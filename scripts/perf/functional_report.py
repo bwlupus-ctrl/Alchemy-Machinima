@@ -27,37 +27,70 @@ LOCAL_HAZARDS = frozenset({
     "export_import", "save_disk", "clipboard_write", "external_url_process",
     "persistent_setting",
 })
+LOGIN_BLOCKING_HAZARDS = frozenset({
+    "file_picker", "destructive", "logout", "clipboard_write",
+    "external_url_process", "modal", "opens_color_picker",
+})
+LOGIN_ONLY_BLOCKER_RULES = {
+    "logout": r"\b(?:requestQuit|forceQuit|userQuit|handleQuit|forceDisconnect|logout|disconnectFromGrid|exit)\s*\(",
+}
 
 HAZARD_RULES = {
     "file_picker": r"\b(?:LLFilePicker|LLFilePickerReplyThread|LLFloaterFilePicker|getOpenFile|getSaveFile)\b",
-    "delete": (r"\b(?:LLFile::remove|remove_all|DeleteFile|removeItem|removeCategory|purgeObject|purgeDescendents"
+    "delete": (r"\b(?:gDirUtilp\s*->\s*deleteFilesInDir|std::filesystem::(?:remove|remove_all)"
+               r"|LLFile::(?:remove|unlink|rmdir)|remove_all|DeleteFile|removeItem|removeCategory|purgeObject|purgeDescendents"
                r"|deleteItem|deleteObject|deletePreset|removePreset|deleteScene|removeScene|deleteTake|removeTake"
                r"|deleteGhost|removeGhost|deleteNode|removeNode|deleteCue|removeCue|deleteSlot|clearSlot)\s*\("),
-    "rename": r"\b(?:LLFile::rename|std::filesystem::rename|rename[A-Z]\w*)\s*\(",
+    "rename": r"\b(?:LLFile::(?:rename|copy)|std::filesystem::(?:rename|copy)|rename[A-Z]\w*)\s*\(",
     "export_import": r"\b(?:export\w*|import\w*)\s*\(",
-    "save_disk": r"\b(?:llofstream|ofstream)\b|\b(?:save[A-Z]\w*|writePreset|write[A-Z]\w*File)\s*\(",
+    "save_disk": (r"\b(?:llofstream|std::ofstream|ofstream)\b"
+                  r"|\b(?:LLFile::)?fopen\s*\([^;\n]*?(?:LLFILE_MODE\s*\(\s*)?[\"'][^\"']*[wa+][^\"']*[\"']"
+                  r"|\bLLAPRFile::(?:open|write)\s*\("
+                  r"|\bLLAPRFile\s+([A-Za-z_]\w*)\s*;[^{}]{0,200}?\b\1\s*\.\s*(?:open|write)\s*\("
+                  r"|\bLLSDSerialize::(?:toXML|toPrettyXML|toBinary|serialize)\s*\([^;{}]{0,200}?,\s*(?!std::(?:cout|cerr)\b)[A-Za-z_]\w*\s*\)"
+                  r"|\b(?:save[A-Z]\w*|writePreset|write[A-Z]\w*File)\s*\("),
     "logout": r"\b(?:requestQuit|forceDisconnect|logout|disconnectFromGrid)\s*\(",
-    "server_message": r"\b(?:gMessageSystem|sendReliable(?:Message)?|sendMessage)\b",
-    "agent_send": (r"\b(?:sendAnimationRequests?|(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*)\b"
+    "server_message": (r"\bgMessageSystem\s*->\s*(?:newMessage\w*|sendReliable|sendMessage)\s*\("
+                       r"|\bsendReliable(?:Message)?\s*\(|\bsendMessage\s*\("),
+    "agent_send": (r"\b(?:sendAnimationRequests?|sendAgentUpdate|send_agent_update)\s*\("
+                   r"|\b(?:gAgent|LLAgent\w*)\b[^;{}]{0,100}?\bsend[A-Z]\w*\s*\("
+                   r"|\bLLAgent::set(?:LookAt|PointAt)\s*\("
+                   r"|\bgAgent\s*\.\s*set(?:LookAt|PointAt)\s*\("
+                   r"|\bLLHUDManager::(?:getInstance\s*\(\s*\)\s*->|instance\s*\(\s*\)\s*\.)?createViewerEffect\s*\("
                    r"|\bAOEngine\s*::\s*(?:(?:instance|getInstance)\s*\(\s*\)\s*(?:\.|->)\s*)?override\s*\("
                    r"|\bAOEngine\s*::\s*[A-Za-z_]\w*Request\s*\("),
-    "object_send": r"\bLLViewerObject\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
-    "selection_send": r"\bLLSelectMgr\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
+    "object_send": (r"\bLLViewerObject\w*\b[^;{}]{0,120}?\bsend[A-Z]\w*\s*\("
+                    r"|->\s*send[A-Z]\w*\s*\("),
+    "selection_send": r"\bLLSelectMgr::(?:getInstance\s*\(\s*\)\s*->|instance\s*\(\s*\)\s*\.)\s*(?:selection\w*|send[A-Z]\w*)\s*\(",
     "selection_broadcast": (r"\b(?:selectObjectOnly|selectObjectAndFamily|selectProxy"
                             r"|selectHighlightedObjects|selectionSetObject\w*)\s*\("
-                            r"|\bLLSelectMgr\w*\b[^;{}]{0,80}?\bselect[A-Z]\w*\s*\("
+                            r"|\bLLSelectMgr::(?:getInstance\s*\(\s*\)\s*->|instance\s*\(\s*\)\s*\.)\s*(?:select|deselect)\w*\s*\("
                             r"|\"animation_explorer\""
                             r"|\bALToolGhostEdit\w*\b[^;{}]{0,80}?\bsetEdit\w*\s*\("),
-    "parcel_send": r"\bLLViewerParcel\w*\b[^;{}]{0,80}?\b(?:send|update|claim|deed|buy|release)[A-Z]\w*\s*\(",
     "chat_im_voice": r"\b(?:sendChat|sendIM|sendInstantMessage|send_chat_from_viewer|send_improved_im|startCall|startVoice|speak|shout)\w*\s*\(",
-    # Concrete viewer APIs only. Bare English words such as return/bank/take
-    # are not evidence of a world write.
-    "world_action": (r"\b(?:LLSelectMgr::getInstance\s*\(\s*\)\s*->\s*(?:derezObject|sendDelete|sendTake|sendReturn)"
-                     r"|LLToolDragAndDrop::handleGiveDragAndDrop|LLAgent::teleportViaLocation|gAgent\.teleportViaLocation"
+    # Case-sensitive call forms: retain the pre-round-5 action verbs while
+    # explicitly covering the concrete viewer APIs that those broad verbs miss.
+    "world_action": (r"\b(?:gAgent\s*\.\s*teleport(?:Home|Cancel|ViaLandmark|ViaLocation\w*|Request)"
+                     r"|LLAgent::teleport(?:Home|Cancel|ViaLandmark|ViaLocation\w*|Request)"
+                     r"|LLAvatarActions::(?:teleportRequest|pay|offerTeleport)"
+                     r"|LLEnvironment::(?:instance|getInstance)\s*\(\s*\)\s*(?:\.|->)\s*update\w*"
+                     r"|LLEnvironment::(?:updateParcel|updateRegion)"
+                     r"|LLSelectMgr::getInstance\s*\(\s*\)\s*->\s*(?:selection\w*|send[A-Z]\w*|select\w*|deselect\w*)"
+                     r"|gAgent\s*\.\s*(?:standUp|sitDown)"
+                     r"|LLAppearanceMgr::(?:instance|getInstance)\s*\(\s*\)\s*(?:\.|->)\s*(?:wear|remove|replace)\w*"
+                     r"|LLAppearanceMgr::(?:wear|remove|replace)\w*"
+                     r"|gInventory\s*\.\s*(?:remove|purge|changeItemParent|changeCategoryParent)\w*"
+                     r"|(?:create_inventory_item|update_inventory_item|copy_inventory_item|move_inventory_item|remove_inventory_\w*|purge_descendents_of|LLGiveInventory::\w+)"
+                     r"|LLToolDragAndDrop::handleGiveDragAndDrop"
                      r"|LLViewerParcelMgr::getInstance\s*\(\s*\)\s*->\s*(?:sendParcel|buy|claim|release|deed)\w*"
-                     r"|LLEnvironment::(?:instance|getInstance)\s*\(\s*\)\s*\.\s*(?:updateRegion|resetRegion)"
                      r"|LLViewerRegion::(?:set|update)\w*|send_ObjectDeRez|derez_objects(?:_separate)?"
-                     r"|handle_object_take|handle_object_return)\s*\("),
+                     r"|handle_object_take|handle_object_return)\s*\("
+                     r"|\b(?:rez|duplicate|delete|take|give|pay|buy|teleport|sit|stand|attach|detach|wear|takeOff|upload|invite|eject|friend|estate|updateRegion|updateParcel|setRegion|setParcel|claimParcel|releaseParcel)\w*\s*\("
+                     r"|\b(?:updateParcel|updateRegion)\s*\("
+                     r"|\b(?:gAgent\s*\.\s*|LLAgent::)?setControlFlags\s*\([^;\n]*(?:AGENT_CONTROL_SIT|AGENT_CONTROL_STAND)"),
+    "parcel_send": (r"\bLLViewerParcel\w*\b[^;{}]{0,80}?\b(?:send|update|claim|deed|buy|release)[A-Z]\w*\s*\("
+                    r"|\bgAgent\s*\.\s*getRegionCapability\s*\("
+                    r"|\b(?:LLHTTPClient|LLCoreHttpUtil)\w*::[^;{}]{0,160}?\b(?:post|put)\w*\s*\("),
     "scripted_dialog": r"\b(?:ScriptDialog|ScriptQuestion|LLScriptFloater|scriptQuestion)\b",
     "clipboard_write": r"\b(?:copyToClipboard|copyFromString)\s*\(",
     "external_url_process": (r"\b(?:loadURLExternal|spawnWebBrowser|ShellExecute|"
@@ -78,13 +111,42 @@ def _hazard_classes(hazards: set[str]) -> list[str]:
 
 
 def _mode_denies_hazards(hazards: set[str], inworld: bool,
-                         login_no_circuit_proved: bool) -> bool:
+                         login_no_circuit_proved: bool,
+                         login_snapshot_verified: bool = True) -> bool:
     """Pure policy fixture shared by scanner tests and manifest metadata."""
-    if hazards & LOCAL_HAZARDS:
+    if inworld:
+        return bool(hazards & (LOCAL_HAZARDS | NETWORK_HAZARDS))
+    if not login_snapshot_verified or hazards & LOGIN_BLOCKING_HAZARDS:
         return True
     if hazards & NETWORK_HAZARDS:
-        return inworld or not login_no_circuit_proved
+        return not login_no_circuit_proved
     return False
+
+
+def _login_block_reason(hazards: set[str]) -> str:
+    reasons = []
+    if "file_picker" in hazards:
+        reasons.append("native file picker/dialog can block harness input")
+    if hazards & {"modal", "opens_color_picker", "scripted_dialog"}:
+        reasons.append("modal dialog can block harness input")
+    if "logout" in hazards or "destructive" in hazards:
+        reasons.append("quit/logout/exit can terminate or escape the run")
+    if "external_url_process" in hazards:
+        reasons.append("launches an external process or URL")
+    if "clipboard_write" in hazards:
+        reasons.append("writes the user's unsnapshotted clipboard")
+    return "login denied: " + "; ".join(reasons)
+
+
+def _login_blocking_hazards(row: dict[str, object], hazards: set[str]) -> set[str]:
+    blocked = hazards & LOGIN_BLOCKING_HAZARDS
+    blocked.update(row.get("direct_login_blocking_hazards", []))
+    # scripted_dialog is a NETWORK rule and may arrive only from the
+    # conservative callee-TU union. It blocks login only when directly
+    # reachable; NETWORK ambiguity alone is inert under the no-circuit proof.
+    if "scripted_dialog" in set(row.get("direct_hazards", [])):
+        blocked.add("scripted_dialog")
+    return blocked
 
 # In-world execution is allow-listed by source owner. Generated bind=setting
 # rows qualify only after their C++ callbacks, listeners, and consumers scan
@@ -327,38 +389,66 @@ def _cpp_without_comments(text: str) -> str:
     escaped = False
     line_comment = False
     block_comment = False
+    raw_end = ""
     pos = 0
     while pos < len(text):
         char = text[pos]
         following = text[pos + 1] if pos + 1 < len(text) else ""
+        if raw_end:
+            if text.startswith(raw_end, pos):
+                pos += len(raw_end)
+                raw_end = ""
+            else:
+                pos += 1
+            continue
         if line_comment:
             if char == "\n":
                 line_comment = False
             else:
                 chars[pos] = " "
-        elif block_comment:
+            pos += 1
+            continue
+        if block_comment:
             if char == "*" and following == "/":
                 chars[pos] = chars[pos + 1] = " "
                 block_comment = False
-                pos += 1
+                pos += 2
             elif char != "\n":
                 chars[pos] = " "
-        elif quote:
+                pos += 1
+            else:
+                pos += 1
+            continue
+        if quote:
             if escaped:
                 escaped = False
             elif char == "\\":
                 escaped = True
             elif char == quote:
                 quote = ""
-        elif char == "/" and following == "/":
+            pos += 1
+            continue
+        if char == "/" and following == "/":
             chars[pos] = chars[pos + 1] = " "
             line_comment = True
-            pos += 1
-        elif char == "/" and following == "*":
+            pos += 2
+            continue
+        if char == "/" and following == "*":
             chars[pos] = chars[pos + 1] = " "
             block_comment = True
-            pos += 1
-        elif char in {'"', "'"}:
+            pos += 2
+            continue
+        raw = re.match(r'(?:u8|u|U|L)?R"([^ ()\\\t\r\n]{0,16})\(', text[pos:pos + 24])
+        if raw and (pos == 0 or not (text[pos - 1].isalnum() or text[pos - 1] == "_")):
+            raw_end = ")" + raw.group(1) + '"'
+            pos += raw.end()
+            continue
+        if char in {'"', "'"}:
+            # C++14 digit separators are not character-literal delimiters.
+            if char == "'" and pos > 0 and pos + 1 < len(text) and \
+                    text[pos - 1].isalnum() and text[pos + 1].isalnum():
+                pos += 1
+                continue
             quote = char
         pos += 1
     return "".join(chars)
@@ -394,6 +484,27 @@ def _source_bodies_by_leaf(sources: dict[Path, str], leaf: str,
     cache_key = "@leaf:" + leaf + "@" + ",".join(sorted(str(p) for p in (restrict or ())))
     if cache is not None and cache_key in cache:
         return cache[cache_key]  # type: ignore[return-value]
+    if restrict is None and cache is not None:
+        index_key = "@all_member_body_index"
+        if index_key not in cache:
+            index: dict[str, list[tuple[str, Path]]] = defaultdict(list)
+            definition = re.compile(
+                r"\b((?:[A-Za-z_]\w*::)*([A-Za-z_]\w*))\s*"
+                r"\([^;{}]*\)\s*(?:const\s*)?\{")
+            control_words = {"if", "for", "while", "switch", "catch"}
+            for path, source_text in sources.items():
+                for match in definition.finditer(source_text):
+                    name = match.group(2)
+                    if name in control_words:
+                        continue
+                    opening = source_text.find("{", match.start(), match.end())
+                    closing = _matching_delimiter(source_text, opening, "{", "}")
+                    if closing >= 0:
+                        index[name].append((source_text[opening:closing + 1], path))
+            cache[index_key] = index
+        found = cache[index_key].get(leaf, [])  # type: ignore[union-attr]
+        cache[cache_key] = found
+        return found
     paths = ([preferred] if preferred in sources else []) + [p for p in sources if p != preferred]
     if restrict is not None:
         paths = [p for p in paths if p in restrict]
@@ -414,8 +525,20 @@ def _source_bodies_by_leaf(sources: dict[Path, str], leaf: str,
 
 def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str,
                            sources: dict[Path, str], body_cache: dict[str, object],
-                           depth_limit: int = 3) -> list[str]:
+                           depth_limit: int = 3,
+                           reached_paths: set[Path] | None = None,
+                           unresolved_member_calls: set[str] | None = None) -> list[str]:
     """Scan callback text and its same/known-owner-file callees to bounded depth."""
+    expansion_key = "@expand:" + owner_class + ":" + str(depth_limit) + ":" + repr(
+        sorted((str(path or ""), hash(text)) for text, path in seed))
+    cached_expansion = body_cache.get(expansion_key)
+    if cached_expansion is not None:
+        cached_result, cached_paths, cached_unresolved = cached_expansion
+        if reached_paths is not None:
+            reached_paths.update(cached_paths)
+        if unresolved_member_calls is not None:
+            unresolved_member_calls.update(cached_unresolved)
+        return list(cached_result)
     result: list[str] = []
     queue = [(text, path, 0) for text, path in seed]
     seen: set[tuple[str, str]] = set()
@@ -423,6 +546,10 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
         "if", "for", "while", "switch", "return", "sizeof", "decltype", "catch",
         "getChild", "findChild", "setCommitCallback", "setClickedCallback",
         "childSetAction", "childSetCommitCallback", "bind", "add",
+        "get", "getValue", "getName", "getID", "getUUID", "getHandle",
+        "asString", "asBoolean", "asInteger", "asReal", "isMap", "isArray",
+        "empty", "size", "begin", "end", "find", "count", "insert",
+        "push_back", "emplace_back", "reset", "clear", "lock", "unlock",
     }
     owner_key = "@owner_files:" + owner_class
     if owner_key not in body_cache:
@@ -433,12 +560,15 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
     while queue:
         text, source, depth = queue.pop(0)
         result.append(text)
+        if reached_paths is not None and source is not None:
+            reached_paths.add(source)
         restrict = owner_files | frozenset(p for p in (source,) + tuple(
             q for _, q in seed) if p is not None)
         if depth >= depth_limit:
             continue
         calls = set(re.findall(r"(?<![.&>])\b((?:[A-Za-z_]\w*::)*[A-Za-z_]\w*)\s*\(", text))
         calls.update(re.findall(r"&([A-Za-z_]\w*(?:::[A-Za-z_]\w*)+)", text))
+        member_calls = set(re.findall(r"(?:\.|->)\s*([A-Za-z_]\w*)\s*\(", text))
         for called in calls:
             leaf = called.rsplit("::", 1)[-1]
             if leaf in ignored:
@@ -458,6 +588,28 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
                     if key not in seen:
                         seen.add(key)
                         queue.append((body, body_source, depth + 1))
+        # Receiver types are not available to this lightweight scanner. Follow
+        # a unique definition normally. For an ambiguous leaf, scan every
+        # candidate body and add every owning TU to the NETWORK union, but do
+        # not recursively fan out: LOCAL reachability is marked unresolved and
+        # therefore remains SKIP at login.
+        for leaf in member_calls - ignored:
+            candidates = _source_bodies_by_leaf(sources, leaf, source, body_cache, None)
+            if len(candidates) > 1:
+                if unresolved_member_calls is not None:
+                    unresolved_member_calls.add(leaf)
+                for _body, body_source in candidates:
+                    if reached_paths is not None:
+                        reached_paths.add(body_source)
+                continue
+            for body, body_source in candidates:
+                key = ("member:" + leaf + ":" + str(hash(body)), str(body_source))
+                if key not in seen:
+                    seen.add(key)
+                    queue.append((body, body_source, depth + 1))
+    body_cache[expansion_key] = (
+        tuple(result), frozenset(reached_paths or ()),
+        frozenset(unresolved_member_calls or ()))
     return result
 
 
@@ -767,25 +919,37 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
             not callback and "setCommitCallback" not in owner_body and
             "setClickedCallback" not in owner_body)
 
-    # LOCAL hazards belong only to code reachable from this row: its exact
-    # callback/binder or setting consumers, plus one level of direct calls.
+    # LOCAL and NETWORK hazards belong to code reachable from this row: its
+    # exact callback/binder or setting consumers, plus three call levels.
+    called_paths: set[Path] = set()
+    unresolved_member_calls: set[str] = set()
     callback_reachable = _expand_callback_calls(
-        bodies, owner_class, cpp_sources, body_cache, depth_limit=1)
+        bodies + setting_bodies, owner_class, cpp_sources, body_cache,
+        depth_limit=3, reached_paths=called_paths,
+        unresolved_member_calls=unresolved_member_calls)
+    if unresolved_member_calls:
+        row["unresolved_member_calls"] = sorted(unresolved_member_calls)
+        resolved = False
     # Setting consumers are already complete function bodies. Listener callback
     # bodies are added by _setting_reachability; do not fan their incidental
     # calls out through unrelated same-name helpers.
     reachable_seed = bodies + setting_bodies
-    reachable = "\n".join(callback_reachable +
-                          [body for body, _path in setting_bodies])
+    reachable = "\n".join(callback_reachable)
 
     # NETWORK stays deliberately conservative in-world. Include the complete
     # comment-stripped translation units owning reachable code so a dynamic
     # sender in that TU cannot silently pass the allowlist.
-    reachable_paths = {path for _body, path in reachable_seed if path is not None}
+    reachable_paths = {path for _body, path in reachable_seed if path is not None} | called_paths
     hazards: set[str] = set()
+    direct_hazards: set[str] = set()
     for tag, pattern in HAZARD_RULES.items():
         if re.search(pattern, reachable):
             hazards.add(tag)
+            direct_hazards.add(tag)
+    row["direct_hazards"] = sorted(direct_hazards)
+    row["direct_login_blocking_hazards"] = sorted(
+        tag for tag, pattern in LOGIN_ONLY_BLOCKER_RULES.items()
+        if re.search(pattern, reachable))
     for path in reachable_paths:
         cache_key = "@network_tu_hazards:" + str(path)
         if cache_key not in body_cache:
@@ -1634,8 +1798,13 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                         else:
                             unresolved.append(f"{row['version']}:{row['page']}:{widget}: owner setEnabled has no literal setting")
 
-        if row.get("exercise") not in {"", "none", None} and row.get("action") not in {
-                "SKIP", "NO_EXERCISE", "EXPECT_MISSING"}:
+        login_destructive_candidate = (
+            row.get("action") == "SKIP" and
+            str(row.get("reason") or "").startswith("destructive ("))
+        login_destructive_reason = str(row.get("reason") or "")
+        if row.get("exercise") not in {"", "none", None} and (
+                row.get("action") not in {"SKIP", "NO_EXERCISE", "EXPECT_MISSING"} or
+                login_destructive_candidate):
             if kit_row:
                 # Functional probes may add oracles/settings, but generated kit
                 # ownership is immutable: never re-import legacy CSV evidence.
@@ -1656,6 +1825,8 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                     "setting callback/listener scan unresolved")
             if hazards:
                 row["hazards"] = sorted(set(row.get("hazards", [])) | hazards)
+                login_blockers = _login_blocking_hazards(row, set(row["hazards"]))
+                row["login_blocking_hazards"] = sorted(login_blockers)
                 row["hazard_classes"] = _hazard_classes(set(row["hazards"]))
                 hazard_rows += 1
                 # Hazardous callbacks are never authorized in-world, including
@@ -1663,26 +1834,55 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                 # coverage may remain executable for non-button controls.
                 _apply_inworld_hazard_policy(row, hazards)
                 if not handler_resolved:
-                    row["action"] = "SKIP"
-                    row["reason"] = "local reachability unresolved"
+                    row["inworld_skip_reason"] = "local reachability unresolved"
+                    if login_blockers:
+                        row["action"] = "SKIP"
+                        row["reason"] = _login_block_reason(login_blockers)
+                    elif row.get("action") == "RUN":
+                        row["login_policy_run"] = True
+                        row["reason"] = ""
                     row["known_gap"] = False
                     unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
                 elif ((row.get("action") == "RUN" and legacy_button_scan) or
                         row.get("motion_send_hazard")):
-                    row["action"] = "SKIP"
-                    row["reason"] = (
+                    hazard_reason = (
                         "in-world: may send animation request via AO override "
                         "(llvoavatar.cpp:7398-7413,7442-7457; "
                         "aldirectoranimswitcher.cpp:414,418,565; "
                         "llfloaterdirector.cpp:3726,3741)"
                         if row.get("motion_send_hazard") else
                         "resolved handler hazard: " + ", ".join(sorted(hazards)))
+                    row["inworld_skip_reason"] = hazard_reason
+                    if login_blockers:
+                        row["action"] = "SKIP"
+                        row["reason"] = _login_block_reason(login_blockers)
+                    else:
+                        row["login_policy_run"] = True
+                        row["reason"] = ""
                     row["known_gap"] = False
             elif not handler_resolved:
-                row["action"] = "SKIP"
-                row["reason"] = "local reachability unresolved"
+                row["inworld_allowed"] = False
+                row["inworld_allow_evidence"] = "unresolved handler reachability"
+                row["inworld_skip_reason"] = "local reachability unresolved"
+                if row.get("action") == "RUN":
+                    row["login_policy_run"] = True
+                    row["reason"] = ""
                 row["known_gap"] = False
                 unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
+            if login_destructive_candidate:
+                policy_hazards = set(row.get("hazards", []))
+                login_blockers = _login_blocking_hazards(row, policy_hazards)
+                row["login_blocking_hazards"] = sorted(login_blockers)
+                row["inworld_allowed"] = False
+                row["inworld_allow_evidence"] = login_destructive_reason
+                row["inworld_skip_reason"] = login_destructive_reason
+                if login_blockers:
+                    row["action"] = "SKIP"
+                    row["reason"] = _login_block_reason(login_blockers)
+                else:
+                    row["action"] = "RUN"
+                    row["reason"] = ""
+                    row["login_policy_run"] = True
             elif (handler_resolved and row.get("action") in {"RUN", "DEFER_INWORLD"} and
                   not row.get("setting") and not row.get("consumer") and
                   not row.get("reset_defaults") and
@@ -1952,7 +2152,7 @@ def self_test_handler_scanner() -> None:
         "server_message": "gMessageSystem->sendReliable(host);",
         "agent_send": "gAgent.sendAnimationRequest(id, ANIM_REQUEST_START);",
         "object_send": "LLViewerObject::sendShapeUpdate();",
-        "selection_send": "LLSelectMgr::sendMultipleUpdate();",
+        "selection_send": "LLSelectMgr::getInstance()->sendMultipleUpdate(UPD_POSITION);",
         "selection_broadcast": "LLSelectMgr::getInstance()->selectObjectOnly(object);",
         "parcel_send": "LLViewerParcelMgr::sendParcelPropertiesUpdate();",
         "chat_im_voice": "sendChat(text);",
@@ -1965,6 +2165,88 @@ def self_test_handler_scanner() -> None:
     for tag, fixture in positive.items():
         assert re.search(HAZARD_RULES[tag], _cpp_without_comments(fixture)), \
             "positive fixture missed hazard rule: " + tag
+    positive_calls = {
+        "world_action": [
+            "gAgent.teleportHome();",  # alchatcommand.cpp:193
+            "gAgent.teleportCancel();",  # alfloaterprogressview.cpp:100
+            "gAgent.teleportViaLandmark(asset_id);",
+            "gAgent.teleportViaLocation(pos_global);",  # alchatcommand.cpp:125
+            "gAgent.teleportRequest(region_handle, position, false);",
+            "LLAvatarActions::teleportRequest(id);",  # alfloatersceneexplorer.cpp:3141
+            "LLAvatarActions::offerTeleport(getAvatarId());",  # alpanelprofilelegacy.cpp:645
+            "LLAvatarActions::pay(getAvatarId());",  # alpanelprofilelegacy.cpp:651
+            "LLEnvironment::instance().updateParcel(parcel_id, settings);",
+            "LLEnvironment::getInstance()->updateRegion(settings);",
+            "LLSelectMgr::getInstance()->selectionUpdateTemporary(1);",  # alviewermenu.cpp:283
+            "LLSelectMgr::getInstance()->sendDelink();",  # alviewermenu.cpp:285
+            "LLSelectMgr::getInstance()->selectObjectOnly(object);",
+            "LLSelectMgr::getInstance()->deselectAll();",
+            "gAgent.standUp();",  # fsfloaterposestand.cpp:104
+            "gAgent.sitDown();",  # fsfloaterposestand.cpp:152
+            "setControlFlags(AGENT_CONTROL_SIT_ON_GROUND);",  # llagent.cpp:1423
+            "LLAppearanceMgr::instance().wearItemOnAvatar(inv_item, true);",
+            "LLAppearanceMgr::instance().removeItemsFromAvatar(ids);",
+            "LLAppearanceMgr::instance().replaceCurrentOutfit(outfit_id);",
+            "gInventory.removeItem(item_id);",
+            "gInventory.purgeObject(object_id);",
+            "gInventory.changeItemParent(item, parent, true);",
+            "create_inventory_item(gAgent.getID(), session, parent, id, type, inv, name, desc, sale, flags, cb);",
+            "update_inventory_item(item, callback);",
+            "copy_inventory_item(owner, item, parent, name, callback);",
+            "move_inventory_item(item, parent, name, callback);",
+            "remove_inventory_item(item_id);",
+            "purge_descendents_of(category_id);",
+            "LLGiveInventory::doGiveInventoryItem(avatar_id, item, session_id);",
+        ],
+        "agent_send": [
+            "gAgent.setLookAt(LOOKAT_TARGET_SELECT, object, position);",
+            "LLAgent::setPointAt(POINTAT_TARGET_SELECT, object, position);",
+            "LLHUDManager::getInstance()->createViewerEffect(LLHUDObject::LL_HUD_EFFECT_POINTAT);",
+            "sendAgentUpdate(true, true);",
+        ],
+        "object_send": ["objectp->sendShapeUpdate();"],
+        "server_message": [
+            "gMessageSystem->newMessageFast(_PREHASH_ObjectGrab);",
+            "gMessageSystem->sendReliable(region->getHost());",
+            "gMessageSystem->sendMessage(host);",
+        ],
+        "parcel_send": [
+            "LLHTTPClient::post(gAgent.getRegionCapability(\"Example\"), body, responder);",
+            "LLCoreHttpUtil::put(gAgent.getRegionCapability(\"Example\"), body, handler);",
+        ],
+        "delete": [
+            "gDirUtilp->deleteFilesInDir(directory, mask);",
+            "std::filesystem::remove(path);", "std::filesystem::remove_all(path);",
+            "LLFile::unlink(path);", "LLFile::rmdir(path);",
+        ],
+        "rename": [
+            "std::filesystem::rename(old_path, new_path);",
+            "std::filesystem::copy(old_path, new_path);",
+            "LLFile::rename(old_path, new_path);", "LLFile::copy(old_path, new_path);",
+        ],
+        "save_disk": [
+            "FILE* fp = fopen(path.c_str(), \"wx\");",
+            "LLFILE* fp = LLFile::fopen(path, LLFILE_MODE(\"wb\"));",
+            "llofstream output(path.c_str());", "std::ofstream output(path);",
+            "LLAPRFile file; file.open(path, LL_APR_WB);",
+            "LLAPRFile file; file.write(buffer, size);",
+            "LLSDSerialize::toXML(data, output);",
+        ],
+        "logout": ["requestQuit();"],
+    }
+    for tag, fixtures in positive_calls.items():
+        for fixture in fixtures:
+            assert re.search(HAZARD_RULES[tag], _cpp_without_comments(fixture)), \
+                f"positive call fixture missed {tag}: {fixture}"
+    for fixture in ("LLAppViewer::instance()->forceQuit();", "exit(0);"):
+        assert re.search(LOGIN_ONLY_BLOCKER_RULES["logout"], fixture), \
+            f"login quit/exit blocker fixture missed: {fixture}"
+    raw_and_digit = _cpp_without_comments(
+        'auto raw = R"tag(// text /* still raw */)tag";\n'
+        "auto n = 1'000; gAgent.teleportHome();\n"
+        "#if 0\ngAgent.teleportCancel();\n#endif\n")
+    assert "gAgent.teleportHome" in raw_and_digit and "gAgent.teleportCancel" in raw_and_digit, \
+        "raw string or digit separator hid executable/#if-0 code"
     negative = _cpp_without_comments(r'''
 // requestQuit(); LLFile::remove(path); gAgent.sendAnimationRequest(id, true);
 /* savePreset(name); logout(); */
@@ -2036,6 +2318,26 @@ void Fixture::onPickProp() { LLSelectMgr::getInstance()->selectObjectOnly(prop);
         "proved no-circuit login mode must run NETWORK-only rows"
     assert _mode_denies_hazards(hazards, False, False), \
         "login mode must abort when the no-circuit proof is absent"
+    assert _mode_denies_hazards(hazards, False, True, False), \
+        "login mode must abort when its file snapshot is unverified"
+
+    login_network_fixture = dict(danger, action="RUN", login_policy_run=True)
+    assert login_network_fixture["action"] == "RUN" and \
+        not _mode_denies_hazards(hazards, False, True) and \
+        _mode_denies_hazards(hazards, True, True), \
+        "NETWORK row must run only at proved-no-circuit login and remain denied in-world"
+    login_unresolved_fixture = {
+        "action": "RUN", "login_policy_run": True,
+        "handler_scan_resolved": False, "inworld_allowed": False,
+    }
+    assert login_unresolved_fixture["action"] == "RUN" and \
+        login_unresolved_fixture["inworld_allowed"] is False, \
+        "unresolved row must run under login policy and remain denied in-world"
+    assert not _mode_denies_hazards({"save_disk", "delete"}, False, True), \
+        "snapshot-covered file writes/deletes must run at login"
+    for blocked in LOGIN_BLOCKING_HAZARDS:
+        assert _mode_denies_hazards({blocked}, False, True), \
+            f"login blocker escaped policy: {blocked}"
 
     safe, hazards, resolved = scan("safe_neighbor")
     assert resolved and not (hazards & LOCAL_HAZARDS), \

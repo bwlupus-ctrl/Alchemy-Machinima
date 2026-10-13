@@ -650,7 +650,9 @@ struct FunctionalDiskSnapshot
 {
     std::filesystem::path mRoot;
     bool mExisted = false;
+    bool mIncludeAll = false;
     std::map<std::filesystem::path, std::string> mFiles;
+    std::set<std::filesystem::path> mDirectories;
 };
 
 class SaveControls final : public LLControlGroup::ApplyFunctor
@@ -1460,6 +1462,7 @@ public:
         }
         if (mFunctional) restoreFunctionalAction();
         if (mFunctional) finishFunctionalShaderBatch();
+        if (mFunctional) restoreFunctionalVCamState();
         restoreDirectorAuditSettings();
         restoreInitialState();
         restore();
@@ -1663,6 +1666,15 @@ private:
         return local.count(hazard) != 0;
     }
 
+    static bool functionalLoginBlockingHazard(const std::string& hazard)
+    {
+        static const std::set<std::string> blocked = {
+            "file_picker", "destructive", "logout", "clipboard_write",
+            "external_url_process", "modal", "opens_color_picker",
+        };
+        return blocked.count(hazard) != 0;
+    }
+
     static std::vector<std::string> functionalHazardsByClass(
         const LLSD& entry, bool network_class)
     {
@@ -1699,35 +1711,114 @@ private:
             name.compare(name.size() - 4, 4, ".xml") == 0;
     }
 
+    static bool functionalProtectedUserPath(const std::filesystem::path& relative,
+                                            bool include_all)
+    {
+        if (include_all) return true;
+        if (!relative.has_parent_path() || relative.parent_path().empty())
+        {
+            // Root user-data files a Director/Lightbox row can write, plus their
+            // .tmp/.stale/.prev/.lock siblings (diopter custom looks, env intensity presets).
+            std::string name = relative.filename().string();
+            LLStringUtil::toLower(name);
+            static const char* const root_files[] = {
+                "diopter_custom.llsd", "diopter_kal_custom.llsd",
+                "light_intensity_presets.xml", "tracked_regions.xml"
+            };
+            for (const char* file : root_files)
+                if (name.rfind(file, 0) == 0)
+                    return true;
+            return functionalSettingsFile(relative);
+        }
+        std::string first = relative.begin()->string();
+        LLStringUtil::toLower(first);
+        static const std::set<std::string> folders = {
+            "presets", "cinematic_presets", "cine_light_rig",
+            "cine_light_rig_cues", "director_scenes", "weather_presets",
+            "windlight", "poses", "director_presets", "colorlut"
+        };
+        return folders.count(first) != 0;
+    }
+
     void captureFunctionalUserFiles()
     {
-        std::set<std::filesystem::path> roots;
-        roots.insert(std::filesystem::path(
-            gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, "")));
+        mFunctionalUserFilesVerified = false;
+        std::vector<std::pair<std::filesystem::path, bool>> roots;
+        roots.emplace_back(std::filesystem::path(
+            gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, "")), false);
         const std::string account = gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, "");
-        if (!account.empty()) roots.insert(std::filesystem::path(account));
-        for (const std::filesystem::path& root : roots)
+        if (mInWorld && !account.empty())
+            roots.emplace_back(std::filesystem::path(account), true);
+        for (const auto& target : roots)
         {
             FunctionalDiskSnapshot snapshot;
-            snapshot.mRoot = root;
+            snapshot.mRoot = target.first;
+            snapshot.mIncludeAll = target.second;
             std::error_code error;
-            snapshot.mExisted = std::filesystem::is_directory(root, error);
+            snapshot.mExisted = std::filesystem::is_directory(snapshot.mRoot, error);
             if (snapshot.mExisted)
             {
-                for (std::filesystem::recursive_directory_iterator it(root, error), end;
+                snapshot.mDirectories.insert(std::filesystem::path());
+                for (std::filesystem::recursive_directory_iterator it(snapshot.mRoot, error), end;
                      !error && it != end; it.increment(error))
                 {
-                    if (!it->is_regular_file(error) ||
-                        !functionalSettingsFile(it->path())) continue;
+                    const std::filesystem::path relative =
+                        std::filesystem::relative(it->path(), snapshot.mRoot, error);
+                    if (error || !functionalProtectedUserPath(relative, snapshot.mIncludeAll))
+                        continue;
+                    if (it->is_directory(error))
+                    {
+                        snapshot.mDirectories.insert(relative);
+                        continue;
+                    }
+                    if (!it->is_regular_file(error)) continue;
                     std::ifstream input(it->path(), std::ios::binary);
-                    if (!input.good()) continue;
-                    snapshot.mFiles[std::filesystem::relative(it->path(), root, error)] =
+                    if (!input.good())
+                        LL_ERRS("UIFunctionalSelfTest") << "Cannot snapshot "
+                            << it->path().string() << LL_ENDL;
+                    snapshot.mFiles[relative] =
                         std::string(std::istreambuf_iterator<char>(input),
                                     std::istreambuf_iterator<char>());
                 }
+                if (error)
+                    LL_ERRS("UIFunctionalSelfTest") << "Snapshot traversal failed under "
+                        << snapshot.mRoot.string() << ": " << error.message() << LL_ENDL;
             }
             mFunctionalUserFiles.push_back(std::move(snapshot));
         }
+        for (const FunctionalDiskSnapshot& snapshot : mFunctionalUserFiles)
+        {
+            std::error_code error;
+            const bool exists = std::filesystem::is_directory(snapshot.mRoot, error);
+            if (error || exists != snapshot.mExisted)
+                return;
+            std::map<std::filesystem::path, std::string> files;
+            std::set<std::filesystem::path> directories;
+            if (exists)
+            {
+                directories.insert(std::filesystem::path());
+                for (std::filesystem::recursive_directory_iterator it(snapshot.mRoot, error), end;
+                     !error && it != end; it.increment(error))
+                {
+                    const std::filesystem::path relative =
+                        std::filesystem::relative(it->path(), snapshot.mRoot, error);
+                    if (error || !functionalProtectedUserPath(relative, snapshot.mIncludeAll))
+                        continue;
+                    if (it->is_directory(error))
+                        directories.insert(relative);
+                    else if (it->is_regular_file(error))
+                    {
+                        std::ifstream input(it->path(), std::ios::binary);
+                        if (!input.good()) return;
+                        files[relative] = std::string(std::istreambuf_iterator<char>(input),
+                                                      std::istreambuf_iterator<char>());
+                    }
+                }
+            }
+            if (error || files != snapshot.mFiles || directories != snapshot.mDirectories)
+                return;
+        }
+        mFunctionalUserFilesVerified = !mFunctionalUserFiles.empty();
     }
 
     void restoreFunctionalUserFiles()
@@ -1737,21 +1828,28 @@ private:
         for (const FunctionalDiskSnapshot& snapshot : mFunctionalUserFiles)
         {
             std::error_code error;
-            // Never replace the account directory: chat/IM transcripts and
-            // other user data may have been created while the test was live.
-            // Remove only settings XML files absent from the original snapshot.
+            std::vector<std::filesystem::path> created_directories;
             if (std::filesystem::is_directory(snapshot.mRoot, error))
             {
                 for (std::filesystem::recursive_directory_iterator it(snapshot.mRoot, error), end;
                      !error && it != end; it.increment(error))
                 {
-                    if (!it->is_regular_file(error) ||
-                        !functionalSettingsFile(it->path())) continue;
                     std::error_code file_error;
                     const std::filesystem::path relative =
                         std::filesystem::relative(it->path(), snapshot.mRoot, file_error);
-                    if (!file_error && snapshot.mFiles.find(relative) == snapshot.mFiles.end())
+                    if (file_error || !functionalProtectedUserPath(
+                            relative, snapshot.mIncludeAll)) continue;
+                    if (it->is_directory(file_error))
+                    {
+                        if (snapshot.mDirectories.count(relative) == 0)
+                            created_directories.push_back(it->path());
+                    }
+                    else if (it->is_regular_file(file_error) &&
+                             snapshot.mFiles.find(relative) == snapshot.mFiles.end())
                         std::filesystem::remove(it->path(), file_error);
+                    if (file_error)
+                        LL_ERRS("UIFunctionalSelfTest") << "Cannot remove created path "
+                            << it->path().string() << ": " << file_error.message() << LL_ENDL;
                 }
             }
             if (!snapshot.mExisted && snapshot.mFiles.empty()) continue;
@@ -1762,7 +1860,37 @@ private:
                 std::filesystem::create_directories(path.parent_path(), error);
                 std::ofstream output(path, std::ios::binary | std::ios::trunc);
                 output.write(saved.second.data(), static_cast<std::streamsize>(saved.second.size()));
+                output.close();
+                if (!output)
+                    LL_ERRS("UIFunctionalSelfTest") << "Cannot restore "
+                        << path.string() << LL_ENDL;
             }
+            std::sort(created_directories.begin(), created_directories.end(),
+                [](const std::filesystem::path& left, const std::filesystem::path& right)
+                { return left.native().size() > right.native().size(); });
+            for (const std::filesystem::path& directory : created_directories)
+            {
+                std::error_code remove_error;
+                std::filesystem::remove(directory, remove_error);
+                if (remove_error)
+                    LL_ERRS("UIFunctionalSelfTest") << "Cannot remove created directory "
+                        << directory.string() << ": " << remove_error.message() << LL_ENDL;
+            }
+            std::map<std::filesystem::path, std::string> verified;
+            for (std::filesystem::recursive_directory_iterator it(snapshot.mRoot, error), end;
+                 !error && it != end; it.increment(error))
+            {
+                if (!it->is_regular_file(error)) continue;
+                const std::filesystem::path relative =
+                    std::filesystem::relative(it->path(), snapshot.mRoot, error);
+                if (error || !functionalProtectedUserPath(relative, snapshot.mIncludeAll)) continue;
+                std::ifstream input(it->path(), std::ios::binary);
+                verified[relative] = std::string(std::istreambuf_iterator<char>(input),
+                                                 std::istreambuf_iterator<char>());
+            }
+            if (error || verified != snapshot.mFiles)
+                LL_ERRS("UIFunctionalSelfTest") << "Functional file restore byte verification failed under "
+                    << snapshot.mRoot.string() << LL_ENDL;
         }
     }
 
@@ -5704,6 +5832,14 @@ private:
             mFunctionalIndex = mFunctionalEntries.size();
             return;
         }
+        if (!mInWorld && !mFunctionalUserFilesVerified)
+        {
+            addFunctionalResult(entry, "FAIL",
+                "login user-data snapshot was not taken and byte-verified; run aborted before dispatch");
+            restoreFunctionalAction();
+            mFunctionalIndex = mFunctionalEntries.size();
+            return;
+        }
         const std::string action = entry["action"].asString();
         const std::vector<std::string> network_hazards =
             functionalHazardsByClass(entry, true);
@@ -5756,9 +5892,7 @@ private:
         if (action == "SKIP")
         {
             std::string reason = entry["reason"].asString();
-            const bool login_network_only = !mInWorld && !network_hazards.empty() &&
-                local_hazards.empty();
-            if (!login_network_only)
+            if (mInWorld || !entry["login_policy_run"].asBoolean())
             {
                 addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
                                     reason.empty() ? "manifest SKIP lacks explicit reason" : reason);
@@ -5803,10 +5937,24 @@ private:
             ++mFunctionalIndex;
             return;
         }
-        if (!local_hazards.empty())
+        std::vector<std::string> login_blockers;
+        const LLSD& declared_hazards = entry["hazards"];
+        if (declared_hazards.isArray())
+            for (LLSD::array_const_iterator it = declared_hazards.beginArray();
+                 it != declared_hazards.endArray(); ++it)
+                if (functionalLoginBlockingHazard(it->asString()))
+                    login_blockers.push_back(it->asString());
+        const LLSD& declared_login_blockers = entry["login_blocking_hazards"];
+        if (declared_login_blockers.isArray())
+            for (LLSD::array_const_iterator it = declared_login_blockers.beginArray();
+                 it != declared_login_blockers.endArray(); ++it)
+                if (std::find(login_blockers.begin(), login_blockers.end(), it->asString()) ==
+                    login_blockers.end())
+                    login_blockers.push_back(it->asString());
+        if (!mInWorld && !login_blockers.empty())
         {
             std::string reason = entry["reason"].asString();
-            if (reason.empty()) reason = "local hazard denied: " + functionalJoin(local_hazards);
+            if (reason.empty()) reason = "login blocking hazard denied: " + functionalJoin(login_blockers);
             addFunctionalResult(entry, "SKIP", reason);
             ++mFunctionalIndex;
             return;
@@ -7343,16 +7491,20 @@ private:
             {
                 mFunctionalObserved = LLSD::emptyMap();
                 const bool no_circuit = functionalLoginHasNoCircuit();
-                if (!no_circuit || !prepareFunctionalLoginVCam())
+                const bool snapshot_verified = mFunctionalUserFilesVerified;
+                mFunctionalObserved["login_snapshot_proof"]["taken_and_byte_verified"] =
+                    snapshot_verified;
+                if (!snapshot_verified || !no_circuit || !prepareFunctionalLoginVCam())
                 {
                     LLSD failure;
                     failure["page"] = "vcam_tab";
                     failure["widget_name"] = "login_vcam_fixture";
                     failure["widget_type"] = "fixture";
                     failure["exercise"] = "Add camera / View";
-                    addFunctionalResult(failure, "FAIL", no_circuit
-                        ? "viewer-local login VCam fixture could not be created"
-                        : "login network-safety proof failed before VCam fixture");
+                    addFunctionalResult(failure, "FAIL", !snapshot_verified
+                        ? "login user-data snapshot was not taken and byte-verified before row 1"
+                        : (no_circuit ? "viewer-local login VCam fixture could not be created"
+                                      : "login network-safety proof failed before VCam fixture"));
                     mFunctionalIndex = mFunctionalEntries.size();
                 }
                 mFunctionalObserved = LLSD::emptyMap();
@@ -10402,6 +10554,7 @@ private:
     bool mFunctionalHaveShadowSnapshot = false;
     bool mFunctionalRigRestored = false;
     std::vector<FunctionalDiskSnapshot> mFunctionalUserFiles;
+    bool mFunctionalUserFilesVerified = false;
     bool mFunctionalUserFilesRestored = false;
     std::vector<AuditSize> mAuditSizes;
     bool mCullOn = true;

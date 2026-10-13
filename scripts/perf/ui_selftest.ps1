@@ -111,42 +111,67 @@ $python = 'C:\Program Files\NVIDIA Corporation\Nsight Systems 2026.1.3\host-wind
 if (-not (Test-Path -LiteralPath $python)) { $python = 'python' }
 $crashes = [System.Collections.Generic.List[object]]::new()
 
-function Get-DirectoryByteManifest([string]$Root) {
+$functionalUserFolders = @('presets', 'cinematic_presets', 'cine_light_rig',
+  'cine_light_rig_cues', 'director_scenes', 'weather_presets', 'windlight',
+  'poses', 'director_presets', 'colorlut')
+$functionalUserRootFiles = @('diopter_custom.llsd*', 'diopter_kal_custom.llsd*',
+  'light_intensity_presets.xml*', 'tracked_regions.xml*')
+
+function Test-FunctionalProtectedPath([string]$Relative, [bool]$IncludeAll) {
+  if ($IncludeAll) { return $true }
+  $parts = $Relative -split '[\\/]'
+  if ($parts.Count -eq 1) {
+    # Root user-data files a Director/Lightbox row can write, including their
+    # .tmp/.stale/.prev/.lock siblings (Opus 10/13: diopter custom looks).
+    foreach ($pattern in $functionalUserRootFiles) {
+      if ($parts[0] -like $pattern) { return $true }
+    }
+    return $parts[0] -like 'settings*.xml'
+  }
+  return $functionalUserFolders -contains $parts[0]
+}
+
+function Get-DirectoryByteManifest([string]$Root, [bool]$IncludeAll) {
   $result = @{}
   if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return $result }
   $prefix = [System.IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
-  foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force |
-      Where-Object { $_.Name -like 'settings*.xml' })) {
+  foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force)) {
     $relative = $file.FullName.Substring($prefix.Length)
+    if (-not (Test-FunctionalProtectedPath $relative $IncludeAll)) { continue }
     $result[$relative] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+  }
+  return $result
+}
+
+function Get-FunctionalProtectedDirectories([string]$Root, [bool]$IncludeAll) {
+  $result = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return $result }
+  $prefix = [System.IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
+  foreach ($directory in @(Get-ChildItem -LiteralPath $Root -Directory -Recurse -Force)) {
+    $relative = $directory.FullName.Substring($prefix.Length)
+    if (Test-FunctionalProtectedPath $relative $IncludeAll) { $null = $result.Add($relative) }
   }
   return $result
 }
 
 function New-FunctionalSettingsBackup {
   $appRoot = [System.IO.Path]::GetFullPath((Join-Path $env:APPDATA 'AlchemyMachinima'))
-  $targets = [System.Collections.Generic.List[string]]::new()
-  $targets.Add((Join-Path $appRoot 'user_settings'))
+  $targets = [System.Collections.Generic.List[object]]::new()
+  $targets.Add([pscustomobject]@{ Path = (Join-Path $appRoot 'user_settings'); IncludeAll = $false })
   if ($InWorld) {
     $accountFolder = Join-Path $appRoot '5kvideoeye_resident'
     if (-not (Test-Path -LiteralPath $accountFolder -PathType Container)) {
       throw "Authorized saved-account folder not found: $accountFolder"
     }
-    $targets.Add($accountFolder)
-  }
-  if (Test-Path -LiteralPath $appRoot -PathType Container) {
-    foreach ($settingsFile in @(Get-ChildItem -LiteralPath $appRoot -File -Recurse -Force `
-        -Filter 'settings_per_account.xml' -ErrorAction SilentlyContinue)) {
-      $parent = $settingsFile.Directory.FullName
-      if ($targets -notcontains $parent) { $targets.Add($parent) }
-    }
+    $targets.Add([pscustomobject]@{ Path = $accountFolder; IncludeAll = $true })
   }
   $backupRoot = Join-Path ([System.IO.Path]::GetTempPath()) `
     ('alchemy_functional_settings_' + [guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory -Path $backupRoot | Out-Null
   $records = [System.Collections.Generic.List[object]]::new()
   for ($index = 0; $index -lt $targets.Count; ++$index) {
-    $target = [System.IO.Path]::GetFullPath($targets[$index])
+    $target = [System.IO.Path]::GetFullPath($targets[$index].Path)
+    $includeAll = [bool]$targets[$index].IncludeAll
     $appPrefix = $appRoot.TrimEnd('\') + '\'
     if (-not $target.StartsWith($appPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
       throw "Refusing to back up settings path outside $appRoot`: $target"
@@ -155,19 +180,34 @@ function New-FunctionalSettingsBackup {
     $existed = Test-Path -LiteralPath $target -PathType Container
     if ($existed) {
       New-Item -ItemType Directory -Path $copy | Out-Null
-      $manifest = Get-DirectoryByteManifest $target
+      $manifest = Get-DirectoryByteManifest $target $includeAll
       foreach ($relative in $manifest.Keys) {
         $copyPath = Join-Path $copy $relative
         New-Item -ItemType Directory -Path (Split-Path -Parent $copyPath) -Force | Out-Null
         Copy-Item -LiteralPath (Join-Path $target $relative) -Destination $copyPath -Force
       }
+      $copyManifest = Get-DirectoryByteManifest $copy $true
+      if ($copyManifest.Count -ne $manifest.Count) {
+        throw "Functional snapshot verification count mismatch for $target"
+      }
+      foreach ($relative in $manifest.Keys) {
+        if (-not $copyManifest.ContainsKey($relative) -or
+            $copyManifest[$relative] -ne $manifest[$relative]) {
+          throw "Functional snapshot byte verification failed for $target\$relative"
+        }
+      }
     }
     $records.Add([pscustomobject]@{
       Target = $target; Copy = $copy; Existed = $existed
-      Manifest = $(if ($existed) { Get-DirectoryByteManifest $target } else { @{} })
+      IncludeAll = $includeAll
+      Manifest = $(if ($existed) { Get-DirectoryByteManifest $target $includeAll } else { @{} })
+      Directories = $(if ($existed) { Get-FunctionalProtectedDirectories $target $includeAll } else {
+        [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase) })
     })
   }
-  return [pscustomobject]@{ Root = $backupRoot; AppRoot = $appRoot; Records = $records }
+  return [pscustomobject]@{
+    Root = $backupRoot; AppRoot = $appRoot; Records = $records; Verified = $true
+  }
 }
 
 function Restore-FunctionalSettingsBackup($Backup) {
@@ -183,11 +223,10 @@ function Restore-FunctionalSettingsBackup($Backup) {
       if ($record.Existed) {
         New-Item -ItemType Directory -Path $target -Force | Out-Null
       }
-      # Restore only settings XML. Chat/IM transcripts and any other files
-      # created during the live account session must remain untouched.
       foreach ($file in @(Get-ChildItem -LiteralPath $target -File -Recurse -Force `
-          -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'settings*.xml' })) {
+          -ErrorAction SilentlyContinue)) {
         $relative = $file.FullName.Substring($target.TrimEnd('\').Length + 1)
+        if (-not (Test-FunctionalProtectedPath $relative ([bool]$record.IncludeAll))) { continue }
         if (-not $record.Manifest.ContainsKey($relative)) {
           Remove-Item -LiteralPath $file.FullName -Force
         }
@@ -197,7 +236,17 @@ function Restore-FunctionalSettingsBackup($Backup) {
         New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
         Copy-Item -LiteralPath (Join-Path $record.Copy $relative) -Destination $destination -Force
       }
-      $actual = if ($record.Existed) { Get-DirectoryByteManifest $target } else { @{} }
+      foreach ($directory in @(Get-ChildItem -LiteralPath $target -Directory -Recurse -Force `
+          -ErrorAction SilentlyContinue | Sort-Object { $_.FullName.Length } -Descending)) {
+        $relative = $directory.FullName.Substring($target.TrimEnd('\').Length + 1)
+        if ((Test-FunctionalProtectedPath $relative ([bool]$record.IncludeAll)) -and
+            -not $record.Directories.Contains($relative)) {
+          Remove-Item -LiteralPath $directory.FullName -Force -ErrorAction Stop
+        }
+      }
+      $actual = if ($record.Existed) {
+        Get-DirectoryByteManifest $target ([bool]$record.IncludeAll)
+      } else { @{} }
       $allNames = @($record.Manifest.Keys) + @($actual.Keys) | Sort-Object -Unique
       foreach ($name in $allNames) {
         if (-not $record.Manifest.ContainsKey($name)) { $differences.Add("created after restore: $target\$name") }
@@ -345,6 +394,9 @@ if ($Functional) {
     $process = $null
     $settingsBackup = New-FunctionalSettingsBackup
     try {
+      if (-not $settingsBackup.Verified) {
+        throw 'Functional user-data snapshot was not taken and byte-verified before row 1.'
+      }
       if ($InWorld) { Set-InWorldAOSafetySettings $settingsBackup }
       Remove-Item -LiteralPath $functionalCsvPath -Force -ErrorAction SilentlyContinue
       $requestFields = [System.Collections.Generic.List[string]]::new()
