@@ -57,7 +57,11 @@ void showStoredValue(LLComboBox* combo, const LLSD& stored_value,
                      const std::array<LLSD, 5>& slot_values,
                      S32 subject_count)
 {
-    if (!combo)
+    // Never change what the user is looking at while they are choosing: skip a
+    // combo that has keyboard focus or an open list (restores the old
+    // setValueIfChanged behaviour of Dance's 2 Hz refresh). The next refresh
+    // after they finish catches up.
+    if (!combo || combo->hasFocus() || combo->isListVisible())
         return;
     const LLSD display_value = subjectDisplayValue(
         stored_value, slot_values, selfSubjectMask(subject_count), subject_count);
