@@ -181,7 +181,10 @@ template<> template<> void stepped_object::test<6>()
     for (U32 i = 0; i < 100000; ++i)
     {
         const LLQuaternion q = ALSteppedAnim::boilRotation(i, i / 2, i % 160, .6f);
-        const F32 angle = 2.f * std::acos(llclamp(std::fabs(q.mQ[VW]), 0.f, 1.f));
+        // 2*atan2(|xyz|, |w|) is accurate for small angles; acos(w) near w=1 loses
+        // ~5e-4 rad in single precision, far above the bound's 1e-5 tolerance.
+        const F32 vec_len = std::sqrt(q.mQ[VX] * q.mQ[VX] + q.mQ[VY] * q.mQ[VY] + q.mQ[VZ] * q.mQ[VZ]);
+        const F32 angle = 2.f * std::atan2(vec_len, std::fabs(q.mQ[VW]));
         ensure("T6 bounded angle", angle <= .6f * DEG_TO_RAD + 1.e-5f);
     }
     ALSteppedAnim::ActorState s; ALSteppedAnim::Config c; c.enabled = true; c.boilTicks = 2;
