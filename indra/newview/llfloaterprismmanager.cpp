@@ -539,7 +539,7 @@ bool LLFloaterPrismManager::postBuild()
             // joint is absent, Eyeline (the first entry) becomes the new pick.
             refreshBoneJointChoices(true);
             mBoneJointPreferredValue = mBoneJointCombo->getValue().asString();
-            onCommitCameraSettings(true);
+            onCommitCameraSettings(true, true);
         });
     mBoneAimCombo->setCommitCallback(camera_commit);
     mBoneRollCombo->setCommitCallback(camera_commit);
@@ -1987,7 +1987,8 @@ void LLFloaterPrismManager::onNewVirtualCamera()
     setStatus(reason);
 }
 
-void LLFloaterPrismManager::onCommitCameraSettings(bool commit_bone_joint)
+void LLFloaterPrismManager::onCommitCameraSettings(bool commit_bone_joint,
+                                                   bool commit_bone_anchor)
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
@@ -2031,7 +2032,11 @@ void LLFloaterPrismManager::onCommitCameraSettings(bool commit_bone_joint)
 
     LLPrismLens::BonePovSettings& bone = settings.mBonePov;
     bone.mEnabled = mBonePovEnabledCheck->getValue().asBoolean();
-    bone.mAnchorSlot = boneAnchorFromValue(mBoneAnchorCombo->getValue());
+    // A merged self row can be displaying a stored Subject slot. Only the
+    // anchor combo's own user commit is allowed to replace that slot with Me;
+    // unrelated camera edits retain the model value copied above.
+    if (commit_bone_anchor)
+        bone.mAnchorSlot = boneAnchorFromValue(mBoneAnchorCombo->getValue());
     if (commit_bone_joint)
     {
         const std::string selected_joint =

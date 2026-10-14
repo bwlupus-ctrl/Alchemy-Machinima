@@ -2,12 +2,30 @@
 
 #include "aldirectorcastui.h"
 
+#include "llagent.h"
 #include "llcombobox.h"
 #include "lldirectorcast.h"
 #include "llscrolllistitem.h"
 
+#include <utility>
+
 namespace ALDirectorCastUI
 {
+namespace
+{
+struct SavedItem
+{
+    std::string label;
+    LLSD value;
+    bool enabled;
+};
+
+bool sameValue(const LLSD& left, const LLSD& right)
+{
+    return left.asString() == right.asString();
+}
+}
+
 void mergeSubjectCombo(LLComboBox* combo, S32 self_value, S32 subject_a_value,
                        S32 subject_count)
 {
@@ -26,12 +44,6 @@ void mergeSubjectCombo(LLComboBox* combo,
     {
         return;
     }
-    struct SavedItem
-    {
-        std::string label;
-        LLSD value;
-        bool enabled;
-    };
     std::vector<SavedItem> extras;
     for (LLScrollListItem* item : combo->getAllData())
     {
@@ -39,9 +51,9 @@ void mergeSubjectCombo(LLComboBox* combo,
         {
             continue;
         }
-        bool subject_item = item->getValue().asString() == slot_values[0].asString();
+        bool subject_item = sameValue(item->getValue(), slot_values[0]);
         for (S32 slot = 1; slot <= subject_count && !subject_item; ++slot)
-            subject_item = item->getValue().asString() == slot_values[slot].asString();
+            subject_item = sameValue(item->getValue(), slot_values[slot]);
         if (!subject_item)
         {
             extras.push_back({ item->getColumn(0)->getValue().asString(),
@@ -51,46 +63,106 @@ void mergeSubjectCombo(LLComboBox* combo,
 
     const LLSD selected = combo->getValue();
     LLDirectorCast& cast = LLDirectorCast::instance();
+    const std::vector<LLDirectorCast::ActorChoice> choices = cast.getActorChoices();
     combo->clearRows();
-    for (const LLDirectorCast::ActorChoice& choice : cast.getActorChoices())
+
+    const LLDirectorCast::ActorChoice* self_choice = nullptr;
+    for (const LLDirectorCast::ActorChoice& choice : choices)
     {
-        U8 visible_subjects = 0;
-        for (S32 slot = 1; slot <= subject_count; ++slot)
+        if (LLDirectorCast::isSelf(choice.mId))
         {
-            if (choice.isSubject(slot)) visible_subjects |= U8(1u << (slot - 1));
+            self_choice = &choice;
+            break;
         }
-        if (!LLDirectorCast::isSelf(choice.mId) && visible_subjects == 0)
-        {
-            continue;
-        }
-        LLSD value = LLDirectorCast::isSelf(choice.mId) ? slot_values[0]
-                                                        : slot_values[1];
-        for (S32 slot = 1; slot <= subject_count; ++slot)
+    }
+    combo->add(self_choice ? self_choice->mLabel : std::string("You"), slot_values[0]);
+
+    S32 selected_self_slot = 0;
+    for (S32 slot = 1; slot <= subject_count; ++slot)
+    {
+        const LLDirectorCast::ActorChoice* subject_choice = nullptr;
+        for (const LLDirectorCast::ActorChoice& choice : choices)
         {
             if (choice.isSubject(slot))
             {
-                value = slot_values[slot];
+                subject_choice = &choice;
                 break;
             }
         }
-        S32 selected_slot = 0;
-        for (S32 slot = 1; slot <= subject_count; ++slot)
-            if (selected.asString() == slot_values[slot].asString()) selected_slot = slot;
-        if (selected_slot > 0 && choice.isSubject(selected_slot))
+        if (subject_choice && LLDirectorCast::isSelf(subject_choice->mId))
         {
-            value = selected;
+            if (sameValue(selected, slot_values[slot]))
+                selected_self_slot = slot;
+            continue;
         }
-        else if (LLDirectorCast::isSelf(choice.mId) &&
-                 selected.asString() == slot_values[0].asString())
+        const char letter = static_cast<char>('A' + slot - 1);
+        std::string label = llformat("Subject %c \xE2\x80\x93 ", letter);
+        if (!subject_choice)
         {
-            value = slot_values[0];
+            label += "not set";
         }
-        combo->add(choice.mLabel, LLSD(value));
+        else
+        {
+            const LLDirectorCast::CastMember* member = cast.getMember(subject_choice->mId);
+            label += member && !member->mLastName.empty()
+                ? member->mLastName : subject_choice->mId.asString();
+        }
+        combo->add(label, slot_values[slot]);
     }
     for (const SavedItem& item : extras)
     {
         combo->add(item.label, item.value, ADD_BOTTOM, item.enabled);
     }
-    combo->setValue(selected);
+    combo->setValue(selected_self_slot > 0 ? slot_values[0] : selected);
+}
+
+void mergeActorCombo(LLComboBox* combo, const LLSD& self_value,
+                     const std::string& actor_value_prefix,
+                     const std::string& self_label,
+                     const std::string& actor_label_prefix)
+{
+    if (!combo)
+        return;
+
+    const LLSD selected = combo->getValue();
+    std::vector<SavedItem> before;
+    std::vector<SavedItem> after;
+    bool saw_identity = false;
+    for (LLScrollListItem* item : combo->getAllData())
+    {
+        if (!item || !item->getColumn(0))
+            continue;
+        const std::string value = item->getValue().asString();
+        const bool identity = sameValue(item->getValue(), self_value) ||
+            value.rfind(actor_value_prefix, 0) == 0;
+        if (identity)
+        {
+            saw_identity = true;
+            continue;
+        }
+        SavedItem saved{ item->getColumn(0)->getValue().asString(),
+                         item->getValue(), item->getEnabled() };
+        (saw_identity ? after : before).push_back(std::move(saved));
+    }
+
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const bool self_is_actor = cast.getMember(gAgentID) != nullptr;
+    const std::string self_actor_value = actor_value_prefix + gAgentID.asString();
+    combo->clearRows();
+    for (const SavedItem& item : before)
+        combo->add(item.label, item.value, ADD_BOTTOM, item.enabled);
+    combo->add(self_is_actor ? self_label + " (Actor: you)" : self_label,
+               self_value);
+    for (const LLDirectorCast::ActorChoice& choice : cast.getActorChoices())
+    {
+        if (!LLDirectorCast::isSelf(choice.mId))
+            combo->add(actor_label_prefix + choice.mLabel,
+                       actor_value_prefix + choice.mId.asString());
+    }
+    for (const SavedItem& item : after)
+        combo->add(item.label, item.value, ADD_BOTTOM, item.enabled);
+
+    combo->setValue(self_is_actor && selected.asString() == self_actor_value
+        ? self_value : selected);
 }
 }

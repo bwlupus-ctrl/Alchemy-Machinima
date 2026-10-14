@@ -348,9 +348,9 @@ bool ALPanelDanceBall::postBuild()
     mRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onRemove(); });
     mExcludeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onExclude(); });
     mClearExclusionsBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClearExclusions(); });
-    mRadius->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoJoinChanged(); });
-    mFocus->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoJoinChanged(); });
-    mAutoJoin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoJoinChanged(); });
+    mRadius->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoJoinChanged(false); });
+    mFocus->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoJoinChanged(true); });
+    mAutoJoin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoJoinChanged(false); });
     mIncludeSeated->setCommitCallback([this](LLUICtrl*, const LLSD&) { onIncludeSeated(); });
     mIncludeMe->setCommitCallback([this](LLUICtrl*, const LLSD&) { onIncludeMe(); });
 
@@ -381,11 +381,11 @@ bool ALPanelDanceBall::postBuild()
     mReshuffleBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onReshuffle(); });
 
     // cinema
-    mWaveEnable->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(); });
-    mWaveFocus->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(); });
-    mWaveSpeed->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(); });
-    mWaveDir->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(); });
-    mWaveApply->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(); });
+    mWaveEnable->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(false); });
+    mWaveFocus->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(true); });
+    mWaveSpeed->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(false); });
+    mWaveDir->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(false); });
+    mWaveApply->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWaveChanged(false); });
     mRampGoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onRampGo(); });
     mExportBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onExport(); });
     mImportBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onImport(); });
@@ -1267,7 +1267,7 @@ void ALPanelDanceBall::onAddNearby()
 {
     const F32 radius = mRadius->getValueF32();
     const ALDanceBall::AutoJoinFocus focus =
-        static_cast<ALDanceBall::AutoJoinFocus>(mFocus->getValue().asInteger());
+        ALDanceBall::instance().autoJoinFocus();
     showFeedbackAdded(ALDanceBall::instance().addNearby(radius, focus));
 }
 
@@ -1327,15 +1327,19 @@ void ALPanelDanceBall::onClearExclusions()
     requestRefresh();
 }
 
-void ALPanelDanceBall::onAutoJoinChanged()
+void ALPanelDanceBall::onAutoJoinChanged(bool focus_commit)
 {
     if (mRefreshing)
     {
         return;
     }
-    ALDanceBall::instance().setAutoJoin(
+    ALDanceBall& ball = ALDanceBall::instance();
+    const ALDanceBall::AutoJoinFocus focus = focus_commit
+        ? static_cast<ALDanceBall::AutoJoinFocus>(mFocus->getValue().asInteger())
+        : ball.autoJoinFocus();
+    ball.setAutoJoin(
         mAutoJoin->get(), mRadius->getValueF32(),
-        static_cast<ALDanceBall::AutoJoinFocus>(mFocus->getValue().asInteger()));
+        focus);
     requestRefresh();
 }
 
@@ -1961,18 +1965,20 @@ void ALPanelDanceBall::onReshuffle()
     requestRefresh();
 }
 
-void ALPanelDanceBall::onWaveChanged()
+void ALPanelDanceBall::onWaveChanged(bool focus_commit)
 {
-    ALDanceBall::Wave wave;
+    ALDanceBall& ball = ALDanceBall::instance();
+    ALDanceBall::Wave wave = ball.wave();
     wave.mEnabled = mWaveEnable->get();
-    wave.mFocus = static_cast<ALDanceBall::AutoJoinFocus>(
-        std::clamp(mWaveFocus->getValue().asInteger(), 0, 2));
+    if (focus_commit)
+        wave.mFocus = static_cast<ALDanceBall::AutoJoinFocus>(
+            std::clamp(mWaveFocus->getValue().asInteger(), 0, 2));
     wave.mSpreadMetersPerSecond = mWaveSpeed->getValue().asReal();
     wave.mDirection = static_cast<ALDanceBallModel::WaveDirection>(
         std::clamp(mWaveDir->getValue().asInteger(), 0, 1));
     wave.mApply = static_cast<ALDanceBallModel::WaveApply>(
         std::clamp(mWaveApply->getValue().asInteger(), 0, 2));
-    ALDanceBall::instance().setWave(wave);
+    ball.setWave(wave);
     requestRefresh();
 }
 

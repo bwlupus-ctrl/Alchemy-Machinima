@@ -26,8 +26,8 @@ class LLButton;
 class LLCheckBoxCtrl;
 class LLComboBox;
 class LLLineEditor;
-class LLSpinCtrl;
 class LLTextBox;
+class LLUICtrl;
 
 class ALPanelDirectorSwitcher final : public LLPanel
 {
@@ -71,11 +71,11 @@ private:
     LLComboBox*     mSecondarySubject = nullptr;
     LLLineEditor*   mSlotLabel = nullptr;
     LLCheckBoxCtrl* mCustomEnabled = nullptr;
-    LLSpinCtrl*     mCustomYaw = nullptr;
-    LLSpinCtrl*     mCustomPitch = nullptr;
-    LLSpinCtrl*     mCustomDistance = nullptr;
-    LLSpinCtrl*     mCustomHeight = nullptr;
-    LLSpinCtrl*     mCustomFov = nullptr;
+    LLUICtrl*       mCustomYaw = nullptr;
+    LLUICtrl*       mCustomPitch = nullptr;
+    LLUICtrl*       mCustomDistance = nullptr;
+    LLUICtrl*       mCustomHeight = nullptr;
+    LLUICtrl*       mCustomFov = nullptr;
     LLButton*       mCaptureCurrent = nullptr;
     LLTextBox*      mCaptureStatus = nullptr;
     LLTextBox*      mSelectedSlotText = nullptr;

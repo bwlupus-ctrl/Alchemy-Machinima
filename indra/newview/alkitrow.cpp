@@ -142,6 +142,7 @@ ALKitRow::Params::Params() :
     who_picker("who_picker", false),
     hidden("hidden", false),
     added("added", false),
+    widget_history("widget_history", true),
     row_height("row_height", 28),
     decimals("decimals", 3),
     min_val("min_val", 0.f),
@@ -161,7 +162,8 @@ ALKitRow::ALKitRow(const Params& p) :
     mCardPreset(p.card_preset),
     mWhoPicker(p.who_picker),
     mHidden(p.hidden),
-    mAdded(p.added)
+    mAdded(p.added),
+    mWidgetHistory(p.widget_history)
 {
     ALKitStyle::color(ALKitStyle::WINDOW_BG);
     mMeta.kind           = p.kind;
@@ -280,7 +282,8 @@ bool ALKitRow::postBuild()
                 [action = mMeta.action](LLUICtrl*, const LLSD&) { dispatchAction(action); });
         }
 
-        if (mBind == "code" && mMeta.kind != "button" && mMeta.kind != "readout" && mMeta.mirror_setting.empty())
+        if (mWidgetHistory && mBind == "code" && mMeta.kind != "button" &&
+            mMeta.kind != "readout" && mMeta.mirror_setting.empty())
             mHistoryConnection = mControl->setCommitCallback(
                 [this](LLUICtrl* c, const LLSD&)
                 {

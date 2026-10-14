@@ -72,6 +72,7 @@ private:
     LLUICtrl*     mWeightedWeight = nullptr;
     U64           mDronePresetRevision = 0;
     ALLiveReadoutClock mScrubClock{10.f};
+    ALLiveReadoutClock mReadoutClock{4.f};
     boost::signals2::scoped_connection mFlightModelConnection;
 };
 

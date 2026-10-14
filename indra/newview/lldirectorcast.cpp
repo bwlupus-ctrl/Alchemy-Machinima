@@ -1838,22 +1838,22 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
 void LLDirectorCast::setSubjectA(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectA != value) { mSubjectA = value; ++mGazeConfigRevision; touchScene(); }
+    if (mSubjectA != value) { mSubjectA = value; ++mSubjectRevision; touchScene(); }
 }
 void LLDirectorCast::setSubjectB(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectB != value) { mSubjectB = value; ++mGazeConfigRevision; touchScene(); }
+    if (mSubjectB != value) { mSubjectB = value; ++mSubjectRevision; touchScene(); }
 }
 void LLDirectorCast::setSubjectC(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectC != value) { mSubjectC = value; ++mGazeConfigRevision; touchScene(); }
+    if (mSubjectC != value) { mSubjectC = value; ++mSubjectRevision; touchScene(); }
 }
 void LLDirectorCast::setSubjectD(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectD != value) { mSubjectD = value; ++mGazeConfigRevision; touchScene(); }
+    if (mSubjectD != value) { mSubjectD = value; ++mSubjectRevision; touchScene(); }
 }
 
 LLVOAvatar* LLDirectorCast::resolveSubjectA()

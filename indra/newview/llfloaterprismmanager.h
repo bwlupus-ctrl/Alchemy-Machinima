@@ -67,7 +67,8 @@ private:
     void onPlaceEyeInFront();
     void onSnapVirtualCameraToView();
     void onNewVirtualCamera();
-    void onCommitCameraSettings(bool commit_bone_joint = false);
+    void onCommitCameraSettings(bool commit_bone_joint = false,
+                                bool commit_bone_anchor = false);
     void onCommitRateSettings();
     void onRatePresetChanged();
     void onAddDisplay();

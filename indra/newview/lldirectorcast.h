@@ -304,7 +304,7 @@ public:
     // Code that writes mLastName directly must call touchCast() afterwards.
     U64 getCastRevision() const { return mCastRevision; }
     U64 getActorChoiceRevision() const
-        { return mCastRevision + mGazeConfigRevision; }
+        { return mCastRevision + mSubjectRevision; }
     void touchCast() { ++mCastRevision; touchScene(); }
     U64 getSceneRevision() const { return mSceneRevision; }
     void touchScene();
@@ -501,6 +501,7 @@ private:
     LLUUID mSteppedActorId; // null means You
     U64 mGazeCueRevision = 0;
     U64 mGazeConfigRevision = 1;
+    U64 mSubjectRevision = 1;
     U64 mCastRevision = 1;      // [GhostPanelPerf] membership + cached names
     U64 mSceneRevision = 1;     // every authored value captured by sceneData()
     boost::signals2::signal<void()> mChangedSignal;

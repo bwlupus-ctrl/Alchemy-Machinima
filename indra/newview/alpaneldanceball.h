@@ -155,7 +155,7 @@ private:
     void onRemove();
     void onExclude();
     void onClearExclusions();
-    void onAutoJoinChanged();
+    void onAutoJoinChanged(bool focus_commit = false);
     void onIncludeSeated();
     void onIncludeMe();
 
@@ -193,7 +193,7 @@ private:
     void onReshuffle();
 
     // ---- cinema
-    void onWaveChanged();
+    void onWaveChanged(bool focus_commit = false);
     void onRampGo();
     void onExport();
     void onImport();

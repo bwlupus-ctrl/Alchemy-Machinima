@@ -11,6 +11,7 @@
 
 #include "aldirectortabmigration.h"
 #include "aldirectorqol.h"
+#include "alcameracurve.h"
 #include "alkitshell.h"
 #include "alkitbinding.h"
 #include "alkitbar.h"
@@ -1393,8 +1394,6 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "atmosphere_tab", &LLFloaterDirector::bindAtmospherePage },
         { "operator_tab", &LLFloaterDirector::bindOperatorPage },
         { "frame_orbit_tab", &LLFloaterDirector::bindFrameOrbitPage },
-        { "temporal_tab", &LLFloaterDirector::bindTemporalPage },
-        { "takes_tab", &LLFloaterDirector::bindTakesPage },
     };
     for (const Binding& binding : bindings)
     {
@@ -1858,25 +1857,25 @@ void LLFloaterDirector::bindAnimatePage(LLView* root)
 
 void LLFloaterDirector::bindCameraPage(LLView* root)
 {
-    if (LLTextBox* control = root->findChild<LLTextBox>("subject_a_text"))
+    if (LLTextBox* control = root->findChild<LLTextBox>("subject_a_text", true))
     {
         mSubjectAText = control;
     }
-    if (LLTextBox* control = root->findChild<LLTextBox>("subject_b_text"))
+    if (LLTextBox* control = root->findChild<LLTextBox>("subject_b_text", true))
     {
         mSubjectBText = control;
     }
-    if (LLTextBox* control = root->findChild<LLTextBox>("subject_c_text"))
+    if (LLTextBox* control = root->findChild<LLTextBox>("subject_c_text", true))
     {
         mSubjectCText = control;
     }
-    if (LLTextBox* control = root->findChild<LLTextBox>("subject_d_text"))
+    if (LLTextBox* control = root->findChild<LLTextBox>("subject_d_text", true))
     {
         mSubjectDText = control;
     }
     auto bind_subject = [this, root](const char* name, LLButton*& member, S32 subject, bool clear)
     {
-        if (LLButton* control = root->findChild<LLButton>(name))
+        if (LLButton* control = root->findChild<LLButton>(name, true))
         {
             member = control;
             control->setCommitCallback([this, subject, clear](LLUICtrl*, const LLSD&)
@@ -1913,8 +1912,11 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
                                     for (S32 mark = SUBJECT_A; mark <= SUBJECT_D; ++mark)
                                         clear_subject(cast, mark);
                                 if (!batch || index < 4)
-                                    assign_subject(cast, subject + index,
-                                                   *static_cast<LLUUID*>(cargo));
+                                {
+                                    const LLUUID& id = *static_cast<LLUUID*>(cargo);
+                                    cast.add(id);
+                                    assign_subject(cast, subject + index, id);
+                                }
                             }
                             return true;
                         });
@@ -1928,16 +1930,16 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
     bind_subject("btn_clear_b", mClearBBtn, SUBJECT_B, true);
     bind_subject("btn_clear_c", mClearCBtn, SUBJECT_C, true);
     bind_subject("btn_clear_d", mClearDBtn, SUBJECT_D, true);
-    if (LLButton* control = root->findChild<LLButton>("btn_assign_subjects_ad"))
+    if (LLButton* control = root->findChild<LLButton>("btn_assign_subjects_ad", true))
     {
         mAssignSubjectsBtn = control;
         control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAssignSubjects(); });
     }
-    if (LLButton* control = root->findChild<LLButton>("btn_actor_gaze"))
+    if (LLButton* control = root->findChild<LLButton>("btn_actor_gaze", true))
     {
         control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
     }
-    if (ALPanelLensGaze* control = root->findChild<ALPanelLensGaze>("director_gaze_panel"))
+    if (ALPanelLensGaze* control = root->findChild<ALPanelLensGaze>("director_gaze_panel", true))
     {
         mGazePanel = control;
         mGazePanel->setSelectedActors(selectedCastIds());
@@ -2041,14 +2043,14 @@ static bool sFrameAspectSyncing = false;
 // writes the chosen ratio and mirrors the setting back (reset, paste, preset) under a recursion guard.
 void LLFloaterDirector::bindFrameOrbitPage(LLView* root)
 {
-    if (LLButton* resolve = root->findChild<LLButton>("auto_frame_resolve"))
+    if (LLButton* resolve = root->findChild<LLButton>("auto_frame_resolve", true))
     {
         resolve->setCommitCallback([](LLUICtrl*, const LLSD&)
         {
             LLCinematicCamera::instance().requestAutoReframe();
         });
     }
-    LLComboBox* aspect = root->findChild<LLComboBox>("frame_aspect_ratio");
+    LLComboBox* aspect = root->findChild<LLComboBox>("frame_aspect_ratio", true);
     if (!aspect)
     {
         return;
@@ -2094,76 +2096,43 @@ void LLFloaterDirector::bindFrameOrbitPage(LLView* root)
                 mirror(aspect, (F32)value.asReal());
             }));
     }
-}
 
-// Scale presets: the same two writes as ALPanelTemporalCapture::onClickScalePreset.
-static void applyTemporalScalePreset(F32 scale, bool manual)
-{
-    gSavedSettings.setF32("TemporalWorldScale", scale);
-    // Realtime (manual = false) returns to Live; every other preset engages Manual.
-    gSavedSettings.setS32("TemporalMode", manual ? 1 : 0);
-}
+    const LLHandle<LLView> root_handle = root->getHandle();
+    const auto update_settle_controls = [root_handle]()
+    {
+        LLView* page = root_handle.get();
+        if (!page)
+            return;
+        const bool auto_frame = gSavedSettings.getBOOL("CinematicAutoFrameEnabled");
+        const bool post_cut = auto_frame &&
+            gSavedSettings.getS32("CinematicAutoFrameSettleMode") == 2;
+        for (const char* name : { "auto_frame_settle_seconds",
+                                  "auto_frame_settle_seconds_reset" })
+            if (LLView* control = page->findChild<LLView>(name, true))
+                control->setEnabled(post_cut);
 
-// Time (generated kit page). The scale commit side effect (Live -> Manual when the scale is not 1)
-// is driven from the TemporalWorldScale signal, so reset, paste and preset follow the same rule.
-void LLFloaterDirector::bindTemporalPage(LLView* root)
-{
-    if (LLButton* button = root->findChild<LLButton>("btn_freeze"))
-    {
-        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(0.f, true); });
-    }
-    if (LLButton* button = root->findChild<LLButton>("btn_quarter"))
-    {
-        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(0.25f, true); });
-    }
-    if (LLButton* button = root->findChild<LLButton>("btn_half"))
-    {
-        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(0.5f, true); });
-    }
-    if (LLButton* button = root->findChild<LLButton>("btn_realtime"))
-    {
-        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(1.f, false); });
-    }
-    if (LLButton* button = root->findChild<LLButton>("btn_double"))
-    {
-        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(2.f, true); });
-    }
-    if (LLControlVariable* scale = gSavedSettings.getControl("TemporalWorldScale"))
-    {
-        mTemporalConnections.emplace_back(scale->getSignal()->connect(
-            [](LLControlVariable*, const LLSD& value, const LLSD&)
-            {
-                if (gSavedSettings.getS32("TemporalMode") == 0 && value.asReal() != 1.0)
-                {
-                    gSavedSettings.setS32("TemporalMode", 1);
-                }
-            }));
-    }
-}
-
-// Takes > Flight (generated kit page). The drone preset is code-bound: 0..4 apply the whole preset
-// through applyDronePreset(); Custom (5) is not an apply target. On release marks the preset custom.
-void LLFloaterDirector::bindTakesPage(LLView* root)
-{
-    if (LLComboBox* preset = root->findChild<LLComboBox>("FlycamDronePreset"))
-    {
-        preset->setCommitCallback([](LLUICtrl* ctrl, const LLSD&)
-        {
-            LLComboBox* box = dynamic_cast<LLComboBox*>(ctrl);
-            const S32 index = box ? box->getValue().asInteger() : 5;
-            if (index >= 0 && index <= 4)
-            {
-                LLViewerJoystick::getInstance()->applyDronePreset(index);
-            }
-        });
-    }
-    if (LLComboBox* release = root->findChild<LLComboBox>("FlycamDroneRelease"))
-    {
-        release->setCommitCallback([](LLUICtrl*, const LLSD&)
-        {
-            LLViewerJoystick::getInstance()->markDronePresetCustom();
-        });
-    }
+        const bool custom = auto_frame &&
+            gSavedSettings.getS32("CinematicAutoFrameSettleCurve") ==
+                ALCameraCurve::CUSTOM_BEZIER;
+        for (const char* name : { "auto_frame_settle_bezier_x1",
+                                  "auto_frame_settle_bezier_y1",
+                                  "auto_frame_settle_bezier_x2",
+                                  "auto_frame_settle_bezier_y2",
+                                  "auto_frame_settle_bezier_x1_reset",
+                                  "auto_frame_settle_bezier_y1_reset",
+                                  "auto_frame_settle_bezier_x2_reset",
+                                  "auto_frame_settle_bezier_y2_reset" })
+            if (LLView* control = page->findChild<LLView>(name, true))
+                control->setEnabled(custom);
+    };
+    update_settle_controls();
+    for (const char* setting_name : { "CinematicAutoFrameEnabled",
+                                      "CinematicAutoFrameSettleMode",
+                                      "CinematicAutoFrameSettleCurve" })
+        if (LLControlVariable* setting = gSavedSettings.getControl(setting_name))
+            mFrameAspectConnections.emplace_back(setting->getCommitSignal()->connect(
+                [update_settle_controls](LLControlVariable*, const LLSD&, const LLSD&)
+                { update_settle_controls(); }));
 }
 
 void LLFloaterDirector::bindLauncherPage(LLView* root)

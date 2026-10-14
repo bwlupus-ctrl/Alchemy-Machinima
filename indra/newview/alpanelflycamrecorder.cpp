@@ -178,10 +178,13 @@ void ALPanelFlycamRecorder::draw()
         setValueIfChanged(mScrub, LLSD(rec.getPlayhead()));
     }
 
-    const F32 shown = recording ? duration : rec.getPlayhead();
-    setTextIfChanged(mTimeText, llformat("%.1f / %.1f s   %d keys",
-                                         shown, duration, rec.getNumKeyframes()));
-    setTextIfChanged(mStatusText, rec.getStatus());
+    if (mReadoutClock.due())
+    {
+        const F32 shown = recording ? duration : rec.getPlayhead();
+        setTextIfChanged(mTimeText, llformat("%.1f / %.1f s   %d keys",
+                                             shown, duration, rec.getNumKeyframes()));
+        setTextIfChanged(mStatusText, rec.getStatus());
+    }
 
     // Clear / Save need a take; Load is always available (all drive the one
     // singleton the standalone floater and the console Takes tab share)

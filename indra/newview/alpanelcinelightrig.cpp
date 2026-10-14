@@ -51,6 +51,7 @@
 #include "alkitrow.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 static LLPanelInjector<ALPanelCineLightRig>
@@ -1502,30 +1503,42 @@ void ALPanelCineLightRig::updateAnchorList()
     ids.reserve(5);
     labels.reserve(5);
     values.reserve(5);
-    for (const LLDirectorCast::ActorChoice& choice : cast.getActorChoices())
+    const std::array<LLUUID, 5> anchor_ids = {
+        LLUUID::null, cast.getSubjectA(), cast.getSubjectB(),
+        cast.getSubjectC(), cast.getSubjectD()
+    };
+    for (S32 value = 0; value < 5; ++value)
     {
-        if (!LLDirectorCast::isSelf(choice.mId) && choice.mSubjectMask == 0)
-        {
-            continue;
-        }
-        S32 value = LLDirectorCast::isSelf(choice.mId) ? 0 : 1;
-        for (S32 slot = 1; slot <= 4; ++slot)
-        {
-            if (choice.isSubject(slot))
-            {
-                value = slot;
-                break;
-            }
-        }
-        if (choice.isSubject(selected_slot)) value = selected_slot;
         const ALCineLightRigManager::Slot slot =
             static_cast<ALCineLightRigManager::Slot>(value);
-        std::string label(choice.mLabel);
+        const LLUUID& id = anchor_ids[value];
+        std::string label;
+        if (value == 0)
+        {
+            label = "You";
+        }
+        else
+        {
+            label = llformat("Subject %c \xE2\x80\x93 ", 'A' + value - 1);
+            if (LLDirectorCast::isSelf(id))
+            {
+                label += id.isNull() ? "not set" : "You";
+            }
+            else if (const LLDirectorCast::CastMember* member = cast.getMember(id);
+                     member && !member->mLastName.empty())
+            {
+                label += member->mLastName;
+            }
+            else
+            {
+                label += id.asString();
+            }
+        }
         if (manager.at(slot).getObjectTarget().notNull())
         {
             label += " (object)";
         }
-        ids.push_back(choice.mId);
+        ids.push_back(id);
         labels.push_back(label);
         values.push_back(value);
     }

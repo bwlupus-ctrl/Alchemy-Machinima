@@ -21,8 +21,8 @@
 #include "llcontrol.h"
 #include "lllineeditor.h"
 #include "llstring.h"
-#include "llspinctrl.h"
 #include "lltextbox.h"
+#include "lluictrl.h"
 #include "llviewercontrol.h"
 
 #include <utility>
@@ -80,22 +80,23 @@ bool ALPanelDirectorSwitcher::postBuild()
     mSlotLabel = getChild<LLLineEditor>("switcher_slot_label");
     mCustomEnabled =
         getChild<LLCheckBoxCtrl>("switcher_custom_enabled");
-    mCustomYaw = getChild<LLSpinCtrl>("switcher_custom_yaw");
-    mCustomPitch = getChild<LLSpinCtrl>("switcher_custom_pitch");
-    mCustomDistance =
-        getChild<LLSpinCtrl>("switcher_custom_distance");
-    mCustomHeight = getChild<LLSpinCtrl>("switcher_custom_height");
-    mCustomFov = getChild<LLSpinCtrl>("switcher_custom_fov");
+    mCustomYaw = findChild<LLUICtrl>("switcher_custom_yaw", true);
+    mCustomPitch = findChild<LLUICtrl>("switcher_custom_pitch", true);
+    mCustomDistance = findChild<LLUICtrl>("switcher_custom_distance", true);
+    mCustomHeight = findChild<LLUICtrl>("switcher_custom_height", true);
+    mCustomFov = findChild<LLUICtrl>("switcher_custom_fov", true);
+    if (!mCustomYaw || !mCustomPitch || !mCustomDistance ||
+        !mCustomHeight || !mCustomFov)
+    {
+        LL_WARNS("DirectorSwitcher") << "Switcher custom controls are incomplete"
+                                     << LL_ENDL;
+        return false;
+    }
     mCaptureCurrent =
         getChild<LLButton>("switcher_capture_current");
-    // The legacy embed has dedicated status/header text.  The generated kit
-    // surface uses its Fine-tune readout for transient capture feedback and
-    // its card title for selection context.
+    // Both hosts provide a dedicated transient status. Never borrow the kit
+    // Fine-tune help row: capture feedback must not erase authored guidance.
     mCaptureStatus = findChild<LLTextBox>("switcher_capture_status", true);
-    if (!mCaptureStatus)
-    {
-        mCaptureStatus = getChild<LLTextBox>("switcher_custom_help");
-    }
     mSelectedSlotText = findChild<LLTextBox>("switcher_selected_slot", true);
     mProgramText = getChild<LLTextBox>("switcher_program_status");
     getChild<LLButton>("switcher_reset_slots")->setCommitCallback(
@@ -163,12 +164,13 @@ bool ALPanelDirectorSwitcher::postBuild()
         [this](LLUICtrl*, const LLSD&) { onSlotSubject(); });
     mCustomEnabled->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onCustomEnabled(); });
-    for (LLSpinCtrl* spinner :
+    for (LLUICtrl* control :
          { mCustomYaw, mCustomPitch, mCustomDistance,
            mCustomHeight, mCustomFov })
     {
-        spinner->setCommitCallback(
-            [this](LLUICtrl*, const LLSD&) { onCustomValue(); });
+        if (control)
+            control->setCommitCallback(
+                [this](LLUICtrl*, const LLSD&) { onCustomValue(); });
     }
     mCaptureCurrent->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onCaptureCurrentView(); });
@@ -308,7 +310,8 @@ void ALPanelDirectorSwitcher::onSlotButton(S32 slot)
     }
 
     mSelectedSlot = slot;
-    mCaptureStatus->setText(LLStringExplicit(""));
+    if (mCaptureStatus)
+        mCaptureStatus->setText(LLStringExplicit(""));
     refreshEditor();
 
     // Disarmed buttons remain useful for bank editing, but cannot acquire the
@@ -439,8 +442,9 @@ void ALPanelDirectorSwitcher::onCaptureCurrentView()
             slot.mCustomDistanceM, slot.mCustomHeightM,
             slot.mCustomFovDeg))
     {
-        mCaptureStatus->setText(
-            LLStringExplicit("No subject available - view was not changed"));
+        if (mCaptureStatus)
+            mCaptureStatus->setText(
+                LLStringExplicit("No subject available - view was not changed"));
         return;
     }
 
@@ -452,8 +456,9 @@ void ALPanelDirectorSwitcher::onCaptureCurrentView()
         slot.mMode = LLCinematicCamera::MODE_STATIC_FULL;
     }
     slot.mCustomEnabled = true;
-    mCaptureStatus->setText(
-        LLStringExplicit("Captured - punch the slot to recall this view"));
+    if (mCaptureStatus)
+        mCaptureStatus->setText(
+            LLStringExplicit("Captured - punch the slot to recall this view"));
     saveBank(true);
 }
 
@@ -467,8 +472,9 @@ void ALPanelDirectorSwitcher::onResetSlots()
     {
         bank_control->resetToDefault(true);
         refreshBank(true);
-        mCaptureStatus->setText(
-            LLStringExplicit("All 12 slots restored to stock assignments"));
+        if (mCaptureStatus)
+            mCaptureStatus->setText(
+                LLStringExplicit("All 12 slots restored to stock assignments"));
     }
 }
 
@@ -577,11 +583,11 @@ void ALPanelDirectorSwitcher::refreshEditor()
     setValueIfChanged(mCustomDistance, LLSD(slot.mCustomDistanceM), true);
     setValueIfChanged(mCustomHeight, LLSD(slot.mCustomHeightM), true);
     setValueIfChanged(mCustomFov, LLSD(slot.mCustomFovDeg), true);
-    for (LLSpinCtrl* spinner :
+    for (LLUICtrl* control :
          { mCustomYaw, mCustomPitch, mCustomDistance,
            mCustomHeight, mCustomFov })
     {
-        setEnabledIfChanged(spinner, slot.mCustomEnabled);
+        setEnabledIfChanged(control, slot.mCustomEnabled);
     }
     mRefreshing = false;
 }

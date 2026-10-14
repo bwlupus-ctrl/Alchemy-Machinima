@@ -159,6 +159,10 @@ bool ALPanelDirectorVCam::postBuild()
     collectControls(this);
     auto refresh_bone_anchor_choices = [this]()
     {
+        const U64 revision = LLDirectorCast::instance().getActorChoiceRevision();
+        if (revision == mBoneAnchorSubjectRevision)
+            return;
+        mBoneAnchorSubjectRevision = revision;
         ALDirectorCastUI::mergeSubjectCombo(
             dynamic_cast<LLComboBox*>(control("vc_bone_anchor")), 0, 1);
     };

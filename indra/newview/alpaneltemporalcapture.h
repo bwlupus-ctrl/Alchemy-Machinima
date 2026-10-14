@@ -20,6 +20,7 @@
 #ifndef AL_ALPANELTEMPORALCAPTURE_H
 #define AL_ALPANELTEMPORALCAPTURE_H
 
+#include "aluirefresh.h"
 #include "llpanel.h"
 
 class LLButton;
@@ -49,6 +50,7 @@ private:
     std::string mLastEffective;
     std::string mLastPost;
     std::string mLastStatus;
+    ALLiveReadoutClock mReadoutClock{4.f};
 };
 
 #endif // AL_ALPANELTEMPORALCAPTURE_H

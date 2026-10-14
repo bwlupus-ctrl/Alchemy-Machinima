@@ -8,10 +8,60 @@
   "performance_group/gaze_tab": {"actor_target": true}
  },
  "p0_pages": {
-  "camera_group/shot_tab": {"v1_sources": [], "root_class": "panel_director_switcher", "root_name": "shot_tab_logic", "label_names": {}},
+  "camera_group/shot_tab": {
+   "v1_sources": [], "root_class": "panel_director_switcher", "root_name": "shot_tab_logic",
+   "watch_extra": ["DirectorSwitcherBank"],
+   "row_overrides": {
+    "CinematicCamJoint": {"allow_text_entry": true},
+    "switcher_slot_01": {"toggle_button": true}, "switcher_slot_02": {"toggle_button": true},
+    "switcher_slot_03": {"toggle_button": true}, "switcher_slot_04": {"toggle_button": true},
+    "switcher_slot_05": {"toggle_button": true}, "switcher_slot_06": {"toggle_button": true},
+    "switcher_slot_07": {"toggle_button": true}, "switcher_slot_08": {"toggle_button": true},
+    "switcher_slot_09": {"toggle_button": true}, "switcher_slot_10": {"toggle_button": true},
+    "switcher_slot_11": {"toggle_button": true}, "switcher_slot_12": {"toggle_button": true},
+    "switcher_slot_mode": {"no_widget_history": true},
+    "switcher_slot_enabled": {"no_widget_history": true},
+    "switcher_slot_label": {"no_widget_history": true},
+    "switcher_primary_subject": {"no_widget_history": true},
+    "switcher_secondary_subject": {"no_widget_history": true},
+    "switcher_custom_enabled": {"no_widget_history": true},
+    "switcher_custom_yaw": {"no_widget_history": true},
+    "switcher_custom_pitch": {"no_widget_history": true},
+    "switcher_custom_distance": {"no_widget_history": true},
+    "switcher_custom_height": {"no_widget_history": true},
+    "switcher_custom_fov": {"no_widget_history": true}
+   },
+   "add_rows": [
+    {"card": "subjects", "first": true, "row": {"k": "readout", "w": "subject_d_text", "l": "Subject D", "h": "The current Subject D camera target."}},
+    {"card": "subjects", "first": true, "row": {"k": "readout", "w": "subject_c_text", "l": "Subject C", "h": "The current Subject C camera target."}},
+    {"card": "subjects", "first": true, "row": {"k": "readout", "w": "subject_b_text", "l": "Subject B", "h": "The current Subject B camera target."}},
+    {"card": "subjects", "first": true, "row": {"k": "readout", "w": "subject_a_text", "l": "Subject A", "h": "The current Subject A camera target and CineCam anchor."}},
+    {"card": "subjects", "row": {"k": "button", "w": "btn_assign_subjects_ad", "l": "Assign A-D", "btn": "Assign A-D from selection", "h": "Assign selected roster rows to A, B, C and D in roster order."}},
+    {"card": "selected_slot", "row": {"k": "readout", "w": "switcher_capture_status", "l": "Capture status", "h": "Reports the result of Capture current view or Reset slots."}}
+   ],
+   "label_names": {}
+  },
   "camera_group/moves_tab": {"v1_sources": [], "label_names": {}},
-  "camera_group/operator_tab": {"v1_sources": [], "omit_rows": ["CinematicCamFrameOffsetUp"], "omit_rows_note": "CinematicCamFrameOffsetUp is homed on Frame & Orbit (auto_frame_vertical_trim, -20..20); a second writer needs a declared shortcut, which the pinned EXPECTED_SHORTCUTS contract does not allow. The link row points to that home.", "add_rows": [{"card": "response", "row": {"k": "link", "w": "frame_offset_up_link", "l": "Frame offset up", "h": "Vertical frame offset is set on Frame & Orbit > Auto reframe (-20..20).", "to": "camera_group/frame_orbit_tab"}}], "label_names": {}},
-  "camera_group/frame_orbit_tab": {"v1_sources": [], "watch_extra": ["CinematicAutoFrameEnabled", "FlycamOrbitEnabled"], "label_names": {}},
+  "camera_group/operator_tab": {"v1_sources": [], "omit_rows": ["CinematicCamFrameOffsetUp"], "omit_rows_note": "CinematicCamFrameOffsetUp is homed on Frame & Orbit (auto_frame_vertical_trim, -20..20); a second writer needs a declared shortcut, which the pinned EXPECTED_SHORTCUTS contract does not allow. The link row points to that home.", "add_rows": [{"card": "response", "row": {"k": "link", "w": "frame_offset_up_link", "l": "Frame offset up", "h": "Vertical frame offset is set on Frame & Orbit > Auto reframe (-20..20).", "to": "camera_group/frame_orbit_tab"}}], "row_overrides": {"shake_preset_combo": {"it": ["Choose a look...", "Locked-Off", "Tripod Drift", "Doc Handheld", "Run-and-Gun", "Steadicam Float", "Shoulder Rig", "Vehicle / Drive", "Verite", "Heartbeat"], "iv": [0,1,2,3,4,5,6,7,8,9]}, "FlycamOperatorModeBlendTime": {"mn": 0.01}}, "label_names": {}},
+  "camera_group/frame_orbit_tab": {
+   "v1_sources": [], "watch_extra": ["CinematicAutoFrameEnabled", "FlycamOrbitEnabled"],
+   "row_overrides": {
+    "fo_anchor_joint": {"allow_text_entry": true},
+    "frame_guide_style": {"enabled_control": "CinematicFrameGuideEnabled"},
+    "frame_guide_opacity": {"enabled_control": "CinematicFrameGuideEnabled"},
+    "frame_focal_length": {"enabled_control": "CinematicFrameLensEnabled"},
+    "auto_frame_fill": {"enabled_control": "CinematicAutoFrameEnabled"},
+    "auto_frame_compose": {"enabled_control": "CinematicAutoFrameEnabled"},
+    "auto_frame_distance_trim": {"enabled_control": "CinematicAutoFrameEnabled"},
+    "auto_frame_vertical_trim": {"enabled_control": "CinematicAutoFrameEnabled"},
+    "auto_frame_resolve": {"enabled_control": "CinematicAutoFrameEnabled"},
+    "auto_frame_settle_mode": {"enabled_control": "CinematicAutoFrameEnabled"},
+    "auto_frame_settle_curve": {"enabled_control": "CinematicAutoFrameEnabled"},
+    "auto_frame_settle_max_ratio": {"enabled_control": "CinematicAutoFrameEnabled"},
+    "SettleFeather": {"enabled_control": "CinematicAutoFrameEnabled"}
+   },
+   "label_names": {}
+  },
   "camera_group/takes_tab": {"v1_sources": [], "root_class": "panel_flycam_recorder", "root_name": "takes_tab_logic", "label_names": {}},
   "capture_group/temporal_tab": {"v1_sources": [], "root_class": "panel_temporal_capture", "root_name": "temporal_tab_logic", "label_names": {}},
   "capture_group/scene_options_tab": {"v1_sources": [], "label_names": {}},

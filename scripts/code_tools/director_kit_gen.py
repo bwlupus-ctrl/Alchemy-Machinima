@@ -488,8 +488,10 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
                          ("st", "increment"), ("dc", "decimal_digits")):
             if src in row:
                 child.set(dst, scalar(row[src]))
-        if row.get("enabled_control"):
-            child.set("enabled_control", str(row["enabled_control"]))
+        if row.get("allow_text_entry") and child.tag == "combo_box":
+            child.set("allow_text_entry", "true")
+        if row.get("toggle_button") and child.tag == "button":
+            child.set("is_toggle", "true")
         if row.get("disabled"):
             child.set("enabled", "false")
         if kind == "readout" and row.get("row_height"):
@@ -524,8 +526,10 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     for src, dst in (("mn", "min_val"), ("mx", "max_val"), ("st", "increment"), ("dc", "decimal_digits")):
         if src in row:
             attrs[dst] = scalar(row[src])
-    if row.get("enabled_control"):
-        attrs["enabled_control"] = str(row["enabled_control"])
+    if row.get("allow_text_entry") and tag == "combo_box":
+        attrs["allow_text_entry"] = "true"
+    if row.get("toggle_button") and tag == "button":
+        attrs["is_toggle"] = "true"
     if row.get("disabled"):
         attrs["enabled"] = "false"
     if kind == "readout" and row.get("row_height"):
@@ -591,6 +595,10 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         # kit_lint's bind="setting" control-child rule cannot apply to them.
         bind = "none"
     attrs["bind"] = bind
+    if row.get("no_widget_history"):
+        attrs["widget_history"] = "false"
+    if row.get("enabled_control"):
+        attrs["enabled_control"] = str(row["enabled_control"])
     mapping = (("h", "help"), ("kw", "keywords"), ("unit", "unit"), ("sub", "sub"),
                ("to", "link_to"), ("shortcut_of", "shortcut_of"), ("mirror_setting", "mirror_setting"))
     for src, dst in mapping:
@@ -802,18 +810,25 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
 def apply_page_features(root: ET.Element, key: str, features: dict) -> None:
     feature = features.get(key, {})
     if feature.get("bulk_subject_assignment"):
-        card = next((node for node in root.iter() if node.get("name") == "shot_subjects_card"), None)
+        card = next((node for node in root.iter()
+                     if node.get("name") in {"shot_subjects_card", "kc_subjects"}), None)
         if card is None:
             raise GenError("bulk subject assignment requires shot_subjects_card")
-        ET.SubElement(card, "button", {"name": "btn_assign_subjects_ad", "label": "Assign A-D from selection",
-                      "tool_tip": "Assign the selected roster rows to A, B, C and D in roster order",
-                      "follows": "left|top", "layout": "topleft", "left": "10", "top": "108",
-                      "width": "318", "height": "20"})
+        if not any(node.get("name") == "btn_assign_subjects_ad" for node in card.iter()):
+            ET.SubElement(card, "button", {"name": "btn_assign_subjects_ad", "label": "Assign A-D from selection",
+                          "tool_tip": "Assign the selected roster rows to A, B, C and D in roster order",
+                          "follows": "left|top", "layout": "topleft", "left": "10", "top": "108",
+                          "width": "318", "height": "20"})
         for subject in "abcd":
             setter = next((node for node in card.iter() if node.get("name") == f"btn_set_{subject}"), None)
             if setter is None:
                 raise GenError(f"bulk subject assignment requires btn_set_{subject}")
             setter.tag = "dnd_button"
+            # On a kit page the drop-target button sits in a kit_row; a dnd_button is not
+            # the plain <button> a kind="button" row requires, so the row is a custom host.
+            for row in card.iter("kit_row"):
+                if setter in list(row):
+                    row.set("kind", "custom")
 
 
 def legacy_page(group: dict, page: dict, leaf: ET.Element, features: dict) -> tuple[ET.Element, set[str]]:
@@ -1186,6 +1201,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
             cfg = config.get("p0_pages", {}).get(key, {})
             sources = [XUI / name for name in cfg.get("v1_sources", [])]
             root, names = kit_page(group, raw_page, cfg, sources, referenced, details)
+            apply_page_features(root, key, config.get("page_features", {}))
             hosted = sum(1 for node in root.iter() if node.tag in HOST_KIND or node.tag == "kit_switch") if sources else 0
             kit_rows = sum(1 for node in root.iter("kit_row"))
         else:

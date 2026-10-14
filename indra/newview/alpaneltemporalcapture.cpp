@@ -75,47 +75,42 @@ void ALPanelTemporalCapture::onScaleCommit()
 void ALPanelTemporalCapture::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
-    // Read the live frozen frame so the readouts show the ACTUAL effective scale
-    // (which equals the requested scale in Landing 1, but is sourced from the
-    // service so it stays correct if adaptive scaling lands later).
-    const LLTemporalFrameContext& tf = LLPresentationTime::currentFrame();
-    const F32 eff = tf.effective_scale;
+    if (mReadoutClock.due())
+    {
+        // Read the live frozen frame so the readouts show the ACTUAL effective scale.
+        const LLTemporalFrameContext& tf = LLPresentationTime::currentFrame();
+        const F32 eff = tf.effective_scale;
 
-    std::string eff_str = tf.active()
-        ? llformat("Effective speed: %.2fx%s", eff, tf.paused ? "  (frozen)" : "")
-        : std::string("Effective speed: 1.00x (live)");
-    if (eff_str != mLastEffective)
-    {
-        mEffectiveText->setText(eff_str);
-        mLastEffective = eff_str;
-    }
+        std::string eff_str = tf.active()
+            ? llformat("Effective speed: %.2fx%s", eff, tf.paused ? "  (frozen)" : "")
+            : std::string("Effective speed: 1.00x (live)");
+        if (eff_str != mLastEffective)
+        {
+            mEffectiveText->setText(eff_str);
+            mLastEffective = eff_str;
+        }
 
-    std::string post_str;
-    if (tf.active() && eff > 0.f)
-    {
-        post_str = llformat("Recommended post speed: %.0f%%", 100.f / eff);
-    }
-    else if (tf.active())   // paused / 0x
-    {
-        post_str = "Recommended post speed: --";
-    }
-    else
-    {
-        post_str = "Recommended post speed: 100%";
-    }
-    if (post_str != mLastPost)
-    {
-        mPostSpeedText->setText(post_str);
-        mLastPost = post_str;
-    }
+        std::string post_str;
+        if (tf.active() && eff > 0.f)
+            post_str = llformat("Recommended post speed: %.0f%%", 100.f / eff);
+        else if (tf.active())
+            post_str = "Recommended post speed: --";
+        else
+            post_str = "Recommended post speed: 100%";
+        if (post_str != mLastPost)
+        {
+            mPostSpeedText->setText(post_str);
+            mLastPost = post_str;
+        }
 
-    std::string status = tf.paused ? "Paused (0x)"
-                                   : (tf.active() ? "Manual scale (grid time is real)"
-                                                  : "Live");
-    if (status != mLastStatus)
-    {
-        mStatusText->setText(status);
-        mLastStatus = status;
+        std::string status = tf.paused ? "Paused (0x)"
+                                       : (tf.active() ? "Manual scale (grid time is real)"
+                                                      : "Live");
+        if (status != mLastStatus)
+        {
+            mStatusText->setText(status);
+            mLastStatus = status;
+        }
     }
 
     LLPanel::draw();

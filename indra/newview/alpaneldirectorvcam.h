@@ -111,6 +111,7 @@ private:
     bool mCompact = false;
     U32 mLargePage = 0;
     U64 mCameraLabelRevision = 0;
+    U64 mBoneAnchorSubjectRevision = 0;
     bool mCustomAspect = false;
     bool mCustomScreenAspect = false;
     bool mRefreshing = false;

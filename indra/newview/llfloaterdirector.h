@@ -97,8 +97,6 @@ private:
     void bindCameraPage(LLView* root);
     void bindOperatorPage(LLView* root);
     void bindFrameOrbitPage(LLView* root);
-    void bindTemporalPage(LLView* root);
-    void bindTakesPage(LLView* root);
     void bindLauncherPage(LLView* root);
     // Look pages (generated kit pages): wire the code-bound buttons, palette side effects and
     // Lightbox links to the same ALRotoInk / ALTron / ALPanelCineLightRig calls the Lightbox uses.
@@ -553,7 +551,6 @@ private:
     boost::signals2::scoped_connection mPageSelectedConnection;
     boost::signals2::scoped_connection mKitUIMsConnection;
     // Kit Time page: scale commit side effect driven from the TemporalWorldScale signal.
-    std::vector<boost::signals2::scoped_connection> mTemporalConnections;
     // Kit Operator/Frame pages: frame aspect readback from CinematicFrameAspectRatio.
     std::vector<boost::signals2::scoped_connection> mFrameAspectConnections;
     std::vector<boost::signals2::scoped_connection> mWorldLensConnections;

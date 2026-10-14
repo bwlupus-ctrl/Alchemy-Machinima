@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanelghoststudio.h"
+#include "aldirectorcastui.h"
 #include "llviewermenufile.h" // [AutoAnimate]
 #include "llfilepicker.h" // [AutoAnimate]
 #include "alscrollfit.h"
@@ -1179,8 +1180,12 @@ void ALPanelGhostStudio::refreshLookTargetCombo()
         mLookTargetCombo->add("Ghost: " + inst.mName,
                               "ghost:" + inst.mId.asString());
     }
-    if (!previous.isDefined() ||
-        !mLookTargetCombo->setSelectedByValue(previous, true))
+    mLookTargetCombo->setSelectedByValue(previous, true);
+    ALDirectorCastUI::mergeActorCombo(
+        mLookTargetCombo, LLSD("me"), "actor:", "Me", "Actor: ");
+    const LLSD merged_selection = mLookTargetCombo->getValue();
+    if (!merged_selection.isDefined() ||
+        !mLookTargetCombo->setSelectedByValue(merged_selection, true))
     {
         mLookTargetCombo->selectFirstItem();
     }
