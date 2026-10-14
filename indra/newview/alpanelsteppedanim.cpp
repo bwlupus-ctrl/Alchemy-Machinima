@@ -105,7 +105,6 @@ void ALPanelSteppedAnim::rebuildActors()
     const LLUUID selected = cast.getSteppedActorId();
     mActorTarget->removeall();
     mOverrideList->deleteAllItems();
-    mActorTarget->add("You", LLUUID::null.asString());
     const auto add_actor = [this](const LLUUID& id, const std::string& name, const LLDirectorCast::ActorStyle& style)
     {
         mActorTarget->add(name, id.asString());
@@ -121,6 +120,10 @@ void ALPanelSteppedAnim::rebuildActors()
     add_actor(LLUUID::null, "You", cast.getActorStyle(LLUUID::null));
     for (const LLDirectorCast::CastMember& member : cast.getCast())
     {
+        // You're auto-added to the cast at login and already listed as "You"
+        // (getActorStyle treats gAgentID and null as the same self style).
+        if (member.mId == gAgentID)
+            continue;
         add_actor(member.mId, member.mLastName.empty() ? member.mId.asString() : member.mLastName,
                   member.mActorStyle);
     }

@@ -117,9 +117,12 @@ std::string whoChipSubject(const LLComboBox* combo)
     return subject;
 }
 
-std::string whoChipLabel(const LLComboBox* combo, bool follows_cast)
+// Prefix is the page's own who_label (e.g. "Stepping"); pages without one keep the
+// historical "Lighting" prefix.
+std::string whoChipLabel(const std::string& who_label, const LLComboBox* combo, bool follows_cast)
 {
-    return "Lighting: " + whoChipSubject(combo) + (follows_cast ? " (follows cast)" : "");
+    const std::string prefix = who_label.empty() ? std::string("Lighting") : who_label;
+    return prefix + ": " + whoChipSubject(combo) + (follows_cast ? " (follows cast)" : "");
 }
 
 bool whoChipHasLabel(const LLButton* chip, const std::string& label)
@@ -671,11 +674,11 @@ bool ALKitPage::postBuild()
                     mWhoCombo->setVisible(false);
                     if (mWhoChip)
                     {
-                        mWhoChip->setLabel(whoChipLabel(mWhoCombo, !mWhoPinned));
+                        mWhoChip->setLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned));
                         reshape(getRect().getWidth(), getRect().getHeight(), false);
                     }
                 });
-            mWhoChip->setLabel(whoChipLabel(mWhoCombo, !mWhoPinned));
+            mWhoChip->setLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned));
         }
         else
         {
@@ -1538,7 +1541,7 @@ void ALKitPage::setWhoPin(const LLSD& value)
         mActorTarget = value.asUUID();
     if (mWhoChip && mWhoCombo)
     {
-        mWhoChip->setLabel(whoChipLabel(mWhoCombo, !mWhoPinned));
+        mWhoChip->setLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned));
         reshape(getRect().getWidth(), getRect().getHeight(), false);
     }
     refreshActorTargetAvailability();
@@ -1619,7 +1622,7 @@ void ALKitPage::draw()
                         row->pollLiveValue();
         if (mWhoCombo && mWhoChip && !mWhoError)
         {
-            const std::string label = whoChipLabel(mWhoCombo, !mWhoPinned);
+            const std::string label = whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned);
             if (!whoChipHasLabel(mWhoChip, label))
             {
                 mWhoChip->setLabel(label); // ui-draw-lint: allow(raw-write) change-gated on label, readout clock throttled

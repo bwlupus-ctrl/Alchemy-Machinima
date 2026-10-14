@@ -1124,6 +1124,9 @@ void ALPanelGhostStudio::refreshSourceCombo()
     mSourceCombo->add("You", LLSD(LLUUID::null));
     for (const LLDirectorCast::CastMember& m : cast.getCast())
     {
+        // Your own avatar is auto-added to the cast at login; it is already "You".
+        if (gAgentID.notNull() && m.mId == gAgentID)
+            continue;
         mSourceCombo->add(sourceName(m.mId), LLSD(m.mId));
     }
     if (!prev.isDefined() || !mSourceCombo->setSelectedByValue(prev, true))
