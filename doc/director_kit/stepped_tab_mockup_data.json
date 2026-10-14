@@ -1,0 +1,775 @@
+{
+  "name": "stepped_tab",
+  "label": "Stepped",
+  "sum": "Characters move on a stepped clock (on twos, threes...) while the camera and world stay smooth. Viewer-local only. Off is byte-identical.",
+  "pre": "stepped_anim",
+  "presets": [
+    "Anime on twos",
+    "Anime on threes (limited)",
+    "KPop Demon Hunters",
+    "Spider-Verse mixed",
+    "Stop-motion (Laika/Aardman)",
+    "Claymation boil",
+    "Harryhausen creature",
+    "Rotoscope (A Scanner Darkly style)",
+    "Silent film undercrank",
+    "Puppet / marionette",
+    "Retro sprite",
+    "Choppy dream / strobe",
+    "Hit-stop action",
+    "Custom (start from defaults)"
+  ],
+  "preset_user": true,
+  "master": {
+    "w": "sa_enable",
+    "l": "Stepped animation",
+    "s": "StepAnimEnabled"
+  },
+  "who": {
+    "label": "Stepping",
+    "pickers": [
+      "sa_actor_target"
+    ]
+  },
+  "cards": [
+    {
+      "id": "stepped",
+      "t": "Stepped animation",
+      "k": "rows",
+      "ew": "sa_enable",
+      "es": "StepAnimEnabled",
+      "rows": [
+        {
+          "w": "sa_scope",
+          "k": "combo",
+          "l": "Applies to",
+          "h": "Who steps: the actor chosen below, the whole cast (you if the cast is empty), or every avatar in view.",
+          "kw": "scope who cast everyone selected",
+          "s": "StepAnimScope",
+          "d": 1,
+          "it": [
+            "Selected actor",
+            "Whole cast",
+            "Everyone in view"
+          ],
+          "iv": [
+            0,
+            1,
+            2
+          ],
+          "bind": "setting"
+        },
+        {
+          "w": "sa_actor_target",
+          "k": "combo",
+          "l": "Actor",
+          "h": "The selected actor: the one stepped in Selected actor scope, the target in Mixed, and the one whose override you edit below. Saved with the scene.",
+          "kw": "actor target selected cast",
+          "it": [
+            "Selected cast",
+            "Mara",
+            "Jun",
+            "Me"
+          ],
+          "who": true,
+          "who_picker": 1,
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::onActorTargetCommit"
+        },
+        {
+          "w": "sa_override_list",
+          "k": "list",
+          "l": "Overrides",
+          "h": "Cast members with their own stepping. Click one to edit it here.",
+          "kw": "override per actor list",
+          "it": [
+            "Mara | Own 8 fps | Pose + position",
+            "Jun | Never stepped"
+          ],
+          "sample": true,
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::onOverrideListSelect"
+        },
+        {
+          "w": "sa_actor_override",
+          "k": "combo",
+          "l": "This actor",
+          "h": "Inherit follows the page. Never keeps this actor smooth. Own settings steps it at its own rate even outside the scope.",
+          "kw": "override inherit never own",
+          "it": [
+            "Inherit",
+            "Never stepped",
+            "Own settings"
+          ],
+          "iv": [
+            0,
+            1,
+            2
+          ],
+          "d": 0,
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::onActorOverrideCommit"
+        },
+        {
+          "w": "sa_actor_rate",
+          "k": "slider",
+          "l": "Own rate",
+          "h": "This actor's stepped rate in frames per second.",
+          "kw": "actor own rate fps",
+          "mn": 2,
+          "mx": 30,
+          "st": 0.5,
+          "dc": 1,
+          "d": 12,
+          "unit": "fps",
+          "show_if": "actor_own",
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::onActorRateCommit"
+        },
+        {
+          "w": "sa_actor_steps",
+          "k": "combo",
+          "l": "Own steps",
+          "h": "What steps for this actor. Inherit uses the What steps card.",
+          "kw": "actor pose position inherit",
+          "it": [
+            "Inherit",
+            "Pose",
+            "Pose + position"
+          ],
+          "iv": [
+            -1,
+            0,
+            1
+          ],
+          "d": -1,
+          "show_if": "actor_own",
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::onActorStepsCommit"
+        },
+        {
+          "w": "sa_actor_role",
+          "k": "combo",
+          "l": "Mixed role",
+          "h": "In Mixed rate mode: Auto makes the selected actor the target; Target or Background forces this actor's role.",
+          "kw": "mixed role target background",
+          "it": [
+            "Auto",
+            "Target",
+            "Background"
+          ],
+          "iv": [
+            0,
+            1,
+            2
+          ],
+          "d": 0,
+          "show_if": "mixed",
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::onActorRoleCommit"
+        },
+        {
+          "w": "sa_override_clear",
+          "k": "button",
+          "l": "Clear",
+          "h": "Removes this actor's own stepping settings so it follows the page again.",
+          "kw": "clear override reset actor",
+          "btn": "Clear override",
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::onOverrideClear"
+        },
+        {
+          "w": "sa_exclude_mounted",
+          "k": "toggle",
+          "l": "Skip camera rigs",
+          "a": 1,
+          "h": "Keeps smooth any actor a camera rides: you in mouselook, the Bone Lock subject and VCam bone-POV anchors. Stops judder in POV shots.",
+          "kw": "exclude mouselook bone lock pov camera",
+          "s": "StepAnimExcludeCameraMounted",
+          "d": true,
+          "bind": "setting"
+        },
+        {
+          "w": "sa_max_avatars",
+          "k": "number",
+          "l": "Max actors",
+          "a": 1,
+          "h": "Most actors stepped at once. The selected actor, overrides and the cast come first, then the nearest. Keeps crowds fast.",
+          "kw": "max actors limit crowd performance",
+          "s": "StepAnimMaxAvatars",
+          "mn": 1,
+          "mx": 100,
+          "st": 1,
+          "dc": 0,
+          "d": 24,
+          "unit": "actors",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_status",
+          "k": "readout",
+          "l": "Status",
+          "h": "How many actors are stepping now, at what rate, and any actors skipped and why.",
+          "kw": "status count stepping",
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::refreshStatus"
+        }
+      ]
+    },
+    {
+      "id": "rate",
+      "t": "Rate",
+      "k": "rows",
+      "rows": [
+        {
+          "w": "sa_mode",
+          "k": "segmented",
+          "l": "Mode",
+          "h": "Fixed steps at one rate. Adaptive goes smoother on fast action and steps on slow holds. Mixed steps the target and the background at different rates.",
+          "kw": "mode fixed adaptive mixed",
+          "s": "StepAnimMode",
+          "d": 0,
+          "it": [
+            "Fixed",
+            "Adaptive",
+            "Mixed"
+          ],
+          "iv": [
+            0,
+            1,
+            2
+          ],
+          "bind": "setting"
+        },
+        {
+          "w": "sa_rate_chips",
+          "k": "segmented",
+          "l": "On",
+          "h": "Quick rates against the base fps: on ones, twos, threes or fours. 2s at 24 is 12 fps.",
+          "kw": "ones twos threes fours chips",
+          "it": [
+            "1s",
+            "2s",
+            "3s",
+            "4s"
+          ],
+          "iv": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::onRateChip"
+        },
+        {
+          "w": "sa_rate",
+          "k": "slider",
+          "l": "Rate",
+          "h": "Pose updates per second. In Mixed this is the target's rate.",
+          "kw": "rate fps steps per second",
+          "s": "StepAnimRate",
+          "mn": 2,
+          "mx": 30,
+          "st": 0.5,
+          "dc": 1,
+          "d": 12,
+          "unit": "fps",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_rate_readout",
+          "k": "readout",
+          "l": "Reads as",
+          "h": "The rate expressed against the base fps, e.g. 12 fps = on twos at 24.",
+          "kw": "readout twos at 24",
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::refreshRateReadout"
+        },
+        {
+          "w": "sa_fast_rate",
+          "k": "slider",
+          "l": "Fast rate",
+          "h": "Rate used during fast action. 24 is on ones at 24; 0 or 1 is fully smooth.",
+          "kw": "adaptive fast rate ones smooth",
+          "s": "StepAnimFastRate",
+          "mn": 0,
+          "mx": 30,
+          "st": 1,
+          "dc": 0,
+          "d": 24,
+          "unit": "fps",
+          "show_if": "adaptive",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_adapt_threshold",
+          "k": "slider",
+          "l": "Threshold",
+          "h": "Limb speed, relative to the hips, above which the fast rate takes over.",
+          "kw": "adaptive threshold limb speed",
+          "s": "StepAnimAdaptThreshold",
+          "mn": 0.1,
+          "mx": 10,
+          "st": 0.1,
+          "dc": 1,
+          "d": 1.5,
+          "unit": "m/s",
+          "show_if": "adaptive",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_adapt_hysteresis",
+          "k": "slider",
+          "l": "Hysteresis",
+          "h": "How far below the threshold the speed must fall before stepping resumes, as a fraction (at least 0.05). Stops flicker.",
+          "kw": "adaptive hysteresis flicker",
+          "s": "StepAnimAdaptHysteresis",
+          "mn": 0.05,
+          "mx": 0.9,
+          "st": 0.05,
+          "dc": 2,
+          "d": 0.3,
+          "show_if": "adaptive",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_adapt_dwell",
+          "k": "slider",
+          "l": "Min hold",
+          "a": 1,
+          "h": "Shortest time either rate is kept before switching again. Never less than one step.",
+          "kw": "adaptive dwell minimum time",
+          "s": "StepAnimAdaptMinDwell",
+          "mn": 0.05,
+          "mx": 2,
+          "st": 0.05,
+          "dc": 2,
+          "d": 0.25,
+          "unit": "s",
+          "show_if": "adaptive",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_speed_meter",
+          "k": "readout",
+          "l": "Limb speed",
+          "a": 1,
+          "h": "Live limb speed of the selected actor and which rate it is on, for tuning the threshold.",
+          "kw": "speed meter live tune",
+          "show_if": "adaptive",
+          "bind": "code",
+          "handler": "ALPanelSteppedAnim::refreshSpeedMeter"
+        },
+        {
+          "w": "sa_background_rate",
+          "k": "slider",
+          "l": "Background",
+          "h": "Rate for everyone in scope who is not a target. 8 is on threes at 24; 0 or 1 is smooth.",
+          "kw": "mixed background rate threes",
+          "s": "StepAnimBackgroundRate",
+          "mn": 0,
+          "mx": 30,
+          "st": 1,
+          "dc": 0,
+          "d": 8,
+          "unit": "fps",
+          "show_if": "mixed",
+          "bind": "setting"
+        }
+      ]
+    },
+    {
+      "id": "what_steps",
+      "t": "What steps",
+      "k": "rows",
+      "rows": [
+        {
+          "w": "sa_what",
+          "k": "segmented",
+          "l": "Steps",
+          "h": "Pose holds the body's joints. Pose + position also holds where the character stands, so travel steps too.",
+          "kw": "pose position root travel",
+          "s": "StepAnimWhatSteps",
+          "d": 1,
+          "it": [
+            "Pose",
+            "Pose + position"
+          ],
+          "iv": [
+            0,
+            1
+          ],
+          "bind": "setting"
+        },
+        {
+          "w": "sa_face",
+          "k": "toggle",
+          "l": "Face & lip-sync",
+          "h": "Steps the face bones and voice lip-sync too. Off keeps the face smooth on a stepped body.",
+          "kw": "face lip sync mouth bento",
+          "s": "StepAnimFace",
+          "d": false,
+          "bind": "setting"
+        },
+        {
+          "w": "sa_gaze",
+          "k": "toggle",
+          "l": "Gaze & look-at",
+          "h": "Steps the neck, head and eyes with the body. Off keeps gaze and look-at smooth.",
+          "kw": "gaze look at eyes head neck",
+          "s": "StepAnimGaze",
+          "d": true,
+          "bind": "setting"
+        },
+        {
+          "w": "sa_flexi",
+          "k": "toggle",
+          "l": "Hair, cloth & flexi",
+          "h": "Flexi prims and avatar physics on this actor update only on steps. Off lets them sway smoothly.",
+          "kw": "flexi hair cloth physics bounce",
+          "s": "StepAnimFlexi",
+          "d": true,
+          "bind": "setting"
+        },
+        {
+          "w": "sa_attach_fx",
+          "k": "toggle",
+          "l": "Attachment FX",
+          "h": "Particles and scripted spin on this actor's attachments update only on steps. Attachments themselves always ride the stepped body.",
+          "kw": "attachments particles spin omega",
+          "s": "StepAnimAttachFX",
+          "d": false,
+          "bind": "setting"
+        }
+      ]
+    },
+    {
+      "id": "timing",
+      "t": "Timing",
+      "k": "rows",
+      "rows": [
+        {
+          "w": "sa_clock",
+          "k": "combo",
+          "l": "Clock",
+          "h": "Capture time follows the World clock, so slow-motion renders still land exact twos. Real time steps per real second.",
+          "kw": "clock capture real time presentation",
+          "s": "StepAnimClock",
+          "d": 0,
+          "it": [
+            "Capture time",
+            "Real time"
+          ],
+          "iv": [
+            0,
+            1
+          ],
+          "bind": "setting"
+        },
+        {
+          "w": "sa_offset",
+          "k": "combo",
+          "l": "Actor offset",
+          "h": "Random gives each actor its own step timing. Locked steps everyone together. Manual uses the phase below.",
+          "kw": "offset phase random locked",
+          "s": "StepAnimOffsetMode",
+          "d": 0,
+          "it": [
+            "Random",
+            "Locked together",
+            "Manual phase"
+          ],
+          "iv": [
+            0,
+            1,
+            2
+          ],
+          "bind": "setting"
+        },
+        {
+          "w": "sa_phase",
+          "k": "slider",
+          "l": "Phase",
+          "h": "Shifts every actor's step timing, as a fraction of one step.",
+          "kw": "phase manual offset tick",
+          "s": "StepAnimPhase",
+          "mn": 0,
+          "mx": 1,
+          "st": 0.05,
+          "dc": 2,
+          "d": 0,
+          "show_if": "manual_phase",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_base_fps",
+          "k": "combo",
+          "l": "Base fps",
+          "h": "The film rate the 1s to 4s chips count against.",
+          "kw": "base fps 24 25 30 film",
+          "s": "StepAnimBaseFPS",
+          "d": 24,
+          "it": [
+            "24",
+            "25",
+            "30"
+          ],
+          "iv": [
+            24,
+            25,
+            30
+          ],
+          "bind": "setting"
+        }
+      ]
+    },
+    {
+      "id": "character",
+      "t": "Character",
+      "k": "rows",
+      "rows": [
+        {
+          "w": "sa_boil",
+          "k": "toggle",
+          "l": "Pose boil",
+          "sub": "Pose boil",
+          "h": "Tiny random jitter on held poses, like stop-motion or clay. The same every playback.",
+          "kw": "boil jitter stop motion clay",
+          "s": "StepAnimBoil",
+          "d": false,
+          "bind": "setting"
+        },
+        {
+          "w": "sa_boil_amount",
+          "k": "slider",
+          "l": "Amount",
+          "sub": "Pose boil",
+          "h": "Largest jitter per joint, in degrees.",
+          "kw": "boil amount degrees",
+          "s": "StepAnimBoilAmount",
+          "mn": 0,
+          "mx": 3,
+          "st": 0.05,
+          "dc": 2,
+          "d": 0.6,
+          "unit": "deg",
+          "enabled_control": "StepAnimBoil",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_boil_ticks",
+          "k": "number",
+          "l": "Boil every",
+          "sub": "Pose boil",
+          "h": "How many steps each jitter lasts. 1 is the fastest boil.",
+          "kw": "boil rate change every",
+          "s": "StepAnimBoilTicks",
+          "mn": 1,
+          "mx": 8,
+          "st": 1,
+          "dc": 0,
+          "d": 2,
+          "unit": "steps",
+          "enabled_control": "StepAnimBoil",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_impact",
+          "k": "toggle",
+          "l": "Hold on impact",
+          "sub": "Hold on impact",
+          "h": "Hit-stop: when a limb stops sharply, the pose holds for a few extra steps.",
+          "kw": "impact hit stop hold fight",
+          "s": "StepAnimImpactHold",
+          "d": false,
+          "bind": "setting"
+        },
+        {
+          "w": "sa_impact_ticks",
+          "k": "number",
+          "l": "Frames",
+          "sub": "Hold on impact",
+          "h": "Extra steps the impact pose is held.",
+          "kw": "impact frames hold steps",
+          "s": "StepAnimImpactTicks",
+          "mn": 1,
+          "mx": 12,
+          "st": 1,
+          "dc": 0,
+          "d": 3,
+          "unit": "steps",
+          "enabled_control": "StepAnimImpactHold",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_impact_threshold",
+          "k": "slider",
+          "l": "Threshold",
+          "sub": "Hold on impact",
+          "h": "How sharply a limb must slow down to count as an impact. Lower triggers more often.",
+          "kw": "impact threshold deceleration",
+          "s": "StepAnimImpactThreshold",
+          "mn": 5,
+          "mx": 200,
+          "st": 1,
+          "dc": 0,
+          "d": 25,
+          "unit": "m/s²",
+          "enabled_control": "StepAnimImpactHold",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_smear",
+          "k": "toggle",
+          "l": "Smear frames",
+          "sub": "Smear frames",
+          "h": "On a fast step, the moving limb is drawn stretched between its old and new pose for one step, like an anime smear.",
+          "kw": "smear stretch anime fast",
+          "s": "StepAnimSmear",
+          "d": false,
+          "bind": "setting"
+        },
+        {
+          "w": "sa_smear_strength",
+          "k": "slider",
+          "l": "Strength",
+          "sub": "Smear frames",
+          "h": "How far the smear stretches and lags the limb.",
+          "kw": "smear strength amount",
+          "s": "StepAnimSmearStrength",
+          "mn": 0,
+          "mx": 1,
+          "st": 0.05,
+          "dc": 2,
+          "d": 0.5,
+          "enabled_control": "StepAnimSmear",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_smear_threshold",
+          "k": "slider",
+          "l": "Smear speed",
+          "sub": "Smear frames",
+          "a": 1,
+          "h": "Limb speed, relative to the hips, a step must reach to smear.",
+          "kw": "smear threshold speed",
+          "s": "StepAnimSmearThreshold",
+          "mn": 0.5,
+          "mx": 10,
+          "st": 0.1,
+          "dc": 1,
+          "d": 2.5,
+          "unit": "m/s",
+          "enabled_control": "StepAnimSmear",
+          "bind": "setting"
+        },
+        {
+          "w": "sa_ease",
+          "k": "toggle",
+          "l": "Ease spacing",
+          "sub": "Ease spacing",
+          "h": "Biases held poses toward the extremes of a move, for snappy key poses.",
+          "kw": "ease spacing extremes key poses snappy",
+          "s": "StepAnimEase",
+          "d": false,
+          "bind": "setting"
+        },
+        {
+          "w": "sa_ease_amount",
+          "k": "slider",
+          "l": "Amount",
+          "sub": "Ease spacing",
+          "h": "How strongly held poses lean toward the nearest extreme. 0 holds the plain sample.",
+          "kw": "ease amount",
+          "s": "StepAnimEaseAmount",
+          "mn": 0,
+          "mx": 1,
+          "st": 0.05,
+          "dc": 2,
+          "d": 0.5,
+          "enabled_control": "StepAnimEase",
+          "bind": "setting"
+        }
+      ]
+    },
+    {
+      "id": "pairs",
+      "t": "Pairs well with",
+      "k": "rows",
+      "rows": [
+        {
+          "w": "sa_match_roto",
+          "k": "toggle",
+          "l": "Match Roto Ink",
+          "h": "Sets Roto Ink's redraw fps and hold frames to this rate, so the ink boils with the steps. Does not turn Roto Ink on.",
+          "kw": "roto ink match redraw sketch fps",
+          "s": "StepAnimMatchRotoInk",
+          "d": false,
+          "bind": "setting"
+        },
+        {
+          "w": "sa_roto_link",
+          "k": "link",
+          "l": "Roto Ink",
+          "h": "Ink lines, sketch boil and line motion are on the Roto Ink page.",
+          "to": "look_group/stylize_tab"
+        },
+        {
+          "w": "sa_tron_link",
+          "k": "link",
+          "l": "Tron",
+          "h": "Neon grid, rim and trails are on the Tron page.",
+          "to": "look_group/tron_tab"
+        },
+        {
+          "w": "sa_actorfx_link",
+          "k": "link",
+          "l": "Actor FX",
+          "h": "Per-actor looks and their effect fps are on the Actor FX page.",
+          "to": "look_group/actor_style_tab"
+        },
+        {
+          "w": "sa_time_link",
+          "k": "link",
+          "l": "World clock",
+          "a": 1,
+          "h": "Capture time is the World clock on the Time page; slow it down there for exact stepped renders.",
+          "to": "capture_group/temporal_tab"
+        }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "id": "stepping",
+      "label": "Stepping",
+      "cards": [
+        0,
+        1
+      ]
+    },
+    {
+      "id": "what",
+      "label": "What & when",
+      "cards": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "character",
+      "label": "Character",
+      "cards": [
+        4
+      ]
+    },
+    {
+      "id": "pairs",
+      "label": "Pairs",
+      "cards": [
+        5
+      ]
+    }
+  ]
+}

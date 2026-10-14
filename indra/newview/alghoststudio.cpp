@@ -1971,6 +1971,36 @@ void ALGhostStudio::updateNameplates()
     mNameplates->update(labels, true);
 }
 
+void ALGhostStudio::applyStepAnimNameplateOffsets(
+    const std::function<LLVector3(const LLUUID&)>& avatar_offset)
+{
+    if (!mNameplates || !avatar_offset) return;
+    mNameplates->applyOffsets([this, &avatar_offset](const LLUUID& key)
+    {
+        if (const Instance* instance = getInstance(key))
+            return avatar_offset(instance->mEntityId.notNull() ? instance->mEntityId : instance->mSource);
+        if (const ALGhostGroupModel::Group* group = mGroups.findGroup(key))
+        {
+            LLVector3 sum;
+            S32 count = 0;
+            for (const ALGhostGroupModel::Member& member : group->mMembers)
+                if (const Instance* instance = getInstance(member.mInstanceId))
+                {
+                    sum += avatar_offset(instance->mEntityId.notNull() ? instance->mEntityId : instance->mSource);
+                    ++count;
+                }
+            if (count) sum /= static_cast<F32>(count);
+            return sum;
+        }
+        return LLVector3::zero;
+    });
+}
+
+void ALGhostStudio::restoreStepAnimNameplateOffsets()
+{
+    if (mNameplates) mNameplates->restoreOffsets();
+}
+
 void ALGhostStudio::scanAnimLibrary()
 {
     // [GhostPanelPerf] one whole-inventory walk, cached for every panel host

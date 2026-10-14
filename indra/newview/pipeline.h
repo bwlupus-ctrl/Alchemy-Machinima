@@ -1755,6 +1755,7 @@ public:
     F64                         mRotoAnimClock = 0.0;
     F64                         mRotoAnimLastTime = 0.0;
     bool                        mRotoAnimClockValid = false;
+    F64 getRotoAnimClockOffset() const;
 
     // [RotoInk Anim] Per-target world-space smoother for subject mode 3
     // (target set), keyed by target UUID (avatar id or object id -- both are

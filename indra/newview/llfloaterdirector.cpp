@@ -34,6 +34,8 @@
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
 #include "alpanellensgaze.h"
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
+#include "alpanelsteppedanim.h"
+#include "alsteppedanim.h"
 #include "alcinelightrigmanager.h"
 #include "alrotoink.h"
 #include "altron.h"
@@ -528,6 +530,80 @@ private:
     mutable ALKitSnapshotStore mStore;
 };
 
+void applySteppedConfig(const ALSteppedAnim::Config& c)
+{
+    gSavedSettings.setS32("StepAnimScope", c.scope);
+    gSavedSettings.setS32("StepAnimMode", c.mode);
+    gSavedSettings.setF32("StepAnimRate", c.rate);
+    gSavedSettings.setF32("StepAnimFastRate", c.fastRate);
+    gSavedSettings.setF32("StepAnimAdaptThreshold", c.adaptThreshold);
+    gSavedSettings.setF32("StepAnimAdaptHysteresis", c.adaptHysteresis);
+    gSavedSettings.setF32("StepAnimAdaptMinDwell", c.adaptMinDwell);
+    gSavedSettings.setF32("StepAnimBackgroundRate", c.backgroundRate);
+    gSavedSettings.setS32("StepAnimWhatSteps", c.what);
+    gSavedSettings.setBOOL("StepAnimFace", c.face);
+    gSavedSettings.setBOOL("StepAnimGaze", c.gaze);
+    gSavedSettings.setBOOL("StepAnimFlexi", c.flexi);
+    gSavedSettings.setBOOL("StepAnimAttachFX", c.attachFX);
+    gSavedSettings.setS32("StepAnimClock", c.clock);
+    gSavedSettings.setS32("StepAnimOffsetMode", c.offset);
+    gSavedSettings.setF32("StepAnimPhase", c.phase);
+    gSavedSettings.setS32("StepAnimBaseFPS", c.baseFps);
+    gSavedSettings.setBOOL("StepAnimBoil", c.boil);
+    gSavedSettings.setF32("StepAnimBoilAmount", c.boilAmount);
+    gSavedSettings.setS32("StepAnimBoilTicks", c.boilTicks);
+    gSavedSettings.setBOOL("StepAnimImpactHold", c.impact);
+    gSavedSettings.setS32("StepAnimImpactTicks", c.impactTicks);
+    gSavedSettings.setF32("StepAnimImpactThreshold", c.impactThreshold);
+    gSavedSettings.setBOOL("StepAnimSmear", c.smear);
+    gSavedSettings.setF32("StepAnimSmearStrength", c.smearStrength);
+    gSavedSettings.setF32("StepAnimSmearThreshold", c.smearThreshold);
+    gSavedSettings.setBOOL("StepAnimEase", c.ease);
+    gSavedSettings.setF32("StepAnimEaseAmount", c.easeAmount);
+    gSavedSettings.setBOOL("StepAnimMatchRotoInk", c.matchRoto);
+}
+
+class ALSteppedPresetProvider final : public ALKitPresetProvider
+{
+public:
+    ALSteppedPresetProvider() : mStore("stepped_anim", ALSteppedAnim::trackedSettings()) {}
+    const std::string& key() const override { return mKey; }
+    void list(std::vector<Entry>& out) const override
+    {
+        for (const ALSteppedAnim::Preset& preset : ALSteppedAnim::builtInPresets())
+            out.push_back({ "b:" + std::string(preset.id), preset.label, true });
+        for (const std::string& name : mStore.names())
+            out.push_back({ "u:" + name, name, false });
+    }
+    bool apply(const std::string& id) override
+    {
+        if (id.compare(0, 2, "b:") == 0)
+        {
+            for (const ALSteppedAnim::Preset& preset : ALSteppedAnim::builtInPresets())
+            {
+                if (id.substr(2) == preset.id)
+                {
+                    applySteppedConfig(preset.values);
+                    gSavedSettings.setBOOL("StepAnimEnabled", true);
+                    return true;
+                }
+            }
+            return false;
+        }
+        return id.compare(0, 2, "u:") == 0 && mStore.load(id.substr(2));
+    }
+    bool canSaveUser() const override { return true; }
+    bool saveUser(const std::string& name) override { return mStore.save(name); }
+    bool canDelete(const std::string& id) const override { return id.compare(0, 2, "u:") == 0; }
+    bool deleteUser(const std::string& id) override { return canDelete(id) && mStore.remove(id.substr(2)); }
+    U64 revision() const override { return mStore.revision(); }
+    const std::vector<std::string>& trackedSettings() const override { return ALSteppedAnim::trackedSettings(); }
+
+private:
+    std::string                mKey = "stepped_anim";
+    mutable ALKitSnapshotStore mStore;
+};
+
 void registerLookPresetProviders()
 {
     static bool registered = false;
@@ -540,6 +616,7 @@ void registerLookPresetProviders()
         "roto_ink", looksFrom(kRotoLooks), applyRotoLook, std::vector<std::string>(ALRotoInk::settings())));
     ALKitPresetRegistry::instance().add(std::make_unique<ALLookPresetProvider>(
         "tron_look", looksFrom(kTronLooks), applyTronLook, std::vector<std::string>(ALTron::lookSettings())));
+    ALKitPresetRegistry::instance().add(std::make_unique<ALSteppedPresetProvider>());
     ALKitPresetRegistry::instance().add(std::make_unique<ALWeatherPresetProvider>());
     ALKitPresetRegistry::instance().add(std::make_unique<ALProjectorShaftPresetProvider>());
 }
@@ -1294,6 +1371,7 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "actor_style_tab", &LLFloaterDirector::bindActorStylePage },
         { "stylize_tab", &LLFloaterDirector::bindRotoInkPage },
         { "tron_tab", &LLFloaterDirector::bindTronPage },
+        { "stepped_tab", &LLFloaterDirector::bindSteppedPage },
         { "image_tab", &LLFloaterDirector::bindImagePage },
         { "animate_tab", &LLFloaterDirector::bindAnimatePage },
         { "shot_tab", &LLFloaterDirector::bindCameraPage },
@@ -1387,6 +1465,23 @@ void LLFloaterDirector::bindTronPage(LLView* root)
                 gSavedSettings.setS32("CineRigRimTronMode", ALTron::lastPresetRigRimTronMode());
             }
         });
+    }
+}
+
+void LLFloaterDirector::bindSteppedPage(LLView* root)
+{
+    if (!root)
+    {
+        return;
+    }
+    ALPanelSteppedAnim* panel = dynamic_cast<ALPanelSteppedAnim*>(root);
+    if (!panel)
+    {
+        panel = root->findChild<ALPanelSteppedAnim>("stepped_tab_logic", true);
+    }
+    if (panel)
+    {
+        panel->bindSteppedPage(root);
     }
 }
 
@@ -4558,8 +4653,12 @@ void LLFloaterDirector::onActorStyleReset()
     {
         return;
     }
-    LLDirectorCast::instance().setActorStyle(
-        actorStyleTargetId(), LLDirectorCast::ActorStyle());
+    const LLUUID id = actorStyleTargetId();
+    const LLDirectorCast::ActorStyle::SteppedOverride stepped =
+        LLDirectorCast::instance().getActorStyle(id).mStepped;
+    LLDirectorCast::ActorStyle reset;
+    reset.mStepped = stepped;
+    LLDirectorCast::instance().setActorStyle(id, reset);
     mActorStyleSnapshot.clear();
 }
 
@@ -5827,7 +5926,7 @@ void LLFloaterDirector::refreshStatusStrip()
         if (mLastCastChipCount != cast_count)
         {
             mLastCastChipCount = cast_count;
-            mCastChip->setLabel(LLStringExplicit(llformat("Cast %d  ^", cast_count)));
+            mCastChip->setLabel(LLStringExplicit(llformat("Cast %d  ^", cast_count))); // ui-draw-lint: allow(raw-write) only when the cast count changed
         }
         setToolTipIfChanged(mCastChip, mCastChipTooltip);
     }

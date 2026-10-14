@@ -48,6 +48,7 @@
 #include <map>
 #include <functional>
 #include <memory>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -671,6 +672,9 @@ public:
     const Instance* getInstance(const LLUUID& id) const;
     const std::vector<Instance>& getInstances() const { return mInstances; }
     std::vector<Instance>&       getInstances()       { return mInstances; }
+    void applyStepAnimNameplateOffsets(
+        const std::function<LLVector3(const LLUUID&)>& avatar_offset);
+    void restoreStepAnimNameplateOffsets();
 
     // ---- FROZEN pose (the out-of-sync feature) ----
     // freezeInstance snapshots the source's CURRENT matrix palettes per

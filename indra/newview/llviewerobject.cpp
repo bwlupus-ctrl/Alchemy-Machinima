@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alsteppedanimruntime.h"
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llviewerobject.h"
@@ -2535,6 +2536,10 @@ void LLViewerObject::idleUpdate(LLAgent &agent, const F64 &frame_time)
                 // presentation-scaled, capped at the uniform 0.25s subsystem hitch
                 // cap so a stall can't produce a huge single rotation step
                 omega_dt = llmin((F32)LLPresentationTime::presentationDelta(), 0.25f);
+            }
+            if (ALSteppedAnimRuntime::sActive)
+            {
+                omega_dt = ALSteppedAnimRuntime::instance().attachmentOmegaDt(this, omega_dt);
             }
             applyAngularVelocity(omega_dt);
 
@@ -8079,4 +8084,3 @@ public:
 
 LLHTTPRegistration<ObjectPhysicsProperties>
     gHTTPRegistrationObjectPhysicsProperties("/message/ObjectPhysicsProperties");
-

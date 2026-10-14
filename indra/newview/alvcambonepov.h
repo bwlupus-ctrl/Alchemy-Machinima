@@ -22,6 +22,7 @@ class ALVCamBonePov
 public:
     static ALVCamBonePov& instance();
     static LLVOAvatar* resolveAnchorAvatar(U8 slot);
+    static bool isAnchorAvatar(const LLVOAvatar* avatar);
 
     void tick(F64 presentation_time);
     std::string status(const LLPrismLens::CaptureHandle& capture) const;

@@ -78,6 +78,8 @@ public:
     LLPointer<LLViewerObject>   mSourceObjectp;
     U32 mID;
     LLViewerPart* mLastPart; //last particle emitted (for making particle ribbons)
+    U8 mSteppedHold = 0; // 0 normal, 1 hold/defer, 2 capture/release
+    F32 mStepDebt = 0.f;
 
 protected:
     U32         mType;

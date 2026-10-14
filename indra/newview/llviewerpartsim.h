@@ -60,6 +60,7 @@ public:
     U32                 mPartID;                    // Particle ID used primarily for moving between groups
     F32                 mLastUpdateTime;            // Last time the particle was updated
     F32                 mSkipOffset;                // Offset against current group mSkippedTime
+    F32                 mStepDebt = 0.f;
 
     LLVPCallback        mVPCallback;                // Callback function for more complicated behaviors
     LLPointer<LLViewerPartSource> mPartSourcep;     // Particle source used for this object

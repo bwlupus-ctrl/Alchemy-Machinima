@@ -123,6 +123,14 @@
    ],
    "label_names": {}
   },
+  "look_group/stepped_tab": {
+   "v1_sources": [],
+   "root_class": "panel_stepped_anim", "root_name": "stepped_tab_logic",
+   "preset": {"mode": "provider", "provider": "stepped_anim"},
+   "who_adapter": "stepped_anim", "actor_target": true,
+   "selector_settings": {}, "card_enables": {}, "add_rows": [],
+   "label_names": {}
+  },
   "look_group/image_tab": {
    "v1_sources": [],
    "omit_rows": ["tonemap_type_combo", "exposure_slider", "tonemap_legacy_gamma_skies", "lpm_toneexp_slider", "slog_ev_slider"],

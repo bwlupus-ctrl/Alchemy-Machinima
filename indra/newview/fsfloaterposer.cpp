@@ -99,8 +99,14 @@ std::string switchboardSlotOccupancy(
 /// </summary>
 constexpr F32 NormalTrackpadRangeInRads = F_PI;
 
+namespace
+{
+FSFloaterPoser* sActivePoser = nullptr;
+}
+
 FSFloaterPoser::FSFloaterPoser(const LLSD& key) : LLFloater(key)
 {
+    sActivePoser = this;
     // Bind requests, other controls are find-and-binds, see postBuild()
     mCommitCallbackRegistrar.add("Poser.RefreshAvatars", [this](LLUICtrl*, const LLSD&) { onAvatarsRefresh(); });
     mCommitCallbackRegistrar.add("Poser.StartStopAnimating", [this](LLUICtrl*, const LLSD&) { onPoseStartStop(); });
@@ -138,6 +144,20 @@ FSFloaterPoser::FSFloaterPoser(const LLSD& key) : LLFloater(key)
     mCommitCallbackRegistrar.add("Poser.Symmetrize", [this](LLUICtrl*, const LLSD& data) { onClickSymmetrize(data); });
 
     mLoadPoseTimer = new FSLoadPoseTimer(boost::bind(&FSFloaterPoser::timedReload, this));
+}
+
+FSFloaterPoser::~FSFloaterPoser()
+{
+    if (sActivePoser == this)
+    {
+        sActivePoser = nullptr;
+    }
+}
+
+bool FSFloaterPoser::isEditingAvatar(const LLVOAvatar* avatar)
+{
+    return sActivePoser && sActivePoser->getVisible() && avatar &&
+        sActivePoser->mPoserAnimator.isPosingAvatar(const_cast<LLVOAvatar*>(avatar));
 }
 
 bool FSFloaterPoser::postBuild()

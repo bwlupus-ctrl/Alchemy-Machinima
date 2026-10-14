@@ -30,6 +30,9 @@
 
 #include "llviewerprecompiledheaders.h"
 
+#include <functional>
+#include "alsteppedanimruntime.h"
+
 #include "llvoavatar.h"
 
 #include <stdio.h>
@@ -2326,6 +2329,7 @@ void LLVOAvatar::applyDefaultParams()
 //-----------------------------------------------------------------------------
 void LLVOAvatar::resetSkeleton(bool reset_animations)
 {
+    ++mJointOverrideEpoch;
     LL_DEBUGS("Avatar") << avString() << " reset starts" << LL_ENDL;
     if (!isControlAvatar() && !mLastProcessedAppearance)
     {
@@ -3362,6 +3366,16 @@ F32 LLVOAvatar::calcMorphAmount() const
 
 void LLVOAvatar::idleUpdateLipSync(bool voice_enabled)
 {
+    if (ALSteppedAnimRuntime::sActive)
+    {
+        const ALSteppedAnim::FrameDecision* decision =
+            ALSteppedAnimRuntime::instance().decisionFor(this);
+        static LLCachedControl<bool> step_face(gSavedSettings, "StepAnimFace");
+        if (decision && step_face && decision->hold && !decision->capture)
+        {
+            return;
+        }
+    }
     // Use the Lipsync_Ooh and Lipsync_Aah morphs for lip sync
     if (voice_enabled
         && mLastRezzedStatus > 0 // no point updating lip-sync for clouds
@@ -7684,6 +7698,7 @@ void LLVOAvatar::clearAttachmentOverrides()
 //-----------------------------------------------------------------------------
 void LLVOAvatar::rebuildAttachmentOverrides()
 {
+    ++mJointOverrideEpoch;
 
     LL_DEBUGS("AnimatedObjects") << "rebuilding" << LL_ENDL;
 
@@ -7857,6 +7872,7 @@ void LLVOAvatar::notifyAttachmentMeshLoaded()
 //-----------------------------------------------------------------------------
 void LLVOAvatar::addAttachmentOverridesForObject(LLViewerObject *vo, std::set<LLUUID>* meshes_seen, bool recursive)
 {
+    ++mJointOverrideEpoch;
     if (vo->getAvatar() != this && vo->getAvatarAncestor() != this)
     {
         LL_WARNS("Avatar") << "called with invalid avatar" << LL_ENDL;
@@ -8111,6 +8127,7 @@ void LLVOAvatar::showAttachmentOverrides(bool verbose) const
 //-----------------------------------------------------------------------------
 void LLVOAvatar::removeAttachmentOverridesForObject(LLViewerObject *vo)
 {
+    ++mJointOverrideEpoch;
     if (vo->getAvatar() != this && vo->getAvatarAncestor() != this)
     {
         LL_WARNS("Avatar") << "called with invalid avatar" << LL_ENDL;
@@ -8139,6 +8156,7 @@ void LLVOAvatar::removeAttachmentOverridesForObject(LLViewerObject *vo)
 //-----------------------------------------------------------------------------
 void LLVOAvatar::removeAttachmentOverridesForObject(const LLUUID& mesh_id)
 {
+    ++mJointOverrideEpoch;
     LLJoint* pJointPelvis = getJoint("mPelvis");
     const std::string av_string = avString();
     for (S32 joint_num = 0; joint_num < LL_CHARACTER_MAX_ANIMATED_JOINTS; joint_num++)
@@ -11468,11 +11486,15 @@ const LLVOAvatar::MatrixPaletteCache& LLVOAvatar::updateSkinInfoMatrixPalette(co
         // [BDMerge A5.4-1b] Stash the outgoing palette as the previous frame's
         // before rebuilding (velocity pass). swap() instead of copy: mGLMp is
         // resized+rewritten just below, so this is allocation-free steady-state.
-        if (!entry.mGLMp.empty())
+        const bool preserve_overlay_previous =
+            ALSteppedAnim::preservePreviousOverlayPalette(
+                entry.mLastFrame, entry.mOverlayFrame, gFrameCount);
+        if (!entry.mRebuildNoRoll && !preserve_overlay_previous && !entry.mGLMp.empty())
         {
             entry.mLastGLMp.swap(entry.mGLMp);
             entry.mLastFrame = entry.mFrame;
         }
+        entry.mRebuildNoRoll = false;
 
         entry.mFrame = gFrameCount;
 
@@ -11511,6 +11533,94 @@ const LLVOAvatar::MatrixPaletteCache& LLVOAvatar::updateSkinInfoMatrixPalette(co
     }
 
     return entry;
+}
+
+U32 LLVOAvatar::invalidateSkinPalettesForOverlay()
+{
+    U32 invalidated = 0;
+    const U32 overlay_frame = ALSteppedAnim::overlayRenderFrame(gFrameCount);
+    for (auto& item : mMatrixPaletteCache)
+    {
+        MatrixPaletteCache& entry = item.second;
+        entry.mOverlayFrame = overlay_frame;
+        if (entry.mFrame == overlay_frame)
+        {
+            entry.mRebuildNoRoll = true;
+            entry.mFrame = gFrameCount;
+            ++invalidated;
+        }
+    }
+    return invalidated;
+}
+
+U32 LLVOAvatar::invalidateSkinPalettesAfterOverlay()
+{
+    U32 invalidated = 0;
+    for (auto& item : mMatrixPaletteCache)
+    {
+        MatrixPaletteCache& entry = item.second;
+        if (ALSteppedAnim::paletteContainsOverlay(
+                entry.mFrame, entry.mOverlayFrame, gFrameCount))
+        {
+            if (!entry.mGLMp.empty())
+            {
+                entry.mLastGLMp.swap(entry.mGLMp);
+                entry.mLastFrame = gFrameCount;
+            }
+            entry.mFrame = gFrameCount - 1;
+            entry.mRebuildNoRoll = true;
+            ++invalidated;
+        }
+        entry.mOverlayFrame = 0xFFFFFFFF;
+    }
+    return invalidated;
+}
+
+void LLVOAvatar::syncStepAnimAttachmentMatrices()
+{
+    std::function<void(LLViewerObject*)> update_tree = [&update_tree](LLViewerObject* object)
+    {
+        if (!object || object->isDead()) return;
+        if (object->mDrawable.notNull() &&
+            !object->mDrawable->isState(LLDrawable::RIGGED | LLDrawable::RIGGED_CHILD))
+        {
+            object->mDrawable->getXform()->updateMatrix();
+        }
+        for (LLViewerObject* child : object->getChildren()) update_tree(child);
+    };
+    for (const auto& item : mAttachmentPoints)
+        if (item.second)
+            for (LLViewerObject* object : item.second->mAttachedObjects)
+                update_tree(object);
+}
+
+void LLVOAvatar::shiftStepAnimLabels(const LLVector3& delta, StepAnimLabelState& state)
+{
+    state = StepAnimLabelState();
+    if (mNameText.notNull())
+    {
+        state.mNameOriginal = gAgent.getPosAgentFromGlobal(mNameText->getPositionGlobal());
+        state.mNameWritten = state.mNameOriginal + delta;
+        mNameText->setPositionAgent(state.mNameWritten);
+        state.mName = true;
+    }
+    if (mVoiceVisualizer.notNull())
+    {
+        state.mVoiceOriginal = gAgent.getPosAgentFromGlobal(mVoiceVisualizer->getPositionGlobal());
+        state.mVoiceWritten = state.mVoiceOriginal + delta;
+        mVoiceVisualizer->setPositionAgent(state.mVoiceWritten);
+        state.mVoice = true;
+    }
+}
+
+void LLVOAvatar::restoreStepAnimLabels(const StepAnimLabelState& state)
+{
+    if (state.mName && mNameText.notNull() &&
+        gAgent.getPosAgentFromGlobal(mNameText->getPositionGlobal()) == state.mNameWritten)
+        mNameText->setPositionAgent(state.mNameOriginal);
+    if (state.mVoice && mVoiceVisualizer.notNull() &&
+        gAgent.getPosAgentFromGlobal(mVoiceVisualizer->getPositionGlobal()) == state.mVoiceWritten)
+        mVoiceVisualizer->setPositionAgent(state.mVoiceOriginal);
 }
 
 // static

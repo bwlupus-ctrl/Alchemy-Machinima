@@ -168,6 +168,14 @@ public:
 
     struct ActorStyle
     {
+        struct SteppedOverride
+        {
+            S32 mMode = 0;
+            F32 mRate = 12.f;
+            S32 mWhat = -1;
+            S32 mRole = 0;
+        };
+
         bool            mEnabled = false;
         EActorStyleMode mMode = ACTOR_STYLE_LAYER;
         S32             mStyle = ACTOR_LOOK_DEFAULT;
@@ -183,6 +191,7 @@ public:
         F32             mDistortionAmount = 0.5f;
         F32             mBrightness = 1.f;
         F32             mEffectFps = 0.f;
+        SteppedOverride mStepped;
     };
 
     enum ELocomotionRole : S32
@@ -294,6 +303,8 @@ public:
     // non-cast ids read as the disabled default and ignore writes.
     const ActorStyle& getActorStyle(const LLUUID& id) const;
     void              setActorStyle(const LLUUID& id, const ActorStyle& style);
+    const LLUUID&     getSteppedActorId() const { return mSteppedActorId; }
+    void              setSteppedActorId(const LLUUID& id);
 
     // ---- render-only real-avatar camera gaze selection ----
     // A subset of the cast, shared by the Camera-tab multi-select widget and
@@ -468,6 +479,7 @@ private:
     GazeCueList mSelfGazeCues;
     GazeInfluenceKeyList mSelfGazeInfluenceKeys;
     ActorStyle mSelfActorStyle;
+    LLUUID mSteppedActorId; // null means You
     U64 mGazeCueRevision = 0;
     U64 mGazeConfigRevision = 1;
     U64 mCastRevision = 1;      // [GhostPanelPerf] membership + cached names

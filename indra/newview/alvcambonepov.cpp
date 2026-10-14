@@ -305,6 +305,22 @@ LLVOAvatar* ALVCamBonePov::resolveAnchorAvatar(U8 slot)
     }
 }
 
+bool ALVCamBonePov::isAnchorAvatar(const LLVOAvatar* avatar)
+{
+    if (!avatar) return false;
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    {
+        const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
+        const LLPrismLens::BonePovSettings& settings = capture.mCamera.mBonePov;
+        if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+            capture.mCamera.mVirtual && settings.mEnabled &&
+            resolveAnchorAvatar(settings.mAnchorSlot) == avatar)
+            return true;
+    }
+    return false;
+}
+
 void ALVCamBonePov::tick(F64 presentation_time)
 {
     std::array<bool, LLPrismLens::MAX_CAPTURES> seen = {};

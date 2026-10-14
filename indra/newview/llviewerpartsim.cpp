@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alsteppedanimruntime.h"
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llviewerpartsim.h"
@@ -292,6 +293,20 @@ void LLViewerPartGroup::updateParticles(const F32 lastdt)
 
         dt = lastdt + mSkippedTime - part->mSkipOffset;
         part->mSkipOffset = 0.f;
+        if (ALSteppedAnimRuntime::sActive && part->mPartSourcep.notNull())
+        {
+            if (part->mPartSourcep->mSteppedHold == 1)
+            {
+                part->mStepDebt += dt;
+                ++i;
+                continue;
+            }
+            if (part->mPartSourcep->mSteppedHold == 2)
+            {
+                dt += part->mStepDebt;
+                part->mStepDebt = 0.f;
+            }
+        }
 
         // Update current time
         const F32 cur_time = part->mLastUpdateTime + dt;
@@ -718,10 +733,24 @@ void LLViewerPartSim::updateSimulation()
             i = count - 1;
         }
 
+        const U8 prior_step_hold = mViewerPartSources[i]->mSteppedHold;
+        mViewerPartSources[i]->mSteppedHold = 0;
+        if (mViewerPartSources[i]->isDead() && prior_step_hold == 1)
+        {
+            // Existing particles can outlive the source; release their debt once.
+            mViewerPartSources[i]->mSteppedHold = 2;
+        }
         if (!mViewerPartSources[i]->isDead())
         {
             bool upd = true;
+            F32 source_dt = dt;
             LLViewerObject* vobj = mViewerPartSources[i]->mSourceObjectp;
+            if (!ALSteppedAnimRuntime::sActive && prior_step_hold == 1)
+            {
+                mViewerPartSources[i]->mSteppedHold = 2;
+                source_dt += mViewerPartSources[i]->mStepDebt;
+                mViewerPartSources[i]->mStepDebt = 0.f;
+            }
 
             // [BDMerge FilmClean] Viewer EFFECT particles are UI, not scene
             // content: the sparkle spiral around an avatar on a script touch or
@@ -808,7 +837,31 @@ void LLViewerPartSim::updateSimulation()
 
             if (upd)
             {
-                mViewerPartSources[i]->update(dt);
+                if (ALSteppedAnimRuntime::sActive && vobj)
+                {
+                    LLVOAvatar* step_avatar = vobj->getAvatar();
+                    const ALSteppedAnim::FrameDecision* decision =
+                        ALSteppedAnimRuntime::instance().decisionFor(step_avatar);
+                    if (!decision && prior_step_hold == 1)
+                    {
+                        mViewerPartSources[i]->mSteppedHold = 2;
+                        source_dt += mViewerPartSources[i]->mStepDebt;
+                        mViewerPartSources[i]->mStepDebt = 0.f;
+                    }
+                    else if (decision && ALSteppedAnimRuntime::instance().holdsAttachmentFX(step_avatar))
+                    {
+                        mViewerPartSources[i]->mSteppedHold = 1;
+                        mViewerPartSources[i]->mStepDebt += source_dt;
+                        upd = false;
+                    }
+                    else if (decision)
+                    {
+                        mViewerPartSources[i]->mSteppedHold = 2;
+                        source_dt += mViewerPartSources[i]->mStepDebt;
+                        mViewerPartSources[i]->mStepDebt = 0.f;
+                    }
+                }
+                if (upd) mViewerPartSources[i]->update(source_dt);
             }
         }
 

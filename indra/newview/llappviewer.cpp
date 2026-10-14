@@ -84,6 +84,7 @@
 #include "alvcambonepov.h"          // skeleton-attached prim-free cameras
 #include "aldirectorswitcher.h" // presentation-time camera switch schedule
 #include "altron.h"             // [TronT0] shared clock latch (idle tick)
+#include "alsteppedanimruntime.h"
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
 #include "llpathcamera.h"    // per-node path camera source (authored actor+camera TAKE)
@@ -889,6 +890,7 @@ bool LLAppViewer::init()
         // quit immediately
         return false;
     }
+    ALSteppedAnimRuntime::initialize();
 
     applyMachinimaDebugLogging();
     gSavedSettings.getControl("MachinimaDebugLogging")->getSignal()->connect(
@@ -1649,6 +1651,11 @@ bool LLAppViewer::doFrame()
                     LLViewerStatsRecorder::instance().idle();
                 }
             }
+        }
+
+        if (ALSteppedAnimRuntime::sHasOverlay)
+        {
+            ALSteppedAnimRuntime::instance().endFrameRestore();
         }
 
         {
@@ -5212,6 +5219,10 @@ void LLAppViewer::idle()
     // iteration -- see altron.h. Cheap no-op work while TronEnabled is off
     // (a handful of cached-setting reads and a fmod).
     ALTron::latchFrame();
+    if (ALSteppedAnimRuntime::sActive)
+    {
+        ALSteppedAnimRuntime::instance().beginFrame();
+    }
     LLEventTimer::updateClass();
     LLPerfStats::updateClass();
 
@@ -5764,6 +5775,11 @@ void LLAppViewer::idle()
             // this line actually commits the changes we've made to source positions, etc.
             gAudiop->idle();
         }
+    }
+
+    if (ALSteppedAnimRuntime::sActive)
+    {
+        ALSteppedAnimRuntime::instance().applyHeld();
     }
 
     // Handle shutdown process, for example,

@@ -67,6 +67,8 @@ class FSFloaterPoser : public LLFloater, public LLEditMenuHandler
     friend class LLFloaterReg;
     FSFloaterPoser(const LLSD &key);
 public:
+    ~FSFloaterPoser() override;
+    static bool isEditingAvatar(const LLVOAvatar* avatar);
     void updatePosedBones(const std::string& jointName, const LLQuaternion& rotation, const LLVector3& position, const LLVector3& scale);
     LLQuaternion getManipGimbalRotation(const std::string& jointName);
     void selectJointByName(const std::string& jointName);

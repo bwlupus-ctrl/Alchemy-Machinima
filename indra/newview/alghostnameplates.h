@@ -17,6 +17,7 @@
 #include "v3math.h"
 
 #include <map>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,8 @@ public:
 
     void update(const std::vector<Label>& labels, bool visible);
     void clear();
+    void applyOffsets(const std::function<LLVector3(const LLUUID&)>& offset_for);
+    void restoreOffsets();
 
 private:
     // [GhostPanelPerf] LLHUDNameTag::setString() re-tokenises and re-measures the
@@ -52,6 +55,8 @@ private:
     Entry* getOrCreate(const LLUUID& key);
 
     std::map<LLUUID, Entry> mTags;
+    struct OffsetState { LLVector3 mOriginal, mWritten; };
+    std::map<LLUUID, OffsetState> mOffsets;
 };
 
 #endif // AL_ALGHOSTNAMEPLATES_H

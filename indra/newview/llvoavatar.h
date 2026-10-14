@@ -212,6 +212,23 @@ public:
     //if you KNOW joint_num is a valid animated joint index, use getSkeletonJoint for efficiency
     inline LLJoint* getSkeletonJoint(S32 joint_num) { return mSkeleton[joint_num]; }
     inline size_t getSkeletonJointCount() const { return mSkeleton.size(); }
+    inline LLJoint* getCollisionVolumeJoint(S32 index)
+        { return index >= 0 && index < mNumCollisionVolumes ? &mCollisionVolumes[index] : nullptr; }
+    inline S32 getCollisionVolumeJointCount() const { return mNumCollisionVolumes; }
+    U32 getJointOverrideEpoch() const { return mJointOverrideEpoch; }
+    U32 getSteppedSkeletonSerial() const { return mLastSkeletonSerialNum; }
+    U32 invalidateSkinPalettesForOverlay();
+    U32 invalidateSkinPalettesAfterOverlay();
+    void syncStepAnimAttachmentMatrices();
+    void markStepAnimPoseChanged() { mNeedsSkin = true; }
+    struct StepAnimLabelState
+    {
+        LLVector3 mNameOriginal, mNameWritten;
+        LLVector3 mVoiceOriginal, mVoiceWritten;
+        bool mName = false, mVoice = false;
+    };
+    void shiftStepAnimLabels(const LLVector3& delta, StepAnimLabelState& state);
+    void restoreStepAnimLabels(const StepAnimLabelState& state);
 
     void                    notifyAttachmentMeshLoaded();
     void                    addAttachmentOverridesForObject(LLViewerObject *vo, std::set<LLUUID>* meshes_seen = NULL, bool recursive = true);
@@ -928,6 +945,10 @@ public:
         // spurious motion spike on re-entry.
         std::vector<F32> mLastGLMp;
         U32 mLastFrame = 0;
+        // Render frame tagged by the stepped overlay. Post-render restore keeps
+        // its palette as velocity history while idle readers rebuild smooth.
+        bool mRebuildNoRoll = false;
+        U32 mOverlayFrame = 0xFFFFFFFF;
 
         MatrixPaletteCache() :
             mFrame(gFrameCount - 1)
@@ -943,6 +964,7 @@ public:
     // Map of LLMeshSkinInfo::mHash to MatrixPaletteCache
     typedef boost::unordered_map<U64, MatrixPaletteCache> matrix_palette_cache_t;
     matrix_palette_cache_t mMatrixPaletteCache;
+    U32 mJointOverrideEpoch = 0;
 
 protected:
     void            releaseMeshData();

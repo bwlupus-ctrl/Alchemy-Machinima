@@ -241,6 +241,8 @@ set(viewer_SOURCE_FILES
     alfloaterwebprofile.cpp
     alflycamclassic.cpp
     alflycamweighted.cpp
+    alsteppedanim.cpp
+    alsteppedanimruntime.cpp
     allegacynotificationwellwindow.cpp
     alobjectproperties.cpp
     alpanelaomini.cpp
@@ -391,6 +393,7 @@ set(viewer_SOURCE_FILES
     alpaneltemporalcapture.cpp
     llpresentationtime.cpp
     alpanelactormover.cpp
+    alpanelsteppedanim.cpp
     alpanelanimpreview.cpp
     alpanelatmosphericvolumes.cpp
     alpanelavatarlightresponse.cpp
@@ -1157,6 +1160,9 @@ set(viewer_HEADER_FILES
     alfloaterwebprofile.h
     alflycamclassic.h
     alflycamweighted.h
+    alsteppedanim.h
+    alsteppedanimruntime.h
+    alpanelsteppedanim.h
     alcameradispatch.h
     allegacynotificationwellwindow.h
     alobjectproperties.h
@@ -2834,6 +2840,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(llflycamdrone "llflycamdrone.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alflycamclassic "alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alflycamweighted "alflycamweighted.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alsteppedanim "alsteppedanim.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitqol "" "${test_libs}" "${test_project}")

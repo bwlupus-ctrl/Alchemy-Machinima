@@ -108,12 +108,14 @@ KIND_TYPES: dict[str, tuple[str, ...]] = {
     # 3-element LLSD array, which a Color3 control takes as-is (colour-grade
     # curve rows Toe/Shoulder/Strength). Color4 and vec2 stay excluded.
     "vec2": VECTOR, "vec3": VECTOR + ("Color3",),
+    "segmented": ("S32", "U32", "String"),
 }
 # Setting types a control widget may bind through control_name.
 TAG_TYPES: dict[str, tuple[str, ...]] = {
     "slider": NUMERIC, "spinner": NUMERIC, "compass_dial": NUMERIC,
     "check_box": BOOLEAN, "kit_switch": BOOLEAN, "combo_box": COMBO,
     "color_swatch": COLOR, "line_editor": ("String",),
+    "radio_group": ("S32", "U32", "String"),
 }
 ATTR_TYPES: dict[str, tuple[str, ...]] = {
     "enable_setting": BOOLEAN, "master_setting": BOOLEAN, "mode_setting": BOOLEAN,
@@ -994,6 +996,16 @@ def run_selftest(as_json: bool) -> int:
     k8dial = Node("compass_dial", {"name": "dial"}, 2, k8row); k8row.children = [k8dial]
     record("R1_K8_dial_contract", bool(check_rows(Tree("k8.xml", k8row, "fixture", None))),
            "dial requires kit geometry and suppresses its internal readout")
+    k9row = Node("kit_row", {"kind": "segmented", "widget": "seg", "setting": "FloatSetting"}, 1, None)
+    k9radio = Node("radio_group", {"name": "seg", "control_name": "FloatSetting"}, 2, k9row)
+    k9row.children = [k9radio]
+    record("R1_K9_segmented_type", bool(check_settings(
+        Tree("k9.xml", k9row, "fixture", None), {"FloatSetting": "F32"}, {}, {})),
+        "segmented rows reject non-enum setting types")
+    k10radio = Node("radio_group", {"name": "radio", "control_name": "FloatSetting"}, 1, None)
+    record("R1_K10_radio_group_type", bool(check_settings(
+        Tree("k10.xml", k10radio, "fixture", None), {"FloatSetting": "F32"}, {}, {})),
+        "radio_group controls reject non-enum setting types")
 
     with tempfile.TemporaryDirectory() as empty:
         report = lint(Inputs(Path(empty), kit, settings, homes))

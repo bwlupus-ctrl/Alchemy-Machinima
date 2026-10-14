@@ -100,6 +100,7 @@ private:
     // Lightbox links to the same ALRotoInk / ALTron / ALPanelCineLightRig calls the Lightbox uses.
     void bindRotoInkPage(LLView* root);
     void bindTronPage(LLView* root);
+    void bindSteppedPage(LLView* root);
     void bindImagePage(LLView* root);
     // Lens, World and Look-adjacent generated kit pages: code-bound buttons and preset actions
     // only; the setting-bound rows need no binder. Same calls as the v1 panels.

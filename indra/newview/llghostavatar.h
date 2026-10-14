@@ -162,6 +162,7 @@ public:
     // True while this clone is in DRIVE_TRUE_MIRROR. Used by LLActorMover to
     // skip its root override and gaze layer (the stamp owns the pose).
     bool isTrueMirrorDriven() const;
+    const LLUUID& getAnimationSourceId() const { return mAnimationSourceId; }
 
     virtual bool isImpostor() { return false; }
     virtual bool isBuddy() const { return false; }

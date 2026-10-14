@@ -145,4 +145,35 @@ void ALGhostNameplates::clear()
         }
     }
     mTags.clear();
+    mOffsets.clear();
+}
+
+void ALGhostNameplates::applyOffsets(
+    const std::function<LLVector3(const LLUUID&)>& offset_for)
+{
+    mOffsets.clear();
+    if (!offset_for) return;
+    for (auto& item : mTags)
+    {
+        if (item.second.mTag.isNull()) continue;
+        const LLVector3 delta = offset_for(item.first);
+        if (delta.isExactlyZero()) continue;
+        OffsetState state;
+        state.mOriginal = gAgent.getPosAgentFromGlobal(item.second.mTag->getPositionGlobal());
+        state.mWritten = state.mOriginal + delta;
+        item.second.mTag->setPositionAgent(state.mWritten);
+        mOffsets[item.first] = state;
+    }
+}
+
+void ALGhostNameplates::restoreOffsets()
+{
+    for (const auto& item : mOffsets)
+    {
+        const auto tag = mTags.find(item.first);
+        if (tag != mTags.end() && tag->second.mTag.notNull() &&
+            gAgent.getPosAgentFromGlobal(tag->second.mTag->getPositionGlobal()) == item.second.mWritten)
+            tag->second.mTag->setPositionAgent(item.second.mOriginal);
+    }
+    mOffsets.clear();
 }

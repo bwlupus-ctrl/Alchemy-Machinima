@@ -143,6 +143,11 @@ void sanitizeActorStyle(LLDirectorCast::ActorStyle& style)
     {
         style.mEffectFps = llclamp(floorf(style.mEffectFps + 0.5f), 1.f, 30.f);
     }
+    style.mStepped.mMode = llclamp(style.mStepped.mMode, 0, 2);
+    style.mStepped.mRate = llclamp(
+        std::isfinite(style.mStepped.mRate) ? style.mStepped.mRate : 12.f, 2.f, 30.f);
+    style.mStepped.mWhat = llclamp(style.mStepped.mWhat, -1, 1);
+    style.mStepped.mRole = llclamp(style.mStepped.mRole, 0, 2);
 }
 
 LLSD writeActorStyle(const LLDirectorCast::ActorStyle& input)
@@ -177,6 +182,16 @@ LLSD writeActorStyle(const LLDirectorCast::ActorStyle& input)
     data["distortion_amount"] = style.mDistortionAmount;
     data["brightness"] = style.mBrightness;
     data["effect_fps"] = style.mEffectFps;
+    const LLDirectorCast::ActorStyle::SteppedOverride& stepped = style.mStepped;
+    if (stepped.mMode != 0 || stepped.mRate != 12.f || stepped.mWhat != -1 || stepped.mRole != 0)
+    {
+        LLSD value = LLSD::emptyMap();
+        value["mode"] = stepped.mMode;
+        value["rate"] = stepped.mRate;
+        value["what"] = stepped.mWhat;
+        value["role"] = stepped.mRole;
+        data["stepped"] = value;
+    }
     return data;
 }
 
@@ -217,6 +232,14 @@ LLDirectorCast::ActorStyle readActorStyle(const LLSD& data)
     if (data.has("distortion_amount")) style.mDistortionAmount = static_cast<F32>(data["distortion_amount"].asReal());
     if (data.has("brightness"))       style.mBrightness = static_cast<F32>(data["brightness"].asReal());
     if (data.has("effect_fps"))       style.mEffectFps = static_cast<F32>(data["effect_fps"].asReal());
+    if (data.has("stepped") && data["stepped"].isMap())
+    {
+        const LLSD& value = data["stepped"];
+        if (value.has("mode")) style.mStepped.mMode = value["mode"].asInteger();
+        if (value.has("rate")) style.mStepped.mRate = static_cast<F32>(value["rate"].asReal());
+        if (value.has("what")) style.mStepped.mWhat = value["what"].asInteger();
+        if (value.has("role")) style.mStepped.mRole = value["role"].asInteger();
+    }
     sanitizeActorStyle(style);
     return style;
 }
@@ -1118,6 +1141,10 @@ void LLDirectorCast::remove(const LLUUID& id)
     // draw-time list rebuild. Targeted on the removed id: see onRosterMemberRemoved.
     LLActorMover::instance().onRosterMemberRemoved(actor_id);
     mLookAtCameraIds.erase(actor_id);
+    if (mSteppedActorId == actor_id)
+    {
+        mSteppedActorId.setNull();
+    }
     // a subject that leaves the cast stops being a subject
     if (mSubjectA == actor_id)
     {
@@ -1245,6 +1272,20 @@ void LLDirectorCast::setActorStyle(const LLUUID& id, const ActorStyle& input)
     if (CastMember* member = getMember(canonicalActorId(id)))
     {
         member->mActorStyle = style;
+        touchScene();
+    }
+}
+
+void LLDirectorCast::setSteppedActorId(const LLUUID& id)
+{
+    const LLUUID actor_id = canonicalActorId(id);
+    if (actor_id.notNull() && !containsStored(actor_id))
+    {
+        return;
+    }
+    if (mSteppedActorId != actor_id)
+    {
+        mSteppedActorId = actor_id;
         touchScene();
     }
 }
@@ -2226,6 +2267,10 @@ LLSD LLDirectorCast::sceneData() const
         data["self_gaze_influence_keys"] = writeGazeInfluenceKeys(mSelfGazeInfluenceKeys);
     }
     data["self_actor_style"] = writeActorStyle(mSelfActorStyle);
+    if (mSteppedActorId.notNull())
+    {
+        data["stepped_actor"] = mSteppedActorId;
+    }
     const LLSD self_path = LLActorMover::instance().pathSceneData(LLUUID::null);
     if (self_path.isMap())
     {
@@ -2287,6 +2332,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mSelfGazeCues.clear();
     mSelfGazeInfluenceKeys.clear();
     mSelfActorStyle = ActorStyle();
+    mSteppedActorId.setNull();
 
     // Build the legacy-to-stable identity map before loading any gaze lane:
     // self targets may refer to a cast entry that appears later in the file.
@@ -2356,6 +2402,11 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     if (data.has("self_actor_style"))
     {
         mSelfActorStyle = readActorStyle(data["self_actor_style"]);
+    }
+    if (data.has("stepped_actor"))
+    {
+        mSteppedActorId = canonicalSceneActorId(
+            data["stepped_actor"].asUUID(), scene_actor_ids);
     }
     if (data.has("self_actor_path"))
     {

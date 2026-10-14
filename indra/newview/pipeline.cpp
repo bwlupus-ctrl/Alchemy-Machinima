@@ -32267,3 +32267,7 @@ S32 LLPipeline::uploadPrismPreviewColorGradeUniforms(LLGLSLShader& target_shader
     }
     return cglut_channel;
 }
+F64 LLPipeline::getRotoAnimClockOffset() const
+{
+    return mRotoAnimClock - LLPresentationTime::currentFrame().presentation_time;
+}

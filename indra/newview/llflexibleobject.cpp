@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alsteppedanimruntime.h"
 
 #include "pipeline.h"
 #include "lldrawpoolbump.h"
@@ -767,6 +768,11 @@ bool LLVolumeImplFlexible::doUpdateGeometry(LLDrawable *drawable)
         if (parent)
         {
             LLVOAvatar* avatar = (LLVOAvatar*) parent;
+            if (ALSteppedAnimRuntime::sActive &&
+                ALSteppedAnimRuntime::instance().holdsFlexi(avatar))
+            {
+                return true;
+            }
             if (avatar->isImpostor() && !avatar->needsImpostorUpdate())
             {
                 return true;
