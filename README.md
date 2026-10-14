@@ -11,7 +11,7 @@
 
 **Absolute Cinema SL** is a [Second Life](https://secondlife.com) viewer for making films, music videos and cinematic stills in-world. It gives creators far more control over cameras, timing, staging, actors and look than a standard viewer. It is based on the [Alchemy Viewer](https://github.com/AlchemyViewer/Alchemy), with features borrowed from Firestorm and Black Dragon, all built on the official [Linden Lab viewer](https://github.com/secondlife/viewer).
 
-Everything a shoot needs is in one place, the **Director**: camera moves, cinematic lighting, lens effects, stylised looks, weather, actors and takes. A built-in **ReShade bridge** gives effects such as iMMERSE RTGI and ambient occlusion the viewer's real scene data.
+Everything a shoot needs is in one place, the **Director**: camera moves, cinematic lighting, lens effects, stylised looks, weather, actors and takes. **Ghost Studio** fills your scene with clones and crowds. A built-in **ReShade bridge** gives effects such as iMMERSE RTGI and ambient occlusion the viewer's real scene data.
 
 📖 **[Machinima Feature Guide](doc/MACHINIMA_USER_GUIDE.md)**: what every feature does and how to reach it.
 
@@ -21,6 +21,33 @@ Everything a shoot needs is in one place, the **Director**: camera moves, cinema
 > **No warranty; use at your own risk.** It is provided **"as is", without warranty of any kind**. Using it may violate the Second Life Terms of Service, and any consequences, including **suspension or termination of your Second Life account**, are your sole responsibility. See the [full disclaimer](doc/MACHINIMA_USER_GUIDE.md) in the guide.
 
 > **Everything is viewer-side.** Lights, looks, weather, camera moves, ghosts, stepped animation and the other effects are drawn by your viewer only. Other residents see the world as normal, and nothing is changed on the server. What you see is what you record.
+
+---
+
+## 👻 Ghost Studio: clones & crowds
+
+Clone any avatar, yourself included, into copies you can place, pose, animate and style. Use them for doubles, background extras, crowds, mirror shots and stylised effects. The clones exist only in your viewer, so you can fill a scene without anyone else being there.
+
+- **Two kinds of clone:**
+  - **Overlay ghosts:** lightweight copies for crowds and effects.
+  - **Entity clones:** full clones that take the scene's lighting like a real avatar.
+- **Place them anywhere:** click the ground to place, snap to an actor or to you, drop to ground, align feet, set yaw and scale (0.05× to 150×), or drag them in-world. Copy and paste transforms between clones.
+- **Pose and animate:**
+  - grab a pose, or follow the source avatar live;
+  - **true mirror mode** for perfectly mirrored doubles;
+  - per-clone animation speed and look-at (camera, you, or a target);
+  - turn-to-face;
+  - an animation library;
+  - **AutoAnimate** idle life, so a crowd doesn't stand frozen.
+- **Crowds:** build lines, rings and formations from one source, and add per-clone variation ("chaos") so the crowd isn't identical.
+- **Looks:** Ghost, Clone, Hologram, Wireframe, X-ray, Thermal, Neon Outline, Silhouette, Toon-Ink and more.
+- **Fast chat commands:**
+  - `/ghostdress` clones the targeted avatar;
+  - `/ghostscale`, `/ghostturn`, `/ghostlook` and `/ghostanim` adjust clones;
+  - `/ghostchaos` varies a crowd;
+  - `/ghostclear` removes them.
+
+Open it from the Director (Cast › Ghosts) or the Me menu. The full reference is in the [feature guide](doc/MACHINIMA_USER_GUIDE.md#7-ghost-studio-clones).
 
 ---
 
@@ -83,7 +110,7 @@ The Director is a single panel organised the way a film crew works: **Quick, Cas
 - **Actor Mover:** walk actors along paths and in groups, with marks to reset to between takes.
 - **Path editor:** draw and edit movement paths.
 - **Prop mover:** move, spin, orbit and shuttle props, including seated avatars.
-- **Ghost Studio:** clone avatars into ghosts and crowds for background extras.
+- **Ghost Studio:** clones and crowds; see [Ghost Studio](#-ghost-studio-clones--crowds) above.
 - **Dance Ball:** a client-side dance controller for your actors.
 
 ### ⏱️ Capture
