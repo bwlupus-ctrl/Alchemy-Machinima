@@ -1063,8 +1063,8 @@ void ALPanelDanceBall::updatePlaylistCells(const ALDanceBall& ball)
 void ALPanelDanceBall::refreshDancerControls(const ALDanceBall& ball)
 {
     setValueIfChanged(mRadius, LLSD(static_cast<F64>(ball.autoJoinRadius())));
-    setValueIfChanged(mFocus,
-        LLSD(llformat("%d", static_cast<S32>(ball.autoJoinFocus()))));
+    ALDirectorCastUI::showStoredValue(
+        mFocus, LLSD(static_cast<S32>(ball.autoJoinFocus())), 0, 2, 1);
     setValueIfChanged(mAutoJoin, LLSD(ball.autoJoin()), true);
     setValueIfChanged(mIncludeSeated, LLSD(ball.includeSeated()), true);
     setValueIfChanged(mIncludeMe, LLSD(ball.includeSelf()), true);
@@ -1113,8 +1113,8 @@ void ALPanelDanceBall::refreshCinemaControls(const ALDanceBall& ball)
 {
     const ALDanceBall::Wave& wave = ball.wave();
     setValueIfChanged(mWaveEnable, LLSD(wave.mEnabled), true);
-    setValueIfChanged(mWaveFocus,
-        LLSD(llformat("%d", static_cast<S32>(wave.mFocus))));
+    ALDirectorCastUI::showStoredValue(
+        mWaveFocus, LLSD(static_cast<S32>(wave.mFocus)), 0, 2, 1);
     setValueIfChanged(mWaveSpeed, LLSD(wave.mSpreadMetersPerSecond));
     setValueIfChanged(mWaveDir,
         LLSD(llformat("%d", static_cast<S32>(wave.mDirection))));
@@ -1463,6 +1463,9 @@ void ALPanelDanceBall::updateBlockingCells(const ALDanceBall& ball)
 void ALPanelDanceBall::refreshBlockingControls(const ALDanceBall& ball)
 {
     setValueIfChanged(mBlockingOn, LLSD(ball.blockingEnabled()), true);
+    ALDirectorCastUI::showStoredValue(
+        mBlockCentre, LLSD(static_cast<S32>(ball.blockingCentreFocus())),
+        0, 2, 1);
     std::string centre_status = mStrCentreNone;
     if (ball.blockingCentreSource() ==
         ALAvatarStaging::BallCentreSource::SET)

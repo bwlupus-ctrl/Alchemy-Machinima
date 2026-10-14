@@ -25,6 +25,44 @@ bool sameValue(const LLSD& left, const LLSD& right)
 {
     return left.asString() == right.asString();
 }
+
+U32 selfSubjectMask(S32 subject_count)
+{
+    U32 mask = 0;
+    for (const LLDirectorCast::ActorChoice& choice :
+         LLDirectorCast::instance().getActorChoices())
+    {
+        for (S32 slot = 1; slot <= subject_count; ++slot)
+        {
+            if (choice.isSubject(slot) && LLDirectorCast::isSelf(choice.mId))
+                mask |= 1u << (slot - 1);
+        }
+    }
+    return mask;
+}
+}
+
+void showStoredValue(LLComboBox* combo, const LLSD& stored_value,
+                     S32 self_value, S32 subject_a_value,
+                     S32 subject_count)
+{
+    std::array<LLSD, 5> values;
+    values[0] = self_value;
+    for (S32 slot = 1; slot <= 4; ++slot)
+        values[slot] = subject_a_value + slot - 1;
+    showStoredValue(combo, stored_value, values, subject_count);
+}
+
+void showStoredValue(LLComboBox* combo, const LLSD& stored_value,
+                     const std::array<LLSD, 5>& slot_values,
+                     S32 subject_count)
+{
+    if (!combo)
+        return;
+    const LLSD display_value = subjectDisplayValue(
+        stored_value, slot_values, selfSubjectMask(subject_count), subject_count);
+    if (!sameValue(combo->getValue(), display_value))
+        combo->setValue(display_value);
 }
 
 void mergeSubjectCombo(LLComboBox* combo, S32 self_value, S32 subject_a_value,
@@ -93,7 +131,6 @@ void mergeSubjectCombo(LLComboBox* combo,
     }
     combo->add(self_choice ? self_choice->mLabel : std::string("You"), slot_values[0]);
 
-    U32 self_subject_mask = 0;
     for (S32 slot = 1; slot <= subject_count; ++slot)
     {
         const LLDirectorCast::ActorChoice* subject_choice = nullptr;
@@ -107,7 +144,6 @@ void mergeSubjectCombo(LLComboBox* combo,
         }
         if (subject_choice && LLDirectorCast::isSelf(subject_choice->mId))
         {
-            self_subject_mask |= 1u << (slot - 1);
             continue;
         }
         const char letter = static_cast<char>('A' + slot - 1);
@@ -128,8 +164,7 @@ void mergeSubjectCombo(LLComboBox* combo,
     {
         combo->add(item.label, item.value, ADD_BOTTOM, item.enabled);
     }
-    combo->setValue(subjectDisplayValue(stored_value, slot_values,
-                                        self_subject_mask, subject_count));
+    showStoredValue(combo, stored_value, slot_values, subject_count);
 }
 
 void mergeActorCombo(LLComboBox* combo, const LLSD& self_value,

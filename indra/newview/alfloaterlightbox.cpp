@@ -263,6 +263,19 @@ bool ALFloaterLightBox::postBuild()
     mSubjectCombos[0] = findChild<LLComboBox>("sd_subject_target_combo", true);
     mSubjectCombos[1] = findChild<LLComboBox>("ri_subject_target_combo", true);
     mSubjectCombos[2] = findChild<LLComboBox>("tr_subject_target_combo", true);
+    for (S32 index = 0; index < 3; ++index)
+    {
+        LLComboBox* combo = mSubjectCombos[index];
+        if (combo && combo->getControlVariable())
+        {
+            mSubjectComboConnections[index] =
+                combo->getControlVariable()->getSignal()->connect(
+                    [combo](LLControlVariable*, const LLSD&, const LLSD& value)
+                    {
+                        ALDirectorCastUI::showStoredValue(combo, value, 0, 1);
+                    });
+        }
+    }
 
     mSelLight.cast_cb = findChild<LLCheckBoxCtrl>("sl_cast_shadows");
     mSelLight.vol_cb = findChild<LLCheckBoxCtrl>("sl_volumetric");

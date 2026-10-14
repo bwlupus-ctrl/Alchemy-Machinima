@@ -87,6 +87,8 @@ public:
     ALKitQol::Favorite favoriteKey() const;
     ALKitRow* sourceRow() const { return mSourceRow.get(); }
     void refreshFavorite();
+    void setSubjectDisplayValues(S32 self_value, S32 subject_a_value,
+                                 S32 subject_count);
     static ALKitRow* createProxy(ALKitRow*, const std::string&);
 
 protected:
@@ -123,5 +125,9 @@ private:
     value_signal_t mValueSignal;
     LLFrameTimer   mFlashTimer;
     LLSD           mLastValue, mShownValue;
+    bool           mSubjectDisplay = false;
+    S32            mSubjectSelfValue = 0;
+    S32            mSubjectAValue = 1;
+    S32            mSubjectCount = 4;
 };
 #endif

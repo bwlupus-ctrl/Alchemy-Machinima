@@ -37,6 +37,7 @@
 #include "lluuid.h" // [UIPerfC1] mSelLightLastId
 #include "alscrollfit.h" // [ScrollFit] mScrollFit (per-instance wheel guard + focus tracker)
 #include "aluirefresh.h"
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -134,6 +135,7 @@ public:
     ALLiveReadoutClock mStatsClock{1.f};
     bool mJointComboFilled = false;
     LLComboBox* mSubjectCombos[3] = {};
+    std::array<boost::signals2::scoped_connection, 3> mSubjectComboConnections;
     U64 mSubjectComboRevision = ~U64(0);
     void onSelLightCastShadows();
     void onSelLightVolumetric();

@@ -720,6 +720,19 @@ bool ALPanelCineLightRig::postBuild()
     mSubjectTargetCombos[0] = findChild<LLComboBox>("cine_easy_probe_target");
     mSubjectTargetCombos[1] = findChild<LLComboBox>("cine_live_probe_target");
     mSubjectTargetCombos[2] = findChild<LLComboBox>("cine_night_mask_target");
+    for (S32 index = 0; index < 3; ++index)
+    {
+        LLComboBox* combo = mSubjectTargetCombos[index];
+        if (combo && combo->getControlVariable())
+        {
+            mSubjectTargetConnections[index] =
+                combo->getControlVariable()->getSignal()->connect(
+                    [combo](LLControlVariable*, const LLSD&, const LLSD& value)
+                    {
+                        ALDirectorCastUI::showStoredValue(combo, value, 0, 1);
+                    });
+        }
+    }
     const char* const advanced_driven_names[] = {
         "cine_master_ev", "cine_master_ev_reset",
         "cine_key_ev", "cine_key_ev_reset",

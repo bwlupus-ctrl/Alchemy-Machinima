@@ -34,6 +34,15 @@ inline LLSD subjectDisplayValue(const LLSD& stored_value,
     return stored_value;
 }
 
+// Show an authoritative stored subject value without committing the mapped
+// presentation value back to its control or model.
+void showStoredValue(LLComboBox* combo, const LLSD& stored_value,
+                     S32 self_value, S32 subject_a_value,
+                     S32 subject_count = 4);
+void showStoredValue(LLComboBox* combo, const LLSD& stored_value,
+                     const std::array<LLSD, 5>& slot_values,
+                     S32 subject_count = 4);
+
 // Rebuild the identity portion of a static Self/A/B/C/D combo without changing
 // its stored value. Bound controls supply that authoritative value automatically;
 // model-backed controls must supply value_provider. Non-subject items are kept.

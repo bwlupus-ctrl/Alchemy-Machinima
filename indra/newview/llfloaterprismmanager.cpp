@@ -1201,7 +1201,9 @@ void LLFloaterPrismManager::refreshCaptureEditor()
         const LLPrismLens::BonePovSettings& bone = capture->mCamera.mBonePov;
         mBonePovPanel->setVisible(is_virtual);
         mBonePovEnabledCheck->setValue(bone.mEnabled);
-        mBoneAnchorCombo->setValue(boneAnchorValue(bone.mAnchorSlot));
+        ALDirectorCastUI::showStoredValue(
+            mBoneAnchorCombo, boneAnchorValue(bone.mAnchorSlot),
+            { LLSD("me"), LLSD("a"), LLSD("b"), LLSD("c"), LLSD("d") });
         mBoneJointPreferredValue = boneJointValue(bone);
         refreshBoneJointChoices(false);
         mBoneJointCombo->setValue(LLSD(

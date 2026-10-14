@@ -708,7 +708,9 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(control("vc_look_feeds"), llformat("%u bound face%s",
             capture->mDisplayCount, capture->mDisplayCount == 1 ? "" : "s"));
 
-        setValueIfChanged(control("vc_bone_anchor"), bone.mAnchorSlot);
+        ALDirectorCastUI::showStoredValue(
+            dynamic_cast<LLComboBox*>(control("vc_bone_anchor")),
+            LLSD(bone.mAnchorSlot), 0, 1);
         setValueIfChanged(control("vc_bone_enabled"), bone.mEnabled);
         setValueIfChanged(control("vc_bone_joint"), bone.mJointSelection == LLPrismLens::BONE_JOINT_EYELINE
             ? LLSD("") : LLSD(bone.mCustomJoint));

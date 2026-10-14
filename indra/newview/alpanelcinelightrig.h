@@ -16,6 +16,7 @@
 #include "lluicolor.h"
 #include "lluuid.h"
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -158,6 +159,7 @@ private:
     boost::signals2::scoped_connection mEasyModeConnection;
     LLTextBox* mNightMaskStatus = nullptr;
     LLComboBox* mSubjectTargetCombos[3] = {};
+    std::array<boost::signals2::scoped_connection, 3> mSubjectTargetConnections;
     ALRigRimController mRim;
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;

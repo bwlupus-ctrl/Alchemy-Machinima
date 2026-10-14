@@ -906,6 +906,10 @@ bool ALKitPage::postBuild()
             mSubjectCombos.push_back(
                 { combo, spec.self_value, spec.subject_a_value,
                   spec.subject_count, spec.value_source });
+            if (ALKitRow* row = findRow(spec.name))
+                row->setSubjectDisplayValues(spec.self_value,
+                                             spec.subject_a_value,
+                                             spec.subject_count);
         }
     }
     return true;

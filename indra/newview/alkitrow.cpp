@@ -1,5 +1,6 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitrow.h"
+#include "aldirectorcastui.h"
 #include "alfloaterlightbox.h"
 #include "alkitbinding.h"
 #include "alkitmenu.h"
@@ -704,7 +705,14 @@ void ALKitRow::bindingChanged()
     {
         const LLSD value = mBinding->get();
         if (!alSameValue(value, mControl->getValue()))
-            mControl->setValue(value);
+        {
+            if (mSubjectDisplay)
+                ALDirectorCastUI::showStoredValue(
+                    dynamic_cast<LLComboBox*>(mControl), value,
+                    mSubjectSelfValue, mSubjectAValue, mSubjectCount);
+            else
+                mControl->setValue(value);
+        }
     }
     const bool now = amber();
     if (mReset)
@@ -722,6 +730,15 @@ void ALKitRow::bindingChanged()
     if (mControl && !baselineEditActive(mControl))
         mLastValue = mControl->getValue();
     mValueSignal();
+}
+
+void ALKitRow::setSubjectDisplayValues(S32 self_value, S32 subject_a_value,
+                                       S32 subject_count)
+{
+    mSubjectDisplay = true;
+    mSubjectSelfValue = self_value;
+    mSubjectAValue = subject_a_value;
+    mSubjectCount = subject_count;
 }
 
 void ALKitRow::resolveBinding()
