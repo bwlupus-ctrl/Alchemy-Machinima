@@ -39,6 +39,9 @@ struct State
     LLVector3d vT;
     LLVector3d uR;
     LLVector3d vR;
+    F64 brakeReferenceT = 0.0;
+    F64 brakeReferenceR = 0.0;
+    bool brakeLatched = false;
     bool active = false;
     bool settled = true;
 };
@@ -53,10 +56,23 @@ struct Step
     bool nonFinite = false;
 };
 
+struct TriggerMomentum
+{
+    bool enabled = false;
+    F32 gas = 0.f;
+    F32 brake = 0.f;
+    F32 gasResponse = .35f;
+    F32 brakeStopTime = 1.f;
+    F32 brakeRotation = 1.f;
+    F32 impact = 1.f;
+};
+
 Tuning tuningForWeight(F32 weightPercent, F32 tauMax, F32 curveK, F32 rotationShare);
 Target targetFromClassic(const F32 d[6], const LLQuaternion& q0, F64 h, bool inputZero);
 bool isExtremeInput(const Target& target, F64 h);
 Step advance(State& state, const Target& target, const Tuning& tuning, F64 h);
+Step advance(State& state, const Target& target, const Tuning& tuning, F64 h,
+             const TriggerMomentum& trigger);
 void seedAtTarget(State& state, const Target& target);
 void seedVelocity(State& state, const LLVector3d& velocity, const LLVector3d& angularVelocity);
 void rest(State& state);
@@ -82,6 +98,7 @@ struct Settings
     F32 curve = 20.f;
     F32 rotationShare = .6f;
     bool guardArmed = false;
+    TriggerMomentum trigger;
 };
 
 struct FrameIn

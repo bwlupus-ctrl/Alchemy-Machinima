@@ -9,6 +9,7 @@
 #include "m3math.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -35,6 +36,14 @@ F64 magnitude(const LLVector3d& value)
     return std::sqrt(value.mdV[VX] * value.mdV[VX] +
                      value.mdV[VY] * value.mdV[VY] +
                      value.mdV[VZ] * value.mdV[VZ]);
+}
+
+bool exactStep(const ALFlycamWeighted::Step& lhs,
+               const ALFlycamWeighted::Step& rhs)
+{
+    return lhs.dp == rhs.dp && lhs.dtheta == rhs.dtheta &&
+        lhs.held == rhs.held && lhs.woke == rhs.woke &&
+        lhs.settledNow == rhs.settledNow && lhs.nonFinite == rhs.nonFinite;
 }
 
 F64 rotationDistance(const LLQuaternion& lhs, const LLQuaternion& rhs)
@@ -110,6 +119,56 @@ ALFlycamWeighted::Target target(F64 x, F64 y = 0.0, F64 z = 0.0)
     result.v.set(x, y, z);
     result.inputZero = x == 0.0 && y == 0.0 && z == 0.0;
     return result;
+}
+
+ALFlycamWeighted::TriggerMomentum triggerMomentum(
+    F32 gas, F32 brake, F32 impact = 1.f)
+{
+    ALFlycamWeighted::TriggerMomentum trigger;
+    trigger.enabled = true;
+    trigger.gas = gas;
+    trigger.brake = brake;
+    trigger.gasResponse = .35f;
+    trigger.brakeStopTime = 1.f;
+    trigger.brakeRotation = 1.f;
+    trigger.impact = impact;
+    return trigger;
+}
+
+F64 brakeStopTime(F64 frequency, F64 initialSpeed, F32 impact,
+                  bool* reversed = nullptr)
+{
+    ALFlycamWeighted::State state;
+    ALFlycamWeighted::seedVelocity(
+        state, LLVector3d(initialSpeed, 0., 0.), LLVector3d(0., initialSpeed, 0.));
+    const F64 h = 1.0 / frequency;
+    const auto tuning = ALFlycamWeighted::tuningForWeight(50.f, 1.f, 20.f, .6f);
+    const auto trigger = triggerMomentum(0.f, 1.f, impact);
+    for (S32 step = 1; step <= static_cast<S32>(frequency * 5.0); ++step)
+    {
+        ALFlycamWeighted::advance(state, target(0.), tuning, h, trigger);
+        if (reversed && (state.vT.mdV[VX] < 0.0 || state.vR.mdV[VY] < 0.0))
+            *reversed = true;
+        if (state.settled)
+            return static_cast<F64>(step) * h;
+    }
+    return 5.0;
+}
+
+F64 gasTimeToNinety(F32 impact)
+{
+    ALFlycamWeighted::State state;
+    ALFlycamWeighted::rest(state);
+    const F64 h = .001;
+    const auto tuning = ALFlycamWeighted::tuningForWeight(50.f, 1.f, 20.f, .6f);
+    const auto trigger = triggerMomentum(1.f, 0.f, impact);
+    for (S32 step = 1; step <= 5000; ++step)
+    {
+        ALFlycamWeighted::advance(state, target(1.), tuning, h, trigger);
+        if (state.vT.mdV[VX] >= .9)
+            return static_cast<F64>(step) * h;
+    }
+    return 5.0;
 }
 
 // Frozen verbatim copy of the pre-WP-W1 decision function. It intentionally
@@ -1230,5 +1289,149 @@ template<> template<> void weighted_object::test<50>()
         std::memcmp(&before, &coordinator.state(), sizeof(before)) == 0);
     ALFlycamWeighted::Coordinator resetCoordinator; auto reset = basicFrame(); reset.weightedEdge = ALFlycamWeightedEdge::C2W;
     ensure("I13 reset replay rests", resetCoordinator.frame(reset).writePose && resetCoordinator.state().settled);
+}
+
+
+// Trigger momentum (a): the default stop time stops any latched speed in one
+// second at Weight 50 and cannot reverse translation or rotation.
+template<> template<> void weighted_object::test<51>()
+{
+    bool reversed = false;
+    const F64 stop = brakeStopTime(120., 10., 1.f, &reversed);
+    close("TM a one-second stop", stop, 1.0, .1);
+    ensure("TM a never reverses", !reversed);
+}
+
+// Trigger momentum (b): full gas scales the build-up time by GasResponse.
+template<> template<> void weighted_object::test<52>()
+{
+    const F64 normal = gasTimeToNinety(0.f);
+    const F64 gas = gasTimeToNinety(1.f);
+    ensure("TM b full gas faster", gas < normal);
+    close("TM b response ratio", gas / normal, .35, .02);
+}
+
+// Trigger momentum (c): releasing both triggers preserves legacy coast exactly.
+template<> template<> void weighted_object::test<53>()
+{
+    ALFlycamWeighted::State legacy;
+    ALFlycamWeighted::seedVelocity(legacy, LLVector3d(2., -.5, .25), LLVector3d(.2, 0., -.1));
+    ALFlycamWeighted::State momentum = legacy;
+    const auto tuning = ALFlycamWeighted::tuningForWeight(50.f, 1.f, 20.f, .6f);
+    const auto released = triggerMomentum(0.f, 0.f);
+    for (S32 step = 0; step < 240; ++step)
+    {
+        const auto a = ALFlycamWeighted::advance(legacy, target(0.), tuning, 1. / 120.);
+        const auto b = ALFlycamWeighted::advance(momentum, target(0.), tuning, 1. / 120., released);
+        ensure("TM c coast state exact", std::memcmp(&legacy, &momentum, sizeof(legacy)) == 0);
+        ensure("TM c coast output exact", exactStep(a, b));
+    }
+}
+
+// Trigger momentum (d): disabled is byte-identical over a scripted sequence.
+template<> template<> void weighted_object::test<54>()
+{
+    ALFlycamWeighted::State legacy;
+    ALFlycamWeighted::rest(legacy);
+    ALFlycamWeighted::State disabled = legacy;
+    auto trigger = triggerMomentum(1.f, 1.f, 2.f);
+    trigger.enabled = false;
+    const auto tuning = ALFlycamWeighted::tuningForWeight(50.f, 1.f, 20.f, .6f);
+    for (S32 step = 0; step < 360; ++step)
+    {
+        const F64 command = step < 100 ? 1. : (step < 180 ? -0.4 : 0.);
+        const auto desired = target(command, step % 7 == 0 ? .2 : 0.);
+        const auto a = ALFlycamWeighted::advance(legacy, desired, tuning, 1. / 120.);
+        const auto b = ALFlycamWeighted::advance(disabled, desired, tuning, 1. / 120., trigger);
+        ensure("TM d disabled state exact", std::memcmp(&legacy, &disabled, sizeof(legacy)) == 0);
+        ensure("TM d disabled output exact", exactStep(a, b));
+    }
+}
+
+// Trigger momentum (e): active braking is frame-rate independent.
+template<> template<> void weighted_object::test<55>()
+{
+    struct Sample { F64 speed; F64 distance; };
+    const auto sample = [](S32 frequency)
+    {
+        ALFlycamWeighted::State state;
+        ALFlycamWeighted::seedVelocity(state, LLVector3d(1., 0., 0.), LLVector3d());
+        const F64 h = 1.0 / static_cast<F64>(frequency);
+        const auto tuning = ALFlycamWeighted::tuningForWeight(50.f, 1.f, 20.f, .6f);
+        const auto trigger = triggerMomentum(0.f, 1.f);
+        F64 distance = 0.0;
+        for (S32 step = 0; step < frequency / 2; ++step)
+            distance += ALFlycamWeighted::advance(
+                state, target(0.), tuning, h, trigger).dp.mdV[VX];
+        return Sample{ state.vT.mdV[VX], distance };
+    };
+    const Sample sample30 = sample(30);
+    const Sample sample60 = sample(60);
+    const Sample sample144 = sample(144);
+    close("TM e speed 30/60", sample30.speed, sample60.speed, 1.e-12);
+    close("TM e speed 60/144", sample60.speed, sample144.speed, 1.e-12);
+    close("TM e distance 30/60", sample30.distance, sample60.distance, 1.e-12);
+    close("TM e distance 60/144", sample60.distance, sample144.distance, 1.e-12);
+
+    const F64 thirty = brakeStopTime(30., 40., 1.f);
+    const F64 sixty = brakeStopTime(60., 40., 1.f);
+    const F64 oneFortyFour = brakeStopTime(144., 40., 1.f);
+    close("TM e 30/60", thirty, sixty, 1. / 30.);
+    close("TM e 60/144", sixty, oneFortyFour, 1. / 30.);
+}
+
+// Trigger momentum (f): zero impact is legacy-exact; brake duration is inverse
+// to impact and gas response becomes monotonically faster through 200%.
+template<> template<> void weighted_object::test<56>()
+{
+    ALFlycamWeighted::State legacy;
+    ALFlycamWeighted::seedVelocity(legacy, LLVector3d(.8, 0., 0.), LLVector3d());
+    ALFlycamWeighted::State zero = legacy;
+    const auto tuning = ALFlycamWeighted::tuningForWeight(50.f, 1.f, 20.f, .6f);
+    const auto trigger = triggerMomentum(1.f, 1.f, 0.f);
+    for (S32 step = 0; step < 240; ++step)
+    {
+        const auto desired = target(step < 80 ? 1. : 0.);
+        const auto a = ALFlycamWeighted::advance(legacy, desired, tuning, 1. / 120.);
+        const auto b = ALFlycamWeighted::advance(zero, desired, tuning, 1. / 120., trigger);
+        ensure("TM f zero-impact state exact", std::memcmp(&legacy, &zero, sizeof(legacy)) == 0);
+        ensure("TM f zero-impact output exact", exactStep(a, b));
+    }
+
+    for (F64 speed : {2., 10., 40.})
+        close("TM f speed-relative one-second brake",
+              brakeStopTime(120., speed, 1.f), 1., .1);
+    const F64 half = brakeStopTime(120., 10., .5f);
+    const F64 full = brakeStopTime(120., 10., 1.f);
+    const F64 doubleImpact = brakeStopTime(120., 10., 2.f);
+    close("TM f half-impact brake", half / full, 2., .03);
+    close("TM f double-impact brake", doubleImpact / full, .5, .03);
+
+    const F64 gas0 = gasTimeToNinety(0.f);
+    const F64 gas50 = gasTimeToNinety(.5f);
+    const F64 gas100 = gasTimeToNinety(1.f);
+    const F64 gas200 = gasTimeToNinety(2.f);
+    ensure("TM f gas monotone", gas0 > gas50 && gas50 > gas100 && gas100 > gas200);
+}
+
+// Full brake remains effective while the stick asks for the trigger-throttled
+// ten-percent target, and a release clears the speed latch.
+template<> template<> void weighted_object::test<57>()
+{
+    ALFlycamWeighted::State state;
+    ALFlycamWeighted::seedVelocity(state, LLVector3d(40., 0., 0.), LLVector3d(0., 4., 0.));
+    const auto tuning = ALFlycamWeighted::tuningForWeight(50.f, 1.f, 20.f, .6f);
+    const auto brake = triggerMomentum(0.f, 1.f);
+    F64 previous = magnitude(state.vT);
+    for (S32 step = 0; step < 132; ++step)
+    {
+        ALFlycamWeighted::advance(state, target(4.), tuning, 1. / 120., brake);
+        ensure("TM g stick brake does not accelerate", magnitude(state.vT) <= previous + 1.e-12);
+        previous = magnitude(state.vT);
+    }
+    ensure("TM g stick brake substantially slows", magnitude(state.vT) < 4.1);
+    ALFlycamWeighted::advance(state, target(0.), tuning, 1. / 120., triggerMomentum(0.f, 0.f));
+    ensure("TM g release resets latch", !state.brakeLatched &&
+           state.brakeReferenceT == 0. && state.brakeReferenceR == 0.);
 }
 }

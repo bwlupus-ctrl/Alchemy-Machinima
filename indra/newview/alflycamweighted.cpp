@@ -128,6 +128,34 @@ CascadeResult cascade(LLVector3d& first, LLVector3d& second,
     return result;
 }
 
+void brakeVelocity(LLVector3d& first, LLVector3d& second, F64 amount)
+{
+    const F64 speed = vectorLength(second);
+    if (!(speed > 0.0) || !(amount > 0.0))
+        return;
+    const F64 remaining = std::max(0.0, speed - amount);
+    const F64 scale = remaining / speed;
+    first *= scale;
+    second *= scale;
+}
+
+LLVector3d brakeIntegral(LLVector3d& first, LLVector3d& second,
+                         F64 amount, F64 h)
+{
+    const LLVector3d before = second;
+    brakeVelocity(first, second, amount);
+    return (before + second) * (0.5 * h);
+}
+
+bool buildingMomentum(const LLVector3d& target, const LLVector3d& velocity)
+{
+    const F64 targetSpeed = vectorLength(target);
+    const F64 speed = vectorLength(velocity);
+    const F64 dot = target.mdV[VX] * velocity.mdV[VX] +
+        target.mdV[VY] * velocity.mdV[VY] + target.mdV[VZ] * velocity.mdV[VZ];
+    return targetSpeed > speed && (speed < VELOCITY_EPSILON || dot > 0.0);
+}
+
 bool targetAtRest(const ALFlycamWeighted::Target& target)
 {
     return target.inputZero && vectorLength(target.v) < VELOCITY_EPSILON &&
@@ -199,6 +227,12 @@ bool isExtremeInput(const Target& target, F64 h)
 
 Step advance(State& state, const Target& target, const Tuning& tuning, F64 h)
 {
+    return advance(state, target, tuning, h, TriggerMomentum());
+}
+
+Step advance(State& state, const Target& target, const Tuning& tuning, F64 h,
+             const TriggerMomentum& trigger)
+{
     Step result;
     if (!(h > 0.0) || !std::isfinite(h) || !finiteVector(target.v) ||
         !finiteVector(target.w) || !std::isfinite(tuning.tauT) ||
@@ -207,6 +241,15 @@ Step advance(State& state, const Target& target, const Tuning& tuning, F64 h)
         result.nonFinite = true;
         rest(state);
         return result;
+    }
+
+    const F64 rawImpact = std::max(0.0, std::min(2.0,
+        std::isfinite(trigger.impact) ? static_cast<F64>(trigger.impact) : 1.0));
+    if (trigger.enabled && rawImpact > 0.0 &&
+        !(std::isfinite(trigger.brake) && trigger.brake > 0.f))
+    {
+        state.brakeReferenceT = state.brakeReferenceR = 0.0;
+        state.brakeLatched = false;
     }
 
     const bool wake = !target.inputZero || vectorLength(target.v) >= 2.0 * VELOCITY_EPSILON ||
@@ -223,8 +266,71 @@ Step advance(State& state, const Target& target, const Tuning& tuning, F64 h)
     }
     state.active = true;
 
-    result.dp = cascade(state.uT, state.vT, target.v, tuning.tauT, h).integral;
-    result.dtheta = cascade(state.uR, state.vR, target.w, tuning.tauR, h).integral;
+    Tuning effective = tuning;
+    const F64 impact = rawImpact;
+    bool directTranslationBrake = false;
+    bool directRotationBrake = false;
+    if (trigger.enabled && impact > 0.0)
+    {
+        const F64 brake = std::max(0.0, std::min(1.0,
+            std::isfinite(trigger.brake) ? static_cast<F64>(trigger.brake) : 0.0));
+        const F64 stopTime = std::max(0.2, std::min(5.0,
+            std::isfinite(trigger.brakeStopTime)
+                ? static_cast<F64>(trigger.brakeStopTime) : 1.0));
+        const F64 rotationMultiplier = std::max(0.0, std::min(2.0,
+            std::isfinite(trigger.brakeRotation)
+                ? static_cast<F64>(trigger.brakeRotation) : 1.0));
+        if (brake > 0.0 && !state.brakeLatched)
+        {
+            state.brakeReferenceT = vectorLength(state.vT);
+            state.brakeReferenceR = vectorLength(state.vR);
+            state.brakeLatched = true;
+        }
+        else if (!(brake > 0.0))
+        {
+            state.brakeReferenceT = state.brakeReferenceR = 0.0;
+            state.brakeLatched = false;
+        }
+        state.brakeReferenceT = std::max(state.brakeReferenceT, vectorLength(state.vT));
+        state.brakeReferenceR = std::max(state.brakeReferenceR, vectorLength(state.vR));
+        const F64 brakeAmount = brake * impact * state.brakeReferenceT * h / stopTime;
+        const F64 rotationBrakeAmount = brake * impact * state.brakeReferenceR *
+            rotationMultiplier * h / stopTime;
+        directTranslationBrake = target.inputZero && brakeAmount > 0.0;
+        directRotationBrake = target.inputZero && rotationBrakeAmount > 0.0;
+
+        // With the controls released, the active brake replaces passive coast.
+        // Its onset speed is latched, so every speed has the same stop time.
+        if (directTranslationBrake)
+            result.dp = brakeIntegral(state.uT, state.vT, brakeAmount, h);
+        else
+            brakeVelocity(state.uT, state.vT, brakeAmount);
+        if (directRotationBrake)
+            result.dtheta = brakeIntegral(
+                state.uR, state.vR, rotationBrakeAmount, h);
+        else
+            brakeVelocity(state.uR, state.vR, rotationBrakeAmount);
+
+        const F64 gas = std::max(0.0, std::min(1.0,
+            std::isfinite(trigger.gas) ? static_cast<F64>(trigger.gas) : 0.0));
+        const F64 configuredResponse = std::max(0.1, std::min(1.0,
+            std::isfinite(trigger.gasResponse)
+                ? static_cast<F64>(trigger.gasResponse) : 0.35));
+        const F64 response = std::max(0.05,
+            1.0 + (configuredResponse - 1.0) * impact);
+        const F64 responseScale = 1.0 + (response - 1.0) * gas;
+        if (!target.inputZero && buildingMomentum(target.v, state.vT) &&
+            !directTranslationBrake)
+            effective.tauT *= responseScale;
+        if (!target.inputZero && buildingMomentum(target.w, state.vR) &&
+            !directRotationBrake)
+            effective.tauR *= responseScale;
+    }
+
+    if (!directTranslationBrake)
+        result.dp = cascade(state.uT, state.vT, target.v, effective.tauT, h).integral;
+    if (!directRotationBrake)
+        result.dtheta = cascade(state.uR, state.vR, target.w, effective.tauR, h).integral;
     if (!finiteVector(result.dp) || !finiteVector(result.dtheta) ||
         !finiteVector(state.uT) || !finiteVector(state.vT) ||
         !finiteVector(state.uR) || !finiteVector(state.vR))
@@ -249,6 +355,8 @@ void seedAtTarget(State& state, const Target& target)
 {
     state.uT = state.vT = target.v;
     state.uR = state.vR = target.w;
+    state.brakeReferenceT = state.brakeReferenceR = 0.0;
+    state.brakeLatched = false;
     state.active = true;
     state.settled = targetAtRest(target);
 }
@@ -262,6 +370,8 @@ void seedVelocity(State& state, const LLVector3d& velocity, const LLVector3d& an
     }
     state.uT = state.vT = velocity;
     state.uR = state.vR = angularVelocity;
+    state.brakeReferenceT = state.brakeReferenceR = 0.0;
+    state.brakeLatched = false;
     state.active = true;
     state.settled = vectorLength(velocity) < VELOCITY_EPSILON &&
         vectorLength(angularVelocity) < ANGULAR_EPSILON;
@@ -273,6 +383,8 @@ void rest(State& state)
     state.vT.setZero();
     state.uR.setZero();
     state.vR.setZero();
+    state.brakeReferenceT = state.brakeReferenceR = 0.0;
+    state.brakeLatched = false;
     state.active = true;
     state.settled = true;
 }
@@ -638,8 +750,7 @@ FrameOut Coordinator::frame(const FrameIn& in)
         const Tuning tuning = tuningForWeight(in.settings.weight, in.settings.tauMax,
             in.settings.curve, in.settings.rotationShare);
         const bool wasSettled = mState.settled;
-        step = advance(mState, target,
-            tuning, h);
+        step = advance(mState, target, tuning, h, in.settings.trigger);
         if (step.nonFinite)
         {
             ++mNonFiniteCount;

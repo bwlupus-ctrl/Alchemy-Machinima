@@ -129,7 +129,10 @@ bool exact_state(const LLFlycamDrone::State& a, const LLFlycamDrone::State& b)
         a.rollVelocity == b.rollVelocity && a.quaternionSign == b.quaternionSign &&
         a.tiltLimit == b.tiltLimit && a.pole == b.pole &&
         a.pendingPole == b.pendingPole && a.totalLimitMax == b.totalLimitMax &&
-        a.hasPendingPole == b.hasPendingPole && a.recentre == b.recentre &&
+        a.brakeReference == b.brakeReference &&
+        a.rotationBrakeReference == b.rotationBrakeReference &&
+        a.hasPendingPole == b.hasPendingPole && a.brakeLatched == b.brakeLatched &&
+        a.recentre == b.recentre &&
         a.snapped == b.snapped && a.settled == b.settled &&
         a.nonFiniteRecovered == b.nonFiniteRecovered;
 }
@@ -871,5 +874,106 @@ template<> template<> void flycam_drone_object::test<49>()
     // exercises the promised >=30x case.
     dolly.cruise*=.2f;dolly.top*=.2f;dolly.climb*=.2f;dolly.stopDistance*=.2f;const F32 dollyFloor=dolly.top*(dolly.onset+2.f/120.f);dolly.stopDistance=std::max(dolly.stopDistance,std::nextafter(dollyFloor,std::numeric_limits<F32>::infinity()));LLFlycamDrone::Params after;ensure("T52 scaled Dolly accepted",LLFlycamDrone::compile(dolly,dolly,1.f/120.f,2.f,after));ensure("T52 combined drop >=30x",before.totalLimit>=30.f*after.totalLimit);
     for(bool settle:{false,true}){LLFlycamDrone d(before);d.setParams(after);auto s=d.state();s.totalLimitMax=before.totalLimit;const F32 jStar=std::min(LLFlycamDrone::effectiveJerk(before.pole,before.totalLimit,after.tick),after.effectiveJerk);const F32 eps=std::min(jStar*after.tick*after.tick/4.f,.005f)/4.f;s.smootherVelocity.set(eps,0,0);s.velocity.set(2*eps,0,0);s.deltaVelocity.set(eps,0,0);LLFlycamDrone::Input in;if(!settle)in.yaw=.2f;auto q=d.step(s,in,after.tick);ensure("T52 combined event one snap",q.snapped&&!q.hasPendingPole);ensure_equals("T52 combined max reset",q.totalLimitMax,after.totalLimit);ensure_equals("T52 combined settle classification",q.settled,settle);}
+}
+
+
+// Trigger momentum: stop time is speed-relative for translation and rotation,
+// impact scales duration, and neither channel can reverse.
+template<> template<> void flycam_drone_object::test<50>()
+{
+    const auto p = compiled(1, 120.f);
+    LLFlycamDrone drone(p);
+    const auto stopTime = [&](F32 speed, F32 impact)
+    {
+        drone.seed(LLVector3::zero, LLQuaternion(), LLVector3(speed, 0.f, 0.f));
+        LLFlycamDrone::State state = drone.state();
+        state.yawVelocity = speed;
+        LLFlycamDrone::Input brake;
+        brake.brake = 1.f;
+        brake.droneThrottle = true;
+        brake.triggerMomentum = true;
+        brake.triggerImpact = impact;
+        F32 previous = speed;
+        for (S32 step = 1; step <= 600; ++step)
+        {
+            state = drone.step(state, brake, p.tick);
+            ensure("TM Drone brake never reverses", state.velocity.mV[VX] >= 0.f &&
+                   state.yawVelocity >= 0.f && state.velocity.length() <= previous);
+            previous = state.velocity.length();
+            if (state.velocity.length() == 0.f && state.yawVelocity == 0.f)
+                return step * p.tick;
+        }
+        return 5.f;
+    };
+    for (F32 speed : {2.f, 10.f, 40.f})
+        close("TM Drone one-second stop", stopTime(speed, 1.f), 1.f, .1f);
+    const F32 full = stopTime(10.f, 1.f);
+    close("TM Drone 50% impact", stopTime(10.f, .5f) / full, 2.f, .1f);
+    close("TM Drone 200% impact", stopTime(10.f, 2.f) / full, .5f, .05f);
+}
+
+// Trigger momentum OFF preserves the pre-feature Drone state byte-for-byte.
+template<> template<> void flycam_drone_object::test<51>()
+{
+    const auto p = compiled(1, 120.f);
+    LLFlycamDrone drone(p);
+    LLFlycamDrone::State legacy = drone.state();
+    LLFlycamDrone::State disabled = legacy;
+    for (S32 step = 0; step < 600; ++step)
+    {
+        LLFlycamDrone::Input a = forward(step < 300 ? .8f : .2f);
+        a.brake = step > 350 ? .7f : 0.f;
+        a.yaw = step % 80 < 40 ? .25f : -.25f;
+        LLFlycamDrone::Input b = a;
+        b.triggerMomentum = false;
+        b.gasResponse = step % 2 ? .1f : 1.f;
+        b.triggerImpact = step % 3 ? 2.f : 0.f;
+        legacy = drone.step(legacy, a, p.tick);
+        disabled = drone.step(disabled, b, p.tick);
+        ensure("TM Drone disabled exact", exact_state(legacy, disabled));
+    }
+
+    legacy = disabled = drone.state();
+    for (S32 step = 0; step < 240; ++step)
+    {
+        LLFlycamDrone::Input a = forward(.7f);
+        a.brake = .8f;
+        LLFlycamDrone::Input b = a;
+        b.triggerMomentum = true;
+        b.triggerImpact = 0.f;
+        legacy = drone.step(legacy, a, p.tick);
+        disabled = drone.step(disabled, b, p.tick);
+        ensure("TM Drone zero impact exact", exact_state(legacy, disabled));
+    }
+}
+
+// Outer frame rates agree because the stop law runs only in Drone's fixed-step
+// loop; holding the stick during full brake still reaches zero on schedule.
+template<> template<> void flycam_drone_object::test<52>()
+{
+    const auto p = compiled(1, 120.f);
+    const auto halfSecond = [&](S32 fps)
+    {
+        LLFlycamDrone drone(p);
+        drone.seed(LLVector3::zero, LLQuaternion(), LLVector3(40.f, 0.f, 0.f));
+        LLFlycamDrone::Input brake;
+        brake.brake = 1.f;
+        brake.droneThrottle = brake.triggerMomentum = true;
+        for (S32 frame = 0; frame < fps / 2; ++frame)
+            drone.advanceRaw(1.0 / fps, brake);
+        return drone.state().velocity.length();
+    };
+    close("TM Drone 30/60 fps", halfSecond(30), halfSecond(60), 1.e-4f);
+    close("TM Drone 60/144 fps", halfSecond(60), halfSecond(144), 1.e-4f);
+
+    LLFlycamDrone drone(p);
+    drone.seed(LLVector3::zero, LLQuaternion(), LLVector3(40.f, 0.f, 0.f));
+    LLFlycamDrone::State state = drone.state();
+    LLFlycamDrone::Input pushing = forward(1.f);
+    pushing.brake = 1.f;
+    pushing.droneThrottle = pushing.triggerMomentum = true;
+    for (S32 step = 0; step < 132; ++step)
+        state = drone.step(state, pushing, p.tick);
+    ensure("TM Drone stick brake stops within tolerance", state.velocity.length() < .01f);
 }
 }

@@ -122,6 +122,8 @@ private:
     LLUICtrl        *mFlightModel = nullptr;
     LLPanel         *mWeightedSettingsPanel = nullptr;
     LLTextBox       *mWeightedReadout = nullptr;
+    LLTextBox       *mTriggerImpactReadout = nullptr;
+    LLUICtrl        *mTriggerImpactControl = nullptr;
     LLPanel         *mDroneSettingsPanel = nullptr;
     LLTextBox       *mDroneCursorReason = nullptr;
     LLComboBox      *mDronePreset = nullptr;

@@ -448,6 +448,35 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
     const F32 speedLimit = assist ? mParams.cruise + (mParams.top - mParams.cruise) * throttle
                                   : throttle * mParams.top;
     const F32 requestedSpeed = moveLength * speedLimit * (1.f - brake);
+    const F32 impact = clampf(
+        std::isfinite(input.triggerImpact) ? input.triggerImpact : 1.f, 0.f, 2.f);
+    const bool triggerMomentum = input.triggerMomentum && impact > 0.f;
+    const bool triggerBrake = triggerMomentum && brake > 0.f;
+    const F32 brakeStopTime = clampf(
+        std::isfinite(input.brakeStopTime) ? input.brakeStopTime : 1.f, .2f, 5.f);
+    const F32 brakeRotation = clampf(
+        std::isfinite(input.brakeRotation) ? input.brakeRotation : 1.f, 0.f, 2.f);
+    const F32 angularSpeed = std::sqrt(source.yawVelocity * source.yawVelocity +
+        source.tiltVelocity * source.tiltVelocity + source.rollVelocity * source.rollVelocity);
+    if (triggerBrake && !source.brakeLatched)
+    {
+        next.brakeReference = source.velocity.length();
+        next.rotationBrakeReference = angularSpeed;
+        next.brakeLatched = true;
+    }
+    else if (triggerMomentum && !(brake > 0.f))
+    {
+        next.brakeReference = next.rotationBrakeReference = 0.f;
+        next.brakeLatched = false;
+    }
+    const F32 configuredResponse = clampf(
+        std::isfinite(input.gasResponse) ? input.gasResponse : .35f, .1f, 1.f);
+    const F32 gasResponse = triggerMomentum
+        ? std::max(.05f, 1.f + (configuredResponse - 1.f) * impact)
+        : 1.f;
+    const F32 acceleration = triggerMomentum
+        ? mParams.acceleration / (1.f + (gasResponse - 1.f) * throttle)
+        : mParams.acceleration;
     LLVector3 reference = source.referenceVelocity;
 
     if (mParams.freeFly)
@@ -481,7 +510,7 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
                 const F32 ratio = along / mParams.top;
                 const F32 flow = ratio >= 1.f ? mParams.top
                     : mParams.top * std::tanh(std::atanh(ratio) +
-                                              mParams.acceleration * tick / mParams.top);
+                                              acceleration * tick / mParams.top);
                 along = std::min(targetSpeed, flow);
             }
             cross -= clampLength(cross, mParams.grip * mParams.acceleration * tick);
@@ -534,7 +563,7 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
                 const F32 ratio = along / mParams.top;
                 const F32 flow = ratio >= 1.f ? mParams.top
                     : mParams.top * std::tanh(std::atanh(ratio) +
-                                              mParams.acceleration * tick / mParams.top);
+                                              acceleration * tick / mParams.top);
                 along = std::min(requestedSpeed, flow);
             }
             cross -= clampLength(cross, mParams.grip * mParams.acceleration * tick);
@@ -562,6 +591,11 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
                                                 -mParams.climbAcceleration * tick,
                                                  mParams.climbAcceleration * tick));
     }
+    // With no stick input, the stop-time law replaces Drone's preset braking
+    // and smoothing so its duration is independent of the preset and speed.
+    const bool directBrake = triggerBrake && moveLength == 0.f && vertical == 0.f;
+    if (directBrake)
+        reference = source.referenceVelocity;
     next.referenceVelocity = reference;
 
     const F32 poleAfter = next.hasPendingPole ? next.pendingPole : source.pole;
@@ -595,8 +629,29 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
         next.smootherVelocity = source.smootherVelocity * source.pole + reference * (1.f - source.pole);
         next.velocity = source.velocity * source.pole + next.smootherVelocity * (1.f - source.pole);
     }
+    if (triggerBrake)
+    {
+        const F32 speed = directBrake ? source.velocity.length() : next.velocity.length();
+        next.brakeReference = std::max(next.brakeReference, speed);
+        const F32 amount = brake * impact * next.brakeReference * tick / brakeStopTime;
+        const F32 scale = speed > 0.f ? std::max(0.f, speed - amount) / speed : 0.f;
+        if (directBrake)
+        {
+            next.referenceVelocity = source.referenceVelocity * scale;
+            next.smootherVelocity = source.smootherVelocity * scale;
+            next.velocity = source.velocity * scale;
+        }
+        else
+        {
+            next.referenceVelocity *= scale;
+            next.smootherVelocity *= scale;
+            next.velocity *= scale;
+        }
+    }
     next.deltaVelocity = next.velocity - source.velocity;
-    next.position = source.position + next.velocity * tick;
+    next.position = source.position + (triggerBrake
+        ? (source.velocity + next.velocity) * (.5f * tick)
+        : next.velocity * tick);
 
     const F32 yawTarget = shaped(yawInput, mParams.yawExpo) * mParams.yawRate /
                           (1.f + LLVector3(next.velocity.mV[VX], next.velocity.mV[VY], 0.f).length() /
@@ -644,6 +699,33 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
                                     -mParams.rollAcceleration * tick, mParams.rollAcceleration * tick);
         next.roll = wrap(source.roll + next.rollVelocity * tick);
         if (mParams.autoLevel && rollInput == 0.f)
+            next.roll -= next.roll * std::min(1.f, tick / .5f);
+    }
+
+    if (triggerBrake && brakeRotation > 0.f)
+    {
+        const bool directAngularBrake = yawInput == 0.f && tiltInput == 0.f &&
+            rollInput == 0.f && !input.level && !input.recentre && !source.recentre;
+        if (directAngularBrake)
+        {
+            next.yawVelocity = source.yawVelocity;
+            next.tiltVelocity = source.tiltVelocity;
+            next.rollVelocity = source.rollVelocity;
+        }
+        F32 speed = std::sqrt(next.yawVelocity * next.yawVelocity +
+            next.tiltVelocity * next.tiltVelocity + next.rollVelocity * next.rollVelocity);
+        next.rotationBrakeReference = std::max(next.rotationBrakeReference, speed);
+        const F32 amount = brake * impact * next.rotationBrakeReference *
+            brakeRotation * tick / brakeStopTime;
+        const F32 scale = speed > 0.f ? std::max(0.f, speed - amount) / speed : 0.f;
+        next.yawVelocity *= scale;
+        next.tiltVelocity *= scale;
+        next.rollVelocity *= scale;
+        next.yaw = wrap(source.yaw + next.yawVelocity * tick);
+        next.tilt = clampf(source.tilt + next.tiltVelocity * tick,
+                           -next.tiltLimit, next.tiltLimit);
+        next.roll = input.level ? 0.f : wrap(source.roll + next.rollVelocity * tick);
+        if (mParams.autoLevel && rollInput == 0.f && !input.level)
             next.roll -= next.roll * std::min(1.f, tick / .5f);
     }
 
@@ -936,7 +1018,8 @@ bool LLFlycamDrone::finite(const State& state)
            std::isfinite(state.rollVelocity) && std::isfinite(state.tiltLimit) &&
            std::isfinite(state.quaternionSign) &&
            std::isfinite(state.pole) && std::isfinite(state.pendingPole) &&
-           std::isfinite(state.totalLimitMax);
+           std::isfinite(state.totalLimitMax) && std::isfinite(state.brakeReference) &&
+           std::isfinite(state.rotationBrakeReference);
 }
 
 void LLFlycamDrone::log(const std::string& message) const

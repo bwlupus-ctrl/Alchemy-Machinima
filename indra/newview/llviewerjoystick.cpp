@@ -204,6 +204,11 @@ struct FlycamWeightedSettings
     LLCachedControl<F32> tauMax{gSavedSettings, "FlycamWeightedTauMax", 1.f};
     LLCachedControl<F32> curve{gSavedSettings, "FlycamWeightedCurve", 20.f};
     LLCachedControl<bool> guardArmed{gSavedSettings, "FlycamWeightedPoseGuardArmed", false};
+    LLCachedControl<bool> triggerMomentum{gSavedSettings, "FlycamTriggerMomentum", true};
+    LLCachedControl<F32> triggerGasResponse{gSavedSettings, "FlycamTriggerGasResponse", .35f};
+    LLCachedControl<F32> triggerBrakeStopTime{gSavedSettings, "FlycamTriggerBrakeStopTime", 1.f};
+    LLCachedControl<F32> triggerBrakeRotation{gSavedSettings, "FlycamTriggerBrakeRotation", 1.f};
+    LLCachedControl<F32> triggerImpact{gSavedSettings, "FlycamTriggerMomentumImpact", 1.f};
     LLCachedControl<bool> operatorEnabled{gSavedSettings, "FlycamOperatorEnabled", false};
     LLCachedControl<bool> shakeApplyActive{gSavedSettings, "CameraShakeApplyActive", false};
 
@@ -2260,6 +2265,17 @@ void LLViewerJoystick::moveFlycam(bool reset)
     F32 trigger_roll = 0.f;
     F32 trigger_throttle = 1.f;
     computeTriggerOutputs(trigger_roll, trigger_throttle);
+    F32 trigger_gas = 0.f;
+    F32 trigger_brake = 0.f;
+    const bool trigger_fresh = mXITakeover && xInputAssociated() &&
+        ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(),
+                        mXISampleGeneration, mXILoopGeneration);
+    if (trigger_fresh && mXIMode == 1)
+    {
+        ALXInput::droneTriggers(mXILT / 255.f, mXIRT / 255.f,
+            droneSettings().triggerDeadzone, droneSettings().triggerCurve,
+            trigger_gas, trigger_brake);
+    }
     const bool level_horizon = mXILevelPending;
     if (mXIDebugTimer.getElapsedTimeF32() >= 1.f && xInputAssociated())
     {
@@ -2294,9 +2310,20 @@ void LLViewerJoystick::moveFlycam(bool reset)
     const bool tagged_dispatch = gCameraDispatchOwner == ECameraOwner::FLYCAM;
     const bool dispatch_foreign = !sDrone.resetPending &&
         gCameraDispatchForeignSinceFlycamWrite;
-    const bool drone_selected = (S32)flycamFlightModel() == 1 && !m3DCursor;
+    const S32 configured_model = flycamFlightModel();
+    const F32 trigger_impact = weightedSettings().triggerImpact;
+    // Weight zero normally bypasses Weighted byte-for-byte.  Trigger momentum
+    // keeps its zero-tau pass-through active only while its THROTTLE-mode brake
+    // can matter; OFF and 0% impact retain the exact Classic dispatch path.
+    const bool weighted_trigger_pass = configured_model == 2 &&
+        weightedSettings().triggerMomentum && mXIMode == 1 &&
+        std::isfinite(trigger_impact) && trigger_impact > 0.f;
+    const S32 effective_model = weighted_trigger_pass
+        ? configured_model
+        : alEffectiveFlycamModel(configured_model, weightedSettings().weight);
+    const bool drone_selected = configured_model == 1 && !m3DCursor;
     const ALFlycamFrameDecision frame_decision = alResolveFlycamFrame(
-        alEffectiveFlycamModel(flycamFlightModel(), weightedSettings().weight),
+        effective_model,
         m3DCursor, orbit_resolved, sDrone.owner,
         tagged_dispatch, dispatch_foreign);
     const ALFlycamPoseOwner desired_owner = frame_decision.selectedOwner;
@@ -2555,6 +2582,14 @@ void LLViewerJoystick::moveFlycam(bool reset)
         win.presentedRot = LLViewerCamera::getInstance()->getQuaternion();
         win.presentedComparable = !weightedSettings().operatorEnabled && !weightedSettings().shakeApplyActive;
         win.settings = weightedSettings().snapshot();
+        win.settings.trigger.enabled = weightedSettings().triggerMomentum &&
+            trigger_fresh && mXIMode == 1;
+        win.settings.trigger.gas = trigger_gas;
+        win.settings.trigger.brake = trigger_brake;
+        win.settings.trigger.gasResponse = weightedSettings().triggerGasResponse;
+        win.settings.trigger.brakeStopTime = weightedSettings().triggerBrakeStopTime;
+        win.settings.trigger.brakeRotation = weightedSettings().triggerBrakeRotation;
+        win.settings.trigger.impact = weightedSettings().triggerImpact;
         const ALFlycamWeighted::FrameOut wout = sWeighted.frame(win);
         if (wout.writePose) { sFlycamPosition = wout.pos;  sFlycamRotation = wout.rot; }
         if (!wout.log.empty()) LL_INFOS("FlycamWeighted") << wout.log << LL_ENDL;
@@ -2594,9 +2629,6 @@ void LLViewerJoystick::moveFlycam(bool reset)
         if (fabsf(input.roll) <= mFlycamAxisDeadZone[CAM_X_AXIS])
             input.roll = 0.f;
 
-        const bool trigger_fresh = mXITakeover && xInputAssociated() &&
-            ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(),
-                            mXISampleGeneration, mXILoopGeneration);
         input.droneThrottle = trigger_fresh && mXIMode == 1;
         if (input.droneThrottle)
         {
@@ -2604,6 +2636,11 @@ void LLViewerJoystick::moveFlycam(bool reset)
                 droneSettings().triggerDeadzone, droneSettings().triggerCurve,
                 input.throttle, input.brake);
         }
+        input.triggerMomentum = weightedSettings().triggerMomentum && input.droneThrottle;
+        input.gasResponse = weightedSettings().triggerGasResponse;
+        input.triggerImpact = weightedSettings().triggerImpact;
+        input.brakeStopTime = weightedSettings().triggerBrakeStopTime;
+        input.brakeRotation = weightedSettings().triggerBrakeRotation;
         const F64 elapsed_dt = std::isfinite(gFrameIntervalSeconds.value())
             ? llmax((F64)gFrameIntervalSeconds.value(), 0.0) : 0.0;
         const F64 frame_dt = llmin(elapsed_dt, .25);
@@ -3617,11 +3654,16 @@ void LLViewerJoystick::handleXInputDpad()
     {
         const S32 mode = settings.mode == 1 ? 0 : 1;
         gSavedSettings.setS32("JoystickXInputTriggerMode", mode);
-        const bool drone = gSavedSettings.getS32("FlycamFlightModel") == 1 &&
+        const S32 flightModel = gSavedSettings.getS32("FlycamFlightModel");
+        const bool drone = flightModel == 1 &&
             getOverrideCamera() && !m3DCursor;
+        const bool weightedMomentum = flightModel == 2 && getOverrideCamera() &&
+            !m3DCursor && weightedSettings().triggerMomentum;
         xInputHint(drone
             ? (mode == 1 ? "Triggers: THROTTLE + BRAKE (Drone)" : "Triggers: ROLL (Drone)")
-            : (mode == 1 ? "Triggers: THROTTLE" : "Triggers: ROLL"));
+            : (mode == 1
+                ? (weightedMomentum ? "Triggers: GAS + BRAKE" : "Triggers: THROTTLE")
+                : "Triggers: ROLL"));
         playRumble(ALXInput::RUMBLE_MODE_TICK);
     }
     const auto action = [this](S32 value)

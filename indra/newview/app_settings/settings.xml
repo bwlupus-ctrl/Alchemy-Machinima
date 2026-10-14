@@ -13330,6 +13330,41 @@
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>FlycamTriggerMomentum</key>
+    <map>
+      <key>Comment</key><string>Let shaped gas and brake triggers affect Weighted and Drone momentum in THROTTLE mode.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>FlycamTriggerGasResponse</key>
+    <map>
+      <key>Comment</key><string>Full-gas response multiplier for Weighted time constants and Drone acceleration; clamped to 0.1 through 1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>FlycamTriggerMomentumImpact</key>
+    <map>
+      <key>Comment</key><string>Strength of trigger momentum effects: 0 is legacy/off-equivalent, 1 is 100 percent, and 2 is 200 percent.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>FlycamTriggerBrakeStopTime</key>
+    <map>
+      <key>Comment</key><string>Seconds for a full trigger brake to stop from its latched onset speed; clamped to 0.2 through 5.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>FlycamTriggerBrakeRotation</key>
+    <map>
+      <key>Comment</key><string>Weighted and Drone angular brake multiplier, clamped to 0 through 2; zero brakes translation only.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
     <key>FlycamWeightedCurve</key>
     <map>
       <key>Comment</key><string>Weighted Classic response curve, clamped to 1 through 1000.</string>

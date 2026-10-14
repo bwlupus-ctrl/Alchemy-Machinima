@@ -689,7 +689,7 @@
     </panel>
     <panel background_visible="false" height="637" label="Flight model" layout="topleft" name="joystick_drone_tab" width="760">
       <scroll_container follows="all" height="632" layout="topleft" left="0" name="drone_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="760">
-        <panel background_visible="false" follows="left|top|right" layout="topleft" left="0" name="drone_scroll_content" top="0" width="740" height="520">
+        <panel background_visible="false" follows="left|top|right" layout="topleft" left="0" name="drone_scroll_content" top="0" width="740" height="710">
           <text font="SansSerifBold" height="18" layout="topleft" name="drone_flight_model_title" width="150" left="20" top="12" halign="right">Flight model</text>
           <combo_box control_name="FlycamFlightModel" height="20" layout="topleft" name="FlycamFlightModel" width="150" left="180" top="10">
             <combo_box.item label="Classic" value="0" />
@@ -713,8 +713,14 @@
             <slider can_edit_text="true" control_name="FlycamWeightedWeight" decimal_digits="0" height="18" increment="1" label="Weight %" label_width="140" layout="topleft" left="20" max_val="100" min_val="0" name="FlycamWeightedWeight" show_text="true" top="55" width="340" />
             <text font="SansSerifSmall" height="18" layout="topleft" left="385" name="weighted_readout" top="55" width="340">Ease-in --   Stop --</text>
           </panel>
-          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="drone_section_title" top="124" width="300">Drone</text>
-          <panel background_visible="false" enabled="false" follows="left|top|right" height="460" layout="topleft" left="0" name="drone_settings_panel" top="146" width="740">
+          <check_box control_name="FlycamTriggerMomentum" height="18" label="Triggers affect momentum (gas builds faster, brake slows the camera)" layout="topleft" left="20" name="FlycamTriggerMomentum" top="122" width="600" />
+          <slider can_edit_text="true" control_name="FlycamTriggerMomentumImpact" decimal_digits="2" height="18" increment="0.05" label="Trigger impact" label_width="140" layout="topleft" left="20" max_val="2" min_val="0" name="FlycamTriggerMomentumImpact" show_text="true" text_width="45" tool_tip="How strongly gas and brake change the camera's momentum" top="144" width="340" />
+          <text font="SansSerifSmall" height="18" layout="topleft" left="385" name="trigger_impact_readout" top="144" width="120">100%</text>
+          <spinner control_name="FlycamTriggerGasResponse" decimal_digits="2" height="18" increment="0.05" label="Advanced: gas response" label_width="150" layout="topleft" left="20" max_val="1" min_val="0.1" name="FlycamTriggerGasResponse" top="168" width="300" />
+          <spinner control_name="FlycamTriggerBrakeStopTime" decimal_digits="2" height="18" increment="0.1" label="Advanced: brake stop time" label_width="170" layout="topleft" left="385" max_val="5" min_val="0.2" name="FlycamTriggerBrakeStopTime" tool_tip="Seconds for full brake to stop from any speed" top="168" width="300" />
+          <spinner control_name="FlycamTriggerBrakeRotation" decimal_digits="2" height="18" increment="0.05" label="Advanced: brake rotation" label_width="150" layout="topleft" left="20" max_val="2" min_val="0" name="FlycamTriggerBrakeRotation" top="190" width="300" />
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="drone_section_title" top="220" width="300">Drone</text>
+          <panel background_visible="false" enabled="false" follows="left|top|right" height="460" layout="topleft" left="0" name="drone_settings_panel" top="242" width="740">
             <text height="18" layout="topleft" name="drone_preset_label" width="140" left="20" top="5" halign="right">Preset</text>
             <combo_box control_name="FlycamDronePreset" height="20" layout="topleft" name="FlycamDronePreset" width="180" left="170" top="3">
               <combo_box.item label="Cine" value="0" />

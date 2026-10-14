@@ -297,6 +297,13 @@ void LLFloaterJoystick::refreshWeightedReadout()
         LLViewerJoystick::getInstance()->getWeightedTuning();
     setTextIfChanged(mWeightedReadout,
         llformat("Ease-in %.2f s   Stop %.2f s", 3.89 * tuning.tauT, 5.83 * tuning.tauT));
+    if (mTriggerImpactReadout && mTriggerImpactControl)
+    {
+        const F32 impact = llclamp(
+            static_cast<F32>(mTriggerImpactControl->getValue().asReal()), 0.f, 2.f);
+        setTextIfChanged(mTriggerImpactReadout,
+            llformat("%.0f%%", 100.f * impact));
+    }
 }
 
 bool LLFloaterJoystick::postBuild()
@@ -339,6 +346,8 @@ bool LLFloaterJoystick::postBuild()
     mFlightModel = getChild<LLUICtrl>("FlycamFlightModel");
     mWeightedSettingsPanel = getChild<LLPanel>("weighted_settings_panel");
     mWeightedReadout = getChild<LLTextBox>("weighted_readout");
+    mTriggerImpactReadout = getChild<LLTextBox>("trigger_impact_readout");
+    mTriggerImpactControl = getChild<LLUICtrl>("FlycamTriggerMomentumImpact");
     mDroneSettingsPanel = getChild<LLPanel>("drone_settings_panel");
     mDroneCursorReason = getChild<LLTextBox>("drone_cursor_reason");
     mDronePreset = getChild<LLComboBox>("FlycamDronePreset");
@@ -425,7 +434,10 @@ void LLFloaterJoystick::initFromSettings()
         "FlycamDroneExpoGimbal", "FlycamDroneResumeMomentum",
         "FlycamDroneInvertLook", // snapshot/restore on Cancel only; deliberately NOT a tuning->Custom control
         "FlycamWeightedWeight", "FlycamWeightedPreset", "FlycamWeightedRotationShare",
-        "FlycamWeightedTauMax", "FlycamWeightedCurve", "FlycamDpadModelA", "FlycamDpadModelB"
+        "FlycamWeightedTauMax", "FlycamWeightedCurve", "FlycamTriggerMomentum",
+        "FlycamTriggerMomentumImpact",
+        "FlycamTriggerGasResponse", "FlycamTriggerBrakeStopTime", "FlycamTriggerBrakeRotation",
+        "FlycamDpadModelA", "FlycamDpadModelB"
     };
     for (const char* name : flycam_controls)
     {

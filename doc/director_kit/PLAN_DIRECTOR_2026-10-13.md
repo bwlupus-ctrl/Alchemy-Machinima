@@ -12,6 +12,7 @@ Every Director v2 page matches the mockup and every control is **proven at runti
   - Image's 7 three-number rows: the test doesn't handle multi-box rows.
   - Gaze, Props, Move and Animate: these need the world.
   - The non-page features: the bottom bar, the … and right-click menus, the search popup, adding you to the cast at login, and scene Rename/Save.
+- **Rain at altitude (user, 10/13 ~8:30 PM):** the rain shader works, but rain is not visible at high altitude. Noted only: **don't fix until the user asks.** Suspects: rain spawn or volume tied to a ground/water height band, an altitude fade, or height-based gating. Start points: `codex_rain_diag*.txt` and the manifest's `rain_gate` expectation.
 - **Open product items:**
   - Tab between kit controls: unproven. Codex says the failure is a test artefact.
   - Operator page: FlycamOperatorModeBlendTime and FlycamOperatorSimulationHz have no control on the v2 page.

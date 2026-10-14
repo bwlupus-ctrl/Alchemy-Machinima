@@ -121,6 +121,12 @@ public:
         // True only while the unified trigger mode is Drone-THROTTLE.  The
         // model uses Assist when this is false, even if the preset says Pure.
         bool droneThrottle = false;
+        // Trigger momentum is opt-in so the disabled path remains legacy-exact.
+        bool triggerMomentum = false;
+        F32 gasResponse = .35f;
+        F32 triggerImpact = 1.f;
+        F32 brakeStopTime = 1.f;
+        F32 brakeRotation = 1.f;
         F32 vertical = 0.f;
         F32 yaw = 0.f;
         F32 tilt = 0.f;
@@ -147,7 +153,10 @@ public:
         F32 pole = 0.f;
         F32 pendingPole = 0.f;
         F32 totalLimitMax = 0.f;
+        F32 brakeReference = 0.f;
+        F32 rotationBrakeReference = 0.f;
         bool hasPendingPole = false;
+        bool brakeLatched = false;
         bool recentre = false;
         bool snapped = false;
         bool settled = false;
