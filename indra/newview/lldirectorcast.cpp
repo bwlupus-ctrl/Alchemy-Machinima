@@ -1050,6 +1050,33 @@ bool LLDirectorCast::instanceExists()
 }
 
 // static
+bool LLDirectorCast::isSelf(const LLUUID& id)
+{
+    return id.isNull() || (gAgentID.notNull() && id == gAgentID);
+}
+
+// static
+std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::buildActorChoices(
+    const LLUUID& self_id,
+    const std::array<LLUUID, 4>& subjects,
+    const std::vector<ActorChoiceSource>& cast)
+{
+    return alBuildActorChoices(self_id, subjects, cast);
+}
+
+std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::getActorChoices() const
+{
+    std::vector<ActorChoiceSource> sources;
+    sources.reserve(mCast.size());
+    for (const CastMember& member : mCast)
+    {
+        sources.push_back({ member.mId, member.mLastName });
+    }
+    return buildActorChoices(gAgentID,
+        { mSubjectA, mSubjectB, mSubjectC, mSubjectD }, sources);
+}
+
+// static
 LLUUID LLDirectorCast::canonicalActorId(const LLUUID& id)
 {
     if (id.isNull())

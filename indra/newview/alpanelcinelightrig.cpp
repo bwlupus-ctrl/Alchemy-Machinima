@@ -14,6 +14,7 @@
 
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
+#include "aldirectorcastui.h"
 #include "alcinelightrigmodel.h"
 #include "llprismlens.h"
 #include "alkitbinding.h"
@@ -715,6 +716,9 @@ bool ALPanelCineLightRig::postBuild()
     mNightMaskDarkness = getChild<LLUICtrl>("cine_night_mask_darkness"); // [NightMaskPercent]
     mEasyNightMaskDarkness = getChild<LLUICtrl>("cine_easy_night_mask_darkness"); // [NightMaskPercent]
     mNightMaskStatus = getChild<LLTextBox>("night_mask_status");
+    mSubjectTargetCombos[0] = findChild<LLComboBox>("cine_easy_probe_target");
+    mSubjectTargetCombos[1] = findChild<LLComboBox>("cine_live_probe_target");
+    mSubjectTargetCombos[2] = findChild<LLComboBox>("cine_night_mask_target");
     const char* const advanced_driven_names[] = {
         "cine_master_ev", "cine_master_ev_reset",
         "cine_key_ev", "cine_key_ev_reset",
@@ -1160,6 +1164,7 @@ void ALPanelCineLightRig::populateStaticCombos()
 
 }
 
+// ui-draw-lint: allow-function(raw-write) combo rebuild is configuration-revision and rig-slot gated
 void ALPanelCineLightRig::syncProjectorFeeds(bool force)
 {
     static LLCachedControl<bool> prism_enabled(
@@ -1219,7 +1224,7 @@ void ALPanelCineLightRig::syncProjectorFeeds(bool force)
                 break;
             }
         }
-        combo->setValue(selected);
+        setValueIfChanged(combo, LLSD(selected), true);
     }
 }
 
@@ -1465,48 +1470,67 @@ void ALPanelCineLightRig::onGoboLibraryCommit()
     syncGoboLibrary(true);
 }
 
+// ui-draw-lint: allow-function(raw-write) anchor combo rebuild is identity-revision or explicit model-mutation gated
 void ALPanelCineLightRig::updateAnchorList()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightRig updateAnchorList");
     LLDirectorCast& cast = LLDirectorCast::instance();
     ALCineLightRigManager& manager = ALCineLightRigManager::instance();
-    const LLUUID subject_ids[5] = {
-        LLUUID::null, cast.getSubjectA(), cast.getSubjectB(),
-        cast.getSubjectC(), cast.getSubjectD()
-    };
-    const char* const subject_names[5] = {
-        "You", "Subject A", "Subject B", "Subject C", "Subject D"
-    };
+    const U64 subject_revision = cast.getActorChoiceRevision();
+    if (subject_revision != mSubjectChoiceRevision)
+    {
+        mSubjectChoiceRevision = subject_revision;
+        for (LLComboBox* combo : mSubjectTargetCombos)
+        {
+            if (combo)
+            {
+                ALDirectorCastUI::mergeSubjectCombo(combo, 0, 1);
+            }
+        }
+        mCastListInitialized = false;
+        mDisplayedGroupSlots = ~0u;
+    }
+    if (mCastListInitialized)
+    {
+        syncAnchorSelection();
+        return;
+    }
+    const S32 selected_slot = static_cast<S32>(manager.selectedSlot());
     std::vector<LLUUID> ids;
     std::vector<std::string> labels;
+    std::vector<S32> values;
     ids.reserve(5);
     labels.reserve(5);
-    for (S32 i = 0; i < 5; ++i)
+    values.reserve(5);
+    for (const LLDirectorCast::ActorChoice& choice : cast.getActorChoices())
     {
-        const ALCineLightRigManager::Slot slot =
-            static_cast<ALCineLightRigManager::Slot>(i);
-        std::string label(subject_names[i]);
-        if (i > 0)
+        if (!LLDirectorCast::isSelf(choice.mId) && choice.mSubjectMask == 0)
         {
-            std::string resolved_name("not set");
-            if (subject_ids[i].notNull())
-            {
-                const LLDirectorCast::CastMember* member =
-                    cast.getMember(subject_ids[i]);
-                resolved_name = member && !member->mLastName.empty()
-                    ? member->mLastName : subject_ids[i].asString();
-            }
-            label += " \xE2\x80\x93 " + resolved_name;
+            continue;
         }
+        S32 value = LLDirectorCast::isSelf(choice.mId) ? 0 : 1;
+        for (S32 slot = 1; slot <= 4; ++slot)
+        {
+            if (choice.isSubject(slot))
+            {
+                value = slot;
+                break;
+            }
+        }
+        if (choice.isSubject(selected_slot)) value = selected_slot;
+        const ALCineLightRigManager::Slot slot =
+            static_cast<ALCineLightRigManager::Slot>(value);
+        std::string label(choice.mLabel);
         if (manager.at(slot).getObjectTarget().notNull())
         {
             label += " (object)";
         }
-        ids.push_back(subject_ids[i]);
+        ids.push_back(choice.mId);
         labels.push_back(label);
+        values.push_back(value);
     }
     const bool changed = !mCastListInitialized || ids != mCastIds ||
-                         labels != mCastNames;
+                         labels != mCastNames || values != mCastValues;
     if (!changed)
     {
         syncAnchorSelection();
@@ -1521,10 +1545,11 @@ void ALPanelCineLightRig::updateAnchorList()
 
     mCastIds = ids;
     mCastNames = labels;
+    mCastValues = values;
     mAnchorCombo->clearRows();
-    for (S32 i = 0; i < 5; ++i)
+    for (S32 i = 0; i < static_cast<S32>(values.size()); ++i)
     {
-        mAnchorCombo->add(labels[i], LLSD(i));
+        mAnchorCombo->add(labels[i], LLSD(values[i]));
     }
     mCastListInitialized = true;
     mAnchorSelectionInitialized = false;
@@ -1541,7 +1566,7 @@ void ALPanelCineLightRig::syncAnchorSelection()
     {
         return;
     }
-    mAnchorCombo->setValue(selected);
+    setValueIfChanged(mAnchorCombo, LLSD(selected), true);
     mDisplayedSlot = selected;
     mAnchorSelectionInitialized = true;
     mDisplayedGroupEnabled = false;
@@ -1601,19 +1626,19 @@ void ALPanelCineLightRig::syncObjectTargetControls(bool force)
 
     mDisplayedObjectTargetSlot = selected;
     mDisplayedObjectTarget = target;
-    mObjectTargetClear->setEnabled(target.notNull());
+    setEnabledIfChanged(mObjectTargetClear, target.notNull());
     if (target.isNull())
     {
-        mObjectTargetStatus->setText(
-            std::string("\xE2\x80\x94 avatar \xE2\x80\x94"));
-        mObjectTargetStatus->setToolTip(
+        setTextIfChanged(mObjectTargetStatus,
+            std::string("\xE2\x80\x94 avatar \xE2\x80\x94"), true);
+        setToolTipIfChanged(mObjectTargetStatus,
             std::string("This slot follows its avatar anchor."));
     }
     else
     {
         const std::string key = target.asString();
-        mObjectTargetStatus->setText("object " + key.substr(0, 8));
-        mObjectTargetStatus->setToolTip(key);
+        setTextIfChanged(mObjectTargetStatus, "object " + key.substr(0, 8), true);
+        setToolTipIfChanged(mObjectTargetStatus, key);
     }
 }
 
@@ -1642,6 +1667,7 @@ void ALPanelCineLightRig::onTargetObject()
 
     ALCineLightRig& rig = ALCineLightRigManager::instance().selected();
     rig.setObjectTarget(root->getID());
+    mCastListInitialized = false;
     gSavedSettings.setString(
         "CineLightRigObjectTarget", root->getID().asString());
     syncObjectTargetControls(true);
@@ -1652,6 +1678,7 @@ void ALPanelCineLightRig::onTargetObject()
 void ALPanelCineLightRig::onClearObjectTarget()
 {
     ALCineLightRigManager::instance().selected().setObjectTarget(LLUUID::null);
+    mCastListInitialized = false;
     gSavedSettings.setString("CineLightRigObjectTarget", std::string());
     syncObjectTargetControls(true);
     syncGroupControls();
@@ -1668,9 +1695,16 @@ void ALPanelCineLightRig::onGroupEnabledCommit()
 void ALPanelCineLightRig::onGroupSlotsCommit()
 {
     U32 slots = 0;
+    const bool self_checked = mGroupSlotChecks[0]->getValue().asBoolean();
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLUUID subjects[] = { cast.getSubjectA(), cast.getSubjectB(),
+                                cast.getSubjectC(), cast.getSubjectD() };
     for (S32 i = 0; i < 5; ++i)
     {
-        if (mGroupSlotChecks[i]->getValue().asBoolean())
+        const bool duplicate_self = i > 0 && subjects[i - 1].notNull() &&
+                                    LLDirectorCast::isSelf(subjects[i - 1]);
+        if ((duplicate_self ? self_checked
+                            : mGroupSlotChecks[i]->getValue().asBoolean()))
         {
             slots |= 1u << i;
         }
@@ -1681,6 +1715,7 @@ void ALPanelCineLightRig::onGroupSlotsCommit()
 
 void ALPanelCineLightRig::syncGroupControls()
 {
+    LLDirectorCast& cast = LLDirectorCast::instance();
     ALCineLightRig& rig = ALCineLightRigManager::instance().selected();
     const bool enabled = rig.isGroupEnabled();
     const U32 slots = rig.getGroupSlots();
@@ -1694,22 +1729,50 @@ void ALPanelCineLightRig::syncGroupControls()
         return;
     }
 
-    mGroupEnable->setValue(enabled);
-    mGroupEnable->setEnabled(object_target.isNull());
+    setValueIfChanged(mGroupEnable, LLSD(enabled), true);
+    setEnabledIfChanged(mGroupEnable, object_target.isNull());
+    const LLUUID subjects[] = { cast.getSubjectA(), cast.getSubjectB(),
+                                cast.getSubjectC(), cast.getSubjectD() };
+    U32 self_slot_mask = 1u;
+    for (S32 i = 0; i < 4; ++i)
+        if (subjects[i].notNull() && LLDirectorCast::isSelf(subjects[i]))
+            self_slot_mask |= 1u << (i + 1);
+    const bool self_selected = (slots & self_slot_mask) != 0;
     for (S32 i = 0; i < 5; ++i)
     {
-        mGroupSlotChecks[i]->setValue((slots & (1u << i)) != 0);
-        mGroupSlotChecks[i]->setEnabled(enabled && object_target.isNull());
+        const bool duplicate_self = i > 0 && (self_slot_mask & (1u << i));
+        setValueIfChanged(mGroupSlotChecks[i], LLSD((i == 0 || duplicate_self)
+            ? self_selected : (slots & (1u << i)) != 0), true);
+        setEnabledIfChanged(mGroupSlotChecks[i], enabled && object_target.isNull());
     }
+    std::string self_letters;
+    for (S32 i = 0; i < 4; ++i)
+    {
+        const bool duplicate_self = subjects[i].notNull() &&
+                                    LLDirectorCast::isSelf(subjects[i]);
+        setVisibleIfChanged(mGroupSlotChecks[i + 1], !duplicate_self);
+        if (duplicate_self)
+        {
+            if (!self_letters.empty()) self_letters += ", ";
+            self_letters += char('A' + i);
+        }
+    }
+    setLabelIfChanged(mGroupSlotChecks[0], self_letters.empty()
+        ? "You" : (self_letters.size() == 1
+            ? "You (Subject " + self_letters + ")"
+            : "You (Subjects " + self_letters + ")"));
+    setToolTipIfChanged(mGroupSlotChecks[0], self_letters.empty()
+        ? "Include you in the lit group."
+        : "The hidden subject toggle is the same identity; this one switch controls you once.");
 
     if (object_target.notNull())
     {
-        mGroupStatus->setText(std::string("object: group is avatar-only"));
+        setTextIfChanged(mGroupStatus, std::string("object: group is avatar-only"));
         mGroupStatus->setColor(mRadiusDefaultColor);
     }
     else if (!enabled)
     {
-        mGroupStatus->setText(std::string());
+        setTextIfChanged(mGroupStatus, std::string());
         mGroupStatus->setColor(mRadiusDefaultColor);
     }
     else
@@ -1723,13 +1786,13 @@ void ALPanelCineLightRig::syncGroupControls()
         }
         if (resolved_count == 0)
         {
-            mGroupStatus->setText(std::string("none resolved"));
+            setTextIfChanged(mGroupStatus, std::string("none resolved"));
             mGroupStatus->setColor(
                 LLUIColor(LLColor4(1.f, 0.75f, 0.25f, 1.f)));
         }
         else
         {
-            mGroupStatus->setText(llformat(
+            setTextIfChanged(mGroupStatus, llformat(
                 "%d of %d lit", resolved_count, requested_count));
             mGroupStatus->setColor(mRadiusDefaultColor);
         }
@@ -1764,6 +1827,7 @@ void ALPanelCineLightRig::resetAim()
     gSavedSettings.setF32("CineLightRigOrbitPitch", 0.f);
 }
 
+// ui-draw-lint: allow-function(raw-write) setup combo rebuild runs only for a pending or explicit refresh
 void ALPanelCineLightRig::refreshSetupList(const std::string& select_name,
                                            bool allow_empty, bool force)
 {
@@ -2052,6 +2116,7 @@ bool ALPanelCineLightRig::resetAllCallback(
         ALCineLightRig& rig = manager.selected();
         rig.setAnchor(LLUUID::null);
         rig.setObjectTarget(LLUUID::null);
+        mCastListInitialized = false;
         rig.setGroupEnabled(false);
         rig.setGroupSlots(0);
         for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)

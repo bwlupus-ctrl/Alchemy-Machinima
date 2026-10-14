@@ -12,6 +12,8 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpaneldanceball.h"
+#include "aldirectorcastui.h"
+#include "lldirectorcast.h"
 
 #include "alghoststudio.h"
 #include "animationexplorer.h"      // AnimationExplorer::getSelectedAnimId()
@@ -23,7 +25,6 @@
 #include "llclipboard.h"
 #include "llcombobox.h"
 #include "llcontrolavatar.h"
-#include "lldirectorcast.h"
 #include "llfile.h"
 #include "llfloaterreg.h"
 #include "llfocusmgr.h"
@@ -442,6 +443,14 @@ void ALPanelDanceBall::onVisibilityChange(bool new_visibility)
 void ALPanelDanceBall::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    const U64 subject_revision = LLDirectorCast::instance().getActorChoiceRevision();
+    if (subject_revision != mSubjectChoiceRevision)
+    {
+        mSubjectChoiceRevision = subject_revision;
+        ALDirectorCastUI::mergeSubjectCombo(mFocus, 0, 2, 1);
+        ALDirectorCastUI::mergeSubjectCombo(mBlockCentre, 0, 2, 1);
+        ALDirectorCastUI::mergeSubjectCombo(mWaveFocus, 0, 2, 1);
+    }
 
     // At most 2 Hz. User actions call requestRefresh() so their result shows
     // on the very next frame.
@@ -865,6 +874,7 @@ void ALPanelDanceBall::refreshHeader(const ALDanceBall& ball)
     setTextIfChanged(mStatusText, text);
 }
 
+// ui-draw-lint: allow-function(raw-write) full list rebuild is roster-structure-revision gated
 void ALPanelDanceBall::rebuildDancerList(const ALDanceBall& ball)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("DanceBall rebuildDancerList");
@@ -948,6 +958,7 @@ void ALPanelDanceBall::updateDancerCells(const ALDanceBall& ball)
     }
 }
 
+// ui-draw-lint: allow-function(raw-write) full list rebuild is playlist-structure-revision gated
 void ALPanelDanceBall::rebuildPlaylistList(const ALDanceBall& ball)
 {
     mRefreshing = true;
@@ -1358,6 +1369,7 @@ std::vector<LLUUID> ALPanelDanceBall::selectedBlockingIds() const
     return ids;
 }
 
+// ui-draw-lint: allow-function(raw-write) full list rebuild is roster/staging-revision gated
 void ALPanelDanceBall::rebuildBlockingList(const ALDanceBall& ball)
 {
     const std::vector<LLUUID> selected = selectedBlockingIds();

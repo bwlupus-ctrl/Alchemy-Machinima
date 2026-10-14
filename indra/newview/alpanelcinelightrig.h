@@ -157,6 +157,7 @@ private:
     boost::signals2::scoped_connection mNightMaskDarknessConnection; // [NightMaskPercent]
     boost::signals2::scoped_connection mEasyModeConnection;
     LLTextBox* mNightMaskStatus = nullptr;
+    LLComboBox* mSubjectTargetCombos[3] = {};
     ALRigRimController mRim;
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;
@@ -236,6 +237,7 @@ private:
     ALLiveReadoutClock mLiveProbeClock{2.f};
     std::vector<LLUUID> mCastIds;
     std::vector<std::string> mCastNames;
+    std::vector<S32> mCastValues;
     S32 mDisplayedSlot = -1;
     bool mDisplayedGroupEnabled = false;
     U32 mDisplayedGroupSlots = ~0u;
@@ -250,6 +252,7 @@ private:
     LLUIColor mRadiusDefaultColor;
     std::string mPendingSetupSelection;
     bool mAnchorSelectionInitialized = false;
+    U64 mSubjectChoiceRevision = ~U64(0);
     bool mCastListInitialized = false;
     bool mSetupRefreshPending = false;
     bool mPendingSetupAllowEmpty = false;

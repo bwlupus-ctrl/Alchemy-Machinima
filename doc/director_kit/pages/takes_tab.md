@@ -1,12 +1,12 @@
 # Takes — Director Kit page contract
 
 Page key: `takes_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (12/20 setting-bound rows; 12 C++-referenced rows).
+Computed class: **code-driven** (12/21 setting-bound rows; 13 C++-referenced rows).
 
 ## Real owners
 
-- `panel_flycam_recorder` / `panel` at `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:17` (20 matching rows).
-- Referencing classes: `ALPanelFlycamRecorder` (19), `LLViewerJoystick` (3).
+- `panel_flycam_recorder` / `panel` at `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:17` (21 matching rows).
+- Referencing classes: `ALPanelFlycamRecorder` (20), `LLViewerJoystick` (3).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -20,26 +20,27 @@ Use the recorder's existing list, buttons, combos, sliders, and scrubber; do not
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `flycam_flight` / `FlycamFlightModel` (Model) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:22` | kit `combo` ↔ `FlycamFlightModel` `S32` | `indra/newview/skins/default/xui/en/floater_joystick.xml:694` `FlycamFlightModel` |
-| `flycam_flight` / `FlycamDronePreset` (Drone preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:31` | kit `combo` ↔ `FlycamDronePreset` `S32`; `ALTakesKitAdapter` preserves/calls wired in `ALPanelFlycamRecorder::postBuild()`; behavior `LLViewerJoystick::getInstance()` (`indra/newview/alpanelflycamrecorder.cpp:86`) | `indra/newview/skins/default/xui/en/floater_joystick.xml:725` `FlycamDronePreset` |
-| `flycam_flight` / `FlycamDroneRelease` (On release) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:41` | kit `combo` ↔ `FlycamDroneRelease` `S32`; `ALTakesKitAdapter` preserves/calls wired in `ALPanelFlycamRecorder::postBuild()`; behavior `LLViewerJoystick::getInstance()` (`indra/newview/alpanelflycamrecorder.cpp:92`) | `indra/newview/skins/default/xui/en/floater_joystick.xml:735` `FlycamDroneRelease` |
-| `flycam_flight` / `FlycamWeightedPreset` (Weight preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:47` | kit `combo` ↔ `FlycamWeightedPreset` `S32`; `ALTakesKitAdapter` preserves/calls wired in `ALPanelFlycamRecorder::postBuild()`; behavior `LLViewerJoystick::getInstance()` (`indra/newview/alpanelflycamrecorder.cpp:96`) | `indra/newview/skins/default/xui/en/floater_joystick.xml:705` `FlycamWeightedPreset` |
-| `flycam_flight` / `FlycamWeightedWeight` (Weight) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:57` | kit `number` ↔ `FlycamWeightedWeight` `F32` | `indra/newview/skins/default/xui/en/floater_joystick.xml:713` `FlycamWeightedWeight` |
+| `flycam_flight` / `FlycamFlightModel` (Model) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:22` | kit `combo` ↔ `FlycamFlightModel` `S32` | `indra/newview/skins/default/xui/en/floater_joystick.xml:694` `FlycamFlightModel`, `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:9` `FlycamFlightModel` |
+| `flycam_flight` / `FlycamDronePreset` (Drone preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:31` | kit `combo` ↔ `FlycamDronePreset` `S32`; `ALTakesKitAdapter` preserves/calls wired in `ALPanelFlycamRecorder::postBuild()`; behavior `LLViewerJoystick::getInstance()` (`indra/newview/alpanelflycamrecorder.cpp:86`) | `indra/newview/skins/default/xui/en/floater_joystick.xml:725` `FlycamDronePreset`, `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:18` `FlycamDronePreset` |
+| `flycam_flight` / `FlycamDroneRelease` (On release) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:41` | kit `combo` ↔ `FlycamDroneRelease` `S32`; `ALTakesKitAdapter` preserves/calls wired in `ALPanelFlycamRecorder::postBuild()`; behavior `LLViewerJoystick::getInstance()` (`indra/newview/alpanelflycamrecorder.cpp:92`) | `indra/newview/skins/default/xui/en/floater_joystick.xml:735` `FlycamDroneRelease`, `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:30` `FlycamDroneRelease` |
+| `flycam_flight` / `FlycamWeightedPreset` (Weight preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:47` | kit `combo` ↔ `FlycamWeightedPreset` `S32`; `ALTakesKitAdapter` preserves/calls wired in `ALPanelFlycamRecorder::postBuild()`; behavior `LLViewerJoystick::getInstance()` (`indra/newview/alpanelflycamrecorder.cpp:96`) | `indra/newview/skins/default/xui/en/floater_joystick.xml:705` `FlycamWeightedPreset`, `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:38` `FlycamWeightedPreset` |
+| `flycam_flight` / `FlycamWeightedWeight` (Weight) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:57` | kit `number` ↔ `FlycamWeightedWeight` `F32` | `indra/newview/skins/default/xui/en/floater_joystick.xml:713` `FlycamWeightedWeight`, `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:49` `FlycamWeightedWeight` |
 | `record_play` / `btn_record` (Record) | `button` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:67` | `ALTakesKitAdapter` command/model binding → wired in `ALPanelFlycamRecorder::postBuild()`; behavior `ALPanelFlycamRecorder::onRecord()` (`indra/newview/alpanelflycamrecorder.cpp:78`) | none |
 | `record_play` / `btn_play` (Play) | `button` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:77` | `ALTakesKitAdapter` command/model binding → wired in `ALPanelFlycamRecorder::postBuild()`; behavior `ALPanelFlycamRecorder::onPlayPause()` (`indra/newview/alpanelflycamrecorder.cpp:79`) | none |
 | `record_play` / `btn_stop` (Stop) | `button` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:87` | `ALTakesKitAdapter` command/model binding → wired in `ALPanelFlycamRecorder::postBuild()`; behavior `ALPanelFlycamRecorder::onStop()` (`indra/newview/alpanelflycamrecorder.cpp:80`) | none |
 | `record_play` / `btn_clear` (Clear) | `button` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:97` | `ALTakesKitAdapter` command/model binding → wired in `ALPanelFlycamRecorder::postBuild()`; behavior `ALPanelFlycamRecorder::onClear()` (`indra/newview/alpanelflycamrecorder.cpp:81`) | none |
 | `record_play` / `scrub_slider` (Scrub) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:113` | `ALTakesKitAdapter` command/model binding → wired in `ALPanelFlycamRecorder::postBuild()`; behavior `ALPanelFlycamRecorder::onScrub()` (`indra/newview/alpanelflycamrecorder.cpp:84`) | none |
 | `record_play` / `time_lbl` (Length) | `text` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:124` | kit readout ← approved static copy; no runtime writer | none |
+| `record_play` / `status_lbl` (Status) | `text` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:135` | kit readout ← approved static copy; no runtime writer | none |
 | `record_play` / `btn_save` (Save file) | `button` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:253` | `ALTakesKitAdapter` command/model binding → wired in `ALPanelFlycamRecorder::postBuild()`; behavior `ALPanelFlycamRecorder::onSave()` (`indra/newview/alpanelflycamrecorder.cpp:82`) | none |
 | `record_play` / `btn_load` (Load file) | `button` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:263` | `ALTakesKitAdapter` command/model binding → wired in `ALPanelFlycamRecorder::postBuild()`; behavior `ALPanelFlycamRecorder::onLoad()` (`indra/newview/alpanelflycamrecorder.cpp:83`) | none |
-| `record_play` / `FlycamRecSampleRate` (Sample rate) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:239` | kit `slider` ↔ `FlycamRecSampleRate` `F32` | none |
-| `playback` / `FlycamRecSpeed` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:156` | kit `slider` ↔ `FlycamRecSpeed` `F32` | none |
-| `playback` / `FlycamRecLoopMode` (At the end) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:166` | kit `combo` ↔ `FlycamRecLoopMode` `S32` | none |
-| `playback` / `FlycamRecSmooth` (Smooth splines) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:181` | kit `toggle` ↔ `FlycamRecSmooth` `Boolean` | none |
-| `playback_anchor` / `FlycamRecAnchorMode` (Anchor to) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:191` | kit `combo` ↔ `FlycamRecAnchorMode` `S32` | none |
-| `playback_anchor` / `FlycamRecFollowAnchor` (Follow anchor) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:207` | kit `toggle` ↔ `FlycamRecFollowAnchor` `Boolean` | none |
-| `playback_anchor` / `FlycamRecUseOperator` (Handheld layer) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:218` | kit `toggle` ↔ `FlycamRecUseOperator` `Boolean` | none |
+| `record_play` / `FlycamRecSampleRate` (Sample rate) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:239` | kit `slider` ↔ `FlycamRecSampleRate` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:83` `FlycamRecSampleRate` |
+| `playback` / `FlycamRecSpeed` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:156` | kit `slider` ↔ `FlycamRecSpeed` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:90` `FlycamRecSpeed` |
+| `playback` / `FlycamRecLoopMode` (At the end) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:166` | kit `combo` ↔ `FlycamRecLoopMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:95` `FlycamRecLoopMode` |
+| `playback` / `FlycamRecSmooth` (Smooth splines) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:181` | kit `toggle` ↔ `FlycamRecSmooth` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:104` `FlycamRecSmooth` |
+| `playback_anchor` / `FlycamRecAnchorMode` (Anchor to) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:191` | kit `combo` ↔ `FlycamRecAnchorMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:109` `FlycamRecAnchorMode` |
+| `playback_anchor` / `FlycamRecFollowAnchor` (Follow anchor) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:207` | kit `toggle` ↔ `FlycamRecFollowAnchor` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:119` `FlycamRecFollowAnchor` |
+| `playback_anchor` / `FlycamRecUseOperator` (Handheld layer) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:218` | kit `toggle` ↔ `FlycamRecUseOperator` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:122` `FlycamRecUseOperator` |
 
 ## Adapter extraction
 
@@ -119,7 +120,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-34 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+57 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

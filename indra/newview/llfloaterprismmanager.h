@@ -192,6 +192,7 @@ private:
     // Per-capture avatar/clone skeleton attachment (virtual cameras only).
     LLCheckBoxCtrl* mBonePovEnabledCheck = nullptr;
     LLComboBox* mBoneAnchorCombo = nullptr;
+    U64 mBoneAnchorSubjectRevision = ~U64(0);
     LLComboBox* mBoneJointCombo = nullptr;
     LLComboBox* mBoneAimCombo = nullptr;
     LLComboBox* mBoneRollCombo = nullptr;

@@ -1,7 +1,7 @@
 # Scene — Director Kit page contract
 
 Page key: `scene_options_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (1/3 setting-bound rows; 0 C++-referenced rows).
+Computed class: **code-driven** (2/4 setting-bound rows; 0 C++-referenced rows).
 
 ## Real owners
 
@@ -19,7 +19,8 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `scene_options` / `scene_hotkeys_enabled` (Hotkeys) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1758` | kit `toggle` ↔ `DirectorHotkeysEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml:5` `scene_hotkeys_enabled` |
+| `scene_options` / `scene_hotkeys_enabled` (Hotkeys) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1758` | kit `toggle` ↔ `DirectorHotkeysEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml:8` `scene_hotkeys_enabled` |
+| `scene_options` / `scene_add_self_at_login` (Add me to the cast at login) | none | kit `toggle` ↔ `DirectorAddSelfAtLogin` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml:11` `scene_add_self_at_login` |
 | `scene_options` / `scene_hotkeys_list` (Shortcuts) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1759` | kit readout ← approved static copy; no runtime writer | none |
 | `scene_options` / `scene_categories_text` (Saved in file) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1761` | kit readout ← approved static copy; no runtime writer | none |
 
@@ -36,7 +37,7 @@ No approved widget has a C++ literal reference. `ALSceneOptionsKitAdapter` owns 
 
 ## Bounded non-default audit states
 
-Manifest size: **6 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **7 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -46,6 +47,7 @@ Manifest size: **6 states**, hard cap 256, page runtime budget 2 minutes. Each r
 | `card-scene_options-tallest-850` | Only `scene_options` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-scene_options-tallest-1160` | Only `scene_options` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `scene_hotkeys_enabled-on` | Only `scene_hotkeys_enabled` is on; dependent visibility is measured. |
+| `scene_add_self_at_login-on` | Only `scene_add_self_at_login` is on; dependent visibility is measured. |
 
 ## Parity check
 
@@ -60,7 +62,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-3 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+4 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

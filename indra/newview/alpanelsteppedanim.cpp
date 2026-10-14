@@ -117,18 +117,14 @@ void ALPanelSteppedAnim::rebuildActors()
         row["columns"][1]["value"] = mode;
         mOverrideList->addElement(row, ADD_BOTTOM);
     };
-    add_actor(LLUUID::null, "You", cast.getActorStyle(LLUUID::null));
-    for (const LLDirectorCast::CastMember& member : cast.getCast())
+    for (const LLDirectorCast::ActorChoice& choice : cast.getActorChoices())
     {
-        // You're auto-added to the cast at login and already listed as "You"
-        // (getActorStyle treats gAgentID and null as the same self style).
-        if (member.mId == gAgentID)
-            continue;
-        add_actor(member.mId, member.mLastName.empty() ? member.mId.asString() : member.mLastName,
-                  member.mActorStyle);
+        const LLUUID value = LLDirectorCast::isSelf(choice.mId)
+            ? LLUUID::null : choice.mId;
+        add_actor(value, choice.mLabel, cast.getActorStyle(value));
     }
     mActorTarget->setValue(selected.asString());
-    mCastRevision = cast.getCastRevision();
+    mCastRevision = cast.getActorChoiceRevision();
 }
 
 // ui-draw-lint: allow-function(raw-write) draw() calls this only when the cast revision changed
@@ -273,7 +269,7 @@ void ALPanelSteppedAnim::refreshSpeedMeter()
 void ALPanelSteppedAnim::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-    if (LLDirectorCast::instance().getCastRevision() != mCastRevision)
+    if (LLDirectorCast::instance().getActorChoiceRevision() != mCastRevision)
     {
         rebuildActors();
         refreshActor();

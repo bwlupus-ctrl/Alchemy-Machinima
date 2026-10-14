@@ -6,8 +6,7 @@ Computed class: **code-driven** (29/31 setting-bound rows; 1 C++-referenced rows
 ## Real owners
 
 - `panel_cinecam_frame` / `panel` at `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:8` (21 matching rows).
-- `panel_flycam_orbit` / `panel` at `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:13` (10 matching rows).
-- `panel_cinecam_params` / `panel` at `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:10` (2 matching rows).
+- `panel_flycam_orbit` / `panel` at `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:13` (8 matching rows).
 - Referencing classes: `LLCinematicCamera` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
@@ -23,35 +22,35 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `frame_format` / `frame_aspect_ratio` (Format) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:23` | kit `combo` ↔ `CinematicFrameAspectRatio` `F32` | none |
-| `frame_format` / `frame_custom_ratio` (Custom W/H) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:46` | kit `number` ↔ `CinematicFrameCustomRatio` `F32` | none |
-| `frame_format` / `frame_guide_enabled` (Show guide) | `check_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:291` | kit `toggle` ↔ `CinematicFrameGuideEnabled` `Boolean` | none |
-| `frame_format` / `frame_guide_style` (Guide style) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:303` | kit `combo` ↔ `CinematicFrameGuideStyle` `S32` | none |
-| `frame_format` / `frame_guide_opacity` (Bar opacity) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:318` | kit `slider` ↔ `CinematicFrameGuideOpacity` `F32` | none |
-| `frame_format` / `frame_lens_enabled` (Lens reframe) | `check_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:58` | kit `toggle` ↔ `CinematicFrameLensEnabled` `Boolean` | none |
-| `frame_format` / `frame_focal_length` (Base lens) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:69` | kit `number` ↔ `CinematicFrameFocalLengthMM` `F32` | none |
-| `auto_reframe` / `auto_frame_fill` (Skeleton fill) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:99` | kit `slider` ↔ `CinematicAutoFrameFill` `F32` | none |
-| `auto_reframe` / `auto_frame_compose` (Top line) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:112` | kit `slider` ↔ `CinematicAutoFrameComposeLine` `F32` | none |
-| `auto_reframe` / `auto_frame_distance_trim` (Dolly trim) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:124` | kit `number` ↔ `CinematicAutoFrameDistanceTrim` `F32` | none |
-| `auto_reframe` / `auto_frame_vertical_trim` (Vertical trim) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:136` | kit `number` ↔ `CinematicCamFrameOffsetUp` `F32` | page `operator_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:201` `CinematicCamFrameOffsetUp` |
+| `frame_format` / `frame_custom_ratio` (Custom W/H) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:46` | kit `number` ↔ `CinematicFrameCustomRatio` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:25` `frame_custom_ratio` |
+| `frame_format` / `frame_guide_enabled` (Show guide) | `check_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:291` | kit `toggle` ↔ `CinematicFrameGuideEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:28` `frame_guide_enabled` |
+| `frame_format` / `frame_guide_style` (Guide style) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:303` | kit `combo` ↔ `CinematicFrameGuideStyle` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:31` `frame_guide_style` |
+| `frame_format` / `frame_guide_opacity` (Bar opacity) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:318` | kit `slider` ↔ `CinematicFrameGuideOpacity` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:40` `frame_guide_opacity` |
+| `frame_format` / `frame_lens_enabled` (Lens reframe) | `check_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:58` | kit `toggle` ↔ `CinematicFrameLensEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:45` `frame_lens_enabled` |
+| `frame_format` / `frame_focal_length` (Base lens) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:69` | kit `number` ↔ `CinematicFrameFocalLengthMM` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:48` `frame_focal_length` |
+| `auto_reframe` / `auto_frame_fill` (Skeleton fill) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:99` | kit `slider` ↔ `CinematicAutoFrameFill` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:53` `auto_frame_fill` |
+| `auto_reframe` / `auto_frame_compose` (Top line) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:112` | kit `slider` ↔ `CinematicAutoFrameComposeLine` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:58` `auto_frame_compose` |
+| `auto_reframe` / `auto_frame_distance_trim` (Dolly trim) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:124` | kit `number` ↔ `CinematicAutoFrameDistanceTrim` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:63` `auto_frame_distance_trim` |
+| `auto_reframe` / `auto_frame_vertical_trim` (Vertical trim) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:136` | kit `number` ↔ `CinematicCamFrameOffsetUp` `F32` | page `operator_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:201` `CinematicCamFrameOffsetUp`, `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:66` `auto_frame_vertical_trim` |
 | `auto_reframe` / `auto_frame_resolve` (Re-solve now) | `button` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:147` | `ALFrameOrbitKitAdapter` command/model binding → behavior `LLCinematicCamera::requestAutoReframe()` (`indra/newview/alpanelcinecamparams.cpp:107`) | none |
-| `reframe_settle` / `auto_frame_settle_mode` (Settle mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:155` | kit `combo` ↔ `CinematicAutoFrameSettleMode` `S32` | none |
-| `reframe_settle` / `auto_frame_settle_seconds` (Settle time) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:171` | kit `slider` ↔ `CinematicAutoFrameSettleSeconds` `F32` | none |
-| `reframe_settle` / `auto_frame_settle_curve` (Curve) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:197` | kit `combo` ↔ `CinematicAutoFrameSettleCurve` `S32` | none |
-| `reframe_settle` / `auto_frame_settle_max_ratio` (Max ratio) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:183` | kit `number` ↔ `CinematicAutoFrameSettleMaxRatio` `F32` | none |
-| `reframe_settle` / `SettleFeather` (Feather) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:277` | kit `slider` ↔ `CinematicAutoFrameSettleFeather` `F32` | none |
-| `reframe_settle` / `auto_frame_settle_bezier_x1` (X1) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:244` | kit `number` ↔ `CinematicAutoFrameSettleBezierX1` `F32` | none |
-| `reframe_settle` / `auto_frame_settle_bezier_y1` (Y1) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:252` | kit `number` ↔ `CinematicAutoFrameSettleBezierY1` `F32` | none |
-| `reframe_settle` / `auto_frame_settle_bezier_x2` (X2) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:260` | kit `number` ↔ `CinematicAutoFrameSettleBezierX2` `F32` | none |
-| `reframe_settle` / `auto_frame_settle_bezier_y2` (Y2) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:268` | kit `number` ↔ `CinematicAutoFrameSettleBezierY2` `F32` | none |
-| `flycam_orbit` / `CinematicCamJoint` (Anchor joint) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:343`, `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:48` | kit `combo` ↔ `CinematicCamJoint` `String` | page `shot_tab` |
-| `flycam_orbit` / `CinematicCamUseSelected` (Use selected) | `check_box` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:99`, `check_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:75` | kit `toggle` ↔ `CinematicCamUseSelected` `Boolean` | page `shot_tab` |
-| `flycam_orbit` / `FlycamOrbitLevel` (Level horizon) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:87` | kit `toggle` ↔ `FlycamOrbitLevel` `Boolean` | none |
-| `flycam_orbit` / `FlycamOrbitZoom` (Orbit zoom) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:157` | kit `slider` ↔ `FlycamOrbitZoom` `F32` | none |
-| `flycam_orbit` / `FlycamOrbitMaxRadius` (Max radius) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:121` | kit `number` ↔ `FlycamOrbitMaxRadius` `F32` | none |
-| `flycam_orbit` / `FlycamOrbitSmoothing` (Smoothing) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:139` | kit `slider` ↔ `FlycamOrbitSmoothing` `F32` | none |
-| `flycam_orbit` / `FlycamOrbitOffsetUp` (Focus up) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:174` | kit `number` ↔ `FlycamOrbitOffsetUp` `F32` | none |
-| `flycam_orbit` / `FlycamOrbitMinRadius` (Min radius) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:104` | kit `number` ↔ `FlycamOrbitMinRadius` `F32` | none |
-| `flycam_orbit` / `FlycamOrbitOffsetLeft` (Focus left) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:191` | kit `number` ↔ `FlycamOrbitOffsetLeft` `F32` | none |
+| `reframe_settle` / `auto_frame_settle_mode` (Settle mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:155` | kit `combo` ↔ `CinematicAutoFrameSettleMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:74` `auto_frame_settle_mode` |
+| `reframe_settle` / `auto_frame_settle_seconds` (Settle time) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:171` | kit `slider` ↔ `CinematicAutoFrameSettleSeconds` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:83` `auto_frame_settle_seconds` |
+| `reframe_settle` / `auto_frame_settle_curve` (Curve) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:197` | kit `combo` ↔ `CinematicAutoFrameSettleCurve` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:88` `auto_frame_settle_curve` |
+| `reframe_settle` / `auto_frame_settle_max_ratio` (Max ratio) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:183` | kit `number` ↔ `CinematicAutoFrameSettleMaxRatio` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:128` `auto_frame_settle_max_ratio` |
+| `reframe_settle` / `SettleFeather` (Feather) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:277` | kit `slider` ↔ `CinematicAutoFrameSettleFeather` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:131` `SettleFeather` |
+| `reframe_settle` / `auto_frame_settle_bezier_x1` (X1) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:244` | kit `number` ↔ `CinematicAutoFrameSettleBezierX1` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:136` `auto_frame_settle_bezier_x1` |
+| `reframe_settle` / `auto_frame_settle_bezier_y1` (Y1) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:252` | kit `number` ↔ `CinematicAutoFrameSettleBezierY1` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:139` `auto_frame_settle_bezier_y1` |
+| `reframe_settle` / `auto_frame_settle_bezier_x2` (X2) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:260` | kit `number` ↔ `CinematicAutoFrameSettleBezierX2` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:142` `auto_frame_settle_bezier_x2` |
+| `reframe_settle` / `auto_frame_settle_bezier_y2` (Y2) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:268` | kit `number` ↔ `CinematicAutoFrameSettleBezierY2` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:145` `auto_frame_settle_bezier_y2` |
+| `flycam_orbit` / `fo_anchor_joint` (Anchor joint) | none | kit `combo` ↔ `CinematicCamJoint` `String` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:343` `CinematicCamJoint`, `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:150` `fo_anchor_joint`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:11` `CinematicCamJoint`, `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:48` `CinematicCamJoint` |
+| `flycam_orbit` / `fo_use_selected` (Use selected) | none | kit `toggle` ↔ `CinematicCamUseSelected` `Boolean` | `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:99` `CinematicCamUseSelected`, `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:170` `fo_use_selected`, `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:75` `CinematicCamUseSelected` |
+| `flycam_orbit` / `FlycamOrbitLevel` (Level horizon) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:87` | kit `toggle` ↔ `FlycamOrbitLevel` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:173` `FlycamOrbitLevel` |
+| `flycam_orbit` / `FlycamOrbitZoom` (Orbit zoom) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:157` | kit `slider` ↔ `FlycamOrbitZoom` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:176` `FlycamOrbitZoom` |
+| `flycam_orbit` / `FlycamOrbitMaxRadius` (Max radius) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:121` | kit `number` ↔ `FlycamOrbitMaxRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:181` `FlycamOrbitMaxRadius` |
+| `flycam_orbit` / `FlycamOrbitSmoothing` (Smoothing) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:139` | kit `slider` ↔ `FlycamOrbitSmoothing` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:184` `FlycamOrbitSmoothing` |
+| `flycam_orbit` / `FlycamOrbitOffsetUp` (Focus up) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:174` | kit `number` ↔ `FlycamOrbitOffsetUp` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:189` `FlycamOrbitOffsetUp` |
+| `flycam_orbit` / `FlycamOrbitMinRadius` (Min radius) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:104` | kit `number` ↔ `FlycamOrbitMinRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:192` `FlycamOrbitMinRadius` |
+| `flycam_orbit` / `FlycamOrbitOffsetLeft` (Focus left) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:191` | kit `number` ↔ `FlycamOrbitOffsetLeft` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:195` `FlycamOrbitOffsetLeft` |
 | `flycam_orbit` / `anchor_hint` (Anchor) | `text` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:37` | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
@@ -136,21 +135,21 @@ Manifest size: **79 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `auto_frame_settle_curve-option-33` | Only `auto_frame_settle_curve` selects `Custom (bezier)`; other selectors remain default. |
 | `card-flycam_orbit-tallest-850` | Only `flycam_orbit` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-flycam_orbit-tallest-1160` | Only `flycam_orbit` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `CinematicCamJoint-option-0` | Only `CinematicCamJoint` selects `mHead`; other selectors remain default. |
-| `CinematicCamJoint-option-1` | Only `CinematicCamJoint` selects `mNeck`; other selectors remain default. |
-| `CinematicCamJoint-option-2` | Only `CinematicCamJoint` selects `mChest`; other selectors remain default. |
-| `CinematicCamJoint-option-3` | Only `CinematicCamJoint` selects `mTorso`; other selectors remain default. |
-| `CinematicCamJoint-option-4` | Only `CinematicCamJoint` selects `mPelvis`; other selectors remain default. |
-| `CinematicCamJoint-option-5` | Only `CinematicCamJoint` selects `mShoulderRight`; other selectors remain default. |
-| `CinematicCamJoint-option-6` | Only `CinematicCamJoint` selects `mElbowRight`; other selectors remain default. |
-| `CinematicCamJoint-option-7` | Only `CinematicCamJoint` selects `mWristRight`; other selectors remain default. |
-| `CinematicCamJoint-option-8` | Only `CinematicCamJoint` selects `mShoulderLeft`; other selectors remain default. |
-| `CinematicCamJoint-option-9` | Only `CinematicCamJoint` selects `mWristLeft`; other selectors remain default. |
-| `CinematicCamJoint-option-10` | Only `CinematicCamJoint` selects `mHipRight`; other selectors remain default. |
-| `CinematicCamJoint-option-11` | Only `CinematicCamJoint` selects `mKneeRight`; other selectors remain default. |
-| `CinematicCamJoint-option-12` | Only `CinematicCamJoint` selects `mFootRight`; other selectors remain default. |
-| `CinematicCamJoint-option-13` | Only `CinematicCamJoint` selects `mFootLeft`; other selectors remain default. |
-| `CinematicCamUseSelected-on` | Only `CinematicCamUseSelected` is on; dependent visibility is measured. |
+| `fo_anchor_joint-option-0` | Only `fo_anchor_joint` selects `mHead`; other selectors remain default. |
+| `fo_anchor_joint-option-1` | Only `fo_anchor_joint` selects `mNeck`; other selectors remain default. |
+| `fo_anchor_joint-option-2` | Only `fo_anchor_joint` selects `mChest`; other selectors remain default. |
+| `fo_anchor_joint-option-3` | Only `fo_anchor_joint` selects `mTorso`; other selectors remain default. |
+| `fo_anchor_joint-option-4` | Only `fo_anchor_joint` selects `mPelvis`; other selectors remain default. |
+| `fo_anchor_joint-option-5` | Only `fo_anchor_joint` selects `mShoulderRight`; other selectors remain default. |
+| `fo_anchor_joint-option-6` | Only `fo_anchor_joint` selects `mElbowRight`; other selectors remain default. |
+| `fo_anchor_joint-option-7` | Only `fo_anchor_joint` selects `mWristRight`; other selectors remain default. |
+| `fo_anchor_joint-option-8` | Only `fo_anchor_joint` selects `mShoulderLeft`; other selectors remain default. |
+| `fo_anchor_joint-option-9` | Only `fo_anchor_joint` selects `mWristLeft`; other selectors remain default. |
+| `fo_anchor_joint-option-10` | Only `fo_anchor_joint` selects `mHipRight`; other selectors remain default. |
+| `fo_anchor_joint-option-11` | Only `fo_anchor_joint` selects `mKneeRight`; other selectors remain default. |
+| `fo_anchor_joint-option-12` | Only `fo_anchor_joint` selects `mFootRight`; other selectors remain default. |
+| `fo_anchor_joint-option-13` | Only `fo_anchor_joint` selects `mFootLeft`; other selectors remain default. |
+| `fo_use_selected-on` | Only `fo_use_selected` is on; dependent visibility is measured. |
 | `FlycamOrbitLevel-on` | Only `FlycamOrbitLevel` is on; dependent visibility is measured. |
 
 ## Parity check
@@ -166,7 +165,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-14 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+45 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

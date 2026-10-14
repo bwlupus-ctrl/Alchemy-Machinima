@@ -8812,6 +8812,8 @@
     <map><key>Comment</key><string>Per-page Director kit chip, card and subject state.</string><key>Persist</key><integer>1</integer><key>Type</key><string>LLSD</string><key>Value</key><map /></map>
     <key>DirectorAutosaveMinutes</key>
     <map><key>Comment</key><string>[Director] Minutes between rolling crash-recovery snapshots while the scene is dirty; 0 disables recovery autosave.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>5</integer></map>
+    <key>DirectorAddSelfAtLogin</key>
+    <map><key>Comment</key><string>[Director] Add the logged-in avatar to the local Director cast once at login. Removing yourself later does not add you back until the next login.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>1</integer></map>
     <key>DirectorFavorites</key>
     <map><key>Comment</key><string>Per-user Director Quick rows, stored by page key and row widget id.</string><key>Persist</key><integer>1</integer><key>Type</key><string>LLSD</string><key>Value</key><array /></map>
     <key>DirectorV2SelectedLight</key>

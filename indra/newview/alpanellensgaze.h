@@ -128,7 +128,8 @@ private:
     U64 mCastComboRevision = 0;
     LLUUID mCastComboActor;
     LLUUID mCastComboSelection;
-    std::string mEditActorSignature;
+    U64 mEditActorRevision = 0;
+    U64 mSlotIdentityRevision = 0;
 
     LLTextBox* mStatus = nullptr;
     LLComboBox* mEditActor = nullptr;

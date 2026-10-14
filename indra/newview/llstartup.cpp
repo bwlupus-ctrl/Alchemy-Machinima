@@ -2650,7 +2650,8 @@ bool idle_startup()
             // List the logged-in avatar in the Director cast by default (no
             // subject/actor role). This initialization is explicitly non-dirty
             // because the floater may already have established its baseline.
-            if (gAgentID.notNull())
+            if (gAgentID.notNull() &&
+                gSavedSettings.getBOOL("DirectorAddSelfAtLogin"))
                 LLDirectorCast::instance().add(gAgentID, false);
             LLFloaterDirector::startRecoveryService();
         });

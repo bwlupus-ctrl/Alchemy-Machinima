@@ -1,11 +1,12 @@
 # Shadows — Director Kit page contract
 
 Page key: `shadows_probes_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **pure-setting** (37/39 setting-bound rows; 0 C++-referenced rows).
+Computed class: **code-driven** (37/39 setting-bound rows; 1 C++-referenced rows).
 
 ## Real owners
 
 - `floater_lightbox_settings` / `floater` at `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:8` (36 matching rows).
+- Referencing classes: `ALFloaterLightBox` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -131,7 +132,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-39 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+40 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

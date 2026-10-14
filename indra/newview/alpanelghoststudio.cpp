@@ -1108,7 +1108,7 @@ void ALPanelGhostStudio::refreshSourceCombo()
     // The gate is unprimed until the first call, so a fresh login (empty cast) still
     // builds once and adds the default "You" entry.
     LLDirectorCast& cast = LLDirectorCast::instance();
-    bool rebuild = mSourceGate.changed({ cast.getCastRevision() }, ghost_refresh_always());
+    bool rebuild = mSourceGate.changed({ cast.getActorChoiceRevision() }, ghost_refresh_always());
     if (rebuild && mSourceGate.lastWasFallback())
     {
         // the gate's built-in 1 s self-heal (or a debug force): verify by signature
@@ -1121,13 +1121,10 @@ void ALPanelGhostStudio::refreshSourceCombo()
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost rebuild source combo");
     const LLSD prev = mSourceCombo->getSelectedValue();
     mSourceCombo->clearRows();
-    mSourceCombo->add("You", LLSD(LLUUID::null));
-    for (const LLDirectorCast::CastMember& m : cast.getCast())
+    for (const LLDirectorCast::ActorChoice& choice : cast.getActorChoices())
     {
-        // Your own avatar is auto-added to the cast at login; it is already "You".
-        if (gAgentID.notNull() && m.mId == gAgentID)
-            continue;
-        mSourceCombo->add(sourceName(m.mId), LLSD(m.mId));
+        mSourceCombo->add(choice.mLabel, LLSD(
+            LLDirectorCast::isSelf(choice.mId) ? LLUUID::null : choice.mId));
     }
     if (!prev.isDefined() || !mSourceCombo->setSelectedByValue(prev, true))
     {
@@ -1141,10 +1138,10 @@ void ALPanelGhostStudio::populateLensGazeCastTargets()
 {
     const LLSD previous = mLensGazeCastTarget->getSelectedValue();
     mLensGazeCastTarget->clearRows();
-    for (const LLDirectorCast::CastMember& member :
-         LLDirectorCast::instance().getCast())
+    for (const LLDirectorCast::ActorChoice& choice :
+         LLDirectorCast::instance().getActorChoices())
     {
-        mLensGazeCastTarget->add(sourceName(member.mId), LLSD(member.mId));
+        mLensGazeCastTarget->add(choice.mLabel, LLSD(choice.mId));
     }
     if (!previous.isDefined() ||
         !mLensGazeCastTarget->setSelectedByValue(previous, true))
@@ -1193,6 +1190,7 @@ void ALPanelGhostStudio::refreshLookTargetCombo()
 // [GhostPanelPerf] Mirrors the SHARED library (ALGhostStudio::animLibrary, scanned
 // lazily outside draw() and cached for both hosts) into this panel's combo. No
 // inventory walk happens here; it is revision-gated by mAnimLibraryShownRev.
+// ui-draw-lint: allow-function(raw-write) animation combo rebuild is library-revision gated
 void ALPanelGhostStudio::populateAnimationLibrary()
 {
     // Never clear a combo the operator has focused or open (a scan / Refresh from the
@@ -1215,6 +1213,7 @@ void ALPanelGhostStudio::populateAnimationLibrary()
         mAnimationLibraryCombo->setSelectedByValue(selected, true);
     }
 }
+// ui-draw-lint: allow-function(raw-write) list rebuild is instance/cast-revision gated
 void ALPanelGhostStudio::refreshList(bool force_now)
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
@@ -3268,6 +3267,7 @@ void ALPanelGhostStudio::captureFormationParameter()
     }
 }
 
+// ui-draw-lint: allow-function(raw-write) label/range configuration is gated by the cached formation id
 void ALPanelGhostStudio::configureFormationParameter(
     ALGhostStudio::EFormation formation)
 {

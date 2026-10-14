@@ -350,24 +350,23 @@ void ALPanelAvatarLightResponse::collectRows(std::vector<LLUUID>& order,
         order.push_back(key);
     };
 
-    // You
-    add(gAgentID, ALAvatarLightResponse::KIND_SELF, "You");
-
-    // Director cast
-    for (const LLDirectorCast::CastMember& member : LLDirectorCast::instance().getCast())
+    // Canonical Director identities (You first, including any subject letters).
+    for (const LLDirectorCast::ActorChoice& choice :
+         LLDirectorCast::instance().getActorChoices())
     {
-        if (member.mId.isNull() || member.mId == gAgentID)
+        if (LLDirectorCast::isSelf(choice.mId))
         {
+            add(gAgentID, ALAvatarLightResponse::KIND_SELF, choice.mLabel);
             continue;
         }
         ALAvatarLightResponse::EKind kind = ALAvatarLightResponse::KIND_RESIDENT;
-        LLViewerObject* obj = gObjectList.findObject(member.mId);
+        LLViewerObject* obj = gObjectList.findObject(choice.mId);
         LLVOAvatar* avatar = obj ? obj->asAvatar() : nullptr;
         if (obj && (!avatar || avatar->isControlAvatar()))
         {
             kind = ALAvatarLightResponse::KIND_ANIMESH;
         }
-        add(member.mId, kind, member.mLastName);
+        add(choice.mId, kind, choice.mLabel);
     }
 
     // Residents in draw distance
@@ -424,6 +423,7 @@ void ALPanelAvatarLightResponse::collectRows(std::vector<LLUUID>& order,
     }
 }
 
+// ui-draw-lint: allow-function(raw-write) cell updates compare old values and row rebuild runs only when membership changes
 void ALPanelAvatarLightResponse::refreshRows(bool force)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightResponse refreshRows");
@@ -526,6 +526,7 @@ void ALPanelAvatarLightResponse::refreshRows(bool force)
     }
 }
 
+// ui-draw-lint: allow-function(raw-write) state-cell writes are gated by the cached visual state
 void ALPanelAvatarLightResponse::refreshStateCells()
 {
     if (!mTargetList)
@@ -761,6 +762,12 @@ void ALPanelAvatarLightResponse::refreshBrightnessValue()
 
 void ALPanelAvatarLightResponse::refreshSilhouetteNote()
 {
+    static LLCachedControl<bool> emissive_buffer(
+        gSavedSettings, "RenderEnableEmissiveBuffer", false);
+    static LLCachedControl<bool> force_emissive(
+        gSavedSettings, "AvatarSilhouetteForceEmissive", false);
+    static LLCachedControl<bool> rig_rim_enabled(
+        gSavedSettings, "CineRigRimEnabled", false);
     if (!mSilNote)
     {
         return;
@@ -777,8 +784,8 @@ void ALPanelAvatarLightResponse::refreshSilhouetteNote()
         }
     }
     const bool preparing = any_silhouette
-        && !gSavedSettings.getBOOL("RenderEnableEmissiveBuffer")
-        && !gSavedSettings.getBOOL("AvatarSilhouetteForceEmissive");
+        && !emissive_buffer
+        && !force_emissive;
 
     bool rim_unavailable = false;
     const std::vector<LLUUID> keys = selectedKeys();
@@ -786,7 +793,7 @@ void ALPanelAvatarLightResponse::refreshSilhouetteNote()
     {
         const ALLightResponse::Params p = currentParams(keys.front());
         rim_unavailable = p.mSilAmount > ALLightResponse::SILHOUETTE_EPSILON
-            && p.mSilKeepRim && !gSavedSettings.getBOOL("CineRigRimEnabled");
+            && p.mSilKeepRim && !rig_rim_enabled;
     }
 
     const std::string note = preparing

@@ -4,6 +4,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "aldirectorcastui.h"
 
 #include "alvcampagemodel.h"
 
@@ -13,6 +14,7 @@
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
+#include "lldirectorcast.h"
 #include "lljoint.h"
 #include "llnotificationsutil.h"
 #include "llpanel.h"
@@ -720,6 +722,13 @@ void LLFloaterPrismManager::onVisibilityChange(bool visible)
 void LLFloaterPrismManager::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    const U64 revision = LLDirectorCast::instance().getActorChoiceRevision();
+    if (revision != mBoneAnchorSubjectRevision)
+    {
+        mBoneAnchorSubjectRevision = revision;
+        ALDirectorCastUI::mergeSubjectCombo(mBoneAnchorCombo,
+            { LLSD("me"), LLSD("a"), LLSD("b"), LLSD("c"), LLSD("d") });
+    }
     LLFloater::draw();
 }
 

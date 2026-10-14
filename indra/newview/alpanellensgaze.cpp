@@ -1005,29 +1005,25 @@ void ALPanelLensGaze::refreshEditActorCombo()
         return;
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
-    const LLUUID sub_a = cast.getSubjectA();
-    const LLUUID sub_b = cast.getSubjectB();
-    const LLUUID sub_c = cast.getSubjectC();
-    const LLUUID sub_d = cast.getSubjectD();
-
-    // Rebuild only when the populated set changes, so an operator mid-selection
-    // is never yanked. All + You are always offered; A-D only when populated.
-    std::string signature;
-    signature += isAgentAvatarValid() ? "you," : ",";
-    signature += sub_a.notNull() ? "a" : "";
-    signature += sub_b.notNull() ? "b" : "";
-    signature += sub_c.notNull() ? "c" : "";
-    signature += sub_d.notNull() ? "d" : "";
-    if (signature != mEditActorSignature)
+    const U64 revision = cast.getActorChoiceRevision();
+    if (revision != mEditActorRevision)
     {
-        mEditActorSignature = signature;
+        mEditActorRevision = revision;
+        const S32 want = mEditAll ? -1 : mActiveSlot;
         mEditActor->removeall();
         mEditActor->add("All", LLSD(-1));
-        mEditActor->add("You", LLSD(0));
-        if (sub_a.notNull()) { mEditActor->add("A", LLSD(1)); }
-        if (sub_b.notNull()) { mEditActor->add("B", LLSD(2)); }
-        if (sub_c.notNull()) { mEditActor->add("C", LLSD(3)); }
-        if (sub_d.notNull()) { mEditActor->add("D", LLSD(4)); }
+        for (const LLDirectorCast::ActorChoice& choice : cast.getActorChoices())
+        {
+            if (!LLDirectorCast::isSelf(choice.mId) && choice.mSubjectMask == 0)
+                continue;
+            S32 value = LLDirectorCast::isSelf(choice.mId) ? 0 : 1;
+            for (S32 slot = 1; slot <= 4; ++slot)
+                if (choice.isSubject(slot)) { value = slot; break; }
+            if ((want == 0 && LLDirectorCast::isSelf(choice.mId)) ||
+                choice.isSubject(want))
+                value = want;
+            mEditActor->add(choice.mLabel, LLSD(value));
+        }
     }
 
     const S32 want = mEditAll ? -1 : mActiveSlot;
@@ -1127,6 +1123,28 @@ void ALPanelLensGaze::refreshControls()
     setEnabledIfChanged(mSlotB, sub_b.notNull());
     setEnabledIfChanged(mSlotC, sub_c.notNull());
     setEnabledIfChanged(mSlotD, sub_d.notNull());
+    const U64 slot_identity_revision = cast.getActorChoiceRevision();
+    if (slot_identity_revision != mSlotIdentityRevision)
+    {
+        mSlotIdentityRevision = slot_identity_revision;
+        LLCheckBoxCtrl* subject_toggles[] = { mSlotA, mSlotB, mSlotC, mSlotD };
+        const LLUUID subjects[] = { sub_a, sub_b, sub_c, sub_d };
+        std::string self_letters;
+        for (S32 i = 0; i < 4; ++i)
+        {
+            const bool duplicate_self = subjects[i].notNull() &&
+                                        LLDirectorCast::isSelf(subjects[i]);
+            subject_toggles[i]->setVisible(!duplicate_self);
+            if (duplicate_self)
+            {
+                if (!self_letters.empty()) self_letters += ", ";
+                self_letters += char('A' + i);
+            }
+        }
+        setLabelIfChanged(mSlotYou, self_letters.empty() ? "You" :
+            (self_letters.size() == 1 ? "You (Subject " + self_letters + ")" :
+                                        "You (Subjects " + self_letters + ")"));
+    }
 
     if (!isEditing(mSlotYou))
     {

@@ -182,6 +182,7 @@ private:
     void        scrollToView(LLView*);
     void        performPageReset();
     void        refreshActorTargetAvailability();
+    void        refreshSubjectCombos();
     std::string prefix() const;
     std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mModes, mModeSetting,
         mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;
@@ -190,6 +191,15 @@ private:
     LLUUID mActorTarget;
     S32  mModeIndex = 0, mChipIndex = 0, mBarLeftEnd = 0;
     U64  mHistoryRevision = ~U64(0);
+    U64  mSubjectComboRevision = ~U64(0);
+    struct SubjectCombo
+    {
+        LLComboBox* mCombo = nullptr;
+        S32 mSelfValue = 0;
+        S32 mSubjectAValue = 1;
+        S32 mSubjectCount = 4;
+    };
+    std::vector<SubjectCombo>                         mSubjectCombos;
     ALLiveReadoutClock                              mReadoutClock{ 10.f };
     std::vector<SectionData>                        mSections;
     std::vector<ModeData>                           mModeDefs;

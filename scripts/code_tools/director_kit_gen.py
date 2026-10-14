@@ -35,7 +35,7 @@ DIRECTOR_CPP = ROOT / "indra/newview/llfloaterdirector.cpp"
 REPORT = KIT / "gen_report.txt"
 INDEX_FIELDS = 22
 EXPECTED_SHORTCUTS = {
-    ("shot_tab", "CinematicCamJoint", "frame_orbit_tab/CinematicCamJoint"),
+    ("shot_tab", "CinematicCamJoint", "frame_orbit_tab/fo_anchor_joint"),
     ("shot_tab", "CinematicCamVertigoDuration", "moves_tab/zolly_duration"),
     ("shot_tab", "CinematicCamVertigoDirection", "moves_tab/zolly_direction"),
     ("shot_tab", "CinematicCamArcDuration", "moves_tab/hero_arc_duration"),
@@ -220,8 +220,11 @@ def validate_data(data: dict) -> None:
     # Image, Roto Ink, Tron and Actor FX are generated kit pages. The three Rig Rim tint source rows are not
     # generated on Tron because that page links to their Light > Rim home instead.
     # Quick favorites are runtime row proxies, so they intentionally do not change this source-data count.
-    if len(pages) != 36 or row_count != 2059:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 36/2059")
+    # Camera/capture completion adds recorder status, two temporal readouts and
+    # the Scene login-self toggle.  This is source-data completeness, not a
+    # generated/legacy page-classification pin.
+    if len(pages) != 36 or row_count != 2063:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 36/2063")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -487,6 +490,10 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
                 child.set(dst, scalar(row[src]))
         if row.get("enabled_control"):
             child.set("enabled_control", str(row["enabled_control"]))
+        if row.get("disabled"):
+            child.set("enabled", "false")
+        if kind == "readout" and row.get("row_height"):
+            child.set("word_wrap", "true")
         return kind, child, "setting" if hosted.get("control_name") else "code"
     kind, _ = data_kind(row)
     if kind in {"vec2", "vec3", "link"}:
@@ -519,6 +526,10 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
             attrs[dst] = scalar(row[src])
     if row.get("enabled_control"):
         attrs["enabled_control"] = str(row["enabled_control"])
+    if row.get("disabled"):
+        attrs["enabled"] = "false"
+    if kind == "readout" and row.get("row_height"):
+        attrs["word_wrap"] = "true"
     child = ET.Element(tag, attrs)
     if kind == "readout" and row.get("text") is not None:
         child.text = str(row["text"])
@@ -668,7 +679,7 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
     if cfg.get("chip_mode"):
         attrs["chip_mode"] = str(cfg["chip_mode"])
     settings = [] if cfg.get("no_history") else sorted(
-        {str(row["s"]) for row in all_rows(page) if row.get("s")})
+        {str(row["s"]) for row in all_rows(page) if row.get("s")} | set(cfg.get("watch_extra", [])))
     if settings:
         attrs["watch_settings"] = ",".join(settings)
     return attrs
@@ -1146,11 +1157,16 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "lens_group/diopter_tab": "kit (P0)", "world_group/weather_tab": "kit (P0)",
                 "world_group/atmosphere_tab": "kit (P0)", "world_group/shadows_probes_tab": "kit (P0)",
                 "look_group/bloom_glow_tab": "pure kit (new)",
-                "look_group/stepped_tab": "kit (P0)"}
+                "look_group/stepped_tab": "kit (P0)",
+                "camera_group/shot_tab": "kit (P0)", "camera_group/moves_tab": "kit (P0)",
+                "camera_group/operator_tab": "kit (P0)", "camera_group/frame_orbit_tab": "kit (P0)",
+                "camera_group/takes_tab": "kit (P0)", "capture_group/temporal_tab": "kit (P0)",
+                "capture_group/scene_options_tab": "kit (P0)"}
     # Pinned per conversion batch (user-approved 10/13: lower as pages convert, never raise).
     # World/Lens batch: kit 7 -> 13, legacy 27 -> 21. 10/14: new Stepped page (kit_pages
-    # entry => kit (P0)) kit 13 -> 14; legacy unchanged at 21.
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 14, "pure kit (new)": 1, "legacy": 21}):
+    # entry => kit (P0)) kit 13 -> 14; legacy unchanged at 21. 10/14 Camera+Capture
+    # batch: kit 14 -> 21, legacy 21 -> 14.
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 21, "pure kit (new)": 1, "legacy": 14}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -1216,7 +1232,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
         checks = []
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 14, "pure kit (new)": 1, "legacy": 21})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 21, "pure kit (new)": 1, "legacy": 14})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -1253,7 +1269,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
             apply_page_features(expected_legacy, key, config.get("page_features", {}))
             apply_kit_xui_style(expected_legacy)
             legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(expected_legacy)
-        checks.append(("21 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 21))
+        checks.append(("14 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 14))
         dials = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]
         checks.append(("all compass dials use kit geometry without duplicate readout",

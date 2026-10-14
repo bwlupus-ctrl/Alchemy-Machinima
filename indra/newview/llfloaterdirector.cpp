@@ -73,6 +73,7 @@
 #include "llnotificationsutil.h"    // scene delete confirm
 #include "llpresentationtime.h"
 #include "llprismlens.h"
+#include "llviewerjoystick.h"       // drone preset apply/markCustom for the kit Takes page
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
@@ -1390,6 +1391,10 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "filters_tab", &LLFloaterDirector::bindLensFiltersPage },
         { "weather_tab", &LLFloaterDirector::bindWeatherPage },
         { "atmosphere_tab", &LLFloaterDirector::bindAtmospherePage },
+        { "operator_tab", &LLFloaterDirector::bindOperatorPage },
+        { "frame_orbit_tab", &LLFloaterDirector::bindFrameOrbitPage },
+        { "temporal_tab", &LLFloaterDirector::bindTemporalPage },
+        { "takes_tab", &LLFloaterDirector::bindTakesPage },
     };
     for (const Binding& binding : bindings)
     {
@@ -1978,6 +1983,16 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
         mHeroArcBtn = control;
         control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickHeroArc(); });
     }
+    // Shot > Reset controls: the v1 panel's own handlers, reached through its statics
+    // (the kit page has no ALPanelCineCamParams instance).
+    if (LLButton* control = root->findChild<LLButton>("btn_reset_mode"))
+    {
+        control->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelCineCamParams::resetModeToDefaults(); });
+    }
+    if (LLButton* control = root->findChild<LLButton>("btn_reset_all"))
+    {
+        control->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelCineCamParams::confirmResetAll(); });
+    }
     if (ALPanelCineCamParams* control = root->findChild<ALPanelCineCamParams>("cinecam_params_embedded"))
     {
         mCineCamPanel = control;
@@ -1999,6 +2014,155 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
         mGhostPanelView = ghosts;
         mGhostPage = dynamic_cast<LLPanel*>(ghosts->getParent());
         ALScrollFit::fillPage(mGhostPage, mGhostPanelView, 8);
+    }
+}
+
+// Operator (generated kit page). The built-in look combo runs the v1 panel's shake preset through its
+// static applyShakePreset(); the kit page has no ALPanelCineCamParams instance.
+void LLFloaterDirector::bindOperatorPage(LLView* root)
+{
+    if (LLComboBox* combo = root->findChild<LLComboBox>("shake_preset_combo"))
+    {
+        combo->setCommitCallback([](LLUICtrl* ctrl, const LLSD&)
+        {
+            if (LLComboBox* box = dynamic_cast<LLComboBox*>(ctrl))
+            {
+                ALPanelCineCamParams::applyShakePreset(box->getValue().asInteger());
+            }
+        });
+    }
+}
+
+// Set while the frame-aspect combo mirrors the setting, so that the mirror does not write back.
+static bool sFrameAspectSyncing = false;
+
+// Frame & Orbit (generated kit page). Re-solve now was not bound in v2; it calls the same
+// LLCinematicCamera::requestAutoReframe() the v1 button used. Frame aspect is an F32 setting: the combo
+// writes the chosen ratio and mirrors the setting back (reset, paste, preset) under a recursion guard.
+void LLFloaterDirector::bindFrameOrbitPage(LLView* root)
+{
+    if (LLButton* resolve = root->findChild<LLButton>("auto_frame_resolve"))
+    {
+        resolve->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            LLCinematicCamera::instance().requestAutoReframe();
+        });
+    }
+    LLComboBox* aspect = root->findChild<LLComboBox>("frame_aspect_ratio");
+    if (!aspect)
+    {
+        return;
+    }
+    aspect->setCommitCallback([](LLUICtrl* ctrl, const LLSD&)
+    {
+        LLComboBox* box = dynamic_cast<LLComboBox*>(ctrl);
+        if (box && !sFrameAspectSyncing)
+        {
+            gSavedSettings.setF32("CinematicFrameAspectRatio", (F32)box->getValue().asReal());
+        }
+    });
+    auto mirror = [](LLComboBox* box, F32 value)
+    {
+        if (!box || box->getItemCount() <= 0)
+        {
+            return;
+        }
+        // Pick the item nearest to the stored ratio (values are float strings, e.g. 1.7777778).
+        // The guard covers the probing selects too, so no commit can write the setting back.
+        sFrameAspectSyncing = true;
+        S32 best = 0;
+        F64 best_diff = 1.0e30;
+        for (S32 i = 0; i < box->getItemCount(); ++i)
+        {
+            box->setCurrentByIndex(i);
+            const F64 diff = std::fabs(box->getValue().asReal() - (F64)value);
+            if (diff < best_diff)
+            {
+                best_diff = diff;
+                best = i;
+            }
+        }
+        box->setCurrentByIndex(best);
+        sFrameAspectSyncing = false;
+    };
+    if (LLControlVariable* setting = gSavedSettings.getControl("CinematicFrameAspectRatio"))
+    {
+        mirror(aspect, (F32)setting->getValue().asReal());
+        mFrameAspectConnections.emplace_back(setting->getSignal()->connect(
+            [aspect, mirror](LLControlVariable*, const LLSD& value, const LLSD&)
+            {
+                mirror(aspect, (F32)value.asReal());
+            }));
+    }
+}
+
+// Scale presets: the same two writes as ALPanelTemporalCapture::onClickScalePreset.
+static void applyTemporalScalePreset(F32 scale, bool manual)
+{
+    gSavedSettings.setF32("TemporalWorldScale", scale);
+    // Realtime (manual = false) returns to Live; every other preset engages Manual.
+    gSavedSettings.setS32("TemporalMode", manual ? 1 : 0);
+}
+
+// Time (generated kit page). The scale commit side effect (Live -> Manual when the scale is not 1)
+// is driven from the TemporalWorldScale signal, so reset, paste and preset follow the same rule.
+void LLFloaterDirector::bindTemporalPage(LLView* root)
+{
+    if (LLButton* button = root->findChild<LLButton>("btn_freeze"))
+    {
+        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(0.f, true); });
+    }
+    if (LLButton* button = root->findChild<LLButton>("btn_quarter"))
+    {
+        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(0.25f, true); });
+    }
+    if (LLButton* button = root->findChild<LLButton>("btn_half"))
+    {
+        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(0.5f, true); });
+    }
+    if (LLButton* button = root->findChild<LLButton>("btn_realtime"))
+    {
+        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(1.f, false); });
+    }
+    if (LLButton* button = root->findChild<LLButton>("btn_double"))
+    {
+        button->setCommitCallback([](LLUICtrl*, const LLSD&) { applyTemporalScalePreset(2.f, true); });
+    }
+    if (LLControlVariable* scale = gSavedSettings.getControl("TemporalWorldScale"))
+    {
+        mTemporalConnections.emplace_back(scale->getSignal()->connect(
+            [](LLControlVariable*, const LLSD& value, const LLSD&)
+            {
+                if (gSavedSettings.getS32("TemporalMode") == 0 && value.asReal() != 1.0)
+                {
+                    gSavedSettings.setS32("TemporalMode", 1);
+                }
+            }));
+    }
+}
+
+// Takes > Flight (generated kit page). The drone preset is code-bound: 0..4 apply the whole preset
+// through applyDronePreset(); Custom (5) is not an apply target. On release marks the preset custom.
+void LLFloaterDirector::bindTakesPage(LLView* root)
+{
+    if (LLComboBox* preset = root->findChild<LLComboBox>("FlycamDronePreset"))
+    {
+        preset->setCommitCallback([](LLUICtrl* ctrl, const LLSD&)
+        {
+            LLComboBox* box = dynamic_cast<LLComboBox*>(ctrl);
+            const S32 index = box ? box->getValue().asInteger() : 5;
+            if (index >= 0 && index <= 4)
+            {
+                LLViewerJoystick::getInstance()->applyDronePreset(index);
+            }
+        });
+    }
+    if (LLComboBox* release = root->findChild<LLComboBox>("FlycamDroneRelease"))
+    {
+        release->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            LLViewerJoystick::getInstance()->markDronePresetCustom();
+        });
     }
 }
 
@@ -3859,6 +4023,10 @@ static const std::string& dirfix_short_id(const LLUUID& id)
 //static
 std::string LLFloaterDirector::castMemberName(const LLUUID& id)
 {
+    if (LLDirectorCast::isSelf(id))
+    {
+        return "You";
+    }
     if (const LLDirectorCast::CastMember* m = LLDirectorCast::instance().getMember(id);
         m && !m->mLastName.empty())
     {
@@ -4706,7 +4874,8 @@ void LLFloaterDirector::refreshActorStyleTab()
     // (it refreshes the cached name), exactly as the signature loop did.
     bool roster_changed = !mActorStyleRosterBuilt
         || have_self != mActorStyleRosterHadSelf
-        || (have_self && self_id != mActorStyleRosterSelfId);
+        || (have_self && self_id != mActorStyleRosterSelfId)
+        || mActorStyleChoiceRevision != cast.getActorChoiceRevision();
     size_t roster_count = 0;
     for (const LLDirectorCast::CastMember& member : cast.getCast())
     {
@@ -4741,30 +4910,33 @@ void LLFloaterDirector::refreshActorStyleTab()
         mActorStyleRosterBuilt = true;
         mActorStyleRosterHadSelf = have_self;
         mActorStyleRosterSelfId = self_id;
+        mActorStyleChoiceRevision = cast.getActorChoiceRevision();
         mActorStyleRoster.clear();
         const bool had_previous = mActorStyleTarget->getCurrentIndex() >= 0;
         const LLSD previous = mActorStyleTarget->getSelectedValue();
 
         mRefreshingActorStyle = true;
         mActorStyleTarget->clearRows();
-        if (have_self)
+        for (const LLDirectorCast::ActorChoice& choice : cast.getActorChoices())
         {
-            mActorStyleTarget->add("You", LLSD(LLUUID::null));
-        }
-        for (const LLDirectorCast::CastMember& member : cast.getCast())
-        {
-            if (self_id.notNull() && member.mId == self_id)
+            if (LLDirectorCast::isSelf(choice.mId))
             {
+                if (have_self)
+                {
+                    mActorStyleTarget->add(choice.mLabel, LLSD(LLUUID::null));
+                }
                 continue;
             }
-            const bool in_world = cast.resolve(member.mId) != nullptr;
-            mActorStyleRoster.push_back({ member.mId, member.mLastName, in_world }); // [DirFix] D4
-            std::string label = castMemberName(member.mId);
+            const bool in_world = cast.resolve(choice.mId) != nullptr;
+            const LLDirectorCast::CastMember* member = cast.getMember(choice.mId);
+            mActorStyleRoster.push_back({ choice.mId,
+                member ? member->mLastName : choice.mLabel, in_world }); // [DirFix] D4
+            std::string label = choice.mLabel;
             if (!in_world)
             {
                 label += " (away)";
             }
-            mActorStyleTarget->add(label, LLSD(member.mId));
+            mActorStyleTarget->add(label, LLSD(choice.mId));
         }
         if (!had_previous ||
             !mActorStyleTarget->setSelectedByValue(previous, true))

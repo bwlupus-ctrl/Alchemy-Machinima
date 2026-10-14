@@ -70,6 +70,7 @@ public:
                                   const std::string& label = std::string());
 
 private:
+    U64 mSubjectChoiceRevision = ~U64(0);
     // A cached copy of what each list row currently shows, so the 2 Hz cell
     // update writes only the cells that differ.
     struct DancerRow

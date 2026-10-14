@@ -8,6 +8,13 @@
   "performance_group/gaze_tab": {"actor_target": true}
  },
  "p0_pages": {
+  "camera_group/shot_tab": {"v1_sources": [], "root_class": "panel_director_switcher", "root_name": "shot_tab_logic", "label_names": {}},
+  "camera_group/moves_tab": {"v1_sources": [], "label_names": {}},
+  "camera_group/operator_tab": {"v1_sources": [], "omit_rows": ["CinematicCamFrameOffsetUp"], "omit_rows_note": "CinematicCamFrameOffsetUp is homed on Frame & Orbit (auto_frame_vertical_trim, -20..20); a second writer needs a declared shortcut, which the pinned EXPECTED_SHORTCUTS contract does not allow. The link row points to that home.", "add_rows": [{"card": "response", "row": {"k": "link", "w": "frame_offset_up_link", "l": "Frame offset up", "h": "Vertical frame offset is set on Frame & Orbit > Auto reframe (-20..20).", "to": "camera_group/frame_orbit_tab"}}], "label_names": {}},
+  "camera_group/frame_orbit_tab": {"v1_sources": [], "watch_extra": ["CinematicAutoFrameEnabled", "FlycamOrbitEnabled"], "label_names": {}},
+  "camera_group/takes_tab": {"v1_sources": [], "root_class": "panel_flycam_recorder", "root_name": "takes_tab_logic", "label_names": {}},
+  "capture_group/temporal_tab": {"v1_sources": [], "root_class": "panel_temporal_capture", "root_name": "temporal_tab_logic", "label_names": {}},
+  "capture_group/scene_options_tab": {"v1_sources": [], "label_names": {}},
   "camera_group/vcam_tab": {
    "v1_sources": [],
    "root_class": "panel_director_vcam", "root_name": "vcam_tab_logic",

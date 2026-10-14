@@ -32,6 +32,7 @@
 #ifndef LL_LLDIRECTORCAST_H
 #define LL_LLDIRECTORCAST_H
 
+#include "aldirectoractorchoice.h"
 #include "algazemath.h"
 #include "llactormover.h"
 #include "llsd.h"
@@ -43,6 +44,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <array>
 
 class LLVOAvatar;
 class LLEventTimer;
@@ -261,7 +263,22 @@ public:
         ActorStyle              mActorStyle;      // client-only live actor presentation
     };
 
+    // Pure helper types live in aldirectoractorchoice.h (unit-testable without the viewer).
+    using ActorChoiceSource = ALActorChoiceSource;
+    using ActorChoice       = ALActorChoice;
+
     static LLDirectorCast& instance();
+    // Null is the UI/model spelling of You; the live agent UUID is the same
+    // identity. Keep this test centralized so pickers cannot disagree.
+    static bool isSelf(const LLUUID& id);
+    // Pure identity merge used by every Director actor/subject picker. Self is
+    // always first; cast and subject identities follow once each in stable
+    // order. Subject letters are presentation metadata, never new identities.
+    static std::vector<ActorChoice> buildActorChoices(
+        const LLUUID& self_id,
+        const std::array<LLUUID, 4>& subjects,
+        const std::vector<ActorChoiceSource>& cast);
+    std::vector<ActorChoice> getActorChoices() const;
     // Residents use their avatar UUID; animated objects use their persistent
     // linkset-root UUID rather than the regenerated LLControlAvatar UUID.
     static LLUUID canonicalActorId(const LLUUID& id);
@@ -286,6 +303,8 @@ public:
     // compares this instead of rebuilding id+name signature strings per frame.
     // Code that writes mLastName directly must call touchCast() afterwards.
     U64 getCastRevision() const { return mCastRevision; }
+    U64 getActorChoiceRevision() const
+        { return mCastRevision + mGazeConfigRevision; }
     void touchCast() { ++mCastRevision; touchScene(); }
     U64 getSceneRevision() const { return mSceneRevision; }
     void touchScene();

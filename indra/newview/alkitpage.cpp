@@ -4,6 +4,7 @@
 #include "alkitcard.h"
 #include "alkitbinding.h"
 #include "alcinelightrigmanager.h"
+#include "aldirectorcastui.h"
 #include "alkitrow.h"
 #include "alkitpresets.h"
 #include "alkitpopover.h"
@@ -876,6 +877,26 @@ bool ALKitPage::postBuild()
     if (mWhoChip)
         mWhoChip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
     stabilizeComboEditors(this);
+    struct ComboSpec { const char* name; S32 self_value; S32 subject_a_value; S32 subject_count; };
+    static const ComboSpec subject_specs[] = {
+        { "sd_subject_target_combo", 0, 1, 4 },
+        { "ri_subject_target_combo", 0, 1, 4 },
+        { "tr_subject_target_combo", 0, 1, 4 },
+        { "cine_easy_probe_target", 0, 1, 4 },
+        { "cine_live_probe_target", 0, 1, 4 },
+        { "cine_night_mask_target", 0, 1, 4 },
+        { "db_focus", 0, 2, 1 },
+        { "db_block_centre", 0, 2, 1 },
+        { "db_wave_focus", 0, 2, 1 }
+    };
+    for (const ComboSpec& spec : subject_specs)
+    {
+        if (LLComboBox* combo = findChild<LLComboBox>(spec.name, true))
+        {
+            mSubjectCombos.push_back(
+                { combo, spec.self_value, spec.subject_a_value, spec.subject_count });
+        }
+    }
     return true;
 }
 
@@ -1613,6 +1634,12 @@ void ALKitPage::restoreState()
 void ALKitPage::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    const U64 subject_revision = LLDirectorCast::instance().getActorChoiceRevision();
+    if (subject_revision != mSubjectComboRevision)
+    {
+        mSubjectComboRevision = subject_revision;
+        refreshSubjectCombos(); // ui-draw-lint: allow-function(raw-write) revision-gated
+    }
     if (mReadoutClock.due())
     {
         for (const auto& card : mCards)
@@ -1647,4 +1674,13 @@ void ALKitPage::draw()
     if (updateGateStatus())
         reshape(getRect().getWidth(), getRect().getHeight(), true);
     LLPanel::draw();
+}
+
+void ALKitPage::refreshSubjectCombos()
+{
+    for (const SubjectCombo& spec : mSubjectCombos)
+    {
+        ALDirectorCastUI::mergeSubjectCombo(
+            spec.mCombo, spec.mSelfValue, spec.mSubjectAValue, spec.mSubjectCount);
+    }
 }

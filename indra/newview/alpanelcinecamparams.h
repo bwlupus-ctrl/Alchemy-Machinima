@@ -50,7 +50,17 @@ public:
     // in the combo selection; false (no-op) when no such preset exists
     bool applyPresetByName(const std::string& name);
 
+    // ---- static actions shared with the kit Shot and Operator pages ----
+    // Reset the settings of the current CinematicCamMode (no confirm dialog).
+    static void resetModeToDefaults();
+    // Reset every shared and every mode setting after the Reset All confirm.
+    static void confirmResetAll();
+    // Apply built-in shake look 1..N (index 0 is the placeholder and is ignored).
+    static void applyShakePreset(S32 index);
+
 private:
+    static void resetAllToDefaults();
+
     // One entry per CinematicCamMode value: the params panel that exposes it
     // and every CinematicCam* setting that mode's pattern function reads
     // (ground truth: the LLCachedControl declarations in llcinematiccamera.cpp).

@@ -13,6 +13,7 @@
 
 #include "alcameracurve.h"
 #include "alpanelcinecamparams.h" // alRegisterMachinimaResetControl()
+#include "aluirefresh.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcinematiccamera.h"
@@ -65,6 +66,7 @@ bool ALPanelDirectorSwitcher::postBuild()
     {
         const std::string name = llformat("switcher_slot_%02d", slot + 1);
         mSlotButtons[slot] = getChild<LLButton>(name);
+        mSlotButtons[slot]->setUseEllipses(true);
         mSlotButtons[slot]->setCommitCallback(
             [this, slot](LLUICtrl*, const LLSD&) { onSlotButton(slot); });
     }
@@ -86,8 +88,15 @@ bool ALPanelDirectorSwitcher::postBuild()
     mCustomFov = getChild<LLSpinCtrl>("switcher_custom_fov");
     mCaptureCurrent =
         getChild<LLButton>("switcher_capture_current");
-    mCaptureStatus = getChild<LLTextBox>("switcher_capture_status");
-    mSelectedSlotText = getChild<LLTextBox>("switcher_selected_slot");
+    // The legacy embed has dedicated status/header text.  The generated kit
+    // surface uses its Fine-tune readout for transient capture feedback and
+    // its card title for selection context.
+    mCaptureStatus = findChild<LLTextBox>("switcher_capture_status", true);
+    if (!mCaptureStatus)
+    {
+        mCaptureStatus = getChild<LLTextBox>("switcher_custom_help");
+    }
+    mSelectedSlotText = findChild<LLTextBox>("switcher_selected_slot", true);
     mProgramText = getChild<LLTextBox>("switcher_program_status");
     getChild<LLButton>("switcher_reset_slots")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onResetSlots(); });
@@ -110,6 +119,13 @@ bool ALPanelDirectorSwitcher::postBuild()
                 updateCurveControlsEnabled();
             });
     }
+
+    // One assignment editor serves all twelve slots. Generated kit combos
+    // already carry the audited values; clear them so this shared runtime
+    // population remains the single source and never duplicates entries.
+    mSlotMode->clearRows();
+    mPrimarySubject->clearRows();
+    mSecondarySubject->clearRows();
 
     // One assignment editor serves all twelve slots. This keeps the panel
     // compact while still exposing every existing motion and appended static
@@ -524,12 +540,11 @@ void ALPanelDirectorSwitcher::refreshButtons()
                 display_label = wstring_to_utf8str(wide.substr(0, llmax(0, count))) + "...";
             }
         }
-        button->setUseEllipses(true);
-        button->setLabel(display_label);
-        button->setToolTip(LLStringExplicit(llformat(
+        setLabelIfChanged(button, display_label);
+        setToolTipIfChanged(button, llformat(
             "Slot %d: %s (%s). Click to select it; while armed, also cut to it. "
             "Use in auto only controls automatic selection.",
-            slot + 1, label.c_str(), mode_label.c_str())));
+            slot + 1, label.c_str(), mode_label.c_str()));
     }
 }
 
@@ -543,27 +558,30 @@ void ALPanelDirectorSwitcher::refreshEditor()
 
     const Slot& slot = mBank[mSelectedSlot];
     mRefreshing = true;
-    mSelectedSlotText->setText(
-        LLStringExplicit(llformat("Slot %d setup", mSelectedSlot + 1)));
-    mSlotEnabled->setValue(slot.mEnabled);
-    mSlotMode->setValue(LLSD(slot.mMode));
-    mSlotLabel->setText(LLStringExplicit(slot.mLabel));
-    mPrimarySubject->setValue(LLSD(slot.mPrimarySubject));
-    mSecondarySubject->setValue(LLSD(slot.mSecondarySubject));
-    mSecondarySubject->setEnabled(
+    if (mSelectedSlotText)
+    {
+        setTextIfChanged(mSelectedSlotText,
+            llformat("Slot %d setup", mSelectedSlot + 1), true);
+    }
+    setValueIfChanged(mSlotEnabled, LLSD(slot.mEnabled), true);
+    setValueIfChanged(mSlotMode, LLSD(slot.mMode), true);
+    setTextIfChanged(mSlotLabel, slot.mLabel, true);
+    setValueIfChanged(mPrimarySubject, LLSD(slot.mPrimarySubject), true);
+    setValueIfChanged(mSecondarySubject, LLSD(slot.mSecondarySubject), true);
+    setEnabledIfChanged(mSecondarySubject,
         slot.mMode == LLCinematicCamera::MODE_OTS ||
         slot.mMode == LLCinematicCamera::MODE_TWO_SHOT);
-    mCustomEnabled->setValue(slot.mCustomEnabled);
-    mCustomYaw->setValue(slot.mCustomYawOffsetDeg);
-    mCustomPitch->setValue(slot.mCustomPitchDeg);
-    mCustomDistance->setValue(slot.mCustomDistanceM);
-    mCustomHeight->setValue(slot.mCustomHeightM);
-    mCustomFov->setValue(slot.mCustomFovDeg);
+    setValueIfChanged(mCustomEnabled, LLSD(slot.mCustomEnabled), true);
+    setValueIfChanged(mCustomYaw, LLSD(slot.mCustomYawOffsetDeg), true);
+    setValueIfChanged(mCustomPitch, LLSD(slot.mCustomPitchDeg), true);
+    setValueIfChanged(mCustomDistance, LLSD(slot.mCustomDistanceM), true);
+    setValueIfChanged(mCustomHeight, LLSD(slot.mCustomHeightM), true);
+    setValueIfChanged(mCustomFov, LLSD(slot.mCustomFovDeg), true);
     for (LLSpinCtrl* spinner :
          { mCustomYaw, mCustomPitch, mCustomDistance,
            mCustomHeight, mCustomFov })
     {
-        spinner->setEnabled(slot.mCustomEnabled);
+        setEnabledIfChanged(spinner, slot.mCustomEnabled);
     }
     mRefreshing = false;
 }

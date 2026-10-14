@@ -263,7 +263,6 @@ WRITABLE_HOMES = {
     "CinematicCamArcHeightDrift": "moves_tab",
     "CinematicCamFrameOffsetUp": "frame_orbit_tab",
     "CinematicCamJoint": "frame_orbit_tab",
-    "CinematicCamUseSelected": "frame_orbit_tab",
     "CinematicCamVertigoDirection": "moves_tab",
     "CinematicCamVertigoDuration": "moves_tab",
     "RenderBloomStrength": "bloom_glow_tab",
@@ -275,7 +274,7 @@ WRITABLE_HOMES = {
 EXPECTED_SHORTCUTS = {
     ("cine_light_rig_tab", "cine_easy_cone_feather"): "atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider",
     ("cine_light_rig_tab", "cine_easy_shaft_length"): "atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider",
-    ("shot_tab", "CinematicCamJoint"): "frame_orbit_tab/CinematicCamJoint",
+    ("shot_tab", "CinematicCamJoint"): "frame_orbit_tab/fo_anchor_joint",
     ("shot_tab", "CinematicCamVertigoDuration"): "moves_tab/zolly_duration",
     ("shot_tab", "CinematicCamVertigoDirection"): "moves_tab/zolly_direction",
     ("shot_tab", "CinematicCamArcDuration"): "moves_tab/hero_arc_duration",

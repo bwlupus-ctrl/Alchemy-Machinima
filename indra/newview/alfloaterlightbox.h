@@ -133,6 +133,8 @@ public:
     ALLiveReadoutClock mProbeStatusClock{4.f};
     ALLiveReadoutClock mStatsClock{1.f};
     bool mJointComboFilled = false;
+    LLComboBox* mSubjectCombos[3] = {};
+    U64 mSubjectComboRevision = ~U64(0);
     void onSelLightCastShadows();
     void onSelLightVolumetric();
     void onSelLightCaptureOverride();

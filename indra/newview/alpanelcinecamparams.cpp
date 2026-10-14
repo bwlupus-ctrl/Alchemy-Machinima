@@ -452,7 +452,11 @@ void ALPanelCineCamParams::onShakePresetSelected()
     {
         return;
     }
-    const S32 index = mShakePresetCombo->getValue().asInteger();
+    applyShakePreset(mShakePresetCombo->getValue().asInteger());
+}
+
+void ALPanelCineCamParams::applyShakePreset(S32 index)
+{
     if (index <= 0 || index >= (S32)(sizeof(SHAKE_PRESETS) / sizeof(SHAKE_PRESETS[0])))
     {
         return;
@@ -537,6 +541,11 @@ void ALPanelCineCamParams::updateModePanel()
 // ---------------------------------------------------------------------------
 void ALPanelCineCamParams::onClickResetMode()
 {
+    resetModeToDefaults();
+}
+
+void ALPanelCineCamParams::resetModeToDefaults()
+{
     const S32 mode = gSavedSettings.getS32("CinematicCamMode");
     for (const ModeEntry& entry : modeTable())
     {
@@ -574,6 +583,24 @@ bool ALPanelCineCamParams::resetAllCallback(const LLSD& notification, const LLSD
     {
         return false;
     }
+    resetAllToDefaults();
+    return false;
+}
+
+void ALPanelCineCamParams::confirmResetAll()
+{
+    LLNotificationsUtil::add("CinematicCamConfirmResetAll", LLSD(), LLSD(),
+        [](const LLSD& notification, const LLSD& response)
+        {
+            if (LLNotificationsUtil::getSelectedOption(notification, response) == 0)
+            {
+                resetAllToDefaults();
+            }
+        });
+}
+
+void ALPanelCineCamParams::resetAllToDefaults()
+{
     for (const std::string& name : sharedSettings())
     {
         if (LLControlVariable* ctrl = gSavedSettings.getControl(name))
@@ -591,7 +618,6 @@ bool ALPanelCineCamParams::resetAllCallback(const LLSD& notification, const LLSD
             }
         }
     }
-    return false;
 }
 
 // ---------------------------------------------------------------------------

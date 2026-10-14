@@ -360,6 +360,8 @@ set(viewer_SOURCE_FILES
     alclientheight.cpp # [ClientHeight]
     aldiopterpresetbank.cpp
     aldiopterrelevance.cpp
+    aldirectoractorchoice.cpp
+    aldirectorcastui.cpp
     alfloatercinelightcues.cpp
     alfloaterultimatediopter.cpp
     alvcambonepov.cpp
@@ -1303,6 +1305,8 @@ set(viewer_HEADER_FILES
     altoolpathedit.h
     llcinematiccamera.h
     lldirectorcast.h
+    aldirectoractorchoice.h
+    aldirectorcastui.h
     llfloateractormover.h
     llfloaterdirector.h
     alfloateractorgaze.h
@@ -2841,6 +2845,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alflycamclassic "alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alflycamweighted "alflycamweighted.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alsteppedanim "alsteppedanim.cpp" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(lldirectorcast_choice "aldirectoractorchoice.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitqol "" "${test_libs}" "${test_project}")

@@ -29,6 +29,8 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "aldirectorcastui.h"
+#include "lldirectorcast.h"
 #include "alfloaterlightbox.h"
 #include "alscrollfocus.h"
 #include "alscrollfit.h" // [ScrollFit] shared per-tab scroll machinery (was the lb* block here)
@@ -258,6 +260,9 @@ bool ALFloaterLightBox::postBuild()
     mTick.bd_meshpool_stats = getChild<LLTextBox>("bd_meshpool_stats");
     mTick.tr_grid_origin_status = findChild<LLTextBox>("tr_grid_origin_status");
     mTick.sd_effective_splits = findChild<LLTextBox>("sd_effective_splits");
+    mSubjectCombos[0] = findChild<LLComboBox>("sd_subject_target_combo", true);
+    mSubjectCombos[1] = findChild<LLComboBox>("ri_subject_target_combo", true);
+    mSubjectCombos[2] = findChild<LLComboBox>("tr_subject_target_combo", true);
 
     mSelLight.cast_cb = findChild<LLCheckBoxCtrl>("sl_cast_shadows");
     mSelLight.vol_cb = findChild<LLCheckBoxCtrl>("sl_volumetric");
@@ -467,6 +472,18 @@ void ALFloaterLightBox::showTab(const std::string& tab_panel_name)
 void ALFloaterLightBox::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
+    const U64 subject_revision = LLDirectorCast::instance().getActorChoiceRevision();
+    if (subject_revision != mSubjectComboRevision)
+    {
+        mSubjectComboRevision = subject_revision;
+        for (LLComboBox* combo : mSubjectCombos)
+        {
+            if (combo)
+            {
+                ALDirectorCastUI::mergeSubjectCombo(combo, 0, 1);
+            }
+        }
+    }
     // [ProbeOnDemand] Refresh-all readout, at most 4 Hz; the manager holds a
     // terminal text for 10 s. findChild-guarded so it is a no-op until the
     // Rendering tab's widgets exist.

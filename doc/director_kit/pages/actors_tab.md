@@ -8,7 +8,7 @@ Computed class: **code-driven** (5/28 setting-bound rows; 22 C++-referenced rows
 - `panel_avatar_light_response` / `panel` at `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:2` (21 matching rows).
 - `floater_lightbox_settings` / `floater` at `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:8` (5 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matching rows).
-- Referencing classes: `ALPanelAvatarLightResponse` (36), `LLFloaterReg` (2), `ALFloaterLightBox` (1).
+- Referencing classes: `ALPanelAvatarLightResponse` (36), `LLFloaterReg` (2), `ALFloaterLightBox` (1), `LLFloaterDirector` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -25,7 +25,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `actor_mask` / `am_disable_check` (Disable) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5358` | kit `toggle` ↔ `CineLightRigActorMaskDisable` `Boolean` | none |
 | `actor_mask` / `am_debug_combo` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5361` | kit `combo` ↔ `CineLightRigActorMaskDebug` `U32` | none |
 | `actor_mask` / `am_bias_slider` (Mask bias) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5367` | kit `slider` ↔ `CineLightRigActorMaskBias` `F32` | none |
-| `actor_mask` / `am_reset_CineLightRigActorMaskBias` (Reset bias) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5368` | `ALActorLightKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onClickResetControlDefault()` (`indra/newview/alfloaterlightbox.cpp:77`) | none |
+| `actor_mask` / `am_reset_CineLightRigActorMaskBias` (Reset bias) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5368` | `ALActorLightKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onClickResetControlDefault()` (`indra/newview/alfloaterlightbox.cpp:79`) | none |
 | `actor_mask` / `am_test_combo` (Isolation test) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5370` | kit `combo` ↔ `CineLightRigActorMaskTest` `U32` | none |
 | `actor_mask` / `open_lightbox_actormask` (Lightbox ›) | none | kit-native action `floater:lightbox/actor_mask_settings`; no duplicate widget is required | none |
 | `avatar_list` / `target_list` (Avatars) | `scroll_list` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:32` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSelectionChanged()` (`indra/newview/alpanelavatarlightresponse.cpp:113`) | none |
@@ -55,7 +55,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALFloaterLightBox::onClickResetControlDefault()` — `indra/newview/alfloaterlightbox.cpp:77` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterLightBox::onClickResetControlDefault()` — `indra/newview/alfloaterlightbox.cpp:79` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::<inline callback>()` — `indra/newview/alpanelavatarlightresponse.cpp:120` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::onBypass()` — `indra/newview/alpanelavatarlightresponse.cpp:145` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::onCopy()` — `indra/newview/alpanelavatarlightresponse.cpp:156` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
@@ -69,7 +69,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALPanelAvatarLightResponse::onSilFillPreset()` — `indra/newview/alpanelavatarlightresponse.cpp:149` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::onSliderCommit()` — `indra/newview/alpanelavatarlightresponse.cpp:128, 129, 130, 131, 132` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::refreshRows()` — `indra/newview/alpanelavatarlightresponse.cpp:115` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:1005, 1952` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:1006, 1957` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -140,7 +140,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-14 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+15 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

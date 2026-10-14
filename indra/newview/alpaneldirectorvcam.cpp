@@ -11,6 +11,7 @@
 #include "alkitpage.h"
 #include "alkitrow.h"
 #include "alkitswitch.h"
+#include "aldirectorcastui.h"
 #include "alobjectproperties.h"
 #include "aluirefresh.h"
 #include "alvcambonepov.h"
@@ -19,6 +20,7 @@
 #include "llbutton.h"
 #include "llcombobox.h"
 #include "llcontrol.h"
+#include "lldirectorcast.h"
 #include "llfloaterreg.h"
 #include "llfocusmgr.h"
 #include "lllineeditor.h"
@@ -155,6 +157,12 @@ bool ALPanelDirectorVCam::postBuild()
     if (!LLPanel::postBuild()) return false;
     mKitPage = findChild<ALKitPage>("vcam_kit");
     collectControls(this);
+    auto refresh_bone_anchor_choices = [this]()
+    {
+        ALDirectorCastUI::mergeSubjectCombo(
+            dynamic_cast<LLComboBox*>(control("vc_bone_anchor")), 0, 1);
+    };
+    refresh_bone_anchor_choices();
     static const char* const projector_control_names[PROJ_CONTROL_COUNT] = {
         "vc_proj_look", "vc_proj_fit", "vc_proj_anchor_x", "vc_proj_anchor_y",
         "vc_proj_flip_h", "vc_proj_flip_v", "vc_proj_rotate",
@@ -230,6 +238,9 @@ bool ALPanelDirectorVCam::postBuild()
 
     mConnections.emplace_back(mModel.connectChanged(
         [this](U32 dirty) { onModelChanged(dirty); }));
+    mConnections.emplace_back(
+        LLDirectorCast::instance().addChangedCallback(
+            refresh_bone_anchor_choices));
     mConnections.emplace_back(
         ALObjectPropertiesCache::instance().setChangeCallback(
             [this](const LLUUID& object_id)
