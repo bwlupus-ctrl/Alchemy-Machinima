@@ -181,7 +181,10 @@ void ALSteppedAnimRuntime::collectActors()
         ALSteppedAnim::ActorFacts f;
         f.seed = (actor_id.isNull() ? gAgentID : actor_id).getDigest64();
         f.isSelf = avatar->isSelf();
-        f.inCast = f.isSelf ? empty_cast : cast.containsStored(actor_id);
+        // Self is stored under gAgentID when it is a cast member (auto-added at login);
+        // with an empty cast, "Whole cast" means you.
+        const bool self_in_cast = f.isSelf && gAgentID.notNull() && cast.containsStored(gAgentID);
+        f.inCast = f.isSelf ? (empty_cast || self_in_cast) : cast.containsStored(actor_id);
         f.isSelected = selected.isNull() ? f.isSelf : actor_id == selected;
         f.drawn = true;
         f.cameraMounted = (f.isSelf && gAgentCamera.cameraMouselook()) ||
@@ -189,7 +192,7 @@ void ALSteppedAnimRuntime::collectActors()
             bone_pov_anchors.find(avatar->getID()) != bone_pov_anchors.end();
         f.posing = FSFloaterPoser::isEditingAvatar(avatar);
         f.cameraDistance = static_cast<F32>((avatar->getPositionGlobal() - camera).length());
-        const auto order = cast_order.find(actor_id);
+        const auto order = cast_order.find(f.isSelf ? gAgentID : actor_id);
         if (order != cast_order.end()) f.castOrder = order->second;
         else if (f.isSelf && empty_cast) f.castOrder = 0;
         const LLDirectorCast::ActorStyle::SteppedOverride& ov = cast.getActorStyle(actor_id).mStepped;
