@@ -4,6 +4,7 @@
 
 #include "llagent.h"
 #include "llcombobox.h"
+#include "llcontrol.h"
 #include "lldirectorcast.h"
 #include "llscrolllistitem.h"
 
@@ -27,23 +28,39 @@ bool sameValue(const LLSD& left, const LLSD& right)
 }
 
 void mergeSubjectCombo(LLComboBox* combo, S32 self_value, S32 subject_a_value,
-                       S32 subject_count)
+                       S32 subject_count, const ValueProvider& value_provider)
 {
     std::array<LLSD, 5> values;
     values[0] = self_value;
     for (S32 slot = 1; slot <= 4; ++slot)
         values[slot] = subject_a_value + slot - 1;
-    mergeSubjectCombo(combo, values, subject_count);
+    mergeSubjectCombo(combo, values, subject_count, value_provider);
 }
 
 void mergeSubjectCombo(LLComboBox* combo,
                        const std::array<LLSD, 5>& slot_values,
-                       S32 subject_count)
+                       S32 subject_count, const ValueProvider& value_provider)
 {
     if (!combo)
     {
         return;
     }
+    LLSD stored_value;
+    if (value_provider)
+    {
+        stored_value = value_provider();
+    }
+    else if (LLControlVariable* control = combo->getControlVariable())
+    {
+        stored_value = control->getValue();
+    }
+    else
+    {
+        LL_WARNS("DirectorCastUI") << "Subject combo " << combo->getName()
+            << " has no authoritative value provider" << LL_ENDL;
+        return;
+    }
+
     std::vector<SavedItem> extras;
     for (LLScrollListItem* item : combo->getAllData())
     {
@@ -61,7 +78,6 @@ void mergeSubjectCombo(LLComboBox* combo,
         }
     }
 
-    const LLSD selected = combo->getValue();
     LLDirectorCast& cast = LLDirectorCast::instance();
     const std::vector<LLDirectorCast::ActorChoice> choices = cast.getActorChoices();
     combo->clearRows();
@@ -77,7 +93,7 @@ void mergeSubjectCombo(LLComboBox* combo,
     }
     combo->add(self_choice ? self_choice->mLabel : std::string("You"), slot_values[0]);
 
-    S32 selected_self_slot = 0;
+    U32 self_subject_mask = 0;
     for (S32 slot = 1; slot <= subject_count; ++slot)
     {
         const LLDirectorCast::ActorChoice* subject_choice = nullptr;
@@ -91,8 +107,7 @@ void mergeSubjectCombo(LLComboBox* combo,
         }
         if (subject_choice && LLDirectorCast::isSelf(subject_choice->mId))
         {
-            if (sameValue(selected, slot_values[slot]))
-                selected_self_slot = slot;
+            self_subject_mask |= 1u << (slot - 1);
             continue;
         }
         const char letter = static_cast<char>('A' + slot - 1);
@@ -113,7 +128,8 @@ void mergeSubjectCombo(LLComboBox* combo,
     {
         combo->add(item.label, item.value, ADD_BOTTOM, item.enabled);
     }
-    combo->setValue(selected_self_slot > 0 ? slot_values[0] : selected);
+    combo->setValue(subjectDisplayValue(stored_value, slot_values,
+                                        self_subject_mask, subject_count));
 }
 
 void mergeActorCombo(LLComboBox* combo, const LLSD& self_value,

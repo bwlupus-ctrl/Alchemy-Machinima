@@ -154,6 +154,7 @@ public:
     bool setBlockingCentre(AutoJoinFocus focus);
     void clearBlockingCentre();
     bool hasBlockingCentre() const;
+    AutoJoinFocus blockingCentreFocus() const { return mBlockingCentreFocus; }
     ALAvatarStaging::BallCentreSource blockingCentreSource() const;
     std::size_t blockingCentreDancerCount() const;
     bool ensureBlockingCentre(const std::vector<LLUUID>& ids);
@@ -319,6 +320,7 @@ private:
     bool mHadWorld = false;
     F32 mAutoJoinRadius = 20.f;
     AutoJoinFocus mAutoJoinFocus = AutoJoinFocus::ME;
+    AutoJoinFocus mBlockingCentreFocus = AutoJoinFocus::ME;
     F64 mLastScanWall = -1.0;
     F64 mUnitTime = 0.0; // presentation time at fixed 1x (play-once/fades/waves)
     F64 mFadeTime = 0.0; // advances while transport is frozen so releases finish

@@ -727,7 +727,13 @@ void LLFloaterPrismManager::draw()
     {
         mBoneAnchorSubjectRevision = revision;
         ALDirectorCastUI::mergeSubjectCombo(mBoneAnchorCombo,
-            { LLSD("me"), LLSD("a"), LLSD("b"), LLSD("c"), LLSD("d") });
+            { LLSD("me"), LLSD("a"), LLSD("b"), LLSD("c"), LLSD("d") }, 4,
+            [this]() -> LLSD
+            {
+                const LLPrismLens::CaptureDefinition* capture = selectedCapture();
+                return capture ? boneAnchorValue(capture->mCamera.mBonePov.mAnchorSlot)
+                               : LLSD("me");
+            });
     }
     LLFloater::draw();
 }

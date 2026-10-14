@@ -192,12 +192,20 @@ private:
     S32  mModeIndex = 0, mChipIndex = 0, mBarLeftEnd = 0;
     U64  mHistoryRevision = ~U64(0);
     U64  mSubjectComboRevision = ~U64(0);
+    enum class SubjectValueSource
+    {
+        CONTROL,
+        DANCE_FOCUS,
+        DANCE_BLOCK_CENTRE,
+        DANCE_WAVE_FOCUS
+    };
     struct SubjectCombo
     {
         LLComboBox* mCombo = nullptr;
         S32 mSelfValue = 0;
         S32 mSubjectAValue = 1;
         S32 mSubjectCount = 4;
+        SubjectValueSource mValueSource = SubjectValueSource::CONTROL;
     };
     std::vector<SubjectCombo>                         mSubjectCombos;
     ALLiveReadoutClock                              mReadoutClock{ 10.f };

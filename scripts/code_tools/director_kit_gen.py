@@ -392,6 +392,10 @@ def apply_kit_xui_style(root: ET.Element) -> None:
             node.set("label_color_selected", "KitTextStrong")
             node.set("label_color_disabled", "KitFaint")
             node.set("label_shadow", "false")
+            if name.startswith(("switcher_slot_", "anim_slot_")):
+                node.set("image_color_selected", "KitAccent")
+                node.set("image_color_pressed", "KitAccentHi")
+                node.set("label_color_selected", "KitAccentTextOn")
         elif node.tag == "line_editor":
             node.set("use_bg_color", "true")
             node.set("bg_color", "KitInputBg")
@@ -494,6 +498,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
             child.set("is_toggle", "true")
         if row.get("disabled"):
             child.set("enabled", "false")
+        if row.get("enabled_control"):
+            child.set("enabled_control", str(row["enabled_control"]))
         if kind == "readout" and row.get("row_height"):
             child.set("word_wrap", "true")
         return kind, child, "setting" if hosted.get("control_name") else "code"
@@ -532,6 +538,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
         attrs["is_toggle"] = "true"
     if row.get("disabled"):
         attrs["enabled"] = "false"
+    if row.get("enabled_control"):
+        attrs["enabled_control"] = str(row["enabled_control"])
     if kind == "readout" and row.get("row_height"):
         attrs["word_wrap"] = "true"
     child = ET.Element(tag, attrs)
@@ -597,8 +605,6 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
     attrs["bind"] = bind
     if row.get("no_widget_history"):
         attrs["widget_history"] = "false"
-    if row.get("enabled_control"):
-        attrs["enabled_control"] = str(row["enabled_control"])
     mapping = (("h", "help"), ("kw", "keywords"), ("unit", "unit"), ("sub", "sub"),
                ("to", "link_to"), ("shortcut_of", "shortcut_of"), ("mirror_setting", "mirror_setting"))
     for src, dst in mapping:

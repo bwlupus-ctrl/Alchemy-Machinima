@@ -164,7 +164,14 @@ bool ALPanelDirectorVCam::postBuild()
             return;
         mBoneAnchorSubjectRevision = revision;
         ALDirectorCastUI::mergeSubjectCombo(
-            dynamic_cast<LLComboBox*>(control("vc_bone_anchor")), 0, 1);
+            dynamic_cast<LLComboBox*>(control("vc_bone_anchor")), 0, 1, 4,
+            [this]() -> LLSD
+            {
+                const LLPrismLens::CaptureDefinition* capture = selectedCapture();
+                return capture ? LLSD(static_cast<S32>(
+                                     capture->mCamera.mBonePov.mAnchorSlot))
+                               : LLSD(0);
+            });
     };
     refresh_bone_anchor_choices();
     static const char* const projector_control_names[PROJ_CONTROL_COUNT] = {

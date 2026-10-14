@@ -479,6 +479,7 @@ bool ALDanceBall::setBlockingCentre(AutoJoinFocus focus)
     LLVector3d point;
     if (!focalPoint(focus, point)) return false;
     ALAvatarStaging::instance().setBallCentre(point);
+    mBlockingCentreFocus = focus;
     return true;
 }
 
@@ -2053,6 +2054,7 @@ void ALDanceBall::shutdown()
     mIncludeSelf = false;
     mAutoJoinRadius = 20.f;
     mAutoJoinFocus = AutoJoinFocus::ME;
+    mBlockingCentreFocus = AutoJoinFocus::ME;
     mHadWorld = false;
     mLastScanWall = -1.0;
     ++mRosterRevision;

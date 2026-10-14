@@ -447,9 +447,24 @@ void ALPanelDanceBall::draw()
     if (subject_revision != mSubjectChoiceRevision)
     {
         mSubjectChoiceRevision = subject_revision;
-        ALDirectorCastUI::mergeSubjectCombo(mFocus, 0, 2, 1);
-        ALDirectorCastUI::mergeSubjectCombo(mBlockCentre, 0, 2, 1);
-        ALDirectorCastUI::mergeSubjectCombo(mWaveFocus, 0, 2, 1);
+        ALDirectorCastUI::mergeSubjectCombo(mFocus, 0, 2, 1,
+            []() -> LLSD
+            {
+                return LLSD(static_cast<S32>(
+                    ALDanceBall::instance().autoJoinFocus()));
+            });
+        ALDirectorCastUI::mergeSubjectCombo(mBlockCentre, 0, 2, 1,
+            []() -> LLSD
+            {
+                return LLSD(static_cast<S32>(
+                    ALDanceBall::instance().blockingCentreFocus()));
+            });
+        ALDirectorCastUI::mergeSubjectCombo(mWaveFocus, 0, 2, 1,
+            []() -> LLSD
+            {
+                return LLSD(static_cast<S32>(
+                    ALDanceBall::instance().wave().mFocus));
+            });
     }
 
     // At most 2 Hz. User actions call requestRefresh() so their result shows
