@@ -4615,6 +4615,7 @@ void LLAppViewer::abortQuit()
     LL_INFOS() << "abortQuit()" << LL_ENDL;
     mQuitRequested = false;
     mClosingFloaters = false;
+    ALUIPerfSelfTest::quitAborted();
 }
 
 void LLAppViewer::migrateCacheDirectory()

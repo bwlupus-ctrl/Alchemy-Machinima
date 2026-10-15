@@ -206,6 +206,8 @@ public:
     //void            resetStatusBarContainer(); // undo changes done by resetStatusBarContainer on initWorldUI()
 
     bool handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down, bool &is_toolmgr_action);
+    // Functional self-test (in-world) only: drop a tool's mouse capture without its callback.
+    bool dropToolMouseCaptureWhileWorldSuspended();
 
     //
     // LLWindowCallback interface implementation

@@ -4718,6 +4718,12 @@ private:
                 "; input refused (an injected move would call clearAFK and message the simulator)";
             return false;
         }
+        // With the UI disabled a click skips UI dispatch entirely; never inject then.
+        if (!gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+        {
+            reason = "in-world: the UI is disabled (hidden); input refused";
+            return false;
+        }
         return true;
     }
 
@@ -4729,6 +4735,9 @@ private:
             if (!reason.empty()) mFunctionalLastClickReason = reason;
             return;
         }
+        // Never move the synthetic mouse while a tool holds the capture (it would receive
+        // the motion, e.g. ObjectGrabUpdate).  Dropped without the tool's callback.
+        gViewerWindow->dropToolMouseCaptureWhileWorldSuspended();
         gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), position, MASK_NONE);
     }
 
@@ -4783,6 +4792,16 @@ private:
         return true;
     }
 
+    // Arrow-key nudge of a slider/dial: gives the widget the keyboard focus first (what a
+    // click does for a user), then the same guarded delivery as every other key.  True only
+    // when delivered AND the widget handled it.
+    bool functionalNudgeKey(LLUICtrl* target, KEY key)
+    {
+        if (target && !functionalHoldsKeyboardFocus(target)) target->setFocus(true);
+        bool handled = false;
+        return functionalDeliverKey(target, key, MASK_NONE, &handled) && handled;
+    }
+
     // Character route: straight to the focused text control (never handleUnicodeChar, whose
     // Return remap re-enters the user key bindings).
     bool functionalDeliverChar(LLView* target, unsigned char ch)
@@ -4835,6 +4854,7 @@ private:
     void functionalParkMouse()
     {
         if (!mInWorld) return;
+        if (gViewerWindow) gViewerWindow->dropToolMouseCaptureWhileWorldSuspended();
         if (!gViewerWindow || !gMenuBarView || !gMenuBarView->getVisible() ||
             !gMenuBarView->getMouseOpaque())
         {
@@ -5099,7 +5119,7 @@ private:
                 KEY_RIGHT : KEY_LEFT;
             // Deliver straight to the slider (never window key routing): no keystroke can reach
             // the login panel, a menu or the world camera.
-            if (!slider->handleKeyHere(key, MASK_NONE)) break;
+            if (!functionalNudgeKey(slider, key)) break;
             ++nudges;
         }
         if (nudges) mFunctionalObserved["click"]["keyboard_nudges"] = nudges;
@@ -5215,7 +5235,7 @@ private:
         {
             const KEY key = dial->getValue().asReal() < target_value.asReal() ?
                 KEY_RIGHT : KEY_LEFT;
-            if (!dial->handleKeyHere(key, MASK_NONE)) break; // direct, never window key routing
+            if (!functionalNudgeKey(dial, key)) break; // direct, guarded, never window key routing
             ++nudges;
         }
         if (nudges) mFunctionalObserved["click"]["keyboard_nudges"] = nudges;
@@ -5232,7 +5252,7 @@ private:
         {
             const KEY key = dial->getValue().asReal() < target_value.asReal() ?
                 KEY_RIGHT : KEY_LEFT;
-            if (!dial->handleKeyHere(key, MASK_NONE)) break; // direct target delivery only
+            if (!functionalNudgeKey(dial, key)) break; // direct, guarded target delivery only
             ++nudges;
         }
         mFunctionalObserved["click"]["direct_dial_keys"] = nudges;
@@ -7915,6 +7935,9 @@ private:
             return finishFunctionalInWorldFailure(
                 "global key/mouse bindings were re-enabled during the in-world run; stopped (fail-closed)",
                 "inworld_binding_safety", "binding suspension guard");
+        // A tool must never hold the mouse capture during the run (grab/select would
+        // receive hover and motion); LLViewerWindow also drops it each updateUI.
+        if (gViewerWindow) gViewerWindow->dropToolMouseCaptureWhileWorldSuspended();
         gAwayTriggerTimer.reset(); // idle timer only; never clearAFK()
         return false;
     }
@@ -13325,6 +13348,19 @@ void ALUIPerfSelfTest::recordKitWidgetTree(LLView* root)
             visit(child);
     };
     visit(root);
+}
+
+void ALUIPerfSelfTest::quitAborted()
+{
+    // A logout was cancelled (e.g. the unsaved notecard/script dialog).  With no runner left
+    // to police the session it continues as a normal one: nothing may stay suspended.  (With a
+    // runner still active the run owns the flags and ends them itself.)  A logout-blocking
+    // dialog that is NOT cancelled leaves the process to the wrapper's timeout/hard-kill.
+    if (!sRunner)
+    {
+        gViewerInput.setGlobalBindsSuspended(false);
+        gViewerInput.setWorldInputSuspended(false);
+    }
 }
 
 bool ALUIPerfSelfTest::suppressSettingsSave()

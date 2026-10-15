@@ -184,6 +184,21 @@ the whole run (login, in-world, teardown and logout):
    Director hotkey or auto-chat), `handleKeyUp` never reaches a gesture release, and
    `handleUnicodeChar` skips the Return remap and menu jump keys.
 
+5. **Tool clicks, tool mouse capture, picks.** While the world flag is set
+   `LLViewerWindow::handleAnyMouseClick` is UI dispatch only: a click the UI does not
+   take, or any click while the UI is disabled, is dropped and never reaches the tool
+   manager or the pie menu (and `functionalInputSafe` refuses to inject while the UI is
+   disabled). Only UI views may hold the mouse capture: `dropToolMouseCaptureWhileWorldSuspended`
+   removes a tool's capture WITHOUT its `onMouseCaptureLost()` callback (a grab would
+   send there) at the top of click dispatch, `updateUI`, scroll wheel, before every
+   synthetic mouse move, before parking, and every in-world frame; a tool therefore
+   never receives captor hover or motion (`ObjectGrabUpdate`). `pickAsync` schedules
+   nothing and `pickImmediate` returns an empty pick.
+6. **Cancelled logout.** If the logout is cancelled (unsaved notecard/script dialog,
+   `LLAppViewer::abortQuit`), `ALUIPerfSelfTest::quitAborted` lifts both flags when no
+   runner is left. The harness does not answer a logout-blocking dialog; an uncancelled
+   one is ended by the wrapper's timeout and hard-kill grace.
+
 Injection routes (every one in `aluiperfselftest.cpp`):
 
 | Injection | Route |
@@ -191,7 +206,8 @@ Injection routes (every one in `aluiperfselftest.cpp`):
 | mouse move (`functionalMoveMouse`) | `handleMouseMove` (AFK-guarded; hover gated) |
 | click down/up (`functionalMouseButton`) | `handleAnyMouseClick` (binds suspended; target preverified) |
 | slider/dial drag `updateUI()` | UI hover only (world tool hover gated) |
-| slider/dial arrow nudges, Tab, Esc | `widget->handleKeyHere` / `floater->handleKeyHere` direct |
+| slider/dial arrow nudges | `functionalNudgeKey` (focus the widget, then guarded `functionalDeliverKey`) |
+| Tab, Esc | `director->handleKeyHere` / `floater->handleKeyHere` direct |
 | Ctrl+Z (`sld_diffuse`) | `functionalDeliverKey` -> focused non-text control `handleKeyHere` |
 | Ctrl+A in text rows | `functionalSelectAll` -> `LLLineEditor/LLTextEditor::selectAll()` |
 | typed characters | `functionalDeliverChar` -> `handleUnicodeCharHere` |

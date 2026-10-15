@@ -43,6 +43,9 @@ public:
     static bool suppressSettingsSave();
     static bool suppressCredentialSave();
     static bool isActive();
+
+    // LLAppViewer::abortQuit(): lifts the in-world input suspension when no runner is left.
+    static void quitAborted();
 };
 
 #endif

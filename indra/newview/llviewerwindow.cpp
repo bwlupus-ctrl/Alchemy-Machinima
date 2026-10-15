@@ -1126,9 +1126,25 @@ void LLViewerWindow::handlePieMenu(S32 x, S32 y, MASK mask)
     }
 }
 
+// Functional self-test (in-world): while world input is suspended, only UI views may hold the
+// mouse capture.  A tool (grab, select, pie ...) holding it would receive hover, clicks and
+// wheel and could send ObjectGrabUpdate / ObjectDeGrab / ObjectSelect.  Drop it WITHOUT the
+// onMouseCaptureLost() callback (which some tools turn into a network message).  Returns true
+// when a non-UI capture was dropped.  A no-op in every normal session.
+bool LLViewerWindow::dropToolMouseCaptureWhileWorldSuspended()
+{
+    if (!gViewerInput.worldInputSuspended()) return false;
+    LLMouseHandler* captor = gFocusMgr.getMouseCapture();
+    if (!captor || dynamic_cast<LLView*>(captor)) return false;
+    gFocusMgr.removeMouseCaptureWithoutCallback(captor);
+    if (mWindow) mWindow->setMouseClipping(false);
+    return true;
+}
+
 bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down, bool& is_toolmgr_action)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    dropToolMouseCaptureWhileWorldSuspended();
     const char* buttonname = "";
     const char* buttonstatestr = "";
     S32 x = pos.mX;
@@ -1289,6 +1305,14 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
             {
                 LL_INFOS() << buttonname << " Mouse " << buttonstatestr << " not handled by view" << LL_ENDL;
             }
+    }
+
+    // Functional self-test (in-world): UI dispatch only.  A click the UI did not take (or any
+    // click while the UI is disabled) is DROPPED: it never reaches the tool manager (grab,
+    // sit, select ...) or the pie menu.  Up-clicks stay "handled" as for the OS.
+    if (gViewerInput.worldInputSuspended())
+    {
+        return !down;
     }
 
     // Do not allow tool manager to handle mouseclicks if we have disconnected
@@ -3751,6 +3775,7 @@ void LLViewerWindow::handleScrollWheel(LLScrollDelta delta)
     static LLCachedControl<F32> scroll_sensitivity(gSavedSettings, "MouseWheelScrollSensitivity", 1.f);
     delta.mPrecise *= scroll_sensitivity;
 
+    dropToolMouseCaptureWhileWorldSuspended();
     LLMouseHandler* mouse_captor = gFocusMgr.getMouseCapture();
     if( mouse_captor )
     {
@@ -4018,6 +4043,10 @@ void LLViewerWindow::updateUI()
 
         gDebugRaycastParticle = gPipeline.lineSegmentIntersectParticle(gDebugRaycastStart, gDebugRaycastEnd, &gDebugRaycastParticleIntersection, NULL);
     }
+
+    // Functional self-test (in-world): a tool holding the mouse capture must not receive the
+    // captor hover below (ObjectGrabUpdate while the synthetic mouse is parked).
+    dropToolMouseCaptureWhileWorldSuspended();
 
     updateMouseDelta();
     updateKeyboardFocus();
@@ -4932,6 +4961,11 @@ void LLViewerWindow::pickAsync( S32 x,
                                 bool pick_unselectable,
                                 bool pick_reflection_probes)
 {
+    // Functional self-test (in-world): no world pick is scheduled (tool dispatch is dropped too).
+    if (gViewerInput.worldInputSuspended())
+    {
+        return;
+    }
     static LLCachedControl<bool> select_invisible_objects(gSavedSettings, "SelectInvisibleObjects");
     // "Show Debug Alpha" means no object actually transparent
     bool in_build_mode = LLFloaterReg::instanceVisible("build");
@@ -4997,6 +5031,11 @@ void LLViewerWindow::returnEmptyPicks()
 // Performs the GL object/land pick.
 LLPickInfo LLViewerWindow::pickImmediate(S32 x, S32 y_from_bot, bool pick_transparent, bool pick_rigged, bool pick_particle, bool pick_unselectable, bool pick_reflection_probe)
 {
+    // Functional self-test (in-world): world picks return nothing.
+    if (gViewerInput.worldInputSuspended())
+    {
+        return LLPickInfo();
+    }
     static LLCachedControl<bool> select_invisible_objects(gSavedSettings, "SelectInvisibleObjects");
     bool in_build_mode = LLFloaterReg::instanceVisible("build");
     if ((in_build_mode && select_invisible_objects) || LLDrawPoolAlpha::sShowDebugAlpha)
