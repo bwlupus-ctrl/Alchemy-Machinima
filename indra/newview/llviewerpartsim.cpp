@@ -859,6 +859,14 @@ void LLViewerPartSim::updateSimulation()
                         mViewerPartSources[i]->mSteppedHold = 2;
                         source_dt += mViewerPartSources[i]->mStepDebt;
                         mViewerPartSources[i]->mStepDebt = 0.f;
+                        if (vobj->isAttachment())
+                        {
+                            StepAnimDeferredSource deferred;
+                            deferred.mSource = mViewerPartSources[i];
+                            deferred.mDelta = source_dt;
+                            mStepAnimDeferredSources.push_back(deferred);
+                            upd = false;
+                        }
                     }
                 }
                 if (upd) mViewerPartSources[i]->update(source_dt);
@@ -935,6 +943,27 @@ void LLViewerPartSim::updateSimulation()
     updatePartBurstRate() ;
 
     //LL_INFOS() << "Particles: " << sParticleCount << " Adaptive Rate: " << sParticleAdaptiveRate << LL_ENDL;
+}
+
+void LLViewerPartSim::refreshStepAnimAttachmentSourcePositions()
+{
+    LL_PROFILE_ZONE_NAMED("StepAnim::particleSources");
+    for (StepAnimDeferredSource& deferred : mStepAnimDeferredSources)
+    {
+        if (deferred.mSource.notNull() && !deferred.mSource->isDead())
+        {
+            deferred.mSource->update(deferred.mDelta);
+        }
+    }
+    mStepAnimDeferredSources.clear();
+    for (LLPointer<LLViewerPartSource>& source : mViewerPartSources)
+    {
+        LLViewerObject* object = source->mSourceObjectp;
+        if (!object || object->isDead() || !object->isAttachment()) continue;
+        LLVOAvatar* avatar = object->getAvatar();
+        if (!ALSteppedAnimRuntime::instance().decisionFor(avatar)) continue;
+        source->mPosAgent = object->getRenderPosition();
+    }
 }
 
 void LLViewerPartSim::updatePartBurstRate()

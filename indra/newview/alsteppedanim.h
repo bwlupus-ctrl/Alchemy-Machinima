@@ -40,7 +40,7 @@ struct Config
     F32 adaptMinDwell = .25f;
     F32 backgroundRate = 8.f;
     S32 what = WHAT_POSE_POSITION;
-    bool face = false;
+    bool face = true;
     bool gaze = true;
     bool flexi = true;
     bool attachFX = false;
@@ -103,6 +103,8 @@ struct Assignment
 
 Assignment resolveActor(const Config&, const ActorFacts&, F64 roto_phase);
 bool ghostMayInherit(const Config&, const ActorFacts&);
+bool inheritAttachedAssignment(const Assignment& source, U64 source_seed,
+                               Assignment& attached, U64& attached_seed);
 void applyActorCap(const Config&, const std::vector<ActorFacts>&, std::vector<Assignment>&);
 U8 heldClasses(const Config&, S32 what);
 F64 actorPhase(const Config&, U64 seed, F64 roto_phase);
@@ -176,6 +178,7 @@ bool smearHistoryReady(bool previous_valid, size_t previous_size, size_t current
 F32 unitHash(U64 seed, S64 a, U32 b, U32 c);
 
 U32 overlayRenderFrame(U32 current_frame);
+bool paletteNeedsOverlayRebuild(U32 cache_frame, U32 current_frame);
 bool preservePreviousOverlayPalette(U32 last_frame, U32 overlay_frame, U32 render_frame);
 bool paletteContainsOverlay(U32 cache_frame, U32 overlay_frame, U32 current_frame);
 bool paletteReadyForOverlay(U32 cache_frame, U32 overlay_frame, U32 render_frame,

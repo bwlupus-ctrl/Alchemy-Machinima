@@ -328,6 +328,20 @@ template<> template<> void stepped_object::test<10>()
     ensure("T10 camera ghost cannot inherit", !ALSteppedAnim::ghostMayInherit(c, f));
     f.cameraMounted = false; ensure("T10 eligible ghost can inherit", ALSteppedAnim::ghostMayInherit(c, f));
 
+    ALSteppedAnim::Assignment wearer;
+    wearer.stepped = true; wearer.rate = 8.f; wearer.phase = .375;
+    wearer.heldClasses = ALSteppedAnim::JC_BODY | ALSteppedAnim::JC_FACE;
+    ALSteppedAnim::Assignment attached;
+    U64 attached_seed = 91;
+    ensure("T10 attached animesh inherits a stepped wearer",
+        ALSteppedAnim::inheritAttachedAssignment(wearer, 42, attached, attached_seed));
+    ensure("T10 attached animesh inherits assignment, seed and phase",
+        attached.stepped && attached.rate == wearer.rate && attached.phase == wearer.phase &&
+        attached.heldClasses == wearer.heldClasses && attached_seed == 42);
+    wearer.stepped = false;
+    ensure("T10 smooth wearer is not inherited",
+        !ALSteppedAnim::inheritAttachedAssignment(wearer, 7, attached, attached_seed));
+
     c = ALSteppedAnim::Config(); c.enabled = true; c.mode = ALSteppedAnim::MODE_MIXED;
     f = ALSteppedAnim::ActorFacts(); f.drawn = true; f.inCast = true;
     c.scope = ALSteppedAnim::SCOPE_SELECTED;
@@ -402,6 +416,10 @@ template<> template<> void stepped_object::test<11>()
 
     ensure_equals("R1 palette targets about-to-render frame",
         overlayRenderFrame(41), U32(42));
+    ensure("R3 idle-built palette is invalidated even when the step pose needs no writes",
+        paletteNeedsOverlayRebuild(42, 41));
+    ensure("R3 prior rendered palette is not mistaken for an idle-built current palette",
+        !paletteNeedsOverlayRebuild(41, 41));
     ensure("R1 palette preserves contiguous rendered hold",
         preservePreviousOverlayPalette(41, 42, 42));
     ensure("R1 palette does not preserve stale frame",
@@ -420,6 +438,10 @@ template<> template<> void stepped_object::test<11>()
         !hasOverlayWrites(std::vector<U8>(160, 0), 0));
     ensure("R1 root write is non-empty bookkeeping",
         hasOverlayWrites(std::vector<U8>(), 2));
+    ensure("R3 no-write capture still needs the about-to-render palette boundary",
+        !paletteReadyForOverlay(42, 0xFFFFFFFF, 42, 9, 9));
+    ensure("R3 tagged no-write capture retains a valid real-motion palette",
+        paletteReadyForOverlay(42, 42, 42, 9, 9));
 }
 
 // T12: preset completeness/config clamps/effective rates/Roto mapping.

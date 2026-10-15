@@ -72,6 +72,7 @@ private:
         LLVOAvatar::StepAnimLabelState mLabels;
         LLVector3 mRootDelta;
         bool mDropAfterRestore = false;
+        bool mPaletteOverlay = false;
         bool mRenderStateMismatchLogged = false;
     };
 

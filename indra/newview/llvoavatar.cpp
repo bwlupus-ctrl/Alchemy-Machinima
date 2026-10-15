@@ -37,6 +37,7 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include <cmath>
 #include <cstring>
 #include <sstream>
 
@@ -11487,6 +11488,7 @@ const LLVOAvatar::MatrixPaletteCache& LLVOAvatar::updateSkinInfoMatrixPalette(co
         if (mStepAnimOverlayFrame == gFrameCount)
         {
             entry.mOverlayFrame = gFrameCount;
+            entry.mSkinInfo = const_cast<LLMeshSkinInfo*>(skin);
         }
 
         // [BDMerge A5.4-1b] Stash the outgoing palette as the previous frame's
@@ -11551,7 +11553,7 @@ U32 LLVOAvatar::invalidateSkinPalettesForOverlay()
     {
         MatrixPaletteCache& entry = item.second;
         entry.mOverlayFrame = overlay_frame;
-        if (entry.mFrame == overlay_frame)
+        if (ALSteppedAnim::paletteNeedsOverlayRebuild(entry.mFrame, gFrameCount))
         {
             entry.mRebuildNoRoll = true;
             entry.mFrame = gFrameCount;
@@ -11598,84 +11600,178 @@ void LLVOAvatar::markStepAnimPoseChanged()
 void LLVOAvatar::syncStepAnimAttachmentMatrices()
 {
     U32 drawable_count = 0;
-    std::function<void(LLViewerObject*)> update_tree = [&update_tree, &drawable_count](LLViewerObject* object)
+    std::function<void(LLViewerObject*)> update_children = [&update_children, &drawable_count](LLViewerObject* object)
     {
         if (!object || object->isDead()) return;
         if (object->mDrawable.notNull())
         {
-            // RIGGED is drawable-wide: a drawable can also contain rigid faces.
-            // Refresh every model matrix, then retain the normal pipeline move.
-            object->mDrawable->updateXform(true);
-            gPipeline.markMoved(object->mDrawable);
+            object->mDrawable->getXform()->updateMatrix();
             ++drawable_count;
         }
-        for (LLViewerObject* child : object->getChildren()) update_tree(child);
+        for (LLViewerObject* child : object->getChildren()) update_children(child);
     };
     for (const auto& item : mAttachmentPoints)
         if (item.second)
             for (LLViewerObject* object : item.second->mAttachedObjects)
-                update_tree(object);
+            {
+                if (!object || object->isDead()) continue;
+                if (object->mDrawable.isNull())
+                {
+                    for (LLViewerObject* child : object->getChildren()) update_children(child);
+                    continue;
+                }
+                LLDrawable* root = object->mDrawable;
+                const LLMatrix4 before = root->getWorldMatrix();
+                root->getXform()->updateMatrix();
+                ++drawable_count;
+                if (std::memcmp(before.mMatrix, root->getWorldMatrix().mMatrix,
+                                sizeof(before.mMatrix)) == 0)
+                {
+                    continue;
+                }
+                for (LLViewerObject* child : object->getChildren()) update_children(child);
+                // Retain normal spatial processing once per changed linkset. Child
+                // matrices are already current and must not enter updateMove(),
+                // where spinning children would dirty their spatial groups.
+                gPipeline.markMoved(root);
+            }
     mStepAnimAttachmentPoseEpoch = mStepAnimPoseEpoch;
     mStepAnimAttachmentDrawableCount = drawable_count;
 }
 
-U32 LLVOAvatar::verifyStepAnimRenderState(U32 render_frame) const
+void LLVOAvatar::captureStepAnimRenderState()
 {
-    U32 mismatch = STEP_ANIM_RENDER_OK;
-    for (const auto& item : mMatrixPaletteCache)
+    mStepAnimHeldJointWorld.resize(LL_CHARACTER_MAX_ANIMATED_JOINTS);
+    mStepAnimHeldJointValid.assign(LL_CHARACTER_MAX_ANIMATED_JOINTS, false);
+    for (S32 joint_num = 0; joint_num < LL_CHARACTER_MAX_ANIMATED_JOINTS; ++joint_num)
     {
-        const MatrixPaletteCache& entry = item.second;
-        if (!ALSteppedAnim::paletteReadyForOverlay(
-                entry.mFrame, entry.mOverlayFrame, render_frame,
-                entry.mPoseEpoch, mStepAnimPoseEpoch))
+        LLJoint* joint = getJoint(joint_num);
+        if (joint)
         {
-            mismatch |= STEP_ANIM_RENDER_PALETTE;
-            break;
+            mStepAnimHeldJointWorld[joint_num] = joint->getWorldMatrix4a();
+            mStepAnimHeldJointValid[joint_num] = true;
         }
     }
 
-    U32 drawable_count = 0;
-    bool attachment_mismatch = false;
-    std::function<void(const LLViewerObject*)> count_tree =
-        [&count_tree, &drawable_count, &attachment_mismatch](const LLViewerObject* object)
+    mStepAnimExpectedAttachments.clear();
+    struct ExpectedXform
+    {
+        LLVector3 mPosition;
+        LLQuaternion mRotation;
+        LLVector3 mScale;
+        LLMatrix4 mMatrix;
+        bool mScaleChildOffset = false;
+    };
+    std::function<void(LLViewerObject*, const ExpectedXform*, const std::string&)> capture_tree;
+    capture_tree = [this, &capture_tree](LLViewerObject* object, const ExpectedXform* parent,
+                                        const std::string& parent_path)
     {
         if (!object || object->isDead()) return;
-        if (object->mDrawable.notNull())
+        if (object->mDrawable.isNull())
         {
-            ++drawable_count;
-            // getXform() is non-const; this verifier only reads the xform.
-            LLXformMatrix* xform = const_cast<LLDrawable*>(object->mDrawable.get())->getXform();
-            LLVector3 expected_position = xform->getPosition();
-            LLQuaternion expected_rotation = xform->getRotation();
-            LLXform* parent = xform->getParent();
-            if (parent)
-            {
-                if (parent->getScaleChildOffset())
-                    expected_position.scaleVec(parent->getScale());
-                expected_position *= parent->getWorldRotation();
-                expected_position += parent->getWorldPosition();
-                expected_rotation *= parent->getWorldRotation();
-            }
-            LLMatrix4 expected_matrix;
-            expected_matrix.initAll(xform->getScale(), expected_rotation, expected_position);
-            if (std::memcmp(expected_matrix.mMatrix,
-                            xform->getWorldMatrix().mMatrix,
-                            sizeof(expected_matrix.mMatrix)) != 0)
-            {
-                attachment_mismatch = true;
-            }
+            for (LLViewerObject* child : object->getChildren())
+                capture_tree(child, parent, parent_path);
+            return;
         }
-        for (const LLViewerObject* child : object->getChildren()) count_tree(child);
+        LLDrawable* drawable = object->mDrawable;
+        LLXformMatrix* xform = drawable->getXform();
+        ExpectedXform expected;
+        expected.mPosition = xform->getPosition();
+        expected.mRotation = xform->getRotation();
+        expected.mScale = xform->getScale();
+        expected.mScaleChildOffset = xform->getScaleChildOffset();
+        if (parent)
+        {
+            if (parent->mScaleChildOffset) expected.mPosition.scaleVec(parent->mScale);
+            expected.mPosition *= parent->mRotation;
+            expected.mPosition += parent->mPosition;
+            expected.mRotation *= parent->mRotation;
+        }
+        else if (LLXform* xform_parent = xform->getParent())
+        {
+            if (xform_parent->getScaleChildOffset()) expected.mPosition.scaleVec(xform_parent->getScale());
+            expected.mPosition *= xform_parent->getWorldRotation();
+            expected.mPosition += xform_parent->getWorldPosition();
+            expected.mRotation *= xform_parent->getWorldRotation();
+        }
+        expected.mMatrix.initAll(expected.mScale, expected.mRotation, expected.mPosition);
+        const std::string path = parent_path.empty()
+            ? std::string("attachment/") + object->getID().asString()
+            : parent_path + "/" + object->getID().asString();
+        StepAnimExpectedAttachment item;
+        item.mObject = object;
+        item.mRenderMatrix = drawable->isRoot() || !parent ? expected.mMatrix : parent->mMatrix;
+        item.mPath = path;
+        mStepAnimExpectedAttachments.push_back(item);
+        for (LLViewerObject* child : object->getChildren()) capture_tree(child, &expected, path);
     };
     for (const auto& item : mAttachmentPoints)
         if (item.second)
-            for (const LLViewerObject* object : item.second->mAttachedObjects)
-                count_tree(object);
-    if (attachment_mismatch ||
-        mStepAnimAttachmentPoseEpoch != mStepAnimPoseEpoch ||
-        mStepAnimAttachmentDrawableCount != drawable_count)
+            for (LLViewerObject* object : item.second->mAttachedObjects)
+                capture_tree(object, nullptr, std::string());
+}
+
+U32 LLVOAvatar::verifyStepAnimRenderState(U32 render_frame)
+{
+    U32 mismatch = STEP_ANIM_RENDER_OK;
+    constexpr F32 tolerance = 1.e-4f;
+    auto log_mismatch = [this](const std::string& path)
     {
-        mismatch |= STEP_ANIM_RENDER_ATTACHMENT;
+        if (mStepAnimRenderMismatchPaths.insert(path).second)
+            LL_WARNS("StepAnim") << "Held render state mismatch for " << getID()
+                << " at " << path << LL_ENDL;
+    };
+    auto floats_match = [tolerance](const F32* a, const F32* b, size_t count)
+    {
+        for (size_t i = 0; i < count; ++i)
+            if (!std::isfinite(a[i]) || !std::isfinite(b[i]) || std::fabs(a[i] - b[i]) > tolerance)
+                return false;
+        return true;
+    };
+    for (const auto& item : mMatrixPaletteCache)
+    {
+        const MatrixPaletteCache& entry = item.second;
+        if (entry.mFrame != render_frame || entry.mOverlayFrame != render_frame ||
+            entry.mSkinInfo.isNull()) continue;
+        const LLMeshSkinInfo* skin = entry.mSkinInfo;
+        const U32 count = LLSkinningUtil::getMeshJointCount(skin);
+        std::vector<LLMatrix4a> expected(count);
+        bool valid = skin->mInvBindMatrix.size() >= count && skin->mJointNums.size() >= count;
+        for (U32 joint = 0; valid && joint < count; ++joint)
+        {
+            const S32 joint_num = skin->mJointNums[joint];
+            valid = joint_num >= 0 && static_cast<size_t>(joint_num) < mStepAnimHeldJointWorld.size() &&
+                mStepAnimHeldJointValid[joint_num];
+            if (valid) matMulUnsafe(skin->mInvBindMatrix[joint],
+                                   mStepAnimHeldJointWorld[joint_num], expected[joint]);
+        }
+        std::vector<F32> expected_gl(count * 12);
+        for (U32 joint = 0; valid && joint < count; ++joint)
+        {
+            const F32* m = expected[joint].mMatrix[0].getF32ptr();
+            F32* out = &expected_gl[joint * 12];
+            out[0] = m[0]; out[1] = m[1]; out[2] = m[2]; out[3] = m[12];
+            out[4] = m[4]; out[5] = m[5]; out[6] = m[6]; out[7] = m[13];
+            out[8] = m[8]; out[9] = m[9]; out[10] = m[10]; out[11] = m[14];
+        }
+        if (!valid || entry.mGLMp.size() != expected_gl.size() ||
+            !floats_match(entry.mGLMp.data(), expected_gl.data(), expected_gl.size()))
+        {
+            mismatch |= STEP_ANIM_RENDER_PALETTE;
+            log_mismatch(std::string("palette/") + llformat("%016llx", item.first));
+        }
+    }
+
+    for (const StepAnimExpectedAttachment& expected : mStepAnimExpectedAttachments)
+    {
+        LLViewerObject* object = expected.mObject;
+        if (!object || object->isDead() || object->mDrawable.isNull() ||
+            !floats_match(&object->mDrawable->getRenderMatrix().mMatrix[0][0],
+                          &expected.mRenderMatrix.mMatrix[0][0], 16))
+        {
+            mismatch |= STEP_ANIM_RENDER_ATTACHMENT;
+            log_mismatch(expected.mPath);
+        }
     }
     return mismatch;
 }

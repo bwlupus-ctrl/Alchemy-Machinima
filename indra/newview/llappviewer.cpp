@@ -85,6 +85,7 @@
 #include "aldirectorswitcher.h" // presentation-time camera switch schedule
 #include "altron.h"             // [TronT0] shared clock latch (idle tick)
 #include "alsteppedanimruntime.h"
+#include "llviewerpartsim.h"
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
 #include "llpathcamera.h"    // per-node path camera source (authored actor+camera TAKE)
@@ -1656,6 +1657,7 @@ bool LLAppViewer::doFrame()
         if (ALSteppedAnimRuntime::sHasOverlay)
         {
             ALSteppedAnimRuntime::instance().endFrameRestore();
+            LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions();
         }
 
         {
@@ -5780,6 +5782,10 @@ void LLAppViewer::idle()
     if (ALSteppedAnimRuntime::sActive)
     {
         ALSteppedAnimRuntime::instance().applyHeld();
+        if (ALSteppedAnimRuntime::sHasOverlay)
+        {
+            LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions();
+        }
     }
 
     // Handle shutdown process, for example,

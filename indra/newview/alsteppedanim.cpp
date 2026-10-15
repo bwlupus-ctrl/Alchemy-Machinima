@@ -184,6 +184,15 @@ bool ghostMayInherit(const Config& raw, const ActorFacts& facts)
         (!cfg.excludeCameraMounted || !facts.cameraMounted) && ov.mode != 1;
 }
 
+bool inheritAttachedAssignment(const Assignment& source, U64 source_seed,
+                               Assignment& attached, U64& attached_seed)
+{
+    if (!source.stepped) return false;
+    attached = source;
+    attached_seed = source_seed;
+    return true;
+}
+
 void applyActorCap(const Config& raw, const std::vector<ActorFacts>& facts,
                    std::vector<Assignment>& assignments)
 {
@@ -312,6 +321,11 @@ bool smearHistoryReady(bool previous_valid, size_t previous_size, size_t current
 U32 overlayRenderFrame(U32 current_frame)
 {
     return current_frame + 1;
+}
+
+bool paletteNeedsOverlayRebuild(U32 cache_frame, U32 current_frame)
+{
+    return cache_frame == overlayRenderFrame(current_frame);
 }
 
 bool preservePreviousOverlayPalette(U32 last_frame, U32 overlay_frame, U32 render_frame)
@@ -583,7 +597,7 @@ const std::vector<Preset>& builtInPresets()
         c = Config(); c.scope = SCOPE_SELECTED; c.boil = true; c.boilAmount = .3f; add("harryhausen", "Harryhausen creature", c);
         c = Config(); c.face = true; c.matchRoto = true; add("rotoscope", "Rotoscope (A Scanner Darkly style)", c);
         c = Config(); c.rate = 16.f; c.offset = OFFSET_LOCKED; add("undercrank", "Silent film undercrank", c);
-        c = Config(); c.rate = 10.f; c.what = WHAT_POSE; c.gaze = false; c.boil = true; c.boilAmount = .3f;
+        c = Config(); c.rate = 10.f; c.what = WHAT_POSE; c.face = false; c.gaze = false; c.boil = true; c.boilAmount = .3f;
         add("puppet", "Puppet / marionette", c);
         c = Config(); c.rate = 6.f; c.offset = OFFSET_LOCKED; add("retro_sprite", "Retro sprite", c);
         c = Config(); c.rate = 4.f; c.offset = OFFSET_LOCKED; add("strobe", "Choppy dream / strobe", c);

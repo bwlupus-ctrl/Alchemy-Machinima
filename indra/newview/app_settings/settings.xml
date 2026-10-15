@@ -27,7 +27,7 @@
     <key>StepAnimWhatSteps</key>
     <map><key>Comment</key><string>[StepAnim] What is held: 0 pose, 1 pose and position.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>1</integer></map>
     <key>StepAnimFace</key>
-    <map><key>Comment</key><string>[StepAnim] Hold Bento face bones and voice lip-sync.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+    <map><key>Comment</key><string>[StepAnim] Hold Bento face bones and voice lip-sync.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>1</integer></map>
     <key>StepAnimGaze</key>
     <map><key>Comment</key><string>[StepAnim] Hold neck, head, eye and look-at joints.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>1</integer></map>
     <key>StepAnimFlexi</key>

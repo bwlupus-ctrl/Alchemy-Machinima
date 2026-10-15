@@ -152,9 +152,9 @@ This makes the overlay invisible outside the render window, including for joints
 ### 3.6 Attachment matrices (review MAJOR 5)
 Rigid attachment drawables are parented to joint xforms (`llviewerjointattachment.cpp:115-128`) and normally re-resolved only when `gPipeline.updateMove` processes a queued move in `display()` (queued by `idleUpdateMisc`, `llvoavatar.cpp:3135+`, and only on detailed-update frames). Two problems follow if nothing else is done: after the window closes, the cached drawable matrices would stay held until the next display; and an avatar with no queued move this frame would draw its attachments at the smooth pose on a held body.
 
-`syncAttachmentMatrices(av)` is called by `applyHeld` (after writing the held pose) and by `endFrameRestore` (after restoring the smooth pose). For every attachment point in `mAttachmentPoints`, every attached object, and that object's child prims in parent-before-child order, it calls `drawable->updateXform(true)` and `gPipeline.markMoved(drawable)`: it recomputes the world matrix from the (now held, or now smooth) parent joint and the unchanged local transform, then retains normal spatial processing. It includes drawables flagged rigged because that flag is drawable-wide and the same drawable can contain rigid faces whose model matrix must follow the held joint. The queued `updateMove` still runs in `display()` as in stock and computes the same matrices.
+`syncAttachmentMatrices(av)` is called by `applyHeld` (after writing the held pose) and by `endFrameRestore` (after restoring the smooth pose). For every attachment point it refreshes the linkset root matrix first; unchanged roots skip the linkset. Changed linksets refresh child matrices in parent-before-child order and queue only the root with `gPipeline.markMoved`, avoiding child `updateXform` rebuilds for spinning prims. The ordinary `mMovedList` is drained earlier in idle, before `applyHeld`; display drains `mMovedBridge`, so this explicit matrix refresh is what makes the held pose visible in the current render window.
 
-Result: inside the window, attachments render at the held pose; outside it, everything that reads attachment matrices sees smooth ones: cameras or focus targeted at an attachment (CineCam/flycam/DoF focus on an object, run in the idle camera dispatch), build and selection tools, manipulators and picking (input handling). Cost: one matrix compose per attachment prim per call (§16).
+Result: inside the window, attachments render at the held pose; outside it, everything that reads attachment matrices sees smooth ones: cameras or focus targeted at an attachment (CineCam/flycam/DoF focus on an object, run in the idle camera dispatch), build and selection tools, manipulators and picking (input handling). Cost: one matrix compose per prim in each changed attachment linkset (§16).
 
 ### 3.7 Name tags and nameplates follow the held root (review MAJOR 4)
 Only when ROOT is held (Pose + position); in Pose mode the body travels smoothly and the labels already match.
@@ -313,7 +313,7 @@ namespace ALSteppedAnim
         S32 mode = MODE_FIXED; F32 rate = 12.f; F32 fastRate = 24.f;
         F32 adaptThreshold = 1.5f; F32 adaptHysteresis = 0.3f; F32 adaptMinDwell = 0.25f;
         F32 backgroundRate = 8.f; S32 what = WHAT_POSE_POSITION;
-        bool face = false; bool gaze = true; bool flexi = true; bool attachFX = false;
+        bool face = true; bool gaze = true; bool flexi = true; bool attachFX = false;
         S32 clock = CLOCK_CAPTURE; S32 offset = OFFSET_RANDOM; F32 phase = 0.f; S32 baseFps = 24;
         bool boil = false; F32 boilAmount = 0.6f; S32 boilTicks = 2;
         bool impact = false; S32 impactTicks = 3; F32 impactThreshold = 25.f;
@@ -432,7 +432,7 @@ namespace ALSteppedAnim
 }
 ```
 
-Viewer side (not pure): `alsteppedanimruntime.h/.cpp`, singleton `ALSteppedAnimRuntime` with `static bool sActive` (master on) and `static bool sHasOverlay` (any `W` non-empty). It owns the per-actor map `LLUUID → {ActorState, PoseBuffer S, H, H_prev, C, W, classes, skeletonSerial, overrideEpoch, nameTagShift}`, `beginFrame()` (plan only), `applyHeld()` (opens the window), `endFrameRestore()` (closes it), `syncAttachmentMatrices()`, the query `const FrameDecision* decisionFor(const LLVOAvatar*)` (used by flexi, particles, spin, lip-sync), the exclusion probes, the Roto Match listener and a debug counter block. The page is `alpanelsteppedanim.h/.cpp` (`root_class` `panel_stepped_anim`).
+Viewer side (not pure): `alsteppedanimruntime.h/.cpp`, singleton `ALSteppedAnimRuntime` with `static bool sActive` (master on) and `static bool sHasOverlay` (render/palette window open, including a zero-write capture frame). It owns the per-actor map `LLUUID → {ActorState, PoseBuffer S, H, H_prev, C, W, classes, skeletonSerial, overrideEpoch, nameTagShift}`, `beginFrame()` (plan only), `applyHeld()` (opens the window), `endFrameRestore()` (closes it), `syncAttachmentMatrices()`, the query `const FrameDecision* decisionFor(const LLVOAvatar*)` (used by flexi, particles, spin, lip-sync), the exclusion probes, the Roto Match listener and a debug counter block. The page is `alpanelsteppedanim.h/.cpp` (`root_class` `panel_stepped_anim`).
 
 ## 12. Presets
 
@@ -459,7 +459,7 @@ Every preset writes all 29. **Any setting not listed in a row = its default (§1
 | 7 | `harryhausen` | Harryhausen creature | Scope 0, Boil 1, BoilAmount 0.3, BoilTicks 2 |
 | 8 | `rotoscope` | Rotoscope (A Scanner Darkly style) | Face 1, MatchRotoInk 1 |
 | 9 | `undercrank` | Silent film undercrank | Rate 16, OffsetMode 1 |
-| 10 | `puppet` | Puppet / marionette | Rate 10, WhatSteps 0, Gaze 0, Boil 1, BoilAmount 0.3, BoilTicks 2 |
+| 10 | `puppet` | Puppet / marionette | Rate 10, WhatSteps 0, Face 0, Gaze 0, Boil 1, BoilAmount 0.3, BoilTicks 2 |
 | 11 | `retro_sprite` | Retro sprite | Rate 6, OffsetMode 1 |
 | 12 | `strobe` | Choppy dream / strobe | Rate 4, OffsetMode 1 |
 | 13 | `hitstop` | Hit-stop action | Rate 24, ImpactHold 1, ImpactTicks 4, ImpactThreshold 20, Smear 1, SmearStrength 0.5 |
@@ -494,7 +494,7 @@ Runtime (login screen and in-world, in the self-test and the wiring audit):
 - **R2 smooth invariance (live).** `StepAnimDebugVerify` (debug, not persisted): right after `endFrameRestore` and again at the top of the next `idle()`, compare every slot the overlay wrote against the saved smooth value. Foreign writes (current ≠ W at restore) are logged, not errors. Assert zero unexpected differences over 600 frames of live animation with every option on.
 - **R3 held velocity zero.** With `BDMergeVelocityBuffer` and `BDMergeVelocityDebug` on, a held actor in Pose + position shows neutral grey (zero) on held frames; step frames show the snap. Visual check for TAA: no ghost trail on held poses.
 - **R4 page.** Every row runtime-proven (value written, read back, consumer clamp honoured); every preset applies exactly §12.2 and shows "modified" after one tracked edit.
-- **R5 benchmark (acceptance, review MAJOR 7).** Tracy zones `StepAnim::beginFrame`, `StepAnim::applyHeld`, `StepAnim::endFrameRestore`, `StepAnim::syncAttachments`, and the counter `paletteRebuilds`. Scene: 50 Bento avatars in view (typical outfits, ~30 attachments each, rigid and rigged), Everyone in view, `StepAnimMaxAvatars` 50, every option on, Release build on the user's machine. Pass: the sum of the zones has mean ≤ 2.5 ms and p95 ≤ 4.0 ms per frame; at the default cap of 24, mean ≤ 1.2 ms; with the master off, ≤ 0.01 ms; `paletteRebuilds` = 0 when no actor is a ghost source.
+- **R5 benchmark (acceptance, review MAJOR 7).** Tracy zones `StepAnim::beginFrame`, `StepAnim::applyHeld`, `StepAnim::endFrameRestore`, `StepAnim::attachmentsApply`, `StepAnim::attachmentsRestore`, and the counter `paletteRebuilds`. Scene: 50 Bento avatars in view (typical outfits, ~30 attachments each, rigid and rigged), Everyone in view, `StepAnimMaxAvatars` 50, every option on, Release build on the user's machine. Pass: the sum of the zones has mean ≤ 2.5 ms and p95 ≤ 4.0 ms per frame; at the default cap of 24, mean ≤ 1.0 ms; with the master off, ≤ 0.01 ms; `paletteRebuilds` = 0 when no actor is a ghost source.
 
 ## 14. Settings
 
@@ -515,7 +515,7 @@ Consumer clamp = what the runtime's `readConfig()` must apply before `ALSteppedA
 | StepAnimAdaptMinDwell | F32 | 0.25 | 0.05 to 2 s (runtime floor: one step, §5) | 1 | `llclamp(finite_or(v, 0.25), 0.05, 2)` |
 | StepAnimBackgroundRate | F32 | 8.0 | 0 to 30 fps; < 2 = smooth | 1 | `v = finite_or(v, 8); v < 2 ? 0 : llclamp(v, 2, 30)` |
 | StepAnimWhatSteps | S32 | 1 | 0 Pose, 1 Pose + position | 1 | `std::clamp(v, 0, 1)` |
-| StepAnimFace | Boolean | 0 | | 1 | bool |
+| StepAnimFace | Boolean | 1 | | 1 | bool |
 | StepAnimGaze | Boolean | 1 | | 1 | bool |
 | StepAnimFlexi | Boolean | 1 | | 1 | bool |
 | StepAnimAttachFX | Boolean | 0 | | 1 | bool |
@@ -581,14 +581,14 @@ Edits go through `setActorStyle`, which ignores non-cast ids (`lldirectorcast.h`
 
 ### 16.2 Per-actor cost
 Per stepped, drawn actor per frame (Bento skeleton ≈ 160 joints incl. 26 collision volumes; A = rigid attachment prims):
-- `applyHeld`: read 160 locals (~7 KB), 5 effector transforms, hash/slerp ops; on held frames one `updateWorldMatrixChildren` (~160 matrix composes) plus `syncAttachmentMatrices` (A matrix composes). About 25 to 45 µs at A ≈ 30.
-- `endFrameRestore`: compare + write of the written slots, one `updateWorldMatrixChildren`, `syncAttachmentMatrices`. About 15 to 30 µs.
+- `applyHeld`: read 160 locals (~7 KB), 5 effector transforms, hash/slerp ops; on held frames one `updateWorldMatrixChildren` (~160 matrix composes). `attachmentsApply` compares each linkset root and only traverses changed linksets, updating child matrices without queuing them. About 20 to 35 µs at A ≈ 30.
+- `endFrameRestore`: compare + write of the written slots, one `updateWorldMatrixChildren`; `attachmentsRestore` has the same root-only queue and unchanged-linkset skip. About 12 to 25 µs.
 - Palette rebuilds: 0 extra unless the actor is a ghost source (§7.2).
 - Boil/smear/ease: ≤ 160 quaternion ops on the frames they apply; ease copies at most one buffer per sub-step (4 per step).
 - Flexi and particles: **save** CPU on held frames.
 - Memory: 5 PoseBuffers per actor (~35 KB).
 
-Estimate: 24 actors ≈ 1.0 ms, 50 actors ≈ 2.0 to 2.5 ms per frame on the main thread. Acceptance is the R5 benchmark (§13): 50 actors mean ≤ 2.5 ms, p95 ≤ 4.0 ms; 24 actors mean ≤ 1.2 ms; off ≤ 0.01 ms. If R5 fails, the first lever is to write only joints whose held value differs from smooth (animated joints only), then lower the default cap. Off: three static-bool tests per frame in `llappviewer.cpp`, and one per flexi / particle source / lip-sync / attachment-spin call site.
+Expected after root-only attachment queuing: 24 actors ≈ 0.7 to 0.9 ms, 50 actors ≈ 1.6 to 2.2 ms per frame on the main thread. Tracy reports `StepAnim::attachmentsApply` and `StepAnim::attachmentsRestore` separately. Acceptance is the R5 benchmark (§13): 50 actors mean ≤ 2.5 ms, p95 ≤ 4.0 ms; 24 actors mean ≤ 1.0 ms; off ≤ 0.01 ms. If R5 fails, the first lever is to write only joints whose held value differs from smooth (animated joints only), then lower the default cap. Off: three static-bool tests per frame in `llappviewer.cpp`, and one per flexi / particle source / lip-sync / attachment-spin call site.
 
 ## 17. Risks, in order
 1. **Overlay ownership and restore** (§3.4). The window is now closed before anything outside rendering runs, so a leak needs a writer *inside* the window: mesh-load callbacks (handled by the ownership rule and the override epoch) or a UI `draw()` that writes pose state (none known; the Poser is excluded). R1d and R2 are the guards.

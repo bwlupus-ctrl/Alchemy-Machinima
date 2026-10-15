@@ -31,6 +31,7 @@
 #include <map>
 #include <deque>
 #include <string>
+#include <set>
 #include <vector>
 
 #include <boost/signals2/trackable.hpp>
@@ -220,6 +221,7 @@ public:
     U32 invalidateSkinPalettesForOverlay();
     U32 invalidateSkinPalettesAfterOverlay();
     void syncStepAnimAttachmentMatrices();
+    void captureStepAnimRenderState();
     void markStepAnimPoseChanged();
     enum EStepAnimRenderMismatch : U32
     {
@@ -227,7 +229,7 @@ public:
         STEP_ANIM_RENDER_PALETTE = 1,
         STEP_ANIM_RENDER_ATTACHMENT = 2
     };
-    U32 verifyStepAnimRenderState(U32 render_frame) const;
+    U32 verifyStepAnimRenderState(U32 render_frame);
     struct StepAnimLabelState
     {
         LLVector3 mNameOriginal, mNameWritten;
@@ -957,6 +959,7 @@ public:
         bool mRebuildNoRoll = false;
         U32 mOverlayFrame = 0xFFFFFFFF;
         U32 mPoseEpoch = 0;
+        LLPointer<LLMeshSkinInfo> mSkinInfo;
 
         MatrixPaletteCache() :
             mFrame(gFrameCount - 1)
@@ -977,6 +980,16 @@ public:
     U32 mStepAnimAttachmentPoseEpoch = 0;
     U32 mStepAnimAttachmentDrawableCount = 0;
     U32 mStepAnimOverlayFrame = 0xFFFFFFFF;
+    struct StepAnimExpectedAttachment
+    {
+        LLPointer<LLViewerObject> mObject;
+        LLMatrix4 mRenderMatrix;
+        std::string mPath;
+    };
+    std::vector<LLMatrix4a> mStepAnimHeldJointWorld;
+    std::vector<bool> mStepAnimHeldJointValid;
+    std::vector<StepAnimExpectedAttachment> mStepAnimExpectedAttachments;
+    std::set<std::string> mStepAnimRenderMismatchPaths;
 
 protected:
     void            releaseMeshData();

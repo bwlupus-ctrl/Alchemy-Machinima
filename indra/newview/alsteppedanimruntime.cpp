@@ -13,6 +13,7 @@
 #include "llagentcamera.h"
 #include "llcharacter.h"
 #include "llcinematiccamera.h"
+#include "llcontrolavatar.h"
 #include "lldirectorcast.h"
 #include "llghostavatar.h"
 #include "lljoint.h"
@@ -29,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <functional>
 #include <limits>
 #include <set>
 
@@ -154,6 +156,7 @@ void ALSteppedAnimRuntime::collectActors()
 {
     std::vector<ALSteppedAnim::ActorFacts> facts;
     std::vector<LLUUID> ids;
+    std::vector<LLUUID> attached_wearers;
     const LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID selected = cast.getSteppedActorId();
     const bool empty_cast = cast.getIds().empty();
@@ -198,6 +201,8 @@ void ALSteppedAnimRuntime::collectActors()
         const LLDirectorCast::ActorStyle::SteppedOverride& ov = cast.getActorStyle(actor_id).mStepped;
         f.ov = {ov.mMode, ov.mRate, ov.mWhat, ov.mRole};
         ids.push_back(avatar->getID());
+        attached_wearers.push_back(avatar->isControlAvatar() && avatar->getAttachedAvatar()
+            ? avatar->getAttachedAvatar()->getID() : LLUUID::null);
         facts.push_back(f);
     }
     std::vector<ALSteppedAnim::Assignment> assignments;
@@ -226,11 +231,48 @@ void ALSteppedAnimRuntime::collectActors()
             }
         }
     }
+    for (U32 i = 0; i < ids.size(); ++i)
+    {
+        if (attached_wearers[i].isNull()) continue;
+        const auto wearer_id = std::find(ids.begin(), ids.end(), attached_wearers[i]);
+        if (wearer_id == ids.end()) continue;
+        const U32 wearer = static_cast<U32>(std::distance(ids.begin(), wearer_id));
+        ALSteppedAnim::inheritAttachedAssignment(
+            assignments[wearer], facts[wearer].seed, assignments[i], facts[i].seed);
+    }
     const S32 before = static_cast<S32>(std::count_if(assignments.begin(), assignments.end(),
         [](const ALSteppedAnim::Assignment& a) { return a.stepped; }));
     ALSteppedAnim::applyActorCap(mConfig, facts, assignments);
-    mPlanned.clear(); mActiveActors = 0;
+    // A worn animesh is part of its wearer, not an independently capped crowd
+    // actor. Re-apply the dependency after the actor cap so the cap boundary can
+    // never leave the visible attachment animating smoothly on a stepped wearer.
     for (U32 i = 0; i < ids.size(); ++i)
+    {
+        if (attached_wearers[i].isNull()) continue;
+        const auto wearer_id = std::find(ids.begin(), ids.end(), attached_wearers[i]);
+        if (wearer_id == ids.end()) continue;
+        const U32 wearer = static_cast<U32>(std::distance(ids.begin(), wearer_id));
+        ALSteppedAnim::inheritAttachedAssignment(
+            assignments[wearer], facts[wearer].seed, assignments[i], facts[i].seed);
+    }
+    mPlanned.clear(); mActiveActors = 0;
+    std::vector<U32> ordered;
+    std::vector<bool> emitted(ids.size(), false);
+    std::function<void(U32)> emit = [&](U32 index)
+    {
+        if (index >= ids.size() || emitted[index] || !assignments[index].stepped) return;
+        if (attached_wearers[index].notNull())
+        {
+            const auto wearer_id = std::find(ids.begin(), ids.end(), attached_wearers[index]);
+            if (wearer_id != ids.end()) emit(static_cast<U32>(std::distance(ids.begin(), wearer_id)));
+        }
+        emitted[index] = true;
+        ordered.push_back(index);
+        for (U32 child = 0; child < ids.size(); ++child)
+            if (!emitted[child] && attached_wearers[child] == ids[index]) emit(child);
+    };
+    for (U32 i = 0; i < ids.size(); ++i) emit(i);
+    for (U32 i : ordered)
         if (assignments[i].stepped)
         {
             Entry& entry = mEntries[ids[i]];
@@ -488,16 +530,24 @@ void ALSteppedAnimRuntime::writeOverlay(LLVOAvatar* avatar, Entry& entry,
     {
         entry.mWrittenMask.clear();
         entry.mRootWrittenMask = 0;
+        mPaletteRebuilds += avatar->invalidateSkinPalettesForOverlay();
+        entry.mPaletteOverlay = true;
+        static LLCachedControl<bool> verify(gSavedSettings, "StepAnimDebugVerify");
+        if (verify) avatar->captureStepAnimRenderState();
+        sHasOverlay = true;
         return;
     }
     entry.mWriteEpoch = avatar->getJointOverrideEpoch();
     avatar->getRootJoint()->updateWorldMatrixChildren();
     avatar->markStepAnimPoseChanged();
     mPaletteRebuilds += avatar->invalidateSkinPalettesForOverlay();
+    entry.mPaletteOverlay = true;
     {
-        LL_PROFILE_ZONE_NAMED("StepAnim::syncAttachments");
+        LL_PROFILE_ZONE_NAMED("StepAnim::attachmentsApply");
         avatar->syncStepAnimAttachmentMatrices();
     }
+    static LLCachedControl<bool> verify(gSavedSettings, "StepAnimDebugVerify");
+    if (verify) avatar->captureStepAnimRenderState();
     if (entry.mRootWrittenMask)
     {
         entry.mRootDelta = render.rootPos - entry.mSmooth.rootPos;
@@ -556,27 +606,6 @@ void ALSteppedAnimRuntime::applyHeld()
             const auto found = mEntries.find(id);
             return found == mEntries.end() ? LLVector3::zero : found->second.mRootDelta;
         });
-    static LLCachedControl<bool> verify(gSavedSettings, "StepAnimDebugVerify");
-    if (verify && sHasOverlay)
-    {
-        const U32 render_frame = ALSteppedAnim::overlayRenderFrame(gFrameCount);
-        for (const LLUUID& id : mPlanned)
-        {
-            Entry& entry = mEntries[id];
-            if (entry.mWrittenMask.empty() && !entry.mRootWrittenMask) continue;
-            LLViewerObject* object = gObjectList.findObject(id);
-            LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
-            const U32 mismatch = avatar
-                ? avatar->verifyStepAnimRenderState(render_frame)
-                : LLVOAvatar::STEP_ANIM_RENDER_ATTACHMENT;
-            if (mismatch && !entry.mRenderStateMismatchLogged)
-            {
-                LL_WARNS("StepAnim") << "Held render state mismatch for " << id
-                    << " flags " << mismatch << LL_ENDL;
-                entry.mRenderStateMismatchLogged = true;
-            }
-        }
-    }
     LL_PROFILE_PLOT("StepAnim actors", mActiveActors);
     LL_PROFILE_PLOT("StepAnim skipped", mSkippedActors);
     LL_PROFILE_PLOT("paletteRebuilds", mPaletteRebuilds);
@@ -616,11 +645,12 @@ void ALSteppedAnimRuntime::restoreOverlay(LLVOAvatar* avatar, Entry& entry)
     {
         root->updateWorldMatrixChildren();
         avatar->markStepAnimPoseChanged();
-        LL_PROFILE_ZONE_NAMED("StepAnim::syncAttachments");
+        LL_PROFILE_ZONE_NAMED("StepAnim::attachmentsRestore");
         avatar->syncStepAnimAttachmentMatrices();
     }
     avatar->restoreStepAnimLabels(entry.mLabels);
-    avatar->invalidateSkinPalettesAfterOverlay();
+    if (entry.mPaletteOverlay) avatar->invalidateSkinPalettesAfterOverlay();
+    entry.mPaletteOverlay = false;
     entry.mWrittenMask.clear(); entry.mRootWrittenMask = 0; entry.mRootDelta.clear();
     if (epoch_changed) entry.mDropAfterRestore = true;
 }
@@ -628,20 +658,34 @@ void ALSteppedAnimRuntime::restoreOverlay(LLVOAvatar* avatar, Entry& entry)
 void ALSteppedAnimRuntime::endFrameRestore()
 {
     LL_PROFILE_ZONE_NAMED("StepAnim::endFrameRestore");
-    ALGhostStudio::instance().restoreStepAnimNameplateOffsets();
-    for (auto it = mEntries.begin(); it != mEntries.end();)
+    static LLCachedControl<bool> verify(gSavedSettings, "StepAnimDebugVerify");
+    if (verify)
     {
-        Entry& entry = it->second;
-        if (!entry.mWrittenMask.empty() || entry.mRootWrittenMask)
+        for (const LLUUID& id : mPlanned)
         {
-            LLViewerObject* object = gObjectList.findObject(it->first);
+            Entry& entry = mEntries[id];
+            if (!entry.mPaletteOverlay) continue;
+            LLViewerObject* object = gObjectList.findObject(id);
+            LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
+            if (avatar) avatar->verifyStepAnimRenderState(gFrameCount);
+        }
+    }
+    ALGhostStudio::instance().restoreStepAnimNameplateOffsets();
+    for (auto it = mPlanned.rbegin(); it != mPlanned.rend(); ++it)
+    {
+        const auto found = mEntries.find(*it);
+        if (found == mEntries.end()) continue;
+        Entry& entry = found->second;
+        if (!entry.mWrittenMask.empty() || entry.mRootWrittenMask || entry.mPaletteOverlay)
+        {
+            LLViewerObject* object = gObjectList.findObject(*it);
             LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
             if (avatar && !avatar->isDead() && avatar->getRootJoint()) restoreOverlay(avatar, entry);
         }
-        if (entry.mDropAfterRestore) it = mEntries.erase(it); else ++it;
     }
+    for (auto it = mEntries.begin(); it != mEntries.end();)
+        if (it->second.mDropAfterRestore) it = mEntries.erase(it); else ++it;
     sHasOverlay = false;
-    static LLCachedControl<bool> verify(gSavedSettings, "StepAnimDebugVerify");
     if (verify) verifyRestored("frame-end");
 }
 

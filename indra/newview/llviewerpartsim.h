@@ -148,6 +148,7 @@ public:
     void shift(const LLVector3 &offset);
 
     void updateSimulation();
+    void refreshStepAnimAttachmentSourcePositions();
 
     void addPartSource(LLPointer<LLViewerPartSource> sourcep);
 
@@ -193,6 +194,12 @@ protected:
 
     group_list_t mViewerPartGroups;
     source_list_t mViewerPartSources;
+    struct StepAnimDeferredSource
+    {
+        LLPointer<LLViewerPartSource> mSource;
+        F32 mDelta = 0.f;
+    };
+    std::vector<StepAnimDeferredSource> mStepAnimDeferredSources;
     LLFrameTimer mSimulationTimer;
 
     static S32 sMaxParticleCount;
