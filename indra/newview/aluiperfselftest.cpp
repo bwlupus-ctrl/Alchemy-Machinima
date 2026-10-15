@@ -11,6 +11,7 @@
 #include "alkithistory.h"
 #include "alkitlazypage.h"
 #include "alkitpage.h"
+#include "alkitpopover.h"
 #include "alkitrow.h"
 #include "alkitsearch.h"
 #include "alkitshell.h"
@@ -109,7 +110,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <deque>
 #include <filesystem>
+#include <functional>
 #include <fstream>
 #include <iomanip>
 #include <memory>
@@ -596,6 +599,34 @@ struct FunctionalResult
     bool mInWorld = false;
 };
 
+// One unit of the Director rule engine (R1-R6).  mRun is called once per pump
+// slice; it returns true when the task is finished and may set mWait to
+// pause for that many pumps so deferred kit layout can settle.
+struct DirRuleTask
+{
+    std::string mName;
+    S32 mPhase = 0;
+    S32 mWait = 0;
+    S32 mCounter = 0;
+    S32 mFrames = 0;
+    LLSD mData;
+    std::function<bool(DirRuleTask&)> mRun;
+};
+
+// Test-only read access to ALKitRow::mFlashing (the reveal highlight), which the
+// production class does not expose.  Explicit instantiation ignores access.
+template <typename Tag, typename Tag::type Member>
+struct DirPrivateAccessor
+{
+    friend typename Tag::type privateMember(Tag) { return Member; }
+};
+struct KitRowFlashingTag
+{
+    using type = bool ALKitRow::*;
+    friend type privateMember(KitRowFlashingTag);
+};
+template struct DirPrivateAccessor<KitRowFlashingTag, &ALKitRow::mFlashing>;
+
 struct LayoutFinding
 {
     std::string mSizePass;
@@ -1069,6 +1100,10 @@ U32                             sKitTextFrame = ~0u;
 std::vector<KitTextRun>         sKitTextRuns;
 std::vector<KitInteractiveRect> sKitInteractiveRects;
 std::set<const LLView*>         sKitRecordedViews;
+// Functional-run raw-name probe: every distinct drawn kit text (help strip, card
+// titles, badges) keyed by view name.  Off outside the Director rule phase.
+bool                            sKitTextProbe = false;
+std::set<std::pair<std::string, std::string>> sKitProbedText;
 
 void beginKitTextFrame()
 {
@@ -1371,6 +1406,7 @@ public:
                 else if (key == "version") mFunctionalVersionFilter = value;
                 else if (key == "shots") mFunctionalShots = value == "1";
                 else if (key == "dry_reveal") mFunctionalDryReveal = value == "1";
+                else if (key == "rules") mDirRulesEnabled = value != "0";
                 else if (key == "account") mFunctionalAccount = value;
                 else if (key == "watchdog_seconds")
                 {
@@ -3493,7 +3529,7 @@ private:
         row.mReason = reason;
         row.mInWorld = mInWorld;
         mFunctionalResults.push_back(std::move(row));
-        if (status == "FAIL" && mFunctionalShots)
+        if (status == "FAIL" && mFunctionalShots && !entry["no_shot"].asBoolean())
         {
             const std::string quota_key = entry["version"].asString() + "/" +
                 entry["page"].asString() + "/" + reason;
@@ -3540,6 +3576,10 @@ private:
             return false;
         }
         const std::string version = mDirectorV2 ? "v2" : "v1";
+        // The Director rule engine (R1-R6) reads the generated page registry and the
+        // unfiltered v2 oracle table, independent of the page/row filters below.
+        mDirRulesDoc = root["director_rules"];
+        if (mDirectorV2) dirBuildOracle(root);
         const LLSD& entries = root["entries"];
         for (LLSD::array_const_iterator it = entries.beginArray(); it != entries.endArray(); ++it)
         {
@@ -7801,7 +7841,12 @@ private:
         else if (mFunctionalRevealPending) settleFunctionalReveal();
         else if (!mFunctionalSentinelDone) runFunctionalSentinel();
         else if (!mFunctionalGlobalAssertionsDone) runFunctionalKeyboardAssertion();
+        else if (mDirRulesActive)
+        {
+            if (stepDirectorRules()) finishDirectorRules();
+        }
         else if (mFunctionalIndex < mFunctionalEntries.size()) beginFunctionalEntry();
+        else if (directorRulesEligible()) startDirectorRules();
         else
         {
             restoreFunctionalAction();
@@ -7817,6 +7862,1550 @@ private:
             return true;
         }
         return false;
+    }
+
+    // ======================================================================
+    // Director rule engine (user rules of 2026-10-15; CONNECTEDNESS_AUDIT C14).
+    //
+    // Runs after the manifest rows, inside the same functional session, in both
+    // login-screen and in-world mode.  Every check is viewer-local UI: it drives
+    // the real pointer path on shell chrome (rail, gear, tabs, popover anchors,
+    // link rows), calls ALKitShell navigation/help APIs, and reads the widget
+    // tree.  It never presses a control that sends, saves, deletes or opens a
+    // file picker, so the existing in-world hazard policy is not touched.
+    //
+    //   R1_REACHABILITY   every registry page via rail/gear click AND navigateTo,
+    //                     every link row / card link lands on its target
+    //   R2_POPOVERS       open, front, inside shell, sized, buttons inside, toggle
+    //                     closed by anchor, Esc closes
+    //   R3_LABEL_FIT      drawn text width against the drawn box (clip = FAIL,
+    //                     elided = WARN)
+    //   R4_RAW_NAMES      help/tooltips/status/search text never shows internal ids
+    //   R5_THEMED_PAGES   plain (non-kit) widgets per page; unlisted page = FAIL
+    //   R6_CONNECTED      every interactive kit row has an effect oracle or a
+    //                     reviewed exclusion with a reason
+    // ======================================================================
+    static std::string dirLeaf(const std::string& key)
+    {
+        const size_t slash = key.rfind('/');
+        return slash == std::string::npos ? key : key.substr(slash + 1);
+    }
+
+    static std::string dirGroupOf(const std::string& key)
+    {
+        const size_t slash = key.find('/');
+        return slash == std::string::npos ? std::string() : key.substr(0, slash);
+    }
+
+    static bool dirEndsWith(const std::string& text, const std::string& suffix)
+    {
+        return text.size() >= suffix.size() &&
+            text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
+    }
+
+    ALKitShell* dirShell()
+    {
+        return findFirstView<ALKitShell>(mFloater.get());
+    }
+
+    void dirResult(const std::string& rule, const std::string& page_key, const std::string& item,
+                   const std::string& status, const std::string& reason, S32 items = 1,
+                   const LLSD& detail = LLSD())
+    {
+        LLSD entry;
+        entry["version"] = "v2";
+        entry["page"] = page_key.empty() ? std::string("director") : dirLeaf(page_key);
+        entry["widget_name"] = item;
+        entry["widget_type"] = "rule";
+        entry["exercise"] = rule;
+        entry["action"] = "RULE";
+        entry["no_shot"] = true;
+        entry["host"]["floater"] = "director";
+        if (!mFunctionalObserved.isMap()) mFunctionalObserved = LLSD::emptyMap();
+        if (detail.isMap())
+            for (LLSD::map_const_iterator it = detail.beginMap(); it != detail.endMap(); ++it)
+                mFunctionalObserved[it->first] = it->second;
+        mFunctionalObserved["rule"] = rule;
+        mFunctionalObserved["items"] = items;
+        mFunctionalObserved["page_key"] = page_key;
+        addFunctionalResult(entry, status, reason);
+        mFunctionalObserved = LLSD::emptyMap();
+    }
+
+    // One real pointer click through the same dispatch path as every manifest row.
+    // ui-draw-lint: allow-function(lookup) isolated test-only director rule click
+    bool dirClick(LLUICtrl* control, std::string& reason)
+    {
+        if (!control)
+        {
+            reason = "control missing";
+            return false;
+        }
+        mFunctionalObserved = LLSD::emptyMap();
+        mFunctionalLastClickReason.clear();
+        mFunctionalHostFloater = mFloater;
+        mFunctionalControl = control->getDerivedHandle<LLUICtrl>();
+        // Card-switch geometry is asserted by the manifest rows; do not let one
+        // page's switch fault block unrelated chrome clicks here.
+        mFunctionalPageRoot = nullptr;
+        if (!functionalReachable(control, reason)) return false;
+        if (!functionalPointerClick())
+        {
+            reason = mFunctionalLastClickReason.empty() ? std::string("click not delivered")
+                                                        : mFunctionalLastClickReason;
+            return false;
+        }
+        return true;
+    }
+
+    // ---------------------------------------------------------------- R4 detector
+
+    bool dirIsRawToken(const std::string& token) const
+    {
+        if (token.size() < 4) return false;
+        const bool has_underscore = token.find('_') != std::string::npos;
+        bool inner_upper = false;
+        for (size_t i = 1; i < token.size(); ++i)
+            if (std::isupper(static_cast<unsigned char>(token[i]))) inner_upper = true;
+        if (has_underscore && mDirWidgetNames.count(token)) return true;
+        if ((has_underscore || inner_upper) &&
+            (gSavedSettings.controlExists(token) || gSavedPerAccountSettings.controlExists(token)))
+            return true;
+        return false;
+    }
+
+    // Returns the first internal identifier found in user-visible text, or "".
+    std::string dirRawName(const std::string& text) const
+    {
+        if (text.empty()) return std::string();
+        static const std::regex pattern(
+            R"((\bSetting [A-Z][A-Za-z0-9_]{2,})|(\bWidget [a-z][a-z0-9_]{2,})|(\bWP[0-9]+\b)|(\[[A-Z][A-Za-z0-9_]{3,}\]))");
+        std::smatch match;
+        // std::regex is slow; only run it when a trigger substring is present.
+        if ((text.find("Setting ") != std::string::npos || text.find("Widget ") != std::string::npos ||
+             text.find("WP") != std::string::npos || text.find('[') != std::string::npos) &&
+            std::regex_search(text, match, pattern))
+            return match.str(0);
+        std::string token;
+        for (size_t i = 0; i <= text.size(); ++i)
+        {
+            const char c = i < text.size() ? text[i] : ' ';
+            if (std::isalnum(static_cast<unsigned char>(c)) || c == '_')
+            {
+                token.push_back(c);
+                continue;
+            }
+            if (dirIsRawToken(token)) return token;
+            token.clear();
+        }
+        return std::string();
+    }
+
+    // Adversarial fixtures (CONNECTEDNESS_AUDIT C15): the detector must trip on a
+    // planted internal name and stay quiet on authored text, or the gate itself
+    // has been relaxed.
+    // ui-draw-lint: allow-function(setting) isolated test-only detector fixture
+    std::string dirDetectorSelfTest() const
+    {
+        std::string failures;
+        if (dirRawName("Setting CineLightRigMasterEV").empty()) failures += " 'Setting <Name>' not detected;";
+        if (dirRawName("Widget sa_include_ghosts").empty()) failures += " 'Widget <name>' not detected;";
+        if (dirRawName("owned by WP8").empty()) failures += " 'WP<n>' not detected;";
+        if (dirRawName("opens [GhostPanelPerf] now").empty()) failures += " unresolved [Placeholder] not detected;";
+        if (gSavedSettings.controlExists("CineLightRigMasterEV") &&
+            dirRawName("tune CineLightRigMasterEV here").empty())
+            failures += " bare settings key not detected;";
+        if (!dirRawName("Master exposure for the light rig, in stops.").empty())
+            failures += " authored text flagged;";
+        if (!dirRawName("Right-click a cast member for subject and mark actions.").empty())
+            failures += " help boilerplate flagged;";
+        return failures;
+    }
+
+    // Recursively collect every view name so tooltips that quote a widget id are caught.
+    void dirCollectNames(LLView* view)
+    {
+        if (!view) return;
+        const std::string& name = view->getName();
+        if (name.size() >= 5 && name.find('_') != std::string::npos) mDirWidgetNames.insert(name);
+        for (LLView* child : *view->getChildList()) dirCollectNames(child);
+    }
+
+    void dirScanRawView(LLView* view, const std::string& page_key, const std::string& scope,
+                        std::set<std::string>& seen, S32& scanned, S32& failed, bool texts_visible_only)
+    {
+        if (!view) return;
+        const std::string& tip = view->getToolTip();
+        if (!tip.empty())
+        {
+            ++scanned;
+            const std::string hit = dirRawName(tip);
+            if (!hit.empty() && seen.insert("tip|" + view->getName() + "|" + hit).second)
+            {
+                ++failed;
+                LLSD detail;
+                detail["text"] = tip.substr(0, 160);
+                dirResult("R4_RAW_NAMES", page_key, scope + "/" + view->getName(), "FAIL",
+                          "tooltip shows internal name '" + hit + "'", 1, detail);
+            }
+        }
+        if (!texts_visible_only || view->getVisible())
+        {
+            std::string text;
+            if (LLTextBox* box = dynamic_cast<LLTextBox*>(view)) text = box->getText();
+            else if (LLButton* button = dynamic_cast<LLButton*>(view)) text = button->getText();
+            if (!text.empty() && (!texts_visible_only || view->isInVisibleChain()))
+            {
+                ++scanned;
+                const std::string hit = dirRawName(text);
+                if (!hit.empty() && seen.insert("txt|" + view->getName() + "|" + hit).second)
+                {
+                    ++failed;
+                    LLSD detail;
+                    detail["text"] = text.substr(0, 160);
+                    dirResult("R4_RAW_NAMES", page_key, scope + "/" + view->getName(), "FAIL",
+                              "visible text shows internal name '" + hit + "'", 1, detail);
+                }
+            }
+        }
+        for (LLView* child : *view->getChildList())
+            dirScanRawView(child, page_key, scope, seen, scanned, failed, texts_visible_only);
+    }
+
+    // Reads every text block of the help column after an update call.
+    // ui-draw-lint: allow-function(lookup) isolated test-only help column read
+    std::string dirHelpText(ALKitShell* shell)
+    {
+        std::string all;
+        LLPanel* panel = shell ? shell->findChild<LLPanel>("kit_help") : nullptr;
+        if (!panel) return all;
+        for (LLView* child : *panel->getChildList())
+            if (LLTextBase* text = dynamic_cast<LLTextBase*>(child))
+                all += text->getText() + "\n";
+        return all;
+    }
+
+    // ---------------------------------------------------------------- R3 label fit
+
+    void dirCheckBoxFit(LLTextBox* box, const std::string& page_key, const std::string& item,
+                        const std::string& original, std::set<std::string>& seen, S32& checked,
+                        S32& warned, S32& failed)
+    {
+        if (!box || !box->getVisible()) return;
+        const LLFontGL* font = box->getFont();
+        const std::string& text = box->getText();
+        if (!font || text.empty()) return;
+        const bool multiline = text.find('\n') != std::string::npos ||
+            box->getTextPixelHeight() > static_cast<S32>(font->getLineHeight()) * 3 / 2;
+        const bool row_label = !original.empty();
+        if (multiline && !row_label) return; // wrapped prose is sized by its scroller, not clipped
+        if (!seen.insert("fit|" + item).second) return;
+        const S32 avail = box->getRect().getWidth() - 2 * box->getHPad();
+        const S32 width = font->getWidth(text);
+        const bool clipped = multiline
+            ? box->getTextPixelHeight() > box->getRect().getHeight() + 2
+            : width > avail + 1;
+        const bool shown_elided = row_label && text != original;
+        ++checked;
+        LLSD detail;
+        detail["text_px"] = width;
+        detail["box_px"] = avail;
+        detail["shown"] = text;
+        if (!original.empty()) detail["label"] = original;
+        if (clipped && !(box->getUseEllipses() || shown_elided))
+        {
+            ++failed;
+            dirResult("R3_LABEL_FIT", page_key, item, "FAIL",
+                      "'" + (original.empty() ? text : original) + "' needs " + llformat("%d", width) +
+                      " px but its box is " + llformat("%d", avail) + " px and it is not elided", 1, detail);
+        }
+        else if (shown_elided || (clipped && box->getUseEllipses()))
+        {
+            ++warned;
+            dirResult("R3_LABEL_FIT", page_key, item, "WARN",
+                      "elided: '" + (original.empty() ? text : original) + "' needs " + llformat("%d", width) +
+                      " px, box " + llformat("%d", avail) + " px", 1, detail);
+        }
+    }
+
+    void dirCheckButtonFit(LLButton* button, const std::string& page_key, const std::string& item,
+                           std::set<std::string>& seen, S32& checked, S32& failed)
+    {
+        if (!button || !button->getVisible() || !button->getFont()) return;
+        const std::string& text = button->getText();
+        if (text.empty()) return;
+        if (!seen.insert("fit|" + item).second) return;
+        S32 avail = button->getRect().getWidth() - button->getLeftHPad() - button->getRightHPad();
+        if (button->getImageOverlay().notNull() &&
+            button->getImageOverlayHAlign() != LLFontGL::HCENTER)
+            avail -= button->getImageOverlay()->getWidth() + 4;
+        const S32 width = button->getFont()->getWidth(text);
+        ++checked;
+        if (width > avail + 1)
+        {
+            ++failed;
+            LLSD detail;
+            detail["text_px"] = width;
+            detail["box_px"] = avail;
+            detail["shown"] = text;
+            dirResult("R3_LABEL_FIT", page_key, item, "FAIL",
+                      "button '" + text + "' needs " + llformat("%d", width) + " px but has " +
+                      llformat("%d", avail) + " px (buttons never elide)", 1, detail);
+        }
+    }
+
+    // Walks a subtree (a page, the shell chrome or a popover) and measures every
+    // visible kit label.  Rows are measured through their direct children so the
+    // inner combo/spinner buttons (which show values, not labels) are not judged.
+    void dirScanFit(LLView* view, LLView* root, const std::string& page_key, const std::string& scope,
+                    std::set<std::string>& seen, S32& checked, S32& warned, S32& failed)
+    {
+        if (!view || !view->getVisible()) return;
+        if (view != root && dynamic_cast<ALKitPopover*>(view)) return; // measured by its own task
+        if (view != root && view->getName() == "director_tabs") return;
+        if (ALKitRow* row = dynamic_cast<ALKitRow*>(view))
+        {
+            if (!row->isEffectivelyVisible()) return;
+            for (LLView* child : *row->getChildList())
+            {
+                if (LLTextBox* box = dynamic_cast<LLTextBox*>(child))
+                {
+                    if (box == row->valueView()) continue;
+                    dirCheckBoxFit(box, page_key, scope + "/" + row->meta().widget + "/label",
+                                   row->meta().label, seen, checked, warned, failed);
+                }
+                else if (LLButton* button = dynamic_cast<LLButton*>(child))
+                    dirCheckButtonFit(button, page_key, scope + "/" + row->meta().widget + "/" + button->getName(),
+                                      seen, checked, failed);
+            }
+            return;
+        }
+        if (LLTextBox* box = dynamic_cast<LLTextBox*>(view))
+        {
+            dirCheckBoxFit(box, page_key, scope + "/" + box->getName(), std::string(), seen, checked, warned, failed);
+            return;
+        }
+        if (LLButton* button = dynamic_cast<LLButton*>(view))
+        {
+            dirCheckButtonFit(button, page_key, scope + "/" + button->getName(), seen, checked, failed);
+            return;
+        }
+        if (view != root && (dynamic_cast<LLComboBox*>(view) || dynamic_cast<LLSpinCtrl*>(view) ||
+                             dynamic_cast<LLSliderCtrl*>(view) || dynamic_cast<LLLineEditor*>(view)))
+            return;
+        for (LLView* child : *view->getChildList())
+            dirScanFit(child, root, page_key, scope, seen, checked, warned, failed);
+    }
+
+    // ---------------------------------------------------------------- R5 themed pages
+
+    struct DirNonKit
+    {
+        std::string mKind, mName;
+    };
+
+    void dirWalkNonKit(LLView* view, bool in_card, std::vector<DirNonKit>& found, S32& other)
+    {
+        if (!view || !view->getVisible()) return;
+        if (dynamic_cast<ALKitRow*>(view) || dynamic_cast<ALKitSwitch*>(view)) return;
+        const bool card_now = in_card || dynamic_cast<ALKitCard*>(view) != nullptr;
+        if (dynamic_cast<LLCheckBoxCtrl*>(view)) { found.push_back({ "checkbox", view->getName() }); return; }
+        if (dynamic_cast<LLSliderCtrl*>(view)) { found.push_back({ "slider", view->getName() }); return; }
+        if (dynamic_cast<LLSpinCtrl*>(view)) { found.push_back({ "spinner", view->getName() }); return; }
+        if (dynamic_cast<LLTabContainer*>(view))
+        {
+            found.push_back({ "tab container", view->getName() });
+            for (LLView* child : *view->getChildList())
+                if (dynamic_cast<LLPanel*>(child)) dirWalkNonKit(child, card_now, found, other);
+            return;
+        }
+        if (dynamic_cast<LLButton*>(view))
+        {
+            if (!card_now) found.push_back({ "button", view->getName() });
+            return;
+        }
+        if (dynamic_cast<LLComboBox*>(view) || dynamic_cast<LLRadioGroup*>(view) ||
+            dynamic_cast<LLLineEditor*>(view) || dynamic_cast<LLScrollListCtrl*>(view))
+        {
+            if (!card_now) ++other;
+            return;
+        }
+        for (LLView* child : *view->getChildList()) dirWalkNonKit(child, card_now, found, other);
+    }
+
+    // ---------------------------------------------------------------- R6 connectedness
+
+    static std::string dirEffectClass(const LLSD& entry)
+    {
+        if (entry["known_gap"].asBoolean()) return "none";
+        const LLSD& expect = entry["expect"];
+        if (expect.has("setting")) return "setting";
+        if (expect.has("field") || expect.has("mode")) return "state";
+        if (expect.has("callback")) return "handler";
+        if (expect.has("ui"))
+        {
+            const std::string ui = expect["ui"].asString();
+            if (ui.find("no observable") != std::string::npos) return "none";
+            if (ui.find("navigates") != std::string::npos) return "navigate";
+            if (ui.find("opens") != std::string::npos) return "opens";
+            if (ui.find("non-empty text") != std::string::npos) return "readout";
+            return "ui";
+        }
+        return "none";
+    }
+
+    static int dirActionRank(const std::string& action)
+    {
+        if (action == "RUN") return 5;
+        if (action == "DEFER_INWORLD") return 4;
+        if (action == "SKIP") return 3;
+        if (action == "NO_EXERCISE") return 2;
+        return 1;
+    }
+
+    void dirBuildOracle(const LLSD& root)
+    {
+        mDirOracle.clear();
+        const LLSD& entries = root["entries"];
+        for (LLSD::array_const_iterator it = entries.beginArray(); it != entries.endArray(); ++it)
+        {
+            if ((*it)["version"].asString() != "v2") continue;
+            const std::string key = (*it)["page"].asString() + "|" + (*it)["widget_name"].asString();
+            LLSD item;
+            item["action"] = (*it)["action"].asString();
+            item["reason"] = (*it)["reason"].asString();
+            item["effect"] = dirEffectClass(*it);
+            item["type"] = (*it)["widget_type"].asString();
+            auto found = mDirOracle.find(key);
+            if (found == mDirOracle.end() ||
+                dirActionRank(item["action"].asString()) > dirActionRank(found->second["action"].asString()))
+                mDirOracle[key] = item;
+        }
+    }
+
+    // ---------------------------------------------------------------- R1 assertions
+
+    // Returns "" when `key` is the visible current page with a real size inside the floater.
+    // ui-draw-lint: allow-function(lookup) isolated test-only navigation assertion
+    std::string dirAssertPageCurrent(ALKitShell* shell, const std::string& key, bool rail)
+    {
+        const std::string group = dirGroupOf(key);
+        const std::string leaf = dirLeaf(key);
+        if (shell->currentPageKey() != key)
+            return "current page is '" + shell->currentPageKey() + "', expected '" + key + "'";
+        ALKitPage* page = shell->currentKitPage();
+        if (!page || !page->isInVisibleChain()) return "page is not visible in the view chain";
+        if (page->getRect().getWidth() <= 0 || page->getRect().getHeight() <= 0)
+            return "page has zero size";
+        LLFloater* floater = mFloater.get();
+        if (floater)
+        {
+            const LLRect page_screen = page->calcScreenRect();
+            const LLRect floater_screen = floater->calcScreenRect();
+            if (llmin(page_screen.mRight, floater_screen.mRight) - llmax(page_screen.mLeft, floater_screen.mLeft) <= 0 ||
+                llmin(page_screen.mTop, floater_screen.mTop) - llmax(page_screen.mBottom, floater_screen.mBottom) <= 0)
+                return "page is outside the floater";
+        }
+        LLTabContainer* groups = shell->findChild<LLTabContainer>("director_tabs");
+        if (!groups || !groups->getCurrentPanel() || groups->getCurrentPanel()->getName() != group)
+            return "group '" + group + "' is not the selected group (selected '" +
+                (groups && groups->getCurrentPanel() ? groups->getCurrentPanel()->getName() : std::string("<none>")) + "')";
+        ALKitLazyPage* lazy = shell->findChild<ALKitLazyPage>(leaf);
+        if (!lazy || !lazy->isInVisibleChain()) return "page host '" + leaf + "' is hidden";
+        if (LLTabContainer* inner = dynamic_cast<LLTabContainer*>(lazy->getParent()))
+            if (inner->getCurrentPanel() != lazy)
+                return "inner tab container is not on '" + leaf + "'";
+        if (rail)
+        {
+            bool found = false;
+            for (LLButton* button : shell->railButtons())
+                if (button && button->getName() == "kit_rail_" + group)
+                {
+                    found = true;
+                    if (!button->getToggleState()) return "rail item for '" + group + "' is not highlighted";
+                }
+            if (!found) return "no rail item for group '" + group + "'";
+        }
+        else if (LLButton* gear = shell->findChild<LLButton>("btn_director_settings"))
+        {
+            if (!gear->getToggleState()) return "gear is not highlighted on the Settings page";
+        }
+        if (LLButton* tab = shell->findChild<LLButton>("kit_tab_" + leaf))
+            if (tab->isInVisibleChain() && !tab->getToggleState())
+                return "page tab '" + leaf + "' is not selected";
+        return std::string();
+    }
+
+    // ---------------------------------------------------------------- task engine
+
+    void dirQueue(const std::string& name, const LLSD& data, std::function<bool(DirRuleTask&)> fn)
+    {
+        DirRuleTask task;
+        task.mName = name;
+        task.mData = data;
+        task.mRun = std::move(fn);
+        mDirTasks.push_back(std::move(task));
+    }
+
+    // True once the whole rule phase is finished.
+    bool stepDirectorRules()
+    {
+        if (mDirTasks.empty()) return true;
+        DirRuleTask& task = mDirTasks.front();
+        if (task.mWait > 0)
+        {
+            --task.mWait;
+            return false;
+        }
+        if (++task.mFrames > 900)
+        {
+            dirResult("R1_REACHABILITY", task.mData["key"].asString(), task.mName, "FAIL",
+                      "rule task stalled for 900 frames in phase " + llformat("%d", task.mPhase));
+            mDirTasks.pop_front();
+            return false;
+        }
+        LLFloater* floater = mFloater.get();
+        if (!floater || !dirShell())
+        {
+            dirResult("R1_REACHABILITY", std::string(), task.mName, "FAIL", "Director floater disappeared during rule checks");
+            mDirTasks.clear();
+            return true;
+        }
+        // Copy: the task may be popped by the callee's own completion.
+        const bool done = task.mRun(task);
+        if (done && !mDirTasks.empty()) mDirTasks.pop_front();
+        return false;
+    }
+
+    // ---------------------------------------------------------------- R1 tasks
+
+    // ui-draw-lint: allow-function(lookup) isolated test-only reachability driver
+    bool dirTaskReachPage(DirRuleTask& t)
+    {
+        ALKitShell* shell = dirShell();
+        const std::string key = t.mData["key"].asString();
+        const std::string group = dirGroupOf(key);
+        const std::string leaf = dirLeaf(key);
+        const bool rail = t.mData["rail"].asBoolean();
+        const std::string other = t.mData["other"].asString();
+        std::string reason;
+        auto fail_click = [&](const std::string& route, const std::string& why)
+        {
+            dirResult("R1_REACHABILITY", key, route, "FAIL", route + ": " + why);
+            t.mData["click_failed"] = true;
+            t.mPhase = 4;
+        };
+        switch (t.mPhase)
+        {
+        case 0:
+            // Start from a different page so a no-op navigation can never pass.
+            shell->closePopover();
+            if (shell->currentPageKey() == key && !other.empty()) shell->selectPage(dirLeaf(other));
+            t.mWait = 3;
+            t.mPhase = 1;
+            return false;
+        case 1:
+        {
+            LLButton* button = nullptr;
+            if (rail)
+            {
+                for (LLButton* candidate : shell->railButtons())
+                    if (candidate && candidate->getName() == "kit_rail_" + group) button = candidate;
+            }
+            else
+                button = shell->findChild<LLButton>("btn_director_settings");
+            const std::string route = rail ? "rail click" : "gear click";
+            if (!button) { fail_click(route, rail ? "no rail item for group " + group : "gear button missing"); return false; }
+            if (!dirClick(button, reason)) { fail_click(route, reason); return false; }
+            t.mWait = 3;
+            t.mPhase = rail ? 2 : 3;
+            return false;
+        }
+        case 2:
+        {
+            LLTabContainer* groups = shell->findChild<LLTabContainer>("director_tabs");
+            LLPanel* current = groups ? groups->getCurrentPanel() : nullptr;
+            if (!current || current->getName() != group)
+            {
+                fail_click("rail click", "rail item did not select group '" + group + "' (selected '" +
+                    (current ? current->getName() : std::string("<none>")) + "')");
+                return false;
+            }
+            LLButton* tab = shell->findChild<LLButton>("kit_tab_" + leaf);
+            if (!tab) { fail_click("tab click", "no tab button for page " + leaf); return false; }
+            if (!tab->isInVisibleChain() && shell->tabNext() && shell->tabNext()->isInVisibleChain() &&
+                t.mCounter < 8)
+            {
+                ++t.mCounter;
+                if (!dirClick(shell->tabNext(), reason)) { fail_click("tab overflow arrow", reason); return false; }
+                t.mWait = 2;
+                return false;
+            }
+            if (!dirClick(tab, reason)) { fail_click("tab click", reason); return false; }
+            t.mWait = 3;
+            t.mPhase = 3;
+            return false;
+        }
+        case 3:
+        {
+            reason = dirAssertPageCurrent(shell, key, rail);
+            dirResult("R1_REACHABILITY", key, rail ? "rail+tab click" : "gear click",
+                      reason.empty() ? "PASS" : "FAIL",
+                      reason.empty() ? "page became the visible current page via the real click path" : reason);
+            t.mPhase = 4;
+            return false;
+        }
+        case 4:
+            if (!other.empty()) shell->selectPage(dirLeaf(other));
+            t.mWait = 3;
+            t.mPhase = 5;
+            return false;
+        case 5:
+        {
+            const bool navigated = shell->navigateTo(key);
+            t.mData["navigated"] = navigated;
+            t.mWait = 3;
+            t.mPhase = 6;
+            return false;
+        }
+        default:
+        {
+            reason = dirAssertPageCurrent(shell, key, rail);
+            if (reason.empty() && !t.mData["navigated"].asBoolean()) reason = "navigateTo returned false";
+            dirResult("R1_REACHABILITY", key, "navigateTo", reason.empty() ? "PASS" : "FAIL",
+                      reason.empty() ? "navigateTo(page key) made it the visible current page" : reason);
+            return true;
+        }
+        }
+    }
+
+    // ui-draw-lint: allow-function(lookup) isolated test-only link-row driver
+    bool dirTaskLink(DirRuleTask& t)
+    {
+        ALKitShell* shell = dirShell();
+        const std::string source = t.mData["source"].asString();
+        const std::string id = t.mData["id"].asString();
+        const std::string target = t.mData["target"].asString();
+        const std::string target_widget = t.mData["target_widget"].asString();
+        const bool card_link = t.mData["kind"].asString() == "card";
+        const std::string item = (card_link ? "card:" : "row:") + id + " -> " + t.mData["link_to"].asString();
+        std::string reason;
+        switch (t.mPhase)
+        {
+        case 0:
+            shell->navigateTo(source);
+            t.mWait = 3;
+            t.mPhase = 1;
+            return false;
+        case 1:
+        {
+            ALKitPage* page = shell->findBuiltPage(source);
+            LLUICtrl* control = nullptr;
+            if (page)
+            {
+                if (card_link)
+                {
+                    if (ALKitCard* card = page->findCard(id))
+                    {
+                        page->revealCard(card, false);
+                        control = card->findChild<LLButton>("kc_" + id + "_go");
+                    }
+                }
+                else if (ALKitRow* row = page->findRow(id))
+                {
+                    page->revealRow(row, false);
+                    control = row->control();
+                }
+            }
+            if (!control)
+            {
+                dirResult("R1_REACHABILITY", source, item, "FAIL",
+                          std::string("link control not found on ") + source + (page ? "" : " (page not built)"));
+                return true;
+            }
+            t.mData["control_found"] = true;
+            t.mWait = 3;
+            t.mPhase = 2;
+            return false;
+        }
+        case 2:
+        {
+            ALKitPage* page = shell->findBuiltPage(source);
+            LLUICtrl* control = nullptr;
+            if (page)
+            {
+                if (card_link)
+                {
+                    if (ALKitCard* card = page->findCard(id)) control = card->findChild<LLButton>("kc_" + id + "_go");
+                }
+                else if (ALKitRow* row = page->findRow(id)) control = row->control();
+            }
+            if (!dirClick(control, reason))
+            {
+                dirResult("R1_REACHABILITY", source, item, "FAIL", "link click failed: " + reason);
+                return true;
+            }
+            t.mWait = 3;
+            t.mPhase = 3;
+            return false;
+        }
+        default:
+        {
+            reason = dirAssertPageCurrent(shell, target, !dirEndsWith(target, "director_settings_tab"));
+            if (reason.empty() && !target_widget.empty())
+            {
+                ALKitPage* page = shell->findBuiltPage(target);
+                ALKitRow* row = page ? page->findRow(target_widget) : nullptr;
+                ALKitCard* card = (!row && page) ? page->findCard(target_widget) : nullptr;
+                if (row)
+                {
+                    if (!row->isInVisibleChain() || !row->isEffectivelyVisible())
+                        reason = "target widget '" + target_widget + "' is not visible after the jump";
+                    else if (!(row->*privateMember(KitRowFlashingTag())))
+                        reason = "target widget '" + target_widget + "' is visible but not highlighted";
+                }
+                else if (card)
+                {
+                    if (!card->isInVisibleChain())
+                        reason = "target card '" + target_widget + "' is not visible after the jump";
+                }
+                else
+                    reason = "target '" + target_widget + "' not found on " + target;
+            }
+            dirResult("R1_REACHABILITY", source, item, reason.empty() ? "PASS" : "FAIL",
+                      reason.empty() ? "link click landed on " + target + (target_widget.empty() ? std::string() : "/" + target_widget)
+                                     : "link did not land on " + target + ": " + reason);
+            return true;
+        }
+        }
+    }
+
+    // ---------------------------------------------------------------- page audit (R3-R6)
+
+    // ui-draw-lint: allow-function(lookup,raw-write) isolated test-only page audit
+    bool dirTaskPageAudit(DirRuleTask& t)
+    {
+        ALKitShell* shell = dirShell();
+        const std::string key = t.mData["key"].asString();
+        const std::string leaf = dirLeaf(key);
+        if (t.mPhase == 0)
+        {
+            shell->closePopover();
+            shell->navigateTo(key);
+            t.mWait = 4;
+            t.mPhase = 1;
+            return false;
+        }
+        ALKitPage* page = shell->findBuiltPage(key);
+        if (!page)
+        {
+            dirResult("R1_REACHABILITY", key, "page_build", "FAIL", "page did not build, so R3-R6 could not run");
+            return true;
+        }
+        if (t.mPhase == 1)
+        {
+            dirCollectNames(page);
+            // ---- R5: themed page
+            {
+                std::vector<DirNonKit> found;
+                S32 other = 0;
+                LLView* root = page->legacy() ? static_cast<LLView*>(page->legacyHost())
+                                              : static_cast<LLView*>(page->scroller());
+                dirWalkNonKit(root, false, found, other);
+                const bool listed = mDirKnownLegacy.count(leaf) > 0;
+                std::map<std::string, S32> counts;
+                for (const DirNonKit& item : found) ++counts[item.mKind];
+                std::string summary;
+                for (const auto& count : counts)
+                    summary += (summary.empty() ? "" : ", ") + llformat("%d ", count.second) + count.first;
+                LLSD detail;
+                detail["non_kit"] = static_cast<S32>(found.size());
+                detail["other_controls"] = other;
+                detail["legacy_flag"] = page->legacy();
+                detail["known_legacy"] = listed;
+                LLSD names = LLSD::emptyArray();
+                for (size_t i = 0; i < found.size() && i < 40; ++i) names.append(found[i].mKind + ":" + found[i].mName);
+                detail["widgets"] = names;
+                if (page->legacy() && !listed)
+                    dirResult("R5_THEMED_PAGES", key, "legacy_flag", "FAIL",
+                              "page is built legacy but is not in the known-legacy list (no new unthemed page may appear)", 1, detail);
+                if (found.empty())
+                {
+                    if (listed)
+                        dirResult("R5_THEMED_PAGES", key, "legacy_list", "WARN",
+                                  "known-legacy page has no plain widgets any more: remove it from the legacy list", 1, detail);
+                    else
+                        dirResult("R5_THEMED_PAGES", key, "themed", "PASS", "themed kit page: 0 non-kit widgets", 1, detail);
+                }
+                else if (listed)
+                    dirResult("R5_THEMED_PAGES", key, "legacy (not themed)", "WARN",
+                              "legacy (not themed): " + summary + (other ? llformat(" + %d other controls", other) : std::string()),
+                              static_cast<S32>(found.size()), detail);
+                else
+                    for (size_t i = 0; i < found.size() && i < 30; ++i)
+                        dirResult("R5_THEMED_PAGES", key, found[i].mKind + ":" + found[i].mName, "FAIL",
+                                  "plain " + found[i].mKind + " '" + found[i].mName +
+                                  "' outside kit rows/cards on a page that is not in the known-legacy list", 1, detail);
+            }
+            // ---- R6: connectedness of every interactive kit row
+            if (!page->legacy() && key != "quick_group/quick_tab")
+            {
+                std::vector<ALKitRow*> rows;
+                collectViewsOfType<ALKitRow>(page, rows);
+                S32 passed = 0;
+                std::map<std::string, S32> by_effect;
+                for (ALKitRow* row : rows)
+                {
+                    const ALKitRowMeta& meta = row->meta();
+                    if (meta.widget.empty() || !row->control() || meta.kind == "readout") continue;
+                    std::vector<std::string> widgets;
+                    if (meta.kind == "vec2" || meta.kind == "vec3")
+                    {
+                        widgets.push_back(meta.widget + "_x");
+                        widgets.push_back(meta.widget + "_y");
+                        if (meta.kind == "vec3") widgets.push_back(meta.widget + "_z");
+                    }
+                    else
+                        widgets.push_back(meta.widget);
+                    for (const std::string& widget : widgets)
+                    {
+                        const auto found = mDirOracle.find(leaf + "|" + widget);
+                        LLSD detail;
+                        detail["setting"] = meta.setting;
+                        if (found == mDirOracle.end())
+                        {
+                            dirResult("R6_CONNECTED", key, widget, "FAIL",
+                                      "interactive control has no effect oracle and no reviewed exclusion in the functional manifest", 1, detail);
+                            continue;
+                        }
+                        const std::string action = found->second["action"].asString();
+                        const std::string effect = found->second["effect"].asString();
+                        const std::string why = found->second["reason"].asString();
+                        detail["manifest_action"] = action;
+                        detail["effect"] = effect;
+                        if (action == "RUN" || action == "DEFER_INWORLD")
+                        {
+                            if (effect == "none" || effect == "readout" || effect == "ui")
+                                dirResult("R6_CONNECTED", key, widget, "FAIL",
+                                          "no observable effect: oracle proves only '" + effect + "'", 1, detail);
+                            else
+                            {
+                                ++passed;
+                                ++by_effect[effect];
+                            }
+                        }
+                        else if (action == "SKIP")
+                        {
+                            if (why.empty())
+                                dirResult("R6_CONNECTED", key, widget, "FAIL", "excluded from the effect oracle without a reason", 1, detail);
+                            else
+                                dirResult("R6_CONNECTED", key, widget, "WARN", "reviewed exclusion: " + why, 1, detail);
+                        }
+                        else
+                            dirResult("R6_CONNECTED", key, widget, "FAIL",
+                                      "not exercised and not a reviewed exclusion (" + action + "): " + why, 1, detail);
+                    }
+                }
+                LLSD detail;
+                for (const auto& effect : by_effect) detail["by_effect"][effect.first] = effect.second;
+                dirResult("R6_CONNECTED", key, "interactive_rows", "PASS",
+                          llformat("%d interactive kit controls have an effect oracle", passed), passed, detail);
+            }
+            else if (key == "quick_group/quick_tab")
+                dirResult("R6_CONNECTED", key, "quick_proxies", "WARN",
+                          "Quick rows are proxies of rows on their own pages, each checked there", 1);
+            // ---- R4: help column, tooltips and visible text on this page
+            {
+                std::set<std::string> seen;
+                S32 scanned = 0, failed = 0;
+                std::vector<ALKitRow*> rows;
+                collectViewsOfType<ALKitRow>(page, rows);
+                for (ALKitRow* row : rows)
+                {
+                    shell->help().showRow(row);
+                    const std::string help = dirHelpText(shell);
+                    ++scanned;
+                    const std::string hit = dirRawName(help);
+                    if (!hit.empty() && seen.insert("help|" + row->meta().widget + "|" + hit).second)
+                    {
+                        ++failed;
+                        LLSD detail;
+                        detail["help"] = help.substr(0, 200);
+                        dirResult("R4_RAW_NAMES", key, "help:" + row->meta().widget, "FAIL",
+                                  "help column shows internal name '" + hit + "'", 1, detail);
+                    }
+                }
+                std::vector<ALKitCard*> cards;
+                collectViewsOfType<ALKitCard>(page, cards);
+                for (ALKitCard* card : cards)
+                {
+                    shell->help().showCard(card);
+                    const std::string hit = dirRawName(dirHelpText(shell));
+                    ++scanned;
+                    if (!hit.empty() && seen.insert("card|" + card->id() + "|" + hit).second)
+                    {
+                        ++failed;
+                        dirResult("R4_RAW_NAMES", key, "help:card:" + card->id(), "FAIL",
+                                  "help column shows internal name '" + hit + "'");
+                    }
+                }
+                shell->help().showPage(page);
+                {
+                    const std::string hit = dirRawName(dirHelpText(shell));
+                    ++scanned;
+                    if (!hit.empty())
+                    {
+                        ++failed;
+                        dirResult("R4_RAW_NAMES", key, "help:page", "FAIL", "help column shows internal name '" + hit + "'");
+                    }
+                }
+                dirScanRawView(page, key, leaf, seen, scanned, failed, true);
+                if (!failed)
+                    dirResult("R4_RAW_NAMES", key, "help+tooltips+text", "PASS",
+                              llformat("%d help panels, tooltips and texts show no internal names", scanned), scanned);
+            }
+            // ---- R3 first pass (current chip)
+            mDirFitSeen.clear();
+            mDirFitChecked = mDirFitWarned = mDirFitFailed = 0;
+            dirScanFit(page, page, key, leaf, mDirFitSeen, mDirFitChecked, mDirFitWarned, mDirFitFailed);
+            if (LLButton* tab = shell->findChild<LLButton>("kit_tab_" + leaf))
+                dirCheckButtonFit(tab, key, "tab:" + leaf, mDirFitSeen, mDirFitChecked, mDirFitFailed);
+            t.mData["chip_start"] = page->chipIndex();
+            t.mCounter = 0;
+            t.mPhase = 2;
+            return false;
+        }
+        if (t.mPhase == 2)
+        {
+            // Walk every section chip so rows hidden behind the active chip are measured too.
+            if (t.mCounter < 12 && page->cycleChip(1) && page->chipIndex() != t.mData["chip_start"].asInteger())
+            {
+                ++t.mCounter;
+                t.mWait = 3;
+                t.mPhase = 3;
+                return false;
+            }
+            t.mPhase = 4;
+            return false;
+        }
+        if (t.mPhase == 3)
+        {
+            dirScanFit(page, page, key, leaf, mDirFitSeen, mDirFitChecked, mDirFitWarned, mDirFitFailed);
+            t.mPhase = 2;
+            return false;
+        }
+        // Phase 4: restore the chip and report.
+        page->setChipIndex(t.mData["chip_start"].asInteger());
+        if (!mDirFitFailed)
+            dirResult("R3_LABEL_FIT", key, "labels", "PASS",
+                      llformat("%d labels fit their drawn box (%d elided, listed as WARN)", mDirFitChecked, mDirFitWarned),
+                      mDirFitChecked);
+        return true;
+    }
+
+    // ---------------------------------------------------------------- R2 popovers
+
+    ALKitPopover* dirVisiblePopover(ALKitShell* shell, S32& visible_count)
+    {
+        std::vector<ALKitPopover*> all;
+        collectViewsOfType<ALKitPopover>(shell, all);
+        ALKitPopover* found = nullptr;
+        visible_count = 0;
+        for (ALKitPopover* popover : all)
+            if (popover->getVisible())
+            {
+                ++visible_count;
+                if (!found) found = popover;
+            }
+        return found;
+    }
+
+    bool dirPopoverInFront(ALKitShell* shell, ALKitPopover* popover, std::string& why)
+    {
+        if (popover->getParent() != shell)
+        {
+            why = "popover is not a direct child of the shell";
+            return false;
+        }
+        const S32 cx = popover->getRect().getCenterX();
+        const S32 cy = popover->getRect().getCenterY();
+        for (LLView* child : *shell->getChildList())
+        {
+            if (!child->getVisible() || !child->getRect().pointInRect(cx, cy)) continue;
+            if (child == popover) break;
+            why = "covered at its centre by '" + child->getName() + "'";
+            return false;
+        }
+        // The hit test must also resolve into the popover (nothing mouse-opaque in front).
+        S32 screen_x = 0, screen_y = 0;
+        shell->localPointToScreen(cx, cy, &screen_x, &screen_y);
+        LLView* resolved = functionalResolveInView(shell, screen_x, screen_y);
+        if (!resolved || !(resolved == popover || resolved->hasAncestor(popover)))
+        {
+            why = "a click at its centre reaches '" + (resolved ? resolved->getName() : std::string("<nothing>")) + "'";
+            return false;
+        }
+        return true;
+    }
+
+    // Types a query into the visible page search box so the real results popup arms.
+    // ui-draw-lint: allow-function(lookup,raw-write) isolated test-only search arming
+    bool dirArmSearchPopover(ALKitShell* shell, const std::string& query, std::string& reason)
+    {
+        ALKitPage* page = shell->currentKitPage();
+        LLLineEditor* editor = page ? page->searchEditor() : nullptr;
+        if (!editor || !editor->isInVisibleChain())
+        {
+            reason = "no visible page search box to anchor the results popover";
+            return false;
+        }
+        editor->setFocus(true);
+        editor->setText(LLStringExplicit(query));
+        shell->setSearchPopupArmed(editor, true);
+        return true;
+    }
+
+    // The anchor button for `via` and sequence step (the hotkeys flow presses btn_help, then Hotkeys).
+    // ui-draw-lint: allow-function(lookup) isolated test-only popover anchor lookup
+    LLButton* dirPopoverAnchor(ALKitShell* shell, const LLSD& data, S32 step)
+    {
+        const std::string via = data["via"].asString();
+        if (via == "hotkeys") return shell->findChild<LLButton>(step == 0 ? "btn_help" : "btn_legend_hotkeys");
+        if (via == "page_reset")
+        {
+            ALKitPage* page = shell->currentKitPage();
+            return page ? page->resetButton() : nullptr;
+        }
+        if (via == "page_who")
+        {
+            ALKitPage* page = shell->currentKitPage();
+            return page ? page->whoChip() : nullptr;
+        }
+        return shell->findChild<LLButton>(data["anchor"].asString());
+    }
+
+    bool dirClickPopoverAnchor(ALKitShell* shell, const LLSD& data, S32 step, std::string& reason)
+    {
+        LLButton* button = dirPopoverAnchor(shell, data, step);
+        if (!button)
+        {
+            reason = "anchor not found";
+            return false;
+        }
+        if (!button->isInVisibleChain())
+        {
+            reason = "anchor is not visible (collapsed out of its bar or hidden)";
+            return false;
+        }
+        if (!button->getEnabled())
+        {
+            reason = "anchor is disabled";
+            return false;
+        }
+        return dirClick(button, reason);
+    }
+
+    // ui-draw-lint: allow-function(lookup,raw-write) isolated test-only popover driver
+    bool dirTaskPopover(DirRuleTask& t)
+    {
+        ALKitShell* shell = dirShell();
+        LLFloater* floater = mFloater.get();
+        const std::string via = t.mData["via"].asString();
+        const std::string name = t.mData["name"].asString();
+        const std::string page_key = t.mData["page_key"].asString();
+        const std::string item = t.mData["label"].asString();
+        const bool hotkeys = via == "hotkeys";
+        const bool page_scoped = via.compare(0, 5, "page_") == 0;
+        std::string reason;
+        switch (t.mPhase)
+        {
+        case 0:
+            shell->closePopover();
+            shell->clearSearch();
+            if (!page_key.empty()) shell->navigateTo(page_key);
+            t.mWait = 3;
+            t.mPhase = 1;
+            return false;
+        case 1:
+        {
+            // Pages without a Reset button or Who picker have nothing to test.
+            if (page_scoped)
+            {
+                LLButton* anchor = dirPopoverAnchor(shell, t.mData, 0);
+                if (!anchor || !anchor->getEnabled()) return true;
+            }
+            const bool opened = via == "search" ? dirArmSearchPopover(shell, "light", reason)
+                                                : dirClickPopoverAnchor(shell, t.mData, 0, reason);
+            if (!opened)
+            {
+                dirResult("R2_POPOVERS", page_key, item + "/open", page_scoped ? "WARN" : "FAIL",
+                          "could not open: " + reason);
+                shell->closePopover();
+                return true;
+            }
+            t.mWait = 3;
+            t.mPhase = hotkeys ? 2 : 3;
+            return false;
+        }
+        case 2:
+            // Second click of the hotkeys flow (legend -> Hotkeys button).
+            if (!dirClickPopoverAnchor(shell, t.mData, 1, reason))
+            {
+                dirResult("R2_POPOVERS", page_key, item + "/open", "FAIL", "Hotkeys button click failed: " + reason);
+                shell->closePopover();
+                return true;
+            }
+            t.mWait = 3;
+            t.mPhase = 3;
+            return false;
+        case 3:
+        {
+            S32 visible = 0;
+            ALKitPopover* popover = dirVisiblePopover(shell, visible);
+            std::string failure;
+            if (!popover || visible != 1)
+                failure = visible == 0 ? "popover did not open after its anchor was clicked"
+                                       : llformat("%d popovers are open at once", visible);
+            else if (!name.empty() && popover->getName() != name)
+                failure = "opened '" + popover->getName() + "' instead of '" + name + "'";
+            else if (via == "page_reset" && !dirEndsWith(popover->getName(), "_reset_popover"))
+                failure = "opened '" + popover->getName() + "', not a reset popover";
+            else if (via == "page_who" && !dirEndsWith(popover->getName(), "_who_popover"))
+                failure = "opened '" + popover->getName() + "', not a who popover";
+            if (!failure.empty())
+            {
+                dirResult("R2_POPOVERS", page_key, item + "/open", "FAIL", failure);
+                shell->closePopover();
+                return true;
+            }
+            dirResult("R2_POPOVERS", page_key, item + "/open", "PASS", "opened by its anchor: '" + popover->getName() + "'");
+            // Geometry and drawing order.
+            std::vector<std::pair<std::string, std::string>> checks;
+            if (!popover->isInVisibleChain()) checks.push_back({ "visible", "popover is not visible in the view chain" });
+            if (popover->getRect().getHeight() <= 10 || popover->getRect().getWidth() <= 10)
+                checks.push_back({ "size", llformat("popover is %dx%d, the 10 px stand-in was never laid out",
+                                                     popover->getRect().getWidth(), popover->getRect().getHeight()) });
+            if (!shell->getLocalRect().contains(popover->getRect()))
+                checks.push_back({ "inside_shell", "popover leaves the shell rect" });
+            std::string why;
+            if (!dirPopoverInFront(shell, popover, why)) checks.push_back({ "front", why });
+            bool any_content = false;
+            for (LLView* child : *popover->getChildList())
+            {
+                if (!child->getVisible()) continue;
+                any_content = true;
+                if (LLButton* button = dynamic_cast<LLButton*>(child))
+                    if (!popover->getLocalRect().contains(button->getRect()))
+                        checks.push_back({ "buttons_inside:" + button->getName(),
+                                           "button '" + button->getName() + "' lies outside the popover rect" });
+            }
+            if (!any_content && popover->getName() != "kit_search_results")
+                checks.push_back({ "content", "popover has no visible content" });
+            LLSD detail;
+            detail["rect"] = functionalRect(popover->getRect());
+            detail["shell"] = functionalRect(shell->getLocalRect());
+            for (const auto& check : checks)
+                dirResult("R2_POPOVERS", page_key, item + "/" + check.first, "FAIL", check.second, 1, detail);
+            if (checks.empty())
+                dirResult("R2_POPOVERS", page_key, item + "/geometry", "PASS",
+                          "visible, in front, inside the shell, " +
+                          llformat("%dx%d", popover->getRect().getWidth(), popover->getRect().getHeight()) +
+                          ", buttons inside", 5, detail);
+            // Labels and raw names inside the open popover.
+            {
+                std::set<std::string> seen, raw_seen;
+                S32 checked = 0, warned = 0, failed = 0, scanned = 0, raw_failed = 0;
+                dirScanFit(popover, popover, page_key, item, seen, checked, warned, failed);
+                dirScanRawView(popover, page_key, item, raw_seen, scanned, raw_failed, true);
+                if (!failed)
+                    dirResult("R3_LABEL_FIT", page_key, item + "/labels", "PASS",
+                              llformat("%d popover labels fit (%d elided)", checked, warned), checked);
+                if (!raw_failed)
+                    dirResult("R4_RAW_NAMES", page_key, item + "/text", "PASS",
+                              llformat("%d popover texts and tooltips show no internal names", scanned), scanned);
+            }
+            if (via == "search")
+            {
+                // A text-box anchor re-arms on click instead of toggling: Esc / emptying the box closes it.
+                dirResult("R2_POPOVERS", page_key, item + "/anchor_closes", "PASS",
+                          "text-box anchor: the results close on Esc or by emptying the box, tested below");
+                t.mPhase = 5;
+                return false;
+            }
+            // Click the anchor again: it must close the popover.
+            if (!dirClickPopoverAnchor(shell, t.mData, 0, reason))
+            {
+                dirResult("R2_POPOVERS", page_key, item + "/anchor_closes", "FAIL", "second anchor click failed: " + reason);
+                shell->closePopover();
+                return true;
+            }
+            t.mWait = 3;
+            t.mPhase = 4;
+            return false;
+        }
+        case 4:
+        {
+            S32 visible = 0;
+            dirVisiblePopover(shell, visible);
+            dirResult("R2_POPOVERS", page_key, item + "/anchor_closes", visible == 0 ? "PASS" : "FAIL",
+                      visible == 0 ? "clicking the anchor again closed the popover"
+                                   : "clicking the anchor while open did not close it (it re-opened or stayed open)");
+            shell->closePopover();
+            t.mWait = 2;
+            t.mPhase = 6;
+            return false;
+        }
+        case 6:
+            // Re-open to test Esc.
+            if (!dirClickPopoverAnchor(shell, t.mData, 0, reason))
+            {
+                dirResult("R2_POPOVERS", page_key, item + "/esc_closes", "FAIL", "could not re-open before Esc: " + reason);
+                return true;
+            }
+            t.mWait = 3;
+            t.mPhase = hotkeys ? 7 : 5;
+            return false;
+        case 7:
+            if (!dirClickPopoverAnchor(shell, t.mData, 1, reason))
+            {
+                dirResult("R2_POPOVERS", page_key, item + "/esc_closes", "FAIL", "could not re-open before Esc: " + reason);
+                shell->closePopover();
+                return true;
+            }
+            t.mWait = 3;
+            t.mPhase = 5;
+            return false;
+        case 5:
+        {
+            S32 visible = 0;
+            dirVisiblePopover(shell, visible);
+            if (visible == 0)
+            {
+                dirResult("R2_POPOVERS", page_key, item + "/esc_closes", "FAIL", "popover was not open to test Esc");
+                return true;
+            }
+            floater->handleKeyHere(KEY_ESCAPE, MASK_NONE);
+            t.mWait = 3;
+            t.mPhase = 9;
+            return false;
+        }
+        default:
+        {
+            S32 visible = 0;
+            dirVisiblePopover(shell, visible);
+            dirResult("R2_POPOVERS", page_key, item + "/esc_closes", visible == 0 ? "PASS" : "FAIL",
+                      visible == 0 ? "Esc closed the popover" : "Esc did not close the popover");
+            shell->closePopover();
+            shell->clearSearch();
+            if (ALKitPage* page = shell->currentKitPage())
+                if (LLLineEditor* editor = page->searchEditor())
+                    editor->setFocus(false);
+            return true;
+        }
+        }
+    }
+
+    // ---------------------------------------------------------------- global tasks
+
+    // Rail, tab strip, transport and roster chrome.
+    // ui-draw-lint: allow-function(lookup) isolated test-only shell chrome audit
+    bool dirTaskShellChrome(DirRuleTask&)
+    {
+        ALKitShell* shell = dirShell();
+        std::set<std::string> seen;
+        S32 checked = 0, warned = 0, failed = 0;
+        dirScanFit(shell, shell, std::string(), "shell", seen, checked, warned, failed);
+        if (!failed)
+            dirResult("R3_LABEL_FIT", std::string(), "shell_chrome", "PASS",
+                      llformat("%d rail/tab/transport labels fit (%d elided)", checked, warned), checked);
+        std::set<std::string> raw_seen;
+        S32 scanned = 0, raw_failed = 0;
+        for (LLView* child : *shell->getChildList())
+        {
+            if (child->getName() == "director_tabs") continue; // pages are scanned one by one
+            dirScanRawView(child, std::string(), "shell", raw_seen, scanned, raw_failed, true);
+        }
+        if (!raw_failed)
+            dirResult("R4_RAW_NAMES", std::string(), "shell_chrome", "PASS",
+                      llformat("%d shell tooltips and status texts show no internal names", scanned), scanned);
+        return true;
+    }
+
+    // Drives the real results popup with several queries and scans every visible result label.
+    // ui-draw-lint: allow-function(lookup,raw-write) isolated test-only search label scan
+    bool dirTaskSearchLabels(DirRuleTask& t)
+    {
+        ALKitShell* shell = dirShell();
+        const LLSD& queries = mDirRulesDoc["search_queries"];
+        const S32 index = t.mCounter;
+        if (index >= static_cast<S32>(queries.size()))
+        {
+            shell->clearSearch();
+            if (ALKitPage* page = shell->currentKitPage())
+                if (LLLineEditor* editor = page->searchEditor()) editor->setFocus(false);
+            return true;
+        }
+        const std::string query = queries[index].asString();
+        if (t.mPhase == 0)
+        {
+            ALKitPage* page = shell->currentKitPage();
+            LLLineEditor* editor = page ? page->searchEditor() : nullptr;
+            if (!editor || !editor->isInVisibleChain())
+            {
+                // Park on the first non-legacy page, whose bar always has the box.
+                const LLSD& pages = mDirRulesDoc["pages"];
+                for (LLSD::array_const_iterator it = pages.beginArray(); it != pages.endArray(); ++it)
+                    if (!(*it)["legacy"].asBoolean() && (*it)["key"].asString() != "quick_group/quick_tab")
+                    {
+                        shell->navigateTo((*it)["key"].asString());
+                        break;
+                    }
+                if (t.mFrames > 12)
+                {
+                    dirResult("R4_RAW_NAMES", std::string(), "search:" + query, "FAIL", "no visible page search box to type into");
+                    t.mCounter = static_cast<S32>(queries.size());
+                    return false;
+                }
+                t.mWait = 3;
+                return false;
+            }
+            editor->setFocus(true);
+            editor->setText(LLStringExplicit(query));
+            shell->setSearchPopupArmed(editor, true);
+            t.mWait = 4;
+            t.mPhase = 1;
+            return false;
+        }
+        std::set<std::string> seen;
+        S32 scanned = 0, failed = 0;
+        ALKitPopover* popover = shell->findChild<ALKitPopover>("kit_search_results");
+        if (popover && popover->getVisible())
+            dirScanRawView(popover, std::string(), "search:" + query, seen, scanned, failed, true);
+        if (!popover || !popover->getVisible() || !scanned)
+            dirResult("R4_RAW_NAMES", std::string(), "search:" + query, "WARN",
+                      "query produced no visible result labels to scan (search index not loaded?)");
+        else if (!failed)
+            dirResult("R4_RAW_NAMES", std::string(), "search:" + query, "PASS",
+                      llformat("%d visible search result labels show no internal names", scanned), scanned);
+        shell->clearSearch();
+        ++t.mCounter;
+        t.mPhase = 0;
+        t.mWait = 2;
+        return false;
+    }
+
+    // Drawn kit text captured by the render hook (help strip, card titles, badges).
+    bool dirTaskDrawnText(DirRuleTask&)
+    {
+        S32 scanned = 0, failed = 0;
+        for (const auto& drawn : sKitProbedText)
+        {
+            ++scanned;
+            const std::string hit = dirRawName(drawn.second);
+            if (hit.empty()) continue;
+            ++failed;
+            LLSD detail;
+            detail["text"] = drawn.second.substr(0, 160);
+            dirResult("R4_RAW_NAMES", std::string(), "drawn:" + drawn.first, "FAIL",
+                      "drawn kit text shows internal name '" + hit + "'", 1, detail);
+        }
+        if (!failed)
+            dirResult("R4_RAW_NAMES", std::string(), "drawn_text", "PASS",
+                      llformat("%d drawn kit text runs (help strip, card titles, badges) show no internal names", scanned),
+                      scanned);
+        return true;
+    }
+
+    // ---------------------------------------------------------------- start / finish
+
+    bool directorRulesEligible() const
+    {
+        return mDirectorV2 && mDirRulesEnabled && !mDirRulesDone && !mFunctionalDryReveal &&
+            !mFunctionalInjectionBroken && !mFunctionalHaveRowFilter && mFloater.get() != nullptr;
+    }
+
+    // ui-draw-lint: allow-function(lookup,setting) isolated test-only rule phase setup
+    void startDirectorRules()
+    {
+        mDirRulesActive = true;
+        LLSD dummy;
+        dummy["page"] = "director";
+        dummy["widget_name"] = "director_rules";
+        dummy["action"] = "RULE";
+        dummy["version"] = "v2";
+        mFunctionalEntries.push_back(dummy);
+        mFunctionalIndex = mFunctionalEntries.size() - 1;
+        mFunctionalObserved = LLSD::emptyMap();
+        sKitProbedText.clear();
+        sKitTextProbe = true;
+
+        if (mInWorld)
+        {
+            // The rule phase needs a few minutes of in-world time.  Never start it so close
+            // to the safety watchdog that the watchdog would cut it off half-way.
+            const F32 remaining = static_cast<F32>(mFunctionalWatchdogSeconds) -
+                mFunctionalWatchdog.getElapsedTimeF32();
+            if (remaining < 240.f)
+            {
+                dirResult("R1_REACHABILITY", std::string(), "in_world_budget", "FAIL",
+                          llformat("only %d s of the in-world watchdog remain; the Director rule phase needs about "
+                                   "240 s. Re-run with a larger -InWorldWatchdogMin",
+                                   static_cast<S32>(remaining)));
+                return;
+            }
+        }
+        ALKitShell* shell = dirShell();
+        if (!shell || !mDirRulesDoc.isMap())
+        {
+            dirResult("R1_REACHABILITY", std::string(), "registry", "FAIL",
+                      !shell ? "Director shell not found" :
+                               "manifest has no director_rules block: regenerate it with director_functional_manifest.py");
+            return;
+        }
+        mDirOriginalPage = shell->currentPageKey();
+        mDirKnownLegacy.clear();
+        const LLSD& legacy = mDirRulesDoc["known_legacy_pages"];
+        for (LLSD::array_const_iterator it = legacy.beginArray(); it != legacy.endArray(); ++it)
+            mDirKnownLegacy.insert(it->asString());
+        const LLSD& names = mDirRulesDoc["widget_names"];
+        for (LLSD::array_const_iterator it = names.beginArray(); it != names.endArray(); ++it)
+            mDirWidgetNames.insert(it->asString());
+        dirCollectNames(shell);
+
+        // Detector fixtures first: a relaxed detector fails the run before it can pass anything.
+        {
+            const std::string broken = dirDetectorSelfTest();
+            dirResult("R4_RAW_NAMES", std::string(), "detector_selftest", broken.empty() ? "PASS" : "FAIL",
+                      broken.empty() ? "raw-name detector trips on planted names and ignores authored text"
+                                     : "raw-name detector is broken:" + broken);
+        }
+
+        // ---- registry versus the live shell
+        const LLSD& pages = mDirRulesDoc["pages"];
+        std::set<std::string> registry_leaves;
+        for (LLSD::array_const_iterator it = pages.beginArray(); it != pages.endArray(); ++it)
+        {
+            const std::string leaf = (*it)["page"].asString();
+            registry_leaves.insert(leaf);
+            if (!shell->findChild<ALKitLazyPage>(leaf))
+                dirResult("R1_REACHABILITY", (*it)["key"].asString(), "registry", "FAIL",
+                          "generated registry lists this page but the shell has no tab for it");
+        }
+        std::vector<ALKitLazyPage*> live;
+        collectViewsOfType<ALKitLazyPage>(shell, live);
+        for (ALKitLazyPage* lazy : live)
+            if (!registry_leaves.count(lazy->getName()))
+                dirResult("R1_REACHABILITY", lazy->getName(), "registry", "FAIL",
+                          "the shell has a page that is not in the generated registry (regenerate the manifest)");
+        {
+            std::vector<std::string> expected;
+            const LLSD& rail = mDirRulesDoc["rail_groups"];
+            for (LLSD::array_const_iterator it = rail.beginArray(); it != rail.endArray(); ++it)
+                expected.push_back(it->asString());
+            if (shell->railGroups() != expected)
+                dirResult("R1_REACHABILITY", std::string(), "rail_groups", "FAIL",
+                          "rail groups in the shell differ from the generated registry");
+            else
+                dirResult("R1_REACHABILITY", std::string(), "registry", "PASS",
+                          llformat("%d registry pages and %d rail groups match the live shell",
+                                   static_cast<S32>(pages.size()), static_cast<S32>(expected.size())),
+                          static_cast<S32>(pages.size()));
+        }
+
+        auto in_scope = [this](const std::string& leaf)
+        {
+            return mFunctionalPageFilters.empty() ||
+                std::find(mFunctionalPageFilters.begin(), mFunctionalPageFilters.end(), leaf) !=
+                    mFunctionalPageFilters.end();
+        };
+        std::vector<LLSD> scoped;
+        for (LLSD::array_const_iterator it = pages.beginArray(); it != pages.endArray(); ++it)
+            if (in_scope((*it)["page"].asString())) scoped.push_back(*it);
+
+        // ---- R1: reachability by click and by navigateTo
+        for (size_t i = 0; i < scoped.size(); ++i)
+        {
+            LLSD data = scoped[i];
+            // A page in another group, so the start state differs from the target.
+            const S32 page_count = static_cast<S32>(pages.size());
+            for (S32 j = 1; j <= page_count; ++j)
+            {
+                const LLSD& candidate = pages[static_cast<S32>((static_cast<S32>(i) + j * 7) % page_count)];
+                if (candidate["group"].asString() != data["group"].asString())
+                {
+                    data["other"] = candidate["key"].asString();
+                    break;
+                }
+            }
+            dirQueue("reach", data, [this](DirRuleTask& t) { return dirTaskReachPage(t); });
+        }
+        // ---- R1: link rows and card links
+        const LLSD& links = mDirRulesDoc["links"];
+        for (LLSD::array_const_iterator it = links.beginArray(); it != links.endArray(); ++it)
+            if (in_scope(dirLeaf((*it)["source"].asString())))
+                dirQueue("link", *it, [this](DirRuleTask& t) { return dirTaskLink(t); });
+        // ---- R3-R6 per page
+        for (const LLSD& page : scoped)
+            dirQueue("audit", page, [this](DirRuleTask& t) { return dirTaskPageAudit(t); });
+        // ---- R2 popovers
+        const bool shell_scope = mFunctionalPageFilters.empty();
+        if (shell_scope)
+        {
+            const LLSD& popovers = mDirRulesDoc["popovers"];
+            for (LLSD::array_const_iterator it = popovers.beginArray(); it != popovers.endArray(); ++it)
+            {
+                LLSD data = *it;
+                data["label"] = (*it)["name"].asString();
+                data["page_key"] = (*it)["page_key"].asString();
+                if (data["via"].asString() == "search" && data["page_key"].asString().empty())
+                    data["page_key"] = "camera_group/shot_tab";
+                dirQueue("popover", data, [this](DirRuleTask& t) { return dirTaskPopover(t); });
+            }
+        }
+        for (const LLSD& page : scoped)
+        {
+            if (page["key"].asString() == "quick_group/quick_tab") continue;
+            for (const char* via : { "page_reset", "page_who" })
+            {
+                LLSD data;
+                data["via"] = via;
+                data["name"] = "";
+                data["label"] = std::string(via == std::string("page_reset") ? "reset_popover" : "who_popover");
+                data["page_key"] = page["key"].asString();
+                dirQueue("page_popover", data, [this](DirRuleTask& t) { return dirTaskPopover(t); });
+            }
+        }
+        // ---- shell chrome, search results and drawn text
+        if (shell_scope)
+        {
+            dirQueue("shell_chrome", LLSD(), [this](DirRuleTask& t) { return dirTaskShellChrome(t); });
+            dirQueue("search", LLSD(), [this](DirRuleTask& t) { return dirTaskSearchLabels(t); });
+            dirQueue("drawn_text", LLSD(), [this](DirRuleTask& t) { return dirTaskDrawnText(t); });
+        }
+    }
+
+    // ui-draw-lint: allow-function(lookup) isolated test-only rule phase teardown
+    void finishDirectorRules()
+    {
+        sKitTextProbe = false;
+        sKitProbedText.clear();
+        if (ALKitShell* shell = dirShell())
+        {
+            shell->closePopover();
+            shell->clearSearch();
+            if (!mDirOriginalPage.empty()) shell->navigateTo(mDirOriginalPage);
+        }
+        mDirTasks.clear();
+        mDirRulesActive = false;
+        mDirRulesDone = true;
+        if (!mFunctionalEntries.empty() && mFunctionalEntries.back()["widget_name"].asString() == "director_rules")
+            mFunctionalEntries.pop_back();
+        mFunctionalIndex = mFunctionalEntries.size();
+        mFunctionalClickTarget = LLHandle<LLView>();
+        mFunctionalControl = LLHandle<LLUICtrl>();
+        mFunctionalHostFloater = LLHandle<LLFloater>();
+        mFunctionalObserved = LLSD::emptyMap();
+        functionalResetInputState();
     }
 
     enum Phase
@@ -10729,6 +12318,20 @@ private:
     bool mFunctionalPending = false;
     bool mFunctionalActionWorked = false;
     bool mFunctionalGlobalAssertionsDone = false;
+    // Director rule engine (R1-R6) state.
+    bool mDirRulesEnabled = true;
+    bool mDirRulesActive = false;
+    bool mDirRulesDone = false;
+    LLSD mDirRulesDoc;
+    std::map<std::string, LLSD> mDirOracle;
+    std::set<std::string> mDirWidgetNames;
+    std::set<std::string> mDirKnownLegacy;
+    std::set<std::string> mDirFitSeen;
+    std::string mDirOriginalPage;
+    std::deque<DirRuleTask> mDirTasks;
+    S32 mDirFitChecked = 0;
+    S32 mDirFitWarned = 0;
+    S32 mDirFitFailed = 0;
     bool mFunctionalSentinelDone = false;
     bool mFunctionalInjectionBroken = false;
     bool mFunctionalGatePrepared = false;
@@ -10981,6 +12584,8 @@ bool ALUIPerfSelfTest::layoutAuditActive()
 void ALUIPerfSelfTest::recordKitText(LLView* view, const std::string& text,
                                      const LLRect& local_rect, LLView* owner)
 {
+    if (sKitTextProbe && view && !text.empty() && sKitProbedText.size() < 20000)
+        sKitProbedText.insert({ view->getName(), text });
     if (!sLayoutAuditActive || !view || text.empty() || !view->getVisible() || !view->isInVisibleChain() ||
         !isWidgetOnScreen(view) || LLView::getDrawContext().mAlpha <= 0.f ||
         local_rect.getWidth() <= 0 || local_rect.getHeight() <= 0)

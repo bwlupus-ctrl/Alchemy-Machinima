@@ -2067,8 +2067,12 @@ def load(value: str) -> list[dict[str, str]]:
                 if row["PASS/FAIL/SKIP"] == "SKIP" and not row["reason"].strip()]
     if bad_skip:
         raise SystemExit(f"{path}: {len(bad_skip)} SKIP row(s) lack an explicit reason")
+    bad_warn = [row for row in rows
+                if row["PASS/FAIL/SKIP"] == "WARN" and not row["reason"].strip()]
+    if bad_warn:
+        raise SystemExit(f"{path}: {len(bad_warn)} WARN row(s) lack an explicit reason")
     unknown = sorted({row["PASS/FAIL/SKIP"] for row in rows}
-                     - {"PASS", "FAIL", "SKIP", "KNOWN_GAP"})
+                     - {"PASS", "FAIL", "SKIP", "KNOWN_GAP", "WARN"})
     if unknown:
         raise SystemExit(f"{path}: unknown status values: {', '.join(unknown)}")
     unknown_modes = sorted({row["inworld"].lower() for row in rows} - {"true", "false"})
@@ -2119,6 +2123,93 @@ def compare(left: list[dict[str, str]], right: list[dict[str, str]],
     return lines
 
 
+RULE_TITLES = {
+    "R1_REACHABILITY": "Every page and link is reachable through the real navigation code",
+    "R2_POPOVERS": "Every shell popover opens correctly and closes both ways",
+    "R3_LABEL_FIT": "No visible label is clipped (elided labels are WARN)",
+    "R4_RAW_NAMES": "No internal id is shown to the user",
+    "R5_THEMED_PAGES": "Every Director page is a themed kit page (known-legacy pages are WARN)",
+    "R6_CONNECTED": "Every interactive kit control has an observable effect",
+}
+
+
+def rule_rows_of(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [row for row in rows if row.get("kind") == "rule"]
+
+
+def _row_items(row: dict[str, str]) -> int:
+    try:
+        return max(1, int(json.loads(row["observed"]).get("items", 1)))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return 1
+
+
+def rules_section(rows: list[dict[str, str]], require: bool) -> tuple[list[str], bool]:
+    """Per-rule PASS/FAIL/WARN counts and per-item lines for the Director rule engine."""
+    rule_rows = rule_rows_of(rows)
+    lines = ["## Director rule checks", ""]
+    missing: list[str] = []
+    if require and any(row["ui_version"] == "v2" for row in rows):
+        seen = {row["action"] for row in rule_rows}
+        missing = [rule for rule in RULE_TITLES if rule not in seen]
+    failed = bool(missing)
+    if not rule_rows:
+        lines.append("- No rule rows in this run." +
+                     (" REQUIRED rules missing: " + ", ".join(missing) if missing else ""))
+        lines.append("")
+        return lines, failed
+    by_rule: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in rule_rows:
+        by_rule[row["action"]].append(row)
+    lines += ["| Rule | PASS | FAIL | WARN | SKIP | Items checked |", "|---|---:|---:|---:|---:|---:|"]
+    for rule in sorted(by_rule):
+        group = by_rule[rule]
+        status = Counter(row["PASS/FAIL/SKIP"] for row in group)
+        items = sum(_row_items(row) for row in group if row["PASS/FAIL/SKIP"] == "PASS") + \
+            status["FAIL"] + status["WARN"] + status["SKIP"]
+        lines.append(f"| {rule} | {status['PASS']} | {status['FAIL']} | {status['WARN']} | "
+                     f"{status['SKIP']} | {items} |")
+    for rule in sorted(set(RULE_TITLES) - set(by_rule)):
+        lines.append(f"| {rule} | 0 | 0 | 0 | 0 | 0 (did not run) |")
+    lines.append("")
+    if missing:
+        lines += ["REQUIRED rules missing from this run: " + ", ".join(missing), ""]
+    for rule in sorted(by_rule):
+        group = by_rule[rule]
+        lines += [f"### {rule} - {RULE_TITLES.get(rule, '')}".rstrip(" -"), ""]
+        for status in ("FAIL", "WARN", "SKIP"):
+            for row in group:
+                if row["PASS/FAIL/SKIP"] != status:
+                    continue
+                reason = row["reason"].replace("\n", " ").replace("|", "/")
+                lines.append(f"- {status} `{row['page']}` / `{row['control']}`: {reason}")
+        passes = [row for row in group if row["PASS/FAIL/SKIP"] == "PASS"]
+        if passes:
+            lines.append(f"- PASS: {len(passes)} check(s) over {sum(_row_items(r) for r in passes)} item(s)")
+        lines.append("")
+    legacy = [row for row in by_rule.get("R5_THEMED_PAGES", [])
+              if row["control"] == "legacy (not themed)"]
+    if legacy:
+        lines += ["### Legacy (not themed) pages", "", "| Page | Plain widgets | Detail |", "|---|---:|---|"]
+        for row in sorted(legacy, key=lambda r: r["page"]):
+            lines.append(f"| {row['page']} | {_row_items(row)} | {row['reason'].replace('|', '/')} |")
+        lines.append("")
+    effects: Counter[str] = Counter()
+    for row in by_rule.get("R6_CONNECTED", []):
+        by_effect = json.loads(row["observed"]).get("by_effect", {})
+        if isinstance(by_effect, dict):
+            for name, count in by_effect.items():
+                effects[name] += int(count)
+    if effects:
+        lines += ["### Connectedness: effect proven per interactive kit control", "",
+                  "| Effect | Controls |", "|---|---:|"]
+        for name, count in sorted(effects.items()):
+            lines.append(f"| {name} | {count} |")
+        lines.append("")
+    failed = failed or any(row["PASS/FAIL/SKIP"] in FAIL_STATUSES for row in rule_rows)
+    return lines, failed
+
+
 def render(rows: list[dict[str, str]], title: str) -> list[str]:
     modes = sorted({row.get("inworld", "false").lower() for row in rows})
     mode = "in-world" if modes == ["true"] else "login-screen" if modes == ["false"] else "mixed"
@@ -2134,7 +2225,8 @@ def render(rows: list[dict[str, str]], title: str) -> list[str]:
                         for row in rows)
     lines += ["", f"Total: {total['PASS'] - missing_total} interactive/state PASS, "
               f"{missing_total} EXPECT_MISSING, {total['FAIL']} FAIL, "
-              f"{total['KNOWN_GAP']} KNOWN_GAP (failing), {total['SKIP']} SKIP.", ""]
+              f"{total['KNOWN_GAP']} KNOWN_GAP (failing), {total['SKIP']} SKIP, "
+              f"{total['WARN']} WARN.", ""]
     reasons = Counter((row["ui_version"], row["PASS/FAIL/SKIP"], row["reason"] or "(none)")
                       for row in rows if row["PASS/FAIL/SKIP"] != "PASS")
     if reasons:
@@ -2656,6 +2748,8 @@ def main() -> int:
                         help="report reveal-only results without enforcing the click PASS floor")
     parser.add_argument("--self-test", action="store_true",
                         help="run callback-scanner regression fixtures")
+    parser.add_argument("--require-rules", action="store_true",
+                        help="fail when a v2 run lacks rows for any Director rule (R1-R6)")
     args = parser.parse_args()
     if args.self_test:
         self_test_handler_scanner()
@@ -2682,8 +2776,13 @@ def main() -> int:
         left = [row for row in left if row_re.search(row["control"])]
     if args.version and args.version != "both":
         left = [row for row in left if row["ui_version"] == args.version]
-    right = load(args.right) if args.right else []
+    right = [row for row in (load(args.right) if args.right else []) if row.get("kind") != "rule"]
+    left_all = left
+    left = [row for row in left if row.get("kind") != "rule"]
     lines = render(left, csv_path(args.left).parent.name)
+    rule_lines, rules_failed = rules_section(
+        left_all, args.require_rules and not pages and not row_re)
+    lines += [""] + rule_lines
     annotated, shot_note = annotate_failure_shots(left, csv_path(args.left).parent)
     if annotated or shot_note:
         lines += ["", "## Failure screenshots", "",
@@ -2705,7 +2804,7 @@ def main() -> int:
     else:
         print(text, end="")
     failed = any(row["PASS/FAIL/SKIP"] in FAIL_STATUSES for row in left)
-    failed = failed or budget_failed
+    failed = failed or budget_failed or rules_failed
     if args.right:
         failed = failed or any(row["PASS/FAIL/SKIP"] in FAIL_STATUSES for row in right)
     if args.dry_reveal:

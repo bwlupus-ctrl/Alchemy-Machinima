@@ -15,7 +15,13 @@ Outputs:
   doc/director_kit/functional/functional_manifest.json
   doc/director_kit/functional/FUNCTIONAL_MANIFEST.md
 
+The JSON also carries a "director_rules" block (page/link/popover registry and the list of
+runtime rule checks R1-R6 that aluiperfselftest.cpp runs after the manifest rows).
+
 Stdlib only. Run as:  python -I scripts/code_tools/director_functional_manifest.py
+  --check      regenerate to a temp folder, validate the rule registry against the viewer source and
+               the checked-in manifest, write nothing to the repo (exit 1 on any problem)
+  --self-test  adversarial fixtures for the rule-registry validator
 """
 
 import argparse
@@ -1512,6 +1518,288 @@ def add_light_response_oracles(entries, page_meta):
     negative["expect"]["field"] = "tame"
     entries.append(negative)
 
+# ---------------------------------------------------------------- Director rule registry
+#
+# The viewer self-test (indra/newview/aluiperfselftest.cpp, "Director rule engine")
+# enforces six user rules at runtime.  This section builds the page/link/popover
+# registry it drives, lists every check so a new one cannot be added in C++
+# without being declared here (and vice versa), and validates the registry.
+
+FLOATER_V2_PATH = os.path.join(XUI_DIR, "floater_director_v2.xml")
+SELFTEST_CPP = os.path.join(REPO, "indra", "newview", "aluiperfselftest.cpp")
+GEN_REPORT_PATH = os.path.join(HERE, "director_kit", "gen_report.txt")
+# Shrink-only pin (user-approved 10/13: lower as pages convert, never raise).  Mirrors the
+# "legacy" count director_kit_gen.py pins in its classification table.
+KNOWN_LEGACY_MAX = 13
+
+DIRECTOR_RULES = collections.OrderedDict([
+    ("R1_REACHABILITY", (
+        "Every page and link is reachable through the real navigation code",
+        ["rail click then tab click (gear click for Settings) selects the page: right group, "
+         "tab toggled, visible in chain, non-zero size, inside the floater",
+         "ALKitShell::navigateTo(page key) selects the same page from another page",
+         "every link row and card link click lands on its target page (widget visible and highlighted)",
+         "the generated registry matches the live shell (pages, rail groups)"])),
+    ("R2_POPOVERS", (
+        "Every shell popover opens correctly and closes both ways",
+        ["anchor click opens exactly one popover of the expected name",
+         "visible, front-most child of the shell at its centre, inside the shell rect, taller than the "
+         "10 px stand-in, buttons inside its rect",
+         "a second anchor click closes it; Esc closes it",
+         "covers ACTION options, legend, hotkeys, scene menu, cast, search results, and per page "
+         "Reset and Who popovers"])),
+    ("R3_LABEL_FIT", (
+        "No visible label is clipped",
+        ["font text width against the drawn box for kit row labels, page-bar master labels, who chips, "
+         "tab and rail labels, button labels, transport and popover labels",
+         "clipped without elision = FAIL; elided = WARN listing the label",
+         "every section chip of every page is walked so rows behind the active chip are measured"])),
+    ("R4_RAW_NAMES", (
+        "No internal id is ever shown to the user",
+        ["help column text for every row, card and page (help column update called per item)",
+         "every tooltip and visible text on each page, the shell chrome and the open popovers",
+         "visible search result labels for a fixed query set, and all drawn kit text (help strip, card titles)",
+         "detector self-test with planted names runs first, so a relaxed detector fails the run"])),
+    ("R5_THEMED_PAGES", (
+        "Every Director page is a themed kit page",
+        ["plain checkbox, slider, spinner, tab container and button outside kit rows and cards are counted per page",
+         "known-legacy pages are reported as 'legacy (not themed)' (WARN); any other page with one FAILS",
+         "a page built as legacy that is not in the known-legacy list FAILS; the list can only shrink"])),
+    ("R6_CONNECTED", (
+        "Every interactive kit control has an observable effect",
+        ["each interactive kit row maps to a RUN oracle that changes its setting, handler state, opens or navigates "
+         "(the existing effect oracles stay as they were)",
+         "no oracle, an oracle that proves nothing, or an unexplained exclusion FAILS; a SKIP with a reason is "
+         "listed as WARN"])),
+])
+
+# Popovers the shell owns.  "anchor" is the button the user clicks; "via" selects the opening flow.
+DIRECTOR_POPOVERS = [
+    {"name": "kit_arm_popover", "anchor": "btn_arm", "via": "anchor", "xml": True},
+    {"name": "legend_panel", "anchor": "btn_help", "via": "anchor", "xml": True},
+    {"name": "kit_hotkeys_popover", "anchor": "btn_help", "via": "hotkeys", "xml": True},
+    {"name": "kit_scene_popover", "anchor": "btn_scene_menu", "via": "anchor", "xml": True},
+    {"name": "kit_cast_popover", "anchor": "btn_cast_chip", "via": "anchor", "xml": False},
+    {"name": "kit_search_results", "anchor": "page_search_editor", "via": "search", "xml": False},
+]
+DIRECTOR_SEARCH_QUERIES = ["light", "exposure", "reset", "rim", "tron", "gaze", "step", "camera", "color", "shadow"]
+
+
+def _load_floater_registry():
+    """Rail items, groups and lazy pages of floater_director_v2.xml."""
+    root = ET.parse(FLOATER_V2_PATH).getroot()
+    rail = [(item.get("group"), item.get("label")) for item in root.iter()
+            if item.tag.endswith("rail_item")]
+    tabs = next((e for e in root.iter("tab_container") if e.get("name") == "director_tabs"), None)
+    groups = []
+    if tabs is not None:
+        for panel in tabs.findall("panel"):
+            inner = next(iter(panel.iter("tab_container")), None)
+            pages = []
+            if inner is not None:
+                for lazy in inner.findall("kit_lazy_page"):
+                    pages.append({"page": lazy.get("name"), "label": lazy.get("label", ""),
+                                  "file": lazy.get("page_file", ""),
+                                  "master_setting": lazy.get("master_setting", "")})
+            groups.append({"group": panel.get("name"), "label": panel.get("label", ""), "pages": pages})
+    return root, rail, groups
+
+
+def _gen_report_legacy():
+    legacy = set()
+    if os.path.isfile(GEN_REPORT_PATH):
+        with open(GEN_REPORT_PATH, encoding="utf-8") as stream:
+            for line in stream:
+                match = re.match(r"^(\w+)/(\w+): legacy;", line)
+                if match:
+                    legacy.add(match.group(2))
+    return legacy
+
+
+def build_director_rules():
+    """Build the registry the viewer rule engine drives from the generated XUI."""
+    floater, rail, groups = _load_floater_registry()
+    rail_groups = [group for group, _label in rail]
+    pages, links, widget_names = [], [], set()
+    page_targets = {}
+    errors = []
+    for element in floater.iter():
+        name = element.get("name")
+        if name and "_" in name and len(name) >= 5:
+            widget_names.add(name)
+    for group in groups:
+        for lazy in group["pages"]:
+            key = "%s/%s" % (group["group"], lazy["page"])
+            path = os.path.join(XUI_DIR, lazy["file"])
+            entry = {"key": key, "group": group["group"], "page": lazy["page"], "label": lazy["label"],
+                     "file": lazy["file"], "rail": group["group"] in rail_groups, "legacy": False}
+            if not os.path.isfile(path):
+                errors.append("page file missing for %s: %s" % (key, lazy["file"]))
+                pages.append(entry)
+                continue
+            root = ET.parse(path).getroot()
+            kit_page = next(root.iter("kit_page"), None)
+            if kit_page is None:
+                errors.append("%s has no kit_page element" % lazy["file"])
+                pages.append(entry)
+                continue
+            if kit_page.get("page") != key:
+                errors.append("%s declares page=%r but the shell lists it as %r" % (lazy["file"], kit_page.get("page"), key))
+            entry["legacy"] = kit_page.get("legacy") == "true"
+            targets = set()
+            for element in root.iter():
+                name = element.get("name")
+                if name and "_" in name and len(name) >= 5:
+                    widget_names.add(name)
+                widget = element.get("widget")
+                if widget:
+                    targets.add(widget)
+                    if "_" in widget and len(widget) >= 5:
+                        widget_names.add(widget)
+                if element.tag == "kit_card" and element.get("id"):
+                    targets.add(element.get("id"))
+            page_targets[key] = targets
+            for element in root.iter():
+                if element.tag not in ("kit_row", "kit_card") or element.get("kind") != "link":
+                    continue
+                link_to = element.get("link_to", "")
+                if not link_to:
+                    errors.append("%s has a link with no link_to" % key)
+                    continue
+                parts = [part for part in link_to.split("/") if part]
+                target = "/".join(parts[:2])
+                target_widget = parts[2] if len(parts) > 2 else ""
+                links.append({"source": key, "kind": "card" if element.tag == "kit_card" else "row",
+                              "id": element.get("id") if element.tag == "kit_card" else element.get("widget", ""),
+                              "link_to": link_to, "target": target, "target_widget": target_widget})
+            pages.append(entry)
+    keys = {page["key"] for page in pages}
+    for link in links:
+        if link["target"] not in keys:
+            errors.append("%s link %s points at %r, which is not a registered page" % (link["source"], link["id"], link["link_to"]))
+        elif link["target_widget"] and link["target_widget"] not in page_targets.get(link["target"], set()):
+            errors.append("%s link %s targets widget %r missing from %s" % (link["source"], link["id"], link["target_widget"], link["target"]))
+        if not link["id"]:
+            errors.append("%s has a link without a widget/id" % link["source"])
+    legacy = sorted(page["page"] for page in pages if page["legacy"])
+    if len(legacy) > KNOWN_LEGACY_MAX:
+        errors.append("%d legacy pages exceed the shrink-only pin of %d: no new unthemed page may appear" % (len(legacy), KNOWN_LEGACY_MAX))
+    report_legacy = _gen_report_legacy()
+    if report_legacy and set(legacy) != report_legacy:
+        errors.append("legacy pages in XUI %s differ from director_kit_gen classification %s" % (legacy, sorted(report_legacy)))
+    shell_buttons = {e.get("name") for e in floater.iter() if e.tag == "button"}
+    popover_xml = {e.get("name"): e.get("anchor") for e in floater.iter() if e.tag == "kit_popover"}
+    for popover in DIRECTOR_POPOVERS:
+        if popover["xml"]:
+            if popover_xml.get(popover["name"]) != popover["anchor"]:
+                errors.append("popover %s anchor mismatch in floater_director_v2.xml" % popover["name"])
+        if popover["via"] != "search" and popover["anchor"] not in shell_buttons:
+            errors.append("popover %s anchor %s is not a button in floater_director_v2.xml" % (popover["name"], popover["anchor"]))
+    rules = {
+        "version": 1,
+        "rules": [{"id": rule_id, "title": title, "checks": checks}
+                  for rule_id, (title, checks) in DIRECTOR_RULES.items()],
+        "rail_groups": rail_groups,
+        "groups": [{"group": g["group"], "label": g["label"], "rail": g["group"] in rail_groups,
+                    "pages": [p["page"] for p in g["pages"]]} for g in groups],
+        "pages": pages,
+        "links": links,
+        "known_legacy_pages": legacy,
+        "legacy_pin": KNOWN_LEGACY_MAX,
+        "popovers": [dict(popover) for popover in DIRECTOR_POPOVERS],
+        "search_queries": list(DIRECTOR_SEARCH_QUERIES),
+        "widget_names": sorted(widget_names),
+    }
+    return rules, errors
+
+
+def validate_director_rules(rules, entries, cpp_text=None):
+    """Return a list of problems with the rule registry; empty means the gate passes."""
+    errors = []
+    ids = [rule["id"] for rule in rules.get("rules", [])]
+    if len(ids) != len(set(ids)) or not ids:
+        errors.append("rule ids are missing or duplicated")
+    pages = rules.get("pages", [])
+    if not pages:
+        errors.append("registry has no pages")
+    leaves = {page["page"] for page in pages}
+    covered = {e["page"] for e in entries if e.get("version") == "v2"}
+    for page in pages:
+        if page["key"] == "quick_group/quick_tab":
+            continue
+        if page["page"] not in covered:
+            errors.append("page %s has no v2 functional entries (R6 would fail every control)" % page["key"])
+    for link in rules.get("links", []):
+        if link["target"] not in {page["key"] for page in pages}:
+            errors.append("link %s -> %s has no registered target page" % (link["id"], link["link_to"]))
+    if len(rules.get("known_legacy_pages", [])) > rules.get("legacy_pin", KNOWN_LEGACY_MAX):
+        errors.append("known-legacy list exceeds its shrink-only pin")
+    for popover in rules.get("popovers", []):
+        if not popover.get("name") or not popover.get("anchor"):
+            errors.append("popover entry without name/anchor: %r" % popover)
+    if cpp_text is not None:
+        for rule_id in ids:
+            if '"%s"' % rule_id not in cpp_text:
+                errors.append("%s is declared here but never emitted by aluiperfselftest.cpp" % rule_id)
+        for used in sorted(set(re.findall(r'"(R[0-9]+_[A-Z_]+)"', cpp_text))):
+            if used not in ids:
+                errors.append("aluiperfselftest.cpp emits %s, which is not declared in DIRECTOR_RULES" % used)
+        if "director_rules" not in cpp_text:
+            errors.append("aluiperfselftest.cpp does not read the director_rules manifest block")
+    _ = leaves
+    return errors
+
+
+def render_rules_md(rules):
+    lines = ["", "## Director rule checks (runtime, `-Functional -DirectorV2` and `-InWorld`)", "",
+             "These run after the manifest rows inside the same session. They are viewer-local UI checks "
+             "(real clicks on shell chrome, navigation and help APIs, widget-tree reads) and never press a "
+             "control that sends, saves, deletes or opens a file picker. Each emits PASS/FAIL/WARN rows "
+             "(`kind=rule`) into `functional.csv`; any FAIL fails the run.", ""]
+    for rule in rules["rules"]:
+        lines.append("### %s - %s" % (rule["id"], rule["title"]))
+        lines.append("")
+        for check in rule["checks"]:
+            lines.append("- %s" % check)
+        lines.append("")
+    legacy = rules["known_legacy_pages"]
+    lines.append("Registry: %d pages in %d groups (%d rail groups, Settings via the gear), %d link rows/cards, "
+                 "%d popovers, %d search queries." % (
+                     len(rules["pages"]), len(rules["groups"]), len(rules["rail_groups"]),
+                     len(rules["links"]), len(rules["popovers"]), len(rules["search_queries"])))
+    lines.append("")
+    lines.append("Known-legacy pages (%d of at most %d; shrink-only): %s." % (
+        len(legacy), rules["legacy_pin"], ", ".join(legacy)))
+    lines.append("")
+    return "\n".join(lines)
+
+
+def rules_self_test():
+    """Adversarial fixtures: each planted fault must be reported by validate_director_rules."""
+    good = {
+        "rules": [{"id": "R1_REACHABILITY"}], "pages": [{"key": "a_group/a_tab", "page": "a_tab"}],
+        "links": [], "known_legacy_pages": [], "legacy_pin": 1,
+        "popovers": [{"name": "p", "anchor": "btn"}],
+    }
+    entries = [{"version": "v2", "page": "a_tab"}]
+    cpp = '"R1_REACHABILITY" director_rules'
+    assert not validate_director_rules(good, entries, cpp), "baseline fixture must pass"
+    faults = {
+        "link to a missing page": dict(good, links=[{"id": "x", "link_to": "a/b", "target": "a/b"}]),
+        "legacy list over its pin": dict(good, known_legacy_pages=["x", "y"]),
+        "page without functional entries": dict(good, pages=[{"key": "a_group/b_tab", "page": "b_tab"}]),
+        "popover without an anchor": dict(good, popovers=[{"name": "p", "anchor": ""}]),
+        "duplicate rule ids": dict(good, rules=[{"id": "R1_REACHABILITY"}, {"id": "R1_REACHABILITY"}]),
+    }
+    for label, fixture in faults.items():
+        assert validate_director_rules(fixture, entries, cpp), "fixture not detected: " + label
+    assert validate_director_rules(good, entries, cpp.replace("R1_REACHABILITY", "R9_X")), \
+        "C++ rule drift not detected"
+    assert validate_director_rules(good, entries, '"R1_REACHABILITY" "R7_UNDECLARED" director_rules'), \
+        "undeclared C++ rule not detected"
+    print("director_functional_manifest rule self-test: PASS (%d fixtures)" % (len(faults) + 3))
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -1520,7 +1808,20 @@ def main():
                         help="generated JSON path (default: checked-in manifest)")
     parser.add_argument("--markdown-output", default=MD_PATH,
                         help="generated Markdown path (default: checked-in report)")
+    parser.add_argument("--check", action="store_true",
+                        help="regenerate into a temp folder, validate the Director rule registry against "
+                             "aluiperfselftest.cpp and the checked-in manifest, write nothing to the repo")
+    parser.add_argument("--self-test", action="store_true",
+                        help="run the rule-registry adversarial fixtures and exit")
     args = parser.parse_args()
+    if args.self_test:
+        rules_self_test()
+        return
+    if args.check:
+        import tempfile
+        scratch = tempfile.mkdtemp(prefix="director_manifest_check_")
+        args.json_output = os.path.join(scratch, "functional_manifest.json")
+        args.markdown_output = os.path.join(scratch, "FUNCTIONAL_MANIFEST.md")
     json_path = os.path.abspath(args.json_output)
     markdown_path = os.path.abspath(args.markdown_output)
     rows = load_csv()
@@ -1639,7 +1940,15 @@ def main():
         "warning_count": len(xi.warnings),
         "unknown_control_tags": dict(xi.unknown_tags),
     }
-    doc = {"meta": meta, "entries": entries}
+    rules, rule_errors = build_director_rules()
+    with open(SELFTEST_CPP, encoding="utf-8", errors="replace") as stream:
+        cpp_text = stream.read()
+    rule_errors += validate_director_rules(rules, entries, cpp_text)
+    if rule_errors:
+        sys.exit("Director rule registry check failed:\n  " + "\n  ".join(rule_errors))
+    meta["director_rules"] = {"pages": len(rules["pages"]), "links": len(rules["links"]),
+                              "popovers": len(rules["popovers"]), "known_legacy": len(rules["known_legacy_pages"])}
+    doc = {"meta": meta, "entries": entries, "director_rules": rules}
 
     enforce_hazard_skip_run_guard(entries)
 
@@ -1652,7 +1961,7 @@ def main():
         check = json.load(f)
     assert len(check["entries"]) == len(entries)
 
-    md = write_md(entries, meta, skip_rows, page_order, page_meta, synth)
+    md = write_md(entries, meta, skip_rows, page_order, page_meta, synth) + render_rules_md(rules)
     with open(markdown_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(md)
 
@@ -1661,6 +1970,27 @@ def main():
     for v in VERSIONS:
         print(v, {a: cnt[(v, a)] for a in ACTION_ORDER})
     print("warnings=%d" % len(xi.warnings))
+    print("director rules: %d pages, %d links, %d popovers, %d known-legacy (pin %d)" % (
+        len(rules["pages"]), len(rules["links"]), len(rules["popovers"]),
+        len(rules["known_legacy_pages"]), rules["legacy_pin"]))
+    if args.check:
+        # A stale checked-in manifest would feed the viewer an old registry.
+        stale = []
+        try:
+            with open(JSON_PATH, encoding="utf-8") as stream:
+                checked_in = json.load(stream)
+            if checked_in.get("director_rules") != json.loads(json.dumps(rules)):
+                stale.append("checked-in functional_manifest.json director_rules block is stale: "
+                             "run python -I scripts/code_tools/director_functional_manifest.py")
+            if len(checked_in.get("entries", [])) != len(entries):
+                stale.append("checked-in functional_manifest.json has %d entries, regeneration has %d" % (
+                    len(checked_in.get("entries", [])), len(entries)))
+        except (OSError, ValueError) as exc:
+            stale.append("cannot read checked-in manifest: %s" % exc)
+        if stale:
+            sys.exit("manifest check failed:\n  " + "\n  ".join(stale))
+        print("manifest check: PASS (registry valid, checked-in manifest current)")
+        return
     print("wrote", rel(json_path), rel(markdown_path))
 
 

@@ -118,6 +118,20 @@ the partial CSV, and requests normal logout. The wrapper timeout defaults to 18
 minutes, then allows a further 60-second normal-exit grace before reporting any
 last-resort hard kill explicitly.
 
+## Director rule phase (R1-R6, 10/15)
+
+After the manifest rows the same session runs the Director rule engine
+(reachability, popovers, label fit, raw names, themed pages, connectedness; the
+checks are listed in `FUNCTIONAL_MANIFEST.md`). It is viewer-local UI work only:
+real clicks on shell chrome (rail, gear, tabs, popover anchors, link rows),
+`ALKitShell` navigation and help calls, and widget-tree reads. It presses no
+manifest control, sends nothing and never confirms a popover action, so it adds
+no entry to the hazard lists. It needs about four minutes; the in-world run will
+not start it with less than 240 s of the watchdog left and records a FAIL row
+asking for a larger `-InWorldWatchdogMin` instead. The wrapper timeout is raised
+to 22 minutes (9 at the login screen) to cover it; the 12-minute watchdog default
+is unchanged.
+
 ## Selection and Animation Explorer exclusions (10/12)
 
 Any `LLSelectMgr` selection, even of a viewer-only (`mIsLocalOnly`) object, broadcasts a PointAt ViewerEffect and `AGENT_STATE_EDITING` in AgentUpdate (llselectmgr.cpp:679, 8049; llhudeffectpointat.cpp:254; llagent.cpp:2312-2315), so other residents see the avatar's edit pose. `btn_enroll` (which reads the selection) is excluded in-world. `db_from_explorer` is excluded because Animation Explorer sends ObjectSelect/ObjectDeselect to name non-avatar animation sources (animationexplorer.cpp:540-556). Both are excluded in `functional_report.py` INWORLD_EXCLUDED_CONTROLS and in the C++ runner.

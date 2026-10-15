@@ -77,10 +77,11 @@ if ($Rows.Contains('|') -or $Pages.Contains('|')) {
   Write-Host '-Rows and -Pages must not contain the request separator |.' -ForegroundColor Red
   exit 2
 }
-if ($Functional -and $TimeoutMin -eq 10) { $TimeoutMin = 5 }
+# The Director rule phase (R1-R6) adds a few minutes to every v2 functional run.
+if ($Functional -and $TimeoutMin -eq 10) { $TimeoutMin = $(if ($DirectorV2 -or $Both) { 9 } else { 5 }) }
 elseif ($DirectorV2 -and $TimeoutMin -eq 10) { $TimeoutMin = 75 }
 elseif ($Layout -and $TimeoutMin -eq 10) { $TimeoutMin = 25 }
-if ($InWorld -and $TimeoutMin -eq 5) { $TimeoutMin = 18 }
+if ($InWorld -and $TimeoutMin -eq 9) { $TimeoutMin = 22 }
 if ($InWorld -and $InWorldWatchdogMin -lt 1) {
   Write-Host '-InWorldWatchdogMin must be at least 1.' -ForegroundColor Red
   exit 2
@@ -430,6 +431,9 @@ if ($Functional) {
       $requestFields.Add('version=' + $(if ($Both) { 'both' } elseif ($useV2) { 'v2' } else { 'v1' }))
       $requestFields.Add('shots=' + $(if ($Shots -or $Pages) { '1' } else { '0' }))
       $requestFields.Add('dry_reveal=' + $(if ($DryReveal) { '1' } else { '0' }))
+      # Director rule engine (reachability, popovers, label fit, raw names, themed pages,
+      # connectedness). Viewer-local UI checks; v2 only, so the v1 pass ignores it.
+      $requestFields.Add('rules=1')
       if ($InWorld) {
         $requestFields[0] = 'functional-inworld'
         $requestFields.Add('account=5kvideoeye')
@@ -490,6 +494,7 @@ if ($Functional) {
   if ($Version) { $reportArgs += @('--version', $Version) }
   if ($UpdateBudget) { $reportArgs += '--update-budget' }
   if ($DryReveal) { $reportArgs += '--dry-reveal' }
+  if (-not $Pages -and -not $Rows -and -not $DryReveal -and ($DirectorV2 -or $Both)) { $reportArgs += '--require-rules' }
   & $python @reportArgs
   $reportExit = $LASTEXITCODE
   # PowerShell variable names are case-insensitive: `$rows` aliases the
@@ -503,10 +508,21 @@ if ($Functional) {
   $failures = @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -in @('FAIL', 'KNOWN_GAP') })
   $skipsWithoutReason = @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' -and -not $_.reason })
   Write-Host "Functional results: $runDir"
-  Write-Host ("PASS {0} / FAIL-or-GAP {1} / SKIP {2}" -f
+  Write-Host ("PASS {0} / FAIL-or-GAP {1} / SKIP {2} / WARN {3}" -f
     @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'PASS' }).Count,
     $failures.Count,
-    @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' }).Count)
+    @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' }).Count,
+    @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'WARN' }).Count)
+  # Per-rule Director summary (rows with kind=rule; the full per-item list is in summary.md).
+  $ruleRows = @($functionalResultRows | Where-Object { $_.kind -eq 'rule' })
+  foreach ($ruleGroup in @($ruleRows | Group-Object action | Sort-Object Name)) {
+    $ruleStatus = $ruleGroup.Group | Group-Object 'PASS/FAIL/SKIP' -AsHashTable -AsString
+    $ruleLine = "  {0}: PASS {1} / FAIL {2} / WARN {3}" -f $ruleGroup.Name,
+      $(if ($ruleStatus.ContainsKey('PASS')) { $ruleStatus['PASS'].Count } else { 0 }),
+      $(if ($ruleStatus.ContainsKey('FAIL')) { $ruleStatus['FAIL'].Count } else { 0 }),
+      $(if ($ruleStatus.ContainsKey('WARN')) { $ruleStatus['WARN'].Count } else { 0 })
+    Write-Host $ruleLine -ForegroundColor $(if ($ruleStatus.ContainsKey('FAIL')) { 'Red' } else { 'Gray' })
+  }
   if ($DryReveal) {
     Write-Host 'DRY REVEAL: NOT A FUNCTIONAL RESULT' -ForegroundColor Yellow
     exit 3
