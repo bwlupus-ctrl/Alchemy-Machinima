@@ -640,9 +640,10 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         attrs["bulk_reset"] = "false"
     if row.get("no_widget_history"):
         attrs["widget_history"] = "false"
-    if row.get("disabled"):
-        # [Connectedness B9] A disabled row is not connected to anything: the runtime skips it
-        # in Reset page/card, paste, Quick favourites and Advanced reveal.
+    if row.get("unconnected"):
+        # [Connectedness B9] A row explicitly marked "unconnected" (nothing reads its setting) is
+        # skipped by Reset page/card, paste, Quick favourites and Advanced reveal. A merely
+        # disabled row (e.g. reserved for a later version, but read by code) is not.
         attrs["unconnected"] = "true"
     mapping = (("h", "help"), ("kw", "keywords"), ("unit", "unit"), ("sub", "sub"),
                ("to", "link_to"), ("shortcut_of", "shortcut_of"), ("mirror_setting", "mirror_setting"))
