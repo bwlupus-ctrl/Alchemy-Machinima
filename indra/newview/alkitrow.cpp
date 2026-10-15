@@ -479,15 +479,19 @@ void ALKitRow::fitLabel(S32 box_width)
 
 void ALKitRow::layoutRow(S32 w)
 {
+    // The favorite star sits between the value column and the reset glyph, so it takes
+    // track width and never narrows the label track.
+    constexpr S32 kFavoriteW = 18;
     const S32 h = heightForWidth(w);
     reshape(w, h, true);
     if (mLabel)
     {
         const bool full_span_custom = mMeta.kind == "custom" && mMeta.label.empty();
-        mLabel->reshape(ALKitStyle::LABEL_W - 18, 20, true);
-        mLabel->setOrigin(ALKitStyle::ROW_INSET + 18, (h - 20) / 2);
+        // The label box is the mockup's 100 px label track; the favorite star has its own slot (below).
+        mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
+        mLabel->setOrigin(ALKitStyle::ROW_INSET, (h - 20) / 2);
         mLabel->setVisible(!full_span_custom);
-        fitLabel(ALKitStyle::LABEL_W - 18);
+        fitLabel(ALKitStyle::LABEL_W);
     }
 
     const bool full_span_custom = mMeta.kind == "custom" && mMeta.label.empty();
@@ -496,7 +500,7 @@ void ALKitRow::layoutRow(S32 w)
     const S32 cw =
         full_span_custom
             ? llmax(1, w - 2 * ALKitStyle::ROW_INSET)
-            : llmax(1, w - 2 * ALKitStyle::ROW_INSET - ALKitStyle::LABEL_W - ALKitStyle::VALUE_W - ALKitStyle::RESET_W - 3 * ALKitStyle::COL_GAP);
+            : llmax(1, w - 2 * ALKitStyle::ROW_INSET - ALKitStyle::LABEL_W - ALKitStyle::VALUE_W - ALKitStyle::RESET_W - kFavoriteW - 4 * ALKitStyle::COL_GAP);
     const S32 span = full_span_custom ? cw : cw + ALKitStyle::COL_GAP + ALKitStyle::VALUE_W;
 
     if (mVecCount)
@@ -612,7 +616,11 @@ void ALKitRow::layoutRow(S32 w)
         mReset->setOrigin(w - ALKitStyle::ROW_INSET - ALKitStyle::RESET_W, (h - 20) / 2);
     }
     if (mFavorite)
-        mFavorite->setOrigin(ALKitStyle::ROW_INSET, (h - 18) / 2);
+    {
+        mFavorite->reshape(kFavoriteW, 18, true);
+        mFavorite->setOrigin(full_span_custom ? ALKitStyle::ROW_INSET : x + cw + 2 * ALKitStyle::COL_GAP + ALKitStyle::VALUE_W,
+                             (h - 18) / 2);
+    }
 }
 
 void ALKitRow::layoutDialCell(S32 w)

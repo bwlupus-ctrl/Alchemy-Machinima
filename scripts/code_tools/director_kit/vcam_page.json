@@ -25,23 +25,23 @@
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, Skeleton POV, or the local 512 px test pattern. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV", "Test pattern"], "iv": [0,1,2,3], "bind": "code"},
       {"l": "Bound to", "k": "readout", "w": "vc_source_bound", "h": "The object, stored transform, or skeleton driver used by this camera.", "bind": "code"},
-      {"l": "Object source note", "k": "readout", "w": "vc_source_note_object", "h": "Object cameras follow the selected camera object.", "bind": "code", "show_if": "object"},
-      {"l": "Virtual source note", "k": "readout", "w": "vc_source_note_virtual", "h": "Virtual cameras store a position and rotation and need no prim.", "bind": "code", "show_if": "virtual"},
-      {"l": "Skeleton source note", "k": "readout", "w": "vc_source_note_skeleton", "h": "Skeleton POV follows a cast subject or you.", "bind": "code", "show_if": "skeleton"},
+      {"l": "Object note", "k": "readout", "w": "vc_source_note_object", "h": "Object source note: Object cameras follow the selected camera object.", "bind": "code", "show_if": "object"},
+      {"l": "Virtual note", "k": "readout", "w": "vc_source_note_virtual", "h": "Virtual source note: Virtual cameras store a position and rotation and need no prim.", "bind": "code", "show_if": "virtual"},
+      {"l": "Skeleton note", "k": "readout", "w": "vc_source_note_skeleton", "h": "Skeleton source note: Skeleton POV follows a cast subject or you.", "bind": "code", "show_if": "skeleton"},
       {"l": "Type", "k": "readout", "w": "vc_lens_type", "h": "A Surface Lens looks through one aperture face. The type is fixed; add a camera for a different source.", "bind": "code", "show_if": "surface_lens"},
       {"l": "Aperture", "k": "readout", "w": "vc_lens_aperture", "h": "The world face this lens looks through.", "bind": "code", "show_if": "surface_lens"},
       {"l": "Locate aperture", "k": "button", "w": "vc_lens_locate", "h": "Flash the aperture face in-world.", "btn": "Locate aperture", "bind": "code", "show_if": "surface_lens"},
       {"l": "Surface Lens note", "k": "readout", "w": "vc_lens_note", "h": "A Lens owns exactly one aperture face. Its mapping is fixed; remove the capture to remove that face.", "bind": "code", "show_if": "surface_lens"}
     ]},
     {"id": "placement", "t": "Placement", "k": "rows", "badge": "CAM n", "rows": [
-      {"l": "Set selected camera", "k": "button", "w": "vc_set_selected_camera", "h": "Bind this camera to the object you have selected in-world.", "btn": "Set selected camera", "bind": "code", "show_if": "object"},
+      {"l": "Set camera", "k": "button", "w": "vc_set_selected_camera", "h": "Set selected camera: Bind this camera to the object you have selected in-world.", "btn": "Set selected camera", "bind": "code", "show_if": "object"},
       {"l": "Place eye in front", "k": "readout", "w": "vc_place_eye_front", "h": "Info only: no existing model command safely derives an eye offset from arbitrary selected-object geometry.", "bind": "code", "show_if": "object"},
-      {"l": "Marker convention", "k": "readout", "w": "vc_placement_note", "h": "Local -Z looks forward and local +Y is up. Use a transparent marker or move the eye beyond visible housing.", "bind": "code", "show_if": "object"},
+      {"l": "Marker style", "k": "readout", "w": "vc_placement_note", "h": "Marker convention: Local -Z looks forward and local +Y is up. Use a transparent marker or move the eye beyond visible housing.", "bind": "code", "show_if": "object"},
       {"l": "Eye offset X", "k": "slider", "w": "vc_eye_x", "h": "Local eye offset in metres (object cameras only).", "mn": -64, "mx": 64, "st": 0.01, "dc": 3, "unit": "m", "bind": "code", "a": 1, "show_if": "object"},
       {"l": "Eye offset Y", "k": "slider", "w": "vc_eye_y", "h": "Local eye offset in metres, +Y is up.", "mn": -64, "mx": 64, "st": 0.01, "dc": 3, "unit": "m", "bind": "code", "a": 1, "show_if": "object"},
       {"l": "Eye offset Z", "k": "slider", "w": "vc_eye_z", "h": "Local eye offset in metres, -Z looks forward.", "mn": -64, "mx": 64, "st": 0.01, "dc": 3, "unit": "m", "bind": "code", "a": 1, "show_if": "object"},
       {"l": "Snap to my view", "k": "button", "w": "vc_snap_view", "h": "Store your current camera position and orientation as this virtual camera's transform.", "btn": "Snap to my view", "bind": "code", "show_if": "virtual"},
-      {"l": "Virtual placement note", "k": "readout", "w": "vc_virtual_note", "h": "Fly your view to the shot, then Snap. The eye offset does not apply to virtual cameras.", "bind": "code", "show_if": "virtual"}
+      {"l": "Placement note", "k": "readout", "w": "vc_virtual_note", "h": "Virtual placement note: Fly your view to the shot, then Snap. The eye offset does not apply to virtual cameras.", "bind": "code", "show_if": "virtual"}
     ]},
     {"id": "skeleton", "t": "Skeleton POV", "k": "rows", "badge": "CAM n", "show_if": "virtual", "rows": [
       {"l": "Bone POV", "k": "toggle", "w": "vc_bone_enabled", "h": "Attach this virtual camera to a skeleton joint.", "bind": "code"},
@@ -77,7 +77,7 @@
       {"l": "Rule of thirds", "k": "toggle", "w": "vc_guide_thirds", "h": "Subdivide the framing gate into a 3x3 grid.", "bind": "code", "show_if": "guide_on"},
       {"l": "Up / roll", "k": "toggle", "w": "vc_guide_up", "h": "Draw an up/roll nub on the top edge of the gate so tilt reads.", "bind": "code", "show_if": "guide_on"},
       {"l": "Center crosshair", "k": "toggle", "w": "vc_guide_cross", "h": "Draw a small crosshair at the gate centre.", "bind": "code", "show_if": "guide_on"},
-      {"l": "Clip range markers", "k": "toggle", "w": "vc_guide_clip", "h": "Draw the near-clip rectangle so the depth range reads.", "bind": "code", "show_if": "guide_on"},
+      {"l": "Clip markers", "k": "toggle", "w": "vc_guide_clip", "h": "Clip range markers: Draw the near-clip rectangle so the depth range reads.", "bind": "code", "show_if": "guide_on"},
       {"l": "Guide note", "k": "readout", "w": "vc_guide_note", "h": "Shows where this camera is and what its lens covers, so you can place it in the world.", "bind": "code", "show_if": "guide_off"}
     ]},
     {"id": "camera_look", "t": "Camera look", "k": "rows", "badge": "CAM n", "copy_type": "vcam_look", "rows": [
@@ -99,7 +99,7 @@
     {"id": "faces", "t": "Faces this camera feeds", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "", "k": "custom", "w": "vc_face_list", "h": "Choose raw camera output or a bound face. Drop another camera's monitor on a face row to move it.", "custom_tag": "vcam_face_list", "bind": "code", "row_height": 150},
       {"l": "Add selected face", "k": "button", "w": "vc_add_face", "h": "Bind the selected in-world prim face to this camera.", "btn": "Add selected face", "bind": "code"},
-      {"l": "Mapping for new face", "k": "combo", "w": "vc_new_face_fit", "h": "Default mapping used for a newly bound face.", "it": ["Fit", "Fill", "Stretch"], "iv": [0,1,2], "bind": "code"},
+      {"l": "New face map", "k": "combo", "w": "vc_new_face_fit", "h": "Mapping for new face: Default mapping used for a newly bound face.", "it": ["Fit", "Fill", "Stretch"], "iv": [0,1,2], "bind": "code"},
       {"l": "Add virtual screen", "k": "button", "w": "vc_add_screen", "h": "Add a viewer-local virtual screen in front of your view.", "btn": "Add virtual screen", "bind": "code"},
       {"l": "Face capacity", "k": "readout", "w": "vc_face_count", "h": "Faces used across all cameras.", "bind": "code"}
     ]},
@@ -118,9 +118,9 @@
       {"l": "Keystone H", "k": "slider", "w": "vc_proj_keystone_h", "h": "Horizontal trapezoid correction.", "mn": -1, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
       {"l": "Keystone V", "k": "slider", "w": "vc_proj_keystone_v", "h": "Vertical trapezoid correction.", "mn": -1, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
       {"l": "Throw", "k": "segmented", "w": "vc_proj_throw", "h": "Lock projected size to neither FOV, the projector light's FOV, or the camera's FOV.", "it": ["Off", "Light FOV", "Camera FOV"], "iv": [0,1,2], "bind": "code"},
-      {"l": "Brightness (feed EV)", "k": "slider", "w": "vc_proj_brightness", "h": "Exposure offset applied to this projector feed.", "mn": -6, "mx": 6, "st": 0.1, "dc": 1, "unit": "EV", "bind": "code"},
+      {"l": "Feed brightness", "k": "slider", "w": "vc_proj_brightness", "h": "Brightness (feed EV): Exposure offset applied to this projector feed.", "mn": -6, "mx": 6, "st": 0.1, "dc": 1, "unit": "EV", "bind": "code"},
       {"l": "Lamp power", "k": "slider", "w": "vc_proj_lamp_power", "h": "Viewer-only boost of this projector's light output while it shows a VCam feed. Goes far past the build menu's intensity limit; nothing is sent to the object.", "mn": -2, "mx": 8, "st": 0.1, "dc": 1, "unit": "EV", "bind": "code"},
-      {"l": "Follow main exposure", "k": "toggle", "w": "vc_proj_follow_exposure", "h": "Follow the main view's exposure while lighting the projection.", "bind": "code"},
+      {"l": "Follow exposure", "k": "toggle", "w": "vc_proj_follow_exposure", "h": "Follow main exposure: Follow the main view's exposure while lighting the projection.", "bind": "code"},
       {"l": "Lamp colour", "k": "slider", "w": "vc_proj_lamp_kelvin", "h": "Projector lamp colour temperature; 6500 K is neutral.", "mn": 2700, "mx": 10000, "st": 100, "dc": 0, "unit": "K", "bind": "code"},
       {"l": "Gel tint", "k": "color", "w": "vc_proj_gel_tint", "h": "Colour gel multiplied into the projector lamp.", "bind": "code"},
       {"l": "Hot spot", "k": "slider", "w": "vc_proj_hotspot", "h": "Centre brightness and edge falloff of the lamp.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
@@ -133,8 +133,8 @@
       {"l": "Burn", "k": "slider", "w": "vc_proj_burn", "h": "Film burn-in and edge burn.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
       {"l": "Halation", "k": "slider", "w": "vc_proj_halation", "h": "Glow bleeding around projected highlights.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
       {"l": "Resolution", "k": "segmented", "w": "vc_proj_resolution", "h": "Resolution of the projector cookie.", "it": ["256", "512", "1024"], "iv": [256,512,1024], "bind": "code"},
-      {"l": "When camera is off", "k": "combo", "w": "vc_proj_no_signal", "h": "Choose the no-signal picture used while the camera is unavailable.", "it": ["Projector's own cookie", "Black", "White"], "iv": [0,1,2], "bind": "code"},
-      {"l": "Keep the light's gobo", "k": "toggle", "w": "vc_proj_keep_gobo", "h": "Keep the projector light's existing gobo while the VCam feed is attached.", "bind": "code"}
+      {"l": "When cam off", "k": "combo", "w": "vc_proj_no_signal", "h": "When camera is off: Choose the no-signal picture used while the camera is unavailable.", "it": ["Projector's own cookie", "Black", "White"], "iv": [0,1,2], "bind": "code"},
+      {"l": "Keep gobo", "k": "toggle", "w": "vc_proj_keep_gobo", "h": "Keep the light's gobo: Keep the projector light's existing gobo while the VCam feed is attached.", "bind": "code"}
     ]},
     {"id": "projector_tv", "t": "More effects (TV)", "k": "rows", "badge": "PROJECTOR n", "copy_type": "vcam_projector_tv", "show_if": "selected_projector", "rows": [
       {"l": "Presets", "k": "combo", "w": "vc_proj_tv_preset", "h": "Apply Clean, Old CRT, Broken TV, VHS Tape, or Security Feed to this projector.", "it": ["Pick...", "Clean", "Old CRT", "Broken TV", "VHS Tape", "Security Feed"], "iv": ["", "clean", "crt", "broken", "vhs", "security"], "bind": "code"},
@@ -167,7 +167,7 @@
       {"l": "Height", "k": "slider", "w": "vc_screen_height", "h": "Height of this virtual screen in metres; width follows the aspect.", "mn": 0.1, "mx": 20, "st": 0.05, "dc": 2, "unit": "m", "bind": "code", "show_if": "virtual_face"},
       {"l": "Screen aspect", "k": "combo", "w": "vc_screen_aspect", "h": "Width = height x aspect. Custom keeps the current ratio.", "it": ["16:9", "4:3", "1:1", "Custom"], "iv": [1.7777778,1.3333333,1,-1], "bind": "code", "show_if": "virtual_face"},
       {"l": "Locate", "k": "button", "w": "vc_face_locate", "h": "Flash this face in-world.", "btn": "Locate", "bind": "code"},
-      {"l": "Reposition to my view", "k": "button", "w": "vc_screen_reposition", "h": "Move this virtual screen a few metres in front of your view, facing you.", "btn": "Reposition to my view", "bind": "code", "show_if": "virtual_face"},
+      {"l": "Move to my view", "k": "button", "w": "vc_screen_reposition", "h": "Reposition to my view: Move this virtual screen a few metres in front of your view, facing you.", "btn": "Reposition to my view", "bind": "code", "show_if": "virtual_face"},
       {"l": "Remove face", "k": "button", "w": "vc_remove_face", "h": "Unbind this face from the camera.", "btn": "Remove face", "bind": "code"},
       {"l": "Gate note", "k": "readout", "w": "vc_gate_note", "h": "This face shows whatever the Gate has on air. Mapping and TV effects still apply.", "bind": "code", "show_if": "gate_feed"},
       {"l": "Bar R", "k": "slider", "w": "vc_bar_r", "h": "Letterbox bar colour (linear), red. Bars appear with Fit.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
@@ -217,7 +217,7 @@
       {"l": "Admitted", "k": "readout", "w": "vc_admitted", "h": "Attempts the scheduler is admitting across all cameras right now.", "bind": "code"},
       {"l": "Previews", "k": "readout", "w": "vc_preview_cost", "h": "Monitors only cost renders for cameras with no visible face.", "bind": "code"},
       {"l": "Adaptive note", "k": "readout", "w": "vc_performance_note_1", "h": "Adaptive protects presented main-view FPS and fairly shares the total budget across cameras.", "bind": "code", "a": 1},
-      {"l": "Presented FPS note", "k": "readout", "w": "vc_performance_note_2", "h": "Adaptive reacts to presented FPS only and cannot guarantee the target in an already slower scene.", "bind": "code", "a": 1},
+      {"l": "FPS note", "k": "readout", "w": "vc_performance_note_2", "h": "Presented FPS note: Adaptive reacts to presented FPS only and cannot guarantee the target in an already slower scene.", "bind": "code", "a": 1},
       {"l": "Face cost note", "k": "readout", "w": "vc_performance_note_3", "h": "One camera feeding many faces still performs one scheduled scene render. Faces are capped at 16.", "bind": "code", "a": 1}
     ]}
   ],

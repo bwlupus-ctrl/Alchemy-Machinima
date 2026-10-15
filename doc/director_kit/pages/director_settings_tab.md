@@ -20,13 +20,13 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `scene_recovery` / `settings_recovery_mode` (When an unsaved scene is found) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:8` | kit `combo` ↔ `DirectorRecoveryMode` `S32` | none |
+| `scene_recovery` / `settings_recovery_mode` (Unsaved scene) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:8` | kit `combo` ↔ `DirectorRecoveryMode` `S32` | none |
 | `scene_recovery` / `settings_crash_backups` (Crash backups) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:17` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `scene_recovery` / `settings_restore_backup` (Restore the selected backup) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:23` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `scene_recovery` / `settings_delete_backup` (Delete the selected backup) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:26` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `scene_recovery` / `settings_restore_backup` (Restore backup) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:23` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `scene_recovery` / `settings_delete_backup` (Delete backup) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:26` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
 | `scene_recovery` / `settings_recovery_help` (About recovery) | `text` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:29` | kit readout ← approved static copy; no runtime writer | none |
-| `settings_cast` / `settings_add_self_link` (Add me to the cast at login) | none | kit-native action `link_to:capture_group/scene_options_tab`; no duplicate widget is required | none |
-| `settings_prompts` / `settings_reset_prompts` (Reset 'don't ask again' prompts) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:37` | `ALDirectorSettingsKitAdapter` command/model binding → wired in `LLFloaterDirector::bindDirectorSettingsPage()`; behavior `LLNotifications::setIgnored()` (`indra/newview/llfloaterdirector.cpp:2025`) | none |
+| `settings_cast` / `settings_add_self_link` (Add me at login) | none | kit-native action `link_to:capture_group/scene_options_tab`; no duplicate widget is required | none |
+| `settings_prompts` / `settings_reset_prompts` (Reset prompts) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:37` | `ALDirectorSettingsKitAdapter` command/model binding → wired in `LLFloaterDirector::bindDirectorSettingsPage()`; behavior `LLNotifications::setIgnored()` (`indra/newview/llfloaterdirector.cpp:2025`) | none |
 | `settings_appearance` / `settings_theme` (Theme) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:42` | kit `combo` ↔ `DirectorTheme` `String` | none |
 
 ## Adapter extraction
@@ -85,8 +85,8 @@ None. Every approved visual kind is either a kit primitive or an existing XUI co
 ## Unresolved and pending-decision items
 
 - `settings_crash_backups` (Crash backups): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
-- `settings_restore_backup` (Restore the selected backup): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
-- `settings_delete_backup` (Delete the selected backup): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `settings_restore_backup` (Restore backup): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `settings_delete_backup` (Delete backup): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 
 ## Risks
 

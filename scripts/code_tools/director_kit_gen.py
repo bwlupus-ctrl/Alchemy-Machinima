@@ -1072,6 +1072,12 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
             # which Subject A consumes to fill A-D. A plain scroll_list cannot.
             node.tag = "radar_list"
             node.set("content_type", "Agents")
+            # The name column takes the roster's spare width (the rail roster is 176 px and the
+            # popover 280 px). The v1 fixed 72 px clipped names to about 11 characters.
+            for column in node.iter("columns"):
+                if column.get("name") == "name":
+                    column.attrib.pop("width", None)
+                    column.set("dynamic_width", "true")
         if name == "cast_hint":
             node.set("clip", "true")
         tool_icons = {"btn_add_you": "KitIcon_cast_tool_you_16", "btn_add_animesh": "KitIcon_cast_tool_animesh_16",

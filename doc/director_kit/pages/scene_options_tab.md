@@ -20,7 +20,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `scene_options` / `scene_hotkeys_enabled` (Hotkeys) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1758` | kit `toggle` ↔ `DirectorHotkeysEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml:8` `scene_hotkeys_enabled` |
-| `scene_options` / `scene_add_self_at_login` (Add me to the cast at login) | none | kit `toggle` ↔ `DirectorAddSelfAtLogin` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml:11` `scene_add_self_at_login` |
+| `scene_options` / `scene_add_self_at_login` (Add me at login) | none | kit `toggle` ↔ `DirectorAddSelfAtLogin` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml:11` `scene_add_self_at_login` |
 | `scene_options` / `scene_hotkeys_list` (Shortcuts) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1759` | kit readout ← approved static copy; no runtime writer | none |
 | `scene_options` / `scene_categories_text` (Saved in file) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1761` | kit readout ← approved static copy; no runtime writer | none |
 

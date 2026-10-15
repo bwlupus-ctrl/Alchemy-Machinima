@@ -48,7 +48,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `what_steps` / `sa_flexi` (Hair, cloth & flexi) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:147` | kit `toggle` ↔ `StepAnimFlexi` `Boolean` | none |
 | `what_steps` / `sa_attach_fx` (Attachment FX) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:150` | kit `toggle` ↔ `StepAnimAttachFX` `Boolean` | none |
 | `what_steps` / `sa_particles` (Step particles) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:153` | kit `toggle` ↔ `StepAnimParticles` `Boolean` | none |
-| `what_steps` / `sa_texture_anim` (Step texture animation) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:156` | kit `toggle` ↔ `StepAnimTextureAnim` `Boolean` | none |
+| `what_steps` / `sa_texture_anim` (Step textures) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:156` | kit `toggle` ↔ `StepAnimTextureAnim` `Boolean` | none |
 | `step_timing` / `sa_clock` (Clock) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:161` | kit `combo` ↔ `StepAnimClock` `S32` | none |
 | `step_timing` / `sa_offset` (Actor offset) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:169` | kit `combo` ↔ `StepAnimOffsetMode` `S32` | none |
 | `step_timing` / `sa_phase` (Phase) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:178` | kit `slider` ↔ `StepAnimPhase` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:65`) | none |

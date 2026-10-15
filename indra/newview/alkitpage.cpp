@@ -122,6 +122,24 @@ std::string whoChipSubject(const LLComboBox* combo)
 // Who chip text insets (LLButton pads) and the gap after its leading icon.
 constexpr S32 kWhoChipLeftPad = 28, kWhoChipRightPad = 24, kWhoChipIconGap = 1, kWhoChipSlack = 8;
 
+// Section chips are as wide as their text, as in the mockup (10 px padding each side, 6 px apart).
+constexpr S32 kSectionChipPad = 10, kSectionChipGap = 6, kSectionChipSlack = 6;
+
+static void placeSectionChips(const std::vector<LLButton*>& chips, S32 left)
+{
+    const LLFontGL* font = ALKitStyle::sansFont("Kit12");
+    S32 x = left;
+    for (LLButton* chip : chips)
+    {
+        if (!chip->getVisible())
+            continue;
+        const S32 text_w = font ? font->getWidth(chip->getText()) : 100;
+        chip->reshape(text_w + 2 * kSectionChipPad + kSectionChipSlack, 24, true);
+        chip->setOrigin(x, 7);
+        x += chip->getRect().getWidth() + kSectionChipGap;
+    }
+}
+
 // Prefix is the page's own who_label (e.g. "Stepping"); pages without one keep the
 // historical "Lighting" prefix.
 std::string whoChipLabel(const std::string& who_label, const LLComboBox* combo, bool follows_cast)
@@ -1086,15 +1104,7 @@ void ALKitPage::applyModeAndChip(bool request_layout)
             }
         }
     }
-    S32 chip_x = ALKitStyle::PAGE_PAD_LR;
-    for (LLButton* chip : mChips)
-    {
-        if (!chip->getVisible())
-            continue;
-        chip->reshape(100, 24, true);
-        chip->setOrigin(chip_x, 7);
-        chip_x += 106;
-    }
+    placeSectionChips(mChips, ALKitStyle::PAGE_PAD_LR);
     if (request_layout)
         requestLayout();
 }
@@ -1184,15 +1194,7 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
         top -= ALKitStyle::CHIPS_H;
         mChipsContainer->reshape(w, ALKitStyle::CHIPS_H, true);
         mChipsContainer->setOrigin(0, top);
-        S32 x = ALKitStyle::PAGE_PAD_LR;
-        for (LLButton* b : mChips)
-        {
-            if (!b->getVisible())
-                continue;
-            b->reshape(100, 24, true);
-            b->setOrigin(x, 7);
-            x += 106;
-        }
+        placeSectionChips(mChips, ALKitStyle::PAGE_PAD_LR);
     }
 
     if (mWhoChip)
