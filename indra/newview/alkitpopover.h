@@ -36,9 +36,9 @@ protected:
 
 private:
     void ensureScroller();
-    bool place();
-    void layoutPopover(S32 width, S32 max_height);
-    void fitFixedHeight(S32 max_height);
+    bool place(bool to_top);
+    void layoutPopover(S32 width, S32 max_height, bool to_top);
+    void fitFixedHeight(S32 max_height, bool to_top);
 
     std::string        mAnchorName;
     std::string        mSide;

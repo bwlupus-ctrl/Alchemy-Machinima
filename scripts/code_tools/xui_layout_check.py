@@ -1458,6 +1458,11 @@ def kit_dial_label_limit() -> int:
         raise ValueError("alkitcard.cpp: the dial cell is no longer (body_w - GRID_GAP) / 2")
     if not re.search(r"body_w\s*=\s*w\s*-\s*ALKitStyle::CARD_PAD_L\s*-\s*ALKitStyle::CARD_PAD_R", card_source):
         raise ValueError("alkitcard.cpp: the card body width is no longer w - CARD_PAD_L - CARD_PAD_R")
+    # The flow grid's card width is the narrowest card the viewer builds: it must be this constant,
+    # not a literal, or a change to the page's card width would not reach this gate.
+    page_source = ALKIT_PAGE_CPP.read_text(encoding="utf-8")
+    if not re.search(r"gp\.card_width\s*=\s*ALKitStyle::CARD_MIN_W\s*;", page_source):
+        raise ValueError("alkitpage.cpp: the flow grid card_width is no longer ALKitStyle::CARD_MIN_W")
     card_min = _read_const(style, "CARD_MIN_W", ALKIT_STYLE_H)
     body = card_min - _read_const(style, "CARD_PAD_L", ALKIT_STYLE_H) - _read_const(style, "CARD_PAD_R", ALKIT_STYLE_H)
     cell = (body - _read_const(style, "GRID_GAP", ALKIT_STYLE_H)) // 2

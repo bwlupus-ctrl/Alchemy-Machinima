@@ -32,7 +32,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `auto_reframe` / `auto_frame_compose` (Top line) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:112` | kit `slider` ↔ `CinematicAutoFrameComposeLine` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:58` `auto_frame_compose` |
 | `auto_reframe` / `auto_frame_distance_trim` (Dolly trim) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:124` | kit `number` ↔ `CinematicAutoFrameDistanceTrim` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:63` `auto_frame_distance_trim` |
 | `auto_reframe` / `auto_frame_vertical_trim` (Vertical trim) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:136` | kit `number` ↔ `CinematicCamFrameOffsetUp` `F32` | page `operator_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:201` `CinematicCamFrameOffsetUp`, `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:66` `auto_frame_vertical_trim` |
-| `auto_reframe` / `auto_frame_resolve` (Re-solve now) | `button` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:147` | `ALFrameOrbitKitAdapter` command/model binding → behavior `LLCinematicCamera::requestAutoReframe()` (`indra/newview/alpanelcinecamparams.cpp:107`) | none |
+| `auto_reframe` / `auto_frame_resolve` (Re-solve now) | `button` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:147` | `ALFrameOrbitKitAdapter` command/model binding → behavior `LLCinematicCamera::requestAutoReframe()` (`indra/newview/alpanelcinecamparams.cpp:147`) | none |
 | `reframe_settle` / `auto_frame_settle_mode` (Settle mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:155` | kit `combo` ↔ `CinematicAutoFrameSettleMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:74` `auto_frame_settle_mode` |
 | `reframe_settle` / `auto_frame_settle_seconds` (Settle time) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:171` | kit `slider` ↔ `CinematicAutoFrameSettleSeconds` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:83` `auto_frame_settle_seconds` |
 | `reframe_settle` / `auto_frame_settle_curve` (Curve) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:197` | kit `combo` ↔ `CinematicAutoFrameSettleCurve` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml:88` `auto_frame_settle_curve` |
@@ -57,7 +57,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `LLCinematicCamera::requestAutoReframe()` — `indra/newview/alpanelcinecamparams.cpp:107` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLCinematicCamera::requestAutoReframe()` — `indra/newview/alpanelcinecamparams.cpp:147` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

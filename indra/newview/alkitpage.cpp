@@ -834,7 +834,7 @@ bool ALKitPage::postBuild()
     gp.rect        = getLocalRect();
     gp.pack        = "rows";
     gp.max_columns = 2;
-    gp.card_width  = 340;
+    gp.card_width  = ALKitStyle::CARD_MIN_W; // the narrowest card; xui_layout_check reads this same constant
     gp.column_gap  = 12;
     gp.row_gap     = 12;
     gp.pad         = 0;

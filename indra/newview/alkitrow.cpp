@@ -861,6 +861,15 @@ bool ALKitRow::setBoundValue(const LLSD& value)
             low               = ranged->getMinValue();
             high              = ranged->getMaxValue();
         }
+    // A colour with no declared minimum never goes negative (HDR above 1 stays allowed).
+    LLControlVariable* colour_setting = (mVecCount == 3 && !mMeta.setting.empty())
+        ? gSavedSettings.getControl(mMeta.setting).get() : nullptr;
+    const bool colour_row = mMeta.kind == "color" || (colour_setting && colour_setting->isType(TYPE_COL3));
+    if (colour_row && !has_min)
+    {
+        has_min = true;
+        low     = 0.0;
+    }
     auto clamp_number = [&](const LLSD& number_value, bool as_integer) -> LLSD
     {
         F64 number = number_value.asReal();

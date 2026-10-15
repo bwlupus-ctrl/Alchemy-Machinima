@@ -974,7 +974,7 @@ _LABEL_WORD_MAP = {
     "min": "min", "max": "max", "lo": "low", "hi": "high", "pow": "power", "var": "variation",
     "kal": "kaleidoscope", "ior": "IOR", "rot": "rotation", "tex": "texture", "src": "source",
     "cx": "centre X", "cy": "centre Y", "rx": "radius X", "ry": "radius Y", "db": "dB", "tron": "Tron",
-    "n": "N", "sil": "silhouette", "am": "amount", "amp": "amplitude", "fstop": "f-stop", "focaltime": "focal time",
+    "n": "N", "sil": "silhouette", "amp": "amplitude", "fstop": "f-stop", "focaltime": "focal time",
 }
 
 
@@ -992,6 +992,9 @@ def _label_tokens(widget: str) -> tuple[list[str], bool]:
     # "reset"/"default"/"rst" tokens anywhere (reset_X, X_default_btn, cas_reset_X) make it a Reset label.
     reset = any(word in ("reset", "default", "rst") for word in words)
     words = [word for word in words if word not in ("reset", "default", "rst")]
+    # "am" is the actor-mask prefix (am_reset_CineLightRigActorMaskBias): the mask word carries it.
+    if "mask" in words:
+        words = [word for word in words if word != "am"]
     while len(words) > 1 and words[-1] in _LABEL_SUFFIXES:
         words = words[:-1]
     while len(words) > 1 and words[0] in _LABEL_SETTING_WORDS:
@@ -1022,6 +1025,52 @@ def humanize_widget_name(widget: str) -> str:
 
 
 _LABEL_SIBLING_TAGS = {"text", "text_box", "label"}
+# Captions that name a state or a heading rather than the control beside them: scan past these.
+_LABEL_SKIP_SUFFIXES = ("_status", "_hint", "_note", "_empty", "_header", "_col")
+# Per-light cards repeat the same rows (EV, Yaw, Colour); the card names the light.
+_LIGHT_ROLE_PANELS = {"cine_key_card": "Key", "cine_fill_card": "Fill", "cine_rim_card": "Back", "cine_bg_card": "BG"}
+
+
+def _is_skipped_caption(parent: ET.Element, previous: ET.Element) -> bool:
+    if previous.get("name", "").endswith(_LABEL_SKIP_SUFFIXES):
+        return True
+    # Column headings: three or more captions at one height with no field on that row (Amount | Sharp |
+    # Wrap | Back over a table). A row with a field on it is an inline caption set (Spikes [x] Sharp [x]).
+    def band(node: ET.Element) -> int | None:
+        try:
+            return int(float(node.get("top", "")))
+        except ValueError:
+            return None
+
+    top = band(previous)
+    if top is None:
+        return False
+    near = [s for s in parent if isinstance(s.tag, str) and band(s) is not None and abs(band(s) - top) <= 6]
+    captions = [s for s in near if s.tag in _LABEL_SIBLING_TAGS]
+    fields = [s for s in near if s.tag in EXTERNAL_CONTROL_TAGS and s.tag not in ("button", "flyout_button")]
+    return len(captions) >= 3 and not fields
+
+
+def light_role_label(role: str, label: str) -> str:
+    """Prefix the light role onto a per-light row label: 'EV' -> 'Key EV', 'Yaw' -> 'Fill yaw'."""
+    if not role or not label or not label[0].isalpha() or label.startswith("Reset"):
+        return label
+    if role.lower() in label.lower():
+        return label
+    word = label if label[:2].isupper() else label[:1].lower() + label[1:]
+    return role + " " + word
+
+
+def reset_tooltip_label(node: ET.Element) -> str:
+    """A reset button with no caption names its job in its tool tip ('Reset all per-light rim values')."""
+    if node.tag != "button":
+        return ""
+    tip = (node.get("tool_tip") or "").strip().rstrip(".")
+    # Only a reset that covers a whole group ("Reset all per-light rim values"): per-control tips
+    # ("Reset to default", "Reset Actor only") read worse than the widget name.
+    if tip.startswith("Reset all ") and len(tip) <= 60:
+        return tip
+    return ""
 
 
 def sibling_label(parent: ET.Element | None, node: ET.Element) -> str:
@@ -1029,7 +1078,8 @@ def sibling_label(parent: ET.Element | None, node: ET.Element) -> str:
 
     Floater XML pairs a control with a caption (``<text value="Sharpen (CAS):"/>`` then the slider)
     rather than a label= attribute. Scan back over siblings that belong to the same control (slider
-    then spinner on one setting, or its reset button) and stop at any other control.
+    then spinner on one setting, or its reset button) and stop at any other control. Status, hint,
+    note and heading captions are not the control's name, so the scan skips them.
     """
     if parent is None:
         return ""
@@ -1043,6 +1093,8 @@ def sibling_label(parent: ET.Element | None, node: ET.Element) -> str:
         if not isinstance(previous.tag, str):
             continue
         if previous.tag in _LABEL_SIBLING_TAGS:
+            if _is_skipped_caption(parent, previous):
+                continue
             caption = (previous.get("value") or previous.get("label") or previous.text or "").strip()
             caption = caption.rstrip(":").strip()
             if 1 < len(caption) <= 40 and not caption.startswith("$") and chr(10) not in caption:
@@ -1075,13 +1127,16 @@ def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[lis
     rows: list[list[str]] = []
 
     def visit(node: ET.Element, floater: dict, tab_name: str = "", tab_label: str = "",
-              parent: ET.Element | None = None) -> None:
+              parent: ET.Element | None = None, role: str = "") -> None:
         name = node.get("name", "")
         setting = node.get("control_name", "")
         widget = name or setting
+        if node.tag == "panel" and name in _LIGHT_ROLE_PANELS:
+            role = _LIGHT_ROLE_PANELS[name]
         if isinstance(node.tag, str) and widget and (node.tag in EXTERNAL_CONTROL_TAGS or setting):
-            label = (node.get("label", "").strip() or (node.text or "").strip()
-                     or sibling_label(parent, node) or humanize_widget_name(widget))
+            label = light_role_label(role, (node.get("label", "").strip() or (node.text or "").strip()
+                                            or sibling_label(parent, node) or reset_tooltip_label(node)
+                                            or humanize_widget_name(widget)))
             help_text = node.get("tool_tip", "")
             direct = " ".join((label, name, setting, help_text, tab_label, floater["label"]))
             rows.append([
@@ -1094,14 +1149,14 @@ def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[lis
         filename = node.get("filename", "")
         if filename:
             included = parse_xml(XUI / filename)
-            visit(included, floater, tab_name, tab_label, None)
+            visit(included, floater, tab_name, tab_label, None, role)
         for child in node:
             child_tab_name = tab_name
             child_tab_label = tab_label
             if node.tag == "tab_container" and child.tag == "panel":
                 child_tab_name = child.get("name", "")
                 child_tab_label = child.get("label", "") or child_tab_name.replace("_", " ").title()
-            visit(child, floater, child_tab_name, child_tab_label, node)
+            visit(child, floater, child_tab_name, child_tab_label, node, role)
 
     for floater in spec.get("floaters", []):
         visit(parse_xml(XUI / floater["xui"]), floater)

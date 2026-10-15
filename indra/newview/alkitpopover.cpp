@@ -131,7 +131,7 @@ bool ALKitPopover::postBuild()
             mAutoWidth = 340;
         else if (getName() == "kit_overflow_popover")
             mAutoWidth = 180;
-        layoutPopover(mAutoWidth, popoverCap(shell));
+        layoutPopover(mAutoWidth, popoverCap(shell), true);
     }
     if (LLUICtrl* close = findChild<LLUICtrl>("btn_legend_close"))
     {
@@ -183,8 +183,10 @@ void ALKitPopover::ensureScroller()
 // Sizes an auto-sized popover: the content stacks top-down in the scrolling area, the
 // buttons stay pinned under it, and the popover is as tall as its natural height, capped
 // to max_height. A content stack taller than the room left by the buttons scrolls.
-void ALKitPopover::layoutPopover(S32 width, S32 max_height)
+// to_top (show) starts at the top; a refit keeps the scroll position, clamped to the new range.
+void ALKitPopover::layoutPopover(S32 width, S32 max_height, bool to_top)
 {
+    const S32 kept_scroll = mScroller ? mScroller->getDocPosVertical() : 0;
     ensureScroller();
     const S32 inner = width - 2 * kMargin;
     const S32 sb    = llmax(0, gSavedSettings.getS32("UIScrollbarSize"));
@@ -229,16 +231,20 @@ void ALKitPopover::layoutPopover(S32 width, S32 max_height)
         mDoc->reshape(doc_w, doc_h, true);
         placeStack(content, content_heights, 0, doc_w, doc_h);
         mScroller->reshape(inner, scroll_h, true);
-        mScroller->goToTop();
+        if (to_top)
+            mScroller->goToTop();
+        else
+            mScroller->setDocPosVertical(kept_scroll); // the scrollbar clamps it to the new range
     }
 }
 
 // Caps a fixed-size popover to the room the shell has and scrolls what no longer fits.
 // The designed size is remembered on first use, so a later, taller shell restores it.
-void ALKitPopover::fitFixedHeight(S32 max_height)
+void ALKitPopover::fitFixedHeight(S32 max_height, bool to_top)
 {
     if (mAutoWidth > 0)
         return;
+    const S32 kept_scroll = mScroller ? mScroller->getDocPosVertical() : 0;
     if (mFixedHeight <= 0)
     {
         mFixedWidth  = getRect().getWidth();
@@ -276,7 +282,10 @@ void ALKitPopover::fitFixedHeight(S32 max_height)
     mScroller->reshape(mFixedWidth + sb, shown, true);
     mScroller->setOrigin(0, 0);
     mDoc->reshape(mFixedWidth, mFixedHeight, false);
-    mScroller->goToTop();
+    if (to_top)
+        mScroller->goToTop();
+    else
+        mScroller->setDocPosVertical(kept_scroll); // the scrollbar clamps it to the new range
 }
 
 void ALKitPopover::draw()
@@ -299,7 +308,7 @@ void ALKitPopover::show()
         return;
     }
     shell->closePopover();
-    if (!place())
+    if (!place(true))
     {
         return;
     }
@@ -317,10 +326,10 @@ void ALKitPopover::refit()
     // Called by the shell when it reshapes while this popover is open: re-fit to the
     // new height and re-clamp the position so it cannot end up outside the shell.
     if (getVisible())
-        place();
+        place(false);
 }
 
-bool ALKitPopover::place()
+bool ALKitPopover::place(bool to_top)
 {
     ALKitShell* shell  = ALKitShell::find(this);
     LLView*     anchor = mAnchor.get();
@@ -338,11 +347,11 @@ bool ALKitPopover::place()
     // minimum-size Director may be shorter than it was when the XML was built.
     if (mAutoWidth > 0)
     {
-        layoutPopover(mAutoWidth, popoverCap(shell));
+        layoutPopover(mAutoWidth, popoverCap(shell), to_top);
     }
     else
     {
-        fitFixedHeight(popoverCap(shell));
+        fitFixedHeight(popoverCap(shell), to_top);
     }
     LLRect anchor_rect;
     if (!anchor->localRectToOtherView(anchor->getLocalRect(), &anchor_rect, shell))

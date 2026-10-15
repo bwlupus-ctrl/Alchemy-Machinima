@@ -32,6 +32,46 @@ namespace
 {
 constexpr char PRESET_SUBDIR[] = "cinematic_presets";
 
+namespace
+{
+// What the active preset stored for each tracked setting. An edit that leaves the preset's
+// value (Shot, Operator, per-row or page reset) clears the active name, so a later scene
+// load never re-applies the preset over the saved values.
+LLSD                                     sActivePresetSettings;
+bool                                     sApplyingPreset = false;
+std::vector<boost::signals2::connection> sPresetWatch;
+
+bool presetValueHolds(const LLSD& now, const LLSD& stored)
+{
+    if ((now.isReal() || now.isInteger()) && (stored.isReal() || stored.isInteger()))
+    {
+        const F64 value = stored.asReal();
+        return std::fabs(now.asReal() - value) <= 1e-6 * llmax(1.0, std::fabs(value));
+    }
+    if (now.isArray() && stored.isArray() && now.size() == stored.size())
+    {
+        for (S32 index = 0; index < now.size(); ++index)
+            if (!presetValueHolds(now[index], stored[index]))
+                return false;
+        return true;
+    }
+    return llsd_equals(now, stored);
+}
+
+void onPresetTrackedChanged(const std::string& setting, const LLSD& value)
+{
+    if (sApplyingPreset || ALPanelCineCamParams::activePresetName().empty() || !sActivePresetSettings.has(setting))
+    {
+        return;
+    }
+    if (presetValueHolds(value, sActivePresetSettings[setting]))
+    {
+        return;
+    }
+    ALPanelCineCamParams::clearActivePresetName();
+}
+}
+
 struct ShakePreset
 {
     const char* mName;
@@ -464,6 +504,30 @@ bool ALPanelCineCamParams::postBuild()
             [this](LLControlVariable*, const LLSD&, const LLSD&) { updateModePanel(); });
     }
 
+    // Watch every setting a preset stores (process-wide, connected once): an edit that
+    // moves one off the preset's value clears the active preset name.
+    static bool sPresetWatchConnected = false;
+    if (!sPresetWatchConnected)
+    {
+        sPresetWatchConnected = true;
+        std::vector<std::string> tracked = sharedSettings();
+        for (const ModeEntry& entry : modeTable())
+        {
+            tracked.insert(tracked.end(), entry.mSettings.begin(), entry.mSettings.end());
+        }
+        for (const std::string& setting : tracked)
+        {
+            if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+            {
+                sPresetWatch.push_back(ctrl->getSignal()->connect(
+                    [setting](LLControlVariable* changed, const LLSD&, const LLSD&)
+                    {
+                        onPresetTrackedChanged(setting, changed->getValue());
+                    }));
+            }
+        }
+    }
+
     updateModePanel();
     refreshPresetList();
     return true;
@@ -532,6 +596,7 @@ std::string ALPanelCineCamParams::getSelectedPresetName() const
 
 std::string ALPanelCineCamParams::sActivePresetName;
 
+
 //static
 std::string ALPanelCineCamParams::activePresetName()
 {
@@ -542,6 +607,7 @@ std::string ALPanelCineCamParams::activePresetName()
 void ALPanelCineCamParams::clearActivePresetName()
 {
     sActivePresetName.clear();
+    sActivePresetSettings = LLSD();
 }
 
 //static
@@ -800,6 +866,7 @@ void ALPanelCineCamParams::writePreset(const std::string& name)
     LLSDSerialize::toPrettyXML(preset, out);
     out.close();
     sActivePresetName = name;
+    sActivePresetSettings = settings;
     LL_INFOS("CinematicCam") << "Saved cinematic camera preset '" << name << "'" << LL_ENDL;
 }
 
@@ -845,6 +912,7 @@ void ALPanelCineCamParams::applyPreset(const std::string& name)
             }
         }
     };
+    sApplyingPreset = true; // our own writes are not edits: the name must survive them
     for (const ModeEntry& entry : modeTable())
     {
         for (const std::string& setting : entry.mSettings)
@@ -861,7 +929,9 @@ void ALPanelCineCamParams::applyPreset(const std::string& name)
     {
         gSavedSettings.setS32("CinematicCamMode", preset["mode"].asInteger());
     }
+    sApplyingPreset = false;
     sActivePresetName = name;
+    sActivePresetSettings = preset["settings"];
     LL_INFOS("CinematicCam") << "Applied cinematic camera preset '" << name << "'" << LL_ENDL;
 }
 

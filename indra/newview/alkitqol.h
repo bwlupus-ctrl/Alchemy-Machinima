@@ -51,6 +51,9 @@ inline bool pasteTypesCompatible(const LLSD& source, const LLSD& destination)
         return false;
     const bool source_numeric = source.isInteger() || source.isReal();
     const bool destination_numeric = destination.isInteger() || destination.isReal();
+    // Vectors and colours paste only onto a row of the same component count (Vector3 onto Vector2 is refused).
+    if (source.isArray() && destination.isArray() && source.size() != destination.size())
+        return false;
     return source.type() == destination.type() || (source_numeric && destination_numeric);
 }
 
