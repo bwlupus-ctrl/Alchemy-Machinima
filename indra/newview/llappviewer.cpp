@@ -86,6 +86,7 @@
 #include "aldirectorswitcher.h" // presentation-time camera switch schedule
 #include "altron.h"             // [TronT0] shared clock latch (idle tick)
 #include "alsteppedanimruntime.h"
+#include "alframelimiter.h" // [FrameLimiter] frame rate cap
 #include "llviewerpartsim.h"
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
@@ -1469,10 +1470,20 @@ bool LLAppViewer::frame()
     return ret;
 }
 
+// [FrameLimiter] One cached bool read per frame; everything else is skipped when the cap is off.
+static bool frameLimiterEnabled()
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "FramerateLimitEnabled", false);
+    return enabled;
+}
+
 bool LLAppViewer::doFrame()
 {
     LL_PROFILE_ZONE_SCOPED;
     LL_PROFILE_GPU_ZONE("doFrame");
+
+    // [FrameLimiter] One cached bool per frame; the pacer anchors itself on the previous deadline.
+    const bool frame_limiter_on = frameLimiterEnabled();
 
     resumeMainloopTimeout("Main:doFrameStart");
 
@@ -1705,6 +1716,15 @@ bool LLAppViewer::doFrame()
             native_dialog_open = LLWindowSDL::dialogOpen();
 #endif
 
+            // [FrameLimiter] When the cap is on, an unfocused-but-visible window (the user
+            // clicked over to OBS) is paced by the cap, not by the background yield: the yield
+            // sleeps on top of the render time and would drop a 30 fps cap to ~18 fps. A
+            // hidden or MINIMISED window keeps today's yield (Windows still reports a
+            // minimised window as visible, so check getMinimized() too).
+            const bool window_idle = gViewerWindow
+                && (!gViewerWindow->getWindow()->getVisible() || gViewerWindow->getWindow()->getMinimized());
+            const bool limiter_holds_pace = frame_limiter_on && !window_idle;
+
             // yield cooperatively when not running as foreground window
             // and when not quiting (causes trouble at mac's cleanup stage)
             if (!LLApp::isExiting()
@@ -1717,7 +1737,12 @@ bool LLAppViewer::doFrame()
                 S32 milliseconds_to_sleep = llclamp((S32)s_background_yield_time, 0, 1000);
                 // don't sleep when BackgroundYieldTime set to 0, since this will still yield to other threads
                 // of equal priority on Windows
-                if (milliseconds_to_sleep > 0)
+                if (limiter_holds_pace)
+                {
+                    // Skip the sleep, keep the worker-thread pause.
+                    LLAppViewer::getTextureCache()->pause();
+                }
+                else if (milliseconds_to_sleep > 0)
                 {
                     LLPerfStats::RecordSceneTime T ( LLPerfStats::StatType_t::RENDER_SLEEP );
                     ms_sleep(milliseconds_to_sleep);
@@ -1777,6 +1802,18 @@ bool LLAppViewer::doFrame()
             {
                 LL_PROFILE_ZONE_NAMED_CATEGORY_APP("df LLVFSThread");
                 LLLFSThread::sLocal->pause();
+            }
+
+            // [FrameLimiter] Last thing in the frame, so VSync's swap wait and the
+            // background/minimised yield above already count as elapsed time (no
+            // double wait), and a slow frame gets no wait and no catch-up.
+            if (frame_limiter_on && !LLApp::isExiting())
+            {
+                static LLCachedControl<U32> limit_fps(gSavedSettings, "FramerateLimitFPS", 60);
+                // Recorded as sleep (like the background yield) so AutoTune does not read the
+                // deliberate wait as a slow frame and keep lowering quality toward TargetFPS.
+                LLPerfStats::RecordSceneTime T(LLPerfStats::StatType_t::RENDER_SLEEP);
+                ALFrameLimiter::endFrameWait((S32)limit_fps);
             }
 
             {
@@ -1862,6 +1899,8 @@ bool LLAppViewer::cleanup()
     // [XInputRumble] The main loop no longer advances patterns; stop the pad now,
     // not when the joystick is terminated much later in cleanup.
     if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);
+
+    ALFrameLimiter::shutdown(); // [FrameLimiter] close the high-resolution timer handle
 
     // [AvatarLightResponse] Quit-time flush: the Director floater skips its close-save while quitting, and
     // a slider debounce may still be pending. flushIfDirty() writes only a real unsaved edit of a loaded account.

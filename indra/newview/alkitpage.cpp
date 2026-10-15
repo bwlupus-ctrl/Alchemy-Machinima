@@ -337,7 +337,6 @@ bool ALKitPage::postBuild()
 {
     if (!LLPanel::postBuild())
         return false;
-    mShell = ALKitShell::find(this);
 
     const std::string        pre     = prefix();
     std::vector<std::string> watched = tokens(mWatchSettings);
@@ -450,47 +449,7 @@ bool ALKitPage::postBuild()
     reset->setOrigin(bar_x, 10);
     bar_x += 34;
 
-    if (mShell)
-    {
-        ALKitPopover::Params popover_params;
-        popover_params.name    = pre + "_reset_popover";
-        popover_params.rect    = LLRect(0, 96, 320, 0);
-        popover_params.visible = false;
-        mResetPopover          = LLUICtrlFactory::create<ALKitPopover>(popover_params);
-        mShell->addChild(mResetPopover);
-        mResetPopover->bindAnchor(reset);
-
-        LLTextBox::Params message_params;
-        message_params.name          = pre + "_reset_message";
-        message_params.rect          = LLRect(12, 84, 308, 48);
-        message_params.initial_value = "Reset every control on this page to its default?";
-        message_params.wrap          = true;
-        mResetPopover->addChild(LLUICtrlFactory::create<LLTextBox>(message_params));
-
-        LLButton* cancel  = makeButton(pre + "_reset_cancel", "Cancel");
-        LLButton* confirm = makeButton(pre + "_reset_confirm", "Reset");
-        cancel->setOrigin(140, 12);
-        confirm->setOrigin(228, 12);
-        mResetPopover->addChild(cancel);
-        mResetPopover->addChild(confirm);
-        LLHandle<ALKitPopover> popover_handle = mResetPopover->getDerivedHandle<ALKitPopover>();
-        LLHandle<ALKitPage>    page_handle    = getDerivedHandle<ALKitPage>();
-        cancel->setCommitCallback(
-            [popover_handle](LLUICtrl*, const LLSD&)
-            {
-                if (ALKitPopover* popover = popover_handle.get())
-                    popover->hide();
-            });
-        confirm->setCommitCallback(
-            [page_handle, popover_handle](LLUICtrl*, const LLSD&)
-            {
-                if (ALKitPopover* popover = popover_handle.get())
-                    popover->hide();
-                if (ALKitPage* page = page_handle.get())
-                    page->performPageReset();
-            });
-        ALKitStyle::styleTree(mResetPopover);
-    }
+    buildResetPopover();
 
     mUndo = makeButton(pre + "_undo", "");
     mRedo = makeButton(pre + "_redo", "");
@@ -598,12 +557,13 @@ bool ALKitPage::postBuild()
     changed.rect = LLRect(0, 24, 100, 0);
     changed.label = "Changed only";
     mChangedOnly = LLUICtrlFactory::create<LLCheckBoxCtrl>(changed);
-    mChangedOnly->setValue(mShell && mShell->changedOnly());
+    ALKitShell* shell = ALKitShell::find(this);
+    mChangedOnly->setValue(shell && shell->changedOnly());
     mChangedOnly->setCommitCallback(
         [this](LLUICtrl* control, const LLSD&)
         {
-            if (mShell)
-                mShell->setChangedOnly(control->getValue().asBoolean());
+            if (ALKitShell* shell = ALKitShell::find(this))
+                shell->setChangedOnly(control->getValue().asBoolean());
         });
     mBar->addChild(mChangedOnly);
     if (mLegacy)
@@ -676,7 +636,8 @@ bool ALKitPage::postBuild()
         LLTextBox::Params who_hint;
         who_hint.name          = pre + "_who_hint";
         who_hint.rect          = LLRect(0, 24, 420, 0);
-        who_hint.initial_value = "Follows the cast member you click in the Cast list. Pick one here to lock it.";
+        who_hint.initial_value = "Follows the Cast selection; pick one to lock.";
+        who_hint.use_ellipses  = true;
         who_hint.text_color    = ALKitStyle::color(ALKitStyle::MUTED);
         mWhoHint = LLUICtrlFactory::create<LLTextBox>(who_hint);
         mWhoContainer->addChild(mWhoHint);
@@ -1539,7 +1500,7 @@ void ALKitPage::setSearchText(const std::string& q)
         mSearch->setValue(q);
     if (q.empty())
     {
-        if (mShell && mShell->changedOnly())
+        if (ALKitShell* shell = ALKitShell::find(this); shell && shell->changedOnly())
             applyLocalFilter("", true);
         else
             clearSearch();
@@ -1554,16 +1515,66 @@ void ALKitPage::setChangedOnlyValue(bool enabled)
         mChangedOnly->setEnabled(enabled);
 }
 
+void ALKitPage::buildResetPopover()
+{
+    if (mResetPopover || !mResetPage)
+        return;
+    const std::string pre = prefix();
+    if (ALKitShell* shell = ALKitShell::find(this))
+    {
+        ALKitPopover::Params popover_params;
+        popover_params.name    = pre + "_reset_popover";
+        popover_params.rect    = LLRect(0, 96, 320, 0);
+        popover_params.visible = false;
+        mResetPopover          = LLUICtrlFactory::create<ALKitPopover>(popover_params);
+        shell->addChild(mResetPopover);
+        mResetPopover->bindAnchor(mResetPage);
+
+        LLTextBox::Params message_params;
+        message_params.name          = pre + "_reset_message";
+        message_params.rect          = LLRect(12, 84, 308, 48);
+        message_params.initial_value = "Reset every control on this page to its default?";
+        message_params.wrap          = true;
+        mResetPopover->addChild(LLUICtrlFactory::create<LLTextBox>(message_params));
+
+        LLButton* cancel  = makeButton(pre + "_reset_cancel", "Cancel");
+        LLButton* confirm = makeButton(pre + "_reset_confirm", "Reset");
+        cancel->setOrigin(140, 12);
+        confirm->setOrigin(228, 12);
+        mResetPopover->addChild(cancel);
+        mResetPopover->addChild(confirm);
+        LLHandle<ALKitPopover> popover_handle = mResetPopover->getDerivedHandle<ALKitPopover>();
+        LLHandle<ALKitPage>    page_handle    = getDerivedHandle<ALKitPage>();
+        cancel->setCommitCallback(
+            [popover_handle](LLUICtrl*, const LLSD&)
+            {
+                if (ALKitPopover* popover = popover_handle.get())
+                    popover->hide();
+            });
+        confirm->setCommitCallback(
+            [page_handle, popover_handle](LLUICtrl*, const LLSD&)
+            {
+                if (ALKitPopover* popover = popover_handle.get())
+                    popover->hide();
+                if (ALKitPage* page = page_handle.get())
+                    page->performPageReset();
+            });
+        ALKitStyle::styleTree(mResetPopover);
+    }
+
+}
+
 void ALKitPage::resetPage()
 {
+    buildResetPopover();
     if (mResetPopover)
         mResetPopover->toggle();
 }
 
 void ALKitPage::performPageReset()
 {
-    if (mShell)
-        mShell->history().beginGesture(ALKitHistory::MOUSE, mPage, "Reset page");
+    if (ALKitShell* shell = ALKitShell::find(this))
+        shell->history().beginGesture(ALKitHistory::MOUSE, mPage, "Reset page");
     for (auto& card : mCards)
         for (ALKitRow* row : card.second->rows())
             if (row->bulkResettable() && !row->cardPreset() && !row->whoPicker())
@@ -1739,16 +1750,16 @@ void ALKitPage::draw()
         }
         refreshActorTargetAvailability();
     }
-    if (mShell)
+    if (ALKitShell* shell = ALKitShell::find(this))
     {
-        const U64 revision = mShell->history().revision();
+        const U64 revision = shell->history().revision();
         if (revision != mHistoryRevision)
         {
             mHistoryRevision = revision;
             if (mUndo)
-                mUndo->setEnabled(mShell->history().canUndo());
+                mUndo->setEnabled(shell->history().canUndo());
             if (mRedo)
-                mRedo->setEnabled(mShell->history().canRedo());
+                mRedo->setEnabled(shell->history().canRedo());
         }
     }
     updateMaster();

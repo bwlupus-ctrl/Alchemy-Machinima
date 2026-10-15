@@ -238,7 +238,10 @@ def fnum(text):
 
 
 def rel(path):
-    return os.path.relpath(path, REPO).replace("\\", "/")
+    try:
+        return os.path.relpath(path, REPO).replace("\\", "/")
+    except ValueError:  # Windows temporary output can be on another drive.
+        return os.path.abspath(path).replace("\\", "/")
 
 
 def sha256_file(path):
@@ -558,6 +561,7 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
         "light_rim_tab": "ALRigRimController::attach",
         "vcam_tab": "ALPanelDirectorVCam::postBuild",
         "takes_tab": "ALPanelFlycamRecorder::postBuild",
+        "stepped_tab": "ALPanelSteppedAnim::bindSteppedPage",
         "temporal_tab": "ALPanelTemporalCapture::postBuild",
         "actors_tab": "ALPanelAvatarLightResponse::postBuild",
     })
@@ -613,6 +617,28 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 if exercise != "none" and not owner:
                     sys.exit("kit coverage check failed: no code binder for %s/%s" %
                              (page, widget))
+            if child is not None and binding != "setting" and not callbacks:
+                callbacks = next((item.get("function", "") for item in child
+                                  if item.tag.endswith(".commit_callback") and item.get("function")), "")
+            if page == "shot_tab" and binding != "setting" and widget.startswith(("switcher_", "reset_switcher_")):
+                owner = "ALPanelDirectorSwitcher::postBuild"
+                if re.fullmatch(r"switcher_slot_\d{2}", widget):
+                    callbacks = "ALPanelDirectorSwitcher::onSlotButton"
+                elif widget.startswith("reset_switcher_custom_"):
+                    callbacks = "ALPanelDirectorSwitcher::onCustomReset"
+            if page == "cine_light_rig_tab" and binding != "setting":
+                if widget in {"cine_group_self", "cine_group_a", "cine_group_b", "cine_group_c", "cine_group_d"}:
+                    callbacks = "ALPanelCineLightRig::onGroupSlotsCommit"
+                elif widget.startswith("cine_fixture_gel_"):
+                    callbacks = "ALPanelCineLightRig::onFixtureValuesCommit"
+                elif re.fullmatch(r"cine_(key|fill|rim|bg)_cone_width", widget):
+                    callbacks = "ALPanelCineLightRig::onManualConeWidthCommit"
+                elif re.fullmatch(r"cine_(key|fill|rim|bg)_projector_feed", widget):
+                    callbacks = "ALPanelCineLightRig::onProjectorFeedCommit"
+                elif re.fullmatch(r"cine_(key|fill|rim|bg)_shaft", widget):
+                    callbacks = "ALCineLightRig::setShaftEnabled"
+                elif re.fullmatch(r"cine_(key|fill|rim|bg)_hero", widget):
+                    callbacks = "ALCineLightRig::setHeroEnabled"
             if page == "actors_tab" and widget in {
                     "light_response_popout", "am_reset_CineLightRigActorMaskBias", "am_test_trigger"}:
                 owner = "LLFloaterDirector::bindLightActorsPage"
@@ -657,10 +683,27 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 "min": lo, "max": hi, "increment": step,
                 "combo_items": [{"label": label, "value": value} for label, value in items],
                 "binding": binding, "link_to": row.get("link_to") or None,
+                "kit_action": row.get("action") or None,
                 "shortcut_of": row.get("shortcut_of") or None,
                 "callbacks": callbacks or None, "owner": owner or None,
                 "evidence": rel(path),
             })
+            kit_action = row.get("action", "")
+            if kit_action.startswith(("lightbox:", "floater:")):
+                family, destination = kit_action.split(":", 1)
+                entry.update(probe="launcher", launcher_floater="lightbox" if family == "lightbox" else destination,
+                             expect={"ui": "opens " + ("lightbox" if family == "lightbox" else destination)})
+            transformed = TRANSFORMED_VALUE_TESTS.get(("v2", page, widget))
+            if transformed:
+                entry["test_value"], entry["expect"]["value"] = transformed
+            unavailable = next((reason for flag, reason in (
+                (row.get("hidden") == "true", "authored hidden row"),
+                (row.get("unconnected") == "true", "not connected yet"),
+                (row.get("enabled") == "false" or
+                 (child is not None and child.get("enabled") == "false"),
+                 "authored disabled control")) if flag), "")
+            if unavailable:
+                entry.update(action="SKIP", reason=unavailable, declared_non_interactive=True)
             if kind in ("vec2", "vec3"):
                 component_count = 2 if kind == "vec2" else 3
                 setting_size = len(default) if isinstance(default, list) else component_count
@@ -835,6 +878,11 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
         test_value, test_resolved = transformed
 
     cb = r[source_version + "_callbacks"]
+    if el is not None:
+        declared_callback = next((child.get("function") for child in el
+                                  if child.tag.endswith(".commit_callback") and child.get("function")), None)
+        if declared_callback:
+            cb = declared_callback
     owner = owner_from_evidence(r[source_version + "_evidence"])
     action, reason, hazards = classify({
         "status": status, "exercise": exercise, "etype": etype, "name": name,
@@ -1076,7 +1124,25 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                     continue
                 sel = card.get("sel_setting")
                 sinfo = settings.get(sel, {})
-                for opt in card.findall("kit_option"):
+                options = card.findall("kit_option")
+                if len(options) > 6:
+                    widget = card.get("name") + "_selector"
+                    items = [(opt.get("label", ""), opt.get("value", "")) for opt in options]
+                    test, expected = combo_test(sinfo.get("default"), items, sinfo.get("type", ""))
+                    e = base_entry(page_meta, page, "v2", "synthetic:selector_combo")
+                    e.update(id="v2:%s:%s:synthetic" % (page, widget), csv_index=None,
+                             card=card.get("id", ""), card_title=card.get("title", ""),
+                             row_label=card.get("title", ""), xui_file=rel(xi.path_of(fn)),
+                             widget_name=widget, widget_type="combo", exercise="select_item",
+                             setting=sel, setting_type=sinfo.get("type"),
+                             default=sinfo.get("default"), binding="setting", resolution="kit",
+                             combo_items=[{"label": label, "value": value} for label, value in items])
+                    finish_synthetic(e, "RUN", "", [], test,
+                                     {"setting": sel, "type": sinfo.get("type", ""), "value": expected},
+                                     {"setting": sel, "value": sinfo.get("default")})
+                    out.append(e)
+                    continue
+                for option_index, opt in enumerate(options):
                     try:
                         value = int(opt.get("value"))
                     except (TypeError, ValueError):
@@ -1096,7 +1162,8 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                               "setting_source": "sel_setting", "setting_type": sinfo.get("type"),
                               "default": sinfo.get("default"), "min": None, "max": None,
                               "increment": None, "callbacks": None, "owner": None,
-                              "evidence": None, "probe": "selector_segment"})
+                              "evidence": None, "probe": "selector_segment",
+                              "option_index": option_index})
                     finish_synthetic(
                         e, "RUN", "", [], value,
                         {"setting": sel, "type": sinfo.get("type", ""), "value": value},
@@ -1119,7 +1186,8 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                               "setting": RIG_RIM_SENTINEL, "setting_source": "rig_rim preset table",
                               "setting_type": settings.get(RIG_RIM_SENTINEL, {}).get("type"),
                               "default": default_master, "min": None, "max": None, "increment": None,
-                              "callbacks": None, "owner": "ALPanelRigRim", "evidence": None,
+                              "callbacks": "ALRigRimController::applyPresetByName",
+                              "owner": "ALKitPresetStrip::postBuild", "evidence": "indra/newview/alpanelrigrim.cpp:48",
                               "probe": "preset_strip"})
                     test = {"preset": pick[0], "id": "b:" + pick[0]}
                     finish_synthetic(
@@ -1463,7 +1531,7 @@ def add_light_response_oracles(entries, page_meta):
         "chk_bypass": ("bypass", "Boolean", True, True),
         "chk_sil_haze": ("sil_haze", "Boolean", False, False),
         "chk_sil_keep_rim": ("sil_keep_rim", "Boolean", True, True),
-        "combo_sil_fill": ("sil_fill", "Color3", 2, [1, 1, 1]),
+        "combo_sil_fill": ("sil_fill", "Color3", {"item_index": 2}, [1, 1, 1]),
         "swatch_sil_fill": ("sil_fill", "Color3", [0.2, 0.4, 0.6, 1], [0.2, 0.4, 0.6]),
     }
     fixtures = set(fields) | {
@@ -1517,6 +1585,88 @@ def add_light_response_oracles(entries, page_meta):
                     resolution="light_response_negative_control", negative_control=True)
     negative["expect"]["field"] = "tame"
     entries.append(negative)
+
+def add_runtime_prerequisites(entries):
+    """Describe owner gates that page/card reveal cannot manufacture."""
+    with open(VCAM_PAGE_JSON, encoding="utf-8") as stream:
+        vcam = json.load(stream)
+    # The page source has the row-level show_if conditions stripped from XUI.
+    cards = vcam.get("cards", [])
+    vcam_rows = {row["w"]: (card, row) for card in cards for row in card.get("rows", [])}
+    camera_cards = {"source", "placement", "skeleton", "optics", "guide", "camera_look",
+                    "look_goes", "output_frame", "faces", "picture_rate", "raw_output"}
+    for entry in entries:
+        page, widget = entry["page"], entry["widget_name"]
+        if page == "switchboard_tab" and re.fullmatch(r"anim_slot_\d{2}", widget):
+            entry.update(owner="ALPanelDirectorAnimSwitcher::postBuild",
+                         callbacks="ALPanelDirectorAnimSwitcher::onSlotButton")
+        if (page, widget) in {("shot_tab", "btn_reset_all"),
+                               ("cine_light_rig_tab", "cine_reset_all"),
+                               ("actors_tab", "la_btn_reset_all")}:
+            entry.update(action="SKIP", reason="bulk reset has no independent state oracle; Reset page is tested separately",
+                         declared_non_interactive=True)
+            continue
+        if widget in {"tr_trail_clear_btn", "tr_grid_origin_clear_btn", "sa_override_clear"} or (
+                page == "takes_tab" and widget == "btn_record"):
+            entry.update(action="SKIP", reason="no independent reset/clear/record state oracle",
+                         declared_non_interactive=True)
+            continue
+        if page == "director_settings_tab" and widget in {
+                "settings_crash_backups", "settings_restore_backup", "settings_delete_backup"}:
+            entry.update(action="SKIP", reason="requires an existing crash backup; no backup fixture",
+                         declared_non_interactive=True)
+            continue
+        if entry.get("action") in {"SKIP", "NO_EXERCISE", "EXPECT_MISSING"}:
+            continue
+        condition = ""
+        if page == "vcam_tab":
+            card, row = vcam_rows.get(widget, ({}, {}))
+            card_id = card.get("id", entry.get("card", ""))
+            show = row.get("show_if", card.get("show_if", ""))
+            if show in {"never", "status", "large_and_more_than_four"}:
+                entry.update(action="SKIP", reason="code-hidden informational row: " + show,
+                             declared_non_interactive=True)
+                continue
+            if card_id in {"projector", "projector_tv"}:
+                condition = "projector selected"
+            elif card_id in {"face_mapping", "tv_effects"}:
+                condition = "face selected"
+            elif card_id in camera_cards or widget == "vc_camera_name":
+                condition = "camera selected"
+            if show:
+                condition = (condition + "; " if condition else "") + show
+            if condition:
+                entry["visible_when"] = condition
+            if show == "custom_aspect":
+                entry.setdefault("reveal", []).append({"selector": "vc_output_aspect", "value": -1})
+        elif page == "gaze_tab" and not entry.get("setting"):
+            condition = "actor selected"
+        elif page == "ghosts_tab" and widget in {
+                "animation_library_combo", "array_parameter_spinner", "formation_motion_combo",
+                "brigade_columns_spinner", "brigade_rows_spinner", "brigade_file_spacing_spinner",
+                "brigade_rank_spacing_spinner"}:
+            condition = "entity clone selected" if widget == "animation_library_combo" else "crowd draft active"
+        elif page == "actor_style_tab" and widget not in {"actor_style_status"} and not entry.get("setting"):
+            condition = "actor selected"
+        elif page == "stepped_tab" and widget in {"sa_actor_rate", "sa_group_pick", "sa_group_offset"}:
+            condition = "actor selected" if widget == "sa_actor_rate" else "cast group selected"
+        elif page == "cine_light_rig_tab" and widget == "cine_clear_object":
+            condition = "rig target object selected"
+        if condition:
+            entry.update(action="DEFER_INWORLD", enable_when=condition,
+                         reason="requires " + condition, known_gap=False,
+                         hazards=sorted(set(entry.get("hazards", [])) | {"requires_world"}))
+        if widget in {"actor_style_target", "sa_actor_target", "cine_anchor"}:
+            entry.update(action="SKIP", reason="hidden who-picker backing combo; use the cast chip",
+                         declared_non_interactive=True)
+        if widget in {"txt_sil_note", "txt_budget"}:
+            entry.update(action="SKIP", reason="informational text shown only when non-empty",
+                         declared_non_interactive=True)
+        if page == "stepped_tab" and widget in {"sa_fast_rate", "sa_adapt_hysteresis", "sa_background_rate"}:
+            entry.setdefault("reveal", []).append({"selector": "sa_mode",
+                                                   "value": 2 if widget == "sa_background_rate" else 1})
+
+
 
 # ---------------------------------------------------------------- Director rule registry
 #
@@ -1867,9 +2017,44 @@ def rules_self_test():
     print("director_functional_manifest rule self-test: PASS (%d fixtures)" % (len(faults) + 3))
 
 
+def generation_self_test():
+    """Exercise actual generated-row policy, units, and large selector shape."""
+    fixture = ET.fromstring('''<kit_page page="look_group/image_tab"><kit_card id="fixture">
+      <kit_row kind="toggle" widget="hidden" setting="Fixture" bind="setting" hidden="true"><kit_switch name="hidden" /></kit_row>
+      <kit_row kind="toggle" widget="disabled" setting="Fixture" bind="setting"><kit_switch name="disabled" enabled="false" /></kit_row>
+      <kit_row kind="toggle" widget="unconnected" setting="Fixture" bind="setting" unconnected="true"><kit_switch name="unconnected" /></kit_row>
+    </kit_card></kit_page>''')
+    card = fixture.find("kit_card")
+    rows = [("fixture.xml", os.path.join(REPO, "fixture.xml"), fixture, card, row) for row in card]
+    entries = build_kit_entries({"image_tab": rows}, [],
+                                {"Fixture": {"type": "Boolean", "default": False}}, {})
+    assert len(entries) == 3 and all(entry["action"] == "SKIP" and entry["reason"] for entry in entries)
+    prerequisites = [{"page": page, "widget_name": widget, "action": "RUN"} for page, widget in (
+        ("vcam_tab", "vc_proj_resolution"), ("vcam_tab", "vc_camera_name"),
+        ("gaze_tab", "gaze_cast_combo"))]
+    add_runtime_prerequisites(prerequisites)
+    assert all(row["action"] == "DEFER_INWORLD" and row["enable_when"] for row in prerequisites)
+    orphan = {"page": "shot_tab", "widget_name": "btn_reset_all", "action": "SKIP"}
+    add_runtime_prerequisites([orphan])
+    assert orphan["declared_non_interactive"] and "independent state oracle" in orphan["reason"]
+    xi = XuiIndex()
+    settings = load_settings()
+    metadata = {r["page"]: (r["page_label"], r["group"]) for r in load_csv()}
+    selectors = synthetic_entries(xi, settings, set(), metadata, [], [])
+    large = [row for row in selectors if row.get("widget_name") == "kc_move_settings_selector"]
+    assert len(large) == 1 and large[0]["exercise"] == "select_item"
+    assert not any(row.get("probe") == "selector_segment" and
+                   str(row.get("widget_name", "")).startswith("kc_move_settings:") for row in selectors)
+    kit = build_kit_entries(load_generated_kit_pages(xi), [], settings, metadata)
+    darkness = [row for row in kit if row["widget_name"] in
+                {"cine_night_mask_darkness", "cine_easy_night_mask_darkness"}]
+    assert len(darkness) == 2 and all(row["test_value"] == 1 and row["expect"]["value"] == .99 for row in darkness)
+    print("director_functional_manifest generation self-test: PASS")
+
+
 # ---------------------------------------------------------------- main
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json-output", default=JSON_PATH,
                         help="generated JSON path (default: checked-in manifest)")
@@ -1880,9 +2065,50 @@ def main():
                              "aluiperfselftest.cpp and the checked-in manifest, write nothing to the repo")
     parser.add_argument("--self-test", action="store_true",
                         help="run the rule-registry adversarial fixtures and exit")
-    args = parser.parse_args()
+    parser.add_argument("--counts", choices=("login", "in-world", "both"),
+                        help="report enriched v2 RUN/SKIP classification counts by mode")
+    parser.add_argument("--counts-manifest", help="count an existing merged manifest (before baseline)")
+    parser.add_argument("--counts-prepared-output", help="retain the enriched manifest used for fresh counts")
+    args = parser.parse_args(argv)
+    if args.counts:
+        import tempfile
+        sys.path.insert(0, os.path.join(REPO, "scripts", "perf"))
+        from functional_report import prepare_manifest, classification_counts
+        from pathlib import Path
+        if args.counts_manifest:
+            document = json.loads(Path(args.counts_manifest).read_text(encoding="utf-8"))
+        else:
+            with tempfile.TemporaryDirectory(prefix="director_counts_") as scratch:
+                generated = os.path.join(scratch, "generated.json")
+                main(["--json-output", generated, "--markdown-output", os.path.join(scratch, "report.md")])
+                # Counts are for the v2 console. Keep every v2 row and the
+                # required legacy oracle rows, without scanning unused v1 UI.
+                generated_doc = json.loads(Path(generated).read_text(encoding="utf-8"))
+                required = json.loads((Path(OUT_DIR) / "consumers.json").read_text(encoding="utf-8"))["required"]
+                required_keys = {(row["version"], row["page"], row["widget_name"]) for row in required}
+                generated_doc["entries"] = [row for row in generated_doc["entries"]
+                    if row["version"] == "v2" or
+                    (row["version"], row["page"], row["widget_name"]) in required_keys]
+                generated_doc["meta"]["classification_version"] = "v2"
+                generated_doc["meta"]["entries"] = len(generated_doc["entries"])
+                Path(generated).write_text(json.dumps(generated_doc), encoding="utf-8")
+                merged = Path(scratch) / "merged.json"
+                prepare_manifest(Path(generated), Path(REPO), merged,
+                                 progress=lambda done, total: print("classification %d/%d" % (done, total),
+                                                                     file=sys.stderr, flush=True))
+                document = json.loads(merged.read_text(encoding="utf-8"))
+                if args.counts_prepared_output:
+                    Path(args.counts_prepared_output).write_text(json.dumps(document, indent=1) + "\n", encoding="utf-8")
+        login_counts = classification_counts(document, False)
+        world_counts = classification_counts(document, True)
+        world_counts["requested_RUN_target"] = login_counts["RUN"] + world_counts["viewer_local_DEFER_INWORLD_RUN"]
+        world_counts["requested_target_met"] = world_counts["RUN"] >= world_counts["requested_RUN_target"]
+        for inworld in ([False, True] if args.counts == "both" else [args.counts == "in-world"]):
+            print(json.dumps(world_counts if inworld else login_counts, indent=2))
+        return
     if args.self_test:
         rules_self_test()
+        generation_self_test()
         return
     if args.check:
         import tempfile
@@ -1932,6 +2158,7 @@ def main():
     entries.extend(synth)
     entries.extend(build_kit_entries(kit_pages, rows, settings, page_meta))
     add_light_response_oracles(entries, page_meta)
+    add_runtime_prerequisites(entries)
 
     # Coverage check: every interactive CSV row must appear once per version.
     expected = {(i, v) for i, r in enumerate(rows) if r["interactive"] == "Y" for v in VERSIONS

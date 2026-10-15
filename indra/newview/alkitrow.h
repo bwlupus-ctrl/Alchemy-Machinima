@@ -42,6 +42,7 @@ public:
     void        onMouseLeave(S32, S32, MASK) override;
     bool        handleKeyHere(KEY, MASK) override;
     bool        handleMouseDown(S32, S32, MASK) override;
+    bool        handleMouseUp(S32, S32, MASK) override;
     bool        handleRightMouseDown(S32, S32, MASK) override;
     S32         heightForWidth(S32) const;
     void        layoutRow(S32);

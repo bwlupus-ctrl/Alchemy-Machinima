@@ -9,6 +9,7 @@
     ["rim", "backlight", "edge light"],
     ["camera", "cam", "vcam", "lens"],
     ["speed", "rate", "fps"],
+    ["fps cap", "frame limit", "framerate", "fps limit", "frame rate limit"],
     ["size", "scale", "radius"],
     ["depth of field", "dof", "focus", "diopter"],
     ["field of view", "fov", "zoom", "focal length"],

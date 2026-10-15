@@ -69,7 +69,7 @@
       {"l": "Far clip", "k": "slider", "w": "vc_far_clip", "h": "Far clipping plane distance.", "mn": 0.2, "mx": 512, "st": 0.1, "dc": 1, "unit": "m", "bind": "code"}
     ]},
     {"id": "surface_lens", "t": "Surface lens", "k": "rows", "badge": "ALL CAMERAS", "rows": [
-      {"l": "Lens zoom", "k": "slider", "w": "vc_lens_zoom", "h": "Magnification shared by every Surface Lens (PrismLensZoom).", "kw": "surface lens zoom magnify", "s": "PrismLensZoom", "d": 2.0, "mn": 1, "mx": 8, "st": 0.1, "dc": 2, "unit": "x", "bind": "setting"},
+      {"l": "Lens zoom", "k": "slider", "w": "vc_lens_zoom", "h": "Magnification shared by every Surface Lens.", "kw": "surface lens zoom magnify", "s": "PrismLensZoom", "d": 2.0, "mn": 1, "mx": 8, "st": 0.1, "dc": 2, "unit": "x", "bind": "setting"},
       {"l": "Lens zoom note", "k": "readout", "w": "vc_lens_zoom_note", "h": "Lens zoom applies to all lenses, not just this one.", "bind": "code"}
     ]},
     {"id": "guide", "t": "In-world guide", "k": "rows", "badge": "CAM n", "rows": [
@@ -92,7 +92,7 @@
       {"l": "Go to Output", "k": "button", "w": "vc_go_output", "h": "Open the Output section.", "btn": "Go to Output", "bind": "code"}
     ]},
     {"id": "output_frame", "t": "Output frame", "k": "rows", "badge": "CAM n", "copy_type": "vcam_output", "rows": [
-      {"l": "Output aspect", "k": "combo", "w": "vc_output_aspect", "h": "Shape of the picture this camera renders.", "it": ["16:9", "4:3", "1:1", "Custom"], "iv": [1.7777778, 1.3333333, 1, -1], "bind": "code"},
+      {"l": "Output aspect", "k": "combo", "w": "vc_output_aspect", "h": "Shape of the picture this camera renders.", "it": ["16:9", "4:3", "1:1", "Custom"], "iv": [1.7777778, 1.3333333, 1, -1], "selectable_values": [-1], "bind": "code"},
       {"l": "Custom W/H", "k": "slider", "w": "vc_output_custom", "h": "Width over height.", "mn": 0.25, "mx": 4, "st": 0.01, "dc": 3, "bind": "code", "show_if": "custom_aspect"},
       {"l": "Picture", "k": "readout", "w": "vc_output_picture", "h": "Logical axes are capped at 1024 px; Quality ceiling and Adaptive scale it.", "bind": "code"}
     ]},
@@ -165,7 +165,7 @@
       {"l": "Anchor Y", "k": "slider", "w": "vc_anchor_y", "h": "Which part survives the crop, top to bottom.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "show_if": "fill"},
       {"l": "Face shape", "k": "readout", "w": "vc_face_shape", "h": "The surface the picture is mapped onto.", "bind": "code"},
       {"l": "Height", "k": "slider", "w": "vc_screen_height", "h": "Height of this virtual screen in metres; width follows the aspect.", "mn": 0.1, "mx": 20, "st": 0.05, "dc": 2, "unit": "m", "bind": "code", "show_if": "virtual_face"},
-      {"l": "Screen aspect", "k": "combo", "w": "vc_screen_aspect", "h": "Width = height x aspect. Custom keeps the current ratio.", "it": ["16:9", "4:3", "1:1", "Custom"], "iv": [1.7777778,1.3333333,1,-1], "bind": "code", "show_if": "virtual_face"},
+      {"l": "Screen aspect", "k": "combo", "w": "vc_screen_aspect", "h": "Width = height x aspect. Custom keeps the current ratio.", "it": ["16:9", "4:3", "1:1", "Custom"], "iv": [1.7777778,1.3333333,1,-1], "selectable_values": [-1], "bind": "code", "show_if": "virtual_face"},
       {"l": "Locate", "k": "button", "w": "vc_face_locate", "h": "Flash this face in-world.", "btn": "Locate", "bind": "code"},
       {"l": "Move to my view", "k": "button", "w": "vc_screen_reposition", "h": "Reposition to my view: Move this virtual screen a few metres in front of your view, facing you.", "btn": "Reposition to my view", "bind": "code", "show_if": "virtual_face"},
       {"l": "Remove face", "k": "button", "w": "vc_remove_face", "h": "Unbind this face from the camera.", "btn": "Remove face", "bind": "code"},

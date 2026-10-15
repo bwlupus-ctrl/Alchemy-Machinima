@@ -241,8 +241,9 @@ def validate_data(data: dict) -> None:
     # 2088: Stepped page targeting + variation + group rates (+13): Radius, Limit distance, Include me, Rate offset,
     #       Effective, Seed, New seed (Reroll), Phase spread, Rate variation, Imperfect timing, Group, Group rate,
     #       All groups (10/15).
-    if len(pages) != 37 or row_count != 2088:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2088")
+    # 2091: Capture > Time Frame rate card (+3): Limit frame rate, Frame rate limit, a help note (10/15).
+    if len(pages) != 37 or row_count != 2091:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2091")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -589,7 +590,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
             value = values[index] if index < len(values) else index
             item_tag = "combo_box.item" if tag == "combo_box" else "radio_item"
             item_attrs = {"name": f"{widget}_item_{index}", "label": str(label), "value": scalar(value)}
-            if scalar(value) == "-1" and not (index == 0 and row.get("inherit_selectable")):
+            if (scalar(value) == "-1" and not (index == 0 and row.get("inherit_selectable"))
+                    and scalar(value) not in {scalar(v) for v in row.get("selectable_values", [])}):
                 # A value of -1 is a divider label (e.g. Actor FX "-- Live Actor Exclusives --"),
                 # not a selectable enum; the v1 combo disables it the same way. A row that sets
                 # "inherit_selectable" opts its FIRST item (a real Inherit choice) out of this.
@@ -1573,6 +1575,11 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                   "combo": "combo", "button": "button", "line_editor": "text", "list": "list"}
         checks.append(("kind mapping", all(NATIVE_TAG.get(k) == v for k, v in expected.items())
                        and HOST_KIND == hosted and CUSTOM_KIND == custom))
+        negative_option = {"w": "fixture", "k": "combo", "it": ["Custom"], "iv": [-1]}
+        _, divider, _ = control_for(negative_option, None, set(), [])
+        _, selectable, _ = control_for(dict(negative_option, selectable_values=[-1]), None, set(), [])
+        checks.append(("Custom aspect selectable; divider remains disabled",
+                       divider[0].get("enabled") == "false" and selectable[0].get("enabled") != "false"))
         v1 = parse_xml(V1_FLOATER)
         config = json.loads(config_path.read_text(encoding="utf-8"))
         legacy_ok = True

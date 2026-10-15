@@ -418,6 +418,8 @@ bool ALKitRow::postBuild()
     favorite.name  = mMeta.widget + "_favorite";
     favorite.rect  = LLRect(0, 18, 18, 0);
     favorite.label = "\xE2\x98\x86";
+    favorite.pad_left = 1;
+    favorite.pad_right = 1;
     mFavorite      = LLUICtrlFactory::create<LLButton>(favorite);
     mFavorite->setToolTip(LLStringExplicit("Add to Quick"));
     mFavorite->setCommitCallback(
@@ -1078,6 +1080,14 @@ bool ALKitRow::handleMouseDown(S32 x, S32 y, MASK mask)
         }
     }
     return LLPanel::handleMouseDown(x, y, mask);
+}
+
+bool ALKitRow::handleMouseUp(S32 x, S32 y, MASK mask)
+{
+    if (mMeta.kind == "segmented" && mControl && mControl->getEnabled() &&
+        mControl->getRect().pointInRect(x, y))
+        return true;
+    return LLPanel::handleMouseUp(x, y, mask);
 }
 
 bool ALKitRow::handleRightMouseDown(S32 x, S32 y, MASK)

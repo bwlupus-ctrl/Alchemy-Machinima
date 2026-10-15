@@ -105,6 +105,7 @@ public:
         Params();
     };
     bool               postBuild() override;
+    void               buildResetPopover();
     void               draw() override;
     void               reshape(S32, S32, bool = true) override;
     ALKitRow*          findRow(const std::string&) const;
@@ -231,7 +232,6 @@ private:
     LLPanel*                                        mPathPlayback   = nullptr;
     ALKitSwitch*                                    mMaster         = nullptr;
     ALKitSwitch*                                    mModeSwitch     = nullptr;
-    ALKitShell*                                     mShell          = nullptr;
     ALKitPopover*                                   mResetPopover   = nullptr;
     LLTextBox*                                      mMasterLabelText = nullptr;
     LLTextBox*                                      mMasterState    = nullptr;

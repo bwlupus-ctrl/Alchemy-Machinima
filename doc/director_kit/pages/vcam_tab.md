@@ -21,9 +21,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `lens_vcam_card` / `prism_lens_enabled` (Enable) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1347` | kit `toggle` ↔ `PrismLensEnabled` `Boolean` | `indra/newview/skins/default/xui/en/floater_prism_manager.xml:32` `prism_enabled` |
-| `lens_vcam_card` / `prism_summary` (Status) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1348`, `text` `indra/newview/skins/default/xui/en/floater_prism_manager.xml:42` | kit readout ← approved static copy; no runtime writer | none |
-| `lens_vcam_card` / `btn_prism_manage` (Open manager) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1349` | `ALVCamKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickManagePrism()` (`indra/newview/llfloaterdirector.cpp:1609`) | none |
+| `lens_vcam_card` / `prism_lens_enabled` (Enable) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1349` | kit `toggle` ↔ `PrismLensEnabled` `Boolean` | `indra/newview/skins/default/xui/en/floater_prism_manager.xml:32` `prism_enabled` |
+| `lens_vcam_card` / `prism_summary` (Status) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1350`, `text` `indra/newview/skins/default/xui/en/floater_prism_manager.xml:42` | kit readout ← approved static copy; no runtime writer | none |
+| `lens_vcam_card` / `btn_prism_manage` (Open manager) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1351` | `ALVCamKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickManagePrism()` (`indra/newview/llfloaterdirector.cpp:1609`) | none |
 
 ## Adapter extraction
 

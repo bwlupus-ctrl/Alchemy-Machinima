@@ -275,7 +275,7 @@ bool ALKitCard::postBuild()
         tp.name          = "kc_" + mId + "_body_text";
         tp.rect          = LLRect(0, 22, 200, 0);
         tp.initial_value = mKind == "link" ? "Lives on " + mLinkLabel :
-                           mKind == "quick" ? "Star a row or use its right-click menu to add live controls here." : mHelp;
+                           mKind == "quick" ? "Star a row or use its menu to add controls here." : mHelp;
         tp.text_color    = ALKitStyle::color(ALKitStyle::MUTED);
         mBodyText        = LLUICtrlFactory::create<LLTextBox>(tp);
         addChild(mBodyText);

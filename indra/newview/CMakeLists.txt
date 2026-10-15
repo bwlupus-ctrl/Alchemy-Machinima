@@ -242,6 +242,7 @@ set(viewer_SOURCE_FILES
     alfloaterwebprofile.cpp
     alflycamclassic.cpp
     alflycamweighted.cpp
+    alframelimiter.cpp
     alsteppedanim.cpp
     alsteppedanimruntime.cpp
     allegacynotificationwellwindow.cpp
@@ -1164,6 +1165,7 @@ set(viewer_HEADER_FILES
     alfloaterwebprofile.h
     alflycamclassic.h
     alflycamweighted.h
+    alframelimiter.h
     alsteppedanim.h
     alsteppedanimruntime.h
     alpanelsteppedanim.h
@@ -2851,6 +2853,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(aldirectorsubjectmapping "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitmath "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alframelimiter "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitqol "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(aldirectortheme "" "${test_libs}" "${test_project}")
 

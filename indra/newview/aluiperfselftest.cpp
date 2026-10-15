@@ -2532,7 +2532,7 @@ private:
             const size_t colon = name.find(':');
             if (colon != std::string::npos)
                 name = name.substr(0, colon) + "_seg_" +
-                    llformat("%d", entry["test_value"].asInteger());
+                    llformat("%d", entry["option_index"].asInteger());
         }
         else if (entry["probe"].asString() == "preset_strip" && mDirectorV2)
         {
@@ -3557,10 +3557,10 @@ private:
     static LLUICtrl* functionalFirstKitControl(LLView* view)
     {
         if (!view || !view->isInVisibleChain()) return nullptr;
-        if (view->getEnabled())
+        if (view->isInEnabledChain())
         {
-            if (ALKitSwitch* sw = dynamic_cast<ALKitSwitch*>(view)) return sw;
-            if (LLButton* button = dynamic_cast<LLButton*>(view))
+            if (ALKitSwitch* sw = dynamic_cast<ALKitSwitch*>(view); sw && sw->hasTabStop()) return sw;
+            if (LLButton* button = dynamic_cast<LLButton*>(view); button && button->hasTabStop())
                 for (LLView* parent = button->getParent(); parent; parent = parent->getParent())
                     if (dynamic_cast<ALKitPage*>(parent)) return button;
         }
@@ -3753,6 +3753,11 @@ private:
         assertion["widget_type"] = "focus";
         assertion["exercise"] = "Tab";
         LLFloater* director = mFloater.get();
+        ALKitShell* shell = director ? findFirstView<ALKitShell>(director) : nullptr;
+        const std::string original_page = shell ? shell->currentPageKey() : std::string();
+        if (director && gFloaterView) gFloaterView->bringToFront(director);
+        // Quick may be empty on a fresh profile. Build a page with real tab stops.
+        if (shell) shell->selectPage("shot_tab");
         LLUICtrl* first = director ? functionalFirstKitControl(director) : nullptr;
         if (first) first->setFocus(true);
         LLView* before = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
@@ -3760,10 +3765,14 @@ private:
             (before == director || before->hasAncestor(director));
         if (focus_verified)
         {
-            director->handleKeyHere(KEY_TAB, MASK_NONE);
+            LLUICtrl* focus_root = first->findRootMostFocusRoot();
+            mFunctionalObserved["focus"]["root"] = functionalViewPath(focus_root);
+            mFunctionalObserved["focus"]["tab_handled"] = director->handleKeyHere(KEY_TAB, MASK_NONE);
         }
         LLView* after = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
-        mFunctionalObserved["focus"]["tab_dispatches"] = 1;
+        mFunctionalObserved["focus"]["before"] = functionalViewPath(before);
+        mFunctionalObserved["focus"]["after"] = functionalViewPath(after);
+        mFunctionalObserved["focus"]["tab_dispatches"] = focus_verified ? 1 : 0;
         mFunctionalObserved["focus"]["moved"] = after && after != before;
         const bool ring = focus_verified && after &&
             (after == director || after->hasAncestor(director)) && after != before &&
@@ -3772,6 +3781,7 @@ private:
             ring ? "Tab exposes a kit focus ring" :
                               "Tab from a focused kit control did not move to the next kit focus ring");
 
+        if (shell && !original_page.empty()) shell->selectPage(original_page);
         LLSD masking;
         masking["page"] = "director";
         masking["widget_name"] = "masking_count_positive";
@@ -4249,6 +4259,9 @@ private:
                     break;
                 }
             radio->setValue(original);
+            // Kit rows paint the segments and route clicks through their group rectangle.
+            if (ALKitRow* row = dynamic_cast<ALKitRow*>(radio->getParent()))
+                if (row->meta().kind == "segmented") return row;
             if (target) return target;
         }
         return control;
@@ -4662,6 +4675,15 @@ private:
             const F64 ratio = high > low ? llclamp((entry["test_value"].asReal() - low) / (high - low), 0.05, 0.95) : .75;
             local_x = target->getLocalRect().mLeft + ll_round((F32)(target->getLocalRect().getWidth() * ratio));
         }
+        if (LLRadioGroup* radio = dynamic_cast<LLRadioGroup*>(control); radio && target == radio->getParent())
+        {
+            S32 index = mFunctionalEntries[mFunctionalIndex]["test_value"]["item_index"].asInteger();
+            if (index < 0 || index >= radio->getItemCount() || index == radio->getSelectedIndex())
+                index = (radio->getSelectedIndex() + 1) % llmax(1, radio->getItemCount());
+            local_x = radio->getRect().mLeft + ll_round((index + .5f) *
+                radio->getRect().getWidth() / llmax(1, radio->getItemCount()));
+            local_y = radio->getRect().getCenterY();
+        }
         target->localPointToScreen(local_x, local_y, &mFunctionalScreenX, &mFunctionalScreenY);
         mFunctionalClickTarget = target->getHandle();
         mFunctionalObserved["rect"]["ctrl"] = functionalRect(control->calcScreenRect());
@@ -4735,8 +4757,8 @@ private:
             for (LLSD::array_const_iterator it = reveals.beginArray(); it != reveals.endArray(); ++it)
             {
                 const std::string selector_name = (*it)["selector"].asString();
-                LLComboBox* selector = mFunctionalPageRoot ?
-                    mFunctionalPageRoot->findChild<LLComboBox>(selector_name, true) : nullptr;
+                LLUICtrl* selector = mFunctionalPageRoot ?
+                    mFunctionalPageRoot->findChild<LLUICtrl>(selector_name, true) : nullptr;
                 if (selector && selector->getValue() != (*it)["value"])
                 {
                     const bool already_saved = std::any_of(mFunctionalRevealWidgetValues.begin(),
@@ -4744,7 +4766,10 @@ private:
                             { return saved.first.get() == selector; });
                     if (!already_saved) mFunctionalRevealWidgetValues.emplace_back(
                         selector->getDerivedHandle<LLUICtrl>(), selector->getValue());
-                    functionalSelectComboValue(selector, (*it)["value"]);
+                    if (LLComboBox* combo = dynamic_cast<LLComboBox*>(selector))
+                        functionalSelectComboValue(combo, (*it)["value"]);
+                    else if (LLRadioGroup* radio = dynamic_cast<LLRadioGroup*>(selector))
+                        functionalSelectRadioValue(radio, (*it)["value"]);
                 }
                 LLSD action = LLSD::emptyMap();
                 action["selector"] = selector_name;
@@ -5479,6 +5504,34 @@ private:
         return functionalPointerClick();
     }
 
+    bool functionalSelectRadioValue(LLRadioGroup* radio, const LLSD& value)
+    {
+        if (!radio) return false;
+        const LLSD original = radio->getValue();
+        S32 index = -1;
+        for (S32 candidate = 0; candidate < radio->getItemCount(); ++candidate)
+        {
+            if (radio->setSelectedIndex(candidate, true) &&
+                radio->getValue().asString() == value.asString())
+            {
+                index = candidate;
+                break;
+            }
+        }
+        radio->setValue(original);
+        if (index < 0) return false;
+        const LLSD saved_test = mFunctionalEntries[mFunctionalIndex]["test_value"];
+        const LLHandle<LLUICtrl> saved_control = mFunctionalControl;
+        mFunctionalEntries[mFunctionalIndex]["test_value"] = LLSD::emptyMap();
+        mFunctionalEntries[mFunctionalIndex]["test_value"]["item_index"] = index;
+        mFunctionalControl = radio->getDerivedHandle<LLUICtrl>();
+        std::string reason;
+        const bool clicked = functionalReachable(radio, reason) && functionalPointerClick();
+        mFunctionalControl = saved_control;
+        mFunctionalEntries[mFunctionalIndex]["test_value"] = saved_test;
+        return clicked && radio->getValue().asString() == value.asString();
+    }
+
     bool functionalSelectComboValue(LLComboBox* combo, const LLSD& value)
     {
         LLScrollListCtrl* list = combo ? FunctionalComboAccess::list(combo) : nullptr;
@@ -5718,16 +5771,11 @@ private:
             {
                 if (!focus_exact() || !functionalDeliverChar(control, ch)) return false;
             }
-            // Re-check the focus once more after the last character; no frame or callback
-            // may have redirected it to the login form or an alert.  The former Return
-            // went through LLViewerWindow::handleKey, which consumed it WITHOUT delivering it
-            // to the widget (an unmodified key < 0x80 with a focused control only waits for
-            // the character event), so it was never a widget keystroke.  It is deliberately
-            // not delivered now: handleKeyHere(Return) would run widget Return handlers
-            // (search-result pick, newline in a text editor) the old run never exercised.
+            // Commit through the focused widget, as an editor's Return key does.
             if (!focus_exact()) return false;
-            mFunctionalObserved["keyboard"]["return_delivered_to_widget"] = false;
-            return true;
+            const bool delivered = functionalDeliverKey(control, KEY_RETURN, MASK_NONE);
+            mFunctionalObserved["keyboard"]["return_delivered_to_widget"] = delivered;
+            return delivered;
         }
         if (LLSliderCtrl* slider_ctrl = dynamic_cast<LLSliderCtrl*>(control))
         {
@@ -5757,7 +5805,7 @@ private:
     bool prepareFunctionalAlternate(const LLSD& entry)
     {
         if (entry["probe"].asString() != "selector_segment") return true;
-        const S32 target = entry["test_value"].asInteger();
+        const S32 target = entry["option_index"].asInteger();
         const std::string base = entry["widget_name"].asString().substr(
             0, entry["widget_name"].asString().find(':'));
         LLUICtrl* other = mFunctionalPageRoot->findChild<LLUICtrl>(
@@ -5943,7 +5991,10 @@ private:
         if (!functionalReachable(control, reachability))
         {
             std::string world_reason;
-            if (reachability == "not reachable: disabled-by-parent")
+            if (!entry["enable_when"].asString().empty() || !entry["visible_when"].asString().empty())
+                world_reason = "prerequisite unavailable: " + entry["enable_when"].asString() +
+                    " " + entry["visible_when"].asString();
+            if (world_reason.empty() && reachability == "not reachable: disabled-by-parent")
             {
                 const std::string page = entry["page"].asString();
                 if (page == "gaze_tab") world_reason = "requires a logged-in edited actor";
@@ -8826,7 +8877,9 @@ private:
 
     static std::string dirEffectClass(const LLSD& entry)
     {
+        if (!entry["consumer"].asString().empty()) return "consumer";
         if (entry["known_gap"].asBoolean()) return "none";
+        if (entry["reset_defaults"].isMap()) return "setting";
         const LLSD& expect = entry["expect"];
         if (expect.has("setting")) return "setting";
         if (expect.has("field") || expect.has("mode")) return "state";

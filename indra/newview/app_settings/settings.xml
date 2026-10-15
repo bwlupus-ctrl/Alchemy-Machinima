@@ -26461,6 +26461,28 @@
       <key>Value</key>
       <integer>-1</integer>
     </map>
+    <key>FramerateLimitEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>Caps how fast the viewer draws frames, to the rate in "Frame rate limit". Works even when VSync is overridden by the graphics driver. With VSync on, pick a cap that divides your refresh rate (for example 30 or 60 on a 60 Hz screen) for the smoothest pacing. Auto-tune pauses while the cap is on. Off by default.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>FramerateLimitFPS</key>
+    <map>
+      <key>Comment</key>
+      <string>The most frames per second the viewer will draw while the frame rate limit is on (10 to 240). With VSync on, pick a cap that divides your refresh rate (for example 30 or 60 on a 60 Hz screen) for the smoothest pacing.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>60</integer>
+    </map>
     <key>MaxFPS</key>
     <map>
       <key>Comment</key>

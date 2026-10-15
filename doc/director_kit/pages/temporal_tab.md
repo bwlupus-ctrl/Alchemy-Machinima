@@ -1,12 +1,12 @@
 # Time — Director Kit page contract
 
 Page key: `temporal_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (8/18 setting-bound rows; 9 C++-referenced rows).
+Computed class: **code-driven** (10/21 setting-bound rows; 11 C++-referenced rows).
 
 ## Real owners
 
 - `panel_temporal_capture` / `panel` at `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:17` (18 matching rows).
-- Referencing classes: `ALPanelTemporalCapture` (10).
+- Referencing classes: `ALPanelTemporalCapture` (13).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -20,31 +20,35 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `world_clock` / `mode_combo` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:48` | kit `combo` ↔ `TemporalMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:9` `mode_combo` |
-| `world_clock` / `scale_slider` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:78` | kit `slider` ↔ `TemporalWorldScale` `F32`; `ALTemporalCaptureKitAdapter` preserves/calls wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onScaleCommit()` (`indra/newview/alpaneltemporalcapture.cpp:49`) | page `ghosts_tab`, `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:17` `scale_slider`, `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:94` `scale_spinner` |
-| `world_clock` / `output_fps_spinner` (Out FPS) | `spinner` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:182` | kit `number` ↔ `TemporalOutputFPS` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:22` `output_fps_spinner` |
+| `world_clock` / `mode_combo` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:48` | kit `combo` ↔ `TemporalMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:10` `mode_combo` |
+| `world_clock` / `scale_slider` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:78` | kit `slider` ↔ `TemporalWorldScale` `F32`; `ALTemporalCaptureKitAdapter` preserves/calls wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onScaleCommit()` (`indra/newview/alpaneltemporalcapture.cpp:50`) | page `ghosts_tab`, `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:18` `scale_slider`, `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:94` `scale_spinner` |
+| `world_clock` / `output_fps_spinner` (Out FPS) | `spinner` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:182` | kit `number` ↔ `TemporalOutputFPS` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:23` `output_fps_spinner` |
 | `world_clock` / `status_text` (Status) | `text` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:259` | kit readout ← approved static copy; no runtime writer | none |
 | `world_clock` / `effective_text` (Effective) | `text` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:154` | kit readout ← approved static copy; no runtime writer | none |
 | `world_clock` / `postspeed_text` (Post speed) | `text` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:164` | kit readout ← approved static copy; no runtime writer | none |
 | `world_clock` / `temporal_hint` (Note) | `text` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:271` | kit readout ← approved static copy; no runtime writer | none |
-| `speed_presets` / `btn_freeze` (Freeze) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:106` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:33`) | none |
-| `speed_presets` / `btn_quarter` (0.25x) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:116` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:35`) | none |
-| `speed_presets` / `btn_half` (0.5x) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:125` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:37`) | none |
-| `speed_presets` / `btn_realtime` (1x) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:134` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:39`) | none |
-| `speed_presets` / `btn_double` (2x) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:144` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:41`) | none |
+| `speed_presets` / `btn_freeze` (Freeze) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:106` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:34`) | none |
+| `speed_presets` / `btn_quarter` (0.25x) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:116` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:36`) | none |
+| `speed_presets` / `btn_half` (0.5x) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:125` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:38`) | none |
+| `speed_presets` / `btn_realtime` (1x) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:134` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:40`) | none |
+| `speed_presets` / `btn_double` (2x) | `button` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:144` | `ALTemporalCaptureKitAdapter` command/model binding → wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::onClickScalePreset()` (`indra/newview/alpaneltemporalcapture.cpp:42`) | none |
 | `drive_on_clock` / `drives_lbl` (Applies to) | `text` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:192` | kit readout ← approved static copy; no runtime writer | none |
-| `drive_on_clock` / `drive_anim_check` (Animation) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:204` | kit `toggle` ↔ `TemporalDriveAnimation` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:59` `drive_anim_check` |
-| `drive_on_clock` / `drive_objects_check` (Objects) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:215` | kit `toggle` ↔ `TemporalDriveObjects` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:62` `drive_objects_check` |
-| `drive_on_clock` / `drive_texanim_check` (Textures) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:226` | kit `toggle` ↔ `TemporalDriveTextureAnim` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:65` `drive_texanim_check` |
-| `drive_on_clock` / `drive_particles_check` (Particles) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:237` | kit `toggle` ↔ `TemporalDriveParticles` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:68` `drive_particles_check` |
-| `drive_on_clock` / `drive_camera_check` (Camera) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:249` | kit `toggle` ↔ `TemporalDriveCamera` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:71` `drive_camera_check` |
+| `drive_on_clock` / `drive_anim_check` (Animation) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:204` | kit `toggle` ↔ `TemporalDriveAnimation` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:60` `drive_anim_check` |
+| `drive_on_clock` / `drive_objects_check` (Objects) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:215` | kit `toggle` ↔ `TemporalDriveObjects` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:63` `drive_objects_check` |
+| `drive_on_clock` / `drive_texanim_check` (Textures) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:226` | kit `toggle` ↔ `TemporalDriveTextureAnim` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:66` `drive_texanim_check` |
+| `drive_on_clock` / `drive_particles_check` (Particles) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:237` | kit `toggle` ↔ `TemporalDriveParticles` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:69` `drive_particles_check` |
+| `drive_on_clock` / `drive_camera_check` (Camera) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:249` | kit `toggle` ↔ `TemporalDriveCamera` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:72` `drive_camera_check` |
+| `frame_rate` / `fps_limit_check` (Limit frame rate) | none | kit `toggle` ↔ `FramerateLimitEnabled` `Boolean`; `ALTemporalCaptureKitAdapter` preserves/calls wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::syncFpsLimitRow()` (`indra/newview/alpaneltemporalcapture.cpp:63`) | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:198` `FramerateLimitEnabled`, `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:77` `fps_limit_check` |
+| `frame_rate` / `fps_limit_slider` (Frame rate limit) | none | kit `slider` ↔ `FramerateLimitFPS` `U32` | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:215` `FramerateLimitFPS`, `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:80` `fps_limit_slider` |
+| `frame_rate` / `fps_limit_hint` (Note) | none | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelTemporalCapture::onClickScalePreset()` — `indra/newview/alpaneltemporalcapture.cpp:33, 35, 37, 39, 41` | Move model-facing work into `ALTemporalCaptureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelTemporalCapture::onScaleCommit()` — `indra/newview/alpaneltemporalcapture.cpp:49` | Move model-facing work into `ALTemporalCaptureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelTemporalCapture::onClickScalePreset()` — `indra/newview/alpaneltemporalcapture.cpp:34, 36, 38, 40, 42` | Move model-facing work into `ALTemporalCaptureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelTemporalCapture::onScaleCommit()` — `indra/newview/alpaneltemporalcapture.cpp:50` | Move model-facing work into `ALTemporalCaptureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelTemporalCapture::syncFpsLimitRow()` — `indra/newview/alpaneltemporalcapture.cpp:63` | Move model-facing work into `ALTemporalCaptureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -55,7 +59,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **16 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **19 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -75,6 +79,9 @@ Manifest size: **16 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `drive_texanim_check-on` | Only `drive_texanim_check` is on; dependent visibility is measured. |
 | `drive_particles_check-on` | Only `drive_particles_check` is on; dependent visibility is measured. |
 | `drive_camera_check-on` | Only `drive_camera_check` is on; dependent visibility is measured. |
+| `card-frame_rate-tallest-850` | Only `frame_rate` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-frame_rate-tallest-1160` | Only `frame_rate` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `fps_limit_check-on` | Only `fps_limit_check` is on; dependent visibility is measured. |
 
 ## Parity check
 
@@ -89,7 +96,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-50 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+53 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

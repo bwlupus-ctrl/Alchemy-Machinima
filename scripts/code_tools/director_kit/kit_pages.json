@@ -141,7 +141,7 @@
    "omit_empty_cards": ["fog_size_turn", "fog_look"],
    "omit_rows_note": "The 23 fog-volume list and per-volume rows have no setting: they write the LocalFogBank slot through the v1 ALPanelAtmosphericVolumes (list fill, add, duplicate, delete, move-to-camera). Hosting that panel is not done in this batch, so they are represented by the Lightbox link row below (tab atmospheric_volumes_settings, floater_lightbox_settings.xml:5259).",
    "add_rows": [
-    {"card": "local_fog_volumes", "row": {"k": "button", "w": "open_lightbox_fog", "l": "Fog volumes", "btn": "Open fog volumes in Lightbox", "target": "lightbox", "target_tab": "atmospheric_volumes_settings", "h": "Add, duplicate, delete and edit fog volumes in the full Lightbox Atmos Volumes tab."}}
+    {"card": "local_fog_volumes", "row": {"k": "button", "w": "open_lightbox_fog", "l": "Fog volumes", "btn": "Open in Lightbox", "target": "lightbox", "target_tab": "atmospheric_volumes_settings", "h": "Add, duplicate, delete and edit fog volumes in the full Lightbox Atmos Volumes tab."}}
    ],
    "row_overrides": {
     "ch_CineHazeStrength_slider": {"enabled_control": "CineHazeEnable"},

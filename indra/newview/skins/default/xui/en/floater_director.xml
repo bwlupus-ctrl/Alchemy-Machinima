@@ -76,6 +76,8 @@
      top="24"
      name="btn_reset_marks"
      width="100" />
+    <!-- set_scene_name_editing swaps these controls in the same slot. -->
+    <!-- xui-check: exclusive scene_combo scene_name_editor -->
     <combo_box
      follows="left|top"
      height="22"
@@ -220,7 +222,7 @@
         <columns
          label="AB"
          name="ab"
-         width="22" />
+         width="26" />
         <columns
          label="M"
          name="mark"

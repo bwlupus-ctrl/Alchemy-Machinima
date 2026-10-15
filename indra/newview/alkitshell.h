@@ -181,6 +181,7 @@ private:
     ALKitPopover*                                        mOpenPopover   = nullptr;
     ALKitPopover*                                        mAnchorClosedPopover = nullptr; // identity only, never dereferenced
     ALKitPopover*                                        mCastPopover   = nullptr;
+    LLTextBox*                                           mCastEmpty     = nullptr;
     ALKitPopover*                                        mOverflowPopover = nullptr;
     LLButton*                                            mTransportCut  = nullptr;
     LLButton*                                            mTransportArm  = nullptr;

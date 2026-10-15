@@ -252,6 +252,16 @@ Shot tally (this file's own widgets): 12 rows, 12 OK. Embedded panel_director_sw
 
 Scene options tally: 1 row, 1 OK. The text blocks are static copy with no controls.
 
+## Page: panel_dpage_capture_temporal.xml (Frame rate card, 10/15)
+
+| Page | Widget | Kind | Label | Binding | Verdict | Reason |
+|---|---|---|---|---|---|---|
+| temporal | fps_limit_check | kit_switch | Limit frame rate | control_name FramerateLimitEnabled (Boolean, default 0, settings.xml:26464) | OK | Read once per frame by the cached bool at llappviewer.cpp:1474/1524 (wait :1853; background yield skipped while the cap is on, :1762-1776). Same setting as Preferences > Graphics `FramerateLimitEnabled` (floater_preferences_graphics_advanced.xml:191). |
+| temporal | fps_limit_slider | slider | Frame rate limit | control_name FramerateLimitFPS (U32, default 60, settings.xml:26475); range 10-240 step 1 matches ALFrameLimiter::MIN_FPS/MAX_FPS (alframelimiter.h) and the code clamps again (clampFps) | OK | Row is created hidden (show_if fps_limit_on) and shown by ALPanelTemporalCapture::syncFpsLimitRow (alpaneltemporalcapture.cpp:71, via ALKitRow::setControlVisible) on the toggle commit and the 4 Hz readout poll. Read at llappviewer.cpp:1816 (endFrameWait); VSync is left as the user set it. Preferences twin: floater_preferences_graphics_advanced.xml:202, enabled_control FramerateLimitEnabled. |
+| temporal | fps_limit_hint | readout | Note | static text | OK | One-line help, no binding. |
+
+Frame rate tally: 3 rows, 3 OK. The remaining Temporal rows are the generated kit rows (settings-bound via control_name, handlers in alpaneltemporalcapture.cpp); the older line below that says this page "embeds panel_temporal_capture.xml" is stale.
+
 ## Pages with no own controls (embedded panels only)
 
 - panel_dpage_camera_frame_orbit.xml: embeds panel_cinecam_frame.xml and panel_flycam_orbit.xml. Own widgets: titles only.

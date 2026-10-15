@@ -11,6 +11,7 @@
 
 #include "alpaneltemporalcapture.h"
 
+#include "alkitrow.h"
 #include "llbutton.h"
 #include "lltextbox.h"
 #include "lluictrl.h"
@@ -53,7 +54,30 @@ bool ALPanelTemporalCapture::postBuild()
         sp->setCommitCallback([this](LLUICtrl*, const LLSD&) { onScaleCommit(); });
     }
 
+    // [FrameLimiter] show_if fps_limit_on: the slider row (created hidden by the
+    // generator) appears while the cap is enabled. The toggle commit makes it
+    // instant; the 4 Hz draw sync covers changes made elsewhere (Preferences).
+    mFpsLimitSlider = findChild<LLView>("fps_limit_slider", true);
+    if (LLUICtrl* t = findChild<LLUICtrl>("fps_limit_check"))
+    {
+        t->setCommitCallback([this](LLUICtrl*, const LLSD&) { syncFpsLimitRow(); });
+    }
+    syncFpsLimitRow();
+
     return true;
+}
+
+// ui-draw-lint: allow-function(raw-write) change-guarded; runs on a toggle click or the 4 Hz readout poll only
+void ALPanelTemporalCapture::syncFpsLimitRow()
+{
+    if (!mFpsLimitSlider)
+    {
+        return;
+    }
+    static LLCachedControl<bool> limit_enabled(gSavedSettings, "FramerateLimitEnabled", false);
+    // Through the kit row so the card relayouts and leaves no gap (a raw setVisible on the
+    // row is overridden by the card layout).
+    ALKitRow::setControlVisible(mFpsLimitSlider, limit_enabled);
 }
 
 void ALPanelTemporalCapture::onClickScalePreset(F32 scale, bool manual)
@@ -77,6 +101,7 @@ void ALPanelTemporalCapture::draw()
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     if (mReadoutClock.due())
     {
+        syncFpsLimitRow();
         // Read the live frozen frame so the readouts show the ACTUAL effective scale.
         const LLTemporalFrameContext& tf = LLPresentationTime::currentFrame();
         const F32 eff = tf.effective_scale;

@@ -25,6 +25,7 @@
 
 class LLButton;
 class LLTextBox;
+class LLView;
 
 class ALPanelTemporalCapture final : public LLPanel
 {
@@ -41,10 +42,13 @@ private:
     void onClickScalePreset(F32 scale, bool manual);
     // touching the speed while Live implies the user wants Manual scaling
     void onScaleCommit();
+    // [FrameLimiter] show the "Frame rate limit" slider row only while the cap is on
+    void syncFpsLimitRow();
 
     LLTextBox* mEffectiveText = nullptr;
     LLTextBox* mPostSpeedText = nullptr;
     LLTextBox* mStatusText = nullptr;
+    LLView* mFpsLimitSlider = nullptr;  // [FrameLimiter] fps_limit_slider; its kit row is show_if fps_limit_on
 
     // draw()-rate diffing so text is re-set only when it changes
     std::string mLastEffective;

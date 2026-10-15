@@ -2860,6 +2860,9 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         if(gFloaterView)translateIntoRect(gFloaterView->getLocalRect());
         gSavedSettings.setBOOL("DirectorV2RectBumped",true);
     }
+    // Saved rectangles can come from a larger display after the one-time size bump.
+    if (mIsV2 && gFloaterView)
+        gFloaterView->adjustToFitScreen(this, false);
     if(mShell)mShell->startSearchLoad();
     mLauncherClock.forceDue();
     // pick up scenes saved by an earlier session without losing the current
@@ -5979,7 +5982,7 @@ void LLFloaterDirector::refreshActorStyleTab()
     // it while the Actor FX tab is not in the visible chain. onTabChanged / onOpen set
     // mActorStyleTabDirty; the first visible pass drops every "last written" cache so the
     // reveal frame rebuilds the roster and rewrites all controls (force) before paint.
-    if (!mActorStyleTarget->isInVisibleChain())
+    if (!mActorStyleEnabled->isInVisibleChain())
     {
         return;
     }

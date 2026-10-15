@@ -552,7 +552,7 @@
      name="gaze_limit_mode_lbl" top="1242" width="124">Limits source</text>
     <combo_box follows="left|top|right" height="20" layout="topleft"
      left="140" name="gaze_limit_mode_combo" top="1242"
-     tool_tip="Inherit follows the global custom-limits switch below (DirectorGazeCustomLimitsEnabled). Legacy constants forces the original hardcoded cones for this actor. Custom uses this actor's profile in the grid below."
+     tool_tip="Inherit follows the global custom-limits switch below. Legacy constants forces the original hardcoded cones for this actor. Custom uses this actor's profile in the grid below."
      width="336">
         <combo_box.item label="Inherit" name="gaze_limit_inherit" value="-1" />
         <combo_box.item label="Legacy constants" name="gaze_limit_legacy" value="0" />

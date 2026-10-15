@@ -502,6 +502,13 @@ void ALKitShell::buildChrome()
         mCastPopover   = LLUICtrlFactory::create<ALKitPopover>(params);
         addChild(mCastPopover);
         mCastPopover->bindAnchor(cast_chip);
+        LLTextBox::Params empty;
+        empty.name = "kit_cast_empty";
+        empty.rect = LLRect(12, 344, 288, 300);
+        empty.initial_value = "Cast is shown in the left rail.";
+        empty.wrap = true;
+        mCastEmpty = LLUICtrlFactory::create<LLTextBox>(empty);
+        mCastPopover->addChild(mCastEmpty);
         LLHandle<ALKitPopover> handle = mCastPopover->getDerivedHandle<ALKitPopover>();
         cast_chip->setCommitCallback(
             [handle](LLUICtrl*, const LLSD&)
@@ -720,6 +727,8 @@ void ALKitShell::layoutChrome()
     if (mRoster)
     {
         const bool roster_in_rail = mRosterOpen && mRailLabels && y >= 120;
+        if (mCastEmpty)
+            mCastEmpty->setVisible(roster_in_rail);
         mRoster->setVisible(roster_in_rail);
         if (roster_in_rail)
         {
@@ -1458,6 +1467,8 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
         page = findFirst<ALKitPage>(panel);
     if (!page)
         return;
+    page->buildResetPopover();
+    page->setChangedOnlyValue(changedOnly());
     mBuiltPages[page->pageKey()] = page->getDerivedHandle<ALKitPage>();
     refreshChangedMarkers();
     layoutChrome();
