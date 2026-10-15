@@ -1301,6 +1301,10 @@ bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)
 
 bool LLViewerInput::handleGlobalBindsKeyDown(KEY key, MASK mask)
 {
+    if (mGlobalBindsSuspended)
+    {
+        return false; // functional self-test: no user binding may run
+    }
     if (LLSetKeyBindDialog::isRecording())
     {
         // handleGlobalBindsKeyDown happens before view handling, so can't
@@ -1313,6 +1317,10 @@ bool LLViewerInput::handleGlobalBindsKeyDown(KEY key, MASK mask)
 
 bool LLViewerInput::handleGlobalBindsKeyUp(KEY key, MASK mask)
 {
+    if (mGlobalBindsSuspended)
+    {
+        return false; // functional self-test: no user binding may run
+    }
     if (LLSetKeyBindDialog::isRecording())
     {
         // handleGlobalBindsKeyUp happens before view handling, so can't
@@ -1326,6 +1334,10 @@ bool LLViewerInput::handleGlobalBindsKeyUp(KEY key, MASK mask)
 
 bool LLViewerInput::handleGlobalBindsMouse(EMouseClickType clicktype, MASK mask, bool down)
 {
+    if (mGlobalBindsSuspended)
+    {
+        return false; // functional self-test: no user binding may run
+    }
     if (LLSetKeyBindDialog::isRecording())
     {
         // handleGlobalBindsMouse happens before view handling, so can't

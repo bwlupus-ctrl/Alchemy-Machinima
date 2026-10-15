@@ -112,11 +112,65 @@ per-account/settings XML persistence is covered by that backup and restore.
 Output is the usual
 `functional.csv` and `summary.md`; CSV rows include `inworld=true`.
 
-An in-viewer wall-clock watchdog defaults to 12 minutes (the wrapper passes
-`watchdog_seconds` from `-InWorldWatchdogMin`). It restores test state, writes
-the partial CSV, and requests normal logout. The wrapper timeout defaults to 18
-minutes, then allows a further 60-second normal-exit grace before reporting any
-last-resort hard kill explicitly.
+An in-viewer wall-clock watchdog defaults to 30 minutes (the wrapper passes
+`watchdog_seconds` from `-InWorldWatchdogMin`; the clock starts with the viewer, so
+it covers login, the manifest rows and the rule phase). It restores test state,
+writes the partial CSV, and requests normal logout. The wrapper timeout defaults
+to the watchdog plus 8 minutes, then allows a further 60-second normal-exit grace
+before reporting any last-resort hard kill explicitly.
+
+## Input safety: global bindings and AFK (10/15)
+
+The harness injects real mouse movement and clicks. Two viewer behaviours sit in
+front of the UI on that path, and both are closed fail-closed for the whole run
+(login and in-world):
+
+1. **Global key/mouse bindings.** `LLViewerWindow::handleAnyMouseClick` runs
+   `gViewerInput.handleGlobalBindsMouse` before any UI dispatch
+   (`llviewerwindow.cpp`, "Handle non-consuming global keybindings"). A saved plain
+   left-click binding to `toggle_voice` would therefore open the microphone on a
+   harness click. The in-world runner calls
+   `LLViewerInput::setGlobalBindsSuspended(true)` from its constructor, before login;
+   `handleGlobalBindsKeyDown/KeyUp/Mouse` then return without running anything.
+   The flag is process-local (nothing is written to the user's bindings file, so a
+   crash needs no restore) and is cleared in `Runner::restore()`, which every
+   teardown path calls. Every injected event (`functionalInputSafe`) and every
+   pre-dispatch check refuses unless the suspension is in force, and the per-frame
+   guard fails the run if it is ever lifted.
+2. **AFK.** An injected mouse move reaches `LLAgent::clearAFK()`
+   (`LLViewerWindow::handleMouseMove`), which sends `ANIM_REQUEST_STOP` while the
+   avatar is away. The harness never calls `clearAFK`. Instead: (a) once the account
+   is verified it disables the `AFKTimeout` setting for the run (active value only,
+   restored by the settings snapshot; if it cannot, the run FAILs
+   `inworld_afk_safety`); (b) every frame it resets `gAwayTriggerTimer`, the idle
+   timer, directly; (c) the avatar being away (`AGENT_CONTROL_AWAY` or the away
+   animation signalled, exactly the condition under which `clearAFK` would send)
+   fails the run at once with an `inworld_afk` FAIL row and a normal logout, and
+   `functionalInputSafe` refuses every injected move, click and key while away, so
+   nothing is sent. An avatar that is already away at the start fails the same way
+   before any click phase.
+
+## Rule-phase click gate (10/15)
+
+Every click of the rule phase goes through `dirClick`, which in-world calls
+`dirInWorldClickAllowed` first (same allow-list / hazard / exclusion policy as the
+manifest rows; unknown means refuse):
+
+- the explicit in-world exclusion list is one shared function
+  (`functionalInWorldExcludedWidget`) used by the manifest rows and this gate;
+- a control that is also a manifest row must pass that row's own `inworld_allowed`,
+  skip/known-gap and hazard checks;
+- `nav`: only the shell's own rail buttons, page tabs, tab arrows and the gear;
+- `popover_anchor`: only `btn_arm`, `btn_scene_menu`, `btn_cast_chip`, `btn_help`,
+  `btn_legend_hotkeys`, a page's Reset button (opens its confirm popover; Reset is
+  never confirmed) and a Who chip only when the page has a Who combo (without one a
+  click toggles the actor pin and saves page state, so it is never clicked);
+- `link_row` / `link_card`: only the GENERATED navigation button (`alkitrow.cpp`
+  postBuild, `alkitcard.cpp` `kc_<id>_go`). The link registry carries an `authored`
+  flag; an authored widget that shares the link's name is refused, as is any button
+  whose label is not the generated one;
+- a popover anchor collapsed into the transport bar's overflow list is reported as
+  WARN, not driven (an overflow entry forwards to controls such as Save scene).
 
 ## Director rule phase (R1-R6, 10/15)
 
@@ -126,11 +180,18 @@ checks are listed in `FUNCTIONAL_MANIFEST.md`). It is viewer-local UI work only:
 real clicks on shell chrome (rail, gear, tabs, popover anchors, link rows),
 `ALKitShell` navigation and help calls, and widget-tree reads. It presses no
 manifest control, sends nothing and never confirms a popover action, so it adds
-no entry to the hazard lists. It needs about four minutes; the in-world run will
-not start it with less than 240 s of the watchdog left and records a FAIL row
-asking for a larger `-InWorldWatchdogMin` instead. The wrapper timeout is raised
-to 22 minutes (9 at the login screen) to cover it; the 12-minute watchdog default
-is unchanged.
+no entry to the hazard lists. It is queued as about 4000-7500 frames (38 pages, 14
+links, about 80 popover flows), i.e. roughly 3 to 12 minutes at 10-30 fps; the
+estimate comes from the queued tasks. The in-world run will not start it with less
+than 240 s of the watchdog left, or less than the estimate at an assumed 10 fps, and
+records a FAIL row asking for a larger `-InWorldWatchdogMin` instead. It reports its
+measured wall time and frame count in an `R1_REACHABILITY` `rule_phase_timing` row.
+The watchdog default is raised to 30 minutes and the wrapper timeout is the watchdog
+plus 8 minutes (9 at the login screen).
+
+R6 (connectedness) credits only an effect observed in this run: the control's own
+functional row must have run and passed. Skipped or excluded rows (everything outside
+the in-world allow-list) are reported as SKIP with their reason, never PASS.
 
 ## Selection and Animation Explorer exclusions (10/12)
 

@@ -40,6 +40,7 @@
 #include "aoengine.h"
 
 #include "llagent.h"
+#include "llanimationstates.h"
 #include "llappviewer.h"
 #include "llactormover.h"
 #include "llaccordionctrl.h"
@@ -84,6 +85,7 @@
 #include "llreflectionmapmanager.h"
 #include "llrender.h"
 #include "llrootview.h"
+#include "llscrollbar.h"
 #include "llscrollcontainer.h"
 #include "llscrolllistctrl.h"
 #include "llselectmgr.h"
@@ -98,6 +100,7 @@
 #include "lltexteditor.h"
 #include "lltoast.h"
 #include "llviewercontrol.h"
+#include "llviewerinput.h"
 #include "llviewerobjectlist.h"
 #include "llviewershadermgr.h"
 #include "llviewerwindow.h"
@@ -1388,6 +1391,9 @@ public:
         {
             mFunctional = true;
             mInWorld = inworld_request;
+            // Whole run, login and in-world: no saved key/mouse binding (toggle_voice and
+            // friends) may run on a synthetic click.  Cleared in restore().
+            if (mInWorld) gViewerInput.setGlobalBindsSuspended(true);
             std::vector<std::string> fields;
             LLStringUtil::getTokens(mRequest.substr(
                 inworld_request ? inworld_prefix.size() : functional_prefix.size()), fields, "|");
@@ -2763,7 +2769,7 @@ private:
             ALKitPage* page = findFirstView<ALKitPage>(mFunctionalPageRoot);
             const bool no_undo = shell && !shell->history().canUndo();
             if (page) page->setFocus(true);
-            if (gViewerWindow) gViewerWindow->handleKey('Z', MASK_CONTROL);
+            functionalInjectKey('Z', MASK_CONTROL);
             const bool undo_kept_store = no_undo && lightResponseEqual(snapshot, lightResponseSnapshot());
             const bool persist = gSavedSettings.getBOOL("AvatarLightResponsePersist");
             for (const char* name : {"AvatarLightResponseDebugTint", "CineLightRigActorMaskBias",
@@ -4331,6 +4337,8 @@ private:
             reason = "not reachable: missing click target";
             return false;
         }
+        // Fail-closed before anything else: bindings suspended and avatar not away.
+        if (!functionalInputSafe(reason)) return false;
         LLFloater* host = mFunctionalHostFloater.get();
         if (!host) host = functionalOwningFloater(expected);
         if (!host) host = mFloater.get();
@@ -4623,6 +4631,109 @@ private:
         }
     }
 
+    // ======================================================================
+    // In-world input safety (fail-closed).  EVERY synthetic mouse/key event the
+    // harness injects goes through the wrappers below.
+    //
+    //  * Global bindings.  LLViewerWindow::handleAnyMouseClick runs
+    //    gViewerInput.handleGlobalBindsMouse BEFORE any UI dispatch
+    //    (llviewerwindow.cpp, "Handle non-consuming global keybindings"), so a saved
+    //    plain-left-click binding to toggle_voice would open the microphone on a
+    //    harness click.  The in-world Runner therefore suspends those entry points
+    //    for the whole run (LLViewerInput::setGlobalBindsSuspended: process-local,
+    //    nothing persisted, so a crash needs no restore) and clears the suspension in
+    //    restore().  Every injection REFUSES unless the suspension is in force.
+    //  * AFK.  An injected mouse move reaches LLAgent::clearAFK()
+    //    (LLViewerWindow::handleMouseMove), which sends ANIM_REQUEST_STOP while the
+    //    avatar is away.  Input is refused while the avatar is away, the AFK timeout is
+    //    disabled for the run, and the idle timer is kept reset each frame WITHOUT ever
+    //    calling clearAFK() (nothing in this file does).
+    // ======================================================================
+
+    // The exact condition under which LLAgent::clearAFK() would message the simulator.
+    bool functionalAgentAway(std::string& why) const
+    {
+        if (gAgent.getAFK())
+        {
+            why = "avatar is AFK/away (AGENT_CONTROL_AWAY set)";
+            return true;
+        }
+        if (isAgentAvatarValid() &&
+            gAgentAvatarp->mSignaledAnimations.find(ANIM_AGENT_AWAY) !=
+                gAgentAvatarp->mSignaledAnimations.end())
+        {
+            why = "avatar is signalling the away animation";
+            return true;
+        }
+        return false;
+    }
+
+    // True when one more injected input event is safe.  Out-of-world modes always are.
+    bool functionalInputSafe(std::string& reason) const
+    {
+        if (!mInWorld) return true;
+        if (!gViewerInput.globalBindsSuspended())
+        {
+            reason = "in-world: global key/mouse bindings are not suspended (a saved binding such "
+                     "as toggle_voice could run); input refused";
+            return false;
+        }
+        std::string why;
+        if (functionalAgentAway(why))
+        {
+            reason = "in-world: " + why +
+                "; input refused (an injected move would call clearAFK and message the simulator)";
+            return false;
+        }
+        return true;
+    }
+
+    void functionalMoveMouse(const LLCoordGL& position)
+    {
+        std::string reason;
+        if (!gViewerWindow || !functionalInputSafe(reason))
+        {
+            if (!reason.empty()) mFunctionalLastClickReason = reason;
+            return;
+        }
+        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), position, MASK_NONE);
+    }
+
+    bool functionalMouseButton(const LLCoordGL& position, bool down, bool& toolmgr)
+    {
+        std::string reason;
+        // Refuse both edges when the guards fail: a global binding can fire on up as well.
+        if (!gViewerWindow || !functionalInputSafe(reason))
+        {
+            if (!reason.empty()) mFunctionalLastClickReason = reason;
+            return false;
+        }
+        return gViewerWindow->handleAnyMouseClick(
+            gViewerWindow->getWindow(), position, MASK_NONE, CLICK_LEFT, down, toolmgr);
+    }
+
+    bool functionalInjectKey(KEY key, MASK mask)
+    {
+        std::string reason;
+        if (!gViewerWindow || !functionalInputSafe(reason))
+        {
+            if (!reason.empty()) mFunctionalLastClickReason = reason;
+            return false;
+        }
+        return gViewerWindow->handleKey(key, mask);
+    }
+
+    bool functionalInjectChar(unsigned char ch)
+    {
+        std::string reason;
+        if (!gViewerWindow || !functionalInputSafe(reason))
+        {
+            if (!reason.empty()) mFunctionalLastClickReason = reason;
+            return false;
+        }
+        return gViewerWindow->handleUnicodeChar(static_cast<llwchar>(ch), MASK_NONE);
+    }
+
     bool functionalPointerClick()
     {
         LLView* expected = mFunctionalClickTarget.get();
@@ -4635,7 +4746,7 @@ private:
         }
         LLCoordGL gl(ll_round((F32)mFunctionalScreenX * gViewerWindow->getDisplayScale().mV[VX]),
                      ll_round((F32)mFunctionalScreenY * gViewerWindow->getDisplayScale().mV[VY]));
-        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), gl, MASK_NONE);
+        functionalMoveMouse(gl);
         LLView* deepest = nullptr;
         struct RecorderGuard
         {
@@ -4656,8 +4767,7 @@ private:
         // the down event. A pointer click must not move its target before mouse-up.
         const LLRect rect_before_down = expected->calcScreenRect();
         mFunctionalObserved["click"]["rect_before_down"] = functionalRect(rect_before_down);
-        const bool down = gViewerWindow->handleAnyMouseClick(
-            gViewerWindow->getWindow(), gl, MASK_NONE, CLICK_LEFT, true, toolmgr);
+        const bool down = functionalMouseButton(gl, true, toolmgr);
         const std::string down_path = LLView::sMouseHandlerMessage;
         LLView* down_deepest = deepest;
         LLMouseHandler* captor = gFocusMgr.getMouseCapture();
@@ -4687,7 +4797,7 @@ private:
                            ll_round((F32)release_y * gViewerWindow->getDisplayScale().mV[VY]));
             mFunctionalObserved["click"]["combo_open_release_outside_list"] = true;
         }
-        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), release_gl, MASK_NONE);
+        functionalMoveMouse(release_gl);
         // Diagnose clicks that are handled but don't commit: did the target move between
         // down and up (e.g. a scroll-to-focus jump), or did something else take the capture?
         const LLRect rect_before_up = expected->calcScreenRect();
@@ -4701,8 +4811,7 @@ private:
                 LLSD(captor_view ? captor_view->getPathname() : std::string("<non-view>"));
         }
         deepest = nullptr;
-        const bool up = gViewerWindow->handleAnyMouseClick(
-            gViewerWindow->getWindow(), release_gl, MASK_NONE, CLICK_LEFT, false, toolmgr);
+        const bool up = functionalMouseButton(release_gl, false, toolmgr);
         const std::string up_path = deepest ? deepest->getPathname() :
             LLView::sMouseHandlerMessage;
         // Opening a combo transfers capture from its button to its list.  The
@@ -4815,7 +4924,7 @@ private:
                         ll_round((F32)start_screen_y * display_scale.mV[VY]));
         LLCoordGL end(ll_round((F32)end_screen_x * display_scale.mV[VX]),
                       ll_round((F32)end_screen_y * display_scale.mV[VY]));
-        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), start, MASK_NONE);
+        functionalMoveMouse(start);
         LLView* deepest = nullptr;
         struct RecorderGuard
         {
@@ -4832,18 +4941,16 @@ private:
             }
         } recorder(deepest);
         bool toolmgr = false;
-        const bool down = gViewerWindow->handleAnyMouseClick(
-            gViewerWindow->getWindow(), start, MASK_NONE, CLICK_LEFT, true, toolmgr);
+        const bool down = functionalMouseButton(start, true, toolmgr);
         const std::string down_path = LLView::sMouseHandlerMessage;
         LLView* down_deepest = deepest;
         const bool captured = gFocusMgr.getMouseCapture() == slider;
-        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), end, MASK_NONE);
+        functionalMoveMouse(end);
         // handleMouseMove only stores the OS position. updateUI is the shipping
         // per-frame path that delivers hover to the current mouse captor.
         gViewerWindow->updateUI();
         deepest = nullptr;
-        const bool up = gViewerWindow->handleAnyMouseClick(
-            gViewerWindow->getWindow(), end, MASK_NONE, CLICK_LEFT, false, toolmgr);
+        const bool up = functionalMouseButton(end, false, toolmgr);
         const std::string up_path = deepest ? deepest->getPathname() :
             LLView::sMouseHandlerMessage;
         const bool handler = down_deepest == slider ||
@@ -4933,7 +5040,7 @@ private:
                         ll_round((F32)start_screen_y * display_scale.mV[VY]));
         LLCoordGL end(ll_round((F32)end_screen_x * display_scale.mV[VX]),
                       ll_round((F32)end_screen_y * display_scale.mV[VY]));
-        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), start, MASK_NONE);
+        functionalMoveMouse(start);
         LLView* deepest = nullptr;
         struct RecorderGuard
         {
@@ -4950,15 +5057,13 @@ private:
             }
         } recorder(deepest);
         bool toolmgr = false;
-        const bool down = gViewerWindow->handleAnyMouseClick(
-            gViewerWindow->getWindow(), start, MASK_NONE, CLICK_LEFT, true, toolmgr);
+        const bool down = functionalMouseButton(start, true, toolmgr);
         LLView* down_deepest = deepest;
         const bool captured = gFocusMgr.getMouseCapture() == dial;
-        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), end, MASK_NONE);
+        functionalMoveMouse(end);
         gViewerWindow->updateUI();
         deepest = nullptr;
-        const bool up = gViewerWindow->handleAnyMouseClick(
-            gViewerWindow->getWindow(), end, MASK_NONE, CLICK_LEFT, false, toolmgr);
+        const bool up = functionalMouseButton(end, false, toolmgr);
         const bool handler = down_deepest == dial ||
             (down_deepest && down_deepest->hasAncestor(dial));
         mFunctionalObserved["click"]["real_drag"] = true;
@@ -5350,16 +5455,16 @@ private:
                 if (!exact) mFunctionalLastClickReason = "focus not on target";
                 return exact;
             };
-            if (!focus_exact() || !gViewerWindow->handleKey('A', MASK_CONTROL)) return false;
+            if (!focus_exact() || !functionalInjectKey('A', MASK_CONTROL)) return false;
             const std::string typed = test.asString();
             for (unsigned char ch : typed)
             {
-                if (!focus_exact() || !gViewerWindow->handleUnicodeChar(ch, MASK_NONE)) return false;
+                if (!focus_exact() || !functionalInjectChar(ch)) return false;
             }
             // Re-check immediately before Return; no frame or callback may
             // redirect it to the login form or an alert.
             if (!focus_exact()) return false;
-            return gViewerWindow->handleKey(KEY_RETURN, MASK_NONE);
+            return functionalInjectKey(KEY_RETURN, MASK_NONE);
         }
         if (LLSliderCtrl* slider_ctrl = dynamic_cast<LLSliderCtrl*>(control))
         {
@@ -6043,6 +6148,26 @@ private:
         faces->onCommit();
     }
 
+    // Widgets the in-world run must never press, whatever their allow-list flag says.
+    // ONE list shared by the manifest rows (beginFunctionalEntry) and the rule-phase click
+    // gate (dirInWorldClickAllowed), so no click path can bypass it.
+    static bool functionalInWorldExcludedWidget(const std::string& name)
+    {
+        static const std::set<std::string> excluded = {
+            "vc_lens_locate", "vc_face_locate",
+            // Anim explorer: stop/revoke message the simulator; blacklist
+            // writes the account's asset_blocklist.
+            "btn_anim_ex_stop", "btn_anim_ex_revoke", "btn_anim_ex_blacklist",
+            // Any LLSelectMgr selection broadcasts PointAt/AGENT_STATE_EDITING;
+            // Animation Explorer sends ObjectSelect for animation sources.
+            "btn_enroll", "db_add_selected", "db_from_explorer",
+            // Opens Animation Explorer (ObjectSelect for sources) /
+            // ghost edit mode selects its proxy volume (PointAt).
+            "btn_open_animexp", "edit_ghosts_check"
+        };
+        return excluded.count(name) != 0;
+    }
+
     // ui-draw-lint: allow-function(lookup,raw-write,setting-write) isolated login-only functional pre-state
     void beginFunctionalEntry()
     {
@@ -6139,22 +6264,7 @@ private:
             }
         }
         if (mInWorld && (!entry["inworld_allowed"].asBoolean() ||
-                         entry["widget_name"].asString() == "vc_lens_locate" ||
-                         entry["widget_name"].asString() == "vc_face_locate" ||
-                         // Anim explorer: stop/revoke message the simulator; blacklist
-                         // writes the account's asset_blocklist.
-                         entry["widget_name"].asString() == "btn_anim_ex_stop" ||
-                         entry["widget_name"].asString() == "btn_anim_ex_revoke" ||
-                         entry["widget_name"].asString() == "btn_anim_ex_blacklist" ||
-                         // Any LLSelectMgr selection broadcasts PointAt/AGENT_STATE_EDITING;
-                         // Animation Explorer sends ObjectSelect for animation sources.
-                         entry["widget_name"].asString() == "btn_enroll" ||
-                         entry["widget_name"].asString() == "db_add_selected" ||
-                         entry["widget_name"].asString() == "db_from_explorer" ||
-                         // Opens Animation Explorer (ObjectSelect for sources) /
-                         // ghost edit mode selects its proxy volume (PointAt).
-                         entry["widget_name"].asString() == "btn_open_animexp" ||
-                         entry["widget_name"].asString() == "edit_ghosts_check"))
+                         functionalInWorldExcludedWidget(entry["widget_name"].asString())))
         {
             addFunctionalResult(entry, "SKIP",
                 "in-world: not on the viewer-local allow-list");
@@ -7644,6 +7754,45 @@ private:
         return true;
     }
 
+    // Disable the idle-away timeout for the run (0 = never; llappviewer.cpp idle_afk_check
+    // and LLViewerWindow::handleActivate both honour it).  Active value only: the settings
+    // snapshot restores it on every teardown path, and nothing is saved.
+    // ui-draw-lint: allow-function(setting,setting-write) fail-closed AFK inhibit for the in-world run
+    bool inhibitFunctionalAfk()
+    {
+        LLControlVariable* control = gSavedSettings.getControl("AFKTimeout").get();
+        if (!control) return false;
+        control->setValue(LLSD::Integer(0), false);
+        mFunctionalAfkInhibited = gSavedSettings.getS32("AFKTimeout") == 0;
+        return mFunctionalAfkInhibited;
+    }
+
+    bool functionalBindsSafetyHolds() const
+    {
+        return gViewerInput.globalBindsSuspended();
+    }
+
+    // Per-frame in-world guard (after the account is verified).  Returns true when the
+    // run was aborted.  The avatar going away at any point stops the run immediately:
+    // nothing further is injected, nothing is sent, and the normal logout path runs.
+    // The idle timer is kept reset directly; clearAFK() is never called.
+    bool functionalInWorldSafetyTick()
+    {
+        if (!mInWorld || !mFunctionalAccountVerified) return false;
+        std::string why;
+        if (functionalAgentAway(why))
+            return finishFunctionalInWorldFailure(
+                "avatar went AFK/away during the in-world run (" + why +
+                "); stopped before any further input (fail-closed)",
+                "inworld_afk", "AFK guard");
+        if (!functionalBindsSafetyHolds())
+            return finishFunctionalInWorldFailure(
+                "global key/mouse bindings were re-enabled during the in-world run; stopped (fail-closed)",
+                "inworld_binding_safety", "binding suspension guard");
+        gAwayTriggerTimer.reset(); // idle timer only; never clearAFK()
+        return false;
+    }
+
     bool finishFunctionalInWorldFailure(const std::string& reason,
                                         const std::string& widget = "inworld_account",
                                         const std::string& exercise = "saved-credential auto-login")
@@ -7741,7 +7890,18 @@ private:
                     return finishFunctionalInWorldFailure(
                         "AO safety gate failed: expected AlchemyAOEnable=0 and an inactive AOEngine",
                         "inworld_ao_safety", "pre-launch AO inhibit");
+                // Never let the avatar go AFK during the run: injected moves would clear AFK
+                // and message the simulator.  The setting is restored with the settings snapshot.
+                if (!inhibitFunctionalAfk())
+                    return finishFunctionalInWorldFailure(
+                        "AFK safety gate failed: AFKTimeout could not be disabled for the run",
+                        "inworld_afk_safety", "pre-launch AFK inhibit");
+                if (!functionalBindsSafetyHolds())
+                    return finishFunctionalInWorldFailure(
+                        "input safety gate failed: global key/mouse bindings are not suspended",
+                        "inworld_binding_safety", "pre-launch binding suspension");
             }
+            if (functionalInWorldSafetyTick()) return true;
 
             if (mFunctionalWatchdog.getElapsedTimeF32() >=
                     static_cast<F32>(mFunctionalWatchdogSeconds))
@@ -7765,6 +7925,7 @@ private:
             if (!prepareFunctionalInWorld())
                 return finishFunctionalInWorldFailure("in-world VCam setup failed");
         }
+        if (mInWorld && functionalInWorldSafetyTick()) return true;
         if (mInWorld && mFunctionalWatchdog.getElapsedTimeF32() >=
                 static_cast<F32>(mFunctionalWatchdogSeconds))
             return finishFunctionalInWorldFailure("in-world wall-clock watchdog expired",
@@ -7932,15 +8093,163 @@ private:
         mFunctionalObserved = LLSD::emptyMap();
     }
 
+    // ---------------------------------------------------------------- in-world click gate
+    //
+    // EVERY rule-phase click (rail, gear, tabs, link rows, card links, popover anchors)
+    // passes through dirClick -> dirInWorldClickAllowed.  In-world the gate is the same
+    // allow-list / hazard / explicit-exclusion policy the manifest rows use, and it is
+    // fail-closed: an unknown role, an unknown control, or anything not positively
+    // recognised is REFUSED, never clicked.
+
+    // A manifest row's in-world policy (mirrors beginFunctionalEntry).
+    bool dirManifestRowAllowedInWorld(const LLSD& entry, std::string& why) const
+    {
+        if (!entry["inworld_allowed"].asBoolean())
+        {
+            why = "not on the viewer-local allow-list";
+            return false;
+        }
+        if (functionalInWorldExcludedWidget(entry["widget_name"].asString()))
+        {
+            why = "explicit in-world exclusion";
+            return false;
+        }
+        if (!entry["inworld_skip_reason"].asString().empty() ||
+            !entry["inworld_known_gap_reason"].asString().empty())
+        {
+            why = "manifest marks it skipped/known-gap in-world";
+            return false;
+        }
+        if (functionalHazard(entry, "handler_unknown"))
+        {
+            why = "hazard unknown";
+            return false;
+        }
+        const std::vector<std::string> network = functionalHazardsByClass(entry, true);
+        if (!network.empty())
+        {
+            why = "network hazard: " + functionalJoin(network);
+            return false;
+        }
+        const std::vector<std::string> local = functionalHazardsByClass(entry, false);
+        if (!local.empty())
+        {
+            why = "local hazard: " + functionalJoin(local);
+            return false;
+        }
+        return true;
+    }
+
+    // ui-draw-lint: allow-function(lookup) isolated test-only in-world rule click gate
+    bool dirInWorldClickAllowed(LLUICtrl* control, const std::string& role, const LLSD* data,
+                                std::string& why)
+    {
+        if (!mInWorld) return true;
+        ALKitShell* shell = dirShell();
+        LLButton* button = dynamic_cast<LLButton*>(control);
+        if (!control || !shell || !button || !control->hasAncestor(shell))
+        {
+            why = "in-world: rule-phase click target is not a button inside the Director shell";
+            return false;
+        }
+        const std::string name = control->getName();
+        if (functionalInWorldExcludedWidget(name))
+        {
+            why = "in-world: '" + name + "' is on the explicit in-world exclusion list";
+            return false;
+        }
+        // A control that is also a manifest row must pass that row's own in-world policy.
+        {
+            const auto found = mDirOracle.find(dirLeaf(shell->currentPageKey()) + "|" + name);
+            if (found != mDirOracle.end() && found->second.has("entry"))
+            {
+                std::string row_why;
+                if (!dirManifestRowAllowedInWorld(found->second["entry"], row_why))
+                {
+                    why = "in-world: manifest row '" + name + "' is refused (" + row_why + ")";
+                    return false;
+                }
+            }
+        }
+        bool allowed = false;
+        std::string basis;
+        if (role == "nav")
+        {
+            // Shell-built navigation chrome whose commit callback only selects a group/page
+            // or scrolls the tab strip (alkitshell.cpp buildChrome).
+            if (button == shell->findChild<LLButton>("btn_director_settings") ||
+                button == shell->tabNext() || button == shell->tabPrevious())
+                allowed = true;
+            for (LLButton* rail : shell->railButtons())
+                if (button == rail) allowed = true;
+            for (LLButton* tab : shell->tabButtons())
+                if (button == tab) allowed = true;
+            basis = "shell navigation button";
+        }
+        else if (role == "popover_anchor")
+        {
+            // Anchors whose callbacks only toggle a shell popover (alkitshell.cpp popover
+            // buttons; LLFloaterDirector::onToggleLegend; the legend Hotkeys button).
+            static const std::set<std::string> anchors = {
+                "btn_arm", "btn_scene_menu", "btn_cast_chip", "btn_help", "btn_legend_hotkeys"
+            };
+            if (anchors.count(name) && button == shell->findChild<LLButton>(name)) allowed = true;
+            ALKitPage* page = shell->currentKitPage();
+            if (page && button == page->resetButton() && dirEndsWith(name, "_reset_page"))
+                allowed = true; // ALKitPage::resetPage only toggles the confirm popover
+            // The Who chip is a popover anchor ONLY when the page has a Who combo; without
+            // one a click toggles the actor pin and saves page state (alkitpage.cpp:727).
+            if (page && button == page->whoChip() && page->whoCombo() && dirEndsWith(name, "_who_chip"))
+                allowed = true;
+            basis = "popover-toggle anchor";
+        }
+        else if (role == "link_row" || role == "link_card")
+        {
+            // Only the GENERATED navigation button (alkitrow.cpp postBuild / alkitcard.cpp
+            // "_go" button), never an authored widget that shares the link's name.
+            const std::string id = data ? (*data)["id"].asString() : std::string();
+            const bool authored = !data || !data->has("authored") || (*data)["authored"].asBoolean();
+            if (!id.empty() && !authored)
+            {
+                if (role == "link_row")
+                {
+                    ALKitRow* row = dynamic_cast<ALKitRow*>(control->getParent());
+                    allowed = row && row->control() == control && row->meta().kind == "link" &&
+                        row->meta().widget == id && name == id &&
+                        button->getText() == row->meta().label + " \xE2\x80\xBA";
+                }
+                else
+                {
+                    ALKitCard* card = nullptr;
+                    for (LLView* parent = control->getParent(); parent && !card; parent = parent->getParent())
+                        card = dynamic_cast<ALKitCard*>(parent);
+                    allowed = card && card->id() == id && name == "kc_" + id + "_go" &&
+                        button->getText() == "Open \xE2\x80\xBA";
+                }
+            }
+            basis = "generated link navigation button";
+        }
+        if (!allowed)
+        {
+            why = "in-world: '" + name + "' (" + role + ") is not a recognised " + basis +
+                "; click refused (fail-closed)";
+            return false;
+        }
+        return true;
+    }
+
     // One real pointer click through the same dispatch path as every manifest row.
+    // `role` is one of nav | popover_anchor | link_row | link_card; anything else is refused
+    // in-world.  `data` carries the link registry entry for link roles.
     // ui-draw-lint: allow-function(lookup) isolated test-only director rule click
-    bool dirClick(LLUICtrl* control, std::string& reason)
+    bool dirClick(LLUICtrl* control, const std::string& role, const LLSD* data, std::string& reason)
     {
         if (!control)
         {
             reason = "control missing";
             return false;
         }
+        if (!dirInWorldClickAllowed(control, role, data, reason)) return false;
         mFunctionalObserved = LLSD::emptyMap();
         mFunctionalLastClickReason.clear();
         mFunctionalHostFloater = mFloater;
@@ -7978,12 +8287,15 @@ private:
     std::string dirRawName(const std::string& text) const
     {
         if (text.empty()) return std::string();
+        // Known internal-name patterns only: "Setting <Name>", "Widget <name>", work-package ids.
+        // A bracketed capitalised word such as "[Beta]" is authored text and is NOT flagged; exact
+        // settings keys and exact Director widget names are caught by the token scan below.
         static const std::regex pattern(
-            R"((\bSetting [A-Z][A-Za-z0-9_]{2,})|(\bWidget [a-z][a-z0-9_]{2,})|(\bWP[0-9]+\b)|(\[[A-Z][A-Za-z0-9_]{3,}\]))");
+            R"((\bSetting [A-Z][A-Za-z0-9_]{2,})|(\bWidget [a-z][a-z0-9_]{2,})|(\bWP[0-9]+\b))");
         std::smatch match;
         // std::regex is slow; only run it when a trigger substring is present.
         if ((text.find("Setting ") != std::string::npos || text.find("Widget ") != std::string::npos ||
-             text.find("WP") != std::string::npos || text.find('[') != std::string::npos) &&
+             text.find("WP") != std::string::npos) &&
             std::regex_search(text, match, pattern))
             return match.str(0);
         std::string token;
@@ -8011,7 +8323,8 @@ private:
         if (dirRawName("Setting CineLightRigMasterEV").empty()) failures += " 'Setting <Name>' not detected;";
         if (dirRawName("Widget sa_include_ghosts").empty()) failures += " 'Widget <name>' not detected;";
         if (dirRawName("owned by WP8").empty()) failures += " 'WP<n>' not detected;";
-        if (dirRawName("opens [GhostPanelPerf] now").empty()) failures += " unresolved [Placeholder] not detected;";
+        if (!dirRawName("Beta phase: [Beta] and [Preview] labels stay").empty())
+            failures += " authored bracketed text flagged;";
         if (gSavedSettings.controlExists("CineLightRigMasterEV") &&
             dirRawName("tune CineLightRigMasterEV here").empty())
             failures += " bare settings key not detected;";
@@ -8208,6 +8521,13 @@ private:
     {
         if (!view || !view->getVisible()) return;
         if (dynamic_cast<ALKitRow*>(view) || dynamic_cast<ALKitSwitch*>(view)) return;
+        // Kit-internal / framework-owned subtrees are not authored plain widgets: an
+        // LLScrollbar's line-up / line-down arrows are plain LLButtons owned by the scroll
+        // container (and by text editors and lists), and the page scroller and its border
+        // are chrome.  Skip them so they can never read as an unthemed page.  Combos,
+        // spinners, sliders, line editors and lists are already treated as single controls
+        // below (their inner buttons are never visited).
+        if (dynamic_cast<LLScrollbar*>(view)) return;
         const bool card_now = in_card || dynamic_cast<ALKitCard*>(view) != nullptr;
         if (dynamic_cast<LLCheckBoxCtrl*>(view)) { found.push_back({ "checkbox", view->getName() }); return; }
         if (dynamic_cast<LLSliderCtrl*>(view)) { found.push_back({ "slider", view->getName() }); return; }
@@ -8276,11 +8596,38 @@ private:
             item["reason"] = (*it)["reason"].asString();
             item["effect"] = dirEffectClass(*it);
             item["type"] = (*it)["widget_type"].asString();
+            item["entry"] = *it; // in-world click gate reads inworld_allowed / hazards from it
             auto found = mDirOracle.find(key);
             if (found == mDirOracle.end() ||
                 dirActionRank(item["action"].asString()) > dirActionRank(found->second["action"].asString()))
                 mDirOracle[key] = item;
         }
+    }
+
+    // What the manifest rows of one control actually did in THIS run (R6 evidence).
+    struct DirRowOutcome
+    {
+        S32 mPass = 0, mFail = 0, mSkip = 0;
+        std::string mFirstFail, mFirstSkip;
+    };
+
+    DirRowOutcome dirRowOutcome(const std::string& leaf, const std::string& widget) const
+    {
+        DirRowOutcome outcome;
+        for (const FunctionalResult& result : mFunctionalResults)
+        {
+            if (result.mKind == "rule" || result.mPage != leaf || result.mControl != widget) continue;
+            if (result.mStatus == "PASS") ++outcome.mPass;
+            else if (result.mStatus == "SKIP")
+            {
+                if (!outcome.mSkip++) outcome.mFirstSkip = result.mReason;
+            }
+            else
+            {
+                if (!outcome.mFail++) outcome.mFirstFail = result.mStatus + ": " + result.mReason;
+            }
+        }
+        return outcome;
     }
 
     // ---------------------------------------------------------------- R1 assertions
@@ -8350,6 +8697,7 @@ private:
     // True once the whole rule phase is finished.
     bool stepDirectorRules()
     {
+        ++mDirPumpCount;
         if (mDirTasks.empty()) return true;
         DirRuleTask& task = mDirTasks.front();
         if (task.mWait > 0)
@@ -8416,7 +8764,7 @@ private:
                 button = shell->findChild<LLButton>("btn_director_settings");
             const std::string route = rail ? "rail click" : "gear click";
             if (!button) { fail_click(route, rail ? "no rail item for group " + group : "gear button missing"); return false; }
-            if (!dirClick(button, reason)) { fail_click(route, reason); return false; }
+            if (!dirClick(button, "nav", nullptr, reason)) { fail_click(route, reason); return false; }
             t.mWait = 3;
             t.mPhase = rail ? 2 : 3;
             return false;
@@ -8437,11 +8785,11 @@ private:
                 t.mCounter < 8)
             {
                 ++t.mCounter;
-                if (!dirClick(shell->tabNext(), reason)) { fail_click("tab overflow arrow", reason); return false; }
+                if (!dirClick(shell->tabNext(), "nav", nullptr, reason)) { fail_click("tab overflow arrow", reason); return false; }
                 t.mWait = 2;
                 return false;
             }
-            if (!dirClick(tab, reason)) { fail_click("tab click", reason); return false; }
+            if (!dirClick(tab, "nav", nullptr, reason)) { fail_click("tab click", reason); return false; }
             t.mWait = 3;
             t.mPhase = 3;
             return false;
@@ -8540,7 +8888,7 @@ private:
                 }
                 else if (ALKitRow* row = page->findRow(id)) control = row->control();
             }
-            if (!dirClick(control, reason))
+            if (!dirClick(control, card_link ? "link_card" : "link_row", &t.mData, reason))
             {
                 dirResult("R1_REACHABILITY", source, item, "FAIL", "link click failed: " + reason);
                 return true;
@@ -8612,7 +8960,8 @@ private:
                 LLView* root = page->legacy() ? static_cast<LLView*>(page->legacyHost())
                                               : static_cast<LLView*>(page->scroller());
                 dirWalkNonKit(root, false, found, other);
-                const bool listed = mDirKnownLegacy.count(leaf) > 0;
+                // The list is the explicit, pinned, shrink-only set of page KEYS from the manifest.
+                const bool listed = mDirKnownLegacy.count(key) > 0;
                 std::map<std::string, S32> counts;
                 for (const DirNonKit& item : found) ++counts[item.mKind];
                 std::string summary;
@@ -8629,6 +8978,10 @@ private:
                 if (page->legacy() && !listed)
                     dirResult("R5_THEMED_PAGES", key, "legacy_flag", "FAIL",
                               "page is built legacy but is not in the known-legacy list (no new unthemed page may appear)", 1, detail);
+                if (!page->legacy() && listed)
+                    dirResult("R5_THEMED_PAGES", key, "legacy_list", "FAIL",
+                              "stale entry: the page is no longer legacy but is still in the pinned known-legacy list "
+                              "(the list can only shrink: remove it)", 1, detail);
                 if (found.empty())
                 {
                     if (listed)
@@ -8683,33 +9036,56 @@ private:
                         const std::string why = found->second["reason"].asString();
                         detail["manifest_action"] = action;
                         detail["effect"] = effect;
-                        if (action == "RUN" || action == "DEFER_INWORLD")
+                        // R6 credits an OBSERVED effect only: the manifest row for this control must
+                        // have run in THIS run and recorded PASS (its setting changed, its handler
+                        // state changed, or it opened a view / navigated).  A declared oracle, a
+                        // skipped or excluded row, a failed row or a disconnected binding is never
+                        // credit: skipped rows are reported as SKIP with their reason.
+                        const DirRowOutcome outcome = dirRowOutcome(leaf, widget);
+                        detail["observed_pass"] = outcome.mPass;
+                        detail["observed_fail"] = outcome.mFail;
+                        detail["observed_skip"] = outcome.mSkip;
+                        if (outcome.mFail > 0)
+                        {
+                            dirResult("R6_CONNECTED", key, widget, "FAIL",
+                                      "the control's functional row did not pass in this run (" +
+                                      outcome.mFirstFail + ")", 1, detail);
+                        }
+                        else if (outcome.mPass > 0)
                         {
                             if (effect == "none" || effect == "readout" || effect == "ui")
                                 dirResult("R6_CONNECTED", key, widget, "FAIL",
-                                          "no observable effect: oracle proves only '" + effect + "'", 1, detail);
+                                          "no observable effect: the row proves only '" + effect + "'", 1, detail);
                             else
                             {
                                 ++passed;
                                 ++by_effect[effect];
                             }
                         }
-                        else if (action == "SKIP")
+                        else if (outcome.mSkip > 0)
                         {
-                            if (why.empty())
-                                dirResult("R6_CONNECTED", key, widget, "FAIL", "excluded from the effect oracle without a reason", 1, detail);
-                            else
-                                dirResult("R6_CONNECTED", key, widget, "WARN", "reviewed exclusion: " + why, 1, detail);
+                            dirResult("R6_CONNECTED", key, widget, "SKIP",
+                                      "no effect observed (row skipped in this run): " + outcome.mFirstSkip, 1, detail);
+                        }
+                        else if ((action == "SKIP" || action == "NO_EXERCISE") && !why.empty())
+                        {
+                            dirResult("R6_CONNECTED", key, widget, "SKIP",
+                                      "no effect observed (reviewed exclusion): " + why, 1, detail);
                         }
                         else
+                        {
                             dirResult("R6_CONNECTED", key, widget, "FAIL",
-                                      "not exercised and not a reviewed exclusion (" + action + "): " + why, 1, detail);
+                                      "no functional row result was recorded for this control in this run, "
+                                      "so no effect was observed (manifest action " + action + ")", 1, detail);
+                        }
                     }
                 }
                 LLSD detail;
                 for (const auto& effect : by_effect) detail["by_effect"][effect.first] = effect.second;
-                dirResult("R6_CONNECTED", key, "interactive_rows", "PASS",
-                          llformat("%d interactive kit controls have an effect oracle", passed), passed, detail);
+                if (passed > 0)
+                    dirResult("R6_CONNECTED", key, "interactive_rows", "PASS",
+                              llformat("%d interactive kit controls had their effect observed in this run", passed),
+                              passed, detail);
             }
             else if (key == "quick_group/quick_tab")
                 dirResult("R6_CONNECTED", key, "quick_proxies", "WARN",
@@ -8879,12 +9255,28 @@ private:
         if (via == "page_who")
         {
             ALKitPage* page = shell->currentKitPage();
-            return page ? page->whoChip() : nullptr;
+            // The Who chip is a popover anchor only on pages that have a Who combo. On
+            // move/path/animate/gaze (actor-target pages) a click toggles the actor pin and
+            // saves page state (alkitpage.cpp:727), so it is never an anchor and never clicked.
+            return (page && page->whoCombo()) ? page->whoChip() : nullptr;
         }
         return shell->findChild<LLButton>(data["anchor"].asString());
     }
 
-    bool dirClickPopoverAnchor(ALKitShell* shell, const LLSD& data, S32 step, std::string& reason)
+    // True when `button` is currently collapsed into the transport bar's "..." overflow
+    // list at this window width (its natural visibility is on; the bar hid it).
+    bool dirAnchorCollapsedIntoOverflow(ALKitShell* shell, LLView* button)
+    {
+        if (!shell || !button) return false;
+        ALKitBar* bar = shell->findChild<ALKitBar>("kit_transport");
+        if (!bar) return false;
+        for (LLView* collapsed : bar->collapsedChildren())
+            if (collapsed == button) return true;
+        return false;
+    }
+
+    bool dirClickPopoverAnchor(ALKitShell* shell, const LLSD& data, S32 step, std::string& reason,
+                               bool* collapsed = nullptr)
     {
         LLButton* button = dirPopoverAnchor(shell, data, step);
         if (!button)
@@ -8892,9 +9284,18 @@ private:
             reason = "anchor not found";
             return false;
         }
+        if (collapsed) *collapsed = false;
+        if (dirAnchorCollapsedIntoOverflow(shell, button))
+        {
+            // Not a failure: at this width the control lives in the overflow list. Pressing the
+            // overflow entry would forward to controls such as Save scene, so it is not driven.
+            if (collapsed) *collapsed = true;
+            reason = "anchor is collapsed into the transport bar's overflow list at this window width";
+            return false;
+        }
         if (!button->isInVisibleChain())
         {
-            reason = "anchor is not visible (collapsed out of its bar or hidden)";
+            reason = "anchor is not visible (hidden)";
             return false;
         }
         if (!button->getEnabled())
@@ -8902,7 +9303,7 @@ private:
             reason = "anchor is disabled";
             return false;
         }
-        return dirClick(button, reason);
+        return dirClick(button, "popover_anchor", nullptr, reason);
     }
 
     // ui-draw-lint: allow-function(lookup,raw-write) isolated test-only popover driver
@@ -8934,12 +9335,13 @@ private:
                 LLButton* anchor = dirPopoverAnchor(shell, t.mData, 0);
                 if (!anchor || !anchor->getEnabled()) return true;
             }
+            bool collapsed = false;
             const bool opened = via == "search" ? dirArmSearchPopover(shell, "light", reason)
-                                                : dirClickPopoverAnchor(shell, t.mData, 0, reason);
+                                                : dirClickPopoverAnchor(shell, t.mData, 0, reason, &collapsed);
             if (!opened)
             {
-                dirResult("R2_POPOVERS", page_key, item + "/open", page_scoped ? "WARN" : "FAIL",
-                          "could not open: " + reason);
+                dirResult("R2_POPOVERS", page_key, item + "/open", (page_scoped || collapsed) ? "WARN" : "FAIL",
+                          (collapsed ? "not opened: " : "could not open: ") + reason);
                 shell->closePopover();
                 return true;
             }
@@ -9241,15 +9643,17 @@ private:
 
         if (mInWorld)
         {
-            // The rule phase needs a few minutes of in-world time.  Never start it so close
-            // to the safety watchdog that the watchdog would cut it off half-way.
+            // The rule phase needs many minutes of in-world time.  Never start it so close
+            // to the safety watchdog that the watchdog would cut it off half-way.  This is
+            // the fixed fail-closed floor; the frame-count estimate is checked again once
+            // the task queue is built (below).
             const F32 remaining = static_cast<F32>(mFunctionalWatchdogSeconds) -
                 mFunctionalWatchdog.getElapsedTimeF32();
             if (remaining < 240.f)
             {
                 dirResult("R1_REACHABILITY", std::string(), "in_world_budget", "FAIL",
-                          llformat("only %d s of the in-world watchdog remain; the Director rule phase needs about "
-                                   "240 s. Re-run with a larger -InWorldWatchdogMin",
+                          llformat("only %d s of the in-world watchdog remain; the Director rule phase needs at "
+                                   "least 240 s. Re-run with a larger -InWorldWatchdogMin",
                                    static_cast<S32>(remaining)));
                 return;
             }
@@ -9382,11 +9786,65 @@ private:
             dirQueue("search", LLSD(), [this](DirRuleTask& t) { return dirTaskSearchLabels(t); });
             dirQueue("drawn_text", LLSD(), [this](DirRuleTask& t) { return dirTaskDrawnText(t); });
         }
+
+        // ---- time budget: estimate the phase from the queued tasks frame counts.
+        // One task slice runs per frame.  Conservative per-task frame counts from the task
+        // state machines (waits of 3-4 frames per step; audits walk up to 12 section chips at
+        // about 6 frames each; page popovers run a full open/geometry/close/Esc flow).
+        {
+            static const std::map<std::string, S32> frames_per_task = {
+                { "reach", 24 }, { "link", 14 }, { "audit", 80 }, { "popover", 40 },
+                { "page_popover", 40 }, { "shell_chrome", 2 }, { "search", 100 }, { "drawn_text", 2 }
+            };
+            mDirEstimatedPumps = 0;
+            for (const DirRuleTask& task : mDirTasks)
+            {
+                const auto found = frames_per_task.find(task.mName);
+                mDirEstimatedPumps += found == frames_per_task.end() ? 40 : found->second;
+            }
+            mDirRulesTimer.reset();
+            mDirPumpCount = 0;
+            constexpr F32 kAssumedFps = 10.f; // slow in-world draw with the Director open
+            if (mInWorld)
+            {
+                const F32 remaining = static_cast<F32>(mFunctionalWatchdogSeconds) -
+                    mFunctionalWatchdog.getElapsedTimeF32();
+                const F32 needed = llmax(240.f, static_cast<F32>(mDirEstimatedPumps) / kAssumedFps);
+                if (remaining < needed)
+                {
+                    LLSD detail;
+                    detail["estimated_frames"] = mDirEstimatedPumps;
+                    detail["assumed_fps"] = kAssumedFps;
+                    detail["needed_s"] = static_cast<S32>(needed);
+                    detail["remaining_s"] = static_cast<S32>(remaining);
+                    dirResult("R1_REACHABILITY", std::string(), "in_world_budget", "FAIL",
+                              llformat("only %d s of the in-world watchdog remain but the rule phase is estimated at "
+                                       "%d frames (about %d s at %d fps). Re-run with a larger -InWorldWatchdogMin",
+                                       static_cast<S32>(remaining), mDirEstimatedPumps,
+                                       static_cast<S32>(needed), static_cast<S32>(kAssumedFps)),
+                              1, detail);
+                    mDirTasks.clear();
+                    return;
+                }
+            }
+        }
     }
 
     // ui-draw-lint: allow-function(lookup) isolated test-only rule phase teardown
     void finishDirectorRules()
     {
+        {
+            // Measured phase time, so the next run can calibrate the estimate.
+            LLSD detail;
+            detail["seconds"] = mDirRulesTimer.getElapsedTimeF32();
+            detail["frames"] = mDirPumpCount;
+            detail["estimated_frames"] = mDirEstimatedPumps;
+            dirResult("R1_REACHABILITY", std::string(), "rule_phase_timing", "PASS",
+                      llformat("rule phase took %d s over %d frames (estimated %d frames)",
+                               static_cast<S32>(mDirRulesTimer.getElapsedTimeF32()),
+                               mDirPumpCount, mDirEstimatedPumps),
+                      1, detail);
+        }
         sKitTextProbe = false;
         sKitProbedText.clear();
         if (ALKitShell* shell = dirShell())
@@ -12235,6 +12693,8 @@ private:
 
     void restore()
     {
+        // Always lift the in-world input suspension, even on a repeated restore.
+        if (mInWorld) gViewerInput.setGlobalBindsSuspended(false);
         if (mRestored) return;
         mRestored = true;
         for (const std::string& target : mTargets)
@@ -12268,13 +12728,14 @@ private:
     bool mFunctionalAutoLoginStarted = false;
     bool mFunctionalAccountVerified = false;
     bool mFunctionalWorldReady = false;
+    bool mFunctionalAfkInhibited = false;
     bool mFunctionalInWorldPrepared = false;
     bool mFunctionalHaveProjector = false;
     bool mFunctionalProjectorSelected = false;
     bool mFunctionalVCamRestored = false;
     U32 mFunctionalWorldFrames = 0;
     std::string mFunctionalAccount;
-    S32 mFunctionalWatchdogSeconds = 12 * 60;
+    S32 mFunctionalWatchdogSeconds = 30 * 60; // login + rows + the rule phase (see startDirectorRules)
     LLFrameTimer mFunctionalLoginTimer;
     LLFrameTimer mFunctionalWatchdog;
     LLFrameTimer mFunctionalWorldSettle;
@@ -12322,6 +12783,9 @@ private:
     bool mDirRulesEnabled = true;
     bool mDirRulesActive = false;
     bool mDirRulesDone = false;
+    LLFrameTimer mDirRulesTimer;   // wall time of the rule phase (reported at its end)
+    S32 mDirPumpCount = 0;         // frames the rule phase actually consumed
+    S32 mDirEstimatedPumps = 0;    // frames estimated from the queued tasks
     LLSD mDirRulesDoc;
     std::map<std::string, LLSD> mDirOracle;
     std::set<std::string> mDirWidgetNames;

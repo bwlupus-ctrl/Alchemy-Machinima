@@ -117,6 +117,13 @@ public:
     bool            handleGlobalBindsKeyDown(KEY key, MASK mask);
     bool            handleGlobalBindsKeyUp(KEY key, MASK mask);
     bool            handleGlobalBindsMouse(EMouseClickType clicktype, MASK mask, bool down);
+    // Functional self-test safety (aluiperfselftest.cpp, in-world run): while set,
+    // the three handleGlobalBinds* entry points above run NOTHING, so a synthetic
+    // click or key can never reach a user binding such as toggle_voice (an open
+    // microphone is a server-visible effect). In-process flag only; nothing is
+    // persisted, and the self-test clears it on every teardown path.
+    void            setGlobalBindsSuspended(bool suspended) { mGlobalBindsSuspended = suspended; }
+    bool            globalBindsSuspended() const { return mGlobalBindsSuspended; }
 
     S32             loadBindingsXML(const std::string& filename);                                       // returns number bound, 0 on error
     EKeyboardMode   getMode() const;
@@ -191,6 +198,7 @@ private:
     // This is indentical to what llkeyboard does (mKeyRepeated, mKeyLevel, mKeyDown e t c),
     // just instead of remembering individually as bools,  we record state as enum
     EMouseState     mMouseLevel[CLICK_COUNT];   // records of key state
+    bool            mGlobalBindsSuspended = false;  // self-test: global key/mouse binds disabled
 };
 
 extern LLViewerInput gViewerInput;

@@ -17,7 +17,7 @@ param(
   [switch]$DryReveal,
   [switch]$UpdateBudget,
   [int]$TimeoutMin = 10,
-  [int]$InWorldWatchdogMin = 12,
+  [int]$InWorldWatchdogMin = 30,
   [string]$Compare
 )
 
@@ -81,7 +81,9 @@ if ($Rows.Contains('|') -or $Pages.Contains('|')) {
 if ($Functional -and $TimeoutMin -eq 10) { $TimeoutMin = $(if ($DirectorV2 -or $Both) { 9 } else { 5 }) }
 elseif ($DirectorV2 -and $TimeoutMin -eq 10) { $TimeoutMin = 75 }
 elseif ($Layout -and $TimeoutMin -eq 10) { $TimeoutMin = 25 }
-if ($InWorld -and $TimeoutMin -eq 9) { $TimeoutMin = 22 }
+# In-world: login + manifest rows + the Director rule phase (about 4000-7500 frames at 10-30 fps).
+# The wrapper outlasts the in-viewer watchdog by a margin for the normal logout and its grace.
+if ($InWorld -and $TimeoutMin -eq 9) { $TimeoutMin = $InWorldWatchdogMin + 8 }
 if ($InWorld -and $InWorldWatchdogMin -lt 1) {
   Write-Host '-InWorldWatchdogMin must be at least 1.' -ForegroundColor Red
   exit 2

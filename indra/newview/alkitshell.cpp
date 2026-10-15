@@ -1240,6 +1240,12 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
         if (card)
             return page->revealCard(card, true);
     }
+    // A page-only target ("group/page") has nothing further to reveal: ensurePageBuilt
+    // already selected the page, so that is success (no "not found" toast). Only a named
+    // card/widget/setting that cannot be found is a genuine miss and falls through to the
+    // warning and false below.
+    if (target.widget.empty() && target.card_id.empty() && target.setting.empty())
+        return true;
     if (!target.widget.empty())
         if (LLView* view = panel->findChild<LLView>(target.widget))
         {

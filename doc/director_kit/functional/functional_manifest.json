@@ -30,10 +30,10 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 1510,
-  "entries": 3949,
+  "generated_kit_rows": 1523,
+  "entries": 3962,
   "pages": 37,
-  "settings_declared": 3631,
+  "settings_declared": 3639,
   "xui_files": 835,
   "rim_presets": 20,
   "rim_preset_written_settings": [
@@ -96344,6 +96344,14 @@
     {
      "label": "Everyone in view",
      "value": 2
+    },
+    {
+     "label": "Friends",
+     "value": 3
+    },
+    {
+     "label": "Nearby",
+     "value": 4
     }
    ],
    "test_value_resolved": 2
@@ -194260,6 +194268,14 @@
     {
      "label": "Everyone in view",
      "value": "2"
+    },
+    {
+     "label": "Friends",
+     "value": "3"
+    },
+    {
+     "label": "Nearby",
+     "value": "4"
     }
    ],
    "binding": "setting",
@@ -194280,7 +194296,169 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_include_ghosts:kit:1",
+   "id": "v2:stepped_tab:sa_nearby_radius:kit:1",
+   "csv_index": null,
+   "card": "stepped",
+   "card_title": "Stepped animation",
+   "row_label": "Radius",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_nearby_radius",
+   "widget_type": "slider",
+   "csv_kind": "slider",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 21.0,
+   "expect": {
+    "setting": "StepAnimNearbyRadius",
+    "type": "F32",
+    "value": 21.0
+   },
+   "restore": {
+    "setting": "StepAnimNearbyRadius",
+    "value": 20.0
+   },
+   "setting": "StepAnimNearbyRadius",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 20.0,
+   "min": 1.0,
+   "max": 256.0,
+   "increment": 1.0,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_limit_distance:kit:2",
+   "csv_index": null,
+   "card": "stepped",
+   "card_title": "Stepped animation",
+   "row_label": "Limit distance",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_limit_distance",
+   "widget_type": "toggle",
+   "csv_kind": "toggle",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "toggle",
+   "test_value": true,
+   "expect": {
+    "setting": "StepAnimLimitDistance",
+    "type": "Boolean",
+    "value": true
+   },
+   "restore": {
+    "setting": "StepAnimLimitDistance",
+    "value": false
+   },
+   "setting": "StepAnimLimitDistance",
+   "setting_source": "kit_row setting",
+   "setting_type": "Boolean",
+   "default": false,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_include_self:kit:3",
+   "csv_index": null,
+   "card": "stepped",
+   "card_title": "Stepped animation",
+   "row_label": "Include me",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_include_self",
+   "widget_type": "toggle",
+   "csv_kind": "toggle",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "toggle",
+   "test_value": false,
+   "expect": {
+    "setting": "StepAnimIncludeSelf",
+    "type": "Boolean",
+    "value": false
+   },
+   "restore": {
+    "setting": "StepAnimIncludeSelf",
+    "value": true
+   },
+   "setting": "StepAnimIncludeSelf",
+   "setting_source": "kit_row setting",
+   "setting_type": "Boolean",
+   "default": true,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_include_ghosts:kit:4",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194334,7 +194512,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actor_target:kit:2",
+   "id": "v2:stepped_tab:sa_actor_target:kit:5",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194407,7 +194585,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_override_list:kit:3",
+   "id": "v2:stepped_tab:sa_override_list:kit:6",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194464,7 +194642,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actor_override:kit:4",
+   "id": "v2:stepped_tab:sa_actor_override:kit:7",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194533,7 +194711,129 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actor_rate:kit:5",
+   "id": "v2:stepped_tab:sa_actor_offset:kit:8",
+   "csv_index": null,
+   "card": "stepped",
+   "card_title": "Stepped animation",
+   "row_label": "Rate offset",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_actor_offset",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "Same",
+    "value": "0"
+   },
+   "expect": {
+    "callback": "LLFloaterDirector::bindSteppedPage",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Inherit",
+     "value": "-1"
+    },
+    {
+     "label": "Same",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    }
+   ],
+   "binding": "code",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "LLFloaterDirector::bindSteppedPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_actor_effective:kit:9",
+   "csv_index": null,
+   "card": "stepped",
+   "card_title": "Stepped animation",
+   "row_label": "Effective",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_actor_effective",
+   "widget_type": "readout",
+   "csv_kind": "readout",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "readout",
+   "test_value": null,
+   "expect": {
+    "ui": "non-empty text after page refresh"
+   },
+   "restore": null,
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "code",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "LLFloaterDirector::bindSteppedPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_actor_rate:kit:10",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194585,7 +194885,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actor_steps:kit:6",
+   "id": "v2:stepped_tab:sa_actor_steps:kit:11",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194654,7 +194954,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actor_role:kit:7",
+   "id": "v2:stepped_tab:sa_actor_role:kit:12",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194723,7 +195023,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_override_clear:kit:8",
+   "id": "v2:stepped_tab:sa_override_clear:kit:13",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194772,7 +195072,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_exclude_mounted:kit:9",
+   "id": "v2:stepped_tab:sa_exclude_mounted:kit:14",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194826,7 +195126,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_max_avatars:kit:10",
+   "id": "v2:stepped_tab:sa_max_avatars:kit:15",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194880,7 +195180,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_status:kit:11",
+   "id": "v2:stepped_tab:sa_status:kit:16",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194929,7 +195229,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_mode:kit:12",
+   "id": "v2:stepped_tab:sa_mode:kit:17",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195000,7 +195300,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_rate_chips:kit:13",
+   "id": "v2:stepped_tab:sa_rate_chips:kit:18",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195073,7 +195373,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_rate:kit:14",
+   "id": "v2:stepped_tab:sa_rate:kit:19",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195127,7 +195427,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_rate_readout:kit:15",
+   "id": "v2:stepped_tab:sa_rate_readout:kit:20",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195176,7 +195476,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_fast_rate:kit:16",
+   "id": "v2:stepped_tab:sa_fast_rate:kit:21",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195230,7 +195530,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_adapt_threshold:kit:17",
+   "id": "v2:stepped_tab:sa_adapt_threshold:kit:22",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195284,7 +195584,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_adapt_hysteresis:kit:18",
+   "id": "v2:stepped_tab:sa_adapt_hysteresis:kit:23",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195338,7 +195638,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_adapt_dwell:kit:19",
+   "id": "v2:stepped_tab:sa_adapt_dwell:kit:24",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195392,7 +195692,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_speed_meter:kit:20",
+   "id": "v2:stepped_tab:sa_speed_meter:kit:25",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195441,7 +195741,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_background_rate:kit:21",
+   "id": "v2:stepped_tab:sa_background_rate:kit:26",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195495,7 +195795,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_what:kit:22",
+   "id": "v2:stepped_tab:sa_what:kit:27",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -195562,7 +195862,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_face:kit:23",
+   "id": "v2:stepped_tab:sa_face:kit:28",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -195616,7 +195916,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_gaze:kit:24",
+   "id": "v2:stepped_tab:sa_gaze:kit:29",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -195670,7 +195970,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_flexi:kit:25",
+   "id": "v2:stepped_tab:sa_flexi:kit:30",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -195724,7 +196024,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_attach_fx:kit:26",
+   "id": "v2:stepped_tab:sa_attach_fx:kit:31",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -195778,7 +196078,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_particles:kit:27",
+   "id": "v2:stepped_tab:sa_particles:kit:32",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -195832,7 +196132,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_texture_anim:kit:28",
+   "id": "v2:stepped_tab:sa_texture_anim:kit:33",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -195886,7 +196186,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_clock:kit:29",
+   "id": "v2:stepped_tab:sa_clock:kit:34",
    "csv_index": null,
    "card": "step_timing",
    "card_title": "Timing",
@@ -195953,7 +196253,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_offset:kit:30",
+   "id": "v2:stepped_tab:sa_offset:kit:35",
    "csv_index": null,
    "card": "step_timing",
    "card_title": "Timing",
@@ -196024,7 +196324,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_phase:kit:31",
+   "id": "v2:stepped_tab:sa_phase:kit:36",
    "csv_index": null,
    "card": "step_timing",
    "card_title": "Timing",
@@ -196078,7 +196378,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_base_fps:kit:32",
+   "id": "v2:stepped_tab:sa_base_fps:kit:37",
    "csv_index": null,
    "card": "step_timing",
    "card_title": "Timing",
@@ -196149,7 +196449,470 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_boil:kit:33",
+   "id": "v2:stepped_tab:sa_seed:kit:38",
+   "csv_index": null,
+   "card": "variation",
+   "card_title": "Variation",
+   "row_label": "Seed",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_seed",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 1,
+   "expect": {
+    "setting": "StepAnimSeed",
+    "type": "U32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "StepAnimSeed",
+    "value": 0
+   },
+   "setting": "StepAnimSeed",
+   "setting_source": "kit_row setting",
+   "setting_type": "U32",
+   "default": 0,
+   "min": 0.0,
+   "max": 99999.0,
+   "increment": 1.0,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_seed_reroll:kit:39",
+   "csv_index": null,
+   "card": "variation",
+   "card_title": "Variation",
+   "row_label": "New seed",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_seed_reroll",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "LLFloaterDirector::bindSteppedPage",
+    "commit": true
+   },
+   "restore": {
+    "note": "restore any viewer-local action state"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "code",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "LLFloaterDirector::bindSteppedPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_phase_spread:kit:40",
+   "csv_index": null,
+   "card": "variation",
+   "card_title": "Variation",
+   "row_label": "Phase spread",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_phase_spread",
+   "widget_type": "slider",
+   "csv_kind": "slider",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.95,
+   "expect": {
+    "setting": "StepAnimPhaseSpread",
+    "type": "F32",
+    "value": 0.95
+   },
+   "restore": {
+    "setting": "StepAnimPhaseSpread",
+    "value": 1.0
+   },
+   "setting": "StepAnimPhaseSpread",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 1.0,
+   "min": 0.0,
+   "max": 1.0,
+   "increment": 0.05,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_rate_variation:kit:41",
+   "csv_index": null,
+   "card": "variation",
+   "card_title": "Variation",
+   "row_label": "Rate variation",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_rate_variation",
+   "widget_type": "slider",
+   "csv_kind": "slider",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.05,
+   "expect": {
+    "setting": "StepAnimRateVariation",
+    "type": "F32",
+    "value": 0.05
+   },
+   "restore": {
+    "setting": "StepAnimRateVariation",
+    "value": 0.0
+   },
+   "setting": "StepAnimRateVariation",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 0.0,
+   "min": 0.0,
+   "max": 1.0,
+   "increment": 0.05,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_timing_jitter:kit:42",
+   "csv_index": null,
+   "card": "variation",
+   "card_title": "Variation",
+   "row_label": "Imperfect timing",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_timing_jitter",
+   "widget_type": "slider",
+   "csv_kind": "slider",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.05,
+   "expect": {
+    "setting": "StepAnimTimingJitter",
+    "type": "F32",
+    "value": 0.05
+   },
+   "restore": {
+    "setting": "StepAnimTimingJitter",
+    "value": 0.0
+   },
+   "setting": "StepAnimTimingJitter",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 0.0,
+   "min": 0.0,
+   "max": 1.0,
+   "increment": 0.05,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_group_pick:kit:43",
+   "csv_index": null,
+   "card": "group_rates",
+   "card_title": "Group rates",
+   "row_label": "Group",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_group_pick",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "Demons",
+    "value": "1"
+   },
+   "expect": {
+    "callback": "LLFloaterDirector::bindSteppedPage",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Hunters",
+     "value": "0"
+    },
+    {
+     "label": "Demons",
+     "value": "1"
+    }
+   ],
+   "binding": "code",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "LLFloaterDirector::bindSteppedPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_group_offset:kit:44",
+   "csv_index": null,
+   "card": "group_rates",
+   "card_title": "Group rates",
+   "row_label": "Group rate",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_group_offset",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "+1 step",
+    "value": "1"
+   },
+   "expect": {
+    "callback": "LLFloaterDirector::bindSteppedPage",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Same",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    },
+    {
+     "label": "Smooth",
+     "value": "3"
+    }
+   ],
+   "binding": "code",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "LLFloaterDirector::bindSteppedPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_group_list:kit:45",
+   "csv_index": null,
+   "card": "group_rates",
+   "card_title": "Group rates",
+   "row_label": "All groups",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_group_list",
+   "widget_type": "list",
+   "csv_kind": "list",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "DEFER_INWORLD",
+   "reason": "list contents are populated in-world (avatars, anims, groups, presets)",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "resolve": "runtime"
+   },
+   "expect": {
+    "callback": "LLFloaterDirector::bindSteppedPage",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "code",
+   "link_to": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "LLFloaterDirector::bindSteppedPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_boil:kit:46",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196203,7 +196966,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_boil_amount:kit:34",
+   "id": "v2:stepped_tab:sa_boil_amount:kit:47",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196257,7 +197020,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_boil_ticks:kit:35",
+   "id": "v2:stepped_tab:sa_boil_ticks:kit:48",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196311,7 +197074,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_impact:kit:36",
+   "id": "v2:stepped_tab:sa_impact:kit:49",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196365,7 +197128,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_impact_ticks:kit:37",
+   "id": "v2:stepped_tab:sa_impact_ticks:kit:50",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196419,7 +197182,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_impact_threshold:kit:38",
+   "id": "v2:stepped_tab:sa_impact_threshold:kit:51",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196473,7 +197236,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_smear:kit:39",
+   "id": "v2:stepped_tab:sa_smear:kit:52",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196527,7 +197290,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_smear_strength:kit:40",
+   "id": "v2:stepped_tab:sa_smear_strength:kit:53",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196581,7 +197344,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_smear_threshold:kit:41",
+   "id": "v2:stepped_tab:sa_smear_threshold:kit:54",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196635,7 +197398,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_ease:kit:42",
+   "id": "v2:stepped_tab:sa_ease:kit:55",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196689,7 +197452,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_ease_amount:kit:43",
+   "id": "v2:stepped_tab:sa_ease_amount:kit:56",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -196743,7 +197506,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_match_roto:kit:44",
+   "id": "v2:stepped_tab:sa_match_roto:kit:57",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -196797,7 +197560,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_roto_link:kit:45",
+   "id": "v2:stepped_tab:sa_roto_link:kit:58",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -196848,7 +197611,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_tron_link:kit:46",
+   "id": "v2:stepped_tab:sa_tron_link:kit:59",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -196899,7 +197662,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actorfx_link:kit:47",
+   "id": "v2:stepped_tab:sa_actorfx_link:kit:60",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -196953,7 +197716,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_time_link:kit:48",
+   "id": "v2:stepped_tab:sa_time_link:kit:61",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -218344,15 +219107,16 @@
     "checks": [
      "plain checkbox, slider, spinner, tab container and button outside kit rows and cards are counted per page",
      "known-legacy pages are reported as 'legacy (not themed)' (WARN); any other page with one FAILS",
-     "a page built as legacy that is not in the known-legacy list FAILS; the list can only shrink"
+     "a page built as legacy that is not in the pinned known-legacy list FAILS, and so does a pinned entry whose page is no longer legacy (stale); the list is explicit (page keys) and can only shrink"
     ]
    },
    {
     "id": "R6_CONNECTED",
     "title": "Every interactive kit control has an observable effect",
     "checks": [
-     "each interactive kit row maps to a RUN oracle that changes its setting, handler state, opens or navigates (the existing effect oracles stay as they were)",
-     "no oracle, an oracle that proves nothing, or an unexplained exclusion FAILS; a SKIP with a reason is listed as WARN"
+     "PASS only from an effect OBSERVED in this run: the control's own functional row ran and passed (its setting changed, its handler state changed, or it opened a view / navigated)",
+     "no oracle, an oracle that proves nothing, a failed row, or a control with no recorded result FAILS",
+     "skipped or excluded rows (including every in-world exclusion) are listed as SKIP with their reason, never PASS"
     ]
    }
   ],
@@ -218826,6 +219590,7 @@
     "source": "camera_group/shot_tab",
     "kind": "row",
     "id": "shot_use_selected_link",
+    "authored": false,
     "link_to": "camera_group/frame_orbit_tab",
     "target": "camera_group/frame_orbit_tab",
     "target_widget": ""
@@ -218834,6 +219599,7 @@
     "source": "camera_group/shot_tab",
     "kind": "card",
     "id": "handheld_operator_link",
+    "authored": false,
     "link_to": "camera_group/operator_tab",
     "target": "camera_group/operator_tab",
     "target_widget": ""
@@ -218842,6 +219608,7 @@
     "source": "camera_group/operator_tab",
     "kind": "row",
     "id": "frame_offset_up_link",
+    "authored": false,
     "link_to": "camera_group/frame_orbit_tab",
     "target": "camera_group/frame_orbit_tab",
     "target_widget": ""
@@ -218850,6 +219617,7 @@
     "source": "look_group/image_tab",
     "kind": "row",
     "id": "exposure_link",
+    "authored": false,
     "link_to": "light_group/exposure_tab",
     "target": "light_group/exposure_tab",
     "target_widget": ""
@@ -218858,6 +219626,7 @@
     "source": "look_group/image_tab",
     "kind": "row",
     "id": "set_lens_filters_link",
+    "authored": false,
     "link_to": "lens_group/filters_tab",
     "target": "lens_group/filters_tab",
     "target_widget": ""
@@ -218866,6 +219635,7 @@
     "source": "look_group/stylize_tab",
     "kind": "row",
     "id": "ri_sync_tron_link",
+    "authored": false,
     "link_to": "look_group/tron_tab",
     "target": "look_group/tron_tab",
     "target_widget": ""
@@ -218874,6 +219644,7 @@
     "source": "look_group/tron_tab",
     "kind": "row",
     "id": "tr_rigrim_link",
+    "authored": false,
     "link_to": "light_group/light_rim_tab",
     "target": "light_group/light_rim_tab",
     "target_widget": ""
@@ -218882,6 +219653,7 @@
     "source": "look_group/tron_tab",
     "kind": "row",
     "id": "tr_roto_link",
+    "authored": false,
     "link_to": "look_group/stylize_tab",
     "target": "look_group/stylize_tab",
     "target_widget": ""
@@ -218890,6 +219662,7 @@
     "source": "look_group/stepped_tab",
     "kind": "row",
     "id": "sa_roto_link",
+    "authored": false,
     "link_to": "look_group/stylize_tab",
     "target": "look_group/stylize_tab",
     "target_widget": ""
@@ -218898,6 +219671,7 @@
     "source": "look_group/stepped_tab",
     "kind": "row",
     "id": "sa_tron_link",
+    "authored": false,
     "link_to": "look_group/tron_tab",
     "target": "look_group/tron_tab",
     "target_widget": ""
@@ -218906,6 +219680,7 @@
     "source": "look_group/stepped_tab",
     "kind": "row",
     "id": "sa_actorfx_link",
+    "authored": false,
     "link_to": "look_group/actor_style_tab",
     "target": "look_group/actor_style_tab",
     "target_widget": ""
@@ -218914,6 +219689,7 @@
     "source": "look_group/stepped_tab",
     "kind": "row",
     "id": "sa_time_link",
+    "authored": false,
     "link_to": "capture_group/temporal_tab",
     "target": "capture_group/temporal_tab",
     "target_widget": ""
@@ -218922,6 +219698,7 @@
     "source": "world_group/shadows_probes_tab",
     "kind": "row",
     "id": "shadows_soft_projector_link",
+    "authored": false,
     "link_to": "world_group/atmosphere_tab",
     "target": "world_group/atmosphere_tab",
     "target_widget": ""
@@ -218930,25 +219707,26 @@
     "source": "settings_group/director_settings_tab",
     "kind": "row",
     "id": "settings_add_self_link",
+    "authored": false,
     "link_to": "capture_group/scene_options_tab",
     "target": "capture_group/scene_options_tab",
     "target_widget": ""
    }
   ],
   "known_legacy_pages": [
-   "animate_tab",
-   "dance_tab",
-   "exposure_tab",
-   "gaze_cues_tab",
-   "gaze_tab",
-   "ghosts_tab",
-   "light_cues_tab",
-   "move_tab",
-   "path_tab",
-   "polish_tab",
-   "practicals_tab",
-   "props_tab",
-   "switchboard_tab"
+   "cast_group/dance_tab",
+   "cast_group/ghosts_tab",
+   "cast_group/move_tab",
+   "cast_group/path_tab",
+   "cast_group/props_tab",
+   "light_group/exposure_tab",
+   "light_group/light_cues_tab",
+   "light_group/practicals_tab",
+   "performance_group/animate_tab",
+   "performance_group/gaze_cues_tab",
+   "performance_group/gaze_tab",
+   "performance_group/polish_tab",
+   "performance_group/switchboard_tab"
   ],
   "legacy_pin": 13,
   "popovers": [
@@ -219950,6 +220728,7 @@
    "kc_gradnd",
    "kc_grain",
    "kc_grid",
+   "kc_group_rates",
    "kc_guide",
    "kc_hand",
    "kc_handheld_operator_link",
@@ -220071,6 +220850,7 @@
    "kc_tron_master",
    "kc_tune",
    "kc_tv_effects",
+   "kc_variation",
    "kc_vcam_master",
    "kc_vignette",
    "kc_walk_gait",
@@ -220457,6 +221237,12 @@
    "ri_subject_targetset_combo_item_7",
    "ri_sync_tron_link",
    "ri_width_slider",
+   "sa_actor_effective",
+   "sa_actor_offset",
+   "sa_actor_offset_item_0",
+   "sa_actor_offset_item_1",
+   "sa_actor_offset_item_2",
+   "sa_actor_offset_item_3",
    "sa_actor_override",
    "sa_actor_override_item_0",
    "sa_actor_override_item_1",
@@ -220498,16 +221284,28 @@
    "sa_fast_rate",
    "sa_flexi",
    "sa_gaze",
+   "sa_group_list",
+   "sa_group_offset",
+   "sa_group_offset_item_0",
+   "sa_group_offset_item_1",
+   "sa_group_offset_item_2",
+   "sa_group_offset_item_3",
+   "sa_group_pick",
+   "sa_group_pick_item_0",
+   "sa_group_pick_item_1",
    "sa_impact",
    "sa_impact_threshold",
    "sa_impact_ticks",
    "sa_include_ghosts",
+   "sa_include_self",
+   "sa_limit_distance",
    "sa_match_roto",
    "sa_max_avatars",
    "sa_mode",
    "sa_mode_item_0",
    "sa_mode_item_1",
    "sa_mode_item_2",
+   "sa_nearby_radius",
    "sa_offset",
    "sa_offset_item_0",
    "sa_offset_item_1",
@@ -220516,6 +221314,7 @@
    "sa_override_list",
    "sa_particles",
    "sa_phase",
+   "sa_phase_spread",
    "sa_rate",
    "sa_rate_chips",
    "sa_rate_chips_item_0",
@@ -220523,11 +221322,16 @@
    "sa_rate_chips_item_2",
    "sa_rate_chips_item_3",
    "sa_rate_readout",
+   "sa_rate_variation",
    "sa_roto_link",
    "sa_scope",
    "sa_scope_item_0",
    "sa_scope_item_1",
    "sa_scope_item_2",
+   "sa_scope_item_3",
+   "sa_scope_item_4",
+   "sa_seed",
+   "sa_seed_reroll",
    "sa_smear",
    "sa_smear_strength",
    "sa_smear_threshold",
@@ -220535,6 +221339,7 @@
    "sa_status",
    "sa_texture_anim",
    "sa_time_link",
+   "sa_timing_jitter",
    "sa_tron_link",
    "sa_what",
    "sa_what_item_0",

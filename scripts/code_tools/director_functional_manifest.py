@@ -1531,6 +1531,28 @@ GEN_REPORT_PATH = os.path.join(HERE, "director_kit", "gen_report.txt")
 # Shrink-only pin (user-approved 10/13: lower as pages convert, never raise).  Mirrors the
 # "legacy" count director_kit_gen.py pins in its classification table.
 KNOWN_LEGACY_MAX = 13
+# The EXPLICIT, hand-maintained list of the unthemed (legacy) pages, by page key.  It is NOT
+# regenerated from the XML flags: that would let a newly unthemed page silently replace a
+# converted one.  It can only SHRINK.  The check fails if a page outside the list is legacy
+# (a new unthemed page) AND if the list names a page that is no longer legacy (a stale entry,
+# remove it as the page converts).
+# Exposure, Practicals, Light Cues, Switchboard, Gaze, Polish, Gaze Cues, Animate, Dance,
+# Ghosts, Move, Path, Props.
+KNOWN_LEGACY_PAGES = (
+    "light_group/exposure_tab",
+    "light_group/practicals_tab",
+    "light_group/light_cues_tab",
+    "performance_group/switchboard_tab",
+    "performance_group/gaze_tab",
+    "performance_group/polish_tab",
+    "performance_group/gaze_cues_tab",
+    "performance_group/animate_tab",
+    "cast_group/dance_tab",
+    "cast_group/ghosts_tab",
+    "cast_group/move_tab",
+    "cast_group/path_tab",
+    "cast_group/props_tab",
+)
 
 DIRECTOR_RULES = collections.OrderedDict([
     ("R1_REACHABILITY", (
@@ -1564,13 +1586,15 @@ DIRECTOR_RULES = collections.OrderedDict([
         "Every Director page is a themed kit page",
         ["plain checkbox, slider, spinner, tab container and button outside kit rows and cards are counted per page",
          "known-legacy pages are reported as 'legacy (not themed)' (WARN); any other page with one FAILS",
-         "a page built as legacy that is not in the known-legacy list FAILS; the list can only shrink"])),
+         "a page built as legacy that is not in the pinned known-legacy list FAILS, and so does a pinned entry "
+         "whose page is no longer legacy (stale); the list is explicit (page keys) and can only shrink"])),
     ("R6_CONNECTED", (
         "Every interactive kit control has an observable effect",
-        ["each interactive kit row maps to a RUN oracle that changes its setting, handler state, opens or navigates "
-         "(the existing effect oracles stay as they were)",
-         "no oracle, an oracle that proves nothing, or an unexplained exclusion FAILS; a SKIP with a reason is "
-         "listed as WARN"])),
+        ["PASS only from an effect OBSERVED in this run: the control's own functional row ran and passed "
+         "(its setting changed, its handler state changed, or it opened a view / navigated)",
+         "no oracle, an oracle that proves nothing, a failed row, or a control with no recorded result FAILS",
+         "skipped or excluded rows (including every in-world exclusion) are listed as SKIP with their reason, "
+         "never PASS"])),
 ])
 
 # Popovers the shell owns.  "anchor" is the button the user clicks; "via" selects the opening flow.
@@ -1614,6 +1638,25 @@ def _gen_report_legacy():
                 if match:
                     legacy.add(match.group(2))
     return legacy
+
+
+def _legacy_pin_errors(legacy_now, pinned, registered):
+    """Problems between the pages the XUI flags legacy and the pinned, shrink-only list."""
+    errors = []
+    pinned_set = set(pinned)
+    if len(pinned_set) != len(pinned):
+        errors.append("the pinned known-legacy list has duplicates")
+    if len(pinned_set) > KNOWN_LEGACY_MAX:
+        errors.append("%d pinned legacy pages exceed the shrink-only pin of %d" % (len(pinned_set), KNOWN_LEGACY_MAX))
+    for key in sorted(set(legacy_now) - pinned_set):
+        errors.append("page %s is built legacy (unthemed) but is not in the pinned known-legacy list: "
+                      "no new unthemed page may appear" % key)
+    for key in sorted(pinned_set - set(legacy_now)):
+        errors.append("stale pinned legacy entry %s: that page is no longer legacy; remove it from "
+                      "KNOWN_LEGACY_PAGES (the list can only shrink)" % key)
+    for key in sorted(pinned_set - set(registered)):
+        errors.append("pinned legacy entry %s is not a registered page" % key)
+    return errors
 
 
 def build_director_rules():
@@ -1669,8 +1712,15 @@ def build_director_rules():
                 parts = [part for part in link_to.split("/") if part]
                 target = "/".join(parts[:2])
                 target_widget = parts[2] if len(parts) > 2 else ""
+                link_id = element.get("id") if element.tag == "kit_card" else element.get("widget", "")
+                # "authored": an XML child already carries this name, so the viewer would NOT build
+                # the generated navigation button (alkitrow.cpp postBuild) and the in-world run must
+                # not click it.  Card links always get the generated "kc_<id>_go" button.
+                generated_name = ("kc_%s_go" % link_id) if element.tag == "kit_card" else link_id
+                authored = any(child.get("name") == generated_name
+                               for child in element.iter() if child is not element)
                 links.append({"source": key, "kind": "card" if element.tag == "kit_card" else "row",
-                              "id": element.get("id") if element.tag == "kit_card" else element.get("widget", ""),
+                              "id": link_id, "authored": authored,
                               "link_to": link_to, "target": target, "target_widget": target_widget})
             pages.append(entry)
     keys = {page["key"] for page in pages}
@@ -1681,12 +1731,13 @@ def build_director_rules():
             errors.append("%s link %s targets widget %r missing from %s" % (link["source"], link["id"], link["target_widget"], link["target"]))
         if not link["id"]:
             errors.append("%s has a link without a widget/id" % link["source"])
-    legacy = sorted(page["page"] for page in pages if page["legacy"])
-    if len(legacy) > KNOWN_LEGACY_MAX:
-        errors.append("%d legacy pages exceed the shrink-only pin of %d: no new unthemed page may appear" % (len(legacy), KNOWN_LEGACY_MAX))
+    legacy_now = {page["key"] for page in pages if page["legacy"]}
+    legacy = sorted(KNOWN_LEGACY_PAGES)
+    errors.extend(_legacy_pin_errors(legacy_now, legacy, {page["key"] for page in pages}))
     report_legacy = _gen_report_legacy()
-    if report_legacy and set(legacy) != report_legacy:
-        errors.append("legacy pages in XUI %s differ from director_kit_gen classification %s" % (legacy, sorted(report_legacy)))
+    if report_legacy and {key.rsplit("/", 1)[-1] for key in legacy_now} != report_legacy:
+        errors.append("legacy pages in XUI %s differ from director_kit_gen classification %s" % (
+            sorted(legacy_now), sorted(report_legacy)))
     shell_buttons = {e.get("name") for e in floater.iter() if e.tag == "button"}
     popover_xml = {e.get("name"): e.get("anchor") for e in floater.iter() if e.tag == "kit_popover"}
     for popover in DIRECTOR_POPOVERS:
@@ -1734,6 +1785,13 @@ def validate_director_rules(rules, entries, cpp_text=None):
             errors.append("link %s -> %s has no registered target page" % (link["id"], link["link_to"]))
     if len(rules.get("known_legacy_pages", [])) > rules.get("legacy_pin", KNOWN_LEGACY_MAX):
         errors.append("known-legacy list exceeds its shrink-only pin")
+    errors.extend(_legacy_pin_errors({page["key"] for page in pages if page.get("legacy")},
+                                     rules.get("known_legacy_pages", []),
+                                     {page["key"] for page in pages}))
+    for link in rules.get("links", []):
+        if "authored" not in link:
+            errors.append("link %s has no 'authored' flag (the in-world run needs it to click only generated buttons)"
+                          % link.get("id"))
     for popover in rules.get("popovers", []):
         if not popover.get("name") or not popover.get("anchor"):
             errors.append("popover entry without name/anchor: %r" % popover)
@@ -1781,12 +1839,21 @@ def rules_self_test():
         "links": [], "known_legacy_pages": [], "legacy_pin": 1,
         "popovers": [{"name": "p", "anchor": "btn"}],
     }
-    entries = [{"version": "v2", "page": "a_tab"}]
+    legacy_page = {"key": "a_group/old_tab", "page": "old_tab", "legacy": True}
+    converted_page = {"key": "a_group/old_tab", "page": "old_tab", "legacy": False}
+    entries = [{"version": "v2", "page": "a_tab"}, {"version": "v2", "page": "old_tab"}]
     cpp = '"R1_REACHABILITY" director_rules'
     assert not validate_director_rules(good, entries, cpp), "baseline fixture must pass"
     faults = {
         "link to a missing page": dict(good, links=[{"id": "x", "link_to": "a/b", "target": "a/b"}]),
         "legacy list over its pin": dict(good, known_legacy_pages=["x", "y"]),
+        "new unthemed page not in the pinned list": dict(
+            good, pages=good["pages"] + [legacy_page], known_legacy_pages=[]),
+        "stale pinned entry for a converted page": dict(
+            good, pages=good["pages"] + [converted_page], known_legacy_pages=["a_group/old_tab"]),
+        "pinned entry that is not a page": dict(good, known_legacy_pages=["a_group/gone_tab"]),
+        "link without an authored flag": dict(
+            good, links=[{"id": "x", "link_to": "a_group/a_tab", "target": "a_group/a_tab"}]),
         "page without functional entries": dict(good, pages=[{"key": "a_group/b_tab", "page": "b_tab"}]),
         "popover without an anchor": dict(good, popovers=[{"name": "p", "anchor": ""}]),
         "duplicate rule ids": dict(good, rules=[{"id": "R1_REACHABILITY"}, {"id": "R1_REACHABILITY"}]),
