@@ -1,14 +1,14 @@
 # Actors — Director Kit page contract
 
 Page key: `actors_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (5/28 setting-bound rows; 22 C++-referenced rows).
+Computed class: **code-driven** (5/29 setting-bound rows; 23 C++-referenced rows).
 
 ## Real owners
 
-- `panel_avatar_light_response` / `panel` at `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:2` (21 matching rows).
-- `floater_lightbox_settings` / `floater` at `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:8` (5 matching rows).
+- `panel_avatar_light_response` / `panel` at `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:3` (22 matching rows).
+- `floater_lightbox_settings` / `floater` at `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:8` (4 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matching rows).
-- Referencing classes: `ALPanelAvatarLightResponse` (36), `LLFloaterReg` (2), `ALFloaterLightBox` (1), `LLFloaterDirector` (1).
+- Referencing classes: `ALPanelAvatarLightResponse` (36), `LLFloaterDirector` (4), `ALFloaterLightBox` (1), `LLFloaterReg` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -18,58 +18,58 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Row bindings
 
-`ALActorLightKitAdapter` is the page bridge. A direct setting row remains an `ALKitSettingBinding`; a C++-referenced row routes through the named existing function below or through a controller extraction of that same function. The v1 owner is rewired to that controller in the same work package.
+`ALPanelAvatarLightResponse` is the page bridge. A direct setting row remains an `ALKitSettingBinding`; a C++-referenced row routes through the named existing function below or through a controller extraction of that same function. The v1 owner is rewired to that controller in the same work package.
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `actor_mask` / `am_disable_check` (Disable) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5358` | kit `toggle` ↔ `CineLightRigActorMaskDisable` `Boolean` | none |
-| `actor_mask` / `am_debug_combo` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5361` | kit `combo` ↔ `CineLightRigActorMaskDebug` `U32` | none |
-| `actor_mask` / `am_bias_slider` (Mask bias) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5367` | kit `slider` ↔ `CineLightRigActorMaskBias` `F32` | none |
-| `actor_mask` / `am_reset_CineLightRigActorMaskBias` (Reset bias) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5368` | `ALActorLightKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onClickResetControlDefault()` (`indra/newview/alfloaterlightbox.cpp:79`) | none |
-| `actor_mask` / `am_test_combo` (Isolation test) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5370` | kit `combo` ↔ `CineLightRigActorMaskTest` `U32` | none |
+| `actor_mask` / `am_disable_check` (Disable) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5358` | kit `toggle` ↔ `CineLightRigActorMaskDisable` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml:10` `am_disable_check` |
+| `actor_mask` / `am_debug_combo` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5361` | kit `combo` ↔ `CineLightRigActorMaskDebug` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml:13` `am_debug_combo` |
+| `actor_mask` / `am_bias_slider` (Mask bias) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5367` | kit `slider` ↔ `CineLightRigActorMaskBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml:22` `am_bias_slider` |
+| `actor_mask` / `am_reset_CineLightRigActorMaskBias` (Reset bias) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5368` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onClickResetControlDefault()` (`indra/newview/alfloaterlightbox.cpp:79`) | none |
+| `actor_mask` / `am_test_trigger` (Isolation test) | none | kit-native action `owner-command:LLFloaterDirector::bindLightActorsPage`; no duplicate widget is required | none |
 | `actor_mask` / `open_lightbox_actormask` (Lightbox ›) | none | kit-native action `floater:lightbox/actor_mask_settings`; no duplicate widget is required | none |
-| `avatar_list` / `target_list` (Avatars) | `scroll_list` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:43` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSelectionChanged()` (`indra/newview/alpanelavatarlightresponse.cpp:113`) | none |
-| `avatar_list` / `chk_only_adjusted` (Only adjusted) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:66` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::refreshRows()` (`indra/newview/alpanelavatarlightresponse.cpp:115`) | none |
-| `avatar_list` / `btn_refresh` (Refresh) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:31` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::<inline callback>()` (`indra/newview/alpanelavatarlightresponse.cpp:120`) | none |
+| `avatar_list` / `target_list` (Avatars) | `scroll_list` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:44` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSelectionChanged()` (`indra/newview/alpanelavatarlightresponse.cpp:125`) | none |
+| `avatar_list` / `chk_only_adjusted` (Only adjusted) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:67` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::refreshRows()` (`indra/newview/alpanelavatarlightresponse.cpp:127`) | none |
+| `avatar_list` / `btn_refresh` (Refresh) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:32` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::<inline callback>()` (`indra/newview/alpanelavatarlightresponse.cpp:132`) | none |
 | `avatar_list` / `light_response_popout` (Open window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1418` | kit-native action `floater:avatar_light_response:selected-actor`; no duplicate widget is required | none |
-| `light_response` / `sld_diffuse` (Diffuse) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:81` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:128`) | none |
-| `light_response` / `sld_tame` (Reflections) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:97` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:129`) | none |
-| `light_response` / `sld_brightness` (Brightness) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:113` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:130`) | none |
-| `light_response` / `sld_glow` (Glow) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:139` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:131`) | none |
-| `light_response` / `chk_bypass` (Bypass) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:149` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onBypass()` (`indra/newview/alpanelavatarlightresponse.cpp:145`) | none |
-| `light_response` / `txt_brightness_ev` (Brightness EV) | `text` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:122` | kit readout ← approved static copy; no runtime writer | none |
-| `silhouette` / `sld_sil_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:175` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:132`) | none |
-| `silhouette` / `combo_sil_fill` (Fill) | `combo_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:204` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSilFillPreset()` (`indra/newview/alpanelavatarlightresponse.cpp:149`) | none |
-| `silhouette` / `swatch_sil_fill` (Custom colour) | `color_swatch` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:196` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSilFill()` (`indra/newview/alpanelavatarlightresponse.cpp:146`) | none |
-| `silhouette` / `chk_sil_haze` (Haze) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:221` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSilCheckbox()` (`indra/newview/alpanelavatarlightresponse.cpp:150`) | none |
-| `silhouette` / `chk_sil_keep_rim` (Keep rim) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:231` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSilCheckbox()` (`indra/newview/alpanelavatarlightresponse.cpp:151`) | none |
-| `light_presets` / `btn_reset_selected` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:305` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onResetSelected()` (`indra/newview/alpanelavatarlightresponse.cpp:153`) | none |
-| `light_presets` / `btn_inherit_selected` (Inherit) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:315` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onInheritSelected()` (`indra/newview/alpanelavatarlightresponse.cpp:154`) | none |
-| `light_presets` / `btn_copy` (Copy) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:325` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onCopy()` (`indra/newview/alpanelavatarlightresponse.cpp:156`) | none |
-| `light_presets` / `btn_paste` (Paste) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:334` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onPaste()` (`indra/newview/alpanelavatarlightresponse.cpp:157`) | none |
-| `light_presets` / `btn_reset_all` (Reset all...) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:343` | `ALActorLightKitAdapter` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onResetAll()` (`indra/newview/alpanelavatarlightresponse.cpp:155`) | none |
-| `actors_diagnostics` / `chk_debug_tint` (Debug tint) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:354` | kit `toggle` ↔ `AvatarLightResponseDebugTint` `Boolean` | none |
-| `actors_diagnostics` / `txt_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:363` | kit readout ← approved static copy; no runtime writer | none |
+| `avatar_list` / `chk_persist` (Remember between sessions) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:22` | kit `toggle` ↔ `AvatarLightResponsePersist` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml:54` `chk_persist` |
+| `light_response` / `sld_diffuse` (Diffuse) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:82` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:140`) | none |
+| `light_response` / `sld_tame` (Reflections) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:98` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:141`) | none |
+| `light_response` / `sld_brightness` (Brightness) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:114` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:142`) | none |
+| `light_response` / `sld_glow` (Glow) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:140` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:143`) | none |
+| `light_response` / `chk_bypass` (Bypass) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:150` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onBypass()` (`indra/newview/alpanelavatarlightresponse.cpp:157`) | none |
+| `light_response` / `txt_brightness_ev` (Brightness EV) | `text` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:123` | kit readout ← approved static copy; no runtime writer | none |
+| `silhouette` / `sld_sil_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:176` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSliderCommit()` (`indra/newview/alpanelavatarlightresponse.cpp:144`) | none |
+| `silhouette` / `combo_sil_fill` (Fill) | `combo_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:205` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSilFillPreset()` (`indra/newview/alpanelavatarlightresponse.cpp:161`) | none |
+| `silhouette` / `swatch_sil_fill` (Custom colour) | `color_swatch` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:197` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSilFill()` (`indra/newview/alpanelavatarlightresponse.cpp:158`) | none |
+| `silhouette` / `chk_sil_haze` (Haze) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:222` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSilCheckbox()` (`indra/newview/alpanelavatarlightresponse.cpp:162`) | none |
+| `silhouette` / `chk_sil_keep_rim` (Keep rim) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:232` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSilCheckbox()` (`indra/newview/alpanelavatarlightresponse.cpp:163`) | none |
+| `light_presets` / `btn_reset_selected` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:306` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onResetSelected()` (`indra/newview/alpanelavatarlightresponse.cpp:165`) | none |
+| `light_presets` / `btn_inherit_selected` (Inherit) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:316` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onInheritSelected()` (`indra/newview/alpanelavatarlightresponse.cpp:166`) | none |
+| `light_presets` / `btn_copy` (Copy) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:326` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onCopy()` (`indra/newview/alpanelavatarlightresponse.cpp:175`) | none |
+| `light_presets` / `btn_paste` (Paste) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:335` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onPaste()` (`indra/newview/alpanelavatarlightresponse.cpp:176`) | none |
+| `light_presets` / `btn_reset_all` (Reset all...) | `button` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:344` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `actors_diagnostics` / `chk_debug_tint` (Debug tint) | `check_box` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:355` | kit `toggle` ↔ `AvatarLightResponseDebugTint` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml:138` `chk_debug_tint` |
+| `actors_diagnostics` / `txt_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:364` | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALFloaterLightBox::onClickResetControlDefault()` — `indra/newview/alfloaterlightbox.cpp:79` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::<inline callback>()` — `indra/newview/alpanelavatarlightresponse.cpp:120` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onBypass()` — `indra/newview/alpanelavatarlightresponse.cpp:145` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onCopy()` — `indra/newview/alpanelavatarlightresponse.cpp:156` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onInheritSelected()` — `indra/newview/alpanelavatarlightresponse.cpp:154` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onPaste()` — `indra/newview/alpanelavatarlightresponse.cpp:157` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onResetAll()` — `indra/newview/alpanelavatarlightresponse.cpp:155` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onResetSelected()` — `indra/newview/alpanelavatarlightresponse.cpp:153` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onSelectionChanged()` — `indra/newview/alpanelavatarlightresponse.cpp:113` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onSilCheckbox()` — `indra/newview/alpanelavatarlightresponse.cpp:150, 151` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onSilFill()` — `indra/newview/alpanelavatarlightresponse.cpp:146` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onSilFillPreset()` — `indra/newview/alpanelavatarlightresponse.cpp:149` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::onSliderCommit()` — `indra/newview/alpanelavatarlightresponse.cpp:128, 129, 130, 131, 132` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAvatarLightResponse::refreshRows()` — `indra/newview/alpanelavatarlightresponse.cpp:115` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:1009, 1968` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterLightBox::onClickResetControlDefault()` — `indra/newview/alfloaterlightbox.cpp:79` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::<inline callback>()` — `indra/newview/alpanelavatarlightresponse.cpp:132` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onBypass()` — `indra/newview/alpanelavatarlightresponse.cpp:157` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onCopy()` — `indra/newview/alpanelavatarlightresponse.cpp:175` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onInheritSelected()` — `indra/newview/alpanelavatarlightresponse.cpp:166` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onPaste()` — `indra/newview/alpanelavatarlightresponse.cpp:176` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onResetSelected()` — `indra/newview/alpanelavatarlightresponse.cpp:165` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onSelectionChanged()` — `indra/newview/alpanelavatarlightresponse.cpp:125` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onSilCheckbox()` — `indra/newview/alpanelavatarlightresponse.cpp:162, 163` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onSilFill()` — `indra/newview/alpanelavatarlightresponse.cpp:158` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onSilFillPreset()` — `indra/newview/alpanelavatarlightresponse.cpp:161` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::onSliderCommit()` — `indra/newview/alpanelavatarlightresponse.cpp:140, 141, 142, 143, 144` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAvatarLightResponse::refreshRows()` — `indra/newview/alpanelavatarlightresponse.cpp:127` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:1010` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -80,7 +80,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **42 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **40 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -93,15 +93,13 @@ Manifest size: **42 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `am_debug_combo-option-0` | Only `am_debug_combo` selects `Off`; other selectors remain default. |
 | `am_debug_combo-option-1` | Only `am_debug_combo` selects `Overlay`; other selectors remain default. |
 | `am_debug_combo-option-2` | Only `am_debug_combo` selects `Mask only`; other selectors remain default. |
-| `am_test_combo-option-0` | Only `am_test_combo` selects `Idle`; other selectors remain default. |
-| `am_test_combo-option-1` | Only `am_test_combo` selects `Run test`; other selectors remain default. |
-| `am_test_combo-option-2` | Only `am_test_combo` selects `Cancel`; other selectors remain default. |
 | `card-avatar_list-tallest-850` | Only `avatar_list` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-avatar_list-tallest-1160` | Only `avatar_list` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `target_list-empty` | `target_list` is empty with no selection. |
 | `target_list-one` | `target_list` has one selected item. |
 | `target_list-overflow` | `target_list` has 51 items and a visible scrollbar. |
 | `chk_only_adjusted-on` | Only `chk_only_adjusted` is on; dependent visibility is measured. |
+| `chk_persist-on` | Only `chk_persist` is on; dependent visibility is measured. |
 | `card-light_response-tallest-850` | Only `light_response` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-light_response-tallest-1160` | Only `light_response` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `chk_bypass-on` | Only `chk_bypass` is on; dependent visibility is measured. |
@@ -140,7 +138,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-15 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+62 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 
@@ -148,7 +146,7 @@ None. Every approved visual kind is either a kit primitive or an existing XUI co
 
 ## Unresolved and pending-decision items
 
-None in the current evidence index.
+- `btn_reset_all` (Reset all...): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 
 ## Risks
 

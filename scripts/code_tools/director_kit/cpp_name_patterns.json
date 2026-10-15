@@ -4,5 +4,6 @@
   {"template": "card_{id}_{part}", "id": ["gaze_cues", "diopter", "practicals", "actor_mask", "light_cues", "image", "rotoink", "tron", "haze", "shadows_probes", "snapshot"], "part": ["open", "summary"]}
 ],
 "expressions": [
+  {"expression": "reset_all_name", "names": ["la_btn_reset_all", "btn_reset_all"], "any_of": true},
   {"expression": "base", "names": ["cine_key_actor_only", "cine_fill_actor_only", "cine_rim_actor_only", "cine_bg_actor_only", "cine_bounce_lights_set", "cine_catchlight_actor_only", "cine_actor_only_all"]}
 ]}

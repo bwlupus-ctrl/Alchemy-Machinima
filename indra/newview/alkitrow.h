@@ -30,7 +30,7 @@ public:
         Mandatory<std::string> kind;
         Optional<std::string>  widget, label, label_name, help, keywords, unit, sub, setting, bind, reset_settings, default_value, link_to,
             action, mirror_setting;
-        Optional<bool> advanced, card_preset, who_picker, hidden, added, widget_history;
+        Optional<bool> advanced, card_preset, who_picker, hidden, added, widget_history, bulk_reset;
         Optional<S32>  row_height, decimals;
         Optional<F32>  min_val, max_val, increment;
         Params();
@@ -66,6 +66,8 @@ public:
     bool                        amber() const;
     boost::signals2::connection setAmberCallback(const amber_signal_t::slot_type& s) { return mAmberSignal.connect(s); }
     boost::signals2::connection setValueCallback(const value_signal_t::slot_type& s) { return mValueSignal.connect(s); }
+    // Preferences may keep row reset while opting out of page/card look resets.
+    bool                        bulkResettable() const { return mBulkReset && resettable(); }
     bool                        resettable() const { return mBinding && mBinding->hasDefault(); }
     LLTextBox*                  valueView() const { return mValueText; }
     void                        refreshValueEditorStyle() { styleValueEditor(mHovered); }
@@ -107,7 +109,7 @@ private:
     bool         mExplicitRowHeight = false;
     bool         mCardPreset = false, mWhoPicker = false, mHidden = false, mAdded = false, mFilterVisible = true, mCodeHidden = false,
                  mHovered = false, mPointerInside = false, mFlashing = false, mAmber = false, mSyncingMirror = false,
-                 mWidgetHistory = true;
+                 mWidgetHistory = true, mBulkReset = true;
     LLUICtrl*    mControl = nullptr;
     std::array<LLUICtrl*, 3>           mVec{ { nullptr, nullptr, nullptr } };
     std::vector<std::string>            mSegmentLabels;

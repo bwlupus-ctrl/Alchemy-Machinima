@@ -3,7 +3,7 @@
 
 Checks (DIRECTOR_KIT_P0_SPEC.md section 6.2 unless noted):
 
-  0  the machine authority lists exactly 35 pages (USER_DECISIONS_20261010.md drops Capture)
+  0  the machine authority lists exactly 36 pages (35 per USER_DECISIONS_20261010.md, which drops Capture, + Stepped 10/14)
   1  every v1 widget name is a v2 name, or matches a parity_allow glob with a reason
   2  every v1 control_name is bound by some control_name in v2; declared shortcuts
      (shortcut_of) are ordinary bindings and duplicate bindings are not reported here
@@ -13,7 +13,7 @@ Checks (DIRECTOR_KIT_P0_SPEC.md section 6.2 unless noted):
      values (sections 3.4 and 6.1 rule 10). New selectors have no v1 combo oracle.
 
 The P0 gate is exactly ``--groups light_group`` and its v1 scope is the recursively expanded
-Director leaf tree required by P0 spec section 6.2. ``--all`` checks all 35 pages: unchanged
+Director leaf tree required by P0 spec section 6.2. ``--all`` checks all 36 pages: unchanged
 legacy pages against their v1 leaves and converted/new pages against their declared owners.
 
 Usage::
@@ -52,7 +52,7 @@ CPP_PATTERNS = KIT_DIR / "cpp_name_patterns.json"
 GEN_REPORT = KIT_DIR / "gen_report.txt"
 V2_FLOATER = "floater_director_v2.xml"
 V1_FLOATER = XUI_DIR / "floater_director.xml"
-EXPECTED_PAGES = 35
+EXPECTED_PAGES = 36  # 35 per USER_DECISIONS_20261010 + Look > Stepped animation (user request 10/14, 360c226ec5f)
 ROLLOUT_WP = {
     "cast_group": "WP7", "performance_group": "WP8",
     "camera_group": "WP9", "lens_group": "WP9",
@@ -136,6 +136,13 @@ class GetChildRequest:
     text: str
     unresolved: bool
     owner: str = ""
+    # ANY-OF: the names are alternatives for one control (e.g. the standalone floater and the Director kit
+    # page name the same button differently); the request passes when ANY ONE exists with the right type.
+    any_of: bool = False
+
+
+class AnyOfNames(tuple):
+    """Names of an expression flagged `"any_of": true` in cpp_name_patterns.json."""
 
 
 @dataclass(frozen=True)
@@ -234,7 +241,8 @@ def load_expression_expansions(path: Path) -> dict[str, tuple]:
     data = _load_json(path, required=False) or {}
     out = {}
     for item in data.get("expressions", []):
-        out[str(item["expression"])] = tuple(str(name) for name in item.get("names", []))
+        names = tuple(str(name) for name in item.get("names", []))
+        out[str(item["expression"])] = AnyOfNames(names) if item.get("any_of") is True else names
     return out
 
 
@@ -494,7 +502,8 @@ def extract_getchild(text: str, source: str, expansions: list,
                     break
         if names:
             out.append(GetChildRequest(source, line, match.group(1).split("::")[-1],
-                                       tuple(names), args, False, owner))
+                                       tuple(names), args, False, owner,
+                                       isinstance(names, AnyOfNames)))
         else:
             out.append(_classify(match.group(1).split("::")[-1], args, source, line, expansions, owner))
     return out
@@ -561,6 +570,9 @@ def check_getchild(requests: list, tags: dict, retired: Optional[dict] = None,
             out.append(Finding("3", f"{request.source}:{request.line}",
                                f"dynamic lookup {request.text!r} is not expanded by cpp_name_patterns.json"))
             continue
+        any_ok = False
+        any_findings: list = []
+        any_allowed: list = []
         for name in request.names:
             actual = tags.get(name)
             policy = pending.get(name)
@@ -576,16 +588,40 @@ def check_getchild(requests: list, tags: dict, retired: Optional[dict] = None,
                                     f"{expected_file}:{expected_symbol} stops referencing it"),
                     })
                     observed_pending.add(name)
+            finding = None
+            allow_entry = None
             if actual is None:
                 if name in retired:
                     policy = retired[name]
                     reason = policy if isinstance(policy, str) else f"{policy.get('reason')} ({policy.get('citation')})"
-                    allowed.append({"check": "3", "subject": name, "reason": reason})
+                    allow_entry = {"check": "3", "subject": name, "reason": reason}
                 else:
-                    out.append(Finding("3", name, f"{where} name is missing from v2"))
+                    finding = Finding("3", name, f"{where} name is missing from v2")
             elif (request.requested in CLASS_TAGS and "*" not in actual
                   and not (actual & CLASS_TAGS[request.requested])):
-                out.append(Finding("3", name, f"{where} but v2 tag is {sorted(actual)}"))
+                finding = Finding("3", name, f"{where} but v2 tag is {sorted(actual)}")
+            if request.any_of:
+                # A retired or missing alternative never satisfies the request.
+                any_ok = any_ok or (finding is None and allow_entry is None)
+                if finding is not None:
+                    any_findings.append(finding)
+                if allow_entry is not None:
+                    any_allowed.append(allow_entry)
+            else:
+                if allow_entry is not None:
+                    allowed.append(allow_entry)
+                if finding is not None:
+                    out.append(finding)
+        if request.any_of and not any_ok:
+            # None of the alternatives exists (with the right type) on the page: report them all.
+            # A retired alternative never satisfies, so when every alternative is retired (no per-name
+            # finding exists) the request itself is reported.
+            allowed.extend(any_allowed)
+            if any_findings:
+                out.extend(any_findings)
+            else:
+                out.append(Finding("3", "any_of(" + ", ".join(request.names) + ")",
+                                   f"{where} any_of: every alternative is retired, none is live on v2"))
     return out
 
 
@@ -722,6 +758,7 @@ def evaluate(paths: Paths, groups: Optional[list], p0_scope: bool = False,
     retired, pending_cpp = load_cpp_policy(paths)
     request_count = 0
     root_owner = {
+        "panel_avatar_light_response": {"ALPanelAvatarLightResponse"},
         "panel_cine_light_rig": {"ALPanelCineLightRig"},
         "panel_rig_rim": {"ALPanelRigRim", "ALRigRimController"},
     }
@@ -886,6 +923,20 @@ def selftest() -> int:
                                           expansions), idx_pass.tags)
     expect("check 3 fail: unexpanded dynamic lookups reported",
            len(f3d) == 2 and all("not expanded" in f.message for f in f3d), [f.message for f in f3d])
+    # Check 3 any_of: alternatives for ONE control pass when any one exists; all other expressions stay all-of.
+    anyof_expr = load_expression_expansions(fx("c3_patterns_anyof.json"))
+    anyof_reqs = extract_getchild(read_text(fx("c3_anyof.fixture")), "c3_anyof.fixture", expansions, anyof_expr)
+    expect("check 3 any_of extraction: flag carried only for the flagged expression",
+           [(r.text, r.any_of) for r in anyof_reqs]
+           == [("either_ok", True), ("either_none", True), ("all_of_expr", False)],
+           [(r.text, r.any_of) for r in anyof_reqs])
+    f3any = check_getchild(anyof_reqs, idx_pass.tags)
+    expect("check 3 any_of: passes when one name exists; fails when NONE does; all-of still flags a missing name",
+           sorted(f.subject for f in f3any) == ["fx_missing_a", "fx_missing_b", "fx_nothere"],
+           sorted(f.subject for f in f3any))
+    expect("check 3 any_of: retired alternatives never satisfy; all retired reports, one missing still reports",
+           len(check_getchild(anyof_reqs[1:2], idx_pass.tags, {"fx_missing_a": "x", "fx_missing_b": "x"})) == 1
+           and len(check_getchild(anyof_reqs[1:2], idx_pass.tags, {"fx_missing_a": "x"})) == 1)
 
     # Check 4 (selector values round-trip)
     items = combo_items(leaf)
@@ -930,7 +981,7 @@ def selftest() -> int:
 
     # Check 0 (page count)
     expect("check 0 fail: 34 pages", len(page_count_findings(34)) == 1)
-    expect("check 0 pass: 35 pages", page_count_findings(35) == [])
+    expect("check 0 pass: 36 pages", page_count_findings(36) == [])
 
     # End-to-end on fixture page_sources and fixture xui trees
     def e2e_paths(sub: str) -> Paths:
@@ -961,7 +1012,7 @@ def selftest() -> int:
     # Smoke run on the real repository (v1 side must load; v2 may be absent)
     try:
         real = evaluate(Paths(), None)
-        expect("--all on the real tree: 35 pages, v1 side loads, status is a known state",
+        expect("--all on the real tree: 36 pages, v1 side loads, status is a known state",
                len(real["pages"]) == EXPECTED_PAGES and real["counts"]["v1_names"] > 0
                and real["status"] in ("V2_NOT_GENERATED", "PASS", "FAIL"), real["status"])
     except ParityError as exc:
@@ -978,7 +1029,7 @@ def main(argv: Optional[list] = None) -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--groups", metavar="GROUP[,GROUP...]",
                       help="page groups to check, e.g. light_group; 'all' means --all")
-    mode.add_argument("--all", action="store_true", help="check all 35 pages in page_sources.json")
+    mode.add_argument("--all", action="store_true", help="check all 36 pages in page_sources.json")
     mode.add_argument("--selftest", action="store_true", help="run the fixture tests and exit")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
     args = parser.parse_args(argv)

@@ -5,15 +5,15 @@ Per-control rows: `doc/director_kit/wiring/wiring_table.csv`.
 
 Versions: **ORIG** = commit 9c25f75491a (git blobs); **V1** = working tree `floater_director.xml` + owner panels; **V2** = working tree `floater_director_v2.xml` + `panel_dpage_*.xml` + kit rows.
 
-Interactive controls: 1765 (of 1837 catalog rows; readout/text rows excluded from counts).
+Interactive controls: 1816 (of 1896 catalog rows; readout/text rows excluded from counts).
 
 ## Totals
 
 | Version | Wired | WIRED_SETTING | WIRED_CALLBACK | WIRED_CPP | Suspect (V2) | UNWIRED | MISSING |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| ORIG | 1621 | 1040 | 1 | 580 | 0 | 55 | 89 |
-| V1 | 1622 | 1040 | 1 | 581 | 0 | 54 | 89 |
-| V2 | 1530 | 1044 | 1 | 485 | 96 | 55 | 84 |
+| ORIG | 1620 | 1038 | 1 | 581 | 0 | 54 | 142 |
+| V1 | 1664 | 1072 | 1 | 591 | 0 | 56 | 96 |
+| V2 | 1546 | 1133 | 0 | 413 | 156 | 78 | 36 |
 
 ## Per page: wired counts (ORIG -> V1 -> V2)
 
@@ -29,71 +29,122 @@ Interactive controls: 1765 (of 1837 catalog rows; readout/text rows excluded fro
 | gaze_tab (Gaze) | Performance | 118 | 118 | 118 | 117 | 1 | 0 | 0 | 0 |
 | polish_tab (Polish) | Performance | 14 | 14 | 14 | 13 | 1 | 0 | 0 | 0 |
 | gaze_cues_tab (Gaze Cues) | Performance | 5 | 3 | 3 | 3 | 0 | 0 | 2 | 0 |
-| shot_tab (Shot) | Camera | 328 | 298 | 298 | 287 | 8 | 16 | 17 | 0 |
+| shot_tab (Shot) | Camera | 328 | 297 | 297 | 288 | 23 | 17 | 0 | 0 |
 | moves_tab (Moves) | Camera | 14 | 14 | 14 | 11 | 3 | 0 | 0 | 0 |
-| operator_tab (Operator) | Camera | 69 | 69 | 69 | 66 | 1 | 0 | 2 | 2 |
-| frame_orbit_tab (Frame & Orbit) | Camera | 30 | 30 | 30 | 30 | 0 | 0 | 0 | 0 |
-| takes_tab (Takes) | Camera | 19 | 19 | 19 | 19 | 0 | 0 | 0 | 0 |
-| vcam_tab (VCam) | Camera | 2 | 2 | 2 | 1 | 1 | 0 | 0 | 0 |
-| focus_tab (Focus) | Lens | 14 | 14 | 14 | 14 | 0 | 0 | 0 | 0 |
-| filters_tab (Filters) | Lens | 29 | 29 | 29 | 29 | 0 | 0 | 0 | 0 |
-| diopter_tab (Diopter) | Lens | 5 | 4 | 4 | 4 | 0 | 0 | 1 | 0 |
-| cine_light_rig_tab (Rig) | Light | 169 | 156 | 156 | 114 | 42 | 12 | 1 | 0 |
+| operator_tab (Operator) | Camera | 69 | 69 | 69 | 67 | 1 | 0 | 1 | 0 |
+| frame_orbit_tab (Frame & Orbit) | Camera | 30 | 30 | 30 | 28 | 0 | 2 | 0 | 2 |
+| takes_tab (Takes) | Camera | 19 | 19 | 19 | 12 | 7 | 0 | 0 | 0 |
+| vcam_tab (VCam) | Camera | 2 | 2 | 2 | 1 | 0 | 0 | 1 | 1 |
+| focus_tab (Focus) | Lens | 14 | 14 | 14 | 13 | 0 | 1 | 0 | 1 |
+| filters_tab (Filters) | Lens | 29 | 29 | 29 | 26 | 3 | 0 | 0 | 0 |
+| diopter_tab (Diopter) | Lens | 5 | 4 | 4 | 4 | 0 | 1 | 0 | 0 |
+| cine_light_rig_tab (Rig) | Light | 173 | 156 | 156 | 114 | 42 | 16 | 1 | 0 |
 | light_rim_tab (Rim) | Light | 41 | 40 | 41 | 41 | 0 | 0 | 0 | 0 |
 | exposure_tab (Exposure) | Light | 24 | 23 | 23 | 22 | 1 | 1 | 0 | 0 |
 | practicals_tab (Practicals) | Light | 15 | 14 | 14 | 14 | 0 | 0 | 1 | 0 |
-| actors_tab (Actors) | Light | 26 | 23 | 23 | 23 | 0 | 2 | 1 | 0 |
+| actors_tab (Actors) | Light | 27 | 23 | 25 | 5 | 21 | 1 | 0 | 0 |
 | light_cues_tab (Light Cues) | Light | 5 | 5 | 5 | 5 | 0 | 0 | 0 | 0 |
-| image_tab (Image) | Look | 74 | 20 | 20 | 20 | 0 | 2 | 52 | 0 |
+| image_tab (Image) | Look | 74 | 20 | 20 | 63 | 0 | 6 | 5 | 0 |
 | bloom_glow_tab (Bloom & Glow) | Look | 17 | 7 | 7 | 16 | 0 | 1 | 0 | 0 |
-| stylize_tab (Roto Ink) | Look | 81 | 78 | 78 | 78 | 0 | 1 | 2 | 0 |
-| tron_tab (Tron) | Look | 132 | 124 | 124 | 124 | 0 | 6 | 2 | 0 |
+| stylize_tab (Roto Ink) | Look | 81 | 78 | 78 | 78 | 0 | 3 | 0 | 0 |
+| tron_tab (Tron) | Look | 132 | 124 | 124 | 121 | 0 | 8 | 3 | 0 |
+| stepped_tab (Stepped) | Look | 45 | 0 | 41 | 33 | 8 | 4 | 0 | 0 |
 | actor_style_tab (Actor FX) | Look | 16 | 16 | 16 | 0 | 16 | 0 | 0 | 0 |
-| weather_tab (Weather) | World | 50 | 50 | 50 | 50 | 0 | 0 | 0 | 0 |
-| atmosphere_tab (Atmosphere) | World | 77 | 74 | 74 | 74 | 0 | 2 | 1 | 0 |
-| shadows_probes_tab (Shadows) | World | 39 | 37 | 37 | 37 | 0 | 0 | 2 | 0 |
-| temporal_tab (Time) | Capture | 13 | 13 | 13 | 13 | 0 | 0 | 0 | 0 |
-| scene_options_tab (Scene) | Capture | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
+| weather_tab (Weather) | World | 50 | 50 | 50 | 48 | 2 | 0 | 0 | 0 |
+| atmosphere_tab (Atmosphere) | World | 77 | 74 | 74 | 52 | 0 | 3 | 22 | 22 |
+| shadows_probes_tab (Shadows) | World | 39 | 37 | 37 | 37 | 0 | 2 | 0 | 0 |
+| temporal_tab (Time) | Capture | 13 | 13 | 13 | 8 | 5 | 0 | 0 | 0 |
+| scene_options_tab (Scene) | Capture | 2 | 1 | 1 | 2 | 0 | 0 | 0 | 0 |
 
 ## Reconciliation with page_sources.json
 
-Catalog = 1509 mockup rows + 328 page_sources-only (page, widget) rows = 1837 controls. page_sources.json lists 1839 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
-Of the page_sources-only rows, 327 are interactive.
+Catalog = 1562 mockup rows + 334 page_sources-only (page, widget) rows = 1896 controls. page_sources.json lists 1896 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
+Of the page_sources-only rows, 331 are interactive.
 
 ## V2 losses: wired in ORIG or V1, UNWIRED or MISSING in V2
 
-Total: 2 (excludes 3 rows that are present on another V2 page, listed below)
+Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
-### operator_tab (2)
+### frame_orbit_tab (2)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `FlycamOperatorModeBlendTime` | Blend (s) | WIRED_SETTING | WIRED_SETTING | MISSING | - |
-| `FlycamOperatorSimulationHz` | Update Hz | WIRED_SETTING | WIRED_SETTING | MISSING | - |
+| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2087 LLFloaterDirector::bindFrameOrbitPage |
+| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:2080 LLFloaterDirector::bindFrameOrbitPage |
+
+### vcam_tab (1)
+
+| Widget | Label | ORIG | V1 | V2 | V2 evidence |
+|---|---|---|---|---|---|
+| `btn_prism_manage` | Open manager | WIRED_CPP | WIRED_CPP | MISSING | - |
+
+### focus_tab (1)
+
+| Widget | Label | ORIG | V1 | V2 | V2 evidence |
+|---|---|---|---|---|---|
+| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:1613 LLFloaterDirector::bindLensFocusPage |
+
+### atmosphere_tab (22)
+
+| Widget | Label | ORIG | V1 | V2 | V2 evidence |
+|---|---|---|---|---|---|
+| `localfog_volume_list` | Volumes | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_add` | + Add | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_duplicate` | Duplicate | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_delete` | Delete | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_enabled` | Enabled | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_shape` | Shape | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_move_camera` | Move to camera | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_center_x` | Center X | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_center_y` | Center Y | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_center_z` | Center Z | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_size_x` | Radius X | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_size_y` | Radius Y | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_size_z` | Radius Z | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_rotation_x` | Turn X | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_rotation_y` | Turn Y | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_rotation_z` | Turn Z | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_density` | Density | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_feather` | Edge softness | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_height_falloff` | Height falloff | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_noise_scale` | Noise scale | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_noise_speed` | Noise speed | WIRED_CPP | WIRED_CPP | MISSING | - |
+| `localfog_tint` | Tint | WIRED_CPP | WIRED_CPP | MISSING | - |
 
 
 ### Relocated in V2 (missing on this page, present on another V2 page)
 
-- shot_tab `CinematicCamVertigoDirection` (Direction): V2 page(s) moves_tab
-- shot_tab `CinematicCamArcGeneratorAngle` (Angle): V2 page(s) moves_tab
-- shot_tab `CinematicCamArcHeightDrift` (Height drift): V2 page(s) moves_tab
+- operator_tab `CinematicCamFrameOffsetUp` (Frame up): V2 page(s) frame_orbit_tab
+- image_tab `tonemap_type_combo` (Tonemapper): V2 page(s) exposure_tab
+- image_tab `exposure_slider` (Exposure): V2 page(s) exposure_tab
+- image_tab `tonemap_legacy_gamma_skies` (Legacy skies): V2 page(s) exposure_tab
+- image_tab `lpm_toneexp_slider` (Tone exposure): V2 page(s) exposure_tab
+- image_tab `slog_ev_slider` (EV offset): V2 page(s) exposure_tab
+- tron_tab `tr_rigrim_tron_mode_combo` (Rig Rim tint): V2 page(s) light_rim_tab
+- tron_tab `tr_rigrim_tron_mix_slider` (Tint mix): V2 page(s) light_rim_tab
+- tron_tab `tr_rigrim_tron_color_combo` (Tint colour): V2 page(s) light_rim_tab
 
 ## V2 suspects: V2_SUSPECT_FLOATER_SCOPED (only support is LLFloaterDirector v1 path or a non-instantiated panel class)
 
-Total: 96 (of which previously wired in ORIG or V1: 96)
+Total: 156 (of which previously wired in ORIG or V1: 155)
 
 - **move_tab**: `group_run_combo`, `group_delay_spinner`, `btn_group_start`, `btn_group_stop`, `groups_list`, `btn_group_rename`, `btn_group_dissolve`
 - **dance_tab**: `dance_popout`
 - **animate_tab**: `anim_list`, `btn_anim_copy`, `btn_anim_setloco`, `btn_anim_play`, `btn_anim_stop`, `btn_paste_play`, `btn_paste_stop`, `btn_paste_setloco`, `locomotion_role_combo`, `locomotion_speed`, `locomotion_phase`, `locomotion_allow_ao`, `btn_clear_loco`, `btn_open_animexp`
 - **gaze_tab**: `btn_actor_gaze`
 - **polish_tab**: `polish_popout`
-- **shot_tab**: `btn_set_a`, `btn_clear_a`, `btn_set_b`, `btn_clear_b`, `btn_set_c`, `btn_clear_c`, `btn_set_d`, `btn_clear_d`
+- **shot_tab**: `btn_reset_mode`, `btn_reset_all`, `btn_set_a`, `btn_clear_a`, `btn_set_b`, `btn_clear_b`, `btn_set_c`, `btn_clear_c`, `btn_set_d`, `btn_clear_d`, `switcher_reset_slots`, `switcher_slot_mode`, `switcher_slot_enabled`, `switcher_primary_subject`, `switcher_secondary_subject`, `switcher_custom_enabled`, `switcher_capture_current`, `switcher_custom_yaw`, `switcher_custom_pitch`, `switcher_custom_distance`, `switcher_custom_height`, `switcher_custom_fov`, `reset_switcher_custom_yaw`
 - **moves_tab**: `btn_build_ots_pair`, `btn_start_zolly`, `btn_start_hero_arc`
 - **operator_tab**: `shake_preset_combo`
-- **vcam_tab**: `btn_prism_manage`
+- **takes_tab**: `btn_record`, `btn_play`, `btn_stop`, `btn_clear`, `scrub_slider`, `btn_save`, `btn_load`
+- **filters_tab**: `ir_preset_action`, `ir_enable_tag`, `softedge_preset_action`
 - **cine_light_rig_tab**: `cine_easy_brightness`, `cine_easy_drama`, `cine_easy_warmth`, `cine_easy_rim`, `cine_easy_bg`, `cine_easy_cone_width`, `cine_easy_cone_feather`, `cine_easy_flare_preset`, `cine_easy_night_mask_darkness`, `cine_easy_night_mask_preset`, `cine_anchor`, `cine_target_object`, `cine_clear_object`, `cine_group_self`, `cine_group_a`, `cine_group_b`, `cine_group_c`, `cine_group_d`, `cine_reset_all`, `cine_fx_stop`, `cine_seed`, `cine_seed_randomize`, `cine_aim_yaw_minus`, `cine_aim_yaw_plus`, `cine_aim_pitch_minus`, `cine_aim_pitch_plus`, `cine_aim_reset`, `cine_shadow_fixit`, `cine_fixture_role`, `cine_fixture_mode`, `cine_fixture_preset`, `cine_fixture_kelvin`, `cine_fixture_source_size`, `cine_fixture_gel_0`, `cine_fixture_gel_1`, `cine_fixture_gel_2`, `cine_gobo_library`, `cine_open_cues`, `cine_flare_preset`, `cine_live_probe_refresh_now`, `cine_night_mask_preset`, `cine_night_mask_darkness`
 - **exposure_tab**: `exposure_popout`
+- **actors_tab**: `am_reset_CineLightRigActorMaskBias`, `am_test_trigger`, `target_list`, `chk_only_adjusted`, `btn_refresh`, `light_response_popout`, `sld_diffuse`, `sld_tame`, `sld_brightness`, `sld_glow`, `chk_bypass`, `sld_sil_amount`, `combo_sil_fill`, `swatch_sil_fill`, `chk_sil_haze`, `chk_sil_keep_rim`, `btn_reset_selected`, `btn_inherit_selected`, `btn_copy`, `btn_paste`, `btn_reset_all`
+- **stepped_tab**: `sa_actor_target`, `sa_override_list`, `sa_actor_override`, `sa_actor_rate`, `sa_actor_steps`, `sa_actor_role`, `sa_override_clear`, `sa_rate_chips`
 - **actor_style_tab**: `actor_style_target`, `actor_style_reset`, `actor_style_look`, `actor_style_mode`, `actor_style_alpha`, `actor_style_dissolve_progress`, `actor_style_use_actor_hue`, `actor_style_hue`, `actor_style_brightness`, `actor_style_shimmer_amount`, `actor_style_shimmer_speed`, `actor_style_glitch`, `actor_style_effect_fps`, `actor_style_distortion`, `actor_style_distortion_amount`, `actor_style_pixel`
+- **weather_tab**: `weather_reset_all`, `weather_trigger`
+- **temporal_tab**: `btn_freeze`, `btn_quarter`, `btn_half`, `btn_realtime`, `btn_double`
 
 ## V1 regressions (wired in ORIG, not wired in V1)
 
@@ -101,20 +152,20 @@ Total: 0
 
 ### Element-name removals ORIG -> V1 (whole page closure, not only mockup rows)
 
-Names present in the ORIG page closure but absent from the V1 closure: 35 entries, 1 distinct names.
+Names present in the ORIG page closure but absent from the V1 closure: 36 entries, 1 distinct names.
 
 | Name | Tag | ORIG file:line | Pages | WT C++ literal refs | first ref |
 |---|---|---|---|---:|---|
-| `straight_group` | panel | panel_actor_mover.xml:55 | 35 page(s): move_tab, path_tab, props_tab, ghosts_tab ... | 0 |  |
+| `straight_group` | panel | panel_actor_mover.xml:55 | 36 page(s): move_tab, path_tab, props_tab, ghosts_tab ... | 0 |  |
 
 ## Structural checks
 
 - Interactive rows whose V1 XUI control_name/setting is not declared in app_settings/settings*.xml: 0 (may be declared in C++ instead; not counted as WIRED_SETTING).
-- V2 resolution by source: alias-xui=12, none=84, redirect-alias-xui=4, redirect-xui=312, xui=1353.
+- V2 resolution by source: alias-kit=1, kit=17, none=36, redirect-xui=22, xui=1740.
   `xui` = named widget in the V2 dpage closure; `kit` = kit row `widget=`; `alias-*` = matched by bound setting on the same page; `redirect-*` = V2 launcher stub, control found in the V1 owner floater it opens.
-- Launcher-stub pages (V2 opens V1 floater): actors_tab, atmosphere_tab, diopter_tab, gaze_cues_tab, image_tab, light_cues_tab, practicals_tab, shadows_probes_tab, stylize_tab, tron_tab.
-- Interactive rows missing in ALL three versions (mockup-only, never implemented): 79.
-- Rows absent from the director_kit_index.xml TSV (page, widget): 133 of 1765 interactive.
+- Launcher-stub pages (V2 opens V1 floater): gaze_cues_tab, light_cues_tab, practicals_tab.
+- Interactive rows missing in ALL three versions (mockup-only, never implemented): 4.
+- Rows absent from the director_kit_index.xml TSV (page, widget): 34 of 1816 interactive.
 - V2 bound setting differs from the kit index TSV: 0
 - V2 pages without a panel_dpage file: none
 
@@ -123,7 +174,7 @@ Names present in the ORIG page closure but absent from the V1 closure: 35 entrie
 - Static analysis only. A C++ match inside a FLOATER-owned postBuild (LLFloaterDirector) does not prove the V2 copy is wired; such V2 controls are flagged `V2_SUSPECT_FLOATER_SCOPED` unless the enclosing function mentions `DirectorUIV2`. This flag is conservative and needs in-world confirmation.
 - A panel class counts as instantiated for a V2 page only when its XML is embedded in that page closure (`LLPanelInjector` registration name = file stem).
 - Kit rows (V2 `kit_row`/`kit_switch` with `widget=`) have no per-widget C++; WIRED_SETTING means the bound setting is declared (kit binding is generic in alkit*.cpp), not that the in-world behaviour was checked.
-- Control universe = the mockup rows (1765 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
+- Control universe = the mockup rows (1816 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
 - ORIG page owners are the HEAD owner files that exist at ORIG; ORIG floater_director.xml is always searched. ORIG C++ is read from the commit; V1/V2 C++ is the working tree.
 - Callbacks count as WIRED only when the name is referenced (not just defined) in top-level indra/newview/*.cpp. Registry names are matched as literals or identifiers.
 - Widget literal hits require a getChild/findChild/childSet/setCommitCallback/Registrar token within 3 lines before (or 1 line after) the literal, and the enclosing class must be one of the page owner classes from page_sources.json.

@@ -1852,6 +1852,13 @@ bool LLAppViewer::cleanup()
     // not when the joystick is terminated much later in cleanup.
     if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);
 
+    // [AvatarLightResponse] Quit-time flush: the Director floater skips its close-save while quitting, and
+    // a slider debounce may still be pending. flushIfDirty() writes only a real unsaved edit of a loaded account.
+    if (ALAvatarLightResponse::instanceExists())
+    {
+        ALAvatarLightResponse::instance().flushIfDirty();
+    }
+
 #if LL_VELOPACK
     // Apply any pending Velopack update before shutdown
     if (velopack_is_update_pending())

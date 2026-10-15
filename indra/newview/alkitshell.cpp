@@ -1950,6 +1950,12 @@ bool ALKitShell::closePopover()
 void ALKitShell::setOpenPopover(ALKitPopover* popover)
 { mOpenPopover = popover; }
 
+void ALKitShell::popoverHidden(ALKitPopover* popover)
+{
+    if (mOpenPopover == popover)
+        mOpenPopover = nullptr;
+}
+
 bool ALKitShell::handleMouseDown(S32 x, S32 y, MASK mask)
 {
     if (mOpenPopover && mOpenPopover->getVisible())

@@ -2587,7 +2587,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     {
         if (ALAvatarLightResponse::instance().importMerge(data["light_response"]))
         {
-            ALAvatarLightResponse::instance().saveIfPersist();
+            ALAvatarLightResponse::instance().flushIfDirty();
         }
     }
 

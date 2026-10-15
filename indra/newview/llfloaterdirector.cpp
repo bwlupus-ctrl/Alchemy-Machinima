@@ -599,7 +599,8 @@ public:
     bool canDelete(const std::string& id) const override { return id.compare(0, 2, "u:") == 0; }
     bool deleteUser(const std::string& id) override { return canDelete(id) && mStore.remove(id.substr(2)); }
     U64 revision() const override { return mStore.revision(); }
-    const std::vector<std::string>& trackedSettings() const override { return ALSteppedAnim::trackedSettings(); }
+    // Preset-owned only: StepAnimParticles / StepAnimTextureAnim are independent of presets.
+    const std::vector<std::string>& trackedSettings() const override { return ALSteppedAnim::presetSettings(); }
 
 private:
     std::string                mKey = "stepped_anim";
@@ -664,7 +665,7 @@ void LLFloaterDirector::onClose(bool app_quitting)
     {
         ALDirectorSwitcher::instance().cancelEaseWorldTime();
         if (ALAvatarLightResponse::instanceExists())
-            ALAvatarLightResponse::instance().saveIfPersist();
+            ALAvatarLightResponse::instance().flushIfDirty();
     }
 }
 
@@ -1246,13 +1247,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mLegendPanel = root->getChild<LLPanel>("legend_panel");
     mHotkeysPanel = root->getChild<LLPanel>("kit_hotkeys_popover");
     mHelpBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleLegend(); });
-    mLegendPanel->getChild<LLButton>("btn_legend_close")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&)
-        {
-            // close through the shell so its open-popover tracking is cleared too
-            if (mShell) mShell->closePopover();
-            else mLegendPanel->setVisible(false);
-        });
+    // btn_legend_close is wired by ALKitPopover::postBuild(); its hide path clears the shell's open-popover tracking.
     mLegendPanel->getChild<LLButton>("btn_legend_hotkeys")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
         {
@@ -1392,10 +1387,9 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "ghosts_tab", &LLFloaterDirector::bindCameraPage },
         { "polish_tab", &LLFloaterDirector::bindCameraPage },
         { "exposure_tab", &LLFloaterDirector::bindCameraPage },
-        { "actors_tab", &LLFloaterDirector::bindCameraPage },
+        { "actors_tab", &LLFloaterDirector::bindLightActorsPage },
         { "gaze_cues_tab", &LLFloaterDirector::bindLauncherPage },
         { "practicals_tab", &LLFloaterDirector::bindLauncherPage },
-        { "actors_tab", &LLFloaterDirector::bindLauncherPage },
         { "light_cues_tab", &LLFloaterDirector::bindLauncherPage },
         { "focus_tab", &LLFloaterDirector::bindLensFocusPage },
         { "filters_tab", &LLFloaterDirector::bindLensFiltersPage },
@@ -1478,6 +1472,42 @@ void LLFloaterDirector::bindTronPage(LLView* root)
                 gSavedSettings.setS32("CineRigRimTronMode", ALTron::lastPresetRigRimTronMode());
             }
         });
+    }
+}
+
+// Light > Actors (generated kit page rooted as panel_avatar_light_response). The panel's own
+// postBuild binds the list and every per-avatar row; this binds the Director-only rows.
+void LLFloaterDirector::bindLightActorsPage(LLView* root)
+{
+    if (LLButton* b = root->findChild<LLButton>("light_response_popout", true))
+        b->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        {
+            const LLUUID actor = firstSelectedCastId();
+            LLFloaterReg::showInstance("avatar_light_response", LLSD(actor.notNull() ? actor : gAgentID));
+        });
+    if (LLButton* b = root->findChild<LLButton>("am_reset_CineLightRigActorMaskBias", true))
+        b->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            if (LLControlVariable* c = gSavedSettings.getControl("CineLightRigActorMaskBias").get())
+                c->resetToDefault(true);
+        });
+    if (LLButton* b = root->findChild<LLButton>("am_test_trigger", true))
+    {
+        const LLHandle<LLView> handle = b->getHandle();
+        auto sync = [handle]()
+        {
+            if (LLButton* btn = dynamic_cast<LLButton*>(handle.get()))
+                btn->setLabel(gSavedSettings.getU32("CineLightRigActorMaskTest") == 1 ? "Cancel test" : "Run test");
+        };
+        b->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            ALKitHistory::ScopedSuspend suspend;   // a command, never an undo step
+            const U32 now = gSavedSettings.getU32("CineLightRigActorMaskTest");
+            gSavedSettings.setU32("CineLightRigActorMaskTest", now == 1 ? 2 : 1);   // 1 arm, 2 cancel; self-resets to 0
+        });
+        mActorMaskTestWatch = ALKitSettingWatch::instance().watch("CineLightRigActorMaskTest",
+            [sync](const LLSD&, const LLSD&) { sync(); });   // event-driven label, no per-frame read
+        sync();
     }
 }
 
@@ -1965,11 +1995,6 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
     {
         control->setCommitCallback([](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("exposure_hub"); });
     }
-    if (LLButton* control = root->findChild<LLButton>("light_response_popout")) control->setCommitCallback([this](LLUICtrl*, const LLSD&)
-    {
-        const LLUUID actor = firstSelectedCastId();
-        LLFloaterReg::showInstance("avatar_light_response", LLSD(actor.notNull() ? actor : gAgentID));
-    });
     if (LLTextBox* control = root->findChild<LLTextBox>("prism_summary"))
     {
         mPrismSummaryText = control;
@@ -2183,14 +2208,6 @@ void LLFloaterDirector::bindLauncherPage(LLView* root)
             if (!volume->getIsLight()) return std::string("Selection is not a light (or its light is off)");
             if (volume->isLightSpotlight()) return std::string("Projector selected");
             return std::string("Point light selected (needs a projector)");
-        });
-    }
-    if (root->findChild<LLButton>("card_actor_mask_open"))
-    {
-        addLauncherCard("actor_mask", [] { ALFloaterLightBox::showTab("actor_mask_settings"); }, []
-        {
-            static LLCachedControl<bool> disabled(gSavedSettings, "CineLightRigActorMaskDisable", false);
-            return std::string("Actor-only lights: ") + (disabled ? "disabled" : "active");
         });
     }
     if (root->findChild<LLButton>("card_light_cues_open"))

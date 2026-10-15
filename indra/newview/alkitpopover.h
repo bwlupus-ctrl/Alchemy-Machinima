@@ -22,6 +22,7 @@ public:
     void toggle();
     void bindAnchor(LLView* anchor);
     bool handleKeyHere(KEY key, MASK mask) override;
+    void setVisible(bool visible) override;
 
 protected:
     friend class LLUICtrlFactory;

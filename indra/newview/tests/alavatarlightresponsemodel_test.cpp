@@ -989,4 +989,47 @@ namespace tut
         }
         ensure("randomized gate rejects distributed scaling", distributed_differs);
     }
+
+    // Persistence unit: the save gate never lets a quit / close / debounce clobber the account file.
+    template<> template<>
+    void avatar_light_response_object::test<30>()
+    {
+        SaveGateInput ok;
+        ok.mPersist = true;
+        ok.mAgentKnown = true;
+        ok.mAgentIsLoadedOwner = true;
+        ok.mDirty = true;
+        ensure("clean owner, dirty, persist on: writes", mayWriteSaveFile(ok));
+
+        SaveGateInput g = ok; g.mPersist = false;
+        ensure("persist off: never writes", !mayWriteSaveFile(g));
+        g = ok; g.mAgentKnown = false;
+        ensure("null agent: never writes", !mayWriteSaveFile(g));
+        g = ok; g.mAgentIsLoadedOwner = false;
+        ensure("account never loaded (validation failed): never writes", !mayWriteSaveFile(g));
+        g = ok; g.mDirty = false;
+        ensure("not dirty (quit with no edit): never writes", !mayWriteSaveFile(g));
+
+        g = ok; g.mLoadFailed = true;
+        ensure("unreadable file, no edit this session: never writes", !mayWriteSaveFile(g));
+        g.mEditedSinceLoadFail = true;
+        ensure("unreadable file, explicit edit: writes (store backs the file up first)", mayWriteSaveFile(g));
+        g.mDirty = false;
+        ensure("unreadable file, edit already saved: no write", !mayWriteSaveFile(g));
+
+        // Exhaustive: a write requires all four base conditions, whatever the failure flags are.
+        for (int bits = 0; bits < 64; ++bits)
+        {
+            SaveGateInput in;
+            in.mPersist = (bits & 1) != 0;
+            in.mAgentKnown = (bits & 2) != 0;
+            in.mAgentIsLoadedOwner = (bits & 4) != 0;
+            in.mDirty = (bits & 8) != 0;
+            in.mLoadFailed = (bits & 16) != 0;
+            in.mEditedSinceLoadFail = (bits & 32) != 0;
+            const bool base = in.mPersist && in.mAgentKnown && in.mAgentIsLoadedOwner && in.mDirty;
+            const bool expect = base && (!in.mLoadFailed || in.mEditedSinceLoadFail);
+            ensure_equals("gate truth table", mayWriteSaveFile(in), expect);
+        }
+    }
 }

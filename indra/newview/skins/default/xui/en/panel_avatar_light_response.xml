@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Generator input for Light Actors: widget renames/removals require director_kit_gen.py regeneration. -->
 <panel class="panel_avatar_light_response" follows="left|top|right" height="576" layout="topleft" name="panel_avatar_light_response" tool_tip="Changes how this avatar responds to every light, on your screen only. Adjusted avatars are always rendered and animated in full." width="360">
     <check_box
      control_name="AvatarLightResponseEnabled"

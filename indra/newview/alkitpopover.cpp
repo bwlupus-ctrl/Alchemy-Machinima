@@ -55,12 +55,23 @@ bool ALKitPopover::postBuild()
             height = 300;
         }
         reshape(width, height, true);
-        S32 top = height - 10;
+        constexpr S32 kGap    = 4;   // vertical gap between stacked children
+        constexpr S32 kMargin = 10;  // top and bottom inset
         // LLView::addChild() pushes to the front, so the child list runs in
         // reverse XML order; walk it backwards so the first XML row sits on top.
+        std::vector<LLView*> children;
         for (auto it = getChildList()->rbegin(); it != getChildList()->rend(); ++it)
+            children.push_back(*it);
+
+        // Pass 1: fixed heights come from the child or the fallback table; children
+        // with no explicit height ("flex", e.g. a word-wrapped text block) share
+        // whatever space is left after the fixed children, the gaps and the margins.
+        std::vector<S32> heights(children.size(), 0);
+        S32 fixed_total = 0;
+        S32 flex_count  = 0;
+        for (size_t i = 0; i < children.size(); ++i)
         {
-            LLView* child = *it;
+            LLView* child = children[i];
             S32 child_height = child->getRect().getHeight();
             if (child_height <= 1)
             {
@@ -69,11 +80,34 @@ bool ALKitPopover::postBuild()
                 else if (dynamic_cast<LLButton*>(child))
                     child_height = 24; // menu/command buttons: one standard kit button height
                 else
-                    child_height = height - 50;
+                    child_height = 0;  // flex: sized in pass 2
+            }
+            if (child_height <= 1)
+                ++flex_count;
+            heights[i] = child_height;
+            fixed_total += child_height;
+        }
+        const S32 gaps = children.empty() ? 0 : kGap * (S32(children.size()) - 1);
+        S32 flex_height = 0;
+        if (flex_count > 0)
+        {
+            const S32 space = height - 2 * kMargin - fixed_total - gaps;
+            flex_height = llmax(20, space / flex_count);
+        }
+
+        // Pass 2: stack top-down.
+        S32 top = height - kMargin;
+        for (size_t i = 0; i < children.size(); ++i)
+        {
+            LLView* child = children[i];
+            S32 child_height = heights[i];
+            if (child_height <= 1)
+            {
+                child_height = flex_height;
             }
             child->reshape(width - 20, child_height, true);
             child->setOrigin(10, top - child_height);
-            top -= child_height + 4;
+            top -= child_height + kGap;
         }
     }
     if (LLUICtrl* close = findChild<LLUICtrl>("btn_legend_close"))
@@ -132,6 +166,18 @@ void ALKitPopover::show()
 
 void ALKitPopover::hide()
 { setVisible(false); }
+
+void ALKitPopover::setVisible(bool visible)
+{
+    LLPanel::setVisible(visible);
+    // Every hide path (hide(), Esc, the close button, a direct setVisible(false))
+    // ends here, so the shell's open-popover tracking can never go stale.
+    if (!visible)
+    {
+        if (ALKitShell* shell = ALKitShell::find(this))
+            shell->popoverHidden(this);
+    }
+}
 
 void ALKitPopover::toggle()
 {

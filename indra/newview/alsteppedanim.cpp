@@ -221,10 +221,12 @@ bool particleAgeExpired(F32 age, F32 max_age)
     return age > max_age;
 }
 
-ParticleSubsteps particleSubsteps(F32 dt)
+ParticleSubsteps particleSubsteps(F32 dt, bool bounce)
 {
     constexpr F32 max_dt = 1.f / 30.f;
-    constexpr U32 max_steps = 16;
+    // Bounce particles get a wider budget so typical impact holds are fully
+    // integrated (the bounce plane is tested per substep) instead of tailed.
+    const U32 max_steps = bounce ? 64 : 16;
     const F32 integrated = llmin(dt, max_steps * max_dt);
     ParticleSubsteps out;
     out.count = llclamp(static_cast<U32>(std::ceil(integrated / max_dt)), U32(1), max_steps);

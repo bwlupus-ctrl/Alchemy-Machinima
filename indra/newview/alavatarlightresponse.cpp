@@ -15,6 +15,7 @@
 #include "alavatarkey.h"   // [ClientHeight] shared key helper
 #include "alghoststudio.h"
 #include "llagentdata.h"
+#include "llapp.h"
 #include "llappviewer.h"
 #include "llcontrolavatar.h"
 #include "llcharacter.h"
@@ -31,6 +32,11 @@
 #include "llvoavatar.h"
 
 #include <algorithm>
+#include <cerrno>
+#include <chrono>
+#include <ctime>
+#include <filesystem>
+#include <system_error>
 
 namespace
 {
@@ -58,7 +64,7 @@ ALAvatarLightResponse::EKind kindFromString(const std::string& str)
     return ALAvatarLightResponse::KIND_RESIDENT;
 }
 
-// ONE priority order for admission (import, file capture) and for the file write when the cap bites:
+// ONE priority order for admission (file load, scene import) when the cap bites:
 // 0 = your own entry, 1 = explicit identity / bypass (terminates fallback chains), 2 = everything else.
 int persistPriority(const LLUUID& key, const ALLightResponse::Params& params)
 {
@@ -67,6 +73,121 @@ int persistPriority(const LLUUID& key, const ALLightResponse::Params& params)
         return 0;
     }
     return ALLightResponse::isIdentity(params) ? 1 : 2;
+}
+
+// Copies an unreadable account file to a fresh name: base-YYYYMMDD-HHMMSS, then base-YYYYMMDD-HHMMSS-2, -3, ...
+// Each copy refuses to overwrite (copy_options::none), so a name taken in the meantime is never clobbered.
+// Returns false, with nothing written, when no backup can be made.
+bool backupUnreadableFile(const std::string& path, std::string& backup_out)
+{
+    try
+    {
+        const std::time_t now = std::time(nullptr);
+        char stamp[32] = "";
+        std::strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", localtime(&now));
+        const std::string base = path + ".bak-" + stamp;
+        const S64 source_size = LLFile::size(path);
+        for (int n = 1; n <= 99; ++n)
+        {
+            const std::string candidate = n == 1 ? base : base + "-" + std::to_string(n);
+            if (LLFile::exists(candidate))
+            {
+                continue;
+            }
+            std::error_code ec;
+            if (LLFile::copy(path, candidate, std::filesystem::copy_options::none, ec))
+            {
+                if (LLFile::size(candidate) != source_size)
+                {
+                    return false;   // the copy must match what it backs up
+                }
+                backup_out = candidate;
+                return true;
+            }
+            if (ec != std::errc::file_exists)
+            {
+                return false;   // a real failure, not a name collision: retrying other names will not help
+            }
+        }
+        return false;
+    }
+    catch (...)
+    {
+        LL_WARNS("AvatarLightResponse") << "Backup of \"" << path << "\" failed with an exception" << LL_ENDL;
+        return false;
+    }
+}
+
+// Best-effort removal of a temp file. Never throws; a failure is logged and otherwise ignored.
+void removeQuietly(const std::string& path)
+{
+    try
+    {
+        LLFile::remove(path, ENOENT);
+    }
+    catch (...)
+    {
+        LL_WARNS("AvatarLightResponse") << "Could not remove the temporary file \"" << path << "\"" << LL_ENDL;
+    }
+}
+
+// True only for exactly "<target>.tmp-<digits>-<digits>", the name saveToFile() creates (pid, then counter).
+bool isSaveTempName(const std::string& name, const std::string& target)
+{
+    const std::string prefix = target + ".tmp-";
+    if (name.size() <= prefix.size() || name.compare(0, prefix.size(), prefix) != 0)
+    {
+        return false;
+    }
+    const std::string rest = name.substr(prefix.size());
+    const std::string::size_type dash = rest.find('-');
+    if (dash == std::string::npos || dash == 0)
+    {
+        return false;
+    }
+    const std::string pid = rest.substr(0, dash);
+    const std::string counter = rest.substr(dash + 1);
+    const auto all_digits = [](const std::string& s)
+    {
+        return !s.empty() && s.find_first_not_of("0123456789") == std::string::npos;
+    };
+    return all_digits(pid) && all_digits(counter);
+}
+
+// Best effort, at load: removes temp files stranded by an interrupted save ("<file>.tmp-<pid>-<n>") that are
+// older than 10 minutes, so a live viewer's in-flight temp is never touched. Never throws.
+void removeStaleSaveFiles(const std::string& path)
+{
+    try
+    {
+        const std::filesystem::path file(path);
+        std::error_code ec;
+        const std::filesystem::directory_iterator end;
+        for (std::filesystem::directory_iterator it(file.parent_path(), ec); !ec && it != end; it.increment(ec))
+        {
+            const std::filesystem::path entry = it->path();
+            const std::string name = entry.filename().string();
+            if (!isSaveTempName(name, ALR_FILE_NAME))
+            {
+                continue;
+            }
+            std::error_code mtime_ec;
+            const std::filesystem::file_time_type mtime = std::filesystem::last_write_time(entry, mtime_ec);
+            if (mtime_ec)
+            {
+                continue;   // unknown age: leave it alone
+            }
+            if (std::filesystem::file_time_type::clock::now() - mtime < std::chrono::minutes(10))
+            {
+                continue;   // possibly another viewer's save in progress
+            }
+            LLFile::remove(entry, ENOENT);
+        }
+    }
+    catch (...)
+    {
+        LL_WARNS("AvatarLightResponse") << "Could not clean up stale save files next to \"" << path << "\"" << LL_ENDL;
+    }
 }
 }
 
@@ -119,7 +240,8 @@ ALAvatarLightResponse::ALAvatarLightResponse()
                     return;
                 }
                 captureFileExtras();
-                saveToFile();
+                mSaveDirty = true;   // the switch itself publishes the live table (not an edit of a file we could not read)
+                flushIfDirty();
             });
     }
 }
@@ -280,9 +402,13 @@ bool ALAvatarLightResponse::set(const LLUUID& key, EKind kind, const std::string
         sEverActive = true;
     }
     markChanged(key);
-    if (save_now && kind != KIND_CLONE)
+    if (kind != KIND_CLONE)
     {
-        saveIfPersist();
+        markUserEdit();
+        if (save_now)
+        {
+            flushIfDirty();
+        }
     }
     return true;
 }
@@ -292,35 +418,58 @@ void ALAvatarLightResponse::inherit(const LLUUID& key, bool save_now)
     // An explicit clear removes the file-only copy too, so no later save can bring it back.
     mPersistSuppressed.insert(key);
     const bool wasExtra = mPersistExtras.erase(key) > 0;
+    if (wasExtra)
+    {
+        markUserEdit();
+    }
     const auto it = mEntries.find(key);
     if (it == mEntries.end())
     {
         if (wasExtra && save_now)
         {
-            saveIfPersist();
+            flushIfDirty();
         }
         return;
     }
     const EKind kind = it->second.mKind;
     mEntries.erase(it);
     markChanged(key);
-    if (save_now && kind != KIND_CLONE)
+    if (kind != KIND_CLONE)
     {
-        saveIfPersist();
+        markUserEdit();
+        if (save_now)
+        {
+            flushIfDirty();
+        }
     }
 }
 
-void ALAvatarLightResponse::clearAll(bool save_now)
+void ALAvatarLightResponse::clearAll(bool save_now, bool user_action)
 {
     // "Reset all" removes file-only entries as well, for the rest of this session.
     mPersistSuppressAll = true;
-    const bool hadExtras = !mPersistExtras.empty();
+    bool hadStored = !mPersistExtras.empty();   // anything the file holds that this call removes
+    const bool hadExtras = hadStored;
     mPersistExtras.clear();
+    for (const auto& kv : mEntries)
+    {
+        if (kv.second.mKind != KIND_CLONE)
+        {
+            hadStored = true;
+            break;
+        }
+    }
+    // A confirmed reset by the user is an edit even when the table is already empty (e.g. after an unreadable
+    // file): it is what lets the empty store be saved. Internal calls do not count as an edit.
+    if (hadStored || user_action)
+    {
+        markUserEdit();
+    }
     if (mEntries.empty())
     {
-        if (hadExtras && save_now)
+        if ((hadExtras || user_action) && save_now)
         {
-            saveIfPersist();
+            flushIfDirty();
         }
         return;
     }
@@ -331,8 +480,14 @@ void ALAvatarLightResponse::clearAll(bool save_now)
     mChangeSignal();
     if (save_now)
     {
-        saveIfPersist();
+        flushIfDirty();
     }
+}
+
+void ALAvatarLightResponse::markUserEdit()
+{
+    mSaveDirty = true;
+    mEditedSinceLoadFail = true;
 }
 
 void ALAvatarLightResponse::markChanged(const LLUUID& key)
@@ -689,8 +844,9 @@ void ALAvatarLightResponse::debugLogTick()
 }
 
 // Called on the OFF -> ON transition. Reads the account file and keeps the entries the session does not
-// hold (not cleared or reset this session), admitted in the same order and under the same cap as import.
-// Live entries are never touched, so the user sees no change at the switch itself.
+// hold (not cleared or reset this session) as file-only extras. ALL of them are kept, past the cap too: the
+// cap limits what the session may ADD, never what a save drops. Live entries are never touched, so the user
+// sees no change at the switch itself.
 void ALAvatarLightResponse::captureFileExtras()
 {
     mPersistExtras.clear();
@@ -700,67 +856,66 @@ void ALAvatarLightResponse::captureFileExtras()
         return;
     }
     const std::string path = gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, ALR_FILE_NAME);
-    llifstream in(path.c_str());
-    if (!in.is_open())
+    if (!LLFile::exists(path))
     {
         return;
     }
+    llifstream in(path.c_str());
     LLSD root;
-    const S32 ret = LLSDSerialize::fromXML(root, in);
-    in.close();
+    S32 ret = LLSDParser::PARSE_FAILURE;
+    if (in.is_open())
+    {
+        ret = LLSDSerialize::fromXML(root, in);
+        in.close();
+    }
     if (ret == LLSDParser::PARSE_FAILURE || !root.isMap() || !root.has("entries") || !root["entries"].isMap())
     {
+        // An existing file we cannot read: never rewrite it without an explicit edit, and back it up first.
+        LL_WARNS("AvatarLightResponse") << "Cannot read \"" << path << "\" to keep its entries" << LL_ENDL;
+        mLoadFailed = true;
+        mEditedSinceLoadFail = false;   // an earlier edit must not let this switch alone overwrite the unreadable file
         return;
     }
-    for (int pass = 0; pass < 3; ++pass)
+    mLoadFailed = false;   // readable now; its entries are kept as extras below
+    for (const auto& kv : llsd::inMap(root["entries"]))
     {
-        for (const auto& kv : llsd::inMap(root["entries"]))
+        const LLUUID key = keyFromString(kv.first);
+        if (key.isNull() || !kv.second.isMap() || kindFromString(kv.second["kind"].asString()) == KIND_CLONE)
         {
-            const LLUUID key = keyFromString(kv.first);
-            if (key.isNull() || !kv.second.isMap() || kindFromString(kv.second["kind"].asString()) == KIND_CLONE)
-            {
-                continue;
-            }
-            if (mEntries.find(key) != mEntries.end() || mPersistSuppressed.find(key) != mPersistSuppressed.end())
-            {
-                continue;
-            }
-            const ALLightResponse::Params params = ALLightResponse::fromLLSD(kv.second);
-            if (persistPriority(key, params) != pass)
-            {
-                continue;
-            }
-            if (key != gAgentID && storedEntryCount() >= ALR_MAX_ENTRIES)
-            {
-                continue;   // same capacity rule as set() and importMerge()
-            }
-            mPersistExtras[key] = kv.second;
+            continue;
         }
+        if (mEntries.find(key) != mEntries.end() || mPersistSuppressed.find(key) != mPersistSuppressed.end())
+        {
+            continue;
+        }
+        mPersistExtras[key] = kv.second;
     }
 }
 
-void ALAvatarLightResponse::saveIfPersist() const
+void ALAvatarLightResponse::flushIfDirty()
 {
-    if (gSavedSettings.getBOOL("AvatarLightResponsePersist"))
+    if (mSaveDirty)
     {
         saveToFile();
     }
 }
 
-void ALAvatarLightResponse::saveToFile() const
+bool ALAvatarLightResponse::saveToFile()
 {
-    if (gAgentID.isNull())
+    ALLightResponse::SaveGateInput gate;
+    gate.mPersist             = gSavedSettings.getBOOL("AvatarLightResponsePersist");
+    gate.mAgentKnown          = gAgentID.notNull();   // "self" cannot be keyed yet: writing now would erase the saved self entry
+    gate.mAgentIsLoadedOwner  = gAgentID == mLoadedForAgent;
+    gate.mDirty               = mSaveDirty;
+    gate.mLoadFailed          = mLoadFailed;
+    gate.mEditedSinceLoadFail = mEditedSinceLoadFail;
+    if (!ALLightResponse::mayWriteSaveFile(gate))
     {
-        return;   // "self" cannot be keyed yet: writing now would erase the saved self entry
+        return false;
     }
     // Live entries, then file-only extras for targets the table does not hold. Clones are session-only.
-    struct Pending
-    {
-        int    priority;
-        LLUUID key;
-        LLSD   entry;
-    };
-    std::vector<Pending> pending;
+    // Nothing is dropped for the cap: extras beyond it came from the file and stay in it.
+    LLSD entries = LLSD::emptyMap();
     for (const auto& kv : mEntries)
     {
         if (kv.second.mKind == KIND_CLONE)
@@ -770,7 +925,7 @@ void ALAvatarLightResponse::saveToFile() const
         LLSD e = ALLightResponse::toLLSD(kv.second.mParams);
         e["kind"]  = kindToString(kv.second.mKind);
         e["label"] = kv.second.mLabel;
-        pending.push_back({ persistPriority(kv.first, kv.second.mParams), kv.first, e });
+        entries[keyToString(kv.first)] = e;
     }
     for (const auto& kv : mPersistExtras)
     {
@@ -778,29 +933,89 @@ void ALAvatarLightResponse::saveToFile() const
         {
             continue;   // the live entry is the one that is saved
         }
-        pending.push_back({ persistPriority(kv.first, ALLightResponse::fromLLSD(kv.second)), kv.first, kv.second });
-    }
-    // Same cap and order as admission: self, then identity/bypass, then the rest.
-    std::stable_sort(pending.begin(), pending.end(),
-                     [](const Pending& a, const Pending& b) { return a.priority < b.priority; });
-    LLSD entries = LLSD::emptyMap();
-    for (size_t i = 0; i < pending.size() && i < ALR_MAX_ENTRIES; ++i)
-    {
-        entries[keyToString(pending[i].key)] = pending[i].entry;
+        entries[keyToString(kv.first)] = kv.second;
     }
     LLSD root = LLSD::emptyMap();
     root["version"] = 1;
     root["entries"] = entries;
 
     const std::string path = gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, ALR_FILE_NAME);
-    llofstream out(path.c_str());
-    if (!out.is_open())
+    // Unique per process and per save, so two viewers on one account (or two saves in a row) never share a temp file.
+    static U32 sSaveCount = 0;
+    const std::string tmp_path = path + ".tmp-" + std::to_string(LLApp::getPid()) + "-" + std::to_string(++sSaveCount);
+    try
     {
-        LL_WARNS("AvatarLightResponse") << "Can't open \"" << path << "\" for writing" << LL_ENDL;
-        return;
+        if (mLoadFailed && LLFile::exists(path))
+        {
+            // A file this session could not read: keep a copy under a fresh name before the first overwrite.
+            // No backup, no write: the edit stays dirty and the warning is given once until a save or load succeeds.
+            std::string backup;
+            if (!backupUnreadableFile(path, backup))
+            {
+                if (!mBackupWarned)
+                {
+                    LL_WARNS("AvatarLightResponse") << "Backup of the unreadable \"" << path
+                                                    << "\" failed; leaving it untouched and keeping the edit unsaved" << LL_ENDL;
+                    mBackupWarned = true;
+                }
+                return false;
+            }
+            LL_WARNS("AvatarLightResponse") << "Saving over an unreadable \"" << path << "\"; keeping the old file as \""
+                                            << backup << "\"" << LL_ENDL;
+        }
+        // Write the whole temp file first; the target is untouched until it is complete.
+        {
+            llofstream out(tmp_path.c_str());
+            if (!out.is_open())
+            {
+                LL_WARNS("AvatarLightResponse") << "Can't open \"" << tmp_path << "\" for writing" << LL_ENDL;
+                return false;
+            }
+            LLSDSerialize::toPrettyXML(root, out);
+            out.flush();
+            out.close();
+            // Stream state is checked AFTER close: buffered write errors surface there, not before it.
+            llstat st;
+            const bool written = !out.fail() && LLFile::stat(tmp_path, &st) == 0 && st.st_size > 0;
+            if (!written)
+            {
+                LL_WARNS("AvatarLightResponse") << "Write to \"" << tmp_path << "\" failed; \"" << path
+                                                << "\" is unchanged" << LL_ENDL;
+                removeQuietly(tmp_path);
+                return false;
+            }
+        }
+        // One rename replaces the target in place (LLFile::rename replaces an existing file on Windows).
+        // On failure the temp file is removed, the target is untouched and the store stays dirty for a retry.
+        if (LLFile::rename(tmp_path, path) != 0)
+        {
+            removeQuietly(tmp_path);
+            if (!mSaveFailWarned)
+            {
+                LL_WARNS("AvatarLightResponse") << "Could not replace \"" << path
+                                                << "\"; the file is unchanged and the edit stays unsaved (retried on the next save)" << LL_ENDL;
+                mSaveFailWarned = true;
+            }
+            return false;
+        }
     }
-    LLSDSerialize::toPrettyXML(root, out);
-    out.close();
+    catch (...)
+    {
+        removeQuietly(tmp_path);
+        if (!mSaveFailWarned)
+        {
+            LL_WARNS("AvatarLightResponse") << "Saving \"" << path
+                                            << "\" failed with an exception; the file is unchanged and the edit stays unsaved" << LL_ENDL;
+            mSaveFailWarned = true;
+        }
+        return false;
+    }
+    mSaveDirty = false;
+    mLoadFailed = false;   // the old file is backed up and replaced; later saves are ordinary
+    mBackupWarned = false;
+    mSaveFailWarned = false;
+    mSavedSignal();
+    return true;
 }
 
 void ALAvatarLightResponse::loadFromFile()
@@ -815,6 +1030,12 @@ void ALAvatarLightResponse::loadFromFile()
     mPersistExtras.clear();
     mPersistSuppressed.clear();
     mPersistSuppressAll = false;
+    mSaveDirty = false;
+    mLoadedForAgent = gAgentID;   // writes are allowed only for the account that was loaded here
+    mLoadFailed = false;
+    mEditedSinceLoadFail = false;
+    mBackupWarned = false;
+    mSaveFailWarned = false;
     mUploadsNow.clear();
     mUploadsLast.clear();
     mDirty = true;
@@ -823,25 +1044,47 @@ void ALAvatarLightResponse::loadFromFile()
     gSavedSettings.setBOOL("AvatarSilhouetteForceEmissive", false);
     mChangeSignal();
 
+    if (gAgentID.notNull())
+    {
+        removeStaleSaveFiles(gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, ALR_FILE_NAME));
+    }
     if (!gSavedSettings.getBOOL("AvatarLightResponsePersist"))
     {
         return;
     }
     const std::string path = gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, ALR_FILE_NAME);
-    llifstream in(path.c_str());
-    if (!in.is_open())
+    if (!LLFile::exists(path))
     {
         return;   // first run: nothing saved yet
     }
+    llifstream in(path.c_str());
     LLSD root;
-    const S32 ret = LLSDSerialize::fromXML(root, in);
-    in.close();
-    if (ret == LLSDParser::PARSE_FAILURE || !root.isMap())
+    S32 ret = LLSDParser::PARSE_FAILURE;
+    if (in.is_open())
     {
+        ret = LLSDSerialize::fromXML(root, in);
+        in.close();
+    }
+    if (ret == LLSDParser::PARSE_FAILURE || !root.isMap() || !root.has("entries") || !root["entries"].isMap())
+    {
+        // An existing file we could not read (parse failure, lock, unreadable): never rewrite it from an
+        // empty table. flushIfDirty() waits for an explicit edit and backs the file up first.
         LL_WARNS("AvatarLightResponse") << "Ignoring unreadable \"" << path << "\"" << LL_ENDL;
+        mLoadFailed = true;
         return;
     }
-    importMerge(root);
+    // Entries past the cap stay in the file as file-only extras: a save never truncates it.
+    std::map<LLUUID, LLSD> overflow;
+    mergeEntries(root, &overflow);
+    if (!overflow.empty())
+    {
+        LL_WARNS("AvatarLightResponse") << "\"" << path << "\" holds " << overflow.size()
+                                        << " entries past the " << ALR_MAX_ENTRIES << " cap; keeping them unused" << LL_ENDL;
+        for (const auto& kv : overflow)
+        {
+            mPersistExtras[kv.first] = kv.second;
+        }
+    }
 }
 
 LLSD ALAvatarLightResponse::exportFor(const std::vector<LLUUID>& ids) const
@@ -868,6 +1111,16 @@ LLSD ALAvatarLightResponse::exportFor(const std::vector<LLUUID>& ids) const
 
 bool ALAvatarLightResponse::importMerge(const LLSD& data)
 {
+    const bool any = mergeEntries(data, nullptr);
+    if (any)
+    {
+        markUserEdit();   // a scene import changes what the account file should hold; the caller flushes
+    }
+    return any;
+}
+
+bool ALAvatarLightResponse::mergeEntries(const LLSD& data, std::map<LLUUID, LLSD>* overflow)
+{
     if (!data.isMap() || !data.has("entries") || !data["entries"].isMap())
     {
         return false;
@@ -891,7 +1144,7 @@ bool ALAvatarLightResponse::importMerge(const LLSD& data)
                 continue;
             }
             const ALLightResponse::Params params = ALLightResponse::fromLLSD(kv.second);
-            const int priority = (key == gAgentID) ? 0 : (ALLightResponse::isIdentity(params) ? 1 : 2);
+            const int priority = persistPriority(key, params);
             if (priority != pass)
             {
                 continue;
@@ -899,6 +1152,10 @@ bool ALAvatarLightResponse::importMerge(const LLSD& data)
             const bool known = mEntries.find(key) != mEntries.end() || mPersistExtras.find(key) != mPersistExtras.end();
             if (key != gAgentID && !known && storedEntryCount() >= ALR_MAX_ENTRIES)
             {
+                if (overflow)
+                {
+                    (*overflow)[key] = kv.second;   // file load: keep it in the file, just not in the live table
+                }
                 continue;   // same capacity rule as set(): a hostile file/scene cannot grow the table without bound
             }
             if (key == gAgentID)

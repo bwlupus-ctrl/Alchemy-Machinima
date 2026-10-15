@@ -78,6 +78,30 @@ F32 calc_desired_size(LLViewerCamera* camera, LLVector3 pos, LLVector2 scale)
     return llclamp(desired_size, scale.magVec()*0.5f, PART_SIM_BOX_SIDE*2);
 }
 
+// Bounce rule against the source's height plane; shared by the per-substep test
+// and the ballistic tail so a long hold can never leave a particle below the plane.
+static void bounce_off_source_plane(LLViewerPart* part)
+{
+    F32 dz = part->mPosAgent.mV[VZ] - part->mPartSourcep->mPosAgent.mV[VZ];
+    if (dz < 0)
+    {
+        part->mPosAgent.mV[VZ] += -2.f*dz;
+        part->mVelocity.mV[VZ] *= -0.75f;
+    }
+}
+
+// Long-tail variant: a mirror would reflect the whole fall back above the source. Land the
+// particle on the plane instead, with the same velocity reflection as bounce_off_source_plane.
+static void land_on_source_plane(LLViewerPart* part)
+{
+    F32 dz = part->mPosAgent.mV[VZ] - part->mPartSourcep->mPosAgent.mV[VZ];
+    if (dz < 0)
+    {
+        part->mPosAgent.mV[VZ] -= dz;
+        part->mVelocity.mV[VZ] *= -0.75f;
+    }
+}
+
 LLViewerPart::LLViewerPart() :
     mPartID(0),
     mLastUpdateTime(0.f),
@@ -406,17 +430,41 @@ void LLViewerPartGroup::updateParticles(const F32 lastdt, F32 step_dt, bool step
         integration.dt = dt;
         if (step_capture && (part->mFlags & (LLPartData::LL_PART_WIND_MASK |
                 LLPartData::LL_PART_TARGET_POS_MASK | LLPartData::LL_PART_BOUNCE_MASK)))
-            integration = ALSteppedAnim::particleSubsteps(dt);
+            integration = ALSteppedAnim::particleSubsteps(dt,
+                (part->mFlags & LLPartData::LL_PART_BOUNCE_MASK) != 0);
         if (integration.ballisticDt > 0.f)
         {
             // Long impact holds can exceed the bounded force-integration budget.
             // Preserve the full ballistic interval and lifetime even at that cap.
             const F32 tail = integration.ballisticDt;
             const LLVector3 displacement = tail * part->mVelocity + .5f * tail * tail * part->mAccel;
-            part->mPosAgent += displacement;
-            if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK) part->mPosOffset += displacement;
+            const bool follow_src = (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK) != 0;
+            const bool bounce = (part->mFlags & LLPartData::LL_PART_BOUNCE_MASK) != 0;
+            if (follow_src && bounce)
+            {
+                // Carry the source's current translation into the tail before the bounce test.
+                // Otherwise a source that moved during the hold reads as a fall through the plane.
+                part->mPosOffset += displacement;
+                part->mPosAgent = part->mPartSourcep->mPosAgent;
+                part->mPosAgent += part->mPosOffset;
+            }
+            else
+            {
+                part->mPosAgent += displacement;
+                if (follow_src) part->mPosOffset += displacement;
+            }
             part->mVelocity += tail * part->mAccel;
             part->mLastUpdateTime += tail;
+            // The tail ignores the bounce plane, so land on it afterwards (no mirrored multi-metre rebound).
+            if (bounce)
+            {
+                land_on_source_plane(part);
+                if (follow_src)
+                {
+                    part->mPosOffset = part->mPosAgent;
+                    part->mPosOffset -= part->mPartSourcep->mPosAgent;
+                }
+            }
         }
         for (U32 substep = 0; substep < integration.count; ++substep)
         {
@@ -483,12 +531,7 @@ void LLViewerPartGroup::updateParticles(const F32 lastdt, F32 step_dt, bool step
             {
                 // Need to do point vs. plane check...
                 // For now, just check relative to object height...
-                F32 dz = part->mPosAgent.mV[VZ] - part->mPartSourcep->mPosAgent.mV[VZ];
-                if (dz < 0)
-                {
-                    part->mPosAgent.mV[VZ] += -2.f*dz;
-                    part->mVelocity.mV[VZ] *= -0.75f;
-                }
+                bounce_off_source_plane(part);
             }
 
 

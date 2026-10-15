@@ -686,4 +686,14 @@ Params fromLLSD(const LLSD& s)
     p.mBypass     = s.isMap() && s.has("bypass") && s["bypass"].asBoolean();
     return sanitize(p);
 }
+
+bool mayWriteSaveFile(const SaveGateInput& in)
+{
+    if (!in.mPersist || !in.mAgentKnown || !in.mAgentIsLoadedOwner || !in.mDirty)
+    {
+        return false;
+    }
+    // A file we could not read is never overwritten by an untouched session.
+    return !in.mLoadFailed || in.mEditedSinceLoadFail;
+}
 }

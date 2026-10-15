@@ -29,6 +29,6 @@ void ALFloaterAvatarLightResponse::onOpen(const LLSD& key)
 
 void ALFloaterAvatarLightResponse::onClose(bool app_quitting)
 {
-    ALAvatarLightResponse::instance().saveIfPersist();
+    ALAvatarLightResponse::instance().flushIfDirty();
     LLFloater::onClose(app_quitting);
 }

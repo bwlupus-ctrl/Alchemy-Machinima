@@ -224,8 +224,9 @@ def validate_data(data: dict) -> None:
     # the Scene login-self toggle.  This is source-data completeness, not a
     # generated/legacy page-classification pin.
     # 2065: + Step particles and Step texture animation toggles (10/15).
-    if len(pages) != 36 or row_count != 2065:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 36/2065")
+    # 2066: + Actors Remember-between-sessions toggle; Isolation test combo replaced by one trigger button (10/15)
+    if len(pages) != 36 or row_count != 2066:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 36/2066")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -358,7 +359,7 @@ def apply_config(page: dict, cfg: dict) -> dict:
 
 def matched_node(row: dict, by_name: dict[str, ET.Element],
                  by_control: dict[str, list[ET.Element]]) -> ET.Element | None:
-    node = by_name.get(str(row.get("w", "")))
+    node = by_name.get(str(row.get("source_widget", row.get("w", ""))))
     if node is not None and (row.get("w") != "check_box" or not row.get("s")):
         return node
     candidates = by_control.get(str(row.get("s", "")), []) if row.get("s") else []
@@ -465,6 +466,10 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
         tag = hosted.tag
         kind = HOST_KIND.get(tag, "custom")
         child = stripped_copy(hosted)
+        child.set("name", widget)
+        for node in child.iter():
+            if node.get("name") in row.get("child_names", {}):
+                node.set("name", str(row["child_names"][node.get("name")]))
         if tag == "check_box":
             child.tag = "kit_switch"
         elif tag in {"slider", "spinner"} and requested in {"dial", "arc"} and widget not in referenced:
@@ -604,6 +609,8 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         # kit_lint's bind="setting" control-child rule cannot apply to them.
         bind = "none"
     attrs["bind"] = bind
+    if row.get("bulk_reset") is False:
+        attrs["bulk_reset"] = "false"
     if row.get("no_widget_history"):
         attrs["widget_history"] = "false"
     mapping = (("h", "help"), ("kw", "keywords"), ("unit", "unit"), ("sub", "sub"),
@@ -799,9 +806,12 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
                                                cfg.get("label_names", {})))
     preset = cfg.get("preset", {})
     if preset.get("mode") == "widgets":
-        host = ET.SubElement(body, "kit_preset_host", {"name": "kit_preset_host"})
-        for key in ("combo", "save", "delete"):
+        host = ET.SubElement(body, "kit_preset_host", {
+            "name": page["name"].removesuffix("_tab") + "_preset_host"})
+        for key in ("combo", "apply", "save", "delete"):
             name = preset.get(key)
+            if not name and key != "combo":
+                continue
             if not name or name not in by_name:
                 raise GenError(f"preset widget {name!r} not found")
             host.append(stripped_copy(by_name[name], strip_label=False))
@@ -1172,6 +1182,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     classes = {f"{g['name']}/{p['name']}": classify(g["name"], p, config, leaves)
                for g, p in flatten_pages(data)}
     expected = {"light_group/cine_light_rig_tab": "kit (P0)", "light_group/light_rim_tab": "kit (P0)",
+                "light_group/actors_tab": "kit (P0)",
                 "camera_group/vcam_tab": "kit (P0)", "look_group/stylize_tab": "kit (P0)",
                 "look_group/tron_tab": "kit (P0)", "look_group/image_tab": "kit (P0)",
                 "look_group/actor_style_tab": "kit (P0)",
@@ -1188,7 +1199,8 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # World/Lens batch: kit 7 -> 13, legacy 27 -> 21. 10/14: new Stepped page (kit_pages
     # entry => kit (P0)) kit 13 -> 14; legacy unchanged at 21. 10/14 Camera+Capture
     # batch: kit 14 -> 21, legacy 21 -> 14.
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 21, "pure kit (new)": 1, "legacy": 14}):
+    # 10/15 Light Actors: kit 21 -> 22, legacy 14 -> 13
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 22, "pure kit (new)": 1, "legacy": 13}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -1255,7 +1267,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
         checks = []
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 21, "pure kit (new)": 1, "legacy": 14})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 22, "pure kit (new)": 1, "legacy": 13})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -1292,7 +1304,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
             apply_page_features(expected_legacy, key, config.get("page_features", {}))
             apply_kit_xui_style(expected_legacy)
             legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(expected_legacy)
-        checks.append(("14 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 14))
+        checks.append(("13 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 13))
         dials = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]
         checks.append(("all compass dials use kit geometry without duplicate readout",
@@ -1311,7 +1323,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("look Tron page is a generated kit page (no launcher)",
                        not launcher_cards and len(list(tron.iter("kit_row"))) > 100
                        and any(node.get("page") == "look_group/tron_tab" for node in tron.iter("kit_page"))))
-        checks.append(("36 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 36))
+        checks.append(("37 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 37))
         synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
         exposure_aliases = synonym_aliases("Exposure", synonyms).split()
         checks.append(("synonym expansion is bidirectional and index-ready",

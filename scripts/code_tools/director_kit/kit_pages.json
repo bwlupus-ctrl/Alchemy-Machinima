@@ -200,6 +200,89 @@
    "v1_sources": [],
    "actor_target": true,
    "label_names": {}
+  },
+  "light_group/actors_tab": {
+   "v1_sources": [
+    "panel_avatar_light_response.xml"
+   ],
+   "root_class": "panel_avatar_light_response",
+   "root_name": "actors_tab_logic",
+   "preset": {
+    "mode": "widgets",
+    "combo": "combo_preset",
+    "apply": "btn_apply_preset"
+   },
+   "selector_settings": {},
+   "card_enables": {},
+   "row_overrides": {
+    "btn_reset_all": {"w": "la_btn_reset_all", "source_widget": "btn_reset_all"},
+    "target_list": {
+     "no_widget_history": true,
+     "row_height": 140,
+     "child_names": {"name": "la_name"}
+    },
+    "chk_only_adjusted": {
+     "no_widget_history": true
+    },
+    "sld_diffuse": {
+     "no_widget_history": true
+    },
+    "sld_tame": {
+     "no_widget_history": true
+    },
+    "sld_brightness": {
+     "no_widget_history": true
+    },
+    "sld_glow": {
+     "no_widget_history": true
+    },
+    "chk_bypass": {
+     "no_widget_history": true
+    },
+    "sld_sil_amount": {
+     "no_widget_history": true
+    },
+    "combo_sil_fill": {
+     "no_widget_history": true
+    },
+    "swatch_sil_fill": {
+     "no_widget_history": true
+    },
+    "chk_sil_haze": {
+     "no_widget_history": true
+    },
+    "chk_sil_keep_rim": {
+     "no_widget_history": true
+    },
+    "chk_persist": {
+     "bulk_reset": false
+    }
+   },
+   "add_rows": [
+    {
+     "card": "silhouette",
+     "after": "chk_sil_keep_rim",
+     "row": {
+      "k": "readout",
+      "w": "txt_sil_note",
+      "l": "Note",
+      "show_if": "sil_note",
+      "h": "Shown only while the silhouette is getting ready, or when Keep rim needs Rig Rim."
+     }
+    },
+    {
+     "card": "actors_diagnostics",
+     "after": "txt_status",
+     "row": {
+      "k": "readout",
+      "w": "txt_budget",
+      "l": "Frame rate",
+      "show_if": "over_budget",
+      "h": "Shown when changed avatars exceed your avatar impostor limit. They then draw at full detail, which costs frame rate."
+     }
+    }
+   ],
+   "label_names": {}
   }
  },
  "layout_overrides": {"look_group/bloom_glow_tab": {"row_overrides": {"set_RenderBloomMipCount": {"row_height": 32}}}},
@@ -215,5 +298,16 @@
                   "card_light_cues_summary": "retired launcher replaced by the inline Light Cues list",
                   "cine_light_rig_flow_grid": "v1 layout container",
                   "cine_*_card": "v1 card containers (glob)",
-                  "cine_*_label": "v1 decoration labels not referenced by C++ (glob; the referenced ones must exist)"}
+                  "cine_*_label": "v1 decoration labels not referenced by C++ (glob; the referenced ones must exist)",
+  "actors_flow_scroll": "v1 layout container",
+  "actors_flow_grid": "v1 layout container",
+  "actors_light_response_card": "v1 layout container",
+  "actors_light_response_card_title": "v1 layout container",
+  "director_light_response_panel": "v1 layout container",
+  "card_actor_mask": "retired Director launcher replaced by the inline Actor only card",
+  "card_actor_mask_title": "retired Director launcher replaced by the inline Actor only card",
+  "card_actor_mask_summary": "retired Director launcher replaced by the inline Actor only card",
+  "card_actor_mask_open": "retired Director launcher replaced by the inline Actor only card",
+  "txt_sil_header": "static heading replaced by the Silhouette card title"
+ }
 }

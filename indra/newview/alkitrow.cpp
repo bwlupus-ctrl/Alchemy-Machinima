@@ -144,6 +144,7 @@ ALKitRow::Params::Params() :
     hidden("hidden", false),
     added("added", false),
     widget_history("widget_history", true),
+    bulk_reset("bulk_reset", true),
     row_height("row_height", 28),
     decimals("decimals", 3),
     min_val("min_val", 0.f),
@@ -164,7 +165,8 @@ ALKitRow::ALKitRow(const Params& p) :
     mWhoPicker(p.who_picker),
     mHidden(p.hidden),
     mAdded(p.added),
-    mWidgetHistory(p.widget_history)
+    mWidgetHistory(p.widget_history),
+    mBulkReset(p.bulk_reset)
 {
     ALKitStyle::color(ALKitStyle::WINDOW_BG);
     mMeta.kind           = p.kind;
@@ -796,6 +798,11 @@ void ALKitRow::resolveBinding()
             addChild(mReset);
         }
         bindingChanged();
+        // The card's reset-icon visibility (can_reset in ALKitCard::layoutBody) depends on which rows are
+        // resettable. A binding that arrives after the first layout (registry rebind via
+        // ALKitPage::rebindRows) must relayout the card; requestLayout() is coalesced to one idle pass.
+        if (ALKitCard* owner = card())
+            owner->requestLayout();
     }
 }
 
@@ -860,6 +867,8 @@ ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
     params.decimals = source->mMeta.decimals;
     params.min_val = source->mMeta.has_min ? source->mMeta.min_val : -1000000.f;
     params.max_val = source->mMeta.has_max ? source->mMeta.max_val : 1000000.f;
+    // A non-resettable source stays non-resettable: a Quick reset must never reach its setting.
+    params.bulk_reset = source->mBulkReset;
     ALKitRow* proxy = new ALKitRow(params);
     proxy->mSourceRow = source->getDerivedHandle<ALKitRow>();
     if (open_on_page)

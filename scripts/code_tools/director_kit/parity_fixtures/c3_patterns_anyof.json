@@ -1,0 +1,6 @@
+{"patterns": [],
+ "expressions": [
+  {"expression": "either_ok", "names": ["fx_nothere", "fx_slider"], "any_of": true},
+  {"expression": "either_none", "names": ["fx_missing_a", "fx_missing_b"], "any_of": true},
+  {"expression": "all_of_expr", "names": ["fx_slider", "fx_nothere"]}
+ ]}

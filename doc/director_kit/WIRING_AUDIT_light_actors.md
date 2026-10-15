@@ -190,3 +190,80 @@ Not run: the layout check (`xui_layout_check`), the generator, and any build. Th
 - Whether the generator's `reset_setting()` path produces the "Reset bias" button for `CineLightRigActorMaskBias`.
 - Whether `alkitrow` can host an existing panel-owned `scroll_list` as a custom row without the generator creating its own list (the `list` kind mapping is `director_kit_gen.py:53-66`).
 - Whether `ALActorLightKitAdapter` exists under another name or in an unpushed branch.
+
+
+## Kit conversion verification
+
+Implemented 2026-10-15 against checkpoint a04435b1f55. The spec supersedes the proposals above: the shared ALPanelAvatarLightResponse is the generated page root. Q1: show first selected/write all, without a mixed indicator. Q2 user override: AvatarLightResponsePersist is a preference and is excluded from page AND card resets through bulk_reset=false; individual setting binding remains intact. Q3: no per-avatar undo.
+
+The table below completes the spec validation table. PASS in code-verified means source/XUI verification only, never a runtime claim. UI ranges were compared to sanitize and the actual consumer; combo values were compared to EFillPreset/EPreset and command consumers. Store.set sanitizes every write (alavatarlightresponse.cpp:275). The second bias clamp mentioned in the original spec, pipeline.cpp:25538, belongs to AvatarSilhouetteCoverBias; the Actor Mask clamp is at :25703. All runtime results remain explicitly unrun because the user prohibited any viewer run.
+
+| # | widget | writes | type | UI range ↔ store, clamp | combo values | handler | read-back | runtime oracle | code-verified | runtime result |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | chk_enabled (master) | `AvatarLightResponseEnabled` | Boolean | - | - | kit master; store constructor:94 | setting binding | toggle → setting false/true | PASS (static): Boolean master setting; store commit invalidates table and impostors (store constructor:94). | Not run: viewer run prohibited. |
+| 2 | chk_persist | `AvatarLightResponsePersist` | Boolean | - | - | kit setting; store constructor:108-122 | setting binding | toggle → setting; in-world: file written on ON | PASS (static): Boolean setting, default 0; ON captures extras then saves (store:108-122); generated bulk_reset=false. | Not run: viewer run prohibited. |
+| 3 | target_list | panel selection | multi list | - | - | panel onSelectionChanged:821 | selectedKeys / refreshEditors | select fixture → sliders enabled, show the fixture's values | PASS (static): multi-select scroll_list retains state/name/kind; selection callback refreshes first-selected editors. | Not run: viewer run prohibited. |
+| 4 | chk_only_adjusted | panel filter | bool | - | - | panel postBuild:88 | refreshRows filter | ON hides unchanged rows | PASS (static): panel-local Boolean filter; commit rebuilds list and refreshes editors. | Not run: viewer run prohibited. |
+| 5 | btn_refresh | idle flags | - | - | - | panel postBuild:88 | idleUpdate -> refreshRows | commit; list rebuilt next idle | PASS (static): Refresh sets idle row/state flags; idleUpdate coalesces list rebuild to 1 Hz. | Not run: viewer run prohibited. |
+| 6 | light_response_popout | opens floater | - | - | - | Director bindLightActorsPage:1480 | floater registration key | floater visible, key = cast id or `gAgentID` | PASS (static): Director binder opens avatar_light_response with cast UUID or gAgentID. | Not run: viewer run prohibited. |
+| 7 | sld_diffuse | `Params::mDiffuse` | F32 | 0..100 ↔ 0..1, model.cpp:106 | - | panel onSliderCommit:830 | panel refreshEditors:707 | 50 → 0.5 ±1e-4, other fields unchanged | PASS (static): mDiffuse=v/100; model clamp 0..1; refreshEditors multiplies by 100. | Not run: viewer run prohibited. |
+| 8 | sld_tame | `mTame` | F32 | 0..100 ↔ 0..1, :107 | - | panel onSliderCommit:830 | panel refreshEditors:707 | 25 → 0.25 | PASS (static): mTame=v/100; model clamp 0..1; refreshEditors multiplies by 100. | Not run: viewer run prohibited. |
+| 9 | sld_brightness | `mExposureEV` | F32 | -2..1 ↔ same, :108 | - | panel onSliderCommit:830 | panel refreshEditors:707 | -1.0 → -1.0 | PASS (static): mExposureEV=v; model clamp -2..1; refreshEditors reads EV unchanged. | Not run: viewer run prohibited. |
+| 10 | txt_brightness_ev | display | - | - | - | panel refreshBrightnessValue:770 | formatted slider value | after #9: "-1.00 EV" | PASS (static): refreshBrightnessValue formats signed %.2f EV from the slider. | Not run: viewer run prohibited. |
+| 11 | sld_glow | `mGlow` | F32 | 0..200 ↔ 0..2, :109 | - | panel onSliderCommit:830 | panel refreshEditors:707 | 150 → 1.5 | PASS (static): mGlow=v/100; model clamp 0..2; refreshEditors multiplies by 100. | Not run: viewer run prohibited. |
+| 12 | chk_bypass | `mBypass` | bool | - | - | panel onBypass:954 | panel refreshEditors:707 | ON → true | PASS (static): mBypass Boolean; applyParams(save_now=true); first-selected read-back. | Not run: viewer run prohibited. |
+| 13 | sld_sil_amount | `mSilAmount` | F32 | 0..100 ↔ 0..1, :110 | - | panel onSliderCommit:830 | panel refreshEditors:707 | 40 → 0.4 | PASS (static): mSilAmount=v/100; model clamp 0..1; refreshEditors multiplies by 100. | Not run: viewer run prohibited. |
+| 14 | combo_sil_fill | `mSilFillSrgb` | vec3 | each 0..1, :113 | 0-5 = `EFillPreset` model.h:105-114 | panel onSilFillPreset:902 | panel refreshEditors:707 | item 2 → `fillPresetSrgb(FILL_WHITE)`; item 5 → no write | PASS (static): Values 0..5 match EFillPreset; 2=white, 5=Custom/no write; matchFillPreset read-back. | Not run: viewer run prohibited. |
+| 15 | swatch_sil_fill | `mSilFillSrgb` | vec3 | each 0..1, :113 | - | panel onSilFill:866 | panel refreshEditors:707 | (0.2,0.4,0.6) stored; combo reads 5 | PASS (static): mSilFillSrgb vec3; each channel clamp 0..1; select/cancel callbacks retained; custom combo value 5. | Not run: viewer run prohibited. |
+| 16 | chk_sil_haze | `mSilHaze` | bool | default true | - | panel onSilCheckbox:930 | panel refreshEditors:707 | OFF → false | PASS (static): mSilHaze Boolean default true; refreshEditors reads the same field. | Not run: viewer run prohibited. |
+| 17 | chk_sil_keep_rim | `mSilKeepRim` | bool | - | - | panel onSilCheckbox:930 | panel refreshEditors:707 | ON → true | PASS (static): mSilKeepRim Boolean default false; refreshEditors reads the same field. | Not run: viewer run prohibited. |
+| 18 | txt_sil_note | visibility | - | - | - | panel refreshSilhouetteNote:778 | refreshSilhouetteNote | shown iff (any silhouette and no emissive buffer) or (Keep rim and Rig Rim off) | PASS (static): ALKitRow reveal after initial code-hide; preparing or unavailable-rim predicate. | Not run: viewer run prohibited. |
+| 19 | combo_preset (bar) | index only | S32 | 0..8 | = `EPreset` model.h:158-170 | panel onApplyPreset:970 | combo selection only | - | PASS (static): Hosted item values 0..8 match EPreset; combo is selection-only, not a store field. | Not run: viewer run prohibited. |
+| 20 | btn_apply_preset (bar) | all fields | - | - | - | panel onApplyPreset:970 | panel refreshEditors:707 | preset 1 → params == `applyPreset(Params(),1)` | PASS (static): onApplyPreset applies the selected enum to every selected key and refreshes. | Not run: viewer run prohibited. |
+| 21 | btn_reset_selected | identity entry | - | - | - | panel onResetSelected:992 | refreshEditors / findEntry | entry present and `isIdentity` | PASS (static): Params() writes explicit identity; retains the entry. | Not run: viewer run prohibited. |
+| 22 | btn_inherit_selected | removes entry | - | - | - | panel onInheritSelected:1004 | refreshEditors enable rule | resident fixture → disabled (not run, reason); in-world: clone → entry removed | PASS (static): inherit removes the entry; resident fixture cannot inherit; all selected kinds must have fallback. | Not run: viewer run prohibited. |
+| 23 | btn_copy | `mClip` | - | - | - | panel onCopy:1034 | refreshEditors enables Paste | Paste enabled after | PASS (static): Copies keys.front() Params to the shared static mClip; refresh enables Paste. | Not run: viewer run prohibited. |
+| 24 | btn_paste | all fields | - | - | - | panel onPaste:1048 | refreshEditors / findEntry | fixture B params == fixture A params | PASS (static): Writes mClip to every selected key; full-field store oracle compares A to B. | Not run: viewer run prohibited. |
+| 25 | btn_reset_all | `clearAll` | - | - | - | panel onResetAll:1016 | store change subscription | hazard: not run at login (reason: modal + clears all) | PASS (static): AvatarLightResponseResetAll confirmation gates clearAll(true). | Not run: viewer run prohibited. |
+| 26 | am_disable_check | `CineLightRigActorMaskDisable` | Boolean | - | - | kit setting binding | setting binding | toggle → setting | PASS (static): Boolean CineLightRigActorMaskDisable; kit setting read/write. | Not run: viewer run prohibited. |
+| 27 | am_debug_combo | `CineLightRigActorMaskDebug` | U32 | 0..2, no clamp | Off 0, Overlay 1, Mask only 2 | kit setting binding | setting binding | item 1 → 1 | PASS (static): U32 debug; item values exactly Off=0, Overlay=1, Mask only=2; consumer reads raw U32 (diagnostics:1537). | Not run: viewer run prohibited. |
+| 28 | am_bias_slider | `CineLightRigActorMaskBias` | F32 | -64..0, pipeline.cpp:25703 | - | kit setting binding | setting binding | -7.5 → -7.5 | PASS (static): F32 bias -64..0 step .5; equals pipeline.cpp:25702-25704 clamp; default -8. | Not run: viewer run prohibited. |
+| 29 | am_reset_CineLightRigActorMaskBias | reset to -8 | F32 | - | - | Director bindLightActorsPage:1480 | setting binding | -20 then click → -8 | PASS (static): Binder resets CineLightRigActorMaskBias to its declared -8 default. | Not run: viewer run prohibited. |
+| 30 | am_test_trigger | `CineLightRigActorMaskTest` | U32 | command 1/2 | - | Director bindLightActorsPage:1480 | mActorMaskTestWatch label sync | SKIP at login (reason as `am_test_combo`); static: label follows setting | PASS (static): Unbound U32 command: 0/2->1, 1->2; scoped history suspend; event watch updates label; consumer resets to 0. | Not run: viewer run prohibited. |
+| 31 | open_lightbox_actormask | action | - | - | - | ALKitRow action dispatch | Lightbox actor_mask_settings | Lightbox open on that panel | PASS (static): Generated action lightbox:actor_mask_settings; ALKitRow dispatches to the existing Lightbox tab. | Not run: viewer run prohibited. |
+| 32 | chk_debug_tint | `AvatarLightResponseDebugTint` | Boolean | - | - | kit setting binding | setting binding | toggle → setting | PASS (static): Boolean AvatarLightResponseDebugTint; consumer lldrawpool.cpp:541; kit read-back. | Not run: viewer run prohibited. |
+| 33 | txt_status | display | - | - | - | panel refreshStatus:587 | refreshStatus | "adjusted" count +1 after the fixture write | PASS (static): refreshStatus counts nonidentity entries, uploads and visible targets; diff-guarded text. | Not run: viewer run prohibited. |
+| 34 | txt_budget | visibility | - | - | - | panel refreshStatus:587 | refreshStatus / row visibility | hidden at login (no live avatars); visible state only | PASS (static): refreshStatus shows only when countLiveOverBudget()>0; code-hide/reveal uses ALKitRow. | Not run: viewer run prohibited. |
+
+
+### Work packages and gate evidence
+
+- WP1: ALKitRow conditional reveal, 0.5 s non-mouse save debounce and offscreen flush; Director binder for Open window, Reset bias and Run/Cancel. The v1 launcher and standalone floater remain intact.
+- WP2: edited repo JSON directly; exactly +1 mockup row, Remember between sessions (2065 -> 2066); trigger replacement is 1-for-1. Two conditional readouts are kit-config additions: 31 kit rows plus master and two bar widgets. Kit 21 -> 22; legacy 14 -> 13; pure kit stays 1. Light Rig body is byte-identical after ignoring its generated header.
+- WP3: parity owner filter, real adapter, pinned isolated UUID fixtures, per-field/full-Params store assertions, multi-select/show-first, no-undo, real page-reset callback, preset/copy/paste and wrong-field negative control. Raw negative verdict must be FAIL; the harness fails if it passes. In-world setup skips with the required account-file reason while Persist is ON. Exact fixture hazard review entries cite the user-approved WP3; no hazard guard is disabled.
+- Regenerated sources, wiring and manifest in spec order. Regeneration exposed missing existing Takes/Temporal owners and an authored static Scene readout: supplied actual owners and preserved the Takes native-picker SKIP.
+
+| Test | Result | Evidence / limitation |
+|---|---|---|
+| T1 --check | PASS | Regenerated outputs match sources. |
+| T1 --selftest | FAIL (pre-existing) | Checkpoint generator with checkpoint JSON/config and converted generator both fail the unchanged 36-output pin: 36 authored pages plus Quick produce 37. This unrelated pin was not changed. |
+| T2 kit_lint --all | FAIL | Four duplicate-name errors below; no new help-audit-term warnings on Actors. Required legacy widget names and preset host collide across pages. No lint rule or name allowance was loosened. |
+| T3 parity light_group | PASS | 0 findings; 24 owner-filtered lookups; only the ten specified parity allowances added. |
+| T4 layout selftest/changed HEAD/Actors file | PASS | 13/13 legacy parity; 40 changed XUI files have 0 findings; Actors has 0 findings. Bare checker requires arguments (exit 2), so explicit scopes were run. |
+| T5 page_sources --check | PASS | Actors has 0 unresolved rows. |
+| T6 zs_check / draw lint changed HEAD | PASS | Six feature TUs pass /Zs; final card-reset edit rechecked. 0 new draw-lint errors and 0 baseline additions. |
+| prebuild_guard -ChecksOnly | FAIL | UI, draw, compile including changed tests, maths, generation, parity, layout selftest and sources pass. Kit lint is the sole remaining failure. No purge or build. |
+| T7/T8 | PASS | director_light_actors_check.py: 24 compatible unique lookups, 12 unresettable/no-history store rows, no who attributes, preset order, hidden notes, unbound command, persistence reset exclusion, setting types/ranges/combo values, Rig body unchanged; standalone/v1 legacy XML unchanged except its input comment. |
+| T9-T12 | NOT RUN | User prohibited viewer runs: runtime values, standalone/v1 click passes and narrow/wide visual comparison remain unrun. |
+| Opus review | NOT RUN | No Opus reviewer available here; no build requested or performed. |
+
+Raw remaining gate findings (not waived):
+
+    panel_dpage_light_actors.xml:40: error: widget-name: widget name 'name' is already used at floater_director_v2.xml:18
+    panel_dpage_light_actors.xml:132: error: widget-name: widget name 'btn_reset_all_label' is already used at panel_dpage_camera_shot.xml:1042
+    panel_dpage_light_actors.xml:133: error: widget-name: widget name 'btn_reset_all' is already used at panel_dpage_camera_shot.xml:1043
+    panel_dpage_light_cine_light_rig.xml:915: error: widget-name: widget name 'kit_preset_host' is already used at panel_dpage_light_actors.xml:150
+    FAIL: 36 page files including runtime Quick host
+    KIT GATES FAILED: Kit lint gate -- refusing to build.
+
+Concurrent Director/kit edits appeared during this session and were preserved. Generated hashes and inventories were refreshed against the shared tree. No build, viewer run, commit or fetch occurred.

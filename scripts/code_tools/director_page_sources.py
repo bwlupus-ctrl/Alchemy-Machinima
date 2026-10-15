@@ -128,6 +128,7 @@ SETTING_OVERRIDES = {
 }
 
 KIT_ACTION_OVERRIDES = {
+    ("actors_tab", "am_test_trigger"): "owner-command:LLFloaterDirector::bindLightActorsPage",
     ("dance_tab", "dance_popout"): "floater:dance_ball",
     ("gaze_tab", "btn_actor_gaze"): "owner-command:LLFloaterDirector::onOpenActorGaze",
     ("gaze_tab", "btn_pose_polish"): "floater:pose_polish",
@@ -294,7 +295,7 @@ ADAPTERS = {
     "focus_tab": "ALFocusKitAdapter", "filters_tab": "ALLensFilterKitAdapter",
     "diopter_tab": "ALDiopterKitAdapter", "cine_light_rig_tab": "ALCineRigKitAdapter",
     "light_rim_tab": "ALRigRimKitAdapter", "exposure_tab": "ALExposureKitAdapter",
-    "practicals_tab": "ALPracticalsKitAdapter", "actors_tab": "ALActorLightKitAdapter",
+    "practicals_tab": "ALPracticalsKitAdapter", "actors_tab": "ALPanelAvatarLightResponse",
     "light_cues_tab": "ALLightCueKitAdapter", "image_tab": "ALImageLookKitAdapter",
     "bloom_glow_tab": "ALBloomGlowKitAdapter", "stylize_tab": "ALRotoKitAdapter",
     "tron_tab": "ALTronKitAdapter", "actor_style_tab": "ALActorStyleKitAdapter",

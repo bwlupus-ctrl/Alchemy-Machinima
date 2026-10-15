@@ -15,6 +15,7 @@
 #include "alpanelcinecamparams.h"
 
 #include "alghoststudio.h"
+#include "alkitrow.h"
 #include "llagentdata.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
@@ -77,11 +78,18 @@ ALPanelAvatarLightResponse::ALPanelAvatarLightResponse()
 
 ALPanelAvatarLightResponse::~ALPanelAvatarLightResponse()
 {
+    if (mSavePending && ALAvatarLightResponse::instanceExists())
+    {
+        // Destroyed inside a pending debounce: the store already holds the edit, so write it now.
+        mSavePending = false;
+        ALAvatarLightResponse::instance().flushIfDirty();
+    }
     if (mIdleRegistered)
     {
         gIdleCallbacks.deleteFunction(onIdle, this);
     }
     mChangeConnection.disconnect();
+    mSavedConnection.disconnect();
 }
 
 bool ALPanelAvatarLightResponse::postBuild()
@@ -109,6 +117,10 @@ bool ALPanelAvatarLightResponse::postBuild()
     mBrightnessValue = getChild<LLTextBox>("txt_brightness_ev");
     mStatus          = getChild<LLTextBox>("txt_status");
     mBudget          = getChild<LLTextBox>("txt_budget");
+
+    // Hide through the kit row so the first reveal also reflows its card.
+    ALKitRow::setControlVisible(mSilNote, false);
+    ALKitRow::setControlVisible(mBudget, false);
 
     mTargetList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSelectionChanged(); });
     mTargetList->setCommitOnSelectionChange(true);
@@ -152,7 +164,14 @@ bool ALPanelAvatarLightResponse::postBuild()
     mApplyPreset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onApplyPreset(); });
     mResetSelected->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetSelected(); });
     mInheritSelected->setCommitCallback([this](LLUICtrl*, const LLSD&) { onInheritSelected(); });
-    getChild<LLButton>("btn_reset_all")->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetAll(); });
+    // Director kit controls have page-unique names; standalone and v1 keep theirs. Probe by presence:
+    // postBuild runs before the Director binds the page, so no flag is set yet.
+    const char* reset_all_name = "btn_reset_all";
+    if (findChild<LLButton>("la_btn_reset_all"))
+    {
+        reset_all_name = "la_btn_reset_all";
+    }
+    getChild<LLButton>(reset_all_name)->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetAll(); });
     mCopy->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCopy(); });
     mPaste->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPaste(); });
 
@@ -162,6 +181,9 @@ bool ALPanelAvatarLightResponse::postBuild()
         mIdleStatePending = true;
         mIdleEditorsPending = true;
     });
+    // Whoever writes the file (quit, close, another panel), this edit is on disk: drop the pending debounce so
+    // the same edit is never written twice.
+    mSavedConnection = ALAvatarLightResponse::instance().setSavedCallback([this]() { mSavePending = false; });
     if (isInVisibleChain())
     {
         gIdleCallbacks.addFunction(onIdle, this);
@@ -196,6 +218,12 @@ void ALPanelAvatarLightResponse::onVisibilityChange(bool new_visibility)
     {
         gIdleCallbacks.addFunction(onIdle, this);
         mIdleRegistered = true;
+    }
+    if (!new_visibility && mSavePending && ALAvatarLightResponse::instanceExists())
+    {
+        // Hiding ends the debounce window: flush now rather than wait for an idle tick that may never come.
+        mSavePending = false;
+        ALAvatarLightResponse::instance().flushIfDirty();
     }
     if (new_visibility)
     {
@@ -238,13 +266,20 @@ void ALPanelAvatarLightResponse::onIdle(void* user_data)
 void ALPanelAvatarLightResponse::idleUpdate()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightResponse idleUpdate");
+    releaseLostSliderDrag();
     if (!isWidgetOnScreen(this))
     {
         // Single-instance floaters retain their children after close, so a
         // child visibility callback is not guaranteed. Retire the callback
-        // here; the first visible draw registers it again.
+        // here; the first visible draw registers it again. Flush any pending
+        // save now: nothing else will tick this panel until it is shown again.
         gIdleCallbacks.deleteFunction(onIdle, this);
         mIdleRegistered = false;
+        if (mSavePending)
+        {
+            mSavePending = false;
+            ALAvatarLightResponse::instance().flushIfDirty();
+        }
         return;
     }
     if (mSeenClipRevision != mClipRevision)
@@ -285,6 +320,11 @@ void ALPanelAvatarLightResponse::idleUpdate()
         refreshEditors();
         setEnabledIfChanged(mPaste, !selectedKeys().empty() && mHaveClip);
         mIdleEditorsPending = false;
+    }
+    if (mSavePending && !mSliderDragging && mSaveDebounce.getElapsedTimeF32() >= 0.5f)
+    {
+        mSavePending = false;
+        ALAvatarLightResponse::instance().flushIfDirty();
     }
 }
 
@@ -500,6 +540,7 @@ void ALPanelAvatarLightResponse::refreshRows(bool force)
     // order: You, cast, nearby, animesh, clones, pinned, then away.
     mTargetList->deleteAllItems();
     mStateVisuals.clear();
+    const char* name_column = mTargetList->getColumn("la_name") ? "la_name" : "name";
     for (const LLUUID& key : order)
     {
         const RowInfo& row = info[key];
@@ -507,7 +548,7 @@ void ALPanelAvatarLightResponse::refreshRows(bool force)
         element["value"] = key;
         element["columns"][0]["column"] = "state";
         element["columns"][0]["value"] = "";
-        element["columns"][1]["column"] = "name";
+        element["columns"][1]["column"] = name_column;
         element["columns"][1]["value"] = row.mName + (row.mAway ? " (away)" : "");
         element["columns"][2]["column"] = "kind";
         element["columns"][2]["value"] = kindLabel(row.mKind);
@@ -610,11 +651,11 @@ void ALPanelAvatarLightResponse::refreshStatus()
         {
             mBudget->setColor(ALR_COLOR_AMBER);
         }
-        setVisibleIfChanged(mBudget, true);
+        ALKitRow::setControlVisible(mBudget, true);
     }
     else
     {
-        setVisibleIfChanged(mBudget, false);
+        ALKitRow::setControlVisible(mBudget, false);
     }
 }
 
@@ -639,12 +680,45 @@ void ALPanelAvatarLightResponse::selectKeys(const std::vector<LLUUID>& keys)
     }
     const bool was_updating = mUpdating;
     mUpdating = true;
+    // One multi-select pass. setSelectedByValue(key, true) is single-select by default and
+    // would deselect every key added before it.
     mTargetList->deselectAllItems(true);
-    for (const LLUUID& key : keys)
-    {
-        mTargetList->setSelectedByValue(LLSD(key), true);
-    }
+    uuid_vec_t ids(keys.begin(), keys.end());
+    mTargetList->selectMultiple(ids);
     mUpdating = was_updating;
+}
+
+void ALPanelAvatarLightResponse::deferSave()
+{
+    if (!mIdleRegistered)
+    {
+        // A hidden page retires its idle callback, so the 0.5 s debounce would never fire.
+        mSavePending = false;
+        ALAvatarLightResponse::instance().flushIfDirty();
+        return;
+    }
+    mSavePending = true;
+    mSaveDebounce.reset();
+}
+
+void ALPanelAvatarLightResponse::releaseLostSliderDrag()
+{
+    if (!mSliderDragging)
+    {
+        return;
+    }
+    // Alt-tab or a window switch takes mouse capture away mid-drag, and the slider never reports its mouse-up.
+    const LLView* const sliders[] = { mDiffuse, mTame, mBrightness, mGlow, mSilAmount };
+    for (const LLView* slider : sliders)
+    {
+        if (slider && gFocusMgr.childHasMouseCapture(slider))
+        {
+            return;
+        }
+    }
+    mSliderDragging = false;
+    mSavePending = false;
+    ALAvatarLightResponse::instance().flushIfDirty();
 }
 
 ALLightResponse::Params ALPanelAvatarLightResponse::currentParams(const LLUUID& key) const
@@ -800,7 +874,7 @@ void ALPanelAvatarLightResponse::refreshSilhouetteNote()
         ? "Preparing silhouette buffer\xE2\x80\xA6"
         : (rim_unavailable ? "Keep Rim: Rig Rim is off (Cine Light Rig)" : std::string());
     setTextIfChanged(mSilNote, note);
-    setVisibleIfChanged(mSilNote, !note.empty());
+    ALKitRow::setControlVisible(mSilNote, !note.empty());
 }
 
 void ALPanelAvatarLightResponse::onSelectionChanged()
@@ -832,6 +906,7 @@ void ALPanelAvatarLightResponse::onSliderCommit(EField field)
         }
         applyParams(key, p, false);   // saved on slider mouse-up
     }
+    deferSave();
     refreshBrightnessValue();
     if (field == FIELD_SIL_AMOUNT)
     {
@@ -842,7 +917,8 @@ void ALPanelAvatarLightResponse::onSliderCommit(EField field)
 void ALPanelAvatarLightResponse::onSliderMouseUp()
 {
     mSliderDragging = false;
-    ALAvatarLightResponse::instance().saveIfPersist();
+    mSavePending = false;
+    ALAvatarLightResponse::instance().flushIfDirty();
 }
 
 void ALPanelAvatarLightResponse::onSilFill(bool save_now, bool custom)
@@ -861,7 +937,12 @@ void ALPanelAvatarLightResponse::onSilFill(bool save_now, bool custom)
     }
     if (save_now)
     {
-        ALAvatarLightResponse::instance().saveIfPersist();
+        mSavePending = false;
+        ALAvatarLightResponse::instance().flushIfDirty();
+    }
+    else
+    {
+        deferSave();
     }
     if (custom)
     {
@@ -898,7 +979,8 @@ void ALPanelAvatarLightResponse::onSilFillPreset()
         p.mSilFillSrgb = fill;
         applyParams(key, p, false);
     }
-    ALAvatarLightResponse::instance().saveIfPersist();
+    mSavePending = false;
+    ALAvatarLightResponse::instance().flushIfDirty();
     refreshEditors();
 }
 
@@ -921,7 +1003,8 @@ void ALPanelAvatarLightResponse::onSilCheckbox(bool haze)
         }
         applyParams(key, p, false);
     }
-    ALAvatarLightResponse::instance().saveIfPersist();
+    mSavePending = false;
+    ALAvatarLightResponse::instance().flushIfDirty();
     refreshEditors();
 }
 
@@ -935,8 +1018,10 @@ void ALPanelAvatarLightResponse::onBypass()
     {
         ALLightResponse::Params p = currentParams(key);
         p.mBypass = mBypass->get();
-        applyParams(key, p, true);
+        applyParams(key, p, false);   // one write for the whole selection, below
     }
+    mSavePending = false;
+    ALAvatarLightResponse::instance().flushIfDirty();
     refreshEditors();
 }
 
@@ -957,7 +1042,8 @@ void ALPanelAvatarLightResponse::onApplyPreset()
                     ALLightResponse::applyPreset(currentParams(key), static_cast<ALLightResponse::EPreset>(index)),
                     false);
     }
-    ALAvatarLightResponse::instance().saveIfPersist();
+    mSavePending = false;
+    ALAvatarLightResponse::instance().flushIfDirty();
     refreshEditors();
 }
 
@@ -968,7 +1054,8 @@ void ALPanelAvatarLightResponse::onResetSelected()
     {
         applyParams(key, ALLightResponse::Params(), false);
     }
-    ALAvatarLightResponse::instance().saveIfPersist();
+    mSavePending = false;
+    ALAvatarLightResponse::instance().flushIfDirty();
     refreshEditors();
 }
 
@@ -978,7 +1065,8 @@ void ALPanelAvatarLightResponse::onInheritSelected()
     {
         ALAvatarLightResponse::instance().inherit(key, false);
     }
-    ALAvatarLightResponse::instance().saveIfPersist();
+    mSavePending = false;
+    ALAvatarLightResponse::instance().flushIfDirty();
     refreshRows(true);
     refreshEditors();
 }
@@ -991,7 +1079,7 @@ void ALPanelAvatarLightResponse::onResetAll()
         {
             if (LLNotificationsUtil::getSelectedOption(notification, response) == 0)
             {
-                ALAvatarLightResponse::instance().clearAll(true);
+                ALAvatarLightResponse::instance().clearAll(true, true);
                 if (ALPanelAvatarLightResponse* self = handle.get())
                 {
                     self->mIdleRowsPending = true;
@@ -1025,6 +1113,7 @@ void ALPanelAvatarLightResponse::onPaste()
     {
         applyParams(key, mClip, false);
     }
-    ALAvatarLightResponse::instance().saveIfPersist();
+    mSavePending = false;
+    ALAvatarLightResponse::instance().flushIfDirty();
     refreshEditors();
 }

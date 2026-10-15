@@ -1678,7 +1678,7 @@ def run_selftest(json_output: bool) -> int:
     # Legacy (embedded v1) Director pages still pinned to v1 findings. Lower this as
     # pages become real kit pages (user-approved 10/13, Look batch: 30 -> 27,
     # World/Lens batch: 27 -> 21, Camera+Capture: 21 -> 14); never raise it.
-    LEGACY_PAGE_COUNT = 14
+    LEGACY_PAGE_COUNT = 13  # Light Actors: 14 -> 13
     real_passed = real_ok and real_count == LEGACY_PAGE_COUNT and baseline_ok and runtime_ok
     passed = passed and real_passed
     reports.append({"fixture": "real legacy pages", "expected": f"{LEGACY_PAGE_COUNT} pages match v1 leaf findings",

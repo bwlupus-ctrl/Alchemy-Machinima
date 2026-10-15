@@ -1,3 +1,23 @@
 {
- "allow": {}
+  "allow": {
+    "v2:actors_tab:target_list": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:chk_only_adjusted": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:btn_refresh": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:sld_diffuse": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:sld_tame": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:sld_brightness": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:sld_glow": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:chk_bypass": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:txt_brightness_ev": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:sld_sil_amount": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:combo_sil_fill": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:swatch_sil_fill": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:chk_sil_haze": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:chk_sil_keep_rim": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:btn_reset_selected": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:btn_copy": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:btn_paste": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:combo_preset": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created.",
+    "v2:actors_tab:btn_apply_preset": "SPEC_light_actors_kit.md WP3: user-approved isolated UUID store oracle; persistence OFF required in-world; inherit(false) cleanup; no avatar or server object is created."
+  }
 }

@@ -103,6 +103,7 @@ private:
     void bindRotoInkPage(LLView* root);
     void bindTronPage(LLView* root);
     void bindSteppedPage(LLView* root);
+    void bindLightActorsPage(LLView* root);
     void bindImagePage(LLView* root);
     // Lens, World and Look-adjacent generated kit pages: code-bound buttons and preset actions
     // only; the setting-bound rows need no binder. Same calls as the v1 panels.
@@ -548,6 +549,7 @@ private:
     LLTimer mKitDrawTimer;
     F32 mKitDrawEMA = 0.f;
     ALLiveReadoutClock mKitDrawClock{2.f};
+    boost::signals2::scoped_connection mActorMaskTestWatch;
     boost::signals2::scoped_connection mPageBuiltConnection;
     boost::signals2::scoped_connection mPageSelectedConnection;
     boost::signals2::scoped_connection mKitUIMsConnection;

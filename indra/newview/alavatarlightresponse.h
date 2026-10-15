@@ -93,7 +93,7 @@ public:
     // ---- entries ----
     const Entry* findEntry(const LLUUID& key) const;
     const std::map<LLUUID, Entry>& entries() const { return mEntries; }
-    // Sanitizes; keeps identity.  save_now = false for continuous slider drags.
+    // Sanitizes; keeps identity.  save_now = false for continuous slider drags (the caller flushes later).
     // Returns false (and changes nothing) when a NEW stored entry would exceed the capacity
     // (maxStoredEntries(), clones excluded: they are session-only; your own entry is exempt).
     bool set(const LLUUID& key, EKind kind, const std::string& label,
@@ -101,7 +101,8 @@ public:
     static size_t maxStoredEntries();
     size_t storedEntryCount() const;    // non-clone live entries plus file-only extras (the ones that are saved)
     void inherit(const LLUUID& key, bool save_now = true);
-    void clearAll(bool save_now = true);
+    // user_action = true only for the explicit "Reset all" confirmation: it counts as an edit even on an empty store.
+    void clearAll(bool save_now = true, bool user_action = false);
 
     // ---- draw-time lookup (first non-null key with a slot terminates) ----
     // lookup: nullptr for absent OR identity.  peek: identical, kept as a
@@ -120,8 +121,17 @@ public:
     // Always resets the account-owned store first (account switch / failed login / missing file),
     // then merges the account's file when persistence is on.  Call once gAgentID is known.
     void loadFromFile();
-    void saveToFile() const;      // refuses to write while gAgentID is null (self key would be lost)
-    void saveIfPersist() const;
+    // THE one write path (quit, close, hide, debounce, every edit). Does nothing unless Persist is on, the
+    // store holds an unsaved user edit, and gAgentID is the account loadFromFile ran for. A file that could
+    // not be read at load is only rewritten after an explicit edit, and is copied to a timestamped .bak- name first.
+    void flushIfDirty();
+    bool hasUnsavedChanges() const { return mSaveDirty; }
+    // Fired after each successful write, so UI debounce flags can be cleared (one edit = one write).
+    typedef boost::signals2::signal<void()> saved_signal_t;
+    boost::signals2::connection setSavedCallback(const saved_signal_t::slot_type& cb)
+    {
+        return mSavedSignal.connect(cb);
+    }
 
     // ---- Director scene I/O ----
     // ids: cast member ids; a null id means "You" and is written as "self".
@@ -152,6 +162,11 @@ private:
     void dirtyImpostors(const LLUUID& key) const;
     void debugLogTick();
     void captureFileExtras();   // ON transition with persistence OFF at login: file-only entries, kept out of mEntries
+    // Admission shared by the account file load and Director scene import. Entries over the cap are handed
+    // to `overflow` (when given) instead of being dropped.
+    bool mergeEntries(const LLSD& data, std::map<LLUUID, LLSD>* overflow);
+    void markUserEdit();        // an edit that changes what the file should hold
+    bool saveToFile();          // gated; see flushIfDirty()
 
     std::map<LLUUID, Entry>            mEntries;
     // File-only entries (raw saved LLSD) captured when persistence is switched ON mid-session. They are
@@ -159,6 +174,15 @@ private:
     std::map<LLUUID, LLSD>             mPersistExtras;
     std::set<LLUUID>                   mPersistSuppressed;   // explicitly cleared this session: never resurrected from the file
     bool                               mPersistSuppressAll = false;   // "Reset all" this session: no file-only entries
+
+    // Save gating (see flushIfDirty): never write an account file the session did not load or cannot read.
+    bool                               mSaveDirty = false;         // user edit not yet on disk
+    LLUUID                             mLoadedForAgent;            // account loadFromFile ran for (null = none yet)
+    bool                               mLoadFailed = false;        // an existing file could not be read
+    bool                               mEditedSinceLoadFail = false;
+    bool                               mBackupWarned = false;      // the "backup failed" warning was logged (reset on success)
+    bool                               mSaveFailWarned = false;    // the "save failed" warning was logged once (reset on success)
+    saved_signal_t                     mSavedSignal;
 
     std::unordered_map<LLUUID, Slot>   mTable;
     std::unordered_map<LLUUID, S32>    mUploadsNow;

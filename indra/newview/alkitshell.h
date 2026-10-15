@@ -95,6 +95,7 @@ public:
     void                        setChangedOnly(bool);
     bool                        changedOnly() const { return mChangedOnly; }
     void                        setOpenPopover(ALKitPopover*);
+    void                        popoverHidden(ALKitPopover*);
     boost::signals2::connection setPageBuiltCallback(const page_built_signal_t::slot_type& s) { return mPageBuilt.connect(s); }
     boost::signals2::connection setPageSelectedCallback(const page_selected_signal_t::slot_type& s) { return mPageSelected.connect(s); }
     boost::signals2::connection setCastSelectionCallback(const cast_signal_t::slot_type& s) { return mCastSelection.connect(s); }

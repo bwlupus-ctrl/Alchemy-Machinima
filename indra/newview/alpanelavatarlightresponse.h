@@ -42,6 +42,9 @@ public:
 
     bool postBuild() override;
     void focusTarget(const LLUUID& target);
+    // Makes exactly these keys the selection, in one multi-select pass (no key deselects another).
+    // Keys not in the list are ignored. The read-first row is the first selected one in list order.
+    void selectKeys(const std::vector<LLUUID>& keys);
     void onVisibilityChange(bool new_visibility) override;
     void draw() override;
 
@@ -75,7 +78,12 @@ private:
     std::vector<LLUUID> selectedKeys() const;
     ALLightResponse::Params currentParams(const LLUUID& key) const;
     void applyParams(const LLUUID& key, const ALLightResponse::Params& params, bool save_now);
-    void selectKeys(const std::vector<LLUUID>& keys);
+    // Debounced save request. With the idle callback retired (page hidden) it flushes at once.
+    // Every flush goes through the store's flushIfDirty(), which writes only a real unsaved edit.
+    void deferSave();
+    // Clears a slider drag whose mouse capture vanished (alt-tab) and flushes what it changed (nothing
+    // changed = the store is not dirty = no write).
+    void releaseLostSliderDrag();
 
     void onSelectionChanged();
     void onSliderCommit(EField field);
@@ -131,9 +139,12 @@ private:
     static bool                  mHaveClip;
     static U64                   mClipRevision;
     static ALLightResponse::Params mClip;
+    bool                         mSavePending = false;
+    LLFrameTimer                 mSaveDebounce;
     LLFrameTimer                 mRefreshTimer;
     ALRevisionGate               mStoreGate;
     boost::signals2::connection  mChangeConnection;
+    boost::signals2::connection  mSavedConnection;   // store wrote the file: clears mSavePending
 };
 
 #endif // AL_ALPANELAVATARLIGHTRESPONSE_H

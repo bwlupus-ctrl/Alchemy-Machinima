@@ -330,7 +330,7 @@ bool ALKitCard::postBuild()
             if (ALKitShell* s = ALKitShell::find(this))
                 s->history().beginGesture(ALKitHistory::MOUSE, page, "Reset " + mTitle);
             for (ALKitRow* row : mRows)
-                if (rowBranchVisible(row, this) && !row->cardPreset() && !row->whoPicker() && (row->getVisible() || row->meta().advanced))
+                if (row->bulkResettable() && rowBranchVisible(row, this) && !row->cardPreset() && !row->whoPicker() && (row->getVisible() || row->meta().advanced))
                     row->reset();
         });
     addChild(mReset);
@@ -392,7 +392,7 @@ bool ALKitCard::postBuild()
             if (ALKitShell* s = ALKitShell::find(this))
                 s->history().beginGesture(ALKitHistory::MOUSE, page, "Reset all " + mSelectorLabel + "s");
             for (ALKitRow* row : mRows)
-                if (!row->cardPreset() && !row->whoPicker() && row->resettable())
+                if (!row->cardPreset() && !row->whoPicker() && row->bulkResettable())
                     row->reset();
         };
         reset_menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(ip));
@@ -759,9 +759,20 @@ void ALKitCard::layoutBody(S32 w)
 
     if (mReset)
     {
+        // The reset icon resets bulk-resettable rows only (the click and "Reset all" paths both
+        // filter on bulkResettable). A card with none would show an icon that does nothing: hide it.
+        bool can_reset = false;
+        for (ALKitRow* row : mRows)
+        {
+            can_reset = can_reset || (row->bulkResettable() && !row->cardPreset() && !row->whoPicker());
+        }
+        mReset->setVisible(can_reset);
         mReset->reshape(24, 24, true);
         mReset->setOrigin(header_x, getRect().getHeight() - 30);
-        header_x -= 24 + ALKitStyle::COL_GAP;
+        if (can_reset)
+        {
+            header_x -= 24 + ALKitStyle::COL_GAP;
+        }
     }
     if (mMenuButton)
     {

@@ -357,7 +357,7 @@ bool ALKitPage::postBuild()
     }
 
     if (mPresetMode == "widgets")
-        if (ALKitPresetHost* host = findChild<ALKitPresetHost>("kit_preset_host"))
+        if (ALKitPresetHost* host = findChild<ALKitPresetHost>(pre + "_preset_host"))
         {
             std::vector<LLView*> items;
             for (LLView* c : *host->getChildList())
@@ -1496,7 +1496,7 @@ void ALKitPage::performPageReset()
         mShell->history().beginGesture(ALKitHistory::MOUSE, mPage, "Reset page");
     for (auto& card : mCards)
         for (ALKitRow* row : card.second->rows())
-            if (row->resettable() && !row->cardPreset() && !row->whoPicker())
+            if (row->bulkResettable() && !row->cardPreset() && !row->whoPicker())
                 row->reset();
 }
 

@@ -184,7 +184,7 @@ struct ParticleSubsteps
     F32 dt = 0.f;
     F32 ballisticDt = 0.f;
 };
-ParticleSubsteps particleSubsteps(F32 dt);
+ParticleSubsteps particleSubsteps(F32 dt, bool bounce = false);
 F32 particleGroupDt(F32 frame_dt, F32 skipped_time, F32& skip_offset, bool step_only);
 F32 particleStepDt(F32 dt, ParticleStepDebt& debt, U64 epoch, const FrameDecision* decision,
                    U64 actor_epoch = 0);

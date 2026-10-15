@@ -29,6 +29,7 @@
 #include "allocalfogmanager.h"
 #include "alobjectpathmover.h"
 #include "alpaneldirectorvcam.h"
+#include "alpanelavatarlightresponse.h"
 #include "alpanellensgaze.h"
 #include "alpanelpatheditor.h"
 #include "alghoststudio.h"
@@ -1672,6 +1673,7 @@ private:
         static const std::set<std::string> blocked = {
             "file_picker", "destructive", "logout", "clipboard_write",
             "external_url_process", "modal", "opens_color_picker",
+            "persistent_setting",   // Remember: writes the user's saved file, never driven by the harness
         };
         return blocked.count(hazard) != 0;
     }
@@ -2551,6 +2553,200 @@ private:
         return ok;
     }
 
+
+    static bool lightResponseEqual(const LLSD& a, const LLSD& b)
+    {
+        if (a.type() != b.type()) return false;
+        if (a.isReal()) return std::fabs(a.asReal() - b.asReal()) <= 1e-4;
+        if (a.isArray())
+        {
+            if (a.size() != b.size()) return false;
+            for (S32 i = 0; i < a.size(); ++i)
+                if (!lightResponseEqual(a[i], b[i])) return false;
+            return true;
+        }
+        if (a.isMap())
+        {
+            if (a.size() != b.size()) return false;
+            for (auto it = a.beginMap(); it != a.endMap(); ++it)
+                if (!b.has(it->first) || !lightResponseEqual(it->second, b[it->first])) return false;
+            return true;
+        }
+        return a == b;
+    }
+
+    // ui-draw-lint: allow-function(lookup,raw-write) isolated UUID fixture, never a world avatar
+    bool prepareLightResponseFixture(const LLSD& entry)
+    {
+        if (!mFunctionalLightFixtures.empty()) return true;
+        ALPanelAvatarLightResponse* panel = dynamic_cast<ALPanelAvatarLightResponse*>(mFunctionalPageRoot);
+        if (!panel && mFunctionalPageRoot)
+            panel = findFirstView<ALPanelAvatarLightResponse>(mFunctionalPageRoot);
+        LLScrollListCtrl* list = panel ? panel->findChild<LLScrollListCtrl>("target_list", true) : nullptr;
+        if (!panel || !list) return false;
+        ALAvatarLightResponse& store = ALAvatarLightResponse::instance();
+        const std::string widget = entry["widget_name"].asString();
+        const S32 count = widget == "btn_paste" || widget == "target_list" ||
+            entry["fixture_count"].asInteger() == 2 ? 2 : 1;
+        if (LLCheckBoxCtrl* filter = panel->findChild<LLCheckBoxCtrl>("chk_only_adjusted", true))
+        {
+            mFunctionalLightFilterBefore = filter->getValue();
+            filter->setValue(false);
+            filter->onCommit();
+        }
+        for (S32 i = 0; i < count; ++i)
+        {
+            const LLUUID id = LLUUID::generateNewID();
+            mFunctionalLightFixtures.push_back(id);
+            ALLightResponse::Params params;
+            params.mDiffuse = i == 0 ? 0.2f : 0.7f;
+            if (!store.set(id, ALAvatarLightResponse::KIND_RESIDENT, "Functional light response", params, false))
+                return false;
+            panel->focusTarget(id); // pinned: the normal 1 Hz rebuild cannot lose this row
+        }
+        panel->focusTarget(mFunctionalLightFixtures.front());
+        if (count == 2 && widget != "btn_paste")
+        {
+            if (ALKitShell* shell = findFirstView<ALKitShell>(mFloater.get()))
+                shell->history().barrier("Light response fixture: per-avatar edits have no undo");
+            // Both rows in one multi-select pass: setSelectedByValue(key, true) would deselect the first.
+            panel->selectKeys(mFunctionalLightFixtures);
+            list->onCommit();
+            // The panel reads the first selected row in list order; the sliders must show that row's stored value.
+            const std::vector<LLScrollListItem*> selected = list->getAllSelected();
+            const ALAvatarLightResponse::Entry* read_first = selected.size() == 2
+                ? store.findEntry(selected.front()->getUUID()) : nullptr;
+            LLSliderCtrl* diffuse = panel->findChild<LLSliderCtrl>("sld_diffuse", true);
+            mFunctionalObserved["light_response"]["both_selected"] = selected.size() == 2;
+            mFunctionalObserved["light_response"]["show_first"] = diffuse && read_first &&
+                std::fabs(diffuse->getValueF32() - read_first->mParams.mDiffuse * 100.f) <= 1e-4f;
+            if (!mFunctionalObserved["light_response"]["show_first"].asBoolean()) return false;
+        }
+        if (widget == "btn_paste")
+        {
+            panel->findChild<LLButton>("btn_copy", true)->onCommit();
+            mFunctionalLightPaste = ALLightResponse::toLLSD(store.findEntry(mFunctionalLightFixtures.front())->mParams);
+            panel->focusTarget(mFunctionalLightFixtures.back());
+        }
+        if (widget == "btn_apply_preset")
+            panel->findChild<LLComboBox>("combo_preset", true)->setValue(1);
+        return true;
+    }
+
+    void captureLightResponseBefore()
+    {
+        mFunctionalLightBefore.clear();
+        for (const LLUUID& id : mFunctionalLightFixtures)
+        {
+            const auto* entry = ALAvatarLightResponse::instance().findEntry(id);
+            mFunctionalLightBefore.push_back(entry ? ALLightResponse::toLLSD(entry->mParams) : LLSD());
+        }
+    }
+
+    static LLSD lightResponseSnapshot()
+    {
+        LLSD snapshot = LLSD::emptyMap();
+        for (const auto& item : ALAvatarLightResponse::instance().entries())
+            snapshot[item.first.asString()] = ALLightResponse::toLLSD(item.second.mParams);
+        return snapshot;
+    }
+
+    // ui-draw-lint: allow-function(lookup,raw-write,setting) bounded test-only assertion after one input exercise
+    bool checkLightResponseStore(const LLSD& entry)
+    {
+        if (mFunctionalLightFixtures.empty() || mFunctionalLightBefore.size() != mFunctionalLightFixtures.size())
+            return false;
+        const std::string widget = entry["widget_name"].asString();
+        const std::string field = entry["expect"]["field"].asString();
+        bool ok = true;
+        for (size_t i = 0; i < mFunctionalLightFixtures.size(); ++i)
+        {
+            LLSD expected = mFunctionalLightBefore[i];
+            if (!field.empty())
+            {
+                const LLSD& value = entry["expect"]["value"];
+                if (entry["expect"]["type"].asString() == "Color3")
+                {
+                    expected[field] = LLSD::emptyArray();
+                    for (S32 c = 0; c < 3; ++c) expected[field].append(value[c].asReal());
+                }
+                else if (entry["expect"]["type"].asString() == "Boolean")
+                    expected[field] = value.asBoolean();
+                else expected[field] = value.asReal();
+            }
+            else if (widget == "btn_reset_selected") expected = ALLightResponse::toLLSD(ALLightResponse::Params());
+            else if (widget == "btn_apply_preset") expected = ALLightResponse::toLLSD(
+                ALLightResponse::applyPreset(ALLightResponse::fromLLSD(expected), ALLightResponse::PRESET_POWDERED));
+            else if (widget == "btn_paste" && i == 1) expected = mFunctionalLightPaste;
+            const auto* stored = ALAvatarLightResponse::instance().findEntry(mFunctionalLightFixtures[i]);
+            const LLSD actual = stored ? ALLightResponse::toLLSD(stored->mParams) : LLSD();
+            const bool matches = lightResponseEqual(actual, expected);
+            ok = matches && ok;
+            mFunctionalObserved["light_response"]["expected"].append(expected);
+            mFunctionalObserved["light_response"]["actual"].append(actual);
+        }
+        if (widget == "combo_sil_fill")
+        {
+            // Custom is a selector-only no-op; it must preserve the white just applied.
+            LLComboBox* fill = mFunctionalPageRoot->findChild<LLComboBox>("combo_sil_fill", true);
+            if (!fill) return false;
+            const LLSD before = lightResponseSnapshot();
+            fill->setValue(5);
+            fill->onCommit();
+            ok = lightResponseEqual(before, lightResponseSnapshot()) && ok;
+        }
+        if (widget == "swatch_sil_fill")
+        {
+            LLComboBox* fill = mFunctionalPageRoot->findChild<LLComboBox>("combo_sil_fill", true);
+            ok = fill && fill->getValue().asInteger() == 5 && ok;
+        }
+        if (widget == "sld_brightness")
+        {
+            LLTextBox* value = mFunctionalPageRoot->findChild<LLTextBox>("txt_brightness_ev", true);
+            ok = value && value->getValue().asString() == "-1.00 EV" && ok;
+        }
+        if (widget == "combo_preset")
+        {
+            LLComboBox* preset = mFunctionalPageRoot->findChild<LLComboBox>("combo_preset", true);
+            ok = preset && preset->getValue().asInteger() == 1 && ok;
+        }
+        if (widget == "target_list")
+        {
+            LLSliderCtrl* diffuse = mFunctionalPageRoot->findChild<LLSliderCtrl>("sld_diffuse", true);
+            ok = diffuse && std::fabs(diffuse->getValueF32() - 70.f) <= 1e-4f && ok;
+        }
+        if (widget == "btn_copy")
+        {
+            LLButton* paste = mFunctionalPageRoot->findChild<LLButton>("btn_paste", true);
+            ok = paste && paste->getEnabled() && ok;
+        }
+        if (entry["fixture_count"].asInteger() == 2)
+        {
+            const LLSD snapshot = lightResponseSnapshot();
+            ALKitShell* shell = findFirstView<ALKitShell>(mFloater.get());
+            ALKitPage* page = findFirstView<ALKitPage>(mFunctionalPageRoot);
+            const bool no_undo = shell && !shell->history().canUndo();
+            if (page) page->setFocus(true);
+            if (gViewerWindow) gViewerWindow->handleKey('Z', MASK_CONTROL);
+            const bool undo_kept_store = no_undo && lightResponseEqual(snapshot, lightResponseSnapshot());
+            const bool persist = gSavedSettings.getBOOL("AvatarLightResponsePersist");
+            for (const char* name : {"AvatarLightResponseDebugTint", "CineLightRigActorMaskBias",
+                                    "CineLightRigActorMaskDebug", "CineLightRigActorMaskDisable"})
+                rememberFunctionalSetting(name);
+            if (page) page->resetPage();
+            LLButton* confirm = shell ? shell->findChild<LLButton>("actors_reset_confirm", true) : nullptr;
+            // Exercise the real confirmation callback, including performPageReset's reset-set filter.
+            if (confirm) confirm->onCommit();
+            const bool reset_kept_store = confirm && lightResponseEqual(snapshot, lightResponseSnapshot()) &&
+                persist == gSavedSettings.getBOOL("AvatarLightResponsePersist");
+            mFunctionalObserved["light_response"]["undo_kept_store"] = undo_kept_store;
+            mFunctionalObserved["light_response"]["page_reset_kept_store_and_preference"] = reset_kept_store;
+            ok = undo_kept_store && reset_kept_store && ok;
+        }
+        mFunctionalObserved["light_response"]["raw_verdict"] = ok ? "PASS" : "FAIL";
+        return ok;
+    }
+
     // ui-draw-lint: allow-function(setting,lookup,raw-write) isolated test-only prerequisite setup
     bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
     {
@@ -2567,28 +2763,8 @@ private:
                     "cine_fixture_role", true))
                 role->onCommit();
         }
-        if (!mInWorld && entry["page"].asString() == "actors_tab" &&
-            widget == "chk_bypass" && mFunctionalPageRoot)
-        {
-            // Avatar Light Response stores overrides by UUID; its editor does
-            // not dereference the avatar. A temporary list selection is enough
-            // to exercise Bypass at login without creating a world object.
-            if (LLScrollListCtrl* targets =
-                    mFunctionalPageRoot->findChild<LLScrollListCtrl>("target_list", true))
-            {
-                LLSD row;
-                const LLUUID fixture = LLUUID::generateNewID();
-                row["value"] = fixture;
-                row["columns"][0]["column"] = "name";
-                row["columns"][0]["value"] = "Functional local actor";
-                targets->addElement(row, ADD_BOTTOM);
-                targets->setSelectedByValue(fixture, true);
-                targets->onCommit();
-                ok = !targets->getAllSelected().empty() && ok;
-            }
-            else
-                ok = false;
-        }
+        if (prerequisite == "light_response_fixture")
+            ok = prepareLightResponseFixture(entry) && ok;
         if (mInWorld && (prerequisite == "ghost_selected_entity" ||
                          prerequisite == "ghost_selected_formation") &&
             gAgentAvatarp && mFunctionalGhostFixture.isNull())
@@ -3615,6 +3791,16 @@ private:
         mFunctionalPathLeaderId.setNull();
         mFunctionalPathExpected = LLSD();
         mFunctionalDanceSelectedObject = nullptr;
+        for (const LLUUID& id : mFunctionalLightFixtures)
+            ALAvatarLightResponse::instance().inherit(id, false);
+        if (!mFunctionalLightFixtures.empty() && mFunctionalPageRoot)
+            if (LLCheckBoxCtrl* filter = mFunctionalPageRoot->findChild<LLCheckBoxCtrl>("chk_only_adjusted", true)) // ui-draw-lint: allow(lookup) one-shot fixture cleanup
+            {
+                filter->setValue(mFunctionalLightFilterBefore);
+                filter->onCommit();
+            }
+        mFunctionalLightFixtures.clear();
+        mFunctionalLightBefore.clear();
         if (mFunctionalGhostFixture.notNull())
         {
             ALGhostStudio& studio = ALGhostStudio::instance();
@@ -4854,6 +5040,9 @@ private:
                 }
             }
         }
+        if (list->getName() == "target_list" && mFunctionalLightFixtures.size() == 2)
+            for (LLScrollListItem* item : list->getAllData())
+                if (item->getUUID() == mFunctionalLightFixtures.back()) index = list->getItemIndex(item);
         index = llclamp(index, 0, list->getItemCount() - 1);
         const S32 page_lines = llmax(1, list->getLinesPerPage());
         const S32 wanted_scroll = index < list->getScrollPos() ? index :
@@ -5628,6 +5817,7 @@ private:
                 if (mFunctionalLauncherWasOpen) existing->closeFloater(false);
             }
         }
+        if (entry["probe"].asString() == "light_response_store") captureLightResponseBefore();
         mFunctionalControlBefore = control->getValue();
         const std::string owner_probe = entry["probe"].asString();
         if (owner_probe == "dance_owner")
@@ -5705,7 +5895,7 @@ private:
         mFunctionalDynamicSetting = false;
         mFunctionalSettingName = functionalOracleSetting(entry, control);
         rememberFunctionalSetting(mFunctionalSettingName);
-        mFunctionalSetting = gSavedSettings.getControl(mFunctionalSettingName).get();
+        mFunctionalSetting = gSavedSettings.getControl(mFunctionalSettingName).get(); // ui-draw-lint: allow(setting) bounded functional-row setup
         mFunctionalBefore = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
         mFunctionalHistoryBefore = ALExposureSettingsHistory::revision();
         std::ostringstream before;
@@ -5839,6 +6029,13 @@ private:
                 "login user-data snapshot was not taken and byte-verified; run aborted before dispatch");
             restoreFunctionalAction();
             mFunctionalIndex = mFunctionalEntries.size();
+            return;
+        }
+        if (mInWorld && entry["prereq"].asString() == "light_response_fixture" &&
+            gSavedSettings.getBOOL("AvatarLightResponsePersist")) // ui-draw-lint: allow(setting) fixture must never reach an account file
+        {
+            addFunctionalResult(entry, "SKIP", "would write the fixture into the account file");
+            ++mFunctionalIndex;
             return;
         }
         const std::string action = entry["action"].asString();
@@ -7099,6 +7296,15 @@ private:
             expected_ok = expected_ok && reflow_stable;
             if (!reflow_stable)
                 assertion_failure = "Lightbox hidden-row reflow drifted or did not restore exactly";
+        }
+        if (entry["probe"].asString() == "light_response_store")
+        {
+            const bool store_ok = checkLightResponseStore(entry);
+            const bool negative = entry["negative_control"].asBoolean();
+            expected_ok = negative ? !store_ok : store_ok;
+            observable = expected_ok;
+            if (!expected_ok) assertion_failure = negative ?
+                "wrong-field negative control unexpectedly passed" : "per-avatar store value or untouched fields differ";
         }
         const std::string observed = "value=" + functionalValue(actual) +
             "; consumer=" + functionalValue(consumer_after) +
@@ -10507,6 +10713,10 @@ private:
     LLHandle<LLScrollListCtrl> mFunctionalCastList;
     bool mFunctionalPathActorWasCast = true;
     LLUUID mFunctionalPathLeaderId;
+    std::vector<LLUUID> mFunctionalLightFixtures;
+    std::vector<LLSD> mFunctionalLightBefore;
+    LLSD mFunctionalLightPaste;
+    LLSD mFunctionalLightFilterBefore;
     LLUUID mFunctionalGhostFixture;
     LLUUID mFunctionalGhostSelectionBefore;
     LLDirectorCast::ActorStyle mFunctionalActorStyleBefore;

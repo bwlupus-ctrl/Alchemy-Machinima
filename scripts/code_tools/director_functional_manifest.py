@@ -178,6 +178,16 @@ FORCED_SAFE_SKIPS = {
                             ["agent_send"]),
 }
 
+# Controls that write the user's own saved data to disk. The harness never
+# toggles or otherwise drives them: turning Remember on would persist the
+# session's Avatar Light Response edits into the user's file. Keyed by
+# (page, widget) because v1 and v2 both name it chk_persist. Enforced in classify().
+PERSIST_WRITE_CONTROLS = {
+    ("actors_tab", "chk_persist"): (
+        "writes the session's Avatar Light Response edits to the user's saved file",
+        ["persistent_setting"]),
+}
+
 V2_LEGACY_OPERATOR_ROWS = {
     "FlycamOperatorModeBlendTime", "FlycamOperatorSimulationHz",
 }
@@ -541,6 +551,9 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
         "cine_light_rig_tab": "ALPanelCineLightRig::postBuild",
         "light_rim_tab": "ALRigRimController::attach",
         "vcam_tab": "ALPanelDirectorVCam::postBuild",
+        "takes_tab": "ALPanelFlycamRecorder::postBuild",
+        "temporal_tab": "ALPanelTemporalCapture::postBuild",
+        "actors_tab": "ALPanelAvatarLightResponse::postBuild",
     })
     out = []
     for page, xml_rows in kit_pages.items():
@@ -582,7 +595,9 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
             if page == "vcam_tab" and kind != "readout":
                 owner = "ALPanelDirectorVCam::onControl"
             if binding == "code":
-                if row.get("action") or row.get("link_to") or kind == "link":
+                if kind == "readout" and child is not None and (child.text or "").strip():
+                    owner = "ALKitRow::postBuild (authored static text)"
+                elif row.get("action") or row.get("link_to") or kind == "link":
                     owner = "ALKitRow::postBuild"
                 else:
                     binder = binder_by_page.get(page, "")
@@ -592,6 +607,9 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 if exercise != "none" and not owner:
                     sys.exit("kit coverage check failed: no code binder for %s/%s" %
                              (page, widget))
+            if page == "actors_tab" and widget in {
+                    "light_response_popout", "am_reset_CineLightRigActorMaskBias", "am_test_trigger"}:
+                owner = "LLFloaterDirector::bindLightActorsPage"
             action, reason, hazards = classify({
                 "status": "GENERATED_KIT", "exercise": exercise, "etype": etype,
                 "name": widget, "label": row.get("label", ""), "page": page,
@@ -675,6 +693,9 @@ def classify(c):
     hazards = []
     if c["status"] == "MISSING":
         return "EXPECT_MISSING", "no element with this name in this version", hazards
+    if (c["page"], c["name"]) in PERSIST_WRITE_CONTROLS:
+        reason, persist_hazards = PERSIST_WRITE_CONTROLS[(c["page"], c["name"])]
+        return "SKIP", reason, list(persist_hazards)
     if c["exercise"] == "none":
         return "NO_EXERCISE", "no generic exercise for widget type '%s'" % c["etype"], hazards
     text_like = c["exercise"] == "set_value" and c["etype"] == "text"
@@ -927,7 +948,7 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
         entry["options"] = [{"label": a, "value": coerce_item(b, stype)} for a, b in items]
     if test_resolved is not None and test_resolved != test_value:
         entry["test_value_resolved"] = test_resolved
-    if name == "am_test_combo":
+    if name == "am_test_combo" or (v == "v2" and r["page"] == "actors_tab" and name == "am_test_trigger"):
         # This is a command, not durable state: its diagnostics listener either
         # arms the in-world capture sequence or reports it inconclusive, then
         # resets CineLightRigActorMaskTest to Idle on the next idle callback.
@@ -1423,6 +1444,74 @@ def enforce_hazard_skip_run_guard(entries):
                  (rel(HAZARD_RUN_ALLOW_PATH), ", ".join(violations)))
 
 
+
+
+def add_light_response_oracles(entries, page_meta):
+    """Use isolated UUIDs and store fields, never widget echo as the value oracle."""
+    fields = {
+        "sld_diffuse": ("diffuse", "F32", 50, 0.5),
+        "sld_tame": ("tame", "F32", 25, 0.25),
+        "sld_brightness": ("ev", "F32", -1, -1),
+        "sld_glow": ("glow", "F32", 150, 1.5),
+        "sld_sil_amount": ("sil_amount", "F32", 40, 0.4),
+        "chk_bypass": ("bypass", "Boolean", True, True),
+        "chk_sil_haze": ("sil_haze", "Boolean", False, False),
+        "chk_sil_keep_rim": ("sil_keep_rim", "Boolean", True, True),
+        "combo_sil_fill": ("sil_fill", "Color3", 2, [1, 1, 1]),
+        "swatch_sil_fill": ("sil_fill", "Color3", [0.2, 0.4, 0.6, 1], [0.2, 0.4, 0.6]),
+    }
+    fixtures = set(fields) | {
+        "target_list", "chk_only_adjusted", "btn_refresh", "txt_brightness_ev",
+        "btn_reset_selected", "btn_inherit_selected", "btn_copy", "btn_paste",
+        "combo_preset", "btn_apply_preset",
+    }
+    # Preserve the legacy native-picker hazard when Takes is inventoried from kit XML.
+    for e in entries:
+        if e["version"] == "v2" and e["page"] == "takes_tab" and e["widget_name"] == "btn_load":
+            e.update(action="SKIP", reason="opens a native file picker that cannot be safely automated at login")
+    actors = [e for e in entries if e["version"] == "v2" and e["page"] == "actors_tab"]
+    # The bar widgets are deliberately outside kit_row coverage, but still exercised.
+    template = next(e for e in actors if e["widget_name"] == "btn_copy")
+    for widget, kind, exercise in (("combo_preset", "combo", "select_item"),
+                                    ("btn_apply_preset", "button", "click")):
+        e = copy.deepcopy(template)
+        e.update(id="v2:actors_tab:%s:bar" % widget, widget_name=widget,
+                 widget_type=kind, exercise=exercise, source="synthetic:light_response_bar",
+                 resolution="hosted_preset_bar", test_value=1)
+        entries.append(e)
+        actors.append(e)
+    for e in actors:
+        widget = e["widget_name"]
+        if widget == "am_test_trigger":
+            e.update(action="SKIP", expect={}, reason=(
+                "command self-resets to Idle; requires an active actor-only light and "
+                "rendered diagnostic captures for an effect oracle"))
+        if widget == "am_reset_CineLightRigActorMaskBias":
+            e.update(action="RUN", reason="", reset_widget="am_bias_slider", reset_pre_value=-20,
+                     expect={"setting": "CineLightRigActorMaskBias", "type": "F32", "value": -8},
+                     restore={"setting": "CineLightRigActorMaskBias", "value": "snapshot-before-test"})
+        if widget not in fixtures:
+            continue
+        e.update(prereq="light_response_fixture", probe="light_response_store",
+                 action="RUN", reason="", hazards=[], inworld_allowed=True,
+                 restore={"state": "inherit each isolated fixture UUID without saving"})
+        e["expect"] = {"mode": widget, "value": None}
+        if widget in fields:
+            field, stype, test, value = fields[widget]
+            e.update(test_value=test, expect={"field": field, "type": stype, "value": value})
+        if widget == "btn_inherit_selected":
+            e.update(action="SKIP", reason="resident fixture has no wearer/source fallback; Inherit is disabled")
+    diffuse = next(e for e in actors if e["widget_name"] == "sld_diffuse")
+    multi = copy.deepcopy(diffuse)
+    multi.update(id="v2:actors_tab:sld_diffuse:multi", source="synthetic:light_response_multi",
+                 resolution="light_response_multiselect", fixture_count=2)
+    entries.append(multi)
+    negative = copy.deepcopy(diffuse)
+    negative.update(id="v2:actors_tab:sld_diffuse:wrong_field", source="synthetic:light_response_negative",
+                    resolution="light_response_negative_control", negative_control=True)
+    negative["expect"]["field"] = "tame"
+    entries.append(negative)
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -1474,6 +1563,7 @@ def main():
                       str(entry.get("source", "")).startswith("vcam_page.json")))]
     entries.extend(synth)
     entries.extend(build_kit_entries(kit_pages, rows, settings, page_meta))
+    add_light_response_oracles(entries, page_meta)
 
     # Coverage check: every interactive CSV row must appear once per version.
     expected = {(i, v) for i, r in enumerate(rows) if r["interactive"] == "Y" for v in VERSIONS

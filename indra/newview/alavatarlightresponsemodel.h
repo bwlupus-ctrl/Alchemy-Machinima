@@ -173,6 +173,20 @@ Params    applyPreset(const Params& cur, EPreset preset);
 
 LLSD      toLLSD(const Params& p);     // v1 keys, including sil_* fields
 Params    fromLLSD(const LLSD& s);     // missing keys => defaults; result sanitized
+
+// Pure gate for writing the per-account persistence file. The store (ALAvatarLightResponse) fills this from its
+// own state; every write goes through mayWriteSaveFile(), so a quit, a close and a debounce can never clobber a
+// file the session did not own or could not read.
+struct SaveGateInput
+{
+    bool mPersist             = false;   // "Remember between sessions" is on
+    bool mAgentKnown          = false;   // gAgentID is non-null
+    bool mAgentIsLoadedOwner  = false;   // gAgentID == the agent loadFromFile ran for (account fully initialised)
+    bool mDirty               = false;   // a user mutation is not yet on disk
+    bool mLoadFailed          = false;   // an EXISTING file could not be read at load
+    bool mEditedSinceLoadFail = false;   // the user changed something this session after that failure
+};
+bool      mayWriteSaveFile(const SaveGateInput& in);
 }
 
 #endif // AL_AVATAR_LIGHT_RESPONSE_MODEL_H
