@@ -49,6 +49,13 @@ public:
     // apply a preset through the exact path the combo uses and reflect it
     // in the combo selection; false (no-op) when no such preset exists
     bool applyPresetByName(const std::string& name);
+    // [Connectedness B2] The v2 Shot page has no ALPanelCineCamParams instance
+    // (no preset combo), so scene save/load reaches the preset store directly.
+    // activePresetName(): the preset most recently applied or saved this
+    // session (empty when none). applyPresetNamed(): apply a stored preset
+    // without a panel instance; false (no-op) when no such preset exists.
+    static std::string activePresetName();
+    static bool applyPresetNamed(const std::string& name);
 
     // ---- static actions shared with the kit Shot and Operator pages ----
     // Reset the settings of the current CinematicCamMode (no confirm dialog).
@@ -94,7 +101,8 @@ private:
     bool deletePresetCallback(const LLSD& notification, const LLSD& response,
                               const std::string name);
     void writePreset(const std::string& name);
-    void applyPreset(const std::string& name);
+    static void applyPreset(const std::string& name);
+    static std::string sActivePresetName;
 
     LLComboBox* mPresetCombo = nullptr;
     LLComboBox* mShakePresetCombo = nullptr;

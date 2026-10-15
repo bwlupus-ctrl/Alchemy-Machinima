@@ -129,10 +129,9 @@ void ALKitHelp::showRow(ALKitRow* row)
     }
     if (!meta.unit.empty())
         detail += "\nUnit " + meta.unit;
-    if (!meta.setting.empty())
-        detail += "\nSetting " + meta.setting;
-    // The widget name (e.g. sa_rate_chips) is an implementation id, never user
-    // text: the row's label is the title and its authored help is the explanation.
+    // [Connectedness B6] Neither the setting name nor the widget name (e.g.
+    // sa_rate_chips) is user text; both are implementation ids and are never shown.
+    // The row's label is the title and its authored help is the explanation.
     if (meta.advanced)
         detail += "\nIn More options";
     detail.erase(0, detail.find_first_not_of('\n')); // no blank first line when there was no default/range

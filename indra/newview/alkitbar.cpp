@@ -3,6 +3,7 @@
 #include "alkitbar.h"
 
 #include "alkitstyle.h"
+#include "llbutton.h"
 #include "llrender.h"
 #include "llstring.h"
 #include "llui.h"
@@ -43,6 +44,16 @@ bool ALKitBar::postBuild()
             mCollapsed.push_back(false);
         }
     }
+    // Overflow button: whatever the width collapses stays reachable through it.
+    LLButton::Params more;
+    more.name     = "btn_bar_more";
+    more.label    = "...";
+    more.rect     = LLRect(0, 24, 28, 0);
+    more.tool_tip = "More controls";
+    mMore         = LLUICtrlFactory::create<LLButton>(more);
+    mMore->setVisible(false);
+    addChild(mMore);
+    mChildren.push_back(mMore);
     layoutChildren();
     return LLPanel::postBuild();
 }
@@ -120,6 +131,15 @@ void ALKitBar::setCollapsibleVisible(LLView* child, bool visible)
     layoutChildren();
 }
 
+std::vector<LLView*> ALKitBar::collapsedChildren() const
+{
+    std::vector<LLView*> collapsed;
+    for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
+        if (mCollapsed[index] && mNaturalVisible[index])
+            collapsed.push_back(mCollapse[index]);
+    return collapsed;
+}
+
 void ALKitBar::layoutChildren()
 {
     constexpr S32 PAD = 10;
@@ -134,8 +154,11 @@ void ALKitBar::layoutChildren()
         mCollapsed[index] = false;
     }
 
-    auto layout_visible = [this](LLView* child)
+    bool more_counted = false; // the overflow button takes room only while something is collapsed
+    auto layout_visible = [this, &more_counted](LLView* child)
     {
+        if (child == mMore)
+            return more_counted;
         for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
             if (mCollapse[index] == child)
                 return mNaturalVisible[index] && !mCollapsed[index];
@@ -171,8 +194,11 @@ void ALKitBar::layoutChildren()
         if (mNaturalVisible[index])
         {
             mCollapsed[index] = true;
+            more_counted      = true;
         }
     }
+    if (mMore && mMore->getVisible() != more_counted)
+        mMore->setVisible(more_counted);
     for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
     {
         const bool visible = mNaturalVisible[index] && !mCollapsed[index];

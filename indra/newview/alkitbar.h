@@ -3,6 +3,8 @@
 
 #include "llpanel.h"
 
+class LLButton;
+
 #include <string>
 #include <vector>
 
@@ -22,6 +24,10 @@ public:
     void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     void setCollapsibleVisible(LLView* child, bool visible);
     void setRecording(bool recording) { mRecording = recording; }
+    // The "..." overflow button; visible only while some control is collapsed.
+    LLButton* moreButton() const { return mMore; }
+    // Controls the current width has collapsed, in collapse order.
+    std::vector<LLView*> collapsedChildren() const;
 
 protected:
     friend class LLUICtrlFactory;
@@ -38,6 +44,7 @@ private:
     std::vector<bool>        mNaturalVisible;
     std::vector<bool>        mCollapsed;
     bool                     mRecording = false;
+    LLButton*                mMore      = nullptr;
 };
 
 #endif

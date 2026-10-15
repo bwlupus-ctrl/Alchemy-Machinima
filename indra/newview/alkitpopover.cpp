@@ -129,6 +129,8 @@ bool ALKitPopover::postBuild()
             mAutoWidth = 180;
         else if (getName() == "kit_hotkeys_popover")
             mAutoWidth = 340;
+        else if (getName() == "kit_overflow_popover")
+            mAutoWidth = 180;
         layoutPopover(mAutoWidth, popoverCap(shell));
     }
     if (LLUICtrl* close = findChild<LLUICtrl>("btn_legend_close"))
@@ -231,6 +233,52 @@ void ALKitPopover::layoutPopover(S32 width, S32 max_height)
     }
 }
 
+// Caps a fixed-size popover to the room the shell has and scrolls what no longer fits.
+// The designed size is remembered on first use, so a later, taller shell restores it.
+void ALKitPopover::fitFixedHeight(S32 max_height)
+{
+    if (mAutoWidth > 0)
+        return;
+    if (mFixedHeight <= 0)
+    {
+        mFixedWidth  = getRect().getWidth();
+        mFixedHeight = getRect().getHeight();
+    }
+    const S32 shown = llmin(mFixedHeight, max_height);
+    if (shown >= mFixedHeight && !mScroller)
+        return;
+    if (!mScroller)
+    {
+        LLScrollContainer::Params sp;
+        sp.name                  = getName() + "_fixed_scroll";
+        sp.rect                  = LLRect(0, mFixedHeight, mFixedWidth, 0);
+        sp.is_opaque             = false;
+        sp.reserve_scroll_corner = false;
+        mScroller                = LLUICtrlFactory::create<LLScrollContainer>(sp);
+        ALKitStyle::styleScroller(mScroller);
+
+        LLPanel::Params dp;
+        dp.name               = getName() + "_fixed_content";
+        dp.rect               = LLRect(0, mFixedHeight, mFixedWidth, 0);
+        dp.background_visible = false;
+        mDoc                  = LLUICtrlFactory::create<LLPanel>(dp);
+        std::vector<LLView*> kids;
+        for (LLView* child : *getChildList())
+            kids.push_back(child);
+        for (LLView* child : kids)
+            mDoc->addChild(child); // removes it from this popover; positions are unchanged
+        mScroller->addChild(mDoc);
+        addChild(mScroller);
+    }
+    const bool overflow = shown < mFixedHeight;
+    const S32  sb       = overflow ? llmax(0, gSavedSettings.getS32("UIScrollbarSize")) : 0;
+    reshape(mFixedWidth + sb, shown, false);
+    mScroller->reshape(mFixedWidth + sb, shown, true);
+    mScroller->setOrigin(0, 0);
+    mDoc->reshape(mFixedWidth, mFixedHeight, false);
+    mScroller->goToTop();
+}
+
 void ALKitPopover::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
@@ -251,6 +299,11 @@ void ALKitPopover::show()
     {
         return;
     }
+    // A collapsed bottom-bar anchor is hidden and stale; open from the bar's "..." button.
+    if (!anchor->getVisible())
+        if (LLView* more = shell->findChild<LLView>("btn_bar_more"))
+            if (more->getVisible())
+                anchor = more;
 
     shell->closePopover();
     // Re-fit an auto-sized popover to the shell's current height: a resized or
@@ -258,6 +311,10 @@ void ALKitPopover::show()
     if (mAutoWidth > 0)
     {
         layoutPopover(mAutoWidth, popoverCap(shell));
+    }
+    else
+    {
+        fitFixedHeight(popoverCap(shell));
     }
     LLRect anchor_rect;
     if (!anchor->localRectToOtherView(anchor->getLocalRect(), &anchor_rect, shell))
@@ -296,8 +353,25 @@ void ALKitPopover::setVisible(bool visible)
     }
 }
 
+bool ALKitPopover::anchorContains(S32 x, S32 y) const
+{
+    LLView*     anchor = mAnchor.get();
+    ALKitShell* shell  = ALKitShell::find(const_cast<ALKitPopover*>(this));
+    if (!anchor || !shell || !anchor->getVisible())
+        return false;
+    LLRect rect;
+    if (!anchor->localRectToOtherView(anchor->getLocalRect(), &rect, shell))
+        return false;
+    return rect.pointInRect(x, y);
+}
+
 void ALKitPopover::toggle()
 {
+    // The press that landed on this popover's own anchor already closed it (the
+    // shell's outside-click handler); the click's commit must not reopen it.
+    if (ALKitShell* shell = ALKitShell::find(this))
+        if (shell->consumeAnchorClose(this))
+            return;
     if (getVisible())
     {
         hide();

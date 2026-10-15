@@ -60,6 +60,7 @@ public:
     bool                        navigateTo(const std::string& path);
     bool                        navigateTo(const ALKitTarget&);
     bool                        selectPage(const std::string& page_name);
+    bool                        revealLegacyWidget(LLPanel* panel, LLView* view);
     void                        syncSelection();
     void                        setReady();
     bool                        isReady() const { return mReady; }
@@ -88,6 +89,8 @@ public:
     bool                        cyclePage(S32 delta);
     bool                        cycleGroup(S32 delta);
     bool                        closePopover();
+    // True once after a press on `popover`'s own anchor closed it, so toggle() does not reopen it.
+    bool                        consumeAnchorClose(ALKitPopover* popover);
     bool                        isFavorite(const std::string&, const std::string&) const;
     void                        toggleFavorite(const std::string&, const std::string&);
     void                        showRowInSearch(ALKitRow*);
@@ -120,6 +123,8 @@ private:
         LLButton*   button = nullptr;
     };
     void                                                 buildChrome();
+    void                                                 buildOverflowPopover();
+    void                                                 toggleOverflow();
     void                                                 layoutChrome();
     void                                                 refreshModeProxy();
     void                                                 updatePips();
@@ -174,7 +179,10 @@ private:
     S32                                                  mTabOffset = 0;
     std::vector<TabData>                                 mTabs;
     ALKitPopover*                                        mOpenPopover   = nullptr;
+    ALKitPopover*                                        mAnchorClosedPopover = nullptr; // identity only, never dereferenced
+    LLFrameTimer                                         mAnchorClosedTimer;
     ALKitPopover*                                        mCastPopover   = nullptr;
+    ALKitPopover*                                        mOverflowPopover = nullptr;
     LLButton*                                            mTransportCut  = nullptr;
     LLButton*                                            mTransportArm  = nullptr;
     ALKitPopover*                                        mSearchPopover = nullptr;

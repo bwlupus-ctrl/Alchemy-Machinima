@@ -566,17 +566,12 @@ private:
     std::string mCastChipTooltip;
     ALKitShell* mShell = nullptr;
     bool mIsV2 = false;
-    LLTextBox* mKitUIMs = nullptr;
-    LLTimer mKitDrawTimer;
-    F32 mKitDrawEMA = 0.f;
-    ALLiveReadoutClock mKitDrawClock{2.f};
     LLComboBox* mCrashBackupCombo = nullptr;
     LLButton* mCrashBackupRestoreButton = nullptr;
     LLButton* mCrashBackupDeleteButton = nullptr;
     boost::signals2::scoped_connection mActorMaskTestWatch;
     boost::signals2::scoped_connection mPageBuiltConnection;
     boost::signals2::scoped_connection mPageSelectedConnection;
-    boost::signals2::scoped_connection mKitUIMsConnection;
     // Kit Time page: scale commit side effect driven from the TemporalWorldScale signal.
     // Kit Operator/Frame pages: frame aspect readback from CinematicFrameAspectRatio.
     std::vector<boost::signals2::scoped_connection> mFrameAspectConnections;

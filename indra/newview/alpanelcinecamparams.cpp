@@ -530,6 +530,25 @@ std::string ALPanelCineCamParams::getSelectedPresetName() const
     return mPresetCombo ? mPresetCombo->getSelectedItemLabel() : std::string();
 }
 
+std::string ALPanelCineCamParams::sActivePresetName;
+
+//static
+std::string ALPanelCineCamParams::activePresetName()
+{
+    return sActivePresetName;
+}
+
+//static
+bool ALPanelCineCamParams::applyPresetNamed(const std::string& name)
+{
+    if (name.empty() || !gDirUtilp->fileExists(presetPath(name)))
+    {
+        return false;
+    }
+    applyPreset(name);
+    return true;
+}
+
 bool ALPanelCineCamParams::applyPresetByName(const std::string& name)
 {
     if (name.empty() || !gDirUtilp->fileExists(presetPath(name)))
@@ -771,6 +790,7 @@ void ALPanelCineCamParams::writePreset(const std::string& name)
     }
     LLSDSerialize::toPrettyXML(preset, out);
     out.close();
+    sActivePresetName = name;
     LL_INFOS("CinematicCam") << "Saved cinematic camera preset '" << name << "'" << LL_ENDL;
 }
 
@@ -786,6 +806,7 @@ void ALPanelCineCamParams::onPresetSelected()
     }
 }
 
+//static
 void ALPanelCineCamParams::applyPreset(const std::string& name)
 {
     const std::string path = presetPath(name);
@@ -831,6 +852,7 @@ void ALPanelCineCamParams::applyPreset(const std::string& name)
     {
         gSavedSettings.setS32("CinematicCamMode", preset["mode"].asInteger());
     }
+    sActivePresetName = name;
     LL_INFOS("CinematicCam") << "Applied cinematic camera preset '" << name << "'" << LL_ENDL;
 }
 
@@ -869,6 +891,10 @@ bool ALPanelCineCamParams::deletePresetCallback(const LLSD& notification, const 
     if (LLFile::remove(path) != 0)
     {
         LL_WARNS("CinematicCam") << "Cannot delete preset file " << path << LL_ENDL;
+    }
+    if (sActivePresetName == name)
+    {
+        sActivePresetName.clear();
     }
     refreshPresetList();
     return false;

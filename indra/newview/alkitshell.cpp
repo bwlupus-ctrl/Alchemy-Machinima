@@ -17,6 +17,7 @@
 #include "llfloaterreg.h"
 #include "llfocusmgr.h"
 #include "llfontgl.h"
+#include "llnotificationsutil.h"
 #include "lllineeditor.h"
 #include "llrender.h"
 #include "llsliderwheel.h"
@@ -340,7 +341,8 @@ bool ALKitShell::postBuild()
     mTransport    = findChild<LLPanel>("kit_transport");
     mTransportCut = findChild<LLButton>("btn_cut");
     mTransportArm = findChild<LLButton>("btn_arm");
-    mRosterOpen   = gSavedSettings.getBOOL("DirectorV2CastRosterOpen");
+    // [Connectedness B5] mRosterOpen stays at its header default (true): nothing toggles
+    // the roster, so the old read of DirectorV2CastRosterOpen could never see a write.
     const LLSD stored_favorites = gSavedSettings.getLLSD("DirectorFavorites");
     mFavorites = ALKitQol::favoritesFromLLSD(stored_favorites);
     const LLSD cleaned_favorites = ALKitQol::favoritesToLLSD(mFavorites);
@@ -531,6 +533,8 @@ void ALKitShell::buildChrome()
             });
     }
 
+    buildOverflowPopover();
+
     for (const RailData& item : mRailData)
     {
         LLButton::Params params;
@@ -717,7 +721,7 @@ void ALKitShell::layoutChrome()
         }
         else if (mCastPopover)
         {
-            if (mRoster->getParent() != mCastPopover)
+            if (!mRoster->hasAncestor(mCastPopover))
                 mCastPopover->addChild(mRoster);
             mRoster->setVisible(true);
             mRoster->reshape(280, 340, true);
@@ -755,7 +759,10 @@ void ALKitShell::layoutChrome()
                 page_label = tab.label;
                 break;
             }
-        const std::string title = "Director \xE2\x80\xBA " + group_label + " \xE2\x80\xBA " + page_label;
+        // A group with one page of the same name (Settings) shows that name once.
+        const std::string title = group_label == page_label
+            ? "Director \xE2\x80\xBA " + group_label
+            : "Director \xE2\x80\xBA " + group_label + " \xE2\x80\xBA " + page_label;
         if (floater->getTitle() != title)
             floater->setTitle(title);
     }
@@ -1039,16 +1046,144 @@ ALKitShell* ALKitShell::find(LLView* v)
     return nullptr;
 }
 
+// The bottom bar collapses controls as it narrows; the "..." button (btn_bar_more) lists
+// whatever is collapsed so nothing becomes unreachable. The list is rebuilt on every open.
+void ALKitShell::buildOverflowPopover()
+{
+    ALKitBar* bar = findChild<ALKitBar>("kit_transport");
+    if (!bar || !bar->moreButton())
+        return;
+    ALKitPopover::Params params;
+    params.name    = "kit_overflow_popover";
+    params.rect    = LLRect(0, 1, 100, 0); // no designed height: auto-sized
+    params.side    = "above";
+    params.visible = false;
+    mOverflowPopover = LLUICtrlFactory::create<ALKitPopover>(params);
+    addChild(mOverflowPopover);
+    mOverflowPopover->bindAnchor(bar->moreButton());
+    LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+    bar->moreButton()->setCommitCallback(
+        [handle](LLUICtrl*, const LLSD&)
+        {
+            if (ALKitShell* shell = handle.get())
+                shell->toggleOverflow();
+        });
+}
+
+void ALKitShell::toggleOverflow()
+{
+    ALKitBar* bar = findChild<ALKitBar>("kit_transport");
+    if (!bar || !mOverflowPopover)
+        return;
+    if (consumeAnchorClose(mOverflowPopover)) // the press on "..." already closed the list
+        return;
+    if (mOverflowPopover->getVisible())
+    {
+        mOverflowPopover->hide();
+        return;
+    }
+    std::vector<LLView*> stale;
+    for (LLView* child : *mOverflowPopover->getChildList())
+        stale.push_back(child);
+    for (LLView* child : stale)
+    {
+        mOverflowPopover->removeChild(child);
+        delete child;
+    }
+    struct Entry
+    {
+        const char* name;
+        const char* label;
+    };
+    static const Entry labels[] = { { "btn_reset_marks", "Reset marks" },
+                                    { "btn_set_marks", "Set marks" },
+                                    { "show_paths_global_check", "Show paths" },
+                                    { "btn_help", "Legend and hotkeys" },
+                                    { "btn_scene_load", "Load scene" },
+                                    { "btn_scene_save", "Save scene" },
+                                    { "btn_scene_menu", "Save as, Rename, Delete..." } };
+    S32 index = 0;
+    for (LLView* collapsed : bar->collapsedChildren())
+    {
+        std::string label;
+        for (const Entry& entry : labels)
+            if (collapsed->getName() == entry.name)
+                label = entry.label;
+        LLButton* source = dynamic_cast<LLButton*>(collapsed);
+        if (label.empty() && !source)
+        {
+            // A collapsed status line has no action; show its text so it is not lost.
+            if (LLTextBox* text = dynamic_cast<LLTextBox*>(collapsed))
+                label = text->getText();
+            if (label.empty())
+                continue;
+        }
+        if (label.empty())
+            continue;
+        LLButton::Params button_params;
+        button_params.name  = "kit_overflow_item_" + llformat("%d", index++);
+        button_params.label = label;
+        button_params.rect  = LLRect(0, 24, 160, 0);
+        LLButton* item      = LLUICtrlFactory::create<LLButton>(button_params);
+        if (!source)
+            item->setEnabled(false);
+        else
+        {
+            item->setEnabled(source->getEnabled());
+            LLHandle<LLView>       source_handle = source->getHandle();
+            LLHandle<ALKitPopover> popover_handle = mOverflowPopover->getDerivedHandle<ALKitPopover>();
+            item->setCommitCallback(
+                [source_handle, popover_handle](LLUICtrl*, const LLSD&)
+                {
+                    if (ALKitPopover* popover = popover_handle.get())
+                        popover->hide();
+                    // Committing a button is the same as clicking it.
+                    if (LLButton* target = dynamic_cast<LLButton*>(source_handle.get()))
+                        target->onCommit();
+                });
+        }
+        mOverflowPopover->addChild(item);
+    }
+    ALKitStyle::styleTree(mOverflowPopover);
+    if (index > 0)
+        mOverflowPopover->show();
+}
+
 bool ALKitShell::navigateTo(const std::string& path)
 {
-    ALKitTarget  target;
-    const size_t slash = path.find('/');
-    if (slash == std::string::npos)
-        target.page_key = path;
+    // Page keys are "group/page"; a full target is "group/page[/card[/widget]]".
+    // Callers (link rows, card links, Quick, Show in search) pass either
+    // "group/page" or "group/page/widget"; a lone third segment is resolved as
+    // a widget first and as a card id second (see navigateTo(ALKitTarget)).
+    std::vector<std::string> segments;
+    size_t                   start = 0;
+    while (start <= path.size())
+    {
+        const size_t slash = path.find('/', start);
+        const size_t end   = slash == std::string::npos ? path.size() : slash;
+        if (end > start)
+            segments.push_back(path.substr(start, end - start));
+        if (slash == std::string::npos)
+            break;
+        start = slash + 1;
+    }
+    if (segments.empty())
+        return false;
+    ALKitTarget target;
+    size_t      used = 1;
+    if (segments.size() == 1)
+        target.page_key = segments[0];
     else
     {
-        target.page_key = path.substr(0, slash);
-        target.widget   = path.substr(slash + 1);
+        target.page_key = segments[0] + "/" + segments[1];
+        used            = 2;
+    }
+    if (segments.size() == used + 1)
+        target.widget = segments[used];
+    else if (segments.size() > used + 1)
+    {
+        target.card_id = segments[used];
+        target.widget  = segments[used + 1];
     }
     return navigateTo(target);
 }
@@ -1061,44 +1196,83 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
     LLPanel* panel = ensurePageBuilt(target.page_key);
     if (!panel)
         return false;
-    if (ALKitPage* page = findFirst<ALKitPage>(panel))
+    ALKitPage* page = findFirst<ALKitPage>(panel);
+    // One reveal path: group/page is selected (ensurePageBuilt), then the
+    // ALKitPage reveal switches mode, chip, card option and More options and
+    // scrolls/flashes the row.  Legacy widgets get the same treatment through
+    // revealLegacyWidget (inner tabs, accordions, scroll, highlight).
+    if (page)
     {
-        ALKitRow* row = !target.widget.empty() ? page->findRow(target.widget) : page->findRowBySetting(target.setting);
-        if (row)
-            return page->revealRow(row, true);
-        if (ALKitCard* card = page->findCard(target.card_id))
+        ALKitRow*  row  = !target.widget.empty() ? page->findRow(target.widget) : page->findRowBySetting(target.setting);
+        ALKitCard* card = target.card_id.empty() ? nullptr : page->findCard(target.card_id);
+        if (!row && !target.setting.empty())
+            row = page->findRowBySetting(target.setting);
+        if (!card && !row && !target.widget.empty())
+            card = page->findCard(target.widget);
+        if (row && page->revealRow(row, true))
+            return true;
+        if (card)
             return page->revealCard(card, true);
     }
     if (!target.widget.empty())
         if (LLView* view = panel->findChild<LLView>(target.widget))
         {
-            for (LLView* ancestor = view->getParent(); ancestor && ancestor != panel; ancestor = ancestor->getParent())
-                if (LLAccordionCtrlTab* accordion = dynamic_cast<LLAccordionCtrlTab*>(ancestor))
-                    accordion->setDisplayChildren(true);
-            for (LLView* ancestor = view->getParent(); ancestor; ancestor = ancestor->getParent())
-            {
-                if (LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(ancestor))
+            // A widget that is a row's control but was not found by name still
+            // goes through the row reveal so chips/modes/More options switch.
+            for (LLView* ancestor = view; ancestor && ancestor != panel; ancestor = ancestor->getParent())
+                if (ALKitRow* owner = dynamic_cast<ALKitRow*>(ancestor))
                 {
-                    LLRect rect;
-                    if (LLView* document = scroller->getScrolledView())
-                    {
-                        if (view->localRectToOtherView(view->getLocalRect(), &rect, document))
-                        {
-                            const LLRect visible = scroller->getVisibleContentRect();
-                            const S32 center = visible.getHeight() / 2;
-                            const S32 half = llmax(1, rect.getHeight() / 2);
-                            scroller->scrollToShowRect(rect,
-                                LLRect(0, center + half, visible.getWidth(), center - half));
-                        }
-                    }
+                    if (page && page->revealRow(owner, true))
+                        return true;
                     break;
                 }
-            }
-            mHighlight = view->getHandle();
-            mHighlightTimer.reset();
-            return true;
+            return revealLegacyWidget(panel, view);
         }
+    LL_WARNS("DirectorKit") << "navigateTo: no target for page '" << target.page_key << "' widget '" << target.widget
+                            << "' setting '" << target.setting << "'" << LL_ENDL;
     return false;
+}
+
+bool ALKitShell::revealLegacyWidget(LLPanel* panel, LLView* view)
+{
+    if (!panel || !view)
+        return false;
+    // Activate every parent tab and accordion of a legacy page, innermost last
+    // so nested containers land on the right pane.
+    std::vector<LLView*> chain;
+    for (LLView* ancestor = view; ancestor && ancestor != panel; ancestor = ancestor->getParent())
+        chain.push_back(ancestor);
+    for (auto it = chain.rbegin(); it != chain.rend(); ++it)
+    {
+        LLView* ancestor = *it;
+        if (LLTabContainer* tabs = dynamic_cast<LLTabContainer*>(ancestor->getParent()))
+            if (LLPanel* tab_panel = dynamic_cast<LLPanel*>(ancestor))
+                tabs->selectTabPanel(tab_panel);
+        if (LLAccordionCtrlTab* accordion = dynamic_cast<LLAccordionCtrlTab*>(ancestor))
+            accordion->setDisplayChildren(true);
+    }
+    for (LLView* ancestor = view->getParent(); ancestor; ancestor = ancestor->getParent())
+    {
+        if (LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(ancestor))
+        {
+            LLRect rect;
+            if (LLView* document = scroller->getScrolledView())
+            {
+                if (view->localRectToOtherView(view->getLocalRect(), &rect, document))
+                {
+                    const LLRect visible = scroller->getVisibleContentRect();
+                    const S32 center = visible.getHeight() / 2;
+                    const S32 half = llmax(1, rect.getHeight() / 2);
+                    scroller->scrollToShowRect(rect,
+                        LLRect(0, center + half, visible.getWidth(), center - half));
+                }
+            }
+            break;
+        }
+    }
+    mHighlight = view->getHandle();
+    mHighlightTimer.reset();
+    return true;
 }
 
 bool ALKitShell::selectPage(const std::string& page_name)
@@ -1537,7 +1711,10 @@ void ALKitShell::updateSearchResults(const ALKitSearch::Hits& hits, ALKitPage* p
         if (hit.advanced)
             context += (context.empty() ? std::string() : "  \xC2\xB7  ") + std::string("More");
 
-        std::string detail = searchDisplayText(hit.setting);
+        // [Connectedness B6] Detail is a readable page path, never a setting or widget name.
+        std::string detail = searchDisplayText(hit.group_label);
+        if (!hit.page_label.empty())
+            detail += (detail.empty() ? std::string() : " \xE2\x80\xBA ") + searchDisplayText(hit.page_label);
         if (hit.external)
         {
             detail = "Opens in " + searchDisplayText(hit.external_label);
@@ -1664,7 +1841,11 @@ bool ALKitShell::openExternalResult(const ALKitSearch::Hit& hit)
     setSearchPopupArmed(nullptr, false);
     LLFloater* floater = LLFloaterReg::showInstance(hit.external_floater);
     if (!floater)
+    {
+        LL_WARNS("DirectorKit") << "External result floater '" << hit.external_floater << "' did not open" << LL_ENDL;
+        LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", "That window couldn't be opened."));
         return false;
+    }
     selectTabRecursive(floater, hit.external_tab);
     LLView* target_root = hit.external_tab.empty()
         ? static_cast<LLView*>(floater)
@@ -1673,7 +1854,16 @@ bool ALKitShell::openExternalResult(const ALKitSearch::Hit& hit)
         target_root = floater;
     LLView* target = findExternalTarget(target_root, hit.widget, hit.setting);
     if (!target)
+    {
+        // The window opened but the control is not in it: say so rather than
+        // leaving the user in an unexplained, unrelated floater.
+        LL_WARNS("DirectorKit") << "External result target not found: floater '" << hit.external_floater
+                                << "' tab '" << hit.external_tab << "' widget '" << hit.widget << "' setting '"
+                                << hit.setting << "'" << LL_ENDL;
+        LLNotificationsUtil::add("SystemMessageTip",
+            LLSD().with("MESSAGE", "That control isn't available in the window that opened."));
         return false;
+    }
     for (LLView* ancestor = target->getParent(); ancestor && ancestor != floater; ancestor = ancestor->getParent())
         if (LLAccordionCtrlTab* accordion = dynamic_cast<LLAccordionCtrlTab*>(ancestor))
             accordion->setDisplayChildren(true);
@@ -1714,8 +1904,20 @@ bool ALKitShell::cycleGroup(S32 delta)
 {
     if (!mDirectorTabs || mDirectorTabs->getTabCount() < 1)
         return false;
+    // Settings has no rail button (it opens from the gear), so rail cycling skips it.
+    const S32 count   = mDirectorTabs->getTabCount();
     const S32 current = mDirectorTabs->getCurrentPanelIndex();
-    LLPanel*  group   = mDirectorTabs->getPanelByIndex((current + delta + mDirectorTabs->getTabCount()) % mDirectorTabs->getTabCount());
+    const S32 step    = delta < 0 ? -1 : 1;
+    LLPanel*  group   = nullptr;
+    for (S32 hop = 1; hop <= count; ++hop)
+    {
+        LLPanel* candidate = mDirectorTabs->getPanelByIndex(((current + step * hop) % count + count) % count);
+        if (candidate && candidate->getName() != "settings_group")
+        {
+            group = candidate;
+            break;
+        }
+    }
     if (!group)
         return false;
     mDirectorTabs->selectTabPanel(group);
@@ -1870,6 +2072,10 @@ void ALKitShell::rebuildQuick()
         ALKitRow* source = source_page ? source_page->findRow(favorite.widget) : nullptr;
         if (ALKitRow* proxy = ALKitRow::createProxy(source, "quick_proxy_" + llformat("%d", index++)))
             proxies.push_back(proxy);
+        else
+            LL_WARNS("DirectorKit") << "Quick dropped favorite '" << favorite.page << "' / '" << favorite.widget << "': "
+                                    << (source_page ? (source ? "its row has no control to proxy" : "its row was not found on the page")
+                                                    : "its page is not built") << LL_ENDL;
     }
     card->setQuickRows(std::move(proxies));
     if (mChangedOnly || !mSearch.queryText().empty())
@@ -1983,6 +2189,13 @@ bool ALKitShell::closePopover()
     return true;
 }
 
+bool ALKitShell::consumeAnchorClose(ALKitPopover* popover)
+{
+    const bool match = popover && mAnchorClosedPopover == popover && mAnchorClosedTimer.getElapsedTimeF32() < 2.f;
+    mAnchorClosedPopover = nullptr;
+    return match;
+}
+
 void ALKitShell::setOpenPopover(ALKitPopover* popover)
 { mOpenPopover = popover; }
 
@@ -2005,7 +2218,13 @@ bool ALKitShell::handleMouseDown(S32 x, S32 y, MASK mask)
             // search cannot reopen it; clicking into the box re-arms it.
             if (mOpenPopover == mSearchPopover)
                 mSearchPopupArmed = false;
+            ALKitPopover* closing = mOpenPopover;
+            const bool on_anchor = closing->anchorContains(x, y);
             closePopover();
+            // A press on the popover's own anchor closes it; remember that so the
+            // anchor's click (toggle) does not immediately reopen it.
+            mAnchorClosedPopover = on_anchor ? closing : nullptr;
+            mAnchorClosedTimer.reset();
         }
     }
     return LLPanel::handleMouseDown(x, y, mask);

@@ -439,6 +439,12 @@ bool ALKitPage::postBuild()
     reset->setImageOverlay("KitIcon_reset_arc_16");
     reset->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
     reset->setCommitCallback([this](LLUICtrl*, const LLSD&) { resetPage(); });
+    if (mLegacy)
+    {
+        // Legacy pages have no kit cards, so Reset page has nothing to reset.
+        reset->setEnabled(false);
+        reset->setToolTip(LLStringExplicit("Available after this page is converted"));
+    }
     mBar->addChild(reset);
     reset->reshape(28, 24, true);
     reset->setOrigin(bar_x, 10);
@@ -600,6 +606,12 @@ bool ALKitPage::postBuild()
                 mShell->setChangedOnly(control->getValue().asBoolean());
         });
     mBar->addChild(mChangedOnly);
+    if (mLegacy)
+    {
+        // Legacy pages have no kit rows to filter by change.
+        mChangedOnly->setEnabled(false);
+        mChangedOnly->setToolTip(LLStringExplicit("Available after this page is converted"));
+    }
 
     mBanner = makePanel(pre + "_banner", ALKitStyle::BANNER_H, page_width);
     mBanner->setBackgroundVisible(true);
@@ -1536,6 +1548,9 @@ void ALKitPage::setSearchText(const std::string& q)
 void ALKitPage::setChangedOnlyValue(bool enabled)
 {
     setValueIfChanged(mChangedOnly, LLSD(enabled), true);
+    // A legacy page cannot filter, but a filter that is already on must stay switch-off-able.
+    if (mLegacy && mChangedOnly)
+        mChangedOnly->setEnabled(enabled);
 }
 
 void ALKitPage::resetPage()

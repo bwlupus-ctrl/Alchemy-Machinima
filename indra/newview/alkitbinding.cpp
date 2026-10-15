@@ -8,6 +8,43 @@
 #include "lltimer.h"
 #include "v3color.h"
 #include "v4color.h"
+#include <cstdlib>
+
+namespace
+{
+// U32 controls are stored as the S32 bit pattern of the value (llcontrol.cpp), so a value
+// above 2^31-1 is a negative LLSD integer.  Writing must therefore build the U32 first (from a
+// real or string that may exceed S32 range) and wrap it once; reading unwraps it for the UI.
+U32 llsdToU32(const LLSD& value)
+{
+    if (value.isReal())
+    {
+        const F64 real = value.asReal();
+        if (!(real > 0.0))
+            return 0;
+        if (real >= 4294967295.0)
+            return 4294967295u;
+        return static_cast<U32>(real + 0.5);
+    }
+    if (value.isString())
+    {
+        const std::string text = value.asString();
+        char*             end  = nullptr;
+        const F64         real = strtod(text.c_str(), &end);
+        if (end == text.c_str() || !(real > 0.0))
+            return 0;
+        return real >= 4294967295.0 ? 4294967295u : static_cast<U32>(real + 0.5);
+    }
+    return static_cast<U32>(value.asInteger()); // an integer already carries the bit pattern
+}
+
+LLSD unsignedControlValue(LLControlVariable* control, const LLSD& raw)
+{
+    if (control && control->type() == TYPE_U32 && raw.isInteger() && raw.asInteger() < 0)
+        return LLSD(static_cast<LLSD::Real>(static_cast<U32>(raw.asInteger())));
+    return raw;
+}
+} // namespace
 
 bool alKitSetTypedControl(LLControlGroup& group, const std::string& name, const LLSD& value)
 {
@@ -21,7 +58,7 @@ bool alKitSetTypedControl(LLControlGroup& group, const std::string& name, const 
             control->set(LLSD(value.asInteger()));
             break;
         case TYPE_U32:
-            control->set(LLSD(static_cast<LLSD::Integer>(static_cast<U32>(value.asInteger()))));
+            control->set(LLSD(static_cast<LLSD::Integer>(llsdToU32(value))));
             break;
         case TYPE_F32:
             control->set(LLSD(value.asReal()));
@@ -68,10 +105,10 @@ LLControlVariable* ALKitSettingBinding::control() const
 { return gSavedSettings.getControl(mName).get(); }
 
 LLSD ALKitSettingBinding::get() const
-{ return control() ? control()->get() : LLSD(); }
+{ return control() ? unsignedControlValue(control(), control()->get()) : LLSD(); }
 
 LLSD ALKitSettingBinding::getDefault() const
-{ return control() ? control()->getDefault() : LLSD(); }
+{ return control() ? unsignedControlValue(control(), control()->getDefault()) : LLSD(); }
 
 void ALKitSettingBinding::set(const LLSD& v)
 {

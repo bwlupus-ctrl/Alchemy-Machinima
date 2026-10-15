@@ -250,3 +250,12 @@ Each class below is a finding from this audit that would have failed at code tim
 ## 6. Reference: phantom index entries (R2-3)
 
 27 non-external entries with no matching widget on the page. Practicals: `sl_status`, `sl_cast_shadows`, `sl_volumetric`, `sl_capture`, `sl_clear`, `sl_gobo`, `sl_gobo_animmode`, `sl_gobo_speed`, `sl_gobo_zoom`, `sl_gobo_tint`, `sl_gobo_soft`, `sl_gobo_dispersion`, `sl_gobo_var1`, `sl_gobo_var2`, `sl_gobo_invert`, `open_lightbox_sellight`. Gaze Cues: `cue_list`, `btn_cue_add`, `btn_cue_delete`, `gaze_cue_play`, `gaze_cue_stop`. Light Cues: `cue_rows`, `cue_capture`, `cue_delete`, `cue_goto`, `cue_release`. VCam: `vc_monitor_tile_manifest`. The matching floater rows already exist as external entries (for example `sl_cast_shadows` at index line 2989, `cue_goto` at line 3663), so the Director rows can be dropped.
+
+## 7. Needs a user decision (wire or remove)
+
+Both rows are kept, now disabled with the tooltip "Not connected yet" and honest help text (fix batch 10/15, item B9). Neither has a consumer in C++ or GLSL, so neither can be wired without new renderer or readout work.
+
+| Setting | Where | State now | Decision needed |
+|---|---|---|---|
+| `RenderBloomHDR` | Look > Bloom & Glow, "HDR bloom" (`set_RenderBloomHDR`); also the Exposure hub bloom controls | Row disabled, tooltip "Not connected yet". No reader exists, so bloom does not change with it. | Wire it in `pipeline.cpp` (HDR bloom branch) or remove the row and the `enabled_control` gating in the Exposure hub. |
+| `TemporalOutputFPS` | Capture > Time, "Out FPS" (`output_fps_spinner`) | Row disabled, tooltip "Not connected yet". `alpaneltemporalcapture.cpp` computes the post speed-up from the speed alone. | Use it in the speed-up readout or remove the row. |

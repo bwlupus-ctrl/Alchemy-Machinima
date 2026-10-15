@@ -19,6 +19,7 @@
 #include "lltextbox.h"
 #include "lltexteditor.h"
 #include "llspinctrl.h"
+#include "llsliderctrl.h"
 #include "llcombobox.h"
 #include "llcheckboxctrl.h"
 #include "llradiogroup.h"
@@ -839,9 +840,33 @@ LLSD ALKitRow::boundDefault() const
 
 bool ALKitRow::setBoundValue(const LLSD& value)
 {
-    const LLSD coerced = ALKitQol::coercePasteValue(value, boundValue());
+    LLSD coerced = ALKitQol::coercePasteValue(value, boundValue());
     if (!coerced.isDefined() || (mBinding && !mBinding->canSet()))
         return false;
+    if (coerced.isInteger() || coerced.isReal())
+    {
+        // Paste (and Quick proxy commits) must stay inside the row's range.
+        bool  has_min = mMeta.has_min;
+        bool  has_max = mMeta.has_max;
+        F64   low     = mMeta.min_val;
+        F64   high    = mMeta.max_val;
+        if (!has_min && !has_max)
+            if (LLSliderCtrl* ranged = dynamic_cast<LLSliderCtrl*>(mControl)) // sliders always declare a range
+            {
+                has_min = has_max = true;
+                low               = ranged->getMinValue();
+                high              = ranged->getMaxValue();
+            }
+        if (has_min || has_max)
+        {
+            F64 number = coerced.asReal();
+            if (has_min)
+                number = llmax(number, low);
+            if (has_max)
+                number = llmin(number, high);
+            coerced = coerced.isInteger() ? LLSD(static_cast<LLSD::Integer>(llround(number))) : LLSD(number);
+        }
+    }
     if (mBinding)
         mBinding->set(coerced);
     else if (mControl)
@@ -953,7 +978,8 @@ void ALKitRow::refreshFavorite()
     {
         mFavorite->setLabel(favorite ? "\xE2\x98\x85" : "\xE2\x98\x86");
         mFavorite->setToolTip(LLStringExplicit(favorite ? "Remove from Quick" : "Add to Quick"));
-        mFavorite->setVisible(mHovered || favorite);
+        // Rows outside a page (popover rows) have no page key and cannot be Quick favorites.
+        mFavorite->setVisible(ALKitQol::isValidFavorite(key) && (mHovered || favorite));
     }
 }
 
@@ -1069,6 +1095,7 @@ void ALKitRow::showContextMenu(S32 x, S32 y)
     if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("favorite"))
     {
         const ALKitQol::Favorite key = favoriteKey();
+        item->setVisible(ALKitQol::isValidFavorite(key));
         item->setLabel(LLStringExplicit(ALKitShell::find(this) &&
             ALKitShell::find(this)->isFavorite(key.page, key.widget) ? "Remove from Quick" : "Add to Quick"));
     }

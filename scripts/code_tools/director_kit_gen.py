@@ -527,6 +527,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
             child.set("is_toggle", "true")
         if row.get("disabled"):
             child.set("enabled", "false")
+        if row.get("tip"):
+            child.set("tool_tip", str(row["tip"]))
         if row.get("enabled_control"):
             child.set("enabled_control", str(row["enabled_control"]))
         if kind == "readout" and row.get("row_height"):
@@ -567,6 +569,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
         attrs["is_toggle"] = "true"
     if row.get("disabled"):
         attrs["enabled"] = "false"
+    if row.get("tip"):  # [Connectedness B9] widget tooltip, e.g. "Not connected yet" on a disabled row
+        attrs["tool_tip"] = str(row["tip"])
     if row.get("enabled_control"):
         attrs["enabled_control"] = str(row["enabled_control"])
     if kind == "readout" and row.get("row_height"):
@@ -938,6 +942,64 @@ EXTERNAL_CONTROL_TAGS = {
 }
 
 
+# [Connectedness B6] External floater controls often carry no label of their own. The index used to
+# fall back to the widget name ("ps reset BDMergeFroxelWindAzimuth"), which then showed in search
+# results. Build a readable label from the widget name instead: drop the short layout prefix and the
+# control-type suffix, split camelCase, and turn reset/default buttons into "Reset <thing>".
+_LABEL_PREFIXES = {"cine", "rig", "ps", "ri", "tr", "ch", "sd", "pol", "exp", "fx", "lpm", "gradnd"}
+_LABEL_SETTING_WORDS = {"bd", "merge", "alchemy", "render", "cine"}
+_LABEL_SUFFIXES = {"slider", "spinner", "btn", "button", "check", "checkbox", "combo", "swatch", "picker",
+                   "editor", "list", "bar", "field", "radio", "text", "label"}
+_LABEL_ACRONYMS = {"ev", "fps", "ir", "hdr", "rgb", "gi", "ao", "ca", "ui", "lut", "fov", "nd", "dof", "bg",
+                   "ots", "iso", "lod", "sdr", "rtgi", "vram", "z", "x", "y"}
+
+
+def humanize_widget_name(widget: str) -> str:
+    parts = [part for part in widget.split("_") if part]
+    if len(parts) > 1 and parts[0].lower() in _LABEL_PREFIXES:
+        parts = parts[1:]
+    words: list[str] = []
+    for part in parts:
+        pieces = re.findall(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+", part) or [part]
+        if len(pieces) > 1:  # camelCase token: it is a setting-style name, drop its internal prefix words
+            while len(pieces) > 1 and pieces[0].lower() in _LABEL_SETTING_WORDS:
+                pieces = pieces[1:]
+        words.extend(piece.lower() for piece in pieces)
+    reset = False
+    while words and words[0] in ("reset", "rst"):
+        reset = True
+        words = words[1:]
+    while len(words) > 1 and words[-1] in _LABEL_SUFFIXES:
+        words = words[:-1]
+    while len(words) > 1 and words[-1] in ("reset", "default", "rst"):
+        reset = True
+        words = words[:-1]
+    while len(words) > 1 and words[-1] in _LABEL_SUFFIXES:
+        words = words[:-1]
+    if not words:
+        words = ["control"]
+    words = [word.upper() if word in _LABEL_ACRONYMS else word for word in words]
+    if reset:
+        return "Reset " + " ".join(words)
+    words[0] = words[0][:1].upper() + words[0][1:]
+    return " ".join(words)
+
+
+def tree_names(root: ET.Element, seen: set[str] | None = None) -> set[str]:
+    """Every name= / widget= in a page tree, following filename= includes (B8: index rows must resolve)."""
+    seen = set() if seen is None else seen
+    names: set[str] = set()
+    for node in root.iter():
+        for attr in ("name", "widget"):
+            if node.get(attr):
+                names.add(node.get(attr))
+        include = node.get("filename", "")
+        if include and include not in seen and (XUI / include).exists():
+            seen.add(include)
+            names |= tree_names(parse_xml(XUI / include), seen)
+    return names
+
+
 def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[list[str]]:
     rows: list[list[str]] = []
 
@@ -946,7 +1008,7 @@ def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[lis
         setting = node.get("control_name", "")
         widget = name or setting
         if isinstance(node.tag, str) and widget and (node.tag in EXTERNAL_CONTROL_TAGS or setting):
-            label = node.get("label", "").strip() or (node.text or "").strip() or widget.replace("_", " ")
+            label = node.get("label", "").strip() or (node.text or "").strip() or humanize_widget_name(widget)
             help_text = node.get("tool_tip", "")
             direct = " ".join((label, name, setting, help_text, tab_label, floater["label"]))
             rows.append([
@@ -974,7 +1036,7 @@ def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[lis
 
 
 def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
-                generated_rows: dict[str, set[str]]) -> bytes:
+                generated_rows: dict[str, set[str]], page_names: dict[str, set[str]] | None = None) -> bytes:
     lines: list[str] = []
     synonym_groups = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
     def esc(value) -> str:
@@ -1006,6 +1068,11 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                           row.get("s", ""), str(row.get("dc") if row.get("dc") is not None
                                                    else (0 if row.get("k") in ("dial", "arc") else 3)),
                           flags, row.get("kw", ""), row.get("h", "")]
+                # [Connectedness B8] Only index widgets that exist on their page: a row naming a widget the
+                # page tree lacks opens the page, finds nothing and highlights nothing. The matching floater
+                # rows are already indexed as external entries.
+                if page_names is not None and row.get("w", "") not in page_names.get(key, set()):
+                    continue
                 direct = " ".join(str(value or "") for value in fields[8:16])
                 fields += [synonym_aliases(direct, synonym_groups), "", "", "", "", "director"]
                 if len(fields) != INDEX_FIELDS:
@@ -1100,8 +1167,8 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
                 attrs["master_setting"] = str(master["s"])
             ET.SubElement(tc, "kit_lazy_page", attrs)
     bar = ET.SubElement(shell, "kit_bar", {"name": "kit_transport", "flex": "transport_spacer",
-                        "collapse_order": "transport_toast,btn_reset_marks,btn_scene_menu,btn_scene_save,"
-                                          "btn_scene_load,btn_set_marks,show_paths_global_check,btn_help,status_strip"})
+                        "collapse_order": "transport_toast,btn_reset_marks,btn_set_marks,show_paths_global_check,"
+                                          "btn_help,btn_scene_load,status_strip,btn_scene_save,btn_scene_menu"})
     widths = {"btn_action": 92, "btn_cut": 92, "btn_arm": 22, "btn_take_play": 28, "btn_take_stop": 28,
               "take_timecode": 100, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_load": 44,
               "btn_scene_save": 50, "btn_scene_menu": 28, "btn_set_marks": 28, "btn_reset_marks": 28,
@@ -1181,6 +1248,11 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     legend_body = copy_chrome("legend_body", v1)
     if legend_body.text:
         legend_body.text = legend_body.text.replace("see Capture > Scene options", "use F1 or ?, or choose Hotkeys below")
+        # [Connectedness B7] The per-actor Look-at-camera flag and its master toggle live on
+        # Performance > Gaze, not Camera > Shot (the A/B subjects are the Camera > Shot part).
+        if "override (Camera > Shot)" not in legend_body.text:
+            raise GenError("legend L-column text changed: update the B7 replacement")
+        legend_body.text = legend_body.text.replace("override (Camera > Shot)", "override (Performance > Gaze)")
     legend.append(legend_body)
     ET.SubElement(legend, "button", {"name": "btn_legend_hotkeys", "label": "Hotkeys (F1 / ?)"})
     legend.append(copy_chrome("btn_legend_close", v1))
@@ -1189,10 +1261,14 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
                         ("btn_scene_delete", "Delete...")):
         ET.SubElement(scene_menu, "button", {"name": name, "label": label})
     hot = ET.SubElement(shell, "kit_popover", {"name": "kit_hotkeys_popover", "anchor": "btn_help", "side": "above", "visible": "false"})
+    # [Connectedness B7] Every unmodified key aldirectorhotkeys.cpp handles (F2-F8, 1-9, Alt+1-9)
+    # plus the in-console keys handled by LLFloaterDirector::handleKeyHere.
     ET.SubElement(hot, "text", {"name": "kit_hotkeys_text", "word_wrap": "true"}).text = (
-        "Enter: ACTION\nEsc: close, clear or CUT\nF5: reset to marks / F8: set marks\n/: search\nCtrl+Z/Y: undo / redo\n"
+        "F2: show / hide the Director console\nF3: ACTION (becomes CUT while running)\nF4: CUT\n"
+        "F5: reset to marks\nF6: pose ghosts on / off\nF7: take play / pause\nF8: set marks\n"
+        "Enter: ACTION\nEsc: close, clear or CUT\n/: search\nCtrl+Z/Y: undo / redo\n"
         "PgUp/PgDn: chip\nShift+PgUp/PgDn: page\nAlt+PgUp/PgDn: group\nArrows: adjust\n"
-        "Home: reset row\nSpace/Enter: activate\n1-9: camera slots / Alt+1-9: animation slots")
+        "Home: reset row\nSpace/Enter: activate\n1-9: camera slots (when armed)\nAlt+1-9: animation slots (when armed)")
     return root
 
 
@@ -1279,6 +1355,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     outputs: dict[Path, bytes] = {}
     page_files: dict[str, str] = {}
     generated_rows: dict[str, set[str]] = {}
+    page_names: dict[str, set[str]] = {}
     report_lines = [note, "", "CLASSIFICATION"]
     for group, raw_page in flatten_pages(data):
         key = f"{group['name']}/{raw_page['name']}"
@@ -1303,6 +1380,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         page_files[key] = file_name
         outputs[out_dir / file_name] = xml_bytes(root, note)
         generated_rows[key] = {str(node.get("widget")) for node in root.iter("kit_row") if node.get("widget")}
+        page_names[key] = tree_names(root)
         data_rows = sum(1 for _ in all_rows(raw_page))
         pure_kit = all(is_pure_row(row) for row in all_rows(raw_page))
         predicate = f"pure-kit-eligible:{str(pure_kit).lower()}"
@@ -1326,7 +1404,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     floater = floater_tree(floater_data, page_files, v1)
     apply_kit_xui_style(floater)
     outputs[out_dir / "floater_director_v2.xml"] = xml_bytes(floater, note)
-    outputs[out_dir / "director_kit_index.xml"] = index_bytes(data, config, classes, note, generated_rows)
+    outputs[out_dir / "director_kit_index.xml"] = index_bytes(data, config, classes, note, generated_rows, page_names)
     report_lines += ["", "ICON_TEXTURES KitIcon_*_16 Kit_RoundRect4 Kit_RoundRect6 Kit_Pill9 Kit_Circle Kit_SliderTrack Kit_SliderThumb",
                      "TRANSPORT take_timecode uses LLFlycamRecorder playhead at 2 Hz; generated visible",
                      "CONTROL_NAME cine_rimq_actors_alpha: data widget spelling differs; v1 setting CineRigRimActorsOnlyAlpha is authoritative"]

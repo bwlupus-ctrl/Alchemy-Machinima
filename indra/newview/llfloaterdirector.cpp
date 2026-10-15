@@ -1687,8 +1687,6 @@ bool LLFloaterDirector::postBuild()
     // ---- status strip ----
     mStatusStrip = getChild<LLTextBox>("status_strip");
     mRecIndicator = getChild<LLTextBox>("rec_indicator");
-    mKitUIMs=findChild<LLTextBox>("kit_ui_ms");
-    if(mKitUIMs)mKitUIMs->setVisible(gSavedSettings.getBOOL("KitShowUIMs"));
 
     // [DirFix] D1: after every getChild and after the tab commit callback above (onTabChanged
     // and the helper's refit both stay on the commit signal; the refit is connected later,
@@ -1914,31 +1912,8 @@ void LLFloaterDirector::bindChrome(LLView* root)
 
     mStatusStrip = root->getChild<LLTextBox>("status_strip");
     mRecIndicator = root->getChild<LLTextBox>("rec_indicator");
-    mKitUIMs = root->findChild<LLTextBox>("kit_ui_ms");
-    if (mKitUIMs)
-    {
-        if(ALKitBar* bar=dynamic_cast<ALKitBar*>(mKitUIMs->getParent()))
-        {
-            bar->setCollapsibleVisible(mKitUIMs,gSavedSettings.getBOOL("KitShowUIMs"));
-        }
-        else mKitUIMs->setVisible(gSavedSettings.getBOOL("KitShowUIMs"));
-        LLHandle<LLFloaterDirector> handle=getDerivedHandle<LLFloaterDirector>();
-        mKitUIMsConnection=ALKitSettingWatch::instance().watch("KitShowUIMs",
-            [handle](const LLSD& value,const LLSD&)
-            {
-                if(LLFloaterDirector* director=handle.get())
-                {
-                    if(director->mKitUIMs)
-                    {
-                        if(ALKitBar* bar=dynamic_cast<ALKitBar*>(director->mKitUIMs->getParent()))
-                        {
-                            bar->setCollapsibleVisible(director->mKitUIMs,value.asBoolean());
-                        }
-                        else director->mKitUIMs->setVisible(value.asBoolean());
-                    }
-                }
-            });
-    }
+    // [Connectedness B5] The kit_ui_ms readout was never authored in any XUI
+    // file; its lookup, setting watch and per-frame EMA were dead and are gone.
     if(mShell)
     {
         mShell->history().watchSettings("chrome",{
@@ -2365,6 +2340,14 @@ void LLFloaterDirector::bindMovePage(LLView* root)
         mGroupDissolveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupDissolve(); });
     }
     mMoverPanel = root->findChild<ALPanelActorMover>("actor_mover_panel");
+    // [Connectedness B4] The Move page is built lazily: groups tagged before it
+    // was first opened left group_run_combo empty because mLastGroupNames already
+    // matched. Force a rebuild now that the combo exists.
+    mLastGroupNames.assign(1, std::string());   // impossible value ("" is never listed)
+    mGroupsListSnapshot.clear();
+    mGroupDelayShownFor.clear();
+    mGroupsTabDirty = true;
+    refreshGroupControls();
 }
 
 void LLFloaterDirector::bindPathPage(LLView* root)
@@ -2800,6 +2783,9 @@ void LLFloaterDirector::bindFrameOrbitPage(LLView* root)
                 { update_settle_controls(); }));
 }
 
+// [Connectedness B5] Only the cards that exist in the v2 pages are bound here: Gaze Cues,
+// Selected Light (practicals) and Light Cues. The diopter/haze/shadows/snapshot cards live
+// in the v1 floater only and are bound by its own addLauncherCard calls.
 void LLFloaterDirector::bindLauncherPage(LLView* root)
 {
     if (root->findChild<LLButton>("card_gaze_cues_open"))
@@ -2818,14 +2804,6 @@ void LLFloaterDirector::bindLauncherPage(LLView* root)
                 const S32 count = (S32)LLDirectorCast::instance().getGazeCues(actor).size();
                 return llformat("%s: %d gaze cue%s", castMemberName(actor).c_str(), count, count == 1 ? "" : "s");
             });
-    }
-    if (root->findChild<LLButton>("card_diopter_open"))
-    {
-        addLauncherCard("diopter", [] { LLFloaterReg::showInstance("ultimate_diopter"); }, []
-        {
-            static LLCachedControl<bool> enabled(gSavedSettings, "CineDiopterEnabled", false);
-            return std::string("Diopter: ") + (enabled ? "on" : "off");
-        });
     }
     if (root->findChild<LLButton>("card_practicals_open"))
     {
@@ -2849,34 +2827,6 @@ void LLFloaterDirector::bindLauncherPage(LLView* root)
             const S32 count = (S32)cues.mCues.size();
             if (cues.mName.empty()) return llformat("%d cue%s", count, count == 1 ? "" : "s");
             return llformat("%d cue%s \xC2\xB7 %s", count, count == 1 ? "" : "s", cues.mName.c_str());
-        });
-    }
-    if (root->findChild<LLButton>("card_haze_open"))
-    {
-        addLauncherCard("haze", [] { ALFloaterLightBox::showTab("cinehaze_settings"); }, []
-        {
-            static LLCachedControl<bool> on(gSavedSettings, "CineHazeEnable", false);
-            return std::string(on ? "On" : "Off");
-        });
-    }
-    if (root->findChild<LLButton>("card_shadows_probes_open"))
-    {
-        addLauncherCard("shadows_probes", [] { ALFloaterLightBox::showTab("shadow_settings"); }, []
-        {
-            static LLCachedControl<S32> detail(gSavedSettings, "RenderShadowDetail", 0);
-            switch ((S32)detail)
-            {
-                case 1: return std::string("Sun/moon");
-                case 2: return std::string("Sun/moon + projectors");
-                default: return std::string("Off");
-            }
-        });
-    }
-    if (root->findChild<LLButton>("card_snapshot_open"))
-    {
-        addLauncherCard("snapshot", [] { LLFloaterReg::showInstance("snapshot"); }, []
-        {
-            return std::string("Stills and high-resolution frames");
         });
     }
 }
@@ -3111,7 +3061,6 @@ void LLFloaterDirector::refreshLauncherCards()
 void LLFloaterDirector::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LLFloaterDirector draw");
-    if(mIsV2)mKitDrawTimer.reset();
     refreshCastList();
     refreshGroupControls();
     refreshTransport();
@@ -3127,12 +3076,6 @@ void LLFloaterDirector::draw()
     refreshLauncherCards();
     refreshStatusStrip();
     LLFloater::draw();
-    if(mIsV2&&mKitUIMs)
-    {
-        const F32 elapsed=mKitDrawTimer.getElapsedTimeF32()*1000.f;
-        mKitDrawEMA=mKitDrawEMA==0.f?elapsed:lerp(mKitDrawEMA,elapsed,.1f);
-        if(mKitDrawClock.due())setTextIfChanged(mKitUIMs,llformat("UI %.1f ms",mKitDrawEMA));
-    }
     // the embedded ALPanelAnimPreview blits + spins its own dummy in its draw()
 }
 
@@ -3244,8 +3187,12 @@ bool LLFloaterDirector::handleUnicodeCharHere(llwchar uni_char)
             if(prefix.size()>4&&prefix.compare(prefix.size()-4,4,"_tab")==0)prefix.erase(prefix.size()-4);
             if(LLLineEditor* search=page->findChild<LLLineEditor>(prefix+"_search"))
             {
-                search->setFocus(true);
-                return true;
+                // A hidden search box (collapsed bar, hidden page) must not take focus.
+                if(search->isInVisibleChain())
+                {
+                    search->setFocus(true);
+                    return true;
+                }
             }
         }
     }
@@ -3833,6 +3780,24 @@ void LLFloaterDirector::onClickSceneLoad()
         });
 }
 
+// [Connectedness B3] Swap the scene combo and the inline name editor in the
+// transport bar. The bar lays out its children only when asked, so route the
+// swap through ALKitBar::setCollapsibleVisible (sets visibility + re-lays out);
+// the editor then sits in the combo's slot and Save/menu keep their place.
+static void set_scene_name_editing(LLComboBox* combo, LLLineEditor* editor, bool editing)
+{
+    if (ALKitBar* bar = dynamic_cast<ALKitBar*>(combo->getParent()))
+    {
+        bar->setCollapsibleVisible(combo, !editing);
+        bar->setCollapsibleVisible(editor, editing);
+    }
+    else
+    {
+        combo->setVisible(!editing);
+        editor->setVisible(editing);
+    }
+}
+
 void LLFloaterDirector::onClickSceneSave()
 {
     if (!mSceneNameEditor->getVisible())
@@ -3846,8 +3811,7 @@ void LLFloaterDirector::onClickSceneSave()
         // reveal the inline name box in the combo's spot (usability rule 2:
         // no naming popups), preloaded so "tweak and re-save" is Save-Enter
         mSceneNameEditor->setText(current.empty() ? mSceneCombo->getSelectedItemLabel() : current);
-        mSceneCombo->setVisible(false);
-        mSceneNameEditor->setVisible(true);
+        set_scene_name_editing(mSceneCombo, mSceneNameEditor, true);
         mSceneNameEditor->setFocus(true);
         mSceneNameEditor->selectAll();
     }
@@ -3864,8 +3828,7 @@ void LLFloaterDirector::onClickSceneSaveAs()
     mSceneSaveAs = true;
     mSceneWriteSource.clear();
     mSceneNameEditor->setText(std::string());
-    mSceneCombo->setVisible(false);
-    mSceneNameEditor->setVisible(true);
+    set_scene_name_editing(mSceneCombo, mSceneNameEditor, true);
     mSceneNameEditor->setFocus(true);
 }
 
@@ -3880,8 +3843,7 @@ void LLFloaterDirector::onClickSceneRename()
     mSceneSaveAs = false;
     mSceneWriteSource.clear();
     mSceneNameEditor->setText(name);
-    mSceneCombo->setVisible(false);
-    mSceneNameEditor->setVisible(true);
+    set_scene_name_editing(mSceneCombo, mSceneNameEditor, true);
     mSceneNameEditor->setFocus(true);
     mSceneNameEditor->selectAll();
 }
@@ -3889,8 +3851,7 @@ void LLFloaterDirector::onClickSceneRename()
 void LLFloaterDirector::commitSceneName()
 {
     const std::string name = sanitizeSceneName(mSceneNameEditor->getText());
-    mSceneNameEditor->setVisible(false);
-    mSceneCombo->setVisible(true);
+    set_scene_name_editing(mSceneCombo, mSceneNameEditor, false);
     if (name.empty())
     {
         mSceneRenameSource.clear();
@@ -4042,13 +4003,14 @@ LLSD LLFloaterDirector::captureSceneData()
     static LLCachedControl<S32> cinecam_mode(gSavedSettings, "CinematicCamMode", 0);
     scene["cinecam_mode"] = (S32)cinecam_mode;
     LLFloaterDirector* director = static_cast<LLFloaterDirector*>(sRecoveryDirectorHandle.get());
-    if (director && director->mCineCamPanel)
+    // [Connectedness B2] The v2 Shot page has no params panel (mCineCamPanel is
+    // null), so fall back to the preset store's session-active name.
+    const std::string preset = (director && director->mCineCamPanel)
+        ? director->mCineCamPanel->getSelectedPresetName()
+        : ALPanelCineCamParams::activePresetName();
+    if (!preset.empty())
     {
-        const std::string preset = director->mCineCamPanel->getSelectedPresetName();
-        if (!preset.empty())
-        {
-            scene["cinecam_preset"] = preset;
-        }
+        scene["cinecam_preset"] = preset;
     }
     return scene;
 }
@@ -4432,10 +4394,13 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
 
     // named preset first (its apply path writes CinematicCam* including the
     // mode), THEN the scene's explicit mode wins
-    if (scene["cinecam_preset"].isString() && mCineCamPanel)
+    if (scene["cinecam_preset"].isString())
     {
         const std::string preset = scene["cinecam_preset"].asString();
-        if (!mCineCamPanel->applyPresetByName(preset))
+        const bool applied = mCineCamPanel
+            ? mCineCamPanel->applyPresetByName(preset)
+            : ALPanelCineCamParams::applyPresetNamed(preset);
+        if (!applied)
         {
             LL_WARNS("Director") << "Scene '" << name
                                  << "' references missing cinematic preset '"
@@ -7017,7 +6982,10 @@ void LLFloaterDirector::refreshSubjects()
 void LLFloaterDirector::refreshPrismDependents()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshPrismDependents");
-    if (!mOtsPairBtn || !mPrismSummaryText || !mZollyBtn || !mHeroArcBtn)
+    // [Connectedness B1] prism_summary exists only on the v1 camera tab; the v2
+    // Moves page has just the buttons. Gate on the buttons and null-guard only
+    // the summary text update below.
+    if (!mOtsPairBtn || !mZollyBtn || !mHeroArcBtn)
     {
         return;
     }
@@ -7025,7 +6993,8 @@ void LLFloaterDirector::refreshPrismDependents()
     // Prism registry/gate snapshots every frame unless Camera is the visible
     // tab; the controls will refresh immediately when their visible chain is
     // restored.
-    if (!mOtsPairBtn->isInVisibleChain() && !mPrismSummaryText->isInVisibleChain())
+    if (!mOtsPairBtn->isInVisibleChain() &&
+        !(mPrismSummaryText && mPrismSummaryText->isInVisibleChain()))
     {
         return;
     }
@@ -7130,16 +7099,19 @@ void LLFloaterDirector::refreshPrismDependents()
         const bool needs_attention =
             capture_attention != 0 || display_attention != 0;
 
-        setTextIfChanged(mPrismSummaryText, llformat(
-            "Prism %u/%u captures | %u/%u faces | %u live%s",
-            snapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
-            snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
-            updating, needs_attention ? " | attention" : ""));
-        setToolTipIfChanged(mPrismSummaryText, llformat(
-            "%u captures and %u display bindings; attention: %u capture%s, %u display%s. Open Virtual Cam Manager for sources, faces, optics, picture FPS, and adaptive performance.",
-            snapshot.mCaptureCount, snapshot.mDisplayCount,
-            capture_attention, capture_attention == 1 ? "" : "s",
-            display_attention, display_attention == 1 ? "" : "s"));
+        if (mPrismSummaryText)
+        {
+            setTextIfChanged(mPrismSummaryText, llformat(
+                "Prism %u/%u captures | %u/%u faces | %u live%s",
+                snapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
+                snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
+                updating, needs_attention ? " | attention" : ""));
+            setToolTipIfChanged(mPrismSummaryText, llformat(
+                "%u captures and %u display bindings; attention: %u capture%s, %u display%s. Open Virtual Cam Manager for sources, faces, optics, picture FPS, and adaptive performance.",
+                snapshot.mCaptureCount, snapshot.mDisplayCount,
+                capture_attention, capture_attention == 1 ? "" : "s",
+                display_attention, display_attention == 1 ? "" : "s"));
+        }
         mPrismConfigurationRevision = prism_configuration_revision;
         mPrismRuntimeRevision = prism_runtime_revision;
         mHavePrismSummary = true;
