@@ -288,6 +288,7 @@ private:
     LLButton*     mSceneSaveBtn = nullptr;
     LLButton*     mSceneDeleteBtn = nullptr;
     LLButton*     mSceneLoadBtn = nullptr;
+    LLButton*     mSceneRenameBtn = nullptr;    // v2 kit_scene_popover only
     LLTextBox*    mSceneDirtyText = nullptr;
     LLTextBox*    mSceneMetadataText = nullptr;
     std::string   mSceneRenameSource;

@@ -36,6 +36,8 @@
 
 bool ALSteppedAnimRuntime::sActive = false;
 bool ALSteppedAnimRuntime::sHasOverlay = false;
+bool ALSteppedAnimRuntime::sStepParticles = false;
+bool ALSteppedAnimRuntime::sStepTextureAnim = false;
 
 namespace
 {
@@ -75,6 +77,14 @@ void ALSteppedAnimRuntime::initialize()
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
+    // Called after initConfiguration(): preserve the shipped attachment-particle hold once.
+    bool particles = gSavedSettings.getBOOL("StepAnimParticles");
+    bool migrated = gSavedSettings.getBOOL("StepAnimParticlesMigrated");
+    if (ALSteppedAnim::migrateParticleSetting(gSavedSettings.getBOOL("StepAnimAttachFX"), particles, migrated))
+    {
+        gSavedSettings.setBOOL("StepAnimParticles", particles);
+        gSavedSettings.setBOOL("StepAnimParticlesMigrated", migrated);
+    }
     sActive = gSavedSettings.getBOOL("StepAnimEnabled");
     auto refresh = [](LLControlVariable*, const LLSD& value, const LLSD&)
     {
@@ -99,6 +109,18 @@ void ALSteppedAnimRuntime::initialize()
         gSavedSettings.getControl(name)->getSignal()->connect(
             [](LLControlVariable*, const LLSD&, const LLSD&)
             { ALSteppedAnimRuntime::instance().updateRotoMatch(); });
+    gSavedSettings.getControl("StepAnimParticles")->getSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            if (value.asBoolean()) return;
+            ALSteppedAnimRuntime::sStepParticles = false;
+            LLViewerPartSim::clearStepAnimParticleDebt();
+        });
+    gSavedSettings.getControl("StepAnimTextureAnim")->getSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            if (!value.asBoolean()) ALSteppedAnimRuntime::sStepTextureAnim = false;
+        });
     instance().updateRotoMatch();
 }
 
@@ -119,6 +141,8 @@ ALSteppedAnim::Config ALSteppedAnimRuntime::readConfig() const
     static LLCachedControl<bool> gaze(gSavedSettings, "StepAnimGaze");
     static LLCachedControl<bool> flexi(gSavedSettings, "StepAnimFlexi");
     static LLCachedControl<bool> attachment_fx(gSavedSettings, "StepAnimAttachFX");
+    static LLCachedControl<bool> particles(gSavedSettings, "StepAnimParticles");
+    static LLCachedControl<bool> texture_anim(gSavedSettings, "StepAnimTextureAnim");
     static LLCachedControl<S32> clock(gSavedSettings, "StepAnimClock");
     static LLCachedControl<S32> offset(gSavedSettings, "StepAnimOffsetMode");
     static LLCachedControl<F32> phase(gSavedSettings, "StepAnimPhase");
@@ -141,6 +165,7 @@ ALSteppedAnim::Config ALSteppedAnimRuntime::readConfig() const
     c.adaptThreshold = finiteSetting(threshold, 1.5f); c.adaptHysteresis = finiteSetting(hysteresis, .3f);
     c.adaptMinDwell = finiteSetting(dwell, .25f); c.backgroundRate = finiteSetting(background, 8.f);
     c.what = what; c.face = face; c.gaze = gaze; c.flexi = flexi; c.attachFX = attachment_fx;
+    c.particles = particles; c.textureAnim = texture_anim;
     c.clock = clock; c.offset = offset; c.phase = finiteSetting(phase, 0.f); c.baseFps = base_fps;
     c.boil = boil; c.boilAmount = finiteSetting(boil_amount, .6f); c.boilTicks = boil_ticks;
     c.impact = impact; c.impactTicks = impact_ticks; c.impactThreshold = finiteSetting(impact_threshold, 25.f);
@@ -295,6 +320,7 @@ void ALSteppedAnimRuntime::collectActors()
         if (assignments[i].stepped)
         {
             Entry& entry = mEntries[ids[i]];
+            if (!entry.mParticleEpoch) entry.mParticleEpoch = ++mNextParticleEpoch;
             // Copy the wearer's frame only when the wearer itself is stepped this
             // frame. A camera-mounted, capped or "Never" wearer has no planned
             // entry, so the animesh must plan its own frame (else it freezes on a
@@ -316,6 +342,8 @@ void ALSteppedAnimRuntime::collectActors()
                 entry.mAssignment = assignments[i];
                 entry.mDecision = ALSteppedAnim::planFrame(entry.mState, entry.mAssignment, mConfig, mTime);
             }
+            if (mConfig.particles && !entry.mDecision.hold)
+                entry.mParticleEpoch = ++mNextParticleEpoch;
             mPlanned.push_back(ids[i]);
             ++mActiveActors;
         }
@@ -339,6 +367,10 @@ void ALSteppedAnimRuntime::beginFrame()
     const LLTemporalFrameContext& frame = LLPresentationTime::currentFrame();
     mTime = mConfig.clock == ALSteppedAnim::CLOCK_REAL ? frame.wall_time : frame.presentation_time;
     collectActors();
+    const bool step_particles = mConfig.particles && mActiveActors > 0;
+    if (sStepParticles && !step_particles) LLViewerPartSim::clearStepAnimParticleDebt();
+    sStepParticles = step_particles;
+    sStepTextureAnim = mConfig.textureAnim && mActiveActors > 0;
 }
 
 void ALSteppedAnimRuntime::buildClasses(LLVOAvatar* avatar, Entry& entry)
@@ -756,11 +788,13 @@ void ALSteppedAnimRuntime::endFrameRestore()
     if (verify) verifyRestored("frame-end");
 }
 
-const ALSteppedAnim::FrameDecision* ALSteppedAnimRuntime::decisionFor(const LLVOAvatar* avatar) const
+const ALSteppedAnim::FrameDecision* ALSteppedAnimRuntime::decisionFor(const LLVOAvatar* avatar, U64* particle_epoch) const
 {
     if (!avatar) return nullptr;
     const auto found = mEntries.find(avatar->getID());
-    return found == mEntries.end() || !found->second.mAssignment.stepped ? nullptr : &found->second.mDecision;
+    if (found == mEntries.end() || !found->second.mAssignment.stepped) return nullptr;
+    if (particle_epoch) *particle_epoch = found->second.mParticleEpoch;
+    return &found->second.mDecision;
 }
 
 bool ALSteppedAnimRuntime::holdsFlexi(const LLVOAvatar* avatar) const
@@ -773,6 +807,12 @@ bool ALSteppedAnimRuntime::holdsAttachmentFX(const LLVOAvatar* avatar) const
 {
     const auto* decision = decisionFor(avatar);
     return decision && mConfig.attachFX && decision->hold && !decision->capture;
+}
+
+bool ALSteppedAnimRuntime::holdsTextureAnim(const LLVOAvatar* avatar) const
+{
+    const auto* decision = decisionFor(avatar);
+    return decision && mConfig.textureAnim && decision->hold && !decision->capture;
 }
 
 F32 ALSteppedAnimRuntime::attachmentOmegaDt(LLViewerObject* object, F32 dt)
@@ -856,6 +896,8 @@ void ALSteppedAnimRuntime::updateRotoMatch()
 
 void ALSteppedAnimRuntime::deactivate()
 {
+    sStepParticles = false;
+    sStepTextureAnim = false;
     LLViewerPartSim::instance().clearStepAnimDeferredSources();
     mPlanned.clear();
     mOmegaDebt.clear();

@@ -27,6 +27,7 @@
 // A "volume" is a box, cylinder, sphere, or other primitive shape.
 
 #include "llviewerprecompiledheaders.h"
+#include "alsteppedanimruntime.h"
 
 #include "llvovolume.h"
 
@@ -619,6 +620,12 @@ void LLVOVolume::animateTextures()
     if (!mDead)
     {
         shrinkWrap();
+        if (ALSteppedAnimRuntime::sStepTextureAnim && isAttachment() && !isHUDAttachment() &&
+            ALSteppedAnimRuntime::instance().holdsTextureAnim(getAvatar()))
+        {
+            mTextureAnimp->advanceSteppedTime();
+            return;
+        }
         F32 off_s = 0.f, off_t = 0.f, scale_s = 1.f, scale_t = 1.f, rot = 0.f;
         S32 result = mTextureAnimp->animateTextures(off_s, off_t, scale_s, scale_t, rot);
 

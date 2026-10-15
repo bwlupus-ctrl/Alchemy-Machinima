@@ -44,6 +44,8 @@ struct Config
     bool gaze = true;
     bool flexi = true;
     bool attachFX = false;
+    bool particles = false;
+    bool textureAnim = false;
     S32 clock = CLOCK_CAPTURE;
     S32 offset = OFFSET_RANDOM;
     F32 phase = 0.f;
@@ -164,6 +166,29 @@ struct FrameDecision
     F32 rate = 0.f;
 };
 
+// Epoch changes discard deferred time on disable/release without walking particles.
+struct ParticleStepDebt
+{
+    F32 seconds = 0.f;
+    U64 epoch = 0;
+    U64 actorEpoch = 0;
+    U64 frame = 0;
+};
+bool migrateParticleSetting(bool attach_fx, bool& particles, bool& migrated);
+bool particleSourceEligible(bool is_avatar, bool is_attachment, bool is_hud);
+bool claimParticleFrame(ParticleStepDebt& debt, U64 frame);
+bool particleAgeExpired(F32 age, F32 max_age);
+struct ParticleSubsteps
+{
+    U32 count = 1;
+    F32 dt = 0.f;
+    F32 ballisticDt = 0.f;
+};
+ParticleSubsteps particleSubsteps(F32 dt);
+F32 particleGroupDt(F32 frame_dt, F32 skipped_time, F32& skip_offset, bool step_only);
+F32 particleStepDt(F32 dt, ParticleStepDebt& debt, U64 epoch, const FrameDecision* decision,
+                   U64 actor_epoch = 0);
+
 void inheritAttachedFrame(const Assignment& source_assignment, U64 source_seed,
                           const ActorState& source_state, const FrameDecision& source_decision,
                           Assignment& attached_assignment, U64& attached_seed,
@@ -220,6 +245,7 @@ RotoMatch mapRotoInk(F32 rate);
 struct Preset { const char* id; const char* label; Config values; };
 const std::vector<Preset>& builtInPresets();
 const std::vector<std::string>& trackedSettings();
+const std::vector<std::string>& presetSettings();
 }
 
 #endif

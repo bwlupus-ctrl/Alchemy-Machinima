@@ -252,9 +252,10 @@ No change to `lldrawpool.cpp`, `llviewerjointmesh.cpp`, the shaders, or any `BDM
 - **Avatar physics** (`LLPhysicsMotion` writes driven visual params, `llphysicsmotion.cpp:783`, which move collision volumes): held through the PHYS class when `StepAnimFlexi` is on; smooth when off. The physics simulation itself keeps integrating every frame (simulation is never touched).
 - **Flexi prims:** in `LLVolumeImplFlexible::doUpdateGeometry` (`llflexibleobject.cpp:753`), the existing attachment-to-avatar walk (`:758-773`, used for the impostor skip) gains: if `ALSteppedAnimRuntime::sActive` and the avatar is stepped, `StepAnimFlexi` is on and this is not a capture frame → `return true` (no update). `doFlexibleUpdate`'s `mTimer.getElapsedTimeAndResetF32()` (`:462`) is not reset on skipped frames, so the capture frame integrates the whole interval (capped at 0.2 s by the existing clamp).
 - **Attachment FX** (`StepAnimAttachFX`):
-  - Particles: in `LLViewerPartSim::updateSimulation` (`llviewerpartsim.cpp:660`), the source loop already resolves `vobj->getAvatar()` for attachments (`:792-800`). New `LLViewerPartSource::mSteppedHold` (U8) is set per source per frame. A held source accumulates `dt` and skips `update(dt)` (`:811`); on capture it runs `update(dt + debt)`. In `LLViewerPartGroup::updateParticles` (`:277`), a particle whose `mPartSourcep->mSteppedHold` is set adds its `dt` to a new `LLViewerPart::mStepDebt` and is skipped; on capture `dt += mStepDebt`. Particles outlive their source normally.
+  - Particle sources: in `LLViewerPartSim::updateSimulation`, a held source accumulates `dt` and skips `update(dt)`; on capture it emits using the accumulated interval. Source emission and scripted spin are independent of particle motion.
   - Spin: in `LLViewerObject::idleUpdate` (`llviewerobject.cpp:2532-2539`), for attachments of a stepped actor, `omega_dt` is accumulated in a runtime side map (keyed by object id) on held frames and applied as one `applyAngularVelocity(sum)` on capture.
-  - Texture animation is not stepped in this build.
+- **Step particles** (`StepAnimParticles`, default off): particles sourced by a stepped avatar or its attachments hold position, velocity, age, colour, scale and glow while `decision && hold && !capture`. Each particle carries skipped time and consumes it once on the next tick, including offscreen groups; lifetime expiry happens by that tick. They remain drawn while held, and follow-source re-anchoring still uses the held attachment. HUD and world sources are unaffected. Catch-up uses at most 16 force substeps of at most 1/30 s; longer holds retain the remaining ballistic time and full age. Disabling or leaving the stepped assignment invalidates debt without replay.
+- **Step texture animation** (`StepAnimTextureAnim`, default off): texture transforms on attachments, including worn animesh, hold between ticks. The animation clock continues through holds (including presentation-time drive), so each tick evaluates the current frame/offset/rotation without drift. HUD attachments and non-attachments are unaffected; release resumes at current time.
 - **Lip-sync:** with `StepAnimFace` on, `idleUpdateLipSync` (`llvoavatar.cpp:3363`) runs only on capture frames for a stepped actor (the morph weights persist between). It runs before applyHeld, which is why the frame plan is made in beginFrame.
 - **Face** = FACE joints (Bento face). System `express_*`/blink morphs are not held (§0).
 - Flexi, Attachment FX and lip-sync are **simulation deferrals**, not overlays: they update less often by design, so their stepped state is visible outside the render window. That is the intended look, and it never touches joints.
@@ -428,7 +429,7 @@ namespace ALSteppedAnim
     // presets (§12): built-in table, data only
     struct Preset { const char* id; const char* label; Config values; };
     const std::vector<Preset>& builtInPresets();
-    const std::vector<std::string>& trackedSettings();   // §12.1, 29 names
+    const std::vector<std::string>& trackedSettings();   // §12.1, 31 names
 }
 ```
 
@@ -436,17 +437,19 @@ Viewer side (not pure): `alsteppedanimruntime.h/.cpp`, singleton `ALSteppedAnimR
 
 ## 12. Presets
 
-Provider key **`stepped_anim`**, registered in `registerLookPresetProviders()` (`llfloaterdirector.cpp:531`) next to `roto_ink` and `tron_look` (`:540-542`). Unlike `ALLookPresetProvider` (`:412`, built-ins only), it supports user Save/Delete with an `ALKitSnapshotStore("stepped_anim", trackedSettings())`, the shape of `ALProjectorShaftPresetProvider` (`:486`) and `RigRimPresetProvider` (`alpanelrigrim.cpp:32-66`): built-ins `b:<id>`, user presets `u:<name>`. `apply("b:<id>")` writes every tracked setting from the table, then `StepAnimEnabled = true` (the master is not tracked, as for Rig Rim). Presets never touch per-actor overrides or the selected actor.
+Provider key **`stepped_anim`**, registered in `registerLookPresetProviders()` (`llfloaterdirector.cpp:531`) next to `roto_ink` and `tron_look` (`:540-542`). Unlike `ALLookPresetProvider` (`:412`, built-ins only), it supports user Save/Delete with an `ALKitSnapshotStore("stepped_anim", presetSettings())`, the shape of `ALProjectorShaftPresetProvider` (`:486`) and `RigRimPresetProvider` (`alpanelrigrim.cpp:32-66`): built-ins `b:<id>`, user presets `u:<name>`. `apply("b:<id>")` writes the 29 preset settings from the table, then `StepAnimEnabled = true` (the master is not tracked, as for Rig Rim). Presets never touch per-actor overrides or the selected actor.
 
 "Modified" is the kit strip's comparison of the tracked settings against the values captured at apply (`ALKitPresetStrip::captureApplied` / `isModified`, `alkitpresets.cpp:409/436`).
 
-### 12.1 Tracked settings (29)
-`StepAnimScope, StepAnimMode, StepAnimRate, StepAnimFastRate, StepAnimAdaptThreshold, StepAnimAdaptHysteresis, StepAnimAdaptMinDwell, StepAnimBackgroundRate, StepAnimWhatSteps, StepAnimFace, StepAnimGaze, StepAnimFlexi, StepAnimAttachFX, StepAnimClock, StepAnimOffsetMode, StepAnimPhase, StepAnimBaseFPS, StepAnimBoil, StepAnimBoilAmount, StepAnimBoilTicks, StepAnimImpactHold, StepAnimImpactTicks, StepAnimImpactThreshold, StepAnimSmear, StepAnimSmearStrength, StepAnimSmearThreshold, StepAnimEase, StepAnimEaseAmount, StepAnimMatchRotoInk`.
+A non-UI persisted `StepAnimParticlesMigrated` marker (Boolean, default 0) migrates the shipped `StepAnimAttachFX` particle hold once after settings load: enable `StepAnimParticles` when Attachment FX was enabled, then mark migration complete. Later opt-outs are preserved.
+
+### 12.1 Tracked settings (31)
+`StepAnimScope, StepAnimMode, StepAnimRate, StepAnimFastRate, StepAnimAdaptThreshold, StepAnimAdaptHysteresis, StepAnimAdaptMinDwell, StepAnimBackgroundRate, StepAnimWhatSteps, StepAnimFace, StepAnimGaze, StepAnimFlexi, StepAnimAttachFX, StepAnimParticles, StepAnimTextureAnim, StepAnimClock, StepAnimOffsetMode, StepAnimPhase, StepAnimBaseFPS, StepAnimBoil, StepAnimBoilAmount, StepAnimBoilTicks, StepAnimImpactHold, StepAnimImpactTicks, StepAnimImpactThreshold, StepAnimSmear, StepAnimSmearStrength, StepAnimSmearThreshold, StepAnimEase, StepAnimEaseAmount, StepAnimMatchRotoInk`.
 
 Not tracked: `StepAnimEnabled` (master), `StepAnimExcludeCameraMounted` (safety), `StepAnimMaxAvatars` (performance), `StepAnimDebugVerify` (debug).
 
 ### 12.2 Values
-Every preset writes all 29. **Any setting not listed in a row = its default (§14.1).**
+Presets write the 29 style settings. Built-in and saved presets exclude `StepAnimParticles` and `StepAnimTextureAnim`, preserving the user's independent choices. **Any preset setting not listed in a row = its default (§14.1).**
 
 | # | id | Label | Values that differ from the defaults |
 |---|---|---|---|
@@ -519,6 +522,8 @@ Consumer clamp = what the runtime's `readConfig()` must apply before `ALSteppedA
 | StepAnimGaze | Boolean | 1 | | 1 | bool |
 | StepAnimFlexi | Boolean | 1 | | 1 | bool |
 | StepAnimAttachFX | Boolean | 0 | | 1 | bool |
+| StepAnimParticles | Boolean | 0 | | 1 | bool |
+| StepAnimTextureAnim | Boolean | 0 | | 1 | bool |
 | StepAnimClock | S32 | 0 | 0 Capture time, 1 Real time | 1 | `std::clamp(v, 0, 1)` |
 | StepAnimOffsetMode | S32 | 0 | 0 Random, 1 Locked, 2 Manual | 1 | `std::clamp(v, 0, 2)` |
 | StepAnimPhase | F32 | 0.0 | 0 to 1 step | 1 | `llclamp(finite_or(v, 0), 0, 1)`, then `1 → 0` |

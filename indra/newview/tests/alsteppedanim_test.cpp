@@ -1,6 +1,6 @@
 /**
  * @file alsteppedanim_test.cpp
- * @brief Stepped-animation pure-core tests (design T1-T12 and unit-testable R1 gates).
+ * @brief Stepped-animation pure-core tests (timing, particle catch-up and R1 gates).
  */
 #include "linden_common.h"
 #include "llmath.h"
@@ -45,6 +45,7 @@ bool sameTrackedConfig(const ALSteppedAnim::Config& a, const ALSteppedAnim::Conf
         a.adaptThreshold == b.adaptThreshold && a.adaptHysteresis == b.adaptHysteresis &&
         a.adaptMinDwell == b.adaptMinDwell && a.backgroundRate == b.backgroundRate && a.what == b.what &&
         a.face == b.face && a.gaze == b.gaze && a.flexi == b.flexi && a.attachFX == b.attachFX &&
+        a.particles == b.particles && a.textureAnim == b.textureAnim &&
         a.clock == b.clock && a.offset == b.offset && a.phase == b.phase && a.baseFps == b.baseFps &&
         a.boil == b.boil && a.boilAmount == b.boilAmount && a.boilTicks == b.boilTicks &&
         a.impact == b.impact && a.impactTicks == b.impactTicks && a.impactThreshold == b.impactThreshold &&
@@ -478,14 +479,37 @@ template<> template<> void stepped_object::test<12>()
 {
     const auto& presets = ALSteppedAnim::builtInPresets();
     ensure_equals("T12 preset count", presets.size(), size_t(14));
-    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(29));
+    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(31));
     std::set<std::string> ids;
     for (const auto& p : presets)
     {
         ensure("T12 unique id", ids.insert(p.id).second);
+
         const auto clean = ALSteppedAnim::sanitize(p.values);
         ensure("T12 complete preset survives sanitize", sameTrackedConfig(clean, p.values));
     }
+    const auto& preset_names = ALSteppedAnim::presetSettings();
+    const std::set<std::string> preset_settings(preset_names.begin(), preset_names.end());
+    ensure("T12 built-in and saved preset whitelist excludes independent options",
+        preset_settings.size() == 29 && !preset_settings.count("StepAnimParticles") &&
+        !preset_settings.count("StepAnimTextureAnim"));
+    const ALSteppedAnim::Config defaults;
+    ensure("T12 new options default off", !defaults.particles && !defaults.textureAnim);
+    const auto& tracked = ALSteppedAnim::trackedSettings();
+    const std::set<std::string> settings(tracked.begin(), tracked.end());
+    ensure("T12 both new options tracked", settings.count("StepAnimParticles") == 1 &&
+        settings.count("StepAnimTextureAnim") == 1 && settings.size() == tracked.size());
+    for (bool particles : {false, true})
+        for (bool textures : {false, true})
+        {
+            ALSteppedAnim::Config parsed;
+            parsed.particles = particles;
+            parsed.textureAnim = textures;
+            const auto clean_options = ALSteppedAnim::sanitize(parsed);
+            ensure("T12 config preserves independent option values",
+                clean_options.particles == particles && clean_options.textureAnim == textures &&
+                !clean_options.attachFX);
+        }
     ALSteppedAnim::Config bad; bad.scope = -9; bad.mode = 9; bad.what = 9; bad.clock = 9; bad.offset = 9;
     bad.rate = std::numeric_limits<F32>::quiet_NaN(); bad.fastRate = 1.9f;
     bad.adaptThreshold = 99.f; bad.adaptHysteresis = 0.f; bad.adaptMinDwell = 0.f;
@@ -514,4 +538,137 @@ template<> template<> void stepped_object::test<12>()
     ensure("T12 roto unchanged", !ALSteppedAnim::mapRotoInk(10.f).setMotionStep);
     ensure_equals("T12 roto clamp", ALSteppedAnim::mapRotoInk(30.f).sketchFps, 24.f);
 }
+
+// T13: run the same frame claim, debt and expiry gates as the particle loop.
+// A second group visit must change neither simulation state nor accrued debt.
+template<> template<> void stepped_object::test<13>()
+{
+    ALSteppedAnim::ParticleStepDebt debt;
+    ALSteppedAnim::FrameDecision decision;
+    decision.hold = true;
+    const F32 dt = 1.f / 64.f;
+    F32 age = 0.f, position = 0.f, velocity = 2.f;
+    const F32 acceleration = 4.f;
+    const F32 max_age = 4.f * dt;
+    bool alive = true;
+    auto visit_group = [&](U64 frame)
+    {
+        if (!alive || !ALSteppedAnim::claimParticleFrame(debt, frame)) return;
+        const F32 elapsed = ALSteppedAnim::particleStepDt(dt, debt, 1, &decision);
+        if (decision.hold && !decision.capture) return;
+        position += elapsed * velocity + .5f * elapsed * elapsed * acceleration;
+        velocity += elapsed * acceleration;
+        age += elapsed;
+        alive = !ALSteppedAnim::particleAgeExpired(age, max_age);
+    };
+    for (U64 frame = 1; frame <= 5; ++frame)
+    {
+        visit_group(frame);
+        visit_group(frame); // same particle encountered after a group transfer
+        close("hold debt accrues once per frame", debt.seconds, frame * dt, 1.e-7);
+        ensure("held particle remains alive and drawable past its future expiry",
+            alive && age == 0.f && position == 0.f && velocity == 2.f);
+    }
+    decision.capture = true;
+    visit_group(6);
+    close("tick age includes all debt once", age, 6.f * dt, 1.e-7);
+    close("ballistic position at accumulated time", position, .205078125, 1.e-7);
+    close("ballistic velocity at accumulated time", velocity, 2.375, 1.e-7);
+    ensure("lifetime crossing during hold is removed on next tick", !alive);
+    ensure_equals("capture consumes the debt", debt.seconds, 0.f);
+    // Repeat the capture visit on a surviving particle to exercise dedupe itself.
+    alive = true;
+    visit_group(6);
+    close("second group cannot apply capture twice", age, 6.f * dt, 1.e-7);
+    close("second group cannot move particle twice", position, .205078125, 1.e-7);
+    ensure_equals("next frame cannot replay consumed debt",
+        ALSteppedAnim::particleStepDt(dt, debt, 1, &decision), dt);
+    decision.capture = false;
+    ALSteppedAnim::particleStepDt(dt, debt, 1, &decision);
+    ensure_equals("scope/source release discards debt", ALSteppedAnim::particleStepDt(dt, debt, 1, nullptr), dt);
+    ALSteppedAnim::particleStepDt(dt, debt, 1, &decision);
+    decision.hold = false;
+    ensure_equals("smooth adaptive decision discards debt", ALSteppedAnim::particleStepDt(dt, debt, 1, &decision), dt);
+    decision.hold = true;
+    ALSteppedAnim::particleStepDt(dt, debt, 1, &decision);
+    decision.capture = true;
+    ensure_equals("disable/re-enable epoch cannot replay stale debt",
+        ALSteppedAnim::particleStepDt(dt, debt, 2, &decision), dt);
+    decision.capture = false;
+    ALSteppedAnim::particleStepDt(dt, debt, 2, &decision, 7);
+    decision.capture = true;
+    ensure_equals("leaving and re-entering scope cannot replay a prior session",
+        ALSteppedAnim::particleStepDt(dt, debt, 2, &decision, 8), dt);
+    ALSteppedAnim::ParticleStepDebt newborn;
+    ensure_equals("new particle has no inherited source debt",
+        ALSteppedAnim::particleStepDt(dt, newborn, 2, &decision), dt);
+}
+
+
+// Offscreen extra passes consume elapsed time once, including mid-group births.
+template<> template<> void stepped_object::test<14>()
+{
+    const F32 dt = 1.f / 64.f;
+    F32 skipped = 0.f, offset = 0.f, age = 0.f;
+    F32 newborn_offset = 0.f, newborn_age = 0.f;
+    ALSteppedAnim::ParticleStepDebt debt, newborn_debt;
+    ALSteppedAnim::FrameDecision decision;
+    decision.hold = true;
+    for (S32 frame = 0; frame < 24; ++frame)
+    {
+        const bool step_only = frame % 8 != 7;
+        decision.capture = frame % 4 == 3;
+        const F32 elapsed = ALSteppedAnim::particleGroupDt(dt, skipped, offset, step_only);
+        close("offscreen interval counted once", elapsed, dt, 1.e-7);
+        age += ALSteppedAnim::particleStepDt(elapsed, debt, 1, &decision);
+        if (frame == 3) newborn_offset = skipped; // addPart records the group's skipped time
+        if (frame >= 3)
+        {
+            const F32 newborn_elapsed = ALSteppedAnim::particleGroupDt(dt, skipped, newborn_offset, step_only);
+            close("birth excludes pre-birth skipped time", newborn_elapsed, dt, 1.e-7);
+            newborn_age += ALSteppedAnim::particleStepDt(newborn_elapsed, newborn_debt, 1, &decision);
+        }
+        skipped = step_only ? skipped + dt : 0.f;
+        if (decision.capture)
+            close("offscreen particle reaches age on each avatar tick", age, (frame + 1) * dt, 1.e-7);
+    }
+    close("offscreen lifetime uses elapsed time", age, 24.f * dt, 1.e-7);
+    close("newborn lifetime uses only its own elapsed time", newborn_age, 21.f * dt, 1.e-7);
+}
+
+// Migration is independent of the master switch and respects subsequent opt-outs.
+template<> template<> void stepped_object::test<15>()
+{
+    for (bool attach_fx : {false, true})
+        for (bool initial : {false, true})
+        {
+            bool particles = initial, migrated = false;
+            ensure("first startup applies migration",
+                ALSteppedAnim::migrateParticleSetting(attach_fx, particles, migrated));
+            ensure("migration preserves prior particle hold or explicit enabled choice",
+                migrated && particles == (initial || attach_fx));
+            particles = false;
+            ensure("later startup does not undo user's opt-out",
+                !ALSteppedAnim::migrateParticleSetting(attach_fx, particles, migrated) && !particles);
+        }
+    ensure("avatar source is eligible", ALSteppedAnim::particleSourceEligible(true, false, false));
+    ensure("attachment source is eligible", ALSteppedAnim::particleSourceEligible(false, true, false));
+    ensure("HUD attachment is excluded", !ALSteppedAnim::particleSourceEligible(false, true, true));
+    ensure("HUD always wins", !ALSteppedAnim::particleSourceEligible(true, true, true));
+    ensure("world source is excluded", !ALSteppedAnim::particleSourceEligible(false, false, false));
+}
+
+// Low-rate ticks retain all elapsed time with bounded nonlinear integration.
+template<> template<> void stepped_object::test<16>()
+{
+    for (F32 dt : {1.f / 6.f, 1.f / 4.f, .5f, 2.f})
+    {
+        const auto steps = ALSteppedAnim::particleSubsteps(dt);
+        ensure("force substeps are bounded", steps.count >= 1 && steps.count <= 16 && steps.dt <= 1.f / 30.f);
+        close("substeps and ballistic tail retain exact elapsed time",
+            steps.count * steps.dt + steps.ballisticDt, dt, 1.e-7);
+        if (dt <= .5f) ensure_equals("2-6 fps has no force-integration tail", steps.ballisticDt, 0.f);
+    }
+}
+
 }

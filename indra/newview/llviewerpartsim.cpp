@@ -45,12 +45,16 @@
 #include "llvoavatarself.h"
 #include "llvovolume.h"
 
+#include <algorithm>
+
 const F32 PART_SIM_BOX_SIDE = 16.f;
 
 //static
 S32 LLViewerPartSim::sMaxParticleCount = 0;
 S32 LLViewerPartSim::sParticleCount = 0;
 S32 LLViewerPartSim::sParticleCount2 = 0;
+U64 LLViewerPartSim::sStepParticleEpoch = 1;
+U64 LLViewerPartSim::sStepParticleFrame = 0;
 // This controls how greedy individual particle burst sources are allowed to be, and adapts according to how near the particle-count limit we are.
 F32 LLViewerPartSim::sParticleAdaptiveRate = 0.0625f;
 F32 LLViewerPartSim::sParticleBurstRate = 0.5f;
@@ -249,6 +253,54 @@ bool LLViewerPartGroup::posInGroup(const LLVector3 &pos, const F32 desired_size)
 }
 
 
+const ALSteppedAnim::FrameDecision* LLViewerPartSource::particleStepDecision(U64 frame, U64& actor_epoch)
+{
+    if (mStepDecisionFrame != frame)
+    {
+        mStepDecisionFrame = frame;
+        mHasStepDecision = false;
+        mStepActorEpoch = 0;
+        LLViewerObject* object = mSourceObjectp.get();
+        if (object && !object->isDead() && ALSteppedAnim::particleSourceEligible(
+                object->isAvatar(), object->isAttachment(), object->isHUDAttachment()))
+        {
+            LLVOAvatar* avatar = object->isAvatar() ? object->asAvatar() : object->getAvatar();
+            const ALSteppedAnim::FrameDecision* decision =
+                ALSteppedAnimRuntime::instance().decisionFor(avatar, &mStepActorEpoch);
+            if (decision)
+            {
+                mStepDecision = *decision;
+                mHasStepDecision = true;
+            }
+        }
+    }
+    actor_epoch = mStepActorEpoch;
+    return mHasStepDecision ? &mStepDecision : nullptr;
+}
+
+bool LLViewerPartGroup::hasSteppedParticles()
+{
+    if (mHud) return false;
+    for (const ParticleSourceCount& entry : mParticleSources)
+    {
+        U64 actor_epoch = 0;
+        const ALSteppedAnim::FrameDecision* decision =
+            entry.source->particleStepDecision(LLViewerPartSim::sStepParticleFrame, actor_epoch);
+        if (decision && decision->hold) return true;
+    }
+    return false;
+}
+
+void LLViewerPartGroup::removeParticleSource(LLViewerPartSource* source)
+{
+    for (auto it = mParticleSources.begin(); it != mParticleSources.end(); ++it)
+        if (it->source == source)
+        {
+            if (--it->count == 0) mParticleSources.erase(it);
+            return;
+        }
+}
+
 bool LLViewerPartGroup::addPart(LLViewerPart* part, F32 desired_size)
 {
     if (part->mFlags & LLPartData::LL_PART_HUD && !mHud)
@@ -268,6 +320,14 @@ bool LLViewerPartGroup::addPart(LLViewerPart* part, F32 desired_size)
 
     gPipeline.markRebuild(mVOPartGroupp->mDrawable, LLDrawable::REBUILD_ALL);
 
+    LLViewerPartSource* source = part->mPartSourcep.get();
+    if (source)
+    {
+        auto it = std::find_if(mParticleSources.begin(), mParticleSources.end(),
+            [source](const ParticleSourceCount& entry) { return entry.source == source; });
+        if (it == mParticleSources.end()) mParticleSources.push_back({source, 1});
+        else ++it->count;
+    }
     mParticles.push_back(part);
     part->mSkipOffset=mSkippedTime;
     LLViewerPartSim::incPartCount(1);
@@ -275,7 +335,7 @@ bool LLViewerPartGroup::addPart(LLViewerPart* part, F32 desired_size)
 }
 
 
-void LLViewerPartGroup::updateParticles(const F32 lastdt)
+void LLViewerPartGroup::updateParticles(const F32 lastdt, F32 step_dt, bool step_only)
 {
     F32 dt;
 
@@ -291,99 +351,154 @@ void LLViewerPartGroup::updateParticles(const F32 lastdt)
         LLVector3 a(0.f, 0.f, 0.f);
         LLViewerPart* part = mParticles[i] ;
 
+        bool step_capture = false;
         dt = lastdt + mSkippedTime - part->mSkipOffset;
-        part->mSkipOffset = 0.f;
-        if (ALSteppedAnimRuntime::sActive && part->mPartSourcep.notNull())
+        if (ALSteppedAnimRuntime::sStepParticles)
         {
-            if (part->mPartSourcep->mSteppedHold == 1)
+            U64 actor_epoch = 0;
+            const ALSteppedAnim::FrameDecision* decision = !mHud && part->mPartSourcep.notNull()
+                ? part->mPartSourcep->particleStepDecision(LLViewerPartSim::sStepParticleFrame, actor_epoch)
+                : nullptr;
+            const bool stepped = decision && decision->hold;
+            if (step_only && !stepped)
             {
-                part->mStepDebt += dt;
                 ++i;
                 continue;
             }
-            if (part->mPartSourcep->mSteppedHold == 2)
+            if (stepped)
             {
-                dt += part->mStepDebt;
-                part->mStepDebt = 0.f;
+                // Offscreen groups normally update only every eighth frame.
+                // Consume real elapsed time every frame for stepped particles;
+                // mSkipOffset prevents those extra passes being counted again.
+                // A capture may transfer this particle to a later group in this
+                // pass. Claim the frame before changing age, position or debt.
+                if (!ALSteppedAnim::claimParticleFrame(part->mStepDebt, LLViewerPartSim::sStepParticleFrame))
+                {
+                    part->mSkipOffset = step_only ? mSkippedTime + step_dt : 0.f;
+                    ++i;
+                    continue;
+                }
+                dt = ALSteppedAnim::particleGroupDt(step_dt, mSkippedTime, part->mSkipOffset, step_only);
+                step_capture = decision->capture;
             }
+            else
+            {
+                part->mSkipOffset = 0.f;
+            }
+            dt = ALSteppedAnim::particleStepDt(dt, part->mStepDebt,
+                LLViewerPartSim::sStepParticleEpoch, decision, actor_epoch);
+            if (decision && decision->hold && !decision->capture)
+            {
+                ++i;
+                continue;
+            }
+        }
+        else
+        {
+            part->mSkipOffset = 0.f;
         }
 
         // Update current time
         const F32 cur_time = part->mLastUpdateTime + dt;
         const F32 frac = cur_time / part->mMaxAge;
 
-        // "Drift" the object based on the source object
-        if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK)
+        ALSteppedAnim::ParticleSubsteps integration;
+        integration.dt = dt;
+        if (step_capture && (part->mFlags & (LLPartData::LL_PART_WIND_MASK |
+                LLPartData::LL_PART_TARGET_POS_MASK | LLPartData::LL_PART_BOUNCE_MASK)))
+            integration = ALSteppedAnim::particleSubsteps(dt);
+        if (integration.ballisticDt > 0.f)
         {
-            part->mPosAgent = part->mPartSourcep->mPosAgent;
-            part->mPosAgent += part->mPosOffset;
+            // Long impact holds can exceed the bounded force-integration budget.
+            // Preserve the full ballistic interval and lifetime even at that cap.
+            const F32 tail = integration.ballisticDt;
+            const LLVector3 displacement = tail * part->mVelocity + .5f * tail * tail * part->mAccel;
+            part->mPosAgent += displacement;
+            if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK) part->mPosOffset += displacement;
+            part->mVelocity += tail * part->mAccel;
+            part->mLastUpdateTime += tail;
         }
-
-        // Do a custom callback if we have one...
-        if (part->mVPCallback)
+        for (U32 substep = 0; substep < integration.count; ++substep)
         {
-            (*part->mVPCallback)(*part, dt);
-        }
-
-        if (part->mFlags & LLPartData::LL_PART_WIND_MASK)
-        {
-            part->mVelocity *= 1.f - 0.1f*dt;
-            part->mVelocity += 0.1f*dt*regionp->mWind.getVelocity(regionp->getPosRegionFromAgent(part->mPosAgent));
-        }
-
-        // Now do interpolation towards a target
-        if (part->mFlags & LLPartData::LL_PART_TARGET_POS_MASK)
-        {
-            F32 remaining = part->mMaxAge - part->mLastUpdateTime;
-            F32 step = dt / remaining;
-
-            step = llclamp(step, 0.f, 0.1f);
-            step *= 5.f;
-            // we want a velocity that will result in reaching the target in the
-            // Interpolate towards the target.
-            LLVector3 delta_pos = part->mPartSourcep->mTargetPosAgent - part->mPosAgent;
-
-            delta_pos /= remaining;
-
-            part->mVelocity *= (1.f - step);
-            part->mVelocity += step*delta_pos;
-        }
-
-
-        if (part->mFlags & LLPartData::LL_PART_TARGET_LINEAR_MASK)
-        {
-            LLVector3 delta_pos = part->mPartSourcep->mTargetPosAgent - part->mPartSourcep->mPosAgent;
-            part->mPosAgent = part->mPartSourcep->mPosAgent;
-            part->mPosAgent += frac*delta_pos;
-            part->mVelocity = delta_pos;
-        }
-        else
-        {
-            // Do velocity interpolation
-            part->mPosAgent += dt*part->mVelocity;
-            part->mPosAgent += 0.5f*dt*dt*part->mAccel;
-            part->mVelocity += part->mAccel*dt;
-        }
-
-        // Do a bounce test
-        if (part->mFlags & LLPartData::LL_PART_BOUNCE_MASK)
-        {
-            // Need to do point vs. plane check...
-            // For now, just check relative to object height...
-            F32 dz = part->mPosAgent.mV[VZ] - part->mPartSourcep->mPosAgent.mV[VZ];
-            if (dz < 0)
+            dt = integration.dt;
+            // "Drift" the object based on the source object
+            if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK)
             {
-                part->mPosAgent.mV[VZ] += -2.f*dz;
-                part->mVelocity.mV[VZ] *= -0.75f;
+                part->mPosAgent = part->mPartSourcep->mPosAgent;
+                part->mPosAgent += part->mPosOffset;
             }
-        }
+
+            // Do a custom callback if we have one...
+            if (part->mVPCallback)
+            {
+                (*part->mVPCallback)(*part, dt);
+            }
+
+            if (part->mFlags & LLPartData::LL_PART_WIND_MASK)
+            {
+                part->mVelocity *= 1.f - 0.1f*dt;
+                part->mVelocity += 0.1f*dt*regionp->mWind.getVelocity(regionp->getPosRegionFromAgent(part->mPosAgent));
+            }
+
+            // Now do interpolation towards a target
+            if (part->mFlags & LLPartData::LL_PART_TARGET_POS_MASK)
+            {
+                F32 remaining = step_capture
+                    ? llmax(part->mMaxAge - part->mLastUpdateTime, dt)
+                    : part->mMaxAge - part->mLastUpdateTime;
+                F32 step = dt / remaining;
+
+                step = llclamp(step, 0.f, 0.1f);
+                step *= 5.f;
+                // we want a velocity that will result in reaching the target in the
+                // Interpolate towards the target.
+                LLVector3 delta_pos = part->mPartSourcep->mTargetPosAgent - part->mPosAgent;
+
+                delta_pos /= remaining;
+
+                part->mVelocity *= (1.f - step);
+                part->mVelocity += step*delta_pos;
+            }
 
 
-        // Reset the offset from the source position
-        if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK)
-        {
-            part->mPosOffset = part->mPosAgent;
-            part->mPosOffset -= part->mPartSourcep->mPosAgent;
+            if (part->mFlags & LLPartData::LL_PART_TARGET_LINEAR_MASK)
+            {
+                LLVector3 delta_pos = part->mPartSourcep->mTargetPosAgent - part->mPartSourcep->mPosAgent;
+                part->mPosAgent = part->mPartSourcep->mPosAgent;
+                const F32 step_frac = integration.count > 1
+                    ? (part->mLastUpdateTime + dt) / part->mMaxAge : frac;
+                part->mPosAgent += step_frac*delta_pos;
+                part->mVelocity = delta_pos;
+            }
+            else
+            {
+                // Do velocity interpolation
+                part->mPosAgent += dt*part->mVelocity;
+                part->mPosAgent += 0.5f*dt*dt*part->mAccel;
+                part->mVelocity += part->mAccel*dt;
+            }
+
+            // Do a bounce test
+            if (part->mFlags & LLPartData::LL_PART_BOUNCE_MASK)
+            {
+                // Need to do point vs. plane check...
+                // For now, just check relative to object height...
+                F32 dz = part->mPosAgent.mV[VZ] - part->mPartSourcep->mPosAgent.mV[VZ];
+                if (dz < 0)
+                {
+                    part->mPosAgent.mV[VZ] += -2.f*dz;
+                    part->mVelocity.mV[VZ] *= -0.75f;
+                }
+            }
+
+
+            // Reset the offset from the source position
+            if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK)
+            {
+                part->mPosOffset = part->mPosAgent;
+                part->mPosOffset -= part->mPartSourcep->mPosAgent;
+            }
+            part->mLastUpdateTime += dt;
         }
 
         // Do color interpolation
@@ -413,10 +528,11 @@ void LLViewerPartGroup::updateParticles(const F32 lastdt)
 
 
         // Kill dead particles (either flagged dead, or too old)
-        if ((part->mLastUpdateTime > part->mMaxAge) || (LLViewerPart::LL_PART_DEAD_MASK == part->mFlags))
+        if (ALSteppedAnim::particleAgeExpired(part->mLastUpdateTime, part->mMaxAge) || (LLViewerPart::LL_PART_DEAD_MASK == part->mFlags))
         {
             mParticles[i] = mParticles.back() ;
             mParticles.pop_back() ;
+            removeParticleSource(part->mPartSourcep.get());
             delete part ;
         }
         else
@@ -425,6 +541,7 @@ void LLViewerPartGroup::updateParticles(const F32 lastdt)
             if (!posInGroup(part->mPosAgent, desired_size))
             {
                 // Transfer particles between groups
+                removeParticleSource(part->mPartSourcep.get());
                 LLViewerPartSim::getInstance()->put(part) ;
                 mParticles[i] = mParticles.back() ;
                 mParticles.pop_back() ;
@@ -707,6 +824,8 @@ void LLViewerPartSim::updateSimulation()
         return;
     }
 
+    if (ALSteppedAnimRuntime::sStepParticles) ++sStepParticleFrame;
+
     // Start at a random particle system so the same
     // particle system doesn't always get first pick at the
     // particles.  Theoretically we'd want to do this in distance
@@ -737,11 +856,6 @@ void LLViewerPartSim::updateSimulation()
 
         const U8 prior_step_hold = mViewerPartSources[i]->mSteppedHold;
         mViewerPartSources[i]->mSteppedHold = 0;
-        if (mViewerPartSources[i]->isDead() && prior_step_hold == 1)
-        {
-            // Existing particles can outlive the source; release their debt once.
-            mViewerPartSources[i]->mSteppedHold = 2;
-        }
         if (!mViewerPartSources[i]->isDead())
         {
             bool upd = true;
@@ -749,7 +863,6 @@ void LLViewerPartSim::updateSimulation()
             LLViewerObject* vobj = mViewerPartSources[i]->mSourceObjectp;
             if (!ALSteppedAnimRuntime::sActive && prior_step_hold == 1)
             {
-                mViewerPartSources[i]->mSteppedHold = 2;
                 source_dt += mViewerPartSources[i]->mStepDebt;
                 mViewerPartSources[i]->mStepDebt = 0.f;
             }
@@ -846,7 +959,6 @@ void LLViewerPartSim::updateSimulation()
                         ALSteppedAnimRuntime::instance().decisionFor(step_avatar);
                     if (!decision && prior_step_hold == 1)
                     {
-                        mViewerPartSources[i]->mSteppedHold = 2;
                         source_dt += mViewerPartSources[i]->mStepDebt;
                         mViewerPartSources[i]->mStepDebt = 0.f;
                     }
@@ -858,7 +970,6 @@ void LLViewerPartSim::updateSimulation()
                     }
                     else if (decision)
                     {
-                        mViewerPartSources[i]->mSteppedHold = 2;
                         source_dt += mViewerPartSources[i]->mStepDebt;
                         mViewerPartSources[i]->mStepDebt = 0.f;
                         if (vobj->isAttachment())
@@ -909,7 +1020,7 @@ void LLViewerPartSim::updateSimulation()
             {
                 gPipeline.markRebuild(vobj->mDrawable, LLDrawable::REBUILD_ALL);
             }
-            mViewerPartGroups[i]->updateParticles(dt * visirate);
+            mViewerPartGroups[i]->updateParticles(dt * visirate, dt);
             mViewerPartGroups[i]->mSkippedTime=0.0f;
             if (!mViewerPartGroups[i]->getCount())
             {
@@ -921,6 +1032,18 @@ void LLViewerPartSim::updateSimulation()
         }
         else
         {
+            if (ALSteppedAnimRuntime::sStepParticles && mViewerPartGroups[i]->hasSteppedParticles())
+            {
+                mViewerPartGroups[i]->updateParticles(dt, dt, true);
+                if (!mViewerPartGroups[i]->getCount())
+                {
+                    delete mViewerPartGroups[i];
+                    mViewerPartGroups.erase(mViewerPartGroups.begin() + i);
+                    --i;
+                    --count;
+                    continue;
+                }
+            }
             mViewerPartGroups[i]->mSkippedTime+=dt;
         }
 
@@ -950,6 +1073,7 @@ void LLViewerPartSim::updateSimulation()
 void LLViewerPartSim::refreshStepAnimAttachmentSourcePositions()
 {
     LL_PROFILE_ZONE_NAMED("StepAnim::particleSources");
+    if (ALSteppedAnimRuntime::instance().activeActorCount() == 0) return;
     for (StepAnimDeferredSource& deferred : mStepAnimDeferredSources)
     {
         if (deferred.mSource.notNull() && !deferred.mSource->isDead())
@@ -984,6 +1108,13 @@ void LLViewerPartSim::refreshStepAnimAttachmentSourcePositions()
 void LLViewerPartSim::clearStepAnimDeferredSources()
 {
     mStepAnimDeferredSources.clear();
+    clearStepAnimParticleDebt();
+}
+
+void LLViewerPartSim::clearStepAnimParticleDebt()
+{
+    // Lazy invalidation also covers particles retained by a dead source.
+    ++sStepParticleEpoch;
 }
 
 void LLViewerPartSim::updatePartBurstRate()

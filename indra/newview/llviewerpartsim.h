@@ -27,6 +27,7 @@
 #ifndef LL_LLVIEWERPARTSIM_H
 #define LL_LLVIEWERPARTSIM_H
 
+#include "alsteppedanim.h"
 #include "llframetimer.h"
 #include "llpointer.h"
 #include "llpartdata.h"
@@ -60,7 +61,7 @@ public:
     U32                 mPartID;                    // Particle ID used primarily for moving between groups
     F32                 mLastUpdateTime;            // Last time the particle was updated
     F32                 mSkipOffset;                // Offset against current group mSkippedTime
-    F32                 mStepDebt = 0.f;
+    ALSteppedAnim::ParticleStepDebt mStepDebt;
 
     LLVPCallback        mVPCallback;                // Callback function for more complicated behaviors
     LLPointer<LLViewerPartSource> mPartSourcep;     // Particle source used for this object
@@ -98,7 +99,9 @@ public:
 
     bool addPart(LLViewerPart* part, const F32 desired_size = -1.f);
 
-    void updateParticles(const F32 lastdt);
+    void updateParticles(const F32 lastdt, F32 step_dt = 0.f, bool step_only = false);
+
+    bool hasSteppedParticles();
 
     bool posInGroup(const LLVector3 &pos, const F32 desired_size = -1.f);
 
@@ -125,6 +128,12 @@ public:
     bool mHud;
 
 protected:
+    // Raw pointers stay alive through mParticles; counts change only on birth,
+    // death or transfer. Offscreen checks walk sources, never the particle pool.
+    struct ParticleSourceCount { LLViewerPartSource* source; U32 count; };
+    std::vector<ParticleSourceCount> mParticleSources;
+    void removeParticleSource(LLViewerPartSource* source);
+
     LLVector3 mCenterAgent;
     F32 mBoxRadius;
     F32 mBoxSide;
@@ -150,6 +159,9 @@ public:
     void updateSimulation();
     void refreshStepAnimAttachmentSourcePositions();
     void clearStepAnimDeferredSources();
+    static void clearStepAnimParticleDebt();
+    static U64 sStepParticleEpoch;
+    static U64 sStepParticleFrame;
 
     void addPartSource(LLPointer<LLViewerPartSource> sourcep);
 

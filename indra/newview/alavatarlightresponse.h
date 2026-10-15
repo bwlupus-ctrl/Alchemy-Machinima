@@ -26,6 +26,7 @@
 #include <boost/signals2.hpp>
 
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -98,7 +99,7 @@ public:
     bool set(const LLUUID& key, EKind kind, const std::string& label,
              const ALLightResponse::Params& params, bool save_now = true);
     static size_t maxStoredEntries();
-    size_t storedEntryCount() const;    // non-clone entries (the ones that are saved)
+    size_t storedEntryCount() const;    // non-clone live entries plus file-only extras (the ones that are saved)
     void inherit(const LLUUID& key, bool save_now = true);
     void clearAll(bool save_now = true);
 
@@ -150,8 +151,15 @@ private:
     void markChanged(const LLUUID& key);
     void dirtyImpostors(const LLUUID& key) const;
     void debugLogTick();
+    void captureFileExtras();   // ON transition with persistence OFF at login: file-only entries, kept out of mEntries
 
     std::map<LLUUID, Entry>            mEntries;
+    // File-only entries (raw saved LLSD) captured when persistence is switched ON mid-session. They are
+    // written back on every save but never enter mEntries, so the live view is unchanged.
+    std::map<LLUUID, LLSD>             mPersistExtras;
+    std::set<LLUUID>                   mPersistSuppressed;   // explicitly cleared this session: never resurrected from the file
+    bool                               mPersistSuppressAll = false;   // "Reset all" this session: no file-only entries
+
     std::unordered_map<LLUUID, Slot>   mTable;
     std::unordered_map<LLUUID, S32>    mUploadsNow;
     std::unordered_map<LLUUID, S32>    mUploadsLast;

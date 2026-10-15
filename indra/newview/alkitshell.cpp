@@ -846,14 +846,29 @@ void ALKitShell::layoutRoster()
         hint->reshape(llmax(1, width - 8), hint_height, true);
         hint->setOrigin(4, 2);
     }
+    // Group tag box sits directly under the cast list (above the hint); the
+    // list's bottom edge is raised by its height. Empty-state help text points
+    // users here ("tag cast members via the Group box under the cast list").
+    // The rail admits the roster at 120 px, so when the list would be left
+    // under ~3 rows (heading + 3 * ~18 px row, approximate) the Group box is
+    // hidden first and the cast list keeps the space.
+    constexpr S32 ROSTER_MIN_LIST_H = 23 + 3 * 18;
+    const S32     list_ceiling      = height - ALKitStyle::ROSTER_HDR_H - 4;
+    S32           list_bottom       = hint ? hint->getRect().mTop + 4 : 34;
     if (group)
     {
-        group->setVisible(false);
+        const bool show_group = list_ceiling - (list_bottom + ALKitStyle::ROSTER_TOOL + 4) >= ROSTER_MIN_LIST_H;
+        group->setVisible(show_group);
+        if (show_group)
+        {
+            group->reshape(llmax(1, width - 8), ALKitStyle::ROSTER_TOOL, true);
+            group->setOrigin(4, list_bottom);
+            list_bottom += ALKitStyle::ROSTER_TOOL + 4;
+        }
     }
     if (list)
     {
-        const S32 list_bottom = hint ? hint->getRect().mTop + 4 : 34;
-        const S32 list_top = llmax(list_bottom + 1, height - ALKitStyle::ROSTER_HDR_H - 4);
+        const S32 list_top = llmax(list_bottom + 1, list_ceiling);
         list->reshape(llmax(1, width - 8), llmax(1, list_top - list_bottom), true);
         list->setOrigin(4, list_bottom);
     }

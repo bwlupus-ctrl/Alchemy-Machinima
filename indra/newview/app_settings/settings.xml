@@ -34,6 +34,12 @@
     <map><key>Comment</key><string>[StepAnim] Step avatar physics and attached flexible objects.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>1</integer></map>
     <key>StepAnimAttachFX</key>
     <map><key>Comment</key><string>[StepAnim] Step attachment particle sources and scripted spin.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimParticles</key>
+    <map><key>Comment</key><string>[StepAnim] Step motion and aging of particles from stepped avatars and their attachments.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimParticlesMigrated</key>
+    <map><key>Comment</key><string>[StepAnim] Internal one-time migration of the shipped attachment particle hold.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimTextureAnim</key>
+    <map><key>Comment</key><string>[StepAnim] Hold attachment texture animation between avatar ticks.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
     <key>StepAnimClock</key>
     <map><key>Comment</key><string>[StepAnim] Clock: 0 capture/presentation time, 1 real time.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
     <key>StepAnimOffsetMode</key>
@@ -30606,10 +30612,10 @@
   </map>
   <key>AvatarLightResponsePersist</key>
   <map>
-    <key>Comment</key><string>[AvatarLightResponse] Save each avatar's Light Response per account (avatar_light_response.xml).</string>
+    <key>Comment</key><string>[AvatarLightResponse] Remember each avatar's Light Response across sessions (saved per account in avatar_light_response.xml). Off: adjustments last for this session only.</string>
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>Boolean</string>
-    <key>Value</key><integer>1</integer>
+    <key>Value</key><integer>0</integer>
   </map>
   <key>AvatarLightResponseDebugLog</key>
   <map>

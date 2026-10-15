@@ -40,6 +40,7 @@ private:
 
 public:
     static void updateClass();
+    void advanceSteppedTime();
 
     LLViewerTextureAnim(LLVOVolume* vobj);
     virtual ~LLViewerTextureAnim();
@@ -59,6 +60,7 @@ public:
     F32 mRot;
 
 protected:
+    F32 advanceTime();
     LLVOVolume* mVObj;
     LLFrameTimer mTimer;
     F64 mLastTime;

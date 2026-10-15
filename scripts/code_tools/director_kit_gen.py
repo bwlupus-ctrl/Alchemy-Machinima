@@ -223,8 +223,9 @@ def validate_data(data: dict) -> None:
     # Camera/capture completion adds recorder status, two temporal readouts and
     # the Scene login-self toggle.  This is source-data completeness, not a
     # generated/legacy page-classification pin.
-    if len(pages) != 36 or row_count != 2063:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 36/2063")
+    # 2065: + Step particles and Step texture animation toggles (10/15).
+    if len(pages) != 36 or row_count != 2065:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 36/2065")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1145,9 +1146,9 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
         ET.SubElement(scene_menu, "button", {"name": name, "label": label})
     hot = ET.SubElement(shell, "kit_popover", {"name": "kit_hotkeys_popover", "anchor": "btn_help", "side": "above", "visible": "false"})
     ET.SubElement(hot, "text", {"name": "kit_hotkeys_text", "word_wrap": "true"}).text = (
-        "Enter: ACTION\nEsc: close, clear or CUT\nF8 / F5\n/: search\nCtrl+Z/Y: undo / redo\n"
+        "Enter: ACTION\nEsc: close, clear or CUT\nF5: reset to marks / F8: set marks\n/: search\nCtrl+Z/Y: undo / redo\n"
         "PgUp/PgDn: chip\nShift+PgUp/PgDn: page\nAlt+PgUp/PgDn: group\nArrows: adjust\n"
-        "Home: reset row\nSpace/Enter: activate\n1-9 and Alt+1-9: cast")
+        "Home: reset row\nSpace/Enter: activate\n1-9: camera slots / Alt+1-9: animation slots")
     return root
 
 

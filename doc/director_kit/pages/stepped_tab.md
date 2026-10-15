@@ -1,11 +1,11 @@
 # Stepped — Director Kit page contract
 
 Page key: `stepped_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (31/46 setting-bound rows; 17 C++-referenced rows).
+Computed class: **code-driven** (33/48 setting-bound rows; 17 C++-referenced rows).
 
 ## Real owners
 
-- `stepped_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:3` (42 matching rows).
+- `stepped_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:3` (44 matching rows).
 - Referencing classes: `ALPanelSteppedAnim` (21).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
@@ -46,22 +46,24 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `what_steps` / `sa_gaze` (Gaze & look-at) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:141` | kit `toggle` ↔ `StepAnimGaze` `Boolean` | none |
 | `what_steps` / `sa_flexi` (Hair, cloth & flexi) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:144` | kit `toggle` ↔ `StepAnimFlexi` `Boolean` | none |
 | `what_steps` / `sa_attach_fx` (Attachment FX) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:147` | kit `toggle` ↔ `StepAnimAttachFX` `Boolean` | none |
-| `step_timing` / `sa_clock` (Clock) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:152` | kit `combo` ↔ `StepAnimClock` `S32` | none |
-| `step_timing` / `sa_offset` (Actor offset) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:160` | kit `combo` ↔ `StepAnimOffsetMode` `S32` | none |
-| `step_timing` / `sa_phase` (Phase) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:169` | kit `slider` ↔ `StepAnimPhase` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:65`) | none |
-| `step_timing` / `sa_base_fps` (Base fps) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:174` | kit `combo` ↔ `StepAnimBaseFPS` `S32` | none |
-| `character` / `sa_boil` (Pose boil) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:185` | kit `toggle` ↔ `StepAnimBoil` `Boolean` | none |
-| `character` / `sa_boil_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:188` | kit `slider` ↔ `StepAnimBoilAmount` `F32` | none |
-| `character` / `sa_boil_ticks` (Boil every) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:193` | kit `number` ↔ `StepAnimBoilTicks` `S32` | none |
-| `character` / `sa_impact` (Hold on impact) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:196` | kit `toggle` ↔ `StepAnimImpactHold` `Boolean` | none |
-| `character` / `sa_impact_ticks` (Frames) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:199` | kit `number` ↔ `StepAnimImpactTicks` `S32` | none |
-| `character` / `sa_impact_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:202` | kit `slider` ↔ `StepAnimImpactThreshold` `F32` | none |
-| `character` / `sa_smear` (Smear frames) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:207` | kit `toggle` ↔ `StepAnimSmear` `Boolean` | none |
-| `character` / `sa_smear_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:210` | kit `slider` ↔ `StepAnimSmearStrength` `F32` | none |
-| `character` / `sa_smear_threshold` (Smear speed) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:215` | kit `slider` ↔ `StepAnimSmearThreshold` `F32` | none |
-| `character` / `sa_ease` (Ease spacing) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:220` | kit `toggle` ↔ `StepAnimEase` `Boolean` | none |
-| `character` / `sa_ease_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:223` | kit `slider` ↔ `StepAnimEaseAmount` `F32` | none |
-| `pairs` / `sa_match_roto` (Match Roto Ink) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:230` | kit `toggle` ↔ `StepAnimMatchRotoInk` `Boolean` | none |
+| `what_steps` / `sa_particles` (Step particles) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:150` | kit `toggle` ↔ `StepAnimParticles` `Boolean` | none |
+| `what_steps` / `sa_texture_anim` (Step texture animation) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:153` | kit `toggle` ↔ `StepAnimTextureAnim` `Boolean` | none |
+| `step_timing` / `sa_clock` (Clock) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:158` | kit `combo` ↔ `StepAnimClock` `S32` | none |
+| `step_timing` / `sa_offset` (Actor offset) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:166` | kit `combo` ↔ `StepAnimOffsetMode` `S32` | none |
+| `step_timing` / `sa_phase` (Phase) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:175` | kit `slider` ↔ `StepAnimPhase` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:65`) | none |
+| `step_timing` / `sa_base_fps` (Base fps) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:180` | kit `combo` ↔ `StepAnimBaseFPS` `S32` | none |
+| `character` / `sa_boil` (Pose boil) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:191` | kit `toggle` ↔ `StepAnimBoil` `Boolean` | none |
+| `character` / `sa_boil_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:194` | kit `slider` ↔ `StepAnimBoilAmount` `F32` | none |
+| `character` / `sa_boil_ticks` (Boil every) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:199` | kit `number` ↔ `StepAnimBoilTicks` `S32` | none |
+| `character` / `sa_impact` (Hold on impact) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:202` | kit `toggle` ↔ `StepAnimImpactHold` `Boolean` | none |
+| `character` / `sa_impact_ticks` (Frames) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:205` | kit `number` ↔ `StepAnimImpactTicks` `S32` | none |
+| `character` / `sa_impact_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:208` | kit `slider` ↔ `StepAnimImpactThreshold` `F32` | none |
+| `character` / `sa_smear` (Smear frames) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:213` | kit `toggle` ↔ `StepAnimSmear` `Boolean` | none |
+| `character` / `sa_smear_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:216` | kit `slider` ↔ `StepAnimSmearStrength` `F32` | none |
+| `character` / `sa_smear_threshold` (Smear speed) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:221` | kit `slider` ↔ `StepAnimSmearThreshold` `F32` | none |
+| `character` / `sa_ease` (Ease spacing) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:226` | kit `toggle` ↔ `StepAnimEase` `Boolean` | none |
+| `character` / `sa_ease_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:229` | kit `slider` ↔ `StepAnimEaseAmount` `F32` | none |
+| `pairs` / `sa_match_roto` (Match Roto Ink) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:236` | kit `toggle` ↔ `StepAnimMatchRotoInk` `Boolean` | none |
 | `pairs` / `sa_roto_link` (Roto Ink) | none | kit-native action `link_to:look_group/stylize_tab`; no duplicate widget is required | none |
 | `pairs` / `sa_tron_link` (Tron) | none | kit-native action `link_to:look_group/tron_tab`; no duplicate widget is required | none |
 | `pairs` / `sa_actorfx_link` (Actor FX) | none | kit-native action `link_to:look_group/actor_style_tab`; no duplicate widget is required | none |
@@ -82,7 +84,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **52 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **54 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -119,6 +121,8 @@ Manifest size: **52 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `sa_gaze-on` | Only `sa_gaze` is on; dependent visibility is measured. |
 | `sa_flexi-on` | Only `sa_flexi` is on; dependent visibility is measured. |
 | `sa_attach_fx-on` | Only `sa_attach_fx` is on; dependent visibility is measured. |
+| `sa_particles-on` | Only `sa_particles` is on; dependent visibility is measured. |
+| `sa_texture_anim-on` | Only `sa_texture_anim` is on; dependent visibility is measured. |
 | `card-step_timing-tallest-850` | Only `step_timing` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-step_timing-tallest-1160` | Only `step_timing` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `sa_clock-option-0` | Only `sa_clock` selects `Capture time`; other selectors remain default. |

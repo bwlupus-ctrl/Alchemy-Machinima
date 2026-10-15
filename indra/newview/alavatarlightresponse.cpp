@@ -57,6 +57,17 @@ ALAvatarLightResponse::EKind kindFromString(const std::string& str)
     if (str == "clone")   return ALAvatarLightResponse::KIND_CLONE;
     return ALAvatarLightResponse::KIND_RESIDENT;
 }
+
+// ONE priority order for admission (import, file capture) and for the file write when the cap bites:
+// 0 = your own entry, 1 = explicit identity / bypass (terminates fallback chains), 2 = everything else.
+int persistPriority(const LLUUID& key, const ALLightResponse::Params& params)
+{
+    if (key == gAgentID)
+    {
+        return 0;
+    }
+    return ALLightResponse::isIdentity(params) ? 1 : 2;
+}
 }
 
 bool ALAvatarLightResponse::sEverActive = false;
@@ -89,6 +100,26 @@ ALAvatarLightResponse::ALAvatarLightResponse()
                 mDirty = true;
                 LLVOAvatar::resetImpostors();
                 mChangeSignal();
+            });
+    }
+
+    // Persistence toggle. ON: file-only entries are kept as extras (written, never shown) and the
+    // table is saved now. OFF: no further saves; the file is left as is.
+    LLControlVariable* persist = gSavedSettings.getControl("AvatarLightResponsePersist");
+    if (persist)
+    {
+        persist->getCommitSignal()->connect(
+            [this](LLControlVariable*, const LLSD& newval, const LLSD&)
+            {
+                if (!newval.asBoolean())
+                {
+                    // OFF: file-only extras stop counting toward the cap. The suppression sets stay: they
+                    // record targets cleared this session that the (unrewritten) file still holds.
+                    mPersistExtras.clear();
+                    return;
+                }
+                captureFileExtras();
+                saveToFile();
             });
     }
 }
@@ -203,12 +234,20 @@ size_t ALAvatarLightResponse::maxStoredEntries()
     return ALR_MAX_ENTRIES;
 }
 
+// Live entries plus file-only extras: the one count every capacity check uses.
 size_t ALAvatarLightResponse::storedEntryCount() const
 {
     size_t count = 0;
     for (const auto& kv : mEntries)
     {
         if (kv.second.mKind != KIND_CLONE)
+        {
+            ++count;
+        }
+    }
+    for (const auto& kv : mPersistExtras)
+    {
+        if (mEntries.find(kv.first) == mEntries.end())
         {
             ++count;
         }
@@ -225,8 +264,8 @@ bool ALAvatarLightResponse::set(const LLUUID& key, EKind kind, const std::string
     }
     // ONE capacity policy for set / load / scene import / save: a new stored entry is refused past the cap
     // (own entry exempt so "You" can never be the one that is dropped).
-    if (kind != KIND_CLONE && key != gAgentID && mEntries.find(key) == mEntries.end()
-        && storedEntryCount() >= ALR_MAX_ENTRIES)
+    const bool known = mEntries.find(key) != mEntries.end() || mPersistExtras.find(key) != mPersistExtras.end();
+    if (kind != KIND_CLONE && key != gAgentID && !known && storedEntryCount() >= ALR_MAX_ENTRIES)
     {
         return false;
     }
@@ -235,6 +274,7 @@ bool ALAvatarLightResponse::set(const LLUUID& key, EKind kind, const std::string
     entry.mLabel  = utf8str_truncate(label, ALR_MAX_LABEL);
     entry.mParams = ALLightResponse::sanitize(params);
     mEntries[key] = entry;
+    mPersistExtras.erase(key);   // the live entry now owns this target
     if (!ALLightResponse::isIdentity(entry.mParams))
     {
         sEverActive = true;
@@ -249,9 +289,16 @@ bool ALAvatarLightResponse::set(const LLUUID& key, EKind kind, const std::string
 
 void ALAvatarLightResponse::inherit(const LLUUID& key, bool save_now)
 {
+    // An explicit clear removes the file-only copy too, so no later save can bring it back.
+    mPersistSuppressed.insert(key);
+    const bool wasExtra = mPersistExtras.erase(key) > 0;
     const auto it = mEntries.find(key);
     if (it == mEntries.end())
     {
+        if (wasExtra && save_now)
+        {
+            saveIfPersist();
+        }
         return;
     }
     const EKind kind = it->second.mKind;
@@ -265,8 +312,16 @@ void ALAvatarLightResponse::inherit(const LLUUID& key, bool save_now)
 
 void ALAvatarLightResponse::clearAll(bool save_now)
 {
+    // "Reset all" removes file-only entries as well, for the rest of this session.
+    mPersistSuppressAll = true;
+    const bool hadExtras = !mPersistExtras.empty();
+    mPersistExtras.clear();
     if (mEntries.empty())
     {
+        if (hadExtras && save_now)
+        {
+            saveIfPersist();
+        }
         return;
     }
     mEntries.clear();
@@ -633,6 +688,57 @@ void ALAvatarLightResponse::debugLogTick()
     }
 }
 
+// Called on the OFF -> ON transition. Reads the account file and keeps the entries the session does not
+// hold (not cleared or reset this session), admitted in the same order and under the same cap as import.
+// Live entries are never touched, so the user sees no change at the switch itself.
+void ALAvatarLightResponse::captureFileExtras()
+{
+    mPersistExtras.clear();
+    if (mPersistSuppressAll || gAgentID.isNull())
+    {
+        // Reset all this session: nothing from the file. No account yet: loadFromFile will load it.
+        return;
+    }
+    const std::string path = gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, ALR_FILE_NAME);
+    llifstream in(path.c_str());
+    if (!in.is_open())
+    {
+        return;
+    }
+    LLSD root;
+    const S32 ret = LLSDSerialize::fromXML(root, in);
+    in.close();
+    if (ret == LLSDParser::PARSE_FAILURE || !root.isMap() || !root.has("entries") || !root["entries"].isMap())
+    {
+        return;
+    }
+    for (int pass = 0; pass < 3; ++pass)
+    {
+        for (const auto& kv : llsd::inMap(root["entries"]))
+        {
+            const LLUUID key = keyFromString(kv.first);
+            if (key.isNull() || !kv.second.isMap() || kindFromString(kv.second["kind"].asString()) == KIND_CLONE)
+            {
+                continue;
+            }
+            if (mEntries.find(key) != mEntries.end() || mPersistSuppressed.find(key) != mPersistSuppressed.end())
+            {
+                continue;
+            }
+            const ALLightResponse::Params params = ALLightResponse::fromLLSD(kv.second);
+            if (persistPriority(key, params) != pass)
+            {
+                continue;
+            }
+            if (key != gAgentID && storedEntryCount() >= ALR_MAX_ENTRIES)
+            {
+                continue;   // same capacity rule as set() and importMerge()
+            }
+            mPersistExtras[key] = kv.second;
+        }
+    }
+}
+
 void ALAvatarLightResponse::saveIfPersist() const
 {
     if (gSavedSettings.getBOOL("AvatarLightResponsePersist"))
@@ -647,27 +753,40 @@ void ALAvatarLightResponse::saveToFile() const
     {
         return;   // "self" cannot be keyed yet: writing now would erase the saved self entry
     }
-    LLSD entries = LLSD::emptyMap();
-    size_t written = 0;
-    // Own entry first so a (never expected) over-cap map still cannot drop it.
-    for (int pass = 0; pass < 2; ++pass)
+    // Live entries, then file-only extras for targets the table does not hold. Clones are session-only.
+    struct Pending
     {
-        for (const auto& kv : mEntries)
+        int    priority;
+        LLUUID key;
+        LLSD   entry;
+    };
+    std::vector<Pending> pending;
+    for (const auto& kv : mEntries)
+    {
+        if (kv.second.mKind == KIND_CLONE)
         {
-            if (kv.second.mKind == KIND_CLONE || ((kv.first == gAgentID) != (pass == 0)))
-            {
-                continue;   // clone keys are session-only
-            }
-            if (pass == 1 && written >= ALR_MAX_ENTRIES)
-            {
-                break;
-            }
-            LLSD e = ALLightResponse::toLLSD(kv.second.mParams);
-            e["kind"]  = kindToString(kv.second.mKind);
-            e["label"] = kv.second.mLabel;
-            entries[keyToString(kv.first)] = e;
-            ++written;
+            continue;
         }
+        LLSD e = ALLightResponse::toLLSD(kv.second.mParams);
+        e["kind"]  = kindToString(kv.second.mKind);
+        e["label"] = kv.second.mLabel;
+        pending.push_back({ persistPriority(kv.first, kv.second.mParams), kv.first, e });
+    }
+    for (const auto& kv : mPersistExtras)
+    {
+        if (mEntries.find(kv.first) != mEntries.end())
+        {
+            continue;   // the live entry is the one that is saved
+        }
+        pending.push_back({ persistPriority(kv.first, ALLightResponse::fromLLSD(kv.second)), kv.first, kv.second });
+    }
+    // Same cap and order as admission: self, then identity/bypass, then the rest.
+    std::stable_sort(pending.begin(), pending.end(),
+                     [](const Pending& a, const Pending& b) { return a.priority < b.priority; });
+    LLSD entries = LLSD::emptyMap();
+    for (size_t i = 0; i < pending.size() && i < ALR_MAX_ENTRIES; ++i)
+    {
+        entries[keyToString(pending[i].key)] = pending[i].entry;
     }
     LLSD root = LLSD::emptyMap();
     root["version"] = 1;
@@ -693,6 +812,9 @@ void ALAvatarLightResponse::loadFromFile()
         mEntries.clear();
         LLVOAvatar::resetImpostors();
     }
+    mPersistExtras.clear();
+    mPersistSuppressed.clear();
+    mPersistSuppressAll = false;
     mUploadsNow.clear();
     mUploadsLast.clear();
     mDirty = true;
@@ -774,7 +896,8 @@ bool ALAvatarLightResponse::importMerge(const LLSD& data)
             {
                 continue;
             }
-            if (key != gAgentID && mEntries.find(key) == mEntries.end() && storedEntryCount() >= ALR_MAX_ENTRIES)
+            const bool known = mEntries.find(key) != mEntries.end() || mPersistExtras.find(key) != mPersistExtras.end();
+            if (key != gAgentID && !known && storedEntryCount() >= ALR_MAX_ENTRIES)
             {
                 continue;   // same capacity rule as set(): a hostile file/scene cannot grow the table without bound
             }
@@ -787,6 +910,7 @@ bool ALAvatarLightResponse::importMerge(const LLSD& data)
             entry.mLabel  = utf8str_truncate(kv.second["label"].asString(), ALR_MAX_LABEL);
             entry.mParams = params;
             mEntries[key] = entry;
+            mPersistExtras.erase(key);
             if (!ALLightResponse::isIdentity(entry.mParams))
             {
                 sEverActive = true;

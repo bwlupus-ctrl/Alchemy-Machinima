@@ -196,6 +196,71 @@ bool inheritAttachedAssignment(const Assignment& source, U64 source_seed,
     return true;
 }
 
+bool migrateParticleSetting(bool attach_fx, bool& particles, bool& migrated)
+{
+    if (migrated) return false;
+    if (attach_fx) particles = true;
+    migrated = true;
+    return true;
+}
+
+bool particleSourceEligible(bool is_avatar, bool is_attachment, bool is_hud)
+{
+    return !is_hud && (is_avatar || is_attachment);
+}
+
+bool claimParticleFrame(ParticleStepDebt& debt, U64 frame)
+{
+    if (debt.frame == frame) return false;
+    debt.frame = frame;
+    return true;
+}
+
+bool particleAgeExpired(F32 age, F32 max_age)
+{
+    return age > max_age;
+}
+
+ParticleSubsteps particleSubsteps(F32 dt)
+{
+    constexpr F32 max_dt = 1.f / 30.f;
+    constexpr U32 max_steps = 16;
+    const F32 integrated = llmin(dt, max_steps * max_dt);
+    ParticleSubsteps out;
+    out.count = llclamp(static_cast<U32>(std::ceil(integrated / max_dt)), U32(1), max_steps);
+    out.dt = integrated / out.count;
+    // Bound nonlinear work even across long impact holds. The remaining time
+    // still advances ballistic motion and age exactly, without a giant force step.
+    out.ballisticDt = dt - integrated;
+    return out;
+}
+
+F32 particleGroupDt(F32 frame_dt, F32 skipped_time, F32& skip_offset, bool step_only)
+{
+    const F32 dt = frame_dt + skipped_time - skip_offset;
+    skip_offset = step_only ? skipped_time + frame_dt : 0.f;
+    return dt;
+}
+
+F32 particleStepDt(F32 dt, ParticleStepDebt& debt, U64 epoch, const FrameDecision* decision,
+                   U64 actor_epoch)
+{
+    if (debt.epoch != epoch || debt.actorEpoch != actor_epoch || !decision || !decision->hold)
+    {
+        debt.seconds = 0.f;
+        debt.epoch = epoch;
+        debt.actorEpoch = actor_epoch;
+    }
+    if (decision && decision->hold && !decision->capture)
+    {
+        debt.seconds += dt;
+        return 0.f;
+    }
+    const F32 result = dt + debt.seconds;
+    debt.seconds = 0.f;
+    return result;
+}
+
 void inheritAttachedFrame(const Assignment& source_assignment, U64 source_seed,
                           const ActorState& source_state, const FrameDecision& source_decision,
                           Assignment& attached_assignment, U64& attached_seed,
@@ -583,7 +648,8 @@ const std::vector<std::string>& trackedSettings()
         "StepAnimScope", "StepAnimMode", "StepAnimRate", "StepAnimFastRate",
         "StepAnimAdaptThreshold", "StepAnimAdaptHysteresis", "StepAnimAdaptMinDwell",
         "StepAnimBackgroundRate", "StepAnimWhatSteps", "StepAnimFace", "StepAnimGaze",
-        "StepAnimFlexi", "StepAnimAttachFX", "StepAnimClock", "StepAnimOffsetMode",
+        "StepAnimFlexi", "StepAnimAttachFX", "StepAnimParticles", "StepAnimTextureAnim",
+        "StepAnimClock", "StepAnimOffsetMode",
         "StepAnimPhase", "StepAnimBaseFPS", "StepAnimBoil", "StepAnimBoilAmount",
         "StepAnimBoilTicks", "StepAnimImpactHold", "StepAnimImpactTicks",
         "StepAnimImpactThreshold", "StepAnimSmear", "StepAnimSmearStrength",
@@ -592,12 +658,27 @@ const std::vector<std::string>& trackedSettings()
     return settings;
 }
 
+const std::vector<std::string>& presetSettings()
+{
+    static const std::vector<std::string> settings = []
+    {
+        std::vector<std::string> out;
+        for (const std::string& name : trackedSettings())
+            if (name != "StepAnimParticles" && name != "StepAnimTextureAnim") out.push_back(name);
+        return out;
+    }();
+    return settings;
+}
+
 const std::vector<Preset>& builtInPresets()
 {
     static const std::vector<Preset> presets = []
     {
         std::vector<Preset> out;
-        auto add = [&out](const char* id, const char* label, const Config& values) { out.push_back({id, label, values}); };
+        auto add = [&out](const char* id, const char* label, Config values)
+        {
+            out.push_back({id, label, values});
+        };
         Config c;
         c.ease = true; c.easeAmount = .3f; add("anime_twos", "Anime on twos", c);
         c = Config(); c.rate = 8.f; c.ease = true; c.easeAmount = .3f; add("anime_threes", "Anime on threes (limited)", c);

@@ -269,6 +269,11 @@ const std::vector<ALPanelCineCamParams::ModeEntry>& ALPanelCineCamParams::modeTa
               { "CinematicCamStaticFullHeading", "CinematicCamStaticFullDistance",
                 "CinematicCamStaticFullCameraUp", "CinematicCamStaticFullAimUp",
                 "CinematicCamStaticFullFov" } },
+        { 51, "panel_mode_pedro_bob",
+              { "CinematicCamPedroBPM", "CinematicCamPedroSway",
+                "CinematicCamPedroBob", "CinematicCamPedroRoll",
+                "CinematicCamPedroDistance", "CinematicCamPedroHeight",
+                "CinematicCamPedroFov" } },
     };
     return table;
 }
@@ -293,6 +298,15 @@ const std::vector<std::string>& ALPanelCineCamParams::sharedSettings()
         "CinematicAutoFrameFill",
         "CinematicAutoFrameComposeLine",
         "CinematicAutoFrameDistanceTrim",
+        "CinematicAutoFrameSettleMode",
+        "CinematicAutoFrameSettleSeconds",
+        "CinematicAutoFrameSettleMaxRatio",
+        "CinematicAutoFrameSettleCurve",
+        "CinematicAutoFrameSettleBezierX1",
+        "CinematicAutoFrameSettleBezierY1",
+        "CinematicAutoFrameSettleBezierX2",
+        "CinematicAutoFrameSettleBezierY2",
+        "CinematicAutoFrameSettleFeather",
         // Non-destructive delivery frame and differential lens. Additive keys
         // are included in named rigs without changing any legacy preset key.
         "CinematicFrameAspectRatio",
@@ -302,6 +316,15 @@ const std::vector<std::string>& ALPanelCineCamParams::sharedSettings()
         "CinematicFrameGuideOpacity",
         "CinematicFrameGuideStyle",
         "CinematicFrameLensEnabled",
+        // Shared lens warp controls on the Shot page.
+        "CineFisheyeEnabled",
+        "CineFisheyeStrength",
+        "CineFisheyeStrength2",
+        "CineFisheyeZoom",
+        "CineFisheyeCenterX",
+        "CineFisheyeCenterY",
+        "CineFisheyeVignetteRadius",
+        "CineFisheyeVignetteSoft",
         // Complete handheld operator surface. Every FlycamOperator* setting is
         // both visible in the shared panel and registered here, so named
         // presets and Reset All round-trip the whole rig without hidden state.

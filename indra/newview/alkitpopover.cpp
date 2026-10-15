@@ -56,8 +56,11 @@ bool ALKitPopover::postBuild()
         }
         reshape(width, height, true);
         S32 top = height - 10;
-        for (LLView* child : *getChildList())
+        // LLView::addChild() pushes to the front, so the child list runs in
+        // reverse XML order; walk it backwards so the first XML row sits on top.
+        for (auto it = getChildList()->rbegin(); it != getChildList()->rend(); ++it)
         {
+            LLView* child = *it;
             S32 child_height = child->getRect().getHeight();
             if (child_height <= 1)
             {

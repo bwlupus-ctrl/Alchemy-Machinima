@@ -27,6 +27,7 @@
 #ifndef LL_LLVIEWERPARTSOURCE_H
 #define LL_LLVIEWERPARTSOURCE_H
 
+#include "alsteppedanim.h"
 #include "llrefcount.h"
 #include "llpartdata.h"
 #include "llpointer.h"
@@ -78,7 +79,12 @@ public:
     LLPointer<LLViewerObject>   mSourceObjectp;
     U32 mID;
     LLViewerPart* mLastPart; //last particle emitted (for making particle ribbons)
-    U8 mSteppedHold = 0; // 0 normal, 1 hold/defer, 2 capture/release
+    const ALSteppedAnim::FrameDecision* particleStepDecision(U64 frame, U64& actor_epoch);
+    U64 mStepDecisionFrame = 0;
+    U64 mStepActorEpoch = 0;
+    ALSteppedAnim::FrameDecision mStepDecision;
+    bool mHasStepDecision = false;
+    U8 mSteppedHold = 0; // 0 normal, 1 held emission
     F32 mStepDebt = 0.f;
 
 protected:

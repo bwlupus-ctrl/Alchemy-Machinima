@@ -568,7 +568,7 @@ void applySteppedConfig(const ALSteppedAnim::Config& c)
 class ALSteppedPresetProvider final : public ALKitPresetProvider
 {
 public:
-    ALSteppedPresetProvider() : mStore("stepped_anim", ALSteppedAnim::trackedSettings()) {}
+    ALSteppedPresetProvider() : mStore("stepped_anim", ALSteppedAnim::presetSettings()) {}
     const std::string& key() const override { return mKey; }
     void list(std::vector<Entry>& out) const override
     {
@@ -711,9 +711,11 @@ bool LLFloaterDirector::postBuild()
     mSceneNameEditor = getChild<LLLineEditor>("scene_name_editor");
     mSceneSaveBtn = getChild<LLButton>("btn_scene_save");
     mSceneDeleteBtn = getChild<LLButton>("btn_scene_delete");
-    mSceneLoadBtn = getChild<LLButton>("btn_scene_load");
+    // v1 floater_director.xml has no Load button (v2 only); keep the lookup null-safe
+    mSceneLoadBtn = findChild<LLButton>("btn_scene_load");
     mSceneDirtyText = findChild<LLTextBox>("scene_dirty_indicator");
-    mSceneLoadBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneLoad(); });
+    if (mSceneLoadBtn)
+        mSceneLoadBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneLoad(); });
     mSceneCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSceneSelected(); });
     mSceneNameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { commitSceneName(); });
     mSceneSaveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneSave(); });
@@ -1201,7 +1203,8 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mSceneDeleteBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneDelete(); });
     root->getChild<LLButton>("btn_scene_save_as")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickSceneSaveAs(); });
-    root->getChild<LLButton>("btn_scene_rename")->setCommitCallback(
+    mSceneRenameBtn = root->getChild<LLButton>("btn_scene_rename");
+    mSceneRenameBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickSceneRename(); });
     refreshSceneList();
     updateTransportTooltipCache();
@@ -1210,6 +1213,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mTabContainer->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTabChanged(); });
     struct GroupInfo { const char* page; const char* tabs; const char* icon; };
     static const GroupInfo groups[] = {
+        { "quick_group", "quick_tabs", "Command_View_Icon" },
         { "cast_group", "cast_tabs", "Command_People_Icon" },
         { "performance_group", "performance_tabs", "Command_Poser_Icon" },
         { "camera_group", "camera_tabs", "Command_View_Icon" },
@@ -1243,7 +1247,12 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mHotkeysPanel = root->getChild<LLPanel>("kit_hotkeys_popover");
     mHelpBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleLegend(); });
     mLegendPanel->getChild<LLButton>("btn_legend_close")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { mLegendPanel->setVisible(false); });
+        [this](LLUICtrl*, const LLSD&)
+        {
+            // close through the shell so its open-popover tracking is cleared too
+            if (mShell) mShell->closePopover();
+            else mLegendPanel->setVisible(false);
+        });
     mLegendPanel->getChild<LLButton>("btn_legend_hotkeys")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
         {
@@ -2831,6 +2840,8 @@ void LLFloaterDirector::refreshTransport()
     mSceneDeleteBtn->setEnabled(!scene_sel.empty() && !naming);
     setToolTipIfChanged(mSceneDeleteBtn, scene_sel.empty() ? TOOLTIP_SCENE_SELECT :
         naming ? TOOLTIP_SCENE_NAMING : TOOLTIP_SCENE_DELETE);
+    if (mSceneRenameBtn)
+        mSceneRenameBtn->setEnabled(!scene_sel.empty() && !naming);
 }
 
 // ---------------------------------------------------------------------------
@@ -3187,10 +3198,11 @@ void LLFloaterDirector::onClickSceneSaveAs()
 
 void LLFloaterDirector::onClickSceneRename()
 {
+    // close the menu on every path, including the no-selection early return
+    if (mShell) mShell->closePopover();
     const std::string name = mSceneCombo->getSelectedItemLabel();
     if (name.empty())
         return;
-    if (mShell) mShell->closePopover();
     mSceneRenameSource = name;
     mSceneSaveAs = false;
     mSceneWriteSource.clear();

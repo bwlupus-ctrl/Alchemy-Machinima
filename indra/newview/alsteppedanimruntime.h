@@ -22,6 +22,8 @@ class ALSteppedAnimRuntime
 public:
     static bool sActive;
     static bool sHasOverlay;
+    static bool sStepParticles;
+    static bool sStepTextureAnim;
 
     static ALSteppedAnimRuntime& instance();
     static void initialize();
@@ -29,9 +31,10 @@ public:
     void beginFrame();
     void applyHeld();
     void endFrameRestore();
-    const ALSteppedAnim::FrameDecision* decisionFor(const LLVOAvatar* avatar) const;
+    const ALSteppedAnim::FrameDecision* decisionFor(const LLVOAvatar* avatar, U64* particle_epoch = nullptr) const;
     bool holdsFlexi(const LLVOAvatar* avatar) const;
     bool holdsAttachmentFX(const LLVOAvatar* avatar) const;
+    bool holdsTextureAnim(const LLVOAvatar* avatar) const;
     F32 attachmentOmegaDt(LLViewerObject* object, F32 dt);
     F32 selectedLimbSpeed() const;
     S32 activeActorCount() const { return mActiveActors; }
@@ -66,6 +69,7 @@ private:
         U32 mOverrideEpoch = 0;
         U64 mRegionHandle = 0;
         U64 mSeed = 0;
+        U64 mParticleEpoch = 0;
         LLUUID mDecisionSource;
         U64 mEaseCandidateSerial = 0;
         U64 mInheritedEaseCandidateSerial = 0;
@@ -106,6 +110,7 @@ private:
     S32 mActiveActors = 0;
     S32 mSkippedActors = 0;
     U64 mPaletteRebuilds = 0;
+    U64 mNextParticleEpoch = 0;
     std::map<LLUUID, F32> mOmegaDebt;
     U64 mAgentRegionHandle = 0;
     LLVector3d mAgentOriginGlobal;

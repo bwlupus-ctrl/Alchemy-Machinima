@@ -263,18 +263,27 @@ bool ALKitRow::postBuild()
 
     if (mControl)
     {
-        mControl->setRightMouseDownCallback(
-            [this](LLUICtrl* control, S32 x, S32 y, MASK)
-            {
-                // Let an editor own clicks in its text field so its standard
-                // Cut/Copy/Paste menu is the only menu shown there.
-                if (pointInLineEditor(control, x, y))
-                    return;
-                S32 row_x = 0;
-                S32 row_y = 0;
-                control->localPointToOtherView(x, y, &row_x, &row_y, this);
-                showContextMenu(row_x, row_y);
-            });
+        auto on_right_click = [this](LLUICtrl* control, S32 x, S32 y, MASK)
+        {
+            // Let an editor own clicks in its text field so its standard
+            // Cut/Copy/Paste menu is the only menu shown there.
+            if (pointInLineEditor(control, x, y))
+                return;
+            S32 row_x = 0;
+            S32 row_y = 0;
+            control->localPointToOtherView(x, y, &row_x, &row_y, this);
+            showContextMenu(row_x, row_y);
+        };
+        // Vector rows: every component (Y/Z too) opens the row menu, not just X.
+        if (mVecCount)
+        {
+            for (S32 i = 0; i < mVecCount; ++i)
+                mVec[i]->setRightMouseDownCallback(on_right_click);
+        }
+        else
+        {
+            mControl->setRightMouseDownCallback(on_right_click);
+        }
         mLastValue = mShownValue = mControl->getValue();
 
         if (!mMeta.action.empty())
@@ -375,6 +384,9 @@ bool ALKitRow::postBuild()
                 mSegmentLabels.push_back(item->getLabel());
             segment->setVisible(false);
         }
+        // The native radio buttons are hidden; the painted group owns the
+        // single tab stop and keeps LLRadioGroup's arrow-key selection.
+        mControl->setTabStop(true);
         mControl->setMouseOpaque(false);
     }
 
@@ -933,6 +945,25 @@ void ALKitRow::onMouseLeave(S32 x, S32 y, MASK m)
     LLPanel::onMouseLeave(x, y, m);
 }
 
+bool ALKitRow::handleKeyHere(KEY key, MASK mask)
+{
+    if (mMeta.kind == "segmented" && mControl && mControl->getEnabled() &&
+        mControl->hasFocus() && mask == MASK_NONE)
+    {
+        if (key == KEY_HOME && resettable())
+        {
+            reset();
+            return true;
+        }
+        if (key == ' ' || key == KEY_RETURN)
+        {
+            mControl->onCommit();
+            return true;
+        }
+    }
+    return LLPanel::handleKeyHere(key, mask);
+}
+
 bool ALKitRow::handleMouseDown(S32 x, S32 y, MASK mask)
 {
     if (mMeta.kind == "segmented" && mControl && mControl->getEnabled() &&
@@ -945,6 +976,7 @@ bool ALKitRow::handleMouseDown(S32 x, S32 y, MASK mask)
             const S32 index = llclamp((x - mControl->getRect().mLeft) * count /
                                           llmax(1, mControl->getRect().getWidth()),
                                       0, count - 1);
+            group->setFocus(true);
             group->setSelectedIndex(index);
             group->onCommit();
             return true;
@@ -1081,7 +1113,8 @@ void ALKitRow::draw()
             const LLRect segment(left, control_rect.mTop, right - 1, control_rect.mBottom);
             gl_rect_2d(segment, ALKitStyle::color(index == selected ? ALKitStyle::ACTIVE_FILL
                                                                     : ALKitStyle::INPUT_BG).get(), true);
-            gl_rect_2d(segment, ALKitStyle::color(ALKitStyle::INPUT_BORDER).get(), false);
+            gl_rect_2d(segment, ALKitStyle::color(mControl->hasFocus() && index == selected
+                ? ALKitStyle::ACCENT : ALKitStyle::INPUT_BORDER).get(), false);
             if (font)
                 font->renderUTF8(mSegmentLabels[index], 0,
                     (left + right) / 2,

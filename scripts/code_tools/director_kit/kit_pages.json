@@ -82,7 +82,8 @@
                     "rig_catchlight": "cine_catchlight", "live_probe": "cine_live_probe_enable",
                     "night_mask": "cine_night_mask_enable"},
    "option_enables": {"lights": {"Key": "cine_key_on", "Fill": "cine_fill_on", "Back": "cine_rim_on", "BG": "cine_bg_on"}},
-   "row_overrides": {"CineGobo01": {"w": "cine_gobo_preview", "k": "gobo"},
+   "row_overrides": {"cine_seed": {"reset_settings": "CineLightRigSeed"},
+                     "CineGobo01": {"w": "cine_gobo_preview", "k": "gobo"},
                      "cine_easy_drama": {"shortcut_of": "cine_light_rig_tab/cine_ratio"},
                      "cine_shadow_fixit": {"a": 0},
                      "cine_fixture_role": {"mirror_setting": "DirectorV2SelectedLight"}},
@@ -185,6 +186,7 @@
    "root_class": "panel_stepped_anim", "root_name": "stepped_tab_logic",
    "preset": {"mode": "provider", "provider": "stepped_anim"},
    "who_adapter": "stepped_anim", "actor_target": true,
+   "row_overrides": {"sa_rate_chips": {"reset_settings": "StepAnimRate"}},
    "selector_settings": {}, "card_enables": {}, "add_rows": [],
    "label_names": {}
   },
