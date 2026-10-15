@@ -49,28 +49,28 @@ struct BackupStamp
 constexpr size_t kCrashBackupKeep = 2;  // newest crash backups kept (plus the live autosave); older ones are pruned
 constexpr size_t kCorruptBackupKeep = 3; // damaged (.corrupt) files kept; never counted in the 2
 
-// Largest scene file Director writes (autosave and manual save) and, as the same constant, reads. A
-// scene whose serialized XML is larger is not written: the previous file stays as it was.
-constexpr size_t kDirectorSceneMaxBytes = 8u * 1024u * 1024u;
+// Largest scene file Director writes (manual save, autosave) and reads (manual load, crash-backup reads). A
+// scene whose serialized XML is larger is not written: the previous file stays as it was. Fixed, not a setting.
+constexpr size_t kDirectorSceneMaxBytes = 64u * 1024u * 1024u;
 // True when a serialized scene of this many bytes may be written / read.
 bool sceneSizeAllowed(size_t bytes);
+// After an oversized autosave refusal no new attempt is made until the scene changes or this long passes.
+constexpr double kOversizedAutosaveRetrySeconds = 300.0;
 
-// Live autosave slots: slot 1 is ".director_recovery.xml", slot N>1 is
-// ".director_recovery_N.xml". Autosave writes to the first slot that holds no unmoved
-// previous-session backup, so it can never overwrite one and can never be disabled.
-std::string liveRecoveryFileName(S32 slot);
-// 0 when the name is not a live slot file (an exact ".director_recovery[_N].xml").
-S32 liveRecoverySlot(const std::string& file_name);
-constexpr S32 kMaxLiveSlots = 2;         // the main slot plus ONE spare; beyond that the overflow name is used
-// The lowest slot in 1..max_slot that is not in unmoved_slots, or 0 when every slot is occupied.
-// NEVER returns an occupied slot (no overwrite is possible); the caller then uses an overflow name.
-S32 autosaveSlot(const std::vector<S32>& unmoved_slots, S32 max_slot = kMaxLiveSlots);
-// Used when every slot is occupied: ".director_recovery-<pid>-YYYYMMDDHHMMSS[-N].xml". Unique per
-// process and second (counter N >= 1 for a repeat), so it can never overwrite anything.
-std::string overflowRecoveryFileName(S32 pid, const BackupStamp& stamp, S32 counter = 0);
-bool isOverflowRecoveryName(const std::string& file_name);
-// A live autosave file of any kind: a slot file or an overflow file. The login move collects all of them.
+// Live autosave file, one per viewer process: ".director_recovery-p<pid>.xml". A viewer only ever writes and
+// deletes its own pid file, so concurrent viewers never share a slot. The pre-pid name ".director_recovery.xml"
+// is legacy: it is only ever collected (never written).
+std::string liveRecoveryFileName(S32 pid);
+// The pid of a ".director_recovery-p<pid>.xml" name, or 0 when the name is not one.
+S32 liveRecoveryPid(const std::string& file_name);
+bool isLegacyLiveRecoveryName(const std::string& file_name);
+// A live autosave file of any kind: a pid file or the legacy plain name.
 bool isLiveRecoveryFile(const std::string& file_name);
+// True when a live file belongs to a previous session and must be moved into crash_backups at login: every
+// legacy file, and every pid file whose pid is not this process. This process's own pid file counts as
+// previous-session until it has written one (own_file_written == false): at login such a file can only be a
+// stale leftover of a crashed process whose pid was reused.
+bool isPreviousSessionLiveFile(const std::string& file_name, S32 my_pid, bool own_file_written);
 // The previous build's ".director_recovery_kept.xml" and its ".kept-<stamp>" rotations.
 bool isLegacyKeptBackupName(const std::string& file_name);
 
@@ -126,7 +126,15 @@ enum class PromptAction
 };
 PromptAction promptAction(S32 option, bool remember, bool replayed);
 // The "Don't ask me again" mapping: ticked Restore -> 1, ticked Discard -> 2, otherwise -1 (unchanged).
-S32 rememberedRecoveryMode(S32 option, bool remember);
+// A replayed response never changes the mode (the user did not answer now).
+S32 rememberedRecoveryMode(S32 option, bool remember, bool replayed = false);
+// Whether the handler may call setIgnored(false) on the shown prompt: never for a replayed response (that
+// would re-enable a popup the user disabled in Preferences).
+bool mayClearPromptIgnore(bool replayed);
+
+// Cache key of a crash-backup file (name, size, mtime): a file found damaged or oversized is not re-read
+// until the key changes.
+std::string backupFileKey(const std::string& file_name, S64 size, S64 mtime);
 
 // A scene name that would collide with a backup or recovery file is refused in
 // Save / Save as / Rename: a leading '.', "crash_backups", and the recovery names,

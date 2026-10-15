@@ -144,75 +144,43 @@ constexpr char LIVE_KEPT_NAME[] = ".director_recovery_kept.xml";
 constexpr char LIVE_KEPT_OLDER_TAG[] = ".director_recovery_kept.xml.kept-";
 } // namespace
 
-std::string ALDirectorQol::liveRecoveryFileName(S32 slot)
+std::string ALDirectorQol::liveRecoveryFileName(S32 pid)
 {
-    return slot <= 1 ? std::string(LIVE_PREFIX) + ".xml"
-                     : std::string(LIVE_PREFIX) + "_" + std::to_string(slot) + ".xml";
+    return std::string(LIVE_PREFIX) + "-p" + std::to_string(pid) + ".xml";
 }
 
-S32 ALDirectorQol::liveRecoverySlot(const std::string& file_name)
+S32 ALDirectorQol::liveRecoveryPid(const std::string& file_name)
 {
+    // ".director_recovery-p<1..10 digits, no leading zero>.xml"
     const std::string name = lowerAscii(file_name);
-    const std::string prefix = LIVE_PREFIX;
-    if (name == prefix + ".xml")
-        return 1;
-    if (name.compare(0, prefix.size() + 1, prefix + "_") != 0 || !endsWith(name, ".xml"))
-        return 0;
-    const size_t start = prefix.size() + 1;
-    if (name.size() < start + 4 + 1)
-        return 0;
-    const size_t digits = name.size() - 4 - start;
-    // 2..99 only: "_kept", "_0", "_1" and leading-zero spellings are not live slots.
-    if (digits == 0 || digits > 2 || !allDigits(name, start, digits) || name[start] == '0')
-        return 0;
-    const S32 slot = std::atoi(name.substr(start, digits).c_str());
-    return slot >= 2 ? slot : 0;
-}
-
-S32 ALDirectorQol::autosaveSlot(const std::vector<S32>& unmoved_slots, S32 max_slot)
-{
-    for (S32 slot = 1; slot <= max_slot; ++slot)
-        if (std::find(unmoved_slots.begin(), unmoved_slots.end(), slot) == unmoved_slots.end())
-            return slot;
-    return 0; // every slot holds an unmoved backup: use overflowRecoveryFileName()
-}
-
-std::string ALDirectorQol::overflowRecoveryFileName(S32 pid, const BackupStamp& stamp, S32 counter)
-{
-    char buffer[80];
-    snprintf(buffer, sizeof(buffer), "%s-%d-%04d%02d%02d%02d%02d%02d", LIVE_PREFIX, pid, stamp.year,
-             stamp.month, stamp.day, stamp.hour, stamp.minute, stamp.second);
-    std::string name = buffer;
-    if (counter > 0)
-        name += "-" + std::to_string(counter);
-    return name + ".xml";
-}
-
-bool ALDirectorQol::isOverflowRecoveryName(const std::string& file_name)
-{
-    // ".director_recovery-<pid digits>-<14 digits>[-<counter digits>].xml"
-    const std::string name = lowerAscii(file_name);
-    const std::string prefix = std::string(LIVE_PREFIX) + "-";
+    const std::string prefix = std::string(LIVE_PREFIX) + "-p";
     if (name.compare(0, prefix.size(), prefix) != 0 || !endsWith(name, ".xml") ||
-        name.size() < prefix.size() + 4)
-        return false;
-    const std::string body = name.substr(prefix.size(), name.size() - prefix.size() - 4);
-    // body = digits '-' 14 digits ['-' digits]
-    const size_t dash = body.find('-');
-    if (dash == std::string::npos || dash == 0 || dash > 10 || !allDigits(body, 0, dash))
-        return false;
-    if (!allDigits(body, dash + 1, 14))
-        return false;
-    const size_t tail = dash + 1 + 14;
-    if (tail == body.size())
-        return true;
-    const size_t count = body.size() - tail - 1;
-    return body[tail] == '-' && count >= 1 && count <= 6 && allDigits(body, tail + 1, count);
+        name.size() < prefix.size() + 1 + 4)
+        return 0;
+    const size_t digits = name.size() - 4 - prefix.size();
+    if (digits == 0 || digits > 9 || !allDigits(name, prefix.size(), digits) || name[prefix.size()] == '0')
+        return 0;
+    return std::atoi(name.substr(prefix.size(), digits).c_str());
+}
+
+bool ALDirectorQol::isLegacyLiveRecoveryName(const std::string& file_name)
+{
+    return lowerAscii(file_name) == std::string(LIVE_PREFIX) + ".xml";
 }
 
 bool ALDirectorQol::isLiveRecoveryFile(const std::string& file_name)
 {
-    return liveRecoverySlot(file_name) > 0 || isOverflowRecoveryName(file_name);
+    return isLegacyLiveRecoveryName(file_name) || liveRecoveryPid(file_name) > 0;
+}
+
+bool ALDirectorQol::isPreviousSessionLiveFile(const std::string& file_name, S32 my_pid, bool own_file_written)
+{
+    if (isLegacyLiveRecoveryName(file_name))
+        return true;
+    const S32 pid = liveRecoveryPid(file_name);
+    if (pid <= 0)
+        return false;
+    return pid != my_pid || !own_file_written;
 }
 
 bool ALDirectorQol::sceneSizeAllowed(size_t bytes)
@@ -387,15 +355,25 @@ ALDirectorQol::PromptAction ALDirectorQol::promptAction(S32 option, bool remembe
     return PromptAction::KEEP;
 }
 
-S32 ALDirectorQol::rememberedRecoveryMode(S32 option, bool remember)
+S32 ALDirectorQol::rememberedRecoveryMode(S32 option, bool remember, bool replayed)
 {
-    if (!remember)
+    if (!remember || replayed)
         return -1;
     if (option == 0)
         return 1;
     if (option == 1)
         return 2;
     return -1;
+}
+
+bool ALDirectorQol::mayClearPromptIgnore(bool replayed)
+{
+    return !replayed;
+}
+
+std::string ALDirectorQol::backupFileKey(const std::string& file_name, S64 size, S64 mtime)
+{
+    return lowerAscii(file_name) + "|" + std::to_string(size) + "|" + std::to_string(mtime);
 }
 
 bool ALDirectorQol::isReservedSceneName(const std::string& name)

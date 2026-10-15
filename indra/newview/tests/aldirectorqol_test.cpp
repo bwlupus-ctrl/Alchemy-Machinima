@@ -41,58 +41,45 @@ template<> template<> void director_qol_object::test<2>()
     ensure_equals("roster order D", assigned[3], d);
 }
 
-// Autosave is never disabled: it always has a slot to write, and that slot is never an
-// unmoved previous-session backup.
+// Live autosave file is per process: concurrent viewers never share a file, and the login move collects every
+// live file that is not this process's own.
 template<> template<> void director_qol_object::test<3>()
 {
-    ensure_equals("slot 1 is the plain live file", ALDirectorQol::liveRecoveryFileName(1),
-                  std::string(".director_recovery.xml"));
-    ensure_equals("slot 2 is the alternate live file", ALDirectorQol::liveRecoveryFileName(2),
-                  std::string(".director_recovery_2.xml"));
-    ensure_equals("nothing unmoved -> slot 1", ALDirectorQol::autosaveSlot({}), 1);
-    ensure_equals("an unmoved slot-1 backup -> autosave moves to slot 2", ALDirectorQol::autosaveSlot({1}), 2);
-    ensure_equals("only the main slot plus one spare exist", ALDirectorQol::kMaxLiveSlots, 2);
-    ensure_equals("a free slot below an unmoved one is reused", ALDirectorQol::autosaveSlot({2}), 1);
-    // Exhausted: slots 1 and 2 both hold unmoved files. autosaveSlot never returns an occupied slot (0 means
-    // "use the unique overflow name"), so no overwrite is possible.
-    ensure_equals("both slots unmoved -> no slot (overflow name)", ALDirectorQol::autosaveSlot({1, 2}), 0);
-    for (S32 count = 0; count < 40; ++count)
-    {
-        std::vector<S32> unmoved;
-        for (S32 slot = 1; slot <= count; ++slot)
-            unmoved.push_back(slot);
-        const S32 chosen = ALDirectorQol::autosaveSlot(unmoved);
-        ensure("a returned slot is never an unmoved backup (0 = overflow)",
-               chosen == 0 || std::find(unmoved.begin(), unmoved.end(), chosen) == unmoved.end());
-        ensure("0 is returned only when every slot is occupied", chosen != 0 || count >= ALDirectorQol::kMaxLiveSlots);
-    }
-    // The overflow file: unique per process/second/counter, and collected by the login move like a live slot.
-    ALDirectorQol::BackupStamp overflow_stamp;
-    overflow_stamp.year = 2026; overflow_stamp.month = 10; overflow_stamp.day = 15;
-    overflow_stamp.hour = 9; overflow_stamp.minute = 7; overflow_stamp.second = 3;
-    ensure_equals("overflow name", ALDirectorQol::overflowRecoveryFileName(4321, overflow_stamp),
-                  std::string(".director_recovery-4321-20261015090703.xml"));
-    ensure_equals("overflow name counter", ALDirectorQol::overflowRecoveryFileName(4321, overflow_stamp, 2),
-                  std::string(".director_recovery-4321-20261015090703-2.xml"));
-    ensure("overflow names are recognised", ALDirectorQol::isOverflowRecoveryName(".director_recovery-4321-20261015090703.xml") &&
-           ALDirectorQol::isOverflowRecoveryName(".Director_Recovery-1-20261015090703-12.XML"));
-    ensure("overflow names are live files the login move collects",
-           ALDirectorQol::isLiveRecoveryFile(".director_recovery-4321-20261015090703.xml") &&
-           ALDirectorQol::isLiveRecoveryFile(".director_recovery.xml") &&
-           ALDirectorQol::isLiveRecoveryFile(".director_recovery_2.xml"));
-    for (const char* not_live : {".director_recovery-x-20261015090703.xml", ".director_recovery--20261015090703.xml",
-                                 ".director_recovery-12-2026101509070.xml", ".director_recovery-12-20261015090703-.xml",
-                                 ".director_recovery-12-20261015090703.xml.tmp", ".director_recovery_kept.xml", "scene.xml"})
+    ensure_equals("live name carries the pid", ALDirectorQol::liveRecoveryFileName(4321),
+                  std::string(".director_recovery-p4321.xml"));
+    ensure("two processes never share a live name",
+           ALDirectorQol::liveRecoveryFileName(4321) != ALDirectorQol::liveRecoveryFileName(77));
+    ensure_equals("pid round-trips", ALDirectorQol::liveRecoveryPid(ALDirectorQol::liveRecoveryFileName(4321)), 4321);
+    ensure_equals("pid parse is case-insensitive", ALDirectorQol::liveRecoveryPid(".Director_Recovery-P77.XML"), 77);
+    for (const char* bad : {".director_recovery.xml", ".director_recovery-p.xml", ".director_recovery-p0.xml",
+                            ".director_recovery-p012.xml", ".director_recovery-px.xml", ".director_recovery-p12x.xml",
+                            ".director_recovery-p12.xml.tmp", ".director_recovery-p1234567890.xml",
+                            ".director_recovery_kept.xml", ".director_recovery-12-20261015090703.xml", "scene.xml"})
+        ensure_equals(std::string("not a pid name: ") + bad, ALDirectorQol::liveRecoveryPid(bad), 0);
+
+    ensure("a pid file is a live file", ALDirectorQol::isLiveRecoveryFile(".director_recovery-p4321.xml"));
+    ensure("the legacy plain file is a live file", ALDirectorQol::isLiveRecoveryFile(".director_recovery.xml"));
+    ensure("the legacy plain file is recognised as legacy", ALDirectorQol::isLegacyLiveRecoveryName(".Director_Recovery.xml"));
+    for (const char* not_live : {".director_recovery_kept.xml", ".director_recovery-p12.xml.tmp", ".director_recovery_2.xml",
+                                 "director_recovery.xml", "scene.xml", ".director_recovery-p.xml"})
         ensure(std::string("not a live file: ") + not_live, !ALDirectorQol::isLiveRecoveryFile(not_live));
-    ensure("an overflow file is never a slot", ALDirectorQol::liveRecoverySlot(".director_recovery-4321-20261015090703.xml") == 0);
-    ensure("an overflow name is reserved as a scene name", ALDirectorQol::isReservedSceneName(".director_recovery-4321-20261015090703"));
-    ensure_equals("slot name round-trips", ALDirectorQol::liveRecoverySlot(ALDirectorQol::liveRecoveryFileName(7)), 7);
-    ensure_equals("slot 1 name parses", ALDirectorQol::liveRecoverySlot(".director_recovery.xml"), 1);
-    ensure_equals("case-insensitive", ALDirectorQol::liveRecoverySlot(".Director_Recovery_2.XML"), 2);
-    ensure_equals("the legacy kept file is not a live slot", ALDirectorQol::liveRecoverySlot(".director_recovery_kept.xml"), 0);
-    ensure_equals("_1 is not a slot name", ALDirectorQol::liveRecoverySlot(".director_recovery_1.xml"), 0);
-    ensure_equals("a user scene is not a slot", ALDirectorQol::liveRecoverySlot("director_recovery_2.xml"), 0);
-    ensure_equals("a temp file is not a slot", ALDirectorQol::liveRecoverySlot(".director_recovery.xml.tmp"), 0);
+    ensure("a pid name is reserved as a scene name", ALDirectorQol::isReservedSceneName(".director_recovery-p4321"));
+
+    // Login collection: other pids and the legacy name are previous-session; this process's own file is not
+    // once it has written one. Before it has written (at login) even a same-pid file is a stale leftover.
+    const S32 mine = 4321;
+    ensure("another process's file is collected at login",
+           ALDirectorQol::isPreviousSessionLiveFile(".director_recovery-p77.xml", mine, false));
+    ensure("another process's file is collected even after this process wrote its own",
+           ALDirectorQol::isPreviousSessionLiveFile(".director_recovery-p77.xml", mine, true));
+    ensure("the legacy file is collected", ALDirectorQol::isPreviousSessionLiveFile(".director_recovery.xml", mine, true));
+    ensure("a stale same-pid file at login (nothing written yet) is collected",
+           ALDirectorQol::isPreviousSessionLiveFile(".director_recovery-p4321.xml", mine, false));
+    ensure("this process's own written file is never collected",
+           !ALDirectorQol::isPreviousSessionLiveFile(".director_recovery-p4321.xml", mine, true));
+    ensure("a non-live file is never collected",
+           !ALDirectorQol::isPreviousSessionLiveFile("scene.xml", mine, false) &&
+           !ALDirectorQol::isPreviousSessionLiveFile(".director_recovery_kept.xml", mine, false));
 }
 
 template<> template<> void director_qol_object::test<4>()
@@ -141,6 +128,13 @@ template<> template<> void director_qol_object::test<5>()
         ensure("only an unticked Discard deletes", ALDirectorQol::promptAction(option, false, false) != Prompt::DISCARD);
     ensure("a ticked Discard never deletes", ALDirectorQol::promptAction(1, true, false) != Prompt::DISCARD);
 
+    // A replayed response changes neither the mode nor the ignore state.
+    for (S32 option : {-1, 0, 1, 2})
+        for (bool remember : {false, true})
+            ensure_equals("a replayed response never changes the mode",
+                          ALDirectorQol::rememberedRecoveryMode(option, remember, true), -1);
+    ensure("a replayed response may not clear the ignore flag", !ALDirectorQol::mayClearPromptIgnore(true));
+    ensure("a live response may clear the ignore flag", ALDirectorQol::mayClearPromptIgnore(false));
     ensure_equals("ticked Restore -> Restore automatically", ALDirectorQol::rememberedRecoveryMode(0, true), 1);
     ensure_equals("ticked Discard -> Don't restore", ALDirectorQol::rememberedRecoveryMode(1, true), 2);
     ensure_equals("unticked changes nothing", ALDirectorQol::rememberedRecoveryMode(0, false), -1);
@@ -299,14 +293,28 @@ template<> template<> void director_qol_object::test<8>()
            existing[0] != existing[1] && existing[1] != existing[2] && existing[0] != existing[2]);
 }
 
-// Scene size cap: one constant (8 MB) shared by the write and the load path.
+// Scene size cap: one fixed constant (64 MB) shared by save, autosave, crash-backup reads and manual load.
 template<> template<> void director_qol_object::test<9>()
 {
-    ensure_equals("the cap is 8 MB", ALDirectorQol::kDirectorSceneMaxBytes, size_t(8) * 1024 * 1024);
+    ensure_equals("the cap is 64 MB", ALDirectorQol::kDirectorSceneMaxBytes, size_t(64) * 1024 * 1024);
     ensure("an empty scene is allowed", ALDirectorQol::sceneSizeAllowed(0));
     ensure("a typical scene is allowed", ALDirectorQol::sceneSizeAllowed(200 * 1024));
+    ensure("a 9 MB scene is allowed now", ALDirectorQol::sceneSizeAllowed(size_t(9) * 1024 * 1024));
     ensure("exactly at the cap is allowed", ALDirectorQol::sceneSizeAllowed(ALDirectorQol::kDirectorSceneMaxBytes));
     ensure("one byte over the cap is refused", !ALDirectorQol::sceneSizeAllowed(ALDirectorQol::kDirectorSceneMaxBytes + 1));
-    ensure("a huge scene is refused", !ALDirectorQol::sceneSizeAllowed(size_t(64) * 1024 * 1024));
+    ensure("a huge scene is refused", !ALDirectorQol::sceneSizeAllowed(size_t(65) * 1024 * 1024));
+    ensure("an oversized autosave waits at least five minutes", ALDirectorQol::kOversizedAutosaveRetrySeconds >= 300.0);
+}
+
+// Corrupt-backup cache key: name + size + mtime; a damaged file is re-read only when one of them changes.
+template<> template<> void director_qol_object::test<10>()
+{
+    const std::string base = ALDirectorQol::backupFileKey("scene-20261005-090703.xml", 1234, 1000);
+    ensure("same file, same key", base == ALDirectorQol::backupFileKey("scene-20261005-090703.xml", 1234, 1000));
+    ensure("case-insensitive name", base == ALDirectorQol::backupFileKey("SCENE-20261005-090703.XML", 1234, 1000));
+    ensure("a size change changes the key", base != ALDirectorQol::backupFileKey("scene-20261005-090703.xml", 1235, 1000));
+    ensure("a modification-time change changes the key", base != ALDirectorQol::backupFileKey("scene-20261005-090703.xml", 1234, 1001));
+    ensure("a different file changes the key", base != ALDirectorQol::backupFileKey("scene-20261005-090704.xml", 1234, 1000));
+    ensure("size and mtime fields cannot be confused", ALDirectorQol::backupFileKey("a.xml", 12, 3) != ALDirectorQol::backupFileKey("a.xml", 1, 23));
 }
 } // namespace tut

@@ -152,7 +152,8 @@ private:
     bool loadScene(const std::string& name, bool recovery = false,
                    const std::string& recovery_path = std::string());
     static LLSD captureSceneData();
-    static bool writeSceneFile(const std::string& path, const std::string& label, bool notify_failure);
+    static bool writeSceneFile(const std::string& path, const std::string& label, bool notify_failure,
+                               bool* oversized_out = nullptr);
     static void initializeSceneRecovery();
     static void idleSceneRecovery(bool force_write = false);
     static void updateSceneDirty();
