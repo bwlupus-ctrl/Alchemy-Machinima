@@ -26,9 +26,20 @@ namespace
                      .with("colors", colors);
     }
 
+    // LLSD::append returns the appended element, not the array, so it can't be chained.
+    LLSD array(std::initializer_list<LLSD> items)
+    {
+        LLSD out = LLSD::emptyArray();
+        for (const LLSD& item : items)
+        {
+            out.append(item);
+        }
+        return out;
+    }
+
     LLSD accent(F64 r, F64 g, F64 b, F64 a)
     {
-        return LLSD::emptyArray().append(r).append(g).append(b).append(a);
+        return array({ r, g, b, a });
     }
 }
 
@@ -97,10 +108,10 @@ template<> template<> void aldirectortheme_object::test<5>()
     ensure("negative component is rejected", !ALDirectorTheme::validate(
         theme("x", LLSD().with("KitAccent", accent(-0.1, 0.5, 0.5, 1))), "x", knownNames, out).empty());
     ensure("three components are rejected", !ALDirectorTheme::validate(
-        theme("x", LLSD().with("KitAccent", LLSD::emptyArray().append(0.1).append(0.2).append(0.3))),
+        theme("x", LLSD().with("KitAccent", array({ 0.1, 0.2, 0.3 }))),
         "x", knownNames, out).empty());
     ensure("string component is rejected", !ALDirectorTheme::validate(
-        theme("x", LLSD().with("KitAccent", LLSD::emptyArray().append("0.1").append(0.2).append(0.3).append(1))),
+        theme("x", LLSD().with("KitAccent", array({ "0.1", 0.2, 0.3, 1 }))),
         "x", knownNames, out).empty());
 }
 
