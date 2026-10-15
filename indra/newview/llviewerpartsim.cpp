@@ -511,6 +511,7 @@ LLViewerPartSim::LLViewerPartSim()
 //enable/disable particle system
 void LLViewerPartSim::enable(bool enabled)
 {
+    if (!enabled) clearStepAnimDeferredSources();
     if(!enabled && sMaxParticleCount > 0)
     {
         sMaxParticleCount = 0; //disable
@@ -538,6 +539,7 @@ void LLViewerPartSim::destroyClass()
 
     // Kill all of the sources
     mViewerPartSources.clear();
+    clearStepAnimDeferredSources();
 }
 
 //static
@@ -964,6 +966,24 @@ void LLViewerPartSim::refreshStepAnimAttachmentSourcePositions()
         if (!ALSteppedAnimRuntime::instance().decisionFor(avatar)) continue;
         source->mPosAgent = object->getRenderPosition();
     }
+    // Particle groups ran before the held attachment matrices were applied.
+    // Re-anchor follow-source particles now so both newly emitted particles and
+    // existing followers are drawn from the held source in this render window.
+    for (LLViewerPartGroup* group : mViewerPartGroups)
+        for (LLViewerPart* part : group->mParticles)
+        {
+            if (!(part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK) ||
+                part->mPartSourcep.isNull()) continue;
+            LLViewerObject* object = part->mPartSourcep->mSourceObjectp;
+            if (!object || !object->isAttachment() ||
+                !ALSteppedAnimRuntime::instance().decisionFor(object->getAvatar())) continue;
+            part->mPosAgent = part->mPartSourcep->mPosAgent + part->mPosOffset;
+        }
+}
+
+void LLViewerPartSim::clearStepAnimDeferredSources()
+{
+    mStepAnimDeferredSources.clear();
 }
 
 void LLViewerPartSim::updatePartBurstRate()

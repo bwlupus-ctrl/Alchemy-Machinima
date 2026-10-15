@@ -189,8 +189,23 @@ bool inheritAttachedAssignment(const Assignment& source, U64 source_seed,
 {
     if (!source.stepped) return false;
     attached = source;
+    // The control avatar follows its worn volume transform. Holding its own
+    // root as well double-applies the wearer's held attachment transform.
+    attached.heldClasses &= ~JC_ROOT;
     attached_seed = source_seed;
     return true;
+}
+
+void inheritAttachedFrame(const Assignment& source_assignment, U64 source_seed,
+                          const ActorState& source_state, const FrameDecision& source_decision,
+                          Assignment& attached_assignment, U64& attached_seed,
+                          ActorState& attached_state, FrameDecision& attached_decision)
+{
+    if (!inheritAttachedAssignment(source_assignment, source_seed,
+                                   attached_assignment, attached_seed))
+        return;
+    attached_state = source_state;
+    attached_decision = source_decision;
 }
 
 void applyActorCap(const Config& raw, const std::vector<ActorFacts>& facts,

@@ -330,14 +330,43 @@ template<> template<> void stepped_object::test<10>()
 
     ALSteppedAnim::Assignment wearer;
     wearer.stepped = true; wearer.rate = 8.f; wearer.phase = .375;
-    wearer.heldClasses = ALSteppedAnim::JC_BODY | ALSteppedAnim::JC_FACE;
+    wearer.adaptive = true; wearer.fastRate = 24.f;
+    wearer.heldClasses = ALSteppedAnim::JC_ROOT | ALSteppedAnim::JC_BODY | ALSteppedAnim::JC_FACE;
     ALSteppedAnim::Assignment attached;
     U64 attached_seed = 91;
     ensure("T10 attached animesh inherits a stepped wearer",
         ALSteppedAnim::inheritAttachedAssignment(wearer, 42, attached, attached_seed));
     ensure("T10 attached animesh inherits assignment, seed and phase",
         attached.stepped && attached.rate == wearer.rate && attached.phase == wearer.phase &&
-        attached.heldClasses == wearer.heldClasses && attached_seed == 42);
+        attached.heldClasses == (wearer.heldClasses & ~ALSteppedAnim::JC_ROOT) && attached_seed == 42);
+    ensure("T10 attached animesh never holds its own root",
+        !(attached.heldClasses & ALSteppedAnim::JC_ROOT));
+
+    ALSteppedAnim::ActorState wearer_state, attached_state;
+    wearer_state.hasCapture = true;
+    wearer_state.fast = true;
+    wearer_state.captureTick = 73;
+    wearer_state.captureRate = 24.;
+    wearer_state.candidateSub = 2;
+    ALSteppedAnim::FrameDecision wearer_decision, attached_decision;
+    wearer_decision.capture = true;
+    wearer_decision.hold = true;
+    wearer_decision.tick = 74;
+    wearer_decision.boilIndex = 19;
+    wearer_decision.rate = 24.f;
+    ALSteppedAnim::inheritAttachedFrame(wearer, 42, wearer_state, wearer_decision,
+        attached, attached_seed, attached_state, attached_decision);
+    ensure("T10 attached animesh inherits the exact per-frame decision",
+        attached_decision.capture == wearer_decision.capture &&
+        attached_decision.hold == wearer_decision.hold &&
+        attached_decision.tick == wearer_decision.tick &&
+        attached_decision.boilIndex == wearer_decision.boilIndex &&
+        attached_decision.rate == wearer_decision.rate &&
+        attached_state.fast == wearer_state.fast &&
+        attached_state.captureTick == wearer_state.captureTick &&
+        attached_state.captureRate == wearer_state.captureRate &&
+        attached_state.candidateSub == wearer_state.candidateSub &&
+        attached_seed == 42);
     wearer.stepped = false;
     ensure("T10 smooth wearer is not inherited",
         !ALSteppedAnim::inheritAttachedAssignment(wearer, 7, attached, attached_seed));

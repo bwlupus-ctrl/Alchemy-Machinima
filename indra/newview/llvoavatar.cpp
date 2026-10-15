@@ -11624,6 +11624,11 @@ void LLVOAvatar::syncStepAnimAttachmentMatrices()
                 const LLMatrix4 before = root->getWorldMatrix();
                 root->getXform()->updateMatrix();
                 ++drawable_count;
+                if (object->isAnimatedObject())
+                {
+                    LLControlAvatar* cav = object->getControlAvatar();
+                    if (cav) cav->matchVolumeTransform();
+                }
                 if (std::memcmp(before.mMatrix, root->getWorldMatrix().mMatrix,
                                 sizeof(before.mMatrix)) == 0)
                 {
@@ -11633,7 +11638,8 @@ void LLVOAvatar::syncStepAnimAttachmentMatrices()
                 // Retain normal spatial processing once per changed linkset. Child
                 // matrices are already current and must not enter updateMove(),
                 // where spinning children would dirty their spatial groups.
-                gPipeline.markMoved(root);
+                LLSpatialBridge* bridge = root->getSpatialBridge();
+                gPipeline.markMoved(bridge ? bridge : root, false);
             }
     mStepAnimAttachmentPoseEpoch = mStepAnimPoseEpoch;
     mStepAnimAttachmentDrawableCount = drawable_count;
@@ -11711,6 +11717,11 @@ void LLVOAvatar::captureStepAnimRenderState()
                 capture_tree(object, nullptr, std::string());
 }
 
+void LLVOAvatar::clearStepAnimRenderState()
+{
+    mStepAnimExpectedAttachments.clear();
+}
+
 U32 LLVOAvatar::verifyStepAnimRenderState(U32 render_frame)
 {
     U32 mismatch = STEP_ANIM_RENDER_OK;
@@ -11737,14 +11748,18 @@ U32 LLVOAvatar::verifyStepAnimRenderState(U32 render_frame)
         const U32 count = LLSkinningUtil::getMeshJointCount(skin);
         std::vector<LLMatrix4a> expected(count);
         bool valid = skin->mInvBindMatrix.size() >= count && skin->mJointNums.size() >= count;
+        bool unsupported_joint = false;
         for (U32 joint = 0; valid && joint < count; ++joint)
         {
             const S32 joint_num = skin->mJointNums[joint];
-            valid = joint_num >= 0 && static_cast<size_t>(joint_num) < mStepAnimHeldJointWorld.size() &&
-                mStepAnimHeldJointValid[joint_num];
-            if (valid) matMulUnsafe(skin->mInvBindMatrix[joint],
-                                   mStepAnimHeldJointWorld[joint_num], expected[joint]);
+            unsupported_joint = joint_num < 0 ||
+                static_cast<size_t>(joint_num) >= mStepAnimHeldJointWorld.size() ||
+                !mStepAnimHeldJointValid[joint_num];
+            if (unsupported_joint) break;
+            matMulUnsafe(skin->mInvBindMatrix[joint],
+                         mStepAnimHeldJointWorld[joint_num], expected[joint]);
         }
+        if (unsupported_joint) continue;
         std::vector<F32> expected_gl(count * 12);
         for (U32 joint = 0; valid && joint < count; ++joint)
         {

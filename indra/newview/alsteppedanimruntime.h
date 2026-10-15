@@ -66,6 +66,11 @@ private:
         U32 mOverrideEpoch = 0;
         U64 mRegionHandle = 0;
         U64 mSeed = 0;
+        LLUUID mDecisionSource;
+        U64 mEaseCandidateSerial = 0;
+        U64 mInheritedEaseCandidateSerial = 0;
+        F32 mFrameEaseWeight = 0.f;
+        bool mFrameEaseApplied = false;
         U32 mWriteEpoch = 0;
         U8 mRootWrittenMask = 0;
         U8 mVerifyRootMask = 0;
@@ -86,7 +91,8 @@ private:
     ALSteppedAnim::LimbFrame limbFrame(LLVOAvatar* avatar, const Entry& entry, F64 time) const;
     void updateEaseCandidate(Entry& entry, const ALSteppedAnim::LimbFrame& limbs, F64 time);
     void capturePose(LLVOAvatar* avatar, Entry& entry,
-                     const ALSteppedAnim::LimbFrame& limbs, F64 time);
+                     const ALSteppedAnim::LimbFrame& limbs, F64 time,
+                     const Entry* decision_source = nullptr);
     void applyEffects(LLVOAvatar* avatar, Entry& entry, ALSteppedAnim::PoseBuffer& render);
     void verifyRestored(const char* point);
     void updateRotoMatch();

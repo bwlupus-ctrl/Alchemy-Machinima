@@ -149,6 +149,7 @@ public:
 
     void updateSimulation();
     void refreshStepAnimAttachmentSourcePositions();
+    void clearStepAnimDeferredSources();
 
     void addPartSource(LLPointer<LLViewerPartSource> sourcep);
 

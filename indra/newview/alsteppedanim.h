@@ -164,6 +164,11 @@ struct FrameDecision
     F32 rate = 0.f;
 };
 
+void inheritAttachedFrame(const Assignment& source_assignment, U64 source_seed,
+                          const ActorState& source_state, const FrameDecision& source_decision,
+                          Assignment& attached_assignment, U64& attached_seed,
+                          ActorState& attached_state, FrameDecision& attached_decision);
+
 FrameDecision planFrame(ActorState&, const Assignment&, const Config&, F64 t);
 void observe(ActorState&, const Config&, const LimbFrame&);
 

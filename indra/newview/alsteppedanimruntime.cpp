@@ -24,13 +24,13 @@
 #include "llviewercamera.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
+#include "llviewerpartsim.h"
 #include "llviewerregion.h"
 #include "llvoavatarself.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <functional>
 #include <limits>
 #include <set>
 
@@ -85,6 +85,13 @@ void ALSteppedAnimRuntime::initialize()
             ALSteppedAnimRuntime::instance().deactivate();
     };
     gSavedSettings.getControl("StepAnimEnabled")->getSignal()->connect(refresh);
+    gSavedSettings.getControl("StepAnimDebugVerify")->getSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            if (value.asBoolean()) return;
+            for (LLCharacter* character : LLCharacter::sInstances)
+                static_cast<LLVOAvatar*>(character)->clearStepAnimRenderState();
+        });
     const char* const roto_controls[] = {
         "StepAnimEnabled", "StepAnimMatchRotoInk", "StepAnimRate", "StepAnimMode"
     };
@@ -211,17 +218,49 @@ void ALSteppedAnimRuntime::collectActors()
         ? std::fmod(gPipeline.getRotoAnimClockOffset() * mConfig.rate, 1.) : 0.;
     for (const auto& f : facts) assignments.push_back(ALSteppedAnim::resolveActor(mConfig, f, roto_phase));
 
+    std::map<LLUUID, U32> actor_indices;
+    for (U32 i = 0; i < ids.size(); ++i) actor_indices[ids[i]] = i;
+    std::vector<S32> parents(ids.size(), -1);
+    std::vector<std::vector<U32>> children(ids.size());
     for (U32 i = 0; i < ids.size(); ++i)
+    {
+        const auto wearer = actor_indices.find(attached_wearers[i]);
+        if (wearer == actor_indices.end()) continue;
+        parents[i] = static_cast<S32>(wearer->second);
+        children[wearer->second].push_back(i);
+    }
+    std::vector<U32> ordered;
+    std::vector<bool> emitted(ids.size(), false);
+    ordered.reserve(ids.size());
+    for (U32 i = 0; i < ids.size(); ++i)
+        if (parents[i] < 0)
+        {
+            emitted[i] = true;
+            ordered.push_back(i);
+        }
+    for (U32 cursor = 0; cursor < ordered.size(); ++cursor)
+        for (U32 child : children[ordered[cursor]])
+        {
+            if (emitted[child]) continue;
+            emitted[child] = true;
+            ordered.push_back(child);
+        }
+    // Malformed attachment cycles are not expected, but retain their actors
+    // deterministically without recursive traversal.
+    for (U32 i = 0; i < ids.size(); ++i)
+        if (!emitted[i]) ordered.push_back(i);
+
+    for (U32 i : ordered)
     {
         LLViewerObject* object = gObjectList.findObject(ids[i]);
         LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
         if (!avatar || !avatar->isGhostAvatar()) continue;
         LLGhostAvatar* ghost = static_cast<LLGhostAvatar*>(avatar);
         const LLUUID source = ghost->getAnimationSourceId();
-        const auto source_id = std::find(ids.begin(), ids.end(), source);
-        if (source_id != ids.end())
+        const auto source_id = actor_indices.find(source);
+        if (source_id != actor_indices.end())
         {
-            const U32 source_index = static_cast<U32>(std::distance(ids.begin(), source_id));
+            const U32 source_index = source_id->second;
             if (assignments[source_index].stepped &&
                 ALSteppedAnim::ghostMayInherit(mConfig, facts[i]))
             {
@@ -231,12 +270,10 @@ void ALSteppedAnimRuntime::collectActors()
             }
         }
     }
-    for (U32 i = 0; i < ids.size(); ++i)
+    for (U32 i : ordered)
     {
-        if (attached_wearers[i].isNull()) continue;
-        const auto wearer_id = std::find(ids.begin(), ids.end(), attached_wearers[i]);
-        if (wearer_id == ids.end()) continue;
-        const U32 wearer = static_cast<U32>(std::distance(ids.begin(), wearer_id));
+        if (parents[i] < 0) continue;
+        const U32 wearer = static_cast<U32>(parents[i]);
         ALSteppedAnim::inheritAttachedAssignment(
             assignments[wearer], facts[wearer].seed, assignments[i], facts[i].seed);
     }
@@ -246,39 +283,33 @@ void ALSteppedAnimRuntime::collectActors()
     // A worn animesh is part of its wearer, not an independently capped crowd
     // actor. Re-apply the dependency after the actor cap so the cap boundary can
     // never leave the visible attachment animating smoothly on a stepped wearer.
-    for (U32 i = 0; i < ids.size(); ++i)
+    for (U32 i : ordered)
     {
-        if (attached_wearers[i].isNull()) continue;
-        const auto wearer_id = std::find(ids.begin(), ids.end(), attached_wearers[i]);
-        if (wearer_id == ids.end()) continue;
-        const U32 wearer = static_cast<U32>(std::distance(ids.begin(), wearer_id));
+        if (parents[i] < 0) continue;
+        const U32 wearer = static_cast<U32>(parents[i]);
         ALSteppedAnim::inheritAttachedAssignment(
             assignments[wearer], facts[wearer].seed, assignments[i], facts[i].seed);
     }
     mPlanned.clear(); mActiveActors = 0;
-    std::vector<U32> ordered;
-    std::vector<bool> emitted(ids.size(), false);
-    std::function<void(U32)> emit = [&](U32 index)
-    {
-        if (index >= ids.size() || emitted[index] || !assignments[index].stepped) return;
-        if (attached_wearers[index].notNull())
-        {
-            const auto wearer_id = std::find(ids.begin(), ids.end(), attached_wearers[index]);
-            if (wearer_id != ids.end()) emit(static_cast<U32>(std::distance(ids.begin(), wearer_id)));
-        }
-        emitted[index] = true;
-        ordered.push_back(index);
-        for (U32 child = 0; child < ids.size(); ++child)
-            if (!emitted[child] && attached_wearers[child] == ids[index]) emit(child);
-    };
-    for (U32 i = 0; i < ids.size(); ++i) emit(i);
     for (U32 i : ordered)
         if (assignments[i].stepped)
         {
             Entry& entry = mEntries[ids[i]];
-            entry.mSeed = facts[i].seed;
-            entry.mAssignment = assignments[i];
-            entry.mDecision = ALSteppedAnim::planFrame(entry.mState, entry.mAssignment, mConfig, mTime);
+            entry.mDecisionSource = parents[i] >= 0
+                ? ids[static_cast<U32>(parents[i])] : LLUUID::null;
+            if (parents[i] >= 0)
+            {
+                Entry& wearer = mEntries[ids[static_cast<U32>(parents[i])]];
+                ALSteppedAnim::inheritAttachedFrame(
+                    wearer.mAssignment, wearer.mSeed, wearer.mState, wearer.mDecision,
+                    entry.mAssignment, entry.mSeed, entry.mState, entry.mDecision);
+            }
+            else
+            {
+                entry.mSeed = facts[i].seed;
+                entry.mAssignment = assignments[i];
+                entry.mDecision = ALSteppedAnim::planFrame(entry.mState, entry.mAssignment, mConfig, mTime);
+            }
             mPlanned.push_back(ids[i]);
             ++mActiveActors;
         }
@@ -424,13 +455,14 @@ void ALSteppedAnimRuntime::updateEaseCandidate(Entry& entry,
             entry.mCandidateSpeed = speed;
             entry.mState.candidateSub = sub;
             entry.mHaveCandidate = true;
+            ++entry.mEaseCandidateSerial;
         }
     }
     entry.mLastEaseTick = current_tick;
 }
 
 void ALSteppedAnimRuntime::capturePose(LLVOAvatar*, Entry& entry,
-    const ALSteppedAnim::LimbFrame& limbs, F64)
+    const ALSteppedAnim::LimbFrame& limbs, F64, const Entry* decision_source)
 {
     const bool had_previous = entry.mHaveHeld;
     if (had_previous)
@@ -440,11 +472,17 @@ void ALSteppedAnimRuntime::capturePose(LLVOAvatar*, Entry& entry,
         entry.mHavePreviousHeld = true;
     }
     entry.mHeld = entry.mSmooth;
-    if (mConfig.ease && mConfig.easeAmount > 0.f && entry.mHaveCandidate)
+    entry.mFrameEaseApplied = false;
+    entry.mFrameEaseWeight = 0.f;
+    if (mConfig.ease && mConfig.easeAmount > 0.f && entry.mHaveCandidate &&
+        (!decision_source || decision_source->mFrameEaseApplied))
     {
-        const F32 capture_speed = ALSteppedAnim::speedAt(entry.mState.limbs, limbs.t);
-        const F32 weight = ALSteppedAnim::easeWeight(
-            mConfig.easeAmount, entry.mCandidateSpeed, capture_speed);
+        const F32 weight = decision_source
+            ? decision_source->mFrameEaseWeight
+            : ALSteppedAnim::easeWeight(mConfig.easeAmount, entry.mCandidateSpeed,
+                ALSteppedAnim::speedAt(entry.mState.limbs, limbs.t));
+        entry.mFrameEaseApplied = true;
+        entry.mFrameEaseWeight = weight;
         for (U32 i = 0; i < entry.mHeld.joints.size() && i < entry.mClasses.size(); ++i)
             if (entry.mClasses[i] & (ALSteppedAnim::JC_BODY | ALSteppedAnim::JC_FACE | ALSteppedAnim::JC_GAZE))
             {
@@ -577,6 +615,12 @@ void ALSteppedAnimRuntime::applyHeld()
         LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
         if (!eligible(avatar)) continue;
         Entry& entry = mEntries[id];
+        Entry* decision_source = nullptr;
+        if (entry.mDecisionSource.notNull())
+        {
+            const auto source = mEntries.find(entry.mDecisionSource);
+            if (source != mEntries.end()) decision_source = &source->second;
+        }
         const U32 count = static_cast<U32>(avatar->getSkeletonJointCount() + avatar->getCollisionVolumeJointCount());
         const U64 region = avatar->getRegion() ? avatar->getRegion()->getHandle() : 0;
         const bool invalid = entry.mSkeletonSerial != avatar->getSteppedSkeletonSerial() ||
@@ -588,13 +632,30 @@ void ALSteppedAnimRuntime::applyHeld()
             entry.mSkeletonSerial = avatar->getSteppedSkeletonSerial();
             entry.mOverrideEpoch = avatar->getJointOverrideEpoch(); entry.mRegionHandle = region;
             buildClasses(avatar, entry);
-            entry.mDecision.capture = true;
+            if (!decision_source) entry.mDecision.capture = true;
         }
         readPose(avatar, entry, entry.mSmooth);
         const ALSteppedAnim::LimbFrame limbs = limbFrame(avatar, entry, mTime);
-        ALSteppedAnim::observe(entry.mState, mConfig, limbs);
-        updateEaseCandidate(entry, limbs, mTime);
-        if (entry.mDecision.capture || !entry.mHaveHeld) capturePose(avatar, entry, limbs, mTime);
+        if (decision_source)
+        {
+            entry.mState = decision_source->mState;
+            entry.mDecision = decision_source->mDecision;
+            if (entry.mInheritedEaseCandidateSerial != decision_source->mEaseCandidateSerial)
+            {
+                entry.mCandidate = entry.mSmooth;
+                entry.mCandidateSpeed = decision_source->mCandidateSpeed;
+                entry.mHaveCandidate = true;
+                entry.mInheritedEaseCandidateSerial = decision_source->mEaseCandidateSerial;
+            }
+        }
+        else
+        {
+            entry.mFrameEaseApplied = false;
+            ALSteppedAnim::observe(entry.mState, mConfig, limbs);
+            updateEaseCandidate(entry, limbs, mTime);
+        }
+        if (entry.mDecision.capture || !entry.mHaveHeld)
+            capturePose(avatar, entry, limbs, mTime, decision_source);
         ALSteppedAnim::composeRender(entry.mSmooth, entry.mHeld, entry.mClasses,
                                      entry.mAssignment.heldClasses, entry.mWritten);
         applyEffects(avatar, entry, entry.mWritten);
@@ -789,6 +850,7 @@ void ALSteppedAnimRuntime::updateRotoMatch()
 
 void ALSteppedAnimRuntime::deactivate()
 {
+    LLViewerPartSim::instance().clearStepAnimDeferredSources();
     mPlanned.clear();
     mOmegaDebt.clear();
     mActiveActors = 0;

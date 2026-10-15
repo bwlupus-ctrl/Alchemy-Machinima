@@ -1657,7 +1657,6 @@ bool LLAppViewer::doFrame()
         if (ALSteppedAnimRuntime::sHasOverlay)
         {
             ALSteppedAnimRuntime::instance().endFrameRestore();
-            LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions();
         }
 
         {

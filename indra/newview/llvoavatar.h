@@ -222,6 +222,7 @@ public:
     U32 invalidateSkinPalettesAfterOverlay();
     void syncStepAnimAttachmentMatrices();
     void captureStepAnimRenderState();
+    void clearStepAnimRenderState();
     void markStepAnimPoseChanged();
     enum EStepAnimRenderMismatch : U32
     {
