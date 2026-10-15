@@ -366,93 +366,38 @@ S32 currentProcessId()
 // Any failure leans toward SKIPPING a file for now (it is collected at a later login), never toward
 // collecting a live viewer's file. Failing to take OUR lock only logs: autosave still runs.
 // ---------------------------------------------------------------------------
-enum class LockResult
-{
-    ACQUIRED,
-    HELD,   // another process holds it: the file's owner is running
-    FAILED  // could not tell (e.g. the lock file cannot be created); treated like HELD by the collector
-};
-
-struct LiveLock
-{
-#if LL_WINDOWS
-    HANDLE handle = INVALID_HANDLE_VALUE;
-    bool held() const { return handle != INVALID_HANDLE_VALUE; }
-#else
-    int fd = -1;
-    bool held() const { return fd >= 0; }
-#endif
-    std::string path;
-};
-
-LockResult acquireLiveLock(const std::string& lock_path, LiveLock& lock)
-{
-    if (lock.held())
-        return LockResult::ACQUIRED;
-#if LL_WINDOWS
-    const HANDLE handle = CreateFileW(ll_convert_string_to_wide(lock_path).c_str(),
-                                      GENERIC_READ | GENERIC_WRITE | DELETE, 0 /* exclusive */, nullptr,
-                                      OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
-    if (handle == INVALID_HANDLE_VALUE)
-    {
-        const DWORD error = GetLastError();
-        return (error == ERROR_SHARING_VIOLATION || error == ERROR_LOCK_VIOLATION || error == ERROR_ACCESS_DENIED)
-                   ? LockResult::HELD : LockResult::FAILED;
-    }
-    lock.handle = handle;
-#else
-    const int fd = ::open(lock_path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
-    if (fd < 0)
-        return LockResult::FAILED;
-    if (::flock(fd, LOCK_EX | LOCK_NB) != 0)
-    {
-        const int error = errno;
-        ::close(fd);
-        // Locking unsupported here (or any other error) cannot prove ownership: report FAILED, so the file is
-        // skipped rather than stolen.
-        return (error == EWOULDBLOCK || error == EAGAIN) ? LockResult::HELD : LockResult::FAILED;
-    }
-    lock.fd = fd;
-#endif
-    lock.path = lock_path;
-    return LockResult::ACQUIRED;
-}
-
-// Drop the lock and delete its file. Safe on an unheld lock.
-void releaseLiveLock(LiveLock& lock)
-{
-    if (!lock.held())
-        return;
-#if LL_WINDOWS
-    CloseHandle(lock.handle); // FILE_FLAG_DELETE_ON_CLOSE removes the file
-    lock.handle = INVALID_HANDLE_VALUE;
-#else
-    ::unlink(lock.path.c_str()); // while still locked, so nobody can lock the file we are removing
-    ::close(lock.fd);
-    lock.fd = -1;
-#endif
-    lock.path.clear();
-}
+// The lock type and its acquire/release are ALDirectorQol helpers (aldirectorqol.cpp), unit-tested there.
+using ALDirectorQol::LockResult;
+using ALDirectorQol::LiveLock;
+using ALDirectorQol::acquireLiveLock;
+using ALDirectorQol::releaseLiveLock;
 
 // This session's live file name (empty until the service starts) and the lock held on it.
 std::string sOwnLiveName;
 LiveLock sOwnLock;
 
-// Take our lock if we do not hold it (called at login and before every autosave write). Failure is logged
-// once, never fatal.
+// Take our lock if we do not hold it (called at login and before every autosave write). Failure never stops
+// autosave. Every distinct failure (another lock file, or held vs. could-not-create) is logged; a repeat of the
+// same failure is logged at most once a minute, since autosave calls this on every write.
 void ensureOwnLiveLock(const std::string& live_path)
 {
     if (sOwnLock.held())
         return;
-    if (acquireLiveLock(ALDirectorQol::liveRecoveryLockName(live_path), sOwnLock) != LockResult::ACQUIRED)
+    const std::string lock_path = ALDirectorQol::liveRecoveryLockName(live_path);
+    const LockResult result = acquireLiveLock(lock_path, sOwnLock);
+    if (result == LockResult::ACQUIRED)
+        return;
+    static std::string sLastWarnKey;
+    static F64 sLastWarnTime = 0.0;
+    const std::string key = lock_path + (result == LockResult::HELD ? "|held" : "|failed");
+    const F64 now = LLTimer::getTotalSeconds();
+    if (key != sLastWarnKey || now - sLastWarnTime >= 60.0)
     {
-        static bool sWarned = false;
-        if (!sWarned)
-        {
-            sWarned = true;
-            LL_WARNS("Director") << "Could not lock the Director autosave file " << live_path
-                                 << "; autosave continues, but another viewer could mistake it for a crashed one" << LL_ENDL;
-        }
+        sLastWarnKey = key;
+        sLastWarnTime = now;
+        LL_WARNS("Director") << "Could not lock the Director autosave file " << live_path << " ("
+                             << (result == LockResult::HELD ? "held by another process" : "lock file unavailable")
+                             << "); autosave continues, but another viewer could mistake it for a crashed one" << LL_ENDL;
     }
 }
 
@@ -4726,6 +4671,19 @@ void LLFloaterDirector::moveLiveBackupsAtLogin()
         // Every live file that is not this process's own (other pids, the legacy plain name). This
         // process has written nothing yet, so even a same-pid file here is a stale leftover.
         const bool live = ALDirectorQol::isPreviousSessionLiveFile(file, my_pid, false);
+        // A legacy plain file (older builds never lock it) is collected only once it is old enough that no running
+        // older viewer can still be autosaving it. A fresher one is left for a later login.
+        if (live && ALDirectorQol::isLegacyLiveRecoveryName(file))
+        {
+            llstat legacy_stat;
+            if (LLFile::stat(gDirUtilp->add(scenes, file), &legacy_stat) != 0 ||
+                !ALDirectorQol::legacyLiveFileOldEnough(static_cast<S64>(time(nullptr)), static_cast<S64>(legacy_stat.st_mtime)))
+            {
+                LL_INFOS("Director") << "Legacy Director autosave " << file << " is too recent to collect; left for a later login"
+                                     << LL_ENDL;
+                continue;
+            }
+        }
         // The previous build's kept backups migrate into crash_backups too, once (they are
         // never offered: they were already answered).
         if (live || ALDirectorQol::isLegacyKeptBackupName(file))
@@ -4868,16 +4826,17 @@ void LLFloaterDirector::prepareRecoveryForShutdown()
         idleSceneRecovery(true);
     else
         removeRecoveryFile();
-    // The session is over: drop the ownership lock after the final write / cleanup. A live file left behind by
-    // the final write is now collectable by the next login.
-    releaseLiveLock(sOwnLock);
+    // The ownership lock is NOT released here. A quit can still be cancelled after this point (unsaved notecard or
+    // script prompt), and a released lock would let another viewer collect this live autosave meanwhile. It is held
+    // until the process exits: the OS drops it then (Windows also deletes the lock file). On POSIX the lock file is
+    // left behind and the next login's sweep removes it.
 }
 
 void LLFloaterDirector::cancelRecoveryShutdown()
 {
-    // A quit was aborted (unsaved notecard/script prompt): the real quit must
-    // run the final recovery write/delete again. The ownership lock was released by the aborted
-    // shutdown: take it again, the viewer keeps running.
+    // A quit was aborted (unsaved notecard/script prompt): the real quit must run the final recovery write/delete
+    // again. The ownership lock was never released, so this is a no-op unless taking it failed earlier, in which case
+    // it is retried.
     sRecoveryShutdownPrepared = false;
     if (sRecoveryServiceStarted)
         ensureOwnLiveLock(autosavePath());

@@ -7,6 +7,16 @@
 #include <cstdio>
 #include <cstdlib>
 
+#if LL_WINDOWS
+#include "llwin32headers.h"   // CreateFileW, CloseHandle, GetLastError
+#else
+#include <errno.h>
+#include <fcntl.h>            // open
+#include <sys/file.h>         // flock
+#include <sys/stat.h>         // fstat, stat
+#include <unistd.h>           // unlink, close
+#endif
+
 namespace
 {
 S32 editDistance(const std::string& left, const std::string& right, S32 ceiling)
@@ -432,4 +442,86 @@ bool ALDirectorQol::isReservedSceneName(const std::string& name)
     if (trimmed.empty() || trimmed[0] == '.')
         return true;
     return trimmed == "crash_backups";
+}
+
+bool ALDirectorQol::legacyLiveFileOldEnough(S64 now_seconds, S64 mtime_seconds)
+{
+    return now_seconds - mtime_seconds > kLegacyLiveRecoveryMinAgeSeconds;
+}
+
+// ---------------------------------------------------------------------------
+// Live-file ownership locks. Protocol in llfloaterdirector.cpp: a viewer holds "<live file>.lock" for its whole
+// session; the collector takes the same lock to prove the owner is dead.
+//   Windows: CreateFileW with dwShareMode = 0 and FILE_FLAG_DELETE_ON_CLOSE (the lock file vanishes when the handle
+//            closes, including when the process dies).
+//   POSIX:   open + flock(LOCK_EX | LOCK_NB). The lock is bound to the inode: a path replaced after open() is not
+//            the lock we hold, so it is refused. Release unlinks the path only while it still names our inode.
+// ---------------------------------------------------------------------------
+#if !LL_WINDOWS
+namespace
+{
+bool sameFile(const struct stat& left, const struct stat& right)
+{
+    return left.st_dev == right.st_dev && left.st_ino == right.st_ino;
+}
+} // namespace
+#endif
+
+ALDirectorQol::LockResult ALDirectorQol::acquireLiveLock(const std::string& lock_path, LiveLock& lock)
+{
+    if (lock.held())
+        return LockResult::ACQUIRED;
+#if LL_WINDOWS
+    const HANDLE handle = CreateFileW(ll_convert_string_to_wide(lock_path).c_str(),
+                                      GENERIC_READ | GENERIC_WRITE | DELETE, 0 /* exclusive */, nullptr,
+                                      OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+        const DWORD error = GetLastError();
+        return (error == ERROR_SHARING_VIOLATION || error == ERROR_LOCK_VIOLATION || error == ERROR_ACCESS_DENIED)
+                   ? LockResult::HELD : LockResult::FAILED;
+    }
+    lock.native = reinterpret_cast<intptr_t>(handle);
+#else
+    const int fd = ::open(lock_path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+    if (fd < 0)
+        return LockResult::FAILED;
+    if (::flock(fd, LOCK_EX | LOCK_NB) != 0)
+    {
+        const int error = errno;
+        ::close(fd);
+        // Any other error cannot prove ownership either: FAILED, so the file is skipped rather than stolen.
+        return (error == EWOULDBLOCK || error == EAGAIN) ? LockResult::HELD : LockResult::FAILED;
+    }
+    // The path may have been replaced (a releasing owner unlinked it and another viewer created it) between
+    // open() and flock(): the lock we just took is then on a file nobody will find. Refuse it; retry later.
+    struct stat fd_stat{}, path_stat{};
+    if (::fstat(fd, &fd_stat) != 0 || ::stat(lock_path.c_str(), &path_stat) != 0 || !sameFile(fd_stat, path_stat))
+    {
+        ::close(fd);
+        return LockResult::HELD;
+    }
+    lock.native = fd;
+#endif
+    lock.path = lock_path;
+    return LockResult::ACQUIRED;
+}
+
+void ALDirectorQol::releaseLiveLock(LiveLock& lock)
+{
+    if (!lock.held())
+        return;
+#if LL_WINDOWS
+    CloseHandle(reinterpret_cast<HANDLE>(lock.native)); // FILE_FLAG_DELETE_ON_CLOSE removes the file
+#else
+    const int fd = static_cast<int>(lock.native);
+    // Remove the file only while the path still names the inode we locked; a path replaced since is not ours.
+    // (Checked, then unlinked: a replacement in that instant is the only remaining window.)
+    struct stat fd_stat{}, path_stat{};
+    if (::fstat(fd, &fd_stat) == 0 && ::stat(lock.path.c_str(), &path_stat) == 0 && sameFile(fd_stat, path_stat))
+        ::unlink(lock.path.c_str());
+    ::close(fd);
+#endif
+    lock.native = -1;
+    lock.path.clear();
 }

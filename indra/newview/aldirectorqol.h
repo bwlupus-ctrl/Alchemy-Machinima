@@ -7,6 +7,7 @@
 #include "lluuid.h"
 #include "stdtypes.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -93,6 +94,33 @@ bool isLiveRecoveryFile(const std::string& file_name);
 bool isPreviousSessionLiveFile(const std::string& file_name, S32 my_pid, bool own_file_written);
 // The previous build's ".director_recovery_kept.xml" and its ".kept-<stamp>" rotations.
 bool isLegacyKeptBackupName(const std::string& file_name);
+// A legacy plain ".director_recovery.xml" (written by builds that never lock) is collected at login only when its
+// modification time is older than kLegacyLiveRecoveryMinAgeSeconds: an older running viewer autosaves at least
+// every 5 minutes, so a fresher file may belong to one. Unix seconds; a modification time in the future is not old.
+constexpr S64 kLegacyLiveRecoveryMinAgeSeconds = 600;
+bool legacyLiveFileOldEnough(S64 now_seconds, S64 mtime_seconds);
+
+// Ownership locks on live autosave files (protocol in llfloaterdirector.cpp). A lock is held by the viewer that
+// owns the live file; the collector takes the same lock to prove that owner is dead.
+enum class LockResult
+{
+    ACQUIRED,
+    HELD,   // another process holds it: the file's owner is running
+    FAILED  // could not tell (e.g. the lock file cannot be created); the collector treats it like HELD
+};
+struct LiveLock
+{
+    // Windows HANDLE or POSIX fd; -1 when not held. Opaque, so this header needs no platform headers.
+    intptr_t native = -1;
+    std::string path;
+    bool held() const { return native != -1; }
+};
+// Takes the exclusive lock on lock_path, creating the lock file when missing. Calling it on a lock already held
+// returns ACQUIRED and changes nothing.
+LockResult acquireLiveLock(const std::string& lock_path, LiveLock& lock);
+// Drops the lock and removes the lock file, but only while that path still names the file that was locked.
+// Safe on an unheld lock.
+void releaseLiveLock(LiveLock& lock);
 
 // "scene-YYYYMMDD-HHMMSS[-p<pid>][-N].xml": the pid (when > 0) keeps two viewers that move a backup in the
 // same second from generating the same name; N >= 1 is the repeat counter.

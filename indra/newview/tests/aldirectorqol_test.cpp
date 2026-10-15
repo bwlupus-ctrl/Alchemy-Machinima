@@ -4,6 +4,7 @@
 #include "../aldirectorqol.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <string>
 #include <vector>
 
@@ -385,4 +386,62 @@ template<> template<> void director_qol_object::test<11>()
     ensure("an empty pair with equal contents flag is a duplicate", ALDirectorQol::backupIsDuplicate(0, 0, true));
     ensure("an unknown size is never a duplicate", !ALDirectorQol::backupIsDuplicate(-1, -1, true));
 }
+
+// Legacy plain ".director_recovery.xml" collection: only once its mtime is strictly older than the threshold.
+template<> template<> void director_qol_object::test<12>()
+{
+    const S64 now = 1000000;
+    ensure("a legacy file older than 10 minutes is collected",
+           ALDirectorQol::legacyLiveFileOldEnough(now, now - 601));
+    ensure("exactly 10 minutes is not yet old enough", !ALDirectorQol::legacyLiveFileOldEnough(now, now - 600));
+    ensure("a fresh legacy file (an old running viewer may own it) is left", !ALDirectorQol::legacyLiveFileOldEnough(now, now - 60));
+    ensure("a modification time in the future is not old", !ALDirectorQol::legacyLiveFileOldEnough(now, now + 3600));
+    ensure_equals("the threshold is 10 minutes", ALDirectorQol::kLegacyLiveRecoveryMinAgeSeconds, S64(600));
+}
+
+// Lock liveness in one process: POSIX flock conflicts across two open file descriptions, and the Windows share-0
+// CreateFileW refuses a second open. Both must report HELD for a rival and free the file on release.
+template<> template<> void director_qol_object::test<13>()
+{
+    const std::string path = "aldirectorqol_livelock_test.lock";
+    std::remove(path.c_str());
+    ALDirectorQol::LiveLock owner, rival;
+    ensure("the first owner takes the lock", ALDirectorQol::acquireLiveLock(path, owner) == ALDirectorQol::LockResult::ACQUIRED);
+    ensure("the lock reads as held", owner.held());
+    ensure("a rival is refused while the owner holds the lock",
+           ALDirectorQol::acquireLiveLock(path, rival) == ALDirectorQol::LockResult::HELD);
+    ensure("a refused rival holds nothing", !rival.held());
+    ensure("taking a held lock again changes nothing",
+           ALDirectorQol::acquireLiveLock(path, owner) == ALDirectorQol::LockResult::ACQUIRED);
+    ALDirectorQol::releaseLiveLock(owner);
+    ensure("released lock reads as not held", !owner.held());
+    ensure("after release the rival can take the lock",
+           ALDirectorQol::acquireLiveLock(path, rival) == ALDirectorQol::LockResult::ACQUIRED);
+    ALDirectorQol::releaseLiveLock(rival);
+    std::remove(path.c_str());
+}
+
+#if !LL_WINDOWS
+// Release removes the lock file only while it still names the inode that was locked: a replacement made after the
+// lock was taken belongs to someone else and must survive.
+template<> template<> void director_qol_object::test<14>()
+{
+    const std::string path = "aldirectorqol_livelock_replace.lock";
+    std::remove(path.c_str());
+    ALDirectorQol::LiveLock owner;
+    ensure("the owner takes the lock", ALDirectorQol::acquireLiveLock(path, owner) == ALDirectorQol::LockResult::ACQUIRED);
+    std::remove(path.c_str());
+    if (FILE* replacement = std::fopen(path.c_str(), "w"))
+    {
+        std::fputs("replacement", replacement);
+        std::fclose(replacement);
+    }
+    ALDirectorQol::releaseLiveLock(owner);
+    FILE* after = std::fopen(path.c_str(), "r");
+    ensure("a replacement file survives the release", after != nullptr);
+    if (after)
+        std::fclose(after);
+    std::remove(path.c_str());
+}
+#endif
 } // namespace tut
