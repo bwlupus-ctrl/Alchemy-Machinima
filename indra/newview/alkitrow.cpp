@@ -467,6 +467,16 @@ S32 ALKitRow::heightForWidth(S32) const
     return llmax(28, mRowHeight);
 }
 
+// A label wider than its box is elided with an ellipsis; the full text moves to the tooltip.
+void ALKitRow::fitLabel(S32 box_width)
+{
+    if (!mLabel)
+        return;
+    const std::string shown = ALKitStyle::fitText(ALKitStyle::sansFont("Kit12"), mMeta.label, box_width);
+    setTextIfChanged(mLabel, shown);
+    setToolTipIfChanged(mLabel, shown == mMeta.label ? std::string() : mMeta.label);
+}
+
 void ALKitRow::layoutRow(S32 w)
 {
     const S32 h = heightForWidth(w);
@@ -477,6 +487,7 @@ void ALKitRow::layoutRow(S32 w)
         mLabel->reshape(ALKitStyle::LABEL_W - 18, 20, true);
         mLabel->setOrigin(ALKitStyle::ROW_INSET + 18, (h - 20) / 2);
         mLabel->setVisible(!full_span_custom);
+        fitLabel(ALKitStyle::LABEL_W - 18);
     }
 
     const bool full_span_custom = mMeta.kind == "custom" && mMeta.label.empty();
@@ -611,6 +622,7 @@ void ALKitRow::layoutDialCell(S32 w)
     {
         mLabel->reshape(llmax(1, w - ALKitStyle::RESET_W - ALKitStyle::COL_GAP), 20, true);
         mLabel->setOrigin(0, ALKitStyle::DIAL_CELL_H - 20);
+        fitLabel(llmax(1, w - ALKitStyle::RESET_W - ALKitStyle::COL_GAP));
     }
     if (mReset)
     {

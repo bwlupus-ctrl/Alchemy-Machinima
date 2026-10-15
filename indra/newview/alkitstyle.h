@@ -24,6 +24,8 @@ constexpr S32 SUB_FIRST_H = 26, SUB_H = 34, MORE_H = 26, SELECTOR_BAND_H = 34, T
 constexpr S32 RAIL_W = 176, RAIL_ICON_W = 56, RAIL_ITEM_H = 40, ROSTER_HDR_H = 24, ROSTER_TOOL = 22;
 constexpr S32 HELP_W = 224, HELP_STRIP_H = 30, TABSTRIP_H = 40, CHIPS_H = 38, WHO_H = 34;
 constexpr S32 BAR_H = 44, BANNER_H = 32, TRANSPORT_H = 40, SEARCH_W = 170, PRESET_COMBO_W = 160;
+// Page master label box: MIN to MAX wide; longer text is elided with a tooltip.
+constexpr S32 MASTER_LABEL_MIN_W = 72, MASTER_LABEL_MAX_W = 120, MASTER_LABEL_PAD = 4;
 constexpr S32 CARD_PRESET_W = 160, MAP_LEGEND_H = 40, MAP_CONTROL_H = 28, MAP_HINT_H = 18;
 constexpr S32 MAP_FOOTER_H = MAP_LEGEND_H + MAP_CONTROL_H + MAP_HINT_H;
 constexpr S32 BP_FULL = 1160, BP_RAIL = 980, BP_HYST = 8;
@@ -80,6 +82,10 @@ enum EColor
 const LLUIColor& color(EColor color);
 const LLFontGL*  sansFont(const std::string& size = "Kit12", bool bold = false);
 const LLFontGL*  monoFont(const std::string& size = "Kit12", bool bold = false);
+// Returns text, or its prefix with an ellipsis, so the result is at most max_pixels wide in font.
+std::string      fitText(const LLFontGL* font, const std::string& text, S32 max_pixels);
+// Width of the page master label box for text: its own width plus padding, clamped to MIN..MAX.
+S32              masterLabelWidth(const std::string& text);
 void             styleButton(LLButton* button, bool transparent = false);
 void             stylePill(LLButton* button);
 void             styleTransportAction(LLButton* action, LLButton* cut, LLButton* arm, bool running);

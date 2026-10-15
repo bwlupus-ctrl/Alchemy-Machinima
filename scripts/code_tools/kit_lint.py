@@ -30,8 +30,10 @@ Choices where the spec leaves room:
 - Help text is checked when the help attribute is present; "empty" means present and blank.
 - --changed REV lints the whole tree when a kit input changed since REV, else reports nothing.
 - The measured label-width rule (spec 6.1 "Additional errors") is not implemented here: it needs
-  the viewer font and two-line label syntax, which the spec does not pin down.  The runtime audit
-  (6.4, measured label errors) covers it.  The label/value round trip is director_page_sources.py --check.
+  the viewer font, which this stdlib linter does not read.  It lives in xui_layout_check.py
+  (label-fit: kit row and page master labels measured with the Kit12 font file against the
+  viewer's label box).  The runtime audit (6.4) does not measure labels.  The label/value round
+  trip is director_page_sources.py --check.
 """
 
 from __future__ import annotations

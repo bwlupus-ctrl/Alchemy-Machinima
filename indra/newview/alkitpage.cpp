@@ -119,6 +119,9 @@ std::string whoChipSubject(const LLComboBox* combo)
     return subject;
 }
 
+// Who chip text insets (LLButton pads) and the gap after its leading icon.
+constexpr S32 kWhoChipLeftPad = 28, kWhoChipRightPad = 24, kWhoChipIconGap = 1, kWhoChipSlack = 8;
+
 // Prefix is the page's own who_label (e.g. "Stepping"); pages without one keep the
 // historical "Lighting" prefix.
 std::string whoChipLabel(const std::string& who_label, const LLComboBox* combo, bool follows_cast)
@@ -510,9 +513,10 @@ bool ALKitPage::postBuild()
         mBar->addChild(mMasterBox);
         LLTextBox::Params master_label;
         master_label.name          = pre + "_master_label";
-        master_label.rect          = LLRect(0, 20, 72, 0);
+        master_label.rect          = LLRect(0, 20, ALKitStyle::MASTER_LABEL_MIN_W, 0);
         master_label.initial_value = mMasterLabel;
-        mMasterBox->addChild(LLUICtrlFactory::create<LLTextBox>(master_label));
+        mMasterLabelText           = LLUICtrlFactory::create<LLTextBox>(master_label);
+        mMasterBox->addChild(mMasterLabelText);
         master_label.name          = pre + "_master_state";
         master_label.rect          = LLRect(122, 20, 150, 0);
         master_label.initial_value = "";
@@ -659,8 +663,8 @@ bool ALKitPage::postBuild()
         mWhoChip->setImageOverlay("KitIcon_who_person_16", LLFontGL::LEFT);
         mWhoChip->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
         mWhoChip->setHAlign(LLFontGL::LEFT);
-        mWhoChip->setLeftHPad(28);
-        mWhoChip->setRightHPad(24);
+        mWhoChip->setLeftHPad(kWhoChipLeftPad);
+        mWhoChip->setRightHPad(kWhoChipRightPad);
         LLTextBox::Params caret_text;
         caret_text.name          = pre + "_who_caret";
         caret_text.rect          = LLRect(0, 16, 10, 0);
@@ -693,7 +697,7 @@ bool ALKitPage::postBuild()
             mWhoChip->setCommitCallback([this](LLUICtrl*, const LLSD&)
             {
                 mWhoPinned = !mWhoPinned && mActorTarget.notNull();
-                mWhoChip->setLabel(mWhoPinned ? "Actor: locked" : "Actor: follow selection");
+                setWhoChipLabel(mWhoPinned ? "Actor: locked" : "Actor: follow selection");
                 refreshActorTargetAvailability();
                 saveState();
             });
@@ -709,8 +713,7 @@ bool ALKitPage::postBuild()
                     {
                         mActorTarget = ids.empty() ? LLUUID::null : ids.front();
                         mWhoError = ids.empty();
-                        if (mWhoChip)
-                            mWhoChip->setLabel(ids.empty() ? "Actor: none" : "Actor: follows cast");
+                        setWhoChipLabel(ids.empty() ? "Actor: none" : "Actor: follows cast");
                         refreshActorTargetAvailability();
                         return;
                     }
@@ -728,8 +731,7 @@ bool ALKitPage::postBuild()
                             }
                         }
                     mWhoError = true;
-                    if (mWhoChip)
-                        mWhoChip->setLabel("That subject isn't selectable here");
+                    setWhoChipLabel("That subject isn't selectable here");
                 }));
             if (mActorTargetSynthetic && !shell->castSelection().empty())
             {
@@ -1133,6 +1135,42 @@ bool ALKitPage::updateGateStatus()
     return changed;
 }
 
+// Sizes the who chip to its current label.  Every label change goes through
+// setWhoChipLabel, so a chip never keeps the width of the label it replaced.
+void ALKitPage::layoutWhoChip(S32 page_width)
+{
+    if (!mWhoChip || !mWhoLabelText || !mWhoHint || !mWhoCaretText)
+        return;
+    const S32 label_x = ALKitStyle::PAGE_PAD_LR;
+    const S32 chip_x  = label_x + 94;
+    // LLButton puts a LEFT overlay icon at the left pad and starts the label after it
+    // (imgoverlay_label_space, default 1 px); the label keeps the right pad.  The text
+    // budget must start there, or the end of the label is clipped by the icon's width.
+    const LLPointer<LLUIImage> icon = mWhoChip->getImageOverlay();
+    const S32 text_left = kWhoChipLeftPad + (icon.notNull() ? icon->getWidth() + kWhoChipIconGap : 0);
+    // Measured in the font stylePill gives the chip; the chip may be sized before it is styled.
+    const LLFontGL* chip_font = ALKitStyle::sansFont("Kit12");
+    const S32 label_w   = chip_font ? chip_font->getWidth(mWhoChip->getText()) : 120;
+    // The slack keeps the last glyph inside the chip's text area.
+    const S32 content_w = text_left + label_w + kWhoChipRightPad + kWhoChipSlack;
+    const S32 chip_w    = llmin(llmax(120, content_w), llmax(120, page_width - chip_x - 8));
+    mWhoLabelText->setOrigin(label_x, 7);
+    mWhoChip->reshape(chip_w, 24, true);
+    mWhoChip->setOrigin(chip_x, 5);
+    const S32 caret_x = llmin(text_left + label_w + 6, chip_w - 18);
+    mWhoCaretText->setOrigin(caret_x, 4);
+    mWhoHint->reshape(llmax(1, page_width - chip_x - chip_w - 24), 20, true);
+    mWhoHint->setOrigin(chip_x + chip_w + 12, 7);
+}
+
+void ALKitPage::setWhoChipLabel(const std::string& label)
+{
+    if (!mWhoChip || whoChipHasLabel(mWhoChip, label))
+        return;
+    mWhoChip->setLabel(label);
+    layoutWhoChip(getRect().getWidth());
+}
+
 void ALKitPage::reshape(S32 w, S32 h, bool p)
 {
     LLPanel::reshape(w, h, p);
@@ -1162,37 +1200,46 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
         top -= ALKitStyle::WHO_H;
         mWhoContainer->reshape(w, ALKitStyle::WHO_H, true);
         mWhoContainer->setOrigin(0, top);
-        const S32 label_x = ALKitStyle::PAGE_PAD_LR;
-        const S32 chip_x     = label_x + 94;
-        const S32 label_w    = mWhoChip->getFont() ? mWhoChip->getFont()->getWidth(mWhoChip->getText()) : 120;
-        const S32 content_w  = 28 + label_w + 6 + 10 + 8;
-        const S32 chip_w     = llmin(llmax(120, content_w), llmax(120, w - chip_x - 8));
-        mWhoLabelText->setOrigin(label_x, 7);
-        mWhoChip->reshape(chip_w, 24, true);
-        mWhoChip->setOrigin(chip_x, 5);
-        const S32 caret_x = llmin(28 + label_w + 6, chip_w - 18);
-        mWhoCaretText->setOrigin(caret_x, 4);
-        mWhoHint->reshape(llmax(1, w - chip_x - chip_w - 24), 20, true);
-        mWhoHint->setOrigin(chip_x + chip_w + 12, 7);
+        layoutWhoChip(w);
     }
     top -= ALKitStyle::BAR_H;
     if (mBar)
     {
         mBar->reshape(w, ALKitStyle::BAR_H, true);
         mBar->setOrigin(0, top);
+        // Master box: [label][gap][switch][gap][state].  The label box is sized to its
+        // text (MASTER_LABEL_MIN_W..MAX_W) and the switch and state follow it.
+        constexpr S32 kMasterGap = 8, kMasterStateW = 28;
+        const S32  master_label_w  = ALKitStyle::masterLabelWidth(mMasterLabel);
+        const S32  master_switch_x = master_label_w + kMasterGap;
+        const S32  master_state_x  = master_switch_x + ALKitStyle::SWITCH_W + kMasterGap;
+        const S32  master_box_w    = master_state_x + kMasterStateW;
         const S32  master_x       = mBarLeftEnd + ALKitStyle::COL_GAP;
         const S32  right          = w - ALKitStyle::PAGE_PAD_LR;
-        const bool master_fits    = mMasterBox && master_x + 150 <= w - ALKitStyle::PAGE_PAD_LR;
-        const S32  occupied_right = master_fits ? master_x + 150 : mBarLeftEnd;
+        const bool master_fits    = mMasterBox && master_x + master_box_w <= w - ALKitStyle::PAGE_PAD_LR;
+        const S32  occupied_right = master_fits ? master_x + master_box_w : mBarLeftEnd;
         const S32  changed_w      = 100;
         const S32  search_w       = llmin(ALKitStyle::SEARCH_W, llmax(0, right - occupied_right - changed_w - 2 * ALKitStyle::COL_GAP));
         const S32  search_x       = right - search_w;
         const bool search_fits    = mSearch && search_w >= 120;
         if (mMasterBox)
         {
-            mMasterBox->reshape(150, 24, true);
+            mMasterBox->reshape(master_box_w, 24, true);
             mMasterBox->setOrigin(master_x, 10);
             setVisibleIfChanged(mMasterBox, master_fits);
+        }
+        if (mMasterLabelText)
+        {
+            const std::string shown = ALKitStyle::fitText(ALKitStyle::sansFont("Kit12"), mMasterLabel, master_label_w);
+            mMasterLabelText->reshape(master_label_w, 20, true);
+            mMasterLabelText->setOrigin(0, 0);
+            setTextIfChanged(mMasterLabelText, shown);
+            setToolTipIfChanged(mMasterLabelText, shown == mMasterLabel ? std::string() : mMasterLabel);
+        }
+        if (mMasterState)
+        {
+            mMasterState->reshape(kMasterStateW, 20, true);
+            mMasterState->setOrigin(master_state_x, 0);
         }
         if (mMaster)
         {
@@ -1200,7 +1247,7 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
             // after ALKitSwitch has replaced the stock button geometry so the
             // complete painted switch remains hittable.
             mMaster->reshape(ALKitStyle::SWITCH_W, ALKitStyle::SWITCH_H, true);
-            mMaster->setOrigin(80, 3);
+            mMaster->setOrigin(master_switch_x, 3);
         }
         if (mSearch)
         {
@@ -1605,16 +1652,12 @@ void ALKitPage::refreshActorTargetAvailability()
         cast.getMember(target) && cast.resolve(target));
     mActorTargetAway = (target.notNull() || explicit_you) && !present;
     if (mActorTargetAway)
-    {
-        if (!whoChipHasLabel(mWhoChip, "Actor: Away"))
-            mWhoChip->setLabel("Actor: Away"); // ui-draw-lint: allow(raw-write) change-gated, signal-driven with clock fallback
-    }
+        setWhoChipLabel("Actor: Away");
     else if (!mWhoCombo)
     {
         const std::string label = mWhoPinned ? "Actor: locked" :
             (target.notNull() ? "Actor: follows cast" : "Actor: none");
-        if (!whoChipHasLabel(mWhoChip, label))
-            mWhoChip->setLabel(label); // ui-draw-lint: allow(raw-write) change-gated, signal-driven with clock fallback
+        setWhoChipLabel(label);
     }
     if (mLegacyHost)
         mLegacyHost->setEnabled(!mActorTargetAway && (target.notNull() || explicit_you));
@@ -1672,7 +1715,7 @@ void ALKitPage::draw()
             const std::string label = whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned);
             if (!whoChipHasLabel(mWhoChip, label))
             {
-                mWhoChip->setLabel(label); // ui-draw-lint: allow(raw-write) change-gated on label, readout clock throttled
+                setWhoChipLabel(label);
                 reshape(getRect().getWidth(), getRect().getHeight(), false);
             }
         }

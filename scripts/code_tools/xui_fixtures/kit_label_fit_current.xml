@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel name="label_fit_tab_logic" class="panel_label_fit" width="690" height="400" follows="all">
+    <kit_page name="label_fit_kit" page="look_group/label_fit_tab" master_widget="label_fit_enabled" master_setting="LabelFitFixtureEnabled" master_label="Stepped animation">
+        <kit_card name="kc_label_fit" id="label_fit" title="Label fit" kind="rows">
+            <kit_row name="kr_ghosts" kind="toggle" widget="label_fit_ghosts" label="Ghost clones" setting="LabelFitFixtureGhosts" bind="setting">
+                <kit_switch name="label_fit_ghosts" control_name="LabelFitFixtureGhosts"/>
+            </kit_row>
+        </kit_card>
+    </kit_page>
+</panel>

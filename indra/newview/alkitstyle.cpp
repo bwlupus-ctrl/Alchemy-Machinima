@@ -17,6 +17,7 @@
 #include "lltextbox.h"
 #include "llui.h"
 #include "lluicolortable.h"
+#include "llstring.h"
 #include <functional>
 #include <vector>
 
@@ -55,6 +56,29 @@ const LLFontGL* monoFont(const std::string& size, bool bold)
 {
     const LLFontGL* font = LLFontGL::getFont(LLFontDescriptor("IBMPlexMono", size, bold ? LLFontGL::BOLD : 0));
     return font ? font : LLFontGL::getFontMonospace();
+}
+
+std::string fitText(const LLFontGL* font, const std::string& text, S32 max_pixels)
+{
+    if (!font || text.empty() || max_pixels <= 0)
+        return std::string();
+    if (font->getWidth(text) <= max_pixels)
+        return text;
+    static const std::string ellipsis = "\xE2\x80\xA6";
+    const S32 ellipsis_width = font->getWidth(ellipsis);
+    if (ellipsis_width > max_pixels)
+        return std::string();
+    const LLWString wide = utf8str_to_wstring(text);
+    const S32 chars = font->maxDrawableChars(wide.c_str(), (F32)(max_pixels - ellipsis_width),
+                                              (S32)wide.size(), LLFontGL::ANYWHERE);
+    return wstring_to_utf8str(wide.substr(0, llmax(0, chars))) + ellipsis;
+}
+
+S32 masterLabelWidth(const std::string& text)
+{
+    const LLFontGL* font = sansFont("Kit12");
+    const S32 natural = font ? font->getWidth(text) + MASTER_LABEL_PAD : MASTER_LABEL_MIN_W;
+    return llclamp(natural, MASTER_LABEL_MIN_W, MASTER_LABEL_MAX_W);
 }
 
 void styleButton(LLButton* button, bool transparent)

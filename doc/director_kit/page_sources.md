@@ -2007,7 +2007,7 @@ Computed logic class: **code-driven**; 34/49 rows setting-bound, 17 rows referen
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
 | `stepped` / Applies to | `sa_scope` | `combo` | `S32` `indra/newview/app_settings/settings.xml:7` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:11` `stepped_tab_logic`/combo_box | — | — | — |
-| `stepped` / Include ghost clones | `sa_include_ghosts` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:9` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:20` `stepped_tab_logic`/kit_switch | — | — | — |
+| `stepped` / Ghost clones | `sa_include_ghosts` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:9` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:20` `stepped_tab_logic`/kit_switch | — | — | — |
 | `stepped` / Actor | `sa_actor_target` | `combo` | — | `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:23` `stepped_tab_logic`/combo_box | — | — | UNRESOLVED: no scoped owner callback, setting, model binding, or kit action |
 | `stepped` / Overrides | `sa_override_list` | `list` | — | `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:33` `stepped_tab_logic`/scroll_list | — | — | UNRESOLVED: no scoped owner callback, setting, model binding, or kit action |
 | `stepped` / This actor | `sa_actor_override` | `combo` | — | `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:36` `stepped_tab_logic`/combo_box | — | — | UNRESOLVED: no scoped owner callback, setting, model binding, or kit action |

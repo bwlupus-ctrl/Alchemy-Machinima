@@ -25,17 +25,21 @@ Intentional sibling layering must be documented in the XML with::
 Exit status is 1 when any non-baselined finding is reported, 0 otherwise, and
 2 for command-line or XML errors.  Generated legacy Director pages may carry
 only the exact v1-inherited keys listed in gate_policy.json; their static
-selftest makes additions, removals, or drift fatal.  It uses only the Python
-standard library.
+selftest makes additions, removals, or drift fatal.  Kit row labels and page
+master labels are measured with the viewer's Kit12 font file; an overflow must
+be shortened or recorded in gate_policy.json kit_label_fit_allow.  It uses only
+the Python standard library.
 """
 
 from __future__ import annotations
 
 import argparse
 import decimal
+import functools
 import json
 import math
 import re
+import struct
 import subprocess
 import tempfile
 import sys
@@ -1394,13 +1398,193 @@ def check_node(
                    runtime_tab_fit, copies_fit_grid_height, static_rules)
 
 
+# ---------------------------------------------------------------------------
+# Measured kit label fit (DIRECTOR_KIT_P0_SPEC.md 6.1, "Additional errors").
+#
+# A kit row label sits in a fixed box (alkitrow.cpp: LABEL_W minus the inset),
+# and a page master label sits in a box alkitpage.cpp sizes from its text,
+# capped at MASTER_LABEL_MAX_W.  Both use the Kit12 size of IBM Plex Sans, so
+# the width is summed from the viewer's own font file.  The viewer elides an
+# overflowing label with an ellipsis and a tooltip (ALKitStyle::fitText).  That
+# is a fallback, not a fix: an overflow must be shortened, or recorded with a
+# reason in gate_policy.json kit_label_fit_allow.  The allowance list only
+# shrinks: a recorded label that now fits is a label-fit-stale finding.
+# ---------------------------------------------------------------------------
+ROOT_DIR = Path(__file__).resolve().parents[2]
+KIT_FONT_FILE = ROOT_DIR / "indra/newview/fonts/IBMPlexSansVar-Roman.ttf"
+KIT_FONTS_XML = ROOT_DIR / "indra/newview/skins/default/xui/en/fonts.xml"
+ALKIT_STYLE_H = ROOT_DIR / "indra/newview/alkitstyle.h"
+ALKIT_ROW_CPP = ROOT_DIR / "indra/newview/alkitrow.cpp"
+ALKIT_PAGE_CPP = ROOT_DIR / "indra/newview/alkitpage.cpp"
+KIT_LABEL_FONT_SIZE = "Kit12"
+# A dial label sits in a 2-up cell whose width comes from the card, not the column.
+LABEL_FIT_SKIPPED_KINDS = {"dial", "arc"}
+LABEL_FIT_ALLOW_KEY = "kit_label_fit_allow"
+RUNTIME_ELIDE_GUARDS = (
+    (ALKIT_ROW_CPP, "ALKitStyle::fitText(", "kit row labels are no longer elided with a tooltip"),
+    (ALKIT_PAGE_CPP, "ALKitStyle::masterLabelWidth(", "page master labels are no longer sized to their text"),
+)
+
+
+def _read_const(text: str, name: str, source: Path) -> int:
+    match = re.search(r"\b" + name + r"\s*=\s*(\d+)", text)
+    if not match:
+        raise ValueError(f"{source.name}: constant {name} not found")
+    return int(match.group(1))
+
+
+@functools.lru_cache(maxsize=None)
+def kit_label_limits() -> tuple[int, int]:
+    """Return (row label box width, master label maximum width) from the viewer source."""
+    style = ALKIT_STYLE_H.read_text(encoding="utf-8")
+    row_source = ALKIT_ROW_CPP.read_text(encoding="utf-8")
+    inset = re.search(
+        r"mLabel->reshape\(\s*ALKitStyle::LABEL_W\s*-\s*(\d+)\s*,\s*20\s*,\s*true\s*\)", row_source)
+    if not inset:
+        raise ValueError("alkitrow.cpp: the row label box is no longer ALKitStyle::LABEL_W - <inset>")
+    row_box = _read_const(style, "LABEL_W", ALKIT_STYLE_H) - int(inset.group(1))
+    return row_box, _read_const(style, "MASTER_LABEL_MAX_W", ALKIT_STYLE_H)
+
+
+@functools.lru_cache(maxsize=None)
+def _kit_font_metrics() -> tuple[int, dict[int, int], float, float]:
+    """Return (units per em, advance by code point, pixels per em, advance for a missing glyph)."""
+    data = KIT_FONT_FILE.read_bytes()
+    tables: dict[bytes, int] = {}
+    for index in range(struct.unpack_from(">H", data, 4)[0]):
+        tag, _checksum, offset, _length = struct.unpack_from(">4sIII", data, 12 + 16 * index)
+        tables[tag] = offset
+    upem = struct.unpack_from(">H", data, tables[b"head"] + 18)[0]
+    metric_count = struct.unpack_from(">H", data, tables[b"hhea"] + 34)[0]
+    hmtx = tables[b"hmtx"]
+    advance_of = [struct.unpack_from(">H", data, hmtx + 4 * glyph)[0] for glyph in range(metric_count)]
+    cmap = tables[b"cmap"]
+    glyph_for: dict[int, int] = {}
+    for index in range(struct.unpack_from(">H", data, cmap + 2)[0]):
+        _pid, _eid, offset = struct.unpack_from(">HHI", data, cmap + 4 + 8 * index)
+        sub = cmap + offset
+        fmt = struct.unpack_from(">H", data, sub)[0]
+        if fmt == 4 and not glyph_for:
+            seg_x2 = struct.unpack_from(">H", data, sub + 6)[0]
+            seg = seg_x2 // 2
+            ends = struct.unpack_from(f">{seg}H", data, sub + 14)
+            starts = struct.unpack_from(f">{seg}H", data, sub + 16 + seg_x2)
+            deltas = struct.unpack_from(f">{seg}h", data, sub + 16 + 2 * seg_x2)
+            range_at = sub + 16 + 3 * seg_x2
+            ranges = struct.unpack_from(f">{seg}H", data, range_at)
+            for i in range(seg):
+                for code in range(starts[i], ends[i] + 1):
+                    if code == 0xFFFF:
+                        continue
+                    if ranges[i] == 0:
+                        glyph = (code + deltas[i]) & 0xFFFF
+                    else:
+                        glyph = struct.unpack_from(
+                            ">H", data, range_at + 2 * i + ranges[i] + 2 * (code - starts[i]))[0]
+                        if glyph:
+                            glyph = (glyph + deltas[i]) & 0xFFFF
+                    if glyph:
+                        glyph_for[code] = glyph
+        elif fmt == 12 and not glyph_for:
+            for group in range(struct.unpack_from(">I", data, sub + 12)[0]):
+                first, last, glyph0 = struct.unpack_from(">III", data, sub + 16 + 12 * group)
+                for code in range(first, last + 1):
+                    glyph_for[code] = glyph0 + code - first
+    if not glyph_for:
+        raise ValueError(f"{KIT_FONT_FILE.name}: no usable cmap subtable")
+    advances = {code: advance_of[min(glyph, metric_count - 1)] for code, glyph in glyph_for.items()}
+    fonts = ElementTree.parse(KIT_FONTS_XML).getroot()
+    point = next((float(node.get("size")) for node in fonts.iter("font_size")
+                  if node.get("name") == KIT_LABEL_FONT_SIZE), None)
+    if point is None:
+        raise ValueError(f"{KIT_FONTS_XML.name}: font_size {KIT_LABEL_FONT_SIZE} not found")
+    # fonts.xml sizes are points at the viewer's 96 dpi baseline.
+    return upem, advances, point * 96.0 / 72.0, 0.6 * upem
+
+
+def kit_label_width(text: str) -> float:
+    """Advance-sum width in pixels (no kerning). A character the font lacks counts as 0.6 em."""
+    upem, advances, pixels_per_em, missing = _kit_font_metrics()
+    return sum(advances.get(ord(ch), missing) for ch in text) * pixels_per_em / upem
+
+
+@functools.lru_cache(maxsize=None)
+def _runtime_elide_findings() -> tuple[str, ...]:
+    messages = []
+    for source, guard, message in RUNTIME_ELIDE_GUARDS:
+        if guard not in source.read_text(encoding="utf-8"):
+            messages.append(f"{source.name}: {message}")
+    return tuple(messages)
+
+
+def label_fit_allowances(policy_path: Path = GATE_POLICY) -> dict[str, str]:
+    """Return the recorded overflows as {'file|role|label': reason}."""
+    try:
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid gate policy {policy_path}: {exc}") from exc
+    entries = policy.get(LABEL_FIT_ALLOW_KEY, {})
+    if not isinstance(entries, dict):
+        raise ValueError(f"{LABEL_FIT_ALLOW_KEY} must be an object keyed by 'file|role|label'")
+    allowed: dict[str, str] = {}
+    for key, value in entries.items():
+        if key.count("|") != 2 or not isinstance(value, dict) or not str(value.get("reason", "")).strip():
+            raise ValueError(f"{LABEL_FIT_ALLOW_KEY}[{key!r}] needs the form 'file|role|label' and a reason")
+        allowed[key] = str(value["reason"])
+    return allowed
+
+
+def label_fit_findings(root: Node, path: Path,
+                       allowances: dict[str, str] | None = None) -> list[Finding]:
+    allowed = label_fit_allowances() if allowances is None else allowances
+    prefix = f"{path.name}|"
+    kit_nodes = [node for node in (root, *descendants(root)) if node.tag in {"kit_row", "kit_page"}]
+    if not kit_nodes and not any(key.startswith(prefix) for key in allowed):
+        return []
+    row_box, master_max = kit_label_limits()
+    findings: list[Finding] = []
+    overflows: set[str] = set()
+    for node in kit_nodes:
+        if node.tag == "kit_row":
+            label = node.attrs.get("label", "")
+            if not label or node.attrs.get("kind", "") in LABEL_FIT_SKIPPED_KINDS:
+                continue
+            role, allotted = "row", row_box
+        else:
+            label = node.attrs.get("master_label", "")
+            if not label or not node.attrs.get("master_widget"):
+                continue
+            role, allotted = "master", master_max
+        width = kit_label_width(label)
+        if width <= allotted:
+            continue
+        key = f"{prefix}{role}|{label}"
+        overflows.add(key)
+        if key not in allowed:
+            findings.append(Finding(
+                "label-fit", node.line,
+                f"{role} label {label!r} needs about {math.ceil(width)}px; its box is {allotted}px, "
+                "so the viewer elides it. Shorten it, or record it in gate_policy.json "
+                f"{LABEL_FIT_ALLOW_KEY} with a reason",
+            ))
+    if kit_nodes:
+        findings.extend(Finding("label-fit-runtime", 1, message) for message in _runtime_elide_findings())
+    for key in sorted(item for item in allowed if item.startswith(prefix)):
+        if key not in overflows:
+            findings.append(Finding(
+                "label-fit-stale", 1,
+                f"{key} no longer overflows; remove it from {LABEL_FIT_ALLOW_KEY} in gate_policy.json",
+            ))
+    return findings
+
+
 def check_file(path: Path, source_index: SourceIndex | None = None,
                dynamic_visibility_override: set[str] | None = None) -> list[Finding]:
     if path.name == KIT_INDEX_NAME:
         return []
     root, overlap_policy = parse_xml(path)
     calculate(root)
-    kit_findings = kit_geometry_findings(root)
+    kit_findings = kit_geometry_findings(root) + label_fit_findings(root, path)
     if root.rect is None or root.rect.width <= 0 or root.rect.height <= 0:
         if any(node.legacy_kit for node in (root, *descendants(root))):
             kit_findings.append(Finding(
@@ -1514,6 +1698,9 @@ def run_selftest(json_output: bool) -> int:
         ("kit_legacy_zero_root_broken.xml", True, "invalid-root"),
         ("accordion_fit_broken.xml", True, "accordion-clip"),
         ("accordion_fit_current.xml", False, None),
+        ("kit_label_fit_broken.xml", True, "label-fit"),
+        ("kit_label_master_broken.xml", True, "label-fit"),
+        ("kit_label_fit_current.xml", False, None),
     )
     reports: list[dict[str, object]] = []
     passed = True
@@ -1598,6 +1785,29 @@ def run_selftest(json_output: bool) -> int:
     if not json_output:
         print(f"{'PASS' if geometry_key_passed else 'FAIL'} legacy baseline geometry key: "
               "baselined widget growth changes the exact key")
+    # Measured kit labels: the font-file widths must match what the viewer clips
+    # (the row box is 82 px; "Include ghost c" was the visible prefix), and a
+    # recorded overflow must go stale once its label fits.
+    clip_width = kit_label_width("Include ghost c")
+    label_metrics_passed = (
+        82 < kit_label_width("Include ghost clones")
+        and kit_label_width("Ghost clones") <= 82
+        and 80 <= clip_width <= 86
+    )
+    stale_probe = label_fit_findings(
+        parse_xml(fixture_dir / "kit_label_fit_current.xml")[0],
+        Path("kit_label_fit_current.xml"),
+        allowances={"kit_label_fit_current.xml|row|Ghost clones": "selftest: this label fits"},
+    )
+    stale_passed = [item.kind for item in stale_probe] == ["label-fit-stale"]
+    label_probe_passed = label_metrics_passed and stale_passed
+    passed = passed and label_probe_passed
+    reports.append({"fixture": "kit label metrics and stale allowance",
+                    "expected": "widths from the Kit12 font file; recorded fitting label is stale",
+                    "passed": label_probe_passed})
+    if not json_output:
+        print(f"{'PASS' if label_probe_passed else 'FAIL'} kit label metrics and stale allowance: "
+              f"'Include ghost c' {clip_width:.1f}px, stale entry detected={stale_passed}")
     # Real-tree regression: each of the 30 serialized legacy pages must have
     # the same finding keys as the v1 leaf it copied.  This prevents both
     # wrapper-size vacuity and serialization-only drift.

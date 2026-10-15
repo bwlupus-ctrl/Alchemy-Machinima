@@ -46,6 +46,7 @@ public:
     S32         heightForWidth(S32) const;
     void        layoutRow(S32);
     void        layoutDialCell(S32);
+    void        fitLabel(S32 box_width);
     bool        isEffectivelyVisible() const;
     bool        setControlVisible(bool visible);
     static bool setControlVisible(LLView*, bool);

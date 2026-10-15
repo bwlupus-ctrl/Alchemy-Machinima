@@ -21,7 +21,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `stepped` / `sa_scope` (Applies to) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:11` | kit `combo` ↔ `StepAnimScope` `S32` | none |
-| `stepped` / `sa_include_ghosts` (Include ghost clones) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:20` | kit `toggle` ↔ `StepAnimIncludeGhosts` `Boolean` | none |
+| `stepped` / `sa_include_ghosts` (Ghost clones) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:20` | kit `toggle` ↔ `StepAnimIncludeGhosts` `Boolean` | none |
 | `stepped` / `sa_actor_target` (Actor) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:23` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
 | `stepped` / `sa_override_list` (Overrides) | `scroll_list` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:33` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
 | `stepped` / `sa_actor_override` (This actor) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:36` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |

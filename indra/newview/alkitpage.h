@@ -182,6 +182,8 @@ private:
     void        scrollToView(LLView*);
     void        performPageReset();
     void        refreshActorTargetAvailability();
+    void        setWhoChipLabel(const std::string& label);
+    void        layoutWhoChip(S32 page_width);
     void        refreshSubjectCombos();
     std::string prefix() const;
     std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mModes, mModeSetting,
@@ -231,6 +233,7 @@ private:
     ALKitSwitch*                                    mModeSwitch     = nullptr;
     ALKitShell*                                     mShell          = nullptr;
     ALKitPopover*                                   mResetPopover   = nullptr;
+    LLTextBox*                                      mMasterLabelText = nullptr;
     LLTextBox*                                      mMasterState    = nullptr;
     LLTextBox*                                      mGateText       = nullptr;
     LLTextBox*                                      mLegacySummary  = nullptr;
