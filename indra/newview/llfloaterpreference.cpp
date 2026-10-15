@@ -1154,6 +1154,7 @@ LLFloaterPreference::~LLFloaterPreference()
 
 void LLFloaterPreference::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     bool has_first_selected = (mDisabledPopups->getFirstSelected()!=NULL);
     mEnablePopupBtn->setEnabled(has_first_selected);
 
@@ -2024,6 +2025,12 @@ void LLFloaterPreference::onClickEnablePopup()
         //gSavedSettings.setWarning(templatep->mName, true);
         std::string notification_name = templatep->mName;
         LLUI::getInstance()->mSettingGroups["ignores"]->setBOOL(notification_name, true);
+        // Director's crash-backup prompt: re-enabling it also forgets any remembered answer, so a
+        // later disable can never replay a stale one.
+        if (notification_name == "DirectorRestoreRecovery")
+        {
+            LLNotifications::instance().clearSavedResponse(notification_name);
+        }
     }
 
     buildPopupLists();
@@ -2061,6 +2068,8 @@ void LLFloaterPreference::resetAllIgnored()
             iter->second->mForm->setIgnored(false);
         }
     }
+    // Resetting the prompts also forgets Director's remembered crash-backup answer.
+    LLNotifications::instance().clearSavedResponse("DirectorRestoreRecovery");
 }
 
 void LLFloaterPreference::setAllIgnored()
@@ -3299,6 +3308,7 @@ bool LLPanelPreferenceGraphics::postBuild()
 
 void LLPanelPreferenceGraphics::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     LLPanelPreference::draw();
 }
 

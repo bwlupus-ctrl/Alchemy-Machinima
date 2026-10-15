@@ -1211,7 +1211,12 @@ def theme_choices(themes_dir: Path = THEMES_DIR) -> tuple[list[str], list[str]]:
 
 
 def fill_theme_rows(data: dict) -> None:
-    """Rows with theme_list take their combo items from the theme files."""
+    """Rows with theme_list take their combo items from the theme files.
+
+    These generated items are the FALLBACK and the default order only: at runtime
+    LLFloaterDirector::bindDirectorSettingsPage repopulates the combo from
+    ALDirectorTheme::listThemes(), so a theme file added after generation still appears.
+    """
     labels, ids = theme_choices()
     for _group, page in flatten_pages(data):
         for row in all_rows(page):

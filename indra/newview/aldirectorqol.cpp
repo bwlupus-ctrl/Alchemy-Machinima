@@ -169,11 +169,55 @@ S32 ALDirectorQol::liveRecoverySlot(const std::string& file_name)
     return slot >= 2 ? slot : 0;
 }
 
-S32 ALDirectorQol::autosaveSlot(const std::vector<S32>& unmoved_slots)
+S32 ALDirectorQol::autosaveSlot(const std::vector<S32>& unmoved_slots, S32 max_slot)
 {
-    for (S32 slot = 1;; ++slot)
+    for (S32 slot = 1; slot <= max_slot; ++slot)
         if (std::find(unmoved_slots.begin(), unmoved_slots.end(), slot) == unmoved_slots.end())
             return slot;
+    return 0; // every slot holds an unmoved backup: use overflowRecoveryFileName()
+}
+
+std::string ALDirectorQol::overflowRecoveryFileName(S32 pid, const BackupStamp& stamp, S32 counter)
+{
+    char buffer[80];
+    snprintf(buffer, sizeof(buffer), "%s-%d-%04d%02d%02d%02d%02d%02d", LIVE_PREFIX, pid, stamp.year,
+             stamp.month, stamp.day, stamp.hour, stamp.minute, stamp.second);
+    std::string name = buffer;
+    if (counter > 0)
+        name += "-" + std::to_string(counter);
+    return name + ".xml";
+}
+
+bool ALDirectorQol::isOverflowRecoveryName(const std::string& file_name)
+{
+    // ".director_recovery-<pid digits>-<14 digits>[-<counter digits>].xml"
+    const std::string name = lowerAscii(file_name);
+    const std::string prefix = std::string(LIVE_PREFIX) + "-";
+    if (name.compare(0, prefix.size(), prefix) != 0 || !endsWith(name, ".xml") ||
+        name.size() < prefix.size() + 4)
+        return false;
+    const std::string body = name.substr(prefix.size(), name.size() - prefix.size() - 4);
+    // body = digits '-' 14 digits ['-' digits]
+    const size_t dash = body.find('-');
+    if (dash == std::string::npos || dash == 0 || dash > 10 || !allDigits(body, 0, dash))
+        return false;
+    if (!allDigits(body, dash + 1, 14))
+        return false;
+    const size_t tail = dash + 1 + 14;
+    if (tail == body.size())
+        return true;
+    const size_t count = body.size() - tail - 1;
+    return body[tail] == '-' && count >= 1 && count <= 6 && allDigits(body, tail + 1, count);
+}
+
+bool ALDirectorQol::isLiveRecoveryFile(const std::string& file_name)
+{
+    return liveRecoverySlot(file_name) > 0 || isOverflowRecoveryName(file_name);
+}
+
+bool ALDirectorQol::sceneSizeAllowed(size_t bytes)
+{
+    return bytes <= kDirectorSceneMaxBytes;
 }
 
 bool ALDirectorQol::isLegacyKeptBackupName(const std::string& file_name)
@@ -184,23 +228,25 @@ bool ALDirectorQol::isLegacyKeptBackupName(const std::string& file_name)
            (name.size() > older.size() && name.compare(0, older.size(), older) == 0);
 }
 
-std::string ALDirectorQol::crashBackupFileName(const BackupStamp& stamp, S32 counter)
+std::string ALDirectorQol::crashBackupFileName(const BackupStamp& stamp, S32 counter, S32 pid)
 {
     char buffer[48];
     snprintf(buffer, sizeof(buffer), "scene-%04d%02d%02d-%02d%02d%02d", stamp.year, stamp.month,
              stamp.day, stamp.hour, stamp.minute, stamp.second);
     std::string name = buffer;
+    if (pid > 0)
+        name += "-p" + std::to_string(pid);
     if (counter > 0)
         name += "-" + std::to_string(counter);
     return name + ".xml";
 }
 
 std::string ALDirectorQol::uniqueCrashBackupName(const BackupStamp& stamp,
-                                                 const std::vector<std::string>& existing)
+                                                 const std::vector<std::string>& existing, S32 pid)
 {
     for (S32 counter = 0;; ++counter)
     {
-        const std::string candidate = crashBackupFileName(stamp, counter);
+        const std::string candidate = crashBackupFileName(stamp, counter, pid);
         if (!containsInsensitive(existing, candidate))
             return candidate;
     }
@@ -216,14 +262,25 @@ ALDirectorQol::ParsedBackupName ALDirectorQol::parseCrashBackupName(const std::s
         !allDigits(name, 6, 8) || name[14] != '-' || !allDigits(name, 15, 6))
         return parsed;
     const size_t end = name.size() - 4;
-    if (end != TAIL)
+    size_t at = TAIL;
+    if (at < end && name.compare(at, 2, "-p") == 0)
+    {
+        // "-p<pid>": one to ten digits.
+        size_t digits = 0;
+        while (at + 2 + digits < end && name[at + 2 + digits] >= '0' && name[at + 2 + digits] <= '9')
+            ++digits;
+        if (digits == 0 || digits > 10)
+            return parsed;
+        at += 2 + digits;
+    }
+    if (at != end)
     {
         // "-N": one to six digits, no leading zero, at least 1.
-        const size_t count = end - TAIL - 1;
-        if (name[TAIL] != '-' || end < TAIL + 2 || count > 6 || !allDigits(name, TAIL + 1, count) ||
-            name[TAIL + 1] == '0')
+        const size_t count = end - at - 1;
+        if (name[at] != '-' || end < at + 2 || count > 6 || !allDigits(name, at + 1, count) ||
+            name[at + 1] == '0')
             return parsed;
-        parsed.counter = std::atoi(name.substr(TAIL + 1, count).c_str());
+        parsed.counter = std::atoi(name.substr(at + 1, count).c_str());
     }
     const S32 month = std::atoi(name.substr(10, 2).c_str());
     const S32 day = std::atoi(name.substr(12, 2).c_str());
@@ -264,9 +321,10 @@ std::vector<std::string> ALDirectorQol::crashBackupsToPrune(
 {
     names = sortCrashBackupsNewestFirst(std::move(names));
     std::vector<std::string> doomed;
-    for (size_t index = keep; index < names.size(); ++index)
-        if (!containsInsensitive(protected_names, names[index]))
-            doomed.push_back(names[index]);
+    // names is newest first, so walk the excess from its end: the OLDEST go first.
+    for (size_t index = names.size(); index > keep; --index)
+        if (!containsInsensitive(protected_names, names[index - 1]))
+            doomed.push_back(names[index - 1]);
     return doomed;
 }
 
@@ -300,8 +358,8 @@ std::vector<std::string> ALDirectorQol::corruptBackupsToPrune(std::vector<std::s
         return lowerAscii(left) > lowerAscii(right);
     });
     std::vector<std::string> doomed;
-    for (size_t index = keep; index < names.size(); ++index)
-        doomed.push_back(names[index]);
+    for (size_t index = names.size(); index > keep; --index) // oldest first
+        doomed.push_back(names[index - 1]);
     return doomed;
 }
 
@@ -316,12 +374,16 @@ ALDirectorQol::LoginAction ALDirectorQol::loginAction(bool have_new_backup, S32 
     return LoginAction::OFFER;
 }
 
-ALDirectorQol::PromptAction ALDirectorQol::promptAction(S32 option)
+ALDirectorQol::PromptAction ALDirectorQol::promptAction(S32 option, bool remember, bool replayed)
 {
+    // A replayed answer was not given by the user now: it never restores or deletes.
+    if (replayed)
+        return PromptAction::KEEP;
     if (option == 0)
         return PromptAction::RESTORE;
+    // "Don't ask me again" + Discard only sets the mode; it never deletes this backup.
     if (option == 1)
-        return PromptAction::DISCARD;
+        return remember ? PromptAction::KEEP : PromptAction::DISCARD;
     return PromptAction::KEEP;
 }
 

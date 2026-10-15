@@ -30,6 +30,7 @@
 #include <boost/signals2.hpp>
 #include <boost/unordered_map.hpp>
 #include <map>
+#include <set>
 
 #include "llinitparam.h"
 #include "llsingleton.h"
@@ -123,6 +124,10 @@ private:
     // Skin values captured right after the skin files load. saveUserSettings() compares
     // against these, so a theme value in mLoadedColors is never mistaken for a user change.
     std::map<std::string, LLColor4, std::less<>> mSkinColors;
+
+    // Names reset to default: their user node still exists (nodes are never erased, LLUIColor points at
+    // them) but only mirrors the loaded value, so they are default, unsaved and follow colour themes.
+    std::set<std::string, std::less<>> mFollowLoaded;
 
     boost::signals2::signal<void()> mReloadSignal;
 };

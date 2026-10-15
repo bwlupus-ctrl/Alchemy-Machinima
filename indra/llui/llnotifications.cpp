@@ -1895,6 +1895,18 @@ void LLNotifications::setIgnored(std::string_view name, bool ignored)
     templatep->mForm->setIgnored(ignored);
 }
 
+void LLNotifications::clearSavedResponse(std::string_view name)
+{
+    // The remembered answer of a "Don't ask me again" notification (save_option="true"). Re-enabling
+    // the prompt must drop it, or disabling the prompt again later would replay a stale answer.
+    LLNotificationTemplatePtr templatep = getTemplate(name);
+    if (templatep && templatep->mForm
+        && templatep->mForm->getIgnoreType() == LLNotificationForm::IGNORE_WITH_LAST_RESPONSE)
+    {
+        LLUI::getInstance()->mSettingGroups["ignores"]->setLLSD(std::string("Default") + std::string(name), LLSD(std::string()));
+    }
+}
+
 bool LLNotifications::getIgnored(std::string_view name)
 {
     LLNotificationTemplatePtr templatep = getTemplate(name);

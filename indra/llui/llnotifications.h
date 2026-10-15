@@ -989,6 +989,8 @@ public:
     bool getIgnoreAllNotifications();
 
     void setIgnored(std::string_view name, bool ignored);
+    // Clears the remembered answer of a save_option="true" notification (no-op for other kinds).
+    void clearSavedResponse(std::string_view name);
     bool getIgnored(std::string_view name);
 
     bool isVisibleByRules(LLNotificationPtr pNotification);

@@ -1,12 +1,12 @@
 # Settings — Director Kit page contract
 
 Page key: `director_settings_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (2/8 setting-bound rows; 4 C++-referenced rows).
+Computed class: **code-driven** (2/8 setting-bound rows; 5 C++-referenced rows).
 
 ## Real owners
 
 - `director_settings_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (7 matching rows).
-- Referencing classes: `LLFloaterDirector` (3), `LLNotifications` (1).
+- Referencing classes: `LLFloaterDirector` (4), `LLNotifications` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -26,14 +26,14 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `scene_recovery` / `settings_delete_backup` (Delete the selected backup) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:26` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
 | `scene_recovery` / `settings_recovery_help` (About recovery) | `text` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:29` | kit readout ← approved static copy; no runtime writer | none |
 | `settings_cast` / `settings_add_self_link` (Add me to the cast at login) | none | kit-native action `link_to:capture_group/scene_options_tab`; no duplicate widget is required | none |
-| `settings_prompts` / `settings_reset_prompts` (Reset 'don't ask again' prompts) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:37` | `ALDirectorSettingsKitAdapter` command/model binding → wired in `LLFloaterDirector::bindDirectorSettingsPage()`; behavior `LLNotifications::setIgnored()` (`indra/newview/llfloaterdirector.cpp:1699`) | none |
+| `settings_prompts` / `settings_reset_prompts` (Reset 'don't ask again' prompts) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:37` | `ALDirectorSettingsKitAdapter` command/model binding → wired in `LLFloaterDirector::bindDirectorSettingsPage()`; behavior `LLNotifications::setIgnored()` (`indra/newview/llfloaterdirector.cpp:1797`) | none |
 | `settings_appearance` / `settings_theme` (Theme) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:42` | kit `combo` ↔ `DirectorTheme` `String` | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `LLNotifications::setIgnored()` — `indra/newview/llfloaterdirector.cpp:1699` | Move model-facing work into `ALDirectorSettingsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLNotifications::setIgnored()` — `indra/newview/llfloaterdirector.cpp:1797` | Move model-facing work into `ALDirectorSettingsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

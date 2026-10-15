@@ -51,18 +51,41 @@ template<> template<> void director_qol_object::test<3>()
                   std::string(".director_recovery_2.xml"));
     ensure_equals("nothing unmoved -> slot 1", ALDirectorQol::autosaveSlot({}), 1);
     ensure_equals("an unmoved slot-1 backup -> autosave moves to slot 2", ALDirectorQol::autosaveSlot({1}), 2);
-    ensure_equals("slots 1 and 2 unmoved -> slot 3", ALDirectorQol::autosaveSlot({1, 2}), 3);
+    ensure_equals("only the main slot plus one spare exist", ALDirectorQol::kMaxLiveSlots, 2);
     ensure_equals("a free slot below an unmoved one is reused", ALDirectorQol::autosaveSlot({2}), 1);
+    // Exhausted: slots 1 and 2 both hold unmoved files. autosaveSlot never returns an occupied slot (0 means
+    // "use the unique overflow name"), so no overwrite is possible.
+    ensure_equals("both slots unmoved -> no slot (overflow name)", ALDirectorQol::autosaveSlot({1, 2}), 0);
     for (S32 count = 0; count < 40; ++count)
     {
         std::vector<S32> unmoved;
         for (S32 slot = 1; slot <= count; ++slot)
             unmoved.push_back(slot);
         const S32 chosen = ALDirectorQol::autosaveSlot(unmoved);
-        ensure("autosave always has a slot (never disabled)", chosen >= 1);
-        ensure("and it is never an unmoved backup",
-               std::find(unmoved.begin(), unmoved.end(), chosen) == unmoved.end());
+        ensure("a returned slot is never an unmoved backup (0 = overflow)",
+               chosen == 0 || std::find(unmoved.begin(), unmoved.end(), chosen) == unmoved.end());
+        ensure("0 is returned only when every slot is occupied", chosen != 0 || count >= ALDirectorQol::kMaxLiveSlots);
     }
+    // The overflow file: unique per process/second/counter, and collected by the login move like a live slot.
+    ALDirectorQol::BackupStamp overflow_stamp;
+    overflow_stamp.year = 2026; overflow_stamp.month = 10; overflow_stamp.day = 15;
+    overflow_stamp.hour = 9; overflow_stamp.minute = 7; overflow_stamp.second = 3;
+    ensure_equals("overflow name", ALDirectorQol::overflowRecoveryFileName(4321, overflow_stamp),
+                  std::string(".director_recovery-4321-20261015090703.xml"));
+    ensure_equals("overflow name counter", ALDirectorQol::overflowRecoveryFileName(4321, overflow_stamp, 2),
+                  std::string(".director_recovery-4321-20261015090703-2.xml"));
+    ensure("overflow names are recognised", ALDirectorQol::isOverflowRecoveryName(".director_recovery-4321-20261015090703.xml") &&
+           ALDirectorQol::isOverflowRecoveryName(".Director_Recovery-1-20261015090703-12.XML"));
+    ensure("overflow names are live files the login move collects",
+           ALDirectorQol::isLiveRecoveryFile(".director_recovery-4321-20261015090703.xml") &&
+           ALDirectorQol::isLiveRecoveryFile(".director_recovery.xml") &&
+           ALDirectorQol::isLiveRecoveryFile(".director_recovery_2.xml"));
+    for (const char* not_live : {".director_recovery-x-20261015090703.xml", ".director_recovery--20261015090703.xml",
+                                 ".director_recovery-12-2026101509070.xml", ".director_recovery-12-20261015090703-.xml",
+                                 ".director_recovery-12-20261015090703.xml.tmp", ".director_recovery_kept.xml", "scene.xml"})
+        ensure(std::string("not a live file: ") + not_live, !ALDirectorQol::isLiveRecoveryFile(not_live));
+    ensure("an overflow file is never a slot", ALDirectorQol::liveRecoverySlot(".director_recovery-4321-20261015090703.xml") == 0);
+    ensure("an overflow name is reserved as a scene name", ALDirectorQol::isReservedSceneName(".director_recovery-4321-20261015090703"));
     ensure_equals("slot name round-trips", ALDirectorQol::liveRecoverySlot(ALDirectorQol::liveRecoveryFileName(7)), 7);
     ensure_equals("slot 1 name parses", ALDirectorQol::liveRecoverySlot(".director_recovery.xml"), 1);
     ensure_equals("case-insensitive", ALDirectorQol::liveRecoverySlot(".Director_Recovery_2.XML"), 2);
@@ -103,13 +126,20 @@ template<> template<> void director_qol_object::test<5>()
     ensure("no backup beats every mode", ALDirectorQol::loginAction(false, 1) == Login::NONE);
 
     using Prompt = ALDirectorQol::PromptAction;
-    ensure("Restore button restores", ALDirectorQol::promptAction(0) == Prompt::RESTORE);
-    ensure("Discard button discards", ALDirectorQol::promptAction(1) == Prompt::DISCARD);
-    ensure("closing the window keeps the backup", ALDirectorQol::promptAction(-1) == Prompt::KEEP);
-    ensure("an ignored prompt with no saved response keeps the backup", ALDirectorQol::promptAction(2) == Prompt::KEEP);
-    ensure("only Discard deletes",
-           ALDirectorQol::promptAction(-1) != Prompt::DISCARD && ALDirectorQol::promptAction(0) != Prompt::DISCARD &&
-           ALDirectorQol::promptAction(7) != Prompt::DISCARD);
+    // promptAction(option, remember = "Don't ask me again" ticked, replayed = answered by LLNotifications, not the user)
+    ensure("Restore button restores", ALDirectorQol::promptAction(0, false, false) == Prompt::RESTORE);
+    ensure("unticked Discard deletes (only that file)", ALDirectorQol::promptAction(1, false, false) == Prompt::DISCARD);
+    ensure("ticked Restore restores and sets the mode", ALDirectorQol::promptAction(0, true, false) == Prompt::RESTORE);
+    ensure("ticked Discard KEEPS the backup (it only sets mode 2)", ALDirectorQol::promptAction(1, true, false) == Prompt::KEEP);
+    ensure("closing the window keeps the backup", ALDirectorQol::promptAction(-1, false, false) == Prompt::KEEP);
+    ensure("an ignored prompt with no saved response keeps the backup", ALDirectorQol::promptAction(2, false, false) == Prompt::KEEP);
+    for (S32 option : {-1, 0, 1, 2, 7})
+        for (bool remember : {false, true})
+            ensure("a replayed response can never restore or delete",
+                   ALDirectorQol::promptAction(option, remember, true) == Prompt::KEEP);
+    for (S32 option : {-1, 0, 2, 7})
+        ensure("only an unticked Discard deletes", ALDirectorQol::promptAction(option, false, false) != Prompt::DISCARD);
+    ensure("a ticked Discard never deletes", ALDirectorQol::promptAction(1, true, false) != Prompt::DISCARD);
 
     ensure_equals("ticked Restore -> Restore automatically", ALDirectorQol::rememberedRecoveryMode(0, true), 1);
     ensure_equals("ticked Discard -> Don't restore", ALDirectorQol::rememberedRecoveryMode(1, true), 2);
@@ -143,6 +173,21 @@ template<> template<> void director_qol_object::test<6>()
     ensure("plain name parses", plain.valid && plain.counter == 0 && plain.stamp == 20261005090703ULL);
     const ALDirectorQol::ParsedBackupName counted = ALDirectorQol::parseCrashBackupName("scene-20261005-090703-12.xml");
     ensure("counter name parses", counted.valid && counted.counter == 12 && counted.stamp == plain.stamp);
+    ensure_equals("pid name", ALDirectorQol::crashBackupFileName(stamp, 0, 4321), std::string("scene-20261005-090703-p4321.xml"));
+    ensure_equals("pid + counter name", ALDirectorQol::crashBackupFileName(stamp, 2, 4321),
+                  std::string("scene-20261005-090703-p4321-2.xml"));
+    ensure_equals("a taken pid name gets -1",
+                  ALDirectorQol::uniqueCrashBackupName(stamp, {"scene-20261005-090703-p4321.xml"}, 4321),
+                  std::string("scene-20261005-090703-p4321-1.xml"));
+    ensure_equals("two processes in the same second get different names",
+                  ALDirectorQol::uniqueCrashBackupName(stamp, {"scene-20261005-090703-p4321.xml"}, 77),
+                  std::string("scene-20261005-090703-p77.xml"));
+    const ALDirectorQol::ParsedBackupName with_pid = ALDirectorQol::parseCrashBackupName("scene-20261005-090703-p4321-12.xml");
+    ensure("pid name parses", with_pid.valid && with_pid.counter == 12 && with_pid.stamp == plain.stamp);
+    ensure("pid-only name parses", ALDirectorQol::parseCrashBackupName("scene-20261005-090703-p4321.xml").valid);
+    for (const char* bad : {"scene-20261005-090703-p.xml", "scene-20261005-090703-px.xml", "scene-20261005-090703-p12345678901.xml",
+                            "scene-20261005-090703-p12-0.xml", "scene-20261005-090703-p12x.xml"})
+        ensure(std::string("unparseable: ") + bad, !ALDirectorQol::parseCrashBackupName(bad).valid);
     for (const char* bad : {"scene.xml", "scene-20261005-090703.txt", "scene-20261305-090703.xml", "scene-20261005-250703.xml",
                             "scene-20261005-090703-0.xml", "scene-20261005-090703-.xml", "scene-2026100-090703.xml",
                             "scene-20261005-090703-x.xml", "backup.xml", "", "scene-20261005-0907031.xml"})
@@ -174,10 +219,14 @@ template<> template<> void director_qol_object::test<7>()
         stamp.year = 2026; stamp.month = 10; stamp.day = day; stamp.hour = 12;
         seven.push_back(ALDirectorQol::crashBackupFileName(stamp));
     }
-    const std::vector<std::string> doomed = ALDirectorQol::crashBackupsToPrune(seven, ALDirectorQol::kCrashBackupKeep, {});
+    const std::vector<std::string> doomed = ALDirectorQol::crashBackupsToPrune(seven, 5, {});
     ensure_equals("keeps the newest 5 of 7", doomed.size(), size_t(2));
-    ensure_equals("oldest is pruned first", doomed[0], std::string("scene-20261002-120000.xml"));
-    ensure_equals("then the next oldest", doomed[1], std::string("scene-20261001-120000.xml"));
+    ensure_equals("the OLDEST excess is deleted first", doomed[0], std::string("scene-20261001-120000.xml"));
+    ensure_equals("then the next oldest", doomed[1], std::string("scene-20261002-120000.xml"));
+    const std::vector<std::string> doomed_two = ALDirectorQol::crashBackupsToPrune(seven, ALDirectorQol::kCrashBackupKeep, {});
+    ensure_equals("the real cap keeps the newest 2 of 7", doomed_two.size(), size_t(5));
+    ensure_equals("oldest first with the real cap", doomed_two.front(), std::string("scene-20261001-120000.xml"));
+    ensure_equals("and the 3rd newest goes last", doomed_two.back(), std::string("scene-20261005-120000.xml"));
     ensure("under the cap prunes nothing", ALDirectorQol::crashBackupsToPrune({"a.xml", "b.xml"}, 5, {}).empty());
 
     // 8 equal-second backups: -N ordering decides what survives.
@@ -188,20 +237,22 @@ template<> template<> void director_qol_object::test<7>()
         same_second.push_back(ALDirectorQol::crashBackupFileName(second, counter));
     const std::vector<std::string> doomed_same = ALDirectorQol::crashBackupsToPrune(same_second, 5, {});
     ensure_equals("three of eight equal-second backups pruned", doomed_same.size(), size_t(3));
-    ensure_equals("the plain (oldest) name goes first", doomed_same[0], std::string("scene-20261005-090703-2.xml"));
+    ensure_equals("the plain (oldest) name goes first", doomed_same[0], std::string("scene-20261005-090703.xml"));
+    ensure_equals("then -1, then -2 (oldest to newest)", doomed_same[2], std::string("scene-20261005-090703-2.xml"));
     ensure("-7 survives", std::find(doomed_same.begin(), doomed_same.end(), "scene-20261005-090703-7.xml") == doomed_same.end());
-    ensure("the plain name is among the pruned",
-           std::find(doomed_same.begin(), doomed_same.end(), "scene-20261005-090703.xml") != doomed_same.end());
 
     // A protected file (in use / just restored) is never pruned.
     const std::vector<std::string> kept = ALDirectorQol::crashBackupsToPrune(
         seven, 5, {"SCENE-20261001-120000.XML"});
     ensure_equals("a protected backup survives pruning (case-insensitive)", kept.size(), size_t(1));
     ensure_equals("only the unprotected one is pruned", kept[0], std::string("scene-20261002-120000.xml"));
+    ensure("an unparseable name is the oldest and goes first, then the older real backup",
+           ALDirectorQol::crashBackupsToPrune({"scene-20261001-120000.xml", "scene-20261002-120000.xml", "junk.xml"}, 1, {}) ==
+           std::vector<std::string>({"junk.xml", "scene-20261001-120000.xml"}));
     ensure("an unparseable name is pruned first",
            ALDirectorQol::crashBackupsToPrune({"scene-20261001-120000.xml", "junk.xml"}, 1, {}).front() == "junk.xml");
 
-    // Damaged files: .corrupt, unique, max 3, separate from the 5.
+    // Damaged files: .corrupt, unique, max 3, separate from the 2 backups.
     ensure_equals("corrupt name", ALDirectorQol::uniqueCorruptName("scene-20261005-090703.xml", {}),
                   std::string("scene-20261005-090703.xml.corrupt"));
     ensure_equals("corrupt name is unique",
@@ -211,9 +262,9 @@ template<> template<> void director_qol_object::test<7>()
         {"scene-20261001-120000.xml.corrupt", "scene-20261004-120000.xml.corrupt", "scene-20261002-120000.xml.corrupt",
          "scene-20261003-120000.xml.corrupt", "scene-20261005-120000.xml.corrupt"}, ALDirectorQol::kCorruptBackupKeep);
     ensure_equals("max 3 corrupt files kept", corrupt_doomed.size(), size_t(2));
-    ensure_equals("oldest corrupt first", corrupt_doomed[0], std::string("scene-20261002-120000.xml.corrupt"));
-    ensure_equals("then the next", corrupt_doomed[1], std::string("scene-20261001-120000.xml.corrupt"));
-    ensure_equals("the cap is 5 backups", ALDirectorQol::kCrashBackupKeep, size_t(5));
+    ensure_equals("oldest corrupt first", corrupt_doomed[0], std::string("scene-20261001-120000.xml.corrupt"));
+    ensure_equals("then the next", corrupt_doomed[1], std::string("scene-20261002-120000.xml.corrupt"));
+    ensure_equals("the cap is 2 backups (plus the live autosave)", ALDirectorQol::kCrashBackupKeep, size_t(2));
     ensure_equals("the cap is 3 damaged files", ALDirectorQol::kCorruptBackupKeep, size_t(3));
 }
 
@@ -246,5 +297,16 @@ template<> template<> void director_qol_object::test<8>()
         existing.push_back(ALDirectorQol::uniqueCrashBackupName(stamp, existing));
     ensure("three migrated files get three distinct names",
            existing[0] != existing[1] && existing[1] != existing[2] && existing[0] != existing[2]);
+}
+
+// Scene size cap: one constant (8 MB) shared by the write and the load path.
+template<> template<> void director_qol_object::test<9>()
+{
+    ensure_equals("the cap is 8 MB", ALDirectorQol::kDirectorSceneMaxBytes, size_t(8) * 1024 * 1024);
+    ensure("an empty scene is allowed", ALDirectorQol::sceneSizeAllowed(0));
+    ensure("a typical scene is allowed", ALDirectorQol::sceneSizeAllowed(200 * 1024));
+    ensure("exactly at the cap is allowed", ALDirectorQol::sceneSizeAllowed(ALDirectorQol::kDirectorSceneMaxBytes));
+    ensure("one byte over the cap is refused", !ALDirectorQol::sceneSizeAllowed(ALDirectorQol::kDirectorSceneMaxBytes + 1));
+    ensure("a huge scene is refused", !ALDirectorQol::sceneSizeAllowed(size_t(64) * 1024 * 1024));
 }
 } // namespace tut

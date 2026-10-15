@@ -11,6 +11,7 @@
 
 #include "aldirectortabmigration.h"
 #include "aldirectorqol.h"
+#include "aldirectortheme.h"
 #include "alcameracurve.h"
 #include "alkitshell.h"
 #include "alkitbinding.h"
@@ -100,7 +101,15 @@
 #include <algorithm>
 #include <ctime>
 #include <set>
+#include <sstream>
 #include <unordered_map>
+
+#if LL_WINDOWS
+#include "llwin32headers.h"   // MoveFileExW, GetCurrentProcessId
+#else
+#include <errno.h>
+#include <unistd.h>           // link / unlink / getpid
+#endif
 
 namespace
 {
@@ -172,7 +181,6 @@ constexpr char SCENE_SUBDIR[]  = "director_scenes";
 // Crash backups: the previous session's live autosave file is MOVED here at login.
 constexpr char CRASH_BACKUP_SUBDIR[] = "crash_backups";
 constexpr S32 MOVE_RETRIES = 10;     // one attempt per 1 s tick
-constexpr S32 MAX_LIVE_SLOTS = 32;   // ".director_recovery.xml", "_2" ... scanned for unmoved files
 
 // Results of restoreCrashBackup().
 constexpr S32 RESTORE_OK = 0;
@@ -188,18 +196,36 @@ enum class ReadResult
     CORRUPT     // opened, read fully, and it does not parse as a scene
 };
 
-// Read and parse a scene file, closing the stream before returning so the caller
-// may rename or delete it (an open handle makes that fail on Windows).
+// Read and parse a scene file. The whole file is read into memory first (open, size, byte count and
+// stream state all checked) and the stream is closed before returning, so the caller may rename or
+// delete it (an open handle makes that fail on Windows). Anything short of a complete read is UNREADABLE;
+// only a parse failure on fully read bytes is CORRUPT. (The XML parser reads through a streambuf, so
+// the stream's own bad() flag after a parse proves nothing about the read.)
 ReadResult readSceneFileClosed(const std::string& path, LLSD& scene_out)
 {
-    llifstream in(path.c_str());
-    if (!in.is_open())
-        return ReadResult::UNREADABLE;
-    const S32 parsed = LLSDSerialize::fromXML(scene_out, in);
-    const bool stream_bad = in.bad();
-    in.close();
-    if (stream_bad)
-        return ReadResult::UNREADABLE;
+    std::string bytes;
+    {
+        llstat status;
+        if (LLFile::stat(path, &status) != 0)
+            return ReadResult::UNREADABLE;
+        const S64 size = (S64)status.st_size;
+        if (size < 0 || !ALDirectorQol::sceneSizeAllowed((size_t)size))
+            return ReadResult::UNREADABLE; // over the cap: never parsed, never deleted
+        llifstream in(path.c_str(), std::ios::in | std::ios::binary);
+        if (!in.is_open())
+            return ReadResult::UNREADABLE;
+        bytes.resize((size_t)size);
+        if (size > 0)
+        {
+            in.read(&bytes[0], (std::streamsize)size);
+            if (in.bad() || in.gcount() != (std::streamsize)size)
+                return ReadResult::UNREADABLE;
+        }
+        if (in.bad() || in.peek() != std::char_traits<char>::eof())
+            return ReadResult::UNREADABLE; // the file changed size while it was read
+    }
+    std::istringstream stream(bytes);
+    const S32 parsed = LLSDSerialize::fromXML(scene_out, stream);
     return (parsed != LLSDParser::PARSE_FAILURE && scene_out.isMap()) ? ReadResult::OK
                                                                        : ReadResult::CORRUPT;
 }
@@ -300,10 +326,59 @@ std::vector<std::string> listFileNames(const std::string& dir, const std::string
     return names;
 }
 
+S32 currentProcessId()
+{
+#if LL_WINDOWS
+    return (S32)GetCurrentProcessId();
+#else
+    return (S32)getpid();
+#endif
+}
+
+enum class MoveResult
+{
+    MOVED,
+    EXISTS, // the target name is taken: nothing was changed, pick another name
+    FAILED  // the source is left exactly where it was
+};
+
+// Rename that can NEVER replace an existing target, atomically (no exists()-then-rename gap that two
+// viewers starting in the same second could both pass).
+//   Windows: MoveFileExW without MOVEFILE_REPLACE_EXISTING fails if the target exists.
+//   POSIX:   link() fails with EEXIST if the target exists; the source is then unlinked. A filesystem
+//            without hard links falls back to a plain rename after an exists check (best effort).
+MoveResult renameNoReplace(const std::string& source, const std::string& target)
+{
+#if LL_WINDOWS
+    if (MoveFileExW(ll_convert_string_to_wide(source).c_str(), ll_convert_string_to_wide(target).c_str(), 0) != 0)
+        return MoveResult::MOVED;
+    const DWORD error = GetLastError();
+    return (error == ERROR_ALREADY_EXISTS || error == ERROR_FILE_EXISTS) ? MoveResult::EXISTS : MoveResult::FAILED;
+#else
+    if (::link(source.c_str(), target.c_str()) == 0)
+    {
+        if (::unlink(source.c_str()) == 0)
+            return MoveResult::MOVED;
+        ::unlink(target.c_str()); // could not remove the source: undo, leave it where it was
+        return MoveResult::FAILED;
+    }
+    if (errno == EEXIST)
+        return MoveResult::EXISTS;
+    if (errno == EPERM || errno == ENOTSUP || errno == EMLINK)
+    {
+        if (gDirUtilp->fileExists(target))
+            return MoveResult::EXISTS;
+        return LLFile::rename(source, target, ENOENT) == 0 ? MoveResult::MOVED : MoveResult::FAILED;
+    }
+    return MoveResult::FAILED;
+#endif
+}
+
 // MOVE a live / legacy-kept file into the crash-backup folder under a unique
-// scene-YYYYMMDD-HHMMSS[-N].xml name stamped with its last-write time. Never overwrites an
-// existing file. Returns the new base name, or an empty string when the move failed (the
-// source is left exactly where it was) -- the caller retries later.
+// scene-YYYYMMDD-HHMMSS-p<pid>[-N].xml name stamped with its last-write time. Never overwrites an
+// existing file (renameNoReplace; a taken name just moves on to the next -N). Returns the new base
+// name, or an empty string when the move failed (the source is left exactly where it was) -- the
+// caller retries later.
 std::string moveIntoCrashBackups(const std::string& source, const std::string& crash_dir,
                                  std::vector<std::string>& existing_names)
 {
@@ -318,23 +393,23 @@ std::string moveIntoCrashBackups(const std::string& source, const std::string& c
 #endif
     }
     const ALDirectorQol::BackupStamp stamp = stampFromTm(local_time);
-    for (S32 attempt = 0; attempt < 8; ++attempt)
+    const S32 pid = currentProcessId();
+    for (S32 attempt = 0; attempt < 16; ++attempt)
     {
-        const std::string name = ALDirectorQol::uniqueCrashBackupName(stamp, existing_names);
+        const std::string name = ALDirectorQol::uniqueCrashBackupName(stamp, existing_names, pid);
         const std::string target = gDirUtilp->add(crash_dir, name);
-        if (gDirUtilp->fileExists(target))
+        switch (renameNoReplace(source, target))
         {
-            existing_names.push_back(name); // appeared since the listing; pick the next -N
-            continue;
-        }
-        if (LLFile::rename(source, target, ENOENT) == 0 && gDirUtilp->fileExists(target) &&
-            !gDirUtilp->fileExists(source))
-        {
+        case MoveResult::MOVED:
             existing_names.push_back(name);
             return name;
+        case MoveResult::EXISTS:
+            existing_names.push_back(name); // appeared since the listing; pick the next -N
+            continue;
+        case MoveResult::FAILED:
+            LL_WARNS("Director") << "Could not move Director backup " << source << " -> " << target << LL_ENDL;
+            return std::string();
         }
-        LL_WARNS("Director") << "Could not move Director backup " << source << " -> " << target << LL_ENDL;
-        return std::string();
     }
     return std::string();
 }
@@ -410,21 +485,30 @@ void restoreResultToast(S32 result, const std::string& when, bool automatic)
     }
 }
 
-// Scene name shown in the Settings list, read once per backup (a failed read is retried a few times).
+// Scene name shown in the Settings list, read once per backup. A failed read is retried every few
+// seconds until it succeeds (the list signature includes the readable state, so the row updates then).
 struct BackupSceneName
 {
     std::string name;
-    S32 tries = 0;
+    F64 next_try = 0.0;
     bool done = false;
 };
 std::unordered_map<std::string, BackupSceneName> sBackupSceneNames;
 
+// True once the backup's scene name has been read: part of the list signature.
+bool crashBackupNameReadable(const std::string& file_name)
+{
+    auto it = sBackupSceneNames.find(file_name);
+    return it != sBackupSceneNames.end() && it->second.done;
+}
+
 const std::string& crashBackupSceneName(const std::string& crash_dir, const std::string& file_name)
 {
     BackupSceneName& entry = sBackupSceneNames[file_name];
-    if (!entry.done && entry.tries < 3)
+    const F64 now = LLTimer::getTotalSeconds();
+    if (!entry.done && now >= entry.next_try)
     {
-        ++entry.tries;
+        entry.next_try = now + 5.0;
         LLSD scene;
         if (readSceneFileClosed(gDirUtilp->add(crash_dir, file_name), scene) == ReadResult::OK)
         {
@@ -1696,13 +1780,30 @@ void LLFloaterDirector::bindDirectorSettingsPage(LLView* root)
     {
         requestDeleteCrashBackup();
     });
+    // Theme choices come from the theme files at runtime, so a theme file added after the kit was
+    // generated still appears. The generated items are only the fallback (and the default order).
+    if (LLComboBox* theme_combo = root->findChild<LLComboBox>("settings_theme"))
+    {
+        const std::vector<ALDirectorTheme::ThemeInfo> themes = ALDirectorTheme::listThemes();
+        if (!themes.empty())
+        {
+            theme_combo->clearRows(); // ui-draw-lint: allow(raw-write) runs once when the Settings page is bound
+            for (const ALDirectorTheme::ThemeInfo& info : themes)
+                theme_combo->add(info.label, LLSD(info.id));
+            if (!theme_combo->setSelectedByValue(LLSD(gSavedSettings.getString(ALDirectorTheme::kSettingName)), true))
+                theme_combo->setSelectedByValue(LLSD(std::string(ALDirectorTheme::kDefaultId)), true);
+        }
+    }
     root->getChild<LLButton>("settings_reset_prompts")->setCommitCallback([](LLUICtrl*, const LLSD&)
     {
         gSavedSettings.setS32("DirectorRecoveryMode", 0);
         for (const auto& entry : LLNotifications::instance().getTemplateNames())
         {
             if (entry.compare(0, 8, "Director") == 0)
+            {
                 LLNotifications::instance().setIgnored(entry, false);
+                LLNotifications::instance().clearSavedResponse(entry); // no-op unless it remembers an answer
+            }
         }
     });
     sCrashBackupSignature.clear(); // a rebuilt page repopulates its list
@@ -3206,11 +3307,13 @@ std::string LLFloaterDirector::crashBackupsDir()
 //static
 std::string LLFloaterDirector::autosavePath()
 {
-    // Autosave is never disabled: it writes the first live slot that does not hold an
-    // unmoved backup from a previous session (a file this session did not write).
+    // Autosave is never disabled and never overwrites a previous session's unmoved backup (a file this
+    // session did not write). It uses the main slot, else the ONE spare slot; when both hold unmoved
+    // files it writes a unique timestamped overflow name (collected by the next login's move and
+    // subject to the same prune), reusing this session's own overflow file if it already has one.
     const std::string scenes = scenesDir();
     std::vector<S32> unmoved_slots;
-    for (S32 slot = 1; slot <= MAX_LIVE_SLOTS; ++slot)
+    for (S32 slot = 1; slot <= ALDirectorQol::kMaxLiveSlots; ++slot)
     {
         const std::string path = gDirUtilp->add(scenes, ALDirectorQol::liveRecoveryFileName(slot));
         if (gDirUtilp->fileExists(path) &&
@@ -3219,7 +3322,28 @@ std::string LLFloaterDirector::autosavePath()
             unmoved_slots.push_back(slot);
         }
     }
-    return gDirUtilp->add(scenes, ALDirectorQol::liveRecoveryFileName(ALDirectorQol::autosaveSlot(unmoved_slots)));
+    const S32 slot = ALDirectorQol::autosaveSlot(unmoved_slots);
+    if (slot > 0)
+        return gDirUtilp->add(scenes, ALDirectorQol::liveRecoveryFileName(slot));
+
+    for (const std::string& own : sOwnLivePaths)
+        if (ALDirectorQol::isOverflowRecoveryName(gDirUtilp->getBaseFileName(own, false)))
+            return own;
+    std::tm local_time;
+    const time_t now = time(nullptr);
+#if LL_WINDOWS
+    localtime_s(&local_time, &now);
+#else
+    localtime_r(&now, &local_time);
+#endif
+    const ALDirectorQol::BackupStamp stamp = stampFromTm(local_time);
+    for (S32 counter = 0;; ++counter)
+    {
+        const std::string path = gDirUtilp->add(
+            scenes, ALDirectorQol::overflowRecoveryFileName(currentProcessId(), stamp, counter));
+        if (!gDirUtilp->fileExists(path))
+            return path;
+    }
 }
 
 //static
@@ -3436,7 +3560,7 @@ void LLFloaterDirector::refreshSceneList(const std::string& select_name)
         while (dir_iter.next(file))
         {
             const std::string base_file = gDirUtilp->getBaseFileName(file, false);
-            if (ALDirectorQol::liveRecoverySlot(base_file) > 0 ||
+            if (ALDirectorQol::isLiveRecoveryFile(base_file) ||
                 ALDirectorQol::isLegacyKeptBackupName(base_file))
                 continue;
             names.emplace_back(LLURI::unescape(
@@ -3778,7 +3902,35 @@ bool LLFloaterDirector::writeSceneFile(const std::string& path,
                 "Unable to save Director scene '%s'. The previous saved scene, if any, was left unchanged.",
                 label.c_str())));
     };
-    llofstream out(temp_path.c_str());
+    // Serialize to memory first so the size cap is decided before any file is touched.
+    std::ostringstream serialized;
+    const S32 serialized_count = LLSDSerialize::toPrettyXML(scene, serialized);
+    const std::string bytes = serialized.str();
+    if (serialized_count > 0 && !ALDirectorQol::sceneSizeAllowed(bytes.size()))
+    {
+        // Too large to write: keep the previous file. Autosave warns once per session; a manual save says so.
+        LL_WARNS("Director") << "Director scene is " << bytes.size() << " bytes, over the "
+                             << ALDirectorQol::kDirectorSceneMaxBytes << " byte cap; not written: " << path << LL_ENDL;
+        if (notify_failure)
+        {
+            LLNotificationsUtil::add("GenericAlert",
+                LLSD().with("MESSAGE", llformat(
+                    "Director scene '%s' was not saved: it is larger than 8 MB. The previous saved scene, if any, was left unchanged.",
+                    label.c_str())));
+        }
+        else
+        {
+            static bool sWarnedAutosaveTooLarge = false;
+            if (!sWarnedAutosaveTooLarge)
+            {
+                sWarnedAutosaveTooLarge = true;
+                recoveryToast("Director autosave skipped: the scene is larger than 8 MB.");
+            }
+        }
+        return false;
+    }
+
+    llofstream out(temp_path.c_str(), std::ios::out | std::ios::binary);
     if (!out.is_open())
     {
         LL_WARNS("Director") << "Cannot open temporary scene file "
@@ -3788,7 +3940,7 @@ bool LLFloaterDirector::writeSceneFile(const std::string& path,
         return false;
     }
 
-    const S32 serialized_count = LLSDSerialize::toPrettyXML(scene, out);
+    out.write(bytes.data(), (std::streamsize)bytes.size());
     out.flush();
     const bool write_succeeded = serialized_count > 0 && out.good();
     out.close();
@@ -4166,9 +4318,10 @@ void LLFloaterDirector::initializeSceneRecovery()
         service.mSettingConnections.emplace_back(control->getSignal()->connect(
             [](LLControlVariable*, const LLSD&, const LLSD&)
             {
-                // The Settings combo owns the preference; a previous notification
-                // ignore must never bypass a newly selected Ask mode.
+                // The Settings combo owns the preference; a previous notification ignore and its
+                // remembered answer must never bypass a newly selected mode.
                 LLNotifications::instance().setIgnored("DirectorRestoreRecovery", false);
+                LLNotifications::instance().clearSavedResponse("DirectorRestoreRecovery");
             }));
     }
     markSceneClean();
@@ -4258,7 +4411,7 @@ void LLFloaterDirector::sceneRecoveryIdle(void*)
     {
         bool live_waiting = false;
         for (const std::string& path : sUnmovedLiveBackups)
-            live_waiting = live_waiting || ALDirectorQol::liveRecoverySlot(gDirUtilp->getBaseFileName(path, false)) > 0;
+            live_waiting = live_waiting || ALDirectorQol::isLiveRecoveryFile(gDirUtilp->getBaseFileName(path, false));
         if (!live_waiting || sMoveRetriesLeft <= 0)
         {
             sRecoveryOfferPending = false;
@@ -4306,7 +4459,7 @@ void LLFloaterDirector::moveLiveBackupsAtLogin()
     bool live_found = false;
     for (const std::string& file : listFileNames(scenes, ".director_recovery*"))
     {
-        const bool live = ALDirectorQol::liveRecoverySlot(file) > 0;
+        const bool live = ALDirectorQol::isLiveRecoveryFile(file);
         // The previous build's kept backups migrate into crash_backups too, once (they are
         // never offered: they were already answered).
         if (live || ALDirectorQol::isLegacyKeptBackupName(file))
@@ -4330,7 +4483,7 @@ void LLFloaterDirector::moveLiveBackupsAtLogin()
             continue;
         }
         LL_INFOS("Director") << "Moved Director backup " << file << " to crash_backups/" << name << LL_ENDL;
-        if (ALDirectorQol::liveRecoverySlot(file) > 0)
+        if (ALDirectorQol::isLiveRecoveryFile(file))
             sLoginMovedNames.push_back(name);
     }
     sMoveRetriesLeft = sUnmovedLiveBackups.empty() ? 0 : MOVE_RETRIES;
@@ -4365,7 +4518,7 @@ void LLFloaterDirector::retryPendingBackupMoves()
         }
         LL_INFOS("Director") << "Moved Director backup " << file << " to crash_backups/" << name
                              << " (retry)" << LL_ENDL;
-        if (ALDirectorQol::liveRecoverySlot(file) > 0)
+        if (ALDirectorQol::isLiveRecoveryFile(file))
             sLoginMovedNames.push_back(name);
         moved_any = true;
         it = sUnmovedLiveBackups.erase(it);
@@ -4420,9 +4573,19 @@ void LLFloaterDirector::refreshRecoveryControls()
     const std::string dir = crashBackupsDir();
     const std::vector<std::string> names =
         ALDirectorQol::sortCrashBackupsNewestFirst(listFileNames(dir, "*.xml"));
+    // The signature covers each file's name, size, modification time and whether it can be read,
+    // so a file whose first read failed shows its scene name once it becomes readable.
     std::string signature;
     for (const std::string& name : names)
-        signature += name + "\n";
+    {
+        const std::string path = gDirUtilp->add(dir, name);
+        crashBackupSceneName(dir, name); // (re)tries an unread file on a slow timer
+        llstat status;
+        const bool have_stat = LLFile::stat(path, &status) == 0;
+        signature += name + "|" + (have_stat ? std::to_string((S64)status.st_size) : std::string("-")) + "|" +
+                     (have_stat ? std::to_string((S64)status.st_mtime) : std::string("-")) + "|" +
+                     (crashBackupNameReadable(name) ? "r" : "u") + "\n";
+    }
     if (signature != sCrashBackupSignature)
     {
         sCrashBackupSignature = signature;
@@ -4633,8 +4796,11 @@ void LLFloaterDirector::offerSceneRecovery()
         }
     }
     sRecoveryOfferActive = true;
+    // When the popup is disabled in Preferences LLNotifications answers it by replaying a saved
+    // response, with no user involved: remember that so the handler can never restore or delete then.
+    const bool replayed = LLNotifications::instance().getIgnored("DirectorRestoreRecovery");
     LLNotificationsUtil::add("DirectorRestoreRecovery",
-        LLSD().with("TIME", fileTimeLabel(path)), LLSD().with("path", path),
+        LLSD().with("TIME", fileTimeLabel(path)), LLSD().with("path", path).with("replayed", replayed),
         &LLFloaterDirector::onRecoveryResponse);
 }
 
@@ -4643,10 +4809,18 @@ void LLFloaterDirector::onRecoveryResponse(const LLSD& notification, const LLSD&
     sRecoveryOfferActive = false;
     const S32 option = LLNotificationsUtil::getSelectedOption(notification, response);
     const std::string path = notification["payload"]["path"].asString();
-    const S32 remembered = ALDirectorQol::rememberedRecoveryMode(option, response["ignore"].asBoolean());
+    const bool replayed = notification["payload"]["replayed"].asBoolean();
+    const bool remember = response["ignore"].asBoolean();
+    // A ticked "Don't ask me again" only sets the mode (Restore -> 1, Discard -> 2). A replayed
+    // answer implies the same mode; it is the stored copy of an earlier tick.
+    const S32 remembered = ALDirectorQol::rememberedRecoveryMode(option, remember);
     if (remembered >= 0)
         gSavedSettings.setS32("DirectorRecoveryMode", remembered);
-    switch (ALDirectorQol::promptAction(option))
+    // The mode setting carries "don't ask again". Do not also let LLNotifications disable the popup and
+    // store this answer for replay (save_option): a stored answer could otherwise act without the user.
+    if (LLNotificationPtr shown = LLNotifications::instance().find(notification["id"].asUUID()))
+        shown->setIgnored(false);
+    switch (ALDirectorQol::promptAction(option, remember, replayed))
     {
     case ALDirectorQol::PromptAction::RESTORE:
         {
@@ -4657,12 +4831,12 @@ void LLFloaterDirector::onRecoveryResponse(const LLSD& notification, const LLSD&
         }
         break;
     case ALDirectorQol::PromptAction::DISCARD:
-        // Only an explicit Discard deletes, and only the one backup this prompt described.
+        // Only an unticked Discard click deletes, and only the one backup this prompt described.
         if (!path.empty() && gDirUtilp->fileExists(path) && !removeBackupFile(path))
             recoveryToast("Couldn't delete that crash backup.");
         break;
     case ALDirectorQol::PromptAction::KEEP:
-        break; // closed / ignored / no saved response: the backup stays in crash_backups
+        break; // closed / ticked Discard / replayed: the backup stays in crash_backups
     }
     refreshRecoveryControls();
 }

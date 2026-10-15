@@ -13691,13 +13691,13 @@ Please note that &quot;Shared Environment&quot; and &quot;Day cycle based&quot; 
     <unique/>
     The Director autosaves your scene while you work. Your last unsaved scene was autosaved at [TIME], and the viewer closed before it was saved (for example a crash, a forced quit or a disconnect).
 
-Restore reloads that backup: cast, cameras, lights and looks. The backup is kept unless you press Discard, which deletes it. Closing this window keeps it. Every crash backup is listed in Director &gt; Settings.
+Restore reloads that backup: cast, cameras, lights and looks. Discard deletes it. If &apos;Don&apos;t ask me again&apos; is ticked, it is kept, and later backups are kept without asking (restore them from Director &gt; Settings). Closing this window keeps it.
     <tag>confirm</tag>
     <form name="form">
-      <ignore name="ignore" save_option="true" text="Restore an unsaved Director scene"
+      <ignore name="ignore" save_option="true" text="Offer to restore an unsaved Director scene (when disabled, the backup is kept)"
        checkbox_label="Don&apos;t ask me again (change this in Director &gt; Settings)"/>
       <button default="true" index="0" name="Restore" text="Restore" ignore="Restore automatically"/>
-      <button index="1" name="Discard" text="Discard" ignore="Don&apos;t restore (keep later backups)"/>
+      <button index="1" name="Discard" text="Discard" ignore="Don&apos;t restore (keep this and later backups)"/>
     </form>
   </notification>
 
