@@ -196737,8 +196737,7 @@
    "exercise": "select_item",
    "test_value": {
     "item_index": 1,
-    "label": "Demons",
-    "value": "1"
+    "resolve": "runtime"
    },
    "expect": {
     "callback": "LLFloaterDirector::bindSteppedPage",
@@ -196754,16 +196753,7 @@
    "min": null,
    "max": null,
    "increment": null,
-   "combo_items": [
-    {
-     "label": "Hunters",
-     "value": "0"
-    },
-    {
-     "label": "Demons",
-     "value": "1"
-    }
-   ],
+   "combo_items": [],
    "binding": "code",
    "link_to": null,
    "shortcut_of": null,
@@ -221291,8 +221281,6 @@
    "sa_group_offset_item_2",
    "sa_group_offset_item_3",
    "sa_group_pick",
-   "sa_group_pick_item_0",
-   "sa_group_pick_item_1",
    "sa_impact",
    "sa_impact_threshold",
    "sa_impact_ticks",
