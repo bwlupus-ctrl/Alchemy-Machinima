@@ -1258,6 +1258,7 @@ bool LLViewerInput::mouseFromString(const std::string& string, EMouseClickType *
 
 bool LLViewerInput::handleKey(KEY translated_key, MASK translated_mask, bool repeated)
 {
+    if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     // check for re-map
     EKeyboardMode mode = gViewerInput.getMode();
     U32 keyidx = (translated_mask<<16) | translated_key;
@@ -1296,6 +1297,7 @@ bool LLViewerInput::handleKey(KEY translated_key, MASK translated_mask, bool rep
 
 bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)
 {
+    if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     return gViewerWindow->handleKeyUp(translated_key, translated_mask);
 }
 
@@ -1811,6 +1813,7 @@ bool LLViewerInput::scanKey(KEY key, bool key_down, bool key_up, bool key_level)
 
 bool LLViewerInput::handleMouse(LLWindow *window_impl, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down)
 {
+    if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     bool is_toolmgr_action = false;
     bool handled = gViewerWindow->handleAnyMouseClick(window_impl, pos, mask, clicktype, down, is_toolmgr_action);
 

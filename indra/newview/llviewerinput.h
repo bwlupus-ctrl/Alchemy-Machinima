@@ -75,6 +75,20 @@ typedef enum e_keyboard_mode
     MODE_COUNT
 } EKeyboardMode;
 
+// RAII marker: the functional self-test wraps each synthetic event it delivers in one of these.
+// Process-local depth counter; it cannot stick (destructor).  Not copyable.
+class LLSyntheticInputScope
+{
+public:
+    LLSyntheticInputScope() { ++sDepth; }
+    ~LLSyntheticInputScope() { --sDepth; }
+    LLSyntheticInputScope(const LLSyntheticInputScope&) = delete;
+    LLSyntheticInputScope& operator=(const LLSyntheticInputScope&) = delete;
+    static bool active() { return sDepth > 0; }
+private:
+    static inline S32 sDepth = 0;
+};
+
 class LLViewerInput : public LLKeyBindingToStringHandler
 {
 public:
@@ -133,6 +147,10 @@ public:
     // in-world functional self-test launch, so a normal session never has it.
     void            setWorldInputSuspended(bool suspended) { mWorldInputSuspended = suspended; }
     bool            worldInputSuspended() const { return mWorldInputSuspended; }
+    // While world input is suspended, EVERY native (OS) mouse / wheel / key / char / drop /
+    // focus / activation event is ignored; only events delivered inside an
+    // LLSyntheticInputScope (the harness own, UI-only injections) are processed.
+    bool            dropsNativeInput() const;
 
     S32             loadBindingsXML(const std::string& filename);                                       // returns number bound, 0 on error
     EKeyboardMode   getMode() const;
@@ -210,6 +228,11 @@ private:
     bool            mGlobalBindsSuspended = false;  // self-test: global key/mouse binds disabled
     bool            mWorldInputSuspended = false;   // self-test: world hover + menu/gesture key routing disabled
 };
+
+inline bool LLViewerInput::dropsNativeInput() const
+{
+    return mWorldInputSuspended && !LLSyntheticInputScope::active();
+}
 
 extern LLViewerInput gViewerInput;
 

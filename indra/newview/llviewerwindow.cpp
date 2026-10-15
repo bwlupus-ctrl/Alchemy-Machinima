@@ -1137,6 +1137,12 @@ bool LLViewerWindow::dropToolMouseCaptureWhileWorldSuspended()
     LLMouseHandler* captor = gFocusMgr.getMouseCapture();
     if (!captor || dynamic_cast<LLView*>(captor)) return false;
     gFocusMgr.removeMouseCaptureWithoutCallback(captor);
+    // The callback was skipped on purpose (it can send ObjectGrabUpdate / ObjectDeGrab), so
+    // forget the grab state locally instead; nothing is sent.
+    if (dynamic_cast<LLToolGrabBase*>(captor))
+    {
+        LLToolGrab::getInstance()->resetStateWithoutSending();
+    }
     if (mWindow) mWindow->setMouseClipping(false);
     return true;
 }
@@ -1144,6 +1150,14 @@ bool LLViewerWindow::dropToolMouseCaptureWhileWorldSuspended()
 bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down, bool& is_toolmgr_action)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    // Functional self-test (in-world): native clicks are ignored entirely; the harness own
+    // marked clicks are LEFT single clicks only (no right/middle/double/extra-button path, so
+    // no pie menu, no world double-click action, no empty-pick deselect).
+    if (gViewerInput.worldInputSuspended() &&
+        (gViewerInput.dropsNativeInput() || clicktype != CLICK_LEFT))
+    {
+        return true;
+    }
     dropToolMouseCaptureWhileWorldSuspended();
     const char* buttonname = "";
     const char* buttonstatestr = "";
@@ -1343,6 +1357,7 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
 
 bool LLViewerWindow::handleMouseDown(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     mAllowMouseDragging = false;
     if (!mMouseDownTimer.getStarted())
@@ -1360,6 +1375,7 @@ bool LLViewerWindow::handleMouseDown(LLWindow *window,  LLCoordGL pos, MASK mask
 
 bool LLViewerWindow::handleDoubleClick(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     // try handling as a double-click first, then a single-click if that
     // wasn't handled.
     bool down = true;
@@ -1372,6 +1388,7 @@ bool LLViewerWindow::handleDoubleClick(LLWindow *window,  LLCoordGL pos, MASK ma
 
 bool LLViewerWindow::handleMouseUp(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (mMouseDownTimer.getStarted())
     {
@@ -1382,18 +1399,21 @@ bool LLViewerWindow::handleMouseUp(LLWindow *window,  LLCoordGL pos, MASK mask)
 }
 bool LLViewerWindow::handleRightMouseDown(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     bool down = true;
     return gViewerInput.handleMouse(window, pos, mask, CLICK_RIGHT, down);
 }
 
 bool LLViewerWindow::handleRightMouseUp(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     bool down = false;
     return gViewerInput.handleMouse(window, pos, mask, CLICK_RIGHT, down);
 }
 
 bool LLViewerWindow::handleMiddleMouseDown(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     bool down = true;
     gViewerInput.handleMouse(window, pos, mask, CLICK_MIDDLE, down);
 
@@ -1406,6 +1426,9 @@ LLWindowCallbacks::DragNDropResult LLViewerWindow::handleDragNDrop(LLWindow *win
                                                                    LLWindowCallbacks::DragNDropType type, const std::vector<std::string>& data)
 {
     LLWindowCallbacks::DragNDropResult result = LLWindowCallbacks::DND_NONE;
+    // Functional self-test (in-world): no drag-and-drop at all (SLURL dispatch, file upload,
+    // media drop), even for marked events -- the harness never needs one.
+    if (gViewerInput.worldInputSuspended()) return result;
     switch (type)
     {
         case LLWindowCallbacks::DNDT_FILE:
@@ -1790,6 +1813,7 @@ LLWindowCallbacks::DragNDropResult LLViewerWindow::handleDragNDropFile(LLWindow 
 
 bool LLViewerWindow::handleMiddleMouseUp(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     bool down = false;
     gViewerInput.handleMouse(window, pos, mask, CLICK_MIDDLE, down);
 
@@ -1799,6 +1823,7 @@ bool LLViewerWindow::handleMiddleMouseUp(LLWindow *window,  LLCoordGL pos, MASK 
 
 bool LLViewerWindow::handleOtherMouse(LLWindow *window, LLCoordGL pos, MASK mask, S32 button, bool down)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     switch (button)
     {
     case 4:
@@ -1828,6 +1853,7 @@ bool LLViewerWindow::handleOtherMouseUp(LLWindow *window, LLCoordGL pos, MASK ma
 // WARNING: this is potentially called multiple times per frame
 void LLViewerWindow::handleMouseMove(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     S32 x = pos.mX;
     S32 y = pos.mY;
 
@@ -1864,6 +1890,7 @@ void LLViewerWindow::handleMouseMove(LLWindow *window,  LLCoordGL pos, MASK mask
 
 void LLViewerWindow::handleMouseDragged(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     if (mMouseDownTimer.getStarted())
     {
         if (mMouseDownTimer.getElapsedTimeF32() > 0.1)
@@ -1880,6 +1907,7 @@ void LLViewerWindow::handleMouseDragged(LLWindow *window,  LLCoordGL pos, MASK m
 
 void LLViewerWindow::handleMouseLeave(LLWindow *window)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     // SDL3 delivers SDL_EVENT_WINDOW_MOUSE_LEAVE whenever the cursor crosses
     // the window edge, including while we have capture (e.g. mid-drag). In
     // that case the mouse is still logically ours, so don't drop the
@@ -1951,6 +1979,7 @@ void LLViewerWindow::handleResize(LLWindow *window,  S32 width,  S32 height)
 // The top-level window has gained focus (e.g. via ALT-TAB)
 void LLViewerWindow::handleFocus(LLWindow *window)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     gFocusMgr.setAppHasFocus(true);
     LLModalDialog::onAppFocusGained();
 
@@ -1971,6 +2000,7 @@ void LLViewerWindow::handleFocus(LLWindow *window)
 // The top-level window has lost focus (e.g. via ALT-TAB)
 void LLViewerWindow::handleFocusLost(LLWindow *window)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     gFocusMgr.setAppHasFocus(false);
     //LLModalDialog::onAppFocusLost();
     LLToolMgr::getInstance()->onAppFocusLost();
@@ -2001,6 +2031,7 @@ void LLViewerWindow::handleFocusLost(LLWindow *window)
 
 bool LLViewerWindow::handleTranslatedKeyDown(KEY key,  MASK mask, bool repeated)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     // Handle non-consuming global keybindings, like voice
     // Never affects event processing.
     gViewerInput.handleGlobalBindsKeyDown(key, mask);
@@ -2033,6 +2064,7 @@ bool LLViewerWindow::handleTranslatedKeyDown(KEY key,  MASK mask, bool repeated)
 
 bool LLViewerWindow::handleTranslatedKeyUp(KEY key,  MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     // Handle non-consuming global keybindings, like voice
     // Never affects event processing.
     gViewerInput.handleGlobalBindsKeyUp(key, mask);
@@ -2049,6 +2081,7 @@ bool LLViewerWindow::handleTranslatedKeyUp(KEY key,  MASK mask)
 
 void LLViewerWindow::handleScanKey(KEY key, bool key_down, bool key_up, bool key_level)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     LLViewerJoystick::getInstance()->setCameraNeedsUpdate(true);
     gViewerInput.scanKey(key, key_down, key_up, key_level);
     return; // Be clear this function returns nothing
@@ -2059,6 +2092,7 @@ void LLViewerWindow::handleScanKey(KEY key, bool key_down, bool key_up, bool key
 
 bool LLViewerWindow::handleActivate(LLWindow *window, bool activated)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     if (activated)
     {
         mActive = true;
@@ -2095,6 +2129,7 @@ bool LLViewerWindow::handleActivate(LLWindow *window, bool activated)
 
 bool LLViewerWindow::handleActivateApp(LLWindow *window, bool activating)
 {
+    if (gViewerInput.dropsNativeInput()) return false; // functional self-test: real OS input is ignored
     //if (!activating) gAgentCamera.changeCameraToDefault();
 
     LLViewerJoystick::getInstance()->setNeedsReset(true);
@@ -2153,26 +2188,31 @@ bool LLViewerWindow::handlePaint(LLWindow *window,  S32 x,  S32 y, S32 width,  S
 
 void LLViewerWindow::handleScrollWheel(LLWindow *window,  LLScrollDelta delta)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     handleScrollWheel( delta );
 }
 
 void LLViewerWindow::handleScrollHWheel(LLWindow *window,  LLScrollDelta delta)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     handleScrollHWheel(delta);
 }
 
 void LLViewerWindow::handleWindowBlock(LLWindow *window)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     send_agent_pause();
 }
 
 void LLViewerWindow::handleWindowUnblock(LLWindow *window)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     send_agent_resume();
 }
 
 void LLViewerWindow::handleDataCopy(LLWindow *window, S32 data_type, void *data)
 {
+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored
     const S32 SLURL_MESSAGE_TYPE = 0;
     switch (data_type)
     {
@@ -3298,6 +3338,7 @@ void LLViewerWindow::draw()
 // Takes a single keyup event, usually when UI is visible
 bool LLViewerWindow::handleKeyUp(KEY key, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     if (LLSetKeyBindDialog::recordKey(key, mask, false))
     {
         LL_DEBUGS() << "KeyUp handled by LLSetKeyBindDialog" << LL_ENDL;
@@ -3360,6 +3401,7 @@ bool LLViewerWindow::handleKeyUp(KEY key, MASK mask)
 // Takes a single keydown event, usually when UI is visible
 bool LLViewerWindow::handleKey(KEY key, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     // hide tooltips on keypress
     LLToolTipMgr::instance().blockToolTips();
 
@@ -3718,6 +3760,7 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
 
 bool LLViewerWindow::handleUnicodeChar(llwchar uni_char, MASK mask)
 {
+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     // HACK:  We delay processing of return keys until they arrive as a Unicode char,
     // so that if you're typing chat text at low frame rate, we don't send the chat
     // until all keystrokes have been entered. JC

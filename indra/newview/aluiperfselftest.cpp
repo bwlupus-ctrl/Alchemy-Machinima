@@ -101,6 +101,7 @@
 #include "lltoast.h"
 #include "llviewercontrol.h"
 #include "llviewerinput.h"
+#include "lltoolgrab.h"
 #include "llviewerobjectlist.h"
 #include "llviewershadermgr.h"
 #include "llviewerwindow.h"
@@ -4738,6 +4739,7 @@ private:
         // Never move the synthetic mouse while a tool holds the capture (it would receive
         // the motion, e.g. ObjectGrabUpdate).  Dropped without the tool's callback.
         gViewerWindow->dropToolMouseCaptureWhileWorldSuspended();
+        LLSyntheticInputScope synthetic; // marks this as the harness own event (RAII)
         gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), position, MASK_NONE);
     }
 
@@ -4750,6 +4752,7 @@ private:
             if (!reason.empty()) mFunctionalLastClickReason = reason;
             return false;
         }
+        LLSyntheticInputScope synthetic; // marks this as the harness own event (RAII)
         return gViewerWindow->handleAnyMouseClick(
             gViewerWindow->getWindow(), position, MASK_NONE, CLICK_LEFT, down, toolmgr);
     }
@@ -7901,8 +7904,11 @@ private:
     }
 
     // Disable the idle-away timeout for the run (0 = never; llappviewer.cpp idle_afk_check
-    // and LLViewerWindow::handleActivate both honour it).  Active value only: the settings
-    // snapshot restores it on every teardown path, and nothing is saved.
+    // and LLViewerWindow::handleActivate both honour it).  Active value only, nothing is
+    // saved, and it is NOT restored in memory during teardown (restoreSettingsSnapshot skips
+    // it in-world; idle_afk_check also never fires while world input is suspended): a
+    // blocked logout must not let the idle timer send the away animation.  The persisted
+    // value comes back from the wrapper's user_settings file restore.
     // ui-draw-lint: allow-function(setting,setting-write) fail-closed AFK inhibit for the in-world run
     bool inhibitFunctionalAfk()
     {
@@ -10267,6 +10273,10 @@ private:
         for (const auto& entry : mSettingsSnapshot)
         {
             if (!isRestoredSetting(entry.first)) continue;
+            // In-world, AFKTimeout stays 0 in memory until process exit: a blocked logout
+            // must never let the idle timer send the away animation.  The persisted value
+            // comes back from the user_settings file restore, never from this teardown.
+            if (mInWorld && entry.first == "AFKTimeout") continue;
             LLControlVariable* control = gSavedSettings.getControl(entry.first).get();
             if (!control) continue;
             const SavedControlState& saved = entry.second;
@@ -13360,6 +13370,8 @@ void ALUIPerfSelfTest::quitAborted()
     {
         gViewerInput.setGlobalBindsSuspended(false);
         gViewerInput.setWorldInputSuspended(false);
+        // A grab whose capture was dropped without its callback must not resume half-done.
+        LLToolGrab::getInstance()->resetStateWithoutSending();
     }
 }
 

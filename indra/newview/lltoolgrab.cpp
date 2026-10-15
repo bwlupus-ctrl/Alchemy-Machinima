@@ -1100,6 +1100,15 @@ void LLToolGrabBase::onMouseCaptureLost()
 }
 
 
+void LLToolGrabBase::resetStateWithoutSending()
+{
+    mMode = GRAB_INACTIVE;
+    mSpinGrabbing = false;
+    mHideBuildHighlight = false;
+    mHasMoved = false;
+    mGrabPick.mObjectID.setNull();
+}
+
 void LLToolGrabBase::stopGrab()
 {
     LLViewerObject* objectp = mGrabPick.getObject();

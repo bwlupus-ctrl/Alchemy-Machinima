@@ -549,6 +549,16 @@ void idle_afk_check()
         return;
     }
 
+    // Functional self-test (in-world): the session is never allowed to go Away on its own --
+    // not during the run, not during teardown, and not if the logout is blocked by a dialog.
+    // Independent of the AFKTimeout setting (and of an RLV allowidle restriction), which the
+    // run restores or cannot change.  Never set in a normal session.
+    if (gViewerInput.worldInputSuspended())
+    {
+        gAwayTriggerTimer.reset();
+        return;
+    }
+
     // check idle timers
     F32 current_idle = gAwayTriggerTimer.getElapsedTimeF32();
     static LLCachedControl<S32> afk_timeout_cc(gSavedSettings, "AFKTimeout", 300);

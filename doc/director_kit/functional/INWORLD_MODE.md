@@ -103,10 +103,18 @@ Projector cards. Otherwise those card rows are skipped with
 the created camera, bindings, and all row edits are removed.
 
 The C++ settings/rig snapshots are restored before normal quit. The PowerShell
-wrapper separately backs up and byte-verifies only `settings*.xml` beneath
-`user_settings` and `%APPDATA%\AlchemyMachinima\5kvideoeye_resident`; it never
-touches `bin_conf.dat` and never replaces those directories, so chat/IM logs
-and other files created during the run survive. The animation switcher
+wrapper separately backs up and byte-verifies a fixed restore set: in
+`%APPDATA%\AlchemyMachinima\user_settings` the root `settings*.xml`, the root user-data
+files `diopter_custom.llsd*`, `diopter_kal_custom.llsd*`, `light_intensity_presets.xml*`,
+`tracked_regions.xml*` and the user-data folders `presets`, `cinematic_presets`,
+`cine_light_rig`, `cine_light_rig_cues`, `director_scenes`, `weather_presets`, `windlight`,
+`poses`, `director_presets`, `colorlut`; and in `5kvideoeye_resident` ONLY the root-level
+`settings*.xml` (today `settings_per_account.xml`), overwrite-only. Nothing else in the
+account folder (chat/IM transcripts, logs, caches, every other file) is ever read,
+overwritten or deleted, and no account file is deleted at all. Unchanged files are not
+rewritten; each restore action is logged (`restore: ...`). The wrapper never touches
+`bin_conf.dat`. `ui_selftest.ps1 -Functional -InWorld -Account 5kvideoeye -ListRestoreSet`
+prints the exact set (names and sizes, no writes, no viewer start). The animation switcher
 `saveBank()` writes `DirectorAnimSwitcherBank` through `gSavedSettings`, so its
 per-account/settings XML persistence is covered by that backup and restore.
 Output is the usual
@@ -198,6 +206,24 @@ the whole run (login, in-world, teardown and logout):
    `LLAppViewer::abortQuit`), `ALUIPerfSelfTest::quitAborted` lifts both flags when no
    runner is left. The harness does not answer a logout-blocking dialog; an uncancelled
    one is ended by the wrapper's timeout and hard-kill grace.
+
+7. **Native input is ignored entirely.** While the world flag is set every native (OS) event is
+   dropped at its `LLViewerWindow` / `LLViewerInput` entry: mouse down/up/double/right/middle/
+   extra buttons, move, drag, leave, wheel and h-wheel, translated key down/up, scan keys, chars,
+   focus, focus lost, activate / activate-app, window block/unblock, `WM_COPYDATA` SLURLs.
+   Only events delivered inside an `LLSyntheticInputScope` (RAII depth counter, so it cannot
+   stick) are processed, and the harness wraps exactly its own mouse move and left click in it.
+   Even marked events never take a right/middle/double/extra-button click, and drag-and-drop
+   (SLURL dispatch, file upload, media drop) is off unconditionally. Not covered: joystick /
+   XInput gamepad axes (an idle device sends nothing).
+8. **Away / AFK through teardown.** `idle_afk_check` returns early (resetting the idle timer)
+   while world input is suspended, regardless of `AFKTimeout` or an RLV allowidle limit, and
+   `restoreSettingsSnapshot` leaves the in-memory `AFKTimeout=0` alone in-world, so a logout
+   blocked by a dialog can never trigger the away animation. The persisted value comes back
+   from the wrapper's `user_settings` restore. A cancelled logout (`abortQuit`) clears the
+   flags and resets the grab tool state locally without sending.
+9. **Text links.** The harness never clicks text; LLUrl actions (open/profile/IM) are only
+   reachable by native clicks, which item 7 drops.
 
 Injection routes (every one in `aluiperfselftest.cpp`):
 

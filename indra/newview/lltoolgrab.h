@@ -86,6 +86,10 @@ public:
 
     void setClickedInMouselook(bool is_clickedInMouselook) {mClickedInMouselook = is_clickedInMouselook;}
 
+    // Functional self-test only: forget an in-progress grab WITHOUT sending anything
+    // (no ObjectDeGrab / ObjectGrabUpdate).  Used when its mouse capture was dropped.
+    void resetStateWithoutSending();
+
     static void     pickCallback(const LLPickInfo& pick_info);
 private:
     LLVector3d      getGrabPointGlobal();
