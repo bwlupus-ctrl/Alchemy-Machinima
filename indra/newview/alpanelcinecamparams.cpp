@@ -506,27 +506,7 @@ bool ALPanelCineCamParams::postBuild()
 
     // Watch every setting a preset stores (process-wide, connected once): an edit that
     // moves one off the preset's value clears the active preset name.
-    static bool sPresetWatchConnected = false;
-    if (!sPresetWatchConnected)
-    {
-        sPresetWatchConnected = true;
-        std::vector<std::string> tracked = sharedSettings();
-        for (const ModeEntry& entry : modeTable())
-        {
-            tracked.insert(tracked.end(), entry.mSettings.begin(), entry.mSettings.end());
-        }
-        for (const std::string& setting : tracked)
-        {
-            if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
-            {
-                sPresetWatch.push_back(ctrl->getSignal()->connect(
-                    [setting](LLControlVariable* changed, const LLSD&, const LLSD&)
-                    {
-                        onPresetTrackedChanged(setting, changed->getValue());
-                    }));
-            }
-        }
-    }
+    ensurePresetWatchers();
 
     updateModePanel();
     refreshPresetList();
@@ -832,6 +812,7 @@ bool ALPanelCineCamParams::savePresetCallback(const LLSD& notification, const LL
 
 void ALPanelCineCamParams::writePreset(const std::string& name)
 {
+    ensurePresetWatchers(); // the name set below must be guarded from its first edit
     LLSD settings = LLSD::emptyMap();
     auto capture = [&settings](const std::string& setting)
     {
@@ -883,8 +864,37 @@ void ALPanelCineCamParams::onPresetSelected()
 }
 
 //static
+void ALPanelCineCamParams::ensurePresetWatchers()
+{
+    static bool sConnected = false;
+    if (sConnected)
+    {
+        return;
+    }
+    sConnected = true;
+    std::vector<std::string> tracked = sharedSettings();
+    for (const ModeEntry& entry : modeTable())
+    {
+        tracked.insert(tracked.end(), entry.mSettings.begin(), entry.mSettings.end());
+    }
+    for (const std::string& setting : tracked)
+    {
+        if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+        {
+            // captures the setting name only (no 'this'): valid for the process lifetime
+            sPresetWatch.push_back(ctrl->getSignal()->connect(
+                [setting](LLControlVariable* changed, const LLSD&, const LLSD&)
+                {
+                    onPresetTrackedChanged(setting, changed->getValue());
+                }));
+        }
+    }
+}
+
+//static
 void ALPanelCineCamParams::applyPreset(const std::string& name)
 {
+    ensurePresetWatchers(); // connected before the name is set below; the apply loop's writes stay ignored via sApplyingPreset
     const std::string path = presetPath(name);
     llifstream in(path.c_str());
     if (!in.is_open())

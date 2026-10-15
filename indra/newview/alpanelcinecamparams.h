@@ -103,6 +103,11 @@ private:
                               const std::string name);
     void writePreset(const std::string& name);
     static void applyPreset(const std::string& name);
+    // Connects, once per process, the change signals of every preset-tracked setting so an
+    // edit that leaves the active preset's value clears the active name. Called from every
+    // path that sets the name (applyPreset, writePreset) and from postBuild; Director v2 has
+    // no panel instance, so postBuild alone never connects them there.
+    static void ensurePresetWatchers();
     static std::string sActivePresetName;
 
     LLComboBox* mPresetCombo = nullptr;
