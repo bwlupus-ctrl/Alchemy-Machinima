@@ -53,7 +53,11 @@ template<> template<> void director_qol_object::test<3>()
     ensure_equals("pid parse is case-insensitive", ALDirectorQol::liveRecoveryPid(".Director_Recovery-P77.XML"), 77);
     for (const char* bad : {".director_recovery.xml", ".director_recovery-p.xml", ".director_recovery-p0.xml",
                             ".director_recovery-p012.xml", ".director_recovery-px.xml", ".director_recovery-p12x.xml",
-                            ".director_recovery-p12.xml.tmp", ".director_recovery-p1234567890.xml",
+                            ".director_recovery-p12.xml.tmp", ".director_recovery-p12345678901.xml",
+                            ".director_recovery-p2147483648.xml", ".director_recovery-p9999999999.xml",
+                            ".director_recovery-p12.xml.lock", ".director_recovery-p12-0.xml",
+                            ".director_recovery-p12-.xml", ".director_recovery-p12-01.xml",
+                            ".director_recovery-p12-1234567.xml", ".director_recovery-p12-x.xml",
                             ".director_recovery_kept.xml", ".director_recovery-12-20261015090703.xml", "scene.xml"})
         ensure_equals(std::string("not a pid name: ") + bad, ALDirectorQol::liveRecoveryPid(bad), 0);
 
@@ -316,5 +320,69 @@ template<> template<> void director_qol_object::test<10>()
     ensure("a modification-time change changes the key", base != ALDirectorQol::backupFileKey("scene-20261005-090703.xml", 1234, 1001));
     ensure("a different file changes the key", base != ALDirectorQol::backupFileKey("scene-20261005-090704.xml", 1234, 1000));
     ensure("size and mtime fields cannot be confused", ALDirectorQol::backupFileKey("a.xml", 12, 3) != ALDirectorQol::backupFileKey("a.xml", 1, 23));
+}
+
+// Liveness, pid width, the own-pid stale file, and the dedupe decision.
+template<> template<> void director_qol_object::test<11>()
+{
+    // The parser accepts the full width the writer can produce (S32 max has 10 digits), and nothing wider.
+    ensure_equals("10-digit pid (S32 max) round-trips", ALDirectorQol::liveRecoveryPid(
+                  ALDirectorQol::liveRecoveryFileName(ALDirectorQol::kMaxLiveRecoveryPid)), ALDirectorQol::kMaxLiveRecoveryPid);
+    ensure_equals("S32 max is 10 digits", ALDirectorQol::liveRecoveryFileName(2147483647),
+                  std::string(".director_recovery-p2147483647.xml"));
+    ensure_equals("a 9-digit pid parses", ALDirectorQol::liveRecoveryPid(".director_recovery-p123456789.xml"), 123456789);
+    ensure_equals("a 10-digit pid parses", ALDirectorQol::liveRecoveryPid(".director_recovery-p1234567890.xml"), 1234567890);
+    ensure_equals("a pid above S32 max is not a name", ALDirectorQol::liveRecoveryPid(".director_recovery-p2147483648.xml"), 0);
+    ensure_equals("an 11-digit pid is not a name", ALDirectorQol::liveRecoveryPid(".director_recovery-p12345678901.xml"), 0);
+    ensure_equals("the -<n> variant keeps the pid", ALDirectorQol::liveRecoveryPid(".director_recovery-p4321-2.xml"), 4321);
+    ensure_equals("variant name round-trips", ALDirectorQol::liveRecoveryPid(ALDirectorQol::liveRecoveryFileName(4321, 17)), 4321);
+    ensure_equals("counter 0 is the plain name", ALDirectorQol::liveRecoveryFileName(4321, 0), ALDirectorQol::liveRecoveryFileName(4321));
+    ensure("a variant is a live file", ALDirectorQol::isLiveRecoveryFile(".director_recovery-p4321-1.xml"));
+
+    // Live-file classification: lock files are never live files (so never backups), and are recognised on their own.
+    for (const char* lock : {".director_recovery-p4321.xml.lock", ".director_recovery-p4321-1.xml.lock",
+                             ".director_recovery.xml.lock", ".Director_Recovery-P4321.XML.LOCK"})
+    {
+        ensure(std::string("lock is not a live file: ") + lock, !ALDirectorQol::isLiveRecoveryFile(lock));
+        ensure(std::string("lock is not collected: ") + lock, !ALDirectorQol::isPreviousSessionLiveFile(lock, 1, false));
+        ensure_equals(std::string("lock has no pid: ") + lock, ALDirectorQol::liveRecoveryPid(lock), 0);
+        ensure(std::string("lock is a lock file: ") + lock, ALDirectorQol::isLiveRecoveryLockFile(lock));
+    }
+    for (const char* other : {".director_recovery-p4321.xml", ".lock", "scene.xml.lock", "scene.lock",
+                              ".director_recovery_kept.xml.lock", ".director_recovery-p4321.lock"})
+        ensure(std::string("not a live lock file: ") + other, !ALDirectorQol::isLiveRecoveryLockFile(other));
+    ensure_equals("lock name is the live name plus .lock", ALDirectorQol::liveRecoveryLockName(".director_recovery-p4321.xml"),
+                  std::string(".director_recovery-p4321.xml.lock"));
+    ensure("a lock file is not a reserved-name hole: it is hidden by the leading dot",
+           ALDirectorQol::isReservedSceneName(".director_recovery-p4321.xml.lock"));
+    ensure("a lock file is not a crash backup name", !ALDirectorQol::parseCrashBackupName(".director_recovery-p4321.xml.lock").valid);
+
+    // Own-pid stale file: autosave never writes over it.
+    const S32 mine = 4321;
+    ensure_equals("no leftover: the plain pid name", ALDirectorQol::ownLiveRecoveryName(mine, {}),
+                  std::string(".director_recovery-p4321.xml"));
+    ensure_equals("other viewers' files do not matter", ALDirectorQol::ownLiveRecoveryName(mine,
+                  {".director_recovery-p77.xml", ".director_recovery.xml"}), std::string(".director_recovery-p4321.xml"));
+    ensure_equals("a stale same-pid file moves us to -1", ALDirectorQol::ownLiveRecoveryName(mine,
+                  {".director_recovery-p4321.xml"}), std::string(".director_recovery-p4321-1.xml"));
+    ensure_equals("compared case-insensitively", ALDirectorQol::ownLiveRecoveryName(mine,
+                  {".DIRECTOR_RECOVERY-P4321.XML"}), std::string(".director_recovery-p4321-1.xml"));
+    ensure_equals("taken variants are skipped", ALDirectorQol::ownLiveRecoveryName(mine,
+                  {".director_recovery-p4321.xml", ".director_recovery-p4321-1.xml", ".director_recovery-p4321-2.xml"}),
+                  std::string(".director_recovery-p4321-3.xml"));
+    ensure("the chosen name is a live file of our pid",
+           ALDirectorQol::liveRecoveryPid(ALDirectorQol::ownLiveRecoveryName(mine, {".director_recovery-p4321.xml"})) == mine);
+    ensure("the chosen name never equals an existing file", ALDirectorQol::ownLiveRecoveryName(mine,
+           {".director_recovery-p4321.xml"}) != ".director_recovery-p4321.xml");
+    ensure("a leftover variant is collected at the next login",
+           ALDirectorQol::isPreviousSessionLiveFile(".director_recovery-p4321-1.xml", mine, false));
+
+    // Dedupe: sizes AND contents must match. Equal size / mtime alone never deletes anything.
+    ensure("equal size and equal contents is a duplicate", ALDirectorQol::backupIsDuplicate(1000, 1000, true));
+    ensure("equal size but different contents is not a duplicate", !ALDirectorQol::backupIsDuplicate(1000, 1000, false));
+    ensure("different sizes are never duplicates", !ALDirectorQol::backupIsDuplicate(1000, 1001, true));
+    ensure("different sizes and contents are not duplicates", !ALDirectorQol::backupIsDuplicate(1000, 999, false));
+    ensure("an empty pair with equal contents flag is a duplicate", ALDirectorQol::backupIsDuplicate(0, 0, true));
+    ensure("an unknown size is never a duplicate", !ALDirectorQol::backupIsDuplicate(-1, -1, true));
 }
 } // namespace tut

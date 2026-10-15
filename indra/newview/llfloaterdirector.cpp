@@ -100,6 +100,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <ctime>
 #include <set>
 #include <sstream>
@@ -109,8 +110,9 @@
 #include "llwin32headers.h"   // MoveFileExW, GetCurrentProcessId
 #else
 #include <errno.h>
-#include <fcntl.h>            // AT_FDCWD
+#include <fcntl.h>            // AT_FDCWD, open
 #include <stdio.h>            // renamex_np / RENAME_EXCL (macOS)
+#include <sys/file.h>         // flock (live-file ownership locks)
 #include <sys/syscall.h>      // SYS_renameat2 (Linux)
 #include <unistd.h>           // link / unlink / getpid / syscall
 #endif
@@ -191,6 +193,7 @@ constexpr S32 RESTORE_MISSING = 1;     // the file is gone
 constexpr S32 RESTORE_UNREADABLE = 2;  // could not be opened or read: kept untouched
 constexpr S32 RESTORE_DAMAGED = 3;     // opened, read fully and does not parse: set aside as .corrupt
 constexpr S32 RESTORE_FAILED = 4;      // parsed but the scene would not load: kept
+constexpr S32 RESTORE_TOO_LARGE = 5;   // over ALDirectorQol::kDirectorSceneMaxBytes: never read, kept
 
 enum class ReadResult
 {
@@ -347,6 +350,130 @@ S32 currentProcessId()
 #endif
 }
 
+// ---------------------------------------------------------------------------
+// Live-file ownership locks (liveness of another viewer's autosave).
+//
+// scenesDir() is shared by every viewer on the machine, so a live autosave file that is not ours may belong
+// to a viewer that is still RUNNING; it must not be collected into crash_backups (that would even auto-restore
+// one viewer's scene into another). A pid check cannot tell (pids are reused), so ownership is a held lock:
+// each viewer creates "<its live file>.lock" and keeps it open EXCLUSIVELY for its whole session. The OS
+// drops the lock when the process dies, however it dies. The collector tries to take the same lock: if it
+// cannot, a running viewer owns the file and it is SKIPPED; if it can, the owner is dead and the file is
+// collected. Lock files are never backups (isLiveRecoveryFile does not match them).
+//   Windows: CreateFileW with dwShareMode = 0 and FILE_FLAG_DELETE_ON_CLOSE (the lock file vanishes when the
+//            handle closes, including when the process dies).
+//   POSIX:   open + flock(LOCK_EX | LOCK_NB); the file is unlinked while the lock is still held.
+// Any failure leans toward SKIPPING a file for now (it is collected at a later login), never toward
+// collecting a live viewer's file. Failing to take OUR lock only logs: autosave still runs.
+// ---------------------------------------------------------------------------
+enum class LockResult
+{
+    ACQUIRED,
+    HELD,   // another process holds it: the file's owner is running
+    FAILED  // could not tell (e.g. the lock file cannot be created); treated like HELD by the collector
+};
+
+struct LiveLock
+{
+#if LL_WINDOWS
+    HANDLE handle = INVALID_HANDLE_VALUE;
+    bool held() const { return handle != INVALID_HANDLE_VALUE; }
+#else
+    int fd = -1;
+    bool held() const { return fd >= 0; }
+#endif
+    std::string path;
+};
+
+LockResult acquireLiveLock(const std::string& lock_path, LiveLock& lock)
+{
+    if (lock.held())
+        return LockResult::ACQUIRED;
+#if LL_WINDOWS
+    const HANDLE handle = CreateFileW(ll_convert_string_to_wide(lock_path).c_str(),
+                                      GENERIC_READ | GENERIC_WRITE | DELETE, 0 /* exclusive */, nullptr,
+                                      OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+        const DWORD error = GetLastError();
+        return (error == ERROR_SHARING_VIOLATION || error == ERROR_LOCK_VIOLATION || error == ERROR_ACCESS_DENIED)
+                   ? LockResult::HELD : LockResult::FAILED;
+    }
+    lock.handle = handle;
+#else
+    const int fd = ::open(lock_path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+    if (fd < 0)
+        return LockResult::FAILED;
+    if (::flock(fd, LOCK_EX | LOCK_NB) != 0)
+    {
+        const int error = errno;
+        ::close(fd);
+        // Locking unsupported here (or any other error) cannot prove ownership: report FAILED, so the file is
+        // skipped rather than stolen.
+        return (error == EWOULDBLOCK || error == EAGAIN) ? LockResult::HELD : LockResult::FAILED;
+    }
+    lock.fd = fd;
+#endif
+    lock.path = lock_path;
+    return LockResult::ACQUIRED;
+}
+
+// Drop the lock and delete its file. Safe on an unheld lock.
+void releaseLiveLock(LiveLock& lock)
+{
+    if (!lock.held())
+        return;
+#if LL_WINDOWS
+    CloseHandle(lock.handle); // FILE_FLAG_DELETE_ON_CLOSE removes the file
+    lock.handle = INVALID_HANDLE_VALUE;
+#else
+    ::unlink(lock.path.c_str()); // while still locked, so nobody can lock the file we are removing
+    ::close(lock.fd);
+    lock.fd = -1;
+#endif
+    lock.path.clear();
+}
+
+// This session's live file name (empty until the service starts) and the lock held on it.
+std::string sOwnLiveName;
+LiveLock sOwnLock;
+
+// Take our lock if we do not hold it (called at login and before every autosave write). Failure is logged
+// once, never fatal.
+void ensureOwnLiveLock(const std::string& live_path)
+{
+    if (sOwnLock.held())
+        return;
+    if (acquireLiveLock(ALDirectorQol::liveRecoveryLockName(live_path), sOwnLock) != LockResult::ACQUIRED)
+    {
+        static bool sWarned = false;
+        if (!sWarned)
+        {
+            sWarned = true;
+            LL_WARNS("Director") << "Could not lock the Director autosave file " << live_path
+                                 << "; autosave continues, but another viewer could mistake it for a crashed one" << LL_ENDL;
+        }
+    }
+}
+
+// Choose this session's live file name and lock it. Runs once at login, AFTER the previous sessions' files were
+// collected: a stale same-pid leftover (a crashed process whose pid this one reused) that could not be moved
+// yet is still present, and autosave must not write over it, so a unique "-<n>" variant is used instead and
+// the leftover waits for a later login's collection.
+void beginOwnLiveSession(const std::string& scenes_dir)
+{
+    std::vector<std::string> live_names;
+    for (const std::string& file : listFileNames(scenes_dir, ".director_recovery*"))
+        if (ALDirectorQol::isLiveRecoveryFile(file))
+            live_names.push_back(file);
+    const S32 pid = currentProcessId();
+    sOwnLiveName = ALDirectorQol::ownLiveRecoveryName(pid, live_names);
+    if (sOwnLiveName != ALDirectorQol::liveRecoveryFileName(pid))
+        LL_WARNS("Director") << "A stale Director autosave file with this process id could not be moved; autosave uses "
+                             << sOwnLiveName << " instead" << LL_ENDL;
+    ensureOwnLiveLock(gDirUtilp->add(scenes_dir, sOwnLiveName));
+}
+
 enum class MoveResult
 {
     MOVED,
@@ -361,8 +488,9 @@ enum class MoveResult
 //            EEXIST when the target exists.
 //   Fallback (call unsupported by the kernel / file system): link() fails with EEXIST if the target exists,
 //            then the source is unlinked. If that unlink fails the destination is KEPT (the data is safe in
-//            crash_backups) and the source is reported as MOVED_SOURCE_KEPT; the next login recognises it by
-//            size+mtime and does not migrate it twice. A file system with neither atomic call nor hard links
+//            crash_backups) and the source is reported as MOVED_SOURCE_KEPT; the next login recognises it by a
+//            byte-for-byte content comparison (identicalBackupName) and does not migrate it twice.
+//            A file system with neither atomic call nor hard links
 //            FAILS the move (retried later): a plain replacing rename is never used.
 enum class MoveKind
 {
@@ -416,13 +544,48 @@ MoveResult renameNoReplace(const std::string& source, const std::string& target,
 #endif
 }
 
-// The name of a crash backup that is a copy of source (same size and modification time: a hard link or an
-// earlier migration whose source could not be removed), or empty. Such a source is never migrated again.
+// Byte-for-byte comparison of two files of the same known size (both capped at kDirectorSceneMaxBytes by the
+// caller), streamed in 64 KB blocks. Any open/read problem or length mismatch is "not equal".
+bool fileContentsEqual(const std::string& path_a, const std::string& path_b, S64 expected_size)
+{
+    llifstream in_a(path_a.c_str(), std::ios::in | std::ios::binary);
+    llifstream in_b(path_b.c_str(), std::ios::in | std::ios::binary);
+    if (!in_a.is_open() || !in_b.is_open())
+        return false;
+    constexpr std::streamsize BLOCK = 64 * 1024;
+    std::vector<char> block_a((size_t)BLOCK), block_b((size_t)BLOCK);
+    S64 total = 0;
+    for (;;)
+    {
+        in_a.read(block_a.data(), BLOCK);
+        in_b.read(block_b.data(), BLOCK);
+        const std::streamsize got_a = in_a.gcount();
+        const std::streamsize got_b = in_b.gcount();
+        if (got_a != got_b || std::memcmp(block_a.data(), block_b.data(), (size_t)got_a) != 0)
+            return false;
+        total += got_a;
+        if (got_a < BLOCK)
+            break;
+    }
+    return !in_a.bad() && !in_b.bad() && total == expected_size;
+}
+
+// Only the POSIX link() fallback of renameNoReplace can leave a source whose content already sits in
+// crash_backups (linked, but the source could not be unlinked). Nowhere else is a file deleted for being a
+// copy of another.
+constexpr bool DEDUPE_LINK_FALLBACK_SOURCE = !LL_WINDOWS;
+
+// The name of a crash backup whose CONTENT equals source (same size and every byte equal), looked for only in
+// the POSIX link-fallback case; empty otherwise. A size / modification-time match alone never counts. Such a
+// source is not migrated twice.
 std::string identicalBackupName(const std::string& source, const std::string& crash_dir,
                                 const std::vector<std::string>& existing_names)
 {
+    if (!DEDUPE_LINK_FALLBACK_SOURCE)
+        return std::string();
     llstat source_status;
-    if (LLFile::stat(source, &source_status) != 0)
+    if (LLFile::stat(source, &source_status) != 0 || (S64)source_status.st_size < 0 ||
+        !ALDirectorQol::sceneSizeAllowed((size_t)source_status.st_size))
         return std::string();
     for (const std::string& name : existing_names)
     {
@@ -430,9 +593,12 @@ std::string identicalBackupName(const std::string& source, const std::string& cr
         std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return (char)std::tolower(c); });
         if (lower.size() < 4 || lower.compare(lower.size() - 4, 4, ".xml") != 0)
             continue;
+        const std::string candidate = gDirUtilp->add(crash_dir, name);
         llstat status;
-        if (LLFile::stat(gDirUtilp->add(crash_dir, name), &status) == 0 &&
-            status.st_size == source_status.st_size && status.st_mtime == source_status.st_mtime)
+        if (LLFile::stat(candidate, &status) != 0 || (S64)status.st_size != (S64)source_status.st_size)
+            continue;
+        const bool equal = fileContentsEqual(source, candidate, (S64)source_status.st_size);
+        if (ALDirectorQol::backupIsDuplicate((S64)source_status.st_size, (S64)status.st_size, equal))
             return name;
     }
     return std::string();
@@ -550,6 +716,9 @@ void restoreResultToast(S32 result, const std::string& when, bool automatic)
     case RESTORE_DAMAGED:
         recoveryToast("The crash backup from " + when +
                       " is damaged. It was set aside as a .corrupt file in the crash_backups folder.");
+        break;
+    case RESTORE_TOO_LARGE:
+        recoveryToast("This crash backup is larger than " + sceneCapLabel() + " and can't be restored.");
         break;
     default:
         recoveryToast("Couldn't restore your unsaved Director scene; the backup was kept. "
@@ -3399,9 +3568,13 @@ std::string LLFloaterDirector::crashBackupsDir()
 std::string LLFloaterDirector::autosavePath()
 {
     // One live file per viewer process: concurrent viewers never share a slot, and this viewer only ever
-    // writes and deletes its own pid file. A previous session's file (any other pid, the legacy plain
-    // name) is never touched here; the next login moves it into crash_backups.
-    return gDirUtilp->add(scenesDir(), ALDirectorQol::liveRecoveryFileName(currentProcessId()));
+    // writes and deletes its own live file. A previous session's file (any other pid, the legacy plain
+    // name) is never touched here; the next login moves it into crash_backups. sOwnLiveName is the plain pid
+    // name, or a "-<n>" variant when a stale same-pid leftover could not be moved at login (beginOwnLiveSession):
+    // autosave never writes over it.
+    return gDirUtilp->add(scenesDir(), sOwnLiveName.empty()
+                                           ? ALDirectorQol::liveRecoveryFileName(currentProcessId())
+                                           : sOwnLiveName);
 }
 
 //static
@@ -4471,6 +4644,7 @@ void LLFloaterDirector::idleSceneRecovery(bool force_write)
         sOversizeRefused = false;
     }
     const std::string path = autosavePath();
+    ensureOwnLiveLock(path); // normally held since login; retried here if taking it failed then
     bool oversized = false;
     if (writeSceneFile(path, "recovery", false, &oversized))
     {
@@ -4533,6 +4707,7 @@ void LLFloaterDirector::startRecoveryService()
     sRecoveryServiceStarted = true;
     initializeSceneRecovery();
     moveLiveBackupsAtLogin(); // once per session, before the first autosave can be written
+    beginOwnLiveSession(scenesDir());
     gIdleCallbacks.addFunction(&LLFloaterDirector::sceneRecoveryIdle, nullptr);
 }
 
@@ -4545,7 +4720,8 @@ void LLFloaterDirector::moveLiveBackupsAtLogin()
     std::vector<std::string> found;
     bool live_found = false;
     const S32 my_pid = currentProcessId();
-    for (const std::string& file : listFileNames(scenes, ".director_recovery*"))
+    const std::vector<std::string> listing = listFileNames(scenes, ".director_recovery*");
+    for (const std::string& file : listing)
     {
         // Every live file that is not this process's own (other pids, the legacy plain name). This
         // process has written nothing yet, so even a same-pid file here is a stale leftover.
@@ -4553,31 +4729,66 @@ void LLFloaterDirector::moveLiveBackupsAtLogin()
         // The previous build's kept backups migrate into crash_backups too, once (they are
         // never offered: they were already answered).
         if (live || ALDirectorQol::isLegacyKeptBackupName(file))
-        {
             found.push_back(file);
-            live_found = live_found || live;
+        else if (ALDirectorQol::isLiveRecoveryLockFile(file))
+        {
+            // A lock file whose live file is gone (POSIX leftover of a crashed viewer): delete it when its
+            // owner is dead (we can take it), leave it alone while a running viewer holds it.
+            const std::string live_name = file.substr(0, file.size() - 5 /* ".lock" */);
+            bool sibling_present = false;
+            for (const std::string& other : listing)
+                sibling_present = sibling_present || (other.size() == live_name.size() &&
+                    ALDirectorQol::isLiveRecoveryFile(other) &&
+                    std::equal(other.begin(), other.end(), live_name.begin(),
+                               [](char a, char b) { return std::tolower((unsigned char)a) == std::tolower((unsigned char)b); }));
+            if (!sibling_present)
+            {
+                LiveLock orphan;
+                if (acquireLiveLock(gDirUtilp->add(scenes, file), orphan) == LockResult::ACQUIRED)
+                    releaseLiveLock(orphan); // deletes the file
+            }
         }
     }
-    if (found.empty())
-        return;
-    const std::string crash_dir = crashBackupsDir();
-    std::vector<std::string> existing = listFileNames(crash_dir, "*");
-    for (const std::string& file : found)
+    if (!found.empty())
     {
-        const std::string path = gDirUtilp->add(scenes, file);
-        const std::string name = moveIntoCrashBackups(path, crash_dir, existing);
-        if (name.empty())
+        const std::string crash_dir = crashBackupsDir();
+        std::vector<std::string> existing = listFileNames(crash_dir, "*");
+        for (const std::string& file : found)
         {
-            // A transient lock: retry on later ticks. Autosave writes its own pid file meanwhile.
-            sUnmovedLiveBackups.push_back(path);
-            continue;
+            const std::string path = gDirUtilp->add(scenes, file);
+            const bool is_live = ALDirectorQol::isLiveRecoveryFile(file);
+            // A live file is only ours to collect when its owner is dead: hold its lock through the move.
+            // If a running viewer holds it, it is that viewer's active autosave: leave it completely alone.
+            LiveLock claim;
+            if (is_live)
+            {
+                const LockResult claimed = acquireLiveLock(ALDirectorQol::liveRecoveryLockName(path), claim);
+                if (claimed != LockResult::ACQUIRED)
+                {
+                    LL_INFOS("Director") << "Director autosave " << file << " belongs to a running viewer (or could not be checked); not collected"
+                                         << LL_ENDL;
+                    continue;
+                }
+                live_found = true;
+            }
+            const std::string name = moveIntoCrashBackups(path, crash_dir, existing);
+            releaseLiveLock(claim); // the owner is dead and the file is moved or queued: drop the stale .lock
+            if (name.empty())
+            {
+                // A transient lock: retry on later ticks. Autosave writes its own live file meanwhile.
+                sUnmovedLiveBackups.push_back(path);
+                continue;
+            }
+            LL_INFOS("Director") << "Moved Director backup " << file << " to crash_backups/" << name << LL_ENDL;
+            if (is_live)
+                sLoginMovedNames.push_back(name);
         }
-        LL_INFOS("Director") << "Moved Director backup " << file << " to crash_backups/" << name << LL_ENDL;
-        if (ALDirectorQol::isLiveRecoveryFile(file))
-            sLoginMovedNames.push_back(name);
     }
     sMoveRetriesLeft = sUnmovedLiveBackups.empty() ? 0 : MOVE_RETRIES;
     sRecoveryOfferPending = live_found;
+    if (found.empty())
+        return;
+    const std::string crash_dir = crashBackupsDir();
     if (!sLoginMovedNames.empty())
         sProtectedBackups.push_back(ALDirectorQol::sortCrashBackupsNewestFirst(sLoginMovedNames).front());
     pruneCrashBackups(crash_dir);
@@ -4600,7 +4811,24 @@ void LLFloaterDirector::retryPendingBackupMoves()
             continue;
         }
         const std::string file = gDirUtilp->getBaseFileName(*it, false);
+        // Re-check the owner is still dead (never collect a running viewer's autosave on a retry either).
+        LiveLock claim;
+        if (ALDirectorQol::isLiveRecoveryFile(file))
+        {
+            const LockResult claimed = acquireLiveLock(ALDirectorQol::liveRecoveryLockName(*it), claim);
+            if (claimed == LockResult::HELD)
+            {
+                it = sUnmovedLiveBackups.erase(it); // a running viewer owns it now
+                continue;
+            }
+            if (claimed != LockResult::ACQUIRED)
+            {
+                ++it;
+                continue;
+            }
+        }
         const std::string name = moveIntoCrashBackups(*it, crash_dir, existing);
+        releaseLiveLock(claim);
         if (name.empty())
         {
             ++it;
@@ -4640,13 +4868,19 @@ void LLFloaterDirector::prepareRecoveryForShutdown()
         idleSceneRecovery(true);
     else
         removeRecoveryFile();
+    // The session is over: drop the ownership lock after the final write / cleanup. A live file left behind by
+    // the final write is now collectable by the next login.
+    releaseLiveLock(sOwnLock);
 }
 
 void LLFloaterDirector::cancelRecoveryShutdown()
 {
     // A quit was aborted (unsaved notecard/script prompt): the real quit must
-    // run the final recovery write/delete again.
+    // run the final recovery write/delete again. The ownership lock was released by the aborted
+    // shutdown: take it again, the viewer keeps running.
     sRecoveryShutdownPrepared = false;
+    if (sRecoveryServiceStarted)
+        ensureOwnLiveLock(autosavePath());
 }
 
 // static
@@ -4727,10 +4961,12 @@ S32 LLFloaterDirector::restoreCrashBackup(const std::string& path)
         LLSD probe;
         switch (readSceneFileClosed(path, probe))
         {
-        case ReadResult::UNREADABLE:
         case ReadResult::TOO_LARGE:
-            LL_WARNS("Director") << "Cannot read Director crash backup " << path << " (unreadable or over the "
-                                 << sceneCapLabel() << " cap); keeping it" << LL_ENDL;
+            LL_WARNS("Director") << "Director crash backup " << path << " is over the " << sceneCapLabel()
+                                 << " cap and cannot be restored; keeping it" << LL_ENDL;
+            return RESTORE_TOO_LARGE;
+        case ReadResult::UNREADABLE:
+            LL_WARNS("Director") << "Cannot read Director crash backup " << path << "; keeping it" << LL_ENDL;
             return RESTORE_UNREADABLE;
         case ReadResult::CORRUPT:
         {
@@ -4907,8 +5143,7 @@ void LLFloaterDirector::onRecoveryResponse(const LLSD& notification, const LLSD&
     const std::string path = notification["payload"]["path"].asString();
     const bool replayed = notification["payload"]["replayed"].asBoolean();
     const bool remember = response["ignore"].asBoolean();
-    // A ticked "Don't ask me again" only sets the mode (Restore -> 1, Discard -> 2). A replayed
-    // answer implies the same mode; it is the stored copy of an earlier tick.
+    // A ticked "Don't ask me again" only sets the mode (Restore -> 1, Discard -> 2).
     // A replayed response was not given by the user now: it changes neither the mode nor the ignore state.
     const S32 remembered = ALDirectorQol::rememberedRecoveryMode(option, remember, replayed);
     if (remembered >= 0)

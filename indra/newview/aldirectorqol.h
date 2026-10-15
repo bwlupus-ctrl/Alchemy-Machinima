@@ -57,12 +57,32 @@ bool sceneSizeAllowed(size_t bytes);
 // After an oversized autosave refusal no new attempt is made until the scene changes or this long passes.
 constexpr double kOversizedAutosaveRetrySeconds = 300.0;
 
-// Live autosave file, one per viewer process: ".director_recovery-p<pid>.xml". A viewer only ever writes and
-// deletes its own pid file, so concurrent viewers never share a slot. The pre-pid name ".director_recovery.xml"
-// is legacy: it is only ever collected (never written).
-std::string liveRecoveryFileName(S32 pid);
-// The pid of a ".director_recovery-p<pid>.xml" name, or 0 when the name is not one.
+// Live autosave file, one per viewer process: ".director_recovery-p<pid>.xml", or
+// ".director_recovery-p<pid>-<n>.xml" (n >= 1) when the plain name was taken by a stale leftover of a crashed
+// process whose pid this one reused (see ownLiveRecoveryName). A viewer only ever writes and deletes its own
+// live file, so concurrent viewers never share a slot. The pre-pid name ".director_recovery.xml" is legacy:
+// it is only ever collected (never written).
+std::string liveRecoveryFileName(S32 pid, S32 counter = 0);
+// Largest pid the name can carry: S32 max, 10 digits.
+constexpr S32 kMaxLiveRecoveryPid = 2147483647;
+// The pid of a ".director_recovery-p<pid>[-<n>].xml" name (pid 1..kMaxLiveRecoveryPid, 1 to 10 digits, no
+// leading zero; n 1 to 6 digits, no leading zero), or 0 when the name is not one.
 S32 liveRecoveryPid(const std::string& file_name);
+// The live file name THIS process writes this session: its plain pid name, or the first "-<n>" variant that
+// is not in existing_live_names (the live files still present after the login move, compared
+// case-insensitively). A stale file under the plain name that could not be moved is therefore never
+// overwritten; it stays for the next login's collection.
+std::string ownLiveRecoveryName(S32 pid, const std::vector<std::string>& existing_live_names);
+// Each live file has a companion "<live file name>.lock", held open exclusively by the viewer that owns the
+// live file for its whole session. A lock file is never itself a live file or a backup.
+std::string liveRecoveryLockName(const std::string& live_file_name);
+// True for a "<live file name>.lock" name (a pid file, a pid file with -<n>, or the legacy plain name).
+bool isLiveRecoveryLockFile(const std::string& file_name);
+// Dedupe decision for a live file whose content may already sit in crash_backups (only the POSIX link()
+// fallback can leave such a copy: the destination was linked but the source could not be removed). True only
+// when the sizes are equal AND the caller's byte-for-byte comparison found the contents equal. Size and
+// modification time alone never justify deleting a file.
+bool backupIsDuplicate(S64 source_size, S64 candidate_size, bool contents_equal);
 bool isLegacyLiveRecoveryName(const std::string& file_name);
 // A live autosave file of any kind: a pid file or the legacy plain name.
 bool isLiveRecoveryFile(const std::string& file_name);

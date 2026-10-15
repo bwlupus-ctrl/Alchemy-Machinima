@@ -144,23 +144,66 @@ constexpr char LIVE_KEPT_NAME[] = ".director_recovery_kept.xml";
 constexpr char LIVE_KEPT_OLDER_TAG[] = ".director_recovery_kept.xml.kept-";
 } // namespace
 
-std::string ALDirectorQol::liveRecoveryFileName(S32 pid)
+std::string ALDirectorQol::liveRecoveryFileName(S32 pid, S32 counter)
 {
-    return std::string(LIVE_PREFIX) + "-p" + std::to_string(pid) + ".xml";
+    std::string name = std::string(LIVE_PREFIX) + "-p" + std::to_string(pid);
+    if (counter > 0)
+        name += "-" + std::to_string(counter);
+    return name + ".xml";
 }
 
 S32 ALDirectorQol::liveRecoveryPid(const std::string& file_name)
 {
-    // ".director_recovery-p<1..10 digits, no leading zero>.xml"
+    // ".director_recovery-p<1..10 digits, no leading zero>[-<1..6 digits, no leading zero>].xml"
     const std::string name = lowerAscii(file_name);
     const std::string prefix = std::string(LIVE_PREFIX) + "-p";
     if (name.compare(0, prefix.size(), prefix) != 0 || !endsWith(name, ".xml") ||
         name.size() < prefix.size() + 1 + 4)
         return 0;
-    const size_t digits = name.size() - 4 - prefix.size();
-    if (digits == 0 || digits > 9 || !allDigits(name, prefix.size(), digits) || name[prefix.size()] == '0')
+    const size_t begin = prefix.size();
+    const size_t end = name.size() - 4;
+    size_t digits = 0;
+    while (begin + digits < end && name[begin + digits] >= '0' && name[begin + digits] <= '9')
+        ++digits;
+    if (digits == 0 || digits > 10 || name[begin] == '0')
         return 0;
-    return std::atoi(name.substr(prefix.size(), digits).c_str());
+    const size_t at = begin + digits;
+    if (at != end)
+    {
+        const size_t count = end - at - 1; // the "-<n>" counter
+        if (name[at] != '-' || end < at + 2 || count > 6 || !allDigits(name, at + 1, count) ||
+            name[at + 1] == '0')
+            return 0;
+    }
+    const unsigned long long pid = std::strtoull(name.substr(begin, digits).c_str(), nullptr, 10);
+    return pid > (unsigned long long)kMaxLiveRecoveryPid ? 0 : (S32)pid;
+}
+
+std::string ALDirectorQol::ownLiveRecoveryName(S32 pid, const std::vector<std::string>& existing_live_names)
+{
+    for (S32 counter = 0;; ++counter)
+    {
+        const std::string candidate = liveRecoveryFileName(pid, counter);
+        if (!containsInsensitive(existing_live_names, candidate))
+            return candidate;
+    }
+}
+
+std::string ALDirectorQol::liveRecoveryLockName(const std::string& live_file_name)
+{
+    return live_file_name + ".lock";
+}
+
+bool ALDirectorQol::isLiveRecoveryLockFile(const std::string& file_name)
+{
+    const std::string suffix = ".lock";
+    return endsWith(lowerAscii(file_name), suffix) &&
+           isLiveRecoveryFile(file_name.substr(0, file_name.size() - suffix.size()));
+}
+
+bool ALDirectorQol::backupIsDuplicate(S64 source_size, S64 candidate_size, bool contents_equal)
+{
+    return source_size >= 0 && source_size == candidate_size && contents_equal;
 }
 
 bool ALDirectorQol::isLegacyLiveRecoveryName(const std::string& file_name)
