@@ -220,7 +220,14 @@ public:
     U32 invalidateSkinPalettesForOverlay();
     U32 invalidateSkinPalettesAfterOverlay();
     void syncStepAnimAttachmentMatrices();
-    void markStepAnimPoseChanged() { mNeedsSkin = true; }
+    void markStepAnimPoseChanged();
+    enum EStepAnimRenderMismatch : U32
+    {
+        STEP_ANIM_RENDER_OK = 0,
+        STEP_ANIM_RENDER_PALETTE = 1,
+        STEP_ANIM_RENDER_ATTACHMENT = 2
+    };
+    U32 verifyStepAnimRenderState(U32 render_frame) const;
     struct StepAnimLabelState
     {
         LLVector3 mNameOriginal, mNameWritten;
@@ -949,6 +956,7 @@ public:
         // its palette as velocity history while idle readers rebuild smooth.
         bool mRebuildNoRoll = false;
         U32 mOverlayFrame = 0xFFFFFFFF;
+        U32 mPoseEpoch = 0;
 
         MatrixPaletteCache() :
             mFrame(gFrameCount - 1)
@@ -965,6 +973,10 @@ public:
     typedef boost::unordered_map<U64, MatrixPaletteCache> matrix_palette_cache_t;
     matrix_palette_cache_t mMatrixPaletteCache;
     U32 mJointOverrideEpoch = 0;
+    U32 mStepAnimPoseEpoch = 0;
+    U32 mStepAnimAttachmentPoseEpoch = 0;
+    U32 mStepAnimAttachmentDrawableCount = 0;
+    U32 mStepAnimOverlayFrame = 0xFFFFFFFF;
 
 protected:
     void            releaseMeshData();

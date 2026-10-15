@@ -37,6 +37,7 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include <cstring>
 #include <sstream>
 
 #include "llaudioengine.h"
@@ -11483,6 +11484,11 @@ const LLVOAvatar::MatrixPaletteCache& LLVOAvatar::updateSkinInfoMatrixPalette(co
     {
         LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
 
+        if (mStepAnimOverlayFrame == gFrameCount)
+        {
+            entry.mOverlayFrame = gFrameCount;
+        }
+
         // [BDMerge A5.4-1b] Stash the outgoing palette as the previous frame's
         // before rebuilding (velocity pass). swap() instead of copy: mGLMp is
         // resized+rewritten just below, so this is allocation-free steady-state.
@@ -11497,6 +11503,7 @@ const LLVOAvatar::MatrixPaletteCache& LLVOAvatar::updateSkinInfoMatrixPalette(co
         entry.mRebuildNoRoll = false;
 
         entry.mFrame = gFrameCount;
+        entry.mPoseEpoch = mStepAnimPoseEpoch;
 
         //build matrix palette
         U32 count = LLSkinningUtil::getMeshJointCount(skin);
@@ -11539,6 +11546,7 @@ U32 LLVOAvatar::invalidateSkinPalettesForOverlay()
 {
     U32 invalidated = 0;
     const U32 overlay_frame = ALSteppedAnim::overlayRenderFrame(gFrameCount);
+    mStepAnimOverlayFrame = overlay_frame;
     for (auto& item : mMatrixPaletteCache)
     {
         MatrixPaletteCache& entry = item.second;
@@ -11573,18 +11581,33 @@ U32 LLVOAvatar::invalidateSkinPalettesAfterOverlay()
         }
         entry.mOverlayFrame = 0xFFFFFFFF;
     }
+    mStepAnimOverlayFrame = 0xFFFFFFFF;
     return invalidated;
+}
+
+void LLVOAvatar::markStepAnimPoseChanged()
+{
+    mNeedsSkin = true;
+    ++mStepAnimPoseEpoch;
+    if (mStepAnimPoseEpoch == 0)
+    {
+        ++mStepAnimPoseEpoch;
+    }
 }
 
 void LLVOAvatar::syncStepAnimAttachmentMatrices()
 {
-    std::function<void(LLViewerObject*)> update_tree = [&update_tree](LLViewerObject* object)
+    U32 drawable_count = 0;
+    std::function<void(LLViewerObject*)> update_tree = [&update_tree, &drawable_count](LLViewerObject* object)
     {
         if (!object || object->isDead()) return;
-        if (object->mDrawable.notNull() &&
-            !object->mDrawable->isState(LLDrawable::RIGGED | LLDrawable::RIGGED_CHILD))
+        if (object->mDrawable.notNull())
         {
-            object->mDrawable->getXform()->updateMatrix();
+            // RIGGED is drawable-wide: a drawable can also contain rigid faces.
+            // Refresh every model matrix, then retain the normal pipeline move.
+            object->mDrawable->updateXform(true);
+            gPipeline.markMoved(object->mDrawable);
+            ++drawable_count;
         }
         for (LLViewerObject* child : object->getChildren()) update_tree(child);
     };
@@ -11592,6 +11615,69 @@ void LLVOAvatar::syncStepAnimAttachmentMatrices()
         if (item.second)
             for (LLViewerObject* object : item.second->mAttachedObjects)
                 update_tree(object);
+    mStepAnimAttachmentPoseEpoch = mStepAnimPoseEpoch;
+    mStepAnimAttachmentDrawableCount = drawable_count;
+}
+
+U32 LLVOAvatar::verifyStepAnimRenderState(U32 render_frame) const
+{
+    U32 mismatch = STEP_ANIM_RENDER_OK;
+    for (const auto& item : mMatrixPaletteCache)
+    {
+        const MatrixPaletteCache& entry = item.second;
+        if (!ALSteppedAnim::paletteReadyForOverlay(
+                entry.mFrame, entry.mOverlayFrame, render_frame,
+                entry.mPoseEpoch, mStepAnimPoseEpoch))
+        {
+            mismatch |= STEP_ANIM_RENDER_PALETTE;
+            break;
+        }
+    }
+
+    U32 drawable_count = 0;
+    bool attachment_mismatch = false;
+    std::function<void(const LLViewerObject*)> count_tree =
+        [&count_tree, &drawable_count, &attachment_mismatch](const LLViewerObject* object)
+    {
+        if (!object || object->isDead()) return;
+        if (object->mDrawable.notNull())
+        {
+            ++drawable_count;
+            // getXform() is non-const; this verifier only reads the xform.
+            LLXformMatrix* xform = const_cast<LLDrawable*>(object->mDrawable.get())->getXform();
+            LLVector3 expected_position = xform->getPosition();
+            LLQuaternion expected_rotation = xform->getRotation();
+            LLXform* parent = xform->getParent();
+            if (parent)
+            {
+                if (parent->getScaleChildOffset())
+                    expected_position.scaleVec(parent->getScale());
+                expected_position *= parent->getWorldRotation();
+                expected_position += parent->getWorldPosition();
+                expected_rotation *= parent->getWorldRotation();
+            }
+            LLMatrix4 expected_matrix;
+            expected_matrix.initAll(xform->getScale(), expected_rotation, expected_position);
+            if (std::memcmp(expected_matrix.mMatrix,
+                            xform->getWorldMatrix().mMatrix,
+                            sizeof(expected_matrix.mMatrix)) != 0)
+            {
+                attachment_mismatch = true;
+            }
+        }
+        for (const LLViewerObject* child : object->getChildren()) count_tree(child);
+    };
+    for (const auto& item : mAttachmentPoints)
+        if (item.second)
+            for (const LLViewerObject* object : item.second->mAttachedObjects)
+                count_tree(object);
+    if (attachment_mismatch ||
+        mStepAnimAttachmentPoseEpoch != mStepAnimPoseEpoch ||
+        mStepAnimAttachmentDrawableCount != drawable_count)
+    {
+        mismatch |= STEP_ANIM_RENDER_ATTACHMENT;
+    }
+    return mismatch;
 }
 
 void LLVOAvatar::shiftStepAnimLabels(const LLVector3& delta, StepAnimLabelState& state)

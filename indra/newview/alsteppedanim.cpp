@@ -324,6 +324,13 @@ bool paletteContainsOverlay(U32 cache_frame, U32 overlay_frame, U32 current_fram
     return cache_frame == current_frame && overlay_frame == current_frame;
 }
 
+bool paletteReadyForOverlay(U32 cache_frame, U32 overlay_frame, U32 render_frame,
+                            U32 cache_pose_epoch, U32 pose_epoch)
+{
+    return cache_frame != render_frame ||
+        (overlay_frame == render_frame && cache_pose_epoch == pose_epoch);
+}
+
 bool hasOverlayWrites(const std::vector<U8>& written_mask, U8 root_mask)
 {
     return root_mask != 0 || std::any_of(written_mask.begin(), written_mask.end(),

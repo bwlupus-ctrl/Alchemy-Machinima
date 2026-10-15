@@ -178,6 +178,8 @@ F32 unitHash(U64 seed, S64 a, U32 b, U32 c);
 U32 overlayRenderFrame(U32 current_frame);
 bool preservePreviousOverlayPalette(U32 last_frame, U32 overlay_frame, U32 render_frame);
 bool paletteContainsOverlay(U32 cache_frame, U32 overlay_frame, U32 current_frame);
+bool paletteReadyForOverlay(U32 cache_frame, U32 overlay_frame, U32 render_frame,
+                            U32 cache_pose_epoch, U32 pose_epoch);
 bool hasOverlayWrites(const std::vector<U8>& written_mask, U8 root_mask);
 
 struct JointLocal

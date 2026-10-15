@@ -408,6 +408,14 @@ template<> template<> void stepped_object::test<11>()
         !preservePreviousOverlayPalette(40, 42, 42));
     ensure("R1 restore recognizes rendered overlay",
         paletteContainsOverlay(42, 42, 42));
+    ensure("R1 prior-frame smooth palette is forced to rebuild for overlay",
+        paletteReadyForOverlay(41, 42, 42, 8, 9));
+    ensure("R1 held palette is accepted only at the current pose epoch",
+        paletteReadyForOverlay(42, 42, 42, 9, 9));
+    ensure("R1 same-frame smooth palette cannot be reused by overlay",
+        !paletteReadyForOverlay(42, 0xFFFFFFFF, 42, 8, 9));
+    ensure("R1 stale held palette epoch cannot be reused by overlay",
+        !paletteReadyForOverlay(42, 42, 42, 8, 9));
     ensure("R1 all-zero write vector is empty bookkeeping",
         !hasOverlayWrites(std::vector<U8>(160, 0), 0));
     ensure("R1 root write is non-empty bookkeeping",

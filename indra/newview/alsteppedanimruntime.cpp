@@ -488,7 +488,6 @@ void ALSteppedAnimRuntime::writeOverlay(LLVOAvatar* avatar, Entry& entry,
     {
         entry.mWrittenMask.clear();
         entry.mRootWrittenMask = 0;
-        mPaletteRebuilds += avatar->invalidateSkinPalettesForOverlay();
         return;
     }
     entry.mWriteEpoch = avatar->getJointOverrideEpoch();
@@ -557,6 +556,27 @@ void ALSteppedAnimRuntime::applyHeld()
             const auto found = mEntries.find(id);
             return found == mEntries.end() ? LLVector3::zero : found->second.mRootDelta;
         });
+    static LLCachedControl<bool> verify(gSavedSettings, "StepAnimDebugVerify");
+    if (verify && sHasOverlay)
+    {
+        const U32 render_frame = ALSteppedAnim::overlayRenderFrame(gFrameCount);
+        for (const LLUUID& id : mPlanned)
+        {
+            Entry& entry = mEntries[id];
+            if (entry.mWrittenMask.empty() && !entry.mRootWrittenMask) continue;
+            LLViewerObject* object = gObjectList.findObject(id);
+            LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
+            const U32 mismatch = avatar
+                ? avatar->verifyStepAnimRenderState(render_frame)
+                : LLVOAvatar::STEP_ANIM_RENDER_ATTACHMENT;
+            if (mismatch && !entry.mRenderStateMismatchLogged)
+            {
+                LL_WARNS("StepAnim") << "Held render state mismatch for " << id
+                    << " flags " << mismatch << LL_ENDL;
+                entry.mRenderStateMismatchLogged = true;
+            }
+        }
+    }
     LL_PROFILE_PLOT("StepAnim actors", mActiveActors);
     LL_PROFILE_PLOT("StepAnim skipped", mSkippedActors);
     LL_PROFILE_PLOT("paletteRebuilds", mPaletteRebuilds);
