@@ -2,11 +2,12 @@
  * @file aldirectortheme.cpp
  * @brief Director colour themes: loader and LLUIColorTable applier.
  *
- * Widgets hold LLUIColor references into LLUIColorTable nodes, and
- * LLUIColorTable::setColor() moves a skin entry into its user layer without
- * changing the node's address, so an override reaches existing widgets on
- * their next draw.  Originals are snapshotted from the skin table once, before
- * the first override, and Default writes them back.
+ * Widgets hold LLUIColor references into LLUIColorTable nodes.  A theme is
+ * written with LLUIColorTable::setLoadedColor(), which changes the skin node in
+ * place, so an override reaches existing widgets on their next draw and never
+ * becomes a user-set colour (colors.xml is not written because of a theme).
+ * Originals are snapshotted from the skin table once, before the first
+ * override, and Default writes them back.
  */
 
 #include "llviewerprecompiledheaders.h"
@@ -15,6 +16,7 @@
 
 #include <algorithm>
 
+#include "alkitstyle.h"
 #include "llcontrol.h"
 #include "lldir.h"
 #include "llfile.h"
@@ -38,6 +40,7 @@ namespace
 
     bool sSnapshotTaken = false;
     bool sSettingConnected = false;
+    bool sReloadConnected = false;
 
     void takeSnapshot()
     {
@@ -191,8 +194,10 @@ void applyTheme(const Theme& theme)
     {
         const auto override_it = theme.colors.find(original.first);
         const LLColor4& value = (override_it != theme.colors.end()) ? override_it->second : original.second;
-        table.setColor(original.first, value);
+        table.setLoadedColor(original.first, value);
     }
+    // Scroll-list colours are plain LLColor4 values on the list, so the kit lists read them again here.
+    ALKitStyle::restyleLists();
 }
 
 void applyThemeById(const std::string& id)
@@ -223,6 +228,20 @@ void init()
                 });
             sSettingConnected = true;
         }
+    }
+
+    if (!sReloadConnected)
+    {
+        // Advanced > Reload Color Settings re-reads the skin values, which overwrite the theme.
+        // Take a fresh snapshot of the reloaded values and apply the saved theme over them again.
+        LLUIColorTable::instance().setReloadCallback(
+            []()
+            {
+                sSnapshotTaken = false;
+                originals().clear();
+                applyThemeById(gSavedSettings.getString(kSettingName));
+            });
+        sReloadConnected = true;
     }
 }
 } // namespace ALDirectorTheme

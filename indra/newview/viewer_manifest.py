@@ -111,6 +111,9 @@ class ViewerManifest(LLManifest):
                 # ... and the baked projector-volumetric dust volume
                 self.path("dust")
 
+                # ... and the Director colour themes (app_settings/director_themes/*.xml)
+                self.path("director_themes")
+
                 # <FS:AR> Poser Presets
                 self.path("poses")
 

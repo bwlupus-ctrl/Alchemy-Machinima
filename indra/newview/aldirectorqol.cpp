@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <cstdlib>
 
 namespace
@@ -103,65 +104,249 @@ std::vector<LLUUID> ALDirectorQol::subjectAssignment(
     return result;
 }
 
-ALDirectorQol::RecoveryAction ALDirectorQol::recoveryAction(bool file_exists,
-                                                             bool parsed_scene)
+namespace
 {
-    if (!file_exists)
-        return RecoveryAction::NONE;
-    return parsed_scene ? RecoveryAction::OFFER_RESTORE : RecoveryAction::DISCARD_CORRUPT;
+std::string lowerAscii(std::string text)
+{
+    for (char& character : text)
+        if (character >= 'A' && character <= 'Z')
+            character = (char)(character - 'A' + 'a');
+    return text;
 }
 
-ALDirectorQol::LoginRecoveryAction ALDirectorQol::loginRecoveryAction(bool file_exists,
-                                                                       bool parsed_scene,
-                                                                       S32 mode)
+bool allDigits(const std::string& text, size_t start, size_t count)
 {
-    if (!file_exists)
-        return LoginRecoveryAction::NONE;
-    if (!parsed_scene)
-        return LoginRecoveryAction::DISCARD_CORRUPT;
-    if (mode == 1)
-        return LoginRecoveryAction::RESTORE_AUTO;
-    if (mode == 2)
-        return LoginRecoveryAction::KEEP_ASIDE;
-    return LoginRecoveryAction::OFFER;
+    if (start + count > text.size())
+        return false;
+    for (size_t index = start; index < start + count; ++index)
+        if (text[index] < '0' || text[index] > '9')
+            return false;
+    return true;
 }
 
-bool ALDirectorQol::autosaveAllowed(bool live_backup_unresolved)
+bool endsWith(const std::string& text, const std::string& suffix)
 {
-    return !live_backup_unresolved;
+    return text.size() >= suffix.size() &&
+           text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
-bool ALDirectorQol::stillUnresolved(bool was_unresolved, bool step_succeeded)
+bool containsInsensitive(const std::vector<std::string>& names, const std::string& name)
 {
-    return was_unresolved && !step_succeeded;
+    const std::string wanted = lowerAscii(name);
+    for (const std::string& candidate : names)
+        if (lowerAscii(candidate) == wanted)
+            return true;
+    return false;
 }
 
-ALDirectorQol::RestoreSource ALDirectorQol::restoreSource(bool kept_exists,
-                                                           bool live_exists,
-                                                           bool live_unresolved)
+constexpr char LIVE_PREFIX[] = ".director_recovery";
+constexpr char LIVE_KEPT_NAME[] = ".director_recovery_kept.xml";
+constexpr char LIVE_KEPT_OLDER_TAG[] = ".director_recovery_kept.xml.kept-";
+} // namespace
+
+std::string ALDirectorQol::liveRecoveryFileName(S32 slot)
 {
-    if (live_exists && live_unresolved)
-        return RestoreSource::PREVIOUS_LIVE;
-    return kept_exists ? RestoreSource::KEPT : RestoreSource::NONE;
+    return slot <= 1 ? std::string(LIVE_PREFIX) + ".xml"
+                     : std::string(LIVE_PREFIX) + "_" + std::to_string(slot) + ".xml";
 }
 
-ALDirectorQol::RestoreFollowUp ALDirectorQol::restoreFollowUp(RestoreSource source,
-                                                               bool restored)
+S32 ALDirectorQol::liveRecoverySlot(const std::string& file_name)
 {
-    if (source == RestoreSource::NONE)
-        return RestoreFollowUp::LEAVE;
-    if (restored)
-        return RestoreFollowUp::CONSUME;
-    return source == RestoreSource::PREVIOUS_LIVE ? RestoreFollowUp::KEEP_ASIDE
-                                                  : RestoreFollowUp::LEAVE;
+    const std::string name = lowerAscii(file_name);
+    const std::string prefix = LIVE_PREFIX;
+    if (name == prefix + ".xml")
+        return 1;
+    if (name.compare(0, prefix.size() + 1, prefix + "_") != 0 || !endsWith(name, ".xml"))
+        return 0;
+    const size_t start = prefix.size() + 1;
+    if (name.size() < start + 4 + 1)
+        return 0;
+    const size_t digits = name.size() - 4 - start;
+    // 2..99 only: "_kept", "_0", "_1" and leading-zero spellings are not live slots.
+    if (digits == 0 || digits > 2 || !allDigits(name, start, digits) || name[start] == '0')
+        return 0;
+    const S32 slot = std::atoi(name.substr(start, digits).c_str());
+    return slot >= 2 ? slot : 0;
 }
 
-std::vector<std::string> ALDirectorQol::keptBackupsToPrune(std::vector<std::string> older_names,
-                                                           size_t max_older)
+S32 ALDirectorQol::autosaveSlot(const std::vector<S32>& unmoved_slots)
 {
-    std::sort(older_names.begin(), older_names.end());
+    for (S32 slot = 1;; ++slot)
+        if (std::find(unmoved_slots.begin(), unmoved_slots.end(), slot) == unmoved_slots.end())
+            return slot;
+}
+
+bool ALDirectorQol::isLegacyKeptBackupName(const std::string& file_name)
+{
+    const std::string name = lowerAscii(file_name);
+    const std::string older = LIVE_KEPT_OLDER_TAG;
+    return name == LIVE_KEPT_NAME ||
+           (name.size() > older.size() && name.compare(0, older.size(), older) == 0);
+}
+
+std::string ALDirectorQol::crashBackupFileName(const BackupStamp& stamp, S32 counter)
+{
+    char buffer[48];
+    snprintf(buffer, sizeof(buffer), "scene-%04d%02d%02d-%02d%02d%02d", stamp.year, stamp.month,
+             stamp.day, stamp.hour, stamp.minute, stamp.second);
+    std::string name = buffer;
+    if (counter > 0)
+        name += "-" + std::to_string(counter);
+    return name + ".xml";
+}
+
+std::string ALDirectorQol::uniqueCrashBackupName(const BackupStamp& stamp,
+                                                 const std::vector<std::string>& existing)
+{
+    for (S32 counter = 0;; ++counter)
+    {
+        const std::string candidate = crashBackupFileName(stamp, counter);
+        if (!containsInsensitive(existing, candidate))
+            return candidate;
+    }
+}
+
+ALDirectorQol::ParsedBackupName ALDirectorQol::parseCrashBackupName(const std::string& file_name)
+{
+    ParsedBackupName parsed;
+    const std::string name = lowerAscii(file_name);
+    // scene-YYYYMMDD-HHMMSS[-N].xml : "scene-" 6, date 8, '-' at 14, time 6, then the tail.
+    constexpr size_t TAIL = 21;
+    if (name.size() < TAIL + 4 || name.compare(0, 6, "scene-") != 0 || !endsWith(name, ".xml") ||
+        !allDigits(name, 6, 8) || name[14] != '-' || !allDigits(name, 15, 6))
+        return parsed;
+    const size_t end = name.size() - 4;
+    if (end != TAIL)
+    {
+        // "-N": one to six digits, no leading zero, at least 1.
+        const size_t count = end - TAIL - 1;
+        if (name[TAIL] != '-' || end < TAIL + 2 || count > 6 || !allDigits(name, TAIL + 1, count) ||
+            name[TAIL + 1] == '0')
+            return parsed;
+        parsed.counter = std::atoi(name.substr(TAIL + 1, count).c_str());
+    }
+    const S32 month = std::atoi(name.substr(10, 2).c_str());
+    const S32 day = std::atoi(name.substr(12, 2).c_str());
+    const S32 hour = std::atoi(name.substr(15, 2).c_str());
+    const S32 minute = std::atoi(name.substr(17, 2).c_str());
+    const S32 second = std::atoi(name.substr(19, 2).c_str());
+    if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 60)
+        return ParsedBackupName();
+    parsed.stamp = (U64)std::strtoull((name.substr(6, 8) + name.substr(15, 6)).c_str(), nullptr, 10);
+    parsed.valid = true;
+    return parsed;
+}
+
+bool ALDirectorQol::crashBackupNewer(const std::string& left, const std::string& right)
+{
+    const ParsedBackupName a = parseCrashBackupName(left);
+    const ParsedBackupName b = parseCrashBackupName(right);
+    if (a.valid != b.valid)
+        return a.valid; // a name that does not parse is the oldest
+    if (a.valid)
+    {
+        if (a.stamp != b.stamp)
+            return a.stamp > b.stamp;
+        if (a.counter != b.counter)
+            return a.counter > b.counter;
+    }
+    return lowerAscii(left) > lowerAscii(right); // deterministic tie-break
+}
+
+std::vector<std::string> ALDirectorQol::sortCrashBackupsNewestFirst(std::vector<std::string> names)
+{
+    std::sort(names.begin(), names.end(), &ALDirectorQol::crashBackupNewer);
+    return names;
+}
+
+std::vector<std::string> ALDirectorQol::crashBackupsToPrune(
+    std::vector<std::string> names, size_t keep, const std::vector<std::string>& protected_names)
+{
+    names = sortCrashBackupsNewestFirst(std::move(names));
     std::vector<std::string> doomed;
-    if (older_names.size() > max_older)
-        doomed.assign(older_names.begin(), older_names.end() - (std::ptrdiff_t)max_older);
+    for (size_t index = keep; index < names.size(); ++index)
+        if (!containsInsensitive(protected_names, names[index]))
+            doomed.push_back(names[index]);
     return doomed;
+}
+
+std::string ALDirectorQol::uniqueCorruptName(const std::string& backup_name,
+                                             const std::vector<std::string>& existing)
+{
+    for (S32 counter = 0;; ++counter)
+    {
+        const std::string candidate = counter == 0
+            ? backup_name + ".corrupt"
+            : backup_name + "." + std::to_string(counter) + ".corrupt";
+        if (!containsInsensitive(existing, candidate))
+            return candidate;
+    }
+}
+
+std::vector<std::string> ALDirectorQol::corruptBackupsToPrune(std::vector<std::string> names,
+                                                              size_t keep)
+{
+    // Order by the backup the file came from ("<backup>.xml[.N].corrupt").
+    const auto source = [](const std::string& name)
+    {
+        const size_t at = lowerAscii(name).find(".xml");
+        return at == std::string::npos ? name : name.substr(0, at + 4);
+    };
+    std::sort(names.begin(), names.end(), [&source](const std::string& left, const std::string& right)
+    {
+        const std::string a = source(left), b = source(right);
+        if (a != b)
+            return ALDirectorQol::crashBackupNewer(a, b);
+        return lowerAscii(left) > lowerAscii(right);
+    });
+    std::vector<std::string> doomed;
+    for (size_t index = keep; index < names.size(); ++index)
+        doomed.push_back(names[index]);
+    return doomed;
+}
+
+ALDirectorQol::LoginAction ALDirectorQol::loginAction(bool have_new_backup, S32 mode)
+{
+    if (!have_new_backup)
+        return LoginAction::NONE;
+    if (mode == 1)
+        return LoginAction::RESTORE_AUTO;
+    if (mode == 2)
+        return LoginAction::KEEP;
+    return LoginAction::OFFER;
+}
+
+ALDirectorQol::PromptAction ALDirectorQol::promptAction(S32 option)
+{
+    if (option == 0)
+        return PromptAction::RESTORE;
+    if (option == 1)
+        return PromptAction::DISCARD;
+    return PromptAction::KEEP;
+}
+
+S32 ALDirectorQol::rememberedRecoveryMode(S32 option, bool remember)
+{
+    if (!remember)
+        return -1;
+    if (option == 0)
+        return 1;
+    if (option == 1)
+        return 2;
+    return -1;
+}
+
+bool ALDirectorQol::isReservedSceneName(const std::string& name)
+{
+    std::string trimmed = lowerAscii(name);
+    const size_t first = trimmed.find_first_not_of(' ');
+    if (first == std::string::npos)
+        return false;
+    trimmed.erase(0, first);
+    while (!trimmed.empty() && (trimmed.back() == ' ' || trimmed.back() == '.'))
+        trimmed.pop_back();
+    // Hidden / recovery files (".director_recovery", "_2", "_kept") start with '.'.
+    if (trimmed.empty() || trimmed[0] == '.')
+        return true;
+    return trimmed == "crash_backups";
 }

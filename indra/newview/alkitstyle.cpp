@@ -18,6 +18,7 @@
 #include "llui.h"
 #include "lluicolortable.h"
 #include <functional>
+#include <vector>
 
 namespace ALKitStyle
 {
@@ -29,7 +30,7 @@ const LLUIColor& color(EColor value)
         "KitAccent",    "KitAccentHi",  "KitRecord",   "KitRecordText",  "KitText",       "KitTextStrong", "KitLabel",    "KitDim",
         "KitMuted",     "KitFaint",     "KitDialRing", "KitDialFace",    "KitArcTrack",   "KitFlash",      "KitBannerBg", "KitMapKey",
         "KitMapFill",   "KitMapBack",   "KitMapBg",    "KitOffGrey",    "KitLightMapBgCentre", "KitLightMapBgEdge",
-        "KitLightMapBorder"
+        "KitLightMapBorder", "KitIconTint", "KitIconTintStrong", "KitRecordTextOn"
     };
     static LLUIColor colors[COLOR_COUNT];
     static bool      initialized = false;
@@ -103,7 +104,7 @@ void stylePill(LLButton* button)
 void styleTransportAction(LLButton* action, LLButton* cut, LLButton* arm, bool running)
 {
     const LLUIColor& fill = color(running ? RECORD : ACCENT);
-    const LLUIColor foreground = running ? LLUIColor(LLColor4::white) : color(KNOB_ON);
+    const LLUIColor& foreground = running ? color(RECORD_TEXT_ON) : color(KNOB_ON);
     for (LLButton* button : { action, cut, arm })
     {
         if (!button)
@@ -142,7 +143,8 @@ void styleCombo(LLComboBox* combo)
         if (LLButton* button = dynamic_cast<LLButton*>(child))
         {
             styleButton(button, false);
-            button->setImageOverlay("KitIcon_chevron_down_10_16", LLFontGL::RIGHT, color(DIM).get());
+            button->setImageOverlay("KitIcon_chevron_down_10_16", LLFontGL::RIGHT);
+            button->setImageOverlayColor(color(DIM));
             button->setRightHPad(6);
             break;
         }
@@ -159,24 +161,58 @@ void styleScroller(LLScrollContainer* scroller)
             scrollbar->setStyle(track, track, thumb, thumb, color(INPUT_BG), color(INPUT_BORDER), color(INPUT_BG));
 }
 
+namespace
+{
+    // Scroll lists take LLColor4 values, not colour-table references, so each styled list is
+    // remembered and its colours are read again when the colour theme changes (restyleLists()).
+    std::vector<LLHandle<LLScrollListCtrl>> sStyledLists;
+
+    void applyListColors(LLScrollListCtrl* list)
+    {
+        list->setBgWriteableColor(color(INPUT_BG).get());
+        list->setReadOnlyBgColor(color(INPUT_BG).get());
+        list->setBgSelectedColor(color(CONTROL_BG).get());
+        list->setBgStripeColor(color(WINDOW_BG).get());
+        list->setFgSelectedColor(color(TEXT_STRONG).get());
+        list->setFgUnselectedColor(color(TEXT).get());
+        list->setFgDisableColor(color(FAINT).get());
+        list->setHoveredColor(color(RAIL_HOVER).get());
+        list->setHighlightedColor(color(ACCENT).get());
+        static LLPointer<LLUIImage> track = LLUI::getUIImage("Kit_RoundRect4");
+        static LLPointer<LLUIImage> thumb = LLUI::getUIImage("Kit_Pill9");
+        for (LLView* child : *list->getChildList())
+            if (LLScrollbar* scrollbar = dynamic_cast<LLScrollbar*>(child))
+                scrollbar->setStyle(track, track, thumb, thumb, color(INPUT_BG), color(INPUT_BORDER), color(INPUT_BG));
+    }
+
+    // Keeps one live handle per list: drops dead handles and any earlier entry for this list.
+    void rememberList(LLScrollListCtrl* list)
+    {
+        std::vector<LLHandle<LLScrollListCtrl>> live;
+        for (const LLHandle<LLScrollListCtrl>& handle : sStyledLists)
+        {
+            LLScrollListCtrl* other = handle.get();
+            if (other && other != list)
+                live.push_back(handle);
+        }
+        live.push_back(list->getDerivedHandle<LLScrollListCtrl>());
+        sStyledLists.swap(live);
+    }
+}
+
 void styleList(LLScrollListCtrl* list)
 {
     if (!list)
         return;
-    list->setBgWriteableColor(color(INPUT_BG).get());
-    list->setReadOnlyBgColor(color(INPUT_BG).get());
-    list->setBgSelectedColor(color(CONTROL_BG).get());
-    list->setBgStripeColor(color(WINDOW_BG).get());
-    list->setFgSelectedColor(color(TEXT_STRONG).get());
-    list->setFgUnselectedColor(color(TEXT).get());
-    list->setFgDisableColor(color(FAINT).get());
-    list->setHoveredColor(color(RAIL_HOVER).get());
-    list->setHighlightedColor(color(ACCENT).get());
-    static LLPointer<LLUIImage> track = LLUI::getUIImage("Kit_RoundRect4");
-    static LLPointer<LLUIImage> thumb = LLUI::getUIImage("Kit_Pill9");
-    for (LLView* child : *list->getChildList())
-        if (LLScrollbar* scrollbar = dynamic_cast<LLScrollbar*>(child))
-            scrollbar->setStyle(track, track, thumb, thumb, color(INPUT_BG), color(INPUT_BORDER), color(INPUT_BG));
+    applyListColors(list);
+    rememberList(list);
+}
+
+void restyleLists()
+{
+    for (const LLHandle<LLScrollListCtrl>& handle : sStyledLists)
+        if (LLScrollListCtrl* list = handle.get())
+            applyListColors(list);
 }
 
 void styleTree(LLView* root)
@@ -237,8 +273,8 @@ void styleTree(LLView* root)
             {
                 button->setImageColor(color(RECORD));
                 button->setSelectedImageColor(color(RECORD));
-                button->setUnselectedLabelColor(LLUIColor(LLColor4::white));
-                button->setSelectedLabelColor(LLUIColor(LLColor4::white));
+                button->setUnselectedLabelColor(color(RECORD_TEXT_ON));
+                button->setSelectedLabelColor(color(RECORD_TEXT_ON));
                 button->setFont(sansFont("Kit12", true));
             }
             else if (name == "btn_arm")

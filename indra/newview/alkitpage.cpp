@@ -387,6 +387,7 @@ bool ALKitPage::postBuild()
                     {
                         button->setLabel("");
                         button->setImageOverlay("KitIcon_trash_16");
+                        button->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
                         button->setToolTip(LLStringExplicit("Delete preset"));
                         item_width = 28;
                     }
@@ -415,6 +416,7 @@ bool ALKitPage::postBuild()
     LLButton* reset = makeButton(pre + "_reset_page", "");
     mResetPage = reset;
     reset->setImageOverlay("KitIcon_reset_arc_16");
+    reset->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
     reset->setCommitCallback([this](LLUICtrl*, const LLSD&) { resetPage(); });
     mBar->addChild(reset);
     reset->reshape(28, 24, true);
@@ -467,6 +469,8 @@ bool ALKitPage::postBuild()
     mRedo = makeButton(pre + "_redo", "");
     mUndo->setImageOverlay("KitIcon_undo_16");
     mRedo->setImageOverlay("KitIcon_redo_16");
+    mUndo->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
+    mRedo->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
     mUndo->setToolTip(LLStringExplicit("Undo"));
     mRedo->setToolTip(LLStringExplicit("Redo"));
     mUndo->setCommitCallback(
@@ -653,6 +657,7 @@ bool ALKitPage::postBuild()
         mWhoCombo = (mWhoPicker.empty() || mActorTargetSynthetic) ? nullptr : findChild<LLComboBox>(mWhoPicker);
         mWhoChip  = makeButton(pre + "_who_chip", mWhoLabel);
         mWhoChip->setImageOverlay("KitIcon_who_person_16", LLFontGL::LEFT);
+        mWhoChip->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
         mWhoChip->setHAlign(LLFontGL::LEFT);
         mWhoChip->setLeftHPad(28);
         mWhoChip->setRightHPad(24);

@@ -29,6 +29,8 @@ file(GLOB_RECURSE shader_assets LIST_DIRECTORIES FALSE
   "${runtime_source}/app_settings/shaders/*")
 file(GLOB_RECURSE dust_assets LIST_DIRECTORIES FALSE
   "${runtime_source}/app_settings/dust/*")
+file(GLOB director_theme_assets LIST_DIRECTORIES FALSE
+  "${runtime_source}/app_settings/director_themes/*.xml")
 file(GLOB_RECURSE skin_xui_assets LIST_DIRECTORIES FALSE
   "${runtime_source}/skins/*/xui/*.xml")
 file(GLOB skin_root_assets LIST_DIRECTORIES FALSE
@@ -39,6 +41,7 @@ set(runtime_assets
   ${app_setting_assets}
   ${shader_assets}
   ${dust_assets}
+  ${director_theme_assets}
   ${skin_xui_assets}
   ${skin_root_assets})
 list(REMOVE_DUPLICATES runtime_assets)
@@ -88,7 +91,7 @@ foreach(previous_file IN LISTS previous_runtime_assets)
     endif()
 
     if(comparison_previous_file MATCHES
-        "^(app_settings/[^/]+[.](ini|xml)|app_settings/(shaders|dust)/.+|skins/[^/]+/xui/.+[.]xml|skins/[^/]+/[^/]+[.](xml|json))$")
+        "^(app_settings/[^/]+[.](ini|xml)|app_settings/(shaders|dust|director_themes)/.+|skins/[^/]+/xui/.+[.]xml|skins/[^/]+/[^/]+[.](xml|json))$")
       list(FIND runtime_asset_comparison_relatives
         "${comparison_previous_file}" current_index)
       if(current_index EQUAL -1)

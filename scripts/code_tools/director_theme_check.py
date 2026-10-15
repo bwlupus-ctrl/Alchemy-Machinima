@@ -21,6 +21,14 @@ Rules (exit 1 on any finding):
   * KitTextStrong over KitActiveFill (selected row label): >= 4.5:1.
   * KitAccentTextOn over KitAccent (text on accent fills): >= 4.5:1.
   * KitAccent over KitCardBg (accent strokes and focus): >= 3:1.
+  * KitKnobOn over KitAccent (ACTION label) and over KitText (active mode
+    segment label, alkitshell.cpp): >= 4.5:1.
+  * KitRecordTextOn over KitRecord (cut label): >= 4.5:1.
+  * KitIconOnAccent over KitAccent and over KitRecord (icons on transport
+    fills): >= 3:1.
+  * KitIconTint and KitIconTintStrong over each BG_PAIRS background: >= 3:1.
+  Icon pairs may be translucent; they are composited over the background
+  first, so the judged colour is what is drawn.
   EXEMPT_TEXT names (KitFaint, KitTextDisabled, KitTextDisabledIcon) are
   decorative or disabled tiers; WCAG 1.4.3 exempts inactive components.
 
@@ -53,7 +61,17 @@ ACCENT_PAIRS = [
     ("KitTextStrong", "KitActiveFill", 4.5),
     ("KitAccentTextOn", "KitAccent", 4.5),
     ("KitAccent", "KitCardBg", 3.0),
+    ("KitKnobOn", "KitAccent", 4.5),        # ACTION label on the accent fill (alkitstyle.cpp styleTree)
+    ("KitKnobOn", "KitText", 4.5),          # active mode-segment label on its KitText fill (alkitshell.cpp)
+    ("KitRecordTextOn", "KitRecord", 4.5),  # cut label on the record fill (director_kit_gen.py btn_cut)
 ]
+# Icons are drawn with their own tint; translucent tints are composited over the fill first.
+ICON_PAIRS = [
+    ("KitIconOnAccent", "KitAccent", 3.0),  # transport icons drawn on the accent fill
+    ("KitIconOnAccent", "KitRecord", 3.0),  # ... and on the record fill (ACTION while recording)
+]
+ICON_TINT_NAMES = ["KitIconTint", "KitIconTintStrong"]
+ICON_MIN = 3.0
 
 
 def load_skin_colors(path=SKIN_COLORS):
@@ -171,16 +189,27 @@ def contrast(a, b):
     return (la + 0.05) / (lb + 0.05)
 
 
+def composite_over(fg, bg):
+    """Source-over blend of a translucent fg onto an opaque bg (both RGBA 0..1)."""
+    a = fg[3]
+    return tuple(fg[i] * a + bg[i] * (1.0 - a) for i in range(3)) + (1.0,)
+
+
 def contrast_findings(effective):
     findings = []
 
-    def pair(fg, bg, minimum):
+    def pair(fg, bg, minimum, composite=False):
         if fg not in effective or bg not in effective:
             return
         f, b = effective[fg], effective[bg]
-        if f[3] < 1.0 or b[3] < 1.0:
-            findings.append(f"{fg} over {bg}: translucent colour, cannot judge contrast")
+        if b[3] < 1.0:
+            findings.append(f"{fg} over {bg}: translucent background, cannot judge contrast")
             return
+        if f[3] < 1.0:
+            if not composite:
+                findings.append(f"{fg} over {bg}: translucent colour, cannot judge contrast")
+                return
+            f = composite_over(f, b)
         ratio = contrast(f, b)
         if ratio < minimum:
             findings.append(f"{fg} over {bg}: {ratio:.2f}:1 < {minimum}:1")
@@ -190,6 +219,11 @@ def contrast_findings(effective):
             pair(fg, bg, TEXT_TIER_MIN)
     for fg, bg, minimum in ACCENT_PAIRS:
         pair(fg, bg, minimum)
+    for fg, bg, minimum in ICON_PAIRS:
+        pair(fg, bg, minimum, composite=True)
+    for fg in ICON_TINT_NAMES:
+        for bg in BG_PAIRS:
+            pair(fg, bg, ICON_MIN, composite=True)
     return findings
 
 
@@ -267,6 +301,17 @@ def selftest():
          _theme("range", colors=_color("KitAccent", 1.5, 0.5, 0.5)), True),
         ("three-component array fails", "three",
          _theme("three", colors='<key>KitAccent</key><array><real>0.1</real><real>0.2</real><real>0.3</real></array>'), True),
+        # Contrast pairs added with the transport and mode-segment fixes.
+        ("ACTION knob on accent fails (the 1.0:1 defect)", "knobaccent",
+         _theme("knobaccent", colors=_color("KitKnobOn", 0.0, 0.749, 1.0)), True),
+        ("record text on record fails", "recordtext",
+         _theme("recordtext", colors=_color("KitRecordTextOn", 0.851, 0.651, 1.0)), True),
+        ("white icon on accent fails", "iconaccent",
+         _theme("iconaccent", colors=_color("KitIconOnAccent", 1.0, 1.0, 1.0)), True),
+        ("icon tint too dark on window fails", "icontint",
+         _theme("icontint", colors=_color("KitIconTint", 0.10, 0.11, 0.12)), True),
+        ("translucent icon tint passes once composited", "tintalpha",
+         _theme("tintalpha", colors=_color("KitIconTint", 1.0, 1.0, 1.0, "0.75")), False),
     ]
     failures = []
     for label, stem, text, must_fail in fixtures:

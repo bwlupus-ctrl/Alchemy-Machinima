@@ -66,7 +66,7 @@
     <color name="KitTextDisabledIcon" value="0.290 0.318 0.357 1" />
     <color name="KitAccentHover" value="0.953 0.745 0.416 1" />
     <color name="KitAccentTextOn" value="0.078 0.078 0.075 1" />
-    <color name="KitRecordTextOn" value="1 1 1 1" />
+    <color name="KitRecordTextOn" value="0.078 0.078 0.075 1" />
     <color name="KitDangerText" value="0.949 0.655 0.663 1" />
     <color name="KitOkGreen" value="0.275 0.655 0.345 1" />
     <color name="KitGhostPurple" value="0.557 0.486 1 1" />
@@ -146,6 +146,9 @@
     <color name="KitShadowToast" value="0 0 0 0.50" />
     <color name="KitShadowDialog" value="0 0 0 0.50" />
     <color name="KitDimBlack65" value="0 0 0 0.65" />
+    <color name="KitIconTint" value="1 1 1 0.75" />
+    <color name="KitIconTintStrong" value="1 1 1 1" />
+    <color name="KitIconOnAccent" value="0.078 0.078 0.075 1" />
 	<color
 	 name="EmphasisColor"
 	 value="0.3 0.82 1 1" />

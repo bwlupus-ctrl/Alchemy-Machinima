@@ -20,6 +20,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import director_theme_check as theme_check  # noqa: E402  (same-directory checker: theme validity and labels)
+
 
 ROOT = Path(__file__).resolve().parents[2]
 XUI = ROOT / "indra/newview/skins/default/xui/en"
@@ -30,6 +33,7 @@ VCAM_DATA = KIT / "vcam_page.json"
 SYNONYMS_DATA = KIT / "synonyms.json"
 EXTERNAL_SEARCH_DATA = KIT / "external_search.json"
 DEFAULT_OUT = XUI
+THEMES_DIR = ROOT / "indra/newview/app_settings/director_themes"
 V1_FLOATER = XUI / "floater_director.xml"
 DIRECTOR_CPP = ROOT / "indra/newview/llfloaterdirector.cpp"
 REPORT = KIT / "gen_report.txt"
@@ -92,6 +96,7 @@ def sha16(path: Path) -> str:
 def source_bundle_sha(config_path: Path) -> str:
     config = json.loads(config_path.read_text(encoding="utf-8"))
     paths = [Path(__file__), V1_FLOATER, DIRECTOR_CPP, SYNONYMS_DATA, EXTERNAL_SEARCH_DATA]
+    paths += sorted(THEMES_DIR.glob("*.xml"))  # theme list rows and labels come from these files
     paths += [XUI / name for page in config.get("p0_pages", {}).values()
               for name in page.get("v1_sources", [])]
     digest = hashlib.sha256()
@@ -229,8 +234,12 @@ def validate_data(data: dict) -> None:
     # 2072: Include ghost clones adds one Stepped row (10/15).
     # 2073: Capture > Scene regains the "Add me to the cast at login" home row (+1); Director
     #       Settings keeps a link row to it in place of its former toggle (net 0) (10/15).
-    if len(pages) != 37 or row_count != 2073:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2073")
+    # 2073 (unchanged): Director Settings Appearance readout settings_appearance_info becomes the
+    #       DirectorTheme combo settings_theme (1 row replaced, net 0) (10/15).
+    # 2075: Director Settings 'Restore last unsaved scene' button becomes the crash-backup list: a code-bound
+    #       combo (settings_crash_backups) plus Restore and Delete buttons (1 row replaced by 3, net +2) (10/15).
+    if len(pages) != 37 or row_count != 2075:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2075")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -383,9 +392,18 @@ def stripped_copy(node: ET.Element, strip_label: bool = True) -> ET.Element:
     return clone
 
 
+# Transport buttons whose fill is accent or record colour; their icons use KitIconOnAccent.
+ACCENT_FILL_BUTTONS = ("btn_action", "btn_cut", "btn_arm")
+
+
 def apply_kit_xui_style(root: ET.Element) -> None:
     """Stamp only generated Director-v2 controls; v1/global widget defaults stay untouched."""
     for node in list(root.iter()):
+        if node.get("image_overlay", "").startswith("KitIcon_") and "image_overlay_color" not in node.attrib:
+            # Icons on an accent or record fill take KitIconOnAccent; other kit icons follow the
+            # colour theme (KitIconTint = white at 0.75 in the Default skin).
+            on_fill = node.tag == "button" and node.get("name", "") in ACCENT_FILL_BUTTONS
+            node.set("image_overlay_color", "KitIconOnAccent" if on_fill else "KitIconTint")
         if node.tag == "button":
             for attr in ("image_unselected", "image_selected", "image_pressed",
                          "image_hover_unselected", "image_hover_selected"):
@@ -417,6 +435,7 @@ def apply_kit_xui_style(root: ET.Element) -> None:
                 drop.set(attr, "Kit_RoundRect4")
             drop.set("image_color", "KitControlBg")
             drop.set("image_overlay", "KitIcon_chevron_down_10_16")
+            drop.set("image_overlay_color", "KitIconTint")
             drop.set("image_overlay_alignment", "right")
             drop.set("pad_right", "6")
             editor = next((child for child in node if child.tag == "combo_box.combo_editor"), None)
@@ -1171,6 +1190,36 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     return root
 
 
+def theme_choices(themes_dir: Path = THEMES_DIR) -> tuple[list[str], list[str]]:
+    """(labels, ids) of the colour themes, Default first then by file name (ALDirectorTheme::listThemes order).
+
+    Every theme file must pass director_theme_check, so a bad file stops generation.
+    """
+    skin = theme_check.load_skin_colors()
+    entries = []
+    for path in sorted(themes_dir.glob("*.xml")):
+        errors = theme_check.check_theme_file(str(path), skin)
+        if errors:
+            raise GenError(f"theme {path.name} fails director_theme_check: {errors[0]}")
+        root = ET.fromstring(path.read_text(encoding="utf-8"))
+        label = theme_check._llsd_map(root[0], [], path.name)["label"]
+        entries.append((path.stem, label))
+    if not any(stem == "default" for stem, _label in entries):
+        raise GenError("app_settings/director_themes/default.xml is required")
+    entries.sort(key=lambda entry: (entry[0] != "default", entry[0]))
+    return [label for _stem, label in entries], [stem for stem, _label in entries]
+
+
+def fill_theme_rows(data: dict) -> None:
+    """Rows with theme_list take their combo items from the theme files."""
+    labels, ids = theme_choices()
+    for _group, page in flatten_pages(data):
+        for row in all_rows(page):
+            if row.get("theme_list"):
+                row["it"] = labels
+                row["iv"] = ids
+
+
 def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Path, bytes], dict[str, str]]:
     data = json.loads(data_path.read_text(encoding="utf-8"))
     if VCAM_DATA.exists():
@@ -1184,6 +1233,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     config = json.loads(config_path.read_text(encoding="utf-8"))
     validate_data(data)
     normalize_shortcuts(data)
+    fill_theme_rows(data)
     if config.get("version") != 1:
         raise GenError("kit_pages.json version must be 1")
     v1 = parse_xml(V1_FLOATER)

@@ -250,6 +250,8 @@ public:
 
     void            setImageOverlay(const std::string& image_name, LLFontGL::HAlign alignment = LLFontGL::HCENTER, const LLColor4& color = LLColor4::white);
     void            setImageOverlay(const LLUUID& image_id, LLFontGL::HAlign alignment = LLFontGL::HCENTER, const LLColor4& color = LLColor4::white);
+    // Overlay colour as a live LLUIColor (a colour-table reference follows theme changes).
+    void            setImageOverlayColor(const LLUIColor& color) { mImageOverlayColor = color; }
     LLPointer<LLUIImage> getImageOverlay() { return mImageOverlay; }
     LLFontGL::HAlign getImageOverlayHAlign() const  { return mImageOverlayAlignment; }
     void setImageOverlaySelectedColor(const LLUIColor& color) { mImageOverlaySelectedColor = color; }

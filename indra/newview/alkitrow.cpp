@@ -730,9 +730,11 @@ void ALKitRow::bindingChanged()
     }
     const bool now = amber();
     if (mReset)
-        mReset->setImageOverlay("KitIcon_reset_row_16",
-                                LLFontGL::HCENTER,
-                                (now ? ALKitStyle::color(ALKitStyle::ACCENT) : ALKitStyle::color(ALKitStyle::FAINT)).get());
+    {
+        mReset->setImageOverlay("KitIcon_reset_row_16", LLFontGL::HCENTER);
+        // Live colour-table reference, so the icon follows colour theme changes.
+        mReset->setImageOverlayColor(now ? ALKitStyle::color(ALKitStyle::ACCENT) : ALKitStyle::color(ALKitStyle::FAINT));
+    }
     if (now != mAmber)
     {
         mAmber = now;

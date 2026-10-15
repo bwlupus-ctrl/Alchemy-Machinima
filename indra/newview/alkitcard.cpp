@@ -547,8 +547,11 @@ bool ALKitCard::postBuild()
 void ALKitCard::updateResetColor()
 {
     if (mReset)
-        mReset->setImageOverlay("KitIcon_reset_arc_16", LLFontGL::HCENTER,
-                                (mAmberCount > 0 ? ALKitStyle::color(ALKitStyle::ACCENT) : ALKitStyle::color(ALKitStyle::FAINT)).get());
+    {
+        mReset->setImageOverlay("KitIcon_reset_arc_16", LLFontGL::HCENTER);
+        // Live colour-table reference, so the icon follows colour theme changes.
+        mReset->setImageOverlayColor(mAmberCount > 0 ? ALKitStyle::color(ALKitStyle::ACCENT) : ALKitStyle::color(ALKitStyle::FAINT));
+    }
 }
 
 std::string ALKitCard::copySourceName() const

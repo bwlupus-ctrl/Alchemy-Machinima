@@ -104,9 +104,13 @@ private:
     void bindTronPage(LLView* root);
     void bindSteppedPage(LLView* root);
     void bindDirectorSettingsPage(LLView* root);
-    // Restore button: confirms first, then loads the previous-session backup (see recoveryRestoreSource).
-    static void requestRestoreRecoveryScene();
+    // Settings > Scene recovery: the crash-backup list (newest first) with Restore / Delete.
+    // Both confirm first and carry the exact backup path the dialog describes (no reselect).
+    static void requestRestoreCrashBackup();
+    static void requestDeleteCrashBackup();
     static void onRecoveryResponse(const LLSD& notification, const LLSD& response);
+    static void onRestoreRecoveryConfirmed(const LLSD& notification, const LLSD& response);
+    static void onDeleteCrashBackupConfirmed(const LLSD& notification, const LLSD& response);
     static void refreshRecoveryControls();
     void bindLightActorsPage(LLView* root);
     void bindImagePage(LLView* root);
@@ -144,7 +148,7 @@ private:
     void commitSceneName();             // editor commit (Enter) or second Save
     void onClickSceneDelete();
     bool saveScene(const std::string& name);
-    // recovery_path overrides the live recovery file (the kept backup is loaded the same way).
+    // recovery = true loads the crash backup at recovery_path (it is never deleted by the load).
     bool loadScene(const std::string& name, bool recovery = false,
                    const std::string& recovery_path = std::string());
     static LLSD captureSceneData();
@@ -155,14 +159,16 @@ private:
     static void markSceneClean();
     void retargetPathFromCastSelection();
     static void offerSceneRecovery();
-    static std::string recoveryPath();
-    // A backup the user chose to keep (Don't restore / remembered Discard / failed auto-restore).
-    // Never touched by autosave, the shutdown write or saveScene.
-    static std::string keptRecoveryPath();
-    static bool keepRecoveryBackupAside();
-    // 0 = not restored, 1 = restored, 2 = restored but the old backup file could not be removed.
-    static S32 restoreRecoveryBackup();
-    static void onRestoreRecoveryConfirmed(const LLSD& notification, const LLSD& response);
+    // Autosave always runs: it writes the first live slot that does not hold an unmoved
+    // previous-session backup (".director_recovery.xml", then "_2", "_3", ...).
+    static std::string autosavePath();
+    // <scenes>/crash_backups/ (created on demand); the live files of a previous session are
+    // MOVED here at login and the newest ALDirectorQol::kCrashBackupKeep are kept.
+    static std::string crashBackupsDir();
+    static void moveLiveBackupsAtLogin();
+    static void retryPendingBackupMoves();
+    // RESTORE_* result of restoring one crash backup (the file is never deleted by a restore).
+    static S32 restoreCrashBackup(const std::string& path);
     static void sceneRecoveryIdle(void*);
 
     // ---- tabs ----
@@ -563,7 +569,9 @@ private:
     LLTimer mKitDrawTimer;
     F32 mKitDrawEMA = 0.f;
     ALLiveReadoutClock mKitDrawClock{2.f};
-    LLButton* mRecoveryRestoreButton = nullptr;
+    LLComboBox* mCrashBackupCombo = nullptr;
+    LLButton* mCrashBackupRestoreButton = nullptr;
+    LLButton* mCrashBackupDeleteButton = nullptr;
     boost::signals2::scoped_connection mActorMaskTestWatch;
     boost::signals2::scoped_connection mPageBuiltConnection;
     boost::signals2::scoped_connection mPageSelectedConnection;

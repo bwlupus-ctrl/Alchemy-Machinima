@@ -72,6 +72,9 @@ enum EColor
     LIGHTMAP_CENTRE,
     LIGHTMAP_EDGE,
     LIGHTMAP_BORDER,
+    ICON_TINT,
+    ICON_TINT_STRONG,
+    RECORD_TEXT_ON,
     COLOR_COUNT
 };
 const LLUIColor& color(EColor color);
@@ -85,5 +88,7 @@ void             styleEditor(LLLineEditor* editor, bool mono = false);
 void             styleScroller(LLScrollContainer* scroller);
 void             styleList(LLScrollListCtrl* list);
 void             styleTree(LLView* root);
+// Re-reads the colours of every styled scroll list. Call after the colour theme changes.
+void             restyleLists();
 } // namespace ALKitStyle
 #endif

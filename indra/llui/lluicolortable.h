@@ -27,7 +27,9 @@
 #ifndef LL_LLUICOLORTABLE_H_
 #define LL_LLUICOLORTABLE_H_
 
+#include <boost/signals2.hpp>
 #include <boost/unordered_map.hpp>
+#include <map>
 
 #include "llinitparam.h"
 #include "llsingleton.h"
@@ -80,6 +82,11 @@ public:
     // if the color is in the table, it's value is changed, otherwise it is added
     void setColor(std::string_view name, const LLColor4& color);
 
+    // Changes a skin colour's value in place, so existing LLUIColor references see it,
+    // without marking it user-modified: saveUserSettings() ignores it. Used by colour
+    // themes. Returns false when name is not a skin colour.
+    bool setLoadedColor(std::string_view name, const LLColor4& color);
+
     // returns true if color_name exists in the table
     bool colorExists(std::string_view color_name) const;
 
@@ -89,6 +96,12 @@ public:
 
     // loads colors from settings files
     bool loadFromSettings();
+
+    // Called at the end of every loadFromSettings(), after the skin and user files are re-read.
+    boost::signals2::connection setReloadCallback(const boost::signals2::signal<void()>::slot_type& cb)
+    {
+        return mReloadSignal.connect(cb);
+    }
 
     // saves colors specified by the user to the users skin directory
     void saveUserSettings(const bool scrub = false) const;
@@ -106,6 +119,12 @@ private:
 
     string_color_map_t mLoadedColors;
     string_color_map_t mUserSetColors;
+
+    // Skin values captured right after the skin files load. saveUserSettings() compares
+    // against these, so a theme value in mLoadedColors is never mistaken for a user change.
+    std::map<std::string, LLColor4, std::less<>> mSkinColors;
+
+    boost::signals2::signal<void()> mReloadSignal;
 };
 
 #endif // LL_LLUICOLORTABLE_H

@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Second Life colour theme for the Director console.
+  Sampled 2026-10-15 from secondlife.com logo SVG (#00BFFF, #FFFFFF) and site colours (#313234, #BF00FF).
+  Dark base steps are derived from #313234; accent #00BFFF; #BF00FF only for record-type emphasis
+  (KitRecord fill with white text, KitFlash overlay), with a lighter violet for record text on dark.
+  Values are 0..1 RGBA. Missing names fall back to the Default skin colour.
+-->
 <llsd>
 <map>
   <key>version</key><integer>1</integer>
@@ -7,231 +14,243 @@
   <key>colors</key>
   <map>
     <key>KitAccent</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitAccentHi</key>
-    <array><real>0.4314</real><real>0.8627</real><real>0.8118</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitAccentHover</key>
-    <array><real>0.4314</real><real>0.8627</real><real>0.8118</real><real>1.0000</real></array>
+    <array><real>0.2000</real><real>0.8000</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitAccentTextOn</key>
-    <array><real>0.0235</real><real>0.0627</real><real>0.0941</real><real>1.0000</real></array>
+    <array><real>0.0392</real><real>0.0471</real><real>0.0549</real><real>1.0000</real></array>
     <key>KitActiveFill</key>
-    <array><real>0.0588</real><real>0.2980</real><real>0.3216</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.2275</real><real>0.3020</real><real>1.0000</real></array>
     <key>KitAmberTint08</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.0800</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>0.0800</real></array>
     <key>KitAmberTint12</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.1200</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>0.1200</real></array>
     <key>KitAmberTint22</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.2200</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>0.2200</real></array>
     <key>KitAmberTint25</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.2500</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>0.2500</real></array>
     <key>KitAmberTint28</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.2800</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>0.2800</real></array>
     <key>KitAmberTint45</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.4500</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>0.4500</real></array>
     <key>KitAmberTint70</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.7000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>0.7000</real></array>
     <key>KitArcTrack</key>
-    <array><real>0.1216</real><real>0.2275</real><real>0.3765</real><real>1.0000</real></array>
+    <array><real>0.1922</real><real>0.1961</real><real>0.2039</real><real>1.0000</real></array>
     <key>KitBannerBg</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.0800</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>0.0800</real></array>
     <key>KitCanvasOutside</key>
-    <array><real>0.0196</real><real>0.0392</real><real>0.0784</real><real>1.0000</real></array>
+    <array><real>0.0902</real><real>0.0941</real><real>0.1020</real><real>1.0000</real></array>
     <key>KitCardBg</key>
-    <array><real>0.0745</real><real>0.1333</real><real>0.2392</real><real>1.0000</real></array>
+    <array><real>0.1529</real><real>0.1569</real><real>0.1686</real><real>1.0000</real></array>
     <key>KitCardBorder</key>
-    <array><real>0.1333</real><real>0.2275</real><real>0.3843</real><real>1.0000</real></array>
+    <array><real>0.2471</real><real>0.2510</real><real>0.2627</real><real>1.0000</real></array>
     <key>KitCardBorderActive</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitChipCountLit</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitChipHoverBorder</key>
-    <array><real>0.2275</real><real>0.3216</real><real>0.4706</real><real>1.0000</real></array>
+    <array><real>0.3333</real><real>0.3412</real><real>0.3569</real><real>1.0000</real></array>
     <key>KitChipStripBg</key>
-    <array><real>0.0431</real><real>0.0902</real><real>0.1608</real><real>1.0000</real></array>
+    <array><real>0.1176</real><real>0.1216</real><real>0.1294</real><real>1.0000</real></array>
     <key>KitControlBg</key>
-    <array><real>0.1020</real><real>0.1843</real><real>0.3216</real><real>1.0000</real></array>
+    <array><real>0.1922</real><real>0.1961</real><real>0.2039</real><real>1.0000</real></array>
     <key>KitControlBorder</key>
-    <array><real>0.1725</real><real>0.2667</real><real>0.4392</real><real>1.0000</real></array>
+    <array><real>0.2902</real><real>0.2980</real><real>0.3137</real><real>1.0000</real></array>
     <key>KitDialBezelFill</key>
-    <array><real>0.0510</real><real>0.1059</real><real>0.1922</real><real>1.0000</real></array>
+    <array><real>0.1373</real><real>0.1412</real><real>0.1490</real><real>1.0000</real></array>
     <key>KitDialFace</key>
-    <array><real>0.0510</real><real>0.1059</real><real>0.1922</real><real>1.0000</real></array>
+    <array><real>0.1176</real><real>0.1216</real><real>0.1294</real><real>1.0000</real></array>
     <key>KitDialHubInner</key>
-    <array><real>0.0235</real><real>0.0627</real><real>0.0941</real><real>1.0000</real></array>
+    <array><real>0.0392</real><real>0.0471</real><real>0.0549</real><real>1.0000</real></array>
     <key>KitDialLabelDim</key>
-    <array><real>0.4157</real><real>0.4980</real><real>0.6392</real><real>1.0000</real></array>
+    <array><real>0.4314</real><real>0.4431</real><real>0.4667</real><real>1.0000</real></array>
     <key>KitDialNeedle</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitDialRange</key>
-    <array><real>0.1686</real><real>0.2667</real><real>0.4392</real><real>1.0000</real></array>
+    <array><real>0.2902</real><real>0.2980</real><real>0.3137</real><real>1.0000</real></array>
     <key>KitDialRing</key>
-    <array><real>0.1686</real><real>0.2667</real><real>0.4392</real><real>1.0000</real></array>
+    <array><real>0.2902</real><real>0.2980</real><real>0.3137</real><real>1.0000</real></array>
     <key>KitDialTick</key>
-    <array><real>0.5529</real><real>0.6275</real><real>0.7529</real><real>1.0000</real></array>
+    <array><real>0.6039</real><real>0.6157</real><real>0.6353</real><real>1.0000</real></array>
     <key>KitDialTrack</key>
-    <array><real>0.1216</real><real>0.2275</real><real>0.3765</real><real>1.0000</real></array>
+    <array><real>0.1922</real><real>0.1961</real><real>0.2039</real><real>1.0000</real></array>
     <key>KitDim</key>
-    <array><real>0.6431</real><real>0.7137</real><real>0.8235</real><real>1.0000</real></array>
+    <array><real>0.6902</real><real>0.7020</real><real>0.7216</real><real>1.0000</real></array>
     <key>KitDisabledBorderDash</key>
-    <array><real>0.1843</real><real>0.2902</real><real>0.4706</real><real>1.0000</real></array>
+    <array><real>0.2902</real><real>0.2980</real><real>0.3137</real><real>1.0000</real></array>
     <key>KitDivider</key>
-    <array><real>0.1059</real><real>0.1882</real><real>0.3137</real><real>1.0000</real></array>
+    <array><real>0.2275</real><real>0.2314</real><real>0.2431</real><real>1.0000</real></array>
     <key>KitDivider2</key>
-    <array><real>0.0902</real><real>0.1647</real><real>0.2784</real><real>1.0000</real></array>
+    <array><real>0.1922</real><real>0.1961</real><real>0.2039</real><real>1.0000</real></array>
     <key>KitFaint</key>
-    <array><real>0.3647</real><real>0.4431</real><real>0.5882</real><real>1.0000</real></array>
+    <array><real>0.4314</real><real>0.4431</real><real>0.4667</real><real>1.0000</real></array>
     <key>KitFlash</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.2800</real></array>
+    <array><real>0.7490</real><real>0.0000</real><real>1.0000</real><real>0.2800</real></array>
     <key>KitFlipButtonBg</key>
-    <array><real>0.0392</real><real>0.0784</real><real>0.1490</real><real>1.0000</real></array>
+    <array><real>0.1020</real><real>0.1059</real><real>0.1137</real><real>0.8800</real></array>
     <key>KitFocusOutline</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitGhostHoverBg</key>
-    <array><real>0.0902</real><real>0.1647</real><real>0.2902</real><real>1.0000</real></array>
+    <array><real>0.2039</real><real>0.2118</real><real>0.2275</real><real>1.0000</real></array>
     <key>KitHairline</key>
-    <array><real>0.1020</real><real>0.1843</real><real>0.3137</real><real>1.0000</real></array>
+    <array><real>0.1922</real><real>0.1961</real><real>0.2039</real><real>1.0000</real></array>
     <key>KitHoverBg</key>
-    <array><real>0.1098</real><real>0.2000</real><real>0.3451</real><real>1.0000</real></array>
+    <array><real>0.2275</real><real>0.2314</real><real>0.2431</real><real>1.0000</real></array>
+    <key>KitIconOnAccent</key>
+    <array><real>0.0392</real><real>0.0471</real><real>0.0549</real><real>1.0000</real></array>
+    <key>KitIconTint</key>
+    <array><real>0.9020</real><real>0.9137</real><real>0.9333</real><real>1.0000</real></array>
+    <key>KitIconTintStrong</key>
+    <array><real>0.9020</real><real>0.9137</real><real>0.9333</real><real>1.0000</real></array>
     <key>KitInputBg</key>
-    <array><real>0.0392</real><real>0.0824</real><real>0.1569</real><real>1.0000</real></array>
+    <array><real>0.1020</real><real>0.1059</real><real>0.1137</real><real>1.0000</real></array>
     <key>KitInputBorder</key>
-    <array><real>0.1725</real><real>0.2902</real><real>0.4706</real><real>1.0000</real></array>
+    <array><real>0.2902</real><real>0.2980</real><real>0.3137</real><real>1.0000</real></array>
     <key>KitInsetBg</key>
-    <array><real>0.0392</real><real>0.0824</real><real>0.1569</real><real>1.0000</real></array>
+    <array><real>0.1020</real><real>0.1059</real><real>0.1137</real><real>1.0000</real></array>
     <key>KitKnobOff</key>
-    <array><real>0.8471</real><real>0.8941</real><real>0.9490</real><real>1.0000</real></array>
+    <array><real>0.9020</real><real>0.9059</real><real>0.9176</real><real>1.0000</real></array>
     <key>KitKnobOn</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0392</real><real>0.0471</real><real>0.0549</real><real>1.0000</real></array>
     <key>KitLabel</key>
-    <array><real>0.7725</real><real>0.8275</real><real>0.9098</real><real>1.0000</real></array>
+    <array><real>0.7686</real><real>0.7765</real><real>0.7922</real><real>1.0000</real></array>
     <key>KitLightKey</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitLightMapBgCentre</key>
-    <array><real>0.0549</real><real>0.1412</real><real>0.2588</real><real>1.0000</real></array>
+    <array><real>0.1647</real><real>0.1725</real><real>0.1882</real><real>1.0000</real></array>
     <key>KitLightMapBgEdge</key>
-    <array><real>0.0392</real><real>0.1020</real><real>0.1882</real><real>1.0000</real></array>
+    <array><real>0.1176</real><real>0.1216</real><real>0.1294</real><real>1.0000</real></array>
     <key>KitLightMapBorder</key>
-    <array><real>0.1333</real><real>0.2235</real><real>0.3686</real><real>1.0000</real></array>
+    <array><real>0.2471</real><real>0.2510</real><real>0.2627</real><real>1.0000</real></array>
     <key>KitLinkButtonBg</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitMapBack</key>
-    <array><real>0.9020</real><real>0.9333</real><real>0.9725</real><real>1.0000</real></array>
+    <array><real>0.9294</real><real>0.9333</real><real>0.9412</real><real>1.0000</real></array>
     <key>KitMapBackdropEdge</key>
-    <array><real>0.0235</real><real>0.1020</real><real>0.2118</real><real>1.0000</real></array>
+    <array><real>0.0118</real><real>0.0745</real><real>0.1059</real><real>1.0000</real></array>
     <key>KitMapBackdropMid</key>
-    <array><real>0.0745</real><real>0.1882</real><real>0.3529</real><real>1.0000</real></array>
+    <array><real>0.0392</real><real>0.1686</real><real>0.2275</real><real>1.0000</real></array>
     <key>KitMapBg</key>
-    <array><real>0.0431</real><real>0.1137</real><real>0.2196</real><real>1.0000</real></array>
+    <array><real>0.0431</real><real>0.1373</real><real>0.1882</real><real>1.0000</real></array>
     <key>KitMapCamDark</key>
-    <array><real>0.0392</real><real>0.0784</real><real>0.1490</real><real>1.0000</real></array>
+    <array><real>0.0902</real><real>0.0941</real><real>0.1020</real><real>1.0000</real></array>
     <key>KitMapCamGlyphGrey</key>
-    <array><real>0.6902</real><real>0.7686</real><real>0.8157</real><real>1.0000</real></array>
+    <array><real>0.7059</real><real>0.7216</real><real>0.7412</real><real>1.0000</real></array>
     <key>KitMapCamTextBlue</key>
-    <array><real>0.6588</real><real>0.8471</real><real>0.8784</real><real>1.0000</real></array>
+    <array><real>0.5608</real><real>0.8510</real><real>0.9608</real><real>1.0000</real></array>
     <key>KitMapCamTextDim</key>
-    <array><real>0.4980</real><real>0.6549</real><real>0.7098</real><real>1.0000</real></array>
+    <array><real>0.4980</real><real>0.7059</real><real>0.7843</real><real>1.0000</real></array>
     <key>KitMapFill</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitMapGlobeEdgeTop</key>
-    <array><real>0.0392</real><real>0.1451</real><real>0.3137</real><real>1.0000</real></array>
+    <array><real>0.0392</real><real>0.1647</real><real>0.2471</real><real>1.0000</real></array>
     <key>KitMapHemisphereHi</key>
-    <array><real>0.3098</real><real>0.6392</real><real>0.7216</real><real>1.0000</real></array>
+    <array><real>0.3098</real><real>0.7020</real><real>0.8510</real><real>1.0000</real></array>
     <key>KitMapHemisphereLow</key>
-    <array><real>0.1059</real><real>0.3529</real><real>0.4196</real><real>1.0000</real></array>
+    <array><real>0.1020</real><real>0.3137</real><real>0.4392</real><real>1.0000</real></array>
     <key>KitMapHemisphereLow2</key>
-    <array><real>0.1333</real><real>0.4471</real><real>0.5412</real><real>1.0000</real></array>
+    <array><real>0.1333</real><real>0.4039</real><real>0.5412</real><real>1.0000</real></array>
     <key>KitMapHemisphereMid</key>
-    <array><real>0.1725</real><real>0.4980</real><real>0.5725</real><real>1.0000</real></array>
+    <array><real>0.1686</real><real>0.4980</real><real>0.6392</real><real>1.0000</real></array>
     <key>KitMapHorizonStroke</key>
-    <array><real>0.1725</real><real>0.3098</real><real>0.4392</real><real>1.0000</real></array>
+    <array><real>0.1725</real><real>0.3098</real><real>0.3843</real><real>1.0000</real></array>
     <key>KitMapKey</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitMapOrbitStroke</key>
     <array><real>0.3098</real><real>0.5255</real><real>0.6588</real><real>1.0000</real></array>
     <key>KitMuted</key>
-    <array><real>0.5529</real><real>0.6275</real><real>0.7529</real><real>1.0000</real></array>
+    <array><real>0.6039</real><real>0.6157</real><real>0.6353</real><real>1.0000</real></array>
     <key>KitOffGrey</key>
-    <array><real>0.5529</real><real>0.6275</real><real>0.7529</real><real>1.0000</real></array>
+    <array><real>0.6039</real><real>0.6157</real><real>0.6353</real><real>1.0000</real></array>
     <key>KitOverlayScrim</key>
-    <array><real>0.0196</real><real>0.0392</real><real>0.0784</real><real>0.5500</real></array>
+    <array><real>0.0902</real><real>0.0941</real><real>0.1020</real><real>0.5500</real></array>
     <key>KitPanelBg</key>
-    <array><real>0.0510</real><real>0.1059</real><real>0.1922</real><real>1.0000</real></array>
+    <array><real>0.1373</real><real>0.1412</real><real>0.1490</real><real>1.0000</real></array>
     <key>KitPillOnBorder</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitRailActiveDot</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitRailBg</key>
-    <array><real>0.0510</real><real>0.1059</real><real>0.1922</real><real>1.0000</real></array>
+    <array><real>0.1216</real><real>0.1255</real><real>0.1333</real><real>1.0000</real></array>
     <key>KitRailBorder</key>
-    <array><real>0.1059</real><real>0.1882</real><real>0.3137</real><real>1.0000</real></array>
+    <array><real>0.1922</real><real>0.1961</real><real>0.2039</real><real>1.0000</real></array>
     <key>KitRailHover</key>
-    <array><real>0.0824</real><real>0.1569</real><real>0.2902</real><real>1.0000</real></array>
+    <array><real>0.1725</real><real>0.1765</real><real>0.1882</real><real>1.0000</real></array>
+    <key>KitRecord</key>
+    <array><real>0.7490</real><real>0.0000</real><real>1.0000</real><real>1.0000</real></array>
+    <key>KitRecordText</key>
+    <array><real>0.8510</real><real>0.6510</real><real>1.0000</real><real>1.0000</real></array>
+    <key>KitRecordTextOn</key>
+    <array><real>1.0000</real><real>1.0000</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitResultRowHoverBg</key>
-    <array><real>0.0941</real><real>0.1882</real><real>0.3529</real><real>1.0000</real></array>
+    <array><real>0.2275</real><real>0.2314</real><real>0.2431</real><real>1.0000</real></array>
     <key>KitRowHover</key>
-    <array><real>0.0941</real><real>0.1725</real><real>0.3059</real><real>1.0000</real></array>
+    <array><real>0.2039</real><real>0.2118</real><real>0.2275</real><real>1.0000</real></array>
     <key>KitRowHoverBg</key>
-    <array><real>0.0941</real><real>0.1725</real><real>0.3059</real><real>1.0000</real></array>
+    <array><real>0.2039</real><real>0.2118</real><real>0.2275</real><real>1.0000</real></array>
     <key>KitScrollbarThumb</key>
-    <array><real>0.1725</real><real>0.2667</real><real>0.4392</real><real>1.0000</real></array>
+    <array><real>0.2902</real><real>0.2980</real><real>0.3137</real><real>1.0000</real></array>
     <key>KitSkeletonMid</key>
-    <array><real>0.1020</real><real>0.1843</real><real>0.3216</real><real>1.0000</real></array>
+    <array><real>0.1922</real><real>0.1961</real><real>0.2039</real><real>1.0000</real></array>
     <key>KitSliderFocusHalo</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>0.4500</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>0.4500</real></array>
     <key>KitSliderThumb</key>
-    <array><real>0.9020</real><real>0.9686</real><real>0.9608</real><real>1.0000</real></array>
+    <array><real>0.9020</real><real>0.9059</real><real>0.9176</real><real>1.0000</real></array>
     <key>KitSliderTrackEmpty</key>
-    <array><real>0.1686</real><real>0.2667</real><real>0.4392</real><real>1.0000</real></array>
+    <array><real>0.2471</real><real>0.2510</real><real>0.2627</real><real>1.0000</real></array>
     <key>KitSliderTrackFill</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitSpinnerTrack</key>
-    <array><real>0.1686</real><real>0.2667</real><real>0.4392</real><real>1.0000</real></array>
+    <array><real>0.2471</real><real>0.2510</real><real>0.2627</real><real>1.0000</real></array>
     <key>KitSubBand</key>
-    <array><real>0.0431</real><real>0.0902</real><real>0.1608</real><real>1.0000</real></array>
+    <array><real>0.1216</real><real>0.1255</real><real>0.1333</real><real>1.0000</real></array>
     <key>KitSubrowBg</key>
-    <array><real>0.0588</real><real>0.1216</real><real>0.2196</real><real>1.0000</real></array>
+    <array><real>0.1804</real><real>0.1843</real><real>0.1961</real><real>1.0000</real></array>
     <key>KitSubrowBorder</key>
-    <array><real>0.1176</real><real>0.2078</real><real>0.3412</real><real>1.0000</real></array>
+    <array><real>0.2275</real><real>0.2314</real><real>0.2431</real><real>1.0000</real></array>
     <key>KitSwatchBorder</key>
-    <array><real>0.2275</real><real>0.3216</real><real>0.4706</real><real>1.0000</real></array>
+    <array><real>0.3333</real><real>0.3412</real><real>0.3569</real><real>1.0000</real></array>
     <key>KitSwitchKnobOff</key>
-    <array><real>0.8471</real><real>0.8941</real><real>0.9490</real><real>1.0000</real></array>
+    <array><real>0.9020</real><real>0.9059</real><real>0.9176</real><real>1.0000</real></array>
     <key>KitSwitchKnobOn</key>
-    <array><real>0.0235</real><real>0.0627</real><real>0.0941</real><real>1.0000</real></array>
+    <array><real>0.0392</real><real>0.0471</real><real>0.0549</real><real>1.0000</real></array>
     <key>KitSwitchOff</key>
-    <array><real>0.1843</real><real>0.2902</real><real>0.4706</real><real>1.0000</real></array>
+    <array><real>0.2902</real><real>0.2980</real><real>0.3137</real><real>1.0000</real></array>
     <key>KitSwitchOffTrack</key>
-    <array><real>0.1216</real><real>0.2157</real><real>0.3765</real><real>1.0000</real></array>
+    <array><real>0.1922</real><real>0.1961</real><real>0.2039</real><real>1.0000</real></array>
     <key>KitSwitchOnTrack</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitTabUnderline</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitText</key>
-    <array><real>0.9020</real><real>0.9333</real><real>0.9725</real><real>1.0000</real></array>
+    <array><real>0.9490</real><real>0.9529</real><real>0.9608</real><real>1.0000</real></array>
     <key>KitTextDisabled</key>
-    <array><real>0.3647</real><real>0.4431</real><real>0.5882</real><real>1.0000</real></array>
+    <array><real>0.4314</real><real>0.4431</real><real>0.4667</real><real>1.0000</real></array>
     <key>KitTextDisabledIcon</key>
-    <array><real>0.2902</real><real>0.3725</real><real>0.5098</real><real>1.0000</real></array>
+    <array><real>0.3333</real><real>0.3412</real><real>0.3569</real><real>1.0000</real></array>
     <key>KitTextLabel</key>
-    <array><real>0.7725</real><real>0.8275</real><real>0.9098</real><real>1.0000</real></array>
+    <array><real>0.7686</real><real>0.7765</real><real>0.7922</real><real>1.0000</real></array>
     <key>KitTextMuted</key>
-    <array><real>0.5529</real><real>0.6275</real><real>0.7529</real><real>1.0000</real></array>
+    <array><real>0.6039</real><real>0.6157</real><real>0.6353</real><real>1.0000</real></array>
     <key>KitTextPrimary</key>
-    <array><real>0.9020</real><real>0.9333</real><real>0.9725</real><real>1.0000</real></array>
+    <array><real>0.9490</real><real>0.9529</real><real>0.9608</real><real>1.0000</real></array>
     <key>KitTextSecondary</key>
-    <array><real>0.6431</real><real>0.7137</real><real>0.8235</real><real>1.0000</real></array>
+    <array><real>0.7216</real><real>0.7333</real><real>0.7529</real><real>1.0000</real></array>
     <key>KitTextStrong</key>
-    <array><real>0.9569</real><real>0.9725</real><real>0.9922</real><real>1.0000</real></array>
+    <array><real>0.9804</real><real>0.9843</real><real>0.9882</real><real>1.0000</real></array>
     <key>KitToastBorder</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitToastCheck</key>
-    <array><real>0.1804</real><real>0.7686</real><real>0.7137</real><real>1.0000</real></array>
+    <array><real>0.0000</real><real>0.7490</real><real>1.0000</real><real>1.0000</real></array>
     <key>KitTrack</key>
-    <array><real>0.1686</real><real>0.2667</real><real>0.4392</real><real>1.0000</real></array>
+    <array><real>0.2471</real><real>0.2510</real><real>0.2627</real><real>1.0000</real></array>
     <key>KitWindowBg</key>
-    <array><real>0.0392</real><real>0.0784</real><real>0.1490</real><real>1.0000</real></array>
+    <array><real>0.1176</real><real>0.1216</real><real>0.1294</real><real>1.0000</real></array>
     <key>KitWindowBorder</key>
-    <array><real>0.1333</real><real>0.2275</real><real>0.3843</real><real>1.0000</real></array>
+    <array><real>0.2275</real><real>0.2314</real><real>0.2431</real><real>1.0000</real></array>
   </map>
 </map>
 </llsd>

@@ -542,6 +542,7 @@ void ALKitShell::buildChrome()
         button->setRightHPad(8);
         button->setHAlign(LLFontGL::LEFT);
         button->setImageOverlay(item.icon, LLFontGL::LEFT);
+        button->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
         button->setImageOverlaySelectedColor(ALKitStyle::color(ALKitStyle::ACCENT));
         button->setSelectedLabelColor(ALKitStyle::color(ALKitStyle::ACCENT));
         const std::string    group        = item.group;
@@ -643,6 +644,7 @@ void ALKitShell::updatePips()
         if (mRailButtons[index]->getLabelSelected() != label)
             mRailButtons[index]->setLabelSelected(label);
         mRailButtons[index]->setImageOverlay(mRailData[index].icon, mRailLabels ? LLFontGL::LEFT : LLFontGL::HCENTER);
+        mRailButtons[index]->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
         mRailButtons[index]->setFont(ALKitStyle::sansFont("Kit13", mRailButtons[index]->getToggleState()));
     }
     for (TabData& tab : mTabs)

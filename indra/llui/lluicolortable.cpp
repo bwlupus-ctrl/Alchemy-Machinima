@@ -221,14 +221,27 @@ void LLUIColorTable::setColor(std::string_view name, const LLColor4& color)
     }
 }
 
+bool LLUIColorTable::setLoadedColor(std::string_view name, const LLColor4& color)
+{
+    auto it = mLoadedColors.find(name);
+    if (it == mLoadedColors.end())
+    {
+        return false;
+    }
+    // Same node, same address: widgets holding this colour pick up the new value on their next draw.
+    it->second.set(color);
+    return true;
+}
+
 bool LLUIColorTable::isDefault(std::string_view name) const
 {
-    string_color_map_t::const_iterator base_iter = mLoadedColors.find(name);
+    // "Default" is the skin value, even while a colour theme overrides the loaded layer.
+    auto base_iter = mSkinColors.find(name);
     string_color_map_t::const_iterator user_iter = mUserSetColors.find(name);
-    if (base_iter != mLoadedColors.end())
+    if (base_iter != mSkinColors.end())
     {
         if(user_iter != mUserSetColors.end())
-            return user_iter->second == base_iter->second;
+            return user_iter->second.get() == base_iter->second;
 
         return true;
     }
@@ -242,17 +255,26 @@ bool LLUIColorTable::isDefault(std::string_view name) const
 
 void LLUIColorTable::resetToDefault(std::string_view name)
 {
-    string_color_map_t::iterator iter = mUserSetColors.find(name);
-
-    if (iter != mUserSetColors.end())
+    auto user_iter = mUserSetColors.find(name);
+    if (user_iter == mUserSetColors.end())
     {
-        auto default_iter = mLoadedColors.find(name);
-
-        if (default_iter != mLoadedColors.end())
-        {
-            iter->second = default_iter->second.get();
-        }
+        return;
     }
+    // The loaded layer holds the value to show: the skin colour, or the active colour theme's value
+    // (setColor() keeps that copy in step with theme changes).
+    auto loaded_iter = mLoadedColors.find(name);
+    if (loaded_iter == mLoadedColors.end())
+    {
+        return;
+    }
+
+    // Drop the user override. The user node is moved back into the loaded layer rather than erased,
+    // so LLUIColor references that widgets already hold stay valid and follow later theme changes.
+    const LLColor4 shown = loaded_iter->second.get();
+    mLoadedColors.erase(loaded_iter);
+    user_iter->second.set(shown);
+    auto handle = mUserSetColors.extract(user_iter);
+    mLoadedColors.insert(std::move(handle));
 }
 
 bool LLUIColorTable::loadFromSettings()
@@ -267,8 +289,17 @@ bool LLUIColorTable::loadFromSettings()
         result |= loadFromFilename(colors_path, mLoadedColors);
     }
 
+    mSkinColors.clear();
+    for (const auto& color_pair : mLoadedColors)
+    {
+        mSkinColors[color_pair.first] = color_pair.second.get();
+    }
+
     std::string user_filename = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, "colors.xml");
     loadFromFilename(user_filename, mUserSetColors);
+
+    // Listeners (the Director colour theme) re-apply their overrides over the freshly loaded skin values.
+    mReloadSignal();
 
     return result;
 }
@@ -279,9 +310,9 @@ void LLUIColorTable::saveUserSettings(const bool scrub /* = false */) const
 
     for (const auto& color_pair : mUserSetColors)
     {
-        // Compare user color value with the default value, skip if equal
-        string_color_map_t::const_iterator itd = mLoadedColors.find(color_pair.first);
-        if(itd != mLoadedColors.end() && itd->second == color_pair.second)
+        // Compare user color value with the skin default, skip if equal
+        auto itd = mSkinColors.find(color_pair.first);
+        if(itd != mSkinColors.end() && itd->second == color_pair.second.get())
             continue;
 
         if (!scrub || color_pair.first.find("ColorPaletteEntry") != std::string::npos)

@@ -1,12 +1,12 @@
 # Settings — Director Kit page contract
 
 Page key: `director_settings_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (1/6 setting-bound rows; 2 C++-referenced rows).
+Computed class: **code-driven** (2/8 setting-bound rows; 4 C++-referenced rows).
 
 ## Real owners
 
-- `director_settings_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (5 matching rows).
-- Referencing classes: `LLFloaterDirector` (1), `LLNotifications` (1).
+- `director_settings_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (7 matching rows).
+- Referencing classes: `LLFloaterDirector` (3), `LLNotifications` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -21,17 +21,19 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `scene_recovery` / `settings_recovery_mode` (When an unsaved scene is found) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:8` | kit `combo` ↔ `DirectorRecoveryMode` `S32` | none |
-| `scene_recovery` / `settings_restore_recovery` (Restore last unsaved scene) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:17` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `scene_recovery` / `settings_recovery_help` (About recovery) | `text` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:20` | kit readout ← approved static copy; no runtime writer | none |
+| `scene_recovery` / `settings_crash_backups` (Crash backups) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:17` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `scene_recovery` / `settings_restore_backup` (Restore the selected backup) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:23` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `scene_recovery` / `settings_delete_backup` (Delete the selected backup) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:26` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `scene_recovery` / `settings_recovery_help` (About recovery) | `text` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:29` | kit readout ← approved static copy; no runtime writer | none |
 | `settings_cast` / `settings_add_self_link` (Add me to the cast at login) | none | kit-native action `link_to:capture_group/scene_options_tab`; no duplicate widget is required | none |
-| `settings_prompts` / `settings_reset_prompts` (Reset 'don't ask again' prompts) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:28` | `ALDirectorSettingsKitAdapter` command/model binding → wired in `LLFloaterDirector::bindDirectorSettingsPage()`; behavior `LLNotifications::setIgnored()` (`indra/newview/llfloaterdirector.cpp:1463`) | none |
-| `settings_appearance` / `settings_appearance_info` (Appearance) | `text` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:33` | kit readout ← approved static copy; no runtime writer | none |
+| `settings_prompts` / `settings_reset_prompts` (Reset 'don't ask again' prompts) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:37` | `ALDirectorSettingsKitAdapter` command/model binding → wired in `LLFloaterDirector::bindDirectorSettingsPage()`; behavior `LLNotifications::setIgnored()` (`indra/newview/llfloaterdirector.cpp:1699`) | none |
+| `settings_appearance` / `settings_theme` (Theme) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:42` | kit `combo` ↔ `DirectorTheme` `String` | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `LLNotifications::setIgnored()` — `indra/newview/llfloaterdirector.cpp:1463` | Move model-facing work into `ALDirectorSettingsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLNotifications::setIgnored()` — `indra/newview/llfloaterdirector.cpp:1699` | Move model-facing work into `ALDirectorSettingsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -82,7 +84,9 @@ None. Every approved visual kind is either a kit primitive or an existing XUI co
 
 ## Unresolved and pending-decision items
 
-- `settings_restore_recovery` (Restore last unsaved scene): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `settings_crash_backups` (Crash backups): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `settings_restore_backup` (Restore the selected backup): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `settings_delete_backup` (Delete the selected backup): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 
 ## Risks
 
