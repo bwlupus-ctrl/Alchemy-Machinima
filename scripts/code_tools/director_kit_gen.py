@@ -238,8 +238,11 @@ def validate_data(data: dict) -> None:
     #       DirectorTheme combo settings_theme (1 row replaced, net 0) (10/15).
     # 2075: Director Settings 'Restore last unsaved scene' button becomes the crash-backup list: a code-bound
     #       combo (settings_crash_backups) plus Restore and Delete buttons (1 row replaced by 3, net +2) (10/15).
-    if len(pages) != 37 or row_count != 2075:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2075")
+    # 2088: Stepped page targeting + variation + group rates (+13): Radius, Limit distance, Include me, Rate offset,
+    #       Effective, Seed, New seed (Reroll), Phase spread, Rate variation, Imperfect timing, Group, Group rate,
+    #       All groups (10/15).
+    if len(pages) != 37 or row_count != 2088:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2088")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

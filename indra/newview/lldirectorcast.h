@@ -176,6 +176,7 @@ public:
             F32 mRate = 12.f;
             S32 mWhat = -1;
             S32 mRole = 0;
+            S32 mRateOffset = -1; // -1 inherit group/page, 0 same, 1 +1 step, 2 +2 steps
         };
 
         bool            mEnabled = false;

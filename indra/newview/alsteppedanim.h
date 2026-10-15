@@ -16,7 +16,10 @@
 
 namespace ALSteppedAnim
 {
-enum EScope : S32 { SCOPE_SELECTED = 0, SCOPE_CAST = 1, SCOPE_VIEW = 2 };
+// Values 0-2 are saved in user settings and presets; never renumber them.
+enum EScope : S32 { SCOPE_SELECTED = 0, SCOPE_CAST = 1, SCOPE_VIEW = 2, SCOPE_FRIENDS = 3, SCOPE_NEARBY = 4 };
+// Coarser-step offsets for group / per-actor rates: how many extra base-grid frames each hold lasts.
+enum ERateOffset : S32 { RATE_SAME = 0, RATE_PLUS1 = 1, RATE_PLUS2 = 2, RATE_SMOOTH = 3 };
 enum EMode : S32 { MODE_FIXED = 0, MODE_ADAPTIVE = 1, MODE_MIXED = 2 };
 enum EWhat : S32 { WHAT_POSE = 0, WHAT_POSE_POSITION = 1 };
 enum EClock : S32 { CLOCK_CAPTURE = 0, CLOCK_REAL = 1 };
@@ -63,6 +66,14 @@ struct Config
     bool ease = false;
     F32 easeAmount = .5f;
     bool matchRoto = false;
+    // Targeting (T2, T3) and variation (V1-V4). Defaults reproduce the pre-existing look.
+    F32 nearbyRadius = 20.f;
+    bool limitDistance = false;
+    bool includeSelf = true;
+    U32 seed = 0;
+    F32 phaseSpread = 1.f;
+    F32 rateVariation = 0.f;
+    F32 timingJitter = 0.f;
 };
 
 Config sanitize(const Config& raw);
@@ -75,6 +86,7 @@ struct ActorOverride
     F32 rate = 12.f;
     S32 what = -1;
     S32 role = 0;
+    S32 rateOffset = -1; // -1 inherit the group/page, 0 same, 1 +1 step, 2 +2 steps
 };
 ActorOverride sanitize(const ActorOverride& raw);
 
@@ -90,12 +102,15 @@ struct ActorFacts
     bool cameraMounted = false;
     bool posing = false;
     F32 cameraDistance = 0.f;
+    bool isFriend = false;
+    S32 groupOffset = 0; // cast-group rate offset (ERateOffset); the runtime resolves it from the group tag
     S32 castOrder = std::numeric_limits<S32>::max();
     ActorOverride ov;
 };
 
 struct Assignment
 {
+    U64 seed = 0; // mixed actor seed (digest + StepAnimSeed); drives per-actor timing jitter
     bool stepped = false;
     bool adaptive = false;
     F32 rate = 0.f;
@@ -106,6 +121,19 @@ struct Assignment
 };
 
 Assignment resolveActor(const Config&, const ActorFacts&, F64 roto_phase);
+// Scope + include-self + distance rules (T1-T3). Does not apply the per-actor overrides,
+// exclusions or the actor cap, which resolveActor / applyActorCap apply afterwards (T4).
+bool scopeIncludes(const Config&, const ActorFacts&);
+// actor_seed = hash(actor UUID digest, StepAnimSeed); seed 0 returns the digest unchanged.
+U64 mixSeed(U64 digest, U32 user_seed);
+// Deterministic per-actor step-length factor in [1, 1 + variation] (unquantised).
+F32 rateFactor(U64 seed, F32 variation);
+// Applies the factor quantised to whole base-grid frames. Never faster than `rate`, never below 2 fps.
+F32 varyRate(F32 rate, U64 seed, F32 variation, S32 base_fps);
+// Group / per-actor coarser step: each hold lasts `offset` more base-grid frames (RATE_PLUS1/2 only).
+F32 offsetRate(F32 rate, S32 offset, S32 base_fps);
+// Imperfect timing: true when this tick should be held one extra step. Never twice in a row.
+bool extraHold(U64 seed, S64 tick, F32 jitter, bool previous_was_extra);
 bool ghostMayInherit(const Config&, const ActorFacts&);
 bool inheritAttachedAssignment(const Assignment& source, U64 source_seed,
                                Assignment& attached, U64& attached_seed);
@@ -157,6 +185,7 @@ struct ActorState
     S32 candidateSub = -1;
     bool candidatePending = false;
     bool smearTick = false;
+    bool jitterHeld = false; // the previous boundary was an extra (imperfect-timing) hold
 };
 
 struct FrameDecision

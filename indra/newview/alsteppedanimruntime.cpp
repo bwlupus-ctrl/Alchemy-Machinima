@@ -11,6 +11,7 @@
 #include "fsfloaterposer.h"
 #include "llagent.h"
 #include "llagentcamera.h"
+#include "llcallingcard.h"
 #include "llcharacter.h"
 #include "llcinematiccamera.h"
 #include "llcontrolavatar.h"
@@ -160,6 +161,13 @@ ALSteppedAnim::Config ALSteppedAnimRuntime::readConfig() const
     static LLCachedControl<bool> ease(gSavedSettings, "StepAnimEase");
     static LLCachedControl<F32> ease_amount(gSavedSettings, "StepAnimEaseAmount");
     static LLCachedControl<bool> match_roto(gSavedSettings, "StepAnimMatchRotoInk");
+    static LLCachedControl<F32> nearby_radius(gSavedSettings, "StepAnimNearbyRadius");
+    static LLCachedControl<bool> limit_distance(gSavedSettings, "StepAnimLimitDistance");
+    static LLCachedControl<bool> include_self(gSavedSettings, "StepAnimIncludeSelf");
+    static LLCachedControl<U32> seed(gSavedSettings, "StepAnimSeed");
+    static LLCachedControl<F32> phase_spread(gSavedSettings, "StepAnimPhaseSpread");
+    static LLCachedControl<F32> rate_variation(gSavedSettings, "StepAnimRateVariation");
+    static LLCachedControl<F32> timing_jitter(gSavedSettings, "StepAnimTimingJitter");
     ALSteppedAnim::Config c;
     c.includeGhosts = include_ghosts;
     c.enabled = true; c.scope = scope; c.excludeCameraMounted = exclude; c.maxAvatars = maximum;
@@ -174,6 +182,10 @@ ALSteppedAnim::Config ALSteppedAnimRuntime::readConfig() const
     c.smear = smear; c.smearStrength = finiteSetting(smear_strength, .5f);
     c.smearThreshold = finiteSetting(smear_threshold, 2.5f); c.ease = ease;
     c.easeAmount = finiteSetting(ease_amount, .5f); c.matchRoto = match_roto;
+    c.nearbyRadius = finiteSetting(nearby_radius, 20.f); c.limitDistance = limit_distance;
+    c.includeSelf = include_self; c.seed = seed;
+    c.phaseSpread = finiteSetting(phase_spread, 1.f); c.rateVariation = finiteSetting(rate_variation, 0.f);
+    c.timingJitter = finiteSetting(timing_jitter, 0.f);
     return ALSteppedAnim::sanitize(c);
 }
 
@@ -196,6 +208,16 @@ void ALSteppedAnimRuntime::collectActors()
     const bool empty_cast = cast.getIds().empty();
     std::map<LLUUID, S32> cast_order;
     for (U32 i = 0; i < cast.getCast().size(); ++i) cast_order[cast.getCast()[i].mId] = static_cast<S32>(i);
+    // Cast-group rate offsets (viewer-local setting, group tag -> offset). The map is only
+    // built when at least one group has an offset, so the default path allocates nothing new.
+    static LLCachedControl<LLSD> group_rates(gSavedSettings, "StepAnimGroupRates");
+    std::map<LLUUID, S32> group_offsets;
+    const LLSD& group_rate_map = group_rates;
+    if (group_rate_map.isMap() && group_rate_map.size() > 0)
+        for (const auto& member : cast.getCast())
+            if (!member.mGroup.empty() && group_rate_map.has(member.mGroup))
+                group_offsets[member.mId] = llclamp(group_rate_map[member.mGroup].asInteger(), 0, 3);
+    const bool friends_scope = mConfig.scope == ALSteppedAnim::SCOPE_FRIENDS;
     std::set<LLUUID> bone_pov_anchors;
     const LLPrismLens::RegistrySnapshot camera_registry = LLPrismLens::registrySnapshot();
     for (U32 index = 0; index < camera_registry.mCaptureCount; ++index)
@@ -216,7 +238,7 @@ void ALSteppedAnimRuntime::collectActors()
         if (!eligible(avatar)) continue;
         const LLUUID actor_id = runtimeActorId(avatar);
         ALSteppedAnim::ActorFacts f;
-        f.seed = (actor_id.isNull() ? gAgentID : actor_id).getDigest64();
+        f.seed = ALSteppedAnim::mixSeed((actor_id.isNull() ? gAgentID : actor_id).getDigest64(), mConfig.seed);
         f.isSelf = avatar->isSelf();
         // Self is stored under gAgentID when it is a cast member (auto-added at login);
         // with an empty cast, "Whole cast" means you.
@@ -237,11 +259,19 @@ void ALSteppedAnimRuntime::collectActors()
             bone_pov_anchors.find(avatar->getID()) != bone_pov_anchors.end();
         f.posing = FSFloaterPoser::isEditingAvatar(avatar);
         f.cameraDistance = static_cast<F32>((avatar->getPositionGlobal() - camera).length());
+        // The friend list is read locally (nothing is sent); looked up once per actor per frame.
+        if (friends_scope && !f.isSelf) f.isFriend = LLAvatarTracker::instance().isBuddy(avatar->getID());
         const auto order = cast_order.find(f.isSelf ? gAgentID : actor_id);
         if (order != cast_order.end()) f.castOrder = order->second;
         else if (f.isSelf && empty_cast) f.castOrder = 0;
         const LLDirectorCast::ActorStyle::SteppedOverride& ov = cast.getActorStyle(actor_id).mStepped;
-        f.ov = {ov.mMode, ov.mRate, ov.mWhat, ov.mRole};
+        f.ov.mode = ov.mMode; f.ov.rate = ov.mRate; f.ov.what = ov.mWhat; f.ov.role = ov.mRole;
+        f.ov.rateOffset = ov.mRateOffset;
+        if (!group_offsets.empty())
+        {
+            const auto group = group_offsets.find(f.isSelf ? gAgentID : actor_id);
+            if (group != group_offsets.end()) f.groupOffset = group->second;
+        }
         ids.push_back(avatar->getID());
         attached_wearers.push_back(avatar->isControlAvatar() && avatar->getAttachedAvatar()
             ? avatar->getAttachedAvatar()->getID() : LLUUID::null);

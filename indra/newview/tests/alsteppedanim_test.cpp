@@ -7,6 +7,7 @@
 #include "../test/lltut.h"
 #include "../alsteppedanim.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -523,7 +524,7 @@ template<> template<> void stepped_object::test<12>()
 {
     const auto& presets = ALSteppedAnim::builtInPresets();
     ensure_equals("T12 preset count", presets.size(), size_t(14));
-    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(32));
+    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(40));
     std::set<std::string> ids;
     for (const auto& p : presets)
     {
@@ -537,6 +538,12 @@ template<> template<> void stepped_object::test<12>()
     ensure("T12 built-in and saved preset whitelist excludes independent options",
         preset_settings.size() == 29 && !preset_settings.count("StepAnimParticles") &&
         !preset_settings.count("StepAnimTextureAnim") && !preset_settings.count("StepAnimIncludeGhosts"));
+    for (const char* name : {"StepAnimNearbyRadius", "StepAnimLimitDistance", "StepAnimIncludeSelf", "StepAnimSeed",
+                             "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter", "StepAnimGroupRates"})
+        ensure("T12 targeting/variation tracked but never preset-owned",
+            !preset_settings.count(name) &&
+            std::find(ALSteppedAnim::trackedSettings().begin(), ALSteppedAnim::trackedSettings().end(), name) !=
+                ALSteppedAnim::trackedSettings().end());
     const ALSteppedAnim::Config defaults;
     ensure("T12 new options default off", !defaults.particles && !defaults.textureAnim && !defaults.includeGhosts);
     const auto& tracked = ALSteppedAnim::trackedSettings();
@@ -713,6 +720,296 @@ template<> template<> void stepped_object::test<16>()
             steps.count * steps.dt + steps.ballisticDt, dt, 1.e-7);
         if (dt <= .5f) ensure_equals("2-6 fps has no force-integration tail", steps.ballisticDt, 0.f);
     }
+}
+
+
+// T18: scope filtering for Friends / Nearby / limit-distance / include-self (T1-T4).
+template<> template<> void stepped_object::test<18>()
+{
+    using namespace ALSteppedAnim;
+    Config c; c.enabled = true; c.scope = SCOPE_FRIENDS;
+    ActorFacts friend_actor; friend_actor.drawn = true; friend_actor.isFriend = true; friend_actor.cameraDistance = 50.f;
+    ActorFacts stranger; stranger.drawn = true; stranger.cameraDistance = 5.f;
+    ActorFacts self; self.drawn = true; self.isSelf = true; self.isSelected = true; self.inCast = true;
+    ensure("friends scope keeps friends", scopeIncludes(c, friend_actor) && resolveActor(c, friend_actor, 0.).stepped);
+    ensure("friends scope drops strangers", !scopeIncludes(c, stranger) && !resolveActor(c, stranger, 0.).stepped);
+    ensure("friends scope with Include me steps you", scopeIncludes(c, self));
+    c.includeSelf = false;
+    ensure("friends scope without Include me skips you", !scopeIncludes(c, self) && !resolveActor(c, self, 0.).stepped);
+    ensure("friends scope still keeps friends without Include me", scopeIncludes(c, friend_actor));
+    friend_actor.drawn = false;
+    ensure("friends must be in view", !scopeIncludes(c, friend_actor));
+
+    c = Config(); c.enabled = true; c.scope = SCOPE_NEARBY; c.nearbyRadius = 20.f;
+    ActorFacts near_actor; near_actor.drawn = true; near_actor.cameraDistance = 19.9f;
+    ActorFacts edge_actor; edge_actor.drawn = true; edge_actor.cameraDistance = 20.f;
+    ActorFacts far_actor; far_actor.drawn = true; far_actor.cameraDistance = 20.1f;
+    ensure("nearby keeps inside the radius", scopeIncludes(c, near_actor) && scopeIncludes(c, edge_actor));
+    ensure("nearby drops outside the radius", !scopeIncludes(c, far_actor) && !resolveActor(c, far_actor, 0.).stepped);
+    c.nearbyRadius = 1000.f;
+    ActorFacts distant; distant.drawn = true; distant.cameraDistance = 300.f;
+    ensure("radius clamps to 256", !scopeIncludes(c, distant) && sanitize(c).nearbyRadius == 256.f);
+    c.nearbyRadius = 20.f; self.cameraDistance = 0.f;
+    ensure("nearby includes you by default", scopeIncludes(c, self));
+    c.includeSelf = false;
+    ensure("nearby without Include me skips you", !scopeIncludes(c, self));
+
+    // Limit distance caps every other scope.
+    c = Config(); c.enabled = true; c.limitDistance = true; c.nearbyRadius = 20.f;
+    ActorFacts cast_far; cast_far.drawn = true; cast_far.inCast = true; cast_far.cameraDistance = 30.f;
+    ActorFacts cast_near = cast_far; cast_near.cameraDistance = 10.f;
+    for (S32 scope : {SCOPE_SELECTED, SCOPE_CAST, SCOPE_VIEW})
+    {
+        c.scope = scope;
+        cast_far.isSelected = cast_near.isSelected = true;
+        ensure("limit distance drops far actors in every scope", !resolveActor(c, cast_far, 0.).stepped);
+        ensure("limit distance keeps near actors in every scope", resolveActor(c, cast_near, 0.).stepped);
+    }
+    c.limitDistance = false; c.scope = SCOPE_CAST;
+    ensure("limit distance off leaves far cast alone", resolveActor(c, cast_far, 0.).stepped);
+    c.limitDistance = true; cast_far.ov.mode = 2;
+    ensure("explicit per-actor Own settings is not distance limited", resolveActor(c, cast_far, 0.).stepped);
+    cast_far.ov.mode = 1;
+    ensure("per-actor Smooth still wins", !resolveActor(c, cast_far, 0.).stepped);
+
+    // Cast and Selected keep their meaning for you; Include me only governs broad scopes.
+    c = Config(); c.enabled = true; c.includeSelf = false; c.scope = SCOPE_CAST;
+    ensure("cast scope follows the cast for you", resolveActor(c, self, 0.).stepped);
+    c.scope = SCOPE_SELECTED;
+    ensure("selected scope follows the selection for you", resolveActor(c, self, 0.).stepped);
+    c.scope = SCOPE_VIEW;
+    ensure("everyone without Include me skips you", !resolveActor(c, self, 0.).stepped);
+    c.includeSelf = true;
+    ensure("everyone with Include me steps you", resolveActor(c, self, 0.).stepped);
+
+    // Mixed mode keeps the new scopes' membership (background rate for non-targets).
+    c = Config(); c.enabled = true; c.mode = MODE_MIXED; c.scope = SCOPE_FRIENDS;
+    ActorFacts mixed_friend; mixed_friend.drawn = true; mixed_friend.isFriend = true;
+    const auto mixed = resolveActor(c, mixed_friend, 0.);
+    ensure("mixed friends step at the background rate", mixed.stepped && mixed.rate == c.backgroundRate);
+    ensure("mixed friends still drops strangers", !resolveActor(c, stranger, 0.).stepped);
+
+    // The posing / camera / ghost rules and the cap still apply after the scope filter, nearest first.
+    c = Config(); c.enabled = true; c.scope = SCOPE_NEARBY; c.maxAvatars = 2;
+    std::vector<ActorFacts> crowd(4);
+    for (U32 i = 0; i < crowd.size(); ++i) { crowd[i].drawn = true; crowd[i].cameraDistance = 4.f - i; }
+    crowd[0].posing = true;
+    std::vector<Assignment> assigned;
+    for (const auto& f : crowd) assigned.push_back(resolveActor(c, f, 0.));
+    ensure("posed actor excluded after scope", !assigned[0].stepped);
+    applyActorCap(c, crowd, assigned);
+    ensure("cap keeps the nearest two", assigned[3].stepped && assigned[2].stepped && !assigned[1].stepped);
+    ActorFacts ghost; ghost.drawn = true; ghost.ghostOwnAnimation = true; ghost.cameraDistance = 90.f;
+    c.includeGhosts = true;
+    ensure("ghost clones still join an out-of-radius scope", resolveActor(c, ghost, 0.).stepped);
+    c.limitDistance = true;
+    ensure("limit distance also caps ghost clones", !resolveActor(c, ghost, 0.).stepped);
+}
+
+// T19: seed mixing, phase spread, rate variation, imperfect timing, rate offsets.
+template<> template<> void stepped_object::test<19>()
+{
+    using namespace ALSteppedAnim;
+    ensure_equals("seed 0 keeps the digest", mixSeed(0x1234abcdULL, 0), U64(0x1234abcdULL));
+    ensure("same seed same mix", mixSeed(77, 5) == mixSeed(77, 5));
+    ensure("different seed different mix", mixSeed(77, 5) != mixSeed(77, 6) && mixSeed(77, 5) != 77);
+    ensure("different actor different mix", mixSeed(78, 5) != mixSeed(77, 5));
+    Config c; c.enabled = true; c.scope = SCOPE_VIEW; c.rateVariation = 1.f;
+    ActorFacts a; a.drawn = true;
+    S32 changed = 0;
+    for (U32 actor = 1; actor <= 64; ++actor)
+    {
+        a.seed = mixSeed(actor * 7919ULL, 11);
+        const auto first = resolveActor(c, a, 0.), again = resolveActor(c, a, 0.);
+        ensure("same seed gives the same per-actor values", first.phase == again.phase && first.rate == again.rate);
+        a.seed = mixSeed(actor * 7919ULL, 12);
+        if (resolveActor(c, a, 0.).phase != first.phase) ++changed;
+    }
+    ensure("a different seed re-rolls the look", changed >= 60);
+
+    // Phase spread: 0 = lockstep, 1 = today's values, in between scales.
+    Config spread; spread.offset = OFFSET_RANDOM;
+    std::vector<F64> today;
+    for (U64 seed = 1; seed <= 32; ++seed)
+        today.push_back(static_cast<F64>(unitHash(seed, 0x7068617365LL, 0, 0)));
+    for (U64 seed = 1; seed <= 32; ++seed)
+    {
+        spread.phaseSpread = 1.f;
+        ensure_equals("spread 1 reproduces today's phase", actorPhase(spread, seed, 0.), today[seed - 1]);
+        spread.phaseSpread = 0.f;
+        ensure_equals("spread 0 is lockstep", actorPhase(spread, seed, 0.), 0.);
+        spread.phaseSpread = .5f;
+        close("spread scales the random phase", actorPhase(spread, seed, 0.), today[seed - 1] * .5, 1.e-7);
+    }
+    spread.offset = OFFSET_MANUAL; spread.phase = .35f; spread.phaseSpread = 0.f;
+    close("manual phase ignores spread", actorPhase(spread, 3, 0.), .35, 1.e-6);
+    spread.offset = OFFSET_LOCKED;
+    ensure_equals("locked phase ignores spread", actorPhase(spread, 3, 0.), 0.);
+
+    // Rate variation: factor within [1, 1+v], quantised to whole base frames, never faster.
+    for (F32 v : {.1f, .5f, 1.f})
+        for (F32 base_rate : {24.f, 12.f, 8.f, 6.f, 10.f, 2.f})
+        {
+            S32 shapes[32] = {};
+            for (U64 seed = 1; seed <= 400; ++seed)
+            {
+                const F32 factor = rateFactor(seed, v);
+                ensure("factor within [1, 1+v]", factor >= 1.f && factor <= 1.f + v + 1.e-6f);
+                const F32 rate = varyRate(base_rate, seed, v, 24);
+                ensure("never faster than base", rate <= base_rate + 1.e-5f);
+                ensure("never below 2 fps", rate >= 2.f - 1.e-5f);
+                ensure("deterministic", rate == varyRate(base_rate, seed, v, 24));
+                const F32 frames = 24.f / rate;
+                if (rate != base_rate)
+                    ensure("quantised to whole base frames", std::fabs(frames - std::round(frames)) < 1.e-4f);
+                if (frames >= 2.f && frames < 32.f) ++shapes[static_cast<S32>(std::round(frames))];
+            }
+            if (v == 1.f && base_rate == 12.f)
+                ensure("some actors land on threes and fours when the base is twos", shapes[3] > 0 && shapes[4] > 0);
+        }
+    ensure_equals("variation 0 is the identity", varyRate(12.f, 99, 0.f, 24), 12.f);
+    ensure_equals("smooth stays smooth", varyRate(0.f, 99, 1.f, 24), 0.f);
+
+    // Variation respects fixed, adaptive and mixed rates.
+    Config modes; modes.enabled = true; modes.scope = SCOPE_VIEW; modes.rateVariation = 1.f;
+    ActorFacts f; f.drawn = true;
+    for (U64 seed = 1; seed <= 64; ++seed)
+    {
+        f.seed = seed;
+        modes.mode = MODE_ADAPTIVE;
+        const auto adaptive = resolveActor(modes, f, 0.);
+        ensure("adaptive: both rates varied but never faster", adaptive.rate <= modes.rate && adaptive.fastRate <= modes.fastRate &&
+            adaptive.fastRate >= 2.f);
+        modes.mode = MODE_MIXED;
+        ensure("mixed: background varies from its own rate", resolveActor(modes, f, 0.).rate <= modes.backgroundRate);
+    }
+
+    // Group / per-actor rate offsets: +1 step holds one more base frame; precedence actor > group.
+    close("+1 step: twos become threes", offsetRate(12.f, 1, 24), 8., 1.e-4);
+    close("+2 steps: twos become fours", offsetRate(12.f, 2, 24), 6., 1.e-4);
+    ensure_equals("offset 0 is the identity", offsetRate(12.f, 0, 24), 12.f);
+    ensure("offset never goes below 2 fps", offsetRate(2.f, 2, 24) >= 2.f);
+    Config o; o.enabled = true; o.scope = SCOPE_VIEW;
+    ActorFacts g; g.drawn = true; g.seed = 5;
+    g.groupOffset = 1;
+    close("group +1 coarsens the rate", resolveActor(o, g, 0.).rate, 8., 1.e-4);
+    g.ov.rateOffset = 2;
+    close("per-actor offset beats the group", resolveActor(o, g, 0.).rate, 6., 1.e-4);
+    g.ov.rateOffset = 0;
+    ensure_equals("per-actor Same beats the group", resolveActor(o, g, 0.).rate, 12.f);
+    g.ov.rateOffset = -1; g.groupOffset = 3;
+    ensure("group Smooth keeps the whole group smooth", !resolveActor(o, g, 0.).stepped);
+    g.ov.rateOffset = 1;
+    close("per-actor offset beats group Smooth", resolveActor(o, g, 0.).rate, 8., 1.e-4);
+    g.ov.rateOffset = -1; g.groupOffset = 0;
+    ensure_equals("untagged actors use the base rate", resolveActor(o, g, 0.).rate, 12.f);
+    g.groupOffset = 1; g.ov.mode = 2; g.ov.rate = 10.f; g.ov.rateOffset = -1;
+    ensure_equals("Own settings ignores the group offset", resolveActor(o, g, 0.).rate, 10.f);
+    o.mode = MODE_ADAPTIVE; g.ov.mode = 0; g.groupOffset = 1;
+    const auto grouped = resolveActor(o, g, 0.);
+    close("adaptive group offset coarsens the fast rate too", grouped.fastRate, 1.f / (1.f / 24.f + 1.f / 24.f), 1.e-4);
+
+    // Imperfect timing.
+    ensure("jitter 0 never holds extra", [&]
+    {
+        for (S64 tick = 0; tick < 5000; ++tick) if (extraHold(42, tick, 0.f, false)) return false;
+        return true;
+    }());
+    ensure("a hold is never followed by another", [&]
+    {
+        for (S64 tick = 0; tick < 5000; ++tick) if (extraHold(42, tick, 1.f, true)) return false;
+        return true;
+    }());
+    S32 holds = 0;
+    for (S64 tick = 0; tick < 20000; ++tick) if (extraHold(42, tick, 1.f, false)) ++holds;
+    ensure("probability is jitter * 0.25", holds > 4400 && holds < 5600);
+    ensure("deterministic per actor + tick", extraHold(42, 17, 1.f, false) == extraHold(42, 17, 1.f, false));
+    for (F32 jitter : {.2f, 1.f})
+    {
+        Config jc; jc.enabled = true; jc.timingJitter = jitter;
+        Assignment as = assignment(); as.seed = 91;
+        ActorState state; S64 last_tick = -1; S32 consecutive = 0, extra_holds = 0, max_run = 0;
+        for (S32 frame = 0; frame < 24 * 600; ++frame)
+        {
+            const auto d = planFrame(state, as, jc, frame / 24.);
+            if (frame > 0 && d.tick != last_tick)
+            {
+                if (d.capture) consecutive = 0;
+                else { ++extra_holds; max_run = std::max(max_run, ++consecutive); }
+            }
+            last_tick = d.tick;
+        }
+        ensure("imperfect timing adds extra holds", extra_holds > 0);
+        ensure("never two extra holds in a row", max_run == 1);
+    }
+    Config jc0; jc0.enabled = true;
+    ActorState s0; Assignment as0 = assignment(); as0.seed = 91;
+    for (S32 frame = 0; frame < 24 * 60; ++frame)
+    {
+        const auto d = planFrame(s0, as0, jc0, frame / 24.);
+        ensure("jitter 0 captures every boundary", d.capture == (frame == 0 || frame % 2 == 0));
+    }
+}
+
+// T20: defaults reproduce today's decisions exactly.
+template<> template<> void stepped_object::test<20>()
+{
+    using namespace ALSteppedAnim;
+    const Config defaults;
+    ensure("new defaults", defaults.nearbyRadius == 20.f && !defaults.limitDistance && defaults.includeSelf &&
+        defaults.seed == 0 && defaults.phaseSpread == 1.f && defaults.rateVariation == 0.f && defaults.timingJitter == 0.f);
+    ensure("sanitize keeps the new defaults", [&]
+    {
+        const Config clean = sanitize(defaults);
+        return clean.nearbyRadius == 20.f && !clean.limitDistance && clean.includeSelf && clean.seed == 0 &&
+            clean.phaseSpread == 1.f && clean.rateVariation == 0.f && clean.timingJitter == 0.f;
+    }());
+    Config bad; bad.scope = 9; bad.nearbyRadius = 0.f; bad.phaseSpread = 9.f; bad.rateVariation = -2.f;
+    bad.timingJitter = std::numeric_limits<F32>::quiet_NaN();
+    const Config clean = sanitize(bad);
+    ensure("scope clamps to 0-4", clean.scope == SCOPE_NEARBY);
+    ensure("new ranges clamp", clean.nearbyRadius == 1.f && clean.phaseSpread == 1.f && clean.rateVariation == 0.f &&
+        clean.timingJitter == 0.f);
+    ensure("existing scope values keep their meaning",
+        SCOPE_SELECTED == 0 && SCOPE_CAST == 1 && SCOPE_VIEW == 2 && SCOPE_FRIENDS == 3 && SCOPE_NEARBY == 4);
+
+    // Assignments with default config equal the pre-feature formulas.
+    for (S32 scope : {SCOPE_SELECTED, SCOPE_CAST, SCOPE_VIEW})
+        for (S32 mode : {MODE_FIXED, MODE_ADAPTIVE, MODE_MIXED})
+            for (S32 offset : {OFFSET_RANDOM, OFFSET_LOCKED, OFFSET_MANUAL})
+                for (U64 seed = 1; seed <= 8; ++seed)
+                {
+                    Config c; c.enabled = true; c.scope = scope; c.mode = mode; c.offset = offset; c.phase = .25f;
+                    ActorFacts f; f.drawn = true; f.inCast = true; f.isSelected = (seed & 1) != 0; f.seed = seed;
+                    f.cameraDistance = 500.f;
+                    const Assignment now = resolveActor(c, f, 0.);
+                    ensure("default scope membership",
+                        now.stepped == (scope == SCOPE_SELECTED && mode != MODE_MIXED ? f.isSelected : true));
+                    if (!now.stepped) continue;
+                    const F64 expected_phase = offset == OFFSET_RANDOM ? static_cast<F64>(unitHash(seed, 0x7068617365LL, 0, 0))
+                        : (offset == OFFSET_MANUAL ? .25 : 0.);
+                    ensure_equals("default phase", now.phase, expected_phase);
+                    const F32 expected_rate = mode == MODE_MIXED ? (f.isSelected ? c.rate : c.backgroundRate) : c.rate;
+                    ensure_equals("default rate", now.rate, expected_rate);
+                    ensure_equals("default fast rate", now.fastRate, mode == MODE_ADAPTIVE ? c.fastRate : 0.f);
+                    ensure_equals("default held classes", now.heldClasses, heldClasses(sanitize(c), now.what));
+                }
+
+    // Default planFrame: capture exactly on the first call and whenever the analytic tick changes.
+    Config c; c.enabled = true;
+    ActorState state; Assignment as = assignment(); as.seed = 1234; as.phase = .3;
+    S64 previous = -1000;
+    for (S32 frame = 0; frame < 24 * 600; ++frame)
+    {
+        const F64 t = frame / 24. + .0037 * std::sin(frame * .3);
+        const auto d = planFrame(state, as, c, t);
+        const S64 tick = tickIndex(t, 12., .3);
+        ensure("default tick", d.tick == tick);
+        ensure("default capture", d.capture == (frame == 0 || tick != previous));
+        ensure("default hold", d.hold);
+        previous = tick;
+    }
+    ensure("default no extra hold state", !state.jitterHeld);
 }
 
 }

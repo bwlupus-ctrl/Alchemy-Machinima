@@ -9,6 +9,10 @@
 #include "lltimer.h"
 #include "lluuid.h"
 
+#include <array>
+#include <string>
+#include <vector>
+
 class LLButton;
 class LLComboBox;
 class LLRadioGroup;
@@ -33,6 +37,15 @@ private:
     void onActorStepsCommit();
     void onActorRoleCommit();
     void onOverrideClear();
+    void onActorOffsetCommit();
+    void onSeedReroll();
+    void onGroupPick();
+    void onGroupOffsetCommit();
+    void onGroupListSelect();
+    void refreshActorEffective();
+    void syncGroups(bool force);
+    void refreshGroupOffset();
+    std::string selectedGroup() const;
     void onRateChip();
     void rebuildActors();
     void refreshActor();
@@ -50,6 +63,13 @@ private:
     LLSliderCtrl*     mActorRate = nullptr;
     LLComboBox*       mActorSteps = nullptr;
     LLComboBox*       mActorRole = nullptr;
+    LLComboBox*       mActorOffset = nullptr;
+    LLTextBox*        mActorEffective = nullptr;
+    LLButton*         mSeedReroll = nullptr;
+    LLComboBox*       mGroupPick = nullptr;
+    LLComboBox*       mGroupOffset = nullptr;
+    LLScrollListCtrl* mGroupList = nullptr;
+    LLView*           mRadiusRow = nullptr;
     LLButton*         mOverrideClear = nullptr;
     LLRadioGroup*     mRateChips = nullptr;
     LLTextBox*        mStatus = nullptr;
@@ -60,6 +80,10 @@ private:
     LLView*           mManualPhaseRow = nullptr;
     LLView*           mActorOwnRows[2]{};
     U64               mCastRevision = 0;
+    std::vector<std::string> mGroupNames;
+    std::string       mGroupListSignature;
+    std::array<F32, 6> mEffectiveKey{{-1.f, -1.f, -1.f, -1.f, -1.f, -1.f}};
+    LLFrameTimer      mGroupTimer; // group tags are polled twice a second, not every draw
     S32               mLastActive = -1;
     S32               mLastSkipped = -1;
     F32               mLastRate = -1.f;

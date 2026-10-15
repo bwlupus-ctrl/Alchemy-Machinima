@@ -148,6 +148,7 @@ void sanitizeActorStyle(LLDirectorCast::ActorStyle& style)
         std::isfinite(style.mStepped.mRate) ? style.mStepped.mRate : 12.f, 2.f, 30.f);
     style.mStepped.mWhat = llclamp(style.mStepped.mWhat, -1, 1);
     style.mStepped.mRole = llclamp(style.mStepped.mRole, 0, 2);
+    style.mStepped.mRateOffset = llclamp(style.mStepped.mRateOffset, -1, 2);
 }
 
 LLSD writeActorStyle(const LLDirectorCast::ActorStyle& input)
@@ -183,13 +184,15 @@ LLSD writeActorStyle(const LLDirectorCast::ActorStyle& input)
     data["brightness"] = style.mBrightness;
     data["effect_fps"] = style.mEffectFps;
     const LLDirectorCast::ActorStyle::SteppedOverride& stepped = style.mStepped;
-    if (stepped.mMode != 0 || stepped.mRate != 12.f || stepped.mWhat != -1 || stepped.mRole != 0)
+    if (stepped.mMode != 0 || stepped.mRate != 12.f || stepped.mWhat != -1 || stepped.mRole != 0 ||
+        stepped.mRateOffset != -1)
     {
         LLSD value = LLSD::emptyMap();
         value["mode"] = stepped.mMode;
         value["rate"] = stepped.mRate;
         value["what"] = stepped.mWhat;
         value["role"] = stepped.mRole;
+        if (stepped.mRateOffset != -1) value["rate_offset"] = stepped.mRateOffset;
         data["stepped"] = value;
     }
     return data;
@@ -239,6 +242,7 @@ LLDirectorCast::ActorStyle readActorStyle(const LLSD& data)
         if (value.has("rate")) style.mStepped.mRate = static_cast<F32>(value["rate"].asReal());
         if (value.has("what")) style.mStepped.mWhat = value["what"].asInteger();
         if (value.has("role")) style.mStepped.mRole = value["role"].asInteger();
+        if (value.has("rate_offset")) style.mStepped.mRateOffset = value["rate_offset"].asInteger();
     }
     sanitizeActorStyle(style);
     return style;

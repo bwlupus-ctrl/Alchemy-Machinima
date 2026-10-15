@@ -69,7 +69,7 @@ F64 effectiveDwell(F32 min_dwell, F32 current_rate)
 Config sanitize(const Config& raw)
 {
     Config out = raw;
-    out.scope = llclamp(raw.scope, 0, 2);
+    out.scope = llclamp(raw.scope, 0, 4);
     out.maxAvatars = llclamp(raw.maxAvatars, 1, 100);
     out.mode = llclamp(raw.mode, 0, 2);
     out.rate = llclamp(finiteOr(raw.rate, 12.f), 2.f, 30.f);
@@ -91,6 +91,10 @@ Config sanitize(const Config& raw)
     out.smearStrength = llclamp(finiteOr(raw.smearStrength, .5f), 0.f, 1.f);
     out.smearThreshold = llclamp(finiteOr(raw.smearThreshold, 2.5f), .5f, 10.f);
     out.easeAmount = llclamp(finiteOr(raw.easeAmount, .5f), 0.f, 1.f);
+    out.nearbyRadius = llclamp(finiteOr(raw.nearbyRadius, 20.f), 1.f, 256.f);
+    out.phaseSpread = llclamp(finiteOr(raw.phaseSpread, 1.f), 0.f, 1.f);
+    out.rateVariation = llclamp(finiteOr(raw.rateVariation, 0.f), 0.f, 1.f);
+    out.timingJitter = llclamp(finiteOr(raw.timingJitter, 0.f), 0.f, 1.f);
     return out;
 }
 
@@ -101,6 +105,7 @@ ActorOverride sanitize(const ActorOverride& raw)
     out.rate = llclamp(finiteOr(raw.rate, 12.f), 2.f, 30.f);
     out.what = llclamp(raw.what, -1, 1);
     out.role = llclamp(raw.role, 0, 2);
+    out.rateOffset = llclamp(raw.rateOffset, -1, 2);
     return out;
 }
 
@@ -113,11 +118,49 @@ F32 unitHash(U64 seed, S64 a, U32 b, U32 c)
     return static_cast<F32>(mantissa) * (1.f / 16777216.f);
 }
 
+U64 mixSeed(U64 digest, U32 user_seed)
+{
+    if (user_seed == 0) return digest;
+    return splitmix64(digest ^ splitmix64(0x5eed5eed00000000ULL + user_seed));
+}
+
+F32 rateFactor(U64 seed, F32 variation)
+{
+    variation = llclamp(finiteOr(variation, 0.f), 0.f, 1.f);
+    return 1.f + variation * unitHash(seed, 0x72617465LL, 1, 0);
+}
+
+F32 offsetRate(F32 rate, S32 offset, S32 base_fps)
+{
+    if (offset < RATE_PLUS1 || offset > RATE_PLUS2 || !(rate >= 2.f) || base_fps < 1) return rate;
+    const F32 stepped = 1.f / (1.f / rate + static_cast<F32>(offset) / static_cast<F32>(base_fps));
+    return llmax(stepped, 2.f);
+}
+
+F32 varyRate(F32 rate, U64 seed, F32 variation, S32 base_fps)
+{
+    if (!(variation > 0.f) || !(rate >= 2.f) || base_fps < 1) return rate;
+    const F32 base = static_cast<F32>(base_fps);
+    const F32 length = base / rate;
+    S32 frames = static_cast<S32>(std::floor(length * rateFactor(seed, variation) + .5f));
+    frames = llclamp(frames, 1, llmax(1, static_cast<S32>(std::floor(base * .5f))));
+    const F32 varied = base / static_cast<F32>(frames);
+    return varied > rate ? rate : varied;
+}
+
+bool extraHold(U64 seed, S64 tick, F32 jitter, bool previous_was_extra)
+{
+    jitter = llclamp(finiteOr(jitter, 0.f), 0.f, 1.f);
+    if (!(jitter > 0.f) || previous_was_extra) return false;
+    return unitHash(seed, tick, 0x6a697474, 2) < jitter * .25f;
+}
+
 F64 actorPhase(const Config& cfg, U64 seed, F64 roto_phase)
 {
     F64 phase = 0.;
     if (cfg.offset == OFFSET_RANDOM)
-        phase = unitHash(seed, 0x7068617365LL, 0, 0);
+        phase = static_cast<F64>(unitHash(seed, 0x7068617365LL, 0, 0)) *
+            static_cast<F64>(llclamp(finiteOr(cfg.phaseSpread, 1.f), 0.f, 1.f));
     else if (cfg.offset == OFFSET_MANUAL)
         phase = cfg.phase;
     return fraction(phase + roto_phase);
@@ -133,6 +176,41 @@ U8 heldClasses(const Config& cfg, S32 what)
     return mask;
 }
 
+namespace
+{
+// Membership on a sanitized config; includes the mixed-rate "cast plus target" rule.
+bool scopeMember(const Config& cfg, const ActorFacts& facts)
+{
+    bool member = false;
+    switch (cfg.scope)
+    {
+        case SCOPE_SELECTED: member = facts.isSelected; break;
+        case SCOPE_CAST: member = facts.inCast; break;
+        case SCOPE_VIEW: member = facts.drawn; break;
+        case SCOPE_FRIENDS: member = facts.drawn && (facts.isFriend || facts.isSelf); break;
+        case SCOPE_NEARBY: member = facts.drawn && facts.cameraDistance <= cfg.nearbyRadius; break;
+        default: break;
+    }
+    // Everyone / Friends / Nearby include you only when "Include me" is on.
+    if (cfg.scope >= SCOPE_VIEW && facts.isSelf && !cfg.includeSelf) member = false;
+    // Mixed mode treats Selected actor and Whole cast as "cast plus the target".
+    if (cfg.mode == MODE_MIXED && (cfg.scope == SCOPE_SELECTED || cfg.scope == SCOPE_CAST))
+        member = facts.inCast || facts.isSelected;
+    return member;
+}
+
+bool withinLimit(const Config& cfg, const ActorFacts& facts)
+{
+    return !cfg.limitDistance || facts.cameraDistance <= cfg.nearbyRadius;
+}
+}
+
+bool scopeIncludes(const Config& raw, const ActorFacts& facts)
+{
+    const Config cfg = sanitize(raw);
+    return scopeMember(cfg, facts) && withinLimit(cfg, facts);
+}
+
 Assignment resolveActor(const Config& raw, const ActorFacts& facts, F64 roto_phase)
 {
     const Config cfg = sanitize(raw);
@@ -143,8 +221,7 @@ Assignment resolveActor(const Config& raw, const ActorFacts& facts, F64 roto_pha
 
     const ActorOverride ov = sanitize(facts.ov);
     if (ov.mode == 1) return out;
-    bool in_scope = cfg.scope == SCOPE_SELECTED ? facts.isSelected :
-                    cfg.scope == SCOPE_CAST ? facts.inCast : facts.drawn;
+    bool in_scope = scopeMember(cfg, facts) && withinLimit(cfg, facts);
     bool target = facts.isSelected;
     if (ov.role == 1) target = true;
     else if (ov.role == 2) target = false;
@@ -153,24 +230,32 @@ Assignment resolveActor(const Config& raw, const ActorFacts& facts, F64 roto_pha
     bool adaptive = cfg.mode == MODE_ADAPTIVE;
     if (cfg.mode == MODE_MIXED)
     {
-        if (cfg.scope != SCOPE_VIEW) in_scope = facts.inCast || facts.isSelected;
         rate = target ? cfg.rate : cfg.backgroundRate;
         adaptive = false;
     }
+    // Rate offset precedence: per-actor > cast group > page (no offset).
+    S32 offset = llclamp(facts.groupOffset, 0, 3);
+    if (ov.rateOffset >= 0) offset = ov.rateOffset;
     if (ov.mode == 2)
     {
         in_scope = true;
         rate = ov.rate;
         adaptive = false;
+        if (ov.rateOffset < 0) offset = RATE_SAME;
     }
-    if (cfg.includeGhosts && facts.ghostOwnAnimation) in_scope = true;
+    if (cfg.includeGhosts && facts.ghostOwnAnimation && withinLimit(cfg, facts)) in_scope = true;
     rate = effectiveRate(rate);
-    if (!in_scope || rate == 0.f) return out;
+    if (!in_scope || rate == 0.f || offset == RATE_SMOOTH) return out;
 
+    F32 fast = adaptive ? cfg.fastRate : 0.f;
+    rate = varyRate(offsetRate(rate, offset, cfg.baseFps), facts.seed, cfg.rateVariation, cfg.baseFps);
+    if (fast > 0.f)
+        fast = varyRate(offsetRate(fast, offset, cfg.baseFps), facts.seed, cfg.rateVariation, cfg.baseFps);
     out.stepped = true;
     out.adaptive = adaptive;
     out.rate = rate;
-    out.fastRate = adaptive ? cfg.fastRate : 0.f;
+    out.fastRate = fast;
+    out.seed = facts.seed;
     out.what = ov.mode == 2 && ov.what >= 0 ? ov.what : cfg.what;
     out.phase = actorPhase(cfg, facts.seed, cfg.matchRoto ? roto_phase : 0.);
     out.heldClasses = heldClasses(cfg, out.what);
@@ -506,8 +591,11 @@ FrameDecision planFrame(ActorState& state, const Assignment& assignment,
     {
         if (state.impactHoldLeft > 0)
             --state.impactHoldLeft;
+        else if (extraHold(assignment.seed, out.tick, cfg.timingJitter, state.jitterHeld))
+            state.jitterHeld = true; // imperfect timing: hold one extra step, never two in a row
         else
         {
+            state.jitterHeld = false;
             capture = true;
             if (state.impactCooldown) state.impactCooldown = false;
         }
@@ -657,9 +745,25 @@ const std::vector<std::string>& trackedSettings()
         "StepAnimPhase", "StepAnimBaseFPS", "StepAnimBoil", "StepAnimBoilAmount",
         "StepAnimBoilTicks", "StepAnimImpactHold", "StepAnimImpactTicks",
         "StepAnimImpactThreshold", "StepAnimSmear", "StepAnimSmearStrength",
-        "StepAnimSmearThreshold", "StepAnimEase", "StepAnimEaseAmount", "StepAnimMatchRotoInk"
+        "StepAnimSmearThreshold", "StepAnimEase", "StepAnimEaseAmount", "StepAnimMatchRotoInk",
+        "StepAnimNearbyRadius", "StepAnimLimitDistance", "StepAnimIncludeSelf", "StepAnimSeed",
+        "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter", "StepAnimGroupRates"
     };
     return settings;
+}
+
+namespace
+{
+// Targeting, variation and group rates belong to the scene / take, never to a style preset.
+bool isTargetingOrVariation(const std::string& name)
+{
+    static const char* const names[] = {
+        "StepAnimNearbyRadius", "StepAnimLimitDistance", "StepAnimIncludeSelf", "StepAnimSeed",
+        "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter", "StepAnimGroupRates"
+    };
+    for (const char* item : names) if (name == item) return true;
+    return false;
+}
 }
 
 const std::vector<std::string>& presetSettings()
@@ -669,7 +773,7 @@ const std::vector<std::string>& presetSettings()
         std::vector<std::string> out;
         for (const std::string& name : trackedSettings())
             if (name != "StepAnimParticles" && name != "StepAnimTextureAnim" &&
-                name != "StepAnimIncludeGhosts") out.push_back(name);
+                name != "StepAnimIncludeGhosts" && !isTargetingOrVariation(name)) out.push_back(name);
         return out;
     }();
     return settings;

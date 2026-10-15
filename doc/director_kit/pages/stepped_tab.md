@@ -1,12 +1,12 @@
 # Stepped — Director Kit page contract
 
 Page key: `stepped_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (34/49 setting-bound rows; 17 C++-referenced rows).
+Computed class: **code-driven** (41/62 setting-bound rows; 24 C++-referenced rows).
 
 ## Real owners
 
-- `stepped_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:3` (45 matching rows).
-- Referencing classes: `ALPanelSteppedAnim` (21).
+- `stepped_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:3` (58 matching rows).
+- Referencing classes: `ALPanelSteppedAnim` (28).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -20,51 +20,64 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `stepped` / `sa_scope` (Applies to) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:11` | kit `combo` ↔ `StepAnimScope` `S32` | none |
-| `stepped` / `sa_include_ghosts` (Ghost clones) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:20` | kit `toggle` ↔ `StepAnimIncludeGhosts` `Boolean` | none |
-| `stepped` / `sa_actor_target` (Actor) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:23` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `stepped` / `sa_override_list` (Overrides) | `scroll_list` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:33` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `stepped` / `sa_actor_override` (This actor) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:36` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `stepped` / `sa_actor_rate` (Own rate) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:45` | `ALSteppedAnimKitAdapter` command/model binding → behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:66`) | none |
-| `stepped` / `sa_actor_steps` (Own steps) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:50` | `ALSteppedAnimKitAdapter` command/model binding → behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:67`) | none |
-| `stepped` / `sa_actor_role` (Mixed role) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:59` | `ALSteppedAnimKitAdapter` command/model binding → behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:64`) | none |
-| `stepped` / `sa_override_clear` (Clear) | `button` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:68` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `stepped` / `sa_exclude_mounted` (Skip camera rigs) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:71` | kit `toggle` ↔ `StepAnimExcludeCameraMounted` `Boolean` | none |
-| `stepped` / `sa_max_avatars` (Max actors) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:74` | kit `number` ↔ `StepAnimMaxAvatars` `S32` | none |
-| `stepped` / `sa_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:77` | kit readout ← approved static copy; no runtime writer | none |
-| `rate` / `sa_mode` (Mode) | `radio_group` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:82` | kit `segmented` ↔ `StepAnimMode` `S32` | none |
-| `rate` / `sa_rate_chips` (On) | `radio_group` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:89` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `rate` / `sa_rate` (Rate) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:97` | kit `slider` ↔ `StepAnimRate` `F32` | none |
-| `rate` / `sa_rate_readout` (Reads as) | `text` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:102` | kit readout ← approved static copy; no runtime writer | none |
-| `rate` / `sa_fast_rate` (Fast rate) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:105` | kit `slider` ↔ `StepAnimFastRate` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:58`) | none |
-| `rate` / `sa_adapt_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:110` | kit `slider` ↔ `StepAnimAdaptThreshold` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:59`) | none |
-| `rate` / `sa_adapt_hysteresis` (Hysteresis) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:115` | kit `slider` ↔ `StepAnimAdaptHysteresis` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:60`) | none |
-| `rate` / `sa_adapt_dwell` (Min hold) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:120` | kit `slider` ↔ `StepAnimAdaptMinDwell` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:61`) | none |
-| `rate` / `sa_speed_meter` (Limb speed) | `text` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:125` | `ALSteppedAnimKitAdapter` command/model binding → behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:62`) | none |
-| `rate` / `sa_background_rate` (Background) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:128` | kit `slider` ↔ `StepAnimBackgroundRate` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:63`) | none |
-| `what_steps` / `sa_what` (Steps) | `radio_group` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:135` | kit `segmented` ↔ `StepAnimWhatSteps` `S32` | none |
-| `what_steps` / `sa_face` (Face & lip-sync) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:141` | kit `toggle` ↔ `StepAnimFace` `Boolean` | none |
-| `what_steps` / `sa_gaze` (Gaze & look-at) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:144` | kit `toggle` ↔ `StepAnimGaze` `Boolean` | none |
-| `what_steps` / `sa_flexi` (Hair, cloth & flexi) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:147` | kit `toggle` ↔ `StepAnimFlexi` `Boolean` | none |
-| `what_steps` / `sa_attach_fx` (Attachment FX) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:150` | kit `toggle` ↔ `StepAnimAttachFX` `Boolean` | none |
-| `what_steps` / `sa_particles` (Step particles) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:153` | kit `toggle` ↔ `StepAnimParticles` `Boolean` | none |
-| `what_steps` / `sa_texture_anim` (Step textures) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:156` | kit `toggle` ↔ `StepAnimTextureAnim` `Boolean` | none |
-| `step_timing` / `sa_clock` (Clock) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:161` | kit `combo` ↔ `StepAnimClock` `S32` | none |
-| `step_timing` / `sa_offset` (Actor offset) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:169` | kit `combo` ↔ `StepAnimOffsetMode` `S32` | none |
-| `step_timing` / `sa_phase` (Phase) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:178` | kit `slider` ↔ `StepAnimPhase` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:65`) | none |
-| `step_timing` / `sa_base_fps` (Base fps) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:183` | kit `combo` ↔ `StepAnimBaseFPS` `S32` | none |
-| `character` / `sa_boil` (Pose boil) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:194` | kit `toggle` ↔ `StepAnimBoil` `Boolean` | none |
-| `character` / `sa_boil_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:197` | kit `slider` ↔ `StepAnimBoilAmount` `F32` | none |
-| `character` / `sa_boil_ticks` (Boil every) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:202` | kit `number` ↔ `StepAnimBoilTicks` `S32` | none |
-| `character` / `sa_impact` (Hold on impact) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:205` | kit `toggle` ↔ `StepAnimImpactHold` `Boolean` | none |
-| `character` / `sa_impact_ticks` (Frames) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:208` | kit `number` ↔ `StepAnimImpactTicks` `S32` | none |
-| `character` / `sa_impact_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:211` | kit `slider` ↔ `StepAnimImpactThreshold` `F32` | none |
-| `character` / `sa_smear` (Smear frames) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:216` | kit `toggle` ↔ `StepAnimSmear` `Boolean` | none |
-| `character` / `sa_smear_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:219` | kit `slider` ↔ `StepAnimSmearStrength` `F32` | none |
-| `character` / `sa_smear_threshold` (Smear speed) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:224` | kit `slider` ↔ `StepAnimSmearThreshold` `F32` | none |
-| `character` / `sa_ease` (Ease spacing) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:229` | kit `toggle` ↔ `StepAnimEase` `Boolean` | none |
-| `character` / `sa_ease_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:232` | kit `slider` ↔ `StepAnimEaseAmount` `F32` | none |
-| `pairs` / `sa_match_roto` (Match Roto Ink) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:239` | kit `toggle` ↔ `StepAnimMatchRotoInk` `Boolean` | none |
+| `stepped` / `sa_scope` (Applies to) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:12` | kit `combo` ↔ `StepAnimScope` `S32` | none |
+| `stepped` / `sa_nearby_radius` (Radius) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:23` | kit `slider` ↔ `StepAnimNearbyRadius` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:96`) | none |
+| `stepped` / `sa_limit_distance` (Limit distance) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:28` | kit `toggle` ↔ `StepAnimLimitDistance` `Boolean` | none |
+| `stepped` / `sa_include_self` (Include me) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:31` | kit `toggle` ↔ `StepAnimIncludeSelf` `Boolean` | none |
+| `stepped` / `sa_include_ghosts` (Ghost clones) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:34` | kit `toggle` ↔ `StepAnimIncludeGhosts` `Boolean` | none |
+| `stepped` / `sa_actor_target` (Actor) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:37` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `stepped` / `sa_override_list` (Overrides) | `scroll_list` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:47` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `stepped` / `sa_actor_override` (This actor) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:50` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `stepped` / `sa_actor_offset` (Rate offset) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:59` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `stepped` / `sa_actor_effective` (Effective) | `text` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:69` | kit readout ← approved static copy; no runtime writer | none |
+| `stepped` / `sa_actor_rate` (Own rate) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:72` | `ALSteppedAnimKitAdapter` command/model binding → behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:97`) | none |
+| `stepped` / `sa_actor_steps` (Own steps) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:77` | `ALSteppedAnimKitAdapter` command/model binding → behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:98`) | none |
+| `stepped` / `sa_actor_role` (Mixed role) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:86` | `ALSteppedAnimKitAdapter` command/model binding → behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:94`) | none |
+| `stepped` / `sa_override_clear` (Clear) | `button` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:95` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `stepped` / `sa_exclude_mounted` (Skip camera rigs) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:98` | kit `toggle` ↔ `StepAnimExcludeCameraMounted` `Boolean` | none |
+| `stepped` / `sa_max_avatars` (Max actors) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:101` | kit `number` ↔ `StepAnimMaxAvatars` `S32` | none |
+| `stepped` / `sa_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:104` | kit readout ← approved static copy; no runtime writer | none |
+| `rate` / `sa_mode` (Mode) | `radio_group` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:109` | kit `segmented` ↔ `StepAnimMode` `S32` | none |
+| `rate` / `sa_rate_chips` (On) | `radio_group` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:116` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `rate` / `sa_rate` (Rate) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:124` | kit `slider` ↔ `StepAnimRate` `F32` | none |
+| `rate` / `sa_rate_readout` (Reads as) | `text` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:129` | kit readout ← approved static copy; no runtime writer | none |
+| `rate` / `sa_fast_rate` (Fast rate) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:132` | kit `slider` ↔ `StepAnimFastRate` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:88`) | none |
+| `rate` / `sa_adapt_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:137` | kit `slider` ↔ `StepAnimAdaptThreshold` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:89`) | none |
+| `rate` / `sa_adapt_hysteresis` (Hysteresis) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:142` | kit `slider` ↔ `StepAnimAdaptHysteresis` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:90`) | none |
+| `rate` / `sa_adapt_dwell` (Min hold) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:147` | kit `slider` ↔ `StepAnimAdaptMinDwell` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:91`) | none |
+| `rate` / `sa_speed_meter` (Limb speed) | `text` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:152` | `ALSteppedAnimKitAdapter` command/model binding → behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:92`) | none |
+| `rate` / `sa_background_rate` (Background) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:155` | kit `slider` ↔ `StepAnimBackgroundRate` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:93`) | none |
+| `what_steps` / `sa_what` (Steps) | `radio_group` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:162` | kit `segmented` ↔ `StepAnimWhatSteps` `S32` | none |
+| `what_steps` / `sa_face` (Face & lip-sync) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:168` | kit `toggle` ↔ `StepAnimFace` `Boolean` | none |
+| `what_steps` / `sa_gaze` (Gaze & look-at) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:171` | kit `toggle` ↔ `StepAnimGaze` `Boolean` | none |
+| `what_steps` / `sa_flexi` (Hair, cloth & flexi) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:174` | kit `toggle` ↔ `StepAnimFlexi` `Boolean` | none |
+| `what_steps` / `sa_attach_fx` (Attachment FX) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:177` | kit `toggle` ↔ `StepAnimAttachFX` `Boolean` | none |
+| `what_steps` / `sa_particles` (Step particles) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:180` | kit `toggle` ↔ `StepAnimParticles` `Boolean` | none |
+| `what_steps` / `sa_texture_anim` (Step textures) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:183` | kit `toggle` ↔ `StepAnimTextureAnim` `Boolean` | none |
+| `step_timing` / `sa_clock` (Clock) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:188` | kit `combo` ↔ `StepAnimClock` `S32` | none |
+| `step_timing` / `sa_offset` (Actor offset) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:196` | kit `combo` ↔ `StepAnimOffsetMode` `S32` | none |
+| `step_timing` / `sa_phase` (Phase) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:205` | kit `slider` ↔ `StepAnimPhase` `F32`; `ALSteppedAnimKitAdapter` preserves/calls behavior `ALPanelSteppedAnim::bindSteppedPage()` (`indra/newview/alpanelsteppedanim.cpp:95`) | none |
+| `step_timing` / `sa_base_fps` (Base fps) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:210` | kit `combo` ↔ `StepAnimBaseFPS` `S32` | none |
+| `variation` / `sa_seed` (Seed) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:221` | kit `number` ↔ `StepAnimSeed` `U32` | none |
+| `variation` / `sa_seed_reroll` (New seed) | `button` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:224` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `variation` / `sa_phase_spread` (Phase spread) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:227` | kit `slider` ↔ `StepAnimPhaseSpread` `F32` | none |
+| `variation` / `sa_rate_variation` (Rate variation) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:232` | kit `slider` ↔ `StepAnimRateVariation` `F32` | none |
+| `variation` / `sa_timing_jitter` (Imperfect timing) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:237` | kit `slider` ↔ `StepAnimTimingJitter` `F32` | none |
+| `group_rates` / `sa_group_pick` (Group) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:244` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `group_rates` / `sa_group_offset` (Group rate) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:252` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `group_rates` / `sa_group_list` (All groups) | `scroll_list` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:262` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `character` / `sa_boil` (Pose boil) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:267` | kit `toggle` ↔ `StepAnimBoil` `Boolean` | none |
+| `character` / `sa_boil_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:270` | kit `slider` ↔ `StepAnimBoilAmount` `F32` | none |
+| `character` / `sa_boil_ticks` (Boil every) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:275` | kit `number` ↔ `StepAnimBoilTicks` `S32` | none |
+| `character` / `sa_impact` (Hold on impact) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:278` | kit `toggle` ↔ `StepAnimImpactHold` `Boolean` | none |
+| `character` / `sa_impact_ticks` (Frames) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:281` | kit `number` ↔ `StepAnimImpactTicks` `S32` | none |
+| `character` / `sa_impact_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:284` | kit `slider` ↔ `StepAnimImpactThreshold` `F32` | none |
+| `character` / `sa_smear` (Smear frames) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:289` | kit `toggle` ↔ `StepAnimSmear` `Boolean` | none |
+| `character` / `sa_smear_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:292` | kit `slider` ↔ `StepAnimSmearStrength` `F32` | none |
+| `character` / `sa_smear_threshold` (Smear speed) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:297` | kit `slider` ↔ `StepAnimSmearThreshold` `F32` | none |
+| `character` / `sa_ease` (Ease spacing) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:302` | kit `toggle` ↔ `StepAnimEase` `Boolean` | none |
+| `character` / `sa_ease_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:305` | kit `slider` ↔ `StepAnimEaseAmount` `F32` | none |
+| `pairs` / `sa_match_roto` (Match Roto Ink) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml:312` | kit `toggle` ↔ `StepAnimMatchRotoInk` `Boolean` | none |
 | `pairs` / `sa_roto_link` (Roto Ink) | none | kit-native action `link_to:look_group/stylize_tab`; no duplicate widget is required | none |
 | `pairs` / `sa_tron_link` (Tron) | none | kit-native action `link_to:look_group/tron_tab`; no duplicate widget is required | none |
 | `pairs` / `sa_actorfx_link` (Actor FX) | none | kit-native action `link_to:look_group/actor_style_tab`; no duplicate widget is required | none |
@@ -74,7 +87,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelSteppedAnim::bindSteppedPage()` — `indra/newview/alpanelsteppedanim.cpp:58, 59, 60, 61, 62, 63, 64, 65, 66, 67` | Move model-facing work into `ALSteppedAnimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelSteppedAnim::bindSteppedPage()` — `indra/newview/alpanelsteppedanim.cpp:88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98` | Move model-facing work into `ALSteppedAnimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -85,7 +98,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **55 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **76 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -97,6 +110,10 @@ Manifest size: **55 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `sa_scope-option-0` | Only `sa_scope` selects `Selected actor`; other selectors remain default. |
 | `sa_scope-option-1` | Only `sa_scope` selects `Whole cast`; other selectors remain default. |
 | `sa_scope-option-2` | Only `sa_scope` selects `Everyone in view`; other selectors remain default. |
+| `sa_scope-option-3` | Only `sa_scope` selects `Friends`; other selectors remain default. |
+| `sa_scope-option-4` | Only `sa_scope` selects `Nearby`; other selectors remain default. |
+| `sa_limit_distance-on` | Only `sa_limit_distance` is on; dependent visibility is measured. |
+| `sa_include_self-on` | Only `sa_include_self` is on; dependent visibility is measured. |
 | `sa_include_ghosts-on` | Only `sa_include_ghosts` is on; dependent visibility is measured. |
 | `sa_actor_target-option-0` | Only `sa_actor_target` selects `Selected cast`; other selectors remain default. |
 | `sa_actor_target-option-1` | Only `sa_actor_target` selects `Mara`; other selectors remain default. |
@@ -108,6 +125,10 @@ Manifest size: **55 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `sa_actor_override-option-0` | Only `sa_actor_override` selects `Inherit`; other selectors remain default. |
 | `sa_actor_override-option-1` | Only `sa_actor_override` selects `Never stepped`; other selectors remain default. |
 | `sa_actor_override-option-2` | Only `sa_actor_override` selects `Own settings`; other selectors remain default. |
+| `sa_actor_offset-option-0` | Only `sa_actor_offset` selects `Inherit`; other selectors remain default. |
+| `sa_actor_offset-option-1` | Only `sa_actor_offset` selects `Same`; other selectors remain default. |
+| `sa_actor_offset-option-2` | Only `sa_actor_offset` selects `+1 step`; other selectors remain default. |
+| `sa_actor_offset-option-3` | Only `sa_actor_offset` selects `+2 steps`; other selectors remain default. |
 | `sa_actor_steps-option-0` | Only `sa_actor_steps` selects `Inherit`; other selectors remain default. |
 | `sa_actor_steps-option-1` | Only `sa_actor_steps` selects `Pose`; other selectors remain default. |
 | `sa_actor_steps-option-2` | Only `sa_actor_steps` selects `Pose + position`; other selectors remain default. |
@@ -135,6 +156,19 @@ Manifest size: **55 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `sa_base_fps-option-0` | Only `sa_base_fps` selects `24`; other selectors remain default. |
 | `sa_base_fps-option-1` | Only `sa_base_fps` selects `25`; other selectors remain default. |
 | `sa_base_fps-option-2` | Only `sa_base_fps` selects `30`; other selectors remain default. |
+| `card-variation-tallest-850` | Only `variation` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-variation-tallest-1160` | Only `variation` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `card-group_rates-tallest-850` | Only `group_rates` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-group_rates-tallest-1160` | Only `group_rates` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `sa_group_pick-option-0` | Only `sa_group_pick` selects `Hunters`; other selectors remain default. |
+| `sa_group_pick-option-1` | Only `sa_group_pick` selects `Demons`; other selectors remain default. |
+| `sa_group_offset-option-0` | Only `sa_group_offset` selects `Same`; other selectors remain default. |
+| `sa_group_offset-option-1` | Only `sa_group_offset` selects `+1 step`; other selectors remain default. |
+| `sa_group_offset-option-2` | Only `sa_group_offset` selects `+2 steps`; other selectors remain default. |
+| `sa_group_offset-option-3` | Only `sa_group_offset` selects `Smooth`; other selectors remain default. |
+| `sa_group_list-empty` | `sa_group_list` is empty with no selection. |
+| `sa_group_list-one` | `sa_group_list` has one selected item. |
+| `sa_group_list-overflow` | `sa_group_list` has 51 items and a visible scrollbar. |
 | `card-character-tallest-850` | Only `character` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-character-tallest-1160` | Only `character` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `sa_boil-on` | Only `sa_boil` is on; dependent visibility is measured. |
@@ -169,8 +203,13 @@ None. Every approved visual kind is either a kit primitive or an existing XUI co
 - `sa_actor_target` (Actor): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 - `sa_override_list` (Overrides): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 - `sa_actor_override` (This actor): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `sa_actor_offset` (Rate offset): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 - `sa_override_clear` (Clear): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 - `sa_rate_chips` (On): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `sa_seed_reroll` (New seed): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `sa_group_pick` (Group): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `sa_group_offset` (Group rate): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `sa_group_list` (All groups): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 
 ## Risks
 

@@ -7,18 +7,42 @@
 #include "alpanelsteppedanim.h"
 
 #include "alkitbinding.h"
+#include "alsteppedanim.h"
 #include "alsteppedanimruntime.h"
 #include "llagent.h"
 #include "llbutton.h"
 #include "llcombobox.h"
 #include "lldirectorcast.h"
 #include "llradiogroup.h"
+#include "llrand.h"
 #include "llscrolllistctrl.h"
 #include "llsliderctrl.h"
 #include "lltextbox.h"
 #include "llviewercontrol.h"
 
+#include <algorithm>
 #include <cmath>
+
+namespace
+{
+// Cached read for the draw path; the setting is only written from this panel.
+const LLSD& groupRates()
+{
+    static LLCachedControl<LLSD> rates(gSavedSettings, "StepAnimGroupRates");
+    return rates;
+}
+
+const char* offsetLabel(S32 offset)
+{
+    switch (offset)
+    {
+        case 1: return "+1 step";
+        case 2: return "+2 steps";
+        case 3: return "Smooth";
+        default: return "Same";
+    }
+}
+}
 
 static LLPanelInjector<ALPanelSteppedAnim> t_panel_stepped_anim("panel_stepped_anim");
 
@@ -44,6 +68,12 @@ void ALPanelSteppedAnim::bindSteppedPage(LLView* root)
     mActorRate = root->findChild<LLSliderCtrl>("sa_actor_rate", true);
     mActorSteps = root->findChild<LLComboBox>("sa_actor_steps", true);
     mActorRole = root->findChild<LLComboBox>("sa_actor_role", true);
+    mActorOffset = root->findChild<LLComboBox>("sa_actor_offset", true);
+    mActorEffective = root->findChild<LLTextBox>("sa_actor_effective", true);
+    mSeedReroll = root->findChild<LLButton>("sa_seed_reroll", true);
+    mGroupPick = root->findChild<LLComboBox>("sa_group_pick", true);
+    mGroupOffset = root->findChild<LLComboBox>("sa_group_offset", true);
+    mGroupList = root->findChild<LLScrollListCtrl>("sa_group_list", true);
     mOverrideClear = root->findChild<LLButton>("sa_override_clear", true);
     mRateChips = root->findChild<LLRadioGroup>("sa_rate_chips", true);
     mStatus = root->findChild<LLTextBox>("sa_status", true);
@@ -63,6 +93,7 @@ void ALPanelSteppedAnim::bindSteppedPage(LLView* root)
     mMixedRows[0] = row("sa_background_rate");
     mMixedRows[1] = row("sa_actor_role");
     mManualPhaseRow = row("sa_phase");
+    mRadiusRow = row("sa_nearby_radius");
     mActorOwnRows[0] = row("sa_actor_rate");
     mActorOwnRows[1] = row("sa_actor_steps");
 
@@ -73,6 +104,11 @@ void ALPanelSteppedAnim::bindSteppedPage(LLView* root)
     if (mActorSteps) mActorSteps->setCommitCallback([this](LLUICtrl*, const LLSD&) { onActorStepsCommit(); });
     if (mActorRole) mActorRole->setCommitCallback([this](LLUICtrl*, const LLSD&) { onActorRoleCommit(); });
     if (mOverrideClear) mOverrideClear->setCommitCallback([this](LLUICtrl*, const LLSD&) { onOverrideClear(); });
+    if (mActorOffset) mActorOffset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onActorOffsetCommit(); });
+    if (mSeedReroll) mSeedReroll->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSeedReroll(); });
+    if (mGroupPick) mGroupPick->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupPick(); });
+    if (mGroupOffset) mGroupOffset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupOffsetCommit(); });
+    if (mGroupList) mGroupList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupListSelect(); });
     if (mRateChips) mRateChips->setCommitCallback([this](LLUICtrl*, const LLSD&) { onRateChip(); });
 
     ALKitWhoAdapters::add("stepped_anim", [](const LLUUID& id)
@@ -86,6 +122,7 @@ void ALPanelSteppedAnim::bindSteppedPage(LLView* root)
     });
     rebuildActors();
     refreshActor();
+    syncGroups(true);
 }
 
 LLUUID ALPanelSteppedAnim::selectedActor() const
@@ -136,6 +173,7 @@ void ALPanelSteppedAnim::refreshActor()
     if (mActorRate) mActorRate->setValue(style.mStepped.mRate);
     if (mActorSteps) mActorSteps->setCurrentByIndex(style.mStepped.mWhat + 1);
     if (mActorRole) mActorRole->setCurrentByIndex(style.mStepped.mRole);
+    if (mActorOffset) mActorOffset->setCurrentByIndex(style.mStepped.mRateOffset + 1);
     mRefreshing = false;
     refreshConditionalRows();
 }
@@ -153,6 +191,7 @@ void ALPanelSteppedAnim::writeActor()
     if (mActorRate) style.mStepped.mRate = llclamp((F32)mActorRate->getValue().asReal(), 2.f, 30.f);
     if (mActorSteps) style.mStepped.mWhat = llclamp(mActorSteps->getCurrentIndex() - 1, -1, 1);
     if (mActorRole) style.mStepped.mRole = llclamp(mActorRole->getCurrentIndex(), 0, 2);
+    if (mActorOffset) style.mStepped.mRateOffset = llclamp(mActorOffset->getCurrentIndex() - 1, -1, 2);
     cast.setActorStyle(id, style);
     rebuildActors();
     refreshActor();
@@ -179,6 +218,93 @@ void ALPanelSteppedAnim::onActorOverrideCommit() { writeActor(); }
 void ALPanelSteppedAnim::onActorRateCommit() { writeActor(); }
 void ALPanelSteppedAnim::onActorStepsCommit() { writeActor(); }
 void ALPanelSteppedAnim::onActorRoleCommit() { writeActor(); }
+void ALPanelSteppedAnim::onActorOffsetCommit() { writeActor(); }
+
+// A new random seed re-rolls every actor's phase, boil, rate variation and timing. Kept in
+// 1..99999 so the Seed spinner shows it exactly; viewer-local like every Stepped setting.
+void ALPanelSteppedAnim::onSeedReroll()
+{
+    gSavedSettings.setU32("StepAnimSeed", static_cast<U32>(1 + ll_rand(99999)));
+}
+
+std::string ALPanelSteppedAnim::selectedGroup() const
+{
+    return mGroupPick ? mGroupPick->getSelectedValue().asString() : std::string();
+}
+
+void ALPanelSteppedAnim::onGroupPick() { refreshGroupOffset(); }
+
+void ALPanelSteppedAnim::onGroupListSelect()
+{
+    if (!mGroupList || !mGroupPick) return;
+    const std::string name = mGroupList->getSelectedValue().asString();
+    if (name.empty()) return;
+    mGroupPick->setValue(name);
+    refreshGroupOffset();
+}
+
+void ALPanelSteppedAnim::onGroupOffsetCommit()
+{
+    if (mRefreshing || !mGroupOffset) return;
+    const std::string name = selectedGroup();
+    if (name.empty()) return;
+    LLSD rates = gSavedSettings.getLLSD("StepAnimGroupRates");
+    if (!rates.isMap()) rates = LLSD::emptyMap();
+    const S32 offset = llclamp(mGroupOffset->getCurrentIndex(), 0, 3);
+    if (offset == 0) rates.erase(name); else rates[name] = offset;
+    gSavedSettings.setLLSD("StepAnimGroupRates", rates);
+    syncGroups(true);
+}
+
+// ui-draw-lint: allow-function(raw-write) runs on a click, a group change or the 2 Hz poll only
+void ALPanelSteppedAnim::refreshGroupOffset()
+{
+    if (!mGroupOffset) return;
+    const LLSD& rates = groupRates();
+    const std::string name = selectedGroup();
+    mRefreshing = true;
+    mGroupOffset->setCurrentByIndex(name.empty() || !rates.has(name) ? 0 : llclamp(rates[name].asInteger(), 0, 3));
+    mRefreshing = false;
+}
+
+// ui-draw-lint: allow-function(raw-write) rebuilds only when the tag set or a rate changed (2 Hz poll)
+void ALPanelSteppedAnim::syncGroups(bool force)
+{
+    if (!mGroupPick || !mGroupList) return;
+    if (!force && mGroupTimer.getElapsedTimeF32() < 0.5f) return;
+    mGroupTimer.reset();
+    const LLSD& rates = groupRates();
+    const std::vector<std::string> names = LLDirectorCast::instance().getGroupNames();
+    std::string signature;
+    for (const std::string& name : names)
+        signature += name + "=" + std::to_string(rates.has(name) ? rates[name].asInteger() : 0) + ";";
+    if (!force && signature == mGroupListSignature) return;
+    const bool same_names = names == mGroupNames;
+    mGroupListSignature = signature;
+    mGroupNames = names;
+    mRefreshing = true;
+    if (!same_names)
+    {
+        const std::string keep = selectedGroup();
+        mGroupPick->removeall();
+        for (const std::string& name : names) mGroupPick->add(name, name);
+        if (!names.empty())
+            mGroupPick->setValue(std::find(names.begin(), names.end(), keep) != names.end() ? keep : names.front());
+    }
+    mGroupList->deleteAllItems();
+    for (const std::string& name : names)
+    {
+        LLSD row;
+        row["id"] = name;
+        row["columns"][0]["column"] = "name";
+        row["columns"][0]["value"] = name;
+        row["columns"][1]["column"] = "value";
+        row["columns"][1]["value"] = offsetLabel(rates.has(name) ? llclamp(rates[name].asInteger(), 0, 3) : 0);
+        mGroupList->addElement(row, ADD_BOTTOM);
+    }
+    mRefreshing = false;
+    refreshGroupOffset();
+}
 
 void ALPanelSteppedAnim::onOverrideClear()
 {
@@ -212,13 +338,51 @@ void ALPanelSteppedAnim::refreshConditionalRows()
     for (LLView* row : mAdaptiveRows) if (row) row->setVisible(mode == 1);
     for (LLView* row : mMixedRows) if (row) row->setVisible(mode == 2);
     if (mManualPhaseRow) mManualPhaseRow->setVisible((S32)offset_setting == 2);
+    static LLCachedControl<S32> scope_setting(gSavedSettings, "StepAnimScope");
+    static LLCachedControl<bool> limit_setting(gSavedSettings, "StepAnimLimitDistance");
+    if (mRadiusRow) mRadiusRow->setVisible((S32)scope_setting == ALSteppedAnim::SCOPE_NEARBY || limit_setting);
     const bool own = mActorOverride && mActorOverride->getCurrentIndex() == 2;
     for (LLView* row : mActorOwnRows) if (row) row->setVisible(own);
+}
+
+// ui-draw-lint: allow-function(raw-write) writes only when the effective-rate inputs changed
+void ALPanelSteppedAnim::refreshActorEffective()
+{
+    if (!mActorEffective) return;
+    static LLCachedControl<F32> rate_setting(gSavedSettings, "StepAnimRate");
+    static LLCachedControl<S32> base_setting(gSavedSettings, "StepAnimBaseFPS");
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLUUID id = selectedActor();
+    const LLDirectorCast::ActorStyle::SteppedOverride& ov = cast.getActorStyle(id).mStepped;
+    const std::string group = cast.getGroup(id.isNull() ? gAgentID : id);
+    S32 group_offset = 0;
+    if (!group.empty())
+    {
+        const LLSD& rates = groupRates();
+        if (rates.has(group)) group_offset = llclamp(rates[group].asInteger(), 0, 3);
+    }
+    const F32 own_rate = ov.mMode == 2 ? ov.mRate : (F32)rate_setting;
+    const std::array<F32, 6> key = {{own_rate, (F32)(S32)base_setting, (F32)ov.mRateOffset,
+                                     (F32)group_offset, (F32)ov.mMode, 0.f}};
+    if (key == mEffectiveKey) return;
+    mEffectiveKey = key;
+    const S32 offset = ov.mRateOffset >= 0 ? ov.mRateOffset : (ov.mMode == 2 ? 0 : group_offset);
+    std::string text;
+    if (ov.mMode == 1 || offset == ALSteppedAnim::RATE_SMOOTH)
+        text = ov.mMode == 1 ? "Smooth (never stepped)" : "Smooth (group)";
+    else
+    {
+        const F32 rate = ALSteppedAnim::offsetRate(ALSteppedAnim::effectiveRate(own_rate), offset, (S32)base_setting);
+        text = llformat("%.1f fps", rate);
+        if (offset > 0) text += llformat(" (%s%s)", offsetLabel(offset), ov.mRateOffset >= 0 ? ", own" : ", group");
+    }
+    mActorEffective->setText(text);
 }
 
 void ALPanelSteppedAnim::refreshReadouts()
 {
     refreshStatus();
+    refreshActorEffective();
     refreshRateReadout();
     refreshSpeedMeter();
 }
@@ -275,6 +439,7 @@ void ALPanelSteppedAnim::draw()
         refreshActor();
     }
     refreshConditionalRows();
+    syncGroups(false);
     refreshReadouts();
     LLPanel::draw();
 }

@@ -5,7 +5,7 @@
     <key>StepAnimEnabled</key>
     <map><key>Comment</key><string>[StepAnim] Enable viewer-local stepped character animation.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
     <key>StepAnimScope</key>
-    <map><key>Comment</key><string>[StepAnim] Scope: 0 selected actor, 1 whole cast, 2 everyone in view.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>1</integer></map>
+    <map><key>Comment</key><string>[StepAnim] Scope: 0 selected actor, 1 whole cast, 2 everyone in view, 3 friends in view, 4 nearby in view.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>1</integer></map>
     <key>StepAnimIncludeGhosts</key>
     <map><key>Comment</key><string>[StepAnim] Step Ghost Studio clones with independent animation regardless of scope.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
     <key>StepAnimExcludeCameraMounted</key>
@@ -74,6 +74,22 @@
     <map><key>Comment</key><string>[StepAnim] Ease-spacing strength, 0 to 1.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.5</real></map>
     <key>StepAnimMatchRotoInk</key>
     <map><key>Comment</key><string>[StepAnim] Match Roto Ink redraw cadence to the stepped rate.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimNearbyRadius</key>
+    <map><key>Comment</key><string>[StepAnim] Nearby scope radius in metres from the camera; also the cap when Limit distance is on, 1 to 256.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>20.0</real></map>
+    <key>StepAnimLimitDistance</key>
+    <map><key>Comment</key><string>[StepAnim] Only step actors within the nearby radius, whatever the scope.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimIncludeSelf</key>
+    <map><key>Comment</key><string>[StepAnim] Step your own avatar when Everyone, Friends or Nearby scope would include it.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>1</integer></map>
+    <key>StepAnimSeed</key>
+    <map><key>Comment</key><string>[StepAnim] Variation seed: same seed, same look. Mixed into every per-actor random value.</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimPhaseSpread</key>
+    <map><key>Comment</key><string>[StepAnim] Random actor phase spread, 0 (lockstep) to 1 (fully staggered).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.0</real></map>
+    <key>StepAnimRateVariation</key>
+    <map><key>Comment</key><string>[StepAnim] Per-actor step-length spread, 0 to 1; whole base-grid frames, never faster than the rate.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.0</real></map>
+    <key>StepAnimTimingJitter</key>
+    <map><key>Comment</key><string>[StepAnim] Imperfect timing, 0 to 1: chance of one extra held step per tick (at most a quarter), never two in a row.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.0</real></map>
+    <key>StepAnimGroupRates</key>
+    <map><key>Comment</key><string>[StepAnim] Cast group tag -> coarser step offset (1 +1 step, 2 +2 steps, 3 smooth). Viewer-local.</string><key>Persist</key><integer>1</integer><key>Type</key><string>LLSD</string><key>Value</key><map /></map>
     <key>StepAnimDebugVerify</key>
     <map><key>Comment</key><string>[StepAnim] Runtime ownership and smooth-state verification (debug only).</string><key>Persist</key><integer>0</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
     <key>CineOutlineEnabled</key>
