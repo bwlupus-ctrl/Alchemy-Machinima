@@ -212,10 +212,9 @@ F32 offsetRate(F32 rate, S32 offset, S32 base_fps)
     return llmax(stepped, 2.f);
 }
 
-F32 varyRate(F32 rate, U64 seed, F32 variation, S32 base_fps)
+F32 varyRateAtFactor(F32 rate, F32 factor, S32 base_fps)
 {
-    if (!(variation > 0.f) || !(rate >= 2.f) || base_fps < 1) return rate;
-    const F32 factor = rateFactor(seed, variation);
+    if (!(rate >= 2.f) || base_fps < 1) return rate;
     const F32 base = static_cast<F32>(base_fps);
     const F32 length = base / rate; // the actor's own step, in base frames
     const F32 whole = std::floor(length + .5f);
@@ -233,6 +232,12 @@ F32 varyRate(F32 rate, U64 seed, F32 variation, S32 base_fps)
     const S32 steps = llmax(1, static_cast<S32>(std::floor(factor + .5f)));
     const F32 varied = rate / static_cast<F32>(steps);
     return varied >= 2.f ? varied : rate;
+}
+
+F32 varyRate(F32 rate, U64 seed, F32 variation, S32 base_fps)
+{
+    if (!(variation > 0.f) || !(rate >= 2.f) || base_fps < 1) return rate;
+    return varyRateAtFactor(rate, rateFactor(seed, variation), base_fps);
 }
 
 bool extraHold(U64 seed, S64 tick, F32 jitter, bool previous_was_extra)
@@ -327,9 +332,11 @@ RateChoice resolveRate(const Config& raw, const ActorOverride& raw_ov, bool sele
     rate = effectiveRate(rate);
     if (rate == 0.f || offset == RATE_SMOOTH) return out;
 
-    // Match Roto Ink redraws on the page rate's cadence, so while it is on a coarser offset and
-    // the seed variation are switched off (a stepped actor never changes pose between Roto's
-    // redraws). Smooth, Never and the imperfect-timing extra hold are unaffected.
+    // Match Roto Ink redraws on the page rate's cadence. While it is on, group and actor rate
+    // offsets and the seed rate variation are disabled, so the steps stay on Roto's redraws.
+    // Own rates, the Mixed background rate and the Adaptive fast rate are not re-timed to that
+    // cadence; they keep their own values. Smooth, Never and the imperfect-timing extra hold
+    // are unaffected.
     F32 variation = cfg.rateVariation;
     out.rotoLocked = cfg.matchRoto;
     if (cfg.matchRoto)

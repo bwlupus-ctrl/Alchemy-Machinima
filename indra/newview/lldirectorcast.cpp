@@ -2612,25 +2612,11 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         }
     }
 
-    // group stepped rates (absent in older scenes); only groups some loaded member carries are
-    // kept. One-time migration: a scene that predates cast-owned group rates takes over the
-    // retired viewer-wide StepAnimGroupRates map for the groups it has, and the setting is then
-    // emptied so the stale tags never apply to a later scene that reuses the names.
+    // group stepped rates (absent in older scenes, which read with none); only groups some loaded
+    // member carries are kept. Rates are scene data; the retired viewer-wide setting is not read.
+    if (data.has("group_rates"))
     {
-        const std::vector<std::string> live_groups = getGroupNames();
-        if (data.has("group_rates"))
-        {
-            mGroupRates = ALSteppedAnim::readGroupRates(data["group_rates"], live_groups);
-        }
-        else
-        {
-            const LLSD legacy = gSavedSettings.getLLSD("StepAnimGroupRates");
-            if (legacy.isMap() && legacy.size() > 0)
-            {
-                mGroupRates = ALSteppedAnim::readGroupRates(legacy, live_groups);
-                gSavedSettings.setLLSD("StepAnimGroupRates", LLSD::emptyMap());
-            }
-        }
+        mGroupRates = ALSteppedAnim::readGroupRates(data["group_rates"], getGroupNames());
     }
 
     // [AvatarLightResponse] merge (never replace) the scene's stored light responses

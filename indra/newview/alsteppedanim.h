@@ -170,6 +170,10 @@ F32 rateFactor(U64 seed, F32 variation);
 // a whole number of its own steps (x1 or x2). Never faster than `rate`, never below 2 fps and
 // never snapped to the base rate.
 F32 varyRate(F32 rate, U64 seed, F32 variation, S32 base_fps);
+// varyRate with the factor already known (varyRate = this at rateFactor(seed, variation)). The
+// factor is in [1, 1 + variation) and the quantised result is monotone in it, so the reachable
+// step rates lie between the values at factor 1 and at the largest factor a seed can give.
+F32 varyRateAtFactor(F32 rate, F32 factor, S32 base_fps);
 // Group / per-actor coarser step: each hold lasts `offset` more base-grid frames (RATE_PLUS1/2 only).
 F32 offsetRate(F32 rate, S32 offset, S32 base_fps);
 // Imperfect timing: true when this tick should be held one extra step. Never twice in a row.

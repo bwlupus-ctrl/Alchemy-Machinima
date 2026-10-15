@@ -1130,12 +1130,6 @@ template<> template<> void stepped_object::test<21>()
     // a later scene reusing other names never inherits the earlier scene's rates
     ensure("another scene's live groups drop rates it does not carry",
         readGroupRates(saved, std::vector<std::string>{"Crowd"}).empty());
-    // legacy StepAnimGroupRates map migrates by the same read (clamped, only live groups)
-    LLSD legacy = LLSD::emptyMap();
-    legacy["Hunters"] = 2; legacy["Demons"] = 9; legacy["Gone"] = 1;
-    const GroupRates migrated = readGroupRates(legacy, live);
-    ensure("legacy migration keeps live groups and clamps", migrated.size() == 2 &&
-        groupRate(migrated, "Hunters") == 2 && groupRate(migrated, "Demons") == 3 && !migrated.count("Gone"));
 
     // rename keeps the rate; a merge keeps the target's; the source name is gone
     GroupRates r;

@@ -368,10 +368,11 @@ void ALPanelSteppedAnim::refreshActorEffective()
     // rate, group / actor offsets, Roto Ink cadence); the seed variation is shown as a range.
     const ALSteppedAnim::Config config = ALSteppedAnimRuntime::instance().configSnapshot();
     const ALSteppedAnim::RateChoice choice = ALSteppedAnim::resolveRate(config, ov, true, group_offset);
-    const std::array<F32, 8> key = {{choice.stepped ? 1.f : 0.f, choice.rate, choice.fastRate, (F32)choice.offset,
+    const S32 base_fps = ALSteppedAnim::sanitize(config).baseFps;
+    const std::array<F32, 9> key = {{choice.stepped ? 1.f : 0.f, choice.rate, choice.fastRate, (F32)choice.offset,
                                      choice.variation, choice.rotoSuppressed ? 1.f : 0.f,
                                      (F32)(ov.mode * 4 + (ov.rateOffset >= 0 ? 1 : 0) + (group_offset == 3 ? 2 : 0)),
-                                     choice.adaptive ? 1.f : 0.f}};
+                                     choice.adaptive ? 1.f : 0.f, (F32)base_fps}};
     if (key == mEffectiveKey) return;
     mEffectiveKey = key;
     std::string text;
@@ -381,12 +382,34 @@ void ALPanelSteppedAnim::refreshActorEffective()
                    ? "Smooth (group)" : "Smooth (no rate)");
     else
     {
-        text = llformat("%.1f fps", choice.rate);
-        if (choice.adaptive && choice.fastRate > 0.f) text += llformat(", fast %.1f fps", choice.fastRate);
+        // Step rates the seed spread can actually reach after whole-step quantisation: the factor
+        // lies in [1, 1 + variation) (unitHash is below 1), so the ends are varyRate's values at
+        // factor 1 and at the largest factor a seed gives. A spread that quantisation removes
+        // reads as no variation at this rate.
+        const auto reachable = [base_fps](F32 rate, F32 variation, F32& lo, F32& hi)
+        {
+            const F32 top = 1.f + variation * (1.f - 1.f / 16777216.f);
+            const F32 a = ALSteppedAnim::varyRateAtFactor(rate, 1.f, base_fps);
+            const F32 b = ALSteppedAnim::varyRateAtFactor(rate, top, base_fps);
+            lo = std::min(a, b);
+            hi = std::max(a, b);
+        };
+        F32 lo = choice.rate, hi = choice.rate;
+        F32 fast_lo = choice.fastRate, fast_hi = choice.fastRate;
+        if (choice.variation > 0.f)
+        {
+            reachable(choice.rate, choice.variation, lo, hi);
+            if (choice.fastRate > 0.f) reachable(choice.fastRate, choice.variation, fast_lo, fast_hi);
+        }
+        const bool spread = hi > lo + 1.e-3f;
+        const bool fast_spread = fast_hi > fast_lo + 1.e-3f;
+        text = spread ? llformat("steps on %.1f-%.1f fps", lo, hi) : llformat("%.1f fps", choice.rate);
+        if (choice.adaptive && choice.fastRate > 0.f)
+            text += fast_spread ? llformat(", fast %.1f-%.1f fps", fast_lo, fast_hi)
+                                : llformat(", fast %.1f fps", choice.fastRate);
         if (choice.offset > 0)
             text += llformat(" (%s%s)", offsetLabel(choice.offset), ov.rateOffset >= 0 ? ", own" : ", group");
-        if (choice.variation > 0.f)
-            text += llformat(" + up to %d%% longer steps", (S32)std::floor(choice.variation * 100.f + .5f));
+        if (choice.variation > 0.f && !spread && !fast_spread) text += " (no variation at this rate)";
         if (choice.rotoSuppressed) text += " (Roto Ink cadence: offsets and variation off)";
     }
     mActorEffective->setText(text);
