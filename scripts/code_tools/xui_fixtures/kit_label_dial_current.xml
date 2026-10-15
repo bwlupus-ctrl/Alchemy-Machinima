@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel name="label_fit_tab_logic" class="panel_label_fit" width="690" height="400" follows="all">
+    <kit_page name="label_fit_kit" page="look_group/label_fit_tab" master_widget="label_fit_enabled" master_setting="LabelFitFixtureEnabled" master_label="Stepped animation">
+        <kit_card name="kc_label_fit" id="label_fit" title="Label fit" kind="rows">
+            <kit_row name="kr_dial" kind="dial" widget="label_fit_dial" label="Facing direction" setting="LabelFitFixtureAngle" bind="setting" min_val="0" max_val="360" decimals="0">
+                <compass_dial name="label_fit_dial" control_name="LabelFitFixtureAngle" mode="compass" kit_geometry="true" show_readout="false" min_val="0" max_val="360" increment="1" decimal_digits="0" />
+            </kit_row>
+        </kit_card>
+    </kit_page>
+</panel>

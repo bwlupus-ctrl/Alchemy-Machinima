@@ -1413,9 +1413,12 @@ KIT_FONTS_XML = ROOT_DIR / "indra/newview/skins/default/xui/en/fonts.xml"
 ALKIT_STYLE_H = ROOT_DIR / "indra/newview/alkitstyle.h"
 ALKIT_ROW_CPP = ROOT_DIR / "indra/newview/alkitrow.cpp"
 ALKIT_PAGE_CPP = ROOT_DIR / "indra/newview/alkitpage.cpp"
+ALKIT_CARD_CPP = ROOT_DIR / "indra/newview/alkitcard.cpp"
 KIT_LABEL_FONT_SIZE = "Kit12"
-# A dial label sits in a 2-up cell whose width comes from the card, not the column.
-LABEL_FIT_SKIPPED_KINDS = {"dial", "arc"}
+# A dial/arc label sits in a 2-up cell whose width comes from the card, not the column
+# (ALKitRow::layoutDialCell): the viewer elides it at the narrowest card, so the gate
+# measures it against that cell's label box (kit_dial_label_limit()).
+DIAL_LABEL_KINDS = {"dial", "arc"}
 RUNTIME_ELIDE_GUARDS = (
     (ALKIT_ROW_CPP, "ALKitStyle::fitText(", "kit row labels are no longer elided with a tooltip"),
     (ALKIT_PAGE_CPP, "ALKitStyle::masterLabelWidth(", "page master labels are no longer sized to their text"),
@@ -1437,6 +1440,28 @@ def kit_label_limits() -> tuple[int, int]:
     if not re.search(r"mLabel->reshape\(\s*ALKitStyle::LABEL_W\s*,\s*20\s*,\s*true\s*\)", row_source):
         raise ValueError("alkitrow.cpp: the row label box is no longer ALKitStyle::LABEL_W wide")
     return _read_const(style, "LABEL_W", ALKIT_STYLE_H), _read_const(style, "MASTER_LABEL_MAX_W", ALKIT_STYLE_H)
+
+
+@functools.lru_cache(maxsize=None)
+def kit_dial_label_limit() -> int:
+    """Label box of a dial/arc cell at the narrowest card (CARD_MIN_W), from the viewer source.
+
+    alkitcard.cpp: body_w = card_w - CARD_PAD_L - CARD_PAD_R; cell = (body_w - GRID_GAP) / 2.
+    alkitrow.cpp layoutDialCell: label box = cell - RESET_W - COL_GAP.
+    """
+    style = ALKIT_STYLE_H.read_text(encoding="utf-8")
+    row_source = ALKIT_ROW_CPP.read_text(encoding="utf-8")
+    card_source = ALKIT_CARD_CPP.read_text(encoding="utf-8")
+    if not re.search(r"fitLabel\(\s*llmax\(\s*1\s*,\s*w\s*-\s*ALKitStyle::RESET_W\s*-\s*ALKitStyle::COL_GAP\s*\)\s*\)", row_source):
+        raise ValueError("alkitrow.cpp: the dial label box is no longer cell - RESET_W - COL_GAP")
+    if not re.search(r"cell\s*=\s*\(\s*body_w\s*-\s*ALKitStyle::GRID_GAP\s*\)\s*/\s*2", card_source):
+        raise ValueError("alkitcard.cpp: the dial cell is no longer (body_w - GRID_GAP) / 2")
+    if not re.search(r"body_w\s*=\s*w\s*-\s*ALKitStyle::CARD_PAD_L\s*-\s*ALKitStyle::CARD_PAD_R", card_source):
+        raise ValueError("alkitcard.cpp: the card body width is no longer w - CARD_PAD_L - CARD_PAD_R")
+    card_min = _read_const(style, "CARD_MIN_W", ALKIT_STYLE_H)
+    body = card_min - _read_const(style, "CARD_PAD_L", ALKIT_STYLE_H) - _read_const(style, "CARD_PAD_R", ALKIT_STYLE_H)
+    cell = (body - _read_const(style, "GRID_GAP", ALKIT_STYLE_H)) // 2
+    return cell - _read_const(style, "RESET_W", ALKIT_STYLE_H) - _read_const(style, "COL_GAP", ALKIT_STYLE_H)
 
 
 @functools.lru_cache(maxsize=None)
@@ -1519,9 +1544,12 @@ def label_fit_findings(root: Node, path: Path) -> list[Finding]:
     for node in kit_nodes:
         if node.tag == "kit_row":
             label = node.attrs.get("label", "")
-            if not label or node.attrs.get("kind", "") in LABEL_FIT_SKIPPED_KINDS:
+            if not label:
                 continue
-            role, allotted = "row", row_box
+            if node.attrs.get("kind", "") in DIAL_LABEL_KINDS:
+                role, allotted = "dial", kit_dial_label_limit()
+            else:
+                role, allotted = "row", row_box
         else:
             label = node.attrs.get("master_label", "")
             if not label or not node.attrs.get("master_widget"):
@@ -1662,6 +1690,8 @@ def run_selftest(json_output: bool) -> int:
         ("kit_label_fit_broken.xml", True, "label-fit"),
         ("kit_label_master_broken.xml", True, "label-fit"),
         ("kit_label_fit_current.xml", False, None),
+        ("kit_label_dial_broken.xml", True, "label-fit"),
+        ("kit_label_dial_current.xml", False, None),
     )
     reports: list[dict[str, object]] = []
     passed = True

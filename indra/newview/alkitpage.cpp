@@ -1482,7 +1482,8 @@ bool ALKitPage::revealRow(ALKitRow* r, bool flash_it)
             // membership alone therefore cannot reveal such a row (for
             // example Rig's Fill EV in the shared Lights card).
             LLUICtrl* control = r->findChild<LLUICtrl>(r->meta().widget, true);
-            const bool needs_advanced = r->meta().advanced || (control && !control->getEnabled());
+            // An unconnected row is disabled for good, not by Easy mode: it never needs Advanced.
+            const bool needs_advanced = !r->unconnected() && (r->meta().advanced || (control && !control->getEnabled()));
             if (needs_advanced)
                 for (S32 i = 0; i < (S32)mModeDefs.size(); ++i)
                     if (mModeDefs[i].name == "Advanced" &&
@@ -1556,7 +1557,7 @@ void ALKitPage::setChangedOnlyValue(bool enabled)
 void ALKitPage::resetPage()
 {
     if (mResetPopover)
-        mResetPopover->show();
+        mResetPopover->toggle();
 }
 
 void ALKitPage::performPageReset()

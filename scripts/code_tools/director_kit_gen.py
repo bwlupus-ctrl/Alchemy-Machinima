@@ -640,6 +640,10 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         attrs["bulk_reset"] = "false"
     if row.get("no_widget_history"):
         attrs["widget_history"] = "false"
+    if row.get("disabled"):
+        # [Connectedness B9] A disabled row is not connected to anything: the runtime skips it
+        # in Reset page/card, paste, Quick favourites and Advanced reveal.
+        attrs["unconnected"] = "true"
     mapping = (("h", "help"), ("kw", "keywords"), ("unit", "unit"), ("sub", "sub"),
                ("to", "link_to"), ("shortcut_of", "shortcut_of"), ("mirror_setting", "mirror_setting"))
     for src, dst in mapping:
@@ -951,10 +955,29 @@ _LABEL_SETTING_WORDS = {"bd", "merge", "alchemy", "render", "cine"}
 _LABEL_SUFFIXES = {"slider", "spinner", "btn", "button", "check", "checkbox", "combo", "swatch", "picker",
                    "editor", "list", "bar", "field", "radio", "text", "label"}
 _LABEL_ACRONYMS = {"ev", "fps", "ir", "hdr", "rgb", "gi", "ao", "ca", "ui", "lut", "fov", "nd", "dof", "bg",
-                   "ots", "iso", "lod", "sdr", "rtgi", "vram", "z", "x", "y"}
+                   "ots", "iso", "lod", "sdr", "rtgi", "vram", "z", "x", "y", "cas", "ssao", "pov", "eep", "tm",
+                   "fx", "sl", "coc", "cof", "ssr", "ior", "amd"}
+# Abbreviations and run-together words seen in widget names; the value replaces the token as-is
+# (so acronyms keep their capitals).
+_LABEL_WORD_MAP = {
+    "sat": "saturation", "satr": "red saturation", "satg": "green saturation", "satb": "blue saturation",
+    "hdrmax": "HDR max", "toneexp": "tone exposure", "exp": "exposure", "amt": "amount",
+    "glarethr": "glare threshold", "glaredepth": "glare depth", "skysat": "sky saturation",
+    "skydark": "sky darkening", "bandrad": "band radius", "shadowres": "shadow resolution",
+    "shadowtype": "shadow type", "colorlut": "colour LUT", "anisotropicfilter": "anisotropic filter",
+    "blurdist": "blur distance", "spotbias": "spot bias", "spotoffset": "spot offset",
+    "localfog": "local fog", "projvol": "projector volumetric", "rimq": "rim quality", "rigrim": "rig rim",
+    "res": "resolution", "thr": "threshold", "dist": "distance", "rad": "radius", "val": "value",
+    "deg": "degrees", "inten": "intensity", "mult": "multiplier", "freq": "frequency", "temp": "temperature",
+    "desat": "desaturation", "anim": "animation", "env": "environment", "pos": "position",
+    "min": "min", "max": "max", "lo": "low", "hi": "high", "pow": "power", "var": "variation",
+    "kal": "kaleidoscope", "ior": "IOR", "rot": "rotation", "tex": "texture", "src": "source",
+    "cx": "centre X", "cy": "centre Y", "rx": "radius X", "ry": "radius Y", "db": "dB", "tron": "Tron",
+    "n": "N", "sil": "silhouette", "am": "amount", "amp": "amplitude", "fstop": "f-stop", "focaltime": "focal time",
+}
 
 
-def humanize_widget_name(widget: str) -> str:
+def _label_tokens(widget: str) -> tuple[list[str], bool]:
     parts = [part for part in widget.split("_") if part]
     if len(parts) > 1 and parts[0].lower() in _LABEL_PREFIXES:
         parts = parts[1:]
@@ -965,24 +988,71 @@ def humanize_widget_name(widget: str) -> str:
             while len(pieces) > 1 and pieces[0].lower() in _LABEL_SETTING_WORDS:
                 pieces = pieces[1:]
         words.extend(piece.lower() for piece in pieces)
-    reset = False
-    while words and words[0] in ("reset", "rst"):
-        reset = True
+    # "reset"/"default"/"rst" tokens anywhere (reset_X, X_default_btn, cas_reset_X) make it a Reset label.
+    reset = any(word in ("reset", "default", "rst") for word in words)
+    words = [word for word in words if word not in ("reset", "default", "rst")]
+    while len(words) > 1 and words[-1] in _LABEL_SUFFIXES:
+        words = words[:-1]
+    while len(words) > 1 and words[0] in _LABEL_SETTING_WORDS:
         words = words[1:]
-    while len(words) > 1 and words[-1] in _LABEL_SUFFIXES:
-        words = words[:-1]
-    while len(words) > 1 and words[-1] in ("reset", "default", "rst"):
-        reset = True
-        words = words[:-1]
-    while len(words) > 1 and words[-1] in _LABEL_SUFFIXES:
-        words = words[:-1]
+    # A control id often repeats its own subject (cas_reset_RenderCASSharpness): keep the last mention.
+    words = [word for index, word in enumerate(words) if word not in words[index + 1:]]
+    return words, reset
+
+
+def humanize_widget_name(widget: str) -> str:
+    words, reset = _label_tokens(widget)
     if not words:
         words = ["control"]
+    # A trailing single-letter token is a unit (focus m, spin delay s): show it as "(m)" / "(s)".
+    if len(words) > 1 and words[-1] in ("m", "s"):
+        words[-1] = "(" + words[-1] + ")"
+    # "S Log" is the S-Log curve name, split by the camelCase rule.
+    for index in range(len(words) - 1):
+        if words[index] == "s" and words[index + 1] == "log":
+            words[index:index + 2] = ["S-Log"]
+            break
+    words = [_LABEL_WORD_MAP.get(word, word) for word in words]
     words = [word.upper() if word in _LABEL_ACRONYMS else word for word in words]
+    text = " ".join(words)
     if reset:
-        return "Reset " + " ".join(words)
-    words[0] = words[0][:1].upper() + words[0][1:]
-    return " ".join(words)
+        return "Reset " + text
+    return text[:1].upper() + text[1:]
+
+
+_LABEL_SIBLING_TAGS = {"text", "text_box", "label"}
+
+
+def sibling_label(parent: ET.Element | None, node: ET.Element) -> str:
+    """The floater's own label for a bare control: the nearest preceding text/label sibling.
+
+    Floater XML pairs a control with a caption (``<text value="Sharpen (CAS):"/>`` then the slider)
+    rather than a label= attribute. Scan back over siblings that belong to the same control (slider
+    then spinner on one setting, or its reset button) and stop at any other control.
+    """
+    if parent is None:
+        return ""
+    siblings = list(parent)
+    try:
+        index = siblings.index(node)
+    except ValueError:
+        return ""
+    stem = node.get("control_name", "")
+    for previous in reversed(siblings[:index]):
+        if not isinstance(previous.tag, str):
+            continue
+        if previous.tag in _LABEL_SIBLING_TAGS:
+            caption = (previous.get("value") or previous.get("label") or previous.text or "").strip()
+            caption = caption.rstrip(":").strip()
+            if 1 < len(caption) <= 40 and not caption.startswith("$") and chr(10) not in caption:
+                return caption
+            return ""
+        if previous.tag in EXTERNAL_CONTROL_TAGS and stem and previous.get("control_name") == stem:
+            continue
+        if previous.tag in ("view_border", "icon", "layout_panel"):
+            continue
+        return ""
+    return ""
 
 
 def tree_names(root: ET.Element, seen: set[str] | None = None) -> set[str]:
@@ -1003,12 +1073,14 @@ def tree_names(root: ET.Element, seen: set[str] | None = None) -> set[str]:
 def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[list[str]]:
     rows: list[list[str]] = []
 
-    def visit(node: ET.Element, floater: dict, tab_name: str = "", tab_label: str = "") -> None:
+    def visit(node: ET.Element, floater: dict, tab_name: str = "", tab_label: str = "",
+              parent: ET.Element | None = None) -> None:
         name = node.get("name", "")
         setting = node.get("control_name", "")
         widget = name or setting
         if isinstance(node.tag, str) and widget and (node.tag in EXTERNAL_CONTROL_TAGS or setting):
-            label = node.get("label", "").strip() or (node.text or "").strip() or humanize_widget_name(widget)
+            label = (node.get("label", "").strip() or (node.text or "").strip()
+                     or sibling_label(parent, node) or humanize_widget_name(widget))
             help_text = node.get("tool_tip", "")
             direct = " ".join((label, name, setting, help_text, tab_label, floater["label"]))
             rows.append([
@@ -1021,14 +1093,14 @@ def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[lis
         filename = node.get("filename", "")
         if filename:
             included = parse_xml(XUI / filename)
-            visit(included, floater, tab_name, tab_label)
+            visit(included, floater, tab_name, tab_label, None)
         for child in node:
             child_tab_name = tab_name
             child_tab_label = tab_label
             if node.tag == "tab_container" and child.tag == "panel":
                 child_tab_name = child.get("name", "")
                 child_tab_label = child.get("label", "") or child_tab_name.replace("_", " ").title()
-            visit(child, floater, child_tab_name, child_tab_label)
+            visit(child, floater, child_tab_name, child_tab_label, node)
 
     for floater in spec.get("floaters", []):
         visit(parse_xml(XUI / floater["xui"]), floater)

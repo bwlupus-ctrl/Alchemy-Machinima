@@ -146,6 +146,7 @@ ALKitRow::Params::Params() :
     added("added", false),
     widget_history("widget_history", true),
     bulk_reset("bulk_reset", true),
+    unconnected("unconnected", false),
     row_height("row_height", 28),
     decimals("decimals", 3),
     min_val("min_val", 0.f),
@@ -167,7 +168,8 @@ ALKitRow::ALKitRow(const Params& p) :
     mHidden(p.hidden),
     mAdded(p.added),
     mWidgetHistory(p.widget_history),
-    mBulkReset(p.bulk_reset)
+    mBulkReset(p.bulk_reset),
+    mUnconnected(p.unconnected)
 {
     ALKitStyle::color(ALKitStyle::WINDOW_BG);
     mMeta.kind           = p.kind;
@@ -840,33 +842,58 @@ LLSD ALKitRow::boundDefault() const
 
 bool ALKitRow::setBoundValue(const LLSD& value)
 {
-    LLSD coerced = ALKitQol::coercePasteValue(value, boundValue());
+    if (mUnconnected)
+        return false;
+    const LLSD current = boundValue();
+    LLSD       coerced = ALKitQol::coercePasteValue(value, current);
     if (!coerced.isDefined() || (mBinding && !mBinding->canSet()))
         return false;
-    if (coerced.isInteger() || coerced.isReal())
-    {
-        // Paste (and Quick proxy commits) must stay inside the row's range.
-        bool  has_min = mMeta.has_min;
-        bool  has_max = mMeta.has_max;
-        F64   low     = mMeta.min_val;
-        F64   high    = mMeta.max_val;
-        if (!has_min && !has_max)
-            if (LLSliderCtrl* ranged = dynamic_cast<LLSliderCtrl*>(mControl)) // sliders always declare a range
-            {
-                has_min = has_max = true;
-                low               = ranged->getMinValue();
-                high              = ranged->getMaxValue();
-            }
-        if (has_min || has_max)
+    // Paste (and Quick proxy commits) must stay inside the row's range. The scalar range
+    // applies per component to vectors and colours (Vector2/3, Color3/4 are numeric arrays).
+    bool  has_min = mMeta.has_min;
+    bool  has_max = mMeta.has_max;
+    F64   low     = mMeta.min_val;
+    F64   high    = mMeta.max_val;
+    if (!has_min && !has_max)
+        if (LLSliderCtrl* ranged = dynamic_cast<LLSliderCtrl*>(mControl)) // sliders always declare a range
         {
-            F64 number = coerced.asReal();
-            if (has_min)
-                number = llmax(number, low);
-            if (has_max)
-                number = llmin(number, high);
-            coerced = coerced.isInteger() ? LLSD(static_cast<LLSD::Integer>(llround(number))) : LLSD(number);
+            has_min = has_max = true;
+            low               = ranged->getMinValue();
+            high              = ranged->getMaxValue();
         }
+    auto clamp_number = [&](const LLSD& number_value, bool as_integer) -> LLSD
+    {
+        F64 number = number_value.asReal();
+        if (has_min)
+            number = llmax(number, low);
+        if (has_max)
+            number = llmin(number, high);
+        return as_integer ? LLSD(static_cast<LLSD::Integer>(llround(number))) : LLSD(number);
+    };
+    if (coerced.isArray())
+    {
+        // A vector or colour must match the destination's component count, and every
+        // numeric component is clamped on its own.
+        if (current.isArray() && coerced.size() != current.size())
+            return false;
+        LLSD clamped = LLSD::emptyArray();
+        for (S32 index = 0; index < coerced.size(); ++index)
+        {
+            const LLSD& component = coerced[index];
+            if (component.isInteger() || component.isReal())
+            {
+                const bool as_integer = current.isArray() && current[index].isInteger();
+                clamped.append((has_min || has_max) ? clamp_number(component, as_integer)
+                                                    : (as_integer ? LLSD(static_cast<LLSD::Integer>(llround(component.asReal())))
+                                                                  : LLSD(component.asReal())));
+            }
+            else
+                clamped.append(component);
+        }
+        coerced = clamped;
     }
+    else if ((coerced.isInteger() || coerced.isReal()) && (has_min || has_max))
+        coerced = clamp_number(coerced, coerced.isInteger());
     if (mBinding)
         mBinding->set(coerced);
     else if (mControl)
@@ -882,12 +909,14 @@ bool ALKitRow::setBoundValue(const LLSD& value)
 
 bool ALKitRow::canPasteValue(const LLSD& value) const
 {
-    return mControl && (!mBinding || mBinding->canSet()) &&
+    return mControl && !mUnconnected && (!mBinding || mBinding->canSet()) &&
            ALKitQol::pasteTypesCompatible(value, boundValue());
 }
 
 ALKitQol::Favorite ALKitRow::favoriteKey() const
 {
+    if (mUnconnected)
+        return ALKitQol::Favorite{}; // invalid: no star, no menu entry, no Quick proxy
     const ALKitQol::Favorite row{ mMeta.page_key, mMeta.widget };
     ALKitRow* source = mSourceRow.get();
     const ALKitQol::Favorite source_key = source
@@ -898,7 +927,7 @@ ALKitQol::Favorite ALKitRow::favoriteKey() const
 
 ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
 {
-    if (!source || !source->mControl)
+    if (!source || !source->mControl || source->mUnconnected)
         return nullptr;
     const LLSD value = source->boundValue();
     Params params;

@@ -673,6 +673,9 @@ void ALKitShell::reshape(S32 width, S32 height, bool called_from_parent)
     layoutChrome();
     if (old_labels != mRailLabels)
         updatePips();
+    // An open popover was fitted and placed against the old shell size.
+    if (mOpenPopover && mOpenPopover->getVisible())
+        mOpenPopover->refit();
 }
 
 void ALKitShell::layoutChrome()
@@ -953,6 +956,11 @@ void ALKitShell::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALKitShell draw");
     ALUIPerfSelfTest::recordKitWidgetTree(this);
+    // The anchor-close memory belongs to one press. The click commit runs inside the
+    // mouse-up event, before this frame is drawn, so once no view holds mouse capture
+    // (button released, on or off the anchor) the flag is stale and must go.
+    if (mAnchorClosedPopover && !gFocusMgr.getMouseCapture())
+        mAnchorClosedPopover = nullptr;
     auto fill_panel = [this](LLView* panel, const LLUIColor& color)
     {
         LLRect rect;
@@ -1120,6 +1128,9 @@ void ALKitShell::toggleOverflow()
         }
         if (label.empty())
             continue;
+        // A collapsed toggle shows its current state in the list.
+        if (source && source->getName() == "show_paths_global_check")
+            label += source->getToggleState() ? ": On" : ": Off";
         LLButton::Params button_params;
         button_params.name  = "kit_overflow_item_" + llformat("%d", index++);
         button_params.label = label;
@@ -1146,7 +1157,16 @@ void ALKitShell::toggleOverflow()
     }
     ALKitStyle::styleTree(mOverflowPopover);
     if (index > 0)
+    {
         mOverflowPopover->show();
+        // Keyboard users land on the first actionable entry (Esc closes via the popover).
+        for (LLView* child : *mOverflowPopover->getChildList())
+            if (child->getVisible() && child->getEnabled() && child->isCtrl())
+            {
+                child->setFocus(true);
+                break;
+            }
+    }
 }
 
 bool ALKitShell::navigateTo(const std::string& path)
@@ -2191,8 +2211,13 @@ bool ALKitShell::closePopover()
 
 bool ALKitShell::consumeAnchorClose(ALKitPopover* popover)
 {
-    const bool match = popover && mAnchorClosedPopover == popover && mAnchorClosedTimer.getElapsedTimeF32() < 2.f;
-    mAnchorClosedPopover = nullptr;
+    // The flag lives exactly as long as the press that set it: it is cleared by the next
+    // mouse-down anywhere, and once the mouse is released (see draw()), whether or not a
+    // click fired. So a held press never reopens, and a press released off the anchor
+    // cannot swallow a later real click.
+    const bool match = popover && mAnchorClosedPopover == popover;
+    if (match)
+        mAnchorClosedPopover = nullptr;
     return match;
 }
 
@@ -2207,6 +2232,7 @@ void ALKitShell::popoverHidden(ALKitPopover* popover)
 
 bool ALKitShell::handleMouseDown(S32 x, S32 y, MASK mask)
 {
+    mAnchorClosedPopover = nullptr; // any other mouse-down invalidates the previous press
     if (mOpenPopover && mOpenPopover->getVisible())
     {
         S32 local_x = 0;
@@ -2224,7 +2250,6 @@ bool ALKitShell::handleMouseDown(S32 x, S32 y, MASK mask)
             // A press on the popover's own anchor closes it; remember that so the
             // anchor's click (toggle) does not immediately reopen it.
             mAnchorClosedPopover = on_anchor ? closing : nullptr;
-            mAnchorClosedTimer.reset();
         }
     }
     return LLPanel::handleMouseDown(x, y, mask);

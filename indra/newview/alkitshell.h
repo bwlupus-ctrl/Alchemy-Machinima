@@ -180,7 +180,6 @@ private:
     std::vector<TabData>                                 mTabs;
     ALKitPopover*                                        mOpenPopover   = nullptr;
     ALKitPopover*                                        mAnchorClosedPopover = nullptr; // identity only, never dereferenced
-    LLFrameTimer                                         mAnchorClosedTimer;
     ALKitPopover*                                        mCastPopover   = nullptr;
     ALKitPopover*                                        mOverflowPopover = nullptr;
     LLButton*                                            mTransportCut  = nullptr;

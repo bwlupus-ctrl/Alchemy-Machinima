@@ -55,6 +55,7 @@ public:
     // session (empty when none). applyPresetNamed(): apply a stored preset
     // without a panel instance; false (no-op) when no such preset exists.
     static std::string activePresetName();
+    static void clearActivePresetName();
     static bool applyPresetNamed(const std::string& name);
 
     // ---- static actions shared with the kit Shot and Operator pages ----

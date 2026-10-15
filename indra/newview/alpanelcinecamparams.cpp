@@ -539,6 +539,12 @@ std::string ALPanelCineCamParams::activePresetName()
 }
 
 //static
+void ALPanelCineCamParams::clearActivePresetName()
+{
+    sActivePresetName.clear();
+}
+
+//static
 bool ALPanelCineCamParams::applyPresetNamed(const std::string& name)
 {
     if (name.empty() || !gDirUtilp->fileExists(presetPath(name)))
@@ -588,6 +594,8 @@ void ALPanelCineCamParams::onClickResetMode()
 
 void ALPanelCineCamParams::resetModeToDefaults()
 {
+    // The settings no longer match any named preset; a later scene save must not record one.
+    sActivePresetName.clear();
     const S32 mode = gSavedSettings.getS32("CinematicCamMode");
     for (const ModeEntry& entry : modeTable())
     {
@@ -643,6 +651,7 @@ void ALPanelCineCamParams::confirmResetAll()
 
 void ALPanelCineCamParams::resetAllToDefaults()
 {
+    sActivePresetName.clear();
     for (const std::string& name : sharedSettings())
     {
         if (LLControlVariable* ctrl = gSavedSettings.getControl(name))

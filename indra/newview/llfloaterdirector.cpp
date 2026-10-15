@@ -3024,8 +3024,14 @@ void LLFloaterDirector::onToggleLegend()
     {
         if(ALKitPopover* popover=dynamic_cast<ALKitPopover*>(mLegendPanel))
         {
-            if(popover->getVisible())popover->hide();
-            else popover->show();
+            // ALKitPopover::toggle() honours the shell's anchor-close memory: a press on ?
+            // while the legend (or the hotkeys list that shares this anchor) is open has
+            // already closed it, and the click must not reopen it.
+            if (ALKitPopover* hotkeys = dynamic_cast<ALKitPopover*>(mHotkeysPanel))
+                if (ALKitShell* shell = ALKitShell::find(hotkeys))
+                    if (shell->consumeAnchorClose(hotkeys))
+                        return;
+            popover->toggle();
         }
         else
         {
@@ -4405,7 +4411,14 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
             LL_WARNS("Director") << "Scene '" << name
                                  << "' references missing cinematic preset '"
                                  << preset << "'" << LL_ENDL;
+            ALPanelCineCamParams::clearActivePresetName();
         }
+    }
+    else
+    {
+        // A scene saved without a preset must not inherit the previous scene's name:
+        // the next save would record it and a reload would apply it.
+        ALPanelCineCamParams::clearActivePresetName();
     }
     if (scene["cinecam_mode"].isInteger())
     {

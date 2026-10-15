@@ -293,11 +293,40 @@ void ALKitPopover::draw()
 
 void ALKitPopover::show()
 {
+    ALKitShell* shell = ALKitShell::find(this);
+    if (!shell || !mAnchor.get())
+    {
+        return;
+    }
+    shell->closePopover();
+    if (!place())
+    {
+        return;
+    }
+    // The shell's help column, tab strip and rail are added after the XML popovers,
+    // so they sit in front of them; a popover that opens over that chrome (the legend
+    // anchors at the far right) must be raised or it is hidden behind it.
+    if (getParent() == shell)
+        shell->sendChildToFront(this);
+    setVisible(true);
+    shell->setOpenPopover(this);
+}
+
+void ALKitPopover::refit()
+{
+    // Called by the shell when it reshapes while this popover is open: re-fit to the
+    // new height and re-clamp the position so it cannot end up outside the shell.
+    if (getVisible())
+        place();
+}
+
+bool ALKitPopover::place()
+{
     ALKitShell* shell  = ALKitShell::find(this);
     LLView*     anchor = mAnchor.get();
     if (!shell || !anchor)
     {
-        return;
+        return false;
     }
     // A collapsed bottom-bar anchor is hidden and stale; open from the bar's "..." button.
     if (!anchor->getVisible())
@@ -305,7 +334,6 @@ void ALKitPopover::show()
             if (more->getVisible())
                 anchor = more;
 
-    shell->closePopover();
     // Re-fit an auto-sized popover to the shell's current height: a resized or
     // minimum-size Director may be shorter than it was when the XML was built.
     if (mAutoWidth > 0)
@@ -319,7 +347,7 @@ void ALKitPopover::show()
     LLRect anchor_rect;
     if (!anchor->localRectToOtherView(anchor->getLocalRect(), &anchor_rect, shell))
     {
-        return;
+        return false;
     }
 
     const S32 width  = getRect().getWidth();
@@ -329,13 +357,7 @@ void ALKitPopover::show()
     left             = llclamp(left, 0, llmax(0, shell->getRect().getWidth() - width));
     bottom           = llclamp(bottom, 0, llmax(0, shell->getRect().getHeight() - height));
     setOrigin(left, bottom);
-    // The shell's help column, tab strip and rail are added after the XML popovers,
-    // so they sit in front of them; a popover that opens over that chrome (the legend
-    // anchors at the far right) must be raised or it is hidden behind it.
-    if (getParent() == shell)
-        shell->sendChildToFront(this);
-    setVisible(true);
-    shell->setOpenPopover(this);
+    return true;
 }
 
 void ALKitPopover::hide()
