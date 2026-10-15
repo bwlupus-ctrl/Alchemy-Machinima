@@ -24,8 +24,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if (-not $ListRestoreSet -and (Get-Process -Name 'AlchemyTest' -ErrorAction SilentlyContinue)) {
-  Write-Host 'AlchemyTest is already running; refusing to start a second viewer.' -ForegroundColor Red
+# Viewer process names (build + installed): AlchemyTest*.exe, AlchemyBeta.exe,
+# AlchemyProjectBoreal.exe, Alchemy.exe.  Helpers (ALPlugin, SLVoice, crashpad_handler) are not viewers.
+function Get-OtherViewerProcesses([int]$ExcludeId = 0) {
+  return @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.Id -ne $ExcludeId -and $_.ProcessName -match '^(AlchemyTest.*|AlchemyBeta|AlchemyProjectBoreal|Alchemy)$' })
+}
+if (-not $ListRestoreSet -and (Get-OtherViewerProcesses).Count) {
+  Write-Host 'Another Alchemy viewer is already running; refusing to start a second viewer on the same settings.' -ForegroundColor Red
   exit 2
 }
 if (-not $ListRestoreSet -and -not (Test-Path -LiteralPath $Exe -PathType Leaf)) {
@@ -218,16 +224,54 @@ function New-FunctionalSettingsBackup {
         [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase) })
     })
   }
+  $tag = (Get-Date -Format 'yyyyMMdd_HHmmss') + '_' + [guid]::NewGuid().ToString('N').Substring(0, 8)
   return [pscustomobject]@{
     Root = $backupRoot; AppRoot = $appRoot; Records = $records; Verified = $true
+    # Nothing the rollback removes or overwrites is ever deleted: it is MOVED here first.
+    Quarantine = (Join-Path (Join-Path $env:USERPROFILE 'cxs') ('selftest_quarantine_' + $tag))
+    AoEdited = [System.Collections.Generic.List[string]]::new()
+    OtherViewerSeen = [System.Collections.Generic.List[string]]::new()
   }
 }
 
-function Restore-FunctionalSettingsBackup($Backup) {
+# State of every restore-set file at the moment the viewer is launched (after the wrapper's own
+# AO edit).  A file that already differed from the snapshot at launch is not the run's doing and
+# is never touched by the rollback.
+function Set-FunctionalLaunchState($Backup) {
+  foreach ($record in $Backup.Records) {
+    $record | Add-Member -NotePropertyName Launch -NotePropertyValue $(
+      if ($record.Existed) { Get-DirectoryByteManifest $record.Target ([string]$record.Mode) } else { @{} }) -Force
+  }
+}
+
+function Move-ToFunctionalQuarantine($Backup, [int]$Index, [string]$Root, [string]$Relative, [string]$Reason) {
+  $source = Join-Path $Root $Relative
+  $destination = Join-Path (Join-Path $Backup.Quarantine ([string]$Index)) $Relative
+  New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+  $hash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
+  Move-Item -LiteralPath $source -Destination $destination -Force
+  Add-Content -LiteralPath (Join-Path $Backup.Quarantine 'quarantine_manifest.txt') -Encoding utf8 `
+    -Value ("{0}`t{1}`t{2}`t{3}`t{4}" -f (Get-Date -Format 'o'), $Reason, $source, $destination, $hash)
+  Write-Host "restore: QUARANTINED ($Reason) $source -> $destination"
+}
+
+# Non-destructive rollback.  Nothing is deleted: a file the rollback would delete or overwrite is
+# first moved into $Backup.Quarantine (relative paths kept, quarantine_manifest.txt written).
+# Only files whose current bytes differ from the pre-run snapshot AND did not already differ at
+# launch are touched.  With -SkipFolderRollback (another viewer was seen) only the root
+# settings*.xml files are considered.
+function Restore-FunctionalSettingsBackup($Backup, [switch]$SkipFolderRollback) {
   $differences = [System.Collections.Generic.List[string]]::new()
   try {
+    if ($SkipFolderRollback) {
+      Write-Host ('RESTORE: another viewer process was seen during the run (' +
+        ($Backup.OtherViewerSeen -join ', ') +
+        '); the user-data FOLDER rollback is SKIPPED, only root settings*.xml is restored.') -ForegroundColor Yellow
+    }
     $appPrefix = $Backup.AppRoot.TrimEnd('\') + '\'
+    $recordIndex = -1
     foreach ($record in $Backup.Records) {
+      ++$recordIndex
       $target = [System.IO.Path]::GetFullPath($record.Target)
       if (-not $target.StartsWith($appPrefix, [System.StringComparison]::OrdinalIgnoreCase) -or
           $target -eq $Backup.AppRoot) {
@@ -237,45 +281,70 @@ function Restore-FunctionalSettingsBackup($Backup) {
         New-Item -ItemType Directory -Path $target -Force | Out-Null
       }
       $mode = [string]$record.Mode
-      if ($mode -ne 'account') {
-        foreach ($file in @(Get-ChildItem -LiteralPath $target -File -Recurse -Force `
-            -ErrorAction SilentlyContinue)) {
+      $launch = if ($record.PSObject.Properties['Launch']) { $record.Launch } else { $record.Manifest }
+      $inSet = {
+        param([string]$relative)
+        if (-not (Test-FunctionalProtectedPath $relative $mode)) { return $false }
+        if ($SkipFolderRollback) {
+          $parts = $relative -split '[\\/]'
+          return ($parts.Count -eq 1 -and $parts[0] -like 'settings*.xml')
+        }
+        return $true
+      }
+      $leftAlone = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+      # 1. Files created during the run (user mode only; the account folder never loses a file).
+      if ($mode -ne 'account' -and (Test-Path -LiteralPath $target -PathType Container)) {
+        foreach ($file in @(Get-ChildItem -LiteralPath $target -File -Recurse -Force -ErrorAction SilentlyContinue)) {
           $relative = $file.FullName.Substring($target.TrimEnd('\').Length + 1)
-          if (-not (Test-FunctionalProtectedPath $relative $mode)) { continue }
+          if (-not (& $inSet $relative)) { continue }
           if (-not $record.Manifest.ContainsKey($relative)) {
-            Write-Host "restore: removing file created during the run: $target\$relative"
-            Remove-Item -LiteralPath $file.FullName -Force
+            Move-ToFunctionalQuarantine $Backup $recordIndex $target $relative 'created-during-run'
           }
         }
       }
-      foreach ($relative in $record.Manifest.Keys) {
+      # 2. Files that changed (or vanished): put the pre-run bytes back, quarantining what was there.
+      foreach ($relative in @($record.Manifest.Keys)) {
+        if (-not (& $inSet $relative)) { continue }
         $destination = Join-Path $target $relative
-        # Only a file whose bytes changed is rewritten; an unchanged file is left alone.
         $current = if (Test-Path -LiteralPath $destination -PathType Leaf) {
           (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash } else { $null }
         if ($current -eq $record.Manifest[$relative]) { continue }
+        $launchHash = if ($launch.ContainsKey($relative)) { $launch[$relative] } else { $null }
+        $wrapperEdit = $Backup.AoEdited.Contains($relative) -and $mode -eq 'account'
+        if ($launchHash -ne $record.Manifest[$relative] -and -not $wrapperEdit) {
+          Write-Host "restore: left alone (already differed from the snapshot before the run started): $destination" -ForegroundColor Yellow
+          $null = $leftAlone.Add($relative)
+          continue
+        }
+        if ($null -ne $current) {
+          Move-ToFunctionalQuarantine $Backup $recordIndex $target $relative 'overwritten-by-restore'
+        }
         New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
         Copy-Item -LiteralPath (Join-Path $record.Copy $relative) -Destination $destination -Force
-        Write-Host "restore: restored $target\$relative"
+        Write-Host "restore: restored $destination$(if ($null -eq $current) { ' (re-created; it was missing)' })"
       }
-      if ($mode -ne 'account') {
+      # 3. Directories created during the run: only if now empty (never removes content).
+      if ($mode -ne 'account' -and -not $SkipFolderRollback -and (Test-Path -LiteralPath $target -PathType Container)) {
         foreach ($directory in @(Get-ChildItem -LiteralPath $target -Directory -Recurse -Force `
             -ErrorAction SilentlyContinue | Sort-Object { $_.FullName.Length } -Descending)) {
           $relative = $directory.FullName.Substring($target.TrimEnd('\').Length + 1)
           if ((Test-FunctionalProtectedPath $relative $mode) -and
               -not $record.Directories.Contains($relative)) {
-            Write-Host "restore: removing directory created during the run: $target\$relative"
-            Remove-Item -LiteralPath $directory.FullName -Force -ErrorAction Stop
+            if (@(Get-ChildItem -LiteralPath $directory.FullName -Force).Count -eq 0) {
+              Write-Host "restore: removing EMPTY directory created during the run: $($directory.FullName)"
+              Remove-Item -LiteralPath $directory.FullName -Force -ErrorAction Stop
+            } else {
+              Write-Host "restore: directory created during the run is not empty, left in place: $($directory.FullName)" -ForegroundColor Yellow
+            }
           }
         }
       }
-      $actual = if ($record.Existed) {
-        Get-DirectoryByteManifest $target $mode
-      } else { @{} }
+      $actual = if ($record.Existed) { Get-DirectoryByteManifest $target $mode } else { @{} }
       $allNames = @($record.Manifest.Keys) + @($actual.Keys) | Sort-Object -Unique
       foreach ($name in $allNames) {
+        if (-not (& $inSet $name)) { continue }
+        if ($leftAlone.Contains($name)) { continue }
         if (-not $record.Manifest.ContainsKey($name)) {
-          # Account mode never deletes: a NEW settings*.xml is reported and left in place.
           if ($mode -eq 'account') { Write-Host "restore: NOTE new file left in place (never deleted): $target\$name" }
           else { $differences.Add("created after restore: $target\$name") }
         }
@@ -290,6 +359,9 @@ function Restore-FunctionalSettingsBackup($Backup) {
     if ($differences.Count) {
       $differences | ForEach-Object { Write-Host $_ -ForegroundColor Red }
       throw "Functional settings restore verification failed with $($differences.Count) difference(s)."
+    }
+    if (Test-Path -LiteralPath $Backup.Quarantine) {
+      Write-Host "Quarantined files (nothing was deleted): $($Backup.Quarantine)" -ForegroundColor Yellow
     }
     Write-Host "Functional settings restored and byte-verified ($($Backup.Records.Count) folder(s))."
     # Only a verified restore may drop the backup; on any failure it stays for manual recovery.
@@ -320,6 +392,16 @@ function Get-FunctionalRestoreSetListing {
     }
     $lines.Add("  -> $count file(s) in the restore set; every other file in this folder is never touched")
   }
+  $tag = '<yyyyMMdd_HHmmss_xxxxxxxx>'
+  $lines.Add('')
+  $lines.Add("Rollback is NON-DESTRUCTIVE: any file it would delete or overwrite is first MOVED to")
+  $lines.Add("  $(Join-Path (Join-Path $env:USERPROFILE 'cxs') ('selftest_quarantine_' + $tag))\<folder index>\<relative path>")
+  $lines.Add("  with quarantine_manifest.txt (time, reason, original path, quarantined path, sha256).")
+  $lines.Add("Only files whose bytes differ from the pre-run snapshot AND did not already differ at launch are touched.")
+  $lines.Add("The wrapper polls the process list every ~5 s for any other viewer (AlchemyTest*, AlchemyBeta, AlchemyProjectBoreal, Alchemy);")
+  $lines.Add("if one appears, the user-data FOLDER rollback is skipped (only root settings*.xml is restored) and this is reported.")
+  $others = @(Get-OtherViewerProcesses)
+  $lines.Add($(if ($others.Count) { 'Viewer processes running now: ' + (($others | ForEach-Object { "$($_.ProcessName) ($($_.Id))" }) -join ', ') + ' -- a real run would refuse to start.' } else { 'No other viewer process is running now.' }))
   return $lines
 }
 if ($ListRestoreSet) {
@@ -338,11 +420,15 @@ function Set-InWorldAOSafetySettings($Backup) {
   if (-not $accountFolder.StartsWith($appPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "Refusing to edit AO settings outside $($Backup.AppRoot): $accountFolder"
   }
-  $paths = @(Get-ChildItem -LiteralPath $accountFolder -File -Recurse -Force `
-      -Filter 'settings_per_account.xml' -ErrorAction SilentlyContinue)
-  if ($paths.Count -ne 1) {
-    throw "Expected exactly one authorized-account settings_per_account.xml, found $($paths.Count)."
+  # Only the ROOT settings_per_account.xml, and only if it is inside the account restore set
+  # (backed up and restored); a nested or otherwise unprotected file is never edited.
+  $accountRecord = @($Backup.Records | Where-Object { [string]$_.Mode -eq 'account' -and
+      [System.IO.Path]::GetFullPath($_.Target) -ieq $accountFolder })[0]
+  if (-not $accountRecord -or -not $accountRecord.Manifest.ContainsKey('settings_per_account.xml')) {
+    throw 'Refusing to edit AO settings: <account>\settings_per_account.xml is not in the backed-up restore set.'
   }
+  $paths = @(Get-Item -LiteralPath (Join-Path $accountFolder 'settings_per_account.xml') -Force)
+  $null = $Backup.AoEdited.Add('settings_per_account.xml')
   [xml]$document = Get-Content -LiteralPath $paths[0].FullName -Raw
   $map = $document.SelectSingleNode('/llsd/map')
   if (-not $map) { throw "Invalid LLSD settings map: $($paths[0].FullName)" }
@@ -476,6 +562,7 @@ if ($Functional) {
         throw 'Functional user-data snapshot was not taken and byte-verified before row 1.'
       }
       if ($InWorld) { Set-InWorldAOSafetySettings $settingsBackup }
+      Set-FunctionalLaunchState $settingsBackup
       Remove-Item -LiteralPath $functionalCsvPath -Force -ErrorAction SilentlyContinue
       $requestFields = [System.Collections.Generic.List[string]]::new()
       $requestFields.Add('functional')
@@ -488,6 +575,8 @@ if ($Functional) {
       # Director rule engine (reachability, popovers, label fit, raw names, themed pages,
       # connectedness). Viewer-local UI checks; v2 only, so the v1 pass ignores it.
       $requestFields.Add('rules=1')
+      # Where the viewer-side file rollback preserves anything it would delete or overwrite.
+      $requestFields.Add('quarantine=' + (Join-Path $settingsBackup.Quarantine 'viewer'))
       if ($InWorld) {
         $requestFields[0] = 'functional-inworld'
         $requestFields.Add('account=5kvideoeye')
@@ -513,9 +602,20 @@ if ($Functional) {
       $null = $process.Handle
       $startUtc = $process.StartTime.ToUniversalTime()
       $deadline = [DateTime]::UtcNow.AddMinutes($TimeoutMin)
+      $nextViewerPoll = [DateTime]::UtcNow
       while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
         Start-Sleep -Milliseconds 500
         $process.Refresh()
+        if ([DateTime]::UtcNow -ge $nextViewerPoll) {
+          $nextViewerPoll = [DateTime]::UtcNow.AddSeconds(5)
+          foreach ($other in (Get-OtherViewerProcesses $process.Id)) {
+            $label = "$($other.ProcessName) pid $($other.Id)"
+            if (-not $settingsBackup.OtherViewerSeen.Contains($label)) {
+              $settingsBackup.OtherViewerSeen.Add($label)
+              Write-Host "WARNING: another viewer process appeared during the run: $label -- the folder rollback will be skipped." -ForegroundColor Red
+            }
+          }
+        }
       }
       if (-not $process.HasExited) {
         $hardKilled = Wait-NormalExitBeforeHardKill $process `
@@ -534,7 +634,11 @@ if ($Functional) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         $process.WaitForExit(15000) | Out-Null
       }
-      Restore-FunctionalSettingsBackup $settingsBackup
+      foreach ($other in (Get-OtherViewerProcesses $(if ($process) { $process.Id } else { 0 }))) {
+        $label = "$($other.ProcessName) pid $($other.Id)"
+        if (-not $settingsBackup.OtherViewerSeen.Contains($label)) { $settingsBackup.OtherViewerSeen.Add($label) }
+      }
+      Restore-FunctionalSettingsBackup $settingsBackup -SkipFolderRollback:([bool]$settingsBackup.OtherViewerSeen.Count)
     }
   }
   $allRows | Export-Csv -LiteralPath $destCsv -NoTypeInformation -Encoding utf8

@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewerjoystick.h"
+#include "llviewerinput.h"
 #include "alcameradispatch.h"
 #include "alflycamclassic.h"
 #include "alflycamweighted.h"
@@ -1440,6 +1441,9 @@ void LLViewerJoystick::terminate()
 // -----------------------------------------------------------------------------
 void LLViewerJoystick::updateStatus()
 {
+    // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
+    // input is suspended (it reaches avatar controls, object moves and the flycam).
+    if (gViewerInput.worldInputSuspended()) return;
 #if LIB_NDOF
     if (!mNdofDev || !mNdofDev->private_data)
     {
@@ -1645,6 +1649,9 @@ void LLViewerJoystick::resetDeltas(S32 axis[])
 // -----------------------------------------------------------------------------
 void LLViewerJoystick::moveObjects(bool reset)
 {
+    // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
+    // input is suspended (it reaches avatar controls, object moves and the flycam).
+    if (gViewerInput.worldInputSuspended()) return;
     static bool toggle_send_to_sim = false;
 
     if (!gFocusMgr.getAppHasFocus() || mDriverState != JDS_INITIALIZED
@@ -1809,6 +1816,9 @@ void LLViewerJoystick::moveObjects(bool reset)
 // -----------------------------------------------------------------------------
 void LLViewerJoystick::moveAvatar(bool reset)
 {
+    // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
+    // input is suspended (it reaches avatar controls, object moves and the flycam).
+    if (gViewerInput.worldInputSuspended()) return;
     if (!gFocusMgr.getAppHasFocus() || mDriverState != JDS_INITIALIZED
         || !mJoystickEnabled || !mAvatarEnabled)
     {
@@ -2201,6 +2211,9 @@ void LLViewerJoystick::moveAvatar(bool reset)
 // -----------------------------------------------------------------------------
 void LLViewerJoystick::moveFlycam(bool reset)
 {
+    // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
+    // input is suspended (it reaches avatar controls, object moves and the flycam).
+    if (gViewerInput.worldInputSuspended()) return;
     static LLQuaternion         sFlycamRotation;
     static LLVector3            sFlycamPosition;
     static F32                  sFlycamZoom;
@@ -3529,6 +3542,9 @@ void LLViewerJoystick::scanXInputAssociation()
 
 void LLViewerJoystick::pollXInputState()
 {
+    // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
+    // input is suspended (it reaches avatar controls, object moves and the flycam).
+    if (gViewerInput.worldInputSuspended()) { mXIEdges = 0; return; }
     mXIEdges = 0;
 #if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
     if (!xInputAssociated()) return;
@@ -3643,6 +3659,9 @@ void LLViewerJoystick::xInputHint(const std::string& message)
 
 void LLViewerJoystick::handleXInputDpad()
 {
+    // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
+    // input is suspended (it reaches avatar controls, object moves and the flycam).
+    if (gViewerInput.worldInputSuspended()) return;
 #if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
     if (!xInputAssociated() ||
         !ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(),
@@ -3782,6 +3801,9 @@ std::string LLViewerJoystick::getXInputStatus() const
 
 void LLViewerJoystick::scanJoystick()
 {
+    // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
+    // input is suspended (it reaches avatar controls, object moves and the flycam).
+    if (gViewerInput.worldInputSuspended()) return;
     pollForXboxController();
     scanXInputAssociation();
 

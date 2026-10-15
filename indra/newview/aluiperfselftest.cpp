@@ -102,6 +102,7 @@
 #include "llviewercontrol.h"
 #include "llviewerinput.h"
 #include "lltoolgrab.h"
+#include "lltoolcomp.h"
 #include "llviewerobjectlist.h"
 #include "llviewershadermgr.h"
 #include "llviewerwindow.h"
@@ -112,6 +113,9 @@
 #include "llvovolume.h"
 #include "pipeline.h"
 
+#if LL_WINDOWS
+#include <tlhelp32.h>
+#endif
 #include <algorithm>
 #include <cctype>
 #include <deque>
@@ -1419,6 +1423,7 @@ public:
                 else if (key == "dry_reveal") mFunctionalDryReveal = value == "1";
                 else if (key == "rules") mDirRulesEnabled = value != "0";
                 else if (key == "account") mFunctionalAccount = value;
+                else if (key == "quarantine") mFunctionalQuarantine = value;
                 else if (key == "watchdog_seconds")
                 {
                     S32 seconds = 0;
@@ -1766,7 +1771,11 @@ private:
     static bool functionalProtectedUserPath(const std::filesystem::path& relative,
                                             bool include_all)
     {
-        if (include_all) return true;
+        // include_all == the authorized ACCOUNT folder: ONLY its root settings*.xml.  Nothing
+        // else in it (chat/IM logs, transcripts, caches) is read, rewritten or deleted.
+        if (include_all)
+            return (!relative.has_parent_path() || relative.parent_path().empty()) &&
+                functionalSettingsFile(relative);
         if (!relative.has_parent_path() || relative.parent_path().empty())
         {
             // Root user-data files a Director/Lightbox row can write, plus their
@@ -1873,12 +1882,87 @@ private:
         mFunctionalUserFilesVerified = !mFunctionalUserFiles.empty();
     }
 
+    // True when any OTHER Alchemy viewer process is running (AlchemyTest*, AlchemyBeta,
+    // AlchemyProjectBoreal, Alchemy).  Another writer makes the folder rollback unsafe.
+    static std::string functionalOtherViewerRunning()
+    {
+#if LL_WINDOWS
+        std::string found;
+        HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snapshot == INVALID_HANDLE_VALUE) return "process list unavailable";
+        PROCESSENTRY32W entry;
+        entry.dwSize = sizeof(entry);
+        const DWORD self = GetCurrentProcessId();
+        if (Process32FirstW(snapshot, &entry))
+        {
+            do
+            {
+                if (entry.th32ProcessID == self) continue;
+                std::string name = ll_convert_wide_to_string(entry.szExeFile);
+                LLStringUtil::toLower(name);
+                if (name.compare(0, 11, "alchemytest") == 0 || name == "alchemybeta.exe" ||
+                    name == "alchemyprojectboreal.exe" || name == "alchemy.exe")
+                {
+                    found += (found.empty() ? "" : ", ") + name + " pid " +
+                        std::to_string(entry.th32ProcessID);
+                }
+            } while (Process32NextW(snapshot, &entry));
+        }
+        CloseHandle(snapshot);
+        return found;
+#else
+        return std::string();
+#endif
+    }
+
+    // Moves `source` into the quarantine folder (relative path kept, manifest line appended)
+    // instead of deleting it.  Returns false if it could not be preserved.
+    bool functionalQuarantineFile(const FunctionalDiskSnapshot& snapshot, size_t index,
+                                  const std::filesystem::path& relative, const char* reason)
+    {
+        std::filesystem::path quarantine = mFunctionalQuarantine.empty()
+            ? std::filesystem::path(gDirUtilp->getExpandedFilename(LL_PATH_LOGS, "selftest_quarantine_viewer"))
+            : std::filesystem::path(mFunctionalQuarantine);
+        const std::filesystem::path source = snapshot.mRoot / relative;
+        const std::filesystem::path destination = quarantine / std::to_string(index) / relative;
+        std::error_code error;
+        std::filesystem::create_directories(destination.parent_path(), error);
+        std::filesystem::copy_file(source, destination,
+            std::filesystem::copy_options::overwrite_existing, error);
+        if (error) return false;
+        std::ofstream manifest(quarantine / "quarantine_manifest.txt", std::ios::app);
+        manifest << reason << '\t' << source.string() << '\t' << destination.string() << '\n';
+        LL_WARNS("UIFunctionalSelfTest") << "Quarantined (" << reason << ") "
+            << source.string() << " -> " << destination.string() << LL_ENDL;
+        return true;
+    }
+
+    // Non-destructive rollback.  Anything it would delete or overwrite is first copied into the
+    // quarantine folder; only files that differ from the start-of-run snapshot are touched; the
+    // account folder is never deleted from and only its root settings*.xml is considered; if
+    // another viewer process is running only the root settings*.xml files are considered.
     void restoreFunctionalUserFiles()
     {
         if (mFunctionalUserFilesRestored) return;
         mFunctionalUserFilesRestored = true;
+        const std::string other_viewer = functionalOtherViewerRunning();
+        const bool root_only = !other_viewer.empty();
+        if (root_only)
+            LL_WARNS("UIFunctionalSelfTest") << "Another viewer is running (" << other_viewer
+                << "): user-data folder rollback skipped, root settings*.xml only" << LL_ENDL;
+        auto in_set = [root_only](const std::filesystem::path& relative, bool account)
+        {
+            if (!functionalProtectedUserPath(relative, account)) return false;
+            if (root_only)
+                return (!relative.has_parent_path() || relative.parent_path().empty()) &&
+                    functionalSettingsFile(relative);
+            return true;
+        };
+        size_t index = 0;
         for (const FunctionalDiskSnapshot& snapshot : mFunctionalUserFiles)
         {
+            const size_t folder_index = index++;
+            const bool account = snapshot.mIncludeAll;
             std::error_code error;
             std::vector<std::filesystem::path> created_directories;
             if (std::filesystem::is_directory(snapshot.mRoot, error))
@@ -1889,26 +1973,49 @@ private:
                     std::error_code file_error;
                     const std::filesystem::path relative =
                         std::filesystem::relative(it->path(), snapshot.mRoot, file_error);
-                    if (file_error || !functionalProtectedUserPath(
-                            relative, snapshot.mIncludeAll)) continue;
+                    if (file_error || !in_set(relative, account)) continue;
                     if (it->is_directory(file_error))
                     {
                         if (snapshot.mDirectories.count(relative) == 0)
                             created_directories.push_back(it->path());
                     }
-                    else if (it->is_regular_file(file_error) &&
+                    else if (!account && it->is_regular_file(file_error) &&
                              snapshot.mFiles.find(relative) == snapshot.mFiles.end())
-                        std::filesystem::remove(it->path(), file_error);
-                    if (file_error)
-                        LL_ERRS("UIFunctionalSelfTest") << "Cannot remove created path "
-                            << it->path().string() << ": " << file_error.message() << LL_ENDL;
+                    {
+                        // Created during the run: preserved in quarantine, then removed.
+                        if (functionalQuarantineFile(snapshot, folder_index, relative, "created-during-run"))
+                            std::filesystem::remove(it->path(), file_error);
+                        else
+                            LL_WARNS("UIFunctionalSelfTest") << "Could not quarantine, left in place: "
+                                << it->path().string() << LL_ENDL;
+                    }
                 }
             }
             if (!snapshot.mExisted && snapshot.mFiles.empty()) continue;
             std::filesystem::create_directories(snapshot.mRoot, error);
             for (const auto& saved : snapshot.mFiles)
             {
+                if (!in_set(saved.first, account)) continue;
                 const std::filesystem::path path = snapshot.mRoot / saved.first;
+                std::string current;
+                bool have_current = false;
+                {
+                    std::ifstream input(path, std::ios::binary);
+                    if (input.good())
+                    {
+                        have_current = true;
+                        current.assign(std::istreambuf_iterator<char>(input),
+                                       std::istreambuf_iterator<char>());
+                    }
+                }
+                if (have_current && current == saved.second) continue; // untouched by the run
+                if (have_current &&
+                    !functionalQuarantineFile(snapshot, folder_index, saved.first, "overwritten-by-restore"))
+                {
+                    LL_WARNS("UIFunctionalSelfTest") << "Could not quarantine, NOT overwriting: "
+                        << path.string() << LL_ENDL;
+                    continue;
+                }
                 std::filesystem::create_directories(path.parent_path(), error);
                 std::ofstream output(path, std::ios::binary | std::ios::trunc);
                 output.write(saved.second.data(), static_cast<std::streamsize>(saved.second.size()));
@@ -1922,11 +2029,10 @@ private:
                 { return left.native().size() > right.native().size(); });
             for (const std::filesystem::path& directory : created_directories)
             {
+                // Only an EMPTY directory is removed; anything inside is left alone.
                 std::error_code remove_error;
-                std::filesystem::remove(directory, remove_error);
-                if (remove_error)
-                    LL_ERRS("UIFunctionalSelfTest") << "Cannot remove created directory "
-                        << directory.string() << ": " << remove_error.message() << LL_ENDL;
+                if (std::filesystem::is_empty(directory, remove_error) && !remove_error)
+                    std::filesystem::remove(directory, remove_error);
             }
             std::map<std::filesystem::path, std::string> verified;
             for (std::filesystem::recursive_directory_iterator it(snapshot.mRoot, error), end;
@@ -1935,14 +2041,22 @@ private:
                 if (!it->is_regular_file(error)) continue;
                 const std::filesystem::path relative =
                     std::filesystem::relative(it->path(), snapshot.mRoot, error);
-                if (error || !functionalProtectedUserPath(relative, snapshot.mIncludeAll)) continue;
+                if (error || !in_set(relative, account)) continue;
                 std::ifstream input(it->path(), std::ios::binary);
                 verified[relative] = std::string(std::istreambuf_iterator<char>(input),
                                                  std::istreambuf_iterator<char>());
             }
-            if (error || verified != snapshot.mFiles)
-                LL_ERRS("UIFunctionalSelfTest") << "Functional file restore byte verification failed under "
-                    << snapshot.mRoot.string() << LL_ENDL;
+            if (error)
+                LL_WARNS("UIFunctionalSelfTest") << "Functional file restore verification traversal failed under "
+                    << snapshot.mRoot.string() << ": " << error.message() << LL_ENDL;
+            for (const auto& saved : snapshot.mFiles)
+            {
+                if (!in_set(saved.first, account)) continue;
+                const auto found = verified.find(saved.first);
+                if (found == verified.end() || found->second != saved.second)
+                    LL_WARNS("UIFunctionalSelfTest") << "Functional file restore left a difference (quarantined or "
+                        "unwritable) under " << snapshot.mRoot.string() << ": " << saved.first.string() << LL_ENDL;
+            }
         }
     }
 
@@ -13093,6 +13207,7 @@ private:
     bool mFunctionalHaveShadowSnapshot = false;
     bool mFunctionalRigRestored = false;
     std::vector<FunctionalDiskSnapshot> mFunctionalUserFiles;
+    std::string mFunctionalQuarantine; // wrapper-provided quarantine folder for the file rollback
     bool mFunctionalUserFilesVerified = false;
     bool mFunctionalUserFilesRestored = false;
     std::vector<AuditSize> mAuditSizes;
@@ -13372,6 +13487,7 @@ void ALUIPerfSelfTest::quitAborted()
         gViewerInput.setWorldInputSuspended(false);
         // A grab whose capture was dropped without its callback must not resume half-done.
         LLToolGrab::getInstance()->resetStateWithoutSending();
+        LLToolCompGun::getInstance()->resetGrabStateWithoutSending();
     }
 }
 

@@ -112,7 +112,19 @@ files `diopter_custom.llsd*`, `diopter_kal_custom.llsd*`, `light_intensity_prese
 `settings*.xml` (today `settings_per_account.xml`), overwrite-only. Nothing else in the
 account folder (chat/IM transcripts, logs, caches, every other file) is ever read,
 overwritten or deleted, and no account file is deleted at all. Unchanged files are not
-rewritten; each restore action is logged (`restore: ...`). The wrapper never touches
+rewritten; each restore action is logged (`restore: ...`). The rollback is non-destructive:
+a file it would delete or overwrite is first MOVED to
+`%USERPROFILE%\cxs\selftest_quarantine_<tag>\<folder index>\<relative path>` with a
+`quarantine_manifest.txt` (the viewer's own file rollback uses the `viewer` subfolder, passed as
+`quarantine=`); empty created directories are the only thing removed. Only files whose bytes
+differ from the pre-run snapshot AND did not already differ at launch (the wrapper's own AO edit
+excepted) are touched. The wrapper polls the process list every ~5 s for any other viewer
+(`AlchemyTest*`, `AlchemyBeta`, `AlchemyProjectBoreal`, `Alchemy`) and refuses to start if one is
+running; if one appears during the run the user-data FOLDER rollback is skipped (root
+`settings*.xml` only) and this is reported loudly. The viewer applies the same check at its own
+rollback. The account folder in the viewer is likewise root `settings*.xml` only, never deleted
+from. The AO edit writes only `<account>\settings_per_account.xml` and only if it is in the
+backed-up set (otherwise the run refuses). The wrapper never touches
 `bin_conf.dat`. `ui_selftest.ps1 -Functional -InWorld -Account 5kvideoeye -ListRestoreSet`
 prints the exact set (names and sizes, no writes, no viewer start). The animation switcher
 `saveBank()` writes `DirectorAnimSwitcherBank` through `gSavedSettings`, so its
@@ -222,7 +234,10 @@ the whole run (login, in-world, teardown and logout):
    blocked by a dialog can never trigger the away animation. The persisted value comes back
    from the wrapper's `user_settings` restore. A cancelled logout (`abortQuit`) clears the
    flags and resets the grab tool state locally without sending.
-9. **Text links.** The harness never clicks text; LLUrl actions (open/profile/IM) are only
+9. **Joystick / gamepad.** `LLViewerJoystick` `updateStatus`, `scanJoystick`, `moveAvatar`,
+   `moveObjects`, `moveFlycam`, `pollXInputState` and `handleXInputDpad` return immediately while
+   world input is suspended.
+10. **Text links.** The harness never clicks text; LLUrl actions (open/profile/IM) are only
    reachable by native clicks, which item 7 drops.
 
 Injection routes (every one in `aluiperfselftest.cpp`):

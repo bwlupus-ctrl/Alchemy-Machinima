@@ -252,6 +252,10 @@ public:
     virtual void            handleDeselect() override;
     virtual LLTool*         getOverrideTool(MASK mask) override { return NULL; }
 
+    // Functional self-test only: forget this composite's OWN grab instance state without
+    // sending anything (its mouse capture was dropped without the tool callback).
+    void            resetGrabStateWithoutSending();
+
 protected:
     LLToolGun*          mGun;
     LLToolGrabBase*     mGrab;

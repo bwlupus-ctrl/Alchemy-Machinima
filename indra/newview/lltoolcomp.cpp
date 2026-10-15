@@ -755,6 +755,12 @@ LLToolCompGun::LLToolCompGun()
 }
 
 
+void LLToolCompGun::resetGrabStateWithoutSending()
+{
+    if (mGrab) mGrab->resetStateWithoutSending();
+}
+
+
 LLToolCompGun::~LLToolCompGun()
 {
     delete mGun;

@@ -1139,10 +1139,14 @@ bool LLViewerWindow::dropToolMouseCaptureWhileWorldSuspended()
     gFocusMgr.removeMouseCaptureWithoutCallback(captor);
     // The callback was skipped on purpose (it can send ObjectGrabUpdate / ObjectDeGrab), so
     // forget the grab state locally instead; nothing is sent.
-    if (dynamic_cast<LLToolGrabBase*>(captor))
+    // Reset the exact instance that held the capture (the singleton, or the mouselook
+    // composite's own grab), and the composite owners themselves.
+    if (LLToolGrabBase* grab = dynamic_cast<LLToolGrabBase*>(captor))
     {
-        LLToolGrab::getInstance()->resetStateWithoutSending();
+        grab->resetStateWithoutSending();
     }
+    LLToolGrab::getInstance()->resetStateWithoutSending();
+    LLToolCompGun::getInstance()->resetGrabStateWithoutSending();
     if (mWindow) mWindow->setMouseClipping(false);
     return true;
 }
