@@ -582,14 +582,17 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     if kind == "readout" and row.get("text") is not None:
         child.text = str(row["text"])
     if tag in {"combo_box", "radio_group"}:
-        for index, label in enumerate(row.get("it", [])):
+        # "sample": the mockup items are placeholders for rows the code fills at runtime (cast
+        # group tags); emit none, so a sample never ships as a real, selectable choice.
+        for index, label in enumerate([] if row.get("sample") else row.get("it", [])):
             values = row.get("iv", [])
             value = values[index] if index < len(values) else index
             item_tag = "combo_box.item" if tag == "combo_box" else "radio_item"
             item_attrs = {"name": f"{widget}_item_{index}", "label": str(label), "value": scalar(value)}
-            if scalar(value) == "-1":
+            if scalar(value) == "-1" and not (index == 0 and row.get("inherit_selectable")):
                 # A value of -1 is a divider label (e.g. Actor FX "-- Live Actor Exclusives --"),
-                # not a selectable enum; the v1 combo disables it the same way.
+                # not a selectable enum; the v1 combo disables it the same way. A row that sets
+                # "inherit_selectable" opts its FIRST item (a real Inherit choice) out of this.
                 item_attrs["enabled"] = "false"
             if tag == "radio_group":
                 # LLRadioGroup otherwise applies the default top-left layout to

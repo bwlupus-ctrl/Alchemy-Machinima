@@ -409,6 +409,13 @@ public:
     void setGroupDelay(const std::string& name, F32 seconds);
     F32  getGroupDelay(const std::string& name) const;     // 0 when none set
 
+    // per-group stepped-animation RATE OFFSET (ALSteppedAnim::ERateOffset: 0 same, 1 +1 step,
+    // 2 +2 steps, 3 smooth). Group data exactly like the start delay: keyed by the tag, carried
+    // across a rename, shed with the last member, and saved/loaded with the scene (so a stale
+    // tag from one scene never applies to a later scene that reuses the name).
+    void setGroupRate(const std::string& name, S32 offset);
+    S32  getGroupRate(const std::string& name) const;      // 0 (same) when none set
+
     // ---- staggered starts (pending-start queue) ----
     // startMovesStaggered() is the delay-aware replacement for the plain
     // LLActorMover start loops: each id whose group carries a delay is QUEUED
@@ -479,9 +486,9 @@ private:
     // staggered starts: fire every queued start that has come due, then prune
     // dead (already-fired, self-deleted) timer pointers from mStaggerTimers
     void servicePendingStarts();
-    // drop a group's delay once its last member is gone/retagged (the
-    // no-stale-registry rule); safe on names that never had a delay
-    void pruneGroupDelay(const std::string& name);
+    // drop a group's delay and stepped rate once its last member is gone/retagged (the
+    // no-stale-registry rule); safe on names that never had either
+    void pruneGroupData(const std::string& name);
 
     std::vector<CastMember> mCast;
     uuid_vec_t              mIds;       // mirrors mCast order
@@ -524,6 +531,7 @@ private:
 
     // ---- staggered starts ----
     std::map<std::string, F32> mGroupDelays;    // group name -> start delay, s
+    std::map<std::string, S32> mGroupRates;    // ALSteppedAnim::GroupRates: group name -> stepped rate offset (saved with the scene)
 
     struct PendingStart
     {

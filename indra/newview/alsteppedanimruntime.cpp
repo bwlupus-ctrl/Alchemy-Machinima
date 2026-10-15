@@ -67,6 +67,56 @@ F32 finiteSetting(F32 value, F32 fallback)
 }
 }
 
+// Local friend-list snapshot for the Friends scope: rebuilt only when the tracker reports a
+// change (add / remove / online), never per actor per frame. Nothing is sent anywhere.
+class ALSteppedFriendCache final : public LLFriendObserver
+{
+public:
+    ALSteppedFriendCache() { LLAvatarTracker::instance().addObserver(this); }
+    // The tracker is a namespace-scope static built before this lazily-created runtime, so it
+    // outlives it at exit.
+    ~ALSteppedFriendCache() override { LLAvatarTracker::instance().removeObserver(this); }
+    void changed(U32) override { mDirty = true; }
+    bool isFriend(const LLUUID& id)
+    {
+        if (mDirty)
+        {
+            LLAvatarTracker::buddy_map_t buddies;
+            LLAvatarTracker::instance().copyBuddyList(buddies);
+            mFriends.clear();
+            for (const auto& buddy : buddies) mFriends.insert(buddy.first);
+            mDirty = false;
+        }
+        return mFriends.find(id) != mFriends.end();
+    }
+
+private:
+    std::set<LLUUID> mFriends;
+    bool mDirty = true;
+};
+
+ALSteppedAnimRuntime::~ALSteppedAnimRuntime() = default;
+
+void ALSteppedAnimRuntime::refreshCastCache(const LLDirectorCast& cast)
+{
+    const U64 scene = cast.getSceneRevision();
+    const U64 members = cast.getCastRevision();
+    if (mCastCache.valid && mCastCache.sceneRevision == scene && mCastCache.castRevision == members) return;
+    mCastCache.valid = true;
+    mCastCache.sceneRevision = scene;
+    mCastCache.castRevision = members;
+    mCastCache.order.clear();
+    mCastCache.groupOffsets.clear();
+    const auto& roster = cast.getCast();
+    for (U32 i = 0; i < roster.size(); ++i)
+    {
+        mCastCache.order[roster[i].mId] = static_cast<S32>(i);
+        if (roster[i].mGroup.empty()) continue;
+        const S32 offset = cast.getGroupRate(roster[i].mGroup);
+        if (offset > 0) mCastCache.groupOffsets[roster[i].mId] = offset;
+    }
+}
+
 ALSteppedAnimRuntime& ALSteppedAnimRuntime::instance()
 {
     static ALSteppedAnimRuntime runtime;
@@ -206,18 +256,11 @@ void ALSteppedAnimRuntime::collectActors()
     const LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID selected = cast.getSteppedActorId();
     const bool empty_cast = cast.getIds().empty();
-    std::map<LLUUID, S32> cast_order;
-    for (U32 i = 0; i < cast.getCast().size(); ++i) cast_order[cast.getCast()[i].mId] = static_cast<S32>(i);
-    // Cast-group rate offsets (viewer-local setting, group tag -> offset). The map is only
-    // built when at least one group has an offset, so the default path allocates nothing new.
-    static LLCachedControl<LLSD> group_rates(gSavedSettings, "StepAnimGroupRates");
-    std::map<LLUUID, S32> group_offsets;
-    const LLSD& group_rate_map = group_rates;
-    if (group_rate_map.isMap() && group_rate_map.size() > 0)
-        for (const auto& member : cast.getCast())
-            if (!member.mGroup.empty() && group_rate_map.has(member.mGroup))
-                group_offsets[member.mId] = llclamp(group_rate_map[member.mGroup].asInteger(), 0, 3);
+    refreshCastCache(cast);
+    const std::map<LLUUID, S32>& cast_order = mCastCache.order;
+    const std::map<LLUUID, S32>& group_offsets = mCastCache.groupOffsets;
     const bool friends_scope = mConfig.scope == ALSteppedAnim::SCOPE_FRIENDS;
+    if (!friends_scope) mFriends.reset();
     std::set<LLUUID> bone_pov_anchors;
     const LLPrismLens::RegistrySnapshot camera_registry = LLPrismLens::registrySnapshot();
     for (U32 index = 0; index < camera_registry.mCaptureCount; ++index)
@@ -259,8 +302,11 @@ void ALSteppedAnimRuntime::collectActors()
             bone_pov_anchors.find(avatar->getID()) != bone_pov_anchors.end();
         f.posing = FSFloaterPoser::isEditingAvatar(avatar);
         f.cameraDistance = static_cast<F32>((avatar->getPositionGlobal() - camera).length());
-        // The friend list is read locally (nothing is sent); looked up once per actor per frame.
-        if (friends_scope && !f.isSelf) f.isFriend = LLAvatarTracker::instance().isBuddy(avatar->getID());
+        if (friends_scope && !f.isSelf)
+        {
+            if (!mFriends) mFriends.reset(new ALSteppedFriendCache);
+            f.isFriend = mFriends->isFriend(avatar->getID());
+        }
         const auto order = cast_order.find(f.isSelf ? gAgentID : actor_id);
         if (order != cast_order.end()) f.castOrder = order->second;
         else if (f.isSelf && empty_cast) f.castOrder = 0;

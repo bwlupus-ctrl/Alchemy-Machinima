@@ -82,7 +82,8 @@ private:
     U64               mCastRevision = 0;
     std::vector<std::string> mGroupNames;
     std::string       mGroupListSignature;
-    std::array<F32, 6> mEffectiveKey{{-1.f, -1.f, -1.f, -1.f, -1.f, -1.f}};
+    bool              mGroupsSynced = false; // the first sync always rebuilds the group combo
+    std::array<F32, 8> mEffectiveKey{{-1.f, -1.f, -1.f, -1.f, -1.f, -1.f, -1.f, -1.f}};
     LLFrameTimer      mGroupTimer; // group tags are polled twice a second, not every draw
     S32               mLastActive = -1;
     S32               mLastSkipped = -1;

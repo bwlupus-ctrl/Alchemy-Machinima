@@ -109,6 +109,81 @@ ActorOverride sanitize(const ActorOverride& raw)
     return out;
 }
 
+LLSD writeOverride(const ActorOverride& input)
+{
+    const ActorOverride ov = sanitize(input);
+    if (ov.mode == 0 && ov.rate == 12.f && ov.what == -1 && ov.role == 0 && ov.rateOffset == -1)
+        return LLSD();
+    LLSD value = LLSD::emptyMap();
+    value["mode"] = ov.mode;
+    value["rate"] = ov.rate;
+    value["what"] = ov.what;
+    value["role"] = ov.role;
+    if (ov.rateOffset != -1) value["rate_offset"] = ov.rateOffset;
+    return value;
+}
+
+ActorOverride readOverride(const LLSD& data)
+{
+    ActorOverride ov;
+    if (!data.isMap()) return ov;
+    if (data.has("mode")) ov.mode = data["mode"].asInteger();
+    if (data.has("rate")) ov.rate = static_cast<F32>(data["rate"].asReal());
+    if (data.has("what")) ov.what = data["what"].asInteger();
+    if (data.has("role")) ov.role = data["role"].asInteger();
+    if (data.has("rate_offset")) ov.rateOffset = data["rate_offset"].asInteger();
+    return sanitize(ov);
+}
+
+S32 groupRate(const GroupRates& rates, const std::string& group)
+{
+    const auto it = rates.find(group);
+    return it != rates.end() ? llclamp(it->second, 0, 3) : 0;
+}
+
+void setGroupRate(GroupRates& rates, const std::string& group, S32 offset)
+{
+    if (group.empty()) return;
+    offset = llclamp(offset, 0, 3);
+    if (offset == 0) rates.erase(group); // 0 = no entry, so the map never bloats
+    else rates[group] = offset;
+}
+
+void renameGroupRate(GroupRates& rates, const std::string& old_name, const std::string& new_name)
+{
+    if (old_name.empty() || new_name.empty() || old_name == new_name) return;
+    const auto it = rates.find(old_name);
+    if (it == rates.end()) return;
+    // Renaming onto an existing group merges the two: the target's own rate wins, else the source's rides along.
+    if (rates.find(new_name) == rates.end()) rates[new_name] = it->second;
+    rates.erase(old_name);
+}
+
+void pruneGroupRate(GroupRates& rates, const std::string& group, bool group_has_members)
+{
+    if (!group.empty() && !group_has_members) rates.erase(group);
+}
+
+LLSD writeGroupRates(const GroupRates& rates, const std::vector<std::string>& live_groups)
+{
+    LLSD out = LLSD::emptyMap();
+    for (const std::string& name : live_groups)
+    {
+        const S32 offset = groupRate(rates, name);
+        if (offset > 0) out[name] = offset;
+    }
+    return out;
+}
+
+GroupRates readGroupRates(const LLSD& data, const std::vector<std::string>& live_groups)
+{
+    GroupRates out;
+    if (!data.isMap()) return out;
+    for (const std::string& name : live_groups)
+        if (data.has(name)) setGroupRate(out, name, data[name].asInteger());
+    return out;
+}
+
 F32 unitHash(U64 seed, S64 a, U32 b, U32 c)
 {
     U64 value = seed;
@@ -140,12 +215,24 @@ F32 offsetRate(F32 rate, S32 offset, S32 base_fps)
 F32 varyRate(F32 rate, U64 seed, F32 variation, S32 base_fps)
 {
     if (!(variation > 0.f) || !(rate >= 2.f) || base_fps < 1) return rate;
+    const F32 factor = rateFactor(seed, variation);
     const F32 base = static_cast<F32>(base_fps);
-    const F32 length = base / rate;
-    S32 frames = static_cast<S32>(std::floor(length * rateFactor(seed, variation) + .5f));
-    frames = llclamp(frames, 1, llmax(1, static_cast<S32>(std::floor(base * .5f))));
-    const F32 varied = base / static_cast<F32>(frames);
-    return varied > rate ? rate : varied;
+    const F32 length = base / rate; // the actor's own step, in base frames
+    const F32 whole = std::floor(length + .5f);
+    if (length >= 1.f && std::fabs(length - whole) <= 1.e-3f)
+    {
+        // The actor steps in whole base frames: lengthen by whole base frames, never shorter
+        // than its own step and never past the 2 fps floor.
+        const S32 own = static_cast<S32>(whole);
+        const S32 longest = llmax(own, static_cast<S32>(std::floor(base * .5f)));
+        const S32 frames = llclamp(static_cast<S32>(std::floor(length * factor + .5f)), own, longest);
+        return frames == own ? rate : base / static_cast<F32>(frames);
+    }
+    // Any other rate (10 or 30 fps on a 24 base): its own step is the grid, so the step becomes
+    // a whole number of its own steps (x1 or x2 for a spread of at most 1).
+    const S32 steps = llmax(1, static_cast<S32>(std::floor(factor + .5f)));
+    const F32 varied = rate / static_cast<F32>(steps);
+    return varied >= 2.f ? varied : rate;
 }
 
 bool extraHold(U64 seed, S64 tick, F32 jitter, bool previous_was_extra)
@@ -211,18 +298,13 @@ bool scopeIncludes(const Config& raw, const ActorFacts& facts)
     return scopeMember(cfg, facts) && withinLimit(cfg, facts);
 }
 
-Assignment resolveActor(const Config& raw, const ActorFacts& facts, F64 roto_phase)
+RateChoice resolveRate(const Config& raw, const ActorOverride& raw_ov, bool selected, S32 group_offset)
 {
     const Config cfg = sanitize(raw);
-    Assignment out;
-    if (!cfg.enabled || !facts.drawn || facts.excludedAlways || facts.posing ||
-        (cfg.excludeCameraMounted && facts.cameraMounted))
-        return out;
-
-    const ActorOverride ov = sanitize(facts.ov);
+    const ActorOverride ov = sanitize(raw_ov);
+    RateChoice out;
     if (ov.mode == 1) return out;
-    bool in_scope = scopeMember(cfg, facts) && withinLimit(cfg, facts);
-    bool target = facts.isSelected;
+    bool target = selected;
     if (ov.role == 1) target = true;
     else if (ov.role == 2) target = false;
 
@@ -234,27 +316,59 @@ Assignment resolveActor(const Config& raw, const ActorFacts& facts, F64 roto_pha
         adaptive = false;
     }
     // Rate offset precedence: per-actor > cast group > page (no offset).
-    S32 offset = llclamp(facts.groupOffset, 0, 3);
+    S32 offset = llclamp(group_offset, 0, 3);
     if (ov.rateOffset >= 0) offset = ov.rateOffset;
     if (ov.mode == 2)
     {
-        in_scope = true;
         rate = ov.rate;
         adaptive = false;
         if (ov.rateOffset < 0) offset = RATE_SAME;
     }
-    if (cfg.includeGhosts && facts.ghostOwnAnimation && withinLimit(cfg, facts)) in_scope = true;
     rate = effectiveRate(rate);
-    if (!in_scope || rate == 0.f || offset == RATE_SMOOTH) return out;
+    if (rate == 0.f || offset == RATE_SMOOTH) return out;
 
-    F32 fast = adaptive ? cfg.fastRate : 0.f;
-    rate = varyRate(offsetRate(rate, offset, cfg.baseFps), facts.seed, cfg.rateVariation, cfg.baseFps);
-    if (fast > 0.f)
-        fast = varyRate(offsetRate(fast, offset, cfg.baseFps), facts.seed, cfg.rateVariation, cfg.baseFps);
+    // Match Roto Ink redraws on the page rate's cadence, so while it is on a coarser offset and
+    // the seed variation are switched off (a stepped actor never changes pose between Roto's
+    // redraws). Smooth, Never and the imperfect-timing extra hold are unaffected.
+    F32 variation = cfg.rateVariation;
+    out.rotoLocked = cfg.matchRoto;
+    if (cfg.matchRoto)
+    {
+        out.rotoSuppressed = offset != RATE_SAME || variation > 0.f;
+        offset = RATE_SAME;
+        variation = 0.f;
+    }
     out.stepped = true;
     out.adaptive = adaptive;
-    out.rate = rate;
-    out.fastRate = fast;
+    out.offset = offset;
+    out.variation = variation;
+    out.rate = offsetRate(rate, offset, cfg.baseFps);
+    out.fastRate = adaptive && cfg.fastRate > 0.f ? offsetRate(cfg.fastRate, offset, cfg.baseFps) : 0.f;
+    return out;
+}
+
+Assignment resolveActor(const Config& raw, const ActorFacts& facts, F64 roto_phase)
+{
+    const Config cfg = sanitize(raw);
+    Assignment out;
+    if (!cfg.enabled || !facts.drawn || facts.excludedAlways || facts.posing ||
+        (cfg.excludeCameraMounted && facts.cameraMounted))
+        return out;
+
+    const ActorOverride ov = sanitize(facts.ov);
+    if (ov.mode == 1) return out;
+    bool in_scope = scopeMember(cfg, facts) && withinLimit(cfg, facts);
+    // Own settings step the actor even outside the scope, but Limit distance caps every scope.
+    if (ov.mode == 2) in_scope = withinLimit(cfg, facts);
+    if (cfg.includeGhosts && facts.ghostOwnAnimation && withinLimit(cfg, facts)) in_scope = true;
+    const RateChoice choice = resolveRate(cfg, ov, facts.isSelected, facts.groupOffset);
+    if (!in_scope || !choice.stepped) return out;
+
+    out.stepped = true;
+    out.adaptive = choice.adaptive;
+    out.rate = varyRate(choice.rate, facts.seed, choice.variation, cfg.baseFps);
+    out.fastRate = choice.fastRate > 0.f
+        ? varyRate(choice.fastRate, facts.seed, choice.variation, cfg.baseFps) : 0.f;
     out.seed = facts.seed;
     out.what = ov.mode == 2 && ov.what >= 0 ? ov.what : cfg.what;
     out.phase = actorPhase(cfg, facts.seed, cfg.matchRoto ? roto_phase : 0.);
@@ -747,19 +861,20 @@ const std::vector<std::string>& trackedSettings()
         "StepAnimImpactThreshold", "StepAnimSmear", "StepAnimSmearStrength",
         "StepAnimSmearThreshold", "StepAnimEase", "StepAnimEaseAmount", "StepAnimMatchRotoInk",
         "StepAnimNearbyRadius", "StepAnimLimitDistance", "StepAnimIncludeSelf", "StepAnimSeed",
-        "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter", "StepAnimGroupRates"
+        "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter"
     };
     return settings;
 }
 
 namespace
 {
-// Targeting, variation and group rates belong to the scene / take, never to a style preset.
+// Targeting and variation belong to the scene / take, never to a style preset. (Group rates are
+// scene data in the cast; the legacy StepAnimGroupRates setting is no longer read.)
 bool isTargetingOrVariation(const std::string& name)
 {
     static const char* const names[] = {
         "StepAnimNearbyRadius", "StepAnimLimitDistance", "StepAnimIncludeSelf", "StepAnimSeed",
-        "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter", "StepAnimGroupRates"
+        "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter"
     };
     for (const char* item : names) if (name == item) return true;
     return false;

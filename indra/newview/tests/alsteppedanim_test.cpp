@@ -524,7 +524,7 @@ template<> template<> void stepped_object::test<12>()
 {
     const auto& presets = ALSteppedAnim::builtInPresets();
     ensure_equals("T12 preset count", presets.size(), size_t(14));
-    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(40));
+    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(39));
     std::set<std::string> ids;
     for (const auto& p : presets)
     {
@@ -538,8 +538,12 @@ template<> template<> void stepped_object::test<12>()
     ensure("T12 built-in and saved preset whitelist excludes independent options",
         preset_settings.size() == 29 && !preset_settings.count("StepAnimParticles") &&
         !preset_settings.count("StepAnimTextureAnim") && !preset_settings.count("StepAnimIncludeGhosts"));
+    ensure("T12 retired StepAnimGroupRates is no longer tracked (group rates are scene data)",
+        std::find(ALSteppedAnim::trackedSettings().begin(), ALSteppedAnim::trackedSettings().end(),
+                  "StepAnimGroupRates") == ALSteppedAnim::trackedSettings().end() &&
+        !preset_settings.count("StepAnimGroupRates"));
     for (const char* name : {"StepAnimNearbyRadius", "StepAnimLimitDistance", "StepAnimIncludeSelf", "StepAnimSeed",
-                             "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter", "StepAnimGroupRates"})
+                             "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter"})
         ensure("T12 targeting/variation tracked but never preset-owned",
             !preset_settings.count(name) &&
             std::find(ALSteppedAnim::trackedSettings().begin(), ALSteppedAnim::trackedSettings().end(), name) !=
@@ -768,7 +772,14 @@ template<> template<> void stepped_object::test<18>()
     c.limitDistance = false; c.scope = SCOPE_CAST;
     ensure("limit distance off leaves far cast alone", resolveActor(c, cast_far, 0.).stepped);
     c.limitDistance = true; cast_far.ov.mode = 2;
-    ensure("explicit per-actor Own settings is not distance limited", resolveActor(c, cast_far, 0.).stepped);
+    ensure("Limit distance also caps per-actor Own settings", !resolveActor(c, cast_far, 0.).stepped);
+    cast_near.ov.mode = 2;
+    ensure("Own settings inside the limit still step", resolveActor(c, cast_near, 0.).stepped);
+    c.limitDistance = false; c.scope = SCOPE_SELECTED; cast_far.isSelected = false; cast_far.inCast = false;
+    ensure("Own settings still step outside the scope when the limit is off", resolveActor(c, cast_far, 0.).stepped);
+    c.limitDistance = true;
+    ensure("Own settings outside the scope are capped by the limit", !resolveActor(c, cast_far, 0.).stepped);
+    c.scope = SCOPE_CAST; cast_far.isSelected = true; cast_far.inCast = true;
     cast_far.ov.mode = 1;
     ensure("per-actor Smooth still wins", !resolveActor(c, cast_far, 0.).stepped);
 
@@ -846,27 +857,61 @@ template<> template<> void stepped_object::test<19>()
     spread.offset = OFFSET_LOCKED;
     ensure_equals("locked phase ignores spread", actorPhase(spread, 3, 0.), 0.);
 
-    // Rate variation: factor within [1, 1+v], quantised to whole base frames, never faster.
-    for (F32 v : {.1f, .5f, 1.f})
-        for (F32 base_rate : {24.f, 12.f, 8.f, 6.f, 10.f, 2.f})
+    // Rate variation: factor within [1, 1+v]; the step length is multiplied on the actor's own
+    // grid (whole base frames for twos/threes/..., whole own steps for 10 or 30 fps), never faster.
+    for (F32 v : {.01f, .1f, .5f, 1.f})
+        for (F32 base_rate : {24.f, 12.f, 8.f, 6.f, 10.f, 2.f, 30.f, 5.f})
         {
             S32 shapes[32] = {};
+            const F32 own_frames = 24.f / base_rate;
+            const bool whole_frames = std::fabs(own_frames - std::round(own_frames)) < 1.e-3f;
             for (U64 seed = 1; seed <= 400; ++seed)
             {
                 const F32 factor = rateFactor(seed, v);
                 ensure("factor within [1, 1+v]", factor >= 1.f && factor <= 1.f + v + 1.e-6f);
                 const F32 rate = varyRate(base_rate, seed, v, 24);
-                ensure("never faster than base", rate <= base_rate + 1.e-5f);
+                ensure("never faster than the actor's own rate", rate <= base_rate + 1.e-5f);
                 ensure("never below 2 fps", rate >= 2.f - 1.e-5f);
                 ensure("deterministic", rate == varyRate(base_rate, seed, v, 24));
                 const F32 frames = 24.f / rate;
-                if (rate != base_rate)
-                    ensure("quantised to whole base frames", std::fabs(frames - std::round(frames)) < 1.e-4f);
+                if (whole_frames)
+                    ensure("whole-frame actors land on whole base frames", std::fabs(frames - std::round(frames)) < 1.e-4f);
+                else
+                {
+                    const F32 steps = base_rate / rate;
+                    ensure("other rates lengthen by a whole number of their own steps",
+                        std::fabs(steps - std::round(steps)) < 1.e-4f);
+                    ensure("no snap to the base: rate is the actor's own or a whole division of it",
+                        rate == base_rate || std::fabs(rate - base_rate / std::round(steps)) < 1.e-4f);
+                }
                 if (frames >= 2.f && frames < 32.f) ++shapes[static_cast<S32>(std::round(frames))];
             }
             if (v == 1.f && base_rate == 12.f)
                 ensure("some actors land on threes and fours when the base is twos", shapes[3] > 0 && shapes[4] > 0);
         }
+    // Low-fps edge: 10 fps on a 24 base with a tiny spread keeps 10 (not a whole-frame fallback)
+    // and a full spread can double the step, never a rate between.
+    for (U64 seed = 1; seed <= 400; ++seed)
+    {
+        const F32 tiny = varyRate(10.f, seed, .01f, 24);
+        ensure_equals("10 fps with a tiny spread keeps its own step", tiny, 10.f);
+        const F32 full = varyRate(10.f, seed, 1.f, 24);
+        ensure("10 fps with a full spread is 10 or 5", full == 10.f || std::fabs(full - 5.f) < 1.e-4f);
+    }
+    // Rate above the base (30 on 24) is varied on its own grid, never snapped down to 24.
+    {
+        bool saw_thirty = false, saw_fifteen = false;
+        for (U64 seed = 1; seed <= 400; ++seed)
+        {
+            const F32 r = varyRate(30.f, seed, 1.f, 24);
+            ensure("30 fps stays 30 or halves to 15", std::fabs(r - 30.f) < 1.e-4f || std::fabs(r - 15.f) < 1.e-4f);
+            ensure("30 fps never snaps to the base", std::fabs(r - 24.f) > .01f);
+            saw_thirty = saw_thirty || r == 30.f;
+            saw_fifteen = saw_fifteen || std::fabs(r - 15.f) < 1.e-4f;
+            ensure_equals("30 fps with a tiny spread is untouched", varyRate(30.f, seed, .01f, 24), 30.f);
+        }
+        ensure("30 fps varies across actors", saw_thirty && saw_fifteen);
+    }
     ensure_equals("variation 0 is the identity", varyRate(12.f, 99, 0.f, 24), 12.f);
     ensure_equals("smooth stays smooth", varyRate(0.f, 99, 1.f, 24), 0.f);
 
@@ -908,6 +953,48 @@ template<> template<> void stepped_object::test<19>()
     o.mode = MODE_ADAPTIVE; g.ov.mode = 0; g.groupOffset = 1;
     const auto grouped = resolveActor(o, g, 0.);
     close("adaptive group offset coarsens the fast rate too", grouped.fastRate, 1.f / (1.f / 24.f + 1.f / 24.f), 1.e-4);
+
+    // Match Roto Ink keeps stepped actors on the Roto cadence: variation and offsets are switched off.
+    Config roto; roto.enabled = true; roto.scope = SCOPE_VIEW; roto.matchRoto = true; roto.rateVariation = 1.f;
+    ActorFacts rf; rf.drawn = true; rf.groupOffset = 2;
+    for (U64 seed = 1; seed <= 64; ++seed)
+    {
+        rf.seed = seed;
+        ensure_equals("Roto Ink match: no offset, no variation", resolveActor(roto, rf, 0.).rate, roto.rate);
+    }
+    rf.groupOffset = 3;
+    ensure("Roto Ink match: a Smooth group is still smooth", !resolveActor(roto, rf, 0.).stepped);
+    const RateChoice locked = resolveRate(roto, ActorOverride(), true, 2);
+    ensure("Roto lock reports what it switched off", locked.rotoLocked && locked.rotoSuppressed &&
+        locked.offset == RATE_SAME && locked.variation == 0.f);
+    roto.rateVariation = 0.f;
+    ensure("Roto lock with nothing to suppress says nothing", !resolveRate(roto, ActorOverride(), true, 0).rotoSuppressed);
+
+    // resolveRate is what resolveActor uses: mixed role, adaptive fast rate, own settings, base fps.
+    {
+        Config pure; pure.enabled = true; pure.mode = MODE_MIXED; pure.rate = 12.f; pure.backgroundRate = 8.f;
+        ActorOverride none;
+        ensure_equals("mixed selected actor uses the target rate", resolveRate(pure, none, true, 0).rate, 12.f);
+        ensure_equals("mixed unselected actor uses the background rate", resolveRate(pure, none, false, 0).rate, 8.f);
+        ActorOverride background; background.role = 2;
+        ensure_equals("an own Background role beats selection", resolveRate(pure, background, true, 0).rate, 8.f);
+        pure.mode = MODE_ADAPTIVE; pure.fastRate = 24.f;
+        const RateChoice fast = resolveRate(pure, none, true, 1);
+        close("adaptive keeps both rates and offsets the fast one", fast.fastRate, 12., 1.e-4);
+        ensure("adaptive choice is flagged", fast.adaptive && fast.stepped);
+        ActorOverride never; never.mode = 1;
+        ensure("Never is smooth", !resolveRate(pure, never, true, 0).stepped);
+        ActorOverride own; own.mode = 2; own.rate = 10.f;
+        ensure_equals("own settings ignore the page rate", resolveRate(pure, own, true, 1).rate, 10.f);
+        pure.baseFps = 30;
+        close("offsets use the sanitised base fps", resolveRate(pure, none, true, 1).rate,
+            1.f / (1.f / 12.f + 1.f / 30.f), 1.e-4);
+        pure.baseFps = 26; // sanitises to 25
+        close("a stray base fps sanitises first", resolveRate(pure, none, true, 1).rate,
+            1.f / (1.f / 12.f + 1.f / 25.f), 1.e-4);
+        pure.rateVariation = .5f;
+        ensure_equals("variation is reported, not applied", resolveRate(pure, none, true, 0).variation, .5f);
+    }
 
     // Imperfect timing.
     ensure("jitter 0 never holds extra", [&]
@@ -1010,6 +1097,91 @@ template<> template<> void stepped_object::test<20>()
         previous = tick;
     }
     ensure("default no extra hold state", !state.jitterHeld);
+}
+
+
+// T21: cast-group rates and the per-actor override travel with the scene.
+template<> template<> void stepped_object::test<21>()
+{
+    using namespace ALSteppedAnim;
+    const std::vector<std::string> live = {"Hunters", "Demons"};
+    GroupRates rates;
+    setGroupRate(rates, "Hunters", 1);
+    setGroupRate(rates, "Demons", 3);
+    setGroupRate(rates, "Ghosts", 2); // no members: never written
+    setGroupRate(rates, "", 2);       // an empty tag is never a group
+    ensure_equals("empty tag ignored", rates.count(""), size_t(0));
+    setGroupRate(rates, "Wide", 9);
+    ensure_equals("offsets clamp to 0-3", groupRate(rates, "Wide"), S32(3));
+    setGroupRate(rates, "Wide", 0);
+    ensure_equals("same erases the entry", rates.count("Wide"), size_t(0));
+
+    // scene round trip: only live groups, defaults (same) are not stored
+    const LLSD saved = writeGroupRates(rates, live);
+    ensure("group_rates is a map", saved.isMap());
+    ensure_equals("only live groups saved", saved.size(), 2);
+    ensure("no stale group saved", !saved.has("Ghosts"));
+    const GroupRates loaded = readGroupRates(saved, live);
+    ensure_equals("Hunters survives the scene", groupRate(loaded, "Hunters"), S32(1));
+    ensure_equals("Demons survives the scene", groupRate(loaded, "Demons"), S32(3));
+    ensure_equals("unknown group reads as same", groupRate(loaded, "Ghosts"), S32(0));
+    ensure("round trip is stable", readGroupRates(writeGroupRates(loaded, live), live) == loaded);
+    ensure("an older scene without group_rates reads empty", readGroupRates(LLSD(), live).empty());
+    // a later scene reusing other names never inherits the earlier scene's rates
+    ensure("another scene's live groups drop rates it does not carry",
+        readGroupRates(saved, std::vector<std::string>{"Crowd"}).empty());
+    // legacy StepAnimGroupRates map migrates by the same read (clamped, only live groups)
+    LLSD legacy = LLSD::emptyMap();
+    legacy["Hunters"] = 2; legacy["Demons"] = 9; legacy["Gone"] = 1;
+    const GroupRates migrated = readGroupRates(legacy, live);
+    ensure("legacy migration keeps live groups and clamps", migrated.size() == 2 &&
+        groupRate(migrated, "Hunters") == 2 && groupRate(migrated, "Demons") == 3 && !migrated.count("Gone"));
+
+    // rename keeps the rate; a merge keeps the target's; the source name is gone
+    GroupRates r;
+    setGroupRate(r, "Hunters", 1);
+    renameGroupRate(r, "Hunters", "Wolves");
+    ensure("rename carries the rate", groupRate(r, "Wolves") == 1 && !r.count("Hunters"));
+    setGroupRate(r, "Demons", 2);
+    renameGroupRate(r, "Wolves", "Demons");
+    ensure("merge keeps the target's own rate", groupRate(r, "Demons") == 2 && !r.count("Wolves"));
+    setGroupRate(r, "Hunters", 3);
+    renameGroupRate(r, "Hunters", "Crowd");
+    ensure("rename onto a name without a rate carries the source's", groupRate(r, "Crowd") == 3);
+    renameGroupRate(r, "Nobody", "Crowd");
+    renameGroupRate(r, "Crowd", "");
+    renameGroupRate(r, "Crowd", "Crowd");
+    ensure("unknown / empty / same renames change nothing", groupRate(r, "Crowd") == 3 && r.size() == 2);
+
+    // prune: a group that lost its last member sheds its rate; one with members keeps it
+    pruneGroupRate(r, "Crowd", true);
+    ensure("a group with members keeps its rate", groupRate(r, "Crowd") == 3);
+    pruneGroupRate(r, "Crowd", false);
+    ensure("a group without members drops its rate", !r.count("Crowd") && groupRate(r, "Demons") == 2);
+    pruneGroupRate(r, "", false);
+    ensure("an empty tag prunes nothing", groupRate(r, "Demons") == 2);
+
+    // per-actor override scene round trip, including rate_offset
+    for (S32 offset : {-1, 0, 1, 2})
+    {
+        ActorOverride ov; ov.mode = 2; ov.rate = 9.5f; ov.what = 1; ov.role = 2; ov.rateOffset = offset;
+        const ActorOverride back = readOverride(writeOverride(ov));
+        ensure("override round trip", back.mode == 2 && back.rate == 9.5f && back.what == 1 && back.role == 2 &&
+            back.rateOffset == offset);
+    }
+    ActorOverride offset_only; offset_only.rateOffset = 2;
+    const LLSD offset_data = writeOverride(offset_only);
+    ensure("a rate-offset-only override is saved", offset_data.isMap() && offset_data["rate_offset"].asInteger() == 2);
+    ensure("an all-default override saves nothing", !writeOverride(ActorOverride()).isDefined());
+    ActorOverride same_only; same_only.rateOffset = 0;
+    ensure("same (0) is a saved choice, not the default", writeOverride(same_only).isDefined());
+    LLSD old_scene = LLSD::emptyMap();
+    old_scene["mode"] = 2; old_scene["rate"] = 8.0;
+    ensure_equals("a scene from before rate_offset reads as inherit", readOverride(old_scene).rateOffset, S32(-1));
+    LLSD hostile = LLSD::emptyMap();
+    hostile["rate_offset"] = 77; hostile["mode"] = 9; hostile["rate"] = 1000.0;
+    const ActorOverride clamped = readOverride(hostile);
+    ensure("hostile override values clamp", clamped.rateOffset == 2 && clamped.mode == 2 && clamped.rate == 30.f);
 }
 
 }

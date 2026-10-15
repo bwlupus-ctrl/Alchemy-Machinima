@@ -12,8 +12,11 @@
 
 #include <map>
 #include <limits>
+#include <memory>
 #include <vector>
 
+class ALSteppedFriendCache;
+class LLDirectorCast;
 class LLVOAvatar;
 class LLViewerObject;
 
@@ -27,6 +30,9 @@ public:
 
     static ALSteppedAnimRuntime& instance();
     static void initialize();
+    ~ALSteppedAnimRuntime();
+    // The sanitized page config, for the panel's Effective readout (same function the planner reads).
+    ALSteppedAnim::Config configSnapshot() const { return readConfig(); }
 
     void beginFrame();
     void applyHeld();
@@ -87,6 +93,7 @@ private:
 
     ALSteppedAnim::Config readConfig() const;
     void collectActors();
+    void refreshCastCache(const LLDirectorCast& cast);
     bool eligible(const LLVOAvatar* avatar) const;
     void readPose(LLVOAvatar* avatar, Entry& entry, ALSteppedAnim::PoseBuffer& out);
     void writeOverlay(LLVOAvatar* avatar, Entry& entry, const ALSteppedAnim::PoseBuffer& render);
@@ -102,6 +109,19 @@ private:
     void updateRotoMatch();
     void resetEntryHistory(Entry& entry);
     void deactivate();
+
+    // Rebuilt only when the cast / scene revision changes (not every frame): cast order and the
+    // cast-group rate offsets by member id.
+    struct CastCache
+    {
+        bool valid = false;
+        U64 sceneRevision = 0;
+        U64 castRevision = 0;
+        std::map<LLUUID, S32> order;
+        std::map<LLUUID, S32> groupOffsets;
+    };
+    CastCache mCastCache;
+    std::unique_ptr<ALSteppedFriendCache> mFriends; // only alive while the Friends scope is in use
 
     ALSteppedAnim::Config mConfig;
     F64 mTime = 0.;

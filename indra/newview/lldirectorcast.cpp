@@ -13,6 +13,7 @@
 
 #include "aldirectorswitcher.h"
 #include "alghoststudio.h"
+#include "alsteppedanim.h"          // group rate offsets, per-actor override (de)serialisation
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "llagentdata.h"             // gAgentID (stable even while self avatar is unavailable)
 #include "llghostavatar.h"          // LLGhostAvatar complete type for resolveEntityClone() upcast
@@ -151,6 +152,17 @@ void sanitizeActorStyle(LLDirectorCast::ActorStyle& style)
     style.mStepped.mRateOffset = llclamp(style.mStepped.mRateOffset, -1, 2);
 }
 
+ALSteppedAnim::ActorOverride toSteppedOverride(const LLDirectorCast::ActorStyle::SteppedOverride& value)
+{
+    ALSteppedAnim::ActorOverride out;
+    out.mode = value.mMode;
+    out.rate = value.mRate;
+    out.what = value.mWhat;
+    out.role = value.mRole;
+    out.rateOffset = value.mRateOffset;
+    return out;
+}
+
 LLSD writeActorStyle(const LLDirectorCast::ActorStyle& input)
 {
     LLDirectorCast::ActorStyle style = input;
@@ -183,18 +195,8 @@ LLSD writeActorStyle(const LLDirectorCast::ActorStyle& input)
     data["distortion_amount"] = style.mDistortionAmount;
     data["brightness"] = style.mBrightness;
     data["effect_fps"] = style.mEffectFps;
-    const LLDirectorCast::ActorStyle::SteppedOverride& stepped = style.mStepped;
-    if (stepped.mMode != 0 || stepped.mRate != 12.f || stepped.mWhat != -1 || stepped.mRole != 0 ||
-        stepped.mRateOffset != -1)
-    {
-        LLSD value = LLSD::emptyMap();
-        value["mode"] = stepped.mMode;
-        value["rate"] = stepped.mRate;
-        value["what"] = stepped.mWhat;
-        value["role"] = stepped.mRole;
-        if (stepped.mRateOffset != -1) value["rate_offset"] = stepped.mRateOffset;
-        data["stepped"] = value;
-    }
+    const LLSD stepped = ALSteppedAnim::writeOverride(toSteppedOverride(style.mStepped));
+    if (stepped.isDefined()) data["stepped"] = stepped;
     return data;
 }
 
@@ -237,12 +239,12 @@ LLDirectorCast::ActorStyle readActorStyle(const LLSD& data)
     if (data.has("effect_fps"))       style.mEffectFps = static_cast<F32>(data["effect_fps"].asReal());
     if (data.has("stepped") && data["stepped"].isMap())
     {
-        const LLSD& value = data["stepped"];
-        if (value.has("mode")) style.mStepped.mMode = value["mode"].asInteger();
-        if (value.has("rate")) style.mStepped.mRate = static_cast<F32>(value["rate"].asReal());
-        if (value.has("what")) style.mStepped.mWhat = value["what"].asInteger();
-        if (value.has("role")) style.mStepped.mRole = value["role"].asInteger();
-        if (value.has("rate_offset")) style.mStepped.mRateOffset = value["rate_offset"].asInteger();
+        const ALSteppedAnim::ActorOverride value = ALSteppedAnim::readOverride(data["stepped"]);
+        style.mStepped.mMode = value.mode;
+        style.mStepped.mRate = value.rate;
+        style.mStepped.mWhat = value.what;
+        style.mStepped.mRole = value.role;
+        style.mStepped.mRateOffset = value.rateOffset;
     }
     sanitizeActorStyle(style);
     return style;
@@ -1195,7 +1197,7 @@ void LLDirectorCast::remove(const LLUUID& id)
     }
     // leaving the cast also leaves the start queue, and may retire the group
     cancelPendingStart(actor_id);
-    pruneGroupDelay(group);
+    pruneGroupData(group);
 }
 
 void LLDirectorCast::toggle(const LLUUID& id)
@@ -1891,7 +1893,7 @@ void LLDirectorCast::setGroup(const LLUUID& id, const std::string& name)
         m->mGroup = name;   // "" = ungroup; no registry to keep in sync
         if (old != name)
         {
-            pruneGroupDelay(old);   // retagging the last member retires the group
+            pruneGroupData(old);   // retagging the last member retires the group
             touchScene();
         }
     }
@@ -1968,6 +1970,8 @@ bool LLDirectorCast::renameGroup(const std::string& old_name, const std::string&
         }
         mGroupDelays.erase(old_name);
     }
+    // the stepped rate rides along by the same rule (the target's own rate wins on a merge)
+    ALSteppedAnim::renameGroupRate(mGroupRates, old_name, new_name);
     touchScene();
     return true;
 }
@@ -1988,6 +1992,7 @@ bool LLDirectorCast::dissolveGroup(const std::string& name)
         }
     }
     mGroupDelays.erase(name);
+    mGroupRates.erase(name);
     if (any)
         touchScene();
     return any;
@@ -2018,11 +2023,29 @@ F32 LLDirectorCast::getGroupDelay(const std::string& name) const
     return it != mGroupDelays.end() ? it->second : 0.f;
 }
 
-void LLDirectorCast::pruneGroupDelay(const std::string& name)
+S32 LLDirectorCast::getGroupRate(const std::string& name) const
+{
+    return ALSteppedAnim::groupRate(mGroupRates, name);
+}
+
+void LLDirectorCast::setGroupRate(const std::string& name, S32 offset)
+{
+    if (name.empty())
+    {
+        return;
+    }
+    const S32 old_offset = getGroupRate(name);
+    ALSteppedAnim::setGroupRate(mGroupRates, name, offset);
+    if (old_offset != getGroupRate(name))
+        touchScene();
+}
+
+void LLDirectorCast::pruneGroupData(const std::string& name)
 {
     if (!name.empty() && membersInGroup(name).empty())
     {
         mGroupDelays.erase(name);
+        ALSteppedAnim::pruneGroupRate(mGroupRates, name, false);
     }
 }
 
@@ -2320,6 +2343,8 @@ LLSD LLDirectorCast::sceneData() const
         }
     }
     data["group_delays"] = delays;
+    // per-group stepped rate offsets ride with the scene beside the delays (same live-groups rule)
+    data["group_rates"] = ALSteppedAnim::writeGroupRates(mGroupRates, getGroupNames());
 
     // [AvatarLightResponse] each cast member's light response rides with the scene (a null id would mean You)
     std::vector<LLUUID> light_response_ids;
@@ -2345,6 +2370,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         LLActorMover::instance().clearPath(old_member.mId);
     }
     mGroupDelays.clear();
+    mGroupRates.clear();
     mCast.clear();
     ++mCastRevision; // [GhostPanelPerf] wholesale membership replace (also bumped per loaded member)
     touchScene();
@@ -2582,6 +2608,27 @@ void LLDirectorCast::applySceneData(const LLSD& data)
             if (!membersInGroup(it->first).empty())
             {
                 setGroupDelay(it->first, (F32)it->second.asReal());
+            }
+        }
+    }
+
+    // group stepped rates (absent in older scenes); only groups some loaded member carries are
+    // kept. One-time migration: a scene that predates cast-owned group rates takes over the
+    // retired viewer-wide StepAnimGroupRates map for the groups it has, and the setting is then
+    // emptied so the stale tags never apply to a later scene that reuses the names.
+    {
+        const std::vector<std::string> live_groups = getGroupNames();
+        if (data.has("group_rates"))
+        {
+            mGroupRates = ALSteppedAnim::readGroupRates(data["group_rates"], live_groups);
+        }
+        else
+        {
+            const LLSD legacy = gSavedSettings.getLLSD("StepAnimGroupRates");
+            if (legacy.isMap() && legacy.size() > 0)
+            {
+                mGroupRates = ALSteppedAnim::readGroupRates(legacy, live_groups);
+                gSavedSettings.setLLSD("StepAnimGroupRates", LLSD::emptyMap());
             }
         }
     }

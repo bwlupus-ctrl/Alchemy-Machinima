@@ -6,11 +6,13 @@
 #define AL_STEPPED_ANIM_H
 
 #include "llquaternion.h"
+#include "llsd.h"
 #include "stdtypes.h"
 #include "v3math.h"
 
 #include <array>
 #include <limits>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -89,6 +91,24 @@ struct ActorOverride
     S32 rateOffset = -1; // -1 inherit the group/page, 0 same, 1 +1 step, 2 +2 steps
 };
 ActorOverride sanitize(const ActorOverride& raw);
+// Scene (de)serialisation of the per-actor override, shared by the cast and the tests.
+// The write returns an undefined LLSD for an all-default override (nothing is saved);
+// an older scene without "rate_offset" reads back as -1 (inherit).
+LLSD writeOverride(const ActorOverride& ov);
+ActorOverride readOverride(const LLSD& data);
+
+// Cast-group rate offsets (ERateOffset, group tag -> offset). They live in the cast's group
+// data and travel with the scene exactly like the group start delays: a rename carries the
+// rate (renaming onto an existing group keeps the target's), a group without members sheds it.
+typedef std::map<std::string, S32> GroupRates;
+S32 groupRate(const GroupRates& rates, const std::string& group);   // 0 (same) when none
+void setGroupRate(GroupRates& rates, const std::string& group, S32 offset); // 0 erases
+void renameGroupRate(GroupRates& rates, const std::string& old_name, const std::string& new_name);
+void pruneGroupRate(GroupRates& rates, const std::string& group, bool group_has_members);
+// Only groups in `live_groups` are written; an empty map writes an empty LLSD map.
+LLSD writeGroupRates(const GroupRates& rates, const std::vector<std::string>& live_groups);
+// Only groups that still have members are kept (no stale registry). Values clamp to 0-3.
+GroupRates readGroupRates(const LLSD& data, const std::vector<std::string>& live_groups);
 
 struct ActorFacts
 {
@@ -120,6 +140,22 @@ struct Assignment
     U8 heldClasses = 0;
 };
 
+// One pure rate decision for the planner and the panel's Effective readout: the page rate
+// (Fixed / Adaptive fast / Mixed background-or-target), the actor's own settings, and the
+// group / per-actor offset. The per-actor seed variation is applied afterwards by varyRate().
+struct RateChoice
+{
+    bool stepped = false;      // false: kept smooth (Never, Smooth group, rate below 2 fps)
+    bool adaptive = false;
+    F32 rate = 0.f;            // after the offset, before the seed variation
+    F32 fastRate = 0.f;        // adaptive fast rate after the offset, 0 otherwise
+    S32 offset = RATE_SAME;    // offset actually applied (RATE_SAME while Match Roto Ink locks it)
+    F32 variation = 0.f;       // largest step-length spread; 0 when none or locked
+    bool rotoLocked = false;   // Match Roto Ink on: offsets and variation would break the Roto cadence
+    bool rotoSuppressed = false; // ... and something was actually switched off by it
+};
+// `selected` is whether the actor is the stepped target (Mixed uses it, an own Mixed role beats it).
+RateChoice resolveRate(const Config&, const ActorOverride&, bool selected, S32 group_offset);
 Assignment resolveActor(const Config&, const ActorFacts&, F64 roto_phase);
 // Scope + include-self + distance rules (T1-T3). Does not apply the per-actor overrides,
 // exclusions or the actor cap, which resolveActor / applyActorCap apply afterwards (T4).
@@ -128,7 +164,11 @@ bool scopeIncludes(const Config&, const ActorFacts&);
 U64 mixSeed(U64 digest, U32 user_seed);
 // Deterministic per-actor step-length factor in [1, 1 + variation] (unquantised).
 F32 rateFactor(U64 seed, F32 variation);
-// Applies the factor quantised to whole base-grid frames. Never faster than `rate`, never below 2 fps.
+// Multiplies the actor's own step length by the factor, quantised on the actor's own grid:
+// an actor that steps in whole base frames (12 fps on a 24 base = 2 frames) gets a whole number
+// of base frames (2-4, so threes and fours); any other rate (10 or 30 fps on 24) lengthens by
+// a whole number of its own steps (x1 or x2). Never faster than `rate`, never below 2 fps and
+// never snapped to the base rate.
 F32 varyRate(F32 rate, U64 seed, F32 variation, S32 base_fps);
 // Group / per-actor coarser step: each hold lasts `offset` more base-grid frames (RATE_PLUS1/2 only).
 F32 offsetRate(F32 rate, S32 offset, S32 base_fps);

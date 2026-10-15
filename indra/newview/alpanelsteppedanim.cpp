@@ -25,13 +25,6 @@
 
 namespace
 {
-// Cached read for the draw path; the setting is only written from this panel.
-const LLSD& groupRates()
-{
-    static LLCachedControl<LLSD> rates(gSavedSettings, "StepAnimGroupRates");
-    return rates;
-}
-
 const char* offsetLabel(S32 offset)
 {
     switch (offset)
@@ -145,7 +138,10 @@ void ALPanelSteppedAnim::rebuildActors()
     const auto add_actor = [this](const LLUUID& id, const std::string& name, const LLDirectorCast::ActorStyle& style)
     {
         mActorTarget->add(name, id.asString());
-        const char* mode = style.mStepped.mMode == 2 ? "Own" : (style.mStepped.mMode == 1 ? "Never" : "Inherit");
+        // An actor that only carries a rate offset is not "Inherit": show the offset.
+        const LLDirectorCast::ActorStyle::SteppedOverride& ov = style.mStepped;
+        const std::string mode = ov.mMode == 2 ? "Own" : (ov.mMode == 1 ? "Never"
+            : (ov.mRateOffset >= 0 ? std::string("Rate: ") + offsetLabel(ov.mRateOffset) : std::string("Inherit")));
         LLSD row;
         row["id"] = id;
         row["columns"][0]["column"] = "name";
@@ -171,9 +167,11 @@ void ALPanelSteppedAnim::refreshActor()
     mRefreshing = true;
     if (mActorOverride) mActorOverride->setCurrentByIndex(style.mStepped.mMode);
     if (mActorRate) mActorRate->setValue(style.mStepped.mRate);
-    if (mActorSteps) mActorSteps->setCurrentByIndex(style.mStepped.mWhat + 1);
+    // Inherit (-1) is a real, selectable choice: select by value so the combo always shows the
+    // selected actor's own setting and never keeps the previous actor's.
+    if (mActorSteps) mActorSteps->setValue(LLSD(style.mStepped.mWhat));
     if (mActorRole) mActorRole->setCurrentByIndex(style.mStepped.mRole);
-    if (mActorOffset) mActorOffset->setCurrentByIndex(style.mStepped.mRateOffset + 1);
+    if (mActorOffset) mActorOffset->setValue(LLSD(style.mStepped.mRateOffset));
     mRefreshing = false;
     refreshConditionalRows();
 }
@@ -189,9 +187,9 @@ void ALPanelSteppedAnim::writeActor()
     LLDirectorCast::ActorStyle style = cast.getActorStyle(id);
     if (mActorOverride) style.mStepped.mMode = llclamp(mActorOverride->getCurrentIndex(), 0, 2);
     if (mActorRate) style.mStepped.mRate = llclamp((F32)mActorRate->getValue().asReal(), 2.f, 30.f);
-    if (mActorSteps) style.mStepped.mWhat = llclamp(mActorSteps->getCurrentIndex() - 1, -1, 1);
+    if (mActorSteps) style.mStepped.mWhat = llclamp(mActorSteps->getSelectedValue().asInteger(), -1, 1);
     if (mActorRole) style.mStepped.mRole = llclamp(mActorRole->getCurrentIndex(), 0, 2);
-    if (mActorOffset) style.mStepped.mRateOffset = llclamp(mActorOffset->getCurrentIndex() - 1, -1, 2);
+    if (mActorOffset) style.mStepped.mRateOffset = llclamp(mActorOffset->getSelectedValue().asInteger(), -1, 2);
     cast.setActorStyle(id, style);
     rebuildActors();
     refreshActor();
@@ -247,12 +245,9 @@ void ALPanelSteppedAnim::onGroupOffsetCommit()
 {
     if (mRefreshing || !mGroupOffset) return;
     const std::string name = selectedGroup();
-    if (name.empty()) return;
-    LLSD rates = gSavedSettings.getLLSD("StepAnimGroupRates");
-    if (!rates.isMap()) rates = LLSD::emptyMap();
-    const S32 offset = llclamp(mGroupOffset->getCurrentIndex(), 0, 3);
-    if (offset == 0) rates.erase(name); else rates[name] = offset;
-    gSavedSettings.setLLSD("StepAnimGroupRates", rates);
+    if (name.empty()) return; // "No cast groups" placeholder: nothing to rate
+    // Group rates are cast data (saved with the scene), keyed by the group tag.
+    LLDirectorCast::instance().setGroupRate(name, llclamp(mGroupOffset->getCurrentIndex(), 0, 3));
     syncGroups(true);
 }
 
@@ -260,10 +255,12 @@ void ALPanelSteppedAnim::onGroupOffsetCommit()
 void ALPanelSteppedAnim::refreshGroupOffset()
 {
     if (!mGroupOffset) return;
-    const LLSD& rates = groupRates();
     const std::string name = selectedGroup();
+    const bool has_group = !name.empty();
     mRefreshing = true;
-    mGroupOffset->setCurrentByIndex(name.empty() || !rates.has(name) ? 0 : llclamp(rates[name].asInteger(), 0, 3));
+    mGroupOffset->setEnabled(has_group);
+    if (mGroupPick) mGroupPick->setEnabled(has_group);
+    mGroupOffset->setCurrentByIndex(has_group ? LLDirectorCast::instance().getGroupRate(name) : 0);
     mRefreshing = false;
 }
 
@@ -273,13 +270,15 @@ void ALPanelSteppedAnim::syncGroups(bool force)
     if (!mGroupPick || !mGroupList) return;
     if (!force && mGroupTimer.getElapsedTimeF32() < 0.5f) return;
     mGroupTimer.reset();
-    const LLSD& rates = groupRates();
-    const std::vector<std::string> names = LLDirectorCast::instance().getGroupNames();
+    const LLDirectorCast& cast = LLDirectorCast::instance();
+    const std::vector<std::string> names = cast.getGroupNames();
     std::string signature;
     for (const std::string& name : names)
-        signature += name + "=" + std::to_string(rates.has(name) ? rates[name].asInteger() : 0) + ";";
-    if (!force && signature == mGroupListSignature) return;
-    const bool same_names = names == mGroupNames;
+        signature += name + "=" + std::to_string(cast.getGroupRate(name)) + ";";
+    if (!force && mGroupsSynced && signature == mGroupListSignature) return;
+    // The first sync always rebuilds, so nothing baked into the layout survives.
+    const bool same_names = mGroupsSynced && names == mGroupNames;
+    mGroupsSynced = true;
     mGroupListSignature = signature;
     mGroupNames = names;
     mRefreshing = true;
@@ -287,9 +286,18 @@ void ALPanelSteppedAnim::syncGroups(bool force)
     {
         const std::string keep = selectedGroup();
         mGroupPick->removeall();
-        for (const std::string& name : names) mGroupPick->add(name, name);
-        if (!names.empty())
+        if (names.empty())
+        {
+            // No cast groups (the common case): a disabled placeholder with an empty value.
+            mGroupPick->add("No cast groups", LLSD(std::string()), ADD_BOTTOM, false);
+            mGroupPick->setValue(LLSD(std::string()));
+            mGroupPick->setLabel(std::string("No cast groups"));
+        }
+        else
+        {
+            for (const std::string& name : names) mGroupPick->add(name, name);
             mGroupPick->setValue(std::find(names.begin(), names.end(), keep) != names.end() ? keep : names.front());
+        }
     }
     mGroupList->deleteAllItems();
     for (const std::string& name : names)
@@ -299,7 +307,7 @@ void ALPanelSteppedAnim::syncGroups(bool force)
         row["columns"][0]["column"] = "name";
         row["columns"][0]["value"] = name;
         row["columns"][1]["column"] = "value";
-        row["columns"][1]["value"] = offsetLabel(rates.has(name) ? llclamp(rates[name].asInteger(), 0, 3) : 0);
+        row["columns"][1]["value"] = offsetLabel(cast.getGroupRate(name));
         mGroupList->addElement(row, ADD_BOTTOM);
     }
     mRefreshing = false;
@@ -349,32 +357,37 @@ void ALPanelSteppedAnim::refreshConditionalRows()
 void ALPanelSteppedAnim::refreshActorEffective()
 {
     if (!mActorEffective) return;
-    static LLCachedControl<F32> rate_setting(gSavedSettings, "StepAnimRate");
-    static LLCachedControl<S32> base_setting(gSavedSettings, "StepAnimBaseFPS");
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID id = selectedActor();
-    const LLDirectorCast::ActorStyle::SteppedOverride& ov = cast.getActorStyle(id).mStepped;
-    const std::string group = cast.getGroup(id.isNull() ? gAgentID : id);
-    S32 group_offset = 0;
-    if (!group.empty())
-    {
-        const LLSD& rates = groupRates();
-        if (rates.has(group)) group_offset = llclamp(rates[group].asInteger(), 0, 3);
-    }
-    const F32 own_rate = ov.mMode == 2 ? ov.mRate : (F32)rate_setting;
-    const std::array<F32, 6> key = {{own_rate, (F32)(S32)base_setting, (F32)ov.mRateOffset,
-                                     (F32)group_offset, (F32)ov.mMode, 0.f}};
+    const LLDirectorCast::ActorStyle::SteppedOverride& style = cast.getActorStyle(id).mStepped;
+    ALSteppedAnim::ActorOverride ov;
+    ov.mode = style.mMode; ov.rate = style.mRate; ov.what = style.mWhat; ov.role = style.mRole;
+    ov.rateOffset = style.mRateOffset;
+    const S32 group_offset = cast.getGroupRate(cast.getGroup(id.isNull() ? gAgentID : id));
+    // The same pure function the planner uses (sanitised base fps, Mixed background, Adaptive fast
+    // rate, group / actor offsets, Roto Ink cadence); the seed variation is shown as a range.
+    const ALSteppedAnim::Config config = ALSteppedAnimRuntime::instance().configSnapshot();
+    const ALSteppedAnim::RateChoice choice = ALSteppedAnim::resolveRate(config, ov, true, group_offset);
+    const std::array<F32, 8> key = {{choice.stepped ? 1.f : 0.f, choice.rate, choice.fastRate, (F32)choice.offset,
+                                     choice.variation, choice.rotoSuppressed ? 1.f : 0.f,
+                                     (F32)(ov.mode * 4 + (ov.rateOffset >= 0 ? 1 : 0) + (group_offset == 3 ? 2 : 0)),
+                                     choice.adaptive ? 1.f : 0.f}};
     if (key == mEffectiveKey) return;
     mEffectiveKey = key;
-    const S32 offset = ov.mRateOffset >= 0 ? ov.mRateOffset : (ov.mMode == 2 ? 0 : group_offset);
     std::string text;
-    if (ov.mMode == 1 || offset == ALSteppedAnim::RATE_SMOOTH)
-        text = ov.mMode == 1 ? "Smooth (never stepped)" : "Smooth (group)";
+    if (!choice.stepped)
+        text = ov.mode == 1 ? "Smooth (never stepped)"
+            : (group_offset == ALSteppedAnim::RATE_SMOOTH && ov.rateOffset < 0 && ov.mode != 2
+                   ? "Smooth (group)" : "Smooth (no rate)");
     else
     {
-        const F32 rate = ALSteppedAnim::offsetRate(ALSteppedAnim::effectiveRate(own_rate), offset, (S32)base_setting);
-        text = llformat("%.1f fps", rate);
-        if (offset > 0) text += llformat(" (%s%s)", offsetLabel(offset), ov.mRateOffset >= 0 ? ", own" : ", group");
+        text = llformat("%.1f fps", choice.rate);
+        if (choice.adaptive && choice.fastRate > 0.f) text += llformat(", fast %.1f fps", choice.fastRate);
+        if (choice.offset > 0)
+            text += llformat(" (%s%s)", offsetLabel(choice.offset), ov.rateOffset >= 0 ? ", own" : ", group");
+        if (choice.variation > 0.f)
+            text += llformat(" + up to %d%% longer steps", (S32)std::floor(choice.variation * 100.f + .5f));
+        if (choice.rotoSuppressed) text += " (Roto Ink cadence: offsets and variation off)";
     }
     mActorEffective->setText(text);
 }
