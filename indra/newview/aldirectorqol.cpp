@@ -9,6 +9,8 @@
 
 #if LL_WINDOWS
 #include "llwin32headers.h"   // CreateFileW, CloseHandle, GetLastError
+#include <tlhelp32.h>         // CreateToolhelp32Snapshot, Process32FirstW, Process32NextW
+#include <cwchar>             // wcsrchr, _wcsicmp
 #else
 #include <errno.h>
 #include <fcntl.h>            // open
@@ -447,6 +449,37 @@ bool ALDirectorQol::isReservedSceneName(const std::string& name)
 bool ALDirectorQol::legacyLiveFileOldEnough(S64 now_seconds, S64 mtime_seconds)
 {
     return now_seconds - mtime_seconds > kLegacyLiveRecoveryMinAgeSeconds;
+}
+
+bool ALDirectorQol::otherViewerProcessRunning()
+{
+#if LL_WINDOWS
+    // Older viewers that never lock their autosave file run from the same executable image name, so a process
+    // with that name (other than this one) may be the owner of a legacy plain autosave file.
+    std::vector<wchar_t> module_path(32768); // the longest Windows path, in wide characters
+    const DWORD length = GetModuleFileNameW(nullptr, module_path.data(), (DWORD)module_path.size());
+    if (length == 0 || length >= module_path.size())
+        return true; // cannot name our own image: nothing can be proven
+    const wchar_t* image_name = wcsrchr(module_path.data(), L'\\');
+    image_name = image_name ? image_name + 1 : module_path.data();
+
+    const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE)
+        return true; // the process list cannot be read: assume a viewer may be running
+    const DWORD my_pid = GetCurrentProcessId();
+    PROCESSENTRY32W entry{};
+    entry.dwSize = sizeof(entry);
+    bool running = false;
+    BOOL more = Process32FirstW(snapshot, &entry);
+    if (!more)
+        running = GetLastError() != ERROR_NO_MORE_FILES; // an empty list is "none"; any other failure is unknown
+    for (; more && !running; more = Process32NextW(snapshot, &entry))
+        running = entry.th32ProcessID != my_pid && _wcsicmp(entry.szExeFile, image_name) == 0;
+    CloseHandle(snapshot);
+    return running;
+#else
+    return false; // POSIX: the legacy age gate alone decides
+#endif
 }
 
 // ---------------------------------------------------------------------------

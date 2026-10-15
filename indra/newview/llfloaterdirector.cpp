@@ -401,10 +401,11 @@ void ensureOwnLiveLock(const std::string& live_path)
     }
 }
 
-// Choose this session's live file name and lock it. Runs once at login, AFTER the previous sessions' files were
-// collected: a stale same-pid leftover (a crashed process whose pid this one reused) that could not be moved
-// yet is still present, and autosave must not write over it, so a unique "-<n>" variant is used instead and
-// the leftover waits for a later login's collection.
+// Choose this session's live file name and lock it. Runs once at login, BEFORE moveLiveBackupsAtLogin: the lock is
+// taken first, so a collector in another viewer can never hold this session's future slot. A stale same-pid
+// leftover (a crashed process whose pid this one reused) is still present at this point, so autosave must not
+// write over it: a unique "-<n>" variant is used instead, and the leftover is collected by this login's move
+// (or waits for a later login when it cannot be moved yet).
 void beginOwnLiveSession(const std::string& scenes_dir)
 {
     std::vector<std::string> live_names;
@@ -417,6 +418,28 @@ void beginOwnLiveSession(const std::string& scenes_dir)
         LL_WARNS("Director") << "A stale Director autosave file with this process id could not be moved; autosave uses "
                              << sOwnLiveName << " instead" << LL_ENDL;
     ensureOwnLiveLock(gDirUtilp->add(scenes_dir, sOwnLiveName));
+}
+
+// May a legacy plain ".director_recovery.xml" (never locked by its writer) be collected now? Only when it is old
+// enough that no running older viewer is autosaving it AND no other viewer process of this executable is running.
+// Logs the reason when it may not. path is the full path, file its base name.
+bool legacyLiveFileCollectable(const std::string& path, const std::string& file)
+{
+    llstat legacy_stat;
+    if (LLFile::stat(path, &legacy_stat) != 0 ||
+        !ALDirectorQol::legacyLiveFileOldEnough(static_cast<S64>(time(nullptr)), static_cast<S64>(legacy_stat.st_mtime)))
+    {
+        LL_INFOS("Director") << "Legacy Director autosave " << file << " is too recent to collect; left for a later login"
+                             << LL_ENDL;
+        return false;
+    }
+    if (ALDirectorQol::otherViewerProcessRunning())
+    {
+        LL_INFOS("Director") << "Legacy Director autosave " << file << " may belong to a running viewer; left for a later login"
+                             << LL_ENDL;
+        return false;
+    }
+    return true;
 }
 
 enum class MoveResult
@@ -4651,8 +4674,8 @@ void LLFloaterDirector::startRecoveryService()
     }
     sRecoveryServiceStarted = true;
     initializeSceneRecovery();
+    beginOwnLiveSession(scenesDir()); // own lock first: a collector must never hold our future slot's lock
     moveLiveBackupsAtLogin(); // once per session, before the first autosave can be written
-    beginOwnLiveSession(scenesDir());
     gIdleCallbacks.addFunction(&LLFloaterDirector::sceneRecoveryIdle, nullptr);
 }
 
@@ -4668,22 +4691,16 @@ void LLFloaterDirector::moveLiveBackupsAtLogin()
     const std::vector<std::string> listing = listFileNames(scenes, ".director_recovery*");
     for (const std::string& file : listing)
     {
-        // Every live file that is not this process's own (other pids, the legacy plain name). This
-        // process has written nothing yet, so even a same-pid file here is a stale leftover.
+        // This session's own live file was chosen and locked by beginOwnLiveSession before this runs: never collected.
+        if (file == sOwnLiveName)
+            continue;
+        // Every live file that is not this process's own (other pids, the legacy plain name). A same-pid file under
+        // any other name is a stale leftover of a crashed process whose pid this one reused.
         const bool live = ALDirectorQol::isPreviousSessionLiveFile(file, my_pid, false);
-        // A legacy plain file (older builds never lock it) is collected only once it is old enough that no running
-        // older viewer can still be autosaving it. A fresher one is left for a later login.
-        if (live && ALDirectorQol::isLegacyLiveRecoveryName(file))
-        {
-            llstat legacy_stat;
-            if (LLFile::stat(gDirUtilp->add(scenes, file), &legacy_stat) != 0 ||
-                !ALDirectorQol::legacyLiveFileOldEnough(static_cast<S64>(time(nullptr)), static_cast<S64>(legacy_stat.st_mtime)))
-            {
-                LL_INFOS("Director") << "Legacy Director autosave " << file << " is too recent to collect; left for a later login"
-                                     << LL_ENDL;
-                continue;
-            }
-        }
+        // A legacy plain file (older builds never lock it) is collected only when it is old enough and no other viewer
+        // process is running (see legacyLiveFileCollectable). Otherwise it is left for a later login.
+        if (live && ALDirectorQol::isLegacyLiveRecoveryName(file) && !legacyLiveFileCollectable(gDirUtilp->add(scenes, file), file))
+            continue;
         // The previous build's kept backups migrate into crash_backups too, once (they are
         // never offered: they were already answered).
         if (live || ALDirectorQol::isLegacyKeptBackupName(file))
@@ -4769,6 +4786,13 @@ void LLFloaterDirector::retryPendingBackupMoves()
             continue;
         }
         const std::string file = gDirUtilp->getBaseFileName(*it, false);
+        // A queued legacy plain file gets the same checks as at login. One that now fails them (touched since, or another
+        // viewer process is running) belongs to a running viewer: drop it from the queue; a later login decides again.
+        if (ALDirectorQol::isLegacyLiveRecoveryName(file) && !legacyLiveFileCollectable(*it, file))
+        {
+            it = sUnmovedLiveBackups.erase(it);
+            continue;
+        }
         // Re-check the owner is still dead (never collect a running viewer's autosave on a retry either).
         LiveLock claim;
         if (ALDirectorQol::isLiveRecoveryFile(file))

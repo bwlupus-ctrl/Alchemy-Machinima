@@ -97,8 +97,14 @@ bool isLegacyKeptBackupName(const std::string& file_name);
 // A legacy plain ".director_recovery.xml" (written by builds that never lock) is collected at login only when its
 // modification time is older than kLegacyLiveRecoveryMinAgeSeconds: an older running viewer autosaves at least
 // every 5 minutes, so a fresher file may belong to one. Unix seconds; a modification time in the future is not old.
+// The age gate alone is not enough (older builds allow longer autosave intervals or none), so the file is also
+// collected only when otherViewerProcessRunning() is false.
 constexpr S64 kLegacyLiveRecoveryMinAgeSeconds = 600;
 bool legacyLiveFileOldEnough(S64 now_seconds, S64 mtime_seconds);
+// True when another process with this viewer's executable image name is running (this process excluded). Windows:
+// read from the process snapshot; if the snapshot cannot be read, true, because nothing can then be proven. POSIX:
+// always false, so there the age gate alone decides.
+bool otherViewerProcessRunning();
 
 // Ownership locks on live autosave files (protocol in llfloaterdirector.cpp). A lock is held by the viewer that
 // owns the live file; the collector takes the same lock to prove that owner is dead.
