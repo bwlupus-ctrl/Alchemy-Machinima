@@ -3312,6 +3312,12 @@ bool LLViewerWindow::handleKeyUp(KEY key, MASK mask)
         }
     }
 
+    // Functional self-test (in-world): a key release never reaches a gesture.
+    if (gViewerInput.worldInputSuspended())
+    {
+        return true;
+    }
+
     // Try for a new-format gesture
     if (LLGestureMgr::instance().triggerGestureRelease(key, mask))
     {
@@ -3434,6 +3440,20 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
                 }
             }
         }
+    }
+
+    // Functional self-test (in-world): after the keyboard-focus dispatch NOTHING below may
+    // run -- no menu navigation or accelerator (Edit.Undo would send 'Undo' to the sim),
+    // no tool key, no gesture trigger (a user gesture bound to a key sends chat or an
+    // animation), no Director hotkey, no auto-chat.  Process-local flag; never set in a
+    // normal session.
+    if (gViewerInput.worldInputSuspended())
+    {
+        if (keyboard_focus)
+        {
+            keyboard_focus->handleKey(key, mask, false);
+        }
+        return true;
     }
 
     // let menus handle navigation keys for navigation
@@ -3679,6 +3699,17 @@ bool LLViewerWindow::handleUnicodeChar(llwchar uni_char, MASK mask)
     // until all keystrokes have been entered. JC
     // HACK: Numeric keypad <enter> on Mac is Unicode 3
     // HACK: Control-M on Windows is Unicode 13
+    // Functional self-test (in-world): no Return remap into the user key bindings, and no
+    // menu jump-key handling; the character goes only to the keyboard-focus control.
+    if (gViewerInput.worldInputSuspended())
+    {
+        if (LLFocusableElement* suspended_focus = gFocusMgr.getKeyboardFocus())
+        {
+            suspended_focus->handleUnicodeChar(uni_char, false);
+            return true;
+        }
+        return false;
+    }
     if ((uni_char == 13 && mask != MASK_CONTROL && mask != MASK_SHIFT)
         || (uni_char == 3 && mask == MASK_NONE) )
     {
@@ -3993,6 +4024,12 @@ void LLViewerWindow::updateUI()
 
     bool handled = false;
 
+    // Functional self-test (in-world): the world gets NO hover at all -- no tool hover pick
+    // (LLToolPie::handleHover -> setHoverObject -> RequestObjectPropertiesFamily), no land or
+    // object hover tip, no media hover -- whatever the synthetic or real cursor is over,
+    // for the whole run and its logout.  UI hover (floaters, mouse captors) is unaffected.
+    const bool world_input_suspended = gViewerInput.worldInputSuspended();
+
     LLUICtrl* top_ctrl = gFocusMgr.getTopCtrl();
     LLMouseHandler* mouse_captor = gFocusMgr.getMouseCapture();
     LLView* captor_view = dynamic_cast<LLView*>(mouse_captor);
@@ -4259,7 +4296,7 @@ void LLViewerWindow::updateUI()
             {
                 LLTool *tool = LLToolMgr::getInstance()->getCurrentTool();
 
-                if(mMouseInWindow && tool)
+                if(mMouseInWindow && tool && !world_input_suspended)
                 {
                     handled = tool->handleHover(x, y, mask);
                 }
@@ -4350,7 +4387,7 @@ void LLViewerWindow::updateUI()
                 }
 
                 LLTool* current_tool = LLToolMgr::getInstance()->getCurrentTool();
-                if (!tool_tip_handled && current_tool)
+                if (!tool_tip_handled && current_tool && !world_input_suspended)
                 {
                     current_tool->screenPointToLocal(x, y, &local_x, &local_y);
                     tool_tip_handled = current_tool->handleToolTip(local_x, local_y, mask );
@@ -4362,7 +4399,7 @@ void LLViewerWindow::updateUI()
     {   // just have tools handle hover when UI is turned off
         LLTool *tool = LLToolMgr::getInstance()->getCurrentTool();
 
-        if(mMouseInWindow && tool)
+        if(mMouseInWindow && tool && !world_input_suspended)
         {
             handled = tool->handleHover(x, y, mask);
         }

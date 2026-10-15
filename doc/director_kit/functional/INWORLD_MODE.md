@@ -119,11 +119,11 @@ writes the partial CSV, and requests normal logout. The wrapper timeout defaults
 to the watchdog plus 8 minutes, then allows a further 60-second normal-exit grace
 before reporting any last-resort hard kill explicitly.
 
-## Input safety: global bindings and AFK (10/15)
+## Input safety: global bindings, world hover, key routing and AFK (10/15)
 
-The harness injects real mouse movement and clicks. Two viewer behaviours sit in
-front of the UI on that path, and both are closed fail-closed for the whole run
-(login and in-world):
+The harness injects real mouse movement, clicks and keys. Four viewer behaviours sit
+in front of the UI or behind it on those paths, and all are closed fail-closed for
+the whole run (login, in-world, teardown and logout):
 
 1. **Global key/mouse bindings.** `LLViewerWindow::handleAnyMouseClick` runs
    `gViewerInput.handleGlobalBindsMouse` before any UI dispatch
@@ -133,10 +133,12 @@ front of the UI on that path, and both are closed fail-closed for the whole run
    `LLViewerInput::setGlobalBindsSuspended(true)` from its constructor, before login;
    `handleGlobalBindsKeyDown/KeyUp/Mouse` then return without running anything.
    The flag is process-local (nothing is written to the user's bindings file, so a
-   crash needs no restore) and is cleared in `Runner::restore()`, which every
-   teardown path calls. Every injected event (`functionalInputSafe`) and every
-   pre-dispatch check refuses unless the suspension is in force, and the per-frame
-   guard fails the run if it is ever lifted.
+   crash needs no restore). It is NOT cleared by `Runner::restore()` (see 3): the
+   flags stay up through the logout and drop with the process; only
+   `abortForLogin()` lifts them, because that session continues as a normal one.
+   Every injected event (`functionalInputSafe`) and every pre-dispatch check refuses
+   unless the suspension is in force, and the per-frame guard fails the run if it is
+   ever lifted.
 2. **AFK.** An injected mouse move reaches `LLAgent::clearAFK()`
    (`LLViewerWindow::handleMouseMove`), which sends `ANIM_REQUEST_STOP` while the
    avatar is away. The harness never calls `clearAFK`. Instead: (a) once the account
@@ -149,6 +151,51 @@ front of the UI on that path, and both are closed fail-closed for the whole run
    `functionalInputSafe` refuses every injected move, click and key while away, so
    nothing is sent. An avatar that is already away at the start fails the same way
    before any click phase.
+3. **World hover (cursor over the world at teardown).** `restore()` hides the
+   Director and `requestQuit` closes the floaters, but the synthetic mouse point stays
+   where the last click was, and the real OS cursor may be anywhere in the window.
+   With nothing in front of it, `LLViewerWindow::updateUI` runs
+   `LLToolPie::handleHover` -> `LLSelectMgr::setHoverObject` ->
+   `RequestObjectPropertiesFamily` (and the hover parcel, land/object tips and media
+   hover). The second flag, `LLViewerInput::setWorldInputSuspended`, is set together
+   with the binds flag and gates this at four points: the two `tool->handleHover`
+   calls and the `handleToolTip` call in `updateUI` (`llviewerwindow.cpp`),
+   `LLToolPie::handleHover` and `handleToolTip` (`lltoolpie.cpp`), and
+   `LLSelectMgr::setHoverObject` (`llselectmgr.cpp`, the function that sends the
+   request). UI hover (floaters, captors) is unaffected. `restore()` first parks the
+   synthetic mouse on the main menu bar (persistent, opaque chrome;
+   `functionalParkMouse`, recorded as `teardown.mouse_parked`) and does not lift the
+   flags: they are lifted only by process exit after the logout completes (or by
+   `abortForLogin()`). The flag is process-local, set only by an in-world launch
+   request, so a normal session never has it.
+4. **Key routing.** `LLViewerWindow::handleKey` runs menu accelerators before focus
+   dispatch (Ctrl+Z -> `Edit.Undo` -> `LLSelectMgr::undo` sends `Undo` to the sim for
+   an undoable selection) and falls through to `LLGestureMgr::triggerGesture` /
+   `gGestureList.trigger` (a user gesture bound to the key sends chat or an
+   animation). The harness therefore never enters `handleKey`, `handleKeyUp` or
+   `handleUnicodeChar`: every keystroke is delivered straight to the target widget
+   (`functionalDeliverKey` -> `handleKeyHere`, `functionalDeliverChar` ->
+   `handleUnicodeCharHere`, `functionalSelectAll` -> the text control's own
+   `selectAll()`), each refusing unless the widget holds the keyboard focus. The
+   `sld_diffuse` Ctrl+Z is delivered only to a focused non-text control inside the
+   page (`light_response.undo_target_non_text_focus`); otherwise the row FAILs.
+   Defence in depth: while the world flag is set, `handleKey` stops after the
+   keyboard-focus dispatch (no menu navigation/accelerator, tool key, gesture,
+   Director hotkey or auto-chat), `handleKeyUp` never reaches a gesture release, and
+   `handleUnicodeChar` skips the Return remap and menu jump keys.
+
+Injection routes (every one in `aluiperfselftest.cpp`):
+
+| Injection | Route |
+| --- | --- |
+| mouse move (`functionalMoveMouse`) | `handleMouseMove` (AFK-guarded; hover gated) |
+| click down/up (`functionalMouseButton`) | `handleAnyMouseClick` (binds suspended; target preverified) |
+| slider/dial drag `updateUI()` | UI hover only (world tool hover gated) |
+| slider/dial arrow nudges, Tab, Esc | `widget->handleKeyHere` / `floater->handleKeyHere` direct |
+| Ctrl+Z (`sld_diffuse`) | `functionalDeliverKey` -> focused non-text control `handleKeyHere` |
+| Ctrl+A in text rows | `functionalSelectAll` -> `LLLineEditor/LLTextEditor::selectAll()` |
+| typed characters | `functionalDeliverChar` -> `handleUnicodeCharHere` |
+| Return after typing | not delivered (the old window route consumed it without reaching the widget) |
 
 ## Rule-phase click gate (10/15)
 
@@ -185,13 +232,18 @@ links, about 80 popover flows), i.e. roughly 3 to 12 minutes at 10-30 fps; the
 estimate comes from the queued tasks. The in-world run will not start it with less
 than 240 s of the watchdog left, or less than the estimate at an assumed 10 fps, and
 records a FAIL row asking for a larger `-InWorldWatchdogMin` instead. It reports its
-measured wall time and frame count in an `R1_REACHABILITY` `rule_phase_timing` row.
+measured wall time and frame count in an `R1_REACHABILITY` `rule_phase_timing` row
+(PASS only when the phase ran; when the budget or a precondition refused it the row is
+a SKIP and the refusal's own FAIL row carries the reason).
 The watchdog default is raised to 30 minutes and the wrapper timeout is the watchdog
 plus 8 minutes (9 at the login screen).
 
 R6 (connectedness) credits only an effect observed in this run: the control's own
 functional row must have run and passed. Skipped or excluded rows (everything outside
-the in-world allow-list) are reported as SKIP with their reason, never PASS.
+the in-world allow-list), KNOWN_GAP rows and rows excluded by a `version=` filter are
+reported as SKIP with their reason, never PASS and never FAIL. Rows for one control
+are read in run order and the final result wins: a FAIL followed by a PASS (a retry)
+is a PASS, a FAIL after the last PASS is a FAIL.
 
 ## Selection and Animation Explorer exclusions (10/12)
 

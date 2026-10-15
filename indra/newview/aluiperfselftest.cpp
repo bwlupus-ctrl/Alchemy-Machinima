@@ -1391,9 +1391,13 @@ public:
         {
             mFunctional = true;
             mInWorld = inworld_request;
-            // Whole run, login and in-world: no saved key/mouse binding (toggle_voice and
-            // friends) may run on a synthetic click.  Cleared in restore().
-            if (mInWorld) gViewerInput.setGlobalBindsSuspended(true);
+            // Whole run, login, in-world, teardown and logout: no saved key/mouse binding
+            // (toggle_voice and friends) may run on a synthetic click, and the world gets no
+            // hover, no menu accelerator and no gesture trigger.  Process-local; NOT lifted
+            // by restore() (the logout frames still have a cursor over the world) -- only
+            // abortForLogin() lifts it (the session then continues as a normal one), and
+            // process exit drops it.
+            if (mInWorld) functionalSetInputSuspended(true);
             std::vector<std::string> fields;
             LLStringUtil::getTokens(mRequest.substr(
                 inworld_request ? inworld_prefix.size() : functional_prefix.size()), fields, "|");
@@ -1510,6 +1514,8 @@ public:
         restoreDirectorAuditSettings();
         restoreInitialState();
         restore();
+        // The session continues as a normal one: nothing may stay suspended.
+        if (mInWorld) functionalSetInputSuspended(false);
         if (mFunctional)
         {
             restoreFunctionalRigState(false);
@@ -2769,8 +2775,20 @@ private:
             ALKitPage* page = findFirstView<ALKitPage>(mFunctionalPageRoot);
             const bool no_undo = shell && !shell->history().canUndo();
             if (page) page->setFocus(true);
-            functionalInjectKey('Z', MASK_CONTROL);
-            const bool undo_kept_store = no_undo && lightResponseEqual(snapshot, lightResponseSnapshot());
+            // Direct delivery to the focused NON-text control inside the page: never the
+            // window route (Edit.Undo would send 'Undo' to the sim for an undoable selection,
+            // an unconsumed Ctrl+Z reaches user gestures).  Refused unless a non-text
+            // control of the page holds the keyboard focus.
+            LLUICtrl* undo_target = dynamic_cast<LLUICtrl*>(gFocusMgr.getKeyboardFocus());
+            const bool undo_target_ok = page && undo_target && !undo_target->acceptsTextInput() &&
+                !dynamic_cast<LLLineEditor*>(undo_target) && !dynamic_cast<LLTextEditor*>(undo_target) &&
+                (undo_target == page || undo_target->hasAncestor(page));
+            const bool undo_delivered = undo_target_ok &&
+                functionalDeliverKey(undo_target, 'Z', MASK_CONTROL);
+            mFunctionalObserved["light_response"]["undo_target_non_text_focus"] = undo_target_ok;
+            mFunctionalObserved["light_response"]["undo_key_delivered_direct"] = undo_delivered;
+            const bool undo_kept_store = undo_delivered && no_undo &&
+                lightResponseEqual(snapshot, lightResponseSnapshot());
             const bool persist = gSavedSettings.getBOOL("AvatarLightResponsePersist");
             for (const char* name : {"AvatarLightResponseDebugTint", "CineLightRigActorMaskBias",
                                     "CineLightRigActorMaskDebug", "CineLightRigActorMaskDisable"})
@@ -4643,6 +4661,20 @@ private:
     //    for the whole run (LLViewerInput::setGlobalBindsSuspended: process-local,
     //    nothing persisted, so a crash needs no restore) and clears the suspension in
     //    restore().  Every injection REFUSES unless the suspension is in force.
+    //  * World interaction.  The same run also sets LLViewerInput::setWorldInputSuspended
+    //    (together with the binds flag, see functionalSetInputSuspended).  While set:
+    //    LLViewerWindow::updateUI runs NO tool hover (LLToolPie::handleHover ->
+    //    setHoverObject -> RequestObjectPropertiesFamily, hover parcel, media hover) and no
+    //    tool tip, whatever the cursor is over -- including the logout frames after
+    //    restore() has hidden the Director and requestQuit has closed the floaters; and
+    //    LLViewerWindow::handleKey/handleKeyUp run no menu accelerator (Edit.Undo ->
+    //    LLSelectMgr::undo -> 'Undo' to the sim), tool key, gesture trigger or hotkey.
+    //    The flags are therefore NOT lifted by restore(): they live until the logout has
+    //    finished and the process exits (abortForLogin() lifts them: the session continues).
+    //  * Keys.  No harness keystroke ever enters LLViewerWindow::handleKey.  Every key and
+    //    character is delivered straight to the target widget (functionalDeliverKey /
+    //    functionalDeliverChar -> handleKeyHere / handleUnicodeCharHere), after checking
+    //    that the widget is the keyboard focus (or holds it in a descendant).
     //  * AFK.  An injected mouse move reaches LLAgent::clearAFK()
     //    (LLViewerWindow::handleMouseMove), which sends ANIM_REQUEST_STOP while the
     //    avatar is away.  Input is refused while the avatar is away, the AFK timeout is
@@ -4672,10 +4704,11 @@ private:
     bool functionalInputSafe(std::string& reason) const
     {
         if (!mInWorld) return true;
-        if (!gViewerInput.globalBindsSuspended())
+        if (!gViewerInput.globalBindsSuspended() || !gViewerInput.worldInputSuspended())
         {
-            reason = "in-world: global key/mouse bindings are not suspended (a saved binding such "
-                     "as toggle_voice could run); input refused";
+            reason = "in-world: global key/mouse bindings or world interaction are not suspended "
+                     "(a saved binding such as toggle_voice, a hover pick or a menu accelerator "
+                     "could run); input refused";
             return false;
         }
         std::string why;
@@ -4712,26 +4745,113 @@ private:
             gViewerWindow->getWindow(), position, MASK_NONE, CLICK_LEFT, down, toolmgr);
     }
 
-    bool functionalInjectKey(KEY key, MASK mask)
+    // Both suspension flags move together.  Only the in-world run sets them.
+    static void functionalSetInputSuspended(bool suspended)
     {
-        std::string reason;
-        if (!gViewerWindow || !functionalInputSafe(reason))
-        {
-            if (!reason.empty()) mFunctionalLastClickReason = reason;
-            return false;
-        }
-        return gViewerWindow->handleKey(key, mask);
+        gViewerInput.setGlobalBindsSuspended(suspended);
+        gViewerInput.setWorldInputSuspended(suspended);
     }
 
-    bool functionalInjectChar(unsigned char ch)
+    // True when `target` is the keyboard focus or holds it in a descendant, i.e. a key
+    // delivered to it is what a user's key would have reached.
+    static bool functionalHoldsKeyboardFocus(LLView* target)
     {
+        LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+        return target && focus && (focus == target || focus->hasAncestor(target));
+    }
+
+    // The ONLY key route.  Straight to the widget; never LLViewerWindow::handleKey (whose
+    // menu accelerators and gesture triggers can message the simulator).  Returns whether
+    // the key was delivered; the widget's own handled result goes to `handled`.
+    bool functionalDeliverKey(LLView* target, KEY key, MASK mask, bool* handled = nullptr)
+    {
+        if (handled) *handled = false;
         std::string reason;
-        if (!gViewerWindow || !functionalInputSafe(reason))
+        if (!target || !gViewerWindow || !functionalInputSafe(reason))
         {
             if (!reason.empty()) mFunctionalLastClickReason = reason;
             return false;
         }
-        return gViewerWindow->handleUnicodeChar(static_cast<llwchar>(ch), MASK_NONE);
+        if (!target->getVisible() || !functionalHoldsKeyboardFocus(target))
+        {
+            mFunctionalLastClickReason = "key target does not hold keyboard focus";
+            return false;
+        }
+        ALKitHistory::noteKey(); // the window route noted every key; keep that observable
+        const bool result = target->handleKeyHere(key, mask);
+        if (handled) *handled = result;
+        return true;
+    }
+
+    // Character route: straight to the focused text control (never handleUnicodeChar, whose
+    // Return remap re-enters the user key bindings).
+    bool functionalDeliverChar(LLView* target, unsigned char ch)
+    {
+        std::string reason;
+        if (!target || !gViewerWindow || !functionalInputSafe(reason))
+        {
+            if (!reason.empty()) mFunctionalLastClickReason = reason;
+            return false;
+        }
+        if (!target->getVisible() || !functionalHoldsKeyboardFocus(target))
+        {
+            mFunctionalLastClickReason = "char target does not hold keyboard focus";
+            return false;
+        }
+        return target->handleUnicodeCharHere(static_cast<llwchar>(ch));
+    }
+
+    // Select-all as the text control itself performs it (the window's Ctrl+A is the Edit
+    // menu accelerator).  Only the two text widgets the harness types into.
+    bool functionalSelectAll(LLUICtrl* control)
+    {
+        std::string reason;
+        if (!control || !functionalInputSafe(reason))
+        {
+            if (!reason.empty()) mFunctionalLastClickReason = reason;
+            return false;
+        }
+        if (!functionalHoldsKeyboardFocus(control))
+        {
+            mFunctionalLastClickReason = "select-all target does not hold keyboard focus";
+            return false;
+        }
+        if (LLLineEditor* line = dynamic_cast<LLLineEditor*>(control))
+        {
+            line->selectAll();
+            return true;
+        }
+        if (LLTextEditor* text = dynamic_cast<LLTextEditor*>(control))
+        {
+            text->selectAll();
+            return true;
+        }
+        return false;
+    }
+
+    // Park the SYNTHETIC mouse on persistent opaque UI chrome (the main menu bar) before the
+    // teardown hides the Director, so no later frame has the synthetic point over the world.
+    // The suspension flags remain the real protection (they also cover the OS cursor).
+    void functionalParkMouse()
+    {
+        if (!mInWorld) return;
+        if (!gViewerWindow || !gMenuBarView || !gMenuBarView->getVisible() ||
+            !gMenuBarView->getMouseOpaque())
+        {
+            mFunctionalObserved["teardown"]["mouse_parked"] = false;
+            return;
+        }
+        const LLRect bar = gMenuBarView->calcScreenRect();
+        if (bar.getWidth() <= 0 || bar.getHeight() <= 0)
+        {
+            mFunctionalObserved["teardown"]["mouse_parked"] = false;
+            return;
+        }
+        const LLVector2 scale = gViewerWindow->getDisplayScale();
+        const LLCoordGL gl(ll_round((F32)bar.getCenterX() * scale.mV[VX]),
+                           ll_round((F32)bar.getCenterY() * scale.mV[VY]));
+        functionalMoveMouse(gl);
+        mFunctionalObserved["teardown"]["mouse_parked"] = true;
     }
 
     bool functionalPointerClick()
@@ -5455,16 +5575,22 @@ private:
                 if (!exact) mFunctionalLastClickReason = "focus not on target";
                 return exact;
             };
-            if (!focus_exact() || !functionalInjectKey('A', MASK_CONTROL)) return false;
+            if (!focus_exact() || !functionalSelectAll(control)) return false;
             const std::string typed = test.asString();
             for (unsigned char ch : typed)
             {
-                if (!focus_exact() || !functionalInjectChar(ch)) return false;
+                if (!focus_exact() || !functionalDeliverChar(control, ch)) return false;
             }
-            // Re-check immediately before Return; no frame or callback may
-            // redirect it to the login form or an alert.
+            // Re-check the focus once more after the last character; no frame or callback
+            // may have redirected it to the login form or an alert.  The former Return
+            // went through LLViewerWindow::handleKey, which consumed it WITHOUT delivering it
+            // to the widget (an unmodified key < 0x80 with a focused control only waits for
+            // the character event), so it was never a widget keystroke.  It is deliberately
+            // not delivered now: handleKeyHere(Return) would run widget Return handlers
+            // (search-result pick, newline in a text editor) the old run never exercised.
             if (!focus_exact()) return false;
-            return functionalInjectKey(KEY_RETURN, MASK_NONE);
+            mFunctionalObserved["keyboard"]["return_delivered_to_widget"] = false;
+            return true;
         }
         if (LLSliderCtrl* slider_ctrl = dynamic_cast<LLSliderCtrl*>(control))
         {
@@ -7769,7 +7895,7 @@ private:
 
     bool functionalBindsSafetyHolds() const
     {
-        return gViewerInput.globalBindsSuspended();
+        return gViewerInput.globalBindsSuspended() && gViewerInput.worldInputSuspended();
     }
 
     // Per-frame in-world guard (after the account is verified).  Returns true when the
@@ -8611,16 +8737,28 @@ private:
         std::string mFirstFail, mFirstSkip;
     };
 
+    // Retry policy: rows for one control are read in the order they ran and the FINAL result
+    // wins.  A FAIL followed by a later PASS (a retry) is a PASS; a FAIL after the last PASS
+    // stays a FAIL.  KNOWN_GAP is a documented, reviewed gap -- it is a SKIP with its reason,
+    // never a FAIL.  Only SKIP, KNOWN_GAP, PASS and FAIL-class statuses exist.
     DirRowOutcome dirRowOutcome(const std::string& leaf, const std::string& widget) const
     {
         DirRowOutcome outcome;
         for (const FunctionalResult& result : mFunctionalResults)
         {
             if (result.mKind == "rule" || result.mPage != leaf || result.mControl != widget) continue;
-            if (result.mStatus == "PASS") ++outcome.mPass;
-            else if (result.mStatus == "SKIP")
+            if (result.mStatus == "PASS")
             {
-                if (!outcome.mSkip++) outcome.mFirstSkip = result.mReason;
+                ++outcome.mPass;
+                // Everything that failed before this PASS was retried successfully.
+                outcome.mFail = 0;
+                outcome.mFirstFail.clear();
+            }
+            else if (result.mStatus == "SKIP" || result.mStatus == "KNOWN_GAP")
+            {
+                if (!outcome.mSkip++)
+                    outcome.mFirstSkip = (result.mStatus == "KNOWN_GAP" ? "known gap: " : std::string()) +
+                                         result.mReason;
             }
             else
             {
@@ -9066,6 +9204,15 @@ private:
                         {
                             dirResult("R6_CONNECTED", key, widget, "SKIP",
                                       "no effect observed (row skipped in this run): " + outcome.mFirstSkip, 1, detail);
+                        }
+                        else if (!mFunctionalVersionFilter.empty() && mFunctionalVersionFilter != "both" &&
+                                 mFunctionalVersionFilter != "v2")
+                        {
+                            // The manifest rows of this control were never queued: the run's
+                            // version filter excluded them.  Not a connectedness failure.
+                            dirResult("R6_CONNECTED", key, widget, "SKIP",
+                                      "no effect observed (row excluded by the version filter '" +
+                                      mFunctionalVersionFilter + "')", 1, detail);
                         }
                         else if ((action == "SKIP" || action == "NO_EXERCISE") && !why.empty())
                         {
@@ -9828,22 +9975,31 @@ private:
                 }
             }
         }
+        mDirRulesRan = true; // the queue was built and the time budget accepted it
     }
 
     // ui-draw-lint: allow-function(lookup) isolated test-only rule phase teardown
     void finishDirectorRules()
     {
         {
-            // Measured phase time, so the next run can calibrate the estimate.
+            // Measured phase time, so the next run can calibrate the estimate.  Only a phase
+            // that actually ran is timed: a refusal (time budget, missing shell or manifest
+            // block) already recorded its own FAIL and must not also read as a measurement.
             LLSD detail;
             detail["seconds"] = mDirRulesTimer.getElapsedTimeF32();
             detail["frames"] = mDirPumpCount;
             detail["estimated_frames"] = mDirEstimatedPumps;
-            dirResult("R1_REACHABILITY", std::string(), "rule_phase_timing", "PASS",
-                      llformat("rule phase took %d s over %d frames (estimated %d frames)",
-                               static_cast<S32>(mDirRulesTimer.getElapsedTimeF32()),
-                               mDirPumpCount, mDirEstimatedPumps),
-                      1, detail);
+            if (mDirRulesRan)
+                dirResult("R1_REACHABILITY", std::string(), "rule_phase_timing", "PASS",
+                          llformat("rule phase took %d s over %d frames (estimated %d frames)",
+                                   static_cast<S32>(mDirRulesTimer.getElapsedTimeF32()),
+                                   mDirPumpCount, mDirEstimatedPumps),
+                          1, detail);
+            else
+                dirResult("R1_REACHABILITY", std::string(), "rule_phase_timing", "SKIP",
+                          "the rule phase did not run (refused by the in-world time budget or its "
+                          "preconditions; see the in_world_budget / registry rows), so nothing was timed",
+                          1, detail);
         }
         sKitTextProbe = false;
         sKitProbedText.clear();
@@ -12693,10 +12849,13 @@ private:
 
     void restore()
     {
-        // Always lift the in-world input suspension, even on a repeated restore.
-        if (mInWorld) gViewerInput.setGlobalBindsSuspended(false);
+        // The in-world input suspension is deliberately NOT lifted here: restore() hides the
+        // Director and the logout that follows closes the floaters, so for those frames the
+        // cursor may be over the world.  The flags stay up until logout completes and the
+        // process exits (abortForLogin() is the one path that lifts them).
         if (mRestored) return;
         mRestored = true;
+        functionalParkMouse(); // synthetic point onto persistent opaque chrome first
         for (const std::string& target : mTargets)
         {
             LLFloaterReg::hideInstance(target);
@@ -12786,6 +12945,7 @@ private:
     LLFrameTimer mDirRulesTimer;   // wall time of the rule phase (reported at its end)
     S32 mDirPumpCount = 0;         // frames the rule phase actually consumed
     S32 mDirEstimatedPumps = 0;    // frames estimated from the queued tasks
+    bool mDirRulesRan = false;     // queue built and accepted by the time budget
     LLSD mDirRulesDoc;
     std::map<std::string, LLSD> mDirOracle;
     std::set<std::string> mDirWidgetNames;

@@ -828,6 +828,12 @@ void LLToolPie::selectionPropertiesReceived()
 
 bool LLToolPie::handleHover(S32 x, S32 y, MASK mask)
 {
+    // Functional self-test (in-world): no hover pick, hover object, hover parcel or media
+    // hover (each can message the simulator).  Belt and braces with LLViewerWindow::updateUI.
+    if (gViewerInput.worldInputSuspended())
+    {
+        return false;
+    }
     bool pick_rigged = gSavedSettings.getBOOL("AnimatedObjectsAllowLeftClick");
     mHoverPick = gViewerWindow->pickImmediate(x, y, false, pick_rigged);
     LLViewerObject *parent = NULL;
@@ -1401,6 +1407,7 @@ bool LLToolPie::handleToolTip(S32 local_x, S32 local_y, MASK mask)
 {
     static LLCachedControl<bool> show_hover_tips(*LLUI::getInstance()->mSettingGroups["config"], "ShowHoverTips", true);
     if (!show_hover_tips) return true;
+    if (gViewerInput.worldInputSuspended()) return true; // functional self-test: no hover tips
     if (!mHoverPick.isValid()) return true;
 
     LLViewerObject* hover_object = mHoverPick.getObject();

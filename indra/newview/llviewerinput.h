@@ -124,6 +124,15 @@ public:
     // persisted, and the self-test clears it on every teardown path.
     void            setGlobalBindsSuspended(bool suspended) { mGlobalBindsSuspended = suspended; }
     bool            globalBindsSuspended() const { return mGlobalBindsSuspended; }
+    // Functional self-test safety, second flag (set and cleared together with the one above):
+    // while set, WORLD INTERACTION is dead.  No hover pick / hover object / hover tip / media
+    // hover (LLViewerWindow::updateUI, LLToolPie::handleHover/handleToolTip,
+    // LLSelectMgr::setHoverObject, which would send RequestObjectPropertiesFamily), and
+    // LLViewerWindow::handleKey/handleKeyUp run NO menu accelerator, tool key, gesture trigger,
+    // Director hotkey or auto-chat after the keyboard-focus dispatch.  Process-local; set only by an
+    // in-world functional self-test launch, so a normal session never has it.
+    void            setWorldInputSuspended(bool suspended) { mWorldInputSuspended = suspended; }
+    bool            worldInputSuspended() const { return mWorldInputSuspended; }
 
     S32             loadBindingsXML(const std::string& filename);                                       // returns number bound, 0 on error
     EKeyboardMode   getMode() const;
@@ -199,6 +208,7 @@ private:
     // just instead of remembering individually as bools,  we record state as enum
     EMouseState     mMouseLevel[CLICK_COUNT];   // records of key state
     bool            mGlobalBindsSuspended = false;  // self-test: global key/mouse binds disabled
+    bool            mWorldInputSuspended = false;   // self-test: world hover + menu/gesture key routing disabled
 };
 
 extern LLViewerInput gViewerInput;

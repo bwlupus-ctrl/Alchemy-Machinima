@@ -56,6 +56,7 @@
 #include "llagentcamera.h"
 #include "llattachmentsmgr.h"
 #include "llviewerwindow.h"
+#include "llviewerinput.h"
 #include "lldrawable.h"
 #include "llfloaterinspect.h"
 #include "llfloaterreporter.h"
@@ -1285,6 +1286,14 @@ void LLSelectMgr::addAsIndividual(LLViewerObject *objectp, S32 face, bool undoab
 
 LLObjectSelectionHandle LLSelectMgr::setHoverObject(LLViewerObject *objectp, S32 face)
 {
+    // Functional self-test (in-world): hovering must never request object properties from
+    // the simulator (requestObjectPropertiesFamily below).
+    if (gViewerInput.worldInputSuspended())
+    {
+        mHoverObjects->deleteAllNodes();
+        return NULL;
+    }
+
     if (!objectp)
     {
         mHoverObjects->deleteAllNodes();
