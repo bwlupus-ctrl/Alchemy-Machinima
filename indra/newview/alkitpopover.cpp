@@ -6,10 +6,12 @@
 #include "alkitrow.h"
 #include "alkitstyle.h"
 #include "llbutton.h"
+#include "llscrollcontainer.h"
 #include "lltextbox.h"
 #include "lluictrl.h"
 #include "lluictrlfactory.h"
 #include "llui.h"
+#include "llviewercontrol.h"
 
 #include <vector>
 
@@ -18,85 +20,76 @@ static LLDefaultChildRegistry::Register<ALKitPopover> register_popover("kit_popo
 namespace
 {
 // LLView::applyXUILayout() gives every XUI widget that declares no height a 10 px
-// stand-in (MIN_WIDGET_HEIGHT), never 0 or 1. A popover or child at or below this
-// height therefore has no real size of its own.
+// stand-in (MIN_WIDGET_HEIGHT), never 0 or 1. Only a button at or below this height is
+// treated as unsized; every other child keeps the height it declares (spacers, dividers).
 constexpr S32 kUnsizedHeight = 10;
 constexpr S32 kGap           = 4;  // vertical gap between stacked children
 constexpr S32 kMargin        = 10; // inset on every side
 constexpr S32 kButtonHeight  = 24; // one standard kit button height
 constexpr S32 kTextSlack     = 6;  // padding added to a measured text block
+constexpr S32 kMinContent    = 40; // least visible height of the scrolling text area
 
-// Sizes a popover declared in XUI without a rect: the children stack top-down in
-// XML order, each as wide as the popover's interior, and the popover is made exactly
-// as tall as the stack (capped to max_height). Word-wrapped text is measured at the
-// interior width, so it always has the room its wrapped lines need.
-void layoutStack(LLPanel* popover, S32 width, S32 max_height)
+// Children in XML order. LLView::addChild() pushes to the front, so the child list runs
+// in reverse XML order; walking it backwards yields the XML order.
+std::vector<LLView*> xmlOrder(LLView* parent)
 {
-    const S32 inner = width - 2 * kMargin;
-    // LLView::addChild() pushes to the front, so the child list runs in reverse XML
-    // order; walk it backwards so the first XML row sits on top.
     std::vector<LLView*> children;
-    for (auto it = popover->getChildList()->rbegin(); it != popover->getChildList()->rend(); ++it)
+    for (auto it = parent->getChildList()->rbegin(); it != parent->getChildList()->rend(); ++it)
         children.push_back(*it);
+    return children;
+}
 
-    std::vector<S32> heights(children.size(), 0);
-    LLTextBox*       last_text = nullptr;
-    S32              last_text_index = -1;
-    S32              total = 2 * kMargin + (children.empty() ? 0 : kGap * (S32(children.size()) - 1));
-    for (size_t i = 0; i < children.size(); ++i)
+// The height a child takes in a stack laid out at `width`.
+S32 naturalHeight(LLView* child, S32 width)
+{
+    if (ALKitRow* row = dynamic_cast<ALKitRow*>(child))
+        return row->heightForWidth(width);
+    if (LLTextBox* text = dynamic_cast<LLTextBox*>(child))
     {
-        LLView* child = children[i];
-        S32     child_height;
-        if (ALKitRow* row = dynamic_cast<ALKitRow*>(child))
-        {
-            child_height = row->heightForWidth(inner);
-        }
-        else if (LLTextBox* text = dynamic_cast<LLTextBox*>(child))
-        {
-            // Give the block room first so the measure is of the wrapped text, not of
-            // a clipped one.
-            text->reshape(inner, 4096, true);
-            child_height    = llmax(kButtonHeight, text->getTextPixelHeight() + kTextSlack);
-            last_text       = text;
-            last_text_index = S32(i);
-        }
-        else if (dynamic_cast<LLButton*>(child) || child->getRect().getHeight() <= kUnsizedHeight)
-        {
-            child_height = kButtonHeight;
-        }
-        else
-        {
-            child_height = child->getRect().getHeight();
-        }
-        heights[i] = child_height;
-        total += child_height;
+        // Give the block room first so the measure is of the wrapped text, not of a
+        // clipped one.
+        text->reshape(width, 4096, true);
+        return llmax(kButtonHeight, text->getTextPixelHeight() + kTextSlack);
     }
-    // Over the cap: the last text block gives up the excess (its text clips) rather
-    // than letting the stack spill outside the popover.
-    if (total > max_height && last_text)
-    {
-        const S32 shrunk = llmax(40, heights[last_text_index] - (total - max_height));
-        total -= heights[last_text_index] - shrunk;
-        heights[last_text_index] = shrunk;
-    }
-    const S32 height = llmin(total, max_height);
-    popover->reshape(width, height, true);
+    if (dynamic_cast<LLButton*>(child) && child->getRect().getHeight() <= kUnsizedHeight)
+        return kButtonHeight;
+    return child->getRect().getHeight();
+}
 
-    S32 top = height - kMargin;
-    for (size_t i = 0; i < children.size(); ++i)
+// Fills `heights` for `kids` stacked at `width` and returns the stack's total height,
+// gaps included.
+S32 stackHeights(const std::vector<LLView*>& kids, S32 width, std::vector<S32>& heights)
+{
+    heights.clear();
+    S32 total = kids.empty() ? 0 : kGap * (S32(kids.size()) - 1);
+    for (LLView* child : kids)
     {
-        LLView* child = children[i];
+        heights.push_back(naturalHeight(child, width));
+        total += heights.back();
+    }
+    return total;
+}
+
+// Places `kids` top-down, starting with their top edge at `top`, at x = `left`, each
+// `width` wide.
+void placeStack(const std::vector<LLView*>& kids, const std::vector<S32>& heights, S32 left, S32 width, S32 top)
+{
+    for (size_t i = 0; i < kids.size(); ++i)
+    {
+        LLView* child = kids[i];
         if (ALKitRow* row = dynamic_cast<ALKitRow*>(child))
-        {
-            row->layoutRow(inner);
-        }
+            row->layoutRow(width);
         else
-        {
-            child->reshape(inner, heights[i], true);
-        }
-        child->setOrigin(kMargin, top - child->getRect().getHeight());
+            child->reshape(width, heights[i], true);
+        child->setOrigin(left, top - child->getRect().getHeight());
         top -= child->getRect().getHeight() + kGap;
     }
+}
+
+// The tallest an auto-sized popover may be: the shell's current height less a margin.
+S32 popoverCap(const ALKitShell* shell)
+{
+    return shell ? llmax(120, shell->getRect().getHeight() - 2 * kGap) : 600;
 }
 } // namespace
 
@@ -129,15 +122,14 @@ bool ALKitPopover::postBuild()
     ALKitStyle::styleTree(this);
     if (getRect().getHeight() <= kUnsizedHeight)
     {
-        S32 width = 360;
+        mAutoWidth = 360;
         if (getName() == "legend_panel")
-            width = 520;
+            mAutoWidth = 520;
         else if (getName() == "kit_scene_popover")
-            width = 180;
+            mAutoWidth = 180;
         else if (getName() == "kit_hotkeys_popover")
-            width = 340;
-        const S32 cap = shell ? llmax(120, shell->getRect().getHeight() - 2 * kGap) : 600;
-        layoutStack(this, width, cap);
+            mAutoWidth = 340;
+        layoutPopover(mAutoWidth, popoverCap(shell));
     }
     if (LLUICtrl* close = findChild<LLUICtrl>("btn_legend_close"))
     {
@@ -150,6 +142,93 @@ bool ALKitPopover::postBuild()
             });
     }
     return built;
+}
+
+// Moves every child that is not a button into the scrolling document, so the text and
+// rows can scroll while the buttons stay pinned. Idempotent; a no-op when there is no
+// such child.
+void ALKitPopover::ensureScroller()
+{
+    std::vector<LLView*> stray;
+    for (LLView* child : xmlOrder(this))
+        if (child != mScroller && !dynamic_cast<LLButton*>(child))
+            stray.push_back(child);
+    if (stray.empty())
+        return;
+
+    if (!mScroller)
+    {
+        LLScrollContainer::Params sp;
+        sp.name                  = getName() + "_scroll";
+        sp.rect                  = getLocalRect();
+        sp.is_opaque             = false;
+        sp.reserve_scroll_corner = false;
+        mScroller                = LLUICtrlFactory::create<LLScrollContainer>(sp);
+        ALKitStyle::styleScroller(mScroller);
+
+        LLPanel::Params dp;
+        dp.name               = getName() + "_content";
+        dp.rect               = getLocalRect();
+        dp.background_visible = false;
+        mDoc                  = LLUICtrlFactory::create<LLPanel>(dp);
+        mScroller->addChild(mDoc); // the first child becomes the scrolled view
+        addChild(mScroller);
+    }
+    for (LLView* child : stray)
+        mDoc->addChild(child); // removes it from this popover
+}
+
+// Sizes an auto-sized popover: the content stacks top-down in the scrolling area, the
+// buttons stay pinned under it, and the popover is as tall as its natural height, capped
+// to max_height. A content stack taller than the room left by the buttons scrolls.
+void ALKitPopover::layoutPopover(S32 width, S32 max_height)
+{
+    ensureScroller();
+    const S32 inner = width - 2 * kMargin;
+    const S32 sb    = llmax(0, gSavedSettings.getS32("UIScrollbarSize"));
+
+    std::vector<LLView*> content = mDoc ? xmlOrder(mDoc) : std::vector<LLView*>();
+    std::vector<LLView*> buttons;
+    for (LLView* child : xmlOrder(this))
+        if (child != mScroller)
+            buttons.push_back(child);
+
+    std::vector<S32> button_heights;
+    std::vector<S32> content_heights;
+    const S32        button_block      = stackHeights(buttons, inner, button_heights);
+    const S32        gap_above_buttons = (!content.empty() && !buttons.empty()) ? kGap : 0;
+    const S32        fixed             = 2 * kMargin + button_block + gap_above_buttons;
+
+    // The text area keeps at least kMinContent px, so the buttons never leave the popover
+    // even when the cap is tiny.
+    S32       content_h  = stackHeights(content, inner, content_heights);
+    const S32 min_height = fixed + (content.empty() ? 0 : kMinContent);
+    const S32 height     = llmax(min_height, llmin(fixed + content_h, max_height));
+    const S32 scroll_h   = height - fixed;
+    S32       doc_w      = inner;
+    if (content_h > scroll_h)
+    {
+        // Overflows: the scrollbar takes its width, so measure again at the narrower width.
+        doc_w     = inner - sb;
+        content_h = stackHeights(content, doc_w, content_heights);
+    }
+
+    reshape(width, height, true);
+    placeStack(buttons, button_heights, kMargin, inner, kMargin + button_block);
+
+    if (mScroller)
+    {
+        const S32 scroll_bottom = kMargin + button_block + gap_above_buttons;
+        mScroller->reshape(inner, scroll_h, true);
+        mScroller->setOrigin(kMargin, scroll_bottom);
+        // The document is never shorter than the visible area, so short content sits at
+        // the top rather than floating in the middle.
+        const S32 doc_h = llmax(content_h, scroll_h);
+        mDoc->reshape(doc_w, doc_h, true);
+        placeStack(content, content_heights, 0, doc_w, doc_h);
+        mScroller->reshape(inner, scroll_h, true);
+        mScroller->goToTop();
+    }
 }
 
 void ALKitPopover::draw()
@@ -174,6 +253,12 @@ void ALKitPopover::show()
     }
 
     shell->closePopover();
+    // Re-fit an auto-sized popover to the shell's current height: a resized or
+    // minimum-size Director may be shorter than it was when the XML was built.
+    if (mAutoWidth > 0)
+    {
+        layoutPopover(mAutoWidth, popoverCap(shell));
+    }
     LLRect anchor_rect;
     if (!anchor->localRectToOtherView(anchor->getLocalRect(), &anchor_rect, shell))
     {
