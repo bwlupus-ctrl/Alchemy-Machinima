@@ -475,6 +475,8 @@ bool ALDirectorQol::otherViewerProcessRunning()
         running = GetLastError() != ERROR_NO_MORE_FILES; // an empty list is "none"; any other failure is unknown
     for (; more && !running; more = Process32NextW(snapshot, &entry))
         running = entry.th32ProcessID != my_pid && _wcsicmp(entry.szExeFile, image_name) == 0;
+    if (!running && !more && GetLastError() != ERROR_NO_MORE_FILES)
+        running = true; // the walk stopped on an error, not at the end: nothing can be proven
     CloseHandle(snapshot);
     return running;
 #else
