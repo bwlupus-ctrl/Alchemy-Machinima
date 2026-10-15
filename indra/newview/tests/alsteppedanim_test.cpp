@@ -41,7 +41,7 @@ ALSteppedAnim::Assignment assignment(F32 rate = 12.f)
 
 bool sameTrackedConfig(const ALSteppedAnim::Config& a, const ALSteppedAnim::Config& b)
 {
-    return a.scope == b.scope && a.mode == b.mode && a.rate == b.rate && a.fastRate == b.fastRate &&
+    return a.includeGhosts == b.includeGhosts && a.scope == b.scope && a.mode == b.mode && a.rate == b.rate && a.fastRate == b.fastRate &&
         a.adaptThreshold == b.adaptThreshold && a.adaptHysteresis == b.adaptHysteresis &&
         a.adaptMinDwell == b.adaptMinDwell && a.backgroundRate == b.backgroundRate && a.what == b.what &&
         a.face == b.face && a.gaze == b.gaze && a.flexi == b.flexi && a.attachFX == b.attachFX &&
@@ -474,12 +474,56 @@ template<> template<> void stepped_object::test<11>()
         paletteReadyForOverlay(42, 42, 42, 9, 9));
 }
 
+// Ghost clones independently join every scope, but retain all safety gates.
+template<> template<> void stepped_object::test<17>()
+{
+    ALSteppedAnim::Config c;
+    c.enabled = true;
+    ALSteppedAnim::ActorFacts ghost;
+    ghost.drawn = true;
+    ghost.ghostOwnAnimation = true;
+    ensure("ghost option defaults off", !c.includeGhosts);
+    ensure("off keeps outsider smooth", !ALSteppedAnim::resolveActor(c, ghost, 0.).stepped);
+    ensure("off preserves prior inheritance", ALSteppedAnim::ghostMayInherit(c, ghost));
+    c.includeGhosts = true;
+    ensure("sanitize preserves ghost option", ALSteppedAnim::sanitize(c).includeGhosts);
+    for (S32 scope : {ALSteppedAnim::SCOPE_SELECTED, ALSteppedAnim::SCOPE_CAST, ALSteppedAnim::SCOPE_VIEW})
+        for (S32 mode : {ALSteppedAnim::MODE_FIXED, ALSteppedAnim::MODE_ADAPTIVE, ALSteppedAnim::MODE_MIXED})
+        {
+            c.scope = scope; c.mode = mode;
+            ensure("own-animation clone joins every scope/mode", ALSteppedAnim::resolveActor(c, ghost, 0.).stepped);
+        }
+    ensure("own animation keeps its own assignment", !ALSteppedAnim::ghostMayInherit(c, ghost));
+    ghost.ov.mode = 1;
+    ensure("Smooth override wins", !ALSteppedAnim::resolveActor(c, ghost, 0.).stepped);
+    ghost.ov.mode = 0; ghost.posing = true;
+    ensure("posing/edit exclusion wins", !ALSteppedAnim::resolveActor(c, ghost, 0.).stepped);
+    ghost.posing = false; ghost.cameraMounted = true;
+    ensure("camera exclusion wins", !ALSteppedAnim::resolveActor(c, ghost, 0.).stepped);
+    ghost.cameraMounted = false; ghost.drawn = false;
+    ensure("visibility exclusion wins", !ALSteppedAnim::resolveActor(c, ghost, 0.).stepped);
+    ghost.drawn = true; c.enabled = false;
+    ensure("master off wins", !ALSteppedAnim::resolveActor(c, ghost, 0.).stepped);
+    c.enabled = true; c.maxAvatars = 1;
+    ALSteppedAnim::ActorFacts selected;
+    selected.drawn = true; selected.isSelected = true;
+    const std::vector<ALSteppedAnim::ActorFacts> facts = {selected, ghost};
+    std::vector<ALSteppedAnim::Assignment> assignments;
+    for (const auto& f : facts) assignments.push_back(ALSteppedAnim::resolveActor(c, f, 0.));
+    ALSteppedAnim::applyActorCap(c, facts, assignments);
+    ensure("ghost remains subject to actor cap", assignments[0].stepped && !assignments[1].stepped);
+    ghost.ghostOwnAnimation = false;
+    c.scope = ALSteppedAnim::SCOPE_CAST; c.mode = ALSteppedAnim::MODE_FIXED;
+    ensure("mirror/copy ghost still inherits", ALSteppedAnim::ghostMayInherit(c, ghost));
+    ensure("ordinary actors do not bypass scope", !ALSteppedAnim::resolveActor(c, ghost, 0.).stepped);
+}
+
 // T12: preset completeness/config clamps/effective rates/Roto mapping.
 template<> template<> void stepped_object::test<12>()
 {
     const auto& presets = ALSteppedAnim::builtInPresets();
     ensure_equals("T12 preset count", presets.size(), size_t(14));
-    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(31));
+    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(32));
     std::set<std::string> ids;
     for (const auto& p : presets)
     {
@@ -492,13 +536,13 @@ template<> template<> void stepped_object::test<12>()
     const std::set<std::string> preset_settings(preset_names.begin(), preset_names.end());
     ensure("T12 built-in and saved preset whitelist excludes independent options",
         preset_settings.size() == 29 && !preset_settings.count("StepAnimParticles") &&
-        !preset_settings.count("StepAnimTextureAnim"));
+        !preset_settings.count("StepAnimTextureAnim") && !preset_settings.count("StepAnimIncludeGhosts"));
     const ALSteppedAnim::Config defaults;
-    ensure("T12 new options default off", !defaults.particles && !defaults.textureAnim);
+    ensure("T12 new options default off", !defaults.particles && !defaults.textureAnim && !defaults.includeGhosts);
     const auto& tracked = ALSteppedAnim::trackedSettings();
     const std::set<std::string> settings(tracked.begin(), tracked.end());
-    ensure("T12 both new options tracked", settings.count("StepAnimParticles") == 1 &&
-        settings.count("StepAnimTextureAnim") == 1 && settings.size() == tracked.size());
+    ensure("T12 all independent options tracked", settings.count("StepAnimParticles") == 1 &&
+        settings.count("StepAnimTextureAnim") == 1 && settings.count("StepAnimIncludeGhosts") == 1 && settings.size() == tracked.size());
     for (bool particles : {false, true})
         for (bool textures : {false, true})
         {

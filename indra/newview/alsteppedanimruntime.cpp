@@ -127,6 +127,7 @@ void ALSteppedAnimRuntime::initialize()
 ALSteppedAnim::Config ALSteppedAnimRuntime::readConfig() const
 {
     static LLCachedControl<S32> scope(gSavedSettings, "StepAnimScope");
+    static LLCachedControl<bool> include_ghosts(gSavedSettings, "StepAnimIncludeGhosts");
     static LLCachedControl<bool> exclude(gSavedSettings, "StepAnimExcludeCameraMounted");
     static LLCachedControl<S32> maximum(gSavedSettings, "StepAnimMaxAvatars");
     static LLCachedControl<S32> mode(gSavedSettings, "StepAnimMode");
@@ -160,6 +161,7 @@ ALSteppedAnim::Config ALSteppedAnimRuntime::readConfig() const
     static LLCachedControl<F32> ease_amount(gSavedSettings, "StepAnimEaseAmount");
     static LLCachedControl<bool> match_roto(gSavedSettings, "StepAnimMatchRotoInk");
     ALSteppedAnim::Config c;
+    c.includeGhosts = include_ghosts;
     c.enabled = true; c.scope = scope; c.excludeCameraMounted = exclude; c.maxAvatars = maximum;
     c.mode = mode; c.rate = finiteSetting(rate, 12.f); c.fastRate = finiteSetting(fast, 24.f);
     c.adaptThreshold = finiteSetting(threshold, 1.5f); c.adaptHysteresis = finiteSetting(hysteresis, .3f);
@@ -222,6 +224,14 @@ void ALSteppedAnimRuntime::collectActors()
         f.inCast = f.isSelf ? (empty_cast || self_in_cast) : cast.containsStored(actor_id);
         f.isSelected = selected.isNull() ? f.isSelf : actor_id == selected;
         f.drawn = true;
+        if (avatar->isGhostAvatar())
+        {
+            const S32 drive = static_cast<LLGhostAvatar*>(avatar)->getEntityDriveMode();
+            // Only a clone that PLAYS its own animation (Directed) counts. Mirror and
+            // True mirror copy the source; Frozen holds one pose (dormant), so it has
+            // nothing to step and must not take a StepAnimMaxAvatars slot.
+            f.ghostOwnAnimation = drive == ALGhostStudio::DRIVE_DIRECTED;
+        }
         f.cameraMounted = (f.isSelf && gAgentCamera.cameraMouselook()) ||
             LLCinematicCamera::instance().isActiveBoneLockTarget(avatar->getID()) ||
             bone_pov_anchors.find(avatar->getID()) != bone_pov_anchors.end();

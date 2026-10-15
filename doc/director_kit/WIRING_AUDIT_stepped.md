@@ -1,10 +1,11 @@
 # Stepped Animation value-wiring audit
 
-Audit basis: the 46 authoritative rows in `stepped_tab_mockup_data.json`. Setting rows use typed writes and signal read-back in `alkitbinding.cpp:12-57,70-89`; in particular, segmented `LLRadioGroup` payloads are converted to integer at `alkitbinding.cpp:20-22`. Global consumers use cached controls at `alsteppedanimruntime.cpp:96-126` and one sanitize pass at `alsteppedanimruntime.cpp:139`. "Bool" means the widget and consumer are both Boolean. All rows pass.
+Audit basis: the 49 authoritative rows in `director_mockup_data.json`. Setting rows use typed writes and signal read-back in `alkitbinding.cpp:12-57,70-89`; in particular, segmented `LLRadioGroup` payloads are converted to integer at `alkitbinding.cpp:20-22`. Global consumers use cached controls at `alsteppedanimruntime.cpp:96-126` and one sanitize pass at `alsteppedanimruntime.cpp:139`. "Bool" means the widget and consumer are both Boolean. All rows pass.
 
 | Control | Setting / type | Widget values or range | Consumer clamp / enum (exact source) | Handler and read-back | Result |
 |---|---|---|---|---|---|
 | `sa_scope` | `StepAnimScope` / S32 | 0 Selected, 1 Cast, 2 View | 0..2, `alsteppedanim.cpp:72` | typed setting binding; `alkitbinding.cpp:70-89` | PASS |
+| `sa_include_ghosts` | `StepAnimIncludeGhosts` / Boolean, Persist 1, default 0 | false / true | `Config::includeGhosts`, `ActorFacts::ghostOwnAnimation`; `resolveActor` extends scope after exclusions; `ghostMayInherit` preserves independent assignment; cap still applies | typed setting binding/signal read-back; cached `readConfig`; mirror/copy source inheritance unchanged; excluded from presets | PASS |
 | `sa_actor_target` | code / UUID | selected cast actor, cast members, You | canonical cast member or null/You, `lldirectorcast.cpp:1279-1292` | commit `alpanelsteppedanim.cpp:160-164`; read `:91-95,130-139` | PASS |
 | `sa_override_list` | code / UUID list | current override roster | cast styles only | select `alpanelsteppedanim.cpp:166-175`; rebuilt/read `:89-128` | PASS |
 | `sa_actor_override` | code / S32 | 0 Inherit, 1 Never, 2 Own | 0..2, `alpanelsteppedanim.cpp:151` | commit `:177`; read `:134` | PASS |
@@ -30,6 +31,8 @@ Audit basis: the 46 authoritative rows in `stepped_tab_mockup_data.json`. Settin
 | `sa_gaze` | `StepAnimGaze` / Boolean | Bool | Bool, cached `alsteppedanimruntime.cpp:108,132` | typed setting binding/read-back | PASS |
 | `sa_flexi` | `StepAnimFlexi` / Boolean | Bool | Bool, cached `alsteppedanimruntime.cpp:109,132` | typed setting binding/read-back | PASS |
 | `sa_attach_fx` | `StepAnimAttachFX` / Boolean | Bool | Bool, cached `alsteppedanimruntime.cpp:110,132` | typed setting binding/read-back | PASS |
+| `sa_particles` | `StepAnimParticles` / Boolean | Bool | runtime particle hold | typed setting binding/read-back; independent of presets | PASS |
+| `sa_texture_anim` | `StepAnimTextureAnim` / Boolean | Bool | runtime texture-animation hold | typed setting binding/read-back; independent of presets | PASS |
 | `sa_clock` | `StepAnimClock` / S32 | 0 Capture, 1 Real | 0..1, `alsteppedanim.cpp:82` | typed setting binding/read-back | PASS |
 | `sa_offset` | `StepAnimOffsetMode` / S32 | 0 Random, 1 Locked, 2 Manual | 0..2, `alsteppedanim.cpp:83` | typed setting binding/read-back | PASS |
 | `sa_phase` | `StepAnimPhase` / F32 | 0..1, step .05 | 0..1 then 1 -> 0, `alsteppedanim.cpp:84-85` | typed setting binding/read-back | PASS |
@@ -51,4 +54,4 @@ Audit basis: the 46 authoritative rows in `stepped_tab_mockup_data.json`. Settin
 | `sa_actorfx_link` | code / link | Look/Actor FX target | kit navigation | action/read-back `alkitrow.cpp:200-206` | PASS |
 | `sa_time_link` | code / link | `capture_group/temporal_tab` target | kit navigation | action/read-back `alkitrow.cpp:200-206` | PASS |
 
-Result: **46/46 PASS; no value-wiring failures remain.** The page has 31 setting-bound rows (29 preset-tracked plus the safety exclusion and actor cap); its master is `StepAnimEnabled` and is outside the 46 body rows.
+Result: **49/49 PASS; no value-wiring failures remain.** The page has 34 setting-bound rows (29 preset-owned, three independent toggles, the safety exclusion and actor cap); its master is `StepAnimEnabled` and is outside the 49 body rows.

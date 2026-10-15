@@ -151,6 +151,7 @@ private:
     std::vector<RailData>                                mRailData;
     ALKitHistory                                         mHistory;
     ALKitHelp                                            mHelp;
+    LLButton*                                            mSettingsButton = nullptr;
     ALKitSearch                                          mSearch;
     ALScrollFit::Controller                              mScrollFit;
     ALScrollFit::Controller*                             mExternalScrollFit = nullptr;

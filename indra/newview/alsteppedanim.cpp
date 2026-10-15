@@ -163,6 +163,7 @@ Assignment resolveActor(const Config& raw, const ActorFacts& facts, F64 roto_pha
         rate = ov.rate;
         adaptive = false;
     }
+    if (cfg.includeGhosts && facts.ghostOwnAnimation) in_scope = true;
     rate = effectiveRate(rate);
     if (!in_scope || rate == 0.f) return out;
 
@@ -181,7 +182,8 @@ bool ghostMayInherit(const Config& raw, const ActorFacts& facts)
     const Config cfg = sanitize(raw);
     const ActorOverride ov = sanitize(facts.ov);
     return cfg.enabled && facts.drawn && !facts.excludedAlways && !facts.posing &&
-        (!cfg.excludeCameraMounted || !facts.cameraMounted) && ov.mode != 1;
+        (!cfg.excludeCameraMounted || !facts.cameraMounted) && ov.mode != 1 &&
+        !(cfg.includeGhosts && facts.ghostOwnAnimation);
 }
 
 bool inheritAttachedAssignment(const Assignment& source, U64 source_seed,
@@ -647,7 +649,7 @@ RotoMatch mapRotoInk(F32 rate)
 const std::vector<std::string>& trackedSettings()
 {
     static const std::vector<std::string> settings = {
-        "StepAnimScope", "StepAnimMode", "StepAnimRate", "StepAnimFastRate",
+        "StepAnimScope", "StepAnimIncludeGhosts", "StepAnimMode", "StepAnimRate", "StepAnimFastRate",
         "StepAnimAdaptThreshold", "StepAnimAdaptHysteresis", "StepAnimAdaptMinDwell",
         "StepAnimBackgroundRate", "StepAnimWhatSteps", "StepAnimFace", "StepAnimGaze",
         "StepAnimFlexi", "StepAnimAttachFX", "StepAnimParticles", "StepAnimTextureAnim",
@@ -666,7 +668,8 @@ const std::vector<std::string>& presetSettings()
     {
         std::vector<std::string> out;
         for (const std::string& name : trackedSettings())
-            if (name != "StepAnimParticles" && name != "StepAnimTextureAnim") out.push_back(name);
+            if (name != "StepAnimParticles" && name != "StepAnimTextureAnim" &&
+                name != "StepAnimIncludeGhosts") out.push_back(name);
         return out;
     }();
     return settings;

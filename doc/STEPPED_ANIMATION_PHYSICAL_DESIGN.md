@@ -484,6 +484,7 @@ All 14 built-in presets write `StepAnimEngine = 0`. T12 becomes "each preset set
 - `StepAnimFace`: Animation also steps `LLEmote` morphs.
 - `StepAnimGaze`: GAZE class held by the latch (Animation) or overlay (Display); head-rot/eye/gaze always evaluated every frame.
 - `StepAnimExcludeCameraMounted`: unchanged (excludes the actor in both engines).
+- `StepAnimIncludeGhosts` (Boolean, Persist 1, default 0): the Animation engine **must honour it**, as must Display only. Independent-animation Ghost Studio clones join every Scope when on, subject to Smooth overrides, posing/edit and camera-mounted exclusions, and `StepAnimMaxAvatars`. Mirror/copy ghosts retain source inheritance. Shared Config/readConfig and scope resolution own it; it is tracked but presets never write it. The kit toggle is directly under Scope, labelled "Include ghost clones" with help "Step Ghost Studio clones even when they are outside the scope above."
 - `StepAnimMaxAvatars`, all rate/adaptive/effect/clock/phase/Roto settings: unchanged.
 
 ### 11.3 Removed

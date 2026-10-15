@@ -429,7 +429,7 @@ namespace ALSteppedAnim
     // presets (§12): built-in table, data only
     struct Preset { const char* id; const char* label; Config values; };
     const std::vector<Preset>& builtInPresets();
-    const std::vector<std::string>& trackedSettings();   // §12.1, 31 names
+    const std::vector<std::string>& trackedSettings();   // §12.1, 32 names
 }
 ```
 
@@ -443,13 +443,13 @@ Provider key **`stepped_anim`**, registered in `registerLookPresetProviders()` (
 
 A non-UI persisted `StepAnimParticlesMigrated` marker (Boolean, default 0) migrates the shipped `StepAnimAttachFX` particle hold once after settings load: enable `StepAnimParticles` when Attachment FX was enabled, then mark migration complete. Later opt-outs are preserved.
 
-### 12.1 Tracked settings (31)
-`StepAnimScope, StepAnimMode, StepAnimRate, StepAnimFastRate, StepAnimAdaptThreshold, StepAnimAdaptHysteresis, StepAnimAdaptMinDwell, StepAnimBackgroundRate, StepAnimWhatSteps, StepAnimFace, StepAnimGaze, StepAnimFlexi, StepAnimAttachFX, StepAnimParticles, StepAnimTextureAnim, StepAnimClock, StepAnimOffsetMode, StepAnimPhase, StepAnimBaseFPS, StepAnimBoil, StepAnimBoilAmount, StepAnimBoilTicks, StepAnimImpactHold, StepAnimImpactTicks, StepAnimImpactThreshold, StepAnimSmear, StepAnimSmearStrength, StepAnimSmearThreshold, StepAnimEase, StepAnimEaseAmount, StepAnimMatchRotoInk`.
+### 12.1 Tracked settings (32)
+`StepAnimScope, StepAnimIncludeGhosts, StepAnimMode, StepAnimRate, StepAnimFastRate, StepAnimAdaptThreshold, StepAnimAdaptHysteresis, StepAnimAdaptMinDwell, StepAnimBackgroundRate, StepAnimWhatSteps, StepAnimFace, StepAnimGaze, StepAnimFlexi, StepAnimAttachFX, StepAnimParticles, StepAnimTextureAnim, StepAnimClock, StepAnimOffsetMode, StepAnimPhase, StepAnimBaseFPS, StepAnimBoil, StepAnimBoilAmount, StepAnimBoilTicks, StepAnimImpactHold, StepAnimImpactTicks, StepAnimImpactThreshold, StepAnimSmear, StepAnimSmearStrength, StepAnimSmearThreshold, StepAnimEase, StepAnimEaseAmount, StepAnimMatchRotoInk`.
 
 Not tracked: `StepAnimEnabled` (master), `StepAnimExcludeCameraMounted` (safety), `StepAnimMaxAvatars` (performance), `StepAnimDebugVerify` (debug).
 
 ### 12.2 Values
-Presets write the 29 style settings. Built-in and saved presets exclude `StepAnimParticles` and `StepAnimTextureAnim`, preserving the user's independent choices. **Any preset setting not listed in a row = its default (§14.1).**
+Presets write the 29 style settings. Built-in and saved presets exclude `StepAnimParticles`, `StepAnimTextureAnim` and `StepAnimIncludeGhosts`, preserving the user's independent choices. **Any preset setting not listed in a row = its default (§14.1).**
 
 | # | id | Label | Values that differ from the defaults |
 |---|---|---|---|
@@ -508,6 +508,7 @@ Consumer clamp = what the runtime's `readConfig()` must apply before `ALSteppedA
 |---|---|---|---|---|---|
 | StepAnimEnabled | Boolean | 0 | on/off | 1 | bool |
 | StepAnimScope | S32 | 1 | 0 Selected actor, 1 Whole cast, 2 Everyone in view | 1 | `std::clamp(v, 0, 2)` |
+| StepAnimIncludeGhosts | Boolean | 0 | Step Ghost Studio clones with their own animation regardless of Scope | 1 | bool |
 | StepAnimExcludeCameraMounted | Boolean | 1 | | 1 | bool |
 | StepAnimMaxAvatars | S32 | 24 | 1 to 100 actors | 1 | `std::clamp(v, 1, 100)` |
 | StepAnimMode | S32 | 0 | 0 Fixed, 1 Adaptive, 2 Mixed | 1 | `std::clamp(v, 0, 2)` |
@@ -577,6 +578,7 @@ Edits go through `setActorStyle`, which ignores non-cast ids (`lldirectorcast.h`
 - Code rows and handlers (the JSON's `handler` key, informational like `src`): `sa_actor_target` onActorTargetCommit (writes `mSteppedActorId`), `sa_override_list` onOverrideListSelect, `sa_actor_override` / `sa_actor_rate` / `sa_actor_steps` / `sa_actor_role` (write the picked actor's `ActorStyle::mStepped` with the §14.2 clamps; read back on actor change), `sa_override_clear` onOverrideClear, `sa_rate_chips` onRateChip (writes `StepAnimRate = BaseFPS / n`; read-back highlights the chip whose `BaseFPS/n` equals the rate within 0.001, else none), readouts `sa_status`, `sa_rate_readout`, `sa_speed_meter`.
 - Segmented rows bound to S32 settings (`sa_mode`, `sa_what`) are the first setting-bound `radio_group`s in a kit page. The wiring audit must prove the radio payload reaches the S32 control as an integer and reads back (`LLRadioGroup::getValue` returns the item payload, `llradiogroup.cpp:370`).
 - **kit_lint gap (review minor, confirmed).** `KIND_TYPES` and `TAG_TYPES` in `scripts/code_tools/kit_lint.py:103-117` have no entry for `segmented` / `radio_group`, so a segmented row bound to a wrong-typed setting would pass the lint. The implementation must add `"segmented": ("S32", "U32", "String")` to `KIND_TYPES` and `"radio_group": ("S32", "U32", "String")` to `TAG_TYPES`, plus a lint fixture for each.
+- `sa_include_ghosts` (toggle, `StepAnimIncludeGhosts`) sits directly under Scope: "Include ghost clones"; help: "Step Ghost Studio clones even when they are outside the scope above." Default off. With it on, clones with independent animation join every scope; per-actor Smooth, posing/edit, camera-mounted exclusion and the actor cap still win. Mirror/copy ghosts keep inheriting their source. Both engines, including the Animation engine, must honour this option. It is tracked for config/history, but built-in and saved presets must never write it.
 - `sa_max_avatars` (number, `StepAnimMaxAvatars`, advanced) is in Card 1.
 
 ## 16. Cost and bounds

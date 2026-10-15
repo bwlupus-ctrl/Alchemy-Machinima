@@ -103,6 +103,11 @@ private:
     void bindRotoInkPage(LLView* root);
     void bindTronPage(LLView* root);
     void bindSteppedPage(LLView* root);
+    void bindDirectorSettingsPage(LLView* root);
+    // Restore button: confirms first, then loads the previous-session backup (see recoveryRestoreSource).
+    static void requestRestoreRecoveryScene();
+    static void onRecoveryResponse(const LLSD& notification, const LLSD& response);
+    static void refreshRecoveryControls();
     void bindLightActorsPage(LLView* root);
     void bindImagePage(LLView* root);
     // Lens, World and Look-adjacent generated kit pages: code-bound buttons and preset actions
@@ -139,7 +144,9 @@ private:
     void commitSceneName();             // editor commit (Enter) or second Save
     void onClickSceneDelete();
     bool saveScene(const std::string& name);
-    bool loadScene(const std::string& name, bool recovery = false);
+    // recovery_path overrides the live recovery file (the kept backup is loaded the same way).
+    bool loadScene(const std::string& name, bool recovery = false,
+                   const std::string& recovery_path = std::string());
     static LLSD captureSceneData();
     static bool writeSceneFile(const std::string& path, const std::string& label, bool notify_failure);
     static void initializeSceneRecovery();
@@ -149,6 +156,13 @@ private:
     void retargetPathFromCastSelection();
     static void offerSceneRecovery();
     static std::string recoveryPath();
+    // A backup the user chose to keep (Don't restore / remembered Discard / failed auto-restore).
+    // Never touched by autosave, the shutdown write or saveScene.
+    static std::string keptRecoveryPath();
+    static bool keepRecoveryBackupAside();
+    // 0 = not restored, 1 = restored, 2 = restored but the old backup file could not be removed.
+    static S32 restoreRecoveryBackup();
+    static void onRestoreRecoveryConfirmed(const LLSD& notification, const LLSD& response);
     static void sceneRecoveryIdle(void*);
 
     // ---- tabs ----
@@ -549,6 +563,7 @@ private:
     LLTimer mKitDrawTimer;
     F32 mKitDrawEMA = 0.f;
     ALLiveReadoutClock mKitDrawClock{2.f};
+    LLButton* mRecoveryRestoreButton = nullptr;
     boost::signals2::scoped_connection mActorMaskTestWatch;
     boost::signals2::scoped_connection mPageBuiltConnection;
     boost::signals2::scoped_connection mPageSelectedConnection;

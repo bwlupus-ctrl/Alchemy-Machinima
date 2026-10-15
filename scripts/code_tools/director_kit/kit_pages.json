@@ -283,7 +283,8 @@
     }
    ],
    "label_names": {}
-  }
+  },
+  "settings_group/director_settings_tab": {"v1_sources": [], "label_names": {}}
  },
  "layout_overrides": {"look_group/bloom_glow_tab": {"row_overrides": {"set_RenderBloomMipCount": {"row_height": 32}}}},
  "launcher_targets": {},

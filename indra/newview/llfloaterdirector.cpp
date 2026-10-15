@@ -71,6 +71,7 @@
 #include "llkeyframemotion.h"       // priority readout (signaled-anim list)
 #include "lllineeditor.h"
 #include "llmenugl.h"
+#include "llnotifications.h"
 #include "llnotificationsutil.h"    // scene delete confirm
 #include "llpresentationtime.h"
 #include "llprismlens.h"
@@ -117,7 +118,9 @@ bool sRecoveryOfferActive = false;
 bool sRecoveryOfferPending = false;
 bool sRecoveryShutdownPrepared = false;
 // A recovery file from a previous crashed session that the user has not yet
-// answered (Restore/Discard). While set it is never deleted or overwritten.
+// answered (Restore/Discard/Keep). While set it is never deleted or overwritten.
+// A backup the user chose to keep is MOVED to the kept file and this clears, so
+// autosave and the shutdown write resume; the kept file never blocks them.
 bool sRecoveryUnresolved = false;
 U8 sRecoveryOfferCount = 0;
 U8 sRecoveryIdleCountdown = 0;
@@ -160,6 +163,48 @@ bool can_start_manual_subject_shot(std::string* reason)
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
 constexpr char RECOVERY_FILE[] = ".director_recovery.xml";
+// The newest backup the user chose to keep. Older kept backups are renamed to
+// KEPT_RECOVERY_FILE + ".kept-<timestamp>"; at most KEPT_RECOVERY_MAX files in total.
+constexpr char KEPT_RECOVERY_FILE[] = ".director_recovery_kept.xml";
+constexpr char KEPT_RECOVERY_OLDER_TAG[] = ".kept-";
+constexpr size_t KEPT_RECOVERY_MAX = 3;
+
+// Read and parse a scene file, closing the stream before returning so the caller
+// may rename or delete it (an open handle makes that fail on Windows).
+bool readSceneFileClosed(const std::string& path, LLSD& scene_out)
+{
+    llifstream in(path.c_str());
+    if (!in.is_open())
+        return false;
+    const S32 parsed = LLSDSerialize::fromXML(scene_out, in);
+    const bool stream_bad = in.bad();
+    in.close();
+    return parsed != LLSDParser::PARSE_FAILURE && !stream_bad && scene_out.isMap();
+}
+
+// "3:23 PM" from a file's modification time, or "an unknown time".
+std::string fileTimeLabel(const std::string& path)
+{
+    llstat status;
+    std::string label = "an unknown time";
+    if (LLFile::stat(path, &status) == 0)
+    {
+        std::tm local_time;
+#if LL_WINDOWS
+        localtime_s(&local_time, &status.st_mtime);
+#else
+        localtime_r(&status.st_mtime, &local_time);
+#endif
+        char buffer[32];
+        if (std::strftime(buffer, sizeof(buffer), "%I:%M %p", &local_time))
+        {
+            label = buffer;
+            if (!label.empty() && label[0] == '0')
+                label.erase(0, 1);
+        }
+    }
+    return label;
+}
 constexpr S32  SCENE_VERSION   = 6;
 
 const std::string TOOLTIP_COUNTDOWN("Counting down. Click to cancel");
@@ -1378,6 +1423,7 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "stylize_tab", &LLFloaterDirector::bindRotoInkPage },
         { "tron_tab", &LLFloaterDirector::bindTronPage },
         { "stepped_tab", &LLFloaterDirector::bindSteppedPage },
+        { "director_settings_tab", &LLFloaterDirector::bindDirectorSettingsPage },
         { "image_tab", &LLFloaterDirector::bindImagePage },
         { "animate_tab", &LLFloaterDirector::bindAnimatePage },
         { "shot_tab", &LLFloaterDirector::bindCameraPage },
@@ -1405,6 +1451,25 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
             (this->*binding.binder)(root);
         }
     }
+}
+
+void LLFloaterDirector::bindDirectorSettingsPage(LLView* root)
+{
+    mRecoveryRestoreButton = root->getChild<LLButton>("settings_restore_recovery");
+    mRecoveryRestoreButton->setCommitCallback([](LLUICtrl*, const LLSD&)
+    {
+        requestRestoreRecoveryScene();
+    });
+    root->getChild<LLButton>("settings_reset_prompts")->setCommitCallback([](LLUICtrl*, const LLSD&)
+    {
+        gSavedSettings.setS32("DirectorRecoveryMode", 0);
+        for (const auto& entry : LLNotifications::instance().getTemplateNames())
+        {
+            if (entry.compare(0, 8, "Director") == 0)
+                LLNotifications::instance().setIgnored(entry, false);
+        }
+    });
+    refreshRecoveryControls();
 }
 
 // Look > Roto Ink (generated kit page). The look list is the kit preset strip (provider roto_ink);
@@ -2897,6 +2962,12 @@ std::string LLFloaterDirector::recoveryPath()
 }
 
 //static
+std::string LLFloaterDirector::keptRecoveryPath()
+{
+    return gDirUtilp->add(scenesDir(), KEPT_RECOVERY_FILE);
+}
+
+//static
 void LLFloaterDirector::removeRecoveryFile()
 {
     LLFile::remove(recoveryPath(), ENOENT);
@@ -3101,7 +3172,8 @@ void LLFloaterDirector::refreshSceneList(const std::string& select_name)
         std::string file;
         while (dir_iter.next(file))
         {
-            if (gDirUtilp->getBaseFileName(file, false) == RECOVERY_FILE)
+            const std::string base_file = gDirUtilp->getBaseFileName(file, false);
+            if (base_file == RECOVERY_FILE || base_file == KEPT_RECOVERY_FILE)
                 continue;
             names.emplace_back(LLURI::unescape(
                 gDirUtilp->getBaseFileName(file, /*strip_exten=*/true)));
@@ -3400,7 +3472,11 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     {
         markSceneClean();
         recoveryServiceState().mAutosaveTimer.reset();
-        LLFile::remove(recoveryPath(), ENOENT);
+        // This session's rolling autosave is obsolete once the scene is saved, but an
+        // unanswered crash backup from a previous session is not ours to delete, and
+        // the kept backup is never touched here.
+        if (ALDirectorQol::autosaveAllowed(sRecoveryUnresolved))
+            LLFile::remove(recoveryPath(), ENOENT);
         LL_INFOS("Director") << "Saved scene '" << clean_name << "'" << LL_ENDL;
         if (LLFloaterDirector* director = static_cast<LLFloaterDirector*>(sRecoveryDirectorHandle.get()))
             director->showTransportToast("Saved: " + clean_name);
@@ -3466,9 +3542,12 @@ bool LLFloaterDirector::writeSceneFile(const std::string& path,
 }
 
 // ui-draw-lint: allow-function(setting-write) loadScene runs only from the Load button and the recovery Restore alert callback, never per frame
-bool LLFloaterDirector::loadScene(const std::string& name, bool recovery)
+bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
+                                  const std::string& recovery_path)
 {
-    const std::string path = recovery ? recoveryPath() : scenePath(name);
+    const std::string path = recovery
+        ? (recovery_path.empty() ? recoveryPath() : recovery_path)
+        : scenePath(name);
     llifstream in(path.c_str());
     if (!in.is_open())
     {
@@ -3752,9 +3831,9 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery)
     if (mSceneDirtyText)
         setTextIfChanged(mSceneDirtyText, recovery ? "*" : "");
     recoveryServiceState().mAutosaveTimer.reset();
-    if (recovery)
-        LLFile::remove(recoveryPath(), ENOENT);
-    else
+    // A recovery load never deletes its source: the caller does that after closing
+    // every stream and checks the result (restoreRecoveryBackup).
+    if (!recovery)
         showTransportToast("Loaded: " + name);
     return true;
 }
@@ -3810,6 +3889,16 @@ void LLFloaterDirector::initializeSceneRecovery()
                 ++recoveryServiceState().mSettingsRevision;
             }));
     }
+    if (LLControlVariable* control = gSavedSettings.getControl("DirectorRecoveryMode"))
+    {
+        service.mSettingConnections.emplace_back(control->getSignal()->connect(
+            [](LLControlVariable*, const LLSD&, const LLSD&)
+            {
+                // The Settings combo owns the preference; a previous notification
+                // ignore must never bypass a newly selected Ask mode.
+                LLNotifications::instance().setIgnored("DirectorRestoreRecovery", false);
+            }));
+    }
     markSceneClean();
 }
 
@@ -3851,8 +3940,9 @@ void LLFloaterDirector::updateSceneDirty()
 
 void LLFloaterDirector::idleSceneRecovery(bool force_write)
 {
-    // Don't overwrite an unanswered crash backup with this session's state.
-    if (sRecoveryUnresolved)
+    // Don't overwrite an unanswered crash backup with this session's state. A kept
+    // backup lives in its own file and never blocks autosave.
+    if (!ALDirectorQol::autosaveAllowed(sRecoveryUnresolved))
         return;
     updateSceneDirty();
     RecoveryServiceState& service = recoveryServiceState();
@@ -3885,6 +3975,7 @@ void LLFloaterDirector::sceneRecoveryIdle(void*)
         return;
     sRecoveryIdleCountdown = 0;
     idleSceneRecovery();
+    refreshRecoveryControls();
 }
 
 void LLFloaterDirector::startRecoveryService()
@@ -3914,7 +4005,7 @@ void LLFloaterDirector::prepareRecoveryForShutdown()
     sRecoveryShutdownPrepared = true;
 
     // Never touch an unanswered crash backup on the way out.
-    if (sRecoveryUnresolved)
+    if (!ALDirectorQol::autosaveAllowed(sRecoveryUnresolved))
         return;
     updateSceneDirty();
     if (recoveryServiceState().mSceneDirty)
@@ -3930,72 +4021,296 @@ void LLFloaterDirector::cancelRecoveryShutdown()
     sRecoveryShutdownPrepared = false;
 }
 
+namespace
+{
+// Delete a backup file; true when it is really gone. Never assumes success.
+bool removeBackupFile(const std::string& path)
+{
+    if (!gDirUtilp->fileExists(path))
+        return true;
+    LLFile::remove(path, ENOENT);
+    if (gDirUtilp->fileExists(path))
+    {
+        LL_WARNS("Director") << "Could not delete Director backup " << path << LL_ENDL;
+        return false;
+    }
+    return true;
+}
+} // namespace
+
+// static
+void LLFloaterDirector::refreshRecoveryControls()
+{
+    if (LLFloater* floater = sRecoveryDirectorHandle.get())
+    {
+        LLFloaterDirector* self = static_cast<LLFloaterDirector*>(floater);
+        if (self->mRecoveryRestoreButton)
+        {
+            // Only a crash backup from a previous session is restorable: the kept
+            // file, or the live file found at login that is still unanswered. This
+            // session's own rolling autosave never enables the button.
+            const bool available = ALDirectorQol::restoreSource(
+                gDirUtilp->fileExists(keptRecoveryPath()),
+                gDirUtilp->fileExists(recoveryPath()),
+                sRecoveryUnresolved) != ALDirectorQol::RestoreSource::NONE;
+            if (self->mRecoveryRestoreButton->getEnabled() != available)
+                self->mRecoveryRestoreButton->setEnabled(available);
+        }
+    }
+}
+
+// static
+bool LLFloaterDirector::keepRecoveryBackupAside()
+{
+    const std::string live = recoveryPath();
+    if (!gDirUtilp->fileExists(live))
+        return true;
+    const std::string kept = keptRecoveryPath();
+    std::string rotated;
+    if (gDirUtilp->fileExists(kept))
+    {
+        // The newest kept backup wins the main slot; the older one is renamed aside.
+        llstat status;
+        std::string stamp = "unknown";
+        if (LLFile::stat(kept, &status) == 0)
+        {
+            std::tm local_time;
+#if LL_WINDOWS
+            localtime_s(&local_time, &status.st_mtime);
+#else
+            localtime_r(&status.st_mtime, &local_time);
+#endif
+            char buffer[32];
+            if (std::strftime(buffer, sizeof(buffer), "%Y%m%dT%H%M%S", &local_time))
+                stamp = buffer;
+        }
+        for (S32 attempt = 0; attempt < 10; ++attempt)
+        {
+            const std::string candidate = kept + KEPT_RECOVERY_OLDER_TAG + stamp +
+                (attempt ? "-" + std::to_string(attempt) : std::string());
+            if (!gDirUtilp->fileExists(candidate))
+            {
+                rotated = candidate;
+                break;
+            }
+        }
+        if (rotated.empty() || LLFile::rename(kept, rotated, ENOENT) != 0 ||
+            gDirUtilp->fileExists(kept))
+        {
+            LL_WARNS("Director") << "Could not set the older kept Director backup aside; "
+                                    "the crash backup stays where it is" << LL_ENDL;
+            return false;
+        }
+    }
+    if (LLFile::rename(live, kept, ENOENT) != 0 || gDirUtilp->fileExists(live))
+    {
+        LL_WARNS("Director") << "Could not keep the Director crash backup aside (" << live
+                             << " -> " << kept << ")" << LL_ENDL;
+        // Put the older kept backup back so the kept slot is not left empty.
+        if (!rotated.empty() && LLFile::rename(rotated, kept, ENOENT) != 0)
+            LL_WARNS("Director") << "Could not restore the older kept Director backup " << rotated << LL_ENDL;
+        return false;
+    }
+    LL_INFOS("Director") << "Kept the Director crash backup aside as " << kept << LL_ENDL;
+
+    // At most KEPT_RECOVERY_MAX backups in total: the kept file plus older ones.
+    std::vector<std::string> older;
+    {
+        LLDirIterator dir_iter(scenesDir(), std::string(KEPT_RECOVERY_FILE) + KEPT_RECOVERY_OLDER_TAG + "*");
+        std::string file;
+        while (dir_iter.next(file))
+            older.push_back(file);
+    }
+    for (const std::string& doomed : ALDirectorQol::keptBackupsToPrune(older, KEPT_RECOVERY_MAX - 1))
+        removeBackupFile(gDirUtilp->add(scenesDir(), doomed));
+    return true;
+}
+
+// static
+S32 LLFloaterDirector::restoreRecoveryBackup()
+{
+    const std::string kept = keptRecoveryPath();
+    const std::string live = recoveryPath();
+    const ALDirectorQol::RestoreSource source = ALDirectorQol::restoreSource(
+        gDirUtilp->fileExists(kept), gDirUtilp->fileExists(live), sRecoveryUnresolved);
+    if (source == ALDirectorQol::RestoreSource::NONE)
+    {
+        refreshRecoveryControls();
+        return 0;
+    }
+    const std::string& path = source == ALDirectorQol::RestoreSource::KEPT ? kept : live;
+    // loadScene opens, reads and closes the file itself; nothing here holds it open.
+    bool restored = false;
+    if (LLFloaterDirector* self = LLFloaterReg::showTypedInstance<LLFloaterDirector>("director"))
+        restored = self->loadScene("recovery", true, path);
+
+    S32 result = restored ? 1 : 0;
+    switch (ALDirectorQol::restoreFollowUp(source, restored))
+    {
+    case ALDirectorQol::RestoreFollowUp::CONSUME:
+        if (!removeBackupFile(path))
+            result = 2;
+        // The restored scene is dirty and autosaves under this session from now on, so
+        // the previous-session flag clears even if the old file was left behind.
+        if (source == ALDirectorQol::RestoreSource::PREVIOUS_LIVE)
+            sRecoveryUnresolved = false;
+        break;
+    case ALDirectorQol::RestoreFollowUp::KEEP_ASIDE:
+        LL_WARNS("Director") << "Could not restore the Director crash backup; keeping it aside" << LL_ENDL;
+        sRecoveryUnresolved = ALDirectorQol::stillUnresolved(
+            sRecoveryUnresolved, keepRecoveryBackupAside());
+        break;
+    case ALDirectorQol::RestoreFollowUp::LEAVE:
+        break;
+    }
+    refreshRecoveryControls();
+    return result;
+}
+
+// static
+void LLFloaterDirector::requestRestoreRecoveryScene()
+{
+    const std::string kept = keptRecoveryPath();
+    const std::string live = recoveryPath();
+    const ALDirectorQol::RestoreSource source = ALDirectorQol::restoreSource(
+        gDirUtilp->fileExists(kept), gDirUtilp->fileExists(live), sRecoveryUnresolved);
+    if (source == ALDirectorQol::RestoreSource::NONE)
+    {
+        refreshRecoveryControls();
+        return;
+    }
+    LLSD args;
+    args["TIME"] = fileTimeLabel(source == ALDirectorQol::RestoreSource::KEPT ? kept : live);
+    LLNotificationsUtil::add("DirectorConfirmRestoreRecovery", args, LLSD(),
+        &LLFloaterDirector::onRestoreRecoveryConfirmed);
+}
+
+// static
+void LLFloaterDirector::onRestoreRecoveryConfirmed(const LLSD& notification, const LLSD& response)
+{
+    if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
+        return;
+    // Eligibility is re-evaluated: the backup may have changed while the dialog was open.
+    const S32 result = restoreRecoveryBackup();
+    LLSD toast;
+    if (result == 0)
+        toast["MESSAGE"] = "Couldn't restore your unsaved Director scene; the backup was kept.";
+    else if (result == 2)
+        toast["MESSAGE"] = "Restored your unsaved Director scene, but the old backup file couldn't be deleted.";
+    else
+        return;
+    LLNotificationsUtil::add("SystemMessageTip", toast);
+}
+
 void LLFloaterDirector::offerSceneRecovery()
 {
     if (sRecoveryOfferActive || sRecoveryOfferCount >= 2)
         return;
+    // Another route (the Settings button) may have resolved the backup meanwhile.
+    if (!sRecoveryUnresolved)
+        return;
     const std::string path = recoveryPath();
     if (!gDirUtilp->fileExists(path))
-        return;
-    llifstream in(path.c_str());
-    LLSD scene;
-    const S32 parsed = in.is_open() ? LLSDSerialize::fromXML(scene, in)
-                                    : LLSDParser::PARSE_FAILURE;
-    const bool valid = parsed != LLSDParser::PARSE_FAILURE && !in.bad() && scene.isMap();
-    const ALDirectorQol::RecoveryAction action =
-        ALDirectorQol::recoveryAction(true, valid);
-    if (action == ALDirectorQol::RecoveryAction::DISCARD_CORRUPT)
     {
-        LL_WARNS("Director") << "Discarding corrupt Director recovery file " << path << LL_ENDL;
-        LLFile::remove(path, ENOENT);
+        sRecoveryUnresolved = false;
+        refreshRecoveryControls();
         return;
     }
-    llstat status;
-    std::string saved = "an unknown time";
-    if (LLFile::stat(path, &status) == 0)
+    LLSD scene;
+    const bool valid = readSceneFileClosed(path, scene); // the stream is closed before any restore/rename/delete
+    static LLCachedControl<S32> recovery_mode(gSavedSettings, "DirectorRecoveryMode");
+    const S32 mode = recovery_mode;
+    switch (ALDirectorQol::loginRecoveryAction(true, valid, mode))
     {
-        std::tm local_time;
-#if LL_WINDOWS
-        localtime_s(&local_time, &status.st_mtime);
-#else
-        localtime_r(&status.st_mtime, &local_time);
-#endif
-        char buffer[32];
-        if (std::strftime(buffer, sizeof(buffer), "%I:%M %p", &local_time))
+    case ALDirectorQol::LoginRecoveryAction::NONE:
+        return;
+    case ALDirectorQol::LoginRecoveryAction::DISCARD_CORRUPT:
+        LL_WARNS("Director") << "Discarding corrupt Director recovery file " << path << LL_ENDL;
+        sRecoveryUnresolved = ALDirectorQol::stillUnresolved(sRecoveryUnresolved, removeBackupFile(path));
+        refreshRecoveryControls();
+        return;
+    case ALDirectorQol::LoginRecoveryAction::KEEP_ASIDE:
+        // Don't restore: move the backup to the kept file so autosave resumes this session.
+        sRecoveryUnresolved = ALDirectorQol::stillUnresolved(sRecoveryUnresolved, keepRecoveryBackupAside());
+        refreshRecoveryControls();
+        return;
+    case ALDirectorQol::LoginRecoveryAction::RESTORE_AUTO:
+    {
+        const std::string saved = fileTimeLabel(path);
+        const S32 result = restoreRecoveryBackup();
+        LLSD toast;
+        if (result == 1)
         {
-            saved = buffer;
-            if (!saved.empty() && saved[0] == '0')
-                saved.erase(0, 1);
+            toast["MESSAGE"] = "Restored your unsaved Director scene from " + saved + ".";
         }
+        else if (result == 2)
+        {
+            toast["MESSAGE"] = "Restored your unsaved Director scene from " + saved +
+                               ", but the old backup file couldn't be deleted.";
+        }
+        else
+        {
+            // restoreRecoveryBackup moved the backup to the kept file and resumed autosave,
+            // so a failure is not retried silently at every login.
+            toast["MESSAGE"] = "Couldn't restore your unsaved Director scene; the backup was kept. "
+                               "You can try again from Director > Settings.";
+        }
+        LLNotificationsUtil::add("SystemMessageTip", toast);
+        return;
+    }
+    case ALDirectorQol::LoginRecoveryAction::OFFER:
+        break;
     }
     LLSD args;
-    args["TIME"] = saved;
+    args["TIME"] = fileTimeLabel(path);
     sRecoveryOfferActive = true;
     ++sRecoveryOfferCount;
     LLNotificationsUtil::add("DirectorRestoreRecovery", args, LLSD(),
-        [path](const LLSD& notification, const LLSD& response)
+        &LLFloaterDirector::onRecoveryResponse);
+}
+
+void LLFloaterDirector::onRecoveryResponse(const LLSD& notification, const LLSD& response)
+{
+    sRecoveryOfferActive = false;
+    const S32 option = LLNotificationsUtil::getSelectedOption(notification, response);
+    const bool remember = response["ignore"].asBoolean();
+    if (remember && (option == 0 || option == 1))
+        gSavedSettings.setS32("DirectorRecoveryMode", option == 0 ? 1 : 2);
+    // The Settings button may have resolved the backup while this prompt was open. The
+    // live file is then this session's own autosave, which an answer must not touch.
+    if (!sRecoveryUnresolved)
+    {
+        refreshRecoveryControls();
+        return;
+    }
+    if (option == 0)
+    {
+        if (restoreRecoveryBackup() == 0)
         {
-            sRecoveryOfferActive = false;
-            const S32 option = LLNotificationsUtil::getSelectedOption(notification, response);
-            if (option == 0 || option == 1)
-                sRecoveryUnresolved = false;
-            if (option == 0)
-            {
-                if (LLFloaterDirector* self =
-                        LLFloaterReg::showTypedInstance<LLFloaterDirector>("director"))
-                    self->loadScene("recovery", true);
-            }
-            else if (option == 1)
-            {
-                LLFile::remove(path, ENOENT);
-            }
-            else if (sRecoveryOfferCount < 2)
-            {
-                // Window close is neither Restore nor Discard. Re-offer once
-                // on the next idle, even when Director has never been opened.
-                sRecoveryOfferPending = true;
-            }
-        });
+            LLSD toast;
+            toast["MESSAGE"] = "Couldn't restore your unsaved Director scene; the backup was kept. "
+                               "You can try again from Director > Settings.";
+            LLNotificationsUtil::add("SystemMessageTip", toast);
+        }
+    }
+    else if (option == 1 && !remember)
+    {
+        // Discard deletes the backup.
+        sRecoveryUnresolved = ALDirectorQol::stillUnresolved(sRecoveryUnresolved, removeBackupFile(recoveryPath()));
+        refreshRecoveryControls();
+    }
+    else if (option == 1)
+    {
+        // Discard + "Don't ask me again": keep the backup aside for Director > Settings.
+        sRecoveryUnresolved = ALDirectorQol::stillUnresolved(sRecoveryUnresolved, keepRecoveryBackupAside());
+        refreshRecoveryControls();
+    }
+    else if (sRecoveryOfferCount < 2)
+    {
+        // Window close is neither Restore nor Discard. Re-offer once
+        // on the next idle, even when Director has never been opened.
+        sRecoveryOfferPending = true;
+    }
 }
 
 // ---------------------------------------------------------------------------

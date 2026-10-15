@@ -33,6 +33,7 @@
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "alclientheight.h"       // [ClientHeight] disconnect reset
 #include "alsettingsundohistory.h" // session-only exposure undo/redo
+#include "aldirectortheme.h"      // Director colour themes (applied after colours load)
 
 // Viewer includes
 #include "llversioninfo.h"
@@ -2760,6 +2761,7 @@ std::string LLAppViewer::getSettingsFilename(const std::string& location_key,
 void LLAppViewer::loadColorSettings()
 {
     LLUIColorTable::instance().loadFromSettings();
+    ALDirectorTheme::init();
 }
 
 namespace

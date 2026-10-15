@@ -13689,9 +13689,23 @@ Please note that &quot;Shared Environment&quot; and &quot;Day cycle based&quot; 
 
   <notification icon="alertmodal.tga" name="DirectorRestoreRecovery" type="alertmodal">
     <unique/>
-    Restore unsaved Director scene from [TIME]?
+    The Director autosaves your scene while you work. Your last unsaved scene was autosaved at [TIME], and the viewer closed before it was saved (for example a crash, a forced quit or a disconnect).
+
+Restore reloads that backup: cast, cameras, lights and looks. Discard deletes the backup. If you tick &apos;Don&apos;t ask me again&apos;, the backup is kept aside instead and you can restore it later from Director &gt; Settings.
     <tag>confirm</tag>
-    <usetemplate name="okcancelbuttons" notext="Discard" yestext="Restore"/>
+    <form name="form">
+      <ignore name="ignore" save_option="true" text="Restore an unsaved Director scene"
+       checkbox_label="Don&apos;t ask me again (change this in Director &gt; Settings)"/>
+      <button default="true" index="0" name="Restore" text="Restore" ignore="Restore automatically"/>
+      <button index="1" name="Discard" text="Discard" ignore="Don&apos;t restore (keep the backup)"/>
+    </form>
+  </notification>
+
+  <notification icon="alertmodal.tga" name="DirectorConfirmRestoreRecovery" type="alertmodal">
+    <unique/>
+    Replace the current scene with the unsaved scene autosaved at [TIME]? Your current changes will be lost unless you save them first.
+    <tag>confirm</tag>
+    <usetemplate name="okcancelbuttons" notext="Cancel" yestext="Replace"/>
   </notification>
 
   <notification

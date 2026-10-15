@@ -74,6 +74,7 @@ PAGE_OWNER_FILES = {
     "shadows_probes_tab": {"floater_lightbox_settings.xml"},
     "temporal_tab": {"panel_temporal_capture.xml"},
     "scene_options_tab": {"floater_director.xml"},
+    "director_settings_tab": {"panel_dpage_settings_director_settings.xml"},
 }
 
 PAGE_OWNER_CLASSES = {
@@ -113,6 +114,7 @@ PAGE_OWNER_CLASSES = {
     "shadows_probes_tab": {"ALFloaterLightBox"},
     "temporal_tab": {"ALPanelTemporalCapture"},
     "scene_options_tab": {"LLFloaterDirector"},
+    "director_settings_tab": {"LLFloaterDirector"},
 }
 
 WIDGET_NAME_OVERRIDES = {
@@ -303,6 +305,7 @@ ADAPTERS = {
     "weather_tab": "ALWeatherKitAdapter", "atmosphere_tab": "ALAtmosphereKitAdapter",
     "shadows_probes_tab": "ALShadowProbeKitAdapter", "temporal_tab": "ALTemporalCaptureKitAdapter",
     "scene_options_tab": "ALSceneOptionsKitAdapter",
+    "director_settings_tab": "ALDirectorSettingsKitAdapter",
 }
 
 R2_FIRST = [

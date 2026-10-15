@@ -62,4 +62,78 @@ template<> template<> void director_qol_object::test<4>()
     ensure("external result does not win an equal-score tie",
            !ALDirectorQol::searchResultBefore(200, true, 1, 200, false, 8));
 }
+
+// Crash-recovery decisions: login handling per mode, keep-aside vs autosave, the
+// restore button's eligibility, and the follow-up after a failed restore.
+template<> template<> void director_qol_object::test<5>()
+{
+    using Login = ALDirectorQol::LoginRecoveryAction;
+    ensure("no live file does nothing", ALDirectorQol::loginRecoveryAction(false, false, 0) == Login::NONE);
+    ensure("Ask offers", ALDirectorQol::loginRecoveryAction(true, true, 0) == Login::OFFER);
+    ensure("Restore automatically restores", ALDirectorQol::loginRecoveryAction(true, true, 1) == Login::RESTORE_AUTO);
+    ensure("Don't restore keeps the backup aside", ALDirectorQol::loginRecoveryAction(true, true, 2) == Login::KEEP_ASIDE);
+    ensure("unknown mode asks", ALDirectorQol::loginRecoveryAction(true, true, 9) == Login::OFFER);
+    for (S32 mode = 0; mode <= 2; ++mode)
+        ensure("a corrupt file is discarded in every mode",
+               ALDirectorQol::loginRecoveryAction(true, false, mode) == Login::DISCARD_CORRUPT);
+}
+
+template<> template<> void director_qol_object::test<6>()
+{
+    // Login finds a crash backup: autosave is blocked until it is resolved.
+    bool unresolved = true;
+    ensure("unanswered backup blocks autosave", !ALDirectorQol::autosaveAllowed(unresolved));
+    // Mode 2 / ticked Discard: the backup is moved to the kept file. A failed move
+    // keeps the block (the backup must never be overwritten); a good one resumes autosave.
+    ensure("failed keep stays blocked", !ALDirectorQol::autosaveAllowed(ALDirectorQol::stillUnresolved(unresolved, false)));
+    unresolved = ALDirectorQol::stillUnresolved(unresolved, true);
+    ensure("keep -> autosave resumes", ALDirectorQol::autosaveAllowed(unresolved));
+    // The kept file is a separate file: with no unresolved live backup, autosave runs
+    // whether or not a kept backup exists, and a resolved flag stays resolved.
+    ensure("a kept file alone never blocks autosave", ALDirectorQol::autosaveAllowed(false));
+    ensure("resolved stays resolved", !ALDirectorQol::stillUnresolved(false, false));
+}
+
+template<> template<> void director_qol_object::test<7>()
+{
+    using Source = ALDirectorQol::RestoreSource;
+    using Follow = ALDirectorQol::RestoreFollowUp;
+    ensure("nothing eligible", ALDirectorQol::restoreSource(false, false, false) == Source::NONE);
+    ensure("this session's rolling autosave is never eligible",
+           ALDirectorQol::restoreSource(false, true, false) == Source::NONE);
+    ensure("a kept backup is eligible", ALDirectorQol::restoreSource(true, false, false) == Source::KEPT);
+    ensure("rolling autosave does not hide a kept backup",
+           ALDirectorQol::restoreSource(true, true, false) == Source::KEPT);
+    ensure("an unresolved previous-session live file is eligible",
+           ALDirectorQol::restoreSource(false, true, true) == Source::PREVIOUS_LIVE);
+    ensure("the newer unresolved live file wins over the kept one",
+           ALDirectorQol::restoreSource(true, true, true) == Source::PREVIOUS_LIVE);
+    ensure("an unresolved flag without a file is not eligible",
+           ALDirectorQol::restoreSource(false, false, true) == Source::NONE);
+
+    ensure("successful restore consumes the backup",
+           ALDirectorQol::restoreFollowUp(Source::PREVIOUS_LIVE, true) == Follow::CONSUME &&
+           ALDirectorQol::restoreFollowUp(Source::KEPT, true) == Follow::CONSUME);
+    ensure("failed auto-restore of the live backup is kept aside",
+           ALDirectorQol::restoreFollowUp(Source::PREVIOUS_LIVE, false) == Follow::KEEP_ASIDE);
+    ensure("failed restore of a kept backup leaves it in place",
+           ALDirectorQol::restoreFollowUp(Source::KEPT, false) == Follow::LEAVE);
+    ensure("no source leaves everything alone",
+           ALDirectorQol::restoreFollowUp(Source::NONE, true) == Follow::LEAVE);
+    // The failed auto-restore ends with autosave running again (kept, then resolved).
+    ensure("failed auto-restore -> kept -> autosave resumes",
+           ALDirectorQol::autosaveAllowed(ALDirectorQol::stillUnresolved(true, true)));
+}
+
+template<> template<> void director_qol_object::test<8>()
+{
+    const std::vector<std::string> none = ALDirectorQol::keptBackupsToPrune({"a", "b"}, 2);
+    ensure("under the cap keeps everything", none.empty());
+    const std::vector<std::string> doomed =
+        ALDirectorQol::keptBackupsToPrune({"k-20261015T120000", "k-20261013T090000", "k-20261014T100000"}, 2);
+    ensure_equals("one over the cap", doomed.size(), size_t(1));
+    ensure_equals("the oldest goes first", doomed[0], std::string("k-20261013T090000"));
+    ensure("a zero cap removes all",
+           ALDirectorQol::keptBackupsToPrune({"x", "y"}, 0).size() == 2);
+}
 } // namespace tut

@@ -44,6 +44,51 @@ enum class RecoveryAction
 };
 
 RecoveryAction recoveryAction(bool file_exists, bool parsed_scene);
+
+// What to do at login with the live recovery file (a crash backup from the
+// previous session). mode is DirectorRecoveryMode: 0 Ask, 1 Restore
+// automatically, 2 Don't restore (keep the backup aside).
+enum class LoginRecoveryAction
+{
+    NONE,
+    OFFER,
+    RESTORE_AUTO,
+    KEEP_ASIDE,
+    DISCARD_CORRUPT
+};
+LoginRecoveryAction loginRecoveryAction(bool file_exists, bool parsed_scene, S32 mode);
+
+// A previous-session backup in the live recovery file that nobody has answered
+// yet must not be overwritten, so it blocks autosave and the shutdown write.
+// A kept (moved aside) backup lives in its own file and never blocks anything.
+bool autosaveAllowed(bool live_backup_unresolved);
+// The unresolved flag after a Restore / Discard / Keep step. It only clears when
+// the step really succeeded, so a failed rename or delete never reports success.
+bool stillUnresolved(bool was_unresolved, bool step_succeeded);
+
+// "Restore last unsaved scene" only ever restores a crash backup from a PREVIOUS
+// session: the kept file, or the live file found at login that is still
+// unresolved. This session's own rolling autosave is never eligible.
+enum class RestoreSource
+{
+    NONE,
+    KEPT,
+    PREVIOUS_LIVE
+};
+RestoreSource restoreSource(bool kept_exists, bool live_exists, bool live_unresolved);
+
+enum class RestoreFollowUp
+{
+    CONSUME,    // restored: delete the source backup
+    KEEP_ASIDE, // the unresolved live backup failed to restore: move it to the kept file
+    LEAVE       // nothing to do (no source, or a kept backup that failed stays as it is)
+};
+RestoreFollowUp restoreFollowUp(RestoreSource source, bool restored);
+
+// Older kept backups are named so that sorting ascending is oldest first. Returns
+// the names to delete so that at most max_older remain (the oldest go first).
+std::vector<std::string> keptBackupsToPrune(std::vector<std::string> older_names,
+                                            size_t max_older);
 } // namespace ALDirectorQol
 
 #endif

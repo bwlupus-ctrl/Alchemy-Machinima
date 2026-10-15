@@ -110,3 +110,58 @@ ALDirectorQol::RecoveryAction ALDirectorQol::recoveryAction(bool file_exists,
         return RecoveryAction::NONE;
     return parsed_scene ? RecoveryAction::OFFER_RESTORE : RecoveryAction::DISCARD_CORRUPT;
 }
+
+ALDirectorQol::LoginRecoveryAction ALDirectorQol::loginRecoveryAction(bool file_exists,
+                                                                       bool parsed_scene,
+                                                                       S32 mode)
+{
+    if (!file_exists)
+        return LoginRecoveryAction::NONE;
+    if (!parsed_scene)
+        return LoginRecoveryAction::DISCARD_CORRUPT;
+    if (mode == 1)
+        return LoginRecoveryAction::RESTORE_AUTO;
+    if (mode == 2)
+        return LoginRecoveryAction::KEEP_ASIDE;
+    return LoginRecoveryAction::OFFER;
+}
+
+bool ALDirectorQol::autosaveAllowed(bool live_backup_unresolved)
+{
+    return !live_backup_unresolved;
+}
+
+bool ALDirectorQol::stillUnresolved(bool was_unresolved, bool step_succeeded)
+{
+    return was_unresolved && !step_succeeded;
+}
+
+ALDirectorQol::RestoreSource ALDirectorQol::restoreSource(bool kept_exists,
+                                                           bool live_exists,
+                                                           bool live_unresolved)
+{
+    if (live_exists && live_unresolved)
+        return RestoreSource::PREVIOUS_LIVE;
+    return kept_exists ? RestoreSource::KEPT : RestoreSource::NONE;
+}
+
+ALDirectorQol::RestoreFollowUp ALDirectorQol::restoreFollowUp(RestoreSource source,
+                                                               bool restored)
+{
+    if (source == RestoreSource::NONE)
+        return RestoreFollowUp::LEAVE;
+    if (restored)
+        return RestoreFollowUp::CONSUME;
+    return source == RestoreSource::PREVIOUS_LIVE ? RestoreFollowUp::KEEP_ASIDE
+                                                  : RestoreFollowUp::LEAVE;
+}
+
+std::vector<std::string> ALDirectorQol::keptBackupsToPrune(std::vector<std::string> older_names,
+                                                           size_t max_older)
+{
+    std::sort(older_names.begin(), older_names.end());
+    std::vector<std::string> doomed;
+    if (older_names.size() > max_older)
+        doomed.assign(older_names.begin(), older_names.end() - (std::ptrdiff_t)max_older);
+    return doomed;
+}

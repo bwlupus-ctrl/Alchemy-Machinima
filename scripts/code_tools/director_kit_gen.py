@@ -225,8 +225,12 @@ def validate_data(data: dict) -> None:
     # generated/legacy page-classification pin.
     # 2065: + Step particles and Step texture animation toggles (10/15).
     # 2066: + Actors Remember-between-sessions toggle; Isolation test combo replaced by one trigger button (10/15)
-    if len(pages) != 36 or row_count != 2066:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 36/2066")
+    # 2071: Director Settings adds six rows and rehomes the Scene cast-at-login row.
+    # 2072: Include ghost clones adds one Stepped row (10/15).
+    # 2073: Capture > Scene regains the "Add me to the cast at login" home row (+1); Director
+    #       Settings keeps a link row to it in place of its former toggle (net 0) (10/15).
+    if len(pages) != 37 or row_count != 2073:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2073")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1030,6 +1034,11 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     shell = ET.SubElement(root, "kit_shell", {"name": "director_shell", "follows": "all", "left": "0",
                           "top": "30", "width": "1160", "height": "690", "index_file": "director_kit_index.xml"})
     for group in data.get("groups", []):
+        if group.get("rail") is False:
+            button = group["button"]
+            ET.SubElement(shell, "button", {"name": button["name"], "label": "",
+                          "image_overlay": button["icon"], "tool_tip": button["help"]})
+            continue
         masters = sorted({p.get("master", {}).get("s", "") for p in group.get("pages", []) if p.get("master", {}).get("s")})
         ET.SubElement(shell, "kit_shell.rail_item", {"group": group["name"], "label": group["label"],
                       "icon": ICONS[group["icon"]], "master_settings": ",".join(masters)})
@@ -1194,13 +1203,15 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "camera_group/shot_tab": "kit (P0)", "camera_group/moves_tab": "kit (P0)",
                 "camera_group/operator_tab": "kit (P0)", "camera_group/frame_orbit_tab": "kit (P0)",
                 "camera_group/takes_tab": "kit (P0)", "capture_group/temporal_tab": "kit (P0)",
-                "capture_group/scene_options_tab": "kit (P0)"}
+                "capture_group/scene_options_tab": "kit (P0)",
+                "settings_group/director_settings_tab": "kit (P0)"}
     # Pinned per conversion batch (user-approved 10/13: lower as pages convert, never raise).
     # World/Lens batch: kit 7 -> 13, legacy 27 -> 21. 10/14: new Stepped page (kit_pages
     # entry => kit (P0)) kit 13 -> 14; legacy unchanged at 21. 10/14 Camera+Capture
     # batch: kit 14 -> 21, legacy 21 -> 14.
     # 10/15 Light Actors: kit 21 -> 22, legacy 14 -> 13
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 22, "pure kit (new)": 1, "legacy": 13}):
+    # 10/15 Director Settings: kit 22 -> 23, legacy unchanged at 13.
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 23, "pure kit (new)": 1, "legacy": 13}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -1267,7 +1278,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
         checks = []
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 22, "pure kit (new)": 1, "legacy": 13})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 23, "pure kit (new)": 1, "legacy": 13})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -1323,7 +1334,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("look Tron page is a generated kit page (no launcher)",
                        not launcher_cards and len(list(tron.iter("kit_row"))) > 100
                        and any(node.get("page") == "look_group/tron_tab" for node in tron.iter("kit_page"))))
-        checks.append(("37 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 37))
+        checks.append(("38 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 38))
         synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
         exposure_aliases = synonym_aliases("Exposure", synonyms).split()
         checks.append(("synonym expansion is bidirectional and index-ready",

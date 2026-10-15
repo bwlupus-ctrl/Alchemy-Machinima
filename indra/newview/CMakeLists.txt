@@ -197,6 +197,7 @@ set(viewer_SOURCE_FILES
     aldirectorswitchermodel.cpp
     aldirectorqol.cpp
     aldirectortabmigration.cpp
+    aldirectortheme.cpp
     aldroptarget.cpp
     alflowgrid.cpp
     alkitbar.cpp
@@ -1117,6 +1118,7 @@ set(viewer_HEADER_FILES
     aldirectorswitchermodel.h
     aldirectorqol.h
     aldirectortabmigration.h
+    aldirectortheme.h
     aldroptarget.h
     alflowgrid.h
     alkitbar.h
@@ -2850,6 +2852,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitqol "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(aldirectortheme "" "${test_libs}" "${test_project}")
 
   # ALGazeMath is deliberately header-only, so register its TUT directly
   # instead of inventing a production .cpp solely for the per-source macro.

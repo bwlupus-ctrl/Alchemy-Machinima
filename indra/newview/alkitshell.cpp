@@ -433,6 +433,17 @@ void ALKitShell::buildChrome()
             }
         });
 
+    mSettingsButton = findChild<LLButton>("btn_director_settings");
+    if (mSettingsButton)
+    {
+        mTabStrip->addChild(mSettingsButton);
+        mSettingsButton->setCommitCallback([tab_handle](LLUICtrl*, const LLSD&)
+        {
+            if (ALKitShell* shell = tab_handle.get())
+                shell->selectPage("director_settings_tab");
+        });
+    }
+
     ALKitPopover::Params search_params;
     search_params.name    = "kit_search_results";
     search_params.rect    = LLRect(0, 390, 430, 0);
@@ -728,7 +739,7 @@ void ALKitShell::layoutChrome()
     const std::string current_page = current_leaf ? current_leaf->getName() : std::string();
     if (LLFloater* floater = dynamic_cast<LLFloater*>(getParent()))
     {
-        std::string group_label = group_name;
+        std::string group_label = current_group ? current_group->getLabel() : group_name;
         for (const RailData& rail : mRailData)
             if (rail.group == group_name)
             {
@@ -752,6 +763,12 @@ void ALKitShell::layoutChrome()
         mRailButtons[index]->setToggleState(selected);
         mRailButtons[index]->setFont(ALKitStyle::sansFont("Kit13", selected));
     }
+    if (mSettingsButton)
+    {
+        mSettingsButton->reshape(28, 28, true);
+        mSettingsButton->setOrigin(mTabStrip->getRect().getWidth() - 32, 6);
+        mSettingsButton->setToggleState(group_name == "settings_group");
+    }
     refreshModeProxy();
     ALKitPage* mode_page    = currentKitPage();
     const S32  mode_width   = (mode_page ? mode_page->modeCount() : 0) * 86;
@@ -759,7 +776,7 @@ void ALKitShell::layoutChrome()
     for (const TabData& tab : mTabs)
         if (tab.group == group_name)
             ++visible_tabs;
-    const S32        available = llmax(100, mTabStrip->getRect().getWidth() - mode_width - 16);
+    const S32        available = llmax(100, mTabStrip->getRect().getWidth() - mode_width - 48);
     std::vector<S32> tab_widths;
     S32              total_width = 0;
     for (const TabData& tab : mTabs)
@@ -899,7 +916,7 @@ void ALKitShell::refreshModeProxy()
             });
         mModeButtons.push_back(button);
     }
-    S32 x = mTabStrip->getRect().getWidth() - count * 86 - 4;
+    S32 x = mTabStrip->getRect().getWidth() - count * 86 - 36;
     for (S32 index = 0; index < (S32)mModeButtons.size(); ++index)
     {
         const bool visible = index < count;

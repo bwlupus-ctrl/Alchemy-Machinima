@@ -64,6 +64,7 @@ LLNotificationForm::FormElementBase::FormElementBase()
 
 LLNotificationForm::FormIgnore::FormIgnore()
 :   text("text"),
+    checkbox_label("checkbox_label"),
     control("control"),
     invert_control("invert_control", false),
     save_option("save_option", false),
@@ -187,6 +188,7 @@ LLNotificationForm::LLNotificationForm( const LLNotificationForm& other )
     mFormData      = other.mFormData;
     mIgnore        = other.mIgnore;
     mIgnoreMsg     = other.mIgnoreMsg;
+    mIgnoreCheckboxLabel = other.mIgnoreCheckboxLabel;
     mIgnoreSetting = other.mIgnoreSetting;
     mInvertSetting = other.mInvertSetting;
 }
@@ -199,6 +201,7 @@ LLNotificationForm::LLNotificationForm(const std::string& name, const LLNotifica
     {
         // For all cases but IGNORE_CHECKBOX_ONLY this is name for use in preferences
         mIgnoreMsg = p.ignore.text;
+        mIgnoreCheckboxLabel = p.ignore.checkbox_label;
 
         LLUI *ui_inst = LLUI::getInstance();
         if (p.ignore.checkbox_only)

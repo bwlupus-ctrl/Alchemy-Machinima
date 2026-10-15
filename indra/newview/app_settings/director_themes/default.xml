@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<llsd>
+<map>
+  <key>version</key><integer>1</integer>
+  <key>id</key><string>default</string>
+  <key>label</key><string>Default</string>
+  <key>colors</key><map />
+</map>
+</llsd>

@@ -30,6 +30,7 @@ struct Config
 {
     bool enabled = false;
     S32 scope = SCOPE_CAST;
+    bool includeGhosts = false;
     bool excludeCameraMounted = true;
     S32 maxAvatars = 24;
     S32 mode = MODE_FIXED;
@@ -84,6 +85,7 @@ struct ActorFacts
     bool isSelf = false;
     bool isSelected = false;
     bool drawn = false;
+    bool ghostOwnAnimation = false;
     bool excludedAlways = false;
     bool cameraMounted = false;
     bool posing = false;

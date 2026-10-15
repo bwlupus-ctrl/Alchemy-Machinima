@@ -175,6 +175,7 @@ public:
     struct FormIgnore : public LLInitParam::Block<FormIgnore, FormElementBase>
     {
         Optional<std::string>   text;
+        Optional<std::string>   checkbox_label;
         Optional<bool>          save_option;
         Optional<std::string>   control;
         Optional<bool>          invert_control;
@@ -267,11 +268,13 @@ public:
 
     EIgnoreType getIgnoreType()const { return mIgnore; }
     std::string getIgnoreMessage() const { return mIgnoreMsg; }
+    const std::string& getIgnoreCheckboxLabel() const { return mIgnoreCheckboxLabel; }
 
 private:
     LLSD                                mFormData;
     EIgnoreType                         mIgnore;
     std::string                         mIgnoreMsg;
+    std::string                         mIgnoreCheckboxLabel;
     LLPointer<class LLControlVariable>  mIgnoreSetting;
     bool                                mInvertSetting;
 };
