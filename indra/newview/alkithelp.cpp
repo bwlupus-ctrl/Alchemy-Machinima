@@ -131,12 +131,11 @@ void ALKitHelp::showRow(ALKitRow* row)
         detail += "\nUnit " + meta.unit;
     if (!meta.setting.empty())
         detail += "\nSetting " + meta.setting;
-    // Custom rows use implementation-oriented widget names. Their authored
-    // help text is the useful user-facing explanation.
-    if (!meta.widget.empty() && meta.kind != "custom")
-        detail += "\nWidget " + meta.widget;
+    // The widget name (e.g. sa_rate_chips) is an implementation id, never user
+    // text: the row's label is the title and its authored help is the explanation.
     if (meta.advanced)
         detail += "\nIn More options";
+    detail.erase(0, detail.find_first_not_of('\n')); // no blank first line when there was no default/range
     ALKitShell* shell = ALKitShell::find(row);
     std::string title = meta.label;
     if (title.empty())

@@ -6,11 +6,99 @@
 #include "alkitrow.h"
 #include "alkitstyle.h"
 #include "llbutton.h"
+#include "lltextbox.h"
 #include "lluictrl.h"
 #include "lluictrlfactory.h"
 #include "llui.h"
 
+#include <vector>
+
 static LLDefaultChildRegistry::Register<ALKitPopover> register_popover("kit_popover");
+
+namespace
+{
+// LLView::applyXUILayout() gives every XUI widget that declares no height a 10 px
+// stand-in (MIN_WIDGET_HEIGHT), never 0 or 1. A popover or child at or below this
+// height therefore has no real size of its own.
+constexpr S32 kUnsizedHeight = 10;
+constexpr S32 kGap           = 4;  // vertical gap between stacked children
+constexpr S32 kMargin        = 10; // inset on every side
+constexpr S32 kButtonHeight  = 24; // one standard kit button height
+constexpr S32 kTextSlack     = 6;  // padding added to a measured text block
+
+// Sizes a popover declared in XUI without a rect: the children stack top-down in
+// XML order, each as wide as the popover's interior, and the popover is made exactly
+// as tall as the stack (capped to max_height). Word-wrapped text is measured at the
+// interior width, so it always has the room its wrapped lines need.
+void layoutStack(LLPanel* popover, S32 width, S32 max_height)
+{
+    const S32 inner = width - 2 * kMargin;
+    // LLView::addChild() pushes to the front, so the child list runs in reverse XML
+    // order; walk it backwards so the first XML row sits on top.
+    std::vector<LLView*> children;
+    for (auto it = popover->getChildList()->rbegin(); it != popover->getChildList()->rend(); ++it)
+        children.push_back(*it);
+
+    std::vector<S32> heights(children.size(), 0);
+    LLTextBox*       last_text = nullptr;
+    S32              last_text_index = -1;
+    S32              total = 2 * kMargin + (children.empty() ? 0 : kGap * (S32(children.size()) - 1));
+    for (size_t i = 0; i < children.size(); ++i)
+    {
+        LLView* child = children[i];
+        S32     child_height;
+        if (ALKitRow* row = dynamic_cast<ALKitRow*>(child))
+        {
+            child_height = row->heightForWidth(inner);
+        }
+        else if (LLTextBox* text = dynamic_cast<LLTextBox*>(child))
+        {
+            // Give the block room first so the measure is of the wrapped text, not of
+            // a clipped one.
+            text->reshape(inner, 4096, true);
+            child_height    = llmax(kButtonHeight, text->getTextPixelHeight() + kTextSlack);
+            last_text       = text;
+            last_text_index = S32(i);
+        }
+        else if (dynamic_cast<LLButton*>(child) || child->getRect().getHeight() <= kUnsizedHeight)
+        {
+            child_height = kButtonHeight;
+        }
+        else
+        {
+            child_height = child->getRect().getHeight();
+        }
+        heights[i] = child_height;
+        total += child_height;
+    }
+    // Over the cap: the last text block gives up the excess (its text clips) rather
+    // than letting the stack spill outside the popover.
+    if (total > max_height && last_text)
+    {
+        const S32 shrunk = llmax(40, heights[last_text_index] - (total - max_height));
+        total -= heights[last_text_index] - shrunk;
+        heights[last_text_index] = shrunk;
+    }
+    const S32 height = llmin(total, max_height);
+    popover->reshape(width, height, true);
+
+    S32 top = height - kMargin;
+    for (size_t i = 0; i < children.size(); ++i)
+    {
+        LLView* child = children[i];
+        if (ALKitRow* row = dynamic_cast<ALKitRow*>(child))
+        {
+            row->layoutRow(inner);
+        }
+        else
+        {
+            child->reshape(inner, heights[i], true);
+        }
+        child->setOrigin(kMargin, top - child->getRect().getHeight());
+        top -= child->getRect().getHeight() + kGap;
+    }
+}
+} // namespace
 
 ALKitPopover::Params::Params() : anchor("anchor"), side("side", "below")
 {
@@ -35,80 +123,21 @@ bool ALKitPopover::postBuild()
             mAnchor = anchor->getHandle();
         }
     }
-    if (getRect().getWidth() <= 1 || getRect().getHeight() <= 1)
+    // Style first: the text blocks are measured below, and the kit font decides how
+    // many wrapped lines they take.
+    const bool built = LLPanel::postBuild();
+    ALKitStyle::styleTree(this);
+    if (getRect().getHeight() <= kUnsizedHeight)
     {
-        S32 width  = 360;
-        S32 height = 180;
+        S32 width = 360;
         if (getName() == "legend_panel")
-        {
-            width  = 520;
-            height = 420;
-        }
+            width = 520;
         else if (getName() == "kit_scene_popover")
-        {
-            width  = 180;
-            height = 100;
-        }
+            width = 180;
         else if (getName() == "kit_hotkeys_popover")
-        {
-            width  = 340;
-            height = 300;
-        }
-        reshape(width, height, true);
-        constexpr S32 kGap    = 4;   // vertical gap between stacked children
-        constexpr S32 kMargin = 10;  // top and bottom inset
-        // LLView::addChild() pushes to the front, so the child list runs in
-        // reverse XML order; walk it backwards so the first XML row sits on top.
-        std::vector<LLView*> children;
-        for (auto it = getChildList()->rbegin(); it != getChildList()->rend(); ++it)
-            children.push_back(*it);
-
-        // Pass 1: fixed heights come from the child or the fallback table; children
-        // with no explicit height ("flex", e.g. a word-wrapped text block) share
-        // whatever space is left after the fixed children, the gaps and the margins.
-        std::vector<S32> heights(children.size(), 0);
-        S32 fixed_total = 0;
-        S32 flex_count  = 0;
-        for (size_t i = 0; i < children.size(); ++i)
-        {
-            LLView* child = children[i];
-            S32 child_height = child->getRect().getHeight();
-            if (child_height <= 1)
-            {
-                if (dynamic_cast<ALKitRow*>(child))
-                    child_height = 28;
-                else if (dynamic_cast<LLButton*>(child))
-                    child_height = 24; // menu/command buttons: one standard kit button height
-                else
-                    child_height = 0;  // flex: sized in pass 2
-            }
-            if (child_height <= 1)
-                ++flex_count;
-            heights[i] = child_height;
-            fixed_total += child_height;
-        }
-        const S32 gaps = children.empty() ? 0 : kGap * (S32(children.size()) - 1);
-        S32 flex_height = 0;
-        if (flex_count > 0)
-        {
-            const S32 space = height - 2 * kMargin - fixed_total - gaps;
-            flex_height = llmax(20, space / flex_count);
-        }
-
-        // Pass 2: stack top-down.
-        S32 top = height - kMargin;
-        for (size_t i = 0; i < children.size(); ++i)
-        {
-            LLView* child = children[i];
-            S32 child_height = heights[i];
-            if (child_height <= 1)
-            {
-                child_height = flex_height;
-            }
-            child->reshape(width - 20, child_height, true);
-            child->setOrigin(10, top - child_height);
-            top -= child_height + kGap;
-        }
+            width = 340;
+        const S32 cap = shell ? llmax(120, shell->getRect().getHeight() - 2 * kGap) : 600;
+        layoutStack(this, width, cap);
     }
     if (LLUICtrl* close = findChild<LLUICtrl>("btn_legend_close"))
     {
@@ -120,8 +149,6 @@ bool ALKitPopover::postBuild()
                     popover->hide();
             });
     }
-    const bool built = LLPanel::postBuild();
-    ALKitStyle::styleTree(this);
     return built;
 }
 
@@ -160,6 +187,11 @@ void ALKitPopover::show()
     left             = llclamp(left, 0, llmax(0, shell->getRect().getWidth() - width));
     bottom           = llclamp(bottom, 0, llmax(0, shell->getRect().getHeight() - height));
     setOrigin(left, bottom);
+    // The shell's help column, tab strip and rail are added after the XML popovers,
+    // so they sit in front of them; a popover that opens over that chrome (the legend
+    // anchors at the far right) must be raised or it is hidden behind it.
+    if (getParent() == shell)
+        shell->sendChildToFront(this);
     setVisible(true);
     shell->setOpenPopover(this);
 }

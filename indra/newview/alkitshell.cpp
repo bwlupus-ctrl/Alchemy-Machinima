@@ -1109,7 +1109,17 @@ bool ALKitShell::selectPage(const std::string& page_name)
     if (!page)
         return false;
     LLTabContainer* inner = dynamic_cast<LLTabContainer*>(page->getParent());
-    LLPanel*        group = inner ? dynamic_cast<LLPanel*>(inner->getParent()) : nullptr;
+    // The group is the director_tabs page that owns the inner container. Walk up
+    // rather than taking inner->getParent(): a wrapper (e.g. an auto-scroll content
+    // panel) may sit in between, and selectTabByName() only knows the group's name.
+    LLPanel* group = nullptr;
+    if (inner && mDirectorTabs)
+        for (LLView* view = inner; view && view != mDirectorTabs; view = view->getParent())
+            if (view->getParent() == mDirectorTabs)
+            {
+                group = dynamic_cast<LLPanel*>(view);
+                break;
+            }
     if (mDirectorTabs && group)
         mDirectorTabs->selectTabByName(group->getName());
     if (inner)
@@ -1211,6 +1221,13 @@ std::vector<std::string> ALKitShell::unwrappedPages() const
     pages.reserve(mRailData.size() + mTabs.size() + 3);
     for (const RailData& rail : mRailData)
         pages.push_back(rail.group);
+    // Groups with no rail button (Settings, opened from the gear) must stay unwrapped
+    // too: an auto-scroll wrapper reparents the inner tab container and used to break
+    // the page-to-group lookup in selectPage().
+    if (mDirectorTabs)
+        for (S32 index = 0; index < mDirectorTabs->getTabCount(); ++index)
+            if (LLPanel* group = mDirectorTabs->getPanelByIndex(index))
+                pages.push_back(group->getName());
     for (const TabData& tab : mTabs)
         pages.push_back(tab.page);
     pages.push_back("dance_legacy_host");
