@@ -295,9 +295,15 @@ void ALSteppedAnimRuntime::collectActors()
         if (assignments[i].stepped)
         {
             Entry& entry = mEntries[ids[i]];
-            entry.mDecisionSource = parents[i] >= 0
+            // Copy the wearer's frame only when the wearer itself is stepped this
+            // frame. A camera-mounted, capped or "Never" wearer has no planned
+            // entry, so the animesh must plan its own frame (else it freezes on a
+            // stale held pose while the wearer moves smoothly).
+            const bool inherit_from_wearer = parents[i] >= 0 &&
+                assignments[static_cast<U32>(parents[i])].stepped;
+            entry.mDecisionSource = inherit_from_wearer
                 ? ids[static_cast<U32>(parents[i])] : LLUUID::null;
-            if (parents[i] >= 0)
+            if (inherit_from_wearer)
             {
                 Entry& wearer = mEntries[ids[static_cast<U32>(parents[i])]];
                 ALSteppedAnim::inheritAttachedFrame(
