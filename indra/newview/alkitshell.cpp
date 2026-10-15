@@ -673,9 +673,15 @@ void ALKitShell::reshape(S32 width, S32 height, bool called_from_parent)
     layoutChrome();
     if (old_labels != mRailLabels)
         updatePips();
-    // An open popover was fitted and placed against the old shell size.
-    if (mOpenPopover && mOpenPopover->getVisible())
+    // An open popover was fitted and placed against the old shell size. Guard against
+    // re-entry: refitting reshapes the popover, which must never re-run this refit.
+    static bool sRefitting = false;
+    if (!sRefitting && mOpenPopover && mOpenPopover->getVisible())
+    {
+        sRefitting = true;
         mOpenPopover->refit();
+        sRefitting = false;
+    }
 }
 
 void ALKitShell::layoutChrome()

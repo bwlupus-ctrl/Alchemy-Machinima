@@ -272,7 +272,7 @@ void ALKitPopover::fitFixedHeight(S32 max_height)
     }
     const bool overflow = shown < mFixedHeight;
     const S32  sb       = overflow ? llmax(0, gSavedSettings.getS32("UIScrollbarSize")) : 0;
-    reshape(mFixedWidth + sb, shown, false);
+    reshape(mFixedWidth + sb, shown, true); // called_from_parent: never notify the shell (no reshape loop)
     mScroller->reshape(mFixedWidth + sb, shown, true);
     mScroller->setOrigin(0, 0);
     mDoc->reshape(mFixedWidth, mFixedHeight, false);
