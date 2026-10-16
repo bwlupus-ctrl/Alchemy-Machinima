@@ -79,16 +79,16 @@
          tool_tip="Length and estimated duration including speed overrides, easing, and dwell"
          use_ellipses="true" width="194">No path yet</text>
         <check_box control_name="PathShowOnionSkin" follows="left|top" height="16"
-         label="Pose ghosts" layout="topleft" left="208" top="119"
+         label="Pose clones" layout="topleft" left="208" top="119"
          name="onion_skin_check"
          tool_tip="Show styled actor copies at path anchors for blocking without playing the path"
          width="104" />
         <button follows="left|top" height="18" layout="topleft" left="314" width="18"
          image_overlay="Refresh_Off" image_top_pad="0" name="reset_onion_skin" top="118"
-         tool_tip="Reset pose ghosts to default" />
+         tool_tip="Reset pose clones to default" />
         <combo_box control_name="PathGhostStyle" follows="left|top|right" height="20"
          layout="topleft" left="336" top="116" name="ghost_style_combo"
-         tool_tip="Appearance of path pose ghosts" width="122">
+         tool_tip="Appearance of path pose clones" width="122">
           <combo_box.item label="Ghost" name="gs_ghost" value="0" />
           <combo_box.item label="Clone" name="gs_clone" value="1" />
           <combo_box.item label="Hologram" name="gs_hologram" value="2" />
@@ -120,7 +120,7 @@
         </combo_box>
         <button follows="left|top" height="18" layout="topleft" left="462" width="18"
          image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_style" top="117"
-         tool_tip="Reset ghost style to default" />
+         tool_tip="Reset clone style to default" />
         <combo_box control_name="PathGhostDistort" follows="left|top" height="20"
          layout="topleft" left="208" top="140" name="ghost_distort_combo"
          tool_tip="Independent path-ghost distortion" width="106">
@@ -136,7 +136,7 @@
         </combo_box>
         <button follows="left|top" height="18" layout="topleft" left="318" width="18"
          image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_distort" top="141"
-         tool_tip="Reset ghost distortion to default" />
+         tool_tip="Reset clone distortion to default" />
         <slider control_name="PathGhostDistortAmount" can_edit_text="true"
          decimal_digits="2" follows="left|top" height="18" increment="0.05"
          label="Amount" label_width="48" layout="topleft" left="208"

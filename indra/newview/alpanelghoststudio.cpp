@@ -1062,7 +1062,7 @@ void ALPanelGhostStudio::draw()
     {
         mHintEdit = mEditMode;
         setTextIfChanged(mHint, mEditMode
-            ? std::string("Click a ghost to select \xC2\xB7 move/rotate with the gizmo \xC2\xB7 scale below \xC2\xB7 Del removes \xC2\xB7 Esc exits")
+            ? std::string("Click a clone to select \xC2\xB7 move/rotate with the gizmo \xC2\xB7 scale below \xC2\xB7 Del removes \xC2\xB7 Esc exits")
             : std::string("Styled copies of cast bodies: place, pose, multiply. Double-click clones to show/hide; groups to expand"));
     }
 
@@ -1274,7 +1274,7 @@ void ALPanelGhostStudio::refreshLookTargetCombo()
     }
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
-        mLookTargetCombo->add("Ghost: " + inst.mName,
+        mLookTargetCombo->add("Clone: " + inst.mName,
                               "ghost:" + inst.mId.asString());
     }
     mLookTargetCombo->setSelectedByValue(previous, true);
@@ -1530,7 +1530,7 @@ void ALPanelGhostStudio::refreshDetail()
     std::string type = "Type: No selection";
     if (overlay)
     {
-        type = "Type: Overlay ghost";
+        type = "Type: Overlay clone";
     }
     else if (entity)
     {
@@ -1648,7 +1648,7 @@ void ALPanelGhostStudio::refreshDetail()
         {
             mShownFor.setNull();
             setTextIfChanged(mNameEdit, std::string(), true);
-            setTextIfChanged(mPoseStatus, std::string("Select a ghost"), true);
+            setTextIfChanged(mPoseStatus, std::string("Select a clone"), true);
         }
         return;
     }
@@ -1897,7 +1897,7 @@ void ALPanelGhostStudio::refreshDetail()
             LLVOAvatar* av = LLDirectorCast::instance().resolve(inst->mSource);
             pose = (av && LLActorMover::instance().ghostBatchesFor(av->getID()))
                  ? "Following live pose"
-                 : "Source not rendering (no ghost)";
+                 : "Source not rendering (no clone)";
         }
         setTextIfChanged(mPoseStatus, pose);
     }
@@ -1922,7 +1922,7 @@ void ALPanelGhostStudio::refreshStatus()
             ++shown;
         }
     }
-    std::string txt = llformat("%d ghost(s), %d shown%s",
+    std::string txt = llformat("%d clone(s), %d shown%s",
                                (S32)studio.getInstances().size(), shown,
                                studio.getShowAll() ? "" : " (all hidden)");
     setTextIfChanged(mStatusText, txt);
@@ -3222,7 +3222,7 @@ void ALPanelGhostStudio::onClickFreeze()
     {
         // most common miss: the pipeline is not rendering the source this
         // frame (instance disabled / master off / skins still loading)
-        mPoseStatus->setText(std::string("Nothing to grab yet -- ghost must be rendering"));
+        mPoseStatus->setText(std::string("Nothing to grab yet -- clone must be rendering"));
     }
 }
 
@@ -3251,7 +3251,7 @@ void ALPanelGhostStudio::onClickBuildArray()
     if (current.mActive && current.mOwnerId != mPlacementOwner)
     {
         mLastCrowdMessage =
-            "Another Ghost Studio panel owns the active placement.";
+            "Another Clone Studio panel owns the active placement.";
         return;
     }
     if (current.mActive)
@@ -3285,7 +3285,7 @@ void ALPanelGhostStudio::onClickBuildArray()
         ALToolGhostEdit::getInstance()->isEditModeActive())
     {
         mLastCrowdMessage =
-            "Finish the other Ghost Studio panel's edit session first.";
+            "Finish the other Clone Studio panel's edit session first.";
         return;
     }
     if (!studio.beginCrowdPlacement(
@@ -3834,7 +3834,7 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
     std::string status;
     if (blocked)
     {
-        status = "Blocked: another Ghost Studio panel owns placement.\n" +
+        status = "Blocked: another Clone Studio panel owns placement.\n" +
                  draft.mValidation.mMessage;
     }
     else if (owner)
@@ -4121,7 +4121,7 @@ void ALPanelGhostStudio::onClickPickFacingTarget()
     {
         mCrowdFacingPrototype.setNull();
         mLastCrowdMessage =
-            "Another Ghost Studio panel is already picking a world point.";
+            "Another Clone Studio panel is already picking a world point.";
         return;
     }
     LLToolMgr::getInstance()->setTransientTool(tool);
@@ -4343,7 +4343,7 @@ public:
                 mCommit = ctrl->setCommitCallback([this](LLUICtrl*, const LLSD&) { mChanged(); });
         return mChanged.connect(std::move(cb));
     }
-    std::string describe() const override { return "Ghost formation parameter"; }
+    std::string describe() const override { return "Clone formation parameter"; }
 
 private:
     LLHandle<LLView>      mControl;

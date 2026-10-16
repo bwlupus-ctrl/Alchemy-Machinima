@@ -33,7 +33,7 @@
    layout="topleft"
    left_pad="2"
    name="target_combo"
-   tool_tip="Pick whose height to adjust: you, a resident, an animated object or a Ghost Studio clone. A * marks an avatar that already has a local offset."
+   tool_tip="Pick whose height to adjust: you, a resident, an animated object or a clone. A * marks an avatar that already has a local offset."
    top_delta="3"
    width="439" />
   <slider

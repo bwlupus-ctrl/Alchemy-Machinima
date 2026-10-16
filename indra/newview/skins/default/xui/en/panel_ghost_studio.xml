@@ -13,15 +13,15 @@
         <!-- Instances -->
         <panel follows="left|top|right" height="214" layout="topleft" left="0" name="instances_section" top="28" width="500">
           <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="8" name="studio_header" top="5" width="90">Instances</text>
-          <check_box follows="left|top" height="18" label="Edit ghosts" layout="topleft" left="110" name="edit_ghosts_check" top="5"
-           tool_tip="Edit ghosts in world: click a ghost to select it, drag to move it on the ground, Shift-drag to turn it, click empty ground to re-place the selection, Delete removes it. Esc (or unchecking) hands the camera back. Spinners below stay the precision path" width="120" />
-          <check_box follows="top|right" height="18" initial_value="true" label="Show ghosts" layout="topleft" left="252" name="show_all_check" top="5"
-           tool_tip="Master visibility: hide every ghost at once without losing the per-ghost enables. Session-only" width="112" />
+          <check_box follows="left|top" height="18" label="Edit clones" layout="topleft" left="110" name="edit_ghosts_check" top="5"
+           tool_tip="Edit clones in world: click a clone to select it, drag to move it on the ground, Shift-drag to turn it, click empty ground to re-place the selection, Delete removes it. Esc (or unchecking) hands the camera back. Spinners below stay the precision path" width="120" />
+          <check_box follows="top|right" height="18" initial_value="true" label="Show clones" layout="topleft" left="252" name="show_all_check" top="5"
+           tool_tip="Master visibility: hide every clone at once without losing the per-clone enables. Session-only" width="112" />
           <text follows="left|top|right" height="32" layout="topleft" left="8" mouse_opaque="false" name="studio_hint" right="-8" text_color="LtGray_50" top="27" word_wrap="true">
             Styled copies of cast bodies: place, pose, multiply. Double-click a clone to show/hide; double-click a group to expand
           </text>
           <scroll_list column_padding="0" draw_heading="true" follows="left|top|right" height="92" layout="topleft" left="8" multi_select="true" name="ghost_list" right="-8" top="64"
-           tool_tip="Every ghost and crowd group. Double-click a clone to toggle visibility; double-click a group header to expand or collapse its individually positionable members. Ghosts keep rendering when their source avatar is off-camera or impostored; freeze to lock a pose">
+           tool_tip="Every clone and crowd group. Double-click a clone to toggle visibility; double-click a group header to expand or collapse its individually positionable members. Clones keep rendering when their source avatar is off-camera or impostored; freeze to lock a pose">
             <columns label="" name="on" width="20" />
             <columns label="Name" name="name" width="84" />
             <columns label="Kind" name="kind" width="42" />
@@ -31,18 +31,18 @@
             <columns label="Pose" name="pose" width="50" />
           </scroll_list>
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="source_combo" top="162"
-           tool_tip="Whose body the new ghost copies: you, or any cast member" width="130" />
+           tool_tip="Whose body the new clone copies: you, or any cast member" width="130" />
           <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="144" name="clone_type_combo" top="162"
-           tool_tip="Persistent type for newly added ghosts" width="130">
-            <combo_box.item label="Overlay ghost" name="clone_type_overlay" value="0" />
+           tool_tip="Persistent type for newly added clones.&#10;&#10;Overlay clone: A light copy that re-draws the source avatar&apos;s own mesh at another spot. It always mirrors exactly what the source is doing, frame for frame. Cheapest; best for crowds and echoes. Drawn after fog and haze, so atmosphere doesn&apos;t touch it.&#10;&#10;Entity clone: A real avatar that exists only in your viewer, with its own skeleton. It can play its own animations (copy the source, a chosen animation, true mirror, or auto-animate), and has its own scale, physics, eye motion, speed and stepping. Lit, fogged and hazed like a real avatar. Heavier per copy." width="130">
+            <combo_box.item label="Overlay clone" name="clone_type_overlay" value="0" />
             <combo_box.item label="Entity clone" name="clone_type_entity" value="1" />
           </combo_box>
           <button follows="left|top" height="22" label="Add" layout="topleft" left="280" name="btn_ghost_add" top="162"
            tool_tip="Add the selected clone type from the chosen source" width="54" />
           <button follows="left|top" height="22" label="Duplicate" layout="topleft" left="8" name="btn_ghost_dup" top="190"
-           tool_tip="Copy the selected ghost (including a frozen pose) one step to its left" width="82" />
+           tool_tip="Copy the selected clone (including a frozen pose) one step to its left" width="82" />
           <button follows="left|top" height="22" label="Delete" layout="topleft" left="96" name="btn_ghost_del" top="190"
-           tool_tip="Remove the selected ghost" width="72" />
+           tool_tip="Remove the selected clone" width="72" />
           <button follows="left|top" height="22" label="Refresh" layout="topleft" left="174" name="btn_ghost_refresh" top="190"
            tool_tip="Re-sync this entity clone to its source's current appearance and worn attachments" visible="false" width="82" />
         </panel>
@@ -63,50 +63,50 @@
         <!-- Placement -->
         <panel follows="left|top" height="282" layout="topleft" left="0" name="placement_section" top="0" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="place_lbl" right="-8" top="8">Placement</text>
-          <text follows="left|top" font="SansSerifSmallBold" height="18" layout="topleft" left="8" name="ghost_type" top="29" width="174">Type: No selection</text>
+          <text follows="left|top" font="SansSerifSmallBold" height="18" layout="topleft" left="8" name="ghost_type" top="29" tool_tip="The kind of the selected clone, and its state.&#10;&#10;Overlay clone: A light copy that re-draws the source avatar&apos;s own mesh at another spot. It always mirrors exactly what the source is doing, frame for frame. Cheapest; best for crowds and echoes. Drawn after fog and haze, so atmosphere doesn&apos;t touch it.&#10;&#10;Entity clone: A real avatar that exists only in your viewer, with its own skeleton. It can play its own animations (copy the source, a chosen animation, true mirror, or auto-animate), and has its own scale, physics, eye motion, speed and stepping. Lit, fogged and hazed like a real avatar. Heavier per copy." width="174">Type: No selection</text>
           <line_editor follows="left|top|right" height="22" label="Name" layout="topleft" left="188" max_length_bytes="63" name="ghost_name" right="-8" top="25"
-           tool_tip="Session-only ghost name. Duplicate names are allowed; identity remains the internal instance id" />
+           tool_tip="Session-only clone name. Duplicate names are allowed; identity remains the internal instance id" />
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="X" label_width="12" layout="topleft" left="8" max_val="9000" min_val="-1000" name="pos_x_spinner" top="53"
-           tool_tip="Ghost foot position, region coordinates (m)" width="100" />
+           tool_tip="Clone foot position, region coordinates (m)" width="100" />
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Y" label_width="12" layout="topleft" left="116" max_val="9000" min_val="-1000" name="pos_y_spinner" top="53"
-           tool_tip="Ghost foot position, region coordinates (m)" width="100" />
+           tool_tip="Clone foot position, region coordinates (m)" width="100" />
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Z" label_width="12" layout="topleft" left="224" max_val="9000" min_val="-1000" name="pos_z_spinner" top="53"
-           tool_tip="Ghost foot height, region coordinates (m)" width="100" />
+           tool_tip="Clone foot height, region coordinates (m)" width="100" />
           <spinner decimal_digits="2" follows="left|top" height="18" increment="1" initial_value="0" label="Yaw (deg)" label_width="62" layout="topleft" left="8" max_val="180" min_val="-180" name="yaw_spinner" top="82"
-           tool_tip="Exact ghost heading in degrees; stays synchronized with the live heading dial" width="140" />
+           tool_tip="Exact clone heading in degrees; stays synchronized with the live heading dial" width="140" />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="150" name="reset_yaw" top="82" tool_tip="Reset yaw to default" width="22" />
           <compass_dial clockwise="false" follows="top|right" height="54" layout="topleft" name="heading_dial" right="-8" show_readout="false" top="72"
-           tool_tip="Ghost heading: drag the needle to rotate the selected ghost live; mouse wheel trims 5 degrees per click" width="54" />
+           tool_tip="Clone heading: drag the needle to rotate the selected clone live; mouse wheel trims 5 degrees per click" width="54" />
           <!-- scale_spinner min_val/max_val: keep in sync with GHOST_SCALE_MIN / GHOST_SCALE_MAX in alghoststudio.h
                (ALPanelGhostStudio re-applies the C++ constants over these on every refresh via setMinValue/setMaxValue) -->
           <spinner decimal_digits="4" follows="left|top" height="18" increment="0.01" initial_value="1.0" label="Scale" label_width="36" layout="topleft" left="214" max_val="150" min_val="0.05" name="scale_spinner" top="82"
            tool_tip="Uniform size or group scale factor; the live tooltip reports the exact allowed group range" width="120" />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="340" name="reset_scale" top="82" tool_tip="Reset scale to default" width="22" />
           <button follows="left|top" height="22" label="Place (click ground)" layout="topleft" left="8" name="btn_place" top="132"
-           tool_tip="Arm one ground click: the next click on ground/prim puts the ghost's feet there. Esc or right-click cancels" width="140" />
+           tool_tip="Arm one ground click: the next click on ground/prim puts the clone's feet there. Esc or right-click cancels" width="140" />
           <button follows="left|top" height="22" label="To actor" layout="topleft" left="154" name="btn_to_actor" top="132"
-           tool_tip="Snap the ghost onto its source's current feet" width="84" />
+           tool_tip="Snap the clone onto its source's current feet" width="84" />
           <button follows="left|top" height="22" label="To me" layout="topleft" left="244" name="btn_to_me" top="132"
-           tool_tip="Snap the ghost onto your avatar's current feet" width="84" />
+           tool_tip="Snap the clone onto your avatar's current feet" width="84" />
           <text follows="left|top" height="18" layout="topleft" left="8" name="look_target_label" top="164" width="84">Face target</text>
           <combo_box follows="left|top|right" height="22" layout="topleft" left="98" name="look_target_combo" right="-8" top="160"
-           tool_tip="Aim at the camera, you, a Director cast member, or another Ghost Studio instance" />
+           tool_tip="Aim at the camera, you, a Director cast member, or another Clone Studio instance" />
           <button follows="left|top" height="22" label="Face now" layout="topleft" left="98" name="btn_face_now" top="190"
-           tool_tip="Turn the selected ghost toward the chosen target once" width="90" />
+           tool_tip="Turn the selected clone toward the chosen target once" width="90" />
           <check_box follows="left|top" height="18" label="Keep facing" layout="topleft" left="196" name="keep_facing_check" top="192"
            tool_tip="Per-instance continuous tracking; re-aims on each viewer idle tick. Turning it off leaves the last heading" width="126" />
           <button follows="left|top" height="22" label="Drop to ground" layout="topleft" left="8" name="btn_drop_ground" top="220"
-           tool_tip="Set each selected ghost's feet to the viewer land height beneath it" width="108" />
+           tool_tip="Set each selected clone's feet to the viewer land height beneath it" width="108" />
           <button follows="left|top" height="22" label="Align feet" layout="topleft" left="122" name="btn_align_feet" top="220"
-           tool_tip="Put all selected ghosts on the first selected ghost's Z plane" width="92" />
+           tool_tip="Put all selected clones on the first selected clone's Z plane" width="92" />
           <button follows="left|top" height="22" label="Upright" layout="topleft" left="220" name="btn_reset_upright" top="220"
-           tool_tip="Clear pitch and roll while keeping each selected ghost's yaw" width="82" />
+           tool_tip="Clear pitch and roll while keeping each selected clone's yaw" width="82" />
           <button follows="left|top" height="22" label="Duplicate here" layout="topleft" left="8" name="btn_duplicate_in_place" top="248"
-           tool_tip="Create a new ghost at exactly the selected ghost's transform" width="108" />
+           tool_tip="Create a new clone at exactly the selected clone's transform" width="108" />
           <button follows="left|top" height="22" label="Copy transform" layout="topleft" left="122" name="btn_copy_transform" top="248"
            tool_tip="Copy foot position, full rotation, and scale to the session clipboard" width="104" />
           <button follows="left|top" height="22" label="Paste transform" layout="topleft" left="232" name="btn_paste_transform" top="248"
-           tool_tip="Paste foot position, full rotation, and scale to every selected ghost" width="110" />
+           tool_tip="Paste foot position, full rotation, and scale to every selected clone" width="110" />
         </panel>
               </panel>
             </scroll_container>
@@ -118,7 +118,7 @@
 
         <!-- Look -->
         <text follows="left|top|right" height="40" layout="topleft" left="8" mouse_opaque="false" name="entity_style_hint" right="-8" text_color="LtGray_50" top="0" visible="false" word_wrap="true">
-          Style options apply to overlay ghosts. Entity clones use the avatar/deferred path and inherit their source appearance.
+          Style options apply to overlay clones. Entity clones use the avatar/deferred path and inherit their source appearance.
         </text>
         <panel follows="left|top" height="280" layout="topleft" left="0" name="look_section" top="44" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="look_lbl" right="-8" top="8">Look</text>
@@ -166,12 +166,12 @@
             <combo_box.item label="Distort: VHS" name="ds_vhs" value="8" />
           </combo_box>
           <check_box follows="left|top" height="18" initial_value="true" label="Actor hue" layout="topleft" left="160" name="actor_tint_check" top="29"
-           tool_tip="Tint from the source's stable path color (matches its path/ghost hue). Uncheck to pick a hue with the slider" width="98" />
+           tool_tip="Tint from the source's stable path color (matches its path/clone hue). Uncheck to pick a hue with the slider" width="98" />
           <slider decimal_digits="0" follows="left|top|right" height="18" increment="5" initial_value="200" label="Hue" label_width="74" layout="topleft" left="8" max_val="360" min_val="0" name="hue_slider" right="-32" top="55"
            tool_tip="Tint hue (degrees) when Actor hue is off" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_hue" right="-8" top="55" tool_tip="Reset hue to default" width="22" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.6" label="Alpha" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="alpha_slider" right="-32" top="77"
-           tool_tip="Base opacity of the ghost" />
+           tool_tip="Base opacity of the clone" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_alpha" right="-8" top="77" tool_tip="Reset alpha to default" width="22" />
           <slider decimal_digits="0" follows="left|top|right" height="18" increment="1" initial_value="0" label="Pixelate" label_width="74" layout="topleft" left="8" max_val="64" min_val="0" name="pixel_slider" right="-32" top="99"
            tool_tip="Screen-space pixelation block size (px). 0 = off. Reads strongest on the Clone style" />
@@ -180,7 +180,7 @@
            tool_tip="Shimmer speed (wobbles per second); only matters when Amount is above 0" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_shimmer_speed" right="-8" top="121" tool_tip="Reset shimmer speed to default" width="22" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Amount" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="shimmer_amount_slider" right="-32" top="143"
-           tool_tip="Shimmer depth: brightness/alpha wobble, phase-offset per ghost so crowds do not strobe together. 0 = off" />
+           tool_tip="Shimmer depth: brightness/alpha wobble, phase-offset per clone so crowds do not strobe together. 0 = off" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_shimmer_amount" right="-8" top="143" tool_tip="Reset shimmer amount to default" width="22" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Glitch" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="glitch_slider" right="-32" top="165"
            tool_tip="Broken-signal effect: horizontal slices tear sideways with a chroma split. 0 = off" />
@@ -189,7 +189,7 @@
            tool_tip="Strength of the selected independent distortion" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_distort_amount" right="-8" top="187" tool_tip="Reset distortion amount" width="22" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1.0" label="Brightness" label_width="74" layout="topleft" left="8" max_val="1.5" min_val="0.05" name="brightness_slider" right="-32" top="209"
-           tool_tip="Output brightness: the ghost is unlit, so a clone reads fullbright in a night scene. Dial down (~0.3-0.5) to sit it into dark sets; 1 = as authored" />
+           tool_tip="Output brightness: an overlay clone is unlit, so it reads fullbright in a night scene. Dial down (~0.3-0.5) to sit it into dark sets; 1 = as authored" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_brightness" right="-8" top="209" tool_tip="Reset brightness to default" width="22" />
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Effect fps" label_width="74" layout="topleft" left="8" max_val="30" min_val="0" name="effect_fps_spinner" top="231"
            tool_tip="Per-clone shader animation cadence. 0 is smooth; 1-30 holds animated looks and distortions for stop motion. Separate from Pose fps." width="138" />
@@ -207,14 +207,14 @@
         <panel follows="left|top" height="790" layout="topleft" left="0" name="pose_section" top="0" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="pose_lbl" right="-8" top="8">Pose &amp; Animation</text>
           <button follows="left|top" height="22" label="Grab pose now" layout="topleft" left="8" name="btn_freeze" top="28"
-           tool_tip="FREEZE: snapshot the source's current pose into this ghost (worn mesh + attachment placement). The ghost holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the ghost" width="126" />
+           tool_tip="FREEZE: snapshot the source's current pose into this clone (worn mesh + attachment placement). The clone holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the clone" width="126" />
           <button follows="left|top" height="22" label="Follow live" layout="topleft" left="140" name="btn_live" top="28"
-           tool_tip="Drop the frozen pose; the ghost mirrors the source's live animation again" width="100" />
+           tool_tip="Drop the frozen pose; the clone mirrors the source's live animation again" width="100" />
           <check_box control_name="GhostMirrorHoldOnSourceChange" follows="left|top" height="18" label="Hold on src change" layout="topleft" left="8" name="mirror_hold_check" top="56"
            tool_tip="MIRROR mode: keep clones playing their last bento + animesh animation through a transient source change (outfit re-rez, brief de-rez, out-of-view imposter, or AO gap) instead of stopping. A real switch to a different animation still mirrors normally. Off = faithful live mirror (a source change or full stop stops the clone too)." width="150" />
           <check_box control_name="GhostMirrorRepeatHeldAnimesh" follows="left|top" height="18" label="Repeat held" layout="topleft" left="170" name="mirror_repeat_held_check" top="56"
            tool_tip="Needs Hold on src change. While a clone's animesh is HELD (source detached/gone), replay each finished one-shot animesh animation so a script-retriggered tail or idle keeps cycling instead of freezing. Looping animations are untouched. Functional repetition, not seamless: a small seam per cycle, and a deliberate one-shot action will repeat too (hence off by default)." width="130" />
-          <text follows="left|top|right" height="18" layout="topleft" left="8" name="pose_status" right="-8" text_color="LtGray_50" top="80">Select a ghost</text>
+          <text follows="left|top|right" height="18" layout="topleft" left="8" name="pose_status" right="-8" text_color="LtGray_50" top="80">Select a clone</text>
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="drive_mode_combo" top="104"
            tool_tip="Entity animation drive: mirror its source's animations, play a local animation asset, hold the current pose, or TRUE mirror (copy the source's final pose incl. gaze/IK/expressions every frame; heavier)" width="118">
             <combo_box.item label="Mirror" name="drive_mirror" value="0" />
@@ -276,7 +276,7 @@
           <check_box follows="left|top" height="18" label="This actor" layout="topleft" left="8" name="lens_gaze_check" top="406"
            tool_tip="Client-only post-blend head, neck and eye tracking toward the render camera. Continues while the clone animation is frozen; camera-on-head feedback interlocks suppress it" width="116" />
           <button follows="left|top" height="22" label="Enable selected" layout="topleft" left="134" name="btn_lens_gaze_selection" top="402"
-           tool_tip="Enable camera gaze for every selected entity clone; overlay ghosts are ignored" width="116" />
+           tool_tip="Enable camera gaze for every selected entity clone; overlay clones are ignored" width="116" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.25" label="Torso" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_torso" right="-32" top="430"
            tool_tip="Torso share for selected entity clones. 0 keeps the chest still; 1 lets the torso take the full gaze turn" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_torso" right="-8" top="430" tool_tip="Reset torso gaze to default" width="22" />
@@ -355,9 +355,9 @@
             <combo_box.item label="Organic" name="form_organic" value="8" />
           </combo_box>
           <combo_box enabled="false" follows="left|top" height="22" initial_value="-1" layout="topleft" left="176" name="crowd_copies_as_combo" top="58" width="180"
-           tool_tip="Crowd copies keep the selected prototype's backing type">
+           tool_tip="Crowd copies keep the selected prototype's backing type: an overlay clone (a light copy that mirrors its source) or an entity clone (a real local avatar with its own animation)">
             <combo_box.item label="Copies as: Select clone" name="copies_as_none" value="-1" />
-            <combo_box.item label="Copies as: Overlay ghost" name="copies_as_overlay" value="0" />
+            <combo_box.item label="Copies as: Overlay clone" name="copies_as_overlay" value="0" />
             <combo_box.item label="Copies as: Entity clone" name="copies_as_entity" value="1" />
           </combo_box>
 
@@ -492,9 +492,9 @@
            tool_tip="Orbit multiplier, breathe radial fraction, or ripple height in metres" width="104" />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="382" name="reset_motion_amplitude" top="84" tool_tip="Reset motion amplitude to default" width="22" />
           <button follows="left|top" height="22" label="Apply selection" layout="topleft" left="8" name="btn_formation_motion_apply" top="112"
-           tool_tip="Snapshot the selected ghosts' authored transforms and enable this group motion; choose Off to restore them" width="116" />
+           tool_tip="Snapshot the selected clones' authored transforms and enable this group motion; choose Off to restore them" width="116" />
           <button follows="left|top" height="22" label="Group" layout="topleft" left="130" name="btn_group_unit" top="112"
-           tool_tip="Lock the selected ghosts as one directing unit" width="52" />
+           tool_tip="Lock the selected clones as one directing unit" width="52" />
           <button follows="left|top" height="22" label="Ungroup" layout="topleft" left="188" name="btn_ungroup_unit" top="112"
            tool_tip="Explicitly unlock the selected unit" width="62" />
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Pose fps" label_width="58" layout="topleft" left="8" max_val="30" min_val="0" name="pose_rate_spinner" top="142"
@@ -508,6 +508,6 @@
 
         <!-- Status -->
         <panel follows="left|top|right" height="26" layout="topleft" left="0" name="status_section" top="0" width="500">
-          <text follows="left|top|right" height="18" layout="topleft" left="8" name="studio_status" right="-8" text_color="LtGray_50" top="4" width="358">0 ghosts</text>
+          <text follows="left|top|right" height="18" layout="topleft" left="8" name="studio_status" right="-8" text_color="LtGray_50" top="4" width="358">0 clones</text>
         </panel>
 </panel>

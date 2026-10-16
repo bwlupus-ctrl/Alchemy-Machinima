@@ -14,7 +14,7 @@
     <string name="kind_self">Me</string>
     <string name="kind_resident">Avatar</string>
     <string name="kind_animesh">Animesh</string>
-    <string name="kind_ghost">Ghost</string>
+    <string name="kind_ghost">Clone</string>
     <string name="state_idle">Idle</string>
     <string name="state_playing">Playing</string>
     <string name="state_pending">Loading asset</string>
@@ -31,7 +31,7 @@
     <string name="no_value">-</string>
     <string name="name_loading">...</string>
     <string name="name_animesh">Animesh [ID]</string>
-    <string name="name_ghost">Ghost [ID]</string>
+    <string name="name_ghost">Clone [ID]</string>
     <string name="distance_format">[METERS] m</string>
     <string name="length_format">[SECONDS] s</string>
     <string name="loop_yes">Loop</string>
@@ -92,7 +92,7 @@
      layout="topleft"
      left="4"
      name="db_on"
-     tool_tip="Master switch. ON starts the dance for everyone in the roster; OFF eases every motion out and restores ghosts."
+     tool_tip="Master switch. ON starts the dance for everyone in the roster; OFF eases every motion out and restores clones."
      top="4"
      width="52" />
     <button
@@ -261,11 +261,11 @@
             <button
              follows="left|top"
              height="22"
-             label="Add ghosts"
+             label="Add clones"
              layout="topleft"
              left="170"
              name="db_add_ghosts"
-             tool_tip="Add every Ghost Studio entity clone"
+             tool_tip="Add every Clone Studio entity clone"
              top="186"
              width="76" />
             <button

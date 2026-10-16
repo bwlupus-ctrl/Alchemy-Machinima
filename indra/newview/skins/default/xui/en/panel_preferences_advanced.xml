@@ -243,7 +243,7 @@
     layout="topleft"
     left="280"
     name="machinima_debug_logging_check"
-    tool_tip="Writes extra diagnostic lines from the machinima tools (light rig, probes, ghosts, director, actor mask...) to the log. Leave off for normal use; turn on only when collecting a log for a bug report. Warnings and errors are always logged."
+    tool_tip="Writes extra diagnostic lines from the machinima tools (light rig, probes, clones, director, actor mask...) to the log. Leave off for normal use; turn on only when collecting a log for a bug report. Warnings and errors are always logged."
     top="166"
     width="232"/>
   <!-- [WebIdle] hidden/never-opened built-in web pages cost CPU+GPU for nothing -->

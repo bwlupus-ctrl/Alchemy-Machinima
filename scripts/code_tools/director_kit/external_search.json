@@ -2,7 +2,7 @@
   "floaters": [
     {"name": "lightbox", "label": "Lightbox", "xui": "floater_lightbox_settings.xml"},
     {"name": "prism_manager", "label": "Virtual Cam Manager", "xui": "floater_prism_manager.xml"},
-    {"name": "ghost_studio", "label": "Ghost Studio", "xui": "floater_ghost_studio.xml"},
+    {"name": "ghost_studio", "label": "Clone Studio", "xui": "floater_ghost_studio.xml"},
     {"name": "cine_light_rig", "label": "Cinematic Light Rig", "xui": "floater_cine_light_rig.xml"},
     {"name": "pose_polish", "label": "Pose Polish", "xui": "floater_pose_polish.xml"},
     {"name": "gaze_cues", "label": "Gaze Cues", "xui": "floater_gaze_cues.xml"},

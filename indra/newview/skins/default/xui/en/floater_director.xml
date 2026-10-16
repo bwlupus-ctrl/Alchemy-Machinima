@@ -551,7 +551,7 @@
          follows="all"
          background_visible="false"
          height="550"
-         label="Ghosts"
+         label="Clones"
          layout="topleft"
          name="ghosts_tab"
          top="0"
@@ -1567,7 +1567,7 @@
                      left="100"
                      name="actor_style_look"
                      right="-10"
-                     tool_tip="Shared Ghost Studio looks plus live-actor-exclusive cinematic treatments"
+                     tool_tip="Shared Clone Studio looks plus live-actor-exclusive cinematic treatments"
                      top="160">
                         <combo_box.item label="Ghost" name="actor_st_ghost" value="0" />
                         <combo_box.item label="Clone" name="actor_st_clone" value="1" />
@@ -1758,7 +1758,7 @@
                 <panel background_visible="false" follows="all" height="525" label="Scene options" layout="topleft" name="scene_options_tab" width="711">
                     <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="10" name="scene_hotkeys_header" top="10" width="680">Hotkeys</text>
                     <check_box control_name="DirectorHotkeysEnabled" follows="left|top" height="18" label="Enable Director hotkeys" layout="topleft" left="10" name="scene_hotkeys_enabled" top="34" width="260"/>
-                    <text follows="left|top|right" height="96" layout="topleft" left="10" name="scene_hotkeys_list" top="60" width="680" word_wrap="true">F2 toggle console &#183; F3 ACTION / CUT &#183; F4 CUT &#183; F5 reset to marks &#183; F6 pose ghosts on/off &#183; F7 take play/pause &#183; F8 set marks &#183; 1-9 punch camera-switcher slots (console visible, switcher armed, no text focus) &#183; Alt+1-9 punch Anim Switchboard slots (console open, switchboard armed, no text focus) &#183; Esc CUT while running (console focused). F-keys work while the Director or Actor Mover is open; F2 works always.</text>
+                    <text follows="left|top|right" height="96" layout="topleft" left="10" name="scene_hotkeys_list" top="60" width="680" word_wrap="true">F2 toggle console &#183; F3 ACTION / CUT &#183; F4 CUT &#183; F5 reset to marks &#183; F6 pose clones on/off &#183; F7 take play/pause &#183; F8 set marks &#183; 1-9 punch camera-switcher slots (console visible, switcher armed, no text focus) &#183; Alt+1-9 punch Anim Switchboard slots (console open, switchboard armed, no text focus) &#183; Esc CUT while running (console focused). F-keys work while the Director or Actor Mover is open; F2 works always.</text>
                     <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="10" name="scene_categories_header" top="170" width="680">What a scene saves</text>
                     <text follows="left|top|right" height="130" layout="topleft" left="10" name="scene_categories_text" top="194" width="680" word_wrap="true">Cast, marks, groups and start delays, locomotion roles, subjects A-D, actor paths, per-actor gaze targets, performance and gaze cues, Actor FX styles; transport arming; camera switcher program; Flycam Orbit; Cinematic camera mode and preset; frame/lens guide; Actor Mover settings; Temporal capture modes; Virtual Cam captures/displays/gate; light rigs, Rig Rim, Roto Ink, Tron. Not saved yet: exposure/tonemap, lens looks, DoF, depth haze, projector shafts, weather, scene-light EVs, Pose Polish, Diopter.</text>
                 </panel>
@@ -1830,7 +1830,7 @@ AB column: A marks Subject A and B marks Subject B, the bodies the cinematic cam
 
 M column: a flag means a mark (a saved position) is set for that actor.
 
-L column: L marks a cast member flagged for the local Look at camera override (Camera &gt; Shot). The master toggle must also be on; ghosts and animesh are never affected.
+L column: L marks a cast member flagged for the local Look at camera override (Camera &gt; Shot). The master toggle must also be on; clones and animesh are never affected.
 
 Groups: the dot-suffix after a name is the member's group tag (set in the Group box under the list); the Move tab's Start/Stop group drive every member of a group at once.
 

@@ -10,6 +10,8 @@
  layout="topleft"
  name="panel_director_anim_switcher"
  width="340">
+    <!-- The Animation and Pose slot kinds share the same row; ALPanelDirectorAnimSwitcher shows one set at a time. -->
+    <!-- xui-check: exclusive anim_slot_uuid anim_from_explorer anim_pose_name anim_pose_load_method -->
     <text
      follows="left|top"
      font="SansSerifBold"
@@ -232,12 +234,12 @@
      layout="topleft"
      left="54"
      name="anim_slot_target"
-     tool_tip="Who this slot drives. Cast = every cast avatar (self when the cast is empty); Self = my avatar only; Ghosts = ghost clones only."
+     tool_tip="Who this slot drives. Cast = every cast avatar (self when the cast is empty); Self = my avatar only; Clones = Clone Studio clones only."
      top="197"
      width="108">
         <combo_box.item label="Cast" name="cast" value="0" />
         <combo_box.item label="Self" name="self" value="1" />
-        <combo_box.item label="Ghosts" name="ghosts" value="2" />
+        <combo_box.item label="Clones" name="ghosts" value="2" />
     </combo_box>
     <text
      follows="left|top"
@@ -255,7 +257,7 @@
      layout="topleft"
      left="220"
      name="anim_slot_priority"
-     tool_tip="Motion priority override for the self path (ignored by ghost clones). Default keeps the animation's authored priority."
+     tool_tip="Motion priority override for the self path (ignored by clones). Default keeps the animation's authored priority."
      top="197"
      width="112">
         <combo_box.item label="Default" name="default" value="-1" />
@@ -281,7 +283,7 @@
      max_val="5"
      min_val="0.1"
      name="anim_slot_speed"
-     tool_tip="Playback speed for ghost clones (ignored by the self path). 1.0 is normal."
+     tool_tip="Playback speed for clones (ignored by the self path). 1.0 is normal."
      top="225"
      width="150" />
     <check_box
@@ -291,7 +293,7 @@
      layout="topleft"
      left="168"
      name="anim_slot_loop"
-     tool_tip="Ghost clones: loop the animation (retrigger) versus play it once."
+     tool_tip="Clones: loop the animation (retrigger) versus play it once."
      top="225"
      width="60" />
     <check_box

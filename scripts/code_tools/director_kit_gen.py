@@ -1513,7 +1513,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     # plus the in-console keys handled by LLFloaterDirector::handleKeyHere.
     ET.SubElement(hot, "text", {"name": "kit_hotkeys_text", "word_wrap": "true"}).text = (
         "F2: show / hide the Director console\nF3: ACTION (becomes CUT while running)\nF4: CUT\n"
-        "F5: reset to marks\nF6: pose ghosts on / off\nF7: take play / pause\nF8: set marks\n"
+        "F5: reset to marks\nF6: pose clones on / off\nF7: take play / pause\nF8: set marks\n"
         "Enter: ACTION\nEsc: close, clear or CUT\n/: search\nCtrl+Z/Y: undo / redo\n"
         "PgUp/PgDn: chip\nShift+PgUp/PgDn: page\nAlt+PgUp/PgDn: group\nArrows: adjust\n"
         "Home: reset row\nSpace/Enter: activate\n1-9: camera slots (when armed)\nAlt+1-9: animation slots (when armed)")

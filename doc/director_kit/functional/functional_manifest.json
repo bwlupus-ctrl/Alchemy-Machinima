@@ -5934,7 +5934,7 @@
    "evidence": "cpp alpanelghoststudio.cpp:282 ALPanelGhostStudio::postBuild",
    "options": [
     {
-     "label": "Overlay ghost",
+     "label": "Overlay clone",
      "value": "0"
     },
     {
@@ -10096,7 +10096,7 @@
    "exercise": "select_item",
    "test_value": {
     "item_index": 1,
-    "label": "Copies as: Overlay ghost",
+    "label": "Copies as: Overlay clone",
     "value": "0"
    },
    "expect": {
@@ -10122,7 +10122,7 @@
      "value": "-1"
     },
     {
-     "label": "Copies as: Overlay ghost",
+     "label": "Copies as: Overlay clone",
      "value": "0"
     },
     {
@@ -17650,7 +17650,7 @@
      "value": "1"
     },
     {
-     "label": "Ghosts",
+     "label": "Clones",
      "value": "2"
     }
    ],
@@ -100475,8 +100475,8 @@
    "id": "v2:path_tab:onion_skin_check:synthetic",
    "csv_index": null,
    "card": "kc_pose_ghosts",
-   "card_title": "Pose preview ghosts",
-   "row_label": "Pose preview ghosts",
+   "card_title": "Pose preview clones",
+   "row_label": "Pose preview clones",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
    "xui_line": null,
    "widget_name": "onion_skin_check",
@@ -142095,7 +142095,7 @@
    "csv_index": null,
    "card": "dancers",
    "card_title": "Dancers",
-   "row_label": "Add ghosts",
+   "row_label": "Add clones",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
    "xui_line": null,
    "widget_name": "db_add_ghosts",
@@ -146343,7 +146343,7 @@
    "id": "v2:ghosts_tab:studio_hint:kit:0",
    "csv_index": null,
    "card": "ghost_list",
-   "card_title": "Ghost list",
+   "card_title": "Clone list",
    "row_label": "",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
@@ -146393,8 +146393,8 @@
    "id": "v2:ghosts_tab:show_all_check:kit:1",
    "csv_index": null,
    "card": "ghost_list",
-   "card_title": "Ghost list",
-   "row_label": "Show ghosts",
+   "card_title": "Clone list",
+   "row_label": "Show clones",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
    "widget_name": "show_all_check",
@@ -146446,8 +146446,8 @@
    "id": "v2:ghosts_tab:edit_ghosts_check:kit:2",
    "csv_index": null,
    "card": "ghost_list",
-   "card_title": "Ghost list",
-   "row_label": "Edit ghosts",
+   "card_title": "Clone list",
+   "row_label": "Edit clones",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
    "widget_name": "edit_ghosts_check",
@@ -146499,8 +146499,8 @@
    "id": "v2:ghosts_tab:ghost_list:kit:3",
    "csv_index": null,
    "card": "ghost_list",
-   "card_title": "Ghost list",
-   "row_label": "Ghosts",
+   "card_title": "Clone list",
+   "row_label": "Clones",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
    "widget_name": "ghost_list",
@@ -146557,7 +146557,7 @@
    "id": "v2:ghosts_tab:studio_status:kit:4",
    "csv_index": null,
    "card": "ghost_list",
-   "card_title": "Ghost list",
+   "card_title": "Clone list",
    "row_label": "Count",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
@@ -146607,7 +146607,7 @@
    "id": "v2:ghosts_tab:btn_ghost_dup:kit:5",
    "csv_index": null,
    "card": "ghost_list",
-   "card_title": "Ghost list",
+   "card_title": "Clone list",
    "row_label": "Duplicate",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
@@ -146662,7 +146662,7 @@
    "id": "v2:ghosts_tab:btn_ghost_del:kit:6",
    "csv_index": null,
    "card": "ghost_list",
-   "card_title": "Ghost list",
+   "card_title": "Clone list",
    "row_label": "Delete",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
@@ -146712,7 +146712,7 @@
    "id": "v2:ghosts_tab:btn_ghost_refresh:kit:7",
    "csv_index": null,
    "card": "ghost_list",
-   "card_title": "Ghost list",
+   "card_title": "Clone list",
    "row_label": "Refresh",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
@@ -146859,7 +146859,7 @@
    "increment": null,
    "combo_items": [
     {
-     "label": "Overlay ghost",
+     "label": "Overlay clone",
      "value": "0"
     },
     {
@@ -148077,7 +148077,7 @@
    "id": "v2:ghosts_tab:style_combo:kit:32",
    "csv_index": null,
    "card": "ghost_look",
-   "card_title": "Ghost look",
+   "card_title": "Clone look",
    "row_label": "Look",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
@@ -148247,7 +148247,7 @@
    "id": "v2:ghosts_tab:distort_combo:kit:33",
    "csv_index": null,
    "card": "ghost_look",
-   "card_title": "Ghost look",
+   "card_title": "Clone look",
    "row_label": "Distortion",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
@@ -148341,7 +148341,7 @@
    "id": "v2:ghosts_tab:distort_amount_slider:kit:34",
    "csv_index": null,
    "card": "ghost_look",
-   "card_title": "Ghost look",
+   "card_title": "Clone look",
    "row_label": "Distort amt",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
@@ -151842,7 +151842,7 @@
    "exercise": "select_item",
    "test_value": {
     "item_index": 1,
-    "label": "Copies as: Overlay ghost",
+    "label": "Copies as: Overlay clone",
     "value": "0"
    },
    "expect": {
@@ -151865,7 +151865,7 @@
      "value": "-1"
     },
     {
-     "label": "Copies as: Overlay ghost",
+     "label": "Copies as: Overlay clone",
      "value": "0"
     },
     {
@@ -155844,7 +155844,7 @@
    "id": "v2:path_tab:ghost_style_combo:kit:17",
    "csv_index": null,
    "card": "pose_ghosts",
-   "card_title": "Pose preview ghosts",
+   "card_title": "Pose preview clones",
    "row_label": "Look",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
    "xui_line": null,
@@ -156016,7 +156016,7 @@
    "id": "v2:path_tab:ghost_distort_combo:kit:18",
    "csv_index": null,
    "card": "pose_ghosts",
-   "card_title": "Pose preview ghosts",
+   "card_title": "Pose preview clones",
    "row_label": "Distortion",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
    "xui_line": null,
@@ -156112,7 +156112,7 @@
    "id": "v2:path_tab:ghost_distort_amount:kit:19",
    "csv_index": null,
    "card": "pose_ghosts",
-   "card_title": "Pose preview ghosts",
+   "card_title": "Pose preview clones",
    "row_label": "Amount",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
    "xui_line": null,
@@ -156167,7 +156167,7 @@
    "id": "v2:path_tab:ghost_effect_fps:kit:20",
    "csv_index": null,
    "card": "pose_ghosts",
-   "card_title": "Pose preview ghosts",
+   "card_title": "Pose preview clones",
    "row_label": "FX fps",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
    "xui_line": null,
@@ -188531,7 +188531,7 @@
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
-   "row_label": "Ghost clones",
+   "row_label": "Include clones",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
    "xui_line": null,
    "widget_name": "sa_include_ghosts",
@@ -216235,7 +216235,7 @@
      "value": "1"
     },
     {
-     "label": "Ghosts",
+     "label": "Clones",
      "value": "2"
     }
    ],
@@ -226017,7 +226017,7 @@
     "key": "cast_group/ghosts_tab",
     "group": "cast_group",
     "page": "ghosts_tab",
-    "label": "Ghosts",
+    "label": "Clones",
     "file": "panel_dpage_cast_ghosts.xml",
     "rail": true,
     "legacy": false

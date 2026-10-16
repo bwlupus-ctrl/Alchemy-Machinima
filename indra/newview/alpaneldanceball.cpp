@@ -150,7 +150,7 @@ std::string blocking_status_text(ALAvatarStaging::Status status)
     case ALAvatarStaging::Status::SUSPENDED_SEATED_PIN: return "Seated";
     case ALAvatarStaging::Status::PIN_RELEASED: return "Re-pin";
     case ALAvatarStaging::Status::MUTED: return "Muted";
-    case ALAvatarStaging::Status::GHOST: return "Ghost";
+    case ALAvatarStaging::Status::GHOST: return "Clone";
     case ALAvatarStaging::Status::GHOST_STUDIO_OWNS: return "Studio";
     case ALAvatarStaging::Status::ABSENT: return "Absent";
     }

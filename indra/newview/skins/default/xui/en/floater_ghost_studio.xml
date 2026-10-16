@@ -12,7 +12,7 @@
  name="floater_ghost_studio"
  save_rect="true"
  single_instance="true"
- title="Ghost Studio (local)"
+ title="Clone Studio (local)"
  width="520">
   <panel
    class="panel_ghost_studio"

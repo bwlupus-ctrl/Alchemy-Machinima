@@ -729,7 +729,7 @@ std::string ALGhostStudio::makeDefaultName() const
 {
     for (S32 number = 1; ; ++number)
     {
-        const std::string candidate = llformat("Ghost %d", number);
+        const std::string candidate = llformat("Clone %d", number);
         const bool used = std::any_of(mInstances.begin(), mInstances.end(),
             [&candidate](const Instance& inst) { return inst.mName == candidate; });
         if (!used)

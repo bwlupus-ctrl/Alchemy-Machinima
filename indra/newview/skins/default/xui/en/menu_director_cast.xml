@@ -58,7 +58,7 @@
   </menu_item_call>
   <!-- [AutoAnimate] Entity-only learned performance actions. -->
   <menu_item_separator layout="topleft" />
-  <menu_item_call label="AutoAnimate (ghost)" layout="topleft" name="autoanim_toggle">
+  <menu_item_call label="AutoAnimate (clone)" layout="topleft" name="autoanim_toggle">
     <menu_item_call.on_click function="Director.AutoAnimToggle" />
     <menu_item_call.on_enable function="Director.CastHasGhostEntity" />
   </menu_item_call>

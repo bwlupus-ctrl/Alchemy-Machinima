@@ -1,4 +1,4 @@
-# Ghosts — Director Kit page contract
+# Clones — Director Kit page contract
 
 Page key: `ghosts_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
 Computed class: **code-driven** (4/128 setting-bound rows; 125 C++-referenced rows).
@@ -21,9 +21,9 @@ Reuse the existing preview/diagnostics controls with a 240 px maximum and visibl
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `ghost_list` / `studio_hint` () | `text` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:20` | kit readout ← approved static copy; no runtime writer | none |
-| `ghost_list` / `show_all_check` (Show ghosts) | `check_box` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:18` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onShowAllToggle()` (`indra/newview/alpanelghoststudio.cpp:533`) | none |
-| `ghost_list` / `edit_ghosts_check` (Edit ghosts) | `check_box` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:16` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onToggleEditMode()` (`indra/newview/alpanelghoststudio.cpp:534`) | none |
-| `ghost_list` / `ghost_list` (Ghosts) | `scroll_list` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:23` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onListSelect()` (`indra/newview/alpanelghoststudio.cpp:535`), wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onListMouseUp()` (`indra/newview/alpanelghoststudio.cpp:536`) | none |
+| `ghost_list` / `show_all_check` (Show clones) | `check_box` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:18` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onShowAllToggle()` (`indra/newview/alpanelghoststudio.cpp:533`) | none |
+| `ghost_list` / `edit_ghosts_check` (Edit clones) | `check_box` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:16` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onToggleEditMode()` (`indra/newview/alpanelghoststudio.cpp:534`) | none |
+| `ghost_list` / `ghost_list` (Clones) | `scroll_list` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:23` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onListSelect()` (`indra/newview/alpanelghoststudio.cpp:535`), wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onListMouseUp()` (`indra/newview/alpanelghoststudio.cpp:536`) | none |
 | `ghost_list` / `studio_status` (Count) | `text` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:511` | kit readout ← approved static copy; no runtime writer | none |
 | `ghost_list` / `btn_ghost_dup` (Duplicate) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:42` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickDuplicate()` (`indra/newview/alpanelghoststudio.cpp:541`) | none |
 | `ghost_list` / `btn_ghost_del` (Delete) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:44` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickDelete()` (`indra/newview/alpanelghoststudio.cpp:542`) | none |
@@ -262,7 +262,7 @@ Manifest size: **212 states**, hard cap 256, page runtime budget 2 minutes. Each
 | `source_combo-option-1` | Only `source_combo` selects `Mara`; other selectors remain default. |
 | `source_combo-option-2` | Only `source_combo` selects `Jun`; other selectors remain default. |
 | `source_combo-option-3` | Only `source_combo` selects `Me`; other selectors remain default. |
-| `clone_type_combo-option-0` | Only `clone_type_combo` selects `Overlay ghost`; other selectors remain default. |
+| `clone_type_combo-option-0` | Only `clone_type_combo` selects `Overlay clone`; other selectors remain default. |
 | `clone_type_combo-option-1` | Only `clone_type_combo` selects `Entity clone`; other selectors remain default. |
 | `card-ghost_position-tallest-850` | Only `ghost_position` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-ghost_position-tallest-1160` | Only `ghost_position` is put in its tallest local state at 1160 px; all other cards stay default. |
@@ -273,7 +273,7 @@ Manifest size: **212 states**, hard cap 256, page runtime budget 2 minutes. Each
 | `look_target_combo-option-0` | Only `look_target_combo` selects `Camera`; other selectors remain default. |
 | `look_target_combo-option-1` | Only `look_target_combo` selects `Me`; other selectors remain default. |
 | `look_target_combo-option-2` | Only `look_target_combo` selects `Actor: Mara`; other selectors remain default. |
-| `look_target_combo-option-3` | Only `look_target_combo` selects `Ghost: Ghost 1`; other selectors remain default. |
+| `look_target_combo-option-3` | Only `look_target_combo` selects `Clone: Clone 1`; other selectors remain default. |
 | `keep_facing_check-on` | Only `keep_facing_check` is on; dependent visibility is measured. |
 | `card-ghost_look-tallest-850` | Only `ghost_look` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-ghost_look-tallest-1160` | Only `ghost_look` is put in its tallest local state at 1160 px; all other cards stay default. |
@@ -413,7 +413,7 @@ Manifest size: **212 states**, hard cap 256, page runtime budget 2 minutes. Each
 | `formation_guide_shape_combo-option-1` | Only `formation_guide_shape_combo` selects `Guide: Circle`; other selectors remain default. |
 | `formation_guide_shape_combo-option-2` | Only `formation_guide_shape_combo` selects `Guide: Square`; other selectors remain default. |
 | `crowd_copies_as_combo-option-0` | Only `crowd_copies_as_combo` selects `Copies as: Select clone`; other selectors remain default. |
-| `crowd_copies_as_combo-option-1` | Only `crowd_copies_as_combo` selects `Copies as: Overlay ghost`; other selectors remain default. |
+| `crowd_copies_as_combo-option-1` | Only `crowd_copies_as_combo` selects `Copies as: Overlay clone`; other selectors remain default. |
 | `crowd_copies_as_combo-option-2` | Only `crowd_copies_as_combo` selects `Copies as: Entity clone`; other selectors remain default. |
 | `crowd_create_mode_combo-option-0` | Only `crowd_create_mode_combo` selects `Create: Separate`; other selectors remain default. |
 | `crowd_create_mode_combo-option-1` | Only `crowd_create_mode_combo` selects `Create: Rigid group`; other selectors remain default. |

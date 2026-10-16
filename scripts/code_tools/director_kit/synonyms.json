@@ -18,6 +18,7 @@
     ["contrast", "curve", "gamma"],
     ["motion blur", "shutter", "shutter angle"],
     ["actor", "avatar", "subject", "cast"],
+    ["clone", "clones", "ghost", "ghosts"],
     ["animation", "anim", "motion"],
     ["light", "lamp", "fixture"],
     ["projector", "gobo", "cookie"],

@@ -27106,7 +27106,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 31,
+          "line": 33,
           "widget": "anim_switcher_armed",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -27145,7 +27145,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 42,
+          "line": 44,
           "widget": "anim_switcher_auto",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -27184,7 +27184,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 351,
+          "line": 353,
           "widget": "anim_interval",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -27223,7 +27223,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 367,
+          "line": 369,
           "widget": "anim_jitter",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -27262,7 +27262,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 378,
+          "line": 380,
           "widget": "anim_sequence",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -48408,7 +48408,7 @@
         },
         {
           "card": "pose_ghosts",
-          "card_title": "Pose preview ghosts",
+          "card_title": "Pose preview clones",
           "option_index": null,
           "option_label": null,
           "index": 0,
@@ -48527,7 +48527,7 @@
         },
         {
           "card": "pose_ghosts",
-          "card_title": "Pose preview ghosts",
+          "card_title": "Pose preview clones",
           "option_index": null,
           "option_label": null,
           "index": 1,
@@ -48627,7 +48627,7 @@
         },
         {
           "card": "pose_ghosts",
-          "card_title": "Pose preview ghosts",
+          "card_title": "Pose preview clones",
           "option_index": null,
           "option_label": null,
           "index": 2,
@@ -48717,7 +48717,7 @@
         },
         {
           "card": "pose_ghosts",
-          "card_title": "Pose preview ghosts",
+          "card_title": "Pose preview clones",
           "option_index": null,
           "option_label": null,
           "index": 3,
@@ -57032,7 +57032,7 @@
     },
     {
       "key": "ghosts_tab",
-      "label": "Ghosts",
+      "label": "Clones",
       "group": "cast_group",
       "group_label": "Cast",
       "row_count": 128,
@@ -57071,7 +57071,7 @@
       "rows": [
         {
           "card": "ghost_list",
-          "card_title": "Ghost list",
+          "card_title": "Clone list",
           "option_index": null,
           "option_label": null,
           "index": 0,
@@ -57139,11 +57139,11 @@
         },
         {
           "card": "ghost_list",
-          "card_title": "Ghost list",
+          "card_title": "Clone list",
           "option_index": null,
           "option_label": null,
           "index": 1,
-          "label": "Show ghosts",
+          "label": "Show clones",
           "kind": "toggle",
           "widget": "show_all_check",
           "matched_widget": "show_all_check",
@@ -57231,11 +57231,11 @@
         },
         {
           "card": "ghost_list",
-          "card_title": "Ghost list",
+          "card_title": "Clone list",
           "option_index": null,
           "option_label": null,
           "index": 2,
-          "label": "Edit ghosts",
+          "label": "Edit clones",
           "kind": "toggle",
           "widget": "edit_ghosts_check",
           "matched_widget": "edit_ghosts_check",
@@ -57323,11 +57323,11 @@
         },
         {
           "card": "ghost_list",
-          "card_title": "Ghost list",
+          "card_title": "Clone list",
           "option_index": null,
           "option_label": null,
           "index": 3,
-          "label": "Ghosts",
+          "label": "Clones",
           "kind": "list",
           "widget": "ghost_list",
           "matched_widget": "ghost_list",
@@ -57337,9 +57337,9 @@
           "setting_declarations": [],
           "items": [
             "Mara (entity clone)",
-            "Jun (overlay ghost)",
+            "Jun (overlay clone)",
             "Crowd: Line x6 (group)",
-            "Ghost 3"
+            "Clone 3"
           ],
           "xui": [
             {
@@ -57418,7 +57418,7 @@
         },
         {
           "card": "ghost_list",
-          "card_title": "Ghost list",
+          "card_title": "Clone list",
           "option_index": null,
           "option_label": null,
           "index": 4,
@@ -57486,7 +57486,7 @@
         },
         {
           "card": "ghost_list",
-          "card_title": "Ghost list",
+          "card_title": "Clone list",
           "option_index": null,
           "option_label": null,
           "index": 5,
@@ -57565,7 +57565,7 @@
         },
         {
           "card": "ghost_list",
-          "card_title": "Ghost list",
+          "card_title": "Clone list",
           "option_index": null,
           "option_label": null,
           "index": 6,
@@ -57644,7 +57644,7 @@
         },
         {
           "card": "ghost_list",
-          "card_title": "Ghost list",
+          "card_title": "Clone list",
           "option_index": null,
           "option_label": null,
           "index": 7,
@@ -57820,7 +57820,7 @@
           "setting_candidates": [],
           "setting_declarations": [],
           "items": [
-            "Overlay ghost",
+            "Overlay clone",
             "Entity clone"
           ],
           "xui": [
@@ -59474,7 +59474,7 @@
             "Camera",
             "Me",
             "Actor: Mara",
-            "Ghost: Ghost 1"
+            "Clone: Clone 1"
           ],
           "xui": [
             {
@@ -59779,7 +59779,7 @@
         },
         {
           "card": "ghost_look",
-          "card_title": "Ghost look",
+          "card_title": "Clone look",
           "option_index": null,
           "option_label": null,
           "index": 0,
@@ -59887,7 +59887,7 @@
         },
         {
           "card": "ghost_look",
-          "card_title": "Ghost look",
+          "card_title": "Clone look",
           "option_index": null,
           "option_label": null,
           "index": 1,
@@ -59976,7 +59976,7 @@
         },
         {
           "card": "ghost_look",
-          "card_title": "Ghost look",
+          "card_title": "Clone look",
           "option_index": null,
           "option_label": null,
           "index": 2,
@@ -64998,7 +64998,7 @@
           "setting_declarations": [],
           "items": [
             "Copies as: Select clone",
-            "Copies as: Overlay ghost",
+            "Copies as: Overlay clone",
             "Copies as: Entity clone"
           ],
           "xui": [
@@ -68172,7 +68172,7 @@
           "items": [
             "Mara",
             "Jun",
-            "Ghost 2 (entity clone)",
+            "Clone 2 (entity clone)",
             "Animesh dog"
           ],
           "xui": [
@@ -68455,7 +68455,7 @@
           "option_index": null,
           "option_label": null,
           "index": 3,
-          "label": "Add ghosts",
+          "label": "Add clones",
           "kind": "button",
           "widget": "db_add_ghosts",
           "matched_widget": "db_add_ghosts",
@@ -71865,7 +71865,7 @@
           "items": [
             "Mara",
             "Jun",
-            "Ghost 2 (entity clone)"
+            "Clone 2 (entity clone)"
           ],
           "xui": [
             {
@@ -77563,7 +77563,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 31,
+              "line": 33,
               "tag": "check_box",
               "control_name": "DirectorAnimSwitcherArmed",
               "callbacks": [],
@@ -77641,7 +77641,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 42,
+              "line": 44,
               "tag": "check_box",
               "control_name": "DirectorAnimSwitcherAuto",
               "callbacks": [],
@@ -77719,7 +77719,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 351,
+              "line": 353,
               "tag": "spinner",
               "control_name": "DirectorAnimSwitcherIntervalSec",
               "callbacks": [],
@@ -77797,7 +77797,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 367,
+              "line": 369,
               "tag": "spinner",
               "control_name": "DirectorAnimSwitcherJitterSec",
               "callbacks": [],
@@ -77875,7 +77875,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 378,
+              "line": 380,
               "tag": "check_box",
               "control_name": "DirectorAnimSwitcherSequence",
               "callbacks": [],
@@ -77944,7 +77944,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 52,
+              "line": 54,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -78012,7 +78012,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 388,
+              "line": 390,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -78068,7 +78068,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 61,
+              "line": 63,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78147,7 +78147,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 62,
+              "line": 64,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78226,7 +78226,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 63,
+              "line": 65,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78305,7 +78305,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 64,
+              "line": 66,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78384,7 +78384,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 65,
+              "line": 67,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78463,7 +78463,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 66,
+              "line": 68,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78542,7 +78542,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 67,
+              "line": 69,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78621,7 +78621,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 68,
+              "line": 70,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78700,7 +78700,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 69,
+              "line": 71,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78779,7 +78779,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 70,
+              "line": 72,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78858,7 +78858,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 71,
+              "line": 73,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78937,7 +78937,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 72,
+              "line": 74,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79016,7 +79016,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 80,
+              "line": 82,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -79087,7 +79087,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 100,
+              "line": 102,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79166,7 +79166,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 135,
+              "line": 137,
               "tag": "line_editor",
               "control_name": null,
               "callbacks": [],
@@ -79245,7 +79245,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 145,
+              "line": 147,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79324,7 +79324,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 323,
+              "line": 325,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -79392,7 +79392,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 214,
+              "line": 216,
               "tag": "line_editor",
               "control_name": null,
               "callbacks": [],
@@ -79470,12 +79470,12 @@
           "items": [
             "Cast",
             "Self",
-            "Ghosts"
+            "Clones"
           ],
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 234,
+              "line": 236,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79554,7 +79554,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 113,
+              "line": 115,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79635,7 +79635,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 167,
+              "line": 169,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79727,7 +79727,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 178,
+              "line": 180,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79816,7 +79816,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 257,
+              "line": 259,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79895,7 +79895,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 283,
+              "line": 285,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -79974,7 +79974,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 293,
+              "line": 295,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -80053,7 +80053,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 303,
+              "line": 305,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -80132,7 +80132,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 314,
+              "line": 316,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -162594,7 +162594,7 @@
             "Mara",
             "Jun",
             "Dance animesh",
-            "Ghost clone 1"
+            "Clone 1"
           ],
           "xui": [
             {
@@ -190888,7 +190888,7 @@
           "option_index": null,
           "option_label": null,
           "index": 4,
-          "label": "Ghost clones",
+          "label": "Include clones",
           "kind": "toggle",
           "widget": "sa_include_ghosts",
           "matched_widget": "sa_include_ghosts",

@@ -202,7 +202,7 @@
      left="16"
      top="168"
      name="drive_anim_check"
-     tool_tip="Skeletal animation (all avatars/animesh) plus actor-mover walking, gaze and ghost turns -- kept locked so a walking actor never foot-slides."
+     tool_tip="Skeletal animation (all avatars/animesh) plus actor-mover walking, gaze and clone turns -- kept locked so a walking actor never foot-slides."
      width="300" />
     <check_box
      control_name="TemporalDriveObjects"
