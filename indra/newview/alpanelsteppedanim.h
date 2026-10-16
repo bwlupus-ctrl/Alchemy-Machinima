@@ -38,6 +38,11 @@ private:
     void onActorRoleCommit();
     void onOverrideClear();
     void onActorOffsetCommit();
+    void onActorPartPick();
+    void onActorPartRateCommit();
+    S32 selectedPart() const;
+    void onPartFaceCommit();
+    void refreshPartFace();
     void onSeedReroll();
     void onGroupPick();
     void onGroupOffsetCommit();
@@ -64,6 +69,11 @@ private:
     LLComboBox*       mActorSteps = nullptr;
     LLComboBox*       mActorRole = nullptr;
     LLComboBox*       mActorOffset = nullptr;
+    LLComboBox*       mActorPart = nullptr;     // which part the Part rate row edits (EPartGroup value)
+    LLComboBox*       mActorPartRate = nullptr; // -1 inherit, 0 same, 1 +1, 2 +2, 3 smooth
+    // The ONE Face control: StepAnimFace off shows Smooth, else StepAnimPartFace (Same / +1 / +2).
+    LLComboBox*       mPartFace = nullptr;
+    S32               mLastPartFace = -1;
     LLTextBox*        mActorEffective = nullptr;
     LLButton*         mSeedReroll = nullptr;
     LLComboBox*       mGroupPick = nullptr;

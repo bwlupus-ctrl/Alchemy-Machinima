@@ -39,6 +39,9 @@ public:
     void endFrameRestore();
     const ALSteppedAnim::FrameDecision* decisionFor(const LLVOAvatar* avatar, U64* particle_epoch = nullptr) const;
     bool holdsFlexi(const LLVOAvatar* avatar) const;
+    // Lip-sync follows the Face part: held between the Face part's own refreshes while the actor's
+    // face bones are held (Face part Smooth / StepAnimFace off: never).
+    bool holdsFace(const LLVOAvatar* avatar) const;
     bool holdsAttachmentFX(const LLVOAvatar* avatar) const;
     bool holdsTextureAnim(const LLVOAvatar* avatar) const;
     F32 attachmentOmegaDt(LLViewerObject* object, F32 dt);
@@ -55,7 +58,15 @@ private:
         ALSteppedAnim::Assignment mAssignment;
         ALSteppedAnim::FrameDecision mDecision;
         ALSteppedAnim::PoseBuffer mSmooth, mHeld, mPreviousHeld, mCandidate, mWritten;
-        std::vector<U8> mClasses;
+        // Pose-buffer order: skeleton joints, collision volumes, then the non-HUD attachment points
+        // (mAttachPointIds, in attachment-id order). mParents indexes the same buffer (-1 = root).
+        std::vector<U16> mClasses;
+        std::vector<S32> mParents;
+        std::vector<S32> mAttachPointIds;
+        std::vector<ALSteppedAnim::JointLocal> mAttachHeld; // root-relative placements (Attachments part)
+        // Smear tick per +1 / +2 part (set on that part's own capture, like ActorState::smearTick
+        // for the torso grid), so a coarser limb smears only on its own ticks.
+        std::array<bool, ALSteppedAnim::kPartGroups> mPartSmearTick{};
         std::array<S32, ALSteppedAnim::kEffectors> mEffectorIndices{};
         std::array<std::array<S32, 2>, 4> mSmearIndices{};
         std::array<std::array<S32, 2>, 4> mSmearChildIndices{};
@@ -101,9 +112,16 @@ private:
     void buildClasses(LLVOAvatar* avatar, Entry& entry);
     ALSteppedAnim::LimbFrame limbFrame(LLVOAvatar* avatar, const Entry& entry, F64 time) const;
     void updateEaseCandidate(Entry& entry, const ALSteppedAnim::LimbFrame& limbs, F64 time);
+    // `groups` = part group bits (ALSteppedAnim::groupBit) whose held joints are refreshed from the
+    // smooth pose; the Torso bit makes it a full capture (previous pose, effectors, ease candidate).
     void capturePose(LLVOAvatar* avatar, Entry& entry,
                      const ALSteppedAnim::LimbFrame& limbs, F64 time,
-                     const Entry* decision_source = nullptr);
+                     const Entry* decision_source, U16 groups, U16 forced);
+    // (`forced` = parts whose offset just changed: their smear history is seeded with the new held
+    // pose; all other smear history advances per part, only for the parts in `groups`.)
+    static U32 attachPointCount(const LLVOAvatar* avatar);
+    static U32 poseJointCount(const LLVOAvatar* avatar);
+    static LLJoint* poseJoint(LLVOAvatar* avatar, const Entry& entry, U32 index);
     void applyEffects(LLVOAvatar* avatar, Entry& entry, ALSteppedAnim::PoseBuffer& render);
     void verifyRestored(const char* point);
     void updateRotoMatch();

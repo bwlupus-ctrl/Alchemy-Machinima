@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "6225f470a7a03914b02ec1ae8de4149ad964f2caec745a47edcff9af1bfeaa84",
+  "csv_sha256": "142461b9ba1ecb16be60e492f98c2c986c9763478e777a3c46f8348034ed31df",
   "interactive_rows": 1816,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -30,11 +30,11 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 1526,
-  "entries": 3916,
+  "generated_kit_rows": 1534,
+  "entries": 3924,
   "pages": 37,
-  "settings_declared": 3641,
-  "xui_files": 835,
+  "settings_declared": 3648,
+  "xui_files": 834,
   "rim_presets": 20,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
@@ -74,12 +74,13 @@
    "NO_EXERCISE"
   ],
   "warnings": [
+   "element 'sa_face' not found for v1 on stepped_tab",
    "element 'sa_roto_link' not found for v1 on stepped_tab",
    "element 'sa_tron_link' not found for v1 on stepped_tab",
    "element 'sa_actorfx_link' not found for v1 on stepped_tab",
    "element 'sa_time_link' not found for v1 on stepped_tab"
   ],
-  "warning_count": 4,
+  "warning_count": 5,
   "unknown_control_tags": {
    "slider_bar": 68
   },
@@ -97960,7 +97961,7 @@
     "value": true
    },
    "setting": "StepAnimFace",
-   "setting_source": "xui control_name",
+   "setting_source": "csv bound",
    "setting_type": "Boolean",
    "default": true,
    "min": null,
@@ -194833,7 +194834,171 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actor_effective:kit:9",
+   "id": "v2:stepped_tab:sa_actor_part:kit:9",
+   "csv_index": null,
+   "card": "stepped",
+   "card_title": "Stepped animation",
+   "row_label": "Part",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_actor_part",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "Face",
+    "value": "2"
+   },
+   "expect": {
+    "callback": "ALPanelSteppedAnim::bindSteppedPage",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Head",
+     "value": "1"
+    },
+    {
+     "label": "Face",
+     "value": "2"
+    },
+    {
+     "label": "Arms",
+     "value": "3"
+    },
+    {
+     "label": "Hands",
+     "value": "4"
+    },
+    {
+     "label": "Legs",
+     "value": "5"
+    },
+    {
+     "label": "Extras",
+     "value": "6"
+    },
+    {
+     "label": "Attachments",
+     "value": "7"
+    }
+   ],
+   "binding": "code",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "ALPanelSteppedAnim::bindSteppedPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_actor_part_rate:kit:10",
+   "csv_index": null,
+   "card": "stepped",
+   "card_title": "Stepped animation",
+   "row_label": "Part rate",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_actor_part_rate",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "Same as torso",
+    "value": "0"
+   },
+   "expect": {
+    "callback": "ALPanelSteppedAnim::bindSteppedPage",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Inherit",
+     "value": "-1"
+    },
+    {
+     "label": "Same as torso",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    },
+    {
+     "label": "Smooth",
+     "value": "3"
+    }
+   ],
+   "binding": "code",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "ALPanelSteppedAnim::bindSteppedPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_actor_effective:kit:11",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194883,7 +195048,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actor_rate:kit:10",
+   "id": "v2:stepped_tab:sa_actor_rate:kit:12",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -194939,7 +195104,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actor_steps:kit:11",
+   "id": "v2:stepped_tab:sa_actor_steps:kit:13",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -195009,7 +195174,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actor_role:kit:12",
+   "id": "v2:stepped_tab:sa_actor_role:kit:14",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -195079,7 +195244,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_override_clear:kit:13",
+   "id": "v2:stepped_tab:sa_override_clear:kit:15",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -195130,7 +195295,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_exclude_mounted:kit:14",
+   "id": "v2:stepped_tab:sa_exclude_mounted:kit:16",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -195185,7 +195350,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_max_avatars:kit:15",
+   "id": "v2:stepped_tab:sa_max_avatars:kit:17",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -195240,7 +195405,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_status:kit:16",
+   "id": "v2:stepped_tab:sa_status:kit:18",
    "csv_index": null,
    "card": "stepped",
    "card_title": "Stepped animation",
@@ -195290,7 +195455,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_mode:kit:17",
+   "id": "v2:stepped_tab:sa_mode:kit:19",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195362,7 +195527,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_rate_chips:kit:18",
+   "id": "v2:stepped_tab:sa_rate_chips:kit:20",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195436,7 +195601,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_rate:kit:19",
+   "id": "v2:stepped_tab:sa_rate:kit:21",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195491,7 +195656,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_rate_readout:kit:20",
+   "id": "v2:stepped_tab:sa_rate_readout:kit:22",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195541,7 +195706,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_fast_rate:kit:21",
+   "id": "v2:stepped_tab:sa_fast_rate:kit:23",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195602,7 +195767,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_adapt_threshold:kit:22",
+   "id": "v2:stepped_tab:sa_adapt_threshold:kit:24",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195657,7 +195822,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_adapt_hysteresis:kit:23",
+   "id": "v2:stepped_tab:sa_adapt_hysteresis:kit:25",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195718,7 +195883,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_adapt_dwell:kit:24",
+   "id": "v2:stepped_tab:sa_adapt_dwell:kit:26",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195773,7 +195938,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_speed_meter:kit:25",
+   "id": "v2:stepped_tab:sa_speed_meter:kit:27",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195823,7 +195988,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_background_rate:kit:26",
+   "id": "v2:stepped_tab:sa_background_rate:kit:28",
    "csv_index": null,
    "card": "rate",
    "card_title": "Rate",
@@ -195884,7 +196049,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_what:kit:27",
+   "id": "v2:stepped_tab:sa_what:kit:29",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -195952,62 +196117,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_face:kit:28",
-   "csv_index": null,
-   "card": "what_steps",
-   "card_title": "What steps",
-   "row_label": "Face & lip-sync",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
-   "xui_line": null,
-   "widget_name": "sa_face",
-   "widget_type": "toggle",
-   "csv_kind": "toggle",
-   "wiring_status": "GENERATED_KIT",
-   "resolution": "generated_kit_xml",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "toggle",
-   "test_value": false,
-   "expect": {
-    "setting": "StepAnimFace",
-    "type": "Boolean",
-    "value": false
-   },
-   "restore": {
-    "setting": "StepAnimFace",
-    "value": true
-   },
-   "setting": "StepAnimFace",
-   "setting_source": "kit_row setting",
-   "setting_type": "Boolean",
-   "default": true,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "combo_items": [],
-   "binding": "setting",
-   "link_to": null,
-   "kit_action": null,
-   "shortcut_of": null,
-   "callbacks": null,
-   "owner": null,
-   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
-  },
-  {
-   "page": "stepped_tab",
-   "page_label": "Stepped",
-   "group": "look_group",
-   "version": "v2",
-   "source": "generated_kit_xml",
-   "host": {
-    "floater": "director",
-    "page_view": "stepped_tab",
-    "via": "tab"
-   },
-   "id": "v2:stepped_tab:sa_gaze:kit:29",
+   "id": "v2:stepped_tab:sa_gaze:kit:30",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -196062,7 +196172,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_flexi:kit:30",
+   "id": "v2:stepped_tab:sa_flexi:kit:31",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -196117,7 +196227,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_attach_fx:kit:31",
+   "id": "v2:stepped_tab:sa_attach_fx:kit:32",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -196172,7 +196282,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_particles:kit:32",
+   "id": "v2:stepped_tab:sa_particles:kit:33",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -196227,7 +196337,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_texture_anim:kit:33",
+   "id": "v2:stepped_tab:sa_texture_anim:kit:34",
    "csv_index": null,
    "card": "what_steps",
    "card_title": "What steps",
@@ -196282,7 +196392,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_clock:kit:34",
+   "id": "v2:stepped_tab:sa_clock:kit:35",
    "csv_index": null,
    "card": "step_timing",
    "card_title": "Timing",
@@ -196350,7 +196460,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_offset:kit:35",
+   "id": "v2:stepped_tab:sa_offset:kit:36",
    "csv_index": null,
    "card": "step_timing",
    "card_title": "Timing",
@@ -196422,7 +196532,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_phase:kit:36",
+   "id": "v2:stepped_tab:sa_phase:kit:37",
    "csv_index": null,
    "card": "step_timing",
    "card_title": "Timing",
@@ -196477,7 +196587,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_base_fps:kit:37",
+   "id": "v2:stepped_tab:sa_base_fps:kit:38",
    "csv_index": null,
    "card": "step_timing",
    "card_title": "Timing",
@@ -196549,7 +196659,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_seed:kit:38",
+   "id": "v2:stepped_tab:sa_seed:kit:39",
    "csv_index": null,
    "card": "variation",
    "card_title": "Variation",
@@ -196604,7 +196714,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_seed_reroll:kit:39",
+   "id": "v2:stepped_tab:sa_seed_reroll:kit:40",
    "csv_index": null,
    "card": "variation",
    "card_title": "Variation",
@@ -196657,7 +196767,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_phase_spread:kit:40",
+   "id": "v2:stepped_tab:sa_phase_spread:kit:41",
    "csv_index": null,
    "card": "variation",
    "card_title": "Variation",
@@ -196712,7 +196822,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_rate_variation:kit:41",
+   "id": "v2:stepped_tab:sa_rate_variation:kit:42",
    "csv_index": null,
    "card": "variation",
    "card_title": "Variation",
@@ -196767,7 +196877,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_timing_jitter:kit:42",
+   "id": "v2:stepped_tab:sa_timing_jitter:kit:43",
    "csv_index": null,
    "card": "variation",
    "card_title": "Variation",
@@ -196822,7 +196932,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_group_pick:kit:43",
+   "id": "v2:stepped_tab:sa_group_pick:kit:44",
    "csv_index": null,
    "card": "group_rates",
    "card_title": "Group rates",
@@ -196881,7 +196991,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_group_offset:kit:44",
+   "id": "v2:stepped_tab:sa_group_offset:kit:45",
    "csv_index": null,
    "card": "group_rates",
    "card_title": "Group rates",
@@ -196958,7 +197068,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_group_list:kit:45",
+   "id": "v2:stepped_tab:sa_group_list:kit:46",
    "csv_index": null,
    "card": "group_rates",
    "card_title": "Group rates",
@@ -197016,7 +197126,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_boil:kit:46",
+   "id": "v2:stepped_tab:sa_boil:kit:47",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197071,7 +197181,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_boil_amount:kit:47",
+   "id": "v2:stepped_tab:sa_boil_amount:kit:48",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197126,7 +197236,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_boil_ticks:kit:48",
+   "id": "v2:stepped_tab:sa_boil_ticks:kit:49",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197181,7 +197291,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_impact:kit:49",
+   "id": "v2:stepped_tab:sa_impact:kit:50",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197236,7 +197346,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_impact_ticks:kit:50",
+   "id": "v2:stepped_tab:sa_impact_ticks:kit:51",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197291,7 +197401,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_impact_threshold:kit:51",
+   "id": "v2:stepped_tab:sa_impact_threshold:kit:52",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197346,7 +197456,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_smear:kit:52",
+   "id": "v2:stepped_tab:sa_smear:kit:53",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197401,7 +197511,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_smear_strength:kit:53",
+   "id": "v2:stepped_tab:sa_smear_strength:kit:54",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197456,7 +197566,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_smear_threshold:kit:54",
+   "id": "v2:stepped_tab:sa_smear_threshold:kit:55",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197511,7 +197621,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_ease:kit:55",
+   "id": "v2:stepped_tab:sa_ease:kit:56",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197566,7 +197676,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_ease_amount:kit:56",
+   "id": "v2:stepped_tab:sa_ease_amount:kit:57",
    "csv_index": null,
    "card": "character",
    "card_title": "Character",
@@ -197621,7 +197731,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_match_roto:kit:57",
+   "id": "v2:stepped_tab:sa_match_roto:kit:58",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -197676,7 +197786,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_roto_link:kit:58",
+   "id": "v2:stepped_tab:sa_roto_link:kit:59",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -197728,7 +197838,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_tron_link:kit:59",
+   "id": "v2:stepped_tab:sa_tron_link:kit:60",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -197780,7 +197890,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_actorfx_link:kit:60",
+   "id": "v2:stepped_tab:sa_actorfx_link:kit:61",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -197835,7 +197945,7 @@
     "page_view": "stepped_tab",
     "via": "tab"
    },
-   "id": "v2:stepped_tab:sa_time_link:kit:61",
+   "id": "v2:stepped_tab:sa_time_link:kit:62",
    "csv_index": null,
    "card": "pairs",
    "card_title": "Pairs well with",
@@ -197874,6 +197984,536 @@
    "shortcut_of": null,
    "callbacks": null,
    "owner": "ALKitRow::postBuild",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_part_head:kit:63",
+   "csv_index": null,
+   "card": "part_rates",
+   "card_title": "Part rates",
+   "row_label": "Head",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_part_head",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "+1 step",
+    "value": 1
+   },
+   "expect": {
+    "setting": "StepAnimPartHead",
+    "type": "S32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "StepAnimPartHead",
+    "value": 0
+   },
+   "setting": "StepAnimPartHead",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 0,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Same as torso",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    },
+    {
+     "label": "Smooth",
+     "value": "3"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_part_face:kit:64",
+   "csv_index": null,
+   "card": "part_rates",
+   "card_title": "Part rates",
+   "row_label": "Face",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_part_face",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "+1 step",
+    "value": "1"
+   },
+   "expect": {
+    "callback": "ALPanelSteppedAnim::bindSteppedPage",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Same as torso",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    },
+    {
+     "label": "Smooth",
+     "value": "3"
+    }
+   ],
+   "binding": "code",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "ALPanelSteppedAnim::bindSteppedPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_part_arms:kit:65",
+   "csv_index": null,
+   "card": "part_rates",
+   "card_title": "Part rates",
+   "row_label": "Arms",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_part_arms",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "+1 step",
+    "value": 1
+   },
+   "expect": {
+    "setting": "StepAnimPartArms",
+    "type": "S32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "StepAnimPartArms",
+    "value": 0
+   },
+   "setting": "StepAnimPartArms",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 0,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Same as torso",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    },
+    {
+     "label": "Smooth",
+     "value": "3"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_part_hands:kit:66",
+   "csv_index": null,
+   "card": "part_rates",
+   "card_title": "Part rates",
+   "row_label": "Hands",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_part_hands",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "+1 step",
+    "value": 1
+   },
+   "expect": {
+    "setting": "StepAnimPartHands",
+    "type": "S32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "StepAnimPartHands",
+    "value": 0
+   },
+   "setting": "StepAnimPartHands",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 0,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Same as torso",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    },
+    {
+     "label": "Smooth",
+     "value": "3"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_part_legs:kit:67",
+   "csv_index": null,
+   "card": "part_rates",
+   "card_title": "Part rates",
+   "row_label": "Legs",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_part_legs",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "+1 step",
+    "value": 1
+   },
+   "expect": {
+    "setting": "StepAnimPartLegs",
+    "type": "S32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "StepAnimPartLegs",
+    "value": 0
+   },
+   "setting": "StepAnimPartLegs",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 0,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Same as torso",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    },
+    {
+     "label": "Smooth",
+     "value": "3"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_part_extras:kit:68",
+   "csv_index": null,
+   "card": "part_rates",
+   "card_title": "Part rates",
+   "row_label": "Extras",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_part_extras",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "+1 step",
+    "value": 1
+   },
+   "expect": {
+    "setting": "StepAnimPartExtras",
+    "type": "S32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "StepAnimPartExtras",
+    "value": 0
+   },
+   "setting": "StepAnimPartExtras",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 0,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Same as torso",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    },
+    {
+     "label": "Smooth",
+     "value": "3"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
+  },
+  {
+   "page": "stepped_tab",
+   "page_label": "Stepped",
+   "group": "look_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "stepped_tab",
+    "via": "tab"
+   },
+   "id": "v2:stepped_tab:sa_part_attach:kit:69",
+   "csv_index": null,
+   "card": "part_rates",
+   "card_title": "Part rates",
+   "row_label": "Attachments",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+   "xui_line": null,
+   "widget_name": "sa_part_attach",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "+1 step",
+    "value": 1
+   },
+   "expect": {
+    "setting": "StepAnimPartAttach",
+    "type": "S32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "StepAnimPartAttach",
+    "value": 0
+   },
+   "setting": "StepAnimPartAttach",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 0,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Same as torso",
+     "value": "0"
+    },
+    {
+     "label": "+1 step",
+     "value": "1"
+    },
+    {
+     "label": "+2 steps",
+     "value": "2"
+    },
+    {
+     "label": "Smooth",
+     "value": "3"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml"
   },
   {
@@ -221271,6 +221911,7 @@
    "kc_output_frame",
    "kc_pairs",
    "kc_pan_wander",
+   "kc_part_rates",
    "kc_pattern",
    "kc_per_light_rim",
    "kc_performance",
@@ -221747,6 +222388,20 @@
    "sa_actor_override_item_0",
    "sa_actor_override_item_1",
    "sa_actor_override_item_2",
+   "sa_actor_part",
+   "sa_actor_part_item_0",
+   "sa_actor_part_item_1",
+   "sa_actor_part_item_2",
+   "sa_actor_part_item_3",
+   "sa_actor_part_item_4",
+   "sa_actor_part_item_5",
+   "sa_actor_part_item_6",
+   "sa_actor_part_rate",
+   "sa_actor_part_rate_item_0",
+   "sa_actor_part_rate_item_1",
+   "sa_actor_part_rate_item_2",
+   "sa_actor_part_rate_item_3",
+   "sa_actor_part_rate_item_4",
    "sa_actor_rate",
    "sa_actor_role",
    "sa_actor_role_item_0",
@@ -221780,7 +222435,6 @@
    "sa_ease",
    "sa_ease_amount",
    "sa_exclude_mounted",
-   "sa_face",
    "sa_fast_rate",
    "sa_flexi",
    "sa_gaze",
@@ -221810,6 +222464,41 @@
    "sa_offset_item_2",
    "sa_override_clear",
    "sa_override_list",
+   "sa_part_arms",
+   "sa_part_arms_item_0",
+   "sa_part_arms_item_1",
+   "sa_part_arms_item_2",
+   "sa_part_arms_item_3",
+   "sa_part_attach",
+   "sa_part_attach_item_0",
+   "sa_part_attach_item_1",
+   "sa_part_attach_item_2",
+   "sa_part_attach_item_3",
+   "sa_part_extras",
+   "sa_part_extras_item_0",
+   "sa_part_extras_item_1",
+   "sa_part_extras_item_2",
+   "sa_part_extras_item_3",
+   "sa_part_face",
+   "sa_part_face_item_0",
+   "sa_part_face_item_1",
+   "sa_part_face_item_2",
+   "sa_part_face_item_3",
+   "sa_part_hands",
+   "sa_part_hands_item_0",
+   "sa_part_hands_item_1",
+   "sa_part_hands_item_2",
+   "sa_part_hands_item_3",
+   "sa_part_head",
+   "sa_part_head_item_0",
+   "sa_part_head_item_1",
+   "sa_part_head_item_2",
+   "sa_part_head_item_3",
+   "sa_part_legs",
+   "sa_part_legs_item_0",
+   "sa_part_legs_item_1",
+   "sa_part_legs_item_2",
+   "sa_part_legs_item_3",
    "sa_particles",
    "sa_phase",
    "sa_phase_spread",

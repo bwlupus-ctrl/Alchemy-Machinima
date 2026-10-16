@@ -177,6 +177,9 @@ public:
             S32 mWhat = -1;
             S32 mRole = 0;
             S32 mRateOffset = -1; // -1 inherit group/page, 0 same, 1 +1 step, 2 +2 steps
+            // Per-part rate overrides indexed by ALSteppedAnim::EPartGroup (torso unused):
+            // -1 inherit the page's part rate, 0 same, 1 +1 step, 2 +2 steps, 3 smooth.
+            std::array<S32, 8> mParts = {{-1, -1, -1, -1, -1, -1, -1, -1}};
         };
 
         bool            mEnabled = false;

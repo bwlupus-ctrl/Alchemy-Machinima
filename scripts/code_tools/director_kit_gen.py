@@ -242,8 +242,12 @@ def validate_data(data: dict) -> None:
     #       Effective, Seed, New seed (Reroll), Phase spread, Rate variation, Imperfect timing, Group, Group rate,
     #       All groups (10/15).
     # 2091: Capture > Time Frame rate card (+3): Limit frame rate, Frame rate limit, a help note (10/15).
-    if len(pages) != 37 or row_count != 2091:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2091")
+    # 2099: Stepped part rates (+9): 'Part rates' card with Head, Face, Arms, Hands, Legs, Extras, Attachments
+    #       combos (StepAnimPart*), plus the per-actor Part picker and Part rate override rows (10/15).
+    #       The Part rates 'Face' combo is the one Face control (Smooth = StepAnimFace off); the old
+    #       'Face & lip-sync' toggle row is gone (-1) (10/15 review fix).
+    if len(pages) != 37 or row_count != 2099:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2099")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

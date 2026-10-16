@@ -150,6 +150,11 @@ void sanitizeActorStyle(LLDirectorCast::ActorStyle& style)
     style.mStepped.mWhat = llclamp(style.mStepped.mWhat, -1, 1);
     style.mStepped.mRole = llclamp(style.mStepped.mRole, 0, 2);
     style.mStepped.mRateOffset = llclamp(style.mStepped.mRateOffset, -1, 2);
+    static_assert(std::tuple_size<decltype(style.mStepped.mParts)>::value == ALSteppedAnim::kPartGroups,
+                  "SteppedOverride::mParts is indexed by ALSteppedAnim::EPartGroup");
+    for (size_t part = 0; part < style.mStepped.mParts.size(); ++part)
+        style.mStepped.mParts[part] = part == ALSteppedAnim::PART_TORSO
+            ? -1 : llclamp(style.mStepped.mParts[part], -1, 3);
 }
 
 ALSteppedAnim::ActorOverride toSteppedOverride(const LLDirectorCast::ActorStyle::SteppedOverride& value)
@@ -160,6 +165,7 @@ ALSteppedAnim::ActorOverride toSteppedOverride(const LLDirectorCast::ActorStyle:
     out.what = value.mWhat;
     out.role = value.mRole;
     out.rateOffset = value.mRateOffset;
+    out.parts = value.mParts;
     return out;
 }
 
@@ -245,6 +251,7 @@ LLDirectorCast::ActorStyle readActorStyle(const LLSD& data)
         style.mStepped.mWhat = value.what;
         style.mStepped.mRole = value.role;
         style.mStepped.mRateOffset = value.rateOffset;
+        style.mStepped.mParts = value.parts;
     }
     sanitizeActorStyle(style);
     return style;

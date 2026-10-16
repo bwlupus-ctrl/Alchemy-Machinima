@@ -88,6 +88,20 @@
     <map><key>Comment</key><string>[StepAnim] Per-actor step-length spread, 0 to 1; whole base-grid frames, never faster than the rate.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.0</real></map>
     <key>StepAnimTimingJitter</key>
     <map><key>Comment</key><string>[StepAnim] Imperfect timing, 0 to 1: chance of one extra held step per tick (at most a quarter), never two in a row.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.0</real></map>
+    <key>StepAnimPartHead</key>
+    <map><key>Comment</key><string>[StepAnim] Head part rate (neck, head and the eyes, i.e. the Gaze joints): 0 same as torso, 1 +1 step, 2 +2 steps, 3 smooth.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimPartFace</key>
+    <map><key>Comment</key><string>[StepAnim] Face part rate (face bones and lip-sync; the eyes follow the Head part, with Gaze): 0 same as torso, 1 +1 step, 2 +2 steps, 3 smooth (the same as StepAnimFace off).</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimPartArms</key>
+    <map><key>Comment</key><string>[StepAnim] Arms part rate (shoulders, elbows, wrists): 0 same as torso, 1 +1 step, 2 +2 steps, 3 smooth.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimPartHands</key>
+    <map><key>Comment</key><string>[StepAnim] Hands part rate (fingers): 0 same as torso, 1 +1 step, 2 +2 steps, 3 smooth.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimPartLegs</key>
+    <map><key>Comment</key><string>[StepAnim] Legs part rate (hips, knees, ankles, feet, toes): 0 same as torso, 1 +1 step, 2 +2 steps, 3 smooth.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimPartExtras</key>
+    <map><key>Comment</key><string>[StepAnim] Extras part rate (Bento tail, wings, hind limbs, groin): 0 same as torso, 1 +1 step, 2 +2 steps, 3 smooth.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
+    <key>StepAnimPartAttach</key>
+    <map><key>Comment</key><string>[StepAnim] Attachments part rate (rigid attachments and worn animesh): 0 same as torso, 1 +1 step, 2 +2 steps, 3 smooth.</string><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
     <key>StepAnimGroupRates</key>
     <map><key>Comment</key><string>[StepAnim] RETIRED and unused, kept only so old settings files still load. Group rates live in the cast (saved with the scene).</string><key>Persist</key><integer>1</integer><key>Type</key><string>LLSD</string><key>Value</key><map /></map>
     <key>StepAnimDebugVerify</key>

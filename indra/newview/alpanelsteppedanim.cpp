@@ -62,6 +62,9 @@ void ALPanelSteppedAnim::bindSteppedPage(LLView* root)
     mActorSteps = root->findChild<LLComboBox>("sa_actor_steps", true);
     mActorRole = root->findChild<LLComboBox>("sa_actor_role", true);
     mActorOffset = root->findChild<LLComboBox>("sa_actor_offset", true);
+    mActorPart = root->findChild<LLComboBox>("sa_actor_part", true);
+    mActorPartRate = root->findChild<LLComboBox>("sa_actor_part_rate", true);
+    mPartFace = root->findChild<LLComboBox>("sa_part_face", true);
     mActorEffective = root->findChild<LLTextBox>("sa_actor_effective", true);
     mSeedReroll = root->findChild<LLButton>("sa_seed_reroll", true);
     mGroupPick = root->findChild<LLComboBox>("sa_group_pick", true);
@@ -98,6 +101,9 @@ void ALPanelSteppedAnim::bindSteppedPage(LLView* root)
     if (mActorRole) mActorRole->setCommitCallback([this](LLUICtrl*, const LLSD&) { onActorRoleCommit(); });
     if (mOverrideClear) mOverrideClear->setCommitCallback([this](LLUICtrl*, const LLSD&) { onOverrideClear(); });
     if (mActorOffset) mActorOffset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onActorOffsetCommit(); });
+    if (mActorPart) mActorPart->setCommitCallback([this](LLUICtrl*, const LLSD&) { onActorPartPick(); });
+    if (mActorPartRate) mActorPartRate->setCommitCallback([this](LLUICtrl*, const LLSD&) { onActorPartRateCommit(); });
+    if (mPartFace) mPartFace->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPartFaceCommit(); });
     if (mSeedReroll) mSeedReroll->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSeedReroll(); });
     if (mGroupPick) mGroupPick->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupPick(); });
     if (mGroupOffset) mGroupOffset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupOffsetCommit(); });
@@ -138,10 +144,12 @@ void ALPanelSteppedAnim::rebuildActors()
     const auto add_actor = [this](const LLUUID& id, const std::string& name, const LLDirectorCast::ActorStyle& style)
     {
         mActorTarget->add(name, id.asString());
-        // An actor that only carries a rate offset is not "Inherit": show the offset.
+        // An actor that only carries a rate offset or part overrides is not "Inherit": show them.
         const LLDirectorCast::ActorStyle::SteppedOverride& ov = style.mStepped;
+        const bool has_parts = std::any_of(ov.mParts.begin(), ov.mParts.end(), [](S32 part) { return part >= 0; });
         const std::string mode = ov.mMode == 2 ? "Own" : (ov.mMode == 1 ? "Never"
-            : (ov.mRateOffset >= 0 ? std::string("Rate: ") + offsetLabel(ov.mRateOffset) : std::string("Inherit")));
+            : (ov.mRateOffset >= 0 ? std::string("Rate: ") + offsetLabel(ov.mRateOffset)
+                                   : (has_parts ? std::string("Part rates") : std::string("Inherit"))));
         LLSD row;
         row["id"] = id;
         row["columns"][0]["column"] = "name";
@@ -172,8 +180,17 @@ void ALPanelSteppedAnim::refreshActor()
     if (mActorSteps) mActorSteps->setValue(LLSD(style.mStepped.mWhat));
     if (mActorRole) mActorRole->setCurrentByIndex(style.mStepped.mRole);
     if (mActorOffset) mActorOffset->setValue(LLSD(style.mStepped.mRateOffset));
+    // The Part rate row shows the picked part's own override (Inherit is a real choice, by value).
+    if (mActorPartRate) mActorPartRate->setValue(LLSD(style.mStepped.mParts[selectedPart()]));
     mRefreshing = false;
     refreshConditionalRows();
+}
+
+// The part picked in the per-actor Part combo (EPartGroup value, never the torso).
+S32 ALPanelSteppedAnim::selectedPart() const
+{
+    const S32 part = mActorPart ? mActorPart->getSelectedValue().asInteger() : ALSteppedAnim::PART_HEAD;
+    return llclamp(part, static_cast<S32>(ALSteppedAnim::PART_HEAD), static_cast<S32>(ALSteppedAnim::kPartGroups) - 1);
 }
 
 void ALPanelSteppedAnim::writeActor()
@@ -190,6 +207,9 @@ void ALPanelSteppedAnim::writeActor()
     if (mActorSteps) style.mStepped.mWhat = llclamp(mActorSteps->getSelectedValue().asInteger(), -1, 1);
     if (mActorRole) style.mStepped.mRole = llclamp(mActorRole->getCurrentIndex(), 0, 2);
     if (mActorOffset) style.mStepped.mRateOffset = llclamp(mActorOffset->getSelectedValue().asInteger(), -1, 2);
+    // Only the picked part is written; the other parts keep what the scene carries.
+    if (mActorPartRate)
+        style.mStepped.mParts[selectedPart()] = llclamp(mActorPartRate->getSelectedValue().asInteger(), -1, 3);
     cast.setActorStyle(id, style);
     rebuildActors();
     refreshActor();
@@ -217,6 +237,37 @@ void ALPanelSteppedAnim::onActorRateCommit() { writeActor(); }
 void ALPanelSteppedAnim::onActorStepsCommit() { writeActor(); }
 void ALPanelSteppedAnim::onActorRoleCommit() { writeActor(); }
 void ALPanelSteppedAnim::onActorOffsetCommit() { writeActor(); }
+// Picking another part only re-reads that part's override; it writes nothing.
+void ALPanelSteppedAnim::onActorPartPick() { refreshActor(); }
+void ALPanelSteppedAnim::onActorPartRateCommit() { writeActor(); }
+
+// The Face part combo is the only Face control: Smooth writes StepAnimFace off (the switch presets
+// and scenes carry); Same / +1 / +2 write StepAnimFace on plus StepAnimPartFace.
+void ALPanelSteppedAnim::onPartFaceCommit()
+{
+    if (mRefreshing || !mPartFace) return;
+    bool face_on = gSavedSettings.getBOOL("StepAnimFace");
+    S32 part_face = gSavedSettings.getS32("StepAnimPartFace");
+    ALSteppedAnim::applyFaceControl(mPartFace->getSelectedValue().asInteger(), face_on, part_face);
+    gSavedSettings.setS32("StepAnimPartFace", part_face);
+    gSavedSettings.setBOOL("StepAnimFace", face_on);
+    mLastPartFace = -1; // re-read on the next draw
+}
+
+// ui-draw-lint: allow-function(raw-write) selects only when the cached Face settings changed
+void ALPanelSteppedAnim::refreshPartFace()
+{
+    if (!mPartFace) return;
+    static LLCachedControl<bool> face_setting(gSavedSettings, "StepAnimFace");
+    static LLCachedControl<S32> part_face_setting(gSavedSettings, "StepAnimPartFace");
+    // Smooth whenever the engine treats the face as Smooth: StepAnimFace off OR the part is Smooth.
+    const S32 shown = ALSteppedAnim::faceControlShown(face_setting, part_face_setting);
+    if (shown == mLastPartFace) return;
+    mLastPartFace = shown;
+    mRefreshing = true;
+    mPartFace->setValue(LLSD(shown));
+    mRefreshing = false;
+}
 
 // A new random seed re-rolls every actor's phase, boil, rate variation and timing. Kept in
 // 1..99999 so the Seed spinner shows it exactly; viewer-local like every Stepped setting.
@@ -362,7 +413,7 @@ void ALPanelSteppedAnim::refreshActorEffective()
     const LLDirectorCast::ActorStyle::SteppedOverride& style = cast.getActorStyle(id).mStepped;
     ALSteppedAnim::ActorOverride ov;
     ov.mode = style.mMode; ov.rate = style.mRate; ov.what = style.mWhat; ov.role = style.mRole;
-    ov.rateOffset = style.mRateOffset;
+    ov.rateOffset = style.mRateOffset; ov.parts = style.mParts;
     const S32 group_offset = cast.getGroupRate(cast.getGroup(id.isNull() ? gAgentID : id));
     // The same pure function the planner uses (sanitised base fps, Mixed background, Adaptive fast
     // rate, group / actor offsets, Roto Ink cadence); the seed variation is shown as a range.
@@ -475,6 +526,7 @@ void ALPanelSteppedAnim::draw()
         refreshActor();
     }
     refreshConditionalRows();
+    refreshPartFace();
     syncGroups(false);
     refreshReadouts();
     LLPanel::draw();

@@ -51,7 +51,7 @@ bool sameTrackedConfig(const ALSteppedAnim::Config& a, const ALSteppedAnim::Conf
         a.boil == b.boil && a.boilAmount == b.boilAmount && a.boilTicks == b.boilTicks &&
         a.impact == b.impact && a.impactTicks == b.impactTicks && a.impactThreshold == b.impactThreshold &&
         a.smear == b.smear && a.smearStrength == b.smearStrength && a.smearThreshold == b.smearThreshold &&
-        a.ease == b.ease && a.easeAmount == b.easeAmount && a.matchRoto == b.matchRoto;
+        a.ease == b.ease && a.easeAmount == b.easeAmount && a.matchRoto == b.matchRoto && a.parts == b.parts;
 }
 }
 
@@ -333,14 +333,16 @@ template<> template<> void stepped_object::test<10>()
     ALSteppedAnim::Assignment wearer;
     wearer.stepped = true; wearer.rate = 8.f; wearer.phase = .375;
     wearer.adaptive = true; wearer.fastRate = 24.f;
-    wearer.heldClasses = ALSteppedAnim::JC_ROOT | ALSteppedAnim::JC_BODY | ALSteppedAnim::JC_FACE;
+    wearer.heldClasses = ALSteppedAnim::JC_ROOT | ALSteppedAnim::JC_BODY | ALSteppedAnim::JC_FACE | ALSteppedAnim::kGroupBits;
     ALSteppedAnim::Assignment attached;
     U64 attached_seed = 91;
     ensure("T10 attached animesh inherits a stepped wearer",
         ALSteppedAnim::inheritAttachedAssignment(wearer, 42, attached, attached_seed));
     ensure("T10 attached animesh inherits assignment, seed and phase",
         attached.stepped && attached.rate == wearer.rate && attached.phase == wearer.phase &&
-        attached.heldClasses == (wearer.heldClasses & ~ALSteppedAnim::JC_ROOT) && attached_seed == 42);
+        attached.heldClasses == static_cast<U16>((wearer.heldClasses & ~ALSteppedAnim::JC_ROOT) &
+                                                 ~ALSteppedAnim::groupBit(ALSteppedAnim::PART_ATTACH)) &&
+        attached_seed == 42);
     ensure("T10 attached animesh never holds its own root",
         !(attached.heldClasses & ALSteppedAnim::JC_ROOT));
 
@@ -422,15 +424,16 @@ template<> template<> void stepped_object::test<11>()
         {"mFaceLipLowerLeft", 14, false}, {"mFaceEyeAltRight", 12, false},
         {"mFaceEyeAltLeft", 12, false}, {"PELVIS", 1, true}, {"HEAD", 9, true}};
     const auto classes = classifyJoints(desc);
-    ensure_equals("T11 root", classes[0], static_cast<U8>(JC_ROOT));
-    ensure_equals("T11 nested face", classes[15], static_cast<U8>(JC_FACE));
-    ensure_equals("T11 gaze", classes[10], static_cast<U8>(JC_GAZE));
-    ensure_equals("T11 alt gaze", classes[16], static_cast<U8>(JC_GAZE));
-    ensure_equals("T11 phys", classes[18], static_cast<U8>(JC_PHYS));
+    // Class bits as before; the part group rides in the upper bits (T22 covers the groups).
+    ensure_equals("T11 root", classes[0], static_cast<U16>(JC_ROOT | groupBit(PART_TORSO)));
+    ensure_equals("T11 nested face", classes[15], static_cast<U16>(JC_FACE | groupBit(PART_FACE)));
+    ensure_equals("T11 gaze", classes[10], static_cast<U16>(JC_GAZE | groupBit(PART_HEAD)));
+    ensure_equals("T11 alt gaze", classes[16], static_cast<U16>(JC_GAZE | groupBit(PART_HEAD)));
+    ensure_equals("T11 phys", classes[18], static_cast<U16>(JC_PHYS | groupBit(PART_TORSO)));
     PoseBuffer smooth, held, rendered; smooth.joints.resize(desc.size()); held = smooth;
     smooth.joints[1].pos.set(1.f, 0.f, 0.f); held.joints[1].pos.set(2.f, 0.f, 0.f);
     smooth.joints[15].pos.set(3.f, 0.f, 0.f); held.joints[15].pos.set(4.f, 0.f, 0.f);
-    composeRender(smooth, held, classes, JC_BODY, rendered);
+    composeRender(smooth, held, classes, JC_BODY | kGroupBits, rendered);
     ensure_equals("T11 held class", rendered.joints[1].pos[VX], 2.f);
     ensure_equals("T11 smooth class", rendered.joints[15].pos[VX], 3.f);
     JointLocal written = held.joints[1], current = written;
@@ -524,7 +527,7 @@ template<> template<> void stepped_object::test<12>()
 {
     const auto& presets = ALSteppedAnim::builtInPresets();
     ensure_equals("T12 preset count", presets.size(), size_t(14));
-    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(39));
+    ensure_equals("T12 tracked count", ALSteppedAnim::trackedSettings().size(), size_t(46)); // 39 + 7 part rates
     std::set<std::string> ids;
     for (const auto& p : presets)
     {
@@ -536,7 +539,7 @@ template<> template<> void stepped_object::test<12>()
     const auto& preset_names = ALSteppedAnim::presetSettings();
     const std::set<std::string> preset_settings(preset_names.begin(), preset_names.end());
     ensure("T12 built-in and saved preset whitelist excludes independent options",
-        preset_settings.size() == 29 && !preset_settings.count("StepAnimParticles") &&
+        preset_settings.size() == 36 && !preset_settings.count("StepAnimParticles") && // 29 + 7 part rates
         !preset_settings.count("StepAnimTextureAnim") && !preset_settings.count("StepAnimIncludeGhosts"));
     ensure("T12 retired StepAnimGroupRates is no longer tracked (group rates are scene data)",
         std::find(ALSteppedAnim::trackedSettings().begin(), ALSteppedAnim::trackedSettings().end(),
@@ -1176,6 +1179,689 @@ template<> template<> void stepped_object::test<21>()
     hostile["rate_offset"] = 77; hostile["mode"] = 9; hostile["rate"] = 1000.0;
     const ActorOverride clamped = readOverride(hostile);
     ensure("hostile override values clamp", clamped.rateOffset == 2 && clamped.mode == 2 && clamped.rate == 30.f);
+}
+
+// T22: part rates. Joint -> group mapping for every group, coarser part grids, Smooth never held,
+// precedence actor > cast group > global, worn animesh on the Attachments part, attachment
+// placement math, scene round trip, and defaults byte-identical to a single-grid actor.
+template<> template<> void stepped_object::test<22>()
+{
+    using namespace ALSteppedAnim;
+    // Representative joints of each group; names and parents as in avatar_skeleton.xml (Bento).
+    const std::vector<JointDesc> desc = {
+        {"mPelvis", -1}, {"mSpine1", 0}, {"mTorso", 1}, {"mChest", 2}, {"mCollarLeft", 3},        // 0-4 torso
+        {"mNeck", 3}, {"mHead", 5}, {"mSkull", 6},                                                // 5-7 head
+        {"mEyeLeft", 6}, {"mFaceRoot", 6}, {"mFaceJaw", 9}, {"mFaceEyeAltLeft", 9},              // 8-11 face
+        {"mShoulderLeft", 4}, {"mElbowLeft", 12}, {"mWristLeft", 13},                            // 12-14 arms
+        {"mHandMiddle1Left", 14}, {"mHandThumb3Left", 14},                                       // 15-16 hands
+        {"mHipRight", 0}, {"mKneeRight", 17}, {"mAnkleRight", 18}, {"mFootRight", 19}, {"mToeRight", 20}, // 17-21 legs
+        {"mTail1", 0}, {"mWingsRoot", 3}, {"mWing1Left", 23}, {"mHindLimbsRoot", 0},
+        {"mHindLimb1Left", 25}, {"mGroin", 0},                                                   // 22-27 extras
+        {"PELVIS", 0, true}, {"L_UPPER_ARM", 12, true}, {"R_LOWER_LEG", 18, true},               // 28-30 collision volumes
+        {"Right Hand", 14, false, true}, {"Skull", 6, false, true}, {"Chest", 3, false, true},   // 31-33 attachment points
+    };
+    const auto classes = classifyJoints(desc);
+    ensure_equals("T22 joint count", classes.size(), desc.size());
+    auto group = [&classes](U32 i) { return partOf(classes[i]); };
+    for (U32 i = 0; i <= 4; ++i) ensure_equals("T22 torso", group(i), U32(PART_TORSO));
+    // Every Gaze joint is Head (neck, head, eyes, Bento alt eyes), so Gaze holds the eyes as before.
+    for (U32 i : {5u, 6u, 7u, 8u, 11u}) ensure_equals("T22 head", group(i), U32(PART_HEAD));
+    for (U32 i : {9u, 10u}) ensure_equals("T22 face", group(i), U32(PART_FACE));
+    for (U32 i = 12; i <= 14; ++i) ensure_equals("T22 arms", group(i), U32(PART_ARMS));
+    for (U32 i = 15; i <= 16; ++i) ensure_equals("T22 hands", group(i), U32(PART_HANDS));
+    for (U32 i = 17; i <= 21; ++i) ensure_equals("T22 legs", group(i), U32(PART_LEGS));
+    for (U32 i = 22; i <= 27; ++i) ensure_equals("T22 extras", group(i), U32(PART_EXTRAS));
+    ensure("T22 collision volumes follow their parent bone",
+        group(28) == PART_TORSO && group(29) == PART_ARMS && group(30) == PART_LEGS && (classes[28] & JC_PHYS));
+    ensure("T22 attachment points are the Attachments part",
+        group(31) == PART_ATTACH && group(32) == PART_ATTACH && group(33) == PART_ATTACH &&
+        (classes[31] & JC_ATTACH) && !(classes[31] & (JC_BODY | JC_PHYS)));
+    ensure("T22 toggle classes are unchanged by the groups",
+        (classes[6] & JC_GAZE) && (classes[8] & JC_GAZE) && (classes[11] & JC_GAZE) && (classes[10] & JC_FACE) &&
+        (classes[0] & JC_BODY) && (classes[7] & JC_BODY) && (classes[31] & kClassBits) == JC_ATTACH);
+    for (U32 i = 0; i < classes.size(); ++i)
+    {
+        U32 bits = 0;
+        for (U32 part = 0; part < kPartGroups; ++part) if (classes[i] & groupBit(part)) ++bits;
+        ensure("T22 exactly one group per joint", bits == 1);
+    }
+
+    // Defaults: every part Same, the held mask is the class bits plus every body group, nothing
+    // attachment-side, and planFrame / refreshGroups / composeRender reduce to the single-grid rule.
+    Config dflt; dflt.enabled = true;
+    ActorFacts f; f.drawn = true; f.inCast = true; f.seed = 5;
+    const Assignment a0 = resolveActor(dflt, f, 0.);
+    ensure("T22 default parts", a0.stepped && a0.parts == kPartsSame);
+    ensure("T22 default held mask", (a0.heldClasses & kGroupBits) == (kGroupBits & ~groupBit(PART_ATTACH)) &&
+        !(a0.heldClasses & JC_ATTACH) && (a0.heldClasses & kClassBits) == (JC_ROOT | JC_BODY | JC_FACE | JC_GAZE | JC_PHYS));
+    for (U32 part = 0; part < kPartGroups; ++part)
+        ensure("T22 default settings are Same", Config().parts[part] == RATE_SAME && sanitize(Config()).parts[part] == RATE_SAME);
+    ensure("T22 setting and scene names", std::string(partSetting(PART_HEAD)) == "StepAnimPartHead" &&
+        std::string(partSetting(PART_ATTACH)) == "StepAnimPartAttach" && partSetting(PART_TORSO)[0] == 0 &&
+        std::string(partKey(PART_HANDS)) == "hands" && std::string(partKey(PART_ATTACH)) == "attach");
+    {
+        ActorState s0;
+        for (S32 frame = 0; frame < 24 * 20; ++frame)
+        {
+            const F64 t = frame / 60.;
+            const auto d = planFrame(s0, a0, dflt, t);
+            ensure("T22 default captureGroups follow capture", d.captureGroups == (d.capture ? kGroupBits : 0));
+            ensure("T22 default refreshGroups follow capture", refreshGroups(a0, d) == d.captureGroups);
+            for (U32 part = 0; part < kPartGroups; ++part)
+                ensure("T22 default part boil is the base boil", d.partBoil[part] == d.boilIndex);
+        }
+    }
+    PoseBuffer smooth, held, rendered; smooth.joints.resize(desc.size()); held = smooth;
+    for (U32 i = 0; i < held.joints.size(); ++i) held.joints[i].pos.set(1.f + i, 0.f, 0.f);
+    composeRender(smooth, held, classes, a0.heldClasses, rendered);
+    for (U32 i = 0; i < classes.size(); ++i)
+    {
+        const bool expected = (classes[i] & a0.heldClasses & kClassBits) != 0 && !(classes[i] & JC_ATTACH);
+        ensure("T22 default composition equals the class rule", rendered.joints[i].pos[VX] == (expected ? 1.f + i : 0.f));
+    }
+    ensure("T22 heldClasses overloads agree", heldClasses(sanitize(dflt), WHAT_POSE_POSITION) ==
+        heldClasses(sanitize(dflt), WHAT_POSE_POSITION, resolveParts(dflt, ActorOverride())));
+
+    // Smooth is never held: not in the mask, never captured, rendered smooth under a held parent.
+    Config c; c.enabled = true; c.parts[PART_ARMS] = RATE_SMOOTH;
+    const Assignment a = resolveActor(c, f, 0.);
+    ensure("T22 smooth arms are not in the held mask", a.stepped && !jointHeld(classes[12], a.heldClasses) &&
+        !jointHeld(classes[13], a.heldClasses) && !jointHeld(classes[29], a.heldClasses) &&
+        jointHeld(classes[15], a.heldClasses) && jointHeld(classes[0], a.heldClasses));
+    composeRender(smooth, held, classes, a.heldClasses, rendered);
+    ensure("T22 smooth part renders smooth", rendered.joints[12].pos[VX] == 0.f && rendered.joints[13].pos[VX] == 0.f &&
+        rendered.joints[29].pos[VX] == 0.f);
+    ensure("T22 held parts render held", rendered.joints[15].pos[VX] == 16.f && rendered.joints[0].pos[VX] == 1.f);
+    ensure("T22 attachments untouched while Same", rendered.joints[31].pos[VX] == 0.f && !(a.heldClasses & JC_ATTACH));
+    {
+        ActorState s;
+        for (S32 frame = 0; frame < 24 * 10; ++frame)
+        {
+            const auto d = planFrame(s, a, c, frame / 60.);
+            ensure("T22 smooth part never captures", !(d.captureGroups & groupBit(PART_ARMS)) &&
+                !(refreshGroups(a, d) & groupBit(PART_ARMS)));
+        }
+    }
+    // Defaults reproduce the OLD class rule for every combination of the old toggles (Face x Gaze x
+    // Flexi x What): a joint was held iff its class bit was in BODY | ROOT(pose+position) |
+    // FACE(face) | GAZE(gaze) | PHYS(flexi). Attachment points were not in the old pose buffer.
+    for (bool face : {false, true})
+        for (bool gaze : {false, true})
+            for (bool flexi : {false, true})
+                for (S32 what : {WHAT_POSE, WHAT_POSE_POSITION})
+                {
+                    Config oc; oc.enabled = true; oc.face = face; oc.gaze = gaze; oc.flexi = flexi; oc.what = what;
+                    const Assignment oa = resolveActor(oc, f, 0.);
+                    const U16 old_mask = static_cast<U16>(JC_BODY | (what == WHAT_POSE_POSITION ? JC_ROOT : 0) |
+                        (face ? JC_FACE : 0) | (gaze ? JC_GAZE : 0) | (flexi ? JC_PHYS : 0));
+                    ensure("T22 old class bits", oa.stepped && (oa.heldClasses & kClassBits) == old_mask);
+                    composeRender(smooth, held, classes, oa.heldClasses, rendered);
+                    for (U32 i = 0; i < classes.size(); ++i)
+                    {
+                        const bool old_held = (classes[i] & kClassBits & old_mask) != 0 && !(classes[i] & JC_ATTACH);
+                        ensure("T22 old rule: held set", jointHeld(classes[i], oa.heldClasses) == old_held);
+                        ensure("T22 old rule: composition", rendered.joints[i].pos[VX] == (old_held ? 1.f + i : 0.f));
+                    }
+                    // Gaze holds the eyes (8 mEyeLeft, 11 mFaceEyeAltLeft) whatever Face says; Face holds
+                    // the face bones (10 mFaceJaw) whatever Gaze says.
+                    ensure("T22 eyes follow Gaze", jointHeld(classes[8], oa.heldClasses) == gaze &&
+                        jointHeld(classes[11], oa.heldClasses) == gaze && jointHeld(classes[6], oa.heldClasses) == gaze);
+                    ensure("T22 face bones follow Face", jointHeld(classes[10], oa.heldClasses) == face);
+                    ActorState os; S64 previous = -1000;
+                    for (S32 frame = 0; frame < 24 * 4; ++frame)
+                    {
+                        const F64 t = frame / 60.;
+                        const auto d = planFrame(os, oa, oc, t);
+                        const S64 tick = tickIndex(t, 12., oa.phase);
+                        ensure("T22 old rule: capture", d.capture == (frame == 0 || tick != previous) && d.hold);
+                        // (a Smooth part, here Face off, is never captured: it is not held)
+                        const U16 held_groups = static_cast<U16>(kGroupBits & ~(face ? 0 : groupBit(PART_FACE)));
+                        ensure("T22 old rule: groups", d.captureGroups == (d.capture ? held_groups : 0) &&
+                            refreshGroups(oa, d) == d.captureGroups);
+                        previous = tick;
+                    }
+                }
+    // The Face part is the existing Face & lip-sync control: Smooth == StepAnimFace off.
+    Config face_off; face_off.enabled = true; face_off.face = false;
+    Config face_smooth; face_smooth.enabled = true; face_smooth.parts[PART_FACE] = RATE_SMOOTH;
+    ensure("T22 face toggle off reads Smooth", resolveParts(face_off, ActorOverride())[PART_FACE] == RATE_SMOOTH);
+    ensure_equals("T22 Face Smooth is StepAnimFace off", resolveActor(face_smooth, f, 0.).heldClasses,
+        resolveActor(face_off, f, 0.).heldClasses);
+    ensure("T22 face class follows the part", !(resolveActor(face_off, f, 0.).heldClasses & JC_FACE) &&
+        !jointHeld(classes[10], resolveActor(face_off, f, 0.).heldClasses) &&
+        jointHeld(classes[10], a0.heldClasses) && jointHeld(classes[8], resolveActor(face_off, f, 0.).heldClasses));
+
+    // Coarser parts: their own grid (offsetRate of the current rate, boundaries on the actor's
+    // base-frame lattice), refreshed only on their own ticks; Same parts ride the torso capture.
+    Config c2; c2.enabled = true; c2.parts[PART_ARMS] = RATE_PLUS1; c2.parts[PART_HANDS] = RATE_PLUS2;
+    const Assignment a2 = resolveActor(c2, f, 0.);
+    ensure("T22 coarser parts stay in the mask", jointHeld(classes[13], a2.heldClasses) && jointHeld(classes[15], a2.heldClasses));
+    ensure_equals("T22 arms +1 at 12 on 24", offsetRate(12.f, RATE_PLUS1, 24), 8.f);
+    ensure_equals("T22 hands +2 at 12 on 24", offsetRate(12.f, RATE_PLUS2, 24), 6.f);
+    const F64 arms_phase = partPhase(a2.phase, 12., 8.), hands_phase = partPhase(a2.phase, 12., 6.);
+    close("T22 part phase keeps the actor's time offset", (1. - arms_phase) / 8. - (1. - a2.phase) / 12.,
+        std::floor(((1. - arms_phase) / 8. - (1. - a2.phase) / 12.) * 24. + .5) / 24., 1.e-9);
+    {
+        ActorState s2;
+        S64 prev_arms = -1, prev_hands = -1;
+        U32 torso_caps = 0, arm_caps = 0, hand_caps = 0;
+        for (S32 frame = 0; frame < 60 * 100; ++frame)
+        {
+            const F64 t = frame / 60.;
+            const auto d = planFrame(s2, a2, c2, t);
+            ensure("T22 captureGroups is refreshGroups", d.captureGroups == refreshGroups(a2, d));
+            const S64 arms_tick = tickIndex(t, 8., arms_phase), hands_tick = tickIndex(t, 6., hands_phase);
+            const bool first = frame == 0;
+            ensure("T22 arms capture on their own ticks only",
+                ((d.captureGroups & groupBit(PART_ARMS)) != 0) == (first || arms_tick != prev_arms));
+            ensure("T22 hands capture on their own ticks only",
+                ((d.captureGroups & groupBit(PART_HANDS)) != 0) == (first || hands_tick != prev_hands));
+            ensure("T22 same parts capture with the torso",
+                ((d.captureGroups & groupBit(PART_TORSO)) != 0) == d.capture &&
+                ((d.captureGroups & groupBit(PART_LEGS)) != 0) == d.capture &&
+                ((d.captureGroups & groupBit(PART_HEAD)) != 0) == d.capture);
+            ensure("T22 same attachments ride the torso", ((d.captureGroups & groupBit(PART_ATTACH)) != 0) == d.capture);
+            if (d.captureGroups & groupBit(PART_ARMS))
+            {
+                // Torso boundaries sit at m/12 - tau with tau = phase/12; arm boundaries at k/8 - tau:
+                // shifted back by tau, every arm boundary is a whole base frame (1/24 s).
+                const F64 lattice = (nextBoundary(t, 8., arms_phase) + a2.phase / 12.) * 24.;
+                close("T22 arm boundaries lie on the base-frame lattice", lattice - std::floor(lattice + .5), 0., 1.e-5);
+            }
+            ensure("T22 coarser boil on its own grid",
+                d.partBoil[PART_ARMS] == tickIndex(t, 8., arms_phase) / sanitize(c2).boilTicks &&
+                d.partBoil[PART_LEGS] == d.boilIndex);
+            torso_caps += d.capture; arm_caps += (d.captureGroups & groupBit(PART_ARMS)) != 0;
+            hand_caps += (d.captureGroups & groupBit(PART_HANDS)) != 0;
+            prev_arms = arms_tick; prev_hands = hands_tick;
+        }
+        ensure("T22 coarser parts capture less often", arm_caps < torso_caps && hand_caps < arm_caps &&
+            arm_caps >= 8 * 100 - 2 && hand_caps >= 6 * 100 - 2);
+    }
+
+    // Precedence: actor part override > cast-group rate (one grid: the page's parts read Same for
+    // a grouped actor) > global part setting. T23 covers the group rule in detail.
+    Config g; g.enabled = true; g.parts[PART_LEGS] = RATE_PLUS1;
+    ActorFacts fa; fa.drawn = true; fa.inCast = true; fa.seed = 3;
+    ensure("T22 global part", resolveActor(g, fa, 0.).parts[PART_LEGS] == RATE_PLUS1);
+    fa.groupOffset = RATE_PLUS2;
+    const Assignment grp = resolveActor(g, fa, 0.);
+    ensure("T22 group rate steps the actor on one grid: page parts read Same",
+        grp.rate == offsetRate(12.f, RATE_PLUS2, 24) && grp.parts[PART_LEGS] == RATE_SAME);
+    fa.ov.parts[PART_LEGS] = RATE_SMOOTH;
+    const Assignment act = resolveActor(g, fa, 0.);
+    ensure("T22 actor part override beats group and global",
+        act.parts[PART_LEGS] == RATE_SMOOTH && !jointHeld(classes[18], act.heldClasses) && act.rate == grp.rate);
+    g.face = false; fa.ov.parts[PART_FACE] = RATE_PLUS1;
+    const Assignment face_act = resolveActor(g, fa, 0.);
+    ensure("T22 actor face override beats the page toggle",
+        face_act.parts[PART_FACE] == RATE_PLUS1 && (face_act.heldClasses & JC_FACE) && jointHeld(classes[10], face_act.heldClasses));
+    fa.ov.parts[PART_TORSO] = RATE_SMOOTH;
+    ensure("T22 the torso can never be overridden", resolveActor(g, fa, 0.).parts[PART_TORSO] == RATE_SAME &&
+        sanitize(fa.ov).parts[PART_TORSO] == -1);
+
+    // Worn animesh follows the Attachments part: Same copies the wearer's grid exactly, +1 / +2
+    // offset it with the wearer's seed and phase, Smooth leaves it smooth.
+    Config ca; ca.enabled = true; ca.parts[PART_ATTACH] = RATE_PLUS1;
+    const Assignment wearer = resolveActor(ca, f, 0.);
+    ensure("T22 coarser attachments hold the attachment points",
+        (wearer.heldClasses & JC_ATTACH) && jointHeld(classes[31], wearer.heldClasses) && !jointHeld(classes[31], a0.heldClasses));
+    Assignment pet; U64 pet_seed = 0;
+    ensure("T22 worn animesh inherits", inheritAttachedAssignment(wearer, 42, pet, pet_seed, wearer.parts[PART_ATTACH], 24));
+    ensure("T22 worn animesh one grid coarser, wearer's seed, the wearer's Attachments phase",
+        pet.stepped && pet.rate == offsetRate(wearer.rate, RATE_PLUS1, 24) &&
+        pet.phase == partPhase(wearer.phase, wearer.rate, pet.rate) && pet_seed == 42 &&
+        pet.parts == kPartsSame && !(pet.heldClasses & JC_ATTACH) && !(pet.heldClasses & JC_ROOT) &&
+        (pet.heldClasses & kGroupBits) == (kGroupBits & ~groupBit(PART_ATTACH)));
+    Assignment pet_same;
+    ensure("T22 same attachments copy the wearer", inheritAttachedAssignment(a0, 42, pet_same, pet_seed, a0.parts[PART_ATTACH], 24) &&
+        pet_same.rate == a0.rate && pet_same.heldClasses == (a0.heldClasses & ~JC_ROOT));
+    Assignment pet_smooth = assignment();
+    ensure("T22 smooth attachments leave the animesh smooth",
+        !inheritAttachedAssignment(wearer, 42, pet_smooth, pet_seed, RATE_SMOOTH, 24) && !pet_smooth.stepped);
+    Config cs; cs.enabled = true; cs.parts[PART_ATTACH] = RATE_SMOOTH;
+    const Assignment as = resolveActor(cs, f, 0.);
+    ensure("T22 smooth attachments are in the mask (re-placed)", (as.heldClasses & JC_ATTACH) && jointHeld(classes[31], as.heldClasses));
+    {
+        ActorState ss;
+        for (S32 frame = 0; frame < 120; ++frame)
+        {
+            const auto d = planFrame(ss, as, cs, frame / 60.);
+            ensure("T22 smooth attachments refresh every frame",
+                (d.captureGroups & groupBit(PART_ATTACH)) && (refreshGroups(as, d) & groupBit(PART_ATTACH)));
+        }
+    }
+    // Attachment placement: the held root-relative placement, re-expressed under a different parent
+    // pose, reproduces that placement (LLJoint rule: child offset scaled by the parent's scale).
+    {
+        const std::vector<S32> parents = {-1, 0, 1};
+        PoseBuffer pose; pose.joints.resize(3);
+        pose.joints[0].rot = LLQuaternion(.3f, LLVector3(0.f, 0.f, 1.f)); pose.joints[0].pos.set(0.f, 0.f, 1.f);
+        pose.joints[1].rot = LLQuaternion(.7f, LLVector3(1.f, 0.f, 0.f)); pose.joints[1].pos.set(.2f, 0.f, .4f);
+        pose.joints[1].scale.set(1.f, 2.f, .5f);
+        pose.joints[2].rot = LLQuaternion(.2f, LLVector3(0.f, 1.f, 0.f)); pose.joints[2].pos.set(.1f, .05f, -.02f);
+        const JointLocal rel = relativePlacement(pose, parents, 2);
+        // hand check of the composition rule for the first two levels
+        LLVector3 p1 = pose.joints[1].pos; p1.scaleVec(pose.joints[0].scale); p1 = p1 * pose.joints[0].rot + pose.joints[0].pos;
+        const JointLocal rel1 = relativePlacement(pose, parents, 1);
+        close("T22 placement x", rel1.pos[VX], p1[VX], 1.e-6); close("T22 placement y", rel1.pos[VY], p1[VY], 1.e-6);
+        close("T22 placement z", rel1.pos[VZ], p1[VZ], 1.e-6);
+        const JointLocal same = localForPlacement(pose, parents, 2, rel);
+        close("T22 same pose returns the local", (same.pos - pose.joints[2].pos).length(), 0., 1.e-5);
+        close("T22 same pose returns the rotation", std::fabs(dot(same.rot, pose.joints[2].rot)), 1., 1.e-5);
+        PoseBuffer other = pose;
+        other.joints[1].rot = LLQuaternion(-.5f, LLVector3(0.f, 1.f, 0.f)); other.joints[1].scale.set(2.f, 1.f, 1.f);
+        other.joints[0].pos.set(1.f, 1.f, 1.f);
+        const JointLocal local = localForPlacement(other, parents, 2, rel);
+        other.joints[2].rot = local.rot; other.joints[2].pos = local.pos;
+        const JointLocal again = relativePlacement(other, parents, 2);
+        close("T22 held placement reproduced", (again.pos - rel.pos).length(), 0., 1.e-4);
+        close("T22 held rotation reproduced", std::fabs(dot(again.rot, rel.rot)), 1., 1.e-5);
+        ensure("T22 the joint's own scale is never held", again.scale == pose.joints[2].scale);
+        std::vector<U16> cls = {static_cast<U16>(JC_BODY | groupBit(PART_TORSO)), static_cast<U16>(JC_BODY | groupBit(PART_ARMS)),
+                                static_cast<U16>(JC_ATTACH | groupBit(PART_ATTACH))};
+        std::vector<JointLocal> holds;
+        captureAttachmentHolds(pose, cls, parents, JC_BODY | kGroupBits, holds);
+        ensure("T22 nothing captured while attachments are not in the mask", holds.size() == 3 && holds[2].pos == LLVector3::zero);
+        captureAttachmentHolds(pose, cls, parents, JC_BODY | JC_ATTACH | kGroupBits, holds);
+        ensure("T22 attachment hold captured", (holds[2].pos - rel.pos).length() < 1.e-6f);
+        PoseBuffer render = other;
+        applyAttachmentHolds(cls, parents, JC_BODY | kGroupBits, holds, render);
+        ensure("T22 nothing applied while attachments are not in the mask", render.joints[2].pos == other.joints[2].pos);
+        render.joints[2] = pose.joints[2];
+        applyAttachmentHolds(cls, parents, JC_BODY | JC_ATTACH | kGroupBits, holds, render);
+        close("T22 attachment hold applied", (render.joints[2].pos - local.pos).length(), 0., 1.e-6);
+    }
+
+    // Scene round trip of the per-actor part overrides (named keys, inherit never written).
+    ActorOverride ov; ov.parts[PART_HANDS] = RATE_PLUS2; ov.parts[PART_ATTACH] = RATE_SMOOTH;
+    const LLSD saved = writeOverride(ov);
+    ensure("T22 parts saved by name", saved.isMap() && saved["parts"].isMap() && saved["parts"]["hands"].asInteger() == 2 &&
+        saved["parts"]["attach"].asInteger() == 3 && !saved["parts"].has("head") && !saved["parts"].has("torso"));
+    ensure("T22 parts round trip", readOverride(saved).parts == ov.parts && readOverride(saved).rateOffset == -1);
+    ensure("T22 an all-inherit override saves nothing", !writeOverride(ActorOverride()).isDefined());
+    ActorOverride same_only; same_only.parts[PART_HEAD] = RATE_SAME;
+    ensure("T22 Same (0) on a part is a saved choice", writeOverride(same_only).isDefined() &&
+        readOverride(writeOverride(same_only)).parts[PART_HEAD] == RATE_SAME);
+    LLSD old_scene = LLSD::emptyMap(); old_scene["mode"] = 2; old_scene["rate"] = 8.0;
+    ensure("T22 a scene from before parts reads as inherit", readOverride(old_scene).parts == kPartsInherit);
+    LLSD hostile = LLSD::emptyMap(); hostile["parts"] = LLSD::emptyMap();
+    hostile["parts"]["legs"] = 99; hostile["parts"]["torso"] = 2; hostile["parts"]["arms"] = -7;
+    const ActorOverride clamped = readOverride(hostile);
+    ensure("T22 hostile parts clamp and the torso never overrides",
+        clamped.parts[PART_LEGS] == 3 && clamped.parts[PART_TORSO] == -1 && clamped.parts[PART_ARMS] == -1);
+    Config bad; bad.parts[PART_HEAD] = 9; bad.parts[PART_ARMS] = -3; bad.parts[PART_TORSO] = 3;
+    ensure("T22 settings clamp to 0-3, torso Same", sanitize(bad).parts[PART_HEAD] == 3 && sanitize(bad).parts[PART_ARMS] == 0 &&
+        sanitize(bad).parts[PART_TORSO] == 0);
+    ensure("T22 part settings are tracked and preset-owned", [&]
+    {
+        const auto& tracked = trackedSettings();
+        const auto& presets = presetSettings();
+        for (U32 part = PART_HEAD; part < kPartGroups; ++part)
+            if (std::find(tracked.begin(), tracked.end(), partSetting(part)) == tracked.end() ||
+                std::find(presets.begin(), presets.end(), partSetting(part)) == presets.end()) return false;
+        return true;
+    }());
+}
+
+// T23: part-rate review fixes. Cast-group precedence, smear vs part masks and grids, forced
+// capture on an offset change, the worn animesh on the wearer's Attachments grid, attachment
+// placement under boiled parents, and impact-hold ordering for coarser parts.
+template<> template<> void stepped_object::test<23>()
+{
+    using namespace ALSteppedAnim;
+    const std::vector<JointDesc> desc = {
+        {"mPelvis", -1}, {"mChest", 0}, {"mCollarLeft", 1}, {"mNeck", 1}, {"mHead", 3},        // 0-4
+        {"mEyeLeft", 4}, {"mFaceRoot", 4}, {"mFaceJaw", 6},                                      // 5-7
+        {"mShoulderLeft", 2}, {"mElbowLeft", 8}, {"mWristLeft", 9},                             // 8-10 arms
+        {"mHipLeft", 0}, {"mKneeLeft", 11}, {"mAnkleLeft", 12},                                 // 11-13 legs
+        {"Right Hand", 10, false, true},                                                        // 14 attachment point
+    };
+    const auto classes = classifyJoints(desc);
+    ActorFacts f; f.drawn = true; f.inCast = true; f.seed = 5;
+
+    // B2: actor part override > cast-group rate > page part. A group with its own rate steps its
+    // members on one grid: the page's part rates read Same for them; the actor's own still win.
+    Config g; g.enabled = true; g.parts[PART_ARMS] = RATE_SMOOTH; g.parts[PART_LEGS] = RATE_PLUS2;
+    ActorFacts fg = f;
+    ensure("T23 page parts apply without a group", resolveActor(g, fg, 0.).parts[PART_ARMS] == RATE_SMOOTH);
+    fg.groupOffset = RATE_PLUS1;
+    const Assignment in_group = resolveActor(g, fg, 0.);
+    ensure("T23 group rate beats the page's part rates (one grid)",
+        in_group.stepped && in_group.rate == offsetRate(12.f, RATE_PLUS1, 24) &&
+        in_group.parts[PART_ARMS] == RATE_SAME && in_group.parts[PART_LEGS] == RATE_SAME &&
+        jointHeld(classes[9], in_group.heldClasses));
+    ensure("T23 resolveParts group argument", resolveParts(g, ActorOverride(), RATE_PLUS1) == kPartsSame &&
+        resolveParts(g, ActorOverride(), RATE_SAME)[PART_ARMS] == RATE_SMOOTH);
+    fg.ov.parts[PART_ARMS] = RATE_SMOOTH;
+    ensure("T23 actor part override beats the group", resolveActor(g, fg, 0.).parts[PART_ARMS] == RATE_SMOOTH &&
+        resolveActor(g, fg, 0.).parts[PART_LEGS] == RATE_SAME && !jointHeld(classes[9], resolveActor(g, fg, 0.).heldClasses));
+    g.face = false;
+    ensure("T23 Face & lip-sync off keeps its meaning inside a group",
+        resolveActor(g, fg, 0.).parts[PART_FACE] == RATE_SMOOTH && !(resolveActor(g, fg, 0.).heldClasses & JC_FACE));
+
+    // B3: smear respects each part's mask and grid.
+    Config c; c.enabled = true; c.parts[PART_ARMS] = RATE_PLUS1;
+    const Assignment a = resolveActor(c, f, 0.);
+    ensure("T23 same part smears on the torso tick at the torso rate",
+        smearChainDt(a, classes[11], true, false, 12.f, 24) == 1.f / 12.f && smearChainDt(a, classes[11], false, true, 12.f, 24) == 0.f);
+    ensure("T23 coarser part smears only on its own tick at its own rate",
+        smearChainDt(a, classes[8], true, false, 12.f, 24) == 0.f && smearChainDt(a, classes[8], false, true, 12.f, 24) == 1.f / 8.f);
+    Config cs; cs.enabled = true; cs.parts[PART_ARMS] = RATE_SMOOTH;
+    const Assignment as = resolveActor(cs, f, 0.);
+    ensure("T23 smooth part never smears", smearChainDt(as, classes[8], true, true, 12.f, 24) == 0.f &&
+        smearChainDt(as, classes[11], true, true, 12.f, 24) == 1.f / 12.f);
+    ensure("T23 unheld or unstepped chains never smear", smearChainDt(Assignment(), classes[11], true, true, 12.f, 24) == 0.f);
+
+    // B4: a part whose effective offset changes is captured at once, even between torso ticks.
+    {
+        Config cfg; cfg.enabled = true;
+        Assignment live = resolveActor(cfg, f, 0.);
+        ActorState st;
+        // Lands one frame after a torso capture (12 fps on a 60 fps clock = 5 frames per tick), so
+        // the frame after it, where the switch happens, is a held frame whatever the actor phase.
+        auto toNonCaptureFrame = [&](F64& t)
+        {
+            for (S32 guard = 0; guard < 600; ++guard)
+            {
+                t += 1. / 60.;
+                if (planFrame(st, live, cfg, t).capture)
+                {
+                    t += 1. / 60.;
+                    return !planFrame(st, live, cfg, t).capture;
+                }
+            }
+            return false;
+        };
+        F64 t = 0.;
+        planFrame(st, live, cfg, t);
+        ensure("T23 settle on a held frame", toNonCaptureFrame(t));
+        live.parts[PART_ARMS] = RATE_PLUS1; live.parts[PART_ATTACH] = RATE_PLUS1;
+        live.heldClasses = heldClasses(cfg, live.what, live.parts);
+        t += 1. / 60.;
+        auto d = planFrame(st, live, cfg, t);
+        ensure("T23 switched parts are captured the same frame", !d.capture &&
+            (d.captureGroups & groupBit(PART_ARMS)) && (d.captureGroups & groupBit(PART_ATTACH)) &&
+            (d.forceGroups & groupBit(PART_ATTACH)) && (refreshGroups(live, d) & groupBit(PART_ATTACH)) &&
+            (refreshGroups(live, d) & groupBit(PART_ARMS)) && !(d.captureGroups & groupBit(PART_LEGS)));
+        t += 1. / 60.;
+        d = planFrame(st, live, cfg, t);
+        ensure("T23 no second forced capture", !(d.forceGroups & (groupBit(PART_ARMS) | groupBit(PART_ATTACH))));
+        // Smooth -> Same: the part is refreshed at once (not minutes-old held joints).
+        live.parts[PART_LEGS] = RATE_SMOOTH; live.heldClasses = heldClasses(cfg, live.what, live.parts);
+        for (S32 frame = 0; frame < 600; ++frame)
+        {
+            t += 1. / 60.;
+            d = planFrame(st, live, cfg, t);
+            ensure("T23 smooth legs never captured", !(d.captureGroups & groupBit(PART_LEGS)) && !(refreshGroups(live, d) & groupBit(PART_LEGS)));
+        }
+        ensure("T23 settle on a held frame again", toNonCaptureFrame(t));
+        live.parts[PART_LEGS] = RATE_SAME; live.heldClasses = heldClasses(cfg, live.what, live.parts);
+        t += 1. / 60.;
+        d = planFrame(st, live, cfg, t);
+        ensure("T23 legs back on the torso grid are captured at once", !d.capture &&
+            (d.captureGroups & groupBit(PART_LEGS)) && (d.forceGroups & groupBit(PART_LEGS)) &&
+            (refreshGroups(live, d) & groupBit(PART_LEGS)) && d.captureGroups == refreshGroups(live, d));
+        // +1 -> Same for a coarser part
+        live.parts[PART_ARMS] = RATE_SAME; live.heldClasses = heldClasses(cfg, live.what, live.parts);
+        t += 1. / 60.;
+        d = planFrame(st, live, cfg, t);
+        ensure("T23 arms back on the torso grid are captured at once", (d.captureGroups & groupBit(PART_ARMS)) != 0);
+    }
+
+    // B5: the worn animesh ticks exactly with the wearer's rigid attachment points and takes the
+    // wearer's Adaptive fast / slow decision.
+    {
+        Config cw; cw.enabled = true; cw.mode = MODE_ADAPTIVE; cw.parts[PART_ATTACH] = RATE_PLUS1;
+        const Assignment wearer = resolveActor(cw, f, 0.);
+        Assignment pet; U64 pet_seed = 0;
+        ensure("T23 inherit", inheritAttachedAssignment(wearer, 42, pet, pet_seed, RATE_PLUS1, 24));
+        ActorState ws; S64 previous_attach_tick = -1;
+        for (S32 frame = 0; frame < 60 * 30; ++frame)
+        {
+            const F64 t = frame / 60.;
+            if (frame == 600) ws.fast = true;   // the wearer's Adaptive decision
+            if (frame == 1200) ws.fast = false;
+            const auto wd = planFrame(ws, wearer, cw, t);
+            const auto pd = attachedDecision(pet, ws, wd, RATE_PLUS1, 24);
+            const F64 attach_rate = offsetRate(wd.rate, RATE_PLUS1, 24);
+            const S64 attach_tick = tickIndex(t, attach_rate, partPhase(wearer.phase, wd.rate, attach_rate));
+            ensure("T23 animesh rate is the wearer's attachment rate (fast or slow)", pd.rate == attach_rate &&
+                pd.rate == (ws.fast ? offsetRate(wearer.fastRate, RATE_PLUS1, 24) : offsetRate(wearer.rate, RATE_PLUS1, 24)));
+            ensure("T23 animesh captures on the attachment grid", pd.capture == ((wd.captureGroups & groupBit(PART_ATTACH)) != 0) &&
+                pd.tick == ws.partTick[PART_ATTACH] && pd.tick == attach_tick && pd.hold == wd.hold);
+            if (frame > 0 && frame != 600 && frame != 1200 && attach_tick != previous_attach_tick && !wd.capture)
+                ensure("T23 attachment boundary captures the animesh", pd.capture);
+            ensure("T23 animesh groups", pd.captureGroups == (pd.capture ? kGroupBits : 0) && refreshGroups(pet, pd) == pd.captureGroups &&
+                pd.boilIndex == wd.partBoil[PART_ATTACH]);
+            if (!ws.fast)
+                ensure("T23 slow grid matches the animesh's own phase", attach_tick == tickIndex(t, pet.rate, pet.phase));
+            previous_attach_tick = attach_tick;
+        }
+        // Same copies the wearer's frame; a Same animesh never re-plans (second frame: nothing forced).
+        Config plain; plain.enabled = true;
+        const Assignment plain_wearer = resolveActor(plain, f, 0.);
+        ActorState s2; planFrame(s2, plain_wearer, plain, .1);
+        const auto wd = planFrame(s2, plain_wearer, plain, .1 + 1. / 60.);
+        Assignment same; ensure("T23 same inherit", inheritAttachedAssignment(plain_wearer, 1, same, pet_seed, RATE_SAME, 24));
+        const auto sd = attachedDecision(same, s2, wd, RATE_SAME, 24);
+        ensure("T23 same copies the wearer's decision", wd.forceGroups == 0 && sd.capture == wd.capture && sd.tick == wd.tick &&
+            sd.rate == wd.rate && sd.hold == wd.hold && sd.boilIndex == wd.boilIndex && sd.captureGroups == wd.captureGroups &&
+            sd.forceGroups == 0);
+    }
+
+    // B6: the held attachment placement is reproduced under boiled / smeared parents.
+    {
+        const std::vector<S32> parents = {-1, 0, 1};
+        PoseBuffer pose; pose.joints.resize(3);
+        pose.joints[0].rot = LLQuaternion(.3f, LLVector3(0.f, 0.f, 1.f)); pose.joints[0].pos.set(0.f, 0.f, 1.f);
+        pose.joints[1].rot = LLQuaternion(.7f, LLVector3(1.f, 0.f, 0.f)); pose.joints[1].pos.set(.2f, 0.f, .4f);
+        pose.joints[2].rot = LLQuaternion(.2f, LLVector3(0.f, 1.f, 0.f)); pose.joints[2].pos.set(.1f, .05f, -.02f);
+        const JointLocal rel = relativePlacement(pose, parents, 2);
+        PoseBuffer boiled = pose;
+        boiled.joints[0].rot *= boilRotation(77, 3, 0, 3.f);
+        boiled.joints[1].rot *= boilRotation(77, 3, 1, 3.f);
+        boiled.joints[1].scale.set(1.3f, 1.f, .8f); // a smear stretch on the parent
+        const JointLocal local = localForPlacement(boiled, parents, 2, rel);
+        boiled.joints[2].rot = local.rot; boiled.joints[2].pos = local.pos;
+        const JointLocal again = relativePlacement(boiled, parents, 2);
+        close("T23 placement survives boil and smear on the parents", (again.pos - rel.pos).length(), 0., 1.e-4);
+        close("T23 rotation survives boil and smear on the parents", std::fabs(dot(again.rot, rel.rot)), 1., 1.e-5);
+        ensure("T23 placement differs from the unboiled local", (local.pos - pose.joints[2].pos).length() > 1.e-4f ||
+            std::fabs(dot(local.rot, pose.joints[2].rot)) < 1.f - 1.e-5f);
+    }
+
+    // P1a: during an impact hold (and its cooldown until the torso captures again) no coarser part
+    // refreshes, including on the boundary that spends the last impact tick.
+    {
+        Config ci; ci.enabled = true; ci.impact = true; ci.impactTicks = 3; ci.parts[PART_ARMS] = RATE_PLUS1;
+        const Assignment ai = resolveActor(ci, f, 0.);
+        ActorState si; F64 t = 0.;
+        for (S32 frame = 0; frame < 30; ++frame) { planFrame(si, ai, ci, t); t += 1. / 60.; }
+        si.impactPending = true;
+        auto d = planFrame(si, ai, ci, t);
+        ensure("T23 impact capture refreshes every part", d.capture && (d.captureGroups & groupBit(PART_ARMS)) &&
+            si.impactHoldLeft == 3 && si.impactCooldown);
+        S32 frozen_frames = 0, arm_boundaries_frozen = 0; S64 prev_arm_tick = si.partTick[PART_ARMS];
+        for (S32 guard = 0; guard < 600; ++guard)
+        {
+            t += 1. / 60.;
+            const S64 arm_tick = tickIndex(t, 8., partPhase(ai.phase, 12., 8.));
+            d = planFrame(si, ai, ci, t);
+            if (d.capture) break;
+            ensure("T23 coarser part frozen through the impact hold", !(d.captureGroups & groupBit(PART_ARMS)));
+            if (arm_tick != prev_arm_tick) ++arm_boundaries_frozen;
+            prev_arm_tick = arm_tick; ++frozen_frames;
+        }
+        // 3 impact ticks + the capture boundary = 4 torso ticks (1/3 s): 2 or 3 arm boundaries at 8 fps.
+        ensure("T23 the hold spanned arm boundaries and ended with a torso capture", d.capture && arm_boundaries_frozen >= 2 &&
+            frozen_frames > 0 && !si.impactCooldown && si.impactHoldLeft == 0);
+    }
+}
+
+// T24: round-3 fixes. Per-part smear history (advances only on the part's own capture, seeded on a
+// forced capture), the worn animesh force-capturing every group when the wearer's Attachments part
+// changes, the one Face control's read-back, and the shared group-rate-in-effect predicate.
+template<> template<> void stepped_object::test<24>()
+{
+    using namespace ALSteppedAnim;
+    ActorFacts f; f.drawn = true; f.inCast = true; f.seed = 5;
+
+    // C1: smear history per part.
+    {
+        const std::vector<U16> classes = {
+            static_cast<U16>(JC_BODY | groupBit(PART_TORSO)), static_cast<U16>(JC_BODY | groupBit(PART_ARMS)),
+            static_cast<U16>(JC_BODY | groupBit(PART_LEGS)), static_cast<U16>(JC_ATTACH | groupBit(PART_ATTACH))};
+        PoseBuffer held, previous; held.joints.resize(4);
+        for (U32 i = 0; i < 4; ++i) held.joints[i].pos.set(1.f + i, 0.f, 0.f);
+        held.rootPos.set(0.f, 0.f, 9.f);
+        advancePartHistory(held, classes, groupBit(PART_TORSO), true, previous);
+        ensure("T24 first history copies everything", previous.joints.size() == 4 && previous.joints[1].pos[VX] == 2.f &&
+            previous.rootPos[VZ] == 9.f);
+        for (U32 i = 0; i < 4; ++i) held.joints[i].pos.set(10.f + i, 0.f, 0.f);
+        held.rootPos.set(0.f, 0.f, 19.f);
+        // a torso capture that does not include the +1 arms: the arms' history stays at their last tick
+        advancePartHistory(held, classes, static_cast<U16>(kGroupBits & ~groupBit(PART_ARMS)), true, previous);
+        ensure("T24 torso capture leaves a coarser part's history alone",
+            previous.joints[0].pos[VX] == 10.f && previous.joints[2].pos[VX] == 12.f && previous.joints[3].pos[VX] == 13.f &&
+            previous.joints[1].pos[VX] == 2.f && previous.rootPos[VZ] == 19.f);
+        // the arms' own tick advances only the arms
+        held.joints[0].pos.set(20.f, 0.f, 0.f); held.joints[1].pos.set(21.f, 0.f, 0.f); held.rootPos.set(0.f, 0.f, 29.f);
+        advancePartHistory(held, classes, groupBit(PART_ARMS), false, previous);
+        ensure("T24 a part tick advances only that part", previous.joints[1].pos[VX] == 21.f &&
+            previous.joints[0].pos[VX] == 10.f && previous.rootPos[VZ] == 19.f);
+        // forced seed: previous = new held for the forced part only (no smear toward a stale hold)
+        PoseBuffer refreshed = held; refreshed.joints[2].pos.set(42.f, 0.f, 0.f);
+        advancePartHistory(refreshed, classes, groupBit(PART_LEGS), false, previous);
+        ensure("T24 forced seed equals the new held pose", previous.joints[2].pos[VX] == 42.f && previous.joints[0].pos[VX] == 10.f);
+        ensure("T24 nothing in groups changes nothing", [&]
+        {
+            PoseBuffer copy = previous;
+            advancePartHistory(refreshed, classes, 0, false, copy);
+            return copy.joints[0].pos == previous.joints[0].pos && copy.joints[2].pos == previous.joints[2].pos &&
+                copy.rootPos == previous.rootPos;
+        }());
+        // the runtime's per-part rule, as smearChainDt sees it: a coarser part's smear tick is its own
+        Config c; c.enabled = true; c.parts[PART_ARMS] = RATE_PLUS1;
+        const Assignment a = resolveActor(c, f, 0.);
+        ensure("T24 coarser chain ignores the torso smear tick",
+            smearChainDt(a, classes[1], true, false, 12.f, 24) == 0.f && smearChainDt(a, classes[1], false, true, 12.f, 24) == 1.f / 8.f);
+    }
+
+    // C2: a forced capture of the wearer's Attachments part forces every animesh group.
+    {
+        Config cw; cw.enabled = true;
+        Assignment wearer = resolveActor(cw, f, 0.);
+        ActorState ws; F64 t = 0.;
+        FrameDecision wd = planFrame(ws, wearer, cw, t); // the first frame always captures: not a boundary
+        // Lands one frame after a torso TICK (12 fps on a 60 fps clock = 5 frames per tick), so the
+        // frame after it, where the switch happens, is a held frame whatever the actor phase.
+        auto settleAfterTick = [&]()
+        {
+            for (S32 guard = 0; guard < 600; ++guard)
+            {
+                t += 1. / 60.;
+                if (planFrame(ws, wearer, cw, t).capture)
+                {
+                    t += 1. / 60.;
+                    wd = planFrame(ws, wearer, cw, t);
+                    return !wd.capture;
+                }
+            }
+            return false;
+        };
+        ensure("T24 settled on a held frame", settleAfterTick() && wd.forceGroups == 0);
+        // Same -> +1
+        wearer.parts[PART_ATTACH] = RATE_PLUS1; wearer.heldClasses = heldClasses(cw, wearer.what, wearer.parts);
+        t += 1. / 60.; wd = planFrame(ws, wearer, cw, t);
+        ensure("T24 wearer forces its Attachments part", !wd.capture && (wd.forceGroups & groupBit(PART_ATTACH)));
+        Assignment pet; U64 seed = 0;
+        ensure("T24 pet inherits +1", inheritAttachedAssignment(wearer, 7, pet, seed, RATE_PLUS1, 24));
+        FrameDecision pd = attachedDecision(pet, ws, wd, RATE_PLUS1, 24);
+        ensure("T24 pet force-captures every group (to +1)", pd.capture && pd.captureGroups == kGroupBits &&
+            pd.forceGroups == kGroupBits && refreshGroups(pet, pd) == kGroupBits && pd.rate == offsetRate(wd.rate, RATE_PLUS1, 24));
+        t += 1. / 60.; wd = planFrame(ws, wearer, cw, t);
+        pd = attachedDecision(pet, ws, wd, RATE_PLUS1, 24);
+        ensure("T24 no force on the next frame", pd.forceGroups == 0 && wd.forceGroups == 0 &&
+            pd.capture == ((wd.captureGroups & groupBit(PART_ATTACH)) != 0));
+        // +1 -> Same, on a held frame: the pet's own body groups are refreshed at once
+        ensure("T24 settled again", settleAfterTick());
+        wearer.parts[PART_ATTACH] = RATE_SAME; wearer.heldClasses = heldClasses(cw, wearer.what, wearer.parts);
+        t += 1. / 60.; wd = planFrame(ws, wearer, cw, t);
+        ensure("T24 wearer forces Attachments back to Same", !wd.capture && (wd.forceGroups & groupBit(PART_ATTACH)) &&
+            (wd.captureGroups & groupBit(PART_ATTACH)) && !(wd.captureGroups & groupBit(PART_LEGS)));
+        Assignment pet_same;
+        ensure("T24 pet inherits Same", inheritAttachedAssignment(wearer, 7, pet_same, seed, RATE_SAME, 24));
+        pd = attachedDecision(pet_same, ws, wd, RATE_SAME, 24);
+        ensure("T24 pet force-captures every group (to Same)", pd.capture && pd.captureGroups == kGroupBits &&
+            pd.forceGroups == kGroupBits && refreshGroups(pet_same, pd) == kGroupBits && pd.rate == wd.rate && pd.tick == wd.tick);
+        t += 1. / 60.; wd = planFrame(ws, wearer, cw, t);
+        pd = attachedDecision(pet_same, ws, wd, RATE_SAME, 24);
+        ensure("T24 Same then copies the wearer again", pd.forceGroups == 0 && pd.capture == wd.capture &&
+            pd.captureGroups == (wd.capture ? kGroupBits : 0));
+    }
+
+    // C4: the one Face control shows Smooth whenever the engine treats the face as Smooth.
+    for (bool face_on : {false, true})
+        for (S32 part_face = 0; part_face <= 3; ++part_face)
+        {
+            Config c; c.enabled = true; c.face = face_on; c.parts[PART_FACE] = part_face;
+            const S32 engine = resolveParts(c, ActorOverride())[PART_FACE];
+            const S32 shown = faceControlShown(face_on, part_face);
+            ensure("T24 Face read-back matches the engine", shown == engine &&
+                ((shown == RATE_SMOOTH) == (!face_on || part_face == RATE_SMOOTH)));
+            ensure("T24 Face read-back never shows +2 for a Smooth face", !(face_on && part_face == 3 && shown != RATE_SMOOTH));
+            for (S32 value = 0; value <= 3; ++value)
+            {
+                bool on = face_on; S32 part = part_face;
+                applyFaceControl(value, on, part);
+                ensure("T24 Face write", value == RATE_SMOOTH ? (!on && part == part_face) : (on && part == value));
+                ensure("T24 Face write reads back as written", faceControlShown(on, part) == value);
+            }
+        }
+    ensure("T24 Face read-back clamps", faceControlShown(true, 99) == RATE_SMOOTH && faceControlShown(true, -5) == RATE_SAME);
+
+    // O1: the cast-group rule triggers only when the group rate is in effect (shared predicate).
+    {
+        Config c; c.enabled = true; c.parts[PART_ARMS] = RATE_PLUS1;
+        ActorFacts fg = f; fg.groupOffset = RATE_PLUS1;
+        ensure("T24 group in effect: one grid", groupRateInEffect(c, fg.ov, fg.groupOffset) &&
+            resolveActor(c, fg, 0.).parts[PART_ARMS] == RATE_SAME && resolveActor(c, fg, 0.).rate == offsetRate(12.f, RATE_PLUS1, 24));
+        Config roto = c; roto.matchRoto = true;
+        const Assignment r = resolveActor(roto, fg, 0.);
+        ensure("T24 Roto Ink locks the group rate: page parts apply", !groupRateInEffect(roto, fg.ov, fg.groupOffset) &&
+            groupRateApplies(fg.ov, fg.groupOffset) && r.rate == 12.f && r.parts[PART_ARMS] == RATE_PLUS1 &&
+            resolveRate(roto, fg.ov, true, fg.groupOffset).rotoSuppressed);
+        ActorFacts own = fg; own.ov.rateOffset = RATE_SAME;
+        ensure("T24 an actor rate offset beats the group: page parts apply", !groupRateApplies(own.ov, own.groupOffset) &&
+            resolveActor(c, own, 0.).rate == 12.f && resolveActor(c, own, 0.).parts[PART_ARMS] == RATE_PLUS1);
+        own.ov.rateOffset = RATE_PLUS2;
+        ensure("T24 actor +2 beats the group", resolveActor(c, own, 0.).rate == offsetRate(12.f, RATE_PLUS2, 24) &&
+            resolveActor(c, own, 0.).parts[PART_ARMS] == RATE_PLUS1);
+        ActorFacts mine = fg; mine.ov.mode = 2; mine.ov.rate = 9.f;
+        ensure("T24 Own settings beat the group: page parts apply", !groupRateApplies(mine.ov, mine.groupOffset) &&
+            resolveActor(c, mine, 0.).rate == 9.f && resolveActor(c, mine, 0.).parts[PART_ARMS] == RATE_PLUS1);
+        ensure("T24 no group, nothing applies", !groupRateApplies(f.ov, RATE_SAME) && !groupRateInEffect(c, f.ov, RATE_SAME));
+        ensure("T24 resolveRate and resolveParts agree on the predicate", [&]
+        {
+            for (S32 group : {RATE_SAME, RATE_PLUS1, RATE_PLUS2})
+                for (S32 actor_offset : {-1, 0, 1})
+                    for (S32 mode : {0, 2})
+                        for (bool roto_on : {false, true})
+                        {
+                            Config cc = c; cc.matchRoto = roto_on;
+                            ActorOverride ov; ov.rateOffset = actor_offset; ov.mode = mode; ov.rate = 10.f;
+                            const RateChoice rc = resolveRate(cc, ov, true, group);
+                            const bool group_rate_used = rc.stepped && rc.offset == group && group != RATE_SAME &&
+                                actor_offset < 0 && mode != 2;
+                            const bool grouped = resolveParts(cc, ov, group)[PART_ARMS] == RATE_SAME;
+                            if (grouped != groupRateInEffect(cc, ov, group)) return false;
+                            if (!roto_on && grouped != group_rate_used) return false;
+                            if (roto_on && grouped) return false;
+                        }
+            return true;
+        }());
+    }
 }
 
 }
