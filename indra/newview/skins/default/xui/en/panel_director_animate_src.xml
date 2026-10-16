@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Source nodes for the generated Director > Performance > Animate kit page
+     (scripts/code_tools/director_kit/kit_pages.json "performance_group/animate_tab").
+     The generator hosts these two nodes inside kit rows; every other Animate control is
+     built natively from director_mockup_data.json. This file is a generator input and is
+     not loaded by the viewer by name. LLFloaterDirector::bindAnimatePage looks up
+     anim_list (columns anim_id / prio / playing) and animation_preview by name. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="330"
+ layout="topleft"
+ name="panel_director_animate_src"
+ width="354">
+    <scroll_list
+     column_padding="0"
+     draw_heading="true"
+     follows="left|top|right"
+     height="118"
+     layout="topleft"
+     left="0"
+     name="anim_list"
+     tool_tip="Animations currently signaled on the selected cast member. Right-click a row for actions"
+     top="0"
+     width="344">
+        <scroll_list.columns
+         dynamic_width="true"
+         label="Animation UUID"
+         name="anim_id" />
+        <scroll_list.columns
+         label="Pri"
+         name="prio"
+         tool_tip="Animation priority when the motion is resolvable; ? otherwise"
+         width="30" />
+        <scroll_list.columns
+         label="On"
+         name="playing"
+         tool_tip="Marker: the animation is actually playing right now"
+         width="28" />
+    </scroll_list>
+    <panel
+     class="panel_anim_preview"
+     filename="panel_anim_preview_pane.xml"
+     follows="left|top"
+     height="180"
+     layout="topleft"
+     left="0"
+     name="animation_preview"
+     top="130"
+     width="180" />
+</panel>

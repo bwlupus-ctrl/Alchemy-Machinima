@@ -29,6 +29,7 @@ public:
     ~ALFloaterCineLightCues() override = default;
 
     bool postBuild() override;
+    void onOpen(const LLSD& key) override;
     void draw() override;
     bool handleKeyHere(KEY key, MASK mask) override;
 

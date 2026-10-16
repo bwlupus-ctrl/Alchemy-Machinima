@@ -2452,7 +2452,7 @@ void LLFloaterDirector::bindAnimatePage(LLView* root)
     mLocomotionAllowAO = root->findChild<LLCheckBoxCtrl>("locomotion_allow_ao");
     mLocoText = root->findChild<LLTextBox>("loco_text");
     mClearLocoBtn = root->findChild<LLButton>("btn_clear_loco");
-    mAnimPreviewPanel = root->findChild<ALPanelAnimPreview>("anim_preview_panel");
+    mAnimPreviewPanel = root->findChild<ALPanelAnimPreview>("animation_preview");
     if (!mAnimateHeader || !mAnimList || !mAnimHint || !mAnimCopyBtn || !mAnimSetLocoBtn || !mAnimPlayBtn || !mAnimStopBtn ||
         !mPasteEditor || !mPastePlayBtn || !mPasteStopBtn || !mPasteSetLocoBtn ||
         !mLocomotionRoleCombo || !mLocomotionSpeed || !mLocomotionPhase ||
@@ -2481,6 +2481,13 @@ void LLFloaterDirector::bindAnimatePage(LLView* root)
     mAnimPrioCol = mAnimList->getColumn("prio")->mIndex;
     mAnimPlayingCol = mAnimList->getColumn("playing")->mIndex;
     mLocomotionRoleCombo->setValue(LLDirectorCast::LOCO_WALK_FORWARD);
+    mPasteEditor->setMaxTextLength(36);     // kit text rows carry no length limit; a UUID is 36 characters
+    if (mAnimPreviewPanel)
+    {
+        // Kit page: Stop / Stop and Revoke / Blacklist are ordinary kit rows, not children of the
+        // shared preview panel, so hand them to it.
+        mAnimPreviewPanel->bindActionControls(root);
+    }
     mAnimCopyBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
     mAnimSetLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimSetLoco(); });
     mAnimPlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimPlayLocal(true); });

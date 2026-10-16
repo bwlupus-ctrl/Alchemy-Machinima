@@ -21,11 +21,11 @@ Keep the cue list plus Add, Remove, Play, and Stop in Director. Selecting a row 
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `cues` / `cue_list` (Cues) | `scroll_list` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:31` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onCueSelected()` (`indra/newview/alfloatergazecues.cpp:138`) | none |
-| `cues` / `btn_cue_add` (Add) | `button` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:39` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onAdd()` (`indra/newview/alfloatergazecues.cpp:140`) | none |
-| `cues` / `btn_cue_delete` (Remove) | `button` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:43` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onDelete()` (`indra/newview/alfloatergazecues.cpp:142`) | none |
-| `cues` / `gaze_cue_play` (Play) | none | kit-native action `engine-work:WP8:LLActorMover::setGazeCuePreview`; no duplicate widget is required | none |
-| `cues` / `gaze_cue_stop` (Stop) | none | kit-native action `engine-work:WP8:LLActorMover::clearGazeCuePreview`; no duplicate widget is required | none |
+| `gaze_cue_track` / `cue_list` (Cues) | `scroll_list` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:31` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onCueSelected()` (`indra/newview/alfloatergazecues.cpp:138`) | none |
+| `gaze_cue_track` / `btn_cue_add` (Add) | `button` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:39` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onAdd()` (`indra/newview/alfloatergazecues.cpp:140`) | none |
+| `gaze_cue_track` / `btn_cue_delete` (Remove) | `button` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:43` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onDelete()` (`indra/newview/alfloatergazecues.cpp:142`) | none |
+| `gaze_cue_track` / `gaze_cue_play` (Play) | none | kit-native action `engine-work:WP8:LLActorMover::setGazeCuePreview`; no duplicate widget is required | none |
+| `gaze_cue_track` / `gaze_cue_stop` (Stop) | none | kit-native action `engine-work:WP8:LLActorMover::clearGazeCuePreview`; no duplicate widget is required | none |
 
 ## Cue-list behavior decided 2026-10-10
 
@@ -72,8 +72,8 @@ Manifest size: **16 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `size-850x560` | Default data at the minimum supported shell size. |
 | `size-915x720` | Default data at the narrow 16:9 shell size. |
 | `size-1141x720` | Default data at the wide non-round shell size. |
-| `card-cues-tallest-850` | Only `cues` is put in its tallest local state at 850 px; all other cards stay default. |
-| `card-cues-tallest-1160` | Only `cues` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `card-gaze_cue_track-tallest-850` | Only `gaze_cue_track` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-gaze_cue_track-tallest-1160` | Only `gaze_cue_track` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `cue_list-empty` | `cue_list` is empty with no selection. |
 | `cue_list-one` | `cue_list` has one selected item. |
 | `cue_list-overflow` | `cue_list` has 51 items and a visible scrollbar. |
@@ -99,7 +99,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-7 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+23 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

@@ -761,6 +761,12 @@ def evaluate(paths: Paths, groups: Optional[list], p0_scope: bool = False,
         "panel_avatar_light_response": {"ALPanelAvatarLightResponse"},
         "panel_cine_light_rig": {"ALPanelCineLightRig"},
         "panel_rig_rim": {"ALPanelRigRim", "ALRigRimController"},
+        # 10/15 legacy conversion batch 1: pages rooted on their own logic class (the floaters that
+        # share widget names keep their own XUI and are not this page's lookups).
+        "panel_light_cues": {"ALPanelLightCues"},
+        "panel_practicals": {"ALPanelPracticals"},
+        "panel_gaze_cues": {"ALPanelGazeCues"},
+        "panel_exposure_page": {"ALPanelExposurePage"},
     }
     for page in active:
         page_file = page_file_by_key.get(str(page["key"]))

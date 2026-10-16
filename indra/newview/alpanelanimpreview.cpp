@@ -54,22 +54,71 @@ void ALPanelAnimPreview::setToolTipIfChanged(LLUICtrl* ctrl, const std::string& 
 bool ALPanelAnimPreview::postBuild()
 {
     mPreviewCtrl = findChild<LLView>("animation_preview");
+    if (!mPreviewCtrl && findChild<LLView>("animation_preview_frame"))
+    {
+        // Director kit pane (panel_anim_preview_pane.xml): the kit row sizes the whole panel, so
+        // the panel itself is the preview rect. Its action buttons are kit rows elsewhere on the
+        // page and are attached by bindActionControls().
+        mPreviewCtrl = this;
+    }
     if (!mPreviewCtrl)
     {
         LL_WARNS("AnimPreview") << "Could not find animation preview placement rect" << LL_ENDL;
         return false;
     }
 
-    mStopBtn = getChild<LLButton>("btn_anim_ex_stop");
-    mRevokeBtn = getChild<LLButton>("btn_anim_ex_revoke");
-    mBlacklistBtn = getChild<LLButton>("btn_anim_ex_blacklist");
-    mStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStop(); });
-    mRevokeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStopAndRevoke(); });
-    mBlacklistBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlacklist(); });
+    // The Explorer floater and the v1 Director tab carry the three buttons inside this panel;
+    // the Director kit page does not, so a missing button is not an error here.
+    mStopBtn = findChild<LLButton>("btn_anim_ex_stop");
+    mRevokeBtn = findChild<LLButton>("btn_anim_ex_revoke");
+    mBlacklistBtn = findChild<LLButton>("btn_anim_ex_blacklist");
+    wireActionButtons();
 
     // the dummy avatar is created lazily in draw() once the agent avatar is
     // valid, so the panel can build before login completes.
     return true;
+}
+
+void ALPanelAnimPreview::bindActionControls(LLView* root)
+{
+    if (!root)
+    {
+        return;
+    }
+    if (!mStopBtn)
+    {
+        mStopBtn = root->findChild<LLButton>("btn_anim_ex_stop", true);
+    }
+    if (!mRevokeBtn)
+    {
+        mRevokeBtn = root->findChild<LLButton>("btn_anim_ex_revoke", true);
+    }
+    if (!mBlacklistBtn)
+    {
+        mBlacklistBtn = root->findChild<LLButton>("btn_anim_ex_blacklist", true);
+    }
+    wireActionButtons();
+}
+
+void ALPanelAnimPreview::wireActionButtons()
+{
+    if (mStopBtn)
+    {
+        mStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStop(); });
+    }
+    if (mRevokeBtn)
+    {
+        mRevokeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStopAndRevoke(); });
+    }
+    if (mBlacklistBtn)
+    {
+        mBlacklistBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlacklist(); });
+    }
+}
+
+LLRect ALPanelAnimPreview::previewRect() const
+{
+    return mPreviewCtrl == this ? getLocalRect() : mPreviewCtrl->getRect();
 }
 
 void ALPanelAnimPreview::previewAnim(const LLUUID& anim_id, const LLUUID& source_object)
@@ -86,9 +135,12 @@ void ALPanelAnimPreview::draw()
     // create the dummy-avatar preview lazily, once the agent avatar is ready
     if (!mAnimationPreview && mPreviewCtrl && isAgentAvatarValid())
     {
-        mAnimationPreview = new LLPreviewAnimation(mPreviewCtrl->getRect().getWidth(),
-                                                   mPreviewCtrl->getRect().getHeight());
-        mAnimationPreview->setZoom(2.0f);
+        const LLRect pane = previewRect();
+        if (pane.getWidth() > 0 && pane.getHeight() > 0)
+        {
+            mAnimationPreview = new LLPreviewAnimation(pane.getWidth(), pane.getHeight());
+            mAnimationPreview->setZoom(2.0f);
+        }
     }
 
     // auto-play the fed animation on the dummy, on loop; re-arm when it changes
@@ -135,7 +187,7 @@ void ALPanelAnimPreview::draw()
     // panel's children so it sits over the view_border frame.
     if (mAnimationPreview && mPreviewCtrl)
     {
-        const LLRect r = mPreviewCtrl->getRect();
+        const LLRect r = previewRect();
         mAnimationPreview->requestUpdate();
         gGL.color3f(1.0f, 1.0f, 1.0f);
         gGL.getTexUnit(0)->bind(mAnimationPreview);
@@ -167,7 +219,7 @@ void ALPanelAnimPreview::draw()
 // ---------------------------------------------------------------------------
 bool ALPanelAnimPreview::handleMouseDown(S32 x, S32 y, MASK mask)
 {
-    if (mAnimationPreview && mPreviewCtrl && mPreviewCtrl->getRect().pointInRect(x, y))
+    if (mAnimationPreview && mPreviewCtrl && previewRect().pointInRect(x, y))
     {
         // raise the host floater the way a floater-level handler used to, then
         // take the mouse for the drag
@@ -196,7 +248,7 @@ bool ALPanelAnimPreview::handleMouseUp(S32 x, S32 y, MASK mask)
 
 bool ALPanelAnimPreview::handleHover(S32 x, S32 y, MASK mask)
 {
-    if (!mAnimationPreview || !mPreviewCtrl || !mPreviewCtrl->getRect().pointInRect(x, y))
+    if (!mAnimationPreview || !mPreviewCtrl || !previewRect().pointInRect(x, y))
     {
         return LLPanel::handleHover(x, y, mask);
     }
@@ -242,7 +294,7 @@ bool ALPanelAnimPreview::handleHover(S32 x, S32 y, MASK mask)
 
 bool ALPanelAnimPreview::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
 {
-    if (mAnimationPreview && mPreviewCtrl && mPreviewCtrl->getRect().pointInRect(x, y))
+    if (mAnimationPreview && mPreviewCtrl && previewRect().pointInRect(x, y))
     {
         mAnimationPreview->zoom((F32)delta.mPrecise * -0.2f);
         mAnimationPreview->requestUpdate();

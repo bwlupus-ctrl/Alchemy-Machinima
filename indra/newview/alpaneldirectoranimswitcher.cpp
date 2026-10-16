@@ -12,6 +12,7 @@
 #include "alpaneldirectoranimswitcher.h"
 
 #include "animationexplorer.h"      // AnimationExplorer::getSelectedAnimId()
+#include "alkitrow.h"              // ALKitRow::setControlVisible (kit page rows)
 #include "lldir.h"
 #include "lldiriterator.h"
 #include "llbutton.h"
@@ -524,24 +525,27 @@ void ALPanelDirectorAnimSwitcher::refreshEditor()
     mSnapCheck->setValue(slot.mSnapOnCut);
     mSlotEnabled->setValue(slot.mEnabled);
     const bool is_anim = slot.mKind == ALDirectorAnimSwitcher::KIND_ANIM;
+    // On the Director kit page each control sits in a kit row; setControlVisible also asks the
+    // card to lay out again, so the hidden kind's rows leave no gap. Outside the kit (the v1
+    // Director tab) it is a plain setVisible.
     mAnimUUIDText->setVisible(is_anim);
-    mAnimUUID->setVisible(is_anim);
+    ALKitRow::setControlVisible(mAnimUUID, is_anim);
     mAnimUUID->setEnabled(is_anim);
-    mFromExplorer->setVisible(is_anim);
+    ALKitRow::setControlVisible(mFromExplorer, is_anim);
     mFromExplorer->setEnabled(is_anim);
     mPriorityText->setVisible(is_anim);
-    mPriorityCombo->setVisible(is_anim);
+    ALKitRow::setControlVisible(mPriorityCombo, is_anim);
     mPriorityCombo->setEnabled(is_anim);
-    mSpeedSpin->setVisible(is_anim);
+    ALKitRow::setControlVisible(mSpeedSpin, is_anim);
     mSpeedSpin->setEnabled(is_anim);
-    mLoopCheck->setVisible(is_anim);
+    ALKitRow::setControlVisible(mLoopCheck, is_anim);
     mLoopCheck->setEnabled(is_anim);
-    mSnapCheck->setVisible(is_anim);
+    ALKitRow::setControlVisible(mSnapCheck, is_anim);
     mSnapCheck->setEnabled(is_anim);
     mPoseNameText->setVisible(!is_anim);
-    mPoseNameCombo->setVisible(!is_anim);
+    ALKitRow::setControlVisible(mPoseNameCombo, !is_anim);
     mPoseNameCombo->setEnabled(!is_anim);
-    mPoseLoadMethodCombo->setVisible(!is_anim);
+    ALKitRow::setControlVisible(mPoseLoadMethodCombo, !is_anim);
     mPoseLoadMethodCombo->setEnabled(!is_anim);
     mRefreshing = false;
 }

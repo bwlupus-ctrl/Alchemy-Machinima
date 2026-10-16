@@ -117,6 +117,22 @@ bool ALFloaterCineLightCues::postBuild()
     return LLFloater::postBuild();
 }
 
+void ALFloaterCineLightCues::onOpen(const LLSD& key)
+{
+    LLFloater::onOpen(key);
+    // The Director Light Cues page opens the stack at the cue its row selected.
+    if (key.isInteger() && mCueRows)
+    {
+        refreshCueRows(true);
+        const S32 index = key.asInteger();
+        if (index >= 0 && index < mCueRows->getItemCount())
+        {
+            mCueRows->selectNthItem(index);
+            onCueSelected();
+        }
+    }
+}
+
 S32 ALFloaterCineLightCues::selectedCueIndex() const
 {
     LLScrollListItem* item = mCueRows->getFirstSelected();

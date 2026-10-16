@@ -564,6 +564,11 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
         "stepped_tab": "ALPanelSteppedAnim::bindSteppedPage",
         "temporal_tab": "ALPanelTemporalCapture::postBuild",
         "actors_tab": "ALPanelAvatarLightResponse::postBuild",
+        "switchboard_tab": "ALPanelDirectorAnimSwitcher::postBuild",
+        "light_cues_tab": "ALPanelLightCues::postBuild",
+        "practicals_tab": "ALPanelPracticals::postBuild",
+        "gaze_cues_tab": "ALPanelGazeCues::postBuild",
+        "exposure_tab": "ALPanelExposurePage::postBuild",
     })
     out = []
     for page, xml_rows in kit_pages.items():
@@ -1680,23 +1685,17 @@ SELFTEST_CPP = os.path.join(REPO, "indra", "newview", "aluiperfselftest.cpp")
 GEN_REPORT_PATH = os.path.join(HERE, "director_kit", "gen_report.txt")
 # Shrink-only pin (user-approved 10/13: lower as pages convert, never raise).  Mirrors the
 # "legacy" count director_kit_gen.py pins in its classification table.
-KNOWN_LEGACY_MAX = 13
+KNOWN_LEGACY_MAX = 6
 # The EXPLICIT, hand-maintained list of the unthemed (legacy) pages, by page key.  It is NOT
 # regenerated from the XML flags: that would let a newly unthemed page silently replace a
 # converted one.  It can only SHRINK.  The check fails if a page outside the list is legacy
 # (a new unthemed page) AND if the list names a page that is no longer legacy (a stale entry,
 # remove it as the page converts).
-# Exposure, Practicals, Light Cues, Switchboard, Gaze, Polish, Gaze Cues, Animate, Dance,
-# Ghosts, Move, Path, Props.
+# Gaze, Dance, Ghosts, Move, Path, Props.
+# (Animate converted 10/15: 13 -> 12; Polish 12 -> 11; Switchboard 11 -> 10; Light Cues 10 -> 9;
+# Practicals 9 -> 8; Gaze Cues 8 -> 7; Exposure 7 -> 6.)
 KNOWN_LEGACY_PAGES = (
-    "light_group/exposure_tab",
-    "light_group/practicals_tab",
-    "light_group/light_cues_tab",
-    "performance_group/switchboard_tab",
     "performance_group/gaze_tab",
-    "performance_group/polish_tab",
-    "performance_group/gaze_cues_tab",
-    "performance_group/animate_tab",
     "cast_group/dance_tab",
     "cast_group/ghosts_tab",
     "cast_group/move_tab",

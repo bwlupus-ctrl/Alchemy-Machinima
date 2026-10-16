@@ -4,7 +4,6 @@
   "camera_group/shot_tab": {"bulk_subject_assignment": true},
   "cast_group/move_tab": {"actor_target": true, "actor_target_synthetic": true},
   "cast_group/path_tab": {"actor_target": true, "actor_target_synthetic": true},
-  "performance_group/animate_tab": {"actor_target": true, "actor_target_synthetic": true},
   "performance_group/gaze_tab": {"actor_target": true}
  },
  "p0_pages": {
@@ -193,7 +192,7 @@
   "look_group/image_tab": {
    "v1_sources": [],
    "omit_rows": ["tonemap_type_combo", "exposure_slider", "tonemap_legacy_gamma_skies", "lpm_toneexp_slider", "slog_ev_slider"],
-   "omit_rows_note": "Homed on Light > Exposure, which is still a legacy (embedded v1) page, so kit_lint cannot see a home writer for a shortcut; the page's Exposure link row covers them. Re-add as shortcut_of rows (user-approved 10/13) when the Light batch converts exposure_tab.",
+   "omit_rows_note": "Homed on Light > Exposure (a kit page since 10/15). The approved image_tab -> exposure_tab shortcuts are NOT re-added yet: kit_lint only accepts shortcut_of rows inside an Easy card or a selector option, and this page has neither, so adding them needs a structure decision for the Image page. The page's Exposure link row covers them meanwhile.",
    "label_names": {}
   },
   "look_group/actor_style_tab": {
@@ -284,7 +283,72 @@
    ],
    "label_names": {}
   },
-  "settings_group/director_settings_tab": {"v1_sources": [], "label_names": {}}
+  "settings_group/director_settings_tab": {"v1_sources": [], "label_names": {}},
+  "performance_group/animate_tab": {
+   "v1_sources": ["panel_director_animate_src.xml"],
+   "actor_target": true, "actor_target_synthetic": true,
+   "row_overrides": {
+    "anim_list": {"row_height": 150},
+    "animation_preview": {"row_height": 186},
+    "play_local_priority_combo": {"iv": [-1, 0, 1, 2, 3, 4], "inherit_selectable": true},
+    "locomotion_role_combo": {"iv": [1, 2, 3, 9, 10]}
+   },
+   "label_names": {}
+  },
+  "performance_group/polish_tab": {
+   "v1_sources": ["panel_pose_polish.xml"],
+   "label_names": {}
+  },
+  "performance_group/switchboard_tab": {
+   "v1_sources": ["panel_director_anim_switcher.xml"],
+   "root_class": "panel_director_anim_switcher", "root_name": "switchboard_tab_logic",
+   "row_overrides": {
+    "anim_slot_01": {"fill_width": true},
+    "anim_slot_02": {"fill_width": true},
+    "anim_slot_03": {"fill_width": true},
+    "anim_slot_04": {"fill_width": true},
+    "anim_slot_05": {"fill_width": true},
+    "anim_slot_06": {"fill_width": true},
+    "anim_slot_07": {"fill_width": true},
+    "anim_slot_08": {"fill_width": true},
+    "anim_slot_09": {"fill_width": true},
+    "anim_slot_10": {"fill_width": true},
+    "anim_slot_11": {"fill_width": true},
+    "anim_slot_12": {"fill_width": true}
+   },
+   "label_names": {"anim_slot_uuid": "anim_slot_uuid_text", "anim_pose_name": "anim_pose_name_text",
+                   "anim_slot_priority": "anim_slot_priority_text", "anim_slot_kind": "anim_slot_kind_text",
+                   "anim_slot_label": "anim_slot_label_text", "anim_slot_target": "anim_slot_target_text"}
+  },
+  "light_group/light_cues_tab": {
+   "v1_sources": ["panel_light_cues_src.xml"],
+   "root_class": "panel_light_cues", "root_name": "light_cues_tab_logic",
+   "row_overrides": {"cue_rows": {"row_height": 184}},
+   "label_names": {}
+  },
+  "light_group/practicals_tab": {
+   "v1_sources": ["panel_practicals_src.xml"],
+   "root_class": "panel_practicals", "root_name": "practicals_tab_logic",
+   "label_names": {}
+  },
+  "performance_group/gaze_cues_tab": {
+   "v1_sources": ["panel_gaze_cues_src.xml"],
+   "root_class": "panel_gaze_cues", "root_name": "gaze_cues_tab_logic",
+   "row_overrides": {"cue_list": {"row_height": 150}},
+   "label_names": {}
+  },
+  "light_group/exposure_tab": {
+   "v1_sources": ["panel_exposure_src.xml"],
+   "root_class": "panel_exposure_page", "root_name": "exposure_tab_logic",
+   "own_history": true,
+   "preset": {"mode": "provider", "provider": "env_intensity"},
+   "omit_rows": ["exp_bloom_strength", "exp_bloom_threshold"],
+   "omit_rows_note": "RenderBloomStrength and RenderBloomThreshold are homed on Look > Bloom & glow (bloom_glow_tab); a second writer needs a declared shortcut, and the pinned EXPECTED_SHORTCUTS contract does not list these. The link row points to that home. Add shortcuts only with user approval.",
+   "add_rows": [
+    {"card": "glow_filters", "first": true, "row": {"k": "link", "w": "exp_bloom_link", "l": "Bloom", "h": "Bloom strength and threshold are set on Look > Bloom & glow.", "to": "look_group/bloom_glow_tab"}}
+   ],
+   "label_names": {}
+  }
  },
  "layout_overrides": {"look_group/bloom_glow_tab": {"row_overrides": {"set_RenderBloomMipCount": {"row_height": 32}}}},
  "launcher_targets": {},
@@ -309,6 +373,71 @@
   "card_actor_mask_title": "retired Director launcher replaced by the inline Actor only card",
   "card_actor_mask_summary": "retired Director launcher replaced by the inline Actor only card",
   "card_actor_mask_open": "retired Director launcher replaced by the inline Actor only card",
-  "txt_sil_header": "static heading replaced by the Silhouette card title"
+  "txt_sil_header": "static heading replaced by the Silhouette card title",
+  "preview_section_lbl": "static heading replaced by the Anim preview card title",
+  "preview_hint": "static hint inside the shared preview panel; its text is the animation_preview row help",
+  "card_light_cues_title": "retired Director launcher replaced by the inline Light Cues list",
+  "card_gaze_cues": "retired Director launcher replaced by the inline Gaze Cues list",
+  "card_gaze_cues_title": "retired Director launcher replaced by the inline Gaze Cues list",
+  "exp_bloom_strength": "homed on Look > Bloom & glow (a second writer needs a declared shortcut); the Exposure page has the exp_bloom_link row",
+  "exp_bloom_threshold": "homed on Look > Bloom & glow (a second writer needs a declared shortcut); the Exposure page has the exp_bloom_link row",
+  "exp_gnd_density": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_gnd_enabled": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_gnd_preset": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_gnd_preset_label": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_hdr_bloom": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_exposure": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_gnd": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_ir": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_light": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_nm": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_pol": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_rig": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_sky": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_softedge": "static heading of the Exposure hub, replaced by a card title",
+  "exp_hdr_tonemap": "static heading of the Exposure hub, replaced by a card title",
+  "exp_ir_enabled": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_ir_preset": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_ir_preset_label": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_ir_strength": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_light_rig_btn": "Rig exposure is set on Light > Rig; the Exposure page has the Rig exposure link card",
+  "exp_nm_darkness": "Night Mask is set on Light > Rig; the Exposure page has the Night mask link card",
+  "exp_nm_enabled": "Night Mask is set on Light > Rig; the Exposure page has the Night mask link card",
+  "exp_personal_lighting_btn": "exp_sky_lighting_btn opens the same Personal Lighting floater",
+  "exp_pol_enabled": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_pol_preset": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_pol_preset_label": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_pol_strength": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_rig_headroom": "Rig exposure is set on Light > Rig; the Exposure page has the Rig exposure link card",
+  "exp_rig_master_ev": "Rig exposure is set on Light > Rig; the Exposure page has the Rig exposure link card",
+  "exp_softedge_blur": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_softedge_enabled": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_softedge_preset": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "exp_softedge_preset_label": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
+  "rst_AlchemyEnvGIAmbientEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_AlchemyEnvGIProbeDiffuseEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_AlchemyEnvGIProbeSpecEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_AlchemyEnvLocalLightEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_AlchemyEnvMoonEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_AlchemyEnvShadowLiftEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_AlchemyEnvSkyGIEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_AlchemyEnvSunEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_AlchemyToneMapAMDExposure": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_AlchemyToneMapSLogEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_CineLightRigHeadroomStops": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_CineLightRigMasterEV": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_CineLightRigNightMaskDarkness": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_RenderBloomStrength": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_RenderBloomThreshold": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_RenderExposure": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_RenderGradNDDensity": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_RenderInfraredStrength": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_RenderPolarizerStrength": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_RenderSoftEdgeBlur": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "rst_RenderTonemapMix": "Exposure hub per-row reset button; the kit row draws its own reset glyph",
+  "card_practicals": "retired Director launcher replaced by the inline Practicals card",
+  "card_practicals_title": "retired Director launcher replaced by the inline Practicals card",
+  "card_practicals_summary": "retired Director launcher replaced by the inline Practicals rows",
+  "card_practicals_open": "retired Director launcher replaced by the inline Practicals rows and the Lightbox link"
  }
 }

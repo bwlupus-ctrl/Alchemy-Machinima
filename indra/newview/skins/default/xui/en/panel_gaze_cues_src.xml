@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Source node for the generated Director > Performance > Gaze Cues kit page
+     (scripts/code_tools/director_kit/kit_pages.json "performance_group/gaze_cues_tab").
+     The generator hosts the cue list inside a kit row; the Add / Remove / Play / Stop buttons are
+     built natively from director_mockup_data.json. This file is a generator input and is not loaded
+     by the viewer by name. ALPanelGazeCues (alpanelgazecues.cpp) fills the rows using the gc_*
+     column names below. The Gaze Cues floater keeps its own cue_list. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="150"
+ layout="topleft"
+ name="panel_gaze_cues_src"
+ width="354">
+    <scroll_list
+     column_padding="4"
+     draw_heading="true"
+     follows="left|top|right"
+     height="150"
+     layout="topleft"
+     left="0"
+     name="cue_list"
+     tool_tip="Gaze cues for the selected actor. Select a row to open it in the Gaze Cues window."
+     top="0"
+     width="344">
+        <scroll_list.columns
+         label="Time"
+         name="gc_time"
+         width="64" />
+        <scroll_list.columns
+         dynamic_width="true"
+         label="Target"
+         name="gc_target" />
+        <scroll_list.columns
+         label="Macro"
+         name="gc_macro"
+         width="92" />
+    </scroll_list>
+</panel>

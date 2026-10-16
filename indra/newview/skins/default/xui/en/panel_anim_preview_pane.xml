@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Preview-only variant of the shared animation-preview panel (ALPanelAnimPreview, class
+     "panel_anim_preview"), embedded by the Director kit Animate page. The kit row sizes the
+     whole panel, so the panel itself is the preview rect (the animation_preview_frame child
+     is its visible frame). The Capture-all / Stop / Stop and Revoke / Blacklist controls are
+     ordinary kit rows on the page; LLFloaterDirector::bindAnimatePage hands the three
+     buttons to the panel with ALPanelAnimPreview::bindActionControls(). The full variant,
+     panel_anim_preview.xml, stays for the Animation Explorer floater and the v1 Director. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="180"
+ layout="topleft"
+ name="panel_anim_preview_pane"
+ width="180">
+    <view_border
+     bevel_style="in"
+     follows="all"
+     height="180"
+     layout="topleft"
+     left="0"
+     name="animation_preview_frame"
+     top="0"
+     width="180" />
+</panel>

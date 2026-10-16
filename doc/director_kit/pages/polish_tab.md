@@ -23,19 +23,19 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 |---|---|---|---|
 | `windows` / `polish_popout` (Open window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:922` | `ALPosePolishKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterReg::showInstance()` (`indra/newview/llfloaterdirector.cpp:1593`) | none |
 | `master_inertia` / `polish_master_note` (Note) | `text` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:19` | kit readout ← approved static copy; no runtime writer | none |
-| `master_inertia` / `polish_inertia_check` (Inertia) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:41` | kit `toggle` ↔ `ALPolishInertiaEnabled` `Boolean` | none |
-| `master_inertia` / `polish_inertia_spine_slider` (Spine settle) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:57` | kit `slider` ↔ `ALPolishInertiaHalfLifeSpine` `F32` | none |
-| `master_inertia` / `polish_inertia_arm_slider` (Arm settle) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:73` | kit `slider` ↔ `ALPolishInertiaHalfLifeArm` `F32` | none |
-| `master_inertia` / `polish_inertia_leg_slider` (Leg settle) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:89` | kit `slider` ↔ `ALPolishInertiaHalfLifeLeg` `F32` | none |
-| `master_inertia` / `polish_inertia_head_slider` (Head settle) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:105` | kit `slider` ↔ `ALPolishInertiaHalfLifeHead` `F32` | none |
-| `foot_timing` / `polish_contact_check` (Foot contact) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:126` | kit `toggle` ↔ `ALPolishContactEnabled` `Boolean` | none |
-| `foot_timing` / `polish_contact_weight_slider` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:142` | kit `slider` ↔ `ALPolishContactWeight` `F32` | none |
-| `foot_timing` / `polish_phasematch_check` (Phase match) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:163` | kit `toggle` ↔ `ALPolishPhaseMatchEnabled` `Boolean` | none |
-| `foot_timing` / `polish_loopseam_check` (Loop seam) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:184` | kit `toggle` ↔ `ALPolishLoopSeamEnabled` `Boolean` | none |
-| `secondary` / `polish_secondary_check` (Secondary) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:205` | kit `toggle` ↔ `ALPolishSecondaryEnabled` `Boolean` | none |
-| `secondary` / `polish_secondary_breath_slider` (Breath) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:221` | kit `slider` ↔ `ALPolishSecondaryBreathAmp` `F32` | none |
-| `secondary` / `polish_secondary_sway_slider` (Sway) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:237` | kit `slider` ↔ `ALPolishSecondarySwayAmp` `F32` | none |
-| `diagnostics` / `polish_diagnostic_check` (Layer overlay) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:258` | kit `toggle` ↔ `ALPolishLayerDiagnostic` `Boolean` | none |
+| `master_inertia` / `polish_inertia_check` (Inertia) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:41` | kit `toggle` ↔ `ALPolishInertiaEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:17` `polish_inertia_check` |
+| `master_inertia` / `polish_inertia_spine_slider` (Spine settle) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:57` | kit `slider` ↔ `ALPolishInertiaHalfLifeSpine` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:20` `polish_inertia_spine_slider` |
+| `master_inertia` / `polish_inertia_arm_slider` (Arm settle) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:73` | kit `slider` ↔ `ALPolishInertiaHalfLifeArm` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:25` `polish_inertia_arm_slider` |
+| `master_inertia` / `polish_inertia_leg_slider` (Leg settle) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:89` | kit `slider` ↔ `ALPolishInertiaHalfLifeLeg` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:30` `polish_inertia_leg_slider` |
+| `master_inertia` / `polish_inertia_head_slider` (Head settle) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:105` | kit `slider` ↔ `ALPolishInertiaHalfLifeHead` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:35` `polish_inertia_head_slider` |
+| `foot_timing` / `polish_contact_check` (Foot contact) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:126` | kit `toggle` ↔ `ALPolishContactEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:42` `polish_contact_check` |
+| `foot_timing` / `polish_contact_weight_slider` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:142` | kit `slider` ↔ `ALPolishContactWeight` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:45` `polish_contact_weight_slider` |
+| `foot_timing` / `polish_phasematch_check` (Phase match) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:163` | kit `toggle` ↔ `ALPolishPhaseMatchEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:50` `polish_phasematch_check` |
+| `foot_timing` / `polish_loopseam_check` (Loop seam) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:184` | kit `toggle` ↔ `ALPolishLoopSeamEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:53` `polish_loopseam_check` |
+| `secondary` / `polish_secondary_check` (Secondary) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:205` | kit `toggle` ↔ `ALPolishSecondaryEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:58` `polish_secondary_check` |
+| `secondary` / `polish_secondary_breath_slider` (Breath) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:221` | kit `slider` ↔ `ALPolishSecondaryBreathAmp` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:61` `polish_secondary_breath_slider` |
+| `secondary` / `polish_secondary_sway_slider` (Sway) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:237` | kit `slider` ↔ `ALPolishSecondarySwayAmp` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:66` `polish_secondary_sway_slider` |
+| `diagnostics` / `polish_diagnostic_check` (Layer overlay) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:258` | kit `toggle` ↔ `ALPolishLayerDiagnostic` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml:73` `polish_diagnostic_check` |
 
 ## Adapter extraction
 
@@ -93,7 +93,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-1 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+15 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

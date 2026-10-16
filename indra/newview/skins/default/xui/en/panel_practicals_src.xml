@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Source nodes for the generated Director > Light > Practicals kit page
+     (scripts/code_tools/director_kit/kit_pages.json "light_group/practicals_tab").
+     The generator hosts these nodes inside kit rows (one per mockup row, matched by name); ranges and
+     labels come from director_mockup_data.json. The commit callbacks are bound in code by
+     ALPanelPracticals (alpanelpracticals.cpp). This file is a generator input and is not loaded by the
+     viewer by name. The Lightbox "Selected Light" tab keeps its own copies of these controls. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="400"
+ layout="topleft"
+ name="panel_practicals_src"
+ width="354">
+    <text
+     follows="left|top"
+     height="30"
+     layout="topleft"
+     left="0"
+     name="sl_status"
+     top="0"
+     width="340"
+     word_wrap="true">
+        Select a spotlight projector in-world to edit it here.
+    </text>
+    <check_box
+     follows="left|top"
+     height="16"
+     label="Cast shadows"
+     layout="topleft"
+     left="0"
+     name="sl_cast_shadows"
+     tool_tip="Uncheck to make this projector light-only (no shadow), freeing its shadow slot for other projectors. Session-only."
+     top="34"
+     width="340" />
+    <check_box
+     follows="left|top"
+     height="16"
+     label="Volumetric shaft (light cone)"
+     layout="topleft"
+     left="0"
+     name="sl_volumetric"
+     tool_tip="Opt this projector in to the volumetric light-cone effect. Requires the master toggle on the Proj Shafts tab. Session-only."
+     top="54"
+     width="340" />
+    <combo_box
+     follows="left|top"
+     height="22"
+     layout="topleft"
+     left="0"
+     name="sl_gobo"
+     top="76"
+     width="220">
+        <combo_box.item label="Off (texture)" name="sl_gobo_off" value="-1" />
+        <combo_box.item label="Venetian blinds" name="sl_gobo_0" value="0" />
+        <combo_box.item label="Window" name="sl_gobo_1" value="1" />
+        <combo_box.item label="Grate" name="sl_gobo_2" value="2" />
+        <combo_box.item label="Ceiling fan" name="sl_gobo_3" value="3" />
+        <combo_box.item label="Honeycomb / softbox" name="sl_gobo_4" value="4" />
+        <combo_box.item label="Foliage / dapple" name="sl_gobo_5" value="5" />
+        <combo_box.item label="Water caustics" name="sl_gobo_6" value="6" />
+        <combo_box.item label="Prison bars" name="sl_gobo_7" value="7" />
+        <combo_box.item label="Arched window" name="sl_gobo_8" value="8" />
+        <combo_box.item label="Iris / vignette" name="sl_gobo_9" value="9" />
+        <combo_box.item label="Dot grid" name="sl_gobo_10" value="10" />
+        <combo_box.item label="Rings / starburst" name="sl_gobo_11" value="11" />
+        <combo_box.item label="Clouds" name="sl_gobo_12" value="12" />
+    </combo_box>
+    <combo_box
+     follows="left|top"
+     height="22"
+     layout="topleft"
+     left="0"
+     name="sl_gobo_animmode"
+     top="102"
+     width="220">
+        <combo_box.item label="None" name="sl_anim_none" value="0" />
+        <combo_box.item label="Rotate" name="sl_anim_rotate" value="1" />
+        <combo_box.item label="Wind sway" name="sl_anim_sway" value="2" />
+        <combo_box.item label="Pan / scroll" name="sl_anim_pan" value="3" />
+        <combo_box.item label="Pulse / breathe" name="sl_anim_pulse" value="4" />
+        <combo_box.item label="Flicker" name="sl_anim_flicker" value="5" />
+        <combo_box.item label="Strobe" name="sl_anim_strobe" value="6" />
+    </combo_box>
+    <slider
+     can_edit_text="true"
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.05"
+     layout="topleft"
+     left="0"
+     max_val="8"
+     min_val="-8"
+     name="sl_gobo_speed"
+     show_text="true"
+     top="128"
+     width="220" />
+    <slider
+     can_edit_text="true"
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.05"
+     layout="topleft"
+     left="0"
+     max_val="8"
+     min_val="0.1"
+     name="sl_gobo_zoom"
+     show_text="true"
+     top="152"
+     width="220" />
+    <slider
+     can_edit_text="true"
+     decimal_digits="3"
+     follows="left|top"
+     height="20"
+     increment="0.001"
+     layout="topleft"
+     left="0"
+     max_val="0.1"
+     min_val="0"
+     name="sl_gobo_dispersion"
+     show_text="true"
+     top="176"
+     width="220" />
+    <color_swatch
+     can_apply_immediately="true"
+     follows="left|top"
+     height="24"
+     layout="topleft"
+     left="0"
+     name="sl_gobo_tint"
+     tool_tip="Colored gel multiplied onto the cookie. White = no tint."
+     top="200"
+     width="60" />
+    <slider
+     can_edit_text="true"
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.05"
+     layout="topleft"
+     left="0"
+     max_val="1"
+     min_val="-1"
+     name="sl_gobo_var1"
+     show_text="true"
+     tool_tip="Pattern detail / count. 0 = default look."
+     top="228"
+     width="220" />
+    <slider
+     can_edit_text="true"
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.05"
+     layout="topleft"
+     left="0"
+     max_val="1"
+     min_val="-1"
+     name="sl_gobo_var2"
+     show_text="true"
+     tool_tip="Secondary variation (thickness / tilt / blend). 0 = default."
+     top="252"
+     width="220" />
+    <slider
+     can_edit_text="true"
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.05"
+     layout="topleft"
+     left="0"
+     max_val="1"
+     min_val="0"
+     name="sl_gobo_soft"
+     show_text="true"
+     tool_tip="Edge softness. 0 = default."
+     top="276"
+     width="220" />
+    <check_box
+     follows="left|top"
+     height="16"
+     label="Invert (negative cookie)"
+     layout="topleft"
+     left="0"
+     name="sl_gobo_invert"
+     top="302"
+     width="340" />
+</panel>

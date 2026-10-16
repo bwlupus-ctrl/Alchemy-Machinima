@@ -6555,6 +6555,37 @@ void LLActorMover::clearAllDirectorLookAtRuntime()
         restoreDirectorLookAtPose(av, entry.second);
     }
     mDirectorGazes.clear();
+    mGazeCuePreviews.clear();
+}
+
+bool LLActorMover::setGazeCuePreview(const LLUUID& actor_id, S32 cue_index)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    if (actor_id.isNull() || !cast.getMember(actor_id) || !cast.resolve(actor_id))
+    {
+        return false;
+    }
+    const LLDirectorCast::GazeCueList& cues = cast.getGazeCues(actor_id);
+    if (cue_index < 0 || cue_index >= static_cast<S32>(cues.size()))
+    {
+        return false;
+    }
+    GazeCuePreview& preview = mGazeCuePreviews[actor_id];
+    preview.mCueIndex = cue_index;
+    preview.mStartTime = LLPresentationTime::currentFrame().presentation_time;
+    // Hand the actor back to the cue path from a clean start: restore the pose the previous
+    // frame painted so the cue acquires from the authored target, not from stale smoothing.
+    clearDirectorLookAtRuntime(actor_id);
+    return true;
+}
+
+void LLActorMover::clearGazeCuePreview(const LLUUID& actor_id)
+{
+    if (mGazeCuePreviews.erase(actor_id) != 0)
+    {
+        // Back to the live authored target / track; the next frame re-seeds the Director gaze.
+        clearDirectorLookAtRuntime(actor_id);
+    }
 }
 
 bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
@@ -6691,13 +6722,37 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         // SAFETY INVARIANT: do not even evaluate the cue path for an empty
         // list. The configured live GazeTarget and all legacy acquisition
         // behavior below remain the sole source of aim in that case.
-        const LLDirectorCast::GazeCueList& cues =
-            cast.getGazeCues(av->getID());
-        if (!cues.empty())
+        const LLDirectorCast::GazeCueList* cues =
+            &cast.getGazeCues(av->getID());
+        F64 cue_time = presentation_time;
+        LLDirectorCast::GazeCueList preview_cues;
+        if (!mGazeCuePreviews.empty())
+        {
+            // A previewed cue replaces the track for this actor: a one-cue copy evaluated on
+            // preview-local time (the cue's own start moves to zero). The authored list and the
+            // global clock are untouched; a stale index ends the preview.
+            auto preview_it = mGazeCuePreviews.find(av->getID());
+            if (preview_it != mGazeCuePreviews.end())
+            {
+                const S32 index = preview_it->second.mCueIndex;
+                if (index >= 0 && index < static_cast<S32>(cues->size()))
+                {
+                    preview_cues.push_back((*cues)[index]);
+                    preview_cues.front().mStartSec = 0.0;
+                    cue_time = llmax(presentation_time - preview_it->second.mStartTime, 0.0);
+                    cues = &preview_cues;
+                }
+                else
+                {
+                    mGazeCuePreviews.erase(preview_it);
+                }
+            }
+        }
+        if (!cues->empty())
         {
             const LLDirectorCast::GazeCueEvaluation cue =
                 LLDirectorCast::evaluateGazeCues(
-                    cues, seed, presentation_time);
+                    *cues, seed, cue_time);
             if (cue.mHasOverride)
             {
                 cue_override = true;

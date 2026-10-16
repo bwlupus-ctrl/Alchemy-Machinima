@@ -57,6 +57,11 @@ public:
     void previewAnim(const LLUUID& anim_id, const LLUUID& source_object);
     void clearPreview() { previewAnim(LLUUID::null, LLUUID::null); }
 
+    // Attach Stop / Stop and Revoke / Blacklist buttons that live outside this
+    // panel (the Director kit page lays them out as ordinary kit rows). Looks
+    // them up by name under `root`; a button this panel already owns is kept.
+    void bindActionControls(LLView* root);
+
     // The preview owns the mouse while dragging within its preview child rect
     // (LLFloaterBvhPreview / AnimationExplorer idiom, moved off the host
     // floater onto this panel so it lives in exactly one place).
@@ -73,6 +78,11 @@ private:
     void onStopAndRevoke();
     void onBlacklist();
     void refreshActionButtons();
+    void wireActionButtons();   // commit callbacks for whichever of the three buttons exist
+
+    // The preview placement rect in this panel's local coordinates: the
+    // animation_preview child, or the whole panel for the Director kit pane.
+    LLRect previewRect() const;
 
     // set a tooltip only when it changed (draw()-rate friendly)
     static void setToolTipIfChanged(LLUICtrl* ctrl, const std::string& tip);

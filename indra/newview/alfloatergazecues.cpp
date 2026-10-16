@@ -186,6 +186,7 @@ bool ALFloaterGazeCues::postBuild()
 
 void ALFloaterGazeCues::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     refreshCastCombo();
     refreshCueList();
     refreshEditorVisibility();
@@ -195,13 +196,46 @@ void ALFloaterGazeCues::draw()
 
 LLDirectorCast::GazeCue ALFloaterGazeCues::defaultCue() const
 {
+    return makeDefaultCue(mActorId);
+}
+
+//static
+const char* ALFloaterGazeCues::macroLabel(ALGazeMath::EGazeCueMacro macro)
+{
+    return macroName(macro);
+}
+
+//static
+std::string ALFloaterGazeCues::targetLabel(const LLDirectorCast::GazeCue& cue)
+{
+    LLActorMover::GazeTarget display_target = cue.mTarget;
+    if (cue.mMacro == ALGazeMath::GAZE_MACRO_BUTTON_LOOK)
+    {
+        display_target.mMode = LLActorMover::GazeTarget::CAMERA;
+    }
+    return targetName(display_target);
+}
+
+void ALFloaterGazeCues::selectCueIndex(S32 index)
+{
+    refreshCueList(true);
+    if (index >= 0 && index < mCueList->getItemCount())
+    {
+        mCueList->selectNthItem(index);
+        onCueSelected();
+    }
+}
+
+//static
+LLDirectorCast::GazeCue ALFloaterGazeCues::makeDefaultCue(const LLUUID& actor_id)
+{
     LLDirectorCast::GazeCue cue;
     cue.mStartSec = llmax(
         LLPresentationTime::currentFrame().presentation_time, 0.0);
     cue.mDurationSec = llmax(
         static_cast<F64>(gSavedSettings.getF32("DirectorGazeCueDefaultDurationSec")),
         0.0);
-    cue.mTarget = LLDirectorCast::instance().getGazeTarget(mActorId);
+    cue.mTarget = LLDirectorCast::instance().getGazeTarget(actor_id);
     cue.mTarget.mPersonaOverride = false;
     // Snapshot the current global transition defaults into new cue targets.
     // Evaluation then remains independent of mutable settings and scrub-safe.

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Source node for the generated Director > Light > Light Cues kit page
+     (scripts/code_tools/director_kit/kit_pages.json "light_group/light_cues_tab").
+     The generator hosts the cue list inside a kit row; the Add / Remove / Play / Stop buttons are
+     built natively from director_mockup_data.json. This file is a generator input and is not loaded
+     by the viewer by name. ALPanelLightCues (alpanellightcues.cpp) fills the rows using the
+     lc_* column names below. The Lighting Cue Stack floater keeps its own cue_rows list. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="184"
+ layout="topleft"
+ name="panel_light_cues_src"
+ width="354">
+    <scroll_list
+     column_padding="4"
+     draw_heading="true"
+     follows="left|top|right"
+     height="184"
+     layout="topleft"
+     left="0"
+     name="cue_rows"
+     tool_tip="Lighting cues for the selected rig. Select a row to open it in the Lighting Cue Stack."
+     top="0"
+     width="344">
+        <scroll_list.columns
+         label="#"
+         name="lc_number"
+         width="26" />
+        <scroll_list.columns
+         dynamic_width="true"
+         label="Label"
+         name="lc_label" />
+        <scroll_list.columns
+         label="At"
+         name="lc_at"
+         width="48" />
+        <scroll_list.columns
+         label="Fade"
+         name="lc_fade"
+         width="40" />
+        <scroll_list.columns
+         label="Delay"
+         name="lc_delay"
+         width="42" />
+        <scroll_list.columns
+         label="Curve"
+         name="lc_curve"
+         width="46" />
+        <scroll_list.columns
+         label="Follow"
+         name="lc_follow"
+         width="44" />
+    </scroll_list>
+</panel>

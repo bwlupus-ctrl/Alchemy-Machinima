@@ -242,8 +242,12 @@ def validate_data(data: dict) -> None:
     #       Effective, Seed, New seed (Reroll), Phase spread, Rate variation, Imperfect timing, Group, Group rate,
     #       All groups (10/15).
     # 2091: Capture > Time Frame rate card (+3): Limit frame rate, Frame rate limit, a help note (10/15).
-    if len(pages) != 37 or row_count != 2091:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2091")
+    # 2093: Animate gains the two v1 status readouts the mockup lacked: animate_header (Animating) and
+    #       loco_text (locomotion Status) (+2) (10/15).
+    # 2095: Switchboard gains the two v1 status text boxes the mockup lacked: anim_selected_slot (Editing)
+    #       and anim_import_status (Result) (+2) (10/15).
+    if len(pages) != 37 or row_count != 2095:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2095")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -648,6 +652,8 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         attrs["bulk_reset"] = "false"
     if row.get("no_widget_history"):
         attrs["widget_history"] = "false"
+    if row.get("fill_width"):
+        attrs["fill_width"] = "true"
     if row.get("unconnected"):
         # [Connectedness B9] A row explicitly marked "unconnected" (nothing reads its setting) is
         # skipped by Reset page/card, paste, Quick favourites and Advanced reveal. A merely
@@ -740,7 +746,7 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
         attrs["undo_context"] = str(cfg["undo_context"])
     if cfg.get("chip_mode"):
         attrs["chip_mode"] = str(cfg["chip_mode"])
-    settings = [] if cfg.get("no_history") else sorted(
+    settings = [] if (cfg.get("no_history") or cfg.get("own_history")) else sorted(
         {str(row["s"]) for row in all_rows(page) if row.get("s")} | set(cfg.get("watch_extra", [])))
     if settings:
         attrs["watch_settings"] = ",".join(settings)
@@ -754,6 +760,12 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
     if cfg.get("no_history"):
         for row in all_rows(page):
             row["bind"] = "none"
+    if cfg.get("own_history"):
+        # The page owns its undo (Exposure: ALExposureSettingsHistory and its Undo/Redo buttons).
+        # Rows stay bound to their settings but the kit history neither watches them nor records
+        # their widget edits, so one change is not two undo steps.
+        for row in all_rows(page):
+            row["no_widget_history"] = True
     by_name, by_control = source_index(source_paths) if source_paths else ({}, defaultdict(list))
     names: set[str] = set()
     root_attrs = {"follows": "all", "name": cfg.get("root_name", page["name"] + "_logic")}
@@ -766,6 +778,8 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
         # Same flag the retired legacy path emitted from page_features: the page styles the
         # selected cast member through llfloaterdirector's bindActorStylePage.
         body.set("actor_target", "true")
+    if cfg.get("actor_target_synthetic"):
+        body.set("actor_target_synthetic", "true")
     modes = page.get("modes") or {}
     for mode in modes.get("options", []):
         ET.SubElement(body, "kit_page.mode", {"name": str(mode),
@@ -1477,14 +1491,22 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "camera_group/operator_tab": "kit (P0)", "camera_group/frame_orbit_tab": "kit (P0)",
                 "camera_group/takes_tab": "kit (P0)", "capture_group/temporal_tab": "kit (P0)",
                 "capture_group/scene_options_tab": "kit (P0)",
-                "settings_group/director_settings_tab": "kit (P0)"}
+                "settings_group/director_settings_tab": "kit (P0)",
+                "performance_group/animate_tab": "kit (P0)",
+                "light_group/exposure_tab": "kit (P0)",
+                "performance_group/gaze_cues_tab": "kit (P0)",
+                "light_group/practicals_tab": "kit (P0)",
+                "light_group/light_cues_tab": "kit (P0)",
+                "performance_group/switchboard_tab": "kit (P0)",
+                "performance_group/polish_tab": "kit (P0)"}
     # Pinned per conversion batch (user-approved 10/13: lower as pages convert, never raise).
     # World/Lens batch: kit 7 -> 13, legacy 27 -> 21. 10/14: new Stepped page (kit_pages
     # entry => kit (P0)) kit 13 -> 14; legacy unchanged at 21. 10/14 Camera+Capture
     # batch: kit 14 -> 21, legacy 21 -> 14.
     # 10/15 Light Actors: kit 21 -> 22, legacy 14 -> 13
     # 10/15 Director Settings: kit 22 -> 23, legacy unchanged at 13.
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 23, "pure kit (new)": 1, "legacy": 13}):
+    # 10/15 legacy conversion batch 1, Animate: kit 23 -> 24, legacy 13 -> 12.
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 30, "pure kit (new)": 1, "legacy": 6}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -1553,7 +1575,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
         checks = []
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 23, "pure kit (new)": 1, "legacy": 13})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 30, "pure kit (new)": 1, "legacy": 6})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -1595,7 +1617,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
             apply_page_features(expected_legacy, key, config.get("page_features", {}))
             apply_kit_xui_style(expected_legacy)
             legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(expected_legacy)
-        checks.append(("13 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 13))
+        checks.append(("6 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 6))
         dials = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]
         checks.append(("all compass dials use kit geometry without duplicate readout",

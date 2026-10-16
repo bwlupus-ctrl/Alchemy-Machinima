@@ -147,6 +147,7 @@ ALKitRow::Params::Params() :
     widget_history("widget_history", true),
     bulk_reset("bulk_reset", true),
     unconnected("unconnected", false),
+    fill_width("fill_width", false),
     row_height("row_height", 28),
     decimals("decimals", 3),
     min_val("min_val", 0.f),
@@ -169,7 +170,8 @@ ALKitRow::ALKitRow(const Params& p) :
     mAdded(p.added),
     mWidgetHistory(p.widget_history),
     mBulkReset(p.bulk_reset),
-    mUnconnected(p.unconnected)
+    mUnconnected(p.unconnected),
+    mFillWidth(p.fill_width)
 {
     ALKitStyle::color(ALKitStyle::WINDOW_BG);
     mMeta.kind           = p.kind;
@@ -556,7 +558,9 @@ void ALKitRow::layoutRow(S32 w)
             const LLFontGL* f = ALKitStyle::sansFont("Kit12");
             const LLButton* button = dynamic_cast<LLButton*>(mControl);
             const std::string label = button ? button->getText() : mMeta.label;
-            width = llmin(span, (f ? f->getWidth(label) : 80) + 20);
+            // fill_width: code rewrites the label (slot buttons), so size to the track, not the
+            // placeholder text the XML started with.
+            width = mFillWidth ? span : llmin(span, (f ? f->getWidth(label) : 80) + 20);
         }
         else if (mMeta.kind == "slider" || mMeta.kind == "combo" || mMeta.kind == "text" || mMeta.kind == "readout" ||
                  mMeta.kind == "link" || mMeta.kind == "custom" || mMeta.kind == "segmented")

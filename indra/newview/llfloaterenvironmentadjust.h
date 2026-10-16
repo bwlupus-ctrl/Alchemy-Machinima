@@ -64,6 +64,11 @@ public:
 
     virtual void                refresh() override;
 
+    // The built-in Light Intensity quick presets, by key ("golden_hour"), for the Director
+    // Exposure page's preset strip. Applies exactly what the Personal Lighting combo applies,
+    // as one undo step in the exposure settings history. False for an unknown key.
+    static bool                 applyEnvIntensityBuiltin(const std::string& key);
+
 private:
     ALScrollFit::Controller     mScrollFit;
     S32                         reshapeOuterStackToVisiblePanels();

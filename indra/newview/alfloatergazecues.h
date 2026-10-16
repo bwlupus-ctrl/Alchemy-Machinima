@@ -29,6 +29,14 @@ public:
     bool postBuild() override;
     void draw() override;
 
+    // Shared with the Director Gaze Cues page (alpanelgazecues.cpp) so the page and this editor
+    // build new cues and list rows the same way.
+    static LLDirectorCast::GazeCue makeDefaultCue(const LLUUID& actor_id);
+    static std::string targetLabel(const LLDirectorCast::GazeCue& cue);
+    static const char* macroLabel(ALGazeMath::EGazeCueMacro macro);
+    // Select one cue of this actor's list and load it into the editor (the page opens the floater here).
+    void selectCueIndex(S32 index);
+
 private:
     LLDirectorCast::GazeCue defaultCue() const;
     S32 selectedCueIndex() const;

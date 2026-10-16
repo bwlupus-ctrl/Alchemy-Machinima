@@ -628,6 +628,16 @@ public:
     void   clearDirectorLookAtRuntime(const LLUUID& avatar_id);
     void   clearAllDirectorLookAtRuntime();
 
+    // [Director Gaze Cues] Preview ONE authored cue on ONE actor from the Director Gaze Cues page.
+    // The cue plays on preview-local time (zero at the call) through the same cue evaluation the
+    // track uses, so it looks exactly as it will in the take; the cue list and the presentation
+    // clock are never touched. Like the track, it only drives actors that have Look at camera on.
+    // Returns false (no change) for an actor that is not in the cast, has no live avatar, or an
+    // index outside that actor's cue list. Clearing, removing the actor, or logging out ends it.
+    bool   setGazeCuePreview(const LLUUID& actor_id, S32 cue_index);
+    void   clearGazeCuePreview(const LLUUID& actor_id);
+    bool   hasGazeCuePreview(const LLUUID& actor_id) const { return mGazeCuePreviews.count(actor_id) != 0; }
+
     // stable per-actor overlay color derived from the actor id (path ribbon +
     // interior nodes tint to this hue; the panel shows it as a read-only swatch)
     static LLColor4 actorPathColor(const LLUUID& actor_id);
@@ -1683,6 +1693,12 @@ private:
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
     U64 mGazeRevision = 1;
     std::map<LLUUID, DirectorGaze> mDirectorGazes; // render-only real-cast camera gaze runtime
+    struct GazeCuePreview
+    {
+        S32 mCueIndex = -1;
+        F64 mStartTime = 0.0;   // presentation time at setGazeCuePreview()
+    };
+    std::map<LLUUID, GazeCuePreview> mGazeCuePreviews; // one previewed cue per actor (session-only)
     struct GazeObjectCenterCache
     {
         U32 mFrame = 0xFFFFFFFF;

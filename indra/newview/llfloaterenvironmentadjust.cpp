@@ -1241,6 +1241,21 @@ void LLFloaterEnvironmentAdjust::onEnvIntensityPresetSelected()
 // do not flash "Custom" mid-write; when it finishes the "applied" signal calls
 // refreshEnvIntensityPresetCombo() once (connected in postBuild), which
 // re-derives the combo from the values just written (always an exact match).
+bool LLFloaterEnvironmentAdjust::applyEnvIntensityBuiltin(const std::string& key)
+{
+    for (const EnvIntensityPreset& p : ENV_INTENSITY_PRESETS)
+    {
+        if (key == p.mKey)
+        {
+            ALExposureSettingsHistory::ScopedBatch history_batch(
+                std::string("Preset '") + p.mKey + "'");
+            ALEnvIntensityPresets::apply(env_intensity_builtin_values(p));
+            return true;
+        }
+    }
+    return false;
+}
+
 void LLFloaterEnvironmentAdjust::applyEnvIntensityPreset(const std::string& key)
 {
     const EnvIntensityPreset* preset = nullptr;

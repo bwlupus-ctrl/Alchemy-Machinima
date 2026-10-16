@@ -403,7 +403,11 @@ set(viewer_SOURCE_FILES
     alpanelavatarlightresponse.cpp
     alpaneldof.cpp
     alpanelexposurehub.cpp
+    alpanelexposurepage.cpp
+    alpanelgazecues.cpp
     alpanellenslooks.cpp
+    alpanellightcues.cpp
+    alpanelpracticals.cpp
     alpanelprojectorshafts.cpp
     alpanelcinelightrig.cpp
     alprobedirty.cpp # [ProbeOnDemand]
@@ -1326,7 +1330,11 @@ set(viewer_HEADER_FILES
     alpanelavatarlightresponse.h
     alpaneldof.h
     alpanelexposurehub.h
+    alpanelexposurepage.h
+    alpanelgazecues.h
     alpanellenslooks.h
+    alpanellightcues.h
+    alpanelpracticals.h
     alpanelprojectorshafts.h
     alcinehaze.h
     alcinerigrim.h

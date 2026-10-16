@@ -30,7 +30,7 @@ public:
         Mandatory<std::string> kind;
         Optional<std::string>  widget, label, label_name, help, keywords, unit, sub, setting, bind, reset_settings, default_value, link_to,
             action, mirror_setting;
-        Optional<bool> advanced, card_preset, who_picker, hidden, added, widget_history, bulk_reset, unconnected;
+        Optional<bool> advanced, card_preset, who_picker, hidden, added, widget_history, bulk_reset, unconnected, fill_width;
         Optional<S32>  row_height, decimals;
         Optional<F32>  min_val, max_val, increment;
         Params();
@@ -114,7 +114,7 @@ private:
     bool         mExplicitRowHeight = false;
     bool         mCardPreset = false, mWhoPicker = false, mHidden = false, mAdded = false, mFilterVisible = true, mCodeHidden = false,
                  mHovered = false, mPointerInside = false, mFlashing = false, mAmber = false, mSyncingMirror = false,
-                 mWidgetHistory = true, mBulkReset = true, mUnconnected = false;
+                 mWidgetHistory = true, mBulkReset = true, mUnconnected = false, mFillWidth = false;
     LLUICtrl*    mControl = nullptr;
     std::array<LLUICtrl*, 3>           mVec{ { nullptr, nullptr, nullptr } };
     std::vector<std::string>            mSegmentLabels;
