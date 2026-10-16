@@ -95,7 +95,26 @@ Config sanitize(const Config& raw)
     out.phaseSpread = llclamp(finiteOr(raw.phaseSpread, 1.f), 0.f, 1.f);
     out.rateVariation = llclamp(finiteOr(raw.rateVariation, 0.f), 0.f, 1.f);
     out.timingJitter = llclamp(finiteOr(raw.timingJitter, 0.f), 0.f, 1.f);
+    for (U32 part = 0; part < kPartGroups; ++part)
+        out.parts[part] = part == PART_TORSO ? RATE_SAME : llclamp(raw.parts[part], 0, 3);
     return out;
+}
+
+const char* partSetting(U32 part)
+{
+    static const char* const names[kPartGroups] = {
+        "", "StepAnimPartHead", "StepAnimPartFace", "StepAnimPartArms", "StepAnimPartHands",
+        "StepAnimPartLegs", "StepAnimPartExtras", "StepAnimPartAttach"
+    };
+    return part < kPartGroups ? names[part] : "";
+}
+
+const char* partKey(U32 part)
+{
+    static const char* const keys[kPartGroups] = {
+        "torso", "head", "face", "arms", "hands", "legs", "extras", "attach"
+    };
+    return part < kPartGroups ? keys[part] : "";
 }
 
 ActorOverride sanitize(const ActorOverride& raw)
@@ -106,13 +125,16 @@ ActorOverride sanitize(const ActorOverride& raw)
     out.what = llclamp(raw.what, -1, 1);
     out.role = llclamp(raw.role, 0, 2);
     out.rateOffset = llclamp(raw.rateOffset, -1, 2);
+    for (U32 part = 0; part < kPartGroups; ++part)
+        out.parts[part] = part == PART_TORSO ? -1 : llclamp(raw.parts[part], -1, 3);
     return out;
 }
 
 LLSD writeOverride(const ActorOverride& input)
 {
     const ActorOverride ov = sanitize(input);
-    if (ov.mode == 0 && ov.rate == 12.f && ov.what == -1 && ov.role == 0 && ov.rateOffset == -1)
+    if (ov.mode == 0 && ov.rate == 12.f && ov.what == -1 && ov.role == 0 && ov.rateOffset == -1 &&
+        ov.parts == kPartsInherit)
         return LLSD();
     LLSD value = LLSD::emptyMap();
     value["mode"] = ov.mode;
@@ -120,6 +142,15 @@ LLSD writeOverride(const ActorOverride& input)
     value["what"] = ov.what;
     value["role"] = ov.role;
     if (ov.rateOffset != -1) value["rate_offset"] = ov.rateOffset;
+    if (ov.parts != kPartsInherit)
+    {
+        // Only the parts that override are written, keyed by name (partKey), so a scene stays
+        // readable if groups are ever added; an absent key reads back as inherit.
+        LLSD parts = LLSD::emptyMap();
+        for (U32 part = PART_HEAD; part < kPartGroups; ++part)
+            if (ov.parts[part] != -1) parts[partKey(part)] = ov.parts[part];
+        value["parts"] = parts;
+    }
     return value;
 }
 
@@ -132,7 +163,54 @@ ActorOverride readOverride(const LLSD& data)
     if (data.has("what")) ov.what = data["what"].asInteger();
     if (data.has("role")) ov.role = data["role"].asInteger();
     if (data.has("rate_offset")) ov.rateOffset = data["rate_offset"].asInteger();
+    if (data.has("parts") && data["parts"].isMap())
+        for (U32 part = PART_HEAD; part < kPartGroups; ++part)
+            if (data["parts"].has(partKey(part))) ov.parts[part] = data["parts"][partKey(part)].asInteger();
     return sanitize(ov);
+}
+
+PartOffsets resolveParts(const Config& raw, const ActorOverride& raw_ov, S32 group_offset)
+{
+    const Config cfg = sanitize(raw);
+    const ActorOverride ov = sanitize(raw_ov);
+    // A cast group with its own rate steps its members on one grid: the page's part rates are not
+    // applied to them (actor > group > global), only an actor's own part overrides are.
+    const bool grouped = groupRateInEffect(cfg, ov, group_offset); // the rate the actor really steps on
+    PartOffsets out = kPartsSame;
+    for (U32 part = PART_HEAD; part < kPartGroups; ++part)
+    {
+        S32 offset = grouped ? RATE_SAME : cfg.parts[part];
+        // StepAnimFace off is the page's Face & lip-sync switch (presets, scenes): Smooth for all.
+        if (part == PART_FACE && !cfg.face) offset = RATE_SMOOTH;
+        if (ov.parts[part] >= 0) offset = ov.parts[part];
+        out[part] = offset;
+    }
+    return out;
+}
+
+bool groupRateApplies(const ActorOverride& raw_ov, S32 group_offset)
+{
+    const ActorOverride ov = sanitize(raw_ov);
+    return llclamp(group_offset, 0, 3) != RATE_SAME && ov.rateOffset < 0 && ov.mode != 2;
+}
+
+bool groupRateInEffect(const Config& raw, const ActorOverride& ov, S32 group_offset)
+{
+    return groupRateApplies(ov, group_offset) && !sanitize(raw).matchRoto;
+}
+
+S32 faceControlShown(bool face_on, S32 part_face)
+{
+    const S32 part = llclamp(part_face, 0, 3);
+    return !face_on || part == RATE_SMOOTH ? RATE_SMOOTH : part;
+}
+
+void applyFaceControl(S32 value, bool& face_on, S32& part_face)
+{
+    const S32 v = llclamp(value, 0, 3);
+    if (v == RATE_SMOOTH) { face_on = false; return; }
+    face_on = true;
+    part_face = v;
 }
 
 S32 groupRate(const GroupRates& rates, const std::string& group)
@@ -258,14 +336,32 @@ F64 actorPhase(const Config& cfg, U64 seed, F64 roto_phase)
     return fraction(phase + roto_phase);
 }
 
-U8 heldClasses(const Config& cfg, S32 what)
+U16 heldClasses(const Config& cfg, S32 what, const PartOffsets& parts)
 {
-    U8 mask = JC_BODY;
+    U16 mask = JC_BODY;
     if (what == WHAT_POSE_POSITION) mask |= JC_ROOT;
-    if (cfg.face) mask |= JC_FACE;
+    // Face bones follow the Face part (Smooth while StepAnimFace is off, see resolveParts).
+    if (parts[PART_FACE] != RATE_SMOOTH) mask |= JC_FACE;
     if (cfg.gaze) mask |= JC_GAZE;
     if (cfg.flexi) mask |= JC_PHYS;
+    for (U32 part = PART_TORSO; part < PART_ATTACH; ++part)
+        if (part == PART_TORSO || parts[part] != RATE_SMOOTH) mask |= groupBit(part);
+    // Attachment points are left alone (they ride their bone) unless the Attachments part differs
+    // from the body: coarser holds their placement, Smooth re-places them from the smooth pose.
+    if (parts[PART_ATTACH] != RATE_SAME) mask |= JC_ATTACH | groupBit(PART_ATTACH);
     return mask;
+}
+
+U16 heldClasses(const Config& cfg, S32 what)
+{
+    return heldClasses(cfg, what, resolveParts(cfg, ActorOverride()));
+}
+
+U32 partOf(U16 joint_class)
+{
+    for (U32 part = 0; part < kPartGroups; ++part)
+        if (joint_class & groupBit(part)) return part;
+    return PART_TORSO;
 }
 
 namespace
@@ -321,7 +417,9 @@ RateChoice resolveRate(const Config& raw, const ActorOverride& raw_ov, bool sele
         adaptive = false;
     }
     // Rate offset precedence: per-actor > cast group > page (no offset).
-    S32 offset = llclamp(group_offset, 0, 3);
+    // groupRateApplies is the predicate resolveParts shares, so the parts rule follows the rate the
+    // actor really steps on (a Roto Ink lock is applied below and reported as rotoSuppressed).
+    S32 offset = groupRateApplies(ov, group_offset) ? llclamp(group_offset, 0, 3) : RATE_SAME;
     if (ov.rateOffset >= 0) offset = ov.rateOffset;
     if (ov.mode == 2)
     {
@@ -379,7 +477,8 @@ Assignment resolveActor(const Config& raw, const ActorFacts& facts, F64 roto_pha
     out.seed = facts.seed;
     out.what = ov.mode == 2 && ov.what >= 0 ? ov.what : cfg.what;
     out.phase = actorPhase(cfg, facts.seed, cfg.matchRoto ? roto_phase : 0.);
-    out.heldClasses = heldClasses(cfg, out.what);
+    out.parts = resolveParts(cfg, ov, facts.groupOffset);
+    out.heldClasses = heldClasses(cfg, out.what, out.parts);
     return out;
 }
 
@@ -393,15 +492,55 @@ bool ghostMayInherit(const Config& raw, const ActorFacts& facts)
 }
 
 bool inheritAttachedAssignment(const Assignment& source, U64 source_seed,
-                               Assignment& attached, U64& attached_seed)
+                               Assignment& attached, U64& attached_seed,
+                               S32 attach_offset, S32 base_fps)
 {
-    if (!source.stepped) return false;
+    if (!source.stepped || attach_offset == RATE_SMOOTH)
+    {
+        // Attachments Smooth: the worn animesh keeps its own smooth animation.
+        if (source.stepped) attached = Assignment();
+        return false;
+    }
     attached = source;
     // The control avatar follows its worn volume transform. Holding its own
     // root as well double-applies the wearer's held attachment transform.
     attached.heldClasses &= ~JC_ROOT;
+    // One grid for the whole animesh: its own parts are Same, its attachment points untouched.
+    attached.parts = kPartsSame;
+    attached.heldClasses = static_cast<U16>((attached.heldClasses & kClassBits & ~JC_ATTACH) |
+                                            (kGroupBits & ~groupBit(PART_ATTACH)));
+    if (attach_offset == RATE_PLUS1 || attach_offset == RATE_PLUS2)
+    {
+        attached.rate = offsetRate(source.rate, attach_offset, base_fps);
+        if (source.fastRate > 0.f) attached.fastRate = offsetRate(source.fastRate, attach_offset, base_fps);
+        // The wearer's Attachments grid: same time offset as the wearer's rigid attachment points.
+        attached.phase = partPhase(source.phase, source.rate, attached.rate);
+    }
     attached_seed = source_seed;
     return true;
+}
+
+FrameDecision attachedDecision(const Assignment& attached, const ActorState& wearer_state,
+                               const FrameDecision& wearer_decision, S32 attach_offset, S32 base_fps)
+{
+    if (!attached.stepped) return wearer_decision;
+    FrameDecision out = wearer_decision;
+    const bool coarser = attach_offset == RATE_PLUS1 || attach_offset == RATE_PLUS2;
+    if (coarser && wearer_decision.rate >= 2.f) // (a smooth, below-2-fps wearer captures every frame)
+    {
+        out.rate = offsetRate(wearer_decision.rate, attach_offset, base_fps);
+        out.capture = (wearer_decision.captureGroups & groupBit(PART_ATTACH)) != 0;
+        out.tick = wearer_state.partTick[PART_ATTACH];
+        out.boilIndex = wearer_decision.partBoil[PART_ATTACH];
+    }
+    // The animesh is one grid: a forced capture of the wearer's Attachments part (its offset just
+    // changed, Same included) is a forced capture of every animesh group.
+    const bool forced = (wearer_decision.forceGroups & groupBit(PART_ATTACH)) != 0;
+    if (forced) out.capture = true;
+    out.captureGroups = out.capture ? kGroupBits : 0;
+    out.forceGroups = forced ? kGroupBits : 0;
+    out.partBoil.fill(out.boilIndex);
+    return out;
 }
 
 bool migrateParticleSetting(bool attach_fx, bool& particles, bool& migrated)
@@ -474,13 +613,15 @@ F32 particleStepDt(F32 dt, ParticleStepDebt& debt, U64 epoch, const FrameDecisio
 void inheritAttachedFrame(const Assignment& source_assignment, U64 source_seed,
                           const ActorState& source_state, const FrameDecision& source_decision,
                           Assignment& attached_assignment, U64& attached_seed,
-                          ActorState& attached_state, FrameDecision& attached_decision)
+                          ActorState& attached_state, FrameDecision& attached_decision,
+                          S32 attach_offset, S32 base_fps)
 {
     if (!inheritAttachedAssignment(source_assignment, source_seed,
-                                   attached_assignment, attached_seed))
+                                   attached_assignment, attached_seed, attach_offset, base_fps))
         return;
     attached_state = source_state;
-    attached_decision = source_decision;
+    attached_decision = attachedDecision(attached_assignment, source_state, source_decision,
+                                         attach_offset, base_fps);
 }
 
 void applyActorCap(const Config& raw, const std::vector<ActorFacts>& facts,
@@ -508,6 +649,14 @@ void applyActorCap(const Config& raw, const std::vector<ActorFacts>& facts,
     });
     for (U32 i = static_cast<U32>(cap); i < active.size(); ++i)
         assignments[active[i]] = Assignment();
+}
+
+F64 partPhase(F64 phase, F64 rate, F64 part_rate)
+{
+    // Same time offset (phase / rate seconds) on the part's grid, so a +1 / +2 part's boundaries
+    // land on the actor's base-frame lattice and coincide with torso ticks whenever the rates do.
+    if (!(rate > 0.) || !std::isfinite(rate) || !std::isfinite(part_rate) || !std::isfinite(phase)) return fraction(phase);
+    return fraction(phase * part_rate / rate);
 }
 
 S64 tickIndex(F64 t, F64 rate, F64 phase)
@@ -684,6 +833,7 @@ FrameDecision planFrame(ActorState& state, const Assignment& assignment,
         out.capture = true;
         out.hold = false;
         out.tick = state.captureTick + 1;
+        out.captureGroups = kGroupBits;
         return out;
     }
     out.tick = tickIndex(t, out.rate, assignment.phase);
@@ -691,6 +841,9 @@ FrameDecision planFrame(ActorState& state, const Assignment& assignment,
     const bool rate_changed = !state.hasCapture || state.captureRate != out.rate;
     bool boundary = !rate_changed && out.tick != state.captureTick;
     bool capture = !state.hasCapture;
+    // A first or forced capture (impact, adaptive switch) refreshes every part; a plain torso
+    // boundary refreshes only the parts that ride the torso grid.
+    const bool capture_all = !state.hasCapture || state.forceCapture || state.impactPending;
     if (rate_changed && state.hasCapture)
     {
         state.captureRate = out.rate;
@@ -728,6 +881,40 @@ FrameDecision planFrame(ActorState& state, const Assignment& assignment,
         state.captureTick = out.tick;
     }
     out.capture = capture;
+    // Part grids. Same parts refresh with the torso; +1 / +2 parts hold on their own, coarser grid
+    // (offsetRate of the current rate, partPhase) and refresh only on their own boundaries, exact
+    // (no imperfect-timing extra hold) except during an impact hold (impactHoldLeft, then the
+    // cooldown until the torso's next capture), when nothing moves; Smooth body parts are never
+    // held (not in the mask); Smooth attachments are re-placed from the smooth pose every frame. A
+    // part whose effective offset changed is captured at once (forceGroups), so switching a part
+    // to another grid never shows a stale hold or an empty attachment placement.
+    const bool impact_frozen = !capture && (state.impactHoldLeft > 0 || state.impactCooldown);
+    for (U32 part = 0; part < kPartGroups; ++part)
+    {
+        const S32 offset = part == PART_TORSO ? RATE_SAME : assignment.parts[part];
+        const bool offset_changed = state.partOffset[part] != offset;
+        state.partOffset[part] = offset;
+        // (a Smooth body part is not held, so there is nothing to capture for it)
+        if (offset_changed && (offset != RATE_SMOOTH || part == PART_ATTACH)) out.forceGroups |= groupBit(part);
+        if (offset == RATE_PLUS1 || offset == RATE_PLUS2)
+        {
+            const F64 part_rate = offsetRate(out.rate, offset, cfg.baseFps);
+            const S64 part_tick = tickIndex(t, part_rate, partPhase(assignment.phase, out.rate, part_rate));
+            const bool regrid = state.partRate[part] != part_rate;
+            const bool part_capture = capture_all || offset_changed ||
+                (!regrid && !impact_frozen && part_tick != state.partTick[part]);
+            state.partRate[part] = part_rate;
+            state.partTick[part] = part_tick;
+            if (part_capture) out.captureGroups |= groupBit(part);
+            const F64 boil_rate = offsetRate(assignment.rate, offset, cfg.baseFps);
+            out.partBoil[part] = tickIndex(t, boil_rate, partPhase(assignment.phase, assignment.rate, boil_rate)) /
+                cfg.boilTicks;
+            continue;
+        }
+        if (offset == RATE_SMOOTH ? part == PART_ATTACH : (capture || offset_changed))
+            out.captureGroups |= groupBit(part);
+        out.partBoil[part] = out.boilIndex;
+    }
     return out;
 }
 
@@ -781,9 +968,63 @@ F32 easeWeight(F32 amount, F32 minimum, F32 capture)
     return amount * llclamp(1.f - minimum / capture, 0.f, 1.f);
 }
 
-std::vector<U8> classifyJoints(const std::vector<JointDesc>& joints)
+namespace
 {
-    std::vector<U8> out(joints.size(), JC_BODY);
+bool startsWith(const std::string& name, const char* prefix)
+{
+    return name.compare(0, std::strlen(prefix), prefix) == 0;
+}
+
+// Part group a bone names explicitly (avatar_skeleton.xml names); kPartGroups when the bone has
+// no name of its own in the table and follows its parent (mSkull, collision volumes, ...).
+U32 namedPart(const std::string& n)
+{
+    if (startsWith(n, "mPelvis") || startsWith(n, "mSpine") || startsWith(n, "mTorso") ||
+        startsWith(n, "mChest") || startsWith(n, "mCollar")) return PART_TORSO;
+    if (n == "mNeck" || n == "mHead" || startsWith(n, "mEye")) return PART_HEAD;
+    if (n == "mFaceRoot") return PART_FACE;
+    if (startsWith(n, "mShoulder") || startsWith(n, "mElbow") || startsWith(n, "mWrist")) return PART_ARMS;
+    if (startsWith(n, "mHand")) return PART_HANDS;
+    if (startsWith(n, "mHip") || startsWith(n, "mKnee") || startsWith(n, "mAnkle") ||
+        startsWith(n, "mFoot") || startsWith(n, "mToe")) return PART_LEGS;
+    if (startsWith(n, "mTail") || startsWith(n, "mGroin") || startsWith(n, "mHindLimb") ||
+        startsWith(n, "mWing")) return PART_EXTRAS;
+    return kPartGroups;
+}
+
+// Root-relative rotation and position of joint `index` from the local transforms, composed top-down
+// exactly as LLXformMatrix::update does for joints: a child's offset is scaled by its parent's scale,
+// rotated by the parent's world rotation and added to the parent's world position. `parents[i] < 0`
+// is the avatar root, which is left out (it is common to the smooth and the rendered pose).
+void rootRelative(const PoseBuffer& pose, const std::vector<S32>& parents, S32 index,
+                  LLQuaternion& rot, LLVector3& pos)
+{
+    constexpr U32 kMaxDepth = 64;
+    S32 chain[kMaxDepth];
+    U32 depth = 0;
+    for (S32 j = index; j >= 0 && static_cast<size_t>(j) < pose.joints.size() && depth < kMaxDepth;
+         j = static_cast<size_t>(j) < parents.size() ? parents[j] : -1)
+        chain[depth++] = j;
+    rot.loadIdentity();
+    pos.clear();
+    LLVector3 parent_scale(1.f, 1.f, 1.f);
+    bool has_parent = false;
+    for (S32 k = static_cast<S32>(depth) - 1; k >= 0; --k)
+    {
+        const JointLocal& local = pose.joints[chain[k]];
+        LLVector3 offset = local.pos;
+        if (has_parent) offset.scaleVec(parent_scale);
+        pos = offset * rot + pos;
+        rot = local.rot * rot;
+        parent_scale = local.scale;
+        has_parent = true;
+    }
+}
+}
+
+std::vector<U16> classifyJoints(const std::vector<JointDesc>& joints)
+{
+    std::vector<U16> out(joints.size(), JC_BODY);
     S32 face_root = -1;
     for (U32 i = 0; i < joints.size(); ++i)
         if (joints[i].name == "mFaceRoot") face_root = static_cast<S32>(i);
@@ -792,26 +1033,61 @@ std::vector<U8> classifyJoints(const std::vector<JointDesc>& joints)
         return name == "mNeck" || name == "mHead" || name == "mEyeLeft" ||
             name == "mEyeRight" || name == "mFaceEyeAltLeft" || name == "mFaceEyeAltRight";
     };
+    auto parentOf = [&joints](S32 i)
+    {
+        const S32 parent = joints[i].parent;
+        return parent >= 0 && static_cast<size_t>(parent) < joints.size() && parent != i ? parent : -1;
+    };
     for (U32 i = 0; i < joints.size(); ++i)
     {
-        if (joints[i].collisionVolume) { out[i] = JC_PHYS; continue; }
-        if (joints[i].parent < 0 && joints[i].name == "mRoot") { out[i] = JC_ROOT; continue; }
-        if (gaze(joints[i].name)) { out[i] = JC_GAZE; continue; }
-        S32 parent = static_cast<S32>(i);
-        while (parent >= 0 && parent != face_root) parent = joints[parent].parent;
-        if (parent == face_root) out[i] = JC_FACE;
+        // Class: what a toggle holds.
+        U16 cls = JC_BODY;
+        if (joints[i].attachment) cls = JC_ATTACH;
+        else if (joints[i].collisionVolume) cls = JC_PHYS;
+        else if (joints[i].parent < 0 && joints[i].name == "mRoot") cls = JC_ROOT;
+        else if (gaze(joints[i].name)) cls = JC_GAZE;
+        else
+        {
+            S32 parent = static_cast<S32>(i);
+            U32 guard = 0;
+            while (parent >= 0 && parent != face_root && guard++ < joints.size()) parent = parentOf(parent);
+            if (parent == face_root) cls = JC_FACE;
+        }
+        // Group: which grid holds it. Bones name their own group; everything else (collision
+        // volumes, mSkull, unknown bones) follows the nearest named ancestor; parentless is Torso.
+        // Every Gaze joint (neck, head, eyes, the Bento alt eyes) is Head: the Gaze toggle holds
+        // the eyes exactly as before whatever the Face part says.
+        U32 part = PART_TORSO;
+        if (joints[i].attachment) part = PART_ATTACH;
+        else if (cls == JC_GAZE) part = PART_HEAD;
+        else
+        {
+            S32 j = static_cast<S32>(i);
+            U32 guard = 0;
+            while (j >= 0 && guard++ < joints.size())
+            {
+                if (!joints[j].collisionVolume && !joints[j].attachment)
+                {
+                    const U32 named = namedPart(joints[j].name);
+                    if (named < kPartGroups) { part = named; break; }
+                }
+                j = parentOf(j);
+            }
+        }
+        out[i] = static_cast<U16>(cls | groupBit(part));
     }
     return out;
 }
 
 void composeRender(const PoseBuffer& smooth, const PoseBuffer& held,
-                   const std::vector<U8>& classes, U8 mask, PoseBuffer& out)
+                   const std::vector<U16>& classes, U16 mask, PoseBuffer& out)
 {
     out = smooth;
     const U32 count = llmin(static_cast<U32>(smooth.joints.size()),
                             llmin(static_cast<U32>(held.joints.size()), static_cast<U32>(classes.size())));
     for (U32 i = 0; i < count; ++i)
-        if (classes[i] & mask)
+        // Attachment points are placed by applyAttachmentHolds, never copied from the held locals.
+        if (!(classes[i] & JC_ATTACH) && jointHeld(classes[i], mask))
         {
             out.joints[i].rot = held.joints[i].rot;
             out.joints[i].pos = held.joints[i].pos;
@@ -822,6 +1098,104 @@ void composeRender(const PoseBuffer& smooth, const PoseBuffer& held,
         out.rootPos = held.rootPos;
         out.rootRot = held.rootRot;
     }
+}
+
+U16 refreshGroups(const Assignment& assignment, const FrameDecision& decision)
+{
+    U16 groups = 0;
+    for (U32 part = 0; part < kPartGroups; ++part)
+    {
+        const S32 offset = part == PART_TORSO ? RATE_SAME : assignment.parts[part];
+        if (offset == RATE_PLUS1 || offset == RATE_PLUS2) groups |= decision.captureGroups & groupBit(part);
+        else if (offset == RATE_SMOOTH) { if (part == PART_ATTACH) groups |= groupBit(part); }
+        else if (decision.capture || (decision.forceGroups & groupBit(part))) groups |= groupBit(part);
+    }
+    return groups;
+}
+
+F32 smearChainDt(const Assignment& assignment, U16 chain_class, bool torso_smear_tick,
+                 bool part_smear_tick, F32 decision_rate, S32 base_fps)
+{
+    if (!assignment.stepped || !jointHeld(chain_class, assignment.heldClasses)) return 0.f;
+    const U32 part = partOf(chain_class);
+    const S32 offset = part == PART_TORSO ? RATE_SAME : assignment.parts[part];
+    if (offset == RATE_SMOOTH) return 0.f;
+    if (offset == RATE_PLUS1 || offset == RATE_PLUS2)
+        return part_smear_tick ? 1.f / llmax(offsetRate(decision_rate, offset, base_fps), 2.f) : 0.f;
+    return torso_smear_tick ? 1.f / llmax(decision_rate, 2.f) : 0.f;
+}
+
+JointLocal relativePlacement(const PoseBuffer& pose, const std::vector<S32>& parents, S32 index)
+{
+    JointLocal out;
+    if (index < 0 || static_cast<size_t>(index) >= pose.joints.size()) return out;
+    out.scale = pose.joints[index].scale;
+    rootRelative(pose, parents, index, out.rot, out.pos);
+    return out;
+}
+
+JointLocal localForPlacement(const PoseBuffer& pose, const std::vector<S32>& parents, S32 index,
+                             const JointLocal& relative)
+{
+    JointLocal out;
+    if (index < 0 || static_cast<size_t>(index) >= pose.joints.size()) return out;
+    out = pose.joints[index]; // the joint's own scale is never held
+    const S32 parent = static_cast<size_t>(index) < parents.size() ? parents[index] : -1;
+    if (parent < 0 || static_cast<size_t>(parent) >= pose.joints.size())
+    {
+        out.rot = relative.rot;
+        out.pos = relative.pos;
+        return out;
+    }
+    LLQuaternion parent_rot;
+    LLVector3 parent_pos;
+    rootRelative(pose, parents, parent, parent_rot, parent_pos);
+    out.rot = relative.rot * ~parent_rot;
+    LLVector3 offset = (relative.pos - parent_pos) * ~parent_rot;
+    const LLVector3& scale = pose.joints[parent].scale;
+    for (U32 axis = 0; axis < 3; ++axis)
+        offset.mV[axis] = std::fabs(scale.mV[axis]) > 1.e-6f ? offset.mV[axis] / scale.mV[axis]
+                                                             : pose.joints[index].pos.mV[axis];
+    out.pos = offset;
+    return out;
+}
+
+void captureAttachmentHolds(const PoseBuffer& smooth, const std::vector<U16>& classes,
+                            const std::vector<S32>& parents, U16 mask, std::vector<JointLocal>& held)
+{
+    if (held.size() != smooth.joints.size()) held.resize(smooth.joints.size()); // skeleton change only
+    const U32 count = llmin(static_cast<U32>(smooth.joints.size()), static_cast<U32>(classes.size()));
+    for (U32 i = 0; i < count; ++i)
+        if ((classes[i] & JC_ATTACH) && jointHeld(classes[i], mask))
+            held[i] = relativePlacement(smooth, parents, static_cast<S32>(i));
+}
+
+void advancePartHistory(const PoseBuffer& held, const std::vector<U16>& classes, U16 groups, bool root,
+                        PoseBuffer& previous)
+{
+    if (previous.joints.size() != held.joints.size())
+    {
+        previous = held; // skeleton change / first history: everything starts from the held pose
+        return;
+    }
+    const U32 count = llmin(static_cast<U32>(held.joints.size()), static_cast<U32>(classes.size()));
+    for (U32 i = 0; i < count; ++i)
+        if (classes[i] & groups & kGroupBits) previous.joints[i] = held.joints[i];
+    if (root)
+    {
+        previous.rootPos = held.rootPos;
+        previous.rootRot = held.rootRot;
+    }
+}
+
+void applyAttachmentHolds(const std::vector<U16>& classes, const std::vector<S32>& parents, U16 mask,
+                          const std::vector<JointLocal>& held, PoseBuffer& render)
+{
+    const U32 count = llmin(static_cast<U32>(render.joints.size()),
+                            llmin(static_cast<U32>(held.size()), static_cast<U32>(classes.size())));
+    for (U32 i = 0; i < count; ++i)
+        if ((classes[i] & JC_ATTACH) && jointHeld(classes[i], mask))
+            render.joints[i] = localForPlacement(render, parents, static_cast<S32>(i), held[i]);
 }
 
 bool bitEqual(const JointLocal& a, const JointLocal& b)
@@ -868,7 +1242,10 @@ const std::vector<std::string>& trackedSettings()
         "StepAnimImpactThreshold", "StepAnimSmear", "StepAnimSmearStrength",
         "StepAnimSmearThreshold", "StepAnimEase", "StepAnimEaseAmount", "StepAnimMatchRotoInk",
         "StepAnimNearbyRadius", "StepAnimLimitDistance", "StepAnimIncludeSelf", "StepAnimSeed",
-        "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter"
+        "StepAnimPhaseSpread", "StepAnimRateVariation", "StepAnimTimingJitter",
+        // Part rates (preset-owned: a look, like Face / Gaze). Order = EPartGroup from PART_HEAD.
+        "StepAnimPartHead", "StepAnimPartFace", "StepAnimPartArms", "StepAnimPartHands",
+        "StepAnimPartLegs", "StepAnimPartExtras", "StepAnimPartAttach"
     };
     return settings;
 }

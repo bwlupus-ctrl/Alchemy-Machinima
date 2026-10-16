@@ -18,6 +18,7 @@
 #include "lldirectorcast.h"
 #include "llghostavatar.h"
 #include "lljoint.h"
+#include "llviewerjointattachment.h"
 #include "pipeline.h"
 #include "llpresentationtime.h"
 #include "llprismlens.h"
@@ -218,6 +219,13 @@ ALSteppedAnim::Config ALSteppedAnimRuntime::readConfig() const
     static LLCachedControl<F32> phase_spread(gSavedSettings, "StepAnimPhaseSpread");
     static LLCachedControl<F32> rate_variation(gSavedSettings, "StepAnimRateVariation");
     static LLCachedControl<F32> timing_jitter(gSavedSettings, "StepAnimTimingJitter");
+    static LLCachedControl<S32> part_head(gSavedSettings, "StepAnimPartHead");
+    static LLCachedControl<S32> part_face(gSavedSettings, "StepAnimPartFace");
+    static LLCachedControl<S32> part_arms(gSavedSettings, "StepAnimPartArms");
+    static LLCachedControl<S32> part_hands(gSavedSettings, "StepAnimPartHands");
+    static LLCachedControl<S32> part_legs(gSavedSettings, "StepAnimPartLegs");
+    static LLCachedControl<S32> part_extras(gSavedSettings, "StepAnimPartExtras");
+    static LLCachedControl<S32> part_attach(gSavedSettings, "StepAnimPartAttach");
     ALSteppedAnim::Config c;
     c.includeGhosts = include_ghosts;
     c.enabled = true; c.scope = scope; c.excludeCameraMounted = exclude; c.maxAvatars = maximum;
@@ -236,6 +244,10 @@ ALSteppedAnim::Config ALSteppedAnimRuntime::readConfig() const
     c.includeSelf = include_self; c.seed = seed;
     c.phaseSpread = finiteSetting(phase_spread, 1.f); c.rateVariation = finiteSetting(rate_variation, 0.f);
     c.timingJitter = finiteSetting(timing_jitter, 0.f);
+    c.parts[ALSteppedAnim::PART_HEAD] = part_head; c.parts[ALSteppedAnim::PART_FACE] = part_face;
+    c.parts[ALSteppedAnim::PART_ARMS] = part_arms; c.parts[ALSteppedAnim::PART_HANDS] = part_hands;
+    c.parts[ALSteppedAnim::PART_LEGS] = part_legs; c.parts[ALSteppedAnim::PART_EXTRAS] = part_extras;
+    c.parts[ALSteppedAnim::PART_ATTACH] = part_attach;
     return ALSteppedAnim::sanitize(c);
 }
 
@@ -313,6 +325,7 @@ void ALSteppedAnimRuntime::collectActors()
         const LLDirectorCast::ActorStyle::SteppedOverride& ov = cast.getActorStyle(actor_id).mStepped;
         f.ov.mode = ov.mMode; f.ov.rate = ov.mRate; f.ov.what = ov.mWhat; f.ov.role = ov.mRole;
         f.ov.rateOffset = ov.mRateOffset;
+        f.ov.parts = ov.mParts;
         if (!group_offsets.empty())
         {
             const auto group = group_offsets.find(f.isSelf ? gAgentID : actor_id);
@@ -381,12 +394,15 @@ void ALSteppedAnimRuntime::collectActors()
             }
         }
     }
+    // A worn animesh follows its wearer on the wearer's Attachments part rate (Same: the wearer's
+    // grid exactly; +1 / +2: that much coarser; Smooth: left smooth).
     for (U32 i : ordered)
     {
         if (parents[i] < 0) continue;
         const U32 wearer = static_cast<U32>(parents[i]);
         ALSteppedAnim::inheritAttachedAssignment(
-            assignments[wearer], facts[wearer].seed, assignments[i], facts[i].seed);
+            assignments[wearer], facts[wearer].seed, assignments[i], facts[i].seed,
+            assignments[wearer].parts[ALSteppedAnim::PART_ATTACH], mConfig.baseFps);
     }
     const S32 before = static_cast<S32>(std::count_if(assignments.begin(), assignments.end(),
         [](const ALSteppedAnim::Assignment& a) { return a.stepped; }));
@@ -399,7 +415,8 @@ void ALSteppedAnimRuntime::collectActors()
         if (parents[i] < 0) continue;
         const U32 wearer = static_cast<U32>(parents[i]);
         ALSteppedAnim::inheritAttachedAssignment(
-            assignments[wearer], facts[wearer].seed, assignments[i], facts[i].seed);
+            assignments[wearer], facts[wearer].seed, assignments[i], facts[i].seed,
+            assignments[wearer].parts[ALSteppedAnim::PART_ATTACH], mConfig.baseFps);
     }
     mPlanned.clear(); mActiveActors = 0;
     for (U32 i : ordered)
@@ -411,6 +428,8 @@ void ALSteppedAnimRuntime::collectActors()
             // frame. A camera-mounted, capped or "Never" wearer has no planned
             // entry, so the animesh must plan its own frame (else it freezes on a
             // stale held pose while the wearer moves smoothly).
+            // On a coarser Attachments part the animesh still takes its frames from the wearer
+            // (attachedDecision: the wearer's Attachments grid, Adaptive choice and impact holds).
             const bool inherit_from_wearer = parents[i] >= 0 &&
                 assignments[static_cast<U32>(parents[i])].stepped;
             entry.mDecisionSource = inherit_from_wearer
@@ -420,7 +439,8 @@ void ALSteppedAnimRuntime::collectActors()
                 Entry& wearer = mEntries[ids[static_cast<U32>(parents[i])]];
                 ALSteppedAnim::inheritAttachedFrame(
                     wearer.mAssignment, wearer.mSeed, wearer.mState, wearer.mDecision,
-                    entry.mAssignment, entry.mSeed, entry.mState, entry.mDecision);
+                    entry.mAssignment, entry.mSeed, entry.mState, entry.mDecision,
+                    wearer.mAssignment.parts[ALSteppedAnim::PART_ATTACH], mConfig.baseFps);
             }
             else
             {
@@ -499,33 +519,77 @@ void ALSteppedAnimRuntime::buildClasses(LLVOAvatar* avatar, Entry& entry)
         d.parent = parent == indices.end() ? -1 : parent->second;
         desc.push_back(d);
     }
+    // Collision volumes follow their parent bone's part group.
     for (S32 i = 0; i < avatar->getCollisionVolumeJointCount(); ++i)
     {
         LLJoint* joint = avatar->getCollisionVolumeJoint(i);
         ALSteppedAnim::JointDesc d; d.name = joint->getName(); d.collisionVolume = true;
+        const auto parent = indices.find(joint->getParent());
+        d.parent = parent == indices.end() ? -1 : parent->second;
+        desc.push_back(d);
+    }
+    // Non-HUD attachment points (the Attachments part), in attachment-id order.
+    entry.mAttachPointIds.clear();
+    for (const auto& item : avatar->mAttachmentPoints)
+    {
+        LLViewerJointAttachment* point = item.second;
+        if (!point || point->getIsHUDAttachment()) continue;
+        entry.mAttachPointIds.push_back(item.first);
+        ALSteppedAnim::JointDesc d; d.name = point->getName(); d.attachment = true;
+        const auto parent = indices.find(point->getParent());
+        d.parent = parent == indices.end() ? -1 : parent->second;
         desc.push_back(d);
     }
     entry.mClasses = ALSteppedAnim::classifyJoints(desc);
+    entry.mParents.resize(desc.size());
+    for (size_t i = 0; i < desc.size(); ++i) entry.mParents[i] = desc[i].parent;
+    entry.mAttachHeld.assign(desc.size(), ALSteppedAnim::JointLocal());
     entry.mJointCount = static_cast<U32>(desc.size());
+}
+
+U32 ALSteppedAnimRuntime::attachPointCount(const LLVOAvatar* avatar)
+{
+    U32 count = 0;
+    for (const auto& item : avatar->mAttachmentPoints)
+        if (item.second && !item.second->getIsHUDAttachment()) ++count;
+    return count;
+}
+
+U32 ALSteppedAnimRuntime::poseJointCount(const LLVOAvatar* avatar)
+{
+    return static_cast<U32>(avatar->getSkeletonJointCount()) +
+        static_cast<U32>(avatar->getCollisionVolumeJointCount()) + attachPointCount(avatar);
+}
+
+// Pose-buffer index -> joint: skeleton, collision volumes, then the entry's attachment points.
+LLJoint* ALSteppedAnimRuntime::poseJoint(LLVOAvatar* avatar, const Entry& entry, U32 index)
+{
+    const U32 skeleton = static_cast<U32>(avatar->getSkeletonJointCount());
+    const U32 volumes = static_cast<U32>(avatar->getCollisionVolumeJointCount());
+    if (index < skeleton) return avatar->getSkeletonJoint(static_cast<S32>(index));
+    if (index < skeleton + volumes) return avatar->getCollisionVolumeJoint(static_cast<S32>(index - skeleton));
+    const U32 attach = index - skeleton - volumes;
+    if (attach >= entry.mAttachPointIds.size()) return nullptr;
+    const auto found = avatar->mAttachmentPoints.find(entry.mAttachPointIds[attach]);
+    return found == avatar->mAttachmentPoints.end() ? nullptr : found->second;
 }
 
 void ALSteppedAnimRuntime::readPose(LLVOAvatar* avatar, Entry& entry,
                                     ALSteppedAnim::PoseBuffer& out)
 {
-    const U32 skeleton = static_cast<U32>(avatar->getSkeletonJointCount());
-    const U32 count = skeleton + avatar->getCollisionVolumeJointCount();
+    const U32 count = poseJointCount(avatar);
+    if (entry.mClasses.size() != count) buildClasses(avatar, entry);
     out.joints.resize(count);
     for (U32 i = 0; i < count; ++i)
     {
-        LLJoint* joint = i < skeleton ? avatar->getSkeletonJoint(i) :
-            avatar->getCollisionVolumeJoint(i - skeleton);
+        LLJoint* joint = poseJoint(avatar, entry, i);
+        if (!joint) continue;
         out.joints[i].rot = joint->getRotation();
         out.joints[i].pos = joint->getPosition();
         out.joints[i].scale = joint->getScale();
     }
     out.rootPos = avatar->getRootJoint()->getPosition();
     out.rootRot = avatar->getRootJoint()->getRotation();
-    if (entry.mClasses.size() != count) buildClasses(avatar, entry);
 }
 
 ALSteppedAnim::LimbFrame ALSteppedAnimRuntime::limbFrame(
@@ -586,16 +650,76 @@ void ALSteppedAnimRuntime::updateEaseCandidate(Entry& entry,
 }
 
 void ALSteppedAnimRuntime::capturePose(LLVOAvatar*, Entry& entry,
-    const ALSteppedAnim::LimbFrame& limbs, F64, const Entry* decision_source)
+    const ALSteppedAnim::LimbFrame& limbs, F64, const Entry* decision_source, U16 groups, U16 forced)
 {
+    using namespace ALSteppedAnim;
+    // The first capture (or a skeleton change) fills every group; afterwards only the parts in
+    // `groups` are refreshed, so a coarser part keeps its held joints across torso captures.
+    if (!entry.mHaveHeld || entry.mHeld.joints.size() != entry.mSmooth.joints.size()) groups = kGroupBits;
+    // The Torso (base grid) capture is the full one: it keeps the previous pose for smear,
+    // refreshes the effectors and consumes the ease candidate. A part-only refresh copies joints.
+    const bool full = (groups & groupBit(PART_TORSO)) != 0;
     const bool had_previous = entry.mHaveHeld;
+    // Smear history is per part: the previous held pose and effectors advance ONLY for the parts
+    // captured now (a +1 / +2 limb measures its smear from its own last tick, never from a torso
+    // tick); a part whose offset just changed (`forced`) gets previous = new held below, so it never
+    // smears toward a stale hold.
+    const auto chainPart = [&entry](U32 chain) -> S32
+    {
+        const S32 index = entry.mSmearIndices[chain][0];
+        return index >= 0 && static_cast<size_t>(index) < entry.mClasses.size()
+            ? static_cast<S32>(partOf(entry.mClasses[index])) : -1;
+    };
+    // An effector's part: the four limb chains, then the head (Head part); -1 = torso grid.
+    const auto effectorPart = [&entry, &chainPart](U32 e) -> S32
+    {
+        if (e < entry.mSmearIndices.size()) return chainPart(e);
+        const S32 index = entry.mEffectorIndices[e];
+        return index >= 0 && static_cast<size_t>(index) < entry.mClasses.size()
+            ? static_cast<S32>(partOf(entry.mClasses[index])) : -1;
+    };
+    const auto inGroups = [](U16 set, S32 part) { return part < 0 || (set & groupBit(static_cast<U32>(part))) != 0; };
     if (had_previous)
     {
-        entry.mPreviousHeld = entry.mHeld;
-        entry.mPreviousEffectors = entry.mHeldEffectors;
+        advancePartHistory(entry.mHeld, entry.mClasses, groups, full, entry.mPreviousHeld);
+        for (U32 e = 0; e < kEffectors; ++e)
+            if (inGroups(groups, effectorPart(e))) entry.mPreviousEffectors[e] = entry.mHeldEffectors[e];
         entry.mHavePreviousHeld = true;
     }
-    entry.mHeld = entry.mSmooth;
+    const bool have_previous = had_previous && entry.mHavePreviousHeld &&
+        entry.mPreviousHeld.joints.size() == entry.mSmooth.joints.size();
+    if (groups == kGroupBits)
+        entry.mHeld = entry.mSmooth;
+    else
+    {
+        for (U32 i = 0; i < entry.mHeld.joints.size() && i < entry.mClasses.size(); ++i)
+            if (entry.mClasses[i] & groups & kGroupBits) entry.mHeld.joints[i] = entry.mSmooth.joints[i];
+        if (full)
+        {
+            entry.mHeld.rootPos = entry.mSmooth.rootPos;
+            entry.mHeld.rootRot = entry.mSmooth.rootRot;
+        }
+    }
+    if (groups & groupBit(PART_ATTACH))
+        captureAttachmentHolds(entry.mSmooth, entry.mClasses, entry.mParents,
+                               entry.mAssignment.heldClasses, entry.mAttachHeld);
+    // Effectors of the parts captured now (an effector off any part rides the torso grid).
+    for (U32 e = 0; e < kEffectors; ++e)
+        if (inGroups(groups, effectorPart(e)) && (full || effectorPart(e) >= 0)) entry.mHeldEffectors[e] = limbs.p[e];
+    // Smear flags and the forced seed (previous = new held, zero displacement).
+    for (U32 part = 0; part < kPartGroups; ++part)
+        if (groups & groupBit(part)) entry.mPartSmearTick[part] = mConfig.smear && have_previous;
+    const U16 seeded = static_cast<U16>(groups & forced);
+    if (seeded && have_previous)
+    {
+        advancePartHistory(entry.mHeld, entry.mClasses, seeded, false, entry.mPreviousHeld);
+        for (U32 e = 0; e < kEffectors; ++e)
+            if (effectorPart(e) >= 0 && (seeded & groupBit(static_cast<U32>(effectorPart(e)))))
+                entry.mPreviousEffectors[e] = entry.mHeldEffectors[e];
+        for (U32 part = 0; part < kPartGroups; ++part)
+            if (seeded & groupBit(part)) entry.mPartSmearTick[part] = false;
+    }
+    if (!full) return;
     entry.mFrameEaseApplied = false;
     entry.mFrameEaseWeight = 0.f;
     if (mConfig.ease && mConfig.easeAmount > 0.f && entry.mHaveCandidate &&
@@ -603,26 +727,29 @@ void ALSteppedAnimRuntime::capturePose(LLVOAvatar*, Entry& entry,
     {
         const F32 weight = decision_source
             ? decision_source->mFrameEaseWeight
-            : ALSteppedAnim::easeWeight(mConfig.easeAmount, entry.mCandidateSpeed,
-                ALSteppedAnim::speedAt(entry.mState.limbs, limbs.t));
+            : easeWeight(mConfig.easeAmount, entry.mCandidateSpeed, speedAt(entry.mState.limbs, limbs.t));
         entry.mFrameEaseApplied = true;
         entry.mFrameEaseWeight = weight;
         for (U32 i = 0; i < entry.mHeld.joints.size() && i < entry.mClasses.size(); ++i)
-            if (entry.mClasses[i] & (ALSteppedAnim::JC_BODY | ALSteppedAnim::JC_FACE | ALSteppedAnim::JC_GAZE))
+            if ((entry.mClasses[i] & groups & kGroupBits) &&
+                (entry.mClasses[i] & (JC_BODY | JC_FACE | JC_GAZE)))
             {
                 entry.mHeld.joints[i].rot = slerp(weight, entry.mSmooth.joints[i].rot, entry.mCandidate.joints[i].rot);
                 entry.mHeld.joints[i].pos = lerp(entry.mSmooth.joints[i].pos, entry.mCandidate.joints[i].pos, weight);
             }
     }
-    for (U32 i = 0; i < ALSteppedAnim::kEffectors; ++i) entry.mHeldEffectors[i] = limbs.p[i];
     entry.mHaveHeld = true;
     entry.mHaveCandidate = false;
     entry.mCandidateSpeed = 0.f;
     entry.mState.candidateSub = -1;
     std::fill(std::begin(entry.mState.subSeen), std::end(entry.mState.subSeen), false);
-    entry.mState.smearTick = mConfig.smear && ALSteppedAnim::smearHistoryReady(
+    entry.mState.smearTick = mConfig.smear && smearHistoryReady(
         had_previous && entry.mHavePreviousHeld,
         entry.mPreviousHeld.joints.size(), entry.mHeld.joints.size());
+    // Same parts share the torso's smear tick (a forced part keeps its cleared flag); a coarser part
+    // that did not tick keeps its own flag until its next tick.
+    for (U32 part = 0; part < kPartGroups; ++part)
+        if ((groups & groupBit(part)) && !(seeded & groupBit(part))) entry.mPartSmearTick[part] = entry.mState.smearTick;
 }
 
 void ALSteppedAnimRuntime::applyEffects(LLVOAvatar* avatar, Entry& entry,
@@ -630,15 +757,29 @@ void ALSteppedAnimRuntime::applyEffects(LLVOAvatar* avatar, Entry& entry,
 {
     if (mConfig.boil)
         for (U32 i = 0; i < render.joints.size() && i < entry.mClasses.size(); ++i)
-            if ((entry.mClasses[i] & entry.mAssignment.heldClasses) &&
+            if (ALSteppedAnim::jointHeld(entry.mClasses[i], entry.mAssignment.heldClasses) &&
                 (entry.mClasses[i] & (ALSteppedAnim::JC_BODY | ALSteppedAnim::JC_FACE | ALSteppedAnim::JC_GAZE)))
-                render.joints[i].rot *= ALSteppedAnim::boilRotation(
-                    entry.mSeed, entry.mDecision.boilIndex, i, mConfig.boilAmount);
+            {
+                // A coarser part boils on its own grid; Same parts (and a worn animesh copying its
+                // wearer's decision) on the actor's base boil index.
+                const U32 part = ALSteppedAnim::partOf(entry.mClasses[i]);
+                const S32 offset = entry.mAssignment.parts[part];
+                const S64 boil_index = offset == ALSteppedAnim::RATE_PLUS1 || offset == ALSteppedAnim::RATE_PLUS2
+                    ? entry.mDecision.partBoil[part] : entry.mDecision.boilIndex;
+                render.joints[i].rot *= ALSteppedAnim::boilRotation(entry.mSeed, boil_index, i, mConfig.boilAmount);
+            }
 
-    if (!entry.mState.smearTick || !mConfig.smear) return;
-    const F32 tick_dt = 1.f / llmax(entry.mDecision.rate, 2.f);
+    if (!mConfig.smear) return;
     for (U32 chain = 0; chain < entry.mSmearIndices.size(); ++chain)
     {
+        // Each chain smears on its own part's grid and only while that part is held (a Smooth
+        // limb is never rewritten, a coarser limb only on its own ticks).
+        const S32 root_index = entry.mSmearIndices[chain][0];
+        if (root_index < 0 || static_cast<size_t>(root_index) >= entry.mClasses.size()) continue;
+        const U16 chain_class = entry.mClasses[root_index];
+        const F32 tick_dt = ALSteppedAnim::smearChainDt(entry.mAssignment, chain_class, entry.mState.smearTick,
+            entry.mPartSmearTick[ALSteppedAnim::partOf(chain_class)], entry.mDecision.rate, mConfig.baseFps);
+        if (tick_dt <= 0.f) continue;
         F32 length = 0.f, minimum = std::numeric_limits<F32>::max();
         for (U32 j = 0; j < 2; ++j)
         {
@@ -652,7 +793,10 @@ void ALSteppedAnimRuntime::applyEffects(LLVOAvatar* avatar, Entry& entry,
             2, mConfig.smearStrength, mConfig.smearThreshold);
         if (!smear.active) continue;
         LLVector3 direction = displacement; direction.normalize();
-        for (S32 index : entry.mSmearIndices[chain]) if (index >= 0)
+        for (S32 index : entry.mSmearIndices[chain])
+            if (index >= 0 && static_cast<size_t>(index) < entry.mClasses.size() &&
+                ALSteppedAnim::jointHeld(entry.mClasses[index], entry.mAssignment.heldClasses) &&
+                static_cast<size_t>(index) < entry.mPreviousHeld.joints.size())
         {
             render.joints[index].rot = slerp(smear.lagT,
                 entry.mPreviousHeld.joints[index].rot, entry.mHeld.joints[index].rot);
@@ -668,14 +812,14 @@ void ALSteppedAnimRuntime::applyEffects(LLVOAvatar* avatar, Entry& entry,
 void ALSteppedAnimRuntime::writeOverlay(LLVOAvatar* avatar, Entry& entry,
                                         const ALSteppedAnim::PoseBuffer& render)
 {
-    const U32 skeleton = static_cast<U32>(avatar->getSkeletonJointCount());
     if (&render != &entry.mWritten) entry.mWritten = render;
     entry.mWrittenMask.assign(render.joints.size(), 0);
     entry.mLabels = LLVOAvatar::StepAnimLabelState();
     entry.mRootDelta.clear();
     for (U32 i = 0; i < render.joints.size(); ++i)
     {
-        LLJoint* joint = i < skeleton ? avatar->getSkeletonJoint(i) : avatar->getCollisionVolumeJoint(i - skeleton);
+        LLJoint* joint = poseJoint(avatar, entry, i);
+        if (!joint) continue;
         const ALSteppedAnim::JointLocal& target = render.joints[i];
         if (!rotEqual(joint->getRotation(), target.rot)) { joint->setRotation(target.rot); entry.mWrittenMask[i] |= WRITE_ROT; }
         if (!vecEqual(joint->getPosition(), target.pos)) { joint->setPosition(target.pos, false); entry.mWrittenMask[i] |= WRITE_POS; }
@@ -745,7 +889,7 @@ void ALSteppedAnimRuntime::applyHeld()
             const auto source = mEntries.find(entry.mDecisionSource);
             if (source != mEntries.end()) decision_source = &source->second;
         }
-        const U32 count = static_cast<U32>(avatar->getSkeletonJointCount() + avatar->getCollisionVolumeJointCount());
+        const U32 count = poseJointCount(avatar);
         const U64 region = avatar->getRegion() ? avatar->getRegion()->getHandle() : 0;
         const bool invalid = entry.mSkeletonSerial != avatar->getSteppedSkeletonSerial() ||
             entry.mJointCount != count || entry.mOverrideEpoch != avatar->getJointOverrideEpoch() ||
@@ -756,14 +900,25 @@ void ALSteppedAnimRuntime::applyHeld()
             entry.mSkeletonSerial = avatar->getSteppedSkeletonSerial();
             entry.mOverrideEpoch = avatar->getJointOverrideEpoch(); entry.mRegionHandle = region;
             buildClasses(avatar, entry);
-            if (!decision_source) entry.mDecision.capture = true;
+            // A rebuilt actor recaptures every part now; the force bits make a worn animesh on a
+            // coarser Attachments grid (attachedDecision) recapture with it instead of waiting for
+            // its next tick.
+            if (!decision_source)
+            {
+                entry.mDecision.capture = true;
+                entry.mDecision.captureGroups = ALSteppedAnim::kGroupBits;
+                entry.mDecision.forceGroups = ALSteppedAnim::kGroupBits;
+            }
         }
         readPose(avatar, entry, entry.mSmooth);
         const ALSteppedAnim::LimbFrame limbs = limbFrame(avatar, entry, mTime);
         if (decision_source)
         {
             entry.mState = decision_source->mState;
-            entry.mDecision = decision_source->mDecision;
+            // Attachments Same copies the wearer's frame; +1 / +2 takes the wearer's Attachments grid.
+            entry.mDecision = ALSteppedAnim::attachedDecision(entry.mAssignment, decision_source->mState,
+                decision_source->mDecision, decision_source->mAssignment.parts[ALSteppedAnim::PART_ATTACH],
+                mConfig.baseFps);
             if (entry.mInheritedEaseCandidateSerial != decision_source->mEaseCandidateSerial)
             {
                 entry.mCandidate = entry.mSmooth;
@@ -778,11 +933,18 @@ void ALSteppedAnimRuntime::applyHeld()
             ALSteppedAnim::observe(entry.mState, mConfig, limbs);
             updateEaseCandidate(entry, limbs, mTime);
         }
-        if (entry.mDecision.capture || !entry.mHaveHeld)
-            capturePose(avatar, entry, limbs, mTime, decision_source);
+        // Each part group refreshes its held joints on its own grid (all parts Same: on `capture`).
+        const U16 groups = entry.mHaveHeld
+            ? ALSteppedAnim::refreshGroups(entry.mAssignment, entry.mDecision) : ALSteppedAnim::kGroupBits;
+        if (groups) capturePose(avatar, entry, limbs, mTime, decision_source, groups, entry.mDecision.forceGroups);
         ALSteppedAnim::composeRender(entry.mSmooth, entry.mHeld, entry.mClasses,
                                      entry.mAssignment.heldClasses, entry.mWritten);
         applyEffects(avatar, entry, entry.mWritten);
+        // Attachment points on their own grid (or re-placed from the smooth pose) under the FINAL
+        // rendered body (after boil and smear moved the parents); nothing is touched while the
+        // Attachments part is Same.
+        ALSteppedAnim::applyAttachmentHolds(entry.mClasses, entry.mParents, entry.mAssignment.heldClasses,
+                                            entry.mAttachHeld, entry.mWritten);
         writeOverlay(avatar, entry, entry.mWritten);
     }
     if (sHasOverlay)
@@ -800,7 +962,6 @@ void ALSteppedAnimRuntime::restoreOverlay(LLVOAvatar* avatar, Entry& entry)
 {
     static LLCachedControl<bool> verify(gSavedSettings, "StepAnimDebugVerify");
     const bool epoch_changed = avatar->getJointOverrideEpoch() != entry.mWriteEpoch;
-    const U32 skeleton = static_cast<U32>(avatar->getSkeletonJointCount());
     bool restored = false;
     entry.mVerifyPose = entry.mSmooth;
     entry.mVerifyMask.assign(entry.mWrittenMask.size(), 0);
@@ -808,7 +969,8 @@ void ALSteppedAnimRuntime::restoreOverlay(LLVOAvatar* avatar, Entry& entry)
     for (U32 i = 0; i < entry.mWrittenMask.size(); ++i)
     {
         const U8 mask = entry.mWrittenMask[i]; if (!mask) continue;
-        LLJoint* joint = i < skeleton ? avatar->getSkeletonJoint(i) : avatar->getCollisionVolumeJoint(i - skeleton);
+        LLJoint* joint = poseJoint(avatar, entry, i);
+        if (!joint) continue;
         if (verify && (((mask & WRITE_ROT) && !rotEqual(joint->getRotation(), entry.mWritten.joints[i].rot)) ||
                        ((mask & WRITE_POS) && !vecEqual(joint->getPosition(), entry.mWritten.joints[i].pos)) ||
                        ((mask & WRITE_SCALE) && !vecEqual(joint->getScale(), entry.mWritten.joints[i].scale))))
@@ -889,6 +1051,21 @@ bool ALSteppedAnimRuntime::holdsFlexi(const LLVOAvatar* avatar) const
     return decision && mConfig.flexi && decision->hold && !decision->capture;
 }
 
+bool ALSteppedAnimRuntime::holdsFace(const LLVOAvatar* avatar) const
+{
+    if (!avatar) return false;
+    const auto found = mEntries.find(avatar->getID());
+    if (found == mEntries.end() || !found->second.mAssignment.stepped) return false;
+    const Entry& entry = found->second;
+    // One control with the face bones: held only while they are (Face part not Smooth, StepAnimFace
+    // on), and released on the Face part's own refresh frames. All parts Same: hold && !capture.
+    if (!ALSteppedAnim::jointHeld(ALSteppedAnim::JC_FACE | ALSteppedAnim::groupBit(ALSteppedAnim::PART_FACE),
+                                  entry.mAssignment.heldClasses))
+        return false;
+    return entry.mDecision.hold &&
+        !(ALSteppedAnim::refreshGroups(entry.mAssignment, entry.mDecision) & ALSteppedAnim::groupBit(ALSteppedAnim::PART_FACE));
+}
+
 bool ALSteppedAnimRuntime::holdsAttachmentFX(const LLVOAvatar* avatar) const
 {
     const auto* decision = decisionFor(avatar);
@@ -945,12 +1122,12 @@ void ALSteppedAnimRuntime::verifyRestored(const char* point)
         LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
         if (avatar && entry.mVerifyMask.size() == entry.mVerifyPose.joints.size())
         {
-            const U32 skeleton = static_cast<U32>(avatar->getSkeletonJointCount());
             for (U32 i = 0; i < entry.mVerifyMask.size(); ++i)
             {
                 const U8 mask = entry.mVerifyMask[i];
                 if (!mask) continue;
-                LLJoint* joint = i < skeleton ? avatar->getSkeletonJoint(i) : avatar->getCollisionVolumeJoint(i - skeleton);
+                LLJoint* joint = poseJoint(avatar, entry, i);
+                if (!joint) continue;
                 const ALSteppedAnim::JointLocal& expected = entry.mVerifyPose.joints[i];
                 if (((mask & WRITE_ROT) && !rotEqual(joint->getRotation(), expected.rot)) ||
                     ((mask & WRITE_POS) && !vecEqual(joint->getPosition(), expected.pos)) ||

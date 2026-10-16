@@ -1150,6 +1150,9 @@ void applySteppedConfig(const ALSteppedAnim::Config& c)
     gSavedSettings.setBOOL("StepAnimEase", c.ease);
     gSavedSettings.setF32("StepAnimEaseAmount", c.easeAmount);
     gSavedSettings.setBOOL("StepAnimMatchRotoInk", c.matchRoto);
+    // Part rates are preset-owned (built-in presets: all Same as torso).
+    for (U32 part = ALSteppedAnim::PART_HEAD; part < ALSteppedAnim::kPartGroups; ++part)
+        gSavedSettings.setS32(ALSteppedAnim::partSetting(part), c.parts[part]);
 }
 
 class ALSteppedPresetProvider final : public ALKitPresetProvider
@@ -1179,7 +1182,23 @@ public:
             }
             return false;
         }
-        return id.compare(0, 2, "u:") == 0 && mStore.load(id.substr(2));
+        if (id.compare(0, 2, "u:") != 0) return false;
+        const std::string name = id.substr(2);
+        const std::vector<std::string> names = mStore.names();
+        if (std::find(names.begin(), names.end(), name) == names.end()) return false;
+        // A preset saved before the part rates carries no StepAnimPart* keys and the store writes
+        // only the keys it has: reset the parts to Same first so an older preset means one grid.
+        // A failed load puts the seven values back exactly.
+        std::array<S32, ALSteppedAnim::kPartGroups> before{};
+        for (U32 part = ALSteppedAnim::PART_HEAD; part < ALSteppedAnim::kPartGroups; ++part)
+        {
+            before[part] = gSavedSettings.getS32(ALSteppedAnim::partSetting(part));
+            gSavedSettings.setS32(ALSteppedAnim::partSetting(part), ALSteppedAnim::RATE_SAME);
+        }
+        if (mStore.load(name)) return true;
+        for (U32 part = ALSteppedAnim::PART_HEAD; part < ALSteppedAnim::kPartGroups; ++part)
+            gSavedSettings.setS32(ALSteppedAnim::partSetting(part), before[part]);
+        return false;
     }
     bool canSaveUser() const override { return true; }
     bool saveUser(const std::string& name) override { return mStore.save(name); }

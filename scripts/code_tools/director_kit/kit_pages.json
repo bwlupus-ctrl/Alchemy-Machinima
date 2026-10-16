@@ -185,7 +185,9 @@
    "root_class": "panel_stepped_anim", "root_name": "stepped_tab_logic",
    "preset": {"mode": "provider", "provider": "stepped_anim"},
    "who_adapter": "stepped_anim", "actor_target": true,
-   "row_overrides": {"sa_rate_chips": {"reset_settings": "StepAnimRate"}},
+   "watch_extra": ["StepAnimFace", "StepAnimPartFace"],
+   "row_overrides": {"sa_rate_chips": {"reset_settings": "StepAnimRate"},
+                     "sa_part_face": {"reset_settings": "StepAnimFace,StepAnimPartFace"}},
    "selector_settings": {}, "card_enables": {}, "add_rows": [],
    "label_names": {}
   },

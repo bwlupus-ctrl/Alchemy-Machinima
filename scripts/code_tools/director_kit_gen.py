@@ -246,8 +246,12 @@ def validate_data(data: dict) -> None:
     #       loco_text (locomotion Status) (+2) (10/15).
     # 2095: Switchboard gains the two v1 status text boxes the mockup lacked: anim_selected_slot (Editing)
     #       and anim_import_status (Result) (+2) (10/15).
-    if len(pages) != 37 or row_count != 2095:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2095")
+    # 2103: Stepped part rates (+9): 'Part rates' card with Head, Face, Arms, Hands, Legs, Extras, Attachments
+    #       combos (StepAnimPart*), plus the per-actor Part picker and Part rate override rows (10/15).
+    #       The Part rates 'Face' combo is the one Face control (Smooth = StepAnimFace off); the old
+    #       'Face & lip-sync' toggle row is gone (-1) (10/15 review fix).
+    if len(pages) != 37 or row_count != 2103:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2103")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

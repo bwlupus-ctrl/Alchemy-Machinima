@@ -3368,15 +3368,11 @@ F32 LLVOAvatar::calcMorphAmount() const
 
 void LLVOAvatar::idleUpdateLipSync(bool voice_enabled)
 {
-    if (ALSteppedAnimRuntime::sActive)
+    // Lip-sync holds with the face bones: the actor's Face part (StepAnimFace off or Face part
+    // Smooth never holds; a coarser Face part releases on its own refresh frames).
+    if (ALSteppedAnimRuntime::sActive && ALSteppedAnimRuntime::instance().holdsFace(this))
     {
-        const ALSteppedAnim::FrameDecision* decision =
-            ALSteppedAnimRuntime::instance().decisionFor(this);
-        static LLCachedControl<bool> step_face(gSavedSettings, "StepAnimFace");
-        if (decision && step_face && decision->hold && !decision->capture)
-        {
-            return;
-        }
+        return;
     }
     // Use the Lipsync_Ooh and Lipsync_Aah morphs for lip sync
     if (voice_enabled
