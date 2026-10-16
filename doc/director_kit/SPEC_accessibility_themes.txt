@@ -1,0 +1,13 @@
+DIRECTOR THEMES + ACCESSIBILITY (spec; implement after the current final-review round). Repo I:/alchemy-machinima.
+
+User (10/16): "We need some more color theme options, pref stuff that also can accommodate blind users, high contrast theme." Chosen:
+THEMES (add to the existing Default + Second Life themes; same theme machinery, see the 10/15 theme commits and the Director theme gate/selftest):
+ T1 High contrast dark: near-black background (#000000/#0A0A0A), white text (#FFFFFF), accents bright yellow (#FFD400) and cyan (#00E5FF); borders and focus visible. Every text/background pair >= 7:1 (WCAG AAA); every non-text UI boundary (control borders, focus ring, slider track/thumb) >= 3:1.
+ T2 High contrast light: white background, black text (#000000), accent dark blue (#0033CC), same 7:1 / 3:1 rules.
+ T3 Color-blind safe: Okabe-Ito palette (#E69F00 orange, #56B4E9 sky blue, #009E73 bluish green, #F0E442 yellow, #0072B2 blue, #D55E00 vermillion, #CC79A7 reddish purple). No state may be distinguished by red-vs-green alone (on/off, changed, warning, error); pair each with a second cue already present (icon, text, shape) or add one. Verify in protanopia, deuteranopia and tritanopia simulation (Machado 2009 matrices) that every state pair stays distinguishable (delta-E >= 20 after simulation).
+ T4 Dark (soft): lower-contrast dark grey for long night sessions (text >= 4.5:1, AA).
+PREF:
+ P1 Text size: Director text scale 100% / 115% / 130% / 150% (setting DirectorTextScale, default 100%). Applies to all Director kit pages, popovers, the rail and the bottom bar. The layout reflows; labels must still FIT at every scale (the label-fit gate must pass at 150%, no allowances); popovers re-cap to the shell height. If the kit has fixed pixel heights, scale them.
+UI: Director Settings page (settings_group/director_settings_tab): a Theme picker with the 6 themes and a live preview swatch, plus the Text size control. Mockup data first, regenerate. Searchable keywords: theme, colour, color, contrast, high contrast, accessibility, color blind, colourblind, dark, light, text size, font, larger.
+GATES: extend the theme gate/selftest so every theme passes the contrast rules above (compute contrast ratios from the theme tokens: text vs bg 7:1 for T1/T2, 4.5:1 for others; UI boundaries 3:1), and the color-blind simulation check for T3. Never loosen the existing gate.
+Tests, then Opus + Codex (xhigh for the scale/layout part) + Argon (low effort) reviews; then build; then screenshots of every Director page in each new theme and at 150% text vs the mockup layout.
