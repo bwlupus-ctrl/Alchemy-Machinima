@@ -970,8 +970,8 @@ bool ALPanelCineLightRig::postBuild()
         {
             if(!handle.get())return std::string();
             static const char* const slots[] = { "Self", "A", "B", "C", "D" };
-            const S32 slot = (S32)ALCineLightRigManager::instance().selectedSlot();
-            const S32 fixture = handle.get()->mFixtureRoleIndex;
+            const S32 slot = std::clamp((S32)ALCineLightRigManager::instance().selectedSlot(), 0, 4);
+            const S32 fixture = std::clamp(handle.get()->mFixtureRoleIndex, 0, ALCineLightRigModel::LIGHT_COUNT - 1);
             // Global rig widgets and saved settings do not follow light selection.
             if (widget.find("cine_fixture_") == 0 || widget == "cine_gobo_library" || widget == "cine_gobo_preview")
                 return std::string(slots[slot]) + " rig, " + ROLE_NAMES[fixture] + " fixture";
