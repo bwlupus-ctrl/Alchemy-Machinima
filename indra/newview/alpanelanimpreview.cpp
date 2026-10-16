@@ -18,6 +18,7 @@
 #include "llbutton.h"
 #include "llfloater.h"              // gFloaterView (raise host on preview click)
 #include "llfocusmgr.h"             // gFocusMgr (preview mouse capture)
+#include "llframetimer.h"           // LLFrameTimer::getFrameCount (resize settle)
 #include "llkeyframemotion.h"       // force the preview loop
 #include "llrender.h"               // gGL (preview blit)
 #include "llscriptruntimeperms.h"   // SCRIPT_PERMISSIONS (revoke)
@@ -140,6 +141,40 @@ void ALPanelAnimPreview::draw()
         {
             mAnimationPreview = new LLPreviewAnimation(pane.getWidth(), pane.getHeight());
             mAnimationPreview->setZoom(2.0f);
+            mPreviewW = mPendingW = pane.getWidth();
+            mPreviewH = mPendingH = pane.getHeight();
+        }
+    }
+    else if (mAnimationPreview && mPreviewCtrl)
+    {
+        // The texture is a fixed size; blitting it into a resized rect would stretch the avatar.
+        // Recreate it at the new size once the rect has held still for a few frames, then
+        // re-arm the looping animation on the fresh dummy.
+        const LLRect pane = previewRect();
+        const S32 w = pane.getWidth();
+        const S32 h = pane.getHeight();
+        if (w > 0 && h > 0 && (w != mPreviewW || h != mPreviewH))
+        {
+            const U32 frame = LLFrameTimer::getFrameCount();
+            if (w != mPendingW || h != mPendingH)
+            {
+                mPendingW = w;
+                mPendingH = h;
+                mPendingSinceFrame = frame;
+            }
+            else if (frame - mPendingSinceFrame >= 10)
+            {
+                mAnimationPreview = new LLPreviewAnimation(w, h);
+                mAnimationPreview->setZoom(2.0f);
+                mPreviewW = w;
+                mPreviewH = h;
+                mLoopedAnimId.setNull();
+            }
+        }
+        else
+        {
+            mPendingW = mPreviewW;
+            mPendingH = mPreviewH;
         }
     }
 

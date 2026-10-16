@@ -20,10 +20,7 @@
   "panel_dpage_cast_dance.xml|no-scroller-overflow|dance_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
   "panel_dpage_cast_dance.xml|clipped|director_dance_ball_panel (0,30,711,568) extends outside dance_tab_content (0,0,711,525)",
   "panel_dpage_cast_ghosts.xml|no-scroller-overflow|ghosts_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
-  "panel_dpage_cast_ghosts.xml|clipped|ghost_studio_panel (0,8,354,760) extends outside ghosts_tab_content (0,0,374,550)",
-  "panel_dpage_cast_path.xml|scroll-content-overflow|path_scroll: content path_scroll_content is smaller than its children on height (not auto-fit)",
-  "panel_dpage_performance_gaze.xml|no-scroller-overflow|gaze_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
-  "panel_dpage_performance_gaze.xml|clipped|director_gaze_panel (0,30,516,1910) extends outside gaze_tab_content (0,0,711,525)"
+  "panel_dpage_cast_ghosts.xml|clipped|ghost_studio_panel (0,8,354,760) extends outside ghosts_tab_content (0,0,374,550)"
  ],
  "shared_writers": {
   "DirectorV2SelectedLight": {"attrs": ["sel_setting", "mirror_setting"], "reason": "shared selection state, not authored content", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.16 and 5.1", "expires": "WP12"}

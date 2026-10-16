@@ -9,8 +9,8 @@
  * The page root of the generated kit page (class "panel_light_cues"). It drives the same
  * ALCineLightRig cue list and transport as the Lighting Cue Stack floater
  * (alfloatercinelightcues.cpp): Add appends a complete live-rig snapshot, Remove deletes the
- * selected cue, Play runs it through cueGoto(), Stop calls cueRelease(). Selecting a row opens
- * the floater at that cue, where the timing, FX and list files are edited.
+ * selected cue, Play runs it through cueGoto(), Stop calls cueRelease(). Selecting a row only selects
+ * it; double-clicking opens the floater at that cue, where the timing, FX and list files are edited.
  */
 
 #ifndef AL_ALPANELLIGHTCUES_H
@@ -35,7 +35,7 @@ private:
     S32  selectedCueIndex() const;
     void refreshRows(bool force);
     void refreshButtons();
-    void onSelection();
+    void onOpen();      // double-click a row: open the floater at that cue
     void onAdd();
     void onRemove();
     void onPlay();

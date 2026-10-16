@@ -27,6 +27,30 @@
 // The injector name must match class="panel_gaze_cues" in the generated page XML.
 static LLPanelInjector<ALPanelGazeCues> t_panel_gaze_cues("panel_gaze_cues");
 
+ALPanelGazeCues::~ALPanelGazeCues()
+{
+    endPreview();
+}
+
+void ALPanelGazeCues::endPreview()
+{
+    // A preview started here must not outlive the page (hidden tab, closed Director, destroy).
+    if (mPreviewActor.notNull() && LLActorMover::instanceExists())
+    {
+        LLActorMover::instance().clearGazeCuePreview(mPreviewActor);
+    }
+    mPreviewActor.setNull();
+}
+
+void ALPanelGazeCues::onVisibilityChange(bool new_visibility)
+{
+    if (!new_visibility)
+    {
+        endPreview();
+    }
+    LLPanel::onVisibilityChange(new_visibility);
+}
+
 bool ALPanelGazeCues::postBuild()
 {
     mCueList = getChild<LLScrollListCtrl>("cue_list");
@@ -35,7 +59,9 @@ bool ALPanelGazeCues::postBuild()
     mPlayBtn = getChild<LLButton>("gaze_cue_play");
     mStopBtn = getChild<LLButton>("gaze_cue_stop");
 
-    mCueList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSelection(); });
+    // A click only selects (so Remove / Play act on the row); a double-click opens the floater.
+    mCueList->setCommitCallback([this](LLUICtrl*, const LLSD&) { refreshButtons(); });
+    mCueList->setDoubleClickCallback([this]() { onOpen(); });
     mAddBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAdd(); });
     mRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onRemove(); });
     mPlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPlay(); });
@@ -84,6 +110,10 @@ void ALPanelGazeCues::refreshRows(bool force)
     {
         return;
     }
+    if (actor != mSeenActor)
+    {
+        endPreview(); // Stop only acts on the shown actor, so the old one's preview ends here
+    }
     const S32 old_selection = actor == mSeenActor ? selectedCueIndex() : -1;
     mSeenRevision = revision;
     mSeenActor = actor;
@@ -130,7 +160,7 @@ void ALPanelGazeCues::refreshButtons()
                                              : std::string("No cue preview is playing"));
 }
 
-void ALPanelGazeCues::onSelection()
+void ALPanelGazeCues::onOpen()
 {
     const LLUUID actor = actorId();
     const S32 index = selectedCueIndex();
@@ -216,12 +246,21 @@ void ALPanelGazeCues::onRemove()
 
 void ALPanelGazeCues::onPlay()
 {
-    LLActorMover::instance().setGazeCuePreview(actorId(), selectedCueIndex());
+    const LLUUID actor = actorId();
+    if (mPreviewActor.notNull() && mPreviewActor != actor)
+    {
+        endPreview();
+    }
+    if (LLActorMover::instance().setGazeCuePreview(actor, selectedCueIndex()))
+    {
+        mPreviewActor = actor;
+    }
     refreshButtons();
 }
 
 void ALPanelGazeCues::onStop()
 {
     LLActorMover::instance().clearGazeCuePreview(actorId());
+    mPreviewActor.setNull();
     refreshButtons();
 }

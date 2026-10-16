@@ -39,11 +39,23 @@ bool ALPanelActorMover::postBuild()
     // initial selection (draw()'s diff-sync only reacts to changes)
     mScopeRadio->setValue(gSavedSettings.getBOOL("ActorMoverSync") ? 1 : 0);
 
-    mHeadingDial = getChild<ALCompassDial>("heading_dial");
+    // The standalone floater's panel names the dial "heading_dial"; the generated Director Move
+    // page (a kit page rooted on this class) names its Heading row "heading_spinner".
+    mHeadingDial = findChild<ALCompassDial>("heading_dial");
+    if (!mHeadingDial)
+    {
+        mHeadingDial = getChild<ALCompassDial>("heading_spinner");
+    }
     mHeadingDial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDialCommit(); });
 
     mWalkBtn = getChild<LLButton>("btn_walk");
-    mStopBtn = getChild<LLButton>("btn_stop");
+    // Kit widget names are unique across Director pages and Camera > Takes owns "btn_stop", so
+    // the generated Move page names its Stop row "move_btn_stop".
+    mStopBtn = findChild<LLButton>("btn_stop");
+    if (!mStopBtn)
+    {
+        mStopBtn = getChild<LLButton>("move_btn_stop");
+    }
     mWalkBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickWalk(); });
     mStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickStop(); });
 

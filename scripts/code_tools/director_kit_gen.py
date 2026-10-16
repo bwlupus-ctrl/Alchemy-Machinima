@@ -47,8 +47,17 @@ EXPECTED_SHORTCUTS = {
     ("shot_tab", "CinematicCamArcHeightDrift", "moves_tab/hero_arc_height_drift"),
     ("cine_light_rig_tab", "cine_easy_cone_feather", "atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider"),
     ("cine_light_rig_tab", "cine_easy_shaft_length", "atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider"),
-    # 10/13: the user approved 5 image_tab -> exposure_tab shortcuts; add them when
-    # exposure_tab becomes a kit page (see kit_pages.json image_tab omit_rows_note).
+    # 10/13: the user approved 5 image_tab -> exposure_tab shortcuts. exposure_tab became a kit page
+    # 10/15, and the user then asked for them in an Easy card at the top of Look > Image.
+    ("image_tab", "tonemap_type_combo", "exposure_tab/exp_tonemap_type"),
+    ("image_tab", "exposure_slider", "exposure_tab/exp_exposure"),
+    ("image_tab", "tonemap_legacy_gamma_skies", "exposure_tab/exp_legacy_gamma_skies"),
+    ("image_tab", "lpm_toneexp_slider", "exposure_tab/exp_amd_exposure"),
+    ("image_tab", "slog_ev_slider", "exposure_tab/exp_slog_ev"),
+    # 10/15: the mockup's Bloom strength / Threshold rows on Light > Exposure are shortcuts of their
+    # home on Look > Bloom & glow (the user's standing mockup-wins rule; they were a link row before).
+    ("exposure_tab", "exp_bloom_strength", "bloom_glow_tab/set_RenderBloomStrength"),
+    ("exposure_tab", "exp_bloom_threshold", "bloom_glow_tab/set_RenderBloomThreshold"),
 }
 
 STRIP = {"left", "top", "bottom", "width", "height", "follows", "layout",
@@ -250,8 +259,12 @@ def validate_data(data: dict) -> None:
     #       combos (StepAnimPart*), plus the per-actor Part picker and Part rate override rows (10/15).
     #       The Part rates 'Face' combo is the one Face control (Smooth = StepAnimFace off); the old
     #       'Face & lip-sync' toggle row is gone (-1) (10/15 review fix).
-    if len(pages) != 37 or row_count != 2103:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2103")
+    # 2105: Path gains the two v1 readouts the mockup lacked: path_readout (Summary, the length and
+    #       duration line) and suspend_status (the paused-walk Status line) (+2) (10/15 batch 2).
+    # 2107: Gaze gains the v1 Performance preset combo and its reset button, which the mockup lacked
+    #       (gaze_performance_combo, reset_gaze_performance) (+2) (10/15 batch 2).
+    if len(pages) != 37 or row_count != 2107:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2107")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -750,8 +763,12 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
         attrs["undo_context"] = str(cfg["undo_context"])
     if cfg.get("chip_mode"):
         attrs["chip_mode"] = str(cfg["chip_mode"])
-    settings = [] if (cfg.get("no_history") or cfg.get("own_history")) else sorted(
-        {str(row["s"]) for row in all_rows(page) if row.get("s")} | set(cfg.get("watch_extra", [])))
+    # own_history: the settings whose undo another owner already records (Exposure and its
+    # shortcuts on Image: ALExposureSettingsHistory tracks the env EVs, auto exposure and
+    # RenderExposure). Only those leave the kit watch list; every other setting keeps kit undo.
+    own = set(cfg.get("own_history", []))
+    settings = [] if cfg.get("no_history") else sorted(
+        ({str(row["s"]) for row in all_rows(page) if row.get("s")} - own) | set(cfg.get("watch_extra", [])))
     if settings:
         attrs["watch_settings"] = ",".join(settings)
     return attrs
@@ -765,11 +782,14 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
         for row in all_rows(page):
             row["bind"] = "none"
     if cfg.get("own_history"):
-        # The page owns its undo (Exposure: ALExposureSettingsHistory and its Undo/Redo buttons).
-        # Rows stay bound to their settings but the kit history neither watches them nor records
-        # their widget edits, so one change is not two undo steps.
+        # Another owner records these settings' undo (Exposure: ALExposureSettingsHistory and its
+        # Undo/Redo buttons). Their rows stay bound to the settings but the kit history neither
+        # watches them nor records their widget edits, so one change is not two undo steps. Rows
+        # of every other setting keep kit watch and widget history.
+        own_settings = set(cfg["own_history"])
         for row in all_rows(page):
-            row["no_widget_history"] = True
+            if row.get("s") in own_settings:
+                row["no_widget_history"] = True
     by_name, by_control = source_index(source_paths) if source_paths else ({}, defaultdict(list))
     names: set[str] = set()
     root_attrs = {"follows": "all", "name": cfg.get("root_name", page["name"] + "_logic")}
@@ -1502,7 +1522,9 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "light_group/practicals_tab": "kit (P0)",
                 "light_group/light_cues_tab": "kit (P0)",
                 "performance_group/switchboard_tab": "kit (P0)",
-                "performance_group/polish_tab": "kit (P0)"}
+                "performance_group/polish_tab": "kit (P0)",
+                "cast_group/move_tab": "kit (P0)",
+                "cast_group/props_tab": "kit (P0)"}
     # Pinned per conversion batch (user-approved 10/13: lower as pages convert, never raise).
     # World/Lens batch: kit 7 -> 13, legacy 27 -> 21. 10/14: new Stepped page (kit_pages
     # entry => kit (P0)) kit 13 -> 14; legacy unchanged at 21. 10/14 Camera+Capture
@@ -1510,7 +1532,11 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # 10/15 Light Actors: kit 21 -> 22, legacy 14 -> 13
     # 10/15 Director Settings: kit 22 -> 23, legacy unchanged at 13.
     # 10/15 legacy conversion batch 1, Animate: kit 23 -> 24, legacy 13 -> 12.
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 30, "pure kit (new)": 1, "legacy": 6}):
+    # 10/15 batch 2, cast_group/move_tab: legacy 6 -> 5.
+    # 10/15 batch 2, performance_group/gaze_tab: legacy 3 -> 2.
+    # 10/15 batch 2, cast_group/path_tab: legacy 4 -> 3.
+    # 10/15 batch 2, cast_group/props_tab: legacy 5 -> 4.
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 34, "pure kit (new)": 1, "legacy": 2}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -1579,7 +1605,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
         checks = []
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 30, "pure kit (new)": 1, "legacy": 6})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 34, "pure kit (new)": 1, "legacy": 2})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -1621,7 +1647,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
             apply_page_features(expected_legacy, key, config.get("page_features", {}))
             apply_kit_xui_style(expected_legacy)
             legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(expected_legacy)
-        checks.append(("6 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 6))
+        checks.append(("2 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 2))
         dials = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]
         checks.append(("all compass dials use kit geometry without duplicate readout",

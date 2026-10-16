@@ -7883,6 +7883,17 @@
       <key>Value</key>
       <integer>-1</integer>
     </map>
+    <key>DirectorImageEasyMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Look &gt; Image Easy mode: show only the Easy card (the five exposure shortcuts) instead of the whole page. A UI preference; it does not gate rendering.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>DirectorLookAtCameraEnabled</key>
     <map>
       <key>Comment</key>
@@ -8168,6 +8179,17 @@
       <string>F32</string>
       <key>Value</key>
       <real>0.0</real>
+    </map>
+    <key>DirectorExposureEasyMode</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Light &gt; Exposure Basics mode: show only Camera exposure and Bloom &amp; filters instead of every card. A UI preference; it does not gate rendering.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
     </map>
     <key>DirectorGazeSoftRecruitDeg</key>
     <map>

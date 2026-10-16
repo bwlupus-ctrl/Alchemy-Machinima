@@ -18,11 +18,13 @@
 #include "aluirefresh.h"
 #include "llbutton.h"
 #include "llfloaterreg.h"
+#include "llnotificationsutil.h"
 #include "llpresentationtime.h"
 #include "llscrolllistctrl.h"
 #include "llscrolllistitem.h"
 
 #include <algorithm>
+#include <memory>
 
 // The injector name must match class="panel_light_cues" in the generated page XML.
 static LLPanelInjector<ALPanelLightCues> t_panel_light_cues("panel_light_cues");
@@ -56,7 +58,9 @@ bool ALPanelLightCues::postBuild()
     mPlayBtn = getChild<LLButton>("cue_goto");
     mStopBtn = getChild<LLButton>("cue_release");
 
-    mCueRows->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSelection(); });
+    // A click only selects (so Remove / Play act on the row); a double-click opens the floater.
+    mCueRows->setCommitCallback([this](LLUICtrl*, const LLSD&) { refreshButtons(); });
+    mCueRows->setDoubleClickCallback([this]() { onOpen(); });
     mAddBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAdd(); });
     mRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onRemove(); });
     mPlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPlay(); });
@@ -143,7 +147,7 @@ void ALPanelLightCues::refreshButtons()
                                           : std::string("Select a cue first"));
 }
 
-void ALPanelLightCues::onSelection()
+void ALPanelLightCues::onOpen()
 {
     const S32 index = selectedCueIndex();
     const CueList& list = ALCineLightRigManager::instance().selected().cueList();
@@ -164,15 +168,29 @@ void ALPanelLightCues::commitListEdit(const CueList& after, const std::string& l
     rig.setCueList(after);
     if (ALKitShell* shell = ALKitShell::find(this))
     {
+        // The step restores a whole-list snapshot, so it is only valid while the list is exactly
+        // as this step (or its own undo/redo) left it. Track the cue revision it expects; if the
+        // Lighting Cue Stack floater (or a load/save) has edited the list since, the step is
+        // dropped as a no-op with a notice instead of overwriting those later edits.
+        auto expected = std::make_shared<U64>(rig.cueRevision());
         shell->history().recordCustom("light_cue_list", label,
-            [slot, before, after](bool redo, std::string& reason)
+            [slot, before, after, expected](bool redo, std::string& reason)
             {
                 if (!ALCineLightRigManager::instanceExists())
                 {
                     reason = "The light rig is gone";
                     return false;
                 }
-                ALCineLightRigManager::instance().at(slot).setCueList(redo ? after : before);
+                ALCineLightRig& target = ALCineLightRigManager::instance().at(slot);
+                if (target.cueRevision() != *expected)
+                {
+                    LLSD args;
+                    args["MESSAGE"] = "The light cues were edited elsewhere since this step, so it was dropped";
+                    LLNotificationsUtil::add("SystemMessageTip", args);
+                    return true; // consumed as a no-op: it must not block earlier undo steps
+                }
+                target.setCueList(redo ? after : before);
+                *expected = target.cueRevision();
                 return true;
             });
     }

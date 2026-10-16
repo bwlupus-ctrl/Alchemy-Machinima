@@ -283,6 +283,15 @@ EXPECTED_SHORTCUTS = {
     ("shot_tab", "CinematicCamArcDuration"): "moves_tab/hero_arc_duration",
     ("shot_tab", "CinematicCamArcGeneratorAngle"): "moves_tab/hero_arc_angle",
     ("shot_tab", "CinematicCamArcHeightDrift"): "moves_tab/hero_arc_height_drift",
+    # 10/15: the five approved image_tab -> exposure_tab shortcuts (Easy card on Look > Image).
+    ("image_tab", "tonemap_type_combo"): "exposure_tab/exp_tonemap_type",
+    ("image_tab", "exposure_slider"): "exposure_tab/exp_exposure",
+    ("image_tab", "tonemap_legacy_gamma_skies"): "exposure_tab/exp_legacy_gamma_skies",
+    ("image_tab", "lpm_toneexp_slider"): "exposure_tab/exp_amd_exposure",
+    ("image_tab", "slog_ev_slider"): "exposure_tab/exp_slog_ev",
+    # 10/15: Light > Exposure Bloom rows are shortcuts of their home on Look > Bloom & glow.
+    ("exposure_tab", "exp_bloom_strength"): "bloom_glow_tab/set_RenderBloomStrength",
+    ("exposure_tab", "exp_bloom_threshold"): "bloom_glow_tab/set_RenderBloomThreshold",
 }
 
 ADAPTERS = {

@@ -23,7 +23,7 @@ Defaults and ranges are the generated XML values. "Handler" is the function boun
 | 4 | btn_anim_setloco | button | `onAnimSetLoco` (`:6353`) -> `applySelectedLocomotion(selectedAnimId())` | n/a | enabled when a row and a member exist | OK |
 | 5 | btn_anim_play | button | `onAnimPlayLocal(true)` (`:6379`) | n/a | enabled when a row and the avatar exist | OK |
 | 6 | btn_anim_stop | button | `onAnimPlayLocal(false)` | n/a | same as play | OK |
-| 7 | anim_hint | readout `text` (LLTextBox), Advanced | none; refresh sets text and visibility only when it changes | text | `:6684-6687` | OK (hidden by refresh when there is nothing to say; row label stays) |
+| 7 | anim_hint | readout `text` (LLTextBox), basic (was Advanced; the v1 guidance is visible by default) | none; refresh sets text and visibility only when it changes | text | `:6684-6687` | OK (hidden by refresh when there is nothing to say; row label stays) |
 | 8 | paste_lbl | readout `text`, authored static text | none; no runtime writer | text | n/a | OK |
 | 9 | paste_uuid_editor | text `line_editor` (LLLineEditor) | read by `pasteAnimId()` (`:6265`), trimmed and validated as a UUID | free text; max length 36 set in bind (was a v1 XML attribute) | refresh caches the text and derives button enablement | OK |
 | 10 | btn_paste_play | button | `onPastePlayLocal(true)` (`:6395`) | n/a | enabled when UUID valid and avatar exists | OK |
@@ -37,7 +37,7 @@ Defaults and ranges are the generated XML values. "Handler" is the function boun
 | 18 | loco_text | readout `text` (LLTextBox), authored "Select a cast member" | none; refresh writes the role status line (`:6549-6551`) | text | refresh | OK |
 | 19 | btn_clear_loco | button | `onClickClearLoco` (`:6415`) | n/a | enabled when the role has an entry | OK (functional manifest SKIP: destructive) |
 | 20 | btn_open_animexp | button | `LLFloaterReg::showInstance("animation_explorer")` (bind, `:2513`) | n/a | n/a | OK |
-| 21 | locomotion_editor_label | readout `text`, Advanced, authored static text | none | text | n/a | OK |
+| 21 | locomotion_editor_label | readout `text`, basic (was Advanced), authored static text | none | text | n/a | OK |
 | 22 | animation_preview | custom row hosting `panel` class `panel_anim_preview`, file `panel_anim_preview_pane.xml` (ALPanelAnimPreview) | looked up as `ALPanelAnimPreview` by name; `previewAnim(id, source)` called from refresh (`:6767`) | row height 186; the panel is its own preview rect (`animation_preview_frame` child) | the panel blits its dummy in `draw()` via `previewRect()`; mouse orbit/zoom gated to that rect | OK (no generic functional exercise: `NO_EXERCISE`, same class as other custom hosts) |
 | 23 | capture_all_check | toggle `kit_switch`, setting `AnimExplorerCaptureAll` | kit setting binding; consumer `llviewermessage.cpp:4351` (`LLCachedControl<bool>`) | Boolean, default 0 | setting watch | OK |
 | 24 | btn_anim_ex_stop | button | `ALPanelAnimPreview::onStop`, attached by `bindActionControls(root)` | n/a | enabled by `refreshActionButtons()` in the panel's `draw` | OK |

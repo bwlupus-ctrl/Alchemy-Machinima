@@ -56,10 +56,21 @@ bool ALPanelPropMover::postBuild()
     mPropList      = getChild<LLScrollListCtrl>("prop_list");
     mNodeList      = getChild<LLScrollListCtrl>("node_list");
     mPathSpeedSpin = getChild<LLSpinCtrl>("path_speed_spin");
-    mEndModeCombo  = getChild<LLComboBox>("end_mode_combo");
+    // Kit widget names are unique across Director pages (Move owns end_mode_combo, Camera >
+    // Takes owns btn_stop, the shell owns btn_remove, Time owns status_text), so the generated
+    // Props page names those four with a "prop_" prefix; the standalone floater keeps the v1 names.
+    mEndModeCombo  = findChild<LLComboBox>("end_mode_combo");
+    if (!mEndModeCombo)
+    {
+        mEndModeCombo = getChild<LLComboBox>("prop_end_mode_combo");
+    }
     mNodeSkidSpin  = getChild<LLSpinCtrl>("node_skid_spin");
     mNodeSpeedSpin = getChild<LLSpinCtrl>("node_speed_spin");
-    mStatusText    = getChild<LLTextBox>("status_text");
+    mStatusText    = findChild<LLTextBox>("status_text");
+    if (!mStatusText)
+    {
+        mStatusText = getChild<LLTextBox>("prop_status_text");
+    }
 
     mBtnCaptureOrient  = getChild<LLButton>("btn_capture_orient");
     mRotationModeCombo = getChild<LLComboBox>("rotation_mode_combo");
@@ -87,12 +98,22 @@ bool ALPanelPropMover::postBuild()
     mNodeList->setCommitCallback(boost::bind(&ALPanelPropMover::onSelectNode, this));
 
     getChild<LLButton>("btn_enroll")->setClickedCallback(boost::bind(&ALPanelPropMover::onEnrollSelected, this));
-    getChild<LLButton>("btn_remove")->setClickedCallback(boost::bind(&ALPanelPropMover::onRemoveProp, this));
+    LLButton* remove_btn = findChild<LLButton>("btn_remove");
+    if (!remove_btn)
+    {
+        remove_btn = getChild<LLButton>("prop_btn_remove");
+    }
+    remove_btn->setClickedCallback(boost::bind(&ALPanelPropMover::onRemoveProp, this));
     getChild<LLButton>("btn_node_add")->setClickedCallback(boost::bind(&ALPanelPropMover::onAddNode, this));
     getChild<LLButton>("btn_node_del")->setClickedCallback(boost::bind(&ALPanelPropMover::onDeleteNode, this));
     getChild<LLButton>("btn_node_clear")->setClickedCallback(boost::bind(&ALPanelPropMover::onClearNodes, this));
     getChild<LLButton>("btn_drive")->setClickedCallback(boost::bind(&ALPanelPropMover::onDrive, this));
-    getChild<LLButton>("btn_stop")->setClickedCallback(boost::bind(&ALPanelPropMover::onStop, this));
+    LLButton* stop_btn = findChild<LLButton>("btn_stop");
+    if (!stop_btn)
+    {
+        stop_btn = getChild<LLButton>("prop_btn_stop");
+    }
+    stop_btn->setClickedCallback(boost::bind(&ALPanelPropMover::onStop, this));
     getChild<LLButton>("btn_drive_all")->setClickedCallback(boost::bind(&ALPanelPropMover::onDriveAll, this));
     getChild<LLButton>("btn_stop_all")->setClickedCallback(boost::bind(&ALPanelPropMover::onStopAll, this));
 
@@ -169,6 +190,12 @@ void ALPanelPropMover::refresh()
     const S32    scroll_pos = mPropList->getScrollPos();
     mPropList->clearRows();
 
+    // The Director's kit page keeps widget and column names unique across pages, so its Props
+    // list names two columns "prop_name" and "prop_state"; the standalone floater keeps the
+    // v1 "name" and "state".
+    const char* name_column  = mPropList->getColumn("prop_name")  ? "prop_name"  : "name";
+    const char* state_column = mPropList->getColumn("prop_state") ? "prop_state" : "state";
+
     S32 driving = 0;
     for (const LLUUID& id : opm.getRoster())
     {
@@ -180,11 +207,11 @@ void ALPanelPropMover::refresh()
 
         LLSD row;
         row["value"] = id;
-        row["columns"][0]["column"] = "name";
+        row["columns"][0]["column"] = name_column;
         row["columns"][0]["value"]  = prop_display_name(id);
         row["columns"][1]["column"] = "nodes";
         row["columns"][1]["value"]  = nodes;
-        row["columns"][2]["column"] = "state";
+        row["columns"][2]["column"] = state_column;
         row["columns"][2]["value"]  = !resolved ? "away"
                                     : is_driving ? "driving" : "-";
         mPropList->addElement(row, ADD_BOTTOM);

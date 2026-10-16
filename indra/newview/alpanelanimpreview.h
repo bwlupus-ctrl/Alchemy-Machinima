@@ -89,6 +89,13 @@ private:
 
     LLView*                       mPreviewCtrl = nullptr;   // preview placement rect
     LLPointer<LLPreviewAnimation> mAnimationPreview;        // this panel's own dummy
+    // Size the dynamic texture was created at, and a candidate new size awaiting a short settle
+    // so a live drag-resize recreates it once, not every frame.
+    S32 mPreviewW = 0;
+    S32 mPreviewH = 0;
+    S32 mPendingW = 0;
+    S32 mPendingH = 0;
+    U32 mPendingSinceFrame = 0;
 
     LLUUID mAnimId;          // anim the host wants previewed / acted on
     LLUUID mSourceObject;    // object playing it (revoke / blacklist target)

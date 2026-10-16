@@ -20,7 +20,7 @@
      layout="topleft"
      left="0"
      name="cue_list"
-     tool_tip="Gaze cues for the selected actor. Select a row to open it in the Gaze Cues window."
+     tool_tip="Gaze cues for the selected actor. Double-click a cue to edit it in the Gaze Cues window."
      top="0"
      width="344">
         <scroll_list.columns

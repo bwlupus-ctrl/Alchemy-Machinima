@@ -184,6 +184,12 @@ FORCED_SAFE_SKIPS = {
                             ["agent_send"]),
 }
 
+# Kit-page rows that keep a FORCED_SAFE_SKIPS skip after their page became a generated kit page
+# (Performance > Gaze converted 10/15; Look at camera mode still can drive the AO on SELF).
+KIT_FORCED_SAFE_SKIPS = {
+    ("gaze_tab", "look_at_camera_mode"): FORCED_SAFE_SKIPS["look_at_camera_mode"],
+}
+
 # Controls that write the user's own saved data to disk. The harness never
 # toggles or otherwise drives them: turning Remember on would persist the
 # session's Avatar Light Response edits into the user's file. Keyed by
@@ -569,6 +575,7 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
         "practicals_tab": "ALPanelPracticals::postBuild",
         "gaze_cues_tab": "ALPanelGazeCues::postBuild",
         "exposure_tab": "ALPanelExposurePage::postBuild",
+        "props_tab": "ALPanelPropMover::postBuild",
     })
     out = []
     for page, xml_rows in kit_pages.items():
@@ -655,6 +662,14 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
             if exercise == "none":
                 action = "NO_EXERCISE"
                 reason = "no generic exercise for generated kit kind '%s'" % kind
+            forced_skip = KIT_FORCED_SAFE_SKIPS.get((page, widget))
+            if forced_skip:
+                # The row stayed a safe SKIP while its page was a legacy embed (FORCED_SAFE_SKIPS);
+                # converting the page must not turn it into a RUN.
+                reason, forced_hazards = forced_skip
+                hazards = list(forced_hazards)
+                action = "SKIP"
+                test_value = test_resolved = None
             c = {"status": "GENERATED_KIT", "exercise": exercise, "etype": etype,
                  "name": widget, "label": row.get("label", ""), "page": page,
                  "version": "v2", "action": action, "setting": setting,
@@ -1685,7 +1700,7 @@ SELFTEST_CPP = os.path.join(REPO, "indra", "newview", "aluiperfselftest.cpp")
 GEN_REPORT_PATH = os.path.join(HERE, "director_kit", "gen_report.txt")
 # Shrink-only pin (user-approved 10/13: lower as pages convert, never raise).  Mirrors the
 # "legacy" count director_kit_gen.py pins in its classification table.
-KNOWN_LEGACY_MAX = 6
+KNOWN_LEGACY_MAX = 2
 # The EXPLICIT, hand-maintained list of the unthemed (legacy) pages, by page key.  It is NOT
 # regenerated from the XML flags: that would let a newly unthemed page silently replace a
 # converted one.  It can only SHRINK.  The check fails if a page outside the list is legacy
@@ -1693,14 +1708,10 @@ KNOWN_LEGACY_MAX = 6
 # remove it as the page converts).
 # Gaze, Dance, Ghosts, Move, Path, Props.
 # (Animate converted 10/15: 13 -> 12; Polish 12 -> 11; Switchboard 11 -> 10; Light Cues 10 -> 9;
-# Practicals 9 -> 8; Gaze Cues 8 -> 7; Exposure 7 -> 6.)
+# Practicals 9 -> 8; Gaze Cues 8 -> 7; Exposure 7 -> 6; batch 2: cast_group/move_tab 6 -> 5, cast_group/props_tab 5 -> 4, cast_group/path_tab 4 -> 3, performance_group/gaze_tab 3 -> 2.)
 KNOWN_LEGACY_PAGES = (
-    "performance_group/gaze_tab",
     "cast_group/dance_tab",
     "cast_group/ghosts_tab",
-    "cast_group/move_tab",
-    "cast_group/path_tab",
-    "cast_group/props_tab",
 )
 
 DIRECTOR_RULES = collections.OrderedDict([

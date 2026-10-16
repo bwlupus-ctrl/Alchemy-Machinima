@@ -633,7 +633,10 @@ public:
     // track uses, so it looks exactly as it will in the take; the cue list and the presentation
     // clock are never touched. Like the track, it only drives actors that have Look at camera on.
     // Returns false (no change) for an actor that is not in the cast, has no live avatar, or an
-    // index outside that actor's cue list. Clearing, removing the actor, or logging out ends it.
+    // index outside that actor's cue list. It ends when the cue finishes releasing (open-ended
+    // holds: after a cap), on Stop, on any cue-list edit or runtime clear for the actor
+    // (clearDirectorLookAtRuntime erases it), on actor removal / scene load / logout
+    // (resetEditSession), when Look at camera or the master turns off, and when a take/ACTION runs.
     bool   setGazeCuePreview(const LLUUID& actor_id, S32 cue_index);
     void   clearGazeCuePreview(const LLUUID& actor_id);
     bool   hasGazeCuePreview(const LLUUID& actor_id) const { return mGazeCuePreviews.count(actor_id) != 0; }

@@ -10,8 +10,10 @@
  * gaze cue list as the Gaze Cues floater (alfloatergazecues.cpp) through LLDirectorCast: Add
  * appends a cue built from the actor's current gaze defaults, Remove deletes the selected cue (one
  * undo step each), Play previews the selected cue on the actor and Stop ends the preview
- * (LLActorMover::setGazeCuePreview / clearGazeCuePreview). Selecting a row opens the floater on
- * that actor at that cue, where targets, macros, transitions and influence keys are edited.
+ * (LLActorMover::setGazeCuePreview / clearGazeCuePreview). Selecting a row only selects it;
+ * double-clicking a row opens the floater on that actor at that cue, where targets, macros,
+ * transitions and influence keys are edited. A running preview ends when the page hides or is
+ * destroyed, or the page's actor changes.
  *
  * The actor is the first cast selection, or the agent when nothing is selected, exactly as the
  * retired launcher card chose it.
@@ -30,17 +32,19 @@ class ALPanelGazeCues final : public LLPanel
 {
 public:
     ALPanelGazeCues() = default;
-    ~ALPanelGazeCues() override = default;
+    ~ALPanelGazeCues() override;
 
     bool postBuild() override;
     void draw() override;
+    void onVisibilityChange(bool new_visibility) override;
 
 private:
     LLUUID actorId() const;
     S32    selectedCueIndex() const;
     void   refreshRows(bool force);
     void   refreshButtons();
-    void   onSelection();
+    void   onOpen();    // double-click a row: open the floater at that cue
+    void   endPreview();
     void   onAdd();
     void   onRemove();
     void   onPlay();
@@ -55,6 +59,7 @@ private:
     LLButton*         mStopBtn = nullptr;
     U64               mSeenRevision = U64(-1);
     LLUUID            mSeenActor;
+    LLUUID            mPreviewActor;    // the actor this page started a cue preview on
 };
 
 #endif // AL_ALPANELGAZECUES_H

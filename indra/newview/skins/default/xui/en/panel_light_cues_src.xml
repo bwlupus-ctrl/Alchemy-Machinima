@@ -20,7 +20,7 @@
      layout="topleft"
      left="0"
      name="cue_rows"
-     tool_tip="Lighting cues for the selected rig. Select a row to open it in the Lighting Cue Stack."
+     tool_tip="Lighting cues for the selected rig. Double-click a cue to edit it in the Lighting Cue Stack."
      top="0"
      width="344">
         <scroll_list.columns

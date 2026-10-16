@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Probe for the lazy-page adoptPage wiring self-test: a lazily hosted page that owns a
+     scroll_container whose content panel is smaller than its child. This is the exact shape the
+     retired legacy Path page (panel_dpage_cast_path.xml, now a generated kit page) had; the
+     self-test registers this file name as a kit_lazy_page page_file. -->
+<kit_page name="lazy_probe_content" legacy="true" height="550" width="720">
+    <scroll_container name="lazy_probe_scroll" follows="all" height="540" layout="topleft" left="0" opaque="false" top="0" width="720">
+        <panel name="lazy_probe_scroll_content" background_visible="false" layout="topleft" left="0" top="0" width="500" height="548">
+            <panel name="lazy_probe_child" background_visible="false" layout="topleft" left="0" top="8" width="500" height="1160" />
+        </panel>
+    </scroll_container>
+</kit_page>

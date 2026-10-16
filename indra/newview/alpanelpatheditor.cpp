@@ -11,6 +11,8 @@
 
 #include "alpanelpatheditor.h"
 
+#include "alkitbinding.h"
+#include "alkitcard.h"
 #include "altoolpathedit.h"
 #include "aluirefresh.h"             // [UIPerfC1] diff-guarded enable/tooltip writes
 #include "llactormover.h"
@@ -76,8 +78,10 @@ ALPanelPathEditor::~ALPanelPathEditor()
 
 bool ALPanelPathEditor::postBuild()
 {
-    mAccordion     = getChild<LLAccordionCtrl>("path_sections");
-    mHeader        = getChild<LLTextBox>("path_header");
+    // The Director kit page (class panel_path_editor on its logic root) has no accordion and no
+    // header (the Who chip names the actor); the v1 XML used by the floaters keeps both.
+    mAccordion     = findChild<LLAccordionCtrl>("path_sections");
+    mHeader        = findChild<LLTextBox>("path_header");
     mEditModeCheck = getChild<LLCheckBoxCtrl>("edit_mode_check");
     mList          = getChild<LLScrollListCtrl>("waypoint_list");
     mAddBtn        = getChild<LLButton>("btn_wp_add");
@@ -139,21 +143,29 @@ bool ALPanelPathEditor::postBuild()
     mFollowStatus  = getChild<LLTextBox>("follow_status");
 
     mHint             = getChild<LLTextBox>("hint");
-    mSuspendBanner    = getChild<LLPanel>("suspend_banner");
+    mSuspendBanner    = findChild<LLPanel>("suspend_banner");
+    mSuspendCard      = findChild<ALKitCard>("kc_suspended");
+    if (mSuspendCard)
+    {
+        mSuspendCard->setCodeVisible(false);     // shown only while the walk is suspended
+    }
     mSuspendStatus    = getChild<LLTextBox>("suspend_status");
     mResumeBtn        = getChild<LLButton>("btn_suspend_resume");
     mReanchorBtn      = getChild<LLButton>("btn_suspend_reanchor");
     mCancelSuspendBtn = getChild<LLButton>("btn_suspend_cancel");
 
     LLHandle<ALPanelPathEditor> layout_handle = getDerivedHandle<ALPanelPathEditor>();
-    for (LLView* child : *mAccordion->getChildList())
-        if (LLAccordionCtrlTab* tab = dynamic_cast<LLAccordionCtrlTab*>(child))
-            tab->setDropDownStateChangedCallback(
-                [layout_handle](LLUICtrl*, const LLSD&)
-                {
-                    if (ALPanelPathEditor* panel = layout_handle.get())
-                        panel->requestDocumentLayout();
-                });
+    if (mAccordion)
+    {
+        for (LLView* child : *mAccordion->getChildList())
+            if (LLAccordionCtrlTab* tab = dynamic_cast<LLAccordionCtrlTab*>(child))
+                tab->setDropDownStateChangedCallback(
+                    [layout_handle](LLUICtrl*, const LLSD&)
+                    {
+                        if (ALPanelPathEditor* panel = layout_handle.get())
+                            panel->requestDocumentLayout();
+                    });
+    }
 
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onListSelect(); });
@@ -222,7 +234,11 @@ bool ALPanelPathEditor::postBuild()
     auto bind_reset = [this](const char* button_name, const char* target_name,
                              const char* key)
     {
-        LLButton* button = getChild<LLButton>(button_name);
+        LLButton* button = findChild<LLButton>(button_name);
+        if (!button)
+        {
+            return;      // Director kit page: the kit row draws the reset glyph
+        }
         LLUICtrl* target = getChild<LLUICtrl>(target_name);
         mResetBindings.emplace_back(button, target);
         const std::string reset_key(key);
@@ -267,6 +283,8 @@ bool ALPanelPathEditor::postBuild()
     bind_reset("reset_sync_offset", "sync_offset_spinner", "sync_offset");
     bind_reset("reset_follow_leader", "follow_leader_combo", "follow_leader");
     bind_reset("reset_follow_offset", "follow_offset_spinner", "follow_offset");
+
+    registerKitResets();
 
     if (mColorSwatch)
     {
@@ -628,6 +646,112 @@ void ALPanelPathEditor::onResetControl(const std::string& key)
     }
 }
 
+namespace
+{
+// Kit binding for a code-bound Path row: reads the widget, applies a value through the widget's own
+// commit path, and resets through ALPanelPathEditor::onResetControl (the v1 icon-reset path), so
+// the kit's reset glyph and amber state behave like the old per-control reset buttons.
+class PathResetBinding final : public ALKitBinding
+{
+public:
+    PathResetBinding(LLHandle<LLView> control, LLSD default_value, std::function<void()> reset_fn)
+        : mControl(std::move(control)), mDefault(std::move(default_value)), mReset(std::move(reset_fn)) {}
+    LLSD get() const override
+    {
+        const LLUICtrl* ctrl = dynamic_cast<const LLUICtrl*>(mControl.get());
+        return ctrl ? ctrl->getValue() : LLSD();
+    }
+    LLSD getDefault() const override { return mDefault; }
+    void set(const LLSD& value) override
+    {
+        if (LLUICtrl* ctrl = dynamic_cast<LLUICtrl*>(mControl.get()))
+        {
+            ctrl->setValue(value);
+            ctrl->onCommit();
+        }
+    }
+    void reset() override
+    {
+        if (mReset)
+        {
+            mReset();
+        }
+    }
+    boost::signals2::connection connectChanged(std::function<void()> cb) override
+    {
+        LLUICtrl* ctrl = dynamic_cast<LLUICtrl*>(mControl.get());
+        return ctrl ? ctrl->setCommitCallback([cb](LLUICtrl*, const LLSD&) { cb(); }) : boost::signals2::connection();
+    }
+    std::string describe() const override { return "Path"; }
+
+private:
+    LLHandle<LLView>      mControl;
+    LLSD                  mDefault;
+    std::function<void()> mReset;
+};
+} // anonymous namespace
+
+void ALPanelPathEditor::registerKitResets()
+{
+    if (!mSuspendCard)
+    {
+        return;     // v1 XML: the icon reset buttons above already handle every control
+    }
+    struct ResetRow { const char* widget; const char* key; LLSD value; };
+    const ResetRow rows[] = {
+        { "node_height_spinner", "node_height", LLSD(0.0) },
+        { "node_dwell_spinner", "node_dwell", LLSD(0.0) },
+        { "node_speed_spinner", "node_speed", LLSD(0.0) },
+        { "node_corner_radius_spinner", "node_corner_radius", LLSD(0.0) },
+        { "node_anim_editor", "node_anim", LLSD(std::string()) },
+        { "node_cam_transition_combo", "node_cam_transition", LLSD(S32(1)) },
+        { "path_speed_spinner", "path_speed", LLSD(1.0) },
+        { "path_cadence_slider", "path_cadence", LLSD(3.0) },
+        { "path_tension_slider", "path_tension", LLSD(0.5) },
+        { "path_easein_spinner", "path_easein", LLSD(0.0) },
+        { "path_easeout_spinner", "path_easeout", LLSD(0.0) },
+        { "path_groundfollow_check", "path_groundfollow", LLSD(false) },
+        { "path_pitch_check", "path_pitch", LLSD(false) },
+        { "path_airborne_check", "path_airborne", LLSD(false) },
+        { "path_end_combo", "path_end", LLSD(END_STOP) },
+        { "path_shape_combo", "path_shape", LLSD(S32(ALPathGeometry::WAYPOINTS)) },
+        { "primitive_radius_x", "primitive_radius_x", LLSD(3.0) },
+        { "primitive_radius_y", "primitive_radius_y", LLSD(2.0) },
+        { "primitive_start_deg", "primitive_start", LLSD(0.0) },
+        { "primitive_sweep_deg", "primitive_sweep", LLSD(360.0) },
+        { "primitive_yaw_deg", "primitive_yaw", LLSD(0.0) },
+        { "primitive_pitch_deg", "primitive_pitch", LLSD(0.0) },
+        { "primitive_roll_deg", "primitive_roll", LLSD(0.0) },
+        { "primitive_rise", "primitive_rise", LLSD(3.0) },
+        { "sync_offset_spinner", "sync_offset", LLSD(0.0) },
+        { "follow_offset_spinner", "follow_offset", LLSD(3.0) },
+    };
+    LLHandle<ALPanelPathEditor> panel_handle = getDerivedHandle<ALPanelPathEditor>();
+    for (const ResetRow& row : rows)
+    {
+        LLUICtrl* control = findChild<LLUICtrl>(row.widget);
+        if (!control)
+        {
+            continue;
+        }
+        const std::string key(row.key);
+        const LLSD value = row.value;
+        ALKitBindingRegistry::instance().add(this, row.widget,
+            [control_handle = control->getHandle(), value, panel_handle, key]()
+            {
+                return std::unique_ptr<ALKitBinding>(new PathResetBinding(
+                    control_handle, value,
+                    [panel_handle, key]()
+                    {
+                        if (ALPanelPathEditor* panel = panel_handle.get())
+                        {
+                            panel->onResetControl(key);
+                        }
+                    }));
+            });
+    }
+}
+
 void ALPanelPathEditor::onVisibilityChange(bool new_visibility)
 {
     if (!new_visibility)
@@ -653,7 +777,7 @@ void ALPanelPathEditor::refreshHeader()
     const std::string want = mActor.isNull()
         ? std::string("Path \xE2\x80\x94 select a cast member")
         : ("Path \xE2\x80\x94 " + (name.empty() ? std::string("actor") : name));
-    if (mHeader->getValue().asString() != want)
+    if (mHeader && mHeader->getValue().asString() != want)
     {
         mHeader->setText(want);
     }
@@ -1087,10 +1211,17 @@ void ALPanelPathEditor::refreshSuspendBanner()
     if (suspended != mSuspendShown)
     {
         mSuspendShown = suspended;
-        mSuspendBanner->setVisible(suspended);
+        if (mSuspendBanner)
+        {
+            mSuspendBanner->setVisible(suspended);
+        }
+        if (mSuspendCard)
+        {
+            mSuspendCard->setCodeVisible(suspended);
+        }
         // the in-world placement hint shares the banner's band; hide it while
-        // the banner is up so they never overlap
-        if (mHint)
+        // the banner is up so they never overlap (the kit page has no overlap)
+        if (mHint && mSuspendBanner)
         {
             mHint->setVisible(!suspended);
         }

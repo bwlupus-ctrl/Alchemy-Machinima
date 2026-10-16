@@ -2358,7 +2358,13 @@ void LLFloaterDirector::bindMovePage(LLView* root)
         mGroupRenameBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });
         mGroupDissolveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupDissolve(); });
     }
-    mMoverPanel = root->findChild<ALPanelActorMover>("actor_mover_panel");
+    // The generated Move kit page is itself rooted on the shared transport class (class
+    // "panel_actor_mover" on its logic root); the v1 tab embeds it as "actor_mover_panel".
+    mMoverPanel = dynamic_cast<ALPanelActorMover*>(root);
+    if (!mMoverPanel)
+    {
+        mMoverPanel = root->findChild<ALPanelActorMover>("actor_mover_panel");
+    }
     // [Connectedness B4] The Move page is built lazily: groups tagged before it
     // was first opened left group_run_combo empty because mLastGroupNames already
     // matched. Force a rebuild now that the combo exists.
@@ -2371,7 +2377,13 @@ void LLFloaterDirector::bindMovePage(LLView* root)
 
 void LLFloaterDirector::bindPathPage(LLView* root)
 {
-    mPathPanel = root->findChild<ALPanelPathEditor>("path_editor");
+    // The generated Path kit page is rooted on the editor class itself; the v1 tab embeds it as
+    // "path_editor".
+    mPathPanel = dynamic_cast<ALPanelPathEditor*>(root);
+    if (!mPathPanel)
+    {
+        mPathPanel = root->findChild<ALPanelPathEditor>("path_editor");
+    }
     if (mPathPanel)
     {
         retargetPathFromCastSelection();
@@ -2618,7 +2630,11 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
     {
         control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
     }
-    if (ALPanelLensGaze* control = root->findChild<ALPanelLensGaze>("director_gaze_panel", true))
+    // The generated Gaze kit page is rooted on the gaze panel class itself; the v1 tab embeds it
+    // as "director_gaze_panel".
+    ALPanelLensGaze* gaze_root = dynamic_cast<ALPanelLensGaze*>(root);
+    if (ALPanelLensGaze* control = gaze_root ? gaze_root
+            : root->findChild<ALPanelLensGaze>("director_gaze_panel", true))
     {
         mGazePanel = control;
         mGazePanel->setSelectedActors(selectedCastIds());

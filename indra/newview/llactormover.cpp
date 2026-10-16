@@ -4128,6 +4128,7 @@ void LLActorMover::resetEditSession()
         ALToolPathEdit::getInstance()->endSession();    // and an unowned one
     }
     LLPathCamera::instance().stopPreview();
+    mGazeCuePreviews.clear();   // [Director Gaze Cues] a previewed cue never survives a logout
 }
 
 void LLActorMover::pruneEditActor()
@@ -6535,6 +6536,10 @@ void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av)
 
 void LLActorMover::clearDirectorLookAtRuntime(const LLUUID& avatar_id)
 {
+    // [Director Gaze Cues] Every cast lifecycle hook, cue-list edit (setGazeCues) and actor
+    // removal funnels through here, so a cue preview for this actor can never outlive any of
+    // them. Erase before the runtime early-out: a preview can exist with no runtime yet.
+    mGazeCuePreviews.erase(avatar_id);
     auto it = mDirectorGazes.find(avatar_id);
     if (it == mDirectorGazes.end())
     {
@@ -6570,21 +6575,24 @@ bool LLActorMover::setGazeCuePreview(const LLUUID& actor_id, S32 cue_index)
     {
         return false;
     }
+    // Hand the actor back to the cue path from a clean start: restore the pose the previous
+    // frame painted so the cue acquires from the authored target, not from stale smoothing.
+    // This also erases any older preview for the actor, so register the new one AFTER it.
+    clearDirectorLookAtRuntime(actor_id);
     GazeCuePreview& preview = mGazeCuePreviews[actor_id];
     preview.mCueIndex = cue_index;
     preview.mStartTime = LLPresentationTime::currentFrame().presentation_time;
-    // Hand the actor back to the cue path from a clean start: restore the pose the previous
-    // frame painted so the cue acquires from the authored target, not from stale smoothing.
-    clearDirectorLookAtRuntime(actor_id);
     return true;
 }
 
 void LLActorMover::clearGazeCuePreview(const LLUUID& actor_id)
 {
-    if (mGazeCuePreviews.erase(actor_id) != 0)
+    if (mGazeCuePreviews.count(actor_id) != 0)
     {
         // Back to the live authored target / track; the next frame re-seeds the Director gaze.
+        // clearDirectorLookAtRuntime erases the preview itself.
         clearDirectorLookAtRuntime(actor_id);
+        mGazeCuePreviews.erase(actor_id);
     }
 }
 
@@ -6606,6 +6614,7 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         // avatar has despawned without a cast remove() -- it is never ticked
         // again, so it can neither ease nor be restored on a missing joint.
         // Sweep those unresolvable entries (hard-clear is correct there).
+        mGazeCuePreviews.clear(); // a cue preview only drives with the master on
         if (mDirectorGazes.empty())
         {
             return false; // fast, byte-identical early-out once fully released
@@ -6644,6 +6653,10 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     // Master-off (enabled==false) forces deselection for every actor, so the
     // release envelope below eases the pose out instead of the old hard clear.
     const bool selected = enabled && cast.isLookAtCamera(av->getID());
+    if (!selected && !mGazeCuePreviews.empty())
+    {
+        mGazeCuePreviews.erase(av->getID()); // a preview only drives Look-at-camera actors
+    }
     auto runtime_it = mDirectorGazes.find(av->getID());
     if (!selected && runtime_it == mDirectorGazes.end())
     {
@@ -6730,21 +6743,43 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         {
             // A previewed cue replaces the track for this actor: a one-cue copy evaluated on
             // preview-local time (the cue's own start moves to zero). The authored list and the
-            // global clock are untouched; a stale index ends the preview.
+            // global clock are untouched. The preview ends on its own when the cue finishes
+            // releasing (or, for an open-ended hold, after a fixed cap), on a stale index, and
+            // whenever a take / ACTION is running so it can never block recording or the track.
             auto preview_it = mGazeCuePreviews.find(av->getID());
             if (preview_it != mGazeCuePreviews.end())
             {
                 const S32 index = preview_it->second.mCueIndex;
-                if (index >= 0 && index < static_cast<S32>(cues->size()))
+                bool keep = index >= 0 && index < static_cast<S32>(cues->size()) &&
+                            !cast.isRunning();
+                if (keep)
                 {
                     preview_cues.push_back((*cues)[index]);
                     preview_cues.front().mStartSec = 0.0;
                     cue_time = llmax(presentation_time - preview_it->second.mStartTime, 0.0);
+                    const LLDirectorCast::GazeCueEvaluation probe =
+                        LLDirectorCast::evaluateGazeCues(preview_cues, seed, cue_time);
+                    constexpr F64 PREVIEW_OPEN_HOLD_CAP_SEC = 8.0;
+                    // "Finished" = fully released now AND still fully released half a second on
+                    // (a Double-Take's mid-sequence release is followed by a gap/re-acquire).
+                    const LLDirectorCast::GazeCueEvaluation later =
+                        LLDirectorCast::evaluateGazeCues(preview_cues, seed, cue_time + 0.5);
+                    const bool released =
+                        probe.mPhase == ALGazeMath::GAZE_CUE_RELEASE && probe.mTargetBlend <= 0.001f &&
+                        later.mPhase == ALGazeMath::GAZE_CUE_RELEASE && later.mTargetBlend <= 0.001f;
+                    const bool capped = cue_time > preview_cues.front().mDurationSec + PREVIEW_OPEN_HOLD_CAP_SEC;
+                    keep = !released && !capped;
+                }
+                if (keep)
+                {
                     cues = &preview_cues;
                 }
                 else
                 {
+                    // Finished / stale / take running: back to the authored track this frame.
                     mGazeCuePreviews.erase(preview_it);
+                    preview_cues.clear();
+                    cue_time = presentation_time;
                 }
             }
         }

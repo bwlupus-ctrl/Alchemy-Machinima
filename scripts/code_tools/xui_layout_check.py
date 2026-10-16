@@ -1848,7 +1848,10 @@ def run_selftest(json_output: bool) -> int:
     except ValueError:
         baseline_ok = False
     source_index = SourceIndex(repo)
-    lazy_probe = "panel_dpage_cast_path.xml"
+    # 10/15: Path became a generated kit page with no scroll_container, so the probe is a fixture
+    # with the retired legacy Path page's shape, registered as a lazily hosted page.
+    lazy_probe = "lazy_scroll_probe.xml"
+    source_index.lazy_page_files.add(lazy_probe)
     lazy_path = source_index.source_dir / "alkitlazypage.cpp"
     fit_path = source_index.source_dir / "alscrollfit.cpp"
     adopt_present = source_index.fits_tabs_at_runtime(lazy_probe)
@@ -1856,7 +1859,7 @@ def run_selftest(json_output: bool) -> int:
     original_fit = source_index.files.get(fit_path, "")
     source_index.files[lazy_path] = original_lazy.replace(".adoptPage(", ".removedAdoptPage(")
     missing_lazy_rejected = not source_index.fits_tabs_at_runtime(lazy_probe)
-    missing_lazy_kinds = {item.kind for item in check_file(xui / lazy_probe, source_index)}
+    missing_lazy_kinds = {item.kind for item in check_file(fixture_dir / lazy_probe, source_index)}
     source_index.files[lazy_path] = original_lazy
     source_index.files[fit_path] = original_fit.replace("Controller::adoptPage(", "Controller::removedAdoptPage(")
     missing_fit_rejected = not source_index.fits_tabs_at_runtime(lazy_probe)
@@ -1878,7 +1881,7 @@ def run_selftest(json_output: bool) -> int:
     # Legacy (embedded v1) Director pages still pinned to v1 findings. Lower this as
     # pages become real kit pages (user-approved 10/13, Look batch: 30 -> 27,
     # World/Lens batch: 27 -> 21, Camera+Capture: 21 -> 14); never raise it.
-    LEGACY_PAGE_COUNT = 6  # Light Actors: 14 -> 13; Animate: 13 -> 12; polish_tab: 12 -> 11; switchboard_tab: 11 -> 10; light_cues_tab: 10 -> 9; practicals_tab: 9 -> 8; gaze_cues_tab: 8 -> 7; exposure_tab: 7 -> 6
+    LEGACY_PAGE_COUNT = 2  # Light Actors: 14 -> 13; Animate: 13 -> 12; polish_tab: 12 -> 11; switchboard_tab: 11 -> 10; light_cues_tab: 10 -> 9; practicals_tab: 9 -> 8; gaze_cues_tab: 8 -> 7; exposure_tab: 7 -> 6; move_tab: 6 -> 5; props_tab: 5 -> 4; path_tab: 4 -> 3; gaze_tab: 3 -> 2
     real_passed = real_ok and real_count == LEGACY_PAGE_COUNT and baseline_ok and runtime_ok
     passed = passed and real_passed
     reports.append({"fixture": "real legacy pages", "expected": f"{LEGACY_PAGE_COUNT} pages match v1 leaf findings",

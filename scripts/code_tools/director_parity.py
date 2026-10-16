@@ -767,6 +767,8 @@ def evaluate(paths: Paths, groups: Optional[list], p0_scope: bool = False,
         "panel_practicals": {"ALPanelPracticals"},
         "panel_gaze_cues": {"ALPanelGazeCues"},
         "panel_exposure_page": {"ALPanelExposurePage"},
+        # 10/15 batch 2: the Move page is rooted on the shared transport class.
+        "panel_actor_mover": {"ALPanelActorMover"},
     }
     for page in active:
         page_file = page_file_by_key.get(str(page["key"]))

@@ -1,10 +1,7 @@
 {
  "version": 1,
  "page_features": {
-  "camera_group/shot_tab": {"bulk_subject_assignment": true},
-  "cast_group/move_tab": {"actor_target": true, "actor_target_synthetic": true},
-  "cast_group/path_tab": {"actor_target": true, "actor_target_synthetic": true},
-  "performance_group/gaze_tab": {"actor_target": true}
+  "camera_group/shot_tab": {"bulk_subject_assignment": true}
  },
  "p0_pages": {
   "camera_group/shot_tab": {
@@ -193,8 +190,10 @@
   },
   "look_group/image_tab": {
    "v1_sources": [],
-   "omit_rows": ["tonemap_type_combo", "exposure_slider", "tonemap_legacy_gamma_skies", "lpm_toneexp_slider", "slog_ev_slider"],
-   "omit_rows_note": "Homed on Light > Exposure (a kit page since 10/15). The approved image_tab -> exposure_tab shortcuts are NOT re-added yet: kit_lint only accepts shortcut_of rows inside an Easy card or a selector option, and this page has neither, so adding them needs a structure decision for the Image page. The page's Exposure link row covers them meanwhile.",
+   "mode_on": "Easy view",
+   "own_history": ["RenderExposure"],
+   "omit_rows": [],
+   "omit_rows_note": "Done 10/15: the five approved image_tab -> exposure_tab shortcuts (tonemap_type_combo, exposure_slider, tonemap_legacy_gamma_skies, lpm_toneexp_slider, slog_ev_slider) are shortcut_of rows in the Easy card at the top of the page, and Easy view is a page mode (setting DirectorImageEasyMode, Easy view shows only that card, Full view shows every card, default Full view). They are homed on Light > Exposure. The approved 10/13 EXPECTED_SHORTCUTS contract lists them; the user's standing mockup-wins rule is the approval for adding the Easy mode that kit_lint requires for them.",
    "label_names": {}
   },
   "look_group/actor_style_tab": {
@@ -342,13 +341,51 @@
   "light_group/exposure_tab": {
    "v1_sources": ["panel_exposure_src.xml"],
    "root_class": "panel_exposure_page", "root_name": "exposure_tab_logic",
-   "own_history": true,
+   "own_history": ["AlchemyEnvSunEV", "AlchemyEnvSkyGIEV", "AlchemyEnvMoonLinked", "AlchemyEnvMoonEV", "AlchemyEnvGIAmbientEV", "AlchemyEnvGIProbeDiffuseEV", "AlchemyEnvGIProbeSpecEV", "AlchemyEnvLocalLightEV", "AlchemyEnvLocalLightIncludeRig", "AlchemyEnvSunKelvin", "AlchemyEnvSunTintColor", "AlchemyEnvSunTintStrength", "AlchemyEnvMoonTintColor", "AlchemyEnvMoonTintStrength", "AlchemyEnvAmbientTintColor", "AlchemyEnvAmbientTintStrength", "AlchemyEnvShadowLiftEV", "RenderDynamicExposureEnabled", "RenderExposure"],
    "preset": {"mode": "provider", "provider": "env_intensity"},
-   "omit_rows": ["exp_bloom_strength", "exp_bloom_threshold"],
-   "omit_rows_note": "RenderBloomStrength and RenderBloomThreshold are homed on Look > Bloom & glow (bloom_glow_tab); a second writer needs a declared shortcut, and the pinned EXPECTED_SHORTCUTS contract does not list these. The link row points to that home. Add shortcuts only with user approval.",
-   "add_rows": [
-    {"card": "glow_filters", "first": true, "row": {"k": "link", "w": "exp_bloom_link", "l": "Bloom", "h": "Bloom strength and threshold are set on Look > Bloom & glow.", "to": "look_group/bloom_glow_tab"}}
-   ],
+   "mode_on": "Basics",
+   "omit_rows": [],
+   "omit_rows_note": "Done 10/15: Bloom strength and Threshold are shortcut_of rows of their home on Look > Bloom & glow (bloom_glow_tab/set_RenderBloomStrength and set_RenderBloomThreshold), as the mockup specifies. kit_lint only accepts shortcut rows inside an Easy block, so the page has a Basics / Everything mode (setting DirectorExposureEasyMode, Basics shows Camera exposure and Bloom & filters, default Everything). The user's standing mockup-wins rule is the approval for the two shortcuts; they are listed in EXPECTED_SHORTCUTS.",
+   "label_names": {}
+  },
+  "cast_group/move_tab": {
+   "v1_sources": ["panel_actor_mover.xml", "panel_director_move_src.xml"],
+   "root_class": "panel_actor_mover", "root_name": "move_tab_logic",
+   "actor_target": true, "actor_target_synthetic": true,
+   "row_overrides": {
+    "btn_stop": {"w": "move_btn_stop", "source_widget": "btn_stop"},
+    "groups_list": {"row_height": 110}
+   },
+   "label_names": {}
+  },
+  "cast_group/props_tab": {
+   "v1_sources": ["panel_prop_mover.xml"],
+   "root_class": "panel_prop_mover", "root_name": "props_tab_logic",
+   "row_overrides": {
+    "btn_stop": {"w": "prop_btn_stop", "source_widget": "btn_stop"},
+    "end_mode_combo": {"w": "prop_end_mode_combo", "source_widget": "end_mode_combo"},
+    "btn_remove": {"w": "prop_btn_remove", "source_widget": "btn_remove"},
+    "status_text": {"w": "prop_status_text", "source_widget": "status_text"},
+    "prop_list": {"row_height": 110, "child_names": {"name": "prop_name", "state": "prop_state"}},
+    "node_list": {"row_height": 110}
+   },
+   "label_names": {}
+  },
+  "cast_group/path_tab": {
+   "v1_sources": ["panel_path_editor.xml"],
+   "root_class": "panel_path_editor", "root_name": "path_tab_logic",
+   "actor_target": true, "actor_target_synthetic": true,
+   "row_overrides": {
+    "waypoint_list": {"row_height": 130},
+    "color_lbl": {"w": "color_swatch", "source_widget": "color_swatch", "k": "viewport", "row_height": 28}
+   },
+   "label_names": {}
+  },
+  "performance_group/gaze_tab": {
+   "v1_sources": ["panel_lens_gaze.xml"],
+   "root_class": "panel_lens_gaze", "root_name": "gaze_tab_logic",
+   "actor_target": true,
+   "row_overrides": {},
    "label_names": {}
   }
  },
@@ -381,8 +418,6 @@
   "card_light_cues_title": "retired Director launcher replaced by the inline Light Cues list",
   "card_gaze_cues": "retired Director launcher replaced by the inline Gaze Cues list",
   "card_gaze_cues_title": "retired Director launcher replaced by the inline Gaze Cues list",
-  "exp_bloom_strength": "homed on Look > Bloom & glow (a second writer needs a declared shortcut); the Exposure page has the exp_bloom_link row",
-  "exp_bloom_threshold": "homed on Look > Bloom & glow (a second writer needs a declared shortcut); the Exposure page has the exp_bloom_link row",
   "exp_gnd_density": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
   "exp_gnd_enabled": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
   "exp_gnd_preset": "on-lens filter controls live on Lens > Filters; the Exposure page has the Lens filters link card",
@@ -440,6 +475,82 @@
   "card_practicals": "retired Director launcher replaced by the inline Practicals card",
   "card_practicals_title": "retired Director launcher replaced by the inline Practicals card",
   "card_practicals_summary": "retired Director launcher replaced by the inline Practicals rows",
-  "card_practicals_open": "retired Director launcher replaced by the inline Practicals rows and the Lightbox link"
+  "card_practicals_open": "retired Director launcher replaced by the inline Practicals rows and the Lightbox link",
+  "speed_lbl": "static label of the Move transport, replaced by the Speed row label",
+  "dist_lbl": "static label of the Move transport, replaced by the Distance row label",
+  "cadence_lbl": "static label of the Move transport, replaced by the Cadence row label",
+  "end_lbl": "static label of the Move transport, replaced by the End behavior row label",
+  "speed_spinner": "duplicate numeric box of the Speed slider; the kit slider row shows the value itself",
+  "dist_spinner": "duplicate numeric box of the Distance slider; the kit slider row shows the value itself",
+  "cadence_spinner": "duplicate numeric box of the Cadence slider; the kit slider row shows the value itself",
+  "group_run_lbl": "static label of the Move Group row, replaced by the Group row label",
+  "groups_lbl": "static heading of the Move group list, replaced by the Manage groups card title",
+  "orient_header": "static heading of the Props panel, replaced by the Orientation card title",
+  "osc_header": "static heading of the Props panel, replaced by the Hover and Rock card titles",
+  "spin_header": "static heading of the Props panel, replaced by the Spin card title",
+  "shuttle_header": "static heading of the Props panel, replaced by the Shuttle card title",
+  "path_header": "static title of the Path editor; the Who chip names the actor",
+  "node_lbl": "static heading of the Path editor, replaced by the Selected node card title",
+  "node_anim_lbl": "static label of the Path editor, replaced by the Anim UUID row label",
+  "cam_lbl": "static heading of the Path editor, replaced by the Node camera card title",
+  "primitive_lbl": "static label of the Path editor, replaced by the Shape row label",
+  "choreo_lbl": "static heading of the Path editor, replaced by the Camera sync card title",
+  "follow_lbl": "static heading of the Path editor, replaced by the Follow leader card title",
+  "color_lbl": "static label of the Path editor; the Color row hosts color_swatch",
+  "reset_path_*": "icon reset button of the Path editor; the kit row draws its own reset glyph and routes it to the same reset handler",
+  "reset_node_*": "icon reset button of the Path editor; the kit row draws its own reset glyph and routes it to the same reset handler",
+  "reset_primitive_*": "icon reset button of the Path editor; the kit row draws its own reset glyph and routes it to the same reset handler",
+  "reset_ghost_*": "icon reset button of the Path editor; the kit row draws its own reset glyph and routes it to the same reset handler",
+  "reset_sync_*": "icon reset button of the Path editor; the kit row draws its own reset glyph and routes it to the same reset handler",
+  "reset_follow_*": "icon reset button of the Path editor; the kit row draws its own reset glyph and routes it to the same reset handler",
+  "reset_onion_skin": "icon reset button of the Path editor; the kit row draws its own reset glyph and routes it to the same reset handler",
+  "gaze_anim_priority_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_base_section": "static heading of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_blinks_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_composition_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_easing_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_enable_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_extreme_section": "static heading of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_eye_target_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_feel_section": "static heading of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_hint": "static help text of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_ik_lean_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_ik_section": "static heading of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_lbl": "static heading of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_lean_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_limit_eye_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_limit_eyeapply_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_limit_eyeradial_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_limit_grid_pitchup_hdr": "static column heading of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_limit_head_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_limit_hips_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_limit_mode_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_limit_neck_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_limit_spine_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_naturalism_section": "static heading of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_performance_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_performance_section": "static heading of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_priority_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_random_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_range_preset_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_slot_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_target_detail_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_target_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_targeting_section": "static heading of the Gaze panel, replaced by the kit row label or card title",
+  "gaze_tracking_section": "static heading of the Gaze panel, replaced by the kit row label or card title",
+  "look_at_camera_mode_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "look_at_camera_torso_lbl": "static label of the Gaze panel, replaced by the kit row label or card title",
+  "reset_gaze_breakoff_angle": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_gaze_easing": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_gaze_random_interval": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_gaze_restraint": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_gaze_soft_recruit": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_gaze_stillness": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_gaze_transition": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_look_at_camera_ease_time": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_look_at_camera_head_eye": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_look_at_camera_smoothing": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_look_at_camera_strength": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph",
+  "reset_look_at_camera_torso_amount": "icon reset button of a setting-bound Gaze row; the kit row draws its own reset glyph"
  }
 }

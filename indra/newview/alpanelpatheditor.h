@@ -32,6 +32,7 @@
 class LLButton;
 class LLAccordionCtrl;
 class LLAccordionCtrlTab;
+class ALKitCard;
 class LLCheckBoxCtrl;
 class LLComboBox;
 class LLLineEditor;
@@ -160,6 +161,9 @@ private:
     void onClickFitHalfArc();
     void onClickFitSine();
     void onResetControl(const std::string& key);
+    // Director kit page: the kit rows own the reset glyphs, so route each code-bound row
+    // through a binding whose reset is onResetControl (same path as the v1 icon buttons).
+    void registerKitResets();
 
     // cached name for the header
     static std::string actorName(const LLUUID& id);
@@ -262,7 +266,8 @@ private:
 
     // TP-away suspend/resume banner (shown only when the selected actor's walk
     // is suspended -- actor derezzed / left region / teleported)
-    LLPanel*           mSuspendBanner = nullptr;
+    LLPanel*           mSuspendBanner = nullptr;   // v1 XML only
+    ALKitCard*         mSuspendCard = nullptr;     // Director kit page: the "Paused walk" card
     LLTextBox*         mSuspendStatus = nullptr;
     LLButton*          mResumeBtn = nullptr;
     LLButton*          mReanchorBtn = nullptr;

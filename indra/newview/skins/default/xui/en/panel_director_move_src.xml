@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Source nodes for the generated Director > Cast > Move kit page
+     (scripts/code_tools/director_kit/kit_pages.json "cast_group/move_tab").
+     These are the console-only group widgets that used to be typed inline in the v1
+     floater_director.xml Move tab (the transport half comes from the shared
+     panel_actor_mover.xml, also a generator input). The generator hosts each node inside a
+     kit row; the names are the ones LLFloaterDirector::bindMovePage looks up. This file is a
+     generator input and is not loaded by the viewer by name. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="170"
+ layout="topleft"
+ name="panel_director_move_src"
+ width="354">
+    <combo_box
+     follows="left|top"
+     height="20"
+     label="Group"
+     layout="topleft"
+     left="0"
+     top="0"
+     name="group_run_combo"
+     tool_tip="The group Start/Stop act on"
+     width="112" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Start group"
+     layout="topleft"
+     left="120"
+     top="0"
+     name="btn_group_start"
+     width="86" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Stop group"
+     layout="topleft"
+     left="210"
+     top="0"
+     name="btn_group_stop"
+     width="92" />
+    <scroll_list
+     column_padding="0"
+     draw_heading="true"
+     follows="left|top"
+     height="76"
+     layout="topleft"
+     left="0"
+     top="30"
+     name="groups_list"
+     tool_tip="Every group with its member count and start delay. Select a row to highlight its members in the cast list and load the delay / rename fields below"
+     width="344">
+        <scroll_list.columns
+         label="Group"
+         name="group"
+         width="180" />
+        <scroll_list.columns
+         label="Members"
+         name="members"
+         width="70" />
+        <scroll_list.columns
+         label="Delay"
+         name="delay"
+         width="80" />
+    </scroll_list>
+    <spinner
+     decimal_digits="1"
+     follows="left|top"
+     height="20"
+     increment="0.5"
+     label="Delay (s)"
+     label_width="52"
+     layout="topleft"
+     left="0"
+     max_val="120"
+     min_val="0"
+     name="group_delay_spinner"
+     tool_tip="Start delay for the selected group (s): ACTION and Start group launch its members this many seconds late (staggered starts). 0 = immediate. Saved with the scene"
+     top="112"
+     width="130" />
+    <button
+     follows="left|top"
+     height="22"
+     label="Dissolve"
+     layout="topleft"
+     left="140"
+     top="112"
+     name="btn_group_dissolve"
+     tool_tip="Clear the selected group: every member is untagged (nobody is removed from the cast); its delay is dropped"
+     width="100" />
+    <line_editor
+     commit_on_focus_lost="false"
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="0"
+     max_length_chars="32"
+     name="group_rename_editor"
+     tool_tip="New name for the selected group; Enter or Rename commits. Renaming onto an existing group merges them"
+     top="140"
+     width="238" />
+    <button
+     follows="left|top"
+     height="22"
+     label="Rename"
+     layout="topleft"
+     left="244"
+     top="140"
+     name="btn_group_rename"
+     tool_tip="Rename the selected group to the name on the left (retags every member)"
+     width="100" />
+</panel>
