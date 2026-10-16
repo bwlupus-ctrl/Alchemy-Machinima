@@ -538,8 +538,11 @@ if ($Functional) {
       $(if ($entry.reason) { $entry.reason } elseif ($entry.inworld_skip_reason) {
           $entry.inworld_skip_reason } else { $entry.action }))
   }
-  if ($expectedVcamLogin -lt 120 -or $expectedImageLogin -lt 64) {
-    Write-Host 'Functional manifest misses the Step 2 login coverage floor (VCam 120 / Image 64).' -ForegroundColor Red
+  # Split floor (user-approved 10/16): 83 of 173 VCam rows need a face/projector bound to a
+  # world object, so they can only run logged in. Login floor = the honest login-runnable
+  # count (pin; may only go UP). The world-bound rows get their own in-world floor below.
+  if ($expectedVcamLogin -lt 37 -or $expectedImageLogin -lt 64) {
+    Write-Host 'Functional manifest misses the login coverage floor (VCam 37 / Image 64).' -ForegroundColor Red
     exit 2
   }
   $destCsv = Join-Path $runDir 'functional.csv'
@@ -664,6 +667,17 @@ if ($Functional) {
     exit 2
   }
   $failures = @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -in @('FAIL', 'KNOWN_GAP') })
+  if ($InWorld) {
+    # In-world half of the split VCam floor: the 83 world-bound VCam rows must actually execute.
+    $vcamExecuted = @($functionalResultRows | Where-Object {
+      $_.page -eq 'vcam_tab' -and $_.'PASS/FAIL/SKIP' -in @('PASS', 'FAIL', 'KNOWN_GAP') }).Count
+    if ($vcamExecuted -lt 83) {
+      Write-Host "VCam in-world floor FAIL: $vcamExecuted executed VCam rows (need >= 83)." -ForegroundColor Red
+      $failures += [pscustomobject]@{ page = 'vcam_tab'; control = 'vcam_inworld_floor'; reason = "executed $vcamExecuted < 83" }
+    } else {
+      Write-Host "VCam in-world floor OK: $vcamExecuted executed VCam rows (>= 83)."
+    }
+  }
   $skipsWithoutReason = @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' -and -not $_.reason })
   Write-Host "Functional results: $runDir"
   Write-Host ("PASS {0} / FAIL-or-GAP {1} / SKIP {2} / WARN {3}" -f

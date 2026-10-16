@@ -1657,6 +1657,12 @@ def add_runtime_prerequisites(entries):
                 condition = (condition + "; " if condition else "") + show
             if condition:
                 entry["visible_when"] = condition
+            # prepareFunctionalLoginVCam() creates and selects a viewer-local
+            # camera before login rows run. Camera existence alone is therefore
+            # satisfied; keep all source/face/projector/avatar gates deferred,
+            # and preserve any deferral already assigned to the action itself.
+            if condition == "camera selected":
+                condition = ""
             if show == "custom_aspect":
                 entry.setdefault("reveal", []).append({"selector": "vc_output_aspect", "value": -1})
         elif page == "gaze_tab" and not entry.get("setting"):
@@ -2037,10 +2043,21 @@ def generation_self_test():
                                 {"Fixture": {"type": "Boolean", "default": False}}, {})
     assert len(entries) == 3 and all(entry["action"] == "SKIP" and entry["reason"] for entry in entries)
     prerequisites = [{"page": page, "widget_name": widget, "action": "RUN"} for page, widget in (
-        ("vcam_tab", "vc_proj_resolution"), ("vcam_tab", "vc_camera_name"),
+        ("vcam_tab", "vc_proj_resolution"), ("vcam_tab", "vc_face_fit"),
+        ("vcam_tab", "vc_screen_height"), ("vcam_tab", "vc_bone_anchor"),
+        ("vcam_tab", "vc_eye_x"),
         ("gaze_tab", "gaze_cast_combo"))]
     add_runtime_prerequisites(prerequisites)
     assert all(row["action"] == "DEFER_INWORLD" and row["enable_when"] for row in prerequisites)
+    login_camera = [{"page": "vcam_tab", "widget_name": widget, "action": "RUN"}
+                    for widget in ("vc_camera_name", "vc_exposure", "vc_output_aspect")]
+    add_runtime_prerequisites(login_camera)
+    assert all(row["action"] == "RUN" and row["visible_when"] == "camera selected"
+               and not row.get("enable_when") and not row.get("hazards") for row in login_camera)
+    world_action = {"page": "vcam_tab", "widget_name": "vc_add_face",
+                    "action": "DEFER_INWORLD", "hazards": ["requires_world"]}
+    add_runtime_prerequisites([world_action])
+    assert world_action["action"] == "DEFER_INWORLD" and world_action["hazards"] == ["requires_world"]
     orphan = {"page": "shot_tab", "widget_name": "btn_reset_all", "action": "SKIP"}
     add_runtime_prerequisites([orphan])
     assert orphan["declared_non_interactive"] and "independent state oracle" in orphan["reason"]

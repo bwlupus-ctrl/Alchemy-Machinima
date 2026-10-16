@@ -43,8 +43,8 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2118,
-  "entries": 3994,
+  "generated_kit_rows": 2119,
+  "entries": 3995,
   "pages": 37,
   "settings_declared": 3650,
   "xui_files": 842,
@@ -130723,12 +130723,11 @@
    "csv_kind": "text",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
    "hazards": [
-    "requires_world",
     "text_input"
    ],
    "exercise": "set_value",
@@ -130755,8 +130754,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -130781,13 +130779,11 @@
    "csv_kind": "segmented",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "select_item",
    "test_value": {
     "item_index": 1,
@@ -130833,8 +130829,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -130859,13 +130854,11 @@
    "csv_kind": "readout",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "readout",
    "test_value": null,
    "expect": {
@@ -130887,8 +130880,7 @@
    "callbacks": null,
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -132633,13 +132625,11 @@
    "csv_kind": "readout",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "readout",
    "test_value": null,
    "expect": {
@@ -132661,8 +132651,7 @@
    "callbacks": null,
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -132925,13 +132914,11 @@
    "csv_kind": "slider",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "set_value",
    "test_value": 0.02,
    "expect": {
@@ -132956,8 +132943,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -132982,13 +132968,11 @@
    "csv_kind": "slider",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "set_value",
    "test_value": 0.3,
    "expect": {
@@ -133013,8 +132997,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -133146,13 +133129,11 @@
    "csv_kind": "toggle",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "toggle",
    "test_value": true,
    "expect": {
@@ -133177,8 +133158,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -133485,13 +133465,11 @@
    "csv_kind": "slider",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "set_value",
    "test_value": -3.9,
    "expect": {
@@ -133516,8 +133494,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -133542,13 +133519,11 @@
    "csv_kind": "slider",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "set_value",
    "test_value": 0.01,
    "expect": {
@@ -133573,8 +133548,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -133599,13 +133573,11 @@
    "csv_kind": "slider",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "set_value",
    "test_value": 0.01,
    "expect": {
@@ -133630,8 +133602,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -133656,13 +133627,11 @@
    "csv_kind": "slider",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "set_value",
    "test_value": 0.01,
    "expect": {
@@ -133687,8 +133656,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -133713,13 +133681,11 @@
    "csv_kind": "readout",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "readout",
    "test_value": null,
    "expect": {
@@ -133741,8 +133707,7 @@
    "callbacks": null,
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -133767,13 +133732,11 @@
    "csv_kind": "readout",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "readout",
    "test_value": null,
    "expect": {
@@ -133795,8 +133758,7 @@
    "callbacks": null,
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -133822,7 +133784,7 @@
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
    "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "reason": "page acts on in-world actor/object/selection",
    "known_gap": false,
    "suspect": false,
    "hazards": [
@@ -133852,8 +133814,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -133878,13 +133839,11 @@
    "csv_kind": "combo",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "select_item",
    "test_value": {
     "item_index": 1,
@@ -133930,8 +133889,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -134019,13 +133977,11 @@
    "csv_kind": "readout",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "readout",
    "test_value": null,
    "expect": {
@@ -134047,8 +134003,7 @@
    "callbacks": null,
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -134074,7 +134029,7 @@
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
    "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "reason": "list contents are populated in-world (avatars, anims, groups, presets)",
    "known_gap": false,
    "suspect": false,
    "hazards": [
@@ -134107,8 +134062,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -134134,7 +134088,7 @@
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
    "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "reason": "page acts on in-world actor/object/selection",
    "known_gap": false,
    "suspect": false,
    "hazards": [
@@ -134165,8 +134119,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -134191,13 +134144,11 @@
    "csv_kind": "combo",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "select_item",
    "test_value": {
     "item_index": 1,
@@ -134239,8 +134190,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -134266,7 +134216,7 @@
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
    "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "reason": "page acts on in-world actor/object/selection",
    "known_gap": false,
    "suspect": false,
    "hazards": [
@@ -134296,8 +134246,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -134322,13 +134271,11 @@
    "csv_kind": "readout",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "readout",
    "test_value": null,
    "expect": {
@@ -134350,8 +134297,7 @@
    "callbacks": null,
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -139486,13 +139432,11 @@
    "csv_kind": "readout",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "readout",
    "test_value": null,
    "expect": {
@@ -139514,8 +139458,7 @@
    "callbacks": null,
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -139540,13 +139483,11 @@
    "csv_kind": "combo",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "select_item",
    "test_value": {
     "item_index": 1,
@@ -139584,8 +139525,7 @@
    "callbacks": null,
    "owner": "ALPanelDirectorVCam::onControl",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -139773,13 +139713,11 @@
    "csv_kind": "readout",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "readout",
    "test_value": null,
    "expect": {
@@ -139801,8 +139739,7 @@
    "callbacks": null,
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -139827,13 +139764,11 @@
    "csv_kind": "readout",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires camera selected",
+   "action": "RUN",
+   "reason": "",
    "known_gap": false,
    "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
+   "hazards": [],
    "exercise": "readout",
    "test_value": null,
    "expect": {
@@ -139855,8 +139790,7 @@
    "callbacks": null,
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-   "visible_when": "camera selected",
-   "enable_when": "camera selected"
+   "visible_when": "camera selected"
   },
   {
    "page": "vcam_tab",
@@ -146410,7 +146344,7 @@
    "csv_index": null,
    "card": "ghost_list",
    "card_title": "Ghost list",
-   "row_label": "Tip",
+   "row_label": "",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
    "xui_line": null,
    "widget_name": "studio_hint",
@@ -147222,7 +147156,57 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:ghost_name:kit:15",
+   "id": "v2:ghosts_tab:entity_style_hint:kit:15",
+   "csv_index": null,
+   "card": "ghost_position",
+   "card_title": "Position",
+   "row_label": "",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+   "xui_line": null,
+   "widget_name": "entity_style_hint",
+   "widget_type": "readout",
+   "csv_kind": "readout",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "readout",
+   "test_value": null,
+   "expect": {
+    "ui": "non-empty text after page refresh"
+   },
+   "restore": null,
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "code",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "ALKitRow::postBuild (authored static text)",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Ghosts",
+   "group": "cast_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v2:ghosts_tab:ghost_name:kit:16",
    "csv_index": null,
    "card": "ghost_position",
    "card_title": "Position",
@@ -147277,7 +147261,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:pos_x_spinner:kit:16",
+   "id": "v2:ghosts_tab:pos_x_spinner:kit:17",
    "csv_index": null,
    "card": "ghost_position",
    "card_title": "Position",
@@ -147330,7 +147314,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:pos_y_spinner:kit:17",
+   "id": "v2:ghosts_tab:pos_y_spinner:kit:18",
    "csv_index": null,
    "card": "ghost_position",
    "card_title": "Position",
@@ -147383,7 +147367,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:pos_z_spinner:kit:18",
+   "id": "v2:ghosts_tab:pos_z_spinner:kit:19",
    "csv_index": null,
    "card": "ghost_position",
    "card_title": "Position",
@@ -147436,7 +147420,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:yaw_spinner:kit:19",
+   "id": "v2:ghosts_tab:yaw_spinner:kit:20",
    "csv_index": null,
    "card": "ghost_position",
    "card_title": "Position",
@@ -147489,7 +147473,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:heading_dial:kit:20",
+   "id": "v2:ghosts_tab:heading_dial:kit:21",
    "csv_index": null,
    "card": "ghost_position",
    "card_title": "Position",
@@ -147498,7 +147482,7 @@
    "xui_line": null,
    "widget_name": "heading_dial",
    "widget_type": "dial",
-   "csv_kind": "custom",
+   "csv_kind": "dial",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
    "action": "RUN",
@@ -147542,7 +147526,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:scale_spinner:kit:21",
+   "id": "v2:ghosts_tab:scale_spinner:kit:22",
    "csv_index": null,
    "card": "ghost_position",
    "card_title": "Position",
@@ -147595,7 +147579,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_place:kit:22",
+   "id": "v2:ghosts_tab:btn_place:kit:23",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -147650,7 +147634,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_to_actor:kit:23",
+   "id": "v2:ghosts_tab:btn_to_actor:kit:24",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -147706,7 +147690,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_to_me:kit:24",
+   "id": "v2:ghosts_tab:btn_to_me:kit:25",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -147761,7 +147745,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_drop_ground:kit:25",
+   "id": "v2:ghosts_tab:btn_drop_ground:kit:26",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -147816,7 +147800,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_align_feet:kit:26",
+   "id": "v2:ghosts_tab:btn_align_feet:kit:27",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -147871,7 +147855,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:look_target_combo:kit:27",
+   "id": "v2:ghosts_tab:look_target_combo:kit:28",
    "csv_index": null,
    "card": "ghost_facing",
    "card_title": "Facing",
@@ -147927,7 +147911,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_face_now:kit:28",
+   "id": "v2:ghosts_tab:btn_face_now:kit:29",
    "csv_index": null,
    "card": "ghost_facing",
    "card_title": "Facing",
@@ -147982,7 +147966,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:keep_facing_check:kit:29",
+   "id": "v2:ghosts_tab:keep_facing_check:kit:30",
    "csv_index": null,
    "card": "ghost_facing",
    "card_title": "Facing",
@@ -148035,7 +148019,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_reset_upright:kit:30",
+   "id": "v2:ghosts_tab:btn_reset_upright:kit:31",
    "csv_index": null,
    "card": "ghost_facing",
    "card_title": "Facing",
@@ -148090,7 +148074,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:style_combo:kit:31",
+   "id": "v2:ghosts_tab:style_combo:kit:32",
    "csv_index": null,
    "card": "ghost_look",
    "card_title": "Ghost look",
@@ -148260,7 +148244,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:distort_combo:kit:32",
+   "id": "v2:ghosts_tab:distort_combo:kit:33",
    "csv_index": null,
    "card": "ghost_look",
    "card_title": "Ghost look",
@@ -148354,7 +148338,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:distort_amount_slider:kit:33",
+   "id": "v2:ghosts_tab:distort_amount_slider:kit:34",
    "csv_index": null,
    "card": "ghost_look",
    "card_title": "Ghost look",
@@ -148394,56 +148378,6 @@
    "shortcut_of": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::bindCameraPage",
-   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Ghosts",
-   "group": "cast_group",
-   "version": "v2",
-   "source": "generated_kit_xml",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v2:ghosts_tab:entity_style_hint:kit:34",
-   "csv_index": null,
-   "card": "ghost_look",
-   "card_title": "Ghost look",
-   "row_label": "Note",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-   "xui_line": null,
-   "widget_name": "entity_style_hint",
-   "widget_type": "readout",
-   "csv_kind": "readout",
-   "wiring_status": "GENERATED_KIT",
-   "resolution": "generated_kit_xml",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "readout",
-   "test_value": null,
-   "expect": {
-    "ui": "non-empty text after page refresh"
-   },
-   "restore": null,
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "combo_items": [],
-   "binding": "code",
-   "link_to": null,
-   "kit_action": null,
-   "shortcut_of": null,
-   "callbacks": null,
-   "owner": "ALKitRow::postBuild (authored static text)",
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml"
   },
   {
@@ -154190,7 +154124,60 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:end_mode_combo:kit:6",
+   "id": "v2:move_tab:move_heading_dial:kit:6",
+   "csv_index": null,
+   "card": "straight",
+   "card_title": "Straight walk",
+   "row_label": "Heading dial",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+   "xui_line": null,
+   "widget_name": "move_heading_dial",
+   "widget_type": "dial",
+   "csv_kind": "dial",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.1,
+   "expect": {
+    "callback": "LLFloaterDirector::bindMovePage",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "code",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "LLFloaterDirector::bindMovePage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml"
+  },
+  {
+   "page": "move_tab",
+   "page_label": "Move",
+   "group": "cast_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "move_tab",
+    "via": "tab"
+   },
+   "id": "v2:move_tab:end_mode_combo:kit:7",
    "csv_index": null,
    "card": "straight",
    "card_title": "Straight walk",
@@ -154262,7 +154249,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:move_hint:kit:7",
+   "id": "v2:move_tab:move_hint:kit:8",
    "csv_index": null,
    "card": "straight",
    "card_title": "Straight walk",
@@ -154312,7 +154299,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:cadence_slider:kit:8",
+   "id": "v2:move_tab:cadence_slider:kit:9",
    "csv_index": null,
    "card": "straight",
    "card_title": "Straight walk",
@@ -154367,7 +154354,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:custom_anim_editor:kit:9",
+   "id": "v2:move_tab:custom_anim_editor:kit:10",
    "csv_index": null,
    "card": "custom_anim",
    "card_title": "Custom walk anim",
@@ -154418,7 +154405,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:custom_anim_priority_combo:kit:10",
+   "id": "v2:move_tab:custom_anim_priority_combo:kit:11",
    "csv_index": null,
    "card": "custom_anim",
    "card_title": "Custom walk anim",
@@ -154502,7 +154489,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:group_run_combo:kit:11",
+   "id": "v2:move_tab:group_run_combo:kit:12",
    "csv_index": null,
    "card": "group_run",
    "card_title": "Group walk",
@@ -154558,7 +154545,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:group_delay_spinner:kit:12",
+   "id": "v2:move_tab:group_delay_spinner:kit:13",
    "csv_index": null,
    "card": "group_run",
    "card_title": "Group walk",
@@ -154611,7 +154598,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:btn_group_start:kit:13",
+   "id": "v2:move_tab:btn_group_start:kit:14",
    "csv_index": null,
    "card": "group_run",
    "card_title": "Group walk",
@@ -154666,7 +154653,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:btn_group_stop:kit:14",
+   "id": "v2:move_tab:btn_group_stop:kit:15",
    "csv_index": null,
    "card": "group_run",
    "card_title": "Group walk",
@@ -154721,7 +154708,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:groups_list:kit:15",
+   "id": "v2:move_tab:groups_list:kit:16",
    "csv_index": null,
    "card": "groups",
    "card_title": "Manage groups",
@@ -154779,7 +154766,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:group_rename_editor:kit:16",
+   "id": "v2:move_tab:group_rename_editor:kit:17",
    "csv_index": null,
    "card": "groups",
    "card_title": "Manage groups",
@@ -154834,7 +154821,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:btn_group_rename:kit:17",
+   "id": "v2:move_tab:btn_group_rename:kit:18",
    "csv_index": null,
    "card": "groups",
    "card_title": "Manage groups",
@@ -154884,7 +154871,7 @@
     "page_view": "move_tab",
     "via": "tab"
    },
-   "id": "v2:move_tab:btn_group_dissolve:kit:18",
+   "id": "v2:move_tab:btn_group_dissolve:kit:19",
    "csv_index": null,
    "card": "groups",
    "card_title": "Manage groups",
@@ -227235,6 +227222,7 @@
    "btn_wp_delete",
    "btn_wp_insert",
    "cadence_slider",
+   "cadence_spinner",
    "cam_cut",
    "cam_ease",
    "camera_group",
@@ -227783,6 +227771,7 @@
    "director_shell",
    "director_tabs",
    "dist_slider",
+   "dist_spinner",
    "distance_format",
    "distort_amount_slider",
    "distort_combo",
@@ -228668,6 +228657,7 @@
    "motion_ripple",
    "motion_spin",
    "move_btn_stop",
+   "move_heading_dial",
    "move_hint",
    "move_kit",
    "move_tab",
@@ -229609,6 +229599,7 @@
    "softedge_preset_action_item_6",
    "source_combo",
    "speed_slider",
+   "speed_spinner",
    "spin_axis_combo",
    "spin_axis_x",
    "spin_axis_y",
