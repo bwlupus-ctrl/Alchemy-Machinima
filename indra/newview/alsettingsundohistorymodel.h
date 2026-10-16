@@ -27,6 +27,7 @@ public:
     struct Step
     {
         std::string         mLabel;
+        U64                 mSequence = 0;
         std::vector<Change> mChanges;
     };
 
@@ -41,6 +42,7 @@ public:
     void endEdit();
     void closeIdle(U64 now_ms);
     void clear();
+    void discardRedo();
 
     bool canUndo() const;
     bool canRedo() const;
@@ -50,6 +52,7 @@ public:
     std::string undoLabel() const;
     std::string redoLabel() const;
     U64 revision() const { return mRevision; }
+    U64 stepSequence(bool redo) const;
     bool isEditActive() const { return mEditActive; }
 
 private:

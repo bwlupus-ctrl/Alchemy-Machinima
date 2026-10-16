@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "altoolpathedit.h"
+#include "alkithistory.h"
 
 #include "indra_constants.h"        // KEY_DELETE / KEY_BACKSPACE / KEY_ESCAPE
 #include "llactormover.h"
@@ -132,6 +133,7 @@ S32 ALToolPathEdit::pickSegment(S32 x, S32 y, const LLUUID& actor) const
 // ---------------------------------------------------------------------------
 bool ALToolPathEdit::handleMouseDown(S32 x, S32 y, MASK mask)
 {
+    ALKitHistory::ScopedSource source(mHistorySource.get());
     // [DirFix] Common ownership guard (ends a stale session, see sessionLive).
     if (!sessionLive())
     {
@@ -193,6 +195,7 @@ bool ALToolPathEdit::handleMouseDown(S32 x, S32 y, MASK mask)
 
 bool ALToolPathEdit::handleHover(S32 x, S32 y, MASK mask)
 {
+    ALKitHistory::ScopedSource source(mHistorySource.get());
     // [DirFix] Common ownership guard for every hover/drag mutation path.
     if (!sessionLive())
     {
@@ -265,6 +268,7 @@ bool ALToolPathEdit::handleRightMouseDown(S32 x, S32 y, MASK mask)
 
 bool ALToolPathEdit::handleKey(KEY key, MASK mask)
 {
+    ALKitHistory::ScopedSource source(mHistorySource.get());
     // [DirFix] Esc must ALWAYS leave the tool, owner or not: never trap the user
     // in a transient tool without camera control.
     if (key == KEY_ESCAPE)
@@ -330,10 +334,11 @@ void ALToolPathEdit::resetSession()
     mMenuNode = -1;
 }
 
-void ALToolPathEdit::beginSessionFor(const LLUUID& owner)
+void ALToolPathEdit::beginSessionFor(const LLUUID& owner, LLView* source)
 {
     // [DirFix] Reset before owner handoff even when this tool is already current.
     resetSession();
+    mHistorySource = source ? source->getHandle() : LLHandle<LLView>();
     mOwner = owner;
 }
 
@@ -419,6 +424,7 @@ void ALToolPathEdit::ensureMenu()
 
 void ALToolPathEdit::onMenuDelete()
 {
+    ALKitHistory::ScopedSource source(mHistorySource.get());
     LLActorMover& mover = LLActorMover::instance();
     // [DirFix] Reject a deferred callback after owner/actor/node handoff. The
     // common guard comes first: another host claiming the SAME actor and node
@@ -442,6 +448,7 @@ void ALToolPathEdit::onMenuDelete()
 
 void ALToolPathEdit::onMenuInsertAfter()
 {
+    ALKitHistory::ScopedSource source(mHistorySource.get());
     LLActorMover& mover = LLActorMover::instance();
     // [DirFix] Reject a deferred callback after owner/actor/node handoff (common
     // guard first, then the captured triple; see onMenuDelete).

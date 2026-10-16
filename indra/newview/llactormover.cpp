@@ -11,6 +11,9 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
+#include "alkithistory.h"
+#include "alkitpage.h"
+#include "alundosequence.h"
 #include "alavatarstaging.h"       // local avatar blocking when no Move owns root
 #include "algazemath.h"
 #include "algazemotor.h"           // coordinated gaze motor program assembly (spec 6A)
@@ -3492,10 +3495,15 @@ void LLActorMover::applyState(const LLUUID& key, const PathState& st)
 
 void LLActorMover::snapshotForUndo(const LLUUID& actor_id)
 {
+    if (ALKitPage* page = dynamic_cast<ALKitPage*>(ALKitHistory::inputPage()))
+        page->historyEdited(true);
     ++mPathRevision;
     const LLUUID key = path_key(actor_id);
     EditHistory& h = mHistory[key];
     h.mUndo.push_back(captureState(key));
+    h.mUndo.back().mUndoOwner = ALKitHistory::inputPage()
+        ? ALKitHistory::inputPage()->getHandle() : LLHandle<LLView>();
+    h.mUndo.back().mUndoSequence = alNextUndoSequence();
     if ((S32)h.mUndo.size() > UNDO_DEPTH)
     {
         h.mUndo.erase(h.mUndo.begin());     // bounded depth: drop the oldest
@@ -3507,6 +3515,47 @@ bool LLActorMover::canUndoPath(const LLUUID& actor_id) const
 {
     auto it = mHistory.find(path_key(actor_id));
     return it != mHistory.end() && !it->second.mUndo.empty();
+}
+
+U64 LLActorMover::pagePathSequence(LLView* page, bool redo) const
+{
+    U64 sequence = 0;
+    for (const auto& item : mHistory)
+    {
+        const auto& steps = redo ? item.second.mRedo : item.second.mUndo;
+        if (!steps.empty() && steps.back().mUndoOwner.get() == page && !isPathWalking(item.first))
+            sequence = llmax(sequence, steps.back().mUndoSequence);
+    }
+    return sequence;
+}
+
+void LLActorMover::discardPagePathRedo(LLView* page)
+{
+    for (auto& item : mHistory)
+    {
+        auto& steps = item.second.mRedo;
+        steps.erase(std::remove_if(steps.begin(), steps.end(),
+            [page](const PathState& step) { return step.mUndoOwner.get() == page; }), steps.end());
+    }
+}
+
+void LLActorMover::replayPagePath(LLView* page, bool redo)
+{
+    const U64 sequence = pagePathSequence(page, redo);
+    if (!sequence)
+        return;
+    for (const auto& item : mHistory)
+    {
+        const auto& steps = redo ? item.second.mRedo : item.second.mUndo;
+        if (!steps.empty() && steps.back().mUndoSequence == sequence)
+        {
+            if (redo)
+                redoPath(item.first);
+            else
+                undoPath(item.first);
+            return;
+        }
+    }
 }
 
 bool LLActorMover::canRedoPath(const LLUUID& actor_id) const
@@ -3540,6 +3589,8 @@ bool LLActorMover::undoPath(const LLUUID& actor_id)
         return false;
     }
     hit->second.mRedo.push_back(captureState(key));     // current -> redo
+    hit->second.mRedo.back().mUndoOwner = hit->second.mUndo.back().mUndoOwner;
+    hit->second.mRedo.back().mUndoSequence = alNextUndoSequence();
     PathState st = hit->second.mUndo.back();
     hit->second.mUndo.pop_back();
     applyState(key, st);
@@ -3559,6 +3610,8 @@ bool LLActorMover::redoPath(const LLUUID& actor_id)
         return false;
     }
     hit->second.mUndo.push_back(captureState(key));     // current -> undo
+    hit->second.mUndo.back().mUndoOwner = hit->second.mRedo.back().mUndoOwner;
+    hit->second.mUndo.back().mUndoSequence = alNextUndoSequence();
     PathState st = hit->second.mRedo.back();
     hit->second.mRedo.pop_back();
     applyState(key, st);

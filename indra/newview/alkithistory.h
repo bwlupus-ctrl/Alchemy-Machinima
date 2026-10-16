@@ -39,6 +39,7 @@ public:
         std::string              context;
         std::string              page;
         U64                      scene_generation = 0;
+        U64                      sequence = 0;
         std::vector<Entry>       entries;
         std::vector<CustomEntry> custom;
     };
@@ -48,6 +49,7 @@ public:
     ~ALKitHistory();
     void        setOwner(LLView* owner);
     void        beginGesture(EOrigin, const std::string&, const std::string& label = std::string());
+    void        ensureGesture(const std::string& page, const std::string& label);
     static void noteKey();
     static void notePointer(LLView*);
     void        watchSettings(const std::string&, const std::vector<std::string>&);
@@ -57,7 +59,18 @@ public:
     static void globalBarrier(const std::string&);
     bool        canUndo(const std::string& page) const;
     bool        canRedo(const std::string& page) const;
-    bool        canUndo() const { return !mUndo.empty(); }
+    U64         stepSequence(const std::string& page, bool redo) const;
+    void        finishGesture();
+    void        discardRedo(const std::string& page);
+    static LLView* inputPage();
+    struct ScopedSource
+    {
+        explicit ScopedSource(LLView*);
+        ~ScopedSource();
+    private:
+        LLView* mPrevious;
+        bool mPreviousSet;
+    };
     void        undo(const std::string& page);
     void        redo(const std::string& page);
     U64         revision() const { return mRevision; }
@@ -73,7 +86,6 @@ private:
     class GestureTimer;
     void                          captureSetting(const std::string&, const std::string&, const LLSD&, const LLSD&);
     void                          addEntry(Entry, const std::string&, const std::string& label_page = std::string());
-    void                          finishGesture();
     bool                          tickGesture();
     std::string                   currentContext(const std::string&) const;
     bool                          replay(Step&, bool);

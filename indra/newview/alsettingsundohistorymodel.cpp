@@ -5,6 +5,7 @@
 
 #include "linden_common.h"
 #include "alsettingsundohistorymodel.h"
+#include "alundosequence.h"
 #include "llsdutil.h"
 
 #include <algorithm>
@@ -24,6 +25,7 @@ void ALSettingsUndoHistoryModel::record(
     if (mBatchDepth > 0)
     {
         mergeChange(mBatch, change);
+        mBatch.mSequence = alNextUndoSequence();
         changed();
         return;
     }
@@ -38,6 +40,7 @@ void ALSettingsUndoHistoryModel::record(
         if (same_key && in_window)
         {
             mergeChange(mPending, change);
+            mPending.mSequence = alNextUndoSequence();
             mLastChangeMs = now_ms;
             changed();
             return;
@@ -46,6 +49,7 @@ void ALSettingsUndoHistoryModel::record(
     }
 
     mPending.mLabel = label;
+    mPending.mSequence = alNextUndoSequence();
     mPending.mChanges.push_back(std::move(change));
     mLastChangeMs = now_ms;
     changed();
@@ -126,6 +130,7 @@ bool ALSettingsUndoHistoryModel::takeUndo(Step& step)
     step = std::move(mUndo.back());
     mUndo.pop_back();
     mRedo.push_back(step);
+    mRedo.back().mSequence = alNextUndoSequence();
     changed();
     return true;
 }
@@ -139,6 +144,7 @@ bool ALSettingsUndoHistoryModel::takeRedo(Step& step)
     step = std::move(mRedo.back());
     mRedo.pop_back();
     pushUndo(Step(step), false);
+    mUndo.back().mSequence = alNextUndoSequence();
     changed();
     return true;
 }
@@ -159,6 +165,23 @@ void ALSettingsUndoHistoryModel::clear()
     {
         changed();
     }
+}
+
+void ALSettingsUndoHistoryModel::discardRedo()
+{
+    if (!mRedo.empty())
+    {
+        mRedo.clear();
+        changed();
+    }
+}
+
+U64 ALSettingsUndoHistoryModel::stepSequence(bool redo) const
+{
+    if (!redo && !mPending.mChanges.empty())
+        return mPending.mSequence;
+    const auto& steps = redo ? mRedo : mUndo;
+    return (redo && !canRedo()) || steps.empty() ? 0 : steps.back().mSequence;
 }
 
 std::string ALSettingsUndoHistoryModel::undoLabel() const

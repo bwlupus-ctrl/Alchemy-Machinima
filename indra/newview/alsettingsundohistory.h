@@ -41,6 +41,11 @@ namespace ALExposureSettingsHistory
     std::string undoLabel();
     std::string redoLabel();
     U64 revision();
+    // Kit pages use instance-scoped models; the legacy floater keeps its own model.
+    U64 pageStepSequence(LLView* page, bool redo);
+    void replayPage(LLView* page, bool redo);
+    void finishPage(LLView* page);
+    void discardPageRedo(LLView* page);
 
     using revision_signal_t = boost::signals2::signal<void(U64)>;
     boost::signals2::connection connectRevisionChanged(

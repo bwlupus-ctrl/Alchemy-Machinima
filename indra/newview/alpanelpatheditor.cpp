@@ -13,6 +13,7 @@
 
 #include "alkitbinding.h"
 #include "alkitcard.h"
+#include "alkitpage.h"
 #include "altoolpathedit.h"
 #include "aluirefresh.h"             // [UIPerfC1] diff-guarded enable/tooltip writes
 #include "llactormover.h"
@@ -285,6 +286,15 @@ bool ALPanelPathEditor::postBuild()
     bind_reset("reset_follow_offset", "follow_offset_spinner", "follow_offset");
 
     registerKitResets();
+    mKitPage = findChild<ALKitPage>("path_kit");
+    if (ALKitPage* page = mKitPage)
+    {
+        page->setOwnedHistory([page](bool redo) { return LLActorMover::instance().pagePathSequence(page, redo); },
+            [page](bool redo) { LLActorMover::instance().replayPagePath(page, redo); },
+            [page]() { LLActorMover::instance().discardPagePathRedo(page); });
+        page->setAvailabilityRefresh([this]()
+            { refreshHeader(); refreshInspector(); refreshPathControls(); refreshCameraControls(); });
+    }
 
     if (mColorSwatch)
     {
@@ -1445,7 +1455,7 @@ void ALPanelPathEditor::onToggleEditMode()
         claimEdit(); // [DirFix]
         LLPathCamera::instance().stopPreview();
         ALToolPathEdit* tool = ALToolPathEdit::getInstance();
-        tool->beginSessionFor(mEditOwner); // [DirFix] reset before tool handoff
+        tool->beginSessionFor(mEditOwner, this); // [DirFix] reset before tool handoff
         tm->setTransientTool(tool);
         mEditMode = true;
     }
@@ -1483,6 +1493,11 @@ void ALPanelPathEditor::exitEditMode()
 // ---------------------------------------------------------------------------
 void ALPanelPathEditor::onClickUndo()
 {
+    if (ALKitPage* page = mKitPage)
+    {
+        page->undoOnPage(false);
+        return;
+    }
     if (mActor.notNull())
     {
         LLActorMover::instance().undoPath(mActor);
@@ -1491,6 +1506,11 @@ void ALPanelPathEditor::onClickUndo()
 
 void ALPanelPathEditor::onClickRedo()
 {
+    if (ALKitPage* page = mKitPage)
+    {
+        page->undoOnPage(true);
+        return;
+    }
     if (mActor.notNull())
     {
         LLActorMover::instance().redoPath(mActor);
@@ -1580,7 +1600,7 @@ void ALPanelPathEditor::onClickWalkHere()
     exitEditMode();
     claimEdit(); // [DirFix]
     ALToolPathEdit* tool = ALToolPathEdit::getInstance();
-    tool->beginSessionFor(mEditOwner); // [DirFix] reset before arming/handoff
+    tool->beginSessionFor(mEditOwner, this); // [DirFix] reset before arming/handoff
     tool->armWalkTo();
     LLToolMgr::getInstance()->setTransientTool(tool);
 }
@@ -1649,15 +1669,16 @@ void ALPanelPathEditor::refreshEditButtons()
     const bool have_actor = mActor.notNull();
     const bool walking  = have_actor && m.isPathWalking(mActor);
     const bool walkable = have_actor && m.hasWalkablePath(mActor);
-    const bool can_undo = have_actor && m.canUndoPath(mActor);
-    const bool can_redo = have_actor && m.canRedoPath(mActor);
+    ALKitPage* page = mKitPage;
+    const bool can_undo = page ? page->canUndoOnPage(false) : have_actor && m.canUndoPath(mActor) && !walking;
+    const bool can_redo = page ? page->canUndoOnPage(true) : have_actor && m.canRedoPath(mActor) && !walking;
 
-    setEnabledIfChanged(mUndoBtn, can_undo && !walking);
+    setEnabledIfChanged(mUndoBtn, can_undo);
     setToolTipIfChanged(mUndoBtn, walking
         ? std::string("Stop the walk to undo path edits")
         : (can_undo ? std::string("Undo the last path edit")
                     : std::string("Nothing to undo")));
-    setEnabledIfChanged(mRedoBtn, can_redo && !walking);
+    setEnabledIfChanged(mRedoBtn, can_redo);
     setToolTipIfChanged(mRedoBtn, walking
         ? std::string("Stop the walk to redo path edits")
         : (can_redo ? std::string("Redo the last undone edit")

@@ -29,6 +29,7 @@
 #define LL_LLACTORMOVER_H
 
 #include "lluuid.h"
+#include "llhandle.h"
 #include "llsd.h"
 #include "v3math.h"
 #include "v2math.h"
@@ -46,6 +47,7 @@
 #include <functional>       // [CloneFidelity] shared source-walk callbacks
 
 class LLVOAvatar;
+class LLView;
 class LLDrawInfo;
 class LLFace;
 class LLCamera;     // [GhostDeferred] proxy-queue build/cull takes an explicit view
@@ -381,6 +383,9 @@ public:
     bool redoPath(const LLUUID& actor_id);
     bool canUndoPath(const LLUUID& actor_id) const;
     bool canRedoPath(const LLUUID& actor_id) const;
+    U64 pagePathSequence(LLView* page, bool redo) const;
+    void replayPagePath(LLView* page, bool redo);
+    void discardPagePathRedo(LLView* page);
     S32 undoDepth(const LLUUID& actor_id) const;
     S32 redoDepth(const LLUUID& actor_id) const;
 
@@ -1278,6 +1283,8 @@ private:
     // placement clears the path).
     struct PathState
     {
+        LLHandle<LLView> mUndoOwner;
+        U64 mUndoSequence = 0;
         std::vector<Waypoint> mNodes;
         F32    mSpeed        = 1.f;
         F32    mCadence      = 3.f;

@@ -46,6 +46,7 @@ public:
     bool        handleKeyHere(KEY, MASK) override;
     bool        handleMouseDown(S32, S32, MASK) override;
     bool        handleMouseUp(S32, S32, MASK) override;
+    bool        handleScrollWheel(S32, S32, LLScrollDelta) override;
     bool        handleRightMouseDown(S32, S32, MASK) override;
     S32         heightForWidth(S32) const;
     void        layoutRow(S32);
@@ -91,6 +92,7 @@ public:
     LLSD boundDefault() const;
     bool setBoundValue(const LLSD&);
     bool canPasteValue(const LLSD&) const;
+    bool enabledForEdit() const;
     ALKitQol::Favorite favoriteKey() const;
     ALKitRow* sourceRow() const { return mSourceRow.get(); }
     void refreshFavorite();

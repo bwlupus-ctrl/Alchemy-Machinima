@@ -33,6 +33,7 @@
 #include "llhandle.h"
 
 class LLContextMenu;
+class LLView;
 
 class ALToolPathEdit final : public LLTool, public LLSingleton<ALToolPathEdit>
 {
@@ -50,7 +51,7 @@ public:
     void handleDeselect() override;
     void onMouseCaptureLost() override;
 
-    void beginSessionFor(const LLUUID& owner); // [DirFix]
+    void beginSessionFor(const LLUUID& owner, LLView* source = nullptr); // [DirFix]
     bool endSessionFor(const LLUUID& owner);   // [DirFix]
     // [DirFix] Any-owner termination: reset, drop the owner and hand the camera
     // back if this is the current transient tool. Idempotent. Used by the
@@ -94,6 +95,7 @@ private:
     bool sessionLive();
 
     LLUUID mOwner;                  // [DirFix] path-editor tool-session owner
+    LLHandle<LLView> mHistorySource;
     S32  mDragNode = -1;         // node being dragged (-1 = none)
     S32  mHoverNode = -1;        // node under the cursor (-1 = none); drives hover highlight
     bool mDragDidSnapshot = false;  // pushed the pre-drag undo yet (coalesce a drag to one entry)

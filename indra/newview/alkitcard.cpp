@@ -604,7 +604,9 @@ void ALKitCard::pasteSettings()
                     LLSD().with("MESSAGE", "Pasted from " + sCardClipboard.source));
                 return;
             }
-    bool pasted = false;
+    S32 pasted = 0;
+    S32 matched = 0;
+    S32 disabled = 0;
     for (ALKitRow* row : mRows)
     {
         if (!row || !rowBranchVisible(row, this) || !row->control())
@@ -613,14 +615,19 @@ void ALKitCard::pasteSettings()
             if ((*it)["key"].asString() == (mCopyType == "light_role" ? row->meta().label : row->meta().widget) &&
                 ALKitQol::pasteTypesCompatible((*it)["value"], row->boundValue()))
             {
-                pasted = row->setBoundValue((*it)["value"]) || pasted;
+                ++matched;
+                if (!row->enabledForEdit())
+                    ++disabled;
+                else if (row->setBoundValue((*it)["value"]))
+                    ++pasted;
                 break;
             }
     }
-    if (!pasted)
+    if (!matched)
         return;
     LLNotificationsUtil::add("SystemMessageTip",
-        LLSD().with("MESSAGE", "Pasted from " + sCardClipboard.source));
+        LLSD().with("MESSAGE", disabled ? llformat("Pasted %d of %d (%d disabled)", pasted, matched, disabled)
+                                       : "Pasted from " + sCardClipboard.source));
 }
 
 void ALKitCard::refreshSummary(S32 index)

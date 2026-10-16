@@ -15,6 +15,7 @@
 #include "alfloaterlightbox.h"
 #include "alkitpresets.h"
 #include "alsettingsundohistory.h"
+#include "alkitpage.h"
 #include "aluirefresh.h"
 #include "llbutton.h"
 #include "llcontrol.h"
@@ -152,8 +153,10 @@ bool ALPanelExposurePage::postBuild()
 
     getChild<LLButton>("exp_filters_btn")->setCommitCallback(
         [](LLUICtrl*, const LLSD&) { ALFloaterLightBox::showTab("colortone_settings"); });
-    mUndo->setCommitCallback([](LLUICtrl*, const LLSD&) { ALExposureSettingsHistory::undo(); });
-    mRedo->setCommitCallback([](LLUICtrl*, const LLSD&) { ALExposureSettingsHistory::redo(); });
+    mUndo->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { if (ALKitPage* page = findChild<ALKitPage>("exposure_kit")) page->undoOnPage(false); });
+    mRedo->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { if (ALKitPage* page = findChild<ALKitPage>("exposure_kit")) page->undoOnPage(true); });
     mHistoryConnection = ALExposureSettingsHistory::connectRevisionChanged(
         [this](U64) { updateHistoryButtons(); });
     // One history step per slider drag or typed value, not one per mouse move.
@@ -195,12 +198,13 @@ void ALPanelExposurePage::updateTonemapGating()
 
 void ALPanelExposurePage::updateHistoryButtons()
 {
-    const bool can_undo = ALExposureSettingsHistory::canUndo();
-    const bool can_redo = ALExposureSettingsHistory::canRedo();
+    ALKitPage* page = findChild<ALKitPage>("exposure_kit");
+    const bool can_undo = page && page->canUndoOnPage(false);
+    const bool can_redo = page && page->canUndoOnPage(true);
     setEnabledIfChanged(mUndo, can_undo);
-    setToolTipIfChanged(mUndo, can_undo ? "Undo: " + ALExposureSettingsHistory::undoLabel()
+    setToolTipIfChanged(mUndo, can_undo ? std::string("Undo the last change on this page")
                                        : std::string("Nothing to undo"));
     setEnabledIfChanged(mRedo, can_redo);
-    setToolTipIfChanged(mRedo, can_redo ? "Redo: " + ALExposureSettingsHistory::redoLabel()
+    setToolTipIfChanged(mRedo, can_redo ? std::string("Redo the last undone change on this page")
                                        : std::string("Nothing to redo"));
 }

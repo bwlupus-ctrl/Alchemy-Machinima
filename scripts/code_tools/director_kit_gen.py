@@ -777,6 +777,8 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
     # own_history: the settings whose undo another owner already records (Exposure and its
     # shortcuts on Image: ALExposureSettingsHistory tracks the env EVs, auto exposure and
     # RenderExposure). Only those leave the kit watch list; every other setting keeps kit undo.
+    if cfg.get("undo_context"):
+        attrs["undo_context"] = str(cfg["undo_context"])
     own = set(cfg.get("own_history", []))
     settings = [] if cfg.get("no_history") else sorted(
         ({str(row["s"]) for row in all_rows(page) if row.get("s")} - own) | set(cfg.get("watch_extra", [])))
@@ -804,7 +806,9 @@ def declare_undo_owner(body: ET.Element, cfg: dict, page_name: str) -> None:
     owner = cfg.get("_undo") or {}
     no_history = set(owner.get("no_history_rows", []))
     global_rows = set(owner.get("global_rows", []))
-    if owner.get("context") or cfg.get("undo_context"):
+    rig_history = (page_name == "cine_light_rig_tab" and
+                   owner.get("history") == "page" and cfg.get("undo_context") == "cine_rig_slot")
+    if (owner.get("context") or cfg.get("undo_context")) and not rig_history:
         raise GenError(f"{page_name}: subject undo contexts are forbidden; disable widget history")
     seen: set[str] = set()
     missing: list[str] = []
@@ -818,6 +822,8 @@ def declare_undo_owner(body: ET.Element, cfg: dict, page_name: str) -> None:
             continue
         if owner.get("history") == "none" or widget in no_history:
             row.set("widget_history", "false")
+        elif rig_history:
+            row.set("undo_scope", "page")
         elif widget in global_rows or owner.get("scope") == "global":
             row.set("undo_scope", "global")
         else:

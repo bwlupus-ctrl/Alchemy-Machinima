@@ -1,5 +1,6 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitpage.h"
+#include "alsettingsundohistory.h"
 #include "alflowgrid.h"
 #include "alkitcard.h"
 #include "alkitbinding.h"
@@ -205,6 +206,7 @@ ALKitPage::Params::Params() :
     preset_mode("preset_mode", "none"),
     preset_provider("preset_provider", ""),
     watch_settings("watch_settings", ""),
+    undo_context("undo_context", ""),
     chip_mode("chip_mode", "auto"),
     legacy("legacy", false),
     actor_target("actor_target", false),
@@ -874,11 +876,14 @@ bool ALKitPage::postBuild()
     if (mWhoChip)
         mWhoChip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
     stabilizeComboEditors(this);
-    if (mPage == "cast_group/path_tab" || mPage == "light_group/exposure_tab")
+    if (mPage == "light_group/exposure_tab" || mPage == "look_group/image_tab")
     {
-        const bool path = mPage == "cast_group/path_tab";
-        mPageUndo = findChild<LLButton>(path ? "btn_edit_undo" : "exp_undo");
-        mPageRedo = findChild<LLButton>(path ? "btn_edit_redo" : "exp_redo");
+        ALExposureSettingsHistory::initialize();
+        setOwnedHistory([this](bool redo) { return ALExposureSettingsHistory::pageStepSequence(this, redo); },
+            [this](bool redo) { ALExposureSettingsHistory::replayPage(this, redo); },
+            [this]() { ALExposureSettingsHistory::discardPageRedo(this); });
+        mPageUndo = findChild<LLButton>("exp_undo");
+        mPageRedo = findChild<LLButton>("exp_redo");
     }
     struct ComboSpec
     {
@@ -1676,23 +1681,44 @@ LLUUID ALKitPage::actorTarget() const
 
 void ALKitPage::undoOnPage(bool redo)
 {
-    if (LLButton* button = redo ? mPageRedo : mPageUndo)
-    {
-        if (button->getEnabled())
-        {
-            button->onCommit();
-            return;
-        }
-    }
-    if (mPage == "cast_group/path_tab")
-        return; // Path's snapshots are its only history, even when the stack is empty.
     if (ALKitShell* shell = ALKitShell::find(this))
     {
+        // Finish before choosing any owner, so a delayed drag cannot reappear after undo.
+        shell->history().finishGesture();
+        ALExposureSettingsHistory::finishPage(this);
+        const U64 kit = shell->history().stepSequence(mPage, redo);
+        const U64 owned = mOwnedSequence ? mOwnedSequence(redo) : 0;
+        if (owned > kit && mOwnedReplay)
+        {
+            mOwnedReplay(redo);
+            return;
+        }
         if (redo)
             shell->history().redo(mPage);
         else
             shell->history().undo(mPage);
     }
+}
+
+bool ALKitPage::canUndoOnPage(bool redo)
+{
+    ALKitShell* shell = ALKitShell::find(this);
+    return (mOwnedSequence && mOwnedSequence(redo)) ||
+        (shell && (redo ? shell->history().canRedo(mPage) : shell->history().canUndo(mPage)));
+}
+
+void ALKitPage::historyEdited(bool owned)
+{
+    if (ALKitShell* shell = ALKitShell::find(this))
+    {
+        if (owned)
+            shell->history().finishGesture();
+        shell->history().discardRedo(mPage);
+    }
+    if (!owned)
+        ALExposureSettingsHistory::finishPage(this);
+    if (mOwnedDiscardRedo)
+        mOwnedDiscardRedo();
 }
 
 void ALKitPage::refreshActorTargetAvailability()
@@ -1778,15 +1804,19 @@ void ALKitPage::draw()
     if (ALKitShell* shell = ALKitShell::find(this))
     {
         const U64 revision = shell->history().revision();
-        if (revision != mHistoryRevision || mPageUndo)
+        if (revision != mHistoryRevision || mOwnedSequence)
         {
             mHistoryRevision = revision;
-            const bool can_undo = (mPageUndo && mPageUndo->getEnabled()) || shell->history().canUndo(mPage);
-            const bool can_redo = (mPageRedo && mPageRedo->getEnabled()) || shell->history().canRedo(mPage);
+            const bool can_undo = canUndoOnPage(false);
+            const bool can_redo = canUndoOnPage(true);
             if (mUndo && mUndo->getEnabled() != can_undo)
                 mUndo->setEnabled(can_undo);
             if (mRedo && mRedo->getEnabled() != can_redo)
                 mRedo->setEnabled(can_redo);
+            if (mPageUndo && mPageUndo->getEnabled() != can_undo)
+                mPageUndo->setEnabled(can_undo);
+            if (mPageRedo && mPageRedo->getEnabled() != can_redo)
+                mPageRedo->setEnabled(can_redo);
         }
     }
     updateMaster();

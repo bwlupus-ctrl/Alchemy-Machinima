@@ -2,6 +2,7 @@
 #include "alkitbinding.h"
 #include "alkitqol.h"
 #include "alkitpage.h"
+#include "alkitrow.h"
 #include "llcontrol.h"
 #include "lluictrl.h"
 #include "llviewercontrol.h"
@@ -135,7 +136,8 @@ LLSD ALKitWidgetBinding::get() const
 
 void ALKitWidgetBinding::set(const LLSD& v)
 {
-    if (mCtrl && mCtrl->isInEnabledChain())
+    ALKitRow* row = mCtrl ? dynamic_cast<ALKitRow*>(mCtrl->getParent()) : nullptr;
+    if (row ? row->enabledForEdit() : mCtrl && mCtrl->isInEnabledChain())
     {
         mCtrl->setValue(v);
         mCtrl->onCommit();

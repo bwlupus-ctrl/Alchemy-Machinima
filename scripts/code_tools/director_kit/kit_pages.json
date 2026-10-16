@@ -70,7 +70,7 @@
   "light_group/cine_light_rig_tab": {
    "v1_sources": ["panel_cine_light_rig.xml"],
    "root_class": "panel_cine_light_rig", "root_name": "cine_light_rig_tab_logic",
-   "who_adapter": "cine_rig_slot", "mode_adapter": "cine_rig_easy", "mode_on": "Easy", "chip_mode": "filter",
+   "undo_context": "cine_rig_slot", "who_adapter": "cine_rig_slot", "mode_adapter": "cine_rig_easy", "mode_on": "Easy", "chip_mode": "filter",
    "preset": {"mode": "widgets", "combo": "cine_setup_combo", "save": "cine_setup_save", "delete": "cine_setup_delete"},
    "selector_settings": {"lights": "DirectorV2SelectedLight"},
    "card_copy_types": {"lights": "light_role"},
@@ -477,7 +477,7 @@
   "lens_group/focus_tab": {"scope": "global"},
   "lens_group/filters_tab": {"scope": "global"},
   "settings_group/director_settings_tab": {"scope": "global"},
-  "light_group/cine_light_rig_tab": {"history": "none"},
+  "light_group/cine_light_rig_tab": {"history": "page"},
   "light_group/light_cues_tab": {"no_history_rows": ["cue_rows"]},
   "light_group/practicals_tab": {"history": "none"},
   "look_group/actor_style_tab": {"history": "none"},
@@ -489,7 +489,7 @@
   "cast_group/move_tab": {"scope": "global", "no_history_rows": ["groups_list", "group_rename_editor", "group_run_combo", "group_delay_spinner"]},
   "cast_group/path_tab": {"history": "none"},
   "cast_group/props_tab": {"history": "none"},
-  "cast_group/dance_tab": {"history": "none"},
+  "cast_group/dance_tab": {"scope": "global"},
   "cast_group/ghosts_tab": {"scope": "global", "no_history_rows": ["source_combo", "clone_type_combo", "array_count_spinner", "array_spacing_spinner", "formation_edge_gap_spinner", "formation_jitter_spinner", "formation_seed_spinner", "formation_terrain_check", "formation_facing_combo", "facing_yaw_offset_spinner", "preserve_source_tilt_check", "formation_guide_shape_combo", "formation_guide_size_spinner", "crowd_copies_as_combo", "crowd_create_mode_combo", "brigade_columns_spinner", "brigade_rows_spinner", "brigade_file_spacing_spinner", "brigade_rank_spacing_spinner", "strip_count_spinner", "strip_interval_spinner", "formation_motion_combo", "formation_motion_speed", "formation_motion_amplitude", "rig_diagnostics"]}
  },
  "parity_allow": {"cine_rig_rim_preset": "replaced by the kit preset strip (provider rig_rim)",

@@ -33,6 +33,7 @@ class LLButton;
 class LLAccordionCtrl;
 class LLAccordionCtrlTab;
 class ALKitCard;
+class ALKitPage;
 class LLCheckBoxCtrl;
 class LLComboBox;
 class LLLineEditor;
@@ -72,6 +73,7 @@ public:
     void exitEditMode();
 
 private:
+    ALKitPage* mKitPage = nullptr;
     void claimEdit();        // [DirFix] claim/release owned singleton state
     bool ownsEdit() const;
     bool ownsTool() const;

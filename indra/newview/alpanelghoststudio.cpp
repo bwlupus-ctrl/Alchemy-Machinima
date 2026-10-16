@@ -16,6 +16,7 @@
 #include "alscrollfit.h"
 #include "alkitbinding.h"           // ALKitBinding (Formation Parameter reset on the kit page)
 #include "alkitcard.h"
+#include "alkitpage.h"
 #include "alkitrow.h"               // ALKitRow::setControlVisible (Director kit page rows)
 
 #include "alcompassdial.h"          // live direct-manipulation heading control
@@ -771,6 +772,8 @@ bool ALPanelGhostStudio::postBuild()
 
     mShowAllCheck->set(ALGhostStudio::instance().getShowAll());
     mNameplateMode->setValue(gSavedSettings.getS32("GhostStudioNameplateMode"));
+    if (ALKitPage* page = findChild<ALKitPage>("ghosts_kit"))
+        page->setAvailabilityRefresh([this]() { refreshDetail(); });
     return true;
 }
 
@@ -1534,7 +1537,10 @@ void ALPanelGhostStudio::refreshDetail()
         type = std::string("Type: Entity clone \xC2\xB7 ") + state_name(*inst);
     }
     // The kit row already labels this value "Type"; the standalone text owns its label.
-    setTextIfChanged(mTypeText, !mLookControls.empty() ? type.substr(6) : type);
+    const std::string prefix = "Type: ";
+    if (!mLookControls.empty() && type.compare(0, prefix.size(), prefix) == 0)
+        type.erase(0, prefix.size());
+    setTextIfChanged(mTypeText, type);
     setValueIfChanged(mCrowdCopiesAs,
         LLSD(crowd_active
             ? (S32)crowd_draft.mSource.mKind
@@ -1574,7 +1580,7 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mToMeBtn, overlay);
     setEnabledIfChanged(mStyleCombo, overlay);
     setEnabledIfChanged(mActorTintCheck, overlay);
-    setEnabledIfChanged(mHueSlider, overlay && !mActorTintCheck->get());
+    setEnabledIfChanged(mHueSlider, overlay && !inst->mUseActorTint);
     setEnabledIfChanged(mAlphaSlider, overlay);
     setEnabledIfChanged(mShimmerSpeedSlider, overlay);
     setEnabledIfChanged(mShimmerAmountSlider, overlay);
@@ -1582,7 +1588,7 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mGlitchSlider, overlay);
     setEnabledIfChanged(mDistortCombo, overlay);
     setEnabledIfChanged(mDistortAmountSlider,
-        overlay && mDistortCombo->getValue().asInteger() != 0);
+        overlay && inst->mDistort != 0);
     setEnabledIfChanged(mBrightnessSlider, overlay);
     setEnabledIfChanged(mEffectFps, overlay);
     setEnabledIfChanged(mLockMode, group != nullptr);
@@ -2043,6 +2049,7 @@ void ALPanelGhostStudio::onListSelect()
             ? group->mId : selectedInstance());
     mObservedSelectionRevision = studio.getSelectionRevision();
     syncCrowdFacingPointPrototype();
+    refreshDetail();
 }
 
 void ALPanelGhostStudio::onListMouseUp(S32 x, S32, MASK mask)

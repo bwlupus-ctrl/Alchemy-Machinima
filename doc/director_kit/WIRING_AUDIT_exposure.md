@@ -16,41 +16,41 @@ Static audit of the Exposure page after it became a generated kit page (10/15, l
 
 | # | widget | kind | setting or handler | type, default, range / data values | status | Undo owner |
 |---|---|---|---|---|---|---|
-| 1 | exp_sun_ev | slider | `AlchemyEnvSunEV` | F32, 0, -4..6 step 0.05 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 2 | exp_gi_ev | slider | `AlchemyEnvSkyGIEV` | F32, 0, -4..4 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 3 | exp_local_ev | slider | `AlchemyEnvLocalLightEV` | F32, 0, -4..4 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 4 | exp_shadow_lift | slider | `AlchemyEnvShadowLiftEV` | F32, 0, 0..2 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 5 | exp_moon_linked (Advanced) | toggle | `AlchemyEnvMoonLinked` | Boolean, 1 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 6 | exp_moon_ev (Advanced) | slider | `AlchemyEnvMoonEV`; `disabled_control` = `AlchemyEnvMoonLinked` | F32, 0, -4..6 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 7 | exp_amb_ev (Advanced) | slider | `AlchemyEnvGIAmbientEV` | F32, 0, -3..3 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 8 | exp_probe_diff_ev (Advanced) | slider | `AlchemyEnvGIProbeDiffuseEV` | F32, 0, -3..3 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 9 | exp_probe_spec_ev (Advanced) | slider | `AlchemyEnvGIProbeSpecEV` | F32, 0, -3..3 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 10 | exp_local_include_rig (Advanced) | toggle | `AlchemyEnvLocalLightIncludeRig` | Boolean, 0 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 11 | exp_sky_note | readout | none (static copy) | text | OK | n/a (action/output, no widget step) |
-| 12 | exp_sky_lighting_btn | button | hosted `Floater.ShowOrBringToFront env_adjust_snapshot` (the hub's own callback) | n/a | OK | n/a (action/output, no widget step) |
-| 13 | exp_auto_exposure | toggle | `RenderDynamicExposureEnabled` | Boolean, 1 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 14 | exp_exposure | slider | `RenderExposure` | F32, 1.0, 0.5..4 step 0.1 | OK | ALExposureSettingsHistory only; widget_history=false |
-| 15 | exp_tonemap_type | combo | `AlchemyRenderTonemapType` | S32, 7; 0 Khronos Neutral, 1 ACES, 2 ACES Boosted, 3 Reinhard, 4 Filmic, 5 GT, 6 AgX, 7 AMD LPM, 8 S-Log3 Capture | OK | kit setting history (AlchemyRenderTonemapType) |
-| 16 | exp_tonemap_mix | slider | `RenderTonemapMix` | F32, 0.7, 0..1 | OK | kit setting history (RenderTonemapMix) |
-| 17 | exp_amd_exposure (Advanced) | slider | `AlchemyToneMapAMDExposure`; enabled only for type 7 (`updateTonemapGating`) | F32, 7.4, 1..16 | OK | kit setting history (AlchemyToneMapAMDExposure) |
-| 18 | exp_slog_ev (Advanced) | slider | `AlchemyToneMapSLogEV`; enabled only for type 8 | F32, 0, -8..8 | OK | kit setting history (AlchemyToneMapSLogEV) |
-| 19 | exp_legacy_gamma_skies (Advanced) | toggle | `AlchemyTonemapLegacyGammaSkies` | Boolean, 0 | OK | kit setting history (AlchemyTonemapLegacyGammaSkies) |
-| 20 | exp_undo | button | `ALExposureSettingsHistory::undo()`; enabled and tooltip from `canUndo` / `undoLabel` on the revision signal | n/a | OK | ALExposureSettingsHistory (page history) |
-| 21 | exp_redo | button | `ALExposureSettingsHistory::redo()` | n/a | OK | ALExposureSettingsHistory (page history) |
-| 22 | exposure_popout | button | `LLFloaterReg::showInstance("exposure_hub")` (`LLFloaterDirector::bindCameraPage`, unchanged) | n/a | OK | n/a (action/output, no widget step) |
-| 23 | exp_bloom_strength, exp_bloom_threshold | slider x2 | settings `RenderBloomStrength` (F32, 0.325, 0..2 step 0.01, 3 dp) and `RenderBloomThreshold` (F32, 2.5, 0..4 step 0.05, 2 dp); `shortcut_of` Look > Bloom & glow | OK | kit setting history (RenderBloomThreshold) |
-| 24 | exp_filters_btn | button | `ALFloaterLightBox::showTab("colortone_settings")` (same call as the hub) | n/a | OK | n/a (action/output, no widget step) |
+| 1 | exp_sun_ev | slider | `AlchemyEnvSunEV` | F32, 0, -4..6 step 0.05 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 2 | exp_gi_ev | slider | `AlchemyEnvSkyGIEV` | F32, 0, -4..4 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 3 | exp_local_ev | slider | `AlchemyEnvLocalLightEV` | F32, 0, -4..4 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 4 | exp_shadow_lift | slider | `AlchemyEnvShadowLiftEV` | F32, 0, 0..2 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 5 | exp_moon_linked (Advanced) | toggle | `AlchemyEnvMoonLinked` | Boolean, 1 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 6 | exp_moon_ev (Advanced) | slider | `AlchemyEnvMoonEV`; `disabled_control` = `AlchemyEnvMoonLinked` | F32, 0, -4..6 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 7 | exp_amb_ev (Advanced) | slider | `AlchemyEnvGIAmbientEV` | F32, 0, -3..3 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 8 | exp_probe_diff_ev (Advanced) | slider | `AlchemyEnvGIProbeDiffuseEV` | F32, 0, -3..3 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 9 | exp_probe_spec_ev (Advanced) | slider | `AlchemyEnvGIProbeSpecEV` | F32, 0, -3..3 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 10 | exp_local_include_rig (Advanced) | toggle | `AlchemyEnvLocalLightIncludeRig` | Boolean, 0 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 11 | exp_sky_note | readout | none (static copy) | text | OK | n/a (action/output; no widget step) |
+| 12 | exp_sky_lighting_btn | button | hosted `Floater.ShowOrBringToFront env_adjust_snapshot` (the hub's own callback) | n/a | OK | n/a (action/output; no widget step) |
+| 13 | exp_auto_exposure | toggle | `RenderDynamicExposureEnabled` | Boolean, 1 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 14 | exp_exposure | slider | `RenderExposure` | F32, 1.0, 0.5..4 step 0.1 | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| 15 | exp_tonemap_type | combo | `AlchemyRenderTonemapType` | S32, 7; 0 Khronos Neutral, 1 ACES, 2 ACES Boosted, 3 Reinhard, 4 Filmic, 5 GT, 6 AgX, 7 AMD LPM, 8 S-Log3 Capture | OK | kit setting history (this page; guarded against newer edits) |
+| 16 | exp_tonemap_mix | slider | `RenderTonemapMix` | F32, 0.7, 0..1 | OK | kit setting history (this page; guarded against newer edits) |
+| 17 | exp_amd_exposure (Advanced) | slider | `AlchemyToneMapAMDExposure`; enabled only for type 7 (`updateTonemapGating`) | F32, 7.4, 1..16 | OK | kit setting history (this page; guarded against newer edits) |
+| 18 | exp_slog_ev (Advanced) | slider | `AlchemyToneMapSLogEV`; enabled only for type 8 | F32, 0, -8..8 | OK | kit setting history (this page; guarded against newer edits) |
+| 19 | exp_legacy_gamma_skies (Advanced) | toggle | `AlchemyTonemapLegacyGammaSkies` | Boolean, 0 | OK | kit setting history (this page; guarded against newer edits) |
+| 20 | exp_undo | button | `ALKitPage::undoOnPage(false)`; newest page-owned or kit sequence, with the same enabled state as Ctrl+Z | n/a | OK | latest step on this page across its owners |
+| 21 | exp_redo | button | `ALKitPage::undoOnPage(true)`; same ordering and availability as Ctrl+Y | n/a | OK | latest step on this page across its owners |
+| 22 | exposure_popout | button | `LLFloaterReg::showInstance("exposure_hub")` (`LLFloaterDirector::bindCameraPage`, unchanged) | n/a | OK | n/a (action/output; no widget step) |
+| 23 | exp_bloom_strength, exp_bloom_threshold | slider x2 | settings `RenderBloomStrength` and `RenderBloomThreshold`; shortcuts of Look > Bloom & glow | F32, 0.325, 0..2 / F32, 2.5, 0..4 | OK | kit setting history (this page; guarded against newer edits) |
+| 24 | exp_filters_btn | button | `ALFloaterLightBox::showTab("colortone_settings")` (same call as the hub) | n/a | OK | n/a (action/output; no widget step) |
 
 Preset strip (`env_intensity`): ids `b:<key>` for the 14 built-ins (Stock, Golden Hour, Blue Hour, Overcast Soft, Noon Punch, High-Key Studio, Low-Key Noir, Moonlit Night, Neon Night, Candlelit Interior, Desert Heat, Arctic Cold, Soft Fill, Reflections Pop) applied through `applyEnvIntensityBuiltin`; `u:<name>` for saved presets applied through `ALEnvIntensityPresets::applyNamed` in one history batch; Save as saves the live 16 settings (`saveCurrent`, name rules and limits as in Personal Lighting), Delete removes a saved preset. The strip's modified marker watches the same 16 settings the presets own.
 
 ## Undo owners (revised 10/15)
 
-Each setting-bound control has exactly one undo owner. `ALExposureSettingsHistory` (`alsettingsundohistory.cpp`, `TRACKED_SETTINGS`) records the env EVs, tint settings, `RenderDynamicExposureEnabled` and `RenderExposure`; the page's Undo / Redo buttons drive it. Those settings are listed in `own_history` in `kit_pages.json`, so the kit history does not watch them and their rows have `widget_history="false"`. Every other setting on the page is not tracked there and keeps kit watch and widget undo (the shell's undo).
+Each setting-bound control has exactly one undo owner. `ALExposureSettingsHistory` (`alsettingsundohistory.cpp`, `TRACKED_SETTINGS`) records the env EVs, tint settings, `RenderDynamicExposureEnabled` and `RenderExposure`; each kit page has a separate instance-scoped model. Page buttons and Ctrl+Z/Ctrl+Y compare the latest sequence across that model and kit history; Personal Lighting and other floaters cannot supply a page step. Those settings are listed in `own_history` in `kit_pages.json`, so the kit history does not watch them and their rows have `widget_history="false"`. Every other setting on the page is not tracked there and keeps kit watch and widget undo (the shell's undo).
 
 | rows | settings | undo owner |
 |---|---|---|
-| 1-10 | `AlchemyEnvSunEV`, `AlchemyEnvSkyGIEV`, `AlchemyEnvLocalLightEV`, `AlchemyEnvShadowLiftEV`, `AlchemyEnvMoonLinked`, `AlchemyEnvMoonEV`, `AlchemyEnvGIAmbientEV`, `AlchemyEnvGIProbeDiffuseEV`, `AlchemyEnvGIProbeSpecEV`, `AlchemyEnvLocalLightIncludeRig` | `ALExposureSettingsHistory` only |
-| 13, 14 | `RenderDynamicExposureEnabled`, `RenderExposure` | `ALExposureSettingsHistory` only |
+| 1-10 | `AlchemyEnvSunEV`, `AlchemyEnvSkyGIEV`, `AlchemyEnvLocalLightEV`, `AlchemyEnvShadowLiftEV`, `AlchemyEnvMoonLinked`, `AlchemyEnvMoonEV`, `AlchemyEnvGIAmbientEV`, `AlchemyEnvGIProbeDiffuseEV`, `AlchemyEnvGIProbeSpecEV`, `AlchemyEnvLocalLightIncludeRig` | `ALExposureSettingsHistory` for this page instance only |
+| 13, 14 | `RenderDynamicExposureEnabled`, `RenderExposure` | `ALExposureSettingsHistory` for this page instance only |
 | 15 | `AlchemyRenderTonemapType` | kit history only |
 | 16 | `RenderTonemapMix` | kit history only |
 | 17 | `AlchemyToneMapAMDExposure` | kit history only |
@@ -67,11 +67,11 @@ Look > Image has no wiring audit of its own, so the shortcut rows are recorded h
 
 | widget | setting | home | type, range | undo owner | status | Undo owner |
 |---|---|---|---|---|---|---|
-| tonemap_type_combo | `AlchemyRenderTonemapType` | `exposure_tab/exp_tonemap_type` | S32, 7; same nine items as the home | kit history | OK | kit setting history (AlchemyRenderTonemapType) |
-| exposure_slider | `RenderExposure` | `exposure_tab/exp_exposure` | F32, 1.0, 0.5..4 step 0.1 | `ALExposureSettingsHistory` (`own_history: ["RenderExposure"]` on the Image page, so one change is one step) | OK | ALExposureSettingsHistory only; widget_history=false |
-| tonemap_legacy_gamma_skies | `AlchemyTonemapLegacyGammaSkies` | `exposure_tab/exp_legacy_gamma_skies` | Boolean, 0 (was Advanced on Image, basic in the Easy card) | kit history | OK | kit setting history (AlchemyTonemapLegacyGammaSkies) |
-| lpm_toneexp_slider | `AlchemyToneMapAMDExposure` | `exposure_tab/exp_amd_exposure` | F32, 7.4, 1..16 step 0.1 | kit history | OK | kit setting history (AlchemyToneMapAMDExposure) |
-| slog_ev_slider | `AlchemyToneMapSLogEV` | `exposure_tab/exp_slog_ev` | F32, 0, -8..8 step 0.1 | kit history | OK | kit setting history (AlchemyToneMapSLogEV) |
+| tonemap_type_combo | `AlchemyRenderTonemapType` | `exposure_tab/exp_tonemap_type` | S32, 7; same nine items as the home | kit setting history (this page; guarded against newer edits) | OK | kit setting history (this page; guarded against newer edits) |
+| exposure_slider | `RenderExposure` | `exposure_tab/exp_exposure` | F32, 1.0, 0.5..4 step 0.1 | ALExposureSettingsHistory (this page instance only; no kit step) | OK | ALExposureSettingsHistory (this page instance only; no kit step) |
+| tonemap_legacy_gamma_skies | `AlchemyTonemapLegacyGammaSkies` | `exposure_tab/exp_legacy_gamma_skies` | Boolean, 0 (was Advanced on Image, basic in the Easy card) | kit setting history (this page; guarded against newer edits) | OK | kit setting history (this page; guarded against newer edits) |
+| lpm_toneexp_slider | `AlchemyToneMapAMDExposure` | `exposure_tab/exp_amd_exposure` | F32, 7.4, 1..16 step 0.1 | kit setting history (this page; guarded against newer edits) | OK | kit setting history (this page; guarded against newer edits) |
+| slog_ev_slider | `AlchemyToneMapSLogEV` | `exposure_tab/exp_slog_ev` | F32, 0, -8..8 step 0.1 | kit setting history (this page; guarded against newer edits) | OK | kit setting history (this page; guarded against newer edits) |
 
 The generator copies each shortcut's kind, range, step, decimals and unit from its home (`normalize_shortcuts`) and appends "Home: Exposure > ..." to its help; `kit_lint` checks the same fields against the generated home row. The Image page keeps its Exposure link row.
 

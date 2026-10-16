@@ -3264,6 +3264,7 @@ ALKitHistory* LLFloaterDirector::kitHistory()
 
 bool LLFloaterDirector::handleMouseDown(S32 x,S32 y,MASK mask)
 {
+    ALKitHistory::ScopedSource source(mShell ? mShell->findBuiltPage(pageKeyAt(x, y)) : nullptr);
     if(mShell)
     {
         mShell->history().beginGesture(ALKitHistory::MOUSE,pageKeyAt(x,y));
@@ -3279,12 +3280,14 @@ bool LLFloaterDirector::handleMouseDown(S32 x,S32 y,MASK mask)
 
 bool LLFloaterDirector::handleRightMouseDown(S32 x,S32 y,MASK mask)
 {
+    ALKitHistory::ScopedSource source(mShell ? mShell->findBuiltPage(pageKeyAt(x, y)) : nullptr);
     if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,pageKeyAt(x,y));
     return LLFloater::handleRightMouseDown(x,y,mask);
 }
 
 bool LLFloaterDirector::handleScrollWheel(S32 x,S32 y,LLScrollDelta delta)
 {
+    ALKitHistory::ScopedSource source(mShell ? mShell->findBuiltPage(pageKeyAt(x, y)) : nullptr);
     if(mShell)mShell->history().beginGesture(ALKitHistory::WHEEL,pageKeyAt(x,y));
     return LLFloater::handleScrollWheel(x,y,delta);
 }

@@ -489,6 +489,12 @@ def check_undo_owner(tree: Tree) -> list[Finding]:
             continue            # not recorded: the page (or nobody) owns this row's undo
         if scope == "global":
             continue
+        # The rig's registered slot provider and slot-change barrier own its widget steps.
+        # This exception is deliberately confined to that reviewed owner, not subject history.
+        page = node.ancestor("kit_page")
+        if scope == "page" and page and page.attrs.get("page") == "light_group/cine_light_rig_tab" and \
+                page.attrs.get("undo_context") == "cine_rig_slot":
+            continue
         out.append(err(tree, node, "undo-owner",
                        f"code-bound row '{widget}' records kit widget history but declares no undo owner: set "
                        "widget_history='false' (page-owned or selection state), undo_scope='global' (not "

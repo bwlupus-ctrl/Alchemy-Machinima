@@ -74,6 +74,7 @@ public:
     LLSD get() const override { return mSource.get() ? mSource.get()->boundValue() : LLSD(); }
     LLSD getDefault() const override { return mSource.get() ? mSource.get()->boundDefault() : LLSD(); }
     void set(const LLSD& value) override { if (mWritable && mSource.get()) mSource.get()->setBoundValue(value); }
+    void reset() override { if (mWritable && mSource.get()) mSource.get()->reset(); }
     bool canSet() const override { return mWritable; }
     bool hasDefault() const override { return mWritable && mSource.get() && mSource.get()->boundDefault().isDefined(); }
     boost::signals2::connection connectChanged(std::function<void()> callback) override
@@ -493,7 +494,7 @@ void ALKitRow::layoutRow(S32 w)
     reshape(w, h, true);
     if (mLabel)
     {
-        const bool full_span_custom = mMeta.kind == "custom" && mMeta.label.empty();
+        const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout") && mMeta.label.empty();
         // The label box is the mockup's 100 px label track; the favorite star has its own slot (below).
         mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
         mLabel->setOrigin(ALKitStyle::ROW_INSET, (h - 20) / 2);
@@ -501,7 +502,7 @@ void ALKitRow::layoutRow(S32 w)
         fitLabel(ALKitStyle::LABEL_W);
     }
 
-    const bool full_span_custom = mMeta.kind == "custom" && mMeta.label.empty();
+    const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout") && mMeta.label.empty();
     const S32 x = full_span_custom ? ALKitStyle::ROW_INSET
                                    : ALKitStyle::ROW_INSET + ALKitStyle::LABEL_W + ALKitStyle::COL_GAP;
     const S32 cw =
@@ -840,9 +841,12 @@ void ALKitRow::resolveBinding()
 
 void ALKitRow::reset()
 {
+    ALKitHistory::ScopedSource source(this);
     // Every entry point (glyph, Home, context menu and bulk reset) respects live availability.
-    if (!mControl || !mControl->isInEnabledChain() || mUnconnected || !mBinding)
+    if (!enabledForEdit() || mUnconnected || !mBinding)
         return;
+    if (ALKitShell* shell = ALKitShell::find(this))
+        shell->history().ensureGesture(mMeta.page_key, "Reset " + mMeta.label);
     mBinding->reset();
     bindingChanged();
 }
@@ -858,7 +862,8 @@ LLSD ALKitRow::boundDefault() const
 
 bool ALKitRow::setBoundValue(const LLSD& value)
 {
-    if (mUnconnected)
+    ALKitHistory::ScopedSource source(this);
+    if (mUnconnected || !enabledForEdit())
         return false;
     const LLSD current = boundValue();
     LLSD       coerced = ALKitQol::coercePasteValue(value, current);
@@ -919,6 +924,8 @@ bool ALKitRow::setBoundValue(const LLSD& value)
     }
     else if ((coerced.isInteger() || coerced.isReal()) && (has_min || has_max))
         coerced = clamp_number(coerced, coerced.isInteger());
+    if (ALKitShell* shell = ALKitShell::find(this))
+        shell->history().ensureGesture(mMeta.page_key, mMeta.label);
     if (mBinding)
         mBinding->set(coerced);
     else if (mControl)
@@ -934,8 +941,21 @@ bool ALKitRow::setBoundValue(const LLSD& value)
 
 bool ALKitRow::canPasteValue(const LLSD& value) const
 {
-    return mControl && !mUnconnected && (!mBinding || mBinding->canSet()) &&
+    return enabledForEdit() && !mUnconnected && (!mBinding || mBinding->canSet()) &&
            ALKitQol::pasteTypesCompatible(value, boundValue());
+}
+
+bool ALKitRow::enabledForEdit() const
+{
+    if (ALKitRow* source = sourceRow())
+        return source->enabledForEdit();
+    for (LLView* view = getParent(); view; view = view->getParent())
+        if (ALKitPage* page = dynamic_cast<ALKitPage*>(view))
+        {
+            page->refreshAvailability();
+            break;
+        }
+    return mControl && mControl->isInEnabledChain();
 }
 
 ALKitQol::Favorite ALKitRow::favoriteKey() const
@@ -1077,6 +1097,10 @@ bool ALKitRow::handleKeyHere(KEY key, MASK mask)
 
 bool ALKitRow::handleMouseDown(S32 x, S32 y, MASK mask)
 {
+    ALKitHistory::ScopedSource source(this);
+    if (sourceRow())
+        if (ALKitShell* shell = ALKitShell::find(this))
+            shell->history().beginGesture(ALKitHistory::MOUSE, mMeta.page_key, mMeta.label);
     if (mMeta.kind == "segmented" && mControl && mControl->getEnabled() &&
         mControl->getRect().pointInRect(x, y))
     {
@@ -1102,6 +1126,15 @@ bool ALKitRow::handleMouseUp(S32 x, S32 y, MASK mask)
         mControl->getRect().pointInRect(x, y))
         return true;
     return LLPanel::handleMouseUp(x, y, mask);
+}
+
+bool ALKitRow::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
+{
+    ALKitHistory::ScopedSource source(this);
+    if (sourceRow())
+        if (ALKitShell* shell = ALKitShell::find(this))
+            shell->history().beginGesture(ALKitHistory::WHEEL, mMeta.page_key, mMeta.label);
+    return LLPanel::handleScrollWheel(x, y, delta);
 }
 
 bool ALKitRow::handleRightMouseDown(S32 x, S32 y, MASK)

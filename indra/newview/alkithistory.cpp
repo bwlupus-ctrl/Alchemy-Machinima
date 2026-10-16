@@ -4,6 +4,7 @@
 #include "alkitpage.h"
 #include "alkitrow.h"
 #include "alkitshell.h"
+#include "alundosequence.h"
 #include "llcontrol.h"
 #include "lleventtimer.h"
 #include "llfloaterdirector.h"
@@ -16,10 +17,13 @@
 #include "llviewerwindow.h"
 
 #include <algorithm>
+#include <unordered_set>
 
 static S32 sKitHistorySuspend     = 0;
 static F64 sKitHistoryKeyTime     = 0.;
 static F64 sKitHistoryPointerTime = 0.;
+static LLView* sKitInputSource = nullptr;
+static bool sKitInputSourceSet = false;
 
 namespace
 {
@@ -49,6 +53,36 @@ std::string rowPage(LLView* view)
             return page->pageKey();
     return std::string();
 }
+}
+
+ALKitHistory::ScopedSource::ScopedSource(LLView* source) :
+    mPrevious(sKitInputSource), mPreviousSet(sKitInputSourceSet)
+{ sKitInputSource = source; sKitInputSourceSet = true; }
+ALKitHistory::ScopedSource::~ScopedSource()
+{ sKitInputSource = mPrevious; sKitInputSourceSet = mPreviousSet; }
+
+LLView* ALKitHistory::inputPage()
+{
+    LLView* view = sKitInputSource;
+    if (!sKitInputSourceSet && !view)
+        view = dynamic_cast<LLView*>(gFocusMgr.getMouseCapture());
+    if (!sKitInputSourceSet && !view)
+        view = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+    for (; view; view = view->getParent())
+    {
+        if (ALKitRow* row = dynamic_cast<ALKitRow*>(view))
+            if (row->sourceRow())
+                if (ALKitShell* shell = ALKitShell::find(row->sourceRow()))
+                    return shell->findBuiltPage(row->sourceRow()->meta().page_key);
+        if (dynamic_cast<ALKitPage*>(view))
+            return view;
+    }
+    // Shared controllers contain their kit page; tool sessions retain that controller.
+    if (sKitInputSourceSet && sKitInputSource)
+        for (auto it = sKitInputSource->beginTreeBFS(); it != sKitInputSource->endTreeBFS(); ++it)
+            if (dynamic_cast<ALKitPage*>(*it))
+                return *it;
+    return nullptr;
 }
 
 class ALKitHistory::GestureTimer final : public LLEventTimer
@@ -102,6 +136,12 @@ void ALKitHistory::beginGesture(EOrigin o, const std::string& p, const std::stri
 void ALKitHistory::noteKey()
 { sKitHistoryKeyTime = LLTimer::getTotalSeconds(); }
 
+void ALKitHistory::ensureGesture(const std::string& page, const std::string& label)
+{
+    if (!mOpen || mOpen->page != page || mOrigin == KEY)
+        beginGesture(KEY, page, label);
+}
+
 void ALKitHistory::notePointer(LLView* hit_view)
 {
     if (ALKitShell::find(hit_view))
@@ -150,6 +190,7 @@ void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std
     finishGesture();
     beginGesture(KEY, page, label);
     mOpen->custom.push_back({ key, std::move(fn) });
+    mOpen->sequence = alNextUndoSequence();
     if (mOpen->label.empty())
         mOpen->label = label;
     finishGesture();
@@ -179,14 +220,18 @@ void ALKitHistory::captureSetting(const std::string& page, const std::string& na
     if (suspended() || mReplaying || value == old)
         return;
     LLView*    owner       = mOwner.get();
+    ALKitPage* source = dynamic_cast<ALKitPage*>(inputPage());
+    if (page != "chrome" && (!source || source->pageKey() != page || ALKitShell::find(source) != owner))
+        return;
     LLView*    focus       = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
     const F64  now         = LLTimer::getTotalSeconds();
     const bool owner_focus = owner && focus && (focus == owner || focus->hasAncestor(owner));
-    const bool keyboard    = owner_focus && now - llmax(sKitHistoryKeyTime, sKitHistoryPointerTime) <= .5;
+    const bool keyboard    = (sKitInputSourceSet && source) ||
+        (owner_focus && now - llmax(sKitHistoryKeyTime, sKitHistoryPointerTime) <= .5);
     const bool pointer     = mOpen && (mOrigin == MOUSE || mOrigin == WHEEL);
     if (!pointer && !keyboard)
         return;
-    if (!mOpen)
+    if (!mOpen || (page != "chrome" && mOpen->page != page))
     {
         beginGesture(KEY, page);
     }
@@ -211,11 +256,16 @@ void ALKitHistory::addEntry(Entry entry, const std::string& supplied_label, cons
     {
         return; // Callers must establish the action's page before recording any entry.
     }
+    if (ALKitShell* shell = dynamic_cast<ALKitShell*>(mOwner.get()))
+        if (ALKitPage* page = shell->findBuiltPage(mOpen->page))
+            page->historyEdited(false);
     for (Entry& existing : mOpen->entries)
     {
         if (existing.widget == entry.widget && existing.key == entry.key)
         {
             existing.newv = entry.newv;
+            mOpen->sequence = alNextUndoSequence();
+            ++mRevision;
             return;
         }
     }
@@ -237,6 +287,8 @@ void ALKitHistory::addEntry(Entry entry, const std::string& supplied_label, cons
     if (mOpen->label.empty())
         mOpen->label = label;
     mOpen->entries.push_back(std::move(entry));
+    mOpen->sequence = alNextUndoSequence();
+    ++mRevision;
 }
 
 void ALKitHistory::finishGesture()
@@ -251,7 +303,9 @@ void ALKitHistory::finishGesture()
         mUndo.push_back(std::move(*mOpen));
         if (mUndo.size() > MAX_STEPS)
             mUndo.erase(mUndo.begin());
-        mRedo.clear();
+        const std::string page = mUndo.back().page;
+        mRedo.erase(std::remove_if(mRedo.begin(), mRedo.end(),
+            [&page](const Step& step) { return step.page == page; }), mRedo.end());
         ++mRevision;
     }
     mOpen.reset();
@@ -298,6 +352,33 @@ bool ALKitHistory::replay(Step& step, bool redo)
     ScopedSuspend guard;
     mReplaying = true;
     bool ok    = true;
+    // A shared setting may have been edited on another page since this step.
+    // Drop conflicting entries from the replay branch as well as this replay.
+    bool skipped = false;
+    std::unordered_set<std::string> conflicts;
+    for (const Entry& entry : step.entries)
+        if (!entry.widget)
+        {
+            LLControlVariable* control = gSavedSettings.getControl(entry.key).get();
+            if (!control || control->get() != (redo ? entry.oldv : entry.newv))
+                conflicts.insert(entry.key);
+        }
+    step.entries.erase(std::remove_if(step.entries.begin(), step.entries.end(),
+        [&conflicts, &skipped](const Entry& entry)
+        {
+            bool conflict = conflicts.count(entry.key) != 0;
+            if (entry.widget)
+            {
+                LLUICtrl* control = entry.ctrl.get();
+                ALKitRow* row = control ? dynamic_cast<ALKitRow*>(control->getParent()) : nullptr;
+                conflict = row && conflicts.count(row->meta().setting) != 0;
+            }
+            skipped = skipped || conflict;
+            return conflict;
+        }), step.entries.end());
+    if (skipped)
+        LLNotificationsUtil::add("SystemMessageTip",
+            LLSD().with("MESSAGE", "Skipped settings changed elsewhere"));
     for (auto it = step.entries.rbegin(); it != step.entries.rend(); ++it)
     {
         Entry&      entry = *it;
@@ -356,13 +437,33 @@ bool ALKitHistory::replay(Step& step, bool redo)
 
 bool ALKitHistory::canUndo(const std::string& page) const
 {
-    return (mOpen && mOpen->page == page && (!mOpen->entries.empty() || !mOpen->custom.empty())) ||
-        std::any_of(mUndo.begin(), mUndo.end(), [&page](const Step& step) { return step.page == page; });
+    return stepSequence(page, false) != 0;
+}
+
+U64 ALKitHistory::stepSequence(const std::string& page, bool redo) const
+{
+    if (!redo && mOpen && mOpen->page == page &&
+        (!mOpen->custom.empty() || std::any_of(mOpen->entries.begin(), mOpen->entries.end(),
+            [](const Entry& entry) { return entry.oldv != entry.newv; })))
+        return mOpen->sequence;
+    const auto& steps = redo ? mRedo : mUndo;
+    auto it = std::find_if(steps.rbegin(), steps.rend(),
+        [&page](const Step& step) { return step.page == page; });
+    return it == steps.rend() ? 0 : it->sequence;
 }
 
 bool ALKitHistory::canRedo(const std::string& page) const
 {
     return std::any_of(mRedo.begin(), mRedo.end(), [&page](const Step& step) { return step.page == page; });
+}
+
+void ALKitHistory::discardRedo(const std::string& page)
+{
+    const auto count = mRedo.size();
+    mRedo.erase(std::remove_if(mRedo.begin(), mRedo.end(),
+        [&page](const Step& step) { return step.page == page; }), mRedo.end());
+    if (count != mRedo.size())
+        ++mRevision;
 }
 
 void ALKitHistory::undo(const std::string& page)
@@ -376,7 +477,9 @@ void ALKitHistory::undo(const std::string& page)
         return;
     Step s = std::move(*it);
     mUndo.erase(std::next(it).base());
-    mRedo.push_back(std::move(s));
+    s.sequence = alNextUndoSequence();
+    if (!s.entries.empty() || !s.custom.empty())
+        mRedo.push_back(std::move(s));
     ++mRevision;
 }
 void ALKitHistory::redo(const std::string& page)
@@ -390,7 +493,9 @@ void ALKitHistory::redo(const std::string& page)
         return;
     Step s = std::move(*it);
     mRedo.erase(std::next(it).base());
-    mUndo.push_back(std::move(s));
+    s.sequence = alNextUndoSequence();
+    if (!s.entries.empty() || !s.custom.empty())
+        mUndo.push_back(std::move(s));
     ++mRevision;
 }
 

@@ -2888,7 +2888,7 @@ private:
             const LLSD snapshot = lightResponseSnapshot();
             ALKitShell* shell = findFirstView<ALKitShell>(mFloater.get());
             ALKitPage* page = findFirstView<ALKitPage>(mFunctionalPageRoot);
-            const bool no_undo = shell && !shell->history().canUndo();
+            const bool no_undo = shell && page && !shell->history().canUndo(page->pageKey());
             if (page) page->setFocus(true);
             // Direct delivery to the focused NON-text control inside the page: never the
             // window route (Edit.Undo would send 'Undo' to the sim for an undoable selection,

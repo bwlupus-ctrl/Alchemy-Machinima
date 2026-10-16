@@ -307,6 +307,7 @@ void ALKitPresetStrip::refresh()
 
 void ALKitPresetStrip::onSelect()
 {
+    ALKitHistory::ScopedSource source(this);
     if (!mProvider || !mCombo)
     {
         return;

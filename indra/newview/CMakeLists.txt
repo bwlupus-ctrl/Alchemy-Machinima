@@ -1132,6 +1132,7 @@ set(viewer_HEADER_FILES
     alkitmenu.h
     alkithelp.h
     alkithistory.h
+    alundosequence.h
     alkitlazypage.h
     alkitmath.h
     alkitpage.h

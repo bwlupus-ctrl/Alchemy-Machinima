@@ -98,7 +98,7 @@ public:
         Mandatory<std::string> page;
         Optional<std::string>  summary, master_widget, master_setting, master_label, master_tooltip, modes, mode_setting, mode_widget,
             mode_on, mode_tooltip, mode_adapter, who_label, who_picker, who_adapter, preset_mode, preset_provider,
-            watch_settings, chip_mode;
+            watch_settings, chip_mode, undo_context;
         Optional<bool>    legacy, actor_target, actor_target_synthetic;
         Multiple<Section> section;
         Multiple<Mode>    mode;
@@ -161,6 +161,13 @@ public:
     void               setWhoPin(const LLSD& value);
     LLUUID             actorTarget() const;
     void               undoOnPage(bool redo);
+    bool               canUndoOnPage(bool redo);
+    void               setOwnedHistory(std::function<U64(bool)> sequence, std::function<void(bool)> replay,
+                                      std::function<void()> discard_redo)
+                       { mOwnedSequence = std::move(sequence); mOwnedReplay = std::move(replay); mOwnedDiscardRedo = std::move(discard_redo); }
+    void               historyEdited(bool owned);
+    void               setAvailabilityRefresh(std::function<void()> refresh) { mAvailabilityRefresh = std::move(refresh); }
+    void               refreshAvailability() { if (mAvailabilityRefresh) mAvailabilityRefresh(); }
     bool               actorTargetAway() const { return mActorTargetAway; }
 
 protected:
@@ -242,6 +249,10 @@ private:
     LLButton*                                       mRedo           = nullptr;
     LLButton*                                       mPageUndo       = nullptr;
     LLButton*                                       mPageRedo       = nullptr;
+    std::function<U64(bool)>                         mOwnedSequence;
+    std::function<void(bool)>                        mOwnedReplay;
+    std::function<void()>                            mOwnedDiscardRedo;
+    std::function<void()>                            mAvailabilityRefresh;
     LLButton*                                       mResetPage      = nullptr;
     LLButton*                                       mGateButton     = nullptr;
     LLButton*                                       mWhoChip        = nullptr;

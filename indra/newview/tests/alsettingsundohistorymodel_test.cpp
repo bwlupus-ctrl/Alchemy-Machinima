@@ -154,4 +154,43 @@ void alsettingsundohistory_object::test<8>()
     ensure("clear removes undo", !model.canUndo());
     ensure("clear removes redo", !model.canRedo());
 }
+
+template<> template<>
+void alsettingsundohistory_object::test<9>()
+{
+    ALSettingsUndoHistoryModel exposure;
+    ALSettingsUndoHistoryModel image;
+    exposure.record("RenderExposure", "Exposure", 1.0, 2.0, 1000);
+    const U64 first = exposure.stepSequence(false);
+    image.record("RenderExposure", "Exposure", 2.0, 3.0, 1001);
+    ensure("independent page models have a common ordering", image.stepSequence(false) > first);
+    ensure_equals("another page cannot coalesce into this page", exposure.stepSequence(false), first);
+
+    ALSettingsUndoHistoryModel::Step step;
+    ensure("exposure owns its pending step", exposure.takeUndo(step));
+    ensure_equals("exposure keeps its own new value", step.mChanges[0].mNewValue.asReal(), 2.0);
+    const U64 exposure_redo = exposure.stepSequence(true);
+    ensure("image owns its step", image.takeUndo(step));
+    ensure("redo order follows undo order", image.stepSequence(true) > exposure_redo);
+    ensure_equals("undoing image leaves exposure redo intact", exposure.stepSequence(true), exposure_redo);
+}
+
+template<> template<>
+void alsettingsundohistory_object::test<10>()
+{
+    ALSettingsUndoHistoryModel model;
+    model.beginEdit();
+    model.record("RenderExposure", "Exposure", 1.0, 2.0, 1000);
+    const U64 first = model.stepSequence(false);
+    model.record("RenderExposure", "Exposure", 2.0, 3.0, 3000);
+    const U64 last = model.stepSequence(false);
+    ensure("open drags publish their latest change", last > first);
+    model.endEdit();
+    ensure_equals("finishing a gesture preserves chronology", model.stepSequence(false), last);
+    ALSettingsUndoHistoryModel::Step step;
+    ensure("one slow drag undoes", model.takeUndo(step));
+    ensure_equals("slow drag restores its first value", step.mChanges[0].mOldValue.asReal(), 1.0);
+    ensure_equals("slow drag replays its final value", step.mChanges[0].mNewValue.asReal(), 3.0);
+    ensure("slow drag remains one step", !model.canUndo());
+}
 }

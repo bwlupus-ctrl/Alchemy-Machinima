@@ -6,12 +6,15 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alsettingsundohistory.h"
+#include "alkithistory.h"
+#include "alkitpage.h"
 
 #include "llbutton.h"
 #include "llcontrol.h"
 #include "lleventtimer.h"
 #include "llfocusmgr.h"
 #include "lllineeditor.h"
+#include "llnotificationsutil.h"
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
 #include "lltimer.h"
@@ -19,6 +22,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <map>
 #include <utility>
 
 namespace
@@ -65,9 +69,11 @@ public:
                     [this, key = std::string(setting.mKey), label = std::string(setting.mLabel)](
                         LLControlVariable*, const LLSD& new_value, const LLSD& old_value)
                     {
-                        if (!mApplying)
+                        if (!mApplying && !ALKitHistory::suspended())
                         {
-                            mModel.record(key, label, old_value, new_value, nowMilliseconds());
+                            if (ALKitPage* page = dynamic_cast<ALKitPage*>(ALKitHistory::inputPage()))
+                                page->historyEdited(true);
+                            currentModel().record(key, label, old_value, new_value, nowMilliseconds());
                             publishRevision();
                         }
                     }));
@@ -88,6 +94,18 @@ public:
         }
         const U64 before = mModel.revision();
         mModel.closeIdle(nowMilliseconds());
+        for (auto it = mPageModels.begin(); it != mPageModels.end();)
+        {
+            if (it->second.owner.isDead())
+                it = mPageModels.erase(it);
+            else
+            {
+                if (it->second.model.isEditActive() && !gFocusMgr.getMouseCapture())
+                    it->second.model.endEdit();
+                it->second.model.closeIdle(nowMilliseconds());
+                ++it;
+            }
+        }
         if (mModel.revision() != before)
         {
             publishRevision();
@@ -98,14 +116,20 @@ public:
 
     void beginBatch(const std::string& label)
     {
-        mModel.beginBatch(label);
+        ALSettingsUndoHistoryModel* model = &currentModel();
+        mBatches.push_back(model);
+        model->beginBatch(label);
     }
 
     void endBatch()
     {
-        const U64 before = mModel.revision();
-        mModel.endBatch();
-        if (mModel.revision() != before)
+        if (mBatches.empty())
+            return;
+        ALSettingsUndoHistoryModel* model = mBatches.back();
+        mBatches.pop_back();
+        const U64 before = model->revision();
+        model->endBatch();
+        if (model->revision() != before)
         {
             publishRevision();
         }
@@ -115,6 +139,8 @@ public:
     {
         const U64 before = mModel.revision();
         mModel.endEdit();
+        for (auto& item : mPageModels)
+            item.second.model.endEdit();
         if (mModel.revision() != before)
         {
             publishRevision();
@@ -124,7 +150,7 @@ public:
     void beginEdit()
     {
         const U64 before = mModel.revision();
-        mModel.beginEdit();
+        currentModel().beginEdit();
         if (mModel.revision() != before)
         {
             publishRevision();
@@ -135,6 +161,8 @@ public:
     {
         const U64 before = mModel.revision();
         mModel.clear();
+        for (auto& item : mPageModels)
+            item.second.model.clear();
         if (mModel.revision() != before)
         {
             publishRevision();
@@ -160,33 +188,65 @@ public:
     }
 
     ALSettingsUndoHistoryModel& model() { return mModel; }
+    ALSettingsUndoHistoryModel& pageModel(LLView* page)
+    {
+        if (!page)
+            return mModel;
+        auto& history = mPageModels[page];
+        if (history.owner.isDead())
+        {
+            history.model.clear();
+            history.owner = page->getHandle();
+        }
+        return history.model;
+    }
+    void replayPage(LLView* page, bool redo)
+    {
+        ALSettingsUndoHistoryModel::Step step;
+        auto& model = pageModel(page);
+        if (redo ? model.takeRedo(step) : model.takeUndo(step))
+            apply(step, redo);
+    }
     ALExposureSettingsHistory::revision_signal_t& signal() { return mRevisionSignal; }
 
 private:
+    ALSettingsUndoHistoryModel& currentModel()
+    {
+        return mBatches.empty() ? pageModel(ALKitHistory::inputPage()) : *mBatches.back();
+    }
     void apply(const ALSettingsUndoHistoryModel::Step& step, bool use_new_value)
     {
+        ALKitHistory::ScopedSuspend suspend;
         mApplying = true;
+        bool skipped = false;
+        auto apply_change = [&skipped, use_new_value](const ALSettingsUndoHistoryModel::Change& change)
+        {
+            if (LLControlVariable* control = gSavedSettings.getControl(change.mKey))
+            {
+                if (control->get() == (use_new_value ? change.mOldValue : change.mNewValue))
+                    control->setValue(use_new_value ? change.mNewValue : change.mOldValue);
+                else
+                    skipped = true;
+            }
+        };
         if (use_new_value)
         {
             for (const auto& change : step.mChanges)
             {
-                if (LLControlVariable* control = gSavedSettings.getControl(change.mKey))
-                {
-                    control->setValue(change.mNewValue);
-                }
+                apply_change(change);
             }
         }
         else
         {
             for (auto change = step.mChanges.rbegin(); change != step.mChanges.rend(); ++change)
             {
-                if (LLControlVariable* control = gSavedSettings.getControl(change->mKey))
-                {
-                    control->setValue(change->mOldValue);
-                }
+                apply_change(*change);
             }
         }
         mApplying = false;
+        if (skipped)
+            LLNotificationsUtil::add("SystemMessageTip",
+                LLSD().with("MESSAGE", "Skipped settings changed elsewhere"));
         publishRevision(true);
     }
 
@@ -223,6 +283,13 @@ private:
     }
 
     ALSettingsUndoHistoryModel mModel;
+    struct PageModel
+    {
+        LLHandle<LLView> owner;
+        ALSettingsUndoHistoryModel model;
+    };
+    std::map<LLView*, PageModel> mPageModels;
+    std::vector<ALSettingsUndoHistoryModel*> mBatches;
     bool mApplying = false;
     bool mRevisionDirty = false;
     bool mAvailabilityPrimed = false;
@@ -306,6 +373,10 @@ void redo() { service().redo(); }
 std::string undoLabel() { return service().model().undoLabel(); }
 std::string redoLabel() { return service().model().redoLabel(); }
 U64 revision() { return service().model().revision(); }
+U64 pageStepSequence(LLView* page, bool redo) { return service().pageModel(page).stepSequence(redo); }
+void replayPage(LLView* page, bool redo) { service().replayPage(page, redo); }
+void finishPage(LLView* page) { service().pageModel(page).endEdit(); }
+void discardPageRedo(LLView* page) { service().pageModel(page).discardRedo(); }
 
 boost::signals2::connection connectRevisionChanged(const revision_signal_t::slot_type& slot)
 {

@@ -1,28 +1,32 @@
-Rows switched to widget_history=false plus newly added excluded rows (vs HEAD).
-All other pages retain their existing exclusions; actions/readouts do not record widget steps.
+Final review round 2 (on 9211cd98994), 2026-10-16.
 
-cast_group/dance_tab: 25 switched, 33 total disabled rows
-db_header_desync, db_radius, db_focus, db_autojoin, db_include_seated, db_include_me, db_mode, db_adv_interval, db_adv_jitter, db_t_speed, db_t_desync, db_t_crossfade, db_t_speed_jitter, db_t_priority, db_t_dance_drives_face, db_block_step, db_block_shape, db_block_spacing, db_block_centre, db_wave_focus, db_wave_speed, db_wave_dir, db_wave_apply, db_ramp_target, db_ramp_seconds
+ONE UNDO RULE: page buttons and Ctrl+Z/Ctrl+Y choose the newest sequence recorded
+on this page instance across kit and page-owned histories. Other pages and floaters
+cannot supply a step. Finish open gestures before choosing an owner. New edits
+invalidate only this page's redo branch, including its other history owner.
 
-cast_group/ghosts_tab: 25 switched, 68 total disabled rows
-source_combo, clone_type_combo, array_count_spinner, array_spacing_spinner, formation_edge_gap_spinner, formation_jitter_spinner, formation_seed_spinner, formation_terrain_check, formation_facing_combo, facing_yaw_offset_spinner, preserve_source_tilt_check, formation_guide_shape_combo, formation_guide_size_spinner, crowd_copies_as_combo, crowd_create_mode_combo, brigade_columns_spinner, brigade_rows_spinner, brigade_file_spacing_spinner, brigade_rank_spacing_spinner, strip_count_spinner, strip_interval_spinner, formation_motion_combo, formation_motion_speed, formation_motion_amplitude, rig_diagnostics
+Exposure and Image: ALExposureSettingsHistory owns its tracked settings in separate
+page-instance models. own_history excludes them from kit capture, so Image's
+RenderExposure shortcut has exactly one owner. Kit owns the other settings.
+Path: page-instance-tagged snapshots (including in-world tools) and the four global
+ghost-look kit settings compete by sequence; all page buttons use that same choice.
+Light Rig: its existing registered slot context and slot-change barrier are unchanged.
+Shared setting replay requires the current value to match the recorded expected value
+(NEW for undo, OLD for redo); conflicting entries are skipped with a status notice.
+Quick proxy drags retain MOUSE gestures; resets and writes validate the source's live
+enabled state. Card paste reports Pasted N of M (K disabled) when skipping controls.
+Ghosts hints use the full row width and 48 px height: three wrapped lines at CARD_MIN_W 340.
 
-cast_group/move_tab: 2 switched + 1 new dial, 5 total disabled rows
-move_heading_dial, group_run_combo, group_delay_spinner
+Exact lists below cover code-bound value rows. Actions/readouts, mirror-setting rows,
+and setting-bound rows are not widget steps. Other pages retain the round-1 exclusions.
 
-light_group/cine_light_rig_tab: 45 switched, 45 total disabled rows
-cine_easy_brightness, cine_easy_drama, cine_easy_warmth, cine_easy_rim, cine_easy_bg, cine_easy_cone_width, cine_easy_cone_feather, cine_easy_flare_preset, cine_easy_night_mask_darkness, cine_easy_night_mask_preset, cine_anchor, cine_group_self, cine_group_a, cine_group_b, cine_group_c, cine_group_d, cine_seed, cine_key_shaft, cine_key_cone_width, cine_key_hero, cine_key_projector_feed, cine_fill_shaft, cine_fill_cone_width, cine_fill_hero, cine_fill_projector_feed, cine_rim_shaft, cine_rim_cone_width, cine_rim_hero, cine_rim_projector_feed, cine_bg_shaft, cine_bg_cone_width, cine_bg_hero, cine_bg_projector_feed, cine_fixture_mode, cine_fixture_preset, cine_fixture_kelvin, cine_fixture_source_size, cine_fixture_gel_0, cine_fixture_gel_1, cine_fixture_gel_2, cine_gobo_preview, cine_gobo_library, cine_flare_preset, cine_night_mask_preset, cine_night_mask_darkness
+light_group/cine_light_rig_tab
+ON (45): cine_easy_brightness, cine_easy_drama, cine_easy_warmth, cine_easy_rim, cine_easy_bg, cine_easy_cone_width, cine_easy_cone_feather, cine_easy_flare_preset, cine_easy_night_mask_darkness, cine_easy_night_mask_preset, cine_anchor, cine_group_self, cine_group_a, cine_group_b, cine_group_c, cine_group_d, cine_seed, cine_key_shaft, cine_key_cone_width, cine_key_hero, cine_key_projector_feed, cine_fill_shaft, cine_fill_cone_width, cine_fill_hero, cine_fill_projector_feed, cine_rim_shaft, cine_rim_cone_width, cine_rim_hero, cine_rim_projector_feed, cine_bg_shaft, cine_bg_cone_width, cine_bg_hero, cine_bg_projector_feed, cine_fixture_mode, cine_fixture_preset, cine_fixture_kelvin, cine_fixture_source_size, cine_fixture_gel_0, cine_fixture_gel_1, cine_fixture_gel_2, cine_gobo_preview, cine_gobo_library, cine_flare_preset, cine_night_mask_preset, cine_night_mask_darkness
+OFF (0): none
 
-look_group/actor_style_tab: 14 switched, 15 total disabled rows
-actor_style_look, actor_style_mode, actor_style_alpha, actor_style_dissolve_progress, actor_style_use_actor_hue, actor_style_hue, actor_style_brightness, actor_style_shimmer_amount, actor_style_shimmer_speed, actor_style_glitch, actor_style_effect_fps, actor_style_distortion, actor_style_distortion_amount, actor_style_pixel
+cast_group/dance_tab
+ON (25): db_header_desync, db_radius, db_focus, db_autojoin, db_include_seated, db_include_me, db_mode, db_adv_interval, db_adv_jitter, db_t_speed, db_t_desync, db_t_crossfade, db_t_speed_jitter, db_t_priority, db_t_dance_drives_face, db_block_step, db_block_shape, db_block_spacing, db_block_centre, db_wave_focus, db_wave_speed, db_wave_dir, db_wave_apply, db_ramp_target, db_ramp_seconds
+OFF (8): db_dancer_list, db_playlist_list, db_rename_edit, db_blocking_list, db_block_yaw, db_block_face, db_block_keep_facing, db_block_mode
 
-look_group/stepped_tab: 7 switched, 12 total disabled rows
-sa_actor_override, sa_actor_offset, sa_actor_part, sa_actor_part_rate, sa_actor_rate, sa_actor_steps, sa_actor_role
-
-performance_group/animate_tab: 4 switched, 7 total disabled rows
-locomotion_role_combo, locomotion_speed, locomotion_phase, locomotion_allow_ao
-
-performance_group/gaze_tab: 64 switched, 64 total disabled rows
-gaze_edit_actor, gaze_slot_you, gaze_slot_a, gaze_slot_b, gaze_slot_c, gaze_slot_d, gaze_enable_check, gaze_target_combo, gaze_eye_target_combo, gaze_target_detail_scope, gaze_cast_combo, gaze_intensity_slider, gaze_blend_slider, gaze_torso_slider, gaze_smoothing_slider, gaze_influence_slider, gaze_performance_combo, look_at_camera_mode, gaze_eyeline_yaw_slider, gaze_eyeline_pitch_slider, gaze_camera_roll_slider, gaze_breakoff_check, gaze_ease_acquire_spinner, gaze_ease_release_spinner, gaze_deadzone_spinner, gaze_priority_combo, gaze_ik_lean_combo, gaze_anim_priority_combo, gaze_composition_combo, gaze_chest_share_slider, gaze_composition_mix_slider, gaze_range_preset_combo, gaze_limit_mode_combo, gaze_exaggerate_slider, gaze_lean_curve_combo, gaze_lean_threshold_spinner, gaze_lean_softness_spinner, gaze_lean_max_spinner, gaze_limit_eye_yaw_spinner, gaze_limit_head_yaw_spinner, gaze_limit_neck_yaw_spinner, gaze_limit_spine_yaw_spinner, gaze_limit_hips_yaw_spinner, gaze_limit_eye_pitch_spinner, gaze_limit_eye_pitchup_spinner, gaze_limit_head_pitch_spinner, gaze_limit_head_pitchup_spinner, gaze_limit_neck_pitch_spinner, gaze_limit_neck_pitchup_spinner, gaze_limit_spine_pitch_spinner, gaze_limit_spine_pitchup_spinner, gaze_limit_hips_pitch_spinner, gaze_limit_hips_pitchup_spinner, gaze_limit_eye_radial_spinner, gaze_limit_eyeapply_yaw_spinner, gaze_limit_eyeapply_pitch_spinner, gaze_limit_eyeapply_pitchup_spinner, gaze_persona_dom_slider, gaze_persona_aff_slider, gaze_persona_anx_slider, gaze_microlife_slider, gaze_blinks_check, gaze_variation_slider, gaze_break_freq_slider
-
-Total: 186 switched + 1 new dial = 187 exclusions
+Light Rig restores all 45 former widget-history rows exactly as at 2c8b5107653:
+38 code-only rows plus seven code-bound rows that also declare a saved setting.
