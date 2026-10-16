@@ -163,9 +163,14 @@ void ALVCamPageModel::refreshNow(U32 dirty)
         const LLPrismLens::DisplayDefinition* display =
             findDisplay(mSelectedDisplay);
         // A Gate-subscribed face follows the Director switcher and belongs to
-        // no one camera; it stays selectable under every camera.
-        if (!display || (mSelectedCapture.mId.notNull() &&
-                         !display->mGateSubscribed &&
+        // no one camera; it stays selectable under every Camera Feed (not
+        // under a Surface Lens, which owns exactly one face).
+        const LLPrismLens::CaptureDefinition* selected_capture =
+            mSelectedCapture.mId.notNull() ? findCapture(mSelectedCapture) : nullptr;
+        const bool gate_listed = display && display->mGateSubscribed &&
+            (!selected_capture ||
+             selected_capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED);
+        if (!display || (mSelectedCapture.mId.notNull() && !gate_listed &&
                          !sameCapture(display->mCapture, mSelectedCapture)))
             mSelectedDisplay = LLPrismLens::DisplayHandle();
     }

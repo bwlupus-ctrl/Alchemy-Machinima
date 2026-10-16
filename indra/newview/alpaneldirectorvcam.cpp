@@ -500,11 +500,13 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
                 false, sameDisplay(mModel.selectedDisplay(), face.mHandle)});
         }
         // Gate-subscribed faces follow the Director switcher, so they belong to
-        // no single camera: list them under every camera, after its own faces.
+        // no single camera: list them under every Camera Feed, after its own
+        // faces. A Surface Lens owns exactly one face and cannot take them.
         for (U32 i = 0; i < registry.mDisplayCount; ++i)
         {
             const LLPrismLens::DisplayDefinition& face = registry.mDisplays[i];
-            if (!face.mGateSubscribed) continue;
+            if (!face.mGateSubscribed ||
+                capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED) continue;
             faces.push_back({face.mHandle, faceListName(face, i),
                 "Gate program", false,
                 sameDisplay(mModel.selectedDisplay(), face.mHandle)});
@@ -618,8 +620,11 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(projectorControl(PROJ_TV_SHEEN), effect.mSheen);
     }
 
-    setEnabledIfChanged(control("vc_remove_face"), display && capture &&
-        capture->mMode != LLPrismLens::ECaptureMode::SURFACE_LENS);
+    // A Gate face belongs to no single camera, so it can always be removed;
+    // other faces only under an ordinary Camera Feed.
+    setEnabledIfChanged(control("vc_remove_face"), display &&
+        (display->mGateSubscribed ||
+         (capture && capture->mMode != LLPrismLens::ECaptureMode::SURFACE_LENS)));
     setEnabledIfChanged(mCameraName, capture != nullptr);
     if (mCameraName && !gFocusMgr.childHasKeyboardFocus(mCameraName))
         setValueIfChanged(mCameraName,

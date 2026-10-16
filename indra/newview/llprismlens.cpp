@@ -5225,13 +5225,20 @@ public:
             S32 fixed_slot = -1;
             if (fixed_capture)
             {
+                // An explicitly requested capture is never silently replaced.
                 const S32 requested_slot = findCapture(*fixed_capture);
-                if (requested_slot >= 0 &&
-                    mLenses[requested_slot].mMode ==
-                        LLPrismLens::ECaptureMode::CAMERA_FEED)
+                if (requested_slot < 0)
                 {
-                    fixed_slot = requested_slot;
+                    if (reason) *reason = "That capture no longer exists.";
+                    return LLPrismLens::ERegistryResult::STALE_HANDLE;
                 }
+                if (mLenses[requested_slot].mMode !=
+                    LLPrismLens::ECaptureMode::CAMERA_FEED)
+                {
+                    if (reason) *reason = "A surface lens owns exactly one display face.";
+                    return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+                }
+                fixed_slot = requested_slot;
             }
             if (fixed_slot < 0 &&
                 display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
@@ -5259,6 +5266,18 @@ public:
             {
                 if (reason) *reason = "No ordinary Camera Feed is available for this monitor's fixed source.";
                 return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+            }
+            if (!display.mSettings.mVirtual)
+            {
+                // Same self-feed / duplicate guard as capture reassignment.
+                LLViewerObject* object = gObjectList.findObject(display.mObjectId);
+                const LLPrismLens::ActionStatus status = displayTargetStatus(
+                    mLenses[fixed_slot].mHandle, object, display.mTE, &handle);
+                if (!status.allowed())
+                {
+                    if (reason) *reason = status.mReason;
+                    return status.mResult;
+                }
             }
             if (display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
                 mLenses[display.mCaptureSlot].mOccupied &&
