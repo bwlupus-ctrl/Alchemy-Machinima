@@ -268,8 +268,10 @@ def validate_data(data: dict) -> None:
     # 2112: Ghosts gains three v1 controls the mockup lacked: studio_hint (Tip, the edit-mode hint),
     #       ghost_type (Type, the selected ghost's kind and state) and heading_dial (the live heading
     #       dial beside the Yaw spinner) (+3) (10/15 batch 3).
-    if len(pages) != 37 or row_count != 2112:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2112")
+    # 2108: Roto Ink, Tron, Diopter and Gaze move their on/off from a card row to the page-header master
+    #       (page "master": same widget name and setting; Gaze is code-bound, s None like Actor FX) (-4) (10/16).
+    if len(pages) != 37 or row_count != 2108:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2108")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

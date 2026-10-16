@@ -1,13 +1,13 @@
 # Gaze — Director Kit page contract
 
 Page key: `gaze_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (14/125 setting-bound rows; 108 C++-referenced rows).
+Computed class: **code-driven** (14/124 setting-bound rows; 107 C++-referenced rows).
 
 ## Real owners
 
-- `panel_lens_gaze` / `panel` at `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:7` (124 matching rows).
+- `panel_lens_gaze` / `panel` at `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:7` (123 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matching rows).
-- Referencing classes: `ALPanelLensGaze` (175), `LLFloaterDirector` (2), `LLFloaterReg` (1), `ALGazeMath` (1).
+- Referencing classes: `ALPanelLensGaze` (173), `LLFloaterDirector` (2), `LLFloaterReg` (1), `ALGazeMath` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -27,7 +27,6 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `gaze_subjects` / `gaze_slot_b` (Subject B) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:41` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onSlotLookAtCommit()` (`indra/newview/alpanellensgaze.cpp:455`) | none |
 | `gaze_subjects` / `gaze_slot_c` (Subject C) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:44` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onSlotLookAtCommit()` (`indra/newview/alpanellensgaze.cpp:456`) | none |
 | `gaze_subjects` / `gaze_slot_d` (Subject D) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:47` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onSlotLookAtCommit()` (`indra/newview/alpanellensgaze.cpp:457`) | none |
-| `gaze_subjects` / `gaze_enable_check` (Enabled) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:53` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onEnableCommit()` (`indra/newview/alpanellensgaze.cpp:459`) | none |
 | `gaze_subjects` / `gaze_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:18` | kit readout ← approved static copy; no runtime writer | none |
 | `gaze_subjects` / `gaze_base_hint` (Shared base) | `text` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:734` | kit readout ← approved static copy; no runtime writer | none |
 | `targets` / `gaze_target_combo` (Head target) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:82` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onTargetCommit()` (`indra/newview/alpanellensgaze.cpp:460`) | none |
@@ -52,26 +51,26 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `strength` / `reset_gaze_smoothing` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:371` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onSmoothingCommit()` (`indra/newview/alpanellensgaze.cpp:582`) | none |
 | `presets_blend` / `gaze_performance_combo` (Performance) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:233` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onPerformanceCommit()` (`indra/newview/alpanellensgaze.cpp:508`) | none |
 | `presets_blend` / `reset_gaze_performance` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:238` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onResetPerformance()` (`indra/newview/alpanellensgaze.cpp:544`) | none |
-| `presets_blend` / `gaze_transition_slider` (Transition) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:244` | kit `slider` ↔ `DirectorGazeTransitionSec` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:152` `gaze_transition_slider` |
-| `presets_blend` / `gaze_easing_combo` (Easing) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:255` | kit `combo` ↔ `DirectorGazeEasing` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:157` `gaze_easing_combo` |
-| `presets_blend` / `gaze_random_check` (Auto-cycle) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:273` | kit `toggle` ↔ `DirectorGazeRandomMode` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:167` `gaze_random_check` |
-| `presets_blend` / `gaze_random_interval_slider` (Interval) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:279` | kit `slider` ↔ `DirectorGazeRandomInterval` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:170` `gaze_random_interval_slider` |
+| `presets_blend` / `gaze_transition_slider` (Transition) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:244` | kit `slider` ↔ `DirectorGazeTransitionSec` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:149` `gaze_transition_slider` |
+| `presets_blend` / `gaze_easing_combo` (Easing) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:255` | kit `combo` ↔ `DirectorGazeEasing` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:154` `gaze_easing_combo` |
+| `presets_blend` / `gaze_random_check` (Auto-cycle) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:273` | kit `toggle` ↔ `DirectorGazeRandomMode` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:164` `gaze_random_check` |
+| `presets_blend` / `gaze_random_interval_slider` (Interval) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:279` | kit `slider` ↔ `DirectorGazeRandomInterval` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:167` `gaze_random_interval_slider` |
 | `gaze_windows` / `btn_actor_gaze` (Gaze window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:918` | kit-native action `owner-command:LLFloaterDirector::onOpenActorGaze`; no duplicate widget is required | none |
 | `gaze_windows` / `btn_pose_polish` (Pose Polish) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:822` | kit-native action `floater:pose_polish`; no duplicate widget is required | none |
 | `gaze_windows` / `btn_gaze_cues` (Gaze Cues) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:826` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onGazeCues()` (`indra/newview/alpanellensgaze.cpp:525`) | none |
 | `camera_lookat` / `look_at_camera_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:740` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onModeCommit()` (`indra/newview/alpanellensgaze.cpp:524`) | none |
-| `camera_lookat` / `look_at_camera_strength` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:755` | kit `number` ↔ `DirectorLookAtCameraStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:196` `look_at_camera_strength` |
-| `camera_lookat` / `look_at_camera_head_eye` (Head/eyes) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:766` | kit `slider` ↔ `DirectorLookAtCameraHeadEye` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:199` `look_at_camera_head_eye` |
-| `camera_lookat` / `look_at_camera_torso` (Torso) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:779` | kit `toggle` ↔ `DirectorLookAtCameraTorso` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:204` `look_at_camera_torso` |
-| `camera_lookat` / `look_at_camera_smoothing` (Smoothing) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:797` | kit `slider` ↔ `DirectorLookAtCameraSmoothing` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:207` `look_at_camera_smoothing` |
-| `camera_lookat` / `look_at_camera_torso_amount` (Torso amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:786` | kit `slider` ↔ `DirectorLookAtCameraTorsoAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:212` `look_at_camera_torso_amount` |
-| `camera_lookat` / `look_at_camera_ease_time` (Ease master) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:809` | kit `slider` ↔ `DirectorLookAtCameraEaseTime` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:217` `look_at_camera_ease_time` |
+| `camera_lookat` / `look_at_camera_strength` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:755` | kit `number` ↔ `DirectorLookAtCameraStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:193` `look_at_camera_strength` |
+| `camera_lookat` / `look_at_camera_head_eye` (Head/eyes) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:766` | kit `slider` ↔ `DirectorLookAtCameraHeadEye` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:196` `look_at_camera_head_eye` |
+| `camera_lookat` / `look_at_camera_torso` (Torso) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:779` | kit `toggle` ↔ `DirectorLookAtCameraTorso` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:201` `look_at_camera_torso` |
+| `camera_lookat` / `look_at_camera_smoothing` (Smoothing) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:797` | kit `slider` ↔ `DirectorLookAtCameraSmoothing` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:204` `look_at_camera_smoothing` |
+| `camera_lookat` / `look_at_camera_torso_amount` (Torso amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:786` | kit `slider` ↔ `DirectorLookAtCameraTorsoAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:209` `look_at_camera_torso_amount` |
+| `camera_lookat` / `look_at_camera_ease_time` (Ease master) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:809` | kit `slider` ↔ `DirectorLookAtCameraEaseTime` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:214` `look_at_camera_ease_time` |
 | `camera_lookat` / `reset_look_at_camera_mode` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:749` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::editGazeTargetsFor()` (`indra/newview/alpanellensgaze.cpp:672`) | none |
 | `aim_eyeline` / `gaze_eyeline_yaw_slider` (Eyeline yaw) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:376` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onEyelineCommit()` (`indra/newview/alpanellensgaze.cpp:506`) | none |
 | `aim_eyeline` / `gaze_eyeline_pitch_slider` (Eyeline pitch) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:384` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onEyelineCommit()` (`indra/newview/alpanellensgaze.cpp:507`) | none |
 | `aim_eyeline` / `gaze_camera_roll_slider` (Camera roll) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:516` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onCameraRollCommit()` (`indra/newview/alpanellensgaze.cpp:522`) | none |
 | `aim_eyeline` / `gaze_breakoff_check` (Break off) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:494` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onBreakoffCommit()` (`indra/newview/alpanellensgaze.cpp:505`) | none |
-| `aim_eyeline` / `gaze_breakoff_spinner` (Yaw limit) | `spinner` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:500` | kit `number` ↔ `BDMergeGazeBehindAngle` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:245` `gaze_breakoff_spinner` |
+| `aim_eyeline` / `gaze_breakoff_spinner` (Yaw limit) | `spinner` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:500` | kit `number` ↔ `BDMergeGazeBehindAngle` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:242` `gaze_breakoff_spinner` |
 | `aim_eyeline` / `reset_gaze_eyeline_yaw` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:379` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onEyelineCommit()` (`indra/newview/alpanellensgaze.cpp:588`) | none |
 | `aim_eyeline` / `reset_gaze_eyeline_pitch` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:387` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onEyelineCommit()` (`indra/newview/alpanellensgaze.cpp:594`) | none |
 | `aim_eyeline` / `reset_gaze_camera_roll` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:521` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::editGazeTargetsFor()` (`indra/newview/alpanellensgaze.cpp:660`) | none |
@@ -103,7 +102,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `lean_curve` / `gaze_lean_threshold_spinner` (Threshold) | `spinner` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:692` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onLeanThresholdCommit()` (`indra/newview/alpanellensgaze.cpp:501`) | none |
 | `lean_curve` / `gaze_lean_softness_spinner` (Softness) | `spinner` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:701` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onLeanSoftnessCommit()` (`indra/newview/alpanellensgaze.cpp:502`) | none |
 | `lean_curve` / `gaze_lean_max_spinner` (Lean max) | `spinner` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:710` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onLeanMaxCommit()` (`indra/newview/alpanellensgaze.cpp:503`) | none |
-| `lean_curve` / `gaze_soft_recruit_spinner` (Soft recruit) | `spinner` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:720` | kit `number` ↔ `DirectorGazeSoftRecruitDeg` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:414` `gaze_soft_recruit_spinner` |
+| `lean_curve` / `gaze_soft_recruit_spinner` (Soft recruit) | `spinner` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:720` | kit `number` ↔ `DirectorGazeSoftRecruitDeg` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:411` `gaze_soft_recruit_spinner` |
 | `lean_curve` / `reset_gaze_lean_curve` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:686` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::editGazeTargetsFor()` (`indra/newview/alpanellensgaze.cpp:716`) | none |
 | `lean_curve` / `reset_gaze_lean_threshold` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:696` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::editGazeTargetsFor()` (`indra/newview/alpanellensgaze.cpp:722`) | none |
 | `lean_curve` / `reset_gaze_lean_softness` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:705` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::editGazeTargetsFor()` (`indra/newview/alpanellensgaze.cpp:728`) | none |
@@ -141,8 +140,8 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `life_cadence` / `gaze_blinks_check` (Blinks) | `check_box` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:432` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onBlinksCommit()` (`indra/newview/alpanellensgaze.cpp:516`) | none |
 | `life_cadence` / `gaze_variation_slider` (Variation) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:440` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onVariationCommit()` (`indra/newview/alpanellensgaze.cpp:517`) | none |
 | `life_cadence` / `gaze_break_freq_slider` (Glance breaks) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:452` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::onBreakFreqCommit()` (`indra/newview/alpanellensgaze.cpp:518`) | none |
-| `life_cadence` / `gaze_stillness_slider` (Stillness) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:392` | kit `slider` ↔ `DirectorGazeStillness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:546` `gaze_stillness_slider` |
-| `life_cadence` / `gaze_restraint_slider` (Restraint) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:403` | kit `slider` ↔ `DirectorGazeRestraint` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:551` `gaze_restraint_slider` |
+| `life_cadence` / `gaze_stillness_slider` (Stillness) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:392` | kit `slider` ↔ `DirectorGazeStillness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:543` `gaze_stillness_slider` |
+| `life_cadence` / `gaze_restraint_slider` (Restraint) | `slider` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:403` | kit `slider` ↔ `DirectorGazeRestraint` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml:548` `gaze_restraint_slider` |
 | `life_cadence` / `reset_gaze_microlife` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:425` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::editGazeTargetsFor()` (`indra/newview/alpanellensgaze.cpp:603`) | none |
 | `life_cadence` / `reset_gaze_variation` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:445` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::editGazeTargetsFor()` (`indra/newview/alpanellensgaze.cpp:609`) | none |
 | `life_cadence` / `reset_gaze_break_frequency` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:456` | `ALGazeKitAdapter` command/model binding → wired in `ALPanelLensGaze::postBuild()`; behavior `ALPanelLensGaze::editGazeTargetsFor()` (`indra/newview/alpanellensgaze.cpp:615`) | none |
@@ -169,7 +168,6 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALPanelLensGaze::onEaseAcquireCommit()` — `indra/newview/alpanellensgaze.cpp:519` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelLensGaze::onEaseReleaseCommit()` — `indra/newview/alpanellensgaze.cpp:520` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelLensGaze::onEditActorCommit()` — `indra/newview/alpanellensgaze.cpp:449` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelLensGaze::onEnableCommit()` — `indra/newview/alpanellensgaze.cpp:459` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelLensGaze::onExaggerateCommit()` — `indra/newview/alpanellensgaze.cpp:523` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelLensGaze::onEyeTargetCommit()` — `indra/newview/alpanellensgaze.cpp:461, 538` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelLensGaze::onEyelineCommit()` — `indra/newview/alpanellensgaze.cpp:506, 507, 588, 594` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
@@ -211,7 +209,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **113 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **112 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -229,7 +227,6 @@ Manifest size: **113 states**, hard cap 256, page runtime budget 2 minutes. Each
 | `gaze_slot_b-on` | Only `gaze_slot_b` is on; dependent visibility is measured. |
 | `gaze_slot_c-on` | Only `gaze_slot_c` is on; dependent visibility is measured. |
 | `gaze_slot_d-on` | Only `gaze_slot_d` is on; dependent visibility is measured. |
-| `gaze_enable_check-on` | Only `gaze_enable_check` is on; dependent visibility is measured. |
 | `card-targets-tallest-850` | Only `targets` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-targets-tallest-1160` | Only `targets` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `gaze_target_combo-option-0` | Only `gaze_target_combo` selects `Where it's going`; other selectors remain default. |
@@ -342,7 +339,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-131 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+130 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

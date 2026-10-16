@@ -1,11 +1,11 @@
 # Diopter — Director Kit page contract
 
 Page key: `diopter_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (4/5 setting-bound rows; 1 C++-referenced rows).
+Computed class: **code-driven** (3/4 setting-bound rows; 1 C++-referenced rows).
 
 ## Real owners
 
-- `ultimate_diopter` / `floater` at `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:15` (4 matching rows).
+- `ultimate_diopter` / `floater` at `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:15` (3 matching rows).
 - `ultimate_diopter` in `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:8`; `ALFloaterUltimateDiopter` in `indra/newview/alfloaterultimatediopter.cpp:266-1565`.
 - Referencing classes: `ALFloaterUltimateDiopter` (1).
 
@@ -21,10 +21,9 @@ Keep only the everyday controls (on/off, preset, strength, focus split) plus Ope
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `diopter_summary` / `diopter_enabled` (On / off) | `check_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:67` | kit `toggle` ↔ `CineDiopterEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:8` `diopter_enabled` |
-| `diopter_summary` / `diopter_preset` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:73` | kit `combo` ↔ `CineDiopterPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:11` `diopter_preset` |
-| `diopter_summary` / `diopter_blend` (Strength) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:106` | kit `slider` ↔ `CineDiopterBlend` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:38` `diopter_blend` |
-| `diopter_summary` / `diopter_power` (Focus split) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:290` | kit `slider` ↔ `CineDiopterPower` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:43` `diopter_power` |
+| `diopter_summary` / `diopter_preset` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:73` | kit `combo` ↔ `CineDiopterPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:8` `diopter_preset` |
+| `diopter_summary` / `diopter_blend` (Strength) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:106` | kit `slider` ↔ `CineDiopterBlend` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:35` `diopter_blend` |
+| `diopter_summary` / `diopter_power` (Focus split) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:290` | kit `slider` ↔ `CineDiopterPower` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:40` `diopter_power` |
 | `diopter_summary` / `diopter_open_editor` (Full editor) | none | kit-native action `floater:ultimate_diopter`; no duplicate widget is required | none |
 
 ## User-decision control contract
@@ -65,7 +64,7 @@ History test: start from any non-Custom preset, edit Focus split/`CineDiopterPow
 
 ## Bounded non-default audit states
 
-Manifest size: **27 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **26 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -74,7 +73,6 @@ Manifest size: **27 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `size-1141x720` | Default data at the wide non-round shell size. |
 | `card-diopter_summary-tallest-850` | Only `diopter_summary` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-diopter_summary-tallest-1160` | Only `diopter_summary` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `diopter_enabled-on` | Only `diopter_enabled` is on; dependent visibility is measured. |
 | `diopter_preset-option-0` | Only `diopter_preset` selects `Custom (start from scratch)`; other selectors remain default. |
 | `diopter_preset-option-1` | Only `diopter_preset` selects `Split Diopter (classic)`; other selectors remain default. |
 | `diopter_preset-option-2` | Only `diopter_preset` selects `Dream Spot`; other selectors remain default. |
@@ -110,7 +108,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-10 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+7 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

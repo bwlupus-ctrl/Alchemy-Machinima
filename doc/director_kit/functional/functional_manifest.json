@@ -43,8 +43,8 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2119,
-  "entries": 3995,
+  "generated_kit_rows": 2115,
+  "entries": 3991,
   "pages": 37,
   "settings_declared": 3650,
   "xui_files": 842,
@@ -160437,62 +160437,7 @@
     "page_view": "diopter_tab",
     "via": "tab"
    },
-   "id": "v2:diopter_tab:diopter_enabled:kit:0",
-   "csv_index": null,
-   "card": "diopter_summary",
-   "card_title": "Ultimate Diopter",
-   "row_label": "On / off",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
-   "xui_line": null,
-   "widget_name": "diopter_enabled",
-   "widget_type": "toggle",
-   "csv_kind": "toggle",
-   "wiring_status": "GENERATED_KIT",
-   "resolution": "generated_kit_xml",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "toggle",
-   "test_value": true,
-   "expect": {
-    "setting": "CineDiopterEnabled",
-    "type": "Boolean",
-    "value": true
-   },
-   "restore": {
-    "setting": "CineDiopterEnabled",
-    "value": false
-   },
-   "setting": "CineDiopterEnabled",
-   "setting_source": "kit_row setting",
-   "setting_type": "Boolean",
-   "default": false,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "combo_items": [],
-   "binding": "setting",
-   "link_to": null,
-   "kit_action": null,
-   "shortcut_of": null,
-   "callbacks": null,
-   "owner": null,
-   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml"
-  },
-  {
-   "page": "diopter_tab",
-   "page_label": "Diopter",
-   "group": "lens_group",
-   "version": "v2",
-   "source": "generated_kit_xml",
-   "host": {
-    "floater": "director",
-    "page_view": "diopter_tab",
-    "via": "tab"
-   },
-   "id": "v2:diopter_tab:diopter_preset:kit:1",
+   "id": "v2:diopter_tab:diopter_preset:kit:0",
    "csv_index": null,
    "card": "diopter_summary",
    "card_title": "Ultimate Diopter",
@@ -160636,7 +160581,7 @@
     "page_view": "diopter_tab",
     "via": "tab"
    },
-   "id": "v2:diopter_tab:diopter_blend:kit:2",
+   "id": "v2:diopter_tab:diopter_blend:kit:1",
    "csv_index": null,
    "card": "diopter_summary",
    "card_title": "Ultimate Diopter",
@@ -160691,7 +160636,7 @@
     "page_view": "diopter_tab",
     "via": "tab"
    },
-   "id": "v2:diopter_tab:diopter_power:kit:3",
+   "id": "v2:diopter_tab:diopter_power:kit:2",
    "csv_index": null,
    "card": "diopter_summary",
    "card_title": "Ultimate Diopter",
@@ -160746,7 +160691,7 @@
     "page_view": "diopter_tab",
     "via": "tab"
    },
-   "id": "v2:diopter_tab:diopter_open_editor:kit:4",
+   "id": "v2:diopter_tab:diopter_open_editor:kit:3",
    "csv_index": null,
    "card": "diopter_summary",
    "card_title": "Ultimate Diopter",
@@ -192657,62 +192602,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_enable:kit:1",
-   "csv_index": null,
-   "card": "ink",
-   "card_title": "Ink",
-   "row_label": "Enable ink",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
-   "xui_line": null,
-   "widget_name": "ri_enable",
-   "widget_type": "toggle",
-   "csv_kind": "toggle",
-   "wiring_status": "GENERATED_KIT",
-   "resolution": "generated_kit_xml",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "toggle",
-   "test_value": true,
-   "expect": {
-    "setting": "CineOutlineEnabled",
-    "type": "Boolean",
-    "value": true
-   },
-   "restore": {
-    "setting": "CineOutlineEnabled",
-    "value": false
-   },
-   "setting": "CineOutlineEnabled",
-   "setting_source": "kit_row setting",
-   "setting_type": "Boolean",
-   "default": false,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "combo_items": [],
-   "binding": "setting",
-   "link_to": null,
-   "kit_action": null,
-   "shortcut_of": null,
-   "callbacks": null,
-   "owner": null,
-   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml"
-  },
-  {
-   "page": "stylize_tab",
-   "page_label": "Roto Ink",
-   "group": "look_group",
-   "version": "v2",
-   "source": "generated_kit_xml",
-   "host": {
-    "floater": "director",
-    "page_view": "stylize_tab",
-    "via": "tab"
-   },
-   "id": "v2:stylize_tab:ri_color_swatch:kit:2",
+   "id": "v2:stylize_tab:ri_color_swatch:kit:1",
    "csv_index": null,
    "card": "ink",
    "card_title": "Ink",
@@ -192785,7 +192675,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_intensity_slider:kit:3",
+   "id": "v2:stylize_tab:ri_intensity_slider:kit:2",
    "csv_index": null,
    "card": "ink",
    "card_title": "Ink",
@@ -192840,7 +192730,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_opacity_slider:kit:4",
+   "id": "v2:stylize_tab:ri_opacity_slider:kit:3",
    "csv_index": null,
    "card": "ink",
    "card_title": "Ink",
@@ -192895,7 +192785,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_blend_mode_combo:kit:5",
+   "id": "v2:stylize_tab:ri_blend_mode_combo:kit:4",
    "csv_index": null,
    "card": "ink",
    "card_title": "Ink",
@@ -192967,7 +192857,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_ink_layer_combo:kit:6",
+   "id": "v2:stylize_tab:ri_ink_layer_combo:kit:5",
    "csv_index": null,
    "card": "ink",
    "card_title": "Ink",
@@ -193043,7 +192933,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_ink_mode_combo:kit:7",
+   "id": "v2:stylize_tab:ri_ink_mode_combo:kit:6",
    "csv_index": null,
    "card": "ink",
    "card_title": "Ink",
@@ -193111,7 +193001,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_glow_slider:kit:8",
+   "id": "v2:stylize_tab:ri_glow_slider:kit:7",
    "csv_index": null,
    "card": "ink",
    "card_title": "Ink",
@@ -193166,7 +193056,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_match_reach_slider:kit:9",
+   "id": "v2:stylize_tab:ri_match_reach_slider:kit:8",
    "csv_index": null,
    "card": "ink",
    "card_title": "Ink",
@@ -193221,7 +193111,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sil_enable:kit:10",
+   "id": "v2:stylize_tab:ri_sil_enable:kit:9",
    "csv_index": null,
    "card": "line",
    "card_title": "Line",
@@ -193276,7 +193166,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sil_weight_slider:kit:11",
+   "id": "v2:stylize_tab:ri_sil_weight_slider:kit:10",
    "csv_index": null,
    "card": "line",
    "card_title": "Line",
@@ -193331,7 +193221,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_width_slider:kit:12",
+   "id": "v2:stylize_tab:ri_width_slider:kit:11",
    "csv_index": null,
    "card": "line",
    "card_title": "Line",
@@ -193386,7 +193276,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_softness_slider:kit:13",
+   "id": "v2:stylize_tab:ri_softness_slider:kit:12",
    "csv_index": null,
    "card": "line",
    "card_title": "Line",
@@ -193441,7 +193331,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_far_cutoff_slider:kit:14",
+   "id": "v2:stylize_tab:ri_far_cutoff_slider:kit:13",
    "csv_index": null,
    "card": "line",
    "card_title": "Line",
@@ -193496,7 +193386,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sil_thr_slider:kit:15",
+   "id": "v2:stylize_tab:ri_sil_thr_slider:kit:14",
    "csv_index": null,
    "card": "line",
    "card_title": "Line",
@@ -193551,7 +193441,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_metric_thr_slider:kit:16",
+   "id": "v2:stylize_tab:ri_metric_thr_slider:kit:15",
    "csv_index": null,
    "card": "line",
    "card_title": "Line",
@@ -193606,7 +193496,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_depth_mode_combo:kit:17",
+   "id": "v2:stylize_tab:ri_depth_mode_combo:kit:16",
    "csv_index": null,
    "card": "line",
    "card_title": "Line",
@@ -193674,7 +193564,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_crease_enable:kit:18",
+   "id": "v2:stylize_tab:ri_crease_enable:kit:17",
    "csv_index": null,
    "card": "creases",
    "card_title": "Creases",
@@ -193729,7 +193619,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_crease_weight_slider:kit:19",
+   "id": "v2:stylize_tab:ri_crease_weight_slider:kit:18",
    "csv_index": null,
    "card": "creases",
    "card_title": "Creases",
@@ -193784,7 +193674,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_crease_angle_slider:kit:20",
+   "id": "v2:stylize_tab:ri_crease_angle_slider:kit:19",
    "csv_index": null,
    "card": "creases",
    "card_title": "Creases",
@@ -193839,7 +193729,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_color2_mode_combo:kit:21",
+   "id": "v2:stylize_tab:ri_color2_mode_combo:kit:20",
    "csv_index": null,
    "card": "colour2",
    "card_title": "Colour cycle",
@@ -193919,7 +193809,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_color2_swatch:kit:22",
+   "id": "v2:stylize_tab:ri_color2_swatch:kit:21",
    "csv_index": null,
    "card": "colour2",
    "card_title": "Colour cycle",
@@ -193992,7 +193882,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_color2_speed_slider:kit:23",
+   "id": "v2:stylize_tab:ri_color2_speed_slider:kit:22",
    "csv_index": null,
    "card": "colour2",
    "card_title": "Colour cycle",
@@ -194047,7 +193937,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_color2_length_slider:kit:24",
+   "id": "v2:stylize_tab:ri_color2_length_slider:kit:23",
    "csv_index": null,
    "card": "colour2",
    "card_title": "Colour cycle",
@@ -194102,7 +193992,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_mode_combo:kit:25",
+   "id": "v2:stylize_tab:ri_subject_mode_combo:kit:24",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194202,7 +194092,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_target_combo:kit:26",
+   "id": "v2:stylize_tab:ri_subject_target_combo:kit:25",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194282,7 +194172,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_invert_check:kit:27",
+   "id": "v2:stylize_tab:ri_subject_invert_check:kit:26",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194337,7 +194227,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_range_slider:kit:28",
+   "id": "v2:stylize_tab:ri_subject_range_slider:kit:27",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194392,7 +194282,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_feather_slider:kit:29",
+   "id": "v2:stylize_tab:ri_subject_feather_slider:kit:28",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194447,7 +194337,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_manual_depth_slider:kit:30",
+   "id": "v2:stylize_tab:ri_subject_manual_depth_slider:kit:29",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194502,7 +194392,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_source_combo:kit:31",
+   "id": "v2:stylize_tab:ri_subject_source_combo:kit:30",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194578,7 +194468,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_targetset_combo:kit:32",
+   "id": "v2:stylize_tab:ri_subject_targetset_combo:kit:31",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194670,7 +194560,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_max_spinner:kit:33",
+   "id": "v2:stylize_tab:ri_subject_max_spinner:kit:32",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194725,7 +194615,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_shape_combo:kit:34",
+   "id": "v2:stylize_tab:ri_subject_shape_combo:kit:33",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194797,7 +194687,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_target_color_check:kit:35",
+   "id": "v2:stylize_tab:ri_subject_target_color_check:kit:34",
    "csv_index": null,
    "card": "isolation",
    "card_title": "Isolation",
@@ -194852,7 +194742,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_near_slider:kit:36",
+   "id": "v2:stylize_tab:ri_subject_near_slider:kit:35",
    "csv_index": null,
    "card": "band",
    "card_title": "Depth band",
@@ -194907,7 +194797,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_far_slider:kit:37",
+   "id": "v2:stylize_tab:ri_subject_far_slider:kit:36",
    "csv_index": null,
    "card": "band",
    "card_title": "Depth band",
@@ -194962,7 +194852,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_ellipse_slider:kit:38",
+   "id": "v2:stylize_tab:ri_subject_ellipse_slider:kit:37",
    "csv_index": null,
    "card": "ellipse",
    "card_title": "Screen shape",
@@ -195017,7 +194907,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_ellipse_scale_slider:kit:39",
+   "id": "v2:stylize_tab:ri_subject_ellipse_scale_slider:kit:38",
    "csv_index": null,
    "card": "ellipse",
    "card_title": "Screen shape",
@@ -195072,7 +194962,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_ellipse_feather_slider:kit:40",
+   "id": "v2:stylize_tab:ri_subject_ellipse_feather_slider:kit:39",
    "csv_index": null,
    "card": "ellipse",
    "card_title": "Screen shape",
@@ -195127,7 +195017,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_screen_cx_slider:kit:41",
+   "id": "v2:stylize_tab:ri_subject_screen_cx_slider:kit:40",
    "csv_index": null,
    "card": "ellipse",
    "card_title": "Screen shape",
@@ -195182,7 +195072,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_screen_cy_slider:kit:42",
+   "id": "v2:stylize_tab:ri_subject_screen_cy_slider:kit:41",
    "csv_index": null,
    "card": "ellipse",
    "card_title": "Screen shape",
@@ -195237,7 +195127,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_screen_rx_slider:kit:43",
+   "id": "v2:stylize_tab:ri_subject_screen_rx_slider:kit:42",
    "csv_index": null,
    "card": "ellipse",
    "card_title": "Screen shape",
@@ -195292,7 +195182,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_subject_screen_ry_slider:kit:44",
+   "id": "v2:stylize_tab:ri_subject_screen_ry_slider:kit:43",
    "csv_index": null,
    "card": "ellipse",
    "card_title": "Screen shape",
@@ -195347,7 +195237,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sketch_enable:kit:45",
+   "id": "v2:stylize_tab:ri_sketch_enable:kit:44",
    "csv_index": null,
    "card": "sketch",
    "card_title": "Sketch / boil",
@@ -195402,7 +195292,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sketch_amount_slider:kit:46",
+   "id": "v2:stylize_tab:ri_sketch_amount_slider:kit:45",
    "csv_index": null,
    "card": "sketch",
    "card_title": "Sketch / boil",
@@ -195457,7 +195347,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sketch_fps_slider:kit:47",
+   "id": "v2:stylize_tab:ri_sketch_fps_slider:kit:46",
    "csv_index": null,
    "card": "sketch",
    "card_title": "Sketch / boil",
@@ -195512,7 +195402,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sketch_detail_slider:kit:48",
+   "id": "v2:stylize_tab:ri_sketch_detail_slider:kit:47",
    "csv_index": null,
    "card": "sketch",
    "card_title": "Sketch / boil",
@@ -195567,7 +195457,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sketch_strokes_spinner:kit:49",
+   "id": "v2:stylize_tab:ri_sketch_strokes_spinner:kit:48",
    "csv_index": null,
    "card": "sketch",
    "card_title": "Sketch / boil",
@@ -195622,7 +195512,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sketch_roughness_slider:kit:50",
+   "id": "v2:stylize_tab:ri_sketch_roughness_slider:kit:49",
    "csv_index": null,
    "card": "sketch",
    "card_title": "Sketch / boil",
@@ -195677,7 +195567,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sketch_seed_slider:kit:51",
+   "id": "v2:stylize_tab:ri_sketch_seed_slider:kit:50",
    "csv_index": null,
    "card": "sketch",
    "card_title": "Sketch / boil",
@@ -195732,7 +195622,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_pattern_type_combo:kit:52",
+   "id": "v2:stylize_tab:ri_pattern_type_combo:kit:51",
    "csv_index": null,
    "card": "pattern",
    "card_title": "Line pattern",
@@ -195816,7 +195706,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_pattern_size_slider:kit:53",
+   "id": "v2:stylize_tab:ri_pattern_size_slider:kit:52",
    "csv_index": null,
    "card": "pattern",
    "card_title": "Line pattern",
@@ -195871,7 +195761,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_pattern_ratio_slider:kit:54",
+   "id": "v2:stylize_tab:ri_pattern_ratio_slider:kit:53",
    "csv_index": null,
    "card": "pattern",
    "card_title": "Line pattern",
@@ -195926,7 +195816,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_pattern_drift_slider:kit:55",
+   "id": "v2:stylize_tab:ri_pattern_drift_slider:kit:54",
    "csv_index": null,
    "card": "pattern",
    "card_title": "Line pattern",
@@ -195981,7 +195871,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_hatch_angle_slider:kit:56",
+   "id": "v2:stylize_tab:ri_hatch_angle_slider:kit:55",
    "csv_index": null,
    "card": "pattern",
    "card_title": "Line pattern",
@@ -196036,7 +195926,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_hatch_reach_slider:kit:57",
+   "id": "v2:stylize_tab:ri_hatch_reach_slider:kit:56",
    "csv_index": null,
    "card": "pattern",
    "card_title": "Line pattern",
@@ -196091,7 +195981,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_hatch_cross_check:kit:58",
+   "id": "v2:stylize_tab:ri_hatch_cross_check:kit:57",
    "csv_index": null,
    "card": "pattern",
    "card_title": "Line pattern",
@@ -196146,7 +196036,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_pattern_seed_slider:kit:59",
+   "id": "v2:stylize_tab:ri_pattern_seed_slider:kit:58",
    "csv_index": null,
    "card": "pattern",
    "card_title": "Line pattern",
@@ -196201,7 +196091,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_style_combo:kit:60",
+   "id": "v2:stylize_tab:ri_motion_style_combo:kit:59",
    "csv_index": null,
    "card": "motion1",
    "card_title": "Motion",
@@ -196405,7 +196295,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_speed_slider:kit:61",
+   "id": "v2:stylize_tab:ri_motion_speed_slider:kit:60",
    "csv_index": null,
    "card": "motion1",
    "card_title": "Motion",
@@ -196460,7 +196350,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_amount_slider:kit:62",
+   "id": "v2:stylize_tab:ri_motion_amount_slider:kit:61",
    "csv_index": null,
    "card": "motion1",
    "card_title": "Motion",
@@ -196515,7 +196405,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_scale_slider:kit:63",
+   "id": "v2:stylize_tab:ri_motion_scale_slider:kit:62",
    "csv_index": null,
    "card": "motion1",
    "card_title": "Motion",
@@ -196570,7 +196460,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_shape_slider:kit:64",
+   "id": "v2:stylize_tab:ri_motion_shape_slider:kit:63",
    "csv_index": null,
    "card": "motion1",
    "card_title": "Motion",
@@ -196625,7 +196515,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_angle_slider:kit:65",
+   "id": "v2:stylize_tab:ri_motion_angle_slider:kit:64",
    "csv_index": null,
    "card": "motion1",
    "card_title": "Motion",
@@ -196680,7 +196570,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_seed_slider:kit:66",
+   "id": "v2:stylize_tab:ri_motion_seed_slider:kit:65",
    "csv_index": null,
    "card": "motion1",
    "card_title": "Motion",
@@ -196735,7 +196625,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion2_style_combo:kit:67",
+   "id": "v2:stylize_tab:ri_motion2_style_combo:kit:66",
    "csv_index": null,
    "card": "motion2",
    "card_title": "Second motion",
@@ -196939,7 +196829,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion2_speed_slider:kit:68",
+   "id": "v2:stylize_tab:ri_motion2_speed_slider:kit:67",
    "csv_index": null,
    "card": "motion2",
    "card_title": "Second motion",
@@ -196994,7 +196884,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion2_amount_slider:kit:69",
+   "id": "v2:stylize_tab:ri_motion2_amount_slider:kit:68",
    "csv_index": null,
    "card": "motion2",
    "card_title": "Second motion",
@@ -197049,7 +196939,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion2_scale_slider:kit:70",
+   "id": "v2:stylize_tab:ri_motion2_scale_slider:kit:69",
    "csv_index": null,
    "card": "motion2",
    "card_title": "Second motion",
@@ -197104,7 +196994,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion2_shape_slider:kit:71",
+   "id": "v2:stylize_tab:ri_motion2_shape_slider:kit:70",
    "csv_index": null,
    "card": "motion2",
    "card_title": "Second motion",
@@ -197159,7 +197049,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion2_angle_slider:kit:72",
+   "id": "v2:stylize_tab:ri_motion2_angle_slider:kit:71",
    "csv_index": null,
    "card": "motion2",
    "card_title": "Second motion",
@@ -197214,7 +197104,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_anim_speed_slider:kit:73",
+   "id": "v2:stylize_tab:ri_anim_speed_slider:kit:72",
    "csv_index": null,
    "card": "timing",
    "card_title": "Timing",
@@ -197269,7 +197159,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_anim_pause_check:kit:74",
+   "id": "v2:stylize_tab:ri_anim_pause_check:kit:73",
    "csv_index": null,
    "card": "timing",
    "card_title": "Timing",
@@ -197324,7 +197214,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_anim_follow_director_check:kit:75",
+   "id": "v2:stylize_tab:ri_anim_follow_director_check:kit:74",
    "csv_index": null,
    "card": "timing",
    "card_title": "Timing",
@@ -197379,7 +197269,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_tempo_slider:kit:76",
+   "id": "v2:stylize_tab:ri_motion_tempo_slider:kit:75",
    "csv_index": null,
    "card": "timing",
    "card_title": "Timing",
@@ -197434,7 +197324,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_phase_slider:kit:77",
+   "id": "v2:stylize_tab:ri_motion_phase_slider:kit:76",
    "csv_index": null,
    "card": "timing",
    "card_title": "Timing",
@@ -197489,7 +197379,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_motion_step_combo:kit:78",
+   "id": "v2:stylize_tab:ri_motion_step_combo:kit:77",
    "csv_index": null,
    "card": "timing",
    "card_title": "Timing",
@@ -197565,7 +197455,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:ri_sync_tron_link:kit:79",
+   "id": "v2:stylize_tab:ri_sync_tron_link:kit:78",
    "csv_index": null,
    "card": "timing",
    "card_title": "Timing",
@@ -197617,7 +197507,7 @@
     "page_view": "stylize_tab",
     "via": "tab"
    },
-   "id": "v2:stylize_tab:open_lightbox_roto:kit:80",
+   "id": "v2:stylize_tab:open_lightbox_roto:kit:79",
    "csv_index": null,
    "card": "adv_roto",
    "card_title": "Advanced",
@@ -197673,65 +197563,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_enable:kit:0",
+   "id": "v2:tron_tab:tr_layer_combo:kit:0",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
-   "row_label": "Enable Tron",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
-   "xui_line": null,
-   "widget_name": "tr_enable",
-   "widget_type": "toggle",
-   "csv_kind": "toggle",
-   "wiring_status": "GENERATED_KIT",
-   "resolution": "generated_kit_xml",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "toggle",
-   "test_value": true,
-   "expect": {
-    "setting": "TronEnabled",
-    "type": "Boolean",
-    "value": true
-   },
-   "restore": {
-    "setting": "TronEnabled",
-    "value": false
-   },
-   "setting": "TronEnabled",
-   "setting_source": "kit_row setting",
-   "setting_type": "Boolean",
-   "default": false,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "combo_items": [],
-   "binding": "setting",
-   "link_to": null,
-   "kit_action": null,
-   "shortcut_of": null,
-   "callbacks": null,
-   "owner": null,
-   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml"
-  },
-  {
-   "page": "tron_tab",
-   "page_label": "Tron",
-   "group": "look_group",
-   "version": "v2",
-   "source": "generated_kit_xml",
-   "host": {
-    "floater": "director",
-    "page_view": "tron_tab",
-    "via": "tab"
-   },
-   "id": "v2:tron_tab:tr_layer_combo:kit:1",
-   "csv_index": null,
-   "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "Layer",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -197796,10 +197631,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_palette_combo:kit:2",
+   "id": "v2:tron_tab:tr_palette_combo:kit:1",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "Palette",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -197900,10 +197735,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_color_primary:kit:3",
+   "id": "v2:tron_tab:tr_color_primary:kit:2",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "Primary",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -197973,10 +197808,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_color_secondary:kit:4",
+   "id": "v2:tron_tab:tr_color_secondary:kit:3",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "Secondary",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -198046,10 +197881,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_color_accent:kit:5",
+   "id": "v2:tron_tab:tr_color_accent:kit:4",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "Accent",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -198119,10 +197954,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_color_pulse:kit:6",
+   "id": "v2:tron_tab:tr_color_pulse:kit:5",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "Pulse",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -198192,10 +198027,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_also_roto:kit:7",
+   "id": "v2:tron_tab:tr_also_roto:kit:6",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "+ Roto Ink",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -198247,10 +198082,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_also_rigrim:kit:8",
+   "id": "v2:tron_tab:tr_also_rigrim:kit:7",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "+ Rig Rim",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -198302,10 +198137,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_apply_roto_preset_btn:kit:9",
+   "id": "v2:tron_tab:tr_apply_roto_preset_btn:kit:8",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "Roto preset",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -198355,10 +198190,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_apply_rigrim_preset_btn:kit:10",
+   "id": "v2:tron_tab:tr_apply_rigrim_preset_btn:kit:9",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "Rim preset",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -198408,10 +198243,10 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_reset_all:kit:11",
+   "id": "v2:tron_tab:tr_reset_all:kit:10",
    "csv_index": null,
    "card": "tron_master",
-   "card_title": "Master & palette",
+   "card_title": "Layer & palette",
    "row_label": "Reset all",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
    "xui_line": null,
@@ -198458,7 +198293,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_anim_speed_slider:kit:12",
+   "id": "v2:tron_tab:tr_anim_speed_slider:kit:11",
    "csv_index": null,
    "card": "clock",
    "card_title": "Clock & pulse",
@@ -198513,7 +198348,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_anim_pause_check:kit:13",
+   "id": "v2:tron_tab:tr_anim_pause_check:kit:12",
    "csv_index": null,
    "card": "clock",
    "card_title": "Clock & pulse",
@@ -198568,7 +198403,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_rate_slider:kit:14",
+   "id": "v2:tron_tab:tr_pulse_rate_slider:kit:13",
    "csv_index": null,
    "card": "clock",
    "card_title": "Clock & pulse",
@@ -198623,7 +198458,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_shape_combo:kit:15",
+   "id": "v2:tron_tab:tr_pulse_shape_combo:kit:14",
    "csv_index": null,
    "card": "clock",
    "card_title": "Clock & pulse",
@@ -198699,7 +198534,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_amount_slider:kit:16",
+   "id": "v2:tron_tab:tr_pulse_amount_slider:kit:15",
    "csv_index": null,
    "card": "clock",
    "card_title": "Clock & pulse",
@@ -198754,7 +198589,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_sync_roto_check:kit:17",
+   "id": "v2:tron_tab:tr_sync_roto_check:kit:16",
    "csv_index": null,
    "card": "clock",
    "card_title": "Clock & pulse",
@@ -198809,7 +198644,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_anim_follow_check:kit:18",
+   "id": "v2:tron_tab:tr_anim_follow_check:kit:17",
    "csv_index": null,
    "card": "clock",
    "card_title": "Clock & pulse",
@@ -198864,7 +198699,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_strength_slider:kit:19",
+   "id": "v2:tron_tab:tr_grade_strength_slider:kit:18",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -198919,7 +198754,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_darken_ev_slider:kit:20",
+   "id": "v2:tron_tab:tr_grade_darken_ev_slider:kit:19",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -198974,7 +198809,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_desaturate_slider:kit:21",
+   "id": "v2:tron_tab:tr_grade_desaturate_slider:kit:20",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -199029,7 +198864,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_crush_slider:kit:22",
+   "id": "v2:tron_tab:tr_grade_crush_slider:kit:21",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -199084,7 +198919,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_sky_darken_slider:kit:23",
+   "id": "v2:tron_tab:tr_grade_sky_darken_slider:kit:22",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -199139,7 +198974,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_tint_swatch:kit:24",
+   "id": "v2:tron_tab:tr_grade_tint_swatch:kit:23",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -199212,7 +199047,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_tint_amount_slider:kit:25",
+   "id": "v2:tron_tab:tr_grade_tint_amount_slider:kit:24",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -199267,7 +199102,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_keep_bright_lo_slider:kit:26",
+   "id": "v2:tron_tab:tr_grade_keep_bright_lo_slider:kit:25",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -199322,7 +199157,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_keep_bright_hi_slider:kit:27",
+   "id": "v2:tron_tab:tr_grade_keep_bright_hi_slider:kit:26",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -199377,7 +199212,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grade_keep_subject_slider:kit:28",
+   "id": "v2:tron_tab:tr_grade_keep_subject_slider:kit:27",
    "csv_index": null,
    "card": "dark_grade",
    "card_title": "Dark grade",
@@ -199432,7 +199267,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_enable_check:kit:29",
+   "id": "v2:tron_tab:tr_grid_enable_check:kit:28",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199487,7 +199322,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_intensity_slider:kit:30",
+   "id": "v2:tron_tab:tr_grid_intensity_slider:kit:29",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199542,7 +199377,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_spacing_slider:kit:31",
+   "id": "v2:tron_tab:tr_grid_spacing_slider:kit:30",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199597,7 +199432,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_width_slider:kit:32",
+   "id": "v2:tron_tab:tr_grid_width_slider:kit:31",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199652,7 +199487,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_glow_slider:kit:33",
+   "id": "v2:tron_tab:tr_grid_glow_slider:kit:32",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199707,7 +199542,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_min_width_px_slider:kit:34",
+   "id": "v2:tron_tab:tr_grid_min_width_px_slider:kit:33",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199762,7 +199597,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_major_every_spinner:kit:35",
+   "id": "v2:tron_tab:tr_grid_major_every_spinner:kit:34",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199817,7 +199652,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_major_width_slider:kit:36",
+   "id": "v2:tron_tab:tr_grid_major_width_slider:kit:35",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199872,7 +199707,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_major_intensity_slider:kit:37",
+   "id": "v2:tron_tab:tr_grid_major_intensity_slider:kit:36",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199927,7 +199762,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_floor_slider:kit:38",
+   "id": "v2:tron_tab:tr_grid_floor_slider:kit:37",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -199982,7 +199817,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_wall_slider:kit:39",
+   "id": "v2:tron_tab:tr_grid_wall_slider:kit:38",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200037,7 +199872,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_ceiling_slider:kit:40",
+   "id": "v2:tron_tab:tr_grid_ceiling_slider:kit:39",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200092,7 +199927,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_sharpness_slider:kit:41",
+   "id": "v2:tron_tab:tr_grid_sharpness_slider:kit:40",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200147,7 +199982,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_normal_source_combo:kit:42",
+   "id": "v2:tron_tab:tr_grid_normal_source_combo:kit:41",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200215,7 +200050,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_far_fade_slider:kit:43",
+   "id": "v2:tron_tab:tr_grid_far_fade_slider:kit:42",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200270,7 +200105,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_water_mode_combo:kit:44",
+   "id": "v2:tron_tab:tr_grid_water_mode_combo:kit:43",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200342,7 +200177,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_water_tolerance_slider:kit:45",
+   "id": "v2:tron_tab:tr_grid_water_tolerance_slider:kit:44",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200397,7 +200232,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_subject_exclude_slider:kit:46",
+   "id": "v2:tron_tab:tr_grid_subject_exclude_slider:kit:45",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200452,7 +200287,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_subject_radius_slider:kit:47",
+   "id": "v2:tron_tab:tr_grid_subject_radius_slider:kit:46",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200507,7 +200342,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_subject_radius_feather_slider:kit:48",
+   "id": "v2:tron_tab:tr_grid_subject_radius_feather_slider:kit:47",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200562,7 +200397,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_origin_snap_btn:kit:49",
+   "id": "v2:tron_tab:tr_grid_origin_snap_btn:kit:48",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200615,7 +200450,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_grid_origin_clear_btn:kit:50",
+   "id": "v2:tron_tab:tr_grid_origin_clear_btn:kit:49",
    "csv_index": null,
    "card": "grid",
    "card_title": "Neon grid",
@@ -200666,7 +200501,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_grid_amount_slider:kit:51",
+   "id": "v2:tron_tab:tr_pulse_grid_amount_slider:kit:50",
    "csv_index": null,
    "card": "pulses",
    "card_title": "Travelling pulses",
@@ -200721,7 +200556,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_grid_speed_slider:kit:52",
+   "id": "v2:tron_tab:tr_pulse_grid_speed_slider:kit:51",
    "csv_index": null,
    "card": "pulses",
    "card_title": "Travelling pulses",
@@ -200776,7 +200611,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_grid_length_slider:kit:53",
+   "id": "v2:tron_tab:tr_pulse_grid_length_slider:kit:52",
    "csv_index": null,
    "card": "pulses",
    "card_title": "Travelling pulses",
@@ -200831,7 +200666,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_grid_wavelength_slider:kit:54",
+   "id": "v2:tron_tab:tr_pulse_grid_wavelength_slider:kit:53",
    "csv_index": null,
    "card": "pulses",
    "card_title": "Travelling pulses",
@@ -200886,7 +200721,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_grid_density_slider:kit:55",
+   "id": "v2:tron_tab:tr_pulse_grid_density_slider:kit:54",
    "csv_index": null,
    "card": "pulses",
    "card_title": "Travelling pulses",
@@ -200941,7 +200776,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_grid_direction_combo:kit:56",
+   "id": "v2:tron_tab:tr_pulse_grid_direction_combo:kit:55",
    "csv_index": null,
    "card": "pulses",
    "card_title": "Travelling pulses",
@@ -201017,7 +200852,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_grid_color_mode_combo:kit:57",
+   "id": "v2:tron_tab:tr_pulse_grid_color_mode_combo:kit:56",
    "csv_index": null,
    "card": "pulses",
    "card_title": "Travelling pulses",
@@ -201089,7 +200924,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_pulse_seed_slider:kit:58",
+   "id": "v2:tron_tab:tr_pulse_seed_slider:kit:57",
    "csv_index": null,
    "card": "pulses",
    "card_title": "Travelling pulses",
@@ -201144,7 +200979,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_enable:kit:59",
+   "id": "v2:tron_tab:tr_trace_enable:kit:58",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201199,7 +201034,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_intensity_slider:kit:60",
+   "id": "v2:tron_tab:tr_trace_intensity_slider:kit:59",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201254,7 +201089,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_density_slider:kit:61",
+   "id": "v2:tron_tab:tr_trace_density_slider:kit:60",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201309,7 +201144,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_cell_slider:kit:62",
+   "id": "v2:tron_tab:tr_trace_cell_slider:kit:61",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201364,7 +201199,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_width_slider:kit:63",
+   "id": "v2:tron_tab:tr_trace_width_slider:kit:62",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201419,7 +201254,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_pad_radius_slider:kit:64",
+   "id": "v2:tron_tab:tr_trace_pad_radius_slider:kit:63",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201474,7 +201309,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_diagonal_slider:kit:65",
+   "id": "v2:tron_tab:tr_trace_diagonal_slider:kit:64",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201529,7 +201364,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_walls_slider:kit:66",
+   "id": "v2:tron_tab:tr_trace_walls_slider:kit:65",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201584,7 +201419,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_floors_slider:kit:67",
+   "id": "v2:tron_tab:tr_trace_floors_slider:kit:66",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201639,7 +201474,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_pulse_amount_slider:kit:68",
+   "id": "v2:tron_tab:tr_trace_pulse_amount_slider:kit:67",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201694,7 +201529,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_pulse_speed_slider:kit:69",
+   "id": "v2:tron_tab:tr_trace_pulse_speed_slider:kit:68",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201749,7 +201584,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_pulse_length_slider:kit:70",
+   "id": "v2:tron_tab:tr_trace_pulse_length_slider:kit:69",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201804,7 +201639,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trace_seed_slider:kit:71",
+   "id": "v2:tron_tab:tr_trace_seed_slider:kit:70",
    "csv_index": null,
    "card": "traces",
    "card_title": "Circuit traces",
@@ -201859,7 +201694,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_enable:kit:72",
+   "id": "v2:tron_tab:tr_rim_enable:kit:71",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -201914,7 +201749,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_gain_slider:kit:73",
+   "id": "v2:tron_tab:tr_rim_gain_slider:kit:72",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -201969,7 +201804,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_exponent_slider:kit:74",
+   "id": "v2:tron_tab:tr_rim_exponent_slider:kit:73",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -202024,7 +201859,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_scan_amount_slider:kit:75",
+   "id": "v2:tron_tab:tr_rim_scan_amount_slider:kit:74",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -202079,7 +201914,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_scan_speed_slider:kit:76",
+   "id": "v2:tron_tab:tr_rim_scan_speed_slider:kit:75",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -202134,7 +201969,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_scan_width_slider:kit:77",
+   "id": "v2:tron_tab:tr_rim_scan_width_slider:kit:76",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -202189,7 +202024,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_silhouette_gain_slider:kit:78",
+   "id": "v2:tron_tab:tr_rim_silhouette_gain_slider:kit:77",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -202244,7 +202079,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_silhouette_threshold_slider:kit:79",
+   "id": "v2:tron_tab:tr_rim_silhouette_threshold_slider:kit:78",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -202299,7 +202134,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_pulse_amount_slider:kit:80",
+   "id": "v2:tron_tab:tr_rim_pulse_amount_slider:kit:79",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -202354,7 +202189,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_color_mode_combo:kit:81",
+   "id": "v2:tron_tab:tr_rim_color_mode_combo:kit:80",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -202426,7 +202261,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rim_reject_floors_check:kit:82",
+   "id": "v2:tron_tab:tr_rim_reject_floors_check:kit:81",
    "csv_index": null,
    "card": "rim",
    "card_title": "Neon rim",
@@ -202481,7 +202316,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_suit_use_palette_check:kit:83",
+   "id": "v2:tron_tab:tr_suit_use_palette_check:kit:82",
    "csv_index": null,
    "card": "suit",
    "card_title": "Tron Suit",
@@ -202536,7 +202371,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_suit_seam_gain_slider:kit:84",
+   "id": "v2:tron_tab:tr_suit_seam_gain_slider:kit:83",
    "csv_index": null,
    "card": "suit",
    "card_title": "Tron Suit",
@@ -202591,7 +202426,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_suit_rim_gain_slider:kit:85",
+   "id": "v2:tron_tab:tr_suit_rim_gain_slider:kit:84",
    "csv_index": null,
    "card": "suit",
    "card_title": "Tron Suit",
@@ -202646,7 +202481,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_suit_seam_cell_slider:kit:86",
+   "id": "v2:tron_tab:tr_suit_seam_cell_slider:kit:85",
    "csv_index": null,
    "card": "suit",
    "card_title": "Tron Suit",
@@ -202701,7 +202536,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_suit_seam_width_slider:kit:87",
+   "id": "v2:tron_tab:tr_suit_seam_width_slider:kit:86",
    "csv_index": null,
    "card": "suit",
    "card_title": "Tron Suit",
@@ -202756,7 +202591,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_suit_seam_density_slider:kit:88",
+   "id": "v2:tron_tab:tr_suit_seam_density_slider:kit:87",
    "csv_index": null,
    "card": "suit",
    "card_title": "Tron Suit",
@@ -202811,7 +202646,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_enable:kit:89",
+   "id": "v2:tron_tab:tr_trail_enable:kit:88",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -202866,7 +202701,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_style_combo:kit:90",
+   "id": "v2:tron_tab:tr_trail_style_combo:kit:89",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -202938,7 +202773,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_target_set_combo:kit:91",
+   "id": "v2:tron_tab:tr_trail_target_set_combo:kit:90",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203030,7 +202865,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_intensity_slider:kit:92",
+   "id": "v2:tron_tab:tr_trail_intensity_slider:kit:91",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203085,7 +202920,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_height_slider:kit:93",
+   "id": "v2:tron_tab:tr_trail_height_slider:kit:92",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203140,7 +202975,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_width_slider:kit:94",
+   "id": "v2:tron_tab:tr_trail_width_slider:kit:93",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203195,7 +203030,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_fade_time_slider:kit:95",
+   "id": "v2:tron_tab:tr_trail_fade_time_slider:kit:94",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203250,7 +203085,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_color_mode_combo:kit:96",
+   "id": "v2:tron_tab:tr_trail_color_mode_combo:kit:95",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203322,7 +203157,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_max_actors_spinner:kit:97",
+   "id": "v2:tron_tab:tr_trail_max_actors_spinner:kit:96",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203377,7 +203212,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_scale_check:kit:98",
+   "id": "v2:tron_tab:tr_trail_scale_check:kit:97",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203432,7 +203267,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_lift_slider:kit:99",
+   "id": "v2:tron_tab:tr_trail_lift_slider:kit:98",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203487,7 +203322,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_fade_curve_slider:kit:100",
+   "id": "v2:tron_tab:tr_trail_fade_curve_slider:kit:99",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203542,7 +203377,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_edge_slider:kit:101",
+   "id": "v2:tron_tab:tr_trail_edge_slider:kit:100",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203597,7 +203432,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_edge_gain_slider:kit:102",
+   "id": "v2:tron_tab:tr_trail_edge_gain_slider:kit:101",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203652,7 +203487,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_body_gain_slider:kit:103",
+   "id": "v2:tron_tab:tr_trail_body_gain_slider:kit:102",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203707,7 +203542,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_glow_slider:kit:104",
+   "id": "v2:tron_tab:tr_trail_glow_slider:kit:103",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203762,7 +203597,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_fog_combo:kit:105",
+   "id": "v2:tron_tab:tr_trail_fog_combo:kit:104",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203830,7 +203665,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_fog_density_slider:kit:106",
+   "id": "v2:tron_tab:tr_trail_fog_density_slider:kit:105",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203885,7 +203720,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_spacing_slider:kit:107",
+   "id": "v2:tron_tab:tr_trail_spacing_slider:kit:106",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203940,7 +203775,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_min_speed_slider:kit:108",
+   "id": "v2:tron_tab:tr_trail_min_speed_slider:kit:107",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -203995,7 +203830,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_idle_break_slider:kit:109",
+   "id": "v2:tron_tab:tr_trail_idle_break_slider:kit:108",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -204050,7 +203885,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_break_distance_slider:kit:110",
+   "id": "v2:tron_tab:tr_trail_break_distance_slider:kit:109",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -204105,7 +203940,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_max_points_spinner:kit:111",
+   "id": "v2:tron_tab:tr_trail_max_points_spinner:kit:110",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -204160,7 +203995,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_max_segments_spinner:kit:112",
+   "id": "v2:tron_tab:tr_trail_max_segments_spinner:kit:111",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -204215,7 +204050,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_clear_on_cut_check:kit:113",
+   "id": "v2:tron_tab:tr_trail_clear_on_cut_check:kit:112",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -204270,7 +204105,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_trail_clear_btn:kit:114",
+   "id": "v2:tron_tab:tr_trail_clear_btn:kit:113",
    "csv_index": null,
    "card": "trails",
    "card_title": "Light-cycle trails",
@@ -204321,7 +204156,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_target_set_combo:kit:115",
+   "id": "v2:tron_tab:tr_subject_target_set_combo:kit:114",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204413,7 +204248,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_target_combo:kit:116",
+   "id": "v2:tron_tab:tr_subject_target_combo:kit:115",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204493,7 +204328,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_max_targets_spinner:kit:117",
+   "id": "v2:tron_tab:tr_subject_max_targets_spinner:kit:116",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204548,7 +204383,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_shape_combo:kit:118",
+   "id": "v2:tron_tab:tr_subject_shape_combo:kit:117",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204620,7 +204455,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_feather_slider:kit:119",
+   "id": "v2:tron_tab:tr_subject_feather_slider:kit:118",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204675,7 +204510,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_depth_range_slider:kit:120",
+   "id": "v2:tron_tab:tr_subject_depth_range_slider:kit:119",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204730,7 +204565,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_ellipse_scale_slider:kit:121",
+   "id": "v2:tron_tab:tr_subject_ellipse_scale_slider:kit:120",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204785,7 +204620,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_source_grid_combo:kit:122",
+   "id": "v2:tron_tab:tr_subject_source_grid_combo:kit:121",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204861,7 +204696,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_source_rim_combo:kit:123",
+   "id": "v2:tron_tab:tr_subject_source_rim_combo:kit:122",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204937,7 +204772,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_subject_invert_check:kit:124",
+   "id": "v2:tron_tab:tr_subject_invert_check:kit:123",
    "csv_index": null,
    "card": "subject",
    "card_title": "Subject & targets",
@@ -204992,7 +204827,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_no_post_scale_slider:kit:125",
+   "id": "v2:tron_tab:tr_no_post_scale_slider:kit:124",
    "csv_index": null,
    "card": "integration",
    "card_title": "Rig & post",
@@ -205047,7 +204882,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_bloom_meter_scale_slider:kit:126",
+   "id": "v2:tron_tab:tr_bloom_meter_scale_slider:kit:125",
    "csv_index": null,
    "card": "integration",
    "card_title": "Rig & post",
@@ -205102,7 +204937,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_rigrim_link:kit:127",
+   "id": "v2:tron_tab:tr_rigrim_link:kit:126",
    "csv_index": null,
    "card": "integration",
    "card_title": "Rig & post",
@@ -205154,7 +204989,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:tr_roto_link:kit:128",
+   "id": "v2:tron_tab:tr_roto_link:kit:127",
    "csv_index": null,
    "card": "adv_tron",
    "card_title": "Advanced",
@@ -205206,7 +205041,7 @@
     "page_view": "tron_tab",
     "via": "tab"
    },
-   "id": "v2:tron_tab:open_lightbox_tron:kit:129",
+   "id": "v2:tron_tab:open_lightbox_tron:kit:128",
    "csv_index": null,
    "card": "adv_tron",
    "card_title": "Advanced",
@@ -207038,63 +206873,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_enable_check:kit:6",
-   "csv_index": null,
-   "card": "gaze_subjects",
-   "card_title": "Subjects",
-   "row_label": "Enabled",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-   "xui_line": null,
-   "widget_name": "gaze_enable_check",
-   "widget_type": "toggle",
-   "csv_kind": "toggle",
-   "wiring_status": "GENERATED_KIT",
-   "resolution": "generated_kit_xml",
-   "action": "DEFER_INWORLD",
-   "reason": "requires actor selected",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "toggle",
-   "test_value": true,
-   "expect": {
-    "callback": "LLFloaterDirector::bindCameraPage",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "combo_items": [],
-   "binding": "code",
-   "link_to": null,
-   "kit_action": null,
-   "shortcut_of": null,
-   "callbacks": null,
-   "owner": "LLFloaterDirector::bindCameraPage",
-   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-   "enable_when": "actor selected"
-  },
-  {
-   "page": "gaze_tab",
-   "page_label": "Gaze",
-   "group": "performance_group",
-   "version": "v2",
-   "source": "generated_kit_xml",
-   "host": {
-    "floater": "director",
-    "page_view": "gaze_tab",
-    "via": "tab"
-   },
-   "id": "v2:gaze_tab:gaze_status:kit:7",
+   "id": "v2:gaze_tab:gaze_status:kit:6",
    "csv_index": null,
    "card": "gaze_subjects",
    "card_title": "Subjects",
@@ -207147,7 +206926,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_base_hint:kit:8",
+   "id": "v2:gaze_tab:gaze_base_hint:kit:7",
    "csv_index": null,
    "card": "gaze_subjects",
    "card_title": "Subjects",
@@ -207200,7 +206979,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_target_combo:kit:9",
+   "id": "v2:gaze_tab:gaze_target_combo:kit:8",
    "csv_index": null,
    "card": "targets",
    "card_title": "Targets",
@@ -207281,7 +207060,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_eye_target_combo:kit:10",
+   "id": "v2:gaze_tab:gaze_eye_target_combo:kit:9",
    "csv_index": null,
    "card": "targets",
    "card_title": "Targets",
@@ -207370,7 +207149,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_target_detail_scope:kit:11",
+   "id": "v2:gaze_tab:gaze_target_detail_scope:kit:10",
    "csv_index": null,
    "card": "targets",
    "card_title": "Targets",
@@ -207439,7 +207218,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_cast_combo:kit:12",
+   "id": "v2:gaze_tab:gaze_cast_combo:kit:11",
    "csv_index": null,
    "card": "targets",
    "card_title": "Targets",
@@ -207498,7 +207277,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:btn_gaze_setpoint:kit:13",
+   "id": "v2:gaze_tab:btn_gaze_setpoint:kit:12",
    "csv_index": null,
    "card": "targets",
    "card_title": "Targets",
@@ -207554,7 +207333,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:btn_gaze_pick_object:kit:14",
+   "id": "v2:gaze_tab:btn_gaze_pick_object:kit:13",
    "csv_index": null,
    "card": "targets",
    "card_title": "Targets",
@@ -207611,7 +207390,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:btn_gaze_clear_object:kit:15",
+   "id": "v2:gaze_tab:btn_gaze_clear_object:kit:14",
    "csv_index": null,
    "card": "targets",
    "card_title": "Targets",
@@ -207661,7 +207440,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_target:kit:16",
+   "id": "v2:gaze_tab:reset_gaze_target:kit:15",
    "csv_index": null,
    "card": "targets",
    "card_title": "Targets",
@@ -207718,7 +207497,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_eye_target:kit:17",
+   "id": "v2:gaze_tab:reset_gaze_eye_target:kit:16",
    "csv_index": null,
    "card": "targets",
    "card_title": "Targets",
@@ -207775,7 +207554,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_intensity_slider:kit:18",
+   "id": "v2:gaze_tab:gaze_intensity_slider:kit:17",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -207831,7 +207610,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_blend_slider:kit:19",
+   "id": "v2:gaze_tab:gaze_blend_slider:kit:18",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -207887,7 +207666,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_torso_slider:kit:20",
+   "id": "v2:gaze_tab:gaze_torso_slider:kit:19",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -207943,7 +207722,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_smoothing_slider:kit:21",
+   "id": "v2:gaze_tab:gaze_smoothing_slider:kit:20",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -207999,7 +207778,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_influence_slider:kit:22",
+   "id": "v2:gaze_tab:gaze_influence_slider:kit:21",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -208055,7 +207834,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:btn_gaze_influence_set:kit:23",
+   "id": "v2:gaze_tab:btn_gaze_influence_set:kit:22",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -208111,7 +207890,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:btn_gaze_influence_delete:kit:24",
+   "id": "v2:gaze_tab:btn_gaze_influence_delete:kit:23",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -208161,7 +207940,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_intensity:kit:25",
+   "id": "v2:gaze_tab:reset_gaze_intensity:kit:24",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -208217,7 +207996,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_blend:kit:26",
+   "id": "v2:gaze_tab:reset_gaze_blend:kit:25",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -208273,7 +208052,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_torso:kit:27",
+   "id": "v2:gaze_tab:reset_gaze_torso:kit:26",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -208329,7 +208108,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_smoothing:kit:28",
+   "id": "v2:gaze_tab:reset_gaze_smoothing:kit:27",
    "csv_index": null,
    "card": "strength",
    "card_title": "Gaze strength",
@@ -208385,7 +208164,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_performance_combo:kit:29",
+   "id": "v2:gaze_tab:gaze_performance_combo:kit:28",
    "csv_index": null,
    "card": "presets_blend",
    "card_title": "Presets & blend",
@@ -208444,7 +208223,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_performance:kit:30",
+   "id": "v2:gaze_tab:reset_gaze_performance:kit:29",
    "csv_index": null,
    "card": "presets_blend",
    "card_title": "Presets & blend",
@@ -208500,7 +208279,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_transition_slider:kit:31",
+   "id": "v2:gaze_tab:gaze_transition_slider:kit:30",
    "csv_index": null,
    "card": "presets_blend",
    "card_title": "Presets & blend",
@@ -208555,7 +208334,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_easing_combo:kit:32",
+   "id": "v2:gaze_tab:gaze_easing_combo:kit:31",
    "csv_index": null,
    "card": "presets_blend",
    "card_title": "Presets & blend",
@@ -208631,7 +208410,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_random_check:kit:33",
+   "id": "v2:gaze_tab:gaze_random_check:kit:32",
    "csv_index": null,
    "card": "presets_blend",
    "card_title": "Presets & blend",
@@ -208686,7 +208465,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_random_interval_slider:kit:34",
+   "id": "v2:gaze_tab:gaze_random_interval_slider:kit:33",
    "csv_index": null,
    "card": "presets_blend",
    "card_title": "Presets & blend",
@@ -208741,7 +208520,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:btn_actor_gaze:kit:35",
+   "id": "v2:gaze_tab:btn_actor_gaze:kit:34",
    "csv_index": null,
    "card": "gaze_windows",
    "card_title": "Open windows",
@@ -208798,7 +208577,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:btn_pose_polish:kit:36",
+   "id": "v2:gaze_tab:btn_pose_polish:kit:35",
    "csv_index": null,
    "card": "gaze_windows",
    "card_title": "Open windows",
@@ -208854,7 +208633,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:btn_gaze_cues:kit:37",
+   "id": "v2:gaze_tab:btn_gaze_cues:kit:36",
    "csv_index": null,
    "card": "gaze_windows",
    "card_title": "Open windows",
@@ -208910,7 +208689,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:look_at_camera_mode:kit:38",
+   "id": "v2:gaze_tab:look_at_camera_mode:kit:37",
    "csv_index": null,
    "card": "camera_lookat",
    "card_title": "Look at camera",
@@ -208971,7 +208750,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:look_at_camera_strength:kit:39",
+   "id": "v2:gaze_tab:look_at_camera_strength:kit:38",
    "csv_index": null,
    "card": "camera_lookat",
    "card_title": "Look at camera",
@@ -209026,7 +208805,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:look_at_camera_head_eye:kit:40",
+   "id": "v2:gaze_tab:look_at_camera_head_eye:kit:39",
    "csv_index": null,
    "card": "camera_lookat",
    "card_title": "Look at camera",
@@ -209081,7 +208860,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:look_at_camera_torso:kit:41",
+   "id": "v2:gaze_tab:look_at_camera_torso:kit:40",
    "csv_index": null,
    "card": "camera_lookat",
    "card_title": "Look at camera",
@@ -209136,7 +208915,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:look_at_camera_smoothing:kit:42",
+   "id": "v2:gaze_tab:look_at_camera_smoothing:kit:41",
    "csv_index": null,
    "card": "camera_lookat",
    "card_title": "Look at camera",
@@ -209191,7 +208970,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:look_at_camera_torso_amount:kit:43",
+   "id": "v2:gaze_tab:look_at_camera_torso_amount:kit:42",
    "csv_index": null,
    "card": "camera_lookat",
    "card_title": "Look at camera",
@@ -209246,7 +209025,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:look_at_camera_ease_time:kit:44",
+   "id": "v2:gaze_tab:look_at_camera_ease_time:kit:43",
    "csv_index": null,
    "card": "camera_lookat",
    "card_title": "Look at camera",
@@ -209301,7 +209080,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_look_at_camera_mode:kit:45",
+   "id": "v2:gaze_tab:reset_look_at_camera_mode:kit:44",
    "csv_index": null,
    "card": "camera_lookat",
    "card_title": "Look at camera",
@@ -209357,7 +209136,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_eyeline_yaw_slider:kit:46",
+   "id": "v2:gaze_tab:gaze_eyeline_yaw_slider:kit:45",
    "csv_index": null,
    "card": "aim_eyeline",
    "card_title": "Aim & eyeline",
@@ -209413,7 +209192,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_eyeline_pitch_slider:kit:47",
+   "id": "v2:gaze_tab:gaze_eyeline_pitch_slider:kit:46",
    "csv_index": null,
    "card": "aim_eyeline",
    "card_title": "Aim & eyeline",
@@ -209469,7 +209248,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_camera_roll_slider:kit:48",
+   "id": "v2:gaze_tab:gaze_camera_roll_slider:kit:47",
    "csv_index": null,
    "card": "aim_eyeline",
    "card_title": "Aim & eyeline",
@@ -209525,7 +209304,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_breakoff_check:kit:49",
+   "id": "v2:gaze_tab:gaze_breakoff_check:kit:48",
    "csv_index": null,
    "card": "aim_eyeline",
    "card_title": "Aim & eyeline",
@@ -209581,7 +209360,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_breakoff_spinner:kit:50",
+   "id": "v2:gaze_tab:gaze_breakoff_spinner:kit:49",
    "csv_index": null,
    "card": "aim_eyeline",
    "card_title": "Aim & eyeline",
@@ -209636,7 +209415,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_eyeline_yaw:kit:51",
+   "id": "v2:gaze_tab:reset_gaze_eyeline_yaw:kit:50",
    "csv_index": null,
    "card": "aim_eyeline",
    "card_title": "Aim & eyeline",
@@ -209692,7 +209471,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_eyeline_pitch:kit:52",
+   "id": "v2:gaze_tab:reset_gaze_eyeline_pitch:kit:51",
    "csv_index": null,
    "card": "aim_eyeline",
    "card_title": "Aim & eyeline",
@@ -209748,7 +209527,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_camera_roll:kit:53",
+   "id": "v2:gaze_tab:reset_gaze_camera_roll:kit:52",
    "csv_index": null,
    "card": "aim_eyeline",
    "card_title": "Aim & eyeline",
@@ -209804,7 +209583,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_ease_acquire_spinner:kit:54",
+   "id": "v2:gaze_tab:gaze_ease_acquire_spinner:kit:53",
    "csv_index": null,
    "card": "lock_timing",
    "card_title": "Acquire & release",
@@ -209860,7 +209639,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_ease_release_spinner:kit:55",
+   "id": "v2:gaze_tab:gaze_ease_release_spinner:kit:54",
    "csv_index": null,
    "card": "lock_timing",
    "card_title": "Acquire & release",
@@ -209916,7 +209695,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_deadzone_spinner:kit:56",
+   "id": "v2:gaze_tab:gaze_deadzone_spinner:kit:55",
    "csv_index": null,
    "card": "lock_timing",
    "card_title": "Acquire & release",
@@ -209972,7 +209751,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_ease_acquire:kit:57",
+   "id": "v2:gaze_tab:reset_gaze_ease_acquire:kit:56",
    "csv_index": null,
    "card": "lock_timing",
    "card_title": "Acquire & release",
@@ -210028,7 +209807,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_ease_release:kit:58",
+   "id": "v2:gaze_tab:reset_gaze_ease_release:kit:57",
    "csv_index": null,
    "card": "lock_timing",
    "card_title": "Acquire & release",
@@ -210084,7 +209863,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_deadzone:kit:59",
+   "id": "v2:gaze_tab:reset_gaze_deadzone:kit:58",
    "csv_index": null,
    "card": "lock_timing",
    "card_title": "Acquire & release",
@@ -210140,7 +209919,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_priority_combo:kit:60",
+   "id": "v2:gaze_tab:gaze_priority_combo:kit:59",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210217,7 +209996,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_ik_lean_combo:kit:61",
+   "id": "v2:gaze_tab:gaze_ik_lean_combo:kit:60",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210318,7 +210097,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_anim_priority_combo:kit:62",
+   "id": "v2:gaze_tab:gaze_anim_priority_combo:kit:61",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210411,7 +210190,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_composition_combo:kit:63",
+   "id": "v2:gaze_tab:gaze_composition_combo:kit:62",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210484,7 +210263,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_chest_share_slider:kit:64",
+   "id": "v2:gaze_tab:gaze_chest_share_slider:kit:63",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210540,7 +210319,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_composition_mix_slider:kit:65",
+   "id": "v2:gaze_tab:gaze_composition_mix_slider:kit:64",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210596,7 +210375,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_priority:kit:66",
+   "id": "v2:gaze_tab:reset_gaze_priority:kit:65",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210652,7 +210431,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_ik_lean:kit:67",
+   "id": "v2:gaze_tab:reset_gaze_ik_lean:kit:66",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210708,7 +210487,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_anim_priority:kit:68",
+   "id": "v2:gaze_tab:reset_gaze_anim_priority:kit:67",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210764,7 +210543,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_composition:kit:69",
+   "id": "v2:gaze_tab:reset_gaze_composition:kit:68",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210820,7 +210599,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_composition_mix:kit:70",
+   "id": "v2:gaze_tab:reset_gaze_composition_mix:kit:69",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210876,7 +210655,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_chest_share:kit:71",
+   "id": "v2:gaze_tab:reset_gaze_chest_share:kit:70",
    "csv_index": null,
    "card": "feel",
    "card_title": "Movement feel",
@@ -210932,7 +210711,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_range_preset_combo:kit:72",
+   "id": "v2:gaze_tab:gaze_range_preset_combo:kit:71",
    "csv_index": null,
    "card": "rotation_range",
    "card_title": "Rotation range",
@@ -211025,7 +210804,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_mode_combo:kit:73",
+   "id": "v2:gaze_tab:gaze_limit_mode_combo:kit:72",
    "csv_index": null,
    "card": "rotation_range",
    "card_title": "Rotation range",
@@ -211098,7 +210877,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_exaggerate_slider:kit:74",
+   "id": "v2:gaze_tab:gaze_exaggerate_slider:kit:73",
    "csv_index": null,
    "card": "rotation_range",
    "card_title": "Rotation range",
@@ -211154,7 +210933,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_range_preset:kit:75",
+   "id": "v2:gaze_tab:reset_gaze_range_preset:kit:74",
    "csv_index": null,
    "card": "rotation_range",
    "card_title": "Rotation range",
@@ -211210,7 +210989,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_limit_mode:kit:76",
+   "id": "v2:gaze_tab:reset_gaze_limit_mode:kit:75",
    "csv_index": null,
    "card": "rotation_range",
    "card_title": "Rotation range",
@@ -211266,7 +211045,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_exaggerate:kit:77",
+   "id": "v2:gaze_tab:reset_gaze_exaggerate:kit:76",
    "csv_index": null,
    "card": "rotation_range",
    "card_title": "Rotation range",
@@ -211322,7 +211101,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_lean_curve_combo:kit:78",
+   "id": "v2:gaze_tab:gaze_lean_curve_combo:kit:77",
    "csv_index": null,
    "card": "lean_curve",
    "card_title": "Lean curve",
@@ -211391,7 +211170,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_lean_threshold_spinner:kit:79",
+   "id": "v2:gaze_tab:gaze_lean_threshold_spinner:kit:78",
    "csv_index": null,
    "card": "lean_curve",
    "card_title": "Lean curve",
@@ -211447,7 +211226,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_lean_softness_spinner:kit:80",
+   "id": "v2:gaze_tab:gaze_lean_softness_spinner:kit:79",
    "csv_index": null,
    "card": "lean_curve",
    "card_title": "Lean curve",
@@ -211503,7 +211282,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_lean_max_spinner:kit:81",
+   "id": "v2:gaze_tab:gaze_lean_max_spinner:kit:80",
    "csv_index": null,
    "card": "lean_curve",
    "card_title": "Lean curve",
@@ -211559,7 +211338,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_soft_recruit_spinner:kit:82",
+   "id": "v2:gaze_tab:gaze_soft_recruit_spinner:kit:81",
    "csv_index": null,
    "card": "lean_curve",
    "card_title": "Lean curve",
@@ -211614,7 +211393,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_lean_curve:kit:83",
+   "id": "v2:gaze_tab:reset_gaze_lean_curve:kit:82",
    "csv_index": null,
    "card": "lean_curve",
    "card_title": "Lean curve",
@@ -211670,7 +211449,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_lean_threshold:kit:84",
+   "id": "v2:gaze_tab:reset_gaze_lean_threshold:kit:83",
    "csv_index": null,
    "card": "lean_curve",
    "card_title": "Lean curve",
@@ -211726,7 +211505,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_lean_softness:kit:85",
+   "id": "v2:gaze_tab:reset_gaze_lean_softness:kit:84",
    "csv_index": null,
    "card": "lean_curve",
    "card_title": "Lean curve",
@@ -211782,7 +211561,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_lean_max:kit:86",
+   "id": "v2:gaze_tab:reset_gaze_lean_max:kit:85",
    "csv_index": null,
    "card": "lean_curve",
    "card_title": "Lean curve",
@@ -211838,7 +211617,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_eye_yaw_spinner:kit:87",
+   "id": "v2:gaze_tab:gaze_limit_eye_yaw_spinner:kit:86",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -211894,7 +211673,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_head_yaw_spinner:kit:88",
+   "id": "v2:gaze_tab:gaze_limit_head_yaw_spinner:kit:87",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -211950,7 +211729,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_neck_yaw_spinner:kit:89",
+   "id": "v2:gaze_tab:gaze_limit_neck_yaw_spinner:kit:88",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212006,7 +211785,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_spine_yaw_spinner:kit:90",
+   "id": "v2:gaze_tab:gaze_limit_spine_yaw_spinner:kit:89",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212062,7 +211841,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_hips_yaw_spinner:kit:91",
+   "id": "v2:gaze_tab:gaze_limit_hips_yaw_spinner:kit:90",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212118,7 +211897,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_eye_pitch_spinner:kit:92",
+   "id": "v2:gaze_tab:gaze_limit_eye_pitch_spinner:kit:91",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212174,7 +211953,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_eye_pitchup_spinner:kit:93",
+   "id": "v2:gaze_tab:gaze_limit_eye_pitchup_spinner:kit:92",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212230,7 +212009,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_head_pitch_spinner:kit:94",
+   "id": "v2:gaze_tab:gaze_limit_head_pitch_spinner:kit:93",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212286,7 +212065,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_head_pitchup_spinner:kit:95",
+   "id": "v2:gaze_tab:gaze_limit_head_pitchup_spinner:kit:94",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212342,7 +212121,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_neck_pitch_spinner:kit:96",
+   "id": "v2:gaze_tab:gaze_limit_neck_pitch_spinner:kit:95",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212398,7 +212177,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_neck_pitchup_spinner:kit:97",
+   "id": "v2:gaze_tab:gaze_limit_neck_pitchup_spinner:kit:96",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212454,7 +212233,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_spine_pitch_spinner:kit:98",
+   "id": "v2:gaze_tab:gaze_limit_spine_pitch_spinner:kit:97",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212510,7 +212289,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_spine_pitchup_spinner:kit:99",
+   "id": "v2:gaze_tab:gaze_limit_spine_pitchup_spinner:kit:98",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212566,7 +212345,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_hips_pitch_spinner:kit:100",
+   "id": "v2:gaze_tab:gaze_limit_hips_pitch_spinner:kit:99",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212622,7 +212401,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_hips_pitchup_spinner:kit:101",
+   "id": "v2:gaze_tab:gaze_limit_hips_pitchup_spinner:kit:100",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212678,7 +212457,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_eye_radial_spinner:kit:102",
+   "id": "v2:gaze_tab:gaze_limit_eye_radial_spinner:kit:101",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212734,7 +212513,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_eyeapply_yaw_spinner:kit:103",
+   "id": "v2:gaze_tab:gaze_limit_eyeapply_yaw_spinner:kit:102",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212790,7 +212569,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_eyeapply_pitch_spinner:kit:104",
+   "id": "v2:gaze_tab:gaze_limit_eyeapply_pitch_spinner:kit:103",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212846,7 +212625,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_eyeapply_pitchup_spinner:kit:105",
+   "id": "v2:gaze_tab:gaze_limit_eyeapply_pitchup_spinner:kit:104",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212902,7 +212681,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_grid_lbl:kit:106",
+   "id": "v2:gaze_tab:gaze_limit_grid_lbl:kit:105",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -212955,7 +212734,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_grid_yaw_hdr:kit:107",
+   "id": "v2:gaze_tab:gaze_limit_grid_yaw_hdr:kit:106",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -213008,7 +212787,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_limit_grid_pitch_hdr:kit:108",
+   "id": "v2:gaze_tab:gaze_limit_grid_pitch_hdr:kit:107",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -213061,7 +212840,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_limit_profile:kit:109",
+   "id": "v2:gaze_tab:reset_gaze_limit_profile:kit:108",
    "csv_index": null,
    "card": "joint_limits",
    "card_title": "Joint limits",
@@ -213117,7 +212896,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_persona_dom_slider:kit:110",
+   "id": "v2:gaze_tab:gaze_persona_dom_slider:kit:109",
    "csv_index": null,
    "card": "persona",
    "card_title": "Persona",
@@ -213173,7 +212952,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_persona_aff_slider:kit:111",
+   "id": "v2:gaze_tab:gaze_persona_aff_slider:kit:110",
    "csv_index": null,
    "card": "persona",
    "card_title": "Persona",
@@ -213229,7 +213008,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_persona_anx_slider:kit:112",
+   "id": "v2:gaze_tab:gaze_persona_anx_slider:kit:111",
    "csv_index": null,
    "card": "persona",
    "card_title": "Persona",
@@ -213285,7 +213064,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_persona_dom:kit:113",
+   "id": "v2:gaze_tab:reset_gaze_persona_dom:kit:112",
    "csv_index": null,
    "card": "persona",
    "card_title": "Persona",
@@ -213341,7 +213120,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_persona_aff:kit:114",
+   "id": "v2:gaze_tab:reset_gaze_persona_aff:kit:113",
    "csv_index": null,
    "card": "persona",
    "card_title": "Persona",
@@ -213397,7 +213176,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_persona_anx:kit:115",
+   "id": "v2:gaze_tab:reset_gaze_persona_anx:kit:114",
    "csv_index": null,
    "card": "persona",
    "card_title": "Persona",
@@ -213453,7 +213232,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_microlife_slider:kit:116",
+   "id": "v2:gaze_tab:gaze_microlife_slider:kit:115",
    "csv_index": null,
    "card": "life_cadence",
    "card_title": "Idle life",
@@ -213509,7 +213288,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_blinks_check:kit:117",
+   "id": "v2:gaze_tab:gaze_blinks_check:kit:116",
    "csv_index": null,
    "card": "life_cadence",
    "card_title": "Idle life",
@@ -213565,7 +213344,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_variation_slider:kit:118",
+   "id": "v2:gaze_tab:gaze_variation_slider:kit:117",
    "csv_index": null,
    "card": "life_cadence",
    "card_title": "Idle life",
@@ -213621,7 +213400,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_break_freq_slider:kit:119",
+   "id": "v2:gaze_tab:gaze_break_freq_slider:kit:118",
    "csv_index": null,
    "card": "life_cadence",
    "card_title": "Idle life",
@@ -213677,7 +213456,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_stillness_slider:kit:120",
+   "id": "v2:gaze_tab:gaze_stillness_slider:kit:119",
    "csv_index": null,
    "card": "life_cadence",
    "card_title": "Idle life",
@@ -213732,7 +213511,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:gaze_restraint_slider:kit:121",
+   "id": "v2:gaze_tab:gaze_restraint_slider:kit:120",
    "csv_index": null,
    "card": "life_cadence",
    "card_title": "Idle life",
@@ -213787,7 +213566,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_microlife:kit:122",
+   "id": "v2:gaze_tab:reset_gaze_microlife:kit:121",
    "csv_index": null,
    "card": "life_cadence",
    "card_title": "Idle life",
@@ -213843,7 +213622,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_variation:kit:123",
+   "id": "v2:gaze_tab:reset_gaze_variation:kit:122",
    "csv_index": null,
    "card": "life_cadence",
    "card_title": "Idle life",
@@ -213899,7 +213678,7 @@
     "page_view": "gaze_tab",
     "via": "tab"
    },
-   "id": "v2:gaze_tab:reset_gaze_break_frequency:kit:124",
+   "id": "v2:gaze_tab:reset_gaze_break_frequency:kit:123",
    "csv_index": null,
    "card": "life_cadence",
    "card_title": "Idle life",
@@ -227736,7 +227515,6 @@
    "db_wave_speed",
    "delay_spinner",
    "diopter_blend",
-   "diopter_enabled",
    "diopter_kit",
    "diopter_open_editor",
    "diopter_power",
@@ -228012,7 +227790,6 @@
    "gaze_easing_out",
    "gaze_easing_smoothstep",
    "gaze_edit_actor",
-   "gaze_enable_check",
    "gaze_exaggerate_slider",
    "gaze_eye_target_combo",
    "gaze_eyeline_pitch_slider",
@@ -228946,7 +228723,6 @@
    "ri_depth_mode_combo",
    "ri_depth_mode_combo_item_0",
    "ri_depth_mode_combo_item_1",
-   "ri_enable",
    "ri_far_cutoff_slider",
    "ri_glow_slider",
    "ri_hatch_angle_slider",
@@ -229885,7 +229661,6 @@
    "tr_color_primary",
    "tr_color_pulse",
    "tr_color_secondary",
-   "tr_enable",
    "tr_grade_crush_slider",
    "tr_grade_darken_ev_slider",
    "tr_grade_desaturate_slider",

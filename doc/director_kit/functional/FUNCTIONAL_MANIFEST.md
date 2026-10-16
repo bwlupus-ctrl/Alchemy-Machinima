@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `142461b9ba1ecb16` (1816 interactive rows); 36
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1336 | 38 | 300 | 50 | 96 | 1 | 1821 |
-| v2 | 1658 | 0 | 437 | 70 | 0 | 9 | 2174 |
+| v2 | 1655 | 0 | 436 | 70 | 0 | 9 | 2170 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
@@ -33,7 +33,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | dance_tab (Dance) | cast_group | 29 | 0 | 38 | 9 | 0 | 0 | 37 | 0 | 38 | 9 | 0 | 0 |
 | animate_tab (Animate) | performance_group | 6 | 0 | 12 | 1 | 0 | 1 | 11 | 0 | 12 | 2 | 0 | 1 |
 | switchboard_tab (Switchboard) | performance_group | 14 | 0 | 14 | 0 | 0 | 0 | 19 | 0 | 14 | 1 | 0 | 0 |
-| gaze_tab (Gaze) | performance_group | 14 | 0 | 101 | 3 | 0 | 0 | 15 | 0 | 108 | 3 | 0 | 0 |
+| gaze_tab (Gaze) | performance_group | 14 | 0 | 101 | 3 | 0 | 0 | 15 | 0 | 107 | 3 | 0 | 0 |
 | polish_tab (Polish) | performance_group | 13 | 0 | 1 | 0 | 0 | 0 | 15 | 0 | 1 | 0 | 0 | 0 |
 | gaze_cues_tab (Gaze Cues) | performance_group | 0 | 0 | 2 | 1 | 2 | 0 | 0 | 0 | 4 | 1 | 0 | 0 |
 | shot_tab (Shot) | camera_group | 287 | 16 | 5 | 5 | 15 | 0 | 334 | 0 | 2 | 5 | 0 | 4 |
@@ -44,7 +44,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | vcam_tab (VCam) | camera_group | 2 | 0 | 0 | 0 | 0 | 0 | 36 | 0 | 132 | 3 | 0 | 2 |
 | focus_tab (Focus) | lens_group | 14 | 0 | 0 | 0 | 0 | 0 | 16 | 0 | 0 | 0 | 0 | 0 |
 | filters_tab (Filters) | lens_group | 28 | 0 | 1 | 0 | 0 | 0 | 32 | 0 | 1 | 0 | 0 | 0 |
-| diopter_tab (Diopter) | lens_group | 4 | 0 | 0 | 0 | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
+| diopter_tab (Diopter) | lens_group | 4 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 |
 | cine_light_rig_tab (Rig) | light_group | 150 | 12 | 4 | 3 | 5 | 0 | 190 | 0 | 4 | 4 | 0 | 1 |
 | light_rim_tab (Rim) | light_group | 42 | 0 | 1 | 0 | 0 | 0 | 48 | 0 | 1 | 1 | 0 | 0 |
 | exposure_tab (Exposure) | light_group | 23 | 1 | 0 | 0 | 0 | 0 | 25 | 0 | 0 | 0 | 0 | 0 |
@@ -53,8 +53,8 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | light_cues_tab (Light Cues) | light_group | 0 | 0 | 4 | 1 | 0 | 0 | 0 | 0 | 4 | 1 | 0 | 0 |
 | image_tab (Image) | look_group | 20 | 2 | 0 | 0 | 52 | 0 | 85 | 0 | 2 | 0 | 0 | 0 |
 | bloom_glow_tab (Bloom & Glow) | look_group | 7 | 0 | 0 | 0 | 10 | 0 | 16 | 0 | 0 | 1 | 0 | 0 |
-| stylize_tab (Roto Ink) | look_group | 78 | 0 | 0 | 1 | 2 | 0 | 80 | 0 | 0 | 1 | 0 | 0 |
-| tron_tab (Tron) | look_group | 124 | 3 | 0 | 3 | 2 | 0 | 127 | 0 | 0 | 3 | 0 | 0 |
+| stylize_tab (Roto Ink) | look_group | 78 | 0 | 0 | 1 | 2 | 0 | 79 | 0 | 0 | 1 | 0 | 0 |
+| tron_tab (Tron) | look_group | 124 | 3 | 0 | 3 | 2 | 0 | 126 | 0 | 0 | 3 | 0 | 0 |
 | stepped_tab (Stepped) | look_group | 37 | 3 | 3 | 2 | 0 | 0 | 63 | 0 | 6 | 2 | 0 | 0 |
 | actor_style_tab (Actor FX) | look_group | 0 | 0 | 15 | 1 | 0 | 0 | 1 | 0 | 16 | 1 | 0 | 0 |
 | weather_tab (Weather) | world_group | 51 | 0 | 0 | 1 | 0 | 0 | 56 | 0 | 0 | 1 | 0 | 0 |
