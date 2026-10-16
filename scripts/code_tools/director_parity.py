@@ -398,9 +398,16 @@ def build_v2_index(cache: XmlCache, files, kitnames: dict) -> V2Index:
     for path in files:
         for element, source in expand(cache, cache.root(path), path):
             name = (element.get("name") or "").strip()
+            # LLSliderCtrl constructs this named LLLineEditor only for an editable readout.
+            # Count the real typed input; a disabled value_editor parameter is not a widget.
+            parent = cache.parents.get(element)
+            tag = element.tag
+            if (tag == "slider.value_editor" and parent is not None and parent.tag == "slider"
+                    and parent.get("can_edit_text") == "true" and parent.get("show_text") == "true"):
+                tag = "line_editor"
             if name:
-                index.tags.setdefault(name, set()).add(element.tag)
-                if element.tag in NAME_TAGS or element.tag in V2_EXTRA_NAME_TAGS:
+                index.tags.setdefault(name, set()).add(tag)
+                if tag in NAME_TAGS or tag in V2_EXTRA_NAME_TAGS:
                     index.names.add(name)
             control = (element.get("control_name") or "").strip()
             if control:
@@ -842,6 +849,22 @@ def selftest() -> int:
     cache = XmlCache()
     allow = Allow({})
     e2e = fx("e2e")
+
+    # These Params construct an LLLineEditor in LLSliderCtrl only when text editing is enabled.
+    editor_path = REPO_ROOT / "typed_slider_parity_selftest.xml"
+    editor_root = ElementTree.fromstring('<panel><slider name="typed" show_text="true" can_edit_text="true">'
+                                         '<slider.value_editor name="numeric_entry"/></slider></panel>')
+    editor_cache = XmlCache()
+    editor_cache.roots[str(editor_path.resolve())] = editor_root
+    for parent in editor_root.iter():
+        for child in parent:
+            editor_cache.parents[child] = parent
+    typed_index = build_v2_index(editor_cache, [editor_path], {})
+    expect("editable slider instantiates its named numeric editor",
+           "numeric_entry" in typed_index.names and typed_index.tags["numeric_entry"] == {"line_editor"})
+    editor_root.find("slider").set("can_edit_text", "false")
+    expect("read-only slider cannot satisfy numeric editor parity",
+           "numeric_entry" not in build_v2_index(editor_cache, [editor_path], {}).names)
 
     # Scope and extraction
     leaf, _ = scope_elements(cache, fx("v1_leaf.xml"), "fixture_tab")

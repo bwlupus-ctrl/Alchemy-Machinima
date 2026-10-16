@@ -1,13 +1,13 @@
 # Move — Director Kit page contract
 
 Page key: `move_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (8/19 setting-bound rows; 12 C++-referenced rows).
+Computed class: **code-driven** (8/19 setting-bound rows; 11 C++-referenced rows).
 
 ## Real owners
 
 - `panel_actor_mover` / `panel` at `indra/newview/skins/default/xui/en/panel_actor_mover.xml:19` (11 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (8 matching rows).
-- Referencing classes: `LLFloaterDirector` (31), `ALPanelActorMover` (11).
+- Referencing classes: `LLFloaterDirector` (31), `ALPanelActorMover` (7).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -22,16 +22,16 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `walk_who` / `scope_radio` (Who) | `radio_group` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:29` | kit `combo` ↔ `ActorMoverSync` `Boolean`; `ALActorMoverKitAdapter` preserves/calls wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onScopeCommit()` (`indra/newview/alpanelactormover.cpp:38`) | none |
-| `walk_who` / `btn_walk` (Walk) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:290` | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onClickWalk()` (`indra/newview/alpanelactormover.cpp:64`) | none |
-| `walk_who` / `btn_stop` (Stop / Release) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:299` | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onClickStop()` (`indra/newview/alpanelactormover.cpp:65`) | none |
+| `walk_who` / `btn_walk` (Walk) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:290` | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onClickWalk()` (`indra/newview/alpanelactormover.cpp:62`) | none |
+| `walk_who` / `btn_stop` (Stop / Release) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:299` | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onClickStop()` (`indra/newview/alpanelactormover.cpp:63`) | none |
 | `straight` / `speed_slider` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:116` | kit `slider` ↔ `ActorMoverSpeed` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:132` `speed_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:23` `speed_slider` |
-| `straight` / `dist_slider` (Distance) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:158` | kit `slider` ↔ `ActorMoverDistance` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:174` `dist_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:28` `dist_slider` |
-| `straight` / `heading_spinner` (Heading) | `spinner` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:78` | kit `dial` ↔ `ActorMoverHeading` `F32`; `ALActorMoverKitAdapter` preserves/calls wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onDialCommit()` (`indra/newview/alpanelactormover.cpp:53`) | `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:33` `heading_spinner` |
-| `straight` / `end_mode_combo` (End behavior) | `combo_box` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:236` | kit `combo` ↔ `ActorMoverEndMode` `S32` | page `props_tab`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:36` `end_mode_combo` |
+| `straight` / `dist_slider` (Distance) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:158` | kit `slider` ↔ `ActorMoverDistance` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:174` `dist_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:29` `dist_slider` |
+| `straight` / `heading_spinner` (Heading) | `spinner` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:78` | kit `dial` ↔ `ActorMoverHeading` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:35` `heading_spinner` |
+| `straight` / `end_mode_combo` (End behavior) | `combo_box` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:236` | kit `combo` ↔ `ActorMoverEndMode` `S32` | page `props_tab`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:41` `end_mode_combo` |
 | `straight` / `move_hint` (Note) | `text` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:87` | kit readout ← approved static copy; no runtime writer | none |
-| `straight` / `cadence_slider` (Cadence) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:200` | kit `slider` ↔ `ActorMoverWalkNominal` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:216` `cadence_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:50` `cadence_slider` |
-| `custom_anim` / `custom_anim_editor` (Anim UUID) | `line_editor` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:262` | kit `text` ↔ `ActorMoverCustomAnim` `String` | `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:57` `custom_anim_editor` |
-| `custom_anim` / `custom_anim_priority_combo` (Priority) | `combo_box` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:272` | kit `combo` ↔ `ActorMoverCustomAnimPriority` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:60` `custom_anim_priority_combo` |
+| `straight` / `cadence_slider` (Cadence) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:200` | kit `slider` ↔ `ActorMoverWalkNominal` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:216` `cadence_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:55` `cadence_slider` |
+| `custom_anim` / `custom_anim_editor` (Anim UUID) | `line_editor` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:262` | kit `text` ↔ `ActorMoverCustomAnim` `String` | `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:63` `custom_anim_editor` |
+| `custom_anim` / `custom_anim_priority_combo` (Priority) | `combo_box` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:272` | kit `combo` ↔ `ActorMoverCustomAnimPriority` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:66` `custom_anim_priority_combo` |
 | `group_run` / `group_run_combo` (Group) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:383` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroup()` (`indra/newview/llfloaterdirector.cpp:2107`) | none |
 | `group_run` / `group_delay_spinner` (Delay (s)) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:456` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onCommitGroupDelay()` (`indra/newview/llfloaterdirector.cpp:1470`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onCommitGroupDelay()` (`indra/newview/llfloaterdirector.cpp:2356`) | none |
 | `group_run` / `btn_group_start` (Start group) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:393` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroup()` (`indra/newview/llfloaterdirector.cpp:1459`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onClickGroup()` (`indra/newview/llfloaterdirector.cpp:2353`) | none |
@@ -45,9 +45,8 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelActorMover::onClickStop()` — `indra/newview/alpanelactormover.cpp:65` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelActorMover::onClickWalk()` — `indra/newview/alpanelactormover.cpp:64` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelActorMover::onDialCommit()` — `indra/newview/alpanelactormover.cpp:53` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelActorMover::onClickStop()` — `indra/newview/alpanelactormover.cpp:63` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelActorMover::onClickWalk()` — `indra/newview/alpanelactormover.cpp:62` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelActorMover::onScopeCommit()` — `indra/newview/alpanelactormover.cpp:38` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `LLFloaterDirector::onClickGroup()` — `indra/newview/llfloaterdirector.cpp:1459, 1460, 2107, 2353, 2354` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `LLFloaterDirector::onClickGroupDissolve()` — `indra/newview/llfloaterdirector.cpp:1473, 2359` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |

@@ -21,6 +21,36 @@ static S32 sKitHistorySuspend     = 0;
 static F64 sKitHistoryKeyTime     = 0.;
 static F64 sKitHistoryPointerTime = 0.;
 
+namespace
+{
+std::string rowPage(LLView* view)
+{
+    if (ALKitRow* row = dynamic_cast<ALKitRow*>(view ? view->getParent() : nullptr))
+        if (!row->meta().page_key.empty())
+            return row->meta().page_key;
+    LLView* root = view;
+    for (; view; view = view->getParent())
+        if (ALKitPage* page = dynamic_cast<ALKitPage*>(view))
+            return page->pageKey();
+    // Shared page controllers wrap their kit_page rather than sitting inside it.
+    std::function<ALKitPage*(LLView*)> find_page = [&find_page](LLView* parent) -> ALKitPage*
+    {
+        for (LLView* child : *parent->getChildList())
+        {
+            if (ALKitPage* page = dynamic_cast<ALKitPage*>(child))
+                return page;
+            if (ALKitPage* page = find_page(child))
+                return page;
+        }
+        return nullptr;
+    };
+    if (root)
+        if (ALKitPage* page = find_page(root))
+            return page->pageKey();
+    return std::string();
+}
+}
+
 class ALKitHistory::GestureTimer final : public LLEventTimer
 {
 public:
@@ -93,14 +123,12 @@ void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv,
 {
     if (suspended() || mReplaying || !c || oldv == newv)
         return;
-    // The step belongs to the page that owns the row, not to whichever page the last gesture named:
-    // its replay guard (the page's undo subject, currentContext) is read from that page.
-    std::string page;
-    for (LLView* v = c->getParent(); v && page.empty(); v = v->getParent())
-        if (ALKitPage* owner = dynamic_cast<ALKitPage*>(v))
-            page = owner->pageKey();
-    if (!page.empty() && (!mOpen || mOpen->page != page))
-        beginGesture(mOrigin, page, label);
+    const std::string page = rowPage(c);
+    if (page.empty())
+        return;
+    const bool standalone = !mOpen || mOpen->page != page;
+    if (standalone)
+        beginGesture(KEY, page, label);
     Entry e;
     e.widget = true;
     e.key    = c->getName();
@@ -110,15 +138,21 @@ void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv,
     addEntry(std::move(e), label);
 }
 
-void ALKitHistory::recordCustom(const std::string& key, const std::string& label, std::function<bool(bool, std::string&)> fn)
+void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std::string& label,
+                                 std::function<bool(bool, std::string&)> fn)
 {
     if (suspended() || mReplaying)
         return;
-    if (!mOpen)
-        beginGesture(KEY, mPage, label);
+    const std::string page = rowPage(owner);
+    if (page.empty())
+        return;
+    // A list command is one complete action, including a keyboard Add with no open gesture.
+    finishGesture();
+    beginGesture(KEY, page, label);
     mOpen->custom.push_back({ key, std::move(fn) });
     if (mOpen->label.empty())
         mOpen->label = label;
+    finishGesture();
 }
 
 void ALKitHistory::barrier(const std::string& reason)
@@ -175,7 +209,7 @@ void ALKitHistory::addEntry(Entry entry, const std::string& supplied_label, cons
         return;
     if (!mOpen)
     {
-        beginGesture(mOrigin, mPage, supplied_label);
+        return; // Callers must establish the action's page before recording any entry.
     }
     for (Entry& existing : mOpen->entries)
     {
@@ -245,16 +279,8 @@ bool ALKitHistory::tickGesture()
 
 std::string ALKitHistory::currentContext(const std::string& page) const
 {
-    // A panel-registered provider wins (Cine Light Rig: the selected slot). Otherwise the page's own
-    // undo_context declaration supplies the subject (undo_context="actor": the Cast selection), so
-    // a step recorded for one subject is never replayed onto another.
     auto found = mContexts.find(page);
-    if (found != mContexts.end())
-        return found->second();
-    if (ALKitShell* shell = dynamic_cast<ALKitShell*>(mOwner.get()))
-        if (ALKitPage* built = shell->findBuiltPage(page))
-            return built->undoSubject();
-    return std::string();
+    return found == mContexts.end() ? std::string() : found->second();
 }
 
 bool ALKitHistory::replay(Step& step, bool redo)
@@ -265,9 +291,7 @@ bool ALKitHistory::replay(Step& step, bool redo)
     if (!step.context.empty() && context != step.context)
     {
         LLSD args;
-        // A subject key that starts with "actor:" is a Cast selection; name it for the user.
-        args["MESSAGE"] = step.context.rfind("actor:", 0) == 0 ? std::string("Select the same Cast member again to undo this")
-                                                                : "Switch back to " + step.context + " to undo this";
+        args["MESSAGE"] = "Switch back to " + step.context + " to undo this";
         LLNotificationsUtil::add("SystemMessageTip", args);
         return false;
     }
@@ -330,29 +354,42 @@ bool ALKitHistory::replay(Step& step, bool redo)
     return ok;
 }
 
-void ALKitHistory::undo()
+bool ALKitHistory::canUndo(const std::string& page) const
+{
+    return (mOpen && mOpen->page == page && (!mOpen->entries.empty() || !mOpen->custom.empty())) ||
+        std::any_of(mUndo.begin(), mUndo.end(), [&page](const Step& step) { return step.page == page; });
+}
+
+bool ALKitHistory::canRedo(const std::string& page) const
+{
+    return std::any_of(mRedo.begin(), mRedo.end(), [&page](const Step& step) { return step.page == page; });
+}
+
+void ALKitHistory::undo(const std::string& page)
 {
     finishGesture();
     mTimer.reset();
-    if (!canUndo())
+    auto it = std::find_if(mUndo.rbegin(), mUndo.rend(), [&page](const Step& step) { return step.page == page; });
+    if (it == mUndo.rend())
         return;
-    if (!replay(mUndo.back(), false))
+    if (!replay(*it, false))
         return;
-    Step s = std::move(mUndo.back());
-    mUndo.pop_back();
+    Step s = std::move(*it);
+    mUndo.erase(std::next(it).base());
     mRedo.push_back(std::move(s));
     ++mRevision;
 }
-void ALKitHistory::redo()
+void ALKitHistory::redo(const std::string& page)
 {
     finishGesture();
     mTimer.reset();
-    if (!canRedo())
+    auto it = std::find_if(mRedo.rbegin(), mRedo.rend(), [&page](const Step& step) { return step.page == page; });
+    if (it == mRedo.rend())
         return;
-    if (!replay(mRedo.back(), true))
+    if (!replay(*it, true))
         return;
-    Step s = std::move(mRedo.back());
-    mRedo.pop_back();
+    Step s = std::move(*it);
+    mRedo.erase(std::next(it).base());
     mUndo.push_back(std::move(s));
     ++mRevision;
 }

@@ -179,7 +179,7 @@ void ALPanelLightCues::commitListEdit(const CueList& after, const std::string& l
         // current list equals this step's after-list, redo only when it equals the before-list;
         // otherwise the Lighting Cue Stack floater (or a load/save) has edited the list since,
         // and the step is dropped as a no-op with a notice instead of overwriting those edits.
-        shell->history().recordCustom("light_cue_list", label,
+        shell->history().recordCustom(this, "light_cue_list", label,
             [slot, before, after, before_data, after_data](bool redo, std::string& reason)
             {
                 if (!ALCineLightRigManager::instanceExists())

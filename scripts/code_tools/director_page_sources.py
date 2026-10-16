@@ -142,6 +142,12 @@ KIT_ACTION_OVERRIDES = {
 
 def model_binding_override(page: str, widget: str) -> dict | None:
     def binding(file_name: str, line: int, class_name: str, function: str, pattern: str | None = None) -> dict:
+        if class_name == "ALPanelGhostStudio":
+            source = (ROOT / file_name).read_text(encoding="utf-8")
+            match = re.search(r"(?m)^.*\b" + re.escape(class_name + "::" + function) + r"\s*\(", source)
+            if match is None:
+                raise RuntimeError(f"missing model binding: {class_name}::{function}")
+            line = source.count("\n", 0, match.start()) + 1
         return {
             "file": file_name, "line": line, "class": class_name, "function": function,
             "wired_class": class_name, "wired_function": "postBuild",

@@ -135,7 +135,7 @@ LLSD ALKitWidgetBinding::get() const
 
 void ALKitWidgetBinding::set(const LLSD& v)
 {
-    if (mCtrl)
+    if (mCtrl && mCtrl->isInEnabledChain())
     {
         mCtrl->setValue(v);
         mCtrl->onCommit();

@@ -15,6 +15,7 @@
 #include "llfilepicker.h" // [AutoAnimate]
 #include "alscrollfit.h"
 #include "alkitbinding.h"           // ALKitBinding (Formation Parameter reset on the kit page)
+#include "alkitcard.h"
 #include "alkitrow.h"               // ALKitRow::setControlVisible (Director kit page rows)
 
 #include "alcompassdial.h"          // live direct-manipulation heading control
@@ -401,7 +402,7 @@ bool ALPanelGhostStudio::postBuild()
     mEntityLookCombo = getChild<LLComboBox>("entity_look_combo");
     // Overlay-only style controls (hidden for entity clones). The floater groups them in one panel
     // (the parent of the Look combo); the Director's kit page spreads them over three cards of
-    // rows, so each control is hidden with its row.
+    // rows. Hide the whole cards there; the entity note lives in Position.
     bool in_kit_row = false;
     for (LLView* ancestor = mStyleCombo->getParent(); ancestor && ancestor != this;
          ancestor = ancestor->getParent())
@@ -417,6 +418,9 @@ bool ALPanelGhostStudio::postBuild()
         mLookControls = { mStyleCombo, mDistortCombo, mDistortAmountSlider, mActorTintCheck,
                           mHueSlider, mAlphaSlider, mBrightnessSlider, mPixelSlider,
                           mShimmerAmountSlider, mShimmerSpeedSlider, mGlitchSlider, mEffectFps };
+        for (const char* card_name : { "kc_tint", "kc_motion_fx", "kc_ghost_look" })
+            if (ALKitCard* card = findChild<ALKitCard>(card_name))
+                mLookCards.push_back(card);
     }
 
     // Kit widget names are unique across Director pages (Capture > Time owns btn_freeze), so the
@@ -749,9 +753,9 @@ bool ALPanelGhostStudio::postBuild()
         { "reset_lens_gaze_intensity", "lens_gaze_intensity" },
         { "reset_lens_gaze_smoothing", "lens_gaze_smoothing" }
     };
-    // The Director kit page has no icon reset buttons: its rows draw their own reset glyph from the
-    // default_value the mockup gives each of these rows (the same XUI initial_value), and that
-    // reset sets the value and commits it exactly as onResetNumeric does.
+    // Kit glyphs respect the control's enabled state before resetting and committing. Numeric
+    // commits retain their side effects, including onYawCommit keeping mHeadingDial in step.
+    // Formation Parameter has a descriptor-dependent default and uses its registered binding.
     for (const auto& entry : reset_controls)
     {
         LLButton* reset_button = findChild<LLButton>(entry.first);
@@ -780,15 +784,7 @@ void ALPanelGhostStudio::reshape(S32 width, S32 height, bool called_from_parent)
         // The tabs fill from the panel bottom up to the instances section
         // (the status bar is at the top since 382b04b6faf). Derive the top
         // from the XUI layout so the tabs never cover Duplicate/Delete/Refresh.
-        const LLView* instances = nullptr;
-        for (const LLView* child : *getChildList())
-        {
-            if (child->getName() == "instances_section")
-            {
-                instances = child;
-                break;
-            }
-        }
+        const LLView* instances = findChild<LLView>("instances_section", true);
         const S32 tabs_top = instances ? instances->getRect().mBottom
                                        : height - 242;
         tabs->reshape(width, llmax(1, tabs_top), true);
@@ -1519,11 +1515,13 @@ void ALPanelGhostStudio::refreshDetail()
         inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED;
     const bool show_style_controls = !entity;
     setVisibleIfChanged(mLookSection, show_style_controls);
+    for (ALKitCard* card : mLookCards)
+        card->setCodeVisible(show_style_controls);
     for (LLView* look_control : mLookControls)
     {
         setRowVisibleIfChanged(look_control, show_style_controls);
     }
-    setRowVisibleIfChanged(mEntityStyleHint, !show_style_controls);
+    setRowVisibleIfChanged(mEntityStyleHint, entity);
     setRowVisibleIfChanged(mRefreshBtn, entity);
     setEnabledIfChanged(mRefreshBtn, entity);
     std::string type = "Type: No selection";
@@ -1535,7 +1533,8 @@ void ALPanelGhostStudio::refreshDetail()
     {
         type = std::string("Type: Entity clone \xC2\xB7 ") + state_name(*inst);
     }
-    setTextIfChanged(mTypeText, type);
+    // The kit row already labels this value "Type"; the standalone text owns its label.
+    setTextIfChanged(mTypeText, !mLookControls.empty() ? type.substr(6) : type);
     setValueIfChanged(mCrowdCopiesAs,
         LLSD(crowd_active
             ? (S32)crowd_draft.mSource.mKind
@@ -4321,15 +4320,21 @@ public:
     }
     void reset() override
     {
-        if (mReset)
+        LLUICtrl* ctrl = dynamic_cast<LLUICtrl*>(mControl.get());
+        if (ctrl && ctrl->isInEnabledChain() && mReset)
         {
             mReset();
+            mChanged();
         }
     }
     boost::signals2::connection connectChanged(std::function<void()> cb) override
     {
-        LLUICtrl* ctrl = dynamic_cast<LLUICtrl*>(mControl.get());
-        return ctrl ? ctrl->setCommitCallback([cb](LLUICtrl*, const LLSD&) { cb(); }) : boost::signals2::connection();
+        if (!mCommit.connected())
+            if (LLUICtrl* ctrl = dynamic_cast<LLUICtrl*>(mControl.get()))
+                // setCommitCallback connects an additional slot (lluictrl.cpp); it preserves the
+                // panel's captureFormationParameter/updateOwnedCrowdPlacement handler.
+                mCommit = ctrl->setCommitCallback([this](LLUICtrl*, const LLSD&) { mChanged(); });
+        return mChanged.connect(std::move(cb));
     }
     std::string describe() const override { return "Ghost formation parameter"; }
 
@@ -4337,11 +4342,15 @@ private:
     LLHandle<LLView>      mControl;
     std::function<LLSD()> mDefaultFn;
     std::function<void()> mReset;
+    boost::signals2::signal<void()> mChanged;
+    boost::signals2::scoped_connection mCommit;
 };
 } // anonymous namespace
 
 void ALPanelGhostStudio::registerKitParameterReset()
 {
+    // Child kit rows build before this controller's postBuild. Parameter deliberately has no
+    // default_value fallback; registry.add installs its factory before rebindRows resolves it.
     LLHandle<ALPanelGhostStudio> panel_handle = getDerivedHandle<ALPanelGhostStudio>();
     ALKitBindingRegistry::instance().add(this, "array_parameter_spinner",
         [panel_handle, control_handle = mFormationParam->getHandle()]()

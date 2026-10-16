@@ -204,7 +204,6 @@ ALKitPage::Params::Params() :
     who_adapter("who_adapter", ""),
     preset_mode("preset_mode", "none"),
     preset_provider("preset_provider", ""),
-    undo_context("undo_context", ""),
     watch_settings("watch_settings", ""),
     chip_mode("chip_mode", "auto"),
     legacy("legacy", false),
@@ -235,7 +234,6 @@ ALKitPage::ALKitPage(const Params& p) :
     mPresetMode(p.preset_mode),
     mPresetProvider(p.preset_provider),
     mChipMode(p.chip_mode),
-    mUndoContext(p.undo_context),
     mLegacy(p.legacy),
     mActorTargetPage(p.actor_target),
     mActorTargetSynthetic(p.actor_target_synthetic)
@@ -463,14 +461,12 @@ bool ALKitPage::postBuild()
     mUndo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
         {
-            if (ALKitShell* s = ALKitShell::find(this))
-                s->history().undo();
+            undoOnPage(false);
         });
     mRedo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
         {
-            if (ALKitShell* s = ALKitShell::find(this))
-                s->history().redo();
+            undoOnPage(true);
         });
     mBar->addChild(mUndo);
     mBar->addChild(mRedo);
@@ -839,7 +835,8 @@ bool ALKitPage::postBuild()
             if (!row->meta().setting.empty())
             {
                 mRows[row->meta().setting] = row;
-                watched.push_back(row->meta().setting);
+                // watch_settings is authoritative: the generator excludes settings owned by
+                // page histories (Exposure) and pages which deliberately have no kit history.
             }
         }
     }
@@ -877,6 +874,12 @@ bool ALKitPage::postBuild()
     if (mWhoChip)
         mWhoChip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
     stabilizeComboEditors(this);
+    if (mPage == "cast_group/path_tab" || mPage == "light_group/exposure_tab")
+    {
+        const bool path = mPage == "cast_group/path_tab";
+        mPageUndo = findChild<LLButton>(path ? "btn_edit_undo" : "exp_undo");
+        mPageRedo = findChild<LLButton>(path ? "btn_edit_redo" : "exp_redo");
+    }
     struct ComboSpec
     {
         const char* name;
@@ -1671,15 +1674,25 @@ LLUUID ALKitPage::actorTarget() const
     return mWhoCombo ? mWhoCombo->getValue().asUUID() : mActorTarget;
 }
 
-std::string ALKitPage::undoSubject() const
+void ALKitPage::undoOnPage(bool redo)
 {
-    if (mUndoContext != "actor")
-        return std::string();
-    std::string key = "actor:" + actorTarget().asString();
-    if (ALKitShell* shell = ALKitShell::find(const_cast<ALKitPage*>(this)))
-        for (const LLUUID& id : shell->castSelection())
-            key += "," + id.asString();
-    return key;
+    if (LLButton* button = redo ? mPageRedo : mPageUndo)
+    {
+        if (button->getEnabled())
+        {
+            button->onCommit();
+            return;
+        }
+    }
+    if (mPage == "cast_group/path_tab")
+        return; // Path's snapshots are its only history, even when the stack is empty.
+    if (ALKitShell* shell = ALKitShell::find(this))
+    {
+        if (redo)
+            shell->history().redo(mPage);
+        else
+            shell->history().undo(mPage);
+    }
 }
 
 void ALKitPage::refreshActorTargetAvailability()
@@ -1765,13 +1778,15 @@ void ALKitPage::draw()
     if (ALKitShell* shell = ALKitShell::find(this))
     {
         const U64 revision = shell->history().revision();
-        if (revision != mHistoryRevision)
+        if (revision != mHistoryRevision || mPageUndo)
         {
             mHistoryRevision = revision;
-            if (mUndo)
-                mUndo->setEnabled(shell->history().canUndo());
-            if (mRedo)
-                mRedo->setEnabled(shell->history().canRedo());
+            const bool can_undo = (mPageUndo && mPageUndo->getEnabled()) || shell->history().canUndo(mPage);
+            const bool can_redo = (mPageRedo && mPageRedo->getEnabled()) || shell->history().canRedo(mPage);
+            if (mUndo && mUndo->getEnabled() != can_undo)
+                mUndo->setEnabled(can_undo);
+            if (mRedo && mRedo->getEnabled() != can_redo)
+                mRedo->setEnabled(can_redo);
         }
     }
     updateMaster();

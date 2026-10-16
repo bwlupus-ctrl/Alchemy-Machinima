@@ -33,6 +33,8 @@
 #include <string>
 #include <vector>
 
+class ALKitCard;
+
 class LLButton;
 class LLCheckBoxCtrl;
 class LLComboBox;
@@ -337,6 +339,7 @@ private:
     LLTextBox*        mAnimMetadataText = nullptr;
     LLView*           mLookSection = nullptr;      // floater: the panel holding the overlay style controls
     std::vector<LLView*> mLookControls;            // kit page: the same controls, hidden with their rows
+    std::vector<ALKitCard*> mLookCards;            // kit page: overlay-only card shells
     LLTabContainer*   mTabs = nullptr;             // floater only; null on the Director kit page
     LLTextBox*        mEntityStyleHint = nullptr;
     LLButton*         mPlaceBtn = nullptr;

@@ -70,7 +70,7 @@
   "light_group/cine_light_rig_tab": {
    "v1_sources": ["panel_cine_light_rig.xml"],
    "root_class": "panel_cine_light_rig", "root_name": "cine_light_rig_tab_logic",
-   "undo_context": "cine_rig_slot", "who_adapter": "cine_rig_slot", "mode_adapter": "cine_rig_easy", "mode_on": "Easy", "chip_mode": "filter",
+   "who_adapter": "cine_rig_slot", "mode_adapter": "cine_rig_easy", "mode_on": "Easy", "chip_mode": "filter",
    "preset": {"mode": "widgets", "combo": "cine_setup_combo", "save": "cine_setup_save", "delete": "cine_setup_delete"},
    "selector_settings": {"lights": "DirectorV2SelectedLight"},
    "card_copy_types": {"lights": "light_role"},
@@ -354,8 +354,15 @@
    "actor_target": true, "actor_target_synthetic": true,
    "row_overrides": {
     "btn_stop": {"w": "move_btn_stop", "source_widget": "btn_stop"},
+    "speed_slider": {"value_editor_name": "speed_spinner"},
+    "dist_slider": {"value_editor_name": "dist_spinner"},
+    "cadence_slider": {"value_editor_name": "cadence_spinner"},
+    "heading_spinner": {"k": "number"},
     "groups_list": {"row_height": 110}
    },
+   "add_rows": [
+    {"card": "straight", "after": "heading_spinner", "row": {"w": "move_heading_dial", "source_widget": "heading_dial", "k": "dial", "l": "Heading dial", "bind": "code", "d": 0, "no_widget_history": true, "h": "Drag the needle or turn the wheel to trim the travel bearing relative to the actor's facing.", "kw": "heading compass dial bearing drag wheel"}}
+   ],
    "label_names": {}
   },
   "cast_group/props_tab": {
@@ -470,20 +477,20 @@
   "lens_group/focus_tab": {"scope": "global"},
   "lens_group/filters_tab": {"scope": "global"},
   "settings_group/director_settings_tab": {"scope": "global"},
-  "light_group/cine_light_rig_tab": {"context": "cine_rig_slot"},
+  "light_group/cine_light_rig_tab": {"history": "none"},
   "light_group/light_cues_tab": {"no_history_rows": ["cue_rows"]},
   "light_group/practicals_tab": {"history": "none"},
-  "look_group/actor_style_tab": {"context": "actor", "no_history_rows": ["actor_style_target"]},
-  "look_group/stepped_tab": {"context": "actor", "no_history_rows": ["sa_actor_target", "sa_override_list", "sa_group_pick", "sa_group_offset", "sa_group_list"], "global_rows": ["sa_rate_chips", "sa_part_face"]},
-  "performance_group/animate_tab": {"context": "actor", "no_history_rows": ["anim_list", "paste_uuid_editor", "animation_preview"]},
-  "performance_group/gaze_tab": {"context": "actor"},
+  "look_group/actor_style_tab": {"history": "none"},
+  "look_group/stepped_tab": {"scope": "global", "no_history_rows": ["sa_actor_target", "sa_override_list", "sa_group_pick", "sa_group_offset", "sa_group_list", "sa_actor_override", "sa_actor_offset", "sa_actor_part", "sa_actor_part_rate", "sa_actor_rate", "sa_actor_steps", "sa_actor_role"]},
+  "performance_group/animate_tab": {"history": "none"},
+  "performance_group/gaze_tab": {"history": "none"},
   "performance_group/gaze_cues_tab": {"no_history_rows": ["cue_list"]},
   "performance_group/switchboard_tab": {"history": "none"},
-  "cast_group/move_tab": {"scope": "global", "no_history_rows": ["groups_list", "group_rename_editor"]},
+  "cast_group/move_tab": {"scope": "global", "no_history_rows": ["groups_list", "group_rename_editor", "group_run_combo", "group_delay_spinner"]},
   "cast_group/path_tab": {"history": "none"},
   "cast_group/props_tab": {"history": "none"},
-  "cast_group/dance_tab": {"scope": "global"},
-  "cast_group/ghosts_tab": {"scope": "global"}
+  "cast_group/dance_tab": {"history": "none"},
+  "cast_group/ghosts_tab": {"scope": "global", "no_history_rows": ["source_combo", "clone_type_combo", "array_count_spinner", "array_spacing_spinner", "formation_edge_gap_spinner", "formation_jitter_spinner", "formation_seed_spinner", "formation_terrain_check", "formation_facing_combo", "facing_yaw_offset_spinner", "preserve_source_tilt_check", "formation_guide_shape_combo", "formation_guide_size_spinner", "crowd_copies_as_combo", "crowd_create_mode_combo", "brigade_columns_spinner", "brigade_rows_spinner", "brigade_file_spacing_spinner", "brigade_rank_spacing_spinner", "strip_count_spinner", "strip_interval_spinner", "formation_motion_combo", "formation_motion_speed", "formation_motion_amplitude", "rig_diagnostics"]}
  },
  "parity_allow": {"cine_rig_rim_preset": "replaced by the kit preset strip (provider rig_rim)",
                   "card_snapshot_open": "retired Director launcher; Snapshot remains in its standalone floater",
@@ -574,9 +581,6 @@
   "dist_lbl": "static label of the Move transport, replaced by the Distance row label",
   "cadence_lbl": "static label of the Move transport, replaced by the Cadence row label",
   "end_lbl": "static label of the Move transport, replaced by the End behavior row label",
-  "speed_spinner": "duplicate numeric box of the Speed slider; the kit slider row shows the value itself",
-  "dist_spinner": "duplicate numeric box of the Distance slider; the kit slider row shows the value itself",
-  "cadence_spinner": "duplicate numeric box of the Cadence slider; the kit slider row shows the value itself",
   "group_run_lbl": "static label of the Move Group row, replaced by the Group row label",
   "groups_lbl": "static heading of the Move group list, replaced by the Manage groups card title",
   "orient_header": "static heading of the Props panel, replaced by the Orientation card title",

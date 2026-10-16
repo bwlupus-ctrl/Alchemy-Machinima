@@ -52,15 +52,14 @@ public:
     static void notePointer(LLView*);
     void        watchSettings(const std::string&, const std::vector<std::string>&);
     void        recordWidget(LLUICtrl*, const LLSD&, const LLSD&, const std::string&);
-    void        recordCustom(const std::string&, const std::string&, std::function<bool(bool, std::string&)>);
+    void        recordCustom(LLView*, const std::string&, const std::string&, std::function<bool(bool, std::string&)>);
     void        barrier(const std::string&);
     static void globalBarrier(const std::string&);
+    bool        canUndo(const std::string& page) const;
+    bool        canRedo(const std::string& page) const;
     bool        canUndo() const { return !mUndo.empty(); }
-    bool        canRedo() const { return !mRedo.empty(); }
-    std::string undoLabel() const { return canUndo() ? mUndo.back().label : std::string(); }
-    std::string redoLabel() const { return canRedo() ? mRedo.back().label : std::string(); }
-    void        undo();
-    void        redo();
+    void        undo(const std::string& page);
+    void        redo(const std::string& page);
     U64         revision() const { return mRevision; }
     void        registerContext(const std::string&, std::function<std::string()>);
     struct ScopedSuspend

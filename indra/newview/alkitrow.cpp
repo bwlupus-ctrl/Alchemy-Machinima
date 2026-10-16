@@ -450,8 +450,7 @@ bool ALKitRow::postBuild()
         mReset->setCommitCallback(
             [this](LLUICtrl*, const LLSD&)
             {
-                if (mBinding)
-                    mBinding->reset();
+                this->reset();
             });
         addChild(mReset);
         bindingChanged();
@@ -566,6 +565,8 @@ void ALKitRow::layoutRow(S32 w)
         else if (mMeta.kind == "slider" || mMeta.kind == "combo" || mMeta.kind == "text" || mMeta.kind == "readout" ||
                  mMeta.kind == "link" || mMeta.kind == "custom" || mMeta.kind == "segmented")
             width = span;
+        if (mMeta.kind == "readout" && mExplicitRowHeight)
+            height = h;
         if (mExplicitRowHeight && (mMeta.kind == "custom" || mMeta.kind == "list" || mMeta.kind == "viewport"))
             height = h;
         if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
@@ -824,8 +825,7 @@ void ALKitRow::resolveBinding()
             mReset->setCommitCallback(
                 [this](LLUICtrl*, const LLSD&)
                 {
-                    if (mBinding)
-                        mBinding->reset();
+                    this->reset();
                 });
             addChild(mReset);
         }
@@ -836,6 +836,15 @@ void ALKitRow::resolveBinding()
         if (ALKitCard* owner = card())
             owner->requestLayout();
     }
+}
+
+void ALKitRow::reset()
+{
+    // Every entry point (glyph, Home, context menu and bulk reset) respects live availability.
+    if (!mControl || !mControl->isInEnabledChain() || mUnconnected || !mBinding)
+        return;
+    mBinding->reset();
+    bindingChanged();
 }
 
 bool ALKitRow::amber() const

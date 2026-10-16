@@ -190,7 +190,7 @@ void ALPanelGazeCues::commitListEdit(const LLUUID& actor, const LLDirectorCast::
     const LLDirectorCast::GazeCueList stored = cast.getGazeCues(actor);
     if (ALKitShell* shell = ALKitShell::find(this))
     {
-        shell->history().recordCustom("gaze_cue_list", label,
+        shell->history().recordCustom(this, "gaze_cue_list", label,
             [actor, before, stored](bool redo, std::string& reason)
             {
                 LLDirectorCast& cast = LLDirectorCast::instance();

@@ -97,7 +97,7 @@ public:
     {
         Mandatory<std::string> page;
         Optional<std::string>  summary, master_widget, master_setting, master_label, master_tooltip, modes, mode_setting, mode_widget,
-            mode_on, mode_tooltip, mode_adapter, who_label, who_picker, who_adapter, preset_mode, preset_provider, undo_context,
+            mode_on, mode_tooltip, mode_adapter, who_label, who_picker, who_adapter, preset_mode, preset_provider,
             watch_settings, chip_mode;
         Optional<bool>    legacy, actor_target, actor_target_synthetic;
         Multiple<Section> section;
@@ -160,11 +160,7 @@ public:
     bool               whoPinned() const { return mWhoPinned; }
     void               setWhoPin(const LLSD& value);
     LLUUID             actorTarget() const;
-    // Subject key for history replay (alkithistory.cpp): what the page's per-subject rows currently
-    // act on. Empty when the page declares no undo_context. undo_context="actor": the Cast
-    // selection plus the pinned who target, so a step recorded for one actor is never replayed onto
-    // another.
-    std::string        undoSubject() const;
+    void               undoOnPage(bool redo);
     bool               actorTargetAway() const { return mActorTargetAway; }
 
 protected:
@@ -193,7 +189,7 @@ private:
     void        refreshSubjectCombos();
     std::string prefix() const;
     std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mModes, mModeSetting,
-        mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode, mUndoContext;
+        mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;
     bool mLegacy = false, mActorTargetPage = false, mActorTargetSynthetic = false, mActorTargetAway = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,
          mUpdatingModeSwitch = false;
     LLUUID mActorTarget;
@@ -244,6 +240,8 @@ private:
     LLTextBox*                                      mLegacySummary  = nullptr;
     LLButton*                                       mUndo           = nullptr;
     LLButton*                                       mRedo           = nullptr;
+    LLButton*                                       mPageUndo       = nullptr;
+    LLButton*                                       mPageRedo       = nullptr;
     LLButton*                                       mResetPage      = nullptr;
     LLButton*                                       mGateButton     = nullptr;
     LLButton*                                       mWhoChip        = nullptr;

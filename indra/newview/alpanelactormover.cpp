@@ -39,14 +39,12 @@ bool ALPanelActorMover::postBuild()
     // initial selection (draw()'s diff-sync only reacts to changes)
     mScopeRadio->setValue(gSavedSettings.getBOOL("ActorMoverSync") ? 1 : 0);
 
-    // The standalone floater's panel names the dial "heading_dial"; the generated Director Move
-    // page (a kit page rooted on this class) names its Heading row "heading_spinner".
+    // Both hosts retain the exact Heading spinner as well as the live drag/wheel compass.
+    // Ghosts owns the kit-wide "heading_dial" name, so Move uses "move_heading_dial".
     mHeadingDial = findChild<ALCompassDial>("heading_dial");
     if (!mHeadingDial)
     {
-        // On the kit page "heading_spinner" is an LLSpinCtrl, so a typed lookup would warn and
-        // hand back a dummy dial; findChild leaves this null there.
-        mHeadingDial = findChild<ALCompassDial>("heading_spinner");
+        mHeadingDial = findChild<ALCompassDial>("move_heading_dial");
     }
     if (mHeadingDial)
     {

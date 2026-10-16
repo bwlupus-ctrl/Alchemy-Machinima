@@ -472,28 +472,27 @@ UNDO_UNRECORDED_KINDS = frozenset({"button", "readout"})
 
 def check_undo_owner(tree: Tree) -> list[Finding]:
     out: list[Finding] = []
-    page = next((node for node in tree.root.walk() if node.tag == "kit_page"), None)
-    page_context = page.attrs.get("undo_context", "") if page is not None else ""
     for node in tree.root.walk():
-        if node.tag != "kit_row" or node.attrs.get("bind") != "code":
+        if node.tag != "kit_row":
+            continue
+        scope = node.attrs.get("undo_scope", "")
+        widget = node.attrs.get("widget", "?")
+        if scope == "subject":
+            out.append(err(tree, node, "undo-owner",
+                           f"row '{widget}' declares rejected undo_scope='subject'; disable widget history"))
+            continue
+        if node.attrs.get("bind") != "code":
             continue
         if node.attrs.get("kind", "") in UNDO_UNRECORDED_KINDS or node.attrs.get("mirror_setting"):
             continue
         if node.attrs.get("widget_history") == "false":
             continue            # not recorded: the page (or nobody) owns this row's undo
-        scope = node.attrs.get("undo_scope", "")
-        widget = node.attrs.get("widget", "?")
         if scope == "global":
-            continue
-        if scope == "subject":
-            if not page_context:
-                out.append(err(tree, node, "undo-owner",
-                               f"row '{widget}' declares undo_scope='subject' but its page has no undo_context"))
             continue
         out.append(err(tree, node, "undo-owner",
                        f"code-bound row '{widget}' records kit widget history but declares no undo owner: set "
                        "widget_history='false' (page-owned or selection state), undo_scope='global' (not "
-                       "per-subject), or undo_scope='subject' with a page undo_context"))
+                       "per-subject). Page-owned rows must disable kit widget history"))
     return out
 
 

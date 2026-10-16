@@ -3145,12 +3145,14 @@ bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
         {
             if(key=='Z')
             {
-                mShell->history().undo();
+                if (ALKitPage* page = mShell->findBuiltPage(mShell->currentPageKey()))
+                    page->undoOnPage(false);
                 return true;
             }
             if(key=='Y')
             {
-                mShell->history().redo();
+                if (ALKitPage* page = mShell->findBuiltPage(mShell->currentPageKey()))
+                    page->undoOnPage(true);
                 return true;
             }
         }

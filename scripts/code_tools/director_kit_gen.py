@@ -520,6 +520,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     if hosted is not None:
         tag = hosted.tag
         kind = HOST_KIND.get(tag, "custom")
+        if tag == "compass_dial":
+            kind = "arc" if hosted.get("mode") == "arc" else "dial"
         child = stripped_copy(hosted)
         child.set("name", widget)
         for node in child.iter():
@@ -542,6 +544,9 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
             report.append(f"UPGRADE {widget}: spinner -> slider")
         if child.tag == "slider":
             child.set("show_text", "true")
+            if row.get("value_editor_name"):
+                child.set("can_edit_text", "true")
+                ET.SubElement(child, "slider.value_editor", {"name": str(row["value_editor_name"])})
             # P0 spec 3.3 gives sliders the complete VALUE_W slot.  This is
             # the one intentional exception to the generic hosted-control
             # geometry stripping rule in 4.5.
@@ -712,7 +717,8 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
     if hosted is not None and row.get("s") and hosted.get("control_name") != row.get("s"):
         report.append(f"WARNING CONTROL_NAME {widget}: data={row.get('s')} v1={hosted.get('control_name') or '<none>'}; v1 trusted")
     if hosted is not None and hosted.tag == "text" and hosted.get("word_wrap", "false").lower() == "true":
-        attrs["row_height"] = str(int(hosted.get("height", "22")) + 6)
+        # Hosted v1 text spans a wider panel. Keep an explicit kit height sized for CARD_MIN_W.
+        attrs["row_height"] = str(max(int(row.get("row_height", 0)), int(hosted.get("height", "22")) + 6))
     result = ET.Element("kit_row", attrs)
     if child is not None:
         result.append(child)
@@ -766,10 +772,6 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
             attrs["preset_provider"] = str(preset["provider"])
     elif page.get("presets"):
         attrs["preset_mode"] = "none"
-    if cfg.get("undo_context"):
-        attrs["undo_context"] = str(cfg["undo_context"])
-    elif (cfg.get("_undo") or {}).get("context"):
-        attrs["undo_context"] = str(cfg["_undo"]["context"])
     if cfg.get("chip_mode"):
         attrs["chip_mode"] = str(cfg["chip_mode"])
     # own_history: the settings whose undo another owner already records (Exposure and its
@@ -795,15 +797,15 @@ def declare_undo_owner(body: ET.Element, cfg: dict, page_name: str) -> None:
       history "none"     every code-bound row is widget_history=false (the page owns its undo, or the
                          rows are selection state)
       no_history_rows    individual rows that are widget_history=false
-      context            the page declares undo_context (ALKitPage::undoSubject or a panel provider);
-                         its remaining rows are undo_scope=subject and replay only on the same subject
+      Subject values always disable widget history. Page histories keep sole ownership.
       scope "global"     the remaining rows are page-global / local state, undo_scope=global
       global_rows        individual rows that are undo_scope=global on a subject page
     A row left without an owner is a generation error (kit_lint repeats the check on the XML)."""
     owner = cfg.get("_undo") or {}
     no_history = set(owner.get("no_history_rows", []))
     global_rows = set(owner.get("global_rows", []))
-    context = owner.get("context") or cfg.get("undo_context")
+    if owner.get("context") or cfg.get("undo_context"):
+        raise GenError(f"{page_name}: subject undo contexts are forbidden; disable widget history")
     seen: set[str] = set()
     missing: list[str] = []
     for row in body.iter("kit_row"):
@@ -818,8 +820,6 @@ def declare_undo_owner(body: ET.Element, cfg: dict, page_name: str) -> None:
             row.set("widget_history", "false")
         elif widget in global_rows or owner.get("scope") == "global":
             row.set("undo_scope", "global")
-        elif context:
-            row.set("undo_scope", "subject")
         else:
             missing.append(widget)
     unknown = (no_history | global_rows) - seen
