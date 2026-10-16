@@ -45,6 +45,8 @@ namespace ALExposureSettingsHistory
     // Kit pages use instance-scoped models; the legacy floater keeps its own model.
     U64 pageStepSequence(LLView* page, bool redo);
     void replayPage(LLView* page, bool redo);
+    bool pageReplayReady(LLView* page, bool redo);
+    void discardPageStep(LLView* page, bool redo);
     void finishPage(LLView* page);
     void discardPageRedo(LLView* page);
 

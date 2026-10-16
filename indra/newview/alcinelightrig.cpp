@@ -1331,7 +1331,7 @@ void ALCineLightRig::setShaftEnabled(S32 light, bool enabled)
     }
     // An explicit rig choice also claims a VCam auto-enable, even if the
     // underlying session intent already equals the requested value.
-    LLPipeline::noteVolumetricShaftEdit(projectorId(light));
+    LLPipeline::noteVolumetricShaftEdit(projectorId(light), enabled);
     mShaftEnabled[light] = enabled;
     updateProjectorFlags();
 }
@@ -1675,7 +1675,8 @@ void ALCineLightRig::destroyEmitter(LLPointer<LLVOVolume>& emitter)
     const LLUUID id = dying->getID();
     if (LLPipeline::isVolumetricShaftEnabled(id))
     {
-        LLPipeline::toggleVolumetricShaft(id);
+        // Emitter teardown is not a manual decline of its binding's auto flag.
+        LLPipeline::toggleVolumetricShaft(id, false);
     }
     if (LLPipeline::isHeroProjector(id))
     {

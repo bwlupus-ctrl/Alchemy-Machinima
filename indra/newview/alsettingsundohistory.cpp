@@ -179,6 +179,16 @@ public:
     {
         replayModel(pageModel(page), redo);
     }
+    bool pageReplayReady(LLView* page, bool redo)
+    {
+        return pageModel(page).replayReady(redo, [redo](const ALSettingsUndoHistoryModel::Change& change)
+        {
+            LLControlVariable* control = gSavedSettings.getControl(change.mKey).get();
+            return control && alUndoValuesEqual(control->type(), control->get(),
+                redo ? change.mOldValue : change.mNewValue);
+        });
+    }
+    void discardPageStep(LLView* page, bool redo) { pageModel(page).discardStep(redo); publishRevision(); }
     U64 revision() const { return mRevision; }
     void finishPage(LLView* page) { pageModel(page).endEdit(); publishRevision(); }
     void discardPageRedo(LLView* page) { pageModel(page).discardRedo(); publishRevision(); }
@@ -346,6 +356,8 @@ std::string redoLabel() { return service().model().redoLabel(); }
 U64 revision() { return service().revision(); }
 U64 pageStepSequence(LLView* page, bool redo) { return service().pageModel(page).stepSequence(redo); }
 void replayPage(LLView* page, bool redo) { service().replayPage(page, redo); }
+bool pageReplayReady(LLView* page, bool redo) { return service().pageReplayReady(page, redo); }
+void discardPageStep(LLView* page, bool redo) { service().discardPageStep(page, redo); }
 void finishPage(LLView* page) { service().finishPage(page); }
 void discardPageRedo(LLView* page) { service().discardPageRedo(page); }
 

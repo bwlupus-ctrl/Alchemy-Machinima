@@ -22,6 +22,7 @@
 #include "llfontgl.h"
 #include "llagent.h"
 #include "lllineeditor.h"
+#include "llnotificationsutil.h"
 #include "llstring.h"
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
@@ -1686,11 +1687,27 @@ void ALKitPage::undoOnPage(bool redo)
         shell->history().finishGesture();
         ALExposureSettingsHistory::finishPage(this);
         const U64 kit = shell->history().stepSequence(mPage, redo);
-        const U64 owned = mOwnedSequence ? mOwnedSequence(redo) : 0;
+        const U64 available_owned = mOwnedSequence ? mOwnedSequence(redo) : 0;
         const U64 exposure = ALExposureSettingsHistory::pageStepSequence(this, redo);
-        const U64 sequence = std::max({kit, owned, exposure});
+        const U64 sequence = std::max({kit, available_owned, exposure});
         if (!sequence)
             return;
+        const U64 owned = mOwnedGroupSequence && mOwnedGroupSequence(redo) == sequence ? sequence : available_owned;
+        const bool grouped = (kit == sequence) + (owned == sequence) + (exposure == sequence) > 1;
+        std::string reason = "Skipped a grouped change that cannot be replayed";
+        // Validate every participating owner before any value or geometry is changed.
+        const bool kit_ready = kit != sequence || shell->history().prepareReplay(mPage, redo, reason, grouped);
+        const bool exposure_ready = exposure != sequence || !grouped ||
+            ALExposureSettingsHistory::pageReplayReady(this, redo);
+        const bool owned_ready = owned != sequence || !mOwnedReady || mOwnedReady(redo, sequence);
+        if (!kit_ready || !exposure_ready || !owned_ready)
+        {
+            if (kit == sequence) shell->history().discardStep(mPage, redo);
+            if (exposure == sequence) ALExposureSettingsHistory::discardPageStep(this, redo);
+            if (owned == sequence && mOwnedDiscardStep) mOwnedDiscardStep(redo, sequence);
+            LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", reason));
+            return;
+        }
         ALScopedUndoSequence group;
         if (exposure == sequence)
             ALExposureSettingsHistory::replayPage(this, redo);

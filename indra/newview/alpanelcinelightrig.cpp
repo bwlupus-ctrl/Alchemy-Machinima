@@ -969,9 +969,13 @@ bool ALPanelCineLightRig::postBuild()
         shell->history().registerContext("light_group/cine_light_rig_tab",[handle]()
         {
             if(!handle.get())return std::string();
-            return std::string("slot:")+std::to_string((S32)ALCineLightRigManager::instance().selectedSlot())+
-                "/fixture:"+std::to_string(handle.get()->mFixtureRoleIndex)+
-                "/light:"+std::to_string(gSavedSettings.getS32("DirectorV2SelectedLight"));
+            static const char* const slots[] = { "Self", "A", "B", "C", "D" };
+            const S32 slot = (S32)ALCineLightRigManager::instance().selectedSlot();
+            const S32 fixture = handle.get()->mFixtureRoleIndex;
+            const S32 light = gSavedSettings.getS32("DirectorV2SelectedLight");
+            const auto role_name = [](S32 role)
+                { return role >= 0 && role < ALCineLightRigModel::LIGHT_COUNT ? ROLE_NAMES[role] : "No selected"; };
+            return std::string(slots[slot]) + " rig, " + role_name(fixture) + " fixture, " + role_name(light) + " light";
         });
         if (ALKitPage* page = findChild<ALKitPage>("cine_light_rig_kit"))
             page->setAvailabilityRefresh([handle]()

@@ -48904,7 +48904,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 713,
+              "line": 716,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -49018,7 +49018,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 714,
+              "line": 717,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -49132,7 +49132,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 715,
+              "line": 718,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -49246,7 +49246,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 716,
+              "line": 719,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -49373,7 +49373,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 717,
+              "line": 720,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -49661,7 +49661,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 718,
+              "line": 721,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50000,7 +50000,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 719,
+              "line": 722,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50101,7 +50101,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 720,
+              "line": 723,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50202,7 +50202,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 722,
+              "line": 725,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50303,7 +50303,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 723,
+              "line": 726,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50404,7 +50404,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 721,
+              "line": 724,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50545,7 +50545,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 724,
+              "line": 727,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50659,7 +50659,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 725,
+              "line": 728,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50773,7 +50773,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 726,
+              "line": 729,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50879,7 +50879,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 727,
+              "line": 730,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -50988,7 +50988,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 728,
+              "line": 731,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -51445,7 +51445,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 610,
+              "line": 613,
               "class": "ALPanelPathEditor",
               "function": "onResetControl",
               "wired_class": "ALPanelPathEditor",
@@ -51456,7 +51456,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 729,
+              "line": 732,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -51467,7 +51467,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 729,
+              "line": 732,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -51618,7 +51618,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 614,
+              "line": 617,
               "class": "ALPanelPathEditor",
               "function": "onResetControl",
               "wired_class": "ALPanelPathEditor",
@@ -51629,7 +51629,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 730,
+              "line": 733,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -51640,7 +51640,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 730,
+              "line": 733,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -51780,7 +51780,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 731,
+              "line": 734,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -51920,7 +51920,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 732,
+              "line": 735,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -52071,7 +52071,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 638,
+              "line": 641,
               "class": "ALPanelPathEditor",
               "function": "onResetControl",
               "wired_class": "ALPanelPathEditor",
@@ -52082,7 +52082,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 736,
+              "line": 739,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -52093,7 +52093,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 736,
+              "line": 739,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -52246,7 +52246,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 733,
+              "line": 736,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -52386,7 +52386,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 734,
+              "line": 737,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -52526,7 +52526,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 735,
+              "line": 738,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -52666,7 +52666,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 737,
+              "line": 740,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -52943,7 +52943,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 738,
+              "line": 741,
               "class": "ALPanelPathEditor",
               "function": "registerKitResets",
               "wired_class": "ALPanelPathEditor",
@@ -69012,7 +69012,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 900,
+              "line": 901,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -73608,7 +73608,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 901,
+              "line": 902,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -74246,7 +74246,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 903,
+              "line": 904,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -91147,7 +91147,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 3955,
+              "line": 3956,
               "class": "ALCineLightRig",
               "function": "applyCueSceneState",
               "wired_class": "ALCineLightRig",
@@ -91160,7 +91160,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 3956,
+              "line": 3957,
               "class": "ALCineLightRig",
               "function": "applyCueSceneState",
               "wired_class": "ALCineLightRig",
@@ -91173,7 +91173,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 3958,
+              "line": 3959,
               "class": "ALCineLightRig",
               "function": "applyCueSceneState",
               "wired_class": "ALCineLightRig",
@@ -91186,7 +91186,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 4258,
+              "line": 4259,
               "class": "ALCineLightRig",
               "function": "sceneData",
               "wired_class": "ALCineLightRig",
@@ -140503,7 +140503,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 897,
+              "line": 898,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -142993,7 +142993,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1063,
+              "line": 1067,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -143239,7 +143239,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1065,
+              "line": 1069,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -143329,7 +143329,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1064,
+              "line": 1068,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -143731,7 +143731,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1067,
+              "line": 1071,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -144416,7 +144416,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1063,
+              "line": 1067,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -144662,7 +144662,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1065,
+              "line": 1069,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -144752,7 +144752,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1064,
+              "line": 1068,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -145154,7 +145154,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1067,
+              "line": 1071,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -145622,7 +145622,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1063,
+              "line": 1067,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -145868,7 +145868,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1065,
+              "line": 1069,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -145958,7 +145958,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1064,
+              "line": 1068,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -146360,7 +146360,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1067,
+              "line": 1071,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -146828,7 +146828,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1063,
+              "line": 1067,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -147074,7 +147074,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1065,
+              "line": 1069,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -147164,7 +147164,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1064,
+              "line": 1068,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -147566,7 +147566,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1067,
+              "line": 1071,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -150079,7 +150079,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1464,
+              "line": 1468,
               "class": "ALPanelCineLightRig",
               "function": "syncGoboLibrary",
               "wired_class": "ALPanelCineLightRig",
@@ -152016,7 +152016,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 898,
+              "line": 899,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -153551,7 +153551,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 899,
+              "line": 900,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -159818,7 +159818,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 882,
+              "line": 883,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -159951,7 +159951,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 883,
+              "line": 884,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -165550,7 +165550,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 4002,
+              "line": 4003,
               "class": "ALCineLightRig",
               "function": "applyCueSceneState",
               "wired_class": "ALCineLightRig",
@@ -165563,7 +165563,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 4260,
+              "line": 4261,
               "class": "ALCineLightRig",
               "function": "sceneData",
               "wired_class": "ALCineLightRig",
@@ -174837,7 +174837,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 895,
+              "line": 896,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -189770,7 +189770,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 896,
+              "line": 897,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -207631,7 +207631,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 894,
+              "line": 895,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",

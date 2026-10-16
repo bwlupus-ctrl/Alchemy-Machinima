@@ -9,6 +9,7 @@
 #include "../alsettingsundohistorymodel.h"
 #include "../alundosequence.h"
 #include "../alundovalue.h"
+#include "../alkithistory.h"
 
 namespace tut
 {
@@ -230,6 +231,8 @@ void alsettingsundohistory_object::test<12>()
     ensure("float tolerates F32 rounding", alUndoValuesEqual(TYPE_F32, LLSD(0.1), LLSD(F64(F32(0.1)))));
     ensure("float uses relative epsilon", alUndoValuesEqual(TYPE_F32, LLSD(10000.0), LLSD(10000.05)));
     ensure("float detects real changes", !alUndoValuesEqual(TYPE_F32, LLSD(1.0), LLSD(1.001)));
+    ensure("tiny settings retain their small steps", !alUndoValuesEqual(TYPE_F32, LLSD(0.000001), LLSD(0.000002)));
+    ensure("near zero rounding stays bounded", alUndoValuesEqual(TYPE_F32, LLSD(0.0), LLSD(0.0000000005)));
     ensure("integers accept equivalent representation", alUndoValuesEqual(TYPE_S32, LLSD(2), LLSD(2.0)));
     ensure("integers compare exactly", !alUndoValuesEqual(TYPE_S32, LLSD(2), LLSD(2.000001)));
     ensure("unsigned integers compare exactly", !alUndoValuesEqual(TYPE_U32, LLSD(10), LLSD(11)));
@@ -284,5 +287,67 @@ void alsettingsundohistory_object::test<13>()
     ensure_equals("repeated undo retains one shared group", exposure.stepSequence(false), kit.stepSequence(false));
     ensure("compound action leaves no earlier owned step", exposure.takeUndo(step) && !exposure.canUndo());
     ensure("compound action leaves no earlier kit step", kit.takeUndo(step) && !kit.canUndo());
+}
+
+template<> template<>
+void alsettingsundohistory_object::test<14>()
+{
+    ALSettingsUndoHistoryModel rig;
+    rig.record("Kelvin", "Key temperature", 3000.0, 4000.0, 1000);
+    const LLSD quick_value = 5000.0;
+    ALSettingsUndoHistoryModel::Step step;
+    ensure("widget conflict consumes the entry", rig.takeUndo(step, [&quick_value](const auto& change)
+        { return alUndoWidgetValuesEqual(quick_value, change.mNewValue); }));
+    ensure("widget conflict never reaches redo", step.mChanges.empty() && !rig.canUndo() && !rig.canRedo());
+    ensure("widget numeric representation compares by type", alUndoWidgetValuesEqual(LLSD(4000), LLSD(4000.0)));
+    ensure("widget strings stay exact", !alUndoWidgetValuesEqual(LLSD("4000"), LLSD("4000.0")));
+    ensure("widget boolean conflicts", !alUndoWidgetValuesEqual(LLSD(false), LLSD(true)));
+}
+
+template<> template<>
+void alsettingsundohistory_object::test<15>()
+{
+    ALKitHistory::Step compound;
+    ALKitHistory::Entry rig, image;
+    rig.binding_page = "light_group/cine_light_rig_tab";
+    rig.context = "Self rig, Key fixture, Key light";
+    image.binding_page = "look_group/image_tab";
+    compound.entries = {rig, image};
+    ensure("unrelated entry has no rig guard", compound.entries[1].contextMatches(""));
+    ensure("later image entry cannot erase rig guard", !compound.entries[0].contextMatches("Self rig, Fill fixture, Key light"));
+    ensure("original rig context remains replayable", compound.entries[0].contextMatches(rig.context));
+}
+
+template<> template<>
+void alsettingsundohistory_object::test<16>()
+{
+    ALSettingsUndoHistoryModel exposure, kit;
+    {
+        ALScopedUndoSequence group;
+        exposure.record("Exposure", "Exposure", 1.0, 2.0, 1000);
+        kit.record("Widget", "Widget", 3.0, 4.0, 1001);
+    }
+    const U64 sequence = exposure.stepSequence(false);
+    ensure_equals("both parts belong to one action", kit.stepSequence(false), sequence);
+    const auto safe = [](const auto&) { return true; };
+    const auto blocked = [](const auto&) { return false; };
+    for (bool redo : {false, true})
+    {
+        if (redo)
+        {
+            ALSettingsUndoHistoryModel::Step step;
+            ALScopedUndoSequence group;
+            ensure("prepare redo exposure", exposure.takeUndo(step));
+            ensure("prepare redo kit", kit.takeUndo(step));
+        }
+        const U64 before = exposure.stepSequence(redo);
+        ensure("group preflight rejects one blocked part",
+            !(exposure.replayReady(redo, safe) && kit.replayReady(redo, blocked)));
+        ensure_equals("preflight leaves earlier owner unapplied", exposure.stepSequence(redo), before);
+        ensure("valid group passes", exposure.replayReady(redo, safe) && kit.replayReady(redo, safe));
+    }
+    exposure.discardStep(true);
+    kit.discardStep(true);
+    ensure("skipped group is absent from both stacks", !exposure.canUndo() && !exposure.canRedo() && !kit.canUndo() && !kit.canRedo());
 }
 }

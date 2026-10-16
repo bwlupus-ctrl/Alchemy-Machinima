@@ -1911,6 +1911,7 @@ struct PrismProjector
         LLPrismLens::EProjectorTarget::OBJECT;
     LLUUID mObjectId;
     LLUUID mVolumetricObjectId; // acquired local override, including rig rebuilds
+    bool mVolumetricDeclined = false; // belongs to this binding, not its transient emitter
     U8 mRigSlot = 0;
     U8 mRigLight = 0;
     bool mLocalProjector = false;
@@ -1925,6 +1926,8 @@ struct PrismProjector
 void releaseProjectorVolumetrics(PrismProjector& projector)
 {
     if (projector.mVolumetricObjectId.isNull()) return;
+    projector.mVolumetricDeclined =
+        LLPipeline::isVCamVolumetricDeclined(projector.mVolumetricObjectId);
     LLPipeline::releaseVCamVolumetrics(projector.mVolumetricObjectId);
     projector.mVolumetricObjectId.setNull();
 }
@@ -1936,7 +1939,7 @@ void syncProjectorVolumetrics(PrismProjector& projector, LLVOVolume* volume)
     releaseProjectorVolumetrics(projector);
     if (target.isNull()) return;
     projector.mVolumetricObjectId = target;
-    if (!LLPipeline::acquireVCamVolumetrics(target)) return;
+    if (!LLPipeline::acquireVCamVolumetrics(target, !projector.mVolumetricDeclined)) return;
 
     const ALObjectPropertiesCache::ServerProps* properties =
         ALObjectPropertiesCache::instance().get(target);
@@ -5633,8 +5636,11 @@ public:
         // Acquire only on target transitions, so per-frame refresh never
         // re-enables a flag the user subsequently turned off. A capture switch
         // on the same light retains the existing override and its auto marker.
-        // An offline/quarantined binding still owns its assignment. Retain the
-        // marker across outages so coming back cannot override a user edit.
+        // Release stale targets even during quarantine. The binding retains a
+        // declined marker across emitter rebuilds without retaining the old flag.
+        if (quarantined && (!object || object->isDead() ||
+            projector.mVolumetricObjectId != object->getID()))
+            releaseProjectorVolumetrics(projector);
         if (!quarantined) syncProjectorVolumetrics(projector, volume);
         const bool changed = projector.mRuntime.mHealth != health ||
             projector.mRuntime.mReason != reason ||

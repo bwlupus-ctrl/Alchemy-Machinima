@@ -384,7 +384,9 @@ public:
     bool redoPath(const LLUUID& actor_id);
     bool canUndoPath(const LLUUID& actor_id) const;
     bool canRedoPath(const LLUUID& actor_id) const;
-    U64 pagePathSequence(LLView* page, bool redo) const;
+    U64 pagePathSequence(LLView* page, bool redo, bool include_blocked = false) const;
+    bool pagePathReplayReady(LLView* page, bool redo, U64 sequence) const;
+    void discardPagePathStep(LLView* page, bool redo, U64 sequence);
     void replayPagePath(LLView* page, bool redo);
     void discardPagePathRedo(LLView* page);
     S32 undoDepth(const LLUUID& actor_id) const;

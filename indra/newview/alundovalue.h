@@ -14,7 +14,7 @@ inline bool alUndoValuesEqual(eControlType type, const LLSD& a, const LLSD& b)
     {
         const F64 x = left.asReal(), y = right.asReal();
         return std::isfinite(x) && std::isfinite(y) &&
-            std::abs(x - y) <= 1e-5 * std::max({1.0, std::abs(x), std::abs(y)});
+            std::abs(x - y) <= std::max(1e-9, 1e-5 * std::max(std::abs(x), std::abs(y)));
     };
     switch (type)
     {
@@ -36,6 +36,15 @@ inline bool alUndoValuesEqual(eControlType type, const LLSD& a, const LLSD& b)
         return true;
     default: return a == b;
     }
+}
+
+// Code-bound widgets have no saved control declaration; retain the recorded value's type.
+inline bool alUndoWidgetValuesEqual(const LLSD& current, const LLSD& recorded)
+{
+    const eControlType type = recorded.isBoolean() ? TYPE_BOOLEAN :
+        recorded.isInteger() ? TYPE_S32 : recorded.isReal() ? TYPE_F32 :
+        recorded.isString() ? TYPE_STRING : recorded.isArray() ? TYPE_VEC3D : TYPE_LLSD;
+    return alUndoValuesEqual(type, current, recorded);
 }
 
 #endif

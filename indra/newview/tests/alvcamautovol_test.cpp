@@ -88,6 +88,35 @@ constexpr bool balancedReuse()
     return state.acquire(false) && state.release(true);
 }
 
+constexpr bool declinedSurvivesRebuild()
+{
+    EnableOverride master, emitter;
+    if (!master.acquire(false) || !emitter.acquire(false)) return false;
+    master.changed(false);
+    emitter.changed(false);
+    const bool binding_declined = emitter.mDeclined;
+    if (emitter.release(false) || master.release(false)) return false;
+    emitter = EnableOverride(); // region crossing replaces the emitter, not the binding
+    if (emitter.acquire(false, !binding_declined) || master.acquire(false)) return false;
+    if (!emitter.mDeclined || !master.mDeclined) return false;
+    emitter.changed(true);
+    master.changed(true);
+    if (emitter.mDeclined || master.mDeclined) return false;
+    if (emitter.release(true) || master.release(true)) return false;
+    return emitter.acquire(false) && master.acquire(false);
+}
+
+constexpr bool automaticTeardownAllowsRebuild()
+{
+    EnableOverride emitter;
+    if (!emitter.acquire(false)) return false;
+    // Teardown removes the old flag without reporting a manual changed(false).
+    const bool binding_declined = emitter.mDeclined;
+    if (emitter.release(false)) return false;
+    emitter = EnableOverride();
+    return emitter.acquire(false, !binding_declined) && !emitter.mDeclined;
+}
+
 // /Zs validates these regressions without a build or test executable.
 static_assert(decisionMatrix(), "restore only untouched auto-enabled flags");
 static_assert(userOffOnWins(), "an off/on round trip relinquishes ownership");
@@ -95,6 +124,8 @@ static_assert(anotherBindingRespectsUserOff(), "new borrowers respect edits");
 static_assert(sharedMasterAndIndependentLights(), "master waits for last output");
 static_assert(manualChoicesAreIndependent(), "light and master ownership differ");
 static_assert(balancedReuse(), "release is balanced and ownership can be reused");
+static_assert(declinedSurvivesRebuild(), "user off survives emitter rebuilds until manual on");
+static_assert(automaticTeardownAllowsRebuild(), "automatic teardown is not a user decline");
 } // anonymous namespace
 
 namespace tut
@@ -132,5 +163,7 @@ void alvcamautovol_object::test<4>()
 {
     set_test_name("extra release and repeated assignment are safe");
     ensure("ownership reuse", balancedReuse());
+    ensure("declined survives emitter replacement", declinedSurvivesRebuild());
+    ensure("untouched binding re-enables replacement", automaticTeardownAllowsRebuild());
 }
 } // namespace tut

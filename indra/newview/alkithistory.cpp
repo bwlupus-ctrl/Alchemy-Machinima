@@ -61,10 +61,13 @@ ALKitHistory::ScopedSource::ScopedSource(LLView* source) :
     mPrevious(sKitInputSource), mPreviousBinding(sKitBindingSource), mPreviousSet(sKitInputSourceSet)
 {
     // Nested source-row writes retain the page on which the user started the action.
-    if (!sKitInputSourceSet)
-        sKitInputSource = source ? source->getHandle() : LLHandle<LLView>();
-    sKitBindingSource = source ? source->getHandle() : LLHandle<LLView>();
-    sKitInputSourceSet = true;
+    if (source)
+    {
+        if (!sKitInputSourceSet)
+            sKitInputSource = source->getHandle();
+        sKitBindingSource = source->getHandle();
+        sKitInputSourceSet = true;
+    }
 }
 ALKitHistory::ScopedSource::~ScopedSource()
 { sKitInputSource = mPrevious; sKitBindingSource = mPreviousBinding; sKitInputSourceSet = mPreviousSet; }
@@ -118,7 +121,8 @@ bool ALKitHistory::suspended()
 void ALKitHistory::beginGesture(EOrigin o, const std::string& p, const std::string& label)
 {
     if (mOpen && mOrigin == o && mPage == p && (o == WHEEL || o == KEY) &&
-        mOpen->context == currentContext(mOpen->context_page))
+        std::all_of(mOpen->entries.begin(), mOpen->entries.end(), [this](const Entry& entry)
+            { return entry.contextMatches(currentContext(entry.binding_page)); }))
     {
         if (!label.empty() && mOpen->label.empty())
         {
@@ -135,8 +139,6 @@ void ALKitHistory::beginGesture(EOrigin o, const std::string& p, const std::stri
     mOpen->page             = p;
     mOpen->label            = label;
     mOpen->scene_generation = mGeneration;
-    mOpen->context          = currentContext(p);
-    mOpen->context_page     = p;
     mCloseAt                = LLTimer::getTotalSeconds() + ((o == WHEEL || o == KEY) ? .5 : .35);
     if (!mTimer)
         mTimer = std::make_unique<GestureTimer>(this);
@@ -181,15 +183,15 @@ void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv,
     const std::string binding_page = rowPage(c);
     const std::string context = currentContext(binding_page);
     const bool standalone = !mOpen || mOpen->page != page ||
-        (!mOpen->context.empty() && (mOpen->context_page != binding_page || mOpen->context != context));
+        std::any_of(mOpen->entries.begin(), mOpen->entries.end(), [&binding_page, &context](const Entry& entry)
+            { return entry.binding_page == binding_page && !entry.contextMatches(context); });
     if (standalone)
         beginGesture(KEY, page, label);
-    mOpen->context_page = binding_page;
-    mOpen->context = context;
     Entry e;
     e.widget = true;
     e.key    = c->getName();
     e.binding_page = binding_page;
+    e.context = context;
     e.ctrl   = c->getHandle();
     e.oldv   = oldv;
     e.newv   = newv;
@@ -278,6 +280,8 @@ void ALKitHistory::captureSetting(const std::string& page, const std::string& na
     if (action_page != mOpen->page && page != "chrome")
         return;
     Entry entry;
+    entry.binding_page = binding_page;
+    entry.context = currentContext(binding_page);
     entry.key  = name;
     entry.oldv = old;
     entry.newv = value;
@@ -297,7 +301,8 @@ void ALKitHistory::addEntry(Entry entry, const std::string& supplied_label, cons
             page->historyEdited(false);
     for (Entry& existing : mOpen->entries)
     {
-        if (existing.widget == entry.widget && existing.key == entry.key && existing.binding_page == entry.binding_page)
+        if (existing.widget == entry.widget && existing.key == entry.key &&
+            existing.binding_page == entry.binding_page && existing.context == entry.context)
         {
             existing.newv = entry.newv;
             mOpen->sequence = alNextUndoSequence();
@@ -373,18 +378,73 @@ std::string ALKitHistory::currentContext(const std::string& page) const
     return found == mContexts.end() ? std::string() : found->second();
 }
 
-bool ALKitHistory::replay(Step& step, bool redo)
+LLUICtrl* ALKitHistory::resolveWidget(Entry& entry)
 {
-    if (step.scene_generation != mGeneration)
-        return false;
-    const std::string context = currentContext(step.context_page);
-    if (!step.context.empty() && context != step.context)
+    LLUICtrl* ctrl = entry.ctrl.get();
+    if (!ctrl)
+        if (ALKitShell* shell = dynamic_cast<ALKitShell*>(mOwner.get()))
+            if (ALKitRow* row = shell->resolveHistoryRow(entry.binding_page, entry.key))
+            {
+                ctrl = row->control();
+                if (ctrl) entry.ctrl = ctrl->getHandle();
+            }
+    return ctrl;
+}
+
+bool ALKitHistory::entryMatches(Entry& entry, bool redo)
+{
+    const LLSD& expected = redo ? entry.oldv : entry.newv;
+    if (entry.widget)
     {
-        LLSD args;
-        args["MESSAGE"] = "Switch back to " + step.context + " to undo this";
-        LLNotificationsUtil::add("SystemMessageTip", args);
+        LLUICtrl* ctrl = resolveWidget(entry);
+        ALKitRow* row = ctrl ? dynamic_cast<ALKitRow*>(ctrl->getParent()) : nullptr;
+        return ctrl && alUndoWidgetValuesEqual(row ? row->boundValue() : ctrl->getValue(), expected);
+    }
+    LLControlVariable* control = gSavedSettings.getControl(entry.key).get();
+    return control && alUndoValuesEqual(control->type(), control->get(), expected);
+}
+
+bool ALKitHistory::prepareReplay(const std::string& page, bool redo, std::string& reason, bool check_values)
+{
+    ScopedSuspend guard; // Resolving a rebuilt source page must not record initialization writes.
+    auto& steps = redo ? mRedo : mUndo;
+    auto it = std::find_if(steps.rbegin(), steps.rend(),
+        [&page](const Step& step) { return step.page == page; });
+    if (it == steps.rend() || it->scene_generation != mGeneration)
+    {
+        reason = "Skipped a change from an earlier scene";
         return false;
     }
+    for (Entry& entry : it->entries)
+    {
+        if (!entry.contextMatches(currentContext(entry.binding_page)))
+        {
+            reason = "Skipped a change made on " + entry.context + ".";
+            return false;
+        }
+        if (check_values && !entryMatches(entry, redo))
+        {
+            reason = "Skipped a grouped change edited elsewhere";
+            return false;
+        }
+    }
+    return true;
+}
+
+void ALKitHistory::discardStep(const std::string& page, bool redo)
+{
+    auto& steps = redo ? mRedo : mUndo;
+    auto it = std::find_if(steps.rbegin(), steps.rend(),
+        [&page](const Step& step) { return step.page == page; });
+    if (it != steps.rend())
+    {
+        steps.erase(std::next(it).base());
+        ++mRevision;
+    }
+}
+
+bool ALKitHistory::replay(Step& step, bool redo)
+{
     ScopedSuspend guard;
     mReplaying = true;
     bool ok    = true;
@@ -392,22 +452,21 @@ bool ALKitHistory::replay(Step& step, bool redo)
     // Drop conflicting entries from the replay branch as well as this replay.
     bool skipped = false;
     std::unordered_set<std::string> conflicts;
-    for (const Entry& entry : step.entries)
+    for (Entry& entry : step.entries)
         if (!entry.widget)
         {
-            LLControlVariable* control = gSavedSettings.getControl(entry.key).get();
-            if (!control || !alUndoValuesEqual(control->type(), control->get(), redo ? entry.oldv : entry.newv))
+            if (!entryMatches(entry, redo))
                 conflicts.insert(entry.key);
         }
     step.entries.erase(std::remove_if(step.entries.begin(), step.entries.end(),
-        [&conflicts, &skipped](const Entry& entry)
+        [this, redo, &conflicts, &skipped](Entry& entry)
         {
             bool conflict = conflicts.count(entry.key) != 0;
             if (entry.widget)
             {
                 LLUICtrl* control = entry.ctrl.get();
                 ALKitRow* row = control ? dynamic_cast<ALKitRow*>(control->getParent()) : nullptr;
-                conflict = row && conflicts.count(row->meta().setting) != 0;
+                conflict = !entryMatches(entry, redo) || (row && conflicts.count(row->meta().setting) != 0);
             }
             skipped = skipped || conflict;
             return conflict;
@@ -421,11 +480,7 @@ bool ALKitHistory::replay(Step& step, bool redo)
         const LLSD& value = redo ? entry.newv : entry.oldv;
         if (entry.widget)
         {
-            LLUICtrl* ctrl = entry.ctrl.get();
-            if (!ctrl)
-                if (ALKitShell* shell = dynamic_cast<ALKitShell*>(mOwner.get()))
-                    if (ALKitRow* row = shell->resolveHistoryRow(entry.binding_page, entry.key))
-                        ctrl = row->control();
+            LLUICtrl* ctrl = resolveWidget(entry);
             if (ctrl)
             {
                 // Resolve the source binding at replay time; Quick rows may have been rebuilt.
@@ -517,6 +572,13 @@ void ALKitHistory::undo(const std::string& page)
 {
     finishGesture();
     mTimer.reset();
+    std::string reason;
+    if (!prepareReplay(page, false, reason))
+    {
+        discardStep(page, false);
+        LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", reason));
+        return;
+    }
     auto it = std::find_if(mUndo.rbegin(), mUndo.rend(), [&page](const Step& step) { return step.page == page; });
     if (it == mUndo.rend())
         return;
@@ -533,6 +595,13 @@ void ALKitHistory::redo(const std::string& page)
 {
     finishGesture();
     mTimer.reset();
+    std::string reason;
+    if (!prepareReplay(page, true, reason))
+    {
+        discardStep(page, true);
+        LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", reason));
+        return;
+    }
     auto it = std::find_if(mRedo.rbegin(), mRedo.rend(), [&page](const Step& step) { return step.page == page; });
     if (it == mRedo.rend())
         return;

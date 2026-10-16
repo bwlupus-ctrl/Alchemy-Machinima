@@ -115,6 +115,23 @@ bool ALSettingsUndoHistoryModel::canRedo() const
     return mBatchDepth == 0 && mPending.mChanges.empty() && !mRedo.empty();
 }
 
+bool ALSettingsUndoHistoryModel::replayReady(bool redo, const replay_filter_t& filter) const
+{
+    if (mBatchDepth != 0 || (redo ? !canRedo() : !canUndo()))
+        return false;
+    const Step& step = !redo && !mPending.mChanges.empty() ? mPending :
+        (redo ? mRedo.back() : mUndo.back());
+    return std::all_of(step.mChanges.begin(), step.mChanges.end(), filter);
+}
+
+void ALSettingsUndoHistoryModel::discardStep(bool redo)
+{
+    Step step;
+    const auto reject = [](const Change&) { return false; };
+    if (redo) takeRedo(step, reject);
+    else takeUndo(step, reject);
+}
+
 bool ALSettingsUndoHistoryModel::takeUndo(Step& step, const replay_filter_t& filter)
 {
     if (mBatchDepth != 0)

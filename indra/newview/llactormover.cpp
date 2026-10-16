@@ -3521,16 +3521,40 @@ bool LLActorMover::canUndoPath(const LLUUID& actor_id) const
     return it != mHistory.end() && !it->second.mUndo.empty();
 }
 
-U64 LLActorMover::pagePathSequence(LLView* page, bool redo) const
+U64 LLActorMover::pagePathSequence(LLView* page, bool redo, bool include_blocked) const
 {
     U64 sequence = 0;
     for (const auto& item : mHistory)
     {
         const auto& steps = redo ? item.second.mRedo : item.second.mUndo;
-        if (!steps.empty() && steps.back().mUndoOwner.get() == page && !isPathWalking(item.first))
+        if (!steps.empty() && steps.back().mUndoOwner.get() == page && (include_blocked || !isPathWalking(item.first)))
             sequence = llmax(sequence, steps.back().mUndoSequence);
     }
     return sequence;
+}
+
+bool LLActorMover::pagePathReplayReady(LLView* page, bool redo, U64 sequence) const
+{
+    if (!sequence) return false;
+    for (const auto& item : mHistory)
+    {
+        const auto& steps = redo ? item.second.mRedo : item.second.mUndo;
+        if (!steps.empty() && steps.back().mUndoOwner.get() == page &&
+            steps.back().mUndoSequence == sequence && isPathWalking(item.first))
+            return false;
+    }
+    return true;
+}
+
+void LLActorMover::discardPagePathStep(LLView* page, bool redo, U64 sequence)
+{
+    for (auto& item : mHistory)
+    {
+        auto& steps = redo ? item.second.mRedo : item.second.mUndo;
+        if (!steps.empty() && steps.back().mUndoOwner.get() == page && steps.back().mUndoSequence == sequence)
+            steps.pop_back();
+    }
+    ++mPathRevision;
 }
 
 void LLActorMover::discardPagePathRedo(LLView* page)
@@ -3546,18 +3570,18 @@ void LLActorMover::discardPagePathRedo(LLView* page)
 void LLActorMover::replayPagePath(LLView* page, bool redo)
 {
     const U64 sequence = pagePathSequence(page, redo);
+    if (!pagePathReplayReady(page, redo, sequence)) return;
     if (!sequence)
         return;
     for (const auto& item : mHistory)
     {
         const auto& steps = redo ? item.second.mRedo : item.second.mUndo;
-        if (!steps.empty() && steps.back().mUndoSequence == sequence)
+        if (!steps.empty() && steps.back().mUndoOwner.get() == page && steps.back().mUndoSequence == sequence)
         {
             if (redo)
                 redoPath(item.first);
             else
                 undoPath(item.first);
-            return;
         }
     }
 }

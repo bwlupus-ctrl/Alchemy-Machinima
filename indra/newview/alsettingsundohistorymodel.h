@@ -48,6 +48,8 @@ public:
     bool canUndo() const;
     bool canRedo() const;
     using replay_filter_t = std::function<bool(const Change&)>;
+    bool replayReady(bool redo, const replay_filter_t& filter) const;
+    void discardStep(bool redo);
     bool takeUndo(Step& step, const replay_filter_t& filter = {});
     bool takeRedo(Step& step, const replay_filter_t& filter = {});
 

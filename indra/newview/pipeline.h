@@ -412,16 +412,17 @@ public:
     // starts empty, so the effect is off per-projector by default even when the
     // BDMergeProjectorVolumetrics master gate is on. Mirrors ALDerenderList's
     // selection plumbing but purely in-memory.
-    static void  toggleVolumetricShaft(const LLUUID& id);
+    static void  toggleVolumetricShaft(const LLUUID& id, bool user_edit = true);
     static bool  isVolumetricShaftEnabled(const LLUUID& id);
     static void  clearVolumetricShafts();
     // Temporary viewer-local VCam overrides. Return true when acquire enabled
     // the per-light flag or master; release restores only untouched auto edits.
-    static bool  acquireVCamVolumetrics(const LLUUID& id);
+    static bool  acquireVCamVolumetrics(const LLUUID& id, bool allow_light = true);
     static void  releaseVCamVolumetrics(const LLUUID& id);
     static bool  hasVCamVolumetricOverride(const LLUUID& id);
     static bool  isVCamVolumetricAutoEnabled(const LLUUID& id);
-    static void  noteVolumetricShaftEdit(const LLUUID& id);
+    static bool  isVCamVolumetricDeclined(const LLUUID& id);
+    static void  noteVolumetricShaftEdit(const LLUUID& id, bool enabled);
     U32          actorOnlyVolumetricLightCount();
 
     // [BDMerge G3.3 Batch 3] Session-only per-projector "cast shadows" opt-OUT.

@@ -292,7 +292,10 @@ bool ALPanelPathEditor::postBuild()
     {
         page->setOwnedHistory([page](bool redo) { return LLActorMover::instance().pagePathSequence(page, redo); },
             [page](bool redo) { LLActorMover::instance().replayPagePath(page, redo); },
-            [page]() { LLActorMover::instance().discardPagePathRedo(page); });
+            [page]() { LLActorMover::instance().discardPagePathRedo(page); },
+            [page](bool redo, U64 sequence) { return LLActorMover::instance().pagePathReplayReady(page, redo, sequence); },
+            [page](bool redo, U64 sequence) { LLActorMover::instance().discardPagePathStep(page, redo, sequence); },
+            [page](bool redo) { return LLActorMover::instance().pagePathSequence(page, redo, true); });
         page->setAvailabilityRefresh([this]()
             { refreshHeader(); refreshInspector(); refreshPathControls(); refreshCameraControls(); });
     }
@@ -1403,31 +1406,22 @@ void ALPanelPathEditor::onClickClear()
     payload["actor_id"] = mActor;
     LLPathCamera::instance().stopPreview();
     LLHandle<ALPanelPathEditor> handle = getDerivedHandle<ALPanelPathEditor>();
+    const bool kit_host = mKitPage != nullptr;
+    LLHandle<ALKitPage> page = mKitPage ? mKitPage->getDerivedHandle<ALKitPage>() : LLHandle<ALKitPage>();
     LLNotificationsUtil::add("GenericAlertYesCancel", args, payload,
-        [handle](const LLSD& notification, const LLSD& response)
+        [handle, page, kit_host](const LLSD& notification, const LLSD& response)
         {
-            if (ALPanelPathEditor* self = handle.get())
-            {
-                self->clearCallback(notification, response);
-            }
+            ALPanelPathEditor* self = handle.get();
+            if (!self || (kit_host && page.isDead()) ||
+                LLNotificationsUtil::getSelectedOption(notification, response) != 0)
+                return;
+            const LLUUID actor = notification["payload"]["actor_id"].asUUID();
+            LLActorMover& mover = LLActorMover::instance();
+            mover.snapshotForUndo(actor, page.get());
+            mover.clearPath(actor);
+            if (self->mActor == actor && self->ownsEdit())
+                mover.setEditNode(-1);
         });
-}
-
-bool ALPanelPathEditor::clearCallback(const LLSD& notification, const LLSD& response)
-{
-    if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
-    {
-        return false;       // Cancel
-    }
-    const LLUUID actor = notification["payload"]["actor_id"].asUUID();
-    LLActorMover& m = LLActorMover::instance();
-    m.snapshotForUndo(actor, mKitPage);
-    m.clearPath(actor);
-    if (mActor == actor && ownsEdit()) // [DirFix] dialog may outlive ownership
-    {
-        m.setEditNode(-1);
-    }
-    return false;
 }
 
 // ---------------------------------------------------------------------------

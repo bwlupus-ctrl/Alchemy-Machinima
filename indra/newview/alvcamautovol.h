@@ -14,17 +14,24 @@ struct EnableOverride
 {
     unsigned mUsers = 0;
     bool mAutoEnabled = false;
+    bool mDeclined = false;
 
     // Returns whether the caller must enable the flag. Additional bindings
     // share ownership without overriding an intervening user choice.
-    constexpr bool acquire(bool enabled)
+    constexpr bool acquire(bool enabled, bool allowed = true)
     {
+        mDeclined = !enabled && (mDeclined || !allowed);
         if (mUsers++ != 0) return false;
-        mAutoEnabled = !enabled;
+        mAutoEnabled = !enabled && !mDeclined;
         return mAutoEnabled;
     }
 
     constexpr void changed() { mAutoEnabled = false; }
+    constexpr void changed(bool enabled)
+    {
+        mDeclined = !enabled;
+        changed();
+    }
 
     // Returns whether the last binding must restore the original off state.
     constexpr bool release(bool enabled)

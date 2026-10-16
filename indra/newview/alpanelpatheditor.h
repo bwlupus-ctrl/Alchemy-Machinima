@@ -102,7 +102,6 @@ private:
     void onClickInsert();
     void onClickDelete();
     void onClickClear();
-    bool clearCallback(const LLSD& notification, const LLSD& response);
 
     // edit-mode toggle (the in-world tool)
     void onToggleEditMode();

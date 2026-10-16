@@ -163,8 +163,11 @@ public:
     void               undoOnPage(bool redo);
     bool               canUndoOnPage(bool redo);
     void               setOwnedHistory(std::function<U64(bool)> sequence, std::function<void(bool)> replay,
-                                      std::function<void()> discard_redo)
-                       { mOwnedSequence = std::move(sequence); mOwnedReplay = std::move(replay); mOwnedDiscardRedo = std::move(discard_redo); }
+                                      std::function<void()> discard_redo, std::function<bool(bool, U64)> ready,
+                                      std::function<void(bool, U64)> discard_step, std::function<U64(bool)> group_sequence)
+                       { mOwnedSequence = std::move(sequence); mOwnedReplay = std::move(replay); mOwnedDiscardRedo = std::move(discard_redo);
+                         mOwnedReady = std::move(ready); mOwnedDiscardStep = std::move(discard_step);
+                         mOwnedGroupSequence = std::move(group_sequence); }
     void               historyEdited(bool owned);
     void               setAvailabilityRefresh(std::function<void()> refresh) { mAvailabilityRefresh = std::move(refresh); }
     void               refreshAvailability() { if (mAvailabilityRefresh) mAvailabilityRefresh(); }
@@ -252,6 +255,9 @@ private:
     std::function<U64(bool)>                         mOwnedSequence;
     std::function<void(bool)>                        mOwnedReplay;
     std::function<void()>                            mOwnedDiscardRedo;
+    std::function<bool(bool, U64)>                   mOwnedReady;
+    std::function<void(bool, U64)>                   mOwnedDiscardStep;
+    std::function<U64(bool)>                        mOwnedGroupSequence;
     std::function<void()>                            mAvailabilityRefresh;
     LLButton*                                       mResetPage      = nullptr;
     LLButton*                                       mGateButton     = nullptr;

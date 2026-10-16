@@ -22241,33 +22241,35 @@ bool sWritingVCamVolumetricMaster = false;
 void setVCamVolumetricMaster(bool enabled)
 {
     sWritingVCamVolumetricMaster = true;
-    gSavedSettings.setBOOL("BDMergeProjectorVolumetrics", enabled);
+    // The automatic override must never enter the saved settings file, even on a crash.
+    gSavedSettings.getControl("BDMergeProjectorVolumetrics")->setValue(LLSD(enabled), false);
     sWritingVCamVolumetricMaster = false;
 }
 
 } // anonymous namespace
 
-void LLPipeline::noteVolumetricShaftEdit(const LLUUID& id)
+void LLPipeline::noteVolumetricShaftEdit(const LLUUID& id, bool enabled)
 {
     auto found = sVCamVolumetricOverrides.find(id);
-    if (found != sVCamVolumetricOverrides.end()) found->second.changed();
+    if (found != sVCamVolumetricOverrides.end())
+        found->second.changed(enabled);
 }
 
-bool LLPipeline::acquireVCamVolumetrics(const LLUUID& id)
+bool LLPipeline::acquireVCamVolumetrics(const LLUUID& id, bool allow_light)
 {
     if (id.isNull()) return false;
     if (!sVCamVolumetricMasterConnection.connected())
     {
         sVCamVolumetricMasterConnection = gSavedSettings.getControl(
             "BDMergeProjectorVolumetrics")->getSignal()->connect(
-                [](LLControlVariable*, const LLSD&, const LLSD&)
+                [](LLControlVariable*, const LLSD& value, const LLSD&)
                 {
                     if (!sWritingVCamVolumetricMaster)
-                        sVCamVolumetricMaster.changed();
+                        sVCamVolumetricMaster.changed(value.asBoolean());
                 });
     }
     const bool enable_light = sVCamVolumetricOverrides[id].acquire(
-        isVolumetricShaftEnabled(id));
+        isVolumetricShaftEnabled(id), allow_light);
     if (enable_light) sVolumetricShaftObjects.insert(id);
     const bool enable_master = sVCamVolumetricMaster.acquire(
         gSavedSettings.getBOOL("BDMergeProjectorVolumetrics"));
@@ -22285,8 +22287,7 @@ void LLPipeline::releaseVCamVolumetrics(const LLUUID& id)
     if (sVCamVolumetricMaster.release(
             gSavedSettings.getBOOL("BDMergeProjectorVolumetrics")))
         setVCamVolumetricMaster(false);
-    if (sVCamVolumetricMaster.mUsers == 0)
-        sVCamVolumetricMasterConnection.disconnect();
+    // Keep observing manual on/off while emitters are absent between regions.
 }
 
 bool LLPipeline::hasVCamVolumetricOverride(const LLUUID& id)
@@ -22300,16 +22301,22 @@ bool LLPipeline::isVCamVolumetricAutoEnabled(const LLUUID& id)
     return found != sVCamVolumetricOverrides.end() && found->second.mAutoEnabled;
 }
 
-void LLPipeline::toggleVolumetricShaft(const LLUUID& id)
+bool LLPipeline::isVCamVolumetricDeclined(const LLUUID& id)
+{
+    auto found = sVCamVolumetricOverrides.find(id);
+    return found != sVCamVolumetricOverrides.end() && found->second.mDeclined;
+}
+
+void LLPipeline::toggleVolumetricShaft(const LLUUID& id, bool user_edit)
 {
     if (id.isNull())
         return;
-    noteVolumetricShaftEdit(id);
     auto it = sVolumetricShaftObjects.find(id);
     if (it != sVolumetricShaftObjects.end())
         sVolumetricShaftObjects.erase(it);
     else
         sVolumetricShaftObjects.insert(id);
+    if (user_edit) noteVolumetricShaftEdit(id, isVolumetricShaftEnabled(id));
 }
 
 bool LLPipeline::isVolumetricShaftEnabled(const LLUUID& id)
@@ -22350,6 +22357,8 @@ void LLPipeline::clearVolumetricShafts()
 {
     while (!sVCamVolumetricOverrides.empty())
         releaseVCamVolumetrics(sVCamVolumetricOverrides.begin()->first);
+    sVCamVolumetricMaster = ALVCamAutoVol::EnableOverride();
+    sVCamVolumetricMasterConnection.disconnect();
     sVolumetricShaftObjects.clear();
     sVolumetricShaftOverrides.clear();
     sProjectorShadowSoftness.clear();
@@ -22787,7 +22796,6 @@ void LLPipeline::setVolumetricShaftOverride(const LLUUID& id, const VolumetricSh
     if (id.isNull())
         return;
     // Capturing a shaft look is an explicit choice to keep this light enabled.
-    noteVolumetricShaftEdit(id);
     const bool was_shaft_enabled = sVolumetricShaftObjects.count(id) != 0;
     auto existing = sVolumetricShaftOverrides.find(id);
     const VolumetricShaftOverride previous =
@@ -22800,11 +22808,12 @@ void LLPipeline::setVolumetricShaftOverride(const LLUUID& id, const VolumetricSh
         gPipeline.mFroxelHistoryValid = false;
     }
     sVolumetricShaftObjects.insert(id); // capturing implies enabling the shaft
+    noteVolumetricShaftEdit(id, true);
 }
 
 void LLPipeline::clearVolumetricShaftOverride(const LLUUID& id)
 {
-    noteVolumetricShaftEdit(id);
+    noteVolumetricShaftEdit(id, isVolumetricShaftEnabled(id));
     auto it = sVolumetricShaftOverrides.find(id);
     if (it != sVolumetricShaftOverrides.end())
     {

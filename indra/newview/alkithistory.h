@@ -26,6 +26,8 @@ public:
         bool               widget = false;
         std::string        key;
         std::string        binding_page;
+        std::string        context;
+        bool contextMatches(const std::string& current) const { return context.empty() || context == current; }
         LLHandle<LLUICtrl> ctrl;
         LLSD               oldv;
         LLSD               newv;
@@ -38,8 +40,6 @@ public:
     struct Step
     {
         std::string              label;
-        std::string              context;
-        std::string              context_page;
         std::string              page;
         U64                      scene_generation = 0;
         U64                      sequence = 0;
@@ -64,6 +64,8 @@ public:
     bool        canRedo(const std::string& page) const;
     U64         stepSequence(const std::string& page, bool redo) const;
     void        finishGesture();
+    bool        prepareReplay(const std::string& page, bool redo, std::string& reason, bool check_values = false);
+    void        discardStep(const std::string& page, bool redo);
     void        discardRedo(const std::string& page);
     static LLView* inputPage();
     struct ScopedSource
@@ -93,6 +95,8 @@ private:
     bool                          tickGesture();
     std::string                   currentContext(const std::string&) const;
     bool                          replay(Step&, bool);
+    LLUICtrl*                     resolveWidget(Entry&);
+    bool                          entryMatches(Entry&, bool redo);
     std::vector<Step>             mUndo;
     std::vector<Step>             mRedo;
     U64                           mRevision   = 0;
