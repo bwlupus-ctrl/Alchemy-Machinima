@@ -7,6 +7,8 @@
 
 #include "../test/lltut.h"
 #include "../alsettingsundohistorymodel.h"
+#include "../alundosequence.h"
+#include "../alundovalue.h"
 
 namespace tut
 {
@@ -192,5 +194,95 @@ void alsettingsundohistory_object::test<10>()
     ensure_equals("slow drag restores its first value", step.mChanges[0].mOldValue.asReal(), 1.0);
     ensure_equals("slow drag replays its final value", step.mChanges[0].mNewValue.asReal(), 3.0);
     ensure("slow drag remains one step", !model.canUndo());
+}
+
+template<> template<>
+void alsettingsundohistory_object::test<11>()
+{
+    ALSettingsUndoHistoryModel model;
+    model.record("RenderExposure", "Exposure", 1.0, 2.0, 1000);
+    ALSettingsUndoHistoryModel::Step step;
+    auto conflict = [](const ALSettingsUndoHistoryModel::Change&) { return false; };
+    ensure("conflicting undo consumes the step", model.takeUndo(step, conflict));
+    ensure("conflict is omitted from replay", step.mChanges.empty());
+    ensure("conflict is gone from undo", !model.canUndo());
+    ensure("conflict is gone from redo", !model.canRedo());
+    ensure("redo cannot overwrite the other page", !model.takeRedo(step));
+
+    model.beginBatch("Mixed");
+    model.record("Conflict", "Conflict", 1.0, 2.0, 2000);
+    model.record("Safe", "Safe", 3.0, 4.0, 2001);
+    model.endBatch();
+    ensure("partial undo", model.takeUndo(step,
+        [](const ALSettingsUndoHistoryModel::Change& change) { return change.mKey != "Conflict"; }));
+    ensure_equals("only safe entry survives", step.mChanges.size(), std::size_t(1));
+    ensure("partial redo", model.takeRedo(step));
+    ensure_equals("redo contains only safe entry", step.mChanges[0].mKey, std::string("Safe"));
+    ensure("conflicting redo is also consumed", model.takeUndo(step));
+    ensure("skip redo", model.takeRedo(step, conflict));
+    ensure("skipped redo leaves neither branch", !model.canUndo() && !model.canRedo());
+}
+
+template<> template<>
+void alsettingsundohistory_object::test<12>()
+{
+    ensure("float ignores LLSD numeric representation", alUndoValuesEqual(TYPE_F32, LLSD(2), LLSD(2.0)));
+    ensure("float tolerates F32 rounding", alUndoValuesEqual(TYPE_F32, LLSD(0.1), LLSD(F64(F32(0.1)))));
+    ensure("float uses relative epsilon", alUndoValuesEqual(TYPE_F32, LLSD(10000.0), LLSD(10000.05)));
+    ensure("float detects real changes", !alUndoValuesEqual(TYPE_F32, LLSD(1.0), LLSD(1.001)));
+    ensure("integers accept equivalent representation", alUndoValuesEqual(TYPE_S32, LLSD(2), LLSD(2.0)));
+    ensure("integers compare exactly", !alUndoValuesEqual(TYPE_S32, LLSD(2), LLSD(2.000001)));
+    ensure("unsigned integers compare exactly", !alUndoValuesEqual(TYPE_U32, LLSD(10), LLSD(11)));
+    ensure("booleans compare exactly", !alUndoValuesEqual(TYPE_BOOLEAN, LLSD(true), LLSD(false)));
+    ensure("strings compare exactly", !alUndoValuesEqual(TYPE_STRING, LLSD("1"), LLSD("1.0")));
+    LLSD a = LLSD::emptyArray(), b = LLSD::emptyArray();
+    a.append(1); a.append(0.1); a.append(0.5);
+    b.append(1.0); b.append(F64(F32(0.1))); b.append(0.5);
+    ensure("colours compare each component", alUndoValuesEqual(TYPE_COL3, a, b));
+    ensure("vectors compare each component", alUndoValuesEqual(TYPE_VEC3, a, b));
+    b[2] = 0.51;
+    ensure("component conflict is preserved", !alUndoValuesEqual(TYPE_COL3, a, b));
+    b.append(1.0);
+    ensure("component counts must match", !alUndoValuesEqual(TYPE_VEC3, a, b));
+}
+
+template<> template<>
+void alsettingsundohistory_object::test<13>()
+{
+    ALSettingsUndoHistoryModel exposure, kit;
+    U64 action = 0;
+    {
+        ALScopedUndoSequence group;
+        action = alNextUndoSequence();
+        exposure.beginBatch("Reset page");
+        kit.beginBatch("Reset page");
+        exposure.record("RenderExposure", "Exposure", 1.0, 2.0, 1000);
+        kit.record("Tonemap", "Tonemap", 0, 1, 1001);
+        {
+            ALScopedUndoSequence nested;
+            exposure.record("Sun", "Sun", 0.0, 1.0, 1002);
+            ensure_equals("nested actions retain the group", alNextUndoSequence(), action);
+        }
+        exposure.endBatch();
+        kit.endBatch();
+    }
+    ensure_equals("owned portion uses action sequence", exposure.stepSequence(false), action);
+    ensure_equals("kit portion uses action sequence", kit.stepSequence(false), action);
+    ensure("next independent action is newer", alNextUndoSequence() > action);
+    ALSettingsUndoHistoryModel::Step step;
+    {
+        ALScopedUndoSequence replay;
+        ensure("undo owned portion", exposure.takeUndo(step));
+        ensure("undo kit portion", kit.takeUndo(step));
+    }
+    ensure_equals("redo retains one shared group", exposure.stepSequence(true), kit.stepSequence(true));
+    {
+        ALScopedUndoSequence replay;
+        ensure("redo kit portion", kit.takeRedo(step));
+        ensure("redo owned portion", exposure.takeRedo(step));
+    }
+    ensure_equals("repeated undo retains one shared group", exposure.stepSequence(false), kit.stepSequence(false));
+    ensure("compound action leaves no earlier owned step", exposure.takeUndo(step) && !exposure.canUndo());
+    ensure("compound action leaves no earlier kit step", kit.takeUndo(step) && !kit.canUndo());
 }
 }

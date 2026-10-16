@@ -3495,14 +3495,18 @@ void LLActorMover::applyState(const LLUUID& key, const PathState& st)
 
 void LLActorMover::snapshotForUndo(const LLUUID& actor_id)
 {
-    if (ALKitPage* page = dynamic_cast<ALKitPage*>(ALKitHistory::inputPage()))
+    snapshotForUndo(actor_id, ALKitHistory::inputPage());
+}
+
+void LLActorMover::snapshotForUndo(const LLUUID& actor_id, LLView* owner)
+{
+    if (ALKitPage* page = dynamic_cast<ALKitPage*>(owner))
         page->historyEdited(true);
     ++mPathRevision;
     const LLUUID key = path_key(actor_id);
     EditHistory& h = mHistory[key];
     h.mUndo.push_back(captureState(key));
-    h.mUndo.back().mUndoOwner = ALKitHistory::inputPage()
-        ? ALKitHistory::inputPage()->getHandle() : LLHandle<LLView>();
+    h.mUndo.back().mUndoOwner = owner ? owner->getHandle() : LLHandle<LLView>();
     h.mUndo.back().mUndoSequence = alNextUndoSequence();
     if ((S32)h.mUndo.size() > UNDO_DEPTH)
     {

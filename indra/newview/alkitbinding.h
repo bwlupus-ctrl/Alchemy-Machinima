@@ -22,6 +22,7 @@ public:
     virtual LLSD                        get() const        = 0;
     virtual LLSD                        getDefault() const = 0;
     virtual void                        set(const LLSD&)   = 0;
+    virtual void                        replay(const LLSD& value) { set(value); }
     virtual bool                        canSet() const { return true; }
     virtual bool                        hasDefault() const { return true; }
     virtual bool                        isDefault(S32 decimals) const;
@@ -51,6 +52,7 @@ public:
     LLSD                        get() const override;
     LLSD                        getDefault() const override { return mDefault; }
     void                        set(const LLSD&) override;
+    void                        replay(const LLSD&) override;
     boost::signals2::connection connectChanged(std::function<void()>) override;
     std::string                 describe() const override { return "Widget"; }
 

@@ -3,11 +3,37 @@
 
 #include "stdtypes.h"
 
-// UI histories share one clock, including steps still inside an open gesture.
-inline U64 alNextUndoSequence()
+inline U64& alUndoSequenceClock()
 {
     static U64 sequence = 0;
-    return ++sequence;
+    return sequence;
 }
+
+inline U64& alUndoSequenceGroup()
+{
+    static U64 group = 0;
+    return group;
+}
+
+// UI histories share one clock; compound actions and their replays share one group.
+inline U64 alNextUndoSequence()
+{
+    return alUndoSequenceGroup() ? alUndoSequenceGroup() : ++alUndoSequenceClock();
+}
+
+class ALScopedUndoSequence
+{
+public:
+    ALScopedUndoSequence() : mPrevious(alUndoSequenceGroup())
+    {
+        if (!mPrevious)
+            alUndoSequenceGroup() = ++alUndoSequenceClock();
+    }
+    ~ALScopedUndoSequence() { alUndoSequenceGroup() = mPrevious; }
+    ALScopedUndoSequence(const ALScopedUndoSequence&) = delete;
+    ALScopedUndoSequence& operator=(const ALScopedUndoSequence&) = delete;
+private:
+    U64 mPrevious;
+};
 
 #endif

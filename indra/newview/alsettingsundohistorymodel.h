@@ -10,6 +10,7 @@
 #include "stdtypes.h"
 
 #include <cstddef>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -46,8 +47,9 @@ public:
 
     bool canUndo() const;
     bool canRedo() const;
-    bool takeUndo(Step& step);
-    bool takeRedo(Step& step);
+    using replay_filter_t = std::function<bool(const Change&)>;
+    bool takeUndo(Step& step, const replay_filter_t& filter = {});
+    bool takeRedo(Step& step, const replay_filter_t& filter = {});
 
     std::string undoLabel() const;
     std::string redoLabel() const;

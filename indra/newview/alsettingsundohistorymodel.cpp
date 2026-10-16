@@ -115,7 +115,7 @@ bool ALSettingsUndoHistoryModel::canRedo() const
     return mBatchDepth == 0 && mPending.mChanges.empty() && !mRedo.empty();
 }
 
-bool ALSettingsUndoHistoryModel::takeUndo(Step& step)
+bool ALSettingsUndoHistoryModel::takeUndo(Step& step, const replay_filter_t& filter)
 {
     if (mBatchDepth != 0)
     {
@@ -129,13 +129,18 @@ bool ALSettingsUndoHistoryModel::takeUndo(Step& step)
     }
     step = std::move(mUndo.back());
     mUndo.pop_back();
-    mRedo.push_back(step);
-    mRedo.back().mSequence = alNextUndoSequence();
+    if (filter)
+        std::erase_if(step.mChanges, [&filter](const Change& change) { return !filter(change); });
+    if (!step.mChanges.empty())
+    {
+        mRedo.push_back(step);
+        mRedo.back().mSequence = alNextUndoSequence();
+    }
     changed();
     return true;
 }
 
-bool ALSettingsUndoHistoryModel::takeRedo(Step& step)
+bool ALSettingsUndoHistoryModel::takeRedo(Step& step, const replay_filter_t& filter)
 {
     if (!canRedo())
     {
@@ -143,8 +148,13 @@ bool ALSettingsUndoHistoryModel::takeRedo(Step& step)
     }
     step = std::move(mRedo.back());
     mRedo.pop_back();
-    pushUndo(Step(step), false);
-    mUndo.back().mSequence = alNextUndoSequence();
+    if (filter)
+        std::erase_if(step.mChanges, [&filter](const Change& change) { return !filter(change); });
+    if (!step.mChanges.empty())
+    {
+        pushUndo(Step(step), false);
+        mUndo.back().mSequence = alNextUndoSequence();
+    }
     changed();
     return true;
 }

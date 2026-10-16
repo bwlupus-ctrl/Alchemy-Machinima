@@ -67,6 +67,7 @@ public:
     LLPanel*                    ensurePageBuilt(const std::string& page_name);
     ALKitPage*                  currentKitPage() const;
     ALKitPage*                  findBuiltPage(const std::string&) const;
+    ALKitRow*                   resolveHistoryRow(const std::string& page, const std::string& widget);
     std::string                 currentPageKey() const;
     std::string                 pageKeyAt(S32, S32) const;
     std::string                 pagePathLabel(const std::string&) const;

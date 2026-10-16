@@ -644,7 +644,12 @@ void ALFloaterLightBox::updateSelectedLightPanel()
     const bool force_ctrl = identity_changed;
 
     setEnabledIfChanged(cast_cb, is_projector);
-    setEnabledIfChanged(vol_cb, is_projector);
+    // Read back the same local flag for VCam-bound point lights as spotlights.
+    const bool has_volumetric = pVol && (is_projector ||
+        LLPipeline::hasVCamVolumetricOverride(sel_id));
+    setEnabledIfChanged(vol_cb, has_volumetric);
+    setValueIfChanged(vol_cb, LLSD(has_volumetric &&
+        LLPipeline::isVolumetricShaftEnabled(sel_id)), true);
     setEnabledIfChanged(cap_btn, is_projector);
     setEnabledIfChanged(gobo_pattern, is_projector);
     setEnabledIfChanged(gobo_anim, is_projector);
@@ -662,7 +667,6 @@ void ALFloaterLightBox::updateSelectedLightPanel()
         const LLUUID& id = pObj->getID();
         // Checked = casts shadows (default), i.e. NOT in the opt-out set.
         setValueIfChanged(cast_cb, LLSD(!LLPipeline::isProjectorNoShadow(id)), true);
-        setValueIfChanged(vol_cb, LLSD(LLPipeline::isVolumetricShaftEnabled(id)), true);
         setEnabledIfChanged(clr_btn, LLPipeline::hasVolumetricShaftOverride(id) ||
                                      LLPipeline::hasGoboOverride(id));
         const LLPipeline::GoboOverride gobo = LLPipeline::getGoboOverride(id);
@@ -689,14 +693,15 @@ void ALFloaterLightBox::updateSelectedLightPanel()
     else
     {
         setValueIfChanged(cast_cb, LLSD(false), true);
-        setValueIfChanged(vol_cb, LLSD(false), true);
         setEnabledIfChanged(clr_btn, false);
         setValueIfChanged(gobo_pattern, LLSD(-1), force_ctrl);
         setValueIfChanged(gobo_anim, LLSD(0), force_ctrl);
         setValueIfChanged(gobo_speed, LLSD(1.0), force_ctrl);
         setValueIfChanged(gobo_zoom, LLSD(1.0), force_ctrl);
         setValueIfChanged(gobo_dispersion, LLSD(0.0), force_ctrl);
-        setTextIfChanged(status, std::string("Select a spotlight projector in-world to edit it here."), true);
+        setTextIfChanged(status, std::string(has_volumetric
+            ? "Editing selected VCam projector."
+            : "Select a spotlight projector in-world to edit it here."), true);
     }
 }
 

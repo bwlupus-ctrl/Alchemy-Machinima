@@ -1289,6 +1289,7 @@ set(viewer_HEADER_FILES
     alfloaterultimatediopter.h
     alvcambonepov.h
     alvcambonepovmath.h
+    alvcamautovol.h
     alweathermodel.h
     alghostgroupmodel.h
     alghostinteractionstate.h
@@ -2958,6 +2959,13 @@ if (BUILD_TESTING)
 
   # Header-only VP1/VP2 projector schema and demand-policy contract.
   LL_ADD_INTEGRATION_TEST(llprismprojector
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # Temporary volumetric ownership policy, also verified by static_assert.
+  LL_ADD_INTEGRATION_TEST(alvcamautovol
     ""
     "${test_libs}"
     "${test_project}"

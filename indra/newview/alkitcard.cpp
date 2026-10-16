@@ -27,6 +27,7 @@
 #include "llnotificationsutil.h"
 #include "llprismlens.h"
 #include "alkitqol.h"
+#include "alsettingsundohistory.h"
 #include <algorithm>
 static LLDefaultChildRegistry::Register<ALKitCard>   r("kit_card");
 static LLDefaultChildRegistry::Register<ALKitOption> ro("kit_option");
@@ -320,6 +321,8 @@ bool ALKitCard::postBuild()
     mReset->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
         {
+            ALKitHistory::ScopedSource source(this);
+            ALExposureSettingsHistory::ScopedBatch batch("Reset " + mTitle);
             std::string page;
             for (LLView* v = getParent(); v; v = v->getParent())
                 if (ALKitPage* p = dynamic_cast<ALKitPage*>(v))
@@ -382,6 +385,8 @@ bool ALKitCard::postBuild()
         ip.label             = "Reset all " + mSelectorLabel + "s";
         ip.on_click.function = [this](LLUICtrl*, const LLSD&)
         {
+            ALKitHistory::ScopedSource source(this);
+            ALExposureSettingsHistory::ScopedBatch batch("Reset all " + mSelectorLabel + "s");
             std::string page;
             for (LLView* v = getParent(); v; v = v->getParent())
                 if (ALKitPage* p = dynamic_cast<ALKitPage*>(v))
@@ -581,6 +586,8 @@ void ALKitCard::pasteSettings()
 {
     if (sCardClipboard.type != mCopyType || !sCardClipboard.values.isArray())
         return;
+    ALKitHistory::ScopedSource source(this);
+    ALExposureSettingsHistory::ScopedBatch batch("Paste " + mTitle);
     std::string page;
     for (LLView* view = getParent(); view; view = view->getParent())
         if (ALKitPage* owner = dynamic_cast<ALKitPage*>(view))
@@ -607,6 +614,7 @@ void ALKitCard::pasteSettings()
     S32 pasted = 0;
     S32 matched = 0;
     S32 disabled = 0;
+    std::vector<std::pair<ALKitRow*, LLSD>> pending;
     for (ALKitRow* row : mRows)
     {
         if (!row || !rowBranchVisible(row, this) || !row->control())
@@ -616,13 +624,39 @@ void ALKitCard::pasteSettings()
                 ALKitQol::pasteTypesCompatible((*it)["value"], row->boundValue()))
             {
                 ++matched;
-                if (!row->enabledForEdit())
-                    ++disabled;
-                else if (row->setBoundValue((*it)["value"]))
-                    ++pasted;
+                pending.emplace_back(row, (*it)["value"]);
                 break;
             }
     }
+    std::stable_sort(pending.begin(), pending.end(), [](const auto& a, const auto& b)
+    {
+        auto driver = [](ALKitRow* row)
+        {
+            const std::string& kind = row->meta().kind;
+            return kind == "toggle" || kind == "combo" || kind == "segmented";
+        };
+        return driver(a.first) && !driver(b.first);
+    });
+    // Drivers can enable later rows (or rows earlier in the authored order). Refresh
+    // synchronously after every write and retry dependents until no more can apply.
+    bool progress;
+    do
+    {
+        progress = false;
+        for (auto it = pending.begin(); it != pending.end();)
+        {
+            if (!it->first->enabledForEdit())
+            {
+                ++it;
+                continue;
+            }
+            if (it->first->setBoundValue(it->second))
+                ++pasted;
+            it = pending.erase(it);
+            progress = true;
+        }
+    } while (progress && !pending.empty());
+    disabled = static_cast<S32>(pending.size());
     if (!matched)
         return;
     LLNotificationsUtil::add("SystemMessageTip",

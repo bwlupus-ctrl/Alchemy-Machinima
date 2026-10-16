@@ -415,6 +415,13 @@ public:
     static void  toggleVolumetricShaft(const LLUUID& id);
     static bool  isVolumetricShaftEnabled(const LLUUID& id);
     static void  clearVolumetricShafts();
+    // Temporary viewer-local VCam overrides. Return true when acquire enabled
+    // the per-light flag or master; release restores only untouched auto edits.
+    static bool  acquireVCamVolumetrics(const LLUUID& id);
+    static void  releaseVCamVolumetrics(const LLUUID& id);
+    static bool  hasVCamVolumetricOverride(const LLUUID& id);
+    static bool  isVCamVolumetricAutoEnabled(const LLUUID& id);
+    static void  noteVolumetricShaftEdit(const LLUUID& id);
     U32          actorOnlyVolumetricLightCount();
 
     // [BDMerge G3.3 Batch 3] Session-only per-projector "cast shadows" opt-OUT.

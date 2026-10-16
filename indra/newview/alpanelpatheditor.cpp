@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alkithistory.h"
 
 #include "alpanelpatheditor.h"
 
@@ -1326,7 +1327,7 @@ void ALPanelPathEditor::onClickAdd()
         return;
     }
     claimEdit(); // [DirFix]
-    m.snapshotForUndo(mActor);
+    m.snapshotForUndo(mActor, mKitPage);
     m.appendWaypointHere(mActor);       // ground-snaps at the actor's feet
     if (const LLActorMover::Path* p = m.getPath(mActor); p && !p->mNodes.empty())
     {
@@ -1344,7 +1345,7 @@ void ALPanelPathEditor::onClickInsert()
         return;
     }
     claimEdit(); // [DirFix]
-    m.snapshotForUndo(mActor);
+    m.snapshotForUndo(mActor, mKitPage);
     const S32 n = (S32)p->mNodes.size();
     if (sel + 1 < n)
     {
@@ -1377,7 +1378,7 @@ void ALPanelPathEditor::onClickDelete()
         return;
     }
     claimEdit(); // [DirFix]
-    m.snapshotForUndo(mActor);
+    m.snapshotForUndo(mActor, mKitPage);
     if (m.deleteWaypoint(mActor, sel))
     {
         const LLActorMover::Path* p = m.getPath(mActor);
@@ -1420,7 +1421,7 @@ bool ALPanelPathEditor::clearCallback(const LLSD& notification, const LLSD& resp
     }
     const LLUUID actor = notification["payload"]["actor_id"].asUUID();
     LLActorMover& m = LLActorMover::instance();
-    m.snapshotForUndo(actor);
+    m.snapshotForUndo(actor, mKitPage);
     m.clearPath(actor);
     if (mActor == actor && ownsEdit()) // [DirFix] dialog may outlive ownership
     {
@@ -1524,7 +1525,7 @@ void ALPanelPathEditor::onClickReverse()
     {
         return;
     }
-    m.snapshotForUndo(mActor);
+    m.snapshotForUndo(mActor, mKitPage);
     m.reversePath(mActor);
 }
 
@@ -1535,7 +1536,7 @@ void ALPanelPathEditor::onClickMirror()
     {
         return;
     }
-    m.snapshotForUndo(mActor);
+    m.snapshotForUndo(mActor, mKitPage);
     m.mirrorPath(mActor);
 }
 
@@ -1546,7 +1547,7 @@ void ALPanelPathEditor::onClickLoopClose()
     {
         return;
     }
-    m.snapshotForUndo(mActor);
+    m.snapshotForUndo(mActor, mKitPage);
     m.loopClosePath(mActor);
 }
 
@@ -1562,7 +1563,7 @@ void ALPanelPathEditor::onClickCopyTo()
     {
         return;
     }
-    m.snapshotForUndo(dst);     // the destination's overwrite is undoable on that actor
+    m.snapshotForUndo(dst, mKitPage);     // the destination's overwrite is undoable on that actor
     m.copyPathTo(mActor, dst);
 }
 
@@ -1614,7 +1615,7 @@ void ALPanelPathEditor::onClickCenterPrimitive()
     {
         return;
     }
-    mover.snapshotForUndo(mActor);
+    mover.snapshotForUndo(mActor, mKitPage);
     mover.centerPathPrimitiveOnActor(mActor);
 }
 
@@ -1674,15 +1675,15 @@ void ALPanelPathEditor::refreshEditButtons()
     const bool can_redo = page ? page->canUndoOnPage(true) : have_actor && m.canRedoPath(mActor) && !walking;
 
     setEnabledIfChanged(mUndoBtn, can_undo);
-    setToolTipIfChanged(mUndoBtn, walking
-        ? std::string("Stop the walk to undo path edits")
-        : (can_undo ? std::string("Undo the last path edit")
-                    : std::string("Nothing to undo")));
+    setToolTipIfChanged(mUndoBtn, can_undo
+        ? std::string("Undo the last change on this page")
+        : (walking ? std::string("Stop the walk to undo path edits")
+                   : std::string("Nothing to undo")));
     setEnabledIfChanged(mRedoBtn, can_redo);
-    setToolTipIfChanged(mRedoBtn, walking
-        ? std::string("Stop the walk to redo path edits")
-        : (can_redo ? std::string("Redo the last undone edit")
-                    : std::string("Nothing to redo")));
+    setToolTipIfChanged(mRedoBtn, can_redo
+        ? std::string("Redo the last undone change on this page")
+        : (walking ? std::string("Stop the walk to redo path edits")
+                   : std::string("Nothing to redo")));
 
     // one shared reason for the structural ops (walk active / no walkable path)
     const std::string reason = walking
@@ -1999,7 +2000,7 @@ void ALPanelPathEditor::onClickSetCam()
     {
         trans = mCamTransCombo ? mCamTransCombo->getValue().asInteger() : 1;
     }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::instance().setNodeCamera(mActor, sel, pos_global, rot, fov,
                                            llclamp(trans, 0, 1));
 }
@@ -2013,7 +2014,7 @@ void ALPanelPathEditor::onClickClearCam()
     }
     // if we were previewing this shot, hand the camera back before removing it
     LLPathCamera::instance().stopPreview();
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::instance().clearNodeCamera(mActor, sel);
 }
 
@@ -2022,7 +2023,7 @@ void ALPanelPathEditor::onCamTransitionCommit()
     const S32 sel = listSelectedNode();
     if (mActor.notNull() && sel >= 0)
     {
-        LLActorMover::instance().snapshotForUndo(mActor);
+        LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
         LLActorMover::instance().setNodeCamTransition(mActor, sel,
             mCamTransCombo->getValue().asInteger());
     }
@@ -2060,7 +2061,7 @@ void ALPanelPathEditor::onNodeHeightCommit()
     const S32 sel = listSelectedNode();
     if (mActor.notNull() && sel >= 0)
     {
-        LLActorMover::instance().snapshotForUndo(mActor);
+        LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
         LLActorMover::instance().setNodeGroundOffset(mActor, sel, (F32)mNodeHeight->getValue().asReal());
     }
 }
@@ -2070,7 +2071,7 @@ void ALPanelPathEditor::onNodeDwellCommit()
     const S32 sel = listSelectedNode();
     if (mActor.notNull() && sel >= 0)
     {
-        LLActorMover::instance().snapshotForUndo(mActor);
+        LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
         LLActorMover::instance().setNodeDwell(mActor, sel, (F32)mNodeDwell->getValue().asReal());
     }
 }
@@ -2080,7 +2081,7 @@ void ALPanelPathEditor::onNodeSpeedCommit()
     const S32 sel = listSelectedNode();
     if (mActor.notNull() && sel >= 0)
     {
-        LLActorMover::instance().snapshotForUndo(mActor);
+        LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
         LLActorMover::instance().setNodeSpeed(mActor, sel, (F32)mNodeSpeed->getValue().asReal());
     }
 }
@@ -2119,7 +2120,7 @@ void ALPanelPathEditor::onNodeCornerRadiusCommit()
             return;
         }
     }
-    mover.snapshotForUndo(mActor);
+    mover.snapshotForUndo(mActor, mKitPage);
     mover.setNodeCornerRadius(mActor, sel, radius);
 }
 
@@ -2141,7 +2142,7 @@ void ALPanelPathEditor::onNodeAnimCommit()
     {
         return;         // not a valid UUID: leave the node anim unchanged
     }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::instance().setNodeAnim(mActor, sel, id);
 }
 
@@ -2151,7 +2152,7 @@ void ALPanelPathEditor::onNodeAnimCommit()
 void ALPanelPathEditor::onPathSpeedCommit()
 {
     if (mActor.isNull()) { return; }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
     p.mSpeed = llmax(0.05f, (F32)mPathSpeed->getValue().asReal());
     p.markDirty();
@@ -2160,7 +2161,7 @@ void ALPanelPathEditor::onPathSpeedCommit()
 void ALPanelPathEditor::onPathCadenceCommit()
 {
     if (mActor.isNull()) { return; }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
     p.mCadence = llclamp((F32)mCadence->getValue().asReal(), 0.5f, 12.f);
 }
@@ -2183,7 +2184,7 @@ void ALPanelPathEditor::onPathTensionCommit()
     {
         return;
     }
-    mover.snapshotForUndo(mActor);
+    mover.snapshotForUndo(mActor, mKitPage);
     p.mTension = llclamp((F32)mTension->getValue().asReal(), 0.f, 1.f);
     p.markDirty();      // geometry shape changed -> arc-length rebuild
 }
@@ -2191,7 +2192,7 @@ void ALPanelPathEditor::onPathTensionCommit()
 void ALPanelPathEditor::onPathEaseInCommit()
 {
     if (mActor.isNull()) { return; }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
     p.mEaseIn = llmax(0.f, (F32)mEaseIn->getValue().asReal());
     p.markDirty();
@@ -2200,7 +2201,7 @@ void ALPanelPathEditor::onPathEaseInCommit()
 void ALPanelPathEditor::onPathEaseOutCommit()
 {
     if (mActor.isNull()) { return; }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
     p.mEaseOut = llmax(0.f, (F32)mEaseOut->getValue().asReal());
     p.markDirty();
@@ -2209,7 +2210,7 @@ void ALPanelPathEditor::onPathEaseOutCommit()
 void ALPanelPathEditor::onPathGroundFollowCommit()
 {
     if (mActor.isNull()) { return; }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
     p.mGroundFollow = mGroundFollow->get();
     p.markDirty();
@@ -2218,7 +2219,7 @@ void ALPanelPathEditor::onPathGroundFollowCommit()
 void ALPanelPathEditor::onPathPitchCommit()
 {
     if (mActor.isNull()) { return; }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
     p.mPitchToSlope = mPitch->get();
     p.markDirty();
@@ -2227,7 +2228,7 @@ void ALPanelPathEditor::onPathPitchCommit()
 void ALPanelPathEditor::onPathAirborneCommit()
 {
     if (mActor.isNull()) { return; }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
     p.mAirborne = mAirborne->get();
     if (p.mAirborne)
@@ -2240,7 +2241,7 @@ void ALPanelPathEditor::onPathAirborneCommit()
 void ALPanelPathEditor::onPathEndCommit()
 {
     if (mActor.isNull()) { return; }
-    LLActorMover::instance().snapshotForUndo(mActor);
+    LLActorMover::instance().snapshotForUndo(mActor, mKitPage);
     LLActorMover::Path& p = LLActorMover::instance().editPath(mActor);
     switch (mEndCombo->getValue().asInteger())
     {
@@ -2298,12 +2299,13 @@ void ALPanelPathEditor::onPathShapeCommit()
     }
     LLPathCamera::instance().stopPreview();
     exitEditMode();
-    mover.snapshotForUndo(mActor);
+    mover.snapshotForUndo(mActor, mKitPage);
     mover.setPathShape(mActor, mShapeCombo->getValue().asInteger());
 }
 
 void ALPanelPathEditor::onClickFitHalfArc()
 {
+    ALKitHistory::ScopedSource source(mKitPage ? static_cast<LLView*>(mKitPage) : this);
     LLActorMover& mover = LLActorMover::instance();
     if (mActor.isNull() || mover.isPathWalking(mActor)) { return; }
     LLPathCamera::instance().stopPreview();
@@ -2319,6 +2321,7 @@ void ALPanelPathEditor::onClickFitHalfArc()
 
 void ALPanelPathEditor::onClickFitSine()
 {
+    ALKitHistory::ScopedSource source(mKitPage ? static_cast<LLView*>(mKitPage) : this);
     LLActorMover& mover = LLActorMover::instance();
     if (mActor.isNull() || mover.isPathWalking(mActor)) { return; }
     LLPathCamera::instance().stopPreview();
@@ -2342,7 +2345,7 @@ void ALPanelPathEditor::onPrimitiveCommit()
     {
         return;
     }
-    mover.snapshotForUndo(mActor);
+    mover.snapshotForUndo(mActor, mKitPage);
     LLActorMover::Path& path = mover.editPath(mActor);
     path.mPrimitiveRadiusX = llclamp(
         static_cast<F32>(mPrimitiveRadiusX->getValue().asReal()), 0.01f, 10000.f);

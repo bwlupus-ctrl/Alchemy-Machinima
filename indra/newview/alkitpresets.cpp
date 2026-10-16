@@ -2,6 +2,7 @@
 #include "alkitpresets.h"
 #include "alkitbinding.h"
 #include "alkithistory.h"
+#include "alsettingsundohistory.h"
 #include "alkitshell.h"
 #include "llbutton.h"
 #include "llcombobox.h"
@@ -322,6 +323,7 @@ void ALKitPresetStrip::onSelect()
     {
         id.erase(0, 7);
     }
+    ALExposureSettingsHistory::ScopedBatch batch("Apply preset");
     if (ALKitShell* shell = ALKitShell::find(this))
     {
         shell->history().beginGesture(ALKitHistory::MOUSE, mPage, "Apply preset");

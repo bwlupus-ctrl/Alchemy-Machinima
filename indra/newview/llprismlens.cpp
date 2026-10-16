@@ -11,6 +11,7 @@
 
 #include "aldirectorswitchermodel.h"
 #include "alcinelightrigmanager.h"
+#include "alobjectproperties.h"
 #include "lldirectorcast.h"
 
 #include "llappviewer.h"
@@ -1909,6 +1910,7 @@ struct PrismProjector
     LLPrismLens::EProjectorTarget mTarget =
         LLPrismLens::EProjectorTarget::OBJECT;
     LLUUID mObjectId;
+    LLUUID mVolumetricObjectId; // acquired local override, including rig rebuilds
     U8 mRigSlot = 0;
     U8 mRigLight = 0;
     bool mLocalProjector = false;
@@ -1919,6 +1921,37 @@ struct PrismProjector
     std::string mQuarantineReason;
     U32 mBoundFrame = 0;
 };
+
+void releaseProjectorVolumetrics(PrismProjector& projector)
+{
+    if (projector.mVolumetricObjectId.isNull()) return;
+    LLPipeline::releaseVCamVolumetrics(projector.mVolumetricObjectId);
+    projector.mVolumetricObjectId.setNull();
+}
+
+void syncProjectorVolumetrics(PrismProjector& projector, LLVOVolume* volume)
+{
+    const LLUUID target = volume ? volume->getID() : LLUUID::null;
+    if (projector.mVolumetricObjectId == target) return;
+    releaseProjectorVolumetrics(projector);
+    if (target.isNull()) return;
+    projector.mVolumetricObjectId = target;
+    if (!LLPipeline::acquireVCamVolumetrics(target)) return;
+
+    const ALObjectPropertiesCache::ServerProps* properties =
+        ALObjectPropertiesCache::instance().get(target);
+    LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->findNode(volume);
+    std::string name = properties && !properties->mName.empty()
+        ? properties->mName : (node ? node->mName : std::string());
+    if (name.empty())
+    {
+        const LLVector3 position = volume->getPositionRegion();
+        name = llformat("Light at %.1f, %.1f, %.1f", position.mV[VX],
+                        position.mV[VY], position.mV[VZ]);
+    }
+    LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE",
+        "Turned on volumetric projector for " + name + " so the feed shows."));
+}
 
 LLVOVolume* resolveRigProjector(U8 rig_slot, U8 rig_light)
 {
@@ -2292,6 +2325,7 @@ public:
         projector.mRuntime.mHealth = LLPrismLens::EDisplayHealth::READY;
         projector.mBoundFrame = gFrameCount;
         mProjectors[projector_slot] = projector;
+        updateProjectorRuntime(mProjectors[projector_slot]);
         ++mLenses[capture_slot].mProjectorCount;
         gPipeline.ensurePrismProjectorFeed(projector.mHandle,
                                            settings.mResolution,
@@ -2360,6 +2394,7 @@ public:
             : LLPrismLens::EDisplayHealth::OFFLINE;
         projector.mBoundFrame = gFrameCount;
         mProjectors[projector_slot] = projector;
+        updateProjectorRuntime(mProjectors[projector_slot]);
         ++mLenses[capture_slot].mProjectorCount;
         gPipeline.ensurePrismProjectorFeed(projector.mHandle,
                                            settings.mResolution,
@@ -2829,6 +2864,7 @@ public:
         }
         for (PrismProjector& projector : mProjectors)
         {
+            releaseProjectorVolumetrics(projector);
             projector = PrismProjector();
         }
         mGateSettings = LLPrismLens::GateSettings();
@@ -5525,6 +5561,7 @@ public:
         PrismProjector& projector = mProjectors[slot];
         const U32 capture_slot = projector.mCaptureSlot;
         gPipeline.releasePrismProjectorFeed(projector.mHandle);
+        releaseProjectorVolumetrics(projector);
         projector = PrismProjector();
         if (capture_slot < LLPrismLens::MAX_CAPTURES &&
             mLenses[capture_slot].mOccupied)
@@ -5593,6 +5630,12 @@ public:
         {
             local_projector = !volume->isLightSpotlight();
         }
+        // Acquire only on target transitions, so per-frame refresh never
+        // re-enables a flag the user subsequently turned off. A capture switch
+        // on the same light retains the existing override and its auto marker.
+        // An offline/quarantined binding still owns its assignment. Retain the
+        // marker across outages so coming back cannot override a user edit.
+        if (!quarantined) syncProjectorVolumetrics(projector, volume);
         const bool changed = projector.mRuntime.mHealth != health ||
             projector.mRuntime.mReason != reason ||
             was_quarantined != quarantined || projector.mQuarantineReason != reason ||
@@ -7546,7 +7589,10 @@ public:
         for (PrismInstance& capture : mLenses) capture = PrismInstance();
         for (PrismDisplay& display : mDisplays) display = PrismDisplay();
         for (PrismProjector& projector : mProjectors)
+        {
+            releaseProjectorVolumetrics(projector);
             projector = PrismProjector();
+        }
         gPipeline.releasePrismProjectorFeeds();
 
         for (U32 slot = 0; slot < parsed_captures.size(); ++slot)
@@ -7652,6 +7698,8 @@ public:
             routeGateDisplays();
             ++mGate.mGateRevision;
         }
+        for (PrismProjector& projector : mProjectors)
+            if (projector.mOccupied) updateProjectorRuntime(projector);
         mActiveSlot = -1;
         mLastRenderedSlot = -1;
         resetRuntimeHistory();
@@ -8218,6 +8266,7 @@ private:
                 }
                 else
                 {
+                    releaseProjectorVolumetrics(projector);
                     projector = PrismProjector();
                 }
             }

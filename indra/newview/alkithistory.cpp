@@ -5,6 +5,7 @@
 #include "alkitrow.h"
 #include "alkitshell.h"
 #include "alundosequence.h"
+#include "alundovalue.h"
 #include "llcontrol.h"
 #include "lleventtimer.h"
 #include "llfloaterdirector.h"
@@ -22,7 +23,8 @@
 static S32 sKitHistorySuspend     = 0;
 static F64 sKitHistoryKeyTime     = 0.;
 static F64 sKitHistoryPointerTime = 0.;
-static LLView* sKitInputSource = nullptr;
+static LLHandle<LLView> sKitInputSource;
+static LLHandle<LLView> sKitBindingSource;
 static bool sKitInputSourceSet = false;
 
 namespace
@@ -56,30 +58,34 @@ std::string rowPage(LLView* view)
 }
 
 ALKitHistory::ScopedSource::ScopedSource(LLView* source) :
-    mPrevious(sKitInputSource), mPreviousSet(sKitInputSourceSet)
-{ sKitInputSource = source; sKitInputSourceSet = true; }
+    mPrevious(sKitInputSource), mPreviousBinding(sKitBindingSource), mPreviousSet(sKitInputSourceSet)
+{
+    // Nested source-row writes retain the page on which the user started the action.
+    if (!sKitInputSourceSet)
+        sKitInputSource = source ? source->getHandle() : LLHandle<LLView>();
+    sKitBindingSource = source ? source->getHandle() : LLHandle<LLView>();
+    sKitInputSourceSet = true;
+}
 ALKitHistory::ScopedSource::~ScopedSource()
-{ sKitInputSource = mPrevious; sKitInputSourceSet = mPreviousSet; }
+{ sKitInputSource = mPrevious; sKitBindingSource = mPreviousBinding; sKitInputSourceSet = mPreviousSet; }
 
 LLView* ALKitHistory::inputPage()
 {
-    LLView* view = sKitInputSource;
+    LLView* view = sKitInputSource.get();
     if (!sKitInputSourceSet && !view)
         view = dynamic_cast<LLView*>(gFocusMgr.getMouseCapture());
     if (!sKitInputSourceSet && !view)
         view = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
     for (; view; view = view->getParent())
     {
-        if (ALKitRow* row = dynamic_cast<ALKitRow*>(view))
-            if (row->sourceRow())
-                if (ALKitShell* shell = ALKitShell::find(row->sourceRow()))
-                    return shell->findBuiltPage(row->sourceRow()->meta().page_key);
         if (dynamic_cast<ALKitPage*>(view))
             return view;
+        if (ALKitShell* shell = dynamic_cast<ALKitShell*>(view))
+            return shell->currentKitPage(); // Search controls live outside the page tree.
     }
     // Shared controllers contain their kit page; tool sessions retain that controller.
-    if (sKitInputSourceSet && sKitInputSource)
-        for (auto it = sKitInputSource->beginTreeBFS(); it != sKitInputSource->endTreeBFS(); ++it)
+    if (sKitInputSourceSet && sKitInputSource.get())
+        for (auto it = sKitInputSource.get()->beginTreeBFS(); it != sKitInputSource.get()->endTreeBFS(); ++it)
             if (dynamic_cast<ALKitPage*>(*it))
                 return *it;
     return nullptr;
@@ -111,7 +117,8 @@ bool ALKitHistory::suspended()
 
 void ALKitHistory::beginGesture(EOrigin o, const std::string& p, const std::string& label)
 {
-    if (mOpen && mOrigin == o && mPage == p && (o == WHEEL || o == KEY))
+    if (mOpen && mOrigin == o && mPage == p && (o == WHEEL || o == KEY) &&
+        mOpen->context == currentContext(mOpen->context_page))
     {
         if (!label.empty() && mOpen->label.empty())
         {
@@ -129,6 +136,7 @@ void ALKitHistory::beginGesture(EOrigin o, const std::string& p, const std::stri
     mOpen->label            = label;
     mOpen->scene_generation = mGeneration;
     mOpen->context          = currentContext(p);
+    mOpen->context_page     = p;
     mCloseAt                = LLTimer::getTotalSeconds() + ((o == WHEEL || o == KEY) ? .5 : .35);
     if (!mTimer)
         mTimer = std::make_unique<GestureTimer>(this);
@@ -152,6 +160,9 @@ void ALKitHistory::watchSettings(const std::string& page, const std::vector<std:
 {
     for (const std::string& name : names)
     {
+        mSettingPages[name].insert(page);
+        if (mWatches.count(name))
+            continue; // One observer per setting; its owner is the input page, including proxies.
         auto& connections = mWatches[name];
         connections.emplace_back(ALKitSettingWatch::instance().watch(name,
                                                                      [this, page, name](const LLSD& value, const LLSD& old)
@@ -163,15 +174,22 @@ void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv,
 {
     if (suspended() || mReplaying || !c || oldv == newv)
         return;
-    const std::string page = rowPage(c);
+    ALKitPage* input = sKitInputSourceSet ? dynamic_cast<ALKitPage*>(inputPage()) : nullptr;
+    const std::string page = input ? input->pageKey() : rowPage(c);
     if (page.empty())
         return;
-    const bool standalone = !mOpen || mOpen->page != page;
+    const std::string binding_page = rowPage(c);
+    const std::string context = currentContext(binding_page);
+    const bool standalone = !mOpen || mOpen->page != page ||
+        (!mOpen->context.empty() && (mOpen->context_page != binding_page || mOpen->context != context));
     if (standalone)
         beginGesture(KEY, page, label);
+    mOpen->context_page = binding_page;
+    mOpen->context = context;
     Entry e;
     e.widget = true;
     e.key    = c->getName();
+    e.binding_page = binding_page;
     e.ctrl   = c->getHandle();
     e.oldv   = oldv;
     e.newv   = newv;
@@ -183,7 +201,8 @@ void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std
 {
     if (suspended() || mReplaying)
         return;
-    const std::string page = rowPage(owner);
+    ALKitPage* input = sKitInputSourceSet ? dynamic_cast<ALKitPage*>(inputPage()) : nullptr;
+    const std::string page = input ? input->pageKey() : rowPage(owner);
     if (page.empty())
         return;
     // A list command is one complete action, including a keyboard Add with no open gesture.
@@ -221,7 +240,24 @@ void ALKitHistory::captureSetting(const std::string& page, const std::string& na
         return;
     LLView*    owner       = mOwner.get();
     ALKitPage* source = dynamic_cast<ALKitPage*>(inputPage());
-    if (page != "chrome" && (!source || source->pageKey() != page || ALKitShell::find(source) != owner))
+    if (page != "chrome" && (!source || ALKitShell::find(source) != owner))
+        return;
+    const std::string action_page = source ? source->pageKey() : page;
+    std::string binding_page = action_page;
+    for (LLView* view = sKitBindingSource.get(); view; view = view->getParent())
+        if (ALKitRow* row = dynamic_cast<ALKitRow*>(view))
+        {
+            if (ALKitRow* original = row->sourceRow())
+                binding_page = original->meta().page_key;
+            else
+                binding_page = row->meta().page_key;
+            break;
+        }
+    // Retain the authored undo ownership gate. A proxy changes the input page,
+    // never whether its source row is eligible for kit history.
+    const auto pages = mSettingPages.find(name);
+    if (pages == mSettingPages.end() ||
+        (!pages->second.count(binding_page) && !pages->second.count("chrome")))
         return;
     LLView*    focus       = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
     const F64  now         = LLTimer::getTotalSeconds();
@@ -231,15 +267,15 @@ void ALKitHistory::captureSetting(const std::string& page, const std::string& na
     const bool pointer     = mOpen && (mOrigin == MOUSE || mOrigin == WHEEL);
     if (!pointer && !keyboard)
         return;
-    if (!mOpen || (page != "chrome" && mOpen->page != page))
+    if (!mOpen || (page != "chrome" && mOpen->page != action_page))
     {
-        beginGesture(KEY, page);
+        beginGesture(KEY, action_page);
     }
-    else if (mOrigin == KEY && mOpen->page == page)
+    else if (mOrigin == KEY && mOpen->page == action_page)
     {
         mCloseAt = now + .5;
     }
-    if (page != mOpen->page && page != "chrome")
+    if (action_page != mOpen->page && page != "chrome")
         return;
     Entry entry;
     entry.key  = name;
@@ -261,7 +297,7 @@ void ALKitHistory::addEntry(Entry entry, const std::string& supplied_label, cons
             page->historyEdited(false);
     for (Entry& existing : mOpen->entries)
     {
-        if (existing.widget == entry.widget && existing.key == entry.key)
+        if (existing.widget == entry.widget && existing.key == entry.key && existing.binding_page == entry.binding_page)
         {
             existing.newv = entry.newv;
             mOpen->sequence = alNextUndoSequence();
@@ -341,7 +377,7 @@ bool ALKitHistory::replay(Step& step, bool redo)
 {
     if (step.scene_generation != mGeneration)
         return false;
-    const std::string context = currentContext(step.page);
+    const std::string context = currentContext(step.context_page);
     if (!step.context.empty() && context != step.context)
     {
         LLSD args;
@@ -360,7 +396,7 @@ bool ALKitHistory::replay(Step& step, bool redo)
         if (!entry.widget)
         {
             LLControlVariable* control = gSavedSettings.getControl(entry.key).get();
-            if (!control || control->get() != (redo ? entry.oldv : entry.newv))
+            if (!control || !alUndoValuesEqual(control->type(), control->get(), redo ? entry.oldv : entry.newv))
                 conflicts.insert(entry.key);
         }
     step.entries.erase(std::remove_if(step.entries.begin(), step.entries.end(),
@@ -385,10 +421,21 @@ bool ALKitHistory::replay(Step& step, bool redo)
         const LLSD& value = redo ? entry.newv : entry.oldv;
         if (entry.widget)
         {
-            if (LLUICtrl* ctrl = entry.ctrl.get())
+            LLUICtrl* ctrl = entry.ctrl.get();
+            if (!ctrl)
+                if (ALKitShell* shell = dynamic_cast<ALKitShell*>(mOwner.get()))
+                    if (ALKitRow* row = shell->resolveHistoryRow(entry.binding_page, entry.key))
+                        ctrl = row->control();
+            if (ctrl)
             {
-                ctrl->setValue(value);
-                ctrl->onCommit();
+                // Resolve the source binding at replay time; Quick rows may have been rebuilt.
+                if (ALKitRow* row = dynamic_cast<ALKitRow*>(ctrl->getParent()))
+                    row->replayBoundValue(value);
+                else
+                {
+                    ctrl->setValue(value);
+                    ctrl->onCommit();
+                }
             }
         }
     }

@@ -105,6 +105,8 @@ protected:
     explicit ALKitRow(const Params&);
 
 private:
+    friend class ALKitHistory;
+    void         replayBoundValue(const LLSD&);
     void         styleValueEditor(bool active);
     void         bindingChanged();
     void         showContextMenu(S32, S32);

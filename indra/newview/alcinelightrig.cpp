@@ -1329,6 +1329,9 @@ void ALCineLightRig::setShaftEnabled(S32 light, bool enabled)
     {
         return;
     }
+    // An explicit rig choice also claims a VCam auto-enable, even if the
+    // underlying session intent already equals the requested value.
+    LLPipeline::noteVolumetricShaftEdit(projectorId(light));
     mShaftEnabled[light] = enabled;
     updateProjectorFlags();
 }
@@ -1830,7 +1833,11 @@ void ALCineLightRig::updateProjectorFlags()
             continue;
         }
         const LLUUID id = mProjectors[i]->getID();
-        if (LLPipeline::isVolumetricShaftEnabled(id) != mShaftEnabled[i])
+        // Keep the temporary VCam override separate from scene/rig intent.
+        // Replaying the rig each frame must not undo an untouched auto-enable.
+        const bool shaft_enabled = mShaftEnabled[i] ||
+            LLPipeline::isVCamVolumetricAutoEnabled(id);
+        if (LLPipeline::isVolumetricShaftEnabled(id) != shaft_enabled)
         {
             LLPipeline::toggleVolumetricShaft(id);
         }

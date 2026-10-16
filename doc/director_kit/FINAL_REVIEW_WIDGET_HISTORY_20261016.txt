@@ -1,4 +1,4 @@
-Final review round 2 (on 9211cd98994), 2026-10-16.
+Final review round 3 (on 7db606b2db4), 2026-10-16.
 
 ONE UNDO RULE: page buttons and Ctrl+Z/Ctrl+Y choose the newest sequence recorded
 on this page instance across kit and page-owned histories. Other pages and floaters
@@ -10,11 +10,19 @@ page-instance models. own_history excludes them from kit capture, so Image's
 RenderExposure shortcut has exactly one owner. Kit owns the other settings.
 Path: page-instance-tagged snapshots (including in-world tools) and the four global
 ghost-look kit settings compete by sequence; all page buttons use that same choice.
-Light Rig: its existing registered slot context and slot-change barrier are unchanged.
+Light Rig: the slot-change barrier stays; context also guards the fixture role and light selector.
 Shared setting replay requires the current value to match the recorded expected value
-(NEW for undo, OLD for redo); conflicting entries are skipped with a status notice.
+(NEW for undo, OLD for redo), using control-type numeric precision; conflicting entries
+are removed from both replay branches with a status notice.
 Quick proxy drags retain MOUSE gestures; resets and writes validate the source's live
 enabled state. Card paste reports Pasted N of M (K disabled) when skipping controls.
+Quick/search edits belong to the input page; replay resolves the source binding or
+saved setting. Exposure records use that input page's handle-keyed model, including Quick.
+Every model is idle-closed and dead page models are swept; any model revision publishes.
+Page/card resets and presets share one sequence across kit and Exposure histories.
+Card paste applies drivers first and refreshes availability before retrying dependents.
+Path actions pass the page owner explicitly, including Clear's confirmation callback;
+enabled Undo/Redo tooltips describe the page action even while the selected actor walks.
 Ghosts hints use the full row width and 48 px height: three wrapped lines at CARD_MIN_W 340.
 
 Exact lists below cover code-bound value rows. Actions/readouts, mirror-setting rows,

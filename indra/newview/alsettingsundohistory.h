@@ -7,6 +7,7 @@
 #define AL_SETTINGS_UNDO_HISTORY_H
 
 #include "alsettingsundohistorymodel.h"
+#include "alundosequence.h"
 
 #include <boost/signals2.hpp>
 
@@ -58,6 +59,8 @@ namespace ALExposureSettingsHistory
         ~ScopedBatch();
         ScopedBatch(const ScopedBatch&) = delete;
         ScopedBatch& operator=(const ScopedBatch&) = delete;
+    private:
+        ALScopedUndoSequence mSequence;
     };
 }
 

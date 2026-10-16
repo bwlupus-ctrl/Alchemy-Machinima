@@ -20,6 +20,7 @@
 #include "alkitbinding.h"
 #include "alkithistory.h"
 #include "alkitshell.h"
+#include "alkitpage.h"
 #include "aluirefresh.h" // [UIPerfC1] widget-aware value compare
 #include "llbutton.h"
 #include "llagent.h"
@@ -968,8 +969,21 @@ bool ALPanelCineLightRig::postBuild()
         shell->history().registerContext("light_group/cine_light_rig_tab",[handle]()
         {
             if(!handle.get())return std::string();
-            return std::string("slot:")+std::to_string((S32)ALCineLightRigManager::instance().selectedSlot());
+            return std::string("slot:")+std::to_string((S32)ALCineLightRigManager::instance().selectedSlot())+
+                "/fixture:"+std::to_string(handle.get()->mFixtureRoleIndex)+
+                "/light:"+std::to_string(gSavedSettings.getS32("DirectorV2SelectedLight"));
         });
+        if (ALKitPage* page = findChild<ALKitPage>("cine_light_rig_kit"))
+            page->setAvailabilityRefresh([handle]()
+            {
+                if (ALPanelCineLightRig* panel = handle.get())
+                {
+                    panel->applyManualLock();
+                    panel->syncFixtureControls();
+                    panel->syncGroupControls();
+                    panel->updateDerivedStatus();
+                }
+            });
         ALKitModeAdapters::add(this,"cine_rig_easy",[handle](bool desired,ALKitModeAdapters::EOrigin origin)
         {
             ALPanelCineLightRig* panel=handle.get();

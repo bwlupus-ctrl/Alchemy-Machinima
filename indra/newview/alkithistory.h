@@ -5,6 +5,7 @@
 #include <boost/signals2.hpp>
 #include <functional>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,6 +25,7 @@ public:
     {
         bool               widget = false;
         std::string        key;
+        std::string        binding_page;
         LLHandle<LLUICtrl> ctrl;
         LLSD               oldv;
         LLSD               newv;
@@ -37,6 +39,7 @@ public:
     {
         std::string              label;
         std::string              context;
+        std::string              context_page;
         std::string              page;
         U64                      scene_generation = 0;
         U64                      sequence = 0;
@@ -68,7 +71,8 @@ public:
         explicit ScopedSource(LLView*);
         ~ScopedSource();
     private:
-        LLView* mPrevious;
+        LLHandle<LLView> mPrevious;
+        LLHandle<LLView> mPreviousBinding;
         bool mPreviousSet;
     };
     void        undo(const std::string& page);
@@ -102,6 +106,7 @@ private:
     F64                           mCloseAt   = 0.;
     bool                          mReplaying = false;
     std::unordered_map<std::string, std::vector<boost::signals2::scoped_connection>> mWatches;
+    std::unordered_map<std::string, std::set<std::string>>                          mSettingPages;
     std::unordered_map<std::string, std::function<std::string()>>                    mContexts;
 };
 #endif

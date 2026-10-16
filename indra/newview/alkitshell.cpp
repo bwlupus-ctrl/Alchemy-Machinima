@@ -1391,6 +1391,19 @@ std::string ALKitShell::currentPageKey() const
     return page ? page->pageKey() : std::string();
 }
 
+ALKitRow* ALKitShell::resolveHistoryRow(const std::string& key, const std::string& widget)
+{
+    ALKitPage* page = findBuiltPage(key);
+    if (!page)
+    {
+        const std::string leaf = key.substr(key.rfind('/') + 1);
+        if (ALKitLazyPage* lazy = findChild<ALKitLazyPage>(leaf))
+            lazy->ensureBuilt(); // Resolve without selecting or navigating away from the input page.
+        page = findBuiltPage(key);
+    }
+    return page ? page->findRow(widget) : nullptr;
+}
+
 std::string ALKitShell::pageKeyAt(S32 x, S32 y) const
 {
     ALKitPage* page = currentKitPage();

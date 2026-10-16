@@ -8,6 +8,7 @@
 #include "alsettingsundohistory.h"
 #include "alkithistory.h"
 #include "alkitpage.h"
+#include "alundovalue.h"
 
 #include "llbutton.h"
 #include "llcontrol.h"
@@ -88,29 +89,29 @@ public:
 
     bool tick() override
     {
-        if (mModel.isEditActive() && !gFocusMgr.getMouseCapture())
+        const U64 now = nowMilliseconds();
+        auto close = [now](ALSettingsUndoHistoryModel& model)
         {
-            endEdit();
-        }
-        const U64 before = mModel.revision();
-        mModel.closeIdle(nowMilliseconds());
+            if (model.isEditActive() && !gFocusMgr.getMouseCapture())
+                model.endEdit();
+            model.closeIdle(now);
+        };
+        close(mModel);
         for (auto it = mPageModels.begin(); it != mPageModels.end();)
         {
-            if (it->second.owner.isDead())
+            if (it->first.isDead() &&
+                std::find(mBatches.begin(), mBatches.end(), &it->second.model) == mBatches.end())
+            {
                 it = mPageModels.erase(it);
+                mRevisionDirty = true;
+            }
             else
             {
-                if (it->second.model.isEditActive() && !gFocusMgr.getMouseCapture())
-                    it->second.model.endEdit();
-                it->second.model.closeIdle(nowMilliseconds());
+                close(it->second.model);
                 ++it;
             }
         }
-        if (mModel.revision() != before)
-        {
-            publishRevision();
-        }
-        flushRevision();
+        publishRevision();
         return false;
     }
 
@@ -137,54 +138,34 @@ public:
 
     void endEdit()
     {
-        const U64 before = mModel.revision();
         mModel.endEdit();
         for (auto& item : mPageModels)
             item.second.model.endEdit();
-        if (mModel.revision() != before)
-        {
-            publishRevision();
-        }
+        publishRevision();
     }
 
     void beginEdit()
     {
-        const U64 before = mModel.revision();
         currentModel().beginEdit();
-        if (mModel.revision() != before)
-        {
-            publishRevision();
-        }
+        publishRevision();
     }
 
     void clear()
     {
-        const U64 before = mModel.revision();
         mModel.clear();
         for (auto& item : mPageModels)
             item.second.model.clear();
-        if (mModel.revision() != before)
-        {
-            publishRevision();
-        }
+        publishRevision();
     }
 
     void undo()
     {
-        ALSettingsUndoHistoryModel::Step step;
-        if (mModel.takeUndo(step))
-        {
-            apply(step, false);
-        }
+        replayModel(mModel, false);
     }
 
     void redo()
     {
-        ALSettingsUndoHistoryModel::Step step;
-        if (mModel.takeRedo(step))
-        {
-            apply(step, true);
-        }
+        replayModel(mModel, true);
     }
 
     ALSettingsUndoHistoryModel& model() { return mModel; }
@@ -192,21 +173,15 @@ public:
     {
         if (!page)
             return mModel;
-        auto& history = mPageModels[page];
-        if (history.owner.isDead())
-        {
-            history.model.clear();
-            history.owner = page->getHandle();
-        }
-        return history.model;
+        return mPageModels[page->getHandle()].model;
     }
     void replayPage(LLView* page, bool redo)
     {
-        ALSettingsUndoHistoryModel::Step step;
-        auto& model = pageModel(page);
-        if (redo ? model.takeRedo(step) : model.takeUndo(step))
-            apply(step, redo);
+        replayModel(pageModel(page), redo);
     }
+    U64 revision() const { return mRevision; }
+    void finishPage(LLView* page) { pageModel(page).endEdit(); publishRevision(); }
+    void discardPageRedo(LLView* page) { pageModel(page).discardRedo(); publishRevision(); }
     ALExposureSettingsHistory::revision_signal_t& signal() { return mRevisionSignal; }
 
 private:
@@ -214,20 +189,33 @@ private:
     {
         return mBatches.empty() ? pageModel(ALKitHistory::inputPage()) : *mBatches.back();
     }
-    void apply(const ALSettingsUndoHistoryModel::Step& step, bool use_new_value)
+    void replayModel(ALSettingsUndoHistoryModel& model, bool use_new_value)
     {
         ALKitHistory::ScopedSuspend suspend;
         mApplying = true;
         bool skipped = false;
-        auto apply_change = [&skipped, use_new_value](const ALSettingsUndoHistoryModel::Change& change)
+        auto filter = [&skipped, use_new_value](const ALSettingsUndoHistoryModel::Change& change)
         {
             if (LLControlVariable* control = gSavedSettings.getControl(change.mKey))
             {
-                if (control->get() == (use_new_value ? change.mOldValue : change.mNewValue))
-                    control->setValue(use_new_value ? change.mNewValue : change.mOldValue);
-                else
-                    skipped = true;
+                if (alUndoValuesEqual(control->type(), control->get(),
+                    use_new_value ? change.mOldValue : change.mNewValue))
+                    return true;
             }
+            skipped = true;
+            return false;
+        };
+        ALSettingsUndoHistoryModel::Step step;
+        // Filter before transferring the step: conflicts must never survive on the other stack.
+        if (!(use_new_value ? model.takeRedo(step, filter) : model.takeUndo(step, filter)))
+        {
+            mApplying = false;
+            return;
+        }
+        auto apply_change = [use_new_value](const ALSettingsUndoHistoryModel::Change& change)
+        {
+            if (LLControlVariable* control = gSavedSettings.getControl(change.mKey))
+                control->setValue(use_new_value ? change.mNewValue : change.mOldValue);
         };
         if (use_new_value)
         {
@@ -253,50 +241,33 @@ private:
     void publishRevision(bool force = false)
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ExposureHistory publishRevision");
-        const bool can_undo = mModel.canUndo();
-        const bool can_redo = mModel.canRedo();
-        const bool availability_changed = !mAvailabilityPrimed ||
-            can_undo != mLastCanUndo || can_redo != mLastCanRedo;
-        const std::string undo_label = mModel.undoLabel();
-        const std::string redo_label = mModel.redoLabel();
-        const bool label_changed = !mAvailabilityPrimed ||
-            undo_label != mLastUndoLabel || redo_label != mLastRedoLabel;
-        mLastCanUndo = can_undo;
-        mLastCanRedo = can_redo;
-        mLastUndoLabel = undo_label;
-        mLastRedoLabel = redo_label;
-        mAvailabilityPrimed = true;
-        mRevisionDirty = true;
-        if (force || availability_changed || label_changed)
+        bool changed = mRevisionDirty || mPublishedLegacyRevision != mModel.revision();
+        mPublishedLegacyRevision = mModel.revision();
+        for (auto& item : mPageModels)
         {
-            flushRevision();
+            changed = changed || item.second.publishedRevision != item.second.model.revision();
+            item.second.publishedRevision = item.second.model.revision();
         }
-    }
-
-    void flushRevision()
-    {
-        if (mRevisionDirty)
+        mRevisionDirty = false;
+        if (changed || force)
         {
-            mRevisionDirty = false;
-            mRevisionSignal(mModel.revision());
+            ++mRevision;
+            mRevisionSignal(mRevision);
         }
     }
 
     ALSettingsUndoHistoryModel mModel;
     struct PageModel
     {
-        LLHandle<LLView> owner;
         ALSettingsUndoHistoryModel model;
+        U64 publishedRevision = 0;
     };
-    std::map<LLView*, PageModel> mPageModels;
+    std::map<LLHandle<LLView>, PageModel> mPageModels;
     std::vector<ALSettingsUndoHistoryModel*> mBatches;
     bool mApplying = false;
     bool mRevisionDirty = false;
-    bool mAvailabilityPrimed = false;
-    bool mLastCanUndo = false;
-    bool mLastCanRedo = false;
-    std::string mLastUndoLabel;
-    std::string mLastRedoLabel;
+    U64 mPublishedLegacyRevision = 0;
+    U64 mRevision = 1;
     std::vector<boost::signals2::scoped_connection> mConnections;
     ALExposureSettingsHistory::revision_signal_t mRevisionSignal;
 };
@@ -372,11 +343,11 @@ void undo() { service().undo(); }
 void redo() { service().redo(); }
 std::string undoLabel() { return service().model().undoLabel(); }
 std::string redoLabel() { return service().model().redoLabel(); }
-U64 revision() { return service().model().revision(); }
+U64 revision() { return service().revision(); }
 U64 pageStepSequence(LLView* page, bool redo) { return service().pageModel(page).stepSequence(redo); }
 void replayPage(LLView* page, bool redo) { service().replayPage(page, redo); }
-void finishPage(LLView* page) { service().pageModel(page).endEdit(); }
-void discardPageRedo(LLView* page) { service().pageModel(page).discardRedo(); }
+void finishPage(LLView* page) { service().finishPage(page); }
+void discardPageRedo(LLView* page) { service().discardPageRedo(page); }
 
 boost::signals2::connection connectRevisionChanged(const revision_signal_t::slot_type& slot)
 {

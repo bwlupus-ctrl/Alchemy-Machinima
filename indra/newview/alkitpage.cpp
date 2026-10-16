@@ -876,12 +876,9 @@ bool ALKitPage::postBuild()
     if (mWhoChip)
         mWhoChip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
     stabilizeComboEditors(this);
-    if (mPage == "light_group/exposure_tab" || mPage == "look_group/image_tab")
+    if (mPage == "light_group/exposure_tab" || mPage == "look_group/image_tab" || mPage == "quick_group/quick_tab")
     {
         ALExposureSettingsHistory::initialize();
-        setOwnedHistory([this](bool redo) { return ALExposureSettingsHistory::pageStepSequence(this, redo); },
-            [this](bool redo) { ALExposureSettingsHistory::replayPage(this, redo); },
-            [this]() { ALExposureSettingsHistory::discardPageRedo(this); });
         mPageUndo = findChild<LLButton>("exp_undo");
         mPageRedo = findChild<LLButton>("exp_redo");
     }
@@ -1582,6 +1579,8 @@ void ALKitPage::resetPage()
 
 void ALKitPage::performPageReset()
 {
+    ALKitHistory::ScopedSource source(this);
+    ALExposureSettingsHistory::ScopedBatch batch("Reset page");
     if (ALKitShell* shell = ALKitShell::find(this))
         shell->history().beginGesture(ALKitHistory::MOUSE, mPage, "Reset page");
     for (auto& card : mCards)
@@ -1688,22 +1687,30 @@ void ALKitPage::undoOnPage(bool redo)
         ALExposureSettingsHistory::finishPage(this);
         const U64 kit = shell->history().stepSequence(mPage, redo);
         const U64 owned = mOwnedSequence ? mOwnedSequence(redo) : 0;
-        if (owned > kit && mOwnedReplay)
-        {
-            mOwnedReplay(redo);
+        const U64 exposure = ALExposureSettingsHistory::pageStepSequence(this, redo);
+        const U64 sequence = std::max({kit, owned, exposure});
+        if (!sequence)
             return;
+        ALScopedUndoSequence group;
+        if (exposure == sequence)
+            ALExposureSettingsHistory::replayPage(this, redo);
+        if (owned == sequence && mOwnedReplay)
+            mOwnedReplay(redo);
+        if (kit == sequence)
+        {
+            if (redo)
+                shell->history().redo(mPage);
+            else
+                shell->history().undo(mPage);
         }
-        if (redo)
-            shell->history().redo(mPage);
-        else
-            shell->history().undo(mPage);
     }
 }
 
 bool ALKitPage::canUndoOnPage(bool redo)
 {
     ALKitShell* shell = ALKitShell::find(this);
-    return (mOwnedSequence && mOwnedSequence(redo)) ||
+    return ALExposureSettingsHistory::pageStepSequence(this, redo) ||
+        (mOwnedSequence && mOwnedSequence(redo)) ||
         (shell && (redo ? shell->history().canRedo(mPage) : shell->history().canUndo(mPage)));
 }
 
@@ -1711,14 +1718,15 @@ void ALKitPage::historyEdited(bool owned)
 {
     if (ALKitShell* shell = ALKitShell::find(this))
     {
-        if (owned)
+        if (owned && !alUndoSequenceGroup())
             shell->history().finishGesture();
         shell->history().discardRedo(mPage);
     }
-    if (!owned)
+    if (!owned && !alUndoSequenceGroup())
         ALExposureSettingsHistory::finishPage(this);
     if (mOwnedDiscardRedo)
         mOwnedDiscardRedo();
+    ALExposureSettingsHistory::discardPageRedo(this);
 }
 
 void ALKitPage::refreshActorTargetAvailability()
@@ -1803,7 +1811,7 @@ void ALKitPage::draw()
     }
     if (ALKitShell* shell = ALKitShell::find(this))
     {
-        const U64 revision = shell->history().revision();
+        const U64 revision = shell->history().revision() + ALExposureSettingsHistory::revision();
         if (revision != mHistoryRevision || mOwnedSequence)
         {
             mHistoryRevision = revision;

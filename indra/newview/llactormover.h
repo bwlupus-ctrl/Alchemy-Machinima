@@ -379,6 +379,7 @@ public:
     // undo/redo swap authored state and rebuild the arc table. History is keyed by
     // the resolved path key, capped at UNDO_DEPTH, and lives for the session.
     void snapshotForUndo(const LLUUID& actor_id);
+    void snapshotForUndo(const LLUUID& actor_id, LLView* owner);
     bool undoPath(const LLUUID& actor_id);
     bool redoPath(const LLUUID& actor_id);
     bool canUndoPath(const LLUUID& actor_id) const;

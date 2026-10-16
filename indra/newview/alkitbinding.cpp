@@ -149,6 +149,17 @@ boost::signals2::connection ALKitWidgetBinding::connectChanged(std::function<voi
     return mCtrl ? mCtrl->setCommitCallback([cb](LLUICtrl*, const LLSD&) { cb(); }) : boost::signals2::connection();
 }
 
+void ALKitWidgetBinding::replay(const LLSD& value)
+{
+    // A recorded history value has already passed the page/context/conflict checks.
+    // Restore dependents even when another entry in the same step disabled them.
+    if (mCtrl)
+    {
+        mCtrl->setValue(value);
+        mCtrl->onCommit();
+    }
+}
+
 LLSD ALKitSettingsListBinding::get() const
 {
     LLSD out = LLSD::emptyMap();

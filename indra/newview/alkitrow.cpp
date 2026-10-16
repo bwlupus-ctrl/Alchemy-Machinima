@@ -30,6 +30,7 @@
 #include "alcompassdial.h"
 #include "alkitswitch.h"
 #include "alkitqol.h"
+#include "alsettingsundohistory.h"
 #include "llmenugl.h"
 #include "llviewermenu.h"
 
@@ -41,6 +42,13 @@ static LLDefaultChildRegistry::Register<ALKitRow> r("kit_row");
 namespace
 {
 LLSD sRowClipboard;
+
+std::string actionPageKey(const ALKitRow* row)
+{
+    if (ALKitPage* page = dynamic_cast<ALKitPage*>(ALKitHistory::inputPage()))
+        return page->pageKey();
+    return row->meta().page_key;
+}
 
 void dispatchAction(const std::string& action)
 {
@@ -846,7 +854,7 @@ void ALKitRow::reset()
     if (!enabledForEdit() || mUnconnected || !mBinding)
         return;
     if (ALKitShell* shell = ALKitShell::find(this))
-        shell->history().ensureGesture(mMeta.page_key, "Reset " + mMeta.label);
+        shell->history().ensureGesture(actionPageKey(this), "Reset " + mMeta.label);
     mBinding->reset();
     bindingChanged();
 }
@@ -925,7 +933,7 @@ bool ALKitRow::setBoundValue(const LLSD& value)
     else if ((coerced.isInteger() || coerced.isReal()) && (has_min || has_max))
         coerced = clamp_number(coerced, coerced.isInteger());
     if (ALKitShell* shell = ALKitShell::find(this))
-        shell->history().ensureGesture(mMeta.page_key, mMeta.label);
+        shell->history().ensureGesture(actionPageKey(this), mMeta.label);
     if (mBinding)
         mBinding->set(coerced);
     else if (mControl)
@@ -943,6 +951,18 @@ bool ALKitRow::canPasteValue(const LLSD& value) const
 {
     return enabledForEdit() && !mUnconnected && (!mBinding || mBinding->canSet()) &&
            ALKitQol::pasteTypesCompatible(value, boundValue());
+}
+
+void ALKitRow::replayBoundValue(const LLSD& value)
+{
+    if (mBinding && mBinding->canSet())
+        mBinding->replay(value);
+    else if (mControl)
+    {
+        mControl->setValue(value);
+        mControl->onCommit();
+    }
+    bindingChanged();
 }
 
 bool ALKitRow::enabledForEdit() const
@@ -990,6 +1010,7 @@ ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
     params.max_val = source->mMeta.has_max ? source->mMeta.max_val : 1000000.f;
     // A non-resettable source stays non-resettable: a Quick reset must never reach its setting.
     params.bulk_reset = source->mBulkReset;
+    params.widget_history = false; // The source binding records the action under the input page.
     ALKitRow* proxy = new ALKitRow(params);
     proxy->mSourceRow = source->getDerivedHandle<ALKitRow>();
     if (open_on_page)
@@ -1039,6 +1060,7 @@ ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
     proxy->postBuild();
     proxy->mBindingConnection = proxy->mBinding->connectChanged([proxy]() { proxy->bindingChanged(); });
     control->setCommitCallback([proxy](LLUICtrl* edited, const LLSD&) { proxy->setBoundValue(edited->getValue()); });
+    ALExposureSettingsHistory::installEditFinalizers(proxy);
     proxy->bindingChanged();
     return proxy;
 }
@@ -1100,7 +1122,7 @@ bool ALKitRow::handleMouseDown(S32 x, S32 y, MASK mask)
     ALKitHistory::ScopedSource source(this);
     if (sourceRow())
         if (ALKitShell* shell = ALKitShell::find(this))
-            shell->history().beginGesture(ALKitHistory::MOUSE, mMeta.page_key, mMeta.label);
+            shell->history().beginGesture(ALKitHistory::MOUSE, actionPageKey(this), mMeta.label);
     if (mMeta.kind == "segmented" && mControl && mControl->getEnabled() &&
         mControl->getRect().pointInRect(x, y))
     {
@@ -1133,7 +1155,7 @@ bool ALKitRow::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
     ALKitHistory::ScopedSource source(this);
     if (sourceRow())
         if (ALKitShell* shell = ALKitShell::find(this))
-            shell->history().beginGesture(ALKitHistory::WHEEL, mMeta.page_key, mMeta.label);
+            shell->history().beginGesture(ALKitHistory::WHEEL, actionPageKey(this), mMeta.label);
     return LLPanel::handleScrollWheel(x, y, delta);
 }
 
