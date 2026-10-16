@@ -122,7 +122,7 @@ void ALKitHistory::beginGesture(EOrigin o, const std::string& p, const std::stri
 {
     if (mOpen && mOrigin == o && mPage == p && (o == WHEEL || o == KEY) &&
         std::all_of(mOpen->entries.begin(), mOpen->entries.end(), [this](const Entry& entry)
-            { return entry.contextMatches(currentContext(entry.binding_page)); }))
+            { return entry.contextMatches(currentContext(entry.binding_page, entry.key)); }))
     {
         if (!label.empty() && mOpen->label.empty())
         {
@@ -181,7 +181,7 @@ void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv,
     if (page.empty())
         return;
     const std::string binding_page = rowPage(c);
-    const std::string context = currentContext(binding_page);
+    const std::string context = currentContext(binding_page, c->getName());
     const bool standalone = !mOpen || mOpen->page != page ||
         std::any_of(mOpen->entries.begin(), mOpen->entries.end(), [&binding_page, &context](const Entry& entry)
             { return entry.binding_page == binding_page && !entry.contextMatches(context); });
@@ -281,7 +281,6 @@ void ALKitHistory::captureSetting(const std::string& page, const std::string& na
         return;
     Entry entry;
     entry.binding_page = binding_page;
-    entry.context = currentContext(binding_page);
     entry.key  = name;
     entry.oldv = old;
     entry.newv = value;
@@ -372,10 +371,10 @@ bool ALKitHistory::tickGesture()
     return true;
 }
 
-std::string ALKitHistory::currentContext(const std::string& page) const
+std::string ALKitHistory::currentContext(const std::string& page, const std::string& widget) const
 {
     auto found = mContexts.find(page);
-    return found == mContexts.end() ? std::string() : found->second();
+    return found == mContexts.end() ? std::string() : found->second(widget);
 }
 
 LLUICtrl* ALKitHistory::resolveWidget(Entry& entry)
@@ -397,8 +396,7 @@ bool ALKitHistory::entryMatches(Entry& entry, bool redo)
     if (entry.widget)
     {
         LLUICtrl* ctrl = resolveWidget(entry);
-        ALKitRow* row = ctrl ? dynamic_cast<ALKitRow*>(ctrl->getParent()) : nullptr;
-        return ctrl && alUndoWidgetValuesEqual(row ? row->boundValue() : ctrl->getValue(), expected);
+        return ctrl && alUndoWidgetValuesEqual(ctrl->getValue(), expected);
     }
     LLControlVariable* control = gSavedSettings.getControl(entry.key).get();
     return control && alUndoValuesEqual(control->type(), control->get(), expected);
@@ -410,14 +408,19 @@ bool ALKitHistory::prepareReplay(const std::string& page, bool redo, std::string
     auto& steps = redo ? mRedo : mUndo;
     auto it = std::find_if(steps.rbegin(), steps.rend(),
         [&page](const Step& step) { return step.page == page; });
-    if (it == steps.rend() || it->scene_generation != mGeneration)
+    if (it == steps.rend())
+    {
+        reason.clear();
+        return false;
+    }
+    if (it->scene_generation != mGeneration)
     {
         reason = "Skipped a change from an earlier scene";
         return false;
     }
     for (Entry& entry : it->entries)
     {
-        if (!entry.contextMatches(currentContext(entry.binding_page)))
+        if (!entry.contextMatches(currentContext(entry.binding_page, entry.key)))
         {
             reason = "Skipped a change made on " + entry.context + ".";
             return false;
@@ -576,7 +579,8 @@ void ALKitHistory::undo(const std::string& page)
     if (!prepareReplay(page, false, reason))
     {
         discardStep(page, false);
-        LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", reason));
+        if (!reason.empty())
+            LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", reason));
         return;
     }
     auto it = std::find_if(mUndo.rbegin(), mUndo.rend(), [&page](const Step& step) { return step.page == page; });
@@ -599,7 +603,8 @@ void ALKitHistory::redo(const std::string& page)
     if (!prepareReplay(page, true, reason))
     {
         discardStep(page, true);
-        LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", reason));
+        if (!reason.empty())
+            LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", reason));
         return;
     }
     auto it = std::find_if(mRedo.rbegin(), mRedo.rend(), [&page](const Step& step) { return step.page == page; });
@@ -615,5 +620,5 @@ void ALKitHistory::redo(const std::string& page)
     ++mRevision;
 }
 
-void ALKitHistory::registerContext(const std::string& key, std::function<std::string()> context)
+void ALKitHistory::registerContext(const std::string& key, std::function<std::string(const std::string&)> context)
 { mContexts[key] = std::move(context); }

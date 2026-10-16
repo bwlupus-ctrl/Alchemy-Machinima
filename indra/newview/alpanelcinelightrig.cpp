@@ -966,16 +966,19 @@ bool ALPanelCineLightRig::postBuild()
     if(ALKitShell* shell=ALKitShell::find(this))
     {
         LLHandle<ALPanelCineLightRig> handle=getDerivedHandle<ALPanelCineLightRig>();
-        shell->history().registerContext("light_group/cine_light_rig_tab",[handle]()
+        shell->history().registerContext("light_group/cine_light_rig_tab",[handle](const std::string& widget)
         {
             if(!handle.get())return std::string();
             static const char* const slots[] = { "Self", "A", "B", "C", "D" };
             const S32 slot = (S32)ALCineLightRigManager::instance().selectedSlot();
             const S32 fixture = handle.get()->mFixtureRoleIndex;
-            const S32 light = gSavedSettings.getS32("DirectorV2SelectedLight");
-            const auto role_name = [](S32 role)
-                { return role >= 0 && role < ALCineLightRigModel::LIGHT_COUNT ? ROLE_NAMES[role] : "No selected"; };
-            return std::string(slots[slot]) + " rig, " + role_name(fixture) + " fixture, " + role_name(light) + " light";
+            // Global rig widgets and saved settings do not follow light selection.
+            if (widget.find("cine_fixture_") == 0 || widget == "cine_gobo_library" || widget == "cine_gobo_preview")
+                return std::string(slots[slot]) + " rig, " + ROLE_NAMES[fixture] + " fixture";
+            for (const char* role : { "key", "fill", "rim", "bg" })
+                if (widget.find(std::string("cine_") + role + "_") == 0)
+                    return std::string(slots[slot]) + " rig";
+            return std::string();
         });
         if (ALKitPage* page = findChild<ALKitPage>("cine_light_rig_kit"))
             page->setAvailabilityRefresh([handle]()

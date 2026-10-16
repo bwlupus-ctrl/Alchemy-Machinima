@@ -20,8 +20,8 @@ struct EnableOverride
     // share ownership without overriding an intervening user choice.
     constexpr bool acquire(bool enabled, bool allowed = true)
     {
-        mDeclined = !enabled && (mDeclined || !allowed);
         if (mUsers++ != 0) return false;
+        mDeclined = !enabled && (mDeclined || !allowed);
         mAutoEnabled = !enabled && !mDeclined;
         return mAutoEnabled;
     }

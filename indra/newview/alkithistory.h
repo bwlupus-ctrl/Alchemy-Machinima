@@ -80,7 +80,7 @@ public:
     void        undo(const std::string& page);
     void        redo(const std::string& page);
     U64         revision() const { return mRevision; }
-    void        registerContext(const std::string&, std::function<std::string()>);
+    void        registerContext(const std::string&, std::function<std::string(const std::string&)>);
     struct ScopedSuspend
     {
         ScopedSuspend();
@@ -93,7 +93,7 @@ private:
     void                          captureSetting(const std::string&, const std::string&, const LLSD&, const LLSD&);
     void                          addEntry(Entry, const std::string&, const std::string& label_page = std::string());
     bool                          tickGesture();
-    std::string                   currentContext(const std::string&) const;
+    std::string                   currentContext(const std::string&, const std::string&) const;
     bool                          replay(Step&, bool);
     LLUICtrl*                     resolveWidget(Entry&);
     bool                          entryMatches(Entry&, bool redo);
@@ -111,6 +111,6 @@ private:
     bool                          mReplaying = false;
     std::unordered_map<std::string, std::vector<boost::signals2::scoped_connection>> mWatches;
     std::unordered_map<std::string, std::set<std::string>>                          mSettingPages;
-    std::unordered_map<std::string, std::function<std::string()>>                    mContexts;
+    std::unordered_map<std::string, std::function<std::string(const std::string&)>>  mContexts;
 };
 #endif

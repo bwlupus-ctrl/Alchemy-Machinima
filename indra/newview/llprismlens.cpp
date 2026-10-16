@@ -1911,7 +1911,7 @@ struct PrismProjector
         LLPrismLens::EProjectorTarget::OBJECT;
     LLUUID mObjectId;
     LLUUID mVolumetricObjectId; // acquired local override, including rig rebuilds
-    bool mVolumetricDeclined = false; // belongs to this binding, not its transient emitter
+    std::string mVolumetricLight; // stable identity of the acquired light
     U8 mRigSlot = 0;
     U8 mRigLight = 0;
     bool mLocalProjector = false;
@@ -1923,23 +1923,31 @@ struct PrismProjector
     U32 mBoundFrame = 0;
 };
 
+// Session choices belong to a light, across unassignment and emitter rebuilds.
+std::map<std::string, bool> sProjectorVolumetricDeclined;
+std::set<std::string> sProjectorVolumetricNotified;
+
 void releaseProjectorVolumetrics(PrismProjector& projector)
 {
     if (projector.mVolumetricObjectId.isNull()) return;
-    projector.mVolumetricDeclined =
+    sProjectorVolumetricDeclined[projector.mVolumetricLight] =
         LLPipeline::isVCamVolumetricDeclined(projector.mVolumetricObjectId);
     LLPipeline::releaseVCamVolumetrics(projector.mVolumetricObjectId);
     projector.mVolumetricObjectId.setNull();
+    projector.mVolumetricLight.clear();
 }
 
 void syncProjectorVolumetrics(PrismProjector& projector, LLVOVolume* volume)
 {
     const LLUUID target = volume ? volume->getID() : LLUUID::null;
-    if (projector.mVolumetricObjectId == target) return;
+    const std::string light = LLPrismLens::projectorVolumetricIdentity(projector);
+    if (projector.mVolumetricObjectId == target && projector.mVolumetricLight == light) return;
     releaseProjectorVolumetrics(projector);
     if (target.isNull()) return;
     projector.mVolumetricObjectId = target;
-    if (!LLPipeline::acquireVCamVolumetrics(target, !projector.mVolumetricDeclined)) return;
+    projector.mVolumetricLight = light;
+    if (!LLPipeline::acquireVCamVolumetrics(target, !sProjectorVolumetricDeclined[light])) return;
+    if (!sProjectorVolumetricNotified.insert(light).second) return;
 
     const ALObjectPropertiesCache::ServerProps* properties =
         ALObjectPropertiesCache::instance().get(target);
@@ -5636,11 +5644,8 @@ public:
         // Acquire only on target transitions, so per-frame refresh never
         // re-enables a flag the user subsequently turned off. A capture switch
         // on the same light retains the existing override and its auto marker.
-        // Release stale targets even during quarantine. The binding retains a
-        // declined marker across emitter rebuilds without retaining the old flag.
-        if (quarantined && (!object || object->isDead() ||
-            projector.mVolumetricObjectId != object->getID()))
-            releaseProjectorVolumetrics(projector);
+        // Quarantine is temporary: keep ownership until a live replacement is
+        // resolved, or until the binding is explicitly removed.
         if (!quarantined) syncProjectorVolumetrics(projector, volume);
         const bool changed = projector.mRuntime.mHealth != health ||
             projector.mRuntime.mReason != reason ||
@@ -9668,6 +9673,8 @@ void clearDesignations()
 {
     ScopedPrismRevisionSignals signals;
     PrismLensRegistry::instance().clearAll();
+    sProjectorVolumetricDeclined.clear();
+    sProjectorVolumetricNotified.clear();
 }
 
 bool hasDesignation()

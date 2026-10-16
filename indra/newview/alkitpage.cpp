@@ -1687,12 +1687,18 @@ void ALKitPage::undoOnPage(bool redo)
         shell->history().finishGesture();
         ALExposureSettingsHistory::finishPage(this);
         const U64 kit = shell->history().stepSequence(mPage, redo);
-        const U64 available_owned = mOwnedSequence ? mOwnedSequence(redo) : 0;
+        const U64 owned = mOwnedGroupSequence ? mOwnedGroupSequence(redo) : (mOwnedSequence ? mOwnedSequence(redo) : 0);
         const U64 exposure = ALExposureSettingsHistory::pageStepSequence(this, redo);
-        const U64 sequence = std::max({kit, available_owned, exposure});
+        const U64 sequence = std::max({kit, owned, exposure});
         if (!sequence)
             return;
-        const U64 owned = mOwnedGroupSequence && mOwnedGroupSequence(redo) == sequence ? sequence : available_owned;
+        // A walking actor temporarily blocks the entire action, retaining every part.
+        if (owned == sequence && mOwnedReady && !mOwnedReady(redo, sequence))
+        {
+            LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE",
+                redo ? "Stop the walk to redo path edits" : "Stop the walk to undo path edits"));
+            return;
+        }
         const bool grouped = (kit == sequence) + (owned == sequence) + (exposure == sequence) > 1;
         std::string reason = "Skipped a grouped change that cannot be replayed";
         // Validate every participating owner before any value or geometry is changed.

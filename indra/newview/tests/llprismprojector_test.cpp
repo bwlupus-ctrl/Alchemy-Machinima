@@ -7,8 +7,10 @@
 
 #include "../test/lltut.h"
 #include "../llprismlens.h"
+#include "../alvcamautovol.h"
 
 #include <limits>
+#include <map>
 
 namespace tut
 {
@@ -336,5 +338,42 @@ void prism_projector_object::test<20>()
     ensure_equals("names are capped at 32 characters",
         LLPrismLens::normalizeCaptureLabel(std::string(40, 'x'), "Virtual 1"),
         std::string(32, 'x'));
+}
+
+template<> template<>
+void prism_projector_object::test<21>()
+{
+    set_test_name("volumetric decline belongs to the stable light identity");
+    LLPrismLens::ProjectorDefinition projector;
+    projector.mObjectId.generate();
+    const std::string light_a = LLPrismLens::projectorVolumetricIdentity(projector);
+    std::map<std::string, bool> declined;
+    declined[light_a] = true;
+    projector.mObjectId.generate(); // retarget the same projector from A to B
+    const std::string light_b = LLPrismLens::projectorVolumetricIdentity(projector);
+    ALVCamAutoVol::EnableOverride emitter;
+    ensure("retargeted light B starts un-declined", emitter.acquire(false, !declined[light_b]));
+    projector = LLPrismLens::ProjectorDefinition(); // unassign
+    ensure("unassigned projector carries no light A decline",
+        !declined[LLPrismLens::projectorVolumetricIdentity(projector)]);
+    ensure("light A retains its own decline", declined[light_a]);
+
+    projector.mTarget = LLPrismLens::EProjectorTarget::RIG_LIGHT;
+    projector.mRigSlot = 1;
+    projector.mRigLight = 2;
+    const std::string rig_light = LLPrismLens::projectorVolumetricIdentity(projector);
+    declined[rig_light] = true;
+    projector.mObjectId.generate(); // rebuilt emitter for the same slot and role
+    ensure_equals("rig identity survives emitter replacement",
+        LLPrismLens::projectorVolumetricIdentity(projector), rig_light);
+    emitter = ALVCamAutoVol::EnableOverride();
+    ensure("rebuilt light retains its decline", !emitter.acquire(false, !declined[rig_light]));
+    ++projector.mRigLight;
+    ensure("another rig role has its own choice",
+        !declined[LLPrismLens::projectorVolumetricIdentity(projector)]);
+    --projector.mRigLight;
+    ++projector.mRigSlot;
+    ensure("another rig slot has its own choice",
+        !declined[LLPrismLens::projectorVolumetricIdentity(projector)]);
 }
 }

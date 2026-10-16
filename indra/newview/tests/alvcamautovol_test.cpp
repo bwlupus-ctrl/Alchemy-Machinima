@@ -117,6 +117,28 @@ constexpr bool automaticTeardownAllowsRebuild()
     return emitter.acquire(false, !binding_declined) && !emitter.mDeclined;
 }
 
+constexpr bool sharedLightDoesNotInheritBorrowerDecline()
+{
+    EnableOverride light;
+    light.acquire(true);
+    // A second projector's stale decline must not become this light's choice.
+    if (light.acquire(false, false) || light.mDeclined) return false;
+    light.release(false);
+    light.release(false);
+    return light.acquire(false);
+}
+
+constexpr bool sharedLightKeepsOwnDecline()
+{
+    EnableOverride light;
+    light.acquire(false);
+    light.changed(false);
+    if (light.acquire(true) || !light.mDeclined) return false;
+    light.release(false);
+    light.release(false);
+    return !light.acquire(false) && light.mDeclined;
+}
+
 // /Zs validates these regressions without a build or test executable.
 static_assert(decisionMatrix(), "restore only untouched auto-enabled flags");
 static_assert(userOffOnWins(), "an off/on round trip relinquishes ownership");
@@ -126,6 +148,8 @@ static_assert(manualChoicesAreIndependent(), "light and master ownership differ"
 static_assert(balancedReuse(), "release is balanced and ownership can be reused");
 static_assert(declinedSurvivesRebuild(), "user off survives emitter rebuilds until manual on");
 static_assert(automaticTeardownAllowsRebuild(), "automatic teardown is not a user decline");
+static_assert(sharedLightDoesNotInheritBorrowerDecline(), "borrowers cannot decline another binding's light");
+static_assert(sharedLightKeepsOwnDecline(), "borrowers cannot clear a light's decline");
 } // anonymous namespace
 
 namespace tut
@@ -165,5 +189,7 @@ void alvcamautovol_object::test<4>()
     ensure("ownership reuse", balancedReuse());
     ensure("declined survives emitter replacement", declinedSurvivesRebuild());
     ensure("untouched binding re-enables replacement", automaticTeardownAllowsRebuild());
+    ensure("two projectors do not transfer declines", sharedLightDoesNotInheritBorrowerDecline());
+    ensure("two projectors respect this light's decline", sharedLightKeepsOwnDecline());
 }
 } // namespace tut

@@ -3749,6 +3749,46 @@ private:
     {
         mFunctionalGlobalAssertionsDone = true;
         if (!mDirectorV2) return;
+        // Widget history must compare the scalar control value even when the
+        // row's reset_settings binding owns a map. Exercise real replay here;
+        // the pure-model unit target deliberately does not link viewer UI.
+        {
+            struct ResetRow : ALKitRow
+            {
+                explicit ResetRow(const Params& params) : ALKitRow(params) {}
+            };
+            ALKitRow::Params params;
+            params.kind = "slider";
+            params.widget = "reset_list_widget";
+            params.bind = "code";
+            params.reset_settings = "CineLightRigMasterEV";
+            auto row = std::make_unique<ResetRow>(params);
+            row->setOwnerIdentity("test_page", "test_card");
+            LLUICtrl::Params control_params;
+            control_params.name = "reset_list_widget";
+            LLUICtrl* control = LLUICtrlFactory::create<LLUICtrl>(control_params);
+            row->addChild(control);
+            bool ok = row->postBuild() && row->boundValue().isMap();
+            setValueIfChanged(control, LLSD(2.0), true);
+            ALKitHistory history;
+            std::string reason;
+            ok = ok && !history.prepareReplay("test_page", false, reason) && reason.empty();
+            ok = ok && !history.prepareReplay("test_page", true, reason) && reason.empty();
+            history.recordWidget(control, LLSD(1.0), control->getValue(), "Reset list widget");
+            history.finishGesture();
+            ok = ok && history.prepareReplay("test_page", false, reason, true);
+            history.undo("test_page");
+            ok = ok && control->getValue().asReal() == 1.0;
+            ok = ok && history.prepareReplay("test_page", true, reason, true);
+            history.redo("test_page");
+            ok = ok && control->getValue().asReal() == 2.0;
+            LLSD regression;
+            regression["page"] = "selftest";
+            regression["widget_name"] = "reset_settings_history";
+            regression["widget_type"] = "unit";
+            regression["exercise"] = "scalar undo/redo with map reset binding; silent empty stacks";
+            addFunctionalResult(regression, ok ? "PASS" : "FAIL", ok ? "" : "kit history regression failed");
+        }
         LLSD assertion;
         assertion["page"] = "director";
         assertion["widget_name"] = "keyboard_tab_focus";

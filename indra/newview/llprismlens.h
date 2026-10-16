@@ -876,6 +876,14 @@ ERegistryResult validateProjectorReassignment(const Projector&,
         ? ERegistryResult::OK : ERegistryResult::INVALID_CONFIGURATION;
 }
 
+template<typename Projector>
+std::string projectorVolumetricIdentity(const Projector& projector)
+{
+    return projector.mTarget == EProjectorTarget::RIG_LIGHT
+        ? "rig/" + std::to_string(projector.mRigSlot) + "/" + std::to_string(projector.mRigLight)
+        : projector.mObjectId.asString();
+}
+
 inline bool validRigProjectorIdentity(U8 rig_slot, U8 rig_light,
                                       U8 rig_count, U8 light_count)
 {

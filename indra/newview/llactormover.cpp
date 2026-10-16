@@ -3569,7 +3569,7 @@ void LLActorMover::discardPagePathRedo(LLView* page)
 
 void LLActorMover::replayPagePath(LLView* page, bool redo)
 {
-    const U64 sequence = pagePathSequence(page, redo);
+    const U64 sequence = pagePathSequence(page, redo, true);
     if (!pagePathReplayReady(page, redo, sequence)) return;
     if (!sequence)
         return;
