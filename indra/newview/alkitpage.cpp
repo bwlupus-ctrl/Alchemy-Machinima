@@ -235,6 +235,7 @@ ALKitPage::ALKitPage(const Params& p) :
     mPresetMode(p.preset_mode),
     mPresetProvider(p.preset_provider),
     mChipMode(p.chip_mode),
+    mUndoContext(p.undo_context),
     mLegacy(p.legacy),
     mActorTargetPage(p.actor_target),
     mActorTargetSynthetic(p.actor_target_synthetic)
@@ -1668,6 +1669,17 @@ void ALKitPage::setWhoPin(const LLSD& value)
 LLUUID ALKitPage::actorTarget() const
 {
     return mWhoCombo ? mWhoCombo->getValue().asUUID() : mActorTarget;
+}
+
+std::string ALKitPage::undoSubject() const
+{
+    if (mUndoContext != "actor")
+        return std::string();
+    std::string key = "actor:" + actorTarget().asString();
+    if (ALKitShell* shell = ALKitShell::find(const_cast<ALKitPage*>(this)))
+        for (const LLUUID& id : shell->castSelection())
+            key += "," + id.asString();
+    return key;
 }
 
 void ALKitPage::refreshActorTargetAvailability()

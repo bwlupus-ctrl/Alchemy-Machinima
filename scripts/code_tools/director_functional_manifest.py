@@ -1700,7 +1700,7 @@ SELFTEST_CPP = os.path.join(REPO, "indra", "newview", "aluiperfselftest.cpp")
 GEN_REPORT_PATH = os.path.join(HERE, "director_kit", "gen_report.txt")
 # Shrink-only pin (user-approved 10/13: lower as pages convert, never raise).  Mirrors the
 # "legacy" count director_kit_gen.py pins in its classification table.
-KNOWN_LEGACY_MAX = 2
+KNOWN_LEGACY_MAX = 0
 # The EXPLICIT, hand-maintained list of the unthemed (legacy) pages, by page key.  It is NOT
 # regenerated from the XML flags: that would let a newly unthemed page silently replace a
 # converted one.  It can only SHRINK.  The check fails if a page outside the list is legacy
@@ -1708,11 +1708,8 @@ KNOWN_LEGACY_MAX = 2
 # remove it as the page converts).
 # Gaze, Dance, Ghosts, Move, Path, Props.
 # (Animate converted 10/15: 13 -> 12; Polish 12 -> 11; Switchboard 11 -> 10; Light Cues 10 -> 9;
-# Practicals 9 -> 8; Gaze Cues 8 -> 7; Exposure 7 -> 6; batch 2: cast_group/move_tab 6 -> 5, cast_group/props_tab 5 -> 4, cast_group/path_tab 4 -> 3, performance_group/gaze_tab 3 -> 2.)
-KNOWN_LEGACY_PAGES = (
-    "cast_group/dance_tab",
-    "cast_group/ghosts_tab",
-)
+# Practicals 9 -> 8; Gaze Cues 8 -> 7; Exposure 7 -> 6; batch 2: cast_group/move_tab 6 -> 5, cast_group/props_tab 5 -> 4, cast_group/path_tab 4 -> 3, performance_group/gaze_tab 3 -> 2; batch 3: cast_group/dance_tab 2 -> 1, cast_group/ghosts_tab 1 -> 0.)
+KNOWN_LEGACY_PAGES = ()
 
 DIRECTOR_RULES = collections.OrderedDict([
     ("R1_REACHABILITY", (

@@ -30,6 +30,10 @@ public:
         Mandatory<std::string> kind;
         Optional<std::string>  widget, label, label_name, help, keywords, unit, sub, setting, bind, reset_settings, default_value, link_to,
             action, mirror_setting;
+        // Undo owner declaration for a code-bound row that keeps widget history (kit_lint enforces it):
+        // "global" = page-global or local state, not tied to a selected subject; "subject" = tied to
+        // a subject and guarded by the page's undo_context. Declarative; nothing reads it at runtime.
+        Optional<std::string> undo_scope;
         Optional<bool> advanced, card_preset, who_picker, hidden, added, widget_history, bulk_reset, unconnected, fill_width;
         Optional<S32>  row_height, decimals;
         Optional<F32>  min_val, max_val, increment;

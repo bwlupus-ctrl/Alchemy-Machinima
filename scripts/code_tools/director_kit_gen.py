@@ -263,8 +263,13 @@ def validate_data(data: dict) -> None:
     #       duration line) and suspend_status (the paused-walk Status line) (+2) (10/15 batch 2).
     # 2107: Gaze gains the v1 Performance preset combo and its reset button, which the mockup lacked
     #       (gaze_performance_combo, reset_gaze_performance) (+2) (10/15 batch 2).
-    if len(pages) != 37 or row_count != 2107:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2107")
+    # 2109: Dance gains the two v1 readouts the mockup lacked: db_message (Message, the result of the
+    #       last action) and db_local_note (Note, the local-only blocking note) (+2) (10/15 batch 3).
+    # 2112: Ghosts gains three v1 controls the mockup lacked: studio_hint (Tip, the edit-mode hint),
+    #       ghost_type (Type, the selected ghost's kind and state) and heading_dial (the live heading
+    #       dial beside the Yaw spinner) (+3) (10/15 batch 3).
+    if len(pages) != 37 or row_count != 2112:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2112")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -337,7 +342,9 @@ def source_index(paths: list[Path]) -> tuple[dict[str, ET.Element], dict[str, li
         root = parse_xml(path)
         for node in root.iter():
             name = node.get("name")
-            if name:
+            # Scroll-list columns are never rows (a row's widget is the list); several lists of one
+            # panel may reuse a column name ("name", "on") and the row's child_names renames them.
+            if name and node.tag != "columns":
                 if name in by_name:
                     raise GenError(f"duplicate widget name {name!r} in P0 v1 sources")
                 by_name[name] = node
@@ -761,6 +768,8 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
         attrs["preset_mode"] = "none"
     if cfg.get("undo_context"):
         attrs["undo_context"] = str(cfg["undo_context"])
+    elif (cfg.get("_undo") or {}).get("context"):
+        attrs["undo_context"] = str(cfg["_undo"]["context"])
     if cfg.get("chip_mode"):
         attrs["chip_mode"] = str(cfg["chip_mode"])
     # own_history: the settings whose undo another owner already records (Exposure and its
@@ -772,6 +781,53 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
     if settings:
         attrs["watch_settings"] = ",".join(settings)
     return attrs
+
+
+# Kinds the kit never records widget history for (alkitrow.cpp: kind button/readout, mirror rows).
+UNRECORDED_KINDS = {"button", "readout"}
+
+
+def declare_undo_owner(body: ET.Element, cfg: dict, page_name: str) -> None:
+    """Every code-bound row that records kit widget history names its undo owner.
+
+    Replaying a recorded step does setValue + onCommit on whatever is selected at undo time, so a
+    per-subject row must not be replayed blind. kit_pages.json "undo_owners" gives each page one of:
+      history "none"     every code-bound row is widget_history=false (the page owns its undo, or the
+                         rows are selection state)
+      no_history_rows    individual rows that are widget_history=false
+      context            the page declares undo_context (ALKitPage::undoSubject or a panel provider);
+                         its remaining rows are undo_scope=subject and replay only on the same subject
+      scope "global"     the remaining rows are page-global / local state, undo_scope=global
+      global_rows        individual rows that are undo_scope=global on a subject page
+    A row left without an owner is a generation error (kit_lint repeats the check on the XML)."""
+    owner = cfg.get("_undo") or {}
+    no_history = set(owner.get("no_history_rows", []))
+    global_rows = set(owner.get("global_rows", []))
+    context = owner.get("context") or cfg.get("undo_context")
+    seen: set[str] = set()
+    missing: list[str] = []
+    for row in body.iter("kit_row"):
+        widget = str(row.get("widget", ""))
+        if widget in no_history or widget in global_rows:
+            seen.add(widget)
+        recorded = (row.get("bind") == "code" and row.get("kind") not in UNRECORDED_KINDS
+                    and not row.get("mirror_setting"))
+        if not recorded or row.get("widget_history") == "false":
+            continue
+        if owner.get("history") == "none" or widget in no_history:
+            row.set("widget_history", "false")
+        elif widget in global_rows or owner.get("scope") == "global":
+            row.set("undo_scope", "global")
+        elif context:
+            row.set("undo_scope", "subject")
+        else:
+            missing.append(widget)
+    unknown = (no_history | global_rows) - seen
+    if unknown:
+        raise GenError(f"undo_owners for {page_name} names unknown rows: {sorted(unknown)}")
+    if missing:
+        raise GenError(f"{page_name}: code-bound rows with kit widget history and no undo owner "
+                       f"(add the page to kit_pages.json undo_owners): {missing}")
 
 
 def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
@@ -796,6 +852,15 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
     if cfg.get("root_class"):
         root_attrs["class"] = str(cfg["root_class"])
     root = ET.Element("panel", root_attrs)
+    if cfg.get("copy_strings"):
+        # The page's logic class reads its UI text with LLPanel::getString (Dance Ball, Ghost
+        # Studio); the root panel carries the v1 panel's <string> table unchanged.
+        seen_strings: set[str] = set()
+        for source_path in source_paths:
+            for string_node in parse_xml(source_path):
+                if string_node.tag == "string" and string_node.get("name") not in seen_strings:
+                    seen_strings.add(str(string_node.get("name")))
+                    root.append(copy.deepcopy(string_node))
     body = ET.SubElement(root, "kit_page", page_attrs(group, page, cfg))
     omitted_cards = set(cfg.get("omit_empty_cards", []))
     if cfg.get("actor_target"):
@@ -882,6 +947,7 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
                     continue
                 option_node.append(row_element(row, by_name, by_control, referenced, report, names,
                                                cfg.get("label_names", {})))
+    declare_undo_owner(body, cfg, str(page.get("name", "")))
     preset = cfg.get("preset", {})
     if preset.get("mode") == "widgets":
         host = ET.SubElement(body, "kit_preset_host", {
@@ -1524,7 +1590,9 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "performance_group/switchboard_tab": "kit (P0)",
                 "performance_group/polish_tab": "kit (P0)",
                 "cast_group/move_tab": "kit (P0)",
-                "cast_group/props_tab": "kit (P0)"}
+                "cast_group/props_tab": "kit (P0)",
+                "cast_group/dance_tab": "kit (P0)",
+                "cast_group/ghosts_tab": "kit (P0)"}
     # Pinned per conversion batch (user-approved 10/13: lower as pages convert, never raise).
     # World/Lens batch: kit 7 -> 13, legacy 27 -> 21. 10/14: new Stepped page (kit_pages
     # entry => kit (P0)) kit 13 -> 14; legacy unchanged at 21. 10/14 Camera+Capture
@@ -1536,7 +1604,9 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # 10/15 batch 2, performance_group/gaze_tab: legacy 3 -> 2.
     # 10/15 batch 2, cast_group/path_tab: legacy 4 -> 3.
     # 10/15 batch 2, cast_group/props_tab: legacy 5 -> 4.
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 34, "pure kit (new)": 1, "legacy": 2}):
+    # 10/15 batch 3, cast_group/dance_tab: legacy 2 -> 1.
+    # 10/15 batch 3, cast_group/ghosts_tab: legacy 1 -> 0 (no legacy page remains).
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 36, "pure kit (new)": 1}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -1554,10 +1624,13 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
             hosted = len(list(leaves[raw_page["name"]]))
             kit_rows = 0
         elif classification in {"kit (P0)", "pure kit (new)"}:
-            cfg = config.get("p0_pages", {}).get(key, {})
+            cfg = dict(config.get("p0_pages", {}).get(key, {}))
+            cfg["_undo"] = config.get("undo_owners", {}).get(key)
             sources = [XUI / name for name in cfg.get("v1_sources", [])]
             root, names = kit_page(group, raw_page, cfg, sources, referenced, details)
             apply_page_features(root, key, config.get("page_features", {}))
+            # page features add rows after kit_page() returned (Shot's subject-assignment buttons)
+            declare_undo_owner(root.find("kit_page"), cfg, raw_page["name"])
             hosted = sum(1 for node in root.iter() if node.tag in HOST_KIND or node.tag == "kit_switch") if sources else 0
             kit_rows = sum(1 for node in root.iter("kit_row"))
         else:
@@ -1605,7 +1678,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
         checks = []
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 34, "pure kit (new)": 1, "legacy": 2})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 36, "pure kit (new)": 1})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -1647,7 +1720,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
             apply_page_features(expected_legacy, key, config.get("page_features", {}))
             apply_kit_xui_style(expected_legacy)
             legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(expected_legacy)
-        checks.append(("2 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 2))
+        checks.append(("0 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 0))
         dials = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]
         checks.append(("all compass dials use kit geometry without duplicate readout",

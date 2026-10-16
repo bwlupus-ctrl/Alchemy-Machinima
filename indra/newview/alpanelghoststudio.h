@@ -41,6 +41,7 @@ class LLF32UICtrl;
 class LLScrollListCtrl;
 class LLSliderCtrl;
 class LLSpinCtrl;
+class LLTabContainer;
 class LLTextBox;
 class LLTextEditor;
 class ALCompassDial;
@@ -236,6 +237,9 @@ private:
     // ---- master toggle ----
     void onShowAllToggle();
     void onResetNumeric(const std::string& target_name);
+    // Formation "Parameter" reset (the floater's icon button and the kit row's reset glyph).
+    void onFormationParamReset();
+    void registerKitParameterReset();
 
     // cached display name for a source id ("You" for null/self)
     static std::string sourceName(const LLUUID& id);
@@ -331,7 +335,9 @@ private:
     LLSliderCtrl*     mLensGazeSmoothingSlider = nullptr;
     LLTextBox*        mLensGazeStatus = nullptr;
     LLTextBox*        mAnimMetadataText = nullptr;
-    LLView*           mLookSection = nullptr;
+    LLView*           mLookSection = nullptr;      // floater: the panel holding the overlay style controls
+    std::vector<LLView*> mLookControls;            // kit page: the same controls, hidden with their rows
+    LLTabContainer*   mTabs = nullptr;             // floater only; null on the Director kit page
     LLTextBox*        mEntityStyleHint = nullptr;
     LLButton*         mPlaceBtn = nullptr;
     LLButton*         mToActorBtn = nullptr;

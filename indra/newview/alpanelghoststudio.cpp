@@ -14,6 +14,8 @@
 #include "llviewermenufile.h" // [AutoAnimate]
 #include "llfilepicker.h" // [AutoAnimate]
 #include "alscrollfit.h"
+#include "alkitbinding.h"           // ALKitBinding (Formation Parameter reset on the kit page)
+#include "alkitrow.h"               // ALKitRow::setControlVisible (Director kit page rows)
 
 #include "alcompassdial.h"          // live direct-manipulation heading control
 #include "alghostanimassetindex.h"
@@ -57,6 +59,48 @@ static LLPanelInjector<ALPanelGhostStudio> t_panel_ghost_studio("panel_ghost_stu
 
 namespace
 {
+// Name of column `index` of a scroll list. The standalone floater names the ghost list columns
+// "on", "name", "kind"...; the Director's generated kit page keeps names unique across pages, so
+// it renames them (ghost_on, ghost_name_col...). Rows are addressed by position, so the same
+// code fills either layout; `v1_name` is the fallback when the list has no such column.
+std::string column_name(LLScrollListCtrl* list, S32 index, const char* v1_name)
+{
+    if (list)
+    {
+        if (LLScrollListColumn* column = list->getColumn(index))
+        {
+            return column->mName;
+        }
+    }
+    return v1_name;
+}
+
+// The first tab container below `view`, or null when the layout has none (the Director's kit
+// page is one scrolling page of cards; the floater has the Place/Pose/Style/Crowd tabs).
+LLTabContainer* find_tab_container(LLView* view)
+{
+    for (LLView* child : *view->getChildList())
+    {
+        if (LLTabContainer* tabs = dynamic_cast<LLTabContainer*>(child))
+        {
+            return tabs;
+        }
+        if (LLTabContainer* tabs = find_tab_container(child))
+        {
+            return tabs;
+        }
+    }
+    return nullptr;
+}
+
+// Show or hide a control. On the Director kit page the control sits in a kit row, and the whole
+// row (label, reset glyph) has to follow it, so the card re-lays out; in the floater this is a
+// plain setVisible.
+bool setRowVisibleIfChanged(LLView* control, bool visible)
+{
+    return control && ALKitRow::setControlVisible(control, visible);
+}
+
 // style id -> short list label (keep in sync with EGhostStyle /
 // panel_path_editor.xml's ghost_style_combo)
 const char* style_name(S32 style)
@@ -305,7 +349,7 @@ bool ALPanelGhostStudio::postBuild()
     mAutoAnimLoad = getChild<LLButton>("btn_autoanim_load");
     mAutoAnimRelearn = getChild<LLButton>("btn_autoanim_relearn");
     mAutoAnimReseed = getChild<LLButton>("btn_autoanim_reseed");
-    mAutoAnimReset = getChild<LLButton>("reset_autoanim_window");
+    mAutoAnimReset = findChild<LLButton>("reset_autoanim_window");   // floater only (the kit row has its own glyph)
     mAutoAnimSave = getChild<LLButton>("btn_autoanim_save");
     mAutoAnimStop = getChild<LLButton>("btn_autoanim_stop");
     mAutoAnimGo->setToolTip(std::string("Keep the current performance. True mirror switches to Mirror with a COLD body start (not seamless)."));
@@ -328,7 +372,6 @@ bool ALPanelGhostStudio::postBuild()
     mLensGazeSmoothingSlider = getChild<LLSliderCtrl>("lens_gaze_smoothing");
     mLensGazeStatus = getChild<LLTextBox>("lens_gaze_status");
     mAnimMetadataText = getChild<LLTextBox>("anim_metadata_text");
-    mLookSection = getChild<LLView>("look_section");
     mEntityStyleHint = getChild<LLTextBox>("entity_style_hint");
     mPlaceBtn  = getChild<LLButton>("btn_place");
     mToActorBtn = getChild<LLButton>("btn_to_actor");
@@ -356,8 +399,33 @@ bool ALPanelGhostStudio::postBuild()
     mBrightnessSlider = getChild<LLSliderCtrl>("brightness_slider");
     mEffectFps = getChild<LLSpinCtrl>("effect_fps_spinner");
     mEntityLookCombo = getChild<LLComboBox>("entity_look_combo");
+    // Overlay-only style controls (hidden for entity clones). The floater groups them in one panel
+    // (the parent of the Look combo); the Director's kit page spreads them over three cards of
+    // rows, so each control is hidden with its row.
+    bool in_kit_row = false;
+    for (LLView* ancestor = mStyleCombo->getParent(); ancestor && ancestor != this;
+         ancestor = ancestor->getParent())
+    {
+        in_kit_row = in_kit_row || dynamic_cast<ALKitRow*>(ancestor) != nullptr;
+    }
+    if (!in_kit_row)
+    {
+        mLookSection = mStyleCombo->getParent();
+    }
+    else
+    {
+        mLookControls = { mStyleCombo, mDistortCombo, mDistortAmountSlider, mActorTintCheck,
+                          mHueSlider, mAlphaSlider, mBrightnessSlider, mPixelSlider,
+                          mShimmerAmountSlider, mShimmerSpeedSlider, mGlitchSlider, mEffectFps };
+    }
 
-    mFreezeBtn  = getChild<LLButton>("btn_freeze");
+    // Kit widget names are unique across Director pages (Capture > Time owns btn_freeze), so the
+    // generated Ghosts page names it ghost_btn_freeze; the floater keeps the v1 name.
+    mFreezeBtn  = findChild<LLButton>("btn_freeze");
+    if (!mFreezeBtn)
+    {
+        mFreezeBtn = getChild<LLButton>("ghost_btn_freeze");
+    }
     mLiveBtn    = getChild<LLButton>("btn_live");
     mPoseStatus = getChild<LLTextBox>("pose_status");
     mRigDiagnostics = getChild<LLTextEditor>("rig_diagnostics");
@@ -369,7 +437,7 @@ bool ALPanelGhostStudio::postBuild()
     mArrayRingBtn = getChild<LLButton>("btn_array_ring");
     mFormationCombo = getChild<LLComboBox>("array_formation_combo");
     mFormationParam = getChild<LLSpinCtrl>("array_parameter_spinner");
-    mFormationParamReset = getChild<LLButton>("reset_array_parameter");
+    mFormationParamReset = findChild<LLButton>("reset_array_parameter");   // floater only; see registerKitParameterReset
     mFormationSeed = getChild<LLSpinCtrl>("formation_seed_spinner");
     mFormationJitter = getChild<LLSpinCtrl>("formation_jitter_spinner");
     mFormationGuideShape =
@@ -421,25 +489,41 @@ bool ALPanelGhostStudio::postBuild()
 
     // XUI groups each tab beside the section it owns for maintainability.
     // Reinsert the last three panels in the requested visible order.
-    LLTabContainer* tabs = getChild<LLTabContainer>("ghost_studio_tabs");
-    LLPanel* pose_tab = getChild<LLPanel>("pose_tab");
-    LLPanel* style_tab = getChild<LLPanel>("style_tab");
-    LLPanel* crowd_tab = getChild<LLPanel>("crowd_tab");
-    tabs->removeTabPanel(style_tab);
-    tabs->removeTabPanel(pose_tab);
-    tabs->removeTabPanel(crowd_tab);
-    tabs->addTabPanel(pose_tab);
-    tabs->addTabPanel(style_tab);
-    tabs->addTabPanel(crowd_tab);
+    // The Director's generated kit page (Cast > Ghosts) is one scrolling page of cards with no tab
+    // container, so the tabs are found by type and everything below is skipped when there are none.
+    mTabs = find_tab_container(this);
+    if (mTabs)
+    {
+        LLPanel* pose_tab = nullptr;
+        LLPanel* style_tab = nullptr;
+        LLPanel* crowd_tab = nullptr;
+        for (S32 i = 0; i < mTabs->getTabCount(); ++i)
+        {
+            LLPanel* page = mTabs->getPanelByIndex(i);
+            const std::string page_name = page ? page->getName() : std::string();
+            if (page_name == "pose_tab") pose_tab = page;
+            else if (page_name == "style_tab") style_tab = page;
+            else if (page_name == "crowd_tab") crowd_tab = page;
+        }
+        if (pose_tab && style_tab && crowd_tab)
+        {
+            mTabs->removeTabPanel(style_tab);
+            mTabs->removeTabPanel(pose_tab);
+            mTabs->removeTabPanel(crowd_tab);
+            mTabs->addTabPanel(pose_tab);
+            mTabs->addTabPanel(style_tab);
+            mTabs->addTabPanel(crowd_tab);
+        }
 
-    // The shared panel is hosted both standalone and in Director. These named
-    // documents own their scrolling in both hosts; the controller fits them and
-    // installs the same focus-reveal behavior as the former focus-only calls.
-    mScrollFit.installForTabs(tabs, this,
-                              { { "place_scroll", "place_scroll_body" },
-                                { "style_scroll", "style_scroll_body" },
-                                { "pose_scroll", "pose_scroll_body" },
-                                { "crowd_scroll", "crowd_scroll_body" } });
+        // The shared panel is hosted both standalone and in Director. These named
+        // documents own their scrolling in both hosts; the controller fits them and
+        // installs the same focus-reveal behavior as the former focus-only calls.
+        mScrollFit.installForTabs(mTabs, this,
+                                  { { "place_scroll", "place_scroll_body" },
+                                    { "style_scroll", "style_scroll_body" },
+                                    { "pose_scroll", "pose_scroll_body" },
+                                    { "crowd_scroll", "crowd_scroll_body" } });
+    }
 
     mShowAllCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onShowAllToggle(); });
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
@@ -553,19 +637,15 @@ bool ALPanelGhostStudio::postBuild()
         captureFormationParameter();
         updateOwnedCrowdPlacement();
     });
-    mFormationParamReset->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&)
-        {
-            const CrowdParameterDescriptor descriptor =
-                crowd_parameter_descriptor(mConfiguredFormation);
-            if (descriptor.mParameter == ECrowdParameter::NONE)
-            {
-                return;
-            }
-            mFormationParam->setValue(descriptor.mDefault);
-            captureFormationParameter();
-            updateOwnedCrowdPlacement();
-        });
+    if (mFormationParamReset)
+    {
+        mFormationParamReset->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onFormationParamReset(); });
+    }
+    else
+    {
+        registerKitParameterReset();
+    }
     for (LLUICtrl* control :
          { static_cast<LLUICtrl*>(mArrayCount),
            static_cast<LLUICtrl*>(mArraySpacing),
@@ -669,10 +749,18 @@ bool ALPanelGhostStudio::postBuild()
         { "reset_lens_gaze_intensity", "lens_gaze_intensity" },
         { "reset_lens_gaze_smoothing", "lens_gaze_smoothing" }
     };
+    // The Director kit page has no icon reset buttons: its rows draw their own reset glyph from the
+    // default_value the mockup gives each of these rows (the same XUI initial_value), and that
+    // reset sets the value and commits it exactly as onResetNumeric does.
     for (const auto& entry : reset_controls)
     {
+        LLButton* reset_button = findChild<LLButton>(entry.first);
+        if (!reset_button)
+        {
+            continue;
+        }
         const std::string target_name(entry.second);
-        getChild<LLButton>(entry.first)->setCommitCallback(
+        reset_button->setCommitCallback(
             [this, target_name](LLUICtrl*, const LLSD&) { onResetNumeric(target_name); });
     }
     onFormationCommit();
@@ -685,12 +773,22 @@ bool ALPanelGhostStudio::postBuild()
 void ALPanelGhostStudio::reshape(S32 width, S32 height, bool called_from_parent)
 {
     LLPanel::reshape(width, height, called_from_parent);
-    if (LLTabContainer* tabs = findChild<LLTabContainer>("ghost_studio_tabs"))
+    // The floater lays out tabs; the Director kit page has none (this can run before postBuild,
+    // so the tab container is searched for rather than read from mTabs).
+    if (LLTabContainer* tabs = mTabs ? mTabs : find_tab_container(this))
     {
         // The tabs fill from the panel bottom up to the instances section
         // (the status bar is at the top since 382b04b6faf). Derive the top
         // from the XUI layout so the tabs never cover Duplicate/Delete/Refresh.
-        const LLView* instances = findChild<LLView>("instances_section", false);
+        const LLView* instances = nullptr;
+        for (const LLView* child : *getChildList())
+        {
+            if (child->getName() == "instances_section")
+            {
+                instances = child;
+                break;
+            }
+        }
         const S32 tabs_top = instances ? instances->getRect().mBottom
                                        : height - 242;
         tabs->reshape(width, llmax(1, tabs_top), true);
@@ -1261,26 +1359,26 @@ void ALPanelGhostStudio::refreshList(bool force_now)
     {
         LLSD row;
         row["value"] = inst.mId;
-        row["columns"][0]["column"] = "on";
+        row["columns"][0]["column"] = column_name(mList, 0, "on");
         row["columns"][0]["value"] =
             inst.mEnabled ? "\xE2\x97\x8F" : "\xE2\x97\x8B";
-        row["columns"][1]["column"] = "name";
+        row["columns"][1]["column"] = column_name(mList, 1, "name");
         row["columns"][1]["value"] =
             (indented ? std::string("\xE2\x94\x94 ") : std::string()) +
             inst.mName;
-        row["columns"][2]["column"] = "kind";
+        row["columns"][2]["column"] = column_name(mList, 2, "kind");
         row["columns"][2]["value"] = kind_name(inst.mKind);
-        row["columns"][3]["column"] = "state";
+        row["columns"][3]["column"] = column_name(mList, 3, "state");
         row["columns"][3]["value"] = state_name(inst);
-        row["columns"][4]["column"] = "source";
+        row["columns"][4]["column"] = column_name(mList, 4, "source");
         row["columns"][4]["value"] = inst.mSourceLabel.empty()
             ? sourceName(inst.mSource) : inst.mSourceLabel;
-        row["columns"][5]["column"] = "style";
+        row["columns"][5]["column"] = column_name(mList, 5, "style");
         row["columns"][5]["value"] =
             inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE
                 ? std::string("Scene-lit")
                 : std::string(style_name(inst.mStyle));
-        row["columns"][6]["column"] = "pose";
+        row["columns"][6]["column"] = column_name(mList, 6, "pose");
         row["columns"][6]["value"] =
             inst.mPose == ALGhostStudio::POSE_FROZEN
                 ? std::string("FROZEN") : std::string("live");
@@ -1311,25 +1409,25 @@ void ALPanelGhostStudio::refreshList(bool force_now)
 
         LLSD header;
         header["value"] = group->mId;
-        header["columns"][0]["column"] = "on";
+        header["columns"][0]["column"] = column_name(mList, 0, "on");
         header["columns"][0]["value"] =
             all_enabled ? "\xE2\x97\x8F" : "\xE2\x97\x8B";
-        header["columns"][1]["column"] = "name";
+        header["columns"][1]["column"] = column_name(mList, 1, "name");
         header["columns"][1]["value"] =
             std::string(group->mEditMembers ? "\xE2\x96\xBC " :
                                               "\xE2\x96\xB6 ") +
             group->mName + llformat(" (%d)", (S32)group->mMembers.size());
-        header["columns"][2]["column"] = "kind";
+        header["columns"][2]["column"] = column_name(mList, 2, "kind");
         header["columns"][2]["value"] = "Group";
-        header["columns"][3]["column"] = "state";
+        header["columns"][3]["column"] = column_name(mList, 3, "state");
         header["columns"][3]["value"] =
             group->mMode == ALGhostGroupModel::MODE_MOVE_FACE
                 ? "Move+Face" : "Rigid";
-        header["columns"][4]["column"] = "source";
+        header["columns"][4]["column"] = column_name(mList, 4, "source");
         header["columns"][4]["value"] = "";
-        header["columns"][5]["column"] = "style";
+        header["columns"][5]["column"] = column_name(mList, 5, "style");
         header["columns"][5]["value"] = "";
-        header["columns"][6]["column"] = "pose";
+        header["columns"][6]["column"] = column_name(mList, 6, "pose");
         header["columns"][6]["value"] = "group";
         mList->addElement(header, ADD_BOTTOM);
 
@@ -1421,8 +1519,12 @@ void ALPanelGhostStudio::refreshDetail()
         inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED;
     const bool show_style_controls = !entity;
     setVisibleIfChanged(mLookSection, show_style_controls);
-    setVisibleIfChanged(mEntityStyleHint, !show_style_controls);
-    setVisibleIfChanged(mRefreshBtn, entity);
+    for (LLView* look_control : mLookControls)
+    {
+        setRowVisibleIfChanged(look_control, show_style_controls);
+    }
+    setRowVisibleIfChanged(mEntityStyleHint, !show_style_controls);
+    setRowVisibleIfChanged(mRefreshBtn, entity);
     setEnabledIfChanged(mRefreshBtn, entity);
     std::string type = "Type: No selection";
     if (overlay)
@@ -1449,12 +1551,12 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mAnimResumeBtn, entity);
     setEnabledIfChanged(mEntityLookCombo, entity);
     setEnabledIfChanged(mDriveModeCombo, entity);
-    setVisibleIfChanged(mDirectedAnimEdit, directed);
+    setRowVisibleIfChanged(mDirectedAnimEdit, directed);
     setEnabledIfChanged(mDirectedAnimEdit, directed);
-    setVisibleIfChanged(mAnimationLibraryCombo, directed);
-    setVisibleIfChanged(mAnimationLibraryRefreshBtn, directed);
+    setRowVisibleIfChanged(mAnimationLibraryCombo, directed);
+    setRowVisibleIfChanged(mAnimationLibraryRefreshBtn, directed);
     setEnabledIfChanged(mAnimationLibraryCombo, directed);
-    setVisibleIfChanged(mAnimMetadataText, directed);
+    setRowVisibleIfChanged(mAnimMetadataText, directed);
     setEnabledIfChanged(mLoopModeCombo, entity);
     setEnabledIfChanged(mAnimSyncBtn, entity);
     setEnabledIfChanged(mLensGazeCheck, entity && inst->mEntityId.notNull());
@@ -1613,6 +1715,7 @@ void ALPanelGhostStudio::refreshDetail()
     setValueIfChanged(mPhysicsCheck, LLSD(inst->mPhysicsEnabled), true);
     setValueIfChanged(mEntityLookCombo, LLSD((S32)inst->mLook));
     setValueIfChanged(mEffectFps, LLSD((F64)inst->mEffectFps));
+    setValueIfChanged(mPoseRate, LLSD((F64)inst->mPoseRateHz));
     if (inst->mGroupId.notNull() && !studio.getCrowdPlacementDraft().mActive)
         setValueIfChanged(mLockMode, LLSD((S32)inst->mLockMode));
     if (!mYawSpin->hasFocus() && !mHeadingDial->hasMouseCapture())
@@ -1768,6 +1871,7 @@ void ALPanelGhostStudio::refreshDetail()
         setTextIfChanged(mDirectedAnimEdit, inst->mDirectedAnim.asString(), true);
         mDirectedAnimShown = inst->mDirectedAnim;
         setValueIfChanged(mEffectFps, LLSD((F64)inst->mEffectFps), true);
+        setValueIfChanged(mPoseRate, LLSD((F64)inst->mPoseRateHz), true);
         // the combo values the enable block reads just changed
         mDetailDirty = true;
     }
@@ -3295,7 +3399,7 @@ void ALPanelGhostStudio::configureFormationParameter(
     }
     mConfiguredFormation = formation;
     mParamConfigPending = false;
-    setVisibleIfChanged(mFormationParam, visible);
+    setRowVisibleIfChanged(mFormationParam, visible);
     setVisibleIfChanged(mFormationParamReset, visible);
     if (!visible)
     {
@@ -3681,20 +3785,20 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
         setEnabledIfChanged(control, can_edit);
     }
     const bool uses_grid = formation_uses_grid(formation);
-    setVisibleIfChanged(mBrigadeColumns, uses_grid);
-    setVisibleIfChanged(mBrigadeRows, uses_grid);
-    setVisibleIfChanged(mBrigadeFileSpacing, uses_grid);
-    setVisibleIfChanged(mBrigadeRankSpacing, uses_grid);
+    setRowVisibleIfChanged(mBrigadeColumns, uses_grid);
+    setRowVisibleIfChanged(mBrigadeRows, uses_grid);
+    setRowVisibleIfChanged(mBrigadeFileSpacing, uses_grid);
+    setRowVisibleIfChanged(mBrigadeRankSpacing, uses_grid);
     setEnabledIfChanged(mArrayCount, can_edit && !uses_grid);
-    setVisibleIfChanged(mFormationEdgeGap, !uses_grid);
-    setVisibleIfChanged(mFormationJitter, !uses_grid);
+    setRowVisibleIfChanged(mFormationEdgeGap, !uses_grid);
+    setRowVisibleIfChanged(mFormationJitter, !uses_grid);
     setEnabledIfChanged(mBrigadeColumns, can_edit && uses_grid);
     setEnabledIfChanged(mBrigadeRows, can_edit && uses_grid);
     setEnabledIfChanged(mBrigadeFileSpacing, can_edit && uses_grid);
     setEnabledIfChanged(mBrigadeRankSpacing, can_edit && uses_grid);
     setEnabledIfChanged(mFormationGuideSize, can_edit && guide_visible);
     setEnabledIfChanged(mFormationParam, can_edit && has_parameter);
-    setVisibleIfChanged(mFormationParam, has_parameter);
+    setRowVisibleIfChanged(mFormationParam, has_parameter);
     setVisibleIfChanged(mFormationParamReset, has_parameter);
     setEnabledIfChanged(mFormationParamReset, can_edit && has_parameter);
     setEnabledIfChanged(mCrowdCopiesAs, false);
@@ -4176,6 +4280,94 @@ void ALPanelGhostStudio::onShowAllToggle()
     {
         exitEditMode();
     }
+}
+
+void ALPanelGhostStudio::onFormationParamReset()
+{
+    const CrowdParameterDescriptor descriptor =
+        crowd_parameter_descriptor(mConfiguredFormation);
+    if (descriptor.mParameter == ECrowdParameter::NONE)
+    {
+        return;
+    }
+    mFormationParam->setValue(descriptor.mDefault);
+    captureFormationParameter();
+    updateOwnedCrowdPlacement();
+}
+
+namespace
+{
+// Kit binding for the Formation "Parameter" row: its meaning, range and default change with the
+// formation (the same widget serves every formation), so the default is read from the panel's
+// current descriptor each time. Reset runs the floater's reset handler.
+class FormationParamBinding final : public ALKitBinding
+{
+public:
+    FormationParamBinding(LLHandle<LLView> control, std::function<LLSD()> default_fn, std::function<void()> reset_fn)
+        : mControl(std::move(control)), mDefaultFn(std::move(default_fn)), mReset(std::move(reset_fn)) {}
+    LLSD get() const override
+    {
+        const LLUICtrl* ctrl = dynamic_cast<const LLUICtrl*>(mControl.get());
+        return ctrl ? ctrl->getValue() : LLSD();
+    }
+    LLSD getDefault() const override { return mDefaultFn(); }
+    void set(const LLSD& value) override
+    {
+        if (LLUICtrl* ctrl = dynamic_cast<LLUICtrl*>(mControl.get()))
+        {
+            ctrl->setValue(value);
+            ctrl->onCommit();
+        }
+    }
+    void reset() override
+    {
+        if (mReset)
+        {
+            mReset();
+        }
+    }
+    boost::signals2::connection connectChanged(std::function<void()> cb) override
+    {
+        LLUICtrl* ctrl = dynamic_cast<LLUICtrl*>(mControl.get());
+        return ctrl ? ctrl->setCommitCallback([cb](LLUICtrl*, const LLSD&) { cb(); }) : boost::signals2::connection();
+    }
+    std::string describe() const override { return "Ghost formation parameter"; }
+
+private:
+    LLHandle<LLView>      mControl;
+    std::function<LLSD()> mDefaultFn;
+    std::function<void()> mReset;
+};
+} // anonymous namespace
+
+void ALPanelGhostStudio::registerKitParameterReset()
+{
+    LLHandle<ALPanelGhostStudio> panel_handle = getDerivedHandle<ALPanelGhostStudio>();
+    ALKitBindingRegistry::instance().add(this, "array_parameter_spinner",
+        [panel_handle, control_handle = mFormationParam->getHandle()]()
+        {
+            return std::unique_ptr<ALKitBinding>(new FormationParamBinding(
+                control_handle,
+                [panel_handle]() -> LLSD
+                {
+                    ALPanelGhostStudio* panel = panel_handle.get();
+                    if (!panel)
+                    {
+                        return LLSD();
+                    }
+                    const CrowdParameterDescriptor descriptor =
+                        crowd_parameter_descriptor(panel->mConfiguredFormation);
+                    // The row is hidden while the formation has no parameter; 0 keeps the glyph valid.
+                    return descriptor.mParameter == ECrowdParameter::NONE ? LLSD(0.0) : LLSD(descriptor.mDefault);
+                },
+                [panel_handle]()
+                {
+                    if (ALPanelGhostStudio* panel = panel_handle.get())
+                    {
+                        panel->onFormationParamReset();
+                    }
+                }));
+        });
 }
 
 void ALPanelGhostStudio::onResetNumeric(const std::string& target_name)

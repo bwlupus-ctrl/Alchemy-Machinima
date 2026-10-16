@@ -3355,7 +3355,9 @@ private:
                     {
                         LLSD row;
                         row["value"] = gAgentID;
-                        row["columns"][0]["column"] = "name";
+                        // Name column by position (the Director's Dance page renames its columns).
+                        LLScrollListColumn* name_column = dancers->getColumn(1);
+                        row["columns"][0]["column"] = name_column ? name_column->mName : std::string("name");
                         row["columns"][0]["value"] = "You";
                         dancers->addElement(row, ADD_BOTTOM);
                     }

@@ -16,12 +16,7 @@
   "CineLightRigLiveProbeBounceKeep": {"attrs": ["setting"], "reason": "Easy and Advanced rows expose the same page-local setting", "citation": "DIRECTOR_KIT_P0_SPEC.md section 4.4", "expires": "WP12"},
   "CineLightRigNightMaskEnabled": {"attrs": ["setting", "enable_setting"], "reason": "Easy row and Advanced card expose the same page-local enable", "citation": "DIRECTOR_KIT_P0_SPEC.md section 4.4", "expires": "WP12"}
  },
- "xui_legacy_v1_findings": [
-  "panel_dpage_cast_dance.xml|no-scroller-overflow|dance_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
-  "panel_dpage_cast_dance.xml|clipped|director_dance_ball_panel (0,30,711,568) extends outside dance_tab_content (0,0,711,525)",
-  "panel_dpage_cast_ghosts.xml|no-scroller-overflow|ghosts_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
-  "panel_dpage_cast_ghosts.xml|clipped|ghost_studio_panel (0,8,354,760) extends outside ghosts_tab_content (0,0,374,550)"
- ],
+ "xui_legacy_v1_findings": [],
  "shared_writers": {
   "DirectorV2SelectedLight": {"attrs": ["sel_setting", "mirror_setting"], "reason": "shared selection state, not authored content", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.16 and 5.1", "expires": "WP12"}
  },

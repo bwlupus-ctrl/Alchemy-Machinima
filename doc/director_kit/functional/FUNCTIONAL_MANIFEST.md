@@ -18,9 +18,9 @@ Inputs: `wiring_table.csv` sha256 `142461b9ba1ecb16` (1816 interactive rows); 36
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1336 | 38 | 300 | 50 | 96 | 1 | 1821 |
-| v2 | 1614 | 0 | 458 | 68 | 0 | 9 | 2149 |
+| v2 | 1636 | 0 | 458 | 70 | 0 | 9 | 2173 |
 
-Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 1.
+Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
 ## Counts per page and version
 
@@ -29,8 +29,8 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 1.
 | move_tab (Move) | cast_group | 9 | 0 | 5 | 2 | 0 | 0 | 12 | 0 | 5 | 3 | 0 | 0 |
 | path_tab (Path) | cast_group | 31 | 0 | 21 | 3 | 0 | 0 | 40 | 0 | 21 | 4 | 0 | 1 |
 | props_tab (Props) | cast_group | 18 | 0 | 10 | 3 | 0 | 0 | 20 | 0 | 10 | 3 | 0 | 0 |
-| ghosts_tab (Ghosts) | cast_group | 62 | 0 | 48 | 2 | 0 | 0 | 62 | 0 | 48 | 2 | 0 | 0 |
-| dance_tab (Dance) | cast_group | 29 | 0 | 38 | 9 | 0 | 0 | 29 | 0 | 38 | 9 | 0 | 0 |
+| ghosts_tab (Ghosts) | cast_group | 62 | 0 | 48 | 2 | 0 | 0 | 76 | 0 | 48 | 4 | 0 | 0 |
+| dance_tab (Dance) | cast_group | 29 | 0 | 38 | 9 | 0 | 0 | 37 | 0 | 38 | 9 | 0 | 0 |
 | animate_tab (Animate) | performance_group | 6 | 0 | 12 | 1 | 0 | 1 | 11 | 0 | 12 | 2 | 0 | 1 |
 | switchboard_tab (Switchboard) | performance_group | 14 | 0 | 14 | 0 | 0 | 0 | 19 | 0 | 14 | 1 | 0 | 0 |
 | gaze_tab (Gaze) | performance_group | 14 | 0 | 101 | 3 | 0 | 0 | 15 | 0 | 108 | 3 | 0 | 0 |
@@ -186,6 +186,8 @@ Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to e
 | vcam_tab | vc_remove_face | Remove face | v2 | destructive (remove) in action name or label |
 | temporal_tab | output_fps_spinner | Out FPS | v2 | not connected yet |
 | temporal_tab | drive_camera_check | Camera | v2 | authored disabled control |
+| ghosts_tab | directed_anim_editor | Anim UUID | v2 | file/path text input (would write a host path) |
+| ghosts_tab | crowd_copies_as_combo | Copies as | v2 | authored disabled control |
 | move_tab | custom_anim_editor | Anim UUID | v2 | file/path text input (would write a host path) |
 | path_tab | node_anim_editor | Anim UUID | v2 | file/path text input (would write a host path) |
 | props_tab | prop_btn_remove | Remove | v2 | destructive (remove) in action name or label |
@@ -258,4 +260,4 @@ These run after the manifest rows inside the same session. They are viewer-local
 
 Registry: 38 pages in 10 groups (9 rail groups, Settings via the gear), 17 link rows/cards, 6 popovers, 10 search queries.
 
-Known-legacy pages (2 of at most 2; shrink-only): cast_group/dance_tab, cast_group/ghosts_tab.
+Known-legacy pages (0 of at most 0; shrink-only): .

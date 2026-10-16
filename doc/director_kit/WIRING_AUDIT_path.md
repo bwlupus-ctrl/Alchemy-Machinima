@@ -26,30 +26,30 @@ Static audit of the Path page after it became a generated kit page (10/15, legac
 
 All handlers are in `alpanelpatheditor.cpp`. Ranges equal the hosted v1 nodes (checked by script: no min/max/step/decimals difference between `panel_path_editor.xml` and the generated page).
 
-| # | widget | handler / setting | notes | status |
-|---|---|---|---|---|
-| 1 | edit_mode_check (card switch) | `onToggleEditMode` (arms `ALToolPathEdit`) | enabled by `refreshHeader` when an actor is targeted | OK |
-| 2 | hint | static text | hint stays visible (no banner overlap on the kit page) | OK |
-| 3 | waypoint_list | `onListSelect` -> `setEditNode`; rows by `refreshList` (columns `num`, `role`, `detail`) | | OK |
-| 4 | path_readout | `refreshReadout` text | new row | OK |
-| 5-8 | btn_wp_add, btn_wp_insert, btn_wp_delete, btn_wp_clear | `onClickAdd`, `onClickInsert`, `onClickDelete`, `onClickClear` | | OK |
-| 9-13 | btn_edit_undo, btn_edit_redo, btn_edit_reverse, btn_edit_mirror, btn_edit_loopclose | `undoPath`, `redoPath`, reverse, mirror, close loop (disabled while walking) | | OK |
-| 14-16 | btn_play_path, btn_stop_path, btn_walk_here | `onClickPlayPath`, `onClickStopPath`, `onClickWalkHere` | | OK |
-| 17-18 | copy_to_combo, btn_copy_to | `onClickCopyTo` copies to the combo's member | combo filled by code | OK |
-| 19 | onion_skin_check (card switch) | setting `PathShowOnionSkin` | Boolean, default per `settings.xml`; kit setting binding and reset | OK |
-| 20-23 | ghost_style_combo, ghost_distort_combo, ghost_distort_amount, ghost_effect_fps | settings `PathGhostStyle`, `PathGhostDistort`, `PathGhostDistortAmount` (0..1 step 0.05), `PathGhostEffectFps` (0..30) | combo values 0..27 and 0..8 equal v1 | OK |
-| 24-28 | node_height_spinner (-5..5), node_dwell_spinner (0..120), node_speed_spinner (0..10), node_corner_radius_spinner (0..10000), node_anim_editor (36 chars) | `onNodeHeightCommit`, `onNodeDwellCommit`, `onNodeSpeedCommit`, `onNodeCornerRadiusCommit`, `onNodeAnimCommit` (undo snapshot, then the selected node) | reset default 0 (anim: empty) via `PathResetBinding` | OK |
-| 29 | path_camera_enable_check (card switch) | setting `PathCameraEnabled` | | OK |
-| 30-33 | btn_node_setcam, btn_node_clearcam, node_cam_transition_combo, btn_node_preview | `onClickSetCam`, `onClickClearCam`, `onCamTransitionCommit` (Cut 0 / Ease 1, reset Ease), `onClickPreview` | | OK |
-| 34 | node_cam_status | status text from `refreshCameraControls` | now basic | OK |
-| 35-39 | path_speed_spinner, path_cadence_slider, path_easein_spinner, path_easeout_spinner, path_tension_slider | `onPathSpeedCommit`, `onPathCadenceCommit`, `onPathEaseInCommit`, `onPathEaseOutCommit`, `onPathTensionCommit` | reset defaults 1, 3, 0, 0, 0.5 | OK |
-| 40 | color_swatch (row "Color", Advanced) | per-actor world color painted by `refreshPathControls` on the hosted `panel` | mockup row `color_lbl` renamed to the C++ name through `row_overrides` | OK |
-| 41-44 | path_groundfollow_check, path_pitch_check, path_airborne_check, path_end_combo | `onPathGroundFollowCommit`, `onPathPitchCommit`, `onPathAirborneCommit`, `onPathEndCommit` (Stop 0, Stop + face target 1, Loop 2, Ping-pong 3) | reset default false / Stop | OK |
-| 45-49 | path_shape_combo, btn_primitive_center, btn_fit_half_arc, btn_fit_sine, endpoint_generator_lbl | `onPathShapeCommit` (Waypoints 0 ... Sine Wave 6), `onClickCenterPrimitive`, `onClickFitHalfArc`, `onClickFitSine`, static help | reset default Waypoints | OK |
-| 50-57 | primitive_radius_x/y, primitive_start_deg, primitive_sweep_deg, primitive_rise, primitive_yaw_deg, primitive_pitch_deg, primitive_roll_deg | `onPrimitiveCommit` | reset defaults 3, 2, 0, 360, 3, 0, 0, 0 | OK |
-| 58-60 | sync_take_check (card switch), sync_offset_spinner (-60..60), sync_status | `onSyncToggle`, `onSyncOffsetCommit`, `refreshChoreography` text | switch off is its own reset | OK |
-| 61-64 | follow_leader_combo, follow_offset_spinner (0..64), btn_stop_following, follow_status | `onFollowCommit`, `onFollowOffsetCommit` (reset 3), `onStopFollow`, status text | | OK |
-| 65-68 | suspend_status, btn_suspend_resume, btn_suspend_reanchor, btn_suspend_cancel | `refreshSuspendBanner` text and enable; `onClickResume`, `onClickReanchor`, `onClickCancelSuspend` | card shown only while `isWalkSuspended`; `suspend_status` is the new row | OK |
+| # | widget | handler / setting | notes | status | Undo owner |
+|---|---|---|---|---|---|
+| 1 | edit_mode_check (card switch) | `onToggleEditMode` (arms `ALToolPathEdit`) | enabled by `refreshHeader` when an actor is targeted | OK | none: card enable switches are not recorded by kit widget history |
+| 2 | hint | static text | hint stays visible (no banner overlap on the kit page) | OK | n/a (readout, never recorded) |
+| 3 | waypoint_list | `onListSelect` -> `setEditNode`; rows by `refreshList` (columns `num`, `role`, `detail`) | | OK | none (widget_history=false): page-owned: LLActorMover path undo (snapshotForUndo + the Undo button); recording here as well double-recorded and replayed onto the wrong node |
+| 4 | path_readout | `refreshReadout` text | new row | OK | n/a (readout, never recorded) |
+| 5-8 | btn_wp_add, btn_wp_insert, btn_wp_delete, btn_wp_clear | `onClickAdd`, `onClickInsert`, `onClickDelete`, `onClickClear` | | OK | n/a (button, never recorded) |
+| 9-13 | btn_edit_undo, btn_edit_redo, btn_edit_reverse, btn_edit_mirror, btn_edit_loopclose | `undoPath`, `redoPath`, reverse, mirror, close loop (disabled while walking) | | OK | n/a (button, never recorded) |
+| 14-16 | btn_play_path, btn_stop_path, btn_walk_here | `onClickPlayPath`, `onClickStopPath`, `onClickWalkHere` | | OK | n/a (button, never recorded) |
+| 17-18 | copy_to_combo, btn_copy_to | `onClickCopyTo` copies to the combo's member | combo filled by code | OK | none (widget_history=false): page-owned: LLActorMover path undo (snapshotForUndo + the Undo button); recording here as well double-recorded and replayed onto the wrong node |
+| 19 | onion_skin_check (card switch) | setting `PathShowOnionSkin` | Boolean, default per `settings.xml`; kit setting binding and reset | OK | none: card enable switches are not recorded by kit widget history |
+| 20-23 | ghost_style_combo, ghost_distort_combo, ghost_distort_amount, ghost_effect_fps | settings `PathGhostStyle`, `PathGhostDistort`, `PathGhostDistortAmount` (0..1 step 0.05), `PathGhostEffectFps` (0..30) | combo values 0..27 and 0..8 equal v1 | OK | kit setting history (watch_settings: PathGhostStyle) |
+| 24-28 | node_height_spinner (-5..5), node_dwell_spinner (0..120), node_speed_spinner (0..10), node_corner_radius_spinner (0..10000), node_anim_editor (36 chars) | `onNodeHeightCommit`, `onNodeDwellCommit`, `onNodeSpeedCommit`, `onNodeCornerRadiusCommit`, `onNodeAnimCommit` (undo snapshot, then the selected node) | reset default 0 (anim: empty) via `PathResetBinding` | OK | none (widget_history=false): page-owned: LLActorMover path undo (snapshotForUndo + the Undo button); recording here as well double-recorded and replayed onto the wrong node |
+| 29 | path_camera_enable_check (card switch) | setting `PathCameraEnabled` | | OK | none: card enable switches are not recorded by kit widget history |
+| 30-33 | btn_node_setcam, btn_node_clearcam, node_cam_transition_combo, btn_node_preview | `onClickSetCam`, `onClickClearCam`, `onCamTransitionCommit` (Cut 0 / Ease 1, reset Ease), `onClickPreview` | | OK | n/a (button, never recorded) |
+| 34 | node_cam_status | status text from `refreshCameraControls` | now basic | OK | n/a (readout, never recorded) |
+| 35-39 | path_speed_spinner, path_cadence_slider, path_easein_spinner, path_easeout_spinner, path_tension_slider | `onPathSpeedCommit`, `onPathCadenceCommit`, `onPathEaseInCommit`, `onPathEaseOutCommit`, `onPathTensionCommit` | reset defaults 1, 3, 0, 0, 0.5 | OK | none (widget_history=false): page-owned: LLActorMover path undo (snapshotForUndo + the Undo button); recording here as well double-recorded and replayed onto the wrong node |
+| 40 | color_swatch (row "Color", Advanced) | per-actor world color painted by `refreshPathControls` on the hosted `panel` | mockup row `color_lbl` renamed to the C++ name through `row_overrides` | OK | none (widget_history=false): page-owned: LLActorMover path undo (snapshotForUndo + the Undo button); recording here as well double-recorded and replayed onto the wrong node |
+| 41-44 | path_groundfollow_check, path_pitch_check, path_airborne_check, path_end_combo | `onPathGroundFollowCommit`, `onPathPitchCommit`, `onPathAirborneCommit`, `onPathEndCommit` (Stop 0, Stop + face target 1, Loop 2, Ping-pong 3) | reset default false / Stop | OK | none (widget_history=false): page-owned: LLActorMover path undo (snapshotForUndo + the Undo button); recording here as well double-recorded and replayed onto the wrong node |
+| 45-49 | path_shape_combo, btn_primitive_center, btn_fit_half_arc, btn_fit_sine, endpoint_generator_lbl | `onPathShapeCommit` (Waypoints 0 ... Sine Wave 6), `onClickCenterPrimitive`, `onClickFitHalfArc`, `onClickFitSine`, static help | reset default Waypoints | OK | none (widget_history=false): page-owned: LLActorMover path undo (snapshotForUndo + the Undo button); recording here as well double-recorded and replayed onto the wrong node |
+| 50-57 | primitive_radius_x/y, primitive_start_deg, primitive_sweep_deg, primitive_rise, primitive_yaw_deg, primitive_pitch_deg, primitive_roll_deg | `onPrimitiveCommit` | reset defaults 3, 2, 0, 360, 3, 0, 0, 0 | OK | none (widget_history=false): page-owned: LLActorMover path undo (snapshotForUndo + the Undo button); recording here as well double-recorded and replayed onto the wrong node |
+| 58-60 | sync_take_check (card switch), sync_offset_spinner (-60..60), sync_status | `onSyncToggle`, `onSyncOffsetCommit`, `refreshChoreography` text | switch off is its own reset | OK | none: card enable switches are not recorded by kit widget history |
+| 61-64 | follow_leader_combo, follow_offset_spinner (0..64), btn_stop_following, follow_status | `onFollowCommit`, `onFollowOffsetCommit` (reset 3), `onStopFollow`, status text | | OK | none (widget_history=false): page-owned: LLActorMover path undo (snapshotForUndo + the Undo button); recording here as well double-recorded and replayed onto the wrong node |
+| 65-68 | suspend_status, btn_suspend_resume, btn_suspend_reanchor, btn_suspend_cancel | `refreshSuspendBanner` text and enable; `onClickResume`, `onClickReanchor`, `onClickCancelSuspend` | card shown only while `isWalkSuspended`; `suspend_status` is the new row | OK | n/a (readout, never recorded) |
 
 (Rows 1, 19, 29 and 58 are card switches, not mockup rows.)
 

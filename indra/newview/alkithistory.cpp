@@ -93,6 +93,14 @@ void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv,
 {
     if (suspended() || mReplaying || !c || oldv == newv)
         return;
+    // The step belongs to the page that owns the row, not to whichever page the last gesture named:
+    // its replay guard (the page's undo subject, currentContext) is read from that page.
+    std::string page;
+    for (LLView* v = c->getParent(); v && page.empty(); v = v->getParent())
+        if (ALKitPage* owner = dynamic_cast<ALKitPage*>(v))
+            page = owner->pageKey();
+    if (!page.empty() && (!mOpen || mOpen->page != page))
+        beginGesture(mOrigin, page, label);
     Entry e;
     e.widget = true;
     e.key    = c->getName();
@@ -237,8 +245,16 @@ bool ALKitHistory::tickGesture()
 
 std::string ALKitHistory::currentContext(const std::string& page) const
 {
+    // A panel-registered provider wins (Cine Light Rig: the selected slot). Otherwise the page's own
+    // undo_context declaration supplies the subject (undo_context="actor": the Cast selection), so
+    // a step recorded for one subject is never replayed onto another.
     auto found = mContexts.find(page);
-    return found == mContexts.end() ? std::string() : found->second();
+    if (found != mContexts.end())
+        return found->second();
+    if (ALKitShell* shell = dynamic_cast<ALKitShell*>(mOwner.get()))
+        if (ALKitPage* built = shell->findBuiltPage(page))
+            return built->undoSubject();
+    return std::string();
 }
 
 bool ALKitHistory::replay(Step& step, bool redo)
@@ -249,7 +265,9 @@ bool ALKitHistory::replay(Step& step, bool redo)
     if (!step.context.empty() && context != step.context)
     {
         LLSD args;
-        args["MESSAGE"] = "Switch back to " + step.context + " to undo this";
+        // A subject key that starts with "actor:" is a Cast selection; name it for the user.
+        args["MESSAGE"] = step.context.rfind("actor:", 0) == 0 ? std::string("Select the same Cast member again to undo this")
+                                                                : "Switch back to " + step.context + " to undo this";
         LLNotificationsUtil::add("SystemMessageTip", args);
         return false;
     }

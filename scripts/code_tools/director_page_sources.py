@@ -158,24 +158,24 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         return binding("indra/newview/alpanelpropmover.cpp", 593, "ALPanelPropMover", "onClickShuttle")
     if page == "ghosts_tab":
         if widget in {"source_combo", "clone_type_combo"}:
-            return binding("indra/newview/alpanelghoststudio.cpp", 1977, "ALPanelGhostStudio", "onClickAdd")
+            return binding("indra/newview/alpanelghoststudio.cpp", 2103, "ALPanelGhostStudio", "onClickAdd")
         if widget == "formation_motion_combo":
-            return binding("indra/newview/alpanelghoststudio.cpp", 3932, "ALPanelGhostStudio", "onMotionCommit")
+            return binding("indra/newview/alpanelghoststudio.cpp", 4063, "ALPanelGhostStudio", "onMotionCommit")
         if widget.startswith(("formation_", "brigade_", "array_")) or widget in {"preserve_source_tilt_check", "crowd_copies_as_combo", "crowd_create_mode_combo"}:
-            return binding("indra/newview/alpanelghoststudio.cpp", 3510, "ALPanelGhostStudio", "updateOwnedCrowdPlacement")
+            return binding("indra/newview/alpanelghoststudio.cpp", 3641, "ALPanelGhostStudio", "updateOwnedCrowdPlacement")
         if widget in {"strip_count_spinner", "strip_interval_spinner"}:
-            return binding("indra/newview/alpanelghoststudio.cpp", 3901, "ALPanelGhostStudio", "onClickStartStrip")
+            return binding("indra/newview/alpanelghoststudio.cpp", 4032, "ALPanelGhostStudio", "onClickStartStrip")
     if page == "dance_tab":
         if widget == "db_dancer_list":
-            return binding("indra/newview/alpaneldanceball.cpp", 867, "ALPanelDanceBall", "rebuildDancerList")
+            return binding("indra/newview/alpaneldanceball.cpp", 933, "ALPanelDanceBall", "rebuildDancerList")
         if widget in {"db_block_step", "db_block_keep_facing"}:
-            return binding("indra/newview/alpaneldanceball.cpp", 1491, "ALPanelDanceBall", "onBlockingNudgeYaw")
+            return binding("indra/newview/alpaneldanceball.cpp", 1586, "ALPanelDanceBall", "onBlockingNudgeYaw")
         if widget in {"db_block_shape", "db_block_spacing", "db_block_centre"}:
-            return binding("indra/newview/alpaneldanceball.cpp", 1579, "ALPanelDanceBall", "onBlockingFormation")
+            return binding("indra/newview/alpaneldanceball.cpp", 1674, "ALPanelDanceBall", "onBlockingFormation")
         if widget in {"db_ramp_target", "db_ramp_seconds"}:
-            return binding("indra/newview/alpaneldanceball.cpp", 1946, "ALPanelDanceBall", "onRampGo")
+            return binding("indra/newview/alpaneldanceball.cpp", 2043, "ALPanelDanceBall", "onRampGo")
         if re.fullmatch(r"db_block_[fblrud]", widget):
-            return binding("indra/newview/alpaneldanceball.cpp", 1559, "ALPanelDanceBall", "onBlockingNudge")
+            return binding("indra/newview/alpaneldanceball.cpp", 1654, "ALPanelDanceBall", "onBlockingNudge")
     if page == "animate_tab":
         if widget == "anim_list":
             return binding("indra/newview/llfloaterdirector.cpp", 2992, "LLFloaterDirector", "refreshAnimateTab")

@@ -101,6 +101,39 @@ void set_cell(LLScrollListItem* item, S32 column, std::string& cached,
     }
 }
 
+// Name of column `index` of a scroll list. The standalone floater names its columns "on", "name",
+// "kind"...; the Director's generated kit page keeps widget names unique across pages, so it
+// renames them (dancer_name, item_name, block_name...). Rows are addressed by position, so the
+// same code fills either layout; `v1_name` is the fallback when the list has no such column.
+std::string column_name(LLScrollListCtrl* list, S32 index, const char* v1_name)
+{
+    if (list)
+    {
+        if (LLScrollListColumn* column = list->getColumn(index))
+        {
+            return column->mName;
+        }
+    }
+    return v1_name;
+}
+
+// The first tab container below `view`, or null when the layout has none.
+LLTabContainer* find_tab_container(LLView* view)
+{
+    for (LLView* child : *view->getChildList())
+    {
+        if (LLTabContainer* tabs = dynamic_cast<LLTabContainer*>(child))
+        {
+            return tabs;
+        }
+        if (LLTabContainer* tabs = find_tab_container(child))
+        {
+            return tabs;
+        }
+    }
+    return nullptr;
+}
+
 std::string trimmed(std::string text)
 {
     LLStringUtil::trim(text);
@@ -211,7 +244,9 @@ bool ALPanelDanceBall::postBuild()
     mHeaderDesync = getChild<LLSliderCtrl>("db_header_desync");
     mStatusText = getChild<LLTextBox>("db_status");
     mMessageText = getChild<LLTextBox>("db_message");
-    mTabs = getChild<LLTabContainer>("db_tabs");
+    // The floater's panel has one tab container (db_tabs); the Director's generated kit page
+    // (Cast > Dance) is one scrolling page of cards with none, so find it by type, not by name.
+    mTabs = find_tab_container(this);
 
     mDancerList = getChild<LLScrollListCtrl>("db_dancer_list");
     mAddSelectedBtn = getChild<LLButton>("db_add_selected");
@@ -415,7 +450,12 @@ bool ALPanelDanceBall::postBuild()
 
     // Wrap + fit every tab page, re-fit on tab change, and enable the wheel on
     // every slider under this panel (ALScrollFit; CLAUDE.md UI mandate).
-    mScrollFit.installForTabs(mTabs, this);
+    // The kit page (no db_tabs) is fitted and its sliders given the wheel by the Director's lazy
+    // page adoption (ALScrollFit::adoptPage), so only the tabbed floater layout installs here.
+    if (mTabs)
+    {
+        mScrollFit.installForTabs(mTabs, this);
+    }
 
     requestRefresh();
     return true;
@@ -916,15 +956,15 @@ void ALPanelDanceBall::rebuildDancerList(const ALDanceBall& ball)
 
         LLSD element;
         element["id"] = dancer.mId;
-        element["columns"][0]["column"] = "on";
+        element["columns"][0]["column"] = column_name(mDancerList, 0, "on");
         element["columns"][0]["value"] = row.mOn;
-        element["columns"][1]["column"] = "name";
+        element["columns"][1]["column"] = column_name(mDancerList, 1, "name");
         element["columns"][1]["value"] = row.mName;
-        element["columns"][2]["column"] = "kind";
+        element["columns"][2]["column"] = column_name(mDancerList, 2, "kind");
         element["columns"][2]["value"] = row.mKind;
-        element["columns"][3]["column"] = "now";
+        element["columns"][3]["column"] = column_name(mDancerList, 3, "now");
         element["columns"][3]["value"] = row.mNow;
-        element["columns"][4]["column"] = "dist";
+        element["columns"][4]["column"] = column_name(mDancerList, 4, "dist");
         element["columns"][4]["value"] = row.mDist;
         mDancerList->addElement(element);
         mDancerRows[dancer.mId] = row;
@@ -1006,13 +1046,13 @@ void ALPanelDanceBall::rebuildPlaylistList(const ALDanceBall& ball)
 
         LLSD element;
         element["id"] = static_cast<S32>(i);
-        element["columns"][0]["column"] = "name";
+        element["columns"][0]["column"] = column_name(mPlaylistList, 0, "name");
         element["columns"][0]["value"] = row.mName;
-        element["columns"][1]["column"] = "length";
+        element["columns"][1]["column"] = column_name(mPlaylistList, 1, "length");
         element["columns"][1]["value"] = row.mLength;
-        element["columns"][2]["column"] = "loop";
+        element["columns"][2]["column"] = column_name(mPlaylistList, 2, "loop");
         element["columns"][2]["value"] = row.mLoop;
-        element["columns"][3]["column"] = "status";
+        element["columns"][3]["column"] = column_name(mPlaylistList, 3, "status");
         element["columns"][3]["value"] = row.mStatus;
         mPlaylistList->addElement(element);
         mPlaylistRows.push_back(row);
@@ -1420,7 +1460,7 @@ void ALPanelDanceBall::rebuildBlockingList(const ALDanceBall& ball)
                                        row.mMode, row.mPin, row.mStatus };
         for (S32 i = 0; i < 6; ++i)
         {
-            value["columns"][i]["column"] = columns[i];
+            value["columns"][i]["column"] = column_name(mBlockingList, i, columns[i]);
             value["columns"][i]["value"] = values[i];
         }
         mBlockingList->addElement(value);

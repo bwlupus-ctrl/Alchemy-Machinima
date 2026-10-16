@@ -24,28 +24,28 @@ Static audit of the Move page after it became a generated kit page (10/15, legac
 
 Defaults from `settings.xml`; ranges from the hosted v1 node (equal to the mockup row).
 
-| # | widget | kind | setting / handler | type, default, range | consumer / read-back | status |
-|---|---|---|---|---|---|---|
-| 1 | scope_radio | radio (Who) | `ALPanelActorMover::onScopeCommit` writes `ActorMoverSync`; `draw()` reads it back | Boolean, 1; items Selected actors = 0, Everyone = 1 | `onClickWalk/Stop` (`LLActorMover::startAll/stopAll` or the selection) | OK |
-| 2 | btn_walk | button | `onClickWalk` | n/a | `LLActorMover::start(id)` per selected actor, or `startAll` | OK |
-| 3 | move_btn_stop | button | `onClickStop` | n/a | `LLActorMover::stop(id)` / `stopAll` | OK |
-| 4 | speed_slider | slider | `ActorMoverSpeed` | F32, 1.0, 0.05..150 step 0.05, 2 dp | `LLActorMover::start` | OK |
-| 5 | dist_slider | slider | `ActorMoverDistance` | F32, 6.0, 0.5..2048 step 0.5, 1 dp | `LLActorMover::start` | OK |
-| 6 | heading_spinner | compass dial | `ActorMoverHeading` (control_name, plus `onDialCommit` live write) | F32, 0, -180..180 step 5 | `LLActorMover::start`; `draw()` reads the setting back to the needle | OK |
-| 7 | end_mode_combo | combo | `ActorMoverEndMode` | S32, 0; Stop at end = 0, Loop = 1, Ping-pong = 2 (item values equal v1 and `llactormover.cpp:4247`) | walk end handling | OK |
-| 8 | move_hint | readout | none (authored static text) | text | n/a | OK |
-| 9 | cadence_slider (Advanced) | slider | `ActorMoverWalkNominal` | F32, 3.0, 1..150 step 0.1, 1 dp | walk animation speed scaling | OK |
-| 10 | custom_anim_check (card enable) | toggle | `ActorMoverUseCustomAnim` | Boolean, 0 | `llactormover.cpp:149`; also set by the Animation Explorer (`animationexplorer.cpp:286`) | OK |
-| 11 | custom_anim_editor | text | `ActorMoverCustomAnim` | String, empty; `max_length_chars` 36 | `llactormover.cpp:150`; filled by Animation Explorer (`:285`) | OK |
-| 12 | custom_anim_priority_combo | combo | `ActorMoverCustomAnimPriority` | S32, -1; Baked = -1, Pri 0..4 = 0..4 (v1 values, `llactormover.cpp:174`) | custom walk priority | OK |
-| 13 | group_run_combo | combo | filled by `refreshGroupControls` (`mLastGroupNames`); read by `onClickGroup` | code-driven | Start/Stop group | OK |
-| 14 | group_delay_spinner | spinner | `onCommitGroupDelay`; shown for the selected group by `refreshGroupControls` | 0..120 step 0.5, 1 dp, saved with the scene | staggered starts | OK |
-| 15 | btn_group_start | button | `onClickGroup(true)` | n/a | `LLActorMover::start` per member | OK |
-| 16 | btn_group_stop | button | `onClickGroup(false)` | n/a | `LLActorMover::stop` per member | OK |
-| 17 | groups_list | list (columns `group`, `members`, `delay`) | `onGroupsListSelect`; rebuilt by `refreshGroupControls` | code-driven | highlights members in the cast list | OK |
-| 18 | group_rename_editor | text | `onClickGroupRename` (Enter) | `max_length_chars` 32 | retags members | OK |
-| 19 | btn_group_rename | button | `onClickGroupRename` | n/a | retags members | OK |
-| 20 | btn_group_dissolve | button | `onClickGroupDissolve` | n/a | untags members | OK |
+| # | widget | kind | setting / handler | type, default, range | consumer / read-back | status | Undo owner |
+|---|---|---|---|---|---|---|---|
+| 1 | scope_radio | radio (Who) | `ALPanelActorMover::onScopeCommit` writes `ActorMoverSync`; `draw()` reads it back | Boolean, 1; items Selected actors = 0, Everyone = 1 | `onClickWalk/Stop` (`LLActorMover::startAll/stopAll` or the selection) | OK | kit widget history (global, not per-subject) |
+| 2 | btn_walk | button | `onClickWalk` | n/a | `LLActorMover::start(id)` per selected actor, or `startAll` | OK | n/a (button, never recorded) |
+| 3 | move_btn_stop | button | `onClickStop` | n/a | `LLActorMover::stop(id)` / `stopAll` | OK | n/a (button, never recorded) |
+| 4 | speed_slider | slider | `ActorMoverSpeed` | F32, 1.0, 0.05..150 step 0.05, 2 dp | `LLActorMover::start` | OK | kit setting history (watch_settings: ActorMoverSpeed) |
+| 5 | dist_slider | slider | `ActorMoverDistance` | F32, 6.0, 0.5..2048 step 0.5, 1 dp | `LLActorMover::start` | OK | kit setting history (watch_settings: ActorMoverDistance) |
+| 6 | heading_spinner | compass dial | `ActorMoverHeading` (control_name, plus `onDialCommit` live write) | F32, 0, -180..180 step 5 | `LLActorMover::start`; `draw()` reads the setting back to the needle | OK | kit setting history (watch_settings: ActorMoverHeading) |
+| 7 | end_mode_combo | combo | `ActorMoverEndMode` | S32, 0; Stop at end = 0, Loop = 1, Ping-pong = 2 (item values equal v1 and `llactormover.cpp:4247`) | walk end handling | OK | kit setting history (watch_settings: ActorMoverEndMode) |
+| 8 | move_hint | readout | none (authored static text) | text | n/a | OK | n/a (readout, never recorded) |
+| 9 | cadence_slider (Advanced) | slider | `ActorMoverWalkNominal` | F32, 3.0, 1..150 step 0.1, 1 dp | walk animation speed scaling | OK | kit setting history (watch_settings: ActorMoverWalkNominal) |
+| 10 | custom_anim_check (card enable) | toggle | `ActorMoverUseCustomAnim` | Boolean, 0 | `llactormover.cpp:149`; also set by the Animation Explorer (`animationexplorer.cpp:286`) | OK | none: card enable switches are not recorded by kit widget history |
+| 11 | custom_anim_editor | text | `ActorMoverCustomAnim` | String, empty; `max_length_chars` 36 | `llactormover.cpp:150`; filled by Animation Explorer (`:285`) | OK | kit setting history (watch_settings: ActorMoverCustomAnim) |
+| 12 | custom_anim_priority_combo | combo | `ActorMoverCustomAnimPriority` | S32, -1; Baked = -1, Pri 0..4 = 0..4 (v1 values, `llactormover.cpp:174`) | custom walk priority | OK | kit setting history (watch_settings: ActorMoverCustomAnimPriority) |
+| 13 | group_run_combo | combo | filled by `refreshGroupControls` (`mLastGroupNames`); read by `onClickGroup` | code-driven | Start/Stop group | OK | kit widget history (global, not per-subject) |
+| 14 | group_delay_spinner | spinner | `onCommitGroupDelay`; shown for the selected group by `refreshGroupControls` | 0..120 step 0.5, 1 dp, saved with the scene | staggered starts | OK | kit widget history (global, not per-subject) |
+| 15 | btn_group_start | button | `onClickGroup(true)` | n/a | `LLActorMover::start` per member | OK | n/a (button, never recorded) |
+| 16 | btn_group_stop | button | `onClickGroup(false)` | n/a | `LLActorMover::stop` per member | OK | n/a (button, never recorded) |
+| 17 | groups_list | list (columns `group`, `members`, `delay`) | `onGroupsListSelect`; rebuilt by `refreshGroupControls` | code-driven | highlights members in the cast list | OK | none (widget_history=false): group list selection / the selected group name are not data |
+| 18 | group_rename_editor | text | `onClickGroupRename` (Enter) | `max_length_chars` 32 | retags members | OK | none (widget_history=false): group list selection / the selected group name are not data |
+| 19 | btn_group_rename | button | `onClickGroupRename` | n/a | retags members | OK | n/a (button, never recorded) |
+| 20 | btn_group_dissolve | button | `onClickGroupDissolve` | n/a | untags members | OK | n/a (button, never recorded) |
 
 (Row 10 is the card switch of Custom walk anim, not a mockup row: 19 mockup rows plus 1 card enable.)
 

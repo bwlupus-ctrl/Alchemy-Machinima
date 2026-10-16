@@ -17,24 +17,24 @@ Static audit of the Practicals page after it became a generated kit page (10/15,
 
 ## Controls
 
-| # | widget | kind | handler / pipeline call | type, default, range / data values | status |
-|---|---|---|---|---|---|
-| 1 | sl_status | readout | written by `refreshFromSelection`: "Editing: <object name>" or the hint | text | OK |
-| 2 | sl_cast_shadows | toggle | `onCastShadows` -> `LLPipeline::toggleProjectorCastShadows`; mirror `!isProjectorNoShadow` | Boolean, checked = casts shadows | OK |
-| 3 | sl_volumetric | toggle | `onVolumetric` -> `toggleVolumetricShaft`; mirror `isVolumetricShaftEnabled` | Boolean, off | OK |
-| 4 | sl_capture | button | `onCaptureOverride`: snapshots the 11 `BDMergeProjectorVolumetrics*` settings (same list as the Lightbox) into `setVolumetricShaftOverride` | n/a | OK |
-| 5 | sl_clear | button | `onClearOverride` -> `clearVolumetricShaftOverride` and `clearGoboOverride`; enabled by `hasVolumetricShaftOverride || hasGoboOverride` | n/a | OK |
-| 6 | sl_gobo | combo | `onGoboChanged` -> `GoboOverride::mPattern` | -1 Off (texture), 0 Venetian blinds, 1 Window, 2 Grate, 3 Ceiling fan, 4 Honeycomb, 5 Foliage, 6 Water caustics, 7 Prison bars, 8 Arched window, 9 Iris, 10 Dot grid, 11 Rings, 12 Clouds (same values as the Lightbox combo) | OK |
-| 7 | sl_gobo_animmode | combo | `mAnimMode` | 0 None, 1 Rotate, 2 Wind sway, 3 Pan, 4 Pulse, 5 Flicker, 6 Strobe | OK |
-| 8 | sl_gobo_speed | slider | `mSpeed` | F32, -8..8 step 0.05, 2 dp, mirror default 1.0 | OK |
-| 9 | sl_gobo_zoom | slider | `mZoom` | F32, 0.1..8 step 0.05, 2 dp, mirror default 1.0 | OK |
-| 10 | sl_gobo_tint | color | `mTint` (RGB of the swatch; applies while the picker is dragged) | white = no tint | OK |
-| 11 | sl_gobo_soft | slider (Advanced section) | `mPatternParams.z` | F32, 0..1 step 0.05, 2 dp | OK |
-| 12 | sl_gobo_dispersion | slider | `mDispersion` | F32, 0..0.1 step 0.001, 3 dp | OK |
-| 13 | sl_gobo_var1 | slider | `mPatternParams.x` (Detail) | F32, -1..1 step 0.05, 2 dp | OK |
-| 14 | sl_gobo_var2 | slider | `mPatternParams.y` (Thickness) | F32, -1..1 step 0.05, 2 dp | OK |
-| 15 | sl_gobo_invert | toggle | `mPatternParams.w` (>= 0.5 is inverted) | Boolean | OK |
-| 16 | open_lightbox_sellight | button | kit action `lightbox:sellight_settings` (opens the Lightbox tab) | n/a | OK |
+| # | widget | kind | handler / pipeline call | type, default, range / data values | status | Undo owner |
+|---|---|---|---|---|---|---|
+| 1 | sl_status | readout | written by `refreshFromSelection`: "Editing: <object name>" or the hint | text | OK | n/a (readout, never recorded) |
+| 2 | sl_cast_shadows | toggle | `onCastShadows` -> `LLPipeline::toggleProjectorCastShadows`; mirror `!isProjectorNoShadow` | Boolean, checked = casts shadows | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 3 | sl_volumetric | toggle | `onVolumetric` -> `toggleVolumetricShaft`; mirror `isVolumetricShaftEnabled` | Boolean, off | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 4 | sl_capture | button | `onCaptureOverride`: snapshots the 11 `BDMergeProjectorVolumetrics*` settings (same list as the Lightbox) into `setVolumetricShaftOverride` | n/a | OK | n/a (button, never recorded) |
+| 5 | sl_clear | button | `onClearOverride` -> `clearVolumetricShaftOverride` and `clearGoboOverride`; enabled by `hasVolumetricShaftOverride || hasGoboOverride` | n/a | OK | n/a (button, never recorded) |
+| 6 | sl_gobo | combo | `onGoboChanged` -> `GoboOverride::mPattern` | -1 Off (texture), 0 Venetian blinds, 1 Window, 2 Grate, 3 Ceiling fan, 4 Honeycomb, 5 Foliage, 6 Water caustics, 7 Prison bars, 8 Arched window, 9 Iris, 10 Dot grid, 11 Rings, 12 Clouds (same values as the Lightbox combo) | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 7 | sl_gobo_animmode | combo | `mAnimMode` | 0 None, 1 Rotate, 2 Wind sway, 3 Pan, 4 Pulse, 5 Flicker, 6 Strobe | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 8 | sl_gobo_speed | slider | `mSpeed` | F32, -8..8 step 0.05, 2 dp, mirror default 1.0 | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 9 | sl_gobo_zoom | slider | `mZoom` | F32, 0.1..8 step 0.05, 2 dp, mirror default 1.0 | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 10 | sl_gobo_tint | color | `mTint` (RGB of the swatch; applies while the picker is dragged) | white = no tint | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 11 | sl_gobo_soft | slider (Advanced section) | `mPatternParams.z` | F32, 0..1 step 0.05, 2 dp | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 12 | sl_gobo_dispersion | slider | `mDispersion` | F32, 0..0.1 step 0.001, 3 dp | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 13 | sl_gobo_var1 | slider | `mPatternParams.x` (Detail) | F32, -1..1 step 0.05, 2 dp | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 14 | sl_gobo_var2 | slider | `mPatternParams.y` (Thickness) | F32, -1..1 step 0.05, 2 dp | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 15 | sl_gobo_invert | toggle | `mPatternParams.w` (>= 0.5 is inverted) | Boolean | OK | none (widget_history=false): per-selected-light value (the selected practical is the subject) |
+| 16 | open_lightbox_sellight | button | kit action `lightbox:sellight_settings` (opens the Lightbox tab) | n/a | OK | n/a (button, never recorded) |
 
 The ranges equal the Lightbox controls and the `GoboOverride` consumer (the pipeline clamps on use). Rows 4 and 5 use the kit's code-bound button; nothing in the page watches a setting.
 

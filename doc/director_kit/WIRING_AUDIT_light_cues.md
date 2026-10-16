@@ -12,13 +12,13 @@ Static audit of the Light Cues page after it became a generated kit page (10/15,
 
 ## Controls
 
-| # | widget | kind | handler / consumer | notes | status |
-|---|---|---|---|---|---|
-| 1 | cue_rows | list (`scroll_list`, columns `lc_number`, `lc_label`, `lc_at`, `lc_fade`, `lc_delay`, `lc_curve`, `lc_follow`) | rows built by `refreshRows` from `ALCineLightRig::cueList()` (same fields and formats as the floater); selection commit -> `onSelection` opens `cine_light_cues` at that index | refresh is gated on `cueRevision()` and the selected rig slot, so `draw` costs two compares; selection is preserved across rebuilds. The columns are renamed `lc_*` because widget names are global in the kit | OK |
-| 2 | cue_capture (Add) | button | `onAdd`: `captureCue("Cue N")`, `sanitizeCue`, append, `setCueList`; selects the new row | complete live-rig snapshot with the default cue timing; the floater's editor timing is not used from here. One undo step ("Add light cue") via `ALKitHistory::recordCustom` (before/after cue list, rig slot) | OK |
-| 3 | cue_delete (Remove) | button | `onRemove`: erase the selected cue, `setCueList` | one undo step ("Remove light cue"); disabled with no selection | OK |
-| 4 | cue_goto (Play) | button | `onPlay`: `cueGoto(selected, presentation time, false)` (the floater's Goto without snap) | disabled with no selection, and in timecode mode (as the floater's transport) | OK |
-| 5 | cue_release (Stop) | button | `onStop`: `cueRelease(presentation time)` | disabled in timecode mode | OK |
+| # | widget | kind | handler / consumer | notes | status | Undo owner |
+|---|---|---|---|---|---|---|
+| 1 | cue_rows | list (`scroll_list`, columns `lc_number`, `lc_label`, `lc_at`, `lc_fade`, `lc_delay`, `lc_curve`, `lc_follow`) | rows built by `refreshRows` from `ALCineLightRig::cueList()` (same fields and formats as the floater); selection commit -> `onSelection` opens `cine_light_cues` at that index | refresh is gated on `cueRevision()` and the selected rig slot, so `draw` costs two compares; selection is preserved across rebuilds. The columns are renamed `lc_*` because widget names are global in the kit | OK | none (widget_history=false): cue list selection is not data; cue edits are page-recorded |
+| 2 | cue_capture (Add) | button | `onAdd`: `captureCue("Cue N")`, `sanitizeCue`, append, `setCueList`; selects the new row | complete live-rig snapshot with the default cue timing; the floater's editor timing is not used from here. One undo step ("Add light cue") via `ALKitHistory::recordCustom` (before/after cue list, rig slot) | OK | n/a (button, never recorded) |
+| 3 | cue_delete (Remove) | button | `onRemove`: erase the selected cue, `setCueList` | one undo step ("Remove light cue"); disabled with no selection | OK | n/a (button, never recorded) |
+| 4 | cue_goto (Play) | button | `onPlay`: `cueGoto(selected, presentation time, false)` (the floater's Goto without snap) | disabled with no selection, and in timecode mode (as the floater's transport) | OK | n/a (button, never recorded) |
+| 5 | cue_release (Stop) | button | `onStop`: `cueRelease(presentation time)` | disabled in timecode mode | OK | n/a (button, never recorded) |
 
 ## Checks run
 

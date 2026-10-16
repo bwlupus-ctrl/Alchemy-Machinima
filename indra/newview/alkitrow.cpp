@@ -139,6 +139,7 @@ ALKitRow::Params::Params() :
     link_to("link_to", ""),
     action("action", ""),
     mirror_setting("mirror_setting", ""),
+    undo_scope("undo_scope", ""),
     advanced("advanced", false),
     card_preset("card_preset", false),
     who_picker("who_picker", false),

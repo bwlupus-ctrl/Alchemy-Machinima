@@ -13,13 +13,13 @@ Static audit of the Gaze Cues page after it became a generated kit page (10/15, 
 
 ## Controls
 
-| # | widget | kind | handler / consumer | notes | status |
-|---|---|---|---|---|---|
-| 1 | cue_list | list (`scroll_list`, columns `gc_time`, `gc_target`, `gc_macro`) | rows built by `refreshRows` (same text as the floater: start time `%.3f`, target label, macro label); selection commit -> `onSelection` shows `gaze_cues` for the actor (key = actor id string) and `selectCueIndex` | rebuild is gated on `getGazeCueRevision()` and the actor id; selection survives a rebuild for the same actor | OK |
-| 2 | btn_cue_add | button | `onAdd`: `makeDefaultCue(actor)` appended, `setGazeCues` (sanitizes and sorts), then selects the new cue | one undo step ("Add gaze cue") via `ALKitHistory::recordCustom` with the stored before/after lists | OK |
-| 3 | btn_cue_delete | button | `onRemove`: erase the selected cue, `setGazeCues` | one undo step ("Remove gaze cue"); disabled with no selection | OK |
-| 4 | gaze_cue_play | button | `onPlay` -> `LLActorMover::setGazeCuePreview(actor, selected)` | enabled with a selection and the actor in the cast; returns false (no change) otherwise | OK |
-| 5 | gaze_cue_stop | button | `onStop` -> `clearGazeCuePreview(actor)` | enabled only while a preview runs (`hasGazeCuePreview`) | OK |
+| # | widget | kind | handler / consumer | notes | status | Undo owner |
+|---|---|---|---|---|---|---|
+| 1 | cue_list | list (`scroll_list`, columns `gc_time`, `gc_target`, `gc_macro`) | rows built by `refreshRows` (same text as the floater: start time `%.3f`, target label, macro label); selection commit -> `onSelection` shows `gaze_cues` for the actor (key = actor id string) and `selectCueIndex` | rebuild is gated on `getGazeCueRevision()` and the actor id; selection survives a rebuild for the same actor | OK | none (widget_history=false): cue list selection is not data; cue edits are page-recorded (ALKitHistory::recordCustom) |
+| 2 | btn_cue_add | button | `onAdd`: `makeDefaultCue(actor)` appended, `setGazeCues` (sanitizes and sorts), then selects the new cue | one undo step ("Add gaze cue") via `ALKitHistory::recordCustom` with the stored before/after lists | OK | n/a (button, never recorded) |
+| 3 | btn_cue_delete | button | `onRemove`: erase the selected cue, `setGazeCues` | one undo step ("Remove gaze cue"); disabled with no selection | OK | n/a (button, never recorded) |
+| 4 | gaze_cue_play | button | `onPlay` -> `LLActorMover::setGazeCuePreview(actor, selected)` | enabled with a selection and the actor in the cast; returns false (no change) otherwise | OK | n/a (button, never recorded) |
+| 5 | gaze_cue_stop | button | `onStop` -> `clearGazeCuePreview(actor)` | enabled only while a preview runs (`hasGazeCuePreview`) | OK | n/a (button, never recorded) |
 
 The page contract (`pages/gaze_cues_tab.md`) suggests an `ALKitHistory::globalBarrier` around Play and Stop; it is not implemented: the preview never edits the cue list or any setting, so there is nothing to undo around it, and a barrier would clear the user's undo stack for no reason.
 

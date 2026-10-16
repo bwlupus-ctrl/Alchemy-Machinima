@@ -44,9 +44,14 @@ bool ALPanelActorMover::postBuild()
     mHeadingDial = findChild<ALCompassDial>("heading_dial");
     if (!mHeadingDial)
     {
-        mHeadingDial = getChild<ALCompassDial>("heading_spinner");
+        // On the kit page "heading_spinner" is an LLSpinCtrl, so a typed lookup would warn and
+        // hand back a dummy dial; findChild leaves this null there.
+        mHeadingDial = findChild<ALCompassDial>("heading_spinner");
     }
-    mHeadingDial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDialCommit(); });
+    if (mHeadingDial)
+    {
+        mHeadingDial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDialCommit(); });
+    }
 
     mWalkBtn = getChild<LLButton>("btn_walk");
     // Kit widget names are unique across Director pages and Camera > Takes owns "btn_stop", so
@@ -75,7 +80,7 @@ void ALPanelActorMover::draw()
     {
         mScopeRadio->setValue(want);
     }
-    if (fabsf((F32)mHeadingDial->getValue().asReal() - (F32)heading) > 0.01f)
+    if (mHeadingDial && fabsf((F32)mHeadingDial->getValue().asReal() - (F32)heading) > 0.01f)
     {
         mHeadingDial->setValue((F32)heading);
     }
@@ -110,6 +115,10 @@ void ALPanelActorMover::onScopeCommit()
 void ALPanelActorMover::onDialCommit()
 {
     // live while dragging, so the in-world heading ray tracks the needle
+    if (!mHeadingDial)
+    {
+        return;
+    }
     gSavedSettings.setF32("ActorMoverHeading", (F32)mHeadingDial->getValue().asReal());
 }
 

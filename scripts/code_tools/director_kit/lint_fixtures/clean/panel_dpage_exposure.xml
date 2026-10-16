@@ -10,7 +10,7 @@
       <kit_row kind="toggle" widget="FixtureBloomOn_switch" label="Bloom" setting="FixtureBloomOn" bind="setting" help="Turn bloom on.">
         <kit_switch name="FixtureBloomOn_switch" control_name="FixtureBloomOn"/>
       </kit_row>
-      <kit_row kind="text" widget="fixture_seed" label="Seed" setting="FixtureSeed" bind="code" help="Whole-number seed formatted by the adapter.">
+      <kit_row kind="text" widget="fixture_seed" label="Seed" setting="FixtureSeed" bind="code" undo_scope="global" help="Whole-number seed formatted by the adapter.">
         <line_editor name="fixture_seed"/>
       </kit_row>
       <kit_row kind="vec3" widget="fixture_offset" label="Offset" setting="FixtureDeepVec" help="Fixture offset."/>

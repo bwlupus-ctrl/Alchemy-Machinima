@@ -19,6 +19,7 @@
 #include "llbutton.h"
 #include "llfloaterreg.h"
 #include "llnotificationsutil.h"
+#include "llsdutil.h"
 #include "llpresentationtime.h"
 #include "llscrolllistctrl.h"
 #include "llscrolllistitem.h"
@@ -164,17 +165,22 @@ void ALPanelLightCues::commitListEdit(const CueList& after, const std::string& l
     ALCineLightRigManager& manager = ALCineLightRigManager::instance();
     ALCineLightRig& rig = manager.selected();
     const CueList before = rig.cueList();
+    const LLSD before_data = rig.cueListData();
     const ALCineLightRigSlot slot = manager.selectedSlot();
     rig.setCueList(after);
+    // Read back the sanitized list so the later content compare sees what the rig really holds.
+    const LLSD after_data = rig.cueListData();
     if (ALKitShell* shell = ALKitShell::find(this))
     {
-        // The step restores a whole-list snapshot, so it is only valid while the list is exactly
-        // as this step (or its own undo/redo) left it. Track the cue revision it expects; if the
-        // Lighting Cue Stack floater (or a load/save) has edited the list since, the step is
-        // dropped as a no-op with a notice instead of overwriting those later edits.
-        auto expected = std::make_shared<U64>(rig.cueRevision());
+        // The step restores a whole-list snapshot, so it is only valid while the list still has
+        // the content this step (or its own undo/redo) left it with. Staleness is decided by
+        // CONTENT, not by cue revision: every setCueList bumps the revision, so a per-step
+        // revision would mark the second undo of a chain as stale. Undo applies only when the
+        // current list equals this step's after-list, redo only when it equals the before-list;
+        // otherwise the Lighting Cue Stack floater (or a load/save) has edited the list since,
+        // and the step is dropped as a no-op with a notice instead of overwriting those edits.
         shell->history().recordCustom("light_cue_list", label,
-            [slot, before, after, expected](bool redo, std::string& reason)
+            [slot, before, after, before_data, after_data](bool redo, std::string& reason)
             {
                 if (!ALCineLightRigManager::instanceExists())
                 {
@@ -182,7 +188,8 @@ void ALPanelLightCues::commitListEdit(const CueList& after, const std::string& l
                     return false;
                 }
                 ALCineLightRig& target = ALCineLightRigManager::instance().at(slot);
-                if (target.cueRevision() != *expected)
+                const LLSD& expected = redo ? before_data : after_data;
+                if (!llsd_equals(target.cueListData(), expected))
                 {
                     LLSD args;
                     args["MESSAGE"] = "The light cues were edited elsewhere since this step, so it was dropped";
@@ -190,7 +197,6 @@ void ALPanelLightCues::commitListEdit(const CueList& after, const std::string& l
                     return true; // consumed as a no-op: it must not block earlier undo steps
                 }
                 target.setCueList(redo ? after : before);
-                *expected = target.cueRevision();
                 return true;
             });
     }

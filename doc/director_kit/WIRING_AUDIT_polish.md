@@ -13,24 +13,24 @@ Static audit of the Polish page after it became a generated kit page (10/15, leg
 
 Defaults come from `settings.xml`, ranges from the hosted v1 node (equal to the mockup row). Read-back is the kit setting binding (watch on `watch_settings`) for every setting row.
 
-| # | widget | kind | setting / handler | type, default, range | consumer | status |
-|---|---|---|---|---|---|---|
-| 0 | polish_master_check (page master) | toggle | `ALPolishEnabled` | Boolean, 1 | Pose Polish stage master gate (`alposepolish.h`) | OK |
-| 1 | polish_popout | button | `LLFloaterReg::showInstance("pose_polish")` (`bindCameraPage`, `:2611`) | n/a | opens the plain `pose_polish` floater | OK |
-| 2 | polish_master_note | readout | none (authored static text) | text | n/a | OK |
-| 3 | polish_inertia_check | toggle | `ALPolishInertiaEnabled` | Boolean, 1 | inertialization (M1) | OK |
-| 4 | polish_inertia_spine_slider | slider | `ALPolishInertiaHalfLifeSpine` | F32, 0.13, 0.02..0.40 step 0.01, 2 dp | M1 half-life | OK |
-| 5 | polish_inertia_arm_slider | slider (Advanced) | `ALPolishInertiaHalfLifeArm` | F32, 0.09, 0.02..0.40 | M1 | OK |
-| 6 | polish_inertia_leg_slider | slider (Advanced) | `ALPolishInertiaHalfLifeLeg` | F32, 0.09, 0.02..0.40 | M1 | OK |
-| 7 | polish_inertia_head_slider | slider (Advanced) | `ALPolishInertiaHalfLifeHead` | F32, 0.07, 0.02..0.40 | M1 | OK |
-| 8 | polish_contact_check | toggle | `ALPolishContactEnabled` | Boolean, 1 | contact stabilizer (M2) | OK |
-| 9 | polish_contact_weight_slider | slider | `ALPolishContactWeight` | F32, 0.75, 0..1 step 0.05 | M2 blend cap | OK |
-| 10 | polish_phasematch_check | toggle | `ALPolishPhaseMatchEnabled` | Boolean, 1 | phase-aware locomotion | OK |
-| 11 | polish_loopseam_check | toggle | `ALPolishLoopSeamEnabled` | Boolean, 1 | loop-seam repair | OK |
-| 12 | polish_secondary_check | toggle | `ALPolishSecondaryEnabled` | Boolean, 1 | secondary motion (`alposesecondary.h`) | OK |
-| 13 | polish_secondary_breath_slider | slider | `ALPolishSecondaryBreathAmp` | F32, 1.0, 0..2 step 0.05 | breath | OK |
-| 14 | polish_secondary_sway_slider | slider | `ALPolishSecondarySwayAmp` | F32, 1.0, 0..2 step 0.05 | sway | OK |
-| 15 | polish_diagnostic_check | toggle (Advanced) | `ALPolishLayerDiagnostic` | Boolean, 0 | per-joint layer overlay | OK |
+| # | widget | kind | setting / handler | type, default, range | consumer | status | Undo owner |
+|---|---|---|---|---|---|---|---|
+| 0 | polish_master_check (page master) | toggle | `ALPolishEnabled` | Boolean, 1 | Pose Polish stage master gate (`alposepolish.h`) | OK | n/a (not a generated row) |
+| 1 | polish_popout | button | `LLFloaterReg::showInstance("pose_polish")` (`bindCameraPage`, `:2611`) | n/a | opens the plain `pose_polish` floater | OK | n/a (button, never recorded) |
+| 2 | polish_master_note | readout | none (authored static text) | text | n/a | OK | n/a (readout, never recorded) |
+| 3 | polish_inertia_check | toggle | `ALPolishInertiaEnabled` | Boolean, 1 | inertialization (M1) | OK | kit setting history (watch_settings: ALPolishInertiaEnabled) |
+| 4 | polish_inertia_spine_slider | slider | `ALPolishInertiaHalfLifeSpine` | F32, 0.13, 0.02..0.40 step 0.01, 2 dp | M1 half-life | OK | kit setting history (watch_settings: ALPolishInertiaHalfLifeSpine) |
+| 5 | polish_inertia_arm_slider | slider (Advanced) | `ALPolishInertiaHalfLifeArm` | F32, 0.09, 0.02..0.40 | M1 | OK | kit setting history (watch_settings: ALPolishInertiaHalfLifeArm) |
+| 6 | polish_inertia_leg_slider | slider (Advanced) | `ALPolishInertiaHalfLifeLeg` | F32, 0.09, 0.02..0.40 | M1 | OK | kit setting history (watch_settings: ALPolishInertiaHalfLifeLeg) |
+| 7 | polish_inertia_head_slider | slider (Advanced) | `ALPolishInertiaHalfLifeHead` | F32, 0.07, 0.02..0.40 | M1 | OK | kit setting history (watch_settings: ALPolishInertiaHalfLifeHead) |
+| 8 | polish_contact_check | toggle | `ALPolishContactEnabled` | Boolean, 1 | contact stabilizer (M2) | OK | kit setting history (watch_settings: ALPolishContactEnabled) |
+| 9 | polish_contact_weight_slider | slider | `ALPolishContactWeight` | F32, 0.75, 0..1 step 0.05 | M2 blend cap | OK | kit setting history (watch_settings: ALPolishContactWeight) |
+| 10 | polish_phasematch_check | toggle | `ALPolishPhaseMatchEnabled` | Boolean, 1 | phase-aware locomotion | OK | kit setting history (watch_settings: ALPolishPhaseMatchEnabled) |
+| 11 | polish_loopseam_check | toggle | `ALPolishLoopSeamEnabled` | Boolean, 1 | loop-seam repair | OK | kit setting history (watch_settings: ALPolishLoopSeamEnabled) |
+| 12 | polish_secondary_check | toggle | `ALPolishSecondaryEnabled` | Boolean, 1 | secondary motion (`alposesecondary.h`) | OK | kit setting history (watch_settings: ALPolishSecondaryEnabled) |
+| 13 | polish_secondary_breath_slider | slider | `ALPolishSecondaryBreathAmp` | F32, 1.0, 0..2 step 0.05 | breath | OK | kit setting history (watch_settings: ALPolishSecondaryBreathAmp) |
+| 14 | polish_secondary_sway_slider | slider | `ALPolishSecondarySwayAmp` | F32, 1.0, 0..2 step 0.05 | sway | OK | kit setting history (watch_settings: ALPolishSecondarySwayAmp) |
+| 15 | polish_diagnostic_check | toggle (Advanced) | `ALPolishLayerDiagnostic` | Boolean, 0 | per-joint layer overlay | OK | kit setting history (watch_settings: ALPolishLayerDiagnostic) |
 
 ## Checks run
 

@@ -160,6 +160,11 @@ public:
     bool               whoPinned() const { return mWhoPinned; }
     void               setWhoPin(const LLSD& value);
     LLUUID             actorTarget() const;
+    // Subject key for history replay (alkithistory.cpp): what the page's per-subject rows currently
+    // act on. Empty when the page declares no undo_context. undo_context="actor": the Cast
+    // selection plus the pinned who target, so a step recorded for one actor is never replayed onto
+    // another.
+    std::string        undoSubject() const;
     bool               actorTargetAway() const { return mActorTargetAway; }
 
 protected:
@@ -188,7 +193,7 @@ private:
     void        refreshSubjectCombos();
     std::string prefix() const;
     std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mModes, mModeSetting,
-        mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;
+        mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode, mUndoContext;
     bool mLegacy = false, mActorTargetPage = false, mActorTargetSynthetic = false, mActorTargetAway = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,
          mUpdatingModeSwitch = false;
     LLUUID mActorTarget;

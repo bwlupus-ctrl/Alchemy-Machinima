@@ -464,6 +464,39 @@ def check_rows(tree: Tree) -> list[Finding]:
     return out
 
 
+# Rows the kit records widget history for (alkitrow.cpp: widget_history && bind code && kind not
+# button/readout && no mirror_setting).  Replay does setValue + onCommit on whatever is selected at
+# undo time, so each such row has to say who owns its undo.
+UNDO_UNRECORDED_KINDS = frozenset({"button", "readout"})
+
+
+def check_undo_owner(tree: Tree) -> list[Finding]:
+    out: list[Finding] = []
+    page = next((node for node in tree.root.walk() if node.tag == "kit_page"), None)
+    page_context = page.attrs.get("undo_context", "") if page is not None else ""
+    for node in tree.root.walk():
+        if node.tag != "kit_row" or node.attrs.get("bind") != "code":
+            continue
+        if node.attrs.get("kind", "") in UNDO_UNRECORDED_KINDS or node.attrs.get("mirror_setting"):
+            continue
+        if node.attrs.get("widget_history") == "false":
+            continue            # not recorded: the page (or nobody) owns this row's undo
+        scope = node.attrs.get("undo_scope", "")
+        widget = node.attrs.get("widget", "?")
+        if scope == "global":
+            continue
+        if scope == "subject":
+            if not page_context:
+                out.append(err(tree, node, "undo-owner",
+                               f"row '{widget}' declares undo_scope='subject' but its page has no undo_context"))
+            continue
+        out.append(err(tree, node, "undo-owner",
+                       f"code-bound row '{widget}' records kit widget history but declares no undo owner: set "
+                       "widget_history='false' (page-owned or selection state), undo_scope='global' (not "
+                       "per-subject), or undo_scope='subject' with a page undo_context"))
+    return out
+
+
 def check_setting_ref(tree: Tree, node: Node, name: str, label: str,
                       allowed: tuple[str, ...] | None, types: dict[str, str],
                       pending: dict[str, str], release_wp: int | None = None) -> list[Finding]:
@@ -809,7 +842,7 @@ def check_homes(trees: list[Tree], homes: dict[str, str], pending: dict[str, str
 def check_tree(tree: Tree, types: dict[str, str], inputs_sha: tuple[str | None, str | None, str | None, str | None],
                policy: dict, release_wp: int | None = None) -> list[Finding]:
     return (check_header(tree, inputs_sha) + check_geometry(tree) + check_bottom(tree)
-            + check_rows(tree) + check_settings(tree, types, policy["pending_settings"], policy["code_kind_exceptions"], release_wp) + check_cards(tree)
+            + check_rows(tree) + check_undo_owner(tree) + check_settings(tree, types, policy["pending_settings"], policy["code_kind_exceptions"], release_wp) + check_cards(tree)
             + check_options(tree) + check_help(tree, policy["help_audit_allow"], release_wp))
 
 
@@ -870,6 +903,7 @@ SELFTEST_CASES: tuple[tuple[str, str | None, str, str], ...] = (
     ("fail/row_control", "kit-row-control", "error", "control child with width="),
     ("fail/kind_tag", "kit-kind-tag", "error", "toggle row with a combo_box child"),
     ("fail/widget_name", "widget-name", "error", "duplicate name without allow entry"),
+    ("fail/undo_owner", "undo-owner", "error", "code-bound row with kit widget history and no undo owner"),
     ("fail/setting_graph", "setting-graph", "error", "missing setting and type mismatch"),
     ("fail/section_cards", "section-cards", "error", "unknown card and card in no section"),
     ("fail/generated_header", "generated-header", "error", "stale sha256 in header"),
