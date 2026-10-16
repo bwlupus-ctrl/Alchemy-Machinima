@@ -27106,7 +27106,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 33,
+          "line": 36,
           "widget": "anim_switcher_armed",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -27145,7 +27145,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 44,
+          "line": 47,
           "widget": "anim_switcher_auto",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -27184,7 +27184,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 353,
+          "line": 356,
           "widget": "anim_interval",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -27223,7 +27223,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 369,
+          "line": 372,
           "widget": "anim_jitter",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -27262,7 +27262,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-          "line": 380,
+          "line": 383,
           "widget": "anim_sequence",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
@@ -77563,7 +77563,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 33,
+              "line": 36,
               "tag": "check_box",
               "control_name": "DirectorAnimSwitcherArmed",
               "callbacks": [],
@@ -77641,7 +77641,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 44,
+              "line": 47,
               "tag": "check_box",
               "control_name": "DirectorAnimSwitcherAuto",
               "callbacks": [],
@@ -77719,7 +77719,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 353,
+              "line": 356,
               "tag": "spinner",
               "control_name": "DirectorAnimSwitcherIntervalSec",
               "callbacks": [],
@@ -77797,7 +77797,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 369,
+              "line": 372,
               "tag": "spinner",
               "control_name": "DirectorAnimSwitcherJitterSec",
               "callbacks": [],
@@ -77875,7 +77875,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 380,
+              "line": 383,
               "tag": "check_box",
               "control_name": "DirectorAnimSwitcherSequence",
               "callbacks": [],
@@ -77944,7 +77944,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 54,
+              "line": 57,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -78012,7 +78012,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 390,
+              "line": 393,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -78068,7 +78068,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 63,
+              "line": 66,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78147,7 +78147,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 64,
+              "line": 67,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78226,7 +78226,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 65,
+              "line": 68,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78305,7 +78305,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 66,
+              "line": 69,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78384,7 +78384,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 67,
+              "line": 70,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78463,7 +78463,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 68,
+              "line": 71,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78542,7 +78542,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 69,
+              "line": 72,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78621,7 +78621,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 70,
+              "line": 73,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78700,7 +78700,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 71,
+              "line": 74,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78779,7 +78779,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 72,
+              "line": 75,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78858,7 +78858,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 73,
+              "line": 76,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78937,7 +78937,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 74,
+              "line": 77,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79016,7 +79016,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 82,
+              "line": 85,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -79087,7 +79087,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 102,
+              "line": 105,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79166,7 +79166,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 137,
+              "line": 140,
               "tag": "line_editor",
               "control_name": null,
               "callbacks": [],
@@ -79245,7 +79245,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 147,
+              "line": 150,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79324,7 +79324,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 325,
+              "line": 328,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -79392,7 +79392,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 216,
+              "line": 219,
               "tag": "line_editor",
               "control_name": null,
               "callbacks": [],
@@ -79475,7 +79475,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 236,
+              "line": 239,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79554,7 +79554,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 115,
+              "line": 118,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79635,7 +79635,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 169,
+              "line": 172,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79727,7 +79727,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 180,
+              "line": 183,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79816,7 +79816,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 259,
+              "line": 262,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79895,7 +79895,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 285,
+              "line": 288,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -79974,7 +79974,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 295,
+              "line": 298,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -80053,7 +80053,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 305,
+              "line": 308,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -80132,7 +80132,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml",
-              "line": 316,
+              "line": 319,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],

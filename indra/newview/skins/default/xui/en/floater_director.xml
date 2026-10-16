@@ -140,7 +140,7 @@
      left="98"
      top="53"
      name="arm_moves_check"
-     tool_tip="ACTION starts a ghost walk for every cast member (you, if the cast is empty); CUT stops them"
+     tool_tip="ACTION starts a local walk for every cast member (you, if the cast is empty); CUT stops them"
      width="94" />
     <check_box
      control_name="DirectorArmCamera"

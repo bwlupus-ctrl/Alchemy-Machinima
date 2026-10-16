@@ -114,7 +114,7 @@
          show_text="false"
          top="168"
          name="speed_slider"
-         tool_tip="Ground speed of the ghost walk (m/s)"
+         tool_tip="Ground speed of the local walk (m/s)"
          width="164" />
         <spinner
          control_name="ActorMoverSpeed"
@@ -130,7 +130,7 @@
          min_val="0.05"
          top="168"
          name="speed_spinner"
-         tool_tip="Ground speed of the ghost walk (m/s)"
+         tool_tip="Ground speed of the local walk (m/s)"
          width="64" />
         <text
          follows="left|top"
