@@ -63,6 +63,10 @@ private:
     void onControl(LLUICtrl* control);
     void onMonitorMenu(const std::string& action, const LLSD& parameter = LLSD());
     void showMonitorMenu(U32 slot, S32 x, S32 y);
+    void confirmRemoveCapture(const LLPrismLens::CaptureDefinition& capture);
+    void confirmRemoveOutput(const LLPrismLens::CaptureDefinition& capture,
+                             const LLPrismLens::DisplayHandle& display,
+                             const std::string& output_name);
     void setStatus(const std::string& text, bool warning = true);
     void clearStatus();
     void setAspectValue(const std::string& name, F32 ratio);
@@ -106,6 +110,8 @@ private:
     LLPrismLens::CaptureHandle mMenuCapture;
     LLPrismLens::CaptureHandle mMoveTargetCapture;
     std::vector<LLPrismLens::DisplayHandle> mMenuDisplays;
+    // Remove-output list: this camera's faces, then every Gate-subscribed face.
+    std::vector<LLPrismLens::DisplayHandle> mMenuRemoveDisplays;
     std::array<LLPrismLens::CaptureHandle, LLPrismLens::MAX_CAPTURES> mPreviewDemand;
     LLPrismLens::EFitMode mNewFaceFit = LLPrismLens::EFitMode::FIT;
     bool mCompact = false;

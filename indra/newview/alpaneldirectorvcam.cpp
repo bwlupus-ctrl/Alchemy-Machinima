@@ -89,6 +89,14 @@ std::string displayName(const LLPrismLens::DisplayDefinition& display, U32 index
         : llformat("Prim face %u", index + 1);
 }
 
+// Face name for lists that mix per-camera and Gate-subscribed faces.
+std::string faceListName(const LLPrismLens::DisplayDefinition& display, U32 index)
+{
+    return display.mGateSubscribed
+        ? displayName(display, index) + " \xC2\xB7 Gate"
+        : displayName(display, index);
+}
+
 std::string projectorName(const LLPrismLens::ProjectorDefinition& projector)
 {
     static const char* const RIG_ROLES[] = { "Key", "Fill", "Rim", "BG" };
@@ -285,6 +293,8 @@ bool ALPanelDirectorVCam::postBuild()
     registrar.add("VCam.Send", [this](LLUICtrl*, const LLSD& p) { onMonitorMenu("send", p); });
     registrar.add("VCam.MoveFace", [this](LLUICtrl*, const LLSD& p) { onMonitorMenu("move", p); });
     registrar.add("VCam.Display", [this](LLUICtrl*, const LLSD& p) { onMonitorMenu("display", p); });
+    registrar.add("VCam.RemoveCamera", [this](LLUICtrl*, const LLSD& p) { onMonitorMenu("remove_camera", p); });
+    registrar.add("VCam.RemoveOutput", [this](LLUICtrl*, const LLSD& p) { onMonitorMenu("remove_output", p); });
     if (LLContextMenu* menu = LLUICtrlFactory::getInstance()->createFromFile<LLContextMenu>(
             "menu_vcam_monitor.xml", gMenuHolder,
             LLViewerMenuHolderGL::child_registry_t::instance()))
@@ -484,11 +494,20 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         for (U32 i = 0; i < registry.mDisplayCount; ++i)
         {
             const LLPrismLens::DisplayDefinition& face = registry.mDisplays[i];
-            if (!sameCapture(face.mCapture, capture->mHandle)) continue;
+            if (face.mGateSubscribed || !sameCapture(face.mCapture, capture->mHandle)) continue;
             faces.push_back({face.mHandle, displayName(face, i),
-                face.mGateSubscribed ? "Gate program" :
-                    (face.mSettings.mVirtual ? "Virtual screen" : "Prim face"),
+                face.mSettings.mVirtual ? "Virtual screen" : "Prim face",
                 false, sameDisplay(mModel.selectedDisplay(), face.mHandle)});
+        }
+        // Gate-subscribed faces follow the Director switcher, so they belong to
+        // no single camera: list them under every camera, after its own faces.
+        for (U32 i = 0; i < registry.mDisplayCount; ++i)
+        {
+            const LLPrismLens::DisplayDefinition& face = registry.mDisplays[i];
+            if (!face.mGateSubscribed) continue;
+            faces.push_back({face.mHandle, faceListName(face, i),
+                "Gate program", false,
+                sameDisplay(mModel.selectedDisplay(), face.mHandle)});
         }
     }
     mFaceList->setItems(faces);
@@ -1020,21 +1039,7 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
             source->setValue(LLSD());
     }
     else if (name == "vc_remove_capture" && capture)
-    {
-        LLSD args;
-        args["MESSAGE"] = llformat("Remove %s and all %u of its face bindings?",
-                                    mCameraLabels[capture->mSlot].c_str(),
-                                    capture->mDisplayCount);
-        const LLPrismLens::CaptureHandle handle = capture->mHandle;
-        LLHandle<LLPanel> panel_handle = getHandle();
-        LLNotificationsUtil::add("GenericAlertYesCancel", args, LLSD(),
-            [panel_handle, handle](const LLSD& notification, const LLSD& response)
-            {
-                ALPanelDirectorVCam* self = dynamic_cast<ALPanelDirectorVCam*>(panel_handle.get());
-                if (self && LLNotificationsUtil::getSelectedOption(notification, response) == 0)
-                    self->mModel.removeCapture(handle);
-            });
-    }
+        confirmRemoveCapture(*capture);
     else if (name == "vc_set_selected_camera" && capture)
     {
         std::string reason;
@@ -1600,9 +1605,84 @@ void ALPanelDirectorVCam::showMonitorMenu(U32 slot, S32 x, S32 y)
                         break;
                     }
         }
+    // "Remove output" submenu: this camera's outputs (same names as the Display
+    // list), then every Gate-subscribed face, which belongs to no one camera.
+    mMenuRemoveDisplays.clear();
+    for (U32 index = 0; index < mModel.registry().mDisplayCount; ++index)
+    {
+        const LLPrismLens::DisplayDefinition& display = mModel.registry().mDisplays[index];
+        if (!display.mGateSubscribed && sameCapture(display.mCapture, mMenuCapture))
+            mMenuRemoveDisplays.push_back(display.mHandle);
+    }
+    for (U32 index = 0; index < mModel.registry().mDisplayCount; ++index)
+        if (mModel.registry().mDisplays[index].mGateSubscribed)
+            mMenuRemoveDisplays.push_back(mModel.registry().mDisplays[index].mHandle);
+    for (U32 index = 0; index < 16; ++index)
+        if (LLMenuItemGL* choice = menu->findChild<LLMenuItemGL>(llformat("remove_output_%u", index)))
+        {
+            const bool available = index < mMenuRemoveDisplays.size();
+            choice->setVisible(available);
+            if (available)
+                for (U32 global = 0; global < mModel.registry().mDisplayCount; ++global)
+                    if (sameDisplay(mModel.registry().mDisplays[global].mHandle, mMenuRemoveDisplays[index]))
+                    {
+                        choice->setLabel(LLStringExplicit(faceListName(
+                            mModel.registry().mDisplays[global], global)));
+                        break;
+                    }
+        }
+    if (LLMenuItemGL* none = menu->findChild<LLMenuItemGL>("remove_output_none"))
+    {
+        none->setVisible(mMenuRemoveDisplays.empty());
+        none->setEnabled(false);
+    }
     menu->buildDrawLabels();
     menu->updateParent(LLMenuGL::sMenuContainer);
     LLMenuGL::showPopup(mMonitorStrip, menu, x, y);
+}
+
+void ALPanelDirectorVCam::confirmRemoveCapture(const LLPrismLens::CaptureDefinition& capture)
+{
+    LLSD args;
+    args["MESSAGE"] = llformat("Remove %s and all %u of its face bindings?",
+                                mCameraLabels[capture.mSlot].c_str(),
+                                capture.mDisplayCount);
+    const LLPrismLens::CaptureHandle handle = capture.mHandle;
+    LLHandle<LLPanel> panel_handle = getHandle();
+    LLNotificationsUtil::add("GenericAlertYesCancel", args, LLSD(),
+        [panel_handle, handle](const LLSD& notification, const LLSD& response)
+        {
+            ALPanelDirectorVCam* self = dynamic_cast<ALPanelDirectorVCam*>(panel_handle.get());
+            if (self && LLNotificationsUtil::getSelectedOption(notification, response) == 0)
+                self->mModel.removeCapture(handle);
+        });
+}
+
+void ALPanelDirectorVCam::confirmRemoveOutput(const LLPrismLens::CaptureDefinition& capture,
+                                              const LLPrismLens::DisplayHandle& display,
+                                              const std::string& output_name)
+{
+    LLSD args;
+    args["MESSAGE"] = llformat("Remove output %s from %s? The camera keeps running.",
+                                output_name.c_str(),
+                                mCameraLabels[capture.mSlot].c_str());
+    LLHandle<LLPanel> panel_handle = getHandle();
+    LLNotificationsUtil::add("GenericAlertYesCancel", args, LLSD(),
+        [panel_handle, display](const LLSD& notification, const LLSD& response)
+        {
+            ALPanelDirectorVCam* self = dynamic_cast<ALPanelDirectorVCam*>(panel_handle.get());
+            if (!self || LLNotificationsUtil::getSelectedOption(notification, response) != 0)
+                return;
+            // The output may have been removed while the prompt was open.
+            const LLPrismLens::RegistrySnapshot& registry = self->mModel.registry();
+            for (U32 i = 0; i < registry.mDisplayCount; ++i)
+                if (sameDisplay(registry.mDisplays[i].mHandle, display))
+                {
+                    std::string reason;
+                    if (!LLPrismLens::removeDisplay(display, &reason)) self->setStatus(reason);
+                    return;
+                }
+        });
 }
 
 void ALPanelDirectorVCam::onMonitorMenu(const std::string& action,
@@ -1633,6 +1713,28 @@ void ALPanelDirectorVCam::onMonitorMenu(const std::string& action,
             const S32 index = parameter.asInteger();
             if (index >= 0 && index < static_cast<S32>(mMenuDisplays.size()))
                 mModel.setMonitorDisplay(mMenuCapture, mMenuDisplays[index]);
+        }
+    }
+    else if (action == "remove_camera" || action == "remove_output")
+    {
+        const LLPrismLens::CaptureDefinition* capture = nullptr;
+        for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+            if (sameCapture(mModel.registry().mCaptures[i].mHandle, mMenuCapture))
+                capture = &mModel.registry().mCaptures[i];
+        if (!capture) return;
+        if (action == "remove_camera")
+            confirmRemoveCapture(*capture);
+        else
+        {
+            const S32 index = parameter.asInteger();
+            if (index < 0 || index >= static_cast<S32>(mMenuRemoveDisplays.size())) return;
+            for (U32 global = 0; global < mModel.registry().mDisplayCount; ++global)
+                if (sameDisplay(mModel.registry().mDisplays[global].mHandle, mMenuRemoveDisplays[index]))
+                {
+                    confirmRemoveOutput(*capture, mMenuRemoveDisplays[index],
+                        faceListName(mModel.registry().mDisplays[global], global));
+                    break;
+                }
         }
     }
 }

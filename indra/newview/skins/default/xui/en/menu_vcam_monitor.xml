@@ -31,4 +31,27 @@
     <menu_item_call label="Face 15" name="display_14"><menu_item_call.on_click function="VCam.Display" parameter="14" /></menu_item_call>
     <menu_item_call label="Face 16" name="display_15"><menu_item_call.on_click function="VCam.Display" parameter="15" /></menu_item_call>
   </menu>
+  <menu_item_separator name="remove_separator" />
+  <menu_item_call label="Remove this camera..." name="remove_camera">
+    <menu_item_call.on_click function="VCam.RemoveCamera" />
+  </menu_item_call>
+  <menu label="Remove output" name="remove_output">
+    <menu_item_call label="No outputs" name="remove_output_none" enabled="false" />
+    <menu_item_call label="Face 1" name="remove_output_0"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="0" /></menu_item_call>
+    <menu_item_call label="Face 2" name="remove_output_1"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="1" /></menu_item_call>
+    <menu_item_call label="Face 3" name="remove_output_2"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="2" /></menu_item_call>
+    <menu_item_call label="Face 4" name="remove_output_3"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="3" /></menu_item_call>
+    <menu_item_call label="Face 5" name="remove_output_4"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="4" /></menu_item_call>
+    <menu_item_call label="Face 6" name="remove_output_5"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="5" /></menu_item_call>
+    <menu_item_call label="Face 7" name="remove_output_6"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="6" /></menu_item_call>
+    <menu_item_call label="Face 8" name="remove_output_7"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="7" /></menu_item_call>
+    <menu_item_call label="Face 9" name="remove_output_8"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="8" /></menu_item_call>
+    <menu_item_call label="Face 10" name="remove_output_9"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="9" /></menu_item_call>
+    <menu_item_call label="Face 11" name="remove_output_10"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="10" /></menu_item_call>
+    <menu_item_call label="Face 12" name="remove_output_11"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="11" /></menu_item_call>
+    <menu_item_call label="Face 13" name="remove_output_12"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="12" /></menu_item_call>
+    <menu_item_call label="Face 14" name="remove_output_13"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="13" /></menu_item_call>
+    <menu_item_call label="Face 15" name="remove_output_14"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="14" /></menu_item_call>
+    <menu_item_call label="Face 16" name="remove_output_15"><menu_item_call.on_click function="VCam.RemoveOutput" parameter="15" /></menu_item_call>
+  </menu>
 </context_menu>
