@@ -314,3 +314,12 @@ Status: design exploration only; no implementation commitment
 - Start with the first slice: unified hologram placement, surface-aware support, direct rotation/scale controls, soft overlap feedback, reveal staging, and basic undo.
 - It transforms the moment-to-moment feel without discarding the reliable formation solver, transactional crowd commit, shared panel, group model, or viewer-only clone architecture already in place.
 - Build every later brush, preset, and persistence feature on the same preview-is-truth placement session so single clones and 256-member crowds never diverge again.
+
+## User decisions (2026-10-16)
+
+- **Scale during placement:** Ctrl+wheel. Wheel and Q/E rotate.
+- **Shift-click stamping:** one undo entry per clone.
+- **Below-terrain block:** tested at the foot pivot only.
+- **Where the controls live:** inside the Director Cast › Clones page and Clone Studio (a Place card), not a separate toolbar.
+- **Terminology:** "clone" everywhere in the UI; "ghost" is retired from user-facing text as of commit dd7aca76abd.
+- **Next step:** three-way peer review (Opus, Codex xhigh, Gemini Argon low) of Phase 1 and the first slice, before any plan or code.
