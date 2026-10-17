@@ -1049,9 +1049,10 @@ void ALPanelLensGaze::refreshEditActorCombo()
         return;
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
-    // The edited slot lost its actor (Director subject unassigned): fall back to
+    // An edited Subject slot lost its actor (Director subject unassigned; You is
+    // exempt so a transient null self avatar at startup never drops the pick): fall back to
     // All. Otherwise its "not set" row stays selected and edits silently no-op.
-    if (!mEditAll && slotActor(mActiveSlot).isNull())
+    if (!mEditAll && mActiveSlot > 0 && slotActor(mActiveSlot).isNull())
     {
         mEditAll = true;
         mActiveSlot = 0;
