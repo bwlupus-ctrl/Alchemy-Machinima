@@ -11,6 +11,7 @@
 
 #include "alpanelactormover.h"
 
+#include "alkitpage.h"
 #include "alcompassdial.h"          // ALCompassDial custom widget (heading dial)
 #include "llactormover.h"
 #include "llbutton.h"
@@ -34,6 +35,7 @@ void ALPanelActorMover::setToolTipIfChanged(LLUICtrl* ctrl, const std::string& t
 
 bool ALPanelActorMover::postBuild()
 {
+    mKitPage = findChild<ALKitPage>("move_kit");
     mScopeRadio = getChild<LLRadioGroup>("scope_radio");
     mScopeRadio->setCommitCallback([this](LLUICtrl*, const LLSD&) { onScopeCommit(); });
     // initial selection (draw()'s diff-sync only reacts to changes)
@@ -73,7 +75,8 @@ void ALPanelActorMover::draw()
 
     // two-way: reflect external changes (the settings-bound spinner, debug
     // settings, or the other live host) without fighting our own live commits
-    const S32 want = sync ? 1 : 0;
+    const bool everyone = sync && !(mKitPage && mKitPage->whoPinned());
+    const S32 want = everyone ? 1 : 0;
     if (mScopeRadio->getValue().asInteger() != want)
     {
         mScopeRadio->setValue(want);
@@ -84,16 +87,18 @@ void ALPanelActorMover::draw()
     }
 
     // Sync (Everyone) needs no selection; Selected needs a host list selection
-    const bool have_sel = !mSelected.empty();
-    const bool enabled = sync || have_sel;
+    const bool have_sel = mKitPage && mKitPage->whoPinned()
+        ? !mKitPage->actorTargetAway() && mKitPage->actorTarget().notNull()
+        : !mSelected.empty();
+    const bool enabled = everyone || have_sel;
     mWalkBtn->setEnabled(enabled);
     mStopBtn->setEnabled(enabled);
     const std::string walk_tip = enabled
-        ? std::string(sync ? "Start every actor (you, if none are listed) with these parameters"
+        ? std::string(everyone ? "Start every actor (you, if none are listed) with these parameters"
                            : "Start the selected actor(s) with these parameters")
         : std::string("Select an actor first (or switch to Everyone)");
     const std::string stop_tip = enabled
-        ? std::string(sync ? "Stop every actor and release their rendered bodies"
+        ? std::string(everyone ? "Stop every actor and release their rendered bodies"
                            : "Stop the selected actor(s)")
         : std::string("Select an actor first (or switch to Everyone)");
     setToolTipIfChanged(mWalkBtn, walk_tip);
@@ -107,7 +112,10 @@ void ALPanelActorMover::onScopeCommit()
     // segmented Selected|Everyone drives the shared "sync all" setting
     // (1 = Everyone = sync on), same setting the standalone mover historically
     // exposed as a "Sync all" checkbox
-    gSavedSettings.setBOOL("ActorMoverSync", mScopeRadio->getValue().asInteger() == 1);
+    const bool everyone = mScopeRadio->getValue().asInteger() == 1;
+    if (everyone && mKitPage && mKitPage->whoPinned())
+        mKitPage->setWhoPin(LLSD());
+    gSavedSettings.setBOOL("ActorMoverSync", everyone);
 }
 
 void ALPanelActorMover::onDialCommit()
@@ -120,10 +128,20 @@ void ALPanelActorMover::onDialCommit()
     gSavedSettings.setF32("ActorMoverHeading", (F32)mHeadingDial->getValue().asReal());
 }
 
+uuid_vec_t ALPanelActorMover::selectedTargets() const
+{
+    if (mKitPage && mKitPage->whoPinned())
+    {
+        const LLUUID actor = mKitPage->actorTarget();
+        return !mKitPage->actorTargetAway() && actor.notNull() ? uuid_vec_t{actor} : uuid_vec_t{};
+    }
+    return mSelected;
+}
+
 void ALPanelActorMover::onClickWalk()
 {
     static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
-    if (sync)
+    if (sync && !(mKitPage && mKitPage->whoPinned()))
     {
         LLActorMover::instance().startAll();
     }
@@ -132,7 +150,7 @@ void ALPanelActorMover::onClickWalk()
         // act on exactly the host-provided selection (one roster row from the
         // standalone, one or more cast rows from the console) -- identical to
         // each host's former hand-copied Walk handler
-        for (const LLUUID& id : mSelected)
+        for (const LLUUID& id : selectedTargets())
         {
             LLActorMover::instance().start(id);
         }
@@ -142,13 +160,13 @@ void ALPanelActorMover::onClickWalk()
 void ALPanelActorMover::onClickStop()
 {
     static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
-    if (sync)
+    if (sync && !(mKitPage && mKitPage->whoPinned()))
     {
         LLActorMover::instance().stopAll();
     }
     else
     {
-        for (const LLUUID& id : mSelected)
+        for (const LLUUID& id : selectedTargets())
         {
             LLActorMover::instance().stop(id);
         }

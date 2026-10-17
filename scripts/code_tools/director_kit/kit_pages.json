@@ -198,7 +198,7 @@
   },
   "look_group/actor_style_tab": {
    "v1_sources": [],
-   "actor_target": true,
+   "actor_target": true, "who_adapter": "actor_style",
    "label_names": {}
   },
   "light_group/actors_tab": {
@@ -391,7 +391,7 @@
   "performance_group/gaze_tab": {
    "v1_sources": ["panel_lens_gaze.xml"],
    "root_class": "panel_lens_gaze", "root_name": "gaze_tab_logic",
-   "actor_target": true,
+   "actor_target": true, "who_adapter": "gaze_slot",
    "row_overrides": {},
    "label_names": {}
   },

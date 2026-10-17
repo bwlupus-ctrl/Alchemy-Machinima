@@ -36,6 +36,7 @@
 #include "lluuid.h"     // uuid_vec_t
 
 class ALCompassDial;
+class ALKitPage;
 class LLButton;
 class LLRadioGroup;
 
@@ -58,12 +59,14 @@ public:
 private:
     void onScopeCommit();
     void onDialCommit();
+    uuid_vec_t selectedTargets() const;
     void onClickWalk();
     void onClickStop();
 
     // set a tooltip only when it changed (draw()-rate friendly)
     static void setToolTipIfChanged(LLUICtrl* ctrl, const std::string& tip);
 
+    ALKitPage*    mKitPage = nullptr;
     LLRadioGroup*  mScopeRadio = nullptr;
     ALCompassDial* mHeadingDial = nullptr;
     LLButton*      mWalkBtn = nullptr;

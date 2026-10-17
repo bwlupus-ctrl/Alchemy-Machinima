@@ -728,7 +728,7 @@ bool ALPanelCineLightRig::postBuild()
         {
             mSubjectTargetConnections[index] =
                 combo->getControlVariable()->getSignal()->connect(
-                    [combo](LLControlVariable*, const LLSD&, const LLSD& value)
+                    [combo](LLControlVariable*, const LLSD& value, const LLSD&)
                     {
                         ALDirectorCastUI::showStoredValue(combo, value, 0, 1);
                     });

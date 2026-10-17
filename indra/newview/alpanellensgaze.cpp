@@ -13,6 +13,7 @@
 
 #include "llactormover.h"
 #include "algazemath.h"
+#include "alkitbinding.h"
 #include "alpanelcinecamparams.h"
 #include "llagent.h"
 #include "llavatarnamecache.h"
@@ -760,6 +761,20 @@ bool ALPanelLensGaze::postBuild()
                 }));
         }
     }
+    ALKitWhoAdapters::add("gaze_slot", [](const LLUUID& id) -> LLSD
+    {
+        if (id.isNull()) return LLSD();
+        if (LLDirectorCast::isSelf(id)) return LLSD(0);
+        const LLDirectorCast& cast = LLDirectorCast::instance();
+        if (id == cast.getSubjectA()) return LLSD(1);
+        if (id == cast.getSubjectB()) return LLSD(2);
+        if (id == cast.getSubjectC()) return LLSD(3);
+        if (id == cast.getSubjectD()) return LLSD(4);
+        return LLSD();
+    });
+    // The kit's post-attachment sync/popover must see choices before first draw.
+    mEditActorRevision = ~U64(0);
+    refreshEditActorCombo();
     return true;
 }
 

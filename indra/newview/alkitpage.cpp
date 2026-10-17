@@ -17,6 +17,7 @@
 #include "llbutton.h"
 #include "llcallbacklist.h"
 #include "llcombobox.h"
+#include "llscrolllistitem.h"
 #include "llcheckboxctrl.h"
 #include "llcontrol.h"
 #include "llfontgl.h"
@@ -636,7 +637,7 @@ bool ALKitPage::postBuild()
         LLTextBox::Params who_hint;
         who_hint.name          = pre + "_who_hint";
         who_hint.rect          = LLRect(0, 24, 420, 0);
-        who_hint.initial_value = "Follows the Cast selection; pick one to lock.";
+        who_hint.initial_value = "Pick a subject to lock.";
         who_hint.use_ellipses  = true;
         who_hint.text_color    = ALKitStyle::color(ALKitStyle::MUTED);
         mWhoHint = LLUICtrlFactory::create<LLTextBox>(who_hint);
@@ -676,59 +677,19 @@ bool ALKitPage::postBuild()
                     mWhoCombo->setVisible(false);
                     if (mWhoChip)
                     {
-                        mWhoChip->setLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned));
+                        mWhoChip->setLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned && canFollowCast()));
                         reshape(getRect().getWidth(), getRect().getHeight(), false);
                     }
                 });
-            mWhoChip->setLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned));
+            mWhoChip->setLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned && canFollowCast()));
         }
         else
         {
             mWhoChip->setLabel("Actor: follow selection");
             mWhoChip->setCommitCallback([this](LLUICtrl*, const LLSD&)
             {
-                mWhoPinned = !mWhoPinned && mActorTarget.notNull();
-                setWhoChipLabel(mWhoPinned ? "Actor: locked" : "Actor: follow selection");
-                refreshActorTargetAvailability();
-                saveState();
+                setWhoPin(!mWhoPinned && mActorTarget.notNull() ? LLSD(mActorTarget) : LLSD());
             });
-        }
-        if (ALKitShell* shell = ALKitShell::find(this))
-        {
-            mConnections.emplace_back(shell->setCastSelectionCallback(
-                [this](const ALKitShell::uuid_vec_t& ids)
-                {
-                    if (mWhoPinned)
-                        return;
-                    if (mActorTargetPage && !mWhoCombo)
-                    {
-                        mActorTarget = ids.empty() ? LLUUID::null : ids.front();
-                        mWhoError = ids.empty();
-                        setWhoChipLabel(ids.empty() ? "Actor: none" : "Actor: follows cast");
-                        refreshActorTargetAvailability();
-                        return;
-                    }
-                    if (!mWhoCombo)
-                        return;
-                    if (!ids.empty())
-                        if (ALKitWhoAdapters::Adapter adapter = ALKitWhoAdapters::get(mWhoAdapter))
-                        {
-                            const LLSD value = adapter(ids.front());
-                            if (value.isDefined())
-                            {
-                                mWhoCombo->setValue(value);
-                                mWhoCombo->onCommit();
-                                return;
-                            }
-                        }
-                    mWhoError = true;
-                    setWhoChipLabel("That subject isn't selectable here");
-                }));
-            if (mActorTargetSynthetic && !shell->castSelection().empty())
-            {
-                mActorTarget = shell->castSelection().front();
-                mWhoChip->setLabel("Actor: follows cast");
-            }
         }
         if (mActorTargetPage)
         {
@@ -1645,7 +1606,7 @@ void ALKitPage::saveState()
     page["chip"] = mChipIndex;
     if (mWhoPinned && mWhoCombo)
     {
-        page["who_pin"] = mWhoCombo->getValue().asString();
+        page["who_pin"] = mSavedWhoPin.asString();
     }
     else if (mWhoPinned && mActorTargetPage)
     {
@@ -1660,22 +1621,181 @@ void ALKitPage::saveState()
     gSavedSettings.setLLSD("DirectorV2PageState", state);
 }
 
-void ALKitPage::setWhoPin(const LLSD& value)
+bool ALKitPage::canFollowCast() const
 {
-    mWhoPinned = value.isDefined() && !value.asString().empty();
-    if (mActorTargetPage && mWhoPinned)
-        mActorTarget = value.asUUID();
-    if (mWhoChip && mWhoCombo)
+    return mWhoConnection.connected() &&
+        ((mActorTargetPage && !mWhoCombo) || ALKitWhoAdapters::get(mWhoAdapter));
+}
+
+void ALKitPage::setWhoHint(const std::string& text)
+{
+    setTextIfChanged(mWhoHint, text);
+}
+
+void ALKitPage::refreshWhoHint()
+{
+    if (!mWhoHint)
+        return;
+    const bool following = !mWhoPinned && canFollowCast();
+    if (mPage != "light_group/cine_light_rig_tab")
     {
-        mWhoChip->setLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned));
-        reshape(getRect().getWidth(), getRect().getHeight(), false);
+        setWhoHint(following ? "Follows the Cast selection; pick one to lock." : "Pick a subject to lock.");
+        return;
     }
+    const auto& manager = ALCineLightRigManager::instance();
+    const S32 selected = static_cast<S32>(manager.selectedSlot());
+    U32 mask = 0;
+    for (S32 slot = 0; slot < ALCineLightRigManager::SLOT_COUNT; ++slot)
+        if (slot != selected && manager.isSlotEnabled(static_cast<ALCineLightRigManager::Slot>(slot)))
+            mask |= 1u << slot;
+    if (selected == mWhoHintSlot && mask == mWhoHintMask && following == mWhoHintFollowing)
+        return;
+    mWhoHintSlot = selected;
+    mWhoHintMask = mask;
+    mWhoHintFollowing = following;
+    std::string hint = following ? "Follows cast." : "Pick a rig to edit.";
+    if (mask)
+    {
+        hint += " Also on: ";
+        static const char* const labels[] = { "You", "Subject A", "Subject B", "Subject C", "Subject D" };
+        bool first = true;
+        for (S32 slot = 0; slot < ALCineLightRigManager::SLOT_COUNT; ++slot)
+            if (mask & (1u << slot))
+            {
+                if (!first) hint += ", ";
+                hint += labels[slot];
+                first = false;
+            }
+    }
+    setWhoHint(hint);
+}
+
+bool ALKitPage::selectWhoValue(const LLSD& value)
+{
+    if (!mWhoCombo || !value.isDefined())
+        return false;
+    // setValue() leaves the old selection behind on failure. Validate the live
+    // enabled value first, and never commit that old selection for a missing pin.
+    for (LLScrollListItem* item : mWhoCombo->getAllData())
+        if (item && item->getEnabled() && item->getValue().asString() == value.asString())
+        {
+            mWhoCombo->setValue(value);
+            mWhoError = false;
+            return mWhoCombo->getCurrentIndex() >= 0 &&
+                mWhoCombo->getValue().asString() == value.asString();
+        }
+    return false;
+}
+
+void ALKitPage::applyCastSelection(const uuid_vec_t& ids)
+{
+    if (mWhoPinned || !canFollowCast())
+        return;
+    if (mActorTargetPage && !mWhoCombo)
+    {
+        mActorTarget = ids.empty() ? LLUUID::null : ids.front();
+        mWhoError = ids.empty();
+        refreshActorTargetAvailability();
+        return;
+    }
+    if (ids.empty())
+    {
+        mWhoError = false;
+        return;
+    }
+    if (!ids.empty())
+        if (ALKitWhoAdapters::Adapter adapter = ALKitWhoAdapters::get(mWhoAdapter))
+        {
+            LLSD value = adapter(ids.front());
+            // Gaze deduplicates actors with multiple subject assignments. Use
+            // this page's actual slot alias, rather than a different panel's.
+            if (mWhoAdapter == "gaze_slot")
+            {
+                const auto& cast = LLDirectorCast::instance();
+                const LLUUID actors[] = { gAgentID, cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
+                for (LLScrollListItem* item : mWhoCombo->getAllData())
+                {
+                    const S32 slot = item->getValue().asInteger();
+                    if (slot >= 0 && slot < 5 && actors[slot] == ids.front())
+                    {
+                        value = item->getValue();
+                        break;
+                    }
+                }
+            }
+            if (selectWhoValue(value))
+            {
+                mWhoCombo->onCommit();
+                return;
+            }
+        }
+    mWhoError = true;
+    setWhoChipLabel("That subject isn't selectable here");
+}
+
+void ALKitPage::connectWho(ALKitShell& shell)
+{
+    if (!mWhoChip)
+        return;
+    mWhoConnection = shell.setCastSelectionCallback(
+        [this](const uuid_vec_t& ids) { applyCastSelection(ids); });
+    // The owner panel has now populated its combo and installed its commit
+    // handler. Restoring here also invokes that handler, not just the chip UI.
+    ALKitHistory::ScopedSuspend suspend;
+    if (mWhoPinned && mWhoCombo)
+    {
+        if (selectWhoValue(mSavedWhoPin))
+            mWhoCombo->onCommit();
+        else
+        {
+            mWhoPinned = false;
+            mSavedWhoPin = LLSD();
+            mWhoError = false;
+            saveState();
+        }
+    }
+    else
+        applyCastSelection(shell.castSelection());
+    if (mWhoPinned && mPage == "cast_group/move_tab")
+        gSavedSettings.setBOOL("ActorMoverSync", false);
+    refreshWhoHint();
+}
+
+bool ALKitPage::setWhoPin(const LLSD& value)
+{
+    const bool pinned = value.isDefined() && !value.asString().empty();
+    if (pinned && mWhoCombo && !selectWhoValue(value))
+        return false;
+    mWhoPinned = pinned;
+    mSavedWhoPin = value;
+    if (mActorTargetPage && mWhoPinned && !mWhoCombo)
+        mActorTarget = value.asUUID();
+    if (mWhoPinned)
+    {
+        if (mPage == "cast_group/move_tab")
+            gSavedSettings.setBOOL("ActorMoverSync", false);
+        if (mWhoCombo)
+            mWhoCombo->onCommit();
+    }
+    else if (ALKitShell* shell = ALKitShell::find(this))
+        applyCastSelection(shell->castSelection());
+    if (mWhoChip && mWhoCombo && !mWhoError)
+        setWhoChipLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned && canFollowCast()));
     refreshActorTargetAvailability();
+    refreshWhoHint();
     saveState();
+    return true;
 }
 
 LLUUID ALKitPage::actorTarget() const
 {
+    if (mWhoCombo && mWhoAdapter == "gaze_slot")
+    {
+        const S32 slot = mWhoCombo->getValue().asInteger();
+        const LLDirectorCast& cast = LLDirectorCast::instance();
+        const LLUUID actors[] = { gAgentID, cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
+        return slot >= 0 && slot < 5 ? actors[slot] : LLUUID::null;
+    }
     return mWhoCombo ? mWhoCombo->getValue().asUUID() : mActorTarget;
 }
 
@@ -1756,8 +1876,16 @@ void ALKitPage::refreshActorTargetAvailability()
 {
     if (!mActorTargetPage || !mWhoChip)
         return;
+    // Gaze's All option is a broadcast edit scope, not an absent avatar.
+    if (mWhoAdapter == "gaze_slot" && mWhoCombo && mWhoCombo->getValue().asInteger() == -1)
+    {
+        mActorTargetAway = false;
+        if (mLegacyHost) mLegacyHost->setEnabled(true);
+        return;
+    }
     const LLUUID target = actorTarget();
-    const bool explicit_you = mWhoCombo && mWhoCombo->getCurrentIndex() >= 0 && target.isNull();
+    const bool explicit_you = mWhoCombo && mWhoCombo->getCurrentIndex() >= 0 &&
+        (mWhoAdapter == "gaze_slot" ? mWhoCombo->getValue().asInteger() == 0 : target.isNull());
     LLDirectorCast& cast = LLDirectorCast::instance();
     const bool present = explicit_you || (target.notNull() &&
         cast.getMember(target) && cast.resolve(target));
@@ -1767,7 +1895,7 @@ void ALKitPage::refreshActorTargetAvailability()
     else if (!mWhoCombo)
     {
         const std::string label = mWhoPinned ? "Actor: locked" :
-            (target.notNull() ? "Actor: follows cast" : "Actor: none");
+            (target.notNull() && canFollowCast() ? "Actor: follows cast" : "Actor: none");
         setWhoChipLabel(label);
     }
     if (mLegacyHost)
@@ -1791,8 +1919,9 @@ void ALKitPage::restoreState()
     const LLSD& page = state[mPage];
     if (page.has("chip"))
         mChipIndex = llclamp(page["chip"].asInteger(), 0, llmax(0, (S32)mSections.size() - 1));
-    mWhoPinned = page.has("who_pin") && !page["who_pin"].asString().empty();
-    if (mActorTargetPage && mWhoPinned)
+    mSavedWhoPin = page["who_pin"];
+    mWhoPinned = mSavedWhoPin.isDefined() && !mSavedWhoPin.asString().empty();
+    if (mActorTargetPage && mWhoPinned && !mWhoCombo)
         mActorTarget = page["who_pin"].asUUID();
     if (page.has("cards"))
         for (auto& card : mCards)
@@ -1816,6 +1945,7 @@ void ALKitPage::draw()
     }
     if (mReadoutClock.due())
     {
+        refreshWhoHint();
         for (const auto& card : mCards)
             if (card.second->getVisible())
                 for (ALKitRow* row : card.second->rows())
@@ -1823,7 +1953,7 @@ void ALKitPage::draw()
                         row->pollLiveValue();
         if (mWhoCombo && mWhoChip && !mWhoError)
         {
-            const std::string label = whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned);
+            const std::string label = whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned && canFollowCast());
             if (!whoChipHasLabel(mWhoChip, label))
             {
                 setWhoChipLabel(label);

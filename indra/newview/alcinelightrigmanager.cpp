@@ -720,6 +720,37 @@ void ALCineLightRigManager::setSelectedSlot(Slot slot)
     ++mConfigurationRevision;
     mBlobs[slotIndex(mSelected)].toSettings();
     persist();
+    logSelectedTarget();
+}
+
+void ALCineLightRigManager::logSelectedTarget()
+{
+    const ALCineLightRig& rig = selected();
+    const LLUUID subject = mSelected == SLOT_SELF
+        ? (rig.getAnchor().notNull() ? rig.getAnchor() : gAgentID)
+        : legacyAnchorForSlot(mSelected);
+    const LLVOAvatar* avatar = rig.resolveSlotAvatar();
+    const LLUUID resolved = avatar ? avatar->getID() : LLUUID::null;
+    const LLUUID object = rig.getObjectTarget();
+    const bool group = rig.isGroupEnabled();
+    const U32 group_slots = rig.getGroupSlots();
+    const U32 mask = enabledMask();
+    if (mSelected == mLoggedSlot && mask == mLoggedEnabledMask &&
+        subject == mLoggedSubject && resolved == mLoggedAvatar &&
+        object == mLoggedObject && group == mLoggedGroup && group_slots == mLoggedGroupSlots)
+        return;
+    mLoggedSlot = mSelected;
+    mLoggedEnabledMask = mask;
+    mLoggedSubject = subject;
+    mLoggedAvatar = resolved;
+    mLoggedObject = object;
+    mLoggedGroup = group;
+    mLoggedGroupSlots = group_slots;
+    LL_INFOS("CineRig") << "#CineRig selected_slot=" << static_cast<S32>(mSelected)
+        << " enabled_mask=" << mask << " subject_uuid=" << subject
+        << " resolved_avatar_uuid=" << resolved << " object_uuid=" << object
+        << " mode=" << (object.notNull() ? "object" : group ? "group" : "avatar")
+        << " group_mask=" << group_slots << LL_ENDL;
 }
 
 void ALCineLightRigManager::resetAllToSelf()
@@ -1116,6 +1147,7 @@ void ALCineLightRigManager::tick(F64 presentation_time)
         mNeedsSessionRestore = false;
     }
     mBlobs[slotIndex(mSelected)] = captureSelected();
+    logSelectedTarget();
     updateAutoShadowSlots();
     updateRandomCycle(presentation_time);
     resolveCameraFocus();

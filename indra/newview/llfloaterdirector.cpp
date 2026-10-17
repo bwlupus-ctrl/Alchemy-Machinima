@@ -2392,6 +2392,9 @@ void LLFloaterDirector::bindPathPage(LLView* root)
 
 void LLFloaterDirector::bindActorStylePage(LLView* root)
 {
+    // Actor Style stores UUIDs directly (You is the null UUID); selectWhoValue validates combo membership.
+    ALKitWhoAdapters::add("actor_style", [](const LLUUID& id)
+        { return LLDirectorCast::isSelf(id) ? LLSD(LLUUID::null) : LLSD(id); });
     mActorStyleTarget = root->findChild<LLComboBox>("actor_style_target");
     mActorStyleEnabled = root->findChild<LLCheckBoxCtrl>("actor_style_enabled");
     mActorStyleMode = root->findChild<LLComboBox>("actor_style_mode");

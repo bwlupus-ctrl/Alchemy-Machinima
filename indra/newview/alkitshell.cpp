@@ -1486,6 +1486,7 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
         page = findFirst<ALKitPage>(panel);
     if (!page)
         return;
+    page->connectWho(*this);
     page->buildResetPopover();
     page->setChangedOnlyValue(changedOnly());
     mBuiltPages[page->pageKey()] = page->getDerivedHandle<ALKitPage>();
@@ -1546,100 +1547,84 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
         if (mSearchPopover)
             mSearchPopover->bindAnchor(editor);
     }
-    if (LLButton* who = page->findChild<LLButton>(prefix + "_who_chip"))
+    if (LLButton* who = page->whoChip(); who && page->whoCombo())
     {
-        LLComboBox* picker = page->whoCombo();
-        if (picker)
-        {
-            const std::vector<LLScrollListItem*> items       = picker->getAllData();
-            const S32                            item_height = 24;
-            ALKitPopover::Params                 params;
-            params.name           = prefix + "_who_popover";
-            params.rect           = LLRect(0, (S32)(items.size() + 1) * item_height + 16, 360, 0);
-            params.visible        = false;
-            ALKitPopover* popover = LLUICtrlFactory::create<ALKitPopover>(params);
-            addChild(popover);
-            popover->bindAnchor(who);
-            LLHandle<ALKitPopover>          popover_handle = popover->getDerivedHandle<ALKitPopover>();
-            LLHandle<ALKitPage>             page_handle    = page->getDerivedHandle<ALKitPage>();
-            LLHandle<LLComboBox>            picker_handle  = picker->getDerivedHandle<LLComboBox>();
-            std::vector<LLHandle<LLButton>> choice_handles;
-            LLButton::Params                button_params;
-            button_params.rect  = LLRect(10, item_height, 350, 0);
-            button_params.name  = prefix + "_who_follow";
-            button_params.label = "Follow cast selection (" + picker->getSelectedItemLabel() + ")";
-            LLButton* follow    = LLUICtrlFactory::create<LLButton>(button_params);
-            popover->addChild(follow);
-            follow->setOrigin(10, (S32)items.size() * item_height + 8);
-            follow->setCommitCallback(
-                [page_handle, popover_handle](LLUICtrl*, const LLSD&)
+        const auto page_handle = page->getDerivedHandle<ALKitPage>();
+        const auto shell_handle = getDerivedHandle<ALKitShell>();
+        const auto anchor_handle = who->getDerivedHandle<LLButton>();
+        who->setCommitCallback(
+            [page_handle, shell_handle, anchor_handle, prefix,
+             popover_handle = LLHandle<ALKitPopover>()](LLUICtrl*, const LLSD&) mutable
+            {
+                ALKitShell* shell = shell_handle.get();
+                ALKitPage* page = page_handle.get();
+                LLButton* anchor = anchor_handle.get();
+                if (!shell || !page || !anchor || !page->whoCombo())
+                    return;
+                if (ALKitPopover* old = popover_handle.get())
+                {
+                    if (shell->consumeAnchorClose(old))
+                        return;
+                    if (old->getVisible())
+                    {
+                        old->hide();
+                        return;
+                    }
+                    // A fresh popover also resets its scrolling geometry when
+                    // the live combo gained/lost/reordered choices since opening.
+                    delete old;
+                }
+                std::vector<std::pair<std::string, LLSD>> choices;
+                for (LLScrollListItem* item : page->whoCombo()->getAllData())
+                    if (item && item->getEnabled() && item->getColumn(0))
+                        choices.emplace_back(item->getColumn(0)->getValue().asString(), item->getValue());
+                constexpr S32 item_height = 24;
+                ALKitPopover::Params params;
+                params.name = prefix + "_who_popover";
+                params.rect = LLRect(0, (S32)(choices.size() + 1) * item_height + 16, 360, 0);
+                params.visible = false;
+                ALKitPopover* popover = LLUICtrlFactory::create<ALKitPopover>(params);
+                shell->addChild(popover);
+                popover->bindAnchor(anchor);
+                popover_handle = popover->getDerivedHandle<ALKitPopover>();
+                LLButton::Params bp;
+                bp.rect = LLRect(10, item_height, 350, 0);
+                bp.name = prefix + "_who_follow";
+                bp.label = "Follow cast selection";
+                LLButton* follow = LLUICtrlFactory::create<LLButton>(bp);
+                popover->addChild(follow);
+                follow->setOrigin(10, (S32)choices.size() * item_height + 8);
+                follow->setEnabled(page->canFollowCast());
+                follow->setCommitCallback([page_handle, popover_handle](LLUICtrl*, const LLSD&)
                 {
                     if (ALKitPage* target = page_handle.get())
                         target->setWhoPin(LLSD());
                     if (ALKitPopover* target = popover_handle.get())
                         target->hide();
                 });
-            S32 index = 0;
-            for (LLScrollListItem* item : items)
-            {
-                if (!item || !item->getEnabled() || !item->getColumn(0))
-                    continue;
-                const LLSD value    = item->getValue();
-                button_params.name  = prefix + "_who_item_" + llformat("%d", index);
-                button_params.label = item->getColumn(0)->getValue().asString();
-                LLButton* choice    = LLUICtrlFactory::create<LLButton>(button_params);
-                popover->addChild(choice);
-                choice_handles.push_back(choice->getDerivedHandle<LLButton>());
-                choice->setOrigin(10, (S32)(items.size() - index - 1) * item_height + 8);
-                choice->setCommitCallback(
-                    [page_handle, picker_handle, popover_handle, value](LLUICtrl*, const LLSD&)
-                    {
-                        if (LLComboBox* combo = picker_handle.get())
-                        {
-                            combo->setValue(value);
-                            combo->onCommit();
-                        }
-                        if (ALKitPage* target = page_handle.get())
-                            target->setWhoPin(value);
-                        if (ALKitPopover* target = popover_handle.get())
-                            target->hide();
-                    });
-                ++index;
-            }
-            LLHandle<LLButton> follow_handle = follow->getDerivedHandle<LLButton>();
-            who->setCommitCallback(
-                [popover_handle, picker_handle, follow_handle, choice_handles](LLUICtrl*, const LLSD&)
+                S32 index = 0;
+                for (const auto& [label, value] : choices)
                 {
-                    LLComboBox*   combo  = picker_handle.get();
-                    ALKitPopover* target = popover_handle.get();
-                    if (!combo || !target)
-                        return;
-                    if (!target->getVisible())
+                    bp.name = prefix + "_who_item_" + llformat("%d", index);
+                    bp.label = label;
+                    LLButton* choice = LLUICtrlFactory::create<LLButton>(bp);
+                    popover->addChild(choice);
+                    choice->setOrigin(10, (S32)(choices.size() - index - 1) * item_height + 8);
+                    choice->setCommitCallback([page_handle, popover_handle, value](LLUICtrl*, const LLSD&)
                     {
-                        if (LLButton* follow_button = follow_handle.get())
-                        {
-                            follow_button->setLabel("Follow cast selection (" + combo->getSelectedItemLabel() + ")");
-                        }
-                        const std::vector<LLScrollListItem*> current_items = combo->getAllData();
-                        S32                                  choice_index  = 0;
-                        for (LLScrollListItem* item : current_items)
-                        {
-                            if (!item || !item->getEnabled() || !item->getColumn(0))
-                                continue;
-                            if (choice_index < (S32)choice_handles.size())
-                            {
-                                if (LLButton* choice = choice_handles[choice_index].get())
-                                {
-                                    choice->setLabel(item->getColumn(0)->getValue().asString());
-                                }
-                            }
-                            ++choice_index;
-                        }
-                    }
-                    target->toggle();
-                });
-            ALKitStyle::styleTree(popover);
-        }
+                        ALKitPage* target = page_handle.get();
+                        // Revalidate against the combo at click time: a removed
+                        // or disabled value must never commit the old selection.
+                        if (!target || !target->setWhoPin(value))
+                            return;
+                        if (ALKitPopover* popup = popover_handle.get())
+                            popup->hide();
+                    });
+                    ++index;
+                }
+                ALKitStyle::styleTree(popover);
+                popover->show();
+            });
     }
     startSearchLoad();
     rebuildQuick();

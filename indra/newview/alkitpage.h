@@ -158,7 +158,10 @@ public:
     bool               hasPreset() const { return mPresetMode != "none"; }
     LLComboBox*        whoCombo() const { return mWhoCombo; }
     bool               whoPinned() const { return mWhoPinned; }
-    void               setWhoPin(const LLSD& value);
+    bool               setWhoPin(const LLSD& value);
+    void               connectWho(ALKitShell& shell);
+    bool               canFollowCast() const;
+    void               setWhoHint(const std::string& text);
     LLUUID             actorTarget() const;
     void               undoOnPage(bool redo);
     bool               canUndoOnPage(bool redo);
@@ -197,12 +200,20 @@ private:
     void        setWhoChipLabel(const std::string& label);
     void        layoutWhoChip(S32 page_width);
     void        refreshSubjectCombos();
+    void        refreshWhoHint();
+    void        applyCastSelection(const uuid_vec_t& ids);
+    bool        selectWhoValue(const LLSD& value);
     std::string prefix() const;
     std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mModes, mModeSetting,
         mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;
     bool mLegacy = false, mActorTargetPage = false, mActorTargetSynthetic = false, mActorTargetAway = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,
          mUpdatingModeSwitch = false;
     LLUUID mActorTarget;
+    LLSD mSavedWhoPin;
+    S32 mWhoHintSlot = -1;
+    U32 mWhoHintMask = ~0u;
+    bool mWhoHintFollowing = false;
+    boost::signals2::scoped_connection mWhoConnection;
     S32  mModeIndex = 0, mChipIndex = 0, mBarLeftEnd = 0;
     U64  mHistoryRevision = ~U64(0);
     U64  mSubjectComboRevision = ~U64(0);

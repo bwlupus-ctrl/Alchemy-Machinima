@@ -1370,6 +1370,12 @@ private:
     bool restore(const LLSD& data);
     void migrateLegacyScene(const LLSD& data);
     ParamBlob captureSelected() const;
+    void logSelectedTarget();
+    Slot mLoggedSlot = Slot::COUNT;
+    U32 mLoggedEnabledMask = ~0u;
+    LLUUID mLoggedSubject, mLoggedAvatar, mLoggedObject;
+    bool mLoggedGroup = false;
+    U32 mLoggedGroupSlots = ~0u;
 
     ALCineLightRig mInstances[SLOT_COUNT];
     mutable ParamBlob mBlobs[SLOT_COUNT];
