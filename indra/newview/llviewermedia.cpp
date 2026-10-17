@@ -808,6 +808,8 @@ void LLViewerMedia::updateMedia(void *dummy_arg)
                 {
                     media_is_small = true;
                 }
+                if (LLPrismLens::mediaSlotsEnabled() && LLPrismLens::mediaSlotDemand(pimpl) > 0.0)
+                    media_is_small = false;
 
                 if(pimpl->getInterest() == 0.0f)
                 {
@@ -3072,9 +3074,23 @@ LLViewerMediaImpl::CompletedImage LLViewerMediaImpl::completedMediaImage() const
 
 bool LLViewerMediaImpl::mediaSlotPermitted() const
 {
+    static LLCachedControl<bool> inworld_media_enabled(gSavedSettings, "AudioStreamingMedia", true);
     // Observing a source never overrides its ordinary visibility/update policy.
-    return hasLibVLCSource() && !isForcedUnloaded() && !mSuspendUpdates &&
-        mVisible && !mWebPaused && !mMediaSource->isPluginExited();
+    return mediaSlotCandidate() && !isForcedUnloaded() && !mSuspendUpdates &&
+        mVisible && !mWebPaused && inworld_media_enabled &&
+        (!mMediaSource || !mMediaSource->isPluginExited());
+}
+
+bool LLViewerMediaImpl::mediaSlotCandidate() const
+{
+    if (mMediaSource) return hasLibVLCSource();
+    // A MIME mapping is provisional, never proof about a running plugin.
+    std::string plugin = LLMIMETypes::implType(mMimeType);
+#if LL_LINUX
+    if (plugin == "media_plugin_gstreamer10" && gSavedSettings.getBOOL("MediaPluginForceVLC"))
+        plugin = "media_plugin_libvlc";
+#endif
+    return plugin == "media_plugin_libvlc";
 }
 
 std::shared_ptr<LLViewerMediaImpl::MediaUpload> LLViewerMediaImpl::preMediaTexUpdate()
@@ -4435,6 +4451,9 @@ void LLViewerMediaImpl::calculateInterest()
         // This will be a relatively common case now, since it will always be true for unloaded media.
         mInterest = 0.0f;
     }
+
+    if (LLPrismLens::mediaSlotsEnabled())
+        mInterest = llmax(mInterest, LLPrismLens::mediaSlotDemand(this));
 
     // Calculate distance from the avatar, for use in the proximity calculation.
     mProximityDistance = 0.0f;

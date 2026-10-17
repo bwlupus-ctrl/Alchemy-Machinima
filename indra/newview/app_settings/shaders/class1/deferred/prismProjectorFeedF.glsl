@@ -8,8 +8,10 @@ in vec3 prism_eye_normal;
 out vec4 frag_color;
 
 vec4 prismSignalSample(vec2 surface_uv, vec3 eye_pos, vec3 eye_normal);
+bool prismSignalInFrame(vec2 uv);
 vec3 linear_to_srgb(vec3 color);
 uniform int projectorFollowMainExposure;
+uniform int projectorMediaSDR;
 #ifdef PROJECTOR_LOOK
 // Uploaded only by the non-default look program family. The default family is
 // the pre-look shader and receives no additional uniforms.
@@ -70,6 +72,8 @@ void main()
         return;
     }
 #endif
+    // Mask after sampling so the signal's derivatives stay in uniform flow.
+    bool media_bar = projectorMediaSDR != 0 && !prismSignalInFrame(sample_uv);
     vec4 color = prismSignalSample(sample_uv, prism_eye_pos, prism_eye_normal);
 #ifdef PROJECTOR_LOOK
     if (projectorLookGlow.x > 0.001)
@@ -144,4 +148,5 @@ void main()
     }
 #endif
     frag_color = vec4(clamp(color.rgb, vec3(0.0), vec3(1.0)), 1.0);
+    if (media_bar) frag_color = vec4(0.0, 0.0, 0.0, 1.0);
 }

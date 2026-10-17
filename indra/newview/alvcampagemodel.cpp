@@ -476,7 +476,7 @@ LLPrismLens::ActionStatus ALVCamPageModel::reassignDisplayStatus(
             ? "That capture no longer exists." : "That display handle is stale.";
         return status;
     }
-    if (destination_capture->isSurfaceLens())
+    if (!LLPrismLens::canRouteSource(*destination_capture))
     {
         status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         status.mReason = "A surface lens owns exactly one display face.";

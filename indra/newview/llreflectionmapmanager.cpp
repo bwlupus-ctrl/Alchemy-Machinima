@@ -43,6 +43,7 @@
 #include "llvoavatarself.h"       // [ProbeOnDemand]
 #include "llvovolume.h"           // [ProbeOnDemand]
 #include "llviewercamera.h"
+#include "llviewerobjectlist.h"
 #include "llspatialpartition.h"
 #include "llviewerregion.h"
 #include "pipeline.h"
@@ -1301,7 +1302,12 @@ void probe_gather_light(LLDrawable* drawable, LLVOVolume* light, F32 light_scale
         {
             s.mTexId.mData[8 + byte] ^= static_cast<U8>(
                 (projector_feed.mCapture.mGeneration >> (byte * 8)) & 0xffu);
+            if (projector_feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+                s.mTexId.mData[byte] ^= static_cast<U8>(
+                    (projector_feed.mSourceEpoch >> (byte * 8)) & 0xffu);
         }
+        if (projector_feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+            s.mTexId.mData[0] ^= static_cast<U8>(projector_feed.mSourceKind);
     }
     s.mNoShadow = LLPipeline::isProjectorNoShadow(light->getID());
     const LLPipeline::GoboOverride gobo = LLPipeline::getGoboOverride(light->getID());
@@ -1636,6 +1642,12 @@ U64 LLReflectionMapManager::sampleCinematicHOnDemand(LLReflectionMap* probe)
 
     mCineSigOn.clear();
     ALProbeSched::buildLiveOnSignature(mCineSigOn, in, tokens, gatherEnvSample());
+    if (LLPrismLens::mediaSlotsEnabled())
+        for (const auto& token : tokens)
+        {
+            auto* volume = dynamic_cast<LLVOVolume*>(gObjectList.findObject(token.mId));
+            mCineSigOn.addExact(gPipeline.projectorCookieRevision(volume));
+        }
     const U64 h = mCineStickyOn.update(mCineSigOn);
     mCineLastH = h;
 

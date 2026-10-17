@@ -56,6 +56,13 @@ float tv_hash(vec2 p)
     return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
 }
 
+bool prismSignalInFrame(vec2 uv)
+{
+    vec2 logical_uv = uv * displayToCaptureScale + displayToCaptureOffset;
+    return letterbox == 0 || (all(greaterThanEqual(logical_uv, vec2(0.0))) &&
+                              all(lessThanEqual(logical_uv, vec2(1.0))));
+}
+
 vec4 prismSignalSample(vec2 prism_uv, vec3 prism_eye_pos, vec3 prism_eye_normal)
 {
     vec4 frag_color;

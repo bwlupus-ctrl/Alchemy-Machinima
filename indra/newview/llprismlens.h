@@ -30,6 +30,7 @@ class LLPlane;
 class LLRenderTarget;
 class LLViewerObject;
 class LLVOVolume;
+class LLViewerMediaImpl;
 namespace LLPrismLens
 {
 // A capture owns an auxiliary render target. A display binding owns only a
@@ -794,6 +795,8 @@ struct CaptureDefinition : SourceSlotData
     F32 mSignalAspect = 1.f;
     U64 mSourceEpoch = 0;
     U64 mAcceptedSerial = 0;
+    bool mMediaRunning = true; // Consumption only; never changes the player.
+    F64 mMediaDemandArea = 0.0;
 };
 
 std::string captureDisplayLabel(const CaptureDefinition& capture);
@@ -925,9 +928,11 @@ inline bool localProjectorFromLLSD(const LLSD& data)
 }
 
 template<typename Projector>
-ERegistryResult validateProjectorReassignment(const Projector&,
+ERegistryResult validateProjectorReassignment(const Projector& projector,
                                                const SourceSlotData& source)
 {
+    if (source.isMedia() && projector.mGateSubscribed)
+        return ERegistryResult::INVALID_CONFIGURATION;
     return source.isCameraFeed() || source.isMedia()
         ? ERegistryResult::OK : ERegistryResult::INVALID_CONFIGURATION;
 }
@@ -986,6 +991,11 @@ struct ProjectorFeed
     ESourceSlotKind mSourceKind = ESourceSlotKind::EMPTY;
     U64 mSourceEpoch = 0;
     U64 mAcceptedSerial = 0;
+    std::string mLoadToken;
+    F32 mEffectHz = 0.f;
+    F32 mSignalAspect = 1.f;
+    F32 mDestinationAspect = 1.f;
+    U64 mLayoutRevision = 0;
     LLRenderTarget* mOutput = nullptr; // Render-thread only; never retain.
     U32 mOutputWidth = 0;
     U32 mOutputHeight = 0;
@@ -996,6 +1006,30 @@ struct ProjectorFeed
     F32 mCameraAspect = 1.f;
     ProjectorSettings mSettings;
 };
+
+// Publication identity deliberately excludes frame/layout serials. A late
+// upload or failed recompose may keep the last cookie of this same source.
+inline bool sameProjectorSource(const ProjectorFeed& accepted, const ProjectorFeed& current)
+{
+    return accepted.mProjector.mId == current.mProjector.mId &&
+        accepted.mProjector.mGeneration == current.mProjector.mGeneration &&
+        accepted.mCapture.mId == current.mCapture.mId &&
+        accepted.mCapture.mGeneration == current.mCapture.mGeneration &&
+        accepted.mSourceKind == current.mSourceKind &&
+        accepted.mSourceEpoch == current.mSourceEpoch &&
+        accepted.mLoadToken == current.mLoadToken;
+}
+
+inline F64 mediaDemandArea(bool running, bool permitted, bool consumed, U32 width, U32 height)
+{
+    return running && permitted && consumed
+        ? F64(llclamp(width, 1u, 1024u)) * llclamp(height, 1u, 1024u) : 0.0;
+}
+
+constexpr bool projectorVolumetricsEligible(bool master, bool media_enabled, bool media)
+{
+    return master && (!media || media_enabled);
+}
 
 namespace ProjectorDemandPolicy
 {
@@ -1154,6 +1188,9 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a = nullptr,
 ERegistryResult addSurfaceLensFromSelectedFace(
     CaptureHandle* capture, std::string* reason = nullptr);
 bool mediaSlotsEnabled();
+bool canRouteSource(const SourceSlotData& source);
+bool setMediaRunning(const CaptureHandle& slot, bool running);
+F64 mediaSlotDemand(const LLViewerMediaImpl* impl);
 void reconcileMediaSlots();
 ERegistryResult addMediaSlot(CaptureHandle* slot, std::string* reason = nullptr);
 bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source,
@@ -1326,6 +1363,11 @@ bool buildPreviewCompositeState(const CaptureHandle& capture,
                                 CompositeState& state,
                                 bool& offline);
 bool buildProjectorCompositeState(const ProjectorHandle& projector,
+                                  CompositeState& state,
+                                  U32& target_width,
+                                  U32& target_height);
+// Reuse an existing snapshot during the bounded media preparation pass.
+bool buildProjectorCompositeState(const ProjectorDefinition& definition,
                                   CompositeState& state,
                                   U32& target_width,
                                   U32& target_height);

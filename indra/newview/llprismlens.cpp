@@ -1851,6 +1851,9 @@ struct PrismInstance : LLPrismLens::SourceSlotData
     U64 mMediaLayoutRevision = 1;
     U64 mMediaAcceptedLayout = 0;
     U64 mMediaSourceEpoch = 1;
+    bool mMediaRunning = true;
+    F64 mMediaDemandArea = 0.0;
+    U32 mMediaDemandFrame = 0;
     F32 mSignalAspect = 16.f / 9.f;
     LLPrismLens::CaptureHandle mHandle;
     std::string mLabel;
@@ -1947,7 +1950,7 @@ void releaseProjectorVolumetrics(PrismProjector& projector)
 
 void syncProjectorVolumetrics(PrismProjector& projector, LLVOVolume* volume, bool media)
 {
-    if (!prismEnabled() || (media && !LLPrismLens::mediaSlotsEnabled()))
+    if (!LLPrismLens::projectorVolumetricsEligible(prismEnabled(), LLPrismLens::mediaSlotsEnabled(), media))
     {
         releaseProjectorVolumetrics(projector);
         return;
@@ -2195,11 +2198,11 @@ public:
             status.mReason = "That capture no longer exists.";
             return status;
         }
-        if (!mLenses[capture_slot].isCameraFeed())
+        if (!LLPrismLens::canRouteSource(mLenses[capture_slot]))
         {
             status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
             status.mReason = mLenses[capture_slot].isMedia()
-                ? "Media output routing is unavailable."
+                ? "Media slots are disabled."
                 : "A surface lens owns exactly one display face.";
             return status;
         }
@@ -2231,7 +2234,8 @@ public:
             status.mReason = "Maximum of 16 Prism display faces reached.";
             return status;
         }
-        if (object->getID() == mLenses[capture_slot].cameraData()->mObjectId)
+        if (mLenses[capture_slot].isCameraFeed() &&
+            object->getID() == mLenses[capture_slot].cameraData()->mObjectId)
         {
             status.mResult = LLPrismLens::ERegistryResult::DUPLICATE;
             status.mReason = "A camera source cannot display its own feed.";
@@ -2254,11 +2258,11 @@ public:
             status.mReason = "That capture no longer exists.";
             return status;
         }
-        if (!mLenses[capture_slot].isCameraFeed())
+        if (!LLPrismLens::canRouteSource(mLenses[capture_slot]))
         {
             status.mResult =
                 LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-            status.mReason = "Only Camera Feed captures can feed a projector.";
+            status.mReason = "Select an enabled Camera Feed or media slot.";
             return status;
         }
         const S32 reassign_slot = reassigning
@@ -2353,7 +2357,8 @@ public:
         ++mLenses[capture_slot].mProjectorCount;
         gPipeline.ensurePrismProjectorFeed(projector.mHandle,
                                            settings.mResolution,
-                                           settings.mResolution);
+                                           settings.mResolution,
+                                           mLenses[capture_slot].isMedia());
         ++mRevision;
         if (handle) *handle = projector.mHandle;
         if (reason) reason->clear();
@@ -2373,9 +2378,9 @@ public:
             if (reason) *reason = "That capture no longer exists.";
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
-        if (!mLenses[capture_slot].isCameraFeed())
+        if (!LLPrismLens::canRouteSource(mLenses[capture_slot]))
         {
-            if (reason) *reason = "Only Camera Feed captures can feed a projector.";
+            if (reason) *reason = "Select an enabled Camera Feed or media slot.";
             return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         }
         if (rig_slot >= ALCineLightRigManager::SLOT_COUNT ||
@@ -2421,7 +2426,8 @@ public:
         ++mLenses[capture_slot].mProjectorCount;
         gPipeline.ensurePrismProjectorFeed(projector.mHandle,
                                            settings.mResolution,
-                                           settings.mResolution);
+                                           settings.mResolution,
+                                           mLenses[capture_slot].isMedia());
         ++mRevision;
         if (handle) *handle = projector.mHandle;
         if (reason) reason->clear();
@@ -2443,11 +2449,11 @@ public:
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
         PrismProjector& projector = mProjectors[projector_slot];
-        if (mLenses[capture_slot].isMedia() || LLPrismLens::validateProjectorReassignment(
+        if (!LLPrismLens::canRouteSource(mLenses[capture_slot]) || LLPrismLens::validateProjectorReassignment(
                 projector, mLenses[capture_slot]) !=
             LLPrismLens::ERegistryResult::OK)
         {
-            if (reason) *reason = "Only Camera Feed captures can feed a projector.";
+            if (reason) *reason = "Select an enabled Camera Feed or media slot.";
             return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         }
         if (projector.mTarget == LLPrismLens::EProjectorTarget::OBJECT)
@@ -2548,6 +2554,7 @@ public:
         PrismInstance& media = mLenses[slot];
         const bool changed = media.mHasOutput || media.mMediaTexture.notNull() ||
             media.mRuntime.mReason != reason;
+        media.mMediaDemandArea = 0.0;
         media.mMediaTexture = nullptr;
         media.mHasOutput = false;
         media.mMediaCompletedSerial = 0;
@@ -2563,6 +2570,41 @@ public:
             ++mRuntimeRevision;
             LLPrismPreviewService::instance().invalidateMedia(media.mHandle);
         }
+        gPipeline.releasePrismLensOutput(slot);
+        for (PrismProjector& projector : mProjectors)
+            if (projector.mOccupied && projector.mCaptureSlot == slot &&
+                projector.mCaptureGeneration == media.mHandle.mGeneration)
+                gPipeline.releasePrismProjectorFeed(projector.mHandle);
+    }
+
+    bool setMediaRunning(const LLPrismLens::CaptureHandle& handle, bool running)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0 || !mLenses[slot].isMedia()) return false;
+        PrismInstance& media = mLenses[slot];
+        if (media.mMediaRunning == running) return true;
+        media.mMediaRunning = running;
+        media.mMediaDemandArea = 0.0;
+        media.mFrame.mPrepared = false;
+        media.mNextDueTime = media.mNextPreviewDueTime = 0.0;
+        ++mRuntimeRevision;
+        reconcileMedia();
+        return true;
+    }
+
+    F64 mediaDemand(const LLViewerMediaImpl* impl) const
+    {
+        if (!impl || !prismEnabled() || !LLPrismLens::mediaSlotsEnabled() ||
+            !impl->mediaSlotPermitted()) return 0.0;
+        F64 area = 0.0;
+        for (const PrismInstance& media : mLenses)
+            if (media.mOccupied && media.isMedia() && media.mMediaRunning &&
+                (media.mDisplayCount || media.mProjectorCount ||
+                 LLPrismPreviewService::instance().isDemanded(media.mHandle)) &&
+                gFrameCount - media.mMediaDemandFrame <= 2 && resolveMedia(media) == impl &&
+                media.mMediaIdentity == impl->mediaImageIdentity())
+                area = llmax(area, media.mMediaDemandArea);
+        return area;
     }
 
     // No strong impl, face pointer, navigation, sizing, input or audio ownership.
@@ -2587,15 +2629,18 @@ public:
             if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled())
             {
                 invalidateMediaSlot(slot, "Media slots disabled");
-                gPipeline.releasePrismLensOutput(slot);
+                for (PrismProjector& projector : mProjectors)
+                    if (projector.mOccupied && projector.mCaptureSlot == slot)
+                        releaseProjectorVolumetrics(projector);
                 continue;
             }
             auto* impl = resolveMedia(media);
-            if (!impl || !impl->hasLibVLCSource() || !impl->mediaSlotPermitted())
+            media.mMediaDemandArea = 0.0;
+            if (!impl || !impl->mediaSlotCandidate() || !impl->mediaSlotPermitted())
             {
                 invalidateMediaSlot(slot, !impl ? "Source missing or unbound" :
-                    !impl->getMediaPlugin() ? "Waiting for LibVLC / needs source click" :
-                    !impl->hasLibVLCSource() ? "Unsupported player: use direct video/stream URLs handled by LibVLC" :
+                    !impl->mediaSlotCandidate() ? std::string("Unsupported player (") +
+                        impl->resolvedPlugin() + "): use prim media with direct video/stream URLs handled by LibVLC" :
                     "Blocked by media policy");
                 continue;
             }
@@ -2606,16 +2651,91 @@ public:
             media.mMediaIdentity = identity;
             // Hold the texture only, protecting it from the inactive map purge.
             media.mMediaTexture = LLViewerTextureManager::findMediaTexture(impl->getMediaTextureID());
+            U32 width = 0, height = 0;
+            F64 demand_area = 0.0;
+            bool demanded = addProjectorDemand(slot, width, height, &demand_area);
+            for (const PrismDisplay& display : mDisplays)
+                if (display.mOccupied && !display.mQuarantined && display.mCaptureSlot == slot &&
+                    display.mCaptureGeneration == media.mHandle.mGeneration &&
+                    display.mRuntime.mVisibility == LLPrismLens::EDisplayVisibility::VISIBLE)
+                {
+                    demanded = true;
+                    demand_area = llmax(demand_area, LLPrismLens::mediaDemandArea(
+                        true, true, true, display.mFrame.mTargetWidth, display.mFrame.mTargetHeight));
+                    width = llmax(width, display.mFrame.mTargetWidth);
+                    height = llmax(height, display.mFrame.mTargetHeight);
+                }
+            // Query the live service; a closed monitor cannot leave stale demand.
+            if (LLPrismPreviewService::instance().isDemanded(media.mHandle))
+            {
+                demanded = true;
+                demand_area = llmax(demand_area, F64(LLPrismPreviewPolicy::WIDTH) * LLPrismPreviewPolicy::HEIGHT);
+                width = llmax(width, LLPrismPreviewPolicy::WIDTH);
+                height = llmax(height, LLPrismPreviewPolicy::HEIGHT);
+            }
+            if (media.mMediaRunning && demanded && LLTimer::getTotalSeconds() >= media.mRetryAfterTime)
+            {
+                media.mMediaDemandArea = demand_area;
+                media.mMediaDemandFrame = gFrameCount;
+            }
+            if (!media.mMediaRunning)
+            {
+                media.mRuntime.mActivity = LLPrismLens::EActivityState::PAUSED;
+                media.mRuntime.mReason = "Frozen feed; original source audio is unchanged";
+            }
+            else if (!impl->getMediaPlugin())
+                media.mRuntime.mReason = "Waiting for LibVLC / needs source click";
         }
     }
 
-    void prepareMedia()
+    void mediaSettingChanged()
+    {
+        ++mRevision;
+        reconcileMedia();
+    }
+
+    void prepareMediaProjectors()
+    {
+        // One snapshot covers every media slot, including frozen sources.
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+            if (mLenses[slot].mOccupied && mLenses[slot].isMedia() && hasProjectorBinding(slot))
+            {
+                gPipeline.prepareMediaPrismProjectorFeeds();
+                return;
+            }
+    }
+
+    void prepareMedia(const S32 viewport[4], const glm::mat4& projection, const glm::mat4& modelview)
     {
         reconcileMedia();
-        for (PrismInstance& media : mLenses)
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
+            PrismInstance& media = mLenses[slot];
             if (!media.mOccupied || !media.isMedia()) continue;
-            media.mFrame.mPrepared = false;
+            resetFrame(media, gFrameCount);
+            U32 width = MIN_TARGET_EXTENT, height = MIN_TARGET_EXTENT;
+            media.mAnyDisplayVisible = false;
+            for (PrismDisplay& display : mDisplays)
+            {
+                if (!display.mOccupied || display.mCaptureSlot != slot ||
+                    display.mCaptureGeneration != media.mHandle.mGeneration) continue;
+                if (prepareDisplayFrame(display, viewport, projection, modelview))
+                {
+                    media.mAnyDisplayVisible = true;
+                    width = llmax(width, display.mFrame.mTargetWidth);
+                    height = llmax(height, display.mFrame.mTargetHeight);
+                }
+                display.mFrame.mResolvedFace = nullptr;
+            }
+            media.mAnyDisplayVisible |= addProjectorDemand(slot, width, height);
+            media.mPreviewOnly = !media.mAnyDisplayVisible;
+            media.mRuntime.mPreviewOnly = media.mPreviewOnly;
+            if (!media.mMediaRunning) continue;
+            if (!media.mAnyDisplayVisible && !media.mPreviewDemanded)
+            {
+                media.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
+                continue;
+            }
             auto* impl = resolveMedia(media);
             if (!impl || !LLPrismLens::mediaSlotsEnabled() || !impl->mediaSlotPermitted()) continue;
             const auto image = impl->completedMediaImage();
@@ -2623,10 +2743,15 @@ public:
             if (LLTimer::getTotalSeconds() < media.mRetryAfterTime) continue;
             const F32 aspect = LLPrismLens::resolveSourceAspect(media.mediaData()->mAspect, image.videoWidth, image.videoHeight, image.videoSarNum, image.videoSarDen);
             const bool layout = media.mSignalAspect != aspect || media.mMediaAcceptedLayout != media.mMediaLayoutRevision;
-            const bool pending = !media.mHasOutput || image.serial != media.mMediaCompletedSerial || layout;
-            media.mPreviewOnly = true; // slice 1 admits monitor consumption only
-            media.mAnyDisplayVisible = false;
-            media.mRuntime.mPreviewOnly = true;
+            const F32 scale = prismAppliedResolutionScale();
+            media.mRuntime.mEffectiveResolutionScale = scale;
+            const U32 extent = media.mPreviewOnly ? 512u :
+                llclamp(U32(ll_round(llmax(width, height) * scale)), 64u, 1024u);
+            media.mFrame.mTargetWidth = aspect >= 1.f ? extent : llmax(1u, U32(ll_round(extent * aspect)));
+            media.mFrame.mTargetHeight = aspect >= 1.f ? llmax(1u, U32(ll_round(extent / aspect))) : extent;
+            const bool pending = !media.mHasOutput || image.serial != media.mMediaCompletedSerial || layout ||
+                (!media.mPreviewOnly && (media.mOutputPreviewQuality ||
+                 media.mOutputWidth != media.mFrame.mTargetWidth || media.mOutputHeight != media.mFrame.mTargetHeight));
             media.mRuntime.mHealth = LLPrismLens::ECaptureHealth::READY;
             const bool automatic = media.mediaData()->mAspect == LLPrismLens::ESourceAspect::AUTO;
             media.mRuntime.mReason = llformat("LibVLC SDR; video %s; %s %.3f:1",
@@ -2634,11 +2759,14 @@ public:
                 automatic ? (image.videoWidth > 0 ? "Auto" : "Auto: 16:9 fallback") : "override",
                 aspect);
             media.mRuntime.mActivity = media.mHasOutput ? LLPrismLens::EActivityState::LIVE : LLPrismLens::EActivityState::WAITING;
-            if (!pending || !media.mPreviewDemanded) continue;
+            if (impl->getPriority() < LLPluginClassMedia::PRIORITY_NORMAL)
+            {
+                media.mRuntime.mActivity = LLPrismLens::EActivityState::THROTTLED;
+                media.mRuntime.mReason += "; Media budget limited";
+            }
+            if (!pending || (!media.mAnyDisplayVisible && !media.mPreviewDemanded)) continue;
             media.mFrame.mFrame = gFrameCount;
             media.mFrame.mPrepared = true;
-            media.mFrame.mTargetWidth = aspect >= 1.f ? 512u : llmax(1u, U32(ll_round(512.f * aspect)));
-            media.mFrame.mTargetHeight = aspect >= 1.f ? llmax(1u, U32(ll_round(512.f / aspect))) : 512u;
         }
     }
 
@@ -2655,8 +2783,11 @@ public:
         {
             PrismInstance& media = mLenses[slot];
             if (!media.mOccupied || !media.isMedia() || !media.mFrame.mPrepared ||
-                media.mPreviewEntitlementHz <= 0.f || now < media.mNextPreviewDueTime) continue;
-            media.mNextPreviewDueTime = now + 1.0 / media.mPreviewEntitlementHz;
+                !media.mMediaRunning || media.mLastRenderedFrame == gFrameCount) continue;
+            const F32 hz = media.mPreviewOnly ? media.mPreviewEntitlementHz : media.mEntitlementHz;
+            F64& deadline = media.mPreviewOnly ? media.mNextPreviewDueTime : media.mNextDueTime;
+            if (hz <= 0.f || now < deadline) continue;
+            deadline = now + 1.0 / hz;
             auto* impl = resolveMedia(media);
             if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled() || !impl || !impl->mediaSlotPermitted()) continue;
             const auto image = impl->completedMediaImage();
@@ -2670,7 +2801,8 @@ public:
                     media.mFrame.mTargetWidth, media.mFrame.mTargetHeight))
             {
                 media.mRuntime.mReason = "Copy failed: source/shader/target preflight; retrying";
-                media.mRetryAfterTime = media.mNextPreviewDueTime;
+                media.mMediaDemandArea = 0.0;
+                media.mRetryAfterTime = deadline;
                 continue;
             }
             shader.bind();
@@ -2678,7 +2810,8 @@ public:
             if (channel < 0)
             {
                 media.mRuntime.mReason = "Copy failed: media sampler unavailable; retrying";
-                media.mRetryAfterTime = media.mNextPreviewDueTime;
+                media.mMediaDemandArea = 0.0;
+                media.mRetryAfterTime = deadline;
                 continue;
             }
             GLint saved_active = 0, saved_texture = 0, saved_sampler = 0;
@@ -2942,10 +3075,10 @@ public:
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
         PrismDisplay& display = mDisplays[display_slot];
-        if (!mLenses[new_capture_slot].isCameraFeed())
+        if (!LLPrismLens::canRouteSource(mLenses[new_capture_slot]))
         {
             if (reason) *reason = mLenses[new_capture_slot].isMedia()
-                ? "Media output routing is unavailable."
+                ? "Media slots are disabled."
                 : "A surface lens owns exactly one display face.";
             return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         }
@@ -3017,10 +3150,10 @@ public:
             if (reason) *reason = "That capture no longer exists.";
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
-        if (!mLenses[capture_slot].isCameraFeed())
+        if (!LLPrismLens::canRouteSource(mLenses[capture_slot]))
         {
             if (reason) *reason = mLenses[capture_slot].isMedia()
-                ? "Media output routing is unavailable."
+                ? "Media slots are disabled."
                 : "A surface lens owns exactly one display face.";
             return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         }
@@ -3146,6 +3279,8 @@ public:
             PrismInstance& lens = mLenses[slot];
             lens.mHasOutput = false;
             lens.mMediaTexture = nullptr;
+            lens.mMediaDemandArea = 0.0;
+            if (lens.isMedia()) ++lens.mMediaSourceEpoch;
             lens.mMediaCompletedSerial = 0;
             lens.mOutputWidth = 0;
             lens.mOutputHeight = 0;
@@ -3181,6 +3316,13 @@ public:
             if (!capture.mOccupied)
             {
                 continue;
+            }
+            if (capture.isMedia())
+            {
+                capture.mMediaDemandArea = 0.0;
+                capture.mMediaTexture = nullptr;
+                capture.mMediaCompletedSerial = 0;
+                ++capture.mMediaSourceEpoch;
             }
             if (capture.mPublicationSerial != 0)
             {
@@ -4454,7 +4596,9 @@ public:
         {
             lens.mFrame.mProduced = true;
             lens.mHasOutput = true;
-            lens.mOutputPreviewQuality = lens.mPreviewOnly;
+            // Media previews copy the same linear image, with no reduced world
+            // render quality. A frozen preview can immediately feed an output.
+            lens.mOutputPreviewQuality = lens.mPreviewOnly && !lens.isMedia();
             lens.mOutputWidth = output_width;
             lens.mOutputHeight = output_height;
             lens.mLastRenderedFrame = gFrameCount;
@@ -5070,6 +5214,12 @@ public:
             if (reason) *reason = "That projector binding handle is stale.";
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
+        const U32 source_slot = mProjectors[slot].mCaptureSlot;
+        if (subscribed && source_slot < LLPrismLens::MAX_CAPTURES && mLenses[source_slot].isMedia())
+        {
+            if (reason) *reason = "Media slots cannot subscribe to the camera gate.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
         if (mProjectors[slot].mGateSubscribed == subscribed)
         {
             if (reason) reason->clear();
@@ -5473,6 +5623,12 @@ public:
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
         PrismDisplay& display = mDisplays[slot];
+        if (subscribed && display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+            mLenses[display.mCaptureSlot].isMedia())
+        {
+            if (reason) *reason = "Media slots cannot subscribe to the camera gate.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
         if (subscribed && isSurfaceLensAperture(display))
         {
             if (reason)
@@ -5508,7 +5664,7 @@ public:
                     if (reason) *reason = "That capture no longer exists.";
                     return LLPrismLens::ERegistryResult::STALE_HANDLE;
                 }
-                if (!mLenses[requested_slot].isCameraFeed())
+                if (!LLPrismLens::canRouteSource(mLenses[requested_slot]))
                 {
                     if (reason) *reason = mLenses[requested_slot].isMedia()
                         ? "Media slots cannot subscribe to the camera gate."
@@ -5828,6 +5984,15 @@ public:
         }
         if (capture.mDisplayCount > 0) --capture.mDisplayCount;
         display = PrismDisplay();
+        if (capture.isMedia() && capture.mDisplayCount == 0 && capture.mProjectorCount == 0)
+        {
+            // Removing an output releases consumption, not the slot's frozen
+            // image. A visible monitor may still own preview demand.
+            reconcileMedia();
+            ++mRevision;
+            if (reason) reason->clear();
+            return true;
+        }
         if (capture.mDisplayCount == 0 && capture.mProjectorCount == 0)
         {
             gPipeline.releasePrismLensOutput(capture_slot);
@@ -5876,8 +6041,11 @@ public:
             if (capture.mDisplayCount == 0 && capture.mProjectorCount == 0)
             {
                 suppressOutput(capture_slot);
-                capture.mRuntime.mOutput = LLPrismLens::EOutputState::EMPTY;
-                capture.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
+                if (!capture.isMedia())
+                {
+                    capture.mRuntime.mOutput = LLPrismLens::EOutputState::EMPTY;
+                    capture.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
+                }
             }
         }
         ++mRevision;
@@ -5961,7 +6129,7 @@ public:
     }
 
     bool addProjectorDemand(U32 capture_slot, U32& required_width,
-                            U32& required_height)
+                            U32& required_height, F64* demand_area = nullptr)
     {
         bool demanded = false;
         for (PrismProjector& projector : mProjectors)
@@ -6008,6 +6176,8 @@ public:
                         width = llmax(1u, static_cast<U32>(ll_round(height * aspect)));
                 }
             }
+            if (demand_area)
+                *demand_area = llmax(*demand_area, LLPrismLens::mediaDemandArea(true, true, true, width, height));
             required_width = llmax(required_width, width);
             required_height = llmax(required_height, height);
         }
@@ -6068,7 +6238,7 @@ public:
             projector.mCaptureSlot >= LLPrismLens::MAX_CAPTURES)
             return false;
         PrismInstance& capture = mLenses[projector.mCaptureSlot];
-        if (!capture.mOccupied || capture.isMedia() ||
+        if (!capture.mOccupied || !LLPrismLens::canRouteSource(capture) ||
             capture.mHandle.mGeneration != projector.mCaptureGeneration ||
             !capture.mHasOutput || capture.mOutputPreviewQuality ||
             !gPipeline.mPrismLensOutput[projector.mCaptureSlot].isComplete())
@@ -6076,6 +6246,11 @@ public:
         feed.mProjector = projector.mHandle;
         feed.mCapture = capture.mHandle;
         feed.mSourceKind = capture.sourceKind();
+        feed.mSourceEpoch = capture.isMedia() ? capture.mMediaSourceEpoch : 0;
+        feed.mLoadToken = capture.isMedia() ? capture.mMediaIdentity.load : std::string();
+        feed.mAcceptedSerial = capture.mPublicationSerial;
+        feed.mSignalAspect = capture.isMedia() ? capture.mSignalAspect : capture.cameraData()->mSettings.mOutputAspect;
+        feed.mLayoutRevision = capture.isMedia() ? capture.mMediaAcceptedLayout : 0;
         feed.mOutput = &gPipeline.mPrismLensOutput[projector.mCaptureSlot];
         feed.mOutputWidth = capture.mOutputWidth;
         feed.mOutputHeight = capture.mOutputHeight;
@@ -6084,11 +6259,25 @@ public:
         std::memcpy(feed.mUvOffset, capture.mOutputUvOffset,
                     sizeof(feed.mUvOffset));
         feed.mGeneration = capture.mPublicationSerial;
-        feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
-        if (!(feed.mCameraVerticalFovRad > 0.f))
-            feed.mCameraVerticalFovRad = capture.cameraData()->mSettings.mFixedVerticalFovRad;
-        feed.mCameraAspect = capture.cameraData()->mSettings.mOutputAspect;
+        if (capture.cameraData())
+        {
+            feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
+            if (!(feed.mCameraVerticalFovRad > 0.f))
+                feed.mCameraVerticalFovRad = capture.cameraData()->mSettings.mFixedVerticalFovRad;
+            feed.mCameraAspect = capture.cameraData()->mSettings.mOutputAspect;
+        }
         feed.mSettings = projector.mSettings;
+        if (capture.isMedia())
+        {
+            if (auto* volume = dynamic_cast<LLVOVolume*>(gObjectList.findObject(projector.mObjectId)))
+            {
+                const auto scale = volume->getScale();
+                if (scale.mV[VY] > F_ALMOST_ZERO) feed.mDestinationAspect = scale.mV[VX] / scale.mV[VY];
+            }
+            const F32 ceiling = prismCaptureBudgetHz() > 0.f ? prismCaptureBudgetHz() : 30.f;
+            feed.mEffectHz = llmin(capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
+                ? capture.mRate.mTargetFps : 30.f, ceiling * prismAdaptiveCadenceFactor());
+        }
         return true;
     }
 
@@ -6121,13 +6310,21 @@ public:
             if (!capture.mOccupied ||
                 capture.mHandle.mGeneration != projector.mCaptureGeneration)
                 return true;
-            if (capture.isMedia()) return false;
+            if (!LLPrismLens::canRouteSource(capture)) return false;
             feed.mCapture = capture.mHandle;
             feed.mSourceKind = capture.sourceKind();
-            feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
-            if (!(feed.mCameraVerticalFovRad > 0.f))
-                feed.mCameraVerticalFovRad = capture.cameraData()->mSettings.mFixedVerticalFovRad;
-            feed.mCameraAspect = capture.cameraData()->mSettings.mOutputAspect;
+            feed.mSourceEpoch = capture.isMedia() ? capture.mMediaSourceEpoch : 0;
+            feed.mLoadToken = capture.isMedia() ? capture.mMediaIdentity.load : std::string();
+            feed.mAcceptedSerial = capture.mPublicationSerial;
+            feed.mSignalAspect = capture.isMedia() ? capture.mSignalAspect : capture.cameraData()->mSettings.mOutputAspect;
+            feed.mLayoutRevision = capture.isMedia() ? capture.mMediaAcceptedLayout : 0;
+            if (capture.cameraData())
+            {
+                feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
+                if (!(feed.mCameraVerticalFovRad > 0.f))
+                    feed.mCameraVerticalFovRad = capture.cameraData()->mSettings.mFixedVerticalFovRad;
+                feed.mCameraAspect = capture.cameraData()->mSettings.mOutputAspect;
+            }
             if (!capture.mHasOutput || capture.mOutputPreviewQuality ||
                 !gPipeline.mPrismLensOutput[projector.mCaptureSlot].isComplete())
                 return true;
@@ -6169,7 +6366,9 @@ public:
                 : nullptr;
             if (!matches_object && rig_volume != volume) continue;
             updateProjectorRuntime(projector);
-            if (projector.mQuarantined) return false;
+            if (projector.mQuarantined ||
+                (projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+                 mLenses[projector.mCaptureSlot].isMedia() && !LLPrismLens::mediaSlotsEnabled())) return false;
             params.set(F_PI / 3.f, 0.f, 0.f);
             return true;
         }
@@ -6474,6 +6673,8 @@ public:
                 capture.cameraData()->mSettings.mOutputAspect;
             out.mSourceEpoch = capture.mMediaSourceEpoch;
             out.mAcceptedSerial = capture.mPublicationSerial;
+            out.mMediaRunning = capture.mMediaRunning;
+            out.mMediaDemandArea = capture.mMediaDemandArea;
             out.mRate = capture.mRate;
             out.mRuntime = capture.mRuntime;
             out.mRuntime.mHasOutput = capture.mHasOutput;
@@ -7462,6 +7663,10 @@ public:
             if (!LLPrismLens::gateDisplayCaptureReferenceAccepted(
                     parsed.mGateSubscribed, capture_resolves))
                 return fail("A Prism display references an unknown capture.");
+            if (parsed.mGateSubscribed && capture_resolves)
+                for (const ParsedCapture& capture : parsed_captures)
+                    if (capture.mId == parsed.mCaptureId && capture.mIsMedia)
+                        return fail("Media slots cannot subscribe to the camera gate.");
             if (is_virtual)
             {
                 // Prim-free screen: parse the transform + size and leave the face
@@ -7686,8 +7891,10 @@ public:
                     [&parsed](const ParsedCapture& candidate)
                     { return candidate.mId == parsed.mCaptureId; });
                 if (capture == parsed_captures.end() ||
-                    capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
-                    return fail("Only Camera Feed captures can feed a projector.");
+                    (!capture->mIsMedia && capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED))
+                    return fail("Select an enabled Camera Feed or media slot.");
+                if (capture->mIsMedia && parsed.mGateSubscribed)
+                    return fail("Media slots cannot subscribe to the camera gate.");
             }
             const std::string target = item["target"].asString();
             const LLPrismLens::ELoadedProjectorTarget target_kind =
@@ -8554,6 +8761,11 @@ private:
     void suppressOutput(U32 slot)
     {
         if (slot >= LLPrismLens::MAX_CAPTURES || !mLenses[slot].mOccupied) return;
+        if (mLenses[slot].isMedia())
+        {
+            reconcileMedia();
+            return;
+        }
         gPipeline.releasePrismLensOutput(slot);
         // Scratch packs are shared by surviving captures and are deliberately
         // retained. Capture-local removal may release only its retained output.
@@ -9575,6 +9787,22 @@ bool setCaptureLabel(const CaptureHandle& capture, const std::string& label,
     return PrismLensRegistry::instance().setLabel(capture, label, reason);
 }
 
+bool canRouteSource(const SourceSlotData& source)
+{
+    return source.isCameraFeed() || (source.isMedia() && mediaSlotsEnabled());
+}
+
+F64 mediaSlotDemand(const LLViewerMediaImpl* impl)
+{
+    return sPrismLensRegistryExists ? PrismLensRegistry::instance().mediaDemand(impl) : 0.0;
+}
+
+bool setMediaRunning(const CaptureHandle& slot, bool running)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().setMediaRunning(slot, running);
+}
+
 bool mediaSlotsEnabled()
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "VCamMediaSlotsEnabled", false);
@@ -9586,7 +9814,11 @@ bool mediaSlotsEnabled()
             for (auto* impl : LLViewerMedia::getInstance()->getPriorityList())
                 if (auto* source = impl->getMediaPlugin())
                     source->enableMediaFrames(value.asBoolean(), impl->hasLibVLCSource());
-            reconcileMediaSlots();
+            if (sPrismLensRegistryExists)
+            {
+                ScopedPrismRevisionSignals signals;
+                PrismLensRegistry::instance().mediaSettingChanged();
+            }
         });
     return enabled;
 }
@@ -10160,11 +10392,15 @@ void renderAuxiliaryView()
     }
 
     bool cadence_prepared = false;
-    if (mediaSlotsEnabled()) registry.prepareMedia();
+    if (mediaSlotsEnabled()) registry.prepareMedia(main_viewport, main_projection, main_modelview);
     if (mediaSlotsEnabled())
     {
         ScopedPrismRenderState media_state;
-        if (media_state.isValid()) cadence_prepared = registry.copyMedia();
+        if (media_state.isValid())
+        {
+            cadence_prepared = registry.copyMedia();
+            registry.prepareMediaProjectors();
+        }
     }
     if (registry.cameraCount() == 0)
     {
@@ -10792,10 +11028,11 @@ static bool buildSignalCompositeState(U32 capture_slot,
     state.mScreenEffect5[1] = effects.mScanlineSharpness;
     state.mScreenEffect5[2] = effects.mScanlineThickness;
 
-    const F32 capture_aspect = capture->isCameraFeed()
+    F32 capture_aspect = capture->isMedia() ? capture->mSignalAspect : capture->isCameraFeed()
         ? capture->cameraData()->mSettings.mOutputAspect
         : static_cast<F32>(output_width) / static_cast<F32>(output_height);
-    if (capture->isCameraFeed() &&
+    if (capture->isMedia() && effects.mRotate90) capture_aspect = 1.f / capture_aspect;
+    if ((capture->isCameraFeed() || capture->isMedia()) &&
         std::isfinite(display_aspect) && std::isfinite(capture_aspect) &&
         display_aspect > F_ALMOST_ZERO && capture_aspect > F_ALMOST_ZERO)
     {
@@ -10856,7 +11093,7 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
          capture_slot < MAX_CAPTURES && state_count < capacity; ++capture_slot)
     {
         const PrismInstance* capture = registry.capture(capture_slot);
-        if (!capture || capture->isMedia() || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
+        if (!capture || (capture->isMedia() && !mediaSlotsEnabled()) || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
         LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
         U32 output_width = 0;
         U32 output_height = 0;
@@ -11127,7 +11364,7 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
          capture_slot < MAX_CAPTURES && state_count < capacity; ++capture_slot)
     {
         const PrismInstance* capture = registry.capture(capture_slot);
-        if (!capture || capture->isMedia() || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
+        if (!capture || (capture->isMedia() && !mediaSlotsEnabled()) || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
         LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
         U32 output_width = 0;
         U32 output_height = 0;
@@ -11441,38 +11678,51 @@ bool buildProjectorCompositeState(const ProjectorHandle& projector_handle,
         return false;
     }
 
+    return buildProjectorCompositeState(*definition, state, target_width, target_height);
+}
+
+bool buildProjectorCompositeState(const ProjectorDefinition& definition,
+                                  CompositeState& state,
+                                  U32& target_width,
+                                  U32& target_height)
+{
+    state = CompositeState();
+    target_width = 0;
+    target_height = 0;
+    if (definition.mQuarantined || definition.mCapture.mId.isNull()) return false;
+    PrismLensRegistry& registry = PrismLensRegistry::instance();
     U32 capture_slot = MAX_CAPTURES;
     for (U32 slot = 0; slot < MAX_CAPTURES; ++slot)
     {
         const PrismInstance* capture = registry.capture(slot);
-        if (capture && capture->mHandle.mId == definition->mCapture.mId &&
-            capture->mHandle.mGeneration == definition->mCapture.mGeneration)
+        if (capture && capture->mHandle.mId == definition.mCapture.mId &&
+            capture->mHandle.mGeneration == definition.mCapture.mGeneration)
         {
             capture_slot = slot;
             break;
         }
     }
     LLVOVolume* volume = dynamic_cast<LLVOVolume*>(
-        gObjectList.findObject(definition->mObjectId));
+        gObjectList.findObject(definition.mObjectId));
     if (capture_slot >= MAX_CAPTURES || !volume) return false;
 
     const LLVector3 scale = volume->getScale();
     if (scale.mV[VX] <= F_ALMOST_ZERO || scale.mV[VY] <= F_ALMOST_ZERO)
         return false;
     const F32 projector_aspect = scale.mV[VX] / scale.mV[VY];
-    target_width = definition->mSettings.mResolution;
-    target_height = definition->mSettings.mResolution;
+    target_width = definition.mSettings.mResolution;
+    target_height = definition.mSettings.mResolution;
 
     PrismDisplay display;
-    display.mSettings.mFitMode = definition->mSettings.mFitMode;
-    display.mSettings.mAnchor[0] = definition->mSettings.mAnchor[0];
-    display.mSettings.mAnchor[1] = definition->mSettings.mAnchor[1];
-    display.mSettings.mEffects = definition->mSettings.mEffects;
+    display.mSettings.mFitMode = definition.mSettings.mFitMode;
+    display.mSettings.mAnchor[0] = definition.mSettings.mAnchor[0];
+    display.mSettings.mAnchor[1] = definition.mSettings.mAnchor[1];
+    display.mSettings.mEffects = definition.mSettings.mEffects;
     display.mSettings.mEffects.mFlipH =
-        display.mSettings.mEffects.mFlipH != definition->mSettings.mFlipH;
+        display.mSettings.mEffects.mFlipH != definition.mSettings.mFlipH;
     display.mSettings.mEffects.mFlipV =
-        display.mSettings.mEffects.mFlipV != definition->mSettings.mFlipV;
-    U8 rotate = definition->mSettings.mRotate;
+        display.mSettings.mEffects.mFlipV != definition.mSettings.mFlipV;
+    U8 rotate = definition.mSettings.mRotate;
     if (display.mSettings.mEffects.mRotate90) rotate = (rotate + 1) & 3;
     display.mSettings.mEffects.mRotate90 = (rotate & 1) != 0;
     if (rotate >= 2)
@@ -11492,7 +11742,7 @@ bool buildProjectorCompositeState(const ProjectorHandle& projector_handle,
         target_height = 0;
         return false;
     }
-    state.mOpticsParams[3] += definition->mSettings.mFeedEV;
+    state.mOpticsParams[3] += definition.mSettings.mFeedEV;
     return true;
 }
 

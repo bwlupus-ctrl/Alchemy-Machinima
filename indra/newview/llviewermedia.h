@@ -296,6 +296,7 @@ public:
     const std::string& resolvedPlugin() const { return mResolvedPlugin; }
     bool hasLibVLCSource() const { return mMediaSource && mResolvedPlugin == "media_plugin_libvlc"; }
     bool mediaSlotPermitted() const;
+    bool mediaSlotCandidate() const;
     std::shared_ptr<MediaUpload> preMediaTexUpdate();
     bool doMediaTexUpdate(MediaUpload& upload);
     void finishMediaTexUpdate(MediaUpload& upload, bool success);

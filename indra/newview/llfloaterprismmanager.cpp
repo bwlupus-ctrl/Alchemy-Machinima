@@ -1277,8 +1277,7 @@ void LLFloaterPrismManager::refreshDisplayEditor()
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
-    const bool editable = capture && display &&
-        capture->isCameraFeed();
+    const bool editable = capture && display && LLPrismLens::canRouteSource(*capture);
 
     mDisplayFitCombo->setEnabled(editable);
     mAnchorXSpinner->setEnabled(editable);
@@ -1464,7 +1463,7 @@ void LLFloaterPrismManager::refreshDisplayRateReadout()
         return;
     }
 
-    const bool editable = capture->isCameraFeed();
+    const bool editable = LLPrismLens::canRouteSource(*capture);
     mDisplaySourceRate->setText(llformat(
         "Inherited from %s %u | requested %s | observed %.1f FPS%s",
         (capture->isMedia() ? std::string("Media") : captureModeText(capture->cameraData()->mMode)).c_str(), capture->mSlot + 1,
@@ -1501,6 +1500,9 @@ void LLFloaterPrismManager::refreshSelectionActions()
         set_camera_reason = source_status.allowed()
             ? "Rebind this Camera Feed to the exactly-one selected world object"
             : source_status.mReason;
+    }
+    if (capture && LLPrismLens::canRouteSource(*capture))
+    {
         const LLPrismLens::ActionStatus display_status =
             LLPrismLens::addDisplaySelectionStatus(capture->mHandle);
         can_add_display = display_status.allowed();
@@ -1516,7 +1518,7 @@ void LLFloaterPrismManager::refreshSelectionActions()
     // A virtual screen needs no face selection -- only a Camera Feed capture --
     // so it is enabled whenever one is selected, even from the empty state.
     const bool can_add_virtual_screen =
-        capture && capture->isCameraFeed();
+        capture && LLPrismLens::canRouteSource(*capture);
     setActionState(mAddVirtualScreenButton, can_add_virtual_screen,
         can_add_virtual_screen
             ? "Create a prim-free virtual screen for this feed at your current view"
@@ -1529,7 +1531,7 @@ void LLFloaterPrismManager::refreshSelectionActions()
     // the button handlers. Show the reason once on change only; clear the
     // tracker when the action is allowed (or no Camera Feed capture is
     // selected) so a later identical rejection is displayed again.
-    if (capture && capture->isCameraFeed() &&
+    if (capture && LLPrismLens::canRouteSource(*capture) &&
         !can_add_display && !add_display_reason.empty())
     {
         if (add_display_reason != mLastSelectionActionStatus)
@@ -2182,7 +2184,7 @@ void LLFloaterPrismManager::onAddDisplay()
 void LLFloaterPrismManager::onAddVirtualScreen()
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
-    if (!capture || !capture->isCameraFeed())
+    if (!capture || !LLPrismLens::canRouteSource(*capture))
     {
         setStatus("Select a Camera Feed capture first, then add a virtual screen.");
         return;
@@ -2203,7 +2205,7 @@ void LLFloaterPrismManager::onAddVirtualScreen()
 
     // Default the screen to the capture's output aspect at a 0.9 m height.
     const F32 height = 0.9f;
-    F32 aspect = capture->cameraData()->mSettings.mOutputAspect;
+    F32 aspect = capture->isMedia() ? capture->mSignalAspect : capture->cameraData()->mSettings.mOutputAspect;
     if (!std::isfinite(aspect) || aspect <= 0.f) aspect = 16.f / 9.f;
     const F32 width = height * aspect;
 
@@ -2286,7 +2288,7 @@ void LLFloaterPrismManager::onCommitDisplaySettings()
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
-    if (!capture || !display || !capture->isCameraFeed())
+    if (!capture || !display || !LLPrismLens::canRouteSource(*capture))
     {
         return;
     }

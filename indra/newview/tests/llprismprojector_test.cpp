@@ -252,6 +252,8 @@ void prism_projector_object::test<14>()
     source.setMediaData(LLPrismLens::MediaFaceSource());
     ensure("media capability is explicit", source.cameraData() == nullptr && !source.isSurfaceLens());
     ensure("media is eligible for shared routing", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::OK);
+    binding.mGateSubscribed = true;
+    ensure("media cannot inherit a gate subscription", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::INVALID_CONFIGURATION);
 
 }
 
@@ -514,6 +516,67 @@ void prism_projector_object::test<26>()
     }
     ensure("terminal cleanup permits OFF imports", !upload.pending);
     ensure("OFF without tracked jobs uses legacy", !source.active && !upload.pending);
+}
+
+template<> template<>
+void prism_projector_object::test<27>()
+{
+    set_test_name("accepted cookies survive pending frames and reject replaced identities");
+    using namespace LLPrismLens;
+    ProjectorFeed accepted;
+    accepted.mProjector.mId.generate();
+    accepted.mProjector.mGeneration = 3;
+    accepted.mCapture.mId.generate();
+    accepted.mCapture.mGeneration = 7;
+    accepted.mSourceKind = ESourceSlotKind::MEDIA_FACE;
+    accepted.mSourceEpoch = 11;
+    accepted.mLoadToken = "load-A";
+    accepted.mGeneration = accepted.mAcceptedSerial = 23;
+    auto pending = accepted;
+    pending.mGeneration = pending.mAcceptedSerial = 24;
+    pending.mOutputWidth = 1024;
+    pending.mSettings.mResolution = 1024;
+    pending.mSettings.mFlipH = true;
+    ensure("failed recompose retains old pixels and metadata", sameProjectorSource(accepted, pending));
+    ensure_equals("accepted resolution remains independent", accepted.mSettings.mResolution, U16(512));
+    pending.mLoadToken = "load-B";
+    ensure("same impl navigation rejects old cookie", !sameProjectorSource(accepted, pending));
+    pending = accepted; ++pending.mSourceEpoch;
+    ensure("policy loss/source replacement invalidates", !sameProjectorSource(accepted, pending));
+    pending = accepted; ++pending.mCapture.mGeneration;
+    ensure("slot reuse invalidates", !sameProjectorSource(accepted, pending));
+    pending = accepted; ++pending.mProjector.mGeneration;
+    ensure("binding reuse invalidates", !sameProjectorSource(accepted, pending));
+    pending = accepted; pending.mSourceKind = ESourceSlotKind::CAMERA;
+    ensure("source kind is identity", !sameProjectorSource(accepted, pending));
+}
+
+template<> template<>
+void prism_projector_object::test<28>()
+{
+    set_test_name("slot demand releases on freeze policy loss and final consumer loss");
+    using namespace LLPrismLens;
+    const F64 face = mediaDemandArea(true, true, true, 512, 256);
+    const F64 light = mediaDemandArea(true, true, true, 1024, 1024);
+    ensure_equals("fan-out takes maximum, never sum", llmax(face, light), 1048576.0);
+    ensure_equals("frozen owner releases demand", mediaDemandArea(false, true, true, 1024, 1024), 0.0);
+    ensure_equals("other owner still contributes", llmax(face, mediaDemandArea(false, true, true, 1024, 1024)), face);
+    ensure_equals("policy revocation releases demand", mediaDemandArea(true, false, true, 1024, 1024), 0.0);
+    ensure_equals("last consumer loss releases demand", mediaDemandArea(true, true, false, 1024, 1024), 0.0);
+    ensure_equals("demand never exceeds slot capacity", mediaDemandArea(true, true, true, 4096, 4096), light);
+}
+
+template<> template<>
+void prism_projector_object::test<29>()
+{
+    set_test_name("media volumetric acquisition requires both enables on every query");
+    using namespace LLPrismLens;
+    for (bool master : {false, true})
+        for (bool media : {false, true})
+        {
+            ensure("media uses both gates", projectorVolumetricsEligible(master, media, true) == (master && media));
+            ensure("camera depends only on master", projectorVolumetricsEligible(master, media, false) == master);
+        }
 }
 
 }

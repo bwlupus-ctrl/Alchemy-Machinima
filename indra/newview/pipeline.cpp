@@ -1983,7 +1983,7 @@ void LLPipeline::releasePrismLensOutputs()
 }
 
 bool LLPipeline::ensurePrismProjectorFeed(
-    const LLPrismLens::ProjectorHandle& handle, U32 width, U32 height)
+    const LLPrismLens::ProjectorHandle& handle, U32 width, U32 height, bool media)
 {
     if (handle.mId.isNull() || handle.mGeneration == 0 || width == 0 ||
         height == 0 || width > 1024 || height > 1024)
@@ -2010,28 +2010,42 @@ bool LLPipeline::ensurePrismProjectorFeed(
     if (prepared->mHandle.mId != handle.mId ||
         prepared->mHandle.mGeneration != handle.mGeneration)
     {
-        prepared->mTarget.release();
+        prepared->mTarget->release();
         prepared->mHandle = handle;
         prepared->mSourceGeneration = 0;
         prepared->mProducedFrame = 0;
         prepared->mValid = false;
         prepared->mDirty = true;
     }
-    if (prepared->mTarget.isComplete() &&
-        prepared->mTarget.getWidth() == width &&
-        prepared->mTarget.getHeight() == height)
+    if (prepared->mTarget->isComplete() &&
+        prepared->mTarget->getWidth() == width &&
+        prepared->mTarget->getHeight() == height)
     {
         return true;
     }
 
-    prepared->mTarget.release();
-    prepared->mSourceGeneration = 0;
-    prepared->mProducedFrame = 0;
-    prepared->mValid = false;
+    if (!media)
+    {
+        prepared->mTarget->release();
+        prepared->mSourceGeneration = 0;
+        prepared->mProducedFrame = 0;
+        prepared->mValid = false;
+        prepared->mDirty = true;
+        return prepared->mTarget->allocate(width, height, GL_RGBA8, false, false,
+                                          LLTexUnit::TT_TEXTURE,
+                                          LLTexUnit::TMG_AUTO);
+    }
+
+    // Resize is completed by preparation using one stack-owned spare. The
+    // published target and its accepted metadata survive allocation failure.
+    if (prepared->mTarget->isComplete()) return true;
+    auto target = std::make_unique<LLRenderTarget>();
+    if (!target->allocate(width, height, GL_RGBA8, false, false,
+                          LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_AUTO) ||
+        !target->isComplete()) return false;
+    prepared->mTarget.swap(target);
     prepared->mDirty = true;
-    return prepared->mTarget.allocate(width, height, GL_RGBA8, false, false,
-                                      LLTexUnit::TT_TEXTURE,
-                                      LLTexUnit::TMG_AUTO);
+    return true;
 }
 
 void LLPipeline::dirtyPrismProjectorFeed(
@@ -2078,7 +2092,7 @@ void LLPipeline::releasePrismProjectorFeed(
         if (prepared.mHandle.mId == handle.mId &&
             prepared.mHandle.mGeneration == handle.mGeneration)
         {
-            prepared.mTarget.release();
+            prepared.mTarget->release();
             prepared.mHandle = LLPrismLens::ProjectorHandle();
             prepared.mSourceGeneration = 0;
             prepared.mProducedFrame = 0;
@@ -2093,7 +2107,7 @@ void LLPipeline::releasePrismProjectorFeeds()
 {
     for (PrismProjectorPreparedFeed& prepared : mPrismProjectorFeed)
     {
-        prepared.mTarget.release();
+        prepared.mTarget->release();
         prepared.mHandle = LLPrismLens::ProjectorHandle();
         prepared.mSourceGeneration = 0;
         prepared.mProducedFrame = 0;
@@ -2102,6 +2116,7 @@ void LLPipeline::releasePrismProjectorFeeds()
     }
 }
 
+// Keep the camera preparation path in sync with HEAD; media has its own pass.
 void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
 {
     if (capture_slot >= LLPrismLens::MAX_CAPTURES) return;
@@ -2119,7 +2134,8 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
             snapshot.mProjectors[index];
         LLPrismLens::ProjectorFeed feed;
         if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
-            feed.mOutput != &mPrismLensOutput[capture_slot])
+            feed.mOutput != &mPrismLensOutput[capture_slot] ||
+            feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
         {
             continue;
         }
@@ -2160,7 +2176,7 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
             : gPrismProjectorFeedProgram[permutation];
         if (!shader.isComplete()) continue;
 
-        prepared->mTarget.bindTarget();
+        prepared->mTarget->bindTarget();
         glViewport(0, 0, target_width, target_height);
         const S32 target_viewport[4] = {
             0, 0, static_cast<S32>(target_width),
@@ -2172,7 +2188,7 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         glDisable(GL_BLEND);
         gGL.setColorMask(true, true, true, true);
         glClearColor(0.f, 0.f, 0.f, 1.f);
-        prepared->mTarget.clear();
+        prepared->mTarget->clear();
 
         shader.bind();
         const S32 signal_channel =
@@ -2289,7 +2305,243 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
             gGL.getTexUnit(color_grade_channel)->unbind(
                 LLTexUnit::TT_TEXTURE_3D);
         }
-        prepared->mTarget.flush();
+        prepared->mTarget->flush();
+        prepared->mSourceGeneration = feed.mGeneration;
+        prepared->mProducedFrame = gFrameCount;
+        prepared->mValid = true;
+        prepared->mDirty = false;
+    }
+}
+
+void LLPipeline::prepareMediaPrismProjectorFeeds()
+{
+    const LLPrismLens::RegistrySnapshot snapshot =
+        LLPrismLens::registrySnapshot();
+    if (snapshot.mProjectorCount == 0) return;
+
+    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam projector feed prep");
+    LL_PROFILE_GPU_ZONE("VCam projector feed prep");
+
+    for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+    {
+        const LLPrismLens::ProjectorDefinition& definition =
+            snapshot.mProjectors[index];
+        bool media_source = false;
+        for (U32 slot = 0; slot < snapshot.mSlotCount; ++slot)
+        {
+            const auto& capture = snapshot.mCaptures[slot];
+            if (capture.isMedia() && capture.mHandle.mId == definition.mCapture.mId &&
+                capture.mHandle.mGeneration == definition.mCapture.mGeneration)
+            {
+                media_source = true;
+                break;
+            }
+        }
+        if (!media_source) continue;
+        LLPrismLens::ProjectorFeed feed;
+        if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
+            feed.mSourceKind != LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+        {
+            continue;
+        }
+
+        LLPrismLens::CompositeState state;
+        U32 target_width = 0;
+        U32 target_height = 0;
+        if (!LLPrismLens::buildProjectorCompositeState(
+                definition, state, target_width, target_height) ||
+            !ensurePrismProjectorFeed(definition.mHandle,
+                                      target_width, target_height, true))
+        {
+            continue;
+        }
+
+        PrismProjectorPreparedFeed* prepared = nullptr;
+        for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
+        {
+            if (candidate.mHandle.mId == definition.mHandle.mId &&
+                candidate.mHandle.mGeneration == definition.mHandle.mGeneration)
+            {
+                prepared = &candidate;
+                break;
+            }
+        }
+        if (!prepared) continue;
+        const auto& effects = feed.mSettings.mEffects;
+        const auto& film = feed.mSettings.mLook;
+        const bool animated = (effects.mStatic > 0.f || effects.mVerticalRoll > 0.f ||
+            effects.mTracking > 0.f || effects.mFlicker > 0.f || effects.mInterlace > 0.f ||
+            effects.mDropout > 0.f || film.mDust > 0.f || film.mScratches > 0.f ||
+            film.mGrain > 0.f || film.mGateWeave > 0.f || film.mShutterFlicker > 0.f);
+        const F64 now = LLTimer::getTotalSeconds();
+        if (!prepared->mDirty && prepared->mSourceGeneration == feed.mGeneration &&
+            prepared->mAccepted.mDestinationAspect == feed.mDestinationAspect &&
+            (!animated || feed.mEffectHz <= 0.f || now < prepared->mNextEffectTime)) continue;
+
+        const U32 permutation = 0;
+        const LLPrismLens::ProjectorLook& look = feed.mSettings.mLook;
+        const bool apply_look = look.hasFeedEffects() &&
+            gPrismProjectorLookProgram[permutation].isComplete();
+        LLGLSLShader& shader = apply_look
+            ? gPrismProjectorLookProgram[permutation]
+            : gPrismProjectorFeedProgram[permutation];
+        // No retained pixels are touched until every fallible prerequisite is
+        // validated. A requested look cannot silently fall back to another one.
+        if (!shader.isComplete() || (look.hasFeedEffects() && !apply_look) ||
+            !feed.mOutput || !feed.mOutput->isComplete() || !feed.mOutput->getTexture(0) ||
+            (shader.mFeatures.hasTonemap && !mExposureMap.isComplete())) continue;
+        if (shader.getTextureChannel(LLShaderMgr::PRISM_LENS_MAP) < 0 ||
+            (shader.mFeatures.hasTonemap && shader.getTextureChannel(LLShaderMgr::EXPOSURE_MAP) < 0)) continue;
+        std::unique_ptr<LLRenderTarget> spare;
+        LLRenderTarget* target = prepared->mTarget.get();
+        if (target->getWidth() != target_width || target->getHeight() != target_height)
+        {
+            spare = std::make_unique<LLRenderTarget>();
+            if (!spare->allocate(target_width, target_height, GL_RGBA8, false, false,
+                                 LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_AUTO) ||
+                !spare->isComplete()) continue;
+            target = spare.get();
+        }
+        // Registry identity cannot change during this synchronous GL pass.
+        // Use the single feed lookup above; all skips precede shader.bind().
+        if (!target->isComplete()) continue;
+
+        target->bindTarget();
+        glViewport(0, 0, target_width, target_height);
+        const S32 target_viewport[4] = {
+            0, 0, static_cast<S32>(target_width),
+            static_cast<S32>(target_height) };
+        std::memcpy(gGLViewport, target_viewport, sizeof(gGLViewport));
+        LLGLDisable projector_feed_scissor(GL_SCISSOR_TEST);
+        LLGLDisable projector_feed_srgb(GL_FRAMEBUFFER_SRGB);
+        LLGLDepthTest projector_feed_depth(GL_FALSE, GL_FALSE);
+        glDisable(GL_BLEND);
+        gGL.setColorMask(true, true, true, true);
+        glClearColor(0.f, 0.f, 0.f, 1.f);
+        target->clear();
+
+        shader.bind();
+        const S32 signal_channel =
+            shader.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
+        if (signal_channel >= 0)
+        {
+            feed.mOutput->bindTexture(0, signal_channel,
+                                      LLTexUnit::TFO_BILINEAR);
+        }
+        const S32 exposure_channel =
+            shader.enableTexture(LLShaderMgr::EXPOSURE_MAP);
+        if (exposure_channel >= 0)
+        {
+            mExposureMap.bindTexture(0, exposure_channel,
+                                     LLTexUnit::TFO_POINT);
+        }
+
+        static const LLStaticHashedString sDisplayScale("displayToCaptureScale");
+        static const LLStaticHashedString sDisplayOffset("displayToCaptureOffset");
+        static const LLStaticHashedString sOrientationScale("retainedOrientationScale");
+        static const LLStaticHashedString sOrientationOffset("retainedOrientationOffset");
+        static const LLStaticHashedString sRegionScale("textureRegionScale");
+        static const LLStaticHashedString sRegionOffset("textureRegionOffset");
+        static const LLStaticHashedString sLetterbox("letterbox");
+        static const LLStaticHashedString sBars("barColorLinear");
+        static const LLStaticHashedString sFeather("edgeFeather");
+        static const LLStaticHashedString sOptics("prismLensOptics");
+        static const LLStaticHashedString sEffect0("screenEffect0");
+        static const LLStaticHashedString sEffect1("screenEffect1");
+        static const LLStaticHashedString sEffect2("screenEffect2");
+        static const LLStaticHashedString sEffect3("screenEffect3");
+        static const LLStaticHashedString sEffect4("screenEffect4");
+        static const LLStaticHashedString sEffect5("screenEffect5");
+        static const LLStaticHashedString sEffectTime("screenEffectTime");
+        static const LLStaticHashedString sFollowExposure("projectorFollowMainExposure");
+        static const LLStaticHashedString sMediaSDR("projectorMediaSDR");
+        static const LLStaticHashedString sSheenSky("prismEnvSheenSky");
+        static const LLStaticHashedString sSheenGround("prismEnvSheenGround");
+        static const LLStaticHashedString sWorldOrigin("previewWorldOrigin");
+        static const LLStaticHashedString sWorldU("previewWorldUEdge");
+        static const LLStaticHashedString sWorldV("previewWorldVEdge");
+        shader.uniform2fv(sDisplayScale, 1, state.mDisplayToCaptureScale);
+        shader.uniform2fv(sDisplayOffset, 1, state.mDisplayToCaptureOffset);
+        shader.uniform2fv(sOrientationScale, 1, state.mRetainedOrientationScale);
+        shader.uniform2fv(sOrientationOffset, 1, state.mRetainedOrientationOffset);
+        shader.uniform2fv(sRegionScale, 1, state.mTextureRegionScale);
+        shader.uniform2fv(sRegionOffset, 1, state.mTextureRegionOffset);
+        shader.uniform1i(sLetterbox, state.mLetterbox);
+        shader.uniform3fv(sBars, 1, state.mBarColorLinear);
+        shader.uniform1f(sFeather, state.mEdgeFeather);
+        shader.uniform4fv(sOptics, 1, state.mOpticsParams);
+        shader.uniform4fv(sEffect0, 1, state.mScreenEffect0);
+        shader.uniform4fv(sEffect1, 1, state.mScreenEffect1);
+        shader.uniform4fv(sEffect2, 1, state.mScreenEffect2);
+        shader.uniform4fv(sEffect3, 1, state.mScreenEffect3);
+        shader.uniform4fv(sEffect4, 1, state.mScreenEffect4);
+        shader.uniform4fv(sEffect5, 1, state.mScreenEffect5);
+        shader.uniform1f(sEffectTime, fmodf(gFrameTimeSeconds, 3600.f));
+        shader.uniform1i(sFollowExposure, 0);
+        shader.uniform1i(sMediaSDR, 1);
+        if (apply_look)
+        {
+            static const LLStaticHashedString sLookWarp("projectorLookWarp");
+            static const LLStaticHashedString sLookFilm("projectorLookFilm");
+            static const LLStaticHashedString sLookGlow("projectorLookGlow");
+            static const LLStaticHashedString sLookLampGel("projectorLookLampGel");
+            const F32 look_warp[4] = {
+                look.mKeystoneH, look.mKeystoneV, look.mHotspot,
+                fmodf(gFrameTimeSeconds, 3600.f) };
+            const F32 look_film[4] = {
+                look.mDust, look.mScratches, look.mBurn, look.mGrain };
+            const F32 look_glow[4] = {
+                look.mHalation, 1.f / target_width, 1.f / target_height, 0.f };
+            LLColor3 lamp_gel = LLPrismLens::projectorKelvinRgb(
+                look.mLampKelvin);
+            lamp_gel.mV[0] *= look.mGelTint.mV[0];
+            lamp_gel.mV[1] *= look.mGelTint.mV[1];
+            lamp_gel.mV[2] *= look.mGelTint.mV[2];
+            shader.uniform4fv(sLookWarp, 1, look_warp);
+            shader.uniform4fv(sLookFilm, 1, look_film);
+            shader.uniform4fv(sLookGlow, 1, look_glow);
+            shader.uniform3fv(sLookLampGel, 1, lamp_gel.mV);
+        }
+        LLColor3 sheen_sky(0.f, 0.f, 0.f);
+        LLColor3 sheen_ground(0.f, 0.f, 0.f);
+        if (const LLSettingsSky::ptr_t sky =
+                LLEnvironment::instance().getCurrentSky())
+        {
+            const LLColor3 ambient = sky->getAmbientColor();
+            sheen_sky = ambient * 1.5f + sky->getBlueHorizon() * 0.4f;
+            sheen_ground = ambient * 0.5f;
+        }
+        const F32 origin[3] = { 0.f, 0.f, 0.f };
+        const F32 edge_u[3] = { 1.f, 0.f, 0.f };
+        const F32 edge_v[3] = { 0.f, 1.f, 0.f };
+        shader.uniform3fv(sSheenSky, 1, sheen_sky.mV);
+        shader.uniform3fv(sSheenGround, 1, sheen_ground.mV);
+        shader.uniform3fv(sWorldOrigin, 1, origin);
+        shader.uniform3fv(sWorldU, 1, edge_u);
+        shader.uniform3fv(sWorldV, 1, edge_v);
+
+        LLVertexBuffer::unbind();
+        gGL.begin(LLRender::TRIANGLES);
+        gGL.vertex3f(-1.f, -1.f, 0.f);
+        gGL.vertex3f(3.f, -1.f, 0.f);
+        gGL.vertex3f(-1.f, 3.f, 0.f);
+        gGL.end();
+        shader.disableTexture(LLShaderMgr::EXPOSURE_MAP);
+        shader.disableTexture(LLShaderMgr::PRISM_LENS_MAP);
+        // Shared program permutations must retain the legacy camera default.
+        gGL.flush();
+        shader.uniform1i(sMediaSDR, 0);
+        shader.unbind();
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam projector cookie mips");
+            LL_PROFILE_GPU_ZONE("VCam projector cookie mips");
+            target->flush(); // TMG_AUTO builds the complete chain before publication.
+        }
+        if (spare) prepared->mTarget.swap(spare); // old ownership dies this iteration
+        prepared->mAccepted = feed;
+        prepared->mAccepted.mOutput = nullptr; // never retain a registry target pointer
+        prepared->mRevision = ++mPrismProjectorRevision;
+        prepared->mNextEffectTime = now + 1.0 / llmax(0.01f, feed.mEffectHz);
         prepared->mSourceGeneration = feed.mGeneration;
         prepared->mProducedFrame = gFrameCount;
         prepared->mValid = true;
@@ -10663,6 +10915,12 @@ void LLPipeline::appendCinematicProbeLightSignature(
         {
             sig.addExact(projector_feed.mCapture.mId);
             sig.addExact(projector_feed.mCapture.mGeneration);
+            if (projector_feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+            {
+                sig.addExact(static_cast<U64>(projector_feed.mSourceKind));
+                sig.addExact(projector_feed.mSourceEpoch);
+                sig.addExact(projectorCookieRevision(light));
+            }
         }
         sig.addExact(LLPipeline::isProjectorNoShadow(light->getID()));
 
@@ -27785,6 +28043,17 @@ void LLPipeline::doWaterExclusionMask()
     glClearColor(0, 0, 0, 0);
 }
 
+U64 LLPipeline::projectorCookieRevision(const LLVOVolume* volume) const
+{
+    LLPrismLens::ProjectorFeed feed;
+    if (!LLPrismLens::projectorFeedFor(volume, feed) ||
+        feed.mSourceKind != LLPrismLens::ESourceSlotKind::MEDIA_FACE) return 0;
+    for (const auto& prepared : mPrismProjectorFeed)
+        if (prepared.mValid && prepared.mTarget->isComplete() &&
+            LLPrismLens::sameProjectorSource(prepared.mAccepted, feed)) return prepared.mRevision;
+    return 0;
+}
+
 F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
                                     LLVOVolume* volume, F32 focus,
                                     F32 proj_range, bool surface)
@@ -27792,17 +28061,41 @@ F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
     LLPrismLens::ProjectorFeed feed;
     const bool has_binding = LLPrismLens::projectorFeedFor(volume, feed);
     PrismProjectorPreparedFeed* prepared = nullptr;
-    if (has_binding && feed.mGeneration != 0)
+    if (has_binding && feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
     {
         for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
         {
             if (candidate.mHandle.mId == feed.mProjector.mId &&
                 candidate.mHandle.mGeneration == feed.mProjector.mGeneration &&
-                candidate.mValid && candidate.mTarget.isComplete() &&
-                candidate.mSourceGeneration == feed.mGeneration)
+                candidate.mValid && candidate.mTarget->isComplete() &&
+                LLPrismLens::sameProjectorSource(candidate.mAccepted, feed))
             {
                 prepared = &candidate;
                 break;
+            }
+        }
+        if (prepared)
+        {
+            // Media samples the settings accepted with these pixels.
+            feed.mSettings = prepared->mAccepted.mSettings;
+            feed.mCameraVerticalFovRad = prepared->mAccepted.mCameraVerticalFovRad;
+            feed.mCameraAspect = prepared->mAccepted.mCameraAspect;
+        }
+    }
+    else
+    {
+        if (has_binding && feed.mGeneration != 0)
+        {
+            for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
+            {
+                if (candidate.mHandle.mId == feed.mProjector.mId &&
+                    candidate.mHandle.mGeneration == feed.mProjector.mGeneration &&
+                    candidate.mValid && candidate.mTarget->isComplete() &&
+                    candidate.mSourceGeneration == feed.mGeneration)
+                {
+                    prepared = &candidate;
+                    break;
+                }
             }
         }
     }
@@ -27831,10 +28124,10 @@ F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
         F32 lod_range = 0.f;
         if (prepared)
         {
-            prepared->mTarget.bindTexture(0, channel,
+            prepared->mTarget->bindTexture(0, channel,
                 BDMergeGoboAnisotropic ? LLTexUnit::TFO_ANISOTROPIC
                                         : LLTexUnit::TFO_TRILINEAR);
-            lod_range = logf(static_cast<F32>(prepared->mTarget.getWidth())) /
+            lod_range = logf(static_cast<F32>(prepared->mTarget->getWidth())) /
                         logf(2.f);
         }
         else if (img)

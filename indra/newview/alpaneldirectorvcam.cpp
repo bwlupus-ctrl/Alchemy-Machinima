@@ -536,7 +536,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     std::vector<ALVCamFaceList::Item> faces;
     if (capture)
     {
-        faces.push_back({{}, "Camera output (raw)", "before any face mapping", true,
+        faces.push_back({{}, capture->isMedia() ? "Media output (raw)" : "Camera output (raw)", "before any face mapping", true,
                          mModel.selectedDisplay().mId.isNull()});
         for (U32 i = 0; i < registry.mDisplayCount; ++i)
         {
@@ -627,6 +627,8 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(projectorControl(PROJ_KEYSTONE_H), look.mKeystoneH);
         setValueIfChanged(projectorControl(PROJ_KEYSTONE_V), look.mKeystoneV);
         setValueIfChanged(projectorControl(PROJ_THROW), static_cast<S32>(look.mThrowMode));
+        setEnabledIfChanged(projectorControl(PROJ_THROW), capture && capture->isCameraFeed());
+        setEnabledIfChanged(projectorControl(PROJ_FOLLOW_EXPOSURE), capture && capture->isCameraFeed());
         setValueIfChanged(projectorControl(PROJ_BRIGHTNESS), settings.mFeedEV);
         setValueIfChanged(projectorControl(PROJ_LAMP_POWER), settings.mLampPowerEV);
         setValueIfChanged(projectorControl(PROJ_FOLLOW_EXPOSURE), settings.mFollowMainExposure);
@@ -873,8 +875,9 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     setEnabledIfChanged(control("vc_add_media_slot"), LLPrismLens::mediaSlotsEnabled() && registry.mSlotCount < LLPrismLens::MAX_CAPTURES);
     if (media_selected)
     {
-        for (const char* id : {"source", "placement", "skeleton", "optics", "guide", "camera_look", "look_goes", "output_frame", "faces"})
+        for (const char* id : {"source", "placement", "skeleton", "optics", "guide", "camera_look", "look_goes", "output_frame"})
             if (ALKitCard* card = mKitPage->findCard(id)) card->setCodeVisible(false);
+        setValueIfChanged(control("vc_media_running"), capture->mMediaRunning ? 1 : 0);
         setValueIfChanged(control("vc_media_status"), capture->mRuntime.mReason);
         setValueIfChanged(control("vc_source_aspect"), static_cast<S32>(capture->mediaData()->mAspect));
         setValueIfChanged(control("vc_media_face"), capture->mediaData()->mObjectId.isNull() ? "Unbound" :
@@ -1029,7 +1032,9 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         setStatus("Click a prim media face; Escape cancels.", false);
         return;
     }
-    if (name == "vc_enable") gSavedSettings.setBOOL("PrismLensEnabled", value.asBoolean());
+    if (name == "vc_media_running" && capture && capture->isMedia())
+        LLPrismLens::setMediaRunning(capture->mHandle, value.asInteger() != 0);
+    else if (name == "vc_enable") gSavedSettings.setBOOL("PrismLensEnabled", value.asBoolean());
     else if (name == "vc_open_manager") LLFloaterReg::showInstance("prism_manager");
     else if (name == "vc_monitor_header")
     {

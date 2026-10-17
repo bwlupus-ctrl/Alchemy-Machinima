@@ -6368,6 +6368,9 @@ private:
             mFunctionalOwnerModelBefore = LLSD::emptyMap();
             mFunctionalOwnerModelBefore["slots"] = S32(mFunctionalVCamModel->registry().mSlotCount);
             mFunctionalOwnerModelBefore["revision"] = LLSD::Real(mFunctionalVCamModel->registry().mConfigurationRevision);
+            mFunctionalOwnerModelBefore["runtime"] = LLSD::Real(mFunctionalVCamModel->registry().mRuntimeRevision);
+            const auto* media = functionalSelectedVCamCapture(*mFunctionalVCamModel);
+            mFunctionalOwnerModelBefore["running"] = media && media->mMediaRunning;
         }
         else if (owner_probe == "vcam_camera_name" && mFunctionalVCamModel)
         {
@@ -7448,8 +7451,14 @@ private:
                 for (U32 slot = 0; slot < registry.mSlotCount; ++slot)
                     if (registry.mCaptures[slot].isMedia()) { source = &registry.mCaptures[slot]; break; }
             const bool added = entry["widget_name"].asString() == "vc_add_media_slot";
+            const bool consumption = entry["widget_name"].asString() == "vc_media_running";
+            const bool consumption_ok = source && consumption &&
+                source->mMediaRunning == (control->getValue().asInteger() != 0) &&
+                source->mMediaRunning != mFunctionalOwnerModelBefore["running"].asBoolean() &&
+                (source->mMediaRunning || source->mMediaDemandArea == 0.0) &&
+                LLSD::Real(registry.mRuntimeRevision) > mFunctionalOwnerModelBefore["runtime"].asReal();
             const bool changed = source && source->isMedia() && !source->cameraData() &&
-                registry.mCaptureCount == 0 && (added
+                registry.mCaptureCount == 0 && (consumption ? consumption_ok : added
                     ? registry.mSlotCount == U32(mFunctionalOwnerModelBefore["slots"].asInteger() + 1)
                     : source->mediaData()->mAspect == static_cast<LLPrismLens::ESourceAspect>(control->getValue().asInteger()) &&
                       LLSD::Real(registry.mConfigurationRevision) > mFunctionalOwnerModelBefore["revision"].asReal());

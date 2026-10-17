@@ -27,6 +27,7 @@
       {"l": "Pick prim face", "k": "button", "w": "vc_pick_media_face", "h": "Pick an existing LibVLC prim media face. Escape cancels without changing the slot.", "btn": "Pick prim face", "bind": "code"},
       {"l": "Source face", "k": "readout", "w": "vc_media_face", "h": "Authored prim and face. Only you see this feed. Original source audio is unchanged.", "bind": "code"},
       {"l": "Source aspect", "k": "combo", "w": "vc_source_aspect", "h": "Auto uses reported video geometry, falling back to 16:9. Overrides never resize the player.", "it": ["Auto", "16:9", "4:3", "2.39"], "iv": [0, 1, 2, 3], "bind": "code"},
+      {"l": "Feed", "k": "segmented", "w": "vc_media_running", "h": "Resume feed accepts completed source images. Freeze feed holds this slot and releases its demand. Original playback and audio are unchanged.", "it": ["Resume feed", "Freeze feed"], "iv": [1, 0], "bind": "code"},
       {"l": "Media status", "k": "readout", "w": "vc_media_status", "h": "Current face, player and completed-image readiness.", "bind": "code"}
     ]},
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [

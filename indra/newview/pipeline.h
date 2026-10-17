@@ -184,12 +184,13 @@ public:
     void releasePrismLensOutput(U32 slot);
     void releasePrismLensOutputs();
     bool ensurePrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle,
-                                  U32 width, U32 height);
+                                  U32 width, U32 height, bool media = false);
     void dirtyPrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle);
     void prepareDirtyPrismProjectorFeeds();
     void releasePrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle);
     void releasePrismProjectorFeeds();
     void preparePrismProjectorFeeds(U32 capture_slot);
+    void prepareMediaPrismProjectorFeeds();
     bool allocateShadowBuffer(U32 resX, U32 resY);
 
     // rebuild all LLVOVolume render batches
@@ -1395,14 +1396,19 @@ public:
     struct PrismProjectorPreparedFeed
     {
         LLPrismLens::ProjectorHandle mHandle;
-        LLRenderTarget mTarget;
+        std::unique_ptr<LLRenderTarget> mTarget = std::make_unique<LLRenderTarget>();
+        LLPrismLens::ProjectorFeed mAccepted;
         U64 mSourceGeneration = 0;
+        U64 mRevision = 0;
+        F64 mNextEffectTime = 0.0;
         U32 mProducedFrame = 0;
         bool mValid = false;
         bool mDirty = true;
     };
     PrismProjectorPreparedFeed
         mPrismProjectorFeed[LLPrismLens::MAX_PROJECTOR_BINDINGS];
+    U64 mPrismProjectorRevision = 0;
+    U64 projectorCookieRevision(const LLVOVolume* volume) const;
 
     // Auxiliary render path binds through this; null whenever no acquired
     // scratch pack is active (callers must bail rather than render).

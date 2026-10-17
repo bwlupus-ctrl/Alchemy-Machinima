@@ -26,6 +26,7 @@
 #include "lljoint.h"
 #include "llnotificationsutil.h"
 #include "llprimitive.h"
+#include "llprismlens.h"
 #include "llpresentationtime.h"
 #include "llrender.h"
 #include "llsdserialize.h"
@@ -1211,6 +1212,8 @@ static void appendEmitterSignature(
     sig.addExact(emitter->getIsLight());
     sig.addExact(LLPipeline::isProjectorNoShadow(emitter->getID()));
     sig.addExact(emitter->getLightTextureID());
+    if (LLPrismLens::mediaSlotsEnabled())
+        sig.addExact(gPipeline.projectorCookieRevision(emitter));
 }
 
 void ALCineLightRig::appendLiveProbeSignature(

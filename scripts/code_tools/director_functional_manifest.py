@@ -1647,7 +1647,7 @@ def add_runtime_prerequisites(entries):
             continue
         condition = ""
         if page == "vcam_tab":
-            if widget in {"vc_add_media_slot", "vc_source_aspect"}:
+            if widget in {"vc_add_media_slot", "vc_source_aspect", "vc_media_running"}:
                 entry.update(probe="vcam_media", action="RUN", reason="", known_gap=False,
                              hazards=[], owner="ALPanelDirectorVCam::onControl",
                              expect={"state": "isolated media-only registry kind/count/aspect oracle"})

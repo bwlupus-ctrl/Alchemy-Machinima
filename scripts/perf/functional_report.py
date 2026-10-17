@@ -1531,14 +1531,17 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                 "commit": True,
             }
             row["owner"] = row["expect"]["callback"]
-        if widget in {"vc_add_media_slot", "vc_source_aspect"}:
+        if widget in {"vc_add_media_slot", "vc_source_aspect", "vc_media_running"}:
             row.update(owner="ALPanelDirectorVCam::onControl", probe="vcam_media", known_gap=False, action="RUN")
             prereqs.append({"setting": "VCamMediaSlotsEnabled", "value": True, "source": "isolated VCam media fixture"})
             row.pop("effect_kind", None)
             if widget == "vc_source_aspect":
                 row["test_value"] = {"item_index": 1, "label": "16:9", "value": 1}
                 row["test_value_resolved"] = 1
-            row["expect"] = {"state": "media kind/count or accepted source-aspect revision changes"}
+            if widget == "vc_media_running":
+                row["test_value"] = {"item_index": 1, "label": "Freeze feed", "value": 0}
+                row["test_value_resolved"] = 0
+            row["expect"] = {"state": "media kind/count, source aspect, or slot consumption/demand changes"}
         if widget == "vc_pick_media_face":
             row.update(action="DEFER_INWORLD", probe="vcam_media_pick", reason="requires live prim media pick/commit/cancel", known_gap=False)
             row["hazards"] = sorted(set(row.get("hazards", [])) | {"requires_world"})

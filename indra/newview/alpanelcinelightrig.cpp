@@ -1236,7 +1236,7 @@ void ALPanelCineLightRig::syncProjectorFeeds(bool force)
     mProjectorFeedRigSlot = static_cast<S32>(rig_slot);
     U32 camera_count = 0;
     for (U32 index = 0; index < snapshot.mSlotCount; ++index)
-        if (snapshot.mCaptures[index].isCameraFeed())
+        if (LLPrismLens::canRouteSource(snapshot.mCaptures[index]))
             ++camera_count;
     for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
     {
@@ -1249,7 +1249,7 @@ void ALPanelCineLightRig::syncProjectorFeeds(bool force)
         {
             const LLPrismLens::CaptureDefinition& capture =
                 snapshot.mCaptures[index];
-            if (capture.isCameraFeed())
+            if (LLPrismLens::canRouteSource(capture))
                 combo->add(LLPrismLens::captureDisplayLabel(capture),
                            capture.mHandle.mId);
         }
