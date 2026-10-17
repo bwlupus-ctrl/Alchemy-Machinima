@@ -23,6 +23,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <variant>
 
 class LLFace;
 class LLPlane;
@@ -54,6 +55,24 @@ enum class ECaptureMode : U8
     SURFACE_LENS,
     CAMERA_FEED
 };
+
+enum class ESourceSlotKind : U8 { EMPTY, CAMERA, MEDIA_FACE };
+enum class ESourceAspect : U8 { AUTO, WIDE_16_9, STANDARD_4_3, CINEMA_239 };
+
+inline F32 resolveSourceAspect(ESourceAspect selection, S32 width, S32 height,
+                               U32 sarNum = 1, U32 sarDen = 1)
+{
+    switch (selection)
+    {
+        case ESourceAspect::WIDE_16_9: return 16.f / 9.f;
+        case ESourceAspect::STANDARD_4_3: return 4.f / 3.f;
+        case ESourceAspect::CINEMA_239: return 2.39f;
+        default:
+            if (width <= 0 || height <= 0) return 16.f / 9.f;
+            return F32(width) / F32(height) *
+                (sarNum && sarDen ? F32(sarNum) / F32(sarDen) : 1.f);
+    }
+}
 
 enum class EFitMode : U8
 {
@@ -373,6 +392,8 @@ struct PerformanceSnapshot
     F32 mMaximumAppliedResolutionScale = 0.f;
     F32 mAdmittedGlobalAttemptRateHz = 0.f;
     F32 mObservedGlobalAttemptRateHz = 0.f;
+    U64 mCameraRenderCount = 0;
+    U64 mMediaCopyCount = 0;
     bool mGpuTimingReliable = false;
     std::string mReason;
 };
@@ -726,18 +747,53 @@ struct ProjectorRuntimeState
     bool mDemanded = false;
 };
 
-struct CaptureDefinition
+struct CameraPayload
+{
+    ECaptureMode mMode = ECaptureMode::SURFACE_LENS;
+    LLUUID mObjectId;
+    CameraSettings mSettings;
+};
+
+struct MediaFaceSource
+{
+    LLUUID mObjectId;
+    S32 mTE = -1;
+    ESourceAspect mAspect = ESourceAspect::AUTO;
+};
+
+// Both registry instances and snapshots own the same private tagged payload.
+// There are deliberately no forwarding mMode/mCamera/mCameraObjectId fields.
+class SourceSlotData
+{
+public:
+    ESourceSlotKind sourceKind() const
+    { return cameraData() ? ESourceSlotKind::CAMERA : mediaData() ? ESourceSlotKind::MEDIA_FACE : ESourceSlotKind::EMPTY; }
+    CameraPayload* cameraData() { return std::get_if<CameraPayload>(&mSource); }
+    const CameraPayload* cameraData() const { return std::get_if<CameraPayload>(&mSource); }
+    MediaFaceSource* mediaData() { return std::get_if<MediaFaceSource>(&mSource); }
+    const MediaFaceSource* mediaData() const { return std::get_if<MediaFaceSource>(&mSource); }
+    bool isCameraFeed() const { const auto* c = cameraData(); return c && c->mMode == ECaptureMode::CAMERA_FEED; }
+    bool isSurfaceLens() const { const auto* c = cameraData(); return c && c->mMode == ECaptureMode::SURFACE_LENS; }
+    bool isMedia() const { return mediaData() != nullptr; }
+    void setCameraData(const CameraPayload& source) { mSource = source; }
+    void setMediaData(const MediaFaceSource& source) { mSource = source; }
+    void copySourceData(const SourceSlotData& source) { mSource = source.mSource; }
+private:
+    std::variant<std::monostate, CameraPayload, MediaFaceSource> mSource;
+};
+
+struct CaptureDefinition : SourceSlotData
 {
     U32 mSlot = MAX_CAPTURES;
     CaptureHandle mHandle;
     std::string mLabel;
-    ECaptureMode mMode = ECaptureMode::SURFACE_LENS;
-    LLUUID mCameraObjectId;
-    CameraSettings mCamera;
     CaptureRateSettings mRate;
     CaptureRuntimeState mRuntime;
     U32 mDisplayCount = 0;
     U32 mProjectorCount = 0;
+    F32 mSignalAspect = 1.f;
+    U64 mSourceEpoch = 0;
+    U64 mAcceptedSerial = 0;
 };
 
 std::string captureDisplayLabel(const CaptureDefinition& capture);
@@ -870,9 +926,9 @@ inline bool localProjectorFromLLSD(const LLSD& data)
 
 template<typename Projector>
 ERegistryResult validateProjectorReassignment(const Projector&,
-                                               ECaptureMode capture_mode)
+                                               const SourceSlotData& source)
 {
-    return capture_mode == ECaptureMode::CAMERA_FEED
+    return source.isCameraFeed() || source.isMedia()
         ? ERegistryResult::OK : ERegistryResult::INVALID_CONFIGURATION;
 }
 
@@ -927,6 +983,9 @@ struct ProjectorFeed
 {
     ProjectorHandle mProjector;
     CaptureHandle mCapture;
+    ESourceSlotKind mSourceKind = ESourceSlotKind::EMPTY;
+    U64 mSourceEpoch = 0;
+    U64 mAcceptedSerial = 0;
     LLRenderTarget* mOutput = nullptr; // Render-thread only; never retain.
     U32 mOutputWidth = 0;
     U32 mOutputHeight = 0;
@@ -976,6 +1035,7 @@ struct RegistrySnapshot
     U64 mRuntimeRevision = 0;
     U64 mGateRevision = 0;
     U32 mCaptureCount = 0;
+    U32 mSlotCount = 0; // occupied entries in mCaptures; capture count is CAMERA only
     U32 mDisplayCount = 0;
     U32 mProjectorCount = 0;
     std::array<CaptureDefinition, MAX_CAPTURES> mCaptures;
@@ -1014,6 +1074,7 @@ struct Designation
 
 struct CompositeState
 {
+    bool mMediaSDR = false;
     U32 mCaptureSlot = MAX_CAPTURES; // Output owner, never a display index.
     LLFace* mFace = nullptr; // Valid only for the current call/frame.
     // Prim-free "virtual screen". When mVirtual is set, mFace is null and the
@@ -1092,6 +1153,11 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a = nullptr,
                               std::string* reason = nullptr);
 ERegistryResult addSurfaceLensFromSelectedFace(
     CaptureHandle* capture, std::string* reason = nullptr);
+bool mediaSlotsEnabled();
+void reconcileMediaSlots();
+ERegistryResult addMediaSlot(CaptureHandle* slot, std::string* reason = nullptr);
+bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source,
+                    std::string* reason = nullptr);
 ERegistryResult addSelectedDisplay(const CaptureHandle& capture, EFitMode fit,
                                    DisplayHandle* binding,
                                    std::string* reason = nullptr);

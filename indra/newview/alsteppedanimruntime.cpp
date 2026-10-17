@@ -275,12 +275,13 @@ void ALSteppedAnimRuntime::collectActors()
     if (!friends_scope) mFriends.reset();
     std::set<LLUUID> bone_pov_anchors;
     const LLPrismLens::RegistrySnapshot camera_registry = LLPrismLens::registrySnapshot();
-    for (U32 index = 0; index < camera_registry.mCaptureCount; ++index)
+    for (U32 index = 0; index < camera_registry.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& capture = camera_registry.mCaptures[index];
-        const LLPrismLens::BonePovSettings& settings = capture.mCamera.mBonePov;
-        if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
-            capture.mCamera.mVirtual && settings.mEnabled)
+        if (!capture.isCameraFeed()) continue;
+        const LLPrismLens::BonePovSettings& settings = capture.cameraData()->mSettings.mBonePov;
+        if (capture.isCameraFeed() &&
+            capture.cameraData()->mSettings.mVirtual && settings.mEnabled)
         {
             LLVOAvatar* anchor = ALVCamBonePov::resolveAnchorAvatar(settings.mAnchorSlot);
             if (anchor) bone_pov_anchors.insert(anchor->getID());

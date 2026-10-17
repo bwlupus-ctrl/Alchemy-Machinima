@@ -38,6 +38,10 @@
 #include "llviewerregion.h"
 #include "llviewershadermgr.h"
 #include "llvovolume.h"
+#include "llviewermedia.h"
+#include "llviewertexture.h"
+#include "llmediaentry.h"
+#include "llvertexbuffer.h"
 #include "pipeline.h"
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -1838,18 +1842,22 @@ EDisplayTargetValidation validateDisplaySurfaceTarget(
     return EDisplayTargetValidation::VALID;
 }
 
-struct PrismInstance
+struct PrismInstance : LLPrismLens::SourceSlotData
 {
     bool mOccupied = false;
+    LLPointer<LLViewerMediaTexture> mMediaTexture;
+    LLMediaFrame::Identity mMediaIdentity;
+    U64 mMediaCompletedSerial = 0;
+    U64 mMediaLayoutRevision = 1;
+    U64 mMediaAcceptedLayout = 0;
+    U64 mMediaSourceEpoch = 1;
+    F32 mSignalAspect = 16.f / 9.f;
     LLPrismLens::CaptureHandle mHandle;
     std::string mLabel;
-    LLPrismLens::ECaptureMode mMode = LLPrismLens::ECaptureMode::SURFACE_LENS;
     // Lens: source and destination are mObjectId/mTE. Camera Feed: the source
     // object is mCameraObjectId and destinations live exclusively in bindings.
     LLUUID mObjectId;
     S32 mTE = -1;
-    LLUUID mCameraObjectId;
-    LLPrismLens::CameraSettings mCamera;
     LLPrismLens::CaptureRateSettings mRate;
     LLPrismLens::CaptureRuntimeState mRuntime;
     PrismFrame mFrame;
@@ -1937,8 +1945,13 @@ void releaseProjectorVolumetrics(PrismProjector& projector)
     projector.mVolumetricLight.clear();
 }
 
-void syncProjectorVolumetrics(PrismProjector& projector, LLVOVolume* volume)
+void syncProjectorVolumetrics(PrismProjector& projector, LLVOVolume* volume, bool media)
 {
+    if (!prismEnabled() || (media && !LLPrismLens::mediaSlotsEnabled()))
+    {
+        releaseProjectorVolumetrics(projector);
+        return;
+    }
     const LLUUID target = volume ? volume->getID() : LLUUID::null;
     const std::string light = LLPrismLens::projectorVolumetricIdentity(projector);
     if (projector.mVolumetricObjectId == target && projector.mVolumetricLight == light) return;
@@ -2067,8 +2080,7 @@ public:
             status.mReason = "That capture no longer exists.";
             return status;
         }
-        if (replacing && mLenses[findCapture(*replacing)].mMode !=
-                LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (replacing && !mLenses[findCapture(*replacing)].isCameraFeed())
         {
             status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
             status.mReason = "Only Camera Feed captures can be rebound to a camera source.";
@@ -2183,10 +2195,12 @@ public:
             status.mReason = "That capture no longer exists.";
             return status;
         }
-        if (mLenses[capture_slot].mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (!mLenses[capture_slot].isCameraFeed())
         {
             status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-            status.mReason = "A surface lens owns exactly one display face.";
+            status.mReason = mLenses[capture_slot].isMedia()
+                ? "Media output routing is unavailable."
+                : "A surface lens owns exactly one display face.";
             return status;
         }
         if (validateDisplaySurfaceTarget(
@@ -2217,7 +2231,7 @@ public:
             status.mReason = "Maximum of 16 Prism display faces reached.";
             return status;
         }
-        if (object->getID() == mLenses[capture_slot].mCameraObjectId)
+        if (object->getID() == mLenses[capture_slot].cameraData()->mObjectId)
         {
             status.mResult = LLPrismLens::ERegistryResult::DUPLICATE;
             status.mReason = "A camera source cannot display its own feed.";
@@ -2240,8 +2254,7 @@ public:
             status.mReason = "That capture no longer exists.";
             return status;
         }
-        if (mLenses[capture_slot].mMode !=
-            LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (!mLenses[capture_slot].isCameraFeed())
         {
             status.mResult =
                 LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
@@ -2360,8 +2373,7 @@ public:
             if (reason) *reason = "That capture no longer exists.";
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
-        if (mLenses[capture_slot].mMode !=
-            LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (!mLenses[capture_slot].isCameraFeed())
         {
             if (reason) *reason = "Only Camera Feed captures can feed a projector.";
             return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
@@ -2431,8 +2443,8 @@ public:
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
         PrismProjector& projector = mProjectors[projector_slot];
-        if (LLPrismLens::validateProjectorReassignment(
-                projector, mLenses[capture_slot].mMode) !=
+        if (mLenses[capture_slot].isMedia() || LLPrismLens::validateProjectorReassignment(
+                projector, mLenses[capture_slot]) !=
             LLPrismLens::ERegistryResult::OK)
         {
             if (reason) *reason = "Only Camera Feed captures can feed a projector.";
@@ -2474,6 +2486,241 @@ public:
         return LLPrismLens::ERegistryResult::OK;
     }
 
+    LLPrismLens::ERegistryResult addMedia(LLPrismLens::CaptureHandle* handle, std::string* reason)
+    {
+        if (!LLPrismLens::mediaSlotsEnabled())
+        {
+            if (reason) *reason = "Enable VCamMediaSlotsEnabled to use media slots.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        const S32 slot = freeCaptureSlot();
+        U64 generation = 0;
+        if (slot < 0 || !allocateGeneration(generation))
+            return LLPrismLens::ERegistryResult::AT_CAPACITY;
+        PrismInstance source;
+        source.setMediaData(LLPrismLens::MediaFaceSource());
+        source.mOccupied = true;
+        source.mHandle.mId.generate();
+        source.mHandle.mGeneration = generation;
+        source.mLabel = llformat("Media %u", slot + 1);
+        source.mRuntime.mReason = "Unbound media face";
+        mLenses[slot] = source;
+        if (handle) *handle = source.mHandle;
+        ++mRevision;
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
+    bool setMediaSource(const LLPrismLens::CaptureHandle& handle,
+                        const LLPrismLens::MediaFaceSource& source, std::string* reason)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0 || !mLenses[slot].isMedia() ||
+            source.mAspect > LLPrismLens::ESourceAspect::CINEMA_239 || source.mTE < -1 ||
+            source.mTE > 255 || source.mObjectId.isNull() != (source.mTE == -1))
+        {
+            if (reason) *reason = "Invalid or stale media slot.";
+            return false;
+        }
+        PrismInstance& media = mLenses[slot];
+        const auto& old = *media.mediaData();
+        const bool replaced = old.mObjectId != source.mObjectId || old.mTE != source.mTE;
+        // A pick commits only a validated face identity. Unsupported players
+        // remain configured and report a useful status without starting them.
+        if (replaced && source.mObjectId.notNull())
+        {
+            auto* volume = dynamic_cast<LLVOVolume*>(gObjectList.findObject(source.mObjectId));
+            if (!volume || volume->isDead() || source.mTE < 0 ||
+                source.mTE >= volume->getNumTEs() || !volume->getTE(source.mTE)->getMediaData())
+            {
+                if (reason) *reason = "Pick a live prim face with media.";
+                return false;
+            }
+        }
+        media.setMediaData(source);
+        ++media.mMediaLayoutRevision;
+        if (replaced) invalidateMediaSlot(slot, "Waiting for LibVLC");
+        ++mRevision;
+        return true;
+    }
+
+    void invalidateMediaSlot(U32 slot, const std::string& reason)
+    {
+        PrismInstance& media = mLenses[slot];
+        const bool changed = media.mHasOutput || media.mMediaTexture.notNull() ||
+            media.mRuntime.mReason != reason;
+        media.mMediaTexture = nullptr;
+        media.mHasOutput = false;
+        media.mMediaCompletedSerial = 0;
+        media.mRetryAfterTime = 0.0;
+        media.mFrame.mPrepared = false;
+        media.mRuntime.mHealth = LLPrismLens::ECaptureHealth::SOURCE_OFFLINE;
+        media.mRuntime.mActivity = LLPrismLens::EActivityState::WAITING;
+        media.mRuntime.mOutput = LLPrismLens::EOutputState::EMPTY;
+        media.mRuntime.mReason = reason;
+        if (changed)
+        {
+            ++media.mMediaSourceEpoch;
+            ++mRuntimeRevision;
+            LLPrismPreviewService::instance().invalidateMedia(media.mHandle);
+        }
+    }
+
+    // No strong impl, face pointer, navigation, sizing, input or audio ownership.
+    LLViewerMediaImpl* resolveMedia(const PrismInstance& media) const
+    {
+        const auto* source = media.mediaData();
+        if (!source) return nullptr;
+        auto* volume = dynamic_cast<LLVOVolume*>(gObjectList.findObject(source->mObjectId));
+        if (!volume || volume->isDead() || source->mTE < 0 || source->mTE >= volume->getNumTEs()) return nullptr;
+        const auto* entry = volume->getTE(source->mTE)->getMediaData();
+        auto* impl = volume->getMediaImpl(source->mTE).get();
+        return entry && entry->getMediaID().notNull() && impl &&
+            impl->getMediaTextureID() == entry->getMediaID() ? impl : nullptr;
+    }
+
+    void reconcileMedia()
+    {
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        {
+            PrismInstance& media = mLenses[slot];
+            if (!media.mOccupied || !media.isMedia()) continue;
+            if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled())
+            {
+                invalidateMediaSlot(slot, "Media slots disabled");
+                gPipeline.releasePrismLensOutput(slot);
+                continue;
+            }
+            auto* impl = resolveMedia(media);
+            if (!impl || !impl->hasLibVLCSource() || !impl->mediaSlotPermitted())
+            {
+                invalidateMediaSlot(slot, !impl ? "Source missing or unbound" :
+                    !impl->getMediaPlugin() ? "Waiting for LibVLC / needs source click" :
+                    !impl->hasLibVLCSource() ? "Unsupported player: use direct video/stream URLs handled by LibVLC" :
+                    "Blocked by media policy");
+                continue;
+            }
+            const auto identity = impl->mediaImageIdentity();
+            if (media.mMediaIdentity.source != identity.source || media.mMediaIdentity.load != identity.load ||
+                (media.mMediaTexture.notNull() && media.mMediaTexture->getID() != impl->getMediaTextureID()))
+                invalidateMediaSlot(slot, "Waiting for current-load pixels");
+            media.mMediaIdentity = identity;
+            // Hold the texture only, protecting it from the inactive map purge.
+            media.mMediaTexture = LLViewerTextureManager::findMediaTexture(impl->getMediaTextureID());
+        }
+    }
+
+    void prepareMedia()
+    {
+        reconcileMedia();
+        for (PrismInstance& media : mLenses)
+        {
+            if (!media.mOccupied || !media.isMedia()) continue;
+            media.mFrame.mPrepared = false;
+            auto* impl = resolveMedia(media);
+            if (!impl || !LLPrismLens::mediaSlotsEnabled() || !impl->mediaSlotPermitted()) continue;
+            const auto image = impl->completedMediaImage();
+            if (!image.ready || !media.mMediaTexture) continue;
+            if (LLTimer::getTotalSeconds() < media.mRetryAfterTime) continue;
+            const F32 aspect = LLPrismLens::resolveSourceAspect(media.mediaData()->mAspect, image.videoWidth, image.videoHeight, image.videoSarNum, image.videoSarDen);
+            const bool layout = media.mSignalAspect != aspect || media.mMediaAcceptedLayout != media.mMediaLayoutRevision;
+            const bool pending = !media.mHasOutput || image.serial != media.mMediaCompletedSerial || layout;
+            media.mPreviewOnly = true; // slice 1 admits monitor consumption only
+            media.mAnyDisplayVisible = false;
+            media.mRuntime.mPreviewOnly = true;
+            media.mRuntime.mHealth = LLPrismLens::ECaptureHealth::READY;
+            const bool automatic = media.mediaData()->mAspect == LLPrismLens::ESourceAspect::AUTO;
+            media.mRuntime.mReason = llformat("LibVLC SDR; video %s; %s %.3f:1",
+                image.videoWidth > 0 ? llformat("%d x %d", image.videoWidth, image.videoHeight).c_str() : "unknown",
+                automatic ? (image.videoWidth > 0 ? "Auto" : "Auto: 16:9 fallback") : "override",
+                aspect);
+            media.mRuntime.mActivity = media.mHasOutput ? LLPrismLens::EActivityState::LIVE : LLPrismLens::EActivityState::WAITING;
+            if (!pending || !media.mPreviewDemanded) continue;
+            media.mFrame.mFrame = gFrameCount;
+            media.mFrame.mPrepared = true;
+            media.mFrame.mTargetWidth = aspect >= 1.f ? 512u : llmax(1u, U32(ll_round(512.f * aspect)));
+            media.mFrame.mTargetHeight = aspect >= 1.f ? llmax(1u, U32(ll_round(512.f / aspect))) : 512u;
+        }
+    }
+
+    bool copyMedia()
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam media slot copy");
+        bool pending = false;
+        for (const PrismInstance& source : mLenses)
+            pending |= source.mOccupied && source.isMedia() && source.mFrame.mPrepared;
+        if (!pending) return false;
+        const F64 now = LLTimer::getTotalSeconds();
+        updateCadenceEntitlements(now);
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        {
+            PrismInstance& media = mLenses[slot];
+            if (!media.mOccupied || !media.isMedia() || !media.mFrame.mPrepared ||
+                media.mPreviewEntitlementHz <= 0.f || now < media.mNextPreviewDueTime) continue;
+            media.mNextPreviewDueTime = now + 1.0 / media.mPreviewEntitlementHz;
+            auto* impl = resolveMedia(media);
+            if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled() || !impl || !impl->mediaSlotPermitted()) continue;
+            const auto image = impl->completedMediaImage();
+            LLGLSLShader& shader = gPrismMediaCopyProgram;
+            // Complete all fallible checks BEFORE binding/clearing the retained target.
+            if (!image.ready || !(image.identity == media.mMediaIdentity) || !media.mMediaTexture ||
+                !media.mMediaTexture->getGLTexture() || !media.mMediaTexture->getGLTexture()->getTexName() ||
+                image.usedWidth <= 0 || image.usedHeight <= 0 ||
+                image.usedWidth > image.textureWidth || image.usedHeight > image.textureHeight ||
+                !shader.isComplete() || !gPipeline.allocatePrismLensOutput(slot,
+                    media.mFrame.mTargetWidth, media.mFrame.mTargetHeight))
+            {
+                media.mRuntime.mReason = "Copy failed: source/shader/target preflight; retrying";
+                media.mRetryAfterTime = media.mNextPreviewDueTime;
+                continue;
+            }
+            shader.bind();
+            const S32 channel = shader.getTextureChannel(LLShaderMgr::DIFFUSE_MAP);
+            if (channel < 0)
+            {
+                media.mRuntime.mReason = "Copy failed: media sampler unavailable; retrying";
+                media.mRetryAfterTime = media.mNextPreviewDueTime;
+                continue;
+            }
+            GLint saved_active = 0, saved_texture = 0, saved_sampler = 0;
+            glGetIntegerv(GL_ACTIVE_TEXTURE, &saved_active);
+            // Leave LLTexUnit's cached type/name/mipmap state untouched. This
+            // level-zero copy restores the complete native unit binding too.
+            glActiveTexture(GL_TEXTURE0 + channel);
+            glGetIntegerv(GL_TEXTURE_BINDING_2D, &saved_texture);
+            glGetIntegerv(GL_SAMPLER_BINDING, &saved_sampler);
+            glBindSampler(channel, 0);
+            glBindTexture(GL_TEXTURE_2D, media.mMediaTexture->getGLTexture()->getTexName());
+            static const LLStaticHashedString contentSize("contentSize");
+            shader.uniform2i(contentSize, image.usedWidth, image.usedHeight);
+            auto& output = gPipeline.mPrismLensOutput[slot];
+            output.bindTarget();
+            glViewport(0, 0, media.mFrame.mTargetWidth, media.mFrame.mTargetHeight);
+            LLGLDisable scissor(GL_SCISSOR_TEST);
+            LLGLDisable srgb(GL_FRAMEBUFFER_SRGB);
+            LLGLDisable blend(GL_BLEND);
+            LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+            gGL.setColorMask(true, true, true, true);
+            LLVertexBuffer::unbind();
+            gGL.begin(LLRender::TRIANGLES);
+            gGL.vertex3f(-1.f, -1.f, 0.f);
+            gGL.vertex3f(3.f, -1.f, 0.f);
+            gGL.vertex3f(-1.f, 3.f, 0.f);
+            gGL.end();
+            gGL.flush();
+            output.flush();
+            glActiveTexture(GL_TEXTURE0 + channel);
+            glBindTexture(GL_TEXTURE_2D, saved_texture);
+            glBindSampler(channel, saved_sampler);
+            glActiveTexture(saved_active);
+            media.mSignalAspect = LLPrismLens::resolveSourceAspect(media.mediaData()->mAspect, image.videoWidth, image.videoHeight, image.videoSarNum, image.videoSarDen);
+            media.mMediaCompletedSerial = image.serial;
+            media.mMediaAcceptedLayout = media.mMediaLayoutRevision;
+            markProduced(slot, media.mFrame.mTargetWidth, media.mFrame.mTargetHeight);
+            ++mMediaCopies;
+        }
+        return true;
+    }
+
     LLPrismLens::ERegistryResult addCamera(LLPrismLens::CaptureHandle* handle,
                                            std::string* reason)
     {
@@ -2493,13 +2740,14 @@ public:
             return LLPrismLens::ERegistryResult::AT_CAPACITY;
         }
         PrismInstance capture;
+        capture.setCameraData(LLPrismLens::CameraPayload());
         capture.mOccupied = true;
         capture.mHandle.mId.generate();
         capture.mHandle.mGeneration = generation;
-        capture.mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
-        capture.mLabel = defaultLabel(capture.mMode, false);
-        capture.mCameraObjectId = object_id;
-        capture.mCamera.mTestPattern = false;
+        capture.cameraData()->mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
+        capture.mLabel = defaultLabel(capture.cameraData()->mMode, false);
+        capture.cameraData()->mObjectId = object_id;
+        capture.cameraData()->mSettings.mTestPattern = false;
         capture.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
         capture.mNextDueTime = LLTimer::getTotalSeconds();
         mLenses[slot] = capture;
@@ -2540,13 +2788,14 @@ public:
             return LLPrismLens::ERegistryResult::AT_CAPACITY;
         }
         PrismInstance capture;
+        capture.setCameraData(LLPrismLens::CameraPayload());
         capture.mOccupied = true;
         capture.mHandle.mId.generate();
         capture.mHandle.mGeneration = generation;
-        capture.mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
-        capture.mLabel = defaultLabel(capture.mMode, true);
-        capture.mCameraObjectId.setNull(); // objectless: virtual transform only
-        capture.mCamera = camera;
+        capture.cameraData()->mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
+        capture.mLabel = defaultLabel(capture.cameraData()->mMode, true);
+        capture.cameraData()->mObjectId.setNull(); // objectless: virtual transform only
+        capture.cameraData()->mSettings = camera;
         capture.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
         capture.mNextDueTime = LLTimer::getTotalSeconds();
         mLenses[slot] = capture;
@@ -2581,11 +2830,12 @@ public:
         }
 
         PrismInstance capture;
+        capture.setCameraData(LLPrismLens::CameraPayload());
         capture.mOccupied = true;
         capture.mHandle.mId.generate();
         capture.mHandle.mGeneration = capture_generation;
-        capture.mMode = LLPrismLens::ECaptureMode::SURFACE_LENS;
-        capture.mLabel = defaultLabel(capture.mMode, false);
+        capture.cameraData()->mMode = LLPrismLens::ECaptureMode::SURFACE_LENS;
+        capture.mLabel = defaultLabel(capture.cameraData()->mMode, false);
         capture.mObjectId = object_id;
         capture.mTE = te;
         capture.mDisplayCount = 1;
@@ -2692,9 +2942,11 @@ public:
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
         PrismDisplay& display = mDisplays[display_slot];
-        if (mLenses[new_capture_slot].mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (!mLenses[new_capture_slot].isCameraFeed())
         {
-            if (reason) *reason = "A surface lens owns exactly one display face.";
+            if (reason) *reason = mLenses[new_capture_slot].isMedia()
+                ? "Media output routing is unavailable."
+                : "A surface lens owns exactly one display face.";
             return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         }
         if (isSurfaceLensAperture(display))
@@ -2765,9 +3017,11 @@ public:
             if (reason) *reason = "That capture no longer exists.";
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
-        if (mLenses[capture_slot].mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (!mLenses[capture_slot].isCameraFeed())
         {
-            if (reason) *reason = "A surface lens owns exactly one display face.";
+            if (reason) *reason = mLenses[capture_slot].isMedia()
+                ? "Media output routing is unavailable."
+                : "A surface lens owns exactly one display face.";
             return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         }
         if (displayCount() >= LLPrismLens::MAX_DISPLAY_BINDINGS)
@@ -2891,6 +3145,8 @@ public:
             gPipeline.releasePrismLensOutput(slot);
             PrismInstance& lens = mLenses[slot];
             lens.mHasOutput = false;
+            lens.mMediaTexture = nullptr;
+            lens.mMediaCompletedSerial = 0;
             lens.mOutputWidth = 0;
             lens.mOutputHeight = 0;
             lens.mLastRenderedFrame = 0;
@@ -2908,6 +3164,7 @@ public:
         for (PrismProjector& projector : mProjectors)
         {
             projector.mRuntime.mDemanded = false;
+            releaseProjectorVolumetrics(projector);
         }
         gPipeline.releasePrismProjectorFeeds();
         gPipeline.releasePrismLensBuffers();
@@ -2973,6 +3230,14 @@ public:
         return count() != 0;
     }
 
+    U32 cameraCount() const
+    {
+        U32 result = 0;
+        for (const PrismInstance& source : mLenses)
+            if (source.mOccupied && source.cameraData()) ++result;
+        return result;
+    }
+
     U32 count() const
     {
         U32 result = 0;
@@ -2989,7 +3254,7 @@ public:
     {
         designation = LLPrismLens::Designation();
         if (slot >= LLPrismLens::MAX_LENSES || !mLenses[slot].mOccupied ||
-            mLenses[slot].mMode != LLPrismLens::ECaptureMode::SURFACE_LENS)
+            !mLenses[slot].isSurfaceLens())
         {
             return false;
         }
@@ -3067,6 +3332,13 @@ public:
                 }
                 runtime_changed = true;
             }
+            // Demand can be cleared and renewed between registry updates. The
+            // service then forgets its serial even if mPreviewDemanded stayed
+            // true. Re-offer retained media output (idempotently), without a new
+            // decode/copy or a fabricated production sample/serial.
+            if (capture.isMedia() && demanded && capture.mHasOutput)
+                previews.notePublication(capture.mHandle, capture.mPublicationSerial,
+                                         capture.mOutputPreviewQuality);
             capture.mPreviewDemanded = demanded;
         }
         if (runtime_changed) ++mRuntimeRevision;
@@ -3080,7 +3352,8 @@ public:
             return false;
         }
 
-        if (mLenses[slot].mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (mLenses[slot].isMedia()) return false;
+        if (mLenses[slot].isCameraFeed())
         {
             const PrismInstance& capture = mLenses[slot];
             if (!LLPrismPreviewPolicy::captureWorkRequired(
@@ -3430,7 +3703,7 @@ public:
         }
 
         const PrismInstance& capture = mLenses[display.mCaptureSlot];
-        if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS &&
+        if (capture.isSurfaceLens() &&
             (capture.mObjectId != display.mObjectId || capture.mTE != display.mTE))
         {
             display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::INVALID;
@@ -3657,7 +3930,7 @@ public:
             capture.mRuntime.mActivity = LLPrismLens::EActivityState::WAITING;
         }
 
-        LLViewerObject* source_object = gObjectList.findObject(capture.mCameraObjectId);
+        LLViewerObject* source_object = gObjectList.findObject(capture.cameraData()->mObjectId);
         LLVOVolume* source = source_object
             ? dynamic_cast<LLVOVolume*>(source_object) : nullptr;
         // A virtual (prim-free) camera derives everything from its stored
@@ -3665,15 +3938,15 @@ public:
         // effective FOV is always the fixed vertical FOV (FOLLOW_PROJECTOR is
         // forbidden -- there is no spotlight object to read). The non-virtual
         // path below is byte-identical to before.
-        F32 vertical_fov = capture.mCamera.mFixedVerticalFovRad;
-        if (capture.mCamera.mTestPattern)
+        F32 vertical_fov = capture.cameraData()->mSettings.mFixedVerticalFovRad;
+        if (capture.cameraData()->mSettings.mTestPattern)
         {
             // The local generator is intentionally objectless.
         }
-        else if (capture.mCamera.mVirtual)
+        else if (capture.cameraData()->mSettings.mVirtual)
         {
-            if (!capture.mCamera.mVirtualPos.isFinite() ||
-                !capture.mCamera.mVirtualRot.isFinite())
+            if (!capture.cameraData()->mSettings.mVirtualPos.isFinite() ||
+                !capture.cameraData()->mSettings.mVirtualRot.isFinite())
             {
                 capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::INVALID_SOURCE;
                 capture.mRuntime.mReason = "Virtual camera transform is not finite.";
@@ -3682,7 +3955,7 @@ public:
         }
         else
         {
-            if (capture.mCameraObjectId.isNull())
+            if (capture.cameraData()->mObjectId.isNull())
             {
                 capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::UNBOUND_SOURCE;
                 capture.mRuntime.mReason = "No camera source is bound.";
@@ -3703,7 +3976,7 @@ public:
                 capture.mRuntime.mReason = "Camera source is no longer a finite, static, non-HUD volume.";
                 return false;
             }
-            if (capture.mCamera.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
+            if (capture.cameraData()->mSettings.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
             {
                 LLVector3 render_spot_params;
                 if (!projectorRenderParams(source, render_spot_params))
@@ -3725,7 +3998,7 @@ public:
         capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::READY;
         capture.mRuntime.mReason.clear();
         capture.mRuntime.mEffectiveVerticalFovRad = vertical_fov;
-        capture.mRuntime.mEffectiveFarClip = llmin(capture.mCamera.mFarClip,
+        capture.mRuntime.mEffectiveFarClip = llmin(capture.cameraData()->mSettings.mFarClip,
                                                    main_camera.getFar());
 
         if (!capture.mAnyDisplayVisible && capture.mGateWatchFrames > 0 &&
@@ -3755,9 +4028,9 @@ public:
             std::memcpy(frame.mMainViewport, viewport, sizeof(frame.mMainViewport));
             makeDebugRect(viewport, frame.mDebugRect);
             frame.mResolutionScale = 1.f;
-            frame.mTargetWidth = capture.mCamera.mTestPattern
+            frame.mTargetWidth = capture.cameraData()->mSettings.mTestPattern
                 ? TEST_PATTERN_SIZE : LLPrismPreviewPolicy::WIDTH;
-            frame.mTargetHeight = capture.mCamera.mTestPattern
+            frame.mTargetHeight = capture.cameraData()->mSettings.mTestPattern
                 ? TEST_PATTERN_SIZE : LLPrismPreviewPolicy::HEIGHT;
             frame.mPrepared = true;
             capture.mPreviewOnly = true;
@@ -3772,8 +4045,8 @@ public:
 
         // One canonical aspect belongs to the producer. Sibling faces never
         // allocate additional targets; they apply Fit/Fill/Stretch at composite.
-        const F32 aspect = capture.mCamera.mTestPattern
-            ? 1.f : capture.mCamera.mOutputAspect;
+        const F32 aspect = capture.cameraData()->mSettings.mTestPattern
+            ? 1.f : capture.cameraData()->mSettings.mOutputAspect;
         F32 ideal_width = static_cast<F32>(required_width);
         F32 ideal_height = static_cast<F32>(required_height);
         if (ideal_width / ideal_height < aspect)
@@ -3799,11 +4072,11 @@ public:
         std::memcpy(frame.mMainViewport, viewport, sizeof(frame.mMainViewport));
         makeDebugRect(viewport, frame.mDebugRect);
         frame.mResolutionScale = prismAppliedResolutionScale();
-        frame.mTargetWidth = capture.mCamera.mTestPattern
+        frame.mTargetWidth = capture.cameraData()->mSettings.mTestPattern
             ? TEST_PATTERN_SIZE
             : llclamp(static_cast<U32>(ll_round(ideal_width)),
                       MIN_TARGET_EXTENT, MAX_TARGET_EXTENT);
-        frame.mTargetHeight = capture.mCamera.mTestPattern
+        frame.mTargetHeight = capture.cameraData()->mSettings.mTestPattern
             ? TEST_PATTERN_SIZE
             : llclamp(static_cast<U32>(ll_round(ideal_height)),
                       MIN_TARGET_EXTENT, MAX_TARGET_EXTENT);
@@ -4050,10 +4323,10 @@ public:
         ++mPerformanceRevision;
     }
 
-    S32 chooseRenderSlot()
+    S32 chooseRenderSlot(bool cadence_prepared = false)
     {
         const F64 now = LLTimer::getTotalSeconds();
-        updateCadenceEntitlements(now);
+        if (!cadence_prepared) updateCadenceEntitlements(now);
         closeAttemptWindow(now);
         const bool every_frame = prismManualEveryFrameMode();
         // Admission is a presented-frame token for both visible and preview
@@ -4073,7 +4346,7 @@ public:
             {
                 const U32 slot = (cursor + offset) % LLPrismLens::MAX_CAPTURES;
                 const PrismInstance& capture = mLenses[slot];
-                if (!capture.mOccupied || capture.mPreviewOnly != preview_tier ||
+                if (!capture.mOccupied || !capture.cameraData() || capture.mPreviewOnly != preview_tier ||
                     !capture.mFrame.mPrepared || now < capture.mRetryAfterTime)
                 {
                     continue;
@@ -4211,7 +4484,11 @@ public:
                         sizeof(lens.mOutputUvScale));
             std::memcpy(lens.mOutputUvOffset, lens.mFrame.mCompositeUvOffset,
                         sizeof(lens.mOutputUvOffset));
-            mLastRenderedSlot = static_cast<S32>(slot);
+            if (lens.cameraData())
+            {
+                mLastRenderedSlot = static_cast<S32>(slot);
+                ++mCameraRenders;
+            }
             ++mRuntimeRevision;
         }
     }
@@ -4263,7 +4540,7 @@ public:
     {
         return mActiveSlot >= 0 &&
             mLenses[mActiveSlot].mOccupied &&
-            mLenses[mActiveSlot].mMode == LLPrismLens::ECaptureMode::SURFACE_LENS;
+            mLenses[mActiveSlot].isSurfaceLens();
     }
 
     void setActiveSlot(U32 slot)
@@ -4318,7 +4595,7 @@ public:
         selectedObjectIdentity(object_id);
         const S32 slot = findCapture(handle);
         PrismInstance& capture = mLenses[slot];
-        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (!capture.isCameraFeed())
         {
             if (reason) *reason = "Only Camera Feed captures have a source camera.";
             return false;
@@ -4349,10 +4626,10 @@ public:
                 }
             }
         }
-        capture.mCameraObjectId = object_id;
-        capture.mCamera.mVirtual = false;
-        capture.mCamera.mTestPattern = false;
-        capture.mCamera.mBonePov.mEnabled = false;
+        capture.cameraData()->mObjectId = object_id;
+        capture.cameraData()->mSettings.mVirtual = false;
+        capture.cameraData()->mSettings.mTestPattern = false;
+        capture.cameraData()->mSettings.mBonePov.mEnabled = false;
         suppressOutput(static_cast<U32>(slot));
         ++mRevision;
         if (reason) reason->clear();
@@ -4458,7 +4735,7 @@ public:
             return false;
         }
         PrismInstance& capture = mLenses[slot];
-        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (!capture.isCameraFeed())
         {
             if (reason) *reason = "Surface Lens captures do not use camera optics.";
             return false;
@@ -4483,7 +4760,7 @@ public:
             corrected.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
         {
             LLVOVolume* source = dynamic_cast<LLVOVolume*>(
-                gObjectList.findObject(capture.mCameraObjectId));
+                gObjectList.findObject(capture.cameraData()->mObjectId));
             LLVector3 render_spot_params;
             if (source && !projectorRenderParams(source, render_spot_params))
             {
@@ -4491,7 +4768,7 @@ public:
                 return false;
             }
         }
-        capture.mCamera = corrected;
+        capture.cameraData()->mSettings = corrected;
         suppressOutput(static_cast<U32>(slot));
         ++mRevision;
         if (reason) reason->clear();
@@ -4509,19 +4786,19 @@ public:
             return false;
         }
         PrismInstance& capture = mLenses[slot];
-        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
-            !capture.mCamera.mVirtual)
+        if (!capture.isCameraFeed() ||
+            !capture.cameraData()->mSettings.mVirtual)
         {
             if (reason) *reason = "Bone POV runtime transforms require a virtual Camera Feed.";
             return false;
         }
-        if (capture.mCamera.mFovMode != LLPrismLens::EFovMode::FIXED)
+        if (capture.cameraData()->mSettings.mFovMode != LLPrismLens::EFovMode::FIXED)
         {
             if (reason) *reason = "A virtual camera must use fixed vertical FOV.";
             return false;
         }
 
-        LLPrismLens::CameraSettings candidate = capture.mCamera;
+        LLPrismLens::CameraSettings candidate = capture.cameraData()->mSettings;
         candidate.mVirtualPos = pos;
         candidate.mVirtualRot = rot;
         candidate.mFixedVerticalFovRad = vertical_fov_rad;
@@ -4533,9 +4810,9 @@ public:
         // Runtime-only: do not suppress retained output and do not bump the
         // configuration revision. Capture prep republishes the fixed FOV into
         // mEffectiveVerticalFovRad every frame.
-        capture.mCamera.mVirtualPos = pos;
-        capture.mCamera.mVirtualRot = rot;
-        capture.mCamera.mFixedVerticalFovRad = vertical_fov_rad;
+        capture.cameraData()->mSettings.mVirtualPos = pos;
+        capture.cameraData()->mSettings.mVirtualRot = rot;
+        capture.cameraData()->mSettings.mFixedVerticalFovRad = vertical_fov_rad;
         ++mRuntimeRevision;
         if (reason) reason->clear();
         return true;
@@ -4552,19 +4829,19 @@ public:
             return false;
         }
         PrismInstance& capture = mLenses[slot];
-        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
-            !capture.mCamera.mVirtual)
+        if (!capture.isCameraFeed() ||
+            !capture.cameraData()->mSettings.mVirtual)
         {
             if (reason) *reason = "Bone POV runtime positions require a virtual Camera Feed.";
             return false;
         }
-        if (capture.mCamera.mFovMode != LLPrismLens::EFovMode::FIXED)
+        if (capture.cameraData()->mSettings.mFovMode != LLPrismLens::EFovMode::FIXED)
         {
             if (reason) *reason = "A virtual camera must use fixed vertical FOV.";
             return false;
         }
 
-        LLPrismLens::CameraSettings candidate = capture.mCamera;
+        LLPrismLens::CameraSettings candidate = capture.cameraData()->mSettings;
         candidate.mVirtualPos = pos;
         candidate.mFixedVerticalFovRad = vertical_fov_rad;
         if (!validCameraSettings(candidate, reason))
@@ -4573,8 +4850,8 @@ public:
         }
 
         // Deliberately omit mVirtualRot: stabilized aim is operator-owned.
-        capture.mCamera.mVirtualPos = pos;
-        capture.mCamera.mFixedVerticalFovRad = vertical_fov_rad;
+        capture.cameraData()->mSettings.mVirtualPos = pos;
+        capture.cameraData()->mSettings.mFixedVerticalFovRad = vertical_fov_rad;
         ++mRuntimeRevision;
         if (reason) reason->clear();
         return true;
@@ -4619,8 +4896,8 @@ public:
             return false;
         }
         const std::string label = LLPrismLens::normalizeCaptureLabel(
-            value, defaultLabel(mLenses[slot].mMode,
-                                mLenses[slot].mCamera.mVirtual, slot));
+            value, mLenses[slot].isMedia() ? "Media" : defaultLabel(mLenses[slot].cameraData()->mMode,
+                                mLenses[slot].cameraData()->mSettings.mVirtual, slot));
         if (mLenses[slot].mLabel == label)
         {
             if (reason) reason->clear();
@@ -4842,8 +5119,7 @@ public:
                 return false;
             }
             const S32 capture_slot = findCaptureById(armed.mCaptureId);
-            if (capture_slot >= 0 && mLenses[capture_slot].mMode !=
-                    LLPrismLens::ECaptureMode::CAMERA_FEED)
+            if (capture_slot >= 0 && !mLenses[capture_slot].isCameraFeed())
             {
                 if (reason) *reason = "Only Camera Feed captures can be armed.";
                 return false;
@@ -4976,13 +5252,13 @@ public:
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
         const PrismInstance& capture = mLenses[slot];
-        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+        if (!capture.isCameraFeed())
         {
             if (reason) *reason = "Only a Camera Feed capture can be armed.";
             return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         }
         LLViewerObject* source_object =
-            gObjectList.findObject(capture.mCameraObjectId);
+            gObjectList.findObject(capture.cameraData()->mObjectId);
         if (source_object &&
             (source_object->isAvatar() || source_object->isAttachment()))
         {
@@ -4993,7 +5269,7 @@ public:
         {
             const LLPrismLens::ERegistryResult feedback =
                 LLPrismLens::gateFeedbackResult(
-                    capture.mCameraObjectId, display.mObjectId,
+                    capture.cameraData()->mObjectId, display.mObjectId,
                     display.mOccupied && display.mGateSubscribed);
             if (feedback != LLPrismLens::ERegistryResult::OK)
             {
@@ -5211,7 +5487,7 @@ public:
                 const S32 capture_slot = findCaptureById(armed.mCaptureId);
                 if (capture_slot >= 0 &&
                     LLPrismLens::gateFeedbackResult(
-                        mLenses[capture_slot].mCameraObjectId,
+                        mLenses[capture_slot].cameraData()->mObjectId,
                         display.mObjectId, true) !=
                         LLPrismLens::ERegistryResult::OK)
                 {
@@ -5232,10 +5508,11 @@ public:
                     if (reason) *reason = "That capture no longer exists.";
                     return LLPrismLens::ERegistryResult::STALE_HANDLE;
                 }
-                if (mLenses[requested_slot].mMode !=
-                    LLPrismLens::ECaptureMode::CAMERA_FEED)
+                if (!mLenses[requested_slot].isCameraFeed())
                 {
-                    if (reason) *reason = "A surface lens owns exactly one display face.";
+                    if (reason) *reason = mLenses[requested_slot].isMedia()
+                        ? "Media slots cannot subscribe to the camera gate."
+                        : "A surface lens owns exactly one display face.";
                     return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
                 }
                 fixed_slot = requested_slot;
@@ -5243,8 +5520,7 @@ public:
             if (fixed_slot < 0 &&
                 display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
                 mLenses[display.mCaptureSlot].mOccupied &&
-                mLenses[display.mCaptureSlot].mMode ==
-                    LLPrismLens::ECaptureMode::CAMERA_FEED)
+                mLenses[display.mCaptureSlot].isCameraFeed())
             {
                 fixed_slot = static_cast<S32>(display.mCaptureSlot);
             }
@@ -5254,8 +5530,7 @@ public:
                      capture_slot < LLPrismLens::MAX_CAPTURES; ++capture_slot)
                 {
                     if (mLenses[capture_slot].mOccupied &&
-                        mLenses[capture_slot].mMode ==
-                            LLPrismLens::ECaptureMode::CAMERA_FEED)
+                        mLenses[capture_slot].isCameraFeed())
                     {
                         fixed_slot = static_cast<S32>(capture_slot);
                         break;
@@ -5354,21 +5629,21 @@ public:
         }
 
         const PrismInstance& capture = mLenses[slot];
-        if (capture.mCamera.mVirtual)
+        if (capture.cameraData()->mSettings.mVirtual)
         {
-            mGateEyeCache = capture.mCamera.mVirtualPos;
-            mGateRotationCache = capture.mCamera.mVirtualRot;
+            mGateEyeCache = capture.cameraData()->mSettings.mVirtualPos;
+            mGateRotationCache = capture.cameraData()->mSettings.mVirtualRot;
         }
         else
         {
-            LLViewerObject* obj = gObjectList.findObject(capture.mCameraObjectId);
+            LLViewerObject* obj = gObjectList.findObject(capture.cameraData()->mObjectId);
             if (!obj || obj->isDead())
             {
                 return false;
             }
             mGateRotationCache = obj->getRenderRotation();
             mGateEyeCache = obj->getRenderPosition() +
-                capture.mCamera.mLocalEyeOffset * mGateRotationCache;
+                capture.cameraData()->mSettings.mLocalEyeOffset * mGateRotationCache;
         }
         mGateEyeCacheValid = mGateEyeCache.isFinite();
         if (mGateEyeCacheValid)
@@ -5546,7 +5821,7 @@ public:
         }
         const U32 capture_slot = display.mCaptureSlot;
         PrismInstance& capture = mLenses[capture_slot];
-        if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+        if (capture.isSurfaceLens())
         {
             if (reason) *reason = "Remove the Surface Lens capture to remove its required display.";
             return false;
@@ -5665,7 +5940,9 @@ public:
         // on the same light retains the existing override and its auto marker.
         // Quarantine is temporary: keep ownership until a live replacement is
         // resolved, or until the binding is explicitly removed.
-        if (!quarantined) syncProjectorVolumetrics(projector, volume);
+        const bool media = projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES && mLenses[projector.mCaptureSlot].isMedia();
+        if (!prismEnabled() || (media && !LLPrismLens::mediaSlotsEnabled())) releaseProjectorVolumetrics(projector);
+        else if (!quarantined) syncProjectorVolumetrics(projector, volume, media);
         const bool changed = projector.mRuntime.mHealth != health ||
             projector.mRuntime.mReason != reason ||
             was_quarantined != quarantined || projector.mQuarantineReason != reason ||
@@ -5791,13 +6068,14 @@ public:
             projector.mCaptureSlot >= LLPrismLens::MAX_CAPTURES)
             return false;
         PrismInstance& capture = mLenses[projector.mCaptureSlot];
-        if (!capture.mOccupied ||
+        if (!capture.mOccupied || capture.isMedia() ||
             capture.mHandle.mGeneration != projector.mCaptureGeneration ||
             !capture.mHasOutput || capture.mOutputPreviewQuality ||
             !gPipeline.mPrismLensOutput[projector.mCaptureSlot].isComplete())
             return false;
         feed.mProjector = projector.mHandle;
         feed.mCapture = capture.mHandle;
+        feed.mSourceKind = capture.sourceKind();
         feed.mOutput = &gPipeline.mPrismLensOutput[projector.mCaptureSlot];
         feed.mOutputWidth = capture.mOutputWidth;
         feed.mOutputHeight = capture.mOutputHeight;
@@ -5808,8 +6086,8 @@ public:
         feed.mGeneration = capture.mPublicationSerial;
         feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
         if (!(feed.mCameraVerticalFovRad > 0.f))
-            feed.mCameraVerticalFovRad = capture.mCamera.mFixedVerticalFovRad;
-        feed.mCameraAspect = capture.mCamera.mOutputAspect;
+            feed.mCameraVerticalFovRad = capture.cameraData()->mSettings.mFixedVerticalFovRad;
+        feed.mCameraAspect = capture.cameraData()->mSettings.mOutputAspect;
         feed.mSettings = projector.mSettings;
         return true;
     }
@@ -5843,11 +6121,13 @@ public:
             if (!capture.mOccupied ||
                 capture.mHandle.mGeneration != projector.mCaptureGeneration)
                 return true;
+            if (capture.isMedia()) return false;
             feed.mCapture = capture.mHandle;
+            feed.mSourceKind = capture.sourceKind();
             feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
             if (!(feed.mCameraVerticalFovRad > 0.f))
-                feed.mCameraVerticalFovRad = capture.mCamera.mFixedVerticalFovRad;
-            feed.mCameraAspect = capture.mCamera.mOutputAspect;
+                feed.mCameraVerticalFovRad = capture.cameraData()->mSettings.mFixedVerticalFovRad;
+            feed.mCameraAspect = capture.cameraData()->mSettings.mOutputAspect;
             if (!capture.mHasOutput || capture.mOutputPreviewQuality ||
                 !gPipeline.mPrismLensOutput[projector.mCaptureSlot].isComplete())
                 return true;
@@ -5919,9 +6199,7 @@ public:
         record.mCapture.mSlot = static_cast<U32>(slot);
         record.mCapture.mHandle = capture.mHandle;
         record.mCapture.mLabel = capture.mLabel;
-        record.mCapture.mMode = capture.mMode;
-        record.mCapture.mCameraObjectId = capture.mCameraObjectId;
-        record.mCapture.mCamera = capture.mCamera;
+        record.mCapture.copySourceData(capture);
         record.mCapture.mRate = capture.mRate;
         record.mCapture.mRuntime = capture.mRuntime;
         record.mCapture.mDisplayCount = capture.mDisplayCount;
@@ -5976,7 +6254,7 @@ public:
                                 std::string* reason)
     {
         const LLPrismLens::CaptureDefinition& definition = record.mCapture;
-        if (definition.mSlot >= LLPrismLens::MAX_CAPTURES ||
+        if (!definition.isCameraFeed() || definition.mSlot >= LLPrismLens::MAX_CAPTURES ||
             findCaptureById(definition.mHandle.mId) >= 0 ||
             count() >= LLPrismLens::MAX_CAPTURES)
         {
@@ -6020,7 +6298,7 @@ public:
             }
             if (!display.mSettings.mVirtual)
             {
-                if (definition.mCameraObjectId == display.mDisplayObjectId)
+                if (definition.cameraData()->mObjectId == display.mDisplayObjectId)
                 {
                     if (reason) *reason = "A camera source cannot display its own feed.";
                     return false;
@@ -6051,9 +6329,7 @@ public:
         capture.mOccupied = true;
         capture.mHandle = definition.mHandle;
         capture.mLabel = definition.mLabel;
-        capture.mMode = definition.mMode;
-        capture.mCameraObjectId = definition.mCameraObjectId;
-        capture.mCamera = definition.mCamera;
+        capture.copySourceData(definition);
         capture.mRate = definition.mRate;
         capture.mRuntime = definition.mRuntime;
         capture.mNextDueTime = LLTimer::getTotalSeconds();
@@ -6106,7 +6382,7 @@ public:
             mDisplays[freeDisplaySlot()] = display;
             ++mLenses[restore_slot].mDisplayCount;
             mNextGeneration = llmax(mNextGeneration, source.mHandle.mGeneration + 1);
-            if (definition.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+            if (definition.isSurfaceLens())
             {
                 mLenses[restore_slot].mObjectId = source.mDisplayObjectId;
                 mLenses[restore_slot].mTE = source.mDisplayTextureEntry;
@@ -6188,13 +6464,16 @@ public:
         {
             const PrismInstance& capture = mLenses[slot];
             if (!capture.mOccupied) continue;
-            LLPrismLens::CaptureDefinition& out = result.mCaptures[result.mCaptureCount++];
+            LLPrismLens::CaptureDefinition& out = result.mCaptures[result.mSlotCount++];
+            if (capture.cameraData()) ++result.mCaptureCount;
             out.mSlot = slot;
             out.mHandle = capture.mHandle;
             out.mLabel = capture.mLabel;
-            out.mMode = capture.mMode;
-            out.mCameraObjectId = capture.mCameraObjectId;
-            out.mCamera = capture.mCamera;
+            out.copySourceData(capture);
+            out.mSignalAspect = capture.isMedia() ? capture.mSignalAspect :
+                capture.cameraData()->mSettings.mOutputAspect;
+            out.mSourceEpoch = capture.mMediaSourceEpoch;
+            out.mAcceptedSerial = capture.mPublicationSerial;
             out.mRate = capture.mRate;
             out.mRuntime = capture.mRuntime;
             out.mRuntime.mHasOutput = capture.mHasOutput;
@@ -6259,6 +6538,8 @@ public:
         const PrismAdaptiveController& controller = prismAdaptiveController();
         const F32 cadence_factor = adaptive ? controller.cadenceFactor() : 1.f;
         LLPrismLens::PerformanceSnapshot result;
+        result.mCameraRenderCount = mCameraRenders;
+        result.mMediaCopyCount = mMediaCopies;
         result.mRevision = mPerformanceRevision;
         result.mAdaptiveEnabled = adaptive;
         result.mRequestedProtectedMainFps = prismProtectedMainFps();
@@ -6381,61 +6662,72 @@ public:
             LLSD item = LLSD::emptyMap();
             item["capture_id"] = capture.mHandle.mId;
             item["label"] = capture.mLabel;
-            item["mode"] = capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED
+            if (capture.isMedia())
+            {
+                item["source_kind"] = "media_face";
+                item["source_object_id"] = capture.mediaData()->mObjectId;
+                item["source_te"] = capture.mediaData()->mTE;
+                item["source_aspect"] = static_cast<S32>(capture.mediaData()->mAspect);
+                item["output_rate_mode"] = capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS ? "target_fps" : "automatic";
+                item["target_output_fps"] = capture.mRate.mTargetFps;
+                result["prism_captures"].append(item);
+                continue;
+            }
+            item["mode"] = capture.isCameraFeed()
                 ? "camera_feed" : "surface_lens";
             item["output_rate_mode"] =
                 capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
                     ? "target_fps" : "automatic";
             item["target_output_fps"] = capture.mRate.mTargetFps;
-            if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+            if (capture.isCameraFeed())
             {
-                item["camera_id"] = capture.mCameraObjectId;
-                item["fov_mode"] = capture.mCamera.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR
+                item["camera_id"] = capture.cameraData()->mObjectId;
+                item["fov_mode"] = capture.cameraData()->mSettings.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR
                     ? "follow_projector" : "fixed";
-                item["fixed_vertical_fov_radians"] = capture.mCamera.mFixedVerticalFovRad;
-                item["near_clip"] = capture.mCamera.mNearClip;
-                item["far_clip"] = capture.mCamera.mFarClip;
+                item["fixed_vertical_fov_radians"] = capture.cameraData()->mSettings.mFixedVerticalFovRad;
+                item["near_clip"] = capture.cameraData()->mSettings.mNearClip;
+                item["far_clip"] = capture.cameraData()->mSettings.mFarClip;
                 LLSD offset = LLSD::emptyArray();
-                offset.append(capture.mCamera.mLocalEyeOffset.mV[VX]);
-                offset.append(capture.mCamera.mLocalEyeOffset.mV[VY]);
-                offset.append(capture.mCamera.mLocalEyeOffset.mV[VZ]);
+                offset.append(capture.cameraData()->mSettings.mLocalEyeOffset.mV[VX]);
+                offset.append(capture.cameraData()->mSettings.mLocalEyeOffset.mV[VY]);
+                offset.append(capture.cameraData()->mSettings.mLocalEyeOffset.mV[VZ]);
                 item["local_eye_offset"] = offset;
-                item["output_aspect"] = capture.mCamera.mOutputAspect;
-                item["chromatic_aberration"] = capture.mCamera.mOptics.mChromaticAberration;
-                item["film_grain"] = capture.mCamera.mOptics.mFilmGrain;
-                item["crt_scanlines"] = capture.mCamera.mOptics.mCRTScanlines;
-                item["exposure_bias"] = capture.mCamera.mOptics.mExposureBias;
+                item["output_aspect"] = capture.cameraData()->mSettings.mOutputAspect;
+                item["chromatic_aberration"] = capture.cameraData()->mSettings.mOptics.mChromaticAberration;
+                item["film_grain"] = capture.cameraData()->mSettings.mOptics.mFilmGrain;
+                item["crt_scanlines"] = capture.cameraData()->mSettings.mOptics.mCRTScanlines;
+                item["exposure_bias"] = capture.cameraData()->mSettings.mOptics.mExposureBias;
                 // Render-only camera guide (frustum gizmo). Optional on read so
                 // pre-guide scenes round-trip clean; absent keys keep defaults.
-                item["show_guide"]       = capture.mCamera.mShowGuide;
-                item["guide_thirds"]     = capture.mCamera.mGuideThirds;
-                item["guide_uproll"]     = capture.mCamera.mGuideUpRoll;
-                item["guide_crosshair"]  = capture.mCamera.mGuideCrosshair;
-                item["guide_clipmarkers"] = capture.mCamera.mGuideClipMarkers;
+                item["show_guide"]       = capture.cameraData()->mSettings.mShowGuide;
+                item["guide_thirds"]     = capture.cameraData()->mSettings.mGuideThirds;
+                item["guide_uproll"]     = capture.cameraData()->mSettings.mGuideUpRoll;
+                item["guide_crosshair"]  = capture.cameraData()->mSettings.mGuideCrosshair;
+                item["guide_clipmarkers"] = capture.cameraData()->mSettings.mGuideClipMarkers;
                 // Prim-free virtual camera. Optional on read so pre-virtual
                 // scenes round-trip clean. camera_id above is already null for a
                 // virtual capture (a legal persisted state), so it round-trips.
                 // No quat<->LLSD helper exists here; hand-serialize pos (3-array)
                 // and rot (4-array x,y,z,w), mirroring local_eye_offset above.
-                item["virtual"] = capture.mCamera.mVirtual;
-                item["test_pattern"] = capture.mCamera.mTestPattern;
+                item["virtual"] = capture.cameraData()->mSettings.mVirtual;
+                item["test_pattern"] = capture.cameraData()->mSettings.mTestPattern;
                 LLSD virtual_pos = LLSD::emptyArray();
-                virtual_pos.append(capture.mCamera.mVirtualPos.mV[VX]);
-                virtual_pos.append(capture.mCamera.mVirtualPos.mV[VY]);
-                virtual_pos.append(capture.mCamera.mVirtualPos.mV[VZ]);
+                virtual_pos.append(capture.cameraData()->mSettings.mVirtualPos.mV[VX]);
+                virtual_pos.append(capture.cameraData()->mSettings.mVirtualPos.mV[VY]);
+                virtual_pos.append(capture.cameraData()->mSettings.mVirtualPos.mV[VZ]);
                 item["virtual_pos"] = virtual_pos;
                 LLSD virtual_rot = LLSD::emptyArray();
-                virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VX]);
-                virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VY]);
-                virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VZ]);
-                virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VS]);
+                virtual_rot.append(capture.cameraData()->mSettings.mVirtualRot.mQ[VX]);
+                virtual_rot.append(capture.cameraData()->mSettings.mVirtualRot.mQ[VY]);
+                virtual_rot.append(capture.cameraData()->mSettings.mVirtualRot.mQ[VZ]);
+                virtual_rot.append(capture.cameraData()->mSettings.mVirtualRot.mQ[VS]);
                 item["virtual_rot"] = virtual_rot;
 
                 // Optional skeleton attachment. This additive sub-map rides the
                 // existing prism_captures Director scene round-trip; there is no
                 // scene-version or global-setting dependency.
                 const LLPrismLens::BonePovSettings& bone_settings =
-                    capture.mCamera.mBonePov;
+                    capture.cameraData()->mSettings.mBonePov;
                 LLSD bone = LLSD::emptyMap();
                 bone["enabled"] = bone_settings.mEnabled;
                 switch (bone_settings.mAnchorSlot)
@@ -6677,6 +6969,8 @@ public:
         {
             LLUUID mId;
             std::string mLabel;
+            bool mIsMedia = false;
+            LLPrismLens::MediaFaceSource mMedia;
             LLPrismLens::ECaptureMode mMode = LLPrismLens::ECaptureMode::SURFACE_LENS;
             LLUUID mCameraId;
             LLPrismLens::CameraSettings mCamera;
@@ -6779,7 +7073,11 @@ public:
              it != captures_data.endArray(); ++it)
         {
             const LLSD& item = *it;
-            if (!item.isMap() || !item.has("capture_id") || !item.has("mode") ||
+            const bool media_kind = item.has("source_kind") && item["source_kind"].asString() == "media_face";
+            if (item.has("source_kind") && (!item["source_kind"].isString() ||
+                (!media_kind && item["source_kind"].asString() != "camera")))
+                return fail("Unknown Prism source kind.");
+            if (!item.isMap() || !item.has("capture_id") || (!media_kind && !item.has("mode")) ||
                 !item.has("output_rate_mode") || !item.has("target_output_fps"))
             {
                 return fail("A Prism capture is missing required fields.");
@@ -6790,8 +7088,10 @@ public:
             {
                 return fail("Prism capture IDs must be nonnull and unique.");
             }
+            parsed.mIsMedia = media_kind;
             const std::string mode = item["mode"].asString();
-            if (mode == "camera_feed") parsed.mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
+            if (media_kind) {} // no camera mode is read or defaulted for media
+            else if (mode == "camera_feed") parsed.mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
             else if (mode == "surface_lens") parsed.mMode = LLPrismLens::ECaptureMode::SURFACE_LENS;
             else return fail("Unknown Prism capture mode.");
             const std::string rate_mode = item["output_rate_mode"].asString();
@@ -6809,6 +7109,25 @@ public:
                 parsed.mRate.mTargetFps < 1.f || parsed.mRate.mTargetFps > 30.f)
             {
                 return fail("Prism target_output_fps must be finite and between 1 and 30.");
+            }
+            if (media_kind)
+            {
+                if (!item["source_object_id"].isUUID() || !item["source_te"].isInteger() ||
+                    !item["source_aspect"].isInteger() || item["source_te"].asInteger() < -1 ||
+                    item["source_te"].asInteger() > 255 || item["source_aspect"].asInteger() < 0 ||
+                    item["source_aspect"].asInteger() > 3 || item.has("mode") || item.has("camera_id") ||
+                    item["source_object_id"].asUUID().isNull() != (item["source_te"].asInteger() == -1))
+                    return fail("Invalid media source descriptor.");
+                if (item.has("label") && !item["label"].isString()) return fail("Media label must be a string.");
+                parsed.mMedia.mObjectId = item["source_object_id"].asUUID();
+                parsed.mMedia.mTE = item["source_te"].asInteger();
+                parsed.mMedia.mAspect = static_cast<LLPrismLens::ESourceAspect>(item["source_aspect"].asInteger());
+                parsed.mLabel = LLPrismLens::normalizeCaptureLabel(item["label"].asString(), "Media");
+                if (have_parsed_gate)
+                    for (const auto& arm : parsed_gate.mArmed)
+                        if (arm.mCaptureId == parsed.mId) return fail("Media slots cannot be armed into the camera gate.");
+                parsed_captures.push_back(parsed);
+                continue;
             }
             if (parsed.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
             {
@@ -7524,7 +7843,7 @@ public:
         gate_capture_ids.reserve(parsed_captures.size());
         for (const ParsedCapture& capture : parsed_captures)
         {
-            if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+            if (!capture.mIsMedia && capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
                 gate_capture_ids.push_back(capture.mId);
         }
         if (have_parsed_gate)
@@ -7564,13 +7883,13 @@ public:
                 if (display.mGateSubscribed) continue;
                 if (display.mCaptureId != capture.mId) continue;
                 ++references;
-                if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+                if (!capture.mIsMedia && capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
                     capture.mCameraId.notNull() && capture.mCameraId == display.mObjectId)
                 {
                     return fail("A camera source cannot also be one of its display objects.");
                 }
             }
-            if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS && references != 1)
+            if (!capture.mIsMedia && capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS && references != 1)
             {
                 return fail("A Surface Lens must have exactly one display binding.");
             }
@@ -7633,9 +7952,14 @@ public:
             capture.mHandle.mId = parsed.mId;
             allocateGeneration(capture.mHandle.mGeneration);
             capture.mLabel = parsed.mLabel;
-            capture.mMode = parsed.mMode;
-            capture.mCameraObjectId = parsed.mCameraId;
-            capture.mCamera = parsed.mCamera;
+            if (parsed.mIsMedia) capture.setMediaData(parsed.mMedia);
+            else
+            {
+                capture.setCameraData(LLPrismLens::CameraPayload());
+                capture.cameraData()->mMode = parsed.mMode;
+                capture.cameraData()->mObjectId = parsed.mCameraId;
+                capture.cameraData()->mSettings = parsed.mCamera;
+            }
             capture.mRate = parsed.mRate;
             capture.mNextDueTime = LLTimer::getTotalSeconds();
         }
@@ -7665,7 +7989,7 @@ public:
                 display.mCaptureSlot = capture_slot;
                 display.mCaptureGeneration = capture.mHandle.mGeneration;
                 ++capture.mDisplayCount;
-                if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+                if (capture.isSurfaceLens())
                 {
                     capture.mObjectId = parsed.mObjectId;
                     capture.mTE = parsed.mTE;
@@ -7758,8 +8082,7 @@ private:
         result.reserve(LLPrismLens::MAX_CAPTURES);
         for (const PrismInstance& capture : mLenses)
         {
-            if (capture.mOccupied && capture.mMode ==
-                    LLPrismLens::ECaptureMode::CAMERA_FEED)
+            if (capture.mOccupied && capture.isCameraFeed())
                 result.push_back(capture.mHandle.mId);
         }
         return result;
@@ -7772,8 +8095,7 @@ private:
             return -1;
         const S32 slot = findCaptureById(
             mGateSettings.mArmed[static_cast<std::size_t>(arm_index)].mCaptureId);
-        return slot >= 0 && mLenses[slot].mMode ==
-                LLPrismLens::ECaptureMode::CAMERA_FEED
+        return slot >= 0 && mLenses[slot].isCameraFeed()
             ? slot : -1;
     }
 
@@ -7901,7 +8223,7 @@ private:
         for (const PrismInstance& capture : mLenses)
         {
             if (capture.mOccupied &&
-                capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS &&
+                capture.isSurfaceLens() &&
                 capture.mObjectId == display.mObjectId &&
                 capture.mTE == display.mTE)
             {
@@ -8428,6 +8750,8 @@ private:
     mutable U64 mLastRuntimeSignature = 0;
     mutable bool mRuntimeSignatureInitialized = false;
     U64 mPerformanceRevision = 1;
+    U64 mCameraRenders = 0;
+    U64 mMediaCopies = 0;
     U64 mNextGeneration = 1;
     mutable U32 mGateEyeCacheFrame = 0xFFFFFFFF;
     mutable U64 mGateEyeCacheRevision = 0;
@@ -8963,7 +9287,7 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
         }
     }
     std::vector<OtsCaptureRollback> old_ots_records;
-    for (U32 index = 0; index < registry.mCaptureCount; ++index)
+    for (U32 index = 0; index < registry.mSlotCount; ++index)
     {
         const CaptureDefinition& capture = registry.mCaptures[index];
         if (old_ots_capture_ids.count(capture.mHandle.mId) != 0)
@@ -8976,7 +9300,7 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
         }
     }
 
-    const U32 retained_capture_count = registry.mCaptureCount -
+    const U32 retained_capture_count = registry.mSlotCount -
         static_cast<U32>(old_ots_records.size());
     const std::size_t retained_arm_count = gate.mSettings.mArmed.size() -
         old_ots_arm_ids.size();
@@ -9251,9 +9575,44 @@ bool setCaptureLabel(const CaptureHandle& capture, const std::string& label,
     return PrismLensRegistry::instance().setLabel(capture, label, reason);
 }
 
+bool mediaSlotsEnabled()
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "VCamMediaSlotsEnabled", false);
+    // Reconcile disabling once at the setting transition. Ordinary OFF frames
+    // must not scan media slots merely to discover that the feature is disabled.
+    static const auto changed = gSavedSettings.getControl("VCamMediaSlotsEnabled")->getSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            for (auto* impl : LLViewerMedia::getInstance()->getPriorityList())
+                if (auto* source = impl->getMediaPlugin())
+                    source->enableMediaFrames(value.asBoolean(), impl->hasLibVLCSource());
+            reconcileMediaSlots();
+        });
+    return enabled;
+}
+
+void reconcileMediaSlots()
+{
+    if (!sPrismLensRegistryExists) return;
+    ScopedPrismRevisionSignals signals;
+    PrismLensRegistry::instance().reconcileMedia();
+}
+
+ERegistryResult addMediaSlot(CaptureHandle* slot, std::string* reason)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().addMedia(slot, reason);
+}
+
+bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source, std::string* reason)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().setMediaSource(slot, source, reason);
+}
+
 std::string captureDisplayLabel(const CaptureDefinition& capture)
 {
-    return llformat("CAM %u - %s", capture.mSlot + 1, capture.mLabel.c_str());
+    return llformat(capture.isMedia() ? "MEDIA %u - %s" : "CAM %u - %s", capture.mSlot + 1, capture.mLabel.c_str());
 }
 
 bool setDisplaySettings(const DisplayHandle& binding,
@@ -9395,11 +9754,11 @@ void renderCameraGuides()
     // Cheap early-out: nothing to draw unless at least one CAMERA_FEED capture
     // has its per-camera guide enabled. No GL state is touched until then.
     bool any_guide = false;
-    for (U32 i = 0; i < snapshot.mCaptureCount; ++i)
+    for (U32 i = 0; i < snapshot.mSlotCount; ++i)
     {
         const CaptureDefinition& def = snapshot.mCaptures[i];
-        if (def.mMode == ECaptureMode::CAMERA_FEED &&
-            !def.mCamera.mTestPattern && def.mCamera.mShowGuide)
+        if (def.isCameraFeed() &&
+            !def.cameraData()->mSettings.mTestPattern && def.cameraData()->mSettings.mShowGuide)
         {
             any_guide = true;
             break;
@@ -9418,11 +9777,11 @@ void renderCameraGuides()
     gUIProgram.bind();
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
 
-    for (U32 i = 0; i < snapshot.mCaptureCount; ++i)
+    for (U32 i = 0; i < snapshot.mSlotCount; ++i)
     {
         const CaptureDefinition& def = snapshot.mCaptures[i];
-        if (def.mMode != ECaptureMode::CAMERA_FEED ||
-            def.mCamera.mTestPattern || !def.mCamera.mShowGuide)
+        if (!def.isCameraFeed() ||
+            def.cameraData()->mSettings.mTestPattern || !def.cameraData()->mSettings.mShowGuide)
         {
             continue;
         }
@@ -9432,14 +9791,14 @@ void renderCameraGuides()
         // its live render transform. Both then feed the identical frustum draw.
         LLQuaternion rotation;
         LLVector3 eye;
-        if (def.mCamera.mVirtual)
+        if (def.cameraData()->mSettings.mVirtual)
         {
-            rotation = def.mCamera.mVirtualRot;
-            eye = def.mCamera.mVirtualPos; // no mLocalEyeOffset for virtual cams
+            rotation = def.cameraData()->mSettings.mVirtualRot;
+            eye = def.cameraData()->mSettings.mVirtualPos; // no mLocalEyeOffset for virtual cams
         }
         else
         {
-            LLViewerObject* obj = gObjectList.findObject(def.mCameraObjectId);
+            LLViewerObject* obj = gObjectList.findObject(def.cameraData()->mObjectId);
             if (!obj || obj->isDead() || obj->isHUDAttachment())
             {
                 continue;
@@ -9448,7 +9807,7 @@ void renderCameraGuides()
             // camera marker looks down local -Z, local +Y is up).
             rotation = obj->getRenderRotation();
             eye = obj->getRenderPosition() +
-                def.mCamera.mLocalEyeOffset * rotation;
+                def.cameraData()->mSettings.mLocalEyeOffset * rotation;
         }
         LLVector3 forward = LLVector3(0.f, 0.f, -1.f) * rotation;
         LLVector3 up = LLVector3::y_axis * rotation;
@@ -9468,11 +9827,11 @@ void renderCameraGuides()
         F32 vfov = def.mRuntime.mEffectiveVerticalFovRad;
         if (!std::isfinite(vfov) || vfov < 5.f * DEG_TO_RAD)
         {
-            vfov = def.mCamera.mFixedVerticalFovRad;
+            vfov = def.cameraData()->mSettings.mFixedVerticalFovRad;
         }
-        const F32 aspect = def.mCamera.mOutputAspect;
-        const F32 near_clip = def.mCamera.mNearClip;
-        const F32 far_clip = def.mCamera.mFarClip; // user's configured range; NOT
+        const F32 aspect = def.cameraData()->mSettings.mOutputAspect;
+        const F32 near_clip = def.cameraData()->mSettings.mNearClip;
+        const F32 far_clip = def.cameraData()->mSettings.mFarClip; // user's configured range; NOT
                                                    // clamped to the main camera.
         if (!std::isfinite(vfov) || !std::isfinite(aspect) ||
             !std::isfinite(near_clip) || !std::isfinite(far_clip) ||
@@ -9514,7 +9873,7 @@ void renderCameraGuides()
 
         // Rule-of-thirds grid: two verticals + two horizontals subdividing the
         // gate into 3x3, from lerped gate corners at 1/3 and 2/3.
-        if (def.mCamera.mGuideThirds)
+        if (def.cameraData()->mSettings.mGuideThirds)
         {
             const LLVector3 t13 = lerp(tl, tr, 1.f / 3.f);
             const LLVector3 t23 = lerp(tl, tr, 2.f / 3.f);
@@ -9531,7 +9890,7 @@ void renderCameraGuides()
         }
 
         // Center crosshair: two short lines through the gate centre.
-        if (def.mCamera.mGuideCrosshair)
+        if (def.cameraData()->mSettings.mGuideCrosshair)
         {
             const F32 cx = hw_far * 0.12f;
             const F32 cy = hh_far * 0.12f;
@@ -9543,7 +9902,7 @@ void renderCameraGuides()
 
         // Near-clip rectangle marker so the depth range reads (the far rect is
         // the gate already).
-        if (def.mCamera.mGuideClipMarkers)
+        if (def.cameraData()->mSettings.mGuideClipMarkers)
         {
             const F32 hh_near = near_clip * tan_half;
             const F32 hw_near = hh_near * aspect;
@@ -9571,7 +9930,7 @@ void renderCameraGuides()
         gGL.vertex3fv(a0.mV); gGL.vertex3fv(a1.mV); gGL.vertex3fv(a2.mV);
         gGL.vertex3fv(a0.mV); gGL.vertex3fv(a2.mV); gGL.vertex3fv(a3.mV);
 
-        if (def.mCamera.mGuideUpRoll)
+        if (def.cameraData()->mSettings.mGuideUpRoll)
         {
             const LLVector3 tc = (tl + tr) * 0.5f; // gate top-edge centre
             const F32 nub_w = hw_far * 0.06f;
@@ -9766,6 +10125,8 @@ void renderAuxiliaryView()
         return;
     }
 
+    if (mediaSlotsEnabled()) registry.reconcileMedia();
+
     {
         ScopedPrismRenderState projector_feed_state;
         if (projector_feed_state.isValid())
@@ -9798,7 +10159,21 @@ void renderAuxiliaryView()
         }
     }
 
-    const S32 render_slot = registry.chooseRenderSlot();
+    bool cadence_prepared = false;
+    if (mediaSlotsEnabled()) registry.prepareMedia();
+    if (mediaSlotsEnabled())
+    {
+        ScopedPrismRenderState media_state;
+        if (media_state.isValid()) cadence_prepared = registry.copyMedia();
+    }
+    if (registry.cameraCount() == 0)
+    {
+        ScopedPrismRenderState atlas_state;
+        if (atlas_state.isValid()) LLPrismPreviewService::instance().updateAtlas();
+        return;
+    }
+
+    const S32 render_slot = registry.chooseRenderSlot(cadence_prepared);
     if (render_slot < 0)
     {
         LLPrismPreviewService& preview_service = LLPrismPreviewService::instance();
@@ -9843,7 +10218,7 @@ void renderAuxiliaryView()
         {
             return false;
         }
-        if (capture->mCamera.mTestPattern)
+        if (capture->cameraData()->mSettings.mTestPattern)
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam test pattern upload");
             if (!gPipeline.allocatePrismLensOutput(
@@ -9890,11 +10265,11 @@ void renderAuxiliaryView()
         LLViewerCamera lens_camera = main_camera;
         glm::mat4 prism_projection;
         glm::mat4 prism_modelview;
-        if (capture->mMode == ECaptureMode::CAMERA_FEED)
+        if (capture->isCameraFeed())
         {
             LLQuaternion rotation;
             LLVector3 camera_eye;
-            if (capture->mCamera.mVirtual)
+            if (capture->cameraData()->mSettings.mVirtual)
             {
                 // Prim-free: the eye/orientation come from the stored transform,
                 // not from an in-world object. mVirtualPos is in AGENT space --
@@ -9903,12 +10278,12 @@ void renderAuxiliaryView()
                 // agent-space lens camera below with no conversion. No object
                 // lookup, no early-out, and no mLocalEyeOffset add (offset is an
                 // object-rig convenience only).
-                rotation = capture->mCamera.mVirtualRot;
-                camera_eye = capture->mCamera.mVirtualPos;
+                rotation = capture->cameraData()->mSettings.mVirtualRot;
+                camera_eye = capture->cameraData()->mSettings.mVirtualPos;
             }
             else
             {
-                LLViewerObject* source_object = gObjectList.findObject(capture->mCameraObjectId);
+                LLViewerObject* source_object = gObjectList.findObject(capture->cameraData()->mObjectId);
                 LLVOVolume* source = source_object
                     ? dynamic_cast<LLVOVolume*>(source_object) : nullptr;
                 if (!source_object || !source || source_object->isDead() ||
@@ -9920,7 +10295,7 @@ void renderAuxiliaryView()
                 }
                 rotation = source_object->getRenderRotation();
                 camera_eye = source_object->getRenderPosition() +
-                    capture->mCamera.mLocalEyeOffset * rotation;
+                    capture->cameraData()->mSettings.mLocalEyeOffset * rotation;
             }
             LLVector3 forward = LLVector3(0.f, 0.f, -1.f) * rotation;
             LLVector3 up = LLVector3::y_axis * rotation;
@@ -9936,12 +10311,12 @@ void renderAuxiliaryView()
             up.normVec();
             const LLVector3 left_axis = -right;
             const F32 fov = capture->mRuntime.mEffectiveVerticalFovRad;
-            const F32 aspect = capture->mCamera.mOutputAspect;
-            const F32 near_clip = capture->mCamera.mNearClip;
+            const F32 aspect = capture->cameraData()->mSettings.mOutputAspect;
+            const F32 near_clip = capture->cameraData()->mSettings.mNearClip;
             const F32 far_clip = preview_only
-                ? llmin(llmin(capture->mCamera.mFarClip, main_camera.getFar()),
+                ? llmin(llmin(capture->cameraData()->mSettings.mFarClip, main_camera.getFar()),
                         LLPrismPreviewPolicy::MAX_FAR_CLIP)
-                : llmin(capture->mCamera.mFarClip, main_camera.getFar());
+                : llmin(capture->cameraData()->mSettings.mFarClip, main_camera.getFar());
             if (!std::isfinite(fov) || !std::isfinite(aspect) ||
                 !std::isfinite(near_clip) || !std::isfinite(far_clip) ||
                 fov < 5.f * DEG_TO_RAD || fov > 175.f * DEG_TO_RAD ||
@@ -10354,10 +10729,14 @@ static bool buildSignalCompositeState(U32 capture_slot,
     }
 
     state.mCaptureSlot = capture_slot;
-    state.mOpticsParams[0] = capture->mCamera.mOptics.mChromaticAberration;
-    state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
-    state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
-    state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
+    state.mMediaSDR = capture->isMedia();
+    if (capture->cameraData())
+    {
+        state.mOpticsParams[0] = capture->cameraData()->mSettings.mOptics.mChromaticAberration;
+        state.mOpticsParams[1] = capture->cameraData()->mSettings.mOptics.mFilmGrain;
+        state.mOpticsParams[2] = capture->cameraData()->mSettings.mOptics.mCRTScanlines;
+        state.mOpticsParams[3] = capture->cameraData()->mSettings.mOptics.mExposureBias;
+    }
     std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
                 sizeof(state.mRetainedOrientationScale));
     std::memcpy(state.mRetainedOrientationOffset, output_uv_offset,
@@ -10374,8 +10753,8 @@ static bool buildSignalCompositeState(U32 capture_slot,
     // is not anamorphically stretched; bars are neutral black.
     if (!display)
     {
-        F32 raw_aspect = capture->mCamera.mOutputAspect;
-        if (capture->mMode == ECaptureMode::SURFACE_LENS)
+        F32 raw_aspect = capture->isMedia() ? capture->mSignalAspect : capture->cameraData()->mSettings.mOutputAspect;
+        if (capture->isSurfaceLens())
         {
             const F32 surface_u = capture->mFrame.mWorldSurfaceUEdge.magVec();
             const F32 surface_v = capture->mFrame.mWorldSurfaceVEdge.magVec();
@@ -10413,10 +10792,10 @@ static bool buildSignalCompositeState(U32 capture_slot,
     state.mScreenEffect5[1] = effects.mScanlineSharpness;
     state.mScreenEffect5[2] = effects.mScanlineThickness;
 
-    const F32 capture_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
-        ? capture->mCamera.mOutputAspect
+    const F32 capture_aspect = capture->isCameraFeed()
+        ? capture->cameraData()->mSettings.mOutputAspect
         : static_cast<F32>(output_width) / static_cast<F32>(output_height);
-    if (capture->mMode == ECaptureMode::CAMERA_FEED &&
+    if (capture->isCameraFeed() &&
         std::isfinite(display_aspect) && std::isfinite(capture_aspect) &&
         display_aspect > F_ALMOST_ZERO && capture_aspect > F_ALMOST_ZERO)
     {
@@ -10477,7 +10856,7 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
          capture_slot < MAX_CAPTURES && state_count < capacity; ++capture_slot)
     {
         const PrismInstance* capture = registry.capture(capture_slot);
-        if (!capture || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
+        if (!capture || capture->isMedia() || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
         LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
         U32 output_width = 0;
         U32 output_height = 0;
@@ -10546,10 +10925,14 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             std::memcpy(state.mSurfaceVDual, frame.mSurfaceVDual.mV,
                         sizeof(state.mSurfaceVDual));
 
-            state.mOpticsParams[0] = capture->mCamera.mOptics.mChromaticAberration;
-            state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
-            state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
-            state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
+            state.mMediaSDR = capture->isMedia();
+            if (capture->cameraData())
+            {
+                state.mOpticsParams[0] = capture->cameraData()->mSettings.mOptics.mChromaticAberration;
+                state.mOpticsParams[1] = capture->cameraData()->mSettings.mOptics.mFilmGrain;
+                state.mOpticsParams[2] = capture->cameraData()->mSettings.mOptics.mCRTScanlines;
+                state.mOpticsParams[3] = capture->cameraData()->mSettings.mOptics.mExposureBias;
+            }
 
             // Per-display TV screen effects, packed as six vec4 uniforms for
             // the composite shader. A default ScreenEffects has zero strengths
@@ -10601,12 +10984,12 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             const F32 display_v = frame.mWorldSurfaceVEdge.magVec();
             const F32 display_aspect = display_v > F_ALMOST_ZERO
                 ? display_u / display_v : 1.f;
-            const F32 capture_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
-                ? capture->mCamera.mOutputAspect
+            const F32 capture_aspect = capture->isCameraFeed()
+                ? capture->cameraData()->mSettings.mOutputAspect
                 : static_cast<F32>(output_width) / static_cast<F32>(output_height);
             const F32 anchor_x = display->mSettings.mAnchor[0];
             const F32 anchor_y = display->mSettings.mAnchor[1];
-            if (capture->mMode == ECaptureMode::CAMERA_FEED &&
+            if (capture->isCameraFeed() &&
                 std::isfinite(display_aspect) && std::isfinite(capture_aspect) &&
                 display_aspect > F_ALMOST_ZERO && capture_aspect > F_ALMOST_ZERO)
             {
@@ -10744,7 +11127,7 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
          capture_slot < MAX_CAPTURES && state_count < capacity; ++capture_slot)
     {
         const PrismInstance* capture = registry.capture(capture_slot);
-        if (!capture || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
+        if (!capture || capture->isMedia() || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
         LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
         U32 output_width = 0;
         U32 output_height = 0;
@@ -10808,10 +11191,14 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             std::memcpy(state.mSurfaceVDual, frame.mSurfaceVDual.mV,
                         sizeof(state.mSurfaceVDual));
 
-            state.mOpticsParams[0] = capture->mCamera.mOptics.mChromaticAberration;
-            state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
-            state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
-            state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
+            state.mMediaSDR = capture->isMedia();
+            if (capture->cameraData())
+            {
+                state.mOpticsParams[0] = capture->cameraData()->mSettings.mOptics.mChromaticAberration;
+                state.mOpticsParams[1] = capture->cameraData()->mSettings.mOptics.mFilmGrain;
+                state.mOpticsParams[2] = capture->cameraData()->mSettings.mOptics.mCRTScanlines;
+                state.mOpticsParams[3] = capture->cameraData()->mSettings.mOptics.mExposureBias;
+            }
 
             const ScreenEffects& effects = display->mSettings.mEffects;
             state.mScreenEffect0[0] = effects.mScanlines;
@@ -10857,12 +11244,12 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             const F32 display_v = frame.mWorldSurfaceVEdge.magVec();
             const F32 display_aspect = display_v > F_ALMOST_ZERO
                 ? display_u / display_v : 1.f;
-            const F32 capture_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
-                ? capture->mCamera.mOutputAspect
+            const F32 capture_aspect = capture->isCameraFeed()
+                ? capture->cameraData()->mSettings.mOutputAspect
                 : static_cast<F32>(output_width) / static_cast<F32>(output_height);
             const F32 anchor_x = display->mSettings.mAnchor[0];
             const F32 anchor_y = display->mSettings.mAnchor[1];
-            if (capture->mMode == ECaptureMode::CAMERA_FEED &&
+            if (capture->isCameraFeed() &&
                 std::isfinite(display_aspect) && std::isfinite(capture_aspect) &&
                 display_aspect > F_ALMOST_ZERO && capture_aspect > F_ALMOST_ZERO)
             {

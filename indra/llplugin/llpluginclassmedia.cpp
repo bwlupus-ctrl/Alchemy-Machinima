@@ -254,6 +254,11 @@ void LLPluginClassMedia::idle(void)
             if(!mTextureSharedMemoryName.empty())
             {
                 // Tell the plugin to remove the old memory segment
+                if (mFrameTracking.enabled)
+                {
+                    ++mLayoutEpoch;
+                    resetDirty();
+                }
                 mPlugin->removeSharedMemory(mTextureSharedMemoryName);
                 mTextureSharedMemoryName.clear();
             }
@@ -337,6 +342,38 @@ unsigned char* LLPluginClassMedia::getBitsData()
         result = (unsigned char*)mPlugin->getSharedMemoryAddress(mTextureSharedMemoryName);
     }
     return result;
+}
+
+std::shared_ptr<LLPluginSharedMemory> LLPluginClassMedia::retainBits() const
+{
+    return mPlugin ? mPlugin->retainSharedMemory(mTextureSharedMemoryName) : nullptr;
+}
+
+void LLPluginClassMedia::enableMediaFrames(bool enabled, bool loadTokens)
+{
+    const bool wasTokenLoads = mFrameTracking.tokenLoads;
+    if (!mFrameTracking.configure(enabled, loadTokens)) return;
+    ++mLayoutEpoch; // Reject uploads queued before either setting transition.
+    mDirtyLoadToken.clear();
+    mVideoWidth = mVideoHeight = 0;
+    mVideoSarNum = mVideoSarDen = 1;
+    mLoadToken = mFrameTracking.tokenLoads ? LLUUID::generateNewID().asString() : std::string();
+    if (wasTokenLoads || mFrameTracking.tokenLoads)
+    {
+        // Does not navigate, stop, seek or resize the current player. The plugin
+        // tags its retained current-load pixels before activating our new path.
+        LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "enable_media_frames");
+        message.setValue("load_token", mLoadToken);
+        sendMessage(message);
+    }
+}
+
+void LLPluginClassMedia::retryDirty(const LLRect& rect, const LLMediaFrame::Identity& identity)
+{
+    if (identity.layout != mLayoutEpoch || identity.load != mLoadToken) return;
+    if (mDirtyRect.isEmpty()) mDirtyRect = rect;
+    else mDirtyRect.unionWith(rect);
+    mDirtyLoadToken = identity.load;
 }
 
 void LLPluginClassMedia::setSize(int width, int height)
@@ -794,7 +831,17 @@ void LLPluginClassMedia::loadURI(const std::string &uri)
     LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "load_uri");
 
     message.setValue("uri", uri);
-
+    if (mFrameTracking.tokenLoads)
+    {
+        mLoadToken = LLUUID::generateNewID().asString();
+        message.setValue("load_token", mLoadToken);
+        resetDirty();
+        mDirtyLoadToken.clear();
+        mVideoWidth = mVideoHeight = 0;
+        mVideoSarNum = mVideoSarDen = 1;
+        ++mLayoutEpoch;
+        mFrameTracking.awaitFrame();
+    }
     sendMessage(message);
 }
 
@@ -1103,10 +1150,29 @@ void LLPluginClassMedia::receivePluginMessage(const LLPluginMessage &message)
             mAcceleratedPaintDirty = true;
             mediaEvent(LLPluginClassMediaOwner::MEDIA_EVENT_CONTENT_UPDATED);
         }
+        else if (message_name == "source_video_size")
+        {
+            if (mFrameTracking.tokenLoads && LLMediaFrame::acceptsToken(mLoadToken, message.getValue("load_token")))
+            {
+                const S32 width = message.getValueS32("width");
+                const S32 height = message.getValueS32("height");
+                if (width > 0 && height > 0)
+                {
+                    mVideoWidth = width;
+                    mVideoHeight = height;
+                    const U32 sarNum = message.getValueU32("sar_num");
+                    const U32 sarDen = message.getValueU32("sar_den");
+                    mVideoSarNum = sarNum && sarDen ? sarNum : 1;
+                    mVideoSarDen = sarNum && sarDen ? sarDen : 1;
+                }
+            }
+        }
         else if(message_name == "updated")
         {
             if(message.hasValue("left"))
             {
+                if (!mFrameTracking.acceptsUpdate(mLoadToken, message.getValue("load_token"))) return;
+                if (mFrameTracking.active) mDirtyLoadToken = mLoadToken;
                 LLRect newDirtyRect;
                 newDirtyRect.mLeft = message.getValueS32("left");
                 newDirtyRect.mTop = message.getValueS32("top");
@@ -1242,6 +1308,7 @@ void LLPluginClassMedia::receivePluginMessage(const LLPluginMessage &message)
         }
         else if(message_name == "size_change_response")
         {
+            if (mFrameTracking.enabled) ++mLayoutEpoch;
             std::string name = message.getValue("name");
 
             // TODO: check that name matches?

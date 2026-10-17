@@ -119,17 +119,10 @@ LLPluginProcessParent::~LLPluginProcessParent()
 {
     LL_DEBUGS("Plugin") << "destructor" << LL_ENDL;
 
-    // Destroy any remaining shared memory regions
-    sharedMemoryRegionsType::iterator iter;
-    while((iter = mSharedMemoryRegions.begin()) != mSharedMemoryRegions.end())
+    // Pending CPU uploads keep only their mapping, never this parent/process.
     {
-        // destroy the shared memory region
-        iter->second->destroy();
-        delete iter->second;
-        iter->second = NULL;
-
-        // and remove it from our map
-        mSharedMemoryRegions.erase(iter);
+        std::lock_guard<std::mutex> lock(mSharedMemoryMutex);
+        mSharedMemoryRegions.clear();
     }
 
     LLProcess::kill(mProcess);
@@ -1228,18 +1221,9 @@ void LLPluginProcessParent::receiveMessage(const LLPluginMessage &message)
         else if(message_name == "shm_remove_response")
         {
             std::string name = message.getValue("name");
-            sharedMemoryRegionsType::iterator iter = mSharedMemoryRegions.find(name);
+            std::lock_guard<std::mutex> lock(mSharedMemoryMutex);
+            mSharedMemoryRegions.erase(name); // last upload reference retires it
 
-            if(iter != mSharedMemoryRegions.end())
-            {
-                // destroy the shared memory region
-                iter->second->destroy();
-                delete iter->second;
-                iter->second = NULL;
-
-                // and remove it from our map
-                mSharedMemoryRegions.erase(iter);
-            }
         }
         else
         {
@@ -1266,7 +1250,11 @@ std::string LLPluginProcessParent::addSharedMemory(size_t size)
     {
         name = region->getName();
 
-        mSharedMemoryRegions.insert(sharedMemoryRegionsType::value_type(name, region));
+        {
+            std::lock_guard<std::mutex> lock(mSharedMemoryMutex);
+            mSharedMemoryRegions.emplace(name, std::shared_ptr<LLPluginSharedMemory>(
+                region, [](LLPluginSharedMemory* retired) { retired->destroy(); delete retired; }));
+        }
 
         LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_INTERNAL, "shm_add");
         message.setValue("name", name);
@@ -1286,6 +1274,7 @@ std::string LLPluginProcessParent::addSharedMemory(size_t size)
 
 void LLPluginProcessParent::removeSharedMemory(const std::string &name)
 {
+    std::lock_guard<std::mutex> lock(mSharedMemoryMutex);
     sharedMemoryRegionsType::iterator iter = mSharedMemoryRegions.find(name);
 
     if(iter != mSharedMemoryRegions.end())
@@ -1300,29 +1289,22 @@ void LLPluginProcessParent::removeSharedMemory(const std::string &name)
         LL_WARNS("Plugin") << "Request to remove an unknown shared memory segment." << LL_ENDL;
     }
 }
+std::shared_ptr<LLPluginSharedMemory> LLPluginProcessParent::retainSharedMemory(const std::string& name)
+{
+    std::lock_guard<std::mutex> lock(mSharedMemoryMutex);
+    const auto found = mSharedMemoryRegions.find(name);
+    return found == mSharedMemoryRegions.end() ? nullptr : found->second;
+}
+
 size_t LLPluginProcessParent::getSharedMemorySize(const std::string &name)
 {
-    size_t result = 0;
-
-    sharedMemoryRegionsType::iterator iter = mSharedMemoryRegions.find(name);
-    if(iter != mSharedMemoryRegions.end())
-    {
-        result = iter->second->getSize();
-    }
-
-    return result;
+    const auto found = mSharedMemoryRegions.find(name);
+    return found != mSharedMemoryRegions.end() ? found->second->getSize() : 0;
 }
 void *LLPluginProcessParent::getSharedMemoryAddress(const std::string &name)
 {
-    void *result = NULL;
-
-    sharedMemoryRegionsType::iterator iter = mSharedMemoryRegions.find(name);
-    if(iter != mSharedMemoryRegions.end())
-    {
-        result = iter->second->getMappedAddress();
-    }
-
-    return result;
+    const auto found = mSharedMemoryRegions.find(name);
+    return found != mSharedMemoryRegions.end() ? found->second->getMappedAddress() : nullptr;
 }
 
 std::string LLPluginProcessParent::getMessageClassVersion(const std::string &message_class)

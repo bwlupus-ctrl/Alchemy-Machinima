@@ -1,0 +1,328 @@
+Baseline de73653d1b3. Every changed legacy camera-field/mode/count access (one row per original line).
+Unchanged camera-only parser locals are excluded. Probe and routing seams without field edits are explicitly triaged in MEDIA_SLICE1_TRIAGE.md.
+
+indra/newview/alpanelcinelightrig.cpp:1238	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/alpanelcinelightrig.cpp:1249	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/alpanelcinelightrig.cpp:1253	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/alpanelcinelightrig.cpp:1306	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/alpaneldirectorvcam.cpp:180	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	capture->mCamera.mBonePov.mAnchorSlot))
+indra/newview/alpaneldirectorvcam.cpp:345	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+indra/newview/alpaneldirectorvcam.cpp:388	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+indra/newview/alpaneldirectorvcam.cpp:409	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	if (!selectedCapture() && registry.mCaptureCount)
+indra/newview/alpaneldirectorvcam.cpp:418	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < registry.mCaptureCount; ++index)
+indra/newview/alpaneldirectorvcam.cpp:433	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	registry.mCaptureCount, registry.mDisplayCount, visible_faces));
+indra/newview/alpaneldirectorvcam.cpp:447	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 i = 0; i < registry.mCaptureCount; ++i)
+indra/newview/alpaneldirectorvcam.cpp:479	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	mCameraSelector->setActionsEnabled(registry.mCaptureCount < 8, capture != nullptr);
+indra/newview/alpaneldirectorvcam.cpp:509	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED) continue;
+indra/newview/alpaneldirectorvcam.cpp:627	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	(capture && capture->mMode != LLPrismLens::ECaptureMode::SURFACE_LENS)));
+indra/newview/alpaneldirectorvcam.cpp:639	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	const LLPrismLens::CameraSettings& camera = capture->mCamera;
+indra/newview/alpaneldirectorvcam.cpp:641	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	const bool surface = capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS;
+indra/newview/alpaneldirectorvcam.cpp:660	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	capture->mCameraObjectId.asString());
+indra/newview/alpaneldirectorvcam.cpp:835	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 ci = 0; ci < registry.mCaptureCount; ++ci)
+indra/newview/alpaneldirectorvcam.cpp:850	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	master_enabled, previews_enabled, registry.mCaptureCount, preview_only,
+indra/newview/alpaneldirectorvcam.cpp:965	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+indra/newview/alpaneldirectorvcam.cpp:1055	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings settings = capture->mCamera;
+indra/newview/alpaneldirectorvcam.cpp:1140	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings settings = capture->mCamera;
+indra/newview/alpaneldirectorvcam.cpp:1146	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture->mMode != LLPrismLens::ECaptureMode::SURFACE_LENS)
+indra/newview/alpaneldirectorvcam.cpp:1149	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings settings = capture->mCamera;
+indra/newview/alpaneldirectorvcam.cpp:1161	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	(!capture->mCamera.mTestPattern || settings.mVirtualPos.isExactlyZero()))
+indra/newview/alpaneldirectorvcam.cpp:1205	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings settings = capture->mCamera;
+indra/newview/alpaneldirectorvcam.cpp:1547	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings settings = capture->mCamera;
+indra/newview/alpaneldirectorvcam.cpp:1578	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+indra/newview/alpaneldirectorvcam.cpp:1726	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+indra/newview/alsteppedanimruntime.cpp:278	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < camera_registry.mCaptureCount; ++index)
+indra/newview/alsteppedanimruntime.cpp:281	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	const LLPrismLens::BonePovSettings& settings = capture.mCamera.mBonePov;
+indra/newview/alsteppedanimruntime.cpp:282	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+indra/newview/alsteppedanimruntime.cpp:283	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	capture.mCamera.mVirtual && settings.mEnabled)
+indra/newview/aluiperfselftest.cpp:139	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 i = 0; i < registry.mCaptureCount; ++i)
+indra/newview/aluiperfselftest.cpp:6141	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings camera = definition->mCamera;
+indra/newview/aluiperfselftest.cpp:6482	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	if (!registry.mCaptureCount) return;
+indra/newview/aluiperfselftest.cpp:7495	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	(capture->mCamera.mVirtualPos - mFunctionalVCamExpectedPos).length() < .001f;
+indra/newview/aluiperfselftest.cpp:7532	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	const bool pattern = capture && capture->mCamera.mTestPattern;
+indra/newview/alvcambonepov.cpp:312	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/alvcambonepov.cpp:315	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	const LLPrismLens::BonePovSettings& settings = capture.mCamera.mBonePov;
+indra/newview/alvcambonepov.cpp:316	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+indra/newview/alvcambonepov.cpp:317	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	capture.mCamera.mVirtual && settings.mEnabled &&
+indra/newview/alvcambonepov.cpp:330	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/alvcambonepov.cpp:345	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	const LLPrismLens::BonePovSettings& settings = capture.mCamera.mBonePov;
+indra/newview/alvcambonepov.cpp:369	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	smoother.mSmoothedRot = capture.mCamera.mVirtualRot;
+indra/newview/alvcambonepov.cpp:379	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
+indra/newview/alvcambonepov.cpp:380	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	!capture.mCamera.mVirtual || !settings.mEnabled)
+indra/newview/alvcammonitorstrip.cpp:134	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/alvcammonitorstrip.cpp:140	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	if (mode) *mode = candidate.mMode;
+indra/newview/alvcampagemodel.cpp:172	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	selected_capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED);
+indra/newview/alvcampagemodel.cpp:211	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < mRegistry.mCaptureCount; ++index)
+indra/newview/alvcampagemodel.cpp:228	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < mRegistry.mCaptureCount; ++index)
+indra/newview/alvcampagemodel.cpp:384	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < mRegistry.mCaptureCount; ++index)
+indra/newview/alvcampagemodel.cpp:446	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/alvcampagemodel.cpp:470	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	if (destination_capture->mMode ==
+indra/newview/alvcampagemodel.cpp:483	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/alvcampagemodel.cpp:495	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (old_capture && old_capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+indra/newview/alvcampagemodel.cpp:536	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/alvcampagemodel.cpp:717	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/llfloaterdirector.cpp:7123	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < ots_registry.mCaptureCount; ++index)
+indra/newview/llfloaterdirector.cpp:7132	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	ots_registry.mCaptureCount - replaceable_ots_capture_count <=
+indra/newview/llfloaterdirector.cpp:7157	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/llfloaterdirector.cpp:7179	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	snapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
+indra/newview/llfloaterdirector.cpp:7184	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	snapshot.mCaptureCount, snapshot.mDisplayCount,
+indra/newview/llfloaterprismmanager.cpp:560	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	? boneJointValue(capture->mCamera.mBonePov) : std::string();
+indra/newview/llfloaterprismmanager.cpp:604	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llfloaterprismmanager.cpp:608	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings settings = capture->mCamera;
+indra/newview/llfloaterprismmanager.cpp:734	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	return capture ? boneAnchorValue(capture->mCamera.mBonePov.mAnchorSlot)
+indra/newview/llfloaterprismmanager.cpp:875	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	if (mRegistrySnapshot.mCaptureCount > 0)
+indra/newview/llfloaterprismmanager.cpp:915	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+indra/newview/llfloaterprismmanager.cpp:938	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	"%u/%u captures", mRegistrySnapshot.mCaptureCount,
+indra/newview/llfloaterprismmanager.cpp:964	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < mRegistrySnapshot.mCaptureCount; ++index)
+indra/newview/llfloaterprismmanager.cpp:985	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	row["columns"][1]["value"] = captureModeText(capture.mMode);
+indra/newview/llfloaterprismmanager.cpp:1046	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+indra/newview/llfloaterprismmanager.cpp:1098	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	capture_index < mRegistrySnapshot.mCaptureCount; ++capture_index)
+indra/newview/llfloaterprismmanager.cpp:1154	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	const bool is_camera = capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+indra/newview/llfloaterprismmanager.cpp:1162	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mSourceText->setText(capture->mCameraObjectId.isNull()
+indra/newview/llfloaterprismmanager.cpp:1164	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	: "Camera source: " + capture->mCameraObjectId.asString());
+indra/newview/llfloaterprismmanager.cpp:1165	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mFovModeCombo->setValue(capture->mCamera.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR
+indra/newview/llfloaterprismmanager.cpp:1167	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mVerticalFovSpinner->setValue(capture->mCamera.mFixedVerticalFovRad * RAD_TO_DEG);
+indra/newview/llfloaterprismmanager.cpp:1168	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mVerticalFovSpinner->setEnabled(capture->mCamera.mFovMode == LLPrismLens::EFovMode::FIXED);
+indra/newview/llfloaterprismmanager.cpp:1169	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mNearClipSpinner->setValue(capture->mCamera.mNearClip);
+indra/newview/llfloaterprismmanager.cpp:1170	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mFarClipSpinner->setValue(capture->mCamera.mFarClip);
+indra/newview/llfloaterprismmanager.cpp:1171	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mEyeXSpinner->setValue(capture->mCamera.mLocalEyeOffset.mV[VX]);
+indra/newview/llfloaterprismmanager.cpp:1172	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mEyeYSpinner->setValue(capture->mCamera.mLocalEyeOffset.mV[VY]);
+indra/newview/llfloaterprismmanager.cpp:1173	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mEyeZSpinner->setValue(capture->mCamera.mLocalEyeOffset.mV[VZ]);
+indra/newview/llfloaterprismmanager.cpp:1175	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	const F32 aspect = capture->mCamera.mOutputAspect;
+indra/newview/llfloaterprismmanager.cpp:1184	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mChromaticAberrationSpinner->setValue(capture->mCamera.mOptics.mChromaticAberration);
+indra/newview/llfloaterprismmanager.cpp:1185	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mFilmGrainSpinner->setValue(capture->mCamera.mOptics.mFilmGrain);
+indra/newview/llfloaterprismmanager.cpp:1186	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mCRTScanlinesSpinner->setValue(capture->mCamera.mOptics.mCRTScanlines);
+indra/newview/llfloaterprismmanager.cpp:1187	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mExposureBiasSpinner->setValue(capture->mCamera.mOptics.mExposureBias);
+indra/newview/llfloaterprismmanager.cpp:1189	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mShowGuideCheck->setValue(capture->mCamera.mShowGuide);
+indra/newview/llfloaterprismmanager.cpp:1190	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mGuideThirdsCheck->setValue(capture->mCamera.mGuideThirds);
+indra/newview/llfloaterprismmanager.cpp:1191	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mGuideUpRollCheck->setValue(capture->mCamera.mGuideUpRoll);
+indra/newview/llfloaterprismmanager.cpp:1192	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mGuideCrosshairCheck->setValue(capture->mCamera.mGuideCrosshair);
+indra/newview/llfloaterprismmanager.cpp:1193	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	mGuideClipMarkersCheck->setValue(capture->mCamera.mGuideClipMarkers);
+indra/newview/llfloaterprismmanager.cpp:1199	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	const bool is_virtual = capture->mCamera.mVirtual;
+indra/newview/llfloaterprismmanager.cpp:1201	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	const LLPrismLens::BonePovSettings& bone = capture->mCamera.mBonePov;
+indra/newview/llfloaterprismmanager.cpp:1281	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+indra/newview/llfloaterprismmanager.cpp:1290	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+indra/newview/llfloaterprismmanager.cpp:1398	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+indra/newview/llfloaterprismmanager.cpp:1403	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	: capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED
+indra/newview/llfloaterprismmanager.cpp:1447	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED && capture->mDisplayCount == 0)
+indra/newview/llfloaterprismmanager.cpp:1455	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+indra/newview/llfloaterprismmanager.cpp:1467	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	const bool editable = capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+indra/newview/llfloaterprismmanager.cpp:1470	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+indra/newview/llfloaterprismmanager.cpp:1496	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llfloaterprismmanager.cpp:1519	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+indra/newview/llfloaterprismmanager.cpp:1532	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+indra/newview/llfloaterprismmanager.cpp:1559	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+indra/newview/llfloaterprismmanager.cpp:1560	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	!capture->mCameraObjectId.isNull(),
+indra/newview/llfloaterprismmanager.cpp:1561	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED
+indra/newview/llfloaterprismmanager.cpp:1566	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS;
+indra/newview/llfloaterprismmanager.cpp:1606	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < mRegistrySnapshot.mCaptureCount; ++index)
+indra/newview/llfloaterprismmanager.cpp:1846	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+indra/newview/llfloaterprismmanager.cpp:1898	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llfloaterprismmanager.cpp:1902	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLViewerObject* source = gObjectList.findObject(capture->mCameraObjectId);
+indra/newview/llfloaterprismmanager.cpp:1909	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings settings = capture->mCamera;
+indra/newview/llfloaterprismmanager.cpp:1945	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llfloaterprismmanager.cpp:1956	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings settings = capture->mCamera;
+indra/newview/llfloaterprismmanager.cpp:2002	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llfloaterprismmanager.cpp:2007	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	LLPrismLens::CameraSettings settings = capture->mCamera;
+indra/newview/llfloaterprismmanager.cpp:2185	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llfloaterprismmanager.cpp:2206	Guard CAMERA before first camera read/action; common metadata/selection stays source-slot based.	F32 aspect = capture->mCamera.mOutputAspect;
+indra/newview/llfloaterprismmanager.cpp:2289	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (!capture || !display || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llfloaterprismmanager.cpp:2503	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < mRegistrySnapshot.mCaptureCount; ++index)
+indra/newview/llpanelface.cpp:3434	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < registry.mCaptureCount; ++index)
+indra/newview/llpanelface.cpp:3464	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < registry.mCaptureCount; ++index)
+indra/newview/llpanelface.cpp:3540	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/llpanelvolume.cpp:1169	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; capture_id.notNull() && index < snapshot.mCaptureCount; ++index)
+indra/newview/llprismlens.cpp:1846	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	LLPrismLens::ECaptureMode mMode = LLPrismLens::ECaptureMode::SURFACE_LENS;
+indra/newview/llprismlens.cpp:1851	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	LLUUID mCameraObjectId;
+indra/newview/llprismlens.cpp:1852	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	LLPrismLens::CameraSettings mCamera;
+indra/newview/llprismlens.cpp:2070	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (replacing && mLenses[findCapture(*replacing)].mMode !=
+indra/newview/llprismlens.cpp:2186	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (mLenses[capture_slot].mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:2220	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (object->getID() == mLenses[capture_slot].mCameraObjectId)
+indra/newview/llprismlens.cpp:2243	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (mLenses[capture_slot].mMode !=
+indra/newview/llprismlens.cpp:2363	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (mLenses[capture_slot].mMode !=
+indra/newview/llprismlens.cpp:2435	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	projector, mLenses[capture_slot].mMode) !=
+indra/newview/llprismlens.cpp:2499	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture.mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
+indra/newview/llprismlens.cpp:2500	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mLabel = defaultLabel(capture.mMode, false);
+indra/newview/llprismlens.cpp:2501	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCameraObjectId = object_id;
+indra/newview/llprismlens.cpp:2502	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mTestPattern = false;
+indra/newview/llprismlens.cpp:2546	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture.mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
+indra/newview/llprismlens.cpp:2547	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mLabel = defaultLabel(capture.mMode, true);
+indra/newview/llprismlens.cpp:2548	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCameraObjectId.setNull(); // objectless: virtual transform only
+indra/newview/llprismlens.cpp:2549	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera = camera;
+indra/newview/llprismlens.cpp:2587	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture.mMode = LLPrismLens::ECaptureMode::SURFACE_LENS;
+indra/newview/llprismlens.cpp:2588	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mLabel = defaultLabel(capture.mMode, false);
+indra/newview/llprismlens.cpp:2695	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (mLenses[new_capture_slot].mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:2768	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (mLenses[capture_slot].mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:2992	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	mLenses[slot].mMode != LLPrismLens::ECaptureMode::SURFACE_LENS)
+indra/newview/llprismlens.cpp:3083	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (mLenses[slot].mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:3433	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS &&
+indra/newview/llprismlens.cpp:3660	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	LLViewerObject* source_object = gObjectList.findObject(capture.mCameraObjectId);
+indra/newview/llprismlens.cpp:3668	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	F32 vertical_fov = capture.mCamera.mFixedVerticalFovRad;
+indra/newview/llprismlens.cpp:3669	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture.mCamera.mTestPattern)
+indra/newview/llprismlens.cpp:3673	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	else if (capture.mCamera.mVirtual)
+indra/newview/llprismlens.cpp:3675	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (!capture.mCamera.mVirtualPos.isFinite() ||
+indra/newview/llprismlens.cpp:3676	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	!capture.mCamera.mVirtualRot.isFinite())
+indra/newview/llprismlens.cpp:3685	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture.mCameraObjectId.isNull())
+indra/newview/llprismlens.cpp:3706	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture.mCamera.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
+indra/newview/llprismlens.cpp:3728	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mRuntime.mEffectiveFarClip = llmin(capture.mCamera.mFarClip,
+indra/newview/llprismlens.cpp:3758	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	frame.mTargetWidth = capture.mCamera.mTestPattern
+indra/newview/llprismlens.cpp:3760	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	frame.mTargetHeight = capture.mCamera.mTestPattern
+indra/newview/llprismlens.cpp:3775	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	const F32 aspect = capture.mCamera.mTestPattern
+indra/newview/llprismlens.cpp:3776	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	? 1.f : capture.mCamera.mOutputAspect;
+indra/newview/llprismlens.cpp:3802	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	frame.mTargetWidth = capture.mCamera.mTestPattern
+indra/newview/llprismlens.cpp:3806	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	frame.mTargetHeight = capture.mCamera.mTestPattern
+indra/newview/llprismlens.cpp:4266	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	mLenses[mActiveSlot].mMode == LLPrismLens::ECaptureMode::SURFACE_LENS;
+indra/newview/llprismlens.cpp:4321	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:4352	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCameraObjectId = object_id;
+indra/newview/llprismlens.cpp:4353	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mVirtual = false;
+indra/newview/llprismlens.cpp:4354	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mTestPattern = false;
+indra/newview/llprismlens.cpp:4355	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mBonePov.mEnabled = false;
+indra/newview/llprismlens.cpp:4461	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:4486	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	gObjectList.findObject(capture.mCameraObjectId));
+indra/newview/llprismlens.cpp:4494	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera = corrected;
+indra/newview/llprismlens.cpp:4512	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
+indra/newview/llprismlens.cpp:4513	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	!capture.mCamera.mVirtual)
+indra/newview/llprismlens.cpp:4518	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture.mCamera.mFovMode != LLPrismLens::EFovMode::FIXED)
+indra/newview/llprismlens.cpp:4524	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	LLPrismLens::CameraSettings candidate = capture.mCamera;
+indra/newview/llprismlens.cpp:4536	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mVirtualPos = pos;
+indra/newview/llprismlens.cpp:4537	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mVirtualRot = rot;
+indra/newview/llprismlens.cpp:4538	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mFixedVerticalFovRad = vertical_fov_rad;
+indra/newview/llprismlens.cpp:4555	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
+indra/newview/llprismlens.cpp:4556	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	!capture.mCamera.mVirtual)
+indra/newview/llprismlens.cpp:4561	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture.mCamera.mFovMode != LLPrismLens::EFovMode::FIXED)
+indra/newview/llprismlens.cpp:4567	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	LLPrismLens::CameraSettings candidate = capture.mCamera;
+indra/newview/llprismlens.cpp:4576	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mVirtualPos = pos;
+indra/newview/llprismlens.cpp:4577	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mFixedVerticalFovRad = vertical_fov_rad;
+indra/newview/llprismlens.cpp:4622	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	value, defaultLabel(mLenses[slot].mMode,
+indra/newview/llprismlens.cpp:4623	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	mLenses[slot].mCamera.mVirtual, slot));
+indra/newview/llprismlens.cpp:4845	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture_slot >= 0 && mLenses[capture_slot].mMode !=
+indra/newview/llprismlens.cpp:4979	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:4985	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	gObjectList.findObject(capture.mCameraObjectId);
+indra/newview/llprismlens.cpp:4996	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCameraObjectId, display.mObjectId,
+indra/newview/llprismlens.cpp:5214	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	mLenses[capture_slot].mCameraObjectId,
+indra/newview/llprismlens.cpp:5235	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (mLenses[requested_slot].mMode !=
+indra/newview/llprismlens.cpp:5246	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	mLenses[display.mCaptureSlot].mMode ==
+indra/newview/llprismlens.cpp:5257	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	mLenses[capture_slot].mMode ==
+indra/newview/llprismlens.cpp:5357	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture.mCamera.mVirtual)
+indra/newview/llprismlens.cpp:5359	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	mGateEyeCache = capture.mCamera.mVirtualPos;
+indra/newview/llprismlens.cpp:5360	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	mGateRotationCache = capture.mCamera.mVirtualRot;
+indra/newview/llprismlens.cpp:5364	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	LLViewerObject* obj = gObjectList.findObject(capture.mCameraObjectId);
+indra/newview/llprismlens.cpp:5371	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mLocalEyeOffset * mGateRotationCache;
+indra/newview/llprismlens.cpp:5549	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+indra/newview/llprismlens.cpp:5811	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	feed.mCameraVerticalFovRad = capture.mCamera.mFixedVerticalFovRad;
+indra/newview/llprismlens.cpp:5812	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	feed.mCameraAspect = capture.mCamera.mOutputAspect;
+indra/newview/llprismlens.cpp:5849	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	feed.mCameraVerticalFovRad = capture.mCamera.mFixedVerticalFovRad;
+indra/newview/llprismlens.cpp:5850	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	feed.mCameraAspect = capture.mCamera.mOutputAspect;
+indra/newview/llprismlens.cpp:5922	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	record.mCapture.mMode = capture.mMode;
+indra/newview/llprismlens.cpp:5923	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	record.mCapture.mCameraObjectId = capture.mCameraObjectId;
+indra/newview/llprismlens.cpp:5924	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	record.mCapture.mCamera = capture.mCamera;
+indra/newview/llprismlens.cpp:6023	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (definition.mCameraObjectId == display.mDisplayObjectId)
+indra/newview/llprismlens.cpp:6054	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mMode = definition.mMode;
+indra/newview/llprismlens.cpp:6055	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCameraObjectId = definition.mCameraObjectId;
+indra/newview/llprismlens.cpp:6056	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera = definition.mCamera;
+indra/newview/llprismlens.cpp:6109	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (definition.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+indra/newview/llprismlens.cpp:6191	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	LLPrismLens::CaptureDefinition& out = result.mCaptures[result.mCaptureCount++];
+indra/newview/llprismlens.cpp:6195	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	out.mMode = capture.mMode;
+indra/newview/llprismlens.cpp:6196	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	out.mCameraObjectId = capture.mCameraObjectId;
+indra/newview/llprismlens.cpp:6197	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	out.mCamera = capture.mCamera;
+indra/newview/llprismlens.cpp:6384	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	item["mode"] = capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED
+indra/newview/llprismlens.cpp:6390	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:6392	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["camera_id"] = capture.mCameraObjectId;
+indra/newview/llprismlens.cpp:6393	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["fov_mode"] = capture.mCamera.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR
+indra/newview/llprismlens.cpp:6395	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["fixed_vertical_fov_radians"] = capture.mCamera.mFixedVerticalFovRad;
+indra/newview/llprismlens.cpp:6396	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["near_clip"] = capture.mCamera.mNearClip;
+indra/newview/llprismlens.cpp:6397	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["far_clip"] = capture.mCamera.mFarClip;
+indra/newview/llprismlens.cpp:6399	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	offset.append(capture.mCamera.mLocalEyeOffset.mV[VX]);
+indra/newview/llprismlens.cpp:6400	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	offset.append(capture.mCamera.mLocalEyeOffset.mV[VY]);
+indra/newview/llprismlens.cpp:6401	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	offset.append(capture.mCamera.mLocalEyeOffset.mV[VZ]);
+indra/newview/llprismlens.cpp:6403	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["output_aspect"] = capture.mCamera.mOutputAspect;
+indra/newview/llprismlens.cpp:6404	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["chromatic_aberration"] = capture.mCamera.mOptics.mChromaticAberration;
+indra/newview/llprismlens.cpp:6405	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["film_grain"] = capture.mCamera.mOptics.mFilmGrain;
+indra/newview/llprismlens.cpp:6406	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["crt_scanlines"] = capture.mCamera.mOptics.mCRTScanlines;
+indra/newview/llprismlens.cpp:6407	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["exposure_bias"] = capture.mCamera.mOptics.mExposureBias;
+indra/newview/llprismlens.cpp:6410	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["show_guide"]       = capture.mCamera.mShowGuide;
+indra/newview/llprismlens.cpp:6411	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["guide_thirds"]     = capture.mCamera.mGuideThirds;
+indra/newview/llprismlens.cpp:6412	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["guide_uproll"]     = capture.mCamera.mGuideUpRoll;
+indra/newview/llprismlens.cpp:6413	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["guide_crosshair"]  = capture.mCamera.mGuideCrosshair;
+indra/newview/llprismlens.cpp:6414	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["guide_clipmarkers"] = capture.mCamera.mGuideClipMarkers;
+indra/newview/llprismlens.cpp:6420	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["virtual"] = capture.mCamera.mVirtual;
+indra/newview/llprismlens.cpp:6421	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	item["test_pattern"] = capture.mCamera.mTestPattern;
+indra/newview/llprismlens.cpp:6423	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	virtual_pos.append(capture.mCamera.mVirtualPos.mV[VX]);
+indra/newview/llprismlens.cpp:6424	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	virtual_pos.append(capture.mCamera.mVirtualPos.mV[VY]);
+indra/newview/llprismlens.cpp:6425	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	virtual_pos.append(capture.mCamera.mVirtualPos.mV[VZ]);
+indra/newview/llprismlens.cpp:6428	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VX]);
+indra/newview/llprismlens.cpp:6429	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VY]);
+indra/newview/llprismlens.cpp:6430	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VZ]);
+indra/newview/llprismlens.cpp:6431	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VS]);
+indra/newview/llprismlens.cpp:6438	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera.mBonePov;
+indra/newview/llprismlens.cpp:6794	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (mode == "camera_feed") parsed.mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
+indra/newview/llprismlens.cpp:7527	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:7567	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+indra/newview/llprismlens.cpp:7573	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS && references != 1)
+indra/newview/llprismlens.cpp:7636	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mMode = parsed.mMode;
+indra/newview/llprismlens.cpp:7637	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCameraObjectId = parsed.mCameraId;
+indra/newview/llprismlens.cpp:7638	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture.mCamera = parsed.mCamera;
+indra/newview/llprismlens.cpp:7668	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+indra/newview/llprismlens.cpp:7761	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture.mOccupied && capture.mMode ==
+indra/newview/llprismlens.cpp:7775	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	return slot >= 0 && mLenses[slot].mMode ==
+indra/newview/llprismlens.cpp:7904	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS &&
+indra/newview/llprismlens.cpp:8966	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < registry.mCaptureCount; ++index)
+indra/newview/llprismlens.cpp:8979	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	const U32 retained_capture_count = registry.mCaptureCount -
+indra/newview/llprismlens.cpp:9398	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 i = 0; i < snapshot.mCaptureCount; ++i)
+indra/newview/llprismlens.cpp:9401	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (def.mMode == ECaptureMode::CAMERA_FEED &&
+indra/newview/llprismlens.cpp:9402	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	!def.mCamera.mTestPattern && def.mCamera.mShowGuide)
+indra/newview/llprismlens.cpp:9421	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 i = 0; i < snapshot.mCaptureCount; ++i)
+indra/newview/llprismlens.cpp:9424	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (def.mMode != ECaptureMode::CAMERA_FEED ||
+indra/newview/llprismlens.cpp:9425	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	def.mCamera.mTestPattern || !def.mCamera.mShowGuide)
+indra/newview/llprismlens.cpp:9435	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (def.mCamera.mVirtual)
+indra/newview/llprismlens.cpp:9437	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	rotation = def.mCamera.mVirtualRot;
+indra/newview/llprismlens.cpp:9438	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	eye = def.mCamera.mVirtualPos; // no mLocalEyeOffset for virtual cams
+indra/newview/llprismlens.cpp:9442	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	LLViewerObject* obj = gObjectList.findObject(def.mCameraObjectId);
+indra/newview/llprismlens.cpp:9451	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	def.mCamera.mLocalEyeOffset * rotation;
+indra/newview/llprismlens.cpp:9471	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	vfov = def.mCamera.mFixedVerticalFovRad;
+indra/newview/llprismlens.cpp:9473	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	const F32 aspect = def.mCamera.mOutputAspect;
+indra/newview/llprismlens.cpp:9474	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	const F32 near_clip = def.mCamera.mNearClip;
+indra/newview/llprismlens.cpp:9475	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	const F32 far_clip = def.mCamera.mFarClip; // user's configured range; NOT
+indra/newview/llprismlens.cpp:9517	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (def.mCamera.mGuideThirds)
+indra/newview/llprismlens.cpp:9534	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (def.mCamera.mGuideCrosshair)
+indra/newview/llprismlens.cpp:9546	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (def.mCamera.mGuideClipMarkers)
+indra/newview/llprismlens.cpp:9574	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (def.mCamera.mGuideUpRoll)
+indra/newview/llprismlens.cpp:9846	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture->mCamera.mTestPattern)
+indra/newview/llprismlens.cpp:9893	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture->mMode == ECaptureMode::CAMERA_FEED)
+indra/newview/llprismlens.cpp:9897	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	if (capture->mCamera.mVirtual)
+indra/newview/llprismlens.cpp:9906	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	rotation = capture->mCamera.mVirtualRot;
+indra/newview/llprismlens.cpp:9907	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	camera_eye = capture->mCamera.mVirtualPos;
+indra/newview/llprismlens.cpp:9911	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	LLViewerObject* source_object = gObjectList.findObject(capture->mCameraObjectId);
+indra/newview/llprismlens.cpp:9923	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	capture->mCamera.mLocalEyeOffset * rotation;
+indra/newview/llprismlens.cpp:9939	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	const F32 aspect = capture->mCamera.mOutputAspect;
+indra/newview/llprismlens.cpp:9940	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	const F32 near_clip = capture->mCamera.mNearClip;
+indra/newview/llprismlens.cpp:9942	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	? llmin(llmin(capture->mCamera.mFarClip, main_camera.getFar()),
+indra/newview/llprismlens.cpp:9944	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	: llmin(capture->mCamera.mFarClip, main_camera.getFar());
+indra/newview/llprismlens.cpp:10357	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[0] = capture->mCamera.mOptics.mChromaticAberration;
+indra/newview/llprismlens.cpp:10358	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
+indra/newview/llprismlens.cpp:10359	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
+indra/newview/llprismlens.cpp:10360	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
+indra/newview/llprismlens.cpp:10377	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	F32 raw_aspect = capture->mCamera.mOutputAspect;
+indra/newview/llprismlens.cpp:10378	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture->mMode == ECaptureMode::SURFACE_LENS)
+indra/newview/llprismlens.cpp:10416	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	const F32 capture_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
+indra/newview/llprismlens.cpp:10417	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	? capture->mCamera.mOutputAspect
+indra/newview/llprismlens.cpp:10419	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture->mMode == ECaptureMode::CAMERA_FEED &&
+indra/newview/llprismlens.cpp:10549	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[0] = capture->mCamera.mOptics.mChromaticAberration;
+indra/newview/llprismlens.cpp:10550	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
+indra/newview/llprismlens.cpp:10551	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
+indra/newview/llprismlens.cpp:10552	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
+indra/newview/llprismlens.cpp:10604	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	const F32 capture_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
+indra/newview/llprismlens.cpp:10605	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	? capture->mCamera.mOutputAspect
+indra/newview/llprismlens.cpp:10609	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture->mMode == ECaptureMode::CAMERA_FEED &&
+indra/newview/llprismlens.cpp:10811	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[0] = capture->mCamera.mOptics.mChromaticAberration;
+indra/newview/llprismlens.cpp:10812	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
+indra/newview/llprismlens.cpp:10813	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
+indra/newview/llprismlens.cpp:10814	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
+indra/newview/llprismlens.cpp:10860	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	const F32 capture_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
+indra/newview/llprismlens.cpp:10861	Checked camera payload for camera work; tagged copy for snapshots/rollback; common signal metadata for preview.	? capture->mCamera.mOutputAspect
+indra/newview/llprismlens.cpp:10865	Kind-aware camera/surface predicate or explicit CAMERA creation; media cannot fall through.	if (capture->mMode == ECaptureMode::CAMERA_FEED &&
+indra/newview/llprismlens.h:734	Private tagged camera payload; no public forwarding/default payload.	ECaptureMode mMode = ECaptureMode::SURFACE_LENS;
+indra/newview/llprismlens.h:735	Private tagged camera payload; no public forwarding/default payload.	LLUUID mCameraObjectId;
+indra/newview/llprismlens.h:736	Private tagged camera payload; no public forwarding/default payload.	CameraSettings mCamera;
+indra/newview/lltexturectrl.cpp:1444	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+indra/newview/lltexturectrl.cpp:1478	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	list->setItems(items, snapshot.mCaptureCount, mVCamCaptureID);
+indra/newview/lltexturectrl.cpp:1498	Common occupied-slot iteration/capacity; actual CAMERA count published separately.	for (U32 index = 0; index < snapshot.mCaptureCount; ++index)

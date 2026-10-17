@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewermedia.h"
+#include "llprismlens.h"
 
 #include "llagent.h"
 #include "llagentcamera.h"
@@ -695,6 +696,8 @@ void LLViewerMedia::updateMedia(void *dummy_arg)
         setAllMediaEnabled(false);
         return;
     }
+
+    if (LLPrismLens::mediaSlotsEnabled()) LLPrismLens::reconcileMediaSlots();
 
     // HACK: we always try to keep a spare running webkit plugin around to improve launch times.
     // 2017-04-19 Removed CP - this doesn't appear to buy us much and consumes a lot of resources so
@@ -1791,6 +1794,13 @@ void LLViewerMediaImpl::createMediaSource()
 void LLViewerMediaImpl::destroyMediaSource()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA;
+    mResolvedPlugin.clear();
+    if (LLPrismLens::mediaSlotsEnabled())
+    {
+        mMediaUploadState.invalidate();
+        ++mMediaSourceEpoch;
+        mCompletedImage.ready = false;
+    }
     mNeedsNewTexture = true;
     // The plugin's shared texture is going away; tear the interop down fully and
     // force a fresh bind when the next media source delivers a handle (even if the
@@ -1821,6 +1831,7 @@ void LLViewerMediaImpl::destroyMediaSource()
             mMediaSource = NULL; // shared pointer
         }
     }
+    if (LLPrismLens::mediaSlotsEnabled()) LLPrismLens::reconcileMediaSlots();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -1831,8 +1842,9 @@ void LLViewerMediaImpl::setMediaType(const std::string& media_type)
 
 //////////////////////////////////////////////////////////////////////////////////////////
 /*static*/
-LLPluginClassMedia* LLViewerMediaImpl::newSourceFromMediaType(std::string media_type, LLPluginClassMediaOwner *owner /* may be NULL */, S32 default_width, S32 default_height, F64 zoom_factor, const std::string target, bool clean_browser)
+LLPluginClassMedia* LLViewerMediaImpl::newSourceFromMediaType(std::string media_type, LLPluginClassMediaOwner *owner /* may be NULL */, S32 default_width, S32 default_height, F64 zoom_factor, const std::string target, bool clean_browser, std::string* resolved_plugin)
 {
+    if (resolved_plugin) resolved_plugin->clear();
     if (gNonInteractive)
     {
         return NULL;
@@ -1855,6 +1867,8 @@ LLPluginClassMedia* LLViewerMediaImpl::newSourceFromMediaType(std::string media_
             media_source->setSize(default_width, default_height);
             media_source->setZoomFactor(zoom_factor);
 
+            media_source->enableMediaFrames(LLPrismLens::mediaSlotsEnabled(), false);
+            if (resolved_plugin) *resolved_plugin = plugin_basename;
             return media_source;
         }
     }
@@ -1963,6 +1977,8 @@ LLPluginClassMedia* LLViewerMediaImpl::newSourceFromMediaType(std::string media_
             // to satisfy its non-empty contract.
             if (media_source->init(launcher_name, plugin_dir, plugin_basename, gSavedSettings.getBOOL("PluginAttachDebuggerToPlugins")))
             {
+                media_source->enableMediaFrames(LLPrismLens::mediaSlotsEnabled(), plugin_basename == "media_plugin_libvlc");
+                if (resolved_plugin) *resolved_plugin = plugin_basename;
                 return media_source;
             }
             else
@@ -2018,7 +2034,7 @@ bool LLViewerMediaImpl::initializePlugin(const std::string& media_type)
     // Save the MIME type that really caused the plugin to load
     mCurrentMimeType = mMimeType;
 
-    LLPluginClassMedia* media_source = newSourceFromMediaType(mMimeType, this, mMediaWidth, mMediaHeight, mZoomFactor, mTarget, mCleanBrowser);
+    LLPluginClassMedia* media_source = newSourceFromMediaType(mMimeType, this, mMediaWidth, mMediaHeight, mZoomFactor, mTarget, mCleanBrowser, &mResolvedPlugin);
 
     if (media_source)
     {
@@ -2076,7 +2092,14 @@ void LLViewerMediaImpl::loadURI()
             LL_INFOS() << "Asking media source to load URI: " << sanitized_uri << LL_ENDL;
         }
 
+        if (LLPrismLens::mediaSlotsEnabled())
+        {
+            ++mMediaSourceEpoch;
+            mMediaUploadState.invalidate();
+            mCompletedImage.ready = false;
+        }
         mMediaSource->loadURI( uri );
+        if (LLPrismLens::mediaSlotsEnabled()) LLPrismLens::reconcileMediaSlots();
 
         // A non-zero mPreviousMediaTime means that either this media was previously unloaded by the priority code while playing/paused,
         // or a seek happened before the media loaded.  In either case, seek to the saved time.
@@ -2998,6 +3021,202 @@ bool LLViewerMediaImpl::canNavigateBack()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+struct LLViewerMediaImpl::MediaUpload
+{
+    LLMediaFrame::TerminalCleanup terminal;
+    LLViewerMediaImpl* impl = nullptr;
+    LLViewerMediaTexture* texture = nullptr;
+    std::shared_ptr<LLPluginSharedMemory> mapping;
+    LLMediaFrame::Identity identity;
+    LLRect dirty;
+    U8* pixels = nullptr;
+    S32 stride = 0, rows = 0, depth = 0;
+    S32 textureWidth = 0, textureHeight = 0;
+    S32 usedWidth = 0, usedHeight = 0;
+    GLuint name = 0;
+    GLuint baseName = 0;
+    GLsync fence = nullptr;
+    ~MediaUpload()
+    {
+        // The custom deleter below only destroys uploads on main. In particular,
+        // LLRefCount and LLImageGL's deferred-delete list are not worker-safe.
+        llassert(on_main_thread());
+        if (fence) glDeleteSync(fence);
+        if (name) LLImageGL::deleteTextures(1, &name);
+        mapping.reset();
+    }
+};
+
+LLMediaFrame::Identity LLViewerMediaImpl::mediaImageIdentity() const
+{
+    return {mMediaSourceEpoch, mMediaSource ? mMediaSource->getLayoutEpoch() : 0,
+            mMediaSource ? mMediaSource->getLoadToken() : std::string()};
+}
+
+LLViewerMediaImpl::CompletedImage LLViewerMediaImpl::completedMediaImage() const
+{
+    CompletedImage image = mCompletedImage;
+    image.ready = image.ready && mMediaUploadState.ready && hasLibVLCSource() && image.identity == mediaImageIdentity();
+    auto* texture = LLViewerTextureManager::findMediaTexture(mTextureId);
+    image.ready = image.ready && texture && texture->getGLTexture() &&
+        image.textureName != 0 && texture->getGLTexture()->getTexName() == image.textureName;
+    if (mMediaSource)
+    {
+        image.videoWidth = mMediaSource->getVideoWidth();
+        image.videoHeight = mMediaSource->getVideoHeight();
+        image.videoSarNum = mMediaSource->getVideoSarNum();
+        image.videoSarDen = mMediaSource->getVideoSarDen();
+    }
+    return image;
+}
+
+bool LLViewerMediaImpl::mediaSlotPermitted() const
+{
+    // Observing a source never overrides its ordinary visibility/update policy.
+    return hasLibVLCSource() && !isForcedUnloaded() && !mSuspendUpdates &&
+        mVisible && !mWebPaused && !mMediaSource->isPluginExited();
+}
+
+std::shared_ptr<LLViewerMediaImpl::MediaUpload> LLViewerMediaImpl::preMediaTexUpdate()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA;
+    if (mTextureUpdatePending || !mMediaSource) return nullptr;
+    auto* texture = updateMediaImageForSlots();
+    if (!texture) return nullptr;
+    // Late faces and paused/static media still need replacement and resize/UV
+    // maintenance, even when the decoder has no new dirty rectangle.
+    texture->setPlaying(true);
+    LLRect dirty;
+    if (!mMediaSource->getDirty(&dirty)) return nullptr;
+
+    // Registration and address capture precede dirty consumption/enqueue.
+    auto mapping = mMediaSource->retainBits();
+    if (!mapping) return nullptr;
+    auto upload = std::shared_ptr<MediaUpload>(new MediaUpload(), [](MediaUpload* retired)
+    {
+        if (on_main_thread()) delete retired;
+        // A closed reply queue can discard its capture on the worker. Leak the
+        // job (including its refs/mapping/GL objects) in that shutdown case;
+        // never run viewer destruction or deferred texture deletion there.
+    });
+    upload->mapping = std::move(mapping);
+    upload->identity = mediaImageIdentity();
+    if (hasLibVLCSource() && !upload->identity.load.empty() && !LLMediaFrame::acceptsToken(
+            upload->identity.load, mMediaSource->getDirtyLoadToken())) return nullptr;
+    upload->stride = mMediaSource->getBitsWidth();
+    upload->rows = mMediaSource->getBitsHeight();
+    upload->depth = mMediaSource->getTextureDepth();
+    upload->usedWidth = mMediaSource->getWidth();
+    upload->usedHeight = mMediaSource->getHeight();
+    dirty.mLeft = llmax(0, dirty.mLeft);
+    dirty.mBottom = llmax(0, dirty.mBottom);
+    dirty.mRight = llmin(upload->stride, dirty.mRight);
+    dirty.mTop = llmin(upload->rows, dirty.mTop);
+    if (hasLibVLCSource())
+        dirty.set(0, upload->usedHeight, upload->usedWidth, 0);
+    if (!LLMediaFrame::validPixels(upload->mapping->getSize(), upload->stride,
+            upload->rows, upload->depth, dirty.mLeft, dirty.mBottom,
+            dirty.getWidth(), dirty.getHeight())) return nullptr;
+    upload->pixels = static_cast<U8*>(upload->mapping->getMappedAddress());
+    if (!upload->pixels) return nullptr;
+    upload->texture = texture;
+    upload->textureWidth = texture->getWidth();
+    upload->textureHeight = texture->getHeight();
+    upload->baseName = texture->getGLTexture()->getTexName();
+    upload->dirty = dirty;
+    upload->terminal.release = [this, texture]()
+    {
+        mTextureUpdatePending = false;
+        mMediaUploadState.pending = false;
+        texture->unref();
+        unref();
+    };
+    mTextureUpdatePending = true;
+    ref();
+    texture->ref();
+    upload->impl = this;
+    mMediaUploadState.pending = true;
+    mMediaSource->resetDirty();
+    return upload;
+}
+
+bool LLViewerMediaImpl::doMediaTexUpdate(MediaUpload& upload)
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_MEDIA("media texUpload");
+#if LL_IMAGEGL_THREAD_CHECK
+    upload.texture->getGLTexture()->mActiveThread = LLThread::currentID();
+#endif
+    // Descriptor fields and the retained mapping are the worker's only pixel
+    // inputs. No player/parent fields are read here.
+    // LLImageGL's bool results do not report GL allocation/upload errors.
+    // Establish a clean error boundary only for this opt-in upload path.
+    for (U32 errors = 0; errors < 8 && glGetError() != GL_NO_ERROR; ++errors) {}
+    LLPointer<LLImageRaw> raw = new LLImageRaw(upload.pixels,
+        upload.textureWidth, upload.textureHeight, upload.depth, true);
+    const bool allocated = upload.texture->createGLTexture(
+        0, raw, 0, true, LLGLTexture::OTHER, true, &upload.name);
+    raw->releaseData();
+    const GLenum allocationError = glGetError();
+    if (!allocated || !upload.name || allocationError != GL_NO_ERROR) return false;
+    if (!upload.texture->setSubImage(upload.pixels, upload.stride, upload.rows,
+            upload.dirty.mLeft, upload.dirty.mBottom,
+            upload.dirty.getWidth(), upload.dirty.getHeight(), upload.name)) return false;
+    if (glGetError() != GL_NO_ERROR) return false;
+    if (!on_main_thread())
+    {
+        upload.fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        glFlush();
+        if (!upload.fence || glGetError() != GL_NO_ERROR) return false;
+        if (gGLManager.mIsNVIDIA)
+        {
+            // Preserve the existing importer workaround on the worker.
+            const GLenum wait = glClientWaitSync(upload.fence, 0, GL_TIMEOUT_IGNORED);
+            glDeleteSync(upload.fence);
+            upload.fence = nullptr;
+            if (wait == GL_WAIT_FAILED || glGetError() != GL_NO_ERROR) return false;
+        }
+    }
+    return true;
+}
+
+void LLViewerMediaImpl::finishMediaTexUpdate(MediaUpload& upload, bool success)
+{
+    llassert(on_main_thread());
+#if LL_IMAGEGL_THREAD_CHECK
+    upload.texture->getGLTexture()->mActiveThread = LLThread::currentID();
+#endif
+    // This is the main-thread reply, AFTER the worker upload and fence. Promote
+    // and publish together here; syncToMainThread's unconditional swap would
+    // allow a navigated/resized job to replace the current GL name first.
+    if (upload.fence)
+    {
+        for (U32 errors = 0; errors < 8 && glGetError() != GL_NO_ERROR; ++errors) {}
+        glWaitSync(upload.fence, 0, GL_TIMEOUT_IGNORED); // GPU ordering, no CPU wait
+        success = (glGetError() == GL_NO_ERROR) && success;
+        glDeleteSync(upload.fence);
+        upload.fence = nullptr;
+    }
+    const bool current = mMediaSource && upload.identity == mediaImageIdentity();
+    success = success && upload.texture->getGLTexture()->getTexName() == upload.baseName;
+    mMediaUploadState.finish(upload.identity, mediaImageIdentity(), success && current);
+    if (success && current)
+    {
+        upload.texture->getGLTexture()->syncTexName(upload.name);
+        upload.name = 0;
+        mCompletedImage = {upload.identity, mMediaUploadState.serial, true,
+            upload.usedWidth, upload.usedHeight, upload.textureWidth, upload.textureHeight};
+        mCompletedImage.textureName = upload.texture->getGLTexture()->getTexName();
+    }
+    else if (!success && current)
+    {
+        // One coalesced record (the dirty rectangle), one attempt next eligible
+        // update. Merge instead of clearing newer matching decoder dirties.
+        mMediaSource->retryDirty(upload.dirty, upload.identity);
+    }
+    upload.mapping.reset();
+}
+
+
 void LLViewerMediaImpl::update()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA; //LL_RECORD_BLOCK_TIME(FTM_MEDIA_DO_UPDATE);
@@ -3081,6 +3300,10 @@ void LLViewerMediaImpl::update()
         return;
     }
 
+    // A tracked CPU job may outlive disable and player replacement. It still
+    // owns the texture until cleanup; accelerated imports must not race it.
+    if (mMediaUploadState.pending) return;
+
     // Zero-copy paint: the plugin delivers a GPU shared texture instead of CPU
     // pixels, so this media never uses the shm/setSubImage upload path below.
     // Pull the latest frame straight into the media GL texture on this (main)
@@ -3118,6 +3341,10 @@ void LLViewerMediaImpl::update()
     }
 
 
+    // A global setting change can precede the current player's first tagged
+    // frame. Untagged players must continue consuming dirties through legacy.
+    if (!mMediaSource->tracksMediaFrames())
+    {
     LLViewerMediaTexture* media_tex;
     U8* data;
     S32 data_width;
@@ -3159,6 +3386,34 @@ void LLViewerMediaImpl::update()
         {
             doMediaTexUpdate(media_tex, data, data_width, data_height, x_pos, y_pos, width, height, false); // otherwise, update on main thread
         }
+    }
+        return;
+    }
+
+    auto upload = preMediaTexUpdate();
+    if (!upload) return;
+    auto main_queue = LLImageGLThread::sEnabledMedia ? mMainQueue.lock() : nullptr;
+    if (main_queue)
+    {
+        const bool queued = main_queue->postTo(mTexUpdateQueue,
+            [this, upload]() mutable
+            {
+                const bool success = doMediaTexUpdate(*upload);
+                // postTo posts its reply before destroying this callable. Drop
+                // the worker's copy first so only the main reply owns cleanup.
+                upload.reset();
+                return success;
+            },
+            [this, upload](bool success) mutable
+            {
+                finishMediaTexUpdate(*upload, success);
+                upload.reset();
+            });
+        if (!queued) finishMediaTexUpdate(*upload, false);
+    }
+    else
+    {
+        finishMediaTexUpdate(*upload, doMediaTexUpdate(*upload));
     }
 }
 
@@ -3429,6 +3684,77 @@ LLViewerMediaTexture* LLViewerMediaImpl::updateMediaImage()
         if (!media_tex->createGLTexture(discard_level, raw))
         {
             LL_WARNS("Media") << "Failed to create media texture" << LL_ENDL;
+        }
+
+        // MEDIAOPT: set this dynamically on play/stop
+        // FIXME
+//      media_tex->mIsMediaTexture = true;
+        mNeedsNewTexture = false;
+
+        // If the amount of the texture being drawn by the media goes down in either width or height,
+        // recreate the texture to avoid leaving parts of the old image behind.
+        mTextureUsedWidth = mMediaSource->getWidth();
+        mTextureUsedHeight = mMediaSource->getHeight();
+    }
+    return media_tex;
+}
+
+
+LLViewerMediaTexture* LLViewerMediaImpl::updateMediaImageForSlots()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA;
+    llassert(!gCubeSnapshot);
+//    if (!mMediaSource)
+// [SL:KB] - Patch: Render-TextureToggle (Catznip-4.0)
+    if ( (!mMediaSource) || ((LLViewerFetchedTexture::sDefaultDiffuseImagep.notNull()) && (LLViewerFetchedTexture::sDefaultDiffuseImagep->getID() == mTextureId)) )
+// [/SL:KB]
+    {
+        return nullptr; // not ready for updating
+    }
+
+    //llassert(!mTextureId.isNull());
+    // *TODO: Consider enabling mipmaps (they have been disabled for a long time). Likely has a significant performance impact for tiled/high texture repeat media. Mip generation in a shader may also be an option if necessary.
+    LLViewerMediaTexture* media_tex = LLViewerTextureManager::getMediaTexture( mTextureId, USE_MIPMAPS );
+
+    if ( mNeedsNewTexture
+        || (media_tex->getWidth() != mMediaSource->getTextureWidth())
+        || (media_tex->getHeight() != mMediaSource->getTextureHeight())
+        || (mTextureUsedWidth != mMediaSource->getWidth())
+        || (mTextureUsedHeight != mMediaSource->getHeight())
+        )
+    {
+        LL_DEBUGS("Media") << "initializing media placeholder" << LL_ENDL;
+        LL_DEBUGS("Media") << "movie image id " << mTextureId << LL_ENDL;
+
+        int texture_width = mMediaSource->getTextureWidth();
+        int texture_height = mMediaSource->getTextureHeight();
+        int texture_depth = mMediaSource->getTextureDepth();
+
+        // MEDIAOPT: check to see if size actually changed before doing work
+        media_tex->destroyGLTexture();
+
+        // MEDIAOPT: seems insane that we actually have to make an imageraw then
+        // immediately discard it
+        LLPointer<LLImageRaw> raw = new LLImageRaw(texture_width, texture_height, texture_depth);
+        // Clear the texture to the background color, ignoring alpha.
+        // convert background color channels from [0.0, 1.0] to [0, 255];
+        raw->clear(int(mBackgroundColor.mV[VX] * 255.0f), int(mBackgroundColor.mV[VY] * 255.0f), int(mBackgroundColor.mV[VZ] * 255.0f), 0xff);
+
+        // ask media source for correct GL image format constants
+        media_tex->setExplicitFormat(mMediaSource->getTextureFormatInternal(),
+            mMediaSource->getTextureFormatPrimary(),
+            mMediaSource->getTextureFormatType(),
+            mMediaSource->getTextureFormatSwapBytes());
+
+        int discard_level = 0;
+        for (U32 errors = 0; errors < 8 && glGetError() != GL_NO_ERROR; ++errors) {}
+        const bool allocated = media_tex->createGLTexture(discard_level, raw);
+        const GLenum allocationError = glGetError();
+        if (!allocated || allocationError != GL_NO_ERROR)
+        {
+            LL_WARNS("Media") << "Failed to create media texture" << LL_ENDL;
+            mNeedsNewTexture = true;
+            return nullptr;
         }
 
         // MEDIAOPT: set this dynamically on play/stop

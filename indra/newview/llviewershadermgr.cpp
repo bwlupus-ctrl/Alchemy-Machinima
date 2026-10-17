@@ -173,6 +173,7 @@ LLGLSLShader            gPostScreenSpaceReflectionProgram;
 // Deferred rendering shaders
 LLGLSLShader            gDeferredImpostorProgram;
 LLGLSLShader            gPrismLensProgram;
+LLGLSLShader            gPrismMediaCopyProgram;
 LLGLSLShader            gPrismProjectorFeedProgram[8];
 LLGLSLShader            gPrismProjectorLookProgram[8];
 LLGLSLShader            gPrismPreviewProgram[8];
@@ -688,6 +689,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gHazeWaterProgram);
     mShaderList.push_back(&gDeferredSoftenProgram);
     mShaderList.push_back(&gPrismLensProgram);
+    mShaderList.push_back(&gPrismMediaCopyProgram);
     for (LLGLSLShader& shader : gPrismProjectorFeedProgram)
         mShaderList.push_back(&shader);
     for (LLGLSLShader& shader : gPrismProjectorLookProgram)
@@ -1822,6 +1824,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
 
         gDeferredHighlightProgram.unload();
         gPrismLensProgram.unload();
+        gPrismMediaCopyProgram.unload();
         for (LLGLSLShader& shader : gPrismProjectorFeedProgram) shader.unload();
         for (LLGLSLShader& shader : gPrismProjectorLookProgram) shader.unload();
         for (LLGLSLShader& shader : gPrismPreviewProgram) shader.unload();
@@ -1893,6 +1896,15 @@ bool LLViewerShaderMgr::loadShadersDeferred()
     {
         LL_WARNS("Shader") << "Prism Lens composite shader failed to load; Prism Lens disabled. Deferred rendering unaffected." << LL_ENDL;
     }
+
+    gPrismMediaCopyProgram.mName = "VCam SDR media copy";
+    gPrismMediaCopyProgram.mShaderFiles.clear();
+    gPrismMediaCopyProgram.clearPermutations();
+    gPrismMediaCopyProgram.mShaderFiles.push_back(make_pair("deferred/prismMediaCopyV.glsl", GL_VERTEX_SHADER));
+    gPrismMediaCopyProgram.mShaderFiles.push_back(make_pair("deferred/prismMediaCopyF.glsl", GL_FRAGMENT_SHADER));
+    gPrismMediaCopyProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+    if (!gPrismMediaCopyProgram.createShader())
+        LL_WARNS("Shader") << "VCam media copy unavailable" << LL_ENDL;
 
     // The projector conversion uses the same display transform and colour
     // pipeline as monitor previews, but writes a dedicated mipmapped cookie.

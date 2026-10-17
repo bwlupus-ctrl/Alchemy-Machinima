@@ -270,8 +270,9 @@ def validate_data(data: dict) -> None:
     #       dial beside the Yaw spinner) (+3) (10/15 batch 3).
     # 2108: Roto Ink, Tron, Diopter and Gaze move their on/off from a card row to the page-header master
     #       (page "master": same widget name and setting; Gaze is code-bound, s None like Actor FX) (-4) (10/16).
-    if len(pages) != 37 or row_count != 2108:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2108")
+    # 2113: VCam adds five explicit media source rows (+5); exact coverage stays pinned.
+    if len(pages) != 37 or row_count != 2113:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2113")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

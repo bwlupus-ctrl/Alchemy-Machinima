@@ -20,7 +20,14 @@
     ]},
     {"id": "camera_selector", "t": "Settings for", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below, add a camera, or remove the selected capture in one row. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "bind": "code", "row_height": 36},
-      {"l": "Name", "k": "text", "w": "vc_camera_name", "h": "A short camera name saved with the Prism scene. Empty restores the default name.", "bind": "code"}
+      {"l": "Name", "k": "text", "w": "vc_camera_name", "h": "A short camera name saved with the Prism scene. Empty restores the default name.", "bind": "code"},
+      {"l": "Add media slot", "k": "button", "w": "vc_add_media_slot", "h": "Add a viewer-local LibVLC media source slot. Development switch required.", "btn": "Add media slot", "bind": "code"}
+    ]},
+    {"id": "media_source", "t": "Media source", "k": "rows", "badge": "MEDIA", "rows": [
+      {"l": "Pick prim face", "k": "button", "w": "vc_pick_media_face", "h": "Pick an existing LibVLC prim media face. Escape cancels without changing the slot.", "btn": "Pick prim face", "bind": "code"},
+      {"l": "Source face", "k": "readout", "w": "vc_media_face", "h": "Authored prim and face. Only you see this feed. Original source audio is unchanged.", "bind": "code"},
+      {"l": "Source aspect", "k": "combo", "w": "vc_source_aspect", "h": "Auto uses reported video geometry, falling back to 16:9. Overrides never resize the player.", "it": ["Auto", "16:9", "4:3", "2.39"], "iv": [0, 1, 2, 3], "bind": "code"},
+      {"l": "Media status", "k": "readout", "w": "vc_media_status", "h": "Current face, player and completed-image readiness.", "bind": "code"}
     ]},
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, Skeleton POV, or the local 512 px test pattern. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV", "Test pattern"], "iv": [0,1,2,3], "bind": "code"},
@@ -222,10 +229,10 @@
     ]}
   ],
   "sections": [
-    {"id": "source", "label": "1 Source", "cards": [0,1,2,3,4,5]},
-    {"id": "lens", "label": "2 Lens", "cards": [0,1,2,6,7,8]},
-    {"id": "look", "label": "3 Look", "cards": [0,1,2,9,10]},
-    {"id": "output", "label": "4 Output", "cards": [0,1,2,11,12,13,14,15,16,17,18]},
-    {"id": "rate", "label": "5 Rate & performance", "cards": [0,1,2,19,20]}
+    {"id": "source", "label": "1 Source", "cards": [0,1,2,3,4,5,6]},
+    {"id": "lens", "label": "2 Lens", "cards": [0,1,2,7,8,9]},
+    {"id": "look", "label": "3 Look", "cards": [0,1,2,10,11]},
+    {"id": "output", "label": "4 Output", "cards": [0,1,2,12,13,14,15,16,17,18,19]},
+    {"id": "rate", "label": "5 Rate & performance", "cards": [0,1,2,20,21]}
   ]
 }

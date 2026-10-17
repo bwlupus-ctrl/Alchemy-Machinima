@@ -1235,9 +1235,8 @@ void ALPanelCineLightRig::syncProjectorFeeds(bool force)
     mProjectorFeedRevision = snapshot.mConfigurationRevision;
     mProjectorFeedRigSlot = static_cast<S32>(rig_slot);
     U32 camera_count = 0;
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
-        if (snapshot.mCaptures[index].mMode ==
-            LLPrismLens::ECaptureMode::CAMERA_FEED)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
+        if (snapshot.mCaptures[index].isCameraFeed())
             ++camera_count;
     for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
     {
@@ -1246,11 +1245,11 @@ void ALPanelCineLightRig::syncProjectorFeeds(bool force)
         ALKitRow::setControlVisible(combo, camera_count != 0);
         combo->removeall();
         combo->add("None", LLUUID::null);
-        for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+        for (U32 index = 0; index < snapshot.mSlotCount; ++index)
         {
             const LLPrismLens::CaptureDefinition& capture =
                 snapshot.mCaptures[index];
-            if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+            if (capture.isCameraFeed())
                 combo->add(LLPrismLens::captureDisplayLabel(capture),
                            capture.mHandle.mId);
         }
@@ -1303,7 +1302,7 @@ void ALPanelCineLightRig::onProjectorFeedCommit(S32 light)
         return;
     }
     LLPrismLens::CaptureHandle capture;
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
     {
         if (snapshot.mCaptures[index].mHandle.mId == capture_id)
         {

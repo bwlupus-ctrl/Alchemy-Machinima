@@ -3431,7 +3431,7 @@ void LLPanelFace::onVCamTexture(bool restore, const LLUUID& capture_id)
     const LLPrismLens::RegistrySnapshot registry = LLPrismLens::registrySnapshot();
     LLPrismLens::CaptureHandle requested_capture;
     if (!restore && capture_id.notNull())
-        for (U32 index = 0; index < registry.mCaptureCount; ++index)
+        for (U32 index = 0; index < registry.mSlotCount; ++index)
             if (registry.mCaptures[index].mHandle.mId == capture_id)
             {
                 requested_capture = registry.mCaptures[index].mHandle;
@@ -3461,7 +3461,7 @@ void LLPanelFace::onVCamTexture(bool restore, const LLUUID& capture_id)
         LLPrismLens::CaptureHandle wanted;
         if (!restore && wanted_id == capture_id) wanted = requested_capture;
         else if (wanted_id.notNull())
-            for (U32 index = 0; index < registry.mCaptureCount; ++index)
+            for (U32 index = 0; index < registry.mSlotCount; ++index)
                 if (registry.mCaptures[index].mHandle.mId == wanted_id)
                 {
                     wanted = registry.mCaptures[index].mHandle;
@@ -3537,7 +3537,7 @@ void LLPanelFace::refreshVCamTextureLabel()
     if (reader.mSawFace && !reader.mAllSame)
         label = "VCam: Multiple";
     else if (reader.mCapture.notNull())
-        for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+        for (U32 index = 0; index < snapshot.mSlotCount; ++index)
             if (snapshot.mCaptures[index].mHandle.mId == reader.mCapture)
             {
                 label = llformat("VCam: Cam %u", snapshot.mCaptures[index].mSlot + 1);

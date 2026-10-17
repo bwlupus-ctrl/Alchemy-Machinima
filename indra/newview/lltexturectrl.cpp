@@ -1441,7 +1441,7 @@ void LLFloaterTexturePicker::refreshVCamList()
     mVCamPreviewPublication = LLPrismPreviewService::TilePublication();
     mVCamPreviewLabel.clear();
     mVCamPreviewAspect = 16.f / 9.f;
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
         items[index].mCapture = capture.mHandle;
@@ -1453,6 +1453,8 @@ void LLFloaterTexturePicker::refreshVCamList()
             U32 width = 0;
             U32 height = 0;
             LLPrismLens::captureOutputSize(capture.mHandle, width, height);
+            // The atlas has already fitted the accepted source aspect into
+            // its 16:9 cell. Preserve that cell here (avoid fitting it twice).
             const char* state = "live";
             switch (mVCamPreviewPublication.mState)
             {
@@ -1475,7 +1477,7 @@ void LLFloaterTexturePicker::refreshVCamList()
                 dimensions.c_str(), state);
         }
     }
-    list->setItems(items, snapshot.mCaptureCount, mVCamCaptureID);
+    list->setItems(items, snapshot.mSlotCount, mVCamCaptureID);
     if (mModeSelector &&
         mModeSelector->getValue().asInteger() == PICKER_VCAM)
     {
@@ -1495,7 +1497,7 @@ void LLFloaterTexturePicker::updateVCamDemand()
     preview.clearDemand(TEXTURE_PICKER_PREVIEW_OWNER);
     if (!visible) return;
     const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
         preview.setDemand(TEXTURE_PICKER_PREVIEW_OWNER,
                           snapshot.mCaptures[index].mHandle, true);
 }

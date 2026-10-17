@@ -1166,7 +1166,7 @@ void LLPanelVolume::refreshVCamProjectorLabel(LLViewerObject* object)
             break;
         }
     }
-    for (U32 index = 0; capture_id.notNull() && index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; capture_id.notNull() && index < snapshot.mSlotCount; ++index)
         if (snapshot.mCaptures[index].mHandle.mId == capture_id)
         {
             label = llformat("VCam: Cam %u", snapshot.mCaptures[index].mSlot + 1);

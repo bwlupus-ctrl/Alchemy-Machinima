@@ -36,6 +36,7 @@
 #include "llviewermediaobserver.h"
 
 #include "llpluginclassmedia.h"
+#include "llmediaframestate.h"
 #include "v4color.h"
 #include "llnotificationptr.h"
 
@@ -278,6 +279,26 @@ public:
     void update();
     bool preMediaTexUpdate(LLViewerMediaTexture*& media_tex, U8*& data, S32& data_width, S32& data_height, S32& x_pos, S32& y_pos, S32& width, S32& height);
     void doMediaTexUpdate(LLViewerMediaTexture* media_tex, U8* data, S32 data_width, S32 data_height, S32 x_pos, S32 y_pos, S32 width, S32 height, bool sync);
+    struct MediaUpload;
+    struct CompletedImage
+    {
+        LLMediaFrame::Identity identity;
+        U64 serial = 0;
+        bool ready = false;
+        S32 usedWidth = 0, usedHeight = 0;
+        S32 textureWidth = 0, textureHeight = 0;
+        S32 videoWidth = 0, videoHeight = 0;
+        U32 videoSarNum = 1, videoSarDen = 1;
+        U32 textureName = 0;
+    };
+    LLMediaFrame::Identity mediaImageIdentity() const;
+    CompletedImage completedMediaImage() const;
+    const std::string& resolvedPlugin() const { return mResolvedPlugin; }
+    bool hasLibVLCSource() const { return mMediaSource && mResolvedPlugin == "media_plugin_libvlc"; }
+    bool mediaSlotPermitted() const;
+    std::shared_ptr<MediaUpload> preMediaTexUpdate();
+    bool doMediaTexUpdate(MediaUpload& upload);
+    void finishMediaTexUpdate(MediaUpload& upload, bool success);
     void updateImagesMediaStreams();
     LLUUID getMediaTextureID() const;
 
@@ -316,7 +337,7 @@ public:
     void setTarget(const std::string& target) { mTarget = target; }
 
     // utility function to create a ready-to-use media instance from a desired media type.
-    static LLPluginClassMedia* newSourceFromMediaType(std::string media_type, LLPluginClassMediaOwner *owner /* may be NULL */, S32 default_width, S32 default_height, F64 zoom_factor, const std::string target = LLStringUtil::null, bool clean_browser = false);
+    static LLPluginClassMedia* newSourceFromMediaType(std::string media_type, LLPluginClassMediaOwner *owner /* may be NULL */, S32 default_width, S32 default_height, F64 zoom_factor, const std::string target = LLStringUtil::null, bool clean_browser = false, std::string* resolved_plugin = nullptr);
 
     // Internally set our desired browser user agent string, including
     // the Second Life version and skin name.  Used because we can
@@ -485,6 +506,10 @@ private:
     S32 mTextureUsedHeight;
     bool mSuspendUpdates;
     bool mTextureUpdatePending = false;
+    std::string mResolvedPlugin;
+    U64 mMediaSourceEpoch = 1;
+    CompletedImage mCompletedImage;
+    LLMediaFrame::UploadState mMediaUploadState;
     bool mVisible;
     ECursorType mLastSetCursor;
     EMediaNavState mMediaNavState;
@@ -551,6 +576,7 @@ private:
 
 private:
     LLViewerMediaTexture *updateMediaImage();
+    LLViewerMediaTexture* updateMediaImageForSlots();
     LL::WorkQueue::weak_t mMainQueue;
     LL::WorkQueue::weak_t mTexUpdateQueue;
 

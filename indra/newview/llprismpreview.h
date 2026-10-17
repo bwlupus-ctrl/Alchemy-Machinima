@@ -269,6 +269,7 @@ public:
     // It performs at most one queued cell update.
     void updateAtlas();
     void onRenderTargetsReleased();
+    void invalidateMedia(const LLPrismLens::CaptureHandle& capture);
     bool beginOperation(PrismPreviewBudgetController::EOperation operation,
                         const LLPrismLens::CaptureHandle& capture,
                         F64& reservation_ms, S32& query_slot);

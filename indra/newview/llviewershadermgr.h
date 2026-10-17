@@ -271,6 +271,7 @@ extern LLGLSLShader         gPostScreenSpaceReflectionProgram;
 // Deferred rendering shaders
 extern LLGLSLShader         gDeferredImpostorProgram;
 extern LLGLSLShader         gPrismLensProgram;
+extern LLGLSLShader         gPrismMediaCopyProgram;
 extern LLGLSLShader         gPrismProjectorFeedProgram[8];
 extern LLGLSLShader         gPrismProjectorLookProgram[8];
 // Same eight legacy/color-grade/tonemap permutations selected by colorCorrect.

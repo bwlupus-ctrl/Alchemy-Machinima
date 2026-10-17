@@ -1056,6 +1056,8 @@ void LLPrismPreviewService::notePublication(
         if (entry.mDemanded && entry.mCapture.mId == capture.mId &&
             entry.mCapture.mGeneration == capture.mGeneration)
         {
+            if (entry.mPublicationSerial == serial && entry.mPreviewQuality == preview_quality)
+                return;
             entry.mPublicationSerial = serial;
             entry.mPreviewQuality = preview_quality;
             if (preview_quality && mSelfTestPhase == ESelfTestPhase::ENABLED)
@@ -1263,7 +1265,7 @@ void LLPrismPreviewService::updateAtlas()
         return;
     }
 
-    const U32 permutation = gPipeline.colorCorrectPermutation(true, true);
+    const U32 permutation = state.mMediaSDR ? 0u : gPipeline.colorCorrectPermutation(true, true);
     LLGLSLShader& shader = gPrismPreviewProgram[permutation];
     if (!shader.isComplete())
     {
@@ -1378,6 +1380,18 @@ void LLPrismPreviewService::updateAtlas()
     tile.mPublicationSerial = entry.mPublicationSerial;
     markChanged();
     mNextAtlasSlot = (cell + 1) % mDemand.size();
+}
+
+void LLPrismPreviewService::invalidateMedia(const LLPrismLens::CaptureHandle& capture)
+{
+    for (U32 slot = 0; slot < mDemand.size(); ++slot)
+    {
+        auto& entry = mDemand[slot];
+        if (entry.mCapture.mId != capture.mId || entry.mCapture.mGeneration != capture.mGeneration) continue;
+        mTiles[slot] = TilePublication{};
+        entry.mPublicationSerial = entry.mAtlasSerial = 0;
+        markChanged();
+    }
 }
 
 void LLPrismPreviewService::onRenderTargetsReleased()

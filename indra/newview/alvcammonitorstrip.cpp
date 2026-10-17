@@ -128,16 +128,16 @@ bool sameCapture(const LLPrismLens::CaptureHandle& left,
 }
 
 bool currentCapture(const LLUUID& id, LLPrismLens::CaptureHandle& capture,
-                    LLPrismLens::ECaptureMode* mode = nullptr)
+                    bool* surface = nullptr)
 {
     const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& candidate = snapshot.mCaptures[index];
         if (candidate.mHandle.mId == id)
         {
             capture = candidate.mHandle;
-            if (mode) *mode = candidate.mMode;
+            if (surface) *surface = candidate.isSurfaceLens();
             return true;
         }
     }
@@ -637,13 +637,13 @@ bool ALVCamMonitorStrip::beginDragFromTile(
     LLPrismLens::EFitMode new_face_fit, std::string* reason)
 {
     LLPrismLens::CaptureHandle current;
-    LLPrismLens::ECaptureMode mode = LLPrismLens::ECaptureMode::SURFACE_LENS;
-    if (!currentCapture(capture.mId, current, &mode) || !sameCapture(current, capture))
+    bool surface = false;
+    if (!currentCapture(capture.mId, current, &surface) || !sameCapture(current, capture))
     {
         if (reason) *reason = "That capture no longer exists.";
         return false;
     }
-    if (mode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+    if (surface)
     {
         if (reason) *reason = "A Surface Lens owns exactly one immutable aperture display.";
         return false;

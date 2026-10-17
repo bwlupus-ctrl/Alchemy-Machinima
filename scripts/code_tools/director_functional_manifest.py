@@ -104,7 +104,7 @@ CONTROL_TYPE = {
     "texture_picker": "gobo", "viewport": "viewport",
     "vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
     "vcam_monitor_tile": "button", "vcam_camera_selector": "button",
-    "vcam_face_list": "list",
+    "vcam_face_list": "list", "vcam_projector_list": "list",
 }
 # CSV kind -> widget type (fallback when the XUI element is not found).
 KIND_TO_TYPE = {
@@ -1647,6 +1647,10 @@ def add_runtime_prerequisites(entries):
             continue
         condition = ""
         if page == "vcam_tab":
+            if widget in {"vc_add_media_slot", "vc_source_aspect"}:
+                entry.update(probe="vcam_media", action="RUN", reason="", known_gap=False,
+                             hazards=[], owner="ALPanelDirectorVCam::onControl",
+                             expect={"state": "isolated media-only registry kind/count/aspect oracle"})
             card, row = vcam_rows.get(widget, ({}, {}))
             card_id = card.get("id", entry.get("card", ""))
             show = row.get("show_if", card.get("show_if", ""))
@@ -1654,7 +1658,12 @@ def add_runtime_prerequisites(entries):
                 entry.update(action="SKIP", reason="code-hidden informational row: " + show,
                              declared_non_interactive=True)
                 continue
-            if card_id in {"projector", "projector_tv"}:
+            if widget == "vc_pick_media_face":
+                entry.update(action="DEFER_INWORLD", reason="requires a live prim media face pick/commit/cancel", hazards=["requires_world"], probe="vcam_media_pick")
+                condition = "media slot selected"
+            elif card_id == "media_source":
+                condition = "media slot selected"
+            elif card_id in {"projector", "projector_tv"}:
                 condition = "projector selected"
             elif card_id in {"face_mapping", "tv_effects"}:
                 condition = "face selected"
@@ -1668,7 +1677,7 @@ def add_runtime_prerequisites(entries):
             # camera before login rows run. Camera existence alone is therefore
             # satisfied; keep all source/face/projector/avatar gates deferred,
             # and preserve any deferral already assigned to the action itself.
-            if condition == "camera selected":
+            if condition in {"camera selected", "media slot selected"} and widget != "vc_pick_media_face":
                 condition = ""
             if show == "custom_aspect":
                 entry.setdefault("reveal", []).append({"selector": "vc_output_aspect", "value": -1})

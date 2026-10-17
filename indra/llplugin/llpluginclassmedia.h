@@ -31,6 +31,7 @@
 
 #include "llpluginprocessparent.h"
 #include "llrect.h"
+#include "llmediaframestate.h"
 #include "llpluginclassmediaowner.h"
 #include <queue>
 #include "v4color.h"
@@ -71,6 +72,18 @@ public:
 
     // This may return NULL.  Callers need to check for and handle this case.
     unsigned char* getBitsData();
+    std::shared_ptr<LLPluginSharedMemory> retainBits() const;
+    const std::string& getLoadToken() const { return mLoadToken; }
+    const std::string& getDirtyLoadToken() const { return mDirtyLoadToken; }
+    U64 getLayoutEpoch() const { return mLayoutEpoch; }
+    S32 getVideoWidth() const { return mVideoWidth; }
+    S32 getVideoHeight() const { return mVideoHeight; }
+    U32 getVideoSarNum() const { return mVideoSarNum; }
+    U32 getVideoSarDen() const { return mVideoSarDen; }
+    void retryDirty(const LLRect& rect, const LLMediaFrame::Identity& identity);
+    void enableMediaFrames(bool enabled, bool loadTokens);
+    bool tracksMediaFrames() const { return mFrameTracking.active; }
+
 
     // gets the format details of the texture data
     // These may return 0 if they haven't been set up yet.  The caller needs to detect this case.
@@ -484,6 +497,13 @@ protected:
     bool mAcceleratedPaintDirty = false;
 
     LLRect mDirtyRect;
+    LLMediaFrame::TrackingState mFrameTracking;
+    std::string mLoadToken;
+    std::string mDirtyLoadToken;
+    U64 mLayoutEpoch = 1;
+    S32 mVideoWidth = 0;
+    S32 mVideoHeight = 0;
+    U32 mVideoSarNum = 1, mVideoSarDen = 1;
 
     std::string translateModifiers(MASK modifiers);
 

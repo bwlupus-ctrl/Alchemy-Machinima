@@ -309,12 +309,13 @@ bool ALVCamBonePov::isAnchorAvatar(const LLVOAvatar* avatar)
 {
     if (!avatar) return false;
     const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
-        const LLPrismLens::BonePovSettings& settings = capture.mCamera.mBonePov;
-        if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
-            capture.mCamera.mVirtual && settings.mEnabled &&
+        if (!capture.isCameraFeed()) continue;
+        const LLPrismLens::BonePovSettings& settings = capture.cameraData()->mSettings.mBonePov;
+        if (capture.isCameraFeed() &&
+            capture.cameraData()->mSettings.mVirtual && settings.mEnabled &&
             resolveAnchorAvatar(settings.mAnchorSlot) == avatar)
             return true;
     }
@@ -327,10 +328,10 @@ void ALVCamBonePov::tick(F64 presentation_time)
     const LLPrismLens::RegistrySnapshot snapshot =
         LLPrismLens::registrySnapshot();
 
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
-        if (capture.mSlot >= LLPrismLens::MAX_CAPTURES)
+        if (!capture.isCameraFeed() || capture.mSlot >= LLPrismLens::MAX_CAPTURES)
         {
             continue;
         }
@@ -342,7 +343,8 @@ void ALVCamBonePov::tick(F64 presentation_time)
             smoother.mHandle = capture.mHandle;
         }
 
-        const LLPrismLens::BonePovSettings& settings = capture.mCamera.mBonePov;
+        if (!capture.isCameraFeed()) continue;
+        const LLPrismLens::BonePovSettings& settings = capture.cameraData()->mSettings.mBonePov;
         const bool fingerprint_changed = smoother.mHaveFingerprint &&
             (smoother.mAnchorSlot != settings.mAnchorSlot ||
              smoother.mJointSelection != settings.mJointSelection ||
@@ -366,7 +368,7 @@ void ALVCamBonePov::tick(F64 presentation_time)
             if (was_resolved &&
                 settings.mAimMode == LLPrismLens::BONE_AIM_FULL_FOLLOW)
             {
-                smoother.mSmoothedRot = capture.mCamera.mVirtualRot;
+                smoother.mSmoothedRot = capture.cameraData()->mSettings.mVirtualRot;
                 smoother.mHaveRotation = finiteUnitQuaternion(
                     smoother.mSmoothedRot);
             }
@@ -376,8 +378,8 @@ void ALVCamBonePov::tick(F64 presentation_time)
             }
         }
 
-        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
-            !capture.mCamera.mVirtual || !settings.mEnabled)
+        if (!capture.isCameraFeed() ||
+            !capture.cameraData()->mSettings.mVirtual || !settings.mEnabled)
         {
             smoother.mHavePosition = false;
             smoother.mHaveRotation = false;

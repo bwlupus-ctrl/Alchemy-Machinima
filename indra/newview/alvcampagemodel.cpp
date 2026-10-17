@@ -169,7 +169,7 @@ void ALVCamPageModel::refreshNow(U32 dirty)
             mSelectedCapture.mId.notNull() ? findCapture(mSelectedCapture) : nullptr;
         const bool gate_listed = display && display->mGateSubscribed &&
             (!selected_capture ||
-             selected_capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED);
+             selected_capture->isCameraFeed());
         if (!display || (mSelectedCapture.mId.notNull() && !gate_listed &&
                          !sameCapture(display->mCapture, mSelectedCapture)))
             mSelectedDisplay = LLPrismLens::DisplayHandle();
@@ -208,7 +208,7 @@ void ALVCamPageModel::refreshNow(U32 dirty)
         const LLPrismLens::DisplayDefinition* display =
             findDisplay(mMonitorDisplay[slot]);
         const LLPrismLens::CaptureDefinition* capture = nullptr;
-        for (U32 index = 0; index < mRegistry.mCaptureCount; ++index)
+        for (U32 index = 0; index < mRegistry.mSlotCount; ++index)
             if (mRegistry.mCaptures[index].mSlot == slot)
             {
                 capture = &mRegistry.mCaptures[index];
@@ -225,7 +225,7 @@ void ALVCamPageModel::refreshNow(U32 dirty)
 const LLPrismLens::CaptureDefinition* ALVCamPageModel::findCapture(
     const LLPrismLens::CaptureHandle& handle) const
 {
-    for (U32 index = 0; index < mRegistry.mCaptureCount; ++index)
+    for (U32 index = 0; index < mRegistry.mSlotCount; ++index)
         if (sameCapture(mRegistry.mCaptures[index].mHandle, handle))
             return &mRegistry.mCaptures[index];
     return nullptr;
@@ -344,6 +344,15 @@ LLPrismLens::ERegistryResult ALVCamPageModel::addVirtualAtView(
     return result;
 }
 
+LLPrismLens::ERegistryResult ALVCamPageModel::addMediaSlot(std::string* reason)
+{
+    LLPrismLens::CaptureHandle handle;
+    const auto result = LLPrismLens::addMediaSlot(&handle, reason);
+    if (result == LLPrismLens::ERegistryResult::OK) setSelectedCapture(handle);
+    refreshNow();
+    return result;
+}
+
 bool ALVCamPageModel::addOtsPair(std::string* reason)
 {
     LLPrismLens::CaptureHandle first;
@@ -381,7 +390,7 @@ bool ALVCamPageModel::removeCapture(
     mSelectedProjector = LLPrismLens::ProjectorHandle();
     refreshNow(DIRTY_CONFIGURATION | DIRTY_RUNTIME | DIRTY_SELECTION);
     const LLPrismLens::CaptureDefinition* next = nullptr;
-    for (U32 index = 0; index < mRegistry.mCaptureCount; ++index)
+    for (U32 index = 0; index < mRegistry.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& candidate = mRegistry.mCaptures[index];
         const bool next_after = next &&
@@ -443,7 +452,7 @@ LLPrismLens::ActionStatus ALVCamPageModel::reassignDisplayStatus(
     const LLPrismLens::DisplayDefinition* display_definition = nullptr;
     const LLPrismLens::CaptureDefinition* old_capture = nullptr;
     const LLPrismLens::CaptureDefinition* destination_capture = nullptr;
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& candidate =
             snapshot.mCaptures[index];
@@ -467,8 +476,7 @@ LLPrismLens::ActionStatus ALVCamPageModel::reassignDisplayStatus(
             ? "That capture no longer exists." : "That display handle is stale.";
         return status;
     }
-    if (destination_capture->mMode ==
-        LLPrismLens::ECaptureMode::SURFACE_LENS)
+    if (destination_capture->isSurfaceLens())
     {
         status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         status.mReason = "A surface lens owns exactly one display face.";
@@ -480,7 +488,7 @@ LLPrismLens::ActionStatus ALVCamPageModel::reassignDisplayStatus(
         status.mReason = "That display already uses this capture.";
         return status;
     }
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& candidate =
             snapshot.mCaptures[index];
@@ -492,7 +500,7 @@ LLPrismLens::ActionStatus ALVCamPageModel::reassignDisplayStatus(
     }
     // An orphaned display (its capture was removed) may be re-pointed at any
     // valid capture; the registry re-attaches it.
-    if (old_capture && old_capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+    if (old_capture && old_capture->isSurfaceLens())
     {
         status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         status.mReason =
@@ -533,7 +541,7 @@ ALVCamPageModel::FaceDropStatus ALVCamPageModel::faceDropStatus(
     }
     const LLPrismLens::RegistrySnapshot snapshot =
         LLPrismLens::registrySnapshot();
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
     {
         if (snapshot.mCaptures[index].mHandle.mId == capture_id)
         {
@@ -714,7 +722,7 @@ ALVCamPageModel::ProjectorDropStatus ALVCamPageModel::projectorDropStatus(
 {
     ProjectorDropStatus result;
     const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
-    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < snapshot.mSlotCount; ++index)
         if (snapshot.mCaptures[index].mHandle.mId == capture_id)
             result.mCapture = snapshot.mCaptures[index].mHandle;
     if (result.mCapture.mId.isNull())

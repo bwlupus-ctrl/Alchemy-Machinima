@@ -40,6 +40,8 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include "vlc/vlc.h"
+#include <atomic>
+#include <memory>
 #include "vlc/libvlc_version.h"
 
 #if LL_WINDOWS
@@ -64,6 +66,8 @@ private:
     void initVLC();
     void playMedia();
     void resetVLC();
+    void stopPlayer();
+    void reportVideoSize();
     void setVolume(const F64 volume);
     void setVolumeVLC();
     void updateTitle(const char* title);
@@ -71,9 +75,11 @@ private:
     static void* lock(void* data, void** p_pixels);
     static void unlock(void* data, void* id, void* const* raw_pixels);
     static void display(void* data, void* id);
+    static void displayFrame(void* data, void* id);
 
     /*virtual*/ void setDirty(int left, int top, int right, int bottom) /* override, but that is not supported in gcc 4.6 */;
     void setDurationDirty();
+    void setFrameDirty(int left, int top, int right, int bottom);
 
     static void eventCallbacks(const libvlc_event_t* event, void* ptr);
 
@@ -85,9 +91,26 @@ private:
     {
         unsigned char* texture_pixels;
         libvlc_media_player_t* mp;
-        MediaPluginLibVLC* parent;
+        MediaPluginLibVLC* parent = nullptr;
+        // Message-thread only. A setting transition can subscribe to this
+        // same player's retained pixels; decoder callbacks never read tokens.
+        std::string loadToken;
+        const int width = 0;
+        const int height = 0;
+        std::atomic<bool> frameReady{false};
+        std::atomic<bool> hasFrame{false};
+        std::atomic<bool> trackFrames{false};
+        mLibVLCContext() = default;
+        mLibVLCContext(unsigned char* pixels, libvlc_media_player_t* player,
+                       const std::string& token, int w, int h)
+            : texture_pixels(pixels), mp(player), loadToken(token), width(w), height(h),
+              trackFrames(!token.empty()) {}
     };
-    struct mLibVLCContext mLibVLCCallbackContext;
+    std::unique_ptr<mLibVLCContext> mLibVLCCallbackContext;
+    std::string mLoadToken;
+    unsigned mVideoWidth = 0;
+    unsigned mVideoHeight = 0;
+    unsigned mVideoSarNum = 1, mVideoSarDen = 1;
 
     std::string mURL;
     F64 mCurVolume;
@@ -163,6 +186,18 @@ void MediaPluginLibVLC::display(void* data, void* id)
     context->parent->setDirty(0, 0, context->parent->mWidth, context->parent->mHeight);
 }
 
+void MediaPluginLibVLC::displayFrame(void* data, void* id)
+{
+    auto* context = static_cast<mLibVLCContext*>(data);
+    context->hasFrame.store(true, std::memory_order_release);
+    // Switch notification policy without replacing live decoder callbacks or
+    // their context. Untagged/disabled players use the original sender.
+    if (context->trackFrames.load(std::memory_order_acquire))
+        context->frameReady.store(true, std::memory_order_release);
+    else
+        display(data, id);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 void MediaPluginLibVLC::initVLC()
@@ -191,9 +226,61 @@ void MediaPluginLibVLC::initVLC()
 //
 void MediaPluginLibVLC::resetVLC()
 {
-    libvlc_media_player_stop(mLibVLCMediaPlayer);
-    libvlc_media_player_release(mLibVLCMediaPlayer);
-    libvlc_release(mLibVLC);
+    stopPlayer();
+    if (mLibVLC) libvlc_release(mLibVLC);
+    mLibVLC = nullptr;
+}
+
+void MediaPluginLibVLC::stopPlayer()
+{
+    if (mLibVLCMediaPlayer)
+    {
+        // libvlc 3 stop/release quiesces callbacks before reusing pixels/context.
+        libvlc_media_player_stop(mLibVLCMediaPlayer);
+        libvlc_media_player_release(mLibVLCMediaPlayer);
+        mLibVLCMediaPlayer = nullptr;
+    }
+    mLibVLCCallbackContext.reset();
+    if (mLibVLCMedia) libvlc_media_release(mLibVLCMedia);
+    mLibVLCMedia = nullptr;
+}
+
+void MediaPluginLibVLC::reportVideoSize()
+{
+    unsigned width = 0, height = 0;
+    if (!mLibVLCMediaPlayer || !mLibVLCMedia || !mLibVLCCallbackContext ||
+        libvlc_video_get_size(mLibVLCMediaPlayer, 0, &width, &height) != 0 ||
+        !width || !height) return;
+    unsigned sarNum = 1, sarDen = 1;
+    libvlc_media_track_t** tracks = nullptr;
+    const unsigned count = libvlc_media_tracks_get(mLibVLCMedia, &tracks);
+    const int selected = libvlc_video_get_track(mLibVLCMediaPlayer);
+    for (unsigned i = 0; i < count; ++i)
+    {
+        const auto* track = tracks[i];
+        if (track && track->i_type == libvlc_track_video &&
+            track->i_id == selected && track->video &&
+            track->video->i_sar_num && track->video->i_sar_den)
+        {
+            sarNum = track->video->i_sar_num;
+            sarDen = track->video->i_sar_den;
+            break;
+        }
+    }
+    libvlc_media_tracks_release(tracks, count);
+    if (width == mVideoWidth && height == mVideoHeight &&
+        sarNum == mVideoSarNum && sarDen == mVideoSarDen) return;
+    mVideoWidth = width;
+    mVideoHeight = height;
+    mVideoSarNum = sarNum;
+    mVideoSarDen = sarDen;
+    LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "source_video_size");
+    message.setValue("load_token", mLibVLCCallbackContext->loadToken);
+    message.setValueS32("width", width);
+    message.setValueS32("height", height);
+    message.setValueU32("sar_num", sarNum);
+    message.setValueU32("sar_den", sarDen);
+    sendMessage(message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +289,24 @@ void MediaPluginLibVLC::setDirty(int left, int top, int right, int bottom)
 {
     LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "updated");
 
+    message.setValueS32("left", left);
+    message.setValueS32("top", top);
+    message.setValueS32("right", right);
+    message.setValueS32("bottom", bottom);
+
+    message.setValueReal("current_time", mCurTime);
+    message.setValueReal("duration", mDuration);
+    message.setValueReal("current_rate", 1.0f);
+
+    sendMessage(message);
+}
+
+void MediaPluginLibVLC::setFrameDirty(int left, int top, int right, int bottom)
+{
+    LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "updated");
+
+    if (!mLibVLCCallbackContext) return;
+    message.setValue("load_token", mLibVLCCallbackContext->loadToken);
     message.setValueS32("left", left);
     message.setValueS32("top", top);
     message.setValueS32("right", right);
@@ -313,10 +418,7 @@ void MediaPluginLibVLC::playMedia()
     // buffer size is out of sync with the declared size (width/height) for a frame
     // or two and the plugin crashes as VLC tries to decode a frame into unallocated
     // memory.
-    if (mLibVLCMediaPlayer)
-    {
-        libvlc_media_player_stop(mLibVLCMediaPlayer);
-    }
+    stopPlayer();
 
     mLibVLCMedia = libvlc_media_new_location(mLibVLC, mURL.c_str());
     if (!mLibVLCMedia)
@@ -349,12 +451,11 @@ void MediaPluginLibVLC::playMedia()
         libvlc_event_attach(em, libvlc_MediaPlayerTitleChanged, eventCallbacks, this);
     }
 
-    libvlc_video_set_callbacks(mLibVLCMediaPlayer, lock, unlock, display, &mLibVLCCallbackContext);
+    mLibVLCCallbackContext = std::make_unique<mLibVLCContext>(
+        mPixels, mLibVLCMediaPlayer, mLoadToken, mWidth, mHeight);
+    mLibVLCCallbackContext->parent = this;
+    libvlc_video_set_callbacks(mLibVLCMediaPlayer, lock, unlock, displayFrame, mLibVLCCallbackContext.get());
     libvlc_video_set_format(mLibVLCMediaPlayer, "RV32", mWidth, mHeight, mWidth * mDepth);
-
-    mLibVLCCallbackContext.parent = this;
-    mLibVLCCallbackContext.texture_pixels = mPixels;
-    mLibVLCCallbackContext.mp = mLibVLCMediaPlayer;
 
     // Send a "navigate begin" event.
     // This is really a browser message but the QuickTime plugin did it and
@@ -499,6 +600,12 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
             else if (message_name == "idle")
             {
                 setStatus(mVlcStatus);
+                if (!mLoadToken.empty())
+                {
+                    reportVideoSize();
+                    if (mLibVLCCallbackContext && mLibVLCCallbackContext->frameReady.exchange(false, std::memory_order_acquire))
+                        setFrameDirty(0, 0, mLibVLCCallbackContext->width, mLibVLCCallbackContext->height);
+                }
             }
             else if (message_name == "cleanup")
             {
@@ -527,9 +634,7 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
                 {
                     if (mPixels == iter->second.mAddress)
                     {
-                        libvlc_media_player_stop(mLibVLCMediaPlayer);
-                        libvlc_media_player_release(mLibVLCMediaPlayer);
-                        mLibVLCMediaPlayer = 0;
+                        stopPlayer();
 
                         mPixels = NULL;
                         mTextureSegmentName.clear();
@@ -614,8 +719,38 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
                 message.setValueS32("texture_height", texture_height);
                 sendMessage(message);
             }
+            else if (message_name == "enable_media_frames")
+            {
+                mLoadToken = message_in.getValue("load_token");
+                mVideoWidth = mVideoHeight = 0;
+                mVideoSarNum = mVideoSarDen = 1;
+                if (mLibVLCCallbackContext)
+                {
+                    auto& context = *mLibVLCCallbackContext;
+                    context.trackFrames.store(false, std::memory_order_release);
+                    context.frameReady.exchange(false, std::memory_order_acq_rel);
+                    context.loadToken = mLoadToken;
+                    context.trackFrames.store(!mLoadToken.empty(), std::memory_order_release);
+                    // Renewing tracking must work for paused/static players.
+                    // Only this current player's completed pixels may be tagged.
+                    if (context.hasFrame.load(std::memory_order_acquire))
+                    {
+                        if (!mLoadToken.empty())
+                        {
+                            reportVideoSize();
+                            setFrameDirty(0, 0, context.width, context.height);
+                        }
+                        else
+                            setDirty(0, 0, context.width, context.height);
+                    }
+                }
+            }
             else if (message_name == "load_uri")
             {
+                stopPlayer();
+                mLoadToken = message_in.getValue("load_token");
+                mVideoWidth = mVideoHeight = 0;
+                mVideoSarNum = mVideoSarDen = 1;
                 mURL = message_in.getValue("uri");
                 playMedia();
             }

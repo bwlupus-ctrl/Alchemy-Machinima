@@ -88,6 +88,7 @@ public:
 
     LLPrismLens::ERegistryResult addFromSelectedObject(std::string* reason = nullptr);
     LLPrismLens::ERegistryResult addVirtualAtView(std::string* reason = nullptr);
+    LLPrismLens::ERegistryResult addMediaSlot(std::string* reason = nullptr);
     bool addOtsPair(std::string* reason = nullptr);
     LLPrismLens::ERegistryResult addSurfaceLens(std::string* reason = nullptr);
     bool removeCapture(const LLPrismLens::CaptureHandle& capture,

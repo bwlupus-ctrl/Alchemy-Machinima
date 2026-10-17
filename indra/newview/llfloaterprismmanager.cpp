@@ -556,8 +556,8 @@ bool LLFloaterPrismManager::postBuild()
         {
             const LLPrismLens::CaptureDefinition* capture = selectedCapture();
             const std::string selected = mBoneJointCombo->getValue().asString();
-            const std::string previous = capture
-                ? boneJointValue(capture->mCamera.mBonePov) : std::string();
+            const std::string previous = capture && capture->cameraData()
+                ? boneJointValue(capture->cameraData()->mSettings.mBonePov) : std::string();
             if (capture && selected != previous &&
                 selected != BONE_EYELINE_VALUE &&
                 !LLPrismLens::isBonePovSpineJoint(selected))
@@ -601,11 +601,11 @@ bool LLFloaterPrismManager::postBuild()
         [this](LLUICtrl*, const LLSD&)
         {
             const LLPrismLens::CaptureDefinition* capture = selectedCapture();
-            if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+            if (!capture || !capture->isCameraFeed())
             {
                 return;
             }
-            LLPrismLens::CameraSettings settings = capture->mCamera;
+            LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
             settings.mBonePov = LLPrismLens::BonePovSettings();
             std::string reason;
             if (mPageModel.setCamera(capture->mHandle, settings, &reason))
@@ -731,7 +731,7 @@ void LLFloaterPrismManager::draw()
             [this]() -> LLSD
             {
                 const LLPrismLens::CaptureDefinition* capture = selectedCapture();
-                return capture ? boneAnchorValue(capture->mCamera.mBonePov.mAnchorSlot)
+                return capture && capture->cameraData() ? boneAnchorValue(capture->cameraData()->mSettings.mBonePov.mAnchorSlot)
                                : LLSD("me");
             });
     }
@@ -872,7 +872,7 @@ void LLFloaterPrismManager::refreshConfiguration()
     if (!current_capture)
     {
         mSelectedCapture = LLPrismLens::CaptureHandle();
-        if (mRegistrySnapshot.mCaptureCount > 0)
+        if (mRegistrySnapshot.mSlotCount > 0)
         {
             mSelectedCapture = mRegistrySnapshot.mCaptures[0].mHandle;
         }
@@ -912,7 +912,7 @@ void LLFloaterPrismManager::refreshCaptureRuntimeReadouts()
         return;
     }
     mCaptureTitle->setText(llformat("%s %u | %s / %s / %s",
-        captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+        (capture->isMedia() ? std::string("Media") : captureModeText(capture->cameraData()->mMode)).c_str(), capture->mSlot + 1,
         captureHealthText(capture->mRuntime.mHealth).c_str(),
         outputStateText(capture->mRuntime.mOutput).c_str(),
         activityStateText(capture->mRuntime.mActivity).c_str()));
@@ -935,7 +935,7 @@ void LLFloaterPrismManager::refreshPerformance()
 
     const LLPrismLens::PerformanceSnapshot& p = mPerformanceSnapshot;
     const std::string captures_text = llformat(
-        "%u/%u captures", mRegistrySnapshot.mCaptureCount,
+        "%u/%u captures", mRegistrySnapshot.mSlotCount,
         LLPrismLens::MAX_CAPTURES);
     mSummaryText->setText(llformat(
         "VCam %s | %u/%u displays | %s",
@@ -961,7 +961,7 @@ void LLFloaterPrismManager::refreshPerformance()
 void LLFloaterPrismManager::rebuildCaptureList()
 {
     mCaptureList->deleteAllItems();
-    for (U32 index = 0; index < mRegistrySnapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < mRegistrySnapshot.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& capture = mRegistrySnapshot.mCaptures[index];
         const std::string rate = llformat("%s / %.1f / %.1f",
@@ -982,7 +982,7 @@ void LLFloaterPrismManager::rebuildCaptureList()
         row["columns"][0]["column"] = "number";
         row["columns"][0]["value"] = llformat("%u", capture.mSlot + 1);
         row["columns"][1]["column"] = "type";
-        row["columns"][1]["value"] = captureModeText(capture.mMode);
+        row["columns"][1]["value"] = (capture.isMedia() ? std::string("Media") : captureModeText(capture.cameraData()->mMode));
         row["columns"][2]["column"] = "health";
         row["columns"][2]["value"] = captureHealthText(capture.mRuntime.mHealth);
         row["columns"][3]["column"] = "output";
@@ -1043,7 +1043,7 @@ void LLFloaterPrismManager::rebuildDisplayList()
         const std::string inherited = display.mGateSubscribed
             ? "Gate program"
             : llformat("%s %u | %.1f FPS",
-                captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+                (capture->isMedia() ? std::string("Media") : captureModeText(capture->cameraData()->mMode)).c_str(), capture->mSlot + 1,
                 capture->mRuntime.mObservedPublicationHz);
         const std::string tooltip = llformat(
             "Display %s\nGeneration %llu\nObject %s face %d\nHealth: %s\nVisibility: %s\nInherited capture %s",
@@ -1095,7 +1095,7 @@ void LLFloaterPrismManager::rebuildGateArmedList()
             mGateSnapshot.mSettings.mArmed[static_cast<std::size_t>(index)];
         bool capture_resolves = false;
         for (U32 capture_index = 0;
-             capture_index < mRegistrySnapshot.mCaptureCount; ++capture_index)
+             capture_index < mRegistrySnapshot.mSlotCount; ++capture_index)
         {
             if (mRegistrySnapshot.mCaptures[capture_index].mHandle.mId ==
                 armed.mCaptureId)
@@ -1151,28 +1151,28 @@ void LLFloaterPrismManager::refreshCaptureEditor()
         return;
     }
 
-    const bool is_camera = capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+    const bool is_camera = capture->isCameraFeed();
     refreshCaptureRuntimeReadouts();
     mCameraSettingsPanel->setVisible(is_camera);
-    mLensSettingsPanel->setVisible(!is_camera);
+    mLensSettingsPanel->setVisible(capture->isSurfaceLens());
     mRateSettingsPanel->setVisible(true);
 
     if (is_camera)
     {
-        mSourceText->setText(capture->mCameraObjectId.isNull()
+        mSourceText->setText(capture->cameraData()->mObjectId.isNull()
             ? "Camera source: unbound"
-            : "Camera source: " + capture->mCameraObjectId.asString());
-        mFovModeCombo->setValue(capture->mCamera.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR
+            : "Camera source: " + capture->cameraData()->mObjectId.asString());
+        mFovModeCombo->setValue(capture->cameraData()->mSettings.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR
             ? LLSD("projector") : LLSD("fixed"));
-        mVerticalFovSpinner->setValue(capture->mCamera.mFixedVerticalFovRad * RAD_TO_DEG);
-        mVerticalFovSpinner->setEnabled(capture->mCamera.mFovMode == LLPrismLens::EFovMode::FIXED);
-        mNearClipSpinner->setValue(capture->mCamera.mNearClip);
-        mFarClipSpinner->setValue(capture->mCamera.mFarClip);
-        mEyeXSpinner->setValue(capture->mCamera.mLocalEyeOffset.mV[VX]);
-        mEyeYSpinner->setValue(capture->mCamera.mLocalEyeOffset.mV[VY]);
-        mEyeZSpinner->setValue(capture->mCamera.mLocalEyeOffset.mV[VZ]);
+        mVerticalFovSpinner->setValue(capture->cameraData()->mSettings.mFixedVerticalFovRad * RAD_TO_DEG);
+        mVerticalFovSpinner->setEnabled(capture->cameraData()->mSettings.mFovMode == LLPrismLens::EFovMode::FIXED);
+        mNearClipSpinner->setValue(capture->cameraData()->mSettings.mNearClip);
+        mFarClipSpinner->setValue(capture->cameraData()->mSettings.mFarClip);
+        mEyeXSpinner->setValue(capture->cameraData()->mSettings.mLocalEyeOffset.mV[VX]);
+        mEyeYSpinner->setValue(capture->cameraData()->mSettings.mLocalEyeOffset.mV[VY]);
+        mEyeZSpinner->setValue(capture->cameraData()->mSettings.mLocalEyeOffset.mV[VZ]);
 
-        const F32 aspect = capture->mCamera.mOutputAspect;
+        const F32 aspect = capture->cameraData()->mSettings.mOutputAspect;
         std::string aspect_value = "custom";
         if (is_approx_equal(aspect, 16.f / 9.f)) aspect_value = "16:9";
         else if (is_approx_equal(aspect, 4.f / 3.f)) aspect_value = "4:3";
@@ -1181,24 +1181,24 @@ void LLFloaterPrismManager::refreshCaptureEditor()
         mCustomAspectSpinner->setValue(aspect);
         mCustomAspectSpinner->setEnabled(aspect_value == "custom");
 
-        mChromaticAberrationSpinner->setValue(capture->mCamera.mOptics.mChromaticAberration);
-        mFilmGrainSpinner->setValue(capture->mCamera.mOptics.mFilmGrain);
-        mCRTScanlinesSpinner->setValue(capture->mCamera.mOptics.mCRTScanlines);
-        mExposureBiasSpinner->setValue(capture->mCamera.mOptics.mExposureBias);
+        mChromaticAberrationSpinner->setValue(capture->cameraData()->mSettings.mOptics.mChromaticAberration);
+        mFilmGrainSpinner->setValue(capture->cameraData()->mSettings.mOptics.mFilmGrain);
+        mCRTScanlinesSpinner->setValue(capture->cameraData()->mSettings.mOptics.mCRTScanlines);
+        mExposureBiasSpinner->setValue(capture->cameraData()->mSettings.mOptics.mExposureBias);
 
-        mShowGuideCheck->setValue(capture->mCamera.mShowGuide);
-        mGuideThirdsCheck->setValue(capture->mCamera.mGuideThirds);
-        mGuideUpRollCheck->setValue(capture->mCamera.mGuideUpRoll);
-        mGuideCrosshairCheck->setValue(capture->mCamera.mGuideCrosshair);
-        mGuideClipMarkersCheck->setValue(capture->mCamera.mGuideClipMarkers);
+        mShowGuideCheck->setValue(capture->cameraData()->mSettings.mShowGuide);
+        mGuideThirdsCheck->setValue(capture->cameraData()->mSettings.mGuideThirds);
+        mGuideUpRollCheck->setValue(capture->cameraData()->mSettings.mGuideUpRoll);
+        mGuideCrosshairCheck->setValue(capture->cameraData()->mSettings.mGuideCrosshair);
+        mGuideClipMarkersCheck->setValue(capture->cameraData()->mSettings.mGuideClipMarkers);
 
         // Prim-free virtual camera. When enabled, the object-source affordances
         // are meaningless (there is no marker to bind, offset from, or place
         // against) and FOLLOW_PROJECTOR is unavailable, so grey those out. The
         // FOV spinner stays governed by the fixed/projector selection below.
-        const bool is_virtual = capture->mCamera.mVirtual;
+        const bool is_virtual = capture->cameraData()->mSettings.mVirtual;
         mVirtualCameraCheck->setValue(is_virtual);
-        const LLPrismLens::BonePovSettings& bone = capture->mCamera.mBonePov;
+        const LLPrismLens::BonePovSettings& bone = capture->cameraData()->mSettings.mBonePov;
         mBonePovPanel->setVisible(is_virtual);
         mBonePovEnabledCheck->setValue(bone.mEnabled);
         ALDirectorCastUI::showStoredValue(
@@ -1278,7 +1278,7 @@ void LLFloaterPrismManager::refreshDisplayEditor()
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
     const bool editable = capture && display &&
-        capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+        capture->isCameraFeed();
 
     mDisplayFitCombo->setEnabled(editable);
     mAnchorXSpinner->setEnabled(editable);
@@ -1287,7 +1287,7 @@ void LLFloaterPrismManager::refreshDisplayEditor()
     mBarGreenSpinner->setEnabled(editable);
     mBarBlueSpinner->setEnabled(editable);
     const bool gate_source_editable = display && capture &&
-        capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+        capture->isCameraFeed();
     mDisplayGateSourceCheck->setEnabled(gate_source_editable);
     mDisplayGateSourceCheck->setValue(display && display->mGateSubscribed);
     mDisplayGateSourceCheck->setToolTip(std::string(!display
@@ -1395,12 +1395,12 @@ void LLFloaterPrismManager::refreshGateEditor()
 
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const bool can_arm = capture &&
-        capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+        capture->isCameraFeed() &&
         settings.mArmed.size() < GATE_ARM_LIMIT;
     setActionState(mGateArmButton, can_arm,
         can_arm ? "Reference the selected existing capture from the Gate arm list"
                 : !capture ? "Select a Camera Feed capture first"
-                : capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED
+                : !capture->isCameraFeed()
                     ? "Only Camera Feed captures can be armed"
                     : "The Gate already has its maximum of 8 capture references");
     const bool have_selected_arm = !mSelectedGateArm.isNull();
@@ -1444,7 +1444,7 @@ void LLFloaterPrismManager::refreshDisplayRateReadout()
     }
     if (!display)
     {
-        if (capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED && capture->mDisplayCount == 0)
+        if (capture->isCameraFeed() && capture->mDisplayCount == 0)
         {
             mDisplaySourceRate->setText(LLStringExplicit(
                 "Select exactly one flat world face, then click Add selected face."));
@@ -1452,7 +1452,7 @@ void LLFloaterPrismManager::refreshDisplayRateReadout()
         }
         mDisplaySourceRate->setText(llformat(
             "No display selected | inherited from %s %u at %.1f FPS",
-            captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+            (capture->isMedia() ? std::string("Media") : captureModeText(capture->cameraData()->mMode)).c_str(), capture->mSlot + 1,
             capture->mRuntime.mObservedPublicationHz));
         return;
     }
@@ -1464,10 +1464,10 @@ void LLFloaterPrismManager::refreshDisplayRateReadout()
         return;
     }
 
-    const bool editable = capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+    const bool editable = capture->isCameraFeed();
     mDisplaySourceRate->setText(llformat(
         "Inherited from %s %u | requested %s | observed %.1f FPS%s",
-        captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+        (capture->isMedia() ? std::string("Media") : captureModeText(capture->cameraData()->mMode)).c_str(), capture->mSlot + 1,
         requestedRateText(*capture).c_str(), capture->mRuntime.mObservedPublicationHz,
         editable ? "" : " | Lens mapping is fixed"));
 }
@@ -1493,7 +1493,7 @@ void LLFloaterPrismManager::refreshSelectionActions()
     std::string set_camera_reason = "Select a Camera Feed capture first";
     bool can_add_display = false;
     std::string add_display_reason = "Select a Camera Feed capture first";
-    if (capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+    if (capture && capture->isCameraFeed())
     {
         const LLPrismLens::ActionStatus source_status =
             LLPrismLens::setCameraSelectionStatus(capture->mHandle);
@@ -1516,7 +1516,7 @@ void LLFloaterPrismManager::refreshSelectionActions()
     // A virtual screen needs no face selection -- only a Camera Feed capture --
     // so it is enabled whenever one is selected, even from the empty state.
     const bool can_add_virtual_screen =
-        capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED;
+        capture && capture->isCameraFeed();
     setActionState(mAddVirtualScreenButton, can_add_virtual_screen,
         can_add_virtual_screen
             ? "Create a prim-free virtual screen for this feed at your current view"
@@ -1529,7 +1529,7 @@ void LLFloaterPrismManager::refreshSelectionActions()
     // the button handlers. Show the reason once on change only; clear the
     // tracker when the action is allowed (or no Camera Feed capture is
     // selected) so a later identical rejection is displayed again.
-    if (capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+    if (capture && capture->isCameraFeed() &&
         !can_add_display && !add_display_reason.empty())
     {
         if (add_display_reason != mLastSelectionActionStatus)
@@ -1556,14 +1556,14 @@ void LLFloaterPrismManager::refreshSelectionActions()
     // so it can never leak into a later, user-driven refresh.
     mSuppressSelectionRejectOnce = false;
     setActionState(mPlaceEyeButton,
-        capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
-            !capture->mCameraObjectId.isNull(),
-        capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED
+        capture && capture->isCameraFeed() &&
+            !capture->cameraData()->mObjectId.isNull(),
+        capture && capture->isCameraFeed()
             ? "Move the local camera eye just beyond the marker's front (-Z) face"
             : "This control applies only to Camera Feed captures");
 
     const bool lens_display = capture &&
-        capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS;
+        capture->isSurfaceLens();
     setActionState(mRemoveDisplayButton, display && !lens_display,
         !display ? "Select a display first"
                  : lens_display ? "A Lens owns its aperture display; remove the capture instead"
@@ -1603,7 +1603,7 @@ void LLFloaterPrismManager::revealDocumentView(
 void LLFloaterPrismManager::onCaptureSelectionChanged()
 {
     const LLUUID id = mCaptureList->getSelectedValue().asUUID();
-    for (U32 index = 0; index < mRegistrySnapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < mRegistrySnapshot.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& capture = mRegistrySnapshot.mCaptures[index];
         if (capture.mHandle.mId == id)
@@ -1843,7 +1843,7 @@ void LLFloaterPrismManager::onRemoveCapture()
     LLSD args;
     args["MESSAGE"] = llformat(
         "Remove %s %u and all %u of its display bindings?",
-        captureModeText(capture->mMode).c_str(), capture->mSlot + 1,
+        (capture->isMedia() ? std::string("Media") : captureModeText(capture->cameraData()->mMode)).c_str(), capture->mSlot + 1,
         capture->mDisplayCount);
     LLHandle<LLFloater> floater_handle = getHandle();
     LLNotificationsUtil::add("GenericAlertYesCancel", args, LLSD(),
@@ -1895,18 +1895,18 @@ void LLFloaterPrismManager::onSetCamera()
 void LLFloaterPrismManager::onPlaceEyeInFront()
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
-    if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+    if (!capture || !capture->isCameraFeed())
     {
         return;
     }
-    LLViewerObject* source = gObjectList.findObject(capture->mCameraObjectId);
+    LLViewerObject* source = gObjectList.findObject(capture->cameraData()->mObjectId);
     if (!source)
     {
         setStatus("The camera source is currently offline; its scale is unavailable.");
         return;
     }
 
-    LLPrismLens::CameraSettings settings = capture->mCamera;
+    LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
     settings.mLocalEyeOffset.mV[VZ] =
         -(0.5f * source->getScale().mV[VZ] + settings.mNearClip + 0.01f);
     std::string reason;
@@ -1942,7 +1942,7 @@ static void prismCurrentViewTransform(LLVector3& pos, LLQuaternion& rot)
 void LLFloaterPrismManager::onSnapVirtualCameraToView()
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
-    if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+    if (!capture || !capture->isCameraFeed())
     {
         return;
     }
@@ -1953,7 +1953,7 @@ void LLFloaterPrismManager::onSnapVirtualCameraToView()
     // Preserve every other camera setting; flip on virtual and store the view
     // transform. FOLLOW_PROJECTOR is invalid for a virtual camera, so force
     // FIXED here so the UI reflects it at once (the registry soft-corrects too).
-    LLPrismLens::CameraSettings settings = capture->mCamera;
+    LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
     settings.mVirtual = true;
     const bool stabilized_bone = settings.mBonePov.mEnabled &&
         settings.mBonePov.mAimMode == LLPrismLens::BONE_AIM_STABILIZED;
@@ -1999,12 +1999,12 @@ void LLFloaterPrismManager::onCommitCameraSettings(bool commit_bone_joint,
                                                    bool commit_bone_anchor)
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
-    if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+    if (!capture || !capture->isCameraFeed())
     {
         return;
     }
 
-    LLPrismLens::CameraSettings settings = capture->mCamera;
+    LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
     settings.mFovMode = mFovModeCombo->getValue().asString() == "projector"
         ? LLPrismLens::EFovMode::FOLLOW_PROJECTOR : LLPrismLens::EFovMode::FIXED;
     settings.mFixedVerticalFovRad = static_cast<F32>(mVerticalFovSpinner->getValue().asReal() * DEG_TO_RAD);
@@ -2182,7 +2182,7 @@ void LLFloaterPrismManager::onAddDisplay()
 void LLFloaterPrismManager::onAddVirtualScreen()
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
-    if (!capture || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+    if (!capture || !capture->isCameraFeed())
     {
         setStatus("Select a Camera Feed capture first, then add a virtual screen.");
         return;
@@ -2203,7 +2203,7 @@ void LLFloaterPrismManager::onAddVirtualScreen()
 
     // Default the screen to the capture's output aspect at a 0.9 m height.
     const F32 height = 0.9f;
-    F32 aspect = capture->mCamera.mOutputAspect;
+    F32 aspect = capture->cameraData()->mSettings.mOutputAspect;
     if (!std::isfinite(aspect) || aspect <= 0.f) aspect = 16.f / 9.f;
     const F32 width = height * aspect;
 
@@ -2286,7 +2286,7 @@ void LLFloaterPrismManager::onCommitDisplaySettings()
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
-    if (!capture || !display || capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+    if (!capture || !display || !capture->isCameraFeed())
     {
         return;
     }
@@ -2500,7 +2500,7 @@ const LLPrismLens::CaptureDefinition* LLFloaterPrismManager::selectedCapture() c
     {
         return nullptr;
     }
-    for (U32 index = 0; index < mRegistrySnapshot.mCaptureCount; ++index)
+    for (U32 index = 0; index < mRegistrySnapshot.mSlotCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& capture = mRegistrySnapshot.mCaptures[index];
         if (sameHandle(capture.mHandle, mSelectedCapture))

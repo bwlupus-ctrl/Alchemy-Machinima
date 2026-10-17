@@ -136,7 +136,7 @@ const LLPrismLens::CaptureDefinition* functionalSelectedVCamCapture(const ALVCam
 {
     const LLUUID& id = model.selectedCapture().mId;
     const LLPrismLens::RegistrySnapshot& registry = model.registry();
-    for (U32 i = 0; i < registry.mCaptureCount; ++i)
+    for (U32 i = 0; i < registry.mSlotCount; ++i)
         if (registry.mCaptures[i].mHandle.mId == id)
             return &registry.mCaptures[i];
     return nullptr;
@@ -4193,6 +4193,23 @@ private:
         if (mFunctionalIndex < mFunctionalEntries.size() &&
             mFunctionalEntries[mFunctionalIndex]["probe"].asString() == "exposure_history")
             ALExposureSettingsHistory::clear();
+        if (mFunctionalMediaEntrySnapshot.isMap())
+        {
+            std::string reason;
+            if (!LLPrismLens::applySceneData(mFunctionalMediaEntrySnapshot, &reason) &&
+                mFunctionalIndex < mFunctionalEntries.size())
+                addFunctionalResult(mFunctionalEntries[mFunctionalIndex], "FAIL",
+                                    "media fixture restore failed: " + reason);
+            mFunctionalMediaEntrySnapshot = LLSD();
+            mFunctionalProjectorSelected = false;
+            if (mFunctionalVCamModel)
+            {
+                mFunctionalVCamModel->refreshNow();
+                for (const auto& source : mFunctionalVCamModel->registry().mCaptures)
+                    if (source.mHandle.mId == mFunctionalMediaEntrySelection)
+                        mFunctionalVCamModel->setSelectedCapture(source.mHandle);
+            }
+        }
         functionalResetInputState();
         mFunctionalRestore.clear();
         mFunctionalControl = LLHandle<LLUICtrl>();
@@ -6136,9 +6153,9 @@ private:
             for (const LLPrismLens::CaptureDefinition& candidate :
                  mFunctionalVCamModel->registry().mCaptures)
                 if (candidate.mHandle.mId == capture.mId) { definition = &candidate; break; }
-            if (definition)
+            if (definition && definition->cameraData())
             {
-                LLPrismLens::CameraSettings camera = definition->mCamera;
+                LLPrismLens::CameraSettings camera = definition->cameraData()->mSettings;
                 camera.mVirtualPos = mFunctionalVCamExpectedPos + LLVector3(3.f, 0.f, 0.f);
                 std::string reason;
                 mFunctionalVCamModel->setCamera(capture, camera, &reason);
@@ -6345,6 +6362,13 @@ private:
             mFunctionalOwnerModelBefore =
                 gSavedSettings.getLLSD("DirectorSwitcherBank");
         }
+        else if (owner_probe == "vcam_media" && mFunctionalVCamModel)
+        {
+            mFunctionalVCamModel->refreshNow();
+            mFunctionalOwnerModelBefore = LLSD::emptyMap();
+            mFunctionalOwnerModelBefore["slots"] = S32(mFunctionalVCamModel->registry().mSlotCount);
+            mFunctionalOwnerModelBefore["revision"] = LLSD::Real(mFunctionalVCamModel->registry().mConfigurationRevision);
+        }
         else if (owner_probe == "vcam_camera_name" && mFunctionalVCamModel)
         {
             mFunctionalVCamModel->refreshNow();
@@ -6479,11 +6503,35 @@ private:
             entry["page"].asString() != "vcam_tab") return;
         mFunctionalVCamModel->refreshNow();
         const LLPrismLens::RegistrySnapshot& registry = mFunctionalVCamModel->registry();
-        if (!registry.mCaptureCount) return;
+        const bool media_probe = entry["probe"].asString() == "vcam_media";
+        if (media_probe)
+        {
+            // A media-only fixture proves that zero cameras is reachable. No
+            // source/player is created. Restore the camera fixture at this
+            // entry's boundary so later camera/face/projector probes remain live.
+            mFunctionalMediaEntrySnapshot = LLPrismLens::sceneData();
+            mFunctionalMediaEntrySelection = mFunctionalVCamModel->selectedCapture().mId;
+            LLSD empty = LLSD::emptyMap();
+            empty["prism_captures"] = LLSD::emptyArray();
+            empty["prism_displays"] = LLSD::emptyArray();
+            empty["prism_projectors"] = LLSD::emptyArray();
+            empty["prism_gates"] = LLSD::emptyArray();
+            std::string reason;
+            if (!LLPrismLens::applySceneData(empty, &reason)) return;
+            if (entry["widget_name"].asString() != "vc_add_media_slot")
+                mFunctionalVCamModel->addMediaSlot(&reason);
+            mFunctionalVCamModel->refreshNow();
+        }
+        const LLPrismLens::CaptureDefinition* selected = nullptr;
+        for (U32 slot = 0; slot < registry.mSlotCount; ++slot)
+            if ((media_probe && registry.mCaptures[slot].isMedia()) ||
+                (!media_probe && registry.mCaptures[slot].cameraData()))
+            { selected = &registry.mCaptures[slot]; break; }
+        if (!selected) return;
         if (LLUICtrl* selector =
                 mFunctionalPageRoot->findChild<LLUICtrl>("vc_camera_selector", true))
         {
-            selector->setValue(registry.mCaptures[0].mHandle.mId);
+            selector->setValue(selected->mHandle.mId);
             selector->onCommit();
         }
         const std::string card = entry["card"].asString();
@@ -7391,6 +7439,24 @@ private:
             if (!changed) assertion_failure =
                 "switcher custom control did not update DirectorSwitcherBank";
         }
+        if (entry["probe"].asString() == "vcam_media" && mFunctionalVCamModel)
+        {
+            mFunctionalVCamModel->refreshNow();
+            const auto& registry = mFunctionalVCamModel->registry();
+            const auto* source = functionalSelectedVCamCapture(*mFunctionalVCamModel);
+            if (!source)
+                for (U32 slot = 0; slot < registry.mSlotCount; ++slot)
+                    if (registry.mCaptures[slot].isMedia()) { source = &registry.mCaptures[slot]; break; }
+            const bool added = entry["widget_name"].asString() == "vc_add_media_slot";
+            const bool changed = source && source->isMedia() && !source->cameraData() &&
+                registry.mCaptureCount == 0 && (added
+                    ? registry.mSlotCount == U32(mFunctionalOwnerModelBefore["slots"].asInteger() + 1)
+                    : source->mediaData()->mAspect == static_cast<LLPrismLens::ESourceAspect>(control->getValue().asInteger()) &&
+                      LLSD::Real(registry.mConfigurationRevision) > mFunctionalOwnerModelBefore["revision"].asReal());
+            observable = changed;
+            expected_ok = expected_ok && changed;
+            if (!changed) assertion_failure = "media-only kind/count/aspect registry oracle failed";
+        }
         if (entry["probe"].asString() == "vcam_camera_name")
         {
             if (mFunctionalVCamModel) mFunctionalVCamModel->refreshNow();
@@ -7491,8 +7557,8 @@ private:
             for (const LLPrismLens::CaptureDefinition& candidate :
                  mFunctionalVCamModel->registry().mCaptures)
                 if (candidate.mHandle.mId == selected.mId) { capture = &candidate; break; }
-            const bool snapped = capture &&
-                (capture->mCamera.mVirtualPos - mFunctionalVCamExpectedPos).length() < .001f;
+            const bool snapped = capture && capture->cameraData() &&
+                (capture->cameraData()->mSettings.mVirtualPos - mFunctionalVCamExpectedPos).length() < .001f;
             observable = snapped;
             expected_ok = expected_ok && snapped;
             if (!snapped) assertion_failure = "virtual capture camera did not snap to the current view";
@@ -7529,7 +7595,7 @@ private:
                     capture = &candidate;
                     break;
                 }
-            const bool pattern = capture && capture->mCamera.mTestPattern;
+            const bool pattern = capture && capture->cameraData() && capture->cameraData()->mSettings.mTestPattern;
             const bool ready = capture &&
                 capture->mRuntime.mHealth == LLPrismLens::ECaptureHealth::READY;
             const bool current = capture &&
@@ -13141,6 +13207,8 @@ private:
     LLFrameTimer mFunctionalWatchdog;
     LLFrameTimer mFunctionalWorldSettle;
     LLSD mFunctionalVCamSnapshot;
+    LLSD mFunctionalMediaEntrySnapshot;
+    LLUUID mFunctionalMediaEntrySelection;
     std::unique_ptr<ALVCamPageModel> mFunctionalVCamModel;
     LLVector3 mFunctionalVCamExpectedPos;
     LLQuaternion mFunctionalVCamExpectedRot;

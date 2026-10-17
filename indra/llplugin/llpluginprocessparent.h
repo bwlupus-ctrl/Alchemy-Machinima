@@ -30,6 +30,8 @@
 #define LL_LLPLUGINPROCESSPARENT_H
 
 #include <queue>
+#include <memory>
+#include <mutex>
 
 #include "llapr.h"
 #include "llprocess.h"
@@ -110,6 +112,9 @@ public:
     void removeSharedMemory(const std::string &name);
     size_t getSharedMemorySize(const std::string &name);
     void *getSharedMemoryAddress(const std::string &name);
+    // Register before handing pixels to a worker. Erasure/destruction retires
+    // the map's reference; the one pending upload owns the mapping until done.
+    std::shared_ptr<LLPluginSharedMemory> retainSharedMemory(const std::string& name);
 
     // Returns the version string the plugin indicated for the message class, or an empty string if that class wasn't in the list.
     std::string getMessageClassVersion(const std::string &message_class);
@@ -210,8 +215,9 @@ private:
 
     LLPluginProcessParentOwner *mOwner;
 
-    typedef std::map<std::string, LLPluginSharedMemory*> sharedMemoryRegionsType;
+    typedef std::map<std::string, std::shared_ptr<LLPluginSharedMemory>> sharedMemoryRegionsType;
     sharedMemoryRegionsType mSharedMemoryRegions;
+    std::mutex mSharedMemoryMutex;
 
     LLSD mMessageClassVersions;
     std::string mPluginVersionString;

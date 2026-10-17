@@ -8,12 +8,20 @@
 #include "../test/lltut.h"
 #include "../llprismlens.h"
 #include "../alvcamautovol.h"
+#include "../../llplugin/llmediaframestate.h"
 
 #include <limits>
 #include <map>
 
 namespace tut
 {
+template<class T> concept public_camera_fields =
+    requires(T value) { value.mMode; } ||
+    requires(T value) { value.mCamera; } ||
+    requires(T value) { value.mCameraObjectId; };
+static_assert(!public_camera_fields<LLPrismLens::SourceSlotData>);
+static_assert(!public_camera_fields<LLPrismLens::CaptureDefinition>);
+
 struct prism_projector_data {};
 typedef test_group<prism_projector_data> prism_projector_group;
 typedef prism_projector_group::object prism_projector_object;
@@ -226,17 +234,25 @@ void prism_projector_object::test<13>()
 template<> template<>
 void prism_projector_object::test<14>()
 {
-    set_test_name("rig projector reassignment requires a Camera Feed capture");
+    set_test_name("projector reassignment uses source capability and explicit media kind");
+    LLPrismLens::SourceSlotData source;
+    ensure("empty slot has no default camera payload", !source.cameraData() && !source.isSurfaceLens());
+    source.setCameraData(LLPrismLens::CameraPayload());
     LLPrismLens::ProjectorDefinition binding;
     binding.mTarget = LLPrismLens::EProjectorTarget::RIG_LIGHT;
     ensure("surface lens is rejected for rig projector",
            LLPrismLens::validateProjectorReassignment(
-               binding, LLPrismLens::ECaptureMode::SURFACE_LENS) ==
+               binding, source) ==
                LLPrismLens::ERegistryResult::INVALID_CONFIGURATION);
+    source.cameraData()->mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
     ensure("camera feed is accepted for rig projector",
            LLPrismLens::validateProjectorReassignment(
-               binding, LLPrismLens::ECaptureMode::CAMERA_FEED) ==
+               binding, source) ==
                LLPrismLens::ERegistryResult::OK);
+    source.setMediaData(LLPrismLens::MediaFaceSource());
+    ensure("media capability is explicit", source.cameraData() == nullptr && !source.isSurfaceLens());
+    ensure("media is eligible for shared routing", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::OK);
+
 }
 
 template<> template<>
@@ -376,4 +392,128 @@ void prism_projector_object::test<21>()
     ensure("another rig slot has its own choice",
         !declined[LLPrismLens::projectorVolumetricIdentity(projector)]);
 }
+
+template<> template<>
+void prism_projector_object::test<22>()
+{
+    set_test_name("VLC load tokens reject missing and older frame/geometry provenance");
+    ensure("missing token", !LLMediaFrame::acceptsToken("B", ""));
+    ensure("old callback", !LLMediaFrame::acceptsToken("B", "A"));
+    ensure("rapid navigation", !LLMediaFrame::acceptsToken("C", "B"));
+    ensure("only current load", LLMediaFrame::acceptsToken("C", "C"));
+    LLMediaFrame::UploadState state;
+    const LLMediaFrame::Identity old{1, 1, "A"}, current{2, 1, "B"};
+    ensure("stale success cannot publish", !state.finish(old, current, true));
+    ensure_equals("no completed serial", state.serial, U64(0));
+}
+
+template<> template<>
+void prism_projector_object::test<23>()
+{
+    set_test_name("paused frame retry and enqueue rejection roll back all ownership");
+    LLMediaFrame::UploadState state;
+    const LLMediaFrame::Identity current{1, 1, "A"};
+    state.pending = true;
+    bool texture_pending = true;
+    int impl_refs = 1, texture_refs = 1;
+    {
+        LLMediaFrame::TerminalCleanup rejected;
+        ++impl_refs; ++texture_refs;
+        rejected.release = [&]() { texture_pending = false; state.pending = false; --impl_refs; --texture_refs; };
+        ensure("rejection retains failed work", !state.finish(current, current, false) && state.retry);
+    }
+    ensure("pending latch rolled back", !state.pending && !texture_pending);
+    ensure_equals("impl ref rolled back", impl_refs, 1);
+    ensure_equals("texture ref rolled back", texture_refs, 1);
+    ensure("retry succeeds without another frame", state.finish(current, current, true));
+    ensure("ready exactly once", state.ready && !state.retry && state.serial == 1);
+    state.invalidate();
+    ensure("layout replacement discards retries", !state.ready && !state.retry);
+    ensure("stale failure cannot re-dirty", !state.finish(current, {1, 2, "A"}, false) && !state.retry);
+}
+
+template<> template<>
+void prism_projector_object::test<24>()
+{
+    set_test_name("source aspect is independent of square/padded MoaP allocations");
+    using namespace LLPrismLens;
+    ensure("Auto fallback", fabsf(resolveSourceAspect(ESourceAspect::AUTO, 0, 0) - 16.f/9.f) < .0001f);
+    ensure("PAL anamorphic widescreen", fabsf(resolveSourceAspect(ESourceAspect::AUTO, 720, 576, 64, 45) - 16.f/9.f) < .0001f);
+    ensure("PAL anamorphic standard", fabsf(resolveSourceAspect(ESourceAspect::AUTO, 720, 576, 16, 15) - 4.f/3.f) < .0001f);
+    ensure("NTSC anamorphic widescreen", fabsf(resolveSourceAspect(ESourceAspect::AUTO, 720, 480, 32, 27) - 16.f/9.f) < .0001f);
+    ensure("invalid SAR uses square pixels", fabsf(resolveSourceAspect(ESourceAspect::AUTO, 720, 576, 0, 45) - 1.25f) < .0001f);
+    ensure("manual ignores SAR", fabsf(resolveSourceAspect(ESourceAspect::STANDARD_4_3, 720, 576, 64, 45) - 4.f/3.f) < .0001f);
+    ensure("Auto portrait", fabsf(resolveSourceAspect(ESourceAspect::AUTO, 1080, 1920) - 9.f/16.f) < .0001f);
+    ensure("manual wide wins", fabsf(resolveSourceAspect(ESourceAspect::WIDE_16_9, 4, 3) - 16.f/9.f) < .0001f);
+    ensure("manual standard wins", fabsf(resolveSourceAspect(ESourceAspect::STANDARD_4_3, 1920, 1080) - 4.f/3.f) < .0001f);
+    ensure("manual cinema wins", fabsf(resolveSourceAspect(ESourceAspect::CINEMA_239, 1, 1) - 2.39f) < .0001f);
+    ensure("mapping bounds", LLMediaFrame::validPixels(1024*1024*4, 1024, 1024, 4, 0, 0, 1024, 1024));
+    ensure("short region rejected", !LLMediaFrame::validPixels(15, 2, 2, 4, 0, 0, 2, 2));
+    ensure("overflow rejected", !LLMediaFrame::validPixels(1024, 0x7fffffff, 0x7fffffff, 4, 0, 0, 1, 1));
+}
+
+template<> template<>
+void prism_projector_object::test<25>()
+{
+    set_test_name("existing untagged source survives OFF ON OFF tracking transitions");
+    LLMediaFrame::TrackingState source;
+    source.configure(false, true);
+    ensure("OFF accepts original untagged pixels", source.acceptsUpdate("", ""));
+    ensure("OFF uses legacy uploads and loads", !source.active && !source.tokenLoads);
+
+    source.configure(true, true);
+    ensure("ON requests token loads", source.tokenLoads);
+    ensure("existing untagged player stays legacy pending notification", !source.active);
+    ensure("untagged pixels are consumed while enabling", source.acceptsUpdate("A", ""));
+    ensure("untagged pixels do not activate tracking", !source.active);
+    source.configure(false, true); // Disable before the plugin processes enable.
+    ensure("OFF again accepts untagged pixels", source.acceptsUpdate("", ""));
+    ensure("late enable reply cannot activate OFF", source.acceptsUpdate("", "A") && !source.active);
+    ensure("OFF stops generating token loads", !source.tokenLoads);
+
+    source.configure(true, true);
+    ensure("older subscription is rejected", !source.acceptsUpdate("B", "A"));
+    ensure("still legacy until current tagged frame", !source.active);
+    ensure("retained current-player frame activates tracking", source.acceptsUpdate("B", "B") && source.active);
+    ensure("tracked source rejects stale untagged callbacks", !source.acceptsUpdate("B", ""));
+    ensure("repeated ON leaves active subscription intact", !source.configure(true, true) && source.active);
+    source.configure(false, true);
+    ensure("tracked player returns to legacy immediately", !source.active && !source.tokenLoads);
+    ensure("legacy notifications resume", source.acceptsUpdate("", ""));
+
+    source.configure(true, true);
+    ensure("re-enable waits for its own token", !source.acceptsUpdate("C", "B") && !source.active);
+    ensure("re-enable accepts retained current pixels", source.acceptsUpdate("C", "C") && source.active);
+    source.awaitFrame(); // Navigation while ON must also wait for that load.
+    ensure("new load uses legacy until tagged", !source.active);
+    ensure("previous load cannot activate new load", !source.acceptsUpdate("D", "C"));
+    ensure("new load's tagged pixels activate", source.acceptsUpdate("D", "D") && source.active);
+}
+
+template<> template<>
+void prism_projector_object::test<26>()
+{
+    set_test_name("disable and source replacement retain the tracked upload guard");
+    LLMediaFrame::TrackingState source;
+    LLMediaFrame::UploadState upload;
+    const LLMediaFrame::Identity vlc{1, 1, "A"}, cef{2, 1, ""};
+    source.configure(true, true);
+    ensure("VLC tracking active", source.acceptsUpdate("A", "A") && source.active);
+    {
+        LLMediaFrame::TerminalCleanup terminal;
+        upload.pending = true;
+        terminal.release = [&]() { upload.pending = false; };
+        source.configure(false, true);
+        upload.invalidate(); // Disable invalidates the accepted layout.
+        ensure("disable preserves upload protection", !source.active && upload.pending);
+        source = LLMediaFrame::TrackingState(); // Replacement accelerated CEF.
+        upload.invalidate();
+        ensure("replacement preserves upload protection", upload.pending);
+        ensure("stale VLC completion cannot publish", !upload.finish(vlc, cef, true));
+        ensure("no stale completed image", !upload.ready && upload.serial == 0);
+    }
+    ensure("terminal cleanup permits OFF imports", !upload.pending);
+    ensure("OFF without tracked jobs uses legacy", !source.active && !upload.pending);
+}
+
 }

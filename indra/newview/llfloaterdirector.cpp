@@ -7120,7 +7120,7 @@ void LLFloaterDirector::refreshPrismDependents()
         }
     }
     U32 replaceable_ots_capture_count = 0;
-    for (U32 index = 0; index < ots_registry.mCaptureCount; ++index)
+    for (U32 index = 0; index < ots_registry.mSlotCount; ++index)
     {
         if (replaceable_ots_captures.count(
                 ots_registry.mCaptures[index].mHandle.mId) != 0)
@@ -7129,7 +7129,7 @@ void LLFloaterDirector::refreshPrismDependents()
         }
     }
     const bool ots_capacity =
-        ots_registry.mCaptureCount - replaceable_ots_capture_count <=
+        ots_registry.mSlotCount - replaceable_ots_capture_count <=
             LLPrismLens::MAX_CAPTURES - 2 &&
         ots_gate.mSettings.mArmed.size() - replaceable_ots_arms <=
             LLPrismLens::MAX_CAPTURES - 2;
@@ -7154,7 +7154,7 @@ void LLFloaterDirector::refreshPrismDependents()
         U32 capture_attention = 0;
         U32 display_attention = 0;
         U32 updating = 0;
-        for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+        for (U32 index = 0; index < snapshot.mSlotCount; ++index)
         {
             const LLPrismLens::CaptureDefinition& capture =
                 snapshot.mCaptures[index];
@@ -7174,16 +7174,33 @@ void LLFloaterDirector::refreshPrismDependents()
 
         if (mPrismSummaryText)
         {
-            setTextIfChanged(mPrismSummaryText, llformat(
-                "Prism %u/%u captures | %u/%u faces | %u live%s",
-                snapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
-                snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
-                updating, needs_attention ? " | attention" : ""));
-            setToolTipIfChanged(mPrismSummaryText, llformat(
-                "%u captures and %u display bindings; attention: %u capture%s, %u display%s. Open Virtual Cam Manager for sources, faces, optics, picture FPS, and adaptive performance.",
-                snapshot.mCaptureCount, snapshot.mDisplayCount,
-                capture_attention, capture_attention == 1 ? "" : "s",
-                display_attention, display_attention == 1 ? "" : "s"));
+            const bool has_media = LLPrismLens::mediaSlotsEnabled() && snapshot.mSlotCount > snapshot.mCaptureCount;
+            if (has_media)
+            {
+                setTextIfChanged(mPrismSummaryText, llformat(
+                    "Prism %u/%u slots (%u cameras) | %u/%u faces | %u live%s",
+                    snapshot.mSlotCount, LLPrismLens::MAX_CAPTURES, snapshot.mCaptureCount,
+                    snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
+                    updating, needs_attention ? " | attention" : ""));
+                setToolTipIfChanged(mPrismSummaryText, llformat(
+                    "%u source slots and %u display bindings; attention: %u capture%s, %u display%s. Open Virtual Cam Manager for sources, faces, optics, picture FPS, and adaptive performance.",
+                    snapshot.mSlotCount, snapshot.mDisplayCount,
+                    capture_attention, capture_attention == 1 ? "" : "s",
+                    display_attention, display_attention == 1 ? "" : "s"));
+            }
+            else
+            {
+                setTextIfChanged(mPrismSummaryText, llformat(
+                    "Prism %u/%u captures | %u/%u faces | %u live%s",
+                    snapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
+                    snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
+                    updating, needs_attention ? " | attention" : ""));
+                setToolTipIfChanged(mPrismSummaryText, llformat(
+                    "%u captures and %u display bindings; attention: %u capture%s, %u display%s. Open Virtual Cam Manager for sources, faces, optics, picture FPS, and adaptive performance.",
+                    snapshot.mCaptureCount, snapshot.mDisplayCount,
+                    capture_attention, capture_attention == 1 ? "" : "s",
+                    display_attention, display_attention == 1 ? "" : "s"));
+            }
         }
         mPrismConfigurationRevision = prism_configuration_revision;
         mPrismRuntimeRevision = prism_runtime_revision;

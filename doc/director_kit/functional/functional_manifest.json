@@ -43,10 +43,10 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2115,
-  "entries": 3991,
+  "generated_kit_rows": 2120,
+  "entries": 3996,
   "pages": 37,
-  "settings_declared": 3651,
+  "settings_declared": 3652,
   "xui_files": 842,
   "rim_presets": 32,
   "rim_preset_written_settings": [
@@ -130812,7 +130812,295 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_source_type:kit:10",
+   "id": "v2:vcam_tab:vc_add_media_slot:kit:10",
+   "csv_index": null,
+   "card": "camera_selector",
+   "card_title": "Settings for",
+   "row_label": "Add media slot",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "xui_line": null,
+   "widget_name": "vc_add_media_slot",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "state": "isolated media-only registry kind/count/aspect oracle"
+   },
+   "restore": {
+    "note": "restore any viewer-local action state"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "none",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "ALPanelDirectorVCam::onControl",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "probe": "vcam_media"
+  },
+  {
+   "page": "vcam_tab",
+   "page_label": "VCam",
+   "group": "camera_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "vcam_tab",
+    "via": "tab"
+   },
+   "id": "v2:vcam_tab:vc_pick_media_face:kit:11",
+   "csv_index": null,
+   "card": "media_source",
+   "card_title": "Media source",
+   "row_label": "Pick prim face",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "xui_line": null,
+   "widget_name": "vc_pick_media_face",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "DEFER_INWORLD",
+   "reason": "requires media slot selected",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "ALPanelDirectorVCam::onControl",
+    "commit": true
+   },
+   "restore": {
+    "note": "restore any viewer-local action state"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "none",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "ALPanelDirectorVCam::onControl",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "probe": "vcam_media_pick",
+   "visible_when": "media slot selected",
+   "enable_when": "media slot selected"
+  },
+  {
+   "page": "vcam_tab",
+   "page_label": "VCam",
+   "group": "camera_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "vcam_tab",
+    "via": "tab"
+   },
+   "id": "v2:vcam_tab:vc_media_face:kit:12",
+   "csv_index": null,
+   "card": "media_source",
+   "card_title": "Media source",
+   "row_label": "Source face",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "xui_line": null,
+   "widget_name": "vc_media_face",
+   "widget_type": "readout",
+   "csv_kind": "readout",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "readout",
+   "test_value": null,
+   "expect": {
+    "ui": "non-empty text after page refresh"
+   },
+   "restore": null,
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "none",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "visible_when": "media slot selected"
+  },
+  {
+   "page": "vcam_tab",
+   "page_label": "VCam",
+   "group": "camera_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "vcam_tab",
+    "via": "tab"
+   },
+   "id": "v2:vcam_tab:vc_source_aspect:kit:13",
+   "csv_index": null,
+   "card": "media_source",
+   "card_title": "Media source",
+   "row_label": "Source aspect",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "xui_line": null,
+   "widget_name": "vc_source_aspect",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "16:9",
+    "value": "1"
+   },
+   "expect": {
+    "state": "isolated media-only registry kind/count/aspect oracle"
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Auto",
+     "value": "0"
+    },
+    {
+     "label": "16:9",
+     "value": "1"
+    },
+    {
+     "label": "4:3",
+     "value": "2"
+    },
+    {
+     "label": "2.39",
+     "value": "3"
+    }
+   ],
+   "binding": "none",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "ALPanelDirectorVCam::onControl",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "probe": "vcam_media",
+   "visible_when": "media slot selected"
+  },
+  {
+   "page": "vcam_tab",
+   "page_label": "VCam",
+   "group": "camera_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "vcam_tab",
+    "via": "tab"
+   },
+   "id": "v2:vcam_tab:vc_media_status:kit:14",
+   "csv_index": null,
+   "card": "media_source",
+   "card_title": "Media source",
+   "row_label": "Media status",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "xui_line": null,
+   "widget_name": "vc_media_status",
+   "widget_type": "readout",
+   "csv_kind": "readout",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "readout",
+   "test_value": null,
+   "expect": {
+    "ui": "non-empty text after page refresh"
+   },
+   "restore": null,
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "none",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+   "visible_when": "media slot selected"
+  },
+  {
+   "page": "vcam_tab",
+   "page_label": "VCam",
+   "group": "camera_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "vcam_tab",
+    "via": "tab"
+   },
+   "id": "v2:vcam_tab:vc_source_type:kit:15",
    "csv_index": null,
    "card": "source",
    "card_title": "Source",
@@ -130887,7 +131175,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_source_bound:kit:11",
+   "id": "v2:vcam_tab:vc_source_bound:kit:16",
    "csv_index": null,
    "card": "source",
    "card_title": "Source",
@@ -130938,7 +131226,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_source_note_object:kit:12",
+   "id": "v2:vcam_tab:vc_source_note_object:kit:17",
    "csv_index": null,
    "card": "source",
    "card_title": "Source",
@@ -130992,7 +131280,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_source_note_virtual:kit:13",
+   "id": "v2:vcam_tab:vc_source_note_virtual:kit:18",
    "csv_index": null,
    "card": "source",
    "card_title": "Source",
@@ -131046,7 +131334,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_source_note_skeleton:kit:14",
+   "id": "v2:vcam_tab:vc_source_note_skeleton:kit:19",
    "csv_index": null,
    "card": "source",
    "card_title": "Source",
@@ -131100,7 +131388,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_lens_type:kit:15",
+   "id": "v2:vcam_tab:vc_lens_type:kit:20",
    "csv_index": null,
    "card": "source",
    "card_title": "Source",
@@ -131154,7 +131442,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_lens_aperture:kit:16",
+   "id": "v2:vcam_tab:vc_lens_aperture:kit:21",
    "csv_index": null,
    "card": "source",
    "card_title": "Source",
@@ -131208,7 +131496,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_lens_locate:kit:17",
+   "id": "v2:vcam_tab:vc_lens_locate:kit:22",
    "csv_index": null,
    "card": "source",
    "card_title": "Source",
@@ -131265,7 +131553,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_lens_note:kit:18",
+   "id": "v2:vcam_tab:vc_lens_note:kit:23",
    "csv_index": null,
    "card": "source",
    "card_title": "Source",
@@ -131319,7 +131607,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_set_selected_camera:kit:19",
+   "id": "v2:vcam_tab:vc_set_selected_camera:kit:24",
    "csv_index": null,
    "card": "placement",
    "card_title": "Placement",
@@ -131377,7 +131665,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_place_eye_front:kit:20",
+   "id": "v2:vcam_tab:vc_place_eye_front:kit:25",
    "csv_index": null,
    "card": "placement",
    "card_title": "Placement",
@@ -131431,7 +131719,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_placement_note:kit:21",
+   "id": "v2:vcam_tab:vc_placement_note:kit:26",
    "csv_index": null,
    "card": "placement",
    "card_title": "Placement",
@@ -131485,7 +131773,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_eye_x:kit:22",
+   "id": "v2:vcam_tab:vc_eye_x:kit:27",
    "csv_index": null,
    "card": "placement",
    "card_title": "Placement",
@@ -131542,7 +131830,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_eye_y:kit:23",
+   "id": "v2:vcam_tab:vc_eye_y:kit:28",
    "csv_index": null,
    "card": "placement",
    "card_title": "Placement",
@@ -131599,7 +131887,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_eye_z:kit:24",
+   "id": "v2:vcam_tab:vc_eye_z:kit:29",
    "csv_index": null,
    "card": "placement",
    "card_title": "Placement",
@@ -131656,7 +131944,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_snap_view:kit:25",
+   "id": "v2:vcam_tab:vc_snap_view:kit:30",
    "csv_index": null,
    "card": "placement",
    "card_title": "Placement",
@@ -131713,7 +132001,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_virtual_note:kit:26",
+   "id": "v2:vcam_tab:vc_virtual_note:kit:31",
    "csv_index": null,
    "card": "placement",
    "card_title": "Placement",
@@ -131767,7 +132055,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_enabled:kit:27",
+   "id": "v2:vcam_tab:vc_bone_enabled:kit:32",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -131824,7 +132112,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_anchor:kit:28",
+   "id": "v2:vcam_tab:vc_bone_anchor:kit:33",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -131906,7 +132194,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_joint:kit:29",
+   "id": "v2:vcam_tab:vc_bone_joint:kit:34",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132008,7 +132296,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_aim:kit:30",
+   "id": "v2:vcam_tab:vc_bone_aim:kit:35",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132078,7 +132366,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_roll:kit:31",
+   "id": "v2:vcam_tab:vc_bone_roll:kit:36",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132148,7 +132436,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_smooth:kit:32",
+   "id": "v2:vcam_tab:vc_bone_smooth:kit:37",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132205,7 +132493,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_status:kit:33",
+   "id": "v2:vcam_tab:vc_bone_status:kit:38",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132259,7 +132547,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_x:kit:34",
+   "id": "v2:vcam_tab:vc_bone_x:kit:39",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132316,7 +132604,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_y:kit:35",
+   "id": "v2:vcam_tab:vc_bone_y:kit:40",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132373,7 +132661,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_z:kit:36",
+   "id": "v2:vcam_tab:vc_bone_z:kit:41",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132430,7 +132718,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_pitch:kit:37",
+   "id": "v2:vcam_tab:vc_bone_pitch:kit:42",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132487,7 +132775,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_yaw:kit:38",
+   "id": "v2:vcam_tab:vc_bone_yaw:kit:43",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132544,7 +132832,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_scale:kit:39",
+   "id": "v2:vcam_tab:vc_bone_scale:kit:44",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132601,7 +132889,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bone_reset:kit:40",
+   "id": "v2:vcam_tab:vc_bone_reset:kit:45",
    "csv_index": null,
    "card": "skeleton",
    "card_title": "Skeleton POV",
@@ -132658,7 +132946,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_lens_equiv:kit:41",
+   "id": "v2:vcam_tab:vc_lens_equiv:kit:46",
    "csv_index": null,
    "card": "optics",
    "card_title": "Optics",
@@ -132709,7 +132997,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_fov_mode:kit:42",
+   "id": "v2:vcam_tab:vc_fov_mode:kit:47",
    "csv_index": null,
    "card": "optics",
    "card_title": "Optics",
@@ -132779,7 +133067,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_fov_deg:kit:43",
+   "id": "v2:vcam_tab:vc_fov_deg:kit:48",
    "csv_index": null,
    "card": "optics",
    "card_title": "Optics",
@@ -132836,7 +133124,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_fov_projector:kit:44",
+   "id": "v2:vcam_tab:vc_fov_projector:kit:49",
    "csv_index": null,
    "card": "optics",
    "card_title": "Optics",
@@ -132890,7 +133178,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_fov_attached:kit:45",
+   "id": "v2:vcam_tab:vc_fov_attached:kit:50",
    "csv_index": null,
    "card": "optics",
    "card_title": "Optics",
@@ -132947,7 +133235,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_near_clip:kit:46",
+   "id": "v2:vcam_tab:vc_near_clip:kit:51",
    "csv_index": null,
    "card": "optics",
    "card_title": "Optics",
@@ -133001,7 +133289,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_far_clip:kit:47",
+   "id": "v2:vcam_tab:vc_far_clip:kit:52",
    "csv_index": null,
    "card": "optics",
    "card_title": "Optics",
@@ -133055,7 +133343,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_lens_zoom:kit:48",
+   "id": "v2:vcam_tab:vc_lens_zoom:kit:53",
    "csv_index": null,
    "card": "surface_lens",
    "card_title": "Surface lens",
@@ -133112,7 +133400,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_lens_zoom_note:kit:49",
+   "id": "v2:vcam_tab:vc_lens_zoom_note:kit:54",
    "csv_index": null,
    "card": "surface_lens",
    "card_title": "Surface lens",
@@ -133162,7 +133450,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_guide_show:kit:50",
+   "id": "v2:vcam_tab:vc_guide_show:kit:55",
    "csv_index": null,
    "card": "guide",
    "card_title": "In-world guide",
@@ -133216,7 +133504,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_guide_thirds:kit:51",
+   "id": "v2:vcam_tab:vc_guide_thirds:kit:56",
    "csv_index": null,
    "card": "guide",
    "card_title": "In-world guide",
@@ -133273,7 +133561,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_guide_up:kit:52",
+   "id": "v2:vcam_tab:vc_guide_up:kit:57",
    "csv_index": null,
    "card": "guide",
    "card_title": "In-world guide",
@@ -133330,7 +133618,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_guide_cross:kit:53",
+   "id": "v2:vcam_tab:vc_guide_cross:kit:58",
    "csv_index": null,
    "card": "guide",
    "card_title": "In-world guide",
@@ -133387,7 +133675,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_guide_clip:kit:54",
+   "id": "v2:vcam_tab:vc_guide_clip:kit:59",
    "csv_index": null,
    "card": "guide",
    "card_title": "In-world guide",
@@ -133444,7 +133732,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_guide_note:kit:55",
+   "id": "v2:vcam_tab:vc_guide_note:kit:60",
    "csv_index": null,
    "card": "guide",
    "card_title": "In-world guide",
@@ -133498,7 +133786,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_exposure:kit:56",
+   "id": "v2:vcam_tab:vc_exposure:kit:61",
    "csv_index": null,
    "card": "camera_look",
    "card_title": "Camera look",
@@ -133552,7 +133840,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_grain:kit:57",
+   "id": "v2:vcam_tab:vc_grain:kit:62",
    "csv_index": null,
    "card": "camera_look",
    "card_title": "Camera look",
@@ -133606,7 +133894,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_chromatic:kit:58",
+   "id": "v2:vcam_tab:vc_chromatic:kit:63",
    "csv_index": null,
    "card": "camera_look",
    "card_title": "Camera look",
@@ -133660,7 +133948,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_camera_crt:kit:59",
+   "id": "v2:vcam_tab:vc_camera_crt:kit:64",
    "csv_index": null,
    "card": "camera_look",
    "card_title": "Camera look",
@@ -133714,7 +134002,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_look_feeds:kit:60",
+   "id": "v2:vcam_tab:vc_look_feeds:kit:65",
    "csv_index": null,
    "card": "look_goes",
    "card_title": "Where this look goes",
@@ -133765,7 +134053,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_look_note:kit:61",
+   "id": "v2:vcam_tab:vc_look_note:kit:66",
    "csv_index": null,
    "card": "look_goes",
    "card_title": "Where this look goes",
@@ -133816,7 +134104,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_go_output:kit:62",
+   "id": "v2:vcam_tab:vc_go_output:kit:67",
    "csv_index": null,
    "card": "look_goes",
    "card_title": "Where this look goes",
@@ -133872,7 +134160,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_output_aspect:kit:63",
+   "id": "v2:vcam_tab:vc_output_aspect:kit:68",
    "csv_index": null,
    "card": "output_frame",
    "card_title": "Output frame",
@@ -133947,7 +134235,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_output_custom:kit:64",
+   "id": "v2:vcam_tab:vc_output_custom:kit:69",
    "csv_index": null,
    "card": "output_frame",
    "card_title": "Output frame",
@@ -134010,7 +134298,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_output_picture:kit:65",
+   "id": "v2:vcam_tab:vc_output_picture:kit:70",
    "csv_index": null,
    "card": "output_frame",
    "card_title": "Output frame",
@@ -134061,7 +134349,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_face_list:kit:66",
+   "id": "v2:vcam_tab:vc_face_list:kit:71",
    "csv_index": null,
    "card": "faces",
    "card_title": "Faces this camera feeds",
@@ -134120,7 +134408,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_add_face:kit:67",
+   "id": "v2:vcam_tab:vc_add_face:kit:72",
    "csv_index": null,
    "card": "faces",
    "card_title": "Faces this camera feeds",
@@ -134177,7 +134465,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_new_face_fit:kit:68",
+   "id": "v2:vcam_tab:vc_new_face_fit:kit:73",
    "csv_index": null,
    "card": "faces",
    "card_title": "Faces this camera feeds",
@@ -134248,7 +134536,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_add_screen:kit:69",
+   "id": "v2:vcam_tab:vc_add_screen:kit:74",
    "csv_index": null,
    "card": "faces",
    "card_title": "Faces this camera feeds",
@@ -134304,7 +134592,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_face_count:kit:70",
+   "id": "v2:vcam_tab:vc_face_count:kit:75",
    "csv_index": null,
    "card": "faces",
    "card_title": "Faces this camera feeds",
@@ -134355,7 +134643,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_projector_list:kit:71",
+   "id": "v2:vcam_tab:vc_projector_list:kit:76",
    "csv_index": null,
    "card": "projectors",
    "card_title": "Projectors",
@@ -134363,19 +134651,29 @@
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
    "xui_line": null,
    "widget_name": "vc_projector_list",
-   "widget_type": "custom",
+   "widget_type": "list",
    "csv_kind": "custom",
    "wiring_status": "GENERATED_KIT",
    "resolution": "generated_kit_xml",
-   "action": "NO_EXERCISE",
-   "reason": "no generic exercise for generated kit kind 'custom'",
+   "action": "DEFER_INWORLD",
+   "reason": "list contents are populated in-world (avatars, anims, groups, presets)",
    "known_gap": false,
    "suspect": false,
-   "hazards": [],
-   "exercise": "none",
-   "test_value": null,
-   "expect": null,
-   "restore": null,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "resolve": "runtime"
+   },
+   "expect": {
+    "callback": "ALPanelDirectorVCam::onControl",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value"
+   },
    "setting": null,
    "setting_source": null,
    "setting_type": null,
@@ -134403,7 +134701,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_projector_hint:kit:72",
+   "id": "v2:vcam_tab:vc_projector_hint:kit:77",
    "csv_index": null,
    "card": "projectors",
    "card_title": "Projectors",
@@ -134457,7 +134755,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_look:kit:73",
+   "id": "v2:vcam_tab:vc_proj_look:kit:78",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -134543,7 +134841,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_fit:kit:74",
+   "id": "v2:vcam_tab:vc_proj_fit:kit:79",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -134617,7 +134915,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_anchor_x:kit:75",
+   "id": "v2:vcam_tab:vc_proj_anchor_x:kit:80",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -134674,7 +134972,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_anchor_y:kit:76",
+   "id": "v2:vcam_tab:vc_proj_anchor_y:kit:81",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -134731,7 +135029,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_flip_h:kit:77",
+   "id": "v2:vcam_tab:vc_proj_flip_h:kit:82",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -134788,7 +135086,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_flip_v:kit:78",
+   "id": "v2:vcam_tab:vc_proj_flip_v:kit:83",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -134845,7 +135143,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_rotate:kit:79",
+   "id": "v2:vcam_tab:vc_proj_rotate:kit:84",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -134923,7 +135221,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_keystone_h:kit:80",
+   "id": "v2:vcam_tab:vc_proj_keystone_h:kit:85",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -134980,7 +135278,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_keystone_v:kit:81",
+   "id": "v2:vcam_tab:vc_proj_keystone_v:kit:86",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135037,7 +135335,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_throw:kit:82",
+   "id": "v2:vcam_tab:vc_proj_throw:kit:87",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135111,7 +135409,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_brightness:kit:83",
+   "id": "v2:vcam_tab:vc_proj_brightness:kit:88",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135168,7 +135466,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_lamp_power:kit:84",
+   "id": "v2:vcam_tab:vc_proj_lamp_power:kit:89",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135225,7 +135523,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_follow_exposure:kit:85",
+   "id": "v2:vcam_tab:vc_proj_follow_exposure:kit:90",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135282,7 +135580,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_lamp_kelvin:kit:86",
+   "id": "v2:vcam_tab:vc_proj_lamp_kelvin:kit:91",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135339,7 +135637,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_gel_tint:kit:87",
+   "id": "v2:vcam_tab:vc_proj_gel_tint:kit:92",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135402,7 +135700,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_hotspot:kit:88",
+   "id": "v2:vcam_tab:vc_proj_hotspot:kit:93",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135459,7 +135757,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_shutter_flicker:kit:89",
+   "id": "v2:vcam_tab:vc_proj_shutter_flicker:kit:94",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135516,7 +135814,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_shutter_rate:kit:90",
+   "id": "v2:vcam_tab:vc_proj_shutter_rate:kit:95",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135573,7 +135871,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_gate_weave:kit:91",
+   "id": "v2:vcam_tab:vc_proj_gate_weave:kit:96",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135630,7 +135928,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_grain:kit:92",
+   "id": "v2:vcam_tab:vc_proj_grain:kit:97",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135687,7 +135985,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_dust:kit:93",
+   "id": "v2:vcam_tab:vc_proj_dust:kit:98",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135744,7 +136042,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_scratches:kit:94",
+   "id": "v2:vcam_tab:vc_proj_scratches:kit:99",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135801,7 +136099,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_burn:kit:95",
+   "id": "v2:vcam_tab:vc_proj_burn:kit:100",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135858,7 +136156,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_halation:kit:96",
+   "id": "v2:vcam_tab:vc_proj_halation:kit:101",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135915,7 +136213,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_resolution:kit:97",
+   "id": "v2:vcam_tab:vc_proj_resolution:kit:102",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -135989,7 +136287,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_no_signal:kit:98",
+   "id": "v2:vcam_tab:vc_proj_no_signal:kit:103",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -136063,7 +136361,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_keep_gobo:kit:99",
+   "id": "v2:vcam_tab:vc_proj_keep_gobo:kit:104",
    "csv_index": null,
    "card": "projector",
    "card_title": "Projector",
@@ -136120,7 +136418,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_preset:kit:100",
+   "id": "v2:vcam_tab:vc_proj_tv_preset:kit:105",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136206,7 +136504,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_scan:kit:101",
+   "id": "v2:vcam_tab:vc_proj_tv_scan:kit:106",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136263,7 +136561,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_gray:kit:102",
+   "id": "v2:vcam_tab:vc_proj_tv_gray:kit:107",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136320,7 +136618,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_static:kit:103",
+   "id": "v2:vcam_tab:vc_proj_tv_static:kit:108",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136377,7 +136675,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_vignette:kit:104",
+   "id": "v2:vcam_tab:vc_proj_tv_vignette:kit:109",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136434,7 +136732,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_brightness:kit:105",
+   "id": "v2:vcam_tab:vc_proj_tv_brightness:kit:110",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136491,7 +136789,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_lines:kit:106",
+   "id": "v2:vcam_tab:vc_proj_tv_lines:kit:111",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136548,7 +136846,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_dark:kit:107",
+   "id": "v2:vcam_tab:vc_proj_tv_dark:kit:112",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136605,7 +136903,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_sharp:kit:108",
+   "id": "v2:vcam_tab:vc_proj_tv_sharp:kit:113",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136662,7 +136960,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_thick:kit:109",
+   "id": "v2:vcam_tab:vc_proj_tv_thick:kit:114",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136719,7 +137017,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_pixel:kit:110",
+   "id": "v2:vcam_tab:vc_proj_tv_pixel:kit:115",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136776,7 +137074,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_sepia:kit:111",
+   "id": "v2:vcam_tab:vc_proj_tv_sepia:kit:116",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136833,7 +137131,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_chroma:kit:112",
+   "id": "v2:vcam_tab:vc_proj_tv_chroma:kit:117",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136890,7 +137188,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_vroll:kit:113",
+   "id": "v2:vcam_tab:vc_proj_tv_vroll:kit:118",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -136947,7 +137245,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_roll_speed:kit:114",
+   "id": "v2:vcam_tab:vc_proj_tv_roll_speed:kit:119",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -137004,7 +137302,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_tracking:kit:115",
+   "id": "v2:vcam_tab:vc_proj_tv_tracking:kit:120",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -137061,7 +137359,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_flicker:kit:116",
+   "id": "v2:vcam_tab:vc_proj_tv_flicker:kit:121",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -137118,7 +137416,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_interlace:kit:117",
+   "id": "v2:vcam_tab:vc_proj_tv_interlace:kit:122",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -137175,7 +137473,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_dropout:kit:118",
+   "id": "v2:vcam_tab:vc_proj_tv_dropout:kit:123",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -137232,7 +137530,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_proj_tv_sheen:kit:119",
+   "id": "v2:vcam_tab:vc_proj_tv_sheen:kit:124",
    "csv_index": null,
    "card": "projector_tv",
    "card_title": "More effects (TV)",
@@ -137289,7 +137587,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_face_feed:kit:120",
+   "id": "v2:vcam_tab:vc_face_feed:kit:125",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137359,7 +137657,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_face_fit:kit:121",
+   "id": "v2:vcam_tab:vc_face_fit:kit:126",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137433,7 +137731,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_anchor_x:kit:122",
+   "id": "v2:vcam_tab:vc_anchor_x:kit:127",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137490,7 +137788,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_anchor_y:kit:123",
+   "id": "v2:vcam_tab:vc_anchor_y:kit:128",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137547,7 +137845,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_face_shape:kit:124",
+   "id": "v2:vcam_tab:vc_face_shape:kit:129",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137601,7 +137899,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_screen_height:kit:125",
+   "id": "v2:vcam_tab:vc_screen_height:kit:130",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137658,7 +137956,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_screen_aspect:kit:126",
+   "id": "v2:vcam_tab:vc_screen_aspect:kit:131",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137736,7 +138034,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_face_locate:kit:127",
+   "id": "v2:vcam_tab:vc_face_locate:kit:132",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137793,7 +138091,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_screen_reposition:kit:128",
+   "id": "v2:vcam_tab:vc_screen_reposition:kit:133",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137850,7 +138148,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_remove_face:kit:129",
+   "id": "v2:vcam_tab:vc_remove_face:kit:134",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137900,7 +138198,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_gate_note:kit:130",
+   "id": "v2:vcam_tab:vc_gate_note:kit:135",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -137954,7 +138252,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bar_r:kit:131",
+   "id": "v2:vcam_tab:vc_bar_r:kit:136",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -138011,7 +138309,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bar_g:kit:132",
+   "id": "v2:vcam_tab:vc_bar_g:kit:137",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -138068,7 +138366,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_bar_b:kit:133",
+   "id": "v2:vcam_tab:vc_bar_b:kit:138",
    "csv_index": null,
    "card": "face_mapping",
    "card_title": "Face mapping",
@@ -138125,7 +138423,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_preset:kit:134",
+   "id": "v2:vcam_tab:vc_tv_preset:kit:139",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138211,7 +138509,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_scan:kit:135",
+   "id": "v2:vcam_tab:vc_tv_scan:kit:140",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138268,7 +138566,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_gray:kit:136",
+   "id": "v2:vcam_tab:vc_tv_gray:kit:141",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138325,7 +138623,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_static:kit:137",
+   "id": "v2:vcam_tab:vc_tv_static:kit:142",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138382,7 +138680,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_vignette:kit:138",
+   "id": "v2:vcam_tab:vc_tv_vignette:kit:143",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138439,7 +138737,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_brightness:kit:139",
+   "id": "v2:vcam_tab:vc_tv_brightness:kit:144",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138496,7 +138794,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_flip_h:kit:140",
+   "id": "v2:vcam_tab:vc_tv_flip_h:kit:145",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138553,7 +138851,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_flip_v:kit:141",
+   "id": "v2:vcam_tab:vc_tv_flip_v:kit:146",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138610,7 +138908,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_rotate:kit:142",
+   "id": "v2:vcam_tab:vc_tv_rotate:kit:147",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138667,7 +138965,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_lines:kit:143",
+   "id": "v2:vcam_tab:vc_tv_lines:kit:148",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138724,7 +139022,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_dark:kit:144",
+   "id": "v2:vcam_tab:vc_tv_dark:kit:149",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138781,7 +139079,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_sharp:kit:145",
+   "id": "v2:vcam_tab:vc_tv_sharp:kit:150",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138838,7 +139136,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_thick:kit:146",
+   "id": "v2:vcam_tab:vc_tv_thick:kit:151",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138895,7 +139193,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_pixel:kit:147",
+   "id": "v2:vcam_tab:vc_tv_pixel:kit:152",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -138952,7 +139250,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_sepia:kit:148",
+   "id": "v2:vcam_tab:vc_tv_sepia:kit:153",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -139009,7 +139307,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_chroma:kit:149",
+   "id": "v2:vcam_tab:vc_tv_chroma:kit:154",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -139066,7 +139364,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_vroll:kit:150",
+   "id": "v2:vcam_tab:vc_tv_vroll:kit:155",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -139123,7 +139421,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_roll_speed:kit:151",
+   "id": "v2:vcam_tab:vc_tv_roll_speed:kit:156",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -139180,7 +139478,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_tracking:kit:152",
+   "id": "v2:vcam_tab:vc_tv_tracking:kit:157",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -139237,7 +139535,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_flicker:kit:153",
+   "id": "v2:vcam_tab:vc_tv_flicker:kit:158",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -139294,7 +139592,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_interlace:kit:154",
+   "id": "v2:vcam_tab:vc_tv_interlace:kit:159",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -139351,7 +139649,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_dropout:kit:155",
+   "id": "v2:vcam_tab:vc_tv_dropout:kit:160",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -139408,7 +139706,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_tv_sheen:kit:156",
+   "id": "v2:vcam_tab:vc_tv_sheen:kit:161",
    "csv_index": null,
    "card": "tv_effects",
    "card_title": "TV effects",
@@ -139465,7 +139763,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_raw_note:kit:157",
+   "id": "v2:vcam_tab:vc_raw_note:kit:162",
    "csv_index": null,
    "card": "raw_output",
    "card_title": "Showing the raw camera output",
@@ -139516,7 +139814,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_rate_mode:kit:158",
+   "id": "v2:vcam_tab:vc_rate_mode:kit:163",
    "csv_index": null,
    "card": "picture_rate",
    "card_title": "Picture rate",
@@ -139583,7 +139881,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_target_fps:kit:159",
+   "id": "v2:vcam_tab:vc_target_fps:kit:164",
    "csv_index": null,
    "card": "picture_rate",
    "card_title": "Picture rate",
@@ -139640,7 +139938,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_rate_preset:kit:160",
+   "id": "v2:vcam_tab:vc_rate_preset:kit:165",
    "csv_index": null,
    "card": "picture_rate",
    "card_title": "Picture rate",
@@ -139746,7 +140044,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_rate_readout:kit:161",
+   "id": "v2:vcam_tab:vc_rate_readout:kit:166",
    "csv_index": null,
    "card": "picture_rate",
    "card_title": "Picture rate",
@@ -139797,7 +140095,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_rate_note:kit:162",
+   "id": "v2:vcam_tab:vc_rate_note:kit:167",
    "csv_index": null,
    "card": "picture_rate",
    "card_title": "Picture rate",
@@ -139848,7 +140146,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_protect:kit:163",
+   "id": "v2:vcam_tab:vc_protect:kit:168",
    "csv_index": null,
    "card": "performance",
    "card_title": "Performance",
@@ -139905,7 +140203,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_main_fps:kit:164",
+   "id": "v2:vcam_tab:vc_main_fps:kit:169",
    "csv_index": null,
    "card": "performance",
    "card_title": "Performance",
@@ -139975,7 +140273,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_capture_budget:kit:165",
+   "id": "v2:vcam_tab:vc_capture_budget:kit:170",
    "csv_index": null,
    "card": "performance",
    "card_title": "Performance",
@@ -140057,7 +140355,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_quality_ceiling:kit:166",
+   "id": "v2:vcam_tab:vc_quality_ceiling:kit:171",
    "csv_index": null,
    "card": "performance",
    "card_title": "Performance",
@@ -140114,7 +140412,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_admitted:kit:167",
+   "id": "v2:vcam_tab:vc_admitted:kit:172",
    "csv_index": null,
    "card": "performance",
    "card_title": "Performance",
@@ -140164,7 +140462,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_preview_cost:kit:168",
+   "id": "v2:vcam_tab:vc_preview_cost:kit:173",
    "csv_index": null,
    "card": "performance",
    "card_title": "Performance",
@@ -140214,7 +140512,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_performance_note_1:kit:169",
+   "id": "v2:vcam_tab:vc_performance_note_1:kit:174",
    "csv_index": null,
    "card": "performance",
    "card_title": "Performance",
@@ -140264,7 +140562,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_performance_note_2:kit:170",
+   "id": "v2:vcam_tab:vc_performance_note_2:kit:175",
    "csv_index": null,
    "card": "performance",
    "card_title": "Performance",
@@ -140314,7 +140612,7 @@
     "page_view": "vcam_tab",
     "via": "tab"
    },
-   "id": "v2:vcam_tab:vc_performance_note_3:kit:171",
+   "id": "v2:vcam_tab:vc_performance_note_3:kit:176",
    "csv_index": null,
    "card": "performance",
    "card_title": "Performance",
@@ -228216,6 +228514,7 @@
    "kc_look_goes",
    "kc_lpm",
    "kc_master_inertia",
+   "kc_media_source",
    "kc_monitors",
    "kc_motion",
    "kc_motion1",
@@ -229913,6 +230212,7 @@
    "txt_sil_note",
    "txt_status",
    "vc_add_face",
+   "vc_add_media_slot",
    "vc_add_screen",
    "vc_admitted",
    "vc_anchor_x",
@@ -230008,6 +230308,8 @@
    "vc_main_fps_item_0",
    "vc_main_fps_item_1",
    "vc_main_fps_item_2",
+   "vc_media_face",
+   "vc_media_status",
    "vc_monitor_footer",
    "vc_monitor_header",
    "vc_monitor_pager",
@@ -230029,6 +230331,7 @@
    "vc_performance_note_1",
    "vc_performance_note_2",
    "vc_performance_note_3",
+   "vc_pick_media_face",
    "vc_place_eye_front",
    "vc_placement_note",
    "vc_preview_cost",
@@ -230139,6 +230442,11 @@
    "vc_screen_reposition",
    "vc_set_selected_camera",
    "vc_snap_view",
+   "vc_source_aspect",
+   "vc_source_aspect_item_0",
+   "vc_source_aspect_item_1",
+   "vc_source_aspect_item_2",
+   "vc_source_aspect_item_3",
    "vc_source_bound",
    "vc_source_note_object",
    "vc_source_note_skeleton",

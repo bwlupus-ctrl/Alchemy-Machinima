@@ -1531,6 +1531,17 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                 "commit": True,
             }
             row["owner"] = row["expect"]["callback"]
+        if widget in {"vc_add_media_slot", "vc_source_aspect"}:
+            row.update(owner="ALPanelDirectorVCam::onControl", probe="vcam_media", known_gap=False, action="RUN")
+            prereqs.append({"setting": "VCamMediaSlotsEnabled", "value": True, "source": "isolated VCam media fixture"})
+            row.pop("effect_kind", None)
+            if widget == "vc_source_aspect":
+                row["test_value"] = {"item_index": 1, "label": "16:9", "value": 1}
+                row["test_value_resolved"] = 1
+            row["expect"] = {"state": "media kind/count or accepted source-aspect revision changes"}
+        if widget == "vc_pick_media_face":
+            row.update(action="DEFER_INWORLD", probe="vcam_media_pick", reason="requires live prim media pick/commit/cancel", known_gap=False)
+            row["hazards"] = sorted(set(row.get("hazards", [])) | {"requires_world"})
         if widget == "vc_camera_name":
             row.update(owner="ALPanelDirectorVCam::onControl",
                        probe="vcam_camera_name", known_gap=False)
@@ -2014,7 +2025,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                   row.get("probe") not in {
                       "selector_segment", "temporal_preset", "gaze_reset",
                       "cine_fx_stop", "cine_live_probe_refresh", "vc_snap_view",
-                      "vc_face_list", "vc_camera_selector", "actor_mover_active",
+                      "vc_face_list", "vc_camera_selector", "vcam_media", "actor_mover_active",
                       "actor_style_reset", "exposure_history", "launcher",
                       "dance_owner", "prop_owner", "path_owner", "path_selection", "ghost_owner",
                       "gaze_slot", "gaze_cast_target", "list_owner",

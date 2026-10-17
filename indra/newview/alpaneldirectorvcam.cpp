@@ -34,6 +34,9 @@
 #include "llviewercontrol.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
+#include "llviewerwindow.h"
+#include "lltool.h"
+#include "lltoolmgr.h"
 
 #include <algorithm>
 #include <cmath>
@@ -43,6 +46,46 @@ static LLPanelInjector<ALPanelDirectorVCam>
 
 namespace
 {
+// A transient face picker; cancellation has no registry side effects. Capture
+// handle/generation + revision are checked by the owning panel on completion.
+class MediaFacePickTool final : public LLTool
+{
+public:
+    MediaFacePickTool() : LLTool("VCam media face") {}
+    static MediaFacePickTool& instance() { static MediaFacePickTool tool; return tool; }
+    std::function<void(LLViewerObject*, S32)> mPicked;
+    U64 mGeneration = 1;
+    U64 mPendingGeneration = 0;
+    bool mPickPending = false;
+    void begin(std::function<void(LLViewerObject*, S32)> callback)
+    { ++mGeneration; mPicked = std::move(callback); }
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override
+    {
+        // One outstanding callback, including across cancel/re-open. An old
+        // result must not consume the callback installed by a newer picker.
+        if (mPickPending) return true;
+        mPickPending = true;
+        mPendingGeneration = mGeneration;
+        gViewerWindow->pickAsync(x, y, mask, [](const LLPickInfo& pick)
+        {
+            auto& tool = instance();
+            tool.mPickPending = false;
+            if (tool.mPendingGeneration != tool.mGeneration ||
+                LLToolMgr::getInstance()->getCurrentTool() != &tool) return;
+            const auto callback = std::move(tool.mPicked);
+            LLToolMgr::getInstance()->clearTransientTool();
+            if (callback) callback(pick.getObject(), pick.mObjectFace);
+        });
+        return true;
+    }
+    bool handleHover(S32, S32, MASK) override
+    {
+        gViewerWindow->setCursor(UI_CURSOR_TOOLPICKOBJECT3);
+        return true;
+    }
+    void handleDeselect() override { ++mGeneration; mPicked = {}; }
+};
+
 constexpr LLPrismPreviewService::VisibilityOwner VCAM_PAGE_PREVIEW_OWNER = 2;
 bool setRowControlVisible(ALKitRow* row, bool visible)
 {
@@ -176,8 +219,8 @@ bool ALPanelDirectorVCam::postBuild()
             [this]() -> LLSD
             {
                 const LLPrismLens::CaptureDefinition* capture = selectedCapture();
-                return capture ? LLSD(static_cast<S32>(
-                                     capture->mCamera.mBonePov.mAnchorSlot))
+                return capture && capture->cameraData() ? LLSD(static_cast<S32>(
+                                     capture->cameraData()->mSettings.mBonePov.mAnchorSlot))
                                : LLSD(0);
             });
     };
@@ -274,7 +317,7 @@ bool ALPanelDirectorVCam::postBuild()
                     }
             }));
     const char* settings[] = {
-        "PrismLensEnabled", "PrismMonitorPreviewsEnabled", "PrismMonitorInfoOverlay",
+        "PrismLensEnabled", "VCamMediaSlotsEnabled", "PrismMonitorPreviewsEnabled", "PrismMonitorInfoOverlay",
         "PrismMonitorPreviewFPS", "PrismLensZoom",
         "PrismAdaptivePerformance", "PrismProtectedMainFPS",
         "PrismCaptureRefreshCeilingHz", "PrismLensResolutionScale"
@@ -342,7 +385,7 @@ ALKitRow* ALPanelDirectorVCam::row(const std::string& name) const
 
 const LLPrismLens::CaptureDefinition* ALPanelDirectorVCam::selectedCapture() const
 {
-    for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+    for (U32 i = 0; i < mModel.registry().mSlotCount; ++i)
         if (sameCapture(mModel.registry().mCaptures[i].mHandle,
                         mModel.selectedCapture()))
             return &mModel.registry().mCaptures[i];
@@ -385,7 +428,7 @@ void ALPanelDirectorVCam::refreshPreviewDemand()
         mPreviewDemand = desired;
         return;
     }
-    for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+    for (U32 i = 0; i < mModel.registry().mSlotCount; ++i)
     {
         const LLPrismLens::CaptureDefinition& capture = mModel.registry().mCaptures[i];
         desired[capture.mSlot] = capture.mHandle;
@@ -406,7 +449,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     if (mRefreshing || !mModel.pageVisible()) return;
     mRefreshing = true;
     const LLPrismLens::RegistrySnapshot& registry = mModel.registry();
-    if (!selectedCapture() && registry.mCaptureCount)
+    if (!selectedCapture() && registry.mSlotCount)
         mModel.setSelectedCapture(registry.mCaptures[0].mHandle);
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
@@ -415,7 +458,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     if (mCameraLabelRevision != registry.mConfigurationRevision)
     {
         mCameraLabels.fill(std::string());
-        for (U32 index = 0; index < registry.mCaptureCount; ++index)
+        for (U32 index = 0; index < registry.mSlotCount; ++index)
         {
             const LLPrismLens::CaptureDefinition& item = registry.mCaptures[index];
             mCameraLabels[item.mSlot] = LLPrismLens::captureDisplayLabel(item);
@@ -429,8 +472,12 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             LLPrismLens::EDisplayVisibility::VISIBLE)
             ++visible_faces;
     if (LLUICtrl* summary = control("vc_summary"))
-        setValueIfChanged(summary, llformat("VCam %u/8 cameras · %u/16 faces (%u visible)",
-            registry.mCaptureCount, registry.mDisplayCount, visible_faces));
+    {
+        const bool has_media = LLPrismLens::mediaSlotsEnabled() && registry.mSlotCount > registry.mCaptureCount;
+        setValueIfChanged(summary, has_media
+            ? llformat("VCam %u/8 slots · %u/16 faces (%u visible)", registry.mSlotCount, registry.mDisplayCount, visible_faces)
+            : llformat("VCam %u/8 cameras · %u/16 faces (%u visible)", registry.mCaptureCount, registry.mDisplayCount, visible_faces));
+    }
     if (LLUICtrl* perf_line = control("vc_perf"))
         setValueIfChanged(perf_line, !gSavedSettings.getBOOL("PrismLensEnabled")
             ? LLSD("Virtual Cam is off. Nothing renders; cameras and faces stay editable.")
@@ -444,7 +491,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     std::vector<ALVCamCameraSelector::Item> cameras;
     std::array<ALVCamMonitorStrip::Tile, LLPrismLens::MAX_CAPTURES> tiles;
     U32 monitor_slot_span = 0;
-    for (U32 i = 0; i < registry.mCaptureCount; ++i)
+    for (U32 i = 0; i < registry.mSlotCount; ++i)
     {
         const LLPrismLens::CaptureDefinition& item = registry.mCaptures[i];
         monitor_slot_span = llmax(monitor_slot_span, item.mSlot + 1);
@@ -476,7 +523,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         tile.mVisible = true;
     }
     mCameraSelector->setItems(cameras, mModel.selectedCapture());
-    mCameraSelector->setActionsEnabled(registry.mCaptureCount < 8, capture != nullptr);
+    mCameraSelector->setActionsEnabled(registry.mSlotCount < 8, capture != nullptr);
     const bool info_overlay = gSavedSettings.getBOOL("PrismMonitorInfoOverlay");
     mMonitorStrip->setTiles(tiles, monitor_slot_span, mCompact, info_overlay, mLargePage);
     mMonitorStrip->setNewFaceFit(mNewFaceFit);
@@ -506,7 +553,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         {
             const LLPrismLens::DisplayDefinition& face = registry.mDisplays[i];
             if (!face.mGateSubscribed ||
-                capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED) continue;
+                !capture->isCameraFeed()) continue;
             faces.push_back({face.mHandle, faceListName(face, i),
                 "Gate program", false,
                 sameDisplay(mModel.selectedDisplay(), face.mHandle)});
@@ -624,7 +671,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     // other faces only under an ordinary Camera Feed.
     setEnabledIfChanged(control("vc_remove_face"), display &&
         (display->mGateSubscribed ||
-         (capture && capture->mMode != LLPrismLens::ECaptureMode::SURFACE_LENS)));
+         (capture && !capture->isSurfaceLens())));
     setEnabledIfChanged(mCameraName, capture != nullptr);
     if (mCameraName && !gFocusMgr.childHasKeyboardFocus(mCameraName))
         setValueIfChanged(mCameraName,
@@ -634,11 +681,11 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(count, llformat("%u of 16 faces used (all cameras)",
                                          registry.mDisplayCount));
 
-    if (capture)
+    if (capture && capture->cameraData())
     {
-        const LLPrismLens::CameraSettings& camera = capture->mCamera;
+        const LLPrismLens::CameraSettings& camera = capture->cameraData()->mSettings;
         const LLPrismLens::BonePovSettings& bone = camera.mBonePov;
-        const bool surface = capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS;
+        const bool surface = capture->isSurfaceLens();
         const bool test_pattern = !surface && camera.mTestPattern;
         const bool skeleton = !surface && !test_pattern && bone.mEnabled;
         const bool virtual_camera = !surface && !test_pattern && camera.mVirtual && !skeleton;
@@ -657,7 +704,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             skeleton ? ("Driven by " + bone.mCustomJoint) :
             virtual_camera ? llformat("Stored at %.1f, %.1f, %.1f", camera.mVirtualPos.mV[0],
                                       camera.mVirtualPos.mV[1], camera.mVirtualPos.mV[2]) :
-            capture->mCameraObjectId.asString());
+            capture->cameraData()->mObjectId.asString());
         setValueIfChanged(control("vc_source_type"), test_pattern ? 3 :
             skeleton ? 2 : virtual_camera ? 1 : 0);
         setEnabledIfChanged(control("vc_source_type"), !surface);
@@ -817,6 +864,25 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setRowControlVisible(row("vc_raw_note"), capture != nullptr);
     }
 
+    const bool media_selected = capture && capture->isMedia();
+    if (ALKitCard* lens_card = mKitPage->findCard("surface_lens"))
+        lens_card->setCodeVisible(!media_selected);
+    if (ALKitCard* media_card = mKitPage->findCard("media_source"))
+        media_card->setCodeVisible(media_selected && LLPrismLens::mediaSlotsEnabled());
+    setRowControlVisible(row("vc_add_media_slot"), LLPrismLens::mediaSlotsEnabled());
+    setEnabledIfChanged(control("vc_add_media_slot"), LLPrismLens::mediaSlotsEnabled() && registry.mSlotCount < LLPrismLens::MAX_CAPTURES);
+    if (media_selected)
+    {
+        for (const char* id : {"source", "placement", "skeleton", "optics", "guide", "camera_look", "look_goes", "output_frame", "faces"})
+            if (ALKitCard* card = mKitPage->findCard(id)) card->setCodeVisible(false);
+        setValueIfChanged(control("vc_media_status"), capture->mRuntime.mReason);
+        setValueIfChanged(control("vc_source_aspect"), static_cast<S32>(capture->mediaData()->mAspect));
+        setValueIfChanged(control("vc_media_face"), capture->mediaData()->mObjectId.isNull() ? "Unbound" :
+            llformat("%s / face %d", capture->mediaData()->mObjectId.asString().c_str(), capture->mediaData()->mTE));
+        setValueIfChanged(control("vc_rate_mode"), static_cast<S32>(capture->mRate.mMode));
+        setValueIfChanged(control("vc_target_fps"), capture->mRate.mTargetFps);
+    }
+
     mMonitorHeader->setState(mCompact,
         gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled"),
         info_overlay,
@@ -832,7 +898,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled"),
         gSavedSettings.getF32("PrismMonitorPreviewFPS")));
     U32 preview_only = 0;
-    for (U32 ci = 0; ci < registry.mCaptureCount; ++ci)
+    for (U32 ci = 0; ci < registry.mSlotCount; ++ci)
     {
         bool has_visible_face = false;
         for (U32 di = 0; di < registry.mDisplayCount; ++di)
@@ -847,7 +913,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     const bool master_enabled = gSavedSettings.getBOOL("PrismLensEnabled");
     const bool previews_enabled = gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled");
     setValueIfChanged(control("vc_monitor_footer"), mMonitorStrip->monitorFooterText(
-        master_enabled, previews_enabled, registry.mCaptureCount, preview_only,
+        master_enabled, previews_enabled, registry.mSlotCount, preview_only,
         gSavedSettings.getF32("PrismMonitorPreviewFPS")));
 
     if (dirty & (ALVCamPageModel::DIRTY_CONFIGURATION |
@@ -933,6 +999,36 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
 
+    if (name == "vc_add_media_slot")
+    {
+        std::string reason;
+        mModel.addMediaSlot(&reason);
+        if (!reason.empty()) setStatus(reason);
+        return;
+    }
+    if (name == "vc_pick_media_face" && capture && capture->isMedia())
+    {
+        const auto handle = capture->mHandle;
+        const auto descriptor = *capture->mediaData();
+        const U64 revision = mModel.registry().mConfigurationRevision;
+        const auto panel = getHandle();
+        auto& tool = MediaFacePickTool::instance();
+        LLToolMgr::getInstance()->setTransientTool(&tool);
+        tool.begin([panel, handle, descriptor, revision](LLViewerObject* object, S32 te)
+        {
+            auto* self = dynamic_cast<ALPanelDirectorVCam*>(panel.get());
+            if (!self || !object || !sameCapture(self->mModel.selectedCapture(), handle) ||
+                LLPrismLens::registrySnapshot().mConfigurationRevision != revision) return;
+            auto source = descriptor;
+            source.mObjectId = object->getID();
+            source.mTE = te;
+            std::string reason;
+            if (!LLPrismLens::setMediaSource(handle, source, &reason)) self->setStatus(reason);
+            self->mModel.refreshNow();
+        });
+        setStatus("Click a prim media face; Escape cancels.", false);
+        return;
+    }
     if (name == "vc_enable") gSavedSettings.setBOOL("PrismLensEnabled", value.asBoolean());
     else if (name == "vc_open_manager") LLFloaterReg::showInstance("prism_manager");
     else if (name == "vc_monitor_header")
@@ -962,7 +1058,7 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         mCustomAspect = false;
         mCustomScreenAspect = false;
         const LLUUID id = value.asUUID();
-        for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+        for (U32 i = 0; i < mModel.registry().mSlotCount; ++i)
             if (mModel.registry().mCaptures[i].mHandle.mId == id)
                 mModel.setSelectedCapture(mModel.registry().mCaptures[i].mHandle);
     }
@@ -1050,9 +1146,9 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         std::string reason;
         if (!LLPrismLens::setSelectedCamera(capture->mHandle, &reason)) setStatus(reason);
     }
-    else if (name == "vc_snap_view" && capture)
+    else if (name == "vc_snap_view" && capture && capture->cameraData())
     {
-        LLPrismLens::CameraSettings settings = capture->mCamera;
+        LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
         ALVCamPageModel::currentViewTransform(settings.mVirtualPos, settings.mVirtualRot);
         settings.mVirtual = true;
         mModel.setCamera(capture->mHandle, settings);
@@ -1135,18 +1231,17 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
                 value.asInteger() == 1, &capture->mHandle, &reason) != LLPrismLens::ERegistryResult::OK)
             setStatus(reason);
     }
-    else if (name == "vc_bone_reset" && capture)
+    else if (name == "vc_bone_reset" && capture && capture->cameraData())
     {
-        LLPrismLens::CameraSettings settings = capture->mCamera;
+        LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
         settings.mBonePov = LLPrismLens::BonePovSettings();
         settings.mBonePov.mEnabled = settings.mVirtual;
         mModel.setCamera(capture->mHandle, settings);
     }
-    else if (name == "vc_source_type" && capture &&
-             capture->mMode != LLPrismLens::ECaptureMode::SURFACE_LENS)
+    else if (name == "vc_source_type" && capture && capture->isCameraFeed())
     {
         const S32 source_type = value.asInteger();
-        LLPrismLens::CameraSettings settings = capture->mCamera;
+        LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
         if (source_type == 0)
         {
             std::string reason;
@@ -1158,7 +1253,7 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
             // Keep a stored virtual transform across a Test detour; start at the
             // current view when none was ever stored (Object -> Test -> Virtual).
             if (!settings.mTestPattern && !settings.mVirtual &&
-                (!capture->mCamera.mTestPattern || settings.mVirtualPos.isExactlyZero()))
+                (!capture->cameraData()->mSettings.mTestPattern || settings.mVirtualPos.isExactlyZero()))
                 ALVCamPageModel::currentViewTransform(settings.mVirtualPos, settings.mVirtualRot);
             settings.mVirtual = !settings.mTestPattern;
             settings.mBonePov.mEnabled = !settings.mTestPattern && source_type == 2;
@@ -1202,7 +1297,26 @@ void ALPanelDirectorVCam::commitCamera(const std::string& name, const LLSD& valu
         }
         return;
     }
-    LLPrismLens::CameraSettings settings = capture->mCamera;
+    if (capture->isMedia())
+    {
+        if (name == "vc_source_aspect")
+        {
+            auto source = *capture->mediaData();
+            source.mAspect = static_cast<LLPrismLens::ESourceAspect>(llclamp(value.asInteger(), 0, 3));
+            std::string reason;
+            if (!LLPrismLens::setMediaSource(capture->mHandle, source, &reason)) setStatus(reason);
+            mModel.refreshNow();
+        }
+        else if (name == "vc_rate_mode" || name == "vc_target_fps")
+        {
+            auto rate = capture->mRate;
+            if (name == "vc_rate_mode") rate.mMode = static_cast<LLPrismLens::EOutputRateMode>(llclamp(value.asInteger(), 0, 1));
+            else rate.mTargetFps = static_cast<F32>(value.asReal());
+            mModel.setRate(capture->mHandle, rate);
+        }
+        return;
+    }
+    LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
     LLPrismLens::CaptureRateSettings rate = capture->mRate;
     bool camera_changed = true;
     if (name == "vc_eye_x") settings.mLocalEyeOffset.mV[0] = static_cast<F32>(value.asReal());
@@ -1542,9 +1656,9 @@ bool ALPanelDirectorVCam::pasteCardValues(const std::string& card,
     if (card == "optics" || card == "camera_look" || card == "output_frame")
     {
         const LLPrismLens::CaptureDefinition* capture = selectedCapture();
-        if (!capture)
+        if (!capture || !capture->cameraData())
             return false;
-        LLPrismLens::CameraSettings settings = capture->mCamera;
+        LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
         bool changed = false;
         for (LLSD::array_const_iterator it = values.beginArray(); it != values.endArray(); ++it)
             changed = applyCameraPasteValue((*it)["key"].asString(), (*it)["value"], settings) || changed;
@@ -1575,7 +1689,7 @@ bool ALPanelDirectorVCam::pasteCardValues(const std::string& card,
 void ALPanelDirectorVCam::showMonitorMenu(U32 slot, S32 x, S32 y)
 {
     mMenuCapture = LLPrismLens::CaptureHandle();
-    for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+    for (U32 i = 0; i < mModel.registry().mSlotCount; ++i)
         if (mModel.registry().mCaptures[i].mSlot == slot)
             mMenuCapture = mModel.registry().mCaptures[i].mHandle;
     LLContextMenu* menu = mMonitorMenu.get();
@@ -1723,7 +1837,7 @@ void ALPanelDirectorVCam::onMonitorMenu(const std::string& action,
     else if (action == "remove_camera" || action == "remove_output")
     {
         const LLPrismLens::CaptureDefinition* capture = nullptr;
-        for (U32 i = 0; i < mModel.registry().mCaptureCount; ++i)
+        for (U32 i = 0; i < mModel.registry().mSlotCount; ++i)
             if (sameCapture(mModel.registry().mCaptures[i].mHandle, mMenuCapture))
                 capture = &mModel.registry().mCaptures[i];
         if (!capture) return;
