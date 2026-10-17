@@ -20,6 +20,7 @@ public:
     void                                   tickRefresh();
     static bool                            applyPresetByName(const std::string& name);
     static const std::vector<std::string>& presetNames();
+    static std::string presetDescription(const std::string& name);
 
 private:
     LLComboBox*        mPreset             = nullptr;

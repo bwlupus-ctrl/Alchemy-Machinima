@@ -123061,7 +123061,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpresets.cpp",
-              "line": 111,
+              "line": 113,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -123347,7 +123347,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpresets.cpp",
-              "line": 111,
+              "line": 113,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -126130,7 +126130,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpresets.cpp",
-              "line": 111,
+              "line": 113,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -132074,7 +132074,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpresets.cpp",
-              "line": 120,
+              "line": 122,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -132599,7 +132599,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpresets.cpp",
-              "line": 114,
+              "line": 116,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -154816,7 +154816,7 @@
           "cpp": [
             {
               "file": "indra/newview/alrigrimcontroller.cpp",
-              "line": 340,
+              "line": 877,
               "class": "ALRigRimController",
               "function": "attach",
               "wired_class": "ALRigRimController",
@@ -156783,7 +156783,7 @@
           "cpp": [
             {
               "file": "indra/newview/alrigrimcontroller.cpp",
-              "line": 341,
+              "line": 878,
               "class": "ALRigRimController",
               "function": "attach",
               "wired_class": "ALRigRimController",
@@ -156889,7 +156889,7 @@
           "cpp": [
             {
               "file": "indra/newview/alrigrimcontroller.cpp",
-              "line": 342,
+              "line": 879,
               "class": "ALRigRimController",
               "function": "attach",
               "wired_class": "ALRigRimController",
@@ -156999,7 +156999,7 @@
           "cpp": [
             {
               "file": "indra/newview/alrigrimcontroller.cpp",
-              "line": 343,
+              "line": 880,
               "class": "ALRigRimController",
               "function": "attach",
               "wired_class": "ALRigRimController",

@@ -24,7 +24,7 @@ public:
     {
         for (const std::string& name : ALRigRimController::presetNames())
         {
-            out.push_back({ "b:" + name, name, true });
+            out.push_back({ "b:" + name, name, true, ALRigRimController::presetDescription(name) });
         }
         for (const std::string& name : mStore.names())
         {

@@ -511,11 +511,18 @@ def load_rim_presets():
     if m:
         presets = [(n, float(v)) for n, v in
                    re.findall(r'\{\s*"([^"]+)",\s*([-+]?[\d.]+)f', m.group(1))]
+    full = re.search(r"RIG_RIM_FULL_PRESETS\[\d+\]\s*=\s*\{(.*?)\n\};", text, re.S)
+    if full:
+        presets.extend((n, float(v)) for n, v in re.findall(
+            r'\{\s*"([^"]+)",\s*"[^"]*",\s*\{\s*\{ "CineRigRimMasterGain", LLSD\(([-+]?[\d.]+)\)',
+            full.group(1)))
     written = []
+    if full:
+        written = list(dict.fromkeys(re.findall(r'\{ "(CineRigRim\w+)", LLSD\(', full.group(1))))
     fn = re.search(r"void applyRigRimPreset\(.*?\n\}", text, re.S)
     if fn:
         body = fn.group(0)
-        written = re.findall(r'setF32\("(\w+)"', body) + re.findall(r'setBOOL\("(\w+)"', body)
+        written = list(dict.fromkeys(written + re.findall(r'setF32\("(\w+)"', body) + re.findall(r'setBOOL\("(\w+)"', body)))
     return presets, written
 
 

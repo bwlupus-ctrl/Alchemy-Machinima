@@ -13,6 +13,8 @@
 #include "alkitshell.h"
 #include "llbutton.h"
 #include "llcombobox.h"
+#include "llscrolllistitem.h"
+#include "llscrolllistcell.h"
 #include "lldir.h"
 #include "llfile.h"
 #include "lllineeditor.h"
@@ -501,7 +503,9 @@ void ALKitPresetStrip::refresh()
             mCombo->add("-- Saved --", LLSD("header:saved"), ADD_BOTTOM, false);
             had_user = true;
         }
-        mCombo->add(entry.label, LLSD(entry.id));
+        LLScrollListItem* item = mCombo->add(entry.label, LLSD(entry.id));
+        if (item && item->getColumn(0))
+            item->getColumn(0)->setToolTip(entry.tooltip);
     }
     if (!mAppliedId.empty() && mModified)
     {

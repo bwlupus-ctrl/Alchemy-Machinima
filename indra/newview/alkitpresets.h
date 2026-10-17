@@ -14,6 +14,7 @@ public:
     {
         std::string id, label;
         bool        builtin = false;
+        std::string tooltip;
     };
     virtual ~ALKitPresetProvider()                                          = default;
     virtual const std::string&              key() const                     = 0;
