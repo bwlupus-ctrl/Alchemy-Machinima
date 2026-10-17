@@ -549,6 +549,11 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                 // remove dead gltf materials
                 gGLTFMaterialList.flushMaterials();
             }
+
+            // RenderVBOPoolCleanAtFrameEnd: keep expiring pooled VBOs while minimized, so
+            // buffers freed by scene churn are not retained until the window is restored.
+            static LLCachedControl<bool> vbo_clean_at_frame_end_min(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true);
+            LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end_min);
         }
         return;
     }
