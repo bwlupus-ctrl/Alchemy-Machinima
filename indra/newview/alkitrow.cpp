@@ -470,8 +470,17 @@ bool ALKitRow::postBuild()
     return true;
 }
 
-S32 ALKitRow::heightForWidth(S32) const
+S32 ALKitRow::heightForWidth(S32 width) const
 {
+    if (mMeta.kind == "readout")
+        if (LLTextBox* text = dynamic_cast<LLTextBox*>(mControl); text && text->getWordWrap())
+        {
+            // Reflow at the same value-track width used by layoutRow before measuring.
+            const S32 text_width = width - 2 * ALKitStyle::ROW_INSET - (mMeta.label.empty() ? 0 :
+                ALKitStyle::LABEL_W + ALKitStyle::RESET_W + 18 + 3 * ALKitStyle::COL_GAP);
+            text->reshape(llmax(1, text_width), text->getRect().getHeight(), true);
+            return llmax(llmax(28, mRowHeight), text->getTextPixelHeight() + 8);
+        }
     if (mMeta.kind == "dial" || mMeta.kind == "arc")
         return 56;
     if (mMeta.kind == "gobo")
@@ -574,8 +583,9 @@ void ALKitRow::layoutRow(S32 w)
         else if (mMeta.kind == "slider" || mMeta.kind == "combo" || mMeta.kind == "text" || mMeta.kind == "readout" ||
                  mMeta.kind == "link" || mMeta.kind == "custom" || mMeta.kind == "segmented")
             width = span;
-        if (mMeta.kind == "readout" && mExplicitRowHeight)
-            height = h;
+        if (mMeta.kind == "readout")
+            if (LLTextBox* text = dynamic_cast<LLTextBox*>(mControl); mExplicitRowHeight || (text && text->getWordWrap()))
+                height = h - 8;
         if (mExplicitRowHeight && (mMeta.kind == "custom" || mMeta.kind == "list" || mMeta.kind == "viewport"))
             height = h;
         if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
@@ -741,7 +751,20 @@ void ALKitRow::pollLiveValue()
         return;
     const LLSD value = mControl->getValue();
     if (!alSameValue(value, mShownValue))
+    {
+        LLTextBox* text = mMeta.kind == "readout" ? dynamic_cast<LLTextBox*>(mControl) : nullptr;
+        const bool wrapped = text && text->getWordWrap();
+        // Live bindings have already changed the text; retain the last laid-out height.
+        const S32 previous_height = getRect().getHeight();
+        const S32 width = getRect().getWidth();
         refreshValue();
+        if (wrapped)
+        {
+            if (heightForWidth(width) != previous_height)
+                if (ALKitCard* owner = card()) owner->requestLayout();
+            layoutRow(width);
+        }
+    }
     if (!baselineEditActive(mControl))
         mLastValue = value;
 }

@@ -60,25 +60,11 @@ struct MonitorHeaderLayout
     S32 mSpeedLeft;
 };
 
-MonitorHeaderLayout monitorHeaderLayout(S32 width)
+MonitorHeaderLayout monitorHeaderLayout(S32)
 {
-    // Keep the controls at their useful pill widths and align the complete
-    // group to the right. Proportional widths made both segmented controls
-    // expand into long empty bars on wide cards.
-    constexpr S32 speed_controls_width = 196;
-    constexpr S32 size_controls_width = 130;
-    const S32 speed_left = llmax(1, width - speed_controls_width);
-    const S32 speed_label_left = llmax(1, speed_left - 42);
-    const S32 info_right = llmax(1, speed_label_left - 10);
-    const S32 info_left = llmax(1, info_right - 72);
-    const S32 preview_right = llmax(1, info_left - 10);
-    const S32 preview_left = llmax(1, preview_right - 100);
-    const S32 size_right = llmax(1, preview_left - 10);
-    const S32 size_left = llmax(1, size_right - size_controls_width);
-    const S32 size_label_left = llmax(1, size_left - 34);
-    return {size_label_left, size_left, size_right, preview_left, preview_right,
-            info_left, info_right,
-            speed_label_left, speed_left};
+    // Two rows fit the minimum kit card. Drawing and hit testing use the same
+    // tracks; no right-aligned group can push a switch outside the card.
+    return {0, 30, 160, 172, 272, 0, 72, 88, 120};
 }
 
 S32 displayTenths(F32 value)
@@ -190,7 +176,9 @@ void ALVCamMonitorHeader::draw()
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     const S32 w = getRect().getWidth();
     const MonitorHeaderLayout layout = monitorHeaderLayout(w);
-    const S32 h = getRect().getHeight();
+    const S32 h = 24;
+    gGL.pushMatrix();
+    gGL.translatef(0.f, static_cast<F32>(getRect().getHeight() - h), 0.f);
     drawText(mFont, "Size", layout.mSizeLabelLeft, 8, mMutedColor);
     const S32 size_width = llmax(1, layout.mSizeRight - layout.mSizeLeft);
     for (S32 index = 0; index < 2; ++index)
@@ -216,6 +204,7 @@ void ALVCamMonitorHeader::draw()
     gGL.color4fv(preview_knob.mV);
     gl_circle_2d(static_cast<F32>(preview_switch_left + (mPreviews ? 25 : 9)),
                  12.f, 7.f, 20, true);
+    gGL.popMatrix();
     const S32 info_switch_left = layout.mInfoRight - ALKitStyle::SWITCH_W;
     drawText(mFont, "Info", layout.mInfoLeft, 8, mTextColor,
              info_switch_left - layout.mInfoLeft - 4);
@@ -230,10 +219,10 @@ void ALVCamMonitorHeader::draw()
     gGL.color4fv(info_knob.mV);
     gl_circle_2d(static_cast<F32>(info_switch_left + (mInfoOverlay ? 25 : 9)),
                  12.f, 7.f, 20, true);
-    drawText(mFont, "Speed", layout.mSpeedLabelLeft, 8, mMutedColor);
+    drawText(mFont, "fps", layout.mSpeedLabelLeft, 8, mMutedColor);
     const F32 speeds[] = { .5f, 1.f, 2.f, 5.f };
-    const char* labels[] = { "0.5 fps", "1 fps", "2 fps", "5 fps" };
-    const S32 speed_width = llmax(1, w - layout.mSpeedLeft);
+    const char* labels[] = { "0.5", "1", "2", "5" };
+    const S32 speed_width = llmin(196, llmax(1, w - layout.mSpeedLeft));
     for (S32 index = 0; index < 4; ++index)
     {
         LLRect rect(layout.mSpeedLeft + index * speed_width / 4, h,
@@ -245,23 +234,25 @@ void ALVCamMonitorHeader::draw()
     LLUICtrl::draw();
 }
 
-bool ALVCamMonitorHeader::handleMouseDown(S32 x, S32, MASK)
+bool ALVCamMonitorHeader::handleMouseDown(S32 x, S32 y, MASK)
 {
     const S32 w = getRect().getWidth();
     const MonitorHeaderLayout layout = monitorHeaderLayout(w);
     LLSD action;
-    if (x >= layout.mSizeLeft && x < layout.mSizeRight)
+    const bool upper = y >= getRect().getHeight() - 24;
+    const bool lower = y >= 0 && y < 24;
+    if (upper && x >= layout.mSizeLeft && x < layout.mSizeRight)
     {
         action["action"] = "size";
         action["value"] = x >= layout.mSizeLeft +
             llmax(1, layout.mSizeRight - layout.mSizeLeft) / 2;
     }
-    else if (x >= layout.mPreviewLeft && x < layout.mPreviewRight)
+    else if (upper && x >= layout.mPreviewLeft && x < layout.mPreviewRight)
     {
         action["action"] = "previews";
         action["value"] = !mPreviews;
     }
-    else if (x >= layout.mInfoLeft && x < layout.mInfoRight)
+    else if (lower && x >= layout.mInfoLeft && x < layout.mInfoRight)
     {
         action["action"] = "info";
         action["value"] = !mInfoOverlay;
@@ -269,9 +260,10 @@ bool ALVCamMonitorHeader::handleMouseDown(S32 x, S32, MASK)
     else
     {
         const F32 speeds[] = { .5f, 1.f, 2.f, 5.f };
-        if (x < layout.mSpeedLeft) return false;
+        const S32 speed_width = llmin(196, llmax(1, w - layout.mSpeedLeft));
+        if (!lower || x < layout.mSpeedLeft || x >= layout.mSpeedLeft + speed_width) return false;
         const S32 index = llclamp((x - layout.mSpeedLeft) * 4 /
-                                      llmax(1, w - layout.mSpeedLeft), 0, 3);
+                                      speed_width, 0, 3);
         action["action"] = "speed";
         action["value"] = speeds[index];
     }
@@ -777,7 +769,8 @@ bool ALVCamCameraSelector::postBuild()
     add_params.name = "vc_add_camera";
     add_params.rect = LLRect(0, 24, 112, 0);
     mAdd = LLUICtrlFactory::create<LLComboBox>(add_params);
-    mAdd->add("+ Add camera...", LLSD());
+    mAdd->add("+ Add", LLSD());
+    mAdd->setToolTip(std::string("Add a camera"));
     mAdd->add("From selected object", LLSD("object"));
     mAdd->add("Virtual at my view", LLSD("virtual"));
     mAdd->add("OTS pair", LLSD("ots"));
@@ -787,8 +780,9 @@ bool ALVCamCameraSelector::postBuild()
     LLButton::Params remove_params;
     remove_params.name = "vc_remove_capture";
     remove_params.rect = LLRect(0, 24, 106, 0);
-    remove_params.label = "Remove capture";
+    remove_params.label = "Remove";
     mRemove = LLUICtrlFactory::create<LLButton>(remove_params);
+    mRemove->setToolTip(std::string("Remove the selected capture"));
     ALKitStyle::styleButton(mRemove, false);
     addChild(mRemove);
     reshape(getRect().getWidth(), getRect().getHeight(), true);
@@ -812,8 +806,16 @@ void ALVCamCameraSelector::reshape(S32 width, S32 height, bool called_from_paren
 {
     LLUICtrl::reshape(width, height, called_from_parent);
     const S32 gap = 6;
-    const S32 remove_width = llmin(106, width / 4);
-    const S32 add_width = llmin(112, width / 4);
+    const S32 remove_width = (mRemove ? mRemove->getFont() : mFont)->getWidth("Remove") + 20;
+    const LLFontGL* add_font = mFont;
+    if (mAdd)
+        for (LLView* child : *mAdd->getChildList())
+            if (LLButton* button = dynamic_cast<LLButton*>(child); button && button->getFont())
+            {
+                add_font = button->getFont();
+                break;
+            }
+    const S32 add_width = add_font->getWidth("+ Add") + 36;
     mChipWidth = llmax(1, width - add_width - remove_width - gap * 2);
     if (mAdd)
     {
@@ -831,7 +833,7 @@ void ALVCamCameraSelector::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director VCam camera selector");
     if (mItems.empty())
-        drawText(mFont, "Add a camera to start", 4, 8, mMutedColor);
+        drawText(mFont, "Choose a camera", 4, 8, mMutedColor, llmax(1, mChipWidth - 8));
     const S32 width = llmax(1, mChipWidth / llmax(1, static_cast<S32>(mItems.size())));
     for (S32 i = 0; i < static_cast<S32>(mItems.size()); ++i)
     {

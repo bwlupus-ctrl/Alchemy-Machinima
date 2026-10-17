@@ -130610,7 +130610,7 @@
    "csv_index": null,
    "card": "monitors",
    "card_title": "Monitors",
-   "row_label": "Preview cost",
+   "row_label": "",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
    "xui_line": null,
    "widget_name": "vc_monitor_footer",

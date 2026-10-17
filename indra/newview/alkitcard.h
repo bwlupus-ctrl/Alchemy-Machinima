@@ -93,6 +93,13 @@ protected:
     explicit ALKitCard(const Params&);
 
 private:
+    struct HeaderLayout
+    {
+        S32 height = 36, title_width = 0, preset_left = 0, preset_width = 0, badge_width = 0;
+    };
+    HeaderLayout headerLayout(S32 width) const;
+    HeaderLayout mHeaderLayout;
+    S32 subHeaderHeight(const std::string& title, S32 width, bool first) const;
     struct SummaryData
     {
         std::string setting, label, kind, unit;

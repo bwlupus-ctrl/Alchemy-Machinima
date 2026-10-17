@@ -1429,6 +1429,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
         node.set("label_color", "Black" if name == "btn_action" else "White")
         node.set("image_overlay", "KitIcon_transport_action_play_16" if name == "btn_action" else
                  "KitIcon_transport_action_stop_16")
+        node.set("image_overlay_alignment", "left")
         node.set("width", str(widths[name])); node.set("height", "26")
         node.set("left", "0"); node.set("top", "0"); action_group.append(node)
     ET.SubElement(action_group, "button", {"name": "btn_arm", "label": "", "image_overlay": "KitIcon_armed_chevron_up_16",

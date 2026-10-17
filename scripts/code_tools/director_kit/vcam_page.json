@@ -12,11 +12,11 @@
       {"l": "Open full manager", "k": "button", "w": "vc_open_manager", "h": "Open the full Virtual Cam Manager.", "btn": "Open full manager", "bind": "code"}
     ]},
     {"id": "monitors", "t": "Monitors", "k": "rows", "badge": "ALL CAMERAS", "rows": [
-      {"l": "", "k": "custom", "w": "vc_monitor_header", "h": "Large shows four cameras with pages; Compact shows eight. Toggle previews and choose their refresh speed here.", "custom_tag": "vcam_monitor_header", "bind": "code", "row_height": 30},
+      {"l": "", "k": "custom", "w": "vc_monitor_header", "h": "Large shows four cameras with pages; Compact shows eight. Toggle previews and choose their refresh speed here.", "custom_tag": "vcam_monitor_header", "bind": "code", "row_height": 60},
       {"l": "Pages", "k": "custom", "w": "vc_monitor_pager", "h": "Show cameras 1-4 or 5-8 in Large mode.", "custom_tag": "vcam_monitor_pager", "bind": "code", "show_if": "large_and_more_than_four"},
       {"l": "", "k": "custom", "w": "vc_monitor_strip", "h": "What each camera sends out. Drag anywhere on a monitor tile onto a modifiable object face to show that camera there.", "custom_tag": "vcam_monitor_strip", "bind": "code", "row_height": 170},
       {"l": "Monitor tile", "k": "custom", "w": "vc_monitor_tile_manifest", "h": "Eight fixed atlas-backed PREVIEW, LIVE, PAUSED, THROTTLED, OFFLINE, or WARMING tile slots with timestamp, camera, Shows, status, drag handle, and menu.", "custom_tag": "vcam_monitor_tile", "bind": "code", "show_if": "never"},
-      {"l": "Preview cost", "k": "readout", "w": "vc_monitor_footer", "h": "How monitor previews reuse retained pictures and consume the shared attempt budget.", "bind": "code"}
+      {"l": "", "k": "readout", "row_height": 60, "w": "vc_monitor_footer", "h": "How monitor previews reuse retained pictures and consume the shared attempt budget.", "bind": "code"}
     ]},
     {"id": "camera_selector", "t": "Settings for", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below, add a camera, or remove the selected capture in one row. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "bind": "code", "row_height": 36},

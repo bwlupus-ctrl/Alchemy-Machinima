@@ -239,6 +239,7 @@ bool ALKitCard::postBuild()
             hp.name          = "kc_" + mId + "_sub_" + llformat("%d", (S32)mHeadings.size());
             hp.rect          = LLRect(0, 20, 100, 0);
             hp.initial_value = last_sub;
+            hp.font          = ALKitStyle::sansFont();
             hp.text_color    = ALKitStyle::color(ALKitStyle::MUTED);
             LLTextBox* t     = LLUICtrlFactory::create<LLTextBox>(hp);
             addChild(t);
@@ -733,9 +734,49 @@ void ALKitCard::syncSelector()
         mMore->setLabel((moreOpen() ? "Fewer options (" : "More options (") + llformat("%d", mMoreCount) + ")");
 }
 
+ALKitCard::HeaderLayout ALKitCard::headerLayout(S32 width) const
+{
+    S32 right = width - ALKitStyle::CARD_PAD_R - 24;
+    for (ALKitRow* row : mRows)
+        if (row->bulkResettable() && !row->cardPreset() && !row->whoPicker())
+        {
+            right -= 24 + ALKitStyle::COL_GAP;
+            break;
+        }
+    if (mMenuButton) right -= 28 + ALKitStyle::COL_GAP;
+    if (mEnable) right -= ALKitStyle::SWITCH_W + ALKitStyle::COL_GAP;
+    if (mOpen) right -= 48 + ALKitStyle::COL_GAP;
+    const LLFontGL* font = ALKitStyle::sansFont("Kit13", true);
+    const S32 title = font ? font->getWidth(mTitle) : 100;
+    const S32 badge = mBadge.empty() ? 0 : (font ? font->getWidth(mBadge) : 80) + 8;
+    const S32 count = static_cast<S32>(mHeaderPresets.size());
+    const S32 left = ALKitStyle::CARD_PAD_L + title + badge + ALKitStyle::COL_GAP;
+    const bool stacked = count && (right - left - (count - 1) * ALKitStyle::COL_GAP) / count < 96;
+    const S32 preset_min_left = stacked ? ALKitStyle::CARD_PAD_L : left;
+    const S32 preset_right = stacked ? width - ALKitStyle::CARD_PAD_R : right;
+    const S32 preset_width = count ? llmax(1, llmin(ALKitStyle::CARD_PRESET_W,
+        (preset_right - preset_min_left - (count - 1) * ALKitStyle::COL_GAP) / count)) : 0;
+    const S32 preset_left = count ? preset_right - count * preset_width - (count - 1) * ALKitStyle::COL_GAP : preset_right;
+    const S32 title_width = llmax(1, llmin(title, right - ALKitStyle::CARD_PAD_L - badge));
+    return {ALKitStyle::CARD_HDR_H + (stacked ? 28 : 0), title_width, preset_left,
+            preset_width,
+            llmax(0, right - ALKitStyle::CARD_PAD_L - title_width - 8)};
+}
+
+S32 ALKitCard::subHeaderHeight(const std::string& title, S32 width, bool first) const
+{
+    S32 count = 0;
+    for (const auto& preset : mSubPresets)
+        if (preset.first->meta().sub == title) ++count;
+    const LLFontGL* font = ALKitStyle::sansFont();
+    const S32 text_width = font ? font->getWidth(title) : 100;
+    return (first ? ALKitStyle::SUB_FIRST_H : ALKitStyle::SUB_H) +
+        (count && (width - text_width - count * ALKitStyle::COL_GAP) / count < 96 ? 28 : 0);
+}
+
 S32 ALKitCard::heightForWidth(S32 w) const
 {
-    S32 h = ALKitStyle::CARD_HDR_H;
+    S32 h = headerLayout(w).height;
     if (!mBodyOpen)
         return h;
     h += ALKitStyle::CARD_PAD_T + ALKitStyle::CARD_PAD_B;
@@ -767,7 +808,7 @@ S32 ALKitCard::heightForWidth(S32 w) const
         }
         if (mKind == "combined" && !row->meta().sub.empty() && row->meta().sub != sub)
         {
-            h += sub.empty() ? ALKitStyle::SUB_FIRST_H : ALKitStyle::SUB_H;
+            h += subHeaderHeight(row->meta().sub, w - ALKitStyle::CARD_PAD_L - ALKitStyle::CARD_PAD_R, sub.empty());
             sub = row->meta().sub;
         }
         const bool aim = row->meta().kind == "dial" || row->meta().kind == "arc";
@@ -838,12 +879,15 @@ void ALKitCard::layoutBody(S32 w)
         mOpen->setOrigin(header_x - 48, getRect().getHeight() - 29);
         header_x -= 48 + ALKitStyle::COL_GAP;
     }
-    for (auto it = mHeaderPresets.rbegin(); it != mHeaderPresets.rend(); ++it)
+    const HeaderLayout header = headerLayout(w);
+    mHeaderLayout = header;
+    S32 preset_x = header.preset_left;
+    for (LLUICtrl* preset : mHeaderPresets)
     {
-        (*it)->reshape(ALKitStyle::CARD_PRESET_W, 22, true);
-        (*it)->setOrigin(header_x - ALKitStyle::CARD_PRESET_W, getRect().getHeight() - 29);
-        header_x -= ALKitStyle::CARD_PRESET_W + ALKitStyle::COL_GAP;
-        (*it)->setVisible(true);
+        preset->reshape(header.preset_width, 22, true);
+        preset->setOrigin(preset_x, getRect().getHeight() - header.height + 7);
+        preset_x += header.preset_width + ALKitStyle::COL_GAP;
+        preset->setVisible(true);
     }
 
     for (ALKitRow* row : mRows)
@@ -875,7 +919,7 @@ void ALKitCard::layoutBody(S32 w)
 
     if (!mBodyOpen)
         return;
-    S32 top = getRect().getHeight() - ALKitStyle::CARD_HDR_H - ALKitStyle::CARD_PAD_T;
+    S32 top = getRect().getHeight() - header.height - ALKitStyle::CARD_PAD_T;
 
     if (!mSegments.empty())
     {
@@ -948,15 +992,25 @@ void ALKitCard::layoutBody(S32 w)
             for (auto& heading : mHeadings)
                 if (heading.first == row)
                 {
-                    const S32 sh = sub.empty() ? ALKitStyle::SUB_FIRST_H : ALKitStyle::SUB_H;
-                    heading.second->reshape(body_w, 20, true);
-                    heading.second->setOrigin(ALKitStyle::CARD_PAD_L, top - sh + 3);
+                    const S32 base = sub.empty() ? ALKitStyle::SUB_FIRST_H : ALKitStyle::SUB_H;
+                    const S32 sh = subHeaderHeight(row->meta().sub, body_w, sub.empty());
+                    const S32 title_w = llmin(body_w, heading.second->getFont()->getWidth(row->meta().sub));
+                    heading.second->reshape(title_w, 20, true);
+                    heading.second->setOrigin(ALKitStyle::CARD_PAD_L, top - base + 3);
                     heading.second->setVisible(true);
+                    S32 count = 0;
+                    for (const auto& p : mSubPresets)
+                        if (p.first->meta().sub == row->meta().sub) ++count;
+                    S32 left = sh > base ? 0 : title_w + ALKitStyle::COL_GAP;
+                    const S32 preset_w = llmax(1, llmin(ALKitStyle::CARD_PRESET_W,
+                        (body_w - left - (count - 1) * ALKitStyle::COL_GAP) / llmax(1, count)));
+                    left = body_w - count * preset_w - (count - 1) * ALKitStyle::COL_GAP;
                     for (auto& p : mSubPresets)
                         if (p.first->meta().sub == row->meta().sub)
                         {
-                            p.second->reshape(ALKitStyle::CARD_PRESET_W, 22, true);
-                            p.second->setOrigin(ALKitStyle::CARD_PAD_L + body_w - ALKitStyle::CARD_PRESET_W, top - sh + 1);
+                            p.second->reshape(preset_w, 22, true);
+                            p.second->setOrigin(ALKitStyle::CARD_PAD_L + left, top - sh + 1);
+                            left += preset_w + ALKitStyle::COL_GAP;
                             p.second->setVisible(true);
                         }
                     top -= sh;
@@ -1189,7 +1243,7 @@ void ALKitCard::draw()
     }
     if (mBodyOpen)
     {
-        gl_line_2d(0, getRect().getHeight() - ALKitStyle::CARD_HDR_H, getRect().getWidth(), getRect().getHeight() - ALKitStyle::CARD_HDR_H,
+        gl_line_2d(0, getRect().getHeight() - mHeaderLayout.height, getRect().getWidth(), getRect().getHeight() - mHeaderLayout.height,
                    ALKitStyle::color(ALKitStyle::DIVIDER).get());
     }
     if (mAmberCount > 0)
@@ -1200,7 +1254,7 @@ void ALKitCard::draw()
     }
     if (const LLFontGL* f = ALKitStyle::sansFont("Kit13", true))
     {
-        const S32 title_width = llmax(20, getRect().getWidth() / 2 - ALKitStyle::CARD_PAD_L);
+        const S32 title_width = mHeaderLayout.title_width;
         f->renderUTF8(mTitle, 0, (F32)ALKitStyle::CARD_PAD_L, (F32)(getRect().getHeight() - 23),
                       ALKitStyle::color(ALKitStyle::TEXT_STRONG).get(), LLFontGL::LEFT, LLFontGL::VCENTER, LLFontGL::NORMAL,
                       LLFontGL::NO_SHADOW, S32_MAX, title_width, nullptr, true);
@@ -1210,15 +1264,16 @@ void ALKitCard::draw()
                                         LLRect(ALKitStyle::CARD_PAD_L, title_bottom + f->getLineHeight(),
                                                ALKitStyle::CARD_PAD_L + title_draw_width, title_bottom),
                                         this);
-        if (!mBadge.empty())
+        if (!mBadge.empty() && mHeaderLayout.badge_width > 0)
         {
-            const S32 badge_x = ALKitStyle::CARD_PAD_L + llmin(title_width - 8, f->getWidth(mTitle)) + 8;
-            f->renderUTF8(mBadge, 0, badge_x, getRect().getHeight() - 23,
+            const S32 badge_x = ALKitStyle::CARD_PAD_L + title_draw_width + 8;
+            f->renderUTF8(mBadge, 0, static_cast<F32>(badge_x), static_cast<F32>(getRect().getHeight() - 23),
                           ALKitStyle::color(mBadge == "NEW" ? ALKitStyle::ACCENT : ALKitStyle::MUTED).get(), LLFontGL::LEFT,
-                          LLFontGL::VCENTER);
+                          LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW, S32_MAX,
+                          mHeaderLayout.badge_width, nullptr, true);
             ALUIPerfSelfTest::recordKitText(this, mBadge,
                                             LLRect(badge_x, title_bottom + f->getLineHeight(),
-                                                   badge_x + f->getWidth(mBadge), title_bottom),
+                                                   badge_x + llmin(mHeaderLayout.badge_width, f->getWidth(mBadge)), title_bottom),
                                             this);
         }
     }

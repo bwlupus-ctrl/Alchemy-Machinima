@@ -658,6 +658,7 @@ void ALKitShell::updatePips()
         mRailButtons[index]->setImageOverlayColor(ALKitStyle::color(ALKitStyle::ICON_TINT_STRONG));
         mRailButtons[index]->setFont(ALKitStyle::sansFont("Kit13", mRailButtons[index]->getToggleState()));
     }
+    bool tabs_changed = false;
     for (TabData& tab : mTabs)
     {
         const bool off =
@@ -665,8 +666,13 @@ void ALKitShell::updatePips()
         const bool changed = mPageChanged[tab.group + "/" + tab.page];
         const std::string label = tab.label + (changed ? "  \xE2\x80\xA2" : "") + (off ? "  \xE2\x97\x8B" : "");
         if (tab.button->getLabelSelected() != label)
+        {
             tab.button->setLabel(label);
+            tabs_changed = true;
+        }
     }
+    if (tabs_changed)
+        layoutChrome();
 }
 
 void ALKitShell::reshape(S32 width, S32 height, bool called_from_parent)
@@ -809,8 +815,8 @@ void ALKitShell::layoutChrome()
     for (const TabData& tab : mTabs)
         if (tab.group == group_name)
         {
-            const S32 measured = tab.button->getFont() ? tab.button->getFont()->getWidth(tab.label) : 48;
-            const S32 compact  = llclamp(measured + 24, 56, 112);
+            const S32 measured = tab.button->getFont() ? tab.button->getFont()->getWidth(tab.button->getLabelSelected()) : 48;
+            const S32 compact  = llmax(measured + 24, 56);
             tab_widths.push_back(compact);
             total_width += compact + 4;
         }
