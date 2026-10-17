@@ -35,6 +35,9 @@ public:
     ALPanelCineLightRig();
     ~ALPanelCineLightRig() override;
 
+    // Existing model data only; shared by the editing menu and its activity hint.
+    static std::string rigTargetDescription(S32 slot);
+
     bool postBuild() override;
     void draw() override;
     void onVisibilityChange(bool new_visibility) override;
@@ -255,6 +258,10 @@ private:
     std::string mPendingSetupSelection;
     bool mAnchorSelectionInitialized = false;
     U64 mSubjectChoiceRevision = ~U64(0);
+    U32 mAnchorVisibilityState = ~0u;
+    std::array<U32, 5> mAnchorGroupStates{};
+    std::array<LLUUID, 5> mAnchorObjectTargets{};
+    std::array<LLUUID, 5> mAnchorAssignments{};
     bool mCastListInitialized = false;
     bool mSetupRefreshPending = false;
     bool mPendingSetupAllowEmpty = false;

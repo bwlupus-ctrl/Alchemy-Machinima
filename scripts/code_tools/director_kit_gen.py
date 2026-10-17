@@ -1429,7 +1429,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
         node.set("label_color", "Black" if name == "btn_action" else "White")
         node.set("image_overlay", "KitIcon_transport_action_play_16" if name == "btn_action" else
                  "KitIcon_transport_action_stop_16")
-        node.set("image_overlay_alignment", "left")
+        node.set("image_overlay_alignment", "left"); node.set("imgoverlay_label_space", "6")
         node.set("width", str(widths[name])); node.set("height", "26")
         node.set("left", "0"); node.set("top", "0"); action_group.append(node)
     ET.SubElement(action_group, "button", {"name": "btn_arm", "label": "", "image_overlay": "KitIcon_armed_chevron_up_16",
@@ -1448,7 +1448,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     for name in ("scene_combo", "scene_name_editor"):
         node = copy_chrome(name, v1); node.set("width", str(widths[name])); node.set("height", "24"); bar.append(node)
     dirty = ET.SubElement(bar, "text", {"name": "scene_dirty_indicator", "width": "10", "height": "28",
-                                         "halign": "center", "text_color": "KitAccent",
+                                         "halign": "center", "valign": "center", "text_color": "KitAccent",
                                          "tool_tip": "Unsaved Director scene changes"})
     dirty.text = ""
     ET.SubElement(bar, "button", {"name": "btn_scene_load", "label": "Load",
@@ -1466,7 +1466,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
             node.set("image_overlay", "KitIcon_transport_marks_set_16" if name == "btn_set_marks" else
                      "KitIcon_transport_marks_reset_16")
     rec = copy_chrome("rec_indicator", v1)
-    rec.set("width", "48"); rec.set("height", "20"); rec.set("halign", "right"); rec.set("h_pad", "7")
+    rec.set("width", "48"); rec.set("height", "20"); rec.set("halign", "right"); rec.set("valign", "center"); rec.set("h_pad", "7")
     rec.set("text_color", "KitFaint")
     rec.text = "REC"
     bar.append(rec)
@@ -1474,11 +1474,11 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     show.set("image_overlay", "KitIcon_transport_paths_16"); show.set("width", "28"); show.set("height", "26"); bar.append(show)
     help_button = copy_chrome("btn_help", v1); help_button.set("label", ""); help_button.set("image_overlay", "KitIcon_transport_legend_16"); help_button.set("width", "28"); help_button.set("height", "26"); bar.append(help_button)
     ET.SubElement(bar, "text", {"name": "status_strip", "use_ellipses": "true",
-                                "width": "190", "height": "24", "h_pad": "14", "text_color": "KitRecordText",
+                                "width": "190", "height": "24", "h_pad": "14", "valign": "center", "text_color": "KitRecordText",
                                 "visible": "false"})
     ET.SubElement(bar, "panel", {"name": "transport_spacer", "width": "1", "height": "1",
                                   "background_visible": "false"})
-    ET.SubElement(bar, "text", {"name": "transport_toast", "width": "180", "height": "22", "halign": "center",
+    ET.SubElement(bar, "text", {"name": "transport_toast", "width": "180", "height": "22", "halign": "center", "valign": "center",
                                 "use_ellipses": "true", "visible": "false"})
     ET.SubElement(bar, "button", {"name": "btn_cast_chip", "label": "Cast 0  ^", "width": "82", "height": "24",
                                    "tool_tip": "Open the cast tools and member list"})

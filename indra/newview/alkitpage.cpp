@@ -5,6 +5,7 @@
 #include "alkitcard.h"
 #include "alkitbinding.h"
 #include "alcinelightrigmanager.h"
+#include "alpanelcinelightrig.h"
 #include "aldanceball.h"
 #include "aldirectorcastui.h"
 #include "alkitrow.h"
@@ -148,7 +149,8 @@ static void placeSectionChips(const std::vector<LLButton*>& chips, S32 left)
 std::string whoChipLabel(const std::string& who_label, const LLComboBox* combo, bool follows_cast)
 {
     const std::string prefix = who_label.empty() ? std::string("Lighting") : who_label;
-    return prefix + ": " + whoChipSubject(combo) + (follows_cast ? " (follows cast)" : "");
+    return prefix + ": " + (who_label == "Editing rig" && combo
+        ? combo->getSelectedItemLabel() : whoChipSubject(combo)) + (follows_cast ? " (follows cast)" : "");
 }
 
 bool whoChipHasLabel(const LLButton* chip, const std::string& label)
@@ -1648,12 +1650,11 @@ void ALKitPage::refreshWhoHint()
     for (S32 slot = 0; slot < ALCineLightRigManager::SLOT_COUNT; ++slot)
         if (slot != selected && manager.isSlotEnabled(static_cast<ALCineLightRigManager::Slot>(slot)))
             mask |= 1u << slot;
-    if (selected == mWhoHintSlot && mask == mWhoHintMask && following == mWhoHintFollowing)
-        return;
-    mWhoHintSlot = selected;
-    mWhoHintMask = mask;
-    mWhoHintFollowing = following;
-    std::string hint = following ? "Follows cast." : "Pick a rig to edit.";
+    const auto& cast = LLDirectorCast::instance();
+    const bool has_subjects = cast.getSubjectA().notNull() || cast.getSubjectB().notNull() ||
+                              cast.getSubjectC().notNull() || cast.getSubjectD().notNull();
+    std::string hint = !has_subjects ? "Add someone to Cast to light them" :
+                       (following ? "Follows cast." : "Pick a rig to edit.");
     if (mask)
     {
         hint += " Also on: ";
@@ -1664,6 +1665,9 @@ void ALKitPage::refreshWhoHint()
             {
                 if (!first) hint += ", ";
                 hint += labels[slot];
+                if (slot != 0 || manager.at(static_cast<ALCineLightRigManager::Slot>(slot)).isGroupEnabled() ||
+                    manager.at(static_cast<ALCineLightRigManager::Slot>(slot)).getObjectTarget().notNull())
+                    hint += " (-> " + ALPanelCineLightRig::rigTargetDescription(slot) + ")";
                 first = false;
             }
     }

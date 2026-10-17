@@ -129,6 +129,7 @@ private:
     LLUUID mCastComboActor;
     LLUUID mCastComboSelection;
     U64 mEditActorRevision = 0;
+    S32 mEditActorDisplayedSlot = -2;
     U64 mSlotIdentityRevision = 0;
 
     LLTextBox* mStatus = nullptr;

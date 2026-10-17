@@ -890,6 +890,7 @@ void ALPanelLensGaze::draw()
     LLDirectorCast& cast = LLDirectorCast::instance();
     LLActorMover& mover = LLActorMover::instance();
     if (mStructureGate.changed({ cast.getCastRevision(),
+                                 cast.getActorChoiceRevision(),
                                  cast.getGazeConfigRevision(),
                                  cast.getGazeCueRevision(),
                                  mover.getGazeRevision(),
@@ -1021,38 +1022,29 @@ void ALPanelLensGaze::refreshEditActorCombo()
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
     const U64 revision = cast.getActorChoiceRevision();
-    if (revision != mEditActorRevision)
+    const S32 want = mEditAll ? -1 : mActiveSlot;
+    if (revision != mEditActorRevision || want != mEditActorDisplayedSlot)
     {
         mEditActorRevision = revision;
-        const S32 want = mEditAll ? -1 : mActiveSlot;
+        mEditActorDisplayedSlot = want;
         mEditActor->removeall();
         mEditActor->add("All", LLSD(-1));
-        for (const LLDirectorCast::ActorChoice& choice : cast.getActorChoices())
+        mEditActor->add("You", LLSD(0));
+        for (S32 slot = 1; slot <= 4; ++slot)
         {
-            if (!LLDirectorCast::isSelf(choice.mId) && choice.mSubjectMask == 0)
+            const LLUUID id = slotActor(slot);
+            if (id.isNull() && slot != want)
                 continue;
-            S32 value = LLDirectorCast::isSelf(choice.mId) ? 0 : 1;
-            for (S32 slot = 1; slot <= 4; ++slot)
-                if (choice.isSubject(slot)) { value = slot; break; }
-            if ((want == 0 && LLDirectorCast::isSelf(choice.mId)) ||
-                choice.isSubject(want))
-                value = want;
-            mEditActor->add(choice.mLabel, LLSD(value));
+            std::string label = llformat("Subject %c \xE2\x80\x93 ", 'A' + slot - 1);
+            label += id.isNull() ? "not set" :
+                     (LLDirectorCast::isSelf(id) ? "You" : actorName(id));
+            mEditActor->add(label, LLSD(slot));
         }
     }
 
-    const S32 want = mEditAll ? -1 : mActiveSlot;
-    if (mEditActor->getValue().asInteger() != want)
+    if (mEditActor->getCurrentIndex() < 0 || mEditActor->getValue().asInteger() != want)
     {
         setValueIfChanged(mEditActor, LLSD(want), true);
-        if (mEditActor->getCurrentIndex() < 0)
-        {
-            // The selected slot lost its actor: fall back to All and re-sync.
-            mEditAll = true;
-            mActiveSlot = 0;
-            setValueIfChanged(mEditActor, LLSD(-1), true);
-            mCastComboRevision = 0;
-        }
     }
 }
 

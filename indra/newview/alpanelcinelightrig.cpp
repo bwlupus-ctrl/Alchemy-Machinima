@@ -1505,6 +1505,41 @@ void ALPanelCineLightRig::onGoboLibraryCommit()
     syncGoboLibrary(true);
 }
 
+std::string ALPanelCineLightRig::rigTargetDescription(S32 slot)
+{
+    const auto& rig = ALCineLightRigManager::instance().at(
+        static_cast<ALCineLightRigManager::Slot>(slot));
+    // Object targeting overrides both group mode and the slot assignment in tick().
+    if (rig.getObjectTarget().notNull())
+        return rig.getObjectTarget().asString().substr(0, 8) + " (object)";
+
+    const auto& cast = LLDirectorCast::instance();
+    const std::array<LLUUID, 5> ids = { LLUUID::null, cast.getSubjectA(),
+        cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
+    const auto name = [&cast, &ids](S32 value) -> std::string
+    {
+        if (value == 0) return "You";
+        const LLUUID& id = ids[value];
+        if (id.isNull()) return "not set";
+        if (LLDirectorCast::isSelf(id)) return "You";
+        if (const auto* member = cast.getMember(id); member && !member->mLastName.empty())
+            return member->mLastName;
+        return id.asString();
+    };
+    if (!rig.isGroupEnabled()) return name(slot);
+
+    // tick() already resolves and deduplicates members. Never resolve avatars here.
+    const U32 resolved = rig.lastResolvedGroupSlots() & rig.getGroupSlots();
+    std::string members;
+    for (S32 value = 0; value < 5; ++value)
+        if (resolved & (1u << value))
+        {
+            if (!members.empty()) members += ", ";
+            members += name(value);
+        }
+    return "group: " + (members.empty() ? std::string("nobody") : members);
+}
+
 // ui-draw-lint: allow-function(raw-write) anchor combo rebuild is identity-revision or explicit model-mutation gated
 void ALPanelCineLightRig::updateAnchorList()
 {
@@ -1525,53 +1560,55 @@ void ALPanelCineLightRig::updateAnchorList()
         mCastListInitialized = false;
         mDisplayedGroupSlots = ~0u;
     }
+    const S32 selected_slot = static_cast<S32>(manager.selectedSlot());
+    const std::array<LLUUID, 5> anchor_ids = {
+        LLUUID::null, cast.getSubjectA(), cast.getSubjectB(),
+        cast.getSubjectC(), cast.getSubjectD()
+    };
+    std::array<U32, 5> group_states{};
+    std::array<LLUUID, 5> object_targets{};
+    U32 enabled_slots = 0;
+    U32 assigned_slots = 0;
+    for (S32 value = 0; value < 5; ++value)
+    {
+        const auto& rig = manager.at(static_cast<ALCineLightRigManager::Slot>(value));
+        group_states[value] = (rig.isGroupEnabled() ? 1u : 0u) |
+            (rig.getGroupSlots() << 1) | (rig.lastResolvedGroupSlots() << 6);
+        object_targets[value] = rig.getObjectTarget();
+        if (anchor_ids[value].notNull())
+            assigned_slots |= 1u << value;
+        if (manager.isSlotEnabled(static_cast<ALCineLightRigManager::Slot>(value)))
+            enabled_slots |= 1u << value;
+    }
+    const U32 visibility_state = assigned_slots | (enabled_slots << 5) |
+                                 (static_cast<U32>(selected_slot) << 10);
+    if (visibility_state != mAnchorVisibilityState ||
+        group_states != mAnchorGroupStates || object_targets != mAnchorObjectTargets ||
+        anchor_ids != mAnchorAssignments)
+        mCastListInitialized = false;
     if (mCastListInitialized)
     {
         syncAnchorSelection();
         return;
     }
-    const S32 selected_slot = static_cast<S32>(manager.selectedSlot());
     std::vector<LLUUID> ids;
     std::vector<std::string> labels;
     std::vector<S32> values;
     ids.reserve(5);
     labels.reserve(5);
     values.reserve(5);
-    const std::array<LLUUID, 5> anchor_ids = {
-        LLUUID::null, cast.getSubjectA(), cast.getSubjectB(),
-        cast.getSubjectC(), cast.getSubjectD()
-    };
     for (S32 value = 0; value < 5; ++value)
     {
         const ALCineLightRigManager::Slot slot =
             static_cast<ALCineLightRigManager::Slot>(value);
         const LLUUID& id = anchor_ids[value];
-        std::string label;
-        if (value == 0)
-        {
-            label = "You";
-        }
-        else
-        {
-            label = llformat("Subject %c \xE2\x80\x93 ", 'A' + value - 1);
-            if (LLDirectorCast::isSelf(id))
-            {
-                label += id.isNull() ? "not set" : "You";
-            }
-            else if (const LLDirectorCast::CastMember* member = cast.getMember(id);
-                     member && !member->mLastName.empty())
-            {
-                label += member->mLastName;
-            }
-            else
-            {
-                label += id.asString();
-            }
-        }
-        if (manager.at(slot).getObjectTarget().notNull())
-        {
-            label += " (object)";
-        }
+        const bool rig_on = (enabled_slots & (1u << value)) != 0;
+        if (value != 0 && id.isNull() && !rig_on && value != selected_slot)
+            continue;
+        const auto& rig = manager.at(slot);
+        std::string label = value == 0 ? "You" : llformat("Subject %c", 'A' + value - 1);
+        if (value != 0 || rig.isGroupEnabled() || rig.getObjectTarget().notNull())
+            label += " \xE2\x80\x93 " + rigTargetDescription(value);
         ids.push_back(id);
         labels.push_back(label);
         values.push_back(value);
@@ -1593,6 +1630,10 @@ void ALPanelCineLightRig::updateAnchorList()
     mCastIds = ids;
     mCastNames = labels;
     mCastValues = values;
+    mAnchorVisibilityState = visibility_state;
+    mAnchorGroupStates = group_states;
+    mAnchorObjectTargets = object_targets;
+    mAnchorAssignments = anchor_ids;
     mAnchorCombo->clearRows();
     for (S32 i = 0; i < static_cast<S32>(values.size()); ++i)
     {

@@ -210,9 +210,6 @@ private:
          mUpdatingModeSwitch = false;
     LLUUID mActorTarget;
     LLSD mSavedWhoPin;
-    S32 mWhoHintSlot = -1;
-    U32 mWhoHintMask = ~0u;
-    bool mWhoHintFollowing = false;
     boost::signals2::scoped_connection mWhoConnection;
     S32  mModeIndex = 0, mChipIndex = 0, mBarLeftEnd = 0;
     U64  mHistoryRevision = ~U64(0);

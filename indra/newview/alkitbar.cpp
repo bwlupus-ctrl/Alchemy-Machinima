@@ -140,8 +140,24 @@ std::vector<LLView*> ALKitBar::collapsedChildren() const
     return collapsed;
 }
 
+// Icon + label buttons (ACTION, CUT) centre the pair as one unit: LLButton
+// otherwise centres the label in the space right of a left-aligned icon.
+static void centreIconLabel(LLButton* button)
+{
+    if (!button || !button->getImageOverlay() || button->getImageOverlayHAlign() != LLFontGL::LEFT ||
+        !button->getFont())
+        return;
+    constexpr S32 ICON_LABEL_GAP = 6; // matches imgoverlay_label_space in the generated XUI
+    const S32 content = button->getImageOverlay()->getWidth() + ICON_LABEL_GAP +
+                        button->getFont()->getWidth(button->getText());
+    button->setHAlign(LLFontGL::LEFT);
+    button->setLeftHPad(llmax(4, (button->getRect().getWidth() - content) / 2));
+}
+
 void ALKitBar::layoutChildren()
 {
+    for (const char* name : { "btn_action", "btn_cut" })
+        centreIconLabel(findChild<LLButton>(name, true));
     constexpr S32 PAD = 10;
     constexpr S32 GAP = 8;
     constexpr S32 FLEX_MIN = 0;
