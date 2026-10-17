@@ -30757,5 +30757,16 @@
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>0</integer>
   </map>
+  <key>RenderShadowDirectTransitions</key>
+  <map>
+    <key>Comment</key>
+    <string>Bind main-view depth-only shadow targets directly between sun cascades and projector slots, draining pending draws each pass and restoring the entry framebuffer once on exit. Preserves shadow quality, freshness, and the stock last-shadow viewport. TRUE by default; FALSE immediately restores stock per-pass flush/bind transitions (A/B kill switch). Excludes probes, reflections, HUD, impostors, and auxiliary views. Independent of RenderShadowFlushEarly and Tracy GPU zones.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
 </map>
 </llsd>

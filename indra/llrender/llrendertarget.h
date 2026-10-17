@@ -137,6 +137,28 @@ public:
     //  Asserts that this target is not currently bound in the stack
     void bindTarget();
 
+    // Opt-in sequence for depth-only sibling passes. Drains each pass without
+    // returning to the parent between targets; finish()/destruction restores
+    // the original parent once. Disabled sequences use stock bindTarget/flush.
+    // The caller owns gGLViewport, including its stock last-shadow exit value.
+    class ScopedDepthTargetSequence
+    {
+    public:
+        explicit ScopedDepthTargetSequence(bool enabled);
+        ~ScopedDepthTargetSequence();
+        ScopedDepthTargetSequence(const ScopedDepthTargetSequence&) = delete;
+        ScopedDepthTargetSequence& operator=(const ScopedDepthTargetSequence&) = delete;
+
+        void bindTarget(LLRenderTarget& target);
+        void flush(LLRenderTarget& target);
+        void finish();
+
+    private:
+        const bool mEnabled;
+        LLRenderTarget* const mParent;
+        LLRenderTarget* mCurrent = nullptr;
+    };
+
     //clear render targer, clears depth buffer if present,
     //uses scissor rect if in copy-to-texture mode
     // asserts that this target is currently bound

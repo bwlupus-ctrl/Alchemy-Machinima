@@ -29781,6 +29781,36 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
         return;
     }
 
+    static LLCachedControl<bool> shadow_direct_transitions(
+        gSavedSettings, "RenderShadowDirectTransitions", true);
+    const bool direct_shadow_targets = shadow_direct_transitions() &&
+        mRT == &mMainRT && !gCubeSnapshot && !sReflectionRender &&
+        !sRenderingHUDs && !sImpostorRender && !sPrismLensRender &&
+        LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD;
+    LLRenderTarget::ScopedDepthTargetSequence shadow_targets(direct_shadow_targets);
+    LL_PROFILE_ZONE_NUM(direct_shadow_targets ? 1 : 0); // effective A/B state
+
+    // CPU zones enclose the entire RT call, including Tracy GPU timestamps.
+    // Pass zones carry the sun/projector index; bind values pack old/new FBOs.
+    const auto bind_shadow_target = [&shadow_targets](LLRenderTarget& target)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("shadow target bind");
+        LL_PROFILE_ZONE_NUM((U64(LLRenderTarget::sCurFBO) << 32) | target.getFBO());
+        shadow_targets.bindTarget(target);
+    };
+    const auto clear_shadow_target = [](LLRenderTarget& target)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("shadow target clear");
+        LL_PROFILE_ZONE_NUM(target.getFBO());
+        target.clear();
+    };
+    const auto flush_shadow_target = [&shadow_targets](LLRenderTarget& target)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("shadow target flush");
+        LL_PROFILE_ZONE_NUM(target.getFBO());
+        shadow_targets.flush(target);
+    };
+
     // [ShadowDist P1] ShadowMeta site 1 (design v6 s1.1 / v5 s5): written after
     // Control A's override and the cube-snapshot stretch, i.e. these are the
     // planes and blend the frusta below are actually built from. Probe
@@ -29923,6 +29953,8 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
         static LLCachedControl<bool> render_shadow_perspective_warp(gSavedSettings, "RenderShadowPerspectiveWarp", false); // [LowSunShadow]
         for (S32 j = 0; j < (gCubeSnapshot ? 2 : 4); j++)
         {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("sun shadow pass");
+            LL_PROFILE_ZONE_NUM(j);
             if (!hasRenderDebugMask(RENDER_DEBUG_SHADOW_FRUSTA) && !gCubeSnapshot)
             {
                 mShadowFrustPoints[j].clear();
@@ -29940,6 +29972,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
             // fit below stays byte-identical when the column is inactive.
             if (j == 0 && subject_active)
             {
+                LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("sun shadow column");
                 // --- fixed light basis with hysteresis (no camera term -> the texel grid
                 //     does not rotate with the camera); origin at the AGENT origin, so the
                 //     grid is anchored in the agent frame and re-anchors on a region shift
@@ -30149,14 +30182,14 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
                 }
 
                 stop_glerror();
-                mRT->shadow[0].bindTarget();
+                bind_shadow_target(mRT->shadow[0]);
                 mRT->shadow[0].getViewport(gGLViewport);
-                mRT->shadow[0].clear();
+                clear_shadow_target(mRT->shadow[0]);
                 {
                     static LLCullResult column_result;
                     renderShadow(view0, proj0, column_cam, column_result, true, true);
                 }
-                mRT->shadow[0].flush();
+                flush_shadow_target(mRT->shadow[0]);
                 { // [LowSunShadow] early kick also when the column owns cascade 0
                     static LLCachedControl<bool> column_flush_early(gSavedSettings, "RenderShadowFlushEarly", true);
                     if (column_flush_early && mRT == &mMainRT && !gCubeSnapshot)
@@ -30225,12 +30258,12 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
                     mShadowCamera[j+4] = shadow_cam;
                 }
 
-                mRT->shadow[j].bindTarget();
+                bind_shadow_target(mRT->shadow[j]);
                 {
                     LLGLDepthTest depth(GL_TRUE);
-                    mRT->shadow[j].clear();
+                    clear_shadow_target(mRT->shadow[j]);
                 }
-                mRT->shadow[j].flush();
+                flush_shadow_target(mRT->shadow[j]);
 
                 // [ShadowDist P1] ShadowMeta site 4: a cleared map samples as lit
                 // whatever its matrix says, so sunVP[j] is left as is (exactly
@@ -30336,6 +30369,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
             }
 
             {
+                LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("sun shadow projection fit");
                 // best fit line is y=bfm*x+bfb
 
                 //find point that is furthest to the right of line
@@ -30560,9 +30594,9 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
 
             stop_glerror();
 
-            mRT->shadow[j].bindTarget();
+            bind_shadow_target(mRT->shadow[j]);
             mRT->shadow[j].getViewport(gGLViewport);
-            mRT->shadow[j].clear();
+            clear_shadow_target(mRT->shadow[j]);
 
             {
                 static LLCullResult result[4];
@@ -30594,7 +30628,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
                 }
             }
 
-            mRT->shadow[j].flush();
+            flush_shadow_target(mRT->shadow[j]);
 
             // [ProbeBeforePresent] Early kick for the first main-view sun cascade (default on; measured +14% fps). Excludes probe and auxiliary RT renders.
             static LLCachedControl<bool> shadow_flush_early(
@@ -30770,6 +30804,8 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
 
         for (S32 i = 0; i < (S32)bdmergeMaxSpotShadows(); i++) // [BDMerge NSpot]
         {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("projector shadow pass");
+            LL_PROFILE_ZONE_NUM(i);
             if (mSpotShadow[i].getWidth() == 0)
             { // slot count raised before the deferred realloc ran - target
               // not allocated yet this frame; skip (crash guard)
@@ -30866,9 +30902,9 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
 
                 //
 
-                mSpotShadow[i].bindTarget();
+                bind_shadow_target(mSpotShadow[i]);
                 mSpotShadow[i].getViewport(gGLViewport);
-                mSpotShadow[i].clear();
+                clear_shadow_target(mSpotShadow[i]);
 
                 static LLCullResult result[MAX_SPOT_SHADOWS]; // [BDMerge NSpot fix2] was [2] - slot 3+ stomped past the array (the actual hard-crash root cause, symbolized to LLCullResult::pushVisibleGroup)
 
@@ -30881,7 +30917,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
 
                 RenderSpotLight = nullptr;
 
-                mSpotShadow[i].flush();
+                flush_shadow_target(mSpotShadow[i]);
             }
         }
     }
@@ -30890,6 +30926,10 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
         mShadowSpotLight[0] = mShadowSpotLight[1] = NULL;
     }
 
+
+    // Restore the entry parent (or FB0 + GL_BACK) before the beauty-pass state
+    // setup. Keep gGLViewport exactly as stock, including empty-slice behavior.
+    shadow_targets.finish();
 
     if (!CameraOffset)
     {

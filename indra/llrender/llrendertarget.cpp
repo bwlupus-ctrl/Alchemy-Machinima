@@ -34,6 +34,42 @@
 #include "llgl.h"
 
 #include <bit>
+#include <optional>
+
+// Keep the existing GPU timestamps, but measure their CPU submission cost
+// separately from the GL operations inside bind/clear/flush. No extra queries.
+#if defined(TRACY_ENABLE) && LL_PROFILER_ENABLE_TRACY_OPENGL && !defined(__APPLE__)
+namespace
+{
+    class ScopedRTGpuZone
+    {
+    public:
+        explicit ScopedRTGpuZone(const tracy::SourceLocationData* source)
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT GPU timestamp begin");
+#if defined(TRACY_HAS_CALLSTACK) && defined(TRACY_CALLSTACK)
+            mZone.emplace(source, TRACY_CALLSTACK, true);
+#else
+            mZone.emplace(source, true);
+#endif
+        }
+
+        ~ScopedRTGpuZone()
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT GPU timestamp end");
+            mZone.reset();
+        }
+
+    private:
+        std::optional<tracy::GpuCtxScope> mZone;
+    };
+}
+#define RT_PROFILE_GPU_ZONE(name) \
+    static constexpr tracy::SourceLocationData rt_gpu_source { name, TracyFunction, TracyFile, (uint32_t)TracyLine, 0 }; \
+    ScopedRTGpuZone rt_gpu_zone(&rt_gpu_source)
+#else
+#define RT_PROFILE_GPU_ZONE(name) LL_PROFILE_GPU_ZONE(name)
+#endif
 
 LLRenderTarget* LLRenderTarget::sBoundTarget = NULL;
 U32 LLRenderTarget::sBytesAllocated = 0;
@@ -533,12 +569,18 @@ void LLRenderTarget::release()
 
 void LLRenderTarget::bindTarget()
 {
-    LL_PROFILE_GPU_ZONE("bindTarget");
+    // Enclose GPU timestamp entry AND exit in the CPU zone.
+    LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT bindTarget");
+    LL_PROFILE_ZONE_NUM((U64(sCurFBO) << 32) | mFBO); // previous -> next FBO
+    RT_PROFILE_GPU_ZONE("bindTarget");
     llassert(mFBO);
     llassert(!isBoundInStack());
 
-    glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
-    sCurFBO = mFBO;
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT bind framebuffer");
+        glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
+        sCurFBO = mFBO;
+    }
 
     //setup multiple render targets
     GLenum drawbuffers[] = {GL_COLOR_ATTACHMENT0,
@@ -546,21 +588,27 @@ void LLRenderTarget::bindTarget()
                             GL_COLOR_ATTACHMENT2,
                             GL_COLOR_ATTACHMENT3};
 
-    if (mTex.empty())
-    { //no color buffer to draw to
-        glDrawBuffer(GL_NONE);
-        glReadBuffer(GL_NONE);
-    }
-    else
     {
-        glDrawBuffers(static_cast<GLsizei>(mTex.size()), drawbuffers);
-        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT select buffers");
+        if (mTex.empty())
+        { //no color buffer to draw to; GL_NONE belongs to this FBO, not FB0
+            glDrawBuffer(GL_NONE);
+            glReadBuffer(GL_NONE);
+        }
+        else
+        {
+            glDrawBuffers(static_cast<GLsizei>(mTex.size()), drawbuffers);
+            glReadBuffer(GL_COLOR_ATTACHMENT0);
+        }
     }
     check_framebuffer_status();
 
-    glViewport(0, 0, mResX, mResY);
-    sCurResX = mResX;
-    sCurResY = mResY;
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT viewport");
+        glViewport(0, 0, mResX, mResY);
+        sCurResX = mResX;
+        sCurResY = mResY;
+    }
 
     mPreviousRT = sBoundTarget;
     sBoundTarget = this;
@@ -568,7 +616,8 @@ void LLRenderTarget::bindTarget()
 
 void LLRenderTarget::clear(U32 mask_in)
 {
-    LL_PROFILE_GPU_ZONE("clear");
+    LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT clear");
+    RT_PROFILE_GPU_ZONE("clear");
     llassert(mFBO);
     U32 mask = GL_COLOR_BUFFER_BIT;
     if (mUseDepth)
@@ -583,7 +632,10 @@ void LLRenderTarget::clear(U32 mask_in)
     {
         check_framebuffer_status();
         stop_glerror();
-        glClear(mask & mask_in);
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT glClear");
+            glClear(mask & mask_in);
+        }
         stop_glerror();
     }
     else
@@ -591,7 +643,10 @@ void LLRenderTarget::clear(U32 mask_in)
         LLGLEnable scissor(GL_SCISSOR_TEST);
         glScissor(0, 0, mResX, mResY);
         stop_glerror();
-        glClear(mask & mask_in);
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT glClear");
+            glClear(mask & mask_in);
+        }
     }
 }
 
@@ -619,14 +674,20 @@ void LLRenderTarget::bindTexture(U32 index, S32 channel, LLTexUnit::eTextureFilt
 
 void LLRenderTarget::flush()
 {
-    LL_PROFILE_GPU_ZONE("rt flush");
-    gGL.flush();
+    LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT flush");
+    LL_PROFILE_ZONE_NUM((U64(mFBO) << 32) | (mPreviousRT ? mPreviousRT->mFBO : 0));
+    RT_PROFILE_GPU_ZONE("rt flush");
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT pending batch");
+        gGL.flush();
+    }
     llassert(mFBO);
     llassert(sCurFBO == mFBO);
     llassert(sBoundTarget == this);
 
     if (mGenerateMipMaps == LLTexUnit::TMG_AUTO)
     {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT generate mipmaps");
         LL_PROFILE_GPU_ZONE("rt generate mipmaps");
         bindTexture(0, 0, LLTexUnit::TFO_TRILINEAR);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -642,13 +703,98 @@ void LLRenderTarget::flush()
     else
     {
         sBoundTarget = nullptr;
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        sCurFBO = 0;
-        glViewport(gGLViewport[0], gGLViewport[1], gGLViewport[2], gGLViewport[3]);
-        sCurResX = gGLViewport[2];
-        sCurResY = gGLViewport[3];
-        glReadBuffer(GL_BACK);
-        glDrawBuffer(GL_BACK);
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT restore framebuffer 0");
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            sCurFBO = 0;
+        }
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT restore viewport");
+            glViewport(gGLViewport[0], gGLViewport[1], gGLViewport[2], gGLViewport[3]);
+            sCurResX = gGLViewport[2];
+            sCurResY = gGLViewport[3];
+        }
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT restore back buffers");
+            glReadBuffer(GL_BACK);
+            glDrawBuffer(GL_BACK);
+        }
+    }
+}
+
+#undef RT_PROFILE_GPU_ZONE
+
+LLRenderTarget::ScopedDepthTargetSequence::ScopedDepthTargetSequence(bool enabled)
+    : mEnabled(enabled), mParent(sBoundTarget)
+{
+}
+
+LLRenderTarget::ScopedDepthTargetSequence::~ScopedDepthTargetSequence()
+{
+    finish();
+}
+
+void LLRenderTarget::ScopedDepthTargetSequence::bindTarget(LLRenderTarget& target)
+{
+    if (mEnabled)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT depth sibling transition");
+        LL_PROFILE_ZONE_NUM((U64(sCurFBO) << 32) | target.mFBO);
+        llassert(target.mFBO && target.mUseDepth && target.mTex.empty());
+        llassert(target.mGenerateMipMaps != LLTexUnit::TMG_AUTO);
+        llassert(!target.isBoundInStack());
+        llassert(sBoundTarget == (mCurrent ? mCurrent : mParent));
+        {
+            // Drain BEFORE changing either the logical stack or the GL target.
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT transition pending batch");
+            gGL.flush();
+        }
+        if (mCurrent)
+        {
+            llassert(sCurFBO == mCurrent->mFBO);
+            llassert(mCurrent->mPreviousRT == mParent);
+            mCurrent->mPreviousRT = nullptr;
+        }
+        // Pop only the logical sibling. bindTarget binds A -> B directly and
+        // updates FBO/resolution/viewport together, reselecting this FBO's NONE
+        // buffers. B inherits the entry parent, never A (no RT-stack cycle).
+        sBoundTarget = mParent;
+        target.bindTarget();
+        mCurrent = &target;
+    }
+    else
+    {
+        target.bindTarget();
+    }
+}
+
+void LLRenderTarget::ScopedDepthTargetSequence::flush(LLRenderTarget& target)
+{
+    if (mEnabled)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT depth pass completion");
+        llassert(mCurrent == &target && sBoundTarget == &target);
+        llassert(sCurFBO == target.mFBO);
+        // Keep the stock end-of-pass batch drain, including before the optional
+        // first-cascade glFlush. Only the parent/FB0 round trip is deferred.
+        gGL.flush();
+    }
+    else
+    {
+        target.flush();
+    }
+}
+
+void LLRenderTarget::ScopedDepthTargetSequence::finish()
+{
+    if (mCurrent)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("RT depth sequence restore");
+        llassert(sBoundTarget == mCurrent && mCurrent->mPreviousRT == mParent);
+        mCurrent->flush(); // ordinary parent restore, or FB0 + GL_BACK, once
+        mCurrent = nullptr;
+        // Deliberately do not restore gGLViewport: stock leaves the last
+        // shadow-map viewport there, which flush() applies on the FB0 path.
     }
 }
 
