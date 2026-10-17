@@ -1049,6 +1049,14 @@ void ALPanelLensGaze::refreshEditActorCombo()
         return;
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
+    // The edited slot lost its actor (Director subject unassigned): fall back to
+    // All. Otherwise its "not set" row stays selected and edits silently no-op.
+    if (!mEditAll && slotActor(mActiveSlot).isNull())
+    {
+        mEditAll = true;
+        mActiveSlot = 0;
+        mCastComboRevision = 0;
+    }
     const U64 revision = cast.getActorChoiceRevision();
     const S32 want = mEditAll ? -1 : mActiveSlot;
     if (revision != mEditActorRevision || want != mEditActorDisplayedSlot)
