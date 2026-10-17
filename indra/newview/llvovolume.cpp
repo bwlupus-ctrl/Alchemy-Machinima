@@ -1708,7 +1708,22 @@ bool LLVOVolume::calcLOD()
     }
     else
     {
-        cur_detail = computeLODDetail(ll_round(distance, 0.01f), ll_round(radius, 0.01f), lod_factor);
+        const F32 rounded_distance = ll_round(distance, 0.01f);
+        const F32 rounded_radius = ll_round(radius, 0.01f);
+        cur_detail = computeLODDetail(rounded_distance, rounded_radius, lod_factor);
+
+        // RenderRiggedLODHysteresis: rigged radius/distance come from the avatar's animated
+        // extents, which are recomputed every few frames while it animates, so cur_detail can
+        // ping-pong across a threshold and rebuild/re-upload the whole rigged group each time.
+        // Increases in detail stay immediate; a decrease is only accepted if it still holds
+        // with the LOD factor scaled up by the margin, so we only ever keep the higher LOD.
+        static LLCachedControl<F32> rigged_lod_hysteresis(gSavedSettings, "RenderRiggedLODHysteresis", 0.2f);
+        if (cur_detail < mLOD && rigged_lod_hysteresis() > 0.f && mDrawable->isState(LLDrawable::RIGGED))
+        {
+            const S32 padded_detail = computeLODDetail(rounded_distance, rounded_radius,
+                                                       lod_factor * (1.f + rigged_lod_hysteresis()));
+            cur_detail = llmin((S32) mLOD, padded_detail);
+        }
     }
 
     // Ghost attachment prims are synthetic local copies. In particular, their

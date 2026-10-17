@@ -330,6 +330,8 @@ class LLVBOPool
     virtual void allocateVBO(GLenum type, U32 size, GLuint& name, U8*& data) = 0;
     virtual void freeVBO(GLenum type, U32 size, GLuint name, U8* data) = 0;
     virtual U64 getVramBytesUsed() = 0;
+    // Run any deferred expiry sweep (see RenderVBOPoolCleanAtFrameEnd). Default: nothing to do.
+    virtual void cleanIfDue() {}
 };
 
 // VBO Pool for Apple GPUs (as in M1/M2 etc, not Intel macs)
@@ -533,6 +535,18 @@ public:
     void clean()
     {
         mTouchCount++;
+        if (LLVertexBuffer::sCleanPoolAtFrameEnd)
+        {
+            // RenderVBOPoolCleanAtFrameEnd: only count the touch here; the expiry sweep
+            // runs from cleanIfDue() at the end of the frame, never in the middle of a rebuild.
+            return;
+        }
+        cleanIfDue();
+    }
+
+    // Same cadence as always (every 1k touches, 5 s expiry); only the call site differs.
+    void cleanIfDue() override
+    {
         if (mTouchCount < 1024) // clean every 1k touches
         {
             return;
@@ -691,6 +705,7 @@ U32 LLVertexBuffer::sGLRenderBuffer = 0;
 U32 LLVertexBuffer::sGLRenderIndices = 0;
 U32 LLVertexBuffer::sLastMask = 0;
 U32 LLVertexBuffer::sVertexCount = 0;
+bool LLVertexBuffer::sCleanPoolAtFrameEnd = false;
 
 
 //NOTE: each component must be AT LEAST 4 bytes in size to avoid a performance penalty on AMD hardware
@@ -969,6 +984,16 @@ void LLVertexBuffer::initClass(LLWindow* window)
         sVBOThread[i]->start();
     }
 #endif
+}
+
+//static
+void LLVertexBuffer::endOfFrameCleanPool(bool enabled)
+{
+    sCleanPoolAtFrameEnd = enabled;
+    if (enabled && sVBOPool)
+    {
+        sVBOPool->cleanIfDue();
+    }
 }
 
 //static

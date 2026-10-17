@@ -22482,6 +22482,28 @@
 		<key>Value</key>
 		<integer>0</integer>
 	</map>
+	<key>RenderRiggedLODHysteresis</key>
+    <map>
+      <key>Comment</key>
+      <string>Rigged mesh LOD hysteresis. A rigged drawable only drops to a lower LOD if it would still be lower with the LOD factor scaled up by this fraction (0.2 = 20 percent), which stops animated avatar extents from ping-ponging LOD (and rebuilding/re-uploading the whole group) at a threshold. Increases in detail stay immediate. 0 = stock behavior.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.2</real>
+    </map>
+	<key>RenderVBOPoolCleanAtFrameEnd</key>
+    <map>
+      <key>Comment</key>
+      <string>Run the VBO pool expiry sweep once per frame at end of frame instead of inside buffer alloc/free (which could stall in the middle of a rebuild). FALSE = stock behavior.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
 	<key>RenderVolumeLODFactor</key>
     <map>
       <key>Comment</key>

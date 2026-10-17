@@ -120,6 +120,11 @@ public:
     // flush any pending mapped buffers
     static void flushBuffers();
 
+    // RenderVBOPoolCleanAtFrameEnd: call once per frame from a safe end-of-frame point.
+    // enabled = true defers the VBO pool's expiry sweep from alloc/free to this call;
+    // false restores the stock "sweep inside alloc/free" behaviour.
+    static void endOfFrameCleanPool(bool enabled);
+
     //WARNING -- when updating these enums you MUST
     // 1 - update LLVertexBuffer::sTypeSize
     // 2 - update LLVertexBuffer::vb_type_name
@@ -330,6 +335,7 @@ public:
     static U32 sGLRenderIndices;
     static U32 sLastMask;
     static U32 sVertexCount;
+    static bool sCleanPoolAtFrameEnd;
 };
 
 #if LL_PROFILER_ENABLE_RENDER_DOC

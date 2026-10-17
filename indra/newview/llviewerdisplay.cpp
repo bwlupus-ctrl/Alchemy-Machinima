@@ -1226,6 +1226,13 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
     stop_glerror();
 
+    // RenderVBOPoolCleanAtFrameEnd: the swap is done and the cull references are released,
+    // so this is a safe point to run the VBO pool's expiry sweep (not mid-rebuild).
+    {
+        static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true);
+        LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end);
+    }
+
     display_stats();
 
     LLAppViewer::instance()->pingMainloopTimeout("Display:Done");
