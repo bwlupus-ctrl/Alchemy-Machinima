@@ -325,7 +325,7 @@ void LLActorMover::stopLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle)
 
 bool LLActorMover::setLocalMotionSample(LLVOAvatar* av, LocalMotionHandle& handle,
                                         F64 traveled_distance, F32 nominal_speed,
-                                        F32 phase_origin)
+                                        F32 phase_origin, bool discontinuity)
 {
     if (!av || !handle.mControlsMotion || !llfinite(traveled_distance) ||
         !llfinite(nominal_speed) || !llfinite(phase_origin) || nominal_speed <= 0.f)
@@ -357,7 +357,7 @@ bool LLActorMover::setLocalMotionSample(LLVOAvatar* av, LocalMotionHandle& handl
             }
         }
     }
-    return motion->setExternalSampleTime(handle.mOwnerToken, (F32)sample);
+    return motion->setExternalSampleTime(handle.mOwnerToken, (F32)sample, base_time, discontinuity);
 }
 
 bool LLActorMover::setLocalMotionWeight(LLVOAvatar* av, LocalMotionHandle& handle,
@@ -604,7 +604,7 @@ void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
                 mv.mFailedLocomotionAnim.setNull();
             }
         }
-        updateLocomotionSample(av, mv);
+        updateLocomotionSample(av, mv, discontinuity);
         return;
     }
 
@@ -622,7 +622,7 @@ void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
 
     if (!mv.mSecondaryLocomotion.valid())
     {
-        updateLocomotionSample(av, mv);
+        updateLocomotionSample(av, mv, discontinuity);
         return;
     }
 
@@ -635,7 +635,7 @@ void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
         mv.mSecondaryRole = Cast::LOCO_NONE;
         mv.mTransitionElapsed = 0.f;
         setLocalMotionWeight(av, mv.mLocomotion, 1.f);
-        updateLocomotionSample(av, mv);
+        updateLocomotionSample(av, mv, discontinuity);
         return;
     }
     if (secondary)
@@ -647,7 +647,7 @@ void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
         setLocalMotionWeight(av, mv.mLocomotion, 1.f);
         setLocalMotionWeight(av, mv.mSecondaryLocomotion, 0.f);
         // Loading the incoming role must not freeze the outgoing stride.
-        updateLocomotionSample(av, mv);
+        updateLocomotionSample(av, mv, discontinuity);
         return;
     }
 
@@ -657,7 +657,7 @@ void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
     const F32 weight = u * u * u * (u * (u * 6.f - 15.f) + 10.f);
     setLocalMotionWeight(av, mv.mLocomotion, 1.f - weight);
     setLocalMotionWeight(av, mv.mSecondaryLocomotion, weight);
-    updateLocomotionSample(av, mv);
+    updateLocomotionSample(av, mv, discontinuity);
 
     if (u >= 1.f)
     {
@@ -734,7 +734,7 @@ void LLActorMover::startLocomotion(LLVOAvatar* av, Move& mv)
             mv.mRole = Cast::LOCO_NONE;
             mv.mAnim.setNull();
         }
-        updateLocomotionSample(av, mv);
+        updateLocomotionSample(av, mv, true);
     }
 }
 
@@ -746,7 +746,7 @@ void LLActorMover::stopLocomotion(LLVOAvatar* av, Move& mv)
     mv.mDwellAnim.setNull();
 }
 
-void LLActorMover::updateLocomotionSample(LLVOAvatar* av, Move& mv)
+void LLActorMover::updateLocomotionSample(LLVOAvatar* av, Move& mv, bool discontinuity)
 {
     auto clean_lost_motion = [this, av](LocalMotionHandle& handle)
     {
@@ -860,10 +860,10 @@ void LLActorMover::updateLocomotionSample(LLVOAvatar* av, Move& mv)
 
     setLocalMotionSample(av, mv.mLocomotion, mv.mTravelOdometer,
                          llmax(mv.mNominal, 0.05f),
-                         mv.mPhaseOrigin);
+                         mv.mPhaseOrigin, discontinuity);
     setLocalMotionSample(av, mv.mSecondaryLocomotion, mv.mTravelOdometer,
                          llmax(mv.mSecondaryNominal, 0.05f),
-                         mv.mSecondaryPhaseOrigin);
+                         mv.mSecondaryPhaseOrigin, discontinuity);
 }
 
 void LLActorMover::updatePathFacing(Move& mv, F32 target_yaw, F32 target_pitch,
@@ -5544,7 +5544,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     if (sync_seek &&
         (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
     {
-        updateLocomotionSample(av, mv);
+        updateLocomotionSample(av, mv, true);
     }
     else
     {
@@ -5772,7 +5772,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
         (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
     {
         // Snap the owned clocks without interpreting scrub velocity as gait.
-        updateLocomotionSample(av, mv);
+        updateLocomotionSample(av, mv, true);
     }
     else
     {

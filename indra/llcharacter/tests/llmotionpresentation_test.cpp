@@ -230,6 +230,32 @@ void motion_presentation_object::test<10>()
     ensure("deactivate clears exclusion", !motion.isPresentationJointExcluded(&face));
 }
 
+template<> template<>
+void motion_presentation_object::test<12>()
+{
+    TestMotion motion(LLUUID::generateNewID(), true);
+    const LLUUID owner = LLUUID::generateNewID();
+    const LLUUID other = LLUUID::generateNewID();
+    ensure("claim", motion.claimPresentationControl(owner));
+    ensure("pre-wrap sample", motion.setExternalSampleTime(owner, 0.98f, 1000.98));
+    const U32 revision = motion.getPresentationClockRevision();
+    ensure("wrapped sample with advancing clock", motion.setExternalSampleTime(owner, 0.02f, 1001.02));
+    ensure_equals("ordinary wrap preserves continuity", motion.getPresentationClockRevision(), revision);
+    ensure_distance("unwrapped clock retains double precision", motion.getExternalSampleClockTime(), 1001.02, 1e-10);
+    ensure("backward seek", motion.setExternalSampleTime(owner, 0.9f, 1000.9));
+    ensure("backward seek invalidates seam", motion.getPresentationClockRevision() != revision);
+    const U32 after_backward = motion.getPresentationClockRevision();
+    ensure("explicit forward seek", motion.setExternalSampleTime(owner, 0.1f, 1001.1, true));
+    ensure("forward seek invalidates seam", motion.getPresentationClockRevision() != after_backward);
+    const U32 after_seek = motion.getPresentationClockRevision();
+    ensure("invalid clock rejected", !motion.setExternalSampleTime(owner, 0.3f,
+        std::numeric_limits<F64>::quiet_NaN()));
+    ensure("non-owner cannot seek", !motion.setExternalSampleTime(other, 0.3f, 1001.3, true));
+    ensure_equals("rejected writes preserve revision", motion.getPresentationClockRevision(), after_seek);
+    ensure("native clock switch", motion.useNativePresentationClock(owner));
+    ensure("clock switch invalidates seam", motion.getPresentationClockRevision() != after_seek);
+}
+
 namespace
 {
 // True when any of the three channels carries a non-zero signature entry.

@@ -144,6 +144,13 @@ public:
     // controller time. The stored sample survives STATUS_HOLD so the first pose
     // after an asynchronous asset load is evaluated at the requested time.
     bool setExternalSampleTime(const LLUUID& owner, F32 sample_time);
+    // Wrapped samples need a separate unwrapped clock (same seconds/rate).
+    // Mark explicit seeks even when they advance time; backward clock changes
+    // and switches of clock source invalidate continuity automatically.
+    bool setExternalSampleTime(const LLUUID& owner, F32 sample_time,
+                               F64 sample_clock, bool discontinuity = false);
+    F64 getExternalSampleClockTime() const { return mExternalSampleClockTime; }
+    U32 getPresentationClockRevision() const { return mPresentationClockRevision; }
     bool useNativePresentationClock(const LLUUID& owner);
     bool usesExternalSampleClock() const
     {
@@ -300,6 +307,8 @@ protected:
     LLUUID mPresentationOwner;  // non-null while one client feature owns controls
     PresentationClockMode mPresentationClockMode;
     F32 mExternalSampleTime;    // absolute local clip sample, seconds
+    F64 mExternalSampleClockTime; // unwrapped external timeline, seconds
+    U32 mPresentationClockRevision; // changes on clock switches and explicit seeks
     F32 mPresentationWeight;    // explicit 0..1 multiplier; LOD fade is separate
     bool mOwnerManagedLifetime; // presentation owner suppresses native lifetime
     PresentationJointPredicate mPresentationJointExclusion;

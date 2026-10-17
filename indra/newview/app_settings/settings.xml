@@ -8711,7 +8711,7 @@
     <key>ALPolishEnabled</key>
     <map>
       <key>Comment</key>
-      <string>[Machinima] Master gate for the post-blend Pose Polish stage (inertialization, contact stabilization, secondary motion). Off = no-op, displayed pose unchanged.</string>
+      <string>[Machinima] Master gate for the post-blend Pose Polish stage (inertialization, contact stabilization, secondary motion). Off = no-op, displayed pose unchanged. Default on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8722,7 +8722,7 @@
     <key>ALPolishContactEnabled</key>
     <map>
       <key>Comment</key>
-      <string>[Machinima] Pose Polish M2: contact stabilizer — leg IK holds planted feet in world space (anti-footskate). Grounded biped locomotion only; off while sitting/flying. Off = no-op. Requires ALPolishEnabled.</string>
+      <string>[Machinima] Pose Polish M2: contact stabilizer — leg IK holds planted feet in world space (anti-footskate). Grounded biped locomotion only; off while sitting/flying. Off = no-op. Requires ALPolishEnabled. Default on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8744,7 +8744,7 @@
     <key>ALPolishInertiaEnabled</key>
     <map>
       <key>Comment</key>
-      <string>[Machinima] Pose Polish M1: velocity-preserving transition inertialization (kills AO/gesture snap). Off = no-op. Requires ALPolishEnabled.</string>
+      <string>[Machinima] Pose Polish M1: velocity-preserving transition inertialization (kills AO/gesture snap). Off = no-op. Requires ALPolishEnabled. Default on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8799,7 +8799,7 @@
     <key>ALPolishSecondaryEnabled</key>
     <map>
       <key>Comment</key>
-      <string>[Machinima] Pose Polish M6: procedural secondary motion (subtle breath + idle weight-shift sway). Off = no-op. Requires ALPolishEnabled.</string>
+      <string>[Machinima] Pose Polish M6: procedural secondary motion (subtle breath + idle weight-shift sway). Off = no-op. Requires ALPolishEnabled. Default on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8832,7 +8832,7 @@
     <key>ALPolishLoopSeamEnabled</key>
     <map>
       <key>Comment</key>
-      <string>[Machinima] Pose Polish M4: repair the one-frame hitch at a looping animation's seam by pulsing the inertializer across the wrap. Off = no-op. Requires ALPolishEnabled + ALPolishInertiaEnabled.</string>
+      <string>[Machinima] Pose Polish M4: decay real loop-seam pose offsets over 0.15 seconds while retaining live curve motion. Closed seams are unchanged. Default on. Off = no-op. Requires ALPolishEnabled; independent of Inertia.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8843,7 +8843,7 @@
     <key>ALPolishPhaseMatchEnabled</key>
     <map>
       <key>Comment</key>
-      <string>[Machinima] Pose Polish M3: phase-aware locomotion - start a new walk/run clip near a compatible foot-plant phase. Off = stock cadence behavior.</string>
+      <string>[Machinima] Pose Polish M3: phase-aware locomotion - start a new walk/run clip near a compatible foot-plant phase. Off = stock cadence behavior. Default on.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

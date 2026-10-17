@@ -11,6 +11,7 @@
  * transform inputs (no LLVOAvatar dependency), so each is unit-tested here
  * directly. Milestones add their headers + tests as they land:
  *   M1 inertialization  -> #include "../alposecontinuity.h"
+ *   M4 loop seams       -> LLKeyframeMotion::onUpdate integration
  *   M2 contact           -> #include "../alcontactstab.h"
  *   M6 secondary motion  -> #include "../alposesecondary.h"
  */
@@ -20,6 +21,9 @@
 #include "../test/lltut.h"
 
 #include "../alposecontinuity.h"
+#include "../../llcharacter/alloopseam.h"
+#include "../../llcharacter/llcharacter.h"
+#include "../../llcharacter/llkeyframemotion.h"
 #include "../alcontactstab.h"
 #include "../alposesecondary.h"
 
@@ -90,6 +94,86 @@ inline bool finiteVec(const LLVector3& v)
 {
     return std::isfinite(v.mV[VX]) && std::isfinite(v.mV[VY]) && std::isfinite(v.mV[VZ]);
 }
+
+// Minimal skeleton for the real keyframe update path (hand data + constraints).
+class SeamCharacter final : public LLCharacter
+{
+public:
+    LLJoint mJoint;
+    const char* getAnimationPrefix() override { return ""; }
+    LLJoint* getRootJoint() override { return &mJoint; }
+    LLVector3 getCharacterPosition() override { return LLVector3(); }
+    LLQuaternion getCharacterRotation() override { return LLQuaternion(); }
+    LLVector3 getCharacterVelocity() override { return LLVector3(); }
+    LLVector3 getCharacterAngularVelocity() override { return LLVector3(); }
+    void getGround(const LLVector3& in, LLVector3& out, LLVector3& normal) override
+    { out = in; normal = LLVector3::z_axis; }
+    LLJoint* getCharacterJoint(U32) override { return &mJoint; }
+    F32 getTimeDilation() override { return 1.f; }
+    F32 getPixelArea() const override { return 1.f; }
+    LLPolyMesh* getHeadMesh() override { return nullptr; }
+    LLPolyMesh* getUpperBodyMesh() override { return nullptr; }
+    LLVector3d getPosGlobalFromAgent(const LLVector3&) override { return LLVector3d(); }
+    LLVector3 getPosAgentFromGlobal(const LLVector3d&) override { return LLVector3(); }
+    void addDebugText(const std::string&) override {}
+    const LLUUID& getID() const override { return LLUUID::null; }
+};
+
+class SeamMotion final : public LLKeyframeMotion
+{
+public:
+    explicit SeamMotion(SeamCharacter& character, bool open)
+    : LLKeyframeMotion(LLUUID::generateNewID())
+    {
+        mCharacter = &character;
+        mJointMotionList = &mClip;
+        mClip.mDuration = mClip.mLoopOutPoint = 1.f;
+        mClip.mLoopInPoint = 0.f;
+        mClip.mLoop = true;
+        mStopped = false;
+        // Joint 1 remains closed even in the asset containing an open joint.
+        for (S32 j = 0; j < 2; ++j)
+        {
+            JointMotion* jm = new JointMotion;
+            mClip.mJointMotionArray.push_back(jm);
+            jm->mUsage = LLJointState::ROT | LLJointState::POS | LLJointState::SCALE;
+            jm->mPriority = LLJoint::LOW_PRIORITY;
+            const F32 gap = open && j == 0 ? 0.004f : 0.f;
+            const F32 times[] = {0.f, 0.2f, 0.8f, 1.f};
+            const F32 values[] = {0.f, 0.12f, gap - 0.12f, gap};
+            for (S32 k = 0; k < 4; ++k)
+            {
+                const F32 v = values[k];
+                jm->mRotationCurve.mKeys.emplace(times[k], RotationKey(times[k], rotZ(0.3f + 5.f * v)));
+                jm->mPositionCurve.mKeys.emplace(times[k], PositionKey(times[k], LLVector3(v, -0.f, 0.2f)));
+                jm->mScaleCurve.mKeys.emplace(times[k], ScaleKey(times[k], LLVector3(1.f + v, 0.9f, 1.1f)));
+            }
+            jm->mRotationCurve.mNumKeys = jm->mPositionCurve.mNumKeys = jm->mScaleCurve.mNumKeys = 4;
+            LLPointer<LLJointState> state = new LLJointState(&character.mJoint);
+            state->setUsage(jm->mUsage);
+            mJointStates.push_back(state);
+        }
+    }
+    ~SeamMotion() override { sLoopSeamCache.erase(getID()); }
+    const LLJointState& state(S32 j = 0) const { return *mJointStates[j]; }
+    bool blending() const { return mSeamBlendActive; }
+    F32 elapsed() const { return mSeamBlendElapsed; }
+    const ALLoopSeam::Offset& offset() const { return mSeamCapturedPose[0]; }
+private:
+    JointMotionList mClip;
+};
+
+struct SeamGateReset
+{
+    ~SeamGateReset() { LLKeyframeMotion::resetLoopSeamRepairEnabled(); }
+};
+
+void ensureSamePose(const LLJointState& a, const LLJointState& b)
+{
+    ensure("closed rotation equals stock exactly", bitwiseEqual(a.getRotation(), b.getRotation()));
+    ensure("closed position equals stock exactly", bitwiseEqual(a.getPosition(), b.getPosition()));
+    ensure("closed scale equals stock exactly", bitwiseEqual(a.getScale(), b.getScale()));
+}
 } // namespace
 
 struct alposepolish_data {};
@@ -156,8 +240,7 @@ void alposepolish_test_object::test<3>()
     }
 }
 
-// Invariant 2: on a transition (flagged or self-detected) the first output
-// reproduces the old displayed pose — no snap.
+// Invariant 2: a transition from rest reproduces the old displayed pose.
 template<> template<>
 void alposepolish_test_object::test<4>()
 {
@@ -290,19 +373,18 @@ void alposepolish_test_object::test<6>()
     {
         LLQuaternion r = rest_rot; LLVector3 p = rest_pos;
         inertialize(a, r, p, dt, 0.12f, 0.12f, true);
-        ensure("moving capture: first output holds the old pose",
-               angleBetween(r, rotZ(rot_speed * dt * 30.f)) < 1e-3f);
+        ensure("moving capture: first output advances the old pose",
+               angleBetween(r, rotZ(rot_speed * dt * 31.f)) < 1e-3f);
+        ensure_distance("moving capture: first position advances", p.mV[VX], pos_speed * dt * 31.f, 1e-5f);
     }
     {
         LLQuaternion r = rest_rot; LLVector3 p = rest_pos;
         inertialize(b, r, p, dt, 0.12f, 0.12f, true);
     }
 
-    // The seeded offset velocity reflects the tracked display velocity.
-    ensure("seeded rot offset velocity ~ +2 rad/s about Z",
-           a.mRotOffsetVel.mV[VZ] > 1.5f && fabsf(a.mRotOffsetVel.mV[VZ] - rot_speed) < 0.5f);
-    ensure("seeded pos offset velocity ~ +0.5 m/s along X",
-           a.mPosOffsetVel.mV[VX] > 0.3f);
+    // Until a new-stream step exists, seed display minus tracked input.
+    ensure("moving capture provisionally subtracts tracked input velocity",
+           a.mRotOffsetVel.length() < 1e-3f && a.mPosOffsetVel.length() < 1e-4f);
     ensure("static capture has ~zero seed velocity",
            b.mRotOffsetVel.length() < 1e-3f && b.mPosOffsetVel.length() < 1e-4f);
 
@@ -973,6 +1055,214 @@ void alposepolish_test_object::test<20>()
            fabsf(h.mSpinePitch - 0.5f * full.mSpinePitch) < 1e-6f);
     ensure("sway amp does not touch breath",
            bitwiseEqual(h.mChestPitch, full.mChestPitch));
+}
+
+
+// M4: closed seams are bit-identical even for nontrivial transforms.
+template<> template<>
+void alposepolish_test_object::test<21>()
+{
+    ALLoopSeam::Offset offset;
+    const LLQuaternion r = rotZ(0.7f);
+    const LLVector3 p(0.3f, -0.2f, 0.1f), scale(1.1f, 0.9f, 1.2f);
+    offset.capture(r, p, scale, r, p, scale);
+    for (S32 i = 0; i <= 6; ++i)
+    {
+        const F32 ease = ALLoopSeam::weight(i / 30.f, 0.15f);
+        const LLQuaternion live_rot = rotZ(0.7f + i * 0.01f);
+        const LLVector3 live_pos = p + LLVector3(i * 0.001f, 0.f, 0.f);
+        ensure("closed rotation exact", bitwiseEqual(offset.rotation(live_rot, ease), live_rot));
+        ensure("closed position exact", bitwiseEqual(ALLoopSeam::Offset::vector(live_pos, offset.mPosition, ease), live_pos));
+        ensure("closed scale exact", bitwiseEqual(ALLoopSeam::Offset::vector(scale, offset.mScale, ease), scale));
+    }
+}
+
+// M4: open seam continuity, correct composition order, and exact convergence.
+template<> template<>
+void alposepolish_test_object::test<22>()
+{
+    ALLoopSeam::Offset offset;
+    LLQuaternion curve;
+    curve.setAngleAxis(0.4f, 1.f, 0.f, 0.f);
+    const LLQuaternion previous = rotZ(0.2f) * curve;
+    const LLVector3 p(0.2f, 0.3f, 0.4f), scale(1.2f, 0.8f, 1.1f);
+    offset.capture(previous, p, scale, curve, LLVector3(), LLVector3(1.f, 1.f, 1.f));
+    ensure("rotation continuous at seam", angleBetween(offset.rotation(curve, 1.f), previous) < 1e-5f);
+    ensure("position continuous at seam", bitwiseEqual(ALLoopSeam::Offset::vector(LLVector3(), offset.mPosition, 1.f), p));
+    ensure("scale continuous at seam", (ALLoopSeam::Offset::vector(LLVector3(1.f, 1.f, 1.f), offset.mScale, 1.f) - scale).length() < 1e-6f);
+    const F32 done = ALLoopSeam::weight(0.15f, 0.15f);
+    ensure("rotation converged exactly", bitwiseEqual(offset.rotation(curve, done), curve));
+    ensure("position converged exactly", bitwiseEqual(ALLoopSeam::Offset::vector(p, offset.mPosition, done), p));
+    ensure("scale converged exactly", bitwiseEqual(ALLoopSeam::Offset::vector(scale, offset.mScale, done), scale));
+
+    SeamGateReset reset;
+    for (F32 fps : {30.f, 60.f})
+    for (F32 fraction : {0.1f, 0.5f, 1.f})
+    for (bool open : {false, true})
+    for (bool external : {false, true})
+    {
+        const F32 dt = 1.f / fps;
+        const F32 b = fraction * dt;
+        const F32 gap = open ? 0.004f : 0.f;
+        SeamCharacter character, stock_character;
+        SeamMotion motion(character, open), stock(stock_character, open);
+        LLKeyframeMotion::setLoopSeamRepairEnabled(true);
+        ensure("activate repaired motion", motion.onActivate());
+        LLKeyframeMotion::setLoopSeamRepairEnabled(false);
+        ensure("activate stock motion", stock.onActivate());
+        const LLUUID owner = LLUUID::generateNewID();
+        if (external)
+        {
+            ensure("claim repaired clock", motion.claimPresentationControl(owner));
+            ensure("claim stock clock", stock.claimPresentationControl(owner));
+        }
+        auto sample = [&](F32 t)
+        {
+            if (external)
+            {
+                const F32 looped = t > 1.f ? fmodf(t, 1.f) : t;
+                ensure("external repaired sample", motion.setExternalSampleTime(owner, looped, 1000.0 + t));
+                ensure("external stock sample", stock.setExternalSampleTime(owner, looped, 1000.0 + t));
+            }
+            LLKeyframeMotion::setLoopSeamRepairEnabled(true);
+            ensure("repaired update", motion.onUpdate(t, nullptr));
+            LLKeyframeMotion::setLoopSeamRepairEnabled(false);
+            ensure("stock update", stock.onUpdate(t, nullptr));
+            ensureSamePose(motion.state(1), stock.state(1));
+            if (!open) ensureSamePose(motion.state(), stock.state());
+        };
+        sample(1.f + b - dt);
+        ensure("first sample cannot wrap", !motion.blending());
+        const F32 before = motion.state().getPosition().mV[VX];
+        const F32 before_scale = motion.state().getScale().mV[VX];
+        const LLQuaternion before_rot = motion.state().getRotation();
+        for (S32 i = 0; i < 10; ++i)
+        {
+            sample(1.f + b + i * dt);
+            const F32 elapsed = motion.getLastUpdateTime();
+            const F32 w = ALLoopSeam::weight(elapsed, 0.15f);
+            const F32 out = motion.state().getPosition().mV[VX];
+            const F32 raw = stock.state().getPosition().mV[VX];
+            ensure_distance("live curve retains unit weight", out, raw + w * gap, 2e-6f);
+            if (elapsed <= 0.2f)
+            {
+                ensure_distance("authored progress is 1, 2, 3, ... frames",
+                                (out - before + (1.f - w) * gap) / (0.6f * dt),
+                                static_cast<F32>(i + 1), 2e-5f);
+            }
+            ensure_distance("scale uses authored endpoint delta", motion.state().getScale().mV[VX],
+                            stock.state().getScale().mV[VX] + w * gap, 2e-6f);
+            const LLQuaternion expected = slerp(w, LLQuaternion(), rotZ(5.f * gap)) * stock.state().getRotation();
+            ensure("rotation uses authored endpoint delta", angleBetween(motion.state().getRotation(), expected) < 1e-4f);
+            if (i == 0)
+            {
+                ensure_distance("wrap window starts at actual overshoot", motion.elapsed(), b, 2e-7f);
+                ensure("FIRST post-wrap linear step >= 0.9 nominal", out - before >= 0.9f * 0.6f * dt);
+                ensure("FIRST post-wrap angular step >= 0.9 nominal",
+                       angleBetween(motion.state().getRotation(), before_rot) >= 0.9f * 3.f * dt);
+                ensure("FIRST post-wrap scale step >= 0.9 nominal",
+                       motion.state().getScale().mV[VX] - before_scale >= 0.9f * 0.6f * dt);
+                // Remove only the known endpoint-gap decay: authored progress is
+                // exactly one frame, even as b approaches zero.
+                ensure_distance("first authored progress is one full frame",
+                                (out - before + (1.f - w) * gap) / (0.6f * dt), 1.f, 2e-5f);
+            }
+            if (elapsed >= 0.15f) ensureSamePose(motion.state(), stock.state());
+        }
+    }
+
+    // A hitch may cross multiple cycles without decreasing the looped time.
+    // It produces one repair, seeded from the final overshoot, without v*dt.
+    for (bool external : {false, true})
+    for (bool two_crossings : {false, true})
+    {
+        SeamCharacter character, stock_character;
+        SeamMotion motion(character, true), stock(stock_character, true);
+        LLKeyframeMotion::setLoopSeamRepairEnabled(true);
+        motion.onActivate();
+        LLKeyframeMotion::setLoopSeamRepairEnabled(false);
+        stock.onActivate();
+        const LLUUID owner = LLUUID::generateNewID();
+        motion.claimPresentationControl(owner);
+        stock.claimPresentationControl(owner);
+        auto sample = [&](F32 looped, F64 clock, bool seek = false)
+        {
+            if (two_crossings) clock += 1.0;
+            if (external)
+            {
+                ensure("hitch clock", motion.setExternalSampleTime(owner, looped, clock, seek));
+                ensure("stock hitch clock", stock.setExternalSampleTime(owner, looped, clock, seek));
+            }
+            LLKeyframeMotion::setLoopSeamRepairEnabled(true);
+            motion.onUpdate(static_cast<F32>(clock), nullptr);
+            LLKeyframeMotion::setLoopSeamRepairEnabled(false);
+            stock.onUpdate(static_cast<F32>(clock), nullptr);
+            ensureSamePose(motion.state(1), stock.state(1));
+        };
+        sample(two_crossings ? 0.9f : 0.01f, two_crossings ? -0.1 : 0.01);
+        sample(0.05f, 1.05); // dt > one cycle; looped time increases
+        ensure("multi-cycle crossing detected", motion.blending());
+        ensure_distance("hitch overshoot seeded", motion.elapsed(), 0.05f, 2e-7f);
+        ensure_distance("hitch captures only authored gap", motion.offset().mPosition.mV[VX], 0.004f, 1e-6f);
+        const F32 residual = motion.state().getPosition().mV[VX] - stock.state().getPosition().mV[VX];
+        sample(0.02f, 2.02);
+        ensure("second wrap detected during correction", motion.blending());
+        ensure_distance("in-flight correction composed with authored gap",
+                        motion.offset().mPosition.mV[VX], 0.004f + residual, 1e-6f);
+        if (external)
+        {
+            sample(0.03f, 2.03, true);
+            ensure("clock revision discards in-flight correction", !motion.blending());
+            ensureSamePose(motion.state(), stock.state());
+            sample(0.99f, 1.99); // backward clock revision
+            ensure("backward seek cannot become wrap", !motion.blending());
+            ensureSamePose(motion.state(), stock.state());
+            sample(0.01f, 2.01);
+            ensure("forward wrap after revision repairs again", motion.blending());
+            ensure("restore native clock", motion.useNativePresentationClock(owner));
+            ensure("restore stock native clock", stock.useNativePresentationClock(owner));
+            LLKeyframeMotion::setLoopSeamRepairEnabled(true);
+            motion.onUpdate(2.02f, nullptr);
+            LLKeyframeMotion::setLoopSeamRepairEnabled(false);
+            stock.onUpdate(2.02f, nullptr);
+            ensure("clock mode revision clears correction", !motion.blending());
+            ensureSamePose(motion.state(), stock.state());
+        }
+    }
+}
+
+// M1: a moving incoming stream must not add its velocity a second time.
+template<> template<>
+void alposepolish_test_object::test<23>()
+{
+    for (F32 fps : {30.f, 60.f})
+    for (bool flagged : {false, true})
+    {
+        InertiaJoint s;
+        const F32 dt = 1.f / fps;
+        for (S32 i = 0; i <= 10; ++i)
+        {
+            LLQuaternion r = rotZ(i * dt);
+            LLVector3 p(i * dt, 0.f, 0.f);
+            inertialize(s, r, p, dt, 100.f, 100.f, false);
+        }
+        const LLVector3 before_pos = s.mLastPos;
+        const LLQuaternion before_rot = s.mLastRot;
+        // A >7 degree seam self-detects even with seam repair off / short loops.
+        // Same velocity on a shifted stream; long half-life isolates velocity.
+        LLQuaternion r = rotZ(-0.4f);
+        LLVector3 p(-0.4f, 0.f, 0.f);
+        inertialize(s, r, p, dt, 100.f, 100.f, flagged);
+        ensure_distance("capture-frame linear step is dt", (p - before_pos).mV[VX], dt, 1e-5f);
+        ensure_distance("capture-frame angular step is dt", angleBetween(r, before_rot), dt, 1e-5f);
+        const LLVector3 previous_pos = p;
+        const LLQuaternion previous_rot = r;
+        r = rotZ(-0.4f + dt);
+        p = LLVector3(-0.4f + dt, 0.f, 0.f);
+        inertialize(s, r, p, dt, 100.f, 100.f, false);
+        ensure_distance("incoming linear velocity counted once", (p - previous_pos).mV[VX], dt, 1e-5f);
+        ensure_distance("incoming angular velocity counted once", angleBetween(r, previous_rot), dt, 1e-5f);
+    }
 }
 
 } // namespace tut

@@ -1287,7 +1287,8 @@ bool ALDanceBall::ensureMotion(LLVOAvatar* avatar, MotionHandle& handle,
         return false;
     }
     motion->setExternalSampleTime(handle.mToken, static_cast<F32>(
-        std::clamp(sample, 0.0, static_cast<F64>(std::numeric_limits<F32>::max()))));
+        std::clamp(sample, 0.0, static_cast<F64>(std::numeric_limits<F32>::max()))),
+        handle.mSampleClock.time());
     motion->setPresentationWeight(handle.mToken, llclamp(weight, 0.f, 1.f));
     handle.mWeight = llclamp(weight, 0.f, 1.f);
     if (!keyframe->isLoaded() ||
@@ -1311,7 +1312,8 @@ bool ALDanceBall::ensureMotion(LLVOAvatar* avatar, MotionHandle& handle,
             motion->setOwnerManagedLifetime(handle.mToken, true);
             motion->setPresentationJointExclusion(handle.mToken,
                 mTiming.mDanceDrivesFace ? nullptr : &LLMotion::isFaceJoint);
-            motion->setExternalSampleTime(handle.mToken, static_cast<F32>(sample));
+            motion->setExternalSampleTime(handle.mToken, static_cast<F32>(sample),
+                                          handle.mSampleClock.time());
             motion->setPresentationWeight(handle.mToken, handle.mWeight);
         }
         F64 activation_offset = keyframe->getLoopIn();
@@ -1365,7 +1367,8 @@ bool ALDanceBall::ensureMotion(LLVOAvatar* avatar, MotionHandle& handle,
     motion->setPriorityOverride(mTiming.mPriority >= 0
         ? mTiming.mPriority : handle.mSavedPriority);
     motion->setExternalSampleTime(handle.mToken, static_cast<F32>(
-        std::clamp(sample, 0.0, static_cast<F64>(std::numeric_limits<F32>::max()))));
+        std::clamp(sample, 0.0, static_cast<F64>(std::numeric_limits<F32>::max()))),
+        handle.mSampleClock.time());
     motion->setPresentationWeight(handle.mToken, llclamp(weight, 0.f, 1.f));
     state = DancerState::PLAYING;
     return true;

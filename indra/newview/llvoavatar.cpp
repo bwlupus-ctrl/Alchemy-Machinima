@@ -5686,7 +5686,8 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
     // [Machinima] Push the Pose Polish M3 phase-aware-locomotion gate into the
     // walk motion. llcharacter has no settings access, so mirror the
     // LLHeadRotMotion/LLEyeMotion static-push pattern; do it once per frame from
-    // self. Default false => the walk cadence is byte-identical to stock.
+    // self. settings.xml ships these gates on; disabling them restores stock
+    // behavior. Loop seam is independent of the Inertia gate.
     if (isSelf())
     {
         static LLCachedControl<bool> polish_en(gSavedSettings, "ALPolishEnabled", false);

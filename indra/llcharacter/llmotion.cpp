@@ -54,6 +54,8 @@ LLMotion::LLMotion( const LLUUID &id ) :
     mPriorityOverride(-1),
     mPresentationClockMode(PresentationClockMode::NATIVE),
     mExternalSampleTime(0.f),
+    mExternalSampleClockTime(0.0),
+    mPresentationClockRevision(0),
     mPresentationWeight(1.f),
     mOwnerManagedLifetime(false),
     mPresentationJointExclusion(nullptr),
@@ -231,10 +233,23 @@ bool LLMotion::setOwnerManagedLifetime(const LLUUID& owner, bool managed)
 
 bool LLMotion::setExternalSampleTime(const LLUUID& owner, F32 sample_time)
 {
-    if (!isPresentationControlledBy(owner) || !supportsExternalSampling() || !llfinite(sample_time))
+    return setExternalSampleTime(owner, sample_time, static_cast<F64>(sample_time));
+}
+
+bool LLMotion::setExternalSampleTime(const LLUUID& owner, F32 sample_time,
+                                     F64 sample_clock, bool discontinuity)
+{
+    if (!isPresentationControlledBy(owner) || !supportsExternalSampling() ||
+        !llfinite(sample_time) || !llfinite(sample_clock))
     {
         return false;
     }
+    const F64 clock = llmax(0.0, sample_clock);
+    if (!usesExternalSampleClock() || discontinuity || clock < mExternalSampleClockTime)
+    {
+        ++mPresentationClockRevision;
+    }
+    mExternalSampleClockTime = clock;
     mExternalSampleTime = llmax(0.f, sample_time);
     mPresentationClockMode = PresentationClockMode::EXTERNAL_SAMPLE;
     return true;
@@ -246,8 +261,10 @@ bool LLMotion::useNativePresentationClock(const LLUUID& owner)
     {
         return false;
     }
+    ++mPresentationClockRevision;
     mPresentationClockMode = PresentationClockMode::NATIVE;
     mExternalSampleTime = 0.f;
+    mExternalSampleClockTime = 0.0;
     return true;
 }
 
@@ -293,8 +310,10 @@ void LLMotion::resetPresentationControl()
 {
     const bool had_joint_exclusion = mPresentationJointExclusion != nullptr;
     mPresentationOwner.setNull();
+    ++mPresentationClockRevision;
     mPresentationClockMode = PresentationClockMode::NATIVE;
     mExternalSampleTime = 0.f;
+    mExternalSampleClockTime = 0.0;
     mPresentationWeight = 1.f;
     mOwnerManagedLifetime = false;
     mPresentationJointExclusion = nullptr;

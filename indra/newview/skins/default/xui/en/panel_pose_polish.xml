@@ -182,7 +182,7 @@
    layout="topleft"
    left="15"
    name="polish_loopseam_check"
-   tool_tip="Repairs the one-frame hitch at a looping animation's seam by pulsing the inertializer across the wrap. Off = no-op. Requires the master switch above and Transition inertialization."
+   tool_tip="Smooths real loop-seam pose gaps over 0.15 seconds. Closed loops stay unchanged. Requires the master switch above; works independently of Transition inertialization."
    top="326"
    width="330" />
 

@@ -1233,13 +1233,13 @@ private:
     void stopLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle);
     bool setLocalMotionSample(LLVOAvatar* av, LocalMotionHandle& handle,
                               F64 traveled_distance, F32 nominal_speed,
-                              F32 phase_origin = 0.f);
+                              F32 phase_origin = 0.f, bool discontinuity = false);
     bool setLocalMotionWeight(LLVOAvatar* av, LocalMotionHandle& handle, F32 weight);
     F32 resolveLocalMotionPhase(LLVOAvatar* av, const LocalMotionHandle& handle,
                                 F32 configured_phase) const;
     void startLocomotion(LLVOAvatar* av, Move& mv);
     void stopLocomotion(LLVOAvatar* av, Move& mv);
-    void updateLocomotionSample(LLVOAvatar* av, Move& mv);
+    void updateLocomotionSample(LLVOAvatar* av, Move& mv, bool discontinuity = false);
     bool resolveLocomotionRole(LLVOAvatar* av, S32 requested_role,
                                LLUUID& anim, F32& nominal_speed,
                                F32& phase_origin, bool& allow_ao) const;

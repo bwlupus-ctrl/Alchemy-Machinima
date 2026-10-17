@@ -18,8 +18,8 @@
  *  - Settled + no transition + continuous input => the input passes through
  *    BIT-IDENTICAL (no quaternion multiply runs on that path at all).
  *  - On a transition (caller-flagged, or self-detected value jump beyond a
- *    velocity-consistent threshold) the first output reproduces the last
- *    DISPLAYED pose exactly and carries its tracked velocity.
+ *    velocity-consistent threshold) the first output advances the last
+ *    DISPLAYED pose by its tracked velocity times dt.
  *  - The captured offset decays to identity/zero with a critically damped
  *    response evaluated in quaternion-log (angle-axis) space, then snaps to
  *    exactly identity/zero so the authored animation is reproduced bit-for-bit
@@ -88,6 +88,7 @@ struct InertiaJoint
     LLVector3    mInputPosVel;      // raw input linear velocity, m/s
     bool         mRotSettled = true;
     bool         mPosSettled = true;
+    bool         mRefineInputVelocity = false; // first measured step of a new stream
 };
 
 // ---------------------------------------------------------------------------
@@ -218,20 +219,22 @@ inline void inertialize(InertiaJoint& s, LLQuaternion& io_rot, LLVector3& io_pos
 
     if (jump)
     {
-        // Capture the offset of the last DISPLAYED pose relative to the new
-        // input, so that (offset composed with input) == old displayed pose.
-        LLQuaternion rot_off = s.mLastRot * ~in_rot;
+        // Advance the last displayed pose through this frame before capturing.
+        // A discontinuity must not insert a held frame into a moving stream.
+        const LLQuaternion target_rot = dt_ok
+            ? detail::quatExp(s.mDispRotVel * dt) * s.mLastRot : s.mLastRot;
+        const LLVector3 target_pos = dt_ok
+            ? s.mLastPos + s.mDispPosVel * dt : s.mLastPos;
+        LLQuaternion rot_off = target_rot * ~in_rot;
         rot_off.normalize();
         const LLVector3 rot_off_log = detail::quatLog(rot_off);
-        const LLVector3 pos_off = s.mLastPos - in_pos;
+        const LLVector3 pos_off = target_pos - in_pos;
 
-        // Seed the offset velocity from the tracked display velocity. The new
-        // stream's own velocity is unobservable on the capture frame (only one
-        // sample of it exists yet), so it is taken as zero here; from the next
-        // frame on the new input's motion rides through the composition while
-        // the offset decays independently.
-        const LLVector3 rot_vel = s.mDispRotVel;
-        const LLVector3 pos_vel = s.mDispPosVel;
+        // Output velocity = input velocity + offset velocity. Use the tracked
+        // input as the initial estimate; never differentiate across the jump.
+        // Refine it from the first actual new-stream step before decaying.
+        const LLVector3 rot_vel = s.mDispRotVel - s.mInputRotVel;
+        const LLVector3 pos_vel = s.mDispPosVel - s.mInputPosVel;
 
         s.mRotSettled = rot_off_log.length() < SETTLE_ROT_EPS &&
                         rot_vel.length() < SETTLE_ROT_VEL_EPS;
@@ -261,19 +264,28 @@ inline void inertialize(InertiaJoint& s, LLQuaternion& io_rot, LLVector3& io_pos
 
         s.mSettled = s.mRotSettled && s.mPosSettled;
 
-        // No decay on the capture frame: the first post-transition output must
-        // reproduce the old displayed pose. Input velocity tracking restarts
-        // for the new stream.
-        s.mInputRotVel = LLVector3();
-        s.mInputPosVel = LLVector3();
+        // No decay on the capture frame: output the velocity-advanced pose.
+        // Retain the velocity estimate until
+        // the first measurable new-stream step can replace it.
+        s.mRefineInputVelocity = true;
     }
     else
     {
         if (dt_ok)
         {
             const F32 oodt = 1.f / dt;
-            s.mInputRotVel = rot_step * oodt;
-            s.mInputPosVel = pos_step * oodt;
+            const LLVector3 new_rot_vel = rot_step * oodt;
+            const LLVector3 new_pos_vel = pos_step * oodt;
+            if (s.mRefineInputVelocity)
+            {
+                s.mRotOffsetVel += s.mInputRotVel - new_rot_vel;
+                s.mPosOffsetVel += s.mInputPosVel - new_pos_vel;
+                s.mRotSettled = s.mRotSettled && s.mRotOffsetVel.length() < SETTLE_ROT_VEL_EPS;
+                s.mPosSettled = s.mPosSettled && s.mPosOffsetVel.length() < SETTLE_POS_VEL_EPS;
+                s.mRefineInputVelocity = false;
+            }
+            s.mInputRotVel = new_rot_vel;
+            s.mInputPosVel = new_pos_vel;
         }
 
         if (!s.mRotSettled)

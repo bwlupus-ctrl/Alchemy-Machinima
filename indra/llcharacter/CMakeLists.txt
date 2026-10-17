@@ -30,6 +30,7 @@ target_sources(llcharacter
     FILE_SET HEADERS
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
+    alloopseam.h
     llanimationstates.h
     llbvhloader.h
     llbvhconsts.h

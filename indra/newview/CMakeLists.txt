@@ -2875,11 +2875,10 @@ if (BUILD_TESTING)
     "${test_project}"
   )
 
-  # [Machinima] Pose Polish pure-math modules (inertialization, contact, etc.);
-  # header-only, TUT registered directly like ALGazeMath.
+  # Pose Polish math plus the real keyframe loop-seam update path.
   LL_ADD_INTEGRATION_TEST(alposepolish
     ""
-    "${test_libs}"
+    "${test_libs};llcharacter"
     "${test_project}"
   )
 
