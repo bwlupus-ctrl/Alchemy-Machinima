@@ -9,6 +9,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "altron.h"
 
@@ -265,33 +266,6 @@ const char* const kAllSettings[] = {
 const char* const kDirectorExcluded[] = {
     "TronPresetAlsoRoto",
     "TronPresetAlsoRigRim",
-};
-
-// Exact direct-write set for applyPreset(), including colours written by
-// applyPalettePreset(). Optional linked Roto/Rig presets track themselves.
-const char* const kLookSettings[] = {
-    "TronPalette", "TronColorPrimary", "TronColorSecondary", "TronColorAccent", "TronColorPulse",
-    "TronPulseRate", "TronPulseShape", "TronPulseAmount",
-    "TronGradeStrength", "TronGradeDarkenEV", "TronGradeDesaturate", "TronGradeCrush",
-    "TronGradeTint", "TronGradeTintAmount", "TronGradeKeepBrightLo", "TronGradeKeepBrightHi",
-    "TronGradeKeepSubject", "TronGradeSkyDarken",
-    "TronGridEnabled", "TronGridIntensity", "TronGridSpacing", "TronGridWidth", "TronGridMinWidthPx",
-    "TronGridMajorEvery", "TronGridMajorWidth", "TronGridMajorIntensity", "TronGridFarFade",
-    "TronGridFloor", "TronGridWall", "TronGridCeiling", "TronGridSharpness", "TronGridNormalSource",
-    "TronGridGlow", "TronGridWaterMode", "TronGridWaterTolerance",
-    "TronPulseGridAmount", "TronPulseGridSpeed", "TronPulseGridLength", "TronPulseGridWavelength",
-    "TronPulseGridDensity", "TronPulseGridDirection", "TronPulseGridColorMode", "TronPulseSeed",
-    "TronTraceEnabled", "TronTraceIntensity", "TronTraceCell", "TronTraceWidth", "TronTraceDensity",
-    "TronTracePadRadius", "TronTraceDiagonal", "TronTraceWalls", "TronTraceFloors",
-    "TronTracePulseAmount", "TronTracePulseSpeed", "TronTracePulseLength", "TronTraceSeed",
-    "TronRimEnabled", "TronRimGain", "TronRimExponent", "TronRimSilhouetteGain",
-    "TronRimSilhouetteThreshold", "TronRimPulseAmount", "TronRimScanAmount", "TronRimScanSpeed",
-    "TronRimScanWidth", "TronRimColorMode", "TronRimRejectFloors",
-    "TronTrailEnabled", "TronTrailStyle", "TronTrailIntensity", "TronTrailColorMode",
-    "TronTrailHeight", "TronTrailWidth", "TronTrailScaleToAvatar", "TronTrailFadeTime",
-    "TronTrailFadeCurve", "TronTrailEdge", "TronTrailEdgeGain", "TronTrailBodyGain",
-    "TronTrailGlow", "TronTrailFog", "TronTrailFogDensity",
-    "CineRigRimTronMode", "CineRigRimTronMix", "CineRigRimTronColorSource"
 };
 
 bool sPaletteSettingWrite = false;
@@ -692,12 +666,15 @@ ALTron::Palette ALTron::palette()
 // [TronT0]
 void ALTron::applyPalettePreset(S32 id)
 {
+    if (ALPresetLook::replaying()) return;
     for (const NamedPalette& row : kPalettes)
     {
         if (row.mId == id)
         {
+            ALPresetLook::Load load;
             const bool was_writing = sPaletteSettingWrite;
             sPaletteSettingWrite = true;
+            ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::TRON_PALETTE));
             gSavedSettings.setUntypedValue("TronColorPrimary",
                 LLColor3(row.mPr, row.mPg, row.mPb).getValue());
             gSavedSettings.setUntypedValue("TronColorSecondary",
@@ -737,7 +714,7 @@ void ALTron::initializeSettingSync()
             sPaletteSettingConnections.emplace_back(color->getSignal()->connect(
                 [](LLControlVariable*, const LLSD&, const LLSD&)
                 {
-                    if (!sPaletteSettingWrite && gSavedSettings.getS32("TronPalette") != 0)
+                    if (!sPaletteSettingWrite && !ALPresetLook::replaying() && gSavedSettings.getS32("TronPalette") != 0)
                     {
                         const bool was_writing = sPaletteSettingWrite;
                         sPaletteSettingWrite = true;
@@ -1580,6 +1557,7 @@ void ALTron::renderTrails(const ALTron::TrailDrawParams& p)
 // the flag was off at the time.
 void ALTron::applyPreset(const std::string& key)
 {
+    if (ALPresetLook::replaying()) return;
     const LookPreset* row = nullptr;
     for (const LookPreset& p : kLookPresets)
     {
@@ -1593,6 +1571,9 @@ void ALTron::applyPreset(const std::string& key)
     {
         return; // unknown preset key: leave settings untouched
     }
+
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::TRON));
 
     // Common column (T1 contract section 8; T2 contract section 8.1 moves
     // TronGradeStrength/TronGridEnabled/TronGridWall/TronGridCeiling/
@@ -1908,8 +1889,7 @@ const std::vector<std::string>& ALTron::settings()
 
 const std::vector<std::string>& ALTron::lookSettings()
 {
-    static const std::vector<std::string> s_settings(std::begin(kLookSettings), std::end(kLookSettings));
-    return s_settings;
+    return ALPresetLook::owned(ALPresetLook::TRON);
 }
 
 // [TronT0]

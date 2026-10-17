@@ -1267,6 +1267,7 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
                 if (LLView::sMouseHandlerRecorder)
                     if (LLView* captor_view = dynamic_cast<LLView*>(mouse_captor))
                         LLView::sMouseHandlerRecorder(captor_view);
+                ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(dynamic_cast<LLView*>(mouse_captor)));
                 r = mouse_captor->handleAnyMouseClick(local_x, local_y, mask, clicktype, down);
             }
             if (r) {
@@ -3421,6 +3422,7 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
     ALKitHistory::noteKey();
 
     LLFocusableElement* keyboard_focus = gFocusMgr.getKeyboardFocus();
+    ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(dynamic_cast<LLView*>(keyboard_focus)));
 
     if (keyboard_focus
         && !gFocusMgr.getKeystrokesOnly())
@@ -3765,6 +3767,7 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
 bool LLViewerWindow::handleUnicodeChar(llwchar uni_char, MASK mask)
 {
     if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
+    ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus())));
     // HACK:  We delay processing of return keys until they arrive as a Unicode char,
     // so that if you're typing chat text at low frame rate, we don't send the chat
     // until all keystrokes have been entered. JC
@@ -3829,6 +3832,7 @@ void LLViewerWindow::handleScrollWheel(LLScrollDelta delta)
         S32 local_x;
         S32 local_y;
         mouse_captor->screenPointToLocal( mCurrentMousePoint.mX, mCurrentMousePoint.mY, &local_x, &local_y );
+        ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(dynamic_cast<LLView*>(mouse_captor)));
         mouse_captor->handleScrollWheel(local_x, local_y, delta);
         if (LLView::sDebugMouseHandling)
         {

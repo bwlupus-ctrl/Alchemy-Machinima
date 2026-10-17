@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
@@ -3688,9 +3689,12 @@ void ALCineLightRig::applyVolumetricBlock(const CineVolumetricBlock& block)
 
 bool ALCineLightRig::loadSetup(const std::string& name)
 {
+    if (ALPresetLook::replaying()) return false;
     Setup setup;
     OptionalSetupGlobals setup_globals;
     CineVolumetricBlock volumetric;
+    LLSD look_values;
+    LLSD look_shafts;
     if (const MasterSetup* master = findMasterSetup(name))
     {
         setup = master->mSetup;
@@ -3720,15 +3724,54 @@ bool ALCineLightRig::loadSetup(const std::string& name)
         }
         setup_globals = optionalSetupGlobalsFromLLSD(preset);
         volumetric = volumetricBlockFromLLSD(preset);
+        look_values = preset["look_settings"];
+        look_shafts = preset["look_shafts"];
     }
     // Preserve the transition target so the next tick eases from the
     // currently-lit state to this setup over CineLightRigTransitionSec.
     // On the very first load nothing is lit yet (mHaveTarget is false) so
     // updateTransition still snaps, which is the intended first-load behavior.
+    ALPresetLook::Load load;
+    std::array<bool, LIGHT_COUNT> old_shafts{};
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        old_shafts[i] = isShaftEnabled(i);
+        setShaftEnabled(i, false);
+    }
     stopFX(true);
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::LIGHT_RIG));
     writeSetupToSettings(setup);
     applyOptionalSetupGlobals(setup_globals);
     applyVolumetricBlock(volumetric);
+    ALPresetLook::apply(ALPresetLook::owned(ALPresetLook::LIGHT_RIG), look_values);
+    if (look_shafts.isArray() && look_shafts.size() == LIGHT_COUNT)
+        for (S32 i = 0; i < LIGHT_COUNT; ++i) setShaftEnabled(i, look_shafts[i].asBoolean());
+    std::array<bool, LIGHT_COUNT> new_shafts{};
+    for (S32 i = 0; i < LIGHT_COUNT; ++i) new_shafts[i] = isShaftEnabled(i);
+    if (old_shafts != new_shafts)
+        load.recordState("Light rig shafts",
+            [this, old_shafts, new_shafts](bool redo, std::string&)
+            {
+                const auto& restored = redo ? new_shafts : old_shafts;
+                for (S32 i = 0; i < LIGHT_COUNT; ++i) setShaftEnabled(i, restored[i]);
+                return true;
+            },
+            [this, old_shafts, new_shafts](bool redo, std::string& reason)
+        {
+            if (&ALCineLightRigManager::instance().selected() != this)
+            {
+                reason = "Select the original light rig before restoring its shafts.";
+                return false;
+            }
+            const auto& expected = redo ? old_shafts : new_shafts;
+            for (S32 i = 0; i < LIGHT_COUNT; ++i)
+                if (isShaftEnabled(i) != expected[i])
+                {
+                    reason = "Light rig shafts changed elsewhere.";
+                    return false;
+                }
+            return true;
+        });
     // Record the loaded name so callers (e.g. the random cycler) can identify
     // the currently-lit named preset regardless of manual vs random origin.
     mLoadedSetupName = name;
@@ -3751,6 +3794,9 @@ bool ALCineLightRig::saveSetup(const std::string& name)
     LLSD preset = setupToLLSD(setup, globals);
     preset["version"] = 1;
     preset["name"] = clean_name;
+    preset["look_settings"] = ALPresetLook::snapshot(ALPresetLook::owned(ALPresetLook::LIGHT_RIG));
+    preset["look_shafts"] = LLSD::emptyArray();
+    for (S32 i = 0; i < LIGHT_COUNT; ++i) preset["look_shafts"].append(isShaftEnabled(i));
 
     const std::string path = presetPath(clean_name);
     const std::string temporary = path + "." +

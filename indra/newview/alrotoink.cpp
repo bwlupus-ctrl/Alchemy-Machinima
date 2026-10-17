@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "alrotoink.h"
 
@@ -301,6 +302,7 @@ void reset_setting(const char* name)
 
 void ALRotoInk::applyPreset(const std::string& key)
 {
+    if (ALPresetLook::replaying()) return;
     const Preset* row = nullptr;
     for (const Preset& p : kPresets)
     {
@@ -314,6 +316,9 @@ void ALRotoInk::applyPreset(const std::string& key)
     {
         return; // unknown preset key: leave settings untouched
     }
+
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::ROTO));
 
     // Colour / intensity / glow.
     gSavedSettings.setUntypedValue("CineOutlineColor",

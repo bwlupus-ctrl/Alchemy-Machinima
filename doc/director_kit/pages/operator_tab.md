@@ -21,7 +21,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `shake_look` / `shake_preset_combo` (Look) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:34` | `ALCameraOperatorKitAdapter` command/model binding → wired in `ALPanelCineCamParams::postBuild()`; behavior `ALPanelCineCamParams::onShakePresetSelected()` (`indra/newview/alpanelcinecamparams.cpp:494`) | none |
+| `shake_look` / `shake_preset_combo` (Look) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:34` | `ALCameraOperatorKitAdapter` command/model binding → wired in `ALPanelCineCamParams::postBuild()`; behavior `ALPanelCineCamParams::onShakePresetSelected()` (`indra/newview/alpanelcinecamparams.cpp:495`) | none |
 | `shake_look` / `shake_style` (Rig) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:68` | kit `combo` ↔ `FlycamOperatorStyle` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:27` `shake_style` |
 | `shake_look` / `shake_locomotion_mode` (Movement) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:50` | kit `combo` ↔ `FlycamOperatorLocomotionMode` `S32` | `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:155` `FlycamOperatorLocomotionMode`, `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:42` `shake_locomotion_mode` |
 | `shake_look` / `shake_profile` (Feel) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:86` | kit `combo` ↔ `FlycamOperatorProfile` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:56` `shake_profile` |
@@ -95,7 +95,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelCineCamParams::onShakePresetSelected()` — `indra/newview/alpanelcinecamparams.cpp:494` | Move model-facing work into `ALCameraOperatorKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelCineCamParams::onShakePresetSelected()` — `indra/newview/alpanelcinecamparams.cpp:495` | Move model-facing work into `ALCameraOperatorKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -190,7 +190,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-137 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+140 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

@@ -1,4 +1,5 @@
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "alrigrimcontroller.h"
 
@@ -12,7 +13,9 @@
 
 namespace
 {
-// [RigRimPreset] 20-preset Rig Rim table. A preset stamps the global rim
+// [RigRimPreset] 20-preset Rig Rim table. ALPresetLook::RIM resets the complete
+// owned look first, including quality controls added after these rows.
+// A preset stamps the global rim
 // levers (master/soften/back-softness/tint/shadow/alpha/bounce) and every
 // per-light gain/sharpness/wrap/back-bias quad. Enabled, DebugRimOnly and
 // IncludeProbes are deliberately NOT part of any row (matches the Night Mask
@@ -282,6 +285,9 @@ static_assert(LL_ARRAY_SIZE(RIG_RIM_PRESETS) == 20, "Rig Rim preset count change
 
 void applyRigRimPreset(const RigRimPresetRow& row)
 {
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::RIM));
+
     gSavedSettings.setF32("CineRigRimMasterGain", row.mMaster);
     gSavedSettings.setF32("CineRigRimRoughnessSoften", row.mSoften);
     gSavedSettings.setF32("CineRigRimBackSoftness", row.mBackSoft);
@@ -419,6 +425,7 @@ void ALRigRimController::tickRefresh()
 
 bool ALRigRimController::applyPresetByName(const std::string& name)
 {
+    if (ALPresetLook::replaying()) return false;
     for (const RigRimPresetRow& row : RIG_RIM_PRESETS)
     {
         if (name == row.mName)

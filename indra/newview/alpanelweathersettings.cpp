@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "alpanelweathersettings.h"
 
@@ -406,6 +407,7 @@ void ALPanelWeatherSettings::onPresetSelected()
 
 bool ALPanelWeatherSettings::applyNamedPreset(const std::string& name)
 {
+    if (ALPresetLook::replaying()) return false;
     const std::string path = presetPath(name);
     llifstream input(path.c_str());
     if (!input.is_open())
@@ -414,13 +416,17 @@ bool ALPanelWeatherSettings::applyNamedPreset(const std::string& name)
         return false;
     }
     LLSD preset;
-    LLSDSerialize::fromXML(preset, input);
+    const S32 parsed = LLSDSerialize::fromXML(preset, input);
+    const bool stream_bad = input.bad();
     input.close();
-    if (!preset.isMap() || !preset["settings"].isMap())
+    if (parsed == LLSDParser::PARSE_FAILURE || stream_bad || !preset.isMap() || !preset["settings"].isMap())
     {
         LL_WARNS("Weather") << "Malformed preset file " << path << LL_ENDL;
         return false;
     }
+
+    ALPresetLook::Load load;
+    ALPresetLook::reset(trackedSettings());
 
     // Apply only this panel's allowlisted settings; preset data cannot name an
     // arbitrary viewer control.

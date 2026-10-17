@@ -157,8 +157,8 @@ namespace
     }
 
     // §6.3 piece 2d -- seed any owned field missing from a loaded bank
-    // (written by an older build that predates the field) with the CURRENT
-    // live setting, so it is not silently left un-restored. Keys already in
+    // (written by an older build that predates the field) with its declared
+    // default, so the bank's look never depends on current edits. Keys already in
     // `fields` that are NOT in `names` (written by a NEWER build) are left
     // exactly as-is here -- that is what makes write-back preservation
     // (below, in snapshot) possible.
@@ -170,7 +170,7 @@ namespace
             {
                 if (LLControlVariable* control = gSavedSettings.getControl(name))
                 {
-                    fields[name] = control->getValue();
+                    fields[name] = control->getDefault();
                 }
             }
         }

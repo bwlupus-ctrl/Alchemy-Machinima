@@ -1,4 +1,5 @@
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "alpanelrigrim.h"
 
@@ -11,22 +12,7 @@ namespace
 {
 const std::vector<std::string>& rimSettings()
 {
-    static const std::vector<std::string> settings = {
-        "CineRigRimMasterGain",     "CineRigRimRoughnessSoften", "CineRigRimBackSoftness",    "CineRigRimTint",
-        "CineRigRimShadow",         "CineRigRimIncludeAlpha",    "CineRigRimIncludeBounce",   "CineRigRimSmoothness",
-        "CineRigRimAntiShimmer",    "CineRigRimSilhouette",      "CineRigRimSilhouetteWidth", "CineRigRimSilhouetteUnits",
-        "CineRigRimSilhouetteSoft", "CineRigRimActorsOnly",      "CineRigRimActorsOnlyAlpha", "CineRigRimWrapEnabled",
-        "CineRigRimWrapStrength",   "CineRigRimWrapWidth",       "CineRigRimWrapBlur",        "CineRigRimWrapSaturation",
-        "CineRigRimKeyGain",        "CineRigRimKeySharpness",    "CineRigRimKeyWrap",         "CineRigRimKeyBackBias",
-        "CineRigRimFillGain",       "CineRigRimFillSharpness",   "CineRigRimFillWrap",        "CineRigRimFillBackBias",
-        "CineRigRimRimGain",        "CineRigRimRimSharpness",    "CineRigRimRimWrap",         "CineRigRimRimBackBias",
-        "CineRigRimBgGain",         "CineRigRimBgSharpness",     "CineRigRimBgWrap",          "CineRigRimBgBackBias",
-        "CineRigRimTronMode",       "CineRigRimTronMix",         "CineRigRimTronColorSource"
-    };
-    llassert(settings.size() == 39);
-    llassert(std::find(settings.begin(), settings.end(), "CineRigRimActorsOnlyAlpha") != settings.end());
-    llassert(std::find(settings.begin(), settings.end(), "CineRigRimWrapClamp") == settings.end());
-    return settings;
+    return ALPresetLook::owned(ALPresetLook::RIM_CUSTOM);
 }
 
 class RigRimPresetProvider final : public ALKitPresetProvider

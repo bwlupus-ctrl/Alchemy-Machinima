@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "alpanelcinelightrig.h"
 #include "alkithistory.h"
@@ -287,7 +288,7 @@ void addThumbnailGoboLibrary(LLComboBox* combo)
 // 19-preset lens flare table, adapted from the VirtualCinema reference (see
 // docs/projector_lensflare_design.md). Applying a preset stamps every field
 // below onto its matching RenderLensFlare* setting; RenderLensFlareMaster and
-// the RenderCineLensFlare* rig controls are deliberately NOT part of any
+// rig master brightness controls are deliberately NOT part of any
 // preset row — MasterIntensity is a one-knob scale independent of preset, and
 // the rig master/intensity are a separate on/off + brightness the user sets
 // once for their scene.
@@ -348,6 +349,8 @@ const FlarePresetRow FLARE_PRESETS[19] = {
 
 void applyFlarePreset(const FlarePresetRow& row)
 {
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::FLARE));
     gSavedSettings.setF32("RenderLensFlareStreakIntensity", row.mStreakInt);
     // LLControlGroup has no setColor3(); Color3-typed controls are written
     // via the generic LLSD path (mirrors LLColor3's DefaultParam usage
@@ -385,8 +388,8 @@ void applyFlarePreset(const FlarePresetRow& row)
 // strength knobs (distance/feather/darkness/tint strength/desaturation) onto
 // the matching CineLightRigNightMask* setting. Enabled and TintColor are
 // deliberately NOT part of any preset row: the checkbox is what turns the
-// mask on (a preset only shapes it), and TintColor stays whatever the user
-// last picked in the swatch.
+// mask on (a preset only shapes it). The complete owned look, including
+// TintColor and HeightOffset, resets to defaults before the row is applied.
 struct NightMaskPresetRow
 {
     const char* mName;
@@ -410,6 +413,8 @@ const NightMaskPresetRow NIGHT_MASK_PRESETS[6] = {
 
 void applyNightMaskPreset(const NightMaskPresetRow& row)
 {
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::NIGHT_MASK));
     gSavedSettings.setS32("CineLightRigNightMaskShape", row.mShape);
     gSavedSettings.setF32("CineLightRigNightMaskDistance", row.mDistance);
     gSavedSettings.setF32("CineLightRigNightMaskFeather", row.mFeather);
@@ -972,6 +977,9 @@ bool ALPanelCineLightRig::postBuild()
             static const char* const slots[] = { "Self", "A", "B", "C", "D" };
             const S32 slot = std::clamp((S32)ALCineLightRigManager::instance().selectedSlot(), 0, 4);
             const S32 fixture = std::clamp(handle.get()->mFixtureRoleIndex, 0, ALCineLightRigModel::LIGHT_COUNT - 1);
+            const auto& look_settings = ALPresetLook::owned(ALPresetLook::LIGHT_RIG);
+            if (std::find(look_settings.begin(), look_settings.end(), widget) != look_settings.end())
+                return std::string(slots[slot]) + " rig";
             // Global rig widgets and saved settings do not follow light selection.
             if (widget.find("cine_fixture_") == 0 || widget == "cine_gobo_library" || widget == "cine_gobo_preview")
                 return std::string(slots[slot]) + " rig, " + ROLE_NAMES[fixture] + " fixture";
@@ -1405,12 +1413,15 @@ void ALPanelCineLightRig::onFixtureModeCommit()
 
 void ALPanelCineLightRig::onFixturePresetCommit()
 {
+    if (ALPresetLook::replaying()) return;
     const S32 index = std::clamp(
         mFixturePreset->getValue().asInteger(),
         0, ALCineLightRigModel::FIXTURE_PRESET_COUNT - 1);
     const ALCineLightRigModel::FixturePreset& preset =
         ALCineLightRigModel::fixturePreset(index);
     const std::string prefix = fixtureSettingPrefix();
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::fixtureSettings(prefix));
     gSavedSettings.setBOOL(prefix + "FixtureMode", true);
     gSavedSettings.setS32(prefix + "FixturePreset", index);
     gSavedSettings.setF32(prefix + "Kelvin", preset.mKelvin);
@@ -2027,6 +2038,7 @@ void ALPanelCineLightRig::onSetupSelected()
 
 void ALPanelCineLightRig::onFlarePresetSelected(LLComboBox* source)
 {
+    if (ALPresetLook::replaying()) return;
     if (!source)
     {
         return;
@@ -2041,6 +2053,7 @@ void ALPanelCineLightRig::onFlarePresetSelected(LLComboBox* source)
     {
         return;
     }
+    ALPresetLook::Load load;
     applyFlarePreset(FLARE_PRESETS[index - 1]);
     gSavedSettings.setS32("RenderCineLensFlarePreset", index);
     // Snap both the main-panel combo and the Easy card's shortcut copy back
@@ -2059,6 +2072,7 @@ void ALPanelCineLightRig::onFlarePresetSelected(LLComboBox* source)
 
 void ALPanelCineLightRig::onNightMaskPresetSelected(LLComboBox* source)
 {
+    if (ALPresetLook::replaying()) return;
     if (!source)
     {
         return;
@@ -2321,6 +2335,9 @@ bool ALPanelCineLightRig::selectedIsEasyNative() const
 
 bool ALPanelCineLightRig::normalizeSelectedForEasy(bool explicit_entry)
 {
+    // Passive display synchronization must preserve authored preset values and
+    // the values just captured by preset undo, including near-zero EVs.
+    if (!explicit_entry) return true;
     // Fold the key's own EV into Master so subject exposure is preserved while
     // Key is anchored at 0. If the folded value cannot be represented within
     // Master EV's +/-16 range, refuse the fold and leave the rig for Advanced
@@ -2343,14 +2360,8 @@ bool ALPanelCineLightRig::normalizeSelectedForEasy(bool explicit_entry)
     // per-frame syncEasyModeForSelected() re-check (selectedIsEasyNative)
     // vetoes the mode right back off - which made Easy unenterable while any
     // authored look with free-form EVs was active. Only an EXPLICIT toggle
-    // click may snap: the passive sync path reaches here with EVs already
-    // within selectedIsEasyNative()'s 0.01 tolerance, and rewriting a
-    // near-bucket authored EV to the exact bucket there would silently
-    // mutate looks on first show / slot switch / scene load.
-    if (!explicit_entry)
-    {
-        return true;
-    }
+    // click may snap. Passive sync returns above without rewriting near-bucket
+    // authored values on first show / slot switch / scene load.
     const auto snap_to_bucket = [](const char* setting, bool rim)
     {
         const F32 ev = gSavedSettings.getF32(setting);

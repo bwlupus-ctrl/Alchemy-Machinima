@@ -31,6 +31,7 @@
 #include "alcameradispatch.h"
 #include "alflycamclassic.h"
 #include "alflycamweighted.h"
+#include "alpresetlook.h"
 #include "alxinputmath.h"
 #include "llflycamdrone.h"
 #include "alcinelightrig.h"
@@ -1011,6 +1012,10 @@ LLViewerJoystick::LLViewerJoystick()
     gSavedSettings.getControl("FlycamWeightedPreset")->getCommitSignal()->connect(
         [](LLControlVariable*, const LLSD& value, const LLSD&)
         {
+            // Undo restores every owned setting itself. Reapplying the
+            // selector here could overwrite the weight restored earlier.
+            if (ALPresetLook::replaying())
+                return;
             const S32 preset = value.asInteger();
             if (preset >= 0 && preset < 4)
             {
@@ -1022,6 +1027,8 @@ LLViewerJoystick::LLViewerJoystick()
     gSavedSettings.getControl("FlycamWeightedWeight")->getCommitSignal()->connect(
         [](LLControlVariable*, const LLSD& value, const LLSD&)
         {
+            if (ALPresetLook::replaying())
+                return;
             const F32 weight = static_cast<F32>(value.asReal());
             const S32 preset = ALFlycamWeighted::presetForWeight(weight);
             if (gSavedSettings.getS32("FlycamWeightedPreset") != preset)
@@ -4188,9 +4195,11 @@ void LLViewerJoystick::setXboxDefaults()
 
 bool LLViewerJoystick::applyWeightedPreset(S32 preset)
 {
-    if (preset < 0 || preset >= 4)
+    if (preset < 0 || preset >= 4 || ALPresetLook::replaying())
         return false;
 
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::WEIGHTED));
     gSavedSettings.setS32("FlycamWeightedPreset", preset);
     gSavedSettings.setF32("FlycamWeightedWeight",
         ALFlycamWeighted::presetWeight(preset));
@@ -4215,9 +4224,12 @@ ALFlycamWeighted::Tuning LLViewerJoystick::getWeightedTuning() const
 
 bool LLViewerJoystick::applyDronePreset(S32 preset)
 {
-    if (preset < 0 || preset >= static_cast<S32>(LLFlycamDrone::PresetId::COUNT))
+    if (preset < 0 || preset >= static_cast<S32>(LLFlycamDrone::PresetId::COUNT) ||
+        ALPresetLook::replaying())
         return false;
 
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::DRONE));
     DronePresetProvenance& provenance = dronePresetProvenance();
     provenance.source = preset;
     provenance.custom = false;

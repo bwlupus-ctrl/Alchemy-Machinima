@@ -1,4 +1,5 @@
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 #include "alkitpage.h"
 #include "alsettingsundohistory.h"
 #include "alflowgrid.h"
@@ -345,6 +346,8 @@ bool ALKitPage::postBuild()
 
     const std::string        pre     = prefix();
     std::vector<std::string> watched = tokens(mWatchSettings);
+    const auto preset_settings = ALPresetLook::pageSettings(mPage);
+    watched.insert(watched.end(), preset_settings.begin(), preset_settings.end());
     if (!mModeSetting.empty())
         watched.push_back(mModeSetting);
 

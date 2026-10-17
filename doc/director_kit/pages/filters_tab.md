@@ -42,11 +42,11 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `polarizer` / `pol_bandrad_slider` (Band size) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:151` | kit `slider` ↔ `RenderPolarizerBandRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:115` `pol_bandrad_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:153` `pol_bandrad_spinner` |
 | `lens_filter` / `lens_filter_preset` (Filter) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:85` | kit `combo` ↔ `RenderLensFilterPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:122` `lens_filter_preset` |
 | `lens_filter` / `lens_filter_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:86` | kit `slider` ↔ `RenderLensFilterAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:137` `lens_filter_amount` |
-| `infrared` / `ir_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:158` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applyInfraredPreset()` (`indra/newview/alpanellenslooks.cpp:47`) | none |
+| `infrared` / `ir_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:158` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applyInfraredPreset()` (`indra/newview/alpanellenslooks.cpp:48`) | none |
 | `infrared` / `ir_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:160` | kit `combo` ↔ `RenderInfraredMode` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:158` `ir_mode` |
 | `infrared` / `ir_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:162` | kit `slider` ↔ `RenderInfraredStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:166` `ir_strength`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:118` `exp_ir_strength` |
-| `infrared` / `ir_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:164` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `LLNotificationsUtil::add()` (`indra/newview/alpanellenslooks.cpp:59`) | none |
-| `softedge` / `softedge_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:169` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applySoftEdgePreset()` (`indra/newview/alpanellenslooks.cpp:53`) | none |
+| `infrared` / `ir_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:164` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `LLNotificationsUtil::add()` (`indra/newview/alpanellenslooks.cpp:60`) | none |
+| `softedge` / `softedge_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:169` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applySoftEdgePreset()` (`indra/newview/alpanellenslooks.cpp:54`) | none |
 | `softedge` / `softedge_blur_type` (Type) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:171` | kit `combo` ↔ `RenderSoftEdgeBlurType` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:189` `softedge_blur_type` |
 | `softedge` / `softedge_blur` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:173` | kit `slider` ↔ `RenderSoftEdgeBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:197` `softedge_blur`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:132` `exp_softedge_blur` |
 
@@ -54,9 +54,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALLensLooks::applyInfraredPreset()` — `indra/newview/alpanellenslooks.cpp:47` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALLensLooks::applySoftEdgePreset()` — `indra/newview/alpanellenslooks.cpp:53` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLNotificationsUtil::add()` — `indra/newview/alpanellenslooks.cpp:59` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALLensLooks::applyInfraredPreset()` — `indra/newview/alpanellenslooks.cpp:48` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALLensLooks::applySoftEdgePreset()` — `indra/newview/alpanellenslooks.cpp:54` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLNotificationsUtil::add()` — `indra/newview/alpanellenslooks.cpp:60` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -140,7 +140,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-32 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+35 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "alpanelcinecamparams.h"
 #include "alscrollfocus.h"
@@ -524,11 +525,14 @@ void ALPanelCineCamParams::onShakePresetSelected()
 
 void ALPanelCineCamParams::applyShakePreset(S32 index)
 {
+    if (ALPresetLook::replaying()) return;
     if (index <= 0 || index >= (S32)(sizeof(SHAKE_PRESETS) / sizeof(SHAKE_PRESETS[0])))
     {
         return;
     }
 
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::SHAKE));
     const ShakePreset& preset = SHAKE_PRESETS[index];
     gSavedSettings.setF32("FlycamOperatorGainSurge", preset.mSurge);
     gSavedSettings.setF32("FlycamOperatorGainSway", preset.mSway);
@@ -894,6 +898,7 @@ void ALPanelCineCamParams::ensurePresetWatchers()
 //static
 void ALPanelCineCamParams::applyPreset(const std::string& name)
 {
+    if (ALPresetLook::replaying()) return;
     ensurePresetWatchers(); // connected before the name is set below; the apply loop's writes stay ignored via sApplyingPreset
     const std::string path = presetPath(name);
     llifstream in(path.c_str());
@@ -903,9 +908,10 @@ void ALPanelCineCamParams::applyPreset(const std::string& name)
         return;
     }
     LLSD preset;
-    LLSDSerialize::fromXML(preset, in);
+    const S32 parsed = LLSDSerialize::fromXML(preset, in);
+    const bool stream_bad = in.bad();
     in.close();
-    if (!preset.isMap() || !preset["settings"].isMap())
+    if (parsed == LLSDParser::PARSE_FAILURE || stream_bad || !preset.isMap() || !preset["settings"].isMap())
     {
         LL_WARNS("CinematicCam") << "Malformed preset file " << path << LL_ENDL;
         return;
@@ -922,7 +928,12 @@ void ALPanelCineCamParams::applyPreset(const std::string& name)
             }
         }
     };
+    ALPresetLook::Load load;
     sApplyingPreset = true; // our own writes are not edits: the name must survive them
+    std::vector<std::string> owned = sharedSettings();
+    for (const ModeEntry& entry : modeTable())
+        owned.insert(owned.end(), entry.mSettings.begin(), entry.mSettings.end());
+    ALPresetLook::reset(owned);
     for (const ModeEntry& entry : modeTable())
     {
         for (const std::string& setting : entry.mSettings)

@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "aldirectortabmigration.h"
 #include "aldirectorqol.h"
@@ -1121,6 +1122,8 @@ private:
 
 void applySteppedConfig(const ALSteppedAnim::Config& c)
 {
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALSteppedAnim::presetSettings());
     gSavedSettings.setS32("StepAnimScope", c.scope);
     gSavedSettings.setS32("StepAnimMode", c.mode);
     gSavedSettings.setF32("StepAnimRate", c.rate);
@@ -1175,6 +1178,7 @@ public:
             {
                 if (id.substr(2) == preset.id)
                 {
+                    ALPresetLook::Load load;
                     applySteppedConfig(preset.values);
                     gSavedSettings.setBOOL("StepAnimEnabled", true);
                     return true;
@@ -1186,19 +1190,7 @@ public:
         const std::string name = id.substr(2);
         const std::vector<std::string> names = mStore.names();
         if (std::find(names.begin(), names.end(), name) == names.end()) return false;
-        // A preset saved before the part rates carries no StepAnimPart* keys and the store writes
-        // only the keys it has: reset the parts to Same first so an older preset means one grid.
-        // A failed load puts the seven values back exactly.
-        std::array<S32, ALSteppedAnim::kPartGroups> before{};
-        for (U32 part = ALSteppedAnim::PART_HEAD; part < ALSteppedAnim::kPartGroups; ++part)
-        {
-            before[part] = gSavedSettings.getS32(ALSteppedAnim::partSetting(part));
-            gSavedSettings.setS32(ALSteppedAnim::partSetting(part), ALSteppedAnim::RATE_SAME);
-        }
-        if (mStore.load(name)) return true;
-        for (U32 part = ALSteppedAnim::PART_HEAD; part < ALSteppedAnim::kPartGroups; ++part)
-            gSavedSettings.setS32(ALSteppedAnim::partSetting(part), before[part]);
-        return false;
+        return mStore.load(name);
     }
     bool canSaveUser() const override { return true; }
     bool saveUser(const std::string& name) override { return mStore.save(name); }
@@ -1222,9 +1214,9 @@ void registerLookPresetProviders()
     }
     registered = true;
     ALKitPresetRegistry::instance().add(std::make_unique<ALLookPresetProvider>(
-        "roto_ink", looksFrom(kRotoLooks), applyRotoLook, std::vector<std::string>(ALRotoInk::settings())));
+        "roto_ink", looksFrom(kRotoLooks), applyRotoLook, std::vector<std::string>(ALPresetLook::owned(ALPresetLook::ROTO))));
     ALKitPresetRegistry::instance().add(std::make_unique<ALLookPresetProvider>(
-        "tron_look", looksFrom(kTronLooks), applyTronLook, std::vector<std::string>(ALTron::lookSettings())));
+        "tron_look", looksFrom(kTronLooks), applyTronLook, ALPresetLook::pageSettings("look_group/tron_tab")));
     ALKitPresetRegistry::instance().add(std::make_unique<ALSteppedPresetProvider>());
     ALKitPresetRegistry::instance().add(std::make_unique<ALWeatherPresetProvider>());
     ALKitPresetRegistry::instance().add(std::make_unique<ALProjectorShaftPresetProvider>());
@@ -1987,6 +1979,19 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
             (this->*binding.binder)(root);
         }
     }
+    if (page == "takes_tab")
+    {
+        if (LLComboBox* combo = root->findChild<LLComboBox>("FlycamDronePreset"))
+            combo->setCommitCallback([](LLUICtrl* control, const LLSD&)
+            {
+                LLViewerJoystick::getInstance()->applyDronePreset(control->getValue().asInteger());
+            });
+        if (LLComboBox* combo = root->findChild<LLComboBox>("FlycamWeightedPreset"))
+            combo->setCommitCallback([](LLUICtrl* control, const LLSD&)
+            {
+                LLViewerJoystick::getInstance()->applyWeightedPreset(control->getValue().asInteger());
+            });
+    }
 }
 
 void LLFloaterDirector::bindDirectorSettingsPage(LLView* root)
@@ -2092,6 +2097,7 @@ void LLFloaterDirector::bindTronPage(LLView* root)
         rim->setCommitCallback([](LLUICtrl*, const LLSD&)
         {
             const std::string& label = ALTron::lastPresetRigRimLabel();
+            ALPresetLook::Load load;
             if (!label.empty() && ALPanelCineLightRig::applyRigRimPresetByName(label))
             {
                 gSavedSettings.setS32("CineRigRimTronMode", ALTron::lastPresetRigRimTronMode());
@@ -2186,6 +2192,7 @@ void LLFloaterDirector::bindImagePage(LLView* root)
 // action combo back to its "Choose preset..." entry (value 0).
 void LLFloaterDirector::bindLensFiltersPage(LLView* root)
 {
+    ALLensLooks::bindFilterPresets(root);
     if (LLComboBox* ir = root->findChild<LLComboBox>("ir_preset_action"))
     {
         ir->setCommitCallback([](LLUICtrl* control, const LLSD&)

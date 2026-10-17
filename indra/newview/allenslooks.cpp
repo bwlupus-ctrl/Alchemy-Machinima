@@ -3,6 +3,8 @@
  * @brief Lens Looks frame resolver, sanitisation and action presets.
  */
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
+#include "llcombobox.h"
 
 #include "allenslooks.h"
 
@@ -248,7 +250,12 @@ LLColor3 ALLensLooks::frameFilterGain()
 
 void ALLensLooks::applyInfraredPreset(S32 index)
 {
+    if (ALPresetLook::replaying()) return;
     if (index<1 || index>(S32)LL_ARRAY_SIZE(IR_PRESETS)) return; const IrPreset& p=IR_PRESETS[index-1];
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::INFRARED));
+    if (gSavedSettings.getBOOL("RenderInfraredPresetSetsGrain"))
+        ALPresetLook::reset(ALPresetLook::infraredGrainSettings());
     gSavedSettings.setU32("RenderInfraredMode",(U32)p.mode); gSavedSettings.setF32("RenderInfraredStrength",p.strength); gSavedSettings.setF32("RenderInfraredFoliageEV",p.foliage_ev);
     gSavedSettings.setF32("RenderInfraredSkyDarken",p.sky_darken); gSavedSettings.setF32("RenderInfraredWaterDarken",p.water_darken); gSavedSettings.setF32("RenderInfraredRedLeak",p.red_leak);
     gSavedSettings.setF32("RenderInfraredHalation",p.halation); gSavedSettings.setU32("RenderInfraredAeroFilter",(U32)p.aero_filter); gSavedSettings.setF32("RenderInfraredAeroSaturation",p.aero_saturation);
@@ -260,10 +267,34 @@ void ALLensLooks::applyInfraredPreset(S32 index)
 
 void ALLensLooks::applySoftEdgePreset(S32 index)
 {
+    if (ALPresetLook::replaying()) return;
     if(index<1 || index>(S32)LL_ARRAY_SIZE(SOFT_PRESETS)) return; const SoftPreset& p=SOFT_PRESETS[index-1];
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::SOFT_EDGE));
     gSavedSettings.setU32("RenderSoftEdgeShape",(U32)p.shape); gSavedSettings.setF32("RenderSoftEdgeSize",p.size); gSavedSettings.setF32("RenderSoftEdgeAspect",p.aspect); gSavedSettings.setF32("RenderSoftEdgeAngle",p.angle);
     gSavedSettings.setF32("RenderSoftEdgeFeather",p.feather); gSavedSettings.setF32("RenderSoftEdgeBlur",p.blur); gSavedSettings.setF32("RenderSoftEdgeGlow",p.glow); gSavedSettings.setF32("RenderSoftEdgeDesaturate",p.desaturate);
     gSavedSettings.setUntypedValue("RenderSoftEdgeTint",p.tint.getValue()); gSavedSettings.setF32("RenderSoftEdgeTintAmount",p.tint_amount);
+}
+
+void ALLensLooks::bindFilterPresets(LLView* root)
+{
+    struct Binding { const char* widget; const char* setting; S32 count; };
+    static const Binding bindings[] = {
+        {"gradnd_preset_combo", "RenderGradNDPreset", 6},
+        {"polarizer_preset_combo", "RenderPolarizerPreset", 4},
+        {"lens_filter_preset", "RenderLensFilterPreset", 8}
+    };
+    for (const Binding& binding : bindings)
+        if (LLComboBox* combo = root->findChild<LLComboBox>(binding.widget))
+            combo->setCommitCallback([binding](LLUICtrl* control, const LLSD&)
+            {
+                const S32 index = control->getValue().asInteger();
+                if (index < 1 || index > binding.count || ALPresetLook::replaying()) return;
+                ALPresetLook::Load load;
+                // These presets resolve their artistic values in the renderer.
+                // Preserve filter amount and every Custom-mode slider.
+                gSavedSettings.setU32(binding.setting, index);
+            });
 }
 
 const std::vector<std::string>& ALLensLooks::settings()

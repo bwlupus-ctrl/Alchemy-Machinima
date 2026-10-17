@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "alcinehaze.h"
 
@@ -187,6 +188,7 @@ void ALCineHaze::bind(LLGLSLShader& shader)
 
 void ALCineHaze::applyPreset(const std::string& name)
 {
+    if (ALPresetLook::replaying()) return;
     // One preset = one fully-specified look.  Every field is written so switching
     // presets never inherits a previous preset's manual colour, height layer or
     // sun lobe.  density is extinction per metre: half-contrast distance past the
@@ -265,6 +267,9 @@ void ALCineHaze::applyPreset(const std::string& name)
     {
         return; // unknown preset name: leave settings untouched
     }
+
+    ALPresetLook::Load load;
+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::HAZE));
 
     set_setting("CineHazeEnable", true);
     set_setting("CineHazeStrength", p.strength);

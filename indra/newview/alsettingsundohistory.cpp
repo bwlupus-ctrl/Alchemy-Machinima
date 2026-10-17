@@ -201,7 +201,7 @@ private:
     }
     void replayModel(ALSettingsUndoHistoryModel& model, bool use_new_value)
     {
-        ALKitHistory::ScopedSuspend suspend;
+        ALKitHistory::ScopedReplay replay;
         mApplying = true;
         bool skipped = false;
         auto filter = [&skipped, use_new_value](const ALSettingsUndoHistoryModel::Change& change)

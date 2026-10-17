@@ -33,6 +33,7 @@
 #include "llvoavatarself.h"
 
 #include <algorithm>
+#include <tuple>
 
 static LLPanelInjector<ALPanelLensGaze> t_panel_lens_gaze("panel_lens_gaze");
 
@@ -136,7 +137,7 @@ const S32 GAZE_PRESET_COUNT =
 // the combo snaps back to its "Choose range..." sentinel -- it never claims
 // to represent the resulting (now freely-editable, effectively Custom)
 // state. mMode mirrors mLimitProfileModeOverride: 0 = Stock restores legacy
-// constants and touches nothing else in the profile; 1 = every other preset
+// constants and resets the hidden custom profile; 1 = every other preset
 // also fills the per-joint profile below (yaw / pitch-down / pitch-up).
 struct GazeRangePreset
 {
@@ -197,9 +198,55 @@ const GazeLeanPreset GAZE_LEAN_PRESETS[] =
 const S32 GAZE_LEAN_PRESET_COUNT =
     static_cast<S32>(sizeof(GAZE_LEAN_PRESETS) / sizeof(GAZE_LEAN_PRESETS[0]));
 
+// The performance look owns only these fields. Target selection, anatomy and
+// movement ownership stay with the actor. Loading, reset and matching share
+// this list so an inherited row value cannot retain an earlier manual edit.
+using GazeTarget = LLActorMover::GazeTarget;
+const auto GAZE_PERFORMANCE_FIELDS = std::make_tuple(
+    &GazeTarget::mPersonaDominance,
+    &GazeTarget::mPersonaAffection,
+    &GazeTarget::mPersonaAnxiety,
+    &GazeTarget::mHeadEyeBlendOverride,
+    &GazeTarget::mTorsoAmountOverride,
+    &GazeTarget::mIntensityOverride,
+    &GazeTarget::mSmoothingOverride,
+    &GazeTarget::mEyelineOverride,
+    &GazeTarget::mEyelineYawDegOverride,
+    &GazeTarget::mEyelinePitchDegOverride,
+    &GazeTarget::mMicroLifeOverride,
+    &GazeTarget::mBlinksOverride,
+    &GazeTarget::mVariationOverride,
+    &GazeTarget::mBreakFrequencyOverride,
+    &GazeTarget::mEaseAcquireOverride,
+    &GazeTarget::mEaseReleaseOverride,
+    &GazeTarget::mDeadZoneDegOverride,
+    &GazeTarget::mBlinkRateScale,
+    &GazeTarget::mVergenceScale);
+
+const auto GAZE_RANGE_FIELDS = std::make_tuple(
+    &GazeTarget::mLimitProfileModeOverride,
+    &GazeTarget::mLimitProfile,
+    &GazeTarget::mExaggerateOverride);
+
+const auto GAZE_LEAN_FIELDS = std::make_tuple(
+    &GazeTarget::mLeanCurveOverride,
+    &GazeTarget::mLeanThresholdDegOverride,
+    &GazeTarget::mLeanSoftnessDegOverride,
+    &GazeTarget::mLeanMaxDegOverride,
+    &GazeTarget::mChestShareOverride);
+
+template <typename Fields>
+void resetGazeLook(GazeTarget& target, const Fields& fields)
+{
+    const GazeTarget defaults;
+    std::apply([&](auto... member) { ((target.*member = defaults.*member), ...); },
+        fields);
+}
+
 void applyPreset(const GazePerformancePreset& preset,
                  LLActorMover::GazeTarget& target)
 {
+    resetGazeLook(target, GAZE_PERFORMANCE_FIELDS);
     target.mPersonaDominance = preset.mDominance;
     target.mPersonaAffection = preset.mAffection;
     target.mPersonaAnxiety = preset.mAnxiety;
@@ -243,32 +290,13 @@ void applyPreset(const GazePerformancePreset& preset,
 bool presetMatches(const GazePerformancePreset& preset,
                    const LLActorMover::GazeTarget& target)
 {
-    auto close = [](F32 a, F32 b) { return fabsf(a - b) <= 0.001f; };
-    return close(target.mPersonaDominance, preset.mDominance) &&
-           close(target.mPersonaAffection, preset.mAffection) &&
-           close(target.mPersonaAnxiety, preset.mAnxiety) &&
-           close(target.mHeadEyeBlendOverride, preset.mHeadEye) &&
-           (preset.mTorso < 0.f ||
-            close(target.mTorsoAmountOverride, preset.mTorso)) &&
-           (preset.mIntensity < 0.f ||
-            close(target.mIntensityOverride, preset.mIntensity)) &&
-           close(target.mSmoothingOverride, preset.mSmoothing) &&
-           ((preset.mEyelineYaw <= GAZE_PRESET_INHERIT &&
-             preset.mEyelinePitch <= GAZE_PRESET_INHERIT) ||
-            (target.mEyelineOverride &&
-             close(target.mEyelineYawDegOverride, preset.mEyelineYaw) &&
-             close(target.mEyelinePitchDegOverride, preset.mEyelinePitch))) &&
-           close(target.mMicroLifeOverride, preset.mMicroLife) &&
-           (preset.mBlinks < 0 || target.mBlinksOverride == preset.mBlinks) &&
-           (preset.mVariation < 0.f ||
-            close(target.mVariationOverride, preset.mVariation)) &&
-           close(target.mBreakFrequencyOverride, preset.mBreakFrequency) &&
-           close(target.mEaseAcquireOverride, preset.mAcquire) &&
-           close(target.mEaseReleaseOverride, preset.mRelease) &&
-           (preset.mDeadZoneDeg < 0.f ||
-            close(target.mDeadZoneDegOverride, preset.mDeadZoneDeg)) &&
-           close(target.mBlinkRateScale, preset.mBlinkRate) &&
-           close(target.mVergenceScale, preset.mVergence);
+    GazeTarget expected;
+    applyPreset(preset, expected);
+    return std::apply([&](auto... member)
+        {
+            return ((fabsf(static_cast<F32>(target.*member) -
+                           static_cast<F32>(expected.*member)) <= 0.001f) && ...);
+        }, GAZE_PERFORMANCE_FIELDS);
 }
 
 // Read-modify-write each edited actor's authored gaze target through the cast
@@ -1896,8 +1924,8 @@ void ALPanelLensGaze::onLimitProfileCommit()
         [p](LLActorMover::GazeTarget& t) { t.mLimitProfile = p; });
 }
 
-// [Machinima] Range preset chooser (Procedural gaze row). Stock only touches
-// Limits source (legacy constants) + Exaggerate (inherit); every other
+// [Machinima] Range preset chooser (Procedural gaze row). Stock restores
+// Limits source (legacy constants), the default profile and Exaggerate; every other
 // preset also fills the whole per-joint profile. Either way the fields stay
 // freely editable afterward -- there is no "this actor is now preset X" flag
 // -- so the combo snaps back to its "Choose range..." sentinel rather than
@@ -1911,6 +1939,7 @@ void ALPanelLensGaze::onRangePresetCommit()
         editGazeTargetsFor(editActors(),
             [&preset](LLActorMover::GazeTarget& t)
             {
+                resetGazeLook(t, GAZE_RANGE_FIELDS);
                 t.mLimitProfileModeOverride = preset.mMode;
                 t.mExaggerateOverride = preset.mExaggerate;
                 if (preset.mMode == 1)
@@ -1954,6 +1983,7 @@ void ALPanelLensGaze::onIkLeanCommit()
         editGazeTargetsFor(editActors(),
             [&preset](LLActorMover::GazeTarget& t)
             {
+                resetGazeLook(t, GAZE_LEAN_FIELDS);
                 t.mLeanCurveOverride = preset.mCurve;
                 t.mLeanThresholdDegOverride = preset.mThresholdDeg;
                 t.mLeanSoftnessDegOverride = preset.mSoftnessDeg;
@@ -2056,30 +2086,8 @@ void ALPanelLensGaze::onResetPerformance()
 {
     // Preserve targeting and clear only the fields authored by a performance
     // preset. These are the documented neutral/inherit defaults on GazeTarget.
-    const LLActorMover::GazeTarget defaults;
     editGazeTargetsFor(editActors(),
-        [&defaults](LLActorMover::GazeTarget& t)
-        {
-            t.mPersonaDominance = defaults.mPersonaDominance;
-            t.mPersonaAffection = defaults.mPersonaAffection;
-            t.mPersonaAnxiety = defaults.mPersonaAnxiety;
-            t.mHeadEyeBlendOverride = defaults.mHeadEyeBlendOverride;
-            t.mTorsoAmountOverride = defaults.mTorsoAmountOverride;
-            t.mIntensityOverride = defaults.mIntensityOverride;
-            t.mSmoothingOverride = defaults.mSmoothingOverride;
-            t.mEyelineOverride = defaults.mEyelineOverride;
-            t.mEyelineYawDegOverride = defaults.mEyelineYawDegOverride;
-            t.mEyelinePitchDegOverride = defaults.mEyelinePitchDegOverride;
-            t.mMicroLifeOverride = defaults.mMicroLifeOverride;
-            t.mBlinksOverride = defaults.mBlinksOverride;
-            t.mVariationOverride = defaults.mVariationOverride;
-            t.mBreakFrequencyOverride = defaults.mBreakFrequencyOverride;
-            t.mEaseAcquireOverride = defaults.mEaseAcquireOverride;
-            t.mEaseReleaseOverride = defaults.mEaseReleaseOverride;
-            t.mDeadZoneDegOverride = defaults.mDeadZoneDegOverride;
-            t.mBlinkRateScale = defaults.mBlinkRateScale;
-            t.mVergenceScale = defaults.mVergenceScale;
-        });
+        [](LLActorMover::GazeTarget& t) { resetGazeLook(t, GAZE_PERFORMANCE_FIELDS); });
     mPerformance->setValue(LLSD(-1));
 }
 

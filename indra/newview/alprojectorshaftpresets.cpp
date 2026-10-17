@@ -4,6 +4,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 
 #include "alprojectorshaftpresets.h"
 
@@ -94,6 +95,7 @@ const std::vector<std::string>& trackedSettings()
 
 void apply(S32 preset)
 {
+    if (ALPresetLook::replaying()) return;
     if (preset < FAST_PREVIEW || preset > DREAM_MIST)
     {
         return;
@@ -104,6 +106,7 @@ void apply(S32 preset)
     // reselecting Dust Storm does not rebuild shaders off/on and every genuine
     // transition needs at most one rebuild.
     const bool wants_dust = preset == DUST_STORM;
+    ALPresetLook::Load load;
     resetToKnownBase();
     switch (preset)
     {

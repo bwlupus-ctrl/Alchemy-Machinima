@@ -107,6 +107,7 @@ protected:
 private:
     friend class ALKitHistory;
     void         replayBoundValue(const LLSD&);
+    void         commitCardPreset();
     void         styleValueEditor(bool active);
     void         bindingChanged();
     void         showContextMenu(S32, S32);

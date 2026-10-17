@@ -26,6 +26,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llpopupview.h"
+#include "alkithistory.h"
 
 static LLPanelInjector<LLPopupView> r("popup_holder");
 
@@ -118,6 +119,8 @@ bool LLPopupView::handleMouseEvent(std::function<bool(LLView*, S32, S32)> func,
         if (localPointToOtherView(x, y, &popup_x, &popup_y, popup)
             && popup->pointInView(popup_x, popup_y))
         {
+            // Popup dispatch bypasses the row and Director event handlers.
+            ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(popup));
             if (func(popup, popup_x, popup_y))
             {
                 handled = true;

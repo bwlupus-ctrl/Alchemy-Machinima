@@ -36,6 +36,7 @@ public:
     {
         std::string                             key;
         std::function<bool(bool, std::string&)> replay;
+        std::function<bool(bool, std::string&)> validate;
     };
     struct Step
     {
@@ -52,12 +53,13 @@ public:
     ~ALKitHistory();
     void        setOwner(LLView* owner);
     void        beginGesture(EOrigin, const std::string&, const std::string& label = std::string());
-    void        ensureGesture(const std::string& page, const std::string& label);
+    void        ensureGesture(const std::string& page, const std::string& label, bool preserve_key = false);
     static void noteKey();
     static void notePointer(LLView*);
     void        watchSettings(const std::string&, const std::vector<std::string>&);
     void        recordWidget(LLUICtrl*, const LLSD&, const LLSD&, const std::string&);
-    void        recordCustom(LLView*, const std::string&, const std::string&, std::function<bool(bool, std::string&)>);
+    void        recordCustom(LLView*, const std::string&, const std::string&, std::function<bool(bool, std::string&)>, bool join_gesture = false,
+                             std::function<bool(bool, std::string&)> validate = {});
     void        barrier(const std::string&);
     static void globalBarrier(const std::string&);
     bool        canUndo(const std::string& page) const;
@@ -68,6 +70,10 @@ public:
     void        discardStep(const std::string& page, bool redo);
     void        discardRedo(const std::string& page);
     static LLView* inputPage();
+    static bool hasInputSource();
+    // Resolve a combo (or its focused/captured child) only inside kit UI.
+    // Call from user-event dispatch, never from programmatic onCommit().
+    static LLView* comboInputSource(LLView*);
     struct ScopedSource
     {
         explicit ScopedSource(LLView*);
@@ -87,6 +93,16 @@ public:
         ~ScopedSuspend();
     };
     static bool suspended();
+    // Only undo/redo replay uses this guard; ordinary sync/scene suspension
+    // must still allow native preset loaders to run.
+    struct ScopedReplay
+    {
+        ScopedReplay();
+        ~ScopedReplay();
+    private:
+        ScopedSuspend mSuspend;
+    };
+    static bool replaying();
 
 private:
     class GestureTimer;

@@ -158,7 +158,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALPanelDanceBall::onToggleOn()` — `indra/newview/alpaneldanceball.cpp:370` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelDanceBall::onWaveChanged()` — `indra/newview/alpaneldanceball.cpp:420, 421, 422, 423` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelDanceBall::rebuildDancerList()` — `indra/newview/alpaneldanceball.cpp:933` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:1610` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:1602` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

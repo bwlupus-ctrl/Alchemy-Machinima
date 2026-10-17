@@ -274,6 +274,32 @@ instrument so the LOG STATES A VERDICT — distinguish PASS / FAIL / INCONCLUSIV
 make "the measurement itself was untrustworthy" a separate outcome from "the feature is broken".
 Never let a diagnostic silently no-op into a confident wrong answer.
 
+## Presets replace complete looks (user directive, 2026-10-17)
+
+Every preset family defines its owned settings once (an explicit list or a
+prefix with explicit exclusions). A look preset owns LOOK settings only. Never
+own targeting/who (actor-only, subject), shot placement/transform keys (anything
+whose settings.xml Comment contains 'Shot key'), user calibration/preferences
+(stick feel, camera smoothing/zoom time), performance/quality knobs, compile-time
+shader settings (handleSetShaderChanged), or master enables. Filter 'Shot key'
+metadata from every constructed owned set, including explicit lists. Stock
+graphics/camera presets stay sparse; renderer-resolved named lens modes preserve
+Custom sliders and filter amount. Optional Light Rig volumetric blocks apply
+authored values only and never reset missing global values.
+Validate a selection/file before
+mutating anything. In one existing kit/page history group, reset every owned
+setting to its declared default, then apply the preset values. New controls
+must join that ownership definition; do not patch individual preset rows to
+repair inheritance. Never change artistic preset values as a migration.
+
+Save custom presets using the full owned set. Old custom files default missing
+owned keys. Preserve shot targeting;
+Light Rig group/object targeting is outside a look. Non-setting look state
+needs the same default/apply/save contract and grouped undo with conflict
+validation before any replay writes. Preset selection, Quick proxies and paste
+must reach the same loader; undo restores captured values without reapplying
+presets. Shared implementation: `alpresetlook.h` / `alkitpresets.cpp`.
+
 ## Project Overview
 
 Alchemy Viewer is a third-party client for Second Life, forked from the official Linden Lab viewer. It is a large C++ desktop application (~750 source files in the main viewer module alone) using OpenGL for rendering, with builds targeting Windows, macOS, and Linux.

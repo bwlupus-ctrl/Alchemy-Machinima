@@ -1,0 +1,244 @@
+PRESET COMPLETENESS AUDIT
+Branch feature/director-kit-p0; baseline HEAD 44e6fb166f148f71f0256afc63e58eb39dea110d.
+No build, commit or push. Artistic preset tables were not changed.
+
+ROOT CAUSE (baseline HEAD locations)
+alrigrimcontroller.cpp:283 applyRigRimPreset writes only its original 23 keys; applyPresetByName:420 simply delegates. No default reset exists there.
+alpanelrigrim.cpp:14 independently enumerated 39 custom keys; the loader and custom ownership drifted.
+alkitpresets.cpp:101 ALKitSnapshotStore::load writes only values.has(setting), so old custom files inherit every omitted setting from the current user state.
+
+RULE / IMPLEMENTATION
+Owned sets: ALPresetLook::owned in alkitpresets.cpp; existing explicit Weather, shaft and Stepped lists are reused. Cinematic camera reuses modeTable/sharedSettings. Gaze uses owned-member tuples.
+Validated look loads default only their owned LOOK settings and apply authored values. Only a real ScopedSource attaches Load to history; focus fallback never attributes timer/cue loads. Autonomous loads suspend recording without opening, joining or finishing a user gesture. Nested user loads retain one kit/page gesture and undo sequence.
+Page history watches complete preset ownership, including linked Tron -> Roto/Rim and optional IR grain. Quick/favorite/paste setting-bound card presets dispatch the same native action.
+Light Rig saves 91 owned look_settings and four look_shafts; resets only missing look fields. All shaft-family globals are outside setup ownership: optional volumetric blocks still apply explicitly authored values, with no reset when absent. Group/object/per-light actor-only targeting and rig OrbitYaw/OrbitPitch/OffsetZ are excluded from reset ownership. Shaft state joins the same gesture with conflict preflight before any replay writes. Slot context is recorded for scalar rig settings.
+Custom Rim snapshots retain the three previously saved Tron tint keys; built-in Rim presets continue to leave Tron tint to the Tron family.
+The permanent rule is recorded in CLAUDE.md and the alkitpresets.cpp ownership comment: LOOK only; never targeting/who, shot placement/transforms, calibration/preferences, performance/quality, compile-time shader settings or master enables. Every owned family filters settings.xml Comment containing Shot key before caching, including explicit lists.
+Replay uses a dedicated ScopedReplay depth, entered only by ALKitHistory::replay and exposure ALSettingsUndoHistory replayModel. ScopedSuspend alone allows scene/recovery, mirror, navigation, Who and Easy sync preset loads. Joystick listeners and card proxies use the same dedicated replay check.
+Stock graphics and stock camera retain their baseline sparse load/save behavior. The pre-existing RenderShadowAlphaNearCascades one-off graphics reset (and rollback on failure) is preserved. Camera templates stay sparse; absent ZoomTime and CameraPositionSmoothing are preserved. Renderer-resolved Grad ND / Polarizer / Lens Filter selections preserve Custom sliders and RenderLensFilterAmount.
+
+FAMILY TABLE (current working-tree loader locations; complete exact omissions follow)
+Family | Loader file:line | Owned-set definition | Missing keys at baseline | Fixed y/n
+Rig Rim built-ins | indra/newview/alrigrimcontroller.cpp:286 | indra/newview/alkitpresets.cpp:71 (38 keys) | 15 look fields (AntiShimmer, Silhouette, SilhouetteGap ...); actor-only targeting excluded | y
+Roto Ink / Stylize | indra/newview/alrotoink.cpp:303 | indra/newview/alkitpresets.cpp:78 (53 keys) | 0; full row already authored | y
+Tron looks | indra/newview/altron.cpp:1558 | indra/newview/alkitpresets.cpp:81 (85 keys) | 0 look omissions; 11 Shot key fields intentionally excluded | y
+Lens Infrared | indra/newview/allenslooks.cpp:251 | indra/newview/alkitpresets.cpp:87 (14 keys) | 5 (DryVegetation, ExposureEV, FoliageSensitivity, ShadowDepth, SkinEV); conditional grain inherited too | y
+Lens Soft Edge | indra/newview/allenslooks.cpp:268 | indra/newview/alkitpresets.cpp:90 (12 keys) | 2 (BlurType, GlowThreshold) | y
+Depth Haze / Atmosphere | indra/newview/alcinehaze.cpp:189 | indra/newview/alkitpresets.cpp:93 (13 keys) | 1 (ReferenceHeight) (for non-height rows) | y
+Lens Flare / Easy shortcut | indra/newview/alpanelcinelightrig.cpp:350 | indra/newview/alkitpresets.cpp:96 (43 keys) | 16 (RenderCineLensFlareProbeRadius, RenderCineLensFlareRelease, RenderCineLensFlareThreshold, RenderLensFlareChromaticSpread, RenderLensFlareGlowFalloff ...; OcclusionTaps quality excluded) | y
+Night Mask / Easy shortcut | indra/newview/alpanelcinelightrig.cpp:414 | indra/newview/alkitpresets.cpp:101 (8 keys) | 2 (HeightOffset, TintColor) | y
+Operator Shake | indra/newview/alpanelcinecamparams.cpp:526 | indra/newview/alkitpresets.cpp:110 (64 keys; camera smoothing excluded from reset ownership) | 49 (AutoRunEnter, AutoRunEnterDwell, AutoRunExit, AutoRunExitDwell, AutoWalkEnter ...) | y
+Drone / Takes card | indra/newview/llviewerjoystick.cpp:4225 | indra/newview/alkitpresets.cpp:119 (17 HumanParams keys) | 0 look omissions; ExpoGimbal/Move/Yaw and Saturation are user stick feel | y
+Weighted / Takes card | indra/newview/llviewerjoystick.cpp:4196 | indra/newview/alkitpresets.cpp:113 (4 keys) | 3 (Curve, RotationShare, TauMax) | y
+Rig Rim custom | indra/newview/alkitpresets.cpp:311 | indra/newview/alkitpresets.cpp:74 (41 keys; actor-only targeting excluded) | SilhouetteGap, SilhouetteSeedThreshold, SilhouetteSeedSoft, WrapClamp; older files may omit others | y
+Light Rig setups | indra/newview/alcinelightrig.cpp:3690 | ALPresetLook::owned(LIGHT_RIG) (91 settings + 4 shaft flags) | Per-light ShadowSoft and look globals; exclude shaft-family globals, actor-only targeting and rig transforms; authored volumetric block remains sparse | y
+Weather | indra/newview/alpanelweathersettings.cpp:408 | indra/newview/alpanelweathersettings.cpp:65 | Any newer allowlisted field missing from an older saved file | y
+Projector shaft built-ins/custom | indra/newview/alprojectorshaftpresets.cpp:96 | indra/newview/alprojectorshaftpresets.cpp:16 | Native already reset its list (Dust explicitly finalized); old custom snapshots inherited missing fields | y
+Stepped built-ins/custom | indra/newview/llfloaterdirector.cpp:1123 | indra/newview/alsteppedanim.cpp:1268 | Native row complete; custom fallback only special-cased seven Part* keys, leaving other new owned fields inherited | y
+Grad ND / Polarizer / Lens Filter | indra/newview/allenslooks.cpp:279 | Renderer-resolved named blocks; no Custom slider reset | 0 look omissions; preserve filter amount and all inactive Custom controls | y
+Tron palettes | indra/newview/altron.cpp:667 | indra/newview/alkitpresets.cpp:116 (4 colors) | 0; complete color row already authored; grouping/replay hardened | y
+Cinematic camera custom | indra/newview/alpanelcinecamparams.cpp:899 | indra/newview/alpanelcinecamparams.cpp:323 + modeTable | Any owned field missing from older file | y
+Gaze performance | indra/newview/alpanellensgaze.cpp:246 | indra/newview/alpanellensgaze.cpp:205 (19 members) | Conditional torso/intensity/eyeline/blink/variation/dead-zone override fields | y
+Gaze range / lean | indra/newview/alpanellensgaze.cpp:1933 | indra/newview/alpanellensgaze.cpp:226 / GAZE_LEAN_FIELDS | Stock range kept stale profile; named range and lean already filled every owned field | y
+Image / Bloom-Glow | Generated image_tab / bloom_glow_tab | No preset family/provider/action exists at this HEAD | n/a; image style controls are algorithm selectors, not partial preset loads | n (none exists)
+Environment Intensity | indra/newview/alenvintensitypresets.cpp:1074 | FLOAT_FIELDS + COLOR_FIELDS + KEY_MOON_LINKED; fromLLSD starts defaultValues | 0; old saved files already default missing fields and apply complete typed Values in ScopedBatch | n (already correct)
+Diopter / Kaleidoscope | indra/newview/aldiopterpresetbank.cpp:307 | diopterOwnedNames / kaleidoOwnedNames; render resolvers own full named style/motion blocks | Custom bank seedMissing used CURRENT values for absent owned fields | y
+Graphics / stock camera | indra/newview/llpresetsmanager.cpp:577 | Baseline sparse loadFromFile; no complete-look ownership | Intentionally sparse; preserve absent quality and user timing preferences; retain one-off alpha cap reset | y (reverted extension)
+EEP sky/water/daycycle | bdmergeenvlibrary.cpp:209 / LLSettingsVO factories | Whole LLSettings structure, defaults/validation via factory | No partial gSavedSettings look overlay | n (whole-object replacement)
+
+RIM: EVERY OWNED SETTING
+Built-in row writes these 23 (all names have prefix CineRigRim):
+  CineRigRimBackSoftness
+  CineRigRimBgBackBias
+  CineRigRimBgGain
+  CineRigRimBgSharpness
+  CineRigRimBgWrap
+  CineRigRimFillBackBias
+  CineRigRimFillGain
+  CineRigRimFillSharpness
+  CineRigRimFillWrap
+  CineRigRimIncludeAlpha
+  CineRigRimIncludeBounce
+  CineRigRimKeyBackBias
+  CineRigRimKeyGain
+  CineRigRimKeySharpness
+  CineRigRimKeyWrap
+  CineRigRimMasterGain
+  CineRigRimRimBackBias
+  CineRigRimRimGain
+  CineRigRimRimSharpness
+  CineRigRimRimWrap
+  CineRigRimRoughnessSoften
+  CineRigRimShadow
+  CineRigRimTint
+
+Every built-in row omits these 15 LOOK fields; now defaulted on every load:
+  CineRigRimAntiShimmer
+  CineRigRimSilhouette
+  CineRigRimSilhouetteGap
+  CineRigRimSilhouetteSeedSoft
+  CineRigRimSilhouetteSeedThreshold
+  CineRigRimSilhouetteSoft
+  CineRigRimSilhouetteUnits
+  CineRigRimSilhouetteWidth
+  CineRigRimSmoothness
+  CineRigRimWrapBlur
+  CineRigRimWrapClamp
+  CineRigRimWrapEnabled
+  CineRigRimWrapSaturation
+  CineRigRimWrapStrength
+  CineRigRimWrapWidth
+
+Built-in Rim exclusions (not part of its look):
+  CineRigRimActorsOnly, CineRigRimActorsOnlyAlpha (targeting/who)
+  CineRigRimEnabled, CineRigRimDebugView, CineRigRimDebugRimOnly, CineRigRimIncludeProbes
+  CineRigRimTronMode, CineRigRimTronMix, CineRigRimTronColorSource (owned by Tron; retained in custom Rim for compatibility)
+Custom Rim owns the 38 look fields above plus these 3 Tron tint fields (41 total). Actor-only targeting is excluded from both built-in and custom ownership. The former custom list omitted Gap, SeedThreshold, SeedSoft and WrapClamp.
+
+EXACT BASELINE OMISSIONS IN OTHER NAMED ROWS
+TRON EXCLUDED SHOT KEYS (11; preserved, not omissions to fix):
+  TronSuitRimGain
+  TronSuitSeamCell
+  TronSuitSeamDensity
+  TronSuitSeamGain
+  TronSuitSeamWidth
+  TronSuitUsePalette
+  TronTrailBreakDistance
+  TronTrailIdleBreak
+  TronTrailLift
+  TronTrailMinSpeed
+  TronTrailSpacing
+INFRARED (5):
+  RenderInfraredDryVegetation
+  RenderInfraredExposureEV
+  RenderInfraredFoliageSensitivity
+  RenderInfraredShadowDepth
+  RenderInfraredSkinEV
+SOFT_EDGE (2):
+  RenderSoftEdgeBlurType
+  RenderSoftEdgeGlowThreshold
+HAZE (1):
+  CineHazeReferenceHeight
+FLARE (16; OcclusionTaps performance/quality excluded):
+  RenderCineLensFlareProbeRadius
+  RenderCineLensFlareRelease
+  RenderCineLensFlareThreshold
+  RenderLensFlareChromaticSpread
+  RenderLensFlareGlowFalloff
+  RenderLensFlareGlowRadius
+  RenderLensFlareHaloRadius
+  RenderLensFlareOcclusionRadius
+  RenderLensFlareSrcColorAmount
+  RenderLensFlareStarburstSharpness
+  RenderLensFlareStreakFalloff
+  RenderLensFlareStreakLength
+  RenderLensFlareStreakThickness
+  RenderLensFlareStreakTipAmount
+  RenderLensFlareStreakTipTint
+  RenderLensFlareWarp
+NIGHT_MASK (2):
+  CineLightRigNightMaskHeightOffset
+  CineLightRigNightMaskTintColor
+SHAKE (49):
+  FlycamOperatorAutoRunEnter
+  FlycamOperatorAutoRunEnterDwell
+  FlycamOperatorAutoRunExit
+  FlycamOperatorAutoRunExitDwell
+  FlycamOperatorAutoWalkEnter
+  FlycamOperatorAutoWalkEnterDwell
+  FlycamOperatorAutoWalkExit
+  FlycamOperatorAutoWalkExitDwell
+  FlycamOperatorBreathAmount
+  FlycamOperatorBreathFreq
+  FlycamOperatorBreathLift
+  FlycamOperatorCadenceDrive
+  FlycamOperatorDrag
+  FlycamOperatorEnergyTrim
+  FlycamOperatorForceWalk
+  FlycamOperatorForwardWalkBias
+  FlycamOperatorGaitCoupling
+  FlycamOperatorIdleIntensity
+  FlycamOperatorLateralStep
+  FlycamOperatorLateralWalkBias
+  FlycamOperatorModeBlendTime
+  FlycamOperatorMotionBreath
+  FlycamOperatorMotionCalm
+  FlycamOperatorMotionPan
+  FlycamOperatorMotionRoll
+  FlycamOperatorMotionTilt
+  FlycamOperatorOnset
+  FlycamOperatorPanAmount
+  FlycamOperatorPanMode
+  FlycamOperatorPanReactSmoothing
+  FlycamOperatorPanSmoothness
+  FlycamOperatorPanTiltFreq
+  FlycamOperatorProfileInfluence
+  FlycamOperatorReactCeiling
+  FlycamOperatorReactivity
+  FlycamOperatorRecomposeAmount
+  FlycamOperatorRecomposeInterval
+  FlycamOperatorRefAngularSpeed
+  FlycamOperatorRefLinearSpeed
+  FlycamOperatorRollAmount
+  FlycamOperatorRollDamping
+  FlycamOperatorRollFreq
+  FlycamOperatorSettle
+  FlycamOperatorSettleDecay
+  FlycamOperatorSettleFreq
+  FlycamOperatorStepBob
+  FlycamOperatorStepRoll
+  FlycamOperatorTiltAmount
+  FlycamOperatorWalkCadence
+DRONE EXCLUDED USER STICK FEEL (4; preserved, not omissions to fix):
+  FlycamDroneExpoGimbal
+  FlycamDroneExpoMove
+  FlycamDroneExpoYaw
+  FlycamDroneSaturation
+WEIGHTED (3):
+  FlycamWeightedCurve
+  FlycamWeightedRotationShare
+  FlycamWeightedTauMax
+
+KIT CARD AUDIT INVENTORY
+Gaze: range + lean; Operator: shake; Takes: Drone + Weighted; Lens Filters: GradND + Polarizer + LensFilter + Infrared + SoftEdge; Light Rig: flare + Easy flare shortcut + Night Mask + Easy Night Mask shortcut + fixture. All 15 card-preset combos traced to complete loaders or complete owned renderer blocks.
+Fixture owns FixtureMode/FixturePreset/Kelvin/SourceSizeM/Beam/GelSlot0/GelSlot1/GelSlot2 for the selected light; rows were already complete, now reset/group explicitly.
+Roto styles, Tron look strip and Rim strip use the same native loaders as legacy surfaces. There are no separate Bloom/Image named look loaders to fix.
+
+OPUS FINDINGS FOLLOW-UP (all eight implemented; this is not an Opus GREEN review)
+B1 | Dedicated replay flag; scene/recovery and passive ScopedSuspend loads no longer skip native presets.
+B2 | Reverted llpresetsmanager.cpp/.h extension to baseline stock sparse graphics behavior; alpha-cap one-off retained.
+P1-3 | Stock camera sparse behavior restored; no absent ZoomTime/CameraPositionSmoothing resets; templates unchanged.
+P1-4 | Light Rig no longer borrows shaft-family globals/quality/master/shader keys; actor-only and rig transforms excluded; authored volumetric blocks still apply.
+P1-5 | All 11 Tron Shot keys excluded by metadata filter; Rim actor-only pair excluded (38 built-in / 41 custom fields).
+P1-6 | Named filter changes preserve amount (85 -> 81A remains on); Grad ND / Polarizer preserve inactive Custom sliders.
+P1-7 | Drone owns 17 HumanParams fields only; Saturation and all three Expo controls excluded.
+P1-8 | Load requires explicit input provenance for history; autonomous loads suppress capture for the full load and do not touch open user gestures.
+
+VALIDATION (current follow-up)
+kit_lint --all: PASS, 0 errors / 14 warnings, 39 kit files.
+xui_layout_check --changed HEAD: PASS, 40 files / 0 findings.
+zs_check -Files: PASS, 23/23 changed C++ TUs (including alsettingsundohistory.cpp and aldiopterpresetbank_test.cpp), 0 failures; one explicit pass per TU.
+C:/Users/xianw/cxs/prebuild_guard.ps1 -ChecksOnly: PASS, exit 0; all UI/draw, compile since 7050a38cc4e with tests, light-map maths, generator, lint, parity, layout selftest, page sources and theme gates ran unchanged.
+The first guard run stopped before compilation on Git CRLF warnings; normalized alkitrow.cpp and llviewerjoystick.cpp to repository LF, then the complete unchanged guard passed.
+Source/metadata regression checks: PASS; all owned family sets exclude Shot key and handleSetShaderChanged listener keys; sparse stock files/templates match baseline; replay guards instantiate only in the two history replay paths.
+director_page_sources.py regenerated source anchors; its freshness gate passes. git diff --check: PASS.
+Guard uses the requested full-path Python via a process-local wrapper, plus the existing invocation-only readable Git global-ignore override; injected Git configuration and repository ignores were preserved. Explicit zs_check uses a repo-local flags cache. No gate conditions were bypassed.
+aldiopterpresetbank_test.cpp: no existing executable runner found in the workspace (including build sharedlibs); not built per instruction.
+No gate scripts, thresholds or baselines changed. Runtime/in-world Ctrl+Z and rendered looks were not exercised. No build, commit or push.
+
+LIGHT RIG: owned LOOK settings omitted by baseline saveSetup/setupToLLSD (global shaft keys and targeting removed):
+  CineLightRigBgShadowSoft
+  CineLightRigBounceEnabled
+  CineLightRigBounceRatio
+  CineLightRigCatchlight
+  CineLightRigCatchlightAngle
+  CineLightRigCatchlightEV
+  CineLightRigCatchlightSize
+  CineLightRigCookieUUID
+  CineLightRigFillShadowSoft
+  CineLightRigHeadroomStops
+  CineLightRigKeyShadowSoft
+  CineLightRigMirror
+  CineLightRigRimShadowSoft
+  CineLightRigShadowMode
+  Non-setting state: four shaft-enabled flags were also absent from custom setup saves.

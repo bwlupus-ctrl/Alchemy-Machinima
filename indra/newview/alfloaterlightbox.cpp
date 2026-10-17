@@ -29,6 +29,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpresetlook.h"
 #include "aldirectorcastui.h"
 #include "lldirectorcast.h"
 #include "alfloaterlightbox.h"
@@ -1067,6 +1068,7 @@ void ALFloaterLightBox::onTronApplyRotoPreset()
 
 void ALFloaterLightBox::onTronApplyRigRimPreset()
 {
+    ALPresetLook::Load load;
     const std::string& label = ALTron::lastPresetRigRimLabel();
     if (!label.empty() && ALPanelCineLightRig::applyRigRimPresetByName(label))
     {

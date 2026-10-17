@@ -1,5 +1,12 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitpresets.h"
+#include "alpresetlook.h"
+#include "alrotoink.h"
+#include "altron.h"
+#include "alsteppedanim.h"
+#include "alprojectorshaftpresets.h"
+#include "alpanelweathersettings.h"
+#include "alkitpage.h"
 #include "alkitbinding.h"
 #include "alkithistory.h"
 #include "alsettingsundohistory.h"
@@ -16,6 +23,209 @@
 #include "llviewercontrol.h"
 
 #include <algorithm>
+#include <map>
+
+namespace ALPresetLook
+{
+namespace
+{
+S32 sLoadDepth = 0;
+ALKitHistory* sLoadHistory = nullptr;
+
+std::vector<std::string> select(std::initializer_list<const char*> prefixes,
+                                std::initializer_list<const char*> excluded = {})
+{
+    struct Collector final : LLControlGroup::ApplyFunctor
+    {
+        std::vector<std::string> result;
+        std::initializer_list<const char*> prefixes, excluded;
+        void apply(const std::string& name, LLControlVariable*) override
+        {
+            auto matches = [&name](const char* prefix) { return name.compare(0, strlen(prefix), prefix) == 0; };
+            if (std::any_of(prefixes.begin(), prefixes.end(), matches) &&
+                !std::any_of(excluded.begin(), excluded.end(), matches)) result.push_back(name);
+        }
+    } collector;
+    collector.prefixes = prefixes;
+    collector.excluded = excluded;
+    gSavedSettings.applyToAll(&collector);
+    std::sort(collector.result.begin(), collector.result.end());
+    return collector.result;
+}
+}
+
+const std::vector<std::string>& owned(Family family)
+{
+    // A look preset owns LOOK settings only. Never own targeting/who (actor-only,
+    // subject), shot placement/transform (including every settings.xml "Shot key"),
+    // user calibration/preferences (stick feel, camera smoothing/zoom time),
+    // performance/quality knobs, compile-time shader settings (handleSetShaderChanged),
+    // or master enables. Prefix sets require explicit exclusions as well as the
+    // Shot key metadata filter below; optional authored blocks remain sparse.
+    static std::map<Family, std::vector<std::string>> sets;
+    auto found = sets.find(family);
+    if (found != sets.end()) return found->second;
+    std::vector<std::string> keys;
+    switch (family)
+    {
+    case RIM:
+        keys = select({"CineRigRim"}, {"CineRigRimEnabled", "CineRigRimDebug", "CineRigRimIncludeProbes", "CineRigRimTron", "CineRigRimActorsOnly"});
+        break;
+    case RIM_CUSTOM:
+        keys = owned(RIM);
+        for (const char* key : {"CineRigRimTronMode", "CineRigRimTronMix", "CineRigRimTronColorSource"}) keys.emplace_back(key);
+        break;
+    case ROTO:
+        keys = select({"CineOutline"}, {"CineOutlineEnabled", "CineOutlineLayer", "CineOutlineSubject", "CineOutlineAnim"});
+        break;
+    case TRON:
+        keys = select({"Tron", "CineRigRimTron"},
+            {"TronEnabled", "TronLayer", "TronSubject", "TronAnim", "TronPresetAlso", "TronGridOriginGlobal",
+             "TronGridSubject", "TronNoPostScale", "TronBloomMeterScale", "TronTrailTarget", "TronTrailMaxActors",
+             "TronTrailMaxPoints", "TronTrailMaxSegments", "TronTrailClearOnCut"});
+        break;
+    case INFRARED:
+        keys = select({"RenderInfrared"}, {"RenderInfraredEnabled", "RenderInfraredDebugView", "RenderInfraredPresetSetsGrain"});
+        break;
+    case SOFT_EDGE:
+        keys = select({"RenderSoftEdge"}, {"RenderSoftEdgeEnabled", "RenderSoftEdgeAnchor", "RenderSoftEdgeCenter", "RenderSoftEdgeShowMask"});
+        break;
+    case HAZE:
+        keys = select({"CineHaze"}, {"CineHazeEnable", "CineHazeDebug"});
+        break;
+    case FLARE:
+        keys = select({"RenderLensFlare", "RenderCineLensFlare"},
+            {"RenderLensFlareMaster", "RenderLensFlareStrength", "RenderCineLensFlareStrength",
+             "RenderCineLensFlareIntensity", "RenderCineLensFlarePreset", "RenderLensFlareOcclusionTaps"});
+        break;
+    case NIGHT_MASK:
+        keys = select({"CineLightRigNightMask"}, {"CineLightRigNightMaskEnabled", "CineLightRigNightMaskTarget", "CineLightRigNightMaskGizmo"});
+        break;
+    case GRAD_ND:
+    case POLARIZER:
+    case LENS_FILTER:
+        // Named modes resolve in the renderer; Custom sliders and filter amount
+        // belong to the user, not to a named mode selection.
+        break;
+    case SHAKE:
+        keys = select({"FlycamOperator"}, {"FlycamOperatorEnabled", "FlycamOperatorSimulationHz", "FlycamOperatorSeed"});
+        break;
+    case WEIGHTED:
+        keys = {"FlycamWeightedWeight", "FlycamWeightedRotationShare", "FlycamWeightedTauMax", "FlycamWeightedCurve"};
+        break;
+    case TRON_PALETTE:
+        keys = {"TronColorPrimary", "TronColorSecondary", "TronColorAccent", "TronColorPulse"};
+        break;
+    case DRONE:
+        keys = select({"FlycamDrone"}, {"FlycamDronePreset", "FlycamDroneSimulationHz", "FlycamDroneMoveDeadzone", "FlycamDroneLookDeadzone",
+            "FlycamDroneInvertLook", "FlycamDroneResumeMomentum", "FlycamDroneSaturation", "FlycamDroneExpo"});
+        break;
+    case LIGHT_RIG:
+        keys = select({"CineLightRigKey", "CineLightRigFill", "CineLightRigRim", "CineLightRigBg"},
+            {"CineLightRigKeyActorOnly", "CineLightRigFillActorOnly", "CineLightRigRimActorOnly", "CineLightRigBgActorOnly"});
+        for (const char* key : {"CineLightRigRadius", "CineLightRigRatioLock", "CineLightRigRatio", "CineLightRigMasterEV",
+             "CineLightRigMasterTempMired", "CineLightRigHeadroomStops", "CineLightRigBounceEnabled",
+             "CineLightRigBounceRatio", "CineLightRigMirror",
+             "CineLightRigShadowMode", "CineLightRigCatchlight", "CineLightRigCatchlightEV", "CineLightRigCatchlightSize",
+             "CineLightRigCatchlightAngle", "CineLightRigCookieUUID"})
+            keys.emplace_back(key);
+        // Volumetric globals (including quality, master and shader permutations)
+        // are applied only when explicitly authored by the optional block.
+        break;
+    }
+    keys.erase(std::remove_if(keys.begin(), keys.end(), [](const std::string& name)
+        {
+            LLControlVariable* control = gSavedSettings.getControl(name);
+            return control && control->getComment().find("Shot key") != std::string::npos;
+        }), keys.end());
+    return sets.emplace(family, std::move(keys)).first->second;
+}
+
+std::vector<std::string> pageSettings(const std::string& page)
+{
+    std::vector<std::string> keys;
+    auto add = [&keys](const std::vector<std::string>& more) { keys.insert(keys.end(), more.begin(), more.end()); };
+    if (page == "light_group/light_rim_tab") add(owned(RIM_CUSTOM));
+    if (page == "look_group/stylize_tab") add(owned(ROTO));
+    if (page == "look_group/tron_tab") { add(owned(TRON)); add(owned(ROTO)); add(owned(RIM)); }
+    if (page == "lens_group/filters_tab")
+    {
+        add(owned(INFRARED)); add(owned(SOFT_EDGE)); add(owned(GRAD_ND)); add(owned(POLARIZER)); add(owned(LENS_FILTER));
+        add(infraredGrainSettings()); // opt-in IR grain hint
+    }
+    if (page == "camera_group/operator_tab") add(owned(SHAKE));
+    if (page == "camera_group/takes_tab") { add(owned(WEIGHTED)); add(owned(DRONE)); }
+    if (page == "light_group/cine_light_rig_tab") { add(owned(LIGHT_RIG)); add(owned(FLARE)); add(owned(NIGHT_MASK)); }
+    if (page == "world_group/atmosphere_tab") { add(owned(HAZE)); add(ALProjectorShaftPresets::trackedSettings()); }
+    if (page == "world_group/weather_tab") add(ALPanelWeatherSettings::trackedSettings());
+    if (page == "look_group/stepped_tab") { add(ALSteppedAnim::presetSettings()); keys.emplace_back("StepAnimEnabled"); }
+    return keys;
+}
+const std::vector<std::string>& infraredGrainSettings()
+{
+    static const std::vector<std::string> keys = {"RenderFilmGrainAmount"};
+    return keys;
+}
+std::vector<std::string> fixtureSettings(const std::string& prefix)
+{
+    std::vector<std::string> keys;
+    for (const char* suffix : {"FixtureMode", "FixturePreset", "Kelvin", "SourceSizeM", "Beam", "GelSlot0", "GelSlot1", "GelSlot2"})
+        keys.push_back(prefix + suffix);
+    return keys;
+}
+
+void reset(const std::vector<std::string>& settings)
+{
+    for (const std::string& name : settings)
+        if (LLControlVariable* control = gSavedSettings.getControl(name)) control->resetToDefault(true);
+}
+LLSD snapshot(const std::vector<std::string>& settings)
+{
+    LLSD values = LLSD::emptyMap();
+    for (const std::string& name : settings)
+        if (LLControlVariable* control = gSavedSettings.getControl(name)) values[name] = control->get();
+    return values;
+}
+void apply(const std::vector<std::string>& settings, const LLSD& values)
+{
+    for (const std::string& name : settings)
+        if (values.has(name))
+            if (LLControlVariable* control = gSavedSettings.getControl(name)) control->set(values[name]);
+}
+Load::Load(const std::string& label)
+{
+    // Focus is not provenance: timers/cues must not join or close an open user
+    // gesture, even while its page has keyboard focus or mouse capture.
+    if (sLoadDepth++ == 0 && !ALKitHistory::hasInputSource())
+        mSuspend = std::make_unique<ALKitHistory::ScopedSuspend>();
+    if (!ALKitHistory::suspended() && !replaying() && ALKitHistory::hasInputSource())
+        mBatch = std::make_unique<ALExposureSettingsHistory::ScopedBatch>(label);
+    if (sLoadDepth == 1 && !ALKitHistory::suspended() && !replaying() && ALKitHistory::hasInputSource())
+        if (ALKitPage* page = dynamic_cast<ALKitPage*>(ALKitHistory::inputPage()))
+            if (ALKitShell* shell = ALKitShell::find(page))
+            {
+                mHistory = &shell->history();
+                sLoadHistory = mHistory;
+                mHistory->ensureGesture(page->pageKey(), label, true);
+            }
+}
+void Load::recordState(const std::string& key, std::function<bool(bool, std::string&)> replay,
+                       std::function<bool(bool, std::string&)> validate)
+{
+    if (sLoadHistory && ALKitHistory::hasInputSource() && !ALKitHistory::suspended() && !replaying())
+        sLoadHistory->recordCustom(ALKitHistory::inputPage(), key, "Apply preset", std::move(replay), true, std::move(validate));
+}
+bool replaying() { return ALKitHistory::replaying(); }
+Load::~Load()
+{
+    if (mHistory)
+    {
+        mHistory->finishGesture();
+        sLoadHistory = nullptr;
+    }
+    --sLoadDepth;
+}
+}
 
 static LLDefaultChildRegistry::Register<ALKitPresetStrip> register_preset_strip("kit_preset_strip");
 
@@ -100,9 +310,12 @@ bool ALKitSnapshotStore::save(const std::string& name)
 
 bool ALKitSnapshotStore::load(const std::string& name)
 {
+    if (ALPresetLook::replaying()) return false;
     if (!ensureLoaded() || !mCache.has(name) || !mCache[name].isMap())
         return false;
     const LLSD& values = mCache[name];
+    ALPresetLook::Load load;
+    ALPresetLook::reset(mSettings);
     for (const std::string& setting : mSettings)
     {
         if (values.has(setting))

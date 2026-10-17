@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+class LLView;
+
 namespace ALLensLooks
 {
     struct Frame
@@ -73,6 +75,7 @@ namespace ALLensLooks
     LLColor3 frameFilterGain();
     void applyInfraredPreset(S32 index);
     void applySoftEdgePreset(S32 index);
+    void bindFilterPresets(LLView* root);
     const std::vector<std::string>& settings();
 }
 

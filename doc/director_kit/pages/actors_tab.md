@@ -25,7 +25,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `actor_mask` / `am_disable_check` (Disable) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5358` | kit `toggle` ↔ `CineLightRigActorMaskDisable` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml:10` `am_disable_check` |
 | `actor_mask` / `am_debug_combo` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5361` | kit `combo` ↔ `CineLightRigActorMaskDebug` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml:13` `am_debug_combo` |
 | `actor_mask` / `am_bias_slider` (Mask bias) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5367` | kit `slider` ↔ `CineLightRigActorMaskBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml:22` `am_bias_slider` |
-| `actor_mask` / `am_reset_CineLightRigActorMaskBias` (Reset bias) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5368` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onClickResetControlDefault()` (`indra/newview/alfloaterlightbox.cpp:79`) | none |
+| `actor_mask` / `am_reset_CineLightRigActorMaskBias` (Reset bias) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5368` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onClickResetControlDefault()` (`indra/newview/alfloaterlightbox.cpp:80`) | none |
 | `actor_mask` / `am_test_trigger` (Isolation test) | none | kit-native action `owner-command:LLFloaterDirector::bindLightActorsPage`; no duplicate widget is required | none |
 | `actor_mask` / `open_lightbox_actormask` (Lightbox ›) | none | kit-native action `floater:lightbox/actor_mask_settings`; no duplicate widget is required | none |
 | `avatar_list` / `target_list` (Avatars) | `scroll_list` `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:44` | `ALPanelAvatarLightResponse` command/model binding → wired in `ALPanelAvatarLightResponse::postBuild()`; behavior `ALPanelAvatarLightResponse::onSelectionChanged()` (`indra/newview/alpanelavatarlightresponse.cpp:125`) | none |
@@ -56,7 +56,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALFloaterLightBox::onClickResetControlDefault()` — `indra/newview/alfloaterlightbox.cpp:79` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterLightBox::onClickResetControlDefault()` — `indra/newview/alfloaterlightbox.cpp:80` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::<inline callback>()` — `indra/newview/alpanelavatarlightresponse.cpp:132` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::onBypass()` — `indra/newview/alpanelavatarlightresponse.cpp:157` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::onCopy()` — `indra/newview/alpanelavatarlightresponse.cpp:175` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
@@ -69,7 +69,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALPanelAvatarLightResponse::onSilFillPreset()` — `indra/newview/alpanelavatarlightresponse.cpp:161` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::onSliderCommit()` — `indra/newview/alpanelavatarlightresponse.cpp:140, 141, 142, 143, 144` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::refreshRows()` — `indra/newview/alpanelavatarlightresponse.cpp:127` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:1616` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:1608` | Move model-facing work into `ALPanelAvatarLightResponse` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

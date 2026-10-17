@@ -401,11 +401,11 @@ void aldiopterpresetbank_object::test<6>()
                   noop_entries, 1);
 }
 
-// ---- 7: seed a missing field with the LIVE value captured at load time ----
+// ---- 7: seed a missing field with its declared default --------------------
 template<> template<>
 void aldiopterpresetbank_object::test<7>()
 {
-    set_test_name("schema versioning: missing field seeded from the live setting at load");
+    set_test_name("schema versioning: missing field uses its default regardless of live edits");
     const std::string dir = scratchDir("t7");
     ALDiopterPresetBankTest::setTestDir(dir);
 
@@ -426,14 +426,14 @@ void aldiopterpresetbank_object::test<7>()
     root["fields"] = fields;
     writeRawBank(ALDiopterPresetBankTest::bankPath(AL_BANK_DIOPTER), root);
 
-    gSavedSettings.setF32(missingField, 123.f); // the "live value at load time"
+    const F32 defaultValue = static_cast<F32>(gSavedSettings.getControl(missingField)->getDefault().asReal());
+    gSavedSettings.setF32(missingField, 123.f); // unrelated tuning must not seed the bank
     alDiopterLoadBanks();
 
     gSavedSettings.setF32(missingField, 456.f); // a later, unrelated edit
     ensure("restore succeeds", alDiopterRestoreCustomBank(AL_BANK_DIOPTER));
-    ensure_equals("the seeded field restores to the value live AT LOAD TIME, "
-                  "not a later edit made before restore",
-                  gSavedSettings.getF32(missingField), 123.f);
+    ensure_equals("the seeded field restores its declared default, not either live edit",
+                  gSavedSettings.getF32(missingField), defaultValue);
 }
 
 // ---- 8: unknown fields survive write-back; upgrade reaches disk ----------

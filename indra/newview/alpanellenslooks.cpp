@@ -39,6 +39,7 @@ ALPanelLensLooks::~ALPanelLensLooks()
 bool ALPanelLensLooks::postBuild()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALPanelLensLooks postBuild");
+    ALLensLooks::bindFilterPresets(this);
 
     mInfraredHint = getChild<LLTextBox>("ir_tag_hint");
     mInfraredEnableTag = getChild<LLButton>("ir_enable_tag");

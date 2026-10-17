@@ -7,6 +7,7 @@
 #include "alundosequence.h"
 #include "alundovalue.h"
 #include "llcontrol.h"
+#include "llcombobox.h"
 #include "lleventtimer.h"
 #include "llfloaterdirector.h"
 #include "llfloaterreg.h"
@@ -21,6 +22,7 @@
 #include <unordered_set>
 
 static S32 sKitHistorySuspend     = 0;
+static S32 sKitHistoryReplay      = 0;
 static F64 sKitHistoryKeyTime     = 0.;
 static F64 sKitHistoryPointerTime = 0.;
 static LLHandle<LLView> sKitInputSource;
@@ -94,6 +96,22 @@ LLView* ALKitHistory::inputPage()
     return nullptr;
 }
 
+bool ALKitHistory::hasInputSource()
+{ return sKitInputSourceSet && sKitInputSource.get(); }
+
+LLView* ALKitHistory::comboInputSource(LLView* view)
+{
+    LLView* combo = nullptr;
+    for (; view; view = view->getParent())
+    {
+        if (!combo && dynamic_cast<LLComboBox*>(view))
+            combo = view;
+        if (combo && (dynamic_cast<ALKitRow*>(view) || dynamic_cast<ALKitPage*>(view)))
+            return combo;
+    }
+    return nullptr;
+}
+
 class ALKitHistory::GestureTimer final : public LLEventTimer
 {
 public:
@@ -117,6 +135,12 @@ ALKitHistory::ScopedSuspend::~ScopedSuspend()
 { --sKitHistorySuspend; }
 bool ALKitHistory::suspended()
 { return sKitHistorySuspend > 0; }
+ALKitHistory::ScopedReplay::ScopedReplay()
+{ ++sKitHistoryReplay; }
+ALKitHistory::ScopedReplay::~ScopedReplay()
+{ --sKitHistoryReplay; }
+bool ALKitHistory::replaying()
+{ return sKitHistoryReplay > 0; }
 
 void ALKitHistory::beginGesture(EOrigin o, const std::string& p, const std::string& label)
 {
@@ -146,9 +170,9 @@ void ALKitHistory::beginGesture(EOrigin o, const std::string& p, const std::stri
 void ALKitHistory::noteKey()
 { sKitHistoryKeyTime = LLTimer::getTotalSeconds(); }
 
-void ALKitHistory::ensureGesture(const std::string& page, const std::string& label)
+void ALKitHistory::ensureGesture(const std::string& page, const std::string& label, bool preserve_key)
 {
-    if (!mOpen || mOpen->page != page || mOrigin == KEY)
+    if (!mOpen || mOpen->page != page || (mOrigin == KEY && !preserve_key))
         beginGesture(KEY, page, label);
 }
 
@@ -199,7 +223,8 @@ void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv,
 }
 
 void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std::string& label,
-                                 std::function<bool(bool, std::string&)> fn)
+                                 std::function<bool(bool, std::string&)> fn, bool join_gesture,
+                                 std::function<bool(bool, std::string&)> validate)
 {
     if (suspended() || mReplaying)
         return;
@@ -207,10 +232,17 @@ void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std
     const std::string page = input ? input->pageKey() : rowPage(owner);
     if (page.empty())
         return;
+    if (join_gesture && mOpen && mOpen->page == page)
+    {
+        mOpen->custom.push_back({ key, std::move(fn), std::move(validate) });
+        mOpen->sequence = alNextUndoSequence();
+        ++mRevision;
+        return;
+    }
     // A list command is one complete action, including a keyboard Add with no open gesture.
     finishGesture();
     beginGesture(KEY, page, label);
-    mOpen->custom.push_back({ key, std::move(fn) });
+    mOpen->custom.push_back({ key, std::move(fn), std::move(validate) });
     mOpen->sequence = alNextUndoSequence();
     if (mOpen->label.empty())
         mOpen->label = label;
@@ -281,6 +313,7 @@ void ALKitHistory::captureSetting(const std::string& page, const std::string& na
         return;
     Entry entry;
     entry.binding_page = binding_page;
+    entry.context = currentContext(binding_page, name);
     entry.key  = name;
     entry.oldv = old;
     entry.newv = value;
@@ -431,6 +464,8 @@ bool ALKitHistory::prepareReplay(const std::string& page, bool redo, std::string
             return false;
         }
     }
+    for (CustomEntry& entry : it->custom)
+        if (entry.validate && !entry.validate(redo, reason)) return false;
     return true;
 }
 
@@ -448,7 +483,7 @@ void ALKitHistory::discardStep(const std::string& page, bool redo)
 
 bool ALKitHistory::replay(Step& step, bool redo)
 {
-    ScopedSuspend guard;
+    ScopedReplay guard;
     mReplaying = true;
     bool ok    = true;
     // A shared setting may have been edited on another page since this step.

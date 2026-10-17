@@ -879,6 +879,7 @@ void ALKitRow::reset()
     if (ALKitShell* shell = ALKitShell::find(this))
         shell->history().ensureGesture(actionPageKey(this), "Reset " + mMeta.label);
     mBinding->reset();
+    commitCardPreset();
     bindingChanged();
 }
 
@@ -958,7 +959,10 @@ bool ALKitRow::setBoundValue(const LLSD& value)
     if (ALKitShell* shell = ALKitShell::find(this))
         shell->history().ensureGesture(actionPageKey(this), mMeta.label);
     if (mBinding)
+    {
         mBinding->set(coerced);
+        commitCardPreset();
+    }
     else if (mControl)
     {
         mControl->setValue(coerced);
@@ -968,6 +972,18 @@ bool ALKitRow::setBoundValue(const LLSD& value)
         return false;
     bindingChanged();
     return true;
+}
+
+void ALKitRow::commitCardPreset()
+{
+    // A setting binding does not dispatch the native action. Quick proxies
+    // and paste must run the same preset loader as selecting the source combo.
+    // Widget/proxy bindings already dispatch; replay restores captured values.
+    if (mCardPreset && mControl && dynamic_cast<ALKitSettingBinding*>(mBinding.get()) && !ALKitHistory::replaying())
+    {
+        mControl->setValue(mBinding->get());
+        mControl->onCommit();
+    }
 }
 
 bool ALKitRow::canPasteValue(const LLSD& value) const
@@ -1167,6 +1183,7 @@ bool ALKitRow::handleMouseDown(S32 x, S32 y, MASK mask)
 
 bool ALKitRow::handleMouseUp(S32 x, S32 y, MASK mask)
 {
+    ALKitHistory::ScopedSource source(this);
     if (mMeta.kind == "segmented" && mControl && mControl->getEnabled() &&
         mControl->getRect().pointInRect(x, y))
         return true;

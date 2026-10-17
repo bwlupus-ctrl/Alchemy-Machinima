@@ -21,7 +21,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `weather_main` / `weather_deferred_note` (Requires) | `text` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:11` | kit readout ← approved static copy; no runtime writer | none |
-| `weather_main` / `weather_reset_all` (Reset all) | `button` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:260` | `ALWeatherKitAdapter` command/model binding → wired in `ALPanelWeatherSettings::postBuild()`; behavior `ALPanelWeatherSettings::onClickResetAll()` (`indra/newview/alpanelweathersettings.cpp:137`) | none |
+| `weather_main` / `weather_reset_all` (Reset all) | `button` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:260` | `ALWeatherKitAdapter` command/model binding → wired in `ALPanelWeatherSettings::postBuild()`; behavior `ALPanelWeatherSettings::onClickResetAll()` (`indra/newview/alpanelweathersettings.cpp:138`) | none |
 | `rain` / `weather_rain_intensity` (Intensity) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:45` | kit `slider` ↔ `AlchemyWeatherRainIntensity` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml:17` `weather_rain_intensity` |
 | `rain` / `weather_rain_density` (Density) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:48` | kit `slider` ↔ `AlchemyWeatherRainDensity` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml:22` `weather_rain_density` |
 | `rain` / `weather_rain_speed` (Fall speed) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:51` | kit `slider` ↔ `AlchemyWeatherRainFallSpeed` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml:27` `weather_rain_speed` |
@@ -55,7 +55,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `lightning` / `weather_lightning_rate` (Strikes/min) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:180` | kit `slider` ↔ `AlchemyWeatherLightningRate` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml:167` `weather_lightning_rate` |
 | `lightning` / `weather_lightning_brightness` (Brightness) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:192` | kit `slider` ↔ `AlchemyWeatherLightningBrightness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml:172` `weather_lightning_brightness` |
 | `lightning` / `weather_flash_duration` (Flash length) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:183` | kit `slider` ↔ `AlchemyWeatherLightningFlashDuration` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml:177` `weather_flash_duration` |
-| `lightning` / `weather_trigger` (Strike now) | `button` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:207` | `ALWeatherKitAdapter` command/model binding → wired in `ALPanelWeatherSettings::postBuild()`; behavior `ALPanelWeatherSettings::onTriggerStrike()` (`indra/newview/alpanelweathersettings.cpp:135`) | none |
+| `lightning` / `weather_trigger` (Strike now) | `button` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:207` | `ALWeatherKitAdapter` command/model binding → wired in `ALPanelWeatherSettings::postBuild()`; behavior `ALPanelWeatherSettings::onTriggerStrike()` (`indra/newview/alpanelweathersettings.cpp:136`) | none |
 | `lightning` / `weather_bolt_duration` (Bolt time) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:186` | kit `slider` ↔ `AlchemyWeatherLightningBoltDuration` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml:185` `weather_bolt_duration` |
 | `lightning` / `weather_lightning_ambient` (Ambient floor) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:189` | kit `slider` ↔ `AlchemyWeatherLightningAmbient` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml:190` `weather_lightning_ambient` |
 | `lightning` / `weather_lightning_width` (Bolt width) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:195` | kit `slider` ↔ `AlchemyWeatherLightningBoltWidth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml:195` `weather_lightning_width` |
@@ -76,8 +76,8 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelWeatherSettings::onClickResetAll()` — `indra/newview/alpanelweathersettings.cpp:137` | Move model-facing work into `ALWeatherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelWeatherSettings::onTriggerStrike()` — `indra/newview/alpanelweathersettings.cpp:135` | Move model-facing work into `ALWeatherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelWeatherSettings::onClickResetAll()` — `indra/newview/alpanelweathersettings.cpp:138` | Move model-facing work into `ALWeatherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelWeatherSettings::onTriggerStrike()` — `indra/newview/alpanelweathersettings.cpp:136` | Move model-facing work into `ALWeatherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
