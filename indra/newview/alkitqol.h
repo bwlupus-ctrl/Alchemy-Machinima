@@ -12,6 +12,16 @@
 
 namespace ALKitQol
 {
+// Text rows read the system clipboard at click time. Other rows retain the
+// typed value clipboard. Every route uses the owner's ordinary commit path.
+template<class ReadText, class Commit>
+bool pasteRowValue(bool textRow, const LLSD& valueClipboard, ReadText readText, Commit commit)
+{
+    const LLSD value = textRow ? readText() : valueClipboard;
+    if (!value.isDefined() || (textRow && (!value.isString() || value.asString().empty()))) return false;
+    return commit(value);
+}
+
 struct Favorite
 {
     std::string page;

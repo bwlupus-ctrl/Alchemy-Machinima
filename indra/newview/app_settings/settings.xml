@@ -29713,6 +29713,24 @@
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>2048</integer>
     </map>
+    <key>VCamMediaCachePurgePending</key>
+    <map>
+      <key>Comment</key>
+      <string>Retains a media cache purge request until a media cache owner completes it.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>VCamMediaCacheKeepBetweenSessions</key>
+    <map>
+      <key>Comment</key><string>Keep downloaded VCam videos between sessions up to the cache limit. Off deletes downloads at quit and sweeps leftovers on next startup. Local files are never copied.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>VCamMediaCacheMaxMB</key>
     <map>
       <key>Comment</key><string>Private video cache capacity in MiB, including reserved downloads. Must be positive.</string>

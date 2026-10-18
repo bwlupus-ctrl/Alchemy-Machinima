@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kit_page name="toggle_fixture" page="camera_group/fixture">
+    <kit_card name="source" id="source" kind="rows" title="Source">
+        <kit_row widget="keep" kind="toggle" label="Keep downloads between sessions" fill_width="true" bind="none">
+            <kit_switch name="keep" />
+        </kit_row>
+    </kit_card>
+</kit_page>

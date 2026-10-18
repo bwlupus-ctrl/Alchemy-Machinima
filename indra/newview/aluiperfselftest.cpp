@@ -163,14 +163,14 @@ bool functionalMediaLifecycle(const std::string& seam)
             {
                 maintainCache(pending, cleanup, failures, degraded,
                     [&](bool clearing) { if (clearing) ++sweeps; throw std::runtime_error("fixture"); },
-                    []() { return false; }, [&]() { ++drops; });
+                    []() { return false; }, [&]() { ++drops; }, []() { return true; });
             }
             catch (...) { if (attempt == 2 || !pending) return false; }
         }
         if (pending || cleanup || !degraded || sweeps != 3 || drops != 1) return false;
         pending = cleanup = true;
         maintainCache(pending, cleanup, failures, degraded,
-            [](bool) {}, []() { return false; }, [&]() { ++drops; });
+            [](bool) {}, []() { return false; }, [&]() { ++drops; }, []() { return true; });
         return !pending && !cleanup && drops == 1 &&
             std::string(CLEARING) == "Clearing video cache..." &&
             std::string(CLEAR_DEGRADED) == "Some cached videos couldn't be removed";
@@ -214,6 +214,20 @@ bool functionalMediaLifecycle(const std::string& seam)
         closed = true;
         return retirement.poll() && retained.expired() &&
             !privateEndStops(true, true, true) && privateEndStops(true, true, false);
+    }
+    if (seam == "cache_lifetime")
+    {
+        unsigned scheduled = 0;
+        for (bool owner : {false, true})
+            for (bool keep : {false, true})
+            {
+                const auto before = scheduled;
+                if (scheduleSessionCleanup(owner, keep, [&]() { ++scheduled; }) != (owner && !keep) ||
+                    scheduled != before + unsigned(owner && !keep)) return false;
+                for (bool purge : {false, true})
+                    if (clearCacheAtStartup(owner, keep, purge) != (owner && (!keep || purge))) return false;
+            }
+        return scheduled == 1 && deferCacheDeletion(1) && !deferCacheDeletion(0);
     }
     if (seam == "cache_policy")
     {

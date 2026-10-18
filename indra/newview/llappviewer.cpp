@@ -1900,7 +1900,7 @@ void LLAppViewer::flushLFSIO()
 
 bool LLAppViewer::cleanup()
 {
-    ALMediaFile::beginShutdown();
+    ALMediaFile::beginShutdown(gSavedSettings.getBOOL("VCamMediaCacheKeepBetweenSessions"));
     LLPrismLens::shutdownMediaFiles();
     ALMediaFile::drainShutdown(); // one monotonic two-second budget; never join
     // [XInputRumble] The main loop no longer advances patterns; stop the pad now,
@@ -4779,6 +4779,12 @@ bool LLAppViewer::initCache()
 {
     LL_PROFILE_ZONE_SCOPED;
     mPurgeCache = false;
+    const bool purge_media = gSavedSettings.getBOOL("PurgeCacheOnStartup") ||
+        gSavedSettings.getBOOL("PurgeCacheOnNextStartup") ||
+        gSavedSettings.getBOOL("VCamMediaCachePurgePending");
+    // The general one-shot is consumed below even if another viewer owns the
+    // media cache. Only the media lock owner's completed sweep acknowledges this.
+    if (purge_media) gSavedSettings.setBOOL("VCamMediaCachePurgePending", true);
     bool read_only = mSecondInstance;
     LLAppViewer::getTextureCache()->setReadOnly(read_only) ;
     LLVOCache::initParamSingleton(read_only);
@@ -4902,7 +4908,11 @@ bool LLAppViewer::initCache()
     // Remove old, stale CEF cache folders
     purgeCefStaleCaches();
 
-    if (LLPrismLens::mediaSlotsEnabled()) LLPrismLens::initializeMediaFiles();
+    // Retain the Preferences request after its persisted flag was consumed
+    // above, also in a read-only viewer that wins the separate media lock.
+    // Media cleanup acquires its own exclusive lock off-main,
+    // including when either VCam enable is off. purgeCache() stays non-recursive.
+    LLPrismLens::initializeMediaFiles(purge_media);
 
     return true;
 }

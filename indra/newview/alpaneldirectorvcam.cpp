@@ -17,6 +17,7 @@
 #include "alvcambonepov.h"
 #include "alvcammonitorstrip.h"
 #include "alvcammediafileio.h"
+#include "alvcammediafilelifecycle.h"
 #include "llagentcamera.h"
 #include "llbutton.h"
 #include "llcallbacklist.h"
@@ -288,7 +289,7 @@ bool ALPanelDirectorVCam::postBuild()
             const std::string& widget = target->meta().widget;
             const bool url_row = widget == "vc_media_video" || widget == "vc_media_browse" ||
                 widget == "vc_media_transport" || widget == "vc_media_loop" || widget == "vc_media_volume" ||
-                widget == "vc_media_cache_clear" || widget == "vc_media_cache_status";
+                widget == "vc_media_cache_clear" || widget == "vc_media_cache_status" || widget == "vc_media_cache_keep";
             const bool face_row = widget == "vc_media_face" || widget == "vc_media_face_actions";
             if (!url_row && !face_row) return true;
             const auto* selected = selectedCapture();
@@ -583,23 +584,16 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             }
         if (!tile.mMasterEnabled) tile.mStatus = "Error: Turn on Virtual Cam";
         else if (!tile.mPreviewsEnabled) tile.mStatus = "Disabled";
-        else if (const auto refused = mMediaRefusals.find(item.mHandle.mId);
-                 refused != mMediaRefusals.end() && refused->second.generation == item.mHandle.mGeneration)
-            tile.mStatus = "Error: File refused: " + refused->second.reason;
-        else if (!item.mRuntime.mHasOutput)
+        else
         {
-            const auto& reason = item.mRuntime.mReason;
-            bool refused = reason == "Media slots disabled" || reason == "Blocked by media policy" ||
-                reason.rfind("Unsupported player", 0) == 0;
-            for (const char* refusal : {ALMediaFile::NOT_VIDEO, ALMediaFile::MISSING, ALMediaFile::LOCKED,
-                ALMediaFile::BUDGET, ALMediaFile::TOO_LARGE, ALMediaFile::NO_SPACE, ALMediaFile::FAILED,
-                ALMediaFile::UNSUPPORTED, ALMediaFile::REMOTE})
-                refused |= reason == refusal;
-            // Checking/downloading/waiting (including numeric progress) has no
-            // accepted picture yet. Only a real refusal changes the reason.
-            tile.mStatus = refused ? "Error: " + reason : "Error: No source";
+            const auto edit = mMediaRefusals.find(item.mHandle.mId);
+            const bool current = edit != mMediaRefusals.end() && edit->second.generation == item.mHandle.mGeneration &&
+                item.mediaUrlData() && edit->second.cue == item.mediaUrlData()->mValue;
+            const auto error = ALMediaFile::mediaSourceStatus(item.mRuntime.mReason,
+                current ? edit->second.reason : "", item.mRuntime.mReasonSequence, current ? edit->second.sequence : 0);
+            tile.mStatus = !error.empty() ? "Error: " + error :
+                !item.mRuntime.mHasOutput ? "Error: No source" : "Preview";
         }
-        else tile.mStatus = "Preview";
 
         const LLPrismLens::DisplayHandle monitor = mModel.monitorDisplay(item.mSlot);
         if (monitor.mId.notNull())
@@ -966,7 +960,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         const auto* video = capture->mediaUrlData();
         const bool enabled = LLPrismLens::mediaSlotsEnabled();
         setValueIfChanged(control("vc_media_kind"), video ? "url" : "face");
-        for (const char* id : {"vc_media_video", "vc_media_browse", "vc_media_transport", "vc_media_loop", "vc_media_volume", "vc_media_cache_clear", "vc_media_cache_status"})
+        for (const char* id : {"vc_media_video", "vc_media_browse", "vc_media_transport", "vc_media_loop", "vc_media_volume", "vc_media_cache_clear", "vc_media_cache_status", "vc_media_cache_keep"})
             setRowControlVisible(row(id), video != nullptr);
         for (const char* id : {"vc_media_face", "vc_media_face_actions"})
             setRowControlVisible(row(id), video == nullptr);
@@ -981,6 +975,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             mMediaCue = video ? video->mValue : "";
             mMediaDraft = mMediaCue;
             mMediaError.clear();
+            mMediaValidationSequence = 0;
             mMediaPlayable = !mMediaCue.empty();
             const auto refused = mMediaRefusals.find(capture->mHandle.mId);
             if (video && refused != mMediaRefusals.end() &&
@@ -988,7 +983,8 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             {
                 mMediaDraft = refused->second.draft;
                 mMediaError = mMediaPlayStatus = refused->second.reason;
-                mMediaPlayable = false;
+                mMediaValidationSequence = refused->second.sequence;
+                mMediaPlayable = mMediaError.empty() && !mMediaDraft.empty();
             }
             setValueIfChanged(mMediaVideo, mMediaDraft);
         }
@@ -1008,9 +1004,12 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             setLabelIfChanged(freeze, label);
         }
         setValueIfChanged(control("vc_media_running"), capture->mMediaRunning);
-        setValueIfChanged(control("vc_media_status"), !gSavedSettings.getBOOL("PrismLensEnabled") ? "Turn on Virtual Cam to play video" : !mMediaPlayStatus.empty() ? mMediaPlayStatus :
-            !mMediaError.empty() ? mMediaError : video && mMediaDraft.empty() ? "Enter a direct video URL" :
-            !video && capture->mediaData()->mObjectId.isNull() ? "Pick a prim face" : capture->mRuntime.mReason);
+        setValueIfChanged(control("vc_media_status"), !gSavedSettings.getBOOL("PrismLensEnabled") ? "Turn on Virtual Cam to play video" : ALMediaFile::mediaSourceStatus(capture->mRuntime.mReason,
+            !mMediaPlayStatus.empty() ? mMediaPlayStatus : !mMediaError.empty() ? mMediaError :
+            video && mMediaDraft.empty() ? "Enter a direct video URL" :
+            !video && capture->mediaData()->mObjectId.isNull() ? "Pick a prim face" :
+            mMediaValidationSequence > capture->mRuntime.mReasonSequence ? "Set. Press Play to start it." : capture->mRuntime.mReason,
+            capture->mRuntime.mReasonSequence, mMediaValidationSequence));
         if (mMediaVideo) mMediaVideo->setFgColor(ALKitStyle::color(
             !mMediaError.empty() || !mMediaPlayStatus.empty() ? ALKitStyle::RECORD : ALKitStyle::TEXT));
         setValueIfChanged(control("vc_media_note"), video
@@ -1089,19 +1088,27 @@ void ALPanelDirectorVCam::validateMediaVideo()
     mMediaDraft = mMediaVideo->getText();
     ALMediaFile::Descriptor syntax;
     mMediaError.clear();
+    mMediaPlayStatus.clear();
     mMediaPlayable = ALMediaFile::classify(mMediaDraft, syntax, mMediaError, LL_WINDOWS) && !syntax.value.empty();
     setEnabledIfChanged(control("vc_media_play"), LLPrismLens::mediaSlotsEnabled() &&
         mMediaPlayable);
     const auto* capture = selectedCapture();
-    setValueIfChanged(control("vc_media_status"), !gSavedSettings.getBOOL("PrismLensEnabled") ? "Turn on Virtual Cam to play video" : !mMediaPlayStatus.empty() ? mMediaPlayStatus :
-        !mMediaError.empty() ? mMediaError : mMediaDraft.empty() ? "Enter a direct video URL" : capture ? capture->mRuntime.mReason : "Stopped");
+    mMediaValidationSequence = ALMediaFile::nextMediaStatusSequence();
+    // Keystrokes validate only the Source editor. Monitor refusals are recorded
+    // by commitMediaVideo/refuseMediaVideo after Enter, focus loss, paste/Browse.
+    mModel.markDirty(ALVCamPageModel::DIRTY_RUNTIME);
+    setValueIfChanged(control("vc_media_status"), !gSavedSettings.getBOOL("PrismLensEnabled") ? "Turn on Virtual Cam to play video" : ALMediaFile::mediaSourceStatus(capture ? capture->mRuntime.mReason : "",
+        !mMediaPlayStatus.empty() ? mMediaPlayStatus : !mMediaError.empty() ? mMediaError :
+        mMediaDraft.empty() ? "Enter a direct video URL" : "Set. Press Play to start it.",
+        capture ? capture->mRuntime.mReasonSequence : 0, mMediaValidationSequence));
 }
 
 void ALPanelDirectorVCam::refuseMediaVideo(const std::string& reason)
 {
     mMediaError = mMediaPlayStatus = reason;
     mMediaPlayable = false;
-    mMediaRefusals[mMediaEditHandle.mId] = {mMediaEditHandle.mGeneration, mMediaCue, mMediaDraft, reason};
+    mMediaValidationSequence = ALMediaFile::nextMediaStatusSequence();
+    mMediaRefusals[mMediaEditHandle.mId] = {mMediaEditHandle.mGeneration, mMediaCue, mMediaDraft, reason, mMediaValidationSequence};
     mModel.markDirty(ALVCamPageModel::DIRTY_RUNTIME);
 }
 
@@ -1114,20 +1121,20 @@ bool ALPanelDirectorVCam::commitMediaVideo()
         return false;
     }
     validateMediaVideo();
-    ALMediaFile::Descriptor syntax;
-    bool valid = ALMediaFile::classify(mMediaDraft, syntax, mMediaError, LL_WINDOWS);
-    if (valid)
+    const bool valid = ALMediaFile::commitVideoDraft(mMediaDraft, mMediaError, LL_WINDOWS,
+        [&](const ALMediaFile::Descriptor& syntax)
     {
         auto source = *capture->mediaUrlData();
         source.mValue = mMediaDraft; // Keep exactly what the user typed.
         source.mLocation = syntax.location == ALMediaFile::Location::LOCAL_FILE
             ? LLPrismLens::MediaUrlSource::Location::LOCAL_FILE : LLPrismLens::MediaUrlSource::Location::HTTP_URL;
-        valid = LLPrismLens::setMediaUrlSource(capture->mHandle, source, &mMediaError);
-    }
+        return LLPrismLens::setMediaUrlSource(capture->mHandle, source, &mMediaError);
+    });
     LL_INFOS("VCamMedia") << "Typed commit " << (valid ? "valid" : "invalid")
         << " slot=" << capture->mSlot << " rule=syntax/descriptor reason=" << (valid ? "accepted cue" : mMediaError)
         << " ext=" << ALMediaFile::diagnosticExtension(mMediaDraft) << LL_ENDL;
     if (!valid) refuseMediaVideo(mMediaError);
+    else mMediaRefusals[capture->mHandle.mId] = {capture->mHandle.mGeneration, mMediaDraft, mMediaDraft, "", mMediaValidationSequence};
     return valid;
 }
 

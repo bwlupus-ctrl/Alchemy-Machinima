@@ -99,12 +99,7 @@ public:
 
     static ptr_t create(LLPluginProcessParentOwner *owner);
     void requestShutdown();
-    std::shared_ptr<LLPluginFileClose> privateFileCloseFence(const std::string& token)
-    {
-        if (!mPrivateFileClose) mPrivateFileClose = std::make_shared<LLPluginFileClose>();
-        mPrivateFileCloseToken = token;
-        return mPrivateFileClose;
-    }
+    std::shared_ptr<LLPluginFileClose> privateFileCloseFence(const std::string& token);
     F32 getLaunchTimeout() const { return mPluginLaunchTimeout; }
 
     // Inherited from LLPluginMessagePipeOwner

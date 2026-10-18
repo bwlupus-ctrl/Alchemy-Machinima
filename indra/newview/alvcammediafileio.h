@@ -13,6 +13,7 @@ struct Policy
     std::string cacheRoot, caFile, proxy;
     uint64_t downloadBytes = 0, cacheBytes = 0;
     bool allowDownloads = true;
+    bool keepBetweenSessions = false, purgeOnStartup = false;
     std::string denialReason;
 };
 struct Lease
@@ -50,13 +51,13 @@ struct CacheStatus
 };
 CacheStatus cacheStatus(); // immutable, owner-only usage; no inline I/O
 std::string cacheKey(const std::string& url);
-void initialize(const Policy& policy); // Call only with feature enabled; no inline I/O.
+void initialize(const Policy& policy); // Startup maintenance also runs with VCam disabled; no inline I/O.
 void tick(); // bounded deadline/cancellation polling; no filesystem access
 void retireAfterClose(std::shared_ptr<void> retention, std::shared_ptr<LLPluginFileClose> fence);
 Request startPreflight(const Descriptor& source);
 Request startDownload(const Descriptor& source);
 void clearCache(); // Caller first stops cache-backed players, then advances epoch.
-void beginShutdown(); // Closes mailboxes and cancels even previously cancelled jobs.
+void beginShutdown(bool keepBetweenSessions); // Cancels requests; maintenance cleans within the existing drain.
 bool drainShutdown(); // At most the remainder of the single two-second budget.
 bool jobsRemain();
 }

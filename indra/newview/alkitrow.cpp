@@ -14,6 +14,7 @@
 #include "llfontgl.h"
 #include "llfloaterreg.h"
 #include "lllineeditor.h"
+#include "llclipboard.h"
 #include "llrender2dutils.h"
 #include "llstring.h"
 #include "lltextbox.h"
@@ -531,26 +532,36 @@ void ALKitRow::layoutRow(S32 w)
     // track width and never narrows the label track.
     constexpr S32 kFavoriteW = 18;
     const S32 h = heightForWidth(w);
+    const S32 value_width = mFillWidth && mMeta.kind == "toggle" ? 24 : ALKitStyle::VALUE_W;
+    // A full-width toggle spends its otherwise empty track on its label, as
+    // authored in the cache-lifetime mockup. Other rows keep the 100 px track.
+    const S32 label_width = mFillWidth && mMeta.kind == "toggle"
+        ? llmax(ALKitStyle::LABEL_W, w - 2 * ALKitStyle::ROW_INSET - ALKitStyle::SWITCH_W -
+            value_width - ALKitStyle::RESET_W - kFavoriteW - 4 * ALKitStyle::COL_GAP)
+        : ALKitStyle::LABEL_W;
     reshape(w, h, true);
     if (mLabel)
     {
         const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout" || mMeta.kind == "button") && mMeta.label.empty();
         // The label box is the mockup's 100 px label track; the favorite star has its own slot (below).
-        mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
+        if (mFillWidth && mMeta.kind == "toggle")
+            mLabel->reshape(label_width, 20, true);
+        else
+            mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
         const auto* text = dynamic_cast<LLTextBox*>(mControl);
         const bool top_aligned = mMeta.kind == "readout" && text && text->getWordWrap();
         mLabel->setOrigin(ALKitStyle::ROW_INSET, top_aligned ? h - 24 : (h - 20) / 2);
         mLabel->setVisible(!full_span_custom);
-        fitLabel(ALKitStyle::LABEL_W);
+        fitLabel(label_width);
     }
 
     const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout" || mMeta.kind == "button") && mMeta.label.empty();
     const S32 x = full_span_custom ? ALKitStyle::ROW_INSET
-                                   : ALKitStyle::ROW_INSET + ALKitStyle::LABEL_W + ALKitStyle::COL_GAP;
+                                   : ALKitStyle::ROW_INSET + label_width + ALKitStyle::COL_GAP;
     const S32 cw =
         full_span_custom
             ? llmax(1, w - 2 * ALKitStyle::ROW_INSET)
-            : llmax(1, w - 2 * ALKitStyle::ROW_INSET - ALKitStyle::LABEL_W - ALKitStyle::VALUE_W - ALKitStyle::RESET_W - kFavoriteW - 4 * ALKitStyle::COL_GAP);
+            : llmax(1, w - 2 * ALKitStyle::ROW_INSET - label_width - value_width - ALKitStyle::RESET_W - kFavoriteW - 4 * ALKitStyle::COL_GAP);
     const S32 span = full_span_custom ? cw : cw + ALKitStyle::COL_GAP + ALKitStyle::VALUE_W;
 
     if (mVecCount)
@@ -677,7 +688,7 @@ void ALKitRow::layoutRow(S32 w)
 
     if (mValueText)
     {
-        mValueText->reshape(ALKitStyle::VALUE_W, 20, true);
+        mValueText->reshape(value_width, 20, true);
         mValueText->setOrigin(x + cw + ALKitStyle::COL_GAP, (h - 20) / 2);
     }
     if (mReset)
@@ -688,7 +699,7 @@ void ALKitRow::layoutRow(S32 w)
     if (mFavorite)
     {
         mFavorite->reshape(kFavoriteW, 18, true);
-        mFavorite->setOrigin(full_span_custom ? ALKitStyle::ROW_INSET : x + cw + 2 * ALKitStyle::COL_GAP + ALKitStyle::VALUE_W,
+        mFavorite->setOrigin(full_span_custom ? ALKitStyle::ROW_INSET : x + cw + 2 * ALKitStyle::COL_GAP + value_width,
                              (h - 18) / 2);
     }
 }
@@ -941,6 +952,24 @@ bool ALKitRow::setBoundValue(const LLSD& value)
     ALKitHistory::ScopedSource source(this);
     if (mUnconnected || !enabledForEdit())
         return false;
+    if ((mMeta.kind == "text" || dynamic_cast<LLLineEditor*>(mControl)) && value.isString())
+    {
+        if (!mControl || (mBinding && !mBinding->canSet())) return false;
+        if (ALKitRow* original = sourceRow())
+        {
+            const bool applied = original->setBoundValue(value);
+            bindingChanged();
+            return applied;
+        }
+        // Text adapters can expose a non-string bound value. Let the editor's
+        // ordinary commit validate/convert text before any source/setting write.
+        if (ALKitShell* shell = ALKitShell::find(this))
+            shell->history().ensureGesture(actionPageKey(this), mMeta.label);
+        mControl->setValue(value);
+        mControl->onCommit();
+        bindingChanged();
+        return true;
+    }
     const LLSD current = boundValue();
     LLSD       coerced = ALKitQol::coercePasteValue(value, current);
     if (!coerced.isDefined() || (mBinding && !mBinding->canSet()))
@@ -1268,8 +1297,24 @@ void ALKitRow::showContextMenu(S32 x, S32 y)
             menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
         };
         add_item("reset", "Reset to default", [this]() { reset(); });
-        add_item("copy", "Copy value", [this]() { sRowClipboard = boundValue(); });
-        add_item("paste", "Paste value", [this]() { setBoundValue(sRowClipboard); });
+        add_item("copy", "Copy value", [this]()
+        {
+            sRowClipboard = boundValue();
+            if (mMeta.kind == "text" || dynamic_cast<LLLineEditor*>(mControl))
+            {
+                const auto text = utf8str_to_wstring(sRowClipboard.asString());
+                LLClipboard::instance().copyToClipboard(text, 0, static_cast<S32>(text.size()));
+            }
+        });
+        add_item("paste", "Paste value", [this]()
+        {
+            ALKitQol::pasteRowValue(mMeta.kind == "text" || dynamic_cast<LLLineEditor*>(mControl), sRowClipboard, []()
+            {
+                LLWString text;
+                return LLClipboard::instance().pasteFromClipboard(text)
+                    ? LLSD(wstring_to_utf8str(text)) : LLSD();
+            }, [this](const LLSD& value) { return setBoundValue(value); });
+        });
         add_item("favorite", "Add to Quick", [this]()
         {
             if (ALKitShell* shell = ALKitShell::find(this))
@@ -1292,7 +1337,10 @@ void ALKitRow::showContextMenu(S32 x, S32 y)
     if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("reset"))
         item->setVisible(resettable());
     if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("paste"))
-        item->setEnabled(canPasteValue(sRowClipboard));
+        item->setEnabled((mMeta.kind == "text" || dynamic_cast<LLLineEditor*>(mControl))
+            ? LLClipboard::instance().isTextAvailable() && enabledForEdit() && !mUnconnected &&
+                (!mBinding || mBinding->canSet())
+            : canPasteValue(sRowClipboard));
     if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("favorite"))
     {
         const ALKitQol::Favorite key = favoriteKey();

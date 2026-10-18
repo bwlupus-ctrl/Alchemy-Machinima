@@ -2664,6 +2664,7 @@ public:
         if (desired == ALMediaFile::Transport::STOPPED) { stopPrivate(slot); return true; }
         if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled())
         {
+            mLenses[slot].mRuntime.mReasonSequence = ALMediaFile::nextMediaStatusSequence();
             mLenses[slot].mRuntime.mReason = !prismEnabled() ? "Turn on Virtual Cam to play video" : "Media slots disabled";
             ++mRuntimeRevision;
             LL_INFOS("VCamMedia") << "Transport refused slot=" << slot << " rule=media policy reason=" << mLenses[slot].mRuntime.mReason << LL_ENDL;
@@ -2671,6 +2672,8 @@ public:
         }
         const auto& source = *mLenses[slot].mediaUrlData();
         if (desired == ALMediaFile::Transport::PAUSED && !mPrivateOwners[slot]) return false;
+        mLenses[slot].mRuntime.mReasonSequence = ALMediaFile::nextMediaStatusSequence();
+        ++mRuntimeRevision;
         if (desired == ALMediaFile::Transport::PLAYING && mPrivateOwners[slot] &&
             (mPrivateOwners[slot]->source.mLocation != source.mLocation || mPrivateOwners[slot]->source.mValue != source.mValue)) stopPrivate(slot);
         auto owner = privateOwner(slot);
@@ -2880,6 +2883,8 @@ public:
                     ? ALMediaFile::UNKNOWN_LOOP : "Playing" : "PENDING, MUTED";
         }
         else if (owner->lease && owner->desired == ALMediaFile::Transport::PAUSED) owner->status = "Paused";
+        if (mLenses[slot].mRuntime.mReason != owner->status)
+            mLenses[slot].mRuntime.mReasonSequence = ALMediaFile::nextMediaStatusSequence();
         mLenses[slot].mRuntime.mReason = owner->status;
     }
 
@@ -2932,6 +2937,8 @@ public:
         media.mRuntime.mHealth = LLPrismLens::ECaptureHealth::SOURCE_OFFLINE;
         media.mRuntime.mActivity = LLPrismLens::EActivityState::WAITING;
         media.mRuntime.mOutput = LLPrismLens::EOutputState::EMPTY;
+        if (media.mRuntime.mReason != reason)
+            media.mRuntime.mReasonSequence = ALMediaFile::nextMediaStatusSequence();
         media.mRuntime.mReason = reason;
         if (changed)
         {
@@ -3320,6 +3327,8 @@ public:
                 !shader.isComplete() || !gPipeline.allocatePrismLensOutput(slot,
                     media.mFrame.mTargetWidth, media.mFrame.mTargetHeight))
             {
+                if (media.mRuntime.mReason != "Copy failed: source/shader/target preflight; retrying")
+                    media.mRuntime.mReasonSequence = ALMediaFile::nextMediaStatusSequence();
                 media.mRuntime.mReason = "Copy failed: source/shader/target preflight; retrying";
                 media.mMediaDemandArea = 0.0;
                 media.mRetryAfterTime = deadline;
@@ -3329,6 +3338,8 @@ public:
             const S32 channel = shader.getTextureChannel(LLShaderMgr::DIFFUSE_MAP);
             if (channel < 0)
             {
+                if (media.mRuntime.mReason != "Copy failed: media sampler unavailable; retrying")
+                    media.mRuntime.mReasonSequence = ALMediaFile::nextMediaStatusSequence();
                 media.mRuntime.mReason = "Copy failed: media sampler unavailable; retrying";
                 media.mMediaDemandArea = 0.0;
                 media.mRetryAfterTime = deadline;
@@ -10444,10 +10455,11 @@ ERegistryResult addMediaSlot(CaptureHandle* slot, std::string* reason)
     return PrismLensRegistry::instance().addMedia(slot, reason);
 }
 
-void initializeMediaFiles()
+void initializeMediaFiles(bool purgeOnStartup)
 {
-    if (!mediaSlotsEnabled() || !prismEnabled()) return;
     ALMediaFile::Policy policy;
+    policy.keepBetweenSessions = gSavedSettings.getBOOL("VCamMediaCacheKeepBetweenSessions");
+    policy.purgeOnStartup = purgeOnStartup || gSavedSettings.getBOOL("VCamMediaCachePurgePending");
     if (!ALMediaFile::bytesFromMB(gSavedSettings.getS32("VCamMediaDownloadMaxMB"), policy.downloadBytes) ||
         !ALMediaFile::bytesFromMB(gSavedSettings.getS32("VCamMediaCacheMaxMB"), policy.cacheBytes))
     {

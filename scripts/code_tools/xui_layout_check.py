@@ -1445,6 +1445,31 @@ def kit_label_limits() -> tuple[int, int]:
 
 
 @functools.lru_cache(maxsize=None)
+def kit_full_toggle_label_limit() -> int:
+    """The fill_width toggle's label uses the unused track at CARD_MIN_W.
+
+    Pin the viewer formula and its application; ordinary rows retain the exact
+    LABEL_W check above. This measures width, never exempts a long label.
+    """
+    style = ALKIT_STYLE_H.read_text(encoding="utf-8")
+    source = re.sub(r"\s+", "", ALKIT_ROW_CPP.read_text(encoding="utf-8"))
+    formula = ('constS32label_width=mFillWidth&&mMeta.kind=="toggle"'
+               '?llmax(ALKitStyle::LABEL_W,w-2*ALKitStyle::ROW_INSET-ALKitStyle::SWITCH_W-'
+               'value_width-ALKitStyle::RESET_W-kFavoriteW-4*ALKitStyle::COL_GAP)'
+               ':ALKitStyle::LABEL_W;')
+    if (formula not in source or
+            'if(mFillWidth&&mMeta.kind=="toggle")mLabel->reshape(label_width,20,true);' not in source or
+            'fitLabel(label_width);' not in source or 'constexprS32kFavoriteW=18;' not in source or
+            'constS32value_width=mFillWidth&&mMeta.kind=="toggle"?24:ALKitStyle::VALUE_W;' not in source or
+            'mValueText->reshape(value_width,20,true);' not in source):
+        raise ValueError("alkitrow.cpp: full-width toggle label geometry changed")
+    value = lambda key: _read_const(style, key, ALKIT_STYLE_H)
+    body = value("CARD_MIN_W") - value("CARD_PAD_L") - value("CARD_PAD_R")
+    return max(value("LABEL_W"), body - 2 * value("ROW_INSET") - value("SWITCH_W") -
+               24 - value("RESET_W") - 18 - 4 * value("COL_GAP"))
+
+
+@functools.lru_cache(maxsize=None)
 def kit_dial_label_limit() -> int:
     """Label box of a dial/arc cell at the narrowest card (CARD_MIN_W), from the viewer source.
 
@@ -1555,6 +1580,8 @@ def label_fit_findings(root: Node, path: Path) -> list[Finding]:
                 continue
             if node.attrs.get("kind", "") in DIAL_LABEL_KINDS:
                 role, allotted = "dial", kit_dial_label_limit()
+            elif node.attrs.get("kind") == "toggle" and node.attrs.get("fill_width") == "true":
+                role, allotted = "full-width toggle", kit_full_toggle_label_limit()
             else:
                 role, allotted = "row", row_box
         else:
@@ -1753,6 +1780,8 @@ def run_selftest(json_output: bool) -> int:
         ("kit_label_fit_broken.xml", True, "label-fit"),
         ("kit_label_master_broken.xml", True, "label-fit"),
         ("kit_label_fit_current.xml", False, None),
+        ("kit_label_toggle_current.xml", False, None),
+        ("kit_label_toggle_broken.xml", True, "label-fit"),
         ("kit_label_dial_broken.xml", True, "label-fit"),
         ("kit_label_dial_current.xml", False, None),
     )

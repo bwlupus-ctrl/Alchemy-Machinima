@@ -36,7 +36,8 @@
       {"l": "", "k": "button", "w": "vc_media_running", "h": "Hold this image; video and audio keep playing.", "bind": "code", "btn": "Freeze", "kw": "media video Freeze Resume image"},
       {"l": "", "k": "readout", "w": "vc_media_note", "h": "Only you see and hear this. Volume starts muted. Local files work only on this PC; scenes never auto-play.", "bind": "code", "wrap": true, "kw": "media private video local file"},
       {"l": "Media cache", "k": "readout", "w": "vc_media_cache_status", "h": "Cache usage/limit is available only to the cache lock owner.", "bind": "code", "wrap": true, "kw": "media video cache usage limit download", "show_if": "media_url"},
-      {"l": "", "k": "button", "w": "vc_media_cache_clear", "h": "Clear stops cache-backed slots and cancels downloads. Local files and scene cues are preserved.", "bind": "code", "btn": "Clear video cache", "kw": "media video cache Clear download", "show_if": "media_url"}
+      {"l": "", "k": "button", "w": "vc_media_cache_clear", "h": "Clear stops cache-backed slots and cancels downloads. Local files and scene cues are preserved.", "bind": "code", "btn": "Clear video cache", "kw": "media video cache Clear download", "show_if": "media_url"},
+      {"l": "Keep downloads between sessions", "k": "toggle", "w": "vc_media_cache_keep", "fill_width": true, "s": "VCamMediaCacheKeepBetweenSessions", "h": "Off: downloaded videos are deleted when you quit. On: kept up to the cache limit for faster replays. Local files are never copied.", "kw": "media video cache downloads keep sessions lifetime quit purge", "show_if": "media_url"}
     ]},
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, Skeleton POV, or the local 512 px test pattern. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV", "Test pattern"], "iv": [0,1,2,3], "bind": "code"},
@@ -237,7 +238,7 @@
       {"l": "Face cost note", "k": "readout", "w": "vc_performance_note_3", "h": "One camera feeding many faces still performs one scheduled scene render. Faces are capped at 16.", "bind": "code", "a": 1}
     ]}
   ],
-  "functional_probes": [{"seam": "browse_ticket", "widget": "vc_media_browse"}, {"seam": "clear", "widget": "vc_media_cache_clear"}, {"seam": "syntax", "widget": "vc_media_video"}, {"seam": "admission", "widget": "vc_media_play"}, {"seam": "demand_teardown", "widget": "vc_media_running"}, {"seam": "cache_policy", "widget": "vc_media_cache_status"}, {"seam": "scene_restore", "widget": "vc_media_video"}],
+  "functional_probes": [{"seam": "browse_ticket", "widget": "vc_media_browse"}, {"seam": "clear", "widget": "vc_media_cache_clear"}, {"seam": "syntax", "widget": "vc_media_video"}, {"seam": "admission", "widget": "vc_media_play"}, {"seam": "demand_teardown", "widget": "vc_media_running"}, {"seam": "cache_policy", "widget": "vc_media_cache_status"}, {"seam": "cache_lifetime", "widget": "vc_media_cache_keep"}, {"seam": "scene_restore", "widget": "vc_media_video"}],
   "sections": [
     {"id": "source", "label": "1 Source", "cards": [0,1,2,3,4,5,6]},
     {"id": "lens", "label": "2 Lens", "cards": [0,1,2,7,8,9]},

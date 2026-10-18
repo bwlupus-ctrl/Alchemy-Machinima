@@ -4,6 +4,8 @@
 #include "alvcammediafileposix.h"
 #include "alvcammediafilecontainer.h"
 #include "alvcammediafilelifecycle.h"
+#include "alvcammediafilecache.h"
+#include "llviewercontrol.h"
 #include "httpcommon.h"
 #include <openssl/sha.h>
 #include <curl/curl.h>
@@ -43,6 +45,12 @@ struct Job
 {
     Policy policy;
     const char* rule = "request admission"; // worker-only diagnostic stage; no source strings
+    unsigned long osError = 0; // captured at the failing OS call, worker only
+#if LL_WINDOWS
+    const std::error_category* osCategory = &std::system_category();
+#else
+    const std::error_category* osCategory = &std::generic_category();
+#endif
     uint64_t id = 0, epoch = 0;
     std::atomic<unsigned> subscribers{0};
     std::atomic<bool> cancel{false}, done{false}, closed{false};
@@ -53,6 +61,10 @@ struct Job
     bool maintenance = false;
     std::atomic<bool> awaitingApproval{false}, approved{false};
     std::atomic<int64_t> ioDeadline{0};
+    std::atomic<int64_t> ownerDeadline{0}; // independent of transfer start and filesystem operations
+    std::atomic<bool> ownerTimedOut{false};
+    std::atomic<int64_t> clearDeadline{0};
+    std::atomic<bool> clearTimedOut{false};
     std::atomic<uint64_t> bytes{0}, total{0};
     std::atomic<int64_t> started{0}; // queued time is not transfer time
     std::mutex mailbox;
@@ -71,18 +83,26 @@ struct Entry
     uint64_t id = 0, size = 0, lru = 0;
     std::atomic<unsigned> leases{0};
 };
+struct File;
 struct Service
 {
     Policy policy;
     Policy nextPolicy; // main only; copied into each detached job
-    bool started = false, accepting = true;
+    bool started = false, accepting = true; // main only
+    ShutdownDrain shutdown; // main only; captures Keep at beginShutdown
     uint64_t nextId = 1;
     std::atomic<uint64_t> epoch{1};
     std::atomic<unsigned> active{0};
     std::atomic<int> cacheState{0}; // 0 checking, 1 owner, -1 unavailable
-    std::string cacheError = LOCKED;
+    std::atomic<CacheFailure> cacheFailure{CacheFailure::IO};
+    std::atomic<bool> cacheRetryRequested{false};
+    std::shared_ptr<File> cachePins; // process-lifetime ownership, retained across recovery retries
     std::atomic<bool> clearPending{false};
     std::atomic<bool> cleanupPending{false};
+    std::atomic<bool> shutdownClear{false}, drainRequested{false};
+    std::atomic<bool> purgeCompleted{false};
+    LLPointer<LLControlVariable> purgeSetting; // resolved once on main during initialization
+    std::atomic<uint64_t> released{0}; // new work, not a repeating quit retry trigger
     unsigned clearFailures = 0; // maintenance worker only
     std::atomic<bool> clearDegraded{false};
     std::atomic<uint64_t> completeBytes{0}, reservedBytes{0}, limitBytes{0};
@@ -94,18 +114,14 @@ struct Service
     std::vector<std::shared_ptr<Entry>> evicted; // unindexed but still leased
     std::set<std::string> activeFiles; // protected from maintenance sweeps
     CacheOrphans orphans; // cacheMutex; survives degraded Clear
+    std::set<std::string> shutdownAttempted; // worker only; failed names wait for backoff/new releases
+    bool shutdownBatchPending = false; // unattempted work, not retries of undeletable files
     uint64_t sweptClearEpoch = 0; // worker only; explicit Clear permits one immediate retry
     uint64_t lruClock = 0; // serialized, persisted order; independent of reboot clocks
     std::mutex garbageMutex;
     std::deque<std::function<void()>> garbage;
     std::vector<DeferredClose> closing; // under garbageMutex; polled by maintenance only
     std::atomic<bool> maintenanceFailed{false};
-    int64_t shutdownDeadline = 0;
-#if LL_WINDOWS
-    HANDLE cacheLock = INVALID_HANDLE_VALUE;
-#else
-    int cacheLock = -1;
-#endif
 };
 // Deliberately process-lifetime. No CRT/static destruction below blocked jobs.
 static Service* sService = nullptr; // main initializes before any worker starts
@@ -154,10 +170,11 @@ static void publish(Job& job, const std::string& status, std::shared_ptr<Lease> 
 }
 static std::string failureStatus(const std::exception& error)
 {
-    const auto* filesystem = dynamic_cast<const fs::filesystem_error*>(&error);
-    if (filesystem && filesystem->code() == std::errc::no_space_on_device) return NO_SPACE;
+    const auto* system = dynamic_cast<const std::system_error*>(&error);
+    if (system && system->code() == std::errc::no_space_on_device) return NO_SPACE;
     const std::string reason(error.what());
-    for (const char* known : {UNSUPPORTED, REMOTE, NOT_VIDEO, MISSING, LOCKED, BUDGET, TOO_LARGE, NO_SPACE, FAILED})
+    if (reason.rfind(CACHE_UNAVAILABLE, 0) == 0) return reason;
+    for (const char* known : {UNSUPPORTED, REMOTE, NOT_VIDEO, MISSING, LOCKED, BUDGET, TOO_LARGE, NO_SPACE, CLEAR_TIMEOUT, FAILED})
         if (reason == known || (known == FAILED && reason.rfind(FAILED, 0) == 0)) return reason;
     return std::string(FAILED) + " (" + reason + ")";
 }
@@ -190,7 +207,7 @@ struct File
     HANDLE handle = INVALID_HANDLE_VALUE;
     std::vector<HANDLE> directories;
 #else
-    int handle = -1;
+    int handle = -1, directory = -1;
 #endif
     uint64_t size = 0;
     ~File()
@@ -203,6 +220,7 @@ struct File
         for (HANDLE h : directories) CloseHandle(h);
 #else
         if (handle >= 0) close(handle);
+        if (directory >= 0) close(directory);
 #endif
         if (sWorkerJob) sWorkerJob->ioDeadline = previous;
     }
@@ -235,20 +253,26 @@ static void localDirectories(Job& job, const std::string& path, File& file, bool
         if (native[p] != '/' && native[p] != '\\') continue;
         const auto part = native.substr(0, p);
         Operation op(job);
-        if (create && !CreateDirectoryW(part.c_str(), nullptr) && GetLastError() != ERROR_ALREADY_EXISTS) throw std::runtime_error(FAILED);
+        if (create && !CreateDirectoryW(part.c_str(), nullptr))
+        {
+            const auto error = GetLastError();
+            if (error != ERROR_ALREADY_EXISTS) { job.osError = error; throw std::runtime_error(FAILED); }
+        }
         job.rule = "local directory open (no reparse points)";
         HANDLE h = CreateFileW(part.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ,
             nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
         if (h == INVALID_HANDLE_VALUE)
         {
             const auto error = GetLastError();
+            job.osError = error;
             throw std::runtime_error(error == ERROR_PATH_NOT_FOUND || error == ERROR_FILE_NOT_FOUND ? MISSING : REMOTE);
         }
         file.directories.push_back(h); // deny directory rename until playback ends
         job.rule = "local directory reparse-point refusal";
         FILE_ATTRIBUTE_TAG_INFO info{};
-        if (!GetFileInformationByHandleEx(h, FileAttributeTagInfo, &info, sizeof(info)) ||
-            (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) throw std::runtime_error(REMOTE);
+        if (!GetFileInformationByHandleEx(h, FileAttributeTagInfo, &info, sizeof(info)))
+        { job.osError = GetLastError(); throw std::runtime_error(REMOTE); }
+        if (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) throw std::runtime_error(REMOTE);
     }
 }
 static std::shared_ptr<File> openLocal(Job& job, const std::string& path)
@@ -362,6 +386,9 @@ static void index(Job& job)
 {
     auto& s = service();
     Operation op(job);
+    job.rule = "cache index temporary cleanup";
+    removeCacheIndexTemporary(root());
+    job.rule = "cache index write";
     const auto temporary = root() / "index.tmp";
     std::ofstream out(temporary, std::ios::trunc | std::ios::binary);
     const auto usage = cacheUsage(s.entries, s.evicted, s.orphans);
@@ -371,22 +398,37 @@ static void index(Job& job)
         out << e.key << ' ' << e.id << ' ' << e.ext << ' ' << e.mime << ' ' << e.size << ' ' << e.lru << '\n';
     }
     out.flush();
-    if (!out) throw std::runtime_error(errno == ENOSPC ? NO_SPACE : FAILED);
-    out.close();
+    if (!out)
+    {
 #if LL_WINDOWS
-    if (!MoveFileExW(temporary.c_str(), (root() / "index").c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) throw std::runtime_error(GetLastError() == ERROR_DISK_FULL ? NO_SPACE : FAILED);
+        job.osError = GetLastError();
 #else
-    fs::rename(temporary, root() / "index");
+        job.osError = errno;
 #endif
+        throw std::runtime_error(errno == ENOSPC ? NO_SPACE : FAILED);
+    }
+    out.close();
+    if (!out)
+    {
+#if LL_WINDOWS
+        job.osError = GetLastError();
+#else
+        job.osError = errno;
+#endif
+        throw std::runtime_error(errno == ENOSPC ? NO_SPACE : FAILED);
+    }
+    job.rule = "cache index replace";
+    replaceCacheIndex(root());
     s.completeBytes = usage;
     cancelled(job);
 }
 static void eraseFile(Job& job, const fs::path& path)
 {
     Operation op(job);
+    job.rule = "cache sweep unlink";
     std::error_code ec;
     fs::remove(path, ec);
-    if (ec) throw std::runtime_error(FAILED);
+    if (ec) throw std::system_error(ec);
 }
 static void sweep(Job& job, bool clear)
 {
@@ -394,7 +436,13 @@ static void sweep(Job& job, bool clear)
     const auto now = millis();
     const auto epoch = s.epoch.load();
     if (clear && epoch != s.sweptClearEpoch)
-    { s.sweptClearEpoch = epoch; s.orphans.nextRetry = 0; }
+    {
+        s.sweptClearEpoch = epoch;
+        s.orphans.nextRetry = 0;
+        s.orphans.unknown = true;
+        s.orphans.failed.clear();
+        s.clearFailures = 0;
+    }
     // Cleanup requests can arrive every frame; disk retries stay bounded.
     const bool inventory = now >= s.orphans.nextRetry;
     if (!inventory && s.orphans.unknown) throw std::runtime_error(FAILED);
@@ -405,7 +453,7 @@ static void sweep(Job& job, bool clear)
         { s.evicted.push_back(it->second); it = s.entries.erase(it); }
         else { keep.push_back(it->second->name); ++it; }
     for (auto it = s.evicted.begin(); it != s.evicted.end();)
-        if ((*it)->leases) { keep.push_back((*it)->name); ++it; }
+        if (deferCacheDeletion((*it)->leases.load())) { keep.push_back((*it)->name); ++it; }
         else
         {
             s.orphans.files[(*it)->name] = (*it)->size;
@@ -419,6 +467,7 @@ static void sweep(Job& job, bool clear)
         s.completeBytes = UINT64_MAX;
         s.orphans.nextRetry = now + 60000;
         Operation op(job);
+        job.rule = "cache sweep inventory";
         std::map<std::string,uint64_t> found;
         for (const auto& file : fs::directory_iterator(root()))
         {
@@ -429,74 +478,137 @@ static void sweep(Job& job, bool clear)
                 // Unknown object sizes consume all capacity until removed.
                 found[name] = fs::is_regular_file(file.symlink_status()) ? file.file_size() : UINT64_MAX;
         }
-        s.orphans.files = std::move(found);
-        s.orphans.unknown = false;
-        s.orphans.nextRetry = now;
-        s.orphans.retry(now, [&](const std::string& name)
+        s.orphans.inventoried(std::move(found));
+        if (!s.shutdownClear)
+        {
+            s.orphans.nextRetry = now;
+            s.orphans.retry(now, [&](const std::string& name)
+            { return maintenanceItem([&]() { eraseFile(job, root()/name); }, []() {}); });
+        }
+    }
+    if (s.shutdownClear)
+    {
+        if (inventory) s.shutdownAttempted.clear();
+        s.orphans.nextRetry = now + 60000;
+        s.shutdownBatchPending = s.orphans.quitBatch(s.shutdownAttempted, [&](const std::string& name)
         { return maintenanceItem([&]() { eraseFile(job, root()/name); }, []() {}); });
     }
     index(job);
-    if (clear && !s.orphans.files.empty()) throw std::runtime_error(FAILED);
+    if (clear && !s.orphans.failed.empty()) throw std::runtime_error(FAILED);
     cancelled(job);
 }
 static void ownCache(Job& job)
 {
     auto& s = service();
+    if (!s.cachePins)
+    {
+        // A failed acquisition releases its handle/pins before the next Play.
+        // A successful lock survives metadata failures and their bounded retry.
+        auto pins = isolated(new File);
 #if LL_WINDOWS
-    // Pin every parent and cache root itself before creating/opening cache.lock.
-    auto pins = isolated(new File);
-    localDirectories(job, s.policy.cacheRoot + "/cache.lock", *pins, true);
-    for (unsigned attempt = 1; attempt <= 5; ++attempt)
-    {
-        Operation op(job);
-        s.cacheLock = CreateFileW((root() / "cache.lock").c_str(), GENERIC_READ | GENERIC_WRITE,
-            0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
-        if (s.cacheLock != INVALID_HANDLE_VALUE) break;
-        const auto delay = lockRetryMs(attempt, GetLastError() == ERROR_SHARING_VIOLATION);
-        if (!delay) throw std::runtime_error(LOCKED);
-        for (unsigned ms = 0; ms < delay && !job.cancel; ms += 25) std::this_thread::sleep_for(std::chrono::milliseconds(25));
-    }
-    FILE_ATTRIBUTE_TAG_INFO info{};
-    if (!GetFileInformationByHandleEx(s.cacheLock, FileAttributeTagInfo, &info, sizeof(info)) || (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) throw std::runtime_error(REMOTE);
-    // Pins live with the process lock; do not destruct beneath a surviving job.
-    static auto* cachePins = new std::shared_ptr<File>(pins);
-    (void)cachePins;
+        localDirectories(job, s.policy.cacheRoot + "/cache.lock", *pins, true);
+        job.rule = "cache lock acquire";
+        for (unsigned attempt = 1; attempt <= 5; ++attempt)
+        {
+            Operation op(job);
+            pins->handle = CreateFileW((root() / "cache.lock").c_str(), GENERIC_READ | GENERIC_WRITE,
+                0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+            if (pins->handle != INVALID_HANDLE_VALUE) break;
+            job.osError = GetLastError();
+            const auto delay = lockRetryMs(attempt, job.osError == ERROR_SHARING_VIOLATION);
+            if (!delay) throw std::runtime_error(job.osError == ERROR_SHARING_VIOLATION ? LOCKED : FAILED);
+            for (unsigned ms = 0; ms < delay && !job.cancel; ms += 25) std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        }
+        job.osError = 0;
+        job.rule = "cache lock validate";
+        FILE_ATTRIBUTE_TAG_INFO info{};
+        if (!GetFileInformationByHandleEx(pins->handle, FileAttributeTagInfo, &info, sizeof(info)))
+        { job.osError = GetLastError(); throw std::runtime_error(REMOTE); }
+        if (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) throw std::runtime_error(REMOTE);
 #else
-    auto pins = isolated(new File);
-    {
-        Operation op(job);
-        pins->handle = localOpen(s.policy.cacheRoot, true, true);
-        s.cacheLock = openat(pins->handle, "cache.lock", O_RDWR | O_CREAT | O_NOFOLLOW | O_CLOEXEC, 0600);
-        if (s.cacheLock < 0) throw std::runtime_error(REMOTE);
-        struct stat info{};
-        if (fstat(s.cacheLock, &info) || !S_ISREG(info.st_mode)) throw std::runtime_error(REMOTE);
-    }
-    for (unsigned attempt = 1; attempt <= 5; ++attempt)
-    {
-        Operation op(job);
-        if (!flock(s.cacheLock, LOCK_EX | LOCK_NB)) break;
-        const auto delay = lockRetryMs(attempt, errno == EWOULDBLOCK || errno == EAGAIN);
-        if (!delay) throw std::runtime_error(LOCKED);
-        for (unsigned ms = 0; ms < delay && !job.cancel; ms += 25) std::this_thread::sleep_for(std::chrono::milliseconds(25));
-    }
-    static auto* cachePins = new std::shared_ptr<File>(pins);
-    (void)cachePins;
+        job.rule = "cache local directory/lock open";
+        {
+            Operation op(job);
+            pins->directory = localOpen(s.policy.cacheRoot, true, true);
+            pins->handle = openat(pins->directory, "cache.lock", O_RDWR | O_CREAT | O_NOFOLLOW | O_CLOEXEC, 0600);
+            const int error = errno;
+            if (pins->handle < 0) { job.osError = error; throw std::runtime_error(REMOTE); }
+            struct stat info{};
+            if (fstat(pins->handle, &info)) { job.osError = errno; throw std::runtime_error(REMOTE); }
+            if (!S_ISREG(info.st_mode)) throw std::runtime_error(REMOTE);
+        }
+        job.rule = "cache lock acquire";
+        for (unsigned attempt = 1; attempt <= 5; ++attempt)
+        {
+            Operation op(job);
+            if (!flock(pins->handle, LOCK_EX | LOCK_NB)) break;
+            job.osError = errno;
+            const auto delay = lockRetryMs(attempt, job.osError == EWOULDBLOCK || job.osError == EAGAIN);
+            if (!delay) throw std::runtime_error(LOCKED);
+            for (unsigned ms = 0; ms < delay && !job.cancel; ms += 25) std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        }
 #endif
-    Operation op(job);
-    std::ifstream in(root() / "index", std::ios::binary);
-    std::string key, ext, mime;
-    uint64_t id, size, lru;
-    while (in >> key >> id >> ext >> mime >> size >> lru)
-    {
-        if (key.size() != 64 || key.find_first_not_of("0123456789abcdef") != std::string::npos || extension("x." + ext) != ext || !mimeAllowed(mime) || !size) continue;
-        auto e = std::make_shared<Entry>();
-        e->key = key; e->id = id; e->ext = ext; e->mime = mime; e->size = size; e->lru = lru;
-        e->name = key + "." + std::to_string(id) + "." + ext;
-        s.entries[key] = e;
-        s.lruClock = std::max(s.lruClock, lru);
+        s.cachePins = std::move(pins);
     }
-    sweep(job, false);
+    bool recovered = false;
+    {
+        Operation op(job);
+        job.osError = 0;
+        job.rule = "cache index read";
+        const auto metadata = readCacheIndex(root() / "index"); // reader CLOSED on return
+        recovered = metadata.recovered;
+        decltype(s.entries) entries;
+        uint64_t clock = 0;
+        for (const auto& record : metadata.entries)
+        {
+            auto e = std::make_shared<Entry>();
+            e->key = record.key; e->id = record.id; e->ext = record.ext;
+            e->mime = record.mime; e->size = record.size; e->lru = record.lru;
+            e->name = e->key + "." + std::to_string(e->id) + "." + e->ext;
+            entries[e->key] = e;
+            clock = std::max(clock, e->lru);
+        }
+        s.entries = std::move(entries);
+        s.lruClock = clock;
+        job.rule = "cache index temporary cleanup";
+        removeCacheIndexTemporary(root());
+        // Retry must inventory again even if a prior sweep failed after enumeration.
+        s.orphans.nextRetry = 0;
+        if (clearCacheAtStartup(true, s.policy.keepBetweenSessions, s.policy.purgeOnStartup))
+        { s.orphans.unknown = true; s.clearPending = true; }
+        job.rule = "cache startup sweep";
+        if (!s.clearPending) sweep(job, false);
+    } // Complete the deadline check before publishing ownership to download workers.
     s.cacheState = 1;
+    LL_INFOS("VCamMedia") << "ownCache outcome=owner stage=" << job.rule
+        << " os_error=0 category=" << job.osCategory->name()
+        << " metadata=" << (recovered ? "rebuild scheduled/completed" : "valid") << LL_ENDL;
+}
+static void tryOwnCache(Job& job)
+{
+    auto& s = service();
+    job.osError = 0;
+#if LL_WINDOWS
+    job.osCategory = &std::system_category();
+#else
+    job.osCategory = &std::generic_category();
+#endif
+    try { std::lock_guard<std::mutex> lock(s.cacheMutex); ownCache(job); return; }
+    catch (const std::exception& error)
+    {
+        const auto* system = dynamic_cast<const std::system_error*>(&error);
+        if (system) { job.osError = system->code().value(); job.osCategory = &system->code().category(); }
+        const std::string reason = error.what();
+        CacheFailure failure = reason == LOCKED ? CacheFailure::IN_USE :
+            reason == NO_SPACE ? CacheFailure::NO_SPACE : reason == REMOTE ? CacheFailure::LOCAL_ONLY : CacheFailure::IO;
+        failure = cacheFailureFromError(std::error_code(static_cast<int>(job.osError), *job.osCategory), failure);
+        s.cacheFailure = failure;
+    }
+    catch (...) { s.cacheFailure = CacheFailure::IO; }
+    LL_INFOS("VCamMedia") << "ownCache outcome=unavailable stage=" << job.rule
+        << " os_error=" << job.osError << " category=" << job.osCategory->name()
+        << " reason=" << cacheFailureStatus(s.cacheFailure.load()) << LL_ENDL;
+    s.cacheState = -1;
 }
 static void capacity(Job& job, uint64_t reservation)
 {
@@ -520,18 +632,13 @@ static void capacity(Job& job, uint64_t reservation)
 // Caller pins the entry under cacheMutex before dropping it for validation.
 static std::shared_ptr<Lease> cacheLease(Job& job, const std::shared_ptr<Entry>& entry)
 {
-    struct Pin
-    {
-        std::shared_ptr<Entry> entry;
-        bool adopted = false;
-        ~Pin() { if (!adopted) --entry->leases; }
-    } pin{entry};
+    CacheValidationPin<Entry> pin{entry, service().released};
     auto file = openLocal(job, pathText(root() / entry->name));
     if (file->size != entry->size) throw std::runtime_error(NOT_VIDEO);
     preflight(job, *file, entry->ext);
     auto lease = std::make_shared<Lease>();
     lease->cached = true; lease->path = pathText(root() / entry->name); lease->extension = entry->ext;
-    lease->retention = std::shared_ptr<void>(new int(0), [entry, file](void* p) { delete static_cast<int*>(p); retire([entry, file]() { --entry->leases; service().cleanupPending = true; }); });
+    lease->retention = std::shared_ptr<void>(new int(0), [entry, file](void* p) { delete static_cast<int*>(p); retire([entry, file]() { releaseCachePin(entry->leases, service().released); service().cleanupPending = true; }); });
     pin.adopted = true;
     return lease;
 }
@@ -539,18 +646,25 @@ static bool cached(Job& job, const std::string& key)
 {
     auto& s = service();
     std::shared_ptr<Entry> entry;
+    // Keep one deadline across Clear/cacheMutex races; main can terminalize
+    // even if maintenance or this worker is blocked inside the filesystem.
+    job.clearDeadline = millis() + CACHE_CLEAR_WAIT_MS;
     {
         // Clear may be requested between the wait and taking cacheMutex.
         // Retry without holding the mutex the maintenance sweep needs.
         std::unique_lock<std::mutex> lock(s.cacheMutex, std::defer_lock);
         for (;;)
         {
-            awaitCacheClear(s.clearPending, [&]() { cancelled(job); }, []()
+            awaitCacheClearWhile([&]() { return s.clearPending && !s.clearDegraded; }, job.clearDeadline.load(), millis, [&]() { cancelled(job); }, []()
             { std::this_thread::sleep_for(std::chrono::milliseconds(20)); });
             lock.lock();
-            if (!s.clearPending) break;
+            if (!s.clearPending || s.clearDegraded) break;
             lock.unlock();
         }
+        cancelled(job);
+        if (deadlineExpired(job.clearDeadline.load(), millis()))
+        { job.clearTimedOut = true; throw std::runtime_error(CLEAR_TIMEOUT); }
+        job.clearDeadline = 0;
         const auto found = s.entries.find(key);
         if (found == s.entries.end()) return false;
         entry = found->second;
@@ -576,6 +690,7 @@ static bool cached(Job& job, const std::string& key)
             // Sweep retries unlink after that lease has actually quiesced.
             s.evicted.push_back(entry);
             s.cleanupPending = true;
+            ++s.released;
             s.entries.erase(found);
             index(job);
         }
@@ -716,6 +831,7 @@ static void download(Job& job, const Descriptor& source)
             if (!tracked && !removed) s.orphans.abandon(name, job.bytes.load(), s.reservedBytes.load());
             s.completeBytes = cacheUsage(s.entries, s.evicted, s.orphans);
             s.cleanupPending = true;
+            ++s.released;
         }
     } activeFiles{stem, job, pathText(partial.filename())};
     Download d(job);
@@ -903,6 +1019,7 @@ static std::shared_ptr<Job> launch(std::function<void(Job&)> work, bool transfer
     job->id = s.nextId++; job->epoch = s.epoch;
     job->transferLease = transferLease;
     job->cacheJob = transferLease;
+    if (transferLease) job->ownerDeadline = millis() + CACHE_OWNER_WAIT_MS;
     job->maintenance = maintenance;
     job->result.id = job->id; job->result.epoch = job->epoch;
     s.jobs.push_back(job); ++s.active;
@@ -944,19 +1061,24 @@ void initialize(const Policy& policy)
     s.nextPolicy = policy; s.limitBytes = policy.cacheBytes;
     if (s.started) return;
     s.policy = policy; s.started = true;
+    s.purgeSetting = gSavedSettings.getControl("VCamMediaCachePurgePending");
     s.nextId = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(Clock::now().time_since_epoch()).count());
     launch([](Job& job)
     {
         auto& s = service();
-        try { std::lock_guard<std::mutex> lock(s.cacheMutex); ownCache(job); }
-        catch (const std::exception& e) { s.cacheError = e.what(); s.cacheState = -1; }
-        catch (...) { s.cacheError = FAILED; s.cacheState = -1; }
+        tryOwnCache(job);
         // Each item has an independent deadline and exception boundary. The
         // permanent worker has no transfer lifetime and cannot be poisoned by
         // a prior synchronous-I/O cancellation.
         auto report = [&s]() { s.maintenanceFailed = true; };
+        uint64_t sweptRelease = 0;
+        bool shutdownSweepStarted = false;
         while (!job.cancel)
         {
+            if (s.cacheRetryRequested.exchange(false)) tryOwnCache(job);
+            // Observe ordinary workers drained BEFORE the final sweep, so a
+            // transfer finishing during this iteration cannot escape cleanup.
+            const bool finalPass = s.drainRequested && s.active == 1;
             maintenanceItem([&]()
             {
                 std::deque<std::function<void()>> garbage;
@@ -965,8 +1087,8 @@ void initialize(const Policy& policy)
                     std::lock_guard<std::mutex> lock(s.garbageMutex);
                     garbage.swap(s.garbage); closing.swap(s.closing);
                 }
-                for (auto& fn : garbage)
-                    maintenanceWork([&]() { Operation op(job); fn(); cancelled(job); }, s.maintenanceFailed);
+                executeRetirements(garbage, [&](auto& fn)
+                { maintenanceWork([&]() { Operation op(job); fn(); cancelled(job); }, s.maintenanceFailed); });
                 for (auto& item : closing)
                 {
                     bool closed = false;
@@ -978,30 +1100,74 @@ void initialize(const Policy& policy)
                     }
                     // Otherwise retention destructs here, on the worker.
                 }
+                closing.clear();
                 if (s.cacheState == 1)
                 {
                     std::unique_lock<std::mutex> cache(s.cacheMutex, std::try_to_lock);
-                    if (cache && (s.clearPending || s.cleanupPending || millis() >= s.orphans.nextRetry))
+                    const auto released = s.released.load();
+                    const bool newShutdown = s.shutdownClear && !shutdownSweepStarted;
+                    if (cache && cacheMaintenanceDue(millis(), s.orphans.nextRetry,
+                        newShutdown || s.shutdownBatchPending || (s.clearPending && s.sweptClearEpoch != s.epoch), released != sweptRelease))
                         maintenanceWork([&]()
                         {
-                            maintainCache(s.clearPending, s.cleanupPending, s.clearFailures, s.clearDegraded,
-                                [&](bool clearing) { sweep(job, clearing); },
-                                [&]() { return !s.entries.empty() || !s.evicted.empty(); }, [&]()
+                            if (newShutdown || released != sweptRelease)
+                            {
+                                if (s.shutdownClear) s.clearPending = true;
+                                shutdownSweepStarted |= newShutdown;
+                                sweptRelease = released;
+                                s.orphans.nextRetry = 0;
+                            }
+                            try { maintainCache(s.clearPending, s.cleanupPending, s.clearFailures, s.clearDegraded,
+                                [&](bool clearing) { sweep(job, clearing || s.shutdownClear); },
+                                [&]() { return (!s.clearDegraded && !s.entries.empty()) || !s.evicted.empty(); }, [&]()
                             {
                                 // No fallible enumeration/unlink in the fallback:
                                 // drop every hit even when listing the disk failed.
                                 dropCacheHits(s.entries, s.evicted);
+                                LL_WARNS("VCamMedia") << cacheClearSummary(s.orphans, s.evicted.size()) << LL_ENDL;
                                 maintenanceItem([&]() { index(job); }, [&]()
                                 { maintenanceItem([&]() { eraseFile(job, root() / "index"); }, []() {}); });
-                            });
+                            }, [&]() { return s.orphans.covered() && s.evicted.empty(); });
+                                s.orphans.nextRetry = clearFailureRetry(millis(), s.orphans.nextRetry,
+                                    s.clearPending, s.clearFailures, s.shutdownClear); }
+                            catch (...)
+                            {
+                                // Continue incomplete inventory/attempt coverage at 250 ms.
+                                // Degradation opens Play without acknowledging Clear.
+                                // Quit's one-pass/batched deletion rule is unchanged.
+                                s.orphans.nextRetry = clearFailureRetry(millis(), s.orphans.nextRetry,
+                                    s.clearPending, s.clearFailures, s.shutdownClear);
+                                throw;
+                            }
+                            if (s.policy.purgeOnStartup && acknowledgeStartupPurge(s.cacheState == 1,
+                                s.clearPending, s.clearDegraded,
+                                s.entries.empty() && s.evicted.empty() && s.orphans.files.empty() && !s.orphans.unknown,
+                                s.orphans.covered() && s.evicted.empty()))
+                            { s.policy.purgeOnStartup = false; s.purgeCompleted = true; }
                         }, s.maintenanceFailed);
                 }
             }, report);
+            // drainShutdown arms this only after main has retired player owners.
+            // A surviving transfer/close keeps maintenance alive for the bounded
+            // drain; blocked I/O and undeletable files fall to the next startup.
+            if (finalPass)
+            {
+                std::lock_guard<std::mutex> lock(s.garbageMutex);
+                // Queue emptiness alone is insufficient: executed captures can
+                // enqueue another retirement. Every released pin needs a pass.
+                const bool deletionDue = s.shutdownClear && s.cacheState == 1 &&
+                    (!shutdownSweepStarted || s.shutdownBatchPending || sweptRelease != s.released || millis() >= s.orphans.nextRetry);
+                // Local players have no cache deletion work. Their fence/pin can
+                // stay in the process-lifetime service without delaying quit.
+                const bool retirementPending = shutdownRetirementPending(!s.garbage.empty(),
+                    !s.closing.empty(), s.cacheState == 1 && !s.evicted.empty());
+                if (finishShutdownMaintenance(false, true, retirementPending, deletionDue)) break;
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
         std::deque<std::function<void()>> garbage;
         { std::lock_guard<std::mutex> lock(s.garbageMutex); garbage.swap(s.garbage); }
-        for (auto& fn : garbage) maintenanceWork(fn, s.maintenanceFailed);
+        executeRetirements(garbage, [&](auto& fn) { maintenanceWork(fn, s.maintenanceFailed); });
     }, false, true);
 }
 
@@ -1014,8 +1180,21 @@ void tick()
 {
     if (!sService) return;
     auto& s = service();
+    // The worker publishes this one-shot acknowledgement only after the owner
+    // completes the purge. The main-thread setting sink is already resolved.
+    if (s.purgeCompleted.exchange(false) && s.purgeSetting) s.purgeSetting->set(false);
+    bool mailboxesDrained = true;
     for (auto& job : s.jobs)
     {
+        if (!s.accepting && !job->maintenance)
+        {
+            // Closed subscribers can outlive shutdown. Move their mailbox
+            // leases to maintenance without waiting or destroying files here.
+            std::unique_lock<std::mutex> mailbox(job->mailbox, std::try_to_lock);
+            if (!mailbox) mailboxesDrained = false;
+            else if (job->result.lease)
+                retire([lease = std::move(job->result.lease)]() {});
+        }
         if (!job->done && ioExpired(job->ioDeadline, millis()))
         {
             if (!job->maintenance) cancelJob(*job);
@@ -1043,11 +1222,26 @@ void tick()
 #endif
     }
     s.jobs.erase(std::remove_if(s.jobs.begin(), s.jobs.end(), [](const auto& job) { return job->reaped && job->subscribers == 0; }), s.jobs.end());
+    // Publish quiescence AFTER job erasure has released every result retention.
+    // Only main can make this handoff; active==1 by itself races that erasure.
+    if (s.shutdown.draining && mailboxesDrained && s.active == 1) s.drainRequested = true;
 }
 Result Subscription::poll()
 {
     auto& j = *mJob;
     const auto now = millis();
+    if (j.clearTimedOut || deadlineExpired(j.clearDeadline.load(), now))
+    {
+        j.clearTimedOut = true;
+        cancelJob(j);
+        return {j.id, j.epoch, j.bytes, j.total, true, CLEAR_TIMEOUT, {}};
+    }
+    if (j.ownerTimedOut || deadlineExpired(j.ownerDeadline.load(), now))
+    {
+        j.ownerTimedOut = true;
+        cancelJob(j);
+        return {j.id, j.epoch, j.bytes, j.total, true, cacheFailureStatus(service().cacheFailure.load()), {}};
+    }
     const bool io_timeout = ioExpired(j.ioDeadline, now);
     const bool total_timeout = totalExpired(j.maintenance, j.started.load(), now);
     if (io_timeout || total_timeout) cancelJob(j);
@@ -1068,7 +1262,7 @@ Result Subscription::poll()
     std::unique_lock<std::mutex> lock(j.mailbox, std::try_to_lock);
     Result result = lock ? j.result : Result{};
     result.id = j.id; result.epoch = j.epoch; result.bytes = j.bytes; result.total = j.total;
-    if (!result.terminal && j.cacheJob && service().clearPending) result.status = CLEARING;
+    if (!result.terminal && j.cacheJob && service().clearPending && !service().clearDegraded) result.status = CLEARING;
     else if (!result.terminal && result.bytes)
         result.status = result.total ? "Downloading " + std::to_string(std::min<uint64_t>(99, result.bytes * 100 / result.total)) + "%" : "Downloading...";
     return result;
@@ -1119,6 +1313,10 @@ Request startDownload(const Descriptor& source)
     const auto key = cacheKey(source.value);
     if (auto previous = s.inflight[key].lock())
         if (!previous->cancel && previous->epoch == s.epoch && (!previous->closed)) return std::make_shared<Subscription>(previous);
+    if (requestCacheOwnerRetry(s.cacheState))
+    {
+        s.cacheRetryRequested = true; // existing maintenance worker performs the retry
+    }
     auto job = launch([source](Job& job)
     {
         LL_INFOS("VCamMedia") << "Download start job=" << job.id << " ext=" << diagnosticExtension(source.value) << LL_ENDL;
@@ -1126,8 +1324,17 @@ Request startDownload(const Descriptor& source)
         {
             job.rule = "cache owner/lock";
             auto& s = service();
-            while (s.cacheState == 0) { cancelled(job); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
-            if (s.cacheState != 1) throw std::runtime_error(s.cacheError);
+            while (s.cacheState == 0)
+            {
+                if (deadlineExpired(job.ownerDeadline.load(), millis()))
+                {
+                    job.ownerTimedOut = true;
+                    throw std::runtime_error(cacheFailureStatus(s.cacheFailure.load()));
+                }
+                cancelled(job); std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            }
+            job.ownerDeadline = 0;
+            if (s.cacheState != 1) throw std::runtime_error(cacheFailureStatus(s.cacheFailure.load()));
             job.rule = "HTTP/cache transfer";
             download(job, source);
             LL_INFOS("VCamMedia") << "Download end job=" << job.id << " verdict=ADMITTED bytes=" << job.bytes.load()
@@ -1154,20 +1361,30 @@ void clearCache()
     s.clearDegraded = false;
     s.clearPending = true;
 }
-void beginShutdown()
+void beginShutdown(bool keepBetweenSessions)
 {
     if (!sService) return;
     auto& s = service();
     if (!s.accepting) return;
-    s.accepting = false; s.shutdownDeadline = millis() + 2000;
-    for (auto& job : s.jobs) { job->closed = true; cancelJob(*job); }
+    s.accepting = false; s.shutdown.begin(keepBetweenSessions, millis());
+    // State 0 may still acquire the lock: only that worker may execute the
+    // scheduled sweep. A non-owner never touches the index or any cache file.
+    scheduleSessionCleanup(s.cacheState != -1, keepBetweenSessions, [&]()
+    { s.shutdownClear = true; s.clearPending = true; s.cleanupPending = true; });
+    for (auto& job : s.jobs)
+    {
+        job->closed = true;
+        if (finishShutdownMaintenance(keepBetweenSessions, false, true, true) || !job->maintenance) cancelJob(*job);
+    }
 }
 bool drainShutdown()
 {
     if (!sService) return true;
     auto& s = service();
-    while (s.active && millis() < s.shutdownDeadline) { tick(); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
-    return s.active == 0;
+    // Player retirement is complete. Keep ON must bypass even blocked workers;
+    // jobsRemain() still enforces _exit after logs/settings have been flushed.
+    return s.shutdown.drain(s.active, millis, tick, []()
+    { std::this_thread::sleep_for(std::chrono::milliseconds(10)); });
 }
 bool jobsRemain()
 {
@@ -1194,7 +1411,7 @@ CacheStatus cacheStatus()
         result.status = sService->clearPending ? CLEARING : sService->clearDegraded ? CLEAR_DEGRADED :
             sService->maintenanceFailed ? FAILED : "";
     }
-    else if (state < 0) result.status = sService->cacheError;
+    else if (state < 0) result.status = cacheFailureStatus(sService->cacheFailure.load());
     return result;
 }
 }

@@ -4,6 +4,9 @@
 #include "../alvcammediafilepolicy.h"
 #include "../alvcammediafilecontainer.h"
 #include "../alvcammediafilelifecycle.h"
+#include "../alvcammediafilecache.h"
+#include "../alkitqol.h"
+#include <chrono>
 #include "../../llplugin/llpluginfileclose.h"
 #include "../../llplugin/llpluginfileadmission.h"
 #include <array>
@@ -18,12 +21,14 @@
 #endif
 #include <iostream>
 #include <atomic>
+#include <deque>
+#include <thread>
 #include "alvcamfragmentfixture.h"
 
 namespace tut
 {
 struct media_file_data {};
-typedef test_group<media_file_data> media_file_group;
+typedef test_group<media_file_data, 65> media_file_group;
 typedef media_file_group::object media_file_object;
 media_file_group media_file_tests("alvcammediafilepolicy");
 using namespace ALMediaFile;
@@ -654,14 +659,14 @@ template<> template<> void media_file_object::test<29>()
     std::atomic<bool> clear{true}, cleanup{false}, degraded{false}, failed{false};
     unsigned failures = 0, sweeps = 0, waits = 0, drops = 0;
     unsigned entries = 2;
-    awaitCacheClear(clear,[]() {},[&]()
+    awaitCacheClear(clear, CACHE_CLEAR_WAIT_MS, []() { return int64_t(0); }, []() {},[&]()
     {
         ++waits;
         maintenanceWork([&]()
         {
             maintainCache(clear,cleanup,failures,degraded,[&](bool clearing)
             { ensure("retry is still a Clear",clearing); ++sweeps; throw std::runtime_error(FAILED); },
-                [&]() { return entries != 0; },[&]() { ++drops; entries = 0; });
+                [&]() { return entries != 0; },[&]() { ++drops; entries = 0; }, []() { return true; });
         },failed);
         if (waits < 3) ensure("failed Clear remains pending",clear.load() && cleanup.load());
     });
@@ -675,7 +680,7 @@ template<> template<> void media_file_object::test<29>()
     ensure_equals("real disk-full remains distinct",std::string(NO_SPACE),std::string("Not enough disk space"));
     clear = true;
     bool cancelled = false;
-    try { awaitCacheClear(clear,[]() { throw std::runtime_error(FAILED); },[]() {}); }
+    try { awaitCacheClear(clear, CACHE_CLEAR_WAIT_MS, []() { return int64_t(0); }, []() { throw std::runtime_error(FAILED); },[]() {}); }
     catch (const std::runtime_error&) { cancelled = true; }
     ensure("Stop can cancel waiting HTTP",cancelled);
 }
@@ -828,7 +833,7 @@ template<> template<> void media_file_object::test<33>()
         maintenanceItem([&]()
         {
             maintainCache(clear,cleanup,failures,degraded,[](bool) { throw std::runtime_error(FAILED); },
-                [&]() { return !entries.empty(); },[&]() { dropCacheHits(entries,evicted); });
+                [&]() { return !entries.empty(); },[&]() { dropCacheHits(entries,evicted); }, []() { return true; });
         },[]() {});
     ensure("Clear degraded and hit gate released",degraded && !clear && entries.empty());
     ensure_equals("lease and file accounting retained",evicted.size(),size_t(1));
@@ -1092,6 +1097,66 @@ template<> template<> void media_file_object::test<41>()
     ensure("ordinary never-video deadline remains strict", player.verdict == Verdict::REJECTED);
 }
 
+template<> template<> void media_file_object::test<42>()
+{
+    set_test_name("session-only quit schedules detached cleanup without inline deletion");
+    unsigned deleted = 0;
+    std::function<void()> worker;
+    ensure("owner schedules", scheduleSessionCleanup(true, false, [&]()
+    { worker = [&]() { ++deleted; }; }));
+    ensure_equals("quit only posts work", deleted, 0u);
+    worker();
+    ensure_equals("worker performs deletion", deleted, 1u);
+}
+
+template<> template<> void media_file_object::test<43>()
+{
+    set_test_name("session-only startup clears indexed downloads and interrupted leftovers");
+    ensure("off sweeps without Preferences purge", clearCacheAtStartup(true, false, false));
+    ensure("off plus purge clears", clearCacheAtStartup(true, false, true));
+}
+
+template<> template<> void media_file_object::test<44>()
+{
+    set_test_name("keep on preserves downloads across quit and startup");
+    ensure("startup preserves", !clearCacheAtStartup(true, true, false));
+    ensure("quit preserves", !scheduleSessionCleanup(true, true, []()
+    { throw std::runtime_error("keep must not schedule cleanup"); }));
+}
+
+template<> template<> void media_file_object::test<45>()
+{
+    set_test_name("Preferences next-start purge overrides keep on");
+    for (bool keep : {false, true})
+        ensure("lock owner clears regardless of keep", clearCacheAtStartup(true, keep, true));
+}
+
+template<> template<> void media_file_object::test<46>()
+{
+    set_test_name("non-owner cannot schedule quit or startup cache mutation");
+    for (bool keep : {false, true})
+    {
+        for (bool purge : {false, true})
+            ensure("startup untouched", !clearCacheAtStartup(false, keep, purge));
+        ensure("quit untouched", !scheduleSessionCleanup(false, keep, []()
+        { throw std::runtime_error("non-owner must not schedule cleanup"); }));
+    }
+}
+
+template<> template<> void media_file_object::test<47>()
+{
+    set_test_name("turning keep off defers playing files until quit and lease close");
+    unsigned leases = 2, scheduled = 0;
+    bool keep = true;
+    keep = false; // preference edit alone never calls the cleanup scheduler
+    ensure_equals("editing preference schedules nothing", scheduled, 0u);
+    ensure("quit schedules with live leases", scheduleSessionCleanup(true, keep, [&]() { ++scheduled; }));
+    ensure("playing file deferred", deferCacheDeletion(leases));
+    ensure("other player holds it", deferCacheDeletion(--leases));
+    ensure("closed file may be swept", !deferCacheDeletion(--leases));
+    ensure_equals("one quit cleanup", scheduled, 1u);
+}
+
 template<> template<> void media_file_object::test<38>()
 {
     set_test_name("disabled cue status clears on enabling either master/media slots");
@@ -1114,6 +1179,609 @@ template<> template<> void media_file_object::test<38>()
         }
     std::string refused = NOT_VIDEO;
     ensure("unrelated refusal preserved", !clearDisabledStatus(refused, true, false));
+}
+
+
+// Private, disposable direct children only; never touches the viewer cache.
+struct CacheFixFixture
+{
+    std::filesystem::path root;
+    CacheFixFixture()
+    {
+        root = std::filesystem::temp_directory_path() /
+            ("vcam-cache-fix-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        if (!std::filesystem::create_directory(root)) throw std::runtime_error("test directory collision");
+    }
+    ~CacheFixFixture()
+    {
+        std::error_code error;
+        for (const auto* name : {"index", "index.tmp", "orphan.mp4"}) std::filesystem::remove(root / name, error);
+        std::filesystem::remove(root, error);
+    }
+    void write(const char* name, const std::string& bytes)
+    {
+        std::ofstream out(root / name, std::ios::binary | std::ios::trunc);
+        out << bytes;
+        out.close();
+        if (!out) throw std::runtime_error("fixture write failed");
+    }
+    std::string record() const { return std::string(64, 'a') + " 1 mp4 video/mp4 12 3\n"; }
+    void sweepAndReplace(const CacheIndexSnapshot& snapshot)
+    {
+        // Recovery discards corrupt metadata, so unindexed bytes become orphans.
+        if (snapshot.entries.empty()) std::filesystem::remove(root / "orphan.mp4");
+        removeCacheIndexTemporary(root);
+        write("index.tmp", snapshot.entries.empty() ? "" : record());
+        replaceCacheIndex(root);
+    }
+};
+
+template<> template<> void media_file_object::test<48>()
+{
+    set_test_name("Windows index reader sharing regression and closed-reader sweep/replace");
+    CacheFixFixture cache;
+    cache.write("index", cache.record());
+    cache.write("index.tmp", "");
+#if LL_WINDOWS
+    {
+        std::ifstream reader(cache.root / "index", std::ios::binary);
+        ensure("index reader opened", reader.good());
+        bool sharing = false;
+        try { replaceCacheIndex(cache.root); }
+        catch (const std::system_error& error)
+        {
+            std::cout << "Held MSVC index reader replacement: Win32 error=" << error.code().value() << '\n';
+            sharing = error.code().value() == ERROR_SHARING_VIOLATION || error.code().value() == ERROR_ACCESS_DENIED;
+        }
+        ensure("negative control: MSVC reader denies FILE_SHARE_DELETE", sharing);
+    }
+#endif
+    const auto snapshot = readCacheIndex(cache.root / "index");
+    ensure_equals("valid metadata read", snapshot.entries.size(), size_t(1));
+    ensure("not recovery", !snapshot.recovered);
+    cache.sweepAndReplace(snapshot); // Production reader must already be closed.
+    ensure_equals("replacement reopens successfully", readCacheIndex(cache.root / "index").entries.size(), size_t(1));
+    ensure("temporary consumed", !std::filesystem::exists(cache.root / "index.tmp"));
+}
+
+template<> template<> void media_file_object::test<49>()
+{
+    set_test_name("Corrupt/partial metadata discards the entire index; empty and missing indexes recover");
+    CacheFixFixture cache;
+    for (const auto& bytes : {cache.record() + "broken", cache.record() + std::string(64, 'b') + " 2 mp4",
+        cache.record() + cache.record(), std::string(64, 'a') + " -1 mp4 video/mp4 12 3\n",
+        std::string(64, 'a') + " 2 mp4 video/mp4 0 3\n"})
+    {
+        cache.write("index", bytes);
+        cache.write("orphan.mp4", "unindexed bytes");
+        cache.write("index.tmp", "stale interrupted publication");
+        const auto snapshot = readCacheIndex(cache.root / "index");
+        ensure("corrupt metadata reported", snapshot.recovered);
+        ensure("valid prefix never published", snapshot.entries.empty());
+        cache.sweepAndReplace(snapshot);
+        ensure("orphan swept", !std::filesystem::exists(cache.root / "orphan.mp4"));
+        const auto rebuilt = readCacheIndex(cache.root / "index");
+        ensure("empty rebuilt index valid", !rebuilt.recovered && rebuilt.entries.empty());
+    }
+    cache.write("index.tmp", "stale");
+    removeCacheIndexTemporary(cache.root);
+    ensure("stale temporary explicitly removed", !std::filesystem::exists(cache.root / "index.tmp"));
+    removeCacheIndexTemporary(cache.root); // Missing temporary is harmless.
+    std::filesystem::remove(cache.root / "index");
+    const auto missing = readCacheIndex(cache.root / "index");
+    ensure("missing index recoverable", missing.recovered && missing.entries.empty());
+    cache.sweepAndReplace(missing);
+    ensure("missing index rebuilt", !readCacheIndex(cache.root / "index").recovered);
+}
+
+template<> template<> void media_file_object::test<50>()
+{
+    set_test_name("Ownership failure retries once per Play and coalesces pending attempts without a session latch");
+    std::atomic<int> state{0};
+    ensure("startup checking does not retry", !requestCacheOwnerRetry(state));
+    state = 1;
+    ensure("owner never reinitializes", !requestCacheOwnerRetry(state));
+    CacheFixFixture cache;
+    cache.write("index", "");
+    cache.write("index.tmp", "");
+    state = -1;
+#if LL_WINDOWS
+    {
+        std::ifstream blocked(cache.root / "index", std::ios::binary);
+        try { replaceCacheIndex(cache.root); state = 1; }
+        catch (const std::system_error&) { state = -1; }
+        ensure_equals("initial replacement fails", state.load(), -1);
+    }
+#endif
+    ensure("next Play schedules recovery", requestCacheOwnerRetry(state));
+    ensure_equals("admitted retry publishes checking state", state.load(), 0);
+    ensure("concurrent Play shares in-progress attempt", !requestCacheOwnerRetry(state));
+    cache.sweepAndReplace(readCacheIndex(cache.root / "index"));
+    state = 1;
+    ensure("retry replaces after held reader closes", !readCacheIndex(cache.root / "index").recovered);
+    ensure("successful retry stops", !requestCacheOwnerRetry(state));
+    for (unsigned play = 0; play < 5; ++play)
+    {
+        state = -1; // A later transient failure still permits the next explicit Play.
+        ensure("later Play never session-latched", requestCacheOwnerRetry(state));
+        ensure("only one retry admitted per failed attempt", !requestCacheOwnerRetry(state));
+        ensure_equals("pending retry bounds admission", state.load(), 0);
+    }
+}
+
+template<> template<> void media_file_object::test<51>()
+{
+    set_test_name("Tile and Source Status share current failures ahead of stale editor prompts");
+    for (const auto& runtime : {std::string(FAILED), std::string(FAILED) + " (HTTP 403)",
+        cacheFailureStatus(CacheFailure::IO), cacheFailureStatus(CacheFailure::ACCESS), std::string(LOCKED),
+        std::string(NOT_VIDEO), std::string(NO_SPACE), std::string("Unsupported player: VLC"),
+        std::string("Copy failed: media sampler unavailable; retrying"), std::string("Source missing or unbound")})
+        for (const char* stale : {"Enter a direct video URL", "Set. Press Play to start it.", UNSUPPORTED, ""})
+        {
+            ensure("tile recognizes failure", mediaRuntimeFailure(runtime));
+            const auto tile = mediaSourceStatus(runtime, "");
+            ensure_equals("Source Status matches tile", mediaSourceStatus(runtime, stale), tile);
+            ensure_equals("exact runtime failure preserved", tile, runtime);
+        }
+    ensure_equals("active runtime permits editor error", mediaSourceStatus("Playing", UNSUPPORTED), std::string(UNSUPPORTED));
+    ensure_equals("progress is not a failure", mediaSourceStatus("Downloading 45%", "draft"), std::string("draft"));
+    ensure_equals("typed cache status", cacheFailureStatus(CacheFailure::IO), std::string("Video cache unavailable: cache I/O failed"));
+}
+
+template<> template<> void media_file_object::test<52>()
+{
+    set_test_name("All text rows paste OS text through validation; numeric/combo retain value clipboard");
+    std::string os = "https://example.test/new.mp4", draft = "old", cue = "https://example.test/playing.mp4", error;
+    unsigned reads = 0, commits = 0, replacements = 0;
+    auto read = [&]() -> LLSD { ++reads; return os.empty() ? LLSD() : LLSD(os); };
+    auto commit = [&](const LLSD& value)
+    {
+        ++commits;
+        draft = value.asString(); // Normal editor path replaces the entire field.
+        return commitVideoDraft(draft, error, true, [&](const Descriptor& descriptor)
+        {
+            ++replacements; // The real panel's source replacement/possible stop boundary.
+            cue = descriptor.value;
+            return true;
+        });
+    };
+    ensure("OS text enabled without value clipboard", ALKitQol::pasteRowValue(true, LLSD(), read, commit));
+    ensure_equals("whole field replaced", draft, os);
+    ensure_equals("valid cue committed", cue, os);
+    os = "not a video URL";
+    ensure("invalid commit refused", !ALKitQol::pasteRowValue(true, LLSD("stale value"), read, commit));
+    ensure_equals("invalid OS text remains draft", draft, os);
+    ensure_equals("validation reason retained", error, std::string(UNSUPPORTED));
+    ensure_equals("accepted cue survives invalid paste", cue, std::string("https://example.test/new.mp4"));
+    ensure_equals("invalid paste never reaches replacement/stop boundary", replacements, 1u);
+    os.clear();
+    ensure("clipboard disappearing does not paste stale value", !ALKitQol::pasteRowValue(true, LLSD("stale"), read, commit));
+    ensure_equals("missing OS text does not commit", commits, 2u);
+    LLSD applied;
+    ensure("numeric paste", ALKitQol::pasteRowValue(false, LLSD(7), read, [&](const LLSD& v) { applied = v; return true; }));
+    ensure_equals("typed numeric preserved", applied.asInteger(), 7);
+    ensure("combo value paste", ALKitQol::pasteRowValue(false, LLSD("combo"), read, [&](const LLSD& v) { applied = v; return true; }));
+    ensure_equals("combo uses value clipboard", applied.asString(), std::string("combo"));
+    ensure_equals("numeric/combo never read OS text", reads, 3u);
+}
+
+template<> template<> void media_file_object::test<53>()
+{
+    set_test_name("executed retire captures close deny-delete pins before final quit sweep");
+    CacheFixFixture cache;
+    cache.write("orphan.mp4", "playing video");
+    std::deque<std::function<void()>> garbage;
+    unsigned leases = 1;
+#if LL_WINDOWS
+    HANDLE raw = CreateFileW((cache.root / "orphan.mp4").c_str(), GENERIC_READ, FILE_SHARE_READ,
+        nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    ensure("validation deny-delete handle opens", raw != INVALID_HANDLE_VALUE);
+    auto pin = std::shared_ptr<void>(raw, [](void* h) { CloseHandle(h); });
+#else
+    auto pin = std::make_shared<int>(0);
+#endif
+    std::weak_ptr<void> held = pin;
+    // Outer result destruction queues the real cache-lease retirement, just as
+    // mailbox destruction and DeferredClose do in production.
+    auto retention = std::shared_ptr<void>(new int(0), [&, pin](void* p)
+    {
+        delete static_cast<int*>(p);
+        garbage.push_back([&, pin]() { --leases; });
+    });
+    garbage.push_back([retention]() {});
+    retention.reset(); pin.reset();
+    std::deque<std::function<void()>> batch;
+    batch.swap(garbage);
+    executeRetirements(batch, [](auto& fn) { fn(); });
+    ensure("recursive release requires another deletion pass",
+        !finishShutdownMaintenance(false, true, !garbage.empty(), false));
+    batch.swap(garbage);
+    executeRetirements(batch, [&](auto& fn)
+    {
+        fn();
+        ensure_equals("lease count released before capture destroyed", leases, 0u);
+        ensure("executed closure still owns validation pin", !held.expired());
+#if LL_WINDOWS
+        std::error_code error;
+        std::filesystem::remove(cache.root / "orphan.mp4", error);
+        ensure("negative control: executed capture denies delete", bool(error));
+#endif
+    });
+    ensure("production batch destroys every capture before sweeping", held.expired());
+    ensure("quit sweep unlinks playing-at-quit file", std::filesystem::remove(cache.root / "orphan.mp4"));
+    ensure("maintenance exits only after that pass", finishShutdownMaintenance(false, true, false, false));
+}
+
+template<> template<> void media_file_object::test<54>()
+{
+    set_test_name("maintenance observes child death without parent idle or message pumping");
+    auto fence = std::make_shared<LLPluginFileClose>();
+    auto held = std::make_shared<int>(0);
+    std::weak_ptr<int> lease = held;
+    DeferredClose retirement(held, fence);
+    held.reset();
+#if LL_WINDOWS
+    struct Child
+    {
+        PROCESS_INFORMATION info{};
+        ~Child()
+        {
+            if (info.hProcess) { TerminateProcess(info.hProcess, 1); CloseHandle(info.hProcess); }
+            if (info.hThread) CloseHandle(info.hThread);
+        }
+    } child;
+    wchar_t system[MAX_PATH]{};
+    ensure("system directory", GetSystemDirectoryW(system, MAX_PATH) != 0);
+    const std::wstring executable = std::wstring(system) + L"\\cmd.exe";
+    std::wstring command = L"\"" + executable + L"\" /d /c exit 0";
+    STARTUPINFOW startup{}; startup.cb = sizeof(startup);
+    ensure("disposable child starts suspended", CreateProcessW(executable.c_str(), command.data(),
+        nullptr, nullptr, FALSE, CREATE_SUSPENDED | CREATE_NO_WINDOW, nullptr, nullptr, &startup, &child.info) != FALSE);
+    fence->observeProcessHandle(child.info.hProcess); // Same duplication as parent.
+    ensure("live child retains file", !retirement.poll() && !lease.expired());
+    ensure("child resumed", ResumeThread(child.info.hThread) != DWORD(-1));
+    ensure("child exits without main event loop", WaitForSingleObject(child.info.hProcess, 2000) == WAIT_OBJECT_0);
+    // Destroy the original handle before polling to verify independent lifetime.
+    CloseHandle(child.info.hProcess); child.info.hProcess = nullptr;
+#else
+    std::atomic<bool> exited{false};
+    fence->observeExitWith([&]() { return exited.load(); });
+    ensure("live child retains file", !retirement.poll() && !lease.expired());
+    exited = true;
+#endif
+    bool closed = false;
+    std::thread worker([&]() { closed = retirement.poll(); });
+    worker.join();
+    ensure("worker alone acknowledges death and releases lease", closed && lease.expired());
+}
+
+template<> template<> void media_file_object::test<55>()
+{
+    set_test_name("quit drain exits on no useful deletion work and retries only newly released work");
+    ensure("Keep ON returns immediately even with a private player", finishShutdownMaintenance(true, false, true, true));
+    ensure("Keep OFF waits for deletable entries", !finishShutdownMaintenance(false, true, false, true));
+    ensure("Keep OFF returns when deletable set empty", finishShutdownMaintenance(false, true, false, false));
+    ensure("live process still owns retirement", !finishShutdownMaintenance(false, true, true, false));
+    ensure("local-only player never delays cache drain", !shutdownRetirementPending(false, true, false));
+    ensure("cached player still protects deletable work", shutdownRetirementPending(false, true, true));
+    ensure("unfinished transfers can produce new work", !finishShutdownMaintenance(false, false, false, false));
+    const int64_t retry = 60000;
+    unsigned passes = 0;
+    for (int64_t now = 20; now < 2000; now += 20)
+        passes += cacheMaintenanceDue(now, retry, false, false);
+    ensure_equals("locked file never retries at 50 Hz", passes, 0u);
+    ensure("new quit request gets one pass", cacheMaintenanceDue(20, retry, true, false));
+    ensure("newly released lease gets one immediate pass", cacheMaintenanceDue(40, retry, false, true));
+    ensure("same release never re-forces clear", !cacheMaintenanceDue(60, retry, false, false));
+    ensure("ordinary backoff eventually retries", cacheMaintenanceDue(retry, retry, false, false));
+    CacheOrphans orphans;
+    orphans.files["locked"] = 1;
+    for (unsigned i = 0; i < 300; ++i) orphans.files["video" + std::to_string(i)] = 1;
+    std::set<std::string> attempted;
+    unsigned lockedAttempts = 0, removed = 0, batches = 0;
+    bool pending;
+    do
+    {
+        ++batches;
+        pending = orphans.quitBatch(attempted, [&](const std::string& name)
+        {
+            if (name == "locked") { ++lockedAttempts; return false; }
+            ++removed; return true;
+        });
+    } while (pending && batches < 10);
+    ensure_equals("all deletable entries drain across bounded batches", removed, 300u);
+    ensure_equals("large quit sweep uses bounded batches", batches, 3u);
+    ensure_equals("undeletable file gets one attempt across continuations", lockedAttempts, 1u);
+    ensure_equals("only undeletable work remains", orphans.files.size(), size_t(1));
+}
+
+template<> template<> void media_file_object::test<56>()
+{
+    set_test_name("cache ownership wait has its own deadline before transfer or filesystem I/O starts");
+    const int64_t queued = 100, started = 0, ioDeadline = 0;
+    const int64_t ownerDeadline = queued + CACHE_OWNER_WAIT_MS;
+    ensure("no transfer deadline yet", !totalExpired(false, started, ownerDeadline));
+    ensure("no filesystem deadline yet", !deadlineExpired(ioDeadline, ownerDeadline));
+    ensure("owner wait permits bounded recovery", !deadlineExpired(ownerDeadline, ownerDeadline - 1));
+    ensure("owner wait terminalizes independently", deadlineExpired(ownerDeadline, ownerDeadline));
+    ensure_equals("typed timeout status", cacheFailureStatus(CacheFailure::IO), std::string("Video cache unavailable: cache I/O failed"));
+}
+
+template<> template<> void media_file_object::test<57>()
+{
+    set_test_name("404 then invalid committed URL: newest commit wins both surfaces without stopping playback");
+    const std::string runtime = std::string(FAILED) + " (HTTP 404)";
+    const auto failed = nextMediaStatusSequence();
+    std::string error;
+    unsigned replacements = 0;
+    ensure("invalid typed URL refused", !commitVideoDraft("https://invalid", error, true,
+        [&](const Descriptor&) { ++replacements; return true; }));
+    const auto edited = nextMediaStatusSequence();
+    const auto source = mediaSourceStatus(runtime, error, failed, edited);
+    const auto tile = "Error: " + mediaSourceStatus(runtime, error, failed, edited);
+    ensure_equals("fresh edit outranks old 404", source, std::string(UNSUPPORTED));
+    ensure_equals("tile uses same selected event plus Error prefix", tile, "Error: " + source);
+    ensure_equals("invalid draft never replaces/stops the player", replacements, 0u);
+    ensure_equals("a later runtime failure outranks cached edit", mediaSourceStatus(runtime, error, nextMediaStatusSequence(), edited), runtime);
+    ensure_equals("a later valid validation also outranks stale failure",
+        mediaSourceStatus(runtime, "Set. Press Play to start it.", failed, nextMediaStatusSequence()), std::string("Set. Press Play to start it."));
+}
+
+template<> template<> void media_file_object::test<58>()
+{
+    set_test_name("cache error categories remain distinct and only completed owner purge is acknowledged");
+    ensure("generic EIO remains IO", cacheFailureFromError(std::error_code(EIO, std::generic_category()), CacheFailure::IO) == CacheFailure::IO);
+    ensure("errno access denied", cacheFailureFromError(std::error_code(EACCES, std::generic_category()), CacheFailure::IO) == CacheFailure::ACCESS);
+    ensure("errno no space", cacheFailureFromError(std::error_code(ENOSPC, std::generic_category()), CacheFailure::IO) == CacheFailure::NO_SPACE);
+#if LL_WINDOWS
+    ensure("Win32 access denied", cacheFailureFromError(std::error_code(ERROR_ACCESS_DENIED, std::system_category()), CacheFailure::IO) == CacheFailure::ACCESS);
+    ensure("Win32 disk full", cacheFailureFromError(std::error_code(ERROR_DISK_FULL, std::system_category()), CacheFailure::IO) == CacheFailure::NO_SPACE);
+    ensure("Win32 handle disk full", cacheFailureFromError(std::error_code(ERROR_HANDLE_DISK_FULL, std::system_category()), CacheFailure::IO) == CacheFailure::NO_SPACE);
+#endif
+    ensure("non-owner cannot consume purge", !acknowledgeStartupPurge(false, false, false, true, true));
+    ensure("pending cleanup preserves purge", !acknowledgeStartupPurge(true, true, false, true, true));
+    ensure("degraded cleanup acknowledges purge", acknowledgeStartupPurge(true, false, true, true, true));
+    ensure("leftovers preserve purge", !acknowledgeStartupPurge(true, false, false, false, true));
+    ensure("successful owner clears purge", acknowledgeStartupPurge(true, false, false, true, true));
+}
+
+template<> template<> void media_file_object::test<59>()
+{
+    set_test_name("LOCKED plus native sharing violation preserves IN_USE and the exact second-viewer status");
+    const auto failure = cacheFailureFromError(std::error_code(32, std::system_category()), CacheFailure::IN_USE);
+    ensure("semantic LOCKED survives native category mapping", failure == CacheFailure::IN_USE);
+    ensure_equals("spec exact status", cacheFailureStatus(failure), std::string("Video downloads are in use by another open viewer"));
+    ensure("tile treats exact lock status as a runtime failure", mediaRuntimeFailure(cacheFailureStatus(failure)));
+    ensure("real access refusal remains access", cacheFailureFromError(
+        std::make_error_code(std::errc::permission_denied), CacheFailure::IO) == CacheFailure::ACCESS);
+}
+
+template<> template<> void media_file_object::test<60>()
+{
+    set_test_name("Clear retries three times within one second and a stalled Clear wait has a deadline");
+    for (unsigned failCount : {1u, 3u})
+    {
+        bool clear = true, cleanup = false, degraded = false;
+        unsigned failures = 0, attempts = 0, drops = 0;
+        int64_t now = 0, retry = 0;
+        awaitCacheClear(clear, CACHE_CLEAR_WAIT_MS, [&]() { return now; }, []() {}, [&]()
+        {
+            if (cacheMaintenanceDue(now, retry, false, false))
+            {
+                try
+                {
+                    maintainCache(clear, cleanup, failures, degraded, [&](bool)
+                    {
+                        retry = now + 60000; // production inventory's ordinary backoff
+                        if (++attempts <= failCount) throw std::runtime_error(FAILED);
+                    }, []() { return false; }, [&]() { ++drops; }, []() { return true; });
+                }
+                catch (...) { retry = clearFailureRetry(now, retry, clear, failures, false); }
+            }
+            now += 20;
+        });
+        ensure("Clear resolved in less than one second", now < 1000);
+        ensure_equals("one transient failure recovers; persistent failure gets three attempts", attempts, failCount == 1 ? 2u : 3u);
+        ensure_equals("only persistent failure drops hits", drops, failCount == 1 ? 0u : 1u);
+        ensure("persistent failure degrades", degraded == (failCount == 3));
+        ensure_equals("resolved/degraded Clear retains ordinary backoff", clearFailureRetry(now, retry, clear, failures, false), retry);
+    }
+    ensure_equals("quit never hammers failed names", clearFailureRetry(0, 60000, true, 1, true), int64_t(60000));
+    bool stalled = true, timedOut = false;
+    int64_t now = 100;
+    const auto deadline = now + CACHE_CLEAR_WAIT_MS;
+    try
+    {
+        awaitCacheClear(stalled, deadline, [&]() { return now; }, []() {}, [&]() { now += 20; });
+    }
+    catch (const std::runtime_error& error)
+    { timedOut = std::string(error.what()) == CLEAR_TIMEOUT; }
+    ensure("stalled maintenance terminalizes with a clear-specific status", timedOut && stalled);
+    ensure_equals("wait does not exceed deadline", now, deadline);
+    ensure("timeout visible as runtime failure", mediaRuntimeFailure(CLEAR_TIMEOUT));
+}
+
+template<> template<> void media_file_object::test<61>()
+{
+    set_test_name("cancelled validation pin schedules a final sweep; degraded purge is consumed once");
+    struct Record { std::atomic<unsigned> leases{1}; };
+    auto entry = std::make_shared<Record>();
+    std::atomic<uint64_t> released{0};
+    try
+    {
+        CacheValidationPin<Record> pin{entry, released}; // production validation guard
+        throw std::runtime_error(FAILED); // cancelled preflight unwinds without adoption
+    }
+    catch (const std::runtime_error&) {}
+    ensure_equals("unadopted validation releases its lease", entry->leases.load(), 0u);
+    ensure_equals("unadopted validation publishes newly released work", released.load(), uint64_t(1));
+    ensure("backoff cannot hide the final sweep", cacheMaintenanceDue(20, 60000, false, released != 0));
+    ensure("new deletion work prevents final-pass exit", !finishShutdownMaintenance(false, true, false, released != 0));
+    entry->leases = 1;
+    { CacheValidationPin<Record> pin{entry, released}; pin.adopted = true; }
+    ensure_equals("adopted pin is retained for real lease retirement", entry->leases.load(), 1u);
+    ensure_equals("adoption does not fake a release", released.load(), uint64_t(1));
+    bool purgePending = true;
+    if (acknowledgeStartupPurge(true, false, true, false, true)) purgePending = false;
+    ensure("known undeletable leftovers acknowledge degraded owner purge", !purgePending);
+    ensure("Keep ON next startup preserves the remaining cache", !clearCacheAtStartup(true, true, purgePending));
+    ensure("non-owner still cannot acknowledge degraded purge", !acknowledgeStartupPurge(false, false, true, false, true));
+    ensure("unresolved Clear still cannot acknowledge purge", !acknowledgeStartupPurge(true, true, true, false, true));
+}
+
+template<> template<> void media_file_object::test<62>()
+{
+    set_test_name("production shutdown begin/drain bypasses worker wait for Keep ON and bounds Keep OFF");
+    for (unsigned blocked : {1u, 3u, 8u}) // maintenance, preflight/download, blocked filesystem workers
+    {
+        ShutdownDrain shutdown;
+        std::atomic<unsigned> active{blocked};
+        int64_t now = 100;
+        unsigned ticks = 0, sleeps = 0, clocks = 0;
+        auto clock = [&]() { ++clocks; return now; };
+        auto tick = [&]() { ++ticks; }; // blocked jobs never become reaped
+        auto sleep = [&]() { ++sleeps; now += 10; };
+        shutdown.begin(true, now);
+        ensure("outstanding jobs remain for jobsRemain/forced-exit safeguard", !shutdown.drain(active, clock, tick, sleep));
+        ensure("drain begins after player retirement", shutdown.draining);
+        ensure_equals("Keep ON never sleeps for workers", sleeps, 0u);
+        ensure_equals("Keep ON never waits on a drain deadline", clocks, 0u);
+        ensure_equals("Keep ON bypasses even the worker polling pass", ticks, 0u);
+        ensure_equals("Keep ON returns at once", now, int64_t(100));
+        ensure_equals("outstanding jobs are never marked drained", active.load(), blocked);
+        shutdown.begin(false, now);
+        ensure("Keep OFF reports blocked jobs after the bounded drain", !shutdown.drain(active, clock, tick, sleep));
+        ensure_equals("Keep OFF retains the single two-second budget", now, int64_t(2100));
+        active = 0;
+        ensure("genuinely reaped workers permit normal teardown", shutdown.drain(active, clock, tick, sleep));
+    }
+}
+
+template<> template<> void media_file_object::test<63>()
+{
+    set_test_name("Clear covers more than three batches before acknowledgement; only failed unlinks earn strikes");
+    for (bool locked : {false, true})
+    {
+        CacheOrphans orphans;
+        std::map<std::string,uint64_t> disk;
+        for (unsigned i = 0; i < 600; ++i) disk["child-" + std::to_string(i)] = 1;
+        if (locked) disk["aaa-locked"] = 7;
+        bool clear = true, cleanup = false, degraded = false;
+        unsigned failures = 0, passes = 0, drops = 0;
+        size_t leased = 0;
+        std::set<std::string> attempted;
+        int64_t now = 0;
+        while (clear && passes < 30)
+        {
+            ++passes;
+            maintenanceItem([&]()
+            {
+                maintainCache(clear, cleanup, failures, degraded, [&](bool)
+                {
+                    orphans.unknown = true;
+                    orphans.inventoried(disk); // same complete-inventory publication as production
+                    orphans.nextRetry = now;
+                    unsigned batch = 0;
+                    orphans.retry(now, [&](const std::string& name)
+                    {
+                        ++batch;
+                        attempted.insert(name);
+                        if (name == "aaa-locked") return false;
+                        disk.erase(name);
+                        return true;
+                    });
+                    ensure("each pass bounded", batch <= 128);
+                    if (!orphans.failed.empty()) throw std::runtime_error(FAILED);
+                }, [&]() { return leased != 0; }, [&]() { ++drops; },
+                    [&]() { return orphans.covered() && !leased; });
+            }, []() {});
+            if (passes <= 3)
+            {
+                ensure("three batches cannot acknowledge 600 children", clear);
+                ensure("purge marker stays pending", !acknowledgeStartupPurge(true, clear, degraded, disk.empty(), orphans.covered()));
+            }
+            if (locked && passes == 3)
+                ensure("degraded Play opens before attempt coverage completes", degraded && orphans.unattempted() != 0);
+            for (const auto& child : orphans.files)
+                if (!attempted.count(child.first)) ensure("unattempted has no deletion strikes", !orphans.failed.count(child.first));
+            orphans.nextRetry = clearFailureRetry(now, orphans.nextRetry, clear, failures, false);
+            if (clear) ensure_equals("coverage continues at fast cadence", orphans.nextRetry, now + 250);
+            now += 250;
+        }
+        ensure("all children attempted", attempted.size() == (locked ? 601u : 600u));
+        ensure("Clear eventually completes", !clear);
+        ensure("purge completes only with covered children", acknowledgeStartupPurge(true, clear, degraded, disk.empty(), orphans.covered()));
+        ensure_equals("only real failures degrade", drops, locked ? 1u : 0u);
+        if (locked) ensure_equals("locked child has three actual failures", orphans.failed.at("aaa-locked"), 3u);
+        ensure_equals("deletable children all removed", disk.size(), locked ? size_t(1) : size_t(0));
+    }
+}
+
+template<> template<> void media_file_object::test<64>()
+{
+    set_test_name("failed inventories never acknowledge Clear or purge; degraded Play proceeds and leases retain completion");
+    CacheOrphans orphans;
+    bool clear = true, cleanup = false, degraded = false;
+    unsigned failures = 0, drops = 0;
+    size_t leased = 1;
+    int64_t now = 0;
+    for (unsigned i = 0; i < 5; ++i)
+    {
+        maintenanceItem([&]()
+        {
+            maintainCache(clear, cleanup, failures, degraded, [&](bool)
+            { orphans.unknown = true; throw std::runtime_error(FAILED); },
+                [&]() { return leased != 0; }, [&]() { ++drops; },
+                [&]() { return orphans.covered() && !leased; });
+        }, []() {});
+        ensure("inventory failure preserves Clear", clear);
+        ensure("even a caller with no pending bit cannot acknowledge unknown inventory",
+            !acknowledgeStartupPurge(true, false, degraded, false, orphans.covered()));
+        ensure("inventory failure creates no deletion strikes", orphans.failed.empty());
+        ensure_equals("inventory failure retains fast retry", clearFailureRetry(now, 60000, clear, failures, false), now + 250);
+        now += 250;
+    }
+    ensure_equals("degradation logged once", drops, 1u);
+    ensure("Play can bypass unresolved degraded Clear", degraded && clear);
+    unsigned waits = 0;
+    awaitCacheClearWhile([&]() { return clear && !degraded; }, CACHE_CLEAR_WAIT_MS,
+        [&]() { return now; }, []() {}, [&]() { ++waits; });
+    ensure_equals("degraded Play does not wait for acknowledgement", waits, 0u);
+    orphans.inventoried({});
+    maintainCache(clear, cleanup, failures, degraded, [](bool clearing)
+        { ensure("degraded continuation does not clear newly downloaded hits", !clearing); },
+        [&]() { return leased != 0; }, []() {}, [&]() { return orphans.covered() && !leased; });
+    ensure("complete inventory alone cannot release retained lease", clear);
+    leased = 0;
+    maintainCache(clear, cleanup, failures, degraded, [](bool) {}, []() { return false; }, []() {},
+        [&]() { return orphans.covered() && !leased; });
+    ensure("successful inventory and lease release allow completion", !clear);
+    ensure("owner can acknowledge now", acknowledgeStartupPurge(true, clear, degraded, true, orphans.covered()));
+}
+
+template<> template<> void media_file_object::test<65>()
+{
+    set_test_name("degraded log is one summary with at most three anonymous examples");
+    CacheOrphans orphans;
+    for (unsigned i = 0; i < 1000; ++i)
+    {
+        const auto key = std::string(64, 'a') + "." + std::to_string(i) + ".mp4";
+        orphans.files[key] = 42;
+        if (i < 400) orphans.failed[key] = 1;
+    }
+    orphans.unknown = true;
+    const auto log = cacheClearSummary(orphans, 5);
+    ensure("counts distinguish failures, untouched children and leases", log.find("failed=400 unattempted=600 leased=5 inventory_unknown=1") != std::string::npos);
+    ensure("three examples supplied", log.find("example[3]=") != std::string::npos);
+    ensure("fourth example omitted", log.find("example[4]") == std::string::npos);
+    ensure("no cache key or filename leaks", log.find(std::string(64, 'a')) == std::string::npos && log.find(".mp4") == std::string::npos);
+    ensure("single bounded line", log.find('\n') == std::string::npos && log.size() < 300);
+    CacheOrphans empty;
+    ensure("empty inventory supplies no examples", cacheClearSummary(empty, 2).find("example[") == std::string::npos);
+    empty.files["private-path"] = 1;
+    const auto one = cacheClearSummary(empty, 0);
+    ensure("small inventory only supplies available examples", one.find("example[1]=unattempted") != std::string::npos && one.find("example[2]") == std::string::npos);
+    ensure("arbitrary names excluded", one.find("private-path") == std::string::npos);
 }
 
 }

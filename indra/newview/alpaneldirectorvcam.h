@@ -113,9 +113,11 @@ private:
     {
         U64 generation = 0;
         std::string cue, draft, reason;
+        U64 sequence = 0;
     };
     std::unordered_map<LLUUID, RefusedMediaDraft> mMediaRefusals;
     U64 mMediaEditEpoch = 0;
+    U64 mMediaValidationSequence = 0;
     bool mMediaEditingUrl = false;
     bool mMediaPlayable = false;
     std::unordered_map<std::string, LLUICtrl*> mControls;

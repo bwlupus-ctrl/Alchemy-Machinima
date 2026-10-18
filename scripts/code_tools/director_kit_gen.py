@@ -272,8 +272,9 @@ def validate_data(data: dict) -> None:
     #       (page "master": same widget name and setting; Gaze is code-bound, s None like Actor FX) (-4) (10/16).
     # 2114: VCam adds the media consumption row (+1); exact coverage stays pinned.
     # 2122: VCam media source card adds 8 rows (removes duplicate Add and unrequested clear/geometry rows); exact coverage stays pinned.
-    if len(pages) != 37 or row_count != 2122:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2122")
+    # 2123: +1 VCam Keep downloads between sessions toggle (cache lifetime, 10/18).
+    if len(pages) != 37 or row_count != 2123:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2123")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

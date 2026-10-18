@@ -8,10 +8,85 @@
 #include <stdexcept>
 #include <iterator>
 #include <map>
+#include <set>
+#include <atomic>
+#include <sstream>
 #include "../llplugin/llpluginfileclose.h"
 #include "alvcammediafilepolicy.h"
 namespace ALMediaFile
 {
+// One bounded attempt per explicit Play after failure. Pending attempts coalesce;
+// maintenance never retries automatically, and a later Play can recover again.
+inline bool requestCacheOwnerRetry(std::atomic<int>& state)
+{ int failed = -1; return state.compare_exchange_strong(failed, 0); }
+// Invalid editor text never reaches source replacement (which can stop a player).
+template<class Apply> bool commitVideoDraft(const std::string& draft, std::string& error, bool windows, Apply apply)
+{
+    Descriptor syntax;
+    if (!classify(draft, syntax, error, windows)) return false;
+    return apply(syntax);
+}
+// Decide lifetime work without doing I/O or disturbing a playing lease.
+inline bool clearCacheAtStartup(bool owner, bool keep, bool purge)
+{ return owner && (!keep || purge); }
+template<class Schedule> bool scheduleSessionCleanup(bool owner, bool keep, Schedule schedule)
+{
+    if (!owner || keep) return false;
+    schedule(); // detached maintenance only; the caller never unlinks or waits
+    return true;
+}
+inline bool deferCacheDeletion(unsigned leases)
+{ return leases != 0; }
+
+// Executed closures can still hold deny-delete validation handles. Destroy all
+// captures before allowing a sweep, including when an item throws.
+template<class Queue, class Run> void executeRetirements(Queue& garbage, Run run)
+{
+    for (auto& fn : garbage) run(fn);
+    garbage.clear();
+}
+inline bool cacheMaintenanceDue(int64_t now, int64_t nextRetry, bool newClear, bool released)
+{ return newClear || released || now >= nextRetry; }
+inline bool finishShutdownMaintenance(bool keep, bool workersDrained, bool retirementPending, bool deletionDue)
+{ return keep || (workersDrained && !retirementPending && !deletionDue); }
+inline bool shutdownRetirementPending(bool garbage, bool closing, bool cachedLeases)
+{ return garbage || (closing && cachedLeases); }
+inline constexpr int64_t CACHE_OWNER_WAIT_MS = 10000;
+inline constexpr int64_t CACHE_CLEAR_WAIT_MS = 10000;
+inline int64_t clearFailureRetry(int64_t now, int64_t ordinaryRetry, bool pending, unsigned /*failures*/, bool shutdown)
+{ return pending && !shutdown ? now + 250 : ordinaryRetry; }
+inline bool acknowledgeStartupPurge(bool owner, bool pending, bool degraded, bool empty, bool covered)
+{ return owner && !pending && covered && (degraded || empty); }
+
+// This is the production drain loop, including beginShutdown's policy capture.
+// Keep ON hands outstanding jobs to the existing post-persistence forced exit.
+struct ShutdownDrain
+{
+    bool keep = false, draining = false;
+    int64_t deadline = 0;
+    void begin(bool keepBetweenSessions, int64_t now)
+    { keep = keepBetweenSessions; deadline = now + 2000; }
+    template<class Active, class Now, class Tick, class Wait>
+    bool drain(const Active& active, Now now, Tick tick, Wait wait)
+    {
+        draining = true;
+        if (keep) return active == 0;
+        while (active && now() < deadline) { tick(); wait(); }
+        return active == 0;
+    }
+};
+
+// Used by validation's unadopted pin and normal lease retirement alike.
+template<class Leases, class Released> void releaseCachePin(Leases& leases, Released& released)
+{ --leases; ++released; }
+template<class Entry> struct CacheValidationPin
+{
+    std::shared_ptr<Entry> entry;
+    std::atomic<uint64_t>& released;
+    bool adopted = false;
+    ~CacheValidationPin() { if (!adopted) releaseCachePin(entry->leases, released); }
+};
+
 inline bool deadlineExpired(int64_t deadline, int64_t now)
 { return deadline != 0 && now >= deadline; }
 template<class Deadline> bool ioExpired(const Deadline& deadline, int64_t now)
@@ -51,31 +126,46 @@ void maintainCache(Pending& clearPending, Pending& cleanupPending, Work sweep, R
     }
 }
 
-// A failed unlink must not gate all later HTTP requests forever. The final
-// fallback only drops records; it never unlinks a leased/undeletable file.
-template<class Pending, class Degraded, class Work, class Remaining, class Drop>
+// Play may proceed after degradation while Clear completion still waits for
+// a complete inventory, real deletion attempts and all retained leases.
+template<class Pending, class Degraded, class Work, class Remaining, class Drop, class Covered>
 void maintainCache(Pending& clearPending, Pending& cleanupPending, unsigned& failures,
-    Degraded& degraded, Work sweep, Remaining remaining, Drop drop)
+    Degraded& degraded, Work sweep, Remaining remaining, Drop drop, Covered covered)
 {
     try
     {
-        maintainCache(clearPending, cleanupPending, sweep, remaining);
+        sweep(clearPending && !degraded);
+        if (clearPending) clearPending = remaining() || !covered();
+        cleanupPending = false;
         failures = 0;
     }
     catch (...)
     {
-        if (!clearPending || ++failures < 3) throw;
-        drop();
-        degraded = true;
+        cleanupPending = true;
+        if (!clearPending) throw;
+        if (failures < 3) ++failures;
+        if (failures >= 3 && !degraded) { drop(); degraded = true; }
+        if (!degraded || !covered()) throw;
         cleanupPending = false;
         clearPending = false;
         failures = 0;
     }
 }
 
-template<class Pending, class Cancel, class Wait>
-void awaitCacheClear(const Pending& pending, Cancel cancel, Wait wait)
-{ while (pending) { cancel(); wait(); } }
+template<class Pending, class Now, class Cancel, class Wait>
+void awaitCacheClearWhile(Pending pending, int64_t deadline, Now now, Cancel cancel, Wait wait)
+{
+    while (pending())
+    {
+        cancel();
+        if (deadlineExpired(deadline, now())) throw std::runtime_error(CLEAR_TIMEOUT);
+        wait();
+    }
+}
+
+template<class Pending, class Now, class Cancel, class Wait>
+void awaitCacheClear(const Pending& pending, int64_t deadline, Now now, Cancel cancel, Wait wait)
+{ awaitCacheClearWhile([&]() { return bool(pending); }, deadline, now, cancel, wait); }
 
 // Picker/preflight results only commit a descriptor after successful validation.
 template<class Apply> bool commitFileBrowse(std::string& status, const std::string& result,
@@ -103,9 +193,31 @@ struct BrowseOverlay
 struct CacheOrphans
 {
     std::map<std::string,uint64_t> files;
+    std::map<std::string,unsigned> failed; // only actual unsuccessful unlink attempts
     bool unknown = false;
     int64_t nextRetry = 0;
     std::string cursor;
+    size_t unattempted() const
+    {
+        size_t count = 0;
+        for (const auto& file : files) if (!failed.count(file.first)) ++count;
+        return count;
+    }
+    bool covered() const
+    {
+        if (unknown || unattempted()) return false;
+        for (const auto& file : files)
+            if (failed.at(file.first) < 3) return false;
+        return true;
+    }
+    // Preserve strikes only for children still present in a COMPLETE inventory.
+    void inventoried(std::map<std::string,uint64_t> found)
+    {
+        files = std::move(found);
+        for (auto it = failed.begin(); it != failed.end();)
+            if (!files.count(it->first)) it = failed.erase(it); else ++it;
+        unknown = false;
+    }
     void abandon(const std::string& name, uint64_t written, uint64_t reservation)
     { files[name] = std::max(written, reservation); }
     uint64_t bytes() const
@@ -124,10 +236,44 @@ struct CacheOrphans
             auto it = files.upper_bound(cursor);
             if (it == files.end()) it = files.begin();
             cursor = it->first;
-            if (remove(it->first)) files.erase(it);
+            if (remove(it->first)) { failed.erase(it->first); files.erase(it); }
+            else { auto& strikes = failed[it->first]; if (strikes < 3) ++strikes; }
         }
     }
+    // Continue a quit sweep in bounded batches without retrying failed names.
+    // A new release/explicit sweep starts a new attempt set; the ordinary retry
+    // deadline still governs already attempted, undeletable files.
+    template<class Remove> bool quitBatch(std::set<std::string>& attempted, Remove remove)
+    {
+        unsigned count = 0;
+        for (auto it = files.begin(); it != files.end();)
+        {
+            if (attempted.count(it->first)) { ++it; continue; }
+            if (count++ == 128) return true;
+            attempted.insert(it->first);
+            if (remove(it->first)) it = files.erase(it); else ++it;
+        }
+        return false;
+    }
 };
+// One bounded line, with no paths, filenames or cache keys.
+inline std::string cacheClearSummary(const CacheOrphans& orphans, size_t leased)
+{
+    std::ostringstream out;
+    const auto unattempted = orphans.unattempted();
+    out << "Clear degraded: failed=" << orphans.files.size() - unattempted
+        << " unattempted=" << unattempted << " leased=" << leased
+        << " inventory_unknown=" << orphans.unknown;
+    size_t index = 0;
+    for (const auto& file : orphans.files)
+    {
+        if (index == 3) break;
+        const auto failed = orphans.failed.find(file.first);
+        out << " example[" << ++index << "]=" << (failed == orphans.failed.end() ? "unattempted" : "failed")
+            << " bytes=" << file.second;
+    }
+    return out.str();
+}
 inline bool cacheFits(uint64_t used, uint64_t reservation, uint64_t limit)
 { return used <= limit && reservation <= limit-used; }
 template<class Entries, class Evicted> void dropCacheHits(Entries& entries, Evicted& evicted)

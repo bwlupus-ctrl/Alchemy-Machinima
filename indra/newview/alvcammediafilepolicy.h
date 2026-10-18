@@ -9,6 +9,8 @@
 #include <string>
 #include <stdexcept>
 #include <vector>
+#include <atomic>
+#include <system_error>
 
 namespace ALMediaFile
 {
@@ -22,7 +24,43 @@ inline constexpr const char* TOO_LARGE = "File too large";
 inline constexpr const char* NO_SPACE = "Not enough disk space";
 inline constexpr const char* CLEARING = "Clearing video cache...";
 inline constexpr const char* CLEAR_DEGRADED = "Some cached videos couldn't be removed";
+inline constexpr const char* CLEAR_TIMEOUT = "Video cache clear timed out";
 inline constexpr const char* FAILED = "Download failed";
+inline constexpr const char* CACHE_UNAVAILABLE = "Video cache unavailable: ";
+enum class CacheFailure { IO, IN_USE, NO_SPACE, ACCESS, LOCAL_ONLY };
+inline std::string cacheFailureStatus(CacheFailure failure)
+{
+    if (failure == CacheFailure::IN_USE) return LOCKED;
+    const char* reason = failure == CacheFailure::NO_SPACE ? "not enough disk space" :
+        failure == CacheFailure::ACCESS ? "access denied" :
+        failure == CacheFailure::LOCAL_ONLY ? "local cache required" : "cache I/O failed";
+    return std::string(CACHE_UNAVAILABLE) + reason;
+}
+inline bool mediaRuntimeFailure(const std::string& reason)
+{
+    if (reason.rfind(CACHE_UNAVAILABLE, 0) == 0 || reason.rfind(FAILED, 0) == 0 ||
+        reason.rfind("Unsupported player", 0) == 0 || reason.rfind("Copy failed:", 0) == 0) return true;
+    for (const char* failure : {NOT_VIDEO, MISSING, LOCKED, BUDGET, TOO_LARGE, NO_SPACE, CLEAR_TIMEOUT,
+        UNSUPPORTED, REMOTE, "Media slots disabled", "Blocked by media policy", "Source missing or unbound"})
+        if (reason == failure) return true;
+    return false;
+}
+inline uint64_t nextMediaStatusSequence()
+{ static std::atomic<uint64_t> sequence{0}; return ++sequence; }
+inline std::string mediaSourceStatus(const std::string& runtime, const std::string& editor,
+    uint64_t runtimeSequence = 0, uint64_t editorSequence = 0)
+{ return mediaRuntimeFailure(runtime) && runtimeSequence >= editorSequence ? runtime : editor; }
+inline CacheFailure cacheFailureFromError(const std::error_code& error, CacheFailure fallback)
+{
+    // A semantic lock refusal wins over MSVC's permission_denied mapping of
+    // ERROR_SHARING_VIOLATION. Preserve the exact second-viewer status.
+    if (fallback == CacheFailure::IN_USE) return fallback;
+    // Compare conditions through their category; errno EIO and Win32 access
+    // denied both have value 5, but describe different failures.
+    if (error == std::errc::permission_denied || error == std::errc::operation_not_permitted) return CacheFailure::ACCESS;
+    if (error == std::errc::no_space_on_device) return CacheFailure::NO_SPACE;
+    return fallback;
+}
 inline constexpr const char* UNKNOWN_LOOP = "This file has no recorded length - loops may hitch (remux to fix)";
 // Keep the public status contract, but preserve the exact rejecting rule for
 // diagnostics and the offline probe. Rules are constants, never source text.
@@ -34,6 +72,7 @@ struct PolicyRefusal : std::runtime_error
 inline std::string diagnosticReason(const std::exception& error)
 {
     if (const auto* refusal = dynamic_cast<const PolicyRefusal*>(&error)) return refusal->rule;
+    if (std::string(error.what()).rfind(CACHE_UNAVAILABLE, 0) == 0) return error.what();
     for (const char* known : {UNSUPPORTED, REMOTE, NOT_VIDEO, MISSING, LOCKED, BUDGET, TOO_LARGE, NO_SPACE, FAILED})
         if (std::string(error.what()) == known) return known;
     return "I/O or transfer exception"; // Never echo exception text containing a URL/proxy/path.

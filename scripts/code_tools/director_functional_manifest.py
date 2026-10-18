@@ -1767,6 +1767,10 @@ def add_runtime_prerequisites(entries):
                         entry["test_value"] = False
                     else:
                         entry["test_value"] = 0.35
+                elif widget == "vc_media_cache_keep":
+                    # The isolated media fixture reveals this global preference;
+                    # its ordinary setting oracle toggles/restores it without I/O.
+                    condition = ""
                 elif row.get("k") == "readout":
                     condition = ""
                     entry.update(probe="vcam_media_readout", action="RUN", reason="", hazards=[])

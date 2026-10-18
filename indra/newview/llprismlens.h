@@ -358,6 +358,7 @@ struct CaptureRuntimeState
     EOutputState mOutput = EOutputState::EMPTY;
     EActivityState mActivity = EActivityState::IDLE;
     std::string mReason;
+    U64 mReasonSequence = 0; // media runtime event order, shared with editor validation
     F32 mEffectiveVerticalFovRad = 0.f;
     F32 mEffectiveFarClip = 0.f;
     F32 mEffectiveResolutionScale = 0.f;
@@ -1244,7 +1245,7 @@ void browseMediaFile(const CaptureHandle& slot, std::function<bool()> still_curr
                      std::function<void()> committed = {},
                      std::function<void(const std::string&, const std::string&)> refused = {});
 void clearMediaFileCache();
-void initializeMediaFiles();
+void initializeMediaFiles(bool purgeOnStartup = false);
 void retireMediaFileOwners(); // Safe boundary, before any raw media traversal.
 void shutdownMediaFiles();
 void stopPrivateMediaFiles(); // Cancels/marks now; releases owners at the safe boundary.

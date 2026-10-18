@@ -4338,7 +4338,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30768,
+          "line": 30786,
           "group": "Global",
           "type": "Boolean"
         }
@@ -4366,7 +4366,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30747,
+          "line": 30765,
           "group": "Global",
           "type": "Boolean"
         }
@@ -4405,7 +4405,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30754,
+          "line": 30772,
           "group": "Global",
           "type": "Boolean"
         }
@@ -11370,7 +11370,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30327,
+          "line": 30345,
           "group": "Global",
           "type": "Boolean"
         }
@@ -15650,7 +15650,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30320,
+          "line": 30338,
           "group": "Global",
           "type": "S32"
         }
@@ -15701,7 +15701,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30313,
+          "line": 30331,
           "group": "Global",
           "type": "F32"
         }
@@ -15752,7 +15752,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30306,
+          "line": 30324,
           "group": "Global",
           "type": "S32"
         }
@@ -32439,7 +32439,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29730,
+          "line": 29748,
           "group": "Global",
           "type": "Boolean"
         }
@@ -32478,7 +32478,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29772,
+          "line": 29790,
           "group": "Global",
           "type": "F32"
         }
@@ -32517,7 +32517,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29786,
+          "line": 29804,
           "group": "Global",
           "type": "F32"
         }
@@ -32556,7 +32556,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29765,
+          "line": 29783,
           "group": "Global",
           "type": "F32"
         }
@@ -32595,7 +32595,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29779,
+          "line": 29797,
           "group": "Global",
           "type": "F32"
         }
@@ -39976,7 +39976,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29910,
+          "line": 29928,
           "group": "Global",
           "type": "Boolean"
         }
@@ -40015,7 +40015,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29903,
+          "line": 29921,
           "group": "Global",
           "type": "Boolean"
         }
@@ -40054,7 +40054,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29896,
+          "line": 29914,
           "group": "Global",
           "type": "F32"
         }
@@ -40093,7 +40093,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30297,
+          "line": 30315,
           "group": "Global",
           "type": "F32"
         }
@@ -40132,7 +40132,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29882,
+          "line": 29900,
           "group": "Global",
           "type": "Color3"
         }
@@ -40171,7 +40171,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29868,
+          "line": 29886,
           "group": "Global",
           "type": "Color3"
         }
@@ -40210,7 +40210,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29889,
+          "line": 29907,
           "group": "Global",
           "type": "Color3"
         }
@@ -40249,7 +40249,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29875,
+          "line": 29893,
           "group": "Global",
           "type": "Color3"
         }
@@ -40277,7 +40277,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29854,
+          "line": 29872,
           "group": "Global",
           "type": "Boolean"
         }
@@ -40316,7 +40316,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29975,
+          "line": 29993,
           "group": "Global",
           "type": "F32"
         }
@@ -40355,7 +40355,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29961,
+          "line": 29979,
           "group": "Global",
           "type": "F32"
         }
@@ -40394,7 +40394,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29968,
+          "line": 29986,
           "group": "Global",
           "type": "F32"
         }
@@ -40433,7 +40433,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30003,
+          "line": 30021,
           "group": "Global",
           "type": "F32"
         }
@@ -40472,7 +40472,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29996,
+          "line": 30014,
           "group": "Global",
           "type": "F32"
         }
@@ -40511,7 +40511,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30010,
+          "line": 30028,
           "group": "Global",
           "type": "F32"
         }
@@ -40550,7 +40550,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30017,
+          "line": 30035,
           "group": "Global",
           "type": "F32"
         }
@@ -40589,7 +40589,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29954,
+          "line": 29972,
           "group": "Global",
           "type": "F32"
         }
@@ -40628,7 +40628,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29982,
+          "line": 30000,
           "group": "Global",
           "type": "Color3"
         }
@@ -40667,7 +40667,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29989,
+          "line": 30007,
           "group": "Global",
           "type": "F32"
         }
@@ -40706,7 +40706,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30101,
+          "line": 30119,
           "group": "Global",
           "type": "F32"
         }
@@ -40745,7 +40745,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30024,
+          "line": 30042,
           "group": "Global",
           "type": "Boolean"
         }
@@ -40784,7 +40784,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30080,
+          "line": 30098,
           "group": "Global",
           "type": "F32"
         }
@@ -40823,7 +40823,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30087,
+          "line": 30105,
           "group": "Global",
           "type": "F32"
         }
@@ -40862,7 +40862,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30122,
+          "line": 30140,
           "group": "Global",
           "type": "F32"
         }
@@ -40901,7 +40901,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30031,
+          "line": 30049,
           "group": "Global",
           "type": "F32"
         }
@@ -40940,7 +40940,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30059,
+          "line": 30077,
           "group": "Global",
           "type": "S32"
         }
@@ -40979,7 +40979,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30073,
+          "line": 30091,
           "group": "Global",
           "type": "F32"
         }
@@ -41018,7 +41018,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30066,
+          "line": 30084,
           "group": "Global",
           "type": "F32"
         }
@@ -41057,7 +41057,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30052,
+          "line": 30070,
           "group": "Global",
           "type": "F32"
         }
@@ -41096,7 +41096,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30115,
+          "line": 30133,
           "group": "Global",
           "type": "S32"
         }
@@ -41135,7 +41135,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30108,
+          "line": 30126,
           "group": "Global",
           "type": "F32"
         }
@@ -41174,7 +41174,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30038,
+          "line": 30056,
           "group": "Global",
           "type": "F32"
         }
@@ -41213,7 +41213,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30129,
+          "line": 30147,
           "group": "Global",
           "type": "F32"
         }
@@ -41252,7 +41252,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30136,
+          "line": 30154,
           "group": "Global",
           "type": "F32"
         }
@@ -41291,7 +41291,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30143,
+          "line": 30161,
           "group": "Global",
           "type": "F32"
         }
@@ -41330,7 +41330,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30094,
+          "line": 30112,
           "group": "Global",
           "type": "F32"
         }
@@ -41369,7 +41369,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30150,
+          "line": 30168,
           "group": "Global",
           "type": "S32"
         }
@@ -41408,7 +41408,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30157,
+          "line": 30175,
           "group": "Global",
           "type": "F32"
         }
@@ -41447,7 +41447,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30045,
+          "line": 30063,
           "group": "Global",
           "type": "F32"
         }
@@ -41486,7 +41486,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29947,
+          "line": 29965,
           "group": "Global",
           "type": "S32"
         }
@@ -41525,7 +41525,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30290,
+          "line": 30308,
           "group": "Global",
           "type": "F32"
         }
@@ -41564,7 +41564,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29861,
+          "line": 29879,
           "group": "Global",
           "type": "S32"
         }
@@ -41603,7 +41603,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30341,
+          "line": 30359,
           "group": "Global",
           "type": "Boolean"
         }
@@ -41642,7 +41642,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30334,
+          "line": 30352,
           "group": "Global",
           "type": "Boolean"
         }
@@ -41681,7 +41681,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29931,
+          "line": 29949,
           "group": "Global",
           "type": "F32"
         }
@@ -41720,7 +41720,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30164,
+          "line": 30182,
           "group": "Global",
           "type": "F32"
         }
@@ -41759,7 +41759,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30206,
+          "line": 30224,
           "group": "Global",
           "type": "S32"
         }
@@ -41798,7 +41798,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30192,
+          "line": 30210,
           "group": "Global",
           "type": "F32"
         }
@@ -41837,7 +41837,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30199,
+          "line": 30217,
           "group": "Global",
           "type": "S32"
         }
@@ -41876,7 +41876,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30178,
+          "line": 30196,
           "group": "Global",
           "type": "F32"
         }
@@ -41915,7 +41915,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30171,
+          "line": 30189,
           "group": "Global",
           "type": "F32"
         }
@@ -41954,7 +41954,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30185,
+          "line": 30203,
           "group": "Global",
           "type": "F32"
         }
@@ -41993,7 +41993,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29917,
+          "line": 29935,
           "group": "Global",
           "type": "F32"
         }
@@ -42032,7 +42032,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30213,
+          "line": 30231,
           "group": "Global",
           "type": "F32"
         }
@@ -42071,7 +42071,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29924,
+          "line": 29942,
           "group": "Global",
           "type": "S32"
         }
@@ -42110,7 +42110,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30506,
+          "line": 30524,
           "group": "Global",
           "type": "S32"
         }
@@ -42149,7 +42149,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30443,
+          "line": 30461,
           "group": "Global",
           "type": "Boolean"
         }
@@ -42188,7 +42188,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30457,
+          "line": 30475,
           "group": "Global",
           "type": "F32"
         }
@@ -42227,7 +42227,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30450,
+          "line": 30468,
           "group": "Global",
           "type": "F32"
         }
@@ -42266,7 +42266,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30478,
+          "line": 30496,
           "group": "Global",
           "type": "F32"
         }
@@ -42305,7 +42305,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30513,
+          "line": 30531,
           "group": "Global",
           "type": "Boolean"
         }
@@ -42344,7 +42344,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30485,
+          "line": 30503,
           "group": "Global",
           "type": "F32"
         }
@@ -42383,7 +42383,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30492,
+          "line": 30510,
           "group": "Global",
           "type": "F32"
         }
@@ -42422,7 +42422,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30499,
+          "line": 30517,
           "group": "Global",
           "type": "F32"
         }
@@ -42461,7 +42461,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30464,
+          "line": 30482,
           "group": "Global",
           "type": "F32"
         }
@@ -42500,7 +42500,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30471,
+          "line": 30489,
           "group": "Global",
           "type": "F32"
         }
@@ -42539,7 +42539,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30255,
+          "line": 30273,
           "group": "Global",
           "type": "F32"
         }
@@ -42578,7 +42578,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30262,
+          "line": 30280,
           "group": "Global",
           "type": "F32"
         }
@@ -42617,7 +42617,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30248,
+          "line": 30266,
           "group": "Global",
           "type": "F32"
         }
@@ -42656,7 +42656,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30283,
+          "line": 30301,
           "group": "Global",
           "type": "Boolean"
         }
@@ -42695,7 +42695,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30234,
+          "line": 30252,
           "group": "Global",
           "type": "S32"
         }
@@ -42734,7 +42734,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30241,
+          "line": 30259,
           "group": "Global",
           "type": "S32"
         }
@@ -42773,7 +42773,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30269,
+          "line": 30287,
           "group": "Global",
           "type": "S32"
         }
@@ -42812,7 +42812,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30276,
+          "line": 30294,
           "group": "Global",
           "type": "S32"
         }
@@ -42851,7 +42851,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30220,
+          "line": 30238,
           "group": "Global",
           "type": "S32"
         }
@@ -42890,7 +42890,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30227,
+          "line": 30245,
           "group": "Global",
           "type": "S32"
         }
@@ -42929,7 +42929,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30557,
+          "line": 30575,
           "group": "Global",
           "type": "F32"
         }
@@ -42968,7 +42968,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30529,
+          "line": 30547,
           "group": "Global",
           "type": "F32"
         }
@@ -43007,7 +43007,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30543,
+          "line": 30561,
           "group": "Global",
           "type": "F32"
         }
@@ -43046,7 +43046,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30550,
+          "line": 30568,
           "group": "Global",
           "type": "F32"
         }
@@ -43085,7 +43085,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30536,
+          "line": 30554,
           "group": "Global",
           "type": "F32"
         }
@@ -43124,7 +43124,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30522,
+          "line": 30540,
           "group": "Global",
           "type": "Boolean"
         }
@@ -43163,7 +43163,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30364,
+          "line": 30382,
           "group": "Global",
           "type": "F32"
         }
@@ -43202,7 +43202,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30378,
+          "line": 30396,
           "group": "Global",
           "type": "F32"
         }
@@ -43241,7 +43241,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30392,
+          "line": 30410,
           "group": "Global",
           "type": "F32"
         }
@@ -43280,7 +43280,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30350,
+          "line": 30368,
           "group": "Global",
           "type": "Boolean"
         }
@@ -43319,7 +43319,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30406,
+          "line": 30424,
           "group": "Global",
           "type": "F32"
         }
@@ -43358,7 +43358,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30357,
+          "line": 30375,
           "group": "Global",
           "type": "F32"
         }
@@ -43397,7 +43397,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30385,
+          "line": 30403,
           "group": "Global",
           "type": "F32"
         }
@@ -43436,7 +43436,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30413,
+          "line": 30431,
           "group": "Global",
           "type": "F32"
         }
@@ -43475,7 +43475,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30427,
+          "line": 30445,
           "group": "Global",
           "type": "F32"
         }
@@ -43514,7 +43514,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30420,
+          "line": 30438,
           "group": "Global",
           "type": "F32"
         }
@@ -43553,7 +43553,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30434,
+          "line": 30452,
           "group": "Global",
           "type": "F32"
         }
@@ -43592,7 +43592,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30399,
+          "line": 30417,
           "group": "Global",
           "type": "F32"
         }
@@ -43631,7 +43631,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30371,
+          "line": 30389,
           "group": "Global",
           "type": "F32"
         }
@@ -43670,7 +43670,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30669,
+          "line": 30687,
           "group": "Global",
           "type": "F32"
         }
@@ -43709,7 +43709,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30718,
+          "line": 30736,
           "group": "Global",
           "type": "F32"
         }
@@ -43748,7 +43748,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30739,
+          "line": 30757,
           "group": "Global",
           "type": "Boolean"
         }
@@ -43787,7 +43787,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30606,
+          "line": 30624,
           "group": "Global",
           "type": "S32"
         }
@@ -43826,7 +43826,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30655,
+          "line": 30673,
           "group": "Global",
           "type": "F32"
         }
@@ -43865,7 +43865,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30662,
+          "line": 30680,
           "group": "Global",
           "type": "F32"
         }
@@ -43904,7 +43904,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30564,
+          "line": 30582,
           "group": "Global",
           "type": "Boolean"
         }
@@ -43943,7 +43943,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30648,
+          "line": 30666,
           "group": "Global",
           "type": "F32"
         }
@@ -43982,7 +43982,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30641,
+          "line": 30659,
           "group": "Global",
           "type": "F32"
         }
@@ -44021,7 +44021,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30683,
+          "line": 30701,
           "group": "Global",
           "type": "S32"
         }
@@ -44060,7 +44060,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30690,
+          "line": 30708,
           "group": "Global",
           "type": "F32"
         }
@@ -44099,7 +44099,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30676,
+          "line": 30694,
           "group": "Global",
           "type": "F32"
         }
@@ -44138,7 +44138,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30613,
+          "line": 30631,
           "group": "Global",
           "type": "F32"
         }
@@ -44177,7 +44177,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30711,
+          "line": 30729,
           "group": "Global",
           "type": "F32"
         }
@@ -44216,7 +44216,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30599,
+          "line": 30617,
           "group": "Global",
           "type": "F32"
         }
@@ -44255,7 +44255,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30634,
+          "line": 30652,
           "group": "Global",
           "type": "F32"
         }
@@ -44294,7 +44294,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30592,
+          "line": 30610,
           "group": "Global",
           "type": "S32"
         }
@@ -44333,7 +44333,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30725,
+          "line": 30743,
           "group": "Global",
           "type": "S32"
         }
@@ -44372,7 +44372,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30732,
+          "line": 30750,
           "group": "Global",
           "type": "S32"
         }
@@ -44411,7 +44411,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30704,
+          "line": 30722,
           "group": "Global",
           "type": "F32"
         }
@@ -44450,7 +44450,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30627,
+          "line": 30645,
           "group": "Global",
           "type": "Boolean"
         }
@@ -44489,7 +44489,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30697,
+          "line": 30715,
           "group": "Global",
           "type": "F32"
         }
@@ -44528,7 +44528,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30571,
+          "line": 30589,
           "group": "Global",
           "type": "S32"
         }
@@ -44567,7 +44567,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30578,
+          "line": 30596,
           "group": "Global",
           "type": "S32"
         }
@@ -44606,7 +44606,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30620,
+          "line": 30638,
           "group": "Global",
           "type": "F32"
         }
@@ -45054,7 +45054,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3347,
+              "line": 3361,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -46980,7 +46980,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6175,
+              "line": 6189,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47140,7 +47140,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7310,
+              "line": 7324,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47232,7 +47232,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6168,
+              "line": 6182,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47245,7 +47245,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7310,
+              "line": 7324,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47495,7 +47495,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3115,
+              "line": 3129,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47508,7 +47508,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7312,
+              "line": 7326,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47600,7 +47600,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3115,
+              "line": 3129,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47613,7 +47613,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3121,
+              "line": 3135,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47626,7 +47626,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7316,
+              "line": 7330,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47718,7 +47718,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7320,
+              "line": 7334,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47810,7 +47810,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7328,
+              "line": 7342,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47902,7 +47902,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7361,
+              "line": 7375,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -47994,7 +47994,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7367,
+              "line": 7381,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -48086,7 +48086,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3199,
+              "line": 3213,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -48099,7 +48099,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7369,
+              "line": 7383,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -48191,7 +48191,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7371,
+              "line": 7385,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -48367,7 +48367,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6549,
+              "line": 6563,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -48380,7 +48380,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7300,
+              "line": 7314,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -48393,7 +48393,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7374,
+              "line": 7388,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -48906,7 +48906,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7430,
+              "line": 7444,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49020,7 +49020,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7431,
+              "line": 7445,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49134,7 +49134,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7432,
+              "line": 7446,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49248,7 +49248,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3136,
+              "line": 3150,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49261,7 +49261,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7433,
+              "line": 7447,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49454,7 +49454,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6170,
+              "line": 6184,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49467,7 +49467,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7407,
+              "line": 7421,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49663,7 +49663,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3127,
+              "line": 3141,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49676,7 +49676,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3210,
+              "line": 3224,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49689,7 +49689,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7421,
+              "line": 7435,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49781,7 +49781,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3127,
+              "line": 3141,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49794,7 +49794,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3210,
+              "line": 3224,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49807,7 +49807,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6170,
+              "line": 6184,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49820,7 +49820,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7425,
+              "line": 7439,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50547,7 +50547,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7377,
+              "line": 7391,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50661,7 +50661,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7381,
+              "line": 7395,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51069,7 +51069,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3142,
+              "line": 3156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51082,7 +51082,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7385,
+              "line": 7399,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51174,7 +51174,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7398,
+              "line": 7412,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51266,7 +51266,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7401,
+              "line": 7415,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51469,7 +51469,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3143,
+              "line": 3157,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51642,7 +51642,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3143,
+              "line": 3157,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51782,7 +51782,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3144,
+              "line": 3158,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51922,7 +51922,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3144,
+              "line": 3158,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -52095,7 +52095,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3145,
+              "line": 3159,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -52108,7 +52108,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3149,
+              "line": 3163,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -52248,7 +52248,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3145,
+              "line": 3159,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -52388,7 +52388,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3146,
+              "line": 3160,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -52528,7 +52528,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3146,
+              "line": 3160,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -52668,7 +52668,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3130,
+              "line": 3144,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -52945,7 +52945,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3165,
+              "line": 3179,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53037,7 +53037,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3165,
+              "line": 3179,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53050,7 +53050,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7404,
+              "line": 7418,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53651,7 +53651,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3328,
+              "line": 3342,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53664,7 +53664,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6727,
+              "line": 6741,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53760,7 +53760,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3228,
+              "line": 3242,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53773,7 +53773,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3231,
+              "line": 3245,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53786,7 +53786,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3293,
+              "line": 3307,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53799,7 +53799,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3336,
+              "line": 3350,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53812,7 +53812,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5840,
+              "line": 5854,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53825,7 +53825,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7237,
+              "line": 7251,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53838,7 +53838,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7244,
+              "line": 7258,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53851,7 +53851,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7259,
+              "line": 7273,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53864,7 +53864,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7549,
+              "line": 7563,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -54626,7 +54626,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3228,
+              "line": 3242,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -54639,7 +54639,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3276,
+              "line": 3290,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -54652,7 +54652,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3293,
+              "line": 3307,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -54665,7 +54665,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7237,
+              "line": 7251,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -54678,7 +54678,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7246,
+              "line": 7260,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -54691,7 +54691,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7549,
+              "line": 7563,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -54987,7 +54987,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3287,
+              "line": 3301,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55000,7 +55000,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7250,
+              "line": 7264,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55334,7 +55334,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3347,
+              "line": 3361,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55483,7 +55483,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3347,
+              "line": 3361,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55575,7 +55575,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3284,
+              "line": 3298,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55588,7 +55588,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7248,
+              "line": 7262,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -57216,7 +57216,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7512,
+              "line": 7526,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -57308,7 +57308,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6730,
+              "line": 6744,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -67835,7 +67835,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7463,
+              "line": 7477,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68063,7 +68063,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7464,
+              "line": 7478,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68239,7 +68239,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3486,
+              "line": 3500,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68331,7 +68331,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3394,
+              "line": 3408,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68344,7 +68344,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6727,
+              "line": 6741,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68436,7 +68436,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3408,
+              "line": 3422,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68528,7 +68528,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3394,
+              "line": 3408,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68699,7 +68699,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3481,
+              "line": 3495,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68791,7 +68791,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3405,
+              "line": 3419,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68804,7 +68804,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3407,
+              "line": 3421,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -68992,7 +68992,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7468,
+              "line": 7482,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69084,7 +69084,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7470,
+              "line": 7484,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69176,7 +69176,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7471,
+              "line": 7485,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69268,7 +69268,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3405,
+              "line": 3419,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69281,7 +69281,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7472,
+              "line": 7486,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69513,7 +69513,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3353,
+              "line": 3367,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69526,7 +69526,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3505,
+              "line": 3519,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69539,7 +69539,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5851,
+              "line": 5865,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69552,7 +69552,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7226,
+              "line": 7240,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69565,7 +69565,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7448,
+              "line": 7462,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69657,7 +69657,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3453,
+              "line": 3467,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69670,7 +69670,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6727,
+              "line": 6741,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -69762,7 +69762,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3439,
+              "line": 3453,
               "class": "LLClipboard",
               "function": "hasContents",
               "wired_class": null,
@@ -70012,7 +70012,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3520,
+              "line": 3534,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -70183,7 +70183,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7229,
+              "line": 7243,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -70354,7 +70354,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3415,
+              "line": 3429,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -70367,7 +70367,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7458,
+              "line": 7472,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -70380,7 +70380,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7490,
+              "line": 7504,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -70472,7 +70472,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3415,
+              "line": 3429,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -70485,7 +70485,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7459,
+              "line": 7473,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -70498,7 +70498,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7490,
+              "line": 7504,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -70831,7 +70831,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7488,
+              "line": 7502,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71002,7 +71002,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3420,
+              "line": 3434,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71015,7 +71015,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7489,
+              "line": 7503,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71186,7 +71186,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7473,
+              "line": 7487,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71278,7 +71278,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3421,
+              "line": 3435,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71291,7 +71291,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7466,
+              "line": 7480,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71462,7 +71462,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7458,
+              "line": 7472,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71475,7 +71475,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7493,
+              "line": 7507,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71646,7 +71646,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7475,
+              "line": 7489,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71743,7 +71743,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7477,
+              "line": 7491,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71835,7 +71835,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7478,
+              "line": 7492,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74226,7 +74226,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7480,
+              "line": 7494,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74318,7 +74318,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7482,
+              "line": 7496,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74413,7 +74413,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7484,
+              "line": 7498,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74509,7 +74509,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7486,
+              "line": 7500,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74601,7 +74601,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3430,
+              "line": 3444,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74693,7 +74693,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3433,
+              "line": 3447,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74785,7 +74785,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3427,
+              "line": 3441,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74798,7 +74798,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7455,
+              "line": 7469,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74811,7 +74811,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7459,
+              "line": 7473,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74824,7 +74824,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7495,
+              "line": 7509,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -76942,7 +76942,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6730,
+              "line": 6744,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77284,7 +77284,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6724,
+              "line": 6738,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77387,7 +77387,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6724,
+              "line": 6738,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77490,7 +77490,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6724,
+              "line": 6738,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -80330,7 +80330,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3529,
+              "line": 3543,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -80343,7 +80343,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6923,
+              "line": 6937,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -81213,7 +81213,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3548,
+              "line": 3562,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -81226,7 +81226,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7540,
+              "line": 7554,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -121452,7 +121452,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29765,
+              "line": 29783,
               "group": "Global",
               "type": "F32"
             }
@@ -121530,7 +121530,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29772,
+              "line": 29790,
               "group": "Global",
               "type": "F32"
             }
@@ -121608,7 +121608,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29779,
+              "line": 29797,
               "group": "Global",
               "type": "F32"
             }
@@ -121686,7 +121686,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29786,
+              "line": 29804,
               "group": "Global",
               "type": "F32"
             }
@@ -132982,7 +132982,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3347,
+              "line": 3361,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -134212,7 +134212,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29730,
+              "line": 29748,
               "group": "Global",
               "type": "Boolean"
             }
@@ -142503,7 +142503,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6274,
+              "line": 6288,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -142516,7 +142516,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7787,
+              "line": 7801,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -144148,7 +144148,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3580,
+              "line": 3594,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -144262,7 +144262,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3575,
+              "line": 3589,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148796,7 +148796,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2332,
+              "line": 2346,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148809,7 +148809,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3627,
+              "line": 3641,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -149243,7 +149243,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3069,
+              "line": 3083,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -149256,7 +149256,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3075,
+              "line": 3089,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -149269,7 +149269,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4057,
+              "line": 4071,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -149282,7 +149282,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6026,
+              "line": 6040,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -149374,7 +149374,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6030,
+              "line": 6044,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -149480,7 +149480,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6031,
+              "line": 6045,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -149572,7 +149572,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6032,
+              "line": 6046,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -149664,7 +149664,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6033,
+              "line": 6047,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -152368,7 +152368,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6278,
+              "line": 6292,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -152381,7 +152381,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7796,
+              "line": 7810,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -156755,7 +156755,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30306,
+              "line": 30324,
               "group": "Global",
               "type": "S32"
             }
@@ -156865,7 +156865,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30313,
+              "line": 30331,
               "group": "Global",
               "type": "F32"
             }
@@ -156971,7 +156971,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30320,
+              "line": 30338,
               "group": "Global",
               "type": "S32"
             }
@@ -159915,7 +159915,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6161,
+              "line": 6175,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -162790,7 +162790,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2885,
+              "line": 2899,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -162803,7 +162803,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2889,
+              "line": 2903,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -162816,7 +162816,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3013,
+              "line": 3027,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -162829,7 +162829,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5666,
+              "line": 5680,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -162921,7 +162921,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2891,
+              "line": 2905,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -162934,7 +162934,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4165,
+              "line": 4179,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -163194,7 +163194,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30754,
+              "line": 30772,
               "group": "Global",
               "type": "Boolean"
             }
@@ -163333,7 +163333,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2919,
+              "line": 2933,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -163346,7 +163346,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3015,
+              "line": 3029,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -163517,7 +163517,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3003,
+              "line": 3017,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -163756,7 +163756,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3005,
+              "line": 3019,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -163934,7 +163934,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2988,
+              "line": 3002,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -163947,7 +163947,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2991,
+              "line": 3005,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -163960,7 +163960,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3000,
+              "line": 3014,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164052,7 +164052,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2998,
+              "line": 3012,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164302,7 +164302,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2977,
+              "line": 2991,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164473,7 +164473,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2927,
+              "line": 2941,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164486,7 +164486,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3018,
+              "line": 3032,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164578,7 +164578,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2889,
+              "line": 2903,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164591,7 +164591,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2908,
+              "line": 2922,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164604,7 +164604,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2925,
+              "line": 2939,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164617,7 +164617,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2980,
+              "line": 2994,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164630,7 +164630,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3020,
+              "line": 3034,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -164783,7 +164783,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30768,
+              "line": 30786,
               "group": "Global",
               "type": "Boolean"
             }
@@ -179269,7 +179269,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29947,
+              "line": 29965,
               "group": "Global",
               "type": "S32"
             }
@@ -179350,7 +179350,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29861,
+              "line": 29879,
               "group": "Global",
               "type": "S32"
             }
@@ -179455,7 +179455,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29868,
+              "line": 29886,
               "group": "Global",
               "type": "Color3"
             }
@@ -179548,7 +179548,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29875,
+              "line": 29893,
               "group": "Global",
               "type": "Color3"
             }
@@ -179641,7 +179641,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29882,
+              "line": 29900,
               "group": "Global",
               "type": "Color3"
             }
@@ -179734,7 +179734,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29889,
+              "line": 29907,
               "group": "Global",
               "type": "Color3"
             }
@@ -179827,7 +179827,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30334,
+              "line": 30352,
               "group": "Global",
               "type": "Boolean"
             }
@@ -179905,7 +179905,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30341,
+              "line": 30359,
               "group": "Global",
               "type": "Boolean"
             }
@@ -180235,7 +180235,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29896,
+              "line": 29914,
               "group": "Global",
               "type": "F32"
             }
@@ -180313,7 +180313,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29903,
+              "line": 29921,
               "group": "Global",
               "type": "Boolean"
             }
@@ -180391,7 +180391,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29917,
+              "line": 29935,
               "group": "Global",
               "type": "F32"
             }
@@ -180469,7 +180469,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29924,
+              "line": 29942,
               "group": "Global",
               "type": "S32"
             }
@@ -180552,7 +180552,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29931,
+              "line": 29949,
               "group": "Global",
               "type": "F32"
             }
@@ -180630,7 +180630,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30327,
+              "line": 30345,
               "group": "Global",
               "type": "Boolean"
             }
@@ -180720,7 +180720,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29910,
+              "line": 29928,
               "group": "Global",
               "type": "Boolean"
             }
@@ -180798,7 +180798,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29954,
+              "line": 29972,
               "group": "Global",
               "type": "F32"
             }
@@ -180876,7 +180876,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29961,
+              "line": 29979,
               "group": "Global",
               "type": "F32"
             }
@@ -180966,7 +180966,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29968,
+              "line": 29986,
               "group": "Global",
               "type": "F32"
             }
@@ -181056,7 +181056,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29975,
+              "line": 29993,
               "group": "Global",
               "type": "F32"
             }
@@ -181146,7 +181146,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30017,
+              "line": 30035,
               "group": "Global",
               "type": "F32"
             }
@@ -181236,7 +181236,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29982,
+              "line": 30000,
               "group": "Global",
               "type": "Color3"
             }
@@ -181326,7 +181326,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29989,
+              "line": 30007,
               "group": "Global",
               "type": "F32"
             }
@@ -181416,7 +181416,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29996,
+              "line": 30014,
               "group": "Global",
               "type": "F32"
             }
@@ -181506,7 +181506,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30003,
+              "line": 30021,
               "group": "Global",
               "type": "F32"
             }
@@ -181596,7 +181596,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30010,
+              "line": 30028,
               "group": "Global",
               "type": "F32"
             }
@@ -181686,7 +181686,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30024,
+              "line": 30042,
               "group": "Global",
               "type": "Boolean"
             }
@@ -181764,7 +181764,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30031,
+              "line": 30049,
               "group": "Global",
               "type": "F32"
             }
@@ -181854,7 +181854,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30038,
+              "line": 30056,
               "group": "Global",
               "type": "F32"
             }
@@ -181944,7 +181944,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30045,
+              "line": 30063,
               "group": "Global",
               "type": "F32"
             }
@@ -182034,7 +182034,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30122,
+              "line": 30140,
               "group": "Global",
               "type": "F32"
             }
@@ -182124,7 +182124,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30052,
+              "line": 30070,
               "group": "Global",
               "type": "F32"
             }
@@ -182214,7 +182214,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30059,
+              "line": 30077,
               "group": "Global",
               "type": "S32"
             }
@@ -182304,7 +182304,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30066,
+              "line": 30084,
               "group": "Global",
               "type": "F32"
             }
@@ -182394,7 +182394,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30073,
+              "line": 30091,
               "group": "Global",
               "type": "F32"
             }
@@ -182484,7 +182484,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30087,
+              "line": 30105,
               "group": "Global",
               "type": "F32"
             }
@@ -182574,7 +182574,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30094,
+              "line": 30112,
               "group": "Global",
               "type": "F32"
             }
@@ -182664,7 +182664,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30101,
+              "line": 30119,
               "group": "Global",
               "type": "F32"
             }
@@ -182754,7 +182754,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30108,
+              "line": 30126,
               "group": "Global",
               "type": "F32"
             }
@@ -182844,7 +182844,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30115,
+              "line": 30133,
               "group": "Global",
               "type": "S32"
             }
@@ -182937,7 +182937,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30080,
+              "line": 30098,
               "group": "Global",
               "type": "F32"
             }
@@ -183027,7 +183027,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30150,
+              "line": 30168,
               "group": "Global",
               "type": "S32"
             }
@@ -183121,7 +183121,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30157,
+              "line": 30175,
               "group": "Global",
               "type": "F32"
             }
@@ -183211,7 +183211,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30129,
+              "line": 30147,
               "group": "Global",
               "type": "F32"
             }
@@ -183301,7 +183301,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30136,
+              "line": 30154,
               "group": "Global",
               "type": "F32"
             }
@@ -183391,7 +183391,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30143,
+              "line": 30161,
               "group": "Global",
               "type": "F32"
             }
@@ -183673,7 +183673,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30164,
+              "line": 30182,
               "group": "Global",
               "type": "F32"
             }
@@ -183763,7 +183763,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30171,
+              "line": 30189,
               "group": "Global",
               "type": "F32"
             }
@@ -183853,7 +183853,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30178,
+              "line": 30196,
               "group": "Global",
               "type": "F32"
             }
@@ -183943,7 +183943,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30185,
+              "line": 30203,
               "group": "Global",
               "type": "F32"
             }
@@ -184033,7 +184033,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30192,
+              "line": 30210,
               "group": "Global",
               "type": "F32"
             }
@@ -184123,7 +184123,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30199,
+              "line": 30217,
               "group": "Global",
               "type": "S32"
             }
@@ -184218,7 +184218,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30206,
+              "line": 30224,
               "group": "Global",
               "type": "S32"
             }
@@ -184312,7 +184312,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30213,
+              "line": 30231,
               "group": "Global",
               "type": "F32"
             }
@@ -184402,7 +184402,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30350,
+              "line": 30368,
               "group": "Global",
               "type": "Boolean"
             }
@@ -184480,7 +184480,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30357,
+              "line": 30375,
               "group": "Global",
               "type": "F32"
             }
@@ -184570,7 +184570,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30378,
+              "line": 30396,
               "group": "Global",
               "type": "F32"
             }
@@ -184660,7 +184660,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30364,
+              "line": 30382,
               "group": "Global",
               "type": "F32"
             }
@@ -184750,7 +184750,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30371,
+              "line": 30389,
               "group": "Global",
               "type": "F32"
             }
@@ -184840,7 +184840,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30385,
+              "line": 30403,
               "group": "Global",
               "type": "F32"
             }
@@ -184930,7 +184930,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30392,
+              "line": 30410,
               "group": "Global",
               "type": "F32"
             }
@@ -185020,7 +185020,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30399,
+              "line": 30417,
               "group": "Global",
               "type": "F32"
             }
@@ -185110,7 +185110,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30406,
+              "line": 30424,
               "group": "Global",
               "type": "F32"
             }
@@ -185200,7 +185200,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30413,
+              "line": 30431,
               "group": "Global",
               "type": "F32"
             }
@@ -185290,7 +185290,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30420,
+              "line": 30438,
               "group": "Global",
               "type": "F32"
             }
@@ -185380,7 +185380,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30427,
+              "line": 30445,
               "group": "Global",
               "type": "F32"
             }
@@ -185470,7 +185470,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30434,
+              "line": 30452,
               "group": "Global",
               "type": "F32"
             }
@@ -185560,7 +185560,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30443,
+              "line": 30461,
               "group": "Global",
               "type": "Boolean"
             }
@@ -185638,7 +185638,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30450,
+              "line": 30468,
               "group": "Global",
               "type": "F32"
             }
@@ -185728,7 +185728,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30457,
+              "line": 30475,
               "group": "Global",
               "type": "F32"
             }
@@ -185818,7 +185818,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30485,
+              "line": 30503,
               "group": "Global",
               "type": "F32"
             }
@@ -185908,7 +185908,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30492,
+              "line": 30510,
               "group": "Global",
               "type": "F32"
             }
@@ -185998,7 +185998,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30499,
+              "line": 30517,
               "group": "Global",
               "type": "F32"
             }
@@ -186088,7 +186088,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30464,
+              "line": 30482,
               "group": "Global",
               "type": "F32"
             }
@@ -186178,7 +186178,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30471,
+              "line": 30489,
               "group": "Global",
               "type": "F32"
             }
@@ -186268,7 +186268,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30478,
+              "line": 30496,
               "group": "Global",
               "type": "F32"
             }
@@ -186358,7 +186358,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30506,
+              "line": 30524,
               "group": "Global",
               "type": "S32"
             }
@@ -186452,7 +186452,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30513,
+              "line": 30531,
               "group": "Global",
               "type": "Boolean"
             }
@@ -186542,7 +186542,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30522,
+              "line": 30540,
               "group": "Global",
               "type": "Boolean"
             }
@@ -186620,7 +186620,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30550,
+              "line": 30568,
               "group": "Global",
               "type": "F32"
             }
@@ -186698,7 +186698,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30557,
+              "line": 30575,
               "group": "Global",
               "type": "F32"
             }
@@ -186776,7 +186776,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30529,
+              "line": 30547,
               "group": "Global",
               "type": "F32"
             }
@@ -186854,7 +186854,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30536,
+              "line": 30554,
               "group": "Global",
               "type": "F32"
             }
@@ -186932,7 +186932,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30543,
+              "line": 30561,
               "group": "Global",
               "type": "F32"
             }
@@ -187010,7 +187010,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30564,
+              "line": 30582,
               "group": "Global",
               "type": "Boolean"
             }
@@ -187088,7 +187088,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30571,
+              "line": 30589,
               "group": "Global",
               "type": "S32"
             }
@@ -187182,7 +187182,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30578,
+              "line": 30596,
               "group": "Global",
               "type": "S32"
             }
@@ -187281,7 +187281,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30599,
+              "line": 30617,
               "group": "Global",
               "type": "F32"
             }
@@ -187371,7 +187371,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30613,
+              "line": 30631,
               "group": "Global",
               "type": "F32"
             }
@@ -187461,7 +187461,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30620,
+              "line": 30638,
               "group": "Global",
               "type": "F32"
             }
@@ -187551,7 +187551,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30641,
+              "line": 30659,
               "group": "Global",
               "type": "F32"
             }
@@ -187641,7 +187641,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30606,
+              "line": 30624,
               "group": "Global",
               "type": "S32"
             }
@@ -187735,7 +187735,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30592,
+              "line": 30610,
               "group": "Global",
               "type": "S32"
             }
@@ -187825,7 +187825,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30627,
+              "line": 30645,
               "group": "Global",
               "type": "Boolean"
             }
@@ -187915,7 +187915,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30634,
+              "line": 30652,
               "group": "Global",
               "type": "F32"
             }
@@ -188005,7 +188005,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30648,
+              "line": 30666,
               "group": "Global",
               "type": "F32"
             }
@@ -188095,7 +188095,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30655,
+              "line": 30673,
               "group": "Global",
               "type": "F32"
             }
@@ -188185,7 +188185,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30662,
+              "line": 30680,
               "group": "Global",
               "type": "F32"
             }
@@ -188275,7 +188275,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30669,
+              "line": 30687,
               "group": "Global",
               "type": "F32"
             }
@@ -188365,7 +188365,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30676,
+              "line": 30694,
               "group": "Global",
               "type": "F32"
             }
@@ -188455,7 +188455,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30683,
+              "line": 30701,
               "group": "Global",
               "type": "S32"
             }
@@ -188548,7 +188548,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30690,
+              "line": 30708,
               "group": "Global",
               "type": "F32"
             }
@@ -188638,7 +188638,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30697,
+              "line": 30715,
               "group": "Global",
               "type": "F32"
             }
@@ -188728,7 +188728,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30704,
+              "line": 30722,
               "group": "Global",
               "type": "F32"
             }
@@ -188818,7 +188818,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30711,
+              "line": 30729,
               "group": "Global",
               "type": "F32"
             }
@@ -188908,7 +188908,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30718,
+              "line": 30736,
               "group": "Global",
               "type": "F32"
             }
@@ -188998,7 +188998,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30725,
+              "line": 30743,
               "group": "Global",
               "type": "S32"
             }
@@ -189088,7 +189088,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30732,
+              "line": 30750,
               "group": "Global",
               "type": "S32"
             }
@@ -189178,7 +189178,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30739,
+              "line": 30757,
               "group": "Global",
               "type": "Boolean"
             }
@@ -189364,7 +189364,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30227,
+              "line": 30245,
               "group": "Global",
               "type": "S32"
             }
@@ -189463,7 +189463,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30220,
+              "line": 30238,
               "group": "Global",
               "type": "S32"
             }
@@ -189583,7 +189583,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30234,
+              "line": 30252,
               "group": "Global",
               "type": "S32"
             }
@@ -189673,7 +189673,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30241,
+              "line": 30259,
               "group": "Global",
               "type": "S32"
             }
@@ -189767,7 +189767,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30248,
+              "line": 30266,
               "group": "Global",
               "type": "F32"
             }
@@ -189857,7 +189857,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30255,
+              "line": 30273,
               "group": "Global",
               "type": "F32"
             }
@@ -189947,7 +189947,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30262,
+              "line": 30280,
               "group": "Global",
               "type": "F32"
             }
@@ -190037,7 +190037,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30269,
+              "line": 30287,
               "group": "Global",
               "type": "S32"
             }
@@ -190132,7 +190132,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30276,
+              "line": 30294,
               "group": "Global",
               "type": "S32"
             }
@@ -190227,7 +190227,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30283,
+              "line": 30301,
               "group": "Global",
               "type": "Boolean"
             }
@@ -190317,7 +190317,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30306,
+              "line": 30324,
               "group": "Global",
               "type": "S32"
             }
@@ -190399,7 +190399,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30313,
+              "line": 30331,
               "group": "Global",
               "type": "F32"
             }
@@ -190477,7 +190477,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30320,
+              "line": 30338,
               "group": "Global",
               "type": "S32"
             }
@@ -190559,7 +190559,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30290,
+              "line": 30308,
               "group": "Global",
               "type": "F32"
             }
@@ -190637,7 +190637,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30297,
+              "line": 30315,
               "group": "Global",
               "type": "F32"
             }
@@ -194816,7 +194816,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6320,
+              "line": 6334,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -194829,7 +194829,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7910,
+              "line": 7924,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -196482,7 +196482,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2363,
+              "line": 2377,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -196495,7 +196495,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2432,
+              "line": 2446,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -196508,7 +196508,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2522,
+              "line": 2536,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -204015,7 +204015,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3615,
+              "line": 3629,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -204028,7 +204028,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7223,
+              "line": 7237,
               "class": null,
               "function": null,
               "wired_class": null,

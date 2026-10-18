@@ -128,7 +128,8 @@ LLPluginProcessParent::~LLPluginProcessParent()
         mSharedMemoryRegions.clear();
     }
 
-    LLProcess::kill(mProcess);
+    const bool exited = LLProcess::kill(mProcess);
+    if (exited && mPrivateFileClose && !mProcessCreationRequested) mPrivateFileClose->closed = true;
     if (!LLApp::isQuitting())
     {   // If we are quitting, the network sockets will already have been destroyed.
         killSockets();
@@ -185,6 +186,16 @@ void LLPluginProcessParent::shutdown()
     sInstances.clear();
 }
 
+
+std::shared_ptr<LLPluginFileClose> LLPluginProcessParent::privateFileCloseFence(const std::string& token)
+{
+    if (!mPrivateFileClose) mPrivateFileClose = std::make_shared<LLPluginFileClose>();
+    mPrivateFileCloseToken = token;
+#if LL_WINDOWS
+    if (mProcess) mPrivateFileClose->observeProcessHandle(mProcess->getProcessHandle());
+#endif
+    return mPrivateFileClose;
+}
 
 void LLPluginProcessParent::requestShutdown()
 {
@@ -332,6 +343,8 @@ bool LLPluginProcessParent::accept()
 
 void LLPluginProcessParent::idle(void)
 {
+    // A fence may have been requested while process creation was pending.
+    if (mPrivateFileClose) privateFileCloseFence(mPrivateFileCloseToken);
     if (mPrivateFileClose && !mPrivateFileClose->closed && mState >= STATE_GOODBYE)
     {
         // Maintenance owns the timeout. Main only issues the non-waiting kill
