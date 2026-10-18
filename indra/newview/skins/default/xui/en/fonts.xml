@@ -322,6 +322,14 @@
         </style>
     </font>
 
+    <!-- Kit chip selection uses the mockup's 600 weight without changing the
+         700-weight BOLD face used by the rest of the Director kit. -->
+    <font name="KitSansSemibold" user_selectable="false" font_hinting="light">
+        <style name="NORMAL">
+            <file font_weight="600">IBMPlexSansVar-Roman.ttf</file>
+        </style>
+    </font>
+
     <font name="IBMPlexMono" label="IBM Plex Mono" font_hinting="light" monospace="true">
         <style name="NORMAL">
             <file>IBMPlexMono-Regular.ttf</file>

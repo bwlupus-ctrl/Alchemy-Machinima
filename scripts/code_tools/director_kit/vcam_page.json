@@ -18,14 +18,14 @@
       {"l": "Monitor tile", "k": "custom", "w": "vc_monitor_tile_manifest", "h": "Eight fixed atlas-backed PREVIEW, LIVE, PAUSED, THROTTLED, OFFLINE, or WARMING tile slots with timestamp, camera, Shows, status, drag handle, and menu.", "custom_tag": "vcam_monitor_tile", "bind": "code", "show_if": "never"},
       {"l": "", "k": "readout", "row_height": 60, "w": "vc_monitor_footer", "h": "How monitor previews reuse retained pictures and consume the shared attempt budget.", "bind": "code"}
     ]},
-    {"id": "camera_selector", "t": "Settings for", "k": "rows", "badge": "CAM n", "rows": [
-      {"l": "", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below, add a camera, or remove the selected capture in one row. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "selector_actions": [{"value": "media", "label": "Media from a prim face (video)", "index": 5}], "kw": "Add media video URL local file prim face VLC", "bind": "code", "row_height": 36},
-      {"l": "Name", "k": "text", "w": "vc_camera_name", "h": "A short camera name saved with the Prism scene. Empty restores the default name.", "bind": "code"}
+    {"id": "camera_selector", "t": "Settings for", "k": "inline", "rows": [
+      {"l": "", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below, add a camera, or remove the selected capture in one row. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "selector_actions": [{"value": "media", "label": "Media from a prim face (video)", "index": 5}], "kw": "Add media video URL local file prim face VLC", "bind": "code", "fill_width": true, "row_height": 24}
     ]},
     {"id": "media_source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Name", "k": "text", "w": "vc_media_name", "h": "A short camera name saved with the Prism scene. Empty restores the default name.", "bind": "code", "search_alias": "vc_camera_name"},
       {"l": "Source", "k": "segmented", "w": "vc_media_kind", "h": "Video URL plays a private video file. Prim face borrows existing prim video.", "bind": "code", "it": ["Video URL", "Prim face"], "iv": ["url", "face"], "kw": "media video URL local file prim face VLC"},
-      {"l": "Video", "k": "text", "w": "vc_media_video", "hint": "https://…/clip.mp4  or  D:\\Footage\\clip.mov", "h": "An http(s) link or absolute local/file: path. Enter cues only; press Play to start.", "bind": "code", "show_if": "media_url", "kw": "media video URL local file path"},
-      {"l": "", "k": "button", "w": "vc_media_browse", "h": "Pick and check a local video file asynchronously; cancellation leaves this slot unchanged.", "bind": "code", "btn": "Browse…", "show_if": "media_url", "kw": "media Browse local file video picker"},
+      {"l": "Video", "k": "text", "w": "vc_media_video", "hint": "https://…/clip.mp4  or  D:\\Footage\\clip.mov", "h": "An http(s) link or absolute local/file: path. Enter or Load checks and plays the link; clicking away only saves it.", "bind": "code", "show_if": "media_url", "kw": "media video URL local file path Enter Load play"},
+      {"l": "", "k": "custom", "w": "vc_media_file_actions", "h": "Choose a local video or check and play the typed link.", "bind": "code", "show_if": "media_url", "kw": "media Browse Load Enter play local file video picker", "custom_tag": "panel", "actions": [{"w": "vc_media_browse", "l": "Browse…", "h": "Pick and check a local video file asynchronously; cancellation leaves this slot unchanged.", "width": 92}, {"w": "vc_media_load", "l": "Load", "h": "Check and play this link (Enter does the same)", "width": 72}]},
       {"l": "", "k": "custom", "w": "vc_media_transport", "h": "Private video playback: Play, Pause or Stop. Stop cancels downloads.", "bind": "code", "custom_tag": "panel", "actions": [{"w": "vc_media_play", "l": "Play", "h": "Start or resume this video after validation.", "width": 72}, {"w": "vc_media_pause", "l": "Pause", "h": "Pause this video, including while downloading.", "width": 72}, {"w": "vc_media_stop", "l": "Stop", "h": "Stop the video and cancel pending work.", "width": 72}], "show_if": "media_url", "kw": "media video Play Pause Stop VLC"},
       {"l": "Loop", "k": "toggle", "w": "vc_media_loop", "h": "Restart the video when it ends.", "bind": "code", "show_if": "media_url", "kw": "media video Loop"},
       {"l": "Volume", "k": "slider", "w": "vc_media_volume", "volume_text": true, "h": "Private volume; starts muted. Global media volume also applies.", "bind": "code", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "show_if": "media_url", "kw": "media video Volume muted audio"},
@@ -40,6 +40,7 @@
       {"l": "Keep downloads between sessions", "k": "toggle", "w": "vc_media_cache_keep", "fill_width": true, "s": "VCamMediaCacheKeepBetweenSessions", "h": "Off: downloaded videos are deleted when you quit. On: kept up to the cache limit for faster replays. Local files are never copied.", "kw": "media video cache downloads keep sessions lifetime quit purge", "show_if": "media_url"}
     ]},
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Name", "k": "text", "w": "vc_camera_name", "h": "A short camera name saved with the Prism scene. Empty restores the default name.", "bind": "code"},
       {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, Skeleton POV, or the local 512 px test pattern. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV", "Test pattern"], "iv": [0,1,2,3], "bind": "code"},
       {"l": "Bound to", "k": "readout", "w": "vc_source_bound", "h": "The object, stored transform, or skeleton driver used by this camera.", "bind": "code"},
       {"l": "Object note", "k": "readout", "w": "vc_source_note_object", "h": "Object source note: Object cameras follow the selected camera object.", "bind": "code", "show_if": "object"},
@@ -238,7 +239,7 @@
       {"l": "Face cost note", "k": "readout", "w": "vc_performance_note_3", "h": "One camera feeding many faces still performs one scheduled scene render. Faces are capped at 16.", "bind": "code", "a": 1}
     ]}
   ],
-  "functional_probes": [{"seam": "browse_ticket", "widget": "vc_media_browse"}, {"seam": "clear", "widget": "vc_media_cache_clear"}, {"seam": "syntax", "widget": "vc_media_video"}, {"seam": "admission", "widget": "vc_media_play"}, {"seam": "demand_teardown", "widget": "vc_media_running"}, {"seam": "cache_policy", "widget": "vc_media_cache_status"}, {"seam": "cache_lifetime", "widget": "vc_media_cache_keep"}, {"seam": "scene_restore", "widget": "vc_media_video"}],
+  "functional_probes": [{"seam": "browse_ticket", "widget": "vc_media_browse"}, {"seam": "clear", "widget": "vc_media_cache_clear"}, {"seam": "syntax", "widget": "vc_media_video"}, {"seam": "commit_action", "widget": "vc_media_load"}, {"seam": "admission", "widget": "vc_media_play"}, {"seam": "demand_teardown", "widget": "vc_media_running"}, {"seam": "cache_policy", "widget": "vc_media_cache_status"}, {"seam": "cache_lifetime", "widget": "vc_media_cache_keep"}, {"seam": "scene_restore", "widget": "vc_media_video"}],
   "sections": [
     {"id": "source", "label": "1 Source", "cards": [0,1,2,3,4,5,6]},
     {"id": "lens", "label": "2 Lens", "cards": [0,1,2,7,8,9]},

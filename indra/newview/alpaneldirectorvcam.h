@@ -82,7 +82,7 @@ private:
     const LLPrismLens::DisplayDefinition* selectedDisplay() const;
     const LLPrismLens::ProjectorDefinition* selectedProjector() const;
     void commitCamera(const std::string& name, const LLSD& value);
-    bool commitMediaVideo();
+    bool commitMediaVideo(bool start = false);
     void validateMediaVideo();
     void refreshMediaCache();
     void commitDisplay(const std::string& name, const LLSD& value);

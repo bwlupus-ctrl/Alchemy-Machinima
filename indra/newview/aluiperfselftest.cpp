@@ -21,6 +21,7 @@
 #include "alcompassdial.h"
 #include "alsettingsundohistory.h"
 #include "alvcampagemodel.h"
+#include "alvcammonitorstrip.h"
 #include "alvcammediafilelifecycle.h"
 #include "alcinerigrim.h"
 #include "alcinelightrigmanager.h"
@@ -188,6 +189,30 @@ bool functionalMediaLifecycle(const std::string& seam)
         return !classify("rtsp://example.invalid/clip.mp4", descriptor, reason, true) && reason == UNSUPPORTED &&
             std::string(NOT_VIDEO) == "This file isn't a video" && std::string(MISSING) == "File not found" &&
             std::string(LOCKED) == "Video downloads are in use by another open viewer";
+    }
+    if (seam == "commit_action")
+    {
+        unsigned commits = 0, plays = 0;
+        std::string error;
+        const auto apply = [&](const Descriptor&) { ++commits; return true; };
+        const auto play = [&]() { ++plays; };
+        const std::string url = "https://example.invalid/clip.mp4";
+        // Focus loss and Paste value are ordinary cue-only commits.
+        for (int i = 0; i < 2; ++i)
+            if (!commitVideoAction(url, error, true, false, apply, play)) return false;
+        if (commits != 2 || plays != 0) return false;
+        // Enter and Load share the explicit transport action.
+        for (int i = 0; i < 2; ++i)
+            if (!commitVideoAction(url, error, true, true, apply, play)) return false;
+        if (commits != 4 || plays != 2) return false;
+        if (commitVideoAction("https://example.invalid/not-video", error, true, true, apply, play)) return false;
+        if (commits != 4 || plays != 2 || error != UNSUPPORTED) return false;
+        Transport desired = Transport::PLAYING;
+        unsigned loads = 0;
+        const auto request = [&]() { if (beginVideoPlay(desired)) ++loads; };
+        if (!commitVideoAction(url, error, true, true, apply, request) || loads != 0) return false;
+        desired = Transport::PAUSED;
+        return commitVideoAction(url, error, true, true, apply, request) && loads == 1;
     }
     if (seam == "admission")
     {
@@ -6659,7 +6684,7 @@ private:
         const LLPrismLens::RegistrySnapshot& registry = mFunctionalVCamModel->registry();
         const bool media_probe = entry["probe"].asString() == "vcam_media" ||
             entry["probe"].asString() == "vcam_media_file" || entry["probe"].asString() == "vcam_media_readout" ||
-            entry["probe"].asString() == "vcam_media_add";
+            entry["probe"].asString() == "vcam_media_add" || entry["widget_name"].asString() == "vc_media_name";
         if (media_probe)
         {
             mFunctionalFreshMediaFreezeDisabled = false;
@@ -7701,7 +7726,7 @@ private:
                     correct = correct && replaced && replaced->mediaUrlData() &&
                         replaced->mediaUrlData()->mValue == cue && !replaced->mMediaCanPause &&
                         !replaced->mRuntime.mHasOutput && replaced->mMediaDemandArea == 0. &&
-                        replaced->mRuntime.mReason == (cue.empty() ? "Enter a direct video URL" : "Set. Press Play to start it.");
+                        replaced->mRuntime.mReason == (cue.empty() ? "Enter a direct video URL" : "Set. Press Enter, Load or Play to start it.");
                 }
                 editor->setText(entry["test_value"].asString()); // ui-draw-lint: allow(raw-write) one-shot negative editor/restore fixture; never steady refresh
                 editor->onCommit();
@@ -7741,13 +7766,67 @@ private:
             const LLPrismLens::CaptureDefinition* capture = mFunctionalVCamModel
                 ? functionalSelectedVCamCapture(*mFunctionalVCamModel) : nullptr;
             const std::string label = capture ? capture->mLabel : std::string();
-            const bool changed = capture && label != mFunctionalOwnerModelBefore.asString() &&
-                label == control->getValue().asString();
+            const bool media_capture = capture && capture->isMedia();
+            const std::string normalized = LLPrismLens::normalizeCaptureLabel(
+                entry["test_value"].asString(), mFunctionalOwnerModelBefore.asString());
+            bool changed = capture && label != mFunctionalOwnerModelBefore.asString() &&
+                label == normalized && label == control->getValue().asString();
+            ALKitPage* page = findFirstView<ALKitPage>(mFunctionalPageRoot);
+            ALKitRow* name_row = page ? page->findRow(entry["widget_name"].asString()) : nullptr;
+            const auto persisted = [&](const std::string& expected)
+            {
+                if (!mFunctionalVCamModel) return false;
+                mFunctionalVCamModel->refreshNow();
+                const auto* selected = functionalSelectedVCamCapture(*mFunctionalVCamModel);
+                if (!selected || selected->mLabel != expected || control->getValue().asString() != expected) return false;
+                const LLSD scene = LLPrismLens::sceneData();
+                const LLSD& captures = scene["prism_captures"];
+                for (auto it = captures.beginArray(); it != captures.endArray(); ++it)
+                {
+                    const LLSD& item = *it;
+                    if (item["capture_id"].asUUID() == selected->mHandle.mId)
+                        return item["label"].asString() == expected;
+                }
+                return false;
+            };
+            changed = changed && persisted(normalized);
+            // Exercise the same row setter used by the context menu's Paste
+            // value, then read registry + scene data, never just callback/UI.
+            const std::string paste = "  Pasted capture 012345678901234567890123456789  ";
+            const std::string pasted = LLPrismLens::normalizeCaptureLabel(paste, label);
+            changed = changed && name_row && name_row->setBoundValue(paste) && persisted(pasted);
+            if (media_capture && name_row)
+            {
+                const bool feature = gSavedSettings.getBOOL("VCamMediaSlotsEnabled");
+                const bool master = gSavedSettings.getBOOL("PrismLensEnabled");
+                for (bool url : {true, false})
+                {
+                    gSavedSettings.setBOOL("VCamMediaSlotsEnabled", true); // ui-draw-lint: allow(setting-write) bounded isolated Name reachability fixture, restored below
+                    LLPrismLens::switchMediaSourceKind(mFunctionalVCamModel->selectedCapture(), url);
+                    for (bool feature_on : {true, false})
+                        for (bool master_on : {true, false})
+                        {
+                            gSavedSettings.setBOOL("VCamMediaSlotsEnabled", feature_on); // ui-draw-lint: allow(setting-write) bounded isolated Name feature-gate fixture
+                            gSavedSettings.setBOOL("PrismLensEnabled", master_on); // ui-draw-lint: allow(setting-write) bounded isolated Name master-gate fixture
+                            mFunctionalVCamModel->refreshNow(ALVCamPageModel::DIRTY_ALL);
+                            ALKitCard* card = page->findCard("media_source");
+                            const bool reachable = card && card->codeVisible() && name_row->isEffectivelyVisible() &&
+                                control->getEnabled() && control->getVisible();
+                            const std::string gated_paste = llformat("  Paste %d%d%d capture  ", url, feature_on, master_on);
+                            const bool committed = name_row->setBoundValue(gated_paste);
+                            changed = reachable && committed && persisted(LLPrismLens::normalizeCaptureLabel(gated_paste, label)) && changed;
+                        }
+                }
+                gSavedSettings.setBOOL("VCamMediaSlotsEnabled", feature); // ui-draw-lint: allow(setting-write) restore original Name fixture feature gate
+                gSavedSettings.setBOOL("PrismLensEnabled", master); // ui-draw-lint: allow(setting-write) restore original Name fixture master gate
+                mFunctionalVCamModel->refreshNow(ALVCamPageModel::DIRTY_ALL);
+            }
+            if (name_row) changed = name_row->setBoundValue(entry["test_value"]) && persisted(normalized) && changed;
             mFunctionalObserved["vcam"]["camera_label"] = label;
             observable = changed;
             expected_ok = expected_ok && changed;
             if (!changed) assertion_failure =
-                "VCam name editor did not update the selected viewer-local camera";
+                "VCam Name commit/Paste did not persist its normalized registry/scene label or became unreachable behind media gates";
         }
         if (entry["probe"].asString() == "temporal_preset")
         {
@@ -11380,7 +11459,7 @@ private:
         collectViewsOfType<ALKitCard>(root, cards);
         for (ALKitCard* card : cards)
         {
-            if ((card->id() != "source" && card->id() != "media_source") || !visibleWithin(card, root)) continue;
+            if ((card->id() != "source" && card->id() != "media_source" && card->id() != "camera_selector") || !visibleWithin(card, root)) continue;
             const U32 sample = ++mVCamRectSample;
             std::string mode = "camera";
             if (card->id() == "media_source")
@@ -11401,6 +11480,21 @@ private:
                     if (text->localRectToOtherView(text->getLocalRectFromDocIndex(0), &first, card))
                         line << first.mBottom + text->getFont()->getDescenderHeight();
                 }
+                else if (auto* button = dynamic_cast<LLButton*>(widget); button && button->getFont())
+                {
+                    // LLButton renders VCENTER with zero bottom padding on
+                    // selector chips/Remove. Use its actual rect/font metrics,
+                    // including the same device-pixel rounding as LLFontGL.
+                    const LLFontGL* font = button->getFont();
+                    const F32 scale = LLFontGL::sScaleY;
+                    line << rect.mBottom + rect.getHeight() / 2 -
+                        llceil((llceil(font->getAscenderHeight() * scale) -
+                                llceil(font->getDescenderHeight() * scale)) / 2.f) / scale;
+                }
+                line << ',';
+                if (auto* selector = dynamic_cast<ALVCamCameraSelector*>(row->control()))
+                    line << selector->itemCount() << ',' << selector->hasSelection();
+                else line << ',';
                 mVCamRectLines.push_back(line.str());
             };
             for (ALKitRow* row : card->rows())
@@ -11412,7 +11506,16 @@ private:
                 dump(row, control, row->meta().kind == "readout" ? "value" : "control");
                 if (control && row->meta().kind == "custom")
                     for (LLView* child : *control->getChildList())
-                        if (dynamic_cast<LLButton*>(child)) dump(row, child, "action");
+                    {
+                        if (card->id() == "camera_selector")
+                        {
+                            if (dynamic_cast<LLTextBox*>(child)) dump(row, child, "label");
+                            else if (dynamic_cast<LLComboBox*>(child)) dump(row, child, "add");
+                            else if (dynamic_cast<LLButton*>(child))
+                                dump(row, child, child->getName() == "vc_remove_capture" ? "remove" : "chip");
+                        }
+                        else if (dynamic_cast<LLButton*>(child)) dump(row, child, "action");
+                    }
             }
         }
     }
@@ -13490,7 +13593,7 @@ private:
 
         const std::string rect_path = gDirUtilp->getExpandedFilename(LL_PATH_LOGS, "ui_vcam_source_rects.csv");
         llofstream rects(rect_path.c_str(), std::ios::out | std::ios::trunc);
-        rects << "size,state,sample,card,mode,row,role,widget,left,bottom,right,top,baseline\n";
+        rects << "size,state,sample,card,mode,row,role,widget,left,bottom,right,top,baseline,expected_chips,remove_expected\n";
         for (const auto& line : mVCamRectLines) rects << line << '\n';
         rects.flush();
 

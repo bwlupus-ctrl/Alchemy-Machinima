@@ -2633,7 +2633,7 @@ public:
         value.mValue = source.mValue; // Authored text; classify only normalizes internal I/O.
         mLenses[slot].setMediaUrlData(value);
         ++mLenses[slot].mMediaLayoutRevision;
-        if (replaced) invalidateMediaSlot(slot, source.mValue.empty() ? "Enter a direct video URL" : "Set. Press Play to start it.");
+        if (replaced) invalidateMediaSlot(slot, source.mValue.empty() ? "Enter a direct video URL" : "Set. Press Enter, Load or Play to start it.");
         else if (!replaced && mPrivateOwners[slot])
         {
             mPrivateOwners[slot]->source.mVolume = value.mVolume;
@@ -2684,8 +2684,7 @@ public:
             owner->status = "Paused";
             return true;
         }
-        if (owner->desired == ALMediaFile::Transport::PLAYING) return true;
-        owner->desired = desired;
+        if (!ALMediaFile::beginVideoPlay(owner->desired)) return true;
         if (owner->impl && owner->impl->privateFileActive()) { owner->impl->privateTransport(2, owner->source.mLoop); return true; }
         if (owner->request || owner->lease) return true;
         ALMediaFile::Descriptor descriptor; std::string reason;

@@ -7,7 +7,9 @@
 #define AL_VCAM_MONITOR_STRIP_H
 
 #include "alvcampagemodel.h"
+#include "alflowgrid.h"
 #include "llui.h"
+#include "lluiimage.h"
 #include "lluictrl.h"
 #include "llprismpreview.h"
 
@@ -17,6 +19,7 @@
 class LLFontGL;
 class LLButton;
 class LLComboBox;
+class LLTextBox;
 
 class ALVCamMonitorHeader : public LLUICtrl
 {
@@ -170,34 +173,56 @@ private:
     LLColor4 mTextColor;
 };
 
-class ALVCamCameraSelector : public LLUICtrl
+class ALVCamCameraSelector : public LLUICtrl, public ALFlowGridItem
 {
 public:
     struct Params : public LLInitParam::Block<Params, LLUICtrl::Params>
     {
         Params() = default;
     };
-    struct Item { LLPrismLens::CaptureHandle mHandle; std::string mLabel; bool mLive = false; };
+    struct Item
+    {
+        LLPrismLens::CaptureHandle mHandle;
+        std::string mName;
+        U32 mSlot = 0;
+        bool mLive = false;
+        bool mPreview = false;
+    };
     bool postBuild() override;
     void setItems(const std::vector<Item>& items, const LLPrismLens::CaptureHandle& selected);
     void setActionsEnabled(bool can_add, bool can_remove, bool media_enabled);
+    U32 itemCount() const { return static_cast<U32>(mItems.size()); }
+    bool hasSelection() const { return !mSelected.mId.isNull(); }
     void reshape(S32 width, S32 height, bool called_from_parent = true) override;
+    S32 heightForWidth(S32 width) const override;
     void draw() override;
-    bool handleMouseDown(S32 x, S32 y, MASK mask) override;
+    bool handleKeyHere(KEY key, MASK mask) override;
 protected:
     friend class LLUICtrlFactory;
     explicit ALVCamCameraSelector(const Params& p);
 private:
+    struct Layout
+    {
+        LLRect mLabel, mAdd, mRemove;
+        std::vector<LLRect> mChips;
+        S32 mHeight = 24;
+    };
+    Layout layoutForWidth(S32 width) const;
+    void requestLayout();
+    void selectChip(S32 index);
     std::vector<Item> mItems;
+    // Mutually exclusive, focusable radio chips. The selector remains the
+    // commit/probe target; child buttons add native tooltips and keyboard focus.
+    std::vector<LLButton*> mChips;
+    Layout mLayout;
+    LLUIImagePtr mChipImage;
     LLPrismLens::CaptureHandle mSelected;
     const LLFontGL* mFont = nullptr;
-    LLColor4 mTextColor;
-    LLColor4 mMutedColor;
-    LLColor4 mAccentColor;
-    LLColor4 mBorderColor;
+    const LLFontGL* mSelectedFont = nullptr;
+    LLUIColor mLiveColor;
     LLComboBox* mAdd = nullptr;
+    LLTextBox* mLabel = nullptr;
     LLButton* mRemove = nullptr;
-    S32 mChipWidth = 1;
     bool mMediaOptions = false;
 };
 

@@ -68,7 +68,7 @@ public:
     void                          draw() override;
     void                          reshape(S32, S32, bool = true) override;
     S32                           heightForWidth(S32) const override;
-    bool                          spansAllColumns() const override { return false; }
+    bool                          spansAllColumns() const override { return mKind == "inline"; }
     const std::string&            id() const { return mId; }
     const std::string&            title() const { return mTitle; }
     bool                          setBadge(const std::string& badge);

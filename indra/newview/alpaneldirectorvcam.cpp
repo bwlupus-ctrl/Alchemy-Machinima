@@ -257,10 +257,13 @@ bool ALPanelDirectorVCam::postBuild()
     mCameraName = dynamic_cast<LLLineEditor*>(control("vc_camera_name"));
     if (mCameraName)
         mCameraName->setMaxTextLength(128); // Core normalization caps at 32 Unicode characters.
+    if (auto* media_name = dynamic_cast<LLLineEditor*>(control("vc_media_name")))
+        media_name->setMaxTextLength(128); // Same normalized label/handler as camera Source.
     mMediaVideo = dynamic_cast<LLLineEditor*>(control("vc_media_video"));
     if (mMediaVideo)
     {
         mMediaVideo->setMaxTextLength(8192);
+        mMediaVideo->setReturnCallback([this]() { onControl(control("vc_media_load")); });
         mMediaVideo->setKeystrokeCallback([this](LLLineEditor*, void*)
         {
             ++mMediaEditEpoch; // Invalidates a pending Browse even if selection returns.
@@ -287,7 +290,7 @@ bool ALPanelDirectorVCam::postBuild()
         mKitPage->setRowRevealGuard([this](ALKitRow* target)
         {
             const std::string& widget = target->meta().widget;
-            const bool url_row = widget == "vc_media_video" || widget == "vc_media_browse" ||
+            const bool url_row = widget == "vc_media_video" || widget == "vc_media_file_actions" ||
                 widget == "vc_media_transport" || widget == "vc_media_loop" || widget == "vc_media_volume" ||
                 widget == "vc_media_cache_clear" || widget == "vc_media_cache_status" || widget == "vc_media_cache_keep";
             const bool face_row = widget == "vc_media_face" || widget == "vc_media_face_actions";
@@ -554,13 +557,25 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
 
     std::vector<ALVCamCameraSelector::Item> cameras;
     std::array<ALVCamMonitorStrip::Tile, LLPrismLens::MAX_CAPTURES> tiles;
+    const bool previews_enabled = gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled");
     U32 monitor_slot_span = 0;
     for (U32 i = 0; i < registry.mSlotCount; ++i)
     {
         const LLPrismLens::CaptureDefinition& item = registry.mCaptures[i];
         monitor_slot_span = llmax(monitor_slot_span, item.mSlot + 1);
-        cameras.push_back({item.mHandle, mCameraLabels[item.mSlot],
-                           item.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE});
+        bool visible_face = false;
+        for (U32 di = 0; di < registry.mDisplayCount; ++di)
+            if (sameCapture(registry.mDisplays[di].mCapture, item.mHandle) &&
+                registry.mDisplays[di].mRuntime.mVisibility == LLPrismLens::EDisplayVisibility::VISIBLE)
+            {
+                visible_face = true;
+                break;
+            }
+        // Mockup camRates(): live when feeding a visible face, otherwise
+        // preview when previews are on, otherwise idle (including master off).
+        cameras.push_back({item.mHandle, item.mLabel, item.mSlot,
+                           media_master && visible_face,
+                           media_master && !visible_face && previews_enabled});
         ALVCamMonitorStrip::Tile& tile = tiles[item.mSlot];
         tile.mCapture = item.mHandle;
         tile.mPublication = LLPrismPreviewService::instance().tileState(item.mHandle);
@@ -759,10 +774,12 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     setEnabledIfChanged(control("vc_remove_face"), display &&
         (display->mGateSubscribed ||
          (capture && !capture->isSurfaceLens())));
-    setEnabledIfChanged(mCameraName, capture != nullptr);
-    if (mCameraName && !gFocusMgr.childHasKeyboardFocus(mCameraName))
-        setValueIfChanged(mCameraName,
-                          capture ? LLSD(capture->mLabel) : LLSD());
+    for (LLUICtrl* name : {static_cast<LLUICtrl*>(mCameraName), control("vc_media_name")})
+    {
+        setEnabledIfChanged(name, capture != nullptr);
+        if (name && !gFocusMgr.childHasKeyboardFocus(name))
+            setValueIfChanged(name, capture ? LLSD(capture->mLabel) : LLSD());
+    }
     setEnabledIfChanged(control("vc_face_locate"), display && !display->mSettings.mVirtual);
     if (LLUICtrl* count = control("vc_face_count"))
         setValueIfChanged(count, llformat("%u of 16 faces used (all cameras)",
@@ -950,7 +967,16 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         lens_card->setCodeVisible(!media_selected);
     if (ALKitCard* media_card = mKitPage->findCard("media_source"))
     {
-        media_card->setCodeVisible(media_selected && LLPrismLens::mediaSlotsEnabled());
+        // Renaming an existing capture remains available when media playback is gated off.
+        media_card->setCodeVisible(media_selected);
+        for (ALKitRow* media_row : media_card->rows())
+            if (media_row->meta().widget != "vc_media_name" &&
+                media_row->meta().widget != "vc_media_video" && media_row->meta().widget != "vc_media_file_actions" &&
+                media_row->meta().widget != "vc_media_transport" && media_row->meta().widget != "vc_media_loop" &&
+                media_row->meta().widget != "vc_media_volume" && media_row->meta().widget != "vc_media_cache_clear" &&
+                media_row->meta().widget != "vc_media_cache_status" && media_row->meta().widget != "vc_media_cache_keep" &&
+                media_row->meta().widget != "vc_media_face" && media_row->meta().widget != "vc_media_face_actions")
+                setRowControlVisible(media_row, LLPrismLens::mediaSlotsEnabled());
         if (media_selected) media_card->setBadgePlaceholder("CAM n", llformat("Cam %u", capture->mSlot + 1));
     }
     if (media_selected)
@@ -960,10 +986,10 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         const auto* video = capture->mediaUrlData();
         const bool enabled = LLPrismLens::mediaSlotsEnabled();
         setValueIfChanged(control("vc_media_kind"), video ? "url" : "face");
-        for (const char* id : {"vc_media_video", "vc_media_browse", "vc_media_transport", "vc_media_loop", "vc_media_volume", "vc_media_cache_clear", "vc_media_cache_status", "vc_media_cache_keep"})
-            setRowControlVisible(row(id), video != nullptr);
+        for (const char* id : {"vc_media_video", "vc_media_file_actions", "vc_media_transport", "vc_media_loop", "vc_media_volume", "vc_media_cache_clear", "vc_media_cache_status", "vc_media_cache_keep"})
+            setRowControlVisible(row(id), enabled && video != nullptr);
         for (const char* id : {"vc_media_face", "vc_media_face_actions"})
-            setRowControlVisible(row(id), video == nullptr);
+            setRowControlVisible(row(id), enabled && video == nullptr);
         if (!sameCapture(mMediaEditHandle, capture->mHandle) || mMediaEditingUrl != (video != nullptr) ||
             (video && video->mValue != mMediaCue))
         {
@@ -994,6 +1020,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             setValueIfChanged(control("vc_media_volume"), video->mVolume);
         }
         setEnabledIfChanged(control("vc_media_play"), enabled && video && mMediaPlayable);
+        setEnabledIfChanged(control("vc_media_load"), enabled && video && mMediaPlayable);
         setEnabledIfChanged(control("vc_media_pause"), enabled && video && capture->mMediaCanPause);
         setEnabledIfChanged(control("vc_media_stop"), enabled && video);
         setEnabledIfChanged(control("vc_media_running"), enabled &&
@@ -1008,7 +1035,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             !mMediaPlayStatus.empty() ? mMediaPlayStatus : !mMediaError.empty() ? mMediaError :
             video && mMediaDraft.empty() ? "Enter a direct video URL" :
             !video && capture->mediaData()->mObjectId.isNull() ? "Pick a prim face" :
-            mMediaValidationSequence > capture->mRuntime.mReasonSequence ? "Set. Press Play to start it." : capture->mRuntime.mReason,
+            mMediaValidationSequence > capture->mRuntime.mReasonSequence ? "Set. Press Enter, Load or Play to start it." : capture->mRuntime.mReason,
             capture->mRuntime.mReasonSequence, mMediaValidationSequence));
         if (mMediaVideo) mMediaVideo->setFgColor(ALKitStyle::color(
             !mMediaError.empty() || !mMediaPlayStatus.empty() ? ALKitStyle::RECORD : ALKitStyle::TEXT));
@@ -1062,7 +1089,6 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         if (!has_visible_face) ++preview_only;
     }
     const bool master_enabled = gSavedSettings.getBOOL("PrismLensEnabled");
-    const bool previews_enabled = gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled");
     setValueIfChanged(control("vc_monitor_footer"), mMonitorStrip->monitorFooterText(
         master_enabled, previews_enabled, registry.mSlotCount, preview_only,
         gSavedSettings.getF32("PrismMonitorPreviewFPS")));
@@ -1092,6 +1118,7 @@ void ALPanelDirectorVCam::validateMediaVideo()
     mMediaPlayable = ALMediaFile::classify(mMediaDraft, syntax, mMediaError, LL_WINDOWS) && !syntax.value.empty();
     setEnabledIfChanged(control("vc_media_play"), LLPrismLens::mediaSlotsEnabled() &&
         mMediaPlayable);
+    setEnabledIfChanged(control("vc_media_load"), LLPrismLens::mediaSlotsEnabled() && mMediaPlayable);
     const auto* capture = selectedCapture();
     mMediaValidationSequence = ALMediaFile::nextMediaStatusSequence();
     // Keystrokes validate only the Source editor. Monitor refusals are recorded
@@ -1099,7 +1126,7 @@ void ALPanelDirectorVCam::validateMediaVideo()
     mModel.markDirty(ALVCamPageModel::DIRTY_RUNTIME);
     setValueIfChanged(control("vc_media_status"), !gSavedSettings.getBOOL("PrismLensEnabled") ? "Turn on Virtual Cam to play video" : ALMediaFile::mediaSourceStatus(capture ? capture->mRuntime.mReason : "",
         !mMediaPlayStatus.empty() ? mMediaPlayStatus : !mMediaError.empty() ? mMediaError :
-        mMediaDraft.empty() ? "Enter a direct video URL" : "Set. Press Play to start it.",
+        mMediaDraft.empty() ? "Enter a direct video URL" : "Set. Press Enter, Load or Play to start it.",
         capture ? capture->mRuntime.mReasonSequence : 0, mMediaValidationSequence));
 }
 
@@ -1112,7 +1139,7 @@ void ALPanelDirectorVCam::refuseMediaVideo(const std::string& reason)
     mModel.markDirty(ALVCamPageModel::DIRTY_RUNTIME);
 }
 
-bool ALPanelDirectorVCam::commitMediaVideo()
+bool ALPanelDirectorVCam::commitMediaVideo(bool start)
 {
     const auto* capture = selectedCapture();
     if (!capture || !capture->mediaUrlData() || !sameCapture(capture->mHandle, mMediaEditHandle))
@@ -1121,14 +1148,26 @@ bool ALPanelDirectorVCam::commitMediaVideo()
         return false;
     }
     validateMediaVideo();
-    const bool valid = ALMediaFile::commitVideoDraft(mMediaDraft, mMediaError, LL_WINDOWS,
+    const auto handle = capture->mHandle;
+    const bool valid = ALMediaFile::commitVideoAction(mMediaDraft, mMediaError, LL_WINDOWS, start,
         [&](const ALMediaFile::Descriptor& syntax)
     {
         auto source = *capture->mediaUrlData();
-        source.mValue = mMediaDraft; // Keep exactly what the user typed.
-        source.mLocation = syntax.location == ALMediaFile::Location::LOCAL_FILE
+        const auto location = syntax.location == ALMediaFile::Location::LOCAL_FILE
             ? LLPrismLens::MediaUrlSource::Location::LOCAL_FILE : LLPrismLens::MediaUrlSource::Location::HTTP_URL;
-        return LLPrismLens::setMediaUrlSource(capture->mHandle, source, &mMediaError);
+        if (source.mValue == mMediaDraft && source.mLocation == location) return true;
+        source.mValue = mMediaDraft; // Keep exactly what the user typed.
+        source.mLocation = location;
+        return LLPrismLens::setMediaUrlSource(handle, source, &mMediaError);
+    }, [&]()
+    {
+        if (!LLPrismLens::playMediaFile(handle))
+        {
+            const auto state = LLPrismLens::registrySnapshot();
+            for (U32 i = 0; i < state.mSlotCount; ++i)
+                if (sameCapture(state.mCaptures[i].mHandle, handle))
+                    mMediaPlayStatus = state.mCaptures[i].mRuntime.mReason;
+        }
     });
     LL_INFOS("VCamMedia") << "Typed commit " << (valid ? "valid" : "invalid")
         << " slot=" << capture->mSlot << " rule=syntax/descriptor reason=" << (valid ? "accepted cue" : mMediaError)
@@ -1216,11 +1255,19 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
 
+    // Name is capture metadata, including Paste value commits. Dispatch it
+    // before the vc_media_ playback/source router, which consumes that prefix.
+    if (name == "vc_camera_name" || name == "vc_media_name")
+    {
+        commitCamera(name, value);
+        return;
+    }
+
     if (capture && capture->isMedia() && name.rfind("vc_media_", 0) == 0 && name != "vc_media_running")
     {
         const auto handle = capture->mHandle;
         std::string reason;
-        if (name == "vc_media_kind" || name == "vc_media_video" || name == "vc_media_play" ||
+        if (name == "vc_media_kind" || name == "vc_media_video" || name == "vc_media_play" || name == "vc_media_load" ||
             name == "vc_media_stop" || name == "vc_media_browse")
         {
             mMediaPlayStatus.clear(); mMediaError.clear();
@@ -1234,19 +1281,11 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
             LLPrismLens::switchMediaSourceKind(handle, value.asString() == "url");
         }
         else if (name == "vc_media_video") { ++mMediaEditEpoch; commitMediaVideo(); }
-        else if (name == "vc_media_play")
+        else if (name == "vc_media_play" || name == "vc_media_load")
         {
-            if (commitMediaVideo())
-            {
-                if (!LLPrismLens::playMediaFile(handle))
-                {
-                    const auto state = LLPrismLens::registrySnapshot();
-                    for (U32 i = 0; i < state.mSlotCount; ++i)
-                        if (sameCapture(state.mCaptures[i].mHandle, handle))
-                            mMediaPlayStatus = state.mCaptures[i].mRuntime.mReason;
-                }
-            }
-            else LL_INFOS("VCamMedia") << "Play refused rule=invalid editor draft reason=" << mMediaError << LL_ENDL;
+            ++mMediaEditEpoch;
+            if (!commitMediaVideo(true))
+                LL_INFOS("VCamMedia") << "Play refused rule=invalid editor draft reason=" << mMediaError << LL_ENDL;
         }
         else if (name == "vc_media_pause") LLPrismLens::pauseMediaFile(handle);
         else if (name == "vc_media_stop") { ++mMediaEditEpoch; LLPrismLens::stopMediaFile(handle); }
@@ -1422,7 +1461,7 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         else if (action == "media" && LLPrismLens::mediaSlotsEnabled())
             mModel.addMediaSlot(&reason);
         if (!reason.empty()) setStatus(reason);
-        // Snap back to "+ Add camera..." (item 0). Its value is undefined, so
+        // Snap back to "+ Add camera…" (item 0). Its value is undefined, so
         // setValue(LLSD()) matched nothing and the last choice stayed shown.
         if (LLComboBox* add_combo = dynamic_cast<LLComboBox*>(source))
             add_combo->selectFirstItem();
@@ -1574,7 +1613,7 @@ void ALPanelDirectorVCam::commitCamera(const std::string& name, const LLSD& valu
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     if (!capture) return;
-    if (name == "vc_camera_name")
+    if (name == "vc_camera_name" || name == "vc_media_name")
     {
         std::string reason;
         if (!mModel.setLabel(capture->mHandle, value.asString(), &reason))
@@ -1583,7 +1622,10 @@ void ALPanelDirectorVCam::commitCamera(const std::string& name, const LLSD& valu
         {
             mModel.refreshNow(ALVCamPageModel::DIRTY_CONFIGURATION);
             if (const LLPrismLens::CaptureDefinition* renamed = selectedCapture())
+            {
                 setValueIfChanged(mCameraName, renamed->mLabel);
+                setValueIfChanged(control("vc_media_name"), renamed->mLabel);
+            }
         }
         return;
     }

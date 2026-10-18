@@ -87,25 +87,30 @@ void styleButton(LLButton* button, bool transparent)
         return;
     static LLPointer<LLUIImage> rounded = LLUI::getUIImage("Kit_RoundRect4");
     static LLPointer<LLUIImage> clear   = LLUI::getUIImage("transparent.j2c");
+    // The selector owns its border and fill in every pointer state. Native
+    // buttons supply labels, focus, tooltips and input without covering them.
+    const bool selector_outline = button->getName().rfind("vc_camera_chip_", 0) == 0 ||
+                                  button->getName() == "vc_remove_capture";
+    if (selector_outline) transparent = true;
     LLPointer<LLUIImage> image = transparent ? clear : rounded;
     button->setImageUnselected(image);
     button->setImageSelected(image);
-    button->setImageHoverUnselected(rounded);
-    button->setImageHoverSelected(rounded);
-    button->setImagePressed(rounded);
+    button->setImageHoverUnselected(selector_outline ? clear : rounded);
+    button->setImageHoverSelected(selector_outline ? clear : rounded);
+    button->setImagePressed(selector_outline ? clear : rounded);
     button->setImageDisabled(image);
     button->setImageDisabledSelected(image);
     button->setScaleImage(true);
     button->setImageColor(transparent ? LLUIColor(LLColor4::transparent) : color(CONTROL_BG));
     button->setSelectedImageColor(transparent ? LLUIColor(LLColor4::transparent) : color(ACTIVE_FILL));
-    button->setHoverImageColor(color(HOVER_BG));
-    button->setPressedImageColor(color(ACTIVE_FILL));
+    button->setHoverImageColor(selector_outline ? LLUIColor(LLColor4::transparent) : color(HOVER_BG));
+    button->setPressedImageColor(selector_outline ? LLUIColor(LLColor4::transparent) : color(ACTIVE_FILL));
     button->setDisabledImageColor(transparent ? LLUIColor(LLColor4::transparent) : color(INPUT_BG));
     button->setUnselectedLabelColor(color(LABEL));
     button->setSelectedLabelColor(color(TEXT_STRONG));
     button->setDisabledLabelColor(color(FAINT));
     button->setFont(sansFont("Kit12"));
-    button->setHoverGlowStrength(.08f);
+    button->setHoverGlowStrength(selector_outline ? 0.f : .08f);
     button->setKeyboardOnlyFocusBorder(true);
     button->setDropShadowedText(false);
 }
@@ -278,10 +283,12 @@ void styleTree(LLView* root)
             // Cards own the selected/unselected palette of their segmented
             // controls. Reapplying the generic button palette here erases
             // that state immediately after postBuild().
-            if (name.find("_seg_") != std::string::npos || name.find("_view_") != std::string::npos)
+            if (name.find("_seg_") != std::string::npos || name.find("_view_") != std::string::npos ||
+                name.rfind("vc_camera_chip_", 0) == 0)
                 return;
             const bool clear = name.rfind("kit_rail_", 0) == 0 || name.rfind("kit_tab_", 0) == 0 ||
-                               name.rfind("kit_mode_seg_", 0) == 0 || name.find("_reset") != std::string::npos;
+                               name.rfind("kit_mode_seg_", 0) == 0 || name.find("_reset") != std::string::npos ||
+                               name == "vc_remove_capture";
             styleButton(button, clear);
             if (name == "btn_action")
             {

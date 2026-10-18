@@ -776,6 +776,14 @@ S32 ALKitCard::subHeaderHeight(const std::string& title, S32 width, bool first) 
 
 S32 ALKitCard::heightForWidth(S32 w) const
 {
+    // Inline bars retain kit row ownership/search without card chrome or padding.
+    if (mKind == "inline")
+    {
+        S32 height = 0;
+        for (ALKitRow* row : mRows)
+            if (row->isEffectivelyVisible()) height += row->heightForWidth(w);
+        return height;
+    }
     S32 h = headerLayout(w).height;
     if (!mBodyOpen)
         return h;
@@ -833,6 +841,20 @@ S32 ALKitCard::heightForWidth(S32 w) const
 
 void ALKitCard::layoutBody(S32 w)
 {
+    if (mKind == "inline")
+    {
+        for (LLView* child : *getChildList()) child->setVisible(false);
+        S32 top = getRect().getHeight();
+        for (ALKitRow* row : mRows)
+            if (row->isEffectivelyVisible())
+            {
+                row->setVisible(true);
+                row->layoutRow(w);
+                top -= row->getRect().getHeight();
+                row->setOrigin(0, top);
+            }
+        return;
+    }
     for (ALKitOption* option : mOptions)
     {
         option->reshape(w, getRect().getHeight(), true);
@@ -1230,6 +1252,11 @@ void ALKitCard::restoreOpenState(bool body, const LLSD& more)
 void ALKitCard::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    if (mKind == "inline")
+    {
+        LLPanel::draw();
+        return;
+    }
     if (mOuterImage && mInnerImage)
     {
         mOuterImage->draw(0, 0, getRect().getWidth(), getRect().getHeight(), ALKitStyle::color(ALKitStyle::CARD_BORDER).get());

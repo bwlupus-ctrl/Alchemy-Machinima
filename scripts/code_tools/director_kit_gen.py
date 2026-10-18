@@ -273,8 +273,11 @@ def validate_data(data: dict) -> None:
     # 2114: VCam adds the media consumption row (+1); exact coverage stays pinned.
     # 2122: VCam media source card adds 8 rows (removes duplicate Add and unrequested clear/geometry rows); exact coverage stays pinned.
     # 2123: +1 VCam Keep downloads between sessions toggle (cache lifetime, 10/18).
-    if len(pages) != 37 or row_count != 2123:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2123")
+    # 2124: Selector Name moves to camera Source; media Source gains its rename row (net +1, 10/18).
+    # 2124: Enter/Load replaces Browse with a two-action row: delta 0 rows, +1 button (10/18).
+    # 2124: Fix round 1 retains both native Name rows; search alias only, exact row delta 0 (10/18).
+    if len(pages) != 37 or row_count != 2124:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2124")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -675,6 +678,19 @@ def validate_vcam_page(page: dict) -> None:
     obsolete = {row.get("w") for row in rows} & {"vc_add_camera", "vc_remove_capture"}
     if obsolete:
         raise GenError("VCam add/remove actions are integrated into vc_camera_selector")
+    bar = next(card for card in page["cards"] if selector[0] in card.get("rows", []))
+    if bar.get("k") != "inline" or bar.get("badge") or bar.get("rows") != selector or not selector[0].get("fill_width"):
+        raise GenError("VCam Settings for must be a single full-width inline bar without a card badge or Name row")
+    for card_id, widget in (("source", "vc_camera_name"), ("media_source", "vc_media_name")):
+        source = next(card for card in page["cards"] if card["id"] == card_id)
+        if source["rows"][0].get("w") != widget or source["rows"][0].get("k") != "text":
+            raise GenError("VCam camera/media Name editing must remain first in Source")
+    media_name = next(row for row in rows if row.get("w") == "vc_media_name")
+    if media_name.get("search_alias") != "vc_camera_name":
+        raise GenError("VCam Name requires one shared search destination for both capture types")
+    video = next(row for row in rows if row.get("w") == "vc_media_video")
+    if "cue" in video.get("kw", "").lower().split():
+        raise GenError("VCam Video keywords must not pull cue/keyframe/mark synonyms into search")
 
 
 def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str, list[ET.Element]],
@@ -1323,6 +1339,8 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
             page["cards"] = [{"id": "open", "t": page.get("label", ""), "rows": []}]
             page["sections"] = [{"id": "open", "cards": [0]}]
         section_for = {}
+        page_rows = {row.get("w"): row for card in page.get("cards", [])
+                     for row in card.get("rows", [])}
         for section in page.get("sections", []):
             for i in section.get("cards", []):
                 section_for[int(i)] = section.get("id", "")
@@ -1330,6 +1348,18 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
             entries = [(None, row) for row in card.get("rows", [])]
             entries += [(oi, row) for oi, opt in enumerate(card.get("opts", [])) for row in opt.get("rows", [])]
             for oi, row in entries:
+                alias = row.get("search_alias")
+                if alias:
+                    target = page_rows.get(alias)
+                    if ((key, row.get("w"), alias) != ("camera_group/vcam_tab", "vc_media_name", "vc_camera_name") or
+                        not target or target.get("search_alias") or
+                        any(row.get(field) != target.get(field) for field in ("l", "k", "bind")) or
+                        (page_names is not None and alias not in page_names.get(key, set()))):
+                        raise GenError(f"invalid search alias {key}/{row.get('w')} -> {alias}")
+                    # Both rows remain generated and functionally inventoried;
+                    # the shell resolves the canonical hit to the active editor.
+                    indexed_rows[key].add(str(row["w"]))
+                    continue
                 flags = ("a" if row.get("a") else "") + ("l" if row.get("k") == "link" else "") + ("x" if legacy else "")
                 fields = [group["name"], page["name"], page.get("label", ""), group.get("label", ""),
                           section_for.get(ci, ""), card.get("id", ""), card.get("t", ""),
@@ -1708,6 +1738,33 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
         checks = []
+        vcam = json.loads(VCAM_DATA.read_text(encoding="utf-8"))
+        validate_vcam_page(vcam)
+        rejects = []
+        for mutation in ("card", "badge", "name_in_bar", "missing_name", "fixed_width", "duplicate_name_search", "cue_search"):
+            broken = copy.deepcopy(vcam)
+            bar = next(card for card in broken["cards"] if card["id"] == "camera_selector")
+            if mutation == "card": bar["k"] = "rows"
+            elif mutation == "badge": bar["badge"] = "CAM n"
+            elif mutation == "name_in_bar": bar["rows"].append({"w": "name"})
+            elif mutation == "missing_name":
+                next(card for card in broken["cards"] if card["id"] == "source")["rows"].pop(0)
+            elif mutation == "duplicate_name_search":
+                next(card for card in broken["cards"] if card["id"] == "media_source")["rows"][0].pop("search_alias")
+            elif mutation == "cue_search":
+                next(row for card in broken["cards"] for row in card.get("rows", []) if row.get("w") == "vc_media_video")["kw"] += " cue"
+            else: bar["rows"][0]["fill_width"] = False
+            try:
+                validate_vcam_page(broken)
+                rejects.append(False)
+            except GenError:
+                rejects.append(True)
+        checks.append(("VCam inline selector, Source names and search (seven regressions rejected)", all(rejects)))
+        index_lines = outputs[out_dir / "director_kit_index.xml"].decode("utf-8").splitlines()
+        name_hits = [line.split("\t") for line in index_lines if "\tvc_camera_name\t" in line or "\tvc_media_name\t" in line]
+        checks.append(("one VCam Source Name search hit", len(name_hits) == 1 and name_hits[0][8] == "vc_camera_name"))
+        video_hit = next(line.split("\t") for line in index_lines if "\tvc_media_video\t" in line)
+        checks.append(("Video search excludes cue synonyms", not {"cue", "keyframe", "mark"} & set(video_hit[16].lower().split())))
         checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 36, "pure kit (new)": 1})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"

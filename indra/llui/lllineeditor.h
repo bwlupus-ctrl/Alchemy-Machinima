@@ -263,6 +263,9 @@ public:
     void            onKeystroke();
     typedef std::function<void (LLLineEditor* caller, void* user_data)> callback_t;
     void            setKeystrokeCallback(callback_t callback, void* user_data);
+    // Optional explicit Return action; focus loss and programmatic commits
+    // continue to use the ordinary commit callback.
+    void            setReturnCallback(std::function<void()> callback) { mReturnCallback = std::move(callback); }
 
     void            setMaxTextLength(S32 max_text_length);
     void            setMaxTextChars(S32 max_text_chars);
@@ -386,6 +389,7 @@ protected:
     bool        mKeystrokeOnEsc;
 
     keystroke_callback_t mKeystrokeCallback;
+    std::function<void()> mReturnCallback;
 
     bool        mIsSelecting;               // Selection for clipboard operations
     S32         mSelectionStart;

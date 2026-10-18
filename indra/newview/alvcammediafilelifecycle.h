@@ -26,6 +26,23 @@ template<class Apply> bool commitVideoDraft(const std::string& draft, std::strin
     if (!classify(draft, syntax, error, windows)) return false;
     return apply(syntax);
 }
+// Only an explicit Enter/Load/Play requests transport, after a valid commit.
+// The transport owns same-source coalescing and asynchronous admission.
+template<class Apply, class Play> bool commitVideoAction(const std::string& draft,
+    std::string& error, bool windows, bool start, Apply apply, Play play)
+{
+    if (!commitVideoDraft(draft, error, windows, apply)) return false;
+    if (start && !draft.empty()) play();
+    return true;
+}
+// Call only after reconciling the committed source with the runtime owner.
+// Repeated explicit Play requests share an already playing/pending load.
+inline bool beginVideoPlay(Transport& desired)
+{
+    if (desired == Transport::PLAYING) return false;
+    desired = Transport::PLAYING;
+    return true;
+}
 // Decide lifetime work without doing I/O or disturbing a playing lease.
 inline bool clearCacheAtStartup(bool owner, bool keep, bool purge)
 { return owner && (!keep || purge); }

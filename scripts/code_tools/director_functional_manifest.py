@@ -97,6 +97,7 @@ def host_for(version, page):
 # XUI tag -> widget type used for exercise selection.
 MEDIA_RUNTIME_REASONS = {
     "vc_media_browse": "native video picker plus asynchronous filesystem preflight needs the runtime acceptance fixture",
+    "vc_media_load": "Enter/Load commit plus real download, video admission and playback need runtime acceptance",
     "vc_media_play": "validated real video and admitted VLC/audio playback need runtime acceptance",
     "vc_media_pause": "pausing an admitted or pending real VLC player needs runtime acceptance",
     "vc_media_stop": "cancelling a real download and retiring the admitted VLC player need runtime acceptance",
@@ -1725,6 +1726,10 @@ def add_runtime_prerequisites(entries):
                                      "hazards": ["requires_world"]})
             card, row = vcam_rows.get(widget, ({}, {}))
             card_id = card.get("id", entry.get("card", ""))
+            if widget in {"vc_camera_name", "vc_media_name"}:
+                entry.update(probe="vcam_camera_name", action="RUN", reason="", known_gap=False,
+                             test_value="  Director capture 012345678901234567890123456789  ",
+                             expect={"state": "normalized selected registry and scene label; native Paste value; media Name reachable with feature/master gates off"})
             show = row.get("show_if", card.get("show_if", ""))
             if show in {"never", "status", "large_and_more_than_four"}:
                 entry.update(action="SKIP", reason="code-hidden informational row: " + show,
@@ -2169,6 +2174,11 @@ def generation_self_test():
     add_runtime_prerequisites(login_camera)
     assert all(row["action"] == "RUN" and row["visible_when"] == "camera selected"
                and not row.get("enable_when") and not row.get("hazards") for row in login_camera)
+    media_name = {"page": "vcam_tab", "widget_name": "vc_media_name", "action": "RUN"}
+    add_runtime_prerequisites([media_name])
+    assert media_name["probe"] == "vcam_camera_name" and media_name["action"] == "RUN"
+    assert media_name["visible_when"] == "media slot selected" and not media_name.get("enable_when")
+    assert login_camera[0]["probe"] == "vcam_camera_name"
     world_action = {"page": "vcam_tab", "widget_name": "vc_add_face",
                     "action": "DEFER_INWORLD", "hazards": ["requires_world"]}
     add_runtime_prerequisites([world_action])

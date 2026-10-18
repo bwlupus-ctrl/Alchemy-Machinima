@@ -1809,6 +1809,14 @@ bool LLLineEditor::handleSpecialKey(KEY key, MASK mask)
 
 bool LLLineEditor::handleKeyHere(KEY key, MASK mask )
 {
+    if (key == KEY_RETURN && mask == MASK_NONE && hasFocus() && !mReadOnly && mReturnCallback)
+    {
+        updateHistory();
+        mReturnCallback();
+        resetDirty();
+        if (mSelectAllonCommit) selectAll();
+        return true; // Do not bubble to a panel's default button or cue callback.
+    }
     bool    handled = false;
     bool    selection_modified = false;
 

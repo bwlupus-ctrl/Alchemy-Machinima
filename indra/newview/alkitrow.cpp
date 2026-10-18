@@ -484,6 +484,9 @@ bool ALKitRow::postBuild()
 
 S32 ALKitRow::heightForWidth(S32 width) const
 {
+    if (mFillWidth && mMeta.kind == "custom")
+        if (auto* item = dynamic_cast<ALFlowGridItem*>(mControl))
+            return item->heightForWidth(width);
     if (mActionRow && mControl)
     {
         S32 left = 0, lines = 1;
@@ -528,6 +531,18 @@ void ALKitRow::fitLabel(S32 box_width)
 
 void ALKitRow::layoutRow(S32 w)
 {
+    if (mFillWidth && mMeta.kind == "custom")
+        if (auto* item = dynamic_cast<ALFlowGridItem*>(mControl))
+        {
+            const S32 height = item->heightForWidth(w);
+            reshape(w, height, true);
+            if (mLabel) mLabel->setVisible(false);
+            if (mFavorite) mFavorite->setVisible(false);
+            if (mReset) mReset->setVisible(false);
+            mControl->reshape(w, height, true);
+            mControl->setOrigin(0, 0);
+            return;
+        }
     // The favorite star sits between the value column and the reset glyph, so it takes
     // track width and never narrows the label track.
     constexpr S32 kFavoriteW = 18;
@@ -1187,7 +1202,8 @@ void ALKitRow::refreshFavorite()
         mFavorite->setLabel(favorite ? "\xE2\x98\x85" : "\xE2\x98\x86");
         mFavorite->setToolTip(LLStringExplicit(favorite ? "Remove from Quick" : "Add to Quick"));
         // Rows outside a page (popover rows) have no page key and cannot be Quick favorites.
-        mFavorite->setVisible(ALKitQol::isValidFavorite(key) && (mHovered || favorite));
+        const bool inline_bar = mFillWidth && mMeta.kind == "custom" && dynamic_cast<ALFlowGridItem*>(mControl);
+        mFavorite->setVisible(!inline_bar && ALKitQol::isValidFavorite(key) && (mHovered || favorite));
     }
 }
 
@@ -1386,7 +1402,7 @@ void ALKitRow::draw()
         gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BG).get(), true);
         gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BORDER).get(), false);
     }
-    if (mHovered)
+    if (mHovered && !(mFillWidth && mMeta.kind == "custom" && dynamic_cast<ALFlowGridItem*>(mControl)))
         gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::ROW_HOVER).get(), true);
     if (mAdded)
     {

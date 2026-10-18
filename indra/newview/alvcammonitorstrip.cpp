@@ -7,12 +7,15 @@
 #include "alvcammonitorstrip.h"
 
 #include "alkitstyle.h"
+#include "alkitcard.h"
+#include "lluicolortable.h"
 #include "llbutton.h"
 #include "llcombobox.h"
 #include "llfontgl.h"
 #include "llrender.h"
 #include "llrender2dutils.h"
 #include "llsliderwheel.h"
+#include "lltextbox.h"
 #include "lltimer.h"
 #include "lltooldraganddrop.h"
 #include "lluictrlfactory.h"
@@ -619,48 +622,126 @@ bool ALVCamMonitorPager::handleMouseDown(S32 x, S32, MASK)
 }
 
 ALVCamCameraSelector::ALVCamCameraSelector(const Params& p)
-    : LLUICtrl(p), mFont(LLFontGL::getFontSansSerifSmall()),
-      mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get()),
-      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get()),
-      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT).get()),
-      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER).get())
+    : LLUICtrl(p), mFont(ALKitStyle::sansFont("Kit12")),
+      mLiveColor(LLUIColorTable::instance().getColor("KitOkGreen"))
 {
+    mChipImage = LLUI::getUIImage("Kit_RoundRect4");
+    mSelectedFont = LLFontGL::getFont(LLFontDescriptor("KitSansSemibold", "Kit12", 0));
+    if (!mSelectedFont) mSelectedFont = ALKitStyle::sansFont("Kit12", true);
 }
 
 bool ALVCamCameraSelector::postBuild()
 {
-    if (!LLUICtrl::postBuild())
-        return false;
-
+    if (!LLUICtrl::postBuild()) return false;
+    LLTextBox::Params label_params;
+    label_params.name = "vc_settings_for_label";
+    label_params.rect = LLRect(0, 24, mFont->getWidth("Settings for"), 0);
+    label_params.initial_value = "Settings for";
+    label_params.font = mFont;
+    label_params.text_color = ALKitStyle::color(ALKitStyle::DIM);
+    label_params.v_pad = 0;
+    label_params.font_valign = LLFontGL::VCENTER;
+    mLabel = LLUICtrlFactory::create<LLTextBox>(label_params);
+    addChild(mLabel);
     LLComboBox::Params add_params;
     add_params.name = "vc_add_camera";
-    add_params.rect = LLRect(0, 24, 112, 0);
+    add_params.rect = LLRect(0, 24, 156, 0);
     mAdd = LLUICtrlFactory::create<LLComboBox>(add_params);
-    mAdd->add("+ Add", LLSD());
+    mAdd->add("+ Add camera\xE2\x80\xA6", LLSD());
     mAdd->setToolTip(std::string("Add a camera"));
     mAdd->add("From selected object", LLSD("object"));
-    mAdd->add("Virtual at my view", LLSD("virtual"));
-    mAdd->add("OTS pair", LLSD("ots"));
-    mAdd->add("Surface lens", LLSD("lens"));
+    mAdd->add("Virtual cam at my view", LLSD("virtual"));
+    mAdd->add("OTS pair from Subjects A/B", LLSD("ots"));
+    mAdd->add("Surface lens from selected face", LLSD("lens"));
+    mAdd->add("Media from a prim face (video)", LLSD("media"));
+    mAdd->setEnabledByValue(LLSD("media"), false);
+    ALKitStyle::styleCombo(mAdd);
     addChild(mAdd);
 
     LLButton::Params remove_params;
     remove_params.name = "vc_remove_capture";
-    remove_params.rect = LLRect(0, 24, 106, 0);
-    remove_params.label = "Remove";
+    remove_params.rect = LLRect(0, 24, 110, 0);
+    remove_params.label = "Remove capture";
+    remove_params.pad_bottom = 0;
     mRemove = LLUICtrlFactory::create<LLButton>(remove_params);
     mRemove->setToolTip(std::string("Remove the selected capture"));
-    ALKitStyle::styleButton(mRemove, false);
+    ALKitStyle::styleButton(mRemove, true);
+    mRemove->setVisible(false);
     addChild(mRemove);
     reshape(getRect().getWidth(), getRect().getHeight(), true);
     return true;
 }
 
+void ALVCamCameraSelector::requestLayout()
+{
+    reshape(getRect().getWidth(), getRect().getHeight(), true);
+    for (LLView* parent = getParent(); parent; parent = parent->getParent())
+        if (auto* card = dynamic_cast<ALKitCard*>(parent))
+        {
+            card->requestLayout();
+            break;
+        }
+}
+
+void ALVCamCameraSelector::selectChip(S32 index)
+{
+    if (index < 0 || index >= static_cast<S32>(mItems.size())) return;
+    mSelected = mItems[index].mHandle;
+    for (S32 i = 0; i < static_cast<S32>(mChips.size()); ++i)
+    {
+        mChips[i]->setToggleState(i == index);
+        mChips[i]->setTabStop(i == index);
+        mChips[i]->setFont(i == index ? mSelectedFont : mFont);
+    }
+    setValue(LLSD(mSelected.mId));
+    onCommit();
+}
+
 void ALVCamCameraSelector::setItems(
     const std::vector<Item>& items, const LLPrismLens::CaptureHandle& selected)
 {
+    bool changed = items.size() != mItems.size();
+    if (!changed)
+        for (U32 i = 0; i < items.size(); ++i)
+            changed = changed || items[i].mSlot != mItems[i].mSlot;
     mItems = items;
     mSelected = selected;
+    while (mChips.size() > items.size())
+    {
+        LLButton* chip = mChips.back();
+        removeChild(chip);
+        delete chip;
+        mChips.pop_back();
+    }
+    while (mChips.size() < items.size())
+    {
+        const S32 index = static_cast<S32>(mChips.size());
+        LLButton::Params params;
+        params.name = llformat("vc_camera_chip_%d", index);
+        params.rect = LLRect(0, 24, 64, 0);
+        params.is_toggle = true;
+        params.pad_bottom = 0;
+        LLButton* chip = LLUICtrlFactory::create<LLButton>(params);
+        ALKitStyle::styleButton(chip, true);
+        chip->setLeftHPad(22); // 10px padding + 6px dot + 6px gap.
+        chip->setRightHPad(10);
+        chip->setCommitCallback([this, index](LLUICtrl*, const LLSD&) { selectChip(index); });
+        addChild(chip);
+        mChips.push_back(chip);
+    }
+    for (U32 i = 0; i < items.size(); ++i)
+    {
+        const bool on = sameCapture(items[i].mHandle, selected);
+        const std::string label = llformat("Cam %u", items[i].mSlot + 1);
+        const std::string help = llformat("Edit Cam %u \xC2\xB7 %s", items[i].mSlot + 1, items[i].mName.c_str());
+        if (mChips[i]->getLabelUnselected() != label) mChips[i]->setLabel(label);
+        if (mChips[i]->getToolTip() != help) mChips[i]->setToolTip(help);
+        mChips[i]->setToggleState(on);
+        mChips[i]->setTabStop(on || (selected.mId.isNull() && i == 0));
+        const LLFontGL* font = on ? mSelectedFont : mFont;
+        if (mChips[i]->getFont() != font) mChips[i]->setFont(font);
+    }
+    if (changed) requestLayout();
 }
 
 void ALVCamCameraSelector::setActionsEnabled(bool can_add, bool can_remove, bool media_enabled)
@@ -668,76 +749,155 @@ void ALVCamCameraSelector::setActionsEnabled(bool can_add, bool can_remove, bool
     if (mAdd && mMediaOptions != media_enabled)
     {
         mMediaOptions = media_enabled;
-        if (media_enabled)
-        {
-            mAdd->add("Media from a prim face (video)", LLSD("media"));
-        }
-        else
-        {
-            mAdd->remove("Media from a prim face (video)");
-        }
+        // Keep the mockup's five options and the manifest's stable media
+        // index, while retaining the existing feature gate and model guard.
+        mAdd->setEnabledByValue(LLSD("media"), media_enabled);
         mAdd->selectFirstItem();
     }
-    if (mAdd) mAdd->setEnabled(can_add);
-    if (mRemove) mRemove->setEnabled(can_remove);
+    if (mAdd)
+    {
+        mAdd->setEnabled(can_add && mItems.size() < LLPrismLens::MAX_CAPTURES);
+        // The mockup's visible addLabel differs from its accessibility label.
+        mAdd->setLabel(LLStringExplicit(mItems.size() >= LLPrismLens::MAX_CAPTURES ? "8 of 8" : "+ Add camera\xE2\x80\xA6"));
+    }
+    if (mRemove)
+    {
+        const bool changed = mRemove->getVisible() != can_remove;
+        mRemove->setEnabled(can_remove);
+        mRemove->setVisible(can_remove);
+        if (changed) requestLayout();
+    }
+}
+
+ALVCamCameraSelector::Layout ALVCamCameraSelector::layoutForWidth(S32 width) const
+{
+    // CSS flex-wrap: outer gap 8px, radio group gap 4px. All coordinates are
+    // measured downwards here, then translated once to the control's origin.
+    Layout layout;
+    width = llmax(1, width);
+    S32 x = 0, y = 0, line_height = 24;
+    auto place = [&](S32 w, S32 h) -> LLRect
+    {
+        w = llmin(width, w);
+        if (x && x + w > width) { x = 0; y += line_height + 8; line_height = 24; }
+        const LLRect rect(x, -y, x + w, -y - h);
+        x += w + 8;
+        line_height = llmax(line_height, h);
+        return rect;
+    };
+    layout.mLabel = place(mFont->getWidth("Settings for"), 24);
+    if (!mItems.empty())
+    {
+        std::vector<S32> widths;
+        S32 total = 0;
+        for (const Item& item : mItems)
+        {
+            const std::string label = llformat("Cam %u", item.mSlot + 1);
+            const S32 chip_width = llmax(mFont->getWidth(label), mSelectedFont->getWidth(label)) + 32;
+            widths.push_back(chip_width);
+            total += chip_width + 4;
+        }
+        const S32 group_width = llmin(width, total - 4);
+        S32 cx = 0, cy = 0;
+        for (S32 chip_width : widths)
+        {
+            chip_width = llmin(group_width, chip_width);
+            if (cx && cx + chip_width > group_width) { cx = 0; cy += 28; }
+            layout.mChips.emplace_back(cx, -cy, cx + chip_width, -cy - 24);
+            cx += chip_width + 4;
+        }
+        const LLRect group = place(group_width, cy + 24);
+        for (LLRect& chip : layout.mChips) chip.translate(group.mLeft, group.mTop);
+    }
+    layout.mAdd = place(156, 24);
+    if (mRemove && mRemove->getVisible())
+        layout.mRemove = place(mFont->getWidth("Remove capture") + 20, 24);
+    layout.mHeight = y + line_height;
+    return layout;
+}
+
+S32 ALVCamCameraSelector::heightForWidth(S32 width) const
+{
+    return layoutForWidth(width).mHeight;
 }
 
 void ALVCamCameraSelector::reshape(S32 width, S32 height, bool called_from_parent)
 {
     LLUICtrl::reshape(width, height, called_from_parent);
-    const S32 gap = 6;
-    const S32 remove_width = (mRemove ? mRemove->getFont() : mFont)->getWidth("Remove") + 20;
-    const LLFontGL* add_font = mFont;
-    if (mAdd)
-        for (LLView* child : *mAdd->getChildList())
-            if (LLButton* button = dynamic_cast<LLButton*>(child); button && button->getFont())
-            {
-                add_font = button->getFont();
-                break;
-            }
-    const S32 add_width = add_font->getWidth("+ Add") + 36;
-    mChipWidth = llmax(1, width - add_width - remove_width - gap * 2);
-    if (mAdd)
+    mLayout = layoutForWidth(width);
+    auto place = [height](LLView* view, LLRect rect)
     {
-        mAdd->reshape(add_width, 24, true);
-        mAdd->setOrigin(mChipWidth + gap, (height - 24) / 2);
-    }
-    if (mRemove)
-    {
-        mRemove->reshape(remove_width, 24, true);
-        mRemove->setOrigin(mChipWidth + gap * 2 + add_width, (height - 24) / 2);
-    }
+        if (!view) return;
+        rect.translate(0, height);
+        view->reshape(rect.getWidth(), rect.getHeight(), true);
+        view->setOrigin(rect.mLeft, rect.mBottom);
+    };
+    place(mAdd, mLayout.mAdd);
+    place(mLabel, mLayout.mLabel);
+    if (mRemove && mRemove->getVisible()) place(mRemove, mLayout.mRemove);
+    for (U32 i = 0; i < mChips.size(); ++i) place(mChips[i], mLayout.mChips[i]);
 }
 
 void ALVCamCameraSelector::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director VCam camera selector");
-    if (mItems.empty())
-        drawText(mFont, "Choose a camera", 4, 8, mMutedColor, llmax(1, mChipWidth - 8));
-    const S32 width = llmax(1, mChipWidth / llmax(1, static_cast<S32>(mItems.size())));
-    for (S32 i = 0; i < static_cast<S32>(mItems.size()); ++i)
+    // Match the kit segments. Read live theme references, never cached RGBs.
+    const LLColor4 border = ALKitStyle::color(ALKitStyle::INPUT_BORDER).get();
+    auto rounded = [this](const LLRect& rect, const LLColor4& color)
     {
-        const bool selected = sameCapture(mItems[i].mHandle, mSelected);
-        LLRect rect(i * width, getRect().getHeight(), (i + 1) * width - 3, 0);
-        gl_rect_2d(rect, selected ? mAccentColor : mBorderColor, false);
-        drawText(mFont, mItems[i].mLabel, rect.mLeft + 5, 8, mTextColor,
-                 llmax(1, rect.getWidth() - 10));
+        if (mChipImage) mChipImage->draw(rect.mLeft, rect.mBottom, rect.getWidth(), rect.getHeight(), color);
+    };
+    for (U32 i = 0; i < mChips.size(); ++i)
+    {
+        const bool on = sameCapture(mItems[i].mHandle, mSelected);
+        const LLRect rect = mChips[i]->getRect();
+        rounded(rect, ALKitStyle::color(on ? ALKitStyle::ACCENT : ALKitStyle::INPUT_BORDER).get());
+        LLRect inside = rect;
+        inside.stretch(-1);
+        rounded(inside, ALKitStyle::color(on ? ALKitStyle::ACTIVE_FILL : ALKitStyle::INPUT_BG).get());
+    }
+    if (mRemove && mRemove->getVisible())
+    {
+        // A 4px rounded outline with an untouched, transparent interior.
+        const LLRect rect = mRemove->getRect();
+        gl_line_2d(rect.mLeft + 4, rect.mTop, rect.mRight - 4, rect.mTop, border);
+        gl_line_2d(rect.mLeft + 4, rect.mBottom, rect.mRight - 4, rect.mBottom, border);
+        gl_line_2d(rect.mLeft, rect.mBottom + 4, rect.mLeft, rect.mTop - 4, border);
+        gl_line_2d(rect.mRight, rect.mBottom + 4, rect.mRight, rect.mTop - 4, border);
+        gGL.color4fv(border.mV);
+        gl_arc_2d(rect.mRight - 4.f, rect.mTop - 4.f, 4.f, 8, false, 0.f, F_PI_BY_TWO);
+        gl_arc_2d(rect.mLeft + 4.f, rect.mTop - 4.f, 4.f, 8, false, F_PI_BY_TWO, F_PI);
+        gl_arc_2d(rect.mLeft + 4.f, rect.mBottom + 4.f, 4.f, 8, false, F_PI, F_PI + F_PI_BY_TWO);
+        gl_arc_2d(rect.mRight - 4.f, rect.mBottom + 4.f, 4.f, 8, false, F_PI + F_PI_BY_TWO, F_TWO_PI);
     }
     LLUICtrl::draw();
+    for (U32 i = 0; i < mChips.size(); ++i)
+    {
+        const LLRect rect = mChips[i]->getRect();
+        const LLColor4 dot = mItems[i].mLive ? mLiveColor.get() :
+            ALKitStyle::color(mItems[i].mPreview ? ALKitStyle::ACCENT : ALKitStyle::FAINT).get();
+        gGL.color4fv(dot.mV);
+        gl_circle_2d(static_cast<F32>(rect.mLeft + 13), static_cast<F32>(rect.getCenterY()), 3.f, 16, true);
+    }
 }
 
-bool ALVCamCameraSelector::handleMouseDown(S32 x, S32 y, MASK mask)
+bool ALVCamCameraSelector::handleKeyHere(KEY key, MASK mask)
 {
-    // The "+ Add camera" combo and "Remove capture" button are children:
-    // give them the click first (this override used to swallow it).
-    if (LLUICtrl::handleMouseDown(x, y, mask)) return true;
-    if (mItems.empty() || x >= mChipWidth) return false;
-    const S32 index = llclamp(x * static_cast<S32>(mItems.size()) /
-                              llmax(1, mChipWidth), 0,
-                              static_cast<S32>(mItems.size()) - 1);
-    setValue(LLSD(mItems[index].mHandle.mId));
-    onCommit();
-    return true;
+    if (mask == MASK_NONE && !mItems.empty() &&
+        (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN || key == KEY_HOME || key == KEY_END))
+    {
+        S32 index = -1;
+        for (U32 i = 0; i < mChips.size(); ++i)
+            if (mChips[i]->hasFocus()) index = static_cast<S32>(i);
+        if (index < 0) return LLUICtrl::handleKeyHere(key, mask);
+        const S32 count = static_cast<S32>(mItems.size());
+        index = key == KEY_HOME ? 0 : key == KEY_END ? count - 1 :
+            (index + (key == KEY_LEFT || key == KEY_UP ? count - 1 : 1)) % count;
+        mChips[index]->setFocus(true);
+        selectChip(index);
+        return true;
+    }
+    return LLUICtrl::handleKeyHere(key, mask);
 }
 
 ALVCamFaceList::ALVCamFaceList(const Params& p)

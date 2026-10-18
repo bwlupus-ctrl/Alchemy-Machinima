@@ -28,7 +28,8 @@
 namespace tut
 {
 struct media_file_data {};
-typedef test_group<media_file_data, 65> media_file_group;
+// +1 explicit Enter/Load commit-action test; retain all 65 existing cases.
+typedef test_group<media_file_data, 66> media_file_group;
 typedef media_file_group::object media_file_object;
 media_file_group media_file_tests("alvcammediafilepolicy");
 using namespace ALMediaFile;
@@ -1166,7 +1167,7 @@ template<> template<> void media_file_object::test<38>()
             std::string reason = disabled;
             ensure("off status preserved", !clearDisabledStatus(reason, false, empty));
             ensure("enable replaces disabled reason", clearDisabledStatus(reason, true, empty));
-            ensure_equals("current cue status", reason, std::string(empty ? "Enter a direct video URL" : "Set. Press Play to start it."));
+            ensure_equals("current cue status", reason, std::string(empty ? "Enter a direct video URL" : "Set. Press Enter, Load or Play to start it."));
         }
     for (bool master : {false, true})
         for (bool slots : {false, true})
@@ -1316,7 +1317,7 @@ template<> template<> void media_file_object::test<51>()
         cacheFailureStatus(CacheFailure::IO), cacheFailureStatus(CacheFailure::ACCESS), std::string(LOCKED),
         std::string(NOT_VIDEO), std::string(NO_SPACE), std::string("Unsupported player: VLC"),
         std::string("Copy failed: media sampler unavailable; retrying"), std::string("Source missing or unbound")})
-        for (const char* stale : {"Enter a direct video URL", "Set. Press Play to start it.", UNSUPPORTED, ""})
+        for (const char* stale : {"Enter a direct video URL", "Set. Press Enter, Load or Play to start it.", UNSUPPORTED, ""})
         {
             ensure("tile recognizes failure", mediaRuntimeFailure(runtime));
             const auto tile = mediaSourceStatus(runtime, "");
@@ -1524,7 +1525,7 @@ template<> template<> void media_file_object::test<57>()
     ensure_equals("invalid draft never replaces/stops the player", replacements, 0u);
     ensure_equals("a later runtime failure outranks cached edit", mediaSourceStatus(runtime, error, nextMediaStatusSequence(), edited), runtime);
     ensure_equals("a later valid validation also outranks stale failure",
-        mediaSourceStatus(runtime, "Set. Press Play to start it.", failed, nextMediaStatusSequence()), std::string("Set. Press Play to start it."));
+        mediaSourceStatus(runtime, "Set. Press Enter, Load or Play to start it.", failed, nextMediaStatusSequence()), std::string("Set. Press Enter, Load or Play to start it."));
 }
 
 template<> template<> void media_file_object::test<58>()
@@ -1757,6 +1758,41 @@ template<> template<> void media_file_object::test<64>()
         [&]() { return orphans.covered() && !leased; });
     ensure("successful inventory and lease release allow completion", !clear);
     ensure("owner can acknowledge now", acknowledgeStartupPurge(true, clear, degraded, true, orphans.covered()));
+}
+
+template<> template<> void media_file_object::test<66>()
+{
+    set_test_name("Enter/Load play after commit; focus loss/paste only cue; invalid input never replaces or plays");
+    unsigned replacements = 0, plays = 0;
+    std::string error, order;
+    const auto apply = [&](const Descriptor&) { ++replacements; order += 'C'; return true; };
+    const auto play = [&]() { ++plays; order += 'P'; };
+    const std::string url = "https://example.invalid/clip.mp4";
+    ensure("focus-loss cues", commitVideoAction(url, error, true, false, apply, play));
+    ensure("Paste value cues", commitVideoAction(url, error, true, false, apply, play));
+    ensure_equals("neither cue plays", plays, 0u);
+    ensure("Enter commits then plays", commitVideoAction(url, error, true, true, apply, play));
+    ensure("Load commits then plays", commitVideoAction(url, error, true, true, apply, play));
+    ensure_equals("transport only follows successful commits", order, std::string("CCCPCP"));
+    for (const char* invalid : {"https://example.invalid/page", "rtsp://example.invalid/clip.mp4", "\\\\server\\share\\clip.mp4"})
+        ensure("invalid Enter draft refused", !commitVideoAction(invalid, error, true, true, apply, play));
+    ensure_equals("invalid drafts cannot reach replacement/stop", replacements, 4u);
+    ensure_equals("invalid drafts cannot play", plays, 2u);
+    ensure("refused source commit cannot play", !commitVideoAction(url, error, true, true,
+        [](const Descriptor&) { return false; }, play));
+    ensure_equals("failed apply cannot play", plays, 2u);
+    ensure("empty Enter may clear cue", commitVideoAction("", error, true, true, apply, play));
+    ensure_equals("empty draft never plays", plays, 2u);
+    Transport desired = Transport::PLAYING;
+    unsigned loads = 0;
+    const auto request = [&]() { if (beginVideoPlay(desired)) ++loads; };
+    ensure("same-source Enter accepted", commitVideoAction(url, error, true, true, apply, request));
+    ensure("same-source Load accepted", commitVideoAction(url, error, true, true, apply, request));
+    ensure_equals("playing or pending source never reloads", loads, 0u);
+    ensure("same-source transport keeps playing", desired == Transport::PLAYING);
+    desired = Transport::PAUSED;
+    ensure("paused Enter resumes", commitVideoAction(url, error, true, true, apply, request));
+    ensure_equals("paused source requests transport once", loads, 1u);
 }
 
 template<> template<> void media_file_object::test<65>()

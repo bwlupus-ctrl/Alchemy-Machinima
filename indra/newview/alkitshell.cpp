@@ -1244,7 +1244,16 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
     // revealLegacyWidget (inner tabs, accordions, scroll, highlight).
     if (page)
     {
-        ALKitRow*  row  = !target.widget.empty() ? page->findRow(target.widget) : page->findRowBySetting(target.setting);
+        // Camera/media Name share one search destination. Resolve after the
+        // page is built so a global hit follows its current capture selection.
+        std::string widget = target.widget;
+        if (page->pageKey() == "camera_group/vcam_tab" &&
+            (widget == "vc_camera_name" || widget == "vc_media_name"))
+        {
+            ALKitCard* media = page->findCard("media_source");
+            widget = media && media->codeVisible() ? "vc_media_name" : "vc_camera_name";
+        }
+        ALKitRow*  row  = !widget.empty() ? page->findRow(widget) : page->findRowBySetting(target.setting);
         ALKitCard* card = target.card_id.empty() ? nullptr : page->findCard(target.card_id);
         if (!row && !target.setting.empty())
             row = page->findRowBySetting(target.setting);
@@ -1656,6 +1665,14 @@ void ALKitShell::runSearch(const std::string& query)
     }
     mSearch.setCurrentPage(page->pageKey());
     ALKitSearch::Hits hits = query.empty() ? mSearch.all() : mSearch.query(query);
+    for (auto& hit : hits)
+        if (hit.page_key == "camera_group/vcam_tab" && hit.widget == "vc_camera_name")
+            if (ALKitPage* built = findBuiltPage(hit.page_key))
+                if (ALKitCard* media = built->findCard("media_source"); media && media->codeVisible())
+                {
+                    hit.widget = "vc_media_name";
+                    hit.card_id = "media_source";
+                }
     if (mChangedOnly)
         hits.erase(std::remove_if(hits.begin(), hits.end(),
             [this](const ALKitSearch::Hit& hit)

@@ -440,7 +440,7 @@ inline bool unknownLoopRecovery(const Admission& admission, bool loop, Transport
 inline bool clearDisabledStatus(std::string& reason, bool enabled, bool empty)
 {
     if (!enabled || (reason != "Turn on Virtual Cam to play video" && reason != "Media slots disabled")) return false;
-    reason = empty ? "Enter a direct video URL" : "Set. Press Play to start it.";
+    reason = empty ? "Enter a direct video URL" : "Set. Press Enter, Load or Play to start it.";
     return true;
 }
 inline bool clearPlayStatusOnPolicyChange(std::string& status, bool oldMaster, bool oldSlots, bool master, bool slots)
