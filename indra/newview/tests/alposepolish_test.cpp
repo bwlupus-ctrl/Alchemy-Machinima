@@ -1240,12 +1240,21 @@ void alposepolish_test_object::test<23>()
     {
         InertiaJoint s;
         const F32 dt = 1.f / fps;
+        // Establish velocity before the full-rate history: the first 1 m/s
+        // step at 30 fps exceeds JUMP_POS_BASE while tracked velocity is zero.
+        const F32 seed_dt = dt * 0.5f;
+        LLQuaternion seed_rot = rotZ(-seed_dt);
+        LLVector3 seed_pos(-seed_dt, 0.f, 0.f);
+        inertialize(s, seed_rot, seed_pos, seed_dt, 100.f, 100.f, false);
         for (S32 i = 0; i <= 10; ++i)
         {
             LLQuaternion r = rotZ(i * dt);
             LLVector3 p(i * dt, 0.f, 0.f);
-            inertialize(s, r, p, dt, 100.f, 100.f, false);
+            inertialize(s, r, p, i == 0 ? seed_dt : dt, 100.f, 100.f, false);
         }
+        ensure("pre-seam history is settled", s.mSettled);
+        ensure_distance("pre-seam displayed linear velocity is 1 m/s", s.mDispPosVel.mV[VX], 1.f, 1e-5f);
+        ensure_distance("pre-seam displayed angular velocity is 1 rad/s", s.mDispRotVel.mV[VZ], 1.f, 1e-5f);
         const LLVector3 before_pos = s.mLastPos;
         const LLQuaternion before_rot = s.mLastRot;
         // A >7 degree seam self-detects even with seam repair off / short loops.
