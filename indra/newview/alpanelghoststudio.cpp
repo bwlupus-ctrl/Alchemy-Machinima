@@ -338,6 +338,8 @@ bool ALPanelGhostStudio::postBuild()
     mPosZ      = getChild<LLSpinCtrl>("pos_z_spinner");
     mHeadingDial = getChild<ALCompassDial>("heading_dial");
     mYawSpin   = getChild<LLSpinCtrl>("yaw_spinner");
+    mPitchSpin = getChild<LLSpinCtrl>("pitch_spinner");
+    mRollSpin = getChild<LLSpinCtrl>("roll_spinner");
     mScaleSpin = getChild<LLSpinCtrl>("scale_spinner");
     mChaosCheck = getChild<LLCheckBoxCtrl>("chaos_check");
     mChaosSlider = getChild<LLSliderCtrl>("chaos_slider");
@@ -533,6 +535,7 @@ bool ALPanelGhostStudio::postBuild()
     mShowAllCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onShowAllToggle(); });
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onListSelect(); });
+    for (LLSpinCtrl* spin : {mYawSpin, mPitchSpin, mRollSpin}) spin->setWrap(true);
     mList->setMouseUpCallback(
         [this](LLUICtrl*, S32 x, S32 y, MASK mask) { onListMouseUp(x, y, mask); });
     mList->setDoubleClickCallback([this]() { onListDoubleClick(); });
@@ -550,6 +553,10 @@ bool ALPanelGhostStudio::postBuild()
     mHeadingDial->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onHeadingDialCommit(); });
     mYawSpin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onYawCommit(); });
+    mPitchSpin->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { onRotationCommit(1, mPitchSpin->getValue().asReal()); });
+    mRollSpin->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { onRotationCommit(2, mRollSpin->getValue().asReal()); });
     mScaleSpin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onScaleCommit(); });
     mChaosCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
     mChaosSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
@@ -730,6 +737,8 @@ bool ALPanelGhostStudio::postBuild()
     static const std::pair<const char*, const char*> reset_controls[] =
     {
         { "reset_yaw", "yaw_spinner" },
+        { "reset_pitch", "pitch_spinner" },
+        { "reset_roll", "roll_spinner" },
         { "reset_scale", "scale_spinner" },
         { "reset_effect_fps", "effect_fps_spinner" },
         { "reset_anim_speed", "anim_speed_spinner" },
@@ -919,7 +928,7 @@ LLUUID ALPanelGhostStudio::selectedUnitId() const
     const LLUUID row_value = selectedListValue();
     const ALGhostGroupModel::Group* group =
         ALGhostStudio::instance().groupForMember(row_value);
-    return group && row_value == group->mId
+    return group && (row_value == group->mId || !group->mEditMembers)
         ? group->mId : selectedInstance();
 }
 
@@ -979,7 +988,7 @@ std::vector<LLUUID> ALPanelGhostStudio::selectedUnitIds() const
             continue;
         }
         const LLUUID unit_id =
-            group && row_value == group->mId
+            group && (row_value == group->mId || !group->mEditMembers)
                 ? group->mId : row_value;
         if (unit_id.notNull() && unique.insert(unit_id).second)
         {
@@ -999,7 +1008,7 @@ bool ALPanelGhostStudio::selectedUnitTransform(
         studio.groupForMember(row_value);
     // A group header always represents the group transform, even while its
     // member rows are expanded. Only an explicit child row edits one member.
-    collapsed_group = group && row_value == group->mId;
+    collapsed_group = group && (row_value == group->mId || !group->mEditMembers);
     const LLUUID id = collapsed_group ? group->mId : selectedInstance();
     return id.notNull() &&
            studio.getUnitTransform(id, foot, rotation, scale);
@@ -1509,6 +1518,8 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mPosZ, have);
     setEnabledIfChanged(mHeadingDial, have);
     setEnabledIfChanged(mYawSpin, have);
+    setEnabledIfChanged(mPitchSpin, have);
+    setEnabledIfChanged(mRollSpin, have);
     setEnabledIfChanged(mScaleSpin, have);
     setEnabledIfChanged(mLookTargetCombo, have);
     setEnabledIfChanged(mFaceNowBtn, have);
@@ -1644,6 +1655,7 @@ void ALPanelGhostStudio::refreshDetail()
 
     if (!have)
     {
+        for (LLSpinCtrl* spin : {mYawSpin, mPitchSpin, mRollSpin}) spin->setMixedValue(false);
         if (mShownFor.notNull())
         {
             mShownFor.setNull();
@@ -1659,10 +1671,33 @@ void ALPanelGhostStudio::refreshDetail()
     bool collapsed_group = false;
     selectedUnitTransform(
         unit_foot, unit_rotation, unit_scale, collapsed_group);
-    const LLVector3 unit_forward =
-        LLVector3::x_axis * unit_rotation;
-    const F32 unit_yaw_degrees =
-        atan2f(unit_forward.mV[VY], unit_forward.mV[VX]) * RAD_TO_DEG;
+    if (mRotationSelectionDirty) reseedRotationReferences();
+    const auto unit_angles = rotationAngles(selectedUnitId(), unit_rotation);
+    mDisplayedRotation = unit_angles;
+    const F32 unit_yaw_degrees = (F32)(unit_angles[0] * RAD_TO_DEG);
+    const F32 unit_pitch_degrees = (F32)(unit_angles[1] * RAD_TO_DEG);
+    const F32 unit_roll_degrees = (F32)(unit_angles[2] * RAD_TO_DEG);
+    bool rotation_mixed[3] = {};
+    const auto rotation_ids = selectedUnitIds();
+    // Keep each live unit's Euler branch across selection changes, including
+    // pitches beyond vertical. Only deleted units lose their reference.
+    for (auto it = mRotationReferences.begin(); it != mRotationReferences.end(); )
+    {
+        if (!studio.getInstance(it->first) && !studio.groupForMember(it->first))
+            it = mRotationReferences.erase(it);
+        else ++it;
+    }
+    for (const LLUUID& id : rotation_ids)
+    {
+        LLVector3d foot;
+        LLQuaternion rotation;
+        F32 scale = 1.f;
+        if (!studio.getUnitTransform(id, foot, rotation, scale)) continue;
+        const auto angles = rotationAngles(id, rotation);
+        for (S32 axis = 0; axis < 3; ++axis)
+            rotation_mixed[axis] |= std::fabs(ALGhostRotation::wrap(
+                angles[axis] - unit_angles[axis])) > .005 * DEG_TO_RAD;
+    }
     F32 scale_minimum = GHOST_SCALE_MIN;
     F32 scale_maximum = GHOST_SCALE_MAX;
     const bool have_group_scale_limits =
@@ -1731,6 +1766,11 @@ void ALPanelGhostStudio::refreshDetail()
         setValueIfChanged(mHeadingDial, LLSD((F64)unit_yaw_degrees));
         setValueIfChanged(mYawSpin, LLSD((F64)unit_yaw_degrees));
     }
+    setValueIfChanged(mPitchSpin, LLSD((F64)unit_pitch_degrees));
+    setValueIfChanged(mRollSpin, LLSD((F64)unit_roll_degrees));
+    mYawSpin->setMixedValue(rotation_mixed[0]);
+    mPitchSpin->setMixedValue(rotation_mixed[1]);
+    mRollSpin->setMixedValue(rotation_mixed[2]);
     setValueIfChanged(mKeepFacingCheck, LLSD(inst->mKeepFacing),
                       true);
     if (entity)
@@ -1869,6 +1909,8 @@ void ALPanelGhostStudio::refreshDetail()
         // controls mirrored above only while NOT focused get a forced resync here
         setValueIfChanged(mHeadingDial, LLSD((F64)unit_yaw_degrees), true);
         setValueIfChanged(mYawSpin, LLSD((F64)unit_yaw_degrees), true);
+        setValueIfChanged(mPitchSpin, LLSD((F64)unit_pitch_degrees), true);
+        setValueIfChanged(mRollSpin, LLSD((F64)unit_roll_degrees), true);
         setValueIfChanged(mScaleSpin, LLSD((F64)unit_scale), true);
         setValueIfChanged(mAnimSpeedSpin, LLSD((F64)inst->mAnimSpeed), true);
         setValueIfChanged(mPhysicsCheck, LLSD(inst->mPhysicsEnabled), true);
@@ -2351,40 +2393,110 @@ void ALPanelGhostStudio::onPosCommit()
     }
 }
 
+LLQuaternion ALPanelGhostStudio::rotationEditFrame(const LLUUID& id) const
+{
+    // Member values are offsets from the authored slot, not world Euler angles.
+    // Never modify mAuthoredLocal: transformUnit pins the edited member offset.
+    const auto* group = ALGhostStudio::instance().groupForMember(id);
+    if (group && id != group->mId && group->mEditMembers)
+        for (const auto& member : group->mMembers)
+            if (member.mInstanceId == id)
+                return member.mAuthoredLocal.mRotation * group->mWorld.mRotation;
+    return LLQuaternion::DEFAULT;
+}
+
+ALGhostRotation::Angles ALPanelGhostStudio::rotationAngles(
+    const LLUUID& id, const LLQuaternion& world)
+{
+    const LLQuaternion frame = rotationEditFrame(id);
+    const LLQuaternion edit = world * ~frame;
+    const auto* inst = ALGhostStudio::instance().getInstance(id);
+    const U64 reset_revision = inst ? inst->mRotationResetRevision : 0;
+    auto [it, inserted] = mRotationReferences.try_emplace(id);
+    auto& ref = it->second;
+    const bool reseed = inserted || ref.frame != frame || ref.resetRevision != reset_revision;
+    ref.angles = ALGhostRotation::decompose(
+        {edit.mQ[0], edit.mQ[1], edit.mQ[2], edit.mQ[3]}, ref.angles, !reseed);
+    // World edits can recover the model's authored branch after a selection change.
+    if (reseed && frame == LLQuaternion::DEFAULT && inst)
+        ref.angles = inst->rotationAngles();
+    ref.frame = frame;
+    ref.resetRevision = reset_revision;
+    return ref.angles;
+}
+
+void ALPanelGhostStudio::reseedRotationReferences()
+{
+    // Re-read all selected units on a selection change. Frame/reset validation
+    // happens even when the quaternion happens to be numerically unchanged.
+    for (const LLUUID& id : selectedUnitIds())
+    {
+        LLVector3d foot; LLQuaternion rotation; F32 scale;
+        if (ALGhostStudio::instance().getUnitTransform(id, foot, rotation, scale))
+            rotationAngles(id, rotation);
+    }
+    mRotationSelectionDirty = false;
+}
+
+void ALPanelGhostStudio::onRotationCommit(S32 axis, F64 degrees)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const auto ids = selectedUnitIds();
+    const double requested = ALGhostRotation::wrap(degrees * DEG_TO_RAD);
+    for (const LLUUID& id : ids)
+    {
+        LLVector3d foot;
+        LLQuaternion rotation;
+        F32 scale = 1.f;
+        if (!studio.getUnitTransform(id, foot, rotation, scale)) continue;
+        auto angles = ALGhostRotation::editAxis(rotationAngles(id, rotation), axis,
+            requested, mDisplayedRotation[axis], ids.size() > 1);
+        const auto q = ALGhostRotation::compose(angles);
+        const LLQuaternion edit((F32)q[0], (F32)q[1], (F32)q[2], (F32)q[3]);
+        const LLQuaternion frame = rotationEditFrame(id);
+        // Keep world-facing branches separate from slot/group edit angles.
+        // Read the old world rotation before transformUnit changes members.
+        if (auto* inst = studio.getInstance(id)) inst->rotationAngles();
+        else
+            for (const LLUUID& member_id : studio.groupMembers(id))
+                if (auto* member = studio.getInstance(member_id)) member->rotationAngles();
+        if (applyUnitTransform(id, foot, edit * frame, scale))
+        {
+            mRotationReferences[id] = {angles, frame,
+                studio.getInstance(id) ? studio.getInstance(id)->mRotationResetRevision : 0};
+            if (auto* inst = studio.getInstance(id))
+            {
+                if (!studio.groupForMember(id))
+                {
+                    inst->mHeadingReference = angles;
+                    inst->mHeadingReferenceValid = true;
+                }
+                else inst->rotationAngles();
+            }
+            else if (studio.groupForMember(id))
+            {
+                // A group-frame edit also authors each member's world branch.
+                // Seed it before any facing driver reads the new quaternion.
+                for (const LLUUID& member_id : studio.groupMembers(id))
+                    if (auto* member = studio.getInstance(member_id))
+                    {
+                        member->rotationAngles();
+                    }
+            }
+        }
+    }
+    mDetailDirty = true;
+    refreshDetail(); // refresh backing anchor and mixed state before another wheel notch
+}
+
 void ALPanelGhostStudio::onYawCommit()
 {
-    LLVector3d foot;
-    LLQuaternion rotation;
-    F32 scale = 1.f;
-    bool collapsed_group = false;
-    if (selectedUnitTransform(
-            foot, rotation, scale, collapsed_group))
-    {
-        const F32 yaw_degrees = (F32)mYawSpin->getValue().asReal();
-        mHeadingDial->setValue(yaw_degrees);
-        applySelectedUnitTransform(
-            foot,
-            LLQuaternion(yaw_degrees * DEG_TO_RAD, LLVector3::z_axis),
-            scale);
-    }
+    onRotationCommit(0, mYawSpin->getValue().asReal());
 }
 
 void ALPanelGhostStudio::onHeadingDialCommit()
 {
-    LLVector3d foot;
-    LLQuaternion rotation;
-    F32 scale = 1.f;
-    bool collapsed_group = false;
-    if (selectedUnitTransform(
-            foot, rotation, scale, collapsed_group))
-    {
-        const F32 yaw_degrees = (F32)mHeadingDial->getValue().asReal();
-        mYawSpin->setValue(yaw_degrees);
-        applySelectedUnitTransform(
-            foot,
-            LLQuaternion(yaw_degrees * DEG_TO_RAD, LLVector3::z_axis),
-            scale);
-    }
+    onRotationCommit(0, mHeadingDial->getValue().asReal());
 }
 
 void ALPanelGhostStudio::onLookTargetCommit()
@@ -2422,7 +2534,16 @@ void ALPanelGhostStudio::onClickFaceNow()
     if (ALGhostStudio::Instance* inst =
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
-        ALGhostStudio::instance().faceInstance(inst->mId);
+        ALGhostStudio& studio = ALGhostStudio::instance();
+        if (studio.faceInstance(inst->mId))
+        {
+            // Facing levels the affected instances. Keep unrelated units' Euler
+            // branches, including an unchanged group frame, across this action.
+            mRotationReferences.erase(inst->mId);
+            for (const LLUUID& member_id : studio.groupMembers(inst->mId))
+                mRotationReferences.erase(member_id);
+        }
+        mDetailDirty = true;
         const F32 degrees = inst->getYaw() * RAD_TO_DEG;
         mHeadingDial->setValue(degrees);
         mYawSpin->setValue(degrees);
@@ -2930,8 +3051,25 @@ void ALPanelGhostStudio::onClickAlignFeet()
         F32 scale = 1.f;
         if (!studio.getUnitTransform(id, foot, rotation, scale)) continue;
         foot.mdV[VZ] = z;
-        applyUnitTransform(id, foot, rotation, scale);
+        const auto* group = studio.groupForMember(id);
+        auto angles = rotationAngles(id, rotation);
+        if (group && id != group->mId)
+            angles = ALGhostRotation::decompose(
+                {rotation.mQ[0], rotation.mQ[1], rotation.mQ[2], rotation.mQ[3]},
+                studio.getInstance(id)->rotationAngles());
+        if (applyUnitTransform(id, foot,
+                LLQuaternion((F32)angles[0], LLVector3::z_axis), scale))
+        {
+            if (group && id != group->mId) mRotationReferences.erase(id);
+            else mRotationReferences[id].angles = {angles[0], 0., 0.};
+            if (auto* inst = studio.getInstance(id))
+            {
+                inst->mHeadingReference = {angles[0], 0., 0.};
+                inst->mHeadingReferenceValid = true;
+            }
+        }
     }
+    mDetailDirty = true;
 }
 
 void ALPanelGhostStudio::onClickUpright()
@@ -2943,12 +3081,25 @@ void ALPanelGhostStudio::onClickUpright()
         LLQuaternion rotation;
         F32 scale = 1.f;
         if (!studio.getUnitTransform(id, foot, rotation, scale)) continue;
-        const LLVector3 forward = LLVector3::x_axis * rotation;
-        const F32 yaw = atan2f(
-            forward.mV[VY], forward.mV[VX]);
-        applyUnitTransform(
-            id, foot, LLQuaternion(yaw, LLVector3::z_axis), scale);
+        const auto* group = studio.groupForMember(id);
+        auto angles = rotationAngles(id, rotation);
+        if (group && id != group->mId)
+            angles = ALGhostRotation::decompose(
+                {rotation.mQ[0], rotation.mQ[1], rotation.mQ[2], rotation.mQ[3]},
+                studio.getInstance(id)->rotationAngles());
+        if (applyUnitTransform(id, foot,
+                LLQuaternion((F32)angles[0], LLVector3::z_axis), scale))
+        {
+            if (group && id != group->mId) mRotationReferences.erase(id);
+            else mRotationReferences[id].angles = {angles[0], 0., 0.};
+            if (auto* inst = studio.getInstance(id))
+            {
+                inst->mHeadingReference = {angles[0], 0., 0.};
+                inst->mHeadingReferenceValid = true;
+            }
+        }
     }
+    mDetailDirty = true;
 }
 
 void ALPanelGhostStudio::onClickCopyTransform()

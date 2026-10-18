@@ -36,6 +36,7 @@
 #define AL_ALGHOSTSTUDIO_H
 
 #include "alghostgroupmodel.h"
+#include "alghostrotation.h"
 #include "alghostplacementresolver.h"
 #include "alformationsolver.h"
 #include "lluuid.h"
@@ -391,6 +392,25 @@ public:
         // mYaw is gone: yaw-only UI/gestures go through getYaw()/setYaw(), and
         // full 3-axis editing (the manip proxy) writes mRotation directly.
         LLQuaternion mRotation;
+        // Authored world Euler branch, shared with heading-only drivers.
+        mutable ALGhostRotation::Angles mHeadingReference {};
+        mutable bool mHeadingReferenceValid = false;
+        U64 mRotationResetRevision = 0;
+        ALGhostRotation::Angles rotationAngles() const
+        {
+            mHeadingReference = ALGhostRotation::decompose(
+                {mRotation.mQ[0], mRotation.mQ[1], mRotation.mQ[2], mRotation.mQ[3]},
+                mHeadingReference, mHeadingReferenceValid);
+            mHeadingReferenceValid = true;
+            return mHeadingReference;
+        }
+        LLQuaternion withHeading(F32 heading) const
+        {
+            const auto q = ALGhostRotation::withHeading(
+                {mRotation.mQ[0], mRotation.mQ[1], mRotation.mQ[2], mRotation.mQ[3]},
+                heading, mHeadingReference, mHeadingReferenceValid);
+            return LLQuaternion((F32)q[0], (F32)q[1], (F32)q[2], (F32)q[3]);
+        }
         F32         mScale = 1.f;       // uniform, pivoted at the foot (feet stay planted)
         ELookTarget mLookTarget = LOOK_TARGET_CAMERA;
         LLUUID      mLookTargetId;      // actor/cast id or Ghost Studio instance id
@@ -468,6 +488,9 @@ public:
         void setYaw(F32 yaw_rad)
         {
             mRotation = LLQuaternion(yaw_rad, LLVector3::z_axis);
+            mHeadingReference = {ALGhostRotation::wrap(yaw_rad), 0., 0.};
+            mHeadingReferenceValid = true;
+            ++mRotationResetRevision;
             if (mMotionHasBase) mMotionBaseRotation = mRotation;
             mChaosHasBase = false;
             ++mTransformRevision;

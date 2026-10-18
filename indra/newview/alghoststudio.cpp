@@ -1526,10 +1526,8 @@ bool ALGhostStudio::aimInstanceAt(const LLUUID& id,
             {
                 continue;
             }
-            const LLQuaternion member_rotation(
-                atan2f((F32)member_delta.mdV[VY],
-                       (F32)member_delta.mdV[VX]),
-                LLVector3::z_axis);
+            const LLQuaternion member_rotation = member->withHeading(
+                atan2f((F32)member_delta.mdV[VY], (F32)member_delta.mdV[VX]));
             if (!mGroups.setMemberWorldRotation(
                     member_id, member_rotation))
             {
@@ -1546,8 +1544,7 @@ bool ALGhostStudio::aimInstanceAt(const LLUUID& id,
         return false; // coincident horizontally: retain the last meaningful yaw
     }
     return transformUnit(id, inst->mFootGlobal,
-        LLQuaternion(atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX]),
-                     LLVector3::z_axis),
+        inst->withHeading(atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX])),
         inst->mScale);
 }
 
@@ -1677,7 +1674,7 @@ bool ALGhostStudio::stepTurn(const LLUUID& id, F32 dt)
     static LLCachedControl<F32> turn_ease(gSavedSettings, "GhostStudioTurnEase", 0.25f);
 
     const F32 want = atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX]);
-    const F32 have = inst->getYaw();
+    const F32 have = (F32)inst->rotationAngles()[0];
     // Shortest signed arc, so a turn never takes the long way round.
     F32 diff = want - have;
     while (diff >  F_PI) diff -= F_TWO_PI;
@@ -1686,7 +1683,7 @@ bool ALGhostStudio::stepTurn(const LLUUID& id, F32 dt)
     if (fabsf(diff) < 0.0015f)          // ~0.086 deg
     {
         transformUnit(id, inst->mFootGlobal,
-                      LLQuaternion(want, LLVector3::z_axis), inst->mScale);
+                      inst->withHeading(want), inst->mScale);
         inst->mTurnSettled = true;
         inst->mTurnSettledFoot = inst->mFootGlobal;
         return true;
@@ -1706,7 +1703,7 @@ bool ALGhostStudio::stepTurn(const LLUUID& id, F32 dt)
     const F32 eased = llmin(1.f, fabsf(diff) / ease_band);
     F32 step = llmin(max_step * eased, fabsf(diff));
     return transformUnit(id, inst->mFootGlobal,
-        LLQuaternion(have + (diff > 0.f ? step : -step), LLVector3::z_axis),
+        inst->withHeading(have + (diff > 0.f ? step : -step)),
         inst->mScale);
 }
 
@@ -2058,10 +2055,9 @@ void ALGhostStudio::updatePerFrame()
                     // live update, not just the preview -- otherwise the
                     // first runtime tick snapped the member away from the
                     // heading the user actually authored.
-                    LLQuaternion rotation(
+                    const LLQuaternion rotation = inst.withHeading(
                         atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX]) +
-                            inst.mCrowdFacingYawOffset,
-                        LLVector3::z_axis);
+                            inst.mCrowdFacingYawOffset);
                     if (inst.mGroupId.notNull())
                     {
                         if (mGroups.setMemberWorldRotation(inst.mId, rotation))
@@ -2081,11 +2077,11 @@ void ALGhostStudio::updatePerFrame()
         {
             const F32 phase = (F32)(facing_now - inst.mCrowdFacingStart) *
                               2.5f - (F32)inst.mCrowdSlot * 0.65f;
-            inst.mRotation = LLQuaternion(
+            LLQuaternion rotation = inst.withHeading(
                 inst.mCrowdBaseYaw + inst.mCrowdFacingYawOffset +
-                    sinf(phase) * (35.f * DEG_TO_RAD),
-                LLVector3::z_axis);
-            inst.mRotation.normalize();
+                    sinf(phase) * (35.f * DEG_TO_RAD));
+            rotation.normalize();
+            inst.mRotation = rotation;
             ++inst.mTransformRevision;
             if (inst.mKind == BACKING_ENTITY_CLONE)
                 applyEntityTransform(inst.mId);
@@ -2800,6 +2796,8 @@ bool ALGhostStudio::setGroupEditMembers(const LLUUID& id, bool editing)
     {
         return false;
     }
+    for (const LLUUID& member_id : groupMembers(group->mId))
+        if (Instance* member = getInstance(member_id)) ++member->mRotationResetRevision;
     ++mInstanceRevision; // [GhostPanelPerf] expand/collapse arrow + child rows
     if (!editing)
     {
@@ -2816,6 +2814,11 @@ bool ALGhostStudio::resetGroupMemberOffset(const LLUUID& id)
         return false;
     }
     const ALGhostGroupModel::Group before = *group;
+    if (Instance* member = getInstance(id))
+    {
+        ++member->mRotationResetRevision;
+        member->mHeadingReferenceValid = false;
+    }
     ++mInstanceRevision; // [GhostPanelPerf] resetting an offset clears the member's pin flag
     return mGroups.resetMemberOffset(id) &&
            applyGroupTransforms(before.mId, &before);
@@ -2836,6 +2839,11 @@ bool ALGhostStudio::setGroupMemberPinned(const LLUUID& id, bool pinned)
     // immediate, visible meaning even before a future group reflow.
     if (!pinned)
     {
+        if (Instance* member = getInstance(id))
+        {
+            ++member->mRotationResetRevision;
+            member->mHeadingReferenceValid = false;
+        }
         return mGroups.resetMemberOffset(id) &&
                applyGroupTransforms(group_id, &before);
     }

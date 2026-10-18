@@ -37,6 +37,8 @@
 #include "alpanellensgaze.h"
 #include "alpanelpatheditor.h"
 #include "alghoststudio.h"
+#include "alpanelghoststudio.h"
+#include "llscrolllistitem.h"
 #include "altoolghostedit.h"
 #include "altoolpathedit.h"
 #include "animationexplorer.h"
@@ -97,6 +99,8 @@
 #include "llsdutil.h"
 #include "llsdutil_math.h"
 #include "llspinctrl.h"
+#include "llkeyboard.h"
+#include "alghostrotation.h"
 #include "llstartup.h"
 #include "lltabcontainer.h"
 #include "lltextbox.h"
@@ -131,6 +135,323 @@
 #include <regex>
 #include <set>
 #include <sstream>
+
+// Test-only access to production panel callbacks. Every fixture owns its clones
+// and restores the shared and local selections; no user transform is edited.
+struct ALCloneRotationProbe
+{
+    static bool run(ALPanelGhostStudio& panel, const std::string& mode)
+    {
+        auto& studio = ALGhostStudio::instance();
+        struct NeutralKeyboard : LLKeyboard
+        {
+            bool handleKeyUp(NATIVE_KEY_TYPE, MASK) override { return false; }
+            bool handleKeyDown(NATIVE_KEY_TYPE, MASK) override { return false; }
+            void resetMaskKeys() override {}
+            void scanKeyboard() override {}
+            MASK currentMask(bool) override { return MASK_NONE; }
+        } keyboard;
+        struct RestoreKeyboard
+        {
+            LLKeyboard* saved = gKeyboard;
+            ~RestoreKeyboard() { gKeyboard = saved; }
+        } restore_keyboard;
+        gKeyboard = &keyboard;
+        struct TurnSettings
+        {
+            F32 rate = gSavedSettings.getF32("GhostStudioTurnRate");
+            F32 ease = gSavedSettings.getF32("GhostStudioTurnEase");
+            TurnSettings()
+            {
+                gSavedSettings.setF32("GhostStudioTurnRate",180.f);
+                gSavedSettings.setF32("GhostStudioTurnEase",.25f);
+            }
+            ~TurnSettings()
+            {
+                gSavedSettings.setF32("GhostStudioTurnRate",rate);
+                gSavedSettings.setF32("GhostStudioTurnEase",ease);
+            }
+        };
+        std::unique_ptr<TurnSettings> turn_settings;
+        if (mode == "drivers") turn_settings = std::make_unique<TurnSettings>();
+        struct Fixture
+        {
+            ALPanelGhostStudio& panel;
+            ALGhostStudio& studio;
+            LLUUID selected;
+            std::vector<LLUUID> rows, ids;
+            ~Fixture()
+            {
+                for (const auto& id : ids) studio.removeInstance(id);
+                studio.setSelected(selected);
+                panel.refreshList(true);
+                panel.mList->deselectAllItems(true);
+                for (const auto& id : rows) panel.mList->selectByID(id);
+                panel.noteListSelectionChanged();
+                panel.mDetailDirty = true;
+                panel.refreshDetail();
+            }
+        } fixture {panel, studio, studio.getSelected(), {}, {}};
+        for (auto* item : panel.mList->getAllSelected())
+            fixture.rows.push_back(item->getValue().asUUID());
+        const auto select = [&](const std::vector<LLUUID>& ids)
+        {
+            studio.setSelected(ids.front());
+            panel.refreshList(true);
+            panel.mList->deselectAllItems(true);
+            for (const auto& id : ids) panel.mList->selectByID(id);
+            panel.noteListSelectionChanged();
+            panel.mDetailDirty = true;
+            panel.refreshDetail();
+        };
+        const auto seed = [&](const LLUUID& id, ALGhostRotation::Angles a)
+        {
+            auto* inst = studio.getInstance(id);
+            const auto q = ALGhostRotation::compose(a);
+            const bool ok = studio.transformUnit(id, inst->mFootGlobal,
+                LLQuaternion((F32)q[0], (F32)q[1], (F32)q[2], (F32)q[3]), inst->mScale);
+            inst->mHeadingReference = a;
+            inst->mHeadingReferenceValid = true;
+            return ok;
+        };
+        const auto matches = [&](const LLUUID& id, ALGhostRotation::Angles expected)
+        {
+            const auto* inst = studio.getInstance(id);
+            const auto q = ALGhostRotation::compose(expected);
+            F64 direct=0., negated=0.;
+            for (S32 i=0; i<4; ++i)
+            {
+                direct += std::pow(inst->mRotation.mQ[i]-q[i], 2.);
+                negated += std::pow(inst->mRotation.mQ[i]+q[i], 2.);
+            }
+            return std::min(direct, negated) < 1.e-10;
+        };
+        const auto commit = [&](S32 axis, F64 degrees)
+        {
+            LLSpinCtrl* spin = axis == 0 ? panel.mYawSpin : axis == 1 ? panel.mPitchSpin : panel.mRollSpin;
+            spin->setValue(degrees);
+            spin->onCommit();
+        };
+        for (S32 i=0; i<2; ++i)
+        {
+            auto* inst = studio.addInstance(gAgentAvatarp->getID());
+            if (!inst) return false;
+            fixture.ids.push_back(inst->mId);
+            inst->setFootGlobal(gAgent.getPositionGlobal() + LLVector3d(2.+i, 0., 0.));
+        }
+        const auto a = fixture.ids[0], b = fixture.ids[1];
+        if (mode == "multi")
+        {
+            if (!seed(a,{.3,.4,-.2}) || !seed(b,{-.6,.8,.5})) return false;
+            select({a,b});
+            const auto anchor = panel.mDisplayedRotation;
+            commit(1, (anchor[1]+.1)*RAD_TO_DEG);
+            if (!matches(a,{.3,.5,-.2}) || !matches(b,{-.6,.9,.5}) ||
+                !panel.mPitchSpin->isMixedValue()) return false;
+            commit(1, (panel.mDisplayedRotation[1]+.1)*RAD_TO_DEG);
+            if (!matches(a,{.3,.6,-.2}) || !matches(b,{-.6,1.,.5})) return false;
+            panel.mList->deselectAllItems(true);
+            studio.setSelected(LLUUID::null);
+            panel.noteListSelectionChanged(); panel.mDetailDirty=true; panel.refreshDetail();
+            return !panel.mYawSpin->isMixedValue() && !panel.mPitchSpin->isMixedValue() &&
+                !panel.mRollSpin->isMixedValue();
+        }
+        if (mode == "drivers")
+        {
+            // The legacy yaw-only model reset also reseeds both world and
+            // panel references after an almost inverted authored branch.
+            if (!seed(a,{.3,3.1,3.1})) return false;
+            select({a});
+            studio.getInstance(a)->setYaw(.3f);
+            panel.mDetailDirty=true; panel.refreshDetail();
+            commit(1,1.);
+            if (!matches(a,{.3,DEG_TO_RAD,0.})) return false;
+            const ALGhostRotation::Angles tilted {.3,2.1,-.4};
+            if (!seed(a,tilted)) return false;
+            const LLVector3d target = studio.getInstance(a)->mFootGlobal + LLVector3d(0.,10.,0.);
+            if (!studio.aimInstanceAt(a,target) || !matches(a,{F_PI_BY_TWO,2.1,-.4})) return false;
+            studio.setTurnTarget(a,ALGhostStudio::TURN_MODE_ONCE,ALGhostStudio::LOOK_TARGET_POINT,
+                                 LLUUID::null,target);
+            if (!studio.stepTurn(a,.1f) || !matches(a,{F_PI_BY_TWO,2.1,-.4})) return false;
+            const auto moving_target=studio.getInstance(a)->mFootGlobal+LLVector3d(10.,0.,0.);
+            studio.setTurnTarget(a,ALGhostStudio::TURN_MODE_ONCE,ALGhostStudio::LOOK_TARGET_POINT,
+                                 LLUUID::null,moving_target);
+            if (!studio.stepTurn(a,.1f)) return false;
+            const auto turning=studio.getInstance(a)->rotationAngles();
+            if (std::fabs(turning[0]-F_PI_BY_TWO)<.001 || std::fabs(turning[1]-2.1)>1.e-5 ||
+                std::fabs(turning[2]+.4)>1.e-5 || !studio.aimInstanceAt(a,target)) return false;
+            studio.setTurnTarget(a,ALGhostStudio::TURN_MODE_OFF,ALGhostStudio::LOOK_TARGET_POINT,
+                                 LLUUID::null,target);
+            auto* inst=studio.getInstance(a);
+            inst->mCrowdFacing=ALGhostStudio::FACING_TRACK_SUBJECT;
+            inst->mLookTarget=ALGhostStudio::LOOK_TARGET_POINT;
+            inst->mLookPointGlobal=target;
+            studio.updatePerFrame();
+            if (!matches(a,{F_PI_BY_TWO,2.1,-.4})) return false;
+            inst->mCrowdFacing=ALGhostStudio::FACING_WAVE;
+            studio.updatePerFrame();
+            const auto read=inst->rotationAngles();
+            if (std::fabs(read[1]-2.1)>1.e-5 || std::fabs(read[2]+.4)>1.e-5) return false;
+            inst->mCrowdFacing=ALGhostStudio::FACING_AUTHOR;
+            if (!seed(b,{-.5,-1.9,.6}) || studio.lockGroup({a,b})!=2) return false;
+            for (bool editing : {false,true})
+            {
+                studio.setGroupEditMembers(a,editing);
+                if (!studio.aimInstanceAt(a,target)) return false;
+                for (const auto& id : {a,b})
+                {
+                    auto* member=studio.getInstance(id);
+                    const auto angles=member->rotationAngles();
+                    const F64 pitch=id==a ? 2.1 : -1.9, roll=id==a ? -.4 : .6;
+                    if (std::fabs(angles[1]-pitch)>1.e-5 || std::fabs(angles[2]-roll)>1.e-5) return false;
+                    member->mKeepFacing=true;
+                    member->mLookTarget=ALGhostStudio::LOOK_TARGET_POINT;
+                    member->mLookPointGlobal=target;
+                }
+                studio.updateLookAt();
+                studio.setTurnTarget(a,ALGhostStudio::TURN_MODE_ONCE,ALGhostStudio::LOOK_TARGET_POINT,
+                                     LLUUID::null,target);
+                if (!studio.stepTurn(a,.1f)) return false;
+                studio.setTurnTarget(a,ALGhostStudio::TURN_MODE_ONCE,ALGhostStudio::LOOK_TARGET_POINT,
+                                     LLUUID::null,studio.getInstance(a)->mFootGlobal+LLVector3d(10.,0.,0.));
+                if (!studio.stepTurn(a,.1f)) return false;
+                for (const auto& id : {a,b})
+                {
+                    const auto angles=studio.getInstance(id)->rotationAngles();
+                    if (std::fabs(angles[1]-(id==a ? 2.1 : -1.9))>1.e-5 ||
+                        std::fabs(angles[2]-(id==a ? -.4 : .6))>1.e-5) return false;
+                }
+                studio.setTurnTarget(a,ALGhostStudio::TURN_MODE_OFF,ALGhostStudio::LOOK_TARGET_POINT,
+                                     LLUUID::null,target);
+                for (auto facing : {ALGhostStudio::FACING_TRACK_SUBJECT,ALGhostStudio::FACING_WAVE})
+                {
+                    const LLQuaternion before_a = studio.getInstance(a)->mRotation;
+                    const LLQuaternion before_b = studio.getInstance(b)->mRotation;
+                    for (const auto& id : {a,b})
+                    {
+                        auto* member=studio.getInstance(id);
+                        member->mKeepFacing=false;
+                        member->mCrowdFacing=facing;
+                    }
+                    studio.updatePerFrame();
+                    if (facing == ALGhostStudio::FACING_WAVE &&
+                        (studio.getInstance(a)->mRotation != before_a ||
+                         studio.getInstance(b)->mRotation != before_b)) return false;
+                    for (const auto& id : {a,b})
+                    {
+                        const auto angles=studio.getInstance(id)->rotationAngles();
+                        if (std::fabs(angles[1]-(id==a ? 2.1 : -1.9))>1.e-5 ||
+                            std::fabs(angles[2]-(id==a ? -.4 : .6))>1.e-5) return false;
+                    }
+                }
+            }
+            return true;
+        }
+        if (mode == "member" && !seed(a,{170.*DEG_TO_RAD,120.*DEG_TO_RAD,0.})) return false;
+        if (studio.lockGroup({a,b}) != 2) return false;
+        auto* group=studio.groupForMember(a);
+        if (!group) return false;
+        const LLUUID group_id=group->mId;
+        if (mode == "locked")
+        {
+            select({group_id});
+            const LLVector3d delta=studio.getInstance(b)->mFootGlobal-studio.getInstance(a)->mFootGlobal;
+            commit(1,120.); commit(2,25.);
+            LLVector3d foot; LLQuaternion rotation; F32 scale;
+            if (!studio.getUnitTransform(group_id,foot,rotation,scale)) return false;
+            const auto angles=panel.rotationAngles(group_id,rotation);
+            if (std::fabs(angles[1]*RAD_TO_DEG-120.)>.001 ||
+                std::fabs(angles[2]*RAD_TO_DEG-25.)>.001 ||
+                std::fabs((studio.getInstance(b)->mFootGlobal-studio.getInstance(a)->mFootGlobal).length()-delta.length())>1.e-5) return false;
+            const auto target=studio.getInstance(a)->mFootGlobal+LLVector3d(0.,10.,0.);
+            if (!studio.aimInstanceAt(a,target)) return false;
+            for (const auto& id : {a,b})
+            {
+                const auto member=studio.getInstance(id)->rotationAngles();
+                if (std::fabs(member[1]*RAD_TO_DEG-120.)>.001 ||
+                    std::fabs(member[2]*RAD_TO_DEG-25.)>.001) return false;
+            }
+            return true;
+        }
+        studio.setGroupEditMembers(group_id,true);
+        select({a});
+        if (mode == "align")
+        {
+            if (!seed(a,{30.*DEG_TO_RAD,120.*DEG_TO_RAD,0.})) return false;
+            panel.mDetailDirty=true; panel.refreshDetail();
+            panel.onClickAlignFeet();
+            if (!matches(a,{30.*DEG_TO_RAD,0.,0.})) return false;
+            if (!seed(a,{30.*DEG_TO_RAD,120.*DEG_TO_RAD,.4})) return false;
+            panel.onClickUpright();
+            return matches(a,{30.*DEG_TO_RAD,0.,0.});
+        }
+        // Member commits, selection reseed, near-gimbal F32 read-back, direct
+        // model reset/unpin and changed group frame all use production paths.
+        if (mode == "member")
+        {
+            // The authored slot is 170/120/0; a +1 slot pitch must retain
+            // WORLD 170/121/0, never the equivalent -10/59/180 branch.
+            commit(1,1.);
+            const auto world = studio.getInstance(a)->rotationAngles();
+            for (S32 axis=0; axis<3; ++axis)
+                if (std::fabs(world[axis]*RAD_TO_DEG-(axis==0 ? 170. : axis==1 ? 121. : 0.))>.001)
+                    return false;
+            if (!matches(a,{170.*DEG_TO_RAD,121.*DEG_TO_RAD,0.})) return false;
+            const auto target=studio.getInstance(a)->mFootGlobal+LLVector3d(0.,10.,0.);
+            if (!studio.aimInstanceAt(a,target) ||
+                !matches(a,{F_PI_BY_TWO,121.*DEG_TO_RAD,0.})) return false;
+            if (!seed(a,{170.*DEG_TO_RAD,120.*DEG_TO_RAD,0.})) return false;
+            panel.mDetailDirty=true; panel.refreshDetail();
+            commit(1,1.);
+            panel.onClickUpright();
+            if (!matches(a,{170.*DEG_TO_RAD,0.,0.})) return false;
+            studio.resetGroupMemberOffset(a);
+            panel.mDetailDirty=true; panel.refreshDetail();
+        }
+        for (S32 axis=0; axis<3; ++axis)
+        {
+            auto* spin=axis==0 ? panel.mYawSpin : axis==1 ? panel.mPitchSpin : panel.mRollSpin;
+            commit(axis,180.);
+            if (!spin->handleScrollWheel(0,0,LLScrollDelta(-1,-1.f)) ||
+                std::fabs(spin->getValue().asReal()+179.)>.001) return false;
+            commit(axis,-180.);
+            if (!spin->handleScrollWheel(0,0,LLScrollDelta(1,1.f)) ||
+                std::fabs(spin->getValue().asReal()-179.)>.001) return false;
+            const auto& reference=panel.mRotationReferences.at(a).angles;
+            if (std::fabs(reference[axis])>ALGhostRotation::PI) return false;
+        }
+        commit(0,30.); commit(1,120.); commit(2,20.);
+        select({b}); select({a});
+        if (std::fabs(panel.mPitchSpin->getValue().asReal()-120.)>.001) return false;
+        for (F64 pitch : {-90.001,-90.,-89.999,89.999,90.,90.001})
+        {
+            commit(1,pitch);
+            panel.mDetailDirty=true; panel.refreshDetail();
+            if (std::fabs(panel.mPitchSpin->getValue().asReal()-pitch)>.001 ||
+                std::fabs(panel.mYawSpin->getValue().asReal()-30.)>.001 ||
+                std::fabs(panel.mRollSpin->getValue().asReal()-20.)>.001) return false;
+        }
+        for (bool unpin : {false,true})
+        {
+            commit(1,120.);
+            if (!(unpin ? studio.setGroupMemberPinned(a,false) : studio.resetGroupMemberOffset(a))) return false;
+            panel.mDetailDirty=true; panel.refreshDetail();
+            if (std::fabs(panel.mPitchSpin->getValue().asReal())>.001 ||
+                std::fabs(panel.mYawSpin->getValue().asReal())>.001 ||
+                std::fabs(panel.mRollSpin->getValue().asReal())>.001) return false;
+            commit(1,1.);
+            if (std::fabs(panel.mYawSpin->getValue().asReal())>.001) return false;
+        }
+        studio.resetGroupMemberOffset(a);
+        group=studio.groupForMember(a);
+        const auto frame=ALGhostRotation::compose({.7,.4,.2});
+        if (!studio.transformGroup(group_id,group->mWorld.mFoot,
+                LLQuaternion((F32)frame[0],(F32)frame[1],(F32)frame[2],(F32)frame[3]),group->mWorld.mScale)) return false;
+        panel.mDetailDirty=true; panel.refreshDetail();
+        return std::fabs(panel.mPitchSpin->getValue().asReal())<.001 &&
+            std::fabs(panel.mYawSpin->getValue().asReal())<.001;
+    }
+};
 
 namespace
 {
@@ -3139,6 +3460,120 @@ private:
         return ok;
     }
 
+    // ui-draw-lint: allow-function(raw-write) isolated native input fixture
+    bool functionalCloneRotationWheel()
+    {
+        struct WheelRow : ALKitRow
+        {
+            explicit WheelRow(const Params& params) : ALKitRow(params) {}
+        };
+        // Synchronous fixture: exercise native modifier reads without sending
+        // key events to the viewer or changing the user's physical key state.
+        struct WheelKeyboard : LLKeyboard
+        {
+            bool handleKeyUp(NATIVE_KEY_TYPE, MASK) override { return false; }
+            bool handleKeyDown(NATIVE_KEY_TYPE, MASK) override { return false; }
+            void resetMaskKeys() override {}
+            void scanKeyboard() override {}
+            MASK currentMask(bool) override { return MASK_NONE; }
+            void modifiers(MASK mask)
+            {
+                mKeyLevel[KEY_SHIFT] = (mask & MASK_SHIFT) != 0;
+                mKeyLevel[KEY_CONTROL] = (mask & MASK_CONTROL) != 0;
+                mKeyLevel[KEY_ALT] = (mask & MASK_ALT) != 0;
+            }
+        } keyboard;
+        struct KeyboardRestore
+        {
+            LLKeyboard* saved = gKeyboard;
+            ~KeyboardRestore() { gKeyboard = saved; }
+        } restore;
+        gKeyboard = &keyboard;
+        for (const char* name : {"pos_x_spinner", "pos_y_spinner", "pos_z_spinner",
+                                 "yaw_spinner", "pitch_spinner", "roll_spinner"})
+        {
+            const bool position = std::string(name).find("pos_") == 0;
+            const F64 increment = position ? .1 : 1.;
+            ALKitRow::Params params;
+            params.kind = "number";
+            params.widget = name;
+            params.bind = "code";
+            params.widget_history = false;
+            auto row = std::make_unique<WheelRow>(params);
+            LLSpinCtrl::Params spin_params;
+            spin_params.name = name;
+            spin_params.rect = LLRect(0, 24, 100, 0);
+            spin_params.min_value = -180.f;
+            spin_params.max_value = 180.f;
+            spin_params.increment = (F32)increment;
+            spin_params.decimal_digits = 2;
+            LLSpinCtrl* spin = LLUICtrlFactory::create<LLSpinCtrl>(spin_params);
+            spin->setWrap(!position);
+            row->addChild(spin);
+            if (!row->postBuild()) return false;
+            row->reshape(700, 36);
+            S32 commits = 0;
+            spin->setCommitCallback([&commits](LLUICtrl*, const LLSD&) { ++commits; });
+            const LLRect rect = spin->getRect();
+            const auto wheel = [&](S32 clicks, F64 expected, S32 expected_commits)
+            {
+                return row->handleScrollWheel(rect.getCenterX(), rect.getCenterY(),
+                           LLScrollDelta(clicks, (F32)clicks)) &&
+                    std::fabs(spin->getValue().asReal() - expected) < .001 &&
+                    commits == expected_commits && !spin->isMixedValue();
+            };
+            for (MASK mask : {MASK_NONE, MASK_SHIFT, MASK_CONTROL, MASK_ALT,
+                              MASK_SHIFT | MASK_CONTROL | MASK_ALT})
+            {
+                keyboard.modifiers(mask);
+                const F64 multiplier = (mask & MASK_SHIFT) ? .01 :
+                    (mask & MASK_CONTROL) ? .1 : (mask & MASK_ALT) ? 10. : 1.;
+                // Native precision rounds position Shift steps (.001) to .00.
+                const F64 step = std::floor(increment * multiplier * 100. + .5) / 100.;
+                spin->setValue(20.);
+                spin->setMixedValue(true);
+                commits = 0;
+                if (!wheel(-1, 20. + step, 1) || !wheel(1, 20., 2) ||
+                    !wheel(-3, 20. + 3. * step, 5)) return false;
+            }
+            keyboard.modifiers(MASK_NONE);
+            // Focused mixed refreshes must preserve typed text. Native arrows
+            // then step from the editor, rather than the stale backing value.
+            LLLineEditor* editor = nullptr;
+            for (auto* child : *spin->getChildList())
+                if (auto* line = dynamic_cast<LLLineEditor*>(child)) editor = line;
+            if (!editor) return false;
+            LLFocusableElement* saved_focus = gFocusMgr.getKeyboardFocus();
+            spin->setValue(20.);
+            spin->setMixedValue(true);
+            spin->setFocus(true);
+            // Clicking into a mixed field must show the number, not the
+            // placeholder, so a step works before any typing.
+            const bool focused_numeric = !spin->isMixedValue() && editor->getText() != "mixed" &&
+                std::fabs(std::atof(editor->getText().c_str()) - 20.) < .001;
+            if (!focused_numeric) { gFocusMgr.setKeyboardFocus(saved_focus); return false; }
+            editor->setText(LLStringExplicit("42"));
+            spin->setMixedValue(true);
+            commits = 0;
+            const bool typed_up = editor->getText()=="42" && !spin->isMixedValue() &&
+                spin->handleKeyHere(KEY_UP,MASK_NONE) &&
+                std::fabs(spin->getValue().asReal()-(42.+increment))<.001 && commits==1;
+            editor->setText(LLStringExplicit("37"));
+            spin->setMixedValue(true);
+            const bool typed_down = editor->getText()=="37" && !spin->isMixedValue() &&
+                spin->handleKeyHere(KEY_DOWN,MASK_NONE) &&
+                std::fabs(spin->getValue().asReal()-(37.-increment))<.001 && commits==2;
+            gFocusMgr.setKeyboardFocus(saved_focus);
+            if (!typed_up || !typed_down) return false;
+            spin->setValue(180.);
+            commits = 0;
+            if (!wheel(-1, position ? 180. : -179., 1)) return false;
+            spin->setValue(-180.);
+            if (!wheel(1, position ? -180. : 179., 2)) return false;
+        }
+        return true;
+    }
+
     // ui-draw-lint: allow-function(setting,lookup,raw-write) isolated test-only prerequisite setup
     bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
     {
@@ -3169,6 +3604,12 @@ private:
             if (instance)
             {
                 mFunctionalGhostFixture = instance->mId;
+                if (entry["probe"].asString() == "clone_rotation")
+                {
+                    const auto q = ALGhostRotation::compose({.31, .27, -.44});
+                    studio.transformUnit(instance->mId, instance->mFootGlobal,
+                        LLQuaternion((F32)q[0], (F32)q[1], (F32)q[2], (F32)q[3]), instance->mScale);
+                }
                 studio.setSelected(instance->mId);
                 if (prerequisite == "ghost_selected_entity")
                     studio.setInstanceDriveMode(instance->mId, ALGhostStudio::DRIVE_DIRECTED);
@@ -6566,6 +7007,19 @@ private:
             mFunctionalDanceStatusRevisionBefore =
                 ALDanceBall::instance().statusRevision();
         }
+        else if (owner_probe == "clone_rotation")
+        {
+            mFunctionalOwnerModelBefore = LLSD::emptyMap();
+            const ALGhostStudio& studio = ALGhostStudio::instance();
+            if (const auto* clone = studio.getInstance(studio.getSelected()))
+            {
+                mFunctionalOwnerModelBefore["id"] = clone->mId;
+                for (F32 component : clone->mRotation.mQ)
+                    mFunctionalOwnerModelBefore["rotation"].append(component);
+                mFunctionalOwnerModelBefore["foot"] = ll_sd_from_vector3d(clone->mFootGlobal);
+                mFunctionalOwnerModelBefore["scale"] = clone->mScale;
+            }
+        }
         else if (owner_probe == "ghost_owner")
         {
             mFunctionalOwnerModelBefore = LLSD::emptyMap();
@@ -7095,6 +7549,27 @@ private:
             const bool passed = functionalGateLifecycle(entry["gate_seam"].asString());
             addFunctionalResult(entry, passed ? "PASS" : "FAIL", passed ? "production Gate helper oracle; native panel controls have separate probes" : "Gate model oracle failed");
             ++mFunctionalIndex; return;
+        }
+        if (entry["probe"].asString() == "clone_rotation_rows")
+        {
+            if (!mInWorld || !gAgentAvatarp)
+                addFunctionalResult(entry, "DEFER_INWORLD", "disposable clone row fixture requires a region");
+            else
+            {
+                auto* panel = findFirstView<ALPanelGhostStudio>(mFunctionalPageRoot);
+                const bool passed = panel && ALCloneRotationProbe::run(*panel, entry["rotation_mode"].asString());
+                addFunctionalResult(entry, passed ? "PASS" : "FAIL", "production clone panel/model fixture: " + entry["rotation_mode"].asString());
+            }
+            ++mFunctionalIndex; return;
+        }
+        if (entry["probe"].asString() == "clone_rotation_wheel")
+        {
+            const bool passed = functionalCloneRotationWheel();
+            addFunctionalResult(entry, passed ? "PASS" : "FAIL",
+                passed ? "kit rows dispatched X/Y/Z/Yaw/Pitch/Roll wheel steps, modifiers, limits and mixed-value commits"
+                       : "kit/spinner wheel step or commit mismatch");
+            ++mFunctionalIndex;
+            return;
         }
         if (entry["probe"].asString() == "vcam_media_lifecycle")
         {
@@ -7837,6 +8312,43 @@ private:
             observable = owner_ok;
             expected_ok = expected_ok && owner_ok;
             if (!owner_ok) assertion_failure = "dance control did not move its ALDanceBall owner state";
+        }
+        else if (owner_probe == "clone_rotation")
+        {
+            const ALGhostStudio& studio = ALGhostStudio::instance();
+            const auto* clone = studio.getInstance(studio.getSelected());
+            const LLSD& before = mFunctionalOwnerModelBefore["rotation"];
+            F64 delta = 0., orientation_error = 1.;
+            bool owner_ok = clone && before.size() == 4 &&
+                clone->mId == mFunctionalOwnerModelBefore["id"].asUUID();
+            if (owner_ok)
+            {
+                ALGhostRotation::Quaternion original;
+                for (S32 i = 0; i < 4; ++i)
+                {
+                    original[i] = before[i].asReal();
+                    delta += std::fabs(clone->mRotation.mQ[i] - original[i]);
+                }
+                auto requested = ALGhostRotation::decompose(original);
+                const S32 axis = widget_name == "pitch_spinner" ? 1 : widget_name == "roll_spinner" ? 2 : 0;
+                requested[axis] = entry["test_value"].asReal() * DEG_TO_RAD;
+                const auto expected = ALGhostRotation::compose(requested);
+                F64 direct = 0., negated = 0.;
+                for (S32 i = 0; i < 4; ++i)
+                {
+                    direct += std::pow(clone->mRotation.mQ[i] - expected[i], 2.);
+                    negated += std::pow(clone->mRotation.mQ[i] + expected[i], 2.);
+                }
+                orientation_error = std::sqrt(std::min(direct, negated));
+                owner_ok = delta > .000001 && orientation_error < .00001 &&
+                    (clone->mFootGlobal - ll_vector3d_from_sd(mFunctionalOwnerModelBefore["foot"])).length() < .000001 &&
+                    std::fabs(clone->mScale - mFunctionalOwnerModelBefore["scale"].asReal()) < .000001;
+            }
+            mFunctionalObserved["clone_rotation"]["quaternion_delta"] = delta;
+            mFunctionalObserved["clone_rotation"]["orientation_error"] = orientation_error;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure = "rotation spinner failed the requested-axis quaternion or foot/scale preservation oracle";
         }
         else if (owner_probe == "ghost_owner")
         {

@@ -423,6 +423,8 @@
     "pos_y_spinner": {"no_widget_history": true},
     "pos_z_spinner": {"no_widget_history": true},
     "yaw_spinner": {"no_widget_history": true},
+    "pitch_spinner": {"no_widget_history": true},
+    "roll_spinner": {"no_widget_history": true},
     "heading_dial": {"no_widget_history": true},
     "scale_spinner": {"no_widget_history": true},
     "look_target_combo": {"no_widget_history": true},

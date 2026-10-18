@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `142461b9ba1ecb16` (1816 interactive rows); 36
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1336 | 38 | 300 | 50 | 96 | 1 | 1821 |
-| v2 | 1699 | 0 | 446 | 70 | 0 | 12 | 2227 |
+| v2 | 1700 | 0 | 453 | 70 | 0 | 12 | 2235 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
@@ -29,7 +29,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | move_tab (Move) | cast_group | 9 | 0 | 5 | 2 | 0 | 0 | 13 | 0 | 5 | 3 | 0 | 0 |
 | path_tab (Path) | cast_group | 31 | 0 | 21 | 3 | 0 | 0 | 40 | 0 | 21 | 4 | 0 | 1 |
 | props_tab (Props) | cast_group | 18 | 0 | 10 | 3 | 0 | 0 | 20 | 0 | 10 | 3 | 0 | 0 |
-| ghosts_tab (Ghosts) | cast_group | 62 | 0 | 48 | 2 | 0 | 0 | 76 | 0 | 48 | 4 | 0 | 0 |
+| ghosts_tab (Ghosts) | cast_group | 62 | 0 | 48 | 2 | 0 | 0 | 77 | 0 | 55 | 4 | 0 | 0 |
 | dance_tab (Dance) | cast_group | 29 | 0 | 38 | 9 | 0 | 0 | 37 | 0 | 38 | 9 | 0 | 0 |
 | animate_tab (Animate) | performance_group | 6 | 0 | 12 | 1 | 0 | 1 | 11 | 0 | 12 | 2 | 0 | 1 |
 | switchboard_tab (Switchboard) | performance_group | 14 | 0 | 14 | 0 | 0 | 0 | 19 | 0 | 14 | 1 | 0 | 0 |
@@ -124,6 +124,12 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | weather_master | v1 | weather_tab | weather_enabled | toggle | AlchemyWeatherEnabled = true |
 | rain_gate | v1 | weather_tab | weather_rain_enabled | toggle | AlchemyWeatherRainEnabled = false |
 | preset_strip | v1 | light_rim_tab | cine_rig_rim_preset | select_item | CineRigRimMasterGain = 0.6 |
+| clone_rotation_wheel | v2 | ghosts_tab | clone_rotation_wheel | wheel_step | {"ui": "kit row wheel reaches native spinner, exact Yaw step/modifiers and mixed reset"} |
+| clone_rotation_rows | v2 | ghosts_tab | clone_rotation_member | rotation_rows | {"owner": "native rows preserve rotation branches, relative deltas and tilt"} |
+| clone_rotation_rows | v2 | ghosts_tab | clone_rotation_locked | rotation_rows | {"owner": "native rows preserve rotation branches, relative deltas and tilt"} |
+| clone_rotation_rows | v2 | ghosts_tab | clone_rotation_multi | rotation_rows | {"owner": "native rows preserve rotation branches, relative deltas and tilt"} |
+| clone_rotation_rows | v2 | ghosts_tab | clone_rotation_align | rotation_rows | {"owner": "native rows preserve rotation branches, relative deltas and tilt"} |
+| clone_rotation_rows | v2 | ghosts_tab | clone_rotation_drivers | rotation_rows | {"owner": "native rows preserve rotation branches, relative deltas and tilt"} |
 
 Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to equal 0 to 3 in turn. Synthetic rows are programmatic (ALKitCard, ALKitPage, ALKitPresets) and have no CSV row.
 

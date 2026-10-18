@@ -1423,6 +1423,27 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
         finish_synthetic(e, "RUN", "", [], True,
                          {"ui": "matching VCam signal-chain section is visible"}, None)
         out.append(e)
+    e = base_entry(page_meta, "ghosts_tab", "v2", "synthetic:clone_rotation_wheel")
+    e.update(id="v2:ghosts_tab:clone_rotation_wheel:synthetic", csv_index=None,
+             card="ghost_position", card_title="Position", row_label="Rotation wheel step",
+             widget_name="clone_rotation_wheel", widget_type="spinner", exercise="wheel_step",
+             setting=None, owner="ALKitRow / LLSpinCtrl", probe="clone_rotation_wheel",
+             resolution="isolated_native_kit_row", wiring_status="SYNTHETIC")
+    finish_synthetic(e, "RUN", "", [], 1,
+                     {"ui": "kit row wheel reaches native spinner, exact Yaw step/modifiers and mixed reset"}, None)
+    out.append(e)
+
+    for mode in ("member", "locked", "multi", "align", "drivers"):
+        e = base_entry(page_meta, "ghosts_tab", "v2", "synthetic:clone_rotation_" + mode)
+        e.update(id="v2:ghosts_tab:clone_rotation_" + mode + ":synthetic", csv_index=None,
+                 card="ghost_position", card_title="Position", row_label="Rotation " + mode,
+                 widget_name="clone_rotation_" + mode, widget_type="spinner", exercise="rotation_rows",
+                 setting=None, owner="ALPanelGhostStudio / ALGhostStudio", probe="clone_rotation_rows",
+                 rotation_mode=mode, resolution="disposable_native_clone_rows", wiring_status="SYNTHETIC")
+        finish_synthetic(e, "DEFER_INWORLD", "disposable clones require a region", ["requires_world"], None,
+                         {"owner": "native rows preserve rotation branches, relative deltas and tilt"}, None)
+        out.append(e)
+
     return out
 
 
@@ -1806,6 +1827,10 @@ def add_runtime_prerequisites(entries):
                 entry.setdefault("reveal", []).append({"selector": "vc_output_aspect", "value": -1})
         elif page == "gaze_tab" and not entry.get("setting"):
             condition = "actor selected"
+        elif page == "ghosts_tab" and widget in {"pitch_spinner", "roll_spinner"}:
+            condition = "clone selected"
+            entry.update(probe="clone_rotation", prereq="ghost_selected_formation", known_gap=False)
+            entry.pop("no_state_oracle", None)
         elif page == "ghosts_tab" and widget in {
                 "animation_library_combo", "array_parameter_spinner", "formation_motion_combo",
                 "brigade_columns_spinner", "brigade_rows_spinner", "brigade_file_spacing_spinner",
@@ -2222,6 +2247,16 @@ def generation_self_test():
     darkness = [row for row in kit if row["widget_name"] in
                 {"cine_night_mask_darkness", "cine_easy_night_mask_darkness"}]
     assert len(darkness) == 2 and all(row["test_value"] == 1 and row["expect"]["value"] == .99 for row in darkness)
+    rotations = [{"page": "ghosts_tab", "widget_name": axis + "_spinner", "action": "RUN"}
+                 for axis in ("pitch", "roll")]
+    add_runtime_prerequisites(rotations)
+    assert all(e["probe"] == "clone_rotation" and e["action"] == "DEFER_INWORLD"
+               and e["prereq"] == "ghost_selected_formation" for e in rotations)
+    assert len([e for e in selectors if e.get("probe") == "clone_rotation_wheel"]) == 1
+    rotation_rows = [e for e in selectors if e.get("probe") == "clone_rotation_rows"]
+    assert {e["rotation_mode"] for e in rotation_rows} == {"member", "locked", "multi", "align", "drivers"}
+    assert len(rotation_rows) == 5 and all(e["action"] == "DEFER_INWORLD" and
+        "requires_world" in e["hazards"] for e in rotation_rows)
     print("director_functional_manifest generation self-test: PASS")
 
 

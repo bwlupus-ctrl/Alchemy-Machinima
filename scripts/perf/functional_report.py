@@ -2030,7 +2030,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                       "cine_fx_stop", "cine_live_probe_refresh", "vc_snap_view",
                       "vc_face_list", "vc_camera_selector", "vcam_media", "actor_mover_active",
                       "actor_style_reset", "exposure_history", "launcher",
-                      "dance_owner", "prop_owner", "path_owner", "path_selection", "ghost_owner",
+                      "dance_owner", "prop_owner", "path_owner", "path_selection", "ghost_owner", "clone_rotation",
                       "gaze_slot", "gaze_cast_target", "list_owner",
                       "flycam_stop",
                   }):

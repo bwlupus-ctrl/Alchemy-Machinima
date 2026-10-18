@@ -22,6 +22,7 @@
 
 #include "llpanel.h"
 #include "alghoststudio.h"
+#include "alghostrotation.h"
 
 #include "alscrollfit.h"
 #include "aluirefresh.h"            // [GhostPanelPerf] revision gates + live clocks
@@ -30,6 +31,7 @@
 #include "v3dmath.h"
 #include "llquaternion.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -60,6 +62,7 @@ public:
     void onVisibilityChange(bool new_visibility) override;
 
 private:
+    friend struct ALCloneRotationProbe;
     ALScrollFit::Controller mScrollFit;
 
     // ---- refreshers ----
@@ -120,7 +123,7 @@ private:
         bool mAnyEntity = false;        // any selected entity clone with a runtime id
     };
     const SelectionCache& selection();
-    void noteListSelectionChanged() { ++mSelectionEpoch; }
+    void noteListSelectionChanged() { ++mSelectionEpoch; mRotationSelectionDirty = true; }
     SelectionCache mSel;
     U64 mSelectionEpoch = 1;
 
@@ -151,6 +154,19 @@ private:
     void onPosCommit();             // X/Y/Z spinners -> foot position
     void onHeadingDialCommit();     // live dial -> yaw + exact-entry spinner
     void onYawCommit();
+    void onRotationCommit(S32 axis, F64 degrees);
+    LLQuaternion rotationEditFrame(const LLUUID& id) const;
+    ALGhostRotation::Angles rotationAngles(const LLUUID& id, const LLQuaternion& world);
+    struct RotationReference
+    {
+        ALGhostRotation::Angles angles {};
+        LLQuaternion frame;
+        U64 resetRevision = 0;
+    };
+    std::map<LLUUID, RotationReference> mRotationReferences;
+    bool mRotationSelectionDirty = false;
+    ALGhostRotation::Angles mDisplayedRotation {}; // backing anchor before a native commit
+    void reseedRotationReferences();
     void onScaleCommit();
     void onChaosCommit();
     void onAnimSpeedCommit();
@@ -314,6 +330,8 @@ private:
     LLSpinCtrl*       mPosZ = nullptr;
     ALCompassDial*    mHeadingDial = nullptr;
     LLSpinCtrl*       mYawSpin = nullptr;
+    LLSpinCtrl*       mPitchSpin = nullptr;
+    LLSpinCtrl*       mRollSpin = nullptr;
     LLSpinCtrl*       mScaleSpin = nullptr;
     LLCheckBoxCtrl*   mChaosCheck = nullptr;
     LLSliderCtrl*     mChaosSlider = nullptr;

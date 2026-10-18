@@ -88,6 +88,10 @@ public:
 
     virtual void    onTabInto();
 
+    void            setWrap(bool wrap) { mWrap = wrap; } // opt-in cyclic range; default clamps
+    bool            getWrap() const { return mWrap; }
+    void            setMixedValue(bool mixed); // show mixed; wheel starts at backing value
+    bool            isMixedValue() const { return mMixedValue; }
     virtual void    setTentative(bool b);           // marks value as tentative
     virtual void    onCommit();                     // mark not tentative, then commit
 
@@ -107,6 +111,7 @@ public:
     const LLColor4& getDisabledTextColor() const { return mTextDisabledColor.get(); }
 
 private:
+    F32             constrainValue(F32 value) const;
     void            updateLabelColor();
     void            updateEditor();
     void            reportInvalidData();
@@ -123,6 +128,8 @@ private:
 
     bool            mbHasBeenSet;
     bool            mAllowEdit;
+    bool            mMixedValue = false;
+    bool            mWrap = false;
 };
 
 #endif  // LL_LLSPINCTRL_H

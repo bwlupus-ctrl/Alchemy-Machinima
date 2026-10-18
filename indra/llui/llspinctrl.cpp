@@ -185,10 +185,29 @@ F32 clamp_precision(F32 value, S32 decimal_precision)
 }
 
 
+F32 LLSpinCtrl::constrainValue(F32 value) const
+{
+    const F32 span = mMaxValue - mMinValue;
+    if (mWrap && span > 0.f && std::isfinite(value))
+    {
+        // Keep either endpoint when entered exactly; crossing it wraps with
+        // the overshoot intact (180 + 1 -> -179, -180 - 1 -> 179).
+        if (value > mMaxValue || value < mMinValue)
+        {
+            value = std::fmod(value - mMinValue, span);
+            if (value < 0.f) value += span;
+            value += mMinValue;
+        }
+        return value;
+    }
+    return llclamp(value, mMinValue, mMaxValue);
+}
+
 void LLSpinCtrl::onUpBtn( const LLSD& data )
 {
     if( getEnabled() )
     {
+        setMixedValue(false);
         std::string text = mEditor->getText();
         if( LLLineEditor::postvalidateFloat( text ) )
         {
@@ -209,9 +228,7 @@ void LLSpinCtrl::onUpBtn( const LLSD& data )
             }
 
             val = clamp_precision(val, mPrecision);
-            val = llmin( val, mMaxValue );
-            if (val < mMinValue) val = mMinValue;
-            if (val > mMaxValue) val = mMaxValue;
+            val = constrainValue(val);
 
             F32 saved_val = (F32)getValue().asReal();
             setValue(val);
@@ -233,6 +250,7 @@ void LLSpinCtrl::onDownBtn( const LLSD& data )
 {
     if( getEnabled() )
     {
+        setMixedValue(false);
         std::string text = mEditor->getText();
         if( LLLineEditor::postvalidateFloat( text ) )
         {
@@ -252,10 +270,7 @@ void LLSpinCtrl::onDownBtn( const LLSD& data )
             }
 
             val = clamp_precision(val, mPrecision);
-            val = llmax( val, mMinValue );
-
-            if (val < mMinValue) val = mMinValue;
-            if (val > mMaxValue) val = mMaxValue;
+            val = constrainValue(val);
 
             F32 saved_val = (F32)getValue().asReal();
             setValue(val);
@@ -279,6 +294,7 @@ void LLSpinCtrl::onEditorGainFocus( LLFocusableElement* caller, void *userdata )
     LLSpinCtrl* self = (LLSpinCtrl*) userdata;
     llassert( caller == self->mEditor );
 
+    self->setMixedValue(false);
     self->onFocusReceived();
 }
 
@@ -289,6 +305,11 @@ void LLSpinCtrl::onEditorLostFocus( LLFocusableElement* caller, void *userdata )
     llassert( caller == self->mEditor );
 
     self->onFocusLost();
+    if (self->mMixedValue)
+    {
+        self->updateEditor();
+        return;
+    }
 
     std::string text = self->mEditor->getText();
 
@@ -354,6 +375,11 @@ void LLSpinCtrl::updateLabelColor()
 void LLSpinCtrl::updateEditor()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LLSpinCtrl::updateEditor");
+    if (mMixedValue && !mEditor->hasFocus())
+    {
+        mEditor->setText(LLStringExplicit("mixed"));
+        return;
+    }
     LLLocale locale(LLLocale::USER_LOCALE);
 
     // Don't display very small negative valu   es as -0.000
@@ -380,8 +406,7 @@ void LLSpinCtrl::onEditorCommit( const LLSD& data )
         LLLocale locale(LLLocale::USER_LOCALE);
         F32 val = (F32) atof(text.c_str());
 
-        if (val < mMinValue) val = mMinValue;
-        if (val > mMaxValue) val = mMaxValue;
+        val = constrainValue(val);
 
         F32 saved_val = getValueF32();
         setValue(val);
@@ -430,6 +455,20 @@ void LLSpinCtrl::setEnabled(bool b)
 }
 
 
+void LLSpinCtrl::setMixedValue(bool mixed)
+{
+    // A detail refresh must not replace text being edited, or make the next
+    // Up/Down discard that text when it clears mixed state.
+    if (mixed && mEditor->hasFocus()) return;
+    if (mMixedValue == mixed) return;
+    mMixedValue = mixed;
+    setTentative(mixed);
+    // Mixed is never entered while focused (returned above), so a focused
+    // editor clearing mixed still shows only the placeholder: replace it with
+    // the number so the wheel/arrows/typing work immediately after a click.
+    updateEditor();
+}
+
 void LLSpinCtrl::setTentative(bool b)
 {
     mEditor->setTentative(b);
@@ -446,6 +485,7 @@ bool LLSpinCtrl::isMouseHeldDown() const
 
 void LLSpinCtrl::onCommit()
 {
+    setMixedValue(false);
     setTentative(false);
     setControlValue(getValueF32());
     LLF32UICtrl::onCommit();

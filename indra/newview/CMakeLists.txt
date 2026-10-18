@@ -1294,6 +1294,7 @@ set(viewer_HEADER_FILES
     alvcamautovol.h
     alweathermodel.h
     alghostgroupmodel.h
+    alghostrotation.h
     alghostinteractionstate.h
     alghostplacementresolver.h
     alghostplacementadapter.h
