@@ -102,11 +102,11 @@ void ALVCamPageModel::markDirty(U32 dirty)
     if (mIdleQueued) return;
     mIdleQueued = true;
     const std::weak_ptr<bool> alive(mAlive);
-    doOnIdleOneTime([this, alive]()
+    doOnIdleRepeating([this, alive]()
     {
         const std::shared_ptr<bool> token = alive.lock();
-        if (!token || !*token) return;
-        onIdleRefresh(alive);
+        if (!token || !*token) return true;
+        return onIdleRefresh(alive);
     });
 }
 
@@ -118,17 +118,22 @@ void ALVCamPageModel::setPageVisible(bool visible)
         refreshNow(mDirty ? mDirty : DIRTY_ALL);
 }
 
-void ALVCamPageModel::onIdleRefresh(const std::weak_ptr<bool>& alive)
+bool ALVCamPageModel::onIdleRefresh(const std::weak_ptr<bool>& alive)
 {
     const std::shared_ptr<bool> token = alive.lock();
-    if (!token || !*token) return;
+    if (!token || !*token) return true;
+    if (!mPageVisible || !mDirty) { mIdleQueued = false; return true; }
+    const U32 volatile_dirty = DIRTY_RUNTIME | DIRTY_PERFORMANCE | DIRTY_PREVIEW;
+    if (!(mDirty & ~volatile_dirty) && LLTimer::getTotalSeconds() < mNextRuntimeRefresh)
+        return false; // same registered callback, once per idle; no requeue/spin
     mIdleQueued = false;
-    if (!mPageVisible) return;
     refreshNow(mDirty);
+    return true;
 }
 
 void ALVCamPageModel::refreshNow(U32 dirty)
 {
+    mNextRuntimeRefresh = LLTimer::getTotalSeconds() + .25;
     LLPrismLens::ProjectorHandle added_projector;
     if (dirty & (DIRTY_CONFIGURATION | DIRTY_RUNTIME))
     {

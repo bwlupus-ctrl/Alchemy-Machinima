@@ -8,13 +8,16 @@
 #include "../test/lltut.h"
 #include "../llprismlens.h"
 #include "../alvcamautovol.h"
+#include "../alflareenergy.h"
 #include "../alvcammediafilelifecycle.h"
 #include <array>
 #include "../../llplugin/llmediaframestate.h"
 #include "../../llplugin/llpluginclassmedia.h"
+#include "../../llplugin/llpluginloopseam.h"
 #include "../../llplugin/llpluginmessage.h"
 #include "../../llplugin/llpluginmessageclasses.h"
 #include "llcontrol.h"
+#include "llerrorcontrol.h"
 
 // llpluginclassmedia.obj (now linked via the media slot paths) references the viewer global.
 LLControlGroup gSavedSettings("PrismProjectorTest");
@@ -858,6 +861,145 @@ template<> template<> void prism_projector_object::test<37>()
     }
     ensure("unchanged valid source still matches",
         ALMediaFile::matchingPrivateOwner(true, true, 7, 7, true));
+}
+
+template<> template<> void prism_projector_object::test<38>()
+{
+    set_test_name("explicit loop edit hold is scoped to admitted load; rebuilt pixels stay gated");
+    LLPluginClassMedia plugin(nullptr);
+    plugin.enableMediaFrames(true, true);
+    plugin.configurePrivateFile("mp4", 2, true);
+    plugin.loadURI("file:///D:/clip.mp4");
+    LLPluginMessage verdict(LLPLUGIN_MESSAGE_CLASS_MEDIA, "private_file_admission");
+    verdict.setValue("load_token", plugin.getLoadToken());
+    verdict.setValueBoolean("opened", true);
+    verdict.setValue("player_token", "1");
+    verdict.setValueS32("verdict", 1);
+    plugin.receivePluginMessage(verdict);
+    const auto epoch = plugin.getLayoutEpoch();
+    const auto token = plugin.getLoadToken();
+    plugin.receivePluginMessage(verdict); // actual repeated admitted protocol message
+    ensure_equals("repeated admission preserves viewer epoch", plugin.getLayoutEpoch(), epoch);
+    ensure_equals("repeated admission preserves load token", plugin.getLoadToken(), token);
+    ensure_equals("repeated admission remains admitted", plugin.privateFileVerdict(), 1);
+    verdict.setValue("player_token", "2");
+    verdict.setValueS32("verdict", 0);
+    verdict.setValueBoolean("loop_reverify", true);
+    plugin.receivePluginMessage(verdict);
+    ensure("explicit edit holds ownership/pixels", plugin.privateFileRetaining());
+    ensure_equals("replacement still pending", plugin.privateFileVerdict(), 0);
+    LLPluginMessage update(LLPLUGIN_MESSAGE_CLASS_MEDIA, "updated");
+    update.setValue("load_token", token);
+    update.setValueS32("left", 0); update.setValueS32("right", 8);
+    update.setValueS32("bottom", 0); update.setValueS32("top", 8);
+    plugin.receivePluginMessage(update);
+    ensure("pending pixels never published", !plugin.getDirty());
+    ensure("rebuild invalidates old upload provenance", plugin.getLayoutEpoch() > epoch);
+    verdict.setValueS32("verdict", 1);
+    plugin.receivePluginMessage(verdict);
+    plugin.receivePluginMessage(update);
+    ensure("admitted replacement pixels publish", plugin.getDirty());
+    plugin.loadURI("file:///D:/new.mp4");
+    ensure("new URI resets hold", !plugin.privateFileRetaining() && plugin.privateFileVerdict() == 0);
+    verdict.setValue("load_token", plugin.getLoadToken());
+    verdict.setValueS32("verdict", 0);
+    plugin.receivePluginMessage(verdict);
+    ensure("unadmitted load cannot claim edit hold", !plugin.privateFileRetaining());
+}
+
+template<> template<> void prism_projector_object::test<40>()
+{
+    set_test_name("viewer seam aggregation bounds logging and measures excess over each source frame");
+    using Kind = LLPluginLoopSeam::Kind;
+    LLPluginLoopSeam seams;
+    for (int i = 0; i < 3; ++i)
+        ensure("first three individually", seams.sample(i, 40., 30.).kind == Kind::INDIVIDUAL);
+    ensure("subsequent seams aggregate", seams.sample(3., 40., 30.).kind == Kind::NONE);
+    seams.sample(4., 20., 30.);
+    ensure("summary not before ten seconds", seams.poll(11.999).kind == Kind::NONE);
+    const auto summary = seams.poll(12.);
+    ensure("idle flush needs no next seam", summary.kind == Kind::SUMMARY);
+    ensure_equals("window count", summary.count, uint64_t(2));
+    ensure_equals("minimum gap", summary.min, 20.);
+    ensure_equals("maximum gap", summary.max, 40.);
+    ensure_equals("mean gap", summary.mean, 30.);
+    ensure_equals("mean excess clamps sub-frame gaps to zero", summary.excess, 5.);
+    ensure("empty window never logs", seams.poll(30.).kind == Kind::NONE);
+    ensure("summary resumes after quiet period", seams.sample(31., 50., 20.).kind == Kind::SUMMARY);
+    ensure("next window throttled", seams.sample(31.1, 60., 20.).kind == Kind::NONE);
+    ensure("no second summary in ten seconds", seams.poll(40.999).kind == Kind::NONE);
+    ensure_equals("next window independent count", seams.poll(41.).count, uint64_t(1));
+    ensure("invalid gap ignored", seams.sample(42., std::numeric_limits<double>::quiet_NaN(), 20.).kind == Kind::NONE);
+    ensure("invalid frame ignored", seams.sample(42., 30., -1.).kind == Kind::NONE);
+}
+
+template<> template<> void prism_projector_object::test<41>()
+{
+    set_test_name("loop_seam protocol reaches viewer INFO log; stale loads ignored and first-three budget resets per load");
+    struct LogCapture
+    {
+        LLError::SettingsStoragePtr settings = LLError::saveAndResetSettings();
+        std::vector<std::string> messages;
+        LLError::RecorderPtr recorder;
+        LogCapture()
+        {
+            LLError::setDefaultLevel(LLError::LEVEL_INFO);
+            recorder = LLError::addGenericRecorder([this](LLError::ELevel level, const std::string& text)
+            {
+                if (level == LLError::LEVEL_INFO && text.find("loop seam gap") != std::string::npos) messages.push_back(text);
+            });
+        }
+        ~LogCapture() { LLError::removeRecorder(recorder); LLError::restoreSettings(settings); }
+    } log;
+    LLPluginClassMedia plugin(nullptr);
+    plugin.enableMediaFrames(true, true);
+    plugin.configurePrivateFile("mp4", 2, true);
+    plugin.loadURI("file:///D:/clip.mp4");
+    LLPluginMessage seam(LLPLUGIN_MESSAGE_CLASS_MEDIA, "loop_seam");
+    seam.setValueReal("gap_ms", 45.); seam.setValueReal("frame_ms", 40.);
+    seam.setValue("load_token", "stale");
+    plugin.receivePluginMessage(seam);
+    ensure_equals("stale load ignored", log.messages.size(), size_t(0));
+    const auto token = plugin.getLoadToken();
+    seam.setValue("load_token", token);
+    for (int i = 0; i < 4; ++i) plugin.receivePluginMessage(seam);
+    ensure_equals("exactly three viewer log lines", log.messages.size(), size_t(3));
+    ensure("viewer line contains source frame duration", log.messages[0].find("frame_ms=40") != std::string::npos);
+    ensure("viewer line contains excess", log.messages[0].find("excess_ms=5") != std::string::npos);
+    plugin.loadURI("file:///D:/replacement.mp4");
+    plugin.receivePluginMessage(seam);
+    ensure_equals("late old load never consumes new budget", log.messages.size(), size_t(3));
+    seam.setValue("load_token", plugin.getLoadToken());
+    plugin.receivePluginMessage(seam);
+    ensure_equals("new load starts first-three budget", log.messages.size(), size_t(4));
+}
+
+template<> template<> void prism_projector_object::test<39>()
+{
+    set_test_name("flare energy EMA has frame-rate-independent authored release / 100ms attack and soft knee");
+    using namespace ALFlareEnergy;
+    ensure("100ms attack", std::abs(smooth(0.f, 1.f, .100f) - (1.f - std::exp(-1.f))) < .00001f);
+    ensure("authored 100ms release", std::abs(smooth(1.f, 0.f, .100f, .100f, .100f) - std::exp(-1.f)) < .00001f);
+    for (int fps : {24, 30, 60, 144})
+    {
+        float value = 0.f;
+        for (int i = 0; i < fps; ++i) value = smooth(value, 2.f, 1.f / fps);
+        ensure("attack independent of frame rate", std::abs(value - (2.f * (1.f - std::exp(-1.f / .100f)))) < .00001f);
+        for (int i = 0; i < fps; ++i) value = smooth(value, 0.f, 1.f / fps);
+        ensure("release independent of frame rate", std::abs(value - ((2.f * (1.f - std::exp(-1.f / .100f))) * std::exp(-1.f / .450f))) < .00001f);
+    }
+    ensure_equals("release zero is immediate", smooth(1.f, 0.f, .016f, .100f, 0.f), 0.f);
+    ensure("Release slider changes CPU/GPU shared alpha", alpha(.016f, .2f) > alpha(.016f, .8f));
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    ensure_equals("NaN dt holds finite state", smooth(.5f, 1.f, nan), .5f);
+    ensure_equals("NaN history recovers to current value", smooth(nan, .7f, .016f), .7f);
+    ensure_equals("NaN target resets safely", smooth(nan, nan, nan), 0.f);
+    ensure("subsequent finite dt resumes response", smooth(smooth(.5f, 1.f, nan), 1.f, .016f) > .5f);
+    ensure_equals("zero dt holds", smooth(.5f, 1.f, 0.f), .5f);
+    ensure_equals("steady state unchanged", smooth(2.f, 2.f, .1f), 2.f);
+    ensure_equals("below floor stays dark", energy(.24f, .25f), 0.f);
+    ensure("soft knee continuous", energy(.251f, .25f) > 0.f && energy(.251f, .25f) < .001f);
+    ensure_equals("bright steady look preserved", energy(.75f, .25f), 2.f);
 }
 
 }

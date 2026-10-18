@@ -33,7 +33,7 @@ public:
         // Undo owner declaration for a code-bound row that keeps widget history (kit_lint enforces it):
         // "global" = state with no selected subject. Subject rows use widget_history=false.
         Optional<std::string> undo_scope;
-        Optional<bool> advanced, card_preset, who_picker, hidden, added, widget_history, bulk_reset, unconnected, fill_width;
+        Optional<bool> advanced, card_preset, who_picker, hidden, added, widget_history, bulk_reset, unconnected, fill_width, action_row;
         Optional<S32>  row_height, decimals;
         Optional<F32>  min_val, max_val, increment;
         Params();
@@ -116,6 +116,8 @@ private:
     std::string  mBind, mResetSettings, mDefaultValue, mLabelName;
     S32          mRowHeight  = 28;
     bool         mExplicitRowHeight = false;
+    bool         mActionRow = false;
+    std::vector<std::pair<LLButton*, S32>> mActions;
     bool         mCardPreset = false, mWhoPicker = false, mHidden = false, mAdded = false, mFilterVisible = true, mCodeHidden = false,
                  mHovered = false, mPointerInside = false, mFlashing = false, mAmber = false, mSyncingMirror = false,
                  mWidgetHistory = true, mBulkReset = true, mUnconnected = false, mFillWidth = false;

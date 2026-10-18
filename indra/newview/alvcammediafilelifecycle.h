@@ -87,18 +87,14 @@ template<class Apply> bool commitFileBrowse(std::string& status, const std::stri
 struct BrowseOverlay
 {
     std::string underlying, shown;
-    int64_t until = 0;
-    uint64_t observedState = 0;
     void restore(std::string& reason)
     { if (!shown.empty() && reason == shown) reason = underlying; }
-    void apply(std::string& status, bool pending, std::string& reason, int64_t now, uint64_t state = 0)
+    void apply(std::string& status, bool, std::string& reason, int64_t, uint64_t = 0)
     {
         if (status.empty()) { *this = {}; return; }
-        if (pending) until = 0;
-        else if (!until) until = now + 5000;
-        else if (now >= until || reason != underlying || state != observedState)
-        { status.clear(); *this = {}; return; }
-        underlying = reason; shown = status; observedState = state; reason = shown;
+        // Only an explicit slot action clears status; neither time nor a live
+        // player's reconciliation can erase a refused Browse.
+        underlying = reason; shown = status; reason = shown;
     }
 };
 

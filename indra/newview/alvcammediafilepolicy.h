@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
+#include <cmath>
 #include <string>
+#include <stdexcept>
 #include <vector>
 
 namespace ALMediaFile
@@ -21,6 +23,21 @@ inline constexpr const char* NO_SPACE = "Not enough disk space";
 inline constexpr const char* CLEARING = "Clearing video cache...";
 inline constexpr const char* CLEAR_DEGRADED = "Some cached videos couldn't be removed";
 inline constexpr const char* FAILED = "Download failed";
+inline constexpr const char* UNKNOWN_LOOP = "This file has no recorded length - loops may hitch (remux to fix)";
+// Keep the public status contract, but preserve the exact rejecting rule for
+// diagnostics and the offline probe. Rules are constants, never source text.
+struct PolicyRefusal : std::runtime_error
+{
+    std::string rule;
+    explicit PolicyRefusal(const std::string& rule_) : std::runtime_error(NOT_VIDEO), rule(rule_) {}
+};
+inline std::string diagnosticReason(const std::exception& error)
+{
+    if (const auto* refusal = dynamic_cast<const PolicyRefusal*>(&error)) return refusal->rule;
+    for (const char* known : {UNSUPPORTED, REMOTE, NOT_VIDEO, MISSING, LOCKED, BUDGET, TOO_LARGE, NO_SPACE, FAILED})
+        if (std::string(error.what()) == known) return known;
+    return "I/O or transfer exception"; // Never echo exception text containing a URL/proxy/path.
+}
 std::string cacheKey(const std::string& url);
 enum class Location { HTTP_URL, LOCAL_FILE };
 enum class Transport { STOPPED, PAUSED, PLAYING };
@@ -66,6 +83,17 @@ inline std::string extension(const std::string& path)
     const auto p = path.find_last_of('.');
     const std::string e = p == std::string::npos ? "" : lower(path.substr(p + 1));
     return e == "mp4" || e == "mov" || e == "m4v" || e == "webm" || e == "mkv" ? e : "";
+}
+inline std::string diagnosticExtension(const std::string& value)
+{
+    // Keep only an allowlisted extension. Local '#'/'?' characters are literal;
+    // HTTP queries/fragments and file URI percent encoding follow their syntax.
+    std::string path = value;
+    const auto scheme = lower(value.substr(0, value.find(':')));
+    if (scheme == "http" || scheme == "https") path = value.substr(0, value.find_first_of("?#"));
+    else if (scheme == "file" && !decode(value.substr(5), path)) return "unsupported";
+    const auto ext = extension(path);
+    return ext.empty() ? "unsupported" : ext;
 }
 inline bool networkSpelling(std::string path)
 {
@@ -290,10 +318,13 @@ struct Admission
     double deadline = 0;
     Verdict verdict = Verdict::PENDING;
     bool seekable = false;
-    void open(uint64_t t, double now) { token = t; deadline = now + 10.; verdict = Verdict::PENDING; seekable = false; }
-    void rebuild(uint64_t t, double now)
+    bool loopReverify = false;
+    void open(uint64_t t, double now) { token = t; deadline = now + 10.; verdict = Verdict::PENDING; seekable = false; loopReverify = false; }
+    void rebuild(uint64_t t, double now, bool admittedLoop = false)
     {
+        const bool retain = admittedLoop && verdict == Verdict::ADMITTED;
         open(t, now);
+        loopReverify = retain;
     }
     void resumed(double now) { if (verdict == Verdict::PENDING) deadline = now + 10.; }
     bool observe(uint64_t t, double now, bool video, bool terminal, double length)
@@ -303,10 +334,82 @@ struct Admission
         else if (verdict == Verdict::PENDING)
             verdict = now >= deadline ? Verdict::REJECTED : video ? Verdict::ADMITTED : Verdict::PENDING;
         seekable = verdict == Verdict::ADMITTED && length > 0;
+        if (verdict != Verdict::PENDING) loopReverify = false;
         return true;
     }
     bool audible(Transport desired) const { return verdict == Verdict::ADMITTED && desired == Transport::PLAYING; }
+    bool retainsOutput() const { return verdict == Verdict::ADMITTED || (verdict == Verdict::PENDING && loopReverify); }
 };
+// Repeat is configured before input creation. Play-to-end selects false.
+// Pure state transitions shared by the callback's atomic fetch_or and
+// admission's CAS. A marker on pending state blocks all later admission;
+// a marker on admitted state is a normal wrap. Both bits are sticky.
+struct WrapPolicy
+{
+    static constexpr unsigned Admitted = 1u, Marker = 2u;
+    static unsigned marker(unsigned state) { return state | Marker; }
+    static bool rejects(unsigned state) { return (state & Marker) && !(state & Admitted); }
+    static unsigned admit(unsigned state) { return rejects(state) ? state : state | Admitted; }
+
+    double previous = -1.;
+    bool stable = false;
+    bool timeRegression(double time, double duration, bool pending)
+    {
+        if (!std::isfinite(time) || time < 0.) { previous = -1.; stable = false; return false; }
+        const double drop = previous - time;
+        const bool wrap = pending && stable && (drop > 1. || (duration > 0. && drop > duration * .5));
+        // Startup can report a stale/non-monotonic first time. Require an
+        // actual forward step before treating a regression as an EOF fallback.
+        if (previous >= 0. && time > previous) stable = true;
+        previous = time;
+        return wrap;
+    }
+};
+
+struct ResumeWait
+{
+    enum class Action { READY, WAIT, SEEK };
+    double position = 0., deadline = 0.;
+    bool sent = false;
+    double loopTarget(double sampled, bool seekable) const
+    { return position > 0. ? position : seekable && sampled > 0. ? sampled : 0.; }
+    void open(double target, bool seekable)
+    {
+        position = seekable && target > 0. ? target : 0.;
+        resumed();
+    }
+    // Paused/opening time must not consume the seek window. A resumed pending
+    // replacement gets a fresh seek, armed only when Playing is observed.
+    void resumed() { deadline = 0.; sent = false; }
+    Action step(double now, bool playing, bool seekFailed, double time)
+    {
+        if (!(position > 0.)) return Action::READY;
+        if (playing && deadline == 0.) deadline = now + .5;
+        if (seekFailed || (deadline > 0. && now >= deadline) || (sent && time >= position - .01))
+        { position = 0.; return Action::READY; }
+        if (!sent && playing) { sent = true; return Action::SEEK; }
+        return Action::WAIT;
+    }
+};
+
+// VLC 3's duration-less Matroska cannot seek; only it may recover by reopen.
+inline const char* inputRepeatOption(bool loop) { return loop ? ":input-repeat=65535" : ":input-repeat=0"; }
+inline bool unknownLoopRecovery(const Admission& admission, bool loop, Transport desired, double length)
+{
+    return admission.verdict == Verdict::ADMITTED && loop && desired == Transport::PLAYING && !(length > 0.);
+}
+inline bool clearDisabledStatus(std::string& reason, bool enabled, bool empty)
+{
+    if (!enabled || (reason != "Turn on Virtual Cam to play video" && reason != "Media slots disabled")) return false;
+    reason = empty ? "Enter a direct video URL" : "Set. Press Play to start it.";
+    return true;
+}
+inline bool clearPlayStatusOnPolicyChange(std::string& status, bool oldMaster, bool oldSlots, bool master, bool slots)
+{
+    if (oldMaster == master && oldSlots == slots) return false;
+    status.clear();
+    return true;
+}
 // Five sharing-violation attempts spanning two seconds, bounded by the I/O deadline.
 inline unsigned lockRetryMs(unsigned failedAttempts, bool sharingViolation)
 { return sharingViolation && failedAttempts < 5 ? 500 : 0; }

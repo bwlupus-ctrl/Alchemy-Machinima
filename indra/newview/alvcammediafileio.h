@@ -39,6 +39,7 @@ public:
     Result poll(); // Bounded, try-lock only. Deadline terminalizes without waiting.
 private:
     std::shared_ptr<Job> mJob;
+    bool mReportedRefusal = false;
 };
 using Request = std::shared_ptr<Subscription>;
 struct CacheStatus

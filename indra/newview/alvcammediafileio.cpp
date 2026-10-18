@@ -42,9 +42,11 @@ static int64_t millis() { return std::chrono::duration_cast<std::chrono::millise
 struct Job
 {
     Policy policy;
+    const char* rule = "request admission"; // worker-only diagnostic stage; no source strings
     uint64_t id = 0, epoch = 0;
     std::atomic<unsigned> subscribers{0};
     std::atomic<bool> cancel{false}, done{false}, closed{false};
+    bool cancellationLogged = false; // worker only; one terminal diagnostic
     bool reaped = false; // main only
     bool transferLease = false;
     bool cacheJob = false;
@@ -111,7 +113,16 @@ static Service& service() { if (!sService) sService = new Service; return *sServ
 static void cancelled(Job& job)
 {
     const auto now = millis();
-    if (job.cancel.load() || totalExpired(job.maintenance, job.started.load(), now) || ioExpired(job.ioDeadline, now)) throw std::runtime_error(FAILED);
+    if (job.cancel.load() || totalExpired(job.maintenance, job.started.load(), now) || ioExpired(job.ioDeadline, now))
+    {
+        if (!job.maintenance && !job.cancellationLogged)
+        {
+            job.cancellationLogged = true;
+            LL_INFOS("VCamMedia") << "I/O refused job=" << job.id << " stage=" << job.rule << " reason=" <<
+                (ioExpired(job.ioDeadline, now) ? "I/O deadline expired" : totalExpired(job.maintenance, job.started.load(), now) ? "total transfer deadline expired" : "cancelled") << LL_ENDL;
+        }
+        throw std::runtime_error(FAILED);
+    }
 }
 struct Operation
 {
@@ -207,6 +218,7 @@ static std::wstring wide(const std::string& text)
 }
 static void localDirectories(Job& job, const std::string& path, File& file, bool create)
 {
+    job.rule = "local path spelling/absolute drive";
     // This lexical refusal precedes GetDriveType, CreateFile, stat, canonical,
     // and every other filesystem API, including for a configured cache root.
     if (networkSpelling(path) || path.size() < 3 || path[1] != ':' ||
@@ -214,6 +226,7 @@ static void localDirectories(Job& job, const std::string& path, File& file, bool
     const auto native = wide(path);
     {
         Operation op(job);
+        job.rule = "local drive type (fixed/removable/RAM/CDROM only)";
         const auto type = GetDriveTypeW(native.substr(0, 3).c_str());
         if (type != DRIVE_FIXED && type != DRIVE_REMOVABLE && type != DRIVE_RAMDISK && type != DRIVE_CDROM) throw std::runtime_error(REMOTE);
     }
@@ -223,6 +236,7 @@ static void localDirectories(Job& job, const std::string& path, File& file, bool
         const auto part = native.substr(0, p);
         Operation op(job);
         if (create && !CreateDirectoryW(part.c_str(), nullptr) && GetLastError() != ERROR_ALREADY_EXISTS) throw std::runtime_error(FAILED);
+        job.rule = "local directory open (no reparse points)";
         HANDLE h = CreateFileW(part.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ,
             nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
         if (h == INVALID_HANDLE_VALUE)
@@ -231,6 +245,7 @@ static void localDirectories(Job& job, const std::string& path, File& file, bool
             throw std::runtime_error(error == ERROR_PATH_NOT_FOUND || error == ERROR_FILE_NOT_FOUND ? MISSING : REMOTE);
         }
         file.directories.push_back(h); // deny directory rename until playback ends
+        job.rule = "local directory reparse-point refusal";
         FILE_ATTRIBUTE_TAG_INFO info{};
         if (!GetFileInformationByHandleEx(h, FileAttributeTagInfo, &info, sizeof(info)) ||
             (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) throw std::runtime_error(REMOTE);
@@ -241,6 +256,7 @@ static std::shared_ptr<File> openLocal(Job& job, const std::string& path)
     auto file = isolated(new File);
     localDirectories(job, path, *file, false);
     Operation op(job);
+    job.rule = "local file open (read-only/no-follow)";
     file->handle = CreateFileW(wide(path).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
         OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_OVERLAPPED, nullptr);
     if (file->handle == INVALID_HANDLE_VALUE)
@@ -248,10 +264,12 @@ static std::shared_ptr<File> openLocal(Job& job, const std::string& path)
         const auto err = GetLastError();
         throw std::runtime_error(err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND ? MISSING : FAILED);
     }
+    job.rule = "local file attributes/reparse-point refusal";
     FILE_ATTRIBUTE_TAG_INFO info{};
     LARGE_INTEGER size{};
     if (!GetFileInformationByHandleEx(file->handle, FileAttributeTagInfo, &info, sizeof(info))) throw std::runtime_error(REMOTE);
     if (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) throw std::runtime_error(REMOTE);
+    job.rule = "local file must be nonempty and not a directory";
     if ((info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) ||
         !GetFileSizeEx(file->handle, &size) || size.QuadPart <= 0) throw std::runtime_error(NOT_VIDEO);
     file->size = static_cast<uint64_t>(size.QuadPart);
@@ -284,6 +302,7 @@ static std::shared_ptr<File> openLocal(Job& job, const std::string& path)
 {
     Operation op(job);
     auto file = isolated(new File);
+    job.rule = "POSIX local mount/no-follow/regular-file policy";
     file->handle = localOpen(path);
     struct stat st{};
     if (fstat(file->handle, &st) || !S_ISREG(st.st_mode) || st.st_size <= 0) throw std::runtime_error(NOT_VIDEO);
@@ -302,13 +321,30 @@ static void transfer(Job& job, File& file, void* bytes, size_t count, uint64_t o
 // mdat. Encoded frame payload stays opaque; it cannot create false markers.
 static void preflight(Job& job, File& file, const std::string& ext)
 {
-    std::array<unsigned char, 64> header{};
-    const auto n = static_cast<size_t>(std::min<uint64_t>(64, file.size));
-    transfer(job, file, header.data(), n, 0, false);
-    if (!sniff(ext, header.data(), n, file.size)) throw std::runtime_error(NOT_VIDEO);
-    checkContainer([&job, &file](uint64_t offset, void* bytes, size_t count)
-    { transfer(job, file, bytes, count, offset, false); }, file.size, ext);
+    LL_INFOS("VCamMedia") << "Container preflight start job=" << job.id << " size=" << file.size
+        << " ext=" << diagnosticExtension("file." + ext) << LL_ENDL;
+    try
+    {
+        job.rule = "container header read";
+        std::array<unsigned char, 64> header{};
+        const auto n = static_cast<size_t>(std::min<uint64_t>(64, file.size));
+        transfer(job, file, header.data(), n, 0, false);
+        if (!sniff(ext, header.data(), n, file.size)) throw PolicyRefusal("header/extension signature mismatch");
+        job.rule = "container structural walk/read";
+        checkContainer([&job, &file](uint64_t offset, void* bytes, size_t count)
+        { transfer(job, file, bytes, count, offset, false); }, file.size, ext);
+        LL_INFOS("VCamMedia") << "Container preflight finish job=" << job.id << " verdict=ADMITTED rule=signature/structure"
+            << " size=" << file.size << " ext=" << diagnosticExtension("file." + ext) << LL_ENDL;
+    }
+    catch (const std::exception& error)
+    {
+        LL_INFOS("VCamMedia") << "Container preflight finish job=" << job.id << " verdict=REFUSED stage=" << job.rule
+            << " reason=" << diagnosticReason(error) << " size=" << file.size
+            << " ext=" << diagnosticExtension("file." + ext) << LL_ENDL;
+        throw;
+    }
 }
+
 static fs::path root()
 {
 #if LL_WINDOWS
@@ -576,8 +612,11 @@ static size_t headers(char* data, size_t unit, size_t count, void* opaque)
             if (d.status >= 100 && d.status < 200) return n;
             if (d.status != 200) return 0; // headers only; no redirect/error body
             Url url;
+            d.job.rule = "HTTP final URL/extension/MIME/content-encoding";
             if (!httpUrl(d.url, url) || extension(url.path).empty() || !mimeAllowed(d.mime) || (!d.encoding.empty() && lower(d.encoding) != "identity")) throw std::runtime_error(NOT_VIDEO);
+            d.job.rule = "HTTP Content-Length cap";
             if (d.hasLength && d.declared > d.job.policy.downloadBytes) throw std::runtime_error(TOO_LARGE);
+            d.job.rule = "cache capacity reservation/free-space";
             capacity(d.job, d.hasLength ? d.declared : d.job.policy.downloadBytes);
             d.job.total = d.declared;
             d.approved = true;
@@ -614,7 +653,9 @@ static size_t body(char* data, size_t unit, size_t count, void* opaque)
         if (!d.approved || (unit && count > SIZE_MAX / unit)) return 0;
         const size_t n = unit * count;
         const auto received = d.job.bytes.load();
+        d.job.rule = "download streaming byte cap";
         if (n > d.job.policy.downloadBytes - std::min(received, d.job.policy.downloadBytes)) throw std::runtime_error(TOO_LARGE);
+        d.job.rule = "download declared-length bound";
         if (d.hasLength && n > d.declared - std::min(received, d.declared)) throw std::runtime_error(FAILED);
         for (size_t offset = 0; offset < n;)
         {
@@ -635,6 +676,7 @@ static int progress(void* opaque, curl_off_t, curl_off_t, curl_off_t, curl_off_t
 static void download(Job& job, const Descriptor& source)
 {
     auto& s = service();
+    job.rule = "download policy allowDownloads";
     if (!job.policy.allowDownloads) throw std::runtime_error(std::string(FAILED) + " (" + job.policy.denialReason + ")");
     const auto key = cacheKey(source.value);
     if (cached(job, key)) return;
@@ -730,12 +772,18 @@ static void download(Job& job, const Descriptor& source)
             if (d.status == 301 || d.status == 302 || d.status == 303 || d.status == 307 || d.status == 308)
             {
                 std::string next;
+                job.rule = "HTTP redirect target/scheme/hop limit";
                 if (!redirect(d.url, d.location, hop, next)) throw std::runtime_error(FAILED);
                 d.url = next;
                 continue;
             }
             if (!d.error.empty()) throw std::runtime_error(d.error);
-            if (d.status != 200) throw std::runtime_error(std::string(FAILED) + " (HTTP " + std::to_string(d.status) + ")");
+            if (d.status != 200)
+            {
+                LL_INFOS("VCamMedia") << "Download response refused job=" << job.id << " rule=HTTP 200 required status=" << d.status << LL_ENDL;
+                throw std::runtime_error(std::string(FAILED) + " (HTTP " + std::to_string(d.status) + ")");
+            }
+            job.rule = "curl completion/nonempty/exact Content-Length";
             if (code != CURLE_OK || !d.approved || !job.bytes || (d.hasLength && job.bytes != d.declared)) throw std::runtime_error(FAILED);
             break;
         }
@@ -1000,8 +1048,22 @@ Result Subscription::poll()
 {
     auto& j = *mJob;
     const auto now = millis();
-    if (ioExpired(j.ioDeadline, now) || totalExpired(j.maintenance, j.started.load(), now)) cancelJob(j);
-    if (j.cancel || (j.cacheJob && j.epoch != service().epoch)) return {j.id, j.epoch, j.bytes, j.total, true, FAILED, {}};
+    const bool io_timeout = ioExpired(j.ioDeadline, now);
+    const bool total_timeout = totalExpired(j.maintenance, j.started.load(), now);
+    if (io_timeout || total_timeout) cancelJob(j);
+    if (j.cancel || (j.cacheJob && j.epoch != service().epoch))
+    {
+        if (!mReportedRefusal)
+        {
+            mReportedRefusal = true;
+            // Main can terminalize a blocked worker. Report here too, without
+            // reading worker-only fields or waiting for that worker to return.
+            LL_INFOS("VCamMedia") << "I/O subscription finish job=" << j.id << " verdict=REFUSED reason=" <<
+                (io_timeout ? "I/O deadline expired" : total_timeout ? "total transfer deadline expired" :
+                 j.epoch != service().epoch ? "cache epoch changed" : "cancelled") << LL_ENDL;
+        }
+        return {j.id, j.epoch, j.bytes, j.total, true, FAILED, {}};
+    }
     if (j.awaitingApproval) j.approved = true;
     std::unique_lock<std::mutex> lock(j.mailbox, std::try_to_lock);
     Result result = lock ? j.result : Result{};
@@ -1016,31 +1078,68 @@ Request startPreflight(const Descriptor& source)
     tick();
     auto job = launch([source](Job& job)
     {
-        Descriptor validated; std::string reason;
-        if (!classify(source.value, validated, reason, LL_WINDOWS) || validated.location != Location::LOCAL_FILE) throw std::runtime_error(reason.empty() ? UNSUPPORTED : reason);
-        auto file = openLocal(job, validated.value);
-        const auto ext = extension(validated.value);
-        preflight(job, *file, ext);
-        auto lease = std::make_shared<Lease>();
-        lease->path = validated.value; lease->extension = ext; lease->retention = file;
-        publish(job, "PENDING, MUTED", std::move(lease));
+        uint64_t size = 0;
+        LL_INFOS("VCamMedia") << "Preflight start job=" << job.id << " size=unknown ext=" << diagnosticExtension(source.value) << LL_ENDL;
+        try
+        {
+            job.rule = "local-file syntax";
+            Descriptor validated; std::string reason;
+            if (!classify(source.value, validated, reason, LL_WINDOWS) || validated.location != Location::LOCAL_FILE) throw std::runtime_error(reason.empty() ? UNSUPPORTED : reason);
+            auto file = openLocal(job, validated.value);
+            size = file->size;
+            const auto ext = extension(validated.value);
+            preflight(job, *file, ext);
+            auto lease = std::make_shared<Lease>();
+            lease->path = validated.value; lease->extension = ext; lease->retention = file;
+            publish(job, "PENDING, MUTED", std::move(lease));
+            LL_INFOS("VCamMedia") << "Preflight finish job=" << job.id << " verdict=ADMITTED size=" << size
+                << " ext=" << diagnosticExtension(source.value) << " reason=local-file gates passed" << LL_ENDL;
+        }
+        catch (const std::exception& error)
+        {
+            LL_INFOS("VCamMedia") << "Preflight finish job=" << job.id << " verdict=REFUSED rule=" << job.rule
+                << " reason=" << diagnosticReason(error) << " size=" << (size ? std::to_string(size) : "unknown")
+                << " ext=" << diagnosticExtension(source.value) << LL_ENDL;
+            throw;
+        }
     });
+    if (!job) LL_INFOS("VCamMedia") << "Preflight refused rule=service/job admission reason=closed or worker budget"
+        << " size=unknown ext=" << diagnosticExtension(source.value) << LL_ENDL;
     return job ? std::make_shared<Subscription>(job) : Request{};
 }
 Request startDownload(const Descriptor& source)
 {
     tick();
     auto& s = service();
-    if (!s.started || !s.accepting) return {};
+    if (!s.started || !s.accepting)
+    {
+        LL_INFOS("VCamMedia") << "Download refused rule=service admission reason=not started or closed" << LL_ENDL;
+        return {};
+    }
     const auto key = cacheKey(source.value);
     if (auto previous = s.inflight[key].lock())
         if (!previous->cancel && previous->epoch == s.epoch && (!previous->closed)) return std::make_shared<Subscription>(previous);
     auto job = launch([source](Job& job)
     {
-        auto& s = service();
-        while (s.cacheState == 0) { cancelled(job); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
-        if (s.cacheState != 1) throw std::runtime_error(s.cacheError);
-        download(job, source);
+        LL_INFOS("VCamMedia") << "Download start job=" << job.id << " ext=" << diagnosticExtension(source.value) << LL_ENDL;
+        try
+        {
+            job.rule = "cache owner/lock";
+            auto& s = service();
+            while (s.cacheState == 0) { cancelled(job); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+            if (s.cacheState != 1) throw std::runtime_error(s.cacheError);
+            job.rule = "HTTP/cache transfer";
+            download(job, source);
+            LL_INFOS("VCamMedia") << "Download end job=" << job.id << " verdict=ADMITTED bytes=" << job.bytes.load()
+                << " ext=" << diagnosticExtension(source.value) << " reason=complete validated lease" << LL_ENDL;
+        }
+        catch (const std::exception& error)
+        {
+            LL_INFOS("VCamMedia") << "Download failure job=" << job.id << " rule=" << job.rule
+                << " reason=" << diagnosticReason(error) << " bytes=" << job.bytes.load()
+                << " ext=" << diagnosticExtension(source.value) << LL_ENDL;
+            throw;
+        }
     }, true);
     if (!job) return {};
     s.inflight[key] = job;

@@ -266,6 +266,9 @@ uniform float uLensFlareStarburstFalloff;         // radial decay rate from the 
 // uCineFlareCount is 0 (the default) the rig loop is skipped entirely and
 // computeLensFlare's output is bit-identical to the sun-only implementation.
 #define AL_CINE_FLARE_MAX 8
+uniform sampler2D uCineFlareHistory;
+uniform int uCineFlareSmoothed;
+uniform int uCineFlareEnergySlots[AL_CINE_FLARE_MAX];
 uniform sampler2D uCineFlareShaft;                // isolated projector-volumetric RGB, never daylight
 uniform int  uCineFlareCount;                     // active rig sources, 0..AL_CINE_FLARE_MAX
 uniform vec4 uCineFlareA[AL_CINE_FLARE_MAX];      // per source: (uv.x, uv.y, visibility, deviceDepth)
@@ -776,6 +779,14 @@ vec3 flareForSource(sampler2D diffuse, sampler2D depth, vec2 uv,
         if (sun_bright <= 0.0)
             return vec3(0.0);
     }
+    else if (occTaps <= -3)
+    {
+        float energy = texelFetch(uCineFlareHistory, ivec2(uCineFlareEnergySlots[-occTaps - 3], 0), 0).r;
+        if (energy <= 0.0) return vec3(0.0);
+        sun_color = vec3(energy);
+        sun_lum = energy;
+        sun_bright = 1.0;
+    }
     else if (occTaps == -1)
     {
         vec2 suv = clamp(sun_uv, vec2(0.0), vec2(1.0));
@@ -1203,7 +1214,7 @@ vec3 computeLensFlare(sampler2D diffuse, sampler2D depth, vec2 uv)
                 continue;
             total += flareForSource(uCineFlareShaft, depth, uv,
                                     uCineFlareA[i].xy, uCineFlareA[i].w, rvis,
-                                    uCineFlareColor[i].rgb, releasing ? -2 : -1);
+                                    uCineFlareColor[i].rgb, uCineFlareSmoothed != 0 ? -3 - i : releasing ? -2 : -1);
         }
     }
 

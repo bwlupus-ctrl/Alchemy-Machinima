@@ -19,7 +19,6 @@
 #include "llwindow.h"
 
 #include <algorithm>
-#include <ctime>
 
 static LLDefaultChildRegistry::Register<ALVCamMonitorStrip>
     r_vcam_monitor_strip("vcam_monitor_strip");
@@ -70,55 +69,6 @@ MonitorHeaderLayout monitorHeaderLayout(S32)
 S32 displayTenths(F32 value)
 {
     return ll_round(value * 10.f);
-}
-
-const char* tileBadge(LLPrismPreviewService::ETileState state)
-{
-    using State = LLPrismPreviewService::ETileState;
-    switch (state)
-    {
-        case State::LIVE: return "LIVE";
-        case State::PREVIEW:
-        case State::READY: return "PREVIEW";
-        case State::PAUSED:
-        case State::HELD: return "PAUSED";
-        case State::THROTTLED: return "THROTTLED";
-        case State::EMPTY:
-        case State::WARMING: return "WARMING";
-        case State::OFFLINE:
-        case State::FAILED:
-        case State::SHADER_UNAVAILABLE: return "OFFLINE";
-    }
-    return "OFFLINE";
-}
-
-const char* activityText(LLPrismLens::EActivityState state)
-{
-    using State = LLPrismLens::EActivityState;
-    switch (state)
-    {
-        case State::LIVE: return "Live";
-        case State::WAITING: return "Preview only";
-        case State::PAUSED: return "Paused";
-        case State::THROTTLED: return "Throttled";
-        case State::IDLE: return "Idle";
-    }
-    return "Idle";
-}
-
-std::string clockText(F64 publication_time)
-{
-    const F64 age = llmax(0.0, static_cast<F64>(LLTimer::getTotalSeconds()) - publication_time);
-    const std::time_t now = std::time(nullptr) - static_cast<std::time_t>(age);
-    std::tm local{};
-#if LL_WINDOWS
-    localtime_s(&local, &now);
-#else
-    localtime_r(&now, &local);
-#endif
-    char value[16]{};
-    std::strftime(value, sizeof(value), "%I:%M:%S %p", &local);
-    return value;
 }
 
 bool sameCapture(const LLPrismLens::CaptureHandle& left,
@@ -299,90 +249,16 @@ void ALVCamMonitorStrip::setTiles(
 }
 
 void ALVCamMonitorStrip::updateTileText(
-    U32 slot, const Tile& tile, bool info_overlay, bool force_info)
+    U32 slot, const Tile& tile, bool, bool)
 {
     TileTextCache& cache = mTileText[slot];
-    const S32 observed_tenths = displayTenths(tile.mObservedFps);
-    const S32 target_tenths = displayTenths(tile.mTargetFps);
-    const S32 preview_tenths = displayTenths(tile.mPreviewFps);
-    const S64 timestamp_second = static_cast<S64>(tile.mPublication.mTimestamp);
-    const bool name_changed = !cache.mValid || cache.mLabelInput != tile.mLabel || cache.mMedia != tile.mMedia;
-    const bool info_changed = force_info || !cache.mValid ||
-        cache.mActivity != tile.mActivity || cache.mPreviewState != tile.mPublication.mState ||
-        cache.mObservedTenths != observed_tenths || cache.mTargetTenths != target_tenths ||
-        cache.mPreviewTenths != preview_tenths || cache.mTimestampSecond != timestamp_second ||
-        cache.mFaceCount != tile.mFaceCount || cache.mMonitorDisplayIndex != tile.mMonitorDisplayIndex ||
-        cache.mEditing != tile.mEditing || cache.mMasterEnabled != tile.mMasterEnabled ||
-        cache.mPreviewsEnabled != tile.mPreviewsEnabled ||
-        cache.mMonitorShowsDisplay != tile.mMonitorShowsDisplay ||
-        cache.mMonitorDisplayVirtual != tile.mMonitorDisplayVirtual;
-
-    if (name_changed)
-        cache.mName = llformat("CAM %u - %s", slot + 1, tile.mLabel.c_str());
-    if (info_overlay)
-    {
-        if (info_changed)
-        {
-            const char* prefix = tile.mEditing ? "EDITING \xC2\xB7 " : "";
-            if (!tile.mPreviewsEnabled)
-                cache.mBadge = "PREVIEWS OFF";
-            else if (tile.mActivity == LLPrismLens::EActivityState::IDLE)
-                cache.mBadge = std::string(prefix) + "OFFLINE";
-            else if (tile.mActivity == LLPrismLens::EActivityState::LIVE)
-                cache.mBadge = llformat("%sLIVE %.1f/%.1f fps", prefix,
-                    observed_tenths / 10.f, target_tenths / 10.f);
-            else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::PREVIEW ||
-                     tile.mPublication.mState == LLPrismPreviewService::ETileState::READY)
-                cache.mBadge = llformat("%sPREVIEW %.1f fps", prefix, preview_tenths / 10.f);
-            else
-                cache.mBadge = std::string(prefix) + tileBadge(tile.mPublication.mState);
-
-            cache.mTimestamp = tile.mPreviewsEnabled && tile.mPublication.mTimestamp > 0.0
-                ? clockText(tile.mPublication.mTimestamp) : "--:--";
-            cache.mShows = tile.mMonitorShowsDisplay
-                ? llformat("Shows: %s %u", tile.mMonitorDisplayVirtual ? "Virtual screen" : "Prim face",
-                           tile.mMonitorDisplayIndex + 1)
-                : "Shows: camera output (raw)";
-            if (!tile.mMasterEnabled)
-                cache.mStatus = "Paused \xC2\xB7 Virtual Cam off";
-            else if (!tile.mPreviewsEnabled)
-                cache.mStatus = "Previews off";
-            else if (tile.mActivity == LLPrismLens::EActivityState::LIVE)
-                cache.mStatus = llformat("Live %.1f/%.1f fps \xC2\xB7 %u face%s",
-                    observed_tenths / 10.f, target_tenths / 10.f,
-                    tile.mFaceCount, tile.mFaceCount == 1 ? "" : "s");
-            else if (tile.mActivity == LLPrismLens::EActivityState::WAITING)
-                cache.mStatus = "Preview only \xC2\xB7 no visible face";
-            else if (tile.mActivity == LLPrismLens::EActivityState::IDLE)
-                cache.mStatus = "Offline - not producing";
-            else
-                cache.mStatus = std::string(activityText(tile.mActivity)) +
-                    " \xC2\xB7 no visible face";
-        }
-    }
-    else if (mInfoOverlay)
-    {
-        cache.mBadge.clear();
-        cache.mTimestamp.clear();
-        cache.mShows.clear();
-        cache.mStatus.clear();
-    }
-
+    if (!cache.mValid || cache.mLabelInput != tile.mLabel || cache.mMedia != tile.mMedia)
+        cache.mName = llformat(tile.mMedia ? "MEDIA %u - %s" : "CAM %u - %s", slot + 1, tile.mLabel.c_str());
+    // State/reason only. Frame times, rates, and publication serials never
+    // participate in text invalidation. The atlas refresh remains independent.
+    if (cache.mStatus != tile.mStatus) cache.mStatus = tile.mStatus;
     cache.mLabelInput = tile.mLabel;
     cache.mMedia = tile.mMedia;
-    cache.mActivity = tile.mActivity;
-    cache.mPreviewState = tile.mPublication.mState;
-    cache.mObservedTenths = observed_tenths;
-    cache.mTargetTenths = target_tenths;
-    cache.mPreviewTenths = preview_tenths;
-    cache.mTimestampSecond = timestamp_second;
-    cache.mFaceCount = tile.mFaceCount;
-    cache.mMonitorDisplayIndex = tile.mMonitorDisplayIndex;
-    cache.mEditing = tile.mEditing;
-    cache.mMasterEnabled = tile.mMasterEnabled;
-    cache.mPreviewsEnabled = tile.mPreviewsEnabled;
-    cache.mMonitorShowsDisplay = tile.mMonitorShowsDisplay;
-    cache.mMonitorDisplayVirtual = tile.mMonitorDisplayVirtual;
     cache.mValid = true;
 }
 
@@ -475,13 +351,13 @@ void ALVCamMonitorStrip::draw()
         if (!tile.mVisible) continue;
         const LLRect rect = tileRect(static_cast<S32>(slot - start));
         const S32 picture_width = llmax(1, rect.getWidth() - 4);
-        const S32 caption_height = (mCompact || !mInfoOverlay) ? 24 : 54;
+        const S32 caption_height = 42;
         const S32 picture_height = llmin(llmax(1, rect.getHeight() - caption_height),
                                          llmax(1, picture_width * 9 / 16));
         const LLRect picture(rect.mLeft + 2, rect.mTop - 2, rect.mRight - 2,
                              rect.mTop - 2 - picture_height);
         const LLRectf& uv = tile.mPublication.mCellUV;
-        if (tile.mPublication.mAtlas.mGeneration &&
+        if (!tile.mNoSignal && tile.mPublication.mAtlas.mGeneration &&
             mPreviewService->bindAtlas(tile.mPublication.mAtlas))
         {
             gGL.color4f(1.f, 1.f, 1.f, 1.f);
@@ -496,7 +372,7 @@ void ALVCamMonitorStrip::draw()
             gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
         }
         else
-            gl_rect_2d(picture, LLColor4(0.08f, 0.09f, 0.11f, 1.f), true);
+            gl_rect_2d(picture, tile.mNoSignalWhite ? LLColor4::white : LLColor4::black, true);
         gl_rect_2d(picture, mBorderColor, false);
         LLColor4 status_dot(0.56f, 0.85f, 0.66f, 1.f);
         if (!tile.mPreviewsEnabled && tile.mActivity != LLPrismLens::EActivityState::IDLE)
@@ -513,14 +389,7 @@ void ALVCamMonitorStrip::draw()
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::FAILED ||
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::SHADER_UNAVAILABLE)
             status_dot = LLColor4(0.90f, 0.28f, 0.24f, 1.f);
-        if (!mCompact && mInfoOverlay)
-        {
-            drawText(mFont, text_cache.mBadge, picture.mLeft + 4, picture.mTop - 13,
-                     LLColor4(0.56f, 0.85f, 0.66f, 1.f), picture.getWidth() - 8);
-            drawText(mFont, text_cache.mTimestamp, picture.mRight - 70,
-                     picture.mBottom + 4, mTextColor, 66);
-        }
-        else if (mCompact)
+        if (mCompact)
         {
             gGL.color4fv(status_dot.mV);
             gl_circle_2d(static_cast<F32>(picture.mLeft + 6),
@@ -536,11 +405,8 @@ void ALVCamMonitorStrip::draw()
         drawText(mFont, text_cache.mName, name_left, name_y, mTextColor,
                  llmax(1, rect.mRight - 22 - name_left));
         drawText(mFont, "...", rect.mRight - 18, name_y, mMutedColor, 16);
-        if (!mCompact && mInfoOverlay)
         {
-            drawText(mFont, text_cache.mShows, rect.mLeft + 12, picture.mBottom - 28,
-                     mMutedColor, rect.getWidth() - 16);
-            drawText(mFont, text_cache.mStatus, rect.mLeft + 12, picture.mBottom - 43,
+            drawText(mFont, text_cache.mStatus, rect.mLeft + 12, picture.mBottom - 28,
                      status_dot, rect.getWidth() - 16);
         }
     }
@@ -553,7 +419,7 @@ bool ALVCamMonitorStrip::handleMouseDown(S32 x, S32 y, MASK)
     if (slot < 0) return false;
     const LLRect rect = tileRect(mCompact ? slot : slot - static_cast<S32>(mLargePage * 4));
     const S32 picture_width = llmax(1, rect.getWidth() - 4);
-    const S32 caption_height = (mCompact || !mInfoOverlay) ? 24 : 54;
+    const S32 caption_height = 42;
     const S32 picture_height = llmin(llmax(1, rect.getHeight() - caption_height),
                                      llmax(1, picture_width * 9 / 16));
     const S32 name_y = rect.mTop - 2 - picture_height - 13;

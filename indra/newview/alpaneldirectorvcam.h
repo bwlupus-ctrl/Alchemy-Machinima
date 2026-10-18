@@ -105,9 +105,16 @@ private:
     LLLineEditor* mMediaVideo = nullptr;
     LLPrismLens::CaptureHandle mMediaEditHandle;
     std::string mMediaCue, mMediaDraft, mMediaError;
+    void refuseMediaVideo(const std::string& reason);
     std::string mMediaPlayStatus;
-    LLFrameTimer mMediaPlayStatusTimer;
-    bool mMediaPlayPolicy = false, mMediaPlayMaster = false, mMediaPlayEnabled = false;
+    bool mMediaMasterEnabled = false, mMediaSlotsEnabled = false;
+    F64 mNextPerformanceRefresh = 0.;
+    struct RefusedMediaDraft
+    {
+        U64 generation = 0;
+        std::string cue, draft, reason;
+    };
+    std::unordered_map<LLUUID, RefusedMediaDraft> mMediaRefusals;
     U64 mMediaEditEpoch = 0;
     bool mMediaEditingUrl = false;
     bool mMediaPlayable = false;

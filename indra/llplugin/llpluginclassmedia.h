@@ -31,6 +31,7 @@
 
 #include "llpluginprocessparent.h"
 #include "llpluginfileadmission.h"
+#include "llpluginloopseam.h"
 #include "llrect.h"
 #include "llmediaframestate.h"
 #include "llpluginclassmediaowner.h"
@@ -171,6 +172,8 @@ public:
     void loadURI(const std::string &uri);
     void configurePrivateFile(const std::string& demux, S32 desired, bool loop);
     S32 privateFileVerdict() const;
+    bool privateFileRetaining() const { return mPrivateDesired != 0 && mPrivateLoopReverify && privateFileVerdict() == 0; }
+    const char* privateFileFailureReason() const;
     std::shared_ptr<LLPluginFileClose> privateFileCloseFence()
     { return mPlugin ? mPlugin->privateFileCloseFence(mLoadToken) : nullptr; }
     bool privateFileSeekable() const { return privateFileVerdict() == 1 && mPrivateFileSeekable; }
@@ -178,6 +181,9 @@ public:
 private:
     std::string mPrivateDemux;
     S32 mPrivateDesired = 0, mPrivateFileVerdict = 0;
+    bool mPrivateLoopReverify = false;
+    LLPluginLoopSeam mLoopSeams;
+    void logLoopSeamSummary(const LLPluginLoopSeam::Report& report);
     bool mPrivateLoop = true, mPrivateFileSeekable = false;
     LLPluginFileAdmission mPrivateAdmission;
     std::string mPrivatePlayerToken;

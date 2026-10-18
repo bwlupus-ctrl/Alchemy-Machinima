@@ -949,6 +949,19 @@ if ($Layout) {
     Copy-Item -LiteralPath $layoutStatesFile.FullName -Destination $layoutStatesDest
     $layoutStates = @(Import-Csv -LiteralPath $layoutStatesDest)
   }
+  $vcamRectCheckPass = $true
+  if ($DirectorV2 -and (-not $Pages -or $Pages -match 'vcam')) {
+    $vcamRectSource = Get-Item -LiteralPath (Join-Path $logsDir 'ui_vcam_source_rects.csv') -ErrorAction SilentlyContinue
+    if (-not $vcamRectSource -or $vcamRectSource.LastWriteTimeUtc -lt $startUtc) {
+      Write-Host 'VCam runtime rect audit: FAIL (missing/stale viewer dump)' -ForegroundColor Red
+      $vcamRectCheckPass = $false
+    } else {
+      $vcamRectDest = Join-Path $layoutDest 'ui_vcam_source_rects.csv'
+      Copy-Item -LiteralPath $vcamRectSource.FullName -Destination $vcamRectDest
+      & python (Join-Path $PSScriptRoot '../code_tools/vcam_runtime_rect_check.py') $vcamRectDest --require-media-modes
+      $vcamRectCheckPass = $LASTEXITCODE -eq 0
+    }
+  }
   $shotsDest = Join-Path $layoutDest 'ui_audit'
   if (Test-Path -LiteralPath $layoutShotsPath -PathType Container) {
     Copy-Item -LiteralPath $layoutShotsPath -Destination $shotsDest -Recurse
@@ -1220,7 +1233,7 @@ if ($DirectorV2) {
 
   $directorBudgetFailed = -not ($openPass -and $steadyPass -and $buildPass -and
     $searchPass -and $amberPass -and $hoverPass -and $kitLayoutPass -and
-    $liveChecksPass -and $legacyPass)
+    $liveChecksPass -and $legacyPass -and $vcamRectCheckPass)
   Write-Host ("DIRECTOR V2 BUDGET: " + $(if ($directorBudgetFailed) { 'FAIL' } else { 'PASS' })) -ForegroundColor $(if ($directorBudgetFailed) { 'Red' } else { 'Green' })
 }
 if ($crashes.Count) {

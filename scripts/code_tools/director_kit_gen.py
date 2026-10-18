@@ -572,7 +572,7 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
             child.set("tool_tip", str(row["tip"]))
         if row.get("enabled_control"):
             child.set("enabled_control", str(row["enabled_control"]))
-        if kind == "readout" and row.get("row_height"):
+        if kind == "readout" and (row.get("row_height") or row.get("wrap")):
             child.set("word_wrap", "true")
         return kind, child, "setting" if hosted.get("control_name") else "code"
     kind, _ = data_kind(row)
@@ -630,7 +630,7 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
         attrs["tool_tip"] = str(row["tip"])
     if row.get("enabled_control"):
         attrs["enabled_control"] = str(row["enabled_control"])
-    if kind == "readout" and row.get("row_height"):
+    if kind == "readout" and (row.get("row_height") or row.get("wrap")):
         attrs["word_wrap"] = "true"
     child = ET.Element(tag, attrs)
     if kind == "readout" and row.get("text") is not None:
@@ -701,6 +701,8 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         attrs["bulk_reset"] = "false"
     if row.get("no_widget_history"):
         attrs["widget_history"] = "false"
+    if row.get("actions"):
+        attrs["action_row"] = "true"
     if row.get("fill_width"):
         attrs["fill_width"] = "true"
     if row.get("unconnected"):

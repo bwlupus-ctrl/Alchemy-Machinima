@@ -342,6 +342,7 @@ LLGLSLShader            gCGColorgradeLegacyGammaProgram;
 LLGLSLShader            gCGTonemapColorgradeProgram;
 LLGLSLShader            gCGTonemapColorgradeLegacyGammaProgram;
 LLGLSLShader            gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
+LLGLSLShader            gCineFlareEnergyProgram;
 LLGLSLShader            gLensSoftEdgeProgram;
 bool                    gOnLensNoIR = false;
 // [RLVa:KB] - @setsphere
@@ -821,6 +822,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gCGTonemapColorgradeProgram);
     mShaderList.push_back(&gCGTonemapColorgradeLegacyGammaProgram);
     mShaderList.push_back(&gOnLensFiltersProgram);
+    mShaderList.push_back(&gCineFlareEnergyProgram);
 
     // make sure there are no redundancies
     llassert(no_redundant_shaders(mShaderList));
@@ -5540,6 +5542,18 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gCGTonemapColorgradeLegacyGammaProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gCGTonemapColorgradeLegacyGammaProgram.createShader();
         llassert(success);
+    }
+
+    // Optional history pass; failure leaves the established unsmoothed path.
+    if (success)
+    {
+        gCineFlareEnergyProgram.mName = "Cine flare energy history";
+        gCineFlareEnergyProgram.mShaderFiles.clear();
+        gCineFlareEnergyProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gCineFlareEnergyProgram.mShaderFiles.push_back(make_pair("alchemy/cineFlareEnergyF.glsl", GL_FRAGMENT_SHADER));
+        gCineFlareEnergyProgram.clearPermutations();
+        gCineFlareEnergyProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        gCineFlareEnergyProgram.createShader();
     }
 
     // On-lens filters (Graduated ND + Polarizer) pre-pass. Runs on the linear

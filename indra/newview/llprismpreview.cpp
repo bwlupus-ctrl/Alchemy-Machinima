@@ -1256,6 +1256,10 @@ void LLPrismPreviewService::updateAtlas()
             state, offline))
     {
         TilePublication& tile = mTiles[cell];
+        // A failed signal build must not leave an older atlas cell visible.
+        // setDemand resets cells on id/generation changes. Any retained cell
+        // here belongs to this same capture, not a former camera in its slot.
+        tile.mAtlas = AtlasHandle{};
         tile.mState = ETileState::OFFLINE;
         tile.mTimestamp = LLTimer::getTotalSeconds();
         tile.mPublicationSerial = entry.mPublicationSerial;

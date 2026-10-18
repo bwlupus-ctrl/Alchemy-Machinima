@@ -1864,6 +1864,7 @@ struct PendingFileBrowse
     LLPrismLens::MediaUrlSource picked;
     std::function<bool()> current;
     std::function<void()> committed;
+    std::function<void(const std::string&, const std::string&)> refused;
     U64 ticket = 0;
     std::string status;
     ALMediaFile::BrowseOverlay overlay;
@@ -2569,6 +2570,8 @@ public:
 
     void stopPrivate(U32 slot, const std::string& status = "Stopped")
     {
+        if (mFileBrowses[slot].request)
+            LL_INFOS("VCamMedia") << "Browse stale-dropped slot=" << slot << " reason=source/player teardown" << LL_ENDL;
         mFilePickers[slot].cancel();
         mFileBrowses[slot].overlay.restore(mLenses[slot].mRuntime.mReason);
         mFileBrowses[slot] = {};
@@ -2630,7 +2633,7 @@ public:
         value.mValue = source.mValue; // Authored text; classify only normalizes internal I/O.
         mLenses[slot].setMediaUrlData(value);
         ++mLenses[slot].mMediaLayoutRevision;
-        if (replaced) invalidateMediaSlot(slot, "Set. Press Play to start it.");
+        if (replaced) invalidateMediaSlot(slot, source.mValue.empty() ? "Enter a direct video URL" : "Set. Press Play to start it.");
         else if (!replaced && mPrivateOwners[slot])
         {
             mPrivateOwners[slot]->source.mVolume = value.mVolume;
@@ -2650,13 +2653,20 @@ public:
     bool fileTransport(const LLPrismLens::CaptureHandle& handle, ALMediaFile::Transport desired)
     {
         const S32 slot = findCapture(handle);
-        if (slot < 0 || !mLenses[slot].mediaUrlData()) return false;
-        if (desired == ALMediaFile::Transport::STOPPED) { stopPrivate(slot); return true; }
-        if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled() || !gSavedSettings.getBOOL("AudioStreamingMedia"))
+        if (desired == ALMediaFile::Transport::PLAYING)
+            LL_INFOS("VCamMedia") << "Play requested slot=" << slot << " generation=" << handle.mGeneration << LL_ENDL;
+        if (slot < 0 || !mLenses[slot].mediaUrlData())
         {
-            mLenses[slot].mRuntime.mReason = !prismEnabled() ? "VCam is off" :
-                !LLPrismLens::mediaSlotsEnabled() ? "Media slots disabled" : "Media playback is turned off in Preferences";
+            if (desired == ALMediaFile::Transport::PLAYING)
+                LL_INFOS("VCamMedia") << "Play refused rule=slot/generation/private-source" << LL_ENDL;
+            return false;
+        }
+        if (desired == ALMediaFile::Transport::STOPPED) { stopPrivate(slot); return true; }
+        if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled())
+        {
+            mLenses[slot].mRuntime.mReason = !prismEnabled() ? "Turn on Virtual Cam to play video" : "Media slots disabled";
             ++mRuntimeRevision;
+            LL_INFOS("VCamMedia") << "Transport refused slot=" << slot << " rule=media policy reason=" << mLenses[slot].mRuntime.mReason << LL_ENDL;
             return false;
         }
         const auto& source = *mLenses[slot].mediaUrlData();
@@ -2677,42 +2687,112 @@ public:
         if (owner->request || owner->lease) return true;
         ALMediaFile::Descriptor descriptor; std::string reason;
         if (source.mValue.empty() || !ALMediaFile::classify(source.mValue, descriptor, reason, LL_WINDOWS))
-        { owner->desired = ALMediaFile::Transport::STOPPED; owner->status = reason.empty() ? "Stopped" : reason; return false; }
+        {
+            owner->desired = ALMediaFile::Transport::STOPPED;
+            owner->status = source.mValue.empty() ? "Enter a direct video URL" : reason;
+            LL_INFOS("VCamMedia") << "Play refused slot=" << slot << " rule=nonempty syntax reason=" << owner->status << LL_ENDL;
+            return false;
+        }
         LLPrismLens::initializeMediaFiles();
         ++owner->token;
         owner->status = "checking file";
         owner->request = descriptor.location == ALMediaFile::Location::HTTP_URL ? ALMediaFile::startDownload(descriptor) : ALMediaFile::startPreflight(descriptor);
-        if (!owner->request) { owner->desired = ALMediaFile::Transport::STOPPED; owner->status = ALMediaFile::BUDGET; }
+        if (!owner->request) { owner->desired = ALMediaFile::Transport::STOPPED; owner->status = ALMediaFile::BUDGET;
+            LL_INFOS("VCamMedia") << "Play refused slot=" << slot << " rule=I/O admission reason=" << owner->status << LL_ENDL; }
         return owner->request != nullptr;
     }
 
-    void browseFile(const LLPrismLens::CaptureHandle& handle, std::function<bool()> current, std::function<void()> committed)
+    template<class Edit> bool editMediaFile(const LLPrismLens::CaptureHandle& handle, Edit edit)
     {
         const S32 slot = findCapture(handle);
-        if (slot < 0 || !LLPrismLens::mediaSlotsEnabled() || !mLenses[slot].isMedia()) return;
+        if (slot < 0 || !mLenses[slot].mediaUrlData()) return false;
+        auto source = *mLenses[slot].mediaUrlData(); // Live registry, never the page snapshot.
+        edit(source);
+        return setMediaUrlSource(handle, source, nullptr);
+    }
+
+    bool setMediaAspect(const LLPrismLens::CaptureHandle& handle, LLPrismLens::ESourceAspect aspect)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0 || !mLenses[slot].isMedia()) return false;
+        if (mLenses[slot].mediaUrlData())
+            return editMediaFile(handle, [aspect](auto& source) { source.mAspect = aspect; });
+        auto source = *mLenses[slot].mediaData();
+        source.mAspect = aspect;
+        return setMediaSource(handle, source, nullptr);
+    }
+
+    void clearFileBrowse(const LLPrismLens::CaptureHandle& handle)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0) return;
+        if (mFileBrowses[slot].request)
+            LL_INFOS("VCamMedia") << "Browse stale-dropped slot=" << slot << " reason=new slot action" << LL_ENDL;
+        mFilePickers[slot].cancel();
         mFileBrowses[slot].overlay.restore(mLenses[slot].mRuntime.mReason);
         mFileBrowses[slot] = {};
+    }
+
+    void browseFile(const LLPrismLens::CaptureHandle& handle, std::function<bool()> current,
+                    std::function<void()> committed,
+                    std::function<void(const std::string&, const std::string&)> refused)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0 || !LLPrismLens::mediaSlotsEnabled() || !mLenses[slot].isMedia())
+        {
+            LL_INFOS("VCamMedia") << "Browse refused reason=invalid slot or media disabled" << LL_ENDL;
+            return;
+        }
+        clearFileBrowse(handle);
+        if (!prismEnabled())
+        {
+            mLenses[slot].mRuntime.mReason = "Turn on Virtual Cam to play video";
+            ++mRuntimeRevision;
+        }
         const U64 token = mFilePickers[slot].begin();
-        LLFilePickerReplyThread::startPicker([handle, token, current, committed](const std::vector<std::string>& files, LLFilePicker::ELoadFilter, LLFilePicker::ESaveFilter)
+        LLFilePickerReplyThread::startPicker([handle, token, current, committed, refused](const std::vector<std::string>& files, LLFilePicker::ELoadFilter, LLFilePicker::ESaveFilter)
         {
             auto& registry = PrismLensRegistry::instance();
             const S32 slot = registry.findCapture(handle);
-            if (slot < 0 || files.empty()) return;
-            registry.mFilePickers[slot].picked(token, current && current() && prismEnabled() &&
-                LLPrismLens::mediaSlotsEnabled() && registry.mLenses[slot].isMedia(), [&]()
+            const bool valid = slot >= 0 && current && current() &&
+                LLPrismLens::mediaSlotsEnabled() && registry.mLenses[slot].isMedia() &&
+                registry.mFilePickers[slot].serial == token;
+            LL_INFOS("VCamMedia") << "Browse result=" << (!valid ? "stale-dropped" : files.empty() ? "cancelled" : "picked")
+                << " slot=" << slot << " generation=" << handle.mGeneration
+                << " reason=" << (!valid ? "ticket, selection, generation or policy changed" : "picker completed")
+                << " ext=" << (files.empty() ? "none" : ALMediaFile::diagnosticExtension(files.front())) << LL_ENDL;
+            if (!valid || files.empty()) return;
+            ALMediaFile::Descriptor syntax; std::string reason;
+            auto& browse = registry.mFileBrowses[slot];
+            browse.picked = registry.mLenses[slot].fileBrowseCue();
+            browse.picked.mLocation = LLPrismLens::MediaUrlSource::Location::LOCAL_FILE;
+            browse.picked.mValue = files.front();
+            browse.ticket = token; browse.current = current; browse.committed = committed; browse.refused = refused;
+            if (!ALMediaFile::classify(files.front(), syntax, reason, LL_WINDOWS) || syntax.location != ALMediaFile::Location::LOCAL_FILE)
             {
-                ALMediaFile::Descriptor syntax; std::string reason;
-                auto& browse = registry.mFileBrowses[slot];
-                if (!ALMediaFile::classify(files.front(), syntax, reason, LL_WINDOWS) || syntax.location != ALMediaFile::Location::LOCAL_FILE)
-                { browse.status = reason.empty() ? ALMediaFile::UNSUPPORTED : reason; return; }
-                LLPrismLens::initializeMediaFiles();
-                browse.picked = registry.mLenses[slot].fileBrowseCue();
-                browse.picked.mLocation = LLPrismLens::MediaUrlSource::Location::LOCAL_FILE;
-                browse.picked.mValue = files.front();
-                browse.ticket = token; browse.current = current; browse.committed = committed;
-                browse.request = ALMediaFile::startPreflight(syntax);
-                browse.status = browse.request ? "checking file" : ALMediaFile::BUDGET;
-            });
+                browse.status = reason.empty() ? ALMediaFile::UNSUPPORTED : reason;
+                LL_INFOS("VCamMedia") << "Browse refused slot=" << slot << " rule=local-file syntax reason=" << browse.status << LL_ENDL;
+                if (refused) refused(files.front(), browse.status);
+                return;
+            }
+            if (!prismEnabled())
+            {
+                auto source = registry.mLenses[slot].fileBrowseCue();
+                source.mLocation = browse.picked.mLocation;
+                source.mValue = browse.picked.mValue;
+                browse = {};
+                if (registry.setMediaUrlSource(handle, source, nullptr))
+                {
+                    registry.mLenses[slot].mRuntime.mReason = "Turn on Virtual Cam to play video";
+                    ++registry.mRuntimeRevision;
+                    if (committed) committed();
+                }
+                return;
+            }
+            LLPrismLens::initializeMediaFiles();
+            browse.request = ALMediaFile::startPreflight(syntax);
+            browse.status = browse.request ? "checking file" : ALMediaFile::BUDGET;
+            if (!browse.request && refused) refused(files.front(), browse.status);
         }, LLFilePicker::FFLOAD_VIDEO, false);
     }
 
@@ -2720,22 +2800,29 @@ public:
     {
         auto& browse = mFileBrowses[slot];
         if (!browse.request) return;
-        if (!browse.current || !browse.current()) { browse = {}; return; }
+        if (!browse.current || !browse.current() || browse.ticket != mFilePickers[slot].serial)
+        {
+            LL_INFOS("VCamMedia") << "Browse stale-dropped slot=" << slot << " reason=preflight ticket or editor changed" << LL_ENDL;
+            browse = {}; return;
+        }
         const auto result = browse.request->poll();
         browse.status = result.status;
         if (!result.terminal) return;
         browse.request.reset();
         const auto picked = browse.picked;
-        mFilePickers[slot].picked(browse.ticket, true, [&]()
+        if (!result.lease)
         {
-            ALMediaFile::commitFileBrowse(browse.status, result.status,
-                result.lease != nullptr, browse.current && browse.current(), [&]()
-            {
-                const auto committed = browse.committed;
-                browse = {};
-                if (setMediaUrlSource(mLenses[slot].mHandle, picked, nullptr) && committed) committed();
-            });
-        });
+            LL_INFOS("VCamMedia") << "Browse refused slot=" << slot << " job=" << result.id << " reason=" << ALMediaFile::diagnosticReason(std::runtime_error(result.status)) << LL_ENDL;
+            if (browse.refused) browse.refused(picked.mValue, browse.status);
+            return;
+        }
+        LL_INFOS("VCamMedia") << "Browse preflight admitted slot=" << slot << " job=" << result.id << LL_ENDL;
+        const auto committed = browse.committed;
+        // Merge only the picked cue with the latest Loop/Volume/Aspect.
+        auto source = mLenses[slot].fileBrowseCue();
+        source.mLocation = picked.mLocation; source.mValue = picked.mValue;
+        browse = {};
+        if (setMediaUrlSource(mLenses[slot].mHandle, source, nullptr) && committed) committed();
     }
 
     void clearFileCache()
@@ -2757,6 +2844,9 @@ public:
             owner->status = result.status;
             if (result.terminal)
             {
+                LL_INFOS("VCamMedia") << "Play preflight/download finish slot=" << slot << " job=" << result.id
+                    << " verdict=" << (result.lease ? "ADMITTED" : "REFUSED")
+                    << " reason=" << (result.lease ? "validated lease" : ALMediaFile::diagnosticReason(std::runtime_error(result.status))) << LL_ENDL;
                 owner->request.reset();
                 owner->lease = result.lease;
                 if (!owner->lease) { const auto status = result.status; stopPrivate(slot, status); return; }
@@ -2765,8 +2855,9 @@ public:
         if (owner->lease && !owner->impl && owner->desired == ALMediaFile::Transport::PLAYING)
         {
             const auto* source = &owner->source;
+            LL_INFOS("VCamMedia") << "Player create slot=" << slot << " generation=" << owner->generation << " ext=" << owner->lease->extension << LL_ENDL;
             owner->impl = LLViewerMedia::instance().newMediaImpl(LLUUID::generateNewID(), 1024, 1024, false, false);
-            if (!owner->impl) { stopPrivate(slot, ALMediaFile::FAILED); return; }
+            if (!owner->impl) { LL_INFOS("VCamMedia") << "Player create refused slot=" << slot << " reason=newMediaImpl failed" << LL_ENDL; stopPrivate(slot, ALMediaFile::FAILED); return; }
             owner->impl->cuePrivateFile(ALMediaFile::fileUri(owner->lease->path),
                 owner->lease->extension == "mkv" || owner->lease->extension == "webm" ? "mkv" : "mp4", 2, source->mLoop, source->mVolume, owner->lease);
             owner->status = "PENDING, MUTED";
@@ -2777,9 +2868,16 @@ public:
                 owner->impl->privateFileEnded(), owner->source.mLoop))
             { stopPrivate(slot, "Stopped"); return; } // non-loop EOF; fresh Play repeats all gates
             if (owner->impl->privateFileFailed() || !owner->impl->privateFileActive())
-            { stopPrivate(slot, owner->impl->privateBudgetLost() ? ALMediaFile::BUDGET : ALMediaFile::NOT_VIDEO); return; }
+            {
+                const auto* plugin = owner->impl->getMediaPlugin();
+                LL_INFOS("VCamMedia") << "Player admission refused slot=" << slot << " reason=" <<
+                    (owner->impl->privateBudgetLost() ? "private media budget lost" : plugin ? plugin->privateFileFailureReason() : "plugin unavailable/inactive") << LL_ENDL;
+                stopPrivate(slot, owner->impl->privateBudgetLost() ? ALMediaFile::BUDGET : ALMediaFile::NOT_VIDEO); return;
+            }
             owner->status = owner->impl->privateFileAdmitted() ?
-                owner->desired == ALMediaFile::Transport::PAUSED ? "Paused" : "Playing" : "PENDING, MUTED";
+                owner->desired == ALMediaFile::Transport::PAUSED ? "Paused" :
+                owner->source.mLoop && owner->impl->getMediaPlugin() && !owner->impl->getMediaPlugin()->privateFileSeekable()
+                    ? ALMediaFile::UNKNOWN_LOOP : "Playing" : "PENDING, MUTED";
         }
         else if (owner->lease && owner->desired == ALMediaFile::Transport::PAUSED) owner->status = "Paused";
         mLenses[slot].mRuntime.mReason = owner->status;
@@ -2940,6 +3038,65 @@ public:
         return true;
     }
 
+    void logMediaRoutes(U32 slot)
+    {
+        const auto& media = mLenses[slot];
+        const double now = LLTimer::getTotalSeconds();
+        const bool enabled = prismEnabled() && LLPrismLens::mediaSlotsEnabled();
+        U32 displays = 0, projectors = 0, index = 0;
+        auto& states = mMediaRouteStates[slot];
+        bool changed = mMediaRouteGeneration[slot] != media.mHandle.mGeneration;
+        const auto route = [&](bool bound, bool generation, bool quarantined, bool ready, bool visible)
+        {
+            // Logging-only temporal hysteresis: demand must remain visible for
+            // .25s to enter, invisible for .75s to leave. Rendering is untouched.
+            auto& demand = mMediaRouteVisibility[slot][index];
+            if (visible != demand.candidate) { demand.candidate = visible; demand.since = now; }
+            if (visible != demand.stable && now - demand.since >= (visible ? .25 : .75)) demand.stable = visible;
+            const U64 state = 1 + (U64(bound) | (U64(generation)<<1) | (U64(quarantined)<<2) |
+                (U64(ready)<<3) | (U64(demand.stable)<<4) | (U64(media.mHasOutput)<<5) | (U64(enabled)<<6));
+            changed |= states[index] != state;
+            states[index++] = state;
+        };
+        for (const auto& display : mDisplays)
+        {
+            const bool bound = display.mOccupied && display.mCaptureSlot == slot;
+            displays += bound;
+            route(bound, bound && display.mCaptureGeneration == media.mHandle.mGeneration,
+                bound && display.mQuarantined, bound && display.mRuntime.mHealth == LLPrismLens::EDisplayHealth::READY,
+                bound && display.mRuntime.mVisibility == LLPrismLens::EDisplayVisibility::VISIBLE);
+        }
+        for (const auto& projector : mProjectors)
+        {
+            const bool bound = projector.mOccupied && projector.mCaptureSlot == slot;
+            projectors += bound;
+            route(bound, bound && projector.mCaptureGeneration == media.mHandle.mGeneration,
+                bound && projector.mQuarantined, bound && projector.mRuntime.mHealth == LLPrismLens::EDisplayHealth::READY,
+                bound && projector.mRuntime.mDemanded);
+        }
+        const U64 counts = 1 + displays + (U64(projectors)<<32);
+        changed |= mMediaRouteCounts[slot] != counts;
+        mMediaRouteCounts[slot] = counts;
+        mMediaRouteGeneration[slot] = media.mHandle.mGeneration;
+        mMediaRoutesPending[slot] |= changed;
+        if (!mMediaRoutesPending[slot] || now < mMediaRouteNextLog[slot]) return;
+        mMediaRouteNextLog[slot] = now + 2.;
+        mMediaRoutesPending[slot] = false;
+        // Coalesce every binding's latest state into ONE line per slot/2s.
+        std::ostringstream detail;
+        for (U32 binding = 0; binding < states.size(); ++binding)
+        {
+            const U64 state = states[binding] - 1;
+            if (!(state & 1)) continue;
+            detail << (binding < LLPrismLens::MAX_DISPLAY_BINDINGS ? " display=" : " projector=")
+                << (binding < LLPrismLens::MAX_DISPLAY_BINDINGS ? binding : binding - LLPrismLens::MAX_DISPLAY_BINDINGS) << ':'
+                << (!(state & 2) ? "stale generation" : (state & 4) ? "quarantined" : !(state & 8) ? "offline" :
+                    !(state & 16) ? "not demanding" : !(state & 64) ? "disabled" : !(state & 32) ? "waiting for frame" : "available");
+        }
+        LL_INFOS("VCamMedia") << "Slot routes slot=" << slot << " displays=" << displays << " projectors=" << projectors
+            << (!displays && !projectors ? " no output bindings" : "") << detail.str() << LL_ENDL;
+    }
+
     void reconcileMedia()
     {
         if (mReconcilingMedia) return;
@@ -2953,15 +3110,22 @@ public:
         {
             PrismInstance& media = mLenses[slot];
             if (!media.mOccupied || !media.isMedia()) continue;
+            logMediaRoutes(slot);
             if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled())
             {
-                stopPrivate(slot, "Stopped");
-                invalidateMediaSlot(slot, "Media slots disabled");
+                // An off-state picker is still a live syntax-only cue action.
+                // Only active work needs cancellation here.
+                if (mPrivateOwners[slot] || mFileBrowses[slot].request) stopPrivate(slot, "Stopped");
+                invalidateMediaSlot(slot, !prismEnabled() && media.mediaUrlData()
+                    ? "Turn on Virtual Cam to play video" : "Media slots disabled");
                 for (PrismProjector& projector : mProjectors)
                     if (projector.mOccupied && projector.mCaptureSlot == slot)
                         releaseProjectorVolumetrics(projector);
                 continue;
             }
+            if (const auto* cue = media.mediaUrlData(); cue &&
+                ALMediaFile::clearDisabledStatus(media.mRuntime.mReason, true, cue->mValue.empty()))
+                ++mRuntimeRevision;
             mFileBrowses[slot].overlay.restore(media.mRuntime.mReason);
             tickFileBrowse(slot);
             // Face reconciliation still runs during preflight/failure. Overlay
@@ -2980,8 +3144,7 @@ public:
             } browseStatus{media, mFileBrowses[slot]};
             if (media.mediaUrlData())
             {
-                if (!gSavedSettings.getBOOL("AudioStreamingMedia")) stopPrivate(slot, "Blocked by media policy");
-                else tickPrivate(slot);
+                tickPrivate(slot);
                 if (!mPrivateOwners[slot] || !mPrivateOwners[slot]->impl) continue;
             }
             auto* impl = resolveMedia(media);
@@ -3108,7 +3271,10 @@ public:
                  media.mOutputWidth != media.mFrame.mTargetWidth || media.mOutputHeight != media.mFrame.mTargetHeight));
             media.mRuntime.mHealth = LLPrismLens::ECaptureHealth::READY;
             const bool automatic = media.mediaAspect() == LLPrismLens::ESourceAspect::AUTO;
-            media.mRuntime.mReason = llformat("LibVLC SDR; video %s; %s %.3f:1",
+            const auto* private_source = media.mediaUrlData();
+            const bool unknown_loop = private_source && private_source->mLoop && impl->getMediaPlugin() &&
+                impl->privateFileAdmitted() && !impl->getMediaPlugin()->privateFileSeekable();
+            media.mRuntime.mReason = unknown_loop ? ALMediaFile::UNKNOWN_LOOP : llformat("LibVLC SDR; video %s; %s %.3f:1",
                 image.videoWidth > 0 ? llformat("%d x %d", image.videoWidth, image.videoHeight).c_str() : "unknown",
                 automatic ? (image.videoWidth > 0 ? "Auto" : "Auto: 16:9 fallback") : "override",
                 aspect);
@@ -3202,7 +3368,12 @@ public:
             media.mSignalAspect = LLPrismLens::resolveSourceAspect(media.mediaAspect(), image.videoWidth, image.videoHeight, image.videoSarNum, image.videoSarDen);
             media.mMediaCompletedSerial = image.serial;
             media.mMediaAcceptedLayout = media.mMediaLayoutRevision;
+            const bool first = !media.mHasOutput;
             markProduced(slot, media.mFrame.mTargetWidth, media.mFrame.mTargetHeight);
+            if (first)
+                LL_INFOS("VCamMedia") << "First frame published to slot=" << slot << " generation=" << media.mHandle.mGeneration
+                    << " completed_serial=" << image.serial << " width=" << media.mFrame.mTargetWidth
+                    << " height=" << media.mFrame.mTargetHeight << LL_ENDL;
             ++mMediaCopies;
         }
         return true;
@@ -6470,7 +6641,8 @@ public:
         const bool private_stopped = projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
             mLenses[projector.mCaptureSlot].mediaUrlData() &&
             (!mPrivateOwners[projector.mCaptureSlot] || !mPrivateOwners[projector.mCaptureSlot]->impl ||
-             !mPrivateOwners[projector.mCaptureSlot]->impl->privateFileAdmitted());
+             (!mPrivateOwners[projector.mCaptureSlot]->impl->privateFileAdmitted() &&
+              !mPrivateOwners[projector.mCaptureSlot]->impl->privateFileRetaining()));
         if (!prismEnabled() || private_stopped || (media && !LLPrismLens::mediaSlotsEnabled())) releaseProjectorVolumetrics(projector);
         else if (!quarantined) syncProjectorVolumetrics(projector, volume, media);
         const bool changed = projector.mRuntime.mHealth != health ||
@@ -9372,6 +9544,12 @@ private:
     std::array<PendingFileBrowse, LLPrismLens::MAX_CAPTURES> mFileBrowses;
     std::vector<std::shared_ptr<PrivateMediaRuntime>> mRetiredPrivate;
     bool mReconcilingMedia = false;
+    std::array<std::array<U64, LLPrismLens::MAX_DISPLAY_BINDINGS + LLPrismLens::MAX_PROJECTOR_BINDINGS>, LLPrismLens::MAX_CAPTURES> mMediaRouteStates{};
+    std::array<U64, LLPrismLens::MAX_CAPTURES> mMediaRouteGeneration{}, mMediaRouteCounts{};
+    struct RouteVisibility { bool candidate = false, stable = false; double since = 0.; };
+    std::array<std::array<RouteVisibility, LLPrismLens::MAX_DISPLAY_BINDINGS + LLPrismLens::MAX_PROJECTOR_BINDINGS>, LLPrismLens::MAX_CAPTURES> mMediaRouteVisibility{};
+    std::array<double, LLPrismLens::MAX_CAPTURES> mMediaRouteNextLog{};
+    std::array<bool, LLPrismLens::MAX_CAPTURES> mMediaRoutesPending{};
     PrismDisplay mDisplays[LLPrismLens::MAX_DISPLAY_BINDINGS];
     PrismProjector mProjectors[LLPrismLens::MAX_PROJECTOR_BINDINGS];
     LLPrismLens::GateSettings mGateSettings;
@@ -10319,8 +10497,26 @@ bool pauseMediaFile(const CaptureHandle& slot)
 { return PrismLensRegistry::instance().fileTransport(slot, ALMediaFile::Transport::PAUSED); }
 bool stopMediaFile(const CaptureHandle& slot)
 { return PrismLensRegistry::instance().fileTransport(slot, ALMediaFile::Transport::STOPPED); }
-void browseMediaFile(const CaptureHandle& slot, std::function<bool()> current, std::function<void()> committed)
-{ PrismLensRegistry::instance().browseFile(slot, std::move(current), std::move(committed)); }
+bool setMediaFileLoop(const CaptureHandle& slot, bool loop)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().editMediaFile(slot, [loop](auto& source) { source.mLoop = loop; });
+}
+bool setMediaFileVolume(const CaptureHandle& slot, F32 volume)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().editMediaFile(slot, [volume](auto& source) { source.mVolume = volume; });
+}
+bool setMediaSourceAspect(const CaptureHandle& slot, ESourceAspect aspect)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().setMediaAspect(slot, aspect);
+}
+void clearMediaFileBrowse(const CaptureHandle& slot)
+{ PrismLensRegistry::instance().clearFileBrowse(slot); }
+void browseMediaFile(const CaptureHandle& slot, std::function<bool()> current, std::function<void()> committed,
+                     std::function<void(const std::string&, const std::string&)> refused)
+{ PrismLensRegistry::instance().browseFile(slot, std::move(current), std::move(committed), std::move(refused)); }
 void clearMediaFileCache()
 { if (mediaSlotsEnabled()) PrismLensRegistry::instance().clearFileCache(); }
 
@@ -11437,7 +11633,8 @@ static bool buildSignalCompositeState(U32 capture_slot,
 {
     PrismLensRegistry& registry = PrismLensRegistry::instance();
     const PrismInstance* capture = registry.capture(capture_slot);
-    if (!capture || !capture->mHasOutput) return false;
+    if (!capture || !capture->mHasOutput ||
+        (capture->isMedia() && capture->mMediaCompletedSerial == 0)) return false;
     LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
     U32 output_width = 0;
     U32 output_height = 0;

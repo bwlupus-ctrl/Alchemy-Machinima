@@ -198,6 +198,7 @@ void LLPluginClassMedia::reset()
 
 void LLPluginClassMedia::idle(void)
 {
+    logLoopSeamSummary(mLoopSeams.poll(LLTimer::getTotalSeconds()));
     LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA;
     if(mPlugin)
     {
@@ -834,8 +835,11 @@ void LLPluginClassMedia::loadURI(const std::string &uri)
     if (!mPrivateDemux.empty())
     {
         mPrivateFileVerdict = 0;
+        mPrivateLoopReverify = false;
         mPrivatePlayerToken.clear();
+        mLoopSeams = LLPluginLoopSeam();
         mPrivateAdmission.queued(LLTimer::getTotalSeconds(), mPlugin ? mPlugin->getLaunchTimeout() : 60.);
+        LL_INFOS("VCamMedia") << "Player create/launch queued verdict=PENDING, MUTED demux=" << mPrivateDemux << LL_ENDL;
         mPrivateFileSeekable = false;
         message.setValueBoolean("private_file", true);
         message.setValue("demux", mPrivateDemux);
@@ -870,6 +874,21 @@ S32 LLPluginClassMedia::privateFileVerdict() const
 {
     return mPrivateDemux.empty() ? mPrivateFileVerdict :
         mPrivateAdmission.verdict(mPrivateFileVerdict, mPrivateDesired, LLTimer::getTotalSeconds());
+}
+
+void LLPluginClassMedia::logLoopSeamSummary(const LLPluginLoopSeam::Report& report)
+{
+    if (report.kind == LLPluginLoopSeam::Kind::SUMMARY)
+        LL_INFOS("VCamMedia") << "loop seam summary count=" << report.count
+            << " min_gap_ms=" << report.min << " max_gap_ms=" << report.max
+            << " mean_gap_ms=" << report.mean << " mean_excess_ms=" << report.excess << LL_ENDL;
+}
+
+const char* LLPluginClassMedia::privateFileFailureReason() const
+{
+    if (mPrivateFileVerdict == 0 && privateFileVerdict() < 0)
+        return mPrivateAdmission.playerOpened ? "video-track admission timeout" : "plugin launch timeout";
+    return mPrivateFileVerdict < 0 ? "plugin refused (see track/admission verdict)" : "player inactive";
 }
 
 void LLPluginClassMedia::executeJavaScript(const std::string &code)
@@ -1177,11 +1196,34 @@ void LLPluginClassMedia::receivePluginMessage(const LLPluginMessage &message)
             mAcceleratedPaintDirty = true;
             mediaEvent(LLPluginClassMediaOwner::MEDIA_EVENT_CONTENT_UPDATED);
         }
+        else if (message_name == "loop_seam")
+        {
+            if (!mPrivateDemux.empty() && LLMediaFrame::acceptsToken(mLoadToken, message.getValue("load_token")))
+            {
+                const F64 gap = message.getValueReal("gap_ms"), frame = message.getValueReal("frame_ms");
+                const auto report = mLoopSeams.sample(LLTimer::getTotalSeconds(), gap, frame);
+                if (report.kind == LLPluginLoopSeam::Kind::INDIVIDUAL)
+                    LL_INFOS("VCamMedia") << "loop seam gap " << gap << " ms frame_ms=" << frame
+                        << " excess_ms=" << report.excess << LL_ENDL;
+                else logLoopSeamSummary(report);
+            }
+        }
         else if (message_name == "private_file_admission")
         {
             if (!mPrivateDemux.empty() && LLMediaFrame::acceptsToken(mLoadToken, message.getValue("load_token")))
             {
+                const bool transition = mPrivateFileVerdict != message.getValueS32("verdict") ||
+                    mPrivatePlayerToken != message.getValue("player_token");
+                // Only a previously admitted load may hold through its explicit
+                // Loop edit/reprepare. Pending on an arbitrary new load never qualifies.
+                mPrivateLoopReverify = message.getValueS32("verdict") == 0 &&
+                    message.getValueBoolean("loop_reverify") &&
+                    (mPrivateFileVerdict == 1 || mPrivateLoopReverify);
                 mPrivateFileVerdict = message.getValueS32("verdict");
+                if (transition)
+                    LL_INFOS("VCamMedia") << "Player admission verdict=" << mPrivateFileVerdict
+                        << " tracks=" << message.getValueS32("tracks") << " video=" << message.getValueBoolean("video")
+                        << " reason=" << message.getValue("reason") << LL_ENDL;
                 if (mPrivateFileVerdict == 0 && message.getValueBoolean("opened"))
                 {
                     const auto player = message.getValue("player_token");

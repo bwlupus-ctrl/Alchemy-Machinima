@@ -28,6 +28,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alflareenergy.h"
 #include "llactormaskeligibility.h" // [ActorMask]
 #include "alactormaskdiagnostics.h" // [ActorMask] WP7
 #include "alghostattachmentenumerator.h"
@@ -3081,6 +3082,8 @@ void LLPipeline::releaseShadowBuffers()
 
 void LLPipeline::releaseScreenBuffers()
 {
+    for (auto& target : mCineFlareEnergy) target.release();
+    mCineFlareEnergyValid = false;
     mActorMaskQueries.release(); // [ActorMask]
     mActorMaskValid = false;
     mActorMaskAllocated = false;
@@ -13604,6 +13607,70 @@ void LLPipeline::uploadPrismPreviewColorCorrectUniforms(LLGLSLShader& shader) co
     }
 }
 
+// Twenty GPU texels, ping-ponged once per main presentation. No pixel readback,
+// fence wait, or scene-size pass. Restore the color-correct target and bindings.
+bool LLPipeline::updateCineFlareEnergy(const LLVector4* inputs, LLRenderTarget* shaft,
+                                     LLRenderTarget* restore_target, LLGLSLShader* restore_shader,
+                                     F32 attack_alpha, F32 release_alpha)
+{
+    auto& shader = gCineFlareEnergyProgram;
+    if (!shader.isComplete() || !shaft) { mCineFlareEnergyValid = false; return false; }
+    const S32 channels[] = {shader.getTextureChannel(LLShaderMgr::CINE_FLARE_SHAFT),
+                            shader.getTextureChannel(LLShaderMgr::CINE_FLARE_HISTORY), 0};
+    if (channels[0] < 0 || channels[1] < 0) { mCineFlareEnergyValid = false; return false; }
+    const U32 active = gGL.getCurrentTexUnitIndex();
+    U32 textures[3];
+    LLTexUnit::eTextureType types[3];
+    for (U32 i = 0; i < 3; ++i)
+    {
+        textures[i] = gGL.getTexUnit(channels[i])->getCurrTexture();
+        types[i] = gGL.getTexUnit(channels[i])->getCurrType();
+    }
+    GLboolean mask[4];
+    glGetBooleanv(GL_COLOR_WRITEMASK, mask);
+    LLGLDisable blend(GL_BLEND);
+    LLGLDisable scissor(GL_SCISSOR_TEST);
+    LLGLDisable srgb(GL_FRAMEBUFFER_SRGB);
+    LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+    gGL.setColorMask(true, true, true, true);
+    bool ready = true;
+    for (auto& target : mCineFlareEnergy)
+        if (!target.isComplete() && !target.allocate(20, 1, GL_R16F)) ready = false;
+    if (ready)
+    {
+        const U32 write = 1 - mCineFlareEnergyRead;
+        mCineFlareEnergy[write].bindTarget();
+        shader.bind();
+        shader.bindTexture(LLShaderMgr::CINE_FLARE_SHAFT, shaft, false, LLTexUnit::TFO_BILINEAR);
+        shader.bindTexture(LLShaderMgr::CINE_FLARE_HISTORY, &mCineFlareEnergy[mCineFlareEnergyRead], false, LLTexUnit::TFO_POINT);
+        static const LLStaticHashedString sInputs("uEnergyInputs"), sValid("uEnergyValid"),
+            sResponse("uEnergyResponse"), sResolution("uEnergyResolution");
+        shader.uniform4fv(sInputs, 20, inputs[0].mV);
+        shader.uniform1i(sValid, mCineFlareEnergyValid ? 1 : 0);
+        shader.uniform2f(sResponse, attack_alpha, release_alpha);
+        shader.uniform2f(sResolution, static_cast<F32>(restore_target->getWidth()), static_cast<F32>(restore_target->getHeight()));
+        static LLCachedControl<F32> threshold(gSavedSettings, "RenderCineLensFlareThreshold", .25f);
+        static LLCachedControl<F32> radius(gSavedSettings, "RenderCineLensFlareProbeRadius", .06f);
+        shader.uniform1f(LLShaderMgr::CINE_FLARE_THRESHOLD, llclamp(threshold(), 0.f, 6.f));
+        shader.uniform1f(LLShaderMgr::CINE_FLARE_PROBE_RADIUS, llclamp(radius(), 0.f, .2f));
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+        mCineFlareEnergy[write].flush();
+        mCineFlareEnergyRead = write;
+    }
+    mCineFlareEnergyValid = ready;
+    gGL.setColorMask(mask[0] != GL_FALSE, mask[1] != GL_FALSE, mask[2] != GL_FALSE, mask[3] != GL_FALSE);
+    for (U32 i = 0; i < 3; ++i)
+    {
+        auto* unit = gGL.getTexUnit(channels[i]);
+        if (unit->getCurrType() != LLTexUnit::TT_NONE) unit->unbind(unit->getCurrType());
+        if (textures[i] && types[i] != LLTexUnit::TT_NONE) unit->bindManual(types[i], textures[i]);
+    }
+    gGL.getTexUnit(active)->activate();
+    restore_shader->bind();
+    return ready;
+}
+
 void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                               bool apply_tonemap, bool apply_color_grade)
 {
@@ -13651,6 +13718,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
         // variant lacks the sampler and bindTexture is a no-op via getTextureChannel.
         S32 bloom_channel = -1;
         S32 cine_flare_shaft_channel = -1;
+        S32 cine_flare_history_channel = -1;
         if (mRT->bloomMipCount > 0)
         {
             bloom_channel = shader->bindTexture(LLShaderMgr::BLOOM_SAMPLER, &mRT->bloomMip[0], false, LLTexUnit::TFO_BILINEAR);
@@ -13934,6 +14002,13 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                           sizeof(mCineFlareSourceValid) / sizeof(mCineFlareSourceValid[0]) == CINE_FLARE_STABLE_COUNT,
                           "LLPipeline cine flare release caches must match the stable source count");
 
+            static LLCachedControl<bool> smoothing(gSavedSettings, "RenderCineLensFlareSmoothing", true);
+            const bool smooth_energy = smoothing() && !sPrismLensRender && !gCubeSnapshot;
+            static const LLStaticHashedString sSmoothed("uCineFlareSmoothed"), sEnergySlots("uCineFlareEnergySlots");
+            shader->uniform1i(sSmoothed, 0);
+            LLVector4 energy_inputs[CINE_FLARE_STABLE_COUNT];
+            for (auto& input : energy_inputs) input.set(0.f, 0.f, 0.f, 0.f);
+            GLint energy_slots[AL_CINE_FLARE_MAX] = {};
             S32 cine_count = 0;
             LLVector4 cine_a[AL_CINE_FLARE_MAX];
             LLVector4 cine_col[AL_CINE_FLARE_MAX];
@@ -13961,12 +14036,10 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                 shader->uniform1f(LLShaderMgr::CINE_FLARE_PROBE_RADIUS,
                                   llclamp(cine_flare_probe_radius(), 0.f, 0.2f));
                 glm::mat4 proj_mod = get_current_projection() * get_current_modelview();
-                const F32 frame_dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.1f);
-                const F32 attack_seconds = 0.10f;
-                const F32 release_seconds = llclamp(cine_flare_release(), 0.f, 2.f);
-                const F32 attack_alpha = 1.f - expf(-frame_dt / attack_seconds);
-                const F32 release_alpha = release_seconds > 0.f
-                    ? 1.f - expf(-frame_dt / release_seconds) : 1.f;
+                const F32 frame_dt = ALFlareEnergy::finiteDelta(gFrameIntervalSeconds.value());
+                const F32 attack_alpha = ALFlareEnergy::alpha(frame_dt, .100f);
+                const F32 release_alpha = ALFlareEnergy::alpha(frame_dt,
+                    std::isfinite(cine_flare_release()) ? llclamp(cine_flare_release(), 0.f, 2.f) : .450f);
 
                 ALCineLightRigManager& rig_mgr = ALCineLightRigManager::instance();
                 // Visit every (slot, light) pair every frame — even past the
@@ -14008,6 +14081,11 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                             // here so they don't even get projected.
                             LLUUID id = (emitter.mOn && emitter.mIntensity > 0.f)
                                 ? rig->projectorId(light_i) : LLUUID::null;
+                            if (id.notNull() && mCineFlareEnergyId[stable_idx] != id)
+                            {
+                                mCineFlareEnergyId[stable_idx] = id;
+                                energy_inputs[stable_idx].mV[VW] = 1.f;
+                            }
                             LLViewerObject* obj = id.isNull() ? nullptr : gObjectList.findObject(id);
                             LLVOVolume* volume = obj ? dynamic_cast<LLVOVolume*>(obj) : nullptr;
                             if (volume)
@@ -14069,11 +14147,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                                                            light_color.mV[2] * 0.0722f) *
                                                           llmax(BDMergeProjectorVolumetricsMultiplier, 0.f);
                                         modeled_lum = llfinite(modeled_lum) ? llmax(modeled_lum, 0.f) : 0.f;
-                                        const F32 knee = llmax(cine_threshold * 0.5f, 0.1f);
-                                        F32 gate_t = llclamp((modeled_lum - cine_threshold) / knee, 0.f, 1.f);
-                                        F32 gate = gate_t * gate_t * (3.f - 2.f * gate_t);
-                                        F32 release_energy = gate * llmin(
-                                            modeled_lum / llmax(cine_threshold + knee, 1e-3f), 4.f);
+                                        const F32 release_energy = ALFlareEnergy::energy(modeled_lum, cine_threshold);
 
                                         mCineFlareSourceState[stable_idx] = LLVector4(
                                             uv.x, uv.y, source_depth, release_energy);
@@ -14084,15 +14158,17 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                             }
                         }
 
+                        energy_inputs[stable_idx].mV[VX] = uv.x;
+                        energy_inputs[stable_idx].mV[VY] = uv.y;
+                        energy_inputs[stable_idx].mV[VZ] = target_visibility;
+
                         // Smooth every stable slot every frame the rig master
                         // is on, regardless of whether it has a valid source
                         // this frame — target is 0 when off/null/behind-camera,
                         // so an absent projector's OWN slot decays toward 0
                         // instead of a different light inheriting its value.
-                        const F32 response = target_visibility < mCineFlareVisibility[stable_idx]
-                            ? release_alpha : attack_alpha;
-                        mCineFlareVisibility[stable_idx] +=
-                            (target_visibility - mCineFlareVisibility[stable_idx]) * response;
+                        mCineFlareVisibility[stable_idx] = ALFlareEnergy::apply(
+                            mCineFlareVisibility[stable_idx], target_visibility, attack_alpha, release_alpha);
                         if (!source_active[stable_idx] && mCineFlareVisibility[stable_idx] < 0.001f)
                         {
                             mCineFlareVisibility[stable_idx] = 0.f;
@@ -14124,8 +14200,8 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                         {
                             // Negative Color.w selects the no-texture release
                             // branch. Magnitude carries the modeled last energy.
-                            packed_scale = -cine_intensity * llmax(state.mV[VW], 0.f);
-                            if (packed_scale >= 0.f)
+                            packed_scale = smooth_energy ? cine_intensity : -cine_intensity * llmax(state.mV[VW], 0.f);
+                            if (!smooth_energy && packed_scale >= 0.f)
                             {
                                 continue;
                             }
@@ -14134,9 +14210,10 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                         // A.w carries the emission plane's standard GL device
                         // depth. Glow/star remain scene-occluded during release;
                         // the glass layers retain their lens-plane compositing.
+                        energy_slots[cine_count] = stable_idx;
                         cine_a[cine_count] = LLVector4(
                             state.mV[VX], state.mV[VY],
-                            mCineFlareVisibility[stable_idx], state.mV[VZ]);
+                            smooth_energy ? 1.f : mCineFlareVisibility[stable_idx], state.mV[VZ]);
                         const LLColor3& color = mCineFlareSourceColor[stable_idx];
                         cine_col[cine_count] = LLVector4(
                             color.mV[0], color.mV[1], color.mV[2], packed_scale);
@@ -14144,6 +14221,26 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                     }
                 }
 
+                const bool history_ready = smooth_energy &&
+                    updateCineFlareEnergy(energy_inputs, shaft_available ? mProjVolShaftSrc : &mRT->screen, dst, shader, attack_alpha, release_alpha);
+                if (!history_ready) mCineFlareEnergyValid = false;
+                if (history_ready)
+                {
+                    cine_flare_history_channel = shader->bindTexture(LLShaderMgr::CINE_FLARE_HISTORY,
+                        &mCineFlareEnergy[mCineFlareEnergyRead], false, LLTexUnit::TFO_POINT);
+                    shader->uniform1i(sSmoothed, cine_flare_history_channel >= 0 ? 1 : 0);
+                    shader->uniform1iv(sEnergySlots, cine_count, energy_slots);
+                }
+                // If optional history is unavailable, restore legacy envelope
+                // and release scales rather than treating release tails as live.
+                if (smooth_energy && (!history_ready || cine_flare_history_channel < 0))
+                    for (S32 i = 0; i < cine_count; ++i)
+                    {
+                        const S32 stable = energy_slots[i];
+                        cine_a[i].mV[VZ] = mCineFlareVisibility[stable];
+                        if (!source_active[stable])
+                            cine_col[i].mV[VW] = -cine_intensity * llmax(mCineFlareSourceState[stable].mV[VW], .00001f);
+                    }
                 if (cine_count > 0)
                 {
                     // Live sources sample only the isolated shaft. A release-only
@@ -14163,6 +14260,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             }
             else
             {
+                mCineFlareEnergyValid = false;
                 // Explicit feature-off is an immediate mute and clears release
                 // caches so a later re-enable cannot resume a stale afterimage.
                 for (S32 stable_idx = 0; stable_idx < CINE_FLARE_STABLE_COUNT; ++stable_idx)
@@ -14512,6 +14610,8 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
         {
             gGL.getTexUnit(bloom_channel)->unbind(LLTexUnit::TT_TEXTURE);
         }
+        if (cine_flare_history_channel > -1)
+            gGL.getTexUnit(cine_flare_history_channel)->unbind(LLTexUnit::TT_TEXTURE);
         if (cine_flare_shaft_channel > -1)
         {
             gGL.getTexUnit(cine_flare_shaft_channel)->unbind(LLTexUnit::TT_TEXTURE);

@@ -43,6 +43,9 @@ typedef SSIZE_T ssize_t;
 #include <atomic>
 #include <memory>
 #include <chrono>
+#include <mutex>
+#include <deque>
+#include <cstring>
 #include "../../newview/alvcammediafilepolicy.h"
 #include "../../newview/alvcammediafileposix.h"
 #include "vlc/libvlc_version.h"
@@ -67,12 +70,14 @@ private:
     bool init();
 
     void initVLC();
-    void playMedia();
+    void playMedia(bool admittedEdit = false, double position = 0.);
+    void setLoop(bool loop);
+    static void repeatLog(void*, int, const libvlc_log_t*, const char*, va_list);
     void resetVLC();
     void stopPlayer();
     void reportVideoSize();
     void tickPrivateFile();
-    void privateAdmissionMessage();
+    void privateAdmissionMessage(const char* reason = "player opened", unsigned tracks = 0, bool video = false);
     static void privateEvents(const libvlc_event_t* event, void* ptr);
     void setVolume(const F64 volume);
     void setVolumeVLC();
@@ -107,6 +112,25 @@ private:
         std::atomic<bool> hasFrame{false};
         std::atomic<bool> trackFrames{false};
         std::atomic<unsigned> events{0};
+        std::atomic<unsigned> wrapState{0};
+        ALMediaFile::WrapPolicy wrapPolicy; // time samples: message thread only
+        void latchWrap() { wrapState.fetch_or(ALMediaFile::WrapPolicy::Marker, std::memory_order_acq_rel); }
+        unsigned publishAdmission()
+        {
+            unsigned state = wrapState.load(std::memory_order_acquire);
+            unsigned next;
+            do { next = ALMediaFile::WrapPolicy::admit(state); }
+            while (!wrapState.compare_exchange_weak(state, next, std::memory_order_acq_rel, std::memory_order_acquire));
+            return next;
+        }
+        std::atomic<uint64_t> repeats{0};
+        uint64_t presentedRepeat = 0; // display callback only
+        std::atomic<double> lastPresentation{0.};
+        std::mutex seamMutex;
+        std::atomic<double> frameMilliseconds{0.};
+        double recentFrameMilliseconds = 0.; // display callback only
+        struct Seam { double gap, frame; };
+        std::deque<Seam> seamGaps;
         mLibVLCContext() = default;
         mLibVLCContext(unsigned char* pixels, libvlc_media_player_t* player,
                        const std::string& token, int w, int h)
@@ -123,6 +147,9 @@ private:
     F64 mCurVolume;
 
     bool mIsLooping;
+    bool mInputLoop = false;
+    ALMediaFile::ResumeWait mResume;
+    double mRecoveryPresentation = 0.;
 
     F64 mCurTime;
     F64 mDuration;
@@ -147,24 +174,64 @@ static double privateNow()
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
+// Observe VLC's exact native repeat boundary, without querying LibVLC from
+// vout callbacks or relying on its 250ms TimeChanged clock samples. Only this
+// fixed repeat/seek-refusal formats are inspected; no paths/log text is emitted.
+void MediaPluginLibVLC::repeatLog(void* data, int, const libvlc_log_t*, const char* format, va_list)
+{
+    if (std::strcmp(format, "repeating the same input (%d)") == 0)
+    {
+        auto* context = static_cast<mLibVLCContext*>(data);
+        context->latchWrap(); // one atomic RMW latches admission AT the marker
+        context->repeats.fetch_add(1, std::memory_order_release);
+        context->events.fetch_or(16u, std::memory_order_release);
+    }
+    else if (std::strncmp(format, "INPUT_CONTROL_SET_TIME ", sizeof("INPUT_CONTROL_SET_TIME ") - 1) == 0 &&
+             std::strstr(format, " failed or not possible"))
+    {
+        // VLC 3's void set_time reports a demux refusal only here. Inspect the
+        // format, never varargs. ResumeWait's deadline also covers format drift.
+        static_cast<mLibVLCContext*>(data)->events.fetch_or(32u, std::memory_order_release);
+    }
+}
+
+void MediaPluginLibVLC::setLoop(bool loop)
+{
+    mIsLooping = loop;
+    if (mPrivateFile && mLibVLCMediaPlayer && mInputLoop != loop && mDesired != ALMediaFile::Transport::STOPPED)
+    {
+        const bool seekable = mAdmission.seekable && libvlc_media_player_is_seekable(mLibVLCMediaPlayer);
+        const double position = mResume.loopTarget(seekable
+            ? std::max(0., static_cast<double>(libvlc_media_player_get_time(mLibVLCMediaPlayer)) / 1000.) : 0., seekable);
+        // Explicit user edit only. libvlc cannot update input-repeat on a live
+        // input. Reprepare at its position and re-admit with gain/publication 0.
+        playMedia(true, position);
+    }
+}
+
 void MediaPluginLibVLC::privateEvents(const libvlc_event_t* event, void* ptr)
 {
     auto* context = static_cast<mLibVLCContext*>(ptr);
     // Immutable producing-player context, quiesced before release. Decoder
     // callbacks do no LibVLC queries, messaging, transport or volume writes.
     const unsigned flags = event->type == libvlc_MediaPlayerEndReached ? 2u :
-        event->type == libvlc_MediaPlayerEncounteredError ? 4u : 1u;
+        event->type == libvlc_MediaPlayerEncounteredError ? 4u :
+        event->type == libvlc_MediaPlayerPlaying ? 8u : 1u;
     context->events.fetch_or(flags, std::memory_order_release);
 }
 
-void MediaPluginLibVLC::privateAdmissionMessage()
+void MediaPluginLibVLC::privateAdmissionMessage(const char* reason, unsigned tracks, bool video)
 {
     LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "private_file_admission");
     message.setValue("load_token", mLoadToken);
     message.setValueS32("verdict", mAdmission.verdict == ALMediaFile::Verdict::ADMITTED ? 1 :
         mAdmission.verdict == ALMediaFile::Verdict::REJECTED ? -1 : 0);
+    message.setValue("reason", reason);
+    message.setValueS32("tracks", tracks);
+    message.setValueBoolean("video", video);
     message.setValueBoolean("seekable", mAdmission.seekable);
     message.setValueBoolean("opened", mLibVLCMediaPlayer != nullptr);
+    message.setValueBoolean("loop_reverify", mAdmission.loopReverify);
     message.setValue("player_token", std::to_string(mPlayerToken));
     sendMessage(message);
 }
@@ -175,7 +242,21 @@ void MediaPluginLibVLC::tickPrivateFile()
     auto& context = *mLibVLCCallbackContext;
     const unsigned flags = context.events.exchange(0, std::memory_order_acquire);
     const double now = privateNow();
-    if (!flags && now < mNextAdmissionCheck) return;
+    std::deque<mLibVLCContext::Seam> gaps;
+    {
+        std::lock_guard<std::mutex> guard(context.seamMutex);
+        gaps.swap(context.seamGaps);
+    }
+    for (const auto& seam : gaps)
+    {
+        LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "loop_seam");
+        message.setValue("load_token", mLoadToken);
+        message.setValueReal("gap_ms", seam.gap);
+        message.setValueReal("frame_ms", seam.frame);
+        sendMessage(message); // viewer owns logging/aggregation, never SLPlugin's disabled file log
+    }
+    if (!flags && !(mResume.position > 0.) && now < mNextAdmissionCheck &&
+        !ALMediaFile::WrapPolicy::rejects(context.wrapState.load(std::memory_order_acquire))) return;
     mNextAdmissionCheck = now + .1;
     mDuration = static_cast<double>(libvlc_media_get_duration(mLibVLCMedia)) / 1000.;
     mCurTime = static_cast<double>(libvlc_media_player_get_time(mLibVLCMediaPlayer)) / 1000.;
@@ -185,33 +266,75 @@ void MediaPluginLibVLC::tickPrivateFile()
     libvlc_media_track_t** tracks = nullptr;
     const auto count = libvlc_media_tracks_get(mLibVLCMedia, &tracks);
     for (unsigned i = 0; i < count; ++i)
-        if (tracks[i] && tracks[i]->i_type == libvlc_track_video) video = true;
+        if (tracks[i] && tracks[i]->i_type == libvlc_track_video)
+        {
+            video = true;
+            const auto* track = tracks[i]->video;
+            if (track && track->i_frame_rate_num && track->i_frame_rate_den)
+                context.frameMilliseconds.store(1000. * track->i_frame_rate_den / track->i_frame_rate_num, std::memory_order_relaxed);
+        }
     libvlc_media_tracks_release(tracks, count);
+    const bool playing = libvlc_media_player_get_state(mLibVLCMediaPlayer) == libvlc_Playing;
+    const auto resume = mResume.step(now, playing,
+        (flags & 32u) || (playing && !libvlc_media_player_is_seekable(mLibVLCMediaPlayer)), mCurTime);
+    if (resume == ALMediaFile::ResumeWait::Action::SEEK)
+    {
+        // VLC 3's setter returns void: an unreported demux refusal is bounded
+        // by ResumeWait; a reported non-seekable input releases it immediately.
+        libvlc_media_player_set_time(mLibVLCMediaPlayer, static_cast<libvlc_time_t>(mResume.position * 1000.));
+    }
+    if (resume != ALMediaFile::ResumeWait::Action::READY) video = false;
+    if (context.wrapPolicy.timeRegression(mCurTime, mDuration, before == ALMediaFile::Verdict::PENDING))
+        context.latchWrap();
     // Audio-first/Playing/ESAdded never proves enumeration complete. Unknown
     // length is a transport capability only, not an admission condition.
-    mAdmission.observe(mPlayerToken, now, video, (flags & 4) || ((flags & 2) && before != ALMediaFile::Verdict::ADMITTED), mDuration);
+    const bool pendingWrap = ALMediaFile::WrapPolicy::rejects(context.wrapState.load(std::memory_order_acquire));
+    mAdmission.observe(mPlayerToken, now, video, pendingWrap || (flags & 4) || ((flags & 2) && before != ALMediaFile::Verdict::ADMITTED), mDuration);
 #if !LL_WINDOWS
-    if (before != ALMediaFile::Verdict::ADMITTED && mAdmission.verdict == ALMediaFile::Verdict::ADMITTED &&
-        (!mPrivateIdentityValid || !ALMediaFile::unchangedFile(mPrivateFD, mPrivateIdentity)))
+    if ((!mPrivateIdentityValid || !ALMediaFile::unchangedFile(mPrivateFD, mPrivateIdentity)))
         mAdmission.verdict = ALMediaFile::Verdict::REJECTED;
 #endif
-    if (before != mAdmission.verdict || seekable != mAdmission.seekable) privateAdmissionMessage();
+    // The callback may run after flags.exchange or even observe(). Compete
+    // with it in the SAME atomic word before enabling any audio/publication.
+    if (mAdmission.verdict == ALMediaFile::Verdict::ADMITTED &&
+        ALMediaFile::WrapPolicy::rejects(context.publishAdmission()))
+        mAdmission.verdict = ALMediaFile::Verdict::REJECTED;
+    if (mAdmission.verdict == ALMediaFile::Verdict::REJECTED)
+    {
+        mAdmission.seekable = false; mAdmission.loopReverify = false;
+        context.wrapState.fetch_and(~ALMediaFile::WrapPolicy::Admitted, std::memory_order_release);
+    }
+    if (before != mAdmission.verdict || seekable != mAdmission.seekable)
+        privateAdmissionMessage(mAdmission.verdict == ALMediaFile::Verdict::ADMITTED ? "video track admitted" :
+            now >= mAdmission.deadline ? "video-track timeout" : (flags & 4) ? "decoder error" :
+            ALMediaFile::WrapPolicy::rejects(context.wrapState.load(std::memory_order_acquire)) || (flags & 2)
+                ? "ended before video admission" : "file identity changed", count, video);
     if (mAdmission.verdict == ALMediaFile::Verdict::REJECTED)
     {
         mDesired = ALMediaFile::Transport::STOPPED;
         setVolumeVLC(); stopPlayer(); mVlcStatus = STATUS_ERROR;
         return;
     }
+    if ((flags & (2 | 16)) && ALMediaFile::unknownLoopRecovery(mAdmission, mIsLooping, mDesired, mDuration))
+    {
+        // mkv.cpp DEMUX_SET_POSITION/Seek refuse missing duration. Native
+        // repeat can consume EndReached without making progress; its marker
+        // wakes this bounded recovery as well as an ordinary terminal EOF.
+        mRecoveryPresentation = context.lastPresentation.load(std::memory_order_acquire);
+        privateAdmissionMessage(ALMediaFile::UNKNOWN_LOOP);
+        playMedia(true);
+        return;
+    }
     setVolumeVLC();
     if ((flags & 2) && mAdmission.verdict == ALMediaFile::Verdict::ADMITTED)
     {
+        // Native input-repeat consumes repeating EOF inside input.c. An EOF
+        // delivered here is terminal (Loop OFF / exhausted / failed repeat).
+        // Never stop/play or rebuild during an unattended loop.
+        mPrivateEnded = true;
+        mDesired = ALMediaFile::Transport::STOPPED;
         mVlcStatus = STATUS_DONE;
-        if (mIsLooping && mDesired == ALMediaFile::Transport::PLAYING)
-        {
-            mAdmission = ALMediaFile::Admission(); // EOF Loop repeats admission
-            playMedia();
-        }
-        else { mPrivateEnded = true; mDesired = ALMediaFile::Transport::STOPPED; setVolumeVLC(); }
+        setVolumeVLC();
     }
     else mVlcStatus = mDesired == ALMediaFile::Transport::PLAYING ? STATUS_PLAYING : STATUS_PAUSED;
 }
@@ -283,6 +406,26 @@ void MediaPluginLibVLC::display(void* data, void* id)
 void MediaPluginLibVLC::displayFrame(void* data, void* id)
 {
     auto* context = static_cast<mLibVLCContext*>(data);
+    if (context->wrapState.load(std::memory_order_acquire) & ALMediaFile::WrapPolicy::Admitted)
+    {
+        const double now = privateNow();
+        const uint64_t repeat = context->repeats.load(std::memory_order_acquire);
+        const double last = context->lastPresentation.load(std::memory_order_relaxed);
+        if (repeat != context->presentedRepeat)
+        {
+            // The native marker follows decoder/vout drain and precedes seek.
+            // Also measures the explicitly labelled duration-less recovery.
+            if (last > 0.)
+            {
+                std::lock_guard<std::mutex> guard(context->seamMutex);
+                const double frame = context->frameMilliseconds.load(std::memory_order_relaxed);
+                context->seamGaps.push_back({(now - last) * 1000., frame > 0. ? frame : context->recentFrameMilliseconds});
+            }
+            context->presentedRepeat = repeat;
+        }
+        else if (last > 0.) context->recentFrameMilliseconds = (now - last) * 1000.;
+        context->lastPresentation.store(now, std::memory_order_release);
+    }
     context->hasFrame.store(true, std::memory_order_release);
     // Switch notification policy without replacing live decoder callbacks or
     // their context. Untagged/disabled players use the original sender.
@@ -327,6 +470,7 @@ void MediaPluginLibVLC::resetVLC()
 
 void MediaPluginLibVLC::stopPlayer()
 {
+    if (mPrivateFile && mLibVLC) libvlc_log_unset(mLibVLC); // quiesce repeat observer before context release
     if (mPrivateFile && mLibVLCCallbackContext && mLibVLCMedia)
     {
         auto* metadata = libvlc_media_event_manager(mLibVLCMedia);
@@ -507,7 +651,7 @@ void MediaPluginLibVLC::eventCallbacks(const libvlc_event_t* event, void* ptr)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-void MediaPluginLibVLC::playMedia()
+void MediaPluginLibVLC::playMedia(bool admittedEdit, double position)
 {
     if (mPrivateFile && (mDesired == ALMediaFile::Transport::STOPPED || !mPixels || mWidth <= 0 || mHeight <= 0)) return;
     if (mURL.length() == 0)
@@ -527,7 +671,7 @@ void MediaPluginLibVLC::playMedia()
         !ALMediaFile::unchangedFile(mPrivateFD, mPrivateIdentity))
     {
         mAdmission.verdict = ALMediaFile::Verdict::REJECTED;
-        privateAdmissionMessage(); stopPlayer(); mVlcStatus = STATUS_ERROR;
+        privateAdmissionMessage("file identity changed"); stopPlayer(); mVlcStatus = STATUS_ERROR;
         return;
     }
 #endif
@@ -536,10 +680,10 @@ void MediaPluginLibVLC::playMedia()
     if (mPrivateFile)
     {
         if (mURL.rfind("file:///", 0) != 0 || (mPrivateDemux != "mp4" && mPrivateDemux != "mkv"))
-        { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage(); return; }
+        { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage("private URI/demux policy refused"); return; }
         ++mPlayerToken;
         // Every replacement must prove video again before gaining audio/frames.
-        mAdmission.rebuild(mPlayerToken, privateNow());
+        mAdmission.rebuild(mPlayerToken, privateNow(), admittedEdit);
         mPrivateStarted = false;
         mPrivateEnded = false;
         mNextAdmissionCheck = 0;
@@ -555,17 +699,21 @@ void MediaPluginLibVLC::playMedia()
                 mPrivateIdentityValid ? &mPrivateIdentity : nullptr);
             if (mPrivateIdentityValid && !(mPrivateIdentity == identity)) throw std::runtime_error(ALMediaFile::NOT_VIDEO);
             mPrivateIdentity = identity; mPrivateIdentityValid = true;
+            // verifiedLocalFile's pread leaves offset alone. Recheck the exact
+            // descriptor, then rewind before EVERY new fd-backed input.
+            if (!ALMediaFile::unchangedFile(mPrivateFD, mPrivateIdentity) || lseek(mPrivateFD, 0, SEEK_SET) != 0)
+                throw std::runtime_error(ALMediaFile::NOT_VIDEO);
             mLibVLCMedia = libvlc_media_new_fd(mLibVLC, mPrivateFD);
         }
         catch (...)
-        { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage(); stopPlayer(); return; }
+        { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage("verified local-file policy refused"); stopPlayer(); return; }
     }
     else
 #endif
         mLibVLCMedia = libvlc_media_new_location(mLibVLC, mURL.c_str());
     if (!mLibVLCMedia)
     {
-        if (mPrivateFile) { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage(); }
+        if (mPrivateFile) { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage("VLC media/player creation refused"); }
         mLibVLCMediaPlayer = 0;
         setStatus(STATUS_ERROR);
         return;
@@ -578,22 +726,35 @@ void MediaPluginLibVLC::playMedia()
         libvlc_media_add_option(mLibVLCMedia, (":demux=" + mPrivateDemux).c_str());
         libvlc_media_add_option(mLibVLCMedia, ":no-sub-autodetect-file");
         libvlc_media_add_option(mLibVLCMedia, ":no-mkv-preload-local-dir");
+        libvlc_media_add_option(mLibVLCMedia, ":file-caching=50"); // private local/cache bytes only
+        // Repeat eligibility is fixed before input_Create. Admission, rather
+        // than this option, gates ALL publication and audio; its 10s deadline
+        // still terminates a repeating input that never proves a video track.
+        libvlc_media_add_option(mLibVLCMedia, ALMediaFile::inputRepeatOption(mIsLooping));
+        mInputLoop = mIsLooping;
+        mResume.open(position, position > 0.);
     }
     mLibVLCMediaPlayer = libvlc_media_player_new_from_media(mLibVLCMedia);
     if (!mLibVLCMediaPlayer)
     {
-        if (mPrivateFile) { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage(); }
+        if (mPrivateFile) { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage("VLC media/player creation refused"); }
         setStatus(STATUS_ERROR);
         return;
     }
 
     if (mPrivateFile)
     {
-        mAdmission.rebuild(mPlayerToken, privateNow());
         privateAdmissionMessage(); // reports the replacement player's verdict
         mLibVLCCallbackContext = std::make_unique<mLibVLCContext>(
             mPixels, mLibVLCMediaPlayer, mLoadToken, mWidth, mHeight);
         mLibVLCCallbackContext->parent = this;
+        if (mRecoveryPresentation > 0.)
+        {
+            mLibVLCCallbackContext->lastPresentation.store(mRecoveryPresentation, std::memory_order_relaxed);
+            mLibVLCCallbackContext->repeats.store(1, std::memory_order_relaxed);
+            mRecoveryPresentation = 0.;
+        }
+        libvlc_log_set(mLibVLC, repeatLog, mLibVLCCallbackContext.get());
     }
     // listen to events
     libvlc_event_manager_t* em = libvlc_media_player_event_manager(mLibVLCMediaPlayer);
@@ -930,7 +1091,7 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
             else if (message_name == "private_transport")
             {
                 mDesired = static_cast<ALMediaFile::Transport>(message_in.getValueS32("desired"));
-                mIsLooping = message_in.getValueBoolean("loop");
+                setLoop(message_in.getValueBoolean("loop"));
                 if (mPrivateFile)
                 {
                     if (mDesired == ALMediaFile::Transport::STOPPED)
@@ -947,10 +1108,15 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
                     }
                     else if (mDesired == ALMediaFile::Transport::PLAYING)
                     {
-                        if (!mLibVLCMediaPlayer) playMedia();
+                        if (!mLibVLCMediaPlayer || mPrivateEnded) playMedia();
                         else
                         {
-                            if (!mPrivateStarted) { mPrivateStarted = true; mAdmission.resumed(privateNow()); }
+                            if (!mPrivateStarted)
+                            {
+                                mPrivateStarted = true;
+                                mAdmission.resumed(privateNow());
+                                mResume.resumed();
+                            }
                             libvlc_media_player_set_pause(mLibVLCMediaPlayer, 0);
                             libvlc_media_player_play(mLibVLCMediaPlayer);
                         }
@@ -968,6 +1134,7 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
                 if (mPrivateFile)
                 {
                     mAdmission = ALMediaFile::Admission(); // fresh URI never inherits admission
+                    mRecoveryPresentation = 0.;
                     mPrivateDemux = message_in.getValue("demux");
                     mDesired = static_cast<ALMediaFile::Transport>(message_in.getValueS32("desired"));
                     mIsLooping = message_in.getValueBoolean("private_loop");
@@ -1039,7 +1206,7 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
                 else if (message_name == "set_loop")
                 {
                     bool loop = message_in.getValueBoolean("loop");
-                    mIsLooping = loop;
+                    setLoop(loop);
                 }
                 else if (message_name == "set_volume")
                 {

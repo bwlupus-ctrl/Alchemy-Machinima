@@ -4377,5 +4377,16 @@
             <key>Value</key>
             <real>2.0</real>
         </map>
+        <key>RenderCineLensFlareSmoothing</key>
+        <map>
+            <key>Comment</key>
+            <string>Smooth per-projector measured flare energy (100 ms attack, authored Release), without CPU readback.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
     </map>
 </llsd>

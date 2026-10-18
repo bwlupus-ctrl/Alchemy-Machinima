@@ -428,6 +428,7 @@ public:
         // frame like MULTI_LIGHT). AL_CINE_FLARE_MAX cap defined alongside
         // LL_DEFERRED_MULTI_LIGHT_COUNT in llviewershadermgr.h.
         CINE_FLARE_SHAFT,                   //  "uCineFlareShaft" projector-only volumetric shaft texture
+        CINE_FLARE_HISTORY,                 //  "uCineFlareHistory" stable source energy history
         CINE_FLARE_COUNT,                   //  "uCineFlareCount"
         CINE_FLARE_A,                       //  "uCineFlareA"       vec4[] (uv.x, uv.y, visibility, deviceDepth)
         CINE_FLARE_COLOR,                   //  "uCineFlareColor"   vec4[] (linRGB, +liveScale / -releaseScale)

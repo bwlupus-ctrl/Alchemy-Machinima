@@ -1721,6 +1721,7 @@ void LLShaderMgr::initAttribsAndUniforms()
 
     // Cine rig flare sources (Group 1 — rig source arrays)
     mReservedUniforms.push_back("uCineFlareShaft");
+    mReservedUniforms.push_back("uCineFlareHistory");
     mReservedUniforms.push_back("uCineFlareCount");
     mReservedUniforms.push_back("uCineFlareA");
     mReservedUniforms.push_back("uCineFlareColor");

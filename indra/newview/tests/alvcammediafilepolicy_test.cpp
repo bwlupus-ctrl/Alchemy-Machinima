@@ -9,6 +9,15 @@
 #include <array>
 #include <cstring>
 #include <set>
+#include <cstdlib>
+#include <filesystem>
+#include <cstdio>
+#include <sys/stat.h>
+#if LL_WINDOWS
+#include <io.h>
+#endif
+#include <iostream>
+#include <atomic>
 #include "alvcamfragmentfixture.h"
 
 namespace tut
@@ -784,7 +793,7 @@ template<> template<> void media_file_object::test<31>()
 
 template<> template<> void media_file_object::test<32>()
 {
-    set_test_name("Browse failure overlay expires or yields to the slot's own status");
+    set_test_name("Browse refusal persists until an explicit slot action clears it");
     BrowseOverlay overlay;
     std::string status = "checking file", own = "Playing";
     overlay.apply(status,true,own,1000);
@@ -792,21 +801,17 @@ template<> template<> void media_file_object::test<32>()
     overlay.restore(own);
     ensure_equals("committed slot reason retained",own,std::string("Playing"));
     status = NOT_VIDEO; overlay.apply(status,false,own,2000);
-    ensure_equals("failure shown once",own,std::string(NOT_VIDEO));
-    overlay.restore(own); overlay.apply(status,false,own,6999);
-    ensure_equals("failure still visible before five seconds",own,std::string(NOT_VIDEO));
+    ensure_equals("failure shown",own,std::string(NOT_VIDEO));
     overlay.restore(own); overlay.apply(status,false,own,7000);
-    ensure("failure expires",status.empty());
-    ensure_equals("underlying reason restored",own,std::string("Playing"));
-    status = MISSING; overlay.apply(status,false,own,8000);
-    overlay.restore(own); own = "Paused"; overlay.apply(status,false,own,8001);
-    ensure("slot status change clears failure immediately",status.empty());
-    ensure_equals("new slot reason survives",own,std::string("Paused"));
-    overlay.apply(status,false,own,20000);
-    ensure_equals("failure never reappears",own,std::string("Paused"));
-    status = NOT_VIDEO; overlay.apply(status,false,own,21000,1);
-    overlay.restore(own); overlay.apply(status,false,own,21001,2);
-    ensure("health/output/activity change clears overlay even with the same reason",status.empty());
+    ensure_equals("five seconds cannot erase refusal",own,std::string(NOT_VIDEO));
+    overlay.restore(own); own = "Paused"; overlay.apply(status,false,own,20000,2);
+    ensure_equals("live status and health cannot erase refusal",own,std::string(NOT_VIDEO));
+    overlay.restore(own);
+    ensure_equals("latest underlying status restored",own,std::string("Paused"));
+    status.clear(); overlay.apply(status,false,own,30000);
+    ensure_equals("explicit action clears refusal",own,std::string("Paused"));
+    overlay.apply(status,false,own,40000);
+    ensure_equals("cleared refusal never reappears",own,std::string("Paused"));
 }
 
 template<> template<> void media_file_object::test<33>()
@@ -857,6 +862,258 @@ template<> template<> void media_file_object::test<33>()
     partial.abandon("partial-write",0,90);
     ensure_equals("failed partial write retains the entire reservation",partial.bytes(),uint64_t(90));
     ensure("counter lag cannot free capacity before unlink",!cacheFits(partial.bytes(),11,100));
+}
+
+// Opt-in real-file harness: no viewer, plugin, cache or network initialization.
+// A rejected probe is a reported verdict, not a failure of this test runner.
+template<> template<> void media_file_object::test<35>()
+{
+    set_test_name("VCAM_MEDIA_PROBE_FILE production container probe (opt-in)");
+    std::string value;
+#if LL_WINDOWS
+    if (const wchar_t* native = _wgetenv(L"VCAM_MEDIA_PROBE_FILE"))
+    {
+        const auto utf8 = std::filesystem::path(native).u8string();
+        value.assign(utf8.begin(), utf8.end());
+    }
+#else
+    if (const char* native = std::getenv("VCAM_MEDIA_PROBE_FILE")) value = native;
+#endif
+    if (value.empty())
+    {
+        std::cout << "VCAM_MEDIA_PROBE_FILE: SKIPPED (not set)\n";
+        return;
+    }
+    uint64_t size = 0;
+    bool have_size = false;
+    std::string ext = diagnosticExtension(value);
+    try
+    {
+        Descriptor source; std::string reason;
+        if (!classify(value, source, reason, LL_WINDOWS) || source.location != Location::LOCAL_FILE)
+        {
+            std::cout << "VCAM_MEDIA_PROBE_FILE: REJECTED rule=local-file syntax reason=" << (reason.empty() ? UNSUPPORTED : reason)
+                      << " size=unknown ext=" << ext << '\n';
+            return;
+        }
+        const auto path = std::filesystem::path(std::u8string(source.value.begin(), source.value.end()));
+        FILE* opened = nullptr;
+#if LL_WINDOWS
+        if (_wfopen_s(&opened, path.c_str(), L"rb") != 0) throw std::runtime_error(MISSING);
+#else
+        opened = std::fopen(path.c_str(), "rb");
+#endif
+        if (!opened) throw std::runtime_error(MISSING);
+        const std::unique_ptr<FILE, decltype(&std::fclose)> file(opened, std::fclose);
+        const auto snapshot = [&]()
+        {
+#if LL_WINDOWS
+            struct _stat64 info{};
+            if (_fstat64(_fileno(file.get()), &info)) throw PolicyRefusal("probe descriptor stat failed");
+#else
+            struct stat info{};
+            if (fstat(fileno(file.get()), &info)) throw PolicyRefusal("probe descriptor stat failed");
+#endif
+            if ((info.st_mode & S_IFMT) != S_IFREG) throw PolicyRefusal("probe requires a regular file");
+            return FileIdentity{static_cast<uint64_t>(info.st_dev), static_cast<uint64_t>(info.st_ino),
+                static_cast<uint64_t>(info.st_size), info.st_mtime, 0};
+        };
+        size = snapshot().size; have_size = true;
+        const auto read = [&](uint64_t offset, void* dst, size_t count)
+        {
+#if LL_WINDOWS
+            if (_fseeki64(file.get(), static_cast<int64_t>(offset), SEEK_SET)) throw PolicyRefusal("probe seek failed");
+#else
+            if (fseeko(file.get(), static_cast<off_t>(offset), SEEK_SET)) throw PolicyRefusal("probe seek failed");
+#endif
+            if (std::fread(dst, 1, count, file.get()) != count) throw PolicyRefusal("probe short read");
+        };
+        // validateFile calls the real checkContainer; no test reimplementation.
+        validateFile(read, snapshot, extension(source.value));
+        std::cout << "VCAM_MEDIA_PROBE_FILE: ADMITTED rule=validateFile/checkContainer reason=passed"
+                  << " size=" << size << " ext=" << ext << '\n';
+    }
+    catch (const std::exception& error)
+    {
+        std::cout << "VCAM_MEDIA_PROBE_FILE: REJECTED rule=" << diagnosticReason(error)
+                  << " reason=" << (dynamic_cast<const PolicyRefusal*>(&error) ? NOT_VIDEO : diagnosticReason(error))
+                  << " size=" << (have_size ? std::to_string(size) : "unknown") << " ext=" << ext << '\n';
+    }
+}
+
+template<> template<> void media_file_object::test<36>()
+{
+    set_test_name("Diagnostic rules preserve public refusals and never echo input");
+    const PolicyRefusal refusal("dref entry is not a self-contained url/alias");
+    ensure_equals("public status unchanged",std::string(refusal.what()),std::string(NOT_VIDEO));
+    ensure_equals("precise rule retained",diagnosticReason(refusal),refusal.rule);
+    ensure_equals("exception secrets omitted",diagnosticReason(std::runtime_error("https://user:secret@host/a.mp4?key=secret")),std::string("I/O or transfer exception"));
+    ensure_equals("native hash is not a URL fragment",diagnosticExtension("D:/Footage/a#b.MOV"),std::string("mov"));
+    ensure_equals("file URI decoded for extension",diagnosticExtension("file:///D:/Footage/a%2Emp4"),std::string("mp4"));
+    ensure_equals("only safe extension retained",diagnosticExtension("https://user:secret@host/a.mp4?key=secret"),std::string("mp4"));
+    ensure_equals("unsupported extension never echoes input",diagnosticExtension("https://host/a.secret?key=secret"),std::string("unsupported"));
+}
+
+template<> template<> void media_file_object::test<37>()
+{
+    set_test_name("native repeat option and admission latch policy (no VLC seam claim)");
+    ensure_equals("loop option", std::string(inputRepeatOption(true)), std::string(":input-repeat=65535"));
+    ensure_equals("Gate Play-to-end exposes EOF", std::string(inputRepeatOption(false)), std::string(":input-repeat=0"));
+    for (double duration : {0., 30.})
+    {
+        Admission player;
+        player.open(42, 100.);
+        ensure("repeating pending input stays muted", !player.audible(Transport::PLAYING));
+        ensure("pending input cannot publish", !player.retainsOutput());
+        player.observe(42, 110., false, false, duration);
+        ensure("never-admitted repeat expires", player.verdict == Verdict::REJECTED);
+        player.open(43, 111.);
+        player.observe(43, 112., true, false, duration);
+        ensure("known and unknown duration admit video", player.audible(Transport::PLAYING));
+        ensure_equals("only unknown duration can recover by reopen", unknownLoopRecovery(player, true, Transport::PLAYING, duration), duration == 0.);
+        ensure("Loop OFF exposes EOF instead of recovery", !unknownLoopRecovery(player, false, Transport::PLAYING, duration));
+        ensure("paused cannot auto-recover", !unknownLoopRecovery(player, true, Transport::PAUSED, duration));
+        player.rebuild(44, 113., true);
+        ensure("explicit loop edit re-admits muted", !player.audible(Transport::PLAYING));
+        ensure("explicit edit retains accepted old output only", player.retainsOutput());
+        player.observe(44, 123., false, false, duration);
+        ensure("edit deadline revokes hold", !player.retainsOutput());
+    }
+}
+
+template<> template<> void media_file_object::test<39>()
+{
+    set_test_name("wrap admission latch preserves marker-time state across same-tick admission");
+    using W = WrapPolicy;
+    for (bool observeBeforeMarker : {false, true})
+    {
+        Admission player; player.open(7, 0.);
+        unsigned state = 0; // tick already exchanged its event flags
+        if (observeBeforeMarker) player.observe(7, .1, true, false, 30.);
+        state = W::marker(state); // callback while admission is still unpublished
+        if (!observeBeforeMarker) player.observe(7, .1, true, false, 30.);
+        state = W::admit(state);
+        if (W::rejects(state)) player.observe(7, .1, true, true, 30.);
+        ensure("pending marker always rejects even after a local video verdict", player.verdict == Verdict::REJECTED);
+        ensure("pending marker never enables publication", !(state & W::Admitted));
+        ensure("rejected input is muted", !player.audible(Transport::PLAYING));
+        ensure_equals("repeated pending markers cannot clear refusal", W::marker(state), state);
+    }
+    unsigned state = W::admit(0);
+    state = W::marker(state); // callback AFTER atomic admission
+    ensure("normal admitted wrap does not reject", !W::rejects(state) && (state & W::Admitted));
+    // Force the callback RMW between the tick's load and its admission CAS.
+    std::atomic<unsigned> latch{0};
+    unsigned expected = latch.load();
+    const unsigned proposal = W::admit(expected);
+    latch.fetch_or(W::Marker);
+    ensure("stale admission CAS fails", !latch.compare_exchange_strong(expected, proposal));
+    ensure("retry uses sticky marker", latch.compare_exchange_strong(expected, W::admit(expected)));
+    ensure("CAS retry cannot erase pending marker", W::rejects(latch.load()));
+}
+
+template<> template<> void media_file_object::test<40>()
+{
+    set_test_name("pending time regression fallback needs a stable first step, independent of debug marker");
+    WrapPolicy startup;
+    for (double time : {-1., 8., 0., 0.})
+        ensure("non-monotonic startup is not a wrap", !startup.timeRegression(time, 30., true));
+    ensure("first forward step establishes stability", !startup.timeRegression(.1, 30., true));
+    ensure("small jitter is harmless", !startup.timeRegression(.09, 30., true));
+    for (double duration : {0., 30.})
+    {
+        WrapPolicy fallback;
+        ensure("initial sample", !fallback.timeRegression(2., duration, true));
+        ensure("stable forward step", !fallback.timeRegression(3., duration, true));
+        ensure("strict 1s threshold", !fallback.timeRegression(2., duration, true));
+        ensure("more than 1s rejects even with unknown duration", fallback.timeRegression(.5, duration, true));
+    }
+    WrapPolicy shortClip;
+    shortClip.timeRegression(.1, 1., true); shortClip.timeRegression(.9, 1., true);
+    ensure("more than 50 percent catches a short wrap", shortClip.timeRegression(.2, 1., true));
+    WrapPolicy admitted;
+    admitted.timeRegression(2., 30., false); admitted.timeRegression(3., 30., false);
+    ensure("fallback cannot revoke an admitted input", !admitted.timeRegression(0., 30., false));
+    WrapPolicy invalid;
+    invalid.timeRegression(2., 30., true); invalid.timeRegression(3., 30., true);
+    ensure("unavailable clock resets stable step", !invalid.timeRegression(-1., 30., true));
+    ensure("fresh clock needs a new step", !invalid.timeRegression(0., 30., true));
+}
+
+template<> template<> void media_file_object::test<41>()
+{
+    set_test_name("Loop edit resume skips non-seekable input and releases failed seeks within 500ms");
+    using Action = ResumeWait::Action;
+    ResumeWait resume;
+    resume.open(90., false);
+    ensure("duration-less/non-seekable never requests seek", resume.step(100., true, true, 0.) == Action::READY);
+    resume.open(90., true);
+    ensure("wait for playing", resume.step(100., false, false, 0.) == Action::WAIT);
+    ensure("seek only once", resume.step(100.1, true, false, 0.) == Action::SEEK);
+    ensure("reported seek refusal admits immediately", resume.step(100.11, true, true, 0.) == Action::READY);
+    resume.open(90., true);
+    ensure("request resume", resume.step(200., true, false, 0.) == Action::SEEK);
+    ensure("bounded wait retains mute until timeout", resume.step(200.499, true, false, .4) == Action::WAIT);
+    ensure("silent demux seek refusal releases at 500ms", resume.step(200.5, true, false, .5) == Action::READY);
+    Admission player; player.open(1, 200.);
+    player.observe(1, 200.5, true, false, 0.);
+    ensure("failed resume does not cause 10s not-video refusal", player.verdict == Verdict::ADMITTED);
+    resume.open(90., true);
+    resume.step(300., true, false, 0.);
+    ensure("successful seek releases without waiting for timeout", resume.step(300.1, true, false, 90.) == Action::READY);
+    resume.open(90., true);
+    ensure("slow open beyond 500ms keeps target", resume.step(402., false, false, 0.) == Action::WAIT);
+    ensure("slow open still seeks on first Playing", resume.step(403., true, false, 0.) == Action::SEEK);
+    ensure("missing Playing after seek cannot extend armed deadline", resume.step(403.5, false, false, 0.) == Action::READY);
+
+    resume.open(90., true);
+    // A paused replacement is not ticked until Play, even after a long delay.
+    resume.resumed();
+    ensure("extended pause then Play still seeks", resume.step(900., true, false, 0.) == Action::SEEK);
+    ensure("extended pause resumes at target", resume.step(900.1, true, false, 90.) == Action::READY);
+    resume.open(90., true);
+    resume.step(1000., true, false, 0.);
+    resume.resumed(); // Pause while the first seek is pending, then Play.
+    ensure("Play re-arms an already armed pending replacement", resume.step(1100., true, false, 0.) == Action::SEEK);
+    ensure("re-armed seek still bounded", resume.step(1100.5, true, false, 0.) == Action::READY);
+
+    resume.open(90., true);
+    ensure_equals("pending re-toggle overrides unavailable replacement sample", resume.loopTarget(0., false), 90.);
+    resume.open(resume.loopTarget(0., false), true);
+    ensure("re-toggle during open still seeks", resume.step(1200., true, false, 0.) == Action::SEEK);
+    resume.open(resume.loopTarget(.1, true), true);
+    ensure_equals("re-toggle during seek keeps original target", resume.position, 90.);
+    ensure("second replacement seeks original target", resume.step(1300., true, false, 0.) == Action::SEEK);
+    ensure("second replacement reaches original target", resume.step(1300.1, true, false, 90.) == Action::READY);
+    ensure_equals("completed resume uses current sample", resume.loopTarget(20., true), 20.);
+    ensure_equals("no pending target preserves non-seekable skip", resume.loopTarget(20., false), 0.);
+    player.open(2, 500.);
+    player.observe(2, 510., false, false, 0.);
+    ensure("ordinary never-video deadline remains strict", player.verdict == Verdict::REJECTED);
+}
+
+template<> template<> void media_file_object::test<38>()
+{
+    set_test_name("disabled cue status clears on enabling either master/media slots");
+    for (const char* disabled : {"Turn on Virtual Cam to play video", "Media slots disabled"})
+        for (bool empty : {false, true})
+        {
+            std::string reason = disabled;
+            ensure("off status preserved", !clearDisabledStatus(reason, false, empty));
+            ensure("enable replaces disabled reason", clearDisabledStatus(reason, true, empty));
+            ensure_equals("current cue status", reason, std::string(empty ? "Enter a direct video URL" : "Set. Press Play to start it."));
+        }
+    for (bool master : {false, true})
+        for (bool slots : {false, true})
+        {
+            std::string playStatus = "Turn on Virtual Cam to play video";
+            ensure("unchanged policy preserves status", !clearPlayStatusOnPolicyChange(playStatus, master, slots, master, slots));
+            ensure("master edit clears Play status even with slots off", clearPlayStatusOnPolicyChange(playStatus, !master, slots, master, slots) && playStatus.empty());
+            playStatus = "Media slots disabled";
+            ensure("slots edit clears Play status even with master off", clearPlayStatusOnPolicyChange(playStatus, master, !slots, master, slots) && playStatus.empty());
+        }
+    std::string refused = NOT_VIDEO;
+    ensure("unrelated refusal preserved", !clearDisabledStatus(refused, true, false));
 }
 
 }

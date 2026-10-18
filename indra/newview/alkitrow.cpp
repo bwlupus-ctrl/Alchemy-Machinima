@@ -158,6 +158,7 @@ ALKitRow::Params::Params() :
     bulk_reset("bulk_reset", true),
     unconnected("unconnected", false),
     fill_width("fill_width", false),
+    action_row("action_row", false),
     row_height("row_height", 28),
     decimals("decimals", 3),
     min_val("min_val", 0.f),
@@ -174,6 +175,7 @@ ALKitRow::ALKitRow(const Params& p) :
     mLabelName(p.label_name),
     mRowHeight(p.row_height),
     mExplicitRowHeight(p.row_height.isProvided()),
+    mActionRow(p.action_row),
     mCardPreset(p.card_preset),
     mWhoPicker(p.who_picker),
     mHidden(p.hidden),
@@ -261,6 +263,15 @@ bool ALKitRow::postBuild()
             mVec[i] = s;
         }
         mControl = mVec[0];
+    }
+
+    if (mActionRow && mControl)
+    {
+        for (LLView* child : *mControl->getChildList())
+            if (auto* button = dynamic_cast<LLButton*>(child))
+                mActions.emplace_back(button, button->getRect().getWidth());
+        std::sort(mActions.begin(), mActions.end(), [](const auto& a, const auto& b)
+            { return a.first->getRect().mLeft < b.first->getRect().mLeft; });
     }
 
     LLTextBox::Params label;
@@ -472,6 +483,18 @@ bool ALKitRow::postBuild()
 
 S32 ALKitRow::heightForWidth(S32 width) const
 {
+    if (mActionRow && mControl)
+    {
+        S32 left = 0, lines = 1;
+        const S32 available = llmax(1, width - 2 * ALKitStyle::ROW_INSET);
+        for (const auto& action : mActions)
+        {
+            const S32 button_width = llmin(available, action.second);
+            if (left && left + button_width > available) { ++lines; left = 0; }
+            left += button_width + 6;
+        }
+        return llmax(mRowHeight, lines * 28);
+    }
     if (mMeta.kind == "readout")
         if (LLTextBox* text = dynamic_cast<LLTextBox*>(mControl); text && text->getWordWrap())
         {
@@ -511,15 +534,17 @@ void ALKitRow::layoutRow(S32 w)
     reshape(w, h, true);
     if (mLabel)
     {
-        const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout") && mMeta.label.empty();
+        const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout" || mMeta.kind == "button") && mMeta.label.empty();
         // The label box is the mockup's 100 px label track; the favorite star has its own slot (below).
         mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
-        mLabel->setOrigin(ALKitStyle::ROW_INSET, (h - 20) / 2);
+        const auto* text = dynamic_cast<LLTextBox*>(mControl);
+        const bool top_aligned = mMeta.kind == "readout" && text && text->getWordWrap();
+        mLabel->setOrigin(ALKitStyle::ROW_INSET, top_aligned ? h - 24 : (h - 20) / 2);
         mLabel->setVisible(!full_span_custom);
         fitLabel(ALKitStyle::LABEL_W);
     }
 
-    const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout") && mMeta.label.empty();
+    const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout" || mMeta.kind == "button") && mMeta.label.empty();
     const S32 x = full_span_custom ? ALKitStyle::ROW_INSET
                                    : ALKitStyle::ROW_INSET + ALKitStyle::LABEL_W + ALKitStyle::COL_GAP;
     const S32 cw =
@@ -588,6 +613,7 @@ void ALKitRow::layoutRow(S32 w)
                 height = h - 8;
         if (mExplicitRowHeight && (mMeta.kind == "custom" || mMeta.kind == "list" || mMeta.kind == "viewport"))
             height = h;
+        if (mActionRow) height = h - 4;
         if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
             spinner->setValueColumnLayout(width, height, true);
         else
@@ -613,6 +639,20 @@ void ALKitRow::layoutRow(S32 w)
         }
         const S32 control_x = mMeta.kind == "number" ? x + cw + ALKitStyle::COL_GAP : x;
         mControl->setOrigin(control_x, (h - height) / 2);
+        if (mActionRow)
+        {
+            // Geometry-less hosted panels cannot rely on XUI's initial parent
+            // rect/follows translation. Own the nested button coordinates too.
+            S32 left = 0, top = height;
+            for (const auto& action : mActions)
+            {
+                const S32 button_width = llmin(width, action.second);
+                if (left && left + button_width > width) { left = 0; top -= 28; }
+                action.first->reshape(button_width, 24, true);
+                action.first->setOrigin(left, top - 24);
+                left += button_width + 6;
+            }
+        }
 
         if (mMeta.kind == "slider")
         {
@@ -761,8 +801,12 @@ void ALKitRow::pollLiveValue()
         if (wrapped)
         {
             if (heightForWidth(width) != previous_height)
+            {
+                // Resize and move sibling rows together in the card's idle
+                // layout. Growing this row alone temporarily paints over them.
                 if (ALKitCard* owner = card()) owner->requestLayout();
-            layoutRow(width);
+            }
+            else layoutRow(width);
         }
     }
     if (!baselineEditActive(mControl))

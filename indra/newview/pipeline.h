@@ -1952,6 +1952,13 @@ public:
     LLVector4           mCineFlareSourceState[20] = {};
     LLColor3            mCineFlareSourceColor[20] = {};
     bool                mCineFlareSourceValid[20] = {};
+    LLRenderTarget      mCineFlareEnergy[2];
+    LLUUID              mCineFlareEnergyId[20];
+    bool                mCineFlareEnergyValid = false;
+    U32                 mCineFlareEnergyRead = 0;
+    bool updateCineFlareEnergy(const LLVector4* inputs, LLRenderTarget* shaft,
+                              LLRenderTarget* restore_target, LLGLSLShader* restore_shader,
+                              F32 attack_alpha, F32 release_alpha);
 
     bool                    mInitialized;
     bool                    mShadersLoaded;

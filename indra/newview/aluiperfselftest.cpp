@@ -856,7 +856,7 @@ struct AuditSize
 
 struct KitAuditState
 {
-    enum Kind { BASE, MODE, CHIP, CARD, SELECTOR, SETTING };
+    enum Kind { BASE, MODE, CHIP, CARD, SELECTOR, SETTING, MEDIA_SOURCE };
     Kind mKind = BASE;
     std::string mKey;
     LLHandle<LLView> mView;
@@ -7663,7 +7663,7 @@ private:
             {
                 const auto before = LLPrismLens::registrySnapshot();
                 auto* editor = dynamic_cast<LLLineEditor*>(control);
-                editor->setText(std::string("this is not a video URL"));
+                editor->setText(std::string("this is not a video URL")); // ui-draw-lint: allow(raw-write) one-shot negative editor/restore fixture; never steady refresh
                 editor->onCommit();
                 mFunctionalVCamModel->refreshNow();
                 const auto after = LLPrismLens::registrySnapshot();
@@ -7676,20 +7676,20 @@ private:
                     before.mRuntimeRevision == after.mRuntimeRevision &&
                     editor->getText() == "this is not a video URL" && play && !play->getEnabled() &&
                     status && status->getValue().asString() == ALMediaFile::UNSUPPORTED;
-                editor->setText(entry["test_value"].asString());
+                editor->setText(entry["test_value"].asString()); // ui-draw-lint: allow(raw-write) one-shot negative editor/restore fixture; never steady refresh
                 editor->onCommit();
                 for (const std::string cue : {std::string("https://example.invalid/B.mp4"), std::string()})
                 {
-                    editor->setText(cue);
+                    editor->setText(cue); // ui-draw-lint: allow(raw-write) one-shot negative editor/restore fixture; never steady refresh
                     editor->onCommit();
                     mFunctionalVCamModel->refreshNow();
                     const auto* replaced = functionalSelectedVCamCapture(*mFunctionalVCamModel);
                     correct = correct && replaced && replaced->mediaUrlData() &&
                         replaced->mediaUrlData()->mValue == cue && !replaced->mMediaCanPause &&
                         !replaced->mRuntime.mHasOutput && replaced->mMediaDemandArea == 0. &&
-                        replaced->mRuntime.mReason == "Set. Press Play to start it.";
+                        replaced->mRuntime.mReason == (cue.empty() ? "Enter a direct video URL" : "Set. Press Play to start it.");
                 }
-                editor->setText(entry["test_value"].asString());
+                editor->setText(entry["test_value"].asString()); // ui-draw-lint: allow(raw-write) one-shot negative editor/restore fixture; never steady refresh
                 editor->onCommit();
             }
             // Production writer/parser/apply round trip. These fixtures contain
@@ -10952,7 +10952,7 @@ private:
     {
         if (!isDirectorV2() || !mDirectorAuditSettings.empty()) return;
         static const char* const names[] = {
-            "DirectorV2PageState", "CineLightRigEasyMode",
+            "DirectorV2PageState", "CineLightRigEasyMode", "VCamMediaSlotsEnabled",
             "DirectorV2SelectedLight", "CineLightRigEnabled",
             "CineRigRimEnabled", "DirectorV2LightMapView",
             "DirectorV2LightMapSideFrom", "CineLightRigKeyEV",
@@ -10970,6 +10970,11 @@ private:
 
     void restoreDirectorAuditSettings()
     {
+        if (mAuditMediaCapture.mId.notNull())
+        {
+            LLPrismLens::removeCapture(mAuditMediaCapture);
+            mAuditMediaCapture = {};
+        }
         if (mDirectorAuditSettings.empty()) return;
         ALKitHistory::ScopedSuspend suspend;
         for (const auto& saved : mDirectorAuditSettings)
@@ -11138,6 +11143,17 @@ private:
             if (map_card) side_right.mView = map_card->getHandle();
             mKitAuditStates.push_back(side_right);
         }
+        if (page->pageKey() == "camera_group/vcam_tab")
+        {
+            for (const char* mode : {"url", "face"})
+            {
+                KitAuditState state;
+                state.mKind = KitAuditState::MEDIA_SOURCE;
+                state.mKey = std::string("media-source-") + mode;
+                state.mValue = mode;
+                mKitAuditStates.push_back(state);
+            }
+        }
         if (mKitAuditStates.size() > 256)
         {
             LL_WARNS("UILayoutAudit") << "Capping " << page->pageKey()
@@ -11212,6 +11228,37 @@ private:
             }
             if (ALKitCard* card = dynamic_cast<ALKitCard*>(state.mView.get()))
                 applied = page && page->revealCard(card, false) && applied;
+        }
+        if (state.mKind == KitAuditState::MEDIA_SOURCE && page)
+        {
+            if (mAuditMediaCapture.mId.isNull())
+            {
+                const auto before = LLPrismLens::registrySnapshot();
+                if (auto* add = auditPageRoot()->findChild<LLComboBox>("vc_add_camera", true)) // ui-draw-lint: allow(lookup) actual Director Add menu, one audit fixture
+                {
+                    add->setValue("media"); // ui-draw-lint: allow(raw-write) one synthetic Add > media choice, removed on teardown
+                    add->onCommit();
+                }
+                const auto after = LLPrismLens::registrySnapshot();
+                for (U32 i = 0; i < after.mSlotCount; ++i)
+                {
+                    bool existed = false;
+                    for (U32 j = 0; j < before.mSlotCount; ++j)
+                        existed |= before.mCaptures[j].mHandle.mId == after.mCaptures[i].mHandle.mId;
+                    if (!existed && after.mCaptures[i].isMedia()) mAuditMediaCapture = after.mCaptures[i].mHandle;
+                }
+            }
+            if (auto* selector = page->findChild<LLUICtrl>("vc_camera_selector", true); selector && mAuditMediaCapture.mId.notNull()) // ui-draw-lint: allow(lookup) bounded Source-card audit fixture
+            {
+                selector->setValue(LLSD(mAuditMediaCapture.mId)); // ui-draw-lint: allow(raw-write) one synthetic selection per audit state
+                selector->onCommit();
+            }
+            if (auto* kind = page->findChild<LLUICtrl>("vc_media_kind", true); kind && mAuditMediaCapture.mId.notNull()) // ui-draw-lint: allow(lookup) bounded Source-card audit fixture
+            {
+                kind->setValue(state.mValue); // ui-draw-lint: allow(raw-write) one source-mode edit per bounded audit state
+                kind->onCommit(); // syntax-only empty cue: no filesystem/network/player
+                if (auto* card = page->findCard("media_source")) applied = page->revealCard(card, false);
+            }
         }
         if (page)
             page->relayoutNow();
@@ -11307,6 +11354,53 @@ private:
     {
         return inner.mLeft >= outer.mLeft - 1 && inner.mRight <= outer.mRight + 1 && inner.mBottom >= outer.mBottom - 1 &&
                inner.mTop <= outer.mTop + 1;
+    }
+
+    // Measure the actual post-layout tree. No row heights, wrapping formulas,
+    // padding constants or inferred coordinates enter this dump.
+    void auditVCamSourceRects()
+    {
+        LLView* root = auditPageRoot();
+        if (!root) return;
+        std::vector<ALKitCard*> cards;
+        collectViewsOfType<ALKitCard>(root, cards);
+        for (ALKitCard* card : cards)
+        {
+            if ((card->id() != "source" && card->id() != "media_source") || !visibleWithin(card, root)) continue;
+            const U32 sample = ++mVCamRectSample;
+            std::string mode = "camera";
+            if (card->id() == "media_source")
+                if (auto* kind = card->findChild<LLUICtrl>("vc_media_kind", true)) mode = kind->getValue().asString(); // ui-draw-lint: allow(lookup) post-layout audit sample only
+            const auto dump = [&](ALKitRow* row, LLView* widget, const char* role)
+            {
+                LLRect rect;
+                if (!widget || !visibleWithin(widget, card) ||
+                    !widget->localRectToOtherView(widget->getLocalRect(), &rect, card)) return;
+                std::ostringstream line;
+                line << csv(auditSizeName()) << ',' << csv(auditStatePath()) << ',' << sample << ','
+                     << csv(card->id()) << ',' << csv(mode) << ',' << csv(row->getName()) << ',' << role << ','
+                     << csv(widget->getName()) << ',' << rect.mLeft << ',' << rect.mBottom << ',' << rect.mRight << ',' << rect.mTop << ',';
+                if (auto* text = dynamic_cast<LLTextBox*>(widget); text && text->getLength() > 0)
+                {
+                    text->getTextBoundingRect(); // complete pending text reflow
+                    LLRect first;
+                    if (text->localRectToOtherView(text->getLocalRectFromDocIndex(0), &first, card))
+                        line << first.mBottom + text->getFont()->getDescenderHeight();
+                }
+                mVCamRectLines.push_back(line.str());
+            };
+            for (ALKitRow* row : card->rows())
+            {
+                if (!visibleWithin(row, card)) continue;
+                dump(row, row, "row");
+                if (!row->meta().label.empty()) dump(row, row->findChild<LLTextBox>(row->meta().widget + "_label", false), "label"); // ui-draw-lint: allow(lookup) actual label widget in bounded post-layout sample
+                LLUICtrl* control = row->control();
+                dump(row, control, row->meta().kind == "readout" ? "value" : "control");
+                if (control && row->meta().kind == "custom")
+                    for (LLView* child : *control->getChildList())
+                        if (dynamic_cast<LLButton*>(child)) dump(row, child, "action");
+            }
+        }
     }
 
     void auditDirectorLiveLayout()
@@ -11698,6 +11792,7 @@ private:
         if (isDirectorV2() && !mAuditStateApplied) return;
 
         auditDirectorLiveLayout();
+        if (isDirectorV2() && auditPagePath().find("vcam_tab") != std::string::npos) auditVCamSourceRects();
         if (isDirectorV2())
             auditKitTextGeometry(floater);
 
@@ -13379,6 +13474,12 @@ private:
         }
         out.flush();
 
+        const std::string rect_path = gDirUtilp->getExpandedFilename(LL_PATH_LOGS, "ui_vcam_source_rects.csv");
+        llofstream rects(rect_path.c_str(), std::ios::out | std::ios::trunc);
+        rects << "size,state,sample,card,mode,row,role,widget,left,bottom,right,top,baseline\n";
+        for (const auto& line : mVCamRectLines) rects << line << '\n';
+        rects.flush();
+
         if (mDirectorV2)
         {
             const std::string coverage_path = gDirUtilp->getExpandedFilename(
@@ -13676,6 +13777,9 @@ private:
     std::vector<AuditCoverage> mAuditCoverage;
     std::set<std::string> mAuditCoverageKeys;
     std::string mAuditRoot;
+    LLPrismLens::CaptureHandle mAuditMediaCapture;
+    U32 mVCamRectSample = 0;
+    std::vector<std::string> mVCamRectLines;
     U32 mAuditSizeIndex = 0;
     size_t mAuditPageIndex = 0;
     std::vector<KitAuditState> mKitAuditStates;

@@ -12,7 +12,9 @@ The checker models LLView's top-left and legacy bottom-left positioning.  It
 also accounts for tab headers, scroll documents, layout stacks, accordion
 content, and flow grids with ``pack="rows"``.  Director kit tags (``kit_*`` and
 ``light_rig_map``) are runtime-laid-out: their interiors are not positioned,
-and their hosted control geometry is checked as ``kit-geometry``.  A legacy
+and their hosted control geometry is checked as ``kit-geometry``. Nested
+action rows, multiline sibling resizing and label/value first-line alignment
+also have a fail-closed runtime contract check against ALKitRow source.  A legacy
 ``kit_page`` is checked like the v1 leaf it replaces.  Resource-only XUI
 documents with no root width/height are ignored.
 Intentional sibling layering must be documented in the XML with::
@@ -1572,13 +1574,69 @@ def label_fit_findings(root: Node, path: Path) -> list[Finding]:
     return findings
 
 
+@dataclass(frozen=True)
+class KitSourcePins:
+    """Source-string pins only; these do not measure runtime geometry.
+
+    Actual post-layout VCam rects are audited by vcam_runtime_rect_check.py.
+    Unknown source implementations fail closed until the pins are reviewed.
+    """
+    nested_actions: bool
+    top_aligned_readouts: bool
+    atomic_row_resize: bool
+    card_stacks_rows: bool
+
+    @classmethod
+    def from_source(cls, source: str) -> "KitSourcePins":
+        card_source = ALKIT_CARD_CPP.read_text(encoding="utf-8")
+        return cls(
+            all(part in source for part in (
+                "if (mActionRow) height = h - 4;",
+                "action.first->reshape(button_width, 24, true);",
+                "action.first->setOrigin(left, top - 24);",
+                "if (left && left + button_width > width) { left = 0; top -= 28; }",
+                "return llmax(mRowHeight, lines * 28);")),
+            "top_aligned ? h - 24 : (h - 20) / 2" in source,
+            "else layoutRow(width);" in source and
+            "if (ALKitCard* owner = card()) owner->requestLayout();" in source,
+            all(part in card_source for part in (
+                "const S32 rh = row->heightForWidth(body_w);",
+                "row->layoutRow(body_w);",
+                "row->setOrigin(ALKitStyle::CARD_PAD_L, top - rh);",
+                "top -= rh;")),
+        )
+
+
+def kit_source_pin_findings(root: Node, rules: KitSourcePins | None = None) -> list[Finding]:
+    """Pin row ownership/reflow source contracts; make no geometry claims."""
+    if rules is None:
+        rules = KitSourcePins.from_source(ALKIT_ROW_CPP.read_text(encoding="utf-8"))
+    findings: list[Finding] = []
+    for card in (node for node in (root, *descendants(root)) if node.tag == "kit_card"):
+        rows = [node for node in card.children if node.tag == "kit_row"]
+        if rows and not rules.card_stacks_rows:
+            findings.append(Finding("kit-source-stacking", card.line, f"{card.name}: measured-height stacking source pin missing"))
+        for row in rows:
+            control = next((child for child in row.children if child.name == row.attrs.get("widget")), None)
+            buttons = [] if control is None else [child for child in control.children if child.tag == "button"]
+            if row.attrs.get("kind") == "custom" and buttons:
+                if row.attrs.get("action_row", "false") != "true" or not rules.nested_actions:
+                    findings.append(Finding("kit-source-actions", row.line, f"{row.name}: action ownership source pin missing"))
+            if row.attrs.get("kind") == "readout" and control is not None and control.attrs.get("word_wrap") == "true":
+                if not rules.atomic_row_resize:
+                    findings.append(Finding("kit-source-reflow", row.line, f"{row.name}: atomic row reflow source pin missing"))
+                if row.attrs.get("label") and not rules.top_aligned_readouts:
+                    findings.append(Finding("kit-source-readout", row.line, f"{row.name}: first-line alignment source pin missing"))
+    return finalize_findings(findings)
+
+
 def check_file(path: Path, source_index: SourceIndex | None = None,
                dynamic_visibility_override: set[str] | None = None) -> list[Finding]:
     if path.name == KIT_INDEX_NAME:
         return []
     root, overlap_policy = parse_xml(path)
     calculate(root)
-    kit_findings = kit_geometry_findings(root) + label_fit_findings(root, path)
+    kit_findings = kit_geometry_findings(root) + label_fit_findings(root, path) + kit_source_pin_findings(root)
     if root.rect is None or root.rect.width <= 0 or root.rect.height <= 0:
         if any(node.legacy_kit for node in (root, *descendants(root))):
             kit_findings.append(Finding(
@@ -1728,6 +1786,28 @@ def run_selftest(json_output: bool) -> int:
         if not json_output:
             detail = f"{len(findings)} finding(s), {overlap_count} overlap(s)"
             print(f"{'PASS' if case_passed else 'FAIL'} {filename}: {detail}")
+    runtime_root, _ = parse_xml(fixture_dir / "kit_media_runtime.xml")
+    old_rules = KitSourcePins.from_source((fixture_dir / "kit_media_runtime_old.txt").read_text(encoding="utf-8"))
+    old_findings = kit_source_pin_findings(runtime_root, old_rules)
+    current_findings = kit_source_pin_findings(runtime_root)
+    old_kinds = {item.kind for item in old_findings}
+    runtime_passed = {"kit-source-actions", "kit-source-readout"} <= old_kinds and not current_findings
+    passed = passed and runtime_passed
+    reports.append({"fixture": "kit media old/current source pins", "passed": runtime_passed,
+                    "old_findings": len(old_findings), "current_findings": len(current_findings)})
+    if not json_output:
+        print(f"{'PASS' if runtime_passed else 'FAIL'} kit media old/current source pins: "
+              f"old={len(old_findings)} ({', '.join(sorted(old_kinds))}); current={len(current_findings)}")
+    unmanaged_root, _ = parse_xml(fixture_dir / "kit_media_runtime.xml")
+    for node in descendants(unmanaged_root):
+        node.attrs.pop("action_row", None)
+    unmanaged = kit_source_pin_findings(unmanaged_root)
+    unmanaged_passed = any(item.kind == "kit-source-actions" for item in unmanaged)
+    passed = passed and unmanaged_passed
+    reports.append({"fixture": "kit media missing action ownership", "passed": unmanaged_passed})
+    if not json_output:
+        print(f"{'PASS' if unmanaged_passed else 'FAIL'} kit media missing action ownership: "
+              f"{len(unmanaged)} finding(s)")
     alias_source = (fixture_dir / "visibility_alias_fixture.cpp").read_text(encoding="utf-8")
     alias_passed = dynamic_visibility_names(alias_source) == {"member_alternate"}
     passed = passed and alias_passed

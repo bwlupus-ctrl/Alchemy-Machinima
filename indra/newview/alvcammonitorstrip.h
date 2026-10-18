@@ -64,6 +64,9 @@ public:
         LLPrismLens::CaptureHandle mCapture;
         LLPrismPreviewService::TilePublication mPublication;
         std::string mLabel;
+        std::string mStatus;
+        bool mNoSignal = false;
+        bool mNoSignalWhite = false;
         LLPrismLens::EActivityState mActivity = LLPrismLens::EActivityState::IDLE;
         F32 mObservedFps = 0.f;
         F32 mTargetFps = 0.f;
@@ -113,26 +116,10 @@ protected:
 private:
     struct TileTextCache
     {
-        std::string mBadge;
-        std::string mTimestamp;
         std::string mName;
-        std::string mShows;
         std::string mStatus;
         std::string mLabelInput;
         bool mMedia = false;
-        LLPrismLens::EActivityState mActivity = LLPrismLens::EActivityState::IDLE;
-        LLPrismPreviewService::ETileState mPreviewState = LLPrismPreviewService::ETileState::EMPTY;
-        S32 mObservedTenths = 0;
-        S32 mTargetTenths = 0;
-        S32 mPreviewTenths = 0;
-        S64 mTimestampSecond = 0;
-        U32 mFaceCount = 0;
-        U32 mMonitorDisplayIndex = 0;
-        bool mEditing = false;
-        bool mMasterEnabled = false;
-        bool mPreviewsEnabled = false;
-        bool mMonitorShowsDisplay = false;
-        bool mMonitorDisplayVirtual = false;
         bool mValid = false;
     };
     void updateTileText(U32 slot, const Tile& tile, bool info_overlay, bool force_info);

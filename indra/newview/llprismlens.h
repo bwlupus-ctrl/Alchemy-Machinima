@@ -1233,11 +1233,16 @@ bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source,
                     std::string* reason = nullptr);
 // Internal source controls for the later Director UI. Commit/restore are syntax only.
 bool setMediaUrlSource(const CaptureHandle& slot, const MediaUrlSource& source, std::string* reason = nullptr);
+bool setMediaFileLoop(const CaptureHandle& slot, bool loop);
+bool setMediaFileVolume(const CaptureHandle& slot, F32 volume);
+bool setMediaSourceAspect(const CaptureHandle& slot, ESourceAspect aspect);
+void clearMediaFileBrowse(const CaptureHandle& slot);
 bool playMediaFile(const CaptureHandle& slot);
 bool pauseMediaFile(const CaptureHandle& slot);
 bool stopMediaFile(const CaptureHandle& slot);
 void browseMediaFile(const CaptureHandle& slot, std::function<bool()> still_current,
-                     std::function<void()> committed = {});
+                     std::function<void()> committed = {},
+                     std::function<void(const std::string&, const std::string&)> refused = {});
 void clearMediaFileCache();
 void initializeMediaFiles();
 void retireMediaFileOwners(); // Safe boundary, before any raw media traversal.

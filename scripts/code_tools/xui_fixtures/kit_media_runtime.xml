@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<panel name="media_runtime_fixture">
+  <kit_card name="source" title="Source" kind="rows">
+    <kit_row kind="custom" widget="transport" label="" action_row="true">
+      <panel name="transport">
+        <button name="play" left="0" top="0" width="72" height="24" layout="topleft" />
+        <button name="pause" left="78" top="0" width="72" height="24" layout="topleft" />
+        <button name="stop" left="156" top="0" width="72" height="24" layout="topleft" />
+      </panel>
+    </kit_row>
+    <kit_row kind="toggle" widget="loop" label="Loop"><check_box name="loop" /></kit_row>
+    <kit_row kind="readout" widget="status" label="Status" row_height="60">
+      <text name="status" word_wrap="true" />
+    </kit_row>
+    <kit_row kind="readout" widget="cache" label="Media cache" row_height="60">
+      <text name="cache" word_wrap="true" />
+    </kit_row>
+  </kit_card>
+</panel>

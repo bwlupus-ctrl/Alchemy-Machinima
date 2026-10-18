@@ -303,6 +303,7 @@ public:
     bool isPrivateFile() const { return mPrivateFile; }
     bool privateFileActive() const { return mPrivateFile && mPrivateActive; }
     bool privateFileAdmitted() const { return mPrivateFile && mMediaSource && mMediaSource->privateFileVerdict() == 1; }
+    bool privateFileRetaining() const { return mPrivateFile && mPrivateActive && mMediaSource && mMediaSource->privateFileRetaining(); }
     bool privateFileEnded() const { return mPrivateFile && mMediaSource && mMediaSource->getStatus() == MEDIA_DONE; }
     bool privateFileFailed() const { return mPrivateFile && (mPrivateBudgetLost || mMediaSourceFailed || (mMediaSource && mMediaSource->privateFileVerdict() < 0)); }
     bool privateBudgetLost() const { return mPrivateBudgetLost; }

@@ -871,7 +871,7 @@ void LLViewerMedia::updateMedia(void *dummy_arg)
                 new_priority = LLPluginClassMedia::PRIORITY_LOW;
             }
 
-            if(!inworld_media_enabled)
+            if(!inworld_media_enabled && !pimpl->isPrivateFile())
             {
                 // If inworld media is locked out, force all inworld media to stay unloaded.
                 if(!pimpl->getUsedInUI())
@@ -3149,7 +3149,7 @@ bool LLViewerMediaImpl::mediaSlotPermitted() const
     static LLCachedControl<bool> inworld_media_enabled(gSavedSettings, "AudioStreamingMedia", true);
     // Observing a source never overrides its ordinary visibility/update policy.
     return mediaSlotCandidate() && !isForcedUnloaded() && !mSuspendUpdates &&
-        mVisible && !mWebPaused && inworld_media_enabled &&
+        mVisible && !mWebPaused && (mPrivateFile || inworld_media_enabled) &&
         (!mMediaSource || !mMediaSource->isPluginExited());
 }
 
@@ -4823,8 +4823,8 @@ bool LLViewerMediaImpl::isAutoPlayable() const
 //
 bool LLViewerMediaImpl::shouldShowBasedOnClass() const
 {
-    // Objectless private playback uses in-world media preferences, never UI privileges.
-    if (mPrivateFile) return gSavedSettings.getBOOL("AudioStreamingMedia");
+    // Explicit private file playback has its own source/admission policy.
+    if (mPrivateFile) return mPrivateActive;
     // If this is parcel media or in the UI, return true always
     if (getUsedInUI() || isParcelMedia()) return true;
 

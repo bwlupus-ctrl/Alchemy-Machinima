@@ -169,7 +169,7 @@ public:
                   const std::string& label, std::string* reason = nullptr);
 
 private:
-    void onIdleRefresh(const std::weak_ptr<bool>& alive);
+    bool onIdleRefresh(const std::weak_ptr<bool>& alive);
     void selectAfterAdd(const LLPrismLens::CaptureHandle& capture);
     const LLPrismLens::CaptureDefinition* findCapture(
         const LLPrismLens::CaptureHandle& handle) const;
@@ -187,6 +187,7 @@ private:
         mMonitorDisplay;
     U32 mDirty = DIRTY_ALL;
     bool mIdleQueued = false;
+    F64 mNextRuntimeRefresh = 0.;
     bool mPageVisible = false;
     std::shared_ptr<bool> mAlive;
     boost::signals2::scoped_connection mConfigurationConnection;

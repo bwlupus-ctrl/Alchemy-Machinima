@@ -1,0 +1,208 @@
+// Regression excerpt from 88c254041fc: never compiled.
+S32 ALKitRow::heightForWidth(S32 width) const
+{
+    if (mMeta.kind == "readout")
+        if (LLTextBox* text = dynamic_cast<LLTextBox*>(mControl); text && text->getWordWrap())
+        {
+            // Reflow at the same value-track width used by layoutRow before measuring.
+            const S32 text_width = width - 2 * ALKitStyle::ROW_INSET - (mMeta.label.empty() ? 0 :
+                ALKitStyle::LABEL_W + ALKitStyle::RESET_W + 18 + 3 * ALKitStyle::COL_GAP);
+            text->reshape(llmax(1, text_width), text->getRect().getHeight(), true);
+            return llmax(llmax(28, mRowHeight), text->getTextPixelHeight() + 8);
+        }
+    if (mMeta.kind == "dial" || mMeta.kind == "arc")
+        return 56;
+    if (mMeta.kind == "gobo")
+        return 72;
+    if (mMeta.kind == "list")
+        return mRowHeight > 28 ? mRowHeight : 120;
+    if (mMeta.kind == "viewport")
+        return (mRowHeight > 28 ? mRowHeight : 180) + 6;
+    return llmax(28, mRowHeight);
+}
+
+// A label wider than its box is elided with an ellipsis; the full text moves to the tooltip.
+void ALKitRow::fitLabel(S32 box_width)
+{
+    if (!mLabel)
+        return;
+    const std::string shown = ALKitStyle::fitText(ALKitStyle::sansFont("Kit12"), mMeta.label, box_width);
+    setTextIfChanged(mLabel, shown);
+    setToolTipIfChanged(mLabel, shown == mMeta.label ? std::string() : mMeta.label);
+}
+
+void ALKitRow::layoutRow(S32 w)
+{
+    // The favorite star sits between the value column and the reset glyph, so it takes
+    // track width and never narrows the label track.
+    constexpr S32 kFavoriteW = 18;
+    const S32 h = heightForWidth(w);
+    reshape(w, h, true);
+    if (mLabel)
+    {
+        const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout") && mMeta.label.empty();
+        // The label box is the mockup's 100 px label track; the favorite star has its own slot (below).
+        mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
+        mLabel->setOrigin(ALKitStyle::ROW_INSET, (h - 20) / 2);
+        mLabel->setVisible(!full_span_custom);
+        fitLabel(ALKitStyle::LABEL_W);
+    }
+
+    const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout") && mMeta.label.empty();
+    const S32 x = full_span_custom ? ALKitStyle::ROW_INSET
+                                   : ALKitStyle::ROW_INSET + ALKitStyle::LABEL_W + ALKitStyle::COL_GAP;
+    const S32 cw =
+        full_span_custom
+            ? llmax(1, w - 2 * ALKitStyle::ROW_INSET)
+            : llmax(1, w - 2 * ALKitStyle::ROW_INSET - ALKitStyle::LABEL_W - ALKitStyle::VALUE_W - ALKitStyle::RESET_W - kFavoriteW - 4 * ALKitStyle::COL_GAP);
+    const S32 span = full_span_custom ? cw : cw + ALKitStyle::COL_GAP + ALKitStyle::VALUE_W;
+
+    if (mVecCount)
+    {
+        const S32 each = llmax(1, (span - (mVecCount - 1) * ALKitStyle::COL_GAP) / mVecCount);
+        for (S32 i = 0; i < mVecCount; ++i)
+        {
+            mVec[i]->reshape(each, 22, true);
+            mVec[i]->setOrigin(x + i * (each + ALKitStyle::COL_GAP), (h - 22) / 2);
+        }
+    }
+
+    else if (mControl)
+    {
+        S32 width = cw, height = 24;
+        if (mMeta.kind == "toggle")
+        {
+            width  = ALKitStyle::SWITCH_W;
+            height = ALKitStyle::SWITCH_H;
+        }
+        else if (mMeta.kind == "dial" || mMeta.kind == "arc")
+        {
+            width = height = ALKitStyle::DIAL_SIZE;
+        }
+        else if (mMeta.kind == "number")
+            width = ALKitStyle::VALUE_W;
+        else if (mMeta.kind == "color")
+        {
+            width  = 40;
+            height = 18;
+        }
+        else if (mMeta.kind == "gobo")
+        {
+            width = height = 64;
+        }
+        else if (mMeta.kind == "list")
+        {
+            width  = span;
+            height = h;
+        }
+        else if (mMeta.kind == "viewport")
+        {
+            width  = span;
+            height = llmax(1, h - 6);
+        }
+        else if (mMeta.kind == "button")
+        {
+            const LLFontGL* f = ALKitStyle::sansFont("Kit12");
+            const LLButton* button = dynamic_cast<LLButton*>(mControl);
+            const std::string label = button ? button->getText() : mMeta.label;
+            // fill_width: code rewrites the label (slot buttons), so size to the track, not the
+            // placeholder text the XML started with.
+            width = mFillWidth ? span : llmin(span, (f ? f->getWidth(label) : 80) + 20);
+        }
+        else if (mMeta.kind == "slider" || mMeta.kind == "combo" || mMeta.kind == "text" || mMeta.kind == "readout" ||
+                 mMeta.kind == "link" || mMeta.kind == "custom" || mMeta.kind == "segmented")
+            width = span;
+        if (mMeta.kind == "readout")
+            if (LLTextBox* text = dynamic_cast<LLTextBox*>(mControl); mExplicitRowHeight || (text && text->getWordWrap()))
+                height = h - 8;
+        if (mExplicitRowHeight && (mMeta.kind == "custom" || mMeta.kind == "list" || mMeta.kind == "viewport"))
+            height = h;
+        if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
+            spinner->setValueColumnLayout(width, height, true);
+        else
+            mControl->reshape(width, height, true);
+        if (mMeta.kind == "segmented")
+        {
+            std::vector<LLView*> segments(mControl->getChildList()->begin(),
+                                          mControl->getChildList()->end());
+            std::sort(segments.begin(), segments.end(),
+                [](const LLView* left, const LLView* right)
+                {
+                    return left->getRect().mLeft < right->getRect().mLeft;
+                });
+            const S32 count = static_cast<S32>(segments.size());
+            const S32 each = llmax(1, width / llmax(1, count));
+            S32 index = 0;
+            for (LLView* segment : segments)
+            {
+                segment->reshape(index + 1 == count ? width - index * each : each, height, true);
+                segment->setOrigin(index * each, 0);
+                ++index;
+            }
+        }
+        const S32 control_x = mMeta.kind == "number" ? x + cw + ALKitStyle::COL_GAP : x;
+        mControl->setOrigin(control_x, (h - height) / 2);
+
+        if (mMeta.kind == "slider")
+        {
+            for (LLView* child : *mControl->getChildList())
+            {
+                if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+                    editor->setRect(LLRect(width - ALKitStyle::VALUE_W, (height + 20) / 2,
+                                           width, (height - 20) / 2));
+                else if (LLTextBox* text = dynamic_cast<LLTextBox*>(child))
+                {
+                    text->setRect(LLRect(width - ALKitStyle::VALUE_W, (height + 20) / 2,
+                                         width, (height - 20) / 2));
+                    text->setRightAlign();
+                    text->setFont(ALKitStyle::monoFont());
+                }
+            }
+            // Let LLSliderCtrl recompute its track after the value child has
+            // been widened to the shared value-column width.
+            mControl->reshape(width, height, true);
+        }
+    }
+
+    if (mValueText)
+    {
+        mValueText->reshape(ALKitStyle::VALUE_W, 20, true);
+        mValueText->setOrigin(x + cw + ALKitStyle::COL_GAP, (h - 20) / 2);
+    }
+    if (mReset)
+    {
+        mReset->reshape(ALKitStyle::RESET_W, 20, true);
+        mReset->setOrigin(w - ALKitStyle::ROW_INSET - ALKitStyle::RESET_W, (h - 20) / 2);
+    }
+    if (mFavorite)
+    {
+        mFavorite->reshape(kFavoriteW, 18, true);
+        mFavorite->setOrigin(full_span_custom ? ALKitStyle::ROW_INSET : x + cw + 2 * ALKitStyle::COL_GAP + ALKitStyle::VALUE_W,
+                             (h - 18) / 2);
+    }
+}
+
+void ALKitRow::pollLiveValue()
+{
+    if (!mControl)
+        return;
+    const LLSD value = mControl->getValue();
+    if (!alSameValue(value, mShownValue))
+    {
+        LLTextBox* text = mMeta.kind == "readout" ? dynamic_cast<LLTextBox*>(mControl) : nullptr;
+        const bool wrapped = text && text->getWordWrap();
+        // Live bindings have already changed the text; retain the last laid-out height.
+        const S32 previous_height = getRect().getHeight();
+        const S32 width = getRect().getWidth();
+        refreshValue();
+        if (wrapped)
+        {
+            if (heightForWidth(width) != previous_height)
+                if (ALKitCard* owner = card()) owner->requestLayout();
+            layoutRow(width);
+        }
+    }
+    if (!baselineEditActive(mControl))
+        mLastValue = value;
+}
+

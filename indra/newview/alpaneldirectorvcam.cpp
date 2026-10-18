@@ -274,8 +274,6 @@ bool ALPanelDirectorVCam::postBuild()
         if (self->mModel.pageVisible() && self->isInVisibleChain())
         {
             self->refreshMediaCache();
-            if (!self->mMediaPlayStatus.empty() && self->mMediaPlayStatusTimer.getElapsedTimeF32() < 5.5f)
-                self->mModel.markDirty(ALVCamPageModel::DIRTY_RUNTIME);
         }
         return false;
     }, 0.5f);
@@ -499,7 +497,6 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         ++mMediaEditEpoch;
         mMediaEditHandle = LLPrismLens::CaptureHandle();
     }
-    const LLPrismLens::PerformanceSnapshot& perf = mModel.performance();
     if (mCameraLabelRevision != registry.mConfigurationRevision)
     {
         mCameraLabels.fill(std::string());
@@ -523,15 +520,36 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             ? llformat("VCam %u/8 slots · %u/16 faces (%u visible)", registry.mSlotCount, registry.mDisplayCount, visible_faces)
             : llformat("VCam %u/8 cameras · %u/16 faces (%u visible)", registry.mCaptureCount, registry.mDisplayCount, visible_faces));
     }
-    if (LLUICtrl* perf_line = control("vc_perf"))
-        setValueIfChanged(perf_line, !gSavedSettings.getBOOL("PrismLensEnabled")
-            ? LLSD("Virtual Cam is off. Nothing renders; cameras and faces stay editable.")
-            : LLSD(llformat(
-                "Presented %.0f FPS · render p95 %.1f ms · scale %.2f · admitted %.1f attempts/s · Adaptive: %s, protecting %.0f FPS",
-                perf.mPresentedFps, perf.mMainRenderP95Milliseconds,
-                perf.mUserResolutionScaleCeiling, perf.mAdmittedGlobalAttemptRateHz,
-                perf.mAdaptiveEnabled ? performanceText(perf.mState) : "off",
-                perf.mRequestedProtectedMainFps)));
+    // Numeric readouts are quantized by their displayed precision and share
+    // a 2Hz gate even when configuration/selection forces a panel refresh.
+    const F64 now = LLTimer::getTotalSeconds();
+    const bool refresh_performance = now >= mNextPerformanceRefresh;
+    if (refresh_performance)
+    {
+        mNextPerformanceRefresh = now + .5;
+        const auto& perf = mModel.performance();
+        if (LLUICtrl* perf_line = control("vc_perf"))
+            setValueIfChanged(perf_line, !gSavedSettings.getBOOL("PrismLensEnabled")
+                ? LLSD("Virtual Cam is off. Nothing renders; cameras and faces stay editable.")
+                : LLSD(llformat(
+                    "Presented %.0f FPS · render p95 %.1f ms · scale %.2f · admitted %.1f attempts/s · Adaptive: %s, protecting %.0f FPS",
+                    perf.mPresentedFps, perf.mMainRenderP95Milliseconds,
+                    perf.mUserResolutionScaleCeiling, perf.mAdmittedGlobalAttemptRateHz,
+                    perf.mAdaptiveEnabled ? performanceText(perf.mState) : "off",
+                    perf.mRequestedProtectedMainFps)));
+        setValueIfChanged(control("vc_admitted"), llformat("%.1f of %.0f attempts/s",
+            perf.mAdmittedGlobalAttemptRateHz, perf.mEffectiveTotalCaptureBudgetHz));
+        if (capture)
+            setValueIfChanged(control("vc_rate_readout"), llformat("%.1f / %.1f / %.1f fps - age %.2fs",
+                capture->mRate.mTargetFps, capture->mRuntime.mCadenceEntitlementHz,
+                capture->mRuntime.mObservedPublicationHz, capture->mRuntime.mOutputAgeSeconds));
+    }
+    const bool media_master = gSavedSettings.getBOOL("PrismLensEnabled");
+    const bool media_slots = LLPrismLens::mediaSlotsEnabled();
+    ALMediaFile::clearPlayStatusOnPolicyChange(mMediaPlayStatus,
+        mMediaMasterEnabled, mMediaSlotsEnabled, media_master, media_slots);
+    mMediaMasterEnabled = media_master;
+    mMediaSlotsEnabled = media_slots;
 
     std::vector<ALVCamCameraSelector::Item> cameras;
     std::array<ALVCamMonitorStrip::Tile, LLPrismLens::MAX_CAPTURES> tiles;
@@ -556,6 +574,33 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         tile.mEditing = sameCapture(item.mHandle, mModel.selectedCapture());
         tile.mMasterEnabled = gSavedSettings.getBOOL("PrismLensEnabled");
         tile.mPreviewsEnabled = gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled");
+        tile.mNoSignal = item.isMedia() && !item.mRuntime.mHasOutput;
+        for (U32 pi = 0; pi < registry.mProjectorCount; ++pi)
+            if (sameCapture(registry.mProjectors[pi].mCapture, item.mHandle))
+            {
+                tile.mNoSignalWhite = registry.mProjectors[pi].mSettings.mNoSignal == LLPrismLens::ENoSignal::WHITE;
+                break;
+            }
+        if (!tile.mMasterEnabled) tile.mStatus = "Error: Turn on Virtual Cam";
+        else if (!tile.mPreviewsEnabled) tile.mStatus = "Disabled";
+        else if (const auto refused = mMediaRefusals.find(item.mHandle.mId);
+                 refused != mMediaRefusals.end() && refused->second.generation == item.mHandle.mGeneration)
+            tile.mStatus = "Error: File refused: " + refused->second.reason;
+        else if (!item.mRuntime.mHasOutput)
+        {
+            const auto& reason = item.mRuntime.mReason;
+            bool refused = reason == "Media slots disabled" || reason == "Blocked by media policy" ||
+                reason.rfind("Unsupported player", 0) == 0;
+            for (const char* refusal : {ALMediaFile::NOT_VIDEO, ALMediaFile::MISSING, ALMediaFile::LOCKED,
+                ALMediaFile::BUDGET, ALMediaFile::TOO_LARGE, ALMediaFile::NO_SPACE, ALMediaFile::FAILED,
+                ALMediaFile::UNSUPPORTED, ALMediaFile::REMOTE})
+                refused |= reason == refusal;
+            // Checking/downloading/waiting (including numeric progress) has no
+            // accepted picture yet. Only a real refusal changes the reason.
+            tile.mStatus = refused ? "Error: " + reason : "Error: No source";
+        }
+        else tile.mStatus = "Preview";
+
         const LLPrismLens::DisplayHandle monitor = mModel.monitorDisplay(item.mSlot);
         if (monitor.mId.notNull())
             for (U32 di = 0; di < registry.mDisplayCount; ++di)
@@ -823,7 +868,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             12.f / std::tan(llmax(1.f, fov) * DEG_TO_RAD * .5f), fov));
         setValueIfChanged(control("vc_output_picture"), llformat("1024 x %d px (scale %.2f)",
             ll_round(1024.f / llmax(.25f, camera.mOutputAspect)),
-            perf.mUserResolutionScaleCeiling));
+            mModel.performance().mUserResolutionScaleCeiling));
         setValueIfChanged(control("vc_look_feeds"), llformat("%u bound face%s",
             capture->mDisplayCount, capture->mDisplayCount == 1 ? "" : "s"));
 
@@ -937,6 +982,14 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             mMediaDraft = mMediaCue;
             mMediaError.clear();
             mMediaPlayable = !mMediaCue.empty();
+            const auto refused = mMediaRefusals.find(capture->mHandle.mId);
+            if (video && refused != mMediaRefusals.end() &&
+                refused->second.generation == capture->mHandle.mGeneration && refused->second.cue == mMediaCue)
+            {
+                mMediaDraft = refused->second.draft;
+                mMediaError = mMediaPlayStatus = refused->second.reason;
+                mMediaPlayable = false;
+            }
             setValueIfChanged(mMediaVideo, mMediaDraft);
         }
         if (video)
@@ -955,19 +1008,11 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             setLabelIfChanged(freeze, label);
         }
         setValueIfChanged(control("vc_media_running"), capture->mMediaRunning);
-        if (!mMediaPlayStatus.empty() && capture->mRuntime.mReason != mMediaPlayStatus)
-            mMediaPlayStatus.clear(); // A new live status always supersedes the refusal.
-        const bool play_status_expired = mMediaPlayStatusTimer.getElapsedTimeF32() >= 5.f ||
-            mMediaPlayPolicy != gSavedSettings.getBOOL("AudioStreamingMedia") ||
-            mMediaPlayMaster != gSavedSettings.getBOOL("PrismLensEnabled") || mMediaPlayEnabled != enabled;
-        // The registry can retain a refused Play reason while stopped. Retire
-        // that presentation too; never let it cover a newer live status.
-        const std::string media_status = !mMediaPlayStatus.empty() && play_status_expired
-            ? (mMediaDraft.empty() ? "Enter a direct video URL" : "Set. Press Play to start it.")
-            : capture->mRuntime.mReason;
-        setValueIfChanged(control("vc_media_status"), !mMediaError.empty() ? mMediaError :
-            video && mMediaDraft.empty() && capture->mRuntime.mReason != "Set. Press Play to start it." ? "Enter a direct video URL" :
-            !video && capture->mediaData()->mObjectId.isNull() ? "Pick a prim face" : media_status);
+        setValueIfChanged(control("vc_media_status"), !gSavedSettings.getBOOL("PrismLensEnabled") ? "Turn on Virtual Cam to play video" : !mMediaPlayStatus.empty() ? mMediaPlayStatus :
+            !mMediaError.empty() ? mMediaError : video && mMediaDraft.empty() ? "Enter a direct video URL" :
+            !video && capture->mediaData()->mObjectId.isNull() ? "Pick a prim face" : capture->mRuntime.mReason);
+        if (mMediaVideo) mMediaVideo->setFgColor(ALKitStyle::color(
+            !mMediaError.empty() || !mMediaPlayStatus.empty() ? ALKitStyle::RECORD : ALKitStyle::TEXT));
         setValueIfChanged(control("vc_media_note"), video
             ? "Only you see and hear this. Volume starts muted. Local files work only on this PC; scenes never auto-play."
             : "Only you see these outputs; audio stays on the prim.");
@@ -988,9 +1033,6 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     {
         setValueIfChanged(control("vc_rate_mode"), static_cast<S32>(capture->mRate.mMode));
         setValueIfChanged(control("vc_target_fps"), capture->mRate.mTargetFps);
-        setValueIfChanged(control("vc_rate_readout"), llformat("%.1f / %.1f / %.1f fps - age %.2fs",
-            capture->mRate.mTargetFps, capture->mRuntime.mCadenceEntitlementHz,
-            capture->mRuntime.mObservedPublicationHz, capture->mRuntime.mOutputAgeSeconds));
         setRowControlVisible(row("vc_target_fps"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
         setRowControlVisible(row("vc_rate_preset"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
     }
@@ -1004,8 +1046,6 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     setValueIfChanged(control("vc_main_fps"), gSavedSettings.getF32("PrismProtectedMainFPS"));
     setValueIfChanged(control("vc_capture_budget"), gSavedSettings.getF32("PrismCaptureRefreshCeilingHz"));
     setValueIfChanged(control("vc_quality_ceiling"), gSavedSettings.getF32("PrismLensResolutionScale"));
-    setValueIfChanged(control("vc_admitted"), llformat("%.1f of %.0f attempts/s",
-        perf.mAdmittedGlobalAttemptRateHz, perf.mEffectiveTotalCaptureBudgetHz));
     setValueIfChanged(control("vc_preview_cost"), mMonitorStrip->previewCostText(
         gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled"),
         gSavedSettings.getF32("PrismMonitorPreviewFPS")));
@@ -1038,7 +1078,7 @@ void ALPanelDirectorVCam::refreshMediaCache()
 {
     const auto cache = ALMediaFile::cacheStatus(); // Snapshot only; never initializes I/O.
     setEnabledIfChanged(control("vc_media_cache_clear"), LLPrismLens::mediaSlotsEnabled() && cache.owner);
-    setValueIfChanged(control("vc_media_cache_status"), cache.owner
+    setValueIfChanged(control("vc_media_cache_status"), !gSavedSettings.getBOOL("PrismLensEnabled") ? "Turn on Virtual Cam to play video" : cache.owner
         ? llformat("%.1f / %.1f MiB; %s", cache.bytes / 1048576.0, cache.limit / 1048576.0, cache.status.c_str())
         : !cache.status.empty() ? cache.status : cache.checking ? "Checking video cache..." : "Video cache idle");
 }
@@ -1053,23 +1093,42 @@ void ALPanelDirectorVCam::validateMediaVideo()
     setEnabledIfChanged(control("vc_media_play"), LLPrismLens::mediaSlotsEnabled() &&
         mMediaPlayable);
     const auto* capture = selectedCapture();
-    setValueIfChanged(control("vc_media_status"), !mMediaError.empty() ? mMediaError :
-        mMediaDraft.empty() ? "Enter a direct video URL" : capture ? capture->mRuntime.mReason : "Stopped");
+    setValueIfChanged(control("vc_media_status"), !gSavedSettings.getBOOL("PrismLensEnabled") ? "Turn on Virtual Cam to play video" : !mMediaPlayStatus.empty() ? mMediaPlayStatus :
+        !mMediaError.empty() ? mMediaError : mMediaDraft.empty() ? "Enter a direct video URL" : capture ? capture->mRuntime.mReason : "Stopped");
+}
+
+void ALPanelDirectorVCam::refuseMediaVideo(const std::string& reason)
+{
+    mMediaError = mMediaPlayStatus = reason;
+    mMediaPlayable = false;
+    mMediaRefusals[mMediaEditHandle.mId] = {mMediaEditHandle.mGeneration, mMediaCue, mMediaDraft, reason};
+    mModel.markDirty(ALVCamPageModel::DIRTY_RUNTIME);
 }
 
 bool ALPanelDirectorVCam::commitMediaVideo()
 {
     const auto* capture = selectedCapture();
-    if (!capture || !capture->mediaUrlData() || !sameCapture(capture->mHandle, mMediaEditHandle)) return false;
+    if (!capture || !capture->mediaUrlData() || !sameCapture(capture->mHandle, mMediaEditHandle))
+    {
+        LL_INFOS("VCamMedia") << "Typed commit invalid rule=selected private slot/generation" << LL_ENDL;
+        return false;
+    }
     validateMediaVideo();
-    if (!mMediaError.empty()) return false;
     ALMediaFile::Descriptor syntax;
-    if (!ALMediaFile::classify(mMediaDraft, syntax, mMediaError, LL_WINDOWS)) return false;
-    auto source = *capture->mediaUrlData();
-    source.mValue = mMediaDraft; // Keep exactly what the user typed.
-    source.mLocation = syntax.location == ALMediaFile::Location::LOCAL_FILE
-        ? LLPrismLens::MediaUrlSource::Location::LOCAL_FILE : LLPrismLens::MediaUrlSource::Location::HTTP_URL;
-    return LLPrismLens::setMediaUrlSource(capture->mHandle, source, &mMediaError);
+    bool valid = ALMediaFile::classify(mMediaDraft, syntax, mMediaError, LL_WINDOWS);
+    if (valid)
+    {
+        auto source = *capture->mediaUrlData();
+        source.mValue = mMediaDraft; // Keep exactly what the user typed.
+        source.mLocation = syntax.location == ALMediaFile::Location::LOCAL_FILE
+            ? LLPrismLens::MediaUrlSource::Location::LOCAL_FILE : LLPrismLens::MediaUrlSource::Location::HTTP_URL;
+        valid = LLPrismLens::setMediaUrlSource(capture->mHandle, source, &mMediaError);
+    }
+    LL_INFOS("VCamMedia") << "Typed commit " << (valid ? "valid" : "invalid")
+        << " slot=" << capture->mSlot << " rule=syntax/descriptor reason=" << (valid ? "accepted cue" : mMediaError)
+        << " ext=" << ALMediaFile::diagnosticExtension(mMediaDraft) << LL_ENDL;
+    if (!valid) refuseMediaVideo(mMediaError);
+    return valid;
 }
 
 void ALPanelDirectorVCam::setStatus(const std::string& text, bool warning)
@@ -1154,6 +1213,14 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
     {
         const auto handle = capture->mHandle;
         std::string reason;
+        if (name == "vc_media_kind" || name == "vc_media_video" || name == "vc_media_play" ||
+            name == "vc_media_stop" || name == "vc_media_browse")
+        {
+            mMediaPlayStatus.clear(); mMediaError.clear();
+            mMediaRefusals.erase(handle.mId);
+            LLPrismLens::clearMediaFileBrowse(handle);
+            if (capture->mediaUrlData()) validateMediaVideo();
+        }
         if (name == "vc_media_kind")
         {
             ++mMediaEditEpoch;
@@ -1162,18 +1229,17 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         else if (name == "vc_media_video") { ++mMediaEditEpoch; commitMediaVideo(); }
         else if (name == "vc_media_play")
         {
-            mMediaPlayStatus.clear();
-            if (commitMediaVideo() && !LLPrismLens::playMediaFile(handle))
+            if (commitMediaVideo())
             {
-                const auto state = LLPrismLens::registrySnapshot();
-                for (U32 i = 0; i < state.mSlotCount; ++i)
-                    if (sameCapture(state.mCaptures[i].mHandle, handle))
-                        mMediaPlayStatus = state.mCaptures[i].mRuntime.mReason;
-                mMediaPlayStatusTimer.reset();
-                mMediaPlayPolicy = gSavedSettings.getBOOL("AudioStreamingMedia");
-                mMediaPlayMaster = gSavedSettings.getBOOL("PrismLensEnabled");
-                mMediaPlayEnabled = LLPrismLens::mediaSlotsEnabled();
+                if (!LLPrismLens::playMediaFile(handle))
+                {
+                    const auto state = LLPrismLens::registrySnapshot();
+                    for (U32 i = 0; i < state.mSlotCount; ++i)
+                        if (sameCapture(state.mCaptures[i].mHandle, handle))
+                            mMediaPlayStatus = state.mCaptures[i].mRuntime.mReason;
+                }
             }
+            else LL_INFOS("VCamMedia") << "Play refused rule=invalid editor draft reason=" << mMediaError << LL_ENDL;
         }
         else if (name == "vc_media_pause") LLPrismLens::pauseMediaFile(handle);
         else if (name == "vc_media_stop") { ++mMediaEditEpoch; LLPrismLens::stopMediaFile(handle); }
@@ -1192,16 +1258,23 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
                 if (!self || self->mMediaEditEpoch != epoch ||
                     !sameCapture(self->mModel.selectedCapture(), handle)) return;
                 // Force editor read-back on success, including an identical cue.
+                self->mMediaRefusals.erase(handle.mId);
                 self->mMediaEditHandle = {};
                 self->mModel.markDirty(ALVCamPageModel::DIRTY_ALL);
+            }, [panel, handle, epoch](const std::string& path, const std::string& reason)
+            {
+                auto* self = dynamic_cast<ALPanelDirectorVCam*>(panel.get());
+                if (!self || self->mMediaEditEpoch != epoch ||
+                    !sameCapture(self->mModel.selectedCapture(), handle)) return;
+                self->mMediaDraft = path;
+                self->refuseMediaVideo(reason);
+                setValueIfChanged(self->mMediaVideo, path);
             });
         }
         else if ((name == "vc_media_loop" || name == "vc_media_volume") && capture->mediaUrlData())
         {
-            auto video = *capture->mediaUrlData();
-            if (name == "vc_media_loop") video.mLoop = value.asBoolean();
-            else video.mVolume = static_cast<F32>(value.asReal());
-            LLPrismLens::setMediaUrlSource(handle, video, &reason);
+            if (name == "vc_media_loop") LLPrismLens::setMediaFileLoop(handle, value.asBoolean());
+            else LLPrismLens::setMediaFileVolume(handle, static_cast<F32>(value.asReal()));
         }
         else if (name == "vc_media_cache_clear") LLPrismLens::clearMediaFileCache();
         else if (name == "vc_media_locate" && capture->mediaData())
@@ -1511,19 +1584,8 @@ void ALPanelDirectorVCam::commitCamera(const std::string& name, const LLSD& valu
     {
         if (name == "vc_source_aspect")
         {
-            if (capture->mediaUrlData())
-            {
-                auto source = *capture->mediaUrlData();
-                source.mAspect = static_cast<LLPrismLens::ESourceAspect>(llclamp(value.asInteger(), 0, 3));
-                std::string reason;
-                if (!LLPrismLens::setMediaUrlSource(capture->mHandle, source, &reason)) setStatus(reason);
-                mModel.refreshNow();
-                return;
-            }
-            auto source = *capture->mediaData();
-            source.mAspect = static_cast<LLPrismLens::ESourceAspect>(llclamp(value.asInteger(), 0, 3));
-            std::string reason;
-            if (!LLPrismLens::setMediaSource(capture->mHandle, source, &reason)) setStatus(reason);
+            LLPrismLens::setMediaSourceAspect(capture->mHandle,
+                static_cast<LLPrismLens::ESourceAspect>(llclamp(value.asInteger(), 0, 3)));
             mModel.refreshNow();
         }
         else if (name == "vc_rate_mode" || name == "vc_target_fps")
