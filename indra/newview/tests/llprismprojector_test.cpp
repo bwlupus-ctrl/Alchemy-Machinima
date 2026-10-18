@@ -14,6 +14,10 @@
 #include "../../llplugin/llpluginclassmedia.h"
 #include "../../llplugin/llpluginmessage.h"
 #include "../../llplugin/llpluginmessageclasses.h"
+#include "llcontrol.h"
+
+// llpluginclassmedia.obj (now linked via the media slot paths) references the viewer global.
+LLControlGroup gSavedSettings("PrismProjectorTest");
 
 #include <limits>
 #include <map>
