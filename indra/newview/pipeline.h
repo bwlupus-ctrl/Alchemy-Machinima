@@ -191,6 +191,9 @@ public:
     void releasePrismProjectorFeeds();
     void preparePrismProjectorFeeds(U32 capture_slot);
     void prepareMediaPrismProjectorFeeds();
+    void renderPrismDisplays(LLRenderTarget* screen_target);
+    bool gateProjectorPrepared(const LLPrismLens::ProjectorHandle& handle, U64 publication) const;
+    void finishGateProjectors(U64 publication, bool publish);
     bool allocateShadowBuffer(U32 resX, U32 resY);
 
     // rebuild all LLVOVolume render batches
@@ -338,6 +341,8 @@ public:
     bool colorCorrectWillApplyExposure(bool apply_tonemap, bool* out_legacy_gamma = nullptr, bool* out_no_post = nullptr) const;
     // Shared by the main color-correct pass and VC3 atlas shaders. Indices map
     // directly to gPrismPreviewProgram[8].
+    bool worldHDREnabled() const;
+    U32 worldPresentationPermutation() const;
     U32 colorCorrectPermutation(bool apply_tonemap, bool apply_color_grade) const;
     // Uploads the same live exposure/tonemap/grade controls used by
     // colorCorrect, but never binds bloom/post-effect inputs.
@@ -1398,6 +1403,9 @@ public:
         LLPrismLens::ProjectorHandle mHandle;
         std::unique_ptr<LLRenderTarget> mTarget = std::make_unique<LLRenderTarget>();
         LLPrismLens::ProjectorFeed mAccepted;
+        std::unique_ptr<LLRenderTarget> mStagedTarget;
+        LLPrismLens::ProjectorFeed mStaged;
+        U32 mStagedFrame = 0;
         U64 mSourceGeneration = 0;
         U64 mRevision = 0;
         F64 mNextEffectTime = 0.0;

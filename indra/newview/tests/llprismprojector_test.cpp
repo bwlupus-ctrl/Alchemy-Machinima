@@ -1001,5 +1001,49 @@ template<> template<> void prism_projector_object::test<39>()
     ensure("soft knee continuous", energy(.251f, .25f) > 0.f && energy(.251f, .25f) < .001f);
     ensure_equals("bright steady look preserved", energy(.75f, .25f), 2.f);
 }
+template<> template<> void prism_projector_object::test<42>()
+{
+    using namespace ALMediaFile;
+    set_test_name("idle Gate release publishes retained state before synchronous destruction reconciliation");
+    bool released = false, active = true, held_pixels = true, bookmark = true, grant = true;
+    Transport desired = Transport::PLAYING;
+    unsigned stops = 0;
+    releaseGatePrivate(released, desired, [&]()
+    {
+        active = false; // retirePrivateFile -> destroyMediaSource callback
+        if (!gatePrivateRetainsImage(true, released))
+        { ++stops; bookmark = grant = held_pixels = false; }
+    });
+    ensure("release cannot enter stopPrivate or clear held Program", stops == 0 && held_pixels && bookmark && grant);
+    ensure(desired == Transport::PAUSED && released);
+    ensure("inactive retained owner remains safe on subsequent reconciliation", !active && gatePrivateRetainsImage(true, released));
+    ensure("ordinary invalid owners still use normal teardown", !gatePrivateRetainsImage(false, released));
+}
 
+template<> template<> void prism_projector_object::test<43>()
+{
+    set_test_name("Play after disarm deactivate or kill-off detaches the envelope and recreates released players");
+    for (U32 exit = 0; exit < 3; ++exit)
+        for (bool released_player : {false, true})
+            for (bool pending_play : {false, true})
+            {
+                bool gate = true, released = released_player, retiring = false, play = pending_play;
+                ALMediaFile::Transport desired = ALMediaFile::Transport::PAUSED;
+                bool player = !released_player; F32 envelope = 0.f, volume = .37f, audible = 0.f;
+                U32 detach = 0, resumes = 0, creates = 0;
+                ALMediaFile::unclaimGatePrivate(gate, released, retiring, play, desired,
+                    [&]() { ++detach; envelope = 1.f; audible = volume * envelope; },
+                    [&]() { if (player) ++resumes; });
+                ensure(!gate && !released && !retiring && !play);
+                ensure_equals(detach, 1u); ensure_equals(audible, volume);
+                if (!pending_play) ensure(ALMediaFile::beginVideoPlay(desired));
+                ensure(desired == ALMediaFile::Transport::PLAYING);
+                // Same tickPrivate creation predicates after ownership handoff.
+                if (ALMediaFile::privatePlayerMayCreate(true, player, desired, true, gate, false))
+                { player = true; ++creates; }
+                ensure("retiring children still fence recreation", !ALMediaFile::privatePlayerMayCreate(true, false, desired, false, gate, false));
+                ensure(player); ensure_equals(creates, released_player ? 1u : 0u);
+                ensure_equals(resumes, pending_play && !released_player ? 1u : 0u);
+            }
+}
 }

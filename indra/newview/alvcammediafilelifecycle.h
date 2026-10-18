@@ -325,6 +325,28 @@ struct FilePickerTicket
 };
 inline bool matchingPrivateOwner(bool occupied, bool url, uint64_t generation, uint64_t owner, bool sameSource)
 { return occupied && url && generation == owner && sameSource; }
+// Retirement can reconcile synchronously. Publish retention before destroying
+// the child so that callback cannot mistake an idle release for a user Stop.
+template<class Retire>
+void releaseGatePrivate(bool& released, Transport& desired, Retire retire)
+{ released = true; desired = Transport::PAUSED; retire(); }
+inline bool gatePrivateRetainsImage(bool gate, bool released)
+{ return gate && released; }
+// Ownership handoff runs only after the decoder retirement receipt. Clear the
+// retained-image bypass before resuming or creating a standalone player.
+template<class Detach, class Resume>
+void unclaimGatePrivate(bool& gate, bool& released, bool& retiring,
+                        bool& play, Transport& desired, Detach detach, Resume resume)
+{
+    const bool requested = play;
+    gate = released = retiring = play = false;
+    desired = requested ? Transport::PLAYING : Transport::PAUSED;
+    detach(); // resets the plugin envelope to one, restoring authored Volume
+    if (requested) resume();
+}
+inline bool privatePlayerMayCreate(bool lease, bool player, Transport desired,
+                                   bool closed, bool gate, bool gate_allowed)
+{ return lease && !player && desired == Transport::PLAYING && closed && (!gate || gate_allowed); }
 template<class Owners, class Matches, class Stop>
 void sweepPrivateOwners(Owners& owners, Matches matches, Stop stop)
 {

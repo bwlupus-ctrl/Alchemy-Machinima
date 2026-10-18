@@ -6,8 +6,11 @@ in vec2 prism_uv;
 in vec3 prism_eye_pos;
 in vec3 prism_eye_normal;
 out vec4 frag_color;
-vec4 prismSignalSample(vec2 surface_uv, vec3 eye_pos, vec3 eye_normal);
+vec4 prismSignalSource(vec2 surface_uv, vec3 eye_pos, vec3 eye_normal, bool incoming);
 vec3 linear_to_srgb(vec3 color);
+uniform float prismGateAlpha;
+uniform int prismPrimaryMediaSDR;
+uniform int prismGateMediaSDR;
 #ifdef TONEMAP
 vec3 applyExposure(vec3 color);
 vec3 applyToneMap(vec3 color);
@@ -34,29 +37,30 @@ vec3 prismLegacyGamma(vec3 color)
     return vec3(1.0) - pow(c, vec3(gamma));
 }
 #endif
-void main()
+vec4 prismPreviewSource(bool incoming)
 {
-    vec4 color = prismSignalSample(prism_uv, prism_eye_pos, prism_eye_normal);
+    vec4 color = prismSignalSource(prism_uv, prism_eye_pos, prism_eye_normal, incoming);
+    bool camera = (incoming ? prismGateMediaSDR : prismPrimaryMediaSDR) == 0;
 #ifdef TONEMAP
-    color.rgb = applyExposure(color.rgb);
+    if (camera) color.rgb = applyExposure(color.rgb);
 #endif
 #ifdef COLOR_GRADE
-    if (tonemap_type != 8) { color.rgb = applyWhiteBalance(color.rgb); color.rgb = applyLiftGammaGain(color.rgb); }
+    if (camera && tonemap_type != 8) { color.rgb = applyWhiteBalance(color.rgb); color.rgb = applyLiftGammaGain(color.rgb); }
 #endif
 #ifdef TONEMAP
-    color.rgb = applyToneMap(color.rgb);
+    color.rgb = camera ? applyToneMap(color.rgb) : clamp(color.rgb, vec3(0.0), vec3(1.0));
 #else
     color.rgb = clamp(color.rgb, vec3(0.0), vec3(1.0));
 #endif
 #ifdef COLOR_GRADE
-    if (tonemap_type != 8) color.rgb = applySplitToning(color.rgb);
+    if (camera && tonemap_type != 8) color.rgb = applySplitToning(color.rgb);
 #endif
     color.rgb = linear_to_srgb(color.rgb);
 #ifdef LEGACY_GAMMA
-    color.rgb = prismLegacyGamma(color.rgb);
+    if (camera) color.rgb = prismLegacyGamma(color.rgb);
 #endif
 #ifdef COLOR_GRADE
-    if (tonemap_type != 8)
+    if (camera && tonemap_type != 8)
     {
         color.rgb = applyBlackWhitePoint(color.rgb); color.rgb = applyBrightnessContrast(color.rgb);
         color.rgb = applyShadowHighlightRecovery(color.rgb); color.rgb = applySaturation(color.rgb);
@@ -66,5 +70,12 @@ void main()
 #endif
     color.rgb = clamp(color.rgb, vec3(0.0), vec3(1.0));
     color.a = 1.0; // retained alpha is a glow channel, never LLUI opacity
-    frag_color = color;
+    return color;
+}
+
+void main()
+{
+    if (prismGateAlpha <= 0.0) frag_color = prismPreviewSource(false);
+    else if (prismGateAlpha >= 1.0) frag_color = prismPreviewSource(true);
+    else frag_color = mix(prismPreviewSource(false), prismPreviewSource(true), prismGateAlpha);
 }

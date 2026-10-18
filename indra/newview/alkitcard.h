@@ -59,7 +59,7 @@ public:
         Mandatory<std::string> id;
         Optional<std::string>  title, kind, badge, help, enable_widget, enable_setting, enable_tooltip, sel_label, sel_setting, link_to,
             link_label, target, target_tab, button_label, copy_type;
-        Optional<bool>    advanced;
+        Optional<bool>    advanced, full_width;
         Multiple<Summary> summary;
         Params();
     };
@@ -68,7 +68,7 @@ public:
     void                          draw() override;
     void                          reshape(S32, S32, bool = true) override;
     S32                           heightForWidth(S32) const override;
-    bool                          spansAllColumns() const override { return mKind == "inline"; }
+    bool                          spansAllColumns() const override { return mKind == "inline" || mFullWidth; }
     const std::string&            id() const { return mId; }
     const std::string&            title() const { return mTitle; }
     bool                          setBadge(const std::string& badge);
@@ -117,7 +117,7 @@ private:
     std::string mId, mTitle, mKind, mBadge, mBadgeTemplate, mEnableWidget, mEnableSetting, mEnableTooltip, mSelectorLabel, mSelectorSetting, mLinkTo,
         mLinkLabel, mTarget, mTargetTab, mButtonLabel, mHelp, mCopyType;
     std::unordered_map<std::string, std::string> mBadgeSubstitutions;
-    bool                                            mAdvanced = false, mMoreOpen = false, mLayoutPending = false, mBodyOpen = true,
+    bool                                            mAdvanced = false, mFullWidth = false, mMoreOpen = false, mLayoutPending = false, mBodyOpen = true,
                                                     mCodeHidden = false;
     S32                                             mMoreCount = 0;
     S32                                             mActiveOption = 0, mAmberCount = 0;

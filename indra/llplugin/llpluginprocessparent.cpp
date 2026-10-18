@@ -27,6 +27,7 @@
  */
 
 #include "linden_common.h"
+#include <chrono>
 
 #include "llapp.h"
 #include "llpluginprocessparent.h"
@@ -1134,11 +1135,13 @@ void LLPluginProcessParent::servicePoll()
 
 void LLPluginProcessParent::receiveMessageRaw(const std::string &message)
 {
+    const F64 socket_receipt = std::chrono::duration<F64>(std::chrono::steady_clock::now().time_since_epoch()).count();
     LL_DEBUGS("Plugin") << "Received: " << message << LL_ENDL;
 
     LLPluginMessage parsed;
     if(LLSDParser::PARSE_FAILURE != parsed.parse(message))
     {
+        if (parsed.getName() == "gate_time") parsed.setValueReal("parent_socket_steady", socket_receipt);
         if(parsed.hasValue("blocking_request"))
         {
             mBlocked = true;

@@ -847,10 +847,11 @@
              width="864">
                 <panel
                  follows="left|top|right"
-                 height="500"
+
                  layout="topleft"
                  left="0"
                  name="gate_settings_document"
+                 height="752"
                  top="0"
                  width="847">
                     <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="10" name="gate_heading" top="10" width="250">Vcam Gate switchboard</text>
@@ -863,18 +864,37 @@
                     <button follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="480" name="gate_interval_reset" tool_tip="Reset cycle interval to 8 seconds" top="36" width="18" />
                     <spinner decimal_digits="0" follows="left|top" height="22" increment="1" label="Pre-warm frames" label_width="104" layout="topleft" left="520" max_val="5" min_val="0" name="gate_prewarm" top="34" value="3" width="160" />
                     <button follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="686" name="gate_prewarm_reset" tool_tip="Reset pre-warm to 3 frames" top="36" width="18" />
-                    <text follows="left|top|right" font="SansSerifBold" height="18" layout="topleft" left="10" name="gate_live" top="68" use_ellipses="true" width="820">ON AIR: inactive</text>
-                    <text follows="left|top|right" height="34" layout="topleft" left="10" name="gate_reason" text_color="LtGray" top="90" use_ellipses="true" width="820" word_wrap="true">Arm virtual cameras, select a preview row, and activate the Gate.</text>
-                    <scroll_list column_padding="3" draw_heading="true" follows="left|top|right" height="270" layout="topleft" left="10" multi_select="false" name="gate_armed_list" tool_tip="Armed rows are lightweight camera definitions; only program and optional warm producers consume capture slots" top="130" width="820">
+                    <combo_box name="gate_transition" label="Transition" layout="topleft" left="10" top="68" width="190" height="22">
+                        <combo_box.item label="Cut" value="0" /><combo_box.item label="Crossfade" value="1" />
+                    </combo_box>
+                    <spinner name="gate_crossfade_seconds" label="Length (s)" label_width="76" layout="topleft" left="214" top="68" width="170" height="22" min_val="0.1" max_val="3" increment="0.1" value="0.5" decimal_digits="1" />
+                    <combo_box name="gate_fade_over_budget" label="If crossfade is over budget" layout="topleft" left="10" top="98" width="374" height="22">
+                        <combo_box.item label="Cut instead" value="0" /><combo_box.item label="Fade anyway" value="1" /><combo_box.item label="Hold until it fits" value="2" />
+                    </combo_box>
+                    <combo_box name="gate_video_dwell" label="Videos" layout="topleft" left="10" top="128" width="210" height="22">
+                        <combo_box.item label="Use interval" value="0" /><combo_box.item label="Play to end" value="1" />
+                    </combo_box>
+                    <combo_box name="gate_on_cut" label="On cut" layout="topleft" left="234" top="128" width="200" height="22" tool_tip="Private video only. Prim faces are Live feed - Cut/Crossfade only.">
+                        <combo_box.item label="Restart" value="0" /><combo_box.item label="Resume" value="1" /><combo_box.item label="Live" value="2" />
+                    </combo_box>
+                    <text name="gate_count" layout="topleft" left="450" top="130" width="100" height="18">0 of 8</text>
+                    <button name="gate_play_videos" label="Play videos" layout="topleft" left="380" top="436" width="120" height="22" />
+                    <text name="gate_projector_heading" layout="topleft" left="10" top="472" width="820" height="18">Projectors ? This projector shows whatever the Gate has on air.</text>
+                    <scroll_list name="gate_projector_list" layout="topleft" left="10" top="494" width="820" height="180" draw_heading="true" multi_select="false">
+                        <columns name="projector" label="Projector" width="590" /><columns name="source_gate" label="Source: Gate" width="150" />
+                    </scroll_list>
+                    <text follows="left|top|right" font="SansSerifBold" height="18" layout="topleft" left="10" name="gate_live" top="164" use_ellipses="true" width="820">ON AIR: inactive</text>
+                    <text follows="left|top|right" height="34" layout="topleft" left="10" name="gate_reason" text_color="LtGray" top="186" use_ellipses="true" width="820" word_wrap="true">Arm virtual cameras, select a preview row, and activate the Gate.</text>
+                    <scroll_list column_padding="3" draw_heading="true" follows="left|top|right" height="200" layout="topleft" left="10" multi_select="false" name="gate_armed_list" tool_tip="Armed rows are lightweight camera definitions; only program and optional warm producers consume capture slots" top="226" width="820">
                         <columns label="#" name="gate_order" width="38" />
-                        <columns label="Camera" name="gate_label" width="450" />
-                        <columns label="Program" name="gate_live_column" width="120" />
+                        <columns label="Feed" name="gate_label" width="250" />
+                        <columns label="Status" name="gate_live_column" width="320" />
                         <columns label="Auto" name="gate_enabled" width="70" />
                     </scroll_list>
-                    <button follows="left|top" height="22" label="Arm selected capture" layout="topleft" left="10" name="gate_arm" tool_tip="Snapshot the selected prim-free virtual camera into the armed definition list" top="410" width="160" />
-                    <button follows="left|top" height="22" label="Disarm" layout="topleft" left="178" name="gate_disarm" top="410" width="90" />
-                    <button follows="left|top" height="22" label="TAKE" layout="topleft" left="276" name="gate_take" tool_tip="In Manual mode, pre-warm and cut to the selected preview row" top="410" width="90" />
-                    <text follows="left|top|right" height="48" layout="topleft" left="10" name="gate_cost_note" text_color="LtGray" top="446" width="820" word_wrap="true">Up to 12 definitions may be armed. Steady state watches one program producer; the optional warm producer is admitted only for a bounded window, and the existing scheduler still renders at most one auxiliary view per presented frame.</text>
+                    <button follows="left|top" height="22" label="Arm selected capture" layout="topleft" left="10" name="gate_arm" tool_tip="Snapshot the selected prim-free virtual camera into the armed definition list" top="436" width="160" />
+                    <button follows="left|top" height="22" label="Disarm" layout="topleft" left="178" name="gate_disarm" top="436" width="90" />
+                    <button follows="left|top" height="22" label="Take" layout="topleft" left="276" name="gate_take" tool_tip="In Manual mode, pre-warm and cut to the selected preview row" top="436" width="90" />
+                    <text follows="left|top|right" height="48" layout="topleft" left="10" name="gate_cost_note" text_color="LtGray" top="684" width="820" word_wrap="true">Up to 8 existing camera or media feeds may be armed. Steady state watches one program producer; the optional warm producer is admitted only for a bounded window, and the existing scheduler still renders at most one auxiliary view per presented frame.</text>
                 </panel>
             </scroll_container>
         </panel>

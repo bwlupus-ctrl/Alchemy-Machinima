@@ -976,7 +976,7 @@ bool LLPrismPreviewService::prepareFrame()
         if (!enabled)
         {
             for (DemandEntry& entry : mDemand)
-                entry.mAtlasSerial = entry.mPublicationSerial;
+            { entry.mAtlasSerial = entry.mPublicationSerial; entry.mGateSerial = LLPrismLens::gateOutputPublication(); }
         }
         markChanged();
     }
@@ -1080,7 +1080,8 @@ bool LLPrismPreviewService::hasPendingAtlasUpdate() const
     for (U32 slot = 0; slot < mDemand.size(); ++slot)
     {
         const DemandEntry& entry = mDemand[slot];
-        if (entry.mDemanded && entry.mPublicationSerial > entry.mAtlasSerial)
+        if (entry.mDemanded && (entry.mPublicationSerial > entry.mAtlasSerial ||
+            (mSelection[slot].mId.notNull() && entry.mGateSerial != LLPrismLens::gateOutputPublication())))
             if (now >= mNextAtlasDue[slot]) return true;
     }
     return false;
@@ -1201,6 +1202,7 @@ void uploadSignalUniforms(LLGLSLShader& shader,
     shader.uniform3fv(sBars, 1, state.mBarColorLinear);
     shader.uniform1f(sFeather, state.mEdgeFeather);
     shader.uniform4fv(sOptics, 1, state.mOpticsParams);
+    LLPrismLens::bindGateComposite(shader, state);
     shader.uniform4fv(sEffect0, 1, state.mScreenEffect0);
     shader.uniform4fv(sEffect1, 1, state.mScreenEffect1);
     shader.uniform4fv(sEffect2, 1, state.mScreenEffect2);
@@ -1224,7 +1226,8 @@ void LLPrismPreviewService::updateAtlas()
     {
         const U32 candidate = (mNextAtlasSlot + offset) % mDemand.size();
         const DemandEntry& entry = mDemand[candidate];
-        if (entry.mDemanded && entry.mPublicationSerial > entry.mAtlasSerial &&
+        if (entry.mDemanded && (entry.mPublicationSerial > entry.mAtlasSerial ||
+            (mSelection[candidate].mId.notNull() && entry.mGateSerial != LLPrismLens::gateOutputPublication())) &&
             now >= mNextAtlasDue[candidate])
         {
             cell = candidate;
@@ -1264,12 +1267,13 @@ void LLPrismPreviewService::updateAtlas()
         tile.mTimestamp = LLTimer::getTotalSeconds();
         tile.mPublicationSerial = entry.mPublicationSerial;
         entry.mAtlasSerial = entry.mPublicationSerial;
+        entry.mGateSerial = LLPrismLens::gateOutputPublication();
         markChanged();
         mNextAtlasSlot = (cell + 1) % mDemand.size();
         return;
     }
 
-    const U32 permutation = state.mMediaSDR ? 0u : gPipeline.colorCorrectPermutation(true, true);
+    const U32 permutation = state.mMediaSDR && (state.mGateAlpha <= 0.f || state.mIncomingMediaSDR) ? 0u : gPipeline.colorCorrectPermutation(true, true);
     LLGLSLShader& shader = gPrismPreviewProgram[permutation];
     if (!shader.isComplete())
     {
@@ -1277,6 +1281,7 @@ void LLPrismPreviewService::updateAtlas()
         mTiles[cell].mTimestamp = LLTimer::getTotalSeconds();
         mTiles[cell].mPublicationSerial = entry.mPublicationSerial;
         entry.mAtlasSerial = entry.mPublicationSerial;
+        entry.mGateSerial = LLPrismLens::gateOutputPublication();
         mNextAtlasSlot = (cell + 1) % mDemand.size();
         markChanged();
         return;
@@ -1364,6 +1369,7 @@ void LLPrismPreviewService::updateAtlas()
     mAtlas.flush();
 
     entry.mAtlasSerial = entry.mPublicationSerial;
+    entry.mGateSerial = LLPrismLens::gateOutputPublication();
     TilePublication& tile = mTiles[cell];
     tile.mAtlas = atlasHandle();
     const F32 left = static_cast<F32>(column) / ATLAS_COLUMNS;

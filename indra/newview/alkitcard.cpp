@@ -97,6 +97,7 @@ ALKitCard::Params::Params() :
     button_label("button_label", "Open"),
     copy_type("copy_type", ""),
     advanced("advanced", false),
+    full_width("full_width", false),
     summary("summary")
 {
 }
@@ -121,6 +122,7 @@ ALKitCard::ALKitCard(const Params& p) :
     mHelp(p.help),
     mCopyType(p.copy_type),
     mAdvanced(p.advanced),
+    mFullWidth(p.full_width),
     mOuterImage(LLUI::getUIImage("Kit_RoundRect6")),
     mInnerImage(LLUI::getUIImage("Kit_RoundRect4"))
 {

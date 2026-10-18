@@ -29738,6 +29738,13 @@
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>8192</integer>
     </map>
+    <key>VCamGateMediaCycleEnabled</key>
+    <map>
+      <key>Comment</key><string>Allow mixed VCam Gate media cycling and Crossfade. Off keeps camera-only Cut routing, including Gate projectors.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
     <key>VCamMediaSlotsEnabled</key>
     <map>
       <key>Comment</key><string>Enable viewer-local VCam media source slots.</string>

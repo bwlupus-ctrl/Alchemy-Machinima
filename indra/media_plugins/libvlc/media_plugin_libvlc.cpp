@@ -31,6 +31,7 @@
 #include "llgl.h"
 #include "llplugininstance.h"
 #include "llpluginmessage.h"
+#include "llplugingateclock.h"
 #include "llpluginmessageclasses.h"
 #include "media_plugin_base.h"
 
@@ -46,6 +47,8 @@ typedef SSIZE_T ssize_t;
 #include <mutex>
 #include <deque>
 #include <cstring>
+#include <thread>
+#include <condition_variable>
 #include "../../newview/alvcammediafilepolicy.h"
 #include "../../newview/alvcammediafileposix.h"
 #include "vlc/libvlc_version.h"
@@ -162,6 +165,27 @@ private:
     double mNextAdmissionCheck = 0;
     bool mPrivateStarted = false;
     bool mPrivateEnded = false;
+    // Independent 10 ms step-edge sampler and gain timer. It never sends a
+    // plugin message or touches frame storage. stopPlayer fences its pointer.
+    std::mutex mGateMutex;
+    std::condition_variable mGateWake;
+    std::thread mGateTimer;
+    bool mGateQuit = false;
+    U32 mGateReaders = 0;
+    bool mGateParkFirstFrame = false;
+    std::atomic<bool> mGateRestartParking{false}, mGateFirstFrame{false};
+    libvlc_media_player_t* mGatePlayer = nullptr;
+    U64 mGateTransportToken = 0, mGateEnvelopeToken = 0, mGateSampleToken = 0;
+    bool mGateSamplePaused = false, mGateSamplePlaying = false;
+    bool mGateOwned = false;
+    F64 mGateGain = 0., mGateFrom = 0., mGateTo = 0., mGateStart = 0., mGateLength = 0.;
+    F64 mGateBase = 0., mGateSample = 0., mGatePosition = 0.;
+    F64 mGateSampleError = 1., mGateViewerSend = 0., mGateSocketReceipt = 0., mGatePausedAt = 0.;
+    F64 mGateFramePeriod = .1, mGateEnvelopeReceipt = 0.;
+    bool mGateEnvelopeDegraded = true, mGateNativeLoop = false;
+    LLPluginGateClock mGateClock;
+    void gateTimer();
+    void gateReport();
 #if !LL_WINDOWS
     int mPrivateFD = -1;
     ALMediaFile::FileIdentity mPrivateIdentity;
@@ -230,6 +254,7 @@ void MediaPluginLibVLC::privateAdmissionMessage(const char* reason, unsigned tra
     message.setValueS32("tracks", tracks);
     message.setValueBoolean("video", video);
     message.setValueBoolean("seekable", mAdmission.seekable);
+    message.setValueBoolean("creation_loop", mInputLoop);
     message.setValueBoolean("opened", mLibVLCMediaPlayer != nullptr);
     message.setValueBoolean("loop_reverify", mAdmission.loopReverify);
     message.setValue("player_token", std::to_string(mPlayerToken));
@@ -240,6 +265,12 @@ void MediaPluginLibVLC::tickPrivateFile()
 {
     if (!mPrivateFile || !mLibVLCMediaPlayer || !mLibVLCCallbackContext || !mPrivateStarted || mPrivateEnded) return;
     auto& context = *mLibVLCCallbackContext;
+    if (mGateParkFirstFrame && context.hasFrame.load(std::memory_order_acquire))
+    {
+        mGateParkFirstFrame = false; mGateRestartParking = false; mDesired = ALMediaFile::Transport::PAUSED;
+        libvlc_media_player_set_pause(mLibVLCMediaPlayer, 1);
+        setVolumeVLC();
+    }
     const unsigned flags = context.events.exchange(0, std::memory_order_acquire);
     const double now = privateNow();
     std::deque<mLibVLCContext::Seam> gaps;
@@ -366,12 +397,98 @@ MediaPluginBase(host_send_func, host_user_data)
 
     mVlcStatus = STATUS_NONE;
     setStatus(STATUS_NONE);
+    mGateTimer = std::thread([this]() { gateTimer(); });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 MediaPluginLibVLC::~MediaPluginLibVLC()
 {
+    { std::lock_guard<std::mutex> guard(mGateMutex); mGateQuit = true; }
+    mGateWake.notify_all();
+    if (mGateTimer.joinable()) mGateTimer.join();
+}
+
+void MediaPluginLibVLC::gateTimer()
+{
+    std::unique_lock<std::mutex> guard(mGateMutex);
+    while (!mGateQuit)
+    {
+        if (!mGateOwned)
+        { mGateWake.wait(guard, [this]() { return mGateQuit || mGateOwned; }); if (mGateQuit) break; }
+        const F64 now = privateNow();
+        if (auto* player = mGatePlayer)
+        {
+            // stopPlayer clears the pointer then waits (without holding the
+            // mutex) for this reader. VLC callbacks may acquire mGateMutex.
+            ++mGateReaders;
+            const U64 transport = mGateTransportToken;
+            guard.unlock();
+            if (mGateRestartParking.load() && mGateFirstFrame.load()) libvlc_media_player_set_pause(player, 1);
+            const F64 raw = libvlc_media_player_get_time(player) / 1000.;
+            const auto state = libvlc_media_player_get_state(player);
+            const F64 duration = libvlc_media_player_get_length(player) / 1000.;
+            guard.lock();
+            if (player == mGatePlayer && transport == mGateTransportToken)
+            {
+                const bool playing = state == libvlc_Playing, paused = state == libvlc_Paused;
+                const auto clock = mGateClock.sample(now, raw, playing, paused, mGateFramePeriod);
+                mGatePosition = LLPluginGateClock::boundedPosition(clock.position, duration, mGateNativeLoop);
+                mGateSampleError = clock.error; mGatePausedAt = clock.pausedAt;
+                mGateSamplePaused = paused; mGateSamplePlaying = playing;
+                mGateSampleToken = transport; mGateSample = now;
+            }
+            if (mGateLength > 0.)
+            {
+                const F64 alpha = std::clamp((now - mGateStart) / mGateLength, 0., 1.);
+                mGateGain = mGateFrom + (mGateTo - mGateFrom) * alpha;
+                if (alpha >= 1.) mGateLength = 0.;
+            }
+            const int volume = static_cast<int>(100. * mGateBase * mGateGain);
+            const bool apply = mGateOwned && player == mGatePlayer;
+            guard.unlock();
+            if (apply) libvlc_audio_set_volume(player, volume);
+            guard.lock();
+            --mGateReaders; mGateWake.notify_all();
+        }
+        mGateWake.wait_for(guard, std::chrono::milliseconds(10), [this]() { return mGateQuit; });
+    }
+}
+
+void MediaPluginLibVLC::gateReport()
+{
+    if (!mGateOwned || !mPrivateFile) return;
+    LLPluginMessage reply(LLPLUGIN_MESSAGE_CLASS_MEDIA, "gate_time");
+    reply.setValue("load_token", mLoadToken);
+    {
+        std::lock_guard<std::mutex> guard(mGateMutex);
+        if (mLibVLCCallbackContext)
+        {
+            const F64 frame = mLibVLCCallbackContext->frameMilliseconds.load(std::memory_order_relaxed) / 1000.;
+            mGateFramePeriod = frame > 0. ? frame : .1;
+        }
+        reply.setValueReal("frame_period", mGateFramePeriod);
+        reply.setValue("token", std::to_string(mGateSampleToken));
+        reply.setValue("envelope_token", std::to_string(mGateEnvelopeToken));
+        reply.setValueReal("envelope_start", mGateStart);
+        reply.setValueReal("envelope_receipt", mGateEnvelopeReceipt);
+        reply.setValueBoolean("envelope_degraded", mGateEnvelopeDegraded);
+        reply.setValueReal("edge_period", mGateClock.period());
+        reply.setValueReal("edge_residual", mGateClock.residual());
+        reply.setValueBoolean("paused", mGateSamplePaused);
+        reply.setValueBoolean("playing", mGateSamplePlaying);
+        reply.setValueReal("position", mGatePosition);
+        reply.setValueReal("sample_time", mGateSample);
+        reply.setValueReal("error", mGateSampleError);
+        reply.setValueReal("pause_time", mGatePausedAt);
+        reply.setValueReal("viewer_send", mGateViewerSend);
+        reply.setValueReal("plugin_socket_receipt", mGateSocketReceipt);
+        mGateViewerSend = 0.;
+    }
+    reply.setValueReal("duration", mDuration);
+
+    reply.setValueBoolean("eof", mPrivateEnded);
+    sendMessage(reply);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -406,6 +523,7 @@ void MediaPluginLibVLC::display(void* data, void* id)
 void MediaPluginLibVLC::displayFrame(void* data, void* id)
 {
     auto* context = static_cast<mLibVLCContext*>(data);
+    context->parent->mGateFirstFrame.store(true);
     if (context->wrapState.load(std::memory_order_acquire) & ALMediaFile::WrapPolicy::Admitted)
     {
         const double now = privateNow();
@@ -470,6 +588,16 @@ void MediaPluginLibVLC::resetVLC()
 
 void MediaPluginLibVLC::stopPlayer()
 {
+    {
+        std::unique_lock<std::mutex> guard(mGateMutex);
+        mGatePlayer = nullptr; mGateBase = 0.;
+        mGateWake.wait(guard, [this]() { return mGateReaders == 0; });
+        // The admission clamp holds a rebuild at zero. Keep the tokened Gate
+        // envelope so an admitted Program reprepare restores its current gain;
+        // warm/retired owners already have an explicit zero envelope.
+        mGateClock.reset(); mGateSampleError = 1.;
+    }
+    mGateParkFirstFrame = false; mGateRestartParking = false; mGateFirstFrame = false;
     if (mPrivateFile && mLibVLC) libvlc_log_unset(mLibVLC); // quiesce repeat observer before context release
     if (mPrivateFile && mLibVLCCallbackContext && mLibVLCMedia)
     {
@@ -735,6 +863,15 @@ void MediaPluginLibVLC::playMedia(bool admittedEdit, double position)
         mResume.open(position, position > 0.);
     }
     mLibVLCMediaPlayer = libvlc_media_player_new_from_media(mLibVLCMedia);
+    {
+        std::lock_guard<std::mutex> guard(mGateMutex);
+        mGatePlayer = mLibVLCMediaPlayer; mGateNativeLoop = mInputLoop;
+        if (mLibVLCCallbackContext)
+        {
+            const F64 frame = mLibVLCCallbackContext->frameMilliseconds.load(std::memory_order_relaxed) / 1000.;
+            mGateFramePeriod = frame > 0. ? frame : .1;
+        }
+    }
     if (!mLibVLCMediaPlayer)
     {
         if (mPrivateFile) { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage("VLC media/player creation refused"); }
@@ -855,7 +992,12 @@ void MediaPluginLibVLC::setVolumeVLC()
 {
     if (mLibVLCMediaPlayer)
     {
-        const double effective = mPrivateFile && !mAdmission.audible(mDesired) ? 0. : mCurVolume;
+        double effective = mPrivateFile && !mAdmission.audible(mDesired) ? 0. : mCurVolume;
+        {
+            std::lock_guard<std::mutex> guard(mGateMutex);
+            mGateBase = effective; // Admission, desired transport and global policy remain ABOVE the envelope.
+            if (mGateOwned) effective *= mGateGain;
+        }
         int vlc_vol = (int)(effective * 100);
 
         int result = libvlc_audio_set_volume(mLibVLCMediaPlayer, vlc_vol);
@@ -941,6 +1083,7 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
             else if (message_name == "idle")
             {
                 if (mPrivateFile) tickPrivateFile();
+                gateReport();
                 setStatus(mVlcStatus);
                 if (!mLoadToken.empty())
                 {
@@ -1087,6 +1230,82 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
                             setDirty(0, 0, context.width, context.height);
                     }
                 }
+            }
+            else if (message_name == "gate_ping")
+            {
+                if (mPrivateFile && message_in.getValue("load_token") == mLoadToken)
+                {
+                    std::lock_guard<std::mutex> guard(mGateMutex);
+                    mGateViewerSend = message_in.getValueReal("viewer_send");
+                    mGateSocketReceipt = message_in.getValueReal("plugin_socket_receipt");
+                }
+            }
+            else if (message_name == "gate_envelope")
+            {
+                if (!mPrivateFile || message_in.getValue("load_token") != mLoadToken) return;
+                const U64 token = std::strtoull(message_in.getValue("token").c_str(), nullptr, 10);
+                {
+                std::lock_guard<std::mutex> guard(mGateMutex);
+                if (token <= mGateEnvelopeToken) return;
+                mGateEnvelopeToken = token; mGateOwned = true; mGateWake.notify_all();
+                mGateFrom = mGateGain; mGateTo = std::clamp(message_in.getValueReal("gain"), 0., 1.);
+                mGateLength = std::clamp(message_in.getValueReal("seconds"), 0., 3.);
+                mGateStart = privateNow(); // A delayed handler still runs the full receipt fallback ramp.
+                const F64 mapped_start = message_in.getValueReal("start_plugin");
+                mGateEnvelopeReceipt = privateNow();
+                mGateEnvelopeDegraded = !(mapped_start > 0. && std::abs(mGateEnvelopeReceipt - mapped_start) <= .02);
+                if (!mGateEnvelopeDegraded) mGateStart = mapped_start;
+                if (mGateLength == 0.)
+                {
+                    mGateGain = mGateTo;
+
+                }
+                }
+                setVolumeVLC(); // Never invoke VLC under the Gate mutex.
+            }
+            else if (message_name == "gate_transport")
+            {
+                if (!mPrivateFile || message_in.getValue("load_token") != mLoadToken) return;
+                const U64 token = std::strtoull(message_in.getValue("token").c_str(), nullptr, 10);
+                {
+                    std::lock_guard<std::mutex> guard(mGateMutex);
+                    if (token <= mGateTransportToken) return;
+                    mGateTransportToken = token; mGateOwned = true;
+                    if (message_in.getValueS32("desired") < 0)
+                    { mGateOwned = false; mGateGain = mGateFrom = mGateTo = 1.; mGateLength = 0.; }
+                    mGateWake.notify_all();
+                    mGateViewerSend = message_in.getValueReal("viewer_send");
+                    mGateSocketReceipt = message_in.getValueReal("plugin_socket_receipt");
+                    const F64 seek = message_in.getValueReal("seek");
+                    if (seek >= 0.) { mGateClock.seek(seek); mGateSampleError = 1.; }
+                }
+                if (message_in.getValueS32("desired") < 0)
+                {
+                    mGateParkFirstFrame = mGateRestartParking = false;
+                    setVolumeVLC(); // envelope release must restore Volume even if its value did not change
+                    return;
+                }
+                mDesired = static_cast<ALMediaFile::Transport>(message_in.getValueS32("desired"));
+                // RESUME wins even before admission starts tickPrivateFile.
+                if (mDesired == ALMediaFile::Transport::PLAYING)
+                { mGateParkFirstFrame = false; mGateRestartParking = false; }
+                if (mPrivateEnded && mDesired == ALMediaFile::Transport::PLAYING)
+                    playMedia(true, std::max(0., message_in.getValueReal("seek")));
+                if (mLibVLCMediaPlayer)
+                {
+                    const F64 target = message_in.getValueReal("seek");
+                    ALMediaFile::applyGateSeek(target, mAdmission.seekable,
+                        [this](F64 seconds) { libvlc_media_player_set_time(mLibVLCMediaPlayer, static_cast<libvlc_time_t>(seconds * 1000.)); },
+                        [this]()
+                        {
+                            mDesired = ALMediaFile::Transport::PLAYING;
+                            playMedia(true, 0.); // Same pinned file, repeat and admission latch.
+                            mGateParkFirstFrame = true; mGateRestartParking = true;
+                            std::lock_guard<std::mutex> guard(mGateMutex); mGateClock.seek(0.);
+                        });
+                    if (mLibVLCMediaPlayer) libvlc_media_player_set_pause(mLibVLCMediaPlayer, mDesired != ALMediaFile::Transport::PLAYING);
+                }
+                setVolumeVLC(); gateReport();
             }
             else if (message_name == "private_transport")
             {

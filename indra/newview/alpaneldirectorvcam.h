@@ -27,6 +27,7 @@ class ALVCamFaceList;
 class ALVCamProjectorList;
 class LLContextMenu;
 class LLLineEditor;
+class LLScrollListCtrl;
 class LLUICtrl;
 
 class ALPanelDirectorVCam final : public LLPanel
@@ -56,6 +57,8 @@ private:
         PROJ_CONTROL_COUNT
     };
 
+    void refreshGate();
+    void commitGate(const std::string& name, const LLSD& value);
     void collectControls(LLView* root);
     void onModelChanged(U32 dirty);
     void refresh(U32 dirty = ALVCamPageModel::DIRTY_ALL);
@@ -141,6 +144,9 @@ private:
     U64 mBoneAnchorSubjectRevision = 0;
     bool mCustomAspect = false;
     bool mCustomScreenAspect = false;
+    LLScrollListCtrl* mGateList = nullptr;
+    U64 mGateListRevision = 0;
+    LLUUID mSelectedGateArm;
     bool mRefreshing = false;
     std::string mStatus;
     LLFrameTimer mStatusTimer;

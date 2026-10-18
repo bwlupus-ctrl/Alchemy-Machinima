@@ -2969,6 +2969,12 @@ if (BUILD_TESTING)
   )
 
   # Header-only VP1/VP2 projector schema and demand-policy contract.
+  LL_ADD_INTEGRATION_TEST(llprismgate
+    "llprismgate.cpp;aldirectorswitchermodel.cpp"
+    "${test_libs}"
+    "${test_project}"
+  )
+
   LL_ADD_INTEGRATION_TEST(llprismprojector
     ""
     "${test_libs}"

@@ -27,6 +27,7 @@
 */
 
 #include "linden_common.h"
+#include <chrono>
 
 #include "llpluginprocesschild.h"
 #include "llplugininstance.h"
@@ -379,6 +380,17 @@ void LLPluginProcessChild::receiveMessageRaw(const std::string &message)
     LLPluginMessage parsed;
     parsed.parse(message);
 
+    if (parsed.getName().compare(0, 5, "gate_") == 0 && !parsed.hasValue("plugin_socket_receipt"))
+        parsed.setValueReal("plugin_socket_receipt", std::chrono::duration<F64>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+
+    if (mBlockingRequest && parsed.getName() == "gate_envelope" && mInstance)
+    {
+        // LibVLC's tokened gain receiver only updates its independent timer.
+        // Deliver at socket receipt even while an unrelated blocking request is queued.
+        mInstance->sendMessage(parsed.generate());
+        return;
+    }
     if (mBlockingRequest)
     {
         // We're blocking the plugin waiting for a response.
@@ -391,7 +403,7 @@ void LLPluginProcessChild::receiveMessageRaw(const std::string &message)
         else
         {
             // Still waiting.  Queue this message and don't process it yet.
-            mMessageQueue.push(message);
+            mMessageQueue.push(parsed.generate()); // Preserve original socket receipt through blocking replay.
             return;
         }
     }
@@ -503,7 +515,7 @@ void LLPluginProcessChild::receiveMessageRaw(const std::string &message)
     {
         LLTimer elapsed;
 
-        mInstance->sendMessage(message);
+        mInstance->sendMessage(parsed.generate());
 
         mCPUElapsed += elapsed.getElapsedTimeF64();
     }

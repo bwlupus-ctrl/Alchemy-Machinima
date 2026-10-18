@@ -4,6 +4,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "aluirefresh.h"
 #include "aldirectorcastui.h"
 
 #include "alvcampagemodel.h"
@@ -418,6 +419,14 @@ bool LLFloaterPrismManager::postBuild()
     mGateModeCombo = getChild<LLComboBox>("gate_mode");
     mGateIntervalSpinner = getChild<LLSpinCtrl>("gate_interval");
     mGatePrewarmSpinner = getChild<LLSpinCtrl>("gate_prewarm");
+    mGateTransitionCombo = getChild<LLComboBox>("gate_transition");
+    mGateOverBudgetCombo = getChild<LLComboBox>("gate_fade_over_budget");
+    mGateVideoDwellCombo = getChild<LLComboBox>("gate_video_dwell");
+    mGateOnCutCombo = getChild<LLComboBox>("gate_on_cut");
+    mGateLengthSpinner = getChild<LLSpinCtrl>("gate_crossfade_seconds");
+    mGatePlayVideosButton = getChild<LLButton>("gate_play_videos");
+    mGateCountText = getChild<LLTextBox>("gate_count");
+    mGateProjectorList = getChild<LLScrollListCtrl>("gate_projector_list");
     mDisplayFitCombo = getChild<LLComboBox>("display_fit");
     mAnchorXSpinner = getChild<LLSpinCtrl>("anchor_x");
     mAnchorYSpinner = getChild<LLSpinCtrl>("anchor_y");
@@ -500,6 +509,33 @@ bool LLFloaterPrismManager::postBuild()
     mGateModeCombo->setCommitCallback(gate_settings_commit);
     mGateIntervalSpinner->setCommitCallback(gate_settings_commit);
     mGatePrewarmSpinner->setCommitCallback(gate_settings_commit);
+    mGateTransitionCombo->setCommitCallback(gate_settings_commit);
+    mGateOverBudgetCombo->setCommitCallback(gate_settings_commit);
+    mGateVideoDwellCombo->setCommitCallback(gate_settings_commit);
+    mGateLengthSpinner->setCommitCallback(gate_settings_commit);
+    mGatePlayVideosButton->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    { LLPrismLens::gatePlayVideos(); invalidateRegistrySnapshot(); });
+    mGateOnCutCombo->setCommitCallback([this](LLUICtrl*, const LLSD& value)
+    {
+        if (const auto* capture = selectedCapture()) LLPrismLens::setMediaFileOnCut(capture->mHandle,
+            static_cast<LLPrismLens::EMediaOnCut>(value.asInteger()));
+        invalidateRegistrySnapshot();
+    });
+    mGateProjectorList->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        const auto id = mGateProjectorList->getSelectedValue().asUUID();
+        auto* row = mGateProjectorList->getFirstSelected();
+        if (!row) return;
+        for (U32 i = 0; i < mRegistrySnapshot.mProjectorCount; ++i)
+        {
+            const auto& projector = mRegistrySnapshot.mProjectors[i];
+            if (projector.mHandle.mId != id) continue;
+            const bool gate = row->getColumn(1)->getValue().asBoolean();
+            LLPrismLens::setProjectorGateSubscribed(projector.mHandle, gate);
+            if (!gate) if (const auto* capture = selectedCapture()) LLPrismLens::reassignProjector(projector.mHandle, capture->mHandle);
+        }
+        invalidateRegistrySnapshot();
+    });
     mGateIntervalResetButton->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
         {
@@ -1086,6 +1122,8 @@ void LLFloaterPrismManager::rebuildDisplayList()
 
 void LLFloaterPrismManager::rebuildGateArmedList()
 {
+    if (mGateListRevision == mGateSnapshot.mRevision) return;
+    mGateListRevision = mGateSnapshot.mRevision;
     mGateArmedList->deleteAllItems();
     bool selected_present = false;
     for (S32 index = 0;
@@ -1114,7 +1152,7 @@ void LLFloaterPrismManager::rebuildGateArmedList()
             ? armed.mLabel : armed.mLabel + " (deleted)";
         row["columns"][2]["column"] = "gate_live_column";
         row["columns"][2]["value"] =
-            index == mGateSnapshot.mOnAirArmIndex ? "ON AIR" : "";
+            index < static_cast<S32>(mGateSnapshot.mArmStatus.size()) ? mGateSnapshot.mArmStatus[index] : "";
         row["columns"][3]["column"] = "gate_enabled";
         row["columns"][3]["type"] = "checkbox";
         row["columns"][3]["value"] = armed.mEnabled;
@@ -1366,11 +1404,34 @@ void LLFloaterPrismManager::refreshGateEditor()
 {
     rebuildGateArmedList();
     const LLPrismLens::GateSettings& settings = mGateSnapshot.mSettings;
-    mGateActiveCheck->setValue(settings.mActive);
-    mGateModeCombo->setValue(settings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE
+    setValueIfChanged(mGateActiveCheck, settings.mActive);
+    setValueIfChanged(mGateModeCombo, settings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE
         ? LLSD("auto_cycle") : LLSD("manual"));
-    mGateIntervalSpinner->setValue(settings.mIntervalSeconds);
-    mGatePrewarmSpinner->setValue(static_cast<S32>(settings.mPrewarmFrames));
+    setValueIfChanged(mGateIntervalSpinner, settings.mIntervalSeconds);
+    setValueIfChanged(mGatePrewarmSpinner, static_cast<S32>(settings.mPrewarmFrames));
+    setValueIfChanged(mGateTransitionCombo, static_cast<S32>(settings.mTransition));
+    setValueIfChanged(mGateLengthSpinner, settings.mCrossfadeSeconds);
+    setValueIfChanged(mGateOverBudgetCombo, static_cast<S32>(settings.mFadeOverBudget));
+    setValueIfChanged(mGateVideoDwellCombo, static_cast<S32>(settings.mVideoDwell));
+    setVisibleIfChanged(mGatePlayVideosButton, mGateSnapshot.mWaitingForPlay);
+    setTextIfChanged(mGateCountText, llformat("%u of 8", static_cast<U32>(settings.mArmed.size())));
+    const auto* source = selectedCapture();
+    setVisibleIfChanged(mGateOnCutCombo, source && source->mediaUrlData());
+    if (source && source->mediaUrlData()) setValueIfChanged(mGateOnCutCombo, static_cast<S32>(source->mediaUrlData()->mOnCut));
+    if (mGateProjectorRevision != mRegistrySnapshot.mConfigurationRevision)
+    {
+        mGateProjectorRevision = mRegistrySnapshot.mConfigurationRevision;
+        mGateProjectorList->deleteAllItems();
+        for (U32 i = 0; i < mRegistrySnapshot.mProjectorCount; ++i)
+        {
+            const auto& projector = mRegistrySnapshot.mProjectors[i];
+            LLSD row; row["value"] = projector.mHandle.mId;
+            row["columns"][0]["column"] = "projector"; row["columns"][0]["value"] = llformat("Projector %u", i + 1);
+            row["columns"][1]["column"] = "source_gate"; row["columns"][1]["type"] = "checkbox";
+            row["columns"][1]["value"] = projector.mGateSubscribed;
+            mGateProjectorList->addElement(row);
+        }
+    }
 
     std::string live = settings.mActive ? "ON AIR: no valid arm" : "ON AIR: inactive";
     if (mGateSnapshot.mOnAirArmIndex >= 0 &&
@@ -1381,7 +1442,7 @@ void LLFloaterPrismManager::refreshGateEditor()
                 mGateSnapshot.mOnAirArmIndex)].mLabel.c_str(),
             settings.mActive ? "" : " (static)");
     }
-    mGateLiveText->setText(live);
+    setTextIfChanged(mGateLiveText, live);
     std::string gate_reason = mGateSnapshot.mReason;
     if (gate_reason.empty())
     {
@@ -1389,29 +1450,34 @@ void LLFloaterPrismManager::refreshGateEditor()
             ? "Gate routes monitors to the on-air existing capture; the next capture is watched only during bounded pre-warm."
             : "Arm camera captures, select a preview row, and activate the Gate.";
     }
-    mGateReasonText->setText(gate_reason);
-    mGateReasonText->setToolTip(gate_reason);
+    setTextIfChanged(mGateReasonText, gate_reason);
+    setToolTipIfChanged(mGateReasonText, gate_reason);
 
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const bool can_arm = capture &&
-        capture->isCameraFeed() &&
+        (capture->isCameraFeed() || capture->isMedia()) &&
         settings.mArmed.size() < GATE_ARM_LIMIT;
     setActionState(mGateArmButton, can_arm,
         can_arm ? "Reference the selected existing capture from the Gate arm list"
                 : !capture ? "Select a Camera Feed capture first"
                 : !capture->isCameraFeed()
-                    ? "Only Camera Feed captures can be armed"
+                    ? "Only camera or media feeds can be armed"
                     : "The Gate already has its maximum of 8 capture references");
     const bool have_selected_arm = !mSelectedGateArm.isNull();
     setActionState(mGateDisarmButton, have_selected_arm,
         have_selected_arm ? "Remove the selected capture reference from the Gate"
                           : "Select an armed row first");
-    const bool can_take = settings.mActive &&
+    const bool fading = mGateSnapshot.mPhase == LLPrismLens::EGatePhase::CROSSFADING;
+    setEnabledIfChanged(mGateArmedList, !fading);
+    setVisibleIfChanged(mGateTakeButton, settings.mMode == LLPrismLens::EGateMode::MANUAL);
+    const std::string take_label = mGateSnapshot.mTakePending ? "Take pending" : "Take";
+    if (mGateTakeButton->getLabelUnselected() != take_label) mGateTakeButton->setLabel(take_label);
+    const bool can_take = !fading && !mGateSnapshot.mTakePending && settings.mActive &&
         settings.mMode == LLPrismLens::EGateMode::MANUAL &&
         settings.mPreviewArmIndex >= 0 &&
         settings.mPreviewArmIndex != mGateSnapshot.mOnAirArmIndex;
     setActionState(mGateTakeButton, can_take,
-        can_take ? "Cut the selected camera on-air"
+        can_take ? "Take the selected ready feed on-air"
                  : !settings.mActive ? "Activate the Gate first"
                  : settings.mMode != LLPrismLens::EGateMode::MANUAL
                     ? "TAKE is available in Manual mode"
@@ -1780,6 +1846,10 @@ void LLFloaterPrismManager::onCommitGateSettings()
     settings.mMode = mGateModeCombo->getValue().asString() == "auto_cycle"
         ? LLPrismLens::EGateMode::AUTO_CYCLE
         : LLPrismLens::EGateMode::MANUAL;
+    settings.mTransition = static_cast<LLPrismLens::EGateTransition>(mGateTransitionCombo->getValue().asInteger());
+    settings.mCrossfadeSeconds = mGateLengthSpinner->getValue().asReal();
+    settings.mFadeOverBudget = static_cast<LLPrismLens::EGateFadeOverBudget>(mGateOverBudgetCombo->getValue().asInteger());
+    settings.mVideoDwell = static_cast<LLPrismLens::EGateVideoDwell>(mGateVideoDwellCombo->getValue().asInteger());
     settings.mIntervalSeconds = mGateIntervalSpinner->getValue().asReal();
     settings.mPrewarmFrames = static_cast<U32>(
         mGatePrewarmSpinner->getValue().asInteger());

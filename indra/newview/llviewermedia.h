@@ -300,6 +300,8 @@ public:
     void cuePrivateFile(const std::string& uri, const std::string& demux, S32 desired, bool loop, F32 volume, std::shared_ptr<void> retention);
     void privateTransport(S32 desired, bool loop);
     void retirePrivateFile();
+    std::shared_ptr<LLPluginFileClose> privateGateCloseFence() const
+    { return mMediaSource ? mMediaSource->privateFileCloseFence() : mPrivateCloseFence; }
     bool isPrivateFile() const { return mPrivateFile; }
     bool privateFileActive() const { return mPrivateFile && mPrivateActive; }
     bool privateFileAdmitted() const { return mPrivateFile && mMediaSource && mMediaSource->privateFileVerdict() == 1; }
@@ -307,6 +309,8 @@ public:
     bool privateFileEnded() const { return mPrivateFile && mMediaSource && mMediaSource->getStatus() == MEDIA_DONE; }
     bool privateFileFailed() const { return mPrivateFile && (mPrivateBudgetLost || mMediaSourceFailed || (mMediaSource && mMediaSource->privateFileVerdict() < 0)); }
     bool privateBudgetLost() const { return mPrivateBudgetLost; }
+    bool privateClosePending() const { return mPrivateCloseFence && !mPrivateCloseFence->closed.load(); }
+    F64 privateClosingCPU() const { return privateClosePending() ? mPrivateClosingCPU : 0.; }
     std::shared_ptr<MediaUpload> preMediaTexUpdate();
     bool doMediaTexUpdate(MediaUpload& upload);
     void finishMediaTexUpdate(MediaUpload& upload, bool success);
@@ -501,6 +505,8 @@ private:
     S32 mPrivateDesired = 0;
     std::string mPrivateDemux;
     std::shared_ptr<void> mPrivateRetention;
+    std::shared_ptr<LLPluginFileClose> mPrivateCloseFence;
+    F64 mPrivateClosingCPU = 0.;
     LLCoros::Mutex mLock;
     F64     mZoomFactor;
     LLUUID mTextureId;

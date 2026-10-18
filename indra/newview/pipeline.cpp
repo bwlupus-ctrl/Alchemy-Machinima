@@ -2012,6 +2012,7 @@ bool LLPipeline::ensurePrismProjectorFeed(
         prepared->mHandle.mGeneration != handle.mGeneration)
     {
         prepared->mTarget->release();
+        prepared->mStagedTarget.reset(); prepared->mStaged = {}; prepared->mStagedFrame = 0;
         prepared->mHandle = handle;
         prepared->mSourceGeneration = 0;
         prepared->mProducedFrame = 0;
@@ -2094,6 +2095,7 @@ void LLPipeline::releasePrismProjectorFeed(
             prepared.mHandle.mGeneration == handle.mGeneration)
         {
             prepared.mTarget->release();
+            prepared.mStagedTarget.reset(); prepared.mStaged = {}; prepared.mStagedFrame = 0;
             prepared.mHandle = LLPrismLens::ProjectorHandle();
             prepared.mSourceGeneration = 0;
             prepared.mProducedFrame = 0;
@@ -2109,6 +2111,7 @@ void LLPipeline::releasePrismProjectorFeeds()
     for (PrismProjectorPreparedFeed& prepared : mPrismProjectorFeed)
     {
         prepared.mTarget->release();
+        prepared.mStagedTarget.reset(); prepared.mStaged = {}; prepared.mStagedFrame = 0;
         prepared.mHandle = LLPrismLens::ProjectorHandle();
         prepared.mSourceGeneration = 0;
         prepared.mProducedFrame = 0;
@@ -2136,11 +2139,12 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         LLPrismLens::ProjectorFeed feed;
         if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
             feed.mOutput != &mPrismLensOutput[capture_slot] ||
-            LLPrismLens::isMediaKind(feed.mSourceKind))
+            LLPrismLens::isMediaKind(feed.mSourceKind) || definition.mGateSubscribed)
         {
             continue;
         }
 
+        if (definition.mGateSubscribed && !feed.mGatePublication) continue; // Gate cookies publish only in the output transaction
         LLPrismLens::CompositeState state;
         U32 target_width = 0;
         U32 target_height = 0;
@@ -2163,7 +2167,7 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
             }
         }
         if (!prepared || (!prepared->mDirty &&
-                          prepared->mSourceGeneration == feed.mGeneration))
+                          prepared->mSourceGeneration == feed.mGeneration && !definition.mGateSubscribed))
         {
             continue;
         }
@@ -2240,6 +2244,7 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         shader.uniform3fv(sBars, 1, state.mBarColorLinear);
         shader.uniform1f(sFeather, state.mEdgeFeather);
         shader.uniform4fv(sOptics, 1, state.mOpticsParams);
+        LLPrismLens::bindGateComposite(shader, state);
         shader.uniform4fv(sEffect0, 1, state.mScreenEffect0);
         shader.uniform4fv(sEffect1, 1, state.mScreenEffect1);
         shader.uniform4fv(sEffect2, 1, state.mScreenEffect2);
@@ -2301,6 +2306,7 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         gGL.end();
         shader.disableTexture(LLShaderMgr::EXPOSURE_MAP);
         shader.disableTexture(LLShaderMgr::PRISM_LENS_MAP);
+        shader.disableTexture(LLShaderMgr::PRISM_GATE_MAP);
         if (color_grade_channel >= 0)
         {
             gGL.getTexUnit(color_grade_channel)->unbind(
@@ -2308,9 +2314,38 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         }
         prepared->mTarget->flush();
         prepared->mSourceGeneration = feed.mGeneration;
+        prepared->mAccepted = feed; prepared->mAccepted.mOutput = nullptr;
         prepared->mProducedFrame = gFrameCount;
         prepared->mValid = true;
         prepared->mDirty = false;
+    }
+}
+
+bool LLPipeline::gateProjectorPrepared(const LLPrismLens::ProjectorHandle& handle, U64 publication) const
+{
+    for (const auto& feed : mPrismProjectorFeed)
+        if (feed.mHandle.mId == handle.mId && feed.mHandle.mGeneration == handle.mGeneration)
+            return feed.mStagedTarget && feed.mStagedTarget->isComplete() && feed.mStagedFrame == gFrameCount &&
+                feed.mStaged.mGatePublication == publication;
+    return false;
+}
+
+void LLPipeline::finishGateProjectors(U64 publication, bool publish)
+{
+    for (auto& feed : mPrismProjectorFeed)
+    {
+        if (!publication || feed.mStaged.mGatePublication != publication) continue;
+        if (publish)
+        {
+            feed.mTarget.swap(feed.mStagedTarget);
+            feed.mAccepted = feed.mStaged;
+            feed.mSourceGeneration = feed.mAccepted.mGeneration;
+            feed.mProducedFrame = feed.mStagedFrame;
+            feed.mRevision = ++mPrismProjectorRevision;
+            feed.mNextEffectTime = LLTimer::getTotalSeconds() + 1.0 / llmax(.01f, feed.mAccepted.mEffectHz);
+            feed.mValid = true; feed.mDirty = false;
+        }
+        feed.mStaged = {}; feed.mStagedFrame = 0;
     }
 }
 
@@ -2338,14 +2373,15 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
                 break;
             }
         }
-        if (!media_source) continue;
+        if (!media_source && !definition.mGateSubscribed) continue;
         LLPrismLens::ProjectorFeed feed;
         if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
-            !LLPrismLens::isMediaKind(feed.mSourceKind))
+            (!LLPrismLens::isMediaKind(feed.mSourceKind) && !definition.mGateSubscribed))
         {
             continue;
         }
 
+        if (definition.mGateSubscribed && !feed.mGatePublication) continue; // Gate cookies publish only in the output transaction
         LLPrismLens::CompositeState state;
         U32 target_width = 0;
         U32 target_height = 0;
@@ -2375,11 +2411,14 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
             effects.mDropout > 0.f || film.mDust > 0.f || film.mScratches > 0.f ||
             film.mGrain > 0.f || film.mGateWeave > 0.f || film.mShutterFlicker > 0.f);
         const F64 now = LLTimer::getTotalSeconds();
-        if (!prepared->mDirty && prepared->mSourceGeneration == feed.mGeneration &&
+        if (!feed.mGateTransition && !prepared->mAccepted.mGateTransition && LLPrismLens::sameProjectorSource(prepared->mAccepted, feed) &&
+            !prepared->mDirty && prepared->mSourceGeneration == feed.mGeneration &&
             prepared->mAccepted.mDestinationAspect == feed.mDestinationAspect &&
             (!animated || feed.mEffectHz <= 0.f || now < prepared->mNextEffectTime)) continue;
 
-        const U32 permutation = 0;
+        const bool camera_signal = !LLPrismLens::isMediaKind(feed.mSourceKind) ||
+            (state.mGateAlpha > 0.f && !state.mIncomingMediaSDR);
+        const U32 permutation = camera_signal ? colorCorrectPermutation(true, true) : 0;
         const LLPrismLens::ProjectorLook& look = feed.mSettings.mLook;
         const bool apply_look = look.hasFeedEffects() &&
             gPrismProjectorLookProgram[permutation].isComplete();
@@ -2394,8 +2433,10 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         if (shader.getTextureChannel(LLShaderMgr::PRISM_LENS_MAP) < 0 ||
             (shader.mFeatures.hasTonemap && shader.getTextureChannel(LLShaderMgr::EXPOSURE_MAP) < 0)) continue;
         std::unique_ptr<LLRenderTarget> spare;
-        LLRenderTarget* target = prepared->mTarget.get();
-        if (target->getWidth() != target_width || target->getHeight() != target_height)
+        if (feed.mGatePublication && !prepared->mStagedTarget)
+            prepared->mStagedTarget = std::make_unique<LLRenderTarget>();
+        LLRenderTarget* target = feed.mGatePublication ? prepared->mStagedTarget.get() : prepared->mTarget.get();
+        if (!target->isComplete() || target->getWidth() != target_width || target->getHeight() != target_height)
         {
             spare = std::make_unique<LLRenderTarget>();
             if (!spare->allocate(target_width, target_height, GL_RGBA8, false, false,
@@ -2455,7 +2496,6 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         static const LLStaticHashedString sEffect5("screenEffect5");
         static const LLStaticHashedString sEffectTime("screenEffectTime");
         static const LLStaticHashedString sFollowExposure("projectorFollowMainExposure");
-        static const LLStaticHashedString sMediaSDR("projectorMediaSDR");
         static const LLStaticHashedString sSheenSky("prismEnvSheenSky");
         static const LLStaticHashedString sSheenGround("prismEnvSheenGround");
         static const LLStaticHashedString sWorldOrigin("previewWorldOrigin");
@@ -2471,6 +2511,7 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         shader.uniform3fv(sBars, 1, state.mBarColorLinear);
         shader.uniform1f(sFeather, state.mEdgeFeather);
         shader.uniform4fv(sOptics, 1, state.mOpticsParams);
+        LLPrismLens::bindGateComposite(shader, state);
         shader.uniform4fv(sEffect0, 1, state.mScreenEffect0);
         shader.uniform4fv(sEffect1, 1, state.mScreenEffect1);
         shader.uniform4fv(sEffect2, 1, state.mScreenEffect2);
@@ -2478,8 +2519,7 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         shader.uniform4fv(sEffect4, 1, state.mScreenEffect4);
         shader.uniform4fv(sEffect5, 1, state.mScreenEffect5);
         shader.uniform1f(sEffectTime, fmodf(gFrameTimeSeconds, 3600.f));
-        shader.uniform1i(sFollowExposure, 0);
-        shader.uniform1i(sMediaSDR, 1);
+        shader.uniform1i(sFollowExposure, feed.mSettings.mFollowMainExposure ? 1 : 0);
         if (apply_look)
         {
             static const LLStaticHashedString sLookWarp("projectorLookWarp");
@@ -2521,6 +2561,8 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         shader.uniform3fv(sWorldU, 1, edge_u);
         shader.uniform3fv(sWorldV, 1, edge_v);
 
+        uploadPrismPreviewColorCorrectUniforms(shader);
+        const S32 color_grade_channel = uploadPrismPreviewColorGradeUniforms(shader);
         LLVertexBuffer::unbind();
         gGL.begin(LLRender::TRIANGLES);
         gGL.vertex3f(-1.f, -1.f, 0.f);
@@ -2529,14 +2571,21 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         gGL.end();
         shader.disableTexture(LLShaderMgr::EXPOSURE_MAP);
         shader.disableTexture(LLShaderMgr::PRISM_LENS_MAP);
-        // Shared program permutations must retain the legacy camera default.
+        shader.disableTexture(LLShaderMgr::PRISM_GATE_MAP);
+        if (color_grade_channel >= 0) gGL.getTexUnit(color_grade_channel)->unbind(LLTexUnit::TT_TEXTURE_3D);
         gGL.flush();
-        shader.uniform1i(sMediaSDR, 0);
         shader.unbind();
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam projector cookie mips");
             LL_PROFILE_GPU_ZONE("VCam projector cookie mips");
             target->flush(); // TMG_AUTO builds the complete chain before publication.
+        }
+        if (feed.mGatePublication)
+        {
+            if (spare) prepared->mStagedTarget.swap(spare);
+            prepared->mStaged = feed; prepared->mStaged.mOutput = nullptr;
+            prepared->mStagedFrame = gFrameCount;
+            continue; // the final live qualification check owns publication
         }
         if (spare) prepared->mTarget.swap(spare); // old ownership dies this iteration
         prepared->mAccepted = feed;
@@ -13480,6 +13529,11 @@ bool LLPipeline::colorCorrectWillApplyExposure(bool apply_tonemap, bool* out_leg
     return apply_tonemap && !no_post;
 }
 
+bool LLPipeline::worldHDREnabled() const
+{ return gGLManager.mGLVersion > 4.05f && gSavedSettings.getBOOL("RenderHDREnabled"); }
+U32 LLPipeline::worldPresentationPermutation() const
+{ return colorCorrectPermutation(worldHDREnabled(), true); }
+
 U32 LLPipeline::colorCorrectPermutation(bool apply_tonemap,
                                         bool apply_color_grade) const
 {
@@ -23641,7 +23695,7 @@ void LLPipeline::renderFinalize()
     glClearColor(0, 0, 0, 0);
 
     static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
-    bool hdr = gGLManager.mGLVersion > 4.05f && has_hdr();
+    bool hdr = worldHDREnabled();
     if (hdr)
     {
         copyScreenSpaceReflections(&mRT->screen, &mSceneMap);
@@ -27581,315 +27635,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         popRenderTypeMask();
     }
 
-    // Composite every current visible Prism face from its independently retained
-    // linear-HDR beauty immediately before the main screen flush. Fixed-
-    // function depth provides opaque foreground occlusion; transparent pool
-    // ordering remains explicitly out of scope for this slice.
-    // [Prism camera feed - recursive mirror] During the Prism aux (VCam) capture
-    // (sPrismLensRender), select the auxiliary composite path so the monitor faces
-    // show the PREVIOUS frame's retained feed while this aux frame is being drawn -
-    // a 1-frame-lagged recursive tunnel. Outside the aux (the main view, the only
-    // time sPrismLensRender is false here) this calls getCompositeStates exactly as
-    // before, so the main-view composite is byte-identical. getAuxCompositeStates
-    // is itself gated on sPrismLensRender and on the bound target being the active
-    // aux pack screen, so it can never affect the main view even if reached.
-    LLPrismLens::CompositeState prism_states[LLPrismLens::MAX_DISPLAY_BINDINGS];
-    const U32 prism_state_count = gPrismLensProgram.isComplete()
-        ? llmin(sPrismLensRender
-                    ? LLPrismLens::getAuxCompositeStates(
-                          screen_target, prism_states,
-                          LLPrismLens::MAX_DISPLAY_BINDINGS)
-                    : LLPrismLens::getCompositeStates(
-                          screen_target, prism_states,
-                          LLPrismLens::MAX_DISPLAY_BINDINGS),
-                LLPrismLens::MAX_DISPLAY_BINDINGS)
-        : 0;
-    if (prism_state_count > 0)
-    {
-        struct ScopedPrismCompositeRestore
-        {
-            ScopedPrismCompositeRestore()
-                : mSavedShader(LLGLSLShader::sCurBoundShaderPtr),
-                  mSavedMatrixMode(gGL.getMatrixMode()),
-                  mSavedScissorEnabled(glIsEnabled(GL_SCISSOR_TEST))
-            {
-                glGetIntegerv(GL_SCISSOR_BOX, mSavedScissorBox);
-                glGetBooleanv(GL_COLOR_WRITEMASK, mSavedColorMask);
-            }
-
-            ~ScopedPrismCompositeRestore()
-            {
-                if (mFaceMatrixPushed)
-                {
-                    gGL.matrixMode(LLRender::MM_MODELVIEW);
-                    gGL.popMatrix();
-                }
-                gGL.matrixMode(mSavedMatrixMode);
-                gGL.syncMatrices();
-
-                gPrismLensProgram.disableTexture(LLShaderMgr::PRISM_LENS_MAP);
-                LLVertexBuffer::unbind();
-                if (mSavedShader && mSavedShader->isComplete())
-                {
-                    mSavedShader->bind();
-                }
-                else
-                {
-                    LLGLSLShader::unbind();
-                }
-
-                glScissor(mSavedScissorBox[0], mSavedScissorBox[1],
-                          mSavedScissorBox[2], mSavedScissorBox[3]);
-                if (mSavedScissorEnabled)
-                {
-                    glEnable(GL_SCISSOR_TEST);
-                }
-                else
-                {
-                    glDisable(GL_SCISSOR_TEST);
-                }
-                gGL.setColorMask(mSavedColorMask[0] != GL_FALSE,
-                                 mSavedColorMask[1] != GL_FALSE,
-                                 mSavedColorMask[2] != GL_FALSE,
-                                 mSavedColorMask[3] != GL_FALSE);
-            }
-
-            void pushFaceMatrix(LLDrawable* drawable)
-            {
-                gGL.matrixMode(LLRender::MM_MODELVIEW);
-                gGL.pushMatrix();
-                mFaceMatrixPushed = true;
-
-                // Match LLVolumeGeometryManager::registerFace() and
-                // LLRenderPass::applyModelMatrix(): face vertices are in the
-                // drawable space selected below, and the object matrix must be
-                // applied to the camera model-view -- never to the matrix left
-                // behind by the preceding deferred draw.
-                gGL.loadMatrix(gGLModelView);
-                if (drawable->isState(LLDrawable::ANIMATED_CHILD))
-                {
-                    gGL.multMatrix((GLfloat*)drawable->getWorldMatrix().mMatrix);
-                }
-                else if (drawable->isActive())
-                {
-                    gGL.multMatrix((GLfloat*)drawable->getRenderMatrix().mMatrix);
-                }
-                else
-                {
-                    gGL.multMatrix((GLfloat*)drawable->getRegion()->mRenderMatrix.mMatrix);
-                }
-                gGL.syncMatrices();
-            }
-
-            // Prim-free virtual screen: push the BASE world model-view with NO
-            // face matrix applied. The quad vertices are already in world/agent
-            // space (the same space gGLModelView maps to eye space), so unlike
-            // pushFaceMatrix() there is no per-object multiply. popFaceMatrix()
-            // restores it exactly as for a real face.
-            void pushWorldMatrix()
-            {
-                gGL.matrixMode(LLRender::MM_MODELVIEW);
-                gGL.pushMatrix();
-                mFaceMatrixPushed = true;
-                gGL.loadMatrix(gGLModelView);
-                gGL.syncMatrices();
-            }
-
-            void popFaceMatrix()
-            {
-                if (mFaceMatrixPushed)
-                {
-                    gGL.matrixMode(LLRender::MM_MODELVIEW);
-                    gGL.popMatrix();
-                    mFaceMatrixPushed = false;
-                    gGL.syncMatrices();
-                }
-            }
-
-            LLGLSLShader* mSavedShader;
-            LLRender::eMatrixMode mSavedMatrixMode;
-            GLboolean mSavedScissorEnabled;
-            GLint mSavedScissorBox[4];
-            GLboolean mSavedColorMask[4];
-            bool mFaceMatrixPushed = false;
-        };
-
-        // One complete restore scope covers the batch. getCompositeStates()
-        // groups siblings by capture slot, so all displays of one feed can
-        // share a texture bind while retaining per-face matrices and uniforms.
-        ScopedPrismCompositeRestore scoped_composite_restore;
-        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
-        LLGLDisable blend(GL_BLEND);
-        LLGLDisable cull(GL_CULL_FACE); // Displays are deliberately two-sided.
-        gGL.setColorMask(true, true);
-        glEnable(GL_SCISSOR_TEST);
-
-        gPrismLensProgram.bind();
-        const S32 prism_channel =
-            gPrismLensProgram.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
-        if (prism_channel >= 0)
-        {
-            static const LLStaticHashedString sSurfaceOrigin("surfaceOrigin");
-            static const LLStaticHashedString sSurfaceUDual("surfaceUDual");
-            static const LLStaticHashedString sSurfaceVDual("surfaceVDual");
-            static const LLStaticHashedString sDisplayToCaptureScale(
-                "displayToCaptureScale");
-            static const LLStaticHashedString sDisplayToCaptureOffset(
-                "displayToCaptureOffset");
-            static const LLStaticHashedString sRetainedOrientationScale(
-                "retainedOrientationScale");
-            static const LLStaticHashedString sRetainedOrientationOffset(
-                "retainedOrientationOffset");
-            static const LLStaticHashedString sTextureRegionScale(
-                "textureRegionScale");
-            static const LLStaticHashedString sTextureRegionOffset(
-                "textureRegionOffset");
-            static const LLStaticHashedString sLetterbox("letterbox");
-            static const LLStaticHashedString sBarColorLinear("barColorLinear");
-            static const LLStaticHashedString sEdgeFeather("edgeFeather");
-            static const LLStaticHashedString sPrismLensOptics("prismLensOptics");
-            static const LLStaticHashedString sScreenEffect0("screenEffect0");
-            static const LLStaticHashedString sScreenEffect1("screenEffect1");
-            static const LLStaticHashedString sScreenEffect2("screenEffect2");
-            static const LLStaticHashedString sScreenEffect3("screenEffect3");
-            static const LLStaticHashedString sScreenEffect4("screenEffect4");
-            static const LLStaticHashedString sScreenEffect5("screenEffect5"); // [PrismScanlines]
-            static const LLStaticHashedString sScreenEffectTime("screenEffectTime");
-            static const LLStaticHashedString sPrismEnvSheenSky("prismEnvSheenSky");
-            static const LLStaticHashedString sPrismEnvSheenGround(
-                "prismEnvSheenGround");
-
-            // Animated screen effects advance on WALL time (gFrameTimeSeconds)
-            // by design: capture-independent, so upload it once per batch.
-            // This deliberately DIVERGES from FROXEL_TIME / PROJVOL_TIME /
-            // the diopter clocks, which follow the Temporal Capture
-            // presentation clock; only the fmod-wrap idiom is shared (keeps
-            // the uniform small so long sessions never lose float precision).
-            gPrismLensProgram.uniform1f(sScreenEffectTime,
-                                        fmodf(gFrameTimeSeconds, 3600.f));
-
-            // Environmental sheen palette (Feature B). A two-color hemisphere
-            // (sky/ground) approximating the room environment for the glossy
-            // Fresnel reflection in prismLensF.glsl. Derived from the live sky
-            // ambient/horizon so the sheen tracks the scene mood (warm at
-            // sunset, cool/dim at night). This is global to the batch (not
-            // per-display, like the screen-effect clock), so it is uploaded
-            // once here rather than through the CompositeState builders; the
-            // per-display strength lives in screenEffect4.w. Only the shader's
-            // sheen>0 branch reads these, so they never affect the default
-            // (byte-identical) composite. Constants are creative tuning.
-            {
-                const LLSettingsSky::ptr_t psky =
-                    LLEnvironment::instance().getCurrentSky();
-                LLColor3 sheen_sky(0.f, 0.f, 0.f);
-                LLColor3 sheen_ground(0.f, 0.f, 0.f);
-                if (psky)
-                {
-                    const LLColor3 ambient = psky->getAmbientColor();
-                    const LLColor3 horizon = psky->getBlueHorizon();
-                    sheen_sky = ambient * 1.5f + horizon * 0.4f;
-                    sheen_ground = ambient * 0.5f;
-                }
-                const F32 sheen_sky_v[3] = {
-                    sheen_sky.mV[0], sheen_sky.mV[1], sheen_sky.mV[2] };
-                const F32 sheen_ground_v[3] = {
-                    sheen_ground.mV[0], sheen_ground.mV[1], sheen_ground.mV[2] };
-                gPrismLensProgram.uniform3fv(sPrismEnvSheenSky, 1, sheen_sky_v);
-                gPrismLensProgram.uniform3fv(sPrismEnvSheenGround, 1,
-                                             sheen_ground_v);
-            }
-
-            U32 bound_capture_slot = LLPrismLens::MAX_CAPTURES;
-            for (U32 prism_index = 0; prism_index < prism_state_count;
-                 ++prism_index)
-            {
-                const LLPrismLens::CompositeState& prism_state =
-                    prism_states[prism_index];
-                // A prim-free virtual screen has no face; it is drawn as a
-                // world-space quad below. Only a real-face state requires mFace.
-                if (prism_state.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
-                    (!prism_state.mFace && !prism_state.mVirtual) ||
-                    prism_state.mScissor[2] <= 0 ||
-                    prism_state.mScissor[3] <= 0 ||
-                    !mPrismLensOutput[prism_state.mCaptureSlot].isComplete())
-                {
-                    continue;
-                }
-
-                if (bound_capture_slot != prism_state.mCaptureSlot)
-                {
-                    mPrismLensOutput[prism_state.mCaptureSlot].bindTexture(
-                        0, prism_channel, LLTexUnit::TFO_BILINEAR);
-                    bound_capture_slot = prism_state.mCaptureSlot;
-                }
-
-                glScissor(prism_state.mScissor[0], prism_state.mScissor[1],
-                          prism_state.mScissor[2], prism_state.mScissor[3]);
-                gPrismLensProgram.uniform3fv(sSurfaceOrigin, 1, prism_state.mSurfaceOrigin);
-                gPrismLensProgram.uniform3fv(sSurfaceUDual, 1, prism_state.mSurfaceUDual);
-                gPrismLensProgram.uniform3fv(sSurfaceVDual, 1, prism_state.mSurfaceVDual);
-                gPrismLensProgram.uniform2fv(sDisplayToCaptureScale, 1,
-                                             prism_state.mDisplayToCaptureScale);
-                gPrismLensProgram.uniform2fv(sDisplayToCaptureOffset, 1,
-                                             prism_state.mDisplayToCaptureOffset);
-                gPrismLensProgram.uniform2fv(sRetainedOrientationScale, 1,
-                                             prism_state.mRetainedOrientationScale);
-                gPrismLensProgram.uniform2fv(sRetainedOrientationOffset, 1,
-                                             prism_state.mRetainedOrientationOffset);
-                gPrismLensProgram.uniform2fv(sTextureRegionScale, 1,
-                                             prism_state.mTextureRegionScale);
-                gPrismLensProgram.uniform2fv(sTextureRegionOffset, 1,
-                                             prism_state.mTextureRegionOffset);
-                gPrismLensProgram.uniform1i(sLetterbox, prism_state.mLetterbox);
-                gPrismLensProgram.uniform3fv(sBarColorLinear, 1,
-                                             prism_state.mBarColorLinear);
-                gPrismLensProgram.uniform1f(sEdgeFeather, prism_state.mEdgeFeather);
-                gPrismLensProgram.uniform4fv(sPrismLensOptics, 1, prism_state.mOpticsParams);
-                gPrismLensProgram.uniform4fv(sScreenEffect0, 1, prism_state.mScreenEffect0);
-                gPrismLensProgram.uniform4fv(sScreenEffect1, 1, prism_state.mScreenEffect1);
-                gPrismLensProgram.uniform4fv(sScreenEffect2, 1, prism_state.mScreenEffect2);
-                gPrismLensProgram.uniform4fv(sScreenEffect3, 1, prism_state.mScreenEffect3);
-                gPrismLensProgram.uniform4fv(sScreenEffect4, 1, prism_state.mScreenEffect4);
-                gPrismLensProgram.uniform4fv(sScreenEffect5, 1, prism_state.mScreenEffect5);
-
-                if (prism_state.mFace)
-                {
-                    LLDrawable* lens_drawable = prism_state.mFace->getDrawable();
-                    if (lens_drawable &&
-                        (lens_drawable->isActive() || lens_drawable->getRegion()))
-                    {
-                        scoped_composite_restore.pushFaceMatrix(lens_drawable);
-                        prism_state.mFace->renderIndexed();
-                        scoped_composite_restore.popFaceMatrix();
-                    }
-                }
-                else if (prism_state.mVirtual)
-                {
-                    // Prim-free virtual screen: two triangles from the stored
-                    // world-space corners (TL, TR, BR, BL), drawn under the base
-                    // world model-view with the SAME gPrismLensProgram bound. The
-                    // vertex shader reads only `position` (gGL immediate mode
-                    // supplies it as ATTRIBUTE_POSITION) and derives prism_uv from
-                    // the world-space surface uniforms already uploaded above, so
-                    // no shader change is needed. The batch runs under
-                    // LLGLDisable cull(GL_CULL_FACE), so the quad is two-sided --
-                    // matching a real display face.
-                    const F32 (&c)[4][3] = prism_state.mVirtualCorners;
-                    scoped_composite_restore.pushWorldMatrix();
-                    gGL.begin(LLRender::TRIANGLES);
-                    gGL.vertex3fv(c[0]); // TL
-                    gGL.vertex3fv(c[1]); // TR
-                    gGL.vertex3fv(c[2]); // BR
-                    gGL.vertex3fv(c[0]); // TL
-                    gGL.vertex3fv(c[2]); // BR
-                    gGL.vertex3fv(c[3]); // BL
-                    gGL.end();
-                    gGL.flush();
-                    scoped_composite_restore.popFaceMatrix();
-                }
-            }
-        }
-    }
+    renderPrismDisplays(screen_target);
 
     // [ActorMask] WP7 C_post capture (test frames only), then the
     // CineLightRigActorMaskDebug view, while this view's mask is still valid.
@@ -27989,6 +27735,315 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
     // essentially every frame and left temporal consumers (TAA, denoising)
     // permanently reset.
     gGL.setColorMask(true, true);
+}
+
+void LLPipeline::renderPrismDisplays(LLRenderTarget* screen_target)
+{
+    LLGLSLShader& shader = gPrismLensProgram;
+    LLPrismLens::CompositeState prism_states[LLPrismLens::MAX_DISPLAY_BINDINGS];
+    const U32 prism_state_count = shader.isComplete()
+        ? llmin(sPrismLensRender
+                    ? LLPrismLens::getAuxCompositeStates(
+                          screen_target, prism_states,
+                          LLPrismLens::MAX_DISPLAY_BINDINGS)
+                    : LLPrismLens::getCompositeStates(
+                          screen_target, prism_states,
+                          LLPrismLens::MAX_DISPLAY_BINDINGS),
+                LLPrismLens::MAX_DISPLAY_BINDINGS)
+        : 0;
+    if (prism_state_count > 0)
+    {
+        struct ScopedPrismCompositeRestore
+        {
+            ScopedPrismCompositeRestore(LLGLSLShader& program)
+                : shader(program), mSavedShader(LLGLSLShader::sCurBoundShaderPtr),
+                  mSavedMatrixMode(gGL.getMatrixMode()),
+                  mSavedScissorEnabled(glIsEnabled(GL_SCISSOR_TEST))
+            {
+                glGetIntegerv(GL_SCISSOR_BOX, mSavedScissorBox);
+                glGetBooleanv(GL_COLOR_WRITEMASK, mSavedColorMask);
+            }
+
+            ~ScopedPrismCompositeRestore()
+            {
+                if (mFaceMatrixPushed)
+                {
+                    gGL.matrixMode(LLRender::MM_MODELVIEW);
+                    gGL.popMatrix();
+                }
+                gGL.matrixMode(mSavedMatrixMode);
+                gGL.syncMatrices();
+
+                shader.disableTexture(LLShaderMgr::PRISM_LENS_MAP);
+                shader.disableTexture(LLShaderMgr::PRISM_GATE_MAP);
+                LLVertexBuffer::unbind();
+                if (mSavedShader && mSavedShader->isComplete())
+                {
+                    mSavedShader->bind();
+                }
+                else
+                {
+                    LLGLSLShader::unbind();
+                }
+
+                glScissor(mSavedScissorBox[0], mSavedScissorBox[1],
+                          mSavedScissorBox[2], mSavedScissorBox[3]);
+                if (mSavedScissorEnabled)
+                {
+                    glEnable(GL_SCISSOR_TEST);
+                }
+                else
+                {
+                    glDisable(GL_SCISSOR_TEST);
+                }
+                gGL.setColorMask(mSavedColorMask[0] != GL_FALSE,
+                                 mSavedColorMask[1] != GL_FALSE,
+                                 mSavedColorMask[2] != GL_FALSE,
+                                 mSavedColorMask[3] != GL_FALSE);
+            }
+
+            void pushFaceMatrix(LLDrawable* drawable)
+            {
+                gGL.matrixMode(LLRender::MM_MODELVIEW);
+                gGL.pushMatrix();
+                mFaceMatrixPushed = true;
+
+                // Match LLVolumeGeometryManager::registerFace() and
+                // LLRenderPass::applyModelMatrix(): face vertices are in the
+                // drawable space selected below, and the object matrix must be
+                // applied to the camera model-view -- never to the matrix left
+                // behind by the preceding deferred draw.
+                gGL.loadMatrix(gGLModelView);
+                if (drawable->isState(LLDrawable::ANIMATED_CHILD))
+                {
+                    gGL.multMatrix((GLfloat*)drawable->getWorldMatrix().mMatrix);
+                }
+                else if (drawable->isActive())
+                {
+                    gGL.multMatrix((GLfloat*)drawable->getRenderMatrix().mMatrix);
+                }
+                else
+                {
+                    gGL.multMatrix((GLfloat*)drawable->getRegion()->mRenderMatrix.mMatrix);
+                }
+                gGL.syncMatrices();
+            }
+
+            // Prim-free virtual screen: push the BASE world model-view with NO
+            // face matrix applied. The quad vertices are already in world/agent
+            // space (the same space gGLModelView maps to eye space), so unlike
+            // pushFaceMatrix() there is no per-object multiply. popFaceMatrix()
+            // restores it exactly as for a real face.
+            void pushWorldMatrix()
+            {
+                gGL.matrixMode(LLRender::MM_MODELVIEW);
+                gGL.pushMatrix();
+                mFaceMatrixPushed = true;
+                gGL.loadMatrix(gGLModelView);
+                gGL.syncMatrices();
+            }
+
+            void popFaceMatrix()
+            {
+                if (mFaceMatrixPushed)
+                {
+                    gGL.matrixMode(LLRender::MM_MODELVIEW);
+                    gGL.popMatrix();
+                    mFaceMatrixPushed = false;
+                    gGL.syncMatrices();
+                }
+            }
+
+            LLGLSLShader& shader;
+            LLGLSLShader* mSavedShader;
+            LLRender::eMatrixMode mSavedMatrixMode;
+            GLboolean mSavedScissorEnabled;
+            GLint mSavedScissorBox[4];
+            GLboolean mSavedColorMask[4];
+            bool mFaceMatrixPushed = false;
+        };
+
+        // One complete restore scope covers the batch. getCompositeStates()
+        // groups siblings by capture slot, so all displays of one feed can
+        // share a texture bind while retaining per-face matrices and uniforms.
+        ScopedPrismCompositeRestore scoped_composite_restore(shader);
+        gGL.matrixMode(LLRender::MM_PROJECTION); gGL.pushMatrix(); gGL.loadMatrix(gGLProjection);
+        gGL.matrixMode(LLRender::MM_MODELVIEW); gGL.pushMatrix(); gGL.loadMatrix(gGLModelView);
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLDisable blend(GL_BLEND);
+        LLGLDisable cull(GL_CULL_FACE); // Displays are deliberately two-sided.
+        gGL.setColorMask(true, true);
+        glEnable(GL_SCISSOR_TEST);
+
+        shader.bind();
+        const S32 prism_channel =
+            shader.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
+        if (prism_channel >= 0)
+        {
+            static const LLStaticHashedString sSurfaceOrigin("surfaceOrigin");
+            static const LLStaticHashedString sSurfaceUDual("surfaceUDual");
+            static const LLStaticHashedString sSurfaceVDual("surfaceVDual");
+            static const LLStaticHashedString sDisplayToCaptureScale(
+                "displayToCaptureScale");
+            static const LLStaticHashedString sDisplayToCaptureOffset(
+                "displayToCaptureOffset");
+            static const LLStaticHashedString sRetainedOrientationScale(
+                "retainedOrientationScale");
+            static const LLStaticHashedString sRetainedOrientationOffset(
+                "retainedOrientationOffset");
+            static const LLStaticHashedString sTextureRegionScale(
+                "textureRegionScale");
+            static const LLStaticHashedString sTextureRegionOffset(
+                "textureRegionOffset");
+            static const LLStaticHashedString sLetterbox("letterbox");
+            static const LLStaticHashedString sBarColorLinear("barColorLinear");
+            static const LLStaticHashedString sEdgeFeather("edgeFeather");
+            static const LLStaticHashedString sPrismLensOptics("prismLensOptics");
+            static const LLStaticHashedString sScreenEffect0("screenEffect0");
+            static const LLStaticHashedString sScreenEffect1("screenEffect1");
+            static const LLStaticHashedString sScreenEffect2("screenEffect2");
+            static const LLStaticHashedString sScreenEffect3("screenEffect3");
+            static const LLStaticHashedString sScreenEffect4("screenEffect4");
+            static const LLStaticHashedString sScreenEffect5("screenEffect5"); // [PrismScanlines]
+            static const LLStaticHashedString sScreenEffectTime("screenEffectTime");
+            static const LLStaticHashedString sPrismEnvSheenSky("prismEnvSheenSky");
+            static const LLStaticHashedString sPrismEnvSheenGround(
+                "prismEnvSheenGround");
+
+            // Animated screen effects advance on WALL time (gFrameTimeSeconds)
+            // by design: capture-independent, so upload it once per batch.
+            // This deliberately DIVERGES from FROXEL_TIME / PROJVOL_TIME /
+            // the diopter clocks, which follow the Temporal Capture
+            // presentation clock; only the fmod-wrap idiom is shared (keeps
+            // the uniform small so long sessions never lose float precision).
+            shader.uniform1f(sScreenEffectTime,
+                                        fmodf(gFrameTimeSeconds, 3600.f));
+
+            // Environmental sheen palette (Feature B). A two-color hemisphere
+            // (sky/ground) approximating the room environment for the glossy
+            // Fresnel reflection in prismLensF.glsl. Derived from the live sky
+            // ambient/horizon so the sheen tracks the scene mood (warm at
+            // sunset, cool/dim at night). This is global to the batch (not
+            // per-display, like the screen-effect clock), so it is uploaded
+            // once here rather than through the CompositeState builders; the
+            // per-display strength lives in screenEffect4.w. Only the shader's
+            // sheen>0 branch reads these, so they never affect the default
+            // (byte-identical) composite. Constants are creative tuning.
+            {
+                const LLSettingsSky::ptr_t psky =
+                    LLEnvironment::instance().getCurrentSky();
+                LLColor3 sheen_sky(0.f, 0.f, 0.f);
+                LLColor3 sheen_ground(0.f, 0.f, 0.f);
+                if (psky)
+                {
+                    const LLColor3 ambient = psky->getAmbientColor();
+                    const LLColor3 horizon = psky->getBlueHorizon();
+                    sheen_sky = ambient * 1.5f + horizon * 0.4f;
+                    sheen_ground = ambient * 0.5f;
+                }
+                const F32 sheen_sky_v[3] = {
+                    sheen_sky.mV[0], sheen_sky.mV[1], sheen_sky.mV[2] };
+                const F32 sheen_ground_v[3] = {
+                    sheen_ground.mV[0], sheen_ground.mV[1], sheen_ground.mV[2] };
+                shader.uniform3fv(sPrismEnvSheenSky, 1, sheen_sky_v);
+                shader.uniform3fv(sPrismEnvSheenGround, 1,
+                                             sheen_ground_v);
+            }
+
+            U32 bound_capture_slot = LLPrismLens::MAX_CAPTURES;
+            for (U32 prism_index = 0; prism_index < prism_state_count;
+                 ++prism_index)
+            {
+                const LLPrismLens::CompositeState& prism_state =
+                    prism_states[prism_index];
+                // A prim-free virtual screen has no face; it is drawn as a
+                // world-space quad below. Only a real-face state requires mFace.
+                if (prism_state.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
+                    (!prism_state.mFace && !prism_state.mVirtual) ||
+                    prism_state.mScissor[2] <= 0 ||
+                    prism_state.mScissor[3] <= 0 ||
+                    !mPrismLensOutput[prism_state.mCaptureSlot].isComplete())
+                {
+                    continue;
+                }
+
+                if (bound_capture_slot != prism_state.mCaptureSlot)
+                {
+                    mPrismLensOutput[prism_state.mCaptureSlot].bindTexture(
+                        0, prism_channel, LLTexUnit::TFO_BILINEAR);
+                    bound_capture_slot = prism_state.mCaptureSlot;
+                }
+
+                glScissor(prism_state.mScissor[0], prism_state.mScissor[1],
+                          prism_state.mScissor[2], prism_state.mScissor[3]);
+                shader.uniform3fv(sSurfaceOrigin, 1, prism_state.mSurfaceOrigin);
+                shader.uniform3fv(sSurfaceUDual, 1, prism_state.mSurfaceUDual);
+                shader.uniform3fv(sSurfaceVDual, 1, prism_state.mSurfaceVDual);
+                shader.uniform2fv(sDisplayToCaptureScale, 1,
+                                             prism_state.mDisplayToCaptureScale);
+                shader.uniform2fv(sDisplayToCaptureOffset, 1,
+                                             prism_state.mDisplayToCaptureOffset);
+                shader.uniform2fv(sRetainedOrientationScale, 1,
+                                             prism_state.mRetainedOrientationScale);
+                shader.uniform2fv(sRetainedOrientationOffset, 1,
+                                             prism_state.mRetainedOrientationOffset);
+                shader.uniform2fv(sTextureRegionScale, 1,
+                                             prism_state.mTextureRegionScale);
+                shader.uniform2fv(sTextureRegionOffset, 1,
+                                             prism_state.mTextureRegionOffset);
+                shader.uniform1i(sLetterbox, prism_state.mLetterbox);
+                shader.uniform3fv(sBarColorLinear, 1,
+                                             prism_state.mBarColorLinear);
+                shader.uniform1f(sEdgeFeather, prism_state.mEdgeFeather);
+                shader.uniform4fv(sPrismLensOptics, 1, prism_state.mOpticsParams);
+                LLPrismLens::bindGateComposite(shader, prism_state);
+                shader.uniform4fv(sScreenEffect0, 1, prism_state.mScreenEffect0);
+                shader.uniform4fv(sScreenEffect1, 1, prism_state.mScreenEffect1);
+                shader.uniform4fv(sScreenEffect2, 1, prism_state.mScreenEffect2);
+                shader.uniform4fv(sScreenEffect3, 1, prism_state.mScreenEffect3);
+                shader.uniform4fv(sScreenEffect4, 1, prism_state.mScreenEffect4);
+                shader.uniform4fv(sScreenEffect5, 1, prism_state.mScreenEffect5);
+
+                if (prism_state.mFace)
+                {
+                    LLDrawable* lens_drawable = prism_state.mFace->getDrawable();
+                    if (lens_drawable &&
+                        (lens_drawable->isActive() || lens_drawable->getRegion()))
+                    {
+                        scoped_composite_restore.pushFaceMatrix(lens_drawable);
+                        prism_state.mFace->renderIndexed();
+                        scoped_composite_restore.popFaceMatrix();
+                    }
+                }
+                else if (prism_state.mVirtual)
+                {
+                    // Prim-free virtual screen: two triangles from the stored
+                    // world-space corners (TL, TR, BR, BL), drawn under the base
+                    // world model-view with the SAME shader bound. The
+                    // vertex shader reads only `position` (gGL immediate mode
+                    // supplies it as ATTRIBUTE_POSITION) and derives prism_uv from
+                    // the world-space surface uniforms already uploaded above, so
+                    // no shader change is needed. The batch runs under
+                    // LLGLDisable cull(GL_CULL_FACE), so the quad is two-sided --
+                    // matching a real display face.
+                    const F32 (&c)[4][3] = prism_state.mVirtualCorners;
+                    scoped_composite_restore.pushWorldMatrix();
+                    gGL.begin(LLRender::TRIANGLES);
+                    gGL.vertex3fv(c[0]); // TL
+                    gGL.vertex3fv(c[1]); // TR
+                    gGL.vertex3fv(c[2]); // BR
+                    gGL.vertex3fv(c[0]); // TL
+                    gGL.vertex3fv(c[2]); // BR
+                    gGL.vertex3fv(c[3]); // BL
+                    gGL.end();
+                    gGL.flush();
+                    scoped_composite_restore.popFaceMatrix();
+                }
+            }
+        }
+        gGL.matrixMode(LLRender::MM_MODELVIEW); gGL.popMatrix();
+        gGL.matrixMode(LLRender::MM_PROJECTION); gGL.popMatrix();
+    }
 }
 
 void LLPipeline::doAtmospherics()
@@ -28147,10 +28202,10 @@ U64 LLPipeline::projectorCookieRevision(const LLVOVolume* volume) const
 {
     LLPrismLens::ProjectorFeed feed;
     if (!LLPrismLens::projectorFeedFor(volume, feed) ||
-        !LLPrismLens::isMediaKind(feed.mSourceKind)) return 0;
+        (!feed.mGateSubscribed && !LLPrismLens::isMediaKind(feed.mSourceKind))) return 0;
     for (const auto& prepared : mPrismProjectorFeed)
         if (prepared.mValid && prepared.mTarget->isComplete() &&
-            LLPrismLens::sameProjectorSource(prepared.mAccepted, feed)) return prepared.mRevision;
+            (feed.mGateSubscribed ? prepared.mHandle.mId == feed.mProjector.mId && prepared.mHandle.mGeneration == feed.mProjector.mGeneration : LLPrismLens::sameProjectorSource(prepared.mAccepted, feed))) return prepared.mRevision;
     return 0;
 }
 
@@ -28161,14 +28216,14 @@ F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
     LLPrismLens::ProjectorFeed feed;
     const bool has_binding = LLPrismLens::projectorFeedFor(volume, feed);
     PrismProjectorPreparedFeed* prepared = nullptr;
-    if (has_binding && LLPrismLens::isMediaKind(feed.mSourceKind))
+    if (has_binding && (feed.mGateSubscribed || LLPrismLens::isMediaKind(feed.mSourceKind)))
     {
         for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
         {
             if (candidate.mHandle.mId == feed.mProjector.mId &&
                 candidate.mHandle.mGeneration == feed.mProjector.mGeneration &&
                 candidate.mValid && candidate.mTarget->isComplete() &&
-                LLPrismLens::sameProjectorSource(candidate.mAccepted, feed))
+                (feed.mGateSubscribed || LLPrismLens::sameProjectorSource(candidate.mAccepted, feed)))
             {
                 prepared = &candidate;
                 break;

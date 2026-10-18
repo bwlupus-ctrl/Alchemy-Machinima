@@ -30,6 +30,7 @@ class LLPlane;
 class LLRenderTarget;
 class LLViewerObject;
 class LLVOVolume;
+class LLGLSLShader;
 class LLViewerMediaImpl;
 namespace LLPrismLens
 {
@@ -308,7 +309,13 @@ struct CameraSettings
     BonePovSettings mBonePov;
 };
 
-// An armed camera is a reference to one of the user's existing captures. The
+enum class EGateTransition : U8 { CUT, CROSSFADE };
+enum class EGateFadeOverBudget : U8 { CUT_INSTEAD, FADE_ANYWAY, HOLD };
+enum class EGateVideoDwell : U8 { INTERVAL, PLAY_TO_END };
+enum class EMediaOnCut : U8 { RESTART, RESUME, LIVE };
+enum class EGatePhase : U8 { INACTIVE, ON_AIR, WARMING, READY, CROSSFADING, HOLDING };
+
+// Compatibility name: an arm references a camera feed or media source slot. The
 // Gate owns no producer and arming never changes the capture count.
 struct GateArmedCamera
 {
@@ -330,6 +337,10 @@ struct GateSettings
     EGateMode mMode = EGateMode::MANUAL;
     F64 mIntervalSeconds = 8.0;
     U32 mPrewarmFrames = 3;
+    EGateTransition mTransition = EGateTransition::CUT;
+    F64 mCrossfadeSeconds = 0.5;
+    EGateFadeOverBudget mFadeOverBudget = EGateFadeOverBudget::CUT_INSTEAD;
+    EGateVideoDwell mVideoDwell = EGateVideoDwell::INTERVAL;
     std::vector<GateArmedCamera> mArmed;
     S32 mProgramArmIndex = 0;
     S32 mPreviewArmIndex = -1;
@@ -342,6 +353,11 @@ struct GateSnapshot
     S32 mOnAirArmIndex = -1;
     S32 mWarmArmIndex = -1;
     U64 mCutSerial = 0;
+    EGatePhase mPhase = EGatePhase::INACTIVE;
+    bool mTakePending = false;
+    bool mWaitingForPlay = false;
+    F32 mProgress = 0.f;
+    std::vector<std::string> mArmStatus;
     std::string mReason;
 };
 
@@ -771,6 +787,7 @@ struct MediaUrlSource
     Location mLocation = Location::HTTP_URL;
     std::string mValue;
     bool mLoop = true;
+    EMediaOnCut mOnCut = EMediaOnCut::LIVE;
     F32 mVolume = 0.f;
     ESourceAspect mAspect = ESourceAspect::AUTO;
 };
@@ -864,6 +881,7 @@ struct DisplayDefinition
 struct ProjectorDefinition
 {
     ProjectorHandle mHandle;
+    CaptureHandle mHomeCapture; // Authored owner, independent of Gate routing.
     CaptureHandle mCapture;
     EProjectorTarget mTarget = EProjectorTarget::OBJECT;
     LLUUID mObjectId;
@@ -1021,6 +1039,10 @@ inline bool quarantineLoadedProjectorTarget(bool object_present,
 // the source target pointer or change registry/target identity.
 struct ProjectorFeed
 {
+    bool mGateTransition = false, mGateSubscribed = false;
+    U64 mGatePublication = 0;
+    F32 mGateAlpha = 0.f;
+    CaptureHandle mGateIncoming;
     ProjectorHandle mProjector;
     CaptureHandle mCapture;
     ESourceSlotKind mSourceKind = ESourceSlotKind::EMPTY;
@@ -1143,6 +1165,14 @@ struct Designation
 
 struct CompositeState
 {
+    U32 mIncomingSlot = MAX_CAPTURES;
+    F32 mGateAlpha = 0.f;
+    bool mIncomingMediaSDR = false;
+    F32 mIncomingMapping[4] = {1.f, 1.f, 0.f, 0.f};
+    F32 mIncomingOrientation[4] = {1.f, 1.f, 0.f, 0.f};
+    F32 mIncomingRegion[4] = {1.f, 1.f, 0.f, 0.f};
+    F32 mIncomingOptics[4] = {0.f, 0.f, 0.f, 0.f};
+    S32 mIncomingLetterbox = 0;
     bool mMediaSDR = false;
     U32 mCaptureSlot = MAX_CAPTURES; // Output owner, never a display index.
     LLFace* mFace = nullptr; // Valid only for the current call/frame.
@@ -1228,6 +1258,7 @@ bool switchMediaSourceKind(const CaptureHandle& slot, bool url);
 bool canRouteSource(const SourceSlotData& source);
 bool setMediaRunning(const CaptureHandle& slot, bool running);
 F64 mediaSlotDemand(const LLViewerMediaImpl* impl);
+S32 gateMediaPriority(const LLViewerMediaImpl* impl);
 void reconcileMediaSlots();
 ERegistryResult addMediaSlot(CaptureHandle* slot, std::string* reason = nullptr);
 bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source,
@@ -1235,6 +1266,8 @@ bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source,
 // Internal source controls for the later Director UI. Commit/restore are syntax only.
 bool setMediaUrlSource(const CaptureHandle& slot, const MediaUrlSource& source, std::string* reason = nullptr);
 bool setMediaFileLoop(const CaptureHandle& slot, bool loop);
+bool setMediaFileOnCut(const CaptureHandle& slot, EMediaOnCut on_cut);
+bool gatePlayVideos();
 bool setMediaFileVolume(const CaptureHandle& slot, F32 volume);
 bool setMediaSourceAspect(const CaptureHandle& slot, ESourceAspect aspect);
 void clearMediaFileBrowse(const CaptureHandle& slot);
@@ -1333,6 +1366,7 @@ ERegistryResult setDisplayGateSubscribed(const DisplayHandle& binding,
                                          const CaptureHandle* fixed_capture = nullptr,
                                          std::string* reason = nullptr);
 GateSnapshot gateSnapshot();
+U64 gateOutputPublication();
 bool gateOnAirCameraEye(LLVector3& out_agent,
                         U64* out_cut_serial = nullptr,
                         LLQuaternion* out_rotation = nullptr);
@@ -1395,6 +1429,7 @@ void renderCameraGuides();
 void onRenderTargetsReleased();
 
 // Resolve current-frame faces for all valid retained-output HDR composites.
+void bindGateComposite(LLGLSLShader& shader, const CompositeState& state);
 U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
                        U32 capacity);
 

@@ -184,14 +184,15 @@ void ALVCamPageModel::refreshNow(U32 dirty)
         const LLPrismLens::ProjectorDefinition* projector =
             findProjector(mSelectedProjector);
         if (!projector || (mSelectedCapture.mId.notNull() &&
-                           !sameCapture(projector->mCapture, mSelectedCapture)))
+                           findCapture(projector->mHomeCapture) &&
+                           !sameCapture(projector->mHomeCapture, mSelectedCapture)))
             mSelectedProjector = LLPrismLens::ProjectorHandle();
     }
     if (added_projector.mId.notNull())
     {
         const LLPrismLens::ProjectorDefinition* added = findProjector(added_projector);
         if (added && mSelectedCapture.mId.notNull() &&
-            sameCapture(added->mCapture, mSelectedCapture))
+            sameCapture(added->mHomeCapture, mSelectedCapture))
             mSelectedProjector = added_projector;
     }
     if (mSelectedProjector.mId.isNull() && mSelectedCapture.mId.notNull())

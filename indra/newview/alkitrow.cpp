@@ -160,6 +160,7 @@ ALKitRow::Params::Params() :
     unconnected("unconnected", false),
     fill_width("fill_width", false),
     action_row("action_row", false),
+    label_wrap("label_wrap", false),
     row_height("row_height", 28),
     decimals("decimals", 3),
     min_val("min_val", 0.f),
@@ -184,7 +185,8 @@ ALKitRow::ALKitRow(const Params& p) :
     mWidgetHistory(p.widget_history),
     mBulkReset(p.bulk_reset),
     mUnconnected(p.unconnected),
-    mFillWidth(p.fill_width)
+    mFillWidth(p.fill_width),
+    mLabelWrap(p.label_wrap)
 {
     ALKitStyle::color(ALKitStyle::WINDOW_BG);
     mMeta.kind           = p.kind;
@@ -524,6 +526,9 @@ void ALKitRow::fitLabel(S32 box_width)
 {
     if (!mLabel)
         return;
+    mLabel->setWordWrap(mLabelWrap);
+    if (mLabelWrap)
+    { setTextIfChanged(mLabel, mMeta.label); setToolTipIfChanged(mLabel, mMeta.label); return; }
     const std::string shown = ALKitStyle::fitText(ALKitStyle::sansFont("Kit12"), mMeta.label, box_width);
     setTextIfChanged(mLabel, shown);
     setToolTipIfChanged(mLabel, shown == mMeta.label ? std::string() : mMeta.label);
@@ -559,13 +564,15 @@ void ALKitRow::layoutRow(S32 w)
     {
         const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout" || mMeta.kind == "button") && mMeta.label.empty();
         // The label box is the mockup's 100 px label track; the favorite star has its own slot (below).
-        if (mFillWidth && mMeta.kind == "toggle")
+        if (mLabelWrap)
+            mLabel->reshape(label_width, llmax(20, h - 8), true);
+        else if (mFillWidth && mMeta.kind == "toggle")
             mLabel->reshape(label_width, 20, true);
         else
             mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
         const auto* text = dynamic_cast<LLTextBox*>(mControl);
         const bool top_aligned = mMeta.kind == "readout" && text && text->getWordWrap();
-        mLabel->setOrigin(ALKitStyle::ROW_INSET, top_aligned ? h - 24 : (h - 20) / 2);
+        mLabel->setOrigin(ALKitStyle::ROW_INSET, mLabelWrap ? 4 : top_aligned ? h - 24 : (h - 20) / 2);
         mLabel->setVisible(!full_span_custom);
         fitLabel(label_width);
     }

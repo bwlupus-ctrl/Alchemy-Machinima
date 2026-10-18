@@ -226,6 +226,15 @@ private:
     LLComboBox* mGateModeCombo = nullptr;
     LLSpinCtrl* mGateIntervalSpinner = nullptr;
     LLSpinCtrl* mGatePrewarmSpinner = nullptr;
+    LLComboBox* mGateTransitionCombo = nullptr;
+    LLComboBox* mGateOverBudgetCombo = nullptr;
+    LLComboBox* mGateVideoDwellCombo = nullptr;
+    LLComboBox* mGateOnCutCombo = nullptr;
+    LLSpinCtrl* mGateLengthSpinner = nullptr;
+    LLButton* mGatePlayVideosButton = nullptr;
+    LLTextBox* mGateCountText = nullptr;
+    LLScrollListCtrl* mGateProjectorList = nullptr;
+    U64 mGateListRevision = 0, mGateProjectorRevision = 0;
     LLComboBox* mDisplayFitCombo = nullptr;
     LLSpinCtrl* mAnchorXSpinner = nullptr;
     LLSpinCtrl* mAnchorYSpinner = nullptr;

@@ -1,10 +1,6 @@
-/**
- * @file prismLensF.glsl
- * @brief World entry point for the shared Prism signal compositor.
- *
- * The default world path calls prismSignalSample directly with the original
- * varyings and uniforms. The implementation was moved without algebraic edits,
- * so default pixels execute the identical operations in the identical order.
+/** @file prismLensF.glsl
+ * World displays always write scene-linear radiance and the ordinary glow.
+ * Each source uses HEAD's scene transfer; the main pipeline tonemaps once.
  */
 in vec2 prism_uv;
 in vec3 prism_eye_pos;

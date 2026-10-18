@@ -1657,6 +1657,7 @@ def add_media_control_oracles(entries, page_meta):
                              callbacks="ALPanelDirectorVCam::onControl", owner="ALPanelDirectorVCam",
                              xui_file="indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml")
                 reason = ("requires a live prim media face pick/commit/cancel" if action["w"] == "vc_pick_media_face"
+                          else "requires an active Gate/source fixture; reducer semantics have independent pure probes" if action["w"].startswith("vc_gate_")
                           else MEDIA_RUNTIME_REASONS[action["w"]])
                 finish_synthetic(entry, "DEFER_INWORLD", reason,
                                  ["requires_world"], True, {"state": "slot-specific action"},
@@ -1671,6 +1672,17 @@ def add_media_control_oracles(entries, page_meta):
                      resolution="isolated_media_model", probe="vcam_media_lifecycle", media_seam=seam,
                      owner="ALMediaFile", callbacks="production lifecycle helpers")
         finish_synthetic(entry, "RUN", "", [], None, {"state": "isolated " + seam + " oracle"},
+                         {"state": "pure local fixture; no I/O"})
+        entries.append(entry)
+
+    for probe in page.get("gate_functional_probes", []):
+        entry = base_entry(page_meta, "vcam_tab", "v2", "synthetic:vcam_gate_lifecycle")
+        entry.update(id="v2:vcam_tab:gate_model:" + probe["seam"], card="gate", card_title="Gate",
+                     row_label=probe["seam"], widget_name="vc_gate_model_" + probe["seam"], target_widget=probe["widget"],
+                     widget_type="model", exercise="model", resolution="isolated_gate_model",
+                     probe="vcam_gate_lifecycle", gate_seam=probe["seam"], owner="LLPrismLens::GateReducer",
+                     callbacks="production reducer/schema helpers")
+        finish_synthetic(entry, "RUN", "", [], None, {"state": "isolated Gate " + probe["seam"] + " oracle"},
                          {"state": "pure local fixture; no I/O"})
         entries.append(entry)
 
@@ -1689,7 +1701,7 @@ def add_runtime_prerequisites(entries):
     camera_cards = {"source", "placement", "skeleton", "optics", "guide", "camera_look",
                     "look_goes", "output_frame", "faces", "picture_rate", "raw_output"}
     for entry in entries:
-        if entry.get("probe") in {"vcam_media_lifecycle", "vcam_media_add"}:
+        if entry.get("probe") in {"vcam_media_lifecycle", "vcam_media_add", "vcam_gate_lifecycle"}:
             continue
         page, widget = entry["page"], entry["widget_name"]
         if page == "switchboard_tab" and re.fullmatch(r"anim_slot_\d{2}", widget):
@@ -1756,11 +1768,16 @@ def add_runtime_prerequisites(entries):
             # and preserve any deferral already assigned to the action itself.
             if condition in {"camera selected", "media slot selected"} and widget != "vc_pick_media_face":
                 condition = ""
+            if ((card_id == "gate" and widget != "vc_gate_actions" and not widget.startswith("vc_gate_model_") and row.get("k") != "readout")
+                    or widget in {"vc_gate_arm", "vc_gate_disarm", "vc_proj_feed"}):
+                condition = ""
+                entry.update(probe="vcam_gate_native", action="RUN", reason="", hazards=[], known_gap=False,
+                             visible_when="", enable_when="", expect={"state": "native panel commit and production registry read-back"})
             if card_id == "media_source":
                 # Each runnable media row gets an isolated zero-camera fixture.
                 # Native picker, cache mutations, world picks and real playback
                 # remain explicitly deferred; pure lifecycle rows cover their seams.
-                if widget in {"vc_media_kind", "vc_media_video", "vc_media_loop", "vc_media_volume"}:
+                if widget in {"vc_media_kind", "vc_media_video", "vc_media_loop", "vc_media_on_cut", "vc_media_volume"}:
                     condition = ""
                     entry.update(probe="vcam_media_file", action="RUN", reason="", hazards=[], known_gap=False,
                                  expect={"state": "isolated media descriptor and scene round-trip oracle"})
@@ -1768,6 +1785,8 @@ def add_runtime_prerequisites(entries):
                         entry["test_value"] = {"item_index": 1, "label": "Prim face", "value": "face"}
                     elif widget == "vc_media_video":
                         entry["test_value"] = "https://example.invalid/clip.mp4"
+                    elif widget == "vc_media_on_cut":
+                        entry["test_value"] = {"item_index": 1, "label": "Resume", "value": 1}
                     elif widget == "vc_media_loop":
                         entry["test_value"] = False
                     else:
@@ -1811,6 +1830,11 @@ def add_runtime_prerequisites(entries):
         if page == "stepped_tab" and widget in {"sa_fast_rate", "sa_adapt_hysteresis", "sa_background_rate"}:
             entry.setdefault("reveal", []).append({"selector": "sa_mode",
                                                    "value": 2 if widget == "sa_background_rate" else 1})
+
+    for entry in entries:
+        if entry["page"] == "vcam_tab" and entry["widget_name"] in {"vc_gate_arm", "vc_gate_disarm", "vc_proj_feed"}:
+            entry.update(probe="vcam_gate_native", action="RUN", reason="", hazards=[], known_gap=False,
+                         visible_when="", enable_when="", expect={"state": "native panel commit and production registry read-back"})
 
 
 

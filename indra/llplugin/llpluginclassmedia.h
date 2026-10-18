@@ -176,7 +176,17 @@ public:
     const char* privateFileFailureReason() const;
     std::shared_ptr<LLPluginFileClose> privateFileCloseFence()
     { return mPlugin ? mPlugin->privateFileCloseFence(mLoadToken) : nullptr; }
+    bool privateFileEffectiveLoop() const { return mPrivateEffectiveLoop; }
     bool privateFileSeekable() const { return privateFileVerdict() == 1 && mPrivateFileSeekable; }
+    void gateTransport(U64 token, S32 desired, F64 seek = -1.);
+    void gateEnvelope(U64 token, F64 gain, F64 seconds);
+    struct GateTime
+    {
+        U64 token = 0, envelopeToken = 0;
+        F64 position = 0., duration = 0., error = 1., received = 0., age = 1., pauseTime = 0., framePeriod = .1;
+        bool paused = false, playing = false, eof = false;
+    };
+    GateTime gateTime() const;
 
 private:
     std::string mPrivateDemux;
@@ -184,9 +194,11 @@ private:
     bool mPrivateLoopReverify = false;
     LLPluginLoopSeam mLoopSeams;
     void logLoopSeamSummary(const LLPluginLoopSeam::Report& report);
-    bool mPrivateLoop = true, mPrivateFileSeekable = false;
+    bool mPrivateLoop = true, mPrivateFileSeekable = false, mPrivateEffectiveLoop = false;
     LLPluginFileAdmission mPrivateAdmission;
     std::string mPrivatePlayerToken;
+    GateTime mGateTime;
+    F64 mGateNextPing = 0., mGateOffset = 0., mGateError = 1., mGateMapTime = 0.;
 public:
 
     void executeJavaScript(const std::string &code);

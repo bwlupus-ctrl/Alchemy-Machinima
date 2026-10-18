@@ -14,6 +14,21 @@
 
 namespace ALMediaFile
 {
+enum class GateSeek { NONE, SEEK, REOPEN_ZERO };
+inline GateSeek gateSeekPlan(double target, bool seekable)
+{
+    if (!std::isfinite(target) || target < 0.) return GateSeek::NONE;
+    return seekable ? GateSeek::SEEK : target == 0. ? GateSeek::REOPEN_ZERO : GateSeek::NONE;
+}
+
+template<class Seek, class Reopen>
+GateSeek applyGateSeek(double target, bool seekable, Seek seek, Reopen reopen)
+{
+    const auto plan = gateSeekPlan(target, seekable);
+    if (plan == GateSeek::SEEK) seek(target);
+    else if (plan == GateSeek::REOPEN_ZERO) reopen();
+    return plan;
+}
 inline constexpr const char* UNSUPPORTED = "Only video files (.mp4, .mov, .m4v, .webm, .mkv) are supported";
 inline constexpr const char* REMOTE = "Network-share paths are not allowed. Copy the file to a local drive.";
 inline constexpr const char* NOT_VIDEO = "This file isn't a video";

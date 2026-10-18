@@ -63,11 +63,23 @@ bool prismSignalInFrame(vec2 uv)
                               all(lessThanEqual(logical_uv, vec2(1.0))));
 }
 
-vec4 prismSignalSample(vec2 prism_uv, vec3 prism_eye_pos, vec3 prism_eye_normal)
+uniform sampler2D prismGateMap;
+uniform float prismGateAlpha;
+uniform vec4 prismGateMapping;
+uniform vec4 prismGateOrientation;
+uniform vec4 prismGateRegion;
+uniform vec4 prismGateOptics;
+uniform int prismGateLetterbox;
+uniform int prismGateMediaSDR;
+uniform int prismPrimaryMediaSDR;
+vec4 prismGateSource(sampler2D feed, vec2 prism_uv, vec4 mapping,
+                     vec4 orientation, vec4 region, int source_letterbox,
+                     vec4 optics, out vec2 oriented_uv, out float roll_seam,
+                     out vec2 sl_uv_fw)
 {
-    vec4 frag_color;
-    vec2 logical_uv = prism_uv * displayToCaptureScale +
-                      displayToCaptureOffset;
+
+    vec2 logical_uv = prism_uv * mapping.xy +
+                      mapping.zw;
 
     // Slice 1 is opaque-correct only. Edge feathering and transparent-pool
     // ordering are intentionally deferred; retain the uniform/API now.
@@ -80,22 +92,23 @@ vec4 prismSignalSample(vec2 prism_uv, vec3 prism_eye_pos, vec3 prism_eye_normal)
     // [PrismScanlines] Screen-space footprint of the orientation UV, taken in
     // uniform control flow (derivatives are undefined inside the branch
     // below). Used only to anti-alias the hard scanline edges.
-    vec2 sl_uv_fw = fwidth(logical_uv * retainedOrientationScale +
-                           retainedOrientationOffset);
+    sl_uv_fw = fwidth(logical_uv * orientation.xy +
+                           orientation.zw);
 
     // FIT deliberately maps bars outside canonical capture UV. Test before
     // orientation and sampling so an edge texel is never smeared into a bar.
-    if (letterbox != 0 &&
+    if (source_letterbox != 0 &&
         (any(lessThan(logical_uv, vec2(0.0))) ||
          any(greaterThan(logical_uv, vec2(1.0)))))
     {
         // Alpha is the viewer's pre-tonemap Prism glow channel, not opacity.
-        frag_color = vec4(barColorLinear, 0.0);
+        oriented_uv = logical_uv; roll_seam = 0.0;
+        return vec4(barColorLinear, 0.0);
     }
     else
     {
-        vec2 oriented_uv = logical_uv * retainedOrientationScale +
-                           retainedOrientationOffset;
+        oriented_uv = logical_uv * orientation.xy +
+                           orientation.zw;
 
         // -----------------------------------------------------------------
         // Feature A: per-display screen-axis orientation. Rewrites the
@@ -137,7 +150,7 @@ vec4 prismSignalSample(vec2 prism_uv, vec3 prism_eye_pos, vec3 prism_eye_normal)
         // Unstable V-sync vertical roll. The moving seam position is kept so
         // the post-sample stage can darken the classic sync band at the tear
         // instead of merely scrolling the picture.
-        float roll_seam = 0.0;
+        roll_seam = 0.0;
         if (screenEffect1.z > 0.001)
         {
             float roll_rate = mix(0.1, 1.5, screenEffect1.w);
@@ -155,54 +168,85 @@ vec4 prismSignalSample(vec2 prism_uv, vec3 prism_eye_pos, vec3 prism_eye_normal)
             oriented_uv.x = clamp(oriented_uv.x + jitter, 0.0, 1.0);
         }
 
-        vec2 texture_uv = oriented_uv * textureRegionScale +
-                          textureRegionOffset;
+        vec2 texture_uv = oriented_uv * region.xy +
+                          region.zw;
 
         vec4 col;
         // Chromatic Aberration (Radial dispersion offset). The guard is
         // widened for the per-display chroma bleed, which rides the same
         // three-tap fetch as a horizontal fringe; at screenEffect2.z == 0 the
         // committed radial-only math runs byte-identical.
-        if (prismLensOptics.x > 0.001 || screenEffect2.z > 0.001)
+        if (optics.x > 0.001 || screenEffect2.z > 0.001)
         {
-            vec2 dist = (oriented_uv - vec2(0.5)) * prismLensOptics.x * 0.015;
+            vec2 dist = (oriented_uv - vec2(0.5)) * optics.x * 0.015;
             if (screenEffect2.z > 0.001)
             {
                 dist.x += screenEffect2.z * 0.012;
             }
-            vec2 r_uv = clamp(oriented_uv + dist, vec2(0.0), vec2(1.0)) * textureRegionScale + textureRegionOffset;
-            vec2 b_uv = clamp(oriented_uv - dist, vec2(0.0), vec2(1.0)) * textureRegionScale + textureRegionOffset;
-            float r = texture(prismLensMap, r_uv).r;
-            float g = texture(prismLensMap, texture_uv).g;
-            float b = texture(prismLensMap, b_uv).b;
-            float a = texture(prismLensMap, texture_uv).a;
+            vec2 r_uv = clamp(oriented_uv + dist, vec2(0.0), vec2(1.0)) * region.xy + region.zw;
+            vec2 b_uv = clamp(oriented_uv - dist, vec2(0.0), vec2(1.0)) * region.xy + region.zw;
+            float r = texture(feed, r_uv).r;
+            float g = texture(feed, texture_uv).g;
+            float b = texture(feed, b_uv).b;
+            float a = texture(feed, texture_uv).a;
             col = vec4(r, g, b, a);
         }
         else
         {
-            col = texture(prismLensMap, texture_uv);
+            col = texture(feed, texture_uv);
         }
 
         // Exposure EV Bias Adjustment
-        if (abs(prismLensOptics.w) > 0.001)
+        if (abs(optics.w) > 0.001)
         {
-            col.rgb *= exp2(prismLensOptics.w);
+            col.rgb *= exp2(optics.w);
         }
 
         // CRT Scanlines
-        if (prismLensOptics.z > 0.001)
+        if (optics.z > 0.001)
         {
             float scanline = sin(oriented_uv.y * 600.0) * 0.5 + 0.5;
-            col.rgb *= mix(1.0, scanline * 0.4 + 0.6, prismLensOptics.z);
+            col.rgb *= mix(1.0, scanline * 0.4 + 0.6, optics.z);
         }
 
         // Film Grain Noise
-        if (prismLensOptics.y > 0.001)
+        if (optics.y > 0.001)
         {
-            float grain = (fract(sin(dot(oriented_uv, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * prismLensOptics.y * 0.15;
+            float grain = (fract(sin(dot(oriented_uv, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * optics.y * 0.15;
             col.rgb += vec3(grain);
         }
 
+        return col;
+    }
+}
+
+// Each destination applies its ordinary HEAD transfer to a complete source
+// signal. World displays blend these scene-linear signals directly; cookies
+// and previews blend only after their respective per-source transfers.
+bool prismSignalSourceInFrame(vec2 uv, bool incoming)
+{
+    if (!incoming) return prismSignalInFrame(uv);
+    vec2 logical_uv = uv * prismGateMapping.xy + prismGateMapping.zw;
+    return prismGateLetterbox == 0 || (all(greaterThanEqual(logical_uv, vec2(0.0))) &&
+                                      all(lessThanEqual(logical_uv, vec2(1.0))));
+}
+
+vec4 prismSignalSource(vec2 prism_uv, vec3 prism_eye_pos, vec3 prism_eye_normal, bool incoming)
+{
+    vec2 oriented_uv, sl_uv_fw;
+    float roll_seam;
+    vec4 col;
+    if (incoming)
+        col = prismGateSource(prismGateMap, prism_uv, prismGateMapping,
+            prismGateOrientation, prismGateRegion, prismGateLetterbox,
+            prismGateOptics, oriented_uv, roll_seam, sl_uv_fw);
+    else
+        col = prismGateSource(prismLensMap, prism_uv,
+            vec4(displayToCaptureScale, displayToCaptureOffset),
+            vec4(retainedOrientationScale, retainedOrientationOffset),
+            vec4(textureRegionScale, textureRegionOffset), letterbox,
+            prismLensOptics, oriented_uv, roll_seam, sl_uv_fw);
+    if (!prismSignalSourceInFrame(prism_uv, incoming)) return col;
         // -----------------------------------------------------------------
         // Per-display post-sample screen effects. Applied AFTER the committed
         // per-camera optics above; every block gates at > 0.001 so a zeroed
@@ -350,8 +394,13 @@ vec4 prismSignalSample(vec2 prism_uv, vec3 prism_eye_pos, vec3 prism_eye_normal)
             col.rgb = mix(col.rgb, col.rgb + env * fresnel, screenEffect4.w);
         }
 
-        // Preserve the auxiliary beauty alpha as well as RGB.
-        frag_color = col;
-    }
-    return frag_color;
+    return col;
+}
+
+vec4 prismSignalSample(vec2 uv, vec3 eye_pos, vec3 eye_normal)
+{
+    if (prismGateAlpha <= 0.0) return prismSignalSource(uv, eye_pos, eye_normal, false);
+    if (prismGateAlpha >= 1.0) return prismSignalSource(uv, eye_pos, eye_normal, true);
+    return mix(prismSignalSource(uv, eye_pos, eye_normal, false),
+               prismSignalSource(uv, eye_pos, eye_normal, true), prismGateAlpha);
 }

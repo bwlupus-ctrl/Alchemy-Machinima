@@ -7,11 +7,13 @@ in vec3 prism_eye_pos;
 in vec3 prism_eye_normal;
 out vec4 frag_color;
 
-vec4 prismSignalSample(vec2 surface_uv, vec3 eye_pos, vec3 eye_normal);
-bool prismSignalInFrame(vec2 uv);
+vec4 prismSignalSource(vec2 surface_uv, vec3 eye_pos, vec3 eye_normal, bool incoming);
+bool prismSignalSourceInFrame(vec2 uv, bool incoming);
 vec3 linear_to_srgb(vec3 color);
+uniform float prismGateAlpha;
+uniform int prismPrimaryMediaSDR;
+uniform int prismGateMediaSDR;
 uniform int projectorFollowMainExposure;
-uniform int projectorMediaSDR;
 #ifdef PROJECTOR_LOOK
 // Uploaded only by the non-default look program family. The default family is
 // the pre-look shader and receives no additional uniforms.
@@ -60,53 +62,53 @@ vec3 projectorLegacyGamma(vec3 color)
 }
 #endif
 
-void main()
+vec4 prismProjectorSource(bool incoming)
 {
+    bool camera = (incoming ? prismGateMediaSDR : prismPrimaryMediaSDR) == 0;
     vec2 sample_uv = prism_uv;
 #ifdef PROJECTOR_LOOK
     sample_uv = projectorKeystone(sample_uv);
     if (any(lessThan(sample_uv, vec2(0.0))) ||
         any(greaterThan(sample_uv, vec2(1.0))))
     {
-        frag_color = vec4(0.0, 0.0, 0.0, 1.0);
-        return;
+        return vec4(0.0, 0.0, 0.0, 1.0);
     }
 #endif
     // Mask after sampling so the signal's derivatives stay in uniform flow.
-    bool media_bar = projectorMediaSDR != 0 && !prismSignalInFrame(sample_uv);
-    vec4 color = prismSignalSample(sample_uv, prism_eye_pos, prism_eye_normal);
+    bool media_bar = !camera && !prismSignalSourceInFrame(sample_uv, incoming);
+    vec4 color = prismSignalSource(sample_uv, prism_eye_pos, prism_eye_normal, incoming);
 #ifdef PROJECTOR_LOOK
     if (projectorLookGlow.x > 0.001)
     {
         vec2 tap = projectorLookGlow.yz * 2.0;
-        vec3 blur = prismSignalSample(sample_uv + vec2(tap.x, 0.0), prism_eye_pos, prism_eye_normal).rgb;
-        blur += prismSignalSample(sample_uv - vec2(tap.x, 0.0), prism_eye_pos, prism_eye_normal).rgb;
-        blur += prismSignalSample(sample_uv + vec2(0.0, tap.y), prism_eye_pos, prism_eye_normal).rgb;
-        blur += prismSignalSample(sample_uv - vec2(0.0, tap.y), prism_eye_pos, prism_eye_normal).rgb;
+        vec3 blur = prismSignalSource(sample_uv + vec2(tap.x, 0.0), prism_eye_pos, prism_eye_normal, incoming).rgb;
+        blur += prismSignalSource(sample_uv - vec2(tap.x, 0.0), prism_eye_pos, prism_eye_normal, incoming).rgb;
+        blur += prismSignalSource(sample_uv + vec2(0.0, tap.y), prism_eye_pos, prism_eye_normal, incoming).rgb;
+        blur += prismSignalSource(sample_uv - vec2(0.0, tap.y), prism_eye_pos, prism_eye_normal, incoming).rgb;
         blur *= 0.25;
         color.rgb += max(blur - vec3(0.7), vec3(0.0)) * projectorLookGlow.x * 0.35;
     }
 #endif
 #ifdef TONEMAP
-    if (projectorFollowMainExposure != 0)
+    if (camera && projectorFollowMainExposure != 0)
     {
         color.rgb = applyExposure(color.rgb);
     }
 #endif
 #ifdef COLOR_GRADE
-    if (tonemap_type != 8)
+    if (camera && tonemap_type != 8)
     {
         color.rgb = applyWhiteBalance(color.rgb);
         color.rgb = applyLiftGammaGain(color.rgb);
     }
 #endif
 #ifdef TONEMAP
-    color.rgb = applyToneMap(color.rgb);
+    color.rgb = camera ? applyToneMap(color.rgb) : clamp(color.rgb, vec3(0.0), vec3(1.0));
 #else
     color.rgb = clamp(color.rgb, vec3(0.0), vec3(1.0));
 #endif
 #ifdef COLOR_GRADE
-    if (tonemap_type != 8) color.rgb = applySplitToning(color.rgb);
+    if (camera && tonemap_type != 8) color.rgb = applySplitToning(color.rgb);
 #endif
 #ifdef PROJECTOR_LOOK
     vec2 centred = sample_uv - vec2(0.5);
@@ -132,10 +134,10 @@ void main()
 #endif
     color.rgb = linear_to_srgb(color.rgb);
 #ifdef LEGACY_GAMMA
-    color.rgb = projectorLegacyGamma(color.rgb);
+    if (camera) color.rgb = projectorLegacyGamma(color.rgb);
 #endif
 #ifdef COLOR_GRADE
-    if (tonemap_type != 8)
+    if (camera && tonemap_type != 8)
     {
         color.rgb = applyBlackWhitePoint(color.rgb);
         color.rgb = applyBrightnessContrast(color.rgb);
@@ -147,6 +149,13 @@ void main()
         color.rgb = applyChannelCurves(color.rgb);
     }
 #endif
-    frag_color = vec4(clamp(color.rgb, vec3(0.0), vec3(1.0)), 1.0);
-    if (media_bar) frag_color = vec4(0.0, 0.0, 0.0, 1.0);
+    if (media_bar) return vec4(0.0, 0.0, 0.0, 1.0);
+    return vec4(clamp(color.rgb, vec3(0.0), vec3(1.0)), 1.0);
+}
+
+void main()
+{
+    if (prismGateAlpha <= 0.0) frag_color = prismProjectorSource(false);
+    else if (prismGateAlpha >= 1.0) frag_color = prismProjectorSource(true);
+    else frag_color = mix(prismProjectorSource(false), prismProjectorSource(true), prismGateAlpha);
 }

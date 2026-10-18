@@ -1212,7 +1212,7 @@ def check_node(
 
     if (
         node.tag == "scroll_container"
-        and not runtime_tab_fit
+        # Runtime tab fitting resizes tab pages, never nested scroll documents.
         and children
         and children[0].tag in {"panel", "layout_panel"}
     ):
@@ -1589,6 +1589,23 @@ def label_fit_findings(root: Node, path: Path) -> list[Finding]:
             if not label or not node.attrs.get("master_widget"):
                 continue
             role, allotted = "master", master_max
+        if node.tag == "kit_row" and node.attrs.get("label_wrap") == "true":
+            line, lines = "", 1
+            for word in label.split():
+                if kit_label_width(word) > allotted:
+                    findings.append(Finding("label-fit", node.line, "wrapped label contains an over-width word"))
+                trial = (line + " " + word).strip()
+                if line and kit_label_width(trial) > allotted:
+                    lines += 1
+                    line = word
+                else:
+                    line = trial
+            required_height = lines * 16 + 8
+            if int(node.attrs.get("row_height", "28")) < required_height:
+                findings.append(Finding("label-fit", node.line, f"wrapped label needs {required_height}px row height"))
+            if "mLabel->setWordWrap(mLabelWrap);" not in ALKIT_ROW_CPP.read_text(encoding="utf-8"):
+                findings.append(Finding("label-fit-runtime", node.line, "wrapped labels lack runtime wrapping"))
+            continue
         width = kit_label_width(label)
         if width <= allotted:
             continue
@@ -1981,6 +1998,25 @@ def run_selftest(json_output: bool) -> int:
     if not json_output:
         print(f"{'PASS' if adopt_passed else 'FAIL'} lazy-page adoptPage wiring: "
               "alkitlazypage.cpp call and alscrollfit.cpp implementation are both required")
+    # Runtime tab adoption must never hide a nested scroll document extent.
+    manager = xui / "floater_prism_manager.xml"
+    current_gate = check_file(manager, source_index)
+    broken_root, broken_policy = parse_xml(manager)
+    gate_doc = next(node for node in descendants(broken_root) if node.name == "gate_settings_document")
+    explicit_gate_height = gate_doc.integer("height", 0)
+    gate_doc.attrs.pop("height", None)
+    calculate(broken_root)
+    broken_gate: list[Finding] = []
+    check_node(broken_root, broken_policy, broken_gate, set(), True, False)
+    gate_extent_passed = explicit_gate_height >= 750 and not current_gate and any(
+        item.kind == "scroll-content-overflow" and "gate_settings_document" in item.message
+        for item in broken_gate)
+    passed = passed and gate_extent_passed
+    reports.append({"fixture": "full-manager Gate scroll extent", "passed": gate_extent_passed,
+                    "expected": "current document fits; missing height is rejected even with runtime tab fitting"})
+    if not json_output:
+        print(f"{'PASS' if gate_extent_passed else 'FAIL'} full-manager Gate scroll extent: "
+              "current fits; missing height rejected by production checker")
     runtime_observed = {
         finding_key(path.name, item)
         for path in sorted(xui.glob("panel_dpage_*.xml")) if is_legacy_page(path)

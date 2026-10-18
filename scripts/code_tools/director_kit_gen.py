@@ -276,8 +276,10 @@ def validate_data(data: dict) -> None:
     # 2124: Selector Name moves to camera Source; media Source gains its rename row (net +1, 10/18).
     # 2124: Enter/Load replaces Browse with a two-action row: delta 0 rows, +1 button (10/18).
     # 2124: Fix round 1 retains both native Name rows; search alias only, exact row delta 0 (10/18).
-    if len(pages) != 37 or row_count != 2124:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2124")
+    # 2141: Gate fix round 1 retains +17 exactly: help shares the armed-count row; source notes add a list column.
+    # 2141: Gate card +14, URL On cut +1, projector Feed from/note +2 (10/18).
+    if len(pages) != 37 or row_count != 2141:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2141")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -585,6 +587,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     custom_tag = row.get("custom_tag")
     if custom_tag:
         child = ET.Element(str(custom_tag), {"name": widget})
+        for column in row.get("columns", []):
+            ET.SubElement(child, "columns", {key: str(value) for key, value in column.items()})
         if row.get("actions"):
             # A kit row owns the geometry; compact action groups use native
             # buttons, with their labels/IDs/help authored in the page JSON.
@@ -722,6 +726,8 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         attrs["action_row"] = "true"
     if row.get("fill_width"):
         attrs["fill_width"] = "true"
+    if row.get("label_wrap"):
+        attrs["label_wrap"] = "true"
     if row.get("unconnected"):
         # [Connectedness B9] A row explicitly marked "unconnected" (nothing reads its setting) is
         # skipped by Reset page/card, paste, Quick favourites and Advanced reveal. A merely
@@ -937,6 +943,8 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
                 attrs[dst] = "NEW" if src == "new" else scalar(card[src])
         if card.get("badge"):
             attrs["badge"] = scalar(card["badge"])
+        if card.get("full_width"):
+            attrs["full_width"] = "true"
         enable_widget = card.get("ew") or cfg.get("card_enables", {}).get(card["id"])
         enable_setting = card.get("es")
         master = page.get("master") or {}
