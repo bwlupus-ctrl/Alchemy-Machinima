@@ -30,6 +30,7 @@
 #define LL_LLPLUGINCLASSMEDIA_H
 
 #include "llpluginprocessparent.h"
+#include "llpluginfileadmission.h"
 #include "llrect.h"
 #include "llmediaframestate.h"
 #include "llpluginclassmediaowner.h"
@@ -168,6 +169,19 @@ public:
     void setCookie(std::string uri, std::string name, std::string value, std::string domain, std::string path, bool httponly, bool secure);
 
     void loadURI(const std::string &uri);
+    void configurePrivateFile(const std::string& demux, S32 desired, bool loop);
+    S32 privateFileVerdict() const;
+    std::shared_ptr<LLPluginFileClose> privateFileCloseFence()
+    { return mPlugin ? mPlugin->privateFileCloseFence(mLoadToken) : nullptr; }
+    bool privateFileSeekable() const { return privateFileVerdict() == 1 && mPrivateFileSeekable; }
+
+private:
+    std::string mPrivateDemux;
+    S32 mPrivateDesired = 0, mPrivateFileVerdict = 0;
+    bool mPrivateLoop = true, mPrivateFileSeekable = false;
+    LLPluginFileAdmission mPrivateAdmission;
+    std::string mPrivatePlayerToken;
+public:
 
     void executeJavaScript(const std::string &code);
 

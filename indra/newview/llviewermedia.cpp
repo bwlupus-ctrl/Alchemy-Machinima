@@ -27,6 +27,8 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewermedia.h"
+#include "alvcammediafileio.h"
+#include "alvcammediafilelifecycle.h"
 #include "llprismlens.h"
 
 #include "llagent.h"
@@ -684,6 +686,7 @@ void LLViewerMedia::updateMedia(void *dummy_arg)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA; //LL_RECORD_BLOCK_TIME(FTM_MEDIA_UPDATE);
 
+    LLPrismLens::retireMediaFileOwners(); // before raw-pointer media traversals
     llassert(!gCubeSnapshot);
     static LLCachedControl<bool> use_read_thread(gSavedSettings, "PluginUseReadThread", true);
 
@@ -857,7 +860,7 @@ void LLViewerMedia::updateMedia(void *dummy_arg)
 
             // Overrides if the window is minimized or we lost focus (taking care
             // not to accidentally "raise" the priority either)
-            if (!gViewerWindow->getActive() /* viewer window minimized? */
+            if (ALMediaFile::windowMinimizedHides(pimpl->isPrivateFile(), gViewerWindow->getActive())
                 && new_priority > LLPluginClassMedia::PRIORITY_HIDDEN)
             {
                 new_priority = LLPluginClassMedia::PRIORITY_HIDDEN;
@@ -978,6 +981,7 @@ bool LLViewerMedia::isAnyMediaPlaying()
 //////////////////////////////////////////////////////////////////////////////////////////
 void LLViewerMedia::setAllMediaEnabled(bool val)
 {
+    if (!val) LLPrismLens::stopPrivateMediaFiles();
     // Set "tentative" autoplay first.  We need to do this here or else
     // re-enabling won't start up the media below.
     gSavedSettings.setBOOL("MediaTentativeAutoPlay", val);
@@ -1033,6 +1037,7 @@ void LLViewerMedia::setAllMediaEnabled(bool val)
 //////////////////////////////////////////////////////////////////////////////////////////
 void LLViewerMedia::setAllMediaPaused(bool val)
 {
+    if (val) LLPrismLens::stopPrivateMediaFiles();
     // Set "tentative" autoplay first.  We need to do this here or else
     // re-enabling won't start up the media below.
     gSavedSettings.setBOOL("MediaTentativeAutoPlay", !val);
@@ -1772,6 +1777,7 @@ bool LLViewerMediaImpl::initializeMedia(const std::string& mime_type)
 //////////////////////////////////////////////////////////////////////////////////////////
 void LLViewerMediaImpl::createMediaSource()
 {
+    if (mPrivateFile && !mPrivateActive) return;
     if(mPriority == LLPluginClassMedia::PRIORITY_UNLOADED)
     {
         // This media shouldn't be created yet.
@@ -1796,6 +1802,11 @@ void LLViewerMediaImpl::createMediaSource()
 void LLViewerMediaImpl::destroyMediaSource()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA;
+    if (mPrivateFile && mPrivateEverLoaded && !mPrivateInitializing)
+    {
+        mPrivateActive = false; mPrivateDesired = 0;
+        mMediaURL.clear(); resetPreviousMediaState(); mCompletedImage.ready = false;
+    }
     mResolvedPlugin.clear();
     if (LLPrismLens::mediaSlotsEnabled())
     {
@@ -1829,6 +1840,11 @@ void LLViewerMediaImpl::destroyMediaSource()
         LLCoros::LockType lock(mLock); // Delay tear-down while bg thread is updating
         if(mMediaSource)
         {
+            if (mPrivateFile && mPrivateRetention)
+            {
+                auto fence = mMediaSource->privateFileCloseFence();
+                ALMediaFile::retireAfterClose(mPrivateRetention, std::move(fence));
+            }
             mMediaSource->setDeleteOK(true) ;
             mMediaSource = NULL; // shared pointer
         }
@@ -1844,7 +1860,7 @@ void LLViewerMediaImpl::setMediaType(const std::string& media_type)
 
 //////////////////////////////////////////////////////////////////////////////////////////
 /*static*/
-LLPluginClassMedia* LLViewerMediaImpl::newSourceFromMediaType(std::string media_type, LLPluginClassMediaOwner *owner /* may be NULL */, S32 default_width, S32 default_height, F64 zoom_factor, const std::string target, bool clean_browser, std::string* resolved_plugin)
+LLPluginClassMedia* LLViewerMediaImpl::newSourceFromMediaType(std::string media_type, LLPluginClassMediaOwner *owner /* may be NULL */, S32 default_width, S32 default_height, F64 zoom_factor, const std::string target, bool clean_browser, std::string* resolved_plugin, bool force_vlc)
 {
     if (resolved_plugin) resolved_plugin->clear();
     if (gNonInteractive)
@@ -1852,7 +1868,7 @@ LLPluginClassMedia* LLViewerMediaImpl::newSourceFromMediaType(std::string media_
         return NULL;
     }
 
-    std::string plugin_basename = LLMIMETypes::implType(media_type);
+    std::string plugin_basename = force_vlc ? "media_plugin_libvlc" : LLMIMETypes::implType(media_type);
     LLPluginClassMedia* media_source = NULL;
 
     // HACK: we always try to keep a spare running webkit plugin around to improve launch times.
@@ -2036,11 +2052,11 @@ bool LLViewerMediaImpl::initializePlugin(const std::string& media_type)
     // Save the MIME type that really caused the plugin to load
     mCurrentMimeType = mMimeType;
 
-    LLPluginClassMedia* media_source = newSourceFromMediaType(mMimeType, this, mMediaWidth, mMediaHeight, mZoomFactor, mTarget, mCleanBrowser, &mResolvedPlugin);
+    LLPluginClassMedia* media_source = newSourceFromMediaType(mMimeType, this, mMediaWidth, mMediaHeight, mZoomFactor, mTarget, mCleanBrowser, &mResolvedPlugin, mPrivateFile);
 
     if (media_source)
     {
-        media_source->injectOpenIDCookie();
+        if (!mPrivateFile) media_source->injectOpenIDCookie();
         media_source->setDisableTimeout(gSavedSettings.getBOOL("DebugPluginDisableTimeout"));
         media_source->setLoop(mMediaLoop);
         media_source->setAutoScale(mMediaAutoScale);
@@ -2082,6 +2098,15 @@ void LLViewerMediaImpl::loadURI()
 {
     if(mMediaSource)
     {
+        if (mPrivateFile)
+        {
+            if (!mPrivateActive || mMediaURL.rfind("file:///", 0) != 0 || !hasLibVLCSource()) return;
+            mMediaSource->configurePrivateFile(mPrivateDemux, mPrivateDesired, mMediaLoop);
+            ++mMediaSourceEpoch; mMediaUploadState.invalidate(); mCompletedImage.ready = false;
+            mMediaSource->loadURI(mMediaURL); // already encoded exactly once
+            mPrivateEverLoaded = true;
+            return;
+        }
         // trim whitespace from front and back of URL - fixes EXT-5363
         LLStringUtil::trim( mMediaURL );
 
@@ -2163,6 +2188,7 @@ void LLViewerMediaImpl::hideNotification()
 //////////////////////////////////////////////////////////////////////////////////////////
 void LLViewerMediaImpl::play()
 {
+    if (mPrivateFile) return;
     // If the media source isn't there, try to initialize it and load an URL.
     if(mMediaSource == NULL)
     {
@@ -2183,6 +2209,7 @@ void LLViewerMediaImpl::play()
 //////////////////////////////////////////////////////////////////////////////////////////
 void LLViewerMediaImpl::stop()
 {
+    if (mPrivateFile) { retirePrivateFile(); return; }
     if(mMediaSource)
     {
         mMediaSource->stop();
@@ -2193,6 +2220,7 @@ void LLViewerMediaImpl::stop()
 //////////////////////////////////////////////////////////////////////////////////////////
 void LLViewerMediaImpl::pause()
 {
+    if (mPrivateFile) return;
     if(mMediaSource)
     {
         mMediaSource->pause();
@@ -2206,6 +2234,7 @@ void LLViewerMediaImpl::pause()
 //////////////////////////////////////////////////////////////////////////////////////////
 void LLViewerMediaImpl::start()
 {
+    if (mPrivateFile) return;
     if(mMediaSource)
     {
         mMediaSource->start();
@@ -2294,7 +2323,9 @@ void LLViewerMediaImpl::updateVolume()
         // always scale the volume by the global media volume
         F32 volume = mRequestedVolume * LLViewerMedia::getInstance()->getVolume();
 
-        if (mProximityCamera > 0)
+        if (mPrivateFile && (!mPrivateActive || mPrivateDesired != 2 || !privateFileAdmitted() || !mediaSlotPermitted())) volume = 0.f;
+
+        if (!mPrivateFile && mProximityCamera > 0)
         {
             static LLCachedControl<F32> media_rolloff_min(gSavedSettings, "MediaRollOffMin");
             static LLCachedControl<F32> media_rolloff_max(gSavedSettings, "MediaRollOffMax");
@@ -2737,6 +2768,17 @@ void LLViewerMediaImpl::navigateTo(const std::string& url, const std::string& mi
 void LLViewerMediaImpl::navigateInternal(bool should_log)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA;
+    if (mPrivateFile)
+    {
+        if (mPrivateActive && mediaSlotPermitted() && mMediaURL.rfind("file:///", 0) == 0)
+        {
+            mPrivateInitializing = true;
+            const bool ready = initializeMedia("video/mp4");
+            mPrivateInitializing = false;
+            if (ready) loadURI();
+        }
+        return;
+    }
     // Helpful to have media urls in log file. Shouldn't be spammy.
     {
         // Do not log the query parts
@@ -3058,6 +3100,7 @@ LLMediaFrame::Identity LLViewerMediaImpl::mediaImageIdentity() const
 LLViewerMediaImpl::CompletedImage LLViewerMediaImpl::completedMediaImage() const
 {
     CompletedImage image = mCompletedImage;
+    if (mPrivateFile && !privateFileAdmitted()) image.ready = false;
     image.ready = image.ready && mMediaUploadState.ready && hasLibVLCSource() && image.identity == mediaImageIdentity();
     auto* texture = LLViewerTextureManager::findMediaTexture(mTextureId);
     image.ready = image.ready && texture && texture->getGLTexture() &&
@@ -3072,6 +3115,39 @@ LLViewerMediaImpl::CompletedImage LLViewerMediaImpl::completedMediaImage() const
     return image;
 }
 
+void LLViewerMediaImpl::cuePrivateFile(const std::string& uri, const std::string& demux, S32 desired, bool loop, F32 volume, std::shared_ptr<void> retention)
+{
+    mPrivateRetention = std::move(retention);
+    mPrivateFile = true; mPrivateActive = true; mPrivateBudgetLost = false;
+    mPrivateDesired = desired; mPrivateDemux = demux; mMediaLoop = loop;
+    mRequestedVolume = llclamp(volume, 0.f, 1.f);
+    mMediaURL = uri; mMimeType = "video/mp4";
+    mNavigateRediscoverType = false; mNavigateServerRequest = false;
+    resetPreviousMediaState();
+}
+
+void LLViewerMediaImpl::privateTransport(S32 desired, bool loop)
+{
+    if (!mPrivateFile || !mPrivateActive) return;
+    mPrivateDesired = desired; mMediaLoop = loop;
+    if (mMediaSource) mMediaSource->configurePrivateFile(mPrivateDemux, desired, loop);
+    updateVolume();
+}
+
+void LLViewerMediaImpl::retirePrivateFile()
+{
+    if (!mPrivateFile || !mPrivateActive) return;
+    mPrivateActive = false; mPrivateDesired = 0; mRequestedVolume = 0.f;
+    if (mMediaSource)
+    {
+        mMediaSource->setVolume(0.f);
+        mMediaSource->configurePrivateFile(mPrivateDemux, 0, false);
+    }
+    resetPreviousMediaState(); mMediaURL.clear(); mMediaEntryURL.clear();
+    mCompletedImage.ready = false; mMediaUploadState.invalidate();
+    destroyMediaSource();
+}
+
 bool LLViewerMediaImpl::mediaSlotPermitted() const
 {
     static LLCachedControl<bool> inworld_media_enabled(gSavedSettings, "AudioStreamingMedia", true);
@@ -3084,6 +3160,7 @@ bool LLViewerMediaImpl::mediaSlotPermitted() const
 bool LLViewerMediaImpl::mediaSlotCandidate() const
 {
     if (mMediaSource) return hasLibVLCSource();
+    if (mPrivateFile) return mPrivateActive;
     // A MIME mapping is provisional, never proof about a running plugin.
     std::string plugin = LLMIMETypes::implType(mMimeType);
 #if LL_LINUX
@@ -3236,6 +3313,7 @@ void LLViewerMediaImpl::finishMediaTexUpdate(MediaUpload& upload, bool success)
 void LLViewerMediaImpl::update()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA; //LL_RECORD_BLOCK_TIME(FTM_MEDIA_DO_UPDATE);
+    if (mPrivateFile && !mPrivateActive) return;
 
     // [WebIdle] pause / resume undrawn UI web pages (UI impls only)
     updateWebPause();
@@ -3962,7 +4040,7 @@ void LLViewerMediaImpl::setDisabled(bool disabled, bool forcePlayOnEnable)
         else
         {
             // We just (re)enabled this media.  Do a navigate if auto-play is in order.
-            if(isAutoPlayable() || forcePlayOnEnable)
+            if(!mPrivateFile && (isAutoPlayable() || forcePlayOnEnable))
             {
                 navigateTo(mMediaEntryURL, "", true, true);
             }
@@ -3975,6 +4053,7 @@ void LLViewerMediaImpl::setDisabled(bool disabled, bool forcePlayOnEnable)
 //
 bool LLViewerMediaImpl::isForcedUnloaded() const
 {
+    if (mPrivateFile && !mPrivateActive) return true;
     if(mIsMuted || mMediaSourceFailed || mIsDisabled)
     {
         return true;
@@ -4600,6 +4679,12 @@ void LLViewerMediaImpl::setPriority(LLPluginClassMedia::EPriority priority)
             << LL_ENDL;
     }
 
+    if (mPrivateFile && mPrivateActive && priority <= LLPluginClassMedia::PRIORITY_SLIDESHOW)
+    {
+        // Ordinary admission made this decision; recovery requires a new Play.
+        mPrivateBudgetLost = true;
+        retirePrivateFile();
+    }
     mPriority = priority;
 
     if(priority == LLPluginClassMedia::PRIORITY_UNLOADED)
@@ -4739,6 +4824,7 @@ void LLViewerMediaImpl::setTextureID(LLUUID id)
 //
 bool LLViewerMediaImpl::isAutoPlayable() const
 {
+    if (mPrivateFile) return false;
     return (mMediaAutoPlay &&
             gSavedSettings.getS32("ParcelMediaAutoPlayEnable") != 0 &&
             gSavedSettings.getBOOL("MediaTentativeAutoPlay"));
@@ -4748,6 +4834,8 @@ bool LLViewerMediaImpl::isAutoPlayable() const
 //
 bool LLViewerMediaImpl::shouldShowBasedOnClass() const
 {
+    // Objectless private playback uses in-world media preferences, never UI privileges.
+    if (mPrivateFile) return gSavedSettings.getBOOL("AudioStreamingMedia");
     // If this is parcel media or in the UI, return true always
     if (getUsedInUI() || isParcelMedia()) return true;
 
@@ -4788,6 +4876,9 @@ bool LLViewerMediaImpl::shouldShowBasedOnClass() const
 //
 bool LLViewerMediaImpl::isObscured() const
 {
+    // A private file has no prim or parcel classification. Global media policy
+    // and its explicit slot Play remain authoritative.
+    if (mPrivateFile) return false;
     if (getUsedInUI() || isParcelMedia() || isAttachedToHUD()) return false;
 
     LLParcel* agent_parcel = LLViewerParcelMgr::getInstance()->getAgentParcel();

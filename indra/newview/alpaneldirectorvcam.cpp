@@ -879,8 +879,8 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             if (ALKitCard* card = mKitPage->findCard(id)) card->setCodeVisible(false);
         setValueIfChanged(control("vc_media_running"), capture->mMediaRunning ? 1 : 0);
         setValueIfChanged(control("vc_media_status"), capture->mRuntime.mReason);
-        setValueIfChanged(control("vc_source_aspect"), static_cast<S32>(capture->mediaData()->mAspect));
-        setValueIfChanged(control("vc_media_face"), capture->mediaData()->mObjectId.isNull() ? "Unbound" :
+        setValueIfChanged(control("vc_source_aspect"), static_cast<S32>(capture->mediaAspect()));
+        setValueIfChanged(control("vc_media_face"), !capture->mediaData() || capture->mediaData()->mObjectId.isNull() ? "Unbound" :
             llformat("%s / face %d", capture->mediaData()->mObjectId.asString().c_str(), capture->mediaData()->mTE));
         setValueIfChanged(control("vc_rate_mode"), static_cast<S32>(capture->mRate.mMode));
         setValueIfChanged(control("vc_target_fps"), capture->mRate.mTargetFps);
@@ -1012,7 +1012,7 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
     if (name == "vc_pick_media_face" && capture && capture->isMedia())
     {
         const auto handle = capture->mHandle;
-        const auto descriptor = *capture->mediaData();
+        const auto descriptor = capture->mediaData() ? *capture->mediaData() : LLPrismLens::MediaFaceSource();
         const U64 revision = mModel.registry().mConfigurationRevision;
         const auto panel = getHandle();
         auto& tool = MediaFacePickTool::instance();
@@ -1306,6 +1306,15 @@ void ALPanelDirectorVCam::commitCamera(const std::string& name, const LLSD& valu
     {
         if (name == "vc_source_aspect")
         {
+            if (capture->mediaUrlData())
+            {
+                auto source = *capture->mediaUrlData();
+                source.mAspect = static_cast<LLPrismLens::ESourceAspect>(llclamp(value.asInteger(), 0, 3));
+                std::string reason;
+                if (!LLPrismLens::setMediaUrlSource(capture->mHandle, source, &reason)) setStatus(reason);
+                mModel.refreshNow();
+                return;
+            }
             auto source = *capture->mediaData();
             source.mAspect = static_cast<LLPrismLens::ESourceAspect>(llclamp(value.asInteger(), 0, 3));
             std::string reason;

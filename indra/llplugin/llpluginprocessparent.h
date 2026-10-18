@@ -38,6 +38,7 @@
 #include "llpluginmessage.h"
 #include "llpluginmessagepipe.h"
 #include "llpluginsharedmemory.h"
+#include "llpluginfileclose.h"
 
 #include "lliosocket.h"
 #include "llthread.h"
@@ -98,6 +99,13 @@ public:
 
     static ptr_t create(LLPluginProcessParentOwner *owner);
     void requestShutdown();
+    std::shared_ptr<LLPluginFileClose> privateFileCloseFence(const std::string& token)
+    {
+        if (!mPrivateFileClose) mPrivateFileClose = std::make_shared<LLPluginFileClose>();
+        mPrivateFileCloseToken = token;
+        return mPrivateFileClose;
+    }
+    F32 getLaunchTimeout() const { return mPluginLaunchTimeout; }
 
     // Inherited from LLPluginMessagePipeOwner
     /*virtual*/ void receiveMessageRaw(const std::string &message);
@@ -234,6 +242,8 @@ private:
     LLProcessPtr mDebugger;
 
     F32 mPluginLaunchTimeout;       // Somewhat longer timeout for initial launch.
+    std::shared_ptr<LLPluginFileClose> mPrivateFileClose;
+    std::string mPrivateFileCloseToken;
     F32 mPluginLockupTimeout;       // If we don't receive a heartbeat in this many seconds, we declare the plugin locked up.
 
     static bool sUseReadThread;

@@ -31,6 +31,7 @@
 #include <curl/curl.h>
 #include <string>
 #include <sstream>
+#include <atomic>
 
 
 namespace LLCore
@@ -344,9 +345,12 @@ void initialize()
 }
 
 
+static std::atomic<unsigned> sDetachedTransfers{0};
+void retainDetachedTransfer() { sDetachedTransfers.fetch_add(1); }
+void releaseDetachedTransfer() { sDetachedTransfers.fetch_sub(1); }
 void cleanup()
 {
-    curl_global_cleanup();
+    if (!sDetachedTransfers.load()) curl_global_cleanup();
 }
 
 

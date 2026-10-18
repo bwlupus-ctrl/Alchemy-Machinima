@@ -8,6 +8,8 @@
 #include "../test/lltut.h"
 #include "../llprismlens.h"
 #include "../alvcamautovol.h"
+#include "../alvcammediafilelifecycle.h"
+#include <array>
 #include "../../llplugin/llmediaframestate.h"
 
 #include <limits>
@@ -254,6 +256,14 @@ void prism_projector_object::test<14>()
     ensure("media is eligible for shared routing", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::OK);
     binding.mGateSubscribed = true;
     ensure("media cannot inherit a gate subscription", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::INVALID_CONFIGURATION);
+    binding.mGateSubscribed = false;
+    source.setMediaUrlData(LLPrismLens::MediaUrlSource());
+    ensure("private kind has no camera payload", source.cameraData() == nullptr && source.mediaData() == nullptr && source.isMedia());
+    ensure("private route capability", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::OK);
+    ensure("both media output paths", LLPrismLens::isMediaKind(source.sourceKind()));
+    ensure("private defaults", source.mediaUrlData()->mLoop && source.mediaUrlData()->mVolume == 0.f && source.mediaUrlData()->mValue.empty());
+    binding.mGateSubscribed = true;
+    ensure("private media cannot inherit a gate subscription", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::INVALID_CONFIGURATION);
 
 }
 
@@ -577,6 +587,113 @@ void prism_projector_object::test<29>()
             ensure("media uses both gates", projectorVolumetricsEligible(master, media, true) == (master && media));
             ensure("camera depends only on master", projectorVolumetricsEligible(master, media, false) == master);
         }
+}
+
+
+template<> template<>
+void prism_projector_object::test<30>()
+{
+    set_test_name("camera-only scene replacement releases private playback and demand");
+    using namespace LLPrismLens;
+    CaptureDefinition slot;
+    slot.mHandle.mGeneration = 7;
+    MediaUrlSource video;
+    video.mAspect = ESourceAspect::CINEMA_239;
+    slot.setMediaUrlData(video);
+    ensure("URL fixture has no face payload",!slot.mediaData());
+    ensure("URL aspect uses tagged accessor",slot.mediaAspect() == ESourceAspect::CINEMA_239);
+    std::array<std::shared_ptr<int>,1> owners{std::make_shared<int>(7)};
+    std::weak_ptr<int> owner = owners[0];
+    auto matches = [&](unsigned)
+    { return ALMediaFile::matchingPrivateOwner(true,slot.mediaUrlData()!=nullptr,
+        slot.mHandle.mGeneration,7); };
+    ensure_equals("playing URL has bootstrap demand",ALMediaFile::privateOwnerDemand(matches(0),false,true,true),1048576.);
+    // Apply a camera-only scene (new generation); no player/GL/world required.
+    slot = CaptureDefinition();
+    slot.mHandle.mGeneration = 8;
+    slot.setCameraData(CameraPayload());
+    ensure_equals("orphan demand disappears before reconciliation",ALMediaFile::privateOwnerDemand(matches(0),false,true,true),0.);
+    ALMediaFile::sweepPrivateOwners(owners,matches,[&](unsigned index) { owners[index].reset(); });
+    ensure("reconcile releases the private owner",owner.expired());
+    ensure_equals("camera-only scene has zero private demand",ALMediaFile::privateOwnerDemand(matches(0),false,true,true),0.);
+    slot.setMediaUrlData(MediaUrlSource());
+    ensure("same kind with reused slot is still stale",!matches(0));
+}
+
+template<> template<>
+void prism_projector_object::test<31>()
+{
+    set_test_name("scene apply core retires every owner before replacing source slots");
+    using namespace LLPrismLens;
+    std::array<CaptureDefinition,2> slots;
+    slots[0].setMediaUrlData(MediaUrlSource());
+    slots[1].setCameraData(CameraPayload());
+    std::array<std::shared_ptr<int>,2> owners{std::make_shared<int>(7),std::make_shared<int>(8)};
+    std::weak_ptr<int> video = owners[0], orphan = owners[1];
+    unsigned stopped = 0;
+    ALMediaFile::replaceSceneSources(slots,[&](unsigned slot)
+    {
+        ensure("all owners retire before any source is replaced",slots[0].mediaUrlData() != nullptr);
+        owners[slot].reset(); ++stopped;
+    });
+    slots[0].setCameraData(CameraPayload());
+    ensure_equals("scene commit visits camera and media slots",stopped,2u);
+    ensure("scene commit retires playback and pre-existing orphan",video.expired() && orphan.expired());
+    ensure("new scene contains no private source",!slots[0].mediaUrlData() && !slots[1].mediaUrlData());
+}
+
+template<> template<>
+void prism_projector_object::test<32>()
+{
+    set_test_name("face Browse survives reconciliation and converts only on a current pick");
+    using namespace LLPrismLens;
+    SourceSlotData slot;
+    MediaFaceSource face; face.mAspect = ESourceAspect::CINEMA_239;
+    slot.setMediaData(face);
+    ALMediaFile::FilePickerTicket picker;
+    const auto ticket = picker.begin();
+    std::array<std::shared_ptr<int>,1> owners{}; // Browse creates no privateOwner
+    ALMediaFile::sweepPrivateOwners(owners,[](unsigned) { return false; },[&](unsigned) { picker.cancel(); });
+    ensure("opening picker preserves face source",slot.mediaData() != nullptr);
+    ensure("current picker survives owner reconciliation",picker.picked(ticket,true,[&]() { slot.setMediaUrlData(slot.fileBrowseCue()); }));
+    ensure("chosen path converts to URL source",slot.mediaUrlData() != nullptr);
+    ensure("conversion preserves face aspect",slot.mediaAspect() == ESourceAspect::CINEMA_239);
+    ensure("converted cue is empty pending validation",slot.mediaUrlData()->mValue.empty());
+    ensure("conversion defaults remain muted and looping",slot.mediaUrlData()->mVolume == 0.f && slot.mediaUrlData()->mLoop);
+    const auto stale = picker.begin();
+    picker.cancel();
+    bool applied = false;
+    ensure("replacement cancels picker",!picker.picked(stale,true,[&]() { applied = true; }));
+    ensure("caller selection loss cancels picker",!picker.picked(picker.begin(),false,[&]() { applied = true; }));
+    ensure("stale picker cannot mutate cue",!applied);
+}
+
+template<> template<> void prism_projector_object::test<33>()
+{
+    set_test_name("Browse preflight failure and cancellation retain the committed face");
+    using namespace LLPrismLens;
+    SourceSlotData slot;
+    MediaFaceSource face;
+    face.mObjectId.generate(); face.mTE = 7; face.mAspect = ESourceAspect::CINEMA_239;
+    slot.setMediaData(face);
+    std::string status;
+    const auto commit = [&]()
+    {
+        auto cue = slot.fileBrowseCue(); cue.mValue = "C:/valid.mov";
+        cue.mLocation = MediaUrlSource::Location::LOCAL_FILE;
+        slot.setMediaUrlData(cue);
+    };
+    ensure("failed preflight cannot commit",!ALMediaFile::commitFileBrowse(status,ALMediaFile::NOT_VIDEO,false,true,commit));
+    ensure("face kind survives failure",slot.mediaData() != nullptr && !slot.mediaUrlData());
+    ensure("face object survives failure",slot.mediaData()->mObjectId == face.mObjectId);
+    ensure_equals("face TE survives failure",slot.mediaData()->mTE,face.mTE);
+    ensure_equals("failed preflight status visible",status,std::string(ALMediaFile::NOT_VIDEO));
+    ensure("cancelled pick cannot commit",!ALMediaFile::commitFileBrowse(status,"",true,false,commit));
+    ensure("cancelled pick preserves face",slot.mediaData() && slot.mediaData()->mObjectId == face.mObjectId);
+    ensure("only successful current preflight commits",ALMediaFile::commitFileBrowse(status,"",true,true,commit));
+    ensure("successful Browse converts to URL",slot.mediaUrlData() && !slot.mediaData());
+    ensure_equals("successful cue path",slot.mediaUrlData()->mValue,std::string("C:/valid.mov"));
+    ensure("successful conversion preserves aspect",slot.mediaAspect() == ESourceAspect::CINEMA_239);
 }
 
 }

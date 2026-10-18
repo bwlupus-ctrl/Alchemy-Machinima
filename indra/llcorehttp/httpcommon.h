@@ -496,6 +496,9 @@ namespace LLHttp
 
     void initialize();
     void cleanup();
+    // Detached private downloads retain global curl/TLS state until process exit.
+    void retainDetachedTransfer();
+    void releaseDetachedTransfer();
 
     CURL_ptr createEasyHandle();
     std::string getCURLVersion();

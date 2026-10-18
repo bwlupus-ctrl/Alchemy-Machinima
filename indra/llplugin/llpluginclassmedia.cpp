@@ -831,6 +831,17 @@ void LLPluginClassMedia::loadURI(const std::string &uri)
     LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "load_uri");
 
     message.setValue("uri", uri);
+    if (!mPrivateDemux.empty())
+    {
+        mPrivateFileVerdict = 0;
+        mPrivatePlayerToken.clear();
+        mPrivateAdmission.queued(LLTimer::getTotalSeconds(), mPlugin ? mPlugin->getLaunchTimeout() : 60.);
+        mPrivateFileSeekable = false;
+        message.setValueBoolean("private_file", true);
+        message.setValue("demux", mPrivateDemux);
+        message.setValueS32("desired", mPrivateDesired);
+        message.setValueBoolean("private_loop", mPrivateLoop);
+    }
     if (mFrameTracking.tokenLoads)
     {
         mLoadToken = LLUUID::generateNewID().asString();
@@ -843,6 +854,22 @@ void LLPluginClassMedia::loadURI(const std::string &uri)
         mFrameTracking.awaitFrame();
     }
     sendMessage(message);
+}
+
+void LLPluginClassMedia::configurePrivateFile(const std::string& demux, S32 desired, bool loop)
+{
+    mPrivateAdmission.resumed(LLTimer::getTotalSeconds(), mPrivateDesired, desired, mPrivateFileVerdict);
+    mPrivateDemux = demux; mPrivateDesired = desired; mPrivateLoop = loop;
+    LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "private_transport");
+    message.setValueS32("desired", desired);
+    message.setValueBoolean("loop", loop);
+    sendMessage(message);
+}
+
+S32 LLPluginClassMedia::privateFileVerdict() const
+{
+    return mPrivateDemux.empty() ? mPrivateFileVerdict :
+        mPrivateAdmission.verdict(mPrivateFileVerdict, mPrivateDesired, LLTimer::getTotalSeconds());
 }
 
 void LLPluginClassMedia::executeJavaScript(const std::string &code)
@@ -1150,6 +1177,29 @@ void LLPluginClassMedia::receivePluginMessage(const LLPluginMessage &message)
             mAcceleratedPaintDirty = true;
             mediaEvent(LLPluginClassMediaOwner::MEDIA_EVENT_CONTENT_UPDATED);
         }
+        else if (message_name == "private_file_admission")
+        {
+            if (!mPrivateDemux.empty() && LLMediaFrame::acceptsToken(mLoadToken, message.getValue("load_token")))
+            {
+                mPrivateFileVerdict = message.getValueS32("verdict");
+                if (mPrivateFileVerdict == 0 && message.getValueBoolean("opened"))
+                {
+                    const auto player = message.getValue("player_token");
+                    if (player != mPrivatePlayerToken)
+                    {
+                        mPrivatePlayerToken = player;
+                        mPrivateAdmission.queued(LLTimer::getTotalSeconds(), mPlugin ? mPlugin->getLaunchTimeout() : 60.);
+                    }
+                    mPrivateAdmission.opened(LLTimer::getTotalSeconds());
+                }
+                mPrivateFileSeekable = message.getValueBoolean("seekable");
+                if (mPrivateFileVerdict != 1)
+                {
+                    resetDirty(); mDirtyLoadToken.clear();
+                    mFrameTracking.awaitFrame(); ++mLayoutEpoch;
+                }
+            }
+        }
         else if (message_name == "source_video_size")
         {
             if (mFrameTracking.tokenLoads && LLMediaFrame::acceptsToken(mLoadToken, message.getValue("load_token")))
@@ -1169,6 +1219,7 @@ void LLPluginClassMedia::receivePluginMessage(const LLPluginMessage &message)
         }
         else if(message_name == "updated")
         {
+            if (!mPrivateDemux.empty() && mPrivateFileVerdict != 1) return;
             if(message.hasValue("left"))
             {
                 if (!mFrameTracking.acceptsUpdate(mLoadToken, message.getValue("load_token"))) return;

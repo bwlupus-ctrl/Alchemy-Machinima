@@ -1,0 +1,319 @@
+/** Private video-file policy. Pure logic: no viewer state or filesystem calls. */
+#ifndef AL_VCAM_MEDIA_FILE_POLICY_H
+#define AL_VCAM_MEDIA_FILE_POLICY_H
+
+#include <algorithm>
+#include <cctype>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace ALMediaFile
+{
+inline constexpr const char* UNSUPPORTED = "Only video files (.mp4, .mov, .m4v, .webm, .mkv) are supported";
+inline constexpr const char* REMOTE = "Network-share paths are not allowed. Copy the file to a local drive.";
+inline constexpr const char* NOT_VIDEO = "This file isn't a video";
+inline constexpr const char* MISSING = "File not found";
+inline constexpr const char* LOCKED = "Video downloads are in use by another open viewer";
+inline constexpr const char* BUDGET = "Budget limited - press Play";
+inline constexpr const char* TOO_LARGE = "File too large";
+inline constexpr const char* NO_SPACE = "Not enough disk space";
+inline constexpr const char* CLEARING = "Clearing video cache...";
+inline constexpr const char* CLEAR_DEGRADED = "Some cached videos couldn't be removed";
+inline constexpr const char* FAILED = "Download failed";
+std::string cacheKey(const std::string& url);
+enum class Location { HTTP_URL, LOCAL_FILE };
+enum class Transport { STOPPED, PAUSED, PLAYING };
+enum class Verdict { PENDING, ADMITTED, REJECTED };
+struct Descriptor
+{
+    Location location = Location::HTTP_URL;
+    std::string value;
+    bool loop = true;
+    float volume = 0.f;
+};
+inline std::string lower(std::string s)
+{
+    for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return s;
+}
+inline bool control(const std::string& s)
+{
+    return std::any_of(s.begin(), s.end(), [](unsigned char c) { return c < 32 || c == 127; });
+}
+inline int hex(char c)
+{
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
+}
+inline bool decode(std::string s, std::string& out)
+{
+    out.clear();
+    for (size_t i = 0; i < s.size(); ++i)
+    {
+        if (s[i] != '%') out += s[i];
+        else
+        {
+            if (i + 2 >= s.size() || hex(s[i+1]) < 0 || hex(s[i+2]) < 0) return false;
+            out += static_cast<char>(hex(s[i+1]) * 16 + hex(s[i+2]));
+            i += 2;
+        }
+    }
+    return !control(out);
+}
+inline std::string extension(const std::string& path)
+{
+    const auto p = path.find_last_of('.');
+    const std::string e = p == std::string::npos ? "" : lower(path.substr(p + 1));
+    return e == "mp4" || e == "mov" || e == "m4v" || e == "webm" || e == "mkv" ? e : "";
+}
+inline bool networkSpelling(std::string path)
+{
+    std::replace(path.begin(), path.end(), '\\', '/');
+    return path.rfind("//", 0) == 0;
+}
+struct Url { std::string origin, path, request; };
+inline bool ipv6(const std::string& host)
+{
+    if (host.empty() || host.size() > 45 || host.find(":::") != std::string::npos) return false;
+    const auto compressed = host.find("::");
+    if (compressed != std::string::npos && host.find("::", compressed+2) != std::string::npos) return false;
+    if ((host.front() == ':' && host.rfind("::",0) != 0) ||
+        (host.back() == ':' && host.substr(host.size()-2) != "::")) return false;
+    unsigned groups = 0;
+    for (size_t start = 0; start < host.size();)
+    {
+        const auto end = host.find(':',start);
+        const auto part = host.substr(start,end-start);
+        if (part.find('.') != std::string::npos)
+        {
+            if (end != std::string::npos) return false;
+            unsigned octets = 0;
+            for (size_t p = 0; p < part.size();)
+            {
+                const auto dot = part.find('.',p);
+                const auto octet = part.substr(p,dot-p);
+                if (octet.empty() || octet.size() > 3 || octet.find_first_not_of("0123456789") != std::string::npos || std::stoul(octet) > 255) return false;
+                ++octets;
+                if (dot == std::string::npos) break;
+                p = dot+1; if (p == part.size()) return false;
+            }
+            if (octets != 4) return false;
+            groups += 2;
+        }
+        else if (!part.empty())
+        {
+            if (part.size() > 4 || part.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos) return false;
+            ++groups;
+        }
+        if (end == std::string::npos) break;
+        start = end+1;
+    }
+    return compressed == std::string::npos ? groups == 8 : groups < 8;
+}
+inline bool httpUrl(const std::string& input, Url& out)
+{
+    if (control(input) || input.find('\\') != std::string::npos || input.find(' ') != std::string::npos) return false;
+    const auto colon = input.find("://");
+    if (colon == std::string::npos) return false;
+    const auto scheme = lower(input.substr(0, colon));
+    if (scheme != "http" && scheme != "https") return false;
+    const auto end = input.find_first_of("/?#", colon + 3);
+    const auto authority = input.substr(colon + 3, end - (colon + 3));
+    if (authority.empty() || authority.find_first_of("@%") != std::string::npos) return false;
+    std::string host, port;
+    if (authority[0] == '[')
+    {
+        const auto close = authority.find(']');
+        if (close == std::string::npos || close < 3) return false;
+        host = authority.substr(1, close - 1);
+        if (!ipv6(host)) return false;
+        if (close + 1 < authority.size())
+        {
+            if (authority[close+1] != ':') return false;
+            port = authority.substr(close + 2);
+            if (port.empty()) return false;
+        }
+    }
+    else
+    {
+        const auto p = authority.find(':');
+        host = authority.substr(0, p);
+        if (host.empty() || host.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.") != std::string::npos) return false;
+        const auto dns = host.back() == '.' ? host.substr(0, host.size()-1) : host;
+        if (dns.empty() || dns.size() > 253) return false;
+        for (size_t start = 0; start < dns.size();)
+        {
+            const auto stop = dns.find('.', start);
+            const auto label = dns.substr(start, stop - start);
+            if (label.empty() || label.size() > 63 || label.front() == '-' || label.back() == '-') return false;
+            if (stop == std::string::npos) break;
+            start = stop + 1;
+        }
+        if (p != std::string::npos) { port = authority.substr(p+1); if (port.empty()) return false; }
+    }
+    if (!port.empty())
+    {
+        if (port.size() > 5 || port.find_first_not_of("0123456789") != std::string::npos) return false;
+        const auto n = std::stoul(port);
+        if (!n || n > 65535) return false;
+    }
+    out.origin = input.substr(0, colon + 3) + authority;
+    out.request = input.substr(0, input.find('#'));
+    const auto pathEnd = input.find_first_of("?#", end);
+    out.path = end == std::string::npos || input[end] != '/' ? "/" : input.substr(end, pathEnd - end);
+    std::string decoded;
+    return decode(out.path, decoded) && !networkSpelling(decoded) && decoded.find('\\') == std::string::npos;
+}
+inline bool classify(const std::string& input, Descriptor& out, std::string& reason, bool windows)
+{
+    reason = UNSUPPORTED;
+    if (input.empty()) { out.value.clear(); reason.clear(); return true; }
+    std::string path = input;
+    if (control(path)) return false;
+    if (networkSpelling(path)) { reason = REMOTE; return false; }
+    const bool drive = path.size() >= 3 && std::isalpha(static_cast<unsigned char>(path[0])) && path[1] == ':' && (path[2] == '/' || path[2] == '\\');
+    if (lower(path.substr(0, 5)) == "file:")
+    {
+        path.erase(0, 5);
+        if (path.rfind("//", 0) == 0)
+        {
+            if (path.size() < 3 || path[2] != '/') { reason = REMOTE; return false; }
+            path.erase(0, 2); // Empty authority only. Decode exactly once.
+        }
+        if (!decode(path, path)) return false;
+        if (windows && path.size() > 3 && path[0] == '/' && path[2] == ':') path.erase(0, 1);
+        if (networkSpelling(path)) { reason = REMOTE; return false; }
+    }
+    else if (!drive && path[0] != '/')
+    {
+        Url url;
+        if (!httpUrl(path, url) || extension(url.path).empty()) return false;
+        out.location = Location::HTTP_URL; out.value = input; reason.clear(); return true;
+    }
+    if (networkSpelling(path)) { reason = REMOTE; return false; }
+    if (windows)
+    {
+        if (path.size() < 3 || !std::isalpha(static_cast<unsigned char>(path[0])) || path[1] != ':' || (path[2] != '/' && path[2] != '\\')) return false;
+        // Reject alternate streams and ambiguous Win32 trailing-dot/space aliases.
+        std::replace(path.begin(), path.end(), '\\', '/');
+        if (path.find(':', 2) != std::string::npos) return false;
+        size_t start = 3;
+        std::vector<std::string> parts;
+        while (start <= path.size())
+        {
+            const auto end = path.find('/', start);
+            const auto part = path.substr(start, end - start);
+            if (part == "..") { if (parts.empty()) return false; parts.pop_back(); }
+            else if (!part.empty() && part != ".")
+            {
+                if (part.back() == '.' || part.back() == ' ' || part.find_first_of("<>\"|?*") != std::string::npos) return false;
+                const auto name = lower(part.substr(0, part.find('.')));
+                if (name == "con" || name == "nul" || name == "prn" || name == "aux" ||
+                    (name.size() == 4 && (name.substr(0,3) == "com" || name.substr(0,3) == "lpt") && name[3] >= '1' && name[3] <= '9')) { reason = REMOTE; return false; }
+                parts.push_back(part);
+            }
+            if (end == std::string::npos) break;
+            start = end + 1;
+        }
+        path = path.substr(0, 3);
+        for (size_t i = 0; i < parts.size(); ++i) { if (i) path += '/'; path += parts[i]; }
+    }
+    else
+    {
+        if (path.empty() || path[0] != '/') return false;
+        std::vector<std::string> parts;
+        for (size_t start = 1; start <= path.size();)
+        {
+            const auto end = path.find('/', start);
+            const auto part = path.substr(start, end - start);
+            if (part == "..") { if (!parts.empty()) parts.pop_back(); }
+            else if (!part.empty() && part != ".") parts.push_back(part);
+            if (end == std::string::npos) break;
+            start = end + 1;
+        }
+        path.clear();
+        for (const auto& part : parts) path += '/' + part;
+    }
+    if (extension(path).empty()) return false;
+    out.location = Location::LOCAL_FILE; out.value = path; reason.clear(); return true;
+}
+inline std::string fileUri(std::string path)
+{
+    if (path.empty()) return {};
+    if (path.size() > 2 && path[1] == ':') std::replace(path.begin(), path.end(), '\\', '/');
+    std::string uri = path[0] == '/' ? "file://" : "file:///";
+    const char* digits = "0123456789ABCDEF";
+    for (unsigned char c : path)
+        if ((std::isalnum(c) && c < 128) || c == '/' || c == ':' || c == '-' || c == '_' || c == '.' || c == '~') uri += c;
+        else { uri += '%'; uri += digits[c >> 4]; uri += digits[c & 15]; }
+    return uri;
+}
+inline bool redirect(const std::string& from, const std::string& location, unsigned hops, std::string& target)
+{
+    if (hops >= 5 || location.empty() || control(location) || location.find('\\') != std::string::npos) return false;
+    Url base, next;
+    if (!httpUrl(from, base)) return false;
+    if (location.rfind("//", 0) == 0) target = from.substr(0, from.find(':') + 1) + location;
+    else if (location.find(':') != std::string::npos && location.find(':') < location.find_first_of("/?#")) target = location;
+    else if (location[0] == '/') target = base.origin + location;
+    else if (location[0] == '?') target = base.origin + base.path + location;
+    else if (location[0] == '#') target = base.request + location;
+    else target = base.origin + base.path.substr(0, base.path.find_last_of('/') + 1) + location;
+    return httpUrl(target, next);
+}
+inline bool mimeAllowed(std::string mime)
+{
+    mime = lower(mime.substr(0, mime.find(';')));
+    while (!mime.empty() && mime.back() == ' ') mime.pop_back();
+    if (mime.empty() || mime.back() == '/' || mime.find_first_of(" \t\r\n") != std::string::npos) return false;
+    return (mime.rfind("video/", 0) == 0 || mime == "application/octet-stream") &&
+        mime.find("mpegurl") == std::string::npos && mime.find("playlist") == std::string::npos && mime.find("dash") == std::string::npos;
+}
+inline uint64_t be32(const unsigned char* p)
+{ return uint64_t(p[0]) << 24 | uint64_t(p[1]) << 16 | uint64_t(p[2]) << 8 | p[3]; }
+inline bool sniff(const std::string& ext, const unsigned char* p, size_t n, uint64_t fileSize)
+{
+    if (ext == "mkv" || ext == "webm") return n >= 5 && p[0] == 0x1a && p[1] == 0x45 && p[2] == 0xdf && p[3] == 0xa3 && p[4] != 0;
+    if (n < 8) return false;
+    auto size = be32(p);
+    const std::string type(reinterpret_cast<const char*>(p + 4), 4);
+    uint64_t header = 8;
+    if (size == 1) { if (n < 16) return false; size = be32(p+8) << 32 | be32(p+12); header = 16; }
+    else if (!size) size = fileSize;
+    return size >= header + (type == "ftyp" ? 8u : 0u) && size <= fileSize &&
+        (type == "ftyp" || type == "moov" || type == "mdat" || type == "wide" || type == "free");
+}
+struct Admission
+{
+    uint64_t token = 0;
+    double deadline = 0;
+    Verdict verdict = Verdict::PENDING;
+    bool seekable = false;
+    void open(uint64_t t, double now) { token = t; deadline = now + 10.; verdict = Verdict::PENDING; seekable = false; }
+    void rebuild(uint64_t t, double now)
+    {
+        open(t, now);
+    }
+    void resumed(double now) { if (verdict == Verdict::PENDING) deadline = now + 10.; }
+    bool observe(uint64_t t, double now, bool video, bool terminal, double length)
+    {
+        if (t != token || verdict == Verdict::REJECTED) return false;
+        if (terminal) verdict = Verdict::REJECTED;
+        else if (verdict == Verdict::PENDING)
+            verdict = now >= deadline ? Verdict::REJECTED : video ? Verdict::ADMITTED : Verdict::PENDING;
+        seekable = verdict == Verdict::ADMITTED && length > 0;
+        return true;
+    }
+    bool audible(Transport desired) const { return verdict == Verdict::ADMITTED && desired == Transport::PLAYING; }
+};
+// Five sharing-violation attempts spanning two seconds, bounded by the I/O deadline.
+inline unsigned lockRetryMs(unsigned failedAttempts, bool sharingViolation)
+{ return sharingViolation && failedAttempts < 5 ? 500 : 0; }
+inline bool bytesFromMB(int64_t mb, uint64_t& bytes)
+{
+    if (mb <= 0 || uint64_t(mb) > UINT64_MAX / (1024 * 1024)) return false;
+    bytes = uint64_t(mb) * 1024 * 1024; return true;
+}
+}
+#endif

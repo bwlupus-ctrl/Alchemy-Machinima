@@ -57,7 +57,9 @@ enum class ECaptureMode : U8
     CAMERA_FEED
 };
 
-enum class ESourceSlotKind : U8 { EMPTY, CAMERA, MEDIA_FACE };
+enum class ESourceSlotKind : U8 { EMPTY, CAMERA, MEDIA_FACE, MEDIA_URL };
+constexpr bool isMediaKind(ESourceSlotKind kind)
+{ return kind == ESourceSlotKind::MEDIA_FACE || kind == ESourceSlotKind::MEDIA_URL; }
 enum class ESourceAspect : U8 { AUTO, WIDE_16_9, STANDARD_4_3, CINEMA_239 };
 
 inline F32 resolveSourceAspect(ESourceAspect selection, S32 width, S32 height,
@@ -762,25 +764,45 @@ struct MediaFaceSource
     ESourceAspect mAspect = ESourceAspect::AUTO;
 };
 
+struct MediaUrlSource
+{
+    enum class Location : U8 { HTTP_URL, LOCAL_FILE };
+    Location mLocation = Location::HTTP_URL;
+    std::string mValue;
+    bool mLoop = true;
+    F32 mVolume = 0.f;
+    ESourceAspect mAspect = ESourceAspect::AUTO;
+};
+
 // Both registry instances and snapshots own the same private tagged payload.
 // There are deliberately no forwarding mMode/mCamera/mCameraObjectId fields.
 class SourceSlotData
 {
 public:
     ESourceSlotKind sourceKind() const
-    { return cameraData() ? ESourceSlotKind::CAMERA : mediaData() ? ESourceSlotKind::MEDIA_FACE : ESourceSlotKind::EMPTY; }
+    { return cameraData() ? ESourceSlotKind::CAMERA : mediaData() ? ESourceSlotKind::MEDIA_FACE : mediaUrlData() ? ESourceSlotKind::MEDIA_URL : ESourceSlotKind::EMPTY; }
     CameraPayload* cameraData() { return std::get_if<CameraPayload>(&mSource); }
     const CameraPayload* cameraData() const { return std::get_if<CameraPayload>(&mSource); }
     MediaFaceSource* mediaData() { return std::get_if<MediaFaceSource>(&mSource); }
     const MediaFaceSource* mediaData() const { return std::get_if<MediaFaceSource>(&mSource); }
+    MediaUrlSource* mediaUrlData() { return std::get_if<MediaUrlSource>(&mSource); }
+    const MediaUrlSource* mediaUrlData() const { return std::get_if<MediaUrlSource>(&mSource); }
+    ESourceAspect mediaAspect() const { return mediaUrlData() ? mediaUrlData()->mAspect : mediaData() ? mediaData()->mAspect : ESourceAspect::AUTO; }
     bool isCameraFeed() const { const auto* c = cameraData(); return c && c->mMode == ECaptureMode::CAMERA_FEED; }
     bool isSurfaceLens() const { const auto* c = cameraData(); return c && c->mMode == ECaptureMode::SURFACE_LENS; }
-    bool isMedia() const { return mediaData() != nullptr; }
+    bool isMedia() const { return mediaData() != nullptr || mediaUrlData() != nullptr; }
     void setCameraData(const CameraPayload& source) { mSource = source; }
     void setMediaData(const MediaFaceSource& source) { mSource = source; }
+    void setMediaUrlData(const MediaUrlSource& source) { mSource = source; }
     void copySourceData(const SourceSlotData& source) { mSource = source.mSource; }
+    MediaUrlSource fileBrowseCue() const
+    {
+        MediaUrlSource cue = mediaUrlData() ? *mediaUrlData() : MediaUrlSource();
+        cue.mAspect = mediaAspect();
+        return cue;
+    }
 private:
-    std::variant<std::monostate, CameraPayload, MediaFaceSource> mSource;
+    std::variant<std::monostate, CameraPayload, MediaFaceSource, MediaUrlSource> mSource;
 };
 
 struct CaptureDefinition : SourceSlotData
@@ -1195,6 +1217,17 @@ void reconcileMediaSlots();
 ERegistryResult addMediaSlot(CaptureHandle* slot, std::string* reason = nullptr);
 bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source,
                     std::string* reason = nullptr);
+// Internal source controls for the later Director UI. Commit/restore are syntax only.
+bool setMediaUrlSource(const CaptureHandle& slot, const MediaUrlSource& source, std::string* reason = nullptr);
+bool playMediaFile(const CaptureHandle& slot);
+bool pauseMediaFile(const CaptureHandle& slot);
+bool stopMediaFile(const CaptureHandle& slot);
+void browseMediaFile(const CaptureHandle& slot, std::function<bool()> still_current);
+void clearMediaFileCache();
+void initializeMediaFiles();
+void retireMediaFileOwners(); // Safe boundary, before any raw media traversal.
+void shutdownMediaFiles();
+void stopPrivateMediaFiles(); // Cancels/marks now; releases owners at the safe boundary.
 ERegistryResult addSelectedDisplay(const CaptureHandle& capture, EFitMode fit,
                                    DisplayHandle* binding,
                                    std::string* reason = nullptr);

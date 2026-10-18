@@ -7460,7 +7460,8 @@ private:
             const bool changed = source && source->isMedia() && !source->cameraData() &&
                 registry.mCaptureCount == 0 && (consumption ? consumption_ok : added
                     ? registry.mSlotCount == U32(mFunctionalOwnerModelBefore["slots"].asInteger() + 1)
-                    : source->mediaData()->mAspect == static_cast<LLPrismLens::ESourceAspect>(control->getValue().asInteger()) &&
+                    : (source->mediaData() || source->mediaUrlData()) &&
+                      source->mediaAspect() == static_cast<LLPrismLens::ESourceAspect>(control->getValue().asInteger()) &&
                       LLSD::Real(registry.mConfigurationRevision) > mFunctionalOwnerModelBefore["revision"].asReal());
             observable = changed;
             expected_ok = expected_ok && changed;

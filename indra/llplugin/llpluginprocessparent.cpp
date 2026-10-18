@@ -44,6 +44,9 @@
 
 #include <ctime>
 #include <fstream>
+#if !LL_WINDOWS
+#include <signal.h>
+#endif
 
 //virtual
 LLPluginProcessParentOwner::~LLPluginProcessParentOwner()
@@ -212,7 +215,7 @@ void LLPluginProcessParent::requestShutdown()
 
 bool LLPluginProcessParent::pollTick()
 {
-    if (isDone())
+    if (isDone() && (!mPrivateFileClose || mPrivateFileClose->closed))
     {
         ptr_t that;
         {
@@ -329,6 +332,23 @@ bool LLPluginProcessParent::accept()
 
 void LLPluginProcessParent::idle(void)
 {
+    if (mPrivateFileClose && !mPrivateFileClose->closed && mState >= STATE_GOODBYE)
+    {
+        // Maintenance owns the timeout. Main only issues the non-waiting kill
+        // and observes exit; a kill request alone never releases the file.
+        mPrivateFileClose->observeProcess(bool(mProcess), mProcessCreationRequested,
+            [this]() { return LLProcess::isRunning(mProcess); }, [this]()
+        {
+            LL_WARNS("Plugin") << "Private file close timed out; terminating plugin" << LL_ENDL;
+#if LL_WINDOWS
+            LLProcess::kill(mProcess);
+#else
+            // observeProcess checked ownership and running state before this
+            // signal. SIGTERM may be ignored by a wedged decoder.
+            ::kill(mProcess->getProcessID(), SIGKILL);
+#endif
+        });
+    }
     bool idle_again;
 
     do
@@ -1155,6 +1175,12 @@ void LLPluginProcessParent::receiveMessageEarly(const LLPluginMessage &message)
 void LLPluginProcessParent::receiveMessage(const LLPluginMessage &message)
 {
     std::string message_class = message.getClass();
+    // A retired media owner is already detached. Receive its close ack here,
+    // after VLC stop/release, rather than discarding it with the old owner.
+    if (mPrivateFileClose && message_class == LLPLUGIN_MESSAGE_CLASS_MEDIA &&
+        message.getName() == "private_file_closed" &&
+        message.getValue("load_token") == mPrivateFileCloseToken)
+        mPrivateFileClose->closed = true;
     if(message_class == LLPLUGIN_MESSAGE_CLASS_INTERNAL)
     {
         // internal messages should be handled here

@@ -297,6 +297,15 @@ public:
     bool hasLibVLCSource() const { return mMediaSource && mResolvedPlugin == "media_plugin_libvlc"; }
     bool mediaSlotPermitted() const;
     bool mediaSlotCandidate() const;
+    void cuePrivateFile(const std::string& uri, const std::string& demux, S32 desired, bool loop, F32 volume, std::shared_ptr<void> retention);
+    void privateTransport(S32 desired, bool loop);
+    void retirePrivateFile();
+    bool isPrivateFile() const { return mPrivateFile; }
+    bool privateFileActive() const { return mPrivateFile && mPrivateActive; }
+    bool privateFileAdmitted() const { return mPrivateFile && mMediaSource && mMediaSource->privateFileVerdict() == 1; }
+    bool privateFileEnded() const { return mPrivateFile && mMediaSource && mMediaSource->getStatus() == MEDIA_DONE; }
+    bool privateFileFailed() const { return mPrivateFile && (mPrivateBudgetLost || mMediaSourceFailed || (mMediaSource && mMediaSource->privateFileVerdict() < 0)); }
+    bool privateBudgetLost() const { return mPrivateBudgetLost; }
     std::shared_ptr<MediaUpload> preMediaTexUpdate();
     bool doMediaTexUpdate(MediaUpload& upload);
     void finishMediaTexUpdate(MediaUpload& upload, bool success);
@@ -338,7 +347,7 @@ public:
     void setTarget(const std::string& target) { mTarget = target; }
 
     // utility function to create a ready-to-use media instance from a desired media type.
-    static LLPluginClassMedia* newSourceFromMediaType(std::string media_type, LLPluginClassMediaOwner *owner /* may be NULL */, S32 default_width, S32 default_height, F64 zoom_factor, const std::string target = LLStringUtil::null, bool clean_browser = false, std::string* resolved_plugin = nullptr);
+    static LLPluginClassMedia* newSourceFromMediaType(std::string media_type, LLPluginClassMediaOwner *owner /* may be NULL */, S32 default_width, S32 default_height, F64 zoom_factor, const std::string target = LLStringUtil::null, bool clean_browser = false, std::string* resolved_plugin = nullptr, bool force_vlc = false);
 
     // Internally set our desired browser user agent string, including
     // the Second Life version and skin name.  Used because we can
@@ -486,6 +495,11 @@ private:
 private:
     // a single media url with some data and an impl.
     std::shared_ptr<LLPluginClassMedia> mMediaSource;
+    bool mPrivateFile = false, mPrivateActive = false, mPrivateBudgetLost = false;
+    bool mPrivateEverLoaded = false, mPrivateInitializing = false;
+    S32 mPrivateDesired = 0;
+    std::string mPrivateDemux;
+    std::shared_ptr<void> mPrivateRetention;
     LLCoros::Mutex mLock;
     F64     mZoomFactor;
     LLUUID mTextureId;

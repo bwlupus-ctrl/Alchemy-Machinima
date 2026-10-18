@@ -25,6 +25,8 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alvcammediafileio.h"
+#include <openssl/crypto.h>
 
 #include "aluiperfselftest.h"
 
@@ -864,6 +866,8 @@ namespace
 
 bool LLAppViewer::init()
 {
+    // Unconditional: must precede error handling, configuration and all TLS use.
+    if (OPENSSL_init_crypto(OPENSSL_INIT_NO_ATEXIT, nullptr) != 1) return false;
     LL_PROFILE_ZONE_SCOPED;
 
     setupErrorHandling(mSecondInstance);
@@ -1896,6 +1900,9 @@ void LLAppViewer::flushLFSIO()
 
 bool LLAppViewer::cleanup()
 {
+    ALMediaFile::beginShutdown();
+    LLPrismLens::shutdownMediaFiles();
+    ALMediaFile::drainShutdown(); // one monotonic two-second budget; never join
     // [XInputRumble] The main loop no longer advances patterns; stop the pad now,
     // not when the joystick is terminated much later in cleanup.
     if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);
@@ -2393,7 +2400,7 @@ bool LLAppViewer::cleanup()
     // from ~LLAppViewer, so do it here first or the next launch flags a false crash.
     // Gated (default on); set BDMergeFastExit=0 for a fully graceful teardown.
     static LLCachedControl<bool> fast_exit(gSavedSettings, "BDMergeFastExit", true);
-    if (fast_exit)
+    if (fast_exit || ALMediaFile::jobsRemain())
     {
         LL_INFOS("BDMerge") << "[BDMerge FastExit] Persistence and subsystem shutdown complete; skipping static teardown and exiting now." << LL_ENDL; // [DebugLogging] tagged
         removeMarkerFiles();
@@ -4894,6 +4901,8 @@ bool LLAppViewer::initCache()
 
     // Remove old, stale CEF cache folders
     purgeCefStaleCaches();
+
+    if (LLPrismLens::mediaSlotsEnabled()) LLPrismLens::initializeMediaFiles();
 
     return true;
 }

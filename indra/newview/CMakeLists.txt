@@ -875,6 +875,8 @@ set(viewer_SOURCE_FILES
     llpreviewtexture.cpp
     llprismgate.cpp
     llprismlens.cpp
+    alvcammediafileio.cpp
+    alvcammediafilepolicy.cpp
     llprismpreview.cpp
     llproductinforequest.cpp
     llprogressview.cpp
@@ -1813,6 +1815,10 @@ set(viewer_HEADER_FILES
     llpreviewtexture.h
     llprismgate.h
     llprismlens.h
+    alvcammediafileio.h
+    alvcammediafilecontainer.h
+    alvcammediafilepolicy.h
+    alvcammediafileposix.h
     llprismpreview.h
     llproductinforequest.h
     llprogressview.h
@@ -2946,6 +2952,12 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alvcambonepov
     ""
     "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(alvcammediafilepolicy
+    "alvcammediafilepolicy.cpp"
+    "${test_libs};ll::openssl"
     "${test_project}"
   )
 

@@ -67,6 +67,7 @@ LLFilePicker LLFilePicker::sInstance;
 #define SCRIPT_FILTER L"Script files (*.lsl; *.lua; *.luau)\0*.lsl;*.lua;*.luau\0"
 #define DICTIONARY_FILTER L"Dictionary files (*.dic; *.xcu)\0*.dic;*.xcu\0"
 #define ZIP_FILTER L"ZIP files (*.zip)\0*.zip\0"
+#define VIDEO_FILTER L"Video files (*.mp4; *.mov; *.m4v; *.webm; *.mkv)\0*.mp4;*.mov;*.m4v;*.webm;*.mkv\0"
 #endif
 
 #if LL_DARWIN && !LL_SDL_WINDOW
@@ -232,6 +233,9 @@ namespace
             break;
         case LLFilePicker::FFLOAD_DICTIONARY:
             filter_vec.push_back({ "Dictionary files (*.dic; *.xcu)", "dic;xcu" });
+            break;
+        case LLFilePicker::FFLOAD_VIDEO:
+            filter_vec.push_back({ "Video files (*.mp4; *.mov; *.m4v; *.webm; *.mkv)", "mp4;mov;m4v;webm;mkv" });
             break;
         case LLFilePicker::FFLOAD_ZIP:
             filter_vec.push_back({ "ZIP files (*.zip)", "zip" });
@@ -642,6 +646,9 @@ bool LLFilePicker::setupFilter(ELoadFilter filter)
     case FFLOAD_DICTIONARY:
         mOFN.lpstrFilter = DICTIONARY_FILTER \
             L"\0";
+        break;
+    case FFLOAD_VIDEO:
+        mOFN.lpstrFilter = VIDEO_FILTER L"\0";
         break;
     case FFLOAD_ZIP:
         mOFN.lpstrFilter = ZIP_FILTER \
@@ -1131,6 +1138,9 @@ std::unique_ptr<std::vector<std::string>> LLFilePicker::navOpenFilterProc(ELoadF
         case FFLOAD_DICTIONARY:
             allowedv->push_back("dic");
             allowedv->push_back("xcu");
+            break;
+        case FFLOAD_VIDEO:
+            for (const char* ext : {"mp4", "mov", "m4v", "webm", "mkv"}) allowedv->push_back(ext);
             break;
         case FFLOAD_ZIP:
             allowedv->push_back("zip");

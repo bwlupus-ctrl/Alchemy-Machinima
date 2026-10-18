@@ -1302,11 +1302,11 @@ void probe_gather_light(LLDrawable* drawable, LLVOVolume* light, F32 light_scale
         {
             s.mTexId.mData[8 + byte] ^= static_cast<U8>(
                 (projector_feed.mCapture.mGeneration >> (byte * 8)) & 0xffu);
-            if (projector_feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+            if (LLPrismLens::isMediaKind(projector_feed.mSourceKind))
                 s.mTexId.mData[byte] ^= static_cast<U8>(
                     (projector_feed.mSourceEpoch >> (byte * 8)) & 0xffu);
         }
-        if (projector_feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+        if (LLPrismLens::isMediaKind(projector_feed.mSourceKind))
             s.mTexId.mData[0] ^= static_cast<U8>(projector_feed.mSourceKind);
     }
     s.mNoShadow = LLPipeline::isProjectorNoShadow(light->getID());

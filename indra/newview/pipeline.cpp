@@ -2135,7 +2135,7 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         LLPrismLens::ProjectorFeed feed;
         if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
             feed.mOutput != &mPrismLensOutput[capture_slot] ||
-            feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+            LLPrismLens::isMediaKind(feed.mSourceKind))
         {
             continue;
         }
@@ -2340,7 +2340,7 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         if (!media_source) continue;
         LLPrismLens::ProjectorFeed feed;
         if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
-            feed.mSourceKind != LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+            !LLPrismLens::isMediaKind(feed.mSourceKind))
         {
             continue;
         }
@@ -10915,7 +10915,7 @@ void LLPipeline::appendCinematicProbeLightSignature(
         {
             sig.addExact(projector_feed.mCapture.mId);
             sig.addExact(projector_feed.mCapture.mGeneration);
-            if (projector_feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+            if (LLPrismLens::isMediaKind(projector_feed.mSourceKind))
             {
                 sig.addExact(static_cast<U64>(projector_feed.mSourceKind));
                 sig.addExact(projector_feed.mSourceEpoch);
@@ -28047,7 +28047,7 @@ U64 LLPipeline::projectorCookieRevision(const LLVOVolume* volume) const
 {
     LLPrismLens::ProjectorFeed feed;
     if (!LLPrismLens::projectorFeedFor(volume, feed) ||
-        feed.mSourceKind != LLPrismLens::ESourceSlotKind::MEDIA_FACE) return 0;
+        !LLPrismLens::isMediaKind(feed.mSourceKind)) return 0;
     for (const auto& prepared : mPrismProjectorFeed)
         if (prepared.mValid && prepared.mTarget->isComplete() &&
             LLPrismLens::sameProjectorSource(prepared.mAccepted, feed)) return prepared.mRevision;
@@ -28061,7 +28061,7 @@ F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
     LLPrismLens::ProjectorFeed feed;
     const bool has_binding = LLPrismLens::projectorFeedFor(volume, feed);
     PrismProjectorPreparedFeed* prepared = nullptr;
-    if (has_binding && feed.mSourceKind == LLPrismLens::ESourceSlotKind::MEDIA_FACE)
+    if (has_binding && LLPrismLens::isMediaKind(feed.mSourceKind))
     {
         for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
         {

@@ -42,6 +42,9 @@ typedef SSIZE_T ssize_t;
 #include "vlc/vlc.h"
 #include <atomic>
 #include <memory>
+#include <chrono>
+#include "../../newview/alvcammediafilepolicy.h"
+#include "../../newview/alvcammediafileposix.h"
 #include "vlc/libvlc_version.h"
 
 #if LL_WINDOWS
@@ -68,6 +71,9 @@ private:
     void resetVLC();
     void stopPlayer();
     void reportVideoSize();
+    void tickPrivateFile();
+    void privateAdmissionMessage();
+    static void privateEvents(const libvlc_event_t* event, void* ptr);
     void setVolume(const F64 volume);
     void setVolumeVLC();
     void updateTitle(const char* title);
@@ -100,6 +106,7 @@ private:
         std::atomic<bool> frameReady{false};
         std::atomic<bool> hasFrame{false};
         std::atomic<bool> trackFrames{false};
+        std::atomic<unsigned> events{0};
         mLibVLCContext() = default;
         mLibVLCContext(unsigned char* pixels, libvlc_media_player_t* player,
                        const std::string& token, int w, int h)
@@ -120,7 +127,94 @@ private:
     F64 mCurTime;
     F64 mDuration;
     EStatus mVlcStatus;
+    bool mPrivateFile = false;
+    std::string mPrivateDemux;
+    ALMediaFile::Transport mDesired = ALMediaFile::Transport::STOPPED;
+    ALMediaFile::Admission mAdmission;
+    uint64_t mPlayerToken = 0;
+    double mNextAdmissionCheck = 0;
+    bool mPrivateStarted = false;
+    bool mPrivateEnded = false;
+#if !LL_WINDOWS
+    int mPrivateFD = -1;
+    ALMediaFile::FileIdentity mPrivateIdentity;
+    bool mPrivateIdentityValid = false;
+#endif
 };
+
+static double privateNow()
+{
+    return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+void MediaPluginLibVLC::privateEvents(const libvlc_event_t* event, void* ptr)
+{
+    auto* context = static_cast<mLibVLCContext*>(ptr);
+    // Immutable producing-player context, quiesced before release. Decoder
+    // callbacks do no LibVLC queries, messaging, transport or volume writes.
+    const unsigned flags = event->type == libvlc_MediaPlayerEndReached ? 2u :
+        event->type == libvlc_MediaPlayerEncounteredError ? 4u : 1u;
+    context->events.fetch_or(flags, std::memory_order_release);
+}
+
+void MediaPluginLibVLC::privateAdmissionMessage()
+{
+    LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "private_file_admission");
+    message.setValue("load_token", mLoadToken);
+    message.setValueS32("verdict", mAdmission.verdict == ALMediaFile::Verdict::ADMITTED ? 1 :
+        mAdmission.verdict == ALMediaFile::Verdict::REJECTED ? -1 : 0);
+    message.setValueBoolean("seekable", mAdmission.seekable);
+    message.setValueBoolean("opened", mLibVLCMediaPlayer != nullptr);
+    message.setValue("player_token", std::to_string(mPlayerToken));
+    sendMessage(message);
+}
+
+void MediaPluginLibVLC::tickPrivateFile()
+{
+    if (!mPrivateFile || !mLibVLCMediaPlayer || !mLibVLCCallbackContext || !mPrivateStarted || mPrivateEnded) return;
+    auto& context = *mLibVLCCallbackContext;
+    const unsigned flags = context.events.exchange(0, std::memory_order_acquire);
+    const double now = privateNow();
+    if (!flags && now < mNextAdmissionCheck) return;
+    mNextAdmissionCheck = now + .1;
+    mDuration = static_cast<double>(libvlc_media_get_duration(mLibVLCMedia)) / 1000.;
+    mCurTime = static_cast<double>(libvlc_media_player_get_time(mLibVLCMediaPlayer)) / 1000.;
+    const auto before = mAdmission.verdict;
+    const bool seekable = mAdmission.seekable;
+    bool video = false;
+    libvlc_media_track_t** tracks = nullptr;
+    const auto count = libvlc_media_tracks_get(mLibVLCMedia, &tracks);
+    for (unsigned i = 0; i < count; ++i)
+        if (tracks[i] && tracks[i]->i_type == libvlc_track_video) video = true;
+    libvlc_media_tracks_release(tracks, count);
+    // Audio-first/Playing/ESAdded never proves enumeration complete. Unknown
+    // length is a transport capability only, not an admission condition.
+    mAdmission.observe(mPlayerToken, now, video, (flags & 4) || ((flags & 2) && before != ALMediaFile::Verdict::ADMITTED), mDuration);
+#if !LL_WINDOWS
+    if (before != ALMediaFile::Verdict::ADMITTED && mAdmission.verdict == ALMediaFile::Verdict::ADMITTED &&
+        (!mPrivateIdentityValid || !ALMediaFile::unchangedFile(mPrivateFD, mPrivateIdentity)))
+        mAdmission.verdict = ALMediaFile::Verdict::REJECTED;
+#endif
+    if (before != mAdmission.verdict || seekable != mAdmission.seekable) privateAdmissionMessage();
+    if (mAdmission.verdict == ALMediaFile::Verdict::REJECTED)
+    {
+        mDesired = ALMediaFile::Transport::STOPPED;
+        setVolumeVLC(); stopPlayer(); mVlcStatus = STATUS_ERROR;
+        return;
+    }
+    setVolumeVLC();
+    if ((flags & 2) && mAdmission.verdict == ALMediaFile::Verdict::ADMITTED)
+    {
+        mVlcStatus = STATUS_DONE;
+        if (mIsLooping && mDesired == ALMediaFile::Transport::PLAYING)
+        {
+            mAdmission = ALMediaFile::Admission(); // EOF Loop repeats admission
+            playMedia();
+        }
+        else { mPrivateEnded = true; mDesired = ALMediaFile::Transport::STOPPED; setVolumeVLC(); }
+    }
+    else mVlcStatus = mDesired == ALMediaFile::Transport::PLAYING ? STATUS_PLAYING : STATUS_PAUSED;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -233,6 +327,12 @@ void MediaPluginLibVLC::resetVLC()
 
 void MediaPluginLibVLC::stopPlayer()
 {
+    if (mPrivateFile && mLibVLCCallbackContext && mLibVLCMedia)
+    {
+        auto* metadata = libvlc_media_event_manager(mLibVLCMedia);
+        for (auto event : {libvlc_MediaMetaChanged, libvlc_MediaParsedChanged})
+            libvlc_event_detach(metadata, event, privateEvents, mLibVLCCallbackContext.get());
+    }
     if (mLibVLCMediaPlayer)
     {
         // libvlc 3 stop/release quiesces callbacks before reusing pixels/context.
@@ -243,6 +343,9 @@ void MediaPluginLibVLC::stopPlayer()
     mLibVLCCallbackContext.reset();
     if (mLibVLCMedia) libvlc_media_release(mLibVLCMedia);
     mLibVLCMedia = nullptr;
+#if !LL_WINDOWS
+    if (mPrivateFD >= 0) { close(mPrivateFD); mPrivateFD = -1; }
+#endif
 }
 
 void MediaPluginLibVLC::reportVideoSize()
@@ -406,6 +509,7 @@ void MediaPluginLibVLC::eventCallbacks(const libvlc_event_t* event, void* ptr)
 //
 void MediaPluginLibVLC::playMedia()
 {
+    if (mPrivateFile && (mDesired == ALMediaFile::Transport::STOPPED || !mPixels || mWidth <= 0 || mHeight <= 0)) return;
     if (mURL.length() == 0)
     {
         return;
@@ -418,27 +522,94 @@ void MediaPluginLibVLC::playMedia()
     // buffer size is out of sync with the declared size (width/height) for a frame
     // or two and the plugin crashes as VLC tries to decode a frame into unallocated
     // memory.
+#if !LL_WINDOWS
+    if (mPrivateFile && mPrivateFD >= 0 && mPrivateIdentityValid &&
+        !ALMediaFile::unchangedFile(mPrivateFD, mPrivateIdentity))
+    {
+        mAdmission.verdict = ALMediaFile::Verdict::REJECTED;
+        privateAdmissionMessage(); stopPlayer(); mVlcStatus = STATUS_ERROR;
+        return;
+    }
+#endif
     stopPlayer();
 
-    mLibVLCMedia = libvlc_media_new_location(mLibVLC, mURL.c_str());
+    if (mPrivateFile)
+    {
+        if (mURL.rfind("file:///", 0) != 0 || (mPrivateDemux != "mp4" && mPrivateDemux != "mkv"))
+        { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage(); return; }
+        ++mPlayerToken;
+        // Every replacement must prove video again before gaining audio/frames.
+        mAdmission.rebuild(mPlayerToken, privateNow());
+        mPrivateStarted = false;
+        mPrivateEnded = false;
+        mNextAdmissionCheck = 0;
+    }
+
+#if !LL_WINDOWS
+    if (mPrivateFile)
+    {
+        try
+        {
+            ALMediaFile::FileIdentity identity;
+            mPrivateFD = ALMediaFile::verifiedLocalFile(mURL, mPrivateDemux == "mkv" ? "mkv" : "mp4", &identity,
+                mPrivateIdentityValid ? &mPrivateIdentity : nullptr);
+            if (mPrivateIdentityValid && !(mPrivateIdentity == identity)) throw std::runtime_error(ALMediaFile::NOT_VIDEO);
+            mPrivateIdentity = identity; mPrivateIdentityValid = true;
+            mLibVLCMedia = libvlc_media_new_fd(mLibVLC, mPrivateFD);
+        }
+        catch (...)
+        { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage(); stopPlayer(); return; }
+    }
+    else
+#endif
+        mLibVLCMedia = libvlc_media_new_location(mLibVLC, mURL.c_str());
     if (!mLibVLCMedia)
     {
+        if (mPrivateFile) { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage(); }
         mLibVLCMediaPlayer = 0;
         setStatus(STATUS_ERROR);
         return;
     }
 
+    if (mPrivateFile)
+    {
+        // External references were conservatively rejected on the exact pinned
+        // file by the viewer. Pin demux before player creation; no fallback.
+        libvlc_media_add_option(mLibVLCMedia, (":demux=" + mPrivateDemux).c_str());
+        libvlc_media_add_option(mLibVLCMedia, ":no-sub-autodetect-file");
+        libvlc_media_add_option(mLibVLCMedia, ":no-mkv-preload-local-dir");
+    }
     mLibVLCMediaPlayer = libvlc_media_player_new_from_media(mLibVLCMedia);
     if (!mLibVLCMediaPlayer)
     {
+        if (mPrivateFile) { mAdmission.verdict = ALMediaFile::Verdict::REJECTED; privateAdmissionMessage(); }
         setStatus(STATUS_ERROR);
         return;
     }
 
+    if (mPrivateFile)
+    {
+        mAdmission.rebuild(mPlayerToken, privateNow());
+        privateAdmissionMessage(); // reports the replacement player's verdict
+        mLibVLCCallbackContext = std::make_unique<mLibVLCContext>(
+            mPixels, mLibVLCMediaPlayer, mLoadToken, mWidth, mHeight);
+        mLibVLCCallbackContext->parent = this;
+    }
     // listen to events
     libvlc_event_manager_t* em = libvlc_media_player_event_manager(mLibVLCMediaPlayer);
     if (em)
     {
+        if (mPrivateFile)
+        {
+            for (auto event : {libvlc_MediaPlayerPlaying, libvlc_MediaPlayerESAdded,
+                libvlc_MediaPlayerLengthChanged, libvlc_MediaPlayerEndReached, libvlc_MediaPlayerEncounteredError})
+                libvlc_event_attach(em, event, privateEvents, mLibVLCCallbackContext.get());
+            auto* metadata = libvlc_media_event_manager(mLibVLCMedia);
+            for (auto event : {libvlc_MediaMetaChanged, libvlc_MediaParsedChanged})
+                libvlc_event_attach(metadata, event, privateEvents, mLibVLCCallbackContext.get());
+        }
+        else
+        {
         libvlc_event_attach(em, libvlc_MediaPlayerOpening, eventCallbacks, this);
         libvlc_event_attach(em, libvlc_MediaPlayerPlaying, eventCallbacks, this);
         libvlc_event_attach(em, libvlc_MediaPlayerPaused, eventCallbacks, this);
@@ -449,11 +620,15 @@ void MediaPluginLibVLC::playMedia()
         libvlc_event_attach(em, libvlc_MediaPlayerPositionChanged, eventCallbacks, this);
         libvlc_event_attach(em, libvlc_MediaPlayerLengthChanged, eventCallbacks, this);
         libvlc_event_attach(em, libvlc_MediaPlayerTitleChanged, eventCallbacks, this);
+        }
     }
 
-    mLibVLCCallbackContext = std::make_unique<mLibVLCContext>(
-        mPixels, mLibVLCMediaPlayer, mLoadToken, mWidth, mHeight);
-    mLibVLCCallbackContext->parent = this;
+    if (!mPrivateFile)
+    {
+        mLibVLCCallbackContext = std::make_unique<mLibVLCContext>(
+            mPixels, mLibVLCMediaPlayer, mLoadToken, mWidth, mHeight);
+        mLibVLCCallbackContext->parent = this;
+    }
     libvlc_video_set_callbacks(mLibVLCMediaPlayer, lock, unlock, displayFrame, mLibVLCCallbackContext.get());
     libvlc_video_set_format(mLibVLCMediaPlayer, "RV32", mWidth, mHeight, mWidth * mDepth);
 
@@ -476,12 +651,16 @@ void MediaPluginLibVLC::playMedia()
 
     // note this relies on the "set_loop" message arriving before the "start" (play) one
     // but that appears to always be the case
-    if (mIsLooping)
+    if (mIsLooping && !mPrivateFile)
     {
         libvlc_media_add_option(mLibVLCMedia, "input-repeat=65535");
     }
 
-    libvlc_media_player_play(mLibVLCMediaPlayer);
+    if (!mPrivateFile || mDesired == ALMediaFile::Transport::PLAYING)
+    {
+        if (mPrivateFile) { mPrivateStarted = true; mAdmission.resumed(privateNow()); }
+        libvlc_media_player_play(mLibVLCMediaPlayer);
+    }
 
     // send a "location_changed" message - this informs the media system
     // that a new URL is the 'current' one and is used extensively.
@@ -515,7 +694,8 @@ void MediaPluginLibVLC::setVolumeVLC()
 {
     if (mLibVLCMediaPlayer)
     {
-        int vlc_vol = (int)(mCurVolume * 100);
+        const double effective = mPrivateFile && !mAdmission.audible(mDesired) ? 0. : mCurVolume;
+        int vlc_vol = (int)(effective * 100);
 
         int result = libvlc_audio_set_volume(mLibVLCMediaPlayer, vlc_vol);
         if (result == 0)
@@ -540,8 +720,8 @@ void MediaPluginLibVLC::setVolumeVLC()
         // by both CEF and VLC. That's for later. The code there boils down to this so for
                 // now, as we approach a release, the less risky option is to do it directly vs
                 // calls to volume catcher code.
-        DWORD left_channel = (DWORD)(mCurVolume * 65535.0f);
-        DWORD right_channel = (DWORD)(mCurVolume * 65535.0f);
+        DWORD left_channel = (DWORD)(effective * 65535.0f);
+        DWORD right_channel = (DWORD)(effective * 65535.0f);
         DWORD hw_volume = left_channel << 16 | right_channel;
         waveOutSetVolume(NULL, hw_volume);
 #endif
@@ -599,11 +779,12 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
             }
             else if (message_name == "idle")
             {
+                if (mPrivateFile) tickPrivateFile();
                 setStatus(mVlcStatus);
                 if (!mLoadToken.empty())
                 {
                     reportVideoSize();
-                    if (mLibVLCCallbackContext && mLibVLCCallbackContext->frameReady.exchange(false, std::memory_order_acquire))
+                    if ((!mPrivateFile || mAdmission.verdict == ALMediaFile::Verdict::ADMITTED) && mLibVLCCallbackContext && mLibVLCCallbackContext->frameReady.exchange(false, std::memory_order_acquire))
                         setFrameDirty(0, 0, mLibVLCCallbackContext->width, mLibVLCCallbackContext->height);
                 }
             }
@@ -721,6 +902,7 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
             }
             else if (message_name == "enable_media_frames")
             {
+                if (mPrivateFile) return; // private loads never fall back to untagged frames
                 mLoadToken = message_in.getValue("load_token");
                 mVideoWidth = mVideoHeight = 0;
                 mVideoSarNum = mVideoSarDen = 1;
@@ -745,9 +927,51 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
                     }
                 }
             }
+            else if (message_name == "private_transport")
+            {
+                mDesired = static_cast<ALMediaFile::Transport>(message_in.getValueS32("desired"));
+                mIsLooping = message_in.getValueBoolean("loop");
+                if (mPrivateFile)
+                {
+                    if (mDesired == ALMediaFile::Transport::STOPPED)
+                    {
+                        setVolumeVLC(); stopPlayer();
+                        LLPluginMessage closed(LLPLUGIN_MESSAGE_CLASS_MEDIA, "private_file_closed");
+                        closed.setValue("load_token", mLoadToken);
+                        sendMessage(closed);
+                    }
+                    else if (mDesired == ALMediaFile::Transport::PAUSED && mLibVLCMediaPlayer)
+                    {
+                        if (mAdmission.verdict == ALMediaFile::Verdict::PENDING) mPrivateStarted = false;
+                        libvlc_media_player_set_pause(mLibVLCMediaPlayer, 1);
+                    }
+                    else if (mDesired == ALMediaFile::Transport::PLAYING)
+                    {
+                        if (!mLibVLCMediaPlayer) playMedia();
+                        else
+                        {
+                            if (!mPrivateStarted) { mPrivateStarted = true; mAdmission.resumed(privateNow()); }
+                            libvlc_media_player_set_pause(mLibVLCMediaPlayer, 0);
+                            libvlc_media_player_play(mLibVLCMediaPlayer);
+                        }
+                    }
+                    setVolumeVLC();
+                }
+            }
             else if (message_name == "load_uri")
             {
                 stopPlayer();
+#if !LL_WINDOWS
+                mPrivateIdentityValid = false;
+#endif
+                mPrivateFile = message_in.getValueBoolean("private_file");
+                if (mPrivateFile)
+                {
+                    mAdmission = ALMediaFile::Admission(); // fresh URI never inherits admission
+                    mPrivateDemux = message_in.getValue("demux");
+                    mDesired = static_cast<ALMediaFile::Transport>(message_in.getValueS32("desired"));
+                    mIsLooping = message_in.getValueBoolean("private_loop");
+                }
                 mLoadToken = message_in.getValue("load_token");
                 mVideoWidth = mVideoHeight = 0;
                 mVideoSarNum = mVideoSarDen = 1;
@@ -758,6 +982,7 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
         else
             if (message_class == LLPLUGIN_MESSAGE_CLASS_MEDIA_TIME)
             {
+                if (mPrivateFile && message_name != "set_volume" && message_name != "set_loop" && message_name != "seek") return;
                 if (message_name == "stop")
                 {
                     if (mLibVLCMediaPlayer)
@@ -788,6 +1013,7 @@ void MediaPluginLibVLC::receiveMessage(const std::string& message_string)
                 }
                 else if (message_name == "seek")
                 {
+                    if (mPrivateFile && (mAdmission.verdict != ALMediaFile::Verdict::ADMITTED || !mAdmission.seekable)) return;
                     if (mLibVLCMediaPlayer)
                     {
                         libvlc_time_t time = (libvlc_time_t)(1000.0 * message_in.getValueReal("time"));
