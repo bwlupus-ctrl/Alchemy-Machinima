@@ -5,6 +5,7 @@
 #ifndef AL_ALLOOPSEAM_H
 #define AL_ALLOOPSEAM_H
 
+#include "llmath.h"
 #include "llquaternion.h"
 #include "v3math.h"
 
