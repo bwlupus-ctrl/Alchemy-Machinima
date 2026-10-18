@@ -1250,6 +1250,7 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
             row = page->findRowBySetting(target.setting);
         if (!card && !row && !target.widget.empty())
             card = page->findCard(target.widget);
+        if (!page->rowRevealAllowed(row)) return false;
         if (row && page->revealRow(row, true))
             return true;
         if (card)
@@ -1269,6 +1270,7 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
             for (LLView* ancestor = view; ancestor && ancestor != panel; ancestor = ancestor->getParent())
                 if (ALKitRow* owner = dynamic_cast<ALKitRow*>(ancestor))
                 {
+                    if (page && !page->rowRevealAllowed(owner)) return false;
                     if (page && page->revealRow(owner, true))
                         return true;
                     break;

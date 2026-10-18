@@ -21,6 +21,7 @@
 #include "alcompassdial.h"
 #include "alsettingsundohistory.h"
 #include "alvcampagemodel.h"
+#include "alvcammediafilelifecycle.h"
 #include "alcinerigrim.h"
 #include "alcinelightrigmanager.h"
 #include "aldanceball.h"
@@ -131,6 +132,142 @@
 
 namespace
 {
+bool functionalMediaLifecycle(const std::string& seam)
+{
+    using namespace ALMediaFile;
+    if (seam == "browse_ticket")
+    {
+        FilePickerTicket ticket;
+        const auto old = ticket.begin();
+        ticket.cancel();
+        S32 commits = 0;
+        if (ticket.picked(old, true, [&]() { ++commits; })) return false;
+        const auto current = ticket.begin();
+        if (ticket.picked(current, false, [&]() { ++commits; })) return false;
+        if (!ticket.picked(current, true, [&]() { ++commits; }) || commits != 1) return false;
+        std::string status;
+        LLPrismLens::SourceSlotData source;
+        source.setMediaData(LLPrismLens::MediaFaceSource());
+        auto apply = [&]() { source.setMediaUrlData(source.fileBrowseCue()); };
+        if (commitFileBrowse(status, MISSING, false, true, apply) || !source.mediaData() || status != MISSING) return false;
+        if (commitFileBrowse(status, "", true, false, apply) || !source.mediaData()) return false;
+        return commitFileBrowse(status, "", true, true, apply) && source.mediaUrlData();
+    }
+    if (seam == "clear")
+    {
+        bool pending = true, cleanup = true, degraded = false;
+        unsigned failures = 0, sweeps = 0, drops = 0;
+        for (unsigned attempt = 0; attempt < 3; ++attempt)
+        {
+            try
+            {
+                maintainCache(pending, cleanup, failures, degraded,
+                    [&](bool clearing) { if (clearing) ++sweeps; throw std::runtime_error("fixture"); },
+                    []() { return false; }, [&]() { ++drops; });
+            }
+            catch (...) { if (attempt == 2 || !pending) return false; }
+        }
+        if (pending || cleanup || !degraded || sweeps != 3 || drops != 1) return false;
+        pending = cleanup = true;
+        maintainCache(pending, cleanup, failures, degraded,
+            [](bool) {}, []() { return false; }, [&]() { ++drops; });
+        return !pending && !cleanup && drops == 1 &&
+            std::string(CLEARING) == "Clearing video cache..." &&
+            std::string(CLEAR_DEGRADED) == "Some cached videos couldn't be removed";
+    }
+    if (seam == "syntax")
+    {
+        Descriptor descriptor;
+        std::string reason;
+        const LLPrismLens::MediaUrlSource defaults;
+        if (!defaults.mLoop || defaults.mVolume != 0.f || !defaults.mValue.empty()) return false;
+        if (!classify("https://example.invalid/clip.mp4", descriptor, reason, true) || descriptor.location != Location::HTTP_URL) return false;
+        if (!classify("D:\\NeverExists\\clip.mov", descriptor, reason, true) || descriptor.location != Location::LOCAL_FILE) return false;
+        for (const char* path : {"\\\\server\\share\\clip.mov", "//server/share/clip.mp4", "file://server/clip.mp4", "\\\\?\\UNC\\server\\clip.mp4"})
+            if (classify(path, descriptor, reason, true) || reason != REMOTE) return false;
+        return !classify("rtsp://example.invalid/clip.mp4", descriptor, reason, true) && reason == UNSUPPORTED &&
+            std::string(NOT_VIDEO) == "This file isn't a video" && std::string(MISSING) == "File not found" &&
+            std::string(LOCKED) == "Video downloads are in use by another open viewer";
+    }
+    if (seam == "admission")
+    {
+        Admission admission;
+        admission.open(1, 0.);
+        if (admission.audible(Transport::PLAYING) || !admission.observe(1, 1., false, false, -1.) || admission.verdict != Verdict::PENDING) return false;
+        if (!admission.observe(1, 2., true, false, -1.) || admission.verdict != Verdict::ADMITTED || admission.seekable) return false;
+        if (admission.audible(Transport::PAUSED) || !admission.audible(Transport::PLAYING)) return false;
+        admission.rebuild(2, 3.);
+        return !admission.observe(1, 4., true, false, 10.) && !admission.audible(Transport::PLAYING) &&
+            admission.observe(2, 14., false, false, 0.) && admission.verdict == Verdict::REJECTED;
+    }
+    if (seam == "demand_teardown")
+    {
+        if (privateOwnerDemand(true, false, true, true) <= 0. ||
+            privateOwnerDemand(true, true, true, true) != 0. ||
+            LLPrismLens::mediaDemandArea(false, true, true, 1920, 1080) != 0.) return false;
+        auto lease = std::make_shared<int>(1);
+        std::weak_ptr<int> retained = lease;
+        bool closed = false;
+        DeferredClose retirement(lease, [&]() { return closed; });
+        lease.reset();
+        if (retirement.poll() || retained.expired()) return false;
+        closed = true;
+        return retirement.poll() && retained.expired() &&
+            !privateEndStops(true, true, true) && privateEndStops(true, true, false);
+    }
+    if (seam == "cache_policy")
+    {
+        CacheOrphans orphans;
+        orphans.abandon("partial", 32, 64);
+        if (orphans.bytes() != 64 || cacheFits(64, 1, 64)) return false;
+        orphans.retry(1, [](const std::string&) { return false; });
+        if (orphans.bytes() != 64) return false;
+        orphans.retry(60002, [](const std::string&) { return true; });
+        return orphans.bytes() == 0 && cacheFits(0, 64, 64) &&
+            lockRetryMs(4, true) == 500 && lockRetryMs(5, true) == 0;
+    }
+    if (seam == "scene_restore")
+    {
+        const LLSD original = LLPrismLens::sceneData();
+        LLSD scene = LLSD::emptyMap();
+        for (const char* key : {"prism_captures", "prism_displays", "prism_projectors", "prism_gates"})
+            scene[key] = LLSD::emptyArray();
+        for (S32 local = 0; local < 2; ++local)
+        {
+            LLSD source = LLSD::emptyMap();
+            source["capture_id"] = LLUUID::generateNewID();
+            source["label"] = local ? "Missing local cue" : "Unresolvable HTTP cue";
+            source["source_kind"] = "media_url";
+            source["source_location"] = local ? "local_file" : "http_url";
+            source[local ? "source_path" : "source_url"] = local
+                ? (LL_WINDOWS ? "D:/VCamNeverExists/clip.mov" : "/vcam-never-exists/clip.mov")
+                : "https://example.invalid/never-requested.mp4";
+            source["source_loop"] = false;
+            source["source_volume"] = LLSD::Real(.35f);
+            source["source_aspect"] = 2;
+            source["output_rate_mode"] = "target_fps";
+            source["target_output_fps"] = 12.;
+            scene["prism_captures"].append(source);
+        }
+        std::string reason;
+        bool passed = LLPrismLens::applySceneData(scene, &reason);
+        const LLSD saved = LLPrismLens::sceneData();
+        passed = passed && saved == scene && LLPrismLens::applySceneData(saved, &reason);
+        const auto registry = LLPrismLens::registrySnapshot();
+        passed = passed && registry.mCaptureCount == 0 && registry.mSlotCount == 2;
+        for (U32 slot = 0; slot < registry.mSlotCount; ++slot)
+        {
+            const auto& source = registry.mCaptures[slot];
+            passed = passed && source.mediaUrlData() && !source.mediaUrlData()->mLoop &&
+                fabsf(source.mediaUrlData()->mVolume - .35f) < .001f && source.mediaAspect() == LLPrismLens::ESourceAspect::STANDARD_4_3 &&
+                !source.mRuntime.mHasOutput && source.mMediaDemandArea == 0.;
+        }
+        const bool restored = LLPrismLens::applySceneData(original, &reason);
+        return passed && restored;
+    }
+    return false;
+}
+
 // Selected VCam capture through the model's public registry (findCapture is private).
 const LLPrismLens::CaptureDefinition* functionalSelectedVCamCapture(const ALVCamPageModel& model)
 {
@@ -6506,9 +6643,12 @@ private:
             entry["page"].asString() != "vcam_tab") return;
         mFunctionalVCamModel->refreshNow();
         const LLPrismLens::RegistrySnapshot& registry = mFunctionalVCamModel->registry();
-        const bool media_probe = entry["probe"].asString() == "vcam_media";
+        const bool media_probe = entry["probe"].asString() == "vcam_media" ||
+            entry["probe"].asString() == "vcam_media_file" || entry["probe"].asString() == "vcam_media_readout" ||
+            entry["probe"].asString() == "vcam_media_add";
         if (media_probe)
         {
+            mFunctionalFreshMediaFreezeDisabled = false;
             // A media-only fixture proves that zero cameras is reachable. No
             // source/player is created. Restore the camera fixture at this
             // entry's boundary so later camera/face/projector probes remain live.
@@ -6521,9 +6661,26 @@ private:
             empty["prism_gates"] = LLSD::emptyArray();
             std::string reason;
             if (!LLPrismLens::applySceneData(empty, &reason)) return;
-            if (entry["widget_name"].asString() != "vc_add_media_slot")
+            if (entry["widget_name"].asString() != "vc_add_media_slot" && entry["probe"].asString() != "vcam_media_add")
                 mFunctionalVCamModel->addMediaSlot(&reason);
             mFunctionalVCamModel->refreshNow();
+            if (entry["widget_name"].asString() == "vc_media_running")
+            {
+                const auto* fresh = functionalSelectedVCamCapture(*mFunctionalVCamModel);
+                const auto* freeze = mFunctionalPageRoot->findChild<LLUICtrl>("vc_media_running", true);
+                mFunctionalFreshMediaFreezeDisabled = fresh && !fresh->mRuntime.mHasOutput &&
+                    !fresh->mMediaCanPause && fresh->mMediaRunning && freeze && !freeze->getEnabled();
+                // No accepted GL frame can be manufactured by this fixture.
+                // Exercise native Resume; Freeze with a real frame is deferred.
+                LLPrismLens::setMediaRunning(mFunctionalVCamModel->selectedCapture(), false);
+                mFunctionalVCamModel->refreshNow();
+            }
+            if (entry["visible_when"].asString().find("media_face") != std::string::npos)
+            {
+                LLPrismLens::setMediaSource(mFunctionalVCamModel->selectedCapture(),
+                    LLPrismLens::MediaFaceSource(), &reason);
+                mFunctionalVCamModel->refreshNow();
+            }
         }
         const LLPrismLens::CaptureDefinition* selected = nullptr;
         for (U32 slot = 0; slot < registry.mSlotCount; ++slot)
@@ -6611,6 +6768,20 @@ private:
             return;
         }
         const std::string action = entry["action"].asString();
+        if (entry["probe"].asString() == "vcam_media_lifecycle")
+        {
+            if (mInWorld && entry["media_seam"].asString() == "scene_restore")
+            {
+                addFunctionalResult(entry, "SKIP", "scene replacement oracle is login-only");
+                ++mFunctionalIndex;
+                return;
+            }
+            const bool passed = functionalMediaLifecycle(entry["media_seam"].asString());
+            addFunctionalResult(entry, passed ? "PASS" : "FAIL",
+                passed ? "isolated production-helper oracle; native interaction deferred" : "media lifecycle oracle failed");
+            ++mFunctionalIndex;
+            return;
+        }
         const std::vector<std::string> network_hazards =
             functionalHazardsByClass(entry, true);
         const std::vector<std::string> local_hazards =
@@ -6765,6 +6936,12 @@ private:
             restoreFunctionalAction();
             ++mFunctionalIndex;
             return;
+        }
+        if (entry["page"].asString() == "vcam_tab" &&
+            entry["probe"].asString().rfind("vcam_media", 0) == 0)
+        {
+            rememberFunctionalSetting("VCamMediaSlotsEnabled");
+            gSavedSettings.setBOOL("VCamMediaSlotsEnabled", true);
         }
         prepareFunctionalVCamSelection(entry);
         if (mInWorld && mFunctionalHaveProjector &&
@@ -7457,7 +7634,9 @@ private:
                 source->mMediaRunning != mFunctionalOwnerModelBefore["running"].asBoolean() &&
                 (source->mMediaRunning || source->mMediaDemandArea == 0.0) &&
                 LLSD::Real(registry.mRuntimeRevision) > mFunctionalOwnerModelBefore["runtime"].asReal();
-            const bool changed = source && source->isMedia() && !source->cameraData() &&
+            const bool resumed = !consumption || (mFunctionalFreshMediaFreezeDisabled &&
+                source && source->mMediaRunning && !mFunctionalOwnerModelBefore["running"].asBoolean());
+            const bool changed = resumed && source && source->isMedia() && !source->cameraData() &&
                 registry.mCaptureCount == 0 && (consumption ? consumption_ok : added
                     ? registry.mSlotCount == U32(mFunctionalOwnerModelBefore["slots"].asInteger() + 1)
                     : (source->mediaData() || source->mediaUrlData()) &&
@@ -7466,6 +7645,81 @@ private:
             observable = changed;
             expected_ok = expected_ok && changed;
             if (!changed) assertion_failure = "media-only kind/count/aspect registry oracle failed";
+        }
+        if (entry["probe"].asString() == "vcam_media_file" && mFunctionalVCamModel)
+        {
+            mFunctionalVCamModel->refreshNow();
+            const auto* source = functionalSelectedVCamCapture(*mFunctionalVCamModel);
+            const auto* video = source ? source->mediaUrlData() : nullptr;
+            bool correct = source && source->isMedia() && !source->cameraData() &&
+                mFunctionalVCamModel->registry().mCaptureCount == 0;
+            const std::string widget = entry["widget_name"].asString();
+            if (widget == "vc_media_kind") correct = correct && source->mediaData() && control->getValue().asString() == "face";
+            else if (widget == "vc_media_video") correct = correct && video && video->mValue == entry["test_value"].asString() && control->getValue().asString() == video->mValue;
+            else if (widget == "vc_media_loop") correct = correct && video && !video->mLoop && !control->getValue().asBoolean();
+            else if (widget == "vc_media_volume") correct = correct && video && fabsf(video->mVolume - .35f) < .001f && fabs(control->getValue().asReal() - video->mVolume) < .001;
+            else correct = false;
+            if (widget == "vc_media_video")
+            {
+                const auto before = LLPrismLens::registrySnapshot();
+                auto* editor = dynamic_cast<LLLineEditor*>(control);
+                editor->setText(std::string("this is not a video URL"));
+                editor->onCommit();
+                mFunctionalVCamModel->refreshNow();
+                const auto after = LLPrismLens::registrySnapshot();
+                const auto* preserved = functionalSelectedVCamCapture(*mFunctionalVCamModel);
+                const auto* play = mFunctionalPageRoot->findChild<LLUICtrl>("vc_media_play", true);
+                const auto* status = mFunctionalPageRoot->findChild<LLUICtrl>("vc_media_status", true);
+                correct = correct && preserved && preserved->mediaUrlData() &&
+                    preserved->mediaUrlData()->mValue == entry["test_value"].asString() &&
+                    before.mConfigurationRevision == after.mConfigurationRevision &&
+                    before.mRuntimeRevision == after.mRuntimeRevision &&
+                    editor->getText() == "this is not a video URL" && play && !play->getEnabled() &&
+                    status && status->getValue().asString() == ALMediaFile::UNSUPPORTED;
+                editor->setText(entry["test_value"].asString());
+                editor->onCommit();
+                for (const std::string cue : {std::string("https://example.invalid/B.mp4"), std::string()})
+                {
+                    editor->setText(cue);
+                    editor->onCommit();
+                    mFunctionalVCamModel->refreshNow();
+                    const auto* replaced = functionalSelectedVCamCapture(*mFunctionalVCamModel);
+                    correct = correct && replaced && replaced->mediaUrlData() &&
+                        replaced->mediaUrlData()->mValue == cue && !replaced->mMediaCanPause &&
+                        !replaced->mRuntime.mHasOutput && replaced->mMediaDemandArea == 0. &&
+                        replaced->mRuntime.mReason == "Set. Press Play to start it.";
+                }
+                editor->setText(entry["test_value"].asString());
+                editor->onCommit();
+            }
+            // Production writer/parser/apply round trip. These fixtures contain
+            // an unresolvable HTTP host or an empty cue; no Play is issued.
+            const LLSD saved = LLPrismLens::sceneData();
+            std::string reason;
+            correct = correct && LLPrismLens::applySceneData(saved, &reason);
+            const LLSD restored = LLPrismLens::sceneData();
+            correct = correct && saved == restored;
+            mFunctionalVCamModel->refreshNow();
+            const auto& registry = mFunctionalVCamModel->registry();
+            for (U32 slot = 0; slot < registry.mSlotCount; ++slot)
+                correct = correct && !registry.mCaptures[slot].mRuntime.mHasOutput &&
+                    registry.mCaptures[slot].mMediaDemandArea == 0.;
+            observable = correct;
+            expected_ok = expected_ok && correct;
+            if (!correct) assertion_failure = "media control/read-back or syntax-only scene round-trip failed";
+        }
+        if (entry["probe"].asString() == "vcam_media_add" && mFunctionalVCamModel)
+        {
+            mFunctionalVCamModel->refreshNow();
+            const auto& registry = mFunctionalVCamModel->registry();
+            const auto* source = functionalSelectedVCamCapture(*mFunctionalVCamModel);
+            const auto* video = source ? source->mediaUrlData() : nullptr;
+            const bool correct = registry.mSlotCount == 1 && registry.mCaptureCount == 0 && source &&
+                video && video->mValue.empty() && video->mLoop && video->mVolume == 0.f &&
+                !source->mRuntime.mHasOutput && source->mMediaDemandArea == 0.;
+            observable = correct;
+            expected_ok = expected_ok && correct;
+            if (!correct) assertion_failure = "Add selector did not create/select the requested media source with safe defaults";
         }
         if (entry["probe"].asString() == "vcam_camera_name")
         {
@@ -13320,6 +13574,7 @@ private:
     F64 mFunctionalDanceRampBefore = 1.0;
     U64 mFunctionalDanceStatusRevisionBefore = 0;
     LLSD mFunctionalOwnerModelBefore;
+    bool mFunctionalFreshMediaFreezeDisabled = false;
     LLActorMover::GazeTarget mFunctionalCastGazeBefore;
     bool mFunctionalCastLookBefore = false;
     bool mFunctionalHaveCastGazeBefore = false;

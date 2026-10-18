@@ -16,8 +16,10 @@
 #include "aluirefresh.h"
 #include "alvcambonepov.h"
 #include "alvcammonitorstrip.h"
+#include "alvcammediafileio.h"
 #include "llagentcamera.h"
 #include "llbutton.h"
+#include "llcallbacklist.h"
 #include "llcombobox.h"
 #include "llcontrol.h"
 #include "lldirectorcast.h"
@@ -254,12 +256,49 @@ bool ALPanelDirectorVCam::postBuild()
     mCameraName = dynamic_cast<LLLineEditor*>(control("vc_camera_name"));
     if (mCameraName)
         mCameraName->setMaxTextLength(128); // Core normalization caps at 32 Unicode characters.
+    mMediaVideo = dynamic_cast<LLLineEditor*>(control("vc_media_video"));
+    if (mMediaVideo)
+    {
+        mMediaVideo->setMaxTextLength(8192);
+        mMediaVideo->setKeystrokeCallback([this](LLLineEditor*, void*)
+        {
+            ++mMediaEditEpoch; // Invalidates a pending Browse even if selection returns.
+            validateMediaVideo();
+        }, nullptr);
+    }
+    const auto media_panel = getHandle();
+    doPeriodically([media_panel]()
+    {
+        auto* self = dynamic_cast<ALPanelDirectorVCam*>(media_panel.get());
+        if (!self) return true;
+        if (self->mModel.pageVisible() && self->isInVisibleChain())
+        {
+            self->refreshMediaCache();
+            if (!self->mMediaPlayStatus.empty() && self->mMediaPlayStatusTimer.getElapsedTimeF32() < 5.5f)
+                self->mModel.markDirty(ALVCamPageModel::DIRTY_RUNTIME);
+        }
+        return false;
+    }, 0.5f);
 
     if (mKitPage)
     {
         setVisibleIfChanged(mKitPage->undoButton(), false);
         setVisibleIfChanged(mKitPage->redoButton(), false);
         setVisibleIfChanged(mKitPage->resetButton(), false);
+        mKitPage->setRowRevealGuard([this](ALKitRow* target)
+        {
+            const std::string& widget = target->meta().widget;
+            const bool url_row = widget == "vc_media_video" || widget == "vc_media_browse" ||
+                widget == "vc_media_transport" || widget == "vc_media_loop" || widget == "vc_media_volume" ||
+                widget == "vc_media_cache_clear" || widget == "vc_media_cache_status";
+            const bool face_row = widget == "vc_media_face" || widget == "vc_media_face_actions";
+            if (!url_row && !face_row) return true;
+            const auto* selected = selectedCapture();
+            if (selected && ((url_row && selected->mediaUrlData()) || (face_row && selected->mediaData()))) return true;
+            setStatus(url_row ? "Select a media slot and switch Source to Video URL to use this control." :
+                "Select a media slot and switch Source to Prim face to use this control.", false);
+            return false;
+        });
         mKitPage->setCardPasteHandler(
             [this](const std::string& card, const LLSD& values)
             { return pasteCardValues(card, values); });
@@ -363,6 +402,7 @@ void ALPanelDirectorVCam::onVisibilityChange(bool visible)
         visible && gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled"));
     if (!visible)
     {
+        ++mMediaEditEpoch; // A picker may not commit after hiding and reopening this page.
         LLPrismPreviewService::instance().clearDemand(VCAM_PAGE_PREVIEW_OWNER);
         mPreviewDemand.fill(LLPrismLens::CaptureHandle{});
     }
@@ -454,6 +494,11 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
     const LLPrismLens::ProjectorDefinition* selected_projector = selectedProjector();
+    if ((!capture || !capture->isMedia()) && mMediaEditHandle.mId.notNull())
+    {
+        ++mMediaEditEpoch;
+        mMediaEditHandle = LLPrismLens::CaptureHandle();
+    }
     const LLPrismLens::PerformanceSnapshot& perf = mModel.performance();
     if (mCameraLabelRevision != registry.mConfigurationRevision)
     {
@@ -501,6 +546,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         tile.mCapture = item.mHandle;
         tile.mPublication = LLPrismPreviewService::instance().tileState(item.mHandle);
         tile.mLabel = item.mLabel;
+        tile.mMedia = item.isMedia();
         tile.mActivity = item.mRuntime.mActivity;
         tile.mObservedFps = item.mRuntime.mObservedPublicationHz;
         tile.mTargetFps = item.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
@@ -523,7 +569,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         tile.mVisible = true;
     }
     mCameraSelector->setItems(cameras, mModel.selectedCapture());
-    mCameraSelector->setActionsEnabled(registry.mSlotCount < 8, capture != nullptr);
+    mCameraSelector->setActionsEnabled(registry.mSlotCount < 8, capture != nullptr, LLPrismLens::mediaSlotsEnabled());
     const bool info_overlay = gSavedSettings.getBOOL("PrismMonitorInfoOverlay");
     mMonitorStrip->setTiles(tiles, monitor_slot_span, mCompact, info_overlay, mLargePage);
     mMonitorStrip->setNewFaceFit(mNewFaceFit);
@@ -797,13 +843,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(control("vc_bone_yaw"), bone.mTrimYawDeg);
         setValueIfChanged(control("vc_bone_scale"), bone.mScaleAware);
         setValueIfChanged(control("vc_bone_status"), ALVCamBonePov::instance().status(capture->mHandle));
-        setValueIfChanged(control("vc_rate_mode"), static_cast<S32>(capture->mRate.mMode));
-        setValueIfChanged(control("vc_target_fps"), capture->mRate.mTargetFps);
-        setValueIfChanged(control("vc_rate_readout"), llformat("%.1f / %.1f / %.1f fps - age %.2fs",
-            capture->mRate.mTargetFps, capture->mRuntime.mCadenceEntitlementHz,
-            capture->mRuntime.mObservedPublicationHz, capture->mRuntime.mOutputAgeSeconds));
-        setRowControlVisible(row("vc_target_fps"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
-        setRowControlVisible(row("vc_rate_preset"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
+
     }
 
     if (display)
@@ -870,20 +910,89 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     if (ALKitCard* lens_card = mKitPage->findCard("surface_lens"))
         lens_card->setCodeVisible(!media_selected);
     if (ALKitCard* media_card = mKitPage->findCard("media_source"))
+    {
         media_card->setCodeVisible(media_selected && LLPrismLens::mediaSlotsEnabled());
-    setRowControlVisible(row("vc_add_media_slot"), LLPrismLens::mediaSlotsEnabled());
-    setEnabledIfChanged(control("vc_add_media_slot"), LLPrismLens::mediaSlotsEnabled() && registry.mSlotCount < LLPrismLens::MAX_CAPTURES);
+        if (media_selected) media_card->setBadgePlaceholder("CAM n", llformat("Cam %u", capture->mSlot + 1));
+    }
     if (media_selected)
     {
         for (const char* id : {"source", "placement", "skeleton", "optics", "guide", "camera_look", "look_goes", "output_frame"})
             if (ALKitCard* card = mKitPage->findCard(id)) card->setCodeVisible(false);
-        setValueIfChanged(control("vc_media_running"), capture->mMediaRunning ? 1 : 0);
-        setValueIfChanged(control("vc_media_status"), capture->mRuntime.mReason);
+        const auto* video = capture->mediaUrlData();
+        const bool enabled = LLPrismLens::mediaSlotsEnabled();
+        setValueIfChanged(control("vc_media_kind"), video ? "url" : "face");
+        for (const char* id : {"vc_media_video", "vc_media_browse", "vc_media_transport", "vc_media_loop", "vc_media_volume", "vc_media_cache_clear", "vc_media_cache_status"})
+            setRowControlVisible(row(id), video != nullptr);
+        for (const char* id : {"vc_media_face", "vc_media_face_actions"})
+            setRowControlVisible(row(id), video == nullptr);
+        if (!sameCapture(mMediaEditHandle, capture->mHandle) || mMediaEditingUrl != (video != nullptr) ||
+            (video && video->mValue != mMediaCue))
+        {
+            ++mMediaEditEpoch;
+            if (!sameCapture(mMediaEditHandle, capture->mHandle) || mMediaEditingUrl != (video != nullptr))
+                mMediaPlayStatus.clear();
+            mMediaEditHandle = capture->mHandle;
+            mMediaEditingUrl = video != nullptr;
+            mMediaCue = video ? video->mValue : "";
+            mMediaDraft = mMediaCue;
+            mMediaError.clear();
+            mMediaPlayable = !mMediaCue.empty();
+            setValueIfChanged(mMediaVideo, mMediaDraft);
+        }
+        if (video)
+        {
+            setValueIfChanged(control("vc_media_loop"), video->mLoop);
+            setValueIfChanged(control("vc_media_volume"), video->mVolume);
+        }
+        setEnabledIfChanged(control("vc_media_play"), enabled && video && mMediaPlayable);
+        setEnabledIfChanged(control("vc_media_pause"), enabled && video && capture->mMediaCanPause);
+        setEnabledIfChanged(control("vc_media_stop"), enabled && video);
+        setEnabledIfChanged(control("vc_media_running"), enabled &&
+            (!capture->mMediaRunning || capture->mRuntime.mHasOutput));
+        if (auto* freeze = dynamic_cast<LLButton*>(control("vc_media_running")))
+        {
+            const std::string label = capture->mMediaRunning ? "Freeze" : "Resume";
+            setLabelIfChanged(freeze, label);
+        }
+        setValueIfChanged(control("vc_media_running"), capture->mMediaRunning);
+        if (!mMediaPlayStatus.empty() && capture->mRuntime.mReason != mMediaPlayStatus)
+            mMediaPlayStatus.clear(); // A new live status always supersedes the refusal.
+        const bool play_status_expired = mMediaPlayStatusTimer.getElapsedTimeF32() >= 5.f ||
+            mMediaPlayPolicy != gSavedSettings.getBOOL("AudioStreamingMedia") ||
+            mMediaPlayMaster != gSavedSettings.getBOOL("PrismLensEnabled") || mMediaPlayEnabled != enabled;
+        // The registry can retain a refused Play reason while stopped. Retire
+        // that presentation too; never let it cover a newer live status.
+        const std::string media_status = !mMediaPlayStatus.empty() && play_status_expired
+            ? (mMediaDraft.empty() ? "Enter a direct video URL" : "Set. Press Play to start it.")
+            : capture->mRuntime.mReason;
+        setValueIfChanged(control("vc_media_status"), !mMediaError.empty() ? mMediaError :
+            video && mMediaDraft.empty() && capture->mRuntime.mReason != "Set. Press Play to start it." ? "Enter a direct video URL" :
+            !video && capture->mediaData()->mObjectId.isNull() ? "Pick a prim face" : media_status);
+        setValueIfChanged(control("vc_media_note"), video
+            ? "Only you see and hear this. Volume starts muted. Local files work only on this PC; scenes never auto-play."
+            : "Only you see these outputs; audio stays on the prim.");
+        refreshMediaCache();
         setValueIfChanged(control("vc_source_aspect"), static_cast<S32>(capture->mediaAspect()));
-        setValueIfChanged(control("vc_media_face"), !capture->mediaData() || capture->mediaData()->mObjectId.isNull() ? "Unbound" :
-            llformat("%s / face %d", capture->mediaData()->mObjectId.asString().c_str(), capture->mediaData()->mTE));
+        std::string face_name = "None picked";
+        if (const auto* face = capture->mediaData(); face && face->mObjectId.notNull())
+        {
+            const auto* properties = ALObjectPropertiesCache::instance().get(face->mObjectId);
+            face_name = llformat("%s / face %d", properties && !properties->mName.empty()
+                ? properties->mName.c_str() : face->mObjectId.asString().c_str(), face->mTE);
+        }
+        setValueIfChanged(control("vc_media_face"), face_name);
+
+    }
+
+    if (capture)
+    {
         setValueIfChanged(control("vc_rate_mode"), static_cast<S32>(capture->mRate.mMode));
         setValueIfChanged(control("vc_target_fps"), capture->mRate.mTargetFps);
+        setValueIfChanged(control("vc_rate_readout"), llformat("%.1f / %.1f / %.1f fps - age %.2fs",
+            capture->mRate.mTargetFps, capture->mRuntime.mCadenceEntitlementHz,
+            capture->mRuntime.mObservedPublicationHz, capture->mRuntime.mOutputAgeSeconds));
+        setRowControlVisible(row("vc_target_fps"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
+        setRowControlVisible(row("vc_rate_preset"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
     }
 
     mMonitorHeader->setState(mCompact,
@@ -923,6 +1032,44 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
                  ALVCamPageModel::DIRTY_SELECTION))
         refreshPreviewDemand();
     mRefreshing = false;
+}
+
+void ALPanelDirectorVCam::refreshMediaCache()
+{
+    const auto cache = ALMediaFile::cacheStatus(); // Snapshot only; never initializes I/O.
+    setEnabledIfChanged(control("vc_media_cache_clear"), LLPrismLens::mediaSlotsEnabled() && cache.owner);
+    setValueIfChanged(control("vc_media_cache_status"), cache.owner
+        ? llformat("%.1f / %.1f MiB; %s", cache.bytes / 1048576.0, cache.limit / 1048576.0, cache.status.c_str())
+        : !cache.status.empty() ? cache.status : cache.checking ? "Checking video cache..." : "Video cache idle");
+}
+
+void ALPanelDirectorVCam::validateMediaVideo()
+{
+    if (!mMediaVideo) return;
+    mMediaDraft = mMediaVideo->getText();
+    ALMediaFile::Descriptor syntax;
+    mMediaError.clear();
+    mMediaPlayable = ALMediaFile::classify(mMediaDraft, syntax, mMediaError, LL_WINDOWS) && !syntax.value.empty();
+    setEnabledIfChanged(control("vc_media_play"), LLPrismLens::mediaSlotsEnabled() &&
+        mMediaPlayable);
+    const auto* capture = selectedCapture();
+    setValueIfChanged(control("vc_media_status"), !mMediaError.empty() ? mMediaError :
+        mMediaDraft.empty() ? "Enter a direct video URL" : capture ? capture->mRuntime.mReason : "Stopped");
+}
+
+bool ALPanelDirectorVCam::commitMediaVideo()
+{
+    const auto* capture = selectedCapture();
+    if (!capture || !capture->mediaUrlData() || !sameCapture(capture->mHandle, mMediaEditHandle)) return false;
+    validateMediaVideo();
+    if (!mMediaError.empty()) return false;
+    ALMediaFile::Descriptor syntax;
+    if (!ALMediaFile::classify(mMediaDraft, syntax, mMediaError, LL_WINDOWS)) return false;
+    auto source = *capture->mediaUrlData();
+    source.mValue = mMediaDraft; // Keep exactly what the user typed.
+    source.mLocation = syntax.location == ALMediaFile::Location::LOCAL_FILE
+        ? LLPrismLens::MediaUrlSource::Location::LOCAL_FILE : LLPrismLens::MediaUrlSource::Location::HTTP_URL;
+    return LLPrismLens::setMediaUrlSource(capture->mHandle, source, &mMediaError);
 }
 
 void ALPanelDirectorVCam::setStatus(const std::string& text, bool warning)
@@ -998,17 +1145,73 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
     if (!source || mRefreshing) return;
     clearStatus();
     const std::string name = source->getName();
+    if (name == "vc_camera_selector") ++mMediaEditEpoch;
     const LLSD value = source->getValue();
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
 
-    if (name == "vc_add_media_slot")
+    if (capture && capture->isMedia() && name.rfind("vc_media_", 0) == 0 && name != "vc_media_running")
     {
+        const auto handle = capture->mHandle;
         std::string reason;
-        mModel.addMediaSlot(&reason);
+        if (name == "vc_media_kind")
+        {
+            ++mMediaEditEpoch;
+            LLPrismLens::switchMediaSourceKind(handle, value.asString() == "url");
+        }
+        else if (name == "vc_media_video") { ++mMediaEditEpoch; commitMediaVideo(); }
+        else if (name == "vc_media_play")
+        {
+            mMediaPlayStatus.clear();
+            if (commitMediaVideo() && !LLPrismLens::playMediaFile(handle))
+            {
+                const auto state = LLPrismLens::registrySnapshot();
+                for (U32 i = 0; i < state.mSlotCount; ++i)
+                    if (sameCapture(state.mCaptures[i].mHandle, handle))
+                        mMediaPlayStatus = state.mCaptures[i].mRuntime.mReason;
+                mMediaPlayStatusTimer.reset();
+                mMediaPlayPolicy = gSavedSettings.getBOOL("AudioStreamingMedia");
+                mMediaPlayMaster = gSavedSettings.getBOOL("PrismLensEnabled");
+                mMediaPlayEnabled = LLPrismLens::mediaSlotsEnabled();
+            }
+        }
+        else if (name == "vc_media_pause") LLPrismLens::pauseMediaFile(handle);
+        else if (name == "vc_media_stop") { ++mMediaEditEpoch; LLPrismLens::stopMediaFile(handle); }
+        else if (name == "vc_media_browse")
+        {
+            const auto panel = getHandle();
+            const U64 epoch = ++mMediaEditEpoch;
+            LLPrismLens::browseMediaFile(handle, [panel, handle, epoch]()
+            {
+                auto* self = dynamic_cast<ALPanelDirectorVCam*>(panel.get());
+                return self && self->mModel.pageVisible() && self->mMediaEditEpoch == epoch &&
+                    sameCapture(self->mModel.selectedCapture(), handle);
+            }, [panel, handle, epoch]()
+            {
+                auto* self = dynamic_cast<ALPanelDirectorVCam*>(panel.get());
+                if (!self || self->mMediaEditEpoch != epoch ||
+                    !sameCapture(self->mModel.selectedCapture(), handle)) return;
+                // Force editor read-back on success, including an identical cue.
+                self->mMediaEditHandle = {};
+                self->mModel.markDirty(ALVCamPageModel::DIRTY_ALL);
+            });
+        }
+        else if ((name == "vc_media_loop" || name == "vc_media_volume") && capture->mediaUrlData())
+        {
+            auto video = *capture->mediaUrlData();
+            if (name == "vc_media_loop") video.mLoop = value.asBoolean();
+            else video.mVolume = static_cast<F32>(value.asReal());
+            LLPrismLens::setMediaUrlSource(handle, video, &reason);
+        }
+        else if (name == "vc_media_cache_clear") LLPrismLens::clearMediaFileCache();
+        else if (name == "vc_media_locate" && capture->mediaData())
+            if (auto* object = gObjectList.findObject(capture->mediaData()->mObjectId))
+                handle_zoom_to_object(object->getID());
         if (!reason.empty()) setStatus(reason);
+        mModel.refreshNow();
         return;
     }
+
     if (name == "vc_pick_media_face" && capture && capture->isMedia())
     {
         const auto handle = capture->mHandle;
@@ -1033,7 +1236,7 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         return;
     }
     if (name == "vc_media_running" && capture && capture->isMedia())
-        LLPrismLens::setMediaRunning(capture->mHandle, value.asInteger() != 0);
+        LLPrismLens::setMediaRunning(capture->mHandle, !capture->mMediaRunning);
     else if (name == "vc_enable") gSavedSettings.setBOOL("PrismLensEnabled", value.asBoolean());
     else if (name == "vc_open_manager") LLFloaterReg::showInstance("prism_manager");
     else if (name == "vc_monitor_header")
@@ -1136,6 +1339,8 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         else if (action == "virtual") mModel.addVirtualAtView(&reason);
         else if (action == "ots") mModel.addOtsPair(&reason);
         else if (action == "lens") mModel.addSurfaceLens(&reason);
+        else if (action == "media" && LLPrismLens::mediaSlotsEnabled())
+            mModel.addMediaSlot(&reason);
         if (!reason.empty()) setStatus(reason);
         // Snap back to "+ Add camera..." (item 0). Its value is undefined, so
         // setValue(LLSD()) matched nothing and the last choice stayed shown.

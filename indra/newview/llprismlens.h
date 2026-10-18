@@ -792,9 +792,18 @@ public:
     bool isSurfaceLens() const { const auto* c = cameraData(); return c && c->mMode == ECaptureMode::SURFACE_LENS; }
     bool isMedia() const { return mediaData() != nullptr || mediaUrlData() != nullptr; }
     void setCameraData(const CameraPayload& source) { mSource = source; }
-    void setMediaData(const MediaFaceSource& source) { mSource = source; }
-    void setMediaUrlData(const MediaUrlSource& source) { mSource = source; }
-    void copySourceData(const SourceSlotData& source) { mSource = source.mSource; }
+    void setMediaData(const MediaFaceSource& source)
+    { if (mediaUrlData()) mStoredUrl = *mediaUrlData(); mStoredFace = source; mSource = source; }
+    void setMediaUrlData(const MediaUrlSource& source)
+    { if (mediaData()) mStoredFace = *mediaData(); mStoredUrl = source; mSource = source; }
+    void copySourceData(const SourceSlotData& source)
+    { mSource = source.mSource; mStoredUrl = source.mStoredUrl; mStoredFace = source.mStoredFace; }
+    void switchMediaKind(bool url)
+    {
+        const auto aspect = mediaAspect();
+        if (url) { auto cue = mStoredUrl; cue.mAspect = aspect; setMediaUrlData(cue); }
+        else { auto face = mStoredFace; face.mAspect = aspect; setMediaData(face); }
+    }
     MediaUrlSource fileBrowseCue() const
     {
         MediaUrlSource cue = mediaUrlData() ? *mediaUrlData() : MediaUrlSource();
@@ -802,6 +811,8 @@ public:
         return cue;
     }
 private:
+    MediaUrlSource mStoredUrl;
+    MediaFaceSource mStoredFace;
     std::variant<std::monostate, CameraPayload, MediaFaceSource, MediaUrlSource> mSource;
 };
 
@@ -819,6 +830,7 @@ struct CaptureDefinition : SourceSlotData
     U64 mAcceptedSerial = 0;
     bool mMediaRunning = true; // Consumption only; never changes the player.
     F64 mMediaDemandArea = 0.0;
+    bool mMediaCanPause = false; // Runtime transport, not authored cue presence.
 };
 
 std::string captureDisplayLabel(const CaptureDefinition& capture);
@@ -1210,6 +1222,8 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a = nullptr,
 ERegistryResult addSurfaceLensFromSelectedFace(
     CaptureHandle* capture, std::string* reason = nullptr);
 bool mediaSlotsEnabled();
+bool mediaFrameTrackingEnabled(const LLViewerMediaImpl* impl);
+bool switchMediaSourceKind(const CaptureHandle& slot, bool url);
 bool canRouteSource(const SourceSlotData& source);
 bool setMediaRunning(const CaptureHandle& slot, bool running);
 F64 mediaSlotDemand(const LLViewerMediaImpl* impl);
@@ -1222,7 +1236,8 @@ bool setMediaUrlSource(const CaptureHandle& slot, const MediaUrlSource& source, 
 bool playMediaFile(const CaptureHandle& slot);
 bool pauseMediaFile(const CaptureHandle& slot);
 bool stopMediaFile(const CaptureHandle& slot);
-void browseMediaFile(const CaptureHandle& slot, std::function<bool()> still_current);
+void browseMediaFile(const CaptureHandle& slot, std::function<bool()> still_current,
+                     std::function<void()> committed = {});
 void clearMediaFileCache();
 void initializeMediaFiles();
 void retireMediaFileOwners(); // Safe boundary, before any raw media traversal.

@@ -95,6 +95,15 @@ def host_for(version, page):
     return {"floater": "director", "page_view": page, "via": "tab"}
 
 # XUI tag -> widget type used for exercise selection.
+MEDIA_RUNTIME_REASONS = {
+    "vc_media_browse": "native video picker plus asynchronous filesystem preflight needs the runtime acceptance fixture",
+    "vc_media_play": "validated real video and admitted VLC/audio playback need runtime acceptance",
+    "vc_media_pause": "pausing an admitted or pending real VLC player needs runtime acceptance",
+    "vc_media_stop": "cancelling a real download and retiring the admitted VLC player need runtime acceptance",
+    "vc_media_cache_clear": "owner cache worker, real cache files and leases need runtime acceptance",
+    "vc_media_locate": "camera framing needs a live resolved source prim in-world",
+}
+
 CONTROL_TYPE = {
     "check_box": "toggle", "kit_switch": "toggle", "menu_item_check": "toggle",
     "slider": "slider", "spinner": "spinner", "compass_dial": "dial",
@@ -105,6 +114,7 @@ CONTROL_TYPE = {
     "vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
     "vcam_monitor_tile": "button", "vcam_camera_selector": "button",
     "vcam_face_list": "list", "vcam_projector_list": "list",
+    "panel": "container",
 }
 # CSV kind -> widget type (fallback when the XUI element is not found).
 KIND_TO_TYPE = {
@@ -666,6 +676,10 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 "name": widget, "label": row.get("label", ""), "page": page,
                 "reset_of": None, "version": "v2",
             })
+            if page == "vcam_tab" and widget in MEDIA_RUNTIME_REASONS and child is not None and exercise == "click":
+                # Exact native controls with real runtime dependencies. Missing
+                # widgets and generic SKIP/NO_EXERCISE rows remain untouched.
+                action, reason, hazards = "DEFER_INWORLD", MEDIA_RUNTIME_REASONS[widget], ["requires_world"]
             if exercise == "none":
                 action = "NO_EXERCISE"
                 reason = "no generic exercise for generated kit kind '%s'" % kind
@@ -1292,10 +1306,10 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
     }
     kind_type = {"toggle": "toggle", "slider": "slider", "number": "spinner",
                  "combo": "combo", "segmented": "radio", "button": "button",
-                 "color": "color"}
+                 "color": "color", "text": "text", "readout": "readout"}
     custom_type = {"vcam_monitor_header": "button", "vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
                    "vcam_monitor_tile": "button", "vcam_camera_selector": "button",
-                   "vcam_face_list": "list", "vcam_projector_list": "list"}
+                   "vcam_face_list": "list", "vcam_projector_list": "list", "panel": "container"}
     for card in vcam["cards"]:
         for row in card.get("rows", []):
             widget = row.get("w", "")
@@ -1311,6 +1325,8 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                 test = bool_test(default)
             elif etype == "color":
                 test = color_test(default, "Color4")
+            elif exercise == "set_value" and etype == "text":
+                test = text_test(default)
             elif exercise == "set_value":
                 test = number_test(default, row.get("mn"), row.get("mx"), row.get("st"),
                                    sinfo.get("type", "F32"))
@@ -1328,6 +1344,8 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
             if widget == "vc_add_camera":
                 action, reason, hazards = ("DEFER_INWORLD",
                     "camera creation needs a live view or in-world selection", ["requires_world"])
+            if widget in MEDIA_RUNTIME_REASONS:
+                action, reason, hazards = "DEFER_INWORLD", MEDIA_RUNTIME_REASONS[widget], ["requires_world"]
             if widget == "vc_remove_capture":
                 action, reason, hazards = "SKIP", "destructive (remove capture)", ["requires_world"]
             if widget == "vc_source_type":
@@ -1613,6 +1631,49 @@ def add_light_response_oracles(entries, page_meta):
     negative["expect"]["field"] = "tame"
     entries.append(negative)
 
+def add_media_control_oracles(entries, page_meta):
+    """Inventory every nested action and independent no-I/O lifecycle oracle."""
+    with open(VCAM_PAGE_JSON, encoding="utf-8") as stream:
+        page = json.load(stream)
+    for card in page["cards"]:
+        for row in card.get("rows", []):
+            for choice in row.get("selector_actions", []):
+                entry = base_entry(page_meta, "vcam_tab", "v2", "synthetic:vcam_media_add")
+                entry.update(id="v2:vcam_tab:add:" + choice["value"], card=card["id"], card_title=card["t"],
+                             row_label=choice["label"], widget_name="vc_add_camera", widget_type="combo",
+                             exercise="select_item", resolution="generated_media_add", probe="vcam_media_add",
+                             media_add_kind=choice["value"], owner="ALPanelDirectorVCam::onControl")
+                finish_synthetic(entry, "RUN", "", [],
+                                 {"item_index": choice["index"], "label": choice["label"], "value": choice["value"]},
+                                 {"state": "zero-camera media source defaults and selected slot"},
+                                 {"state": "restore isolated scene"})
+                entries.append(entry)
+            for action in row.get("actions", []):
+                entry = base_entry(page_meta, "vcam_tab", "v2", "synthetic:vcam_media_action")
+                entry.update(id="v2:vcam_tab:" + action["w"] + ":action", card=card["id"],
+                             card_title=card["t"], row_label=action["l"], widget_name=action["w"],
+                             widget_type="button", exercise="click", resolution="generated_media_action",
+                             callbacks="ALPanelDirectorVCam::onControl", owner="ALPanelDirectorVCam",
+                             xui_file="indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml")
+                reason = ("requires a live prim media face pick/commit/cancel" if action["w"] == "vc_pick_media_face"
+                          else MEDIA_RUNTIME_REASONS[action["w"]])
+                finish_synthetic(entry, "DEFER_INWORLD", reason,
+                                 ["requires_world"], True, {"state": "slot-specific action"},
+                                 {"state": "restore isolated scene"})
+                entries.append(entry)
+    for probe in page.get("functional_probes", []):
+        seam, widget = probe["seam"], probe["widget"]
+        entry = base_entry(page_meta, "vcam_tab", "v2", "synthetic:vcam_media_lifecycle")
+        entry.update(id="v2:vcam_tab:media_model:" + seam, card="media_source", card_title="Source",
+                     row_label=seam, widget_name="vc_media_model_" + seam, target_widget=widget,
+                     widget_type="model", exercise="model",
+                     resolution="isolated_media_model", probe="vcam_media_lifecycle", media_seam=seam,
+                     owner="ALMediaFile", callbacks="production lifecycle helpers")
+        finish_synthetic(entry, "RUN", "", [], None, {"state": "isolated " + seam + " oracle"},
+                         {"state": "pure local fixture; no I/O"})
+        entries.append(entry)
+
+
 def add_runtime_prerequisites(entries):
     """Describe owner gates that page/card reveal cannot manufacture."""
     with open(VCAM_PAGE_JSON, encoding="utf-8") as stream:
@@ -1620,9 +1681,15 @@ def add_runtime_prerequisites(entries):
     # The page source has the row-level show_if conditions stripped from XUI.
     cards = vcam.get("cards", [])
     vcam_rows = {row["w"]: (card, row) for card in cards for row in card.get("rows", [])}
+    for card in cards:
+        for row in card.get("rows", []):
+            for action in row.get("actions", []):
+                vcam_rows[action["w"]] = (card, row)
     camera_cards = {"source", "placement", "skeleton", "optics", "guide", "camera_look",
                     "look_goes", "output_frame", "faces", "picture_rate", "raw_output"}
     for entry in entries:
+        if entry.get("probe") in {"vcam_media_lifecycle", "vcam_media_add"}:
+            continue
         page, widget = entry["page"], entry["widget_name"]
         if page == "switchboard_tab" and re.fullmatch(r"anim_slot_\d{2}", widget):
             entry.update(owner="ALPanelDirectorAnimSwitcher::postBuild",
@@ -1651,6 +1718,11 @@ def add_runtime_prerequisites(entries):
                 entry.update(probe="vcam_media", action="RUN", reason="", known_gap=False,
                              hazards=[], owner="ALPanelDirectorVCam::onControl",
                              expect={"state": "isolated media-only registry kind/count/aspect oracle"})
+                if widget == "vc_media_running":
+                    entry.update(expect={"state": "fresh stopped slot disables Freeze; native Resume changes running state and runtime revision"},
+                                 deferred_coverage={"action": "DEFER_INWORLD", "control": "Freeze",
+                                     "reason": "requires an accepted GL frame from live media; the isolated stopped fixture has none",
+                                     "hazards": ["requires_world"]})
             card, row = vcam_rows.get(widget, ({}, {}))
             card_id = card.get("id", entry.get("card", ""))
             show = row.get("show_if", card.get("show_if", ""))
@@ -1679,6 +1751,29 @@ def add_runtime_prerequisites(entries):
             # and preserve any deferral already assigned to the action itself.
             if condition in {"camera selected", "media slot selected"} and widget != "vc_pick_media_face":
                 condition = ""
+            if card_id == "media_source":
+                # Each runnable media row gets an isolated zero-camera fixture.
+                # Native picker, cache mutations, world picks and real playback
+                # remain explicitly deferred; pure lifecycle rows cover their seams.
+                if widget in {"vc_media_kind", "vc_media_video", "vc_media_loop", "vc_media_volume"}:
+                    condition = ""
+                    entry.update(probe="vcam_media_file", action="RUN", reason="", hazards=[], known_gap=False,
+                                 expect={"state": "isolated media descriptor and scene round-trip oracle"})
+                    if widget == "vc_media_kind":
+                        entry["test_value"] = {"item_index": 1, "label": "Prim face", "value": "face"}
+                    elif widget == "vc_media_video":
+                        entry["test_value"] = "https://example.invalid/clip.mp4"
+                    elif widget == "vc_media_loop":
+                        entry["test_value"] = False
+                    else:
+                        entry["test_value"] = 0.35
+                elif row.get("k") == "readout":
+                    condition = ""
+                    entry.update(probe="vcam_media_readout", action="RUN", reason="", hazards=[])
+                elif widget in MEDIA_RUNTIME_REASONS:
+                    # Preserve the explicit inventory declaration; never promote missing/skipped rows.
+                    condition = ""
+                    entry.update(probe="vcam_media_runtime")
             if show == "custom_aspect":
                 entry.setdefault("reveal", []).append({"selector": "vc_output_aspect", "value": -1})
         elif page == "gaze_tab" and not entry.get("setting"):
@@ -2197,6 +2292,7 @@ def main(argv=None):
                       str(entry.get("source", "")).startswith("vcam_page.json")))]
     entries.extend(synth)
     entries.extend(build_kit_entries(kit_pages, rows, settings, page_meta))
+    add_media_control_oracles(entries, page_meta)
     add_light_response_oracles(entries, page_meta)
     add_runtime_prerequisites(entries)
 

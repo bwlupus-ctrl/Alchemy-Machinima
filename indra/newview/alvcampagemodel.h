@@ -83,6 +83,7 @@ public:
     void setPageVisible(bool visible);
     bool pageVisible() const { return mPageVisible; }
     void refreshNow(U32 dirty = DIRTY_ALL);
+    void markDirty(U32 dirty);
     static void currentViewTransform(LLVector3& position,
                                      LLQuaternion& rotation);
 
@@ -168,7 +169,6 @@ public:
                   const std::string& label, std::string* reason = nullptr);
 
 private:
-    void markDirty(U32 dirty);
     void onIdleRefresh(const std::weak_ptr<bool>& alive);
     void selectAfterAdd(const LLPrismLens::CaptureHandle& capture);
     const LLPrismLens::CaptureDefinition* findCapture(

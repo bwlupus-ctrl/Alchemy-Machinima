@@ -76,6 +76,7 @@ public:
         bool mMonitorShowsDisplay = false;
         bool mMonitorDisplayVirtual = false;
         bool mVisible = false;
+        bool mMedia = false;
     };
 
     void setTiles(const std::array<Tile, LLPrismLens::MAX_CAPTURES>& tiles,
@@ -118,6 +119,7 @@ private:
         std::string mShows;
         std::string mStatus;
         std::string mLabelInput;
+        bool mMedia = false;
         LLPrismLens::EActivityState mActivity = LLPrismLens::EActivityState::IDLE;
         LLPrismPreviewService::ETileState mPreviewState = LLPrismPreviewService::ETileState::EMPTY;
         S32 mObservedTenths = 0;
@@ -191,7 +193,7 @@ public:
     struct Item { LLPrismLens::CaptureHandle mHandle; std::string mLabel; bool mLive = false; };
     bool postBuild() override;
     void setItems(const std::vector<Item>& items, const LLPrismLens::CaptureHandle& selected);
-    void setActionsEnabled(bool can_add, bool can_remove);
+    void setActionsEnabled(bool can_add, bool can_remove, bool media_enabled);
     void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     void draw() override;
     bool handleMouseDown(S32 x, S32 y, MASK mask) override;
@@ -209,6 +211,7 @@ private:
     LLComboBox* mAdd = nullptr;
     LLButton* mRemove = nullptr;
     S32 mChipWidth = 1;
+    bool mMediaOptions = false;
 };
 
 class ALVCamFaceList : public LLUICtrl

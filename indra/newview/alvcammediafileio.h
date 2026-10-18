@@ -43,9 +43,9 @@ private:
 using Request = std::shared_ptr<Subscription>;
 struct CacheStatus
 {
-    bool owner = false, checking = true;
+    bool owner = false, checking = false;
     uint64_t bytes = 0, reservedBytes = 0, limit = 0;
-    std::string status = "checking file";
+    std::string status = "Cache idle";
 };
 CacheStatus cacheStatus(); // immutable, owner-only usage; no inline I/O
 std::string cacheKey(const std::string& url);

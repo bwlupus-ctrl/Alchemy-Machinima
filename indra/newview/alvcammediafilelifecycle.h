@@ -164,8 +164,8 @@ struct FilePickerTicket
     template<class Apply> bool picked(uint64_t ticket, bool current, Apply apply) const
     { if (ticket != serial || !current) return false; apply(); return true; }
 };
-inline bool matchingPrivateOwner(bool occupied, bool url, uint64_t generation, uint64_t owner)
-{ return occupied && url && generation == owner; }
+inline bool matchingPrivateOwner(bool occupied, bool url, uint64_t generation, uint64_t owner, bool sameSource)
+{ return occupied && url && generation == owner && sameSource; }
 template<class Owners, class Matches, class Stop>
 void sweepPrivateOwners(Owners& owners, Matches matches, Stop stop)
 {

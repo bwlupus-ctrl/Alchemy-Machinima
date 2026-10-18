@@ -82,6 +82,9 @@ private:
     const LLPrismLens::DisplayDefinition* selectedDisplay() const;
     const LLPrismLens::ProjectorDefinition* selectedProjector() const;
     void commitCamera(const std::string& name, const LLSD& value);
+    bool commitMediaVideo();
+    void validateMediaVideo();
+    void refreshMediaCache();
     void commitDisplay(const std::string& name, const LLSD& value);
     void commitProjector(const std::string& name, const LLSD& value);
     bool pasteCardValues(const std::string& card, const LLSD& values);
@@ -99,6 +102,15 @@ private:
     ALVCamFaceList* mFaceList = nullptr;
     ALVCamProjectorList* mProjectorList = nullptr;
     LLLineEditor* mCameraName = nullptr;
+    LLLineEditor* mMediaVideo = nullptr;
+    LLPrismLens::CaptureHandle mMediaEditHandle;
+    std::string mMediaCue, mMediaDraft, mMediaError;
+    std::string mMediaPlayStatus;
+    LLFrameTimer mMediaPlayStatusTimer;
+    bool mMediaPlayPolicy = false, mMediaPlayMaster = false, mMediaPlayEnabled = false;
+    U64 mMediaEditEpoch = 0;
+    bool mMediaEditingUrl = false;
+    bool mMediaPlayable = false;
     std::unordered_map<std::string, LLUICtrl*> mControls;
     std::vector<ALKitCard*> mCards;
     std::array<LLUICtrl*, PROJ_CONTROL_COUNT> mProjectorControls{};

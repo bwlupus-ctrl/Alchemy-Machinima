@@ -117,6 +117,8 @@ public:
     void               relayoutNow();
     void               applySearch(const ALKitSearch::Hits&);
     void               clearSearch();
+    void setRowRevealGuard(std::function<bool(ALKitRow*)> guard) { mRowRevealGuard = std::move(guard); }
+    bool rowRevealAllowed(ALKitRow* row) const { return !row || !mRowRevealGuard || mRowRevealGuard(row); }
     bool               revealRow(ALKitRow*, bool);
     bool               revealCard(ALKitCard*, bool);
     void               setSearchText(const std::string&);
@@ -206,6 +208,7 @@ private:
     std::string prefix() const;
     std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mModes, mModeSetting,
         mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;
+    std::function<bool(ALKitRow*)> mRowRevealGuard;
     bool mLegacy = false, mActorTargetPage = false, mActorTargetSynthetic = false, mActorTargetAway = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,
          mUpdatingModeSwitch = false;
     LLUUID mActorTarget;

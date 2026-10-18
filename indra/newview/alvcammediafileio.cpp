@@ -1087,6 +1087,7 @@ CacheStatus cacheStatus()
     if (!sService) return result;
     const auto state = sService->cacheState.load();
     result.owner = state == 1; result.checking = state == 0;
+    if (result.checking) result.status = "Checking video cache...";
     if (result.owner)
     {
         result.bytes = sService->completeBytes; result.reservedBytes = sService->reservedBytes;

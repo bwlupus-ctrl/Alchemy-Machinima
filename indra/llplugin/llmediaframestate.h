@@ -25,6 +25,16 @@ inline bool acceptsToken(const std::string& expected, const std::string& incomin
 
 // Requested tracking and current-load tracking are distinct: an existing
 // untagged player stays on the legacy upload path until its first tagged frame.
+inline bool trackingEnabled(bool master, bool slots, bool consumed)
+{ return master && slots && consumed; }
+
+// Ordinary media keeps the legacy GL handoff, independent of slot epochs.
+template<class Texture> void syncLegacyUpload(Texture& texture, U32 name, bool worker)
+{
+    if (worker) texture.syncToMainThread(name);
+    else texture.syncTexName(name);
+}
+
 struct TrackingState
 {
     bool enabled = false;
@@ -80,6 +90,13 @@ struct UploadState
     bool ready = false;
 
     void invalidate() { retry = false; ready = false; }
+    bool sourceChanged(bool consumed, U64& epoch)
+    {
+        if (!consumed) return false;
+        ++epoch;
+        invalidate();
+        return true;
+    }
     bool finish(const Identity& job, const Identity& current, bool success)
     {
         pending = false;

@@ -11,9 +11,13 @@
 #include "../alvcammediafilelifecycle.h"
 #include <array>
 #include "../../llplugin/llmediaframestate.h"
+#include "../../llplugin/llpluginclassmedia.h"
+#include "../../llplugin/llpluginmessage.h"
+#include "../../llplugin/llpluginmessageclasses.h"
 
 #include <limits>
 #include <map>
+#include <sstream>
 
 namespace tut
 {
@@ -606,7 +610,7 @@ void prism_projector_object::test<30>()
     std::weak_ptr<int> owner = owners[0];
     auto matches = [&](unsigned)
     { return ALMediaFile::matchingPrivateOwner(true,slot.mediaUrlData()!=nullptr,
-        slot.mHandle.mGeneration,7); };
+        slot.mHandle.mGeneration,7,true); };
     ensure_equals("playing URL has bootstrap demand",ALMediaFile::privateOwnerDemand(matches(0),false,true,true),1048576.);
     // Apply a camera-only scene (new generation); no player/GL/world required.
     slot = CaptureDefinition();
@@ -694,6 +698,162 @@ template<> template<> void prism_projector_object::test<33>()
     ensure("successful Browse converts to URL",slot.mediaUrlData() && !slot.mediaData());
     ensure_equals("successful cue path",slot.mediaUrlData()->mValue,std::string("C:/valid.mov"));
     ensure("successful conversion preserves aspect",slot.mediaAspect() == ESourceAspect::CINEMA_239);
+}
+
+template<> template<> void prism_projector_object::test<34>()
+{
+    set_test_name("frame tracking belongs only to consumed impls with both enables");
+    for (const bool vlc : {false, true})
+    {
+        LLMediaFrame::TrackingState plain, off;
+        // configure(false) must be a no-op: enableMediaFrames returns before
+        // changing layout epoch, tokens, geometry or sending a plugin message.
+        ensure("ON without a slot leaves bookkeeping byte-identical to OFF",
+            !plain.configure(LLMediaFrame::trackingEnabled(true, true, false), vlc));
+        ensure("OFF is also a no-op",
+            !off.configure(LLMediaFrame::trackingEnabled(false, false, false), vlc));
+        for (const auto* incoming : {"", "late", "current"})
+            ensure("ordinary update acceptance identical", plain.acceptsUpdate("", incoming) == off.acceptsUpdate("", incoming));
+        ensure("ordinary frames never enter tracked upload path", !plain.active && !plain.enabled && !plain.tokenLoads);
+        ensure("binding enables bookkeeping", plain.configure(LLMediaFrame::trackingEnabled(true, true, true), vlc));
+        ensure("bound impl tracks", plain.enabled && plain.tokenLoads == vlc);
+        ensure("unbind restores legacy", plain.configure(LLMediaFrame::trackingEnabled(true, true, false), vlc));
+        ensure("unbound impl accepts ordinary frames", plain.acceptsUpdate("", "") && !plain.active && !plain.tokenLoads);
+        ensure("master-off disables bound impl", !LLMediaFrame::trackingEnabled(false, true, true));
+        ensure("feature-off disables bound impl", !LLMediaFrame::trackingEnabled(true, false, true));
+    }
+}
+
+template<> template<> void prism_projector_object::test<35>()
+{
+    set_test_name("source toggles retain authored URL and picked face without starting a player");
+    using namespace LLPrismLens;
+    SourceSlotData slot;
+    MediaUrlSource video;
+    video.mValue = "D:\\Footage\\clip.mov";
+    video.mLocation = MediaUrlSource::Location::LOCAL_FILE;
+    video.mLoop = false; video.mVolume = .35f;
+    slot.setMediaUrlData(video);
+    slot.switchMediaKind(false);
+    MediaFaceSource face;
+    face.mObjectId.generate(); face.mTE = 7; face.mAspect = ESourceAspect::STANDARD_4_3;
+    slot.setMediaData(face);
+    slot.switchMediaKind(true);
+    ensure("typed backslashes survive", slot.mediaUrlData() && slot.mediaUrlData()->mValue == video.mValue);
+    ensure("URL options survive", !slot.mediaUrlData()->mLoop && slot.mediaUrlData()->mVolume == .35f);
+    SourceSlotData copy;
+    copy.copySourceData(slot);
+    copy.switchMediaKind(false);
+    ensure("snapshot retains picked face", copy.mediaData() && copy.mediaData()->mObjectId == face.mObjectId && copy.mediaData()->mTE == 7);
+    ensure("shared aspect survives", copy.mediaAspect() == ESourceAspect::STANDARD_4_3);
+    ALMediaFile::Descriptor internal; std::string reason;
+    ensure("typed path classifies internally", ALMediaFile::classify(video.mValue, internal, reason, true));
+    ensure_equals("internal file URI normalized", ALMediaFile::fileUri(internal.value), std::string("file:///D:/Footage/clip.mov"));
+    ensure_equals("classification never rewrites authored path", slot.mediaUrlData()->mValue, video.mValue);
+}
+
+template<> template<> void prism_projector_object::test<36>()
+{
+    set_test_name("ordinary CEF and VLC updated messages match OFF bytes, binding tracks, unbinding restores");
+    const auto state_bytes = [](LLPluginClassMedia& plugin)
+    {
+        LLRect dirty;
+        std::ostringstream bytes;
+        bytes << plugin.getDirty(&dirty) << ':' << dirty.mLeft << ':' << dirty.mTop << ':'
+            << dirty.mRight << ':' << dirty.mBottom << ':' << plugin.getCurrentTime() << ':'
+            << plugin.getDuration() << ':' << plugin.getLayoutEpoch() << ':' << plugin.getLoadToken()
+            << ':' << plugin.getDirtyLoadToken() << ':' << plugin.tracksMediaFrames() << ':'
+            << plugin.getVideoWidth() << ':' << plugin.getVideoHeight() << ':'
+            << plugin.getVideoSarNum() << ':' << plugin.getVideoSarDen();
+        return bytes.str();
+    };
+    for (const bool vlc : {false, true})
+    {
+        LLPluginClassMedia off(nullptr), plain(nullptr);
+        off.enableMediaFrames(LLMediaFrame::trackingEnabled(false, false, false), vlc);
+        plain.enableMediaFrames(LLMediaFrame::trackingEnabled(true, true, false), vlc);
+        ensure_equals("no consumer changes no bookkeeping bytes", state_bytes(plain), state_bytes(off));
+        LLPluginMessage update(LLPLUGIN_MESSAGE_CLASS_MEDIA, "updated");
+        update.setValueS32("left", 0); update.setValueS32("right", 8);
+        update.setValueS32("bottom", 0); update.setValueS32("top", 4);
+        update.setValueReal("current_time", 1.25); update.setValueReal("duration", 10.);
+        off.receivePluginMessage(update); plain.receivePluginMessage(update);
+        ensure_equals("real ordinary update handler byte-identical to OFF", state_bytes(plain), state_bytes(off));
+        // An ordinary upload may already be in flight at loadURI/destroy.
+        // Exercise the same epoch gate used by both production entry points.
+        LLMediaFrame::UploadState offUpload, plainUpload;
+        U64 offEpoch = 7, plainEpoch = 7;
+        const LLMediaFrame::Identity job{7, 0, ""};
+        offUpload.pending = plainUpload.pending = true;
+        for (int change = 0; change < 2; ++change)
+        {
+            ensure("OFF source change leaves epoch alone",
+                !offUpload.sourceChanged(LLMediaFrame::trackingEnabled(false, false, false), offEpoch));
+            ensure("ON/no-consumer source change leaves epoch alone",
+                !plainUpload.sourceChanged(LLMediaFrame::trackingEnabled(true, true, false), plainEpoch));
+            ensure_equals("ordinary source epoch byte-identical to OFF", plainEpoch, offEpoch);
+            ensure_equals("ordinary epoch does not advance", plainEpoch, U64(7));
+        }
+        ensure("OFF in-flight upload completes", offUpload.finish(job, {offEpoch, 0, ""}, true));
+        ensure("ON/no-consumer in-flight upload completes", plainUpload.finish(job, {plainEpoch, 0, ""}, true));
+        ensure_equals("ordinary upload completion serial matches OFF", plainUpload.serial, offUpload.serial);
+        ensure("ordinary upload remains ready", plainUpload.ready && offUpload.ready);
+        struct TextureHandoff
+        {
+            U32 threaded = 0, direct = 0;
+            void syncToMainThread(U32 name) { threaded = name; }
+            void syncTexName(U32 name) { direct = name; }
+        } offTexture, plainTexture;
+        for (const bool worker : {false, true})
+        {
+            // The production ordinary upload uses this handoff even when a
+            // source-change event occurs between enqueue and completion.
+            ensure("ordinary ON plugin remains on legacy upload path", !plain.tracksMediaFrames());
+            ensure("ordinary OFF plugin remains on legacy upload path", !off.tracksMediaFrames());
+            LLMediaFrame::syncLegacyUpload(offTexture, 42, worker);
+            LLMediaFrame::syncLegacyUpload(plainTexture, 42, worker);
+            ensure_equals("ordinary direct handoff equals OFF", plainTexture.direct, offTexture.direct);
+            ensure_equals("ordinary worker handoff equals OFF", plainTexture.threaded, offTexture.threaded);
+            ensure_equals("ordinary upload is synced", worker ? plainTexture.threaded : plainTexture.direct, U32(42));
+        }
+        ensure("consumed source still invalidates old uploads", plainUpload.sourceChanged(true, plainEpoch));
+        ensure("obsolete consumed upload is rejected", !plainUpload.finish(job, {plainEpoch, 0, ""}, true));
+        plain.enableMediaFrames(LLMediaFrame::trackingEnabled(true, true, true), vlc);
+        if (vlc) update.setValue("load_token", plain.getLoadToken());
+        plain.receivePluginMessage(update);
+        ensure("slot-bound plugin enters tracked frame path", plain.tracksMediaFrames());
+        plain.enableMediaFrames(LLMediaFrame::trackingEnabled(true, true, false), vlc);
+        ensure("unbind returns to ordinary frame path", !plain.tracksMediaFrames());
+        update.setValue("load_token", "");
+        update.setValueReal("current_time", 2.5);
+        plain.resetDirty();
+        plain.receivePluginMessage(update);
+        ensure("unbound ordinary dirty accepted", plain.getDirty());
+        ensure_equals("unbound ordinary time update accepted", plain.getCurrentTime(), 2.5);
+    }
+}
+
+template<> template<> void prism_projector_object::test<37>()
+{
+    set_test_name("obsolete private source never matches after a valid replacement or clear");
+    using namespace LLPrismLens;
+    const MediaUrlSource oldSource{MediaUrlSource::Location::HTTP_URL, "https://example.invalid/A.mp4"};
+    for (const std::string replacement : {"https://example.invalid/B.mp4", ""})
+    {
+        MediaUrlSource source = oldSource;
+        source.mValue = replacement;
+        const bool matches = ALMediaFile::matchingPrivateOwner(true, true, 7, 7,
+            source.mLocation == oldSource.mLocation && source.mValue == oldSource.mValue);
+        ensure("obsolete source cannot match even in the same slot generation", !matches);
+        ensure_equals("obsolete source has no player/bootstrap demand",
+            ALMediaFile::privateOwnerDemand(matches, false, true, true), 0.);
+        std::array<std::shared_ptr<int>, 1> owners{std::make_shared<int>(7)};
+        ALMediaFile::sweepPrivateOwners(owners, [&](unsigned) { return matches; },
+            [&](unsigned slot) { owners[slot].reset(); });
+        ensure("late completion has no current owner to create a player", !owners[0]);
+    }
+    ensure("unchanged valid source still matches",
+        ALMediaFile::matchingPrivateOwner(true, true, 7, 7, true));
 }
 
 }

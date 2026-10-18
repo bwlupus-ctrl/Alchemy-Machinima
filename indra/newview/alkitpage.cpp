@@ -1121,9 +1121,8 @@ void ALKitPage::layoutWhoChip(S32 page_width)
 
 void ALKitPage::setWhoChipLabel(const std::string& label)
 {
-    if (!mWhoChip || whoChipHasLabel(mWhoChip, label))
+    if (!setLabelIfChanged(mWhoChip, label))
         return;
-    mWhoChip->setLabel(label);
     layoutWhoChip(getRect().getWidth());
 }
 
@@ -1403,6 +1402,7 @@ void ALKitPage::clearSearch()
 
 bool ALKitPage::revealRow(ALKitRow* r, bool flash_it)
 {
+    if (!rowRevealAllowed(r)) return false;
     if (!r)
         return false;
     r->setFilterVisible(true);

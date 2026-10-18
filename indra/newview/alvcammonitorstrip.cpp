@@ -306,7 +306,7 @@ void ALVCamMonitorStrip::updateTileText(
     const S32 target_tenths = displayTenths(tile.mTargetFps);
     const S32 preview_tenths = displayTenths(tile.mPreviewFps);
     const S64 timestamp_second = static_cast<S64>(tile.mPublication.mTimestamp);
-    const bool name_changed = !cache.mValid || cache.mLabelInput != tile.mLabel;
+    const bool name_changed = !cache.mValid || cache.mLabelInput != tile.mLabel || cache.mMedia != tile.mMedia;
     const bool info_changed = force_info || !cache.mValid ||
         cache.mActivity != tile.mActivity || cache.mPreviewState != tile.mPublication.mState ||
         cache.mObservedTenths != observed_tenths || cache.mTargetTenths != target_tenths ||
@@ -369,6 +369,7 @@ void ALVCamMonitorStrip::updateTileText(
     }
 
     cache.mLabelInput = tile.mLabel;
+    cache.mMedia = tile.mMedia;
     cache.mActivity = tile.mActivity;
     cache.mPreviewState = tile.mPublication.mState;
     cache.mObservedTenths = observed_tenths;
@@ -796,8 +797,21 @@ void ALVCamCameraSelector::setItems(
     mSelected = selected;
 }
 
-void ALVCamCameraSelector::setActionsEnabled(bool can_add, bool can_remove)
+void ALVCamCameraSelector::setActionsEnabled(bool can_add, bool can_remove, bool media_enabled)
 {
+    if (mAdd && mMediaOptions != media_enabled)
+    {
+        mMediaOptions = media_enabled;
+        if (media_enabled)
+        {
+            mAdd->add("Media from a prim face (video)", LLSD("media"));
+        }
+        else
+        {
+            mAdd->remove("Media from a prim face (video)");
+        }
+        mAdd->selectFirstItem();
+    }
     if (mAdd) mAdd->setEnabled(can_add);
     if (mRemove) mRemove->setEnabled(can_remove);
 }

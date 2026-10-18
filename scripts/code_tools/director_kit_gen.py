@@ -271,8 +271,9 @@ def validate_data(data: dict) -> None:
     # 2108: Roto Ink, Tron, Diopter and Gaze move their on/off from a card row to the page-header master
     #       (page "master": same widget name and setting; Gaze is code-bound, s None like Actor FX) (-4) (10/16).
     # 2114: VCam adds the media consumption row (+1); exact coverage stays pinned.
-    if len(pages) != 37 or row_count != 2114:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2114")
+    # 2122: VCam media source card adds 8 rows (removes duplicate Add and unrequested clear/geometry rows); exact coverage stays pinned.
+    if len(pages) != 37 or row_count != 2122:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2122")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -580,6 +581,17 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     custom_tag = row.get("custom_tag")
     if custom_tag:
         child = ET.Element(str(custom_tag), {"name": widget})
+        if row.get("actions"):
+            # A kit row owns the geometry; compact action groups use native
+            # buttons, with their labels/IDs/help authored in the page JSON.
+            left = 0
+            for action in row["actions"]:
+                width = action.get("width", 72)
+                ET.SubElement(child, "button", {
+                    "name": action["w"], "label": action["l"],
+                    "tool_tip": action["h"], "layout": "topleft",
+                    "left": str(left), "top": "0", "width": str(width), "height": "24"})
+                left += width + 6
         return kind, child, "code"
     tag = NATIVE_TAG.get(kind)
     if tag is None:
@@ -598,8 +610,13 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     if kind == "slider":
         attrs["show_text"] = "true"
         attrs["text_width"] = "52"
+        if row.get("volume_text"):
+            attrs["volume_text"] = "true"
+            attrs["can_edit_text"] = "false"
     if kind == "button":
         attrs["label"] = str(row.get("btn") or row.get("l", ""))
+    if kind == "text" and row.get("hint"):
+        attrs["label"] = str(row["hint"])
     for src, dst in (("mn", "min_val"), ("mx", "max_val"), ("st", "increment"), ("dc", "decimal_digits")):
         if src in row:
             attrs[dst] = scalar(row[src])

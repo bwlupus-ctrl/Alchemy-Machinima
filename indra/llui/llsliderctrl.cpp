@@ -57,6 +57,7 @@ LLSliderCtrl::LLSliderCtrl(const LLSliderCtrl::Params& p)
     mFont(p.font),
     mShowText(p.show_text),
     mCanEditText(p.can_edit_text),
+    mVolumeText(p.volume_text),
     mPrecision(p.decimal_digits),
     mTextEnabledColor(p.text_color()),
     mTextDisabledColor(p.text_disabled_color()),
@@ -359,6 +360,8 @@ void LLSliderCtrl::updateText()
 
         std::string format = llformat("%%.%df", mPrecision);
         std::string text = llformat(format.c_str(), displayed_value);
+        if (!mEditor && mVolumeText)
+            text = displayed_value <= 0.f ? "Muted" : llformat("%.0f%%", displayed_value * 100.f);
         if( mEditor )
         {
             // Setting editor text here to "" before using actual text is here because if text which

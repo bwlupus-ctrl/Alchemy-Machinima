@@ -1808,10 +1808,8 @@ void LLViewerMediaImpl::destroyMediaSource()
         mMediaURL.clear(); resetPreviousMediaState(); mCompletedImage.ready = false;
     }
     mResolvedPlugin.clear();
-    if (LLPrismLens::mediaSlotsEnabled())
+    if (mMediaUploadState.sourceChanged(LLPrismLens::mediaFrameTrackingEnabled(this), mMediaSourceEpoch))
     {
-        mMediaUploadState.invalidate();
-        ++mMediaSourceEpoch;
         mCompletedImage.ready = false;
     }
     mNeedsNewTexture = true;
@@ -1885,7 +1883,7 @@ LLPluginClassMedia* LLViewerMediaImpl::newSourceFromMediaType(std::string media_
             media_source->setSize(default_width, default_height);
             media_source->setZoomFactor(zoom_factor);
 
-            media_source->enableMediaFrames(LLPrismLens::mediaSlotsEnabled(), false);
+            media_source->enableMediaFrames(LLPrismLens::mediaFrameTrackingEnabled(dynamic_cast<LLViewerMediaImpl*>(owner)), false);
             if (resolved_plugin) *resolved_plugin = plugin_basename;
             return media_source;
         }
@@ -1995,7 +1993,7 @@ LLPluginClassMedia* LLViewerMediaImpl::newSourceFromMediaType(std::string media_
             // to satisfy its non-empty contract.
             if (media_source->init(launcher_name, plugin_dir, plugin_basename, gSavedSettings.getBOOL("PluginAttachDebuggerToPlugins")))
             {
-                media_source->enableMediaFrames(LLPrismLens::mediaSlotsEnabled(), plugin_basename == "media_plugin_libvlc");
+                media_source->enableMediaFrames(LLPrismLens::mediaFrameTrackingEnabled(dynamic_cast<LLViewerMediaImpl*>(owner)), plugin_basename == "media_plugin_libvlc");
                 if (resolved_plugin) *resolved_plugin = plugin_basename;
                 return media_source;
             }
@@ -2119,10 +2117,8 @@ void LLViewerMediaImpl::loadURI()
             LL_INFOS() << "Asking media source to load URI: " << sanitized_uri << LL_ENDL;
         }
 
-        if (LLPrismLens::mediaSlotsEnabled())
+        if (mMediaUploadState.sourceChanged(LLPrismLens::mediaFrameTrackingEnabled(this), mMediaSourceEpoch))
         {
-            ++mMediaSourceEpoch;
-            mMediaUploadState.invalidate();
             mCompletedImage.ready = false;
         }
         mMediaSource->loadURI( uri );
@@ -3590,14 +3586,7 @@ void LLViewerMediaImpl::doMediaTexUpdate(LLViewerMediaTexture* media_tex, U8* da
         media_tex->setSubImage(data, data_width, data_height, x_pos, y_pos, width, height, tex_name);
     }
 
-    if (sync)
-    {
-        media_tex->getGLTexture()->syncToMainThread(tex_name);
-    }
-    else
-    {
-        media_tex->getGLTexture()->syncTexName(tex_name);
-    }
+    LLMediaFrame::syncLegacyUpload(*media_tex->getGLTexture(), tex_name, sync);
 
     // release the data pointer before freeing raw so LLImageRaw destructor doesn't
     // free memory at data pointer
