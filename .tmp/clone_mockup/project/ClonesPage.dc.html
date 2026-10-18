@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clones page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.btn{cursor:pointer;font-family:inherit}
+.btn:focus-visible{outline:2px solid #E8A33D;outline-offset:1px}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-thumb{background:#343A42;border-radius:4px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+</style>
+</helmet>
+<div style="box-sizing: border-box; width: 760px; height: 700px; padding: 14px 16px 16px; background: #111316; color: #E6E8EB; font-family: 'IBM Plex Sans', sans-serif; display: flex; flex-direction: column; gap: 10px">
+
+  <!-- Header: master + count + Clone Studio -->
+  <section aria-label="Clones" style="background: #1B1E23; border: 1px solid #2A2F36; border-radius: 6px">
+    <div style="min-height: 36px; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; flex-wrap: wrap">
+      <button id="cl_show" class="btn" type="button" aria-pressed="{{showOn}}" aria-label="Show clones" title="Show or hide every clone. Hidden clones keep their settings." onClick="{{toggleShow}}" style="width: 34px; height: 18px; flex: none; border-radius: 9px; border: none; padding: 0; position: relative; background: {{showTrack}}"><span style="position: absolute; top: 2px; left: {{showKnobLeft}}; width: 14px; height: 14px; border-radius: 7px; background: #141413"></span></button>
+      <label for="cl_show" style="font-size: 13px; font-weight: 600">Clones</label>
+      <div style="font: 500 12px 'IBM Plex Mono', monospace; color: #C9CED6; white-space: nowrap">{{countLine}}</div>
+      <div style="flex: 1"></div>
+      <a href="#" style="font-size: 12px; color: #E8A33D">Open Clone Studio</a>
+    </div>
+  </section>
+
+  <div style="display: grid; grid-template-columns: 372px minmax(0, 1fr); gap: 10px; flex: 1; min-height: 0">
+
+    <!-- LEFT: the clone list with collapsible groups -->
+    <section aria-label="Clone list" style="background: #1B1E23; border: 1px solid #2A2F36; border-radius: 6px; display: flex; flex-direction: column; min-height: 0">
+      <div style="height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; border-bottom: 1px solid #2A2F36">
+        <span style="flex: 1; font-size: 13px; font-weight: 600">Clones</span>
+        <button class="btn" type="button" title="Add a clone of the selected cast member at your view." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">+ Add</button>
+        <button class="btn" type="button" title="Copy the selection in place." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">Duplicate</button>
+        <button class="btn" type="button" title="Delete the selection. Undo brings it back." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">Delete</button>
+      </div>
+
+      <div class="scroll" role="tree" aria-label="Clones and groups" aria-multiselectable="true" style="flex: 1; min-height: 0; overflow-y: auto; padding: 6px 6px 4px">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+          <sc-if value="{{r.isGroup}}" hint-placeholder-val="{{false}}">
+            <div role="treeitem" aria-expanded="{{r.expanded}}" aria-selected="{{r.selected}}" style="{{r.style}}">
+              <button class="btn" type="button" aria-label="{{r.chevLabel}}" onClick="{{r.toggle}}" style="width: 22px; height: 22px; flex: none; border: none; background: transparent; color: #C9CED6; padding: 0; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="{{r.chevStyle}}"><path d="M3.5 2l3 3-3 3" stroke="currentColor" stroke-width="1.6" fill="none"></path></svg></button>
+              <button class="btn" type="button" onClick="{{r.pick}}" title="Select the whole group. Shift-click adds, Ctrl-click toggles." style="flex: 1; min-width: 0; height: 30px; border: none; background: transparent; color: inherit; text-align: left; padding: 0 4px; display: flex; align-items: center; gap: 8px">
+                <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><rect x="3" y="6.5" width="8" height="6" rx="1.2" stroke="{{r.lockColor}}" stroke-width="1.4" fill="none"></rect><path d="{{r.lockPath}}" stroke="{{r.lockColor}}" stroke-width="1.4" fill="none"></path></svg>
+                <span style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span>
+                <span style="font: 500 11px 'IBM Plex Mono', monospace; color: #9BA3AE; white-space: nowrap">{{r.meta}}</span>
+              </button>
+            </div>
+          </sc-if>
+          <sc-if value="{{r.isClone}}" hint-placeholder-val="{{true}}">
+            <div role="treeitem" aria-selected="{{r.selected}}" style="{{r.style}}">
+              <button class="btn" type="button" onClick="{{r.pick}}" title="Click selects. Shift-click adds. Ctrl-click toggles." style="flex: 1; min-width: 0; height: 28px; border: none; background: transparent; color: inherit; text-align: left; padding: 0 4px; display: flex; align-items: center; gap: 8px">
+                <span title="{{r.kindHelp}}" style="{{r.badgeStyle}}">{{r.badge}}</span>
+                <span style="font-size: 12px; color: #E6E8EB; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span>
+                <span style="font-size: 11px; color: #9BA3AE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: auto">{{r.meta}}</span>
+              </button>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+
+      <div style="border-top: 1px solid #2A2F36; padding: 7px 12px; font-size: 11px; color: #9BA3AE; line-height: 1.45">Click selects · Shift-click adds · Ctrl-click toggles · drag a box in the world to select · click empty ground to deselect</div>
+    </section>
+
+    <!-- RIGHT: Place + selection details -->
+    <div class="scroll" style="display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto">
+
+      <section aria-label="Place" style="background: #1B1E23; border: 1px solid #2A2F36; border-radius: 6px">
+        <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; border-bottom: 1px solid #2A2F36">
+          <span style="flex: 1; font-size: 13px; font-weight: 600">Place</span>
+          <button class="btn" type="button" aria-pressed="{{placing}}" onClick="{{togglePlace}}" style="{{placeBtnStyle}}">{{placeBtnLabel}}</button>
+        </div>
+        <div style="padding: 8px 8px 10px 12px; display: flex; flex-direction: column; gap: 2px">
+          <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr); column-gap: 6px; align-items: center; min-height: 28px">
+            <span style="font-size: 12px; color: #C9CED6">Stand</span>
+            <div role="radiogroup" aria-label="Stand" style="display: flex; gap: 2px">
+              <sc-for list="{{standModes}}" as="m" hint-placeholder-count="2">
+                <button class="btn" type="button" role="radio" aria-checked="{{m.on}}" title="{{m.help}}" onClick="{{m.pick}}" style="{{m.style}}">{{m.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr); column-gap: 6px; align-items: center; min-height: 28px">
+            <span style="font-size: 12px; color: #C9CED6">Under cursor</span>
+            <span style="font: 500 12px 'IBM Plex Mono', monospace; color: #C9CED6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{readout}}</span>
+          </div>
+          <sc-if value="{{belowTerrain}}" hint-placeholder-val="{{false}}">
+            <div role="alert" style="display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 6px 8px; border-radius: 4px; background: #2A1E14; border: 1px solid #6B4A22">
+              <span style="flex: 1; font-size: 12px; color: #F3BE6A">Foot is 0.40 m below the ground</span>
+              <button class="btn" type="button" onClick="{{lift}}" style="height: 24px; padding: 0 10px; border: 1px solid #E8A33D; border-radius: 4px; background: transparent; color: #E8A33D; font-size: 12px">Lift to ground</button>
+            </div>
+          </sc-if>
+          <div style="font-size: 11px; color: #9BA3AE; line-height: 1.45; margin-top: 4px">Wheel over a value adjusts it · In Place: wheel or Q / E rotate · Ctrl+wheel scale · click places · Shift-click stamps a copy · Esc cancels</div>
+          <div style="display: flex; gap: 6px; margin-top: 6px">
+            <button class="btn" type="button" title="Drop the selection onto the surface below it (prims, then ground)." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">Drop to surface</button>
+            <button class="btn" type="button" title="Stand the selection straight up." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">Upright</button>
+            <button class="btn" type="button" title="Move the selection to you." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">To me</button>
+          </div>
+        </div>
+      </section>
+
+      <section aria-label="Selection" style="background: #1B1E23; border: 1px solid #2A2F36; border-radius: 6px">
+        <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid #2A2F36">
+          <span style="font-size: 13px; font-weight: 600">{{selTitle}}</span>
+          <span style="font: 500 11px 'IBM Plex Mono', monospace; color: #9BA3AE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{selSub}}</span>
+        </div>
+        <div style="padding: 8px 8px 10px 12px; display: flex; flex-direction: column; gap: 2px">
+          <sc-if value="{{selNote}}" hint-placeholder-val="{{false}}">
+            <div style="font-size: 12px; color: #C9CED6; line-height: 1.45; padding: 4px 0 6px">{{selNote}}</div>
+          </sc-if>
+          <sc-for list="{{detailRows}}" as="d" hint-placeholder-count="7">
+            <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 20px; column-gap: 6px; align-items: center; min-height: 28px">
+              <span title="{{d.help}}" style="font-size: 12px; color: #C9CED6">{{d.label}}</span>
+              <span style="{{d.valueStyle}}">{{d.value}}</span>
+              <span style="{{d.resetStyle}}"></span>
+            </div>
+          </sc-for>
+          <sc-if value="{{showMemberActions}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap">
+              <button class="btn" type="button" title="Put this member back on its spot in the group layout." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">Back to group spot</button>
+              <button class="btn" type="button" title="Take this member out of the group. It becomes a separate clone." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">Take out of group</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{showGroupActions}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap">
+              <button class="btn" type="button" onClick="{{expandSelectedGroup}}" title="Open the group to edit members one by one." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">Edit members</button>
+              <button class="btn" type="button" title="Lock keeps the layout together when you move it; unlock lets each member move on its own." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">{{lockActionLabel}}</button>
+              <button class="btn" type="button" title="Dissolve the group. Members stay where they are as separate clones." style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">Ungroup</button>
+            </div>
+          </sc-if>
+        </div>
+      </section>
+
+      <section aria-label="Clone types" style="background: #15171B; border: 1px solid #262A31; border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; align-items: baseline; gap: 8px"><span style="font: 600 10px 'IBM Plex Mono', monospace; padding: 2px 5px; border-radius: 3px; border: 1px solid #8A929D; color: #C9CED6">OVL</span><span style="font-size: 12px; color: #C9CED6; line-height: 1.45"><b style="font-weight: 600; color: #E6E8EB">Overlay</b> mirrors the source live; light, best for crowds.</span></div>
+        <div style="display: flex; align-items: baseline; gap: 8px"><span style="font: 600 10px 'IBM Plex Mono', monospace; padding: 2px 5px; border-radius: 3px; background: #C9CED6; color: #141413">ENT</span><span style="font-size: 12px; color: #C9CED6; line-height: 1.45"><b style="font-weight: 600; color: #E6E8EB">Entity</b> is its own avatar: own animation, scale, lit by the scene.</span></div>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":700}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      show: true,
+      expanded: { g1: true, g2: false },
+      selected: { m3: true },
+      anchor: 'm3',
+      placing: false,
+      stand: 'upright',
+      below: false
+    };
+  }
+  data() {
+    return [
+      { id: 'c1', name: 'You', kind: 'ENT', meta: 'Directed · Wave 3' },
+      { id: 'c2', name: 'You 2', kind: 'OVL', meta: 'Mirror' },
+      { id: 'g1', group: true, name: 'Crowd 1', locked: true, members: [
+        { id: 'm1', name: 'Dancer 1', kind: 'OVL', meta: 'slot 1' },
+        { id: 'm2', name: 'Dancer 2', kind: 'OVL', meta: 'slot 2' },
+        { id: 'm3', name: 'Dancer 3', kind: 'OVL', meta: 'slot 3 · moved' },
+        { id: 'm4', name: 'Dancer 4', kind: 'OVL', meta: 'slot 4' },
+        { id: 'm5', name: 'Dancer 5', kind: 'ENT', meta: 'slot 5' },
+        { id: 'm6', name: 'Dancer 6', kind: 'OVL', meta: 'slot 6' }
+      ] },
+      { id: 'g2', group: true, name: 'Queue line', locked: false, members: [
+        { id: 'q1', name: 'Extra 1', kind: 'ENT', meta: '' },
+        { id: 'q2', name: 'Extra 2', kind: 'ENT', meta: '' },
+        { id: 'q3', name: 'Extra 3', kind: 'ENT', meta: '' },
+        { id: 'q4', name: 'Extra 4', kind: 'ENT', meta: '' }
+      ] },
+      { id: 'c3', name: 'Juno', kind: 'OVL', meta: 'Frozen pose' }
+    ];
+  }
+  pick(id, e) {
+    const add = e && e.shiftKey;
+    const toggle = e && (e.ctrlKey || e.metaKey);
+    const sel = add || toggle ? Object.assign({}, this.state.selected) : {};
+    if (toggle) { if (sel[id]) delete sel[id]; else sel[id] = true; }
+    else sel[id] = true;
+    this.setState({ selected: sel, anchor: id });
+  }
+  renderVals() {
+    const st = this.state;
+    const items = this.data();
+    const badge = (k) => k === 'ENT'
+      ? 'font: 600 10px \'IBM Plex Mono\', monospace; padding: 2px 5px; border-radius: 3px; background: #C9CED6; color: #141413; flex: none'
+      : 'font: 600 10px \'IBM Plex Mono\', monospace; padding: 2px 5px; border-radius: 3px; border: 1px solid #8A929D; color: #C9CED6; flex: none';
+    const kindHelp = (k) => k === 'ENT'
+      ? 'Entity clone: its own avatar with its own animation, scale and physics. Lit and fogged like a real avatar.'
+      : 'Overlay clone: re-draws the source live (or a frozen pose). Light; best for crowds.';
+    const rowBase = (sel, indent) => 'display: flex; align-items: center; gap: 2px; border-radius: 4px; margin: 1px 0; padding-left: ' + indent + 'px; background: ' + (sel ? '#2B2618' : 'transparent') + '; box-shadow: ' + (sel ? 'inset 2px 0 0 #E8A33D' : 'none');
+    const rows = [];
+    let total = 0; let groups = 0;
+    items.forEach((it) => {
+      if (it.group) {
+        groups++;
+        total += it.members.length;
+        const open = !!st.expanded[it.id];
+        const ents = it.members.filter((m) => m.kind === 'ENT').length;
+        rows.push({
+          isGroup: true, isClone: false, id: it.id, name: it.name,
+          meta: it.members.length + ' clones' + (ents ? ' · ' + ents + ' ENT' : '') + (it.locked ? ' · locked' : ''),
+          expanded: open, selected: !!st.selected[it.id],
+          chevLabel: (open ? 'Collapse ' : 'Expand ') + it.name,
+          chevStyle: 'transform: rotate(' + (open ? '90' : '0') + 'deg); transition: transform .12s',
+          lockColor: it.locked ? '#E8A33D' : '#8A929D',
+          lockPath: it.locked ? 'M4.8 6.5V4.6a2.2 2.2 0 0 1 4.4 0v1.9' : 'M4.8 6.5V4.6a2.2 2.2 0 0 1 4.4 0',
+          style: rowBase(!!st.selected[it.id], 0) + '; border: 1px solid #2A2F36; margin-top: 4px',
+          toggle: () => this.setState({ expanded: Object.assign({}, st.expanded, { [it.id]: !open }) }),
+          pick: (e) => this.pick(it.id, e)
+        });
+        if (open) {
+          it.members.forEach((m) => {
+            rows.push({
+              isGroup: false, isClone: true, id: m.id, name: m.name, meta: m.meta,
+              badge: m.kind, badgeStyle: badge(m.kind), kindHelp: kindHelp(m.kind),
+              selected: !!st.selected[m.id],
+              style: rowBase(!!st.selected[m.id], 26) + '; border-left: 1px dashed #343A42; margin-left: 10px',
+              pick: (e) => this.pick(m.id, e)
+            });
+          });
+        }
+      } else {
+        total++;
+        rows.push({
+          isGroup: false, isClone: true, id: it.id, name: it.name, meta: it.meta,
+          badge: it.kind, badgeStyle: badge(it.kind), kindHelp: kindHelp(it.kind),
+          selected: !!st.selected[it.id],
+          style: rowBase(!!st.selected[it.id], 22),
+          pick: (e) => this.pick(it.id, e)
+        });
+      }
+    });
+
+    // selection summary
+    const selIds = Object.keys(st.selected);
+    const findItem = (id) => {
+      for (const it of items) {
+        if (it.id === id) return { item: it, group: null };
+        if (it.group) for (const m of it.members) if (m.id === id) return { item: m, group: it };
+      }
+      return null;
+    };
+    let selTitle = 'Nothing selected'; let selSub = ''; let selNote = 'Pick a clone or a group in the list, or click one in the world.';
+    let detailRows = []; let showMemberActions = false; let showGroupActions = false; let lockActionLabel = 'Unlock';
+    const valMono = 'font: 500 12px \'IBM Plex Mono\', monospace; color: #E6E8EB';
+    const resetOn = 'width: 11px; height: 11px; border: 1.5px solid #E8A33D; border-radius: 6px; justify-self: center';
+    const resetOff = 'width: 11px; height: 11px; border: 1.5px solid #5C646F; border-radius: 6px; justify-self: center';
+    if (selIds.length === 1) {
+      const f = findItem(selIds[0]);
+      if (f && f.item.group) {
+        const g = f.item;
+        selTitle = g.name; selSub = g.members.length + ' clones · ' + (g.locked ? 'locked' : 'unlocked');
+        selNote = g.locked ? 'Moves, turns and scales as one. Open the group to adjust single members; the group keeps its layout.' : 'Unlocked: Place moves the members together, but each can also be moved on its own.';
+        detailRows = [
+          { label: 'Position', value: '128.4, 96.2, 22.0', valueStyle: valMono, resetStyle: resetOff, help: 'Group centre' },
+          { label: 'Turn', value: '90°', valueStyle: valMono, resetStyle: resetOff, help: 'Turn of the whole group' },
+          { label: 'Pitch (deg)', value: '0°', valueStyle: valMono, resetStyle: resetOff, help: 'Nose up/down' },
+          { label: 'Roll (deg)', value: '0°', valueStyle: valMono, resetStyle: resetOff, help: 'Lean sideways' },
+          { label: 'Scale', value: '×1.00', valueStyle: valMono, resetStyle: resetOff, help: 'Scales the layout and every member' },
+          { label: 'Formation', value: 'Rows · 2.0 m', valueStyle: valMono, resetStyle: resetOff, help: 'Layout the members were placed in' }
+        ];
+        showGroupActions = true; lockActionLabel = g.locked ? 'Unlock' : 'Lock';
+      } else if (f) {
+        const c = f.item;
+        selTitle = c.name;
+        selSub = (c.kind === 'ENT' ? 'Entity' : 'Overlay') + (f.group ? ' · in ' + f.group.name : '');
+        selNote = f.group ? 'Editing one member of ' + f.group.name + '. The rest of the group stays put; this member keeps its own offset.' : '';
+        detailRows = [
+          { label: 'Type', value: c.kind === 'ENT' ? 'Entity' : 'Overlay', valueStyle: 'font-size: 12px; color: #E6E8EB', resetStyle: 'width: 11px', help: kindHelp(c.kind) },
+          { label: 'Position', value: f.group ? 'offset +0.6, −0.2, 0.0' : '131.0, 94.8, 22.0', valueStyle: valMono, resetStyle: f.group ? resetOn : resetOff, help: f.group ? 'Offset from its group spot' : 'World position' },
+          { label: 'Turn', value: f.group ? '+15°' : '0°', valueStyle: valMono, resetStyle: f.group ? resetOn : resetOff, help: 'Facing' },
+          { label: 'Pitch (deg)', value: '0°', valueStyle: valMono, resetStyle: f.group ? resetOn : resetOff, help: 'Nose up/down' },
+          { label: 'Roll (deg)', value: '0°', valueStyle: valMono, resetStyle: f.group ? resetOn : resetOff, help: 'Lean sideways' },
+          { label: 'Scale', value: '×1.00', valueStyle: valMono, resetStyle: resetOff, help: 'Size' },
+          { label: 'Look', value: 'Hologram', valueStyle: 'font-size: 12px; color: #E6E8EB', resetStyle: resetOff, help: 'Clone look' }
+        ];
+        showMemberActions = !!f.group;
+      }
+    } else if (selIds.length > 1) {
+      selTitle = selIds.length + ' selected';
+      selSub = 'changes apply to all';
+      selNote = 'Place moves them together and keeps their layout. Pitch and roll change every selected clone. Locked groups rotate around their group centre. Use the wheel over a value to adjust it.';
+      detailRows = [
+        { label: 'Position', value: 'mixed', valueStyle: 'font-size: 12px; color: #9BA3AE; font-style: italic', resetStyle: resetOff, help: 'Values differ' },
+        { label: 'Turn', value: 'mixed', valueStyle: 'font-size: 12px; color: #9BA3AE; font-style: italic', resetStyle: resetOff, help: 'Values differ' },
+        { label: 'Pitch (deg)', value: 'mixed', valueStyle: 'font-size: 12px; color: #9BA3AE; font-style: italic', resetStyle: resetOff, help: 'Nose up/down' },
+        { label: 'Roll (deg)', value: 'mixed', valueStyle: 'font-size: 12px; color: #9BA3AE; font-style: italic', resetStyle: resetOff, help: 'Lean sideways' },
+        { label: 'Scale', value: '×1.00', valueStyle: valMono, resetStyle: resetOff, help: 'All the same' }
+      ];
+    }
+
+    const pill = (on) => 'height: 24px; padding: 0 10px; border-radius: 4px; font-size: 12px; border: 1px solid ' + (on ? '#E8A33D' : '#343A42') + '; background: ' + (on ? '#3A3222' : '#262A31') + '; color: ' + (on ? '#F3BE6A' : '#C9CED6');
+    const standModes = [
+      { id: 'upright', label: 'Upright', help: 'Stand straight up, whatever the surface slope.' },
+      { id: 'surface', label: 'Align to surface', help: 'Tilt to match the surface under the cursor.' }
+    ].map((m) => ({ ...m, on: st.stand === m.id, style: pill(st.stand === m.id), pick: () => this.setState({ stand: m.id }) }));
+
+    return {
+      showOn: st.show,
+      showTrack: st.show ? '#E8A33D' : '#4A515B',
+      showKnobLeft: st.show ? '18px' : '2px',
+      toggleShow: () => this.setState({ show: !st.show }),
+      countLine: total + ' clones · ' + groups + ' groups',
+      rows,
+      placing: st.placing,
+      placeBtnLabel: st.placing ? 'Placing…  Esc' : 'Place',
+      placeBtnStyle: 'height: 26px; padding: 0 14px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid #E8A33D; background: ' + (st.placing ? '#E8A33D' : 'transparent') + '; color: ' + (st.placing ? '#141413' : '#E8A33D'),
+      togglePlace: () => this.setState({ placing: !st.placing, below: !st.placing ? st.below : false }),
+      standModes,
+      readout: st.placing ? (st.below ? 'Terrain · −0.40 m · ×1.00 · 90°' : 'Prim · 0.00 m above · ×1.00 · 90°') : 'Not placing',
+      belowTerrain: st.placing && st.below,
+      lift: () => this.setState({ below: false }),
+      selTitle, selSub, selNote, detailRows, showMemberActions, showGroupActions, lockActionLabel,
+      expandSelectedGroup: () => {
+        const id = selIds[0];
+        this.setState({ expanded: Object.assign({}, st.expanded, { [id]: true }) });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

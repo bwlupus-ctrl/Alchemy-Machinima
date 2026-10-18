@@ -189,6 +189,7 @@ void LLSpinCtrl::onUpBtn( const LLSD& data )
 {
     if( getEnabled() )
     {
+        setMixedValue(false);
         std::string text = mEditor->getText();
         if( LLLineEditor::postvalidateFloat( text ) )
         {
@@ -233,6 +234,7 @@ void LLSpinCtrl::onDownBtn( const LLSD& data )
 {
     if( getEnabled() )
     {
+        setMixedValue(false);
         std::string text = mEditor->getText();
         if( LLLineEditor::postvalidateFloat( text ) )
         {
@@ -279,6 +281,7 @@ void LLSpinCtrl::onEditorGainFocus( LLFocusableElement* caller, void *userdata )
     LLSpinCtrl* self = (LLSpinCtrl*) userdata;
     llassert( caller == self->mEditor );
 
+    self->setMixedValue(false);
     self->onFocusReceived();
 }
 
@@ -354,6 +357,11 @@ void LLSpinCtrl::updateLabelColor()
 void LLSpinCtrl::updateEditor()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LLSpinCtrl::updateEditor");
+    if (mMixedValue && !mEditor->hasFocus())
+    {
+        mEditor->setText("mixed");
+        return;
+    }
     LLLocale locale(LLLocale::USER_LOCALE);
 
     // Don't display very small negative valu   es as -0.000
@@ -430,6 +438,14 @@ void LLSpinCtrl::setEnabled(bool b)
 }
 
 
+void LLSpinCtrl::setMixedValue(bool mixed)
+{
+    if (mMixedValue == mixed || (mixed && mEditor->hasFocus())) return;
+    mMixedValue = mixed;
+    setTentative(mixed);
+    updateEditor();
+}
+
 void LLSpinCtrl::setTentative(bool b)
 {
     mEditor->setTentative(b);
@@ -446,6 +462,7 @@ bool LLSpinCtrl::isMouseHeldDown() const
 
 void LLSpinCtrl::onCommit()
 {
+    setMixedValue(false);
     setTentative(false);
     setControlValue(getValueF32());
     LLF32UICtrl::onCommit();

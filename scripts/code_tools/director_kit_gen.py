@@ -276,8 +276,9 @@ def validate_data(data: dict) -> None:
     # 2124: Selector Name moves to camera Source; media Source gains its rename row (net +1, 10/18).
     # 2124: Enter/Load replaces Browse with a two-action row: delta 0 rows, +1 button (10/18).
     # 2124: Fix round 1 retains both native Name rows; search alias only, exact row delta 0 (10/18).
-    if len(pages) != 37 or row_count != 2124:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2124")
+    # 2126: clone Pitch and Roll add exactly two Position rows (+2 from 2124).
+    if len(pages) != 37 or row_count != 2126:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2126")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1821,6 +1822,17 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                            len(list(row)) == 1 and list(row)[0].tag == "spinner" and
                            list(row)[0].get("control_name") == row.get("setting")
                            for row in rig_ev_rows)))
+        ghosts = ET.fromstring(outputs[out_dir / "panel_dpage_cast_ghosts.xml"], parser=parser())
+        rotation_rows = [row for row in ghosts.iter("kit_row") if row.get("widget") in
+                         {"yaw_spinner", "pitch_spinner", "roll_spinner"}]
+        checks.append(("clone Yaw/Pitch/Roll retain identical native spinner wheel path and resets",
+                       len(rotation_rows) == 3 and all(
+                           row.get("kind") == "number" and row.get("bind") == "code" and
+                           row.get("default_value") == "0" and row.get("widget_history") == "false" and
+                           row.find("spinner") is not None and
+                           all(row.find("spinner").get(key) == value for key, value in
+                               {"increment": "1", "decimal_digits": "2", "min_val": "-180", "max_val": "180"}.items())
+                           for row in rotation_rows)))
         tron = ET.fromstring(outputs[out_dir / "panel_dpage_look_tron.xml"], parser=parser())
         launcher_cards = [node for node in tron.iter("kit_card") if node.get("kind") == "launcher"]
         checks.append(("look Tron page is a generated kit page (no launcher)",

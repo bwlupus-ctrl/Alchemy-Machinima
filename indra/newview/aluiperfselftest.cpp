@@ -96,6 +96,8 @@
 #include "llsdutil.h"
 #include "llsdutil_math.h"
 #include "llspinctrl.h"
+#include "llkeyboard.h"
+#include "alghostrotation.h"
 #include "llstartup.h"
 #include "lltabcontainer.h"
 #include "lltextbox.h"
@@ -3098,6 +3100,91 @@ private:
         return ok;
     }
 
+    // ui-draw-lint: allow-function(raw-write) isolated native input fixture
+    bool functionalCloneRotationWheel()
+    {
+        struct WheelRow : ALKitRow
+        {
+            explicit WheelRow(const Params& params) : ALKitRow(params) {}
+        };
+        // Synchronous fixture: exercise native modifier reads without sending
+        // key events to the viewer or changing the user's physical key state.
+        struct WheelKeyboard : LLKeyboard
+        {
+            bool handleKeyUp(NATIVE_KEY_TYPE, MASK) override { return false; }
+            bool handleKeyDown(NATIVE_KEY_TYPE, MASK) override { return false; }
+            void resetMaskKeys() override {}
+            void scanKeyboard() override {}
+            MASK currentMask(bool) override { return MASK_NONE; }
+            void modifiers(MASK mask)
+            {
+                mKeyLevel[KEY_SHIFT] = (mask & MASK_SHIFT) != 0;
+                mKeyLevel[KEY_CONTROL] = (mask & MASK_CONTROL) != 0;
+                mKeyLevel[KEY_ALT] = (mask & MASK_ALT) != 0;
+            }
+        } keyboard;
+        struct KeyboardRestore
+        {
+            LLKeyboard* saved = gKeyboard;
+            ~KeyboardRestore() { gKeyboard = saved; }
+        } restore;
+        gKeyboard = &keyboard;
+        for (const char* name : {"pos_x_spinner", "pos_y_spinner", "pos_z_spinner",
+                                 "yaw_spinner", "pitch_spinner", "roll_spinner"})
+        {
+            const bool position = std::string(name).find("pos_") == 0;
+            const F64 increment = position ? .1 : 1.;
+            ALKitRow::Params params;
+            params.kind = "number";
+            params.widget = name;
+            params.bind = "code";
+            params.widget_history = false;
+            auto row = std::make_unique<WheelRow>(params);
+            LLSpinCtrl::Params spin_params;
+            spin_params.name = name;
+            spin_params.rect = LLRect(0, 24, 100, 0);
+            spin_params.min_value = -180.f;
+            spin_params.max_value = 180.f;
+            spin_params.increment = (F32)increment;
+            spin_params.decimal_digits = 2;
+            LLSpinCtrl* spin = LLUICtrlFactory::create<LLSpinCtrl>(spin_params);
+            row->addChild(spin);
+            if (!row->postBuild()) return false;
+            row->reshape(700, 36);
+            S32 commits = 0;
+            spin->setCommitCallback([&commits](LLUICtrl*, const LLSD&) { ++commits; });
+            const LLRect rect = spin->getRect();
+            const auto wheel = [&](S32 clicks, F64 expected, S32 expected_commits)
+            {
+                return row->handleScrollWheel(rect.getCenterX(), rect.getCenterY(),
+                           LLScrollDelta(clicks, (F32)clicks)) &&
+                    std::fabs(spin->getValue().asReal() - expected) < .001 &&
+                    commits == expected_commits && !spin->isMixedValue();
+            };
+            for (MASK mask : {MASK_NONE, MASK_SHIFT, MASK_CONTROL, MASK_ALT,
+                              MASK_SHIFT | MASK_CONTROL | MASK_ALT})
+            {
+                keyboard.modifiers(mask);
+                const F64 multiplier = (mask & MASK_SHIFT) ? .01 :
+                    (mask & MASK_CONTROL) ? .1 : (mask & MASK_ALT) ? 10. : 1.;
+                // Native precision rounds position Shift steps (.001) to .00.
+                const F64 step = std::floor(increment * multiplier * 100. + .5) / 100.;
+                spin->setValue(20.);
+                spin->setMixedValue(true);
+                commits = 0;
+                if (!wheel(-1, 20. + step, 1) || !wheel(1, 20., 2) ||
+                    !wheel(-3, 20. + 3. * step, 5)) return false;
+            }
+            keyboard.modifiers(MASK_NONE);
+            spin->setValue(180.);
+            commits = 0;
+            if (!wheel(-1, 180., 1)) return false;
+            spin->setValue(-180.);
+            if (!wheel(1, -180., 2)) return false;
+        }
+        return true;
+    }
+
     // ui-draw-lint: allow-function(setting,lookup,raw-write) isolated test-only prerequisite setup
     bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
     {
@@ -3128,6 +3215,12 @@ private:
             if (instance)
             {
                 mFunctionalGhostFixture = instance->mId;
+                if (entry["probe"].asString() == "clone_rotation")
+                {
+                    const auto q = ALGhostRotation::compose({.31, .27, -.44});
+                    studio.transformUnit(instance->mId, instance->mFootGlobal,
+                        LLQuaternion((F32)q[0], (F32)q[1], (F32)q[2], (F32)q[3]), instance->mScale);
+                }
                 studio.setSelected(instance->mId);
                 if (prerequisite == "ghost_selected_entity")
                     studio.setInstanceDriveMode(instance->mId, ALGhostStudio::DRIVE_DIRECTED);
@@ -6525,6 +6618,19 @@ private:
             mFunctionalDanceStatusRevisionBefore =
                 ALDanceBall::instance().statusRevision();
         }
+        else if (owner_probe == "clone_rotation")
+        {
+            mFunctionalOwnerModelBefore = LLSD::emptyMap();
+            const ALGhostStudio& studio = ALGhostStudio::instance();
+            if (const auto* clone = studio.getInstance(studio.getSelected()))
+            {
+                mFunctionalOwnerModelBefore["id"] = clone->mId;
+                for (F32 component : clone->mRotation.mQ)
+                    mFunctionalOwnerModelBefore["rotation"].append(component);
+                mFunctionalOwnerModelBefore["foot"] = ll_sd_from_vector3d(clone->mFootGlobal);
+                mFunctionalOwnerModelBefore["scale"] = clone->mScale;
+            }
+        }
         else if (owner_probe == "ghost_owner")
         {
             mFunctionalOwnerModelBefore = LLSD::emptyMap();
@@ -6807,6 +6913,15 @@ private:
             return;
         }
         const std::string action = entry["action"].asString();
+        if (entry["probe"].asString() == "clone_rotation_wheel")
+        {
+            const bool passed = functionalCloneRotationWheel();
+            addFunctionalResult(entry, passed ? "PASS" : "FAIL",
+                passed ? "kit rows dispatched X/Y/Z/Yaw/Pitch/Roll wheel steps, modifiers, limits and mixed-value commits"
+                       : "kit/spinner wheel step or commit mismatch");
+            ++mFunctionalIndex;
+            return;
+        }
         if (entry["probe"].asString() == "vcam_media_lifecycle")
         {
             if (mInWorld && entry["media_seam"].asString() == "scene_restore")
@@ -7541,6 +7656,43 @@ private:
             observable = owner_ok;
             expected_ok = expected_ok && owner_ok;
             if (!owner_ok) assertion_failure = "dance control did not move its ALDanceBall owner state";
+        }
+        else if (owner_probe == "clone_rotation")
+        {
+            const ALGhostStudio& studio = ALGhostStudio::instance();
+            const auto* clone = studio.getInstance(studio.getSelected());
+            const LLSD& before = mFunctionalOwnerModelBefore["rotation"];
+            F64 delta = 0., orientation_error = 1.;
+            bool owner_ok = clone && before.size() == 4 &&
+                clone->mId == mFunctionalOwnerModelBefore["id"].asUUID();
+            if (owner_ok)
+            {
+                ALGhostRotation::Quaternion original;
+                for (S32 i = 0; i < 4; ++i)
+                {
+                    original[i] = before[i].asReal();
+                    delta += std::fabs(clone->mRotation.mQ[i] - original[i]);
+                }
+                auto requested = ALGhostRotation::decompose(original);
+                const S32 axis = widget_name == "pitch_spinner" ? 1 : widget_name == "roll_spinner" ? 2 : 0;
+                requested[axis] = entry["test_value"].asReal() * DEG_TO_RAD;
+                const auto expected = ALGhostRotation::compose(requested);
+                F64 direct = 0., negated = 0.;
+                for (S32 i = 0; i < 4; ++i)
+                {
+                    direct += std::pow(clone->mRotation.mQ[i] - expected[i], 2.);
+                    negated += std::pow(clone->mRotation.mQ[i] + expected[i], 2.);
+                }
+                orientation_error = std::sqrt(std::min(direct, negated));
+                owner_ok = delta > .000001 && orientation_error < .00001 &&
+                    (clone->mFootGlobal - ll_vector3d_from_sd(mFunctionalOwnerModelBefore["foot"])).length() < .000001 &&
+                    std::fabs(clone->mScale - mFunctionalOwnerModelBefore["scale"].asReal()) < .000001;
+            }
+            mFunctionalObserved["clone_rotation"]["quaternion_delta"] = delta;
+            mFunctionalObserved["clone_rotation"]["orientation_error"] = orientation_error;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure = "rotation spinner failed the requested-axis quaternion or foot/scale preservation oracle";
         }
         else if (owner_probe == "ghost_owner")
         {

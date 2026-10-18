@@ -88,6 +88,8 @@ public:
 
     virtual void    onTabInto();
 
+    void            setMixedValue(bool mixed); // show mixed; wheel starts at backing value
+    bool            isMixedValue() const { return mMixedValue; }
     virtual void    setTentative(bool b);           // marks value as tentative
     virtual void    onCommit();                     // mark not tentative, then commit
 
@@ -123,6 +125,7 @@ private:
 
     bool            mbHasBeenSet;
     bool            mAllowEdit;
+    bool            mMixedValue = false;
 };
 
 #endif  // LL_LLSPINCTRL_H

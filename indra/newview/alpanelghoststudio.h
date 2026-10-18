@@ -22,6 +22,7 @@
 
 #include "llpanel.h"
 #include "alghoststudio.h"
+#include "alghostrotation.h"
 
 #include "alscrollfit.h"
 #include "aluirefresh.h"            // [GhostPanelPerf] revision gates + live clocks
@@ -30,6 +31,7 @@
 #include "v3dmath.h"
 #include "llquaternion.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -151,6 +153,10 @@ private:
     void onPosCommit();             // X/Y/Z spinners -> foot position
     void onHeadingDialCommit();     // live dial -> yaw + exact-entry spinner
     void onYawCommit();
+    void onRotationCommit(S32 axis, F64 degrees);
+    LLQuaternion rotationEditFrame(const LLUUID& id) const;
+    ALGhostRotation::Angles rotationAngles(const LLUUID& id, const LLQuaternion& world);
+    std::map<LLUUID, ALGhostRotation::Angles> mRotationReferences;
     void onScaleCommit();
     void onChaosCommit();
     void onAnimSpeedCommit();
@@ -314,6 +320,8 @@ private:
     LLSpinCtrl*       mPosZ = nullptr;
     ALCompassDial*    mHeadingDial = nullptr;
     LLSpinCtrl*       mYawSpin = nullptr;
+    LLSpinCtrl*       mPitchSpin = nullptr;
+    LLSpinCtrl*       mRollSpin = nullptr;
     LLSpinCtrl*       mScaleSpin = nullptr;
     LLCheckBoxCtrl*   mChaosCheck = nullptr;
     LLSliderCtrl*     mChaosSlider = nullptr;

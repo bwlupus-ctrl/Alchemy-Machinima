@@ -58,10 +58,10 @@
          width="500">
           <panel border="false" follows="all" height="490" label="Place" layout="topleft" name="place_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="place_scroll" reserve_scroll_corner="false" top="0" width="500">
-              <panel background_visible="false" follows="left|top" height="282" layout="topleft" left="0" name="place_scroll_body" top="0" width="484">
+              <panel background_visible="false" follows="left|top" layout="topleft" left="0" name="place_scroll_body" top="0" width="484">
 
         <!-- Placement -->
-        <panel follows="left|top" height="282" layout="topleft" left="0" name="placement_section" top="0" width="484">
+        <panel follows="left|top" height="308" layout="topleft" left="0" name="placement_section" top="0" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="place_lbl" right="-8" top="8">Placement</text>
           <text follows="left|top" font="SansSerifSmallBold" height="18" layout="topleft" left="8" name="ghost_type" top="29" tool_tip="The kind of the selected clone, and its state.&#10;&#10;Overlay clone: A light copy that re-draws the source avatar&apos;s own mesh at another spot. It mirrors what the source is doing, or holds a pose you freeze. Cheapest; best for crowds and echoes. Drawn after fog and haze, so atmosphere doesn&apos;t touch it.&#10;&#10;Entity clone: A real avatar that exists only in your viewer, with its own skeleton. It can play its own animations (copy the source, a chosen animation, true mirror, or auto-animate), and has its own scale, physics, eye motion, speed and stepping. Lit, fogged and hazed like a real avatar. Heavier per copy." width="174">Type: No selection</text>
           <line_editor follows="left|top|right" height="22" label="Name" layout="topleft" left="188" max_length_bytes="63" name="ghost_name" right="-8" top="25"
@@ -82,30 +82,36 @@
           <spinner decimal_digits="4" follows="left|top" height="18" increment="0.01" initial_value="1.0" label="Scale" label_width="36" layout="topleft" left="214" max_val="150" min_val="0.05" name="scale_spinner" top="82"
            tool_tip="Uniform size or group scale factor; the live tooltip reports the exact allowed group range" width="120" />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="340" name="reset_scale" top="82" tool_tip="Reset scale to default" width="22" />
-          <button follows="left|top" height="22" label="Place (click ground)" layout="topleft" left="8" name="btn_place" top="132"
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="1" initial_value="0" label="Pitch (deg)" label_width="62" layout="topleft" left="8" max_val="180" min_val="-180" name="pitch_spinner" top="126"
+           tool_tip="Nose up/down; mouse wheel adjusts like Yaw (Shift fine, Ctrl tenth, Alt coarse)" width="140" />
+          <button follows="left|top" height="18" label="&#x21BA;" layout="topleft" left="150" name="reset_pitch" top="126" tool_tip="Reset pitch to zero" width="22" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="1" initial_value="0" label="Roll (deg)" label_width="62" layout="topleft" left="214" max_val="180" min_val="-180" name="roll_spinner" top="126"
+           tool_tip="Lean sideways; mouse wheel adjusts like Yaw (Shift fine, Ctrl tenth, Alt coarse)" width="140" />
+          <button follows="left|top" height="18" label="&#x21BA;" layout="topleft" left="356" name="reset_roll" top="126" tool_tip="Reset roll to zero" width="22" />
+          <button follows="left|top" height="22" label="Place (click ground)" layout="topleft" left="8" name="btn_place" top="158"
            tool_tip="Arm one ground click: the next click on ground/prim puts the clone's feet there. Esc or right-click cancels" width="140" />
-          <button follows="left|top" height="22" label="To actor" layout="topleft" left="154" name="btn_to_actor" top="132"
+          <button follows="left|top" height="22" label="To actor" layout="topleft" left="154" name="btn_to_actor" top="158"
            tool_tip="Snap the clone onto its source's current feet" width="84" />
-          <button follows="left|top" height="22" label="To me" layout="topleft" left="244" name="btn_to_me" top="132"
+          <button follows="left|top" height="22" label="To me" layout="topleft" left="244" name="btn_to_me" top="158"
            tool_tip="Snap the clone onto your avatar's current feet" width="84" />
-          <text follows="left|top" height="18" layout="topleft" left="8" name="look_target_label" top="164" width="84">Face target</text>
-          <combo_box follows="left|top|right" height="22" layout="topleft" left="98" name="look_target_combo" right="-8" top="160"
+          <text follows="left|top" height="18" layout="topleft" left="8" name="look_target_label" top="190" width="84">Face target</text>
+          <combo_box follows="left|top|right" height="22" layout="topleft" left="98" name="look_target_combo" right="-8" top="186"
            tool_tip="Aim at the camera, you, a Director cast member, or another Clone Studio instance" />
-          <button follows="left|top" height="22" label="Face now" layout="topleft" left="98" name="btn_face_now" top="190"
+          <button follows="left|top" height="22" label="Face now" layout="topleft" left="98" name="btn_face_now" top="216"
            tool_tip="Turn the selected clone toward the chosen target once" width="90" />
-          <check_box follows="left|top" height="18" label="Keep facing" layout="topleft" left="196" name="keep_facing_check" top="192"
+          <check_box follows="left|top" height="18" label="Keep facing" layout="topleft" left="196" name="keep_facing_check" top="218"
            tool_tip="Per-instance continuous tracking; re-aims on each viewer idle tick. Turning it off leaves the last heading" width="126" />
-          <button follows="left|top" height="22" label="Drop to ground" layout="topleft" left="8" name="btn_drop_ground" top="220"
+          <button follows="left|top" height="22" label="Drop to ground" layout="topleft" left="8" name="btn_drop_ground" top="246"
            tool_tip="Set each selected clone's feet to the viewer land height beneath it" width="108" />
-          <button follows="left|top" height="22" label="Align feet" layout="topleft" left="122" name="btn_align_feet" top="220"
-           tool_tip="Put all selected clones on the first selected clone's Z plane" width="92" />
-          <button follows="left|top" height="22" label="Upright" layout="topleft" left="220" name="btn_reset_upright" top="220"
+          <button follows="left|top" height="22" label="Align feet" layout="topleft" left="122" name="btn_align_feet" top="246"
+           tool_tip="Put all selected clones on the first selected clone's Z plane and level pitch and roll" width="92" />
+          <button follows="left|top" height="22" label="Upright" layout="topleft" left="220" name="btn_reset_upright" top="246"
            tool_tip="Clear pitch and roll while keeping each selected clone's yaw" width="82" />
-          <button follows="left|top" height="22" label="Duplicate here" layout="topleft" left="8" name="btn_duplicate_in_place" top="248"
+          <button follows="left|top" height="22" label="Duplicate here" layout="topleft" left="8" name="btn_duplicate_in_place" top="274"
            tool_tip="Create a new clone at exactly the selected clone's transform" width="108" />
-          <button follows="left|top" height="22" label="Copy transform" layout="topleft" left="122" name="btn_copy_transform" top="248"
+          <button follows="left|top" height="22" label="Copy transform" layout="topleft" left="122" name="btn_copy_transform" top="274"
            tool_tip="Copy foot position, full rotation, and scale to the session clipboard" width="104" />
-          <button follows="left|top" height="22" label="Paste transform" layout="topleft" left="232" name="btn_paste_transform" top="248"
+          <button follows="left|top" height="22" label="Paste transform" layout="topleft" left="232" name="btn_paste_transform" top="274"
            tool_tip="Paste foot position, full rotation, and scale to every selected clone" width="110" />
         </panel>
               </panel>
