@@ -362,9 +362,9 @@ void drawCinematicFrameGuide(S32 width, S32 height)
     }
 }
 
-// Viewfinder overlay: thin corner brackets, a small centre "+" and a four-line
-// labelled readout (FOV, Angle, Lens, FPS: vertical FOV, view angle, 35 mm-
-// equivalent focal length and frames per second).
+// Viewfinder overlay: thin corner brackets, a small centre "+" and a five-line
+// labelled readout (FOV, View, Lens, Roll, FPS: vertical FOV, raw view angle,
+// 35 mm-equivalent focal length, camera roll and frames per second).
 // Unlike the frame guide this is drawn from LLViewerWindow::drawDebugText(),
 // which render_ui() runs after both UI-hiding mechanisms (HideUI and the UI
 // debug-feature mask) have been applied, so it stays visible with the UI
@@ -458,7 +458,7 @@ void drawCinematicViewfinder(const LLRect& world_rect, S32 width, S32 height)
         fps = (F32)LLTrace::get_frame_recording().getLastRecording().getMean(LLStatViewer::FPS_SAMPLE);
     }
 
-    // Four labelled lines (FOV / Angle / Lens / FPS) as two aligned columns.
+    // Five labelled lines (FOV / View / Lens / Roll / FPS) as two aligned columns.
     // Values are formatted on the stack every frame (no heap); a wide string is
     // rebuilt only when that value's text actually changed.
     constexpr S32 LINES = ALViewfinder::LINE_COUNT;
@@ -476,10 +476,11 @@ void drawCinematicViewfinder(const LLRect& world_rect, S32 width, S32 height)
     }
 
     const F32 fov = LLViewerCamera::getInstance()->getView();
+    const F32 roll = gAgentCamera.getRollAngle();
     for (S32 i = 0; i < LINES; ++i)
     {
         char value[sizeof(last_values[0])];
-        ALViewfinder::formatValue(i, value, sizeof(value), fov, fps);
+        ALViewfinder::formatValue(i, value, sizeof(value), fov, roll, fps);
         if (std::strcmp(value, last_values[i]) != 0)
         {
             std::memcpy(last_values[i], value, sizeof(value));

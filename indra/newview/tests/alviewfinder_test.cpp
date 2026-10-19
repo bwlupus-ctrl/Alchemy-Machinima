@@ -17,22 +17,27 @@ alviewfinder_group gAlViewfinderGroup("alviewfinder");
 
 namespace
 {
-std::string value(int line, float fov, float fps)
+float radians(float degrees)
+{
+    return degrees * (ALViewfinder::PI / 180.f);
+}
+
+std::string value(int line, float fov, float roll, float fps)
 {
     char buf[48];
-    ALViewfinder::formatValue(line, buf, sizeof(buf), fov, fps);
+    ALViewfinder::formatValue(line, buf, sizeof(buf), fov, roll, fps);
     return std::string(buf);
 }
 
-std::string textLine(int line, float fov, float fps)
+std::string textLine(int line, float fov, float roll, float fps)
 {
     char buf[64];
-    ALViewfinder::formatLine(line, buf, sizeof(buf), fov, fps);
+    ALViewfinder::formatLine(line, buf, sizeof(buf), fov, roll, fps);
     return std::string(buf);
 }
 
-// All four lines joined with '\n', as drawn top to bottom.
-std::string block(float fov, float fps)
+// All five lines joined with '\n', as drawn top to bottom.
+std::string block(float fov, float roll, float fps)
 {
     std::string out;
     for (int i = 0; i < ALViewfinder::LINE_COUNT; ++i)
@@ -41,7 +46,7 @@ std::string block(float fov, float fps)
         {
             out += '\n';
         }
-        out += textLine(i, fov, fps);
+        out += textLine(i, fov, roll, fps);
     }
     return out;
 }
@@ -50,32 +55,37 @@ std::string block(float fov, float fps)
 template<> template<>
 void alviewfinder_object::test<1>()
 {
-    set_test_name("0.588 rad -> 33.7 deg, 39.63 mm (shown as 40 mm)");
+    set_test_name("0.588 rad -> 33.7 deg, 39.63 mm (shown as 40 mm), roll -12.5 deg");
+    const float roll = radians(-12.5f);
     ensure_approximately_equals_range("deg", ALViewfinder::fovDegrees(0.588f), 33.69f, 0.01f);
     ensure_approximately_equals_range("mm", ALViewfinder::focalLengthMm(0.588f), 39.63f, 0.02f);
-    ensure_equals("fov", value(ALViewfinder::LINE_FOV, 0.588f, 30.f), std::string("33.7\xC2\xB0"));
-    ensure_equals("angle", value(ALViewfinder::LINE_ANGLE, 0.588f, 30.f), std::string("0.588"));
-    ensure_equals("lens", value(ALViewfinder::LINE_LENS, 0.588f, 30.f), std::string("40 mm"));
-    ensure_equals("fps", value(ALViewfinder::LINE_FPS, 0.588f, 30.f), std::string("30"));
+    ensure_equals("fov", value(ALViewfinder::LINE_FOV, 0.588f, roll, 30.f), std::string("33.7\xC2\xB0"));
+    ensure_equals("view", value(ALViewfinder::LINE_VIEW, 0.588f, roll, 30.f), std::string("0.588"));
+    ensure_equals("lens", value(ALViewfinder::LINE_LENS, 0.588f, roll, 30.f), std::string("40 mm"));
+    ensure_equals("roll", value(ALViewfinder::LINE_ROLL, 0.588f, roll, 30.f), std::string("-12.5\xC2\xB0"));
+    ensure_equals("fps", value(ALViewfinder::LINE_FPS, 0.588f, roll, 30.f), std::string("30"));
 }
 
 template<> template<>
 void alviewfinder_object::test<2>()
 {
-    set_test_name("four labelled lines, label column padded");
-    ensure_equals("FOV line", textLine(ALViewfinder::LINE_FOV, 0.588f, 30.f), std::string("FOV   33.7\xC2\xB0"));
-    ensure_equals("Angle line", textLine(ALViewfinder::LINE_ANGLE, 0.588f, 30.f), std::string("Angle 0.588"));
-    ensure_equals("Lens line", textLine(ALViewfinder::LINE_LENS, 0.588f, 30.f), std::string("Lens  40 mm"));
-    ensure_equals("FPS line", textLine(ALViewfinder::LINE_FPS, 0.588f, 30.f), std::string("FPS   30"));
-    ensure_equals("block", block(0.588f, 30.f),
-        std::string("FOV   33.7\xC2\xB0\nAngle 0.588\nLens  40 mm\nFPS   30"));
+    set_test_name("five labelled lines, label column padded");
+    const float roll = radians(-12.5f);
+    ensure_equals("line count", ALViewfinder::LINE_COUNT, 5);
+    ensure_equals("FOV line", textLine(ALViewfinder::LINE_FOV, 0.588f, roll, 30.f), std::string("FOV   33.7\xC2\xB0"));
+    ensure_equals("View line", textLine(ALViewfinder::LINE_VIEW, 0.588f, roll, 30.f), std::string("View  0.588"));
+    ensure_equals("Lens line", textLine(ALViewfinder::LINE_LENS, 0.588f, roll, 30.f), std::string("Lens  40 mm"));
+    ensure_equals("Roll line", textLine(ALViewfinder::LINE_ROLL, 0.588f, roll, 30.f), std::string("Roll  -12.5\xC2\xB0"));
+    ensure_equals("FPS line", textLine(ALViewfinder::LINE_FPS, 0.588f, roll, 30.f), std::string("FPS   30"));
+    ensure_equals("block", block(0.588f, roll, 30.f),
+        std::string("FOV   33.7\xC2\xB0\nView  0.588\nLens  40 mm\nRoll  -12.5\xC2\xB0\nFPS   30"));
     // Values start in the same text column on every line.
     ensure_equals("value column", ALViewfinder::LABEL_PAD, 6);
     for (int i = 0; i < ALViewfinder::LINE_COUNT; ++i)
     {
-        const std::string line = textLine(i, 0.588f, 30.f);
+        const std::string line = textLine(i, 0.588f, roll, 30.f);
         ensure_equals("value offset", line.substr(ALViewfinder::LABEL_PAD),
-            value(i, 0.588f, 30.f));
+            value(i, 0.588f, roll, 30.f));
     }
 }
 
@@ -87,8 +97,8 @@ void alviewfinder_object::test<3>()
     ensure_approximately_equals_range("90 deg", ALViewfinder::focalLengthMm(ALViewfinder::PI * 0.5f), 12.f, 0.001f);
     // 60 deg vertical -> 12 / tan(30 deg) = 20.78 mm.
     ensure_approximately_equals_range("60 deg", ALViewfinder::focalLengthMm(ALViewfinder::PI / 3.f), 20.785f, 0.01f);
-    ensure_equals("60 deg block", block(ALViewfinder::PI / 3.f, 59.6f),
-        std::string("FOV   60.0\xC2\xB0\nAngle 1.047\nLens  21 mm\nFPS   60"));
+    ensure_equals("60 deg block", block(ALViewfinder::PI / 3.f, 0.f, 59.6f),
+        std::string("FOV   60.0\xC2\xB0\nView  1.047\nLens  21 mm\nRoll  0.0\xC2\xB0\nFPS   60"));
 }
 
 template<> template<>
@@ -106,14 +116,17 @@ void alviewfinder_object::test<4>()
 template<> template<>
 void alviewfinder_object::test<5>()
 {
-    set_test_name("unusable FOV prints placeholders, never garbage");
+    set_test_name("unusable FOV prints placeholders, never garbage; roll is independent");
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    const std::string expected("FOV   --\nAngle --\nLens  --\nFPS   12");
-    ensure_equals("zero", block(0.f, 12.f), expected);
-    ensure_equals("negative", block(-1.f, 12.f), expected);
-    ensure_equals("pi", block(ALViewfinder::PI, 12.f), expected);
-    ensure_equals("nan", block(nan, 12.f), expected);
+    const std::string expected("FOV   --\nView  --\nLens  --\nRoll  0.0\xC2\xB0\nFPS   12");
+    ensure_equals("zero", block(0.f, 0.f, 12.f), expected);
+    ensure_equals("negative", block(-1.f, 0.f, 12.f), expected);
+    ensure_equals("pi", block(ALViewfinder::PI, 0.f, 12.f), expected);
+    ensure_equals("nan", block(nan, 0.f, 12.f), expected);
     ensure_equals("focal of zero fov", ALViewfinder::focalLengthMm(0.f), 0.f);
+    // A bad FOV does not hide the roll, and a bad roll does not hide the FOV.
+    ensure_equals("roll with bad fov", value(ALViewfinder::LINE_ROLL, 0.f, radians(30.f), 12.f), std::string("30.0\xC2\xB0"));
+    ensure_equals("fov with bad roll", value(ALViewfinder::LINE_FOV, 0.588f, nan, 12.f), std::string("33.7\xC2\xB0"));
 }
 
 template<> template<>
@@ -121,18 +134,19 @@ void alviewfinder_object::test<6>()
 {
     set_test_name("labels, bad line index and small buffers");
     ensure_equals("label 0", std::string(ALViewfinder::label(0)), std::string("FOV"));
-    ensure_equals("label 1", std::string(ALViewfinder::label(1)), std::string("Angle"));
+    ensure_equals("label 1", std::string(ALViewfinder::label(1)), std::string("View"));
     ensure_equals("label 2", std::string(ALViewfinder::label(2)), std::string("Lens"));
-    ensure_equals("label 3", std::string(ALViewfinder::label(3)), std::string("FPS"));
+    ensure_equals("label 3", std::string(ALViewfinder::label(3)), std::string("Roll"));
+    ensure_equals("label 4", std::string(ALViewfinder::label(4)), std::string("FPS"));
     ensure_equals("label out of range", std::string(ALViewfinder::label(9)), std::string());
-    ensure_equals("value out of range", value(9, 0.588f, 30.f), std::string());
-    ensure_equals("value negative index", value(-1, 0.588f, 30.f), std::string());
+    ensure_equals("value out of range", value(9, 0.588f, 0.f, 30.f), std::string());
+    ensure_equals("value negative index", value(-1, 0.588f, 0.f, 30.f), std::string());
 
     char buf[4];
     std::fill(buf, buf + sizeof(buf), 'x');
-    ALViewfinder::formatLine(ALViewfinder::LINE_ANGLE, buf, sizeof(buf), 0.588f, 30.f);
+    ALViewfinder::formatLine(ALViewfinder::LINE_VIEW, buf, sizeof(buf), 0.588f, 0.f, 30.f);
     ensure("terminated", std::string(buf).size() < sizeof(buf));
-    ensure_equals("null buffer", ALViewfinder::formatLine(0, nullptr, 0, 0.588f, 30.f), 0);
+    ensure_equals("null buffer", ALViewfinder::formatLine(0, nullptr, 0, 0.588f, 0.f, 30.f), 0);
 }
 
 template<> template<>
@@ -224,5 +238,33 @@ void alviewfinder_object::test<9>()
     const ALViewfinder::Layout four = ALViewfinder::layout(4.f);
     ensure_equals("arm 4x small", ALViewfinder::armLength(four, 100, 100), 48);
     ensure_equals("arm 4x big", ALViewfinder::armLength(four, 3840, 2160), 154);
+}
+
+template<> template<>
+void alviewfinder_object::test<10>()
+{
+    set_test_name("roll wraps to -180..180 and prints signed with one decimal");
+    // Direct wrap maths on exact degree values.
+    ensure_equals("190 -> -170", ALViewfinder::wrapDegrees(190.f), -170.f);
+    ensure_equals("-190 -> 170", ALViewfinder::wrapDegrees(-190.f), 170.f);
+    ensure_equals("180 stays 180", ALViewfinder::wrapDegrees(180.f), 180.f);
+    ensure_equals("-180 -> 180", ALViewfinder::wrapDegrees(-180.f), 180.f);
+    ensure_equals("540 -> 180", ALViewfinder::wrapDegrees(540.f), 180.f);
+    ensure_equals("360 -> 0", ALViewfinder::wrapDegrees(360.f), 0.f);
+    ensure_equals("725 -> 5", ALViewfinder::wrapDegrees(725.f), 5.f);
+    ensure_equals("-725 -> -5", ALViewfinder::wrapDegrees(-725.f), -5.f);
+    ensure_equals("12.5 unchanged", ALViewfinder::wrapDegrees(12.5f), 12.5f);
+
+    // Through the radians path the overlay uses (LLAgentCamera::getRollAngle()).
+    ensure_equals("190 deg", value(ALViewfinder::LINE_ROLL, 0.588f, radians(190.f), 30.f), std::string("-170.0\xC2\xB0"));
+    ensure_equals("-190 deg", value(ALViewfinder::LINE_ROLL, 0.588f, radians(-190.f), 30.f), std::string("170.0\xC2\xB0"));
+    ensure_equals("-12.5 deg", value(ALViewfinder::LINE_ROLL, 0.588f, radians(-12.5f), 30.f), std::string("-12.5\xC2\xB0"));
+    ensure_equals("12.5 deg", value(ALViewfinder::LINE_ROLL, 0.588f, radians(12.5f), 30.f), std::string("12.5\xC2\xB0"));
+    ensure_equals("370 deg (accumulated)", value(ALViewfinder::LINE_ROLL, 0.588f, radians(370.f), 30.f), std::string("10.0\xC2\xB0"));
+    ensure_equals("zero", value(ALViewfinder::LINE_ROLL, 0.588f, 0.f, 30.f), std::string("0.0\xC2\xB0"));
+    // Tiny negative angles must not print "-0.0".
+    ensure_equals("tiny negative", value(ALViewfinder::LINE_ROLL, 0.588f, radians(-0.01f), 30.f), std::string("0.0\xC2\xB0"));
+    ensure_equals("nan roll", value(ALViewfinder::LINE_ROLL, 0.588f, std::numeric_limits<float>::quiet_NaN(), 30.f), std::string("--"));
+    ensure_equals("inf roll", value(ALViewfinder::LINE_ROLL, 0.588f, std::numeric_limits<float>::infinity(), 30.f), std::string("--"));
 }
 } // namespace tut

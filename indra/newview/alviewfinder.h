@@ -6,11 +6,12 @@
  * (tests/alviewfinder_test.cpp). The overlay itself is drawn by
  * drawCinematicViewfinder() in llviewerwindow.cpp.
  *
- * The readout is a four-line labelled block:
+ * The readout is a five-line labelled block:
  *
  *   FOV   33.7°
- *   Angle 0.588
- *   Lens  39 mm
+ *   View  0.588
+ *   Lens  40 mm
+ *   Roll  -12.5°
  *   FPS   30
  *
  * It also holds the Size (CinematicViewfinderScale) layout and font-step maths.
@@ -32,14 +33,14 @@ constexpr float PI = 3.14159265358979323846f;
 // f = (24 / 2) / tan(fov / 2).
 constexpr float SENSOR_HEIGHT_MM = 24.f;
 
-constexpr int LINE_COUNT = 4;
+constexpr int LINE_COUNT = 5;
 constexpr int LINE_FOV   = 0;
-constexpr int LINE_ANGLE = 1;
+constexpr int LINE_VIEW  = 1; // raw view angle (zoom), not roll
 constexpr int LINE_LENS  = 2;
-constexpr int LINE_FPS   = 3;
+constexpr int LINE_ROLL  = 3;
+constexpr int LINE_FPS   = 4;
 
-// Width the label column is padded to in the plain-text form (the longest
-// label, "Angle", plus one space).
+// Width the label column is padded to in the plain-text form.
 constexpr int LABEL_PAD = 6;
 
 // A vertical FOV is usable only strictly between 0 and pi radians.
@@ -63,6 +64,33 @@ inline float focalLengthMm(float fov_radians)
     return (SENSOR_HEIGHT_MM * 0.5f) / std::tan(fov_radians * 0.5f);
 }
 
+// Wraps degrees into (-180, 180]: 190 -> -170, -190 -> 170, 180 stays 180.
+// Non-finite input is returned unchanged (the caller prints a placeholder).
+inline float wrapDegrees(float degrees)
+{
+    if (!std::isfinite(degrees))
+    {
+        return degrees;
+    }
+    degrees = std::fmod(degrees, 360.f);
+    if (degrees > 180.f)
+    {
+        degrees -= 360.f;
+    }
+    else if (degrees <= -180.f)
+    {
+        degrees += 360.f;
+    }
+    return degrees;
+}
+
+// Camera roll (LLAgentCamera::getRollAngle(), radians, accumulates unwrapped)
+// as signed degrees in (-180, 180].
+inline float rollDegrees(float roll_radians)
+{
+    return wrapDegrees(roll_radians * (180.f / PI));
+}
+
 // Whole frames per second, never negative, never non-finite.
 inline int roundedFps(float fps)
 {
@@ -78,8 +106,9 @@ inline const char* label(int line)
     switch (line)
     {
     case LINE_FOV:   return "FOV";
-    case LINE_ANGLE: return "Angle";
+    case LINE_VIEW:  return "View";
     case LINE_LENS:  return "Lens";
+    case LINE_ROLL:  return "Roll";
     case LINE_FPS:   return "FPS";
     default:         return "";
     }
@@ -89,12 +118,14 @@ inline const char* label(int line)
 // NUL-terminates it when size > 0. Returns the snprintf result.
 //
 //   LINE_FOV   vertical FOV, 1 decimal, degrees      "33.7°"  (U+00B0)
-//   LINE_ANGLE raw view angle, 3 decimals, radians   "0.588"
+//   LINE_VIEW  raw view angle, 3 decimals, radians   "0.588"
 //   LINE_LENS  35 mm-equivalent focal length, whole  "40 mm"
+//   LINE_ROLL  camera roll, 1 decimal, signed deg    "-12.5°" (wrapped to -180..180)
 //   LINE_FPS   whole frames per second               "30"
 //
-// An unusable FOV prints "--" for the three FOV-derived values.
-inline int formatValue(int line, char* buf, std::size_t size, float fov_radians, float fps)
+// An unusable FOV prints "--" for the three FOV-derived values; a non-finite
+// roll prints "--" for the roll value.
+inline int formatValue(int line, char* buf, std::size_t size, float fov_radians, float roll_radians, float fps)
 {
     if (!buf || size == 0)
     {
@@ -103,6 +134,19 @@ inline int formatValue(int line, char* buf, std::size_t size, float fov_radians,
     if (line == LINE_FPS)
     {
         return std::snprintf(buf, size, "%d", roundedFps(fps));
+    }
+    if (line == LINE_ROLL)
+    {
+        float degrees = rollDegrees(roll_radians);
+        if (!std::isfinite(degrees))
+        {
+            return std::snprintf(buf, size, "--");
+        }
+        if (std::fabs(degrees) < 0.05f)
+        {
+            degrees = 0.f; // never print "-0.0"
+        }
+        return std::snprintf(buf, size, "%.1f" "\xC2\xB0", static_cast<double>(degrees));
     }
     if (line < LINE_FOV || line > LINE_FPS)
     {
@@ -117,7 +161,7 @@ inline int formatValue(int line, char* buf, std::size_t size, float fov_radians,
     {
     case LINE_FOV:
         return std::snprintf(buf, size, "%.1f" "\xC2\xB0", static_cast<double>(fovDegrees(fov_radians)));
-    case LINE_ANGLE:
+    case LINE_VIEW:
         return std::snprintf(buf, size, "%.3f", static_cast<double>(fov_radians));
     default:
         return std::snprintf(buf, size, "%.0f mm", static_cast<double>(focalLengthMm(fov_radians)));
@@ -125,17 +169,17 @@ inline int formatValue(int line, char* buf, std::size_t size, float fov_radians,
 }
 
 // One plain-text line: the label left-aligned and padded to LABEL_PAD
-// columns, then the value, e.g. "Angle 0.588" or "FPS   30". The overlay draws
+// columns, then the value, e.g. "View  0.588" or "FPS   30". The overlay draws
 // labels and values as two pixel-aligned columns instead (a proportional font
 // does not line up padded spaces); this is the canonical text of each line.
-inline int formatLine(int line, char* buf, std::size_t size, float fov_radians, float fps)
+inline int formatLine(int line, char* buf, std::size_t size, float fov_radians, float roll_radians, float fps)
 {
     if (!buf || size == 0)
     {
         return 0;
     }
     char value[32];
-    formatValue(line, value, sizeof(value), fov_radians, fps);
+    formatValue(line, value, sizeof(value), fov_radians, roll_radians, fps);
     return std::snprintf(buf, size, "%-*s%s", LABEL_PAD, label(line), value);
 }
 

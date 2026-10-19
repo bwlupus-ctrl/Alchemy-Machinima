@@ -5364,7 +5364,7 @@
     <key>CinematicViewfinderEnabled</key>
     <map>
       <key>Comment</key>
-      <string>Show the viewfinder overlay on the main world view: corner brackets, a centre crosshair and a live readout of vertical FOV, view angle, 35 mm-equivalent focal length and FPS. Drawn even while the viewer UI is hidden; never rendered into snapshots</string>
+      <string>Show the viewfinder overlay on the main world view: corner brackets, a centre crosshair and a live readout of vertical FOV, view angle, 35 mm-equivalent focal length, camera roll and FPS. Drawn even while the viewer UI is hidden; never rendered into snapshots</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

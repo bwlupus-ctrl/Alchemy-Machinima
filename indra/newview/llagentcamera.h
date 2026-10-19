@@ -287,6 +287,7 @@ public:
     void            resetCameraOrbit();
     void            resetOrbitDiff();
     void            resetCameraRoll();
+    F32             getRollAngle() const { return mRollAngle; } // Camera roll, radians (unwrapped)
     //--------------------------------------------------------------------
     // Zoom
     //--------------------------------------------------------------------
