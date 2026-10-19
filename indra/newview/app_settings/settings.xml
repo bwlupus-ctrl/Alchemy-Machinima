@@ -5361,6 +5361,28 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>CinematicViewfinderEnabled</key>
+    <map>
+      <key>Comment</key>
+      <string>Show the viewfinder overlay on the main world view: corner brackets, a centre crosshair and a live readout of vertical FOV, view angle, 35 mm-equivalent focal length and FPS. Drawn even while the viewer UI is hidden; never rendered into snapshots</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicViewfinderScale</key>
+    <map>
+      <key>Comment</key>
+      <string>Size multiplier for the viewfinder overlay (text, lines, brackets, crosshair and readout offset together) from 0.5 to 4.0; stacks on top of the UI scale so very high resolution screens can enlarge it</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
     <key>CinematicFrameLensEnabled</key>
     <map>
       <key>Comment</key>

@@ -1292,6 +1292,7 @@ set(viewer_HEADER_FILES
     alvcambonepov.h
     alvcambonepovmath.h
     alvcamautovol.h
+    alviewfinder.h
     alweathermodel.h
     alghostgroupmodel.h
     alghostrotation.h
@@ -2871,6 +2872,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alframelimiter "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alviewfinder "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitqol "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(aldirectortheme "" "${test_libs}" "${test_project}")
 

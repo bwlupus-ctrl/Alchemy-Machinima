@@ -45,6 +45,7 @@
     "fo_anchor_joint": {"allow_text_entry": true},
     "frame_guide_style": {"enabled_control": "CinematicFrameGuideEnabled"},
     "frame_guide_opacity": {"enabled_control": "CinematicFrameGuideEnabled"},
+    "viewfinder_scale": {"enabled_control": "CinematicViewfinderEnabled"},
     "frame_focal_length": {"enabled_control": "CinematicFrameLensEnabled"},
     "auto_frame_fill": {"enabled_control": "CinematicAutoFrameEnabled"},
     "auto_frame_compose": {"enabled_control": "CinematicAutoFrameEnabled"},

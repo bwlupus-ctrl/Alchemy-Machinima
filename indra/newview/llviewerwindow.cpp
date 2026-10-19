@@ -75,6 +75,7 @@
 #include "lldate.h"
 #include "llerrorcontrol.h"
 #include "llfontgl.h"
+#include "llfontregistry.h"
 #include "llmousehandler.h"
 #include "llrect.h"
 #include "llsky.h"
@@ -198,6 +199,7 @@
 #include "llviewerregion.h"
 #include "llviewershadermgr.h"
 #include "llviewerstats.h"
+#include "alviewfinder.h"
 #include "llvoavatarself.h"
 #include "llvopartgroup.h"
 #include "llvovolume.h"
@@ -260,26 +262,15 @@ bool            gShowOverlayTitle = false;
 
 namespace
 {
-// Drawn only in LLViewerWindow::draw() for the live UI composite. It is
-// deliberately absent from snapshot renders and is placed before mRootView so
-// the framing aid covers the world without obscuring Director controls.
-void drawCinematicFrameGuide(S32 width, S32 height)
+// Target-frame rectangle shared by the frame guide and the viewfinder. Returns
+// false when no aspect is active (Off / Native, bad values) or the frame is
+// as-near-native as the window, so there is nothing to mark.
+bool cinematicTargetFrameRect(S32 width, S32 height, LLRect& frame)
 {
-    static LLCachedControl<bool> guide_enabled(
-        gSavedSettings, "CinematicFrameGuideEnabled", false);
-    if (!guide_enabled || width <= 0 || height <= 0)
-    {
-        return;
-    }
-
     static LLCachedControl<F32> configured_aspect(
         gSavedSettings, "CinematicFrameAspectRatio", 0.f);
     static LLCachedControl<F32> custom_aspect(
         gSavedSettings, "CinematicFrameCustomRatio", 2.35f);
-    static LLCachedControl<S32> guide_style(
-        gSavedSettings, "CinematicFrameGuideStyle", 0);
-    static LLCachedControl<F32> guide_opacity(
-        gSavedSettings, "CinematicFrameGuideOpacity", 0.65f);
 
     F32 target_aspect = configured_aspect;
     if (target_aspect < 0.f)
@@ -288,16 +279,16 @@ void drawCinematicFrameGuide(S32 width, S32 height)
     }
     if (!std::isfinite(target_aspect) || target_aspect <= 0.f)
     {
-        return;
+        return false;
     }
 
     const F32 window_aspect = (F32)width / (F32)height;
     if (!std::isfinite(window_aspect) || window_aspect <= 0.f)
     {
-        return;
+        return false;
     }
 
-    LLRect frame(0, height, width, 0);
+    frame = LLRect(0, height, width, 0);
     if (target_aspect > window_aspect)
     {
         const S32 frame_height = llclamp(ll_round((F32)width / target_aspect), 1, height);
@@ -312,7 +303,28 @@ void drawCinematicFrameGuide(S32 width, S32 height)
     }
 
     // Native/as-near-native formats produce no useful guide and no draw call.
-    if (frame.getWidth() >= width - 1 && frame.getHeight() >= height - 1)
+    return !(frame.getWidth() >= width - 1 && frame.getHeight() >= height - 1);
+}
+
+// Drawn only in LLViewerWindow::draw() for the live UI composite. It is
+// deliberately absent from snapshot renders and is placed before mRootView so
+// the framing aid covers the world without obscuring Director controls.
+void drawCinematicFrameGuide(S32 width, S32 height)
+{
+    static LLCachedControl<bool> guide_enabled(
+        gSavedSettings, "CinematicFrameGuideEnabled", false);
+    if (!guide_enabled || width <= 0 || height <= 0)
+    {
+        return;
+    }
+
+    static LLCachedControl<S32> guide_style(
+        gSavedSettings, "CinematicFrameGuideStyle", 0);
+    static LLCachedControl<F32> guide_opacity(
+        gSavedSettings, "CinematicFrameGuideOpacity", 0.65f);
+
+    LLRect frame;
+    if (!cinematicTargetFrameRect(width, height, frame))
     {
         return;
     }
@@ -347,6 +359,166 @@ void drawCinematicFrameGuide(S32 width, S32 height)
     {
         gl_rect_2d(LLRect(0, height, frame.mLeft, 0), bar_color, true);
         gl_rect_2d(LLRect(frame.mRight, height, width, 0), bar_color, true);
+    }
+}
+
+// Viewfinder overlay: thin corner brackets, a small centre "+" and a four-line
+// labelled readout (FOV, Angle, Lens, FPS: vertical FOV, view angle, 35 mm-
+// equivalent focal length and frames per second).
+// Unlike the frame guide this is drawn from LLViewerWindow::drawDebugText(),
+// which render_ui() runs after both UI-hiding mechanisms (HideUI and the UI
+// debug-feature mask) have been applied, so it stays visible with the UI
+// hidden. The caller keeps it out of snapshots (gSnapshot). world_rect is the
+// 3D view in the same scaled UI units; width/height are the scaled window size
+// the frame guide uses.
+void drawCinematicViewfinder(const LLRect& world_rect, S32 width, S32 height)
+{
+    static LLCachedControl<bool> viewfinder_enabled(
+        gSavedSettings, "CinematicViewfinderEnabled", false);
+    if (!viewfinder_enabled || width <= 0 || height <= 0)
+    {
+        return;
+    }
+
+    // Inside the active target frame when one exists (same computation as the
+    // frame guide), otherwise inside the whole 3D view.
+    LLRect box;
+    if (!cinematicTargetFrameRect(width, height, box))
+    {
+        box = world_rect;
+    }
+
+    // One Size multiplier scales every dimension together. All values are in
+    // scaled UI units, so Size stacks on top of the UI scale.
+    static LLCachedControl<F32> viewfinder_scale(
+        gSavedSettings, "CinematicViewfinderScale", 1.f);
+    const F32 scale = ALViewfinder::clampScale(viewfinder_scale);
+    const ALViewfinder::Layout lay = ALViewfinder::layout(scale);
+
+    box.mLeft += lay.margin;
+    box.mRight -= lay.margin;
+    box.mBottom += lay.margin;
+    box.mTop -= lay.margin;
+    if (box.getWidth() < lay.min_box || box.getHeight() < lay.min_box)
+    {
+        return;
+    }
+
+    const S32 arm = ALViewfinder::armLength(lay, box.getWidth(), box.getHeight());
+    const S32 cx = (box.mLeft + box.mRight) / 2;
+    const S32 cy = (box.mBottom + box.mTop) / 2;
+    const S32 cross = lay.cross;
+    const S32 thick = lay.line;
+
+    // Same white-on-dark-shadow look for lines and text.
+    const LLColor4 line_color(1.f, 1.f, 1.f, 0.9f);
+    const LLColor4 shadow_color(0.f, 0.f, 0.f, 0.6f);
+
+    // Lines are thin quads rather than GL lines: wide GL lines are not
+    // available on every driver profile, and quads scale with Size and with the
+    // UI scale. The quad edge is the line edge, so brackets sit inside the box.
+    auto bar = [](S32 x0, S32 y0, S32 x1, S32 y1)
+    {
+        gGL.vertex2i(x0, y0); gGL.vertex2i(x1, y0); gGL.vertex2i(x1, y1);
+        gGL.vertex2i(x0, y0); gGL.vertex2i(x1, y1); gGL.vertex2i(x0, y1);
+    };
+
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    for (S32 pass = 0; pass < 2; ++pass)
+    {
+        // Pass 0: dark shadow, down-right. Pass 1: the lines.
+        const S32 ox = pass == 0 ? lay.shadow : 0;
+        const S32 oy = pass == 0 ? -lay.shadow : 0;
+        const S32 l = box.mLeft + ox;
+        const S32 r = box.mRight + ox;
+        const S32 b = box.mBottom + oy;
+        const S32 t = box.mTop + oy;
+        gGL.color4fv((pass == 0 ? shadow_color : line_color).mV);
+        gGL.begin(LLRender::TRIANGLES);
+        // Corner brackets: bottom-left, bottom-right, top-left, top-right.
+        bar(l, b, l + arm, b + thick);          bar(l, b, l + thick, b + arm);
+        bar(r - arm, b, r, b + thick);          bar(r - thick, b, r, b + arm);
+        bar(l, t - thick, l + arm, t);          bar(l, t - arm, l + thick, t);
+        bar(r - arm, t - thick, r, t);          bar(r - thick, t - arm, r, t);
+        // Centre crosshair, centred on (cx, cy).
+        bar(cx - cross + ox, cy - thick / 2 + oy, cx + cross + ox, cy - thick / 2 + thick + oy);
+        bar(cx - thick / 2 + ox, cy - cross + oy, cx - thick / 2 + thick + ox, cy + cross + oy);
+        gGL.end();
+    }
+
+    // FPS from the same source as the status bar FPS readout, sampled at the
+    // same 0.1 s cadence so the number is readable.
+    static LLFrameTimer fps_timer;
+    static F32 fps = 0.f;
+    static bool have_fps = false;
+    if (!have_fps || fps_timer.getElapsedTimeF32() > 0.1f)
+    {
+        fps_timer.reset();
+        have_fps = true;
+        fps = (F32)LLTrace::get_frame_recording().getLastRecording().getMean(LLStatViewer::FPS_SAMPLE);
+    }
+
+    // Four labelled lines (FOV / Angle / Lens / FPS) as two aligned columns.
+    // Values are formatted on the stack every frame (no heap); a wide string is
+    // rebuilt only when that value's text actually changed.
+    constexpr S32 LINES = ALViewfinder::LINE_COUNT;
+    static LLWString wide_labels[LINES];
+    static LLWString wide_values[LINES];
+    static char last_values[LINES][32] = {};
+    static bool labels_ready = false;
+    if (!labels_ready)
+    {
+        for (S32 i = 0; i < LINES; ++i)
+        {
+            wide_labels[i] = utf8str_to_wstring(std::string(ALViewfinder::label(i)));
+        }
+        labels_ready = true;
+    }
+
+    const F32 fov = LLViewerCamera::getInstance()->getView();
+    for (S32 i = 0; i < LINES; ++i)
+    {
+        char value[sizeof(last_values[0])];
+        ALViewfinder::formatValue(i, value, sizeof(value), fov, fps);
+        if (std::strcmp(value, last_values[i]) != 0)
+        {
+            std::memcpy(last_values[i], value, sizeof(value));
+            wide_values[i] = utf8str_to_wstring(std::string(value));
+        }
+    }
+
+    // Size picks the nearest rung of the Viewfinder font ladder (fonts.xml), so
+    // glyphs are rasterised at their real size rather than stretched. The rung
+    // is created on first use; a missing size falls back to the Small UI font.
+    static const LLFontGL* step_fonts[ALViewfinder::FONT_STEPS] = {};
+    static bool step_tried[ALViewfinder::FONT_STEPS] = {};
+    const S32 step = ALViewfinder::fontStep(scale);
+    if (!step_fonts[step] && !step_tried[step])
+    {
+        step_tried[step] = true;
+        step_fonts[step] = LLFontGL::getFont(
+            LLFontDescriptor("SansSerif", ALViewfinder::fontSizeName(step), 0));
+    }
+    const LLFontGL* font = step_fonts[step] ? step_fonts[step] : LLFontGL::getFontSansSerifSmall();
+
+    // Just below-right of the crosshair, left-aligned; the value column starts
+    // after the widest label.
+    S32 label_width = 0;
+    for (S32 i = 0; i < LINES; ++i)
+    {
+        label_width = llmax(label_width, font->getWidth(wide_labels[i].c_str()));
+    }
+    const S32 label_x = cx + lay.text_dx;
+    const S32 value_x = label_x + label_width + lay.col_gap;
+    const S32 line_height = font->getLineHeight() + lay.line_extra;
+    S32 text_y = cy - lay.text_dy;
+    for (S32 i = 0; i < LINES; ++i)
+    {
+        font->render(wide_labels[i], 0, (F32)label_x, (F32)text_y, line_color,
+            LLFontGL::LEFT, LLFontGL::TOP, LLFontGL::NORMAL, LLFontGL::DROP_SHADOW);
+        font->render(wide_values[i], 0, (F32)value_x, (F32)text_y, line_color,
+            LLFontGL::LEFT, LLFontGL::TOP, LLFontGL::NORMAL, LLFontGL::DROP_SHADOW);
+        text_y -= line_height;
     }
 }
 } // anonymous namespace
@@ -3189,6 +3361,14 @@ void LLViewerWindow::drawDebugText()
         // scale view by UI global scale factor and aspect ratio correction factor
         gGL.scaleUI(mDisplayScale.mV[VX], mDisplayScale.mV[VY], 1.f);
         mDebugText->draw();
+
+        // Cinematic Viewfinder: drawn here, not in draw(), so it survives
+        // both UI-hiding mechanisms. gSnapshot keeps it out of every capture
+        // (render_ui() also runs for snapshots).
+        if (!gSnapshot)
+        {
+            drawCinematicViewfinder(getWorldViewRectScaled(), getWindowWidthScaled(), getWindowHeightScaled());
+        }
     }
     gGL.popUIMatrix();
     gGL.popMatrix();
