@@ -8,6 +8,7 @@
 #include "../test/lltut.h"
 #include "../llprismlens.h"
 #include "../llprismgate.h"
+#include "../llprismpreview.h"
 #include "../alvcamautovol.h"
 #include "../alflareenergy.h"
 #include "../alvcammediafilelifecycle.h"
@@ -266,16 +267,11 @@ void prism_projector_object::test<14>()
     source.setMediaData(LLPrismLens::MediaFaceSource());
     ensure("media capability is explicit", source.cameraData() == nullptr && !source.isSurfaceLens());
     ensure("media is eligible for shared routing", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::OK);
-    binding.mGateSubscribed = true;
-    ensure("media cannot inherit a gate subscription", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::INVALID_CONFIGURATION);
-    binding.mGateSubscribed = false;
     source.setMediaUrlData(LLPrismLens::MediaUrlSource());
     ensure("private kind has no camera payload", source.cameraData() == nullptr && source.mediaData() == nullptr && source.isMedia());
     ensure("private route capability", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::OK);
     ensure("both media output paths", LLPrismLens::isMediaKind(source.sourceKind()));
     ensure("private defaults", source.mediaUrlData()->mLoop && source.mediaUrlData()->mVolume == 0.f && source.mediaUrlData()->mValue.empty());
-    binding.mGateSubscribed = true;
-    ensure("private media cannot inherit a gate subscription", LLPrismLens::validateProjectorReassignment(binding, source) == LLPrismLens::ERegistryResult::INVALID_CONFIGURATION);
 
 }
 
@@ -334,8 +330,8 @@ void prism_projector_object::test<17>()
     LLPrismLens::updateLocalProjectorBindingState(
         binding, false, true, false);
     ensure("unbind restores the point light", !binding.mLocalProjector);
-    ensure("capture deletion removes even a Gate-subscribed binding",
-           LLPrismLens::removeProjectorWithCapture(true, true));
+    ensure("capture deletion removes its projector binding",
+           LLPrismLens::removeProjectorWithCapture(true));
     ensure("real spotlight needs no local override",
            !LLPrismLens::usesLocalProjectorOverride(true, true, true));
 }
@@ -1002,51 +998,9 @@ template<> template<> void prism_projector_object::test<39>()
     ensure("soft knee continuous", energy(.251f, .25f) > 0.f && energy(.251f, .25f) < .001f);
     ensure_equals("bright steady look preserved", energy(.75f, .25f), 2.f);
 }
-template<> template<> void prism_projector_object::test<42>()
-{
-    using namespace ALMediaFile;
-    set_test_name("idle Gate release publishes retained state before synchronous destruction reconciliation");
-    bool released = false, active = true, held_pixels = true, bookmark = true, grant = true;
-    Transport desired = Transport::PLAYING;
-    unsigned stops = 0;
-    releaseGatePrivate(released, desired, [&]()
-    {
-        active = false; // retirePrivateFile -> destroyMediaSource callback
-        if (!gatePrivateRetainsImage(true, released))
-        { ++stops; bookmark = grant = held_pixels = false; }
-    });
-    ensure("release cannot enter stopPrivate or clear held Program", stops == 0 && held_pixels && bookmark && grant);
-    ensure(desired == Transport::PAUSED && released);
-    ensure("inactive retained owner remains safe on subsequent reconciliation", !active && gatePrivateRetainsImage(true, released));
-    ensure("ordinary invalid owners still use normal teardown", !gatePrivateRetainsImage(false, released));
-}
 
-template<> template<> void prism_projector_object::test<43>()
-{
-    set_test_name("Play after disarm deactivate or kill-off detaches the envelope and recreates released players");
-    for (U32 exit = 0; exit < 3; ++exit)
-        for (bool released_player : {false, true})
-            for (bool pending_play : {false, true})
-            {
-                bool gate = true, released = released_player, retiring = false, play = pending_play;
-                ALMediaFile::Transport desired = ALMediaFile::Transport::PAUSED;
-                bool player = !released_player; F32 envelope = 0.f, volume = .37f, audible = 0.f;
-                U32 detach = 0, resumes = 0, creates = 0;
-                ALMediaFile::unclaimGatePrivate(gate, released, retiring, play, desired,
-                    [&]() { ++detach; envelope = 1.f; audible = volume * envelope; },
-                    [&]() { if (player) ++resumes; });
-                ensure(!gate && !released && !retiring && !play);
-                ensure_equals(detach, 1u); ensure_equals(audible, volume);
-                if (!pending_play) ensure(ALMediaFile::beginVideoPlay(desired));
-                ensure(desired == ALMediaFile::Transport::PLAYING);
-                // Same tickPrivate creation predicates after ownership handoff.
-                if (ALMediaFile::privatePlayerMayCreate(true, player, desired, true, gate, false))
-                { player = true; ++creates; }
-                ensure("retiring children still fence recreation", !ALMediaFile::privatePlayerMayCreate(true, false, desired, false, gate, false));
-                ensure(player); ensure_equals(creates, released_player ? 1u : 0u);
-                ensure_equals(resumes, pending_play && !released_player ? 1u : 0u);
-            }
-}
+
+
 
 template<> template<> void prism_projector_object::test<44>()
 {
@@ -1080,7 +1034,6 @@ template<> template<> void prism_projector_object::test<45>()
         bool mOccupied = false;
         U32 mCaptureSlot = 0;
         U64 mCaptureGeneration = 7;
-        bool mGateSubscribed = false;
         ProjectorSettings mSettings;
     };
     struct Output
@@ -1165,14 +1118,6 @@ template<> template<> void prism_projector_object::test<45>()
     ensure_equals(output.releases, 0u);
 
     projectors[0].mOccupied = true;
-    projectors[0].mGateSubscribed = true;
-    ensure_equals("Gate Program keeps HEAD capacity", capacity(0), 1024u);
-    ensure_equals("Gate incoming keeps HEAD capacity", capacity(1), 1024u);
-    ensure_equals("Gate 2048 cookie clamps rather than refusing", projectorRenderResolution(projectors[0].mSettings, true), 1024u);
-    ensure(allocate());
-    ensure_equals(output.size, 1024u);
-    ensure_equals("Gate subscription never allocates large output", output.allocations, 3u);
-    projectors[0].mGateSubscribed = false;
     ensure(allocate());
     projectors[0].mCaptureSlot = 1;
     release_frame();
@@ -1188,32 +1133,7 @@ template<> template<> void prism_projector_object::test<45>()
     ensure_equals("first render after lowering returns to HEAD capacity", output.size, 1024u);
 }
 
-template<> template<> void prism_projector_object::test<46>()
-{
-    using namespace LLPrismLens;
-    set_test_name("Gate 2048 projector uses HEAD cookie dimensions and fade qualification");
-    ProjectorSettings settings; settings.mResolution = 2048;
-    const U32 resolution = projectorRenderResolution(settings, true);
-    ensure_equals(resolution, 1024u);
-    GateFadeDemand budget;
-    for (U32 pass = 0; pass < 8; ++pass)
-    {
-        budget.add(resolution, resolution, true);
-        ensure(budget.fits());
-    }
-    ensure_equals("HEAD eight-cookie pixel budget", budget.pixels, U64(8ULL * 1024 * 1024));
-    budget.add(1, 1, true); ensure(!budget.fits());
-    GateFadeDemand oversized;
-    oversized.add(2048, 2048, true); ensure(!oversized.fits());
-    GateFadeDemand variant;
-    variant.add(resolution, resolution, true, false); ensure(!variant.fits());
-    ensure_equals("This camera retains authored 2048", projectorRenderResolution(settings, false), 2048u);
-    for (U16 legacy : {256, 512, 1024})
-    {
-        settings.mResolution = legacy;
-        ensure_equals("legacy Gate size unchanged", projectorRenderResolution(settings, true), U32(legacy));
-    }
-}
+
 
 template<> template<> void prism_projector_object::test<47>()
 {
@@ -1246,47 +1166,17 @@ template<> template<> void prism_projector_object::test<48>()
     set_test_name("offline source cannot strand an oversized projector cookie");
     ProjectorSettings settings; settings.mResolution = 2048;
     U32 cookie_size = 2048;
-    ensure(!releaseOversizedProjectorCookie(cookie_size, cookie_size, settings, false));
+    ensure(!releaseOversizedProjectorCookie(cookie_size, cookie_size, settings));
     settings.mResolution = 1024;
     // The settings-change path runs this cleanup without requesting a feed.
-    if (releaseOversizedProjectorCookie(cookie_size, cookie_size, settings, false)) cookie_size = 0;
+    if (releaseOversizedProjectorCookie(cookie_size, cookie_size, settings)) cookie_size = 0;
     ensure_equals("offline lowering releases 2048 cookie", cookie_size, 0u);
     settings.mResolution = 2048;
-    ensure(releaseOversizedProjectorCookie(2048, 2048, settings, true));
     settings.mResolution = 256;
-    ensure("legacy dirty-cookie behavior remains HEAD", !releaseOversizedProjectorCookie(1024, 1024, settings, false));
+    ensure("legacy dirty-cookie behavior remains HEAD", !releaseOversizedProjectorCookie(1024, 1024, settings));
 }
 
-template<> template<> void prism_projector_object::test<50>()
-{
-    using namespace LLPrismLens;
-    set_test_name("offline 2048 cookie is released when subscribing to Gate without Program");
-    ProjectorDefinition projector;
-    projector.mSettings.mResolution = 2048;
-    projector.mRuntime.mHealth = EDisplayHealth::OFFLINE;
-    U32 cookie_size = 2048;
-    bool cookie_valid = true;
-    U32 dirty_calls = 0;
-    // No source/Program frame is available to replace the retained cookie.
-    // Drive the same subscription mutation and notification as the registry.
-    updateProjectorGateSubscription(projector.mGateSubscribed, true, [&]()
-    {
-        ++dirty_calls;
-        ensure("cleanup sees the new subscription", projector.mGateSubscribed);
-        if (releaseOversizedProjectorCookie(cookie_size, cookie_size,
-                projector.mSettings, projector.mGateSubscribed))
-        {
-            cookie_size = 0;
-            cookie_valid = false;
-        }
-    });
-    ensure_equals("subscription dirties even without a usable feed", dirty_calls, 1u);
-    ensure_equals("oversized cookie allocation released", cookie_size, 0u);
-    ensure("bind cannot select the released prepared cookie", !cookie_valid);
-    ensure_equals("next Gate cookie clamps to 1024",
-                  projectorRenderResolution(projector.mSettings, projector.mGateSubscribed), 1024u);
-    ensure_equals("authored resolution is retained", projector.mSettings.mResolution, U16(2048));
-}
+
 
 template<> template<> void prism_projector_object::test<49>()
 {
@@ -1306,4 +1196,154 @@ template<> template<> void prism_projector_object::test<49>()
     }
 }
 
+
+template<> template<> void prism_projector_object::test<42>()
+{
+    using namespace LLPrismLens;
+    set_test_name("simple Gate camera capacity inherits 2048 from durable membership only");
+    struct Binding { bool mOccupied = true; ProjectorSettings mSettings; U32 mCaptureSlot = 7; U64 mCaptureGeneration = 1; };
+    std::array<Binding,2> bindings; bindings[0].mSettings.mResolution=2048; bindings[1].mOccupied=false;
+    const U32 gateOwn=projectorOutputCapacity(bindings,7,1);
+    ensure_equals(gateOwn,2048u);
+    // Program, pending and from cameras inherit; off-air cameras do not.
+    for(U32 slot=0;slot<3;++slot) ensure_equals(projectorOutputCapacity(bindings,slot,1,gateOwn),2048u);
+    ensure_equals(projectorOutputCapacity(bindings,3,1),1024u);
+    bindings[1].mOccupied=true; bindings[1].mCaptureSlot=3; bindings[1].mSettings.mResolution=2048;
+    ensure_equals(projectorOutputCapacity(bindings,3,1,1024),2048u);
+    const auto size=cameraTargetSize(2048,2048,16.f/9.f,gateOwn);
+    ensure_equals(size[0],2048u); ensure_equals(size[1],1152u);
+    const auto maxOwn=cameraTargetSize(2048,2048,16.f/9.f,projectorOutputCapacity(bindings,3,1,1024));
+    ensure_equals(maxOwn[0],2048u);
+    CaptureDefinition camera,gate; camera.setCameraData(CameraPayload()); gate.setGateData(GateSource());
+    std::array<bool,MAX_CAPTURES> active{cadenceProducer(camera),cadenceProducer(gate)};
+    std::array<F32,MAX_CAPTURES> demand{30.f,30.f},entitlement{};
+    LLPrismPreviewPolicy::waterFillTier(active,demand,30.f,entitlement);
+    ensure_equals(entitlement[0],30.f); ensure_equals(entitlement[1],0.f);
+}
+template<> template<> void prism_projector_object::test<43>()
+{
+    using namespace LLPrismLens;
+    set_test_name("simple Gate retained output spare swap never blanks and demand cannot thrash capacity");
+    struct Output
+    {
+        U32 size=1024, identity=1;
+        bool isComplete() const { return size!=0; }
+        U32 getWidth() const { return size; } U32 getHeight() const { return size; }
+        void swapOutput(Output& other) { std::swap(size,other.size); std::swap(identity,other.identity); }
+    };
+    Output camera, gate, spare; U32 allocations=0;
+    auto allocate=[&](Output& target,U32 capacity) { ++allocations; target.size=capacity; target.identity=allocations+1; return true; };
+    for(U32 capacity : {2048u,1024u})
+    {
+        requestProjectorOutputCapacity(camera,capacity,[&]() { ensure(camera.isComplete() && gate.isComplete()); });
+        ensure(!produceProjectorOutput(camera,spare,capacity,allocate,[&](auto&) { ensure(camera.isComplete() && gate.isComplete()); return false; }));
+        ensure(camera.isComplete() && gate.isComplete());
+        ensure(produceProjectorOutput(camera,spare,capacity,allocate,[](auto&) { return true; }));
+        ensure(produceProjectorOutput(gate,spare,camera.getWidth(),allocate,[&](auto&) { ensure(gate.isComplete()); return true; }));
+        ensure_equals(gate.getWidth(),camera.getWidth());
+    }
+    const U32 count=allocations, identity=gate.identity;
+    for(U32 frame=0;frame<120;++frame)
+    {
+        const bool demanded=frame%2==0;
+        if(demanded) ensure(produceProjectorOutput(gate,spare,camera.getWidth(),allocate,[](auto&) { return true; }));
+    }
+    ensure_equals(allocations,count); ensure_equals(gate.identity,identity);
+}
+template<> template<> void prism_projector_object::test<46>()
+{
+    using namespace LLPrismLens;
+    set_test_name("Gate snapshot has signal metadata and routing without any camera payload");
+    CaptureDefinition gate; gate.setGateData(GateSource()); gate.mSignalAspect=4.f/3.f;
+    gate.mSignalVideo=true; gate.mSignalOptics={.1f,.2f,.3f,.4f};
+    ensure(gate.isGate() && !gate.cameraData() && !gate.isMedia());
+    ensure(signalIsVideo(gate)); ensure_equals(signalAspect(gate),4.f/3.f);
+    ensure(signalOptics(gate)==gate.mSignalOptics);
+    ProjectorDefinition projector;
+    ensure(validateProjectorReassignment(projector,gate)==ERegistryResult::OK);
+    gate.mSignalVideo=false; ensure(!signalIsVideo(gate));
+    ensure_equals(signalOptics(gate)[3],.4f);
+    // Gate-owned previews remain a distinct source kind, not a private/media producer.
+    ensure(!isMediaKind(gate.sourceKind()));
+    ProjectorFeed feed; gate.mRuntime.mEffectiveVerticalFovRad=.7f;
+    signalCameraParameters(gate,feed);
+    ensure_equals(feed.mCameraVerticalFovRad,.7f); ensure_equals(feed.mCameraAspect,4.f/3.f);
+    gate.mSignalVideo=true; signalCameraParameters(gate,feed);
+    ensure_equals(feed.mCameraVerticalFovRad,0.f); ensure_equals(feed.mCameraAspect,0.f);
+    ensure(releaseLoweredProjectorOutput(1024,2048,false,false,false));
+    ensure(!releaseLoweredProjectorOutput(1024,2048,true,false,false));
+    ensure(!releaseLoweredProjectorOutput(1024,2048,false,true,false));
+    ensure(!releaseLoweredProjectorOutput(1024,2048,false,false,true));
+    ensure(!releaseLoweredProjectorOutput(2048,2048,false,false,false));
+}
+
+template<> template<> void prism_projector_object::test<50>()
+{
+    using namespace LLPrismLens;
+    set_test_name("consumer presentation uses real Fit Fill Stretch settings and Gate signal metadata");
+    CaptureDefinition camera; camera.setCameraData(CameraPayload());
+    camera.cameraData()->mMode=ECaptureMode::CAMERA_FEED;
+    camera.cameraData()->mSettings.mOutputAspect=16.f/9.f;
+    camera.cameraData()->mSettings.mOptics.mExposureBias=.4f;
+    CaptureDefinition gate; gate.setGateData(GateSource());
+    gate.mSignalAspect=signalAspect(camera); gate.mSignalVideo=signalIsVideo(camera); gate.mSignalOptics=signalOptics(camera);
+    CaptureDefinition video; video.setMediaData(MediaFaceSource()); video.mSignalAspect=4.f/3.f;
+    DisplaySettings face, aux, cookie;
+    face.mFitMode=EFitMode::FIT;
+    aux.mFitMode=EFitMode::FILL; aux.mAnchor[0]=aux.mAnchor[1]=.25f; aux.mEffects.mRotate90=true;
+    cookie.mFitMode=EFitMode::STRETCH; cookie.mEffects.mScanlines=.3f; cookie.mBarColorLinear[0]=.2f;
+    const std::array<DisplaySettings,3> consumers{face,aux,cookie};
+    std::array<CompositeState,3> states;
+    for (U32 consumer=0;consumer<consumers.size();++consumer)
+    {
+        const auto& settings=consumers[consumer]; auto& state=states[consumer];
+        state.mCaptureSlot=7;
+        const F32 aspect=consumer==2 ? 4.f/3.f : 1.f;
+        mapSignalToDisplay(gate,settings,aspect,state);
+        CompositeState direct; mapSignalToDisplay(camera,settings,aspect,direct);
+        ensure_equals(state.mMediaSDR,direct.mMediaSDR);
+        ensure_equals(state.mDisplayToCaptureScale[0],direct.mDisplayToCaptureScale[0]);
+        ensure_equals(state.mOpticsParams[3],.4f);
+        gateCompositeIncoming(state,2,.5f,false,[&](auto& incoming)
+        {
+            mapSignalToDisplay(video,settings,aspect,incoming);
+            // Uniform packing only: these UV inputs do not stand in for rendered pixels.
+            incoming.mRetainedOrientationScale[1]=-1.f; incoming.mRetainedOrientationOffset[1]=1.f;
+            return true;
+        });
+        ensure_equals(state.mCaptureSlot,7u); ensure_equals(state.mIncomingSlot,2u);
+        ensure_equals(state.mIncomingOrientation[1],-1.f); ensure_equals(state.mIncomingOrientation[3],1.f);
+        ensure_equals(state.mIncomingOptics[3],signalOptics(video)[3]);
+        ensure_equals(state.mGateAlpha,.5f); ensure(state.mIncomingMediaSDR && !state.mMediaSDR);
+    }
+    ensure_equals(states[0].mLetterbox,1); ensure(std::abs(states[0].mDisplayToCaptureScale[1]-16.f/9.f)<.0001f);
+    ensure_equals(states[1].mDisplayToCaptureScale[0],.5625f);
+    ensure_equals(states[1].mDisplayToCaptureOffset[0],.109375f);
+    ensure_equals(states[1].mIncomingMapping[1],.75f); ensure_equals(states[1].mIncomingMapping[3],.0625f);
+    ensure_equals(states[1].mScreenEffect4[2],1.f);
+    ensure_equals(states[2].mBarColorLinear[0],.2f);
+    ensure_equals(states[2].mDisplayToCaptureScale[0],1.f); ensure_equals(states[2].mScreenEffect0[0],.3f);
+    CompositeState fallback; mapSignalToDisplay(gate,face,1.f,fallback);
+    gateCompositeIncoming(fallback,2,.5f,false,[](auto&){return false;});
+    ensure_equals(fallback.mGateAlpha,0.f); ensure_equals(fallback.mOpticsParams[3],.4f);
+    for(bool faceMapped : {false,true})
+    {
+        CompositeState preview;
+        if(faceMapped) mapSignalToDisplay(gate,aux,1.f,preview);
+        bool built=false;
+        gateCompositeIncoming(preview,2,.5f,true,[&](auto&){built=true;return true;});
+        ensure(!built && preview.mGateAlpha==0.f);
+        ensure_equals(preview.mDisplayToCaptureScale[0],faceMapped ? .5625f : 1.f);
+    }
+    ensure(!publicationPreviewQuality(gate,true));
+    ProjectorFeed feed;
+    feed.mGateCookieKey.black = true;
+    ensure(!projectorCookieIsBlack(feed));
+    feed.mSourceKind = ESourceSlotKind::GATE;
+    feed.mGeneration = 42;
+    feed.mSettings.mNoSignal = ENoSignal::OWN_COOKIE;
+    ensure(projectorCookieIsBlack(feed));
+    feed.mGateCookieKey.black = false;
+    ensure(!projectorCookieIsBlack(feed));
+}
 }

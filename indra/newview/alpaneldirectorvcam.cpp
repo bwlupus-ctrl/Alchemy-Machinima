@@ -139,13 +139,7 @@ std::string displayName(const LLPrismLens::DisplayDefinition& display, U32 index
         : llformat("Prim face %u", index + 1);
 }
 
-// Face name for lists that mix per-camera and Gate-subscribed faces.
-std::string faceListName(const LLPrismLens::DisplayDefinition& display, U32 index)
-{
-    return display.mGateSubscribed
-        ? displayName(display, index) + " \xC2\xB7 Gate"
-        : displayName(display, index);
-}
+
 
 std::string projectorName(const LLPrismLens::ProjectorDefinition& projector)
 {
@@ -263,7 +257,7 @@ bool ALPanelDirectorVCam::postBuild()
         mCameraName->setMaxTextLength(128); // Core normalization caps at 32 Unicode characters.
     if (auto* media_name = dynamic_cast<LLLineEditor*>(control("vc_media_name")))
         media_name->setMaxTextLength(128); // Same normalized label/handler as camera Source.
-    mGateList = findChild<LLScrollListCtrl>("vc_gate_arms");
+    mGateSources = findChild<LLScrollListCtrl>("vc_gate_sources");
     mMediaVideo = dynamic_cast<LLLineEditor*>(control("vc_media_video"));
     if (mMediaVideo)
     {
@@ -296,7 +290,7 @@ bool ALPanelDirectorVCam::postBuild()
         {
             const std::string& widget = target->meta().widget;
             const bool url_row = widget == "vc_media_video" || widget == "vc_media_file_actions" ||
-                widget == "vc_media_transport" || widget == "vc_media_loop" || widget == "vc_media_on_cut" || widget == "vc_media_volume" ||
+                widget == "vc_media_transport" || widget == "vc_media_loop" || widget == "vc_media_volume" ||
                 widget == "vc_media_cache_clear" || widget == "vc_media_cache_status" || widget == "vc_media_cache_keep";
             const bool face_row = widget == "vc_media_face" || widget == "vc_media_face_actions";
             if (!url_row && !face_row) return true;
@@ -333,8 +327,6 @@ bool ALPanelDirectorVCam::postBuild()
         {"vc_lens_zoom_note", "Lens zoom applies to all Surface Lenses."},
         {"vc_guide_note", "Enable Show guide to draw its framing aids."},
         {"vc_look_note", "Camera look affects every face; TV effects affect one face."},
-        {"vc_gate_note", "This face shows whatever the Gate has on air."},
-        {"vc_proj_gate_note", "This projector shows whatever the Gate has on air."},
         {"vc_raw_note", "Raw camera output is shown before face mapping."},
         {"vc_rate_note", "Lower picture FPS saves auxiliary scene renders."},
         {"vc_projector_hint", "Select a projector to edit its look"},
@@ -364,7 +356,7 @@ bool ALPanelDirectorVCam::postBuild()
                     }
             }));
     const char* settings[] = {
-        "PrismLensEnabled", "VCamMediaSlotsEnabled", "VCamGateMediaCycleEnabled", "PrismMonitorPreviewsEnabled", "PrismMonitorInfoOverlay",
+        "PrismLensEnabled", "VCamMediaSlotsEnabled", "PrismMonitorPreviewsEnabled", "PrismMonitorInfoOverlay",
         "PrismMonitorPreviewFPS", "PrismLensZoom",
         "PrismAdaptivePerformance", "PrismProtectedMainFPS",
         "PrismCaptureRefreshCeilingHz", "PrismLensResolutionScale"
@@ -647,22 +639,10 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         for (U32 i = 0; i < registry.mDisplayCount; ++i)
         {
             const LLPrismLens::DisplayDefinition& face = registry.mDisplays[i];
-            if (face.mGateSubscribed || !sameCapture(face.mCapture, capture->mHandle)) continue;
+            if (!sameCapture(face.mCapture, capture->mHandle)) continue;
             faces.push_back({face.mHandle, displayName(face, i),
                 face.mSettings.mVirtual ? "Virtual screen" : "Prim face",
                 false, sameDisplay(mModel.selectedDisplay(), face.mHandle)});
-        }
-        // Gate-subscribed faces follow the Director switcher, so they belong to
-        // no single camera: list them under every Camera Feed, after its own
-        // faces. A Surface Lens owns exactly one face and cannot take them.
-        for (U32 i = 0; i < registry.mDisplayCount; ++i)
-        {
-            const LLPrismLens::DisplayDefinition& face = registry.mDisplays[i];
-            if (!face.mGateSubscribed ||
-                !capture->isCameraFeed()) continue;
-            faces.push_back({face.mHandle, faceListName(face, i),
-                "Gate program", false,
-                sameDisplay(mModel.selectedDisplay(), face.mHandle)});
         }
     }
     mFaceList->setItems(faces);
@@ -679,8 +659,8 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             // is repaired by the registry; the last orphan can unsubscribe.
             const bool has_home = std::any_of(registry.mCaptures.begin(),
                 registry.mCaptures.begin() + registry.mSlotCount,
-                [&](const auto& feed) { return sameCapture(feed.mHandle, projector.mHomeCapture); });
-            if (has_home && (!capture || !sameCapture(projector.mHomeCapture, capture->mHandle))) continue;
+                [&](const auto& feed) { return sameCapture(feed.mHandle, projector.mCapture); });
+            if (has_home && (!capture || !sameCapture(projector.mCapture, capture->mHandle))) continue;
             // Cache only final names (rig role or the object's real name); a
             // fallback ("Light (waiting)", "Light at x,y,z") is re-resolved
             // on later refreshes so the real name appears once it's known.
@@ -722,10 +702,9 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
                     capture ? mCameraLabels[capture->mSlot]
                             : std::string());
 
-    setRowControlVisible(row("vc_proj_gate_note"), selected_projector && selected_projector->mGateSubscribed);
+
     if (selected_projector)
     {
-        setValueIfChanged(control("vc_proj_feed"), selected_projector->mGateSubscribed ? 1 : 0);
         const LLPrismLens::ProjectorSettings& settings = selected_projector->mSettings;
         const LLPrismLens::ProjectorLook& look = settings.mLook;
         const LLPrismLens::ScreenEffects& effect = settings.mEffects;
@@ -782,11 +761,11 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(projectorControl(PROJ_TV_SHEEN), effect.mSheen);
     }
 
+
     // A Gate face belongs to no single camera, so it can always be removed;
     // other faces only under an ordinary Camera Feed.
     setEnabledIfChanged(control("vc_remove_face"), display &&
-        (display->mGateSubscribed ||
-         (capture && !capture->isSurfaceLens())));
+        (capture && !capture->isSurfaceLens()));
     for (LLUICtrl* name : {static_cast<LLUICtrl*>(mCameraName), control("vc_media_name")})
     {
         setEnabledIfChanged(name, capture != nullptr);
@@ -921,7 +900,6 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     {
         const LLPrismLens::DisplaySettings& settings = display->mSettings;
         const LLPrismLens::ScreenEffects& effect = settings.mEffects;
-        setValueIfChanged(control("vc_face_feed"), display->mGateSubscribed ? 1 : 0);
         setValueIfChanged(control("vc_face_fit"), static_cast<S32>(settings.mFitMode));
         const char* visibility = display->mRuntime.mVisibility ==
             LLPrismLens::EDisplayVisibility::VISIBLE ? "visible" : "offscreen";
@@ -934,7 +912,6 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setRowControlVisible(row("vc_screen_reposition"), settings.mVirtual);
         setRowControlVisible(row("vc_screen_height"), settings.mVirtual);
         setRowControlVisible(row("vc_screen_aspect"), settings.mVirtual);
-        setRowControlVisible(row("vc_gate_note"), display->mGateSubscribed);
         setRowControlVisible(row("vc_raw_note"), false);
         setValueIfChanged(control("vc_anchor_x"), settings.mAnchor[0]);
         setValueIfChanged(control("vc_anchor_y"), settings.mAnchor[1]);
@@ -973,13 +950,16 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setRowControlVisible(row("vc_screen_reposition"), false);
         setRowControlVisible(row("vc_screen_height"), false);
         setRowControlVisible(row("vc_screen_aspect"), false);
-        setRowControlVisible(row("vc_gate_note"), false);
         setRowControlVisible(row("vc_raw_note"), capture != nullptr);
     }
 
+    const bool gate_selected = capture && capture->isGate();
+    if (gate_selected)
+        for (const char* id : {"source", "placement", "skeleton", "optics", "guide", "camera_look", "look_goes", "output_frame", "picture_rate", "surface_lens"})
+            if (auto* card = mKitPage->findCard(id)) card->setCodeVisible(false);
     const bool media_selected = capture && capture->isMedia();
     if (ALKitCard* lens_card = mKitPage->findCard("surface_lens"))
-        lens_card->setCodeVisible(!media_selected);
+        lens_card->setCodeVisible(!media_selected && !gate_selected);
     if (ALKitCard* media_card = mKitPage->findCard("media_source"))
     {
         // Renaming an existing capture remains available when media playback is gated off.
@@ -1001,7 +981,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         const auto* video = capture->mediaUrlData();
         const bool enabled = LLPrismLens::mediaSlotsEnabled();
         setValueIfChanged(control("vc_media_kind"), video ? "url" : "face");
-        for (const char* id : {"vc_media_video", "vc_media_file_actions", "vc_media_transport", "vc_media_loop", "vc_media_on_cut", "vc_media_volume", "vc_media_cache_clear", "vc_media_cache_status", "vc_media_cache_keep"})
+        for (const char* id : {"vc_media_video", "vc_media_file_actions", "vc_media_transport", "vc_media_loop", "vc_media_volume", "vc_media_cache_clear", "vc_media_cache_status", "vc_media_cache_keep"})
             setRowControlVisible(row(id), enabled && video != nullptr);
         for (const char* id : {"vc_media_face", "vc_media_face_actions"})
             setRowControlVisible(row(id), enabled && video == nullptr);
@@ -1032,7 +1012,6 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         if (video)
         {
             setValueIfChanged(control("vc_media_loop"), video->mLoop);
-            setValueIfChanged(control("vc_media_on_cut"), static_cast<S32>(video->mOnCut));
             setValueIfChanged(control("vc_media_volume"), video->mVolume);
         }
         setEnabledIfChanged(control("vc_media_play"), enabled && video && mMediaPlayable);
@@ -1237,100 +1216,77 @@ void ALPanelDirectorVCam::setAspectValue(const std::string& name, F32 ratio)
 
 void ALPanelDirectorVCam::refreshGate()
 {
-    const auto& gate = mModel.gate();
-    const auto& settings = gate.mSettings;
-    setValueIfChanged(control("vc_gate_active"), settings.mActive);
-    setValueIfChanged(control("vc_gate_mode"), static_cast<S32>(settings.mMode));
+    const auto* capture = selectedCapture();
+    const bool selected = capture && capture->isGate();
+    if (auto* card = mKitPage->findCard("gate")) card->setCodeVisible(selected);
+    if (!selected) return;
+    const auto& settings = *capture->gateData();
+    setValueIfChanged(control("vc_gate_mode"), S32(settings.mMode));
     setValueIfChanged(control("vc_gate_interval"), settings.mIntervalSeconds);
-    setValueIfChanged(control("vc_gate_prewarm"), static_cast<S32>(settings.mPrewarmFrames));
-    setValueIfChanged(control("vc_gate_transition"), static_cast<S32>(settings.mTransition));
+    setValueIfChanged(control("vc_gate_transition"), S32(settings.mTransition));
     setValueIfChanged(control("vc_gate_crossfade_seconds"), settings.mCrossfadeSeconds);
-    setValueIfChanged(control("vc_gate_fade_over_budget"), static_cast<S32>(settings.mFadeOverBudget));
-    setValueIfChanged(control("vc_gate_video_dwell"), static_cast<S32>(settings.mVideoDwell));
-    const bool fade = settings.mTransition == LLPrismLens::EGateTransition::CROSSFADE;
-    setRowControlVisible(row("vc_gate_crossfade_seconds"), fade);
-    setRowControlVisible(row("vc_gate_fade_over_budget"), fade);
-    setRowControlVisible(row("vc_gate_play_videos"), gate.mWaitingForPlay);
-    setEnabledIfChanged(control("vc_gate_play_videos"), gSavedSettings.getBOOL("VCamGateMediaCycleEnabled") &&
-        gSavedSettings.getBOOL("PrismLensEnabled") && LLPrismLens::mediaSlotsEnabled());
-    setRowControlVisible(row("vc_gate_take"), settings.mMode == LLPrismLens::EGateMode::MANUAL);
-    setValueIfChanged(control("vc_gate_count"), llformat("%u of 8 feeds armed\nSelect an armed row for Preview. Only ready feeds go on air; warming and skipped feeds leave Program intact. Play videos authorizes the armed private videos for this session.", static_cast<U32>(settings.mArmed.size())));
-    static const char* phases[] = {"Inactive", "On air", "Warming...", "Ready", "Crossfading", "Holding"};
-    setValueIfChanged(control("vc_gate_status"), gate.mPhase == LLPrismLens::EGatePhase::CROSSFADING
-        ? llformat("Crossfading %d%%", ll_round(gate.mProgress * 100.f))
-        : gate.mReason.empty() ? phases[static_cast<U32>(gate.mPhase)] : gate.mReason);
-    if (auto* button = dynamic_cast<LLButton*>(control("vc_gate_take")))
-    { if (button->getLabelSelected() != (gate.mTakePending ? "Take pending" : "Take")) button->setLabel(gate.mTakePending ? "Take pending" : "Take"); }
-    const bool fading = gate.mPhase == LLPrismLens::EGatePhase::CROSSFADING;
-    setEnabledIfChanged(control("vc_gate_take"), settings.mActive && settings.mPreviewArmIndex >= 0 && !fading);
-    setEnabledIfChanged(mGateList, !fading);
-    const auto* selected = selectedCapture();
-    const bool already = selected && std::any_of(settings.mArmed.begin(), settings.mArmed.end(),
-        [selected](const auto& arm) { return arm.mCaptureId == selected->mHandle.mId; });
-    setEnabledIfChanged(control("vc_gate_arm"), selected && !selected->isSurfaceLens() && !already && settings.mArmed.size() < 8);
-    setEnabledIfChanged(control("vc_gate_disarm"), mSelectedGateArm.notNull() && !fading);
-    if (!mGateList || mGateListRevision == gate.mRevision) return;
-    mGateListRevision = gate.mRevision;
-    mGateList->deleteAllItems(); // revision-gated, model callback; never a draw refresh.
-    for (S32 i = 0; i < static_cast<S32>(settings.mArmed.size()); ++i)
+    setValueIfChanged(control("vc_gate_off_air"), S32(settings.mOffAir));
+    setValueIfChanged(control("vc_gate_status"), capture->mGateStatus.text);
+    setRowControlVisible(row("vc_gate_interval"), settings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE);
+    setRowControlVisible(row("vc_gate_crossfade_seconds"), settings.mTransition == LLPrismLens::EGateTransition::CROSSFADE);
+    if (!mGateSources) return;
+    const auto& registry = mModel.registry();
+    const std::string key = capture->mHandle.mId.asString() + capture->mGateStatus.program.asString();
+    if (mGateSourcesRevision == registry.mConfigurationRevision && mGateSourcesKey == key) return;
+    mGateSourcesRevision = registry.mConfigurationRevision; mGateSourcesKey = key;
+    const LLSD selected_value = mGateSources->getSelectedValue();
+    mGateSources->deleteAllItems();
+    for (U32 i = 0; i < registry.mSlotCount; ++i)
     {
-        const auto& arm = settings.mArmed[i];
-        LLSD item; item["value"] = arm.mArmId;
-        item["columns"][0]["column"] = "vc_gate_col_feed"; item["columns"][0]["value"] = arm.mLabel;
-        std::string status = i < static_cast<S32>(gate.mArmStatus.size()) ? gate.mArmStatus[i] : "";
-        if (i == settings.mPreviewArmIndex && status.empty()) status = "Preview";
-        for (U32 n = 0; n < mModel.registry().mSlotCount; ++n)
+        const auto& source = registry.mCaptures[i];
+        if (!source.isMedia() && !source.isCameraFeed()) continue;
+        if (const auto* camera = source.cameraData())
         {
-            const auto& slot = mModel.registry().mCaptures[n];
-            if (slot.mHandle.mId != arm.mCaptureId) continue;
-            std::string note = "Camera feed";
-            if (slot.mediaData()) note = "Live feed - Cut/Crossfade only";
-            else if (const auto* file = slot.mediaUrlData())
-                note = std::string("Video URL \xC2\xB7 On cut: ") +
-                    (file->mOnCut == LLPrismLens::EMediaOnCut::RESTART ? "Restart" : file->mOnCut == LLPrismLens::EMediaOnCut::RESUME ? "Resume" : "Live");
-            item["columns"][3]["column"] = "vc_gate_col_note"; item["columns"][3]["value"] = note;
+            auto* object = gObjectList.findObject(camera->mObjectId);
+            if (camera->mSettings.mBonePov.mEnabled || (object && (object->isAvatar() || object->isAttachment()))) continue;
         }
-        item["columns"][1]["column"] = "vc_gate_col_status"; item["columns"][1]["value"] = status;
-        item["columns"][2]["column"] = "vc_gate_col_enabled"; item["columns"][2]["type"] = "checkbox";
-        item["columns"][2]["value"] = arm.mEnabled;
-        mGateList->addElement(item);
+        LLSD item; item["value"] = source.mHandle.mId;
+        item["columns"][0]["column"] = "vc_gate_tick"; item["columns"][0]["type"] = "checkbox";
+        item["columns"][0]["value"] = std::find(settings.mSources.begin(), settings.mSources.end(), source.mHandle.mId) != settings.mSources.end();
+        item["columns"][1]["column"] = "vc_gate_name"; item["columns"][1]["value"] = LLPrismLens::captureDisplayLabel(source);
+        item["columns"][2]["column"] = "vc_gate_air"; item["columns"][2]["value"] = source.mHandle.mId == capture->mGateStatus.program ? "On air" : "";
+        mGateSources->addElement(item);
     }
-    mGateList->selectByValue(mSelectedGateArm);
+    mGateSources->selectByValue(selected_value);
 }
 
 void ALPanelDirectorVCam::commitGate(const std::string& name, const LLSD& value)
 {
-    auto settings = LLPrismLens::gateSnapshot().mSettings;
-    std::string reason;
-    if (name == "vc_gate_arm")
+    const auto* capture = selectedCapture(); if (!capture || !capture->isGate()) return;
+    const auto live = LLPrismLens::registrySnapshot();
+    LLPrismLens::GateSource settings; bool found = false;
+    for (U32 i = 0; i < live.mSlotCount; ++i)
+        if (sameCapture(live.mCaptures[i].mHandle, capture->mHandle) && live.mCaptures[i].gateData())
+        { settings = *live.mCaptures[i].gateData(); found = true; break; }
+    if (!found) return;
+    if (name == "vc_gate_sources" && mGateSources)
     {
-        if (const auto* slot = selectedCapture()) LLPrismLens::gateArm(slot->mHandle, slot->mLabel, nullptr, &reason);
-    }
-    else if (name == "vc_gate_disarm") LLPrismLens::gateDisarm(mSelectedGateArm, &reason);
-    else if (name == "vc_gate_take") LLPrismLens::gateTake(&reason);
-    else if (name == "vc_gate_play_videos") LLPrismLens::gatePlayVideos();
-    else
-    {
-        if (name == "vc_gate_active") settings.mActive = value.asBoolean();
-        else if (name == "vc_gate_mode") settings.mMode = static_cast<LLPrismLens::EGateMode>(value.asInteger());
-        else if (name == "vc_gate_interval") settings.mIntervalSeconds = value.asReal();
-        else if (name == "vc_gate_prewarm") settings.mPrewarmFrames = value.asInteger();
-        else if (name == "vc_gate_transition") settings.mTransition = static_cast<LLPrismLens::EGateTransition>(value.asInteger());
-        else if (name == "vc_gate_crossfade_seconds") settings.mCrossfadeSeconds = value.asReal();
-        else if (name == "vc_gate_fade_over_budget") settings.mFadeOverBudget = static_cast<LLPrismLens::EGateFadeOverBudget>(value.asInteger());
-        else if (name == "vc_gate_video_dwell") settings.mVideoDwell = static_cast<LLPrismLens::EGateVideoDwell>(value.asInteger());
-        else if (name == "vc_gate_arms" && mGateList)
+        const LLUUID id = mGateSources->getSelectedValue().asUUID();
+        auto* selected = mGateSources->getFirstSelected(); if (!selected) return;
+        const bool ticked = selected->getColumn(0)->getValue().asBoolean();
+        const bool was = std::find(settings.mSources.begin(), settings.mSources.end(), id) != settings.mSources.end();
+        if (was == ticked)
         {
-            mSelectedGateArm = mGateList->getSelectedValue().asUUID();
-            for (S32 i = 0; i < static_cast<S32>(settings.mArmed.size()); ++i)
-                if (settings.mArmed[i].mArmId == mSelectedGateArm)
-                {
-                    settings.mPreviewArmIndex = i;
-                    if (auto* selected = mGateList->getFirstSelected()) settings.mArmed[i].mEnabled = selected->getColumn(2)->getValue().asBoolean();
-                }
+            S32 x = 0, y = 0; LLUI::getInstance()->getMousePositionLocal(mGateSources, &x, &y);
+            // Checkbox mouse-down and mouse-up both commit; only the name takes.
+            if (ticked && mGateSources->getLocalRect().pointInRect(x, y) &&
+                mGateSources->getColumnIndexFromOffset(x) == 1) LLPrismLens::gateTake(capture->mHandle, id);
+            return;
         }
-        LLPrismLens::setGateSettings(settings, &reason);
+        if (ticked) settings.mSources.push_back(id); else std::erase(settings.mSources, id);
     }
+    else if (name == "vc_gate_mode") settings.mMode = LLPrismLens::EGateMode(value.asInteger());
+    else if (name == "vc_gate_interval") settings.mIntervalSeconds = value.asReal();
+    else if (name == "vc_gate_transition") settings.mTransition = LLPrismLens::EGateTransition(value.asInteger());
+    else if (name == "vc_gate_crossfade_seconds") settings.mCrossfadeSeconds = value.asReal();
+    else if (name == "vc_gate_off_air") settings.mOffAir = LLPrismLens::EGateOffAir(value.asInteger());
+    else return;
+    std::string reason; LLPrismLens::setGateSource(capture->mHandle, settings, &reason);
     if (!reason.empty()) setStatus(reason, false);
 }
 
@@ -1370,19 +1326,9 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
 
-    if (name.rfind("vc_gate_", 0) == 0 && name != "vc_gate_note")
+    if (name.rfind("vc_gate_", 0) == 0)
     { commitGate(name, value); return; }
-    if (name == "vc_proj_feed")
-    {
-        if (const auto* projector = selectedProjector())
-        {
-            std::string reason;
-            if (value.asInteger()) LLPrismLens::setProjectorGateSubscribed(projector->mHandle, true, &reason);
-            else LLPrismLens::setProjectorGateSubscribed(projector->mHandle, false, &reason);
-            if (!reason.empty()) setStatus(reason);
-        }
-        return;
-    }
+
     // Name is capture metadata, including Paste value commits. Dispatch it
     // before the vc_media_ playback/source router, which consumes that prefix.
     if (name == "vc_camera_name" || name == "vc_media_name")
@@ -1445,7 +1391,6 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
                 setValueIfChanged(self->mMediaVideo, path);
             });
         }
-        else if (name == "vc_media_on_cut" && capture->mediaUrlData()) LLPrismLens::setMediaFileOnCut(handle, static_cast<LLPrismLens::EMediaOnCut>(value.asInteger()));
         else if ((name == "vc_media_loop" || name == "vc_media_volume") && capture->mediaUrlData())
         {
             if (name == "vc_media_loop") LLPrismLens::setMediaFileLoop(handle, value.asBoolean());
@@ -1587,6 +1532,11 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         else if (action == "virtual") mModel.addVirtualAtView(&reason);
         else if (action == "ots") mModel.addOtsPair(&reason);
         else if (action == "lens") mModel.addSurfaceLens(&reason);
+        else if (action == "gate")
+        {
+            LLPrismLens::CaptureHandle handle;
+            if (LLPrismLens::addGateSlot(&handle, &reason) == LLPrismLens::ERegistryResult::OK) mModel.setSelectedCapture(handle);
+        }
         else if (action == "media" && LLPrismLens::mediaSlotsEnabled())
             mModel.addMediaSlot(&reason);
         if (!reason.empty()) setStatus(reason);
@@ -1682,13 +1632,7 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         std::string reason;
         if (!LLPrismLens::removeDisplay(display->mHandle, &reason)) setStatus(reason);
     }
-    else if (name == "vc_face_feed" && display && capture)
-    {
-        std::string reason;
-        if (LLPrismLens::setDisplayGateSubscribed(display->mHandle,
-                value.asInteger() == 1, &capture->mHandle, &reason) != LLPrismLens::ERegistryResult::OK)
-            setStatus(reason);
-    }
+
     else if (name == "vc_bone_reset" && capture && capture->cameraData())
     {
         LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
@@ -1775,6 +1719,7 @@ void ALPanelDirectorVCam::commitCamera(const std::string& name, const LLSD& valu
         }
         return;
     }
+    if (!capture->cameraData()) return;
     LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
     LLPrismLens::CaptureRateSettings rate = capture->mRate;
     bool camera_changed = true;
@@ -2189,12 +2134,9 @@ void ALPanelDirectorVCam::showMonitorMenu(U32 slot, S32 x, S32 y)
     for (U32 index = 0; index < mModel.registry().mDisplayCount; ++index)
     {
         const LLPrismLens::DisplayDefinition& display = mModel.registry().mDisplays[index];
-        if (!display.mGateSubscribed && sameCapture(display.mCapture, mMenuCapture))
+        if (sameCapture(display.mCapture, mMenuCapture))
             mMenuRemoveDisplays.push_back(display.mHandle);
     }
-    for (U32 index = 0; index < mModel.registry().mDisplayCount; ++index)
-        if (mModel.registry().mDisplays[index].mGateSubscribed)
-            mMenuRemoveDisplays.push_back(mModel.registry().mDisplays[index].mHandle);
     for (U32 index = 0; index < 16; ++index)
         if (LLMenuItemGL* choice = menu->findChild<LLMenuItemGL>(llformat("remove_output_%u", index)))
         {
@@ -2204,7 +2146,7 @@ void ALPanelDirectorVCam::showMonitorMenu(U32 slot, S32 x, S32 y)
                 for (U32 global = 0; global < mModel.registry().mDisplayCount; ++global)
                     if (sameDisplay(mModel.registry().mDisplays[global].mHandle, mMenuRemoveDisplays[index]))
                     {
-                        choice->setLabel(LLStringExplicit(faceListName(
+                        choice->setLabel(LLStringExplicit(displayName(
                             mModel.registry().mDisplays[global], global)));
                         break;
                     }
@@ -2310,7 +2252,7 @@ void ALPanelDirectorVCam::onMonitorMenu(const std::string& action,
                 if (sameDisplay(mModel.registry().mDisplays[global].mHandle, mMenuRemoveDisplays[index]))
                 {
                     confirmRemoveOutput(*capture, mMenuRemoveDisplays[index],
-                        faceListName(mModel.registry().mDisplays[global], global));
+                        displayName(mModel.registry().mDisplays[global], global));
                     break;
                 }
         }

@@ -158,7 +158,6 @@ protected:
     LLUUID                    mVCamProjectorOriginalCapture;
     LLPrismLens::ProjectorSettings mVCamProjectorOriginalSettings;
     bool                      mVCamProjectorOriginallyBound = false;
-    bool                      mVCamProjectorOriginalGateSubscribed = false;
 
     LLTextBox*      mLabelPhysicsShapeType = nullptr;
     LLComboBox*     mComboPhysicsShapeType = nullptr;

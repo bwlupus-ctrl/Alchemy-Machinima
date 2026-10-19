@@ -976,7 +976,7 @@ bool LLPrismPreviewService::prepareFrame()
         if (!enabled)
         {
             for (DemandEntry& entry : mDemand)
-            { entry.mAtlasSerial = entry.mPublicationSerial; entry.mGateSerial = LLPrismLens::gateOutputPublication(); }
+                entry.mAtlasSerial = entry.mPublicationSerial;
         }
         markChanged();
     }
@@ -1080,8 +1080,7 @@ bool LLPrismPreviewService::hasPendingAtlasUpdate() const
     for (U32 slot = 0; slot < mDemand.size(); ++slot)
     {
         const DemandEntry& entry = mDemand[slot];
-        if (entry.mDemanded && (entry.mPublicationSerial > entry.mAtlasSerial ||
-            (mSelection[slot].mId.notNull() && entry.mGateSerial != LLPrismLens::gateOutputPublication())))
+        if (entry.mDemanded && entry.mPublicationSerial > entry.mAtlasSerial)
             if (now >= mNextAtlasDue[slot]) return true;
     }
     return false;
@@ -1226,8 +1225,7 @@ void LLPrismPreviewService::updateAtlas()
     {
         const U32 candidate = (mNextAtlasSlot + offset) % mDemand.size();
         const DemandEntry& entry = mDemand[candidate];
-        if (entry.mDemanded && (entry.mPublicationSerial > entry.mAtlasSerial ||
-            (mSelection[candidate].mId.notNull() && entry.mGateSerial != LLPrismLens::gateOutputPublication())) &&
+        if (entry.mDemanded && entry.mPublicationSerial > entry.mAtlasSerial &&
             now >= mNextAtlasDue[candidate])
         {
             cell = candidate;
@@ -1267,7 +1265,6 @@ void LLPrismPreviewService::updateAtlas()
         tile.mTimestamp = LLTimer::getTotalSeconds();
         tile.mPublicationSerial = entry.mPublicationSerial;
         entry.mAtlasSerial = entry.mPublicationSerial;
-        entry.mGateSerial = LLPrismLens::gateOutputPublication();
         markChanged();
         mNextAtlasSlot = (cell + 1) % mDemand.size();
         return;
@@ -1281,7 +1278,6 @@ void LLPrismPreviewService::updateAtlas()
         mTiles[cell].mTimestamp = LLTimer::getTotalSeconds();
         mTiles[cell].mPublicationSerial = entry.mPublicationSerial;
         entry.mAtlasSerial = entry.mPublicationSerial;
-        entry.mGateSerial = LLPrismLens::gateOutputPublication();
         mNextAtlasSlot = (cell + 1) % mDemand.size();
         markChanged();
         return;
@@ -1322,7 +1318,8 @@ void LLPrismPreviewService::updateAtlas()
     const S32 signal_channel = shader.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
     if (signal_channel >= 0)
     {
-        gPipeline.mPrismLensOutput[state.mCaptureSlot].bindTexture(
+        if (state.mBlack) gGL.getTexUnit(signal_channel)->bind(LLViewerTexture::sBlackImagep);
+        else gPipeline.mPrismLensOutput[state.mCaptureSlot].bindTexture(
             0, signal_channel, LLTexUnit::TFO_BILINEAR);
     }
     const S32 exposure_channel = shader.enableTexture(LLShaderMgr::EXPOSURE_MAP);
@@ -1369,7 +1366,6 @@ void LLPrismPreviewService::updateAtlas()
     mAtlas.flush();
 
     entry.mAtlasSerial = entry.mPublicationSerial;
-    entry.mGateSerial = LLPrismLens::gateOutputPublication();
     TilePublication& tile = mTiles[cell];
     tile.mAtlas = atlasHandle();
     const F32 left = static_cast<F32>(column) / ATLAS_COLUMNS;

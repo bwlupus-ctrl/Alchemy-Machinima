@@ -1,226 +1,140 @@
-/**
- * @file llprismgate.h
- * @brief Pure Vcam Gate sequence and persistence helpers.
- */
-
+﻿/** @file llprismgate.h @brief Simple Gate state, proposals and scene migration. */
 #ifndef LL_LLPRISMGATE_H
 #define LL_LLPRISMGATE_H
-
 #include "llprismlens.h"
-#include <limits>
+#include "llmediaframestate.h"
+#include <map>
+#include <set>
 
 namespace LLPrismLens
 {
-// Pointer-free Gate protocol. All times are viewer monotonic seconds. A command
-// receipt is not a decoded-frame acknowledgement; adapters must provide both.
-struct GatePosition
+struct GateCopyKey
 {
-    bool valid = false, restart = false, terminal = false;
-    F64 seconds = 0.;
-    std::string reason;
+    LLUUID id;
+    U64 generation = 0, serial = 0;
+    bool operator==(const GateCopyKey&) const = default;
 };
-GatePosition gatePosition(EMediaOnCut mode, bool bookmarked, F64 position,
-                          F64 off_time, F64 commit_time, F64 duration,
-                          bool loop, F64 frame_period);
-F64 gatePositionDistance(F64 a, F64 b, F64 duration, bool loop);
-// Shared image-demand adapter, used before media admission and by Gate watches.
-bool gateImageDemand(U32 frames, U32 watch_width, U32 watch_height,
-                     U32& width, U32& height, F64& area);
-inline bool gateCadenceDue(F32 hz, F64 now, F64 deadline, bool reserved)
-{ return reserved || (hz > 0.f && now >= deadline); }
-struct GateFrameBudget
+struct GateState
 {
-    U32 cameraFrame = ~0u, warmFrame = ~0u;
-    bool cameraAvailable(U32 frame) const { return cameraFrame != frame; }
-    void cameraAttempt(U32 frame) { cameraFrame = frame; }
-    bool warmCameraAttempt(U32 frame, bool eligible)
-    {
-        if (!eligible || warmFrame == frame) return false;
-        warmFrame = frame;
-        return true;
-    }
-    bool mediaDue(F32 hz, F64 now, F64 deadline, bool reserved) const
-    { return gateCadenceDue(hz, now, deadline, reserved); }
+    LLUUID program, pending, from, held, cursor, queued;
+    F64 pendingStart = 0., fadeStart = 0., nextAuto = 0.;
+    F64 lastTick = -1., unseenSince = -1., demandedSeconds = 0.;
+    F64 fadeSeconds = .5, publishedAt = -1.;
+    U64 baselinePublication = 0, baselineDecoder = 0, cutSerial = 0;
+    LLMediaFrame::Identity baselineIdentity;
+    bool awaitingCopy = false, fadeEndWaiting = false, emptyPublished = false;
+    F32 alpha = 0.f;
+    std::string text = "No sources ticked";
+    GateCopyKey copyKey;
 };
-inline F32 gateProducerDemand(const CaptureRateSettings& rate, F32 capacity)
+struct GateSourceInput
 {
-    return rate.mMode == EOutputRateMode::TARGET_FPS ? rate.mTargetFps : capacity;
-}
-void gateCameraCadence(const std::array<bool, MAX_CAPTURES>& visible,
-                       const std::array<bool, MAX_CAPTURES>& preview,
-                       const std::array<F32, MAX_CAPTURES>& demand, F32 capacity,
-                       S32 program, S32 incoming, bool fading,
-                       std::array<F32, MAX_CAPTURES>& entitlement, S32 reservation = -1);
-// Media warming has an additive copy lane, independent of camera admission and
-// HEAD's ordinary visible allocation. Its rate is the candidate's max-min share
-// alongside the visible producers, never the preview tier's leftover capacity.
-void gateMediaCadence(const std::array<bool, MAX_CAPTURES>& visible,
-                      const std::array<bool, MAX_CAPTURES>& preview,
-                      const std::array<F32, MAX_CAPTURES>& demand, F32 capacity,
-                      S32 warming, F32 warming_request,
-                      std::array<F32, MAX_CAPTURES>& entitlement);
-F64 gateLeadSeconds(U32 frames, F64 frame_dt, bool video);
-bool prismFullTargetScissor(bool virtual_display, bool main_view,
-                            U32 width, U32 height, S32* scissor);
-bool gatePositionQualified(F64 drift, F64 uncertainty, F64 sample_age,
-                           F64 frame_age, F64 frame_period);
-// Per-player command-to-copied-image timings, in monotonic seconds.
-struct GateLatency
-{
-    F64 seek = .2, resume = .2;
-    static F64 sample(F64 estimate, F64 seconds);
-};
-struct GateFadeDemand
-{
-    U32 passes = 0;
-    U64 pixels = 0;
-    bool qualified = true;
-    void add(U32 width, U32 height, bool cookie, bool variant = true);
-    bool fits() const;
-};
-struct GateSourceEvent
-{
-    CaptureHandle handle;
-    ESourceSlotKind kind = ESourceSlotKind::EMPTY;
-    bool metadataReady = true, resident = false;
-    bool available = false, permitted = false, admitted = false;
-    bool ready = false, resumed = false, eof = false, opportunity = true;
-    bool retired = false, paused = false, exited = false, seekable = false;
-    bool loop = true;
-    EMediaOnCut onCut = EMediaOnCut::LIVE;
-    U64 token = 0, frame = 0;
-    F64 position = 0., duration = 0., sampleAge = 1., error = 1., pauseTime = 0.;
-    F64 frameAge = 1., framePeriod = 1. / 30.;
-    std::string refusal;
-};
-enum class EGateAction : U8 { CLAIM, UNCLAIM, WARM, SEEK, PARK, RESUME, RETIRE, CLOSE, RELEASE, PROPOSE, ENVELOPE };
-struct GateAction
-{
-    EGateAction kind;
-    CaptureHandle handle;
-    U64 token = 0;
-    F64 position = 0., gain = 0., seconds = 0.;
-    bool loop = false;
+    LLUUID id;
+    std::string name, reason;
+    ESourceSlotKind kind = ESourceSlotKind::CAMERA;
+    bool eligible = true, hasOutput = false, fullQuality = false;
+    bool paused = false, frozen = false, downloading = false;
+    bool desiredPlaying = false, playRefused = false, stopped = false;
+    bool currentImage = false;
+    U64 publication = 0, copiedDecoder = 0, decoder = 0;
+    LLMediaFrame::Identity identity;
 };
 struct GateInput
 {
-    F64 now = 0., dt = 0., frameDt = 0.;
-    GateSettings settings;
-    std::vector<GateSourceEvent> sources;
-    GateFadeDemand destinations;
-    bool mediaEnabled = true, take = false, playVideos = false;
-    bool activate = false, changed = false;
-    // Matching proposal token, after all participating destination draws/mips.
-    U64 accepted = 0;
+    F64 now = 0.;
+    GateSource settings;
+    std::vector<GateSourceInput> sources;
+    LLUUID take;
+    bool demanded = false;
+    bool hasGatePicture = false; // Both the retained texture and mHasOutput are valid.
 };
-inline bool gateInterceptsPlay(bool active, bool media_cycle, bool armed)
-{ return active && media_cycle && armed; }
-
-class GateReducer
+struct GateProposal
 {
-public:
-    std::vector<GateAction> update(const GateInput& input);
-    // Preparation and publication both validate current source qualification.
-    // ACK never replays the reducer or transport; stale proposals are consumed.
-    bool validatePublication(U64 token, const GateInput& input);
-    std::vector<GateAction> acknowledgeOutputs(U64 token, const GateInput& input);
-    U64 proposal() const { return mProposal; }
-    bool wantsImage(const GateInput& input) const;
-    bool reservesImage(const GateInput& input) const;
-    bool keepsParked(const CaptureHandle& handle) const;
-    void reset();
-    EGatePhase phase() const { return mPhase; }
-    const CaptureHandle& program() const { return mProgram; }
-    const CaptureHandle& incoming() const { return mCandidate; }
-    U64 token() const { return mToken; }
-    U64 revision() const { return mRevision; }
-    F64 alpha() const { return mAlpha; }
-    F64 targetPosition() const { return mTarget; }
-    bool pending() const { return mPending; }
-    const std::string& reason() const { return mReason; }
-    std::string status(const CaptureHandle& handle) const;
-    bool granted(const CaptureHandle& handle) const;
-    bool charged(const CaptureHandle& handle) const;
-    U32 charges() const;
-    void grant(const CaptureHandle& handle);
-    void revoke(const CaptureHandle& handle);
-    // Restores only a valid stable Program. Never restores tokens or grants.
-    void restoreProgram(const CaptureHandle& handle, F64 now);
-private:
-    struct Feed
-    {
-        CaptureHandle handle;
-        bool grant = false, bookmark = false, charged = false, retiring = false, contributing = false;
-        bool closeRequested = false, parked = false, released = false, owned = false;
-        F64 position = 0., off = 0., retirement = 0.;
-        GateLatency latency;
-        U64 token = 0;
-        std::string status;
-    };
-    bool freshImage(const GateSourceEvent& source) const;
-    bool contributionQualified(const GateInput& input) const;
-    Feed& feed(const CaptureHandle& handle);
-    const GateSourceEvent* source(const GateInput&, const CaptureHandle&) const;
-    void retire(const CaptureHandle&, F64 now, std::vector<GateAction>&);
-    void skip(const GateInput&, const std::string&, std::vector<GateAction>&);
-    std::vector<Feed> mFeeds;
-    std::vector<LLUUID> mVisited;
-    CaptureHandle mProgram, mCandidate, mEndProgram;
-    EGatePhase mPhase = EGatePhase::INACTIVE;
-    U64 mToken = 1, mRevision = 1, mProposal = 0, mCommand = 0, mParkFrame = 0, mWarmFrame = 0;
-    F64 mDwellStart = 0., mBoundary = 0., mOverrun = -1., mStage = 0.;
-    F64 mKnownEndTime = std::numeric_limits<F64>::infinity();
-    F64 mEndBoundary = std::numeric_limits<F64>::infinity();
-    F64 mDecodeElapsed = 0., mTarget = 0., mFadeStart = 0., mFadeSeconds = .5, mAlpha = 0.;
-    F64 mTargetCommit = 0.;
-    F64 mCommandStart = 0.;
-    F64 mContributionTime = 0.;
-    F64 mReservationEnd = 0.;
-    bool mPending = false, mSeeking = false, mParked = false, mResuming = false;
-    bool mResumeImage = false, mTargetNowBased = false;
-    bool mCorrected = false, mRestart = false, mEffectiveFade = false, mEnabled = false;
-    bool mHoldingBudget = false;
-    bool mConverged = false, mResetPending = false, mFinishing = false, mMediaWasEnabled = true;
-    EMediaOnCut mPreparedOnCut = EMediaOnCut::LIVE;
-    bool mPreparedLoop = true;
-    EGateVideoDwell mPreparedDwell = EGateVideoDwell::INTERVAL;
-    U64 mConvergenceFrame = 0;
-    std::string mReason;
+    GateState next;
+    LLUUID copy;
+    bool needsPixels = false, rollback = false, publish = false;
+    F64 demandedSeconds = 0.;
+    std::vector<LLUUID> play, pause, feed;
 };
-
-S32 gateNextEnabledIndex(const std::vector<GateArmedCamera>& armed,
-                         S32 current_index);
-S32 gateClampEnabledIndex(const std::vector<GateArmedCamera>& armed,
-                          S32 preferred_index);
-S32 gateResolveArmIndex(const std::vector<GateArmedCamera>& armed,
-                        S32 preferred_index,
-                        const std::vector<LLUUID>& live_capture_ids);
-void gateFilterResolvableArms(GateSettings& settings,
-                              const std::vector<LLUUID>& live_capture_ids);
-F64 gateNextCutTime(F64 past_boundary, F64 interval_seconds);
-bool gateWarmActive(F64 now, F64 next_cut_time, U32 prewarm_frames,
-                    F64 frame_dt);
-bool gateWarmSeedValid(U32 width, U32 height);
-bool gateConsumePreviewWarmFrame(U32& frames_remaining);
-bool gateIsRealCut(S32 current_index, S32 candidate_index);
-ERegistryResult gateFeedbackResult(const LLUUID& camera_source_object_id,
-                                   const LLUUID& display_object_id,
-                                   bool display_gate_subscribed);
-bool gateDisplayCaptureReferenceAccepted(bool gate_source,
-                                         bool capture_id_resolves);
-void gateRouteDisplayBinding(S32 capture_slot, U64 capture_generation,
-                             U32& display_slot, U64& display_generation);
-
-// Malformed armed-camera entries are dropped while a valid outer Gate record
-// remains loadable, matching the scene best-effort contract.
-LLSD gateSettingsToLLSD(const GateSettings& settings);
-bool gateSettingsFromLLSD(const LLSD& data, GateSettings& settings,
-                          std::string* reason = nullptr);
-bool gateSettingsFromScene(const LLSD& scene, GateSettings& settings,
-                           bool& present, std::string* reason = nullptr);
-const char* gateOnCutName(EMediaOnCut policy);
-bool gateOnCutFromLLSD(const LLSD& slot, EMediaOnCut& policy);
-bool gateOutputSourceFromLLSD(const LLSD& output, bool& subscribed);
-} // namespace LLPrismLens
-
-#endif // LL_LLPRISMGATE_H
+GateProposal gateStep(const GateState& state, const GateInput& input);
+void gateApply(GateState& state, const GateProposal& proposal, bool ok);
+inline void gateOutputReleased(GateState& state)
+{ state.copyKey = {}; state.emptyPublished = false; state.publishedAt = -1.; }
+// Constant empty presentation never depends on retained texture allocation.
+inline bool gateBlackComposite(bool empty, U32 slot, CompositeState& state)
+{
+    if (!empty) return false;
+    state.mCaptureSlot = slot; state.mBlack = true; state.mGateAlpha = 0.f;
+    state.mLetterbox = 1;
+    for (U32 axis = 0; axis < 2; ++axis)
+    {
+        state.mDisplayToCaptureScale[axis] = 0.f;
+        state.mDisplayToCaptureOffset[axis] = -2.f;
+        state.mTextureRegionScale[axis] = 1.f;
+        state.mTextureRegionOffset[axis] = 0.f;
+    }
+    std::fill(std::begin(state.mBarColorLinear), std::end(state.mBarColorLinear), 0.f);
+    return true;
+}
+// Production two-pass seams: preparation keeps intent, composition owns commits.
+GateProposal gatePrepareStep(GateState& state, const GateInput& input);
+template<class SourceKey>
+GateCookieKey gateCookieContentKey(const GateState& state, GateCookieKey key, SourceKey sourceKey)
+{
+    key.program = {}; key.from = {}; key.retained = {}; key.alpha = 0.f;
+    key.black = state.held.isNull();
+    if (key.black) { key.phase = 0; key.effectHz = 0.f; return key; }
+    key.program = sourceKey(state.program);
+    key.from = sourceKey(state.from);
+    key.retained = {state.copyKey.id, state.copyKey.generation, state.copyKey.serial, true};
+    key.alpha = state.alpha;
+    return key;
+}
+template<class Publish>
+bool gateComposeApply(GateState& state, const GateProposal& proposal, bool ok,
+                      bool copied, const GateCopyKey& key, bool& rollback, Publish publish)
+{
+    gateApply(state, proposal, ok);
+    if (copied) state.copyKey = key;
+    rollback |= proposal.rollback;
+    // Even a rejected end copy can present the complete incoming picture at
+    // alpha one while the retained-texture swap waits for a retry.
+    const bool present = ok || (state.fadeEndWaiting && state.alpha == 1.f);
+    if (copied || (proposal.publish && present && state.publishedAt != proposal.next.lastTick) || rollback)
+    {
+        // Intent (including black/rollback state and audio) is already applied.
+        // A failed picture publication remains pending until a later retry.
+        if (!publish(rollback))
+        {
+            state.emptyPublished = false;
+            rollback = true;
+            return false;
+        }
+        state.publishedAt = proposal.next.lastTick;
+        rollback = false;
+    }
+    return ok;
+}
+// Live ticks are the only implicit Play edge; scene restoration never calls this.
+template<class Grant, class Mute, class Play>
+void gateLiveTick(EGateOffAir policy, bool stopped, Grant grant, Mute mute, Play play)
+{
+    grant();
+    if (policy == EGateOffAir::KEEP_PLAYING && stopped) { mute(); play(); }
+}
+F32 gateGain(const GateState& state, const LLUUID& id);
+std::map<LLUUID, F32> gateAudioGains(const std::vector<std::pair<LLUUID, F32>>& videos,
+                                    const std::set<LLUUID>& previous);
+F64 gatePlayerDemand(const GateState& state, const LLUUID& id, F64 own);
+GateStatus gateStatus(const GateState& state);
+LLSD gateSourceToLLSD(const GateSource& source);
+bool gateSourceFromLLSD(const LLSD& item, GateSource& source, std::string* reason = nullptr);
+void gateResolveSources(GateSource& source, const LLUUID& self,
+                        const std::vector<LLUUID>& eligible, std::vector<std::string>& notes);
+void gateMigrateScene(LLSD& data, std::vector<SkippedBinding>& notes);
+// Native registry assertions always run; only the optional media fixture needs a clip.
+bool gateRegistryRegression(std::string& reason, std::string& media_status);
+bool prismFullTargetScissor(bool virtual_display, bool main_view,
+                            U32 width, U32 height, S32* scissor);
+}
+#endif

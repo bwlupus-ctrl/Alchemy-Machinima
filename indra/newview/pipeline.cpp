@@ -1981,7 +1981,7 @@ void LLPipeline::releasePrismLensOutputs()
 }
 
 bool LLPipeline::ensurePrismProjectorFeed(
-    const LLPrismLens::ProjectorHandle& handle, U32 width, U32 height, bool media)
+    const LLPrismLens::ProjectorHandle& handle, U32 width, U32 height, bool media, bool defer_allocation)
 {
     if (handle.mId.isNull() || handle.mGeneration == 0 || width == 0 ||
         height == 0 || width > 2048 || height > 2048)
@@ -2009,13 +2009,14 @@ bool LLPipeline::ensurePrismProjectorFeed(
         prepared->mHandle.mGeneration != handle.mGeneration)
     {
         prepared->mTarget->release();
-        prepared->mStagedTarget.reset(); prepared->mStaged = {}; prepared->mStagedFrame = 0;
         prepared->mHandle = handle;
         prepared->mSourceGeneration = 0;
         prepared->mProducedFrame = 0;
         prepared->mValid = false;
-        prepared->mDirty = true;
+        prepared->mDirty = !defer_allocation;
+        prepared->mGateCookie = {};
     }
+    if (defer_allocation) return true; // Gate retries are owned by its content-key cache.
     if (prepared->mTarget->isComplete() &&
         prepared->mTarget->getWidth() == width &&
         prepared->mTarget->getHeight() == height)
@@ -2030,6 +2031,7 @@ bool LLPipeline::ensurePrismProjectorFeed(
         prepared->mProducedFrame = 0;
         prepared->mValid = false;
         prepared->mDirty = true;
+        ++mPrismProjectorAllocationAttempts;
         return prepared->mTarget->allocate(width, height, GL_RGBA8, false, false,
                                           LLTexUnit::TT_TEXTURE,
                                           LLTexUnit::TMG_AUTO);
@@ -2039,6 +2041,7 @@ bool LLPipeline::ensurePrismProjectorFeed(
     // published target and its accepted metadata survive allocation failure.
     if (prepared->mTarget->isComplete()) return true;
     auto target = std::make_unique<LLRenderTarget>();
+    ++mPrismProjectorAllocationAttempts;
     if (!target->allocate(width, height, GL_RGBA8, false, false,
                           LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_AUTO) ||
         !target->isComplete()) return false;
@@ -2062,10 +2065,17 @@ void LLPipeline::dirtyPrismProjectorFeed(
             {
                 const auto& definition = snapshot.mProjectors[i];
                 if (definition.mHandle.mId == handle.mId &&
+                    definition.mHandle.mGeneration == handle.mGeneration)
+                {
+                    for (U32 slot = 0; slot < snapshot.mSlotCount; ++slot)
+                        if (snapshot.mCaptures[slot].mHandle.mId == definition.mCapture.mId &&
+                            snapshot.mCaptures[slot].isGate()) return;
+                }
+                if (definition.mHandle.mId == handle.mId &&
                     definition.mHandle.mGeneration == handle.mGeneration &&
                     LLPrismLens::releaseOversizedProjectorCookie(
                         prepared.mTarget->getWidth(), prepared.mTarget->getHeight(),
-                        definition.mSettings, definition.mGateSubscribed))
+                        definition.mSettings))
                 {
                     releasePrismProjectorFeed(handle);
                     return;
@@ -2095,8 +2105,11 @@ void LLPipeline::prepareDirtyPrismProjectorFeeds()
     // The capture outputs are retained independently of publication cadence.
     // Walk the bounded slot set so a static camera can immediately recompose a
     // changed look/framing/effect without publishing another capture frame.
-    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-        preparePrismProjectorFeeds(slot);
+    const auto snapshot = LLPrismLens::registrySnapshot();
+    for (U32 slot = 0; slot < snapshot.mSlotCount; ++slot)
+        // Gate settings and effects refresh after compose, so a dirty cookie
+        // cannot consume this frame's preparation before the new publication.
+        if (!snapshot.mCaptures[slot].isGate()) preparePrismProjectorFeeds(snapshot.mCaptures[slot].mSlot);
 }
 
 void LLPipeline::releasePrismProjectorFeed(
@@ -2108,12 +2121,12 @@ void LLPipeline::releasePrismProjectorFeed(
             prepared.mHandle.mGeneration == handle.mGeneration)
         {
             prepared.mTarget->release();
-            prepared.mStagedTarget.reset(); prepared.mStaged = {}; prepared.mStagedFrame = 0;
             prepared.mHandle = LLPrismLens::ProjectorHandle();
             prepared.mSourceGeneration = 0;
             prepared.mProducedFrame = 0;
             prepared.mValid = false;
             prepared.mDirty = true;
+            prepared.mGateCookie = {};
             return;
         }
     }
@@ -2124,12 +2137,12 @@ void LLPipeline::releasePrismProjectorFeeds()
     for (PrismProjectorPreparedFeed& prepared : mPrismProjectorFeed)
     {
         prepared.mTarget->release();
-        prepared.mStagedTarget.reset(); prepared.mStaged = {}; prepared.mStagedFrame = 0;
         prepared.mHandle = LLPrismLens::ProjectorHandle();
         prepared.mSourceGeneration = 0;
         prepared.mProducedFrame = 0;
         prepared.mValid = false;
         prepared.mDirty = true;
+        prepared.mGateCookie = {};
     }
 }
 
@@ -2152,12 +2165,11 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         LLPrismLens::ProjectorFeed feed;
         if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
             feed.mOutput != &mPrismLensOutput[capture_slot] ||
-            LLPrismLens::isMediaKind(feed.mSourceKind) || definition.mGateSubscribed)
+            (LLPrismLens::isMediaKind(feed.mSourceKind) || feed.mSourceKind == LLPrismLens::ESourceSlotKind::GATE))
         {
             continue;
         }
 
-        if (definition.mGateSubscribed && !feed.mGatePublication) continue; // Gate cookies publish only in the output transaction
         LLPrismLens::CompositeState state;
         U32 target_width = 0;
         U32 target_height = 0;
@@ -2180,7 +2192,7 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
             }
         }
         if (!prepared || (!prepared->mDirty &&
-                          prepared->mSourceGeneration == feed.mGeneration && !definition.mGateSubscribed))
+                          prepared->mSourceGeneration == feed.mGeneration))
         {
             continue;
         }
@@ -2334,33 +2346,9 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
     }
 }
 
-bool LLPipeline::gateProjectorPrepared(const LLPrismLens::ProjectorHandle& handle, U64 publication) const
-{
-    for (const auto& feed : mPrismProjectorFeed)
-        if (feed.mHandle.mId == handle.mId && feed.mHandle.mGeneration == handle.mGeneration)
-            return feed.mStagedTarget && feed.mStagedTarget->isComplete() && feed.mStagedFrame == gFrameCount &&
-                feed.mStaged.mGatePublication == publication;
-    return false;
-}
 
-void LLPipeline::finishGateProjectors(U64 publication, bool publish)
-{
-    for (auto& feed : mPrismProjectorFeed)
-    {
-        if (!publication || feed.mStaged.mGatePublication != publication) continue;
-        if (publish)
-        {
-            feed.mTarget.swap(feed.mStagedTarget);
-            feed.mAccepted = feed.mStaged;
-            feed.mSourceGeneration = feed.mAccepted.mGeneration;
-            feed.mProducedFrame = feed.mStagedFrame;
-            feed.mRevision = ++mPrismProjectorRevision;
-            feed.mNextEffectTime = LLTimer::getTotalSeconds() + 1.0 / llmax(.01f, feed.mAccepted.mEffectHz);
-            feed.mValid = true; feed.mDirty = false;
-        }
-        feed.mStaged = {}; feed.mStagedFrame = 0;
-    }
-}
+
+
 
 void LLPipeline::prepareMediaPrismProjectorFeeds()
 {
@@ -2379,22 +2367,22 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         for (U32 slot = 0; slot < snapshot.mSlotCount; ++slot)
         {
             const auto& capture = snapshot.mCaptures[slot];
-            if (capture.isMedia() && capture.mHandle.mId == definition.mCapture.mId &&
+            if ((capture.isMedia() && LLPrismLens::mediaSlotsEnabled()) &&
+                capture.mHandle.mId == definition.mCapture.mId &&
                 capture.mHandle.mGeneration == definition.mCapture.mGeneration)
             {
                 media_source = true;
                 break;
             }
         }
-        if (!media_source && !definition.mGateSubscribed) continue;
+        if (!media_source) continue;
         LLPrismLens::ProjectorFeed feed;
         if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
-            (!LLPrismLens::isMediaKind(feed.mSourceKind) && !definition.mGateSubscribed))
+            !LLPrismLens::isMediaKind(feed.mSourceKind))
         {
             continue;
         }
 
-        if (definition.mGateSubscribed && !feed.mGatePublication) continue; // Gate cookies publish only in the output transaction
         LLPrismLens::CompositeState state;
         U32 target_width = 0;
         U32 target_height = 0;
@@ -2424,57 +2412,76 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
             effects.mDropout > 0.f || film.mDust > 0.f || film.mScratches > 0.f ||
             film.mGrain > 0.f || film.mGateWeave > 0.f || film.mShutterFlicker > 0.f);
         const F64 now = LLTimer::getTotalSeconds();
-        if (!feed.mGateTransition && !prepared->mAccepted.mGateTransition && LLPrismLens::sameProjectorSource(prepared->mAccepted, feed) &&
+        if (LLPrismLens::sameProjectorSource(prepared->mAccepted, feed) &&
             !prepared->mDirty && prepared->mSourceGeneration == feed.mGeneration &&
             prepared->mAccepted.mDestinationAspect == feed.mDestinationAspect &&
             (!animated || feed.mEffectHz <= 0.f || now < prepared->mNextEffectTime)) continue;
 
-        const bool camera_signal = !LLPrismLens::isMediaKind(feed.mSourceKind) ||
-            (state.mGateAlpha > 0.f && !state.mIncomingMediaSDR);
-        const U32 permutation = camera_signal ? colorCorrectPermutation(true, true) : 0;
-        const LLPrismLens::ProjectorLook& look = feed.mSettings.mLook;
-        const bool apply_look = look.hasFeedEffects() &&
-            gPrismProjectorLookProgram[permutation].isComplete();
-        LLGLSLShader& shader = apply_look
-            ? gPrismProjectorLookProgram[permutation]
-            : gPrismProjectorFeedProgram[permutation];
-        // No retained pixels are touched until every fallible prerequisite is
-        // validated. A requested look cannot silently fall back to another one.
-        if (!shader.isComplete() || (look.hasFeedEffects() && !apply_look) ||
-            !feed.mOutput || !feed.mOutput->isComplete() || !feed.mOutput->getTexture(0) ||
-            (shader.mFeatures.hasTonemap && !mExposureMap.isComplete())) continue;
-        if (shader.getTextureChannel(LLShaderMgr::PRISM_LENS_MAP) < 0 ||
-            (shader.mFeatures.hasTonemap && shader.getTextureChannel(LLShaderMgr::EXPOSURE_MAP) < 0)) continue;
-        std::unique_ptr<LLRenderTarget> spare;
-        if (feed.mGatePublication && !prepared->mStagedTarget)
-            prepared->mStagedTarget = std::make_unique<LLRenderTarget>();
-        LLRenderTarget* target = feed.mGatePublication ? prepared->mStagedTarget.get() : prepared->mTarget.get();
-        if (!target->isComplete() || target->getWidth() != target_width || target->getHeight() != target_height)
-        {
-            spare = std::make_unique<LLRenderTarget>();
-            if (!spare->allocate(target_width, target_height, GL_RGBA8, false, false,
-                                 LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_AUTO) ||
-                !spare->isComplete()) continue;
-            target = spare.get();
-        }
-        // Registry identity cannot change during this synchronous GL pass.
-        // Use the single feed lookup above; all skips precede shader.bind().
-        if (!target->isComplete()) continue;
+        bool allocation_failed = false;
+        renderRetainedPrismProjectorFeed(feed, state, target_width, target_height, false, allocation_failed, now);
+    }
+}
 
-        target->bindTarget();
-        glViewport(0, 0, target_width, target_height);
-        const S32 target_viewport[4] = {
-            0, 0, static_cast<S32>(target_width),
-            static_cast<S32>(target_height) };
-        std::memcpy(gGLViewport, target_viewport, sizeof(gGLViewport));
-        LLGLDisable projector_feed_scissor(GL_SCISSOR_TEST);
-        LLGLDisable projector_feed_srgb(GL_FRAMEBUFFER_SRGB);
-        LLGLDepthTest projector_feed_depth(GL_FALSE, GL_FALSE);
-        glDisable(GL_BLEND);
-        gGL.setColorMask(true, true, true, true);
-        glClearColor(0.f, 0.f, 0.f, 1.f);
-        target->clear();
 
+bool LLPipeline::renderRetainedPrismProjectorFeed(const LLPrismLens::ProjectorFeed& feed,
+    const LLPrismLens::CompositeState& state, U32 target_width, U32 target_height,
+    bool black, bool& allocation_failed, F64 now)
+{
+    PrismProjectorPreparedFeed* prepared = nullptr;
+    for (auto& candidate : mPrismProjectorFeed)
+        if (candidate.mHandle.mId == feed.mProjector.mId &&
+            candidate.mHandle.mGeneration == feed.mProjector.mGeneration) { prepared = &candidate; break; }
+    if (!prepared) return false;
+    const bool camera_signal = !LLPrismLens::isMediaKind(feed.mSourceKind) ||
+        (state.mGateAlpha > 0.f && !state.mIncomingMediaSDR);
+    const U32 permutation = camera_signal ? colorCorrectPermutation(true, true) : 0;
+    const LLPrismLens::ProjectorLook& look = feed.mSettings.mLook;
+    const bool apply_look = look.hasFeedEffects() &&
+        gPrismProjectorLookProgram[permutation].isComplete();
+    LLGLSLShader& shader = apply_look
+        ? gPrismProjectorLookProgram[permutation]
+        : gPrismProjectorFeedProgram[permutation];
+    // No retained pixels are touched until every fallible prerequisite is
+    // validated. A requested look cannot silently fall back to another one.
+    if (!black && (!shader.isComplete() || (look.hasFeedEffects() && !apply_look) ||
+        !feed.mOutput || !feed.mOutput->isComplete() || !feed.mOutput->getTexture(0) ||
+        (shader.mFeatures.hasTonemap && !mExposureMap.isComplete()))) return false;
+    if (!black && (shader.getTextureChannel(LLShaderMgr::PRISM_LENS_MAP) < 0 ||
+        (shader.mFeatures.hasTonemap && shader.getTextureChannel(LLShaderMgr::EXPOSURE_MAP) < 0))) return false;
+    std::unique_ptr<LLRenderTarget> spare;
+    LLRenderTarget* target = prepared->mTarget.get();
+    if (!target->isComplete() || target->getWidth() != target_width || target->getHeight() != target_height)
+    {
+        spare = std::make_unique<LLRenderTarget>();
+        ++mPrismProjectorAllocationAttempts;
+        if (!spare->allocate(target_width, target_height, GL_RGBA8, false, false,
+                             LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_AUTO) ||
+            !spare->isComplete()) { allocation_failed = true; return false; }
+        target = spare.get();
+    }
+    // Registry identity cannot change during this synchronous GL pass.
+    // Use the single feed lookup above; all skips precede shader.bind().
+    if (!target->isComplete()) return false;
+
+    target->bindTarget();
+    glViewport(0, 0, target_width, target_height);
+    const S32 target_viewport[4] = {
+        0, 0, static_cast<S32>(target_width),
+        static_cast<S32>(target_height) };
+    std::memcpy(gGLViewport, target_viewport, sizeof(gGLViewport));
+    LLGLDisable projector_feed_scissor(GL_SCISSOR_TEST);
+    LLGLDisable projector_feed_srgb(GL_FRAMEBUFFER_SRGB);
+    LLGLDepthTest projector_feed_depth(GL_FALSE, GL_FALSE);
+    glDisable(GL_BLEND);
+    gGL.setColorMask(true, true, true, true);
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+    target->clear();
+
+    if (!black)
+    {
+        const F32 effect_time = feed.mSourceKind == LLPrismLens::ESourceSlotKind::GATE && feed.mEffectHz > 0.f
+            ? F32(std::fmod(F64(feed.mGateCookieKey.phase) / feed.mEffectHz, 3600.))
+            : fmodf(gFrameTimeSeconds, 3600.f);
         shader.bind();
         const S32 signal_channel =
             shader.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
@@ -2531,7 +2538,7 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         shader.uniform4fv(sEffect3, 1, state.mScreenEffect3);
         shader.uniform4fv(sEffect4, 1, state.mScreenEffect4);
         shader.uniform4fv(sEffect5, 1, state.mScreenEffect5);
-        shader.uniform1f(sEffectTime, fmodf(gFrameTimeSeconds, 3600.f));
+        shader.uniform1f(sEffectTime, effect_time);
         shader.uniform1i(sFollowExposure, feed.mSettings.mFollowMainExposure ? 1 : 0);
         if (apply_look)
         {
@@ -2541,7 +2548,7 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
             static const LLStaticHashedString sLookLampGel("projectorLookLampGel");
             const F32 look_warp[4] = {
                 look.mKeystoneH, look.mKeystoneV, look.mHotspot,
-                fmodf(gFrameTimeSeconds, 3600.f) };
+                effect_time };
             const F32 look_film[4] = {
                 look.mDust, look.mScratches, look.mBurn, look.mGrain };
             const F32 look_glow[4] = {
@@ -2588,27 +2595,54 @@ void LLPipeline::prepareMediaPrismProjectorFeeds()
         if (color_grade_channel >= 0) gGL.getTexUnit(color_grade_channel)->unbind(LLTexUnit::TT_TEXTURE_3D);
         gGL.flush();
         shader.unbind();
-        {
-            LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam projector cookie mips");
-            LL_PROFILE_GPU_ZONE("VCam projector cookie mips");
-            target->flush(); // TMG_AUTO builds the complete chain before publication.
-        }
-        if (feed.mGatePublication)
-        {
-            if (spare) prepared->mStagedTarget.swap(spare);
-            prepared->mStaged = feed; prepared->mStaged.mOutput = nullptr;
-            prepared->mStagedFrame = gFrameCount;
-            continue; // the final live qualification check owns publication
-        }
-        if (spare) prepared->mTarget.swap(spare); // old ownership dies this iteration
-        prepared->mAccepted = feed;
-        prepared->mAccepted.mOutput = nullptr; // never retain a registry target pointer
-        prepared->mRevision = ++mPrismProjectorRevision;
-        prepared->mNextEffectTime = now + 1.0 / llmax(0.01f, feed.mEffectHz);
-        prepared->mSourceGeneration = feed.mGeneration;
-        prepared->mProducedFrame = gFrameCount;
-        prepared->mValid = true;
-        prepared->mDirty = false;
+    }
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam projector cookie mips");
+        LL_PROFILE_GPU_ZONE("VCam projector cookie mips");
+        target->flush(); // TMG_AUTO builds the complete chain before publication.
+    }
+
+    if (spare) prepared->mTarget.swap(spare); // old ownership dies this iteration
+    prepared->mAccepted = feed;
+    prepared->mAccepted.mOutput = nullptr; // never retain a registry target pointer
+    prepared->mRevision = ++mPrismProjectorRevision;
+    prepared->mNextEffectTime = now + 1.0 / llmax(0.01f, feed.mEffectHz);
+    prepared->mSourceGeneration = feed.mGeneration;
+    prepared->mProducedFrame = gFrameCount;
+    prepared->mValid = true;
+    if (feed.mSourceKind != LLPrismLens::ESourceSlotKind::GATE) prepared->mDirty = false;
+    return true;
+}
+
+// The sole Gate cookie pass: after composition and the frame effect-clock update,
+// for every binding, including unseen projectors and retained-copy backoff.
+void LLPipeline::prepareGatePrismProjectorFeeds()
+{
+    if (!LLPrismLens::hasGateSlot()) return;
+    const auto snapshot = LLPrismLens::registrySnapshot();
+    const F64 now = LLTimer::getTotalSeconds();
+    for (U32 i = 0; i < snapshot.mProjectorCount; ++i)
+    {
+        const auto& definition = snapshot.mProjectors[i];
+        LLPrismLens::ProjectorFeed feed;
+        if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
+            feed.mSourceKind != LLPrismLens::ESourceSlotKind::GATE) continue;
+        LLPrismLens::CompositeState state;
+        U32 width = feed.mSettings.mResolution, height = width;
+        if (!feed.mGateCookieKey.black &&
+            !LLPrismLens::buildProjectorCompositeState(definition, state, width, height)) continue;
+        if (!ensurePrismProjectorFeed(definition.mHandle, width, height, true, true)) continue;
+        for (auto& prepared : mPrismProjectorFeed)
+            if (prepared.mHandle.mId == definition.mHandle.mId &&
+                prepared.mHandle.mGeneration == definition.mHandle.mGeneration)
+            {
+                prepared.mGateCookie.refresh(feed.mGateCookieKey, now, [&](bool& allocation_failed)
+                {
+                    return renderRetainedPrismProjectorFeed(feed, state, width, height,
+                        feed.mGateCookieKey.black, allocation_failed, now);
+                });
+                break;
+            }
     }
 }
 
@@ -27975,14 +28009,16 @@ void LLPipeline::renderPrismDisplays(LLRenderTarget* screen_target)
                     (!prism_state.mFace && !prism_state.mVirtual) ||
                     prism_state.mScissor[2] <= 0 ||
                     prism_state.mScissor[3] <= 0 ||
-                    !mPrismLensOutput[prism_state.mCaptureSlot].isComplete())
+                    (!prism_state.mBlack && !mPrismLensOutput[prism_state.mCaptureSlot].isComplete()))
                 {
                     continue;
                 }
 
                 if (bound_capture_slot != prism_state.mCaptureSlot)
                 {
-                    mPrismLensOutput[prism_state.mCaptureSlot].bindTexture(
+                    if (prism_state.mBlack)
+                        gGL.getTexUnit(prism_channel)->bind(LLViewerTexture::sBlackImagep);
+                    else mPrismLensOutput[prism_state.mCaptureSlot].bindTexture(
                         0, prism_channel, LLTexUnit::TFO_BILINEAR);
                     bound_capture_slot = prism_state.mCaptureSlot;
                 }
@@ -28215,10 +28251,10 @@ U64 LLPipeline::projectorCookieRevision(const LLVOVolume* volume) const
 {
     LLPrismLens::ProjectorFeed feed;
     if (!LLPrismLens::projectorFeedFor(volume, feed) ||
-        (!feed.mGateSubscribed && !LLPrismLens::isMediaKind(feed.mSourceKind))) return 0;
+        (!LLPrismLens::isMediaKind(feed.mSourceKind) && feed.mSourceKind != LLPrismLens::ESourceSlotKind::GATE)) return 0;
     for (const auto& prepared : mPrismProjectorFeed)
         if (prepared.mValid && prepared.mTarget->isComplete() &&
-            (feed.mGateSubscribed ? prepared.mHandle.mId == feed.mProjector.mId && prepared.mHandle.mGeneration == feed.mProjector.mGeneration : LLPrismLens::sameProjectorSource(prepared.mAccepted, feed))) return prepared.mRevision;
+            LLPrismLens::sameProjectorSource(prepared.mAccepted, feed)) return prepared.mRevision;
     return 0;
 }
 
@@ -28229,14 +28265,15 @@ F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
     LLPrismLens::ProjectorFeed feed;
     const bool has_binding = LLPrismLens::projectorFeedFor(volume, feed);
     PrismProjectorPreparedFeed* prepared = nullptr;
-    if (has_binding && (feed.mGateSubscribed || LLPrismLens::isMediaKind(feed.mSourceKind)))
+    const bool gate_black = has_binding && LLPrismLens::projectorCookieIsBlack(feed);
+    if (has_binding && !gate_black && (feed.mSourceKind == LLPrismLens::ESourceSlotKind::GATE || LLPrismLens::isMediaKind(feed.mSourceKind)))
     {
         for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
         {
             if (candidate.mHandle.mId == feed.mProjector.mId &&
                 candidate.mHandle.mGeneration == feed.mProjector.mGeneration &&
                 candidate.mValid && candidate.mTarget->isComplete() &&
-                (feed.mGateSubscribed || LLPrismLens::sameProjectorSource(candidate.mAccepted, feed)))
+                LLPrismLens::sameProjectorSource(candidate.mAccepted, feed))
             {
                 prepared = &candidate;
                 break;
@@ -28252,7 +28289,7 @@ F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
     }
     else
     {
-        if (has_binding && feed.mGeneration != 0)
+        if (has_binding && !gate_black && feed.mGeneration != 0)
         {
             for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
             {
@@ -28271,7 +28308,7 @@ F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
     // OWN_COOKIE is deliberately the literal legacy path until the first
     // converted frame exists. With no binding this entire branch is the old
     // implementation, including its binds, filters and uniform values.
-    const bool override_cookie = prepared || (has_binding &&
+    const bool override_cookie = prepared || gate_black || (has_binding &&
         feed.mSettings.mNoSignal != LLPrismLens::ENoSignal::OWN_COOKIE);
     LLViewerTexture* img = nullptr;
     if (!override_cookie)
@@ -28281,7 +28318,7 @@ F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
     }
     else if (!prepared)
     {
-        img = feed.mSettings.mNoSignal == LLPrismLens::ENoSignal::BLACK
+        img = gate_black || feed.mSettings.mNoSignal == LLPrismLens::ENoSignal::BLACK
             ? LLViewerTexture::sBlackImagep.get()
             : LLViewerFetchedTexture::sWhiteImagep.get();
     }

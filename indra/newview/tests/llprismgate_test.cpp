@@ -1,1634 +1,775 @@
-/**
- * @file llprismgate_test.cpp
- * @brief Regression tests for the pure Vcam Gate router and schema.
- */
-
+/** @file llprismgate_test.cpp @brief Simple Gate spec section g regressions. */
 #include "linden_common.h"
-#include "llplugingateclock.h"
-
 #include "../test/lltut.h"
-#include "../aldirectorswitchermodel.h"
 #include "../llprismgate.h"
-#include "../llprismpreview.h"
-
-#include <cmath>
-#include <limits>
+#include "llsdutil.h"
 #include <algorithm>
-
+#include <limits>
 namespace tut
 {
-namespace
+using namespace LLPrismLens;
+struct gate_data
 {
-LLPrismLens::GateArmedCamera armedCamera(const char* arm_id,
-                                         const char* capture_id,
-                                         const char* label,
-                                         bool enabled = true)
-{
-    LLPrismLens::GateArmedCamera armed;
-    armed.mArmId.set(arm_id);
-    armed.mCaptureId.set(capture_id);
-    armed.mLabel = label;
-    armed.mEnabled = enabled;
-    return armed;
-}
-
-ALDirectorSwitcherModel::Config gateConfig(
-    const std::vector<LLPrismLens::GateArmedCamera>& armed,
-    F64 interval = 5.0)
-{
-    ALDirectorSwitcherModel::Config config;
-    config.mAuto = true;
-    config.mSequence = true;
-    config.mIntervalSeconds = interval;
-    config.mJitterSeconds = 0.0;
-    for (std::size_t index = 0;
-         index < armed.size() && index < config.mEnabled.size(); ++index)
+    GateState state;
+    GateInput in;
+    LLUUID a, b, c;
+    gate_data()
     {
-        config.mEnabled[index] = armed[index].mEnabled;
-    }
-    return config;
-}
-
-bool approxNear(F64 left, F64 right, F64 tolerance = 1e-6)
-{
-    return std::fabs(left - right) <= tolerance;
-}
-} // anonymous namespace
-
-struct prism_gate_data {};
-typedef test_group<prism_gate_data, 64> prism_gate_test_group;
-typedef prism_gate_test_group::object prism_gate_test_object;
-prism_gate_test_group prism_gate_tests("LLPrismGate");
-
-template<> template<>
-void prism_gate_test_object::test<1>()
-{
-    set_test_name("router cycle, live resolution, routing, deletion, and dark sentinel");
-    using namespace LLPrismLens;
-    std::vector<GateArmedCamera> armed = {
-        armedCamera("10000000-0000-0000-0000-000000000001",
-                    "11000000-0000-0000-0000-000000000001", "A"),
-        armedCamera("10000000-0000-0000-0000-000000000002",
-                    "11000000-0000-0000-0000-000000000002", "B"),
-        armedCamera("10000000-0000-0000-0000-000000000003",
-                    "11000000-0000-0000-0000-000000000003", "C")
-    };
-    std::vector<LLUUID> live = {
-        armed[0].mCaptureId, armed[1].mCaptureId, armed[2].mCaptureId
-    };
-    const std::size_t capture_count_before_arm = live.size();
-    GateSettings gate;
-    gate.mArmed = armed;
-    ensure_equals("arming stores three references", gate.mArmed.size(),
-                  static_cast<std::size_t>(3));
-    ensure_equals("arming allocates no capture", live.size(),
-                  capture_count_before_arm);
-
-    ALDirectorSwitcherModel::Controller controller;
-    const ALDirectorSwitcherModel::Config config = gateConfig(armed);
-    ensure("initial program punch accepted", controller.manualPunch(0, 0.0));
-    ensure("installing config does not cut", !controller.update(0.0, config).mCut);
-    ensure("before boundary remains A", !controller.update(4.999, config).mCut &&
-           controller.activeSlot() == 0);
-    const ALDirectorSwitcherModel::Frame to_b = controller.update(5.001, config);
-    ensure("first elapsed event cuts to B", to_b.mCut && to_b.mSlot == 1);
-    const ALDirectorSwitcherModel::Frame to_c = controller.update(10.001, config);
-    ensure("second event cuts to C", to_c.mCut && to_c.mSlot == 2);
-    const ALDirectorSwitcherModel::Frame wrap = controller.update(15.001, config);
-    ensure("third event wraps C to A", wrap.mCut && wrap.mSlot == 0);
-
-    ensure_equals("on-air arm resolves against live capture IDs",
-                  gateResolveArmIndex(armed, 1, live), 1);
-    U32 display_slot = MAX_CAPTURES;
-    U64 display_generation = 0;
-    gateRouteDisplayBinding(4, 27, display_slot, display_generation);
-    ensure("monitor routing writes the live slot and generation",
-           display_slot == 4 && display_generation == 27);
-
-    live.erase(live.begin());
-    ensure_equals("deleted on-air capture advances to next resolvable arm",
-                  gateResolveArmIndex(armed, 0, live), 1);
-    live.clear();
-    ensure_equals("all deleted arms resolve dark",
-                  gateResolveArmIndex(armed, 0, live), -1);
-    gateRouteDisplayBinding(-1, 99, display_slot, display_generation);
-    ensure("dark routing never writes a freed slot",
-           display_slot == MAX_CAPTURES && display_generation == 0);
-
-    std::vector<GateArmedCamera> empty;
-    ensure_equals("zero armed cameras resolve dark",
-                  gateResolveArmIndex(empty, 0, live), -1);
-
-    ALDirectorSwitcherModel::Controller hitch_controller;
-    hitch_controller.manualPunch(0, 0.0);
-    hitch_controller.update(0.0, config);
-    const ALDirectorSwitcherModel::Frame hitch =
-        hitch_controller.update(500.001, config);
-    ensure("large jump emits one deterministic final cut",
-           hitch.mCut && hitch.mEventsElapsed == 100 && hitch.mSlot == 1);
-}
-
-template<> template<>
-void prism_gate_test_object::test<2>()
-{
-    set_test_name("past boundary, next cut, transient watch target, seed, and expiry");
-    using namespace LLPrismLens;
-    std::vector<GateArmedCamera> armed = {
-        armedCamera("20000000-0000-0000-0000-000000000001",
-                    "21000000-0000-0000-0000-000000000001", "A"),
-        armedCamera("20000000-0000-0000-0000-000000000002",
-                    "21000000-0000-0000-0000-000000000002", "B"),
-        armedCamera("20000000-0000-0000-0000-000000000003",
-                    "21000000-0000-0000-0000-000000000003", "C")
-    };
-    const F64 interval = 5.0;
-    const F64 past_boundary = 5.0;
-    const F64 next_cut = gateNextCutTime(past_boundary, interval);
-    ensure("next cut adds one interval to the just-fired boundary",
-           approxNear(next_cut, 10.0));
-    const F64 dt = 1.0 / 60.0;
-    ensure("warm stays closed before corrected threshold",
-           !gateWarmActive(9.949, next_cut, 3, dt));
-    ensure("warm opens inclusively at corrected threshold",
-           gateWarmActive(9.95, next_cut, 3, dt));
-    ensure("past boundary is never treated as the future cut",
-           !gateWarmActive(4.96, next_cut, 3, dt));
-
-    ALDirectorSwitcherModel::Controller controller;
-    const ALDirectorSwitcherModel::Config config = gateConfig(armed, interval);
-    controller.manualPunch(0, 0.0);
-    controller.update(0.0, config);
-    const S32 predicted = gateNextEnabledIndex(armed, 0);
-    const ALDirectorSwitcherModel::Frame actual = controller.update(5.0, config);
-    ensure("watch target agrees with the Controller's next sequence cut",
-           actual.mCut && actual.mSlot == predicted && predicted == 1);
-    ensure("nonzero on-air dimensions admit a transient watch",
-           gateWarmSeedValid(960, 540));
-    ensure("zero width prevents watch admission", !gateWarmSeedValid(0, 540));
-    ensure("zero height prevents watch admission", !gateWarmSeedValid(960, 0));
-
-    U32 gate_watch_frames = 3;
-    ensure("watch frame one is consumed",
-           gateConsumePreviewWarmFrame(gate_watch_frames));
-    ensure("watch frame two is consumed",
-           gateConsumePreviewWarmFrame(gate_watch_frames));
-    ensure("watch frame three is consumed",
-           gateConsumePreviewWarmFrame(gate_watch_frames));
-    ensure_equals("watch self-expires after exactly N frames",
-                  gate_watch_frames, 0u);
-    ensure("expired watch cannot become permanent",
-           !gateConsumePreviewWarmFrame(gate_watch_frames));
-}
-
-template<> template<>
-void prism_gate_test_object::test<3>()
-{
-    set_test_name("manual take, interval restart, mode flip, and bounded preview watch");
-    using namespace LLPrismLens;
-    ensure("no preview cannot cut", !gateIsRealCut(0, -1));
-    ensure("preview equal to program cannot cut", !gateIsRealCut(0, 0));
-    ensure("distinct preview is a real cut", gateIsRealCut(0, 2));
-
-    std::vector<GateArmedCamera> armed = {
-        armedCamera("30000000-0000-0000-0000-000000000001",
-                    "31000000-0000-0000-0000-000000000001", "A"),
-        armedCamera("30000000-0000-0000-0000-000000000002",
-                    "31000000-0000-0000-0000-000000000002", "B"),
-        armedCamera("30000000-0000-0000-0000-000000000003",
-                    "31000000-0000-0000-0000-000000000003", "C")
-    };
-    ALDirectorSwitcherModel::Controller controller;
-    ALDirectorSwitcherModel::Config config = gateConfig(armed);
-    controller.manualPunch(0, 0.0);
-    controller.update(0.0, config);
-    ensure("manual TAKE punch accepted", controller.manualPunch(2, 2.0));
-    ensure_equals("preview becomes program", controller.activeSlot(), 2);
-    ensure("old interval boundary was cancelled",
-           !controller.update(5.0, config).mCut);
-    const ALDirectorSwitcherModel::Frame restarted = controller.update(7.0, config);
-    ensure("interval restarts from TAKE and resumes sequence",
-           restarted.mCut && restarted.mSlot == 0);
-
-    ALDirectorSwitcherModel::Controller mode_controller;
-    mode_controller.manualPunch(1, 0.0);
-    mode_controller.update(0.0, config);
-    config.mAuto = false;
-    ensure("Auto to Manual freezes without a spurious cut",
-           !mode_controller.update(20.0, config).mCut &&
-           mode_controller.activeSlot() == 1);
-}
-
-template<> template<>
-void prism_gate_test_object::test<4>()
-{
-    set_test_name("reference persistence, best-effort dangling arms, and gate_source exemption");
-    using namespace LLPrismLens;
-    GateSettings input;
-    input.mGateId.set("40000000-0000-0000-0000-000000000001");
-    input.mActive = true;
-    input.mMode = EGateMode::AUTO_CYCLE;
-    input.mIntervalSeconds = 11.5;
-    input.mPrewarmFrames = 4;
-    input.mProgramArmIndex = 0;
-    input.mPreviewArmIndex = 1;
-    input.mArmed.push_back(armedCamera(
-        "40000000-0000-0000-0000-000000000002",
-        "41000000-0000-0000-0000-000000000001", "Wide"));
-    input.mArmed.push_back(armedCamera(
-        "40000000-0000-0000-0000-000000000003",
-        "41000000-0000-0000-0000-000000000002", "Close"));
-
-    const LLSD encoded = gateSettingsToLLSD(input);
-    ensure("router schema has no program capture",
-           !encoded.has("program_capture_id"));
-    ensure("armed rows persist a capture reference, not a camera snapshot",
-           encoded["armed"][0].has("capture_id") &&
-           !encoded["armed"][0].has("camera"));
-    GateSettings output;
-    std::string reason;
-    ensure("serialized Gate parses", gateSettingsFromLLSD(encoded, output, &reason));
-    ensure("outer Gate fields round trip",
-           output.mGateId == input.mGateId && output.mActive == input.mActive &&
-           output.mMode == input.mMode && approxNear(output.mIntervalSeconds, 11.5) &&
-           output.mPrewarmFrames == 4 && output.mProgramArmIndex == 0 &&
-           output.mPreviewArmIndex == 1);
-    ensure("armed order and capture IDs round trip",
-           output.mArmed.size() == 2 &&
-           output.mArmed[0].mCaptureId == input.mArmed[0].mCaptureId &&
-           output.mArmed[1].mCaptureId == input.mArmed[1].mCaptureId);
-
-    std::vector<LLUUID> only_wide = { input.mArmed[0].mCaptureId };
-    gateFilterResolvableArms(output, only_wide);
-    ensure("dangling arm is dropped without failing the Gate",
-           output.mArmed.size() == 1 && output.mArmed[0].mLabel == "Wide");
-    ensure_equals("preview of a dropped arm is cleared",
-                  output.mPreviewArmIndex, -1);
-
-    LLSD gate_source_display = LLSD::emptyMap();
-    gate_source_display["gate_source"] = true;
-    ensure("gate_source with no capture_id is accepted",
-           !gate_source_display.has("capture_id") &&
-           gateDisplayCaptureReferenceAccepted(
-               gate_source_display["gate_source"].asBoolean(), false));
-    gate_source_display["capture_id"] =
-        LLUUID("41000000-0000-0000-0000-000000000099");
-    ensure("gate_source ignores a dangling compatibility hint",
-           gateDisplayCaptureReferenceAccepted(true, false));
-    ensure("non-gate display still rejects an absent or dangling capture",
-           !gateDisplayCaptureReferenceAccepted(false, false));
-    ensure("non-gate display still accepts a resolved capture",
-           gateDisplayCaptureReferenceAccepted(false, true));
-
-    LLSD old_scene = LLSD::emptyMap();
-    old_scene["prism_captures"] = LLSD::emptyArray();
-    old_scene["prism_displays"] = LLSD::emptyArray();
-    GateSettings absent_gate;
-    bool gate_present = true;
-    ensure("old scene is accepted by the Gate extractor",
-           gateSettingsFromScene(old_scene, absent_gate, gate_present, &reason));
-    ensure("old scene produces an empty inactive Gate",
-           !gate_present && !absent_gate.mActive && absent_gate.mArmed.empty());
-}
-
-template<> template<>
-void prism_gate_test_object::test<5>()
-{
-    set_test_name("feedback guard remains scoped to gate-subscribed monitors");
-    using namespace LLPrismLens;
-    const LLUUID display_object("50000000-0000-0000-0000-000000000001");
-    ensure("subscribed display cannot be its armed camera source",
-           gateFeedbackResult(display_object, display_object, true) ==
-               ERegistryResult::INVALID_CONFIGURATION);
-    ensure("fixed display does not create Gate feedback",
-           gateFeedbackResult(display_object, display_object, false) ==
-               ERegistryResult::OK);
-    ensure("different source and display are accepted",
-           gateFeedbackResult(
-               LLUUID("50000000-0000-0000-0000-000000000002"),
-               display_object, true) == ERegistryResult::OK);
-}
-
-namespace
-{
-struct CycleFixture
-{
-    LLPrismLens::GateReducer gate;
-    LLPrismLens::GateInput input;
-    bool pauseAck = true, accept = true;
-    CycleFixture()
-    {
-        using namespace LLPrismLens;
-        input.now = 1.; input.settings.mGateId.generate(); input.settings.mActive = true;
-        input.settings.mMode = EGateMode::AUTO_CYCLE; input.settings.mIntervalSeconds = 1.;
-        input.destinations.add(512, 512, true);
-        for (U32 i = 0; i < 3; ++i)
+        a.generate(); b.generate(); c.generate();
+        for (const auto& id : {a,b,c})
         {
-            GateSourceEvent source; source.handle.mId.generate(); source.handle.mGeneration = i + 1;
-            source.kind = ESourceSlotKind::CAMERA; source.available = source.permitted = source.ready = true;
-            source.error = .03; source.sampleAge = source.frameAge = 0.; source.frame = 1;
-            source.seekable = true; source.duration = 20.;
-            GateArmedCamera arm; arm.mArmId.generate(); arm.mCaptureId = source.handle.mId; arm.mLabel = "Feed";
-            input.sources.push_back(source); input.settings.mArmed.push_back(arm);
+            GateSourceInput source; source.id = id; source.name = id == a ? "A" : id == b ? "B" : "C";
+            source.hasOutput = source.fullQuality = true; source.publication = 10;
+            source.decoder = source.copiedDecoder = 50; source.currentImage = true;
+            in.sources.push_back(source); in.settings.mSources.push_back(id);
         }
+        in.demanded = in.hasGatePicture = true;
+        state.program = state.held = state.cursor = a;
+        state.text = "On air: A";
+        state.copyKey = {a, 1, 10};
     }
-    std::vector<LLPrismLens::GateAction> tick(F64 dt = .01)
+    U32 publications = 0, cookiePreparations = 0, cookieAttempts = 0;
+    GateCookieCache cookieCache;
+    bool cookieAllocationOk = true;
+    F64 copyRetryAfter = 0.;
+    GateCookieKey cookieKey() const
     {
-        using namespace LLPrismLens;
-        input.dt = dt; input.now += dt;
-        for (auto& source : input.sources) if (source.resumed && !source.eof) source.position += dt;
-        auto actions = gate.update(input);
-        input.activate = input.playVideos = input.take = input.changed = false;
-        for (auto& source : input.sources) ++source.frame;
-        for (const auto& action : actions)
+        GateCookieKey key; key.resolution = 512;
+        return gateCookieContentKey(state, key, [&](const LLUUID& id)
         {
-            if (action.kind == EGateAction::PROPOSE && accept) input.accepted = action.token;
-            for (auto& source : input.sources) if (source.handle.mId == action.handle.mId)
-            {
-                if (action.kind == EGateAction::WARM) source.admitted = true;
-                if (action.kind == EGateAction::SEEK || action.kind == EGateAction::RESUME)
-                { source.token = action.token; source.position = action.position;
-                  source.paused = action.kind == EGateAction::SEEK; source.resumed = !source.paused; }
-                if (action.kind == EGateAction::PARK || (action.kind == EGateAction::RETIRE && pauseAck))
-                { source.token = action.token; source.paused = true; source.resumed = false; }
-            }
-        }
-        return actions;
+            GateCookieSourceKey source; source.id=id;
+            for (const auto& s : in.sources) if(s.id==id)
+                { source.generation=1; source.publication=s.publication; source.available=s.hasOutput && s.fullQuality; }
+            return source;
+        });
     }
-    void settle(U32 n = 12) { while (n--) tick(); }
+    void refreshCookie()
+    {
+        if (!state.held.isNull() && !retainedOutput) return;
+        cookieCache.refresh(cookieKey(),in.now,[&](bool& failed)
+        {
+            ++cookieAttempts;
+            if (!cookieAllocationOk) { failed=true; return false; }
+            ++cookiePreparations; prepareCookie(); return true;
+        });
+    }
+    bool rollback = false, retainedOutput = true, cookieValid = true, publicationOk = true;
+    LLUUID cookieHeld;
+    F32 cookieAlpha = 0.f;
+    void prepareCookie()
+    {
+        cookieValid = state.held.isNull() || retainedOutput;
+        cookieHeld = state.held;
+        cookieAlpha = state.alpha;
+    }
+    GateProposal tick(F64 dt = .016, bool ok = true)
+    {
+        in.now += dt;
+        in.hasGatePicture = retainedOutput;
+        const auto p = gatePrepareStep(state, in); // real stepGate rejects pixel work
+        rollback |= p.rollback;
+        in.take.setNull();
+        if (!in.demanded || in.now < copyRetryAfter) { refreshCookie(); return p; }
+        const auto composed = gateStep(state, in); // composeGate re-steps after producers
+        const auto id = composed.copy.notNull() ? composed.copy : state.held;
+        const auto source = std::find_if(in.sources.begin(), in.sources.end(), [&](const auto& s) { return s.id == id; });
+        GateCopyKey key;
+        bool copied = false;
+        if (source != in.sources.end())
+        {
+            key = {id, 1, source->publication};
+            copied = ok && source->hasOutput && source->fullQuality &&
+                (composed.copy.notNull() || !(key == state.copyKey));
+        }
+        const bool accepted = composed.copy.notNull() ? copied : ok;
+        if (copied || (ok && state.held.isNull())) retainedOutput = true;
+        gateComposeApply(state, composed, accepted, copied, key, rollback,
+            [&](bool) { if (!publicationOk || (!ok && state.held.isNull())) return false;
+                ++publications; return true; });
+        refreshCookie();
+        return p;
+    }
+    void takeB() { in.take = b; tick(); }
+    void freshB() { ++in.sources[1].publication; ++in.sources[1].copiedDecoder; in.sources[1].decoder = in.sources[1].copiedDecoder; }
 };
-}
+typedef test_group<gate_data> gate_group;
+typedef gate_group::object gate_object;
+gate_group gate_tests("LLPrismGate");
 
-template<> template<> void prism_gate_test_object::test<6>()
+template<> template<> void gate_object::test<1>()
 {
-    using namespace LLPrismLens;
-    set_test_name("additive Gate defaults, strict enum/types and finite fade range");
-    GateSettings settings; settings.mGateId.generate();
-    const LLSD saved = gateSettingsToLLSD(settings);
-    GateSettings restored; ensure(gateSettingsFromLLSD(saved, restored));
-    ensure(restored.mTransition == EGateTransition::CUT && restored.mFadeOverBudget == EGateFadeOverBudget::CUT_INSTEAD);
-    ensure(restored.mVideoDwell == EGateVideoDwell::INTERVAL && restored.mCrossfadeSeconds == .5);
-    for (const auto* key : {"transition", "fade_over_budget", "video_dwell"})
-    { LLSD bad = saved; bad[key] = "unknown"; ensure(!gateSettingsFromLLSD(bad, restored)); }
-    for (F64 length : {0., .09, 3.1, std::numeric_limits<F64>::infinity(), std::numeric_limits<F64>::quiet_NaN()})
-    { LLSD bad = saved; bad["crossfade_seconds"] = length; ensure(!gateSettingsFromLLSD(bad, restored)); }
-    LLSD old = saved; for (const auto* key : {"transition", "crossfade_seconds", "fade_over_budget", "video_dwell"}) old.erase(key);
-    ensure(gateSettingsFromLLSD(old, restored)); ensure(restored.mCrossfadeSeconds == .5);
-    ensure(MediaUrlSource().mOnCut == EMediaOnCut::LIVE);
+    set_test_name("g1 Gate defaults and LLSD round trip strict settings");
+    GateSource s, restored;
+    ensure(s.mMode == EGateMode::MANUAL && s.mTransition == EGateTransition::CUT && s.mOffAir == EGateOffAir::KEEP_PLAYING);
+    ensure(s.mIntervalSeconds == 8. && s.mCrossfadeSeconds == .5);
+    s.mSources = {a,b}; s.mProgramId = b; s.mMode = EGateMode::AUTO_CYCLE;
+    s.mTransition = EGateTransition::CROSSFADE; s.mOffAir = EGateOffAir::PAUSE;
+    const auto saved = gateSourceToLLSD(s); ensure(gateSourceFromLLSD(saved, restored));
+    ensure(restored.mSources == s.mSources && restored.mProgramId == b && restored.mOffAir == EGateOffAir::PAUSE);
+    for (const auto& key : {"gate_interval", "gate_crossfade_seconds"})
+        for (F64 value : {-1., 0., 121., std::numeric_limits<F64>::quiet_NaN()})
+        { auto bad = saved; bad[key] = value; ensure(!gateSourceFromLLSD(bad, restored)); }
+    for (const auto& key : {"gate_mode", "gate_transition", "gate_off_air"})
+    { auto bad = saved; bad[key] = "unknown"; ensure(!gateSourceFromLLSD(bad, restored)); }
 }
-
-template<> template<> void prism_gate_test_object::test<7>()
+template<> template<> void gate_object::test<2>()
 {
-    using namespace LLPrismLens;
-    set_test_name("Live commit-time math, circular tolerance, unknown length and Loop off");
-    ensure(approxNear(gatePosition(EMediaOnCut::LIVE, true, 3., 10., 35., 12., true, .04).seconds, 4.));
-    const auto terminal = gatePosition(EMediaOnCut::LIVE, true, 3., 10., 35., 12., false, .04);
-    ensure(terminal.terminal && approxNear(terminal.seconds, 11.96));
-    const auto unknown = gatePosition(EMediaOnCut::LIVE, true, 3., 10., 35., 0., true, .04);
-    ensure(unknown.restart && unknown.seconds == 0. && unknown.reason == "Live needs a known length - restarting");
-    ensure(gatePosition(EMediaOnCut::RESUME, true, 3., 10., 35., 12., true, .04).seconds == 3.);
-    ensure(gatePosition(EMediaOnCut::RESTART, true, 3., 10., 35., 12., true, .04).seconds == 0.);
-    ensure(gatePosition(EMediaOnCut::LIVE, false, 3., 10., 35., 12., true, .04).seconds == 0.);
-    ensure(approxNear(gatePositionDistance(.02, 9.98, 10., true), .04));
-    ensure(gatePositionQualified(.1, .05, .1, .04, .04));
-    ensure(!gatePositionQualified(.101, .05, .1, .04, .04));
-    ensure(!gatePositionQualified(0., .15, .1, .04, .04));
-    ensure(!gatePositionQualified(0., .05, .501, .04, .04));
-    ensure(!gatePosition(EMediaOnCut::LIVE, true, NAN, 10., 20., 10., true, .04).valid);
-}
-
-template<> template<> void prism_gate_test_object::test<8>()
-{
-    using namespace LLPrismLens;
-    set_test_name("cold activation prewarm zero, source readiness and publication acknowledgement");
-    CycleFixture f; f.input.settings.mPrewarmFrames = 0; f.input.sources[0].ready = false;
-    f.tick(); ensure(f.gate.phase() == EGatePhase::WARMING && f.gate.program().mId.isNull());
-    f.tick(3.); ensure("initial bootstrap is not a boundary overrun", f.gate.program().mId.isNull() && f.gate.incoming().mId.notNull());
-    f.input.sources[0].ready = true; f.accept = false; f.tick();
-    ensure("proposal alone cannot publish", f.gate.program().mId.isNull());
-    f.accept = true; f.input.accepted = f.gate.token(); f.tick();
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-}
-
-template<> template<> void prism_gate_test_object::test<9>()
-{
-    using namespace LLPrismLens;
-    set_test_name("bounded enabled-order cycle skips refusal and never catches up");
-    CycleFixture f; f.input.sources[1].refusal = "This file isn't a video";
-    f.settle(); ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-    f.settle(); f.tick(1.1); f.settle();
-    ensure(f.gate.program().mId == f.input.sources[2].handle.mId);
-    ensure(f.gate.status(f.input.sources[1].handle).find("Skipped: ") == 0);
-    f.tick(100.); // one transition at most, no catch-up chain
-    ensure(f.gate.program().mId == f.input.sources[2].handle.mId);
-}
-
-template<> template<> void prism_gate_test_object::test<10>()
-{
-    using namespace LLPrismLens;
-    set_test_name("private grant scope includes disabled arms; restored active camera keeps Program");
-    CycleFixture f; f.input.sources[1].kind = f.input.sources[2].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.settings.mArmed[2].mEnabled = false;
-    f.gate.restoreProgram(f.input.sources[0].handle, f.input.now);
-    f.tick(); ensure(!f.gate.granted(f.input.sources[1].handle));
-    ensure(f.gate.status(f.input.sources[1].handle) == "Waiting for Play videos");
-    f.input.playVideos = true; f.tick();
-    ensure(f.gate.granted(f.input.sources[1].handle) && f.gate.granted(f.input.sources[2].handle));
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-    f.input.settings.mActive = false; f.tick(); ensure(!f.gate.granted(f.input.sources[1].handle));
-}
-
-template<> template<> void prism_gate_test_object::test<11>()
-{
-    using namespace LLPrismLens;
-    set_test_name("one charged warm role and delayed retirement barrier including reset");
-    CycleFixture f; for (auto& s : f.input.sources) { s.kind = ESourceSlotKind::MEDIA_URL; s.onCut = EMediaOnCut::RESTART; }
-    f.input.activate = true; f.pauseAck = false; f.settle();
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-    f.settle(); ensure(f.gate.charges() <= 2);
-    f.tick(1.); f.settle(); ensure(f.gate.charges() == 2);
-    f.tick(2.1); f.settle(); ensure("no third role before retirement receipt", f.gate.charges() == 2);
-    f.gate.reset(); f.tick(); ensure("reset retains outstanding charges", f.gate.charges() == 2);
-    for (auto& s : f.input.sources) s.retired = true;
-    f.tick(); ensure(f.gate.charges() == 0);
-}
-
-template<> template<> void prism_gate_test_object::test<12>()
-{
-    using namespace LLPrismLens;
-    set_test_name("deterministic fade arithmetic includes pass count, pixels, variants and rate-independent caps");
-    GateFadeDemand budget; for (U32 i = 0; i < 8; ++i) budget.add(1024, 1024, true);
-    ensure(budget.fits()); budget.add(1, 1, false); ensure(!budget.fits());
-    GateFadeDemand wide; wide.add(1920, 1080, false); ensure(wide.fits()); wide.add(1921, 1080, false); ensure(!wide.fits());
-    GateFadeDemand pixels; for (U32 i = 0; i < 5; ++i) pixels.add(1920, 1080, false); ensure(!pixels.fits());
-    GateFadeDemand variant; variant.add(512, 512, true, false); ensure(!variant.fits());
-}
-
-template<> template<> void prism_gate_test_object::test<13>()
-{
-    using namespace LLPrismLens;
-    set_test_name("over-budget Cut instead, Fade anyway and bounded Hold");
-    for (auto policy : {EGateFadeOverBudget::CUT_INSTEAD, EGateFadeOverBudget::FADE_ANYWAY, EGateFadeOverBudget::HOLD})
-    {
-        CycleFixture f; f.input.settings.mTransition = EGateTransition::CROSSFADE;
-        f.input.settings.mFadeOverBudget = policy; f.input.destinations.passes = 9;
-        f.settle(); f.tick(1.1); f.settle();
-        if (policy == EGateFadeOverBudget::CUT_INSTEAD)
-        { ensure(f.gate.program().mId == f.input.sources[1].handle.mId); ensure(f.gate.reason() == "Crossfade over budget - cut"); }
-        else if (policy == EGateFadeOverBudget::FADE_ANYWAY)
-        { ensure(f.gate.phase() == EGatePhase::CROSSFADING); f.tick(.6); f.tick(); ensure(f.gate.program().mId == f.input.sources[1].handle.mId); }
-        else
-        {
-            ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-            ensure(f.gate.reason() == "Crossfade over budget - holding (up to 2 s)");
-            f.tick(2.01); ensure(f.gate.reason() == "Crossfade over budget - hold timed out");
-            ensure(f.gate.program().mId == f.input.sources[0].handle.mId && !f.gate.pending());
-        }
-    }
-}
-
-template<> template<> void prism_gate_test_object::test<14>()
-{
-    using namespace LLPrismLens;
-    set_test_name("Manual queued Take and Preview replacement keep Program until ready");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL; f.settle();
-    f.input.settings.mPreviewArmIndex = 1; f.input.sources[1].ready = false;
-    f.input.changed = f.input.take = true; f.tick();
-    ensure(f.gate.pending() && f.gate.program().mId == f.input.sources[0].handle.mId);
-    f.input.settings.mPreviewArmIndex = 2; f.input.changed = true; f.tick(); f.input.take = true; f.settle();
-    ensure(f.gate.program().mId == f.input.sources[2].handle.mId);
-}
-
-template<> template<> void prism_gate_test_object::test<15>()
-{
-    using namespace LLPrismLens;
-    set_test_name("borrowed face readiness never emits private transport or volume");
-    CycleFixture f; for (auto& s : f.input.sources) s.kind = ESourceSlotKind::MEDIA_FACE;
-    for (U32 i = 0; i < 160; ++i)
-    {
-        const auto actions = f.tick(.02);
-        for (const auto& action : actions)
-            ensure(action.kind == EGateAction::WARM || action.kind == EGateAction::PROPOSE || action.kind == EGateAction::ENVELOPE);
-        ensure(f.gate.charges() == 0);
-    }
-}
-
-template<> template<> void prism_gate_test_object::test<16>()
-{
-    using namespace LLPrismLens;
-    set_test_name("single-arm Play-to-end holds; media kill switch retains camera-only routing");
-    CycleFixture f; f.input.settings.mArmed.resize(1); f.input.sources.resize(1);
-    f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL; f.input.activate = true;
-    f.input.settings.mVideoDwell = EGateVideoDwell::PLAY_TO_END;
-    f.settle(); f.input.sources[0].eof = true; f.tick(21.); f.settle();
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-    CycleFixture camera; camera.input.mediaEnabled = false; camera.settle(); camera.tick(1.1); camera.settle();
-    ensure(camera.gate.program().mId == camera.input.sources[1].handle.mId);
-}
-
-template<> template<> void prism_gate_test_object::test<17>()
-{
-    using namespace LLPrismLens;
-    set_test_name("predicted Play-to-end and wrap-window Cut win before matching EOF/native repeat");
-    CycleFixture f; f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.activate = true; f.input.settings.mVideoDwell = EGateVideoDwell::PLAY_TO_END;
-    f.settle(); f.input.sources[0].position = 19.99; f.tick();
-    ensure("predicted end proposes without EOF", !f.input.sources[0].eof && f.input.accepted != 0);
-    f.tick(); ensure(f.gate.program().mId == f.input.sources[1].handle.mId);
-    CycleFixture wrap; wrap.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    wrap.input.activate = true; wrap.settle();
-    wrap.input.sources[0].duration = 1.; wrap.input.sources[0].position = .99;
-    wrap.input.now = 2.01;
-    const auto actions = wrap.tick();
-    ensure("ready interval boundary in wrap window proposes early", std::any_of(actions.begin(), actions.end(),
-        [](const auto& a) { return a.kind == EGateAction::PROPOSE; }));
-    ensure("ready cut never asks outgoing input to seek/restart", std::none_of(actions.begin(), actions.end(),
-        [&wrap](const auto& a) { return a.kind == EGateAction::SEEK && a.handle.mId == wrap.input.sources[0].handle.mId; }));
-}
-
-template<> template<> void prism_gate_test_object::test<18>()
-{
-    using namespace LLPrismLens;
-    set_test_name("starvation pauses seek/frame clock; boundary cap and refusal stay bounded");
-    CycleFixture f; f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.activate = true; f.input.sources[0].opportunity = false; f.tick();
-    f.tick(11.); ensure(f.gate.incoming().mId.notNull());
-    f.input.sources[0].opportunity = true; f.tick(10.1);
-    ensure(f.gate.status(f.input.sources[0].handle) == "Skipped: Seek/frame deadline");
-    CycleFixture boundary; boundary.settle(); boundary.input.sources[1].ready = false;
-    boundary.tick(1.); boundary.tick(2.01);
-    ensure(boundary.gate.program().mId == boundary.input.sources[0].handle.mId);
-    ensure(boundary.gate.status(boundary.input.sources[1].handle) == "Skipped: Take timed out");
-}
-
-template<> template<> void prism_gate_test_object::test<19>()
-{
-    using namespace LLPrismLens;
-    set_test_name("restored private-only Gate becomes eligible on Play videos; unknown EOF advances once");
-    CycleFixture f; f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.settings.mArmed.resize(1); f.input.sources.resize(1);
-    f.input.settings.mProgramArmIndex = -1;
-    f.tick(); ensure(f.gate.program().mId.isNull());
-    f.input.playVideos = true; f.settle(); ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-    CycleFixture eof; eof.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    eof.input.sources[0].duration = 0.; eof.input.activate = true;
-    eof.input.settings.mVideoDwell = EGateVideoDwell::PLAY_TO_END;
-    eof.settle(); eof.tick(5.); ensure(eof.gate.program().mId == eof.input.sources[0].handle.mId);
-    eof.input.sources[0].eof = true; eof.tick(); eof.tick();
-    ensure(eof.gate.program().mId == eof.input.sources[1].handle.mId);
-}
-
-template<> template<> void prism_gate_test_object::test<20>()
-{
-    using namespace LLPrismLens;
-    set_test_name("idle release retains bookkeeping and kill switch cancels fade without a third role");
-    CycleFixture f; f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.activate = true; f.settle();
-    f.input.settings.mMode = EGateMode::MANUAL; f.input.settings.mPreviewArmIndex = 1;
-    f.input.take = true; f.settle(12); f.tick();
-    const auto actions = f.tick(61.);
-    ensure(std::any_of(actions.begin(), actions.end(), [](const auto& a) { return a.kind == EGateAction::RELEASE; }));
-    ensure(f.gate.status(f.input.sources[0].handle) == "Idle video released - bookmark kept");
-    CycleFixture fade; fade.input.settings.mTransition = EGateTransition::CROSSFADE;
-    fade.settle(); fade.tick(1.1); fade.settle(); ensure(fade.gate.phase() == EGatePhase::CROSSFADING);
-    fade.input.mediaEnabled = false; fade.tick();
-    ensure(fade.gate.phase() != EGatePhase::CROSSFADING && !fade.gate.pending());
-}
-
-template<> template<> void prism_gate_test_object::test<21>()
-{
-    using namespace LLPrismLens;
-    set_test_name("URL On cut and display/projector Gate subscription serialization compatibility");
-    LLSD slot = LLSD::emptyMap(); EMediaOnCut policy;
-    ensure(gateOnCutFromLLSD(slot, policy) && policy == EMediaOnCut::LIVE);
-    for (auto authored : {EMediaOnCut::RESTART, EMediaOnCut::RESUME, EMediaOnCut::LIVE})
-    { slot["source_on_cut"] = gateOnCutName(authored); ensure(gateOnCutFromLLSD(slot, policy) && policy == authored); }
-    slot["source_on_cut"] = "future"; ensure(!gateOnCutFromLLSD(slot, policy));
-    slot["source_on_cut"] = 2; ensure(!gateOnCutFromLLSD(slot, policy));
-    LLSD projector = LLSD::emptyMap(); bool gate = true;
-    ensure(gateOutputSourceFromLLSD(projector, gate) && !gate);
-    projector["gate_source"] = true; projector["capture_id"] = LLUUID::null;
-    ensure(gateOutputSourceFromLLSD(projector, gate) && gate);
-    ensure(gateDisplayCaptureReferenceAccepted(gate, false));
-    projector["gate_source"] = "true"; ensure(!gateOutputSourceFromLLSD(projector, gate));
-}
-template<> template<> void prism_gate_test_object::test<22>()
-{
-    using namespace LLPrismLens;
-    set_test_name("Manual private READY stays parked through a long dwell until Take");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL;
-    f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.sources[1].onCut = EMediaOnCut::RESTART;
-    f.input.settings.mPreviewArmIndex = 1; f.input.activate = true;
-    f.settle(30);
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-    ensure(f.gate.phase() == EGatePhase::READY && f.input.sources[1].paused);
-    for (U32 i = 0; i < 20; ++i)
-    {
-        const auto actions = f.tick(3.);
-        ensure(std::none_of(actions.begin(), actions.end(), [](const auto& a) { return a.kind == EGateAction::RESUME; }));
-    }
-    f.input.take = true; f.settle(20);
-    ensure(f.gate.program().mId == f.input.sources[1].handle.mId);
-}
-template<> template<> void prism_gate_test_object::test<23>()
-{
-    using namespace LLPrismLens;
-    set_test_name("pending Manual Take coalesces without re-seeking or resetting its proposal");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL;
-    f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.settings.mPreviewArmIndex = 1; f.input.activate = true; f.settle(20); f.accept = false;
-    U32 seeks = 0; U64 proposal = 0;
-    for (U32 i = 0; i < 10; ++i)
-    {
-        f.input.take = true;
-        for (const auto& a : f.tick())
-        {
-            if (a.kind == EGateAction::SEEK) ++seeks;
-            if (a.kind == EGateAction::PROPOSE) { ensure(!proposal); proposal = a.token; }
-        }
-    }
-    ensure_equals(seeks, 1u); ensure(proposal != 0 && f.gate.pending());
-    f.input.accepted = proposal; f.tick(); ensure(f.gate.program().mId == f.input.sources[1].handle.mId);
-}
-
-template<> template<> void prism_gate_test_object::test<24>()
-{
-    using namespace LLPrismLens;
-    set_test_name("250ms clock steps, one paused-seek image, held pause, and observed resume baseline");
-    LLPluginGateClock clock;
-    clock.sample(1., 0., true, false, .0445);
-    clock.sample(1.25, .25, true, false, .0445);
-    auto s = clock.sample(1.5, .5, true, false, .0445);
-    ensure(clock.period() >= .249 && s.error < .15);
-    clock.seek(0.);
-    s = clock.sample(1.51, 0., false, true, .0445);
-    ensure(gatePositionQualified(s.position, s.error, 0., 0., .0445));
-    s = clock.sample(60., 0., false, true, .0445);
-    ensure_equals(s.position, 0.);
-    clock.sample(60.01, 0., true, false, .0445);
-    s = clock.sample(60.05, 0., true, false, .0445);
-    ensure(s.position > .039 && s.position < .041);
-    ensure(gatePositionQualified(s.position, s.error + .01, .04, .01, .0445));
-    ensure(!gatePositionQualified(s.position, s.error, .6, .01, .0445));
-    ensure(!gatePositionQualified(.2, s.error, 0., .01, .0445));
-    clock.reset(); s = clock.sample(1., 0., true, false, .0445); ensure(s.error >= .15);
-}
-
-template<> template<> void prism_gate_test_object::test<25>()
-{
-    using namespace LLPrismLens;
-    set_test_name("cold Live waits for admitted metadata instead of latching transient unknown length");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL;
-    f.input.settings.mPreviewArmIndex = 1; f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.sources[1].metadataReady = false; f.input.sources[1].duration = 0.; f.input.activate = true;
-    f.settle(20);
-    ensure(f.gate.status(f.input.sources[1].handle) != "Live needs a known length - restarting");
-    f.input.sources[1].metadataReady = true; f.input.sources[1].duration = 20.; f.settle(20);
-    ensure(f.gate.phase() == EGatePhase::READY);
-}
-template<> template<> void prism_gate_test_object::test<26>()
-{
-    using namespace LLPrismLens;
-    set_test_name("non-loop clock clamps at EOF and a reached predicted-end cut stays due");
-    ensure_equals(LLPluginGateClock::boundedPosition(20.1, 20., false), 20.);
-    ensure(LLPluginGateClock::boundedPosition(20.1, 20., true) < .11);
-    CycleFixture f; f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.settings.mVideoDwell = EGateVideoDwell::PLAY_TO_END; f.input.activate = true; f.settle();
-    f.input.sources[1].ready = false; f.input.sources[0].position = 19.95; f.tick(); f.tick(.1);
-    f.input.sources[0].eof = true; f.input.sources[0].position = 0.; f.tick();
-    f.input.sources[1].ready = true; f.settle(3);
-    ensure(f.gate.program().mId == f.input.sources[1].handle.mId);
-}
-template<> template<> void prism_gate_test_object::test<27>()
-{
-    using namespace LLPrismLens;
-    set_test_name("kill-off preserves standalone Play; known early EOF waits for the predicted end");
-    ensure(!gateInterceptsPlay(true, false, true)); ensure(gateInterceptsPlay(true, true, true));
-    ensure(!gateInterceptsPlay(false, true, true)); ensure(!gateInterceptsPlay(true, true, false));
-    CycleFixture f; f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.settings.mVideoDwell = EGateVideoDwell::PLAY_TO_END; f.input.activate = true; f.settle();
-    f.input.sources[0].position = 19.; f.tick();
-    f.input.sources[0].eof = true; f.tick(.1); f.settle(3);
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-    f.tick(1.); f.settle(3); ensure(f.gate.program().mId == f.input.sources[1].handle.mId);
-}
-
-template<> template<> void prism_gate_test_object::test<28>()
-{
-    using namespace LLPrismLens;
-    set_test_name("outgoing removal during a private fade promotes the current incoming image through publication");
-    CycleFixture f; f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.settings.mTransition = EGateTransition::CROSSFADE; f.input.activate = true;
-    f.settle(); f.tick(1.1); f.settle(10); ensure(f.gate.phase() == EGatePhase::CROSSFADING);
-    f.tick(.2); f.input.sources[0].available = false; f.tick(); f.tick();
-    ensure(f.gate.program().mId == f.input.sources[1].handle.mId);
-}
-
-template<> template<> void prism_gate_test_object::test<29>()
-{
-    using namespace LLPrismLens;
-    set_test_name("Hold keeps a fixed-start private candidate paused until budget fits");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL; f.input.settings.mPreviewArmIndex = 1;
-    f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL; f.input.sources[1].onCut = EMediaOnCut::RESTART;
-    f.input.settings.mTransition = EGateTransition::CROSSFADE; f.input.settings.mFadeOverBudget = EGateFadeOverBudget::HOLD;
-    f.input.activate = true; f.input.destinations.qualified = false; f.settle(20);
-    ensure(f.input.sources[1].paused); f.input.take = true; f.settle(10);
-    for (U32 i = 0; i < 5; ++i)
-        for (const auto& a : f.tick(.1)) ensure(a.kind != EGateAction::RESUME);
-    f.input.destinations.qualified = true; f.settle(15);
-    ensure(f.gate.phase() == EGatePhase::CROSSFADING);
-}
-template<> template<> void prism_gate_test_object::test<30>()
-{
-    using namespace LLPrismLens;
-    set_test_name("Hold budget loss during private pre-roll parks once and re-finalizes when it fits");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL; f.input.settings.mPreviewArmIndex = 1;
-    f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL; f.input.sources[1].onCut = EMediaOnCut::RESTART;
-    f.input.settings.mTransition = EGateTransition::CROSSFADE; f.input.settings.mFadeOverBudget = EGateFadeOverBudget::HOLD;
-    f.input.activate = true; f.settle(20); f.input.take = true;
-    bool resumed = false;
-    for (U32 i = 0; i < 12 && !resumed; ++i)
-        for (const auto& a : f.tick()) if (a.kind == EGateAction::RESUME) resumed = true;
-    ensure(resumed); f.input.destinations.qualified = false;
-    const auto park = f.tick(); ensure(std::any_of(park.begin(), park.end(), [](const auto& a) { return a.kind == EGateAction::PARK; }));
-    f.tick(.5); ensure(f.input.sources[1].paused);
-    f.input.destinations.qualified = true; f.settle(15); ensure(f.gate.phase() == EGatePhase::CROSSFADING);
-}
-
-template<> template<> void prism_gate_test_object::test<31>()
-{
-    using namespace LLPrismLens;
-    set_test_name("early known EOF does not pin an obsolete future fade length");
-    CycleFixture f; f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.settings.mVideoDwell = EGateVideoDwell::PLAY_TO_END;
-    f.input.settings.mTransition = EGateTransition::CROSSFADE; f.input.settings.mCrossfadeSeconds = 3.;
-    f.input.activate = true; f.settle(); f.input.sources[0].position = 16.; f.tick();
-    f.input.sources[0].eof = true; f.tick(.1);
-    f.input.settings.mCrossfadeSeconds = .1; f.input.changed = true; f.tick(1.1); f.settle(3);
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId && f.gate.phase() != EGatePhase::CROSSFADING);
-}
-
-// Fix round 1: exercise the production protocol, including asynchronous frames.
-template<> template<> void prism_gate_test_object::test<32>()
-{
-    using namespace LLPrismLens;
-    set_test_name("fade endpoint remains an incoming blend until the output ACK");
-    for (double endpoint : {.5, .50001, .51667})
-    {
-        CycleFixture f; f.input.settings.mTransition = EGateTransition::CROSSFADE;
-        f.settle(); f.tick(1.1); f.settle(); ensure(f.gate.phase() == EGatePhase::CROSSFADING);
-        f.accept = false; const auto outgoing = f.gate.program();
-        const auto actions = f.tick(endpoint);
-        bool proposed = false;
-        for (const auto& a : actions) if (a.kind == EGateAction::PROPOSE)
-        { proposed = true; ensure("endpoint stays a two-feed publication", a.seconds > 0.); }
-        ensure(proposed && f.gate.alpha() == 1. && f.gate.program().mId == outgoing.mId);
-        f.input.accepted = f.gate.token(); f.tick();
-        ensure(f.gate.program().mId != outgoing.mId);
-    }
-}
-template<> template<> void prism_gate_test_object::test<33>()
-{
-    using namespace LLPrismLens;
-    set_test_name("first Restart/Resume contribution stays within 150 ms of TARGET, never target plus dispatch delay");
-    for (auto mode : {EMediaOnCut::RESTART, EMediaOnCut::RESUME, EMediaOnCut::LIVE})
-        for (F64 advancement : {.08, .18, .5})
-        {
-            CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL;
-            f.input.settings.mPreviewArmIndex = 1; f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-            f.input.sources[1].onCut = mode;
-            if (mode == EMediaOnCut::RESUME) f.input.settings.mProgramArmIndex = 1;
-            f.input.activate = true; f.settle(30);
-            if (mode == EMediaOnCut::RESUME)
-            {
-                // Contribute, leave air, and receive the real retirement ACK so
-                // Resume measures a nonzero bookmark, not its cold zero fallback.
-                f.input.settings.mPreviewArmIndex = 0; f.input.changed = f.input.take = true; f.settle(20);
-                ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-                f.input.settings.mPreviewArmIndex = 1; f.input.changed = true; f.settle(30);
-                ensure("Resume has a contributed bookmark", f.gate.targetPosition() > 0.);
-            }
-            f.input.take = true; bool resumed = false;
-            for (U32 i = 0; i < 15 && !resumed; ++i)
-                for (const auto& a : f.tick()) if (a.kind == EGateAction::RESUME) resumed = true;
-            ensure(resumed);
-            f.tick(advancement); f.tick();
-            const auto& incoming = f.input.sources[1];
-            const bool committed = f.gate.program().mId == incoming.handle.mId;
-            ensure_equals("E=30ms plus actual advancement must fit 150ms", committed, advancement + incoming.error <= .15);
-            if (committed) ensure(gatePositionDistance(incoming.position, f.gate.targetPosition(), incoming.duration, incoming.loop) + incoming.error <= .150001);
-        }
-    CycleFixture delayed; delayed.input.settings.mMode = EGateMode::MANUAL;
-    delayed.input.settings.mPreviewArmIndex = 1; delayed.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    delayed.input.sources[1].onCut = EMediaOnCut::RESTART; delayed.input.activate = true; delayed.settle(30);
-    delayed.input.take = true; U64 resume = 0;
-    for (U32 i = 0; i < 15 && !resume; ++i)
-        for (const auto& a : delayed.tick()) if (a.kind == EGateAction::RESUME) resume = a.token;
-    ensure(resume != 0);
-    delayed.input.now += .5; // command in transit, no playback advancement
-    delayed.input.sources[1].position = delayed.gate.targetPosition();
-    delayed.tick(); delayed.tick();
-    ensure("dispatch delay must not be counted as playback", delayed.gate.program().mId == delayed.input.sources[1].handle.mId);
-}
-template<> template<> void prism_gate_test_object::test<34>()
-{
-    using namespace LLPrismLens;
-    set_test_name("READY successor never expires or cuts a long Play-to-end Program mid-clip");
-    CycleFixture f; f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.sources[0].duration = 7200.; f.input.settings.mVideoDwell = EGateVideoDwell::PLAY_TO_END;
-    f.input.activate = true; f.settle(30);
-    for (U32 i = 0; i < 200; ++i)
-    {
-        f.tick(10.);
-        ensure("READY is not subject to warm deadlines", f.gate.phase() == EGatePhase::READY);
-        f.tick();
-        ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-        ensure(f.gate.phase() == EGatePhase::READY);
-    }
-}
-template<> template<> void prism_gate_test_object::test<35>()
-{
-    using namespace LLPrismLens;
-    set_test_name("deactivation retains the accepted Program and revokes private grants");
-    CycleFixture f; f.input.activate = true; f.settle(); const auto accepted = f.gate.program();
-    f.input.settings.mActive = false; f.tick();
-    ensure(f.gate.phase() == EGatePhase::INACTIVE);
-    ensure("outputs keep their last accepted feed", f.gate.program().mId == accepted.mId);
-}
-template<> template<> void prism_gate_test_object::test<36>()
-{
-    using namespace LLPrismLens;
-    set_test_name("failed Auto warm candidate advances to healthy later arm in the same pass");
-    CycleFixture f; f.input.sources[1].ready = false; f.settle();
-    f.tick(1.1); f.tick(2.1); f.settle(5);
-    ensure("B failure cannot starve C", f.gate.program().mId == f.input.sources[2].handle.mId);
-}
-template<> template<> void prism_gate_test_object::test<37>()
-{
-    using namespace LLPrismLens;
-    set_test_name("cold preferred index enumerates each arm including zero after media disable");
-    CycleFixture f; f.input.settings.mArmed.resize(2); f.input.sources.resize(2);
-    f.input.settings.mProgramArmIndex = 1; f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.mediaEnabled = false; f.settle(5);
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-}
-template<> template<> void prism_gate_test_object::test<38>()
-{
-    using namespace LLPrismLens;
-    set_test_name("disabling WARMING or READY Auto arm cancels its pending Take");
-    for (bool ready : {false, true})
-    {
-        CycleFixture f; f.input.sources[1].ready = ready; f.settle();
-        ensure(f.gate.incoming().mId == f.input.sources[1].handle.mId);
-        f.input.settings.mArmed[1].mEnabled = false; f.input.changed = true;
-        f.tick(); f.tick(1.1); f.settle(3);
-        ensure("disabled candidate must never become Program", f.gate.program().mId == f.input.sources[2].handle.mId);
-    }
-}
-template<> template<> void prism_gate_test_object::test<39>()
-{
-    using namespace LLPrismLens;
-    set_test_name("activation claims audible off-air URLs even with no Manual Preview or enabled Auto arm");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL; f.input.settings.mPreviewArmIndex = -1;
-    f.input.sources[1].kind = f.input.sources[2].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.sources[1].resident = f.input.sources[2].resident = true;
-    f.input.settings.mArmed[2].mEnabled = false; f.input.activate = true;
-    const auto actions = f.tick();
-    for (U32 i : {1u, 2u})
-    {
-        ensure(std::any_of(actions.begin(), actions.end(), [&](const auto& a) { return a.kind == EGateAction::CLAIM && a.handle.mId == f.input.sources[i].handle.mId; }));
-        ensure(std::any_of(actions.begin(), actions.end(), [&](const auto& a) { return a.kind == EGateAction::RETIRE && a.handle.mId == f.input.sources[i].handle.mId; }));
-        ensure(f.gate.charged(f.input.sources[i].handle));
-    }
-    f.tick(); ensure_equals(f.gate.charges(), 0u);
-}
-template<> template<> void prism_gate_test_object::test<40>()
-{
-    using namespace LLPrismLens;
-    set_test_name("camera watch honors authored prewarm lead with a minimum of one frame");
-    for (U32 frames : {0u, 1u, 3u, 5u})
-    {
-        CycleFixture f; f.input.settings.mIntervalSeconds = 30.; f.input.settings.mPrewarmFrames = frames;
-        f.settle(); f.input.sources[1].frame = 1; // cold/stale retained output
-        ensure(!f.gate.wantsImage(f.input));
-        f.tick(29. - f.input.now + 1.02); ensure(!f.gate.wantsImage(f.input));
-        // Use ordinary frame steps, never count the preceding long wall-clock step as a frame.
-        f.input.now = 31.04 - std::max(1u, frames) * .02; f.input.dt = .02; f.gate.update(f.input);
-        ensure(f.gate.wantsImage(f.input));
-    }
-}
-template<> template<> void prism_gate_test_object::test<41>()
-{
-    using namespace LLPrismLens;
-    set_test_name("output acknowledgement invalidates qualification lost during delayed preparation");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL; f.input.settings.mPreviewArmIndex = 1;
-    f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL; f.input.sources[1].onCut = EMediaOnCut::RESTART;
-    f.input.activate = true; f.settle(20); f.accept = false; f.input.take = true;
-    U64 proposal = 0;
-    for (U32 i = 0; i < 20 && !proposal; ++i)
-        for (const auto& a : f.tick()) if (a.kind == EGateAction::PROPOSE) proposal = a.token;
-    ensure(proposal != 0);
-    f.input.now += .2; f.input.sources[1].position += .2;
-    f.gate.acknowledgeOutputs(proposal, f.input);
-    ensure("stale proposal cannot publish or unmute", f.gate.program().mId != f.input.sources[1].handle.mId && f.gate.proposal() == 0);
-}
-
-template<> template<> void prism_gate_test_object::test<42>()
-{
-    using namespace LLPrismLens;
-    set_test_name("offscreen borrowed-face watch supplies admission-sized demand before routing");
-    CycleFixture f; f.input.sources[1].kind = ESourceSlotKind::MEDIA_FACE;
-    f.input.sources[1].ready = false; f.settle();
-    f.input.now = 2.01; f.input.frameDt = .02; f.input.dt = .02; f.gate.update(f.input);
-    ensure(f.gate.wantsImage(f.input));
-    U32 width = 0, height = 0; F64 area = 0.;
-    ensure(gateImageDemand(1, 1024, 768, width, height, area));
-    ensure(width == 1024 && height == 768 && area == 1024. * 768.);
-    f.input.sources[1].admitted = area > 0.; f.input.sources[1].ready = true;
-    f.tick(1.1); f.tick(); ensure(f.gate.program().mId == f.input.sources[1].handle.mId);
-    ensure(!gateImageDemand(0, 1024, 768, width, height, area));
-}
-template<> template<> void prism_gate_test_object::test<43>()
-{
-    using namespace LLPrismLens;
-    set_test_name("production allocator and reducer reserve a fresh cold successor within each prewarm lead and commit");
-    for (auto kind : {ESourceSlotKind::CAMERA, ESourceSlotKind::MEDIA_FACE, ESourceSlotKind::MEDIA_URL})
-        for (U32 lead : {0u, 1u, 3u, 5u})
-            for (F32 capacity : {1.f, 2.f, 30.f, 60.f})
-            {
-                CycleFixture f; f.input.sources.resize(2); f.input.settings.mArmed.resize(2);
-                f.input.settings.mPrewarmFrames = lead; f.input.sources[1].kind = kind;
-                f.input.sources[1].onCut = EMediaOnCut::RESTART;
-                f.input.activate = true; f.gate.restoreProgram(f.input.sources[0].handle, 1.);
-                auto& cold = f.input.sources[1]; cold.ready = true; cold.frame = 5; // deliberately stale mHasOutput
-                cold.admitted = true;
-                F64 first_image = 0.; U32 reservations = 0; F64 copy_due = 0.;
-                const F64 dt = 1. / 60.; f.input.frameDt = dt;
-                std::array<bool, MAX_CAPTURES> visible{}, preview{};
-                std::array<F32, MAX_CAPTURES> demand{}, entitlement{}, head{};
-                auto actions = f.gate.update(f.input); f.input.activate = false;
-                auto dispatch = [&](const auto& commands)
-                {
-                    for (const auto& a : commands)
-                    {
-                        if (a.kind == EGateAction::SEEK || a.kind == EGateAction::PARK || a.kind == EGateAction::RESUME)
-                        { cold.token = a.token; cold.position = a.position; cold.paused = a.kind != EGateAction::RESUME; cold.resumed = !cold.paused; }
-                        if (a.kind == EGateAction::PROPOSE) f.gate.acknowledgeOutputs(a.token, f.input);
-                    }
-                };
-                dispatch(actions);
-                for (U32 frame = 0; frame < 70 && f.gate.program().mId != cold.handle.mId; ++frame)
-                {
-                    f.input.dt = dt; f.input.now += dt;
-                    if (cold.resumed) cold.position += dt;
-                    dispatch(f.gate.update(f.input));
-                    visible.fill(false); demand.fill(0.f); visible[0] = true; demand[0] = capacity;
-                    const bool watched = f.gate.wantsImage(f.input);
-                    preview[1] = watched; if (watched) demand[1] = capacity;
-                    const S32 reserved = f.gate.reservesImage(f.input) ? 1 : -1;
-                    gateCameraCadence(visible, preview, demand, capacity, 0, 1, false, entitlement, reserved);
-                    if (!watched)
-                    {
-                        head.fill(0.f); LLPrismPreviewPolicy::waterFillTier(visible, demand, capacity, head);
-                        ensure_equals("Program outside lead is unchanged from HEAD", entitlement[0], head[0]);
-                    }
-                    // Media has an independent copy allocation; it cannot use
-                    // or reduce the camera's normal allocation.
-                    const F32 copy_hz = kind == ESourceSlotKind::CAMERA ? entitlement[1] : watched ? capacity : 0.f;
-                    if (gateCadenceDue(copy_hz, f.input.now, copy_due, reserved == 1))
-                    {
-                        if (!first_image) first_image = f.input.now;
-                        if (reserved == 1) ++reservations;
-                        if (copy_hz > 0.f) copy_due = f.input.now + 1. / copy_hz;
-                        ++cold.frame; cold.ready = true; cold.frameAge = cold.sampleAge = 0.;
-                        ensure_equals("reservation preserves Program HEAD share", entitlement[0], capacity);
-                    }
-                    f.input.dt = 0.; dispatch(f.gate.update(f.input));
-                }
-                const F64 lead_start = kind == ESourceSlotKind::CAMERA ?
-                    2. - gateLeadSeconds(lead, dt, false) : 1.;
-                ensure("no stale output may bypass prewarm", first_image >= lead_start - 1e-6);
-                ensure("fresh image produced by boundary, including a one-frame lead", first_image > 0. && first_image <= 2. + 1e-6);
-                ensure(llformat("Automatic cold successor commits kind=%d lead=%u capacity=%.1f phase=%d target=%.4f pos=%.4f reason=%s", int(kind), lead, capacity, int(f.gate.phase()), f.gate.targetPosition(), cold.position, f.gate.reason().c_str()), f.gate.program().mId == cold.handle.mId);
-                ensure("only first copies and one correction reserve frames", reservations <= (kind == ESourceSlotKind::MEDIA_URL ? 4u : 1u));
-            }
-}
-
-template<> template<> void prism_gate_test_object::test<44>()
-{
-    using namespace LLPrismLens;
-    set_test_name("cold camera waits for its prewarm lead throughout a multi-hour Play-to-end Program");
-    CycleFixture f; f.input.sources[0].kind = ESourceSlotKind::MEDIA_URL; f.input.activate = true;
-    f.input.sources[0].duration = 7200.; f.input.settings.mVideoDwell = EGateVideoDwell::PLAY_TO_END;
-    f.input.sources[1].ready = false; f.settle();
-    f.input.sources[0].position += 1900.; f.tick(1900.); f.input.dt = .02; f.gate.update(f.input);
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-    ensure(f.gate.incoming().mId == f.input.sources[1].handle.mId);
-    ensure(!f.gate.wantsImage(f.input));
-}
-template<> template<> void prism_gate_test_object::test<45>()
-{
-    using namespace LLPrismLens;
-    set_test_name("reactivation reclaims standalone owners and reparks them under retirement accounting");
-    CycleFixture f; f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.settings.mMode = EGateMode::MANUAL; f.input.settings.mPreviewArmIndex = -1;
-    f.input.activate = true; f.settle();
-    f.input.settings.mActive = false; f.tick();
-    f.input.sources[1].resident = true; f.input.settings.mActive = true; f.input.activate = true;
-    const auto actions = f.tick();
-    ensure(std::any_of(actions.begin(), actions.end(), [&](const auto& a) { return a.kind == EGateAction::CLAIM && a.handle.mId == f.input.sources[1].handle.mId; }));
-    ensure(f.gate.charged(f.input.sources[1].handle));
-}
-template<> template<> void prism_gate_test_object::test<46>()
-{
-    using namespace LLPrismLens;
-    set_test_name("newly parked claimed input keeps its idle grace from its actual pause ACK");
-    CycleFixture f; f.input.now = 1000.; f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.sources[1].resident = true; f.input.activate = true;
-    f.input.settings.mMode = EGateMode::MANUAL; f.input.settings.mPreviewArmIndex = -1;
-    f.tick(); const auto actions = f.tick();
-    ensure(std::none_of(actions.begin(), actions.end(), [](const auto& a) { return a.kind == EGateAction::RELEASE; }));
-    ensure(f.gate.keepsParked(f.input.sources[1].handle));
-}
-
-template<> template<> void prism_gate_test_object::test<47>()
-{
-    using namespace LLPrismLens;
-    set_test_name("inactive Play videos authorizes without playback; kill-off cannot authorize");
-    CycleFixture f; f.input.settings.mActive = false; f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.playVideos = true; const auto actions = f.tick();
-    ensure(f.gate.granted(f.input.sources[1].handle)); ensure(actions.empty());
-    ensure(f.gate.phase() == EGatePhase::INACTIVE);
-    f.gate.reset(); f.input.mediaEnabled = false; f.input.playVideos = true; f.tick();
-    ensure(!f.gate.granted(f.input.sources[1].handle));
-}
-
-template<> template<> void prism_gate_test_object::test<48>()
-{
-    using namespace LLPrismLens;
-    set_test_name("retiring video arm cannot block a healthy later camera in the bounded cycle pass");
-    CycleFixture f; f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.sources[1].resident = true; f.pauseAck = false; f.input.activate = true;
-    f.settle(); ensure(f.gate.charged(f.input.sources[1].handle));
-    ensure(f.gate.incoming().mId == f.input.sources[2].handle.mId);
-    f.tick(1.1); f.tick();
-    ensure(f.gate.program().mId == f.input.sources[2].handle.mId);
-}
-template<> template<> void prism_gate_test_object::test<49>()
-{
-    using namespace LLPrismLens;
-    set_test_name("fade-start ACK is one-shot and cannot replay resident claims or old retirement receipts");
-    CycleFixture f; f.input.settings.mTransition = EGateTransition::CROSSFADE;
-    f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL; f.input.activate = true;
-    f.settle(); f.accept = false; U64 proposal = 0;
-    for (U32 i = 0; i < 40 && !proposal; ++i)
-        for (const auto& a : f.tick(i ? .01 : 1.)) if (a.kind == EGateAction::PROPOSE) proposal = a.token;
-    ensure(proposal != 0); f.gate.acknowledgeOutputs(proposal, f.input);
-    ensure(f.gate.phase() == EGatePhase::CROSSFADING);
-    f.input.settings.mActive = false; f.gate.update(f.input);
-    const auto charges = f.gate.charges(); const auto token = f.gate.token();
-    for (U32 i = 0; i < 10; ++i) ensure(f.gate.acknowledgeOutputs(proposal, f.input).empty());
-    ensure_equals(f.gate.charges(), charges); ensure_equals(f.gate.token(), token);
-    ensure(f.gate.phase() == EGatePhase::INACTIVE);
-}
-template<> template<> void prism_gate_test_object::test<50>()
-{
-    using namespace LLPrismLens;
-    set_test_name("Program and another visible monitor match HEAD with two previews and an additive reservation");
-    std::array<bool, MAX_CAPTURES> visible{}, preview{};
-    std::array<F32, MAX_CAPTURES> demand{}, entitlement{}, head{};
-    visible[0] = visible[1] = true; preview[2] = preview[3] = true;
-    demand[0] = demand[1] = 60.f; demand[2] = demand[3] = 5.f;
-    for (F32 capacity : {1.f, 2.f, 10.f, 30.f, 60.f})
-        for (S32 reservation : {-1, 2})
-        {
-            head.fill(0.f);
-            const F32 left = LLPrismPreviewPolicy::waterFillTier(visible, demand, capacity, head);
-            LLPrismPreviewPolicy::waterFillTier(preview, demand, left, head);
-            gateCameraCadence(visible, preview, demand, capacity, 0, 2, false, entitlement, reservation);
-            for (U32 i = 0; i < MAX_CAPTURES; ++i) ensure_equals(entitlement[i], head[i]);
-        }
-    visible[1] = false;
-    gateCameraCadence(visible, preview, demand, 10.f, 0, 2, false, entitlement);
-    ensure_equals("Automatic Program retains HEAD 10 Hz with two 5 Hz previews", entitlement[0], 10.f);
-
-}
-template<> template<> void prism_gate_test_object::test<51>()
-{
-    using namespace LLPrismLens;
-    set_test_name("production frame adapter preserves Program during Manual video preview, camera/media warm and Auto video to video");
-    for (bool automatic : {false, true})
-        for (bool camera : {false, true})
-        {
-            GateFrameBudget budget;
-            U32 program = 0, preview = 0, monitor = 0, warm = 0;
-            F64 program_due = 0., preview_due = 0., monitor_due = 0.;
-            for (U32 frame = 0; frame < 180; ++frame)
-            {
-                const F64 now = frame / 60.;
-                const bool reservation = frame >= 57 && frame < 60;
-                // The ordinary Program and monitor copies precede/overlap the
-                // reserved copy; neither camera token is consumed by any copy.
-                if (budget.mediaDue(10.f, now, monitor_due, false))
-                { ++monitor; monitor_due = now + .1; }
-                if (!camera && budget.mediaDue(10.f, now, program_due, false))
-                { ++program; program_due = now + .1; }
-                if (budget.mediaDue(5.f, now, preview_due, reservation))
-                { ++preview; if (now >= preview_due) preview_due = now + .2; }
-                ensure("media leaves the ordinary world-render token available", budget.cameraAvailable(frame));
-                if (camera && now >= program_due && budget.cameraAvailable(frame))
-                { ++program; program_due = now + .1; budget.cameraAttempt(frame); }
-                const bool normal_available = budget.cameraAvailable(frame);
-                if (budget.warmCameraAttempt(frame, reservation)) ++warm;
-                ensure_equals("extra render never changes ordinary admission", budget.cameraAvailable(frame), normal_available);
-                ensure("at most one extra camera attempt per frame", !budget.warmCameraAttempt(frame, reservation));
-                if (!reservation) ensure(!budget.warmCameraAttempt(frame, false));
-            }
-            ensure_equals("Program retains its normal cadence", program, monitor);
-            ensure_equals("three authored lead frames give at most three extra renders", warm, 3u);
-            ensure(preview >= 15u);
-        }
-}
-template<> template<> void prism_gate_test_object::test<52>()
-{
-    using namespace LLPrismLens;
-    set_test_name("Manual Preview uses ordinary demand and a pending Take cannot extend its lead reservation");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL;
-    f.input.settings.mPreviewArmIndex = 1; f.input.settings.mPrewarmFrames = 3;
-    f.input.sources[0].kind = f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.sources[0].onCut = f.input.sources[1].onCut = EMediaOnCut::RESTART;
-    f.input.activate = true; f.settle(20);
-    const auto program = f.gate.program(); ensure(program.mId == f.input.sources[0].handle.mId);
-    f.input.sources[1].ready = false; f.input.sources[1].metadataReady = false;
-    f.input.frameDt = f.input.dt = .02;
-    ensure(f.gate.wantsImage(f.input)); ensure(!f.gate.reservesImage(f.input));
-    f.input.take = true; f.gate.update(f.input); f.input.take = false;
-    ensure(f.gate.reservesImage(f.input));
-    f.input.now += .31; f.gate.update(f.input);
-    ensure(f.gate.pending() && f.gate.wantsImage(f.input));
-    ensure("late readiness cannot hold a reservation", !f.gate.reservesImage(f.input));
-    for (U32 i = 0; i < 20; ++i)
-    {
-        f.input.now += .02;
-        const auto actions = f.gate.update(f.input);
-        ensure(f.gate.program().mId == program.mId && !f.gate.reservesImage(f.input));
-        ensure(std::none_of(actions.begin(), actions.end(), [&](const auto& a)
-            { return a.handle.mId == program.mId && (a.kind == EGateAction::PARK || a.kind == EGateAction::RETIRE || a.kind == EGateAction::ENVELOPE); }));
-    }
-}
-template<> template<> void prism_gate_test_object::test<53>()
-{
-    using namespace LLPrismLens;
-    set_test_name("Restart Resume and Live proposals are invalidated at delayed publication, with no late envelope");
-    for (auto mode : {EMediaOnCut::RESTART, EMediaOnCut::RESUME, EMediaOnCut::LIVE})
-    {
-        CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL;
-        f.input.settings.mPreviewArmIndex = 1; f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-        f.input.sources[1].onCut = mode;
-        if (mode != EMediaOnCut::RESTART) f.input.settings.mProgramArmIndex = 1;
-        f.input.activate = true; f.settle(25);
-        if (mode != EMediaOnCut::RESTART)
-        {
-            f.input.sources[1].position = 4.; f.input.settings.mPreviewArmIndex = 0;
-            f.input.take = true; f.settle(15); f.tick();
-            f.input.settings.mPreviewArmIndex = 1; f.input.changed = true; f.settle(15);
-        }
-        f.accept = false; f.input.accepted = 0; f.input.take = true;
-        U64 proposal = 0;
-        for (U32 i = 0; i < 20 && !proposal; ++i)
-            for (const auto& a : f.tick()) if (a.kind == EGateAction::PROPOSE) proposal = a.token;
-        ensure(llformat("proposal policy=%d phase=%d reason=%s", int(mode), int(f.gate.phase()), f.gate.reason().c_str()), proposal != 0);
-        const auto program = f.gate.program();
-        f.input.now += .5;
-        f.input.sources[1].position += mode == EMediaOnCut::LIVE ? .9 : .5;
-        f.input.sources[1].frameAge = f.input.sources[1].sampleAge = 0.;
-        ensure("current qualification expires before publication", !f.gate.validatePublication(proposal, f.input));
-        ensure_equals(f.gate.proposal(), U64(0));
-        const auto actions = f.gate.acknowledgeOutputs(proposal, f.input);
-        ensure(actions.empty() && f.gate.program().mId == program.mId);
-        f.input.sources[1].position = f.gate.targetPosition();
-        ensure("invalidated tokens cannot resurrect if the clock later recovers", f.gate.acknowledgeOutputs(proposal, f.input).empty());
-    }
-}
-template<> template<> void prism_gate_test_object::test<54>()
-{
-    using namespace LLPrismLens;
-    set_test_name("disarm deactivate and kill switch release every parked or idle-released Gate owner");
-    for (U32 exit = 0; exit < 3; ++exit)
-        for (bool released : {false, true})
-        {
-            CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL;
-            f.input.settings.mPreviewArmIndex = -1;
-            f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-            f.input.sources[1].resident = true; f.input.activate = true; f.settle(15);
-            ensure(f.gate.keepsParked(f.input.sources[1].handle));
-            if (released)
-            {
-                const auto actions = f.tick(61.);
-                ensure(std::any_of(actions.begin(), actions.end(), [](const auto& a) { return a.kind == EGateAction::RELEASE; }));
-            }
-            if (exit == 0)
-            {
-                f.gate.revoke(f.input.sources[1].handle); // public gateDisarm order
-                f.input.settings.mArmed.erase(f.input.settings.mArmed.begin() + 1);
-            }
-            if (exit == 1) f.input.settings.mActive = false;
-            if (exit == 2) f.input.mediaEnabled = false;
-            const auto actions = f.tick();
-            ensure(std::any_of(actions.begin(), actions.end(), [&](const auto& a)
-                { return a.kind == EGateAction::UNCLAIM && a.handle.mId == f.input.sources[1].handle.mId; }));
-            ensure(!f.gate.keepsParked(f.input.sources[1].handle) && !f.gate.charged(f.input.sources[1].handle));
-        }
-}
-template<> template<> void prism_gate_test_object::test<55>()
-{
-    using namespace LLPrismLens;
-    set_test_name("probe reflection and auxiliary scissor covers the full active target");
-    for (bool virtual_display : {false, true}) for (bool main : {false, true})
-        for (U32 extent : {128u, 512u, 1920u})
-        {
-            S32 scissor[4] = {123, 345, 17, 19};
-            const bool full = prismFullTargetScissor(virtual_display, main, extent, extent / 2, scissor);
-            ensure_equals(full, virtual_display || !main);
-            if (full)
-            {
-                ensure_equals(scissor[0], 0); ensure_equals(scissor[1], 0);
-                ensure_equals(scissor[2], S32(extent)); ensure_equals(scissor[3], S32(extent / 2));
-            }
-            else ensure(scissor[0] == 123 && scissor[1] == 345 && scissor[2] == 17 && scissor[3] == 19);
-        }
-}
-template<> template<> void prism_gate_test_object::test<56>()
-{
-    using namespace LLPrismLens;
-    set_test_name("Auto and Manual video successor gets fair copies and commits fresh within the 300ms lead at Automatic and prewarm 3");
-    for (auto mode : {EGateMode::MANUAL, EGateMode::AUTO_CYCLE})
-    {
-        CycleFixture f;
-        f.input.sources.resize(2); f.input.settings.mArmed.resize(2);
-        f.input.settings.mMode = mode; f.input.settings.mPreviewArmIndex = 1;
-        f.input.settings.mPrewarmFrames = 3; f.input.settings.mIntervalSeconds = 1.;
-        for (auto& source : f.input.sources)
-        {
-            source.kind = ESourceSlotKind::MEDIA_URL; source.onCut = EMediaOnCut::RESTART;
-            source.admitted = true;
-        }
-        // Establish a real accepted Program first. restoreProgram intentionally
-        // cannot restore a private player's session grant or running transport.
-        f.input.settings.mPreviewArmIndex = -1; f.input.activate = true;
-        for (U32 step = 0; step < 20 && f.gate.program().mId.isNull(); ++step) f.tick();
-        ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-        const F64 started = f.input.now;
-        f.input.settings.mPreviewArmIndex = 1;
-        auto& cold = f.input.sources[1];
-        cold.ready = false;
-        f.input.dt = f.input.frameDt = 1. / 60.;
-        f.input.settings.mTransition = EGateTransition::CUT;
-        GateFrameBudget budget;
-        F64 program_due = 0., baseline_due = 0., cold_due = 0.;
-        U32 program_copies = 0, baseline_copies = 0, cold_copies = 0;
-        U32 reservations = 0, decoded_roundtrips = 0;
-        bool committed = false, saw_seek = false, saw_park = false, saw_resume = false;
-        GateAction pending{EGateAction::CLAIM, {}}; S32 receipt_at = -1, image_at = -1;
-        auto dispatch = [&](const auto& actions, U32 frame)
-        {
-            for (const auto& a : actions)
-            {
-                if (a.handle.mId != cold.handle.mId) continue;
-                if (a.kind == EGateAction::SEEK || a.kind == EGateAction::PARK || a.kind == EGateAction::RESUME)
-                {
-                    pending = a; receipt_at = S32(frame) + 1;
-                    if (a.kind != EGateAction::PARK) image_at = S32(frame) + 2;
-                    if (a.kind == EGateAction::SEEK) saw_seek = true;
-                    if (a.kind == EGateAction::PARK) saw_park = true;
-                    if (a.kind == EGateAction::RESUME) saw_resume = true;
-                }
-                if (a.kind == EGateAction::PROPOSE)
-                {
-                    ensure("both image round trips precede publication", decoded_roundtrips >= 2 && saw_seek && saw_park && saw_resume);
-                    ensure("fresh post-resume contribution meets the unchanged 150ms bound",
-                        gatePositionDistance(cold.position, f.gate.targetPosition(), cold.duration, cold.loop) + cold.error <= .150001);
-                    f.gate.acknowledgeOutputs(a.token, f.input);
-                    committed = f.gate.program().mId == cold.handle.mId;
-                    const F64 deadline = started + (mode == EGateMode::MANUAL ? .5 + .3 : 1.);
-                    ensure("commit finishes within the lead", f.input.now <= deadline + 1e-6);
-                }
-            }
-        };
-        for (U32 frame = 0; frame < 90 && !committed; ++frame)
-        {
-            f.input.now = started + frame / 60.; f.input.dt = f.input.frameDt;
-            cold.sampleAge = 0.; cold.frameAge += f.input.dt;
-            if (cold.resumed) cold.position += f.input.dt;
-            if (receipt_at == S32(frame))
-            {
-                cold.token = pending.token; cold.position = pending.position;
-                cold.paused = pending.kind != EGateAction::RESUME; cold.resumed = !cold.paused;
-            }
-            if (image_at == S32(frame)) { ++decoded_roundtrips; }
-            f.input.take = mode == EGateMode::MANUAL && frame == 30;
-            dispatch(f.gate.update(f.input), frame); f.input.take = f.input.activate = false;
-            if (committed) break;
-            const bool reserved = f.gate.reservesImage(f.input);
-            if (reserved) ++reservations;
-            std::array<bool, MAX_CAPTURES> visible{}, preview{};
-            std::array<F32, MAX_CAPTURES> demand{}, entitlement{};
-            visible[0] = true; preview[1] = f.gate.wantsImage(f.input);
-            const CaptureRateSettings automatic_rate;
-            demand[0] = gateProducerDemand(automatic_rate, 10.f);
-            demand[1] = 0.f; // UI preview warmup/throttling cannot starve transport.
-            gateMediaCadence(visible, preview, demand, 10.f, 1,
-                gateProducerDemand(automatic_rate, 10.f), entitlement);
-            ensure_equals("Program priority retains HEAD Automatic cadence", entitlement[0], 10.f);
-            ensure_equals("warming receives its normal max-min fair share, even outside the lead", entitlement[1], 5.f);
-            if (f.input.now + 1e-9 >= baseline_due) { ++baseline_copies; baseline_due = f.input.now + .1; }
-            if (budget.mediaDue(entitlement[0], f.input.now + 1e-9, program_due, false))
-            { ++program_copies; program_due = f.input.now + .1; ++f.input.sources[0].frame; }
-            ensure_equals("every ordinary HEAD Program copy executes", program_copies, baseline_copies);
-            ensure(budget.cameraAvailable(frame));
-            // Image completion and image copy are separate; no test frame may
-            // manufacture an image merely because a copy reservation exists.
-            if (decoded_roundtrips > cold_copies && budget.mediaDue(entitlement[1], f.input.now + 1e-9, cold_due, reserved))
-            {
-                cold_copies = decoded_roundtrips; ++cold.frame; cold.ready = true;
-                cold.frameAge = 0.;
-                if (f.input.now + 1e-9 >= cold_due) cold_due = f.input.now + 1. / entitlement[1];
-            }
-            f.input.dt = 0.; dispatch(f.gate.update(f.input), frame);
-        }
-        ensure(llformat("video B commits while video A stays live mode=%d phase=%d program=%s rounds=%u copies=%u seek=%d park=%d resume=%d now=%.4f reason=%s", int(mode), int(f.gate.phase()), f.gate.program().mId.asString().c_str(), decoded_roundtrips, cold_copies, saw_seek, saw_park, saw_resume, f.input.now, f.gate.reason().c_str()), committed);
-        ensure("fast transport stays within the 300ms reservation lead", reservations <= 19u);
-    }
-}
-template<> template<> void prism_gate_test_object::test<57>()
-{
-    using namespace LLPrismLens;
-    set_test_name("video lead is at least 300ms; camera lead and ordinary media cadence remain HEAD");
-    CaptureRateSettings rate;
-    ensure_equals("default Automatic producer demand ignores UI preview rates", gateProducerDemand(rate, 10.f), 10.f);
-    rate.mMode = EOutputRateMode::TARGET_FPS; rate.mTargetFps = 2.f;
-    ensure_equals(gateProducerDemand(rate, 10.f), 2.f);
-    for (F64 dt : {1. / 240., 1. / 60., .1}) for (U32 frames : {0u, 1u, 3u, 5u})
-    {
-        ensure(approxNear(gateLeadSeconds(frames, dt, true), std::max(.3, std::max(1u, frames) * dt)));
-        ensure(approxNear(gateLeadSeconds(frames, dt, false), std::max(1u, frames) * dt));
-    }
-    std::array<bool, MAX_CAPTURES> visible{}, preview{};
-    std::array<F32, MAX_CAPTURES> demand{}, entitlement{}, head{}, fair{};
-    visible[0] = visible[2] = true; preview[1] = preview[3] = true;
-    demand[0] = demand[2] = 60.f; demand[1] = demand[3] = 5.f;
-    for (F32 capacity : {1.f, 2.f, 10.f, 30.f, 60.f})
-    {
-        gateCameraCadence(visible, preview, demand, capacity, -1, -1, false, head);
-        gateMediaCadence(visible, preview, demand, capacity, -1, 0.f, entitlement);
-        ensure(entitlement == head);
-        auto active = visible; active[1] = true; fair.fill(0.f);
-        LLPrismPreviewPolicy::waterFillTier(active, demand, capacity, fair);
-        gateMediaCadence(visible, preview, demand, capacity, 1, demand[1], entitlement);
-        for (U32 i = 0; i < MAX_CAPTURES; ++i)
-            ensure_equals("only candidate gains its fair share; every ordinary producer retains HEAD", entitlement[i], i == 1 ? std::max(head[i], fair[i]) : head[i]);
-        ensure(entitlement[1] > 0.f);
-        for (F32 preview_request : {0.f, 1.f, 5.f})
-        {
-            demand[1] = preview_request;
-            gateCameraCadence(visible, preview, demand, capacity, -1, -1, false, head);
-            auto fair_demand = demand; fair_demand[1] = capacity; fair.fill(0.f);
-            LLPrismPreviewPolicy::waterFillTier(active, fair_demand, capacity, fair);
-            gateMediaCadence(visible, preview, demand, capacity, 1, capacity, entitlement);
-            for (U32 i = 0; i < MAX_CAPTURES; ++i)
-                ensure_equals("preview throttling cannot change ordinary shares or starve the fair video lane", entitlement[i], i == 1 ? std::max(head[i], fair[i]) : head[i]);
-        }
-        demand[1] = 5.f;
-    }
+    set_test_name("g1 late source resolution prunes self duplicate unknown and caps seven");
+    GateSource s; s.mSources = {a,a,b,c}; s.mProgramId = c;
+    std::vector<std::string> notes; gateResolveSources(s,c,{b,a},notes);
+    ensure(s.mSources == std::vector<LLUUID>({b,a})); ensure_equals(notes.size(),size_t(2)); ensure(s.mProgramId.isNull());
+    s.mSources.clear(); std::vector<LLUUID> live;
+    for (S32 i=0;i<9;++i) { LLUUID id; id.generate(); s.mSources.push_back(id); live.push_back(id); }
+    gateResolveSources(s,c,live,notes); ensure_equals(s.mSources.size(),size_t(7));
+    // The Gate item can precede all sources: parsing has no registry dependency.
+    auto item = gateSourceToLLSD(s); GateSource parsed;
+    ensure(gateSourceFromLLSD(item,parsed)); gateResolveSources(parsed,c,live,notes); ensure(parsed.mSources == s.mSources);
 }
 namespace
 {
-void latencyContribution(LLPrismLens::EMediaOnCut policy, bool automatic, bool late,
-    F64 resume_delay = 0., bool delay_publication = false)
+LLSD legacyScene(const LLUUID& a, const LLUUID& b, S32 count = 2)
 {
-    using namespace LLPrismLens;
-    CycleFixture f;
-    f.input.sources.resize(2); f.input.settings.mArmed.resize(2);
-    f.input.settings.mMode = EGateMode::MANUAL;
-    f.input.settings.mProgramArmIndex = 1; f.input.settings.mPreviewArmIndex = -1;
-    auto& video = f.input.sources[1];
-    video.kind = ESourceSlotKind::MEDIA_URL; video.onCut = policy;
-    video.error = .05;
-    f.input.activate = true;
-    if (resume_delay == .4)
+    LLSD scene; scene["prism_captures"] = LLSD::emptyArray();
+    for (S32 i=0;i<count;++i)
+    { LLSD source; source["capture_id"] = i==0?a:i==1?b:LLUUID::generateNewID(); source["mode"]="camera_feed"; source["source_on_cut"]="live"; scene["prism_captures"].append(source); }
+    LLSD binding; binding["binding_id"]=LLUUID::generateNewID(); binding["capture_id"]=a; binding["gate_source"]=true;
+    binding["display_te"]=3; binding["fit"]="fill"; binding["anchor"][0]=.3; binding["screen_effects"]["static"]=.2;
+    scene["prism_displays"].append(binding); binding["home_capture_id"]=b; scene["prism_projectors"].append(binding);
+    LLSD old; old["gate_id"]=LLUUID::generateNewID(); old["active"]=true; old["prewarm_frames"]=3; old["mode"]="auto_cycle"; old["interval_seconds"]=12.; old["transition"]="crossfade"; old["crossfade_seconds"]=.7;
+    old["program_arm_index"]=0;
+    for (const auto& id : {a,b}) { LLSD arm; arm["capture_id"]=id; arm["enabled"]=id==a; old["armed"].append(arm); }
+    scene["prism_gates"].append(old); return scene;
+}
+}
+template<> template<> void gate_object::test<3>()
+{
+    set_test_name("g2 migration free slot preserves TE mapping effects and strips keys");
+    auto scene=legacyScene(a,b); const auto original=scene["prism_displays"][0]; std::vector<SkippedBinding> notes;
+    gateMigrateScene(scene,notes); ensure(notes.empty()); ensure_equals(scene["prism_captures"].size(),3);
+    GateSource restored; ensure(gateSourceFromLLSD(scene["prism_captures"][2],restored));
+    ensure(restored.mSources==std::vector<LLUUID>({a}) && restored.mProgramId==a);
+    ensure(restored.mMode==EGateMode::AUTO_CYCLE && restored.mCrossfadeSeconds==.7);
+    const auto id=scene["prism_captures"][2]["capture_id"].asUUID();
+    ensure(scene["prism_displays"][0]["capture_id"].asUUID()==id && scene["prism_projectors"][0]["capture_id"].asUUID()==id);
+    for (const auto& key : {"display_te","fit","anchor","screen_effects"}) ensure(llsd_equals(scene["prism_displays"][0][key],original[key]));
+    ensure(!scene.has("prism_gates") && !scene["prism_displays"][0].has("gate_source") && !scene["prism_projectors"][0].has("home_capture_id"));
+    ensure(!scene["prism_captures"][0].has("source_on_cut"));
+}
+template<> template<> void gate_object::test<4>()
+{
+    set_test_name("g2 malformed legacy record still creates an empty Gate");
+    auto faces_only=legacyScene(a,b); faces_only.erase("prism_projectors");
+    std::vector<SkippedBinding> face_notes; gateMigrateScene(faces_only,face_notes);
+    ensure("optional projector array stays absent so the loader can supply its default",!faces_only.has("prism_projectors"));
+    ensure(face_notes.empty());
+    auto scene=legacyScene(a,b); scene["prism_gates"]="bad"; std::vector<SkippedBinding> notes; gateMigrateScene(scene,notes);
+    GateSource restored; ensure(gateSourceFromLLSD(scene["prism_captures"][2],restored)); ensure(restored.mSources.empty());
+    for (const auto& key : {"mode", "interval_seconds", "prewarm_frames", "armed"})
     {
-        // Establish a measured 200ms RESUME estimate before retiring the
-        // bookmarked player. Startup delay itself does not advance playback.
-        for (U32 step = 0; step < 20 && f.gate.program().mId.isNull(); ++step)
-            for (const auto& a : f.tick()) if (a.kind == EGateAction::RESUME)
-            {
-                video.position -= .2;
-                f.tick(.2);
-            }
+        scene=legacyScene(a,b); scene["prism_gates"][0][key]="malformed";
+        gateMigrateScene(scene,notes); ensure(gateSourceFromLLSD(scene["prism_captures"][2],restored));
+        ensure(restored.mSources.empty());
     }
-    else f.settle(20);
-    ensure(f.gate.program().mId == video.handle.mId);
-    // A real retirement ACK supplies the nonzero Resume/Live bookmark.
-    video.position = 4.; video.pauseTime = f.input.now;
-    const F64 off = video.pauseTime, bookmark = video.position;
-    f.input.settings.mPreviewArmIndex = 0; f.input.take = true;
-    f.settle(15);
-    ensure(f.gate.program().mId == f.input.sources[0].handle.mId);
-    f.input.settings.mPreviewArmIndex = 1;
-    f.input.settings.mMode = automatic ? EGateMode::AUTO_CYCLE : EGateMode::MANUAL;
-    video.ready = false; video.metadataReady = !late;
-    f.input.accepted = 0;
-    const F64 start = f.input.now;
-    // Camera cut was accepted on the second fixture tick after Take.
-    const F64 boundary = start - .13 + f.input.settings.mIntervalSeconds;
-    GateAction command{EGateAction::CLAIM, {}};
-    F64 receipt = -1., image = -1., copy_due = start, decoded = -1.;
-    bool committed = false, post_boundary_reservation = false;
-    F64 first_target = 0.;
-    U32 seeks = 0, resumes = 0, copies = 0;
-    GateFrameBudget budget;
-    for (U32 frame = 0; frame < 240 && !committed; ++frame)
+}
+template<> template<> void gate_object::test<5>()
+{
+    set_test_name("g2 full scene fallback uses home then hint and reports unresolved bindings");
+    auto scene=legacyScene(a,b,8); LLSD bad=scene["prism_displays"][0]; bad["capture_id"]=LLUUID::null; scene["prism_displays"].append(bad);
+    std::vector<SkippedBinding> notes; gateMigrateScene(scene,notes);
+    ensure_equals(scene["prism_captures"].size(),8); ensure_equals(scene["prism_displays"].size(),1); ensure_equals(notes.size(),size_t(1));
+    ensure(scene["prism_displays"][0]["capture_id"].asUUID()==a && scene["prism_projectors"][0]["capture_id"].asUUID()==b);
+}
+template<> template<> void gate_object::test<6>()
+{
+    set_test_name("g3 pending holds A feeds A B and requires a post-click camera publication");
+    in.take=b; auto p=tick(); ensure(state.pending==b && state.held==a && state.program==a);
+    ensure(p.feed==std::vector<LLUUID>({a,b})); ensure(!tick().needsPixels);
+    freshB(); p=gateStep(state,in); ensure(p.needsPixels && p.copy==b);
+    const auto before=state; gateApply(state,p,false); ensure(state.program==a && state.text==before.text && gateGain(state,a)==1.f && state.copyKey==before.copyKey);
+    gateApply(state,p,true); ensure(state.program==b && state.held==b && state.cutSerial==1);
+}
+template<> template<> void gate_object::test<7>()
+{
+    set_test_name("g3 C2 N1 old decoder copies cannot pass either freshness baseline");
+    auto& video=in.sources[1]; video.kind=ESourceSlotKind::MEDIA_URL; video.copiedDecoder=10; video.decoder=50;
+    takeB(); ++video.publication; video.copiedDecoder=50; ensure(!tick().needsPixels);
+    video.copiedDecoder=51; video.decoder=51; ensure(tick().needsPixels && state.program==b);
+    gate_data f; f.in.sources[1].kind=ESourceSlotKind::MEDIA_URL; f.takeB();
+    ++f.in.sources[1].copiedDecoder; ensure(!f.tick().needsPixels); // decoder alone, no publication
+}
+template<> template<> void gate_object::test<8>()
+{
+    set_test_name("g3 g8 frozen and validated paused prim-face are fresh without a new publication");
+    for (bool frozen : {false,true})
     {
-        f.input.now = start + frame / 60.; f.input.dt = f.input.frameDt = 1. / 60.;
-        video.frameAge += f.input.dt; video.sampleAge = 0.;
-        if (video.resumed) video.position += f.input.dt;
-        if (late && f.input.now >= boundary + .1) video.metadataReady = true;
-        if (receipt >= 0. && f.input.now + 1e-9 >= receipt)
-        {
-            video.token = command.token; video.position = command.position;
-            video.paused = command.kind != EGateAction::RESUME;
-            video.resumed = !video.paused; receipt = -1.;
-        }
-        if (image >= 0. && f.input.now + 1e-9 >= image) { decoded = image; image = -1.; }
-        f.input.take = !automatic && frame == 0;
-        const auto actions = f.gate.update(f.input); f.input.take = false;
-        for (const auto& a : actions)
-        {
-            if (a.handle.mId != video.handle.mId) continue;
-            if (a.kind == EGateAction::SEEK || a.kind == EGateAction::PARK || a.kind == EGateAction::RESUME)
-            {
-                command = a;
-                // SEEK -> parked image 100ms, PARK ACK next frame, RESUME ->
-                // image 150ms (Live) or 200ms (Restart/Resume). Startup is async.
-                const F64 delay = a.kind == EGateAction::RESUME ?
-                    (resume_delay > 0. ? resume_delay : policy == EMediaOnCut::LIVE ? .15 : .2) : .1;
-                receipt = f.input.now + (a.kind == EGateAction::RESUME ? delay : 1. / 60.);
-                if (a.kind != EGateAction::PARK) image = f.input.now + delay;
-                decoded = -1.;
-                if (a.kind == EGateAction::SEEK)
-                {
-                    ++seeks; video.resumed = false;
-                    if (seeks == 1) first_target = a.position;
-                    if (resume_delay == .4 && seeks == 2)
-                    {
-                        const auto live = gatePosition(policy, true, bookmark, off, f.input.now,
-                            video.duration, video.loop, video.framePeriod);
-                        ensure("first late image satisfies frozen target but exceeds current Live tolerance",
-                            gatePositionDistance(video.position, first_target, video.duration, video.loop) + video.error <= .15 &&
-                            gatePositionDistance(video.position, live.seconds, video.duration, video.loop) + video.error > .15);
-                    }
-                }
-                if (a.kind == EGateAction::RESUME)
-                {
-                    ++resumes;
-                    if (resume_delay == .4 && resumes == 1)
-                        ensure("scheduled RESUME uses the measured 200ms estimate",
-                            std::abs(f.input.now - (boundary - .2)) <= 1. / 60. + 1e-9);
-                }
-            }
-            if (a.kind == EGateAction::PROPOSE)
-            {
-                if (resume_delay == .4)
-                    ensure("stale first scheduled image requires exactly one corrective re-seek", seeks == 2 && resumes == 2);
-                ensure("first contribution retains the 150ms target bound",
-                    gatePositionDistance(video.position, f.gate.targetPosition(), video.duration, video.loop) + video.error <= .150001);
-                if (policy == EMediaOnCut::LIVE)
-                {
-                    const auto live = gatePosition(policy, true, bookmark, off, f.input.now,
-                        video.duration, video.loop, video.framePeriod);
-                    ensure("actual Live contribution is within 150ms including clock error",
-                        gatePositionDistance(video.position, live.seconds, video.duration, video.loop) + video.error <= .150001);
-                }
-                if (delay_publication)
-                {
-                    const auto program = f.gate.program();
-                    // The proposed image still matches its frozen seek target,
-                    // but the Live clock advances during output preparation.
-                    f.input.now += .2;
-                    ensure("final publication rejects an off-clock Live image", !f.gate.validatePublication(a.token, f.input));
-                    ensure(f.gate.acknowledgeOutputs(a.token, f.input).empty());
-                    ensure(f.gate.program().mId == program.mId);
-                    const auto correction = f.gate.update(f.input);
-                    ensure("publication failure also triggers the single corrective seek",
-                        std::count_if(correction.begin(), correction.end(), [](const auto& action)
-                            { return action.kind == EGateAction::SEEK; }) == 1);
-                    return;
-                }
-                f.gate.acknowledgeOutputs(a.token, f.input);
-                committed = f.gate.program().mId == video.handle.mId;
-            }
-        }
-        const bool reserved = f.gate.reservesImage(f.input);
-        if (reserved && f.input.now > boundary) post_boundary_reservation = true;
-        // Production fair-share adapter: two Automatic producers at 30Hz give
-        // the candidate 15Hz. Reservations do not consume the Program lane.
-        std::array<bool, MAX_CAPTURES> visible{}, preview{};
-        std::array<F32, MAX_CAPTURES> demand{}, entitlement{};
-        visible[0] = true; preview[1] = f.gate.wantsImage(f.input);
-        demand[0] = gateProducerDemand(CaptureRateSettings(), 30.f);
-        gateMediaCadence(visible, preview, demand, 30.f, 1, 30.f, entitlement);
-        ensure_equals(entitlement[0], 30.f);
-        if (preview[1]) ensure_equals(entitlement[1], 15.f);
-        if (decoded >= 0. && budget.mediaDue(entitlement[1], f.input.now + 1e-9, copy_due, reserved))
-        {
-            ++video.frame; ++copies; video.ready = true; video.frameAge = 0.; decoded = -1.;
-            if (f.input.now + 1e-9 >= copy_due) copy_due = f.input.now + 1. / 15.;
-        }
+        gate_data f; auto& source=f.in.sources[1]; source.kind=ESourceSlotKind::MEDIA_FACE;
+        source.frozen=frozen; source.paused=!frozen; f.in.take=f.b;
+        ensure(f.tick().needsPixels && f.state.program==f.b);
     }
-    ensure(llformat("async contribution policy=%d automatic=%d late=%d seeks=%u resumes=%u copies=%u reason=%s",
-        int(policy), automatic, late, seeks, resumes, copies, f.gate.reason().c_str()), committed);
-    ensure("one corrective seek at most", seeks <= 2 && resumes >= 1);
-    if (late) ensure("transport reservation survives the boundary", post_boundary_reservation);
+    in.sources[1].kind=ESourceSlotKind::MEDIA_FACE; in.sources[1].paused=true; in.sources[1].currentImage=false;
+    takeB(); ensure(state.pending==b);
 }
-}
-
-template<> template<> void prism_gate_test_object::test<58>()
+template<> template<> void gate_object::test<9>()
 {
-    set_test_name("Manual bookmarked Live Take and late Auto survive 250ms seek/resume latency");
-    latencyContribution(LLPrismLens::EMediaOnCut::LIVE, false, false);
-    latencyContribution(LLPrismLens::EMediaOnCut::LIVE, true, true);
+    set_test_name("g4 timed fade feeds two sources then copies B and clears from");
+    in.settings.mTransition=EGateTransition::CROSSFADE; takeB(); freshB(); tick();
+    ensure(state.from==a && state.held==a && state.program==b && state.alpha==0.f);
+    auto p=tick(.25); ensure(std::abs(state.alpha-.5f)<.001f); ensure(p.feed==std::vector<LLUUID>({b,a}));
+    p=tick(.25); ensure(p.copy==b && state.from.isNull() && state.held==b);
 }
-
-template<> template<> void prism_gate_test_object::test<59>()
+template<> template<> void gate_object::test<10>()
 {
-    set_test_name("scheduled Restart and Resume commit with 200ms resume latency and 15Hz fair copies");
-    latencyContribution(LLPrismLens::EMediaOnCut::RESTART, true, false);
-    latencyContribution(LLPrismLens::EMediaOnCut::RESUME, true, false);
+    set_test_name("g4 first program prune recovery and unseen commit are cuts");
+    in.settings.mTransition=EGateTransition::CROSSFADE; state={}; tick(); ++in.sources[0].publication; tick(); ensure(state.program==a && state.from.isNull());
+    in.sources.erase(in.sources.begin()); tick(); ++in.sources[0].publication; tick(); ensure(state.program==b && state.from.isNull());
+    const U64 serial=state.cutSerial;
+    in.sources.clear(); const auto empty=tick();
+    ensure(state.program.isNull() && state.held.isNull() && state.text=="No sources ticked");
+    ensure(empty.publish && empty.rollback && empty.feed.empty());
+    ensure_equals("clearing sources preserves the monotonic cut serial",state.cutSerial,serial);
+    gate_data f; f.in.settings.mTransition=EGateTransition::CROSSFADE; f.in.demanded=false; f.in.take=f.b; f.tick(.3); f.tick(.3);
+    ensure(f.state.program==f.b && f.state.held==f.a && f.state.from.isNull());
 }
-
-template<> template<> void prism_gate_test_object::test<60>()
+template<> template<> void gate_object::test<11>()
 {
-    using namespace LLPrismLens;
-    set_test_name("per-player latency EMA is conservative, bounded, finite and independent");
-    GateLatency a, b;
-    ensure_equals(a.seek, .2); ensure_equals(a.resume, .2);
-    a.resume = GateLatency::sample(a.resume, .4);
-    ensure(approxNear(a.resume, .35)); ensure_equals(a.seek, .2); ensure_equals(b.resume, .2);
-    for (U32 i = 0; i < 100; ++i)
+    set_test_name("g4a fresh copy failures time out to held with matching audio and named status");
+    takeB(); freshB(); for (S32 i=0;i<61;++i) tick(.1,false);
+    ensure_equals("timeout program",state.program,a); ensure("timeout pending cleared",state.pending.isNull()); ensure("timeout status: "+state.text,state.text.find("B has no picture")!=std::string::npos);
+    ensure(gateGain(state,a)==1.f && gateGain(state,b)==0.f);
+}
+template<> template<> void gate_object::test<12>()
+{
+    set_test_name("g4b unseen Auto runs twenty seconds with no deadline and fresh copy on return");
+    in.settings.mMode=EGateMode::AUTO_CYCLE; in.demanded=false;
+    for (S32 i=0;i<200;++i) tick(.1);
+    ensure(state.text.rfind("On air:",0)==0 && state.held==a && state.awaitingCopy);
+    // Unseen Auto still advances at each interval rather than waiting for pixels.
+    ensure(state.cutSerial>=2);
+    in.demanded=true; const LLUUID program=state.program;
+    for (auto& source:in.sources) if(source.id==program) ++source.publication;
+    tick(); ensure(state.held==program && !state.awaitingCopy);
+}
+template<> template<> void gate_object::test<13>()
+{
+    set_test_name("g4b demand debounce preserves Crossfade over alternate frames");
+    in.settings.mTransition=EGateTransition::CROSSFADE; takeB();
+    for (S32 i=0;i<120;++i) { in.demanded=(i%2)==0; tick(.016); }
+    freshB(); in.demanded=true; tick(); ensure(state.from==a && state.program==b);
+    in.demanded=false; tick(1.); ensure(state.from==a); in.demanded=true; tick(); ensure(state.held==b && state.from.isNull());
+}
+template<> template<> void gate_object::test<14>()
+{
+    set_test_name("g4b long demand lapse turns pending into unseen cut with paused clock");
+    takeB(); in.demanded=false; tick(.1); tick(.3); ensure(state.program==b && state.held==a && state.awaitingCopy);
+    tick(30.); ensure(state.program==b); in.demanded=true; freshB(); tick(); ensure(state.held==b);
+}
+template<> template<> void gate_object::test<15>()
+{
+    set_test_name("g4c incoming loss EOF budget replacement rolls presentation and audio back even with unchanged key");
+    for (S32 loss=0;loss<3;++loss)
     {
-        a.resume = GateLatency::sample(a.resume, 100.);
-        a.seek = GateLatency::sample(a.seek, 0.);
-        ensure(a.resume >= .05 && a.resume <= .6 && a.seek >= .05 && a.seek <= .6);
+        gate_data f; f.in.settings.mTransition=EGateTransition::CROSSFADE; f.in.sources[1].kind=ESourceSlotKind::MEDIA_URL;
+        f.takeB(); f.freshB(); f.tick(); f.tick(.2); const auto key=f.state.copyKey;
+        f.in.sources[1].hasOutput=false; f.in.sources[1].reason=loss==0?"EOF":loss==1?"budget":"replaced";
+        const auto p=f.tick(); ensure(p.rollback && p.publish && f.state.program==f.a && f.state.held==f.a && f.state.copyKey==key);
+        ensure(gateGain(f.state,f.a)==1.f && gateGain(f.state,f.b)==0.f && f.state.from.isNull());
     }
-    ensure(approxNear(a.resume, .6) && approxNear(a.seek, .05));
-    for (F64 bad : {-1., std::numeric_limits<F64>::infinity(), std::numeric_limits<F64>::quiet_NaN()})
-        ensure_equals(GateLatency::sample(.2, bad), .2);
+}
+template<> template<> void gate_object::test<16>()
+{
+    set_test_name("g4a fade-end copy and unseen broken program share five demanded seconds rollback");
+    in.settings.mTransition=EGateTransition::CROSSFADE; takeB(); freshB(); tick(); tick(.6,false);
+    for (S32 i=0;i<55;++i) tick(.1,false);
+    ensure_equals("fade timeout program",state.program,a); ensure("fade cleared",state.from.isNull()); ensure("fade timeout status: "+state.text,state.text.find("B has no picture")!=std::string::npos);
+    gate_data f; f.in.demanded=false; f.in.take=f.b; f.tick(.3); f.tick(.3);
+    f.in.sources[1].hasOutput=false; f.in.demanded=true;
+    for (S32 i=0;i<55;++i) f.tick(.1);
+    ensure(f.state.program==f.a && f.state.text.find("B has no picture")!=std::string::npos);
+}
+template<> template<> void gate_object::test<17>()
+{
+    set_test_name("g5 g6 cursor skips ungranted and failed sources without livelock");
+    state={}; in.sources[0].kind=ESourceSlotKind::MEDIA_URL; in.sources[0].eligible=false;
+    in.sources[1].hasOutput=false; tick(); ensure(state.pending==b);
+    for (S32 i=0;i<55;++i) tick(.1); tick(); ensure(state.pending==c); ++in.sources[2].publication; tick(); ensure(state.program==c);
+    for (const auto& id : tick().play) ensure(id!=a);
+    state.program=a; state.pending.setNull(); tick(); ensure(state.program!=a);
+}
+template<> template<> void gate_object::test<18>()
+{
+    set_test_name("g8 pending URL Play both modes off-feed Pause ignores downloads and prim faces");
+    for (auto mode : {EGateMode::MANUAL,EGateMode::AUTO_CYCLE})
+    {
+        gate_data f; f.in.settings.mMode=mode; f.in.settings.mOffAir=EGateOffAir::PAUSE;
+        f.in.sources[1].kind=ESourceSlotKind::MEDIA_URL;
+        f.in.sources[2].kind=ESourceSlotKind::MEDIA_URL; f.in.sources[2].desiredPlaying=true;
+        if(mode==EGateMode::MANUAL) f.in.take=f.b;
+        auto p=f.tick(); ensure(p.play==std::vector<LLUUID>({f.b}) && p.pause==std::vector<LLUUID>({f.c}));
+        f.in.sources[1].desiredPlaying=true; f.in.sources[2].downloading=true; p=f.tick(); ensure(p.play.empty() && p.pause.empty());
+        f.in.sources[2].kind=ESourceSlotKind::MEDIA_FACE; f.in.sources[2].downloading=false; ensure(f.tick().pause.empty());
+    }
+}
+template<> template<> void gate_object::test<19>()
+{
+    set_test_name("g8 refusal fails immediately program stop keeps picture and ordinary steady transport is silent");
+    in.sources[1].kind=ESourceSlotKind::MEDIA_URL; takeB(); in.sources[1].playRefused=true;
+    auto p=tick(); ensure(p.rollback && state.program==a && state.pending.isNull());
+    in.sources[0].kind=ESourceSlotKind::MEDIA_URL; in.sources[0].stopped=true;
+    p=tick(); ensure(state.held==a && state.text.find("A stopped")!=std::string::npos && p.play.empty());
+}
+template<> template<> void gate_object::test<20>()
+{
+    set_test_name("g9 URL face fades use complementary local gains camera program mutes all videos");
+    for (auto from : {ESourceSlotKind::MEDIA_URL,ESourceSlotKind::MEDIA_FACE})
+        for (auto to : {ESourceSlotKind::MEDIA_URL,ESourceSlotKind::MEDIA_FACE})
+        {
+            gate_data f; f.in.sources[0].kind=from; f.in.sources[1].kind=to;
+            f.in.settings.mTransition=EGateTransition::CROSSFADE; f.takeB(); f.freshB(); f.tick(); f.tick(.125);
+            ensure(std::abs(gateGain(f.state,f.a)-.75f)<.001f && std::abs(gateGain(f.state,f.b)-.25f)<.001f);
+            ensure(gateGain(f.state,f.c)==0.f);
+        }
+    ensure(gateGain(state,b)==0.f && gateGain(state,c)==0.f);
+}
+template<> template<> void gate_object::test<21>()
+{
+    set_test_name("g10 copy keys distinguish equal serials by identity and generation");
+    ensure(!(GateCopyKey{a,1,10}==GateCopyKey{b,1,10})); ensure(!(GateCopyKey{a,1,10}==GateCopyKey{a,2,10}));
+    in.take=b; tick(); freshB(); const auto p=tick(); ensure(p.copy==b);
+}
+template<> template<> void gate_object::test<22>()
+{
+    set_test_name("ga manual latest click queues during a fade and Auto ignores names");
+    in.settings.mTransition=EGateTransition::CROSSFADE; takeB(); freshB(); tick();
+    in.take=c; tick(.1); in.take=a; tick(.1); tick(.3); tick(); ensure(state.pending==a);
+    gate_data f; f.in.settings.mMode=EGateMode::AUTO_CYCLE; f.state.nextAuto=100.; f.in.take=f.c;
+    f.tick(); ensure(f.state.program==f.a && f.state.pending.isNull());
 }
 
-template<> template<> void prism_gate_test_object::test<61>()
+template<> template<> void gate_object::test<23>()
 {
-    using namespace LLPrismLens;
-    set_test_name("missing post-resume copy retains only the fixed pre-roll plus overrun reservation");
-    CycleFixture f; f.input.settings.mMode = EGateMode::MANUAL;
-    f.input.settings.mPreviewArmIndex = 1;
-    f.input.sources[1].kind = ESourceSlotKind::MEDIA_URL;
-    f.input.sources[1].onCut = EMediaOnCut::RESTART;
-    f.input.activate = true; f.settle(20);
-    const auto program = f.gate.program();
-    const F64 take = f.input.now + .01;
-    f.input.take = true;
-    bool resumed = false;
-    for (U32 i = 0; i < 15 && !resumed; ++i)
-        for (const auto& a : f.tick()) if (a.kind == EGateAction::RESUME) resumed = true;
-    ensure(resumed);
-    // tick increments the image serial before dispatching RESUME: undo that
-    // fixture copy so only the receipt is visible, with no post-resume image.
-    --f.input.sources[1].frame;
-    f.input.now = take + .4; f.input.dt = 0.;
-    f.gate.update(f.input);
-    ensure("reservation survives the former boundary expiry", f.gate.reservesImage(f.input));
-    f.input.now = take + 2.301;
-    ensure("fixed reservation cannot slide with a late receipt", !f.gate.reservesImage(f.input));
-    f.gate.update(f.input);
-    ensure(f.gate.program().mId == program.mId);
-    ensure(f.gate.reason() == "Take timed out");
+    set_test_name("g9 shared impl max and departure gain restoration cover rebind untick deletion and VCam off");
+    const auto shared = gateAudioGains({{a,0.f},{a,.7f},{b,0.f}},{});
+    ensure_equals(shared.at(a),.7f); ensure_equals(shared.at(b),0.f);
+    // A face rebind changes impl identity: restore the old instance and mute the new one.
+    auto rebound = gateAudioGains({{c,0.f}}, {a,b});
+    ensure_equals(rebound.at(a),1.f); ensure_equals(rebound.at(b),1.f); ensure_equals(rebound.at(c),0.f);
+    for (const auto& old : {a,b,c})
+    {
+        const auto gone = gateAudioGains({}, {old});
+        ensure_equals(gone.at(old),1.f);
+    }
+    // A Volume edit cannot change the reconciled off-air gain.
+    ensure_equals(gateAudioGains({{b,gateGain(state,b)}},{}).at(b),0.f);
+    ensure(gateAudioGains({},{}).empty());
+}
+template<> template<> void gate_object::test<24>()
+{
+    set_test_name("g8 on-air demand outranks private floor under two normal four low caps");
+    state.program=a; state.pending=b; state.from=c;
+    std::vector<std::pair<F64,LLUUID>> players;
+    for (S32 i=0;i<7;++i)
+    {
+        const LLUUID id=i==0?a:i==1?b:i==2?c:LLUUID::generateNewID();
+        players.emplace_back(gatePlayerDemand(state,id,1024.*1024.),id);
+    }
+    std::stable_sort(players.begin(),players.end(),[](const auto& x,const auto& y){return x.first>y.first;});
+    ensure(players.back().second!=a && players.back().second!=b && players.back().second!=c);
+    for (const auto& id : {a,b,c})
+    {
+        const auto found=std::find_if(players.begin(),players.end(),[&](const auto& player){return player.second==id;});
+        ensure(found!=players.end() && found-players.begin()<6);
+        ensure_equals(found->first,2.*1024.*1024.);
+    }
+    ensure_equals(gatePlayerDemand(state,LLUUID::generateNewID(),0.),0.);
+}
+template<> template<> void gate_object::test<25>()
+{
+    set_test_name("g8 Keep-playing user pause and Pause-to-Keep switch send no unsolicited transport");
+    in.sources[1].kind=ESourceSlotKind::MEDIA_URL; in.sources[1].desiredPlaying=false; in.sources[1].paused=true;
+    ensure(tick().play.empty());
+    in.settings.mOffAir=EGateOffAir::PAUSE; ensure(tick().play.empty());
+    in.settings.mOffAir=EGateOffAir::KEEP_PLAYING; ensure(tick().play.empty());
+    in.take=b; ensure(tick().play==std::vector<LLUUID>({b}));
+    in.sources[1].desiredPlaying=true; ensure(tick().play.empty());
+    in.sources[1].desiredPlaying=false; // User Pause after the take is preserved.
+    ensure(tick().play.empty());
 }
 
-template<> template<> void prism_gate_test_object::test<62>()
+template<> template<> void gate_object::test<26>()
 {
-    set_test_name("scheduled bookmarked Live cut retains the 150ms contribution tolerance");
-    latencyContribution(LLPrismLens::EMediaOnCut::LIVE, true, false);
+    set_test_name("g1 restored eligible Auto program publishes its status then advances from its slot");
+    state.cursor.setNull(); state.held.setNull(); state.awaitingCopy=true; state.text="Waiting for A";
+    in.settings.mMode=EGateMode::AUTO_CYCLE; tick();
+    ensure(state.program==a && state.pending.isNull());
+    ++in.sources[0].publication; tick(); ensure(state.held==a && state.text=="On air: A");
+    tick(8.1); ensure(state.pending==b); freshB(); tick(); ensure(state.program==b);
 }
 
-template<> template<> void prism_gate_test_object::test<63>()
+template<> template<> void gate_object::test<27>()
 {
-    set_test_name("scheduled Live corrects 400ms actual resume against 200ms estimate before publishing");
-    latencyContribution(LLPrismLens::EMediaOnCut::LIVE, true, false, .4);
+    set_test_name("g3 g7 latest take supersedes an unseen wait without borrowing another slot publication baseline");
+    in.sources[1].publication=1000; in.demanded=false; in.take=b; tick(.3); tick(.3);
+    ensure(state.program==b && state.awaitingCopy && state.held==a);
+    in.demanded=true; in.take=c; const auto waiting=tick();
+    ensure(state.pending==c && !state.awaitingCopy && state.held==a);
+    ensure(waiting.copy.isNull());
+    ++in.sources[2].publication; const auto accepted=tick();
+    ensure(accepted.copy==c && state.program==c && state.held==c);
 }
 
-template<> template<> void prism_gate_test_object::test<64>()
+template<> template<> void gate_object::test<28>()
 {
-    set_test_name("scheduled Live revalidates its current clock at final publication and corrects once");
-    latencyContribution(LLPrismLens::EMediaOnCut::LIVE, true, false, .15, true);
+    set_test_name("rejected prepare replaces pending with frozen or paused take before compose");
+    for (bool frozen : {false,true})
+    {
+        gate_data f; f.takeB(); f.tick(4.99); // Replacing intent gets its own deadline.
+        f.in.now+=.02;
+        auto& source=f.in.sources[2]; source.kind=ESourceSlotKind::MEDIA_FACE;
+        source.frozen=frozen; source.paused=!frozen;
+        f.in.take=f.c;
+        auto p=gatePrepareStep(f.state,f.in);
+        ensure(p.needsPixels && f.state.pending==f.c && f.state.program==f.a);
+        f.in.take.setNull();
+        p=gateStep(f.state,f.in); gateApply(f.state,p,false);
+        ensure(f.state.pending==f.c && f.state.held==f.a);
+        p=gateStep(f.state,f.in); gateApply(f.state,p,true);
+        ensure(f.state.program==f.c && f.state.held==f.c);
+    }
 }
-} // namespace tut
+template<> template<> void gate_object::test<29>()
+{
+    set_test_name("fade-end rejected copy preserves newest queued click for next take");
+    in.settings.mTransition=EGateTransition::CROSSFADE; takeB(); freshB(); tick();
+    in.take=c; tick(.6,false);
+    ensure(state.from==a && state.queued==c && state.program==b);
+    tick(.01,true); ensure(state.held==b && state.queued==c);
+    tick(); ensure(state.pending==c);
+}
+template<> template<> void gate_object::test<30>()
+{
+    set_test_name("Crossfade requires a valid Gate texture after release or VCam off");
+    in.settings.mTransition=EGateTransition::CROSSFADE;
+    takeB(); retainedOutput=false; gateOutputReleased(state);
+    freshB(); const auto p=tick();
+    ensure(p.copy==b && state.held==b && state.from.isNull());
+}
+template<> template<> void gate_object::test<31>()
+{
+    set_test_name("untick or delete holds last Gate picture until recovery source is fresh");
+    in.settings.mTransition=EGateTransition::CROSSFADE;
+    in.sources.erase(in.sources.begin()); const auto key=state.copyKey;
+    auto p=tick();
+    ensure(p.rollback && state.program.isNull() && state.held==a && state.copyKey==key && state.pending==b);
+    ensure(!tick().publish && state.held==a);
+    ++in.sources[0].publication; p=tick();
+    ensure(p.copy==b && state.held==b && state.from.isNull());
+}
+template<> template<> void gate_object::test<32>()
+{
+    set_test_name("unticking outgoing A finishes fade to healthy incoming B despite failed copy");
+    in.settings.mTransition=EGateTransition::CROSSFADE; takeB(); freshB(); tick(); tick(.1);
+    in.sources.erase(in.sources.begin()); auto p=tick(.01,false);
+    ensure(p.copy==b && state.program==b && state.held==a);
+    p=tick(); ensure(p.copy==b && state.held==b && state.program==b && state.from.isNull());
+}
+template<> template<> void gate_object::test<33>()
+{
+    set_test_name("ineligible program advances Auto and idle states publish once");
+    in.settings.mMode=EGateMode::AUTO_CYCLE; in.sources[0].eligible=false;
+    auto p=tick(); ensure(p.rollback && state.program.isNull() && state.pending==b && state.held==a);
+    freshB(); tick(); ensure(state.program==b);
+    const U32 stable=publications;
+    for(S32 i=0;i<60;++i) ensure(!tick().publish);
+    ensure_equals(publications,stable);
+    in.sources.clear(); ensure(tick().publish); const U32 empty=publications;
+    for(S32 i=0;i<60;++i) ensure(!tick().publish);
+    ensure_equals(publications,empty);
+}
+template<> template<> void gate_object::test<34>()
+{
+    set_test_name("projector-only publication callback follows copy cut fade and rollback once");
+    // Composition publishes retained pixels; the content-key pass prepares cookies separately.
+    takeB(); freshB(); tick(); ensure_equals(publications,1u);
+    ensure(cookieCache.valid && cookieCache.key==cookieKey());
+    tick(); ensure_equals(publications,1u);
+    in.settings.mTransition=EGateTransition::CROSSFADE; in.sources[2].frozen=true; in.take=c;
+    tick(); tick(.2); ensure_equals(publications,3u);
+    bool already=false;
+    const auto repeated=gateStep(state,in);
+    gateComposeApply(state,repeated,true,false,{},already,[&](bool){++publications; ++cookiePreparations;return true;});
+    ensure_equals("second compose in the same publication prepares no cookie",publications,3u);
+    in.demanded=false; in.sources[2].hasOutput=false;
+    const auto p=tick(); ensure(p.rollback && state.program==b);
+    ensure("unseen rollback immediately prepares retained B",cookieValid && cookieHeld==b && cookieAlpha==0.f);
+    ensure(rollback); ensure_equals(publications,3u);
+    tick(); ensure(rollback); ensure_equals(publications,3u);
+    in.demanded=true; tick();
+    ensure(!rollback); ensure_equals(publications,4u); ensure(cookieCache.key==cookieKey());
+}
+template<> template<> void gate_object::test<35>()
+{
+    set_test_name("live tick grants then mutes before its single Play and preserves user Pause");
+    U32 grants=0, plays=0; F32 gain=1.f;
+    auto grant=[&](){++grants;}; auto mute=[&](){gain=0.f;};
+    auto play=[&](){ensure_equals(gain,0.f);++plays;};
+    gateLiveTick(EGateOffAir::KEEP_PLAYING,true,grant,mute,play);
+    ensure_equals(plays,1u); ensure_equals(grants,1u);
+    gateLiveTick(EGateOffAir::KEEP_PLAYING,false,grant,mute,play);
+    gateLiveTick(EGateOffAir::PAUSE,true,grant,mute,play);
+    ensure_equals(plays,1u);
+}
+template<> template<> void gate_object::test<36>()
+{
+    set_test_name("last consumer release invalidates a frozen held copy key");
+    const GateCopyKey held=state.copyKey;
+    gateOutputReleased(state); ensure(!(state.copyKey==held));
+    in.sources[0].frozen=true; retainedOutput=false; in.demanded=false;
+    tick(); ensure(!retainedOutput && state.copyKey.id.isNull() && publications==0);
+    in.demanded=true; tick(.016,false); // actual copy failure retains the invalid key
+    ensure(!retainedOutput && state.copyKey.id.isNull() && publications==0);
+    tick(); // steady held-source copy restores output, without a new take/publication
+    ensure(retainedOutput && state.copyKey==held && cookieValid && cookieHeld==a);
+    ensure_equals(publications,1u); tick(); ensure_equals(publications,1u);
+}
+template<> template<> void gate_object::test<37>()
+{
+    set_test_name("untick on-air A selects frozen or paused D without double prune to E");
+    for (bool frozen : {false,true})
+    {
+        gate_data f; auto& d=f.in.sources[1]; d.kind=ESourceSlotKind::MEDIA_FACE;
+        d.frozen=frozen; d.paused=!frozen;
+        f.in.sources.erase(f.in.sources.begin()); f.tick();
+        ensure(f.state.program==f.b && f.state.held==f.b && f.state.cursor==f.b);
+    }
+}
+template<> template<> void gate_object::test<38>()
+{
+    set_test_name("unseen fade end keeps incoming B until copy or actual incoming loss");
+    for (bool stopped : {false,true})
+    {
+        gate_data f; f.in.settings.mTransition=EGateTransition::CROSSFADE;
+        f.takeB(); f.freshB(); f.tick(); f.tick(.2);
+        ensure(f.cookieAlpha>0.f); const U32 published=f.publications;
+        f.in.demanded=false; f.tick(.1); f.tick(.6);
+        ensure(f.state.fadeEndWaiting && f.state.held==f.a);
+        ensure(f.cookieValid && f.cookieHeld==f.a && f.cookieAlpha==1.f);
+        ensure_equals(f.publications,published);
+        // First consumed frame still has no preparation demand, as in production.
+        f.in.sources[1].stopped=stopped; f.tick();
+        ensure(f.cookieValid && f.cookieHeld==f.a && f.cookieAlpha==(stopped ? 0.f : 1.f));
+        if (stopped) ensure(f.state.program==f.a && f.rollback);
+        f.in.demanded=true; f.tick();
+        ensure(f.state.held==(stopped ? f.a : f.b) && f.cookieAlpha==0.f);
+    }
+}
+template<> template<> void gate_object::test<39>()
+{
+    set_test_name("failed black publication commits intent but retries until picture succeeds");
+    in.sources.clear();
+    tick(.016,false);
+    ensure(state.program.isNull() && state.held.isNull() && state.text=="No sources ticked");
+    ensure(!state.emptyPublished && rollback && publications==0 && state.publishedAt<0.);
+    tick();
+    ensure(state.emptyPublished && !rollback && publications==1 && cookieValid);
+    const U32 published=publications;
+    for(U32 n=0;n<30;++n) tick();
+    ensure_equals(publications,published);
+
+    // Rollback publication failures also remain pending across preparation.
+    gate_data f; f.in.settings.mTransition=EGateTransition::CROSSFADE;
+    f.takeB(); f.freshB(); f.tick(); f.tick(.2);
+    f.in.sources[1].hasOutput=false; f.publicationOk=false; f.tick(.016,false);
+    ensure(f.state.program==f.a && f.rollback && gateGain(f.state,f.a)==1.f);
+    f.publicationOk=true; f.tick(); ensure(!f.rollback && f.cookieAlpha==0.f);
+}
+template<> template<> void gate_object::test<40>()
+{
+    set_test_name("demanded thirty-frame fade prepares each cookie at most once per frame");
+    in.settings.mTransition=EGateTransition::CROSSFADE; takeB(); freshB(); tick();
+    for(U32 n=0;n<31;++n)
+    {
+        const U32 before=cookiePreparations;
+        tick(1./60.);
+        ensure(cookiePreparations-before<=1);
+    }
+    ensure(state.held==b && state.from.isNull());
+}
+template<> template<> void gate_object::test<41>()
+{
+    set_test_name("unseen fade refreshes every alpha and failed end copy keeps alpha one");
+    in.settings.mTransition=EGateTransition::CROSSFADE; takeB(); freshB(); tick();
+    in.demanded=false;
+    const U32 before=cookiePreparations;
+    for(U32 n=0;n<29;++n) tick(1./60.);
+    ensure_equals(cookiePreparations,before+29);
+    tick(.1);
+    ensure(state.fadeEndWaiting && cookieAlpha==1.f);
+    ensure_equals(cookiePreparations,before+30);
+    in.demanded=true; tick(.016,false);
+    ensure(state.fadeEndWaiting && state.alpha==1.f && state.held==a && cookieAlpha==1.f);
+    tick(); ensure(state.held==b && state.from.isNull());
+
+    gate_data f; f.in.settings.mTransition=EGateTransition::CROSSFADE;
+    f.takeB(); f.freshB(); f.tick(); f.tick(.2);
+    f.tick(.4,false); // Allocation/copy failure on a demanded fade-end frame.
+    ensure(f.state.fadeEndWaiting && f.cookieAlpha==1.f && f.state.held==f.a);
+}
+template<> template<> void gate_object::test<42>()
+{
+    set_test_name("cut committed with an effect phase change renders that frame exactly once per projector");
+    for (bool animated : {false,true})
+    {
+        GateCookieCache cookies[2]; ProjectorSettings settings;
+        settings.mEffects.mStatic=animated ? .5f : 0.f;
+        auto key=cookieKey(); key.phase=gateEffectPhase(settings,30.f,1.);
+        U32 renders[2]={0,0};
+        for(U32 i=0;i<2;++i) cookies[i].refresh(key,1.,[&](bool&){++renders[i];return true;});
+        // An effect-due phase is evaluated AFTER composition commits B.
+        takeB(); freshB(); tick(); ensure(state.held==b);
+        key=cookieKey(); key.phase=gateEffectPhase(settings,30.f,1.1);
+        for(U32 i=0;i<2;++i)
+        {
+            ensure(cookies[i].refresh(key,1.1,[&](bool&){++renders[i];return true;}));
+            ensure(cookies[i].key.program.id==b);
+            ensure(!cookies[i].refresh(key,1.1,[&](bool&){++renders[i];return true;}));
+            ensure_equals(renders[i],2u);
+        }
+        state=GateState(); state.program=state.held=state.cursor=a; state.copyKey={a,1,10};
+    }
+}
+template<> template<> void gate_object::test<43>()
+{
+    set_test_name("copy allocation failure and backoff never stall unseen or visible cookie alpha");
+    in.settings.mTransition=EGateTransition::CROSSFADE; takeB(); freshB(); tick();
+    const auto retained=state.copyKey;
+    // Fail the production spare-output seam while retaining the old picture.
+    struct Output { U32 getWidth() const{return 1024;} U32 getHeight() const{return 1024;}
+        bool isComplete() const{return true;} void swapOutput(Output&){} } output,spare;
+    ensure(!produceProjectorOutput(output,spare,2048,[](auto&,U32){return false;},[](auto&){return true;}));
+    copyRetryAfter=gateRetryAfter(in.now);
+    for(bool demanded : {true,false,true,false})
+    {
+        in.demanded=demanded; const U32 before=cookiePreparations;
+        tick(1./60.);
+        ensure_equals(cookiePreparations,before+1);
+        ensure_equals(cookieAlpha,state.alpha); ensure(cookieAlpha>0.f && state.copyKey==retained);
+    }
+}
+template<> template<> void gate_object::test<44>()
+{
+    set_test_name("unseen last untick renders black once then stays idle for 300 frames");
+    tick(); in.demanded=false; in.sources.clear();
+    const U32 before=cookiePreparations; tick();
+    ensure(cookieCache.key.black && cookieValid); ensure_equals(cookiePreparations,before+1);
+    for(U32 n=0;n<300;++n) tick();
+    ensure_equals(cookiePreparations,before+1);
+    // A failed black allocation keeps the accepted A key; changing intents cannot bypass retry.
+    gate_data f; f.tick(); const auto old=f.cookieCache.key;
+    f.in.demanded=false; f.in.sources.clear(); f.cookieAllocationOk=false; f.tick();
+    ensure(f.cookieCache.key==old); const U32 attempts=f.cookieAttempts;
+    for(U32 n=0;n<9;++n) f.tick(1./60.);
+    ensure_equals(f.cookieAttempts,attempts);
+    f.cookieAllocationOk=true; f.tick(.02);
+    ensure_equals(f.cookieAttempts,attempts+1); ensure(f.cookieCache.key.black);
+    const U32 black=f.cookiePreparations;
+    for(U32 n=0;n<300;++n) f.tick();
+    ensure_equals(f.cookiePreparations,black);
+}
+template<> template<> void gate_object::test<45>()
+{
+    set_test_name("each cookie dependency changes the key and failed rendering never accepts it");
+    GateCookieKey base=cookieKey(); base.from={b,1,11,true}; base.gate=c;
+    auto changed=[&](const GateCookieKey& key)
+    {
+        GateCookieCache cache; U32 renders=0;
+        cache.refresh(base,0.,[&](bool&){++renders;return true;});
+        ensure(!(key==base));
+        ensure(!cache.refresh(key,1.,[](bool&){return false;})); ensure(cache.key==base);
+        ensure(cache.refresh(key,1.,[&](bool&){++renders;return true;}));
+        ensure(!cache.refresh(key,1.,[&](bool&){++renders;return true;})); ensure_equals(renders,2u);
+    };
+    auto k=base; k.program.id=b; changed(k);
+    k=base; ++k.program.generation; changed(k); k=base; ++k.program.publication; changed(k);
+    k=base; k.program.available=false; changed(k);
+    k=base; k.from.id=c; changed(k); k=base; ++k.from.publication; changed(k);
+    k=base; ++k.from.generation; changed(k); k=base; k.from.available=false; changed(k);
+    k=base; ++k.retained.publication; changed(k); k=base; ++k.retained.generation; changed(k);
+    k=base; k.retained.id=b; changed(k); k=base; k.alpha=.3f; changed(k);
+    k=base; k.black=true; changed(k); k=base; ++k.phase; changed(k);
+    k=base; k.effectHz=15.f; changed(k); k=base; k.destinationAspect=2.f; changed(k); k=base; ++k.settingsRevision; changed(k);
+    k=base; k.resolution=2048; changed(k); k=base; ++k.gateGeneration; changed(k);
+    ProjectorSettings effects; ensure_equals(gateEffectPhase(effects,30.f,10.),U64(0));
+    effects.mEffects.mStatic=.5f;
+    ensure_equals(gateEffectPhase(effects,30.f,1.001),gateEffectPhase(effects,30.f,1.02));
+    ensure(gateEffectPhase(effects,30.f,1.04)>gateEffectPhase(effects,30.f,1.02));
+}
+
+template<> template<> void gate_object::test<46>()
+{
+    set_test_name("black ignores obsolete sources and animation; changed keys cannot bypass allocation backoff");
+    auto key=cookieKey(); key.phase=42; key.effectHz=30.f;
+    state.held.setNull(); const auto black=gateCookieContentKey(state,key,[](const auto&){return GateCookieSourceKey();});
+    ensure(black.black && black.program.id.isNull() && black.from.id.isNull() &&
+        black.retained.id.isNull() && black.alpha==0.f && black.phase==0 && black.effectHz==0.f);
+    GateCookieCache cache; U32 attempts=0;
+    cache.refresh(key,0.,[](bool&){return true;}); const auto accepted=cache.key;
+    cache.refresh(black,1.,[&](bool& failed){++attempts;failed=true;return false;});
+    for(U32 n=1;n<10;++n)
+    {
+        auto next=black; next.alpha=.01f*n; next.phase=n;
+        ensure(!cache.refresh(next,1.+n/60.,[&](bool&){++attempts;return true;}));
+        ensure(cache.key==accepted);
+    }
+    ensure_equals(attempts,1u);
+    ensure(cache.refresh(black,1.2,[&](bool&){++attempts;return true;}));
+    for(U32 n=0;n<300;++n)
+    {
+        state.program=LLUUID::generateNewID(); state.from=state.program; state.alpha=.5f;
+        key.phase=n; key.effectHz=15.f;
+        const auto empty=gateCookieContentKey(state,key,[](const auto&){return GateCookieSourceKey();});
+        ensure(empty==black);
+        ensure(!cache.refresh(empty,2.+n/60.,[&](bool&){++attempts;return true;}));
+    }
+    ensure_equals(attempts,2u);
+}
+
+template<> template<> void gate_object::test<47>()
+{
+    set_test_name("single ticked on-air URL restarts after nonloop EOF and waits for fresh pixels");
+    in.sources.resize(1); in.settings.mSources = {a};
+    auto& source = in.sources[0]; source.kind = ESourceSlotKind::MEDIA_URL;
+    source.desiredPlaying = true;
+    in.take = a; auto playing = tick();
+    ensure(playing.play.empty() && state.pending.isNull());
+    source.stopped = true; source.desiredPlaying = false; source.reason = "Ended";
+    tick(); in.take = a; const auto restart = tick();
+    ensure(restart.play == std::vector<LLUUID>({a}));
+    ensure(state.pending == a); ensure_equals(state.baselinePublication, source.publication);
+    const auto cuts = state.cutSerial;
+    source.stopped = false; source.desiredPlaying = true;
+    tick(); ensure(state.pending == a && state.cutSerial == cuts);
+    ++source.publication; ++source.decoder; source.copiedDecoder = source.decoder;
+    tick(); ensure(state.pending.isNull() && state.program == a);
+    ensure_equals(state.cutSerial, cuts+1);
+    in.take = a; ensure(tick().play.empty()); ensure(state.pending.isNull());
+}
+
+template<> template<> void gate_object::test<48>()
+{
+    set_test_name("last untick presents constant black during failed black target publication and retry");
+    in.sources.clear(); in.settings.mSources.clear(); publicationOk = false;
+    tick(.016, false);
+    ensure(!state.emptyPublished && retainedOutput && state.held.isNull());
+    for (U32 retry=0; retry<12; ++retry)
+    {
+        CompositeState face; face.mGateAlpha=.5f; face.mBarColorLinear[0]=1.f;
+        ensure(gateBlackComposite(state.held.isNull(), 2, face));
+        ensure(face.mBlack && face.mCaptureSlot==2 && face.mGateAlpha==0.f);
+        ensure(face.mLetterbox==1 && face.mDisplayToCaptureScale[0]==0.f &&
+            face.mDisplayToCaptureOffset[0]<0.f && face.mBarColorLinear[0]==0.f);
+        ensure(cookieKey().black);
+        tick(.016, false);
+    }
+}
+
+}

@@ -144,9 +144,9 @@ private:
     U64 mBoneAnchorSubjectRevision = 0;
     bool mCustomAspect = false;
     bool mCustomScreenAspect = false;
-    LLScrollListCtrl* mGateList = nullptr;
-    U64 mGateListRevision = 0;
-    LLUUID mSelectedGateArm;
+    LLScrollListCtrl* mGateSources = nullptr;
+    U64 mGateSourcesRevision = 0;
+    std::string mGateSourcesKey;
     bool mRefreshing = false;
     std::string mStatus;
     LLFrameTimer mStatusTimer;

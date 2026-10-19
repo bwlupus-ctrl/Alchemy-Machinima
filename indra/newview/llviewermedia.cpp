@@ -603,10 +603,6 @@ bool LLViewerMedia::priorityComparitor(const LLViewerMediaImpl* i1, const LLView
         // Muted or failed items always go to the end of the list, period.
         return true;
     }
-    else if (LLPrismLens::gateMediaPriority(i1) != LLPrismLens::gateMediaPriority(i2))
-    {
-        return LLPrismLens::gateMediaPriority(i1) > LLPrismLens::gateMediaPriority(i2);
-    }
     else if(i1->hasFocus())
     {
         // The item with user focus always comes to the front of the list, period.
@@ -746,11 +742,6 @@ void LLViewerMedia::updateMedia(void *dummy_arg)
 
     F64 total_cpu = 0.0f;
     int impl_count_total = 0;
-    // A close request does not free a resident instance. These impls stay alive
-    // on their close fence, outside the normal priority list's loadable count.
-    for (auto* impl : sViewerMediaImplList)
-        if (impl->privateClosePending() && !impl->getMediaPlugin())
-        { ++impl_count_total; total_cpu += impl->privateClosingCPU(); }
     int impl_count_interest_low = 0;
     int impl_count_interest_normal = 0;
 
@@ -908,9 +899,6 @@ void LLViewerMedia::updateMedia(void *dummy_arg)
                 }
             }
 
-            const F64 cpu_before_priority = pimpl->getCPUUsage();
-            if (new_priority == LLPluginClassMedia::PRIORITY_UNLOADED && pimpl->isPrivateFile() && pimpl->getMediaPlugin())
-                ++impl_count_total; // child is still resident through this frame's close
             pimpl->setPriority(new_priority);
 
             if(pimpl->getUsedInUI())
@@ -923,7 +911,7 @@ void LLViewerMedia::updateMedia(void *dummy_arg)
                 proximity_order.push_back(pimpl);
             }
 
-            total_cpu += cpu_before_priority;
+            total_cpu += pimpl->getCPUUsage();
 
             if (!pimpl->getUsedInUI() && pimpl->hasMedia())
             {
@@ -1850,11 +1838,10 @@ void LLViewerMediaImpl::destroyMediaSource()
         LLCoros::LockType lock(mLock); // Delay tear-down while bg thread is updating
         if(mMediaSource)
         {
-            if (mPrivateFile)
+            if (mPrivateFile && mPrivateRetention)
             {
-                mPrivateClosingCPU = getCPUUsage();
-                mPrivateCloseFence = mMediaSource->privateFileCloseFence();
-                if (mPrivateRetention) ALMediaFile::retireAfterClose(mPrivateRetention, mPrivateCloseFence);
+                auto fence = mMediaSource->privateFileCloseFence();
+                ALMediaFile::retireAfterClose(mPrivateRetention, std::move(fence));
             }
             mMediaSource->setDeleteOK(true) ;
             mMediaSource = NULL; // shared pointer
@@ -2310,6 +2297,14 @@ void LLViewerMediaImpl::setVolume(F32 volume)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+void LLViewerMediaImpl::setPrismGateGain(F32 gain)
+{
+    gain = llclamp(gain, 0.f, 1.f);
+    if (mPrismGateGain == gain) return;
+    mPrismGateGain = gain;
+    updateVolume();
+}
+
 void LLViewerMediaImpl::setMute(bool mute)
 {
     if (mute)
@@ -2330,7 +2325,7 @@ void LLViewerMediaImpl::updateVolume()
     if(mMediaSource)
     {
         // always scale the volume by the global media volume
-        F32 volume = mRequestedVolume * LLViewerMedia::getInstance()->getVolume();
+        F32 volume = mRequestedVolume * mPrismGateGain * LLViewerMedia::getInstance()->getVolume();
 
         if (mPrivateFile && (!mPrivateActive || mPrivateDesired != 2 || !privateFileAdmitted() || !mediaSlotPermitted())) volume = 0.f;
 
@@ -3149,7 +3144,7 @@ void LLViewerMediaImpl::retirePrivateFile()
     mPrivateActive = false; mPrivateDesired = 0; mRequestedVolume = 0.f;
     if (mMediaSource)
     {
-        mMediaSource->setVolume(0.f);
+        updateVolume();
         mMediaSource->configurePrivateFile(mPrivateDemux, 0, false);
     }
     resetPreviousMediaState(); mMediaURL.clear(); mMediaEntryURL.clear();

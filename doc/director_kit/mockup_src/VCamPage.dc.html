@@ -344,6 +344,7 @@ body{margin:0}
         <option value="ots">OTS pair from Subjects A/B</option>
         <option value="lens">Surface lens from selected face</option>
         <option value="media">Media from a prim face (video)</option>
+        <option value="gate">Gate (switch cameras and videos)</option>
       </select>
       <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="position: absolute; right: 8px; top: 7px; pointer-events: none"><path d="M2 3.5l3 3 3-3" stroke="#9BA3AE" stroke-width="1.4" fill="none"></path></svg>
     </div>
@@ -352,124 +353,27 @@ body{margin:0}
     </sc-if>
   </div>
 
-  <!-- Gate - shared by camera and media selection; outside the numbered signal chain -->
-  <section aria-label="Gate" style="{{gateCardStyle}}">
-    <div style="height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid #2A2F36">
-      <div style="flex: 1; font-size: 13px; font-weight: 600; letter-spacing: .01em">Gate</div>
-      <span style="flex: none; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid #E8A33D; color: #E8A33D">All feeds</span>
-    </div>
-    <div style="padding: 6px 8px 8px 12px; display: flex; flex-direction: column; gap: 2px">
-      <sc-for list="{{gateGroups}}" as="group" hint-placeholder-count="3">
-              <sc-for list="{{group.rows}}" as="r" hint-placeholder-count="4">
-                <div title="{{r.help}}" style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 52px 20px; column-gap: 6px; align-items: center; min-height: 28px; {{r.rowStyle}}">
-                  <sc-if value="{{r.showLabel}}" hint-placeholder-val="{{true}}">
-                    <label for="{{r.id}}" style="font-size: 12px; color: #C9CED6; white-space: {{r.labelWhiteSpace}}; overflow: hidden; text-overflow: ellipsis">{{r.label}}</label>
-                  </sc-if>
-                  <sc-if value="{{r.isSlider}}" hint-placeholder-val="{{true}}">
-                    <input id="{{r.id}}" class="rng" type="range" min="{{r.min}}" max="{{r.max}}" step="{{r.step}}" value="{{r.value}}" onInput="{{r.change}}" style="--p: {{r.pct}}%" />
-                    <div style="font: 500 12px 'IBM Plex Mono', monospace; color: #E6E8EB; text-align: right; white-space: nowrap; overflow: hidden">{{r.display}}</div>
-                  </sc-if>
-                  <sc-if value="{{r.isToggle}}" hint-placeholder-val="{{false}}">
-                    <div style="display: flex; align-items: center">
-                      <button id="{{r.id}}" class="btn" type="button" aria-pressed="{{r.on}}" aria-label="{{r.label}}" onClick="{{r.toggle}}" style="width: 34px; height: 18px; border-radius: 9px; border: none; padding: 0; position: relative; background: {{r.trackBg}}"><span style="position: absolute; top: 2px; left: {{r.knobLeft}}; width: 14px; height: 14px; border-radius: 7px; background: {{r.knobBg}}"></span></button>
-                    </div>
-                    <div style="font-size: 12px; color: #9BA3AE; text-align: right">{{r.display}}</div>
-                  </sc-if>
-                  <sc-if value="{{r.isCombo}}" hint-placeholder-val="{{false}}">
-                    <div style="grid-column: span 2; position: relative">
-                      <select id="{{r.id}}" class="sel" value="{{r.value}}" onChange="{{r.change}}">
-                        <sc-for list="{{r.options}}" as="o" hint-placeholder-count="3">
-                          <option value="{{o}}">{{o}}</option>
-                        </sc-for>
-                      </select>
-                      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="position: absolute; right: 8px; top: 7px; pointer-events: none"><path d="M2 3.5l3 3 3-3" stroke="#9BA3AE" stroke-width="1.4" fill="none"></path></svg>
-                    </div>
-                  </sc-if>
-                  <sc-if value="{{r.isSeg}}" hint-placeholder-val="{{false}}">
-                    <div id="{{r.id}}" role="radiogroup" aria-label="{{r.label}}" style="grid-column: span 2; display: flex; gap: 2px; min-width: 0">
-                      <sc-for list="{{r.opts}}" as="o" hint-placeholder-count="3">
-                        <button class="btn" type="button" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="{{o.style}}">{{o.label}}</button>
-                      </sc-for>
-                    </div>
-                  </sc-if>
-                  <sc-if value="{{r.isActions}}" hint-placeholder-val="{{false}}">
-                    <div style="grid-column: 1 / span 3; display: flex; gap: 6px; flex-wrap: wrap; padding: 2px 0">
-                      <sc-for list="{{r.btns}}" as="b" hint-placeholder-count="2">
-                        <button class="btn" type="button" title="{{b.help}}" onClick="{{b.press}}" style="{{b.style}}">{{b.label}}</button>
-                      </sc-for>
-                    </div>
-                  </sc-if>
-                  <sc-if value="{{r.isReadout}}" hint-placeholder-val="{{false}}">
-                    <div id="{{r.id}}" style="grid-column: span 2; font: 500 12px 'IBM Plex Mono', monospace; color: {{r.readColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.display}}</div>
-                  </sc-if>
-                  <sc-if value="{{r.isNote}}" hint-placeholder-val="{{false}}">
-                    <div style="grid-column: 1 / -1; font-size: 11px; color: #8A929D; line-height: 1.45; padding: 2px 0 4px">{{r.display}}</div>
-                  </sc-if>
-                  <sc-if value="{{r.isText}}" hint-placeholder-val="{{false}}">
-                    <input id="{{r.id}}" type="url" spellcheck="false" aria-label="{{r.label}}" title="{{r.help}}" value="{{r.value}}" placeholder="{{r.placeholder}}" onChange="{{r.change}}" onKeyDown="{{r.keydown}}" style="grid-column: span 2; min-width: 0; height: 24px; box-sizing: border-box; padding: 0 8px; border: 1px solid #343A42; border-radius: 4px; background: #15181C; color: #E6E8EB; font: 500 12px 'IBM Plex Mono', monospace">
-                  </sc-if>
-                  <sc-if value="{{r.canReset}}" hint-placeholder-val="{{true}}">
-                    <button class="btn" type="button" aria-label="{{r.resetLabel}}" onClick="{{r.reset}}" style="width: 20px; height: 20px; border: none; background: transparent; color: {{r.resetColor}}; padding: 0; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 7a4.5 4.5 0 1 0 1.4-3.3"></path><path d="M2.3 1.8v2.3h2.3"></path></svg></button>
-                  </sc-if>
-                  <sc-if value="{{r.padReset}}" hint-placeholder-val="{{false}}"><span></span></sc-if>
-                </div>
-              </sc-for>
-
-        <sc-if value="{{group.isArms}}" hint-placeholder-val="{{false}}">
-          <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 20px; column-gap: 6px; align-items: start; padding: 4px 0">
-            <span id="vc_gate_arms_label" style="font-size: 12px; color: #C9CED6; padding-top: 8px">Armed feeds</span>
-            <div id="vc_gate_arms" role="group" aria-labelledby="vc_gate_arms_label" style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
-              <sc-for list="{{gateArms}}" as="arm" hint-placeholder-count="5">
-                <div style="{{arm.style}}">
-                  <button class="btn" type="button" aria-pressed="{{arm.selected}}" aria-label="{{arm.pickLabel}}" title="{{arm.help}}" onClick="{{arm.pick}}" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 0; border: none; background: transparent; color: #E6E8EB; text-align: left">
-                    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" style="flex: none; color: #9BA3AE"><path d="{{arm.icon}}"></path></svg>
-                    <span style="min-width: 0; display: flex; flex-direction: column; gap: 1px">
-                      <span style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{arm.name}}</span>
-                      <span style="font-size: 11px; color: #8A929D; line-height: 1.45">{{arm.note}}</span>
-                    </span>
-                  </button>
-                  <span title="{{arm.status}}" style="{{arm.chipStyle}}">{{arm.status}}</span>
-                  <button id="{{arm.toggleId}}" class="btn" type="button" aria-pressed="{{arm.enabled}}" aria-label="{{arm.toggleLabel}}" title="Include this feed in the cycle" onClick="{{arm.toggle}}" style="width: 34px; height: 18px; flex: none; border-radius: 9px; border: none; padding: 0; position: relative; background: {{arm.track}}"><span style="position: absolute; top: 2px; left: {{arm.left}}; width: 14px; height: 14px; border-radius: 7px; background: {{arm.knob}}"></span></button>
-                </div>
-              </sc-for>
-              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 3px 0">
-                <button id="vc_gate_arm" class="btn" type="button" disabled="{{gateArmDisabled}}" title="Arm the slot selected in Settings for. Arming does not start a video." onClick="{{gateArm}}" style="{{gateArmStyle}}">ARM</button>
-                <button id="vc_gate_disarm" class="btn" type="button" disabled="{{gateDisarmDisabled}}" title="Disarm the selected armed-feed row" onClick="{{gateDisarm}}" style="{{gateDisarmStyle}}">Disarm</button>
-                <span style="font: 500 11px 'IBM Plex Mono', monospace; color: #8A929D">{{gateArmCount}}</span>
-              </div>
+  <sc-if value="{{gateSelected}}" hint-placeholder-val="{{false}}">
+    <section aria-label="Gate" style="{{gateCardStyle}}">
+      <div style="padding:12px;border-bottom:1px solid #343A42">Gate <span style="float:right;color:#E8A33D">GATE</span></div>
+      <div style="padding:12px;display:grid;grid-template-columns:110px 1fr;gap:10px">
+        <span>Sources</span><div id="vc_gate_sources" style="height:150px;overflow:auto">
+          <sc-for list="{{gateSources}}" as="source" hint-placeholder-count="7">
+            <div style="display:flex;gap:8px;padding:4px">
+              <input type="checkbox" aria-label="{{source.tickLabel}}" checked="{{source.ticked}}" onChange="{{source.toggle}}">
+              <button class="btn" type="button" onClick="{{source.take}}" style="{{source.style}}">{{source.name}}</button><span>{{source.onAir}}</span>
             </div>
-            <span></span>
-          </div>
-        </sc-if>
-      </sc-for>
-      <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 20px; column-gap: 6px; align-items: center; min-height: 28px">
-        <span></span>
-        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap">
-          <sc-if value="{{gateShowPlay}}" hint-placeholder-val="{{true}}"><button id="vc_gate_play_videos" class="btn" type="button" title="Authorize all armed private videos for this session, including disabled arms. The current camera stays on air." onClick="{{gatePlayVideos}}" style="{{gatePrimaryStyle}}">Play videos</button></sc-if>
-          <sc-if value="{{gateManual}}" hint-placeholder-val="{{false}}"><button id="vc_gate_take" class="btn" type="button" disabled="{{gateTakeDisabled}}" aria-busy="{{gateTakePending}}" title="Take the selected armed feed when ready. Program stays on air while it warms." onClick="{{gateTake}}" style="{{gateTakeStyle}}">{{gateTakeLabel}}</button></sc-if>
+          </sc-for>
         </div>
-        <span></span>
+        <span>Mode</span><div id="vc_gate_mode"><sc-for list="{{gateModes}}" as="option" hint-placeholder-count="2"><button class="btn" type="button" onClick="{{option.pick}}" style="{{option.style}}">{{option.label}}</button></sc-for></div>
+        <sc-if value="{{gateAuto}}" hint-placeholder-val="{{false}}"><label for="vc_gate_interval">Interval (s)</label><input id="vc_gate_interval" type="range" min="0.5" max="120" step="0.5" value="{{gateInterval}}" onInput="{{gateIntervalChange}}"></sc-if>
+        <span>Transition</span><div id="vc_gate_transition"><sc-for list="{{gateTransitions}}" as="option" hint-placeholder-count="2"><button class="btn" type="button" onClick="{{option.pick}}" style="{{option.style}}">{{option.label}}</button></sc-for></div>
+        <sc-if value="{{gateFade}}" hint-placeholder-val="{{false}}"><label for="vc_gate_crossfade_seconds">Length (s)</label><input id="vc_gate_crossfade_seconds" type="range" min="0.1" max="3" step="0.1" value="{{gateLength}}" onInput="{{gateLengthChange}}"></sc-if>
+        <span>Off-air videos</span><div id="vc_gate_off_air"><sc-for list="{{gateOffAir}}" as="option" hint-placeholder-count="2"><button class="btn" type="button" onClick="{{option.pick}}" style="{{option.style}}">{{option.label}}</button></sc-for></div>
+        <span>Status</span><div id="vc_gate_status" role="status" style="white-space:normal">{{gateStatus}}</div>
       </div>
-      <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 20px; column-gap: 6px; align-items: center; min-height: 28px">
-        <label for="vc_gate_status" style="font-size: 12px; color: #C9CED6">Status</label>
-        <div id="vc_gate_status" role="status" aria-live="polite" title="{{gateStatus}}" style="font: 500 12px 'IBM Plex Mono', monospace; color: {{gateStatusColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{gateStatus}}</div>
-        <span></span>
-      </div>
-      <div style="font-size: 11px; color: #8A929D; line-height: 1.45; padding: 2px 0 4px">Select an armed row for Preview. Only ready feeds go on air; warming and skipped feeds leave Program intact. Play videos authorizes the armed private videos for this session.</div>
-      <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 20px; column-gap: 6px; align-items: center; min-height: 28px; border-top: 1px solid #2A2F36; padding-top: 6px; margin-top: 4px">
-        <label for="vc_gate_demo" style="font-size: 12px; color: #C9CED6">Mockup demo</label>
-        <div style="display: flex; align-items: center; gap: 6px; min-width: 0">
-          <div style="position: relative; flex: 1; min-width: 0">
-            <select id="vc_gate_demo" class="sel" value="{{gateDemo}}" onChange="{{gatePickDemo}}"><sc-for list="{{gateDemos}}" as="demo" hint-placeholder-count="4"><option value="{{demo.id}}">{{demo.label}}</option></sc-for></select>
-            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="position: absolute; right: 8px; top: 7px; pointer-events: none"><path d="M2 3.5l3 3 3-3" stroke="#9BA3AE" stroke-width="1.4" fill="none"></path></svg>
-          </div>
-          <button class="btn" type="button" onClick="{{gateAdvanceDemo}}" style="{{smallBtn}}">Next step</button>
-        </div>
-        <span></span>
-      </div>
-      <div style="font-size: 11px; color: #8A929D; line-height: 1.45; padding: 2px 0 4px">{{gateDemoHelp}}</div>
-    </div>
-  </section>
+    </section>
+  </sc-if>
 
   <sc-if value="{{hasCam}}" hint-placeholder-val="{{true}}">
     <div>
@@ -646,15 +550,15 @@ class Component extends DCLogic {
         bone_pov_smoothing: 0.15, bone_pov_fov: 60, bone_pov_offset_x: 0, bone_pov_offset_y: 0, bone_pov_offset_z: 0,
         bone_pov_trim_pitch: 0, bone_pov_trim_yaw: 0, bone_pov_scale_aware: true,
         fov_mode: 'Fixed vertical FOV', vertical_fov: 60, near_clip: 0.05, far_clip: 256, src_aspect: 'Auto',
-        media_src: 'url', media_loop: true, media_volume: 0, media_on_cut: 'Live',
+        media_src: 'url', media_loop: true, media_volume: 0,
         show_guide: false, guide_thirds: true, guide_uproll: true, guide_crosshair: false, guide_clipmarkers: true,
         exposure_bias: 0, film_grain: 0, chromatic_aberration: 0, crt_scanlines: 0,
         output_aspect: '16:9', custom_aspect: 1.778,
         rate_mode: 'Automatic', target_fps: 30
       },
-      gate: { gate_active: true, gate_mode: 'Auto-cycle', gate_interval: 8, gate_prewarm: 3, gate_transition: 'Cut', gate_crossfade_seconds: 0.5, gate_fade_over_budget: 'Cut instead', gate_video_dwell: 'Use interval' },
+      gate: { gate_mode: 'Manual', gate_interval: 8, gate_transition: 'Cut', gate_crossfade_seconds: 0.5, gate_off_air: 'Keep playing' },
       face: {
-        display_gate_source: false, display_fit: 'Fit', anchor_x: 0.5, anchor_y: 0.5, bar_red: 0, bar_green: 0, bar_blue: 0,
+        display_fit: 'Fit', anchor_x: 0.5, anchor_y: 0.5, bar_red: 0, bar_green: 0, bar_blue: 0,
         screen_height: 0.9, screen_aspect: '16:9',
         effect_scanlines: 0, effect_scanline_count: 350, effect_scanline_depth: 45, effect_scanline_sharpness: 0, effect_scanline_thickness: 50,
         effect_pixelate: 0, effect_grayscale: 0, effect_sepia: 0, effect_chroma_bleed: 0, effect_vertical_roll: 0, effect_roll_speed: 0.2,
@@ -672,13 +576,7 @@ class Component extends DCLogic {
       'Security Feed': { effect_grayscale: 1, effect_scanlines: 0.4, effect_static: 0.15, effect_vignette: 0.5, effect_pixelate: 0.2 }
     };
     this.state = {
-      gate: {
-        gate_active: true, gate_mode: 'Auto-cycle', gate_interval: 8, gate_prewarm: 3,
-        gate_transition: 'Cut', gate_crossfade_seconds: 0.5, gate_fade_over_budget: 'Cut instead', gate_video_dwell: 'Use interval',
-        arms: ['c1', 'c5', 'c6', 'c7', 'c2'].map((id) => ({ id, enabled: true })),
-        program: 'c1', preview: 'c5', grants: [], phases: {}, pending: false,
-        demo: 'restore', overBudget: false, fading: false, status: 'Street wide on air - private videos waiting for Play videos'
-      },
+      gate: { gate_mode: 'Manual', gate_interval: 8, gate_transition: 'Cut', gate_crossfade_seconds: 0.5, gate_off_air: 'Keep playing', sources: [], program: '', status: 'No sources ticked' },
       enabled: true,
       previewsOn: true,
       previewRate: 1,
@@ -926,7 +824,7 @@ class Component extends DCLogic {
   toggleEnable() {
     const on = !this.state.enabled;
     this.clearGateJobs();
-    this.setGate({ grants: [], phases: {}, pending: false, autoTake: false, fading: false, holding: false, status: on ? 'Gate resumed - private videos waiting for Play videos' : 'Gate paused - Virtual Cam disabled' });
+    if (on) this.gateSchedule();
     this.setState({ enabled: on, status: on ? 'Virtual Cam is on.' : 'Virtual Cam is off. Nothing renders; cameras and faces stay editable.' });
     this.schedule(on && this.state.previewsOn, this.state.previewRate);
   }
@@ -953,6 +851,7 @@ class Component extends DCLogic {
   addCam(kind) {
     const st = this.state;
     if (!kind) return;
+    if (kind === 'gate' && st.cams.some((c) => c.type === 'gate')) { this.setState({ status: 'Only one Gate' }); return; }
     const need = kind === 'ots' ? 2 : 1;
     if (st.cams.length + need > 8) {
       this.setState({ status: 'Eight captures is the maximum (' + st.cams.length + ' used).' });
@@ -961,6 +860,7 @@ class Component extends DCLogic {
     const mk = (name, shot, type, extra) => Object.assign({ id: 'c' + (st.nextN + extraN), n: st.nextN + extraN, name, shot, type, bound: '', pos: '', ent: 30, obs: 30, v: {} }, extra || {});
     let extraN = 0;
     const added = [];
+    if (kind === 'gate') added.push(mk('Gate', 'blank', 'gate'));
     if (kind === 'object') added.push(mk('New object cam', 'blank', 'object', { bound: 'Selected object (prim)' }));
     if (kind === 'virtual') added.push(mk('Virtual view', 'blank', 'virtual', { pos: '131.2, 98.0, 24.1' }));
     if (kind === 'lens') added.push(mk('Surface lens', 'lens', 'lens', { bound: 'Selected face (aperture)' }));
@@ -1080,264 +980,40 @@ class Component extends DCLogic {
     return base;
   }
 
-  // ---------- Gate mockup only: no media I/O; all UI lives in the template ----------
+  // Gate mockup: the slot uses ordinary output cards; previews show the held program.
+  clearGateJobs() { if (this.gateTimer) clearTimeout(this.gateTimer); this.gateTimer = null; }
   setGate(patch) { this.setState({ gate: Object.assign({}, this.state.gate, patch) }); }
-  gatePrivate(cam) { return !!cam && cam.type === 'media' && this.cv(cam, 'media_src') === 'url'; }
-  gateCam(id) { return this.state.cams.find((c) => c.id === id); }
-  gateName(id) { const cam = this.gateCam(id); return cam ? cam.name : 'Missing feed'; }
-  clearGateJobs() {
-    (this.gateJobs || []).forEach((job) => clearTimeout(job));
-    this.gateJobs = [];
-    this.gateEpoch = (this.gateEpoch || 0) + 1;
-  }
-  gateLater(action, ms) {
-    const epoch = this.gateEpoch || 0;
-    this.gateJobs = this.gateJobs || [];
-    this.gateJobs.push(setTimeout(() => { if ((this.gateEpoch || 0) === epoch) action(); }, ms));
-  }
+  gateSetting(id, value) { this.setGate({ [id]: value }); this.gateSchedule(); }
   gateSchedule() {
-    const g = this.state.gate;
-    if (g.demo === 'running' && g.gate_active && this.state.enabled && g.gate_mode === 'Auto-cycle' && !g.pending && !g.fading) {
-      this.gateLater(() => this.gateNext(), Number(g.gate_interval) * 1000);
-    }
-  }
-  gateSetting(id, value) {
-    this.clearGateJobs();
-    const g = this.state.gate;
-    const patch = { [id]: value, pending: false, autoTake: false, fading: false };
-    if (id === 'gate_active') {
-      patch.grants = value ? g.arms.filter((a) => this.gatePrivate(this.gateCam(a.id))).map((a) => a.id) : [];
-      patch.phases = {};
-      patch.program = value ? (g.program || (g.arms.find((a) => a.enabled) || {}).id || '') : '';
-      patch.status = value ? 'Gate active - armed videos authorized for this session' : 'Gate inactive - private video authorization cleared';
-    } else if (id === 'gate_mode') {
-      patch.status = value === 'Manual' ? 'Manual - select an armed feed, then Take' : 'Auto-cycle - enabled feeds follow armed order';
-    } else if (id === 'gate_video_dwell') {
-      patch.status = value === 'Play to end' ? 'Play to end overrides Loop - cameras and live faces use Interval' : 'Use interval - authored video Loop applies';
-    } else patch.status = 'Gate settings updated - current Program retained';
-    this.setGate(patch);
-    this.gateSchedule();
-  }
-  gatePlayVideos() {
-    this.clearGateJobs();
-    const g = this.state.gate;
-    const ids = g.arms.filter((a) => this.gatePrivate(this.gateCam(a.id))).map((a) => a.id);
-    this.setGate({ grants: ids, demo: 'running', status: this.gateName(g.program) + ' on air - all armed private videos authorized' });
-    const first = g.arms.find((a) => a.enabled && ids.includes(a.id) && a.id !== g.program);
-    if (first && g.gate_active && this.state.enabled) this.gateWarm(first.id);
-    else this.gateSchedule();
-  }
-  gateWarm(id) {
-    const g = this.state.gate;
-    if (!g.gate_active || !this.state.enabled) return;
-    if (this.gatePrivate(this.gateCam(id)) && !g.grants.includes(id)) {
-      this.setGate({ preview: id, status: this.gateName(g.program) + ' on air - Waiting for Play videos' });
-      return;
-    }
-    this.setGate({ preview: id, phases: Object.assign({}, g.phases, { [id]: 'Checking' }), status: this.gateName(g.program) + ' on air - Warming… Checking ' + this.gateName(id) });
-    this.gateLater(() => this.gateWarmStep(id), 1100);
-  }
-  gateWarmStep(id) {
-    const g = this.state.gate;
-    if (!g.gate_active || !this.state.enabled || !g.arms.some((a) => a.id === id && a.enabled)) return;
-    const stages = ['Checking', 'Downloading', 'Admitting', 'Seeking', 'Ready'];
-    const next = stages[Math.min(stages.indexOf(g.phases[id]) + 1, stages.length - 1)];
-    this.setGate({ phases: Object.assign({}, g.phases, { [id]: next }), status: this.gateName(g.program) + ' on air - ' + (next === 'Ready' ? this.gateName(id) + ' ready' : 'Warming… ' + next + ' ' + this.gateName(id)) });
-    if (next !== 'Ready') this.gateLater(() => this.gateWarmStep(id), 1100);
-    else if (g.pending || g.autoTake) this.gateCommit(id);
-    else this.gateSchedule();
-  }
-  gatePreview(id) {
-    this.clearGateJobs();
-    const g = this.state.gate;
-    this.setGate({ preview: id, pending: false, autoTake: false, fading: false, status: this.gateName(g.program) + ' on air - Preview: ' + this.gateName(id) });
-    if (id !== g.program && this.gatePrivate(this.gateCam(id)) && !g.phases[id]) this.gateWarm(id);
-    else this.gateSchedule();
-  }
-  gateNext() {
-    this.clearGateJobs();
-    const g = this.state.gate;
-    if (!g.gate_active || !this.state.enabled) return;
-    const arms = g.arms;
-    const index = arms.findIndex((a) => a.id === g.program);
-    for (let n = 1; n <= arms.length; n++) {
-      const a = arms[(Math.max(-1, index) + n) % arms.length];
-      const cam = this.gateCam(a.id);
-      if (!a.enabled || a.id === g.program || !cam || (g.phases[a.id] || '').startsWith('Skipped:')) continue;
-      if (this.gatePrivate(cam) && !g.grants.includes(a.id)) continue;
-      this.setGate({ preview: a.id, autoTake: true });
-      this.gateCommit(a.id);
-      return;
-    }
-    this.setGate({ pending: false, autoTake: false, status: this.gateName(g.program) + ' on air - holding; no ready successor' });
-  }
-  gateTake() {
-    this.clearGateJobs();
-    const g = this.state.gate;
-    if (!g.gate_active || !this.state.enabled || g.pending || g.preview === g.program) return;
-    this.setGate({ pending: true });
-    this.gateCommit(g.preview);
-  }
-  gateCommit(id) {
-    const g = this.state.gate;
-    const cam = this.gateCam(id);
-    if (!g.gate_active || !this.state.enabled || !cam || !g.arms.some((a) => a.id === id && a.enabled)) return;
-    if (this.gatePrivate(cam) && !g.grants.includes(id)) {
-      this.setGate({ pending: false, autoTake: false, status: this.gateName(g.program) + ' on air - Waiting for Play videos' });
-      return;
-    }
-    const phase = g.phases[id] || '';
-    if (phase.startsWith('Skipped:')) { this.setGate({ pending: false, autoTake: false, status: this.gateName(g.program) + ' on air - ' + phase }); return; }
-    if (this.gatePrivate(cam) && phase !== 'Ready') {
-      this.setGate({ pending: g.gate_mode === 'Manual', status: 'Take pending - ' + this.gateName(g.program) + ' stays on air; Warming… ' + (phase || 'Checking') });
-      if (!phase) this.gateWarm(id);
-      else this.gateLater(() => this.gateWarmStep(id), 1100);
-      return;
-    }
-    if (g.gate_transition === 'Crossfade' && g.overBudget) {
-      if (g.gate_fade_over_budget === 'Hold until it fits') {
-        this.setGate({ pending: g.gate_mode === 'Manual', holding: true, status: 'Crossfade over budget - holding (up to 2 s)' });
-        this.gateLater(() => this.gateHoldTimeout(), 2000);
-        return;
-      }
-      if (g.gate_fade_over_budget === 'Cut instead') { this.gateFinish(id, 'Crossfade over budget - cut'); return; }
-    }
-    if (g.gate_transition === 'Crossfade') {
-      const message = g.overBudget ? 'Crossfade over budget - fading anyway (frames may drop)' : 'Crossfading ' + this.gateName(g.program) + ' → ' + this.gateName(id);
-      this.setGate({ fading: true, pending: false, status: message + ' - 0%' });
-      this.gateLater(() => this.setGate({ status: message + ' - 50%' }), Number(g.gate_crossfade_seconds) * 500);
-      this.gateLater(() => this.gateFinish(id, g.overBudget ? 'Crossfade over budget - faded anyway' : ''), Number(g.gate_crossfade_seconds) * 1000);
-    } else this.gateFinish(id, '');
-  }
-  gateFinish(id, message) {
-    const g = this.state.gate;
-    const outgoing = g.program;
-    this.setGate({ program: id, preview: outgoing, pending: false, autoTake: false, holding: false, fading: false, status: message || this.gateName(id) + ' on air - ' + (g.gate_video_dwell === 'Play to end' && this.gatePrivate(this.gateCam(id)) ? 'Play to end overrides Loop' : 'cycle continues') });
-    this.gateSchedule();
-  }
-  gateHoldTimeout() {
-    this.clearGateJobs();
-    const g = this.state.gate;
-    this.setGate({ pending: false, autoTake: false, holding: false, phases: Object.assign({}, g.phases, { [g.preview]: 'Skipped: Crossfade hold timed out' }), status: 'Crossfade over budget - hold timed out' });
-    this.gateSchedule();
-  }
-  gateArm() {
-    const g = this.state.gate, cam = this.gateCam(this.state.sel);
-    if (!cam || cam.type === 'lens' || g.arms.length >= 8 || g.arms.some((a) => a.id === cam.id)) return;
-    this.setGate({ arms: g.arms.concat([{ id: cam.id, enabled: true }]), preview: cam.id, status: 'Armed ' + cam.name + (this.gatePrivate(cam) ? ' - Waiting for Play videos' : ' - ready') });
-  }
-  gateDisarm() {
-    this.clearGateJobs();
-    const g = this.state.gate, id = g.preview;
-    const arms = g.arms.filter((a) => a.id !== id);
-    const replacement = arms.find((a) => a.enabled && !this.gatePrivate(this.gateCam(a.id)));
-    const phases = Object.assign({}, g.phases); delete phases[id];
-    this.setGate({ arms, grants: g.grants.filter((x) => x !== id), phases, preview: arms.length ? arms[0].id : '', program: g.program === id ? (replacement ? replacement.id : '') : g.program, pending: false, autoTake: false, fading: false, status: 'Disarmed ' + this.gateName(id) });
-    this.gateSchedule();
-  }
-  gateToggleArm(id) {
-    this.clearGateJobs();
-    const g = this.state.gate;
-    this.setGate({ arms: g.arms.map((a) => a.id === id ? Object.assign({}, a, { enabled: !a.enabled }) : a), pending: false, autoTake: false, fading: false, status: 'Armed feed availability updated - Program retained' });
-    this.gateSchedule();
-  }
-  gateDemo(id) {
-    this.clearGateJobs();
-    const arms = ['c1', 'c5', 'c6', 'c7', 'c2'].filter((x) => this.gateCam(x)).map((x) => ({ id: x, enabled: true }));
-    const g = Object.assign({}, this.D.gate, { arms, program: 'c1', preview: 'c5', grants: arms.filter((a) => this.gatePrivate(this.gateCam(a.id))).map((a) => a.id), phases: { c5: 'Ready', c7: 'Ready' }, pending: false, autoTake: false, fading: false, holding: false, overBudget: false, demo: id });
-    const messages = {
-      restore: 'Street wide on air - private videos waiting for Play videos',
-      running: 'Street wide on air - authorized videos join the ordinary cycle',
-      warming: 'Street wide on air - Warming… Checking Club video',
-      skipped: 'Street wide on air - Skipped: This link isn’t a video file',
-      pending: 'Take pending - Street wide stays on air; Warming… Seeking Club video',
-      fade: 'Crossfading Street wide → Club video - 50%',
-      starved: 'Street wide on air - warming paused; waiting for capture budget',
-      retirement: 'Street wide on air - Waiting for player retirement',
-      idle: 'Street wide on air - Club video released after about 60 s idle; bookmark kept',
-      pressure: 'Street wide on air - Club video released under pressure; bookmark kept',
-      live: 'Live needs a known length - restarting',
-      loop: 'This file has no recorded length - loops may hitch (remux to fix)',
-      eof: 'Play to end overrides Loop - unknown-length EOF; holding last frame for successor'
-    };
-    g.status = messages[id] || 'Street wide on air - Crossfade exceeds the destination budget';
-    if (id === 'restore') { g.grants = []; g.phases = {}; }
-    if (id === 'warming') g.phases = { c5: 'Checking', c7: 'Ready' };
-    if (id === 'skipped') g.phases = { c5: 'Ready', c7: 'Skipped: This link isn’t a video file' };
-    if (id === 'pending') { g.gate_mode = 'Manual'; g.pending = true; g.phases.c5 = 'Seeking'; }
-    if (id === 'fade') { g.gate_transition = 'Crossfade'; g.fading = true; }
-    if (['cut', 'anyway', 'hold', 'hold-timeout'].includes(id)) {
-      g.gate_transition = 'Crossfade'; g.overBudget = true; g.gate_mode = 'Manual';
-      g.gate_fade_over_budget = id === 'cut' ? 'Cut instead' : id === 'anyway' ? 'Fade anyway' : 'Hold until it fits';
-    }
-    if (id === 'starved') g.phases.c5 = 'Admitting';
-    if (id === 'retirement') g.phases.c5 = 'Admitting';
-    if (id === 'eof') { g.gate_video_dwell = 'Play to end'; g.program = 'c5'; g.preview = 'c2'; }
-    this.setGate(g);
-    if (id === 'running') this.gateSchedule();
-    if (id === 'cut' || id === 'anyway' || id === 'hold') this.gateCommit('c5');
-    if (id === 'hold-timeout') this.gateHoldTimeout();
-  }
-  gateAdvanceDemo() {
-    this.clearGateJobs();
-    const g = this.state.gate;
-    if (g.holding) { this.gateHoldTimeout(); return; }
-    if (g.fading) { this.gateFinish(g.preview, g.overBudget ? 'Crossfade over budget - faded anyway' : ''); return; }
-    const warm = g.arms.find((a) => a.enabled && ['Checking', 'Downloading', 'Admitting', 'Seeking'].includes(g.phases[a.id]));
-    if (warm) { this.gateWarmStep(warm.id); return; }
-    if (g.pending) { this.gateCommit(g.preview); return; }
-    this.gateNext();
+    this.clearGateJobs(); const g = this.state.gate;
+    if (!this.state.enabled || g.gate_mode !== 'Auto' || !g.sources.length) return;
+    this.gateTimer = setTimeout(() => {
+      const ordered = this.state.cams.filter((c) => g.sources.includes(c.id));
+      const next = ordered[(ordered.findIndex((c) => c.id === g.program) + 1) % ordered.length];
+      if (next) this.setGate({ program: next.id, status: 'On air: ' + next.name });
+      this.gateSchedule();
+    }, g.gate_interval * 1000);
   }
   gateViews(cam) {
     const g = this.state.gate;
-    const make = (spec) => Object.assign(this.rowView(spec, {}, 'gate'), { labelWhiteSpace: spec.id === 'gate_fade_over_budget' ? 'normal' : 'nowrap' });
-    const slider = (id, label, min, max, step, unit, dec, help) => ({ kind: 'slider', id, label, min, max, step, unit, dec, help });
-    const seg = (id, label, options, help) => ({ kind: 'seg', id, label, options, help });
-    const timing = [
-      { kind: 'toggle', id: 'gate_active', label: 'Activate', help: 'Enable Gate routing. Explicit activation authorizes armed private videos for this session; restoring an active Gate does not.' },
-      seg('gate_mode', 'Mode', ['Manual', 'Auto-cycle'], 'Manual takes the selected Preview. Auto-cycle follows enabled armed order.'),
-      slider('gate_interval', 'Interval', 0.5, 120, 0.5, ' s', 1, 'Dwell for cameras, live prim faces and private videos using interval. Default 8 s.'),
-      slider('gate_prewarm', 'Prewarm frames', 0, 5, 1, ' fr', 0, 'Existing camera warm-up lead, in frames. Default 3 frames; private video readiness is checked separately.')
-    ];
-    const transition = [seg('gate_transition', 'Transition', ['Cut', 'Crossfade'], 'Cut switches ready feeds. Crossfade blends the two feeds for the chosen length.')];
-    if (g.gate_transition === 'Crossfade') transition.push(
-      slider('gate_crossfade_seconds', 'Length', 0.1, 3, 0.1, ' s', 1, 'Crossfade length: 0.1–3 s. Default 0.5 s.'),
-      seg('gate_fade_over_budget', 'If crossfade is over budget', ['Cut instead', 'Fade anyway', 'Hold until it fits'], 'Cut instead (default); Fade anyway even if frames drop; or hold Program for up to 2 s, then skip the candidate.')
-    );
-    transition.push(seg('gate_video_dwell', 'Videos', ['Use interval', 'Play to end'], 'Private videos only. Play to end overrides Loop. Cameras and prim faces still use Interval.'));
-    const arms = g.arms.map((a) => {
-      const c = this.gateCam(a.id), privateVideo = this.gatePrivate(c), face = c && c.type === 'media' && !privateVideo;
-      const selected = g.preview === a.id;
-      const phase = g.phases[a.id] || '';
-      let status = !c ? 'Skipped: Source removed' : a.id === g.program && g.gate_active ? 'On air' : privateVideo && !g.grants.includes(a.id) ? 'Waiting for Play videos' : phase.startsWith('Skipped:') ? phase : ['Checking', 'Downloading', 'Admitting', 'Seeking'].includes(phase) ? 'Warming… ' + phase : selected ? 'Preview' : 'Ready';
-      const color = status === 'On air' ? '#8FD9A8' : status === 'Preview' || status.startsWith('Warming') || status.startsWith('Skipped') ? '#E8A33D' : '#9BA3AE';
-      return {
-        name: c ? c.name : 'Missing feed', note: face ? 'Live feed - Cut/Crossfade only' : privateVideo ? 'Video URL · On cut: ' + this.cv(c, 'media_on_cut') : 'Camera feed',
-        icon: face ? 'M2 3h12v9H2z M5 14h6 M8 12v2 M6 5l4 2.5L6 10z' : privateVideo ? 'M3 2h10v12H3z M6 5l4 3-4 3z' : 'M2 4h8v8H2z M10 6l4-2v8l-4-2',
-        selected: selected ? 'true' : 'false', pickLabel: 'Preview ' + (c ? c.name : 'missing feed'), help: 'Select for Preview; this does not take it on air.', pick: () => this.gatePreview(a.id),
-        status, chipStyle: 'flex: none; max-width: 50%; font: 500 10px \'IBM Plex Mono\', monospace; padding: 2px 6px; border-radius: 3px; border: 1px solid #343A42; color: ' + color + '; white-space: nowrap; overflow: hidden; text-overflow: ellipsis',
-        style: 'display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 10px; border-radius: 4px; border: 1px solid ' + (selected ? '#E8A33D' : '#2A2F36') + '; background: ' + (selected ? '#22262D' : '#15171B') + '; opacity: ' + (a.enabled ? 1 : 0.55),
-        toggleId: 'vc_gate_arm_enabled_' + a.id, toggleLabel: 'Enable ' + (c ? c.name : 'missing feed'), enabled: a.enabled ? 'true' : 'false', toggle: () => this.gateToggleArm(a.id), track: a.enabled ? '#E8A33D' : '#3A4049', left: a.enabled ? '18px' : '2px', knob: a.enabled ? '#141413' : '#C9CED6'
-      };
-    });
-    const disabledArm = !cam || cam.type === 'lens' || g.arms.length >= 8 || g.arms.some((a) => a.id === cam.id);
-    const disabledDisarm = !g.arms.some((a) => a.id === g.preview);
-    const disabledTake = !g.gate_active || !this.state.enabled || g.pending || g.fading || g.preview === g.program || !g.arms.some((a) => a.id === g.preview && a.enabled);
+    const options = (id, labels) => labels.map((label) => ({ label, style: this.segStyle(g[id] === label), pick: () => this.gateSetting(id, label) }));
     return {
-      gateGroups: [{ rows: timing.map(make), isArms: false }, { rows: [], isArms: true }, { rows: transition.map(make), isArms: false }], gateArms: arms,
-      gateArm: () => this.gateArm(), gateDisarm: () => this.gateDisarm(), gateArmDisabled: disabledArm, gateDisarmDisabled: disabledDisarm,
-      gateArmStyle: this.btnStyle(false) + (disabledArm ? '; opacity: .45' : ''), gateDisarmStyle: this.btnStyle(false) + (disabledDisarm ? '; opacity: .45' : ''), gateArmCount: g.arms.length + ' of 8 feeds armed',
-      gateShowPlay: g.arms.some((a) => this.gatePrivate(this.gateCam(a.id)) && !g.grants.includes(a.id)), gatePlayVideos: () => this.gatePlayVideos(), gatePrimaryStyle: this.btnStyle(true),
-      gateManual: g.gate_mode === 'Manual', gateTake: () => this.gateTake(), gateTakePending: g.pending ? 'true' : 'false', gateTakeLabel: g.pending ? 'Take pending' : 'Take', gateTakeDisabled: disabledTake,
-      gateTakeStyle: this.btnStyle(true) + (disabledTake ? '; opacity: .55' : ''), gateStatus: !this.state.enabled ? 'Gate paused - Virtual Cam disabled' : g.status,
-      gateStatusColor: /budget|Skipped|pending|Waiting|waiting|hitch|restarting|paused/.test(g.status) ? '#E8A33D' : '#C9CED6',
-      gateDemo: g.demo, gatePickDemo: (e) => this.gateDemo(e.target.value), gateAdvanceDemo: () => this.gateAdvanceDemo(),
-      gateDemoHelp: g.demo === 'restore' ? 'Restored scene: camera stays on air. Click Play videos once, then watch warm-up and the ordinary interval cycle. Next step advances without waiting.' : 'Demo only. Next step advances warm-up, a pending Take, the cycle or a held transition. Choose a state to replay it.',
-      gateDemos: [
-        ['restore', 'Restored camera · videos waiting'], ['running', 'Authorized · cycle running'], ['warming', 'Warming · Checking · Seeking'], ['skipped', 'Skipped video · refusal reason'],
-        ['pending', 'Manual · Take pending'], ['fade', 'Two-feed crossfade · 50%'], ['cut', 'Over budget · Cut instead'], ['anyway', 'Over budget · Fade anyway'], ['hold', 'Over budget · Hold until it fits'], ['hold-timeout', 'Over budget · Hold timed out'],
-        ['starved', 'Warming · capture budget unavailable'], ['retirement', 'Waiting for player retirement'], ['idle', 'Idle release · bookmark kept'], ['pressure', 'Pressure release · bookmark kept'], ['live', 'Unknown length · Live restarts'], ['loop', 'Unknown length · loop hitch warning'], ['eof', 'Play to end · Loop on · unknown EOF']
-      ].map((d) => ({ id: d[0], label: d[1] }))
+      gateSelected: !!cam && cam.type === 'gate',
+      gateSources: this.state.cams.filter((c) => ['object', 'virtual', 'media'].includes(c.type)).map((c) => ({
+        name: c.name, tickLabel: 'Include ' + c.name, ticked: g.sources.includes(c.id), onAir: g.program === c.id ? 'On air' : '', style: this.btnStyle(false),
+        toggle: () => {
+          const sources = g.sources.includes(c.id) ? g.sources.filter((id) => id !== c.id) : g.sources.concat(c.id).slice(0, 7);
+          const program = sources.includes(g.program) ? g.program : sources[0] || '';
+          const source = this.state.cams.find((item) => item.id === program);
+          this.setGate({ sources, program, status: source ? 'On air: ' + source.name : 'No sources ticked' }); this.gateSchedule();
+        },
+        take: () => { if (g.gate_mode === 'Manual' && g.sources.includes(c.id)) this.setGate({ program: c.id, status: 'On air: ' + c.name }); }
+      })),
+      gateModes: options('gate_mode', ['Manual', 'Auto']), gateAuto: g.gate_mode === 'Auto', gateInterval: g.gate_interval,
+      gateIntervalChange: (e) => this.gateSetting('gate_interval', Number(e.target.value)),
+      gateTransitions: options('gate_transition', ['Cut', 'Crossfade']), gateFade: g.gate_transition === 'Crossfade', gateLength: g.gate_crossfade_seconds,
+      gateLengthChange: (e) => this.gateSetting('gate_crossfade_seconds', Number(e.target.value)),
+      gateOffAir: options('gate_off_air', ['Keep playing', 'Pause']), gateStatus: g.status
     };
   }
 
@@ -1393,7 +1069,6 @@ class Component extends DCLogic {
               { label: 'Pause', help: 'Pause the video on its current frame.', act: () => setCam({ play: 'paused' }, 'Paused Cam ' + cam.n + '.') },
               { label: 'Stop', help: 'Stop the video and release the player.', act: () => setCam({ play: 'stopped' }, 'Stopped Cam ' + cam.n + '.') }
             ]),
-            G('media_on_cut', 'On cut', ['Restart', 'Resume', 'Live'], 'Restart from the beginning; Resume from the saved position; Live advances by time spent off air (default).'),
             N('On cut: Restart begins at the start. Resume returns to the saved position. Live advances while off air without playing; files with no recorded length restart.'),
             R('media_cache_status', 'Media cache', '0 MB / 8192 MB', 'Cache usage/limit is available only to the cache lock owner.'),
             A([{ label: 'Clear video cache', help: 'Clear stops cache-backed slots and cancels downloads. Local files and scene cues are preserved.', act: say('Video cache cleared.') }]),
@@ -1545,14 +1220,12 @@ class Component extends DCLogic {
       cards.push({ id: 'frame', title: 'Output frame', scope: 'cam', span: true, rows: oRows });
       cards.push({ id: 'faces', title: 'Faces this camera feeds', scope: 'cam', span: true, canReset: false, isFaceList: true, rows: [] });
       cards.push({ id: 'projector', title: 'Projector', scope: 'cam', rows: [
-        G('projector_gate_source', 'Feed from', [{ v: false, l: 'This camera' }, { v: true, l: 'Gate program' }], 'Route this projector to the Gate program feed instead of its fixed camera.'),
-        N('This projector shows whatever the Gate has on air.')
+        R('projector_status', 'Feed', 'This slot', 'Projectors bind to the selected slot.')
       ] });
       if (face) {
         const fit = this.fv(face, 'display_fit');
-        const gate = !!this.fv(face, 'display_gate_source');
+        const gate = false;
         const mRows = [
-          G('display_gate_source', 'Feed from', [{ v: false, l: 'This camera' }, { v: true, l: 'Gate program' }], 'Route this face to the Gate program feed instead of its fixed camera.'),
           C('display_fit', 'Mapping', ['Fit', 'Fill', 'Stretch'], 'Fit keeps the whole picture with bars; Fill crops by the anchor; Stretch maps the complete picture.')
         ];
         if (fit === 'Fill') {
@@ -1570,7 +1243,6 @@ class Component extends DCLogic {
           face.kind === 'virtual' ? { label: 'Reposition to my view', help: 'Move this virtual screen a few metres in front of your view, facing you.', act: say(face.name + ' moved in front of your view.') } : null,
           { label: 'Remove face', help: 'Unbind this face from the camera.', act: () => this.removeFace(cam, face) }
         ].filter((b) => !!b)));
-        if (gate) mRows.push(N('This face shows whatever the Gate has on air, not Cam ' + cam.n + '. The mapping and TV effects below still apply.'));
         cards.push({ id: 'map', title: 'Face mapping · ' + face.name, scope: 'face', rows: mRows, adv: [
           S('bar_red', 'Bar R', 0, 1, 0.05, '', 2, 'Letterbox bar colour (linear), red. Bars appear with Fit.'),
           S('bar_green', 'Bar G', 0, 1, 0.05, '', 2, 'Letterbox bar colour (linear), green.'),
@@ -1660,7 +1332,7 @@ class Component extends DCLogic {
       ] });
     }
 
-    return cards;
+    return cam.type === 'gate' ? cards.filter((card) => ['faces', 'projector', 'map', 'tv', 'rawnote', 'perf'].includes(card.id)) : cards;
   }
 
   // ---------- monitor tiles ----------
@@ -1737,7 +1409,7 @@ class Component extends DCLogic {
     // State and captions.
     const rt = this.camRates(cam);
     const on = st.enabled && st.previewsOn;
-    const gate = face && fv('display_gate_source');
+    const gate = false;
     const preset = face ? this.presetName(face) : 'Clean';
     const feed = face
       ? 'Shows: ' + face.name + ' · ' + fit + (preset !== 'Clean' ? ' · ' + preset : '') + (gate ? ' · Gate' : '')
@@ -1943,7 +1615,7 @@ class Component extends DCLogic {
         faceRows.push({
           name: f.name,
           meta: target ? 'Drop to show Cam ' + dragCam.n + ' on this face instead'
-            : (f.kind === 'virtual' ? 'Virtual screen' : 'Prim face') + ' · ' + this.aspectLabel(f.aspect) + ' · ' + this.fv(f, 'display_fit') + (p !== 'Clean' ? ' · ' + p : '') + (this.fv(f, 'display_gate_source') ? ' · Gate' : ''),
+            : (f.kind === 'virtual' ? 'Virtual screen' : 'Prim face') + ' · ' + this.aspectLabel(f.aspect) + ' · ' + this.fv(f, 'display_fit') + (p !== 'Clean' ? ' · ' + p : '') + '',
           vis: f.vis, visColor: f.vis === 'Visible' ? '#8FD9A8' : '#8A929D',
           on: on ? 'true' : 'false', radio: radio(on), style: rowStyle(on, target, hover), help: 'Show this face on the monitor and edit it below. Drop another camera’s monitor here to move the face to that camera.',
           pick: () => this.setState({ selFace: Object.assign({}, this.state.selFace, { [cam.id]: f.id }), status: 'Cam ' + cam.n + '’s monitor now shows ' + f.name + '.' }),
@@ -1966,7 +1638,7 @@ class Component extends DCLogic {
       toggleEnable: () => this.toggleEnable(),
       summary: 'VCam ' + st.cams.length + '/8 cameras · ' + st.faces.length + '/16 faces (' + visibleCount + ' visible)',
       perfLine,
-      openManager: () => this.setState({ status: 'Opening the full Virtual Cam Manager (Captures, Displays, Performance, Gate).' }),
+      openManager: () => this.setState({ status: 'Opening the full Virtual Cam Manager (Captures, Displays, Performance).' }),
       previewsOn: st.previewsOn ? 'true' : 'false', prevTrack: pk.track, prevKnob: pk.knob, prevKnobLeft: pk.left,
       togglePreviews: () => this.togglePreviews(),
       speeds, tiles, previewNote, viewModes,

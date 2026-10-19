@@ -1065,7 +1065,6 @@ void LLPanelVolume::snapshotVCamProjector()
     mVCamProjectorTarget = mObject.notNull() ? mObject->getID() : LLUUID::null;
     mVCamProjectorOriginalCapture.setNull();
     mVCamProjectorOriginallyBound = false;
-    mVCamProjectorOriginalGateSubscribed = false;
     const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
     for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
     {
@@ -1076,7 +1075,6 @@ void LLPanelVolume::snapshotVCamProjector()
             mVCamProjectorOriginalCapture = binding.mCapture.mId;
             mVCamProjectorOriginalSettings = binding.mSettings;
             mVCamProjectorOriginallyBound = true;
-            mVCamProjectorOriginalGateSubscribed = binding.mGateSubscribed;
             break;
         }
     }
@@ -1141,8 +1139,7 @@ void LLPanelVolume::onVCamProjector(bool restore, const LLUUID& capture_id)
             {
                 LLPrismLens::setProjectorSettings(
                     binding.mHandle, mVCamProjectorOriginalSettings, &reason);
-                LLPrismLens::setProjectorGateSubscribed(
-                    binding.mHandle, mVCamProjectorOriginalGateSubscribed, &reason);
+
                 break;
             }
         }

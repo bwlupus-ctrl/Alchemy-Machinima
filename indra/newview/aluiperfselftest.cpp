@@ -460,37 +460,28 @@ bool functionalGateLifecycle(const std::string& seam)
     using namespace LLPrismLens;
     if (seam == "schema")
     {
-        GateSettings authored; authored.mGateId.generate(); authored.mTransition = EGateTransition::CROSSFADE;
-        authored.mCrossfadeSeconds = .7; authored.mFadeOverBudget = EGateFadeOverBudget::HOLD;
-        authored.mVideoDwell = EGateVideoDwell::PLAY_TO_END;
-        GateSettings restored;
-        return gateSettingsFromLLSD(gateSettingsToLLSD(authored), restored) &&
-            restored.mTransition == authored.mTransition && restored.mCrossfadeSeconds == .7 &&
-            restored.mFadeOverBudget == authored.mFadeOverBudget && restored.mVideoDwell == authored.mVideoDwell;
+        GateSource source, restored; source.mTransition = EGateTransition::CROSSFADE;
+        source.mCrossfadeSeconds = .7; source.mOffAir = EGateOffAir::PAUSE;
+        return gateSourceFromLLSD(gateSourceToLLSD(source), restored) &&
+            restored.mTransition == source.mTransition && restored.mCrossfadeSeconds == .7 && restored.mOffAir == source.mOffAir;
     }
-    if (seam == "position")
+    if (seam == "step")
     {
-        const auto live = gatePosition(EMediaOnCut::LIVE, true, 3., 10., 35., 12., true, .04);
-        const auto unknown = gatePosition(EMediaOnCut::LIVE, true, 3., 10., 35., 0., true, .04);
-        return live.valid && std::abs(live.seconds - 4.) < .001 && unknown.restart && unknown.seconds == 0.;
+        GateState state; GateInput input; input.demanded = true;
+        GateSourceInput source; source.id.generate(); source.name = "Fixture";
+        source.hasOutput = source.fullQuality = source.frozen = true; input.sources.push_back(source);
+        auto proposal = gateStep(state, input); gateApply(state, proposal, false);
+        if (state.program.notNull()) return false;
+        gateApply(state, proposal, true); return state.program == source.id && state.held == source.id;
     }
-    if (seam == "budget")
+    if (seam == "migrate")
     {
-        GateFadeDemand demand; for (U32 i = 0; i < 8; ++i) demand.add(1024, 1024, true);
-        const bool fits = demand.fits(); demand.add(1, 1, false); return fits && !demand.fits();
-    }
-    if (seam == "grants")
-    {
-        GateReducer gate; CaptureHandle source; source.mId.generate(); source.mGeneration = 1;
-        if (gate.granted(source)) return false;
-        gate.grant(source); if (!gate.granted(source)) return false;
-        gate.reset(); return !gate.granted(source);
-    }
-    if (seam == "projector")
-    {
-        U32 slot = MAX_CAPTURES; U64 generation = 0;
-        gateRouteDisplayBinding(2, 42, slot, generation);
-        return slot == 2 && generation == 42 && gateDisplayCaptureReferenceAccepted(true, false);
+        LLSD scene; scene["prism_captures"] = LLSD::emptyArray();
+        scene["prism_displays"][0]["gate_source"] = true;
+        std::vector<SkippedBinding> notes; gateMigrateScene(scene, notes);
+        return scene["prism_captures"].size() == 1 &&
+            scene["prism_captures"][0]["source_kind"].asString() == "gate" &&
+            scene["prism_displays"][0]["capture_id"].asUUID() == scene["prism_captures"][0]["capture_id"].asUUID() && notes.empty();
     }
     return false;
 }
@@ -7248,98 +7239,7 @@ private:
 
     // Uses production shaders/binder, comparing paired fades with individually
     // settled sources in each destination's domain. No inverse or CPU grading.
-    bool functionalGatePresentation(std::string& reason)
-    {
-        using namespace LLPrismLens;
-        auto* saved_target = LLRenderTarget::getCurrentBoundTarget();
-        auto* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
-        LLRenderTarget target;
-        bool passed = target.allocate(4, 4, GL_RGBA16F);
-        for (U32 slot = 0; passed && slot < 2; ++slot)
-        {
-            auto& source = gPipeline.mPrismLensOutput[slot]; source.release();
-            passed = source.allocate(4, 4, GL_RGBA16F);
-            if (!passed) break;
-            source.bindTarget();
-            glClearColor(slot ? .15f : 2.f, slot ? .4f : .8f, slot ? .8f : .3f, 1.f);
-            glClear(GL_COLOR_BUFFER_BIT); source.flush();
-        }
-        gGL.matrixMode(LLRender::MM_PROJECTION); gGL.pushMatrix(); gGL.loadIdentity();
-        gGL.matrixMode(LLRender::MM_MODELVIEW); gGL.pushMatrix(); gGL.loadIdentity();
-        LLGLDepthTest depth(GL_FALSE, GL_FALSE); LLGLDisable blend(GL_BLEND);
-        LLGLDisable scissor(GL_SCISSOR_TEST); LLGLDisable cull(GL_CULL_FACE);
-        auto sample = [&](LLGLSLShader& shader, const CompositeState& state, bool follow, F32* pixels) -> bool
-        {
-            if (!shader.isComplete()) return false;
-            target.bindTarget(); shader.bind();
-            const S32 channel = shader.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
-            if (channel < 0) { target.flush(); return false; }
-            gPipeline.mPrismLensOutput[state.mCaptureSlot].bindTexture(0, channel, LLTexUnit::TFO_BILINEAR);
-            const S32 exposure_channel = shader.enableTexture(LLShaderMgr::EXPOSURE_MAP);
-            if (exposure_channel >= 0)
-            {
-                if (!gPipeline.mExposureMap.isComplete()) { target.flush(); return false; }
-                gPipeline.mExposureMap.bindTexture(0, exposure_channel, LLTexUnit::TFO_POINT);
-            }
-            bindGateComposite(shader, state);
-            shader.uniform1i(LLStaticHashedString("projectorFollowMainExposure"), follow ? 1 : 0);
-            const F32 one[2] = {1.f, 1.f}, zero[2] = {0.f, 0.f};
-            for (const char* name : {"displayToCaptureScale", "retainedOrientationScale", "textureRegionScale"}) shader.uniform2fv(LLStaticHashedString(name), 1, one);
-            for (const char* name : {"displayToCaptureOffset", "retainedOrientationOffset", "textureRegionOffset"}) shader.uniform2fv(LLStaticHashedString(name), 1, zero);
-            const F32 origin[3] = {-1.f, -1.f, 0.f}, u[3] = {.5f, 0.f, 0.f}, v[3] = {0.f, .5f, 0.f}, black[4] = {};
-            shader.uniform3fv(LLStaticHashedString("surfaceOrigin"), 1, origin);
-            shader.uniform3fv(LLStaticHashedString("surfaceUDual"), 1, u);
-            shader.uniform3fv(LLStaticHashedString("surfaceVDual"), 1, v);
-            shader.uniform1i(LLStaticHashedString("letterbox"), 0);
-            shader.uniform4fv(LLStaticHashedString("prismLensOptics"), 1, black);
-            for (U32 pack = 0; pack < 6; ++pack) shader.uniform4fv(LLStaticHashedString(llformat("screenEffect%u", pack)), 1, black);
-            gPipeline.uploadPrismPreviewColorCorrectUniforms(shader);
-            const S32 grade = gPipeline.uploadPrismPreviewColorGradeUniforms(shader);
-            gGL.begin(LLRender::TRIANGLES); gGL.vertex3f(-1.f, -1.f, 0.f); gGL.vertex3f(3.f, -1.f, 0.f); gGL.vertex3f(-1.f, 3.f, 0.f); gGL.end(); gGL.flush();
-            glReadPixels(2, 2, 1, 1, GL_RGBA, GL_FLOAT, pixels);
-            shader.disableTexture(LLShaderMgr::PRISM_LENS_MAP); shader.disableTexture(LLShaderMgr::PRISM_GATE_MAP); shader.disableTexture(LLShaderMgr::EXPOSURE_MAP);
-            if (grade >= 0) gGL.getTexUnit(grade)->unbind(LLTexUnit::TT_TEXTURE_3D);
-            target.flush(); return true;
-        };
-        for (U32 permutation = 0; passed && permutation < 8; ++permutation)
-            for (U32 pairing = 0; pairing < 3; ++pairing)
-                for (U32 destination = 0; destination < 3; ++destination)
-                    for (bool follow : {false, true})
-                    {
-                        CompositeState state; state.mCaptureSlot = 0; state.mIncomingSlot = 1;
-                        state.mMediaSDR = pairing != 0; state.mIncomingMediaSDR = pairing != 1;
-                        auto program = [&](bool camera) -> LLGLSLShader&
-                        {
-                            if (destination == 0) return gPrismLensProgram;
-                            if (destination == 1) return gPrismProjectorFeedProgram[camera ? permutation : 0];
-                            return gPrismPreviewProgram[camera ? permutation : 0];
-                        };
-                        F32 head[2][4] = {};
-                        for (U32 source = 0; source < 2; ++source)
-                        {
-                            CompositeState settled; settled.mCaptureSlot = source;
-                            settled.mMediaSDR = source ? state.mIncomingMediaSDR : state.mMediaSDR;
-                            passed = passed && sample(program(!settled.mMediaSDR), settled, follow, head[source]);
-                        }
-                        for (F32 alpha : {0.f, .0001f, 1.f / 30.f, .25f, .5f, .75f, 29.f / 30.f, .9999f, 1.f})
-                        {
-                            state.mGateAlpha = alpha; F32 pixels[4] = {};
-                            passed = passed && sample(program(!state.mMediaSDR || !state.mIncomingMediaSDR), state, follow, pixels);
-                            for (U32 c = 0; c < 4; ++c)
-                            {
-                                const F32 expected = head[0][c] * (1.f - alpha) + head[1][c] * alpha;
-                                const F32 tolerance = alpha == 0.f || alpha == 1.f ? .0001f : .003f;
-                                passed = passed && std::isfinite(pixels[c]) && std::abs(pixels[c] - expected) < tolerance;
-                            }
-                        }
-                    }
-        gGL.matrixMode(LLRender::MM_MODELVIEW); gGL.popMatrix();
-        gGL.matrixMode(LLRender::MM_PROJECTION); gGL.popMatrix(); gGL.matrixMode(LLRender::MM_MODELVIEW);
-        if (saved_target) saved_target->bindTarget();
-        if (saved_shader) saved_shader->bind(); else LLGLSLShader::unbind();
-        if (!passed) reason = "world/cookie/preview differs from per-source settled transfers at fade endpoints/interior";
-        return passed;
-    }
+
 
     // ui-draw-lint: allow-function(lookup,raw-write,setting-write) isolated native Gate regression fixture
     bool functionalNativeGate(const LLSD& entry, std::string& reason)
@@ -7350,141 +7250,132 @@ private:
             if (auto* candidate = dynamic_cast<ALPanelDirectorVCam*>(view)) { panel = candidate; break; }
         if (!panel) { reason = "native VCam panel missing"; return false; }
         const LLSD saved = sceneData();
-        for (const char* setting : {"PrismLensEnabled", "VCamMediaSlotsEnabled", "VCamGateMediaCycleEnabled"})
-        { rememberFunctionalSetting(setting); gSavedSettings.setBOOL(setting, true); }
+        rememberFunctionalSetting("PrismLensEnabled"); gSavedSettings.setBOOL("PrismLensEnabled", true);
         auto refresh = [&]() { panel->onVisibilityChange(false); panel->onVisibilityChange(true); };
         auto native = [&](const std::string& widget, const LLSD& value) -> bool
         {
             auto* control = panel->findChild<LLUICtrl>(widget, true);
             if (!control || !control->getEnabled()) { reason = widget + " missing or disabled"; return false; }
             control->setValue(value); control->onCommit(); refresh();
-            mFunctionalObserved["native_gate"]["commits"].append(widget);
-            return true;
+            mFunctionalObserved["vcam_gate_simple"]["commits"].append(widget); return true;
         };
         const bool passed = [&]() -> bool
         {
-            LLSD empty = LLSD::emptyMap();
-            for (const char* key : {"prism_captures", "prism_displays", "prism_projectors", "prism_gates"}) empty[key] = LLSD::emptyArray();
+            LLSD empty; for (const char* key : {"prism_captures", "prism_displays", "prism_projectors"}) empty[key] = LLSD::emptyArray();
             if (!applySceneData(empty, &reason)) return false;
-            CaptureHandle a, b, video; ProjectorHandle projector;
+            CaptureHandle a, b, gate, second; DisplayHandle screen; ProjectorHandle projector;
             if (addVirtualCamera(&a, LLVector3::zero, LLQuaternion::DEFAULT, &reason) != ERegistryResult::OK ||
-                addVirtualCamera(&b, LLVector3(1.f, 0.f, 0.f), LLQuaternion::DEFAULT, &reason) != ERegistryResult::OK ||
-                addMediaSlot(&video, &reason) != ERegistryResult::OK) return false;
-            if (bindRigProjector(a, 0, 0, ProjectorSettings(), &projector, &reason) != ERegistryResult::OK) return false;
-            gateArm(a, "Native A"); gateArm(b, "Native B"); gateArm(video, "Native video");
-            auto settings = gateSnapshot().mSettings;
-            settings.mMode = EGateMode::MANUAL; settings.mPreviewArmIndex = 1;
-            settings.mTransition = EGateTransition::CROSSFADE; settings.mArmed[2].mEnabled = false;
-            const std::string widget = entry["widget_name"].asString();
-            if (widget == "vc_gate_arm") settings.mArmed.pop_back();
-            // Restore active routing intent with no session grants and no I/O.
-            settings.mActive = false; setGateSettings(settings, &reason);
-            LLSD fixture = sceneData(); fixture["prism_gates"][0]["active"] = widget != "vc_gate_active";
-            if (widget == "vc_proj_feed")
+                addVirtualCamera(&b, LLVector3(1.f,0.f,0.f), LLQuaternion::DEFAULT, &reason) != ERegistryResult::OK ||
+                addGateSlot(&gate, &reason) != ERegistryResult::OK) return false;
+            std::string duplicate;
+            if (addGateSlot(&second, &duplicate) != ERegistryResult::DUPLICATE || duplicate != "Only one Gate") return false;
+            if (addVirtualDisplay(gate, LLVector3(0.f,0.f,2.f), LLQuaternion::DEFAULT, 1.2f, .9f, &screen, &reason) != ERegistryResult::OK) return false;
+            ProjectorSettings projection; projection.mResolution=2048;
+            if (bindRigProjector(gate, 0, 0, projection, &projector, &reason) != ERegistryResult::OK) return false;
+            // Select two differently authored projectors through the real panel router.
+            ProjectorSettings other; other.mResolution=512; other.mFitMode=EFitMode::FILL;
+            other.mAnchor[0]=.2f; other.mFeedEV=1.5f; other.mLampPowerEV=-1.f;
+            other.mLook.mThrowMode=EProjectorThrow::CAMERA_FOV; other.mLook.mLampKelvin=3200.f;
+            other.mLook.mHotspot=.3f; other.mEffects.mScanlines=.4f; other.mEffects.mGrayscale=.7f;
+            ProjectorHandle projector2;
+            if(bindRigProjector(gate,0,1,other,&projector2,&reason)!=ERegistryResult::OK) return false;
+            refresh(); if(!native("vc_camera_selector",gate.mId)) return false;
+            for(const auto& target : {projector2,projector,projector2,projector})
             {
-                fixture["prism_gates"][0]["program_arm_index"] = 1;
-                fixture["prism_projectors"][0]["gate_source"] = true;
+                LLSD select; select["action"]="select"; select["projector"]=target.mId;
+                if(!native("vc_projector_list",select)) return false;
+                const auto& expected=target.mId==projector2.mId ? other : projection;
+                const std::vector<std::pair<std::string,F64>> values{
+                    {"vc_proj_resolution",expected.mResolution},{"vc_proj_fit",S32(expected.mFitMode)},
+                    {"vc_proj_anchor_x",expected.mAnchor[0]},{"vc_proj_throw",S32(expected.mLook.mThrowMode)},
+                    {"vc_proj_brightness",expected.mFeedEV},{"vc_proj_lamp_power",expected.mLampPowerEV},
+                    {"vc_proj_lamp_kelvin",expected.mLook.mLampKelvin},{"vc_proj_hotspot",expected.mLook.mHotspot},
+                    {"vc_proj_tv_scan",expected.mEffects.mScanlines},{"vc_proj_tv_gray",expected.mEffects.mGrayscale}};
+                for(const auto& [name,expected_value]:values)
+                {
+                    auto* actual_control=panel->findChild<LLUICtrl>(name,true);
+                    if(!actual_control || std::abs(actual_control->getValue().asReal()-expected_value)>.001)
+                    { reason="projector read-back: "+name; return false; }
+                }
             }
-            if (!applySceneData(fixture, &reason)) return false;
-            refresh();
-            if (!native("vc_camera_selector", widget == "vc_gate_arm" ? video.mId : a.mId)) return false;
-            auto* list = panel->findChild<LLScrollListCtrl>("vc_gate_arms", true);
-            if (!list || !list->selectNthItem(1)) return false;
-            list->onCommit(); refresh();
-            const auto before = gateSnapshot();
-            LLSD value;
-            if (widget == "vc_gate_active") value = true;
-            else if (widget == "vc_gate_mode") value = 1;
-            else if (widget == "vc_gate_interval") value = 12.5;
-            else if (widget == "vc_gate_prewarm") value = 5;
-            else if (widget == "vc_gate_transition") value = 0;
-            else if (widget == "vc_gate_crossfade_seconds") value = 1.2;
-            else if (widget == "vc_gate_fade_over_budget") value = 2;
-            else if (widget == "vc_gate_video_dwell") value = 1;
-            if (widget == "vc_gate_arms")
+            if(!removeProjector(projector2,&reason)) return false;
+            GateSource settings; settings.mSources={a.mId,b.mId}; settings.mTransition=EGateTransition::CROSSFADE;
+            if (!setGateSource(gate, settings, &reason)) return false;
+            refresh(); if (!native("vc_camera_selector", gate.mId)) return false;
+            const std::string widget=entry["widget_name"].asString();
+            if (widget=="vc_gate_sources")
             {
-                list->selectNthItem(2); // Change Preview from the fixture's index 1.
-                auto* cell = list->getFirstSelected() ? list->getFirstSelected()->getColumn(2) : nullptr;
-                if (!cell || !cell->handleClick()) return false;
-                list->onCommit(); refresh();
-                const auto after = gateSnapshot();
-                return before.mSettings.mPreviewArmIndex == 1 && after.mSettings.mPreviewArmIndex == 2 && after.mSettings.mArmed[1].mEnabled && after.mSettings.mArmed[2].mEnabled;
+                auto* list=panel->findChild<LLScrollListCtrl>(widget,true);
+                if (!list || !list->selectByValue(b.mId)) return false;
+                auto* selected=list->getFirstSelected(); if (!selected) return false;
+                selected->getColumn(0)->setValue(false); list->onCommit(); refresh();
+                mFunctionalObserved["vcam_gate_simple"]["commits"].append(widget);
             }
-            if (widget == "vc_proj_feed")
+            else if (widget=="vc_gate_mode") { if (!native(widget,1)) return false; }
+            else if (widget=="vc_gate_interval") { if (!native("vc_gate_mode",1) || !native(widget,12.5)) return false; }
+            else if (widget=="vc_gate_transition") { if (!native(widget,0)) return false; }
+            else if (widget=="vc_gate_crossfade_seconds") { if (!native(widget,1.2)) return false; }
+            else if (widget=="vc_gate_off_air") { if (!native(widget,1)) return false; }
+            else if (widget!="vc_gate_status") { reason="unhandled simple Gate widget"; return false; }
+            LLSD fixture=sceneData(); const auto snapshot=registrySnapshot();
+            const CaptureDefinition* actual=nullptr;
+            for(U32 i=0;i<snapshot.mSlotCount;++i) if(snapshot.mCaptures[i].mHandle.mId==gate.mId) actual=&snapshot.mCaptures[i];
+            if(!actual || !actual->isGate() || actual->cameraData() || actual->mDisplayCount!=1 || actual->mProjectorCount!=1) return false;
+            const auto& value=*actual->gateData();
+            bool correct=widget=="vc_gate_sources" ? value.mSources==std::vector<LLUUID>({a.mId}) :
+                widget=="vc_gate_mode" ? value.mMode==EGateMode::AUTO_CYCLE :
+                widget=="vc_gate_interval" ? value.mIntervalSeconds==12.5 :
+                widget=="vc_gate_transition" ? value.mTransition==EGateTransition::CUT :
+                widget=="vc_gate_crossfade_seconds" ? std::abs(value.mCrossfadeSeconds-1.2)<.001 :
+                widget=="vc_gate_off_air" ? value.mOffAir==EGateOffAir::PAUSE : !actual->mGateStatus.text.empty();
+            if(!correct) return false;
+            // Gate first: the loader must defer its source references until all slots exist.
+            LLSD ordered=LLSD::emptyArray(), cameras=LLSD::emptyArray();
+            for (auto it=fixture["prism_captures"].beginArray();it!=fixture["prism_captures"].endArray();++it)
+                if ((*it)["source_kind"].asString()=="gate") ordered.append(*it); else cameras.append(*it);
+            for (auto it=cameras.beginArray();it!=cameras.endArray();++it) ordered.append(*it);
+            fixture["prism_captures"]=ordered;
+            if(!applySceneData(fixture,&reason)) return false;
+            mFunctionalObserved["vcam_gate_simple"]["scene"]=fixture;
+            LLSD duplicate_fixture=fixture, duplicate_gate=fixture["prism_captures"][0];
+            duplicate_gate["capture_id"]=LLUUID::generateNewID(); duplicate_fixture["prism_captures"].append(duplicate_gate);
+            LLSD duplicate_face=fixture["prism_displays"][0]; duplicate_face["binding_id"]=LLUUID::generateNewID();
+            duplicate_face["capture_id"]=duplicate_gate["capture_id"]; duplicate_fixture["prism_displays"].append(duplicate_face);
+            const auto duplicate_report=applySceneData(duplicate_fixture,&reason);
+            if(!duplicate_report.mSuccess || duplicate_report.mSkippedBindings.size()<2 || registrySnapshot().mDisplayCount!=1) return false;
+            // Exercise migration through the real scene loader, keeping the serialized face/projector settings.
+            LLSD legacy=fixture, old;
+            legacy["prism_captures"]=cameras;
+            old["gate_id"]=LLUUID::generateNewID(); old["active"]=true;
+            old["mode"]=value.mMode==EGateMode::AUTO_CYCLE ? "auto_cycle" : "manual";
+            old["interval_seconds"]=value.mIntervalSeconds; old["prewarm_frames"]=3;
+            old["transition"]=value.mTransition==EGateTransition::CUT ? "cut" : "crossfade";
+            old["crossfade_seconds"]=value.mCrossfadeSeconds; old["program_arm_index"]=0;
+            old["armed"]=LLSD::emptyArray();
+            for(const auto& id:value.mSources)
             {
-                LLSD selection; selection["action"] = "select"; selection["projector"] = projector.mId;
-                if (!native("vc_projector_list", selection)) return false;
-                auto snapshot = registrySnapshot();
-                if (snapshot.mProjectorCount != 1 || snapshot.mProjectors[0].mHomeCapture.mId != a.mId ||
-                    snapshot.mProjectors[0].mCapture.mId != b.mId) return false;
-                // Repeated page refreshes and a different Program must not move
-                // the control's owning camera, selection, or its home binding.
-                refresh(); refresh();
-                if (!native(widget, 0)) return false;
-                snapshot = registrySnapshot();
-                if (snapshot.mProjectors[0].mGateSubscribed || snapshot.mProjectors[0].mCapture.mId != a.mId) return false;
-                if (!native(widget, 1)) return false;
-                snapshot = registrySnapshot();
-                if (!snapshot.mProjectors[0].mGateSubscribed || snapshot.mProjectors[0].mHomeCapture.mId != a.mId ||
-                    panel->findChild<LLUICtrl>(widget, true)->getValue().asInteger() != 1) return false;
-                if (!native(widget, 0)) return false;
-                GateSettings inactive; inactive.mGateId.generate();
-                if (!setGateSettings(inactive, &reason)) return false;
-                refresh();
-                if (!native(widget, 1)) return false;
-                snapshot = registrySnapshot();
-                if (snapshot.mProjectorCount != 1 || !snapshot.mProjectors[0].mGateSubscribed ||
-                    snapshot.mProjectors[0].mCapture.mId != a.mId) return false;
-                // No Program is serialized as a null compatibility hint. Home
-                // ownership must restore the routed slot, not only its label.
-                const LLSD parked_scene = sceneData();
-                if (!applySceneData(parked_scene, &reason)) return false;
-                refresh(); snapshot = registrySnapshot();
-                if (snapshot.mProjectorCount != 1 || snapshot.mProjectors[0].mCapture.mId != a.mId ||
-                    snapshot.mProjectors[0].mHomeCapture.mId != a.mId) return false;
-                if (!removeCapture(a)) return false;
-                refresh(); snapshot = registrySnapshot();
-                if (snapshot.mProjectorCount != 1 || snapshot.mProjectors[0].mHomeCapture.mId != b.mId) return false;
-                if (!native("vc_camera_selector", b.mId) || !native("vc_projector_list", selection) || !native(widget, 0)) return false;
-                snapshot = registrySnapshot();
-                if (snapshot.mProjectors[0].mGateSubscribed || snapshot.mProjectors[0].mCapture.mId != b.mId) return false;
-                return true;
+                LLSD arm; arm["arm_id"]=LLUUID::generateNewID(); arm["capture_id"]=id;
+                arm["label"]="Fixture"; arm["enabled"]=true; old["armed"].append(arm);
             }
-            if (!native(widget, value)) return false;
-            const auto after = gateSnapshot(); const auto& actual = after.mSettings;
-            const LLSD encoded = gateSettingsToLLSD(actual);
-            mFunctionalObserved["native_gate"]["registry"] = encoded;
-            if (widget == "vc_gate_arm") return actual.mArmed.size() == before.mSettings.mArmed.size() + 1 && actual.mArmed.back().mCaptureId == video.mId;
-            if (widget == "vc_gate_disarm") return actual.mArmed.size() + 1 == before.mSettings.mArmed.size();
-            if (widget == "vc_gate_take") return after.mTakePending && actual.mProgramArmIndex == before.mSettings.mProgramArmIndex;
-            if (widget == "vc_gate_play_videos")
-            {
-                if (!before.mWaitingForPlay || after.mWaitingForPlay || actual.mProgramArmIndex != before.mSettings.mProgramArmIndex) return false;
-                LLSD inactive = sceneData(); inactive["prism_gates"][0]["active"] = false;
-                if (!applySceneData(inactive, &reason)) return false;
-                refresh();
-                gSavedSettings.setBOOL("VCamGateMediaCycleEnabled", false); refresh();
-                auto* play = panel->findChild<LLUICtrl>(widget, true);
-                if (!play || play->getEnabled()) return false;
-                gSavedSettings.setBOOL("VCamGateMediaCycleEnabled", true); refresh();
-                return gateSnapshot().mWaitingForPlay && native(widget, LLSD()) &&
-                    !gateSnapshot().mWaitingForPlay && !gateSnapshot().mSettings.mActive;
-            }
-            if (widget == "vc_gate_active") return actual.mActive;
-            if (widget == "vc_gate_mode") return actual.mMode == EGateMode::AUTO_CYCLE;
-            if (widget == "vc_gate_interval") return actual.mIntervalSeconds == 12.5;
-            if (widget == "vc_gate_prewarm") return actual.mPrewarmFrames == 5;
-            if (widget == "vc_gate_transition") return actual.mTransition == EGateTransition::CUT && functionalGatePresentation(reason);
-            if (widget == "vc_gate_crossfade_seconds") return std::abs(actual.mCrossfadeSeconds - 1.2) < .001;
-            if (widget == "vc_gate_fade_over_budget") return actual.mFadeOverBudget == EGateFadeOverBudget::HOLD;
-            if (widget == "vc_gate_video_dwell") return actual.mVideoDwell == EGateVideoDwell::PLAY_TO_END;
-            reason = "unhandled native Gate control: " + widget; return false;
+            legacy["prism_gates"].append(old);
+            for(const char* key:{"prism_displays","prism_projectors"})
+                for(S32 i=0;i<legacy[key].size();++i)
+                { legacy[key][i]["gate_source"]=true; legacy[key][i]["capture_id"]=a.mId; }
+            if(!applySceneData(legacy,&reason)) return false;
+            const auto migrated=registrySnapshot(); LLUUID migrated_gate;
+            for(U32 i=0;i<migrated.mSlotCount;++i) if(migrated.mCaptures[i].isGate()) migrated_gate=migrated.mCaptures[i].mHandle.mId;
+            if(migrated_gate.isNull() || migrated.mDisplayCount!=1 || migrated.mProjectorCount!=1 ||
+                migrated.mDisplays[0].mCapture.mId!=migrated_gate || migrated.mProjectors[0].mCapture.mId!=migrated_gate) return false;
+            mFunctionalObserved["vcam_gate_simple"]["migrated"]=sceneData();
+            std::string media_status;
+            const bool registry_ok=gateRegistryRegression(reason,media_status);
+            mFunctionalObserved["vcam_gate_simple"]["media"]=media_status;
+            mFunctionalObserved["vcam_gate_simple"]["registry"]=registry_ok ? "passed" : "failed";
+            return registry_ok && functionalGateLifecycle("schema") && functionalGateLifecycle("step") && functionalGateLifecycle("migrate");
         }();
-        std::string restore_reason;
-        const bool restored = applySceneData(saved, &restore_reason).mSuccess;
-        refresh();
-        if (!restored) reason = "native Gate fixture restore failed: " + restore_reason;
-        if (!passed && reason.empty()) reason = "native Gate panel/registry read-back mismatch";
+        std::string restore_reason; const bool restored=applySceneData(saved,&restore_reason).mSuccess; refresh();
+        if(!restored) reason="simple Gate fixture restore failed: "+restore_reason;
+        if(!passed && reason.empty()) reason="simple Gate widget or registry mismatch";
         return passed && restored;
     }
 
@@ -7835,7 +7726,7 @@ private:
             ++mFunctionalIndex;
             return;
         }
-        if (entry["probe"].asString() == "vcam_gate_native")
+        if (entry["probe"].asString() == "vcam_gate_simple")
         {
             std::string reason;
             const bool passed = functionalNativeGate(entry, reason);
@@ -8503,7 +8394,6 @@ private:
             const std::string widget = entry["widget_name"].asString();
             if (widget == "vc_media_kind") correct = correct && source->mediaData() && control->getValue().asString() == "face";
             else if (widget == "vc_media_video") correct = correct && video && video->mValue == entry["test_value"].asString() && control->getValue().asString() == video->mValue;
-            else if (widget == "vc_media_on_cut") correct = correct && video && video->mOnCut == LLPrismLens::EMediaOnCut::RESUME && control->getValue().asInteger() == 1;
             else if (widget == "vc_media_loop") correct = correct && video && !video->mLoop && !control->getValue().asBoolean();
             else if (widget == "vc_media_volume") correct = correct && video && fabsf(video->mVolume - .35f) < .001f && fabs(control->getValue().asReal() - video->mVolume) < .001;
             else correct = false;

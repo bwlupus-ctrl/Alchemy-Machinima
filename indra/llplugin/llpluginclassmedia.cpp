@@ -27,7 +27,6 @@
  */
 
 #include "linden_common.h"
-#include <chrono>
 #include "indra_constants.h"
 
 #include "llpluginclassmedia.h"
@@ -871,44 +870,6 @@ void LLPluginClassMedia::configurePrivateFile(const std::string& demux, S32 desi
     sendMessage(message);
 }
 
-void LLPluginClassMedia::gateTransport(U64 token, S32 desired, F64 seek)
-{
-    if (mPrivateDemux.empty()) return;
-    LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "gate_transport");
-    message.setValue("load_token", mLoadToken);
-    message.setValue("token", std::to_string(token));
-    message.setValueS32("desired", desired);
-    message.setValueReal("seek", seek);
-    message.setValueReal("viewer_send", LLTimer::getTotalSeconds());
-    mPrivateDesired = desired;
-    sendMessage(message);
-}
-
-void LLPluginClassMedia::gateEnvelope(U64 token, F64 gain, F64 seconds)
-{
-    if (mPrivateDemux.empty()) return;
-    LLPluginMessage message(LLPLUGIN_MESSAGE_CLASS_MEDIA, "gate_envelope");
-    message.setValue("load_token", mLoadToken);
-    message.setValue("token", std::to_string(token));
-    message.setValueReal("gain", llclamp(gain, 0., 1.));
-    message.setValueReal("seconds", llclamp(seconds, 0., 3.));
-    const F64 now = LLTimer::getTotalSeconds();
-    if (mGateError <= .02 && now - mGateMapTime <= 2.) message.setValueReal("start_plugin", now + mGateOffset);
-    LL_INFOS("VCamGate") << "audio send token=" << token << " gain=" << gain << " seconds=" << seconds
-        << " clock_error_ms=" << mGateError * 1000. << " receipt_fallback=" << !message.hasValue("start_plugin") << LL_ENDL;
-    sendMessage(message); // Cut step; Crossfade full timer ramp on receipt.
-}
-
-LLPluginClassMedia::GateTime LLPluginClassMedia::gateTime() const
-{
-    GateTime value = mGateTime;
-    const F64 elapsed = llmax(0., static_cast<F64>(LLTimer::getTotalSeconds()) - value.received);
-    value.age += elapsed;
-    if (value.playing && value.age <= .5) value.position += elapsed;
-    if (value.age > .5) value.error = 1.;
-    return value;
-}
-
 S32 LLPluginClassMedia::privateFileVerdict() const
 {
     return mPrivateDemux.empty() ? mPrivateFileVerdict :
@@ -1247,49 +1208,6 @@ void LLPluginClassMedia::receivePluginMessage(const LLPluginMessage &message)
                 else logLoopSeamSummary(report);
             }
         }
-        else if (message_name == "gate_time")
-        {
-            if (!mPrivateDemux.empty() && LLMediaFrame::acceptsToken(mLoadToken, message.getValue("load_token")))
-            {
-                const F64 now = LLTimer::getTotalSeconds();
-                const F64 steady_now = std::chrono::duration<F64>(std::chrono::steady_clock::now().time_since_epoch()).count();
-                const F64 receipt = message.hasValue("parent_socket_steady") ? now + message.getValueReal("parent_socket_steady") - steady_now : now;
-                const F64 sent = message.getValueReal("viewer_send");
-                if (sent > 0. && receipt >= sent)
-                {
-                    const F64 error = (receipt - sent) * .5 + .01;
-                    if (error < mGateError || now - mGateMapTime > 2.)
-                    {
-                        mGateOffset = message.getValueReal("plugin_socket_receipt") - (sent + receipt) * .5;
-                        mGateError = error; mGateMapTime = now;
-                    }
-                }
-                const U64 envelope = std::strtoull(message.getValue("envelope_token").c_str(), nullptr, 10);
-                if (envelope && envelope != mGateTime.envelopeToken)
-                    LL_INFOS("VCamGate") << "audio ack token=" << envelope << " degraded=" << message.getValueBoolean("envelope_degraded")
-                        << " start=" << message.getValueReal("envelope_start") << " receipt=" << message.getValueReal("envelope_receipt")
-                        << " edge_period_ms=" << message.getValueReal("edge_period") * 1000.
-                        << " edge_residual_ms=" << message.getValueReal("edge_residual") * 1000. << LL_ENDL;
-                mGateTime.envelopeToken = envelope;
-                mGateTime.token = std::strtoull(message.getValue("token").c_str(), nullptr, 10);
-                mGateTime.position = message.getValueReal("position");
-                mGateTime.duration = message.getValueReal("duration");
-                mGateTime.framePeriod = message.getValueReal("frame_period");
-                mGateTime.age = llmax(0., now + mGateOffset - message.getValueReal("sample_time"));
-                mGateTime.error = now - mGateMapTime <= 2. ? mGateError + message.getValueReal("error") : 1.;
-                mGateTime.received = now;
-                mGateTime.pauseTime = message.getValueReal("pause_time") > 0. ? message.getValueReal("pause_time") - mGateOffset : 0.;
-                mGateTime.paused = message.getValueBoolean("paused");
-                mGateTime.playing = message.getValueBoolean("playing");
-                mGateTime.eof = message.getValueBoolean("eof");
-                if (now >= mGateNextPing)
-                {
-                    mGateNextPing = now + 1.;
-                    LLPluginMessage ping(LLPLUGIN_MESSAGE_CLASS_MEDIA, "gate_ping");
-                    ping.setValue("load_token", mLoadToken); ping.setValueReal("viewer_send", now); sendMessage(ping);
-                }
-            }
-        }
         else if (message_name == "private_file_admission")
         {
             if (!mPrivateDemux.empty() && LLMediaFrame::acceptsToken(mLoadToken, message.getValue("load_token")))
@@ -1317,7 +1235,6 @@ void LLPluginClassMedia::receivePluginMessage(const LLPluginMessage &message)
                     mPrivateAdmission.opened(LLTimer::getTotalSeconds());
                 }
                 mPrivateFileSeekable = message.getValueBoolean("seekable");
-                mPrivateEffectiveLoop = message.getValueBoolean("creation_loop");
                 if (mPrivateFileVerdict != 1)
                 {
                     resetDirty(); mDirtyLoadToken.clear();

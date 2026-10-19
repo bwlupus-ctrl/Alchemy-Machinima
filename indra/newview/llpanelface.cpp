@@ -3420,7 +3420,6 @@ void LLPanelFace::snapshotVCamFaces()
                 target.mCaptureId = display.mCapture.mId;
                 target.mSettings = display.mSettings;
                 target.mBound = true;
-                target.mGateSubscribed = display.mGateSubscribed;
                 break;
             }
         }
@@ -3487,8 +3486,7 @@ void LLPanelFace::onVCamTexture(bool restore, const LLUUID& capture_id)
         if (restore && binding.mId.notNull())
         {
             LLPrismLens::setDisplaySettings(binding, target.mSettings, &reason);
-            LLPrismLens::setDisplayGateSubscribed(
-                binding, target.mGateSubscribed, nullptr, &reason);
+
         }
     }
     if (!reason.empty() && !restore)

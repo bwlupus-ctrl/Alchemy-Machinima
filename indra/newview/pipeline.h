@@ -185,16 +185,18 @@ public:
     void releasePrismLensOutput(U32 slot);
     void releasePrismLensOutputs();
     bool ensurePrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle,
-                                  U32 width, U32 height, bool media = false);
+                                  U32 width, U32 height, bool media = false, bool defer_allocation = false);
     void dirtyPrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle);
     void prepareDirtyPrismProjectorFeeds();
     void releasePrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle);
     void releasePrismProjectorFeeds();
     void preparePrismProjectorFeeds(U32 capture_slot);
     void prepareMediaPrismProjectorFeeds();
+    void prepareGatePrismProjectorFeeds();
+    bool renderRetainedPrismProjectorFeed(const LLPrismLens::ProjectorFeed& feed,
+        const LLPrismLens::CompositeState& state, U32 width, U32 height,
+        bool black, bool& allocation_failed, F64 now);
     void renderPrismDisplays(LLRenderTarget* screen_target);
-    bool gateProjectorPrepared(const LLPrismLens::ProjectorHandle& handle, U64 publication) const;
-    void finishGateProjectors(U64 publication, bool publish);
     bool allocateShadowBuffer(U32 resX, U32 resY);
 
     // rebuild all LLVOVolume render batches
@@ -1402,6 +1404,12 @@ public:
     // after a replacement beauty has been produced; object addresses stay stable.
     struct PrismLensOutput : LLRenderTarget
     {
+        inline static U64 sAllocationAttempts = 0;
+        template<class... Args> bool allocate(Args... args)
+        {
+            ++sAllocationAttempts;
+            return LLRenderTarget::allocate(args...);
+        }
         PrismLensOutput()
         {
             mGenerateMipMaps = LLTexUnit::TMG_NONE;
@@ -1426,9 +1434,7 @@ public:
         LLPrismLens::ProjectorHandle mHandle;
         std::unique_ptr<LLRenderTarget> mTarget = std::make_unique<LLRenderTarget>();
         LLPrismLens::ProjectorFeed mAccepted;
-        std::unique_ptr<LLRenderTarget> mStagedTarget;
-        LLPrismLens::ProjectorFeed mStaged;
-        U32 mStagedFrame = 0;
+        LLPrismLens::GateCookieCache mGateCookie;
         U64 mSourceGeneration = 0;
         U64 mRevision = 0;
         F64 mNextEffectTime = 0.0;
@@ -1439,6 +1445,7 @@ public:
     PrismProjectorPreparedFeed
         mPrismProjectorFeed[LLPrismLens::MAX_PROJECTOR_BINDINGS];
     U64 mPrismProjectorRevision = 0;
+    U64 mPrismProjectorAllocationAttempts = 0;
     U64 projectorCookieRevision(const LLVOVolume* volume) const;
 
     // Auxiliary render path binds through this; null whenever no acquired

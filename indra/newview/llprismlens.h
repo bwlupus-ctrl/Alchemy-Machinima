@@ -58,7 +58,7 @@ enum class ECaptureMode : U8
     CAMERA_FEED
 };
 
-enum class ESourceSlotKind : U8 { EMPTY, CAMERA, MEDIA_FACE, MEDIA_URL };
+enum class ESourceSlotKind : U8 { EMPTY, CAMERA, MEDIA_FACE, MEDIA_URL, GATE };
 constexpr bool isMediaKind(ESourceSlotKind kind)
 { return kind == ESourceSlotKind::MEDIA_FACE || kind == ESourceSlotKind::MEDIA_URL; }
 enum class ESourceAspect : U8 { AUTO, WIDE_16_9, STANDARD_4_3, CINEMA_239 };
@@ -310,55 +310,28 @@ struct CameraSettings
 };
 
 enum class EGateTransition : U8 { CUT, CROSSFADE };
-enum class EGateFadeOverBudget : U8 { CUT_INSTEAD, FADE_ANYWAY, HOLD };
-enum class EGateVideoDwell : U8 { INTERVAL, PLAY_TO_END };
-enum class EMediaOnCut : U8 { RESTART, RESUME, LIVE };
-enum class EGatePhase : U8 { INACTIVE, ON_AIR, WARMING, READY, CROSSFADING, HOLDING };
-
-// Compatibility name: an arm references a camera feed or media source slot. The
-// Gate owns no producer and arming never changes the capture count.
-struct GateArmedCamera
-{
-    LLUUID mArmId;
-    std::string mLabel;
-    bool mEnabled = true;
-    LLUUID mCaptureId;
-};
+enum class EGateOffAir : U8 { KEEP_PLAYING, PAUSE };
 
 inline bool isOtsPairArmLabel(const std::string& label)
-{
-    return label == "OTS A" || label == "OTS B";
-}
+{ return label == "OTS A" || label == "OTS B"; }
 
-struct GateSettings
+struct GateSource
 {
-    LLUUID mGateId;
-    bool mActive = false;
+    std::vector<LLUUID> mSources;
     EGateMode mMode = EGateMode::MANUAL;
-    F64 mIntervalSeconds = 8.0;
-    U32 mPrewarmFrames = 3;
+    F64 mIntervalSeconds = 8.;
     EGateTransition mTransition = EGateTransition::CUT;
-    F64 mCrossfadeSeconds = 0.5;
-    EGateFadeOverBudget mFadeOverBudget = EGateFadeOverBudget::CUT_INSTEAD;
-    EGateVideoDwell mVideoDwell = EGateVideoDwell::INTERVAL;
-    std::vector<GateArmedCamera> mArmed;
-    S32 mProgramArmIndex = 0;
-    S32 mPreviewArmIndex = -1;
+    F64 mCrossfadeSeconds = .5;
+    EGateOffAir mOffAir = EGateOffAir::KEEP_PLAYING;
+    LLUUID mProgramId;
 };
 
-struct GateSnapshot
+struct GateStatus
 {
-    U64 mRevision = 0;
-    GateSettings mSettings;
-    S32 mOnAirArmIndex = -1;
-    S32 mWarmArmIndex = -1;
-    U64 mCutSerial = 0;
-    EGatePhase mPhase = EGatePhase::INACTIVE;
-    bool mTakePending = false;
-    bool mWaitingForPlay = false;
-    F32 mProgress = 0.f;
-    std::vector<std::string> mArmStatus;
-    std::string mReason;
+    LLUUID program, pending, from;
+    F32 alpha = 0.f;
+    U64 cutSerial = 0;
+    std::string text = "No sources ticked";
 };
 
 struct CaptureRateSettings
@@ -633,22 +606,15 @@ inline void projectorResolutionToLLSD(LLSD& data, const ProjectorSettings& setti
     data["resolution"] = settings.mResolution;
 }
 
-// The old Gate retains HEAD's 1024 demand and cookie size.
-inline U32 projectorRenderResolution(const ProjectorSettings& settings, bool gate_subscribed)
-{
-    return gate_subscribed ? llmin(U32(settings.mResolution), 1024u) : settings.mResolution;
-}
-
-// Only a projector fed by its own camera can raise that camera's capacity.
 template<typename ProjectorContainer>
 U32 projectorOutputCapacity(const ProjectorContainer& projectors, U32 slot,
-                            U64 generation)
+                            U64 generation, U32 inherited = 1024)
 {
     for (const auto& projector : projectors)
         if (projector.mOccupied && projector.mSettings.mResolution == 2048 &&
-            !projector.mGateSubscribed && projector.mCaptureSlot == slot &&
+            projector.mCaptureSlot == slot &&
             projector.mCaptureGeneration == generation) return 2048;
-    return 1024;
+    return llmax(1024u, inherited);
 }
 // HEAD's camera sizing arithmetic, with only the consumer-specific cap varied.
 inline std::array<U32, 2> cameraTargetSize(U32 required_width, U32 required_height,
@@ -700,21 +666,11 @@ bool produceProjectorOutput(Output& output, Output& spare, U32 capacity,
     return true;
 }
 
-// Publish the new subscription before cleanup reads the registry snapshot.
-template<typename DirtyFeed>
-void updateProjectorGateSubscription(bool& gate_subscribed, bool subscribed,
-                                     DirtyFeed dirty_feed)
-{
-    gate_subscribed = subscribed;
-    dirty_feed();
-}
-
 inline bool releaseOversizedProjectorCookie(U32 width, U32 height,
-                                            const ProjectorSettings& settings,
-                                            bool gate_subscribed)
+                                            const ProjectorSettings& settings)
 {
-    const U32 cap = projectorRenderResolution(settings, gate_subscribed);
-    return (width > 1024 || height > 1024) && (width > cap || height > cap);
+    return (width > 1024 || height > 1024) &&
+        (width > settings.mResolution || height > settings.mResolution);
 }
 
 // Preserve HEAD's Picture text at the legacy capacity.
@@ -910,7 +866,6 @@ struct MediaUrlSource
     Location mLocation = Location::HTTP_URL;
     std::string mValue;
     bool mLoop = true;
-    EMediaOnCut mOnCut = EMediaOnCut::LIVE;
     F32 mVolume = 0.f;
     ESourceAspect mAspect = ESourceAspect::AUTO;
 };
@@ -921,13 +876,17 @@ class SourceSlotData
 {
 public:
     ESourceSlotKind sourceKind() const
-    { return cameraData() ? ESourceSlotKind::CAMERA : mediaData() ? ESourceSlotKind::MEDIA_FACE : mediaUrlData() ? ESourceSlotKind::MEDIA_URL : ESourceSlotKind::EMPTY; }
+    { return cameraData() ? ESourceSlotKind::CAMERA : mediaData() ? ESourceSlotKind::MEDIA_FACE : mediaUrlData() ? ESourceSlotKind::MEDIA_URL : isGate() ? ESourceSlotKind::GATE : ESourceSlotKind::EMPTY; }
     CameraPayload* cameraData() { return std::get_if<CameraPayload>(&mSource); }
     const CameraPayload* cameraData() const { return std::get_if<CameraPayload>(&mSource); }
     MediaFaceSource* mediaData() { return std::get_if<MediaFaceSource>(&mSource); }
     const MediaFaceSource* mediaData() const { return std::get_if<MediaFaceSource>(&mSource); }
     MediaUrlSource* mediaUrlData() { return std::get_if<MediaUrlSource>(&mSource); }
     const MediaUrlSource* mediaUrlData() const { return std::get_if<MediaUrlSource>(&mSource); }
+    GateSource* gateData() { return std::get_if<GateSource>(&mSource); }
+    const GateSource* gateData() const { return std::get_if<GateSource>(&mSource); }
+    bool isGate() const { return gateData() != nullptr; }
+    void setGateData(const GateSource& source) { mSource = source; }
     ESourceAspect mediaAspect() const { return mediaUrlData() ? mediaUrlData()->mAspect : mediaData() ? mediaData()->mAspect : ESourceAspect::AUTO; }
     bool isCameraFeed() const { const auto* c = cameraData(); return c && c->mMode == ECaptureMode::CAMERA_FEED; }
     bool isSurfaceLens() const { const auto* c = cameraData(); return c && c->mMode == ECaptureMode::SURFACE_LENS; }
@@ -954,7 +913,7 @@ public:
 private:
     MediaUrlSource mStoredUrl;
     MediaFaceSource mStoredFace;
-    std::variant<std::monostate, CameraPayload, MediaFaceSource, MediaUrlSource> mSource;
+    std::variant<std::monostate, CameraPayload, MediaFaceSource, MediaUrlSource, GateSource> mSource;
 };
 
 struct CaptureDefinition : SourceSlotData
@@ -967,12 +926,27 @@ struct CaptureDefinition : SourceSlotData
     U32 mDisplayCount = 0;
     U32 mProjectorCount = 0;
     F32 mSignalAspect = 1.f;
+    bool mSignalVideo = false;
+    std::array<F32, 4> mSignalOptics = {};
+    GateStatus mGateStatus;
     U64 mSourceEpoch = 0;
     U64 mAcceptedSerial = 0;
     bool mMediaRunning = true; // Consumption only; never changes the player.
     F64 mMediaDemandArea = 0.0;
     bool mMediaCanPause = false; // Runtime transport, not authored cue presence.
 };
+
+template<class Source> F32 signalAspect(const Source& source)
+{ return source.cameraData() ? source.cameraData()->mSettings.mOutputAspect : source.mSignalAspect; }
+template<class Source> bool signalIsVideo(const Source& source)
+{ return source.isMedia() || (source.isGate() && source.mSignalVideo); }
+template<class Source> std::array<F32, 4> signalOptics(const Source& source)
+{
+    if (const auto* c = source.cameraData())
+        return {c->mSettings.mOptics.mChromaticAberration, c->mSettings.mOptics.mFilmGrain,
+                c->mSettings.mOptics.mCRTScanlines, c->mSettings.mOptics.mExposureBias};
+    return source.mSignalOptics;
+}
 
 std::string captureDisplayLabel(const CaptureDefinition& capture);
 inline std::string normalizeCaptureLabel(const std::string& value,
@@ -996,7 +970,6 @@ struct DisplayDefinition
     S32 mDisplayTextureEntry = -1;
     DisplaySettings mSettings;
     DisplayRuntimeState mRuntime;
-    bool mGateSubscribed = false;
     bool mQuarantined = false;
     std::string mQuarantineReason;
 };
@@ -1004,7 +977,6 @@ struct DisplayDefinition
 struct ProjectorDefinition
 {
     ProjectorHandle mHandle;
-    CaptureHandle mHomeCapture; // Authored owner, independent of Gate routing.
     CaptureHandle mCapture;
     EProjectorTarget mTarget = EProjectorTarget::OBJECT;
     LLUUID mObjectId;
@@ -1016,7 +988,6 @@ struct ProjectorDefinition
     bool mLocalProjector = false;
     ProjectorSettings mSettings;
     ProjectorRuntimeState mRuntime;
-    bool mGateSubscribed = false;
     bool mQuarantined = false;
     std::string mQuarantineReason;
 };
@@ -1107,9 +1078,8 @@ template<typename Projector>
 ERegistryResult validateProjectorReassignment(const Projector& projector,
                                                const SourceSlotData& source)
 {
-    if (source.isMedia() && projector.mGateSubscribed)
-        return ERegistryResult::INVALID_CONFIGURATION;
-    return source.isCameraFeed() || source.isMedia()
+    (void)projector;
+    return source.isCameraFeed() || source.isMedia() || source.isGate()
         ? ERegistryResult::OK : ERegistryResult::INVALID_CONFIGURATION;
 }
 
@@ -1139,10 +1109,8 @@ inline bool captureOutputRequired(U32 display_count, U32 projector_count)
     return display_count != 0 || projector_count != 0;
 }
 
-inline bool removeProjectorWithCapture(bool owns_removed_capture,
-                                       bool gate_subscribed)
+inline bool removeProjectorWithCapture(bool owns_removed_capture)
 {
-    (void)gate_subscribed;
     return owns_removed_capture;
 }
 
@@ -1160,18 +1128,70 @@ inline bool quarantineLoadedProjectorTarget(bool object_present,
 // Registry-facing description of the retained producer. VP3 converts this
 // signal into the pipeline-owned opaque, mipmapped cookie; callers never retain
 // the source target pointer or change registry/target identity.
+// Complete identity of a Gate cookie's pixels. Black has no source/phase inputs.
+struct GateCookieSourceKey
+{
+    LLUUID id;
+    U64 generation = 0, publication = 0;
+    bool available = false;
+    bool operator==(const GateCookieSourceKey&) const = default;
+};
+struct GateCookieKey
+{
+    GateCookieSourceKey program, from, retained;
+    LLUUID gate;
+    U64 gateGeneration = 0, settingsRevision = 0, phase = 0;
+    F32 alpha = 0.f, destinationAspect = 1.f, effectHz = 0.f;
+    U16 resolution = 0;
+    bool black = false;
+    bool operator==(const GateCookieKey&) const = default;
+};
+// Allocation retries use the same five-frame / 30 Hz delay as deferRetry,
+// independently of retained-texture copy backoff and of changing content keys.
+inline F64 gateRetryAfter(F64 now, U32 frames = 5) { return now + F64(frames) / 30.; }
+struct GateCookieCache
+{
+    GateCookieKey key;
+    bool valid = false;
+    F64 retryAfter = 0.;
+    template<class Render>
+    bool refresh(const GateCookieKey& current, F64 now, Render render)
+    {
+        if ((valid && key == current) || now < retryAfter) return false;
+        bool allocationFailed = false;
+        if (!render(allocationFailed))
+        {
+            if (allocationFailed) retryAfter = gateRetryAfter(now);
+            return false;
+        }
+        key = current; valid = true; retryAfter = 0.;
+        return true;
+    }
+};
+inline bool projectorEffectsAnimated(const ProjectorSettings& settings)
+{
+    const auto& effects = settings.mEffects;
+    const auto& film = settings.mLook;
+    return effects.mStatic > 0.f || effects.mVerticalRoll > 0.f ||
+        effects.mTracking > 0.f || effects.mFlicker > 0.f || effects.mInterlace > 0.f ||
+        effects.mDropout > 0.f || film.mDust > 0.f || film.mScratches > 0.f ||
+        film.mGrain > 0.f || film.mGateWeave > 0.f || film.mShutterFlicker > 0.f;
+}
+inline U64 gateEffectPhase(const ProjectorSettings& settings, F32 hz, F64 time)
+{
+    return projectorEffectsAnimated(settings) && hz > 0.f
+        ? U64(std::floor(llmax(0., time) * hz)) : 0;
+}
 struct ProjectorFeed
 {
-    bool mGateTransition = false, mGateSubscribed = false;
-    U64 mGatePublication = 0;
-    F32 mGateAlpha = 0.f;
-    CaptureHandle mGateIncoming;
+
     ProjectorHandle mProjector;
     CaptureHandle mCapture;
     ESourceSlotKind mSourceKind = ESourceSlotKind::EMPTY;
     U64 mSourceEpoch = 0;
     U64 mAcceptedSerial = 0;
     std::string mLoadToken;
+    GateCookieKey mGateCookieKey;
     F32 mEffectHz = 0.f;
     F32 mSignalAspect = 1.f;
     F32 mDestinationAspect = 1.f;
@@ -1187,8 +1207,30 @@ struct ProjectorFeed
     ProjectorSettings mSettings;
 };
 
+// Shared by the binder and its native volume-lookup regression.
+inline bool projectorCookieIsBlack(const ProjectorFeed& feed)
+{
+    return feed.mSourceKind == ESourceSlotKind::GATE && feed.mGateCookieKey.black;
+}
+
 // Publication identity deliberately excludes frame/layout serials. A late
 // upload or failed recompose may keep the last cookie of this same source.
+template<class Source>
+void signalCameraParameters(const Source& source, ProjectorFeed& feed)
+{
+    feed.mCameraVerticalFovRad = feed.mCameraAspect = 0.f;
+    if (source.cameraData() || (source.isGate() && !signalIsVideo(source)))
+    {
+        feed.mCameraVerticalFovRad = source.mRuntime.mEffectiveVerticalFovRad;
+        if (feed.mCameraVerticalFovRad <= 0.f && source.cameraData())
+            feed.mCameraVerticalFovRad = source.cameraData()->mSettings.mFixedVerticalFovRad;
+        feed.mCameraAspect = signalAspect(source);
+    }
+}
+inline bool releaseLoweredProjectorOutput(U32 capacity, U32 previous, bool visible,
+                                           bool tile, bool fed)
+{ return capacity < previous && !visible && !tile && !fed; }
+
 inline bool sameProjectorSource(const ProjectorFeed& accepted, const ProjectorFeed& current)
 {
     return accepted.mProjector.mId == current.mProjector.mId &&
@@ -1247,7 +1289,6 @@ struct RegistrySnapshot
 {
     U64 mConfigurationRevision = 0;
     U64 mRuntimeRevision = 0;
-    U64 mGateRevision = 0;
     U32 mCaptureCount = 0;
     U32 mSlotCount = 0; // occupied entries in mCaptures; capture count is CAMERA only
     U32 mDisplayCount = 0;
@@ -1297,6 +1338,7 @@ struct CompositeState
     F32 mIncomingOptics[4] = {0.f, 0.f, 0.f, 0.f};
     S32 mIncomingLetterbox = 0;
     bool mMediaSDR = false;
+    bool mBlack = false; // Empty Gate intent overrides any retained allocation.
     U32 mCaptureSlot = MAX_CAPTURES; // Output owner, never a display index.
     LLFace* mFace = nullptr; // Valid only for the current call/frame.
     // Prim-free "virtual screen". When mVirtual is set, mFace is null and the
@@ -1348,6 +1390,107 @@ struct CompositeState
     F32 mScreenEffect5[4] = { 0.45f, 0.f, 0.5f, 0.f }; // [PrismScanlines] Depth, Sharpness, Thickness, Reserved
 };
 
+// Presentation shared by world faces, auxiliary mirrors, previews and cookies.
+template<class Source>
+void mapSignalToDisplay(const Source& source, const DisplaySettings& settings,
+                               F32 display_aspect, CompositeState& state)
+{
+    state.mMediaSDR = signalIsVideo(source);
+    const auto optics = signalOptics(source);
+    std::copy(optics.begin(), optics.end(), state.mOpticsParams);
+    const ScreenEffects& effects = settings.mEffects;
+    state.mScreenEffect0[0] = effects.mScanlines;
+    state.mScreenEffect0[1] = effects.mScanlineCount;
+    state.mScreenEffect0[2] = effects.mPixelate;
+    state.mScreenEffect0[3] = effects.mGrayscale;
+    state.mScreenEffect1[0] = effects.mSepia;
+    state.mScreenEffect1[1] = effects.mStatic;
+    state.mScreenEffect1[2] = effects.mVerticalRoll;
+    state.mScreenEffect1[3] = effects.mRollSpeed;
+    state.mScreenEffect2[0] = effects.mTracking;
+    state.mScreenEffect2[1] = effects.mFlicker;
+    state.mScreenEffect2[2] = effects.mChromaBleed;
+    state.mScreenEffect2[3] = effects.mVignette;
+    state.mScreenEffect3[0] = effects.mInterlace;
+    state.mScreenEffect3[1] = effects.mDropout;
+    state.mScreenEffect3[2] = effects.mBrightness;
+    state.mScreenEffect4[0] = effects.mFlipH ? 1.f : 0.f;
+    state.mScreenEffect4[1] = effects.mFlipV ? 1.f : 0.f;
+    state.mScreenEffect4[2] = effects.mRotate90 ? 1.f : 0.f;
+    state.mScreenEffect4[3] = effects.mSheen;
+    state.mScreenEffect5[0] = effects.mScanlineDepth;
+    state.mScreenEffect5[1] = effects.mScanlineSharpness;
+    state.mScreenEffect5[2] = effects.mScanlineThickness;
+
+    F32 capture_aspect = signalAspect(source);
+    if (signalIsVideo(source) && effects.mRotate90) capture_aspect = 1.f / capture_aspect;
+    if ((source.isCameraFeed() || source.isMedia() || source.isGate()) &&
+        std::isfinite(display_aspect) && std::isfinite(capture_aspect) &&
+        display_aspect > F_ALMOST_ZERO && capture_aspect > F_ALMOST_ZERO)
+    {
+        const F32 anchor_x = settings.mAnchor[0];
+        const F32 anchor_y = settings.mAnchor[1];
+        if (settings.mFitMode == EFitMode::FIT)
+        {
+            state.mLetterbox = 1;
+            if (display_aspect > capture_aspect)
+            {
+                const F32 fraction = capture_aspect / display_aspect;
+                state.mDisplayToCaptureScale[0] = 1.f / fraction;
+                state.mDisplayToCaptureOffset[0] = -anchor_x * (1.f - fraction) / fraction;
+            }
+            else
+            {
+                const F32 fraction = display_aspect / capture_aspect;
+                state.mDisplayToCaptureScale[1] = 1.f / fraction;
+                state.mDisplayToCaptureOffset[1] = -anchor_y * (1.f - fraction) / fraction;
+            }
+        }
+        else if (settings.mFitMode == EFitMode::FILL)
+        {
+            if (display_aspect > capture_aspect)
+            {
+                const F32 crop = capture_aspect / display_aspect;
+                state.mDisplayToCaptureScale[1] = crop;
+                state.mDisplayToCaptureOffset[1] = anchor_y * (1.f - crop);
+            }
+            else
+            {
+                const F32 crop = display_aspect / capture_aspect;
+                state.mDisplayToCaptureScale[0] = crop;
+                state.mDisplayToCaptureOffset[0] = anchor_x * (1.f - crop);
+            }
+        }
+    }
+    std::memcpy(state.mBarColorLinear, settings.mBarColorLinear,
+                sizeof(state.mBarColorLinear));
+}
+inline bool cadenceProducer(const SourceSlotData& source) { return !source.isGate(); }
+
+// The same source framing/transfer is used by faces, aux mirrors and cookies.
+// Preview callers retain only the Gate texture, including during a fade.
+template<class Build>
+void gateCompositeIncoming(CompositeState& state, U32 incoming, F32 alpha, bool preview, Build build)
+{
+    if (preview || alpha <= 0.f) return;
+    CompositeState second;
+    if (!build(second)) return;
+    state.mIncomingSlot = incoming; state.mGateAlpha = alpha;
+    state.mIncomingMediaSDR = second.mMediaSDR; state.mIncomingLetterbox = second.mLetterbox;
+    for (U32 axis = 0; axis < 2; ++axis)
+    {
+        state.mIncomingMapping[axis] = second.mDisplayToCaptureScale[axis];
+        state.mIncomingMapping[axis + 2] = second.mDisplayToCaptureOffset[axis];
+        state.mIncomingOrientation[axis] = second.mRetainedOrientationScale[axis];
+        state.mIncomingOrientation[axis + 2] = second.mRetainedOrientationOffset[axis];
+        state.mIncomingRegion[axis] = second.mTextureRegionScale[axis];
+        state.mIncomingRegion[axis + 2] = second.mTextureRegionOffset[axis];
+    }
+    std::copy(std::begin(second.mOpticsParams), std::end(second.mOpticsParams), state.mIncomingOptics);
+}
+inline bool publicationPreviewQuality(const SourceSlotData& source, bool preview)
+{ return preview && !source.isMedia() && !source.isGate(); }
+
 // Viewer-local registry. No call writes prim, TE, or material data and no call
 // sends an object update to the simulator.
 ActionStatus addCameraSelectionStatus();
@@ -1381,7 +1524,6 @@ bool switchMediaSourceKind(const CaptureHandle& slot, bool url);
 bool canRouteSource(const SourceSlotData& source);
 bool setMediaRunning(const CaptureHandle& slot, bool running);
 F64 mediaSlotDemand(const LLViewerMediaImpl* impl);
-S32 gateMediaPriority(const LLViewerMediaImpl* impl);
 void reconcileMediaSlots();
 ERegistryResult addMediaSlot(CaptureHandle* slot, std::string* reason = nullptr);
 bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source,
@@ -1389,8 +1531,6 @@ bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source,
 // Internal source controls for the later Director UI. Commit/restore are syntax only.
 bool setMediaUrlSource(const CaptureHandle& slot, const MediaUrlSource& source, std::string* reason = nullptr);
 bool setMediaFileLoop(const CaptureHandle& slot, bool loop);
-bool setMediaFileOnCut(const CaptureHandle& slot, EMediaOnCut on_cut);
-bool gatePlayVideos();
 bool setMediaFileVolume(const CaptureHandle& slot, F32 volume);
 bool setMediaSourceAspect(const CaptureHandle& slot, ESourceAspect aspect);
 void clearMediaFileBrowse(const CaptureHandle& slot);
@@ -1434,9 +1574,7 @@ ERegistryResult reassignProjector(const ProjectorHandle& binding,
 bool setProjectorSettings(const ProjectorHandle& binding,
                           const ProjectorSettings& settings,
                           std::string* reason = nullptr);
-ERegistryResult setProjectorGateSubscribed(
-    const ProjectorHandle& binding, bool subscribed,
-    std::string* reason = nullptr);
+
 bool removeProjector(const ProjectorHandle& binding,
                      std::string* reason = nullptr);
 // Prim-free screen: allocate a faceless display bound to `capture`, drawn as a
@@ -1475,21 +1613,11 @@ bool setCaptureLabel(const CaptureHandle& capture, const std::string& label,
 bool setDisplaySettings(const DisplayHandle& binding,
                         const DisplaySettings& settings,
                         std::string* reason = nullptr);
-bool setGateSettings(const GateSettings& settings,
-                     std::string* reason = nullptr);
-ERegistryResult gateArm(const CaptureHandle& capture,
-                        const std::string& label,
-                        LLUUID* arm_id = nullptr,
-                        std::string* reason = nullptr);
-ERegistryResult gateDisarm(const LLUUID& arm_id,
-                           std::string* reason = nullptr);
-ERegistryResult gateTake(std::string* reason = nullptr);
-ERegistryResult setDisplayGateSubscribed(const DisplayHandle& binding,
-                                         bool subscribed,
-                                         const CaptureHandle* fixed_capture = nullptr,
-                                         std::string* reason = nullptr);
-GateSnapshot gateSnapshot();
-U64 gateOutputPublication();
+ERegistryResult addGateSlot(CaptureHandle* gate, std::string* reason = nullptr);
+bool setGateSource(const CaptureHandle& gate, const GateSource& source,
+                   std::string* reason = nullptr);
+bool hasGateSlot();
+bool gateTake(const CaptureHandle& gate, const LLUUID& source_id);
 bool gateOnAirCameraEye(LLVector3& out_agent,
                         U64* out_cut_serial = nullptr,
                         LLQuaternion* out_rotation = nullptr);

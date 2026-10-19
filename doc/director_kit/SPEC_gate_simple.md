@@ -1,4 +1,4 @@
-# Simple VCam Gate: implementation spec (v3.1)
+# Simple VCam Gate: implementation spec (v3.2)
 
 2026-10-19. Plan only; this is the last spec round before implementation. Supersedes `SPEC_gate_media_cycle.md` v3.3 and the Gate parts of `GATE_MEDIA_IMPL_REPORT.md`.
 
@@ -21,7 +21,7 @@ Build on W:. Its old-Gate hooks are deleted (§e).
    - **Off-air videos:** Keep playing (default) or Pause.
    - **Audio (user decision 10/19):** only the on-air video is heard, at its own slot Volume. Off-air videos are muted. A Crossfade fades the sound across too. A camera on air means no Gate video sound. There is no new control. See §d "Audio".
    - **Status:** "On air: <name>", or an error and why.
-3. **Manual.** Clicking a ticked source's name puts it on air at once with the chosen transition. There is no Preview/Take. Clicking the on-air name does nothing. A click during a fade applies when the fade ends (the latest click wins). Names do nothing in Auto.
+3. **Manual.** Clicking a ticked source's name puts it on air at once with the chosen transition. There is no Preview/Take. Clicking the on-air name does nothing unless it has stopped, then it restarts. A click during a fade applies when the fade ends (the latest click wins). Names do nothing in Auto.
 4. **Auto.** Steps through the ticked sources in slot-list order, every Interval.
 5. **Output.** The Gate slot has the same Output cards as any camera slot: Faces this camera feeds, Projectors / Projector / More effects (TV), Face mapping, TV effects, Raw output. They show the program. Faces, screens and projectors (what gets recorded) show every cut and the full Crossfade blend. The Gate's own monitor tile and Raw output show the Gate texture (the program, cut only) at their normal preview refresh (coordinator decision A).
 6. **Prim surfaces** (same as the old face "Feed from: Gate program"):

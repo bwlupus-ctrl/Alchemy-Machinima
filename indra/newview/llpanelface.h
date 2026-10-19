@@ -290,7 +290,6 @@ private:
         LLPrismLens::DisplaySettings mSettings;
         S32 mTextureEntry = -1;
         bool mBound = false;
-        bool mGateSubscribed = false;
     };
 
     std::vector<VCamFaceBindingSnapshot> mVCamFaceBindings;

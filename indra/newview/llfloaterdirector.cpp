@@ -7107,32 +7107,10 @@ void LLFloaterDirector::refreshPrismDependents()
 
     const LLPrismLens::RegistrySnapshot ots_registry =
         LLPrismLens::registrySnapshot();
-    const LLPrismLens::GateSnapshot ots_gate = LLPrismLens::gateSnapshot();
-    std::set<LLUUID> replaceable_ots_captures;
-    std::size_t replaceable_ots_arms = 0;
-    for (const LLPrismLens::GateArmedCamera& armed :
-         ots_gate.mSettings.mArmed)
-    {
-        if (LLPrismLens::isOtsPairArmLabel(armed.mLabel))
-        {
-            ++replaceable_ots_arms;
-            replaceable_ots_captures.insert(armed.mCaptureId);
-        }
-    }
     U32 replaceable_ots_capture_count = 0;
     for (U32 index = 0; index < ots_registry.mSlotCount; ++index)
-    {
-        if (replaceable_ots_captures.count(
-                ots_registry.mCaptures[index].mHandle.mId) != 0)
-        {
-            ++replaceable_ots_capture_count;
-        }
-    }
-    const bool ots_capacity =
-        ots_registry.mSlotCount - replaceable_ots_capture_count <=
-            LLPrismLens::MAX_CAPTURES - 2 &&
-        ots_gate.mSettings.mArmed.size() - replaceable_ots_arms <=
-            LLPrismLens::MAX_CAPTURES - 2;
+        if (LLPrismLens::isOtsPairArmLabel(ots_registry.mCaptures[index].mLabel)) ++replaceable_ots_capture_count;
+    const bool ots_capacity = ots_registry.mSlotCount - replaceable_ots_capture_count <= LLPrismLens::MAX_CAPTURES - 2;
     setEnabledIfChanged(mOtsPairBtn, distinct_live_pair && ots_capacity);
     setToolTipIfChanged(mOtsPairBtn,
         !live_a || !live_b
@@ -7140,8 +7118,8 @@ void LLFloaterDirector::refreshPrismDependents()
             : !distinct_live_pair
                 ? std::string("Subjects A and B must be different avatars")
                 : !ots_capacity
-                    ? std::string("Two free VCam capture and Gate arm slots are required")
-                    : std::string("Create reciprocal matched-lens OTS A/B virtual cameras and arm both in the Gate"));
+                    ? std::string("Two free VCam capture slots are required")
+                    : std::string("Create reciprocal matched-lens OTS A/B virtual cameras"));
 
     const U64 prism_configuration_revision =
         ots_registry.mConfigurationRevision;

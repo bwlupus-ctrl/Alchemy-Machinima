@@ -2002,20 +2002,20 @@ def run_selftest(json_output: bool) -> int:
     manager = xui / "floater_prism_manager.xml"
     current_gate = check_file(manager, source_index)
     broken_root, broken_policy = parse_xml(manager)
-    gate_doc = next(node for node in descendants(broken_root) if node.name == "gate_settings_document")
+    gate_doc = next(node for node in descendants(broken_root) if node.name == "capture_settings_document")
     explicit_gate_height = gate_doc.integer("height", 0)
     gate_doc.attrs.pop("height", None)
     calculate(broken_root)
     broken_gate: list[Finding] = []
     check_node(broken_root, broken_policy, broken_gate, set(), True, False)
     gate_extent_passed = explicit_gate_height >= 750 and not current_gate and any(
-        item.kind == "scroll-content-overflow" and "gate_settings_document" in item.message
+        item.kind == "scroll-content-overflow" and "capture_settings_document" in item.message
         for item in broken_gate)
     passed = passed and gate_extent_passed
-    reports.append({"fixture": "full-manager Gate scroll extent", "passed": gate_extent_passed,
+    reports.append({"fixture": "full-manager capture scroll extent", "passed": gate_extent_passed,
                     "expected": "current document fits; missing height is rejected even with runtime tab fitting"})
     if not json_output:
-        print(f"{'PASS' if gate_extent_passed else 'FAIL'} full-manager Gate scroll extent: "
+        print(f"{'PASS' if gate_extent_passed else 'FAIL'} full-manager capture scroll extent: "
               "current fits; missing height rejected by production checker")
     runtime_observed = {
         finding_key(path.name, item)

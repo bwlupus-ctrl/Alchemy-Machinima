@@ -9,12 +9,12 @@
 #include "llprismpreview.h"
 #include "llprismgate.h"
 
-#include "aldirectorswitchermodel.h"
 #include "alcinelightrigmanager.h"
 #include "alobjectproperties.h"
 #include "lldirectorcast.h"
 
 #include "llappviewer.h"
+#include "llagent.h"
 #include "llbbox.h"
 #include "lldrawable.h"
 #include "lldrawpoolalpha.h"
@@ -1855,12 +1855,6 @@ struct PrivateMediaRuntime
     viewer_media_t impl;
     std::string status = "Stopped";
     bool retiring = false;
-    bool gateReleased = false;
-    bool gate = false, effectiveLoop = true, gateBudgetDenied = false, gateRetiring = false, standalonePlay = false;
-    U64 noDecoderRetired = 0;
-    U64 gateToken = 0;
-    std::string gateInstalledLoad;
-    std::shared_ptr<LLPluginFileClose> closeFence;
     LLPrismLens::MediaUrlSource source;
 };
 
@@ -1883,7 +1877,11 @@ struct PrismInstance : LLPrismLens::SourceSlotData
     LLMediaFrame::Identity mMediaIdentity;
     LLMediaFrame::Identity mGateDecodeIdentity;
     U64 mGateDecodeSerial = 0;
-    bool mGateAwaitingDecodedImage = false;
+    LLPrismLens::GateState mGateState;
+    LLUUID mGateTake;
+    bool mGateRollback = false;
+    bool mSignalVideo = false;
+    std::array<F32, 4> mSignalOptics = {};
     U64 mMediaCompletedSerial = 0;
     U64 mMediaLayoutRevision = 1;
     U64 mMediaAcceptedLayout = 0;
@@ -1904,8 +1902,6 @@ struct PrismInstance : LLPrismLens::SourceSlotData
     U32 mDisplayCount = 0;
     U32 mProjectorCount = 0;
     bool mAnyDisplayVisible = false;
-    U32 mGateOpportunityFrame = 0;
-    bool mGateWarmOnly = false;
     U32 mGateWatchFrames = 0;
     U32 mGateWatchW = 0;
     U32 mGateWatchH = 0;
@@ -1940,7 +1936,6 @@ struct PrismDisplay
     LLPrismLens::DisplayHandle mHandle;
     U32 mCaptureSlot = LLPrismLens::MAX_CAPTURES;
     U64 mCaptureGeneration = 0;
-    bool mGateSubscribed = false;
     LLUUID mObjectId;
     S32 mTE = -1;
     LLPrismLens::DisplaySettings mSettings;
@@ -1953,7 +1948,6 @@ struct PrismDisplay
 
 struct PrismProjector
 {
-    LLPrismLens::CaptureHandle mHomeCapture;
     bool mOccupied = false;
     LLPrismLens::ProjectorHandle mHandle;
     U32 mCaptureSlot = LLPrismLens::MAX_CAPTURES;
@@ -1967,8 +1961,8 @@ struct PrismProjector
     U8 mRigLight = 0;
     bool mLocalProjector = false;
     LLPrismLens::ProjectorSettings mSettings;
+    U64 mSettingsRevision = 1;
     LLPrismLens::ProjectorRuntimeState mRuntime;
-    bool mGateSubscribed = false;
     bool mQuarantined = false;
     std::string mQuarantineReason;
     U32 mBoundFrame = 0;
@@ -2053,30 +2047,6 @@ struct OtsCaptureRollback
     std::vector<OtsDisplayRollback> mOwnedDisplays;
     std::vector<OtsProjectorRollback> mOwnedProjectors;
 };
-
-struct PrismGateRuntime
-{
-    LLPrismLens::GateReducer mReducer;
-    bool mActivate = false, mPlayVideos = false, mChanged = false;
-    bool mExecuting = false, mPreparing = false, mNeedsOutputRefresh = false;
-    LLPrismLens::CaptureHandle mProposed;
-    U64 mProposalToken = 0, mAccepted = 0, mPublication = 0, mOutputConfiguration = 0;
-    bool mOutputTransaction = false;
-    std::vector<LLPrismLens::DisplayHandle> mAcceptedDisplays;
-    std::vector<LLPrismLens::ProjectorHandle> mAcceptedProjectors;
-    F64 mLastTick = 0., mProposedSeconds = 0., mPublishedAlpha = 0.;
-    U64 mPresentationSerial = 1;
-    std::vector<std::pair<LLPrismLens::ProjectorHandle, LLPrismLens::ProjectorSettings>> mProjectors;
-    std::vector<std::pair<LLPrismLens::DisplayHandle, LLPrismLens::DisplaySettings>> mDisplays;
-    S32 mOnAirArmIndex = -1;
-    S32 mWarmArmIndex = -1;
-    U64 mCutSerial = 0;
-    U64 mGateRevision = 1;
-    bool mPendingTake = false;
-    std::string mReason;
-};
-
-bool buildSignalCompositeForGate(U32 capture_slot, const PrismDisplay& display, LLPrismLens::CompositeState& state);
 
 bool sPrismLensRegistryExists = false;
 
@@ -2392,7 +2362,6 @@ public:
         projector.mOccupied = true;
         projector.mHandle.mId.generate();
         projector.mHandle.mGeneration = generation;
-        projector.mHomeCapture = mLenses[capture_slot].mHandle;
         projector.mCaptureSlot = static_cast<U32>(capture_slot);
         projector.mCaptureGeneration =
             mLenses[capture_slot].mHandle.mGeneration;
@@ -2407,10 +2376,12 @@ public:
         mProjectors[projector_slot] = projector;
         updateProjectorRuntime(mProjectors[projector_slot]);
         ++mLenses[capture_slot].mProjectorCount;
-        gPipeline.ensurePrismProjectorFeed(projector.mHandle,
-                                           settings.mResolution,
-                                           settings.mResolution,
-                                           mLenses[capture_slot].isMedia());
+        // Gate allocation and retry belong exclusively to the content-key pass.
+        if (!mLenses[capture_slot].isGate())
+            gPipeline.ensurePrismProjectorFeed(projector.mHandle,
+                                               settings.mResolution,
+                                               settings.mResolution,
+                                               mLenses[capture_slot].isMedia());
         ++mRevision;
         if (handle) *handle = projector.mHandle;
         if (reason) reason->clear();
@@ -2462,7 +2433,6 @@ public:
         projector.mOccupied = true;
         projector.mHandle.mId.generate();
         projector.mHandle.mGeneration = generation;
-        projector.mHomeCapture = mLenses[capture_slot].mHandle;
         projector.mCaptureSlot = static_cast<U32>(capture_slot);
         projector.mCaptureGeneration = mLenses[capture_slot].mHandle.mGeneration;
         projector.mTarget = LLPrismLens::EProjectorTarget::RIG_LIGHT;
@@ -2477,10 +2447,12 @@ public:
         mProjectors[projector_slot] = projector;
         updateProjectorRuntime(mProjectors[projector_slot]);
         ++mLenses[capture_slot].mProjectorCount;
-        gPipeline.ensurePrismProjectorFeed(projector.mHandle,
-                                           settings.mResolution,
-                                           settings.mResolution,
-                                           mLenses[capture_slot].isMedia());
+        // Gate allocation and retry belong exclusively to the content-key pass.
+        if (!mLenses[capture_slot].isGate())
+            gPipeline.ensurePrismProjectorFeed(projector.mHandle,
+                                               settings.mResolution,
+                                               settings.mResolution,
+                                               mLenses[capture_slot].isMedia());
         ++mRevision;
         if (handle) *handle = projector.mHandle;
         if (reason) reason->clear();
@@ -2535,7 +2507,6 @@ public:
             --mLenses[projector.mCaptureSlot].mProjectorCount;
         }
         ++mLenses[capture_slot].mProjectorCount;
-        projector.mHomeCapture = mLenses[capture_slot].mHandle;
         projector.mCaptureSlot = static_cast<U32>(capture_slot);
         projector.mCaptureGeneration =
             mLenses[capture_slot].mHandle.mGeneration;
@@ -2596,8 +2567,6 @@ public:
 
     void stopPrivate(U32 slot, const std::string& status = "Stopped")
     {
-        mGate.mReducer.revoke(mLenses[slot].mHandle); // also revoke waiting identities with no owner
-        mGate.mChanged = true;
         if (mFileBrowses[slot].request)
             LL_INFOS("VCamMedia") << "Browse stale-dropped slot=" << slot << " reason=source/player teardown" << LL_ENDL;
         mFilePickers[slot].cancel();
@@ -2605,15 +2574,6 @@ public:
         mFileBrowses[slot] = {};
         auto& owner = mPrivateOwners[slot];
         if (!owner || owner->retiring) return;
-        if (owner->impl) owner->closeFence = owner->impl->privateGateCloseFence();
-        if (owner->gate)
-        {
-            mGate.mReducer.revoke(mLenses[slot].mHandle);
-            if (owner->impl) owner->closeFence = owner->impl->privateGateCloseFence();
-            // Download cancellation has no child to acknowledge. Retain that
-            // proof even after this owner/source generation leaves the registry.
-            mGateCloseReceipts.push_back({mLenses[slot].mHandle, owner->closeFence, !owner->closeFence});
-        }
         owner->retiring = true;
         ++owner->token;
         owner->desired = ALMediaFile::Transport::STOPPED;
@@ -2632,17 +2592,10 @@ public:
 
     void retirePrivateOwners()
     {
-        for (auto& owner : mPrivateOwners)
-            if (owner && owner->impl && !owner->impl->privateFileActive() &&
-                (!owner->closeFence || owner->closeFence->closed.load())) owner->impl = nullptr;
-        std::erase_if(mGateCloseReceipts, [this](const auto& receipt)
-        { return (receipt.noChild || (receipt.fence && receipt.fence->closed.load())) && !mGate.mReducer.charged(receipt.handle); });
         auto retired = std::move(mRetiredPrivate);
         mRetiredPrivate.clear();
         for (auto& owner : retired)
         {
-            if (owner->closeFence && !owner->closeFence->closed.load())
-            { mRetiredPrivate.push_back(owner); continue; }
             owner->impl = nullptr; // impl handed the lease to its child close fence
             owner->lease.reset();
         }
@@ -2665,14 +2618,13 @@ public:
         ALMediaFile::Descriptor syntax; std::string error;
         if (slot < 0 || !mLenses[slot].isMedia() || !std::isfinite(source.mVolume) || source.mVolume < 0.f || source.mVolume > 1.f ||
             (source.mLocation != LLPrismLens::MediaUrlSource::Location::HTTP_URL && source.mLocation != LLPrismLens::MediaUrlSource::Location::LOCAL_FILE) ||
-            source.mAspect > LLPrismLens::ESourceAspect::CINEMA_239 || source.mOnCut > LLPrismLens::EMediaOnCut::LIVE ||
+            source.mAspect > LLPrismLens::ESourceAspect::CINEMA_239 ||
             !ALMediaFile::classify(source.mValue, syntax, error, LL_WINDOWS) ||
             (!source.mValue.empty() && (source.mLocation == LLPrismLens::MediaUrlSource::Location::LOCAL_FILE) != (syntax.location == ALMediaFile::Location::LOCAL_FILE)))
         { if (reason) *reason = error.empty() ? ALMediaFile::UNSUPPORTED : error; return false; }
         // A syntax-only commit never creates a player, starts I/O, or looks up cache.
         const auto* previous = mLenses[slot].mediaUrlData();
         const bool replaced = !previous || previous->mLocation != source.mLocation || previous->mValue != source.mValue;
-        if (replaced || (previous && (previous->mOnCut != source.mOnCut || previous->mLoop != source.mLoop))) mGate.mChanged = true;
         if (replaced) stopPrivate(slot);
         auto value = source;
         value.mValue = source.mValue; // Authored text; classify only normalizes internal I/O.
@@ -2686,10 +2638,9 @@ public:
             if (auto* impl = mPrivateOwners[slot]->impl.get())
             {
                 impl->setVolume(value.mVolume);
-                if (!mPrivateOwners[slot]->gate) impl->privateTransport(static_cast<S32>(mPrivateOwners[slot]->desired), value.mLoop);
+                impl->privateTransport(static_cast<S32>(mPrivateOwners[slot]->desired), value.mLoop);
             }
         }
-        updateGateRepeatModes();
         syncMediaTracking();
         ++mRevision;
         if (reason) reason->clear();
@@ -2699,6 +2650,7 @@ public:
     bool fileTransport(const LLPrismLens::CaptureHandle& handle, ALMediaFile::Transport desired)
     {
         const S32 slot = findCapture(handle);
+        if (slot >= 0 && desired == ALMediaFile::Transport::PLAYING) mGateGrants.insert(handle.mId);
         if (desired == ALMediaFile::Transport::PLAYING)
             LL_INFOS("VCamMedia") << "Play requested slot=" << slot << " generation=" << handle.mGeneration << LL_ENDL;
         if (slot < 0 || !mLenses[slot].mediaUrlData())
@@ -2708,13 +2660,6 @@ public:
             return false;
         }
         if (desired == ALMediaFile::Transport::STOPPED) { stopPrivate(slot); return true; }
-        static LLCachedControl<bool> cycle_enabled(gSavedSettings, "VCamGateMediaCycleEnabled", true);
-        if (LLPrismLens::gateInterceptsPlay(mGateSettings.mActive, cycle_enabled, gateArmFor(handle) >= 0) && !mGate.mExecuting && desired == ALMediaFile::Transport::PLAYING)
-        {
-            mGate.mReducer.grant(handle);
-            mGateSettings.mPreviewArmIndex = gateArmFor(handle); mGate.mChanged = true;
-            return true;
-        }
         if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled())
         {
             mLenses[slot].mRuntime.mReasonSequence = ALMediaFile::nextMediaStatusSequence();
@@ -2730,12 +2675,6 @@ public:
         if (desired == ALMediaFile::Transport::PLAYING && mPrivateOwners[slot] &&
             (mPrivateOwners[slot]->source.mLocation != source.mLocation || mPrivateOwners[slot]->source.mValue != source.mValue)) stopPrivate(slot);
         auto owner = privateOwner(slot);
-        if (owner->gate && !mGate.mExecuting && desired == ALMediaFile::Transport::PLAYING)
-        {
-            owner->standalonePlay = true; // transfer after the charged retirement barrier
-            mGate.mChanged = true;
-            return true;
-        }
         if (desired == ALMediaFile::Transport::PAUSED)
         {
             owner->desired = desired;
@@ -2744,7 +2683,7 @@ public:
             return true;
         }
         if (!ALMediaFile::beginVideoPlay(owner->desired)) return true;
-        if (owner->impl && owner->impl->privateFileActive()) { owner->impl->privateTransport(2, owner->gate ? owner->effectiveLoop : owner->source.mLoop); return true; }
+        if (owner->impl && owner->impl->privateFileActive()) { owner->impl->privateTransport(2, owner->source.mLoop); return true; }
         if (owner->request || owner->lease) return true;
         ALMediaFile::Descriptor descriptor; std::string reason;
         if (source.mValue.empty() || !ALMediaFile::classify(source.mValue, descriptor, reason, LL_WINDOWS))
@@ -2894,36 +2833,13 @@ public:
         ALMediaFile::clearCache();
     }
 
-    void unclaimPrivate(U32 slot, U64 token)
-    {
-        auto owner = mPrivateOwners[slot];
-        if (!owner) return;
-        ALMediaFile::unclaimGatePrivate(owner->gate, owner->gateReleased,
-            owner->gateRetiring, owner->standalonePlay, owner->desired,
-            [&]()
-            {
-                owner->gateBudgetDenied = false; owner->gateInstalledLoad.clear();
-                owner->noDecoderRetired = 0;
-                if (owner->impl && !owner->impl->privateFileActive()) owner->impl = nullptr;
-                if (owner->impl)
-                {
-                    if (auto* plugin = owner->impl->getMediaPlugin()) plugin->gateTransport(token, -1);
-                    owner->impl->setVolume(owner->source.mVolume);
-                }
-            },
-            [&]() { if (owner->impl) owner->impl->privateTransport(2, owner->source.mLoop); });
-    }
+
 
     void tickPrivate(U32 slot)
     {
         auto owner = mPrivateOwners[slot];
         if (!owner) return;
         if (!matchingPrivate(slot)) { stopPrivate(slot); return; }
-        if (owner->standalonePlay)
-        {
-            if (mGate.mReducer.charged(mLenses[slot].mHandle) || (owner->closeFence && !owner->closeFence->closed.load())) return;
-            unclaimPrivate(slot, mGate.mReducer.token() + 1);
-        }
         if (owner->request)
         {
             const auto result = owner->request->poll();
@@ -2938,45 +2854,22 @@ public:
                 if (!owner->lease) { const auto status = result.status; stopPrivate(slot, status); return; }
             }
         }
-        if (ALMediaFile::privatePlayerMayCreate(bool(owner->lease), bool(owner->impl), owner->desired,
-            !owner->closeFence || owner->closeFence->closed.load(), owner->gate,
-            !owner->gateBudgetDenied && !owner->gateRetiring &&
-                mGate.mReducer.charged(mLenses[slot].mHandle) && mGate.mReducer.granted(mLenses[slot].mHandle)))
+        if (owner->lease && !owner->impl && owner->desired == ALMediaFile::Transport::PLAYING)
         {
             const auto* source = &owner->source;
             LL_INFOS("VCamMedia") << "Player create slot=" << slot << " generation=" << owner->generation << " ext=" << owner->lease->extension << LL_ENDL;
             owner->impl = LLViewerMedia::instance().newMediaImpl(LLUUID::generateNewID(), 1024, 1024, false, false);
             if (!owner->impl) { LL_INFOS("VCamMedia") << "Player create refused slot=" << slot << " reason=newMediaImpl failed" << LL_ENDL; stopPrivate(slot, ALMediaFile::FAILED); return; }
             owner->impl->cuePrivateFile(ALMediaFile::fileUri(owner->lease->path),
-                owner->lease->extension == "mkv" || owner->lease->extension == "webm" ? "mkv" : "mp4", 2, owner->gate ? owner->effectiveLoop : source->mLoop, owner->gate ? 0.f : source->mVolume, owner->lease);
+                owner->lease->extension == "mkv" || owner->lease->extension == "webm" ? "mkv" : "mp4", 2, source->mLoop, source->mVolume, owner->lease);
             owner->status = "PENDING, MUTED";
         }
         if (owner->impl)
         {
-            if (!owner->gate && ALMediaFile::privateEndStops(owner->impl->privateFileAdmitted(),
+            if (ALMediaFile::privateEndStops(owner->impl->privateFileAdmitted(),
                 owner->impl->privateFileEnded(), owner->source.mLoop))
             { stopPrivate(slot, "Stopped"); return; } // non-loop EOF; fresh Play repeats all gates
-            if (owner->gate)
-            {
-                owner->closeFence = owner->impl->privateGateCloseFence();
-                if (!owner->gateRetiring)
-                    if (auto* plugin = owner->impl->getMediaPlugin(); plugin && !plugin->getLoadToken().empty() && owner->gateInstalledLoad != plugin->getLoadToken())
-                    {
-                        owner->gateInstalledLoad = plugin->getLoadToken();
-                        plugin->gateEnvelope(owner->gateToken, 0., 0.);
-                        plugin->gateTransport(owner->gateToken, static_cast<S32>(owner->desired));
-                    }
-                if (owner->impl->privateBudgetLost())
-                {
-                    if (owner->closeFence && std::none_of(mGateCloseReceipts.begin(), mGateCloseReceipts.end(),
-                        [&owner](const auto& receipt) { return receipt.fence == owner->closeFence; }))
-                        mGateCloseReceipts.push_back({mLenses[slot].mHandle, owner->closeFence});
-                    owner->gateBudgetDenied = true; owner->desired = ALMediaFile::Transport::PAUSED;
-                    owner->status = "Parked video released for budget - bookmark kept";
-                    return; // pressure retirement preserves reducer bookmark and current grant
-                }
-            }
-            if (owner->impl->privateFileFailed() || (!owner->impl->privateFileActive() && !owner->gate))
+            if (owner->impl->privateFileFailed() || !owner->impl->privateFileActive())
             {
                 const auto* plugin = owner->impl->getMediaPlugin();
                 LL_INFOS("VCamMedia") << "Player admission refused slot=" << slot << " reason=" <<
@@ -3006,10 +2899,6 @@ public:
             return false;
         }
         PrismInstance& media = mLenses[slot];
-        if (gateArmFor(handle) >= 0)
-            for (const auto& display : mDisplays)
-                if (display.mOccupied && display.mGateSubscribed && source.mObjectId.notNull() && source.mObjectId == display.mObjectId)
-                { if (reason) *reason = "A Gate source cannot also be a Gate display."; return false; }
         const auto* old = media.mediaData();
         const bool replaced = !old || old->mObjectId != source.mObjectId || old->mTE != source.mTE;
         // A pick commits only a validated face identity. Unsupported players
@@ -3086,17 +2975,25 @@ public:
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
             const auto& owner = mPrivateOwners[slot];
-            if (owner && (!owner->gate || mGate.mReducer.charged(mLenses[slot].mHandle) || mGate.mReducer.keepsParked(mLenses[slot].mHandle))) area = llmax(area, owner->gate && owner->impl.get() == impl && matchingPrivate(slot) && !owner->retiring && impl->privateFileActive() && mGate.mReducer.keepsParked(mLenses[slot].mHandle) ? 1. : ALMediaFile::privateOwnerDemand(matchingPrivate(slot),
+            if (owner) area = llmax(area, ALMediaFile::privateOwnerDemand(matchingPrivate(slot),
                 owner->retiring, owner->impl.get() == impl, impl->privateFileActive()));
         } // playback/bootstrap independent of image consumers
         for (const PrismInstance& media : mLenses)
             if (media.mOccupied && media.isMedia() && media.mMediaRunning &&
-                (!media.mediaUrlData() || !mPrivateOwners[&media - mLenses] || !mPrivateOwners[&media - mLenses]->gate || mGate.mReducer.charged(media.mHandle)) &&
-                (media.mDisplayCount || media.mProjectorCount || media.mGateWatchFrames ||
+                (media.mDisplayCount || media.mProjectorCount ||
                  LLPrismPreviewService::instance().isDemanded(media.mHandle)) &&
                 gFrameCount - media.mMediaDemandFrame <= 2 && resolveMedia(media) == impl &&
                 media.mMediaIdentity == impl->mediaImageIdentity())
                 area = llmax(area, media.mMediaDemandArea);
+        const S32 gate = gateSlot();
+        if (gate >= 0)
+        {
+            const auto& state = mLenses[gate].mGateState;
+            for (const auto& source : mLenses)
+                if (source.mOccupied && source.isMedia() && resolveMedia(source) == impl &&
+                    (source.mHandle.mId == state.program || source.mHandle.mId == state.pending || source.mHandle.mId == state.from))
+                    area = LLPrismLens::gatePlayerDemand(state, source.mHandle.mId, area);
+        }
         return area;
     }
 
@@ -3262,12 +3159,6 @@ public:
             } browseStatus{media, mFileBrowses[slot]};
             if (media.mediaUrlData())
             {
-                const auto owner = mPrivateOwners[slot];
-                if (owner && !owner->standalonePlay && ALMediaFile::gatePrivateRetainsImage(owner->gate,
-                    owner->gateReleased || (owner->gateRetiring &&
-                        (!owner->impl || !owner->impl->privateFileActive())) ||
-                        (owner->impl && owner->impl->privateBudgetLost())))
-                { media.mMediaDemandArea = 0.; continue; }
                 tickPrivate(slot);
                 if (!mPrivateOwners[slot] || !mPrivateOwners[slot]->impl) continue;
             }
@@ -3306,8 +3197,12 @@ public:
                     width = llmax(width, display.mFrame.mTargetWidth);
                     height = llmax(height, display.mFrame.mTargetHeight);
                 }
-            demanded |= LLPrismLens::gateImageDemand(media.mGateWatchFrames, media.mGateWatchW,
-                media.mGateWatchH, width, height, demand_area);
+            if (media.mGateWatchFrames)
+            {
+                demanded = true;
+                width = llmax(width, media.mGateWatchW); height = llmax(height, media.mGateWatchH);
+                demand_area = llmax(demand_area, F64(width) * height);
+            }
             // Query the live service; a closed monitor cannot leave stale demand.
             if (LLPrismPreviewService::instance().isDemanded(media.mHandle))
             {
@@ -3341,7 +3236,8 @@ public:
     {
         // One snapshot covers every media slot, including frozen sources.
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-            if (mLenses[slot].mOccupied && mLenses[slot].isMedia() && hasProjectorBinding(slot))
+            if (mLenses[slot].mOccupied && mLenses[slot].isMedia() &&
+                LLPrismLens::mediaSlotsEnabled() && hasProjectorBinding(slot))
             {
                 gPipeline.prepareMediaPrismProjectorFeeds();
                 return;
@@ -3356,7 +3252,6 @@ public:
             PrismInstance& media = mLenses[slot];
             if (!media.mOccupied || !media.isMedia()) continue;
             resetFrame(media, gFrameCount);
-            media.mGateWarmOnly = false;
             U32 width = MIN_TARGET_EXTENT, height = MIN_TARGET_EXTENT;
             media.mAnyDisplayVisible = false;
             for (PrismDisplay& display : mDisplays)
@@ -3374,12 +3269,9 @@ public:
             media.mAnyDisplayVisible |= addProjectorDemand(slot, width, height);
             if (media.mGateWatchFrames && media.mGateWatchW && media.mGateWatchH)
             {
-                media.mGateWarmOnly = !media.mAnyDisplayVisible;
                 media.mAnyDisplayVisible = true;
                 width = llmax(width, media.mGateWatchW); height = llmax(height, media.mGateWatchH);
             }
-            if (media.mediaUrlData() && mPrivateOwners[slot] && mPrivateOwners[slot]->gate && !mGate.mReducer.charged(media.mHandle))
-            { media.mMediaDemandArea = 0.; continue; }
             media.mPreviewOnly = !media.mAnyDisplayVisible;
             media.mRuntime.mPreviewOnly = media.mPreviewOnly;
             if (!media.mMediaRunning) continue;
@@ -3392,10 +3284,6 @@ public:
             if (!impl || !LLPrismLens::mediaSlotsEnabled() || !impl->mediaSlotPermitted()) continue;
             const auto image = impl->completedMediaImage();
             if (!image.ready || !media.mMediaTexture) continue;
-            // The reservation can copy a held face image, but private transport
-            // still needs an image completed after its SEEK/RESUME request.
-            if (media.mGateAwaitingDecodedImage && image.serial == media.mGateDecodeSerial &&
-                image.identity == media.mGateDecodeIdentity) continue;
             if (LLTimer::getTotalSeconds() < media.mRetryAfterTime) continue;
             const F32 aspect = LLPrismLens::resolveSourceAspect(media.mediaAspect(), image.videoWidth, image.videoHeight, image.videoSarNum, image.videoSarDen);
             const bool layout = media.mSignalAspect != aspect || media.mMediaAcceptedLayout != media.mMediaLayoutRevision;
@@ -3405,7 +3293,7 @@ public:
                 llclamp(U32(ll_round(llmax(width, height) * scale)), 64u, 1024u);
             media.mFrame.mTargetWidth = aspect >= 1.f ? extent : llmax(1u, U32(ll_round(extent * aspect)));
             media.mFrame.mTargetHeight = aspect >= 1.f ? llmax(1u, U32(ll_round(extent / aspect))) : extent;
-            const bool pending = static_cast<S32>(slot) == mGateReservedSlot || !media.mHasOutput || image.serial != media.mMediaCompletedSerial || layout ||
+            const bool pending = !media.mHasOutput || image.serial != media.mMediaCompletedSerial || layout ||
                 (!media.mPreviewOnly && (media.mOutputPreviewQuality ||
                  media.mOutputWidth != media.mFrame.mTargetWidth || media.mOutputHeight != media.mFrame.mTargetHeight));
             media.mRuntime.mHealth = LLPrismLens::ECaptureHealth::READY;
@@ -3438,20 +3326,17 @@ public:
         if (!pending) return false;
         const F64 now = LLTimer::getTotalSeconds();
         updateCadenceEntitlements(now);
-        const S32 reserved_slot = mGate.mReducer.reservesImage(gateInput(now)) ? mGateReservedSlot : -1;
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
             PrismInstance& media = mLenses[slot];
             if (!media.mOccupied || !media.isMedia() || !media.mFrame.mPrepared ||
                 !media.mMediaRunning || media.mLastRenderedFrame == gFrameCount) continue;
-            const bool preview_cadence = media.mPreviewOnly || media.mGateWarmOnly;
+            const bool preview_cadence = media.mPreviewOnly;
             const F32 hz = preview_cadence ? media.mPreviewEntitlementHz : media.mEntitlementHz;
             F64& deadline = preview_cadence ? media.mNextPreviewDueTime : media.mNextDueTime;
-            const bool reserved = static_cast<S32>(slot) == reserved_slot;
-            if (!mGateFrameBudget.mediaDue(hz, now, deadline, reserved)) continue;
+            if (hz <= 0.f || now < deadline) continue;
             // A media copy never spends the camera's normal or extra token.
             if (hz > 0.f && now >= deadline) deadline = now + 1.0 / hz;
-            media.mGateOpportunityFrame = gFrameCount;
             auto* impl = resolveMedia(media);
             if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled() || !impl || !impl->mediaSlotPermitted()) continue;
             const auto image = impl->completedMediaImage();
@@ -3515,7 +3400,6 @@ public:
             glActiveTexture(saved_active);
             media.mSignalAspect = LLPrismLens::resolveSourceAspect(media.mediaAspect(), image.videoWidth, image.videoHeight, image.videoSarNum, image.videoSarDen);
             media.mMediaCompletedSerial = image.serial;
-            media.mGateAwaitingDecodedImage = false;
             media.mMediaAcceptedLayout = media.mMediaLayoutRevision;
             const bool first = !media.mHasOutput;
             markProduced(slot, media.mFrame.mTargetWidth, media.mFrame.mTargetHeight);
@@ -3781,11 +3665,7 @@ public:
                 return status.mResult;
             }
         }
-        if (display.mGateSubscribed)
-        {
-            if (reason) *reason = "A Gate-subscribed display must be changed to a fixed feed before reassignment.";
-            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-        }
+
         const U32 old_capture_slot = display.mCaptureSlot;
         // An orphaned display (its capture is gone) is simply re-attached to
         // the new capture; only a live old capture needs its count released.
@@ -3942,13 +3822,9 @@ public:
             releaseProjectorVolumetrics(projector);
             projector = PrismProjector();
         }
-        mGateSettings = LLPrismLens::GateSettings();
-        mGate.mReducer.reset(); // retirement ledger survives scene/registry replacement
-        mGate.mProposalToken = mGate.mAccepted = 0;
-        mGate.mProposed = {}; mGate.mActivate = mGate.mPlayVideos = false;
-        mGate.mOnAirArmIndex = mGate.mWarmArmIndex = -1;
-        gPipeline.releasePrismLensBuffers();
-        resetRuntimeHistory();
+        mGateGrants.clear();
+        reconcileGateAudio();
+        gPipeline.releasePrismLensBuffers(); resetRuntimeHistory();
     }
 
     void releaseRenderResources()
@@ -3959,6 +3835,7 @@ public:
             PrismInstance& lens = mLenses[slot];
             if (lens.mediaUrlData()) stopPrivate(slot);
             lens.mHasOutput = false;
+            if (lens.isGate()) LLPrismLens::gateOutputReleased(lens.mGateState);
             lens.mMediaTexture = nullptr;
             lens.mMediaDemandArea = 0.0;
             if (lens.isMedia()) ++lens.mMediaSourceEpoch;
@@ -4019,6 +3896,7 @@ public:
                 continue;
             }
             capture.mHasOutput = false;
+            if (capture.isGate()) LLPrismLens::gateOutputReleased(capture.mGateState);
             capture.mOutputWidth = 0;
             capture.mOutputHeight = 0;
             capture.mLastRenderedFrame = 0;
@@ -4175,7 +4053,7 @@ public:
             return false;
         }
 
-        if (mLenses[slot].isMedia()) return false;
+        if (mLenses[slot].isMedia() || mLenses[slot].isGate()) return false;
         if (mLenses[slot].isCameraFeed())
         {
             const PrismInstance& capture = mLenses[slot];
@@ -4722,7 +4600,6 @@ public:
     {
         PrismInstance& capture = mLenses[slot];
         resetFrame(capture, gFrameCount);
-        capture.mGateWarmOnly = false;
         capture.mAnyDisplayVisible = false;
         capture.mPreviewOnly = false;
         capture.mRuntime.mPreviewOnly = false;
@@ -4826,10 +4703,9 @@ public:
         capture.mRuntime.mEffectiveFarClip = llmin(capture.cameraData()->mSettings.mFarClip,
                                                    main_camera.getFar());
 
-        if (!capture.mAnyDisplayVisible && capture.mGateWatchFrames > 0 &&
+        if (capture.mGateWatchFrames > 0 &&
             capture.mGateWatchW > 0 && capture.mGateWatchH > 0)
         {
-            capture.mGateWarmOnly = true;
             capture.mAnyDisplayVisible = true;
             required_width = llmax(required_width, capture.mGateWatchW);
             required_height = llmax(required_height, capture.mGateWatchH);
@@ -4840,7 +4716,6 @@ public:
         // pinned 192x108 preview-quality frame.
         if (addProjectorDemand(slot, required_width, required_height))
         {
-            capture.mGateWarmOnly = false;
             capture.mAnyDisplayVisible = true;
             capture.mRuntime.mActivity = LLPrismLens::EActivityState::WAITING;
         }
@@ -4943,7 +4818,8 @@ public:
         }
         const U32 capture_slot = display.mCaptureSlot;
         PrismInstance& capture = mLenses[capture_slot];
-        if (!capture.mOccupied || !capture.mHasOutput ||
+        if (!capture.mOccupied ||
+            (!(capture.isGate() && capture.mGateState.held.isNull()) && !capture.mHasOutput) ||
             capture.mHandle.mGeneration != display.mCaptureGeneration)
         {
             return nullptr;
@@ -5049,7 +4925,7 @@ public:
                 capture.mRuntime.mOutputAgeSeconds = capture.mLastProducedTime > 0.0
                     ? static_cast<F32>(llmax(0.0, now - capture.mLastProducedTime)) : 0.f;
             }
-            if (!capture.mOccupied ||
+            if (!capture.mOccupied || !LLPrismLens::cadenceProducer(capture) ||
                 (!capture.mAnyDisplayVisible && !capture.mPreviewOnly) ||
                 !capture.mFrame.mPrepared || now < capture.mRetryAfterTime)
             {
@@ -5061,7 +4937,7 @@ public:
                 capture.mRuntime.mPreviewEntitlementHz = 0.f;
                 continue;
             }
-            if (capture.mPreviewOnly || capture.mGateWarmOnly)
+            if (capture.mPreviewOnly)
             {
                 preview_active[slot] = true;
                 demand[slot] = previews.requestedHz(capture.mRate);
@@ -5070,39 +4946,19 @@ public:
             else
             {
                 visible_active[slot] = true;
-                demand[slot] = LLPrismLens::gateProducerDemand(capture.mRate, capacity);
+                demand[slot] = capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
+                    ? capture.mRate.mTargetFps : capacity;
                 capture.mRuntime.mPreviewRequestedHz = 0.f;
-
             }
             capture.mRequestedHz = demand[slot];
         }
 
-        // Ordinary producers keep HEAD's allocation. A warming video also gets
-        // its max-min share in the additive media lane throughout WARMING/READY.
-        // Media copies never consume either of the camera admission tokens.
-        for (bool media : {false, true})
-        {
-            auto visible = visible_active, preview = preview_active;
-            std::array<F32, LLPrismLens::MAX_CAPTURES> allocated{};
-            for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-                if (mLenses[slot].isMedia() != media) visible[slot] = preview[slot] = false;
-            if (media)
-            {
-                const S32 warming = findCapture(mGate.mReducer.incoming());
-                // Only the additive warm share uses normal producer demand.
-                // Keep ordinary preview water filling byte-for-byte HEAD, even
-                // if UI warmup/throttling sets the candidate's preview rate to 0.
-                const F32 request = warming >= 0
-                    ? LLPrismLens::gateProducerDemand(mLenses[warming].mRate, capacity) : 0.f;
-                LLPrismLens::gateMediaCadence(visible, preview, demand, capacity,
-                    warming, request, allocated);
-            }
-            else
-                LLPrismLens::gateCameraCadence(visible, preview, demand, capacity,
-                    -1, -1, false, allocated);
-            for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-                entitlement[slot] += allocated[slot];
-        }
+        // Strict tiers: visible/Gate producers finish their bounded max-min
+        // water fill before preview-only producers see any leftover capacity.
+        F32 remaining = LLPrismPreviewPolicy::waterFillTier(
+            visible_active, demand, capacity, entitlement);
+        LLPrismPreviewPolicy::waterFillTier(
+            preview_active, demand, remaining, entitlement);
 
         for (F32& hz : entitlement)
         {
@@ -5121,7 +4977,7 @@ public:
             const bool active = visible_active[slot] || preview_active[slot];
             if (active)
             {
-                F64& deadline = (capture.mPreviewOnly || capture.mGateWarmOnly)
+                F64& deadline = capture.mPreviewOnly
                     ? capture.mNextPreviewDueTime : capture.mNextDueTime;
                 if (entitlement[slot] > previous_entitlement + 0.001f &&
                     entitlement[slot] > 0.f && deadline > now)
@@ -5158,7 +5014,7 @@ public:
         const bool every_frame = prismManualEveryFrameMode();
         // Admission is a presented-frame token for both visible and preview
         // tiers. A second invocation can never create a second attempt.
-        if (!mGateFrameBudget.cameraAvailable(gFrameCount))
+        if (mLastAuxiliaryAttemptFrame == gFrameCount)
         {
             return -1;
         }
@@ -5173,7 +5029,7 @@ public:
             {
                 const U32 slot = (cursor + offset) % LLPrismLens::MAX_CAPTURES;
                 const PrismInstance& capture = mLenses[slot];
-                if (!capture.mOccupied || !capture.cameraData() || (capture.mPreviewOnly || capture.mGateWarmOnly) != preview_tier ||
+                if (!capture.mOccupied || !capture.cameraData() || capture.mPreviewOnly != preview_tier ||
                     !capture.mFrame.mPrepared || now < capture.mRetryAfterTime)
                 {
                     continue;
@@ -5186,7 +5042,7 @@ public:
                     // Manual Every Frame token.
                     if (capture.mPreviewEntitlementHz <= 0.f || now < deadline) continue;
                 }
-                else if (every_frame && !capture.mGateWarmOnly)
+                else if (every_frame)
                 {
                     // Automatic visible producers are eligible on every frame
                     // token; Target FPS retains its independent deadline.
@@ -5230,7 +5086,7 @@ public:
         {
             PrismInstance& capture = mLenses[best_slot];
             capture.mLastAttemptTime = now;
-            if (capture.mPreviewOnly || capture.mGateWarmOnly)
+            if (capture.mPreviewOnly)
             {
                 capture.mNextPreviewDueTime = LLPrismPreviewPolicy::advanceDeadline(
                     now, capture.mPreviewEntitlementHz);
@@ -5258,30 +5114,19 @@ public:
                 // extra period was missed, discard backlog instead of catching up.
                 capture.mNextDueTime = phase_next <= now ? now + period : phase_next;
             }
-            if (!capture.mPreviewOnly && !capture.mGateWarmOnly)
+            if (!capture.mPreviewOnly)
             {
                 mNextRenderSlot = (static_cast<U32>(best_slot) + 1) %
                                   LLPrismLens::MAX_CAPTURES;
             }
-            capture.mGateOpportunityFrame = gFrameCount;
-            mGateFrameBudget.cameraAttempt(gFrameCount);
+            mLastAuxiliaryAttemptFrame = gFrameCount;
             if (mAttemptWindowStart <= 0.0) mAttemptWindowStart = now;
             ++mAttemptSamples;
         }
         return best_slot;
     }
 
-    S32 chooseReservedRenderSlot()
-    {
-        const S32 slot = mGateReservedSlot;
-        if (slot < 0 || !mGate.mReducer.reservesImage(gateInput(LLTimer::getTotalSeconds()))) return -1;
-        const auto& capture = mLenses[slot];
-        if (!capture.mOccupied || !capture.cameraData() || !capture.mFrame.mPrepared ||
-            capture.mGateOpportunityFrame == gFrameCount || LLTimer::getTotalSeconds() < capture.mRetryAfterTime) return -1;
-        if (!mGateFrameBudget.warmCameraAttempt(gFrameCount, true)) return -1;
-        mLenses[slot].mGateOpportunityFrame = gFrameCount;
-        return slot;
-    }
+
 
     void markProduced(U32 slot, U32 output_width, U32 output_height)
     {
@@ -5296,7 +5141,7 @@ public:
             lens.mHasOutput = true;
             // Media previews copy the same linear image, with no reduced world
             // render quality. A frozen preview can immediately feed an output.
-            lens.mOutputPreviewQuality = lens.mPreviewOnly && !lens.isMedia();
+            lens.mOutputPreviewQuality = LLPrismLens::publicationPreviewQuality(lens, lens.mPreviewOnly);
             lens.mOutputWidth = output_width;
             lens.mOutputHeight = output_height;
             lens.mLastRenderedFrame = gFrameCount;
@@ -5356,8 +5201,7 @@ public:
     {
         if (slot < LLPrismLens::MAX_LENSES && mLenses[slot].mOccupied)
         {
-            mLenses[slot].mRetryAfterTime = LLTimer::getTotalSeconds() +
-                static_cast<F64>(retry_frames) / 30.0;
+            mLenses[slot].mRetryAfterTime = LLPrismLens::gateRetryAfter(LLTimer::getTotalSeconds(), retry_frames);
         }
     }
 
@@ -5441,32 +5285,6 @@ public:
         {
             if (reason) *reason = "Only Camera Feed captures have a source camera.";
             return false;
-        }
-        // If this capture is armed to the Gate, rebinding its source to a
-        // gate-subscribed monitor object would let the gate route that monitor
-        // to itself (feedback). Reject it, mirroring the arm-time guard.
-        bool capture_armed = false;
-        for (const LLPrismLens::GateArmedCamera& armed : mGateSettings.mArmed)
-        {
-            if (armed.mCaptureId == capture.mHandle.mId)
-            {
-                capture_armed = true;
-                break;
-            }
-        }
-        if (capture_armed)
-        {
-            for (const PrismDisplay& display : mDisplays)
-            {
-                if (LLPrismLens::gateFeedbackResult(
-                        object_id, display.mObjectId,
-                        display.mOccupied && display.mGateSubscribed) !=
-                    LLPrismLens::ERegistryResult::OK)
-                {
-                    if (reason) *reason = "That object is a Gate-subscribed monitor; an armed camera cannot use it as its source (feedback).";
-                    return false;
-                }
-            }
         }
         capture.cameraData()->mObjectId = object_id;
         capture.cameraData()->mSettings.mVirtual = false;
@@ -5738,7 +5556,7 @@ public:
             return false;
         }
         const std::string label = LLPrismLens::normalizeCaptureLabel(
-            value, mLenses[slot].isMedia() ? "Media" : defaultLabel(mLenses[slot].cameraData()->mMode,
+            value, mLenses[slot].isGate() ? "Gate" : mLenses[slot].isMedia() ? "Media" : defaultLabel(mLenses[slot].cameraData()->mMode,
                                 mLenses[slot].cameraData()->mSettings.mVirtual, slot));
         if (mLenses[slot].mLabel == label)
         {
@@ -5893,6 +5711,7 @@ public:
             return false;
         }
         if (!validProjectorSettings(settings, reason)) return false;
+        ++mProjectors[slot].mSettingsRevision;
         mProjectors[slot].mSettings = settings;
         mProjectors[slot].mSettings.mEffects.clampAndValidate();
         gPipeline.dirtyPrismProjectorFeed(handle);
@@ -5901,786 +5720,325 @@ public:
         return true;
     }
 
-    LLPrismLens::ERegistryResult setProjectorGateSubscribed(
-        const LLPrismLens::ProjectorHandle& handle, bool subscribed,
-        std::string* reason)
+    S32 gateSlot() const
     {
-        const S32 slot = findProjector(handle);
-        if (slot < 0)
-        {
-            if (reason) *reason = "That projector binding handle is stale.";
-            return LLPrismLens::ERegistryResult::STALE_HANDLE;
-        }
-        if (mProjectors[slot].mGateSubscribed == subscribed)
-        {
-            if (reason) reason->clear();
-            return LLPrismLens::ERegistryResult::OK;
-        }
-        if (!subscribed)
-        {
-            auto& projector = mProjectors[slot];
-            repairProjectorHomes();
-            const S32 home = findCapture(projector.mHomeCapture);
-            if (projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES && mLenses[projector.mCaptureSlot].mProjectorCount)
-                --mLenses[projector.mCaptureSlot].mProjectorCount;
-            projector.mCaptureSlot = home >= 0 ? static_cast<U32>(home) : LLPrismLens::MAX_CAPTURES;
-            projector.mCaptureGeneration = home >= 0 ? projector.mHomeCapture.mGeneration : 0;
-            if (home >= 0) ++mLenses[home].mProjectorCount;
-        }
-        LLPrismLens::updateProjectorGateSubscription(
-            mProjectors[slot].mGateSubscribed, subscribed,
-            [&]() { gPipeline.dirtyPrismProjectorFeed(mProjectors[slot].mHandle); });
-        if (subscribed) routeGateDisplays();
-        ++mRevision;
-        if (reason) reason->clear();
-        return LLPrismLens::ERegistryResult::OK;
-    }
-
-    void updateGateRepeatModes()
-    {
-        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-        {
-            auto owner = mPrivateOwners[slot]; const auto* file = mLenses[slot].mediaUrlData();
-            if (!owner || !owner->gate || !file || !mGate.mReducer.charged(mLenses[slot].mHandle)) continue;
-            const bool effective = file->mLoop && mGateSettings.mVideoDwell != LLPrismLens::EGateVideoDwell::PLAY_TO_END;
-            if (owner->effectiveLoop == effective) continue;
-            owner->effectiveLoop = effective;
-            owner->status = "Updating Gate repeat mode - warming muted";
-            if (owner->impl) owner->impl->privateTransport(static_cast<S32>(owner->desired), effective);
-        }
-    }
-
-    bool setGateSettings(const LLPrismLens::GateSettings& settings, std::string* reason)
-    {
-        auto candidate = settings;
-        if (candidate.mGateId.isNull()) candidate.mGateId.generate();
-        LLPrismLens::GateSettings validated;
-        if (!LLPrismLens::gateSettingsFromLLSD(LLPrismLens::gateSettingsToLLSD(candidate), validated, reason) ||
-            candidate.mMode > LLPrismLens::EGateMode::AUTO_CYCLE ||
-            candidate.mTransition > LLPrismLens::EGateTransition::CROSSFADE ||
-            candidate.mFadeOverBudget > LLPrismLens::EGateFadeOverBudget::HOLD ||
-            candidate.mVideoDwell > LLPrismLens::EGateVideoDwell::PLAY_TO_END ||
-            validated.mArmed.size() != candidate.mArmed.size()) return false;
-        for (const auto& arm : candidate.mArmed)
-        {
-            const S32 slot = findCaptureById(arm.mCaptureId);
-            if (slot >= 0 && !(mLenses[slot].isCameraFeed() || mLenses[slot].isMedia()))
-            { if (reason) *reason = "Surface Lens cannot be armed."; return false; }
-        }
-        if (candidate.mActive && candidate.mArmed.empty())
-        { if (reason) *reason = "Arm at least one feed before activating the Gate."; return false; }
-        const bool activating = !mGateSettings.mActive && candidate.mActive;
-        mGateSettings = candidate;
-        updateGateRepeatModes();
-        mGate.mActivate |= activating;
-        mGate.mChanged = true;
-        ++mRevision; ++mGate.mGateRevision;
-        if (activating) updateGate(LLTimer::getTotalSeconds());
-        if (reason) reason->clear();
-        return true;
-    }
-
-    LLPrismLens::ERegistryResult gateArm(
-        const LLPrismLens::CaptureHandle& handle, const std::string& label,
-        LLUUID* arm_id, std::string* reason)
-    {
-        const S32 slot = findCapture(handle);
-        if (slot < 0)
-        {
-            if (reason) *reason = "That capture handle is stale.";
-            return LLPrismLens::ERegistryResult::STALE_HANDLE;
-        }
-        const PrismInstance& capture = mLenses[slot];
-        if (!(capture.isCameraFeed() || capture.isMedia()))
-        {
-            if (reason) *reason = "Only Camera Feed and media slots can be armed.";
-            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-        }
-        LLViewerObject* source_object =
-            gObjectList.findObject(capture.cameraData() ? capture.cameraData()->mObjectId :
-                capture.mediaData() ? capture.mediaData()->mObjectId : LLUUID::null);
-        if (source_object &&
-            (source_object->isAvatar() || source_object->isAttachment()))
-        {
-            if (reason) *reason = "Avatar and attachment camera sources cannot be armed.";
-            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-        }
-        for (const PrismDisplay& display : mDisplays)
-        {
-            const LLPrismLens::ERegistryResult feedback =
-                LLPrismLens::gateFeedbackResult(
-                    capture.cameraData() ? capture.cameraData()->mObjectId :
-                        capture.mediaData() ? capture.mediaData()->mObjectId : LLUUID::null, display.mObjectId,
-                    display.mOccupied && display.mGateSubscribed);
-            if (feedback != LLPrismLens::ERegistryResult::OK)
-            {
-                if (reason) *reason = "That camera source is a Gate-subscribed monitor; arming it would create feedback.";
-                return feedback;
-            }
-        }
-        for (const LLPrismLens::GateArmedCamera& existing :
-             mGateSettings.mArmed)
-        {
-            if (existing.mCaptureId == capture.mHandle.mId)
-            {
-                if (reason) *reason = "That capture is already armed.";
-                return LLPrismLens::ERegistryResult::DUPLICATE;
-            }
-        }
-        if (mGateSettings.mArmed.size() >= LLPrismLens::MAX_CAPTURES)
-        {
-            if (reason) *reason = "A Gate can arm at most 8 existing captures.";
-            return LLPrismLens::ERegistryResult::AT_CAPACITY;
-        }
-        if (mGateSettings.mGateId.isNull()) mGateSettings.mGateId.generate();
-        LLPrismLens::GateArmedCamera armed;
-        armed.mArmId.generate();
-        armed.mLabel = label.empty()
-            ? llformat("VCam %u", static_cast<U32>(mGateSettings.mArmed.size() + 1))
-            : label.substr(0, 128);
-        armed.mCaptureId = capture.mHandle.mId;
-        mGateSettings.mArmed.push_back(armed);
-        mGate.mChanged = true;
-        ++mRevision;
-        ++mGate.mGateRevision;
-        if (mGateSettings.mActive) updateGate(LLTimer::getTotalSeconds());
-        if (reason) reason->clear();
-        return LLPrismLens::ERegistryResult::OK;
-    }
-
-    LLPrismLens::ERegistryResult gateDisarm(const LLUUID& arm_id, std::string* reason)
-    {
-        auto settings = mGateSettings;
-        auto it = std::find_if(settings.mArmed.begin(), settings.mArmed.end(),
-            [&arm_id](const auto& arm) { return arm.mArmId == arm_id; });
-        if (it == settings.mArmed.end()) return LLPrismLens::ERegistryResult::STALE_HANDLE;
-        const S32 index = static_cast<S32>(it - settings.mArmed.begin());
-        const S32 slot = findCaptureById(it->mCaptureId);
-        if (slot >= 0) mGate.mReducer.revoke(mLenses[slot].mHandle);
-        settings.mArmed.erase(it);
-        if (settings.mPreviewArmIndex == index) settings.mPreviewArmIndex = -1;
-        else if (settings.mPreviewArmIndex > index) --settings.mPreviewArmIndex;
-        if (settings.mArmed.empty()) settings.mActive = false;
-        setGateSettings(settings, reason);
-        return LLPrismLens::ERegistryResult::OK;
-    }
-
-    LLPrismLens::ERegistryResult gateTake(std::string* reason)
-    {
-        if (!mGateSettings.mActive)
-        {
-            if (reason) *reason = "Activate the Gate before taking a preview.";
-            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-        }
-        if (mGateSettings.mMode != LLPrismLens::EGateMode::MANUAL)
-        {
-            if (reason) *reason = "TAKE is available in Manual mode; Auto follows the armed order.";
-            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-        }
-        const S32 preview = mGateSettings.mPreviewArmIndex;
-        if (preview < 0 || preview >= static_cast<S32>(mGateSettings.mArmed.size()))
-        {
-            if (reason) *reason = "Select an armed preview camera first.";
-            return LLPrismLens::ERegistryResult::INVALID_SELECTION;
-        }
-        if (mGate.mOnAirArmIndex >= 0 && !LLPrismLens::gateIsRealCut(mGate.mOnAirArmIndex, preview))
-        {
-            if (reason) *reason = "The selected preview is already on-air.";
-            return LLPrismLens::ERegistryResult::DUPLICATE;
-        }
-        const F64 now = LLTimer::getTotalSeconds();
-        const S32 preview_slot = captureSlotForArm(preview);
-        if (preview_slot < 0)
-        {
-            if (reason) *reason = "The selected camera capture was deleted.";
-            return LLPrismLens::ERegistryResult::STALE_HANDLE;
-        }
-        if (mGate.mReducer.phase() == LLPrismLens::EGatePhase::CROSSFADING)
-            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-        mGate.mPendingTake = true;
-        ++mGate.mGateRevision;
-        if (reason) *reason = "Take pending";
-        return LLPrismLens::ERegistryResult::OK;
-    }
-
-    LLPrismLens::ERegistryResult setDisplayGateSubscribed(
-        const LLPrismLens::DisplayHandle& handle, bool subscribed,
-        const LLPrismLens::CaptureHandle* fixed_capture, std::string* reason)
-    {
-        const S32 slot = findDisplay(handle);
-        if (slot < 0)
-        {
-            if (reason) *reason = "That display handle is stale.";
-            return LLPrismLens::ERegistryResult::STALE_HANDLE;
-        }
-        PrismDisplay& display = mDisplays[slot];
-        if (subscribed && isSurfaceLensAperture(display))
-        {
-            if (reason)
-                *reason = "A Surface Lens aperture must remain bound to its lens capture and cannot follow the Gate.";
-            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-        }
-        if (subscribed)
-        {
-            for (const LLPrismLens::GateArmedCamera& armed :
-                 mGateSettings.mArmed)
-            {
-                const S32 capture_slot = findCaptureById(armed.mCaptureId);
-                if (capture_slot >= 0 &&
-                    LLPrismLens::gateFeedbackResult(
-                        mLenses[capture_slot].cameraData() ? mLenses[capture_slot].cameraData()->mObjectId :
-                            mLenses[capture_slot].mediaData() ? mLenses[capture_slot].mediaData()->mObjectId : LLUUID::null,
-                        display.mObjectId, true) !=
-                        LLPrismLens::ERegistryResult::OK)
-                {
-                    if (reason) *reason = "This monitor is an armed camera's source; subscribing it would create feedback.";
-                    return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-                }
-            }
-        }
-        if (!subscribed && display.mGateSubscribed)
-        {
-            S32 fixed_slot = -1;
-            if (fixed_capture)
-            {
-                // An explicitly requested capture is never silently replaced.
-                const S32 requested_slot = findCapture(*fixed_capture);
-                if (requested_slot < 0)
-                {
-                    if (reason) *reason = "That capture no longer exists.";
-                    return LLPrismLens::ERegistryResult::STALE_HANDLE;
-                }
-                if (!LLPrismLens::canRouteSource(mLenses[requested_slot]))
-                {
-                    if (reason) *reason = mLenses[requested_slot].isMedia()
-                        ? "Media slots are disabled."
-                        : "A surface lens owns exactly one display face.";
-                    return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-                }
-                fixed_slot = requested_slot;
-            }
-            if (fixed_slot < 0 &&
-                display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
-                mLenses[display.mCaptureSlot].mOccupied &&
-                mLenses[display.mCaptureSlot].isCameraFeed())
-            {
-                fixed_slot = static_cast<S32>(display.mCaptureSlot);
-            }
-            if (fixed_slot < 0)
-            {
-                for (U32 capture_slot = 0;
-                     capture_slot < LLPrismLens::MAX_CAPTURES; ++capture_slot)
-                {
-                    if (mLenses[capture_slot].mOccupied &&
-                        mLenses[capture_slot].isCameraFeed())
-                    {
-                        fixed_slot = static_cast<S32>(capture_slot);
-                        break;
-                    }
-                }
-            }
-            if (fixed_slot < 0)
-            {
-                if (reason) *reason = "No ordinary Camera Feed is available for this monitor's fixed source.";
-                return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-            }
-            if (!display.mSettings.mVirtual)
-            {
-                // Same self-feed / duplicate guard as capture reassignment.
-                LLViewerObject* object = gObjectList.findObject(display.mObjectId);
-                const LLPrismLens::ActionStatus status = displayTargetStatus(
-                    mLenses[fixed_slot].mHandle, object, display.mTE, &handle);
-                if (!status.allowed())
-                {
-                    if (reason) *reason = status.mReason;
-                    return status.mResult;
-                }
-            }
-            if (display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
-                mLenses[display.mCaptureSlot].mOccupied &&
-                mLenses[display.mCaptureSlot].mDisplayCount > 0)
-            {
-                --mLenses[display.mCaptureSlot].mDisplayCount;
-            }
-            display.mCaptureSlot = static_cast<U32>(fixed_slot);
-            display.mCaptureGeneration =
-                mLenses[fixed_slot].mHandle.mGeneration;
-            ++mLenses[fixed_slot].mDisplayCount;
-        }
-        display.mGateSubscribed = subscribed;
-        if (subscribed) routeGateDisplays();
-        ++mRevision;
-        ++mGate.mGateRevision;
-        if (reason) reason->clear();
-        return LLPrismLens::ERegistryResult::OK;
-    }
-
-    LLPrismLens::GateSnapshot gateSnapshot() const
-    {
-        LLPrismLens::GateSnapshot result;
-        result.mRevision = mGate.mGateRevision;
-        result.mSettings = mGateSettings;
-        result.mOnAirArmIndex = mGate.mOnAirArmIndex;
-        result.mWarmArmIndex = mGate.mWarmArmIndex;
-        result.mCutSerial = mGate.mCutSerial;
-        result.mReason = mGate.mReason;
-        result.mPhase = mGate.mReducer.phase(); result.mTakePending = mGate.mPendingTake || mGate.mReducer.pending();
-        result.mProgress = static_cast<F32>(mGate.mPublishedAlpha);
-        for (const auto& arm : mGateSettings.mArmed)
-        {
-            const S32 index = findCaptureById(arm.mCaptureId);
-            const auto* slot = index >= 0 ? &mLenses[index] : nullptr;
-            const bool waiting = slot && slot->mediaUrlData() && !mGate.mReducer.granted(slot->mHandle);
-            result.mWaitingForPlay |= waiting;
-            std::string status = waiting ? "Waiting for Play videos" : slot ?
-                mGate.mReducer.status(slot->mHandle) : "Skipped: Feed unavailable";
-            if (slot && status == "Warming...")
-            {
-                const auto& owner = mPrivateOwners[index];
-                status += owner && !owner->status.empty() ? " " + owner->status : " Checking";
-            }
-            result.mArmStatus.push_back(status);
-        }
-        return result;
-    }
-
-    bool gateOnAirCameraEye(LLVector3& out_agent, U64* out_cut_serial,
-                            LLQuaternion* out_rotation) const
-    {
-        if (out_cut_serial)
-        {
-            *out_cut_serial = mGate.mCutSerial;
-        }
-
-        // Gaze can query once per selected avatar. Resolve the registry-owned
-        // capture directly and retain the answer for this immutable render
-        // frame/revision instead of copying GateSnapshot + RegistrySnapshot.
-        if (mGateEyeCacheFrame == gFrameCount &&
-            mGateEyeCacheRevision == mRevision &&
-            mGateEyeCacheRuntimeRevision == mRuntimeRevision &&
-            mGateEyeCacheGateRevision == mGate.mGateRevision)
-        {
-            if (mGateEyeCacheValid)
-            {
-                out_agent = mGateEyeCache;
-                if (out_rotation)
-                {
-                    *out_rotation = mGateRotationCache;
-                }
-            }
-            return mGateEyeCacheValid;
-        }
-
-        mGateEyeCacheFrame = gFrameCount;
-        mGateEyeCacheRevision = mRevision;
-        mGateEyeCacheRuntimeRevision = mRuntimeRevision;
-        mGateEyeCacheGateRevision = mGate.mGateRevision;
-        mGateEyeCacheValid = false;
-
-        if (!mGateSettings.mActive)
-        {
-            return false;
-        }
-        const S32 slot = captureSlotForArm(mGate.mOnAirArmIndex);
-        if (slot < 0)
-        {
-            return false;
-        }
-
-        const PrismInstance& capture = mLenses[slot];
-        if (!capture.isCameraFeed() || !capture.cameraData()) return false;
-        if (capture.cameraData()->mSettings.mVirtual)
-        {
-            mGateEyeCache = capture.cameraData()->mSettings.mVirtualPos;
-            mGateRotationCache = capture.cameraData()->mSettings.mVirtualRot;
-        }
-        else
-        {
-            LLViewerObject* obj = gObjectList.findObject(capture.cameraData() ? capture.cameraData()->mObjectId :
-                capture.mediaData() ? capture.mediaData()->mObjectId : LLUUID::null);
-            if (!obj || obj->isDead())
-            {
-                return false;
-            }
-            mGateRotationCache = obj->getRenderRotation();
-            mGateEyeCache = obj->getRenderPosition() +
-                capture.cameraData()->mSettings.mLocalEyeOffset * mGateRotationCache;
-        }
-        mGateEyeCacheValid = mGateEyeCache.isFinite();
-        if (mGateEyeCacheValid)
-        {
-            out_agent = mGateEyeCache;
-            if (out_rotation)
-            {
-                *out_rotation = mGateRotationCache;
-            }
-        }
-        return mGateEyeCacheValid;
-    }
-
-    S32 gateOutputSlot(S32 fixed) const
-    {
-        if (mGate.mPreparing && mGate.mProposalToken && mGate.mProposedSeconds == 0.)
-            return findCapture(mGate.mProposed);
-        return mGate.mPreparing && mGate.mReducer.program().mId.notNull() ? findCapture(mGate.mReducer.program()) : fixed;
-    }
-    U64 gateOutputPublication() const { return mGate.mPresentationSerial; }
-    S32 gateIncomingSlot() const { return findCapture(mGate.mReducer.incoming()); }
-    bool gateCrossfadeAuthored() const { return mGateSettings.mTransition == LLPrismLens::EGateTransition::CROSSFADE; }
-    F32 gateAlpha() const
-    { return static_cast<F32>(mGate.mPreparing ? mGate.mReducer.alpha() : mGate.mPublishedAlpha); }
-    bool gateTransition() const
-    { return mGate.mProposedSeconds > 0. && mGate.mProposed.mId.notNull(); }
-
-    bool gateProjectorSettings(const LLPrismLens::ProjectorHandle& handle, LLPrismLens::ProjectorSettings& settings) const
-    {
-        for (const auto& entry : mGate.mProjectors)
-            if (entry.first.mId == handle.mId && entry.first.mGeneration == handle.mGeneration)
-            { settings = entry.second; return true; }
-        return false;
-    }
-    bool gateDisplaySettings(const LLPrismLens::DisplayHandle& handle, LLPrismLens::DisplaySettings& settings) const
-    {
-        for (const auto& entry : mGate.mDisplays)
-            if (entry.first.mId == handle.mId && entry.first.mGeneration == handle.mGeneration)
-            { settings = entry.second; return true; }
-        return false;
-    }
-    bool gateDisplayParticipates(const LLPrismLens::DisplayHandle& h) const
-    {
-        if (mGate.mPreparing || !mGate.mOutputTransaction || h.mId.isNull()) return true;
-        return std::any_of(mGate.mAcceptedDisplays.begin(), mGate.mAcceptedDisplays.end(),
-            [&h](const auto& v) { return v.mId == h.mId && v.mGeneration == h.mGeneration; });
-    }
-    bool gateProjectorParticipates(const LLPrismLens::ProjectorHandle& h) const
-    {
-        if (mGate.mPreparing || !mGate.mOutputTransaction) return true;
-        return std::any_of(mGate.mAcceptedProjectors.begin(), mGate.mAcceptedProjectors.end(),
-            [&h](const auto& v) { return v.mId == h.mId && v.mGeneration == h.mGeneration; });
-    }
-    void prepareGateOutputs()
-    {
-        if (mGate.mReducer.phase() != LLPrismLens::EGatePhase::CROSSFADING && mGate.mOutputConfiguration != mRevision)
-        {
-            mGate.mOutputConfiguration = mRevision; mGate.mNeedsOutputRefresh = true;
-            mGate.mDisplays.clear(); mGate.mProjectors.clear();
-            for (const auto& output : mDisplays)
-                if (output.mOccupied && output.mGateSubscribed && !output.mQuarantined && output.mFrame.mTargetWidth && output.mFrame.mTargetHeight)
-                    mGate.mDisplays.emplace_back(output.mHandle, output.mSettings);
-            for (const auto& output : mProjectors)
-                if (output.mOccupied && output.mGateSubscribed && !output.mQuarantined)
-                    mGate.mProjectors.emplace_back(output.mHandle, output.mSettings);
-        }
-        // Settled Program cookies still follow source/effect cadence. Pipeline
-        // cache keys suppress unchanged draws; only a fade forces every frame.
-        if (!mGate.mProposalToken && mGate.mReducer.program().mId.isNull() && !mGate.mNeedsOutputRefresh) return;
-        if (mGate.mProposalToken && !mGate.mReducer.validatePublication(mGate.mProposalToken,
-                gateInput(LLTimer::getTotalSeconds())))
-        { mGate.mProposalToken = 0; mGate.mProposed = {}; return; }
-        mGate.mPreparing = true;
-        ++mGate.mPublication;
-        // All fallible source/shader/target checks precede publication. Failed
-        // destinations keep their accepted cookie; healthy participants proceed.
-        gPipeline.prepareMediaPrismProjectorFeeds();
-        std::vector<LLPrismLens::DisplayHandle> displays;
-        std::vector<LLPrismLens::ProjectorHandle> projectors;
-        const S32 proposed = gateOutputSlot(findCapture(mGate.mReducer.program()));
-        for (const auto& entry : mGate.mDisplays)
-        {
-            const S32 index = findDisplay(entry.first);
-            if (index < 0 || proposed < 0 || mDisplays[index].mQuarantined) continue;
-            const auto& display = mDisplays[index];
-            LLPrismLens::CompositeState state;
-            // The same signal builder used by main, auxiliary and preview passes
-            // validates both retained images and the frozen destination mapping.
-            if (buildSignalCompositeForGate(static_cast<U32>(proposed), display, state)) displays.push_back(entry.first);
-        }
-        for (const auto& entry : mGate.mProjectors)
-            if (gPipeline.gateProjectorPrepared(entry.first, mGate.mPublication)) projectors.push_back(entry.first);
-        mGate.mPreparing = false;
-        const auto publication_input = gateInput(LLTimer::getTotalSeconds());
-        const bool qualified = !mGate.mProposalToken || mGate.mReducer.validatePublication(
-            mGate.mProposalToken, publication_input);
-        const bool publish = qualified && (!displays.empty() || !projectors.empty());
-        gPipeline.finishGateProjectors(mGate.mPublication, publish);
-        if (!publish)
-        {
-            if (!qualified) { mGate.mProposalToken = 0; mGate.mProposed = {}; }
-            return;
-        }
-        mGate.mOutputTransaction = true;
-        mGate.mAcceptedDisplays = std::move(displays);
-        mGate.mAcceptedProjectors = std::move(projectors);
-        mGate.mNeedsOutputRefresh = mGate.mAcceptedDisplays.size() != mGate.mDisplays.size() ||
-            mGate.mAcceptedProjectors.size() != mGate.mProjectors.size();
-        if (mGate.mPublishedAlpha != mGate.mReducer.alpha()) ++mGate.mPresentationSerial;
-        mGate.mPublishedAlpha = mGate.mReducer.alpha();
-        mGate.mAccepted = mGate.mProposalToken;
-        updateGate(publication_input.now, true, &publication_input);
-        routeGateDisplays();
-    }
-
-    S32 gateArmFor(const LLPrismLens::CaptureHandle& handle) const
-    {
-        for (S32 i = 0; i < static_cast<S32>(mGateSettings.mArmed.size()); ++i)
-            if (mGateSettings.mArmed[i].mCaptureId == handle.mId) return i;
+        for (U32 i = 0; i < LLPrismLens::MAX_CAPTURES; ++i)
+            if (mLenses[i].mOccupied && mLenses[i].isGate()) return S32(i);
         return -1;
     }
-
-    bool playGateVideos()
+    bool gateSourceEligible(const PrismInstance& source) const
     {
-        if (!prismEnabled() || !LLPrismLens::mediaSlotsEnabled() ||
-            !gSavedSettings.getBOOL("VCamGateMediaCycleEnabled")) return false;
-        mGate.mPlayVideos = true; mGate.mChanged = true; ++mGate.mGateRevision;
-        updateGate(LLTimer::getTotalSeconds());
+        if (source.isMedia()) return true;
+        if (!source.isCameraFeed()) return false;
+        auto* object = gObjectList.findObject(source.cameraData()->mObjectId);
+        return !source.cameraData()->mSettings.mBonePov.mEnabled &&
+            (!object || (!object->isAvatar() && !object->isAttachment()));
+    }
+    LLPrismLens::ERegistryResult addGateSlot(LLPrismLens::CaptureHandle* handle, std::string* reason)
+    {
+        using namespace LLPrismLens;
+        if (gateSlot() >= 0) { if (reason) *reason = "Only one Gate"; return ERegistryResult::DUPLICATE; }
+        const S32 slot = freeCaptureSlot(); U64 generation = 0;
+        if (slot < 0 || !allocateGeneration(generation)) return ERegistryResult::AT_CAPACITY;
+        PrismInstance gate;
+        gate.setGateData(GateSource()); gate.mOccupied = true;
+        gate.mHandle.mId.generate(); gate.mHandle.mGeneration = generation;
+        gate.mLabel = "Gate"; mLenses[slot] = gate;
+        if (handle) *handle = gate.mHandle;
+        if (reason) reason->clear(); ++mRevision;
+        return ERegistryResult::OK;
+    }
+    bool setGateSource(const LLPrismLens::CaptureHandle& handle, const LLPrismLens::GateSource& source,
+                       std::string* reason)
+    {
+        using namespace LLPrismLens;
+        const S32 slot = findCapture(handle);
+        GateSource validated;
+        if (slot < 0 || !mLenses[slot].isGate() || source.mSources.size() > 7 ||
+            source.mMode > EGateMode::AUTO_CYCLE || source.mTransition > EGateTransition::CROSSFADE ||
+            source.mOffAir > EGateOffAir::PAUSE || !gateSourceFromLLSD(gateSourceToLLSD(source), validated, reason)) return false;
+        std::vector<LLUUID> eligible;
+        for (const auto& c : mLenses) if (c.mOccupied && gateSourceEligible(c)) eligible.push_back(c.mHandle.mId);
+        std::vector<std::string> notes;
+        gateResolveSources(validated, handle.mId, eligible, notes);
+        if (reason) *reason = notes.empty() ? std::string() : notes.front();
+        auto& gate = mLenses[slot]; const auto previous = gate.gateData()->mSources;
+        gate.setGateData(validated);
+        for (const auto& id : validated.mSources)
+            if (std::find(previous.begin(), previous.end(), id) == previous.end())
+            {
+                const S32 i = findCaptureById(id);
+                if (i < 0 || !mLenses[i].mediaUrlData()) continue;
+                const auto& owner = mPrivateOwners[i];
+                gateLiveTick(validated.mOffAir, !owner || owner->desired == ALMediaFile::Transport::STOPPED,
+                    [&]() { mGateGrants.insert(id); },
+                    [&]() { if (auto* impl = resolveMedia(mLenses[i])) impl->setPrismGateGain(0.f); },
+                    [&]() { fileTransport(mLenses[i].mHandle, ALMediaFile::Transport::PLAYING); });
+            }
+        ++mRevision;
         return true;
     }
-
-    S32 gateMediaRole(const LLViewerMediaImpl* impl) const
+    bool gateTake(const LLPrismLens::CaptureHandle& handle, const LLUUID& id)
     {
-        S32 result = 0;
-        for (const auto& slot : mLenses)
+        const S32 slot = findCapture(handle);
+        if (slot < 0 || !mLenses[slot].isGate()) return false;
+        auto& gate = mLenses[slot];
+        if (gate.gateData()->mMode != LLPrismLens::EGateMode::MANUAL ||
+            std::find(gate.gateData()->mSources.begin(), gate.gateData()->mSources.end(), id) == gate.gateData()->mSources.end()) return false;
+        if (id == gate.mGateState.program)
         {
-            if (!slot.mOccupied || !slot.isMedia() || resolveMedia(slot) != impl) continue;
-            if (slot.mHandle.mId == mGate.mReducer.program().mId) result = llmax(result, 2);
-            else if (slot.mHandle.mId == mGate.mReducer.incoming().mId) result = llmax(result, 1);
+            const auto input = gateInput(slot, gate.mGateState.lastTick);
+            const auto source = std::find_if(input.sources.begin(), input.sources.end(),
+                [&](const auto& candidate) { return candidate.id == id; });
+            if (source == input.sources.end() || source->kind != LLPrismLens::ESourceSlotKind::MEDIA_URL ||
+                !source->stopped) return true;
         }
-        return result;
+        mGateGrants.insert(id); gate.mGateTake = id;
+        return true;
     }
-
-    LLPrismLens::GateInput gateInput(F64 now)
+    LLPrismLens::GateInput gateInput(U32 slot, F64 now)
     {
         using namespace LLPrismLens;
-        GateInput input;
-        input.now = now;
-        input.frameDt = llclamp(F64(gFrameIntervalSeconds), 1. / 240., .1);
-        input.settings = mGateSettings;
-        input.settings.mActive &= prismEnabled();
-        input.mediaEnabled = gSavedSettings.getBOOL("VCamGateMediaCycleEnabled") && mediaSlotsEnabled();
-        for (U32 index = 0; index < MAX_CAPTURES; ++index)
+        GateInput in; auto& gate = mLenses[slot];
+        in.now = now; in.settings = *gate.gateData(); in.demanded = gate.mFrame.mPrepared;
+        in.take = gate.mGateTake;
+        in.hasGatePicture = gate.mHasOutput && gPipeline.mPrismLensOutput[slot].isComplete();
+        for (auto& c : mLenses)
         {
-            auto& slot = mLenses[index];
-            if (!slot.mOccupied || !(slot.isCameraFeed() || slot.isMedia())) continue;
-            GateSourceEvent event;
-            event.handle = slot.mHandle; event.kind = slot.sourceKind();
-            event.available = gateArmFor(slot.mHandle) >= 0;
-            event.permitted = prismEnabled() && (!slot.isMedia() || (input.mediaEnabled && mediaSlotsEnabled()));
-            event.ready = slot.mHasOutput && !slot.mOutputPreviewQuality &&
-                gPipeline.mPrismLensOutput[index].isComplete();
-            event.frame = slot.mPublicationSerial;
-            event.frameAge = llmax(0., now - slot.mLastProducedTime);
-            event.opportunity = slot.mGateOpportunityFrame == gFrameCount;
-            if (slot.isCameraFeed()) event.admitted = true;
-            if (const auto* file = slot.mediaUrlData())
+            if (!c.mOccupied || !gateSourceEligible(c) ||
+                std::find(in.settings.mSources.begin(), in.settings.mSources.end(), c.mHandle.mId) == in.settings.mSources.end()) continue;
+            GateSourceInput source;
+            source.id = c.mHandle.mId; source.name = c.mLabel; source.reason = c.mRuntime.mReason;
+            source.kind = c.sourceKind(); source.eligible = !c.mediaUrlData() || mGateGrants.count(source.id);
+            source.hasOutput = c.mHasOutput && gPipeline.mPrismLensOutput[&c - mLenses].isComplete();
+            source.fullQuality = !c.mOutputPreviewQuality; source.publication = c.mPublicationSerial;
+            source.frozen = !c.mMediaRunning; source.copiedDecoder = c.mMediaCompletedSerial;
+            const auto& owner = mPrivateOwners[&c - mLenses];
+            if (c.mediaUrlData())
             {
-                event.loop = file->mLoop; event.onCut = file->mOnCut; event.metadataReady = false;
-                const auto& owner = mPrivateOwners[index];
-                if (owner && owner->impl)
-                {
-                    event.resident = owner->impl->privateFileActive();
-                    event.permitted &= owner->impl->mediaSlotPermitted();
-                    event.admitted = owner->impl->privateFileAdmitted();
-                    if (auto* plugin = owner->impl->getMediaPlugin())
-                    {
-                        const auto time = plugin->gateTime();
-                        event.metadataReady = time.token != 0 && time.age <= .5;
-                        event.token = time.token; event.position = time.position; event.duration = time.duration;
-                        event.error = time.error; event.sampleAge = time.age;
-                        event.paused = time.paused; event.resumed = time.playing; event.eof = time.eof;
-                        event.seekable = plugin->privateFileSeekable(); event.pauseTime = time.pauseTime; event.framePeriod = time.framePeriod;
-                        event.admitted &= plugin->privateFileEffectiveLoop() == owner->effectiveLoop;
-                        event.exited = plugin->isPluginExited();
-                    }
-                    if (owner->impl->privateBudgetLost() && mGate.mReducer.charged(slot.mHandle)) event.refusal = "Program media budget limited";
-                }
-                else if (owner && owner->closeFence) event.retired = owner->closeFence->closed.load();
-                if (owner && owner->noDecoderRetired)
-                { event.retired = true; event.token = owner->noDecoderRetired; }
-                if (owner && owner->gateBudgetDenied && mGate.mReducer.charged(slot.mHandle)) event.refusal = "Program media budget limited";
+                source.desiredPlaying = owner && owner->desired == ALMediaFile::Transport::PLAYING;
+                source.downloading = owner && owner->request;
+                source.stopped = !source.downloading && (!owner || owner->desired == ALMediaFile::Transport::STOPPED);
             }
-            else if (slot.mediaData())
+            if (auto* impl = resolveMedia(c))
             {
-                auto* impl = resolveMedia(slot);
-                event.permitted &= impl && impl->mediaSlotPermitted();
-                event.admitted = event.permitted;
+                const auto image = impl->completedMediaImage();
+                source.decoder = image.serial; source.identity = image.identity;
+                source.paused = impl->isMediaPaused();
+                source.currentImage = image.ready && image.identity == c.mMediaIdentity &&
+                    c.mMediaAcceptedLayout == c.mMediaLayoutRevision;
             }
-            input.sources.push_back(event);
+            in.sources.push_back(source);
         }
-        for (const auto& receipt : mGateCloseReceipts)
-        {
-            if (!receipt.noChild && (!receipt.fence || !receipt.fence->closed.load())) continue;
-            GateSourceEvent event; event.handle = receipt.handle; event.retired = true;
-            input.sources.push_back(event);
-        }
-        const bool auxiliary_view = std::any_of(std::begin(mLenses), std::end(mLenses),
-            [](const auto& slot) { return slot.mOccupied && slot.isCameraFeed(); });
-        const auto& world_shader = gPrismLensProgram;
-        const bool display_variant = world_shader.isComplete() &&
-            world_shader.getTextureChannel(LLShaderMgr::PRISM_GATE_MAP) >= 0;
-        for (const auto& display : mDisplays)
-            if (display.mOccupied && display.mGateSubscribed && !display.mQuarantined)
-            {
-                input.destinations.add(llmax(1u, display.mFrame.mTargetWidth), llmax(1u, display.mFrame.mTargetHeight), false, display_variant);
-                if (auxiliary_view) input.destinations.add(llmax(1u, display.mFrame.mTargetWidth), llmax(1u, display.mFrame.mTargetHeight), false, display_variant);
-                if (LLPrismPreviewService::instance().isDisplayDemanded(display.mHandle)) input.destinations.add(512, 288, false, display_variant);
-            }
-        for (auto& projector : mProjectors)
-            if (projector.mOccupied && projector.mGateSubscribed && (projector.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT ? resolveRigProjector(projector.mRigSlot, projector.mRigLight) : dynamic_cast<LLVOVolume*>(gObjectList.findObject(projector.mObjectId))))
-                {
-                    // All existing effect kernels are bounded shader variants;
-                    // reject an unavailable two-sampler variant before fading.
-                    const U32 permutation = gPipeline.colorCorrectPermutation(true, true);
-                    const auto& shader = projector.mSettings.mLook.hasFeedEffects() ? gPrismProjectorLookProgram[permutation] : gPrismProjectorFeedProgram[permutation];
-                    const U32 resolution = LLPrismLens::projectorRenderResolution(projector.mSettings, true);
-                    input.destinations.add(resolution, resolution, true,
-                        shader.isComplete() && shader.getTextureChannel(LLShaderMgr::PRISM_GATE_MAP) >= 0);
-                }
-        return input;
+        return in;
     }
-
-    void updateGate(F64 now, bool publication = false, const LLPrismLens::GateInput* publication_input = nullptr)
+    void reconcileGateAudio(bool enabled = true)
     {
-        if (!publication) ageGateWatches();
+        std::vector<std::pair<LLUUID, F32>> videos;
+        std::set<LLUUID> current;
+        const S32 index = enabled ? gateSlot() : -1;
+        if (index >= 0)
+        {
+            const auto& gate = mLenses[index];
+            for (auto& c : mLenses)
+                if (c.mOccupied && c.isMedia() && std::find(gate.gateData()->mSources.begin(), gate.gateData()->mSources.end(), c.mHandle.mId) != gate.gateData()->mSources.end())
+                    if (auto* impl = resolveMedia(c))
+                    {
+                        videos.emplace_back(impl->getMediaTextureID(), LLPrismLens::gateGain(gate.mGateState, c.mHandle.mId));
+                        current.insert(impl->getMediaTextureID());
+                    }
+        }
+        const auto gains = LLPrismLens::gateAudioGains(videos, mGainedImpls);
+        for (const auto& [id, gain] : gains)
+            if (auto* impl = LLViewerMedia::getInstance()->getMediaImplFromTextureID(id)) impl->setPrismGateGain(gain);
+        mGainedImpls = std::move(current);
+    }
+    void prepareGateSlot(U32 slot, const S32 viewport[4], const glm::mat4& projection, const glm::mat4& modelview)
+    {
+        auto& gate = mLenses[slot]; resetFrame(gate, gFrameCount);
+        U32 width = 0, height = 0;
+        gate.mAnyDisplayVisible = false;
+        for (auto& display : mDisplays)
+            if (display.mOccupied && display.mCaptureSlot == slot && display.mCaptureGeneration == gate.mHandle.mGeneration)
+            {
+                if (prepareDisplayFrame(display, viewport, projection, modelview))
+                {
+                    gate.mAnyDisplayVisible = true;
+                    width = llmax(width, display.mFrame.mTargetWidth); height = llmax(height, display.mFrame.mTargetHeight);
+                }
+                display.mFrame.mResolvedFace = nullptr;
+            }
+        gate.mAnyDisplayVisible |= addProjectorDemand(slot, width, height);
+        if (gate.mPreviewDemanded)
+        { width = llmax(width, LLPrismPreviewPolicy::WIDTH); height = llmax(height, LLPrismPreviewPolicy::HEIGHT); }
+        gate.mFrame.mPrepared = gate.mAnyDisplayVisible || gate.mPreviewDemanded;
+        gate.mFrame.mTargetWidth = width; gate.mFrame.mTargetHeight = height;
+        gate.mPreviewOnly = !gate.mAnyDisplayVisible;
+    }
+    void noteGateStatus(PrismInstance& gate, const LLPrismLens::GateStatus& before)
+    {
+        const auto& state = gate.mGateState;
+        if (before.program != state.program || before.pending != state.pending || before.from != state.from ||
+            before.alpha != state.alpha || before.cutSerial != state.cutSerial || before.text != state.text)
+            ++mRuntimeRevision;
+        gate.mRuntime.mReason = state.text;
+    }
+    void stepGate(F64 now)
+    {
         using namespace LLPrismLens;
-        GateInput input = publication_input ? *publication_input : gateInput(now);
-        input.dt = !publication && mGate.mLastTick > 0. ? llmax(0., now - mGate.mLastTick) : 0.;
-        if (!publication) mGate.mLastTick = now;
-        input.take = !publication && std::exchange(mGate.mPendingTake, false);
-        input.playVideos = !publication && std::exchange(mGate.mPlayVideos, false);
-        input.activate = !publication && std::exchange(mGate.mActivate, false);
-        input.changed = !publication && std::exchange(mGate.mChanged, false);
-        input.accepted = mGate.mAccepted;
-        const U64 revision = mGate.mReducer.revision();
-        const auto old_program = mGate.mReducer.program();
-        const auto old_candidate = mGate.mReducer.incoming();
-        const auto actions = publication ? mGate.mReducer.acknowledgeOutputs(std::exchange(mGate.mAccepted, 0), input) : mGate.mReducer.update(input);
-        if (publication || !mGate.mReducer.proposal()) mGate.mProposalToken = 0;
-        mGate.mExecuting = true;
-        for (const auto& action : actions)
+        for (auto& c : mLenses) { c.mGateWatchFrames = 0; c.mGateWatchW = c.mGateWatchH = 0; }
+        const S32 index = gateSlot();
+        if (index < 0) { reconcileGateAudio(); return; }
+        auto& gate = mLenses[index];
+        const auto status_before = gateStatus(gate.mGateState);
+        // Eligibility can change outside the Gate card (Bone POV, attachment,
+        // source-kind changes). Drop those ticks once so no hidden tick persists.
+        std::vector<LLUUID> eligible;
+        for (const auto& source : mLenses)
+            if (source.mOccupied && gateSourceEligible(source)) eligible.push_back(source.mHandle.mId);
+        auto settings = *gate.gateData(); std::vector<std::string> dropped;
+        gateResolveSources(settings, gate.mHandle.mId, eligible, dropped);
+        if (!dropped.empty()) { gate.setGateData(settings); ++mRevision; }
+        auto in = gateInput(index, now); gate.mGateTake.setNull();
+        auto proposal = gateStep(gate.mGateState, in);
+        for (const auto& id : proposal.play)
         {
-            const S32 index = findCapture(action.handle);
-            if (index < 0) continue;
-            auto& slot = mLenses[index];
-            auto owner = mPrivateOwners[index];
-            const auto await_decoded_image = [&]()
-            {
-                slot.mGateAwaitingDecodedImage = true;
-                slot.mGateDecodeSerial = 0; slot.mGateDecodeIdentity = {};
-                if (owner && owner->impl)
+            const S32 slot = findCaptureById(id);
+            if (slot >= 0 && !fileTransport(mLenses[slot].mHandle, ALMediaFile::Transport::PLAYING))
+                for (auto& source : in.sources) if (source.id == id)
                 {
-                    const auto image = owner->impl->completedMediaImage();
-                    slot.mGateDecodeSerial = image.serial;
-                    slot.mGateDecodeIdentity = image.identity;
+                    source.playRefused = true;
+                    const auto& owner = mPrivateOwners[slot];
+                    source.reason = mediaSlotsEnabled() && owner ? owner->status : mLenses[slot].mRuntime.mReason;
                 }
-            };
-            if (action.kind == EGateAction::CLAIM && slot.mediaUrlData())
-            {
-                owner = privateOwner(index); owner->gate = true; owner->gateToken = action.token;
-                if (auto* plugin = owner->impl ? owner->impl->getMediaPlugin() : nullptr)
-                    plugin->gateEnvelope(action.token, 0., 0.);
-            }
-            else if (action.kind == EGateAction::UNCLAIM)
-                unclaimPrivate(index, action.token);
-            else if (action.kind == EGateAction::WARM)
-            {
-                if (slot.mediaUrlData())
-                {
-                    owner = privateOwner(index); owner->gate = true; owner->gateReleased = false; owner->gateBudgetDenied = false; owner->gateRetiring = false; owner->noDecoderRetired = 0;
-                    owner->effectiveLoop = action.loop;
-                    await_decoded_image();
-                    if (auto* plugin = owner->impl ? owner->impl->getMediaPlugin() : nullptr)
-                        plugin->gateEnvelope(action.token, 0., 0.);
-                    fileTransport(slot.mHandle, ALMediaFile::Transport::PLAYING);
-                    owner->gateToken = action.token;
-                }
-            }
-            else if (action.kind == EGateAction::PROPOSE)
-            {
-                const auto event = std::find_if(input.sources.begin(), input.sources.end(), [&action](const auto& source) { return source.handle.mId == action.handle.mId; });
-                LL_INFOS("VCamGate") << "propose token=" << action.token << " charged=" << mGate.mReducer.charges()
-                    << " target=" << mGate.mReducer.targetPosition() << " position=" << (event != input.sources.end() ? event->position : 0.)
-                    << " error_ms=" << (event != input.sources.end() ? event->error * 1000. : 0.)
-                    << " priority=" << (owner && owner->impl ? static_cast<S32>(owner->impl->getPriority()) : -1)
-                    << " fade_passes=" << input.destinations.passes << " fade_pixels=" << input.destinations.pixels << LL_ENDL;
-                mGate.mProposed = action.handle; mGate.mProposalToken = action.token;
-                mGate.mProposedSeconds = action.seconds; mGate.mAccepted = 0;
-                if (mGate.mReducer.phase() != EGatePhase::CROSSFADING)
-                {
-                mGate.mProjectors.clear(); mGate.mDisplays.clear();
-                for (const auto& output : mProjectors)
-                    if (output.mOccupied && output.mGateSubscribed && !output.mQuarantined)
-                        mGate.mProjectors.emplace_back(output.mHandle, output.mSettings);
-                for (const auto& output : mDisplays)
-                    if (output.mOccupied && output.mGateSubscribed && !output.mQuarantined && output.mFrame.mTargetWidth && output.mFrame.mTargetHeight)
-                        mGate.mDisplays.emplace_back(output.mHandle, output.mSettings);
-                }
-            }
-            else if (owner && owner->gate)
-            {
-                auto* plugin = owner->impl ? owner->impl->getMediaPlugin() : nullptr;
-                if (action.kind == EGateAction::SEEK || action.kind == EGateAction::RESUME ||
-                    action.kind == EGateAction::PARK || action.kind == EGateAction::RETIRE)
-                {
-                    const bool pause = action.kind == EGateAction::SEEK || action.kind == EGateAction::PARK || action.kind == EGateAction::RETIRE;
-                    if (action.kind == EGateAction::SEEK || action.kind == EGateAction::RESUME)
-                        await_decoded_image();
-                    owner->desired = pause ? ALMediaFile::Transport::PAUSED : ALMediaFile::Transport::PLAYING;
-                    owner->gateToken = action.token;
-                    if (action.kind == EGateAction::RETIRE) owner->gateRetiring = true;
-                    if (action.kind == EGateAction::RETIRE && !plugin)
-                    {
-                        if (owner->impl)
-                        {
-                            owner->impl->retirePrivateFile(); // cancel deferred play/bootstrap without creating a child
-                            owner->closeFence = owner->impl->privateGateCloseFence();
-                        }
-                        if (!owner->closeFence || owner->closeFence->closed.load())
-                            owner->noDecoderRetired = action.token; // no child or acknowledged exit
-                        else mGateCloseReceipts.push_back({action.handle, owner->closeFence});
-                    }
-                    if (plugin)
-                    {
-                        if (action.kind == EGateAction::RETIRE) plugin->gateEnvelope(action.token, 0., 0.);
-                        plugin->gateTransport(action.token, pause ? 1 : 2,
-                            action.kind == EGateAction::SEEK ? action.position : -1.);
-                        owner->impl->setVolume(slot.mediaUrlData()->mVolume);
-                    }
-                }
-                else if (action.kind == EGateAction::ENVELOPE && plugin)
-                    plugin->gateEnvelope(action.token, action.gain, action.seconds);
-                else if ((action.kind == EGateAction::CLOSE || action.kind == EGateAction::RELEASE) && owner->impl)
-                {
-                    owner->closeFence = owner->impl->privateGateCloseFence();
-                    mGateCloseReceipts.push_back({action.handle, owner->closeFence});
-                    owner->status = action.kind == EGateAction::RELEASE ? "Idle video released - bookmark kept" : "Waiting for player retirement";
-                    // A later WARM must see an empty owner while this old child
-                    // closes, rather than reconciling an inactive impl as a new
-                    // policy failure. The fence still owns its close/lease ACK.
-                    auto released_impl = owner->impl;
-                    owner->impl = nullptr;
-                    // retirePrivateFile destroys the child synchronously and can
-                    // re-enter reconcileMedia. Mark retention BEFORE that call.
-                    ALMediaFile::releaseGatePrivate(owner->gateReleased, owner->desired,
-                        [&]() { released_impl->retirePrivateFile(); });
-                }
-            }
         }
-        mGate.mExecuting = false;
-        mGate.mOnAirArmIndex = gateArmFor(mGate.mReducer.program());
-        mGate.mWarmArmIndex = gateArmFor(mGate.mReducer.incoming());
-        if (mGate.mOnAirArmIndex >= 0) mGateSettings.mProgramArmIndex = mGate.mOnAirArmIndex;
-        if (old_program.mId != mGate.mReducer.program().mId || old_program.mGeneration != mGate.mReducer.program().mGeneration)
-        { ++mGate.mCutSerial; ++mGate.mPresentationSerial; ++mRuntimeRevision; routeGateDisplays(); }
-        if (mGate.mReducer.incoming().mId.isNull())
+        if (proposal.next.pending.notNull() && proposal.next.pending != gate.mGateState.pending)
         {
-            if (old_candidate.mId.notNull()) mGate.mNeedsOutputRefresh = true;
-            mGate.mProposalToken = 0; mGate.mAccepted = 0; mGate.mProposed = {}; mGate.mPublishedAlpha = 0.;
+            const S32 source = findCaptureById(proposal.next.pending);
+            if (source >= 0) { mLenses[source].mGateDecodeIdentity = proposal.next.baselineIdentity; mLenses[source].mGateDecodeSerial = proposal.next.baselineDecoder; }
         }
-        else if (mGate.mReducer.wantsImage(input)) watchGateArm(mGate.mWarmArmIndex, 1);
-        if (!publication)
-            mGateReservedSlot = mGate.mReducer.reservesImage(input) ? findCapture(mGate.mReducer.incoming()) : -1;
-        mGate.mReason = mGate.mReducer.reason();
-        if (revision != mGate.mReducer.revision()) ++mGate.mGateRevision;
+        proposal = gatePrepareStep(gate.mGateState, in);
+        gate.mGateRollback |= proposal.rollback;
+        for (const auto& id : proposal.pause) { const S32 slot = findCaptureById(id); if (slot >= 0) fileTransport(mLenses[slot].mHandle, ALMediaFile::Transport::PAUSED); }
+        for (const auto& id : proposal.feed)
+        {
+            const S32 slot = findCaptureById(id); if (slot < 0) continue;
+            auto& c = mLenses[slot]; c.mGateWatchFrames = gate.mFrame.mPrepared ? 1 : 0;
+            c.mGateWatchW = gate.mFrame.mTargetWidth; c.mGateWatchH = gate.mFrame.mTargetHeight;
+        }
+        if (!dropped.empty()) gate.mGateState.text = dropped.front();
+        noteGateStatus(gate, status_before);
+        reconcileGateAudio();
+    }
+    // ui-draw-lint: allow-function(setting-write) isolated native regression fixture, restored on exit
+    bool gateMediaRegistryRegression(std::string& reason)
+    {
+        using namespace LLPrismLens;
+        const char* clip = std::getenv("VCAM_MEDIA_PROBE_FILE");
+        if (!clip || !*clip) { reason = "VCAM_MEDIA_PROBE_FILE required for native Gate media/scene regression"; return false; }
+        const LLSD saved = sceneData();
+        const bool enabled = gSavedSettings.getBOOL("PrismLensEnabled");
+        const bool media_enabled = gSavedSettings.getBOOL("VCamMediaSlotsEnabled");
+        gSavedSettings.setBOOL("PrismLensEnabled", true);
+        gSavedSettings.setBOOL("VCamMediaSlotsEnabled", true);
+        auto check = [&](bool ok, const char* message) { if (!ok) reason = message; return ok; };
+        const bool passed = [&]()
+        {
+            LLSD empty;
+            for (const char* key : {"prism_captures", "prism_displays", "prism_projectors"}) empty[key] = LLSD::emptyArray();
+            if (!applySceneData(empty, &reason)) return false;
+            CaptureHandle a,b,c,video,gate;
+            for (auto* camera : {&a,&b,&c})
+                if (addVirtualCamera(camera, LLVector3::zero, LLQuaternion::DEFAULT, &reason) != ERegistryResult::OK) return false;
+            if (addMedia(&video,&reason) != ERegistryResult::OK || addGateSlot(&gate,&reason) != ERegistryResult::OK) return false;
+            MediaUrlSource cue; cue.mLocation=MediaUrlSource::Location::LOCAL_FILE; cue.mValue=clip;
+            if (!setMediaUrlSource(video,cue,&reason)) return false;
+            for (const auto& target : {a,gate,gate,gate})
+            {
+                DisplayHandle face;
+                if (addVirtualDisplay(target,LLVector3(0.f,0.f,2.f),LLQuaternion::DEFAULT,1.6f,.9f,&face,&reason)!=ERegistryResult::OK) return false;
+            }
+            const U32 v=U32(findCapture(video)), g=U32(findCapture(gate));
+            // A real media instance makes the mute and VCam-off reconciliation observable.
+            // This fixture does not claim decoder or audible/pixel validation.
+            auto owner=privateOwner(v);
+            owner->impl=LLViewerMedia::instance().newMediaImpl(LLUUID::generateNewID(),1024,1024,false,false);
+            LLPointer<LLViewerMediaImpl> impl=owner->impl;
+            if (!impl) return check(false,"native media instance creation failed");
+            GateSource settings; settings.mSources={a.mId,video.mId};
+            if (!setGateSource(gate,settings,&reason)) return false;
+            if (!check(mGateGrants.count(video.mId) && owner->desired==ALMediaFile::Transport::PLAYING &&
+                impl->prismGateGain()==0.f,"live tick must grant, Play and mute the URL")) return false;
+            reconcileGateAudio();
+            if (!check(mGainedImpls.count(impl->getMediaTextureID()),"audio instance not tracked")) return false;
+            gSavedSettings.setBOOL("PrismLensEnabled",false);
+            LLPrismLens::renderAuxiliaryView(); // exercise the actual !enabled branch
+            if (!check(impl->prismGateGain()==1.f && mGainedImpls.empty(),"VCam off did not restore gain")) return false;
+            gSavedSettings.setBOOL("PrismLensEnabled",true);
+            // An ineligible tick cannot veto unrelated settings or its own removal.
+            auto camera=mLenses[findCapture(a)].cameraData()->mSettings; camera.mBonePov.mEnabled=true;
+            if (!setCameraSettings(a,camera,&reason)) return false;
+            settings.mIntervalSeconds=12.;
+            if (!check(setGateSource(gate,settings,&reason) && !reason.empty() &&
+                mLenses[g].gateData()->mSources==std::vector<LLUUID>({video.mId}),"ineligible tick blocked a Gate edit")) return false;
+            settings.mSources={video.mId};
+            if (!setGateSource(gate,settings,&reason)) return false;
+            settings.mSources.clear(); if (!setGateSource(gate,settings,&reason)) return false;
+            camera.mBonePov.mEnabled=false; if (!setCameraSettings(a,camera,&reason)) return false;
+            settings.mSources={a.mId,video.mId}; settings.mOffAir=EGateOffAir::PAUSE;
+            if (!setGateSource(gate,settings,&reason)) return false;
+            const LLSD x=sceneData();
+            if (!fileTransport(video,ALMediaFile::Transport::PLAYING)) return check(false,"native clip Play refused");
+            owner=mPrivateOwners[v];
+            if (!applySceneData(x,&reason)) return false;
+            if (!check(mGateGrants.empty() && owner->retiring && owner->desired==ALMediaFile::Transport::STOPPED &&
+                !owner->request && !mPrivateOwners[v],"scene reload retained grants or private playback")) return false;
+            const auto input=gateInput(U32(gateSlot()),0.);
+            for (const auto& source : input.sources)
+                if (source.id==video.mId && !check(!source.eligible,"loaded URL inherited a grant")) return false;
+            const auto reloaded=snapshot();
+            if (!check(reloaded.mSlotCount==5 && reloaded.mDisplayCount==4,"scene X did not replace counts")) return false;
+            const auto reloaded_video=mLenses[v].mHandle;
+            if (!fileTransport(reloaded_video,ALMediaFile::Transport::PLAYING)) return false;
+            owner=mPrivateOwners[v];
+            // Load smaller Y while X's private URL transport is PLAYING.
+            LLSD y=x, captures=LLSD::emptyArray(), faces=LLSD::emptyArray();
+            captures.append(x["prism_captures"][0]); captures.append(x["prism_captures"][1]);
+            faces.append(x["prism_displays"][0]); y["prism_captures"]=captures; y["prism_displays"]=faces;
+            if (!applySceneData(y,&reason)) return false;
+            if (!check(snapshot().mSlotCount==2 && snapshot().mDisplayCount==1 && gateSlot()<0 &&
+                mLenses[0].mDisplayCount==1 && mLenses[1].mDisplayCount==0 && mGateGrants.empty() &&
+                owner->retiring && owner->desired==ALMediaFile::Transport::STOPPED && !owner->request,
+                "smaller scene left slots, faces, Gate, grants or playback")) return false;
+            for (U32 slot=2;slot<MAX_CAPTURES;++slot)
+                if (!check(!mLenses[slot].mOccupied && !mLenses[slot].mHasOutput && !mPrivateOwners[slot] &&
+                    mLenses[slot].mGateState.program.isNull(),"scene left trailing runtime state")) return false;
+            return check(addGateSlot(nullptr,&reason)==ERegistryResult::OK,"old scene Gate survived replacement");
+        }();
+        std::string restore_reason;
+        const bool restored=applySceneData(saved,&restore_reason).mSuccess;
+        gSavedSettings.setBOOL("PrismLensEnabled",enabled);
+        gSavedSettings.setBOOL("VCamMediaSlotsEnabled",media_enabled);
+        if (!restored) reason="native Gate scene restore failed: "+restore_reason;
+        return passed && restored;
+    }
+    bool gateRegistryRegression(std::string& reason, std::string& media_status);
+    void composeGate();
+    bool gateOnAirCameraEye(LLVector3& eye, U64* serial, LLQuaternion* rotation) const
+    {
+        const S32 index = gateSlot(); if (index < 0) return false;
+        const auto& gate = mLenses[index]; if (serial) *serial = gate.mGateState.cutSerial;
+        const S32 slot = findCaptureById(gate.mGateState.program);
+        if (slot < 0 || !mLenses[slot].cameraData()) return false;
+        const auto& camera = *mLenses[slot].cameraData();
+        LLQuaternion rot;
+        if (camera.mSettings.mVirtual) { eye = camera.mSettings.mVirtualPos; rot = camera.mSettings.mVirtualRot; }
+        else
+        {
+            auto* object = gObjectList.findObject(camera.mObjectId); if (!object || object->isDead()) return false;
+            rot = object->getRenderRotation(); eye = object->getRenderPosition() + camera.mSettings.mLocalEyeOffset * rot;
+        }
+        if (rotation) *rotation = rot; return eye.isFinite();
     }
 
     bool removeDisplay(const LLPrismLens::DisplayHandle& handle, std::string* reason)
@@ -6725,6 +6083,7 @@ public:
             gPipeline.releasePrismLensOutput(capture_slot);
             // Shared scratch packs remain live for unrelated captures.
             capture.mHasOutput = false;
+            if (capture.isGate()) LLPrismLens::gateOutputReleased(capture.mGateState);
             capture.mOutputWidth = 0;
             capture.mOutputHeight = 0;
             capture.mLastRenderedFrame = 0;
@@ -6841,9 +6200,7 @@ public:
             (!mPrivateOwners[projector.mCaptureSlot] || !mPrivateOwners[projector.mCaptureSlot]->impl ||
              (!mPrivateOwners[projector.mCaptureSlot]->impl->privateFileAdmitted() &&
               !mPrivateOwners[projector.mCaptureSlot]->impl->privateFileRetaining()));
-        const bool gate_retained = projector.mGateSubscribed && projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
-            mLenses[projector.mCaptureSlot].mHasOutput;
-        if (!prismEnabled() || (private_stopped && !gate_retained) || (media && !LLPrismLens::mediaSlotsEnabled())) releaseProjectorVolumetrics(projector);
+        if (!prismEnabled() || private_stopped || (media && !LLPrismLens::mediaSlotsEnabled())) releaseProjectorVolumetrics(projector);
         else if (!quarantined) syncProjectorVolumetrics(projector, volume, media);
         const bool changed = projector.mRuntime.mHealth != health ||
             projector.mRuntime.mReason != reason ||
@@ -6890,7 +6247,7 @@ public:
             }
             if (!active) continue;
             demanded = true;
-            U32 width = LLPrismLens::projectorRenderResolution(projector.mSettings, projector.mGateSubscribed);
+            U32 width = projector.mSettings.mResolution;
             U32 height = width;
             LLVOVolume* volume = projector.mTarget ==
                     LLPrismLens::EProjectorTarget::RIG_LIGHT
@@ -6920,10 +6277,24 @@ public:
 
     U32 outputCapacity(U32 slot) const
     {
-        if (slot >= LLPrismLens::MAX_CAPTURES || !mLenses[slot].mOccupied ||
-            !mLenses[slot].isCameraFeed()) return 1024;
-        return LLPrismLens::projectorOutputCapacity(mProjectors, slot,
-            mLenses[slot].mHandle.mGeneration);
+        using namespace LLPrismLens;
+        if (slot >= MAX_CAPTURES || !mLenses[slot].mOccupied) return 1024;
+        const auto& capture = mLenses[slot];
+        if (capture.isGate())
+        {
+            const S32 held = findCaptureById(capture.mGateState.held);
+            return held < 0 ? 1024 : gPipeline.mPrismLensOutput[held].getWidth();
+        }
+        if (!capture.isCameraFeed()) return 1024;
+        U32 inherited = 1024;
+        const S32 gate = gateSlot();
+        if (gate >= 0)
+        {
+            const auto& state = mLenses[gate].mGateState; const auto& id = capture.mHandle.mId;
+            if (id == state.program || id == state.pending || id == state.from)
+                inherited = projectorOutputCapacity(mProjectors, gate, mLenses[gate].mHandle.mGeneration);
+        }
+        return projectorOutputCapacity(mProjectors, slot, capture.mHandle.mGeneration, inherited);
     }
 
     void releaseUnusedProjectorCapacity()
@@ -6936,7 +6307,11 @@ public:
             LLPrismLens::requestProjectorOutputCapacity(
                 gPipeline.mPrismLensOutput[slot], capacity, [&]()
                 {
-                    mLenses[slot].mNextDueTime = 0.;
+                    auto& c = mLenses[slot]; c.mNextDueTime = 0.;
+                    if (c.isGate()) c.mGateState.copyKey = {};
+                    else if (LLPrismLens::releaseLoweredProjectorOutput(capacity, gPipeline.mPrismLensOutput[slot].getWidth(),
+                        c.mAnyDisplayVisible, c.mPreviewDemanded, c.mGateWatchFrames != 0))
+                    { gPipeline.releasePrismLensOutput(slot); c.mHasOutput = false; }
                 });
         }
         if (!large_camera) gPipeline.releasePrismLensLargeScratch();
@@ -6993,27 +6368,24 @@ public:
         PrismProjector& projector = mProjectors[slot];
         updateProjectorRuntime(projector);
         if (projector.mQuarantined ||
-            (projector.mCaptureSlot >= LLPrismLens::MAX_CAPTURES && !projector.mGateSubscribed))
+            projector.mCaptureSlot >= LLPrismLens::MAX_CAPTURES)
             return false;
-        const U32 output_slot = projector.mGateSubscribed ? static_cast<U32>(gateOutputSlot(projector.mCaptureSlot)) : projector.mCaptureSlot;
+        const U32 output_slot = projector.mCaptureSlot;
         if (output_slot >= LLPrismLens::MAX_CAPTURES) return false;
         PrismInstance& capture = mLenses[output_slot];
         if (!capture.mOccupied || !LLPrismLens::canRouteSource(capture) ||
-            (!projector.mGateSubscribed && capture.mHandle.mGeneration != projector.mCaptureGeneration) ||
-            !capture.mHasOutput || capture.mOutputPreviewQuality ||
-            !gPipeline.mPrismLensOutput[output_slot].isComplete())
+            capture.mHandle.mGeneration != projector.mCaptureGeneration ||
+            (!(capture.isGate() && capture.mGateState.held.isNull()) &&
+             (!capture.mHasOutput || capture.mOutputPreviewQuality ||
+              !gPipeline.mPrismLensOutput[output_slot].isComplete())))
             return false;
         feed.mProjector = projector.mHandle;
-        feed.mGateSubscribed = projector.mGateSubscribed;
-        feed.mGateTransition = projector.mGateSubscribed && (gateTransition() || mGate.mProposalToken != 0);
-        feed.mGatePublication = projector.mGateSubscribed && mGate.mPreparing ? mGate.mPublication : 0;
-        feed.mGateAlpha = gateAlpha(); feed.mGateIncoming = mGate.mReducer.incoming();
         feed.mCapture = capture.mHandle;
         feed.mSourceKind = capture.sourceKind();
         feed.mSourceEpoch = capture.isMedia() ? capture.mMediaSourceEpoch : 0;
         feed.mLoadToken = capture.isMedia() ? capture.mMediaIdentity.load : std::string();
         feed.mAcceptedSerial = capture.mPublicationSerial;
-        feed.mSignalAspect = capture.isMedia() ? capture.mSignalAspect : capture.cameraData()->mSettings.mOutputAspect;
+        feed.mSignalAspect = LLPrismLens::signalAspect(capture);
         feed.mLayoutRevision = capture.isMedia() ? capture.mMediaAcceptedLayout : 0;
         feed.mOutput = &gPipeline.mPrismLensOutput[output_slot];
         feed.mOutputWidth = capture.mOutputWidth;
@@ -7023,27 +6395,44 @@ public:
         std::memcpy(feed.mUvOffset, capture.mOutputUvOffset,
                     sizeof(feed.mUvOffset));
         feed.mGeneration = capture.mPublicationSerial;
-        if (capture.cameraData())
-        {
-            feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
-            if (!(feed.mCameraVerticalFovRad > 0.f))
-                feed.mCameraVerticalFovRad = capture.cameraData()->mSettings.mFixedVerticalFovRad;
-            feed.mCameraAspect = capture.cameraData()->mSettings.mOutputAspect;
-        }
+        LLPrismLens::signalCameraParameters(capture, feed);
         feed.mSettings = projector.mSettings;
-        if (projector.mGateSubscribed && mGate.mProposalToken) gateProjectorSettings(projector.mHandle, feed.mSettings);
-        feed.mSettings.mResolution = LLPrismLens::projectorRenderResolution(
-            feed.mSettings, projector.mGateSubscribed);
-        if (capture.isMedia())
+        feed.mSettings.mResolution = feed.mSettings.mResolution;
+        if (capture.isMedia() || capture.isGate())
         {
             if (auto* volume = dynamic_cast<LLVOVolume*>(gObjectList.findObject(projector.mObjectId)))
             {
                 const auto scale = volume->getScale();
                 if (scale.mV[VY] > F_ALMOST_ZERO) feed.mDestinationAspect = scale.mV[VX] / scale.mV[VY];
             }
+        }
+        if (capture.isMedia() || capture.isGate())
+        {
             const F32 ceiling = prismCaptureBudgetHz() > 0.f ? prismCaptureBudgetHz() : 30.f;
             feed.mEffectHz = llmin(capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
                 ? capture.mRate.mTargetFps : 30.f, ceiling * prismAdaptiveCadenceFactor());
+        }
+        if (capture.isGate())
+        {
+            LLPrismLens::GateCookieKey key;
+            key.gate = capture.mHandle.mId; key.gateGeneration = capture.mHandle.mGeneration;
+            key.settingsRevision = projector.mSettingsRevision;
+            key.resolution = feed.mSettings.mResolution; key.destinationAspect = feed.mDestinationAspect;
+            // gFrameTimeSeconds is updated by the frame clock before auxiliary rendering.
+            key.effectHz = LLPrismLens::projectorEffectsAnimated(feed.mSettings) ? feed.mEffectHz : 0.f;
+            key.phase = LLPrismLens::gateEffectPhase(feed.mSettings, feed.mEffectHz, gFrameTimeSeconds);
+            feed.mGateCookieKey = LLPrismLens::gateCookieContentKey(capture.mGateState, key, [&](const LLUUID& id)
+            {
+                LLPrismLens::GateCookieSourceKey source; source.id = id;
+                const S32 slot = findCaptureById(id);
+                if (slot >= 0)
+                {
+                    const auto& c = mLenses[slot];
+                    source.generation = c.mHandle.mGeneration; source.publication = c.mPublicationSerial;
+                    source.available = c.mHasOutput && !c.mOutputPreviewQuality && gPipeline.mPrismLensOutput[slot].isComplete();
+                }
+                return source;
+            });
         }
         return true;
     }
@@ -7070,10 +6459,8 @@ public:
             updateProjectorRuntime(projector);
             if (projector.mQuarantined) return false;
             feed.mProjector = projector.mHandle;
-            feed.mGateSubscribed = projector.mGateSubscribed;
             feed.mSettings = projector.mSettings;
-            feed.mSettings.mResolution = LLPrismLens::projectorRenderResolution(
-                feed.mSettings, projector.mGateSubscribed);
+            feed.mSettings.mResolution = feed.mSettings.mResolution;
             if (projector.mCaptureSlot >= LLPrismLens::MAX_CAPTURES)
                 return true;
             PrismInstance& capture = mLenses[projector.mCaptureSlot];
@@ -7083,17 +6470,19 @@ public:
             if (!LLPrismLens::canRouteSource(capture)) return false;
             feed.mCapture = capture.mHandle;
             feed.mSourceKind = capture.sourceKind();
+            // Empty intent wins over retained pixels, even before output is valid.
+            feed.mGateCookieKey.black = capture.isGate() && capture.mGateState.held.isNull();
             feed.mSourceEpoch = capture.isMedia() ? capture.mMediaSourceEpoch : 0;
             feed.mLoadToken = capture.isMedia() ? capture.mMediaIdentity.load : std::string();
             feed.mAcceptedSerial = capture.mPublicationSerial;
-            feed.mSignalAspect = capture.isMedia() ? capture.mSignalAspect : capture.cameraData()->mSettings.mOutputAspect;
+            feed.mSignalAspect = LLPrismLens::signalAspect(capture);
             feed.mLayoutRevision = capture.isMedia() ? capture.mMediaAcceptedLayout : 0;
             if (capture.cameraData())
             {
                 feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
-                if (!(feed.mCameraVerticalFovRad > 0.f))
+                if (!(feed.mCameraVerticalFovRad > 0.f) && capture.cameraData())
                     feed.mCameraVerticalFovRad = capture.cameraData()->mSettings.mFixedVerticalFovRad;
-                feed.mCameraAspect = capture.cameraData()->mSettings.mOutputAspect;
+                feed.mCameraAspect = LLPrismLens::signalAspect(capture);
             }
             if (!capture.mHasOutput || capture.mOutputPreviewQuality ||
                 !gPipeline.mPrismLensOutput[projector.mCaptureSlot].isComplete())
@@ -7177,10 +6566,7 @@ public:
             if (!display.mOccupied || display.mCaptureSlot != static_cast<U32>(slot) ||
                 display.mCaptureGeneration != capture.mHandle.mGeneration)
                 continue;
-            if (display.mGateSubscribed)
-            {
-                continue;
-            }
+
             OtsDisplayRollback removed;
             removed.mDefinition.mHandle = display.mHandle;
             removed.mDefinition.mCapture = capture.mHandle;
@@ -7188,7 +6574,6 @@ public:
             removed.mDefinition.mDisplayTextureEntry = display.mTE;
             removed.mDefinition.mSettings = display.mSettings;
             removed.mDefinition.mRuntime = display.mRuntime;
-            removed.mDefinition.mGateSubscribed = false;
             removed.mDefinition.mQuarantined = display.mQuarantined;
             removed.mDefinition.mQuarantineReason = display.mQuarantineReason;
             record.mOwnedDisplays.push_back(removed);
@@ -7209,7 +6594,6 @@ public:
             removed.mDefinition.mLocalProjector = projector.mLocalProjector;
             removed.mDefinition.mSettings = projector.mSettings;
             removed.mDefinition.mRuntime = projector.mRuntime;
-            removed.mDefinition.mGateSubscribed = projector.mGateSubscribed;
             removed.mDefinition.mQuarantined = projector.mQuarantined;
             removed.mDefinition.mQuarantineReason =
                 projector.mQuarantineReason;
@@ -7365,7 +6749,6 @@ public:
             PrismProjector projector;
             projector.mOccupied = true;
             projector.mHandle = source.mHandle;
-            projector.mHomeCapture = definition.mHandle;
             projector.mCaptureSlot = restore_slot;
             projector.mCaptureGeneration = definition.mHandle.mGeneration;
             projector.mTarget = source.mTarget;
@@ -7375,7 +6758,6 @@ public:
             projector.mLocalProjector = source.mLocalProjector;
             projector.mSettings = source.mSettings;
             projector.mRuntime = source.mRuntime;
-            projector.mGateSubscribed = source.mGateSubscribed;
             projector.mQuarantined = source.mQuarantined;
             projector.mQuarantineReason = source.mQuarantineReason;
             projector.mBoundFrame = gFrameCount;
@@ -7392,22 +6774,7 @@ public:
         return true;
     }
 
-    void restoreOtsGateRollback(const LLPrismLens::GateSnapshot& snapshot)
-    {
-        mGateSettings = snapshot.mSettings;
-        mGate.mOnAirArmIndex = snapshot.mOnAirArmIndex;
-        mGate.mWarmArmIndex = snapshot.mWarmArmIndex;
-        mGate.mCutSerial = snapshot.mCutSerial;
-        mGate.mReason = snapshot.mReason;
-        mGate.mPendingTake = false;
-        const S32 slot = captureSlotForArm(mGate.mOnAirArmIndex);
-        mGate.mReducer.restoreProgram(slot >= 0 && mLenses[slot].isCameraFeed() ? mLenses[slot].mHandle : LLPrismLens::CaptureHandle(), LLTimer::getTotalSeconds());
-        mGate.mChanged = true; mGate.mProposalToken = mGate.mAccepted = 0;
-        routeGateDisplays();
-        ++mRevision;
-        ++mRuntimeRevision;
-        ++mGate.mGateRevision;
-    }
+
 
     U64 configurationRevision() const { return mRevision; }
     U64 performanceRevision() const { return mPerformanceRevision; }
@@ -7427,7 +6794,6 @@ public:
         LLPrismLens::RegistrySnapshot result;
         result.mConfigurationRevision = mRevision;
         result.mRuntimeRevision = mRuntimeRevision;
-        result.mGateRevision = mGate.mGateRevision;
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
             const PrismInstance& capture = mLenses[slot];
@@ -7438,8 +6804,10 @@ public:
             out.mHandle = capture.mHandle;
             out.mLabel = capture.mLabel;
             out.copySourceData(capture);
-            out.mSignalAspect = capture.isMedia() ? capture.mSignalAspect :
-                capture.cameraData()->mSettings.mOutputAspect;
+            out.mSignalAspect = LLPrismLens::signalAspect(capture);
+            out.mSignalVideo = LLPrismLens::signalIsVideo(capture);
+            out.mSignalOptics = LLPrismLens::signalOptics(capture);
+            out.mGateStatus = LLPrismLens::gateStatus(capture.mGateState);
             out.mSourceEpoch = capture.mMediaSourceEpoch;
             out.mAcceptedSerial = capture.mPublicationSerial;
             out.mMediaRunning = capture.mMediaRunning;
@@ -7463,7 +6831,7 @@ public:
                 mLenses[display.mCaptureSlot].mOccupied &&
                 display.mCaptureGeneration ==
                     mLenses[display.mCaptureSlot].mHandle.mGeneration;
-            if (!capture_valid && !display.mGateSubscribed) continue;
+            if (!capture_valid) continue;
             LLPrismLens::DisplayDefinition& out = result.mDisplays[result.mDisplayCount++];
             out.mHandle = display.mHandle;
             if (capture_valid)
@@ -7472,7 +6840,6 @@ public:
             out.mDisplayTextureEntry = display.mTE;
             out.mSettings = display.mSettings;
             out.mRuntime = display.mRuntime;
-            out.mGateSubscribed = display.mGateSubscribed;
             out.mQuarantined = display.mQuarantined;
             out.mQuarantineReason = display.mQuarantineReason;
         }
@@ -7484,11 +6851,10 @@ public:
                 mLenses[projector.mCaptureSlot].mOccupied &&
                 projector.mCaptureGeneration ==
                     mLenses[projector.mCaptureSlot].mHandle.mGeneration;
-            if (!capture_valid && !projector.mGateSubscribed) continue;
+            if (!capture_valid) continue;
             LLPrismLens::ProjectorDefinition& out =
                 result.mProjectors[result.mProjectorCount++];
             out.mHandle = projector.mHandle;
-            out.mHomeCapture = projector.mHomeCapture;
             if (capture_valid)
                 out.mCapture = mLenses[projector.mCaptureSlot].mHandle;
             out.mTarget = projector.mTarget;
@@ -7498,7 +6864,6 @@ public:
             out.mLocalProjector = projector.mLocalProjector;
             out.mSettings = projector.mSettings;
             out.mRuntime = projector.mRuntime;
-            out.mGateSubscribed = projector.mGateSubscribed;
             out.mQuarantined = projector.mQuarantined;
             out.mQuarantineReason = projector.mQuarantineReason;
         }
@@ -7627,7 +6992,6 @@ public:
         result["prism_captures"] = LLSD::emptyArray();
         result["prism_displays"] = LLSD::emptyArray();
         result["prism_projectors"] = LLSD::emptyArray();
-        result["prism_gates"] = LLSD::emptyArray();
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
             const PrismInstance& capture = mLenses[slot];
@@ -7635,6 +6999,13 @@ public:
             LLSD item = LLSD::emptyMap();
             item["capture_id"] = capture.mHandle.mId;
             item["label"] = capture.mLabel;
+            if (capture.isGate())
+            {
+                auto source = *capture.gateData(); source.mProgramId = capture.mGateState.program;
+                item = LLPrismLens::gateSourceToLLSD(source);
+                item["capture_id"] = capture.mHandle.mId; item["label"] = capture.mLabel;
+                result["prism_captures"].append(item); continue;
+            }
             if (capture.isMedia())
             {
                 if (const auto* source = capture.mediaUrlData())
@@ -7644,7 +7015,6 @@ public:
                     item["source_location"] = local ? "local_file" : "http_url";
                     item[local ? "source_path" : "source_url"] = source->mValue;
                     item["source_loop"] = source->mLoop;
-                    item["source_on_cut"] = LLPrismLens::gateOnCutName(source->mOnCut);
                     item["source_volume"] = source->mVolume;
                 }
                 else
@@ -7751,8 +7121,6 @@ public:
             }
             result["prism_captures"].append(item);
         }
-        const S32 gate_hint_slot = captureSlotForArm(
-            resolveGateArmIndex(mGate.mOnAirArmIndex));
         for (const PrismDisplay& display : mDisplays)
         {
             if (!display.mOccupied)
@@ -7764,17 +7132,10 @@ public:
                 mLenses[display.mCaptureSlot].mOccupied &&
                 display.mCaptureGeneration ==
                     mLenses[display.mCaptureSlot].mHandle.mGeneration;
-            if (!display.mGateSubscribed && !fixed_capture_valid) continue;
+            if (!fixed_capture_valid) continue;
             LLSD item = LLSD::emptyMap();
             item["binding_id"] = display.mHandle.mId;
-            // gate_source is authoritative to this loader. capture_id is only a
-            // resolvable old-viewer hint so older builds show the last on-air
-            // camera as a static feed.
-            item["capture_id"] = display.mGateSubscribed
-                ? (gate_hint_slot >= 0
-                    ? mLenses[gate_hint_slot].mHandle.mId : LLUUID::null)
-                : mLenses[display.mCaptureSlot].mHandle.mId;
-            item["gate_source"] = display.mGateSubscribed;
+            item["capture_id"] = mLenses[display.mCaptureSlot].mHandle.mId;
             item["display_id"] = display.mObjectId;
             item["display_te"] = display.mTE;
             switch (display.mSettings.mFitMode)
@@ -7854,17 +7215,13 @@ public:
                 mLenses[projector.mCaptureSlot].mOccupied &&
                 projector.mCaptureGeneration ==
                     mLenses[projector.mCaptureSlot].mHandle.mGeneration;
-            if (!projector.mGateSubscribed && !fixed_capture_valid) continue;
+            if (!fixed_capture_valid) continue;
             LLSD item = LLSD::emptyMap();
             item["binding_id"] = projector.mHandle.mId;
             item["generation"] = llformat(
                 "%llu", static_cast<unsigned long long>(
                     projector.mHandle.mGeneration));
-            item["capture_id"] = projector.mGateSubscribed
-                ? (gate_hint_slot >= 0
-                    ? mLenses[gate_hint_slot].mHandle.mId : LLUUID::null)
-                : mLenses[projector.mCaptureSlot].mHandle.mId;
-            item["home_capture_id"] = projector.mHomeCapture.mId;
+            item["capture_id"] = mLenses[projector.mCaptureSlot].mHandle.mId;
             item["target"] = projector.mTarget ==
                 LLPrismLens::EProjectorTarget::RIG_LIGHT ? "rig" : "object";
             item["object_id"] = projector.mObjectId;
@@ -7874,7 +7231,6 @@ public:
                 item["rig_slot"] = projector.mRigSlot;
                 item["rig_light"] = projector.mRigLight;
             }
-            item["gate_source"] = projector.mGateSubscribed;
             LLSD settings = LLSD::emptyMap();
             switch (projector.mSettings.mFitMode)
             {
@@ -7934,28 +7290,20 @@ public:
             item["settings"] = settings;
             result["prism_projectors"].append(item);
         }
-        LLPrismLens::GateSettings persisted_gate = mGateSettings;
-        if (mGate.mOnAirArmIndex >= 0 &&
-            mGate.mOnAirArmIndex <
-                static_cast<S32>(persisted_gate.mArmed.size()))
-        {
-            persisted_gate.mProgramArmIndex = mGate.mOnAirArmIndex;
-        }
-        if (persisted_gate.mGateId.notNull() || !persisted_gate.mArmed.empty())
-        {
-            result["prism_gates"].append(
-                LLPrismLens::gateSettingsToLLSD(persisted_gate));
-        }
         return result;
     }
 
-    LLPrismLens::ApplyReport applySceneData(const LLSD& data, std::string* reason)
+    LLPrismLens::ApplyReport applySceneData(const LLSD& scene, std::string* reason)
     {
         LLPrismLens::ApplyReport report;
+        LLSD data = scene;
+        LLPrismLens::gateMigrateScene(data, report.mSkippedBindings);
         struct ParsedCapture
         {
             LLUUID mId;
             std::string mLabel;
+            bool mIsGate = false;
+            LLPrismLens::GateSource mGate;
             bool mIsMedia = false;
             LLPrismLens::MediaFaceSource mMedia;
             bool mIsUrl = false;
@@ -7972,7 +7320,6 @@ public:
             LLUUID mObjectId;
             S32 mTE = -1;
             LLPrismLens::DisplaySettings mSettings;
-            bool mGateSubscribed = false;
             bool mQuarantined = false;
             std::string mQuarantineReason;
         };
@@ -7988,7 +7335,6 @@ public:
             U8 mRigLight = 0;
             bool mLocalProjector = false;
             LLPrismLens::ProjectorSettings mSettings;
-            bool mGateSubscribed = false;
             bool mQuarantined = false;
             std::string mQuarantineReason;
         };
@@ -8018,15 +7364,6 @@ public:
             }
             return true;
         };
-        LLPrismLens::GateSettings parsed_gate;
-        bool have_parsed_gate = false;
-        std::string gate_scene_reason;
-        if (!LLPrismLens::gateSettingsFromScene(
-                data, parsed_gate, have_parsed_gate, &gate_scene_reason))
-        {
-            return fail(gate_scene_reason.empty()
-                ? "Malformed Prism Gate scene data." : gate_scene_reason);
-        }
         if (!data.isMap() || !data.has("prism_captures") ||
             !data.has("prism_displays") || !data["prism_captures"].isArray() ||
             !data["prism_displays"].isArray())
@@ -8039,7 +7376,10 @@ public:
             ? data["prism_projectors"] : LLSD::emptyArray();
         if (!projectors_data.isArray())
             return fail("Prism projector data must be an array.");
-        if (captures_data.size() > LLPrismLens::MAX_CAPTURES ||
+        S32 capture_items = 0; bool counted_gate = false;
+        for (auto it = captures_data.beginArray(); it != captures_data.endArray(); ++it)
+            if ((*it)["source_kind"].asString() != "gate" || !std::exchange(counted_gate, true)) ++capture_items;
+        if (capture_items > LLPrismLens::MAX_CAPTURES ||
             displays_data.size() > LLPrismLens::MAX_DISPLAY_BINDINGS ||
             projectors_data.size() > LLPrismLens::MAX_PROJECTOR_BINDINGS)
         {
@@ -8053,6 +7393,7 @@ public:
         std::vector<ParsedDisplay> parsed_displays;
         std::vector<ParsedProjector> parsed_projectors;
         std::set<LLUUID> capture_ids;
+        std::set<LLUUID> skipped_gate_ids;
         std::set<LLUUID> binding_ids;
         std::set<std::string> display_identities;
         std::set<LLUUID> projector_ids;
@@ -8062,6 +7403,19 @@ public:
              it != captures_data.endArray(); ++it)
         {
             const LLSD& item = *it;
+            if (item.isMap() && item["source_kind"].asString() == "gate")
+            {
+                if (std::any_of(parsed_captures.begin(), parsed_captures.end(), [](const auto& c) { return c.mIsGate; }))
+                {
+                    if (item["capture_id"].asUUID().notNull()) skipped_gate_ids.insert(item["capture_id"].asUUID());
+                    LLPrismLens::SkippedBinding note; note.mReason = "Skipped second Gate"; report.mSkippedBindings.push_back(note); continue;
+                }
+                ParsedCapture parsed; parsed.mIsGate = true; parsed.mId = item["capture_id"].asUUID();
+                if (parsed.mId.isNull() || !capture_ids.insert(parsed.mId).second) return fail("Prism capture IDs must be nonnull and unique.");
+                if (!LLPrismLens::gateSourceFromLLSD(item, parsed.mGate, reason)) return fail("Invalid Gate settings");
+                parsed.mLabel = LLPrismLens::normalizeCaptureLabel(item["label"].asString(), "Gate");
+                parsed_captures.push_back(parsed); continue;
+            }
             const bool url_kind = item["source_kind"].asString() == "media_url";
             const bool media_kind = url_kind || (item.has("source_kind") && item["source_kind"].asString() == "media_face");
             if (item.has("source_kind") && (!item["source_kind"].isString() ||
@@ -8115,7 +7469,6 @@ public:
                 parsed.mIsUrl = true;
                 parsed.mUrl.mLocation = local ? LLPrismLens::MediaUrlSource::Location::LOCAL_FILE : LLPrismLens::MediaUrlSource::Location::HTTP_URL;
                 parsed.mUrl.mLoop = !item.has("source_loop") || item["source_loop"].asBoolean();
-                if (!LLPrismLens::gateOnCutFromLLSD(item, parsed.mUrl.mOnCut)) return fail("Unknown or invalid On cut policy.");
                 const double volume = item.has("source_volume") ? item["source_volume"].asReal() : 0.;
                 if (!std::isfinite(volume) || volume < 0. || volume > 1.) return fail("Invalid private volume.");
                 parsed.mUrl.mVolume = static_cast<F32>(volume);
@@ -8398,19 +7751,7 @@ public:
                     item["label"].asString(), std::string()) : std::string();
             if (parsed.mLabel.empty())
             {
-                if (have_parsed_gate)
-                {
-                    for (const LLPrismLens::GateArmedCamera& armed :
-                         parsed_gate.mArmed)
-                    {
-                        if (armed.mCaptureId == parsed.mId &&
-                            LLPrismLens::isOtsPairArmLabel(armed.mLabel))
-                        {
-                            parsed.mLabel = armed.mLabel;
-                            break;
-                        }
-                    }
-                }
+
                 U32 ordinal = 1;
                 for (const ParsedCapture& existing : parsed_captures)
                 {
@@ -8437,16 +7778,20 @@ public:
              it != displays_data.endArray(); ++it)
         {
             const LLSD& item = *it;
+            if (item.isMap() && skipped_gate_ids.count(item["capture_id"].asUUID()))
+            {
+                LLPrismLens::SkippedBinding note; note.mHandle.mId = item["binding_id"].asUUID();
+                note.mObjectId = item["display_id"].asUUID(); note.mTextureEntry = item["display_te"].asInteger();
+                note.mReason = "Binding source is a skipped second Gate"; report.mSkippedBindings.push_back(note); continue;
+            }
             // A prim-free virtual screen carries a stored transform + size
             // instead of an object/TE identity, so the object-identity fields are
             // required ONLY for a real (face-bound) display. Everything else is
             // common to both.
-            const bool gate_source = item.isMap() && item.has("gate_source") &&
-                                     item["gate_source"].asBoolean();
             const bool is_virtual = item.isMap() && item.has("virtual") &&
                                     item["virtual"].asBoolean();
             if (!item.isMap() || !item.has("binding_id") ||
-                (!gate_source && !item.has("capture_id")) ||
+                !item.has("capture_id") ||
                 !item.has("fit") || !item.has("anchor") ||
                 !item.has("bar_color_linear") ||
                 !item["anchor"].isArray() || item["anchor"].size() != 2 ||
@@ -8470,13 +7815,11 @@ public:
             parsed.mId = item["binding_id"].asUUID();
             parsed.mCaptureId = item.has("capture_id")
                 ? item["capture_id"].asUUID() : LLUUID::null;
-            if (!LLPrismLens::gateOutputSourceFromLLSD(item, parsed.mGateSubscribed)) return fail("Invalid Gate output source.");
             if (parsed.mId.isNull() || !binding_ids.insert(parsed.mId).second)
                 return fail("Prism binding IDs must be nonnull and unique.");
             const bool capture_resolves = parsed.mCaptureId.notNull() &&
                 capture_ids.count(parsed.mCaptureId) != 0;
-            if (!LLPrismLens::gateDisplayCaptureReferenceAccepted(
-                    parsed.mGateSubscribed, capture_resolves))
+            if (!capture_resolves)
                 return fail("A Prism display references an unknown capture.");
             if (is_virtual)
             {
@@ -8640,6 +7983,12 @@ public:
              it != projectors_data.endArray(); ++it)
         {
             const LLSD& item = *it;
+            if (item.isMap() && skipped_gate_ids.count(item["capture_id"].asUUID()))
+            {
+                LLPrismLens::SkippedBinding note; note.mHandle.mId = item["binding_id"].asUUID();
+                note.mObjectId = item["object_id"].asUUID(); note.mTextureEntry = -1;
+                note.mReason = "Binding source is a skipped second Gate"; report.mSkippedBindings.push_back(note); continue;
+            }
             if (item.isMap() && item.has("target"))
             {
                 const std::string candidate_target = item["target"].asString();
@@ -8683,7 +8032,6 @@ public:
             parsed.mCaptureId = item["capture_id"].asUUID();
             parsed.mObjectId = item.has("object_id")
                 ? item["object_id"].asUUID() : LLUUID::null;
-            if (!LLPrismLens::gateOutputSourceFromLLSD(item, parsed.mGateSubscribed)) return fail("Invalid Gate projector source.");
             parsed.mLocalProjector =
                 LLPrismLens::localProjectorFromLLSD(item);
             if (parsed.mId.isNull() || parsed.mGeneration == 0 ||
@@ -8692,7 +8040,7 @@ public:
                 return fail("Prism projector IDs and generations must be nonnull and unique.");
             const bool capture_resolves = parsed.mCaptureId.notNull() &&
                 capture_ids.count(parsed.mCaptureId) != 0;
-            if (!parsed.mGateSubscribed && !capture_resolves)
+            if (!capture_resolves)
                 return fail("A Prism projector references an unknown capture.");
             if (capture_resolves)
             {
@@ -8701,7 +8049,7 @@ public:
                     [&parsed](const ParsedCapture& candidate)
                     { return candidate.mId == parsed.mCaptureId; });
                 if (capture == parsed_captures.end() ||
-                    (!capture->mIsMedia && capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED))
+                    (!capture->mIsGate && !capture->mIsMedia && capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED))
                     return fail("Select an enabled Camera Feed or media slot.");
             }
             const std::string target = item["target"].asString();
@@ -8854,85 +8202,38 @@ public:
             LLPrismLens::appendLoadedProjector(parsed_projectors, target, parsed);
         }
 
-        std::vector<LLUUID> gate_capture_ids;
-        gate_capture_ids.reserve(parsed_captures.size());
-        for (const ParsedCapture& capture : parsed_captures)
-        {
-            if (capture.mIsMedia || capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
-                gate_capture_ids.push_back(capture.mId);
-        }
-        if (have_parsed_gate)
-        {
-            // Keep unresolved authored references; the reducer reports Skipped: Feed unavailable.
-            // Missing live objects never erase the user's armed order.
-        }
-        std::string gate_fallback_reason;
-        if (have_parsed_gate && parsed_gate.mArmed.empty())
-        {
-            parsed_gate.mActive = false;
-            gate_fallback_reason =
-                "Gate loaded inactive because no armed capture reference resolved.";
-        }
-        if (have_parsed_gate && parsed_gate.mActive &&
-            parsed_gate.mMode == LLPrismLens::EGateMode::AUTO_CYCLE)
-        {
-            const S32 enabled_program = LLPrismLens::gateClampEnabledIndex(
-                parsed_gate.mArmed, parsed_gate.mProgramArmIndex);
-            if (enabled_program < 0)
+        std::vector<LLUUID> gate_eligible;
+        for (const auto& c : parsed_captures)
+            if (!c.mIsGate && (c.mIsMedia || (c.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED && !c.mCamera.mBonePov.mEnabled)))
             {
-                parsed_gate.mActive = false;
-                gate_fallback_reason =
-                    "Gate loaded inactive because no Auto arm is enabled.";
+                auto* object = gObjectList.findObject(c.mCameraId);
+                if (c.mIsMedia || !object || (!object->isAvatar() && !object->isAttachment())) gate_eligible.push_back(c.mId);
             }
-            else
-            {
-                parsed_gate.mProgramArmIndex = enabled_program;
-            }
+        for (auto& c : parsed_captures) if (c.mIsGate)
+        {
+            std::vector<std::string> notes;
+            LLPrismLens::gateResolveSources(c.mGate, c.mId, gate_eligible, notes);
+            for (const auto& text : notes) { LLPrismLens::SkippedBinding note; note.mReason = text; report.mSkippedBindings.push_back(note); }
         }
-
         for (const ParsedCapture& capture : parsed_captures)
         {
             U32 references = 0;
             for (const ParsedDisplay& display : parsed_displays)
             {
-                if (display.mGateSubscribed) continue;
                 if (display.mCaptureId != capture.mId) continue;
                 ++references;
-                if (!capture.mIsMedia && capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+                if (!capture.mIsGate && !capture.mIsMedia && capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
                     capture.mCameraId.notNull() && capture.mCameraId == display.mObjectId)
                 {
                     return fail("A camera source cannot also be one of its display objects.");
                 }
             }
-            if (!capture.mIsMedia && capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS && references != 1)
+            if (!capture.mIsGate && !capture.mIsMedia && capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS && references != 1)
             {
                 return fail("A Surface Lens must have exactly one display binding.");
             }
         }
-        if (have_parsed_gate)
-        {
-            for (const ParsedDisplay& display : parsed_displays)
-            {
-                if (!display.mGateSubscribed) continue;
-                for (const LLPrismLens::GateArmedCamera& armed :
-                     parsed_gate.mArmed)
-                {
-                    const auto capture = std::find_if(
-                        parsed_captures.begin(), parsed_captures.end(),
-                        [&armed](const ParsedCapture& candidate)
-                        {
-                            return candidate.mId == armed.mCaptureId;
-                        });
-                    if (capture != parsed_captures.end() &&
-                        LLPrismLens::gateFeedbackResult(
-                            capture->mIsMedia && !capture->mIsUrl ? capture->mMedia.mObjectId : capture->mCameraId, display.mObjectId, true) !=
-                            LLPrismLens::ERegistryResult::OK)
-                    {
-                        return fail("A Gate-subscribed display cannot be an armed camera source.");
-                    }
-                }
-            }
-        }
+
 
         const U64 generations_needed = parsed_captures.size() +
             parsed_displays.size();
@@ -8948,11 +8249,7 @@ public:
             gPipeline.releasePrismLensOutput(slot);
         gPipeline.releasePrismLensBuffers();
         LLPrismPreviewService::instance().clearDemand();
-        mGateSettings = LLPrismLens::GateSettings();
-        mGate.mReducer.reset(); // retirement ledger survives scene/registry replacement
-        mGate.mProposalToken = mGate.mAccepted = 0;
-        mGate.mProposed = {}; mGate.mActivate = mGate.mPlayVideos = false;
-        mGate.mOnAirArmIndex = mGate.mWarmArmIndex = -1;
+        mGateGrants.clear();
         ALMediaFile::replaceSceneSources(mLenses, [this](U32 slot) { stopPrivate(slot); });
         syncMediaTracking();
         for (PrismDisplay& display : mDisplays) display = PrismDisplay();
@@ -8971,7 +8268,14 @@ public:
             capture.mHandle.mId = parsed.mId;
             allocateGeneration(capture.mHandle.mGeneration);
             capture.mLabel = parsed.mLabel;
-            if (parsed.mIsUrl) { capture.setMediaUrlData(parsed.mUrl); capture.mRuntime.mReason = "Stopped"; }
+            if (parsed.mIsGate)
+            {
+                capture.setGateData(parsed.mGate);
+                const auto program = std::find_if(parsed_captures.begin(), parsed_captures.end(), [&](const auto& c) { return c.mId == parsed.mGate.mProgramId; });
+                if (program != parsed_captures.end() && !program->mIsUrl)
+                { capture.mGateState.program = program->mId; capture.mGateState.awaitingCopy = true; capture.mGateState.text = "Waiting for " + program->mLabel; }
+            }
+            else if (parsed.mIsUrl) { capture.setMediaUrlData(parsed.mUrl); capture.mRuntime.mReason = "Stopped"; }
             else if (parsed.mIsMedia) capture.setMediaData(parsed.mMedia);
             else
             {
@@ -8996,10 +8300,9 @@ public:
             display.mObjectId = parsed.mObjectId;
             display.mTE = parsed.mTE;
             display.mSettings = parsed.mSettings;
-            display.mGateSubscribed = parsed.mGateSubscribed;
             display.mQuarantined = parsed.mQuarantined;
             display.mQuarantineReason = parsed.mQuarantineReason;
-            if (!parsed.mGateSubscribed)
+
             {
                 U32 capture_slot = 0;
                 while (capture_slot < parsed_captures.size() &&
@@ -9029,7 +8332,6 @@ public:
             projector.mRigLight = parsed.mRigLight;
             projector.mLocalProjector = parsed.mLocalProjector;
             projector.mSettings = parsed.mSettings;
-            projector.mGateSubscribed = parsed.mGateSubscribed;
             projector.mQuarantined = parsed.mQuarantined;
             projector.mQuarantineReason = parsed.mQuarantineReason;
             projector.mRuntime.mHealth = parsed.mQuarantined
@@ -9043,60 +8345,15 @@ public:
                 ++capture_slot;
             if (capture_slot < parsed_captures.size())
             {
-                projector.mHomeCapture = mLenses[capture_slot].mHandle;
                 projector.mCaptureSlot = capture_slot;
                 projector.mCaptureGeneration =
                     mLenses[capture_slot].mHandle.mGeneration;
                 ++mLenses[capture_slot].mProjectorCount;
             }
-            for (auto it = data["prism_projectors"].beginArray(); it != data["prism_projectors"].endArray(); ++it)
-                if ((*it)["binding_id"].asUUID() == projector.mHandle.mId && (*it).has("home_capture_id"))
-                {
-                    const S32 home = findCaptureById((*it)["home_capture_id"].asUUID());
-                    if (home >= 0) projector.mHomeCapture = mLenses[home].mHandle;
-                }
-            if (projector.mCaptureSlot >= LLPrismLens::MAX_CAPTURES)
-            {
-                const S32 home = findCapture(projector.mHomeCapture);
-                if (home >= 0)
-                {
-                    projector.mCaptureSlot = static_cast<U32>(home);
-                    projector.mCaptureGeneration = mLenses[home].mHandle.mGeneration;
-                    ++mLenses[home].mProjectorCount;
-                }
-            }
             mNextGeneration = llmax(
                 mNextGeneration, projector.mHandle.mGeneration + 1);
         }
 
-        if (have_parsed_gate)
-        {
-            mGateSettings = parsed_gate;
-            mGate.mOnAirArmIndex = resolveGateArmIndex(
-                mGateSettings.mProgramArmIndex);
-            mGateSettings.mProgramArmIndex = mGate.mOnAirArmIndex;
-            if (!gate_fallback_reason.empty())
-            {
-                mGate.mReason = gate_fallback_reason;
-            }
-            // Saved active is routing intent only. Private files need fresh session grants.
-            S32 restored = captureSlotForArm(mGate.mOnAirArmIndex);
-            if (restored >= 0 && mLenses[restored].mediaUrlData())
-            {
-                restored = -1;
-                for (S32 i = 0; i < static_cast<S32>(mGateSettings.mArmed.size()); ++i)
-                {
-                    const S32 slot = captureSlotForArm(i);
-                    if (slot >= 0 && !mLenses[slot].mediaUrlData() && mGateSettings.mArmed[i].mEnabled)
-                    { restored = slot; mGate.mOnAirArmIndex = i; break; }
-                }
-            }
-            if (restored < 0) mGate.mOnAirArmIndex = -1;
-            mGate.mReducer.restoreProgram(restored >= 0 ? mLenses[restored].mHandle : LLPrismLens::CaptureHandle(), LLTimer::getTotalSeconds());
-            mGate.mChanged = true;
-            routeGateDisplays();
-            ++mGate.mGateRevision;
-        }
         for (PrismProjector& projector : mProjectors)
             if (projector.mOccupied) updateProjectorRuntime(projector);
         mActiveSlot = -1;
@@ -9122,92 +8379,20 @@ private:
         return -1;
     }
 
-    std::vector<LLUUID> liveGateCaptureIds() const
-    {
-        std::vector<LLUUID> result;
-        result.reserve(LLPrismLens::MAX_CAPTURES);
-        for (const PrismInstance& capture : mLenses)
-        {
-            if (capture.mOccupied && (capture.isCameraFeed() || capture.isMedia()))
-                result.push_back(capture.mHandle.mId);
-        }
-        return result;
-    }
 
-    S32 captureSlotForArm(S32 arm_index) const
-    {
-        if (arm_index < 0 ||
-            arm_index >= static_cast<S32>(mGateSettings.mArmed.size()))
-            return -1;
-        const S32 slot = findCaptureById(
-            mGateSettings.mArmed[static_cast<std::size_t>(arm_index)].mCaptureId);
-        return slot >= 0 && (mLenses[slot].isCameraFeed() || mLenses[slot].isMedia())
-            ? slot : -1;
-    }
 
-    S32 resolveGateArmIndex(S32 preferred) const
-    {
-        return LLPrismLens::gateResolveArmIndex(
-            mGateSettings.mArmed, preferred, liveGateCaptureIds());
-    }
 
-    void ageGateWatches()
-    {
-        if (mGateWatchFrame == gFrameCount) return;
-        mGateWatchFrame = gFrameCount;
-        for (PrismInstance& capture : mLenses)
-        {
-            if (capture.mGateWatchFrames == 0) continue;
-            --capture.mGateWatchFrames;
-            if (capture.mGateWatchFrames == 0)
-            {
-                capture.mGateWatchW = 0;
-                capture.mGateWatchH = 0;
-            }
-        }
-    }
 
-    void cancelGateWatches()
-    {
-        for (PrismInstance& capture : mLenses)
-        {
-            capture.mGateWatchFrames = 0;
-            capture.mGateWatchW = 0;
-            capture.mGateWatchH = 0;
-        }
-        mGate.mWarmArmIndex = -1;
-    }
 
-    void watchGateArm(S32 arm_index, U32 frames)
-    {
-        const S32 index = captureSlotForArm(arm_index);
-        if (index < 0) return;
-        U32 width = 0, height = 0;
-        for (const auto& display : mDisplays)
-            if (display.mOccupied && display.mGateSubscribed)
-            { width = llmax(width, display.mFrame.mTargetWidth); height = llmax(height, display.mFrame.mTargetHeight); }
-        for (const auto& projector : mProjectors)
-            if (projector.mOccupied && projector.mGateSubscribed)
-            {
-                const U32 resolution = LLPrismLens::projectorRenderResolution(projector.mSettings, true);
-                width = llmax(width, resolution); height = llmax(height, resolution);
-            }
-        if ((!width || !height) && LLPrismPreviewService::instance().isDemanded(mLenses[index].mHandle))
-            width = height = 512;
-        auto& slot = mLenses[index];
-        slot.mGateWatchFrames = frames; slot.mGateWatchW = width; slot.mGateWatchH = height;
-    }
 
-    bool activateGate(F64 now, std::string* reason)
-    {
-        auto settings = mGateSettings; settings.mActive = true;
-        return setGateSettings(settings, reason);
-    }
-    void deactivateGate()
-    {
-        mGateSettings.mActive = false; mGate.mChanged = true;
-        updateGate(LLTimer::getTotalSeconds()); cancelGateWatches();
-    }
+
+
+
+
+
+
+
+
 
     bool isSurfaceLensAperture(const PrismDisplay& display) const
     {
@@ -9228,81 +8413,8 @@ private:
         return false;
     }
 
-    void repairProjectorHomes()
-    {
-        for (auto& projector : mProjectors)
-        {
-            if (!projector.mOccupied || findCapture(projector.mHomeCapture) >= 0) continue;
-            S32 fallback = projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
-                mLenses[projector.mCaptureSlot].mOccupied ? static_cast<S32>(projector.mCaptureSlot) : -1;
-            for (U32 i = 0; fallback < 0 && i < LLPrismLens::MAX_CAPTURES; ++i)
-                if (mLenses[i].mOccupied && mLenses[i].isCameraFeed()) fallback = static_cast<S32>(i);
-            projector.mHomeCapture = fallback >= 0 ? mLenses[fallback].mHandle : LLPrismLens::CaptureHandle();
-        }
-    }
-    void routeGateDisplays()
-    {
-        repairProjectorHomes();
-        const S32 target_slot = captureSlotForArm(mGate.mOnAirArmIndex);
-        if (target_slot < 0) return; // Retain each output's accepted feed until a Program exists.
-        const U64 target_generation = target_slot >= 0
-            ? mLenses[target_slot].mHandle.mGeneration : 0;
-        for (PrismDisplay& display : mDisplays)
-        {
-            if (!display.mOccupied || !display.mGateSubscribed || !gateDisplayParticipates(display.mHandle)) continue;
-            if (isSurfaceLensAperture(display))
-            {
-                display.mGateSubscribed = false;
-                ++mRevision;
-                continue;
-            }
-            if ((target_slot >= 0 &&
-                 display.mCaptureSlot == static_cast<U32>(target_slot) &&
-                 display.mCaptureGeneration == target_generation) ||
-                (target_slot < 0 &&
-                 display.mCaptureSlot == LLPrismLens::MAX_CAPTURES))
-            {
-                continue;
-            }
-            if (display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
-                mLenses[display.mCaptureSlot].mOccupied &&
-                display.mCaptureGeneration ==
-                    mLenses[display.mCaptureSlot].mHandle.mGeneration &&
-                mLenses[display.mCaptureSlot].mDisplayCount > 0)
-            {
-                --mLenses[display.mCaptureSlot].mDisplayCount;
-            }
-            LLPrismLens::gateRouteDisplayBinding(
-                target_slot, target_generation,
-                display.mCaptureSlot, display.mCaptureGeneration);
-            if (target_slot >= 0) ++mLenses[target_slot].mDisplayCount;
-        }
-        for (PrismProjector& projector : mProjectors)
-        {
-            if (!projector.mOccupied || !projector.mGateSubscribed || !gateProjectorParticipates(projector.mHandle)) continue;
-            if ((target_slot >= 0 &&
-                 projector.mCaptureSlot == static_cast<U32>(target_slot) &&
-                 projector.mCaptureGeneration == target_generation) ||
-                (target_slot < 0 &&
-                 projector.mCaptureSlot == LLPrismLens::MAX_CAPTURES))
-                continue;
-            if (projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
-                mLenses[projector.mCaptureSlot].mOccupied &&
-                projector.mCaptureGeneration ==
-                    mLenses[projector.mCaptureSlot].mHandle.mGeneration &&
-                mLenses[projector.mCaptureSlot].mProjectorCount > 0)
-            {
-                --mLenses[projector.mCaptureSlot].mProjectorCount;
-            }
-            projector.mCaptureSlot = target_slot >= 0
-                ? static_cast<U32>(target_slot) : LLPrismLens::MAX_CAPTURES;
-            projector.mCaptureGeneration = target_generation;
-            projector.mBoundFrame = gFrameCount;
-            projector.mRuntime.mDemanded = false;
-            if (target_slot >= 0)
-                ++mLenses[target_slot].mProjectorCount;
-        }
-    }
+
+
 
     static void hashRuntimeValue(U64& hash, U64 value)
     {
@@ -9408,7 +8520,6 @@ private:
         mAttemptWindowStart = 0.0;
         mNextRenderSlot = 0;
         mNextPreviewRenderSlot = 0;
-        mGateFrameBudget = {};
         ++mPerformanceRevision;
     }
 
@@ -9573,6 +8684,7 @@ private:
         // retained. Capture-local removal may release only its retained output.
         PrismInstance& capture = mLenses[slot];
         capture.mHasOutput = false;
+        if (capture.isGate()) LLPrismLens::gateOutputReleased(capture.mGateState);
         capture.mOutputWidth = 0;
         capture.mOutputHeight = 0;
         capture.mRuntime.mOutput = LLPrismLens::EOutputState::SUPPRESSED;
@@ -9607,15 +8719,7 @@ private:
         {
             if (display.mOccupied && display.mCaptureSlot == slot)
             {
-                if (display.mGateSubscribed)
-                {
-                    display.mCaptureSlot = LLPrismLens::MAX_CAPTURES;
-                    display.mCaptureGeneration = 0;
-                }
-                else
-                {
-                    display = PrismDisplay();
-                }
+                display = PrismDisplay();
             }
         }
         for (PrismProjector& projector : mProjectors)
@@ -9624,36 +8728,16 @@ private:
                 projector.mCaptureGeneration == removed_capture.mGeneration)
             {
                 gPipeline.releasePrismProjectorFeed(projector.mHandle);
-                if (!LLPrismLens::removeProjectorWithCapture(
-                        true, projector.mGateSubscribed))
-                {
-                    projector.mCaptureSlot = LLPrismLens::MAX_CAPTURES;
-                    projector.mCaptureGeneration = 0;
-                    projector.mRuntime.mDemanded = false;
-                }
-                else
-                {
-                    releaseProjectorVolumetrics(projector);
-                    projector = PrismProjector();
-                }
+                releaseProjectorVolumetrics(projector);
+                projector = PrismProjector();
             }
         }
         mLenses[slot] = PrismInstance();
-        repairProjectorHomes();
         syncMediaTracking();
-        // A deleted camera must LEAVE the Gate's armed list entirely rather than
-        // linger as a "(deleted)" row. Disarm the arm that referenced it,
-        // reusing gateDisarm's full index/preview/on-air/Controller fixup. A
-        // capture can be armed at most once, so a single match is disarmed.
-        for (const LLPrismLens::GateArmedCamera& armed : mGateSettings.mArmed)
-        {
-            if (armed.mCaptureId == removed_capture_id)
-            {
-                gateDisarm(armed.mArmId, nullptr);
-                break;
-            }
-        }
-        ++mGate.mGateRevision;
+        mGateGrants.erase(removed_capture_id);
+        for (auto& gate : mLenses)
+            if (gate.mOccupied && gate.isGate()) std::erase(gate.gateData()->mSources, removed_capture_id);
+        reconcileGateAudio();
         if (count() == 0)
         {
             resetRuntimeHistory();
@@ -9770,12 +8854,8 @@ private:
     std::array<bool, LLPrismLens::MAX_CAPTURES> mMediaRoutesPending{};
     PrismDisplay mDisplays[LLPrismLens::MAX_DISPLAY_BINDINGS];
     PrismProjector mProjectors[LLPrismLens::MAX_PROJECTOR_BINDINGS];
-    LLPrismLens::GateSettings mGateSettings;
-    struct GateCloseReceipt { LLPrismLens::CaptureHandle handle; std::shared_ptr<LLPluginFileClose> fence; bool noChild = false; };
-    std::vector<GateCloseReceipt> mGateCloseReceipts;
-    S32 mGateReservedSlot = -1;
-    U32 mGateWatchFrame = 0;
-    PrismGateRuntime mGate;
+    std::set<LLUUID> mGateGrants;
+    std::set<LLUUID> mGainedImpls;
     mutable SurfaceGeometryCache mSelectionSurfaceCache;
     U64 mRevision = 1;
     mutable U64 mRuntimeRevision = 1;
@@ -9785,19 +8865,12 @@ private:
     U64 mCameraRenders = 0;
     U64 mMediaCopies = 0;
     U64 mNextGeneration = 1;
-    mutable U32 mGateEyeCacheFrame = 0xFFFFFFFF;
-    mutable U64 mGateEyeCacheRevision = 0;
-    mutable U64 mGateEyeCacheRuntimeRevision = 0;
-    mutable U64 mGateEyeCacheGateRevision = 0;
-    mutable bool mGateEyeCacheValid = false;
-    mutable LLVector3 mGateEyeCache;
-    mutable LLQuaternion mGateRotationCache;
     F32 mObservedAttemptHz = 0.f;
     U32 mAttemptSamples = 0;
     F64 mAttemptWindowStart = 0.0;
+    U32 mLastAuxiliaryAttemptFrame = ~0u;
     U32 mNextRenderSlot = 0;
     U32 mNextPreviewRenderSlot = 0;
-    LLPrismLens::GateFrameBudget mGateFrameBudget;
     S32 mActiveSlot = -1;
     S32 mLastRenderedSlot = -1;
 };
@@ -10226,6 +9299,400 @@ U64 PrismRevisionSignalScopeState::sPendingPerformance = 0;
 F64 PrismRevisionSignalScopeState::sLastRateLimitedEmission = 0.0;
 
 using ScopedPrismRevisionSignals = LLPrismLens::ScopedRevisionSignals;
+void PrismLensRegistry::composeGate()
+{
+    using namespace LLPrismLens;
+    const S32 index = gateSlot(); if (index < 0) return;
+    auto& gate = mLenses[index];
+    if (!gate.mFrame.mPrepared || LLTimer::getTotalSeconds() < gate.mRetryAfterTime) return;
+    ScopedPrismRenderState restore; if (!restore.isValid()) return;
+    const auto status_before = gateStatus(gate.mGateState);
+    auto input = gateInput(index, gate.mGateState.lastTick);
+    const auto proposal = gateStep(gate.mGateState, input);
+    LLUUID id = proposal.copy.notNull() ? proposal.copy : gate.mGateState.held;
+    const S32 source_slot = findCaptureById(id);
+    bool copied = false, allocation_failed = false, ok = !proposal.needsPixels;
+    GateCopyKey key;
+    if (source_slot >= 0)
+    {
+        auto& source = mLenses[source_slot];
+        auto& output = gPipeline.mPrismLensOutput[source_slot];
+        key = {id, source.mHandle.mGeneration, source.mPublicationSerial};
+        if (source.mHasOutput && !source.mOutputPreviewQuality && output.isComplete() &&
+            source.mOutputWidth && source.mOutputHeight &&
+            (proposal.copy.notNull() || !(key == gate.mGateState.copyKey)))
+        {
+            LLPipeline::PrismLensOutput spare;
+            copied = produceProjectorOutput(gPipeline.mPrismLensOutput[index], spare, output.getWidth(),
+                [&](auto& target, U32 capacity)
+                {
+                    const bool allocated = target.allocate(capacity, capacity, GL_RGBA16F);
+                    allocation_failed |= !allocated;
+                    return allocated;
+                },
+                [&](auto& target)
+                {
+                    target.copyContentsFromAttachment(output, 0, 0, 0, source.mOutputWidth, source.mOutputHeight,
+                        0, 0, source.mOutputWidth, source.mOutputHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                    return true;
+                });
+            if (copied)
+            {
+                gate.mSignalAspect = signalAspect(source); gate.mSignalVideo = signalIsVideo(source);
+                gate.mSignalOptics = signalOptics(source);
+                gate.mRuntime.mEffectiveVerticalFovRad = source.cameraData() ? source.mRuntime.mEffectiveVerticalFovRad : 0.f;
+                std::copy(std::begin(source.mOutputUvScale), std::end(source.mOutputUvScale), gate.mOutputUvScale);
+                std::copy(std::begin(source.mOutputUvOffset), std::end(source.mOutputUvOffset), gate.mOutputUvOffset);
+                gate.mOutputWidth = source.mOutputWidth; gate.mOutputHeight = source.mOutputHeight;
+            }
+        }
+        if (proposal.copy.notNull()) ok = copied;
+        else if (proposal.needsPixels) ok = source.mHasOutput && !source.mOutputPreviewQuality && output.isComplete();
+    }
+    // A fade starts on a complete incoming output; the Gate retains from.
+    if (proposal.needsPixels && proposal.copy.isNull())
+    {
+        const S32 incoming = findCaptureById(proposal.next.program);
+        ok = input.hasGatePicture && incoming >= 0 && mLenses[incoming].mHasOutput && !mLenses[incoming].mOutputPreviewQuality &&
+            gPipeline.mPrismLensOutput[incoming].isComplete();
+    }
+    gateComposeApply(gate.mGateState, proposal, ok, copied, key, gate.mGateRollback,
+        [&](bool)
+    {
+        if (gate.mGateState.held.isNull())
+        {
+            auto& black = gPipeline.mPrismLensOutput[index];
+            LLPipeline::PrismLensOutput spare;
+            if (!produceProjectorOutput(black, spare, 1024,
+                [&](auto& target, U32 capacity)
+                {
+                    const bool allocated = target.allocate(capacity, capacity, GL_RGBA16F);
+                    allocation_failed |= !allocated;
+                    return allocated;
+                },
+                [](auto& target)
+                {
+                    target.bindTarget(); LLGLDisable scissor(GL_SCISSOR_TEST);
+                    gGL.setColorMask(true, true, true, true); glClearColor(0.f, 0.f, 0.f, 1.f);
+                    target.clear(GL_COLOR_BUFFER_BIT); target.flush(); return true;
+                })) return false;
+            gate.mSignalAspect = 16.f / 9.f; gate.mSignalVideo = false; gate.mSignalOptics = {};
+            gate.mOutputUvScale[0] = gate.mOutputUvScale[1] = 1.f;
+            gate.mOutputUvOffset[0] = gate.mOutputUvOffset[1] = 0.f;
+            markProduced(index, 1024, 1024);
+        }
+        else markProduced(index, gate.mOutputWidth, gate.mOutputHeight);
+        return true;
+    });
+    if (allocation_failed) deferRetry(index, 5);
+    noteGateStatus(gate, status_before);
+    reconcileGateAudio();
+}
+
+// ui-draw-lint: allow-function(setting-write) isolated native registry fixture; restored on exit
+bool PrismLensRegistry::gateRegistryRegression(std::string& reason, std::string& media_status)
+{
+    using namespace LLPrismLens;
+    const LLSD saved = sceneData();
+    const bool enabled = gSavedSettings.getBOOL("PrismLensEnabled");
+    const bool media_enabled = gSavedSettings.getBOOL("VCamMediaSlotsEnabled");
+    const U32 saved_attempt = mLastAuxiliaryAttemptFrame;
+    const F32 saved_effect_time = gFrameTimeSeconds;
+    const bool adaptive = gSavedSettings.getBOOL("PrismAdaptivePerformance");
+    const F32 ceiling = gSavedSettings.getF32("PrismCaptureRefreshCeilingHz");
+    gSavedSettings.setBOOL("PrismLensEnabled", true);
+    gSavedSettings.setBOOL("VCamMediaSlotsEnabled", true);
+    gSavedSettings.setBOOL("PrismAdaptivePerformance", false);
+    gSavedSettings.setF32("PrismCaptureRefreshCeilingHz", 0.f);
+    ScopedPrismRenderState restore_gl;
+    LLPointer<LLVOVolume> light;
+    auto check = [&](bool ok, const char* message) { if (!ok) reason = message; return ok; };
+    const bool passed = [&]() -> bool
+    {
+        if (!check(restore_gl.isValid(), "Gate registry probe needs a deferred GL context")) return false;
+        LLSD empty;
+        for (const char* key : {"prism_captures", "prism_displays", "prism_projectors"}) empty[key] = LLSD::emptyArray();
+        if (!applySceneData(empty, &reason)) return false;
+        CaptureHandle a, b, gate;
+        if (addVirtualCamera(&a, LLVector3::zero, LLQuaternion::DEFAULT, &reason) != ERegistryResult::OK ||
+            addVirtualCamera(&b, LLVector3::zero, LLQuaternion::DEFAULT, &reason) != ERegistryResult::OK ||
+            addGateSlot(&gate, &reason) != ERegistryResult::OK) return false;
+        const U32 ai = U32(findCapture(a)), bi = U32(findCapture(b)), gi = U32(findCapture(gate));
+        light = dynamic_cast<LLVOVolume*>(gObjectList.createObjectViewer(LL_PCODE_VOLUME, gAgent.getRegion()));
+        if (!check(bool(light), "Gate probe local projector creation failed")) return false;
+        light->mIsLocalOnly = true; light->setIsLight(true);
+        ProjectorHandle projector; ProjectorSettings projection; projection.mResolution = 512;
+        if (bindProjector(gate, light, projection, &projector, &reason) != ERegistryResult::OK) return false;
+        GateSource settings; settings.mSources = {a.mId, b.mId};
+        if (!setGateSource(gate, settings, &reason)) return false;
+        auto& output = mLenses[gi];
+        auto cookie = [&]() -> LLPipeline::PrismProjectorPreparedFeed*
+        {
+            for (auto& p : gPipeline.mPrismProjectorFeed)
+                if (p.mHandle.mId == projector.mId && p.mHandle.mGeneration == projector.mGeneration) return &p;
+            return nullptr;
+        };
+        auto revision = [&]() -> U64 { auto* p = cookie(); return p && p->mValid ? p->mRevision : 0; };
+        auto current_cookie = [&]()
+        {
+            auto* p = cookie();
+            ProjectorFeed feed;
+            return p && p->mValid && getProjectorFeed(projector, feed) &&
+                p->mGateCookie.valid && p->mGateCookie.key == feed.mGateCookieKey;
+        };
+        auto primary = [&]()
+        {
+            CompositeState state; U32 w = 0, h = 0;
+            return revision() && buildProjectorCompositeState(projector, state, w, h) && state.mGateAlpha == 0.f;
+        };
+        auto incoming_b = [&]()
+        {
+            CompositeState state; U32 w = 0, h = 0;
+            return revision() && buildProjectorCompositeState(projector, state, w, h) &&
+                state.mGateAlpha == 1.f && state.mIncomingSlot == bi;
+        };
+        // Deterministic source producer: real retained GL targets and markProduced.
+        // Camera admission uses production prepare/water-fill/chooseRenderSlot;
+        // this tests registry scheduling, not world-camera pixels or a decoder.
+        auto produce = [&](U32 slot)
+        {
+            LLPipeline::PrismLensOutput spare;
+            const bool ok = produceProjectorOutput(gPipeline.mPrismLensOutput[slot], spare, 1024,
+                [](auto& target, U32 size) { return target.allocate(size, size, GL_RGBA16F); },
+                [&](auto& target)
+                {
+                    target.bindTarget(); LLGLDisable scissor(GL_SCISSOR_TEST);
+                    gGL.setColorMask(true, true, true, true);
+                    glClearColor(slot == ai ? 1.f : 0.f, slot == bi ? 1.f : 0.f, 0.f, 1.f);
+                    target.clear(GL_COLOR_BUFFER_BIT); target.flush(); return true;
+                });
+            if (ok) markProduced(slot, 1024, 1024);
+            return ok;
+        };
+        F64 now = LLTimer::getTotalSeconds();
+        S32 rendered = -1;
+        auto frame = [&](bool demand, F64 dt = .05)
+        {
+            ++gFrameCount; now += dt;
+            gFrameTimeSeconds += F32(dt); // frame effect clock precedes composition/cookie pass
+            resetFrame(output, gFrameCount); output.mFrame.mPrepared = demand;
+            output.mFrame.mTargetWidth = output.mFrame.mTargetHeight = 512;
+            output.mPreviewOnly = false;
+            mProjectors[findProjector(projector)].mRuntime.mDemanded = demand;
+            const U64 renders_before = gPipeline.mPrismProjectorRevision;
+            stepGate(now);
+            S32 viewport[4]; std::copy(std::begin(gGLViewport), std::end(gGLViewport), viewport);
+            for (U32 slot : {ai, bi})
+            {
+                // Force due time only; preparation and admission must still succeed.
+                mLenses[slot].mNextDueTime = 0.;
+                prepare(slot, viewport, get_current_projection(), get_current_modelview(), LLViewerCamera::instance());
+                releaseResolvedFace(slot);
+            }
+            rendered = chooseRenderSlot();
+            if (rendered >= 0 && !produce(U32(rendered))) return false;
+            composeGate(); // production demand guard, including the unseen frames
+            gPipeline.prepareGatePrismProjectorFeeds();
+            if (!check(current_cookie(), "Gate cookie did not accept this frame's post-compose key")) return false;
+            const U64 accepted = revision();
+            gPipeline.prepareGatePrismProjectorFeeds(); // identical content is a no-op
+            if (!check(revision() == accepted, "unchanged Gate key rendered twice")) return false;
+            return check(gPipeline.mPrismProjectorRevision - renders_before <= 1,
+                "Gate cookie rendered more than once in one frame");
+        };
+        auto wait_for = [&](const CaptureHandle& target)
+        {
+            for (U32 n = 0; n < 12; ++n)
+            {
+                if (!frame(true)) return false;
+                if (output.mGateState.held == target.mId && output.mGateState.from.isNull()) return true;
+            }
+            return check(false, "Gate registry take did not settle");
+        };
+        auto settle = [&](const CaptureHandle& target)
+        { return gateTake(gate, target.mId) && wait_for(target); };
+        if (!settle(a) || !check(revision() > 0, "initial Gate cookie missing")) return false;
+        // B already has a complete OLD picture when clicked. Merely accepting
+        // that retained picture must not satisfy the post-click assertion.
+        resetFrame(mLenses[bi], gFrameCount); mLenses[bi].mFrame.mPrepared = true;
+        mLenses[bi].mPreviewOnly = false;
+        if (!produce(bi)) return check(false, "pre-click B picture preparation failed");
+        const U32 click_frame = gFrameCount;
+        const U64 click_publication = mLenses[bi].mPublicationSerial, cut_cookie = revision();
+        if (!settle(b)) return false;
+        if (!check(output.mGateState.copyKey.serial > click_publication &&
+            mLenses[bi].mLastRenderedFrame > click_frame, "first B publication was not newer than click") ||
+            !check(revision() > cut_cookie && current_cookie(), "cut did not advance cookie generation")) return false;
+        const U64 a_publications = mLenses[ai].mPublicationSerial;
+        for (U32 n = 0; n < 4; ++n)
+            if (!frame(true) || !check(rendered != S32(ai) && mLenses[ai].mPublicationSerial == a_publications,
+                "A still renders two frames after B cut")) return false;
+        for (const auto& target : {a, b, a})
+        {
+            const U64 previous = revision();
+            if (!settle(target) || !check(revision() > previous && current_cookie(), "each cut must advance cookie generation")) return false;
+        }
+        for (bool animated : {false, true})
+        {
+            settings.mTransition = EGateTransition::CUT;
+            projection.mEffects.mStatic = animated ? .5f : 0.f;
+            if (!setProjectorSettings(projector, projection, &reason) ||
+                !setGateSource(gate, settings, &reason) || !settle(b) || !settle(a) ||
+                !check(current_cookie(), "animated cut did not accept current key that frame")) return false;
+            settings.mTransition = EGateTransition::CROSSFADE;
+            if (!setGateSource(gate, settings, &reason) || !gateTake(gate, b.mId)) return false;
+            for (U32 n = 0; output.mGateState.from.isNull() && n < 12; ++n) if (!frame(true)) return false;
+            if (!check(output.mGateState.from == a.mId, "native fade failed to start")) return false;
+            for (U32 n = 0; output.mGateState.from.notNull() && n < 32; ++n)
+            {
+                const U64 previous = revision();
+                if (!frame(true, 1. / 60.) || !check(revision() > previous && current_cookie(), "fade step/end did not advance cookie generation")) return false;
+            }
+            if (!check(output.mGateState.from.isNull() && output.mGateState.held == b.mId,
+                "native fade did not finish on B")) return false;
+        }
+        projection.mEffects.mStatic = 0.f;
+        if (!setProjectorSettings(projector, projection, &reason)) return false;
+        settings.mTransition = EGateTransition::CUT;
+        if (!setGateSource(gate, settings, &reason) || !settle(a)) return false;
+        settings.mTransition = EGateTransition::CROSSFADE;
+        if (!setGateSource(gate, settings, &reason) || !gateTake(gate, b.mId)) return false;
+        for (U32 n = 0; output.mGateState.from.isNull() && n < 12; ++n) if (!frame(true)) return false;
+        const auto backoff_key = output.mGateState.copyKey;
+        deferRetry(gi, 300); // keep the native interval open without sleeping; unit #43 checks 5/30 s
+        for (U32 n = 0; n < 4; ++n)
+        {
+            const U64 before = revision();
+            if (!frame(n % 2 == 0, 1. / 60.) || !check(revision() == before + 1 &&
+                cookie()->mGateCookie.key.alpha == output.mGateState.alpha &&
+                output.mGateState.copyKey == backoff_key, "copy backoff stalled Gate cookie alpha")) return false;
+        }
+        output.mRetryAfterTime = 0.;
+        // Look away mid-fade: its clock finishes without compose or demand.
+        for (bool lose_incoming : {false, true})
+        {
+            settings.mTransition = EGateTransition::CUT;
+            if (!setGateSource(gate, settings, &reason) || !settle(a)) return false;
+            settings.mTransition = EGateTransition::CROSSFADE;
+            if (!setGateSource(gate, settings, &reason) || !gateTake(gate, b.mId)) return false;
+            for (U32 n = 0; output.mGateState.from.isNull() && n < 12; ++n) if (!frame(true)) return false;
+            if (!frame(true, .2) || !check(output.mGateState.alpha > 0.f, "native mid-fade missing")) return false;
+            const U64 blended_cookie = revision();
+            if (!frame(false, .1) || !check(revision() > blended_cookie && current_cookie() &&
+                    cookie()->mGateCookie.key.alpha == output.mGateState.alpha,
+                    "unseen intermediate fade did not refresh current alpha") || !frame(false, .6) ||
+                !check(revision() > blended_cookie && current_cookie() && output.mGateState.fadeEndWaiting &&
+                    output.mGateState.held == a.mId && incoming_b(),
+                    "unseen fade end must show incoming B at alpha one")) return false;
+            if (lose_incoming) mLenses[bi].mHasOutput = false;
+            const U64 before = revision();
+            if (!frame(false) || !check((lose_incoming ? primary() : incoming_b()) && output.mGateState.held == a.mId,
+                    "first consumed frame showed wrong fade-end picture") ||
+                (lose_incoming && !check(revision() > before && output.mGateState.program == a.mId,
+                    "returning-frame incoming loss did not immediately rebuild A cookie"))) return false;
+            if (!frame(true)) return false;
+        }
+        settings.mTransition = EGateTransition::CUT;
+        if (!setGateSource(gate, settings, &reason) || !settle(b)) return false;
+        // A frozen prim-face retained image can be driven without a live decoder.
+        // Actual paused-player serial/pixel behavior is a decoded-media check.
+        mLenses[bi].setMediaData(MediaFaceSource()); mLenses[bi].mMediaRunning = false;
+        projection.mEffects.mStatic = .5f;
+        if (!setProjectorSettings(projector, projection, &reason)) return false;
+        gPipeline.prepareGatePrismProjectorFeeds();
+        const auto frozen_key = output.mGateState.copyKey;
+        for (U32 n = 0; n < 4; ++n)
+        {
+            ++gFrameCount;
+            auto* p = cookie(); if (!check(p != nullptr, "animated Gate cookie missing")) return false;
+            // Drive the same effect clock used by the key; never rewind frame count.
+            gFrameTimeSeconds += 1.f / 30.f + .001f;
+            const U64 previous = revision();
+            gPipeline.prepareGatePrismProjectorFeeds();
+            if (!check(revision() > previous && output.mGateState.copyKey == frozen_key,
+                "Static failed to refresh Gate with unchanged frozen copy key")) return false;
+        }
+        projection.mEffects.mStatic = 0.f;
+        if (!setProjectorSettings(projector, projection, &reason) || !frame(true)) return false;
+        const U64 before_scale = revision();
+        light->setScale(LLVector3(2.f, 1.f, 1.f), false);
+        ProjectorFeed scaled;
+        if (!frame(true) || !getProjectorFeed(projector, scaled) ||
+            !check(scaled.mDestinationAspect == 2.f && revision() > before_scale &&
+                cookie()->mAccepted.mDestinationAspect == 2.f && output.mGateState.copyKey == frozen_key,
+                "frozen Gate projector did not refresh framing after prim scale change")) return false;
+        // Count allocation attempts, not live bytes (allocate/release churn must fail).
+        const U64 allocations = LLPipeline::PrismLensOutput::sAllocationAttempts + gPipeline.mPrismProjectorAllocationAttempts;
+        for (U32 n = 0; n < 300; ++n)
+            if (!frame(true) || !check(allocations == LLPipeline::PrismLensOutput::sAllocationAttempts +
+                gPipeline.mPrismProjectorAllocationAttempts, "Gate/cookie allocation count changed over 300 frames")) return false;
+        output.mGateState.copyKey = {}; // reset/released output identity is not an allocation failure
+        mLenses[bi].mHasOutput = false;
+        if (!frame(true) || !check(output.mRetryAfterTime <= LLTimer::getTotalSeconds(),
+            "copy-key mismatch introduced allocation backoff")) return false;
+        if (!removeCapture(b) || !wait_for(a) || !check(output.mGateState.program == a.mId && primary(),
+            "Delete B did not automatically restore A cookie")) return false;
+        settings.mSources.clear();
+        const U64 before_black = revision();
+        if (!setGateSource(gate, settings, &reason)) return false;
+        ++gFrameCount; now += .05;
+        stepGate(now);
+        // Exercise the volume lookup used by the binder before the post-compose pass.
+        // The accepted cookie still contains A; black allocation may be backed off.
+        output.mRetryAfterTime = LLTimer::getTotalSeconds() + 60.;
+        for (bool has_output : {true, false})
+        {
+            const bool saved_output = output.mHasOutput;
+            output.mHasOutput = has_output;
+            ProjectorFeed binding;
+            const bool found = projectorFeedFor(light, binding);
+            output.mHasOutput = saved_output;
+            if (!check(found && projectorCookieIsBlack(binding) &&
+                cookie() && !cookie()->mGateCookie.key.black &&
+                sameProjectorSource(cookie()->mAccepted, binding),
+                "empty Gate volume lookup allowed binder to reuse the previous non-black cookie")) return false;
+        }
+        output.mRetryAfterTime = 0.;
+        if (!frame(false) ||
+            !check(output.mGateState.held.isNull() && cookie()->mGateCookie.key.black &&
+                revision() == before_black + 1, "unseen last untick did not render black once")) return false;
+        output.mRetryAfterTime = LLTimer::getTotalSeconds() + 60.;
+        if (!frame(true)) return false;
+        CompositeState empty_preview, empty_projector; bool offline = true; U32 bw = 0, bh = 0;
+        if (!check(buildPreviewCompositeState(gate, DisplayHandle(), 16.f/9.f, empty_preview, offline) &&
+            !offline && empty_preview.mBlack &&
+            buildProjectorCompositeState(projector, empty_projector, bw, bh) && empty_projector.mBlack,
+            "empty Gate sampled retained output during black allocation retry")) return false;
+        output.mRetryAfterTime = 0.;
+        const U64 black_revision = revision();
+        for (U32 n = 0; n < 300; ++n)
+            if (!frame(false) || !check(revision() == black_revision, "steady unseen black redrew cookie")) return false;
+        if (!removeCapture(a) || !frame(true) || !check(output.mGateState.emptyPublished &&
+            output.mHasOutput && primary(), "Delete A did not publish black")) return false;
+        return true;
+    }();
+    std::string restore_reason;
+    const bool restored = applySceneData(saved, &restore_reason).mSuccess;
+    if (light) light->markDead();
+    mLastAuxiliaryAttemptFrame = saved_attempt;
+    gFrameTimeSeconds = saved_effect_time;
+    gSavedSettings.setBOOL("PrismLensEnabled", enabled);
+    gSavedSettings.setBOOL("VCamMediaSlotsEnabled", media_enabled);
+    gSavedSettings.setBOOL("PrismAdaptivePerformance", adaptive);
+    gSavedSettings.setF32("PrismCaptureRefreshCeilingHz", ceiling);
+    if (!restored) reason = "native Gate registry restore failed: " + restore_reason;
+    if (!passed || !restored) return false;
+    const char* clip = std::getenv("VCAM_MEDIA_PROBE_FILE");
+    if (!clip || !*clip)
+    {
+        media_status = "skipped: VCAM_MEDIA_PROBE_FILE unset (media only)";
+        return true;
+    }
+    const bool media_ok = gateMediaRegistryRegression(reason);
+    media_status = media_ok ? "passed" : "failed";
+    return media_ok;
+}
+
 } // anonymous namespace
 
 LLPrismLens::ScopedRevisionSignals::ScopedRevisionSignals()
@@ -10240,6 +9707,9 @@ LLPrismLens::ScopedRevisionSignals::~ScopedRevisionSignals()
 
 namespace LLPrismLens
 {
+bool gateRegistryRegression(std::string& reason, std::string& media_status)
+{ return PrismLensRegistry::instance().gateRegistryRegression(reason, media_status); }
+
 ActionStatus addCameraSelectionStatus()
 {
     return PrismLensRegistry::instance().cameraSelectionStatus();
@@ -10308,18 +9778,10 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
     }
 
     const RegistrySnapshot registry = registrySnapshot();
-    const GateSnapshot gate = gateSnapshot();
-    std::set<LLUUID> old_ots_capture_ids;
-    std::vector<LLUUID> old_ots_arm_ids;
-    for (const GateArmedCamera& armed : gate.mSettings.mArmed)
-    {
-        if (isOtsPairArmLabel(armed.mLabel))
-        {
-            old_ots_arm_ids.push_back(armed.mArmId);
-            old_ots_capture_ids.insert(armed.mCaptureId);
-        }
-    }
     std::vector<OtsCaptureRollback> old_ots_records;
+    std::set<LLUUID> old_ots_capture_ids;
+    for (U32 i = 0; i < registry.mSlotCount; ++i)
+        if (isOtsPairArmLabel(registry.mCaptures[i].mLabel)) old_ots_capture_ids.insert(registry.mCaptures[i].mHandle.mId);
     for (U32 index = 0; index < registry.mSlotCount; ++index)
     {
         const CaptureDefinition& capture = registry.mCaptures[index];
@@ -10335,18 +9797,12 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
 
     const U32 retained_capture_count = registry.mSlotCount -
         static_cast<U32>(old_ots_records.size());
-    const std::size_t retained_arm_count = gate.mSettings.mArmed.size() -
-        old_ots_arm_ids.size();
     if (retained_capture_count > MAX_CAPTURES - 2)
     {
         if (reason) *reason = "Two free Prism capture slots are required for an OTS pair.";
         return false;
     }
-    if (retained_arm_count > MAX_CAPTURES - 2)
-    {
-        if (reason) *reason = "Two free Gate arm slots are required for an OTS pair.";
-        return false;
-    }
+
 
     LLVector3 head_a;
     LLVector3 head_b;
@@ -10435,7 +9891,6 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
                 rollback_failure += restore_reason;
             }
         }
-        PrismLensRegistry::instance().restoreOtsGateRollback(gate);
         if (reason)
         {
             *reason = failure;
@@ -10447,7 +9902,6 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
         return false;
     };
 
-    LLUUID arm_a;
     std::string failure;
     if (addVirtualCamera(&handle_a, eye_a, rot_a, &failure) != ERegistryResult::OK)
     {
@@ -10473,14 +9927,8 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
     {
         return fail_and_rollback(failure);
     }
-    if (gateArm(handle_a, "OTS A", &arm_a, &failure) != ERegistryResult::OK)
-    {
-        return fail_and_rollback(failure);
-    }
-    if (gateArm(handle_b, "OTS B", nullptr, &failure) != ERegistryResult::OK)
-    {
-        return fail_and_rollback(failure);
-    }
+
+
 
     if (ots_a) *ots_a = handle_a;
     if (ots_b) *ots_b = handle_b;
@@ -10610,7 +10058,7 @@ bool setCaptureLabel(const CaptureHandle& capture, const std::string& label,
 
 bool canRouteSource(const SourceSlotData& source)
 {
-    return source.isCameraFeed() || (source.isMedia() && mediaSlotsEnabled());
+    return source.isCameraFeed() || source.isGate() || (source.isMedia() && mediaSlotsEnabled());
 }
 
 F64 mediaSlotDemand(const LLViewerMediaImpl* impl)
@@ -10721,10 +10169,6 @@ bool pauseMediaFile(const CaptureHandle& slot)
 { return PrismLensRegistry::instance().fileTransport(slot, ALMediaFile::Transport::PAUSED); }
 bool stopMediaFile(const CaptureHandle& slot)
 { return PrismLensRegistry::instance().fileTransport(slot, ALMediaFile::Transport::STOPPED); }
-bool gatePlayVideos() { return PrismLensRegistry::instance().playGateVideos(); }
-S32 gateMediaPriority(const LLViewerMediaImpl* impl) { return sPrismLensRegistryExists ? PrismLensRegistry::instance().gateMediaRole(impl) : 0; }
-bool setMediaFileOnCut(const CaptureHandle& slot, EMediaOnCut on_cut)
-{ return PrismLensRegistry::instance().editMediaFile(slot, [on_cut](auto& source) { source.mOnCut = on_cut; }); }
 bool setMediaFileLoop(const CaptureHandle& slot, bool loop)
 {
     ScopedPrismRevisionSignals signals;
@@ -10775,54 +10219,21 @@ bool setProjectorSettings(const ProjectorHandle& binding,
         binding, settings, reason);
 }
 
-ERegistryResult setProjectorGateSubscribed(
-    const ProjectorHandle& binding, bool subscribed, std::string* reason)
+ERegistryResult addGateSlot(CaptureHandle* gate, std::string* reason)
 {
     ScopedPrismRevisionSignals signals;
-    return PrismLensRegistry::instance().setProjectorGateSubscribed(
-        binding, subscribed, reason);
+    return PrismLensRegistry::instance().addGateSlot(gate, reason);
 }
-
-bool setGateSettings(const GateSettings& settings, std::string* reason)
+bool setGateSource(const CaptureHandle& gate, const GateSource& source, std::string* reason)
 {
     ScopedPrismRevisionSignals signals;
-    return PrismLensRegistry::instance().setGateSettings(settings, reason);
+    return PrismLensRegistry::instance().setGateSource(gate, source, reason);
 }
+bool hasGateSlot() { return PrismLensRegistry::instance().gateSlot() >= 0; }
 
-ERegistryResult gateArm(const CaptureHandle& capture, const std::string& label,
-                        LLUUID* arm_id, std::string* reason)
+bool gateTake(const CaptureHandle& gate, const LLUUID& source_id)
 {
-    ScopedPrismRevisionSignals signals;
-    return PrismLensRegistry::instance().gateArm(capture, label, arm_id, reason);
-}
-
-ERegistryResult gateDisarm(const LLUUID& arm_id, std::string* reason)
-{
-    ScopedPrismRevisionSignals signals;
-    return PrismLensRegistry::instance().gateDisarm(arm_id, reason);
-}
-
-ERegistryResult gateTake(std::string* reason)
-{
-    ScopedPrismRevisionSignals signals;
-    return PrismLensRegistry::instance().gateTake(reason);
-}
-
-ERegistryResult setDisplayGateSubscribed(const DisplayHandle& binding,
-                                         bool subscribed,
-                                         const CaptureHandle* fixed_capture,
-                                         std::string* reason)
-{
-    ScopedPrismRevisionSignals signals;
-    return PrismLensRegistry::instance().setDisplayGateSubscribed(
-        binding, subscribed, fixed_capture, reason);
-}
-
-U64 gateOutputPublication() { return PrismLensRegistry::instance().gateOutputPublication(); }
-
-GateSnapshot gateSnapshot()
-{
-    return PrismLensRegistry::instance().gateSnapshot();
+    return PrismLensRegistry::instance().gateTake(gate, source_id);
 }
 
 bool gateOnAirCameraEye(LLVector3& out_agent, U64* out_cut_serial,
@@ -11103,10 +10514,10 @@ LLSD sceneData()
     return PrismLensRegistry::instance().sceneData();
 }
 
-ApplyReport applySceneData(const LLSD& data, std::string* reason)
+ApplyReport applySceneData(const LLSD& scene, std::string* reason)
 {
     ScopedPrismRevisionSignals signals;
-    return PrismLensRegistry::instance().applySceneData(data, reason);
+    return PrismLensRegistry::instance().applySceneData(scene, reason);
 }
 
 void markProjectorConsumed(const LLVOVolume* volume)
@@ -11254,7 +10665,7 @@ void renderAuxiliaryView()
         enabled, has_captures, render_context_available);
     if (!enabled)
     {
-        registry.updateGate(LLTimer::getTotalSeconds());
+        registry.reconcileGateAudio(false);
         // Reclaim bounded Prism VRAM exactly once on the transition while
         // preserving local registry identities for a later re-enable.
         if (was_enabled)
@@ -11266,6 +10677,7 @@ void renderAuxiliaryView()
         return;
     }
     was_enabled = true;
+    registry.reconcileGateAudio();
 
     // Enabled but empty remains a complete no-op.
     if (!has_captures)
@@ -11285,15 +10697,6 @@ void renderAuxiliaryView()
             gPipeline.prepareDirtyPrismProjectorFeeds();
     }
 
-    registry.updateGate(LLTimer::getTotalSeconds());
-    registry.releaseUnusedProjectorCapacity();
-
-    struct GatePublicationScope
-    {
-        PrismLensRegistry& registry;
-        ~GatePublicationScope() { registry.updateGate(LLTimer::getTotalSeconds()); ScopedPrismRenderState restore; if (restore.isValid()) registry.prepareGateOutputs(); }
-    } gate_publication{registry};
-
     // Publish future-page demand only after adaptive protection has updated and
     // before preparation recomputes display visibility. Warming the pinned pack
     // is also gated by master enable, page visibility, and actual demand.
@@ -11308,6 +10711,11 @@ void renderAuxiliaryView()
 
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Prism prepare visible lenses");
+        for (U32 slot = 0; slot < MAX_LENSES; ++slot)
+            if (const auto* c = registry.capture(slot); c && c->isGate())
+                registry.prepareGateSlot(slot, main_viewport, main_projection, main_modelview);
+        registry.stepGate(LLTimer::getTotalSeconds());
+        registry.releaseUnusedProjectorCapacity();
         for (U32 slot = 0; slot < MAX_LENSES; ++slot)
         {
             registry.prepare(slot, main_viewport, main_projection,
@@ -11329,8 +10737,18 @@ void renderAuxiliaryView()
             registry.prepareMediaProjectors();
         }
     }
+    const auto prepare_effects = [&]()
+    {
+        ScopedPrismRenderState effect_state;
+        if (effect_state.isValid())
+        {
+            gPipeline.prepareGatePrismProjectorFeeds();
+        }
+    };
     if (registry.cameraCount() == 0)
     {
+        registry.composeGate();
+        prepare_effects();
         ScopedPrismRenderState atlas_state;
         if (atlas_state.isValid()) LLPrismPreviewService::instance().updateAtlas();
         return;
@@ -11826,7 +11244,8 @@ void renderAuxiliaryView()
         }
     };
     render_one(registry.chooseRenderSlot(cadence_prepared));
-    render_one(registry.chooseReservedRenderSlot());
+    registry.composeGate();
+    prepare_effects();
     LLPrismPreviewService& preview_service = LLPrismPreviewService::instance();
     if (preview_service.hasPendingAtlasUpdate())
     {
@@ -11872,6 +11291,9 @@ static void centerCompositeInAspect(F32 content_aspect, F32 container_aspect,
     state.mLetterbox = 1;
 }
 
+static bool emptyGate(const PrismInstance* capture)
+{ return capture && capture->isGate() && capture->mGateState.held.isNull(); }
+
 static bool buildSignalOne(U32 capture_slot,
                                       const PrismDisplay* display,
                                       F32 display_aspect,
@@ -11879,6 +11301,7 @@ static bool buildSignalOne(U32 capture_slot,
 {
     PrismLensRegistry& registry = PrismLensRegistry::instance();
     const PrismInstance* capture = registry.capture(capture_slot);
+    if (gateBlackComposite(emptyGate(capture), capture_slot, state)) return true;
     if (!capture || !capture->mHasOutput ||
         (capture->isMedia() && capture->mMediaCompletedSerial == 0)) return false;
     LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
@@ -11896,14 +11319,9 @@ static bool buildSignalOne(U32 capture_slot,
     }
 
     state.mCaptureSlot = capture_slot;
-    state.mMediaSDR = capture->isMedia();
-    if (capture->cameraData())
-    {
-        state.mOpticsParams[0] = capture->cameraData()->mSettings.mOptics.mChromaticAberration;
-        state.mOpticsParams[1] = capture->cameraData()->mSettings.mOptics.mFilmGrain;
-        state.mOpticsParams[2] = capture->cameraData()->mSettings.mOptics.mCRTScanlines;
-        state.mOpticsParams[3] = capture->cameraData()->mSettings.mOptics.mExposureBias;
-    }
+    state.mMediaSDR = signalIsVideo(*capture);
+    const auto optics = signalOptics(*capture);
+    std::copy(optics.begin(), optics.end(), state.mOpticsParams);
     std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
                 sizeof(state.mRetainedOrientationScale));
     std::memcpy(state.mRetainedOrientationOffset, output_uv_offset,
@@ -11920,7 +11338,7 @@ static bool buildSignalOne(U32 capture_slot,
     // is not anamorphically stretched; bars are neutral black.
     if (!display)
     {
-        F32 raw_aspect = capture->isMedia() ? capture->mSignalAspect : capture->cameraData()->mSettings.mOutputAspect;
+        F32 raw_aspect = signalAspect(*capture);
         if (capture->isSurfaceLens())
         {
             const F32 surface_u = capture->mFrame.mWorldSurfaceUEdge.magVec();
@@ -11935,109 +11353,23 @@ static bool buildSignalOne(U32 capture_slot,
         return true;
     }
 
-    const ScreenEffects& effects = display->mSettings.mEffects;
-    state.mScreenEffect0[0] = effects.mScanlines;
-    state.mScreenEffect0[1] = effects.mScanlineCount;
-    state.mScreenEffect0[2] = effects.mPixelate;
-    state.mScreenEffect0[3] = effects.mGrayscale;
-    state.mScreenEffect1[0] = effects.mSepia;
-    state.mScreenEffect1[1] = effects.mStatic;
-    state.mScreenEffect1[2] = effects.mVerticalRoll;
-    state.mScreenEffect1[3] = effects.mRollSpeed;
-    state.mScreenEffect2[0] = effects.mTracking;
-    state.mScreenEffect2[1] = effects.mFlicker;
-    state.mScreenEffect2[2] = effects.mChromaBleed;
-    state.mScreenEffect2[3] = effects.mVignette;
-    state.mScreenEffect3[0] = effects.mInterlace;
-    state.mScreenEffect3[1] = effects.mDropout;
-    state.mScreenEffect3[2] = effects.mBrightness;
-    state.mScreenEffect4[0] = effects.mFlipH ? 1.f : 0.f;
-    state.mScreenEffect4[1] = effects.mFlipV ? 1.f : 0.f;
-    state.mScreenEffect4[2] = effects.mRotate90 ? 1.f : 0.f;
-    state.mScreenEffect4[3] = effects.mSheen;
-    state.mScreenEffect5[0] = effects.mScanlineDepth;
-    state.mScreenEffect5[1] = effects.mScanlineSharpness;
-    state.mScreenEffect5[2] = effects.mScanlineThickness;
-
-    F32 capture_aspect = capture->isMedia() ? capture->mSignalAspect : capture->isCameraFeed()
-        ? capture->cameraData()->mSettings.mOutputAspect
-        : static_cast<F32>(output_width) / static_cast<F32>(output_height);
-    if (capture->isMedia() && effects.mRotate90) capture_aspect = 1.f / capture_aspect;
-    if ((capture->isCameraFeed() || capture->isMedia()) &&
-        std::isfinite(display_aspect) && std::isfinite(capture_aspect) &&
-        display_aspect > F_ALMOST_ZERO && capture_aspect > F_ALMOST_ZERO)
-    {
-        const F32 anchor_x = display->mSettings.mAnchor[0];
-        const F32 anchor_y = display->mSettings.mAnchor[1];
-        if (display->mSettings.mFitMode == EFitMode::FIT)
-        {
-            state.mLetterbox = 1;
-            if (display_aspect > capture_aspect)
-            {
-                const F32 fraction = capture_aspect / display_aspect;
-                state.mDisplayToCaptureScale[0] = 1.f / fraction;
-                state.mDisplayToCaptureOffset[0] = -anchor_x * (1.f - fraction) / fraction;
-            }
-            else
-            {
-                const F32 fraction = display_aspect / capture_aspect;
-                state.mDisplayToCaptureScale[1] = 1.f / fraction;
-                state.mDisplayToCaptureOffset[1] = -anchor_y * (1.f - fraction) / fraction;
-            }
-        }
-        else if (display->mSettings.mFitMode == EFitMode::FILL)
-        {
-            if (display_aspect > capture_aspect)
-            {
-                const F32 crop = capture_aspect / display_aspect;
-                state.mDisplayToCaptureScale[1] = crop;
-                state.mDisplayToCaptureOffset[1] = anchor_y * (1.f - crop);
-            }
-            else
-            {
-                const F32 crop = display_aspect / capture_aspect;
-                state.mDisplayToCaptureScale[0] = crop;
-                state.mDisplayToCaptureOffset[0] = anchor_x * (1.f - crop);
-            }
-        }
-    }
-    std::memcpy(state.mBarColorLinear, display->mSettings.mBarColorLinear,
-                sizeof(state.mBarColorLinear));
+    mapSignalToDisplay(*capture, display->mSettings, display_aspect, state);
     return true;
 }
 
 static bool buildSignalCompositeState(U32 capture_slot, const PrismDisplay* display,
-                                      F32 aspect, CompositeState& state)
+                                      F32 aspect, CompositeState& state, bool preview = false)
 {
     auto& registry = PrismLensRegistry::instance();
-    PrismDisplay frozen;
-    if (display && display->mGateSubscribed && display->mHandle.mId.notNull())
-    {
-        frozen = *display;
-        if (!registry.gateDisplayParticipates(display->mHandle) ||
-            (registry.gateTransition() && !registry.gateDisplaySettings(display->mHandle, frozen.mSettings))) frozen.mGateSubscribed = false;
-        display = &frozen;
-    }
-    if (display && display->mGateSubscribed)
-        capture_slot = static_cast<U32>(registry.gateOutputSlot(static_cast<S32>(capture_slot)));
     if (capture_slot >= MAX_CAPTURES || !buildSignalOne(capture_slot, display, aspect, state)) return false;
-    if (!display || !display->mGateSubscribed || !registry.gateTransition()) return true;
-    const S32 incoming = registry.gateIncomingSlot();
+    const auto* gate = registry.capture(capture_slot);
+    if (!display || !gate || !gate->isGate() || gate->mGateState.from.isNull()) return true;
+    S32 incoming = -1;
+    for (U32 i = 0; i < MAX_CAPTURES; ++i)
+        if (const auto* c = registry.capture(i); c && c->mHandle.mId == gate->mGateState.program) incoming = S32(i);
     if (incoming < 0) return true;
-    CompositeState second;
-    if (!buildSignalOne(static_cast<U32>(incoming), display, aspect, second)) return false;
-    state.mIncomingSlot = static_cast<U32>(incoming); state.mGateAlpha = registry.gateAlpha();
-    state.mIncomingMediaSDR = second.mMediaSDR; state.mIncomingLetterbox = second.mLetterbox;
-    for (U32 axis = 0; axis < 2; ++axis)
-    {
-        state.mIncomingMapping[axis] = second.mDisplayToCaptureScale[axis];
-        state.mIncomingMapping[axis + 2] = second.mDisplayToCaptureOffset[axis];
-        state.mIncomingOrientation[axis] = second.mRetainedOrientationScale[axis];
-        state.mIncomingOrientation[axis + 2] = second.mRetainedOrientationOffset[axis];
-        state.mIncomingRegion[axis] = second.mTextureRegionScale[axis];
-        state.mIncomingRegion[axis + 2] = second.mTextureRegionOffset[axis];
-    }
-    std::copy(std::begin(second.mOpticsParams), std::end(second.mOpticsParams), state.mIncomingOptics);
+    gateCompositeIncoming(state, U32(incoming), gate->mGateState.alpha, preview,
+        [&](CompositeState& second) { return buildSignalOne(U32(incoming), display, aspect, second); });
     return true;
 }
 
@@ -12078,16 +11410,23 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
          capture_slot < MAX_CAPTURES && state_count < capacity; ++capture_slot)
     {
         const PrismInstance* capture = registry.capture(capture_slot);
-        if (!capture || (capture->isMedia() && !mediaSlotsEnabled()) || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
+        if (!capture || (capture->isMedia() && !mediaSlotsEnabled()) || (!emptyGate(capture) && (!capture->mHasOutput || capture->mOutputPreviewQuality))) continue;
         LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
         U32 output_width = 0;
         U32 output_height = 0;
         F32 output_uv_scale[2];
         F32 output_uv_offset[2];
-        if (!output.isComplete() ||
+        const bool black = emptyGate(capture);
+        if (black)
+        {
+            output_width = output_height = 1;
+            output_uv_scale[0] = output_uv_scale[1] = 1.f;
+            output_uv_offset[0] = output_uv_offset[1] = 0.f;
+        }
+        if (!black && (!output.isComplete() ||
             !registry.getOutputRegion(capture_slot, output_width, output_height) ||
             !registry.getOutputOrientation(capture_slot, output_uv_scale, output_uv_offset) ||
-            output_width > output.getWidth() || output_height > output.getHeight())
+            output_width > output.getWidth() || output_height > output.getHeight()))
         {
             continue;
         }
@@ -12147,7 +11486,7 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             std::memcpy(state.mSurfaceVDual, frame.mSurfaceVDual.mV,
                         sizeof(state.mSurfaceVDual));
 
-            state.mMediaSDR = capture->isMedia();
+            state.mMediaSDR = signalIsVideo(*capture);
             if (capture->cameraData())
             {
                 state.mOpticsParams[0] = capture->cameraData()->mSettings.mOptics.mChromaticAberration;
@@ -12196,11 +11535,11 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             std::memcpy(state.mRetainedOrientationOffset, output_uv_offset,
                         sizeof(state.mRetainedOrientationOffset));
             state.mTextureRegionScale[0] = static_cast<F32>(output_width - 1u) /
-                                           static_cast<F32>(output.getWidth());
+                                           static_cast<F32>(black ? 1u : output.getWidth());
             state.mTextureRegionScale[1] = static_cast<F32>(output_height - 1u) /
-                                           static_cast<F32>(output.getHeight());
-            state.mTextureRegionOffset[0] = 0.5f / static_cast<F32>(output.getWidth());
-            state.mTextureRegionOffset[1] = 0.5f / static_cast<F32>(output.getHeight());
+                                           static_cast<F32>(black ? 1u : output.getHeight());
+            state.mTextureRegionOffset[0] = 0.5f / static_cast<F32>(black ? 1u : output.getWidth());
+            state.mTextureRegionOffset[1] = 0.5f / static_cast<F32>(black ? 1u : output.getHeight());
 
             const F32 display_u = frame.mWorldSurfaceUEdge.magVec();
             const F32 display_v = frame.mWorldSurfaceVEdge.magVec();
@@ -12343,16 +11682,23 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
          capture_slot < MAX_CAPTURES && state_count < capacity; ++capture_slot)
     {
         const PrismInstance* capture = registry.capture(capture_slot);
-        if (!capture || (capture->isMedia() && !mediaSlotsEnabled()) || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
+        if (!capture || (capture->isMedia() && !mediaSlotsEnabled()) || (!emptyGate(capture) && (!capture->mHasOutput || capture->mOutputPreviewQuality))) continue;
         LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
         U32 output_width = 0;
         U32 output_height = 0;
         F32 output_uv_scale[2];
         F32 output_uv_offset[2];
-        if (!output.isComplete() ||
+        const bool black = emptyGate(capture);
+        if (black)
+        {
+            output_width = output_height = 1;
+            output_uv_scale[0] = output_uv_scale[1] = 1.f;
+            output_uv_offset[0] = output_uv_offset[1] = 0.f;
+        }
+        if (!black && (!output.isComplete() ||
             !registry.getOutputRegion(capture_slot, output_width, output_height) ||
             !registry.getOutputOrientation(capture_slot, output_uv_scale, output_uv_offset) ||
-            output_width > output.getWidth() || output_height > output.getHeight())
+            output_width > output.getWidth() || output_height > output.getHeight()))
         {
             continue;
         }
@@ -12407,7 +11753,7 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             std::memcpy(state.mSurfaceVDual, frame.mSurfaceVDual.mV,
                         sizeof(state.mSurfaceVDual));
 
-            state.mMediaSDR = capture->isMedia();
+            state.mMediaSDR = signalIsVideo(*capture);
             if (capture->cameraData())
             {
                 state.mOpticsParams[0] = capture->cameraData()->mSettings.mOptics.mChromaticAberration;
@@ -12450,11 +11796,11 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             std::memcpy(state.mRetainedOrientationOffset, output_uv_offset,
                         sizeof(state.mRetainedOrientationOffset));
             state.mTextureRegionScale[0] = static_cast<F32>(output_width - 1u) /
-                                           static_cast<F32>(output.getWidth());
+                                           static_cast<F32>(black ? 1u : output.getWidth());
             state.mTextureRegionScale[1] = static_cast<F32>(output_height - 1u) /
-                                           static_cast<F32>(output.getHeight());
-            state.mTextureRegionOffset[0] = 0.5f / static_cast<F32>(output.getWidth());
-            state.mTextureRegionOffset[1] = 0.5f / static_cast<F32>(output.getHeight());
+                                           static_cast<F32>(black ? 1u : output.getHeight());
+            state.mTextureRegionOffset[0] = 0.5f / static_cast<F32>(black ? 1u : output.getWidth());
+            state.mTextureRegionOffset[1] = 0.5f / static_cast<F32>(black ? 1u : output.getHeight());
 
             const F32 display_u = frame.mWorldSurfaceUEdge.magVec();
             const F32 display_v = frame.mWorldSurfaceVEdge.magVec();
@@ -12543,8 +11889,8 @@ bool buildPreviewCompositeState(const CaptureHandle& capture_handle,
             break;
         }
     }
-    if (!capture || !capture->mHasOutput ||
-        !gPipeline.mPrismLensOutput[capture_slot].isComplete())
+    if (!capture || (!emptyGate(capture) && (!capture->mHasOutput ||
+        !gPipeline.mPrismLensOutput[capture_slot].isComplete())))
     {
         offline = true;
         return false;
@@ -12603,12 +11949,12 @@ bool buildPreviewCompositeState(const CaptureHandle& capture_handle,
         display_aspect = basis_u / basis_v;
     }
 
-    if (!buildSignalCompositeState(capture_slot, display, display_aspect, state))
+    if (!buildSignalCompositeState(capture_slot, display, display_aspect, state, true))
     {
         offline = true;
         return false;
     }
-    if (display)
+    if (display && !state.mBlack)
     {
         // A selected face is itself a display-shaped result. Preserve that
         // shape inside the fixed 16:9 atlas cell just as raw capture does.
@@ -12683,11 +12029,7 @@ bool buildProjectorCompositeState(const ProjectorDefinition& authored,
     target_width = 0;
     target_height = 0;
     ProjectorDefinition definition = authored;
-    auto& gate_registry = PrismLensRegistry::instance();
-    if (definition.mGateSubscribed)
-        definition.mGateSubscribed = gate_registry.gateProjectorParticipates(definition.mHandle) &&
-            (!gate_registry.gateTransition() || gate_registry.gateProjectorSettings(definition.mHandle, definition.mSettings));
-    if (definition.mQuarantined || (definition.mCapture.mId.isNull() && !definition.mGateSubscribed)) return false;
+    if (definition.mQuarantined || definition.mCapture.mId.isNull()) return false;
     PrismLensRegistry& registry = PrismLensRegistry::instance();
     U32 capture_slot = MAX_CAPTURES;
     for (U32 slot = 0; slot < MAX_CAPTURES; ++slot)
@@ -12702,18 +12044,16 @@ bool buildProjectorCompositeState(const ProjectorDefinition& authored,
     }
     LLVOVolume* volume = dynamic_cast<LLVOVolume*>(
         gObjectList.findObject(definition.mObjectId));
-    if (definition.mGateSubscribed) capture_slot = static_cast<U32>(registry.gateOutputSlot(static_cast<S32>(capture_slot)));
     if (capture_slot >= MAX_CAPTURES || !volume) return false;
 
     const LLVector3 scale = volume->getScale();
     if (scale.mV[VX] <= F_ALMOST_ZERO || scale.mV[VY] <= F_ALMOST_ZERO)
         return false;
     const F32 projector_aspect = scale.mV[VX] / scale.mV[VY];
-    target_width = projectorRenderResolution(definition.mSettings, authored.mGateSubscribed);
+    target_width = definition.mSettings.mResolution;
     target_height = target_width;
 
     PrismDisplay display;
-    display.mGateSubscribed = definition.mGateSubscribed;
     display.mSettings.mFitMode = definition.mSettings.mFitMode;
     display.mSettings.mAnchor[0] = definition.mSettings.mAnchor[0];
     display.mSettings.mAnchor[1] = definition.mSettings.mAnchor[1];
@@ -12837,15 +12177,5 @@ void compositeDebug()
 
 namespace
 {
-bool buildSignalCompositeForGate(U32 capture_slot, const PrismDisplay& display, LLPrismLens::CompositeState& state)
-{
-    const F32 v = display.mFrame.mWorldSurfaceVEdge.magVec();
-    const F32 aspect = v > F_ALMOST_ZERO ? display.mFrame.mWorldSurfaceUEdge.magVec() / v : 1.f;
-    const auto& world = gPrismLensProgram;
-    if (display.mGateSubscribed && !world.isComplete()) return false;
-    if (!LLPrismLens::buildSignalCompositeState(capture_slot, &display, aspect, state)) return false;
-    auto& shader = gPrismLensProgram;
-    return shader.isComplete() && shader.getTextureChannel(LLShaderMgr::PRISM_LENS_MAP) >= 0 &&
-        (state.mGateAlpha <= 0.f || shader.getTextureChannel(LLShaderMgr::PRISM_GATE_MAP) >= 0);
-}
+
 }

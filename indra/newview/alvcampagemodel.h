@@ -68,7 +68,6 @@ public:
 
     const LLPrismLens::RegistrySnapshot& registry() const { return mRegistry; }
     const LLPrismLens::PerformanceSnapshot& performance() const { return mPerformance; }
-    const LLPrismLens::GateSnapshot& gate() const { return mGate; }
     const LLPrismLens::CaptureHandle& selectedCapture() const { return mSelectedCapture; }
     const LLPrismLens::DisplayHandle& selectedDisplay() const { return mSelectedDisplay; }
     const LLPrismLens::ProjectorHandle& selectedProjector() const { return mSelectedProjector; }
@@ -160,9 +159,7 @@ public:
         static_cast<size_t>(EProjectorLookPreset::COUNT)>& projectorLookPresets();
     static EProjectorLookPreset projectorLookPreset(
         const LLPrismLens::ProjectorLook& look);
-    LLPrismLens::ERegistryResult setProjectorGateSubscribed(
-        const LLPrismLens::ProjectorHandle& binding, bool subscribed,
-        std::string* reason = nullptr);
+
     bool removeProjector(const LLPrismLens::ProjectorHandle& binding,
                          std::string* reason = nullptr);
     bool setLabel(const LLPrismLens::CaptureHandle& capture,
@@ -179,7 +176,6 @@ private:
         const LLPrismLens::ProjectorHandle& handle) const;
     LLPrismLens::RegistrySnapshot mRegistry;
     LLPrismLens::PerformanceSnapshot mPerformance;
-    LLPrismLens::GateSnapshot mGate;
     LLPrismLens::CaptureHandle mSelectedCapture;
     LLPrismLens::DisplayHandle mSelectedDisplay;
     LLPrismLens::ProjectorHandle mSelectedProjector;

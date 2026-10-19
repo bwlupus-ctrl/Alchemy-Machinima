@@ -153,7 +153,6 @@ void ALVCamPageModel::refreshNow(U32 dirty)
                 if (!known) added_projector = fresh.mProjectors[index].mHandle;
             }
         mRegistry = fresh;
-        mGate = LLPrismLens::gateSnapshot();
     }
     if (dirty & DIRTY_PERFORMANCE)
         mPerformance = LLPrismLens::performanceSnapshot();
@@ -167,15 +166,7 @@ void ALVCamPageModel::refreshNow(U32 dirty)
     {
         const LLPrismLens::DisplayDefinition* display =
             findDisplay(mSelectedDisplay);
-        // A Gate-subscribed face follows the Director switcher and belongs to
-        // no one camera; it stays selectable under every Camera Feed (not
-        // under a Surface Lens, which owns exactly one face).
-        const LLPrismLens::CaptureDefinition* selected_capture =
-            mSelectedCapture.mId.notNull() ? findCapture(mSelectedCapture) : nullptr;
-        const bool gate_listed = display && display->mGateSubscribed &&
-            (!selected_capture ||
-             selected_capture->isCameraFeed());
-        if (!display || (mSelectedCapture.mId.notNull() && !gate_listed &&
+        if (!display || (mSelectedCapture.mId.notNull() &&
                          !sameCapture(display->mCapture, mSelectedCapture)))
             mSelectedDisplay = LLPrismLens::DisplayHandle();
     }
@@ -184,15 +175,15 @@ void ALVCamPageModel::refreshNow(U32 dirty)
         const LLPrismLens::ProjectorDefinition* projector =
             findProjector(mSelectedProjector);
         if (!projector || (mSelectedCapture.mId.notNull() &&
-                           findCapture(projector->mHomeCapture) &&
-                           !sameCapture(projector->mHomeCapture, mSelectedCapture)))
+                           findCapture(projector->mCapture) &&
+                           !sameCapture(projector->mCapture, mSelectedCapture)))
             mSelectedProjector = LLPrismLens::ProjectorHandle();
     }
     if (added_projector.mId.notNull())
     {
         const LLPrismLens::ProjectorDefinition* added = findProjector(added_projector);
         if (added && mSelectedCapture.mId.notNull() &&
-            sameCapture(added->mHomeCapture, mSelectedCapture))
+            sameCapture(added->mCapture, mSelectedCapture))
             mSelectedProjector = added_projector;
     }
     if (mSelectedProjector.mId.isNull() && mSelectedCapture.mId.notNull())
@@ -513,13 +504,7 @@ LLPrismLens::ActionStatus ALVCamPageModel::reassignDisplayStatus(
             "A Surface Lens aperture cannot be moved to another capture.";
         return status;
     }
-    if (display_definition->mGateSubscribed)
-    {
-        status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
-        status.mReason =
-            "A Gate-subscribed display must be changed to a fixed feed before reassignment.";
-        return status;
-    }
+
     if (display_definition->mSettings.mVirtual)
     {
         status.mResult = LLPrismLens::ERegistryResult::OK;
@@ -931,13 +916,7 @@ bool ALVCamPageModel::setProjectorLook(
     return setProjectorSettings(binding, settings, reason);
 }
 
-LLPrismLens::ERegistryResult ALVCamPageModel::setProjectorGateSubscribed(
-    const LLPrismLens::ProjectorHandle& binding, bool subscribed,
-    std::string* reason)
-{
-    return LLPrismLens::setProjectorGateSubscribed(
-        binding, subscribed, reason);
-}
+
 
 bool ALVCamPageModel::removeProjector(
     const LLPrismLens::ProjectorHandle& binding, std::string* reason)

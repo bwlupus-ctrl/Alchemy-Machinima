@@ -262,12 +262,6 @@ public:
     // is rate-limited so a low-memory viewer does not churn FBOs every frame.
     bool ensureScratchReady();
     bool isDemanded(const LLPrismLens::CaptureHandle& capture) const;
-    bool isDisplayDemanded(const LLPrismLens::DisplayHandle& display) const
-    {
-        for (U32 i = 0; i < mSelection.size(); ++i)
-            if (mSelection[i].mId == display.mId && mSelection[i].mGeneration == display.mGeneration && isDemanded(mDemand[i].mCapture)) return true;
-        return false;
-    }
     F32 requestedHz(const LLPrismLens::CaptureRateSettings& rate);
     void notePublication(const LLPrismLens::CaptureHandle& capture, U64 serial,
                          bool preview_quality);
@@ -300,7 +294,6 @@ private:
         bool mDemanded = false;
         U64 mPublicationSerial = 0;
         U64 mAtlasSerial = 0;
-        U64 mGateSerial = 0;
         bool mPreviewQuality = false;
         std::array<VisibilityOwner, 4> mOwners{};
     };

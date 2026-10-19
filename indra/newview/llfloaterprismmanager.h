@@ -48,10 +48,8 @@ private:
     void refreshBoneJointChoices(bool force);
     void refreshDisplayEditor();
     void refreshDisplayRateReadout();
-    void refreshGateEditor();
     void rebuildCaptureList();
     void rebuildDisplayList();
-    void rebuildGateArmedList();
 
     void installDocumentFocusReveal();
     void revealDocumentView(LLView* view, LLPanel* document,
@@ -59,7 +57,6 @@ private:
 
     void onCaptureSelectionChanged();
     void onDisplaySelectionChanged();
-    void onGateSelectionChanged();
     void onAddCamera();
     void onAddLens();
     void onRemoveCapture();
@@ -79,11 +76,6 @@ private:
     void onCommitVirtualScreenSize();
     void onRepositionVirtualScreen();
     void onCommitDisplayEffects();
-    void onCommitDisplayGateSource();
-    void onGateArm();
-    void onGateDisarm();
-    void onGateTake();
-    void onCommitGateSettings();
     void onApplyEffectsPreset(const LLPrismLens::ScreenEffects& preset);
     LLPrismLens::ScreenEffects effectsFromUI() const;
     void setUIFromEffects(const LLPrismLens::ScreenEffects& effects);
@@ -95,10 +87,8 @@ private:
 
     LLPrismLens::CaptureHandle mSelectedCapture;
     LLPrismLens::DisplayHandle mSelectedDisplay;
-    LLUUID mSelectedGateArm;
     LLPrismLens::RegistrySnapshot mRegistrySnapshot;
     LLPrismLens::PerformanceSnapshot mPerformanceSnapshot;
-    LLPrismLens::GateSnapshot mGateSnapshot;
     bool mHaveRegistrySnapshot = false;
     bool mHavePerformanceSnapshot = false;
     LLVOAvatar* mBoneJointAvatar = nullptr;
@@ -135,7 +125,6 @@ private:
     LLTextBox* mStatusText = nullptr;
     LLScrollListCtrl* mCaptureList = nullptr;
     LLScrollListCtrl* mDisplayList = nullptr;
-    LLScrollListCtrl* mGateArmedList = nullptr;
 
     LLButton* mAddCameraButton = nullptr;
     LLButton* mAddLensButton = nullptr;
@@ -148,11 +137,6 @@ private:
     LLButton* mAddVirtualScreenButton = nullptr;
     LLButton* mRemoveDisplayButton = nullptr;
     LLButton* mLocateDisplayButton = nullptr;
-    LLButton* mGateArmButton = nullptr;
-    LLButton* mGateDisarmButton = nullptr;
-    LLButton* mGateTakeButton = nullptr;
-    LLButton* mGateIntervalResetButton = nullptr;
-    LLButton* mGatePrewarmResetButton = nullptr;
     // Prim-free virtual-screen editor controls (shown for a virtual display).
     LLButton* mRepositionScreenButton = nullptr;
     LLSliderCtrl* mScreenHeightSlider = nullptr;
@@ -166,15 +150,11 @@ private:
     LLPanel* mRateSettingsPanel = nullptr;
     LLScrollContainer* mPerformanceScroll = nullptr;
     LLPanel* mPerformanceDocument = nullptr;
-    LLScrollContainer* mGateScroll = nullptr;
-    LLPanel* mGateDocument = nullptr;
 
     LLTextBox* mCaptureTitle = nullptr;
     LLTextBox* mSourceText = nullptr;
     LLTextBox* mRateReadout = nullptr;
     LLTextBox* mDisplaySourceRate = nullptr;
-    LLTextBox* mGateLiveText = nullptr;
-    LLTextBox* mGateReasonText = nullptr;
     LLComboBox* mFovModeCombo = nullptr;
     LLSpinCtrl* mVerticalFovSpinner = nullptr;
     LLSpinCtrl* mNearClipSpinner = nullptr;
@@ -221,20 +201,6 @@ private:
     LLSpinCtrl* mTargetFpsSpinner = nullptr;
     LLComboBox* mRatePresetCombo = nullptr;
     LLComboBox* mNewDisplayFitCombo = nullptr;
-    LLCheckBoxCtrl* mDisplayGateSourceCheck = nullptr;
-    LLCheckBoxCtrl* mGateActiveCheck = nullptr;
-    LLComboBox* mGateModeCombo = nullptr;
-    LLSpinCtrl* mGateIntervalSpinner = nullptr;
-    LLSpinCtrl* mGatePrewarmSpinner = nullptr;
-    LLComboBox* mGateTransitionCombo = nullptr;
-    LLComboBox* mGateOverBudgetCombo = nullptr;
-    LLComboBox* mGateVideoDwellCombo = nullptr;
-    LLComboBox* mGateOnCutCombo = nullptr;
-    LLSpinCtrl* mGateLengthSpinner = nullptr;
-    LLButton* mGatePlayVideosButton = nullptr;
-    LLTextBox* mGateCountText = nullptr;
-    LLScrollListCtrl* mGateProjectorList = nullptr;
-    U64 mGateListRevision = 0, mGateProjectorRevision = 0;
     LLComboBox* mDisplayFitCombo = nullptr;
     LLSpinCtrl* mAnchorXSpinner = nullptr;
     LLSpinCtrl* mAnchorYSpinner = nullptr;

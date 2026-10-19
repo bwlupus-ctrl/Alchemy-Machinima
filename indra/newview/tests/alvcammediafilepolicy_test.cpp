@@ -29,7 +29,7 @@ namespace tut
 {
 struct media_file_data {};
 // +1 explicit Enter/Load commit-action test; retain all 65 existing cases.
-typedef test_group<media_file_data, 67> media_file_group;
+typedef test_group<media_file_data, 66> media_file_group;
 typedef media_file_group::object media_file_object;
 media_file_group media_file_tests("alvcammediafilepolicy");
 using namespace ALMediaFile;
@@ -1820,24 +1820,4 @@ template<> template<> void media_file_object::test<65>()
     ensure("arbitrary names excluded", one.find("private-path") == std::string::npos);
 }
 
-
-template<> template<> void media_file_object::test<67>()
-{
-    using namespace ALMediaFile;
-    set_test_name("Gate nonseekable Restart reopens the pinned input at zero instead of pausing an advanced input");
-    double position = 4.5; unsigned reopens = 0, seeks = 0;
-    const auto seek = [&](double target) { ++seeks; position = target; };
-    const auto reopen = [&]() { ++reopens; position = 0.; };
-    applyGateSeek(0., false, seek, reopen);
-    ensure("advanced nonseekable input restarts at zero", position == 0. && reopens == 1 && seeks == 0);
-    applyGateSeek(3., true, seek, reopen);
-    ensure("seekable inputs retain their same-player seek", position == 3. && reopens == 1 && seeks == 1);
-    applyGateSeek(3., false, seek, reopen);
-    ensure("unsupported nonzero seeks do not pretend success", position == 3. && reopens == 1 && seeks == 1);
-    ensure(gateSeekPlan(0., false) == GateSeek::REOPEN_ZERO);
-    ensure(gateSeekPlan(0., true) == GateSeek::SEEK);
-    ensure(gateSeekPlan(3., true) == GateSeek::SEEK);
-    ensure(gateSeekPlan(3., false) == GateSeek::NONE);
-    ensure(gateSeekPlan(-1., false) == GateSeek::NONE);
-}
 }
