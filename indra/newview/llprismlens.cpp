@@ -5739,7 +5739,8 @@ public:
         using namespace LLPrismLens;
         if (gateSlot() >= 0) { if (reason) *reason = "Only one Gate"; return ERegistryResult::DUPLICATE; }
         const S32 slot = freeCaptureSlot(); U64 generation = 0;
-        if (slot < 0 || !allocateGeneration(generation)) return ERegistryResult::AT_CAPACITY;
+        if (slot < 0 || !allocateGeneration(generation))
+        { if (reason) *reason = "All 8 source slots are full"; return ERegistryResult::AT_CAPACITY; }
         PrismInstance gate;
         gate.setGateData(GateSource()); gate.mOccupied = true;
         gate.mHandle.mId.generate(); gate.mHandle.mGeneration = generation;
@@ -10200,7 +10201,7 @@ bool setMediaSource(const CaptureHandle& slot, const MediaFaceSource& source, st
 
 std::string captureDisplayLabel(const CaptureDefinition& capture)
 {
-    return llformat(capture.isMedia() ? "MEDIA %u - %s" : "CAM %u - %s", capture.mSlot + 1, capture.mLabel.c_str());
+    return llformat(capture.isGate() ? "GATE %u - %s" : capture.isMedia() ? "MEDIA %u - %s" : "CAM %u - %s", capture.mSlot + 1, capture.mLabel.c_str());
 }
 
 bool setDisplaySettings(const DisplayHandle& binding,

@@ -8452,12 +8452,16 @@ private:
             const auto& registry = mFunctionalVCamModel->registry();
             const auto* source = functionalSelectedVCamCapture(*mFunctionalVCamModel);
             const auto* video = source ? source->mediaUrlData() : nullptr;
-            const bool correct = registry.mSlotCount == 1 && registry.mCaptureCount == 0 && source &&
-                video && video->mValue.empty() && video->mLoop && video->mVolume == 0.f &&
-                !source->mRuntime.mHasOutput && source->mMediaDemandArea == 0.;
+            const bool gate = entry["media_add_kind"].asString() == "gate";
+            // The select_item exercise clicks the real vc_add_camera combo item.
+            const bool correct = control->getName() == "vc_add_camera" &&
+                registry.mSlotCount == 1 && registry.mCaptureCount == 0 && source &&
+                (gate ? source->isGate() :
+                    video && video->mValue.empty() && video->mLoop && video->mVolume == 0.f &&
+                    !source->mRuntime.mHasOutput && source->mMediaDemandArea == 0.);
             observable = correct;
             expected_ok = expected_ok && correct;
-            if (!correct) assertion_failure = "Add selector did not create/select the requested media source with safe defaults";
+            if (!correct) assertion_failure = "Add selector did not create/select the requested Gate or media source with safe defaults";
         }
         if (entry["probe"].asString() == "vcam_camera_name")
         {

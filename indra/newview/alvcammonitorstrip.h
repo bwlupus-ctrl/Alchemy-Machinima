@@ -83,6 +83,7 @@ public:
         bool mMonitorDisplayVirtual = false;
         bool mVisible = false;
         bool mMedia = false;
+        bool mGate = false;
     };
 
     void setTiles(const std::array<Tile, LLPrismLens::MAX_CAPTURES>& tiles,
@@ -123,6 +124,7 @@ private:
         std::string mStatus;
         std::string mLabelInput;
         bool mMedia = false;
+        bool mGate = false;
         bool mValid = false;
     };
     void updateTileText(U32 slot, const Tile& tile, bool info_overlay, bool force_info);
@@ -187,6 +189,7 @@ public:
         U32 mSlot = 0;
         bool mLive = false;
         bool mPreview = false;
+        bool mGate = false;
     };
     bool postBuild() override;
     void setItems(const std::vector<Item>& items, const LLPrismLens::CaptureHandle& selected);

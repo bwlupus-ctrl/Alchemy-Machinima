@@ -2081,7 +2081,11 @@ bool LLScrollListCtrl::handleMouseUp(S32 x, S32 y, MASK mask)
     {
         mDirty = mDirty || mSelectionChanged;
         mSelectionChanged = false;
+        mMouseUpHitItem = hitItem(x, y);
+        mMouseUpColumn = getColumnIndexFromOffset(x);
         onCommit();
+        mMouseUpHitItem = nullptr;
+        mMouseUpColumn = -1;
     }
 
     return LLUICtrl::handleMouseUp(x, y, mask);

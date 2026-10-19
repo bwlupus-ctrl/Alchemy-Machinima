@@ -93,3 +93,17 @@ GPU pixels / decoded audio still need these precise in-world checks:
 
 Decision B's resolution-change/allocation-failure cookie exception remains; rollback and demand recovery do not use that exception. The 300-frame allocation assertion is now automated in the native registry probe, rather than a manual substitute.
 Fix Round 6: propagated empty Gate black intent through projectorFeedFor before output-validity return; shared the binder black decision with a native volume-lookup regression covering retained non-black cookies, allocation backoff and valid/invalid output (syntax-checked; in-world execution pending), plus unit assertions; units PASS 48/48 + 50/50 + 66/66, zs_check PASS touched .cpp/direct header includers with -IncludeTests and own-target projector flags, prebuild_guard.ps1 -ChecksOnly PASS with GIT_CONFIG_COUNT=1/GIT_CONFIG_KEY_0=core.safecrlf/GIT_CONFIG_VALUE_0=false (only cache path redirected after sandbox denial), git diff --check PASS; logs .tmp/gate_r6_*; no viewer build, commit, push or stash.
+
+
+## UI wiring fixes
+
+Applied the ten requested UI fixes against af5009c59ee, preserving the pending real Add > Gate combo item. Gate projectors enable Throw/Follow exposure (no other projector-row camera-kind exclusion found); the functional Add oracle accepts one selected Gate and continues through the real vc_add_camera combo click exercise. Manual takes require an actual name-column mouse-up hit; blank space and tick clicks cannot take, and checkbox commits remain intact. Gate labels and selector measurements agree, projector help describes Gate-owned 2048 output, search finds Add Gate and selects the existing Gate or explains Add/Auto/Crossfade prerequisites. Runtime source-list signatures include freshly evaluated eligible membership. Sources and Status favourites use the existing Open on its page link; Status remains read-only. Slot summaries include Gate independently of media enablement, and full-slot Add Gate rejection supplies a reason.
+
+Validation:
+- Generators regenerated: director_kit_gen.py, director_page_sources.py, director_functional_manifest.py; each --check PASS. Row counts unchanged, so no director_kit_gen.py pin change. Other regenerated XUI changes are source-hash headers.
+- zs_check -IncludeTests: PASS, 8/8 touched C++ TUs. Direct includers checked for both touched headers: llscrolllistctrl.cpp and alvcammonitorstrip.cpp. Log: .tmp/gate_ui_zs.log.
+- Unit suites: llprismgate PASS 48/48; llprismprojector PASS 50/50, using the existing isolated test binaries (their implementation/test sources are unchanged). Logs: .tmp/gate_ui_llprismgate.log and .tmp/gate_ui_llprismprojector.log.
+- prebuild_guard.ps1 -ChecksOnly: PASS with GIT_CONFIG_COUNT=1, GIT_CONFIG_KEY_0=core.safecrlf, GIT_CONFIG_VALUE_0=false; existing sandbox-safe Git config and writable zs cache redirect retained. Log: .tmp/gate_ui_prebuild.log.
+- git diff --check: PASS. Log: .tmp/gate_ui_diff_check.log.
+
+No viewer build, commit, push or stash operation. The changed functional/UI paths are syntax-checked; in-world execution awaits the user's next build/test.

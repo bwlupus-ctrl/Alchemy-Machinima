@@ -7152,7 +7152,7 @@ void LLFloaterDirector::refreshPrismDependents()
 
         if (mPrismSummaryText)
         {
-            const bool has_media = LLPrismLens::mediaSlotsEnabled() && snapshot.mSlotCount > snapshot.mCaptureCount;
+            const bool has_media = snapshot.mSlotCount > snapshot.mCaptureCount;
             if (has_media)
             {
                 setTextIfChanged(mPrismSummaryText, llformat(

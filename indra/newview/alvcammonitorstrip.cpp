@@ -255,13 +255,14 @@ void ALVCamMonitorStrip::updateTileText(
     U32 slot, const Tile& tile, bool, bool)
 {
     TileTextCache& cache = mTileText[slot];
-    if (!cache.mValid || cache.mLabelInput != tile.mLabel || cache.mMedia != tile.mMedia)
-        cache.mName = llformat(tile.mMedia ? "MEDIA %u - %s" : "CAM %u - %s", slot + 1, tile.mLabel.c_str());
+    if (!cache.mValid || cache.mLabelInput != tile.mLabel || cache.mMedia != tile.mMedia || cache.mGate != tile.mGate)
+        cache.mName = llformat(tile.mGate ? "GATE %u - %s" : tile.mMedia ? "MEDIA %u - %s" : "CAM %u - %s", slot + 1, tile.mLabel.c_str());
     // State/reason only. Frame times, rates, and publication serials never
     // participate in text invalidation. The atlas refresh remains independent.
     if (cache.mStatus != tile.mStatus) cache.mStatus = tile.mStatus;
     cache.mLabelInput = tile.mLabel;
     cache.mMedia = tile.mMedia;
+    cache.mGate = tile.mGate;
     cache.mValid = true;
 }
 
@@ -654,6 +655,9 @@ bool ALVCamCameraSelector::postBuild()
     mAdd->add("OTS pair from Subjects A/B", LLSD("ots"));
     mAdd->add("Surface lens from selected face", LLSD("lens"));
     mAdd->add("Media from a prim face (video)", LLSD("media"));
+    // Index 6 matches vcam_page.json selector_actions; the panel's "gate"
+    // action adds the scene's single Gate slot (a second add reports why).
+    mAdd->add("Gate (switch cameras and videos)", LLSD("gate"));
     mAdd->setEnabledByValue(LLSD("media"), false);
     ALKitStyle::styleCombo(mAdd);
     addChild(mAdd);
@@ -703,7 +707,7 @@ void ALVCamCameraSelector::setItems(
     bool changed = items.size() != mItems.size();
     if (!changed)
         for (U32 i = 0; i < items.size(); ++i)
-            changed = changed || items[i].mSlot != mItems[i].mSlot;
+            changed = changed || items[i].mSlot != mItems[i].mSlot || items[i].mGate != mItems[i].mGate;
     mItems = items;
     mSelected = selected;
     while (mChips.size() > items.size())
@@ -732,8 +736,8 @@ void ALVCamCameraSelector::setItems(
     for (U32 i = 0; i < items.size(); ++i)
     {
         const bool on = sameCapture(items[i].mHandle, selected);
-        const std::string label = llformat("Cam %u", items[i].mSlot + 1);
-        const std::string help = llformat("Edit Cam %u \xC2\xB7 %s", items[i].mSlot + 1, items[i].mName.c_str());
+        const std::string label = items[i].mGate ? "Gate" : llformat("Cam %u", items[i].mSlot + 1);
+        const std::string help = items[i].mGate ? "Edit Gate" : llformat("Edit Cam %u \xC2\xB7 %s", items[i].mSlot + 1, items[i].mName.c_str());
         if (mChips[i]->getLabelUnselected() != label) mChips[i]->setLabel(label);
         if (mChips[i]->getToolTip() != help) mChips[i]->setToolTip(help);
         mChips[i]->setToggleState(on);
@@ -792,7 +796,7 @@ ALVCamCameraSelector::Layout ALVCamCameraSelector::layoutForWidth(S32 width) con
         S32 total = 0;
         for (const Item& item : mItems)
         {
-            const std::string label = llformat("Cam %u", item.mSlot + 1);
+            const std::string label = item.mGate ? "Gate" : llformat("Cam %u", item.mSlot + 1);
             const S32 chip_width = llmax(mFont->getWidth(label), mSelectedFont->getWidth(label)) + 32;
             widths.push_back(chip_width);
             total += chip_width + 4;

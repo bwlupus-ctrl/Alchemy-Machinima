@@ -406,6 +406,9 @@ public:
     void setPageLines(S32 page_lines );
 
     LLScrollListItem*   hitItem(S32 x,S32 y);
+    // Valid only during the mouse-up commit, for actions requiring a row hit.
+    LLScrollListItem* getMouseUpHitItem(S32 column) const
+    { return mMouseUpColumn == column ? mMouseUpHitItem : nullptr; }
     virtual void        scrollToShowSelected();
 
     // LLEditMenuHandler functions
@@ -484,6 +487,8 @@ protected:
     void            setLineHeight(S32 height) { mLineHeight = height; }
 
 private:
+    LLScrollListItem* mMouseUpHitItem = nullptr;
+    S32 mMouseUpColumn = -1;
     void            drawItems();
 
     void            updateLineHeightInsert(LLScrollListItem* item);

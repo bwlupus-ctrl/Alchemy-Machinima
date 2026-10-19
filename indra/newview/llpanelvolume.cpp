@@ -1166,7 +1166,7 @@ void LLPanelVolume::refreshVCamProjectorLabel(LLViewerObject* object)
     for (U32 index = 0; capture_id.notNull() && index < snapshot.mSlotCount; ++index)
         if (snapshot.mCaptures[index].mHandle.mId == capture_id)
         {
-            label = llformat("VCam: Cam %u", snapshot.mCaptures[index].mSlot + 1);
+            label = snapshot.mCaptures[index].isGate() ? "VCam: Gate" : llformat("VCam: Cam %u", snapshot.mCaptures[index].mSlot + 1);
             break;
         }
     mLightTextureCtrl->setVCamOverride(capture_id, label);

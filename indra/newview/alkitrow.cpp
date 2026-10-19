@@ -1132,7 +1132,8 @@ ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
     Params params;
     params.name = name;
     params.rect = LLRect(0, ALKitStyle::ROW_H, 400, 0);
-    const bool open_on_page = value.isMap() || value.isArray();
+    const bool open_on_page = value.isMap() || value.isArray() ||
+        source->mMeta.widget == "vc_gate_sources" || source->mMeta.widget == "vc_gate_status";
     params.kind = open_on_page ? "link" :
         (value.isBoolean() ? "toggle" : (value.isInteger() || value.isReal() ? "number" : "text"));
     params.widget = name + "_control";
