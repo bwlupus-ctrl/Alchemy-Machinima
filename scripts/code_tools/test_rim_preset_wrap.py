@@ -52,6 +52,14 @@ EXPECTED = [
     ('Rain Slick Glaze', True, .25, 1, .5, .6, 4),
     ('Dusk Horizon Kick', True, 1.1, 3.5, 1.5, .8, 6.5),
     ('Spectral Silhouette', True, 1.6, 6, 2.6, .3, 4.5),
+    ('Natural Separation', True, .3, 1.5, 1, .6, 3),
+    ('Dialogue Two-Shot', True, .3, 1.5, 1, .55, 3),
+    ('Interview Hair Light', True, .35, 1.5, 1.2, .6, 3.5),
+    ('Window Backlight', True, .5, 3, 1.6, .75, 5),
+    ('Overcast Outdoor', True, .2, 2.5, 2, .4, 2),
+    ('Night Street Edge', True, .3, 1.5, .8, .85, 5),
+    ('Lamp Practical', True, .4, 2, 1.5, .8, 4),
+    ('Dark Background Lift', True, .25, 1, .6, .5, 3),
 ]
 
 
@@ -219,7 +227,7 @@ require(!ALRigRimController::applyPresetByName("__unknown_rim__"), "unknown pres
 for (const auto& kv : before)
     require(gSavedSettings.controls.at(kv.first).get().scalar == kv.second.get().scalar,
             "unknown preset changed settings");
-std::cout << "PASS: 32 presets, all six explicit wrap keys, 1088 production applies, excluded settings, unknown name\n";
+std::cout << "PASS: 40 presets, all six explicit wrap keys, 1680 production applies, excluded settings, unknown name\n";
 return 0;
 } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

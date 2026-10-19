@@ -155100,7 +155100,7 @@
           "cpp": [
             {
               "file": "indra/newview/alrigrimcontroller.cpp",
-              "line": 1065,
+              "line": 1401,
               "class": "ALRigRimController",
               "function": "attach",
               "wired_class": "ALRigRimController",
@@ -157067,7 +157067,7 @@
           "cpp": [
             {
               "file": "indra/newview/alrigrimcontroller.cpp",
-              "line": 1066,
+              "line": 1402,
               "class": "ALRigRimController",
               "function": "attach",
               "wired_class": "ALRigRimController",
@@ -157173,7 +157173,7 @@
           "cpp": [
             {
               "file": "indra/newview/alrigrimcontroller.cpp",
-              "line": 1067,
+              "line": 1403,
               "class": "ALRigRimController",
               "function": "attach",
               "wired_class": "ALRigRimController",
@@ -157283,7 +157283,7 @@
           "cpp": [
             {
               "file": "indra/newview/alrigrimcontroller.cpp",
-              "line": 1068,
+              "line": 1404,
               "class": "ALRigRimController",
               "function": "attach",
               "wired_class": "ALRigRimController",

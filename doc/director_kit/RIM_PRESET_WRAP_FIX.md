@@ -149,3 +149,35 @@ Running the existing page-source generator updated only rim source references in
 `page_sources.json`, `page_sources.md` and `pages/light_rim_tab.md`; the final
 freshness check passed. No unrelated presets/settings were changed. Stashes were
 not accessed. No viewer build, launch, commit or push was performed.
+
+## Practical presets
+
+Eight natural, low-gain looks appended to `RIG_RIM_FULL_PRESETS` (public indices
+33-40; the two tables now hold 20 + 20 = 40 rows and the static asserts pin 20 and
+40). Each row authors the same 38 keys as the other full looks, including all six
+`CineRigRimWrap*` keys with Enabled=true and strength 0.2-0.5. They do not touch
+`CineRigRimEnabled`, Debug, IncludeProbes, Tron, ActorsOnly or any rig light
+colour/position/EV: "warm" and "cool" come from the rig's own lamp colour and
+the background the wrap samples; the preset only shapes the term (surface-albedo
+`Tint`, wrap `Saturation`). Per-light columns are gain/sharpness/wrap/back-bias;
+a gain of 0 leaves that fixture at the shader default (3/0.35/0). Wrap columns
+are Strength/Width/Blur/Saturation/Clamp. The eight names were also appended to
+the Master row's search keywords in `director_mockup_data.json`, the one place
+the full looks' names are listed for Director search (regenerated XUI).
+
+| Preset | Master | Back soft | Tint | Shadow | Key | Fill | Rim | Bg | Wrap |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Natural Separation | 0.7 | 0.6 | 0.35 | 0.9 | 0/3/0.35/0 | 0/3/0.35/0 | 0.9/3.5/0.3/0.1 | 0.15/3/0.3/0.1 | 0.3/1.5/1/0.6/3 |
+| Dialogue Two-Shot | 0.8 | 0.9 | 0.3 | 0.7 | 0.15/2.5/0.45/-0.3 | 0.15/2.5/0.45/-0.3 | 0.9/2.75/0.45/-0.2 | 0.9/2.75/0.45/-0.2 | 0.3/1.5/1/0.55/3 |
+| Interview Hair Light | 0.9 | 0.6 | 0.3 | 0.85 | 0/3/0.35/0 | 0/3/0.35/0 | 1.2/4/0.3/0.2 | 0/3/0.35/0 | 0.35/1.5/1.2/0.6/3.5 |
+| Window Backlight | 0.9 | 0.9 | 0.2 | 0.6 | 0.1/2/0.5/-0.4 | 0.1/2/0.5/-0.4 | 1.3/2/0.6/0 | 0.5/2/0.6/-0.1 | 0.5/3/1.6/0.75/5 |
+| Overcast Outdoor | 0.6 | 1.2 | 0.4 | 0.4 | 0.3/1.75/0.7/-0.6 | 0.3/1.75/0.7/-0.6 | 0.7/1.75/0.7/-0.5 | 0.3/1.75/0.7/-0.6 | 0.2/2.5/2/0.4/2 |
+| Night Street Edge | 1 | 0.45 | 0.45 | 1 | 0/3/0.35/0 | 0/3/0.35/0 | 1.3/3.5/0.3/0.25 | 0/3/0.35/0 | 0.3/1.5/0.8/0.85/5 |
+| Lamp Practical | 0.8 | 0.8 | 0.55 | 0.7 | 0.3/2/0.6/-0.4 | 0.2/2/0.6/-0.4 | 1/2/0.6/-0.2 | 0/3/0.35/0 | 0.4/2/1.5/0.8/4 |
+| Dark Background Lift | 1 | 0.5 | 0.05 | 0.9 | 0/3/0.35/0 | 0/3/0.35/0 | 1.4/3.5/0.3/0.15 | 0.6/3.5/0.3/0.15 | 0.25/1/0.6/0.5/3 |
+
+Soften/Smoothness/AntiShimmer/Silhouette sit at 0.4-0.9 / 0.3-0.5 / 0.4-0.6 /
+0.3-0.5 with 2.5-4 cm silhouette widths (units 0) and default gap/seed values;
+IncludeAlpha is on for all eight (hair), IncludeBounce only for Window Backlight,
+Overcast Outdoor and Lamp Practical. Regression: `test_rim_preset_wrap.py` now
+expects 40 names/orders and wrap values (1,680 checked applications).
