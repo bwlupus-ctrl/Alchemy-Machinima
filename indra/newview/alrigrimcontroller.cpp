@@ -28,17 +28,20 @@ namespace
 struct RigRimPresetRow
 {
     const char* mName;
+    const char* mDescription;
     F32         mMaster, mSoften, mBackSoft, mTint, mShadow;
     bool        mAlpha, mBounce;
     F32         mKey[4]; // gain, sharpness, wrap, back bias
     F32         mFill[4];
     F32         mRim[4];
     F32         mBg[4];
+    std::initializer_list<std::pair<const char*, LLSD>> mWrapValues;
 };
 
 const RigRimPresetRow RIG_RIM_PRESETS[20] = {
     // name                       Mast Sft  BSft Tint  Shdw  A  B   KEY g/k/wrap/b0                FILL                            RIM BG
     { "Subtle Edge",
+      "Crisp, restrained edge separation with a faint, tight wrap.",
       0.6f,
       0.5f,
       0.5f,
@@ -49,8 +52,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.f, 3.f, 0.35f, 0.f },
       { 0.f, 3.f, 0.35f, 0.f },
       { 1.0f, 4.0f, 0.25f, 0.10f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.00) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(0.50) },
+          { "CineRigRimWrapClamp", LLSD(2.00) }
+      } },
     { "Soft Portrait Wrap",
+      "Soft portrait rim with broad, gently blurred background light wrap.",
       1.0f,
       1.0f,
       0.8f,
@@ -61,8 +73,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.30f, 1.5f, 0.60f, -0.50f },
       { 0.25f, 1.5f, 0.70f, -0.50f },
       { 0.90f, 2.0f, 0.50f, -0.20f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.65) },
+          { "CineRigRimWrapWidth", LLSD(3.00) },
+          { "CineRigRimWrapBlur", LLSD(1.50) },
+          { "CineRigRimWrapSaturation", LLSD(0.65) },
+          { "CineRigRimWrapClamp", LLSD(4.00) }
+      } },
     { "Strong Backlight",
+      "Strong backlight with a narrow, controlled halo of background wrap.",
       1.6f,
       0.3f,
       0.35f,
@@ -73,8 +94,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.f, 3.f, 0.35f, 0.f },
       { 0.f, 3.f, 0.35f, 0.f },
       { 2.5f, 3.0f, 0.40f, 0.20f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.55) },
+          { "CineRigRimWrapWidth", LLSD(2.00) },
+          { "CineRigRimWrapBlur", LLSD(0.80) },
+          { "CineRigRimWrapSaturation", LLSD(0.70) },
+          { "CineRigRimWrapClamp", LLSD(6.00) }
+      } },
     { "Hair Shine",
+      "Crisp, fine hair highlights with a faint, tight wrap.",
       1.3f,
       0.15f,
       0.4f,
@@ -85,8 +115,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.40f, 6.0f, 0.10f, -0.30f },
       { 0.f, 3.f, 0.35f, 0.f },
       { 2.0f, 6.0f, 0.15f, 0.25f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.00) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(0.70) },
+          { "CineRigRimWrapClamp", LLSD(4.00) }
+      } },
     { "Silhouette Glow (any angle)",
+      "Broad all-angle silhouette glow with soft background light bleed.",
       1.2f,
       0.6f,
       0.01f,
@@ -97,8 +136,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 1.0f, 2.5f, 0.80f, -1.f },
       { 1.0f, 2.5f, 0.80f, -1.f },
       { 1.5f, 2.5f, 0.80f, -1.f },
-      { 0.8f, 2.5f, 0.80f, -1.f } },
+      { 0.8f, 2.5f, 0.80f, -1.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.80) },
+          { "CineRigRimWrapWidth", LLSD(3.50) },
+          { "CineRigRimWrapBlur", LLSD(1.80) },
+          { "CineRigRimWrapSaturation", LLSD(0.70) },
+          { "CineRigRimWrapClamp", LLSD(6.00) }
+      } },
     { "Neon / Stage",
+      "Crisp, saturated stage edges that preserve distinct light colours.",
       2.5f,
       0.1f,
       0.25f,
@@ -109,8 +157,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.8f, 5.0f, 0.20f, -0.60f },
       { 0.8f, 5.0f, 0.20f, -0.60f },
       { 3.0f, 5.0f, 0.30f, 0.10f },
-      { 2.0f, 5.0f, 0.30f, 0.10f } },
+      { 2.0f, 5.0f, 0.30f, 0.10f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.00) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(1.00) },
+          { "CineRigRimWrapClamp", LLSD(8.00) }
+      } },
     { "Dreamy Halo",
+      "Dreamy, broad halo with generous blurred background light wrap.",
       1.4f,
       1.0f,
       1.5f,
@@ -121,8 +178,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.5f, 0.75f, 0.90f, -0.80f },
       { 0.5f, 0.75f, 0.90f, -0.80f },
       { 2.0f, 0.75f, 0.90f, -0.60f },
-      { 0.6f, 0.75f, 0.90f, -0.60f } },
+      { 0.6f, 0.75f, 0.90f, -0.60f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(1.10) },
+          { "CineRigRimWrapWidth", LLSD(4.50) },
+          { "CineRigRimWrapBlur", LLSD(2.50) },
+          { "CineRigRimWrapSaturation", LLSD(0.60) },
+          { "CineRigRimWrapClamp", LLSD(6.00) }
+      } },
     { "Noir Kicker",
+      "Crisp, isolated noir kicker with deep shadows and a faint, tight wrap.",
       1.5f,
       0.2f,
       0.2f,
@@ -133,8 +199,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.f, 3.f, 0.35f, 0.f },
       { 0.f, 3.f, 0.35f, 0.f },
       { 2.2f, 5.0f, 0.10f, 0.45f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.00) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(0.30) },
+          { "CineRigRimWrapClamp", LLSD(2.00) }
+      } },
     { "Two-Sided Kick",
+      "Crisp bilateral kickers with clean separation on both sides.",
       1.4f,
       0.3f,
       0.3f,
@@ -145,8 +220,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.f, 3.f, 0.35f, 0.f },
       { 0.f, 3.f, 0.35f, 0.f },
       { 1.8f, 4.0f, 0.30f, 0.15f },
-      { 1.8f, 4.0f, 0.30f, 0.15f } },
+      { 1.8f, 4.0f, 0.30f, 0.15f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.50) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(0.70) },
+          { "CineRigRimWrapClamp", LLSD(4.00) }
+      } },
     { "Fashion Edge",
+      "Polished fashion edge with restrained soft portrait light wrap.",
       1.2f,
       0.4f,
       0.6f,
@@ -157,8 +241,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.9f, 2.5f, 0.50f, -1.f },
       { 0.6f, 2.5f, 0.50f, -1.f },
       { 1.2f, 3.0f, 0.40f, -0.30f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.35) },
+          { "CineRigRimWrapWidth", LLSD(2.00) },
+          { "CineRigRimWrapBlur", LLSD(1.00) },
+          { "CineRigRimWrapSaturation", LLSD(0.65) },
+          { "CineRigRimWrapClamp", LLSD(4.00) }
+      } },
     { "Sci-Fi Hologram",
+      "Luminous all-angle hologram shell with colourful background light wrap.",
       2.0f,
       0.0f,
       0.01f,
@@ -169,8 +262,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 1.0f, 1.5f, 1.0f, -1.f },
       { 1.0f, 1.5f, 1.0f, -1.f },
       { 1.5f, 1.5f, 1.0f, -1.f },
-      { 1.0f, 1.5f, 1.0f, -1.f } },
+      { 1.0f, 1.5f, 1.0f, -1.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.70) },
+          { "CineRigRimWrapWidth", LLSD(2.50) },
+          { "CineRigRimWrapBlur", LLSD(1.20) },
+          { "CineRigRimWrapSaturation", LLSD(1.00) },
+          { "CineRigRimWrapClamp", LLSD(6.00) }
+      } },
     { "Candle Glow",
+      "Gentle candlelit edge with warm, softly diffused background bleed.",
       1.0f,
       0.9f,
       0.9f,
@@ -181,8 +283,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.8f, 1.5f, 0.70f, -0.70f },
       { 0.5f, 1.5f, 0.70f, -0.70f },
       { 0.7f, 1.5f, 0.70f, -0.40f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.50) },
+          { "CineRigRimWrapWidth", LLSD(2.50) },
+          { "CineRigRimWrapBlur", LLSD(1.80) },
+          { "CineRigRimWrapSaturation", LLSD(0.80) },
+          { "CineRigRimWrapClamp", LLSD(4.00) }
+      } },
     { "Metal Sheen",
+      "Crisp metallic sheen preserving hard highlights with a faint, tight wrap.",
       1.3f,
       0.05f,
       0.5f,
@@ -193,8 +304,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 1.0f, 4.0f, 0.20f, -0.80f },
       { 0.6f, 4.0f, 0.20f, -0.80f },
       { 1.2f, 4.0f, 0.20f, -0.20f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.00) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(0.70) },
+          { "CineRigRimWrapClamp", LLSD(4.00) }
+      } },
     { "Skin Sheen",
+      "Subtle skin sheen with low-strength, soft background light wrap.",
       0.8f,
       0.7f,
       0.7f,
@@ -205,8 +325,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.7f, 2.0f, 0.50f, -0.60f },
       { 0.35f, 2.0f, 0.50f, -0.60f },
       { 0.8f, 2.5f, 0.40f, -0.10f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(2.00) },
+          { "CineRigRimWrapBlur", LLSD(1.20) },
+          { "CineRigRimWrapSaturation", LLSD(0.55) },
+          { "CineRigRimWrapClamp", LLSD(3.00) }
+      } },
     { "Soft Fill Wrap",
+      "Broad, softly blurred fill-side wrap for gentle edge separation.",
       0.9f,
       1.0f,
       1.2f,
@@ -217,8 +346,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.4f, 1.0f, 1.0f, -0.90f },
       { 0.9f, 1.0f, 1.0f, -0.90f },
       { 0.5f, 1.5f, 0.80f, -0.50f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.65) },
+          { "CineRigRimWrapWidth", LLSD(3.50) },
+          { "CineRigRimWrapBlur", LLSD(2.00) },
+          { "CineRigRimWrapSaturation", LLSD(0.65) },
+          { "CineRigRimWrapClamp", LLSD(4.00) }
+      } },
     { "Horror Edge",
+      "Crisp, hard horror kickers with dark terminators and a faint, tight wrap.",
       1.8f,
       0.2f,
       0.15f,
@@ -229,8 +367,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.f, 3.f, 0.35f, 0.f },
       { 0.f, 3.f, 0.35f, 0.f },
       { 1.5f, 6.0f, 0.10f, 0.35f },
-      { 2.5f, 6.0f, 0.10f, 0.35f } },
+      { 2.5f, 6.0f, 0.10f, 0.35f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.00) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(0.40) },
+          { "CineRigRimWrapClamp", LLSD(4.00) }
+      } },
     { "Moonlit Rim",
+      "Quiet moonlit separation with a narrow, softly diffused background wrap.",
       1.1f,
       0.5f,
       0.5f,
@@ -241,8 +388,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.f, 3.f, 0.35f, 0.f },
       { 0.f, 3.f, 0.35f, 0.f },
       { 1.6f, 3.5f, 0.30f, 0.30f },
-      { 0.5f, 3.5f, 0.30f, 0.30f } },
+      { 0.5f, 3.5f, 0.30f, 0.30f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.35) },
+          { "CineRigRimWrapWidth", LLSD(2.00) },
+          { "CineRigRimWrapBlur", LLSD(1.20) },
+          { "CineRigRimWrapSaturation", LLSD(0.50) },
+          { "CineRigRimWrapClamp", LLSD(3.00) }
+      } },
     { "Glass Shell",
+      "Crisp, thin glass-like shell preserving sharp surface contours.",
       1.6f,
       0.0f,
       0.01f,
@@ -253,12 +409,21 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 1.2f, 8.0f, 1.0f, -1.f },
       { 1.2f, 8.0f, 1.0f, -1.f },
       { 1.2f, 8.0f, 1.0f, -1.f },
-      { 1.2f, 8.0f, 1.0f, -1.f } },
+      { 1.2f, 8.0f, 1.0f, -1.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.00) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(0.50) },
+          { "CineRigRimWrapClamp", LLSD(4.00) }
+      } },
     // [TronT1] T1 contract section 5 -- linked from the Tron Legacy Cyan /
     // Ares Red look presets (ALTron::applyPreset). Never write
     // CineRigRimTronMode themselves: a Rig Rim preset is a lighting term,
     // the Tron look preset is what turns the tint on.
     { "Tron Suit Kick",
+      "Crisp suit kicker preserving the linked Tron look's clean luminous edges.",
       2.2f,
       0.5f,
       0.5f,
@@ -269,8 +434,17 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.6f, 5.0f, 0.20f, -0.60f },
       { 0.f, 3.f, 0.35f, 0.f },
       { 3.0f, 5.0f, 0.30f, 0.10f },
-      { 0.f, 3.f, 0.35f, 0.f } },
+      { 0.f, 3.f, 0.35f, 0.f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.00) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(1.00) },
+          { "CineRigRimWrapClamp", LLSD(6.00) }
+      } },
     { "Ares Red Backlight",
+      "Crisp bilateral backlight preserving the linked Ares look's saturated edges.",
       2.0f,
       0.5f,
       0.5f,
@@ -281,7 +455,15 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
       { 0.f, 3.f, 0.35f, 0.f },
       { 0.f, 3.f, 0.35f, 0.f },
       { 2.8f, 4.0f, 0.35f, 0.20f },
-      { 1.6f, 4.0f, 0.30f, 0.20f } },
+      { 1.6f, 4.0f, 0.30f, 0.20f },
+      {
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
+          { "CineRigRimWrapWidth", LLSD(1.50) },
+          { "CineRigRimWrapBlur", LLSD(0.50) },
+          { "CineRigRimWrapSaturation", LLSD(1.00) },
+          { "CineRigRimWrapClamp", LLSD(6.00) }
+      } },
 };
 static_assert(LL_ARRAY_SIZE(RIG_RIM_PRESETS) == 20, "Rig Rim preset count changed");
 
@@ -352,8 +534,8 @@ const RigRimFullPresetRow RIG_RIM_FULL_PRESETS[12] = {
           { "CineRigRimSilhouetteGap", LLSD(0.04) },
           { "CineRigRimSilhouetteSeedThreshold", LLSD(0.02) },
           { "CineRigRimSilhouetteSeedSoft", LLSD(0.3) },
-          { "CineRigRimWrapEnabled", LLSD(false) },
-          { "CineRigRimWrapStrength", LLSD(0.0) },
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
           { "CineRigRimWrapWidth", LLSD(1.0) },
           { "CineRigRimWrapBlur", LLSD(0.5) },
           { "CineRigRimWrapSaturation", LLSD(0.5) },
@@ -394,10 +576,10 @@ const RigRimFullPresetRow RIG_RIM_FULL_PRESETS[12] = {
           { "CineRigRimSilhouetteGap", LLSD(0.05) },
           { "CineRigRimSilhouetteSeedThreshold", LLSD(0.02) },
           { "CineRigRimSilhouetteSeedSoft", LLSD(0.4) },
-          { "CineRigRimWrapEnabled", LLSD(false) },
-          { "CineRigRimWrapStrength", LLSD(0.0) },
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
           { "CineRigRimWrapWidth", LLSD(1.0) },
-          { "CineRigRimWrapBlur", LLSD(0.0) },
+          { "CineRigRimWrapBlur", LLSD(0.3) },
           { "CineRigRimWrapSaturation", LLSD(0.7) },
           { "CineRigRimWrapClamp", LLSD(4.0) },
           { "CineRigRimShadow", LLSD(1.0) },
@@ -688,8 +870,8 @@ const RigRimFullPresetRow RIG_RIM_FULL_PRESETS[12] = {
           { "CineRigRimSilhouetteGap", LLSD(0.03) },
           { "CineRigRimSilhouetteSeedThreshold", LLSD(0.01) },
           { "CineRigRimSilhouetteSeedSoft", LLSD(0.25) },
-          { "CineRigRimWrapEnabled", LLSD(false) },
-          { "CineRigRimWrapStrength", LLSD(0.0) },
+          { "CineRigRimWrapEnabled", LLSD(true) },
+          { "CineRigRimWrapStrength", LLSD(0.25) },
           { "CineRigRimWrapWidth", LLSD(1.0) },
           { "CineRigRimWrapBlur", LLSD(0.5) },
           { "CineRigRimWrapSaturation", LLSD(0.6) },
@@ -833,6 +1015,10 @@ void applyRigRimPreset(const RigRimPresetRow& row)
     gSavedSettings.setF32("CineRigRimBgSharpness", row.mBg[1]);
     gSavedSettings.setF32("CineRigRimBgWrap", row.mBg[2]);
     gSavedSettings.setF32("CineRigRimBgBackBias", row.mBg[3]);
+    LLSD wrap_values = LLSD::emptyMap();
+    for (const auto& value : row.mWrapValues)
+        wrap_values[value.first] = value.second;
+    ALPresetLook::apply(ALPresetLook::owned(ALPresetLook::RIM), wrap_values);
 }
 void applyRigRimPreset(const RigRimFullPresetRow& row)
 {
@@ -863,6 +1049,8 @@ const std::vector<std::string>& ALRigRimController::presetNames()
 
 std::string ALRigRimController::presetDescription(const std::string& name)
 {
+    for (const RigRimPresetRow& row : RIG_RIM_PRESETS)
+        if (name == row.mName) return row.mDescription;
     for (const RigRimFullPresetRow& row : RIG_RIM_FULL_PRESETS)
         if (name == row.mName) return row.mDescription;
     return {};
