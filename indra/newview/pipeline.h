@@ -181,6 +181,7 @@ public:
     LLRenderTarget& getWaterDisTarget();
     LLRenderTarget& getWaterExclusionMaskTarget();
     void releasePrismLensBuffers();
+    void releasePrismLensLargeScratch();
     void releasePrismLensOutput(U32 slot);
     void releasePrismLensOutputs();
     bool ensurePrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle,
@@ -1397,7 +1398,29 @@ public:
     // size-keyed LRU and remains exactly 192x108 for its whole GL lifetime.
     PrismLensScratch  mPrismPreviewScratch;
     PrismLensScratch* mActivePrismLensScratch = nullptr;   // set only during a prism aux render
-    LLRenderTarget mPrismLensOutput[LLPrismLens::MAX_CAPTURES];
+    // Camera outputs have no depth or mipmaps. Exchange owned storage only
+    // after a replacement beauty has been produced; object addresses stay stable.
+    struct PrismLensOutput : LLRenderTarget
+    {
+        PrismLensOutput()
+        {
+            mGenerateMipMaps = LLTexUnit::TMG_NONE;
+            mMipLevels = 0;
+        }
+        void swapOutput(PrismLensOutput& other)
+        {
+            llassert(!isBoundInStack() && !other.isBoundInStack());
+            llassert(!mUseDepth && !other.mUseDepth);
+            llassert(mGenerateMipMaps == LLTexUnit::TMG_NONE &&
+                     other.mGenerateMipMaps == LLTexUnit::TMG_NONE);
+            std::swap(mResX, other.mResX);
+            std::swap(mResY, other.mResY);
+            mTex.swap(other.mTex);
+            mInternalFormat.swap(other.mInternalFormat);
+            std::swap(mFBO, other.mFBO);
+        }
+    };
+    PrismLensOutput mPrismLensOutput[LLPrismLens::MAX_CAPTURES];
     struct PrismProjectorPreparedFeed
     {
         LLPrismLens::ProjectorHandle mHandle;

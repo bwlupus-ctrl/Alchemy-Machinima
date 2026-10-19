@@ -890,8 +890,10 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         const F32 fov = skeleton ? bone.mFovDeg : camera.mFixedVerticalFovRad * RAD_TO_DEG;
         setValueIfChanged(control("vc_lens_equiv"), llformat("%.0f mm full frame - %.1f deg V",
             12.f / std::tan(llmax(1.f, fov) * DEG_TO_RAD * .5f), fov));
-        setValueIfChanged(control("vc_output_picture"), llformat("1024 x %d px (scale %.2f)",
-            ll_round(1024.f / llmax(.25f, camera.mOutputAspect)),
+        const auto picture = LLPrismLens::cameraPictureSize(camera.mOutputAspect,
+            LLPrismLens::captureOutputCapacity(capture->mSlot));
+        setValueIfChanged(control("vc_output_picture"), llformat("%u x %d px (scale %.2f)",
+            picture[0], S32(picture[1]),
             mModel.performance().mUserResolutionScaleCeiling));
         setValueIfChanged(control("vc_look_feeds"), llformat("%u bound face%s",
             capture->mDisplayCount, capture->mDisplayCount == 1 ? "" : "s"));

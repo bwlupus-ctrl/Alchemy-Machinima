@@ -4874,26 +4874,8 @@ public:
         // allocate additional targets; they apply Fit/Fill/Stretch at composite.
         const F32 aspect = capture.cameraData()->mSettings.mTestPattern
             ? 1.f : capture.cameraData()->mSettings.mOutputAspect;
-        F32 ideal_width = static_cast<F32>(required_width);
-        F32 ideal_height = static_cast<F32>(required_height);
-        if (ideal_width / ideal_height < aspect)
-        {
-            ideal_width = ideal_height * aspect;
-        }
-        else
-        {
-            ideal_height = ideal_width / aspect;
-        }
-        const F32 downscale = llmin(1.f, llmin(
-            static_cast<F32>(MAX_TARGET_EXTENT) / ideal_width,
-            static_cast<F32>(MAX_TARGET_EXTENT) / ideal_height));
-        ideal_width *= downscale;
-        ideal_height *= downscale;
-        const F32 upscale = llmax(1.f, llmax(
-            static_cast<F32>(MIN_TARGET_EXTENT) / ideal_width,
-            static_cast<F32>(MIN_TARGET_EXTENT) / ideal_height));
-        ideal_width *= upscale;
-        ideal_height *= upscale;
+        const auto target = LLPrismLens::cameraTargetSize(
+            required_width, required_height, aspect, outputCapacity(slot));
         PrismFrame& frame = capture.mFrame;
         frame.mFrame = gFrameCount;
         std::memcpy(frame.mMainViewport, viewport, sizeof(frame.mMainViewport));
@@ -4901,12 +4883,10 @@ public:
         frame.mResolutionScale = prismAppliedResolutionScale();
         frame.mTargetWidth = capture.cameraData()->mSettings.mTestPattern
             ? TEST_PATTERN_SIZE
-            : llclamp(static_cast<U32>(ll_round(ideal_width)),
-                      MIN_TARGET_EXTENT, MAX_TARGET_EXTENT);
+            : target[0];
         frame.mTargetHeight = capture.cameraData()->mSettings.mTestPattern
             ? TEST_PATTERN_SIZE
-            : llclamp(static_cast<U32>(ll_round(ideal_height)),
-                      MIN_TARGET_EXTENT, MAX_TARGET_EXTENT);
+            : target[1];
         frame.mPrepared = true;
         return true;
     }
@@ -5869,8 +5849,7 @@ public:
             settings.mFeedEV < -6.f || settings.mFeedEV > 6.f ||
             !std::isfinite(settings.mLampPowerEV) ||
             settings.mLampPowerEV < -2.f || settings.mLampPowerEV > 8.f ||
-            (settings.mResolution != 256 && settings.mResolution != 512 &&
-             settings.mResolution != 1024) ||
+            !LLPrismLens::validProjectorResolution(settings.mResolution) ||
             (settings.mNoSignal != LLPrismLens::ENoSignal::OWN_COOKIE &&
              settings.mNoSignal != LLPrismLens::ENoSignal::BLACK &&
              settings.mNoSignal != LLPrismLens::ENoSignal::WHITE) ||
@@ -5947,9 +5926,10 @@ public:
             projector.mCaptureSlot = home >= 0 ? static_cast<U32>(home) : LLPrismLens::MAX_CAPTURES;
             projector.mCaptureGeneration = home >= 0 ? projector.mHomeCapture.mGeneration : 0;
             if (home >= 0) ++mLenses[home].mProjectorCount;
-            gPipeline.dirtyPrismProjectorFeed(projector.mHandle);
         }
-        mProjectors[slot].mGateSubscribed = subscribed;
+        LLPrismLens::updateProjectorGateSubscription(
+            mProjectors[slot].mGateSubscribed, subscribed,
+            [&]() { gPipeline.dirtyPrismProjectorFeed(mProjectors[slot].mHandle); });
         if (subscribed) routeGateDisplays();
         ++mRevision;
         if (reason) reason->clear();
@@ -6551,7 +6531,8 @@ public:
                     // reject an unavailable two-sampler variant before fading.
                     const U32 permutation = gPipeline.colorCorrectPermutation(true, true);
                     const auto& shader = projector.mSettings.mLook.hasFeedEffects() ? gPrismProjectorLookProgram[permutation] : gPrismProjectorFeedProgram[permutation];
-                    input.destinations.add(projector.mSettings.mResolution, projector.mSettings.mResolution, true,
+                    const U32 resolution = LLPrismLens::projectorRenderResolution(projector.mSettings, true);
+                    input.destinations.add(resolution, resolution, true,
                         shader.isComplete() && shader.getTextureChannel(LLShaderMgr::PRISM_GATE_MAP) >= 0);
                 }
         return input;
@@ -6909,8 +6890,8 @@ public:
             }
             if (!active) continue;
             demanded = true;
-            U32 width = projector.mSettings.mResolution;
-            U32 height = projector.mSettings.mResolution;
+            U32 width = LLPrismLens::projectorRenderResolution(projector.mSettings, projector.mGateSubscribed);
+            U32 height = width;
             LLVOVolume* volume = projector.mTarget ==
                     LLPrismLens::EProjectorTarget::RIG_LIGHT
                 ? resolveRigProjector(projector.mRigSlot, projector.mRigLight)
@@ -6935,6 +6916,30 @@ public:
             required_height = llmax(required_height, height);
         }
         return demanded;
+    }
+
+    U32 outputCapacity(U32 slot) const
+    {
+        if (slot >= LLPrismLens::MAX_CAPTURES || !mLenses[slot].mOccupied ||
+            !mLenses[slot].isCameraFeed()) return 1024;
+        return LLPrismLens::projectorOutputCapacity(mProjectors, slot,
+            mLenses[slot].mHandle.mGeneration);
+    }
+
+    void releaseUnusedProjectorCapacity()
+    {
+        bool large_camera = false;
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        {
+            const U32 capacity = outputCapacity(slot);
+            large_camera |= capacity == 2048;
+            LLPrismLens::requestProjectorOutputCapacity(
+                gPipeline.mPrismLensOutput[slot], capacity, [&]()
+                {
+                    mLenses[slot].mNextDueTime = 0.;
+                });
+        }
+        if (!large_camera) gPipeline.releasePrismLensLargeScratch();
     }
 
     bool hasProjectorBinding(U32 capture_slot) const
@@ -7027,6 +7032,8 @@ public:
         }
         feed.mSettings = projector.mSettings;
         if (projector.mGateSubscribed && mGate.mProposalToken) gateProjectorSettings(projector.mHandle, feed.mSettings);
+        feed.mSettings.mResolution = LLPrismLens::projectorRenderResolution(
+            feed.mSettings, projector.mGateSubscribed);
         if (capture.isMedia())
         {
             if (auto* volume = dynamic_cast<LLVOVolume*>(gObjectList.findObject(projector.mObjectId)))
@@ -7065,6 +7072,8 @@ public:
             feed.mProjector = projector.mHandle;
             feed.mGateSubscribed = projector.mGateSubscribed;
             feed.mSettings = projector.mSettings;
+            feed.mSettings.mResolution = LLPrismLens::projectorRenderResolution(
+                feed.mSettings, projector.mGateSubscribed);
             if (projector.mCaptureSlot >= LLPrismLens::MAX_CAPTURES)
                 return true;
             PrismInstance& capture = mLenses[projector.mCaptureSlot];
@@ -7881,7 +7890,7 @@ public:
             settings["lamp_power_ev"] = projector.mSettings.mLampPowerEV;
             settings["follow_main_exposure"] =
                 projector.mSettings.mFollowMainExposure;
-            settings["resolution"] = projector.mSettings.mResolution;
+            LLPrismLens::projectorResolutionToLLSD(settings, projector.mSettings);
             switch (projector.mSettings.mNoSignal)
             {
                 case LLPrismLens::ENoSignal::BLACK:
@@ -8754,8 +8763,8 @@ public:
                 return fail("Invalid Prism projector lamp power.");
             parsed.mSettings.mFollowMainExposure =
                 settings["follow_main_exposure"].asBoolean();
-            parsed.mSettings.mResolution =
-                static_cast<U16>(settings["resolution"].asInteger());
+            if (!LLPrismLens::projectorResolutionFromLLSD(settings, parsed.mSettings))
+                return fail("Invalid Prism projector resolution.");
             const std::string no_signal = settings["no_signal"].asString();
             if (no_signal == "own_cookie")
                 parsed.mSettings.mNoSignal = LLPrismLens::ENoSignal::OWN_COOKIE;
@@ -9179,7 +9188,10 @@ private:
             { width = llmax(width, display.mFrame.mTargetWidth); height = llmax(height, display.mFrame.mTargetHeight); }
         for (const auto& projector : mProjectors)
             if (projector.mOccupied && projector.mGateSubscribed)
-            { width = llmax(width, projector.mSettings.mResolution); height = llmax(height, projector.mSettings.mResolution); }
+            {
+                const U32 resolution = LLPrismLens::projectorRenderResolution(projector.mSettings, true);
+                width = llmax(width, resolution); height = llmax(height, resolution);
+            }
         if ((!width || !height) && LLPrismPreviewService::instance().isDemanded(mLenses[index].mHandle))
             width = height = 512;
         auto& slot = mLenses[index];
@@ -10166,6 +10178,7 @@ public:
         if (--sDepth != 0) return;
         PrismLensRegistry& registry = PrismLensRegistry::instance();
         const U64 configuration = registry.configurationRevision();
+        if (configuration != sConfigurationBefore) registry.releaseUnusedProjectorCapacity();
         const F64 now = LLTimer::getTotalSeconds();
         const bool rate_limited_due =
             now - sLastRateLimitedEmission >= 0.1;
@@ -11208,6 +11221,11 @@ bool getDesignation(U32 slot, Designation& designation)
     return PrismLensRegistry::instance().getDesignation(slot, designation);
 }
 
+U32 captureOutputCapacity(U32 slot)
+{
+    return PrismLensRegistry::instance().outputCapacity(slot);
+}
+
 void onRenderTargetsReleased()
 {
     ScopedPrismRevisionSignals signals;
@@ -11268,6 +11286,7 @@ void renderAuxiliaryView()
     }
 
     registry.updateGate(LLTimer::getTotalSeconds());
+    registry.releaseUnusedProjectorCapacity();
 
     struct GatePublicationScope
     {
@@ -11356,21 +11375,28 @@ void renderAuxiliaryView()
             if (capture->cameraData()->mSettings.mTestPattern)
             {
                 LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam test pattern upload");
-                if (!gPipeline.allocatePrismLensOutput(
-                        slot, TEST_PATTERN_SIZE, TEST_PATTERN_SIZE))
+                LLPipeline::PrismLensOutput spare;
+                const bool needs_upload = !capture->mHasOutput ||
+                    gPipeline.mPrismLensOutput[slot].getWidth() != registry.outputCapacity(slot);
+                if (!LLPrismLens::produceProjectorOutput(
+                        gPipeline.mPrismLensOutput[slot], spare, registry.outputCapacity(slot),
+                        [](auto& target, U32 capacity)
+                        { return target.allocate(capacity, capacity, GL_RGBA16F); },
+                        [&](auto& output)
+                        {
+                            if (needs_upload)
+                            {
+                                gGL.getTexUnit(0)->bindManual(output.getUsage(), output.getTexture(0));
+                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
+                                    TEST_PATTERN_SIZE, TEST_PATTERN_SIZE, GL_RGBA,
+                                    GL_UNSIGNED_BYTE, testPatternPixels());
+                                gGL.getTexUnit(0)->unbind(output.getUsage());
+                            }
+                            return true;
+                        }))
                 {
-                    registry.invalidateOutput(slot, 30);
+                    registry.deferRetry(slot, 30);
                     return false;
-                }
-                if (!capture->mHasOutput)
-                {
-                    LLRenderTarget& output = gPipeline.mPrismLensOutput[slot];
-                    gGL.getTexUnit(0)->bindManual(output.getUsage(),
-                                                  output.getTexture(0));
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-                        TEST_PATTERN_SIZE, TEST_PATTERN_SIZE, GL_RGBA,
-                        GL_UNSIGNED_BYTE, testPatternPixels());
-                    gGL.getTexUnit(0)->unbind(output.getUsage());
                 }
                 produced = true;
                 return true;
@@ -11570,17 +11596,6 @@ void renderAuxiliaryView()
             // exact height, keeping cull, pool ordering, water, and fog coherent.
             gPipeline.setPrismAuxiliaryWaterHeight(lens_camera.getOrigin());
 
-            // Delay any growth that replaces a retained output until all projection
-            // validation has succeeded. An early degenerate-view return must leave
-            // the previous cached beauty intact.
-            if (!gPipeline.allocatePrismLensOutput(slot, output_width, output_height))
-            {
-                // Avoid starving the other retained lenses if VRAM allocation keeps
-                // failing for this slot.
-                registry.invalidateOutput(slot, 30);
-                return false;
-            }
-
             LLViewerCamera::instance() = lens_camera;
             set_current_projection(prism_projection);
             set_current_modelview(prism_modelview);
@@ -11760,11 +11775,24 @@ void renderAuxiliaryView()
             // early-out did not. Always copy the beauty attachment explicitly so
             // every consumer (projectors, monitors, face displays) is independent
             // of the shafts setting.
-            gPipeline.mPrismLensOutput[slot].copyContentsFromAttachment(
-                rt.screen, 0,
-                0, 0, render_width, render_height,
-                0, 0, output_width, output_height,
-                GL_COLOR_BUFFER_BIT, copy_filter);
+            LLPipeline::PrismLensOutput spare;
+            if (!LLPrismLens::produceProjectorOutput(
+                    gPipeline.mPrismLensOutput[slot], spare,
+                    registry.outputCapacity(slot),
+                    [](auto& target, U32 capacity)
+                    { return target.allocate(capacity, capacity, GL_RGBA16F); },
+                    [&](auto& target)
+                    {
+                        target.copyContentsFromAttachment(rt.screen, 0,
+                            0, 0, render_width, render_height,
+                            0, 0, output_width, output_height,
+                            GL_COLOR_BUFFER_BIT, copy_filter);
+                        return true;
+                    }))
+            {
+                registry.deferRetry(slot, 30);
+                return false;
+            }
             produced = true;
             return true;
         };
@@ -12681,8 +12709,8 @@ bool buildProjectorCompositeState(const ProjectorDefinition& authored,
     if (scale.mV[VX] <= F_ALMOST_ZERO || scale.mV[VY] <= F_ALMOST_ZERO)
         return false;
     const F32 projector_aspect = scale.mV[VX] / scale.mV[VY];
-    target_width = definition.mSettings.mResolution;
-    target_height = definition.mSettings.mResolution;
+    target_width = projectorRenderResolution(definition.mSettings, authored.mGateSubscribed);
+    target_height = target_width;
 
     PrismDisplay display;
     display.mGateSubscribed = definition.mGateSubscribed;

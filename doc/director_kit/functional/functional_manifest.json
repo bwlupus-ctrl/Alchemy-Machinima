@@ -48,7 +48,7 @@
   "pages": 37,
   "settings_declared": 3660,
   "xui_files": 842,
-  "rim_presets": 32,
+  "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
    "CineRigRimRoughnessSoften",
@@ -138095,6 +138095,10 @@
     {
      "label": "1024",
      "value": "1024"
+    },
+    {
+     "label": "2048",
+     "value": "2048"
     }
    ],
    "binding": "none",
@@ -233286,6 +233290,7 @@
    "vc_proj_resolution_item_0",
    "vc_proj_resolution_item_1",
    "vc_proj_resolution_item_2",
+   "vc_proj_resolution_item_3",
    "vc_proj_rotate",
    "vc_proj_rotate_item_0",
    "vc_proj_rotate_item_1",

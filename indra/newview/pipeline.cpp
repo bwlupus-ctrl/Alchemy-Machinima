@@ -1741,7 +1741,7 @@ bool LLPipeline::acquirePrismLensScratch(U32 width, U32 height)
     // polluted by a sibling capture's stale texels. Packs are reused across
     // frames by size (no per-frame realloc for a steady capture set) and the
     // pool is bounded to MAX_CAPTURES entries with LRU eviction.
-    constexpr U32 MAX_SCRATCH_EXTENT = 1024;
+    constexpr U32 MAX_SCRATCH_EXTENT = 2048;
 
     // Never leave the active pointer aimed at an entry this call may release
     // or evict below; it is re-set only on success.
@@ -1889,7 +1889,7 @@ bool LLPipeline::allocatePrismLensOutput(U32 slot, U32 width, U32 height)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
 
-    constexpr U32 PRISM_OUTPUT_CAPACITY = 1024;
+    const U32 PRISM_OUTPUT_CAPACITY = LLPrismLens::captureOutputCapacity(slot);
 
     if (slot >= LLPrismLens::MAX_CAPTURES || width == 0 || height == 0 ||
         width > PRISM_OUTPUT_CAPACITY || height > PRISM_OUTPUT_CAPACITY)
@@ -1898,22 +1898,9 @@ bool LLPipeline::allocatePrismLensOutput(U32 slot, U32 width, U32 height)
     }
 
     LLRenderTarget& output = mPrismLensOutput[slot];
-    if (output.isComplete())
-    {
-        // Outputs are lifetime-fixed at maximum capacity. The producer owns
-        // the logical copy extent and publishes its texture-region transform.
-        return output.getWidth() == PRISM_OUTPUT_CAPACITY &&
-               output.getHeight() == PRISM_OUTPUT_CAPACITY;
-    }
-
-    // Allocate once, lazily, before this capture can own a valid publication.
-    // There is no release-before-allocate path, so a subsequent logical-size
-    // change can never destroy a retained frame shared by sibling displays.
-    return output.allocate(PRISM_OUTPUT_CAPACITY, PRISM_OUTPUT_CAPACITY,
-                           GL_RGBA16F) &&
-           output.isComplete() &&
-           output.getWidth() == PRISM_OUTPUT_CAPACITY &&
-           output.getHeight() == PRISM_OUTPUT_CAPACITY;
+    // Legacy outputs remain lifetime-fixed; only a 2048 consumer changes capacity.
+    return LLPrismLens::ensureProjectorOutputCapacity(output, PRISM_OUTPUT_CAPACITY,
+        [&output](U32 capacity) { return output.allocate(capacity, capacity, GL_RGBA16F); });
 }
 
 LLRenderTarget& LLPipeline::getWaterDisTarget()
@@ -1966,6 +1953,16 @@ void LLPipeline::releasePrismLensBuffers()
     mActivePrismLensScratch = nullptr;
 }
 
+void LLPipeline::releasePrismLensLargeScratch()
+{
+    for (PrismLensScratch& entry : mPrismLensScratchPool)
+        if (entry.width > 1024 || entry.height > 1024)
+        {
+            if (mActivePrismLensScratch == &entry) mActivePrismLensScratch = nullptr;
+            release_prism_scratch_entry(entry);
+        }
+}
+
 void LLPipeline::releasePrismLensOutput(U32 slot)
 {
     if (slot < LLPrismLens::MAX_CAPTURES)
@@ -1987,7 +1984,7 @@ bool LLPipeline::ensurePrismProjectorFeed(
     const LLPrismLens::ProjectorHandle& handle, U32 width, U32 height, bool media)
 {
     if (handle.mId.isNull() || handle.mGeneration == 0 || width == 0 ||
-        height == 0 || width > 1024 || height > 1024)
+        height == 0 || width > 2048 || height > 2048)
     {
         return false;
     }
@@ -2058,6 +2055,22 @@ void LLPipeline::dirtyPrismProjectorFeed(
         if (prepared.mHandle.mId == handle.mId &&
             prepared.mHandle.mGeneration == handle.mGeneration)
         {
+            // Configuration cleanup must not depend on getProjectorFeed: an
+            // offline source can still own an oversized mipmapped cookie.
+            const auto snapshot = LLPrismLens::registrySnapshot();
+            for (U32 i = 0; i < snapshot.mProjectorCount; ++i)
+            {
+                const auto& definition = snapshot.mProjectors[i];
+                if (definition.mHandle.mId == handle.mId &&
+                    definition.mHandle.mGeneration == handle.mGeneration &&
+                    LLPrismLens::releaseOversizedProjectorCookie(
+                        prepared.mTarget->getWidth(), prepared.mTarget->getHeight(),
+                        definition.mSettings, definition.mGateSubscribed))
+                {
+                    releasePrismProjectorFeed(handle);
+                    return;
+                }
+            }
             // Keep the last good cookie bound until the retained capture is
             // recomposited. In particular, do not invalidate or reallocate it.
             prepared.mDirty = true;

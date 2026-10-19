@@ -2977,7 +2977,7 @@ if (BUILD_TESTING)
   )
 
   LL_ADD_INTEGRATION_TEST(llprismprojector
-    ""
+    "llprismgate.cpp"
     "${test_libs}"
     "${test_project}"
   )

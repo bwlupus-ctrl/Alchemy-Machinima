@@ -593,6 +593,11 @@ struct ProjectorLook
     }
 };
 
+// Projector cookie sizes accepted by the control and scene persistence.
+inline bool validProjectorResolution(S32 resolution)
+{
+    return resolution == 256 || resolution == 512 || resolution == 1024 || resolution == 2048;
+}
 struct ProjectorSettings
 {
     EFitMode mFitMode = EFitMode::FIT;
@@ -615,6 +620,124 @@ struct ProjectorSettings
         return isLampPowerIdentity() ? 1.f : std::exp2(mLampPowerEV);
     }
 };
+
+inline bool projectorResolutionFromLLSD(const LLSD& data, ProjectorSettings& settings)
+{
+    if (!data.has("resolution") || !data["resolution"].isInteger() ||
+        !validProjectorResolution(data["resolution"].asInteger())) return false;
+    settings.mResolution = static_cast<U16>(data["resolution"].asInteger());
+    return true;
+}
+inline void projectorResolutionToLLSD(LLSD& data, const ProjectorSettings& settings)
+{
+    data["resolution"] = settings.mResolution;
+}
+
+// The old Gate retains HEAD's 1024 demand and cookie size.
+inline U32 projectorRenderResolution(const ProjectorSettings& settings, bool gate_subscribed)
+{
+    return gate_subscribed ? llmin(U32(settings.mResolution), 1024u) : settings.mResolution;
+}
+
+// Only a projector fed by its own camera can raise that camera's capacity.
+template<typename ProjectorContainer>
+U32 projectorOutputCapacity(const ProjectorContainer& projectors, U32 slot,
+                            U64 generation)
+{
+    for (const auto& projector : projectors)
+        if (projector.mOccupied && projector.mSettings.mResolution == 2048 &&
+            !projector.mGateSubscribed && projector.mCaptureSlot == slot &&
+            projector.mCaptureGeneration == generation) return 2048;
+    return 1024;
+}
+// HEAD's camera sizing arithmetic, with only the consumer-specific cap varied.
+inline std::array<U32, 2> cameraTargetSize(U32 required_width, U32 required_height,
+                                         F32 aspect, U32 camera_cap)
+{
+    F32 ideal_width = static_cast<F32>(required_width);
+    F32 ideal_height = static_cast<F32>(required_height);
+    if (ideal_width / ideal_height < aspect)
+    {
+        ideal_width = ideal_height * aspect;
+    }
+    else
+    {
+        ideal_height = ideal_width / aspect;
+    }
+    const F32 downscale = llmin(1.f, llmin(
+        static_cast<F32>(camera_cap) / ideal_width,
+        static_cast<F32>(camera_cap) / ideal_height));
+    ideal_width *= downscale;
+    ideal_height *= downscale;
+    const F32 upscale = llmax(1.f, llmax(
+        static_cast<F32>(64u) / ideal_width,
+        static_cast<F32>(64u) / ideal_height));
+    ideal_width *= upscale;
+    ideal_height *= upscale;
+    return { llclamp(static_cast<U32>(ll_round(ideal_width)), 64u, camera_cap),
+             llclamp(static_cast<U32>(ll_round(ideal_height)), 64u, camera_cap) };
+}
+
+// Capacity changes request a render; the held picture survives until publication.
+template<typename Output, typename Request>
+void requestProjectorOutputCapacity(Output& output, U32 capacity, Request request)
+{
+    if (output.isComplete() && output.getWidth() != capacity) request();
+}
+
+// Produce into a spare on size changes, then atomically replace the held image.
+template<typename Output, typename Allocate, typename Produce>
+bool produceProjectorOutput(Output& output, Output& spare, U32 capacity,
+                            Allocate allocate, Produce produce)
+{
+    const bool replace = !output.isComplete() || output.getWidth() != capacity ||
+        output.getHeight() != capacity;
+    Output& target = replace ? spare : output;
+    if (replace && (!allocate(target, capacity) || !target.isComplete() ||
+        target.getWidth() != capacity || target.getHeight() != capacity)) return false;
+    if (!produce(target)) return false;
+    if (replace) output.swapOutput(spare);
+    return true;
+}
+
+// Publish the new subscription before cleanup reads the registry snapshot.
+template<typename DirtyFeed>
+void updateProjectorGateSubscription(bool& gate_subscribed, bool subscribed,
+                                     DirtyFeed dirty_feed)
+{
+    gate_subscribed = subscribed;
+    dirty_feed();
+}
+
+inline bool releaseOversizedProjectorCookie(U32 width, U32 height,
+                                            const ProjectorSettings& settings,
+                                            bool gate_subscribed)
+{
+    const U32 cap = projectorRenderResolution(settings, gate_subscribed);
+    return (width > 1024 || height > 1024) && (width > cap || height > cap);
+}
+
+// Preserve HEAD's Picture text at the legacy capacity.
+inline std::array<U32, 2> cameraPictureSize(F32 aspect, U32 capacity)
+{
+    aspect = llmax(.25f, aspect);
+    if (capacity == 1024) return {1024, U32(ll_round(1024.f / aspect))};
+    return cameraTargetSize(capacity, capacity, aspect, capacity);
+}
+
+// Allocation seam shared by the renderer and the projector contract tests.
+template<typename Output, typename Allocate>
+bool ensureProjectorOutputCapacity(Output& output, U32 capacity, Allocate allocate)
+{
+    if (output.isComplete())
+    {
+        if (output.getWidth() == capacity && output.getHeight() == capacity) return true;
+        output.release();
+    }
+    return allocate(capacity) && output.isComplete() &&
+        output.getWidth() == capacity && output.getHeight() == capacity;
+}
+U32 captureOutputCapacity(U32 slot);
 
 inline LLSD projectorLampPowerToLLSD(const ProjectorSettings& settings)
 {

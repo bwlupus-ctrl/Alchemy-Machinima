@@ -7,6 +7,7 @@
 
 #include "../test/lltut.h"
 #include "../llprismlens.h"
+#include "../llprismgate.h"
 #include "../alvcamautovol.h"
 #include "../alflareenergy.h"
 #include "../alvcammediafilelifecycle.h"
@@ -1046,4 +1047,263 @@ template<> template<> void prism_projector_object::test<43>()
                 ensure_equals(resumes, pending_play && !released_player ? 1u : 0u);
             }
 }
+
+template<> template<> void prism_projector_object::test<44>()
+{
+    using namespace LLPrismLens;
+    set_test_name("projector resolutions including 2048 round-trip through scene persistence");
+    for (S32 resolution : {256,512,1024,2048})
+    {
+        ProjectorSettings settings; settings.mResolution = resolution;
+        LLSD data; projectorResolutionToLLSD(data, settings);
+        ProjectorSettings loaded;
+        ensure(projectorResolutionFromLLSD(data, loaded));
+        ensure_equals(loaded.mResolution, U16(resolution));
+    }
+    for (S32 invalid : {-1,0,255,1025,4096,67584})
+    {
+        ProjectorSettings settings; LLSD data; data["resolution"] = invalid;
+        ensure(!projectorResolutionFromLLSD(data, settings));
+        ensure_equals(settings.mResolution, U16(512));
+    }
+    ProjectorSettings settings; LLSD data; data["resolution"] = "2048";
+    ensure(!projectorResolutionFromLLSD(data, settings));
+    ensure(!projectorResolutionFromLLSD(LLSD::emptyMap(), settings));
+}
+
+template<> template<> void prism_projector_object::test<45>()
+{
+    using namespace LLPrismLens;
+    set_test_name("2048 capacity is lazy, per consumer camera, and released after the last consumer");
+    struct Binding
+    {
+        bool mOccupied = false;
+        U32 mCaptureSlot = 0;
+        U64 mCaptureGeneration = 7;
+        bool mGateSubscribed = false;
+        ProjectorSettings mSettings;
+    };
+    struct Output
+    {
+        U32 size = 0, allocations = 0, releases = 0, picture = 0;
+        void swapOutput(Output& other) { std::swap(size, other.size); std::swap(picture, other.picture); }
+        bool isComplete() const { return size != 0; }
+        U32 getWidth() const { return size; }
+        U32 getHeight() const { return size; }
+        void release() { size = 0; ++releases; }
+    } output;
+    std::array<Binding, 2> projectors{};
+    const auto capacity = [&](U32 slot)
+    { return projectorOutputCapacity(projectors, slot, 7); };
+    const auto release_frame = [&]()
+    { requestProjectorOutputCapacity(output, capacity(0), [&]() { /* schedule only */ }); };
+    const auto allocate = [&]()
+    {
+        Output spare;
+        return produceProjectorOutput(output, spare, capacity(0), [&](Output& target, U32 size)
+        { target.size = size; ++output.allocations; return true; },
+        [&](Output& target) { target.picture = 40 + output.allocations; return true; });
+    };
+    ensure_equals("no eager allocation", output.allocations, 0u);
+    ensure_equals(capacity(0), 1024u);
+    ensure(allocate());
+    projectors[0].mOccupied = true;
+    for (U16 resolution : {256, 512, 1024})
+    {
+        projectors[0].mSettings.mResolution = resolution;
+        ensure_equals("legacy camera cap matches HEAD", capacity(0), 1024u);
+        ensure(allocate());
+        ensure_equals("legacy size changes reuse HEAD's allocation", output.allocations, 1u);
+        ensure_equals(output.releases, 0u);
+    }
+    projectors[0].mSettings.mResolution = 2048;
+    ensure_equals(capacity(0), 2048u);
+    ensure_equals("unrelated camera stays at HEAD capacity", capacity(1), 1024u);
+    ensure_equals("stale capture generation gets no capacity",
+                  projectorOutputCapacity(projectors, 0, 8), 1024u);
+    for (U32 frame = 0; frame < 300; ++frame)
+    {
+        release_frame(); // Offline: no render can be attempted.
+        ensure_equals("growth keeps held 1024 picture", output.size, 1024u);
+        ensure_equals(output.picture, 41u);
+        ensure_equals(output.allocations, 1u);
+    }
+    Output failed_spare;
+    ensure(!produceProjectorOutput(output, failed_spare, capacity(0),
+        [](Output&, U32) { return false; }, [](Output&) { return true; }));
+    ensure_equals("allocation failure keeps held output", output.size, 1024u);
+    ensure_equals(output.picture, 41u);
+    ensure(!produceProjectorOutput(output, failed_spare, capacity(0),
+        [](Output& target, U32 size) { target.size = size; return true; },
+        [](Output&) { return false; }));
+    ensure_equals("failed render keeps held output", output.size, 1024u);
+    ensure_equals(output.picture, 41u);
+    ensure(allocate());
+    ensure_equals("first successful render swaps capacity", output.size, 2048u);
+    ensure_equals("first successful render publishes the replacement picture", output.picture, 42u);
+    const U32 releases_before = output.releases;
+    for (U32 frame = 0; frame < 300; ++frame)
+    {
+        release_frame();
+        ensure_equals("per-frame release retains 2048 output", output.size, 2048u);
+        ensure(allocate());
+    }
+    ensure_equals("per-frame release never frees a live consumer's output", output.releases, releases_before);
+    ensure_equals(output.size, 2048u);
+    ensure_equals("steady 2048 does not reallocate", output.allocations, 2u);
+    projectors[1] = projectors[0];
+    projectors[0].mOccupied = false;
+    ensure(allocate());
+    ensure_equals("second consumer retains capacity", output.size, 2048u);
+    projectors[1].mOccupied = false;
+    release_frame();
+    ensure_equals("offline removal retains held output until replacement", output.size, 2048u);
+    ensure_equals(output.allocations, 2u);
+    ensure(allocate());
+    ensure_equals("last consumer releases extra capacity", output.size, 1024u);
+    ensure_equals(output.allocations, 3u);
+    ensure_equals(output.releases, 0u);
+
+    projectors[0].mOccupied = true;
+    projectors[0].mGateSubscribed = true;
+    ensure_equals("Gate Program keeps HEAD capacity", capacity(0), 1024u);
+    ensure_equals("Gate incoming keeps HEAD capacity", capacity(1), 1024u);
+    ensure_equals("Gate 2048 cookie clamps rather than refusing", projectorRenderResolution(projectors[0].mSettings, true), 1024u);
+    ensure(allocate());
+    ensure_equals(output.size, 1024u);
+    ensure_equals("Gate subscription never allocates large output", output.allocations, 3u);
+    projectors[0].mGateSubscribed = false;
+    ensure(allocate());
+    projectors[0].mCaptureSlot = 1;
+    release_frame();
+    ensure_equals("offline reassignment retains old camera picture", output.size, 2048u);
+    ensure_equals(capacity(1), 2048u);
+    projectors[0].mCaptureSlot = 0;
+    ensure(allocate());
+    projectors[0].mSettings.mResolution = 1024;
+    release_frame();
+    ensure_equals("offline lowering retains held output", output.size, 2048u);
+    ensure_equals(capacity(0), 1024u);
+    ensure(allocate());
+    ensure_equals("first render after lowering returns to HEAD capacity", output.size, 1024u);
+}
+
+template<> template<> void prism_projector_object::test<46>()
+{
+    using namespace LLPrismLens;
+    set_test_name("Gate 2048 projector uses HEAD cookie dimensions and fade qualification");
+    ProjectorSettings settings; settings.mResolution = 2048;
+    const U32 resolution = projectorRenderResolution(settings, true);
+    ensure_equals(resolution, 1024u);
+    GateFadeDemand budget;
+    for (U32 pass = 0; pass < 8; ++pass)
+    {
+        budget.add(resolution, resolution, true);
+        ensure(budget.fits());
+    }
+    ensure_equals("HEAD eight-cookie pixel budget", budget.pixels, U64(8ULL * 1024 * 1024));
+    budget.add(1, 1, true); ensure(!budget.fits());
+    GateFadeDemand oversized;
+    oversized.add(2048, 2048, true); ensure(!oversized.fits());
+    GateFadeDemand variant;
+    variant.add(resolution, resolution, true, false); ensure(!variant.fits());
+    ensure_equals("This camera retains authored 2048", projectorRenderResolution(settings, false), 2048u);
+    for (U16 legacy : {256, 512, 1024})
+    {
+        settings.mResolution = legacy;
+        ensure_equals("legacy Gate size unchanged", projectorRenderResolution(settings, true), U32(legacy));
+    }
+}
+
+template<> template<> void prism_projector_object::test<47>()
+{
+    using namespace LLPrismLens;
+    set_test_name("legacy camera render sizes match HEAD and 2048 doubles the 1024 axes");
+    const U32 resolutions[] = {256, 512, 1024};
+    const U32 wide_width[] = {455, 910, 1024};
+    const U32 wide_height[] = {256, 512, 576};
+    for (U32 i = 0; i < 3; ++i)
+    {
+        const U32 resolution = resolutions[i];
+        const auto square = cameraTargetSize(resolution, resolution, 1.f, 1024);
+        ensure_equals(square[0], resolution); ensure_equals(square[1], resolution);
+        const auto wide = cameraTargetSize(resolution, resolution, 16.f / 9.f, 1024);
+        ensure_equals(wide[0], wide_width[i]); ensure_equals(wide[1], wide_height[i]);
+        const auto portrait = cameraTargetSize(resolution, resolution, 9.f / 16.f, 1024);
+        ensure_equals(portrait[0], wide_height[i]); ensure_equals(portrait[1], wide_width[i]);
+    }
+    const auto legacy = cameraTargetSize(1024, 1024, 16.f / 9.f, 1024);
+    const auto large = cameraTargetSize(2048, 2048, 16.f / 9.f, 2048);
+    ensure_equals(large[0], 2 * legacy[0]); ensure_equals(large[1], 2 * legacy[1]);
+    const auto display = cameraTargetSize(4096, 4096, 16.f / 9.f, 1024);
+    ensure_equals("display-only width cap is unchanged", display[0], 1024u);
+    ensure_equals(display[1], 576u);
+}
+
+template<> template<> void prism_projector_object::test<48>()
+{
+    using namespace LLPrismLens;
+    set_test_name("offline source cannot strand an oversized projector cookie");
+    ProjectorSettings settings; settings.mResolution = 2048;
+    U32 cookie_size = 2048;
+    ensure(!releaseOversizedProjectorCookie(cookie_size, cookie_size, settings, false));
+    settings.mResolution = 1024;
+    // The settings-change path runs this cleanup without requesting a feed.
+    if (releaseOversizedProjectorCookie(cookie_size, cookie_size, settings, false)) cookie_size = 0;
+    ensure_equals("offline lowering releases 2048 cookie", cookie_size, 0u);
+    settings.mResolution = 2048;
+    ensure(releaseOversizedProjectorCookie(2048, 2048, settings, true));
+    settings.mResolution = 256;
+    ensure("legacy dirty-cookie behavior remains HEAD", !releaseOversizedProjectorCookie(1024, 1024, settings, false));
+}
+
+template<> template<> void prism_projector_object::test<50>()
+{
+    using namespace LLPrismLens;
+    set_test_name("offline 2048 cookie is released when subscribing to Gate without Program");
+    ProjectorDefinition projector;
+    projector.mSettings.mResolution = 2048;
+    projector.mRuntime.mHealth = EDisplayHealth::OFFLINE;
+    U32 cookie_size = 2048;
+    bool cookie_valid = true;
+    U32 dirty_calls = 0;
+    // No source/Program frame is available to replace the retained cookie.
+    // Drive the same subscription mutation and notification as the registry.
+    updateProjectorGateSubscription(projector.mGateSubscribed, true, [&]()
+    {
+        ++dirty_calls;
+        ensure("cleanup sees the new subscription", projector.mGateSubscribed);
+        if (releaseOversizedProjectorCookie(cookie_size, cookie_size,
+                projector.mSettings, projector.mGateSubscribed))
+        {
+            cookie_size = 0;
+            cookie_valid = false;
+        }
+    });
+    ensure_equals("subscription dirties even without a usable feed", dirty_calls, 1u);
+    ensure_equals("oversized cookie allocation released", cookie_size, 0u);
+    ensure("bind cannot select the released prepared cookie", !cookie_valid);
+    ensure_equals("next Gate cookie clamps to 1024",
+                  projectorRenderResolution(projector.mSettings, projector.mGateSubscribed), 1024u);
+    ensure_equals("authored resolution is retained", projector.mSettings.mResolution, U16(2048));
+}
+
+template<> template<> void prism_projector_object::test<49>()
+{
+    using namespace LLPrismLens;
+    set_test_name("Picture uses renderer max-axis size at 2048 and preserves HEAD text otherwise");
+    const F32 aspects[] = {16.f / 9.f, 9.f / 16.f, .25f};
+    const U32 widths[] = {2048, 1152, 512};
+    const U32 heights[] = {1152, 2048, 2048};
+    for (U32 i = 0; i < 3; ++i)
+    {
+        const auto picture = cameraPictureSize(aspects[i], 2048);
+        ensure_equals(picture[0], widths[i]); ensure_equals(picture[1], heights[i]);
+        ensure(picture == cameraTargetSize(2048, 2048, aspects[i], 2048));
+        const auto legacy = cameraPictureSize(aspects[i], 1024);
+        ensure_equals(legacy[0], 1024u);
+        ensure_equals(legacy[1], U32(ll_round(1024.f / aspects[i])));
+    }
+}
+
 }

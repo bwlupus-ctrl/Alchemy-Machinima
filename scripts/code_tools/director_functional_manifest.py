@@ -521,7 +521,7 @@ def load_rim_presets():
     m = re.search(r"RIG_RIM_PRESETS\[\d+\]\s*=\s*\{(.*?)\n\};", text, re.S)
     if m:
         presets = [(n, float(v)) for n, v in
-                   re.findall(r'\{\s*"([^"]+)",\s*([-+]?[\d.]+)f', m.group(1))]
+                   re.findall(r'\{\s*"([^"]+)",\s*(?:"[^"]*",\s*)?([-+]?[\d.]+)f', m.group(1))]
     full = re.search(r"RIG_RIM_FULL_PRESETS\[\d+\]\s*=\s*\{(.*?)\n\};", text, re.S)
     if full:
         presets.extend((n, float(v)) for n, v in re.findall(

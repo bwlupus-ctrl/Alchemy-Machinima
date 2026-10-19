@@ -114,7 +114,7 @@
     {"id": "output_frame", "t": "Output frame", "k": "rows", "badge": "CAM n", "copy_type": "vcam_output", "rows": [
       {"l": "Output aspect", "k": "combo", "w": "vc_output_aspect", "h": "Shape of the picture this camera renders.", "it": ["16:9", "4:3", "1:1", "Custom"], "iv": [1.7777778, 1.3333333, 1, -1], "selectable_values": [-1], "bind": "code"},
       {"l": "Custom W/H", "k": "slider", "w": "vc_output_custom", "h": "Width over height.", "mn": 0.25, "mx": 4, "st": 0.01, "dc": 3, "bind": "code", "show_if": "custom_aspect"},
-      {"l": "Picture", "k": "readout", "w": "vc_output_picture", "h": "Logical axes are capped at 1024 px; Quality ceiling and Adaptive scale it.", "bind": "code"}
+      {"l": "Picture", "k": "readout", "w": "vc_output_picture", "h": "Logical axes are capped at 1024 px, or 2048 px while a 2048 projector uses this camera; Quality ceiling and Adaptive scale it.", "bind": "code"}
     ]},
     {"id": "faces", "t": "Faces this camera feeds", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "", "k": "custom", "w": "vc_face_list", "h": "Choose raw camera output or a bound face. Drop another camera's monitor on a face row to move it.", "custom_tag": "vcam_face_list", "bind": "code", "row_height": 150},
@@ -154,7 +154,7 @@
       {"l": "Scratches", "k": "slider", "w": "vc_proj_scratches", "h": "Vertical film scratches.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
       {"l": "Burn", "k": "slider", "w": "vc_proj_burn", "h": "Film burn-in and edge burn.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
       {"l": "Halation", "k": "slider", "w": "vc_proj_halation", "h": "Glow bleeding around projected highlights.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
-      {"l": "Resolution", "k": "segmented", "w": "vc_proj_resolution", "h": "Resolution of the projector cookie.", "it": ["256", "512", "1024"], "iv": [256,512,1024], "bind": "code"},
+      {"l": "Resolution", "k": "segmented", "w": "vc_proj_resolution", "h": "Resolution of the projector cookie. 2048 applies to This camera; Gate program is capped at 1024.", "it": ["256", "512", "1024", "2048"], "iv": [256,512,1024,2048], "bind": "code"},
       {"l": "When cam off", "k": "combo", "w": "vc_proj_no_signal", "h": "When camera is off: Choose the no-signal picture used while the camera is unavailable.", "it": ["Projector's own cookie", "Black", "White"], "iv": [0,1,2], "bind": "code"},
       {"l": "Keep gobo", "k": "toggle", "w": "vc_proj_keep_gobo", "h": "Keep the light's gobo: Keep the projector light's existing gobo while the VCam feed is attached.", "bind": "code"}
     ]},
