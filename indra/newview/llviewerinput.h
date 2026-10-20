@@ -153,6 +153,8 @@ public:
     bool            dropsNativeInput() const;
 
     S32             loadBindingsXML(const std::string& filename);                                       // returns number bound, 0 on error
+    // Controls loader; shares runtime migration gated by the viewer setting and original binding count.
+    static bool     loadKeysXML(const std::string& filename, Keys& keys);
     EKeyboardMode   getMode() const;
 
     static bool     modeFromString(const std::string& string, S32 *mode);           // False on failure
@@ -199,6 +201,7 @@ private:
                           EMouseState state,
                           bool ignore_additional_masks) const;
 
+    static void     migrateKeysXML(const std::string& filename, Keys& keys, S32 binding_count, Keys* additions = nullptr);
     S32             loadBindingMode(const LLViewerInput::KeyMode& keymode, S32 mode);
     bool            bindKey(const S32 mode, const KEY key, const MASK mask, const std::string& function_name);
     bool            bindMouse(const S32 mode, const EMouseClickType mouse, const MASK mask, const std::string& function_name);

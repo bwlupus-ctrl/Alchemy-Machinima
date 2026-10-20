@@ -303,10 +303,8 @@ bool LLKeyConflictHandler::loadFromSettings(const ESourceMode &load_mode, const 
     bool res = false;
 
     LLViewerInput::Keys keys;
-    LLSimpleXUIParser parser;
 
-    if (parser.readXUI(filename, keys)
-        && keys.validateBlock())
+    if (LLViewerInput::loadKeysXML(filename, keys))
     {
         switch (load_mode)
         {
@@ -581,6 +579,10 @@ void LLKeyConflictHandler::saveToSettings(bool temporary)
                     LLXMLNode::writeHeaderToFile(fp);
                     output_node->writeToFile(fp);
                     fclose(fp);
+                    if (!temporary)
+                    {
+                        gSavedSettings.setS32("KeyBindingsMigrationVersion", 2);
+                    }
                 }
             }
             // Now force a rebind for keyboard

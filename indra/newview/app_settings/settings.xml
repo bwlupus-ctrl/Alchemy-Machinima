@@ -30855,5 +30855,12 @@
     <map><key>Comment</key><string>Face pair separation in metres (0.5 to 10, step 0.1).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2.0</real></map>
     <key>GhostReflectVerify</key>
     <map><key>Comment</key><string>Enable periodic Reflect verdicts and inventory round-trip verification; entry/build verdicts always log.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>1</integer></map>
+    <key>KeyBindingsMigrationVersion</key>
+    <map>
+        <key>Comment</key><string>Key binding defaults migration acknowledged by a Controls save. Independent of the key_bindings.xml format version.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>S32</string>
+        <key>Value</key><integer>0</integer>
+    </map>
 </map>
 </llsd>

@@ -53,3 +53,108 @@ Drawn from `LLViewerWindow::drawDebugText()`, which `render_ui()` runs after bot
 ## Not verified
 
 No viewer build or in-world run: the overlay look, the font-rung creation hitch the first time a new Size rung is used, the on-top-of-floaters draw order with UI visible, and that the roll sign matches what the user sees when pressing Shift+E.
+
+## Hotkey
+
+Added 2026-10-20. Default: **Ctrl+Alt+V** (`toggle_viewfinder`). Rebind
+**Toggle Viewfinder** in **Preferences > Controls**. The row is in the shared
+movement controls table so it remains available in first-person Controls as
+well as the other modes (the Camera group is hidden in first person).
+`LLKeyConflictHandler` loads the command from `key_bindings.xml` into its normal
+assignable command map; no special conflict-handler exception is needed.
+
+The regular `REGISTER_KEYBOARD_ACTION` handler flips
+`CinematicViewfinderEnabled` on key-down only. It uses the same setting as the
+Director switch, so the switch and Size enable state follow external changes.
+The normal keyboard action path suppresses repeats and has no UI-visible or
+flycam restriction. Defaults cover all four binding modes: first person, third
+person, sitting and edit avatar. Flycam uses the current one of these modes.
+This also lets the overlay be switched with the UI hidden.
+
+Conflict check: before adding the binding, no mode had any V binding with
+NONE, CTL, ALT or CTL_ALT (including modifier-subset matches in the keyboard
+scanner). All shipped skin XUI shortcuts were scanned: the only V shortcuts
+were Paste (Ctrl+V), with no Ctrl+Alt+V accelerator. The final XML has exactly
+one Ctrl+Alt+V binding per mode, exclusively `toggle_viewfinder`.
+
+The Director help now says: "Toggle with Ctrl+Alt+V (change in Preferences >
+Controls)." Generated output headers changed with the source-data hash; no
+Director rows or pins changed. Page-source and functional-manifest regeneration
+produced no tracked content changes.
+
+Gate results:
+
+- `zs_check.ps1 -Files indra/newview/llviewerinput.cpp`: PASS (1 TU, 0 failures;
+  checked in its own call; migration validation below also checks llkeyconflict.cpp).
+- `director_kit_gen.py --check`, `director_page_sources.py --check` and
+  `director_functional_manifest.py --check`: PASS after the C++ edit and
+  regeneration.
+- `prebuild_guard.ps1 -ChecksOnly`: PASS, all UI/layout, draw, compile, maths,
+  kit generation/lint/parity, page-source and theme gates. Run with
+  `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`,
+  `GIT_CONFIG_VALUE_0=false`; a process-local Git global-config path retained
+  the sandbox's safe-directory access, and the syntax-cache path was redirected
+  inside the workspace.
+- `git ls-files --eol scripts/code_tools/director_kit/director_mockup_data.json`:
+  `i/lf w/lf attr/text eol=lf`.
+- `git diff --check`: PASS.
+
+No viewer build or in-world input test was performed. No commit, push, stash,
+pipeline or shader changes.
+
+Hotkey migration P1 fixes, 2026-10-20 (review
+`.tmp/review_codex_vfkey_r4.md`):
+
+Runtime decides shipped-default fallback from the original user file's binding
+count, before migration. Zero-binding files receive no Viewfinder migration and
+still return zero. Preferences > Controls uses the exact runtime binding-count
+rules on a local input instance before applying the same migration. Parse or
+validation failures receive no migration; omitted modes remain omitted.
+
+`KeyBindingsMigrationVersion` is a new persisted S32 setting, default 0, in
+`app_settings/settings.xml` / `gSavedSettings`. Its global user scope matches
+`LL_PATH_USER_SETTINGS/key_bindings.xml` (the key file is not per-account).
+While the marker is below 2 and the original file yielded at least one binding,
+only `toggle_viewfinder` is eligible for the shipped Ctrl+Alt+V default in each
+provided mode. Any existing V binding blocks insertion, regardless of mask,
+including SHIFT and invalid masks. Existing custom or explicitly empty
+Viewfinder entries also block insertion. No unrelated command is restored.
+Marker values 2 or newer receive no additions, independently of the XML version.
+
+The marker becomes 2 only after a permanent Controls key-file save opens and
+writes the file. Temporary preview saves and loads do not set it. Clearing
+Viewfinder and saving therefore keeps it absent on subsequent loads; a user who
+never saves continues to receive the eligible in-memory default each session.
+Migration itself does not write bindings or alter the key-file format/version.
+
+HEAD ce591b11f94's version semantics are restored exactly: the shipped
+`xml_version` and `keybindings_xml_version` remain 1; unversioned input defaults
+to 0. The entire original runtime loader, including its legacy default-LMB
+handling, missing-LMB additions and version-1 rewrite, is unchanged before the
+new migration tail. Runtime loads only the newly added Viewfinder bindings after
+that legacy upgrade, keeping them out of its file write and preserving the
+original fallback count. This retains HEAD's version-0 script left-click behavior,
+including after a Controls save. `LLKeyConflictHandler::saveToSettings` is exactly
+HEAD's implementation apart from setting the persisted marker after a permanent
+write. It uses the original parser and `keys.xml_version.set(keybindings_xml_version,
+true)` with no migration during save.
+
+`scripts/code_tools/test_key_binding_migration.py` extracts and executes the
+production pure rule with parameter/parser doubles. Coverage includes zero-binding
+files, markers 0/1/2/3, a cleared command with marker >=2, free defaults, every V
+modifier combination and invalid masks, custom and empty Viewfinder entries,
+unrelated omissions, omitted defaults, repeated migration, and collecting only
+new runtime additions. Source regression checks use `git show HEAD:` to require
+the entire original runtime loader before the migration tail and the entire
+Controls save function apart from the marker. They also verify unchanged version
+defaults/constants, shipped format attributes and a persisted global marker.
+These tests do not execute the viewer's XML parser or in-world Controls UI.
+
+Validation: pure migration test PASS. Separate `zs_check.ps1 -Files` calls for
+`llviewerinput.cpp` and `llkeyconflict.cpp` PASS (1 TU each, 0 failures).
+`prebuild_guard.ps1 -ChecksOnly` PASS: all UI/layout, draw, compile, maths, kit,
+page-source and theme checks. Run with `GIT_CONFIG_COUNT=1`,
+`GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`, the existing
+workspace Git config and syntax cache. The new setting is appended so existing
+setting declaration references remain unchanged. `git diff --check` PASS.
+No viewer build, commit, push or stash.

@@ -205,4 +205,14 @@
          name="lst_action"
          value="Stop Moving" />
     </rows>
+    <rows
+     name="toggle_viewfinder"
+     value="toggle_viewfinder">
+        <columns
+         column="lst_action"
+         font="SansSerif"
+         halign="left"
+         name="lst_action"
+         value="Toggle Viewfinder" />
+    </rows>
 </contents>
