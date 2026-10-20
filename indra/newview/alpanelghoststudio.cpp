@@ -363,6 +363,11 @@ bool ALPanelGhostStudio::postBuild()
     mAnimResumeBtn = getChild<LLButton>("btn_anim_resume");
     mDriveModeCombo = getChild<LLComboBox>("drive_mode_combo");
     mReflectPlane = getChild<LLComboBox>("reflect_plane_combo");
+    mReflectOrientation = getChild<LLComboBox>("reflect_orientation_combo");
+    // Populate the real combo in both the shared XUI and generated kit hosts.
+    mReflectOrientation->removeall();
+    mReflectOrientation->add("Wall", LLSD(0));
+    mReflectOrientation->add("Floor", LLSD(1));
     mReflectPosition = getChild<LLCheckBoxCtrl>("reflect_position_check");
     mMirrorLightRig = getChild<LLCheckBoxCtrl>("mirror_light_rig_check");
     mMirrorLightRig->setCommitCallback([this](LLUICtrl*, const LLSD&)
@@ -381,12 +386,25 @@ bool ALPanelGhostStudio::postBuild()
     mReflectPair = getChild<LLButton>("btn_reflect_pair");
     mReflectRecapture = getChild<LLButton>("btn_reflect_recapture");
     mReflectStatus = getChild<LLTextBox>("reflect_status");
+    mReflectOrientation->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        auto& studio = ALGhostStudio::instance();
+        if (auto* inst = studio.getInstance(studio.getSelected()))
+        {
+            inst->mReflectFloor = mReflectOrientation->getValue().asInteger() == 1;
+            inst->mReflectHasLastPlane = false; // never reuse the other orientation's fallback
+            inst->mReflectPlaneDegenerate = false;
+            if (!inst->mReflectFloor && inst->mReflectMirrorPosition) inst->mReflectPlaneMode = 0;
+            studio.invalidateReflectPlane(inst->mId);
+            studio.applyEntityTransform(inst->mId);
+        }
+    });
     mReflectPlane->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         auto& studio = ALGhostStudio::instance();
         if (auto* inst = studio.getInstance(studio.getSelected()))
         {
-            if (inst->mReflectMirrorPosition) return;
+            if (inst->mReflectMirrorPosition && !inst->mReflectFloor) return;
             inst->mReflectPlaneMode = mReflectPlane->getValue().asInteger();
             inst->mReflectPlaneDegenerate = false;
             studio.invalidateReflectPlane(inst->mId);
@@ -397,6 +415,7 @@ bool ALPanelGhostStudio::postBuild()
         auto& studio = ALGhostStudio::instance();
         if (auto* inst = studio.getInstance(studio.getSelected()))
         {
+            if (inst->mReflectFloor) return;
             inst->mReflectMirrorPosition = mReflectPosition->getValue().asBoolean();
             if (inst->mReflectMirrorPosition && inst->mReflectPlaneMode != 0)
             { inst->mReflectPlaneMode = 0; inst->mReflectPlaneValid = false; }
@@ -1628,10 +1647,17 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mMirrorLightRig, light_ghost && !light_ghost->isDead() && light_ghost->isPoseStampDriven());
     setValueIfChanged(mMirrorLightRig, LLSD(inst && inst->mMirrorLightRig), true);
     const bool reflect_single = entity && !studio.groupForMember(inst->mId);
-    setEnabledIfChanged(mReflectPlane, reflect && !inst->mReflectMirrorPosition);
-    setEnabledIfChanged(mReflectPosition, reflect);
+    const bool floor = inst && inst->mReflectFloor;
+    setEnabledIfChanged(mReflectOrientation, reflect);
+    setValueIfChanged(mReflectOrientation, LLSD(floor ? 1 : 0));
+    setEnabledIfChanged(mReflectPlane, reflect && (floor || !inst->mReflectMirrorPosition));
+    setEnabledIfChanged(mReflectPosition, reflect && !floor);
     setEnabledIfChanged(mReflectRecapture, reflect);
-    setEnabledIfChanged(mReflectPair, reflect_single);
+    setEnabledIfChanged(mReflectPair, reflect_single && !floor);
+    setToolTipIfChanged(mReflectPosition, floor ? "Floor reflection always sits under the source" :
+        "Reflect the source foot across the Fixed plane. Holds during path motion, Chaos, locked groups and Ghost Edit drags.");
+    setToolTipIfChanged(mReflectPair, floor ? "Floor reflection always sits under the source" :
+        "Selected entity clone only: stand in front of the source, face it, capture a Fixed plane and enter Reflect. Unavailable for locked groups.");
     setValueIfChanged(mReflectPlane, LLSD(inst ? inst->mReflectPlaneMode : 0));
     setValueIfChanged(mReflectPosition, LLSD(inst && inst->mReflectMirrorPosition), true);
     setTextIfChanged(mReflectStatus, entity ? (studio.groupForMember(inst->mId) && !reflect ?

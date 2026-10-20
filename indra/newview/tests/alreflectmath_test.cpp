@@ -443,4 +443,117 @@ template<> template<> void reflect_object::test<28>()
     }
 }
 
+template<> template<> void reflect_object::test<29>()
+{
+    for (F64 h : {-7., 0., 23.5})
+        for (F64 z : {-12., 0., 8., 40.})
+        {
+            const LLVector3d p(13., -17., z), expected(13., -17., 2. * h - z);
+            const auto reflected = ALReflect::floorPoint(p, h);
+            ensure("floor point x,y unchanged and z reflected", (reflected - expected).length() < 1e-8);
+            ensure("floor point involution", (ALReflect::floorPoint(reflected, h) - p).length() < 1e-8);
+            ensure("generic light rig plane matches floor", (ALReflect::planePoint(p, LLVector3d(0., 0., h),
+                LLVector3::z_axis) - expected).length() < 1e-8);
+        }
+}
+
+template<> template<> void reflect_object::test<30>()
+{
+    Random random;
+    for (S32 i = 0; i < 64; ++i)
+    {
+        const auto source = random.quat();
+        const LLVector3 right_hand(.4f, -.8f, .6f);
+        // The unchanged bone stamp writes the right hand's pose to the left partner.
+        const auto stamped_hand = ALReflect::vector(right_hand);
+        const auto world = right_hand * source;
+        const auto actual = stamped_hand * ALReflect::floorRootRotation(source);
+        closeVec("source right hand stays directly below it, XY not swapped", actual,
+            LLVector3(world.mV[VX], world.mV[VY], -world.mV[VZ]));
+        const auto local = random.vec();
+        const auto posed = local * source;
+        closeVec("full 3D floor root with existing stamp", ALReflect::vector(local) * ALReflect::floorRootRotation(source),
+            LLVector3(posed.mV[VX], posed.mV[VY], -posed.mV[VZ]));
+    }
+}
+
+template<> template<> void reflect_object::test<31>()
+{
+    const F64 h = 3.;
+    const LLVector3d root(10., 20., h + 1.);
+    for (F32 yaw : {0.f, .7f, -2.f})
+    {
+        const LLQuaternion source(yaw, LLVector3::z_axis);
+        const auto clone_root = ALReflect::floorPoint(root, h);
+        const auto clone_rotation = ALReflect::floorRootRotation(source);
+        for (F32 side : {-.15f, .15f})
+        {
+            const LLVector3 sole(0.f, side, -1.f);
+            const auto source_sole = root + LLVector3d(sole * source);
+            const auto clone_sole = clone_root + LLVector3d(ALReflect::vector(sole) * clone_rotation);
+            ensure("corresponding soles coincide at plane", (clone_sole - source_sole).length() < 1e-5 &&
+                fabs(clone_sole.mdV[VZ] - h) < 1e-5);
+        }
+        const auto head = clone_root + LLVector3d(LLVector3(0.f, 0.f, 1.f) * clone_rotation);
+        ensure("head is below reflected pelvis and floor", head.mdV[VZ] < clone_root.mdV[VZ] && head.mdV[VZ] < h);
+        closeVec("clone up points down", LLVector3::z_axis * clone_rotation, -LLVector3::z_axis);
+    }
+}
+
+template<> template<> void reflect_object::test<32>()
+{
+    ALReflect::Plane p;
+    ALReflect::updateFloorPlane(p, LLVector3d(10., 20., 3.));
+    ensure("floor captures foot height", p.valid && !p.degenerate && p.point.mdV[VZ] == 3.);
+    closeVec("horizontal plane normal", p.normal, LLVector3::z_axis);
+    // Live updates even for coincident feet; no Wall bisector hysteresis.
+    ALReflect::updateFloorPlane(p, LLVector3d(10., 20., 4.));
+    ensure("live follows feet", p.valid && p.point.mdV[VZ] == 4.);
+    ALReflect::updateFloorPlane(p, LLVector3d(0., 0., std::numeric_limits<F64>::quiet_NaN()));
+    ensure("invalid foot cannot produce valid floor", !p.valid);
+}
+
+template<> template<> void reflect_object::test<33>()
+{
+    ALReflect::FloorRootHold hold, other_clone;
+    const LLVector3d root(10., 20., 2.); // floor z=3, pelvis one metre below
+    const auto inverted = ALReflect::floorRootRotation(LLQuaternion(.7f, LLVector3::z_axis));
+    LLVector3d p;
+    LLQuaternion q;
+    ensure("entry without a stamp has no held pose", !hold.restore(true, p, q));
+    hold.capture(root, inverted);
+    // The same level-triggered rule covers Pause/Frozen and a live Floor whose
+    // source is missing/out of range: no stamp occurs during any of these frames.
+    for (const char* state : {"Frozen", "source missing", "source out of range"})
+        for (S32 frame = 0; frame < 120; ++frame)
+        {
+            p = LLVector3d(30., 40., 50.);
+            q = LLQuaternion(); // simulate updateOrientation's world-up result
+            ensure(state, hold.restore(true, p, q));
+            ensure("held global root position is exact", p == root);
+            for (S32 k = 0; k < 4; ++k)
+                ensure("held root rotation is exact", q.mQ[k] == inverted.mQ[k]);
+            const auto sole = p + LLVector3d(LLVector3(0.f, 0.f, -1.f) * q);
+            ensure("held sole stays on plane", fabs(sole.mdV[VZ] - 3.) < 1e-5);
+            ensure("another clone has no hold", !other_clone.restore(true, p, q));
+        }
+    const LLVector3d recovered(11., 22., 1.);
+    const auto next = ALReflect::floorRootRotation(LLQuaternion(-.3f, LLVector3::z_axis));
+    hold.capture(recovered, next);
+    ensure("source recovery refreshes snapshot", hold.restore(true, p, q) && p == recovered);
+    closeVec("recovered facing", LLVector3::x_axis * q, LLVector3::x_axis * next);
+    const auto nan = std::numeric_limits<F64>::quiet_NaN();
+    hold.capture(LLVector3d(nan, 0., 0.), LLQuaternion());
+    ensure("invalid stamp preserves last valid root", hold.restore(true, p, q) && p == recovered);
+    for (const char* release : {"Wall", "Mirror", "Directed", "True Mirror", "leave Reflect"})
+    {
+        hold.capture(root, inverted);
+        p = LLVector3d(1., 2., 3.); q = LLQuaternion();
+        ensure(release, !hold.restore(false, p, q));
+        ensure("release leaves ordinary placement alone", p == LLVector3d(1., 2., 3.));
+        closeVec("release leaves ordinary facing alone", LLVector3::z_axis * q, LLVector3::z_axis);
+        ensure("reentry cannot reuse released snapshot", !hold.restore(true, p, q));
+    }
+}
+
 }

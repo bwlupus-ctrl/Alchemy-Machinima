@@ -41,6 +41,39 @@ inline S32 handPose(S32 pose)
 { return pose >= 4 && pose <= 6 ? pose + 3 : pose >= 7 && pose <= 9 ? pose - 3 : pose; }
 inline LLQuaternion rootRotation(const LLQuaternion& source, const LLVector3& normal)
 { return LLQuaternion(F_PI, LLVector3::y_axis) * source * LLQuaternion(F_PI, normal); }
+// Floor: H = diag(1,1,-1), with the same local sagittal stamp S.
+// R_clone = H R_source S; LL applies left first: q_y(pi) * q_source * q_z(pi).
+// Thus S(v) * q_clone = H(v * q_source), preserving world XY (including hands).
+inline LLQuaternion floorRootRotation(const LLQuaternion& source)
+{ return rootRotation(source, LLVector3::z_axis); }
+// Point/root reflection across z=h: (x,y,z) -> (x,y,2h-z).
+inline LLVector3d floorPoint(const LLVector3d& point, F64 height)
+{ return LLVector3d(point.mdV[0], point.mdV[1], 2. * height - point.mdV[2]); }
+// A successful Floor root stamp owns both components until Floor is released.
+// Global position survives agent-origin changes; holds never sample a root that
+// updateOrientation may already have tilted toward world-up.
+struct FloorRootHold
+{
+    bool valid = false;
+    LLVector3d position;
+    LLQuaternion rotation;
+
+    void capture(const LLVector3d& p, const LLQuaternion& q)
+    {
+        if (!p.isFinite() || !q.isFinite()) return;
+        position = p;
+        rotation = q;
+        valid = true;
+    }
+    bool restore(bool floor_active, LLVector3d& p, LLQuaternion& q)
+    {
+        if (!floor_active) valid = false;
+        if (!valid) return false;
+        p = position;
+        q = rotation;
+        return true;
+    }
+};
 inline LLVector3 planeVector(const LLVector3& v, const LLVector3& n)
 { return v - n * (2.f * (v * n)); }
 // Gobo mode 1 rotates UVs; other modes use speed for non-rotation effects.
@@ -66,6 +99,13 @@ struct Plane
     LLVector3d point;
     LLVector3 normal = LLVector3::x_axis;
 };
+inline void updateFloorPlane(Plane& p, const LLVector3d& source_foot)
+{
+    p.valid = source_foot.isFinite();
+    p.degenerate = false;
+    p.point = source_foot;
+    p.normal = LLVector3::z_axis;
+}
 // Returns the capture tier: 0 bisector, 1 forward, 2 last plane, 3 world X,
 // -1 invalid input, 4 hysteresis hold. Never manufactures a non-finite plane.
 inline S32 updatePlane(Plane& p, const LLVector3d& source, const LLVector3d& clone,

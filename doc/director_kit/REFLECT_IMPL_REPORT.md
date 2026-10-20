@@ -375,3 +375,154 @@ fixes (Frozen facing, one rotation push, and True Mirror skip) byte-for-byte.
 
 No viewer build, commit, push, staging, or stash is performed. In-world acceptance
 remains unrun; passing pure tests and syntax gates does not claim runtime acceptance.
+
+## Floor reflection
+
+2026-10-20, on `feature/director-kit-p0`, based on `249a9f05b96`.
+
+Each entity clone now has a session-only **Orientation: Wall / Floor** choice
+beside the Reflect plane controls. Wall is the default and retains its existing
+behavior. Copies start with Wall. Changing orientation clears the old plane and
+its fallback so Wall cannot inherit a Floor normal. Fixed captures lazily on the
+next post-object-list pass when Floor is chosen, Fixed is set, or Recapture plane
+is clicked, matching Wall's capture timing. Live updates height every frame.
+Floor uses `getBaseRootPosition()` minus finite, nonnegative pelvis-to-foot,
+exactly the `source_foot_agent` convention; it has no bisector hysteresis.
+
+For a horizontal plane `z=h`, point/root reflection is `(x,y,z) -> (x,y,2h-z)`.
+Let `H=diag(1,1,-1)` and retain the existing local bone stamp
+`S=diag(1,-1,1)`. The proper clone root rotation is `H R_source S`, or in LL
+multiplication order `q_y(pi) * q_source_world * q_z(pi)`. This is the existing
+Wall mirror followed by a whole-body half turn about a horizontal axis in the
+plane. Consequently `S(v) * q_clone = H(v * q_source)`: the source's right-hand
+motion stays directly below that hand in world XY, the soles coincide at the
+plane for a standing source, and the head points down. The formulas are next to
+the Wall formulas in `alreflectmath.h`.
+
+Floor reflects the source's actual world root position, including seated-source
+transforms. It bypasses the ordinary upright foot API, which would add a positive
+pelvis-to-foot offset. The clone's scale pivot remains at its reflected foot,
+including while Frozen. Floor always owns position and root rotation, including
+when the Wall copy-facing preference is off; later Studio/proxy transform pushes
+cannot overwrite it. Wall's optional placement-owner guards are unchanged.
+Returning to Wall or leaving Reflect/Frozen for another drive restores the
+ordinary upright foot lock. Existing bone snapshot and facing restoration paths
+remain in place; the reflected bone/face stamp and all five True Mirror functions
+are unchanged.
+
+Face pair and Mirror position stay visible and are disabled for Floor, both with
+the tooltip **“Floor reflection always sits under the source”**. The stored Wall
+Mirror position preference survives; returning to Wall with it enabled selects
+Fixed as before. `postBuild()` populates the actual orientation combo in both
+shared-panel and generated-kit hosts. No new setting or scene serialization.
+
+Mirror light rig already consumes `mReflectPlanePoint` and `mReflectPlaneNormal`
+generically after the pose pass. Floor supplies the same captured/live horizontal
+plane, so projector, bounce and catchlight positions/axes reflect below it. No
+light-rig or renderer changes were needed: copies remain clone-only, cast no
+shadows, and asymmetric cookies remain unflipped (the accepted limitation).
+
+Exact click paths (select an entity clone first):
+
+1. **Machinima → Clone Studio… → Pose → Drive: Reflect → Wall/Floor combo →
+   Floor**. The combo sits immediately above Plane: Fixed/Live. The second
+   shared-panel host is **Machinima → Director Console… → Cast → Clones →
+   Pose → Drive: Reflect → Wall/Floor combo → Floor**.
+2. **Machinima → Director Console… (F2) → Cast → Clones → Motion → Pose & drive
+   → Drive: Reflect → Reflect card → Orientation → Floor**. Fixed/Live and
+   Mirror light rig remain in that card.
+
+Shared-panel fit: both pose documents grow 874 → 902 px. Orientation occupies
+y=132..154; all prior controls at y>=132 move down 28 px. The plane row is now
+160..182, Face pair/light rig 188..210, status 216..234, and diagnostics ends at
+894, retaining the 8 px bottom margin. Existing host/scroller wiring is retained.
+The kit row count pin is 2142, with a comment for the new orientation row.
+Sibling generated XUI diffs are source-hash updates required by the generator.
+
+Validation:
+
+| Gate | Result / evidence |
+|---|---|
+| Separate `zs_check.ps1 -Files <one .cpp>` calls | **PASS** for `alghoststudio.cpp`, `llghostavatar.cpp`, `alpanelghoststudio.cpp`, and `tests/alreflectmath_test.cpp` (with `-IncludeTests`). Logs: `.tmp/floor_zs_*.log`. Uses the existing supported workspace `-CachePath`. |
+| Standalone `alreflectmath` tests | **32/32 PASS**, using the earlier `.tmp/reflect_math_compile.cmd` and `.tmp/reflect_unit_link.cmd`, then `.tmp/reflect_unit_bin/INTEGRATION_TEST_alreflectmath.exe`. Tests 29–32 cover z=h point/root reflection, unchanged world XY for the hand, full-3D root orientation, coincident soles, head down, horizontal plane capture/live updates, invalid input, and agreement with the generic light plane. Logs: `.tmp/floor_test_compile.log`, `.tmp/floor_test_link.log`, `.tmp/floor_tests.log`. The existing non-fatal `vswhere.exe` setup message remains. |
+| Generated kit | Regenerated after final C++ edits; `director_kit_gen.py --check`, `director_page_sources.py --check`, and `director_functional_manifest.py --check` **PASS**. Logs: `.tmp/floor_{kit,sources,manifest}_check.log`. Manifest retains its five existing warnings. |
+| `prebuild_guard.ps1 -ChecksOnly` | **PASS, all 11 gates, exit 0**, through the existing `.tmp/reflect_prebuild_checks.ps1` wrapper with `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`. It only redirects the supported compiler cache and uses the existing workspace Git config. Log: `.tmp/floor_prebuild.log`. |
+| `git diff --check` | **PASS**. |
+| `git ls-files --eol` | All three touched JSON files are **i/lf w/lf attr/text eol=lf**: mockup data, page sources, functional manifest. |
+
+In-world checks remain **UNRUN**:
+
+1. Exercise both shared hosts and Director v2 via the paths above. Confirm Wall
+   default, Floor selection, enabled Fixed/Live, disabled Face pair/Mirror
+   position with the exact tooltip, and independent per-clone/session state.
+2. Use see-through ground and a standing source at ordinary clone scale. Raise
+   the right hand: the reflected hand must be directly below it, soles together,
+   head down. Move, turn, pitch/roll and animate the source; repeat seated and at
+   different clone scales. Live follows foot height; Fixed holds the captured
+   height during vertical source motion; selecting Fixed/Recapture captures anew.
+3. With an asymmetric Self light rig, enable Mirror light rig and verify every
+   copied light follows the same horizontal plane below the floor. Check clone
+   illumination only, no copy shadows, and the accepted unflipped-cookie limit.
+4. Switch Floor → Wall and back, including a previously enabled Wall Mirror
+   position option. Freeze/resume, leave Reflect for Mirror/Directed/True Mirror,
+   lose/recover the source, replace the runtime, and delete/copy the clone. Check
+   ordinary facing/bones/placement recovery and light-copy cleanup. Floor must
+   continue to own placement during path/Chaos/group/proxy activity.
+
+The clone is only visible where the ground is see-through or reflective; opaque
+ground can occlude this below-floor geometry. No ground material or render path
+was changed. No viewer build/launch, commit, push, staging, or stash operation.
+
+### P0 review fix: retain the Floor root while stamping stops (2026-10-20)
+
+Addressed `.tmp/review_codex_floor.md`. Pausing the motion controller does not
+pause `LLVOAvatar::updateOrientation()`: its world-up interpolation was rotating
+the inverted root during Frozen and missing-source holds.
+
+Each ghost now owns an `ALReflect::FloorRootHold` snapshot of the last finite
+Floor-stamped root quaternion and global root position. The snapshot is captured
+when the Floor root rotation is stamped, after reflected placement. A single
+level-triggered enforcement block at the end of `LLGhostAvatar::idleUpdate()`
+restores both components on every frame, after the base avatar's orientation
+update and the mover/foot writers, before the outer transform is updated. This
+runs while that runtime's instance has Floor selected, Floor placement remains
+active, and its actual drive is Reflect or Frozen. It does not depend on a pause
+edge or source availability. Live stamping refreshes the snapshot; Frozen and
+missing/out-of-range sources retain it. Global storage survives agent-origin
+changes, and the existing reflected-foot scale pivot remains in use.
+
+The existing Studio placement/facing ownership guards now also retain a valid
+Floor hold during Frozen, so subsequent proxy/Studio transform pushes cannot
+discard it. Ordinary root/foot placement invalidates the snapshot; changing to
+Wall or leaving Reflect/Frozen releases it through the existing placement and
+facing paths. A fresh runtime starts without a snapshot. Wall, True Mirror,
+other clones and real avatars acquire no Floor hold; `llvoavatar.cpp` and its
+orientation interpolation are unchanged.
+
+Added pure-helper lifecycle test **33**: entry before any stamp, 120 repeated
+simulated upright/position overwrites for each of Frozen, source missing and
+source out of range, exact root restoration and soles at the plane, independent
+clone state, source recovery replacing the snapshot, invalid-position rejection,
+and release/reentry without stale reuse. Release cases name Wall, Mirror,
+Directed, True Mirror and leaving Reflect. The test exercises the production
+snapshot/restore helper; it supplies the active/inactive level itself and does
+not instantiate the viewer or execute avatar scheduling/Studio UI callbacks.
+
+Validation:
+
+| Gate | Result / evidence |
+|---|---|
+| Separate `zs_check.ps1 -Files <one .cpp>` calls | **PASS** for `llghostavatar.cpp`, `alghoststudio.cpp`, `tests/alreflectmath_test.cpp` with `-IncludeTests`, and the existing Floor `alpanelghoststudio.cpp`. Logs: `.tmp/floor_hold_zs_{ghost,studio,tests,panel}.log`. Each call uses the supported workspace cache. |
+| Standalone reflection tests | **33/33 PASS** after compile/link with the existing `.tmp/reflect_math_compile.cmd` and `.tmp/reflect_unit_link.cmd`. Logs: `.tmp/floor_hold_test_compile.log`, `.tmp/floor_hold_test_link.log`, `.tmp/floor_hold_tests.log`. The existing non-fatal missing `vswhere.exe` setup message remains. |
+| Generated kit | Regenerated kit, page sources and functional manifest after final C++ changes. All three `--check` invocations **PASS**; `.tmp/floor_hold_{kit,sources,manifest}_check.log`. The manifest retains its five existing warnings. |
+| `prebuild_guard.ps1 -ChecksOnly` | **PASS**, all 11 gates, exit 0, using the existing `.tmp/reflect_prebuild_checks.ps1` wrapper with `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`. Log: `.tmp/floor_hold_prebuild.log`. No object purge or viewer build. |
+| `git diff --check` | **PASS** after the report append. |
+
+In-world acceptance remains **UNRUN**. Specifically verify Clone Studio → Pose →
+Reflect → Floor → Pause (Frozen) over many frames; repeat with Live Floor while
+the source disappears/goes out of range, then returns. The root must remain at
+the last reflected position and orientation with soles on the plane until a new
+stamp. Exercise Studio/proxy pushes during Frozen, resume, Floor → Wall, and
+Reflect → Mirror/Directed/True Mirror; confirm existing facing restoration and
+unaffected Wall/True Mirror, neighboring clones and real avatars. No viewer
+build/launch, commit, push, staging, or stash operation was performed.

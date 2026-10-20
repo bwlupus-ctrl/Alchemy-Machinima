@@ -368,6 +368,7 @@ public:
         // ---- entity-clone animation drive (Track B; ignored for overlays) ----
         EDriveMode  mDriveMode = DRIVE_MIRROR;
         S32 mReflectPlaneMode = 0; // 0 Fixed, 1 Live; session only
+        bool mReflectFloor = false; // Wall by default; session-only orientation
         bool mReflectPlaneValid = false;
         bool mReflectHasLastPlane = false;
         bool mReflectPlaneDegenerate = false;

@@ -29,6 +29,7 @@
 
 #include "llvoavatar.h"
 #include "alghostautoanimmodel.h" // [AutoAnimate]
+#include "alreflectmath.h"
 #include <memory> // [AutoAnimate]
 
 #include <set>
@@ -71,6 +72,8 @@ public:
     // Studio-authored transforms use the avatar's FOOT position. The desired
     // foot remains authoritative while a newly loaded skeleton settles.
     void setGhostFootPosition(const LLVector3& foot_agent);
+    void setGhostFloorPosition(const LLVector3& root_agent, const LLVector3& foot_agent);
+    bool hasFloorRootHold() const { return mGhostFloorPosition && mReflectFloorRootHold.valid; }
     void setGhostRotation(const LLQuaternion& rotation);
 
     // [ClientHeight] The stable Ghost Studio instance id (Instance::mId), stamped by
@@ -247,6 +250,8 @@ private:
     // Global coordinates survive agent-origin changes at region crossings.
     LLVector3d mDesiredGhostFootGlobal;
     bool mDesiredGhostFootValid = false;
+    bool mGhostFloorPosition = false; // derived placement/pivot, not a second plane
+    ALReflect::FloorRootHold mReflectFloorRootHold;
     F32 mEntityScale = 1.f;
     bool mEntityPhysicsEnabled = true;
     bool mEntityEyeMotionEnabled = false;

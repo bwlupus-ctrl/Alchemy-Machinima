@@ -284,8 +284,9 @@ def validate_data(data: dict) -> None:
     # 2139: Reflect adds six Clones rows: plane, position, Face pair, distance, recapture, status (10/20).
     # 2140: +1 per-clone Mirror light rig checkbox beside Reflect (10/20).
     # 2141: +1 Paste position button in Clones > Position (avatar session clipboard, 10/20).
-    if len(pages) != 37 or row_count != 2141:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2141")
+    # 2142: +1 Wall/Floor orientation choice in Clones > Reflect (10/20).
+    if len(pages) != 37 or row_count != 2142:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2142")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

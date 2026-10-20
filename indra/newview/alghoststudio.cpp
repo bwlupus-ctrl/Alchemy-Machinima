@@ -1030,6 +1030,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     const std::string new_name = copy->mName; // spawn already called makeDefaultName()
     *copy = proto;
     copy->mReflectMirrorPosition = false;
+    copy->mReflectFloor = false;
     copy->mMirrorLightRig = false;
     copy->mReflectPlaneValid = false;
     copy->mReflectHasLastPlane = false;
@@ -1521,8 +1522,10 @@ bool ALGhostStudio::applyEntityTransform(const LLUUID& id)
     {
         return false;
     }
-    ghost->setGhostFootPosition(
-        gAgent.getPosAgentFromGlobal(inst->mFootGlobal));
+    // Floor owns the actual root, including after the post-pass (proxy pushes).
+    if (!(inst->mReflectFloor && (ghost->getEntityDriveMode() == DRIVE_REFLECT ||
+        (ghost->getEntityDriveMode() == DRIVE_FROZEN && ghost->hasFloorRootHold()))))
+        ghost->setGhostFootPosition(gAgent.getPosAgentFromGlobal(inst->mFootGlobal));
     if (!stampOwnsFacing(*inst)) ghost->setGhostRotation(inst->mRotation);
     return true;
 }
@@ -2159,10 +2162,12 @@ void ALGhostStudio::updatePerFrame()
 
 namespace
 {
-LLVector3d reflectSourceFoot(LLVOAvatar* source)
+LLVector3d reflectSourceFoot(LLVOAvatar* source, bool floor = false)
 {
-    LLVector3 foot = source->getRootJoint()->getWorldPosition();
-    foot.mV[VZ] -= source->getPelvisToFoot();
+    LLVector3 foot = floor ? source->getBaseRootPosition() : source->getRootJoint()->getWorldPosition();
+    F32 pelvis_to_foot = source->getPelvisToFoot();
+    if (floor && !llfinite(pelvis_to_foot)) pelvis_to_foot = 0.f;
+    foot.mV[VZ] -= floor ? llmax(0.f, pelvis_to_foot) : pelvis_to_foot;
     return gAgent.getPosGlobalFromAgent(foot);
 }
 }
@@ -2177,6 +2182,12 @@ std::string ALGhostStudio::reflectStatus(const Instance& inst) const
     LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
     if (!ghost || ghost->getEntityDriveMode() != DRIVE_REFLECT)
         return "paused: Director switcher re-drive";
+    if (inst.mReflectFloor)
+    {
+        if (!ghost->reflectSource()) return "holding: source missing";
+        if (!inst.mReflectPlaneValid) return "holding: plane not captured";
+        return inst.mReflectPlaneMode == 1 ? "Reflect: floor live, sole to sole" : "Reflect: floor fixed, mirroring pose and position";
+    }
     if (groupForMember(inst.mId))
         return inst.mReflectMirrorPosition ? "position held: locked group; Face pair unavailable" : "Reflect: pose only; Face pair unavailable: locked group";
     if (!ghost->reflectSource()) return "holding: source missing";
@@ -2195,6 +2206,10 @@ std::string ALGhostStudio::reflectStatus(const Instance& inst) const
 bool ALGhostStudio::reflectOwnsPosition(const Instance& inst) const
 {
     LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
+    if (inst.mReflectFloor)
+        return ghost && ghost->getEntityDriveMode() == DRIVE_REFLECT && ghost->reflectSource() &&
+            inst.mReflectPlaneValid && inst.mReflectPlanePoint.isFinite() &&
+            inst.mReflectPlaneNormal == LLVector3::z_axis;
     return ghost && ghost->getEntityDriveMode() == DRIVE_REFLECT &&
         inst.mReflectMirrorPosition && inst.mReflectPlaneMode == 0 &&
         inst.mReflectPlaneValid && inst.mReflectPlanePoint.isFinite() &&
@@ -2210,7 +2225,7 @@ bool ALGhostStudio::facePair(const LLUUID& id)
     Instance* inst = getInstance(id);
     LLGhostAvatar* ghost = resolveEntityClone(id);
     LLVOAvatar* source = ghost ? ghost->reflectSource() : nullptr;
-    if (!inst || !source || groupForMember(id)) return false;
+    if (!inst || !source || inst->mReflectFloor || groupForMember(id)) return false;
     LLVector3 forward = LLVector3::x_axis * source->getRootJoint()->getWorldRotation();
     forward.mV[VZ] = 0.f;
     if (!forward.isFinite() || forward.length() < .2f) return false;
@@ -2237,9 +2252,13 @@ bool ALGhostStudio::stampOwnsFacing(const Instance& inst) const
 {
     static LLCachedControl<bool> copy_facing(
         gSavedSettings, "GhostTrueMirrorCopyFacing", true);
-    return inst.mKind == BACKING_ENTITY_CLONE &&
-           (inst.mDriveMode == DRIVE_TRUE_MIRROR ||
-            (resolveEntityClone(inst.mId) && resolveEntityClone(inst.mId)->getEntityDriveMode() == DRIVE_REFLECT)) && copy_facing;
+    if (inst.mKind != BACKING_ENTITY_CLONE) return false;
+    const LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
+    const bool reflect = ghost && ghost->getEntityDriveMode() == DRIVE_REFLECT;
+    const bool floor_hold = inst.mReflectFloor && ghost &&
+        ghost->getEntityDriveMode() == DRIVE_FROZEN && ghost->hasFloorRootHold();
+    return (inst.mDriveMode == DRIVE_TRUE_MIRROR && copy_facing) ||
+           (reflect && (copy_facing || inst.mReflectFloor)) || floor_hold;
 }
 
 void ALGhostStudio::updatePostObjectList()
@@ -2279,18 +2298,20 @@ void ALGhostStudio::updatePostObjectList()
                     ghost->applyReflectStamp(inst.mReflectPlaneNormal); // INCONCLUSIVE verdict; no writes
                     continue; // hold plane, placement and pose together
                 }
-                const LLVector3d foot = reflectSourceFoot(source);
+                const LLVector3d foot = reflectSourceFoot(source, inst.mReflectFloor);
                 ALReflect::Plane plane;
                 plane.valid = inst.mReflectPlaneValid || inst.mReflectHasLastPlane;
                 plane.degenerate = inst.mReflectPlaneDegenerate;
                 plane.point = inst.mReflectPlanePoint;
                 plane.normal = inst.mReflectPlaneNormal;
-                if (!inst.mReflectPlaneValid || (inst.mReflectPlaneMode == 1 && !inst.mReflectMirrorPosition))
+                if (!inst.mReflectPlaneValid || (inst.mReflectPlaneMode == 1 && (inst.mReflectFloor || !inst.mReflectMirrorPosition)))
                 {
-                    const S32 tier = ALReflect::updatePlane(plane, foot, inst.mFootGlobal,
+                    S32 tier = 0;
+                    if (inst.mReflectFloor) ALReflect::updateFloorPlane(plane, foot);
+                    else tier = ALReflect::updatePlane(plane, foot, inst.mFootGlobal,
                         LLVector3::x_axis * source->getRootJoint()->getWorldRotation(), inst.mReflectPlaneValid && inst.mReflectPlaneMode == 1);
                     if (!inst.mReflectPlaneValid)
-                        LL_INFOS("GhostReflect") << "plane capture tier=" << tier
+                        LL_INFOS("GhostReflect") << (inst.mReflectFloor ? "floor " : "wall ") << "plane capture tier=" << tier
                             << " (0 bisector, 1 forward, 2 last, 3 world +X): "
                             << (plane.valid && tier >= 0 ? "PASS" : "INCONCLUSIVE") << LL_ENDL;
                     inst.mReflectPlaneValid = plane.valid;
@@ -2301,12 +2322,20 @@ void ALGhostStudio::updatePostObjectList()
                 }
                 if (reflectOwnsPosition(inst))
                 {
-                    const LLVector3d mirrored = ALReflect::planeFoot(foot, plane.point, plane.normal);
+                    const LLVector3d mirrored = inst.mReflectFloor ? ALReflect::floorPoint(foot, plane.point.mdV[VZ]) :
+                        ALReflect::planeFoot(foot, plane.point, plane.normal);
                     if (mirrored.isFinite())
                     {
                         inst.mFootGlobal = mirrored; // deliberately no proxy revision bump
                         inst.mChaosHasBase = false;
-                        ghost->setGhostFootPosition(gAgent.getPosAgentFromGlobal(mirrored));
+                        if (inst.mReflectFloor)
+                        {
+                            const LLVector3d root = ALReflect::floorPoint(
+                                gAgent.getPosGlobalFromAgent(source->getRootJoint()->getWorldPosition()), plane.point.mdV[VZ]);
+                            if (root.isFinite()) ghost->setGhostFloorPosition(
+                                gAgent.getPosAgentFromGlobal(root), gAgent.getPosAgentFromGlobal(mirrored));
+                        }
+                        else ghost->setGhostFootPosition(gAgent.getPosAgentFromGlobal(mirrored));
                     }
                 }
                 if (plane.valid) ghost->applyReflectStamp(plane.normal);

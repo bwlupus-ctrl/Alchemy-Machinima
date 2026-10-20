@@ -1055,6 +1055,8 @@ void LLGhostAvatar::setGhostPosition(const LLVector3& pos_agent)
     // This API deliberately keeps its historical root-position contract.
     // A direct root placement supersedes any Studio foot lock.
     mDesiredGhostFootValid = false;
+    mGhostFloorPosition = false;
+    mReflectFloorRootHold.valid = false;
     if (!getRegion())
     {
         LL_WARNS("Avatar") << "setGhostPosition with no region; ignoring" << LL_ENDL;
@@ -1083,7 +1085,19 @@ void LLGhostAvatar::setGhostFootPosition(const LLVector3& foot_agent)
     }
     mDesiredGhostFootGlobal = desired_global;
     mDesiredGhostFootValid = true;
+    mGhostFloorPosition = false;
+    mReflectFloorRootHold.valid = false;
     applyDesiredGhostFootPosition();
+    updateEntityOuterTransform();
+}
+
+void LLGhostAvatar::setGhostFloorPosition(const LLVector3& root_agent, const LLVector3& foot_agent)
+{
+    if (!root_agent.isFinite() || !foot_agent.isFinite() || !getRegion() || !mRoot) return;
+    // The ordinary foot lock adds +pelvis-to-foot, which is wrong upside down.
+    setGhostPosition(root_agent);
+    mDesiredGhostFootGlobal = gAgent.getPosGlobalFromAgent(foot_agent);
+    mGhostFloorPosition = true;
     updateEntityOuterTransform();
 }
 
@@ -1200,6 +1214,7 @@ void LLGhostAvatar::updateEntityOuterTransform()
     F32 p2f = getPelvisToFoot();
     if (!llfinite(p2f)) p2f = 0.f;
     foot.mV[VZ] -= llmax(0.f, p2f);   // no upper cap: a giant custom skeleton is legit
+    if (mGhostFloorPosition) foot = gAgent.getPosAgentFromGlobal(mDesiredGhostFootGlobal);
     if (!foot.isFinite())
     {
         return;
@@ -1484,6 +1499,10 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     {
         return;
     }
+    // Freeze keeps the reflected placement. Other drives resume the ordinary
+    // upright foot lock; Wall switches do this through applyEntityTransform.
+    if (mGhostFloorPosition && mode != ALGhostStudio::DRIVE_REFLECT && mode != ALGhostStudio::DRIVE_FROZEN)
+        setGhostFootPosition(gAgent.getPosAgentFromGlobal(mDesiredGhostFootGlobal));
 
     // [AutoAnimate] Disarm before this transition issues any body or linkset stops.
     // Keep the existing post-transition COLD handling in autoAnimOnDriveModeChanged.
@@ -1668,7 +1687,8 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
     const bool consecutive = mReflectLastFrame + 1 == frame;
     mReflectLastFrame = frame;
     LLVOAvatar* source = reflectSource();
-    if (!source || !normal.isFinite() || fabsf(normal.length() - 1.f) > .001f || fabsf(normal.mV[VZ]) > 1e-5f)
+    const bool floor = normal == LLVector3::z_axis;
+    if (!source || !normal.isFinite() || fabsf(normal.length() - 1.f) > .001f || (!floor && fabsf(normal.mV[VZ]) > 1e-5f))
     {
         mReflectPreviousWritten = false;
         static LLCachedControl<bool> verify_missing(gSavedSettings, "GhostReflectVerify", true);
@@ -1717,10 +1737,17 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
         }
     }
     bool written = true;
-    if (facing)
+    if (facing || floor)
     {
-        const LLQuaternion q = ALReflect::rootRotation(source->getRootJoint()->getWorldRotation(), normal);
-        if (q.isFinite()) mRoot->setWorldRotation(q); else written = false;
+        const LLQuaternion q = floor ? ALReflect::floorRootRotation(source->getRootJoint()->getWorldRotation()) :
+            ALReflect::rootRotation(source->getRootJoint()->getWorldRotation(), normal);
+        if (q.isFinite())
+        {
+            mRoot->setWorldRotation(q);
+            if (floor && mGhostFloorPosition)
+                mReflectFloorRootHold.capture(gAgent.getPosGlobalFromAgent(mRoot->getWorldPosition()), q);
+        }
+        else written = false;
     }
     mReflectLastRotations.clear();
     for (const auto& names : mReflectPartners)
@@ -1773,7 +1800,7 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
         if (!actual.isFinite() || !expected.isFinite() || ((actual - expected) * mEntityScale).length() > .01f * mEntityScale) symmetry = false;
     }
     LL_INFOS("GhostReflect") << "bone symmetry: " << (!written ? "INCONCLUSIVE (missing/non-finite input)" : !shape ? "INCONCLUSIVE (shape mismatch)" : symmetry ? "PASS" : "FAIL") << LL_ENDL;
-    if (!facing) LL_INFOS("GhostReflect") << "world facing: INCONCLUSIVE (copy-facing off)" << LL_ENDL;
+    if (!facing && !floor) LL_INFOS("GhostReflect") << "world facing: INCONCLUSIVE (copy-facing off)" << LL_ENDL;
     else
     {
         bool correct = written;
@@ -4044,6 +4071,21 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         // foot. Leaves mDesiredGhostFoot* untouched -- when the walk ends the
         // foot lock above restores the authored Studio placement.
         syncGhostObjectToMovingRoot();
+    }
+    // Level-triggered and clone-local: updateOrientation runs even with a paused
+    // motion controller. Restore AFTER the base avatar and mover/foot writers,
+    // on every frame, whether or not the later post-object-list stamp can run.
+    // A live stamp refreshes the snapshot; Frozen or an unavailable source holds
+    // it. Wall/other drives release it without touching their facing rules.
+    const auto* inst = ALGhostStudio::instance().findInstanceByRuntime(getID());
+    const bool floor_active = inst && inst->mReflectFloor && mGhostFloorPosition &&
+        (mEntityDriveMode == ALGhostStudio::DRIVE_REFLECT || mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN);
+    LLVector3d held_position;
+    LLQuaternion held_rotation;
+    if (mReflectFloorRootHold.restore(floor_active, held_position, held_rotation) && mRoot && getRegion())
+    {
+        mRoot->setWorldRotation(held_rotation);
+        ghostSlamPosition(gAgent.getPosAgentFromGlobal(held_position));
     }
     updateEntityOuterTransform();
 }
