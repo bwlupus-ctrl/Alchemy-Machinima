@@ -23,7 +23,18 @@
 * $/LicenseInfo$
 */
 
+
+
 /*[EXTRA_CODE_HERE]*/
+#ifdef RELIGHT_SHAPE
+#define RELIGHT_PARAM vec4 shape,
+#define RELIGHT_FORWARD shape,
+#define RELIGHT_DATA(i) light_shapes[i],
+#else
+#define RELIGHT_PARAM
+#define RELIGHT_FORWARD
+#define RELIGHT_DATA(i)
+#endif
 
 //class1/deferred/materialF.glsl
 
@@ -147,6 +158,9 @@ uniform vec3 light_direction[8];
 uniform vec4 light_attenuation[8];
 uniform vec3 light_diffuse[8];
 uniform vec4 rig_rim_lights[8]; // [RigRim] per-unit rim params (x gain, y k, z wrap, w back bias), see LLRender::syncLightState()
+#ifdef RELIGHT_SHAPE
+uniform vec4 light_shapes[8];
+#endif
 
 float getAmbientClamp();
 void waterClip(vec3 pos);
@@ -171,13 +185,64 @@ vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float rou
 // [RigRim] `rim` = this light unit's rig rim params (rig_rim_lights[i]); zero
 // for non-rig lights.  NOTE: `v` is the eye-space POSITION and `npos` the
 // normalized view vector here (legacy naming).
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, vec4 rim,
+
+#ifdef RELIGHT_SHAPE
+vec3 relightUnit(vec3 v, vec3 fallback);
+float relightRatio(vec3 n, vec3 lv, float radius);
+float relightAtten(float d, float range, float falloff, vec4 shape);
+vec3 relightRepresentative(vec3 n, vec3 v, vec3 lv, float radius);
+vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
+vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
+#endif
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, RELIGHT_PARAM vec4 rim,
     RigRimPixel rim_px // [RigRimQ] per-pixel quality inputs
 #ifdef HAS_ACTOR_FX
     , bool sil_on, float sil_keep, float rim_keep
 #endif
 )
 {
+#ifdef RELIGHT_SHAPE
+    if (shape.x > 0.0)
+    {
+        // Invert setupHWLights' attenuation encoding to recover shader range R.
+        float range = ((12.0*fa)-9.0)/la;
+        float falloff = fa-1.0;
+        vec3 delta = lp.xyz-v;
+        vec3 centre = relightUnit(delta,n);
+        vec3 view = relightUnit(-v,n);
+        float spot = max(dot(-ln,centre),is_pointlight);
+        float attenuation = relightAtten(length(delta),range,falloff,shape);
+        vec3 highlight;
+        relightLegacy(lightFunc,diffuse,spec,n,view,
+            delta,range,falloff,shape,highlight);
+        // Match the forward diffuse clamp as the source radius tends to zero.
+        vec3 col = clamp(spot*spot*attenuation*relightRatio(n,delta,shape.x),0.0,1.0)*light_col*diffuse
+            + spot*spot*light_col*highlight;
+        vec3 speccol = spot*spot*light_col*highlight;
+        float glare_delta = max(speccol.r,max(speccol.g,speccol.b));
+#ifdef HAS_ACTOR_FX
+        if (sil_on) col *= sil_keep;
+#endif
+#ifdef HAS_ACTOR_FX
+        if (sil_on) glare_delta *= sil_keep;
+#endif
+        glare = max(glare,speccol.r) + max(glare_delta,0.0);
+        if (rigRimMode() != 0)
+        {
+            vec3 rim_col = rigRimTermEx(n,view,centre,spot*spot*attenuation*light_col,
+                diffuse,1.0-spec.a,rim,rim_px);
+            if (rigRimMode() == 2) col = vec3(0);
+#ifdef HAS_ACTOR_FX
+            if (sil_on) rim_col *= rim_keep;
+#endif
+            col += rim_col;
+        }
+        return max(col * (classic_mode > 0 ? .9 : 1.0),vec3(0));
+    }
+#endif
+
 #ifdef HAS_ACTOR_FX
     float glare_start;
     if (sil_on)
@@ -620,9 +685,9 @@ void main()
 
 // [RigRim] trailing rig_rim_lights[i] argument (+ [RigRimQ] rim_px)
 #ifdef HAS_ACTOR_FX
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i], rim_px, alr_sil_on, alr_sil_keep, alr_rim_keep);
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, RELIGHT_DATA(i) rig_rim_lights[i], rim_px, alr_sil_on, alr_sil_keep, alr_rim_keep);
 #else
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i], rim_px);
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, RELIGHT_DATA(i) rig_rim_lights[i], rim_px);
 #endif
 
     LIGHT_LOOP(1)

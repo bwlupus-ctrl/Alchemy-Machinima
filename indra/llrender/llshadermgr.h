@@ -941,6 +941,8 @@ public:
         LENS_PYRAMID2,
         LENS_PYRAMID3,
         LENS_PYRAMID4,
+        LIGHT_SHAPE,
+        LIGHT_SHAPES,
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

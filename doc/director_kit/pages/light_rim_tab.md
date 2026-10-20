@@ -1,7 +1,7 @@
 # Rim — Director Kit page contract
 
 Page key: `light_rim_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (40/41 setting-bound rows; 4 C++-referenced rows).
+Computed class: **code-driven** (44/45 setting-bound rows; 4 C++-referenced rows).
 
 ## Real owners
 
@@ -61,6 +61,10 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `rim_tron` / `cine_rig_rim_tron_color` (Colour) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1086` | kit `combo` ↔ `CineRigRimTronColorSource` `S32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:1404`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6330` `tr_rigrim_tron_color_combo`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:189` `cine_rig_rim_tron_color` |
 | `rim_diagnostics` / `cine_rig_rim_debug` (Rim only) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:953` | kit `toggle` ↔ `CineRigRimDebugRimOnly` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:200` `cine_rig_rim_debug` |
 | `rim_diagnostics` / `cine_rimq_debug` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1133` | kit `combo` ↔ `CineRigRimDebugView` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:203` `cine_rimq_debug` |
+| `light_shape` / `relight_physical` (Physical falloff) | none | kit `toggle` ↔ `RenderLocalLightPhysicalFalloff` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:217` `relight_physical` |
+| `light_shape` / `relight_world_size` (World light size (m)) | none | kit `slider` ↔ `RenderLocalLightDefaultRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:220` `relight_world_size` |
+| `light_shape` / `relight_near_floor` (Near floor (m)) | none | kit `number` ↔ `RenderLocalLightNearFloor` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:225` `relight_near_floor` |
+| `light_shape` / `relight_max_boost` (Max boost) | none | kit `number` ↔ `RenderLocalLightPhysicalMaxBoost` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:228` `relight_max_boost` |
 
 ## Adapter extraction
 
@@ -77,7 +81,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **36 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **39 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -117,6 +121,9 @@ Manifest size: **36 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `cine_rimq_debug-option-3` | Only `cine_rimq_debug` selects `Smooth normal`; other selectors remain default. |
 | `cine_rimq_debug-option-4` | Only `cine_rimq_debug` selects `Subject mask`; other selectors remain default. |
 | `cine_rimq_debug-option-5` | Only `cine_rimq_debug` selects `Wrap only`; other selectors remain default. |
+| `card-light_shape-tallest-850` | Only `light_shape` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-light_shape-tallest-1160` | Only `light_shape` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `relight_physical-on` | Only `relight_physical` is on; dependent visibility is measured. |
 
 ## Parity check
 
@@ -131,7 +138,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-41 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+45 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

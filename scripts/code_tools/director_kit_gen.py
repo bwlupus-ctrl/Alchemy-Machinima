@@ -285,8 +285,9 @@ def validate_data(data: dict) -> None:
     # 2140: +1 per-clone Mirror light rig checkbox beside Reflect (10/20).
     # 2141: +1 Paste position button in Clones > Position (avatar session clipboard, 10/20).
     # 2142: +1 Wall/Floor orientation choice in Clones > Reflect (10/20).
-    if len(pages) != 37 or row_count != 2142:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2142")
+    # 2146: +4 Light shape rows; Enable is the card header switch (Phase 1, 10/20).
+    if len(pages) != 37 or row_count != 2146:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2146")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -966,6 +967,8 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
                 attrs["enable_tooltip"] = source.get("tool_tip", "")
             if not enable_setting and source is not None and source.get("control_name"):
                 enable_setting = source.get("control_name")
+        if card.get("eh"):
+            attrs["enable_tooltip"] = str(card["eh"])
         if enable_setting:
             attrs["enable_setting"] = str(enable_setting)
         if card.get("opts"):

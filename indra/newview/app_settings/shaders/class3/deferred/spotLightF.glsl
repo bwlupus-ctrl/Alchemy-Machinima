@@ -100,6 +100,9 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
 // globals + helper live in deferredUtil.glsl.  Uploaded by setupSpotLight();
 // zero for every non-rig projector, so only rig fixtures ever add rim.
 uniform vec4 rig_rim_light;
+#ifdef RELIGHT_SHAPE
+uniform vec4 light_shape;
+#endif
 // [RigRim] Rim shadow: 1 = rim shadowed exactly like the light (default, physical).
 // Lower values relax the shadow ONLY near/behind the terminator (n.l < 0.3), where
 // shadow-map self-shadowing erases the wrap zone that a light directly behind the
@@ -120,6 +123,26 @@ struct RigRimPixel
 RigRimPixel rigRimNeutralPixel(vec3 n);
 RigRimPixel rigRimLoadPixel(vec2 tc, vec3 n_sh, float z_view);
 vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim, RigRimPixel px);
+
+
+#ifdef RELIGHT_SHAPE
+vec3 relightUnit(vec3 v, vec3 fallback);
+float relightRatio(vec3 n, vec3 lv, float radius);
+float relightAtten(float d, float range, float falloff, vec4 shape);
+vec3 relightRepresentative(vec3 n, vec3 v, vec3 lv, float radius);
+vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
+vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
+#endif
+#ifdef RELIGHT_SHAPE
+// Projection rays originate at proj_origin; the radial window must retain the
+// legacy light-centre distance from clipProjectedLightVars, in BOTH modes.
+vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float attenDistance);
+vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float attenDistance);
+#endif
 
 void main()
 {
@@ -174,6 +197,9 @@ void main()
     vec3 n = gb.normal;
 
     float dist_atten = calcLegacyDistanceAttenuation(dist, falloff);
+#ifdef RELIGHT_SHAPE
+    if (light_shape.x == 0.0)
+#endif
     if (dist_atten <= 0.0)
     {
         discard;
@@ -195,6 +221,9 @@ void main()
     lv = proj_origin-pos.xyz;
     vec3  h, l, v = -normalize(pos);
     float nh, nl, nv, vh, lightDist;
+#ifdef RELIGHT_SHAPE
+    if (light_shape.x == 0.0)
+#endif
     calcHalfVectors(lv, n, v, h, l, nh, nl, nv, vh, lightDist);
 
     vec3 diffuse = gb.albedo.rgb;
@@ -204,6 +233,86 @@ void main()
 
     vec3 amb_rgb = vec3(0);
 
+#ifdef RELIGHT_SHAPE
+    if (light_shape.x > 0.0)
+    {
+        // Cookie/cone and the existing projector shadow still gate this light.
+        if (proj_tc.x > 0.0 && proj_tc.x < 1.0 && proj_tc.y > 0.0 && proj_tc.y < 1.0)
+        {
+            vec3 delta = proj_origin-pos;
+            vec3 view = relightUnit(-pos,n);
+            vec3 centre = relightUnit(delta,n);
+            vec3 lamp = getProjectedLightDiffuseColor(l_dist,proj_tc.xy);
+            vec3 diffuseColor = diffuse;
+            float roughness = 1.0-spec.a;
+            float attenuation = relightAtten(dist*size,size,falloff,light_shape);
+            if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
+            {
+                roughness = spec.g;
+                diffuseColor = diffuse * .96 * (1.0-spec.b);
+                final_color = lamp * shadow * 3.25 * relightPbr(diffuseColor,
+                    mix(vec3(.04),diffuse,spec.b),roughness,spec.b,n,view,delta,size,falloff,
+                    light_shape,1.0-gb.envIntensity,dist*size);
+                float centre_nl = max(dot(n,centre),.001);
+                vec3 ambient = getProjectedLightAmbiance((centre_nl*.5+.5)*proj_ambiance,
+                    attenuation,0.0,centre_nl,1.0,proj_tc.xy) * 3.25;
+                if (attenuation > 0.0)
+                    final_color += ambient * relightPbr(diffuseColor,mix(vec3(.04),diffuse,spec.b),
+                        roughness,spec.b,n,view,delta,size,falloff,light_shape,1.0-gb.envIntensity,dist*size) / attenuation;
+            }
+            else
+            {
+                vec3 highlight;
+                final_color = lamp * shadow * relightLegacy(lightFunc,diffuse,
+                    vec4(srgb_to_linear(spec.rgb),spec.a),n,view,delta,size,falloff,light_shape,highlight,dist*size);
+                float wrap = relightRatio(n,delta,light_shape.x);
+                vec3 ambient = getProjectedLightAmbiance((wrap*.5+.5)*proj_ambiance,
+                    attenuation,clamp(wrap*attenuation,0.0,1.0),wrap,1.0,proj_tc.xy);
+                final_color += diffuse*ambient*max(dot(-centre,n),0.0);
+            }
+            if (rigRimMode() != 0)
+            {
+                vec3 rim_lit = lamp * attenuation * mix(shadow,1.0,
+                    (1.0-clamp(rig_rim_shadow,0.0,1.0))*(1.0-smoothstep(0.0,.3,dot(n,centre))));
+                rim_color += rigRimTermEx(n,view,centre,rim_lit,diffuseColor,roughness,rig_rim_light,rim_px);
+            }
+        }
+        if (!GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
+        {
+            float envIntensity = gb.envIntensity;
+            if (envIntensity > 0.0)
+            {
+                vec3 ref = reflect(relightUnit(pos,n), n);
+
+                //project from point pos in direction ref to plane proj_p, proj_n
+                vec3 pdelta = proj_p-pos;
+                float ds = dot(ref, proj_n);
+
+                if (ds < 0.0)
+                {
+                    vec3 pfinal = pos + ref * dot(pdelta, proj_n)/ds;
+
+                    vec4 stc = (proj_mat * vec4(pfinal.xyz, 1.0));
+
+                    if (stc.z > 0.0)
+                    {
+                        stc /= stc.w;
+
+                        if (stc.x < 1.0 &&
+                            stc.y < 1.0 &&
+                            stc.x > 0.0 &&
+                            stc.y > 0.0)
+                        {
+                            final_color += color.rgb * texture2DLodSpecular(stc.xy, (1 - spec.a) * (proj_lod * 0.6)).rgb * shadow * envIntensity;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+#endif
     if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
     {
         vec3 orm = spec.rgb;
@@ -348,6 +457,9 @@ void main()
         }
     }
 
+#ifdef RELIGHT_SHAPE
+    }
+#endif
     //not sure why, but this line prevents MATBUG-194
     final_color = max(final_color, vec3(0.0));
     // [RigRim] additive on top of the projector's own lighting; the classic_mode

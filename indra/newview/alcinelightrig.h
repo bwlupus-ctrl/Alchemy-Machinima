@@ -245,6 +245,7 @@ public:
     // [RigRim] per-light rim params (Phase A), bounds-checked; returns a
     // static zero vector for an out-of-range index.
     const LLVector4& rigRimParams(S32 light) const;
+    LLVector4 lightShapeSource(S32 light) const { return mLightShapeSource[light]; }
     bool liveProbeCentre(LLVector3d& centre) const;
     void liveProbeIgnoredLightIds(std::vector<LLUUID>& ids) const;
     void liveProbeProjectorIds(std::vector<LLUUID>& ids) const;
@@ -489,6 +490,7 @@ private:
     F32 mShadowSoftness[ALCineLightRigModel::LIGHT_COUNT] = {};
     // [RigRim] per-light rim params (Phase A); zeroed explicitly in the
     // constructor since LLVector4's default constructor sets w = 1.
+    LLVector4 mLightShapeSource[ALCineLightRigModel::LIGHT_COUNT]; // radius (-1 = default), effective orbit
     LLVector4 mRigRim[ALCineLightRigModel::LIGHT_COUNT];
     F32 mLiveProbeBounceScale = 1.f;
     ALCineLightRigModel::RigFrame mLastFrame;

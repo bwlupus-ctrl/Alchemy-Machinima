@@ -38,6 +38,9 @@ uniform vec4  light_col[LIGHT_COUNT]; // .a = falloff
 // y k, z wrap, w back bias).  Zero for every non-rig light.  Uploaded with
 // the same count as MULTI_LIGHT / MULTI_LIGHT_COL from the fullscreen batch.
 uniform vec4  rig_rim_lights[LIGHT_COUNT];
+#ifdef RELIGHT_SHAPE
+uniform vec4 light_shapes[LIGHT_COUNT];
+#endif
 int rigRimMode();
 // [RigRimQ] per-pixel quality inputs (deferredUtil.glsl; struct must match there)
 #ifndef RIG_RIM_PIXEL_DEFINED
@@ -87,6 +90,17 @@ GBufferInfo getGBuffer(vec2 screenpos);
 bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, out bool haze_skip);
 #endif
 
+
+#ifdef RELIGHT_SHAPE
+vec3 relightUnit(vec3 v, vec3 fallback);
+float relightRatio(vec3 n, vec3 lv, float radius);
+float relightAtten(float d, float range, float falloff, vec4 shape);
+vec3 relightRepresentative(vec3 n, vec3 v, vec3 lv, float radius);
+vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
+vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
+#endif
 void main()
 {
     vec3 final_color = vec3(0, 0, 0);
@@ -140,6 +154,25 @@ void main()
 
         for (int light_idx = 0; light_idx < LIGHT_COUNT; ++light_idx)
         {
+#ifdef RELIGHT_SHAPE
+            if (light_shapes[light_idx].x > 0.0)
+            {
+                vec4 shape = light_shapes[light_idx];
+                vec3 delta = light[light_idx].xyz-pos;
+                float range = light[light_idx].w;
+                float fa = light_col[light_idx].a;
+                if (length(delta) >= range) continue;
+                vec3 view = relightUnit(-pos,n);
+                final_color += light_col[light_idx].rgb * 3.25 * relightPbr(diffuseColor,specularColor,
+                    perceptualRoughness,metallic,n,view,delta,range,fa,shape,1.0-gb.envIntensity);
+                if (rigRimMode() != 0)
+                    rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
+                        relightAtten(length(delta),range,fa,shape)*light_col[light_idx].rgb,
+                        diffuseColor,perceptualRoughness,rig_rim_lights[light_idx],rim_px);
+                continue;
+            }
+#endif
+
             vec3  lightColor = light_col[ light_idx ].rgb; // Already in linear, see pipeline.cpp: volume->getLightLinearColor();
             float falloff    = light_col[ light_idx ].a;
             float lightSize  = light[ light_idx ].w;
@@ -177,6 +210,26 @@ void main()
         // As of OSX 10.6.7 ATI Apple's crash when using a variable size loop
         for (int i = 0; i < LIGHT_COUNT; ++i)
         {
+#ifdef RELIGHT_SHAPE
+            if (light_shapes[i].x > 0.0)
+            {
+                vec4 shape = light_shapes[i];
+                vec3 delta = light[i].xyz-pos;
+                float range = light[i].w;
+                float fa = light_col[i].a;
+                if (length(delta) >= range) continue;
+                vec3 view = relightUnit(-pos,n);
+                vec3 highlight;
+                final_color += light_col[i].rgb * relightLegacy(lightFunc,diffuse,spec,
+                    n,view,delta,range,fa,shape,highlight);
+                if (rigRimMode() != 0)
+                    rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
+                        relightAtten(length(delta),range,fa,shape)*light_col[i].rgb,
+                        diffuse,1.0-spec.a,rig_rim_lights[i],rim_px);
+                continue;
+            }
+#endif
+
             vec3  lv   = light[i].xyz - pos;
             float dist = length(lv);
             dist /= light[i].w;

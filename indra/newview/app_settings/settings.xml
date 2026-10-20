@@ -21539,6 +21539,41 @@
       <key>Value</key>
       <integer>2</integer>
     </map>
+    <key>RenderLightShapeEnable</key>
+    <map>
+        <key>Comment</key><string>Sphere shading for local lights.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>0</integer>
+    </map>
+    <key>RenderLocalLightPhysicalFalloff</key>
+    <map>
+        <key>Comment</key><string>Calibrated inverse square falloff for shaped local lights.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>0</integer>
+    </map>
+    <key>RenderLocalLightDefaultRadius</key>
+    <map>
+        <key>Comment</key><string>World and legacy rig source radius in metres (0 to 1).</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0</real>
+    </map>
+    <key>RenderLocalLightNearFloor</key>
+    <map>
+        <key>Comment</key><string>Minimum physical falloff distance in metres.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0.1</real>
+    </map>
+    <key>RenderLocalLightPhysicalMaxBoost</key>
+    <map>
+        <key>Comment</key><string>Maximum physical gain relative to legacy peak.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>4</real>
+    </map>
     <key>RenderShadowDetail</key>
     <map>
       <key>Comment</key>

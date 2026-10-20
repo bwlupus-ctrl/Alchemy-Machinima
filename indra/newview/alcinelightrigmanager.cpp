@@ -813,6 +813,35 @@ bool ALCineLightRigManager::isSlotLit(Slot slot) const
 // and only pay for isSlotLit() (which can resolve the slot's avatar or
 // object target) once a slot's projector/omni id actually matches — matches
 // are rare (0 or 1 per frame) while this runs once per visible local light.
+bool ALCineLightRigManager::lightShapeSourceFor(const LLUUID& id, LLVector4& out) const
+{
+    if (id.isNull()) return false;
+    const auto lookup = [&](const ALCineLightRig& rig)
+    {
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+        {
+            if (rig.projectorId(i) == id || rig.omniId(i) == id)
+            {
+                out = rig.lightShapeSource(i);
+                return true;
+            }
+        }
+        // Catchlights have no fixture source-size field. Use the global default,
+        // calibrated at the rig effective orbit radius.
+        if (rig.catchlightId() == id)
+        {
+            out.set(-1.f, rig.lightShapeSource(0).mV[1], 0.f, 0.f);
+            return true;
+        }
+        return false;
+    };
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+        if (lookup(at(static_cast<Slot>(i)))) return true;
+    for (const auto& entry : mMirrors)
+        if (lookup(*entry.second)) return true;
+    return false;
+}
+
 bool ALCineLightRigManager::rigRimParamsFor(
     const LLUUID& id, LLVector4& out) const
 {

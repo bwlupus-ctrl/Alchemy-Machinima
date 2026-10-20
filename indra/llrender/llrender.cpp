@@ -650,6 +650,15 @@ void LLLightState::setFalloff(F32 v)
 }
 
 // [RigRim]
+void LLLightState::setLightShape(const LLVector4& shape)
+{
+    if (mLightShape != shape)
+    {
+        ++gGL.mLightHash;
+        mLightShape = shape;
+    }
+}
+
 void LLLightState::setRigRim(const LLVector4& v)
 {
     if (mRigRim != v)
@@ -918,12 +927,15 @@ void LLRender::syncLightState()
         LLVector3 diffuse_b[LL_NUM_LIGHT_UNITS];
         bool      sun_primary[LL_NUM_LIGHT_UNITS];
         LLVector2 size[LL_NUM_LIGHT_UNITS];
+        const bool shape_active = LLGLSLShader::sGlobalDefines.count("RELIGHT_SHAPE") != 0;
+        LLVector4 shapes[LL_NUM_LIGHT_UNITS];
         LLVector4 rim[LL_NUM_LIGHT_UNITS]; // [RigRim]
 
         for (U32 i = 0; i < LL_NUM_LIGHT_UNITS; i++)
         {
             LLLightState *light = &mLightState[i];
 
+            if (shape_active) shapes[i] = light->mLightShape;
             position[i]  = light->mPosition;
             direction[i] = light->mSpotDirection;
             attenuation[i].set(light->mLinearAtten, light->mQuadraticAtten, light->mSpecular.mV[2], light->mSpecular.mV[3]);
@@ -939,6 +951,7 @@ void LLRender::syncLightState()
             }
         }
 
+        if (shape_active) shader->uniform4fv(LLShaderMgr::LIGHT_SHAPES, LL_NUM_LIGHT_UNITS, shapes[0].mV);
         shader->uniform4fv(LLShaderMgr::LIGHT_POSITION, LL_NUM_LIGHT_UNITS, position[0].mV);
         shader->uniform3fv(LLShaderMgr::LIGHT_DIRECTION, LL_NUM_LIGHT_UNITS, direction[0].mV);
         shader->uniform4fv(LLShaderMgr::LIGHT_ATTENUATION, LL_NUM_LIGHT_UNITS, attenuation[0].mV);

@@ -261,6 +261,7 @@ public:
     void setSunPrimary(bool v);
     void setSize(F32 size);
     void setFalloff(F32 falloff);
+    void setLightShape(const LLVector4& shape);
     void setRigRim(const LLVector4& rim); // [RigRim]
 
 protected:
@@ -284,6 +285,7 @@ protected:
     F32 mSpotCutoff;
     F32 mSize = 0.f;
     F32 mFalloff = 0.f;
+    LLVector4 mLightShape{0.f, 0.f, 1.f, -1.f};
     LLVector4 mRigRim = LLVector4(0.f, 0.f, 0.f, 0.f); // [RigRim]
 };
 

@@ -1330,6 +1330,7 @@ public:
     // [RigRim] true + params when `id` is a projector (or, with
     // CineRigRimIncludeBounce, an omni bounce fill) of a currently-lit slot.
     // The catchlight and unlit slots resolve to false.
+    bool lightShapeSourceFor(const LLUUID& id, LLVector4& out) const;
     bool rigRimParamsFor(const LLUUID& id, LLVector4& out) const;
     U32 enabledMask() const;
     S32 enabledCount() const;

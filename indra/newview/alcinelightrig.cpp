@@ -1103,6 +1103,7 @@ void ALCineLightRig::mirrorFrom(const ALCineLightRig& source,
         copy(source.mProjectors[i], mProjectors[i]);
         copy(source.mOmnis[i], mOmnis[i]);
         mRigRim[i] = source.mRigRim[i];
+        mLightShapeSource[i] = source.mLightShapeSource[i];
     }
     copy(source.mCatchlight, mCatchlight);
 }
@@ -3057,6 +3058,13 @@ void ALCineLightRig::tickShared(
     Globals render_globals = mCurrentGlobals;
     render_globals.mSubjectScale = mSmoothedScale;
     render(mCurrentRadius, mCurrentLive, render_globals, mLastFrame);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        const F32 effective_radius = std::clamp(mCurrentRadius * render_globals.mSubjectScale,
+            std::min(mCurrentRadius, SCALED_RADIUS_FLOOR), std::max(mCurrentRadius, SCALED_RADIUS_CEIL));
+        mLightShapeSource[i].set(mCurrentLive[i].mFixtureMode ? mCurrentLive[i].mSourceSizeM * .5f : -1.f,
+                                effective_radius, 0.f, 0.f);
+    }
     if (actor_bounce)
     {
         // [ActorMask] Scale before the model's clamp/on-threshold calculation,

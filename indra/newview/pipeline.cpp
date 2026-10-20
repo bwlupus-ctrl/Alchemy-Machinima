@@ -45,6 +45,7 @@
 #include "alvcamautovol.h"
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
+#include "alrelightmath.h"
 #include "alcinelightrigmodel.h"
 #include "alprobedirty.h" // [ProbeOnDemand]
 #include "aldiopterrelevance.h"      // [Ultimate Diopter] shared armed-state helpers, wave 2
@@ -11703,6 +11704,60 @@ void LLPipeline::endCinematicProbeCapture()
     mCinematicProbeCaptureActive = false;
 }
 
+// [RelightQ] Phase 1 only. Auxiliary views retain their existing local shading.
+static bool light_shape_master_enabled()
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "RenderLightShapeEnable", false);
+    return enabled();
+}
+
+static bool light_shape_enabled()
+{
+    return light_shape_master_enabled() && !gCubeSnapshot && !LLPipeline::sPrismLensRender &&
+        !LLPipeline::sRenderingHUDs && !LLPipeline::sImpostorRender && !LLPipeline::sReflectionRender;
+}
+
+static LLVector4 light_shape_for_volume(const LLVOVolume* volume)
+{
+    const LLVector4 point(0.f, 0.f, 1.f, -1.f);
+    if (!light_shape_enabled() || !volume) return point;
+    static LLCachedControl<bool> physical(gSavedSettings, "RenderLocalLightPhysicalFalloff", false);
+    static LLCachedControl<F32> default_radius(gSavedSettings, "RenderLocalLightDefaultRadius", 0.f);
+    static LLCachedControl<F32> near_floor(gSavedSettings, "RenderLocalLightNearFloor", .1f);
+    const F32 setting_radius = default_radius();
+    F32 radius = std::isfinite(setting_radius) ? llclamp(setting_radius, 0.f, 1.f) : 0.f;
+    const F32 range = volume->getLightRadius() * 1.5f;
+    F32 reference = range * .5f;
+    LLVector4 source;
+    if (ALCineLightRigManager::instance().lightShapeSourceFor(volume->getID(), source))
+    {
+        if (source.mV[0] >= 0.f) radius = source.mV[0];
+        reference = source.mV[1];
+    }
+    if (radius <= 0.f) return point; // exact legacy shading even in physical mode
+    const F32 floor_setting = near_floor();
+    const F32 floor = std::isfinite(floor_setting) ? llclamp(floor_setting, .0001f, 10.f) : .1f;
+    const F32 falloff = volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF);
+    const F32 gain = physical() ? static_cast<F32>(ALRelight::gain(reference, range, falloff, radius, floor)) : 1.f;
+    if (physical())
+    {
+        static LLCachedControl<F32> max_boost(gSavedSettings, "RenderLocalLightPhysicalMaxBoost", 4.f);
+        const F32 boost_setting = max_boost();
+        const F32 boost = std::isfinite(boost_setting) ? llclamp(boost_setting, 0.f, 100.f) : 4.f;
+        const double expected = ALRelight::legacy(reference, range, falloff);
+        const double actual = ALRelight::capped(reference, range, falloff, radius, floor, gain, boost);
+        // Opt-in debug channel: inspect each emitter without a persistent UUID cache.
+        LL_DEBUGS("RelightQ") << "[RelightQ] calibration "
+            << (expected <= 0.0 || actual < expected*.99 ? "INCONCLUSIVE" :
+                std::abs(actual-expected) <= expected*.01 ? "PASS" : "FAIL")
+            << " light=" << volume->getID() << " d_ref=" << reference
+            << " legacy=" << expected << " physical=" << actual
+            << " (cap or out-of-range reference can prevent identity)" << LL_ENDL;
+    }
+    // Gain stays in the shader data, never in the primitive's clamped colour.
+    return LLVector4(radius, physical() ? 1.f : 0.f, gain, -1.f);
+}
+
 void LLPipeline::setupHWLights()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -11837,6 +11892,10 @@ void LLPipeline::setupHWLights()
         light_state->setSize(light->getLightRadius() * 1.5f);
         light_state->setFalloff(light->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
         light_state->setRigRim(ALCineRigRim::paramsForVolume(light)); // [RigRim]
+        if (light_shape_master_enabled())
+        {
+            light_state->setLightShape(light_shape_for_volume(light)); // [RelightQ]
+        }
 
         if (sRenderDeferred)
         {
@@ -11994,6 +12053,10 @@ void LLPipeline::setupHWLights()
         light->setAmbient(LLColor4::black);
         light->setSpecular(LLColor4::black);
         light->setRigRim(LLVector4(0.f, 0.f, 0.f, 0.f)); // [RigRim]
+        if (light_shape_master_enabled())
+        {
+            light->setLightShape(LLVector4(0.f, 0.f, 1.f, -1.f)); // [RelightQ]
+        }
     }
 
     // [ActorMask] Independent uncapped scan, after world units and padding.
@@ -12231,6 +12294,10 @@ void LLPipeline::enableLightsPreview()
     light->setSpotExponent(0.f);
     light->setSpotCutoff(180.f);
     light->setRigRim(LLVector4(0.f, 0.f, 0.f, 0.f)); // [RigRim] P2-3
+    if (light_shape_master_enabled())
+    {
+        light->setLightShape(LLVector4(0.f, 0.f, 1.f, -1.f)); // [RelightQ]
+    }
 
     light_pos = LLVector4(dir1, 0.f);
 
@@ -12243,6 +12310,10 @@ void LLPipeline::enableLightsPreview()
     light->setSpotExponent(0.f);
     light->setSpotCutoff(180.f);
     light->setRigRim(LLVector4(0.f, 0.f, 0.f, 0.f)); // [RigRim] P2-3
+    if (light_shape_master_enabled())
+    {
+        light->setLightShape(LLVector4(0.f, 0.f, 1.f, -1.f)); // [RelightQ]
+    }
 
     light_pos = LLVector4(dir2, 0.f);
     light = gGL.getLight(3);
@@ -12254,6 +12325,10 @@ void LLPipeline::enableLightsPreview()
     light->setSpotExponent(0.f);
     light->setSpotCutoff(180.f);
     light->setRigRim(LLVector4(0.f, 0.f, 0.f, 0.f)); // [RigRim] P2-3
+    if (light_shape_master_enabled())
+    {
+        light->setLightShape(LLVector4(0.f, 0.f, 1.f, -1.f)); // [RelightQ]
+    }
 }
 
 
@@ -27081,11 +27156,13 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             static LLDrawable::drawable_vector_t spot_lights;
             static LLDrawable::drawable_vector_t fullscreen_spot_lights;
             static std::vector<LLVector4>        light_colors;
+            static std::vector<LLVector4>        light_shapes; // [RelightQ]
             static std::vector<LLVector4>        light_rims; // [RigRim]
             // [RigRim] Round-2 P2 fix: read once per call so the point-light
             // push and the multi-light batch pack/upload below can both skip
             // their rim-specific work when Rig Rim is off, instead of only
             // short-circuiting inside ALCineRigRim::paramsForVolume().
+            const bool shape_active = LLGLSLShader::sGlobalDefines.count("RELIGHT_SHAPE") != 0;
             const bool rig_rim_active = ALCineRigRim::isEnabled();
 
             gGL.setSceneBlendType(LLRender::BT_ADD);
@@ -27238,6 +27315,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         gDeferredLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
                         // [RigRim]
                         gDeferredLightProgram.uniform4fv(LLShaderMgr::RIG_RIM_LIGHT, 1, ALCineRigRim::paramsForVolume(volume).mV);
+                        if (LLGLSLShader::sGlobalDefines.count("RELIGHT_SHAPE"))
+                            gDeferredLightProgram.uniform4fv(LLShaderMgr::LIGHT_SHAPE, 1, light_shape_for_volume(volume).mV);
 
                         gGL.syncMatrices();
 
@@ -27266,6 +27345,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         // [ActorMask] This accepted F3 point will use the stock batch below.
                         if (actor_as_world && actor_bits)
                             mActorMaskF3PointPaths.push_back({ volume->getID(), false });
+                        if (shape_active) light_shapes.push_back(light_shape_for_volume(volume));
                         fullscreen_lights.push_back(LLVector4(tc.x, tc.y, tc.z, s));
                         light_colors.push_back(LLVector4(col.mV[0], col.mV[1], col.mV[2], volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)));
                         // [RigRim] Only staged when active; every consumer below checks the
@@ -27338,12 +27418,14 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 const U32 max_count = LL_DEFERRED_MULTI_LIGHT_COUNT;
                 LLVector4 light[max_count];
                 LLVector4 col[max_count];
+                LLVector4 shapes[max_count];
                 LLVector4 rim[max_count]; // [RigRim]
 
                 F32 far_z = 0.f;
 
                 for (size_t i = 0, num_fullscreen_lights = fullscreen_lights.size(); i < num_fullscreen_lights; ++i)
                 {
+                    if (shape_active) shapes[count] = light_shapes[i];
                     light[count] = fullscreen_lights[i];
                     col[count] = light_colors[i];
                     // [RigRim] Round-2 P2 fix: skip packing the rim slot when off;
@@ -27381,6 +27463,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         {
                             gDeferredMultiLightProgram[idx].uniform4fv(LLShaderMgr::RIG_RIM_LIGHTS, count, rim[0].mV); // [RigRim]
                         }
+                        if (shape_active) gDeferredMultiLightProgram[idx].uniform4fv(LLShaderMgr::LIGHT_SHAPES, count, shapes[0].mV);
                         gDeferredMultiLightProgram[idx].uniform1f(LLShaderMgr::MULTI_LIGHT_FAR_Z, far_z);
                         gDeferredMultiLightProgram[idx].uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
                         far_z = 0.f;
@@ -27449,7 +27532,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 }
                 else
                 {
-                    struct ActorPoint { LLVector4 light, color, rim; };
+                    struct ActorPoint { LLVector4 light, color, rim, shape; };
                     std::map<U8, std::vector<ActorPoint>> actor_points;
                     std::map<U8, LLDrawable::drawable_vector_t> actor_spots;
                     const auto& registry = ALCineLightRigManager::instance();
@@ -27487,7 +27570,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                             actor_points[bits].push_back({ LLVector4(tc.x, tc.y, tc.z, size),
                                 LLVector4(color.mV[0], color.mV[1], color.mV[2],
                                     volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)),
-                                rig_rim_active ? ALCineRigRim::paramsForVolume(volume) : LLVector4(0.f, 0.f, 0.f, 0.f) });
+                                rig_rim_active ? ALCineRigRim::paramsForVolume(volume) : LLVector4(0.f, 0.f, 0.f, 0.f),
+                                shape_active ? light_shape_for_volume(volume) : LLVector4(0.f, 0.f, 1.f, -1.f) });
                         }
                     }
 
@@ -27502,12 +27586,13 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         constexpr U32 batch_size = 16; // matches LIGHT_COUNT, including padding
                         for (size_t first = 0; first < group.second.size(); first += batch_size)
                         {
-                            LLVector4 lights[batch_size], colors[batch_size], rims[batch_size];
+                            LLVector4 lights[batch_size], colors[batch_size], rims[batch_size], shapes[batch_size];
                             for (U32 i = 0; i < batch_size; ++i)
                             {
                                 lights[i].set(0.f, 0.f, 1.e9f, 1.f);
                                 colors[i].set(0.f, 0.f, 0.f, 0.f);
                                 rims[i].set(0.f, 0.f, 0.f, 0.f);
+                                shapes[i].set(0.f, 0.f, 1.f, -1.f);
                             }
                             const U32 count = static_cast<U32>(std::min<size_t>(batch_size, group.second.size() - first));
                             F32 far_z = 0.f;
@@ -27517,6 +27602,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                                 lights[i] = point.light;
                                 colors[i] = point.color;
                                 rims[i] = point.rim;
+                                if (shape_active) shapes[i] = point.shape;
                                 far_z = llmin(far_z, point.light.mV[2] - point.light.mV[3]);
                             }
                             auto& shader = gDeferredMultiLightActorMaskProgram;
@@ -27528,6 +27614,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                                 shader.uniform4fv(LLShaderMgr::MULTI_LIGHT, batch_size, lights[0].mV);
                                 shader.uniform4fv(LLShaderMgr::MULTI_LIGHT_COL, batch_size, colors[0].mV);
                                 shader.uniform4fv(LLShaderMgr::RIG_RIM_LIGHTS, batch_size, rims[0].mV);
+                                if (shape_active) shader.uniform4fv(LLShaderMgr::LIGHT_SHAPES, batch_size, shapes[0].mV);
                                 shader.uniform1f(LLShaderMgr::MULTI_LIGHT_FAR_Z, far_z);
                                 shader.uniform1i(LLShaderMgr::CLASSIC_MODE, psky->canAutoAdjust() ? 1 : 0);
                                 mScreenTriangleVB->setBuffer();
@@ -27574,6 +27661,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             spot_lights.clear();
             fullscreen_spot_lights.clear();
             light_colors.clear();
+            light_shapes.clear();
             light_rims.clear(); // [RigRim]
         }
 
@@ -28610,6 +28698,8 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     // gDeferredMultiSpotLightProgram (both surface spot loops call this).
     // Not uploaded by setupSpotLightVolumetric: the volumetric march has no rim.
     shader.uniform4fv(LLShaderMgr::RIG_RIM_LIGHT, 1, ALCineRigRim::paramsForVolume(volume).mV);
+    if (LLGLSLShader::sGlobalDefines.count("RELIGHT_SHAPE"))
+        shader.uniform4fv(LLShaderMgr::LIGHT_SHAPE, 1, light_shape_for_volume(volume).mV);
     return lamp_power_scale;
 }
 

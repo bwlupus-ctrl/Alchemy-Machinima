@@ -1365,6 +1365,10 @@ std::string LLViewerShaderMgr::loadBasicShaders()
         attribs["GBUFFER_FLAG_ENCODING"] = "2";   // hash-only: no shader reads it
     }
 
+    if (gSavedSettings.getBOOL("RenderLightShapeEnable"))
+    {
+        attribs["RELIGHT_SHAPE"] = "1";
+    }
     LLGLSLShader::sGlobalDefines = attribs;
 
     // We no longer have to bind the shaders to global glhandles, they are automatically added to a map now.

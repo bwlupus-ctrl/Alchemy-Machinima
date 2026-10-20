@@ -250,6 +250,19 @@ void ALCineRigRim::bindGlobals(LLGLSLShader& shader, bool forward_alpha)
 // [TronT1]
 void ALCineRigRim::bindAnimated(LLGLSLShader& shader)
 {
+    // [RelightQ] This shared full/fast/forward bind hook runs even with Rim off.
+    // Limits are live uniforms, independent of light hashes and shader reloads.
+    static LLCachedControl<bool> shape_enabled(gSavedSettings, "RenderLightShapeEnable", false);
+    static const LLStaticHashedString limits("relight_limits");
+    if (shape_enabled() && shader.getUniformLocation(limits) >= 0)
+    {
+        static LLCachedControl<F32> near_floor(gSavedSettings, "RenderLocalLightNearFloor", .1f);
+        static LLCachedControl<F32> max_boost(gSavedSettings, "RenderLocalLightPhysicalMaxBoost", 4.f);
+        const F32 floor = near_floor(), boost = max_boost();
+        shader.uniform2f(limits, std::isfinite(floor) ? llclamp(floor, .0001f, 10.f) : .1f,
+                         std::isfinite(boost) ? llclamp(boost, 0.f, 100.f) : 4.f);
+    }
+
     if (shader.getUniformLocation(LLShaderMgr::RIG_RIM_TRON) < 0)
     {
         return; // this program does not link deferredUtil.glsl

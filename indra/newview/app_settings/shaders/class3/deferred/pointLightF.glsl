@@ -74,6 +74,9 @@ bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, o
 // every non-rig light.  Uploaded next to LIGHT_CENTER/LIGHT_SIZE in the
 // deferred box-light loop.  Globals + helper live in deferredUtil.glsl.
 uniform vec4 rig_rim_light;
+#ifdef RELIGHT_SHAPE
+uniform vec4 light_shape;
+#endif
 int rigRimMode();
 // [RigRimQ] per-pixel quality inputs (deferredUtil.glsl; struct must match there)
 #ifndef RIG_RIM_PIXEL_DEFINED
@@ -90,6 +93,17 @@ RigRimPixel rigRimNeutralPixel(vec3 n);
 RigRimPixel rigRimLoadPixel(vec2 tc, vec3 n_sh, float z_view);
 vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim, RigRimPixel px);
 
+
+#ifdef RELIGHT_SHAPE
+vec3 relightUnit(vec3 v, vec3 fallback);
+float relightRatio(vec3 n, vec3 lv, float radius);
+float relightAtten(float d, float range, float falloff, vec4 shape);
+vec3 relightRepresentative(vec3 n, vec3 v, vec3 lv, float radius);
+vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
+vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
+#endif
 void main()
 {
     vec3 final_color = vec3(0);
@@ -119,6 +133,38 @@ void main()
     vec3 diffuse = gb.albedo.rgb;
     vec4 spec    = gb.specular;
 
+#ifdef RELIGHT_SHAPE
+    if (light_shape.x > 0.0)
+    {
+        vec3 lv = trans_center.xyz-pos;
+        if (length(lv) >= size) discard;
+        vec3 v = relightUnit(-pos,n);
+        vec3 l = relightUnit(lv,n);
+        vec3 highlight;
+        vec3 diffuseColor = diffuse;
+        float roughness = 1.0-spec.a;
+        float attenuation = relightAtten(length(lv),size,falloff,light_shape);
+        if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
+        {
+            roughness = spec.g;
+            diffuseColor = diffuse * .96 * (1.0-spec.b);
+            final_color = color * 3.25 * relightPbr(diffuseColor,mix(vec3(.04),diffuse,spec.b),
+                roughness,spec.b,n,v,lv,size,falloff,light_shape,1.0-gb.envIntensity);
+        }
+        else
+            final_color = color * relightLegacy(lightFunc,diffuse,vec4(srgb_to_linear(spec.rgb),spec.a),
+                n,v,lv,size,falloff,light_shape,highlight);
+        if (rigRimMode() != 0)
+        {
+            rim_color = rigRimTermEx(n,v,l,attenuation*color,diffuseColor,roughness,rig_rim_light,rim_px);
+            if (rigRimMode() == 2) final_color = vec3(0);
+            if (alr_sil) final_color = final_color*alr_k + rim_color*alr_r;
+            else final_color += rim_color;
+        }
+    }
+    else
+    {
+#endif
     // Common half vectors calcs
     vec3  lv = trans_center.xyz-pos;
     vec3  h, l, v = -normalize(pos);
@@ -235,6 +281,9 @@ void main()
             discard;
         }
     }
+#ifdef RELIGHT_SHAPE
+    }
+#endif
     if (alr_sil && rigRimMode() == 0)
     {
         final_color *= alr_k;
