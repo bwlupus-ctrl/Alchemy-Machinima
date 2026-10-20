@@ -163,6 +163,9 @@ public:
     // True while this clone is in DRIVE_TRUE_MIRROR. Used by LLActorMover to
     // skip its root override and gaze layer (the stamp owns the pose).
     bool isTrueMirrorDriven() const;
+    bool isPoseStampDriven() const;
+    void applyReflectStamp(const LLVector3& plane_normal);
+    LLVOAvatar* reflectSource() const;
     const LLUUID& getAnimationSourceId() const { return mAnimationSourceId; }
 
     virtual bool isImpostor() { return false; }
@@ -263,6 +266,15 @@ private:
     // [TrueMirror] per-frame idempotency + one-shot source-loss logging, and
     // the visual-param id sets copied from the source (built lazily from this
     // clone's own param table; ids are global to avatar_lad.xml).
+    bool mReflectSnapshotValid = false;
+    std::vector<std::pair<std::string, LLVector3>> mReflectPositions;
+    std::vector<std::pair<size_t, size_t>> mReflectPartners; // source bone index -> paired clone bone index
+    std::vector<LLQuaternion> mReflectLastRotations;
+    U32 mReflectLastFrame = 0;
+    F64 mReflectNextVerify = 0.;
+    bool mReflectPreviousWritten = false;
+    void captureReflectPositions();
+    void buildReflectPartners(LLVOAvatar* source);
     U32 mTrueMirrorLastStampFrame = 0;
     bool mTrueMirrorSourceValid = false;
     bool mTrueMirrorParamSetsBuilt = false;

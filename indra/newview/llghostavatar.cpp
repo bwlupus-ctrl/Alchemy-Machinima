@@ -26,6 +26,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "llghostavatar.h"
+#include "alreflectmath.h"
 
 // [AutoAnimate] Cache facts are copied; no cache-owned pointers survive a call.
 #include "llkeyframemotion.h"
@@ -892,7 +893,8 @@ void LLGhostAvatar::autoAnimOnDriveModeChanged(S32 old_mode, S32 mode)
     cold(mAutoAnim->body, old_mode == ALGhostStudio::DRIVE_MIRROR || mode == ALGhostStudio::DRIVE_MIRROR);
     for (auto& pair : mAutoAnim->links) cold(pair.second,
         mode == ALGhostStudio::DRIVE_DIRECTED || old_mode == ALGhostStudio::DRIVE_DIRECTED ||
-        mode == ALGhostStudio::DRIVE_FROZEN || old_mode == ALGhostStudio::DRIVE_FROZEN);
+        mode == ALGhostStudio::DRIVE_FROZEN || old_mode == ALGhostStudio::DRIVE_FROZEN ||
+        mode == ALGhostStudio::DRIVE_REFLECT || old_mode == ALGhostStudio::DRIVE_REFLECT);
 }
 void LLGhostAvatar::getAutoAnimStatus(ALGhostAutoAnim::LearnStatus& status) const
 {
@@ -941,6 +943,7 @@ void LLGhostAvatar::getAutoAnimStatus(ALGhostAutoAnim::LearnStatus& status) cons
         if (runtime.gated) detail << "Paused: source " << runtime.gateReason << '\n';
         if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED) detail << "(dormant: Directed)";
         if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN) detail << "(dormant: Frozen)";
+        if (mEntityDriveMode == ALGhostStudio::DRIVE_REFLECT) detail << "(dormant: Reflect)";
         runtime.statusDetail = detail.str(); runtime.statusMode = mEntityDriveMode;
         runtime.statusGate = gate; runtime.statusChannels = runtime.links.size();
     }
@@ -1472,7 +1475,7 @@ void LLGhostAvatar::synchronizeCloneAnimations(
 void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
 {
     mode = llclamp(mode, (S32)ALGhostStudio::DRIVE_MIRROR,
-                         (S32)ALGhostStudio::DRIVE_TRUE_MIRROR);
+                         (S32)ALGhostStudio::DRIVE_REFLECT);
     if (mode == mEntityDriveMode && directed_anim == mEntityDirectedAnim)
     {
         return;
@@ -1490,8 +1493,7 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     // FROZEN and TRUE_MIRROR both hold the wearer's controller paused
     // (TRUE_MIRROR never pauses the animesh control avatars, so that vector
     // is simply empty for it).
-    if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN ||
-        mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR)
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN || isPoseStampDriven())
     {
         mEntityPauseRequest = nullptr;
         mEntityControlPauseRequests.clear();
@@ -1508,6 +1510,43 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
         autoAnimSyncBody(signaled_animation_map_t()); // [AutoAnimate] Audit implicit stops.
     }
 
+    if (mode == ALGhostStudio::DRIVE_REFLECT && !mReflectSnapshotValid)
+    {
+        captureReflectPositions();
+    }
+    const bool restore_rotation = (mode == ALGhostStudio::DRIVE_MIRROR || mode == ALGhostStudio::DRIVE_DIRECTED) &&
+        (isPoseStampDriven() || mReflectSnapshotValid);
+    if ((mode == ALGhostStudio::DRIVE_MIRROR || mode == ALGhostStudio::DRIVE_DIRECTED) && mReflectSnapshotValid)
+    {
+        // This operates on this ghost's own joints and local attachments only.
+        clearAttachmentOverrides();
+        for (const auto& saved : mReflectPositions)
+            if (LLJoint* joint = getJoint(saved.first)) joint->setPosition(saved.second);
+        updateAttachmentOverrides();
+        mReflectPositions.clear();
+        mReflectSnapshotValid = false;
+    }
+    if (restore_rotation)
+    {
+        if (const auto* inst = ALGhostStudio::instance().findInstanceByRuntime(getID()))
+            if (inst->mRotation.isFinite()) setGhostRotation(inst->mRotation);
+    }
+    if (mode == ALGhostStudio::DRIVE_REFLECT)
+    {
+        mReflectPartners.clear();
+        mReflectLastRotations.clear();
+        mReflectPreviousWritten = false;
+        mReflectLastFrame = 0;
+        mReflectNextVerify = 0.;
+        LLVOAvatar* source = reflectSource();
+        if (isBuilt() && source) buildReflectPartners(source);
+        else LL_INFOS("GhostReflect") << "entered Reflect: INCONCLUSIVE (source unavailable; partner table deferred)" << LL_ENDL;
+    }
+    if (mode == ALGhostStudio::DRIVE_FROZEN && mEntityDriveMode == ALGhostStudio::DRIVE_REFLECT && mRoot)
+    {
+        const LLQuaternion frozen_root = mRoot->getWorldRotation();
+        if (frozen_root.isFinite()) setGhostRotation(frozen_root);
+    }
     const S32 old_mode = mEntityDriveMode; // [AutoAnimate]
     mEntityDriveMode = mode;
     mEntityDirectedAnim = directed_anim;
@@ -1538,7 +1577,7 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
             }
         }
     }
-    else if (mode == ALGhostStudio::DRIVE_TRUE_MIRROR)
+    else if (mode == ALGhostStudio::DRIVE_TRUE_MIRROR || mode == ALGhostStudio::DRIVE_REFLECT)
     {
         // [TrueMirror] The post-object-list stamp must be the ONLY writer of
         // this clone's pose. Suppress every competing driver on the clone:
@@ -1567,6 +1606,181 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
 bool LLGhostAvatar::isTrueMirrorDriven() const
 {
     return mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR;
+}
+
+bool LLGhostAvatar::isPoseStampDriven() const
+{
+    return isTrueMirrorDriven() || mEntityDriveMode == ALGhostStudio::DRIVE_REFLECT;
+}
+
+LLVOAvatar* LLGhostAvatar::reflectSource() const
+{
+    LLViewerObject* object = gObjectList.findObject(mAnimationSourceId);
+    LLVOAvatar* source = object ? object->asAvatar() : nullptr;
+    return source && source != this && !source->isDead() && source->isBuilt() && source->getRootJoint()
+        ? source : nullptr;
+}
+
+void LLGhostAvatar::captureReflectPositions()
+{
+    if (mReflectSnapshotValid || !isBuilt() || getSkeleton().empty()) return;
+    mReflectPositions.clear();
+    for (LLJoint* joint : getSkeleton())
+        if (joint) mReflectPositions.emplace_back(joint->getName(), joint->getPosition());
+    mReflectSnapshotValid = true;
+}
+
+void LLGhostAvatar::buildReflectPartners(LLVOAvatar* source)
+{
+    U32 paired = 0, centre = 0, unresolved = 0;
+    const auto& src_bones = source->getSkeleton();
+    const auto& dst_bones = getSkeleton();
+    for (size_t i = 0; i < src_bones.size(); ++i)
+    {
+        LLJoint* joint = src_bones[i];
+        if (!joint) continue;
+        const std::string name = joint->getName(), other = ALReflect::partner(name);
+        LLJoint* paired_joint = getJoint(other); // resolve by NAME, once per build/entry
+        const auto destination = std::find(dst_bones.begin(), dst_bones.end(), paired_joint);
+        if (!paired_joint || destination == dst_bones.end())
+        {
+            ++unresolved;
+            LL_WARNS("GhostReflect") << "unresolved bone partner: " << name << " -> " << other << " FAIL" << LL_ENDL;
+            continue;
+        }
+        mReflectPartners.emplace_back(i, (size_t)std::distance(dst_bones.begin(), destination));
+        if (name == other) ++centre; else ++paired;
+    }
+    LL_INFOS("GhostReflect") << "entered Reflect: bone pairs " << paired / 2
+        << "/50, centre " << centre << ", unresolved " << unresolved << " -> "
+        << (paired == 100 && centre == 33 && unresolved == 0 ? "PASS" : "FAIL") << LL_ENDL;
+}
+
+void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
+{
+    if (mEntityDriveMode != ALGhostStudio::DRIVE_REFLECT || isDead() || !isBuilt() || !mRoot) return;
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (mReflectLastFrame == frame) return;
+    const bool consecutive = mReflectLastFrame + 1 == frame;
+    mReflectLastFrame = frame;
+    LLVOAvatar* source = reflectSource();
+    if (!source || !normal.isFinite() || fabsf(normal.length() - 1.f) > .001f || fabsf(normal.mV[VZ]) > 1e-5f)
+    {
+        mReflectPreviousWritten = false;
+        static LLCachedControl<bool> verify_missing(gSavedSettings, "GhostReflectVerify", true);
+        const F64 now = LLTimer::getTotalSeconds();
+        if (verify_missing && now >= mReflectNextVerify)
+        {
+            mReflectNextVerify = now + 5.;
+            LL_INFOS("GhostReflect") << "foreign writer / symmetry / world facing: INCONCLUSIVE (source or plane unavailable)" << LL_ENDL;
+        }
+        return;
+    }
+    captureReflectPositions();
+    if (mReflectPartners.empty()) buildReflectPartners(source);
+    const auto& src_bones = source->getSkeleton();
+    const auto& dst_bones = getSkeleton();
+    auto src_joint = [&](size_t i) -> LLJoint* { return i < src_bones.size() ? src_bones[i] : nullptr; };
+    auto dst_joint = [&](size_t i) -> LLJoint* { return i < dst_bones.size() ? dst_bones[i] : nullptr; };
+    static LLCachedControl<bool> verify(gSavedSettings, "GhostReflectVerify", true);
+    static LLCachedControl<bool> facing(gSavedSettings, "GhostTrueMirrorCopyFacing", true);
+    static LLCachedControl<bool> face(gSavedSettings, "GhostTrueMirrorCopyFace", true);
+    const F64 now = LLTimer::getTotalSeconds();
+    const bool check = verify && now >= mReflectNextVerify;
+    if (check)
+    {
+        mReflectNextVerify = now + 5.;
+        if (!consecutive || !mReflectPreviousWritten || mReflectLastRotations.size() != mReflectPartners.size())
+            LL_INFOS("GhostReflect") << "foreign writer: INCONCLUSIVE (previous stamp skipped)" << LL_ENDL;
+        else
+        {
+            bool same = true;
+            for (size_t i = 0; i < mReflectPartners.size(); ++i)
+            {
+                LLJoint* dst = dst_joint(mReflectPartners[i].second);
+                if (!dst) { same = false; continue; }
+                const LLQuaternion current = dst->getRotation(), previous = mReflectLastRotations[i];
+                F32 dot = 0.f; for (S32 k = 0; k < 4; ++k) dot += current.mQ[k] * previous.mQ[k];
+                for (S32 k = 0; k < 4; ++k)
+                    if (!current.isFinite() || fabsf(current.mQ[k] - (dot < 0.f ? -previous.mQ[k] : previous.mQ[k])) > 1e-4f)
+                    {
+                        same = false;
+                        LL_WARNS("GhostReflect") << "FAIL: " << dst->getName() << " changed between stamps (second writer)" << LL_ENDL;
+                        break;
+                    }
+            }
+            if (same) LL_INFOS("GhostReflect") << "foreign writer: PASS (bones only; root excluded)" << LL_ENDL;
+        }
+    }
+    bool written = true;
+    if (facing)
+    {
+        const LLQuaternion q = ALReflect::rootRotation(source->getRootJoint()->getWorldRotation(), normal);
+        if (q.isFinite()) mRoot->setWorldRotation(q); else written = false;
+    }
+    mReflectLastRotations.clear();
+    for (const auto& names : mReflectPartners)
+    {
+        LLJoint* src = src_joint(names.first);
+        LLJoint* dst = dst_joint(names.second);
+        if (!src || !dst) { written = false; mReflectLastRotations.emplace_back(); continue; }
+        const LLQuaternion q = ALReflect::rotation(src->getRotation());
+        const LLVector3 p = ALReflect::vector(src->getPosition());
+        if (q.isFinite()) dst->setRotation(q); else written = false;
+        if (p.isFinite()) dst->setPosition(p); else written = false;
+        mReflectLastRotations.push_back(dst->getRotation());
+    }
+    if (face)
+    {
+        if (!mTrueMirrorParamSetsBuilt) buildTrueMirrorParamSets();
+        bool changed = false;
+        auto copy = [&](S32 id)
+        {
+            LLVisualParam* src = source->getVisualParam(id);
+            LLVisualParam* dst = getVisualParam(ALReflect::facePartner(id));
+            if (!src || !dst || dst->isAnimating()) return;
+            const F32 weight = ALReflect::faceWeight(id, src->getWeight());
+            if (std::isfinite(weight) && weight != dst->getWeight())
+            { setVisualParamWeight(dst, weight); changed = true; }
+        };
+        for (S32 id : mTrueMirrorFaceParamIds) copy(id);
+        if (mEntityPhysicsEnabled) for (S32 id : mTrueMirrorPhysicsParamIds) copy(id);
+        if (changed) updateVisualParams();
+    }
+    mRoot->updateWorldMatrixChildren();
+    mReflectPreviousWritten = written;
+    if (!check) return;
+    bool shape = mReflectPartners.size() == 133, symmetry = written;
+    // Engine joint matrices exclude the clone's foot-pivot outer render scale
+    // (updateEntityOuterTransform). Compare both root-frame vectors at that same
+    // render scale, with a 1 cm * scale tolerance; never divide joint world data.
+    for (const auto& names : mReflectPartners)
+    {
+        LLJoint* src = src_joint(names.first); LLJoint* dst = dst_joint(names.second);
+        if (!src || !dst || !src->getScale().isFinite() || !dst->getScale().isFinite() ||
+            (src->getScale() - dst->getScale()).length() > .001f) shape = false;
+    }
+    for (const char* name : {"mWristLeft", "mWristRight", "mAnkleLeft", "mAnkleRight", "mHead", "mPelvis"})
+    {
+        LLJoint* src = source->getJoint(name); LLJoint* dst = getJoint(ALReflect::partner(name));
+        if (!src || !dst) { shape = false; continue; }
+        const LLVector3 expected = ALReflect::vector((src->getWorldPosition() - source->getRootJoint()->getWorldPosition()) * ~source->getRootJoint()->getWorldRotation());
+        const LLVector3 actual = (dst->getWorldPosition() - mRoot->getWorldPosition()) * ~mRoot->getWorldRotation();
+        if (!actual.isFinite() || !expected.isFinite() || ((actual - expected) * mEntityScale).length() > .01f * mEntityScale) symmetry = false;
+    }
+    LL_INFOS("GhostReflect") << "bone symmetry: " << (!written ? "INCONCLUSIVE (missing/non-finite input)" : !shape ? "INCONCLUSIVE (shape mismatch)" : symmetry ? "PASS" : "FAIL") << LL_ENDL;
+    if (!facing) LL_INFOS("GhostReflect") << "world facing: INCONCLUSIVE (copy-facing off)" << LL_ENDL;
+    else
+    {
+        bool correct = written;
+        for (const LLVector3& axis : {LLVector3::x_axis, LLVector3::z_axis})
+        {
+            const LLVector3 expected = ALReflect::planeVector(axis * source->getRootJoint()->getWorldRotation(), normal);
+            const LLVector3 actual = axis * mRoot->getWorldRotation();
+            if (!expected.isFinite() || !actual.isFinite() || expected * actual < cosf(DEG_TO_RAD)) correct = false;
+        }
+        LL_INFOS("GhostReflect") << "world facing: " << (!written ? "INCONCLUSIVE (missing/non-finite input)" : correct ? "PASS" : "FAIL") << LL_ENDL;
+    }
 }
 
 void LLGhostAvatar::applyTrueMirrorStamp()
@@ -3267,7 +3481,8 @@ void LLGhostAvatar::repeatHeldAnimesh()
 
     if (!repeat_held_animesh || !hold_on_source_change ||
         (mEntityDriveMode != ALGhostStudio::DRIVE_MIRROR &&
-         mEntityDriveMode != ALGhostStudio::DRIVE_TRUE_MIRROR))
+         mEntityDriveMode != ALGhostStudio::DRIVE_TRUE_MIRROR &&
+         mEntityDriveMode != ALGhostStudio::DRIVE_REFLECT))
     {
         return;
     }
@@ -3562,12 +3777,13 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     // [TrueMirror] animesh control avatars are separate skeletons the joint
     // stamp does not cover, so TRUE_MIRROR keeps the ledger mirror for them.
     if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR ||
-        mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR)
+        mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR ||
+        mEntityDriveMode == ALGhostStudio::DRIVE_REFLECT)
     {
       LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost mirror ledger"); // [GhostPanelPerf]
       for (ClonedLinkset& linkset : mClonedLinksets)
       {
-        if (mAutoAnim && autoAnimLinksetStep(linkset)) continue; // [AutoAnimate]
+        if (mEntityDriveMode != ALGhostStudio::DRIVE_REFLECT && mAutoAnim && autoAnimLinksetStep(linkset)) continue; // [AutoAnimate]
         LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
         if (!root || root->isDead() || !root->isAnimatedObject())
         {

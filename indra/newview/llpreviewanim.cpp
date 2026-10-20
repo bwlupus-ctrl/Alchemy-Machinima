@@ -27,6 +27,8 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llpreviewanim.h"
+#include "alreflectanim.h"
+#include "llviewercontrol.h"
 #include "llbutton.h"
 #include "llcombobox.h"
 #include "llmotion.h"         // LLMotion::setPriorityOverride (client-side priority)
@@ -120,20 +122,22 @@ void LLPreviewAnim::play(const LLSD& param)
             // shows other viewers the baked priority. See LLMotion::setPriorityOverride.
             mPriorityOverride = getChild<LLUICtrl>("priority_combo")->getValue().asInteger();
 
-            if("Inworld" == btn_name)
-            {
+            ALReflectAnim& reflect = ALReflectAnim::instance();
+            const bool world_member = reflect.contains(itemID) && reflect.inworld(itemID);
+            const bool reflected = reflect.play(itemID,
+                btn_name == "Inworld" ? ALReflect::Route::INWORLD : ALReflect::Route::LOCAL,
+                item->getName(), gSavedSettings.getBOOL("AlchemyAnimReflectInventory"));
+            if (!world_member && "Inworld" == btn_name && !reflect.isDerived(itemID))
                 gAgent.sendAnimationRequest(itemID, ANIM_REQUEST_START);
-            }
-            else
-            {
-                gAgentAvatarp->startMotion(item->getAssetUUID());
-            }
+            else if (!reflected && "Locally" == btn_name)
+                gAgentAvatarp->startMotion(itemID);
 
-            LLMotion* motion = gAgentAvatarp->findMotion(itemID);
+            mReflectOriginal = reflected ? itemID : LLUUID::null;
+            mItemID = reflected ? reflect.previewID(itemID) : itemID;
+            mDidStart = false;
+            LLMotion* motion = gAgentAvatarp->findMotion(mItemID);
             if (motion)
             {
-                mItemID = itemID;
-                mDidStart = false;
                 // Apply immediately for the common (already-cached) local case.
                 // draw() re-applies once more when the motion first goes active,
                 // covering the async asset-load / in-world sim-echo ordering
@@ -143,8 +147,14 @@ void LLPreviewAnim::play(const LLSD& param)
         }
         else
         {
-            gAgentAvatarp->stopMotion(itemID);
-            gAgent.sendAnimationRequest(itemID, ANIM_REQUEST_STOP);
+            if (ALReflectAnim::instanceExists() && ALReflectAnim::instance().handles(itemID))
+                ALReflectAnim::instance().stop(itemID);
+            else
+            {
+                gAgentAvatarp->stopMotion(itemID);
+                if ("Inworld" == btn_name && (!ALReflectAnim::instanceExists() || !ALReflectAnim::instance().isDerived(itemID)))
+                    gAgent.sendAnimationRequest(itemID, ANIM_REQUEST_STOP);
+            }
 
             if (btn_other)
             {
@@ -158,6 +168,12 @@ void LLPreviewAnim::play(const LLSD& param)
 void LLPreviewAnim::draw()
 {
     LLPreview::draw();
+    if (!isAgentAvatarValid()) return;
+    if (ALReflectAnim::instanceExists())
+    {
+        if (mReflectOriginal.notNull() && ALReflectAnim::instance().finished(mReflectOriginal)) cleanup();
+        mItemID = ALReflectAnim::instance().previewID(mItemID);
+    }
     if (!this->mItemID.isNull())
     {
         LLMotion* motion = gAgentAvatarp->findMotion(this->mItemID);
@@ -193,14 +209,16 @@ void LLPreviewAnim::refreshFromItem()
         return;
     }
 
-    // Preload motion
-    gAgentAvatarp->createMotion(item->getAssetUUID());
+    // Reflect obtains bytes without creating/loading the original on self.
+    if (!gSavedSettings.getBOOL("AlchemyAnimReflectInventory"))
+        gAgentAvatarp->createMotion(item->getAssetUUID());
 
     LLPreview::refreshFromItem();
 }
 
 void LLPreviewAnim::cleanup()
 {
+    mReflectOriginal.setNull();
     this->mItemID = LLUUID::null;
     this->mDidStart = false;
     getChild<LLUICtrl>("Inworld")->setValue(false);
@@ -216,8 +234,16 @@ void LLPreviewAnim::onClose(bool app_quitting)
 
     if(item)
     {
-        gAgentAvatarp->stopMotion(item->getAssetUUID());
-        gAgent.sendAnimationRequest(item->getAssetUUID(), ANIM_REQUEST_STOP);
+        const LLUUID original = item->getAssetUUID();
+        if (ALReflectAnim::instanceExists() && ALReflectAnim::instance().handles(original))
+            ALReflectAnim::instance().stop(original);
+        else
+        {
+            if (isAgentAvatarValid()) gAgentAvatarp->stopMotion(original);
+            if (getChild<LLUICtrl>("Inworld")->getValue().asBoolean() &&
+                (!ALReflectAnim::instanceExists() || !ALReflectAnim::instance().isDerived(original)))
+                gAgent.sendAnimationRequest(original, ANIM_REQUEST_STOP);
+        }
     }
 }
 

@@ -4637,7 +4637,7 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
     // idleUpdate takes the foot-lock branch, and the Move resumes from the
     // same path distance when the clone leaves TRUE_MIRROR.
     if (av->isGhostAvatar() &&
-        static_cast<LLGhostAvatar*>(av)->isTrueMirrorDriven())
+        static_cast<LLGhostAvatar*>(av)->isPoseStampDriven())
     {
         return false;
     }
@@ -6036,7 +6036,7 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
     // runs after this). Do not paint the clone's own gaze layer or re-enable
     // its eye motion; the gaze entry is left intact for when the mode changes.
     if (av->isGhostAvatar() &&
-        static_cast<LLGhostAvatar*>(av)->isTrueMirrorDriven())
+        static_cast<LLGhostAvatar*>(av)->isPoseStampDriven())
     {
         return;
     }

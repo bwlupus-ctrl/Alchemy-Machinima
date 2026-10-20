@@ -105,11 +105,12 @@ public:
     // the clone every frame from updatePostObjectList(); the clone's own
     // controller is paused so nothing competes with the stamp. Heavier than
     // MIRROR (per-joint copy per clone per frame), so MIRROR stays the default.
+    // REFLECT swaps bone partners and reflects motion across a world plane.
     // Appended LAST so existing numeric values (UI combo, chat) are unchanged.
     // Ignored for overlay instances.
     enum EDriveMode : S32
     {
-        DRIVE_MIRROR = 0, DRIVE_DIRECTED, DRIVE_FROZEN, DRIVE_TRUE_MIRROR
+        DRIVE_MIRROR = 0, DRIVE_DIRECTED, DRIVE_FROZEN, DRIVE_TRUE_MIRROR, DRIVE_REFLECT
     };
     enum ELoopMode : S32 { LOOP_RETRIGGER = 0, LOOP_PLAY_ONCE };
     enum ELockMode : S32
@@ -366,6 +367,14 @@ public:
 
         // ---- entity-clone animation drive (Track B; ignored for overlays) ----
         EDriveMode  mDriveMode = DRIVE_MIRROR;
+        S32 mReflectPlaneMode = 0; // 0 Fixed, 1 Live; session only
+        bool mReflectPlaneValid = false;
+        bool mReflectHasLastPlane = false;
+        bool mReflectPlaneDegenerate = false;
+        LLVector3d mReflectPlanePoint;
+        LLVector3 mReflectPlaneNormal = LLVector3::x_axis;
+        bool mReflectMirrorPosition = false;
+        bool mReflectWasDriven = false;
         // [AutoAnimate] Shared sealed performance; independent runtime recorder and seed.
         bool mAutoAnimate = false;
         F32 mAutoAnimWindow = 0.f;
@@ -650,6 +659,10 @@ public:
     // Pose Polish, then gaze/IK) with zero frame lag. updatePerFrame() runs
     // BEFORE the object list and cannot see that pose.
     void      updatePostObjectList();
+    bool reflectOwnsPosition(const Instance& inst) const;
+    std::string reflectStatus(const Instance& inst) const;
+    bool facePair(const LLUUID& id);
+    void invalidateReflectPlane(const LLUUID& id);
     bool      refreshEntityClone(const LLUUID& id);   // re-pull source appearance + worn attachments onto the clone
     bool      setInstanceChaos(const LLUUID& id, F32 amount);
     bool      setInstanceLook(const LLUUID& id, EGhostLook look);
@@ -856,7 +869,7 @@ private:
     // source root (DRIVE_TRUE_MIRROR entity clone with GhostTrueMirrorCopyFacing
     // on). The Studio's own yaw writers (keep-facing, turn-to, crowd facing)
     // are skipped for it so they neither fight the stamp nor drift mRotation.
-    bool trueMirrorOwnsFacing(const Instance& inst) const;
+    bool stampOwnsFacing(const Instance& inst) const;
     void updateFreezeStrips(F64 now);
     void updateFormationMotion(F64 now);
     LLGhostAvatar* createEntityRuntime(Instance& inst, S32& attachments);

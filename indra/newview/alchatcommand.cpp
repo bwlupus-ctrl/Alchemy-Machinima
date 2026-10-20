@@ -782,7 +782,7 @@ bool ALChatCommand::parseCommand(std::string data)
             if (argument.empty() ||
                 (!scope.empty() && scope != "all" && scope != "selected"))
             {
-                LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|truemirror|freeze|autoon|autooff|autonomous|follow|relearn|stoplearn|reseed|simloss> "
+                LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|truemirror|reflect|freeze|autoon|autooff|autonomous|follow|relearn|stoplearn|reseed|simloss> "
                                           "[all|selected]" << LL_ENDL;
                 return true;
             }
@@ -822,6 +822,10 @@ bool ALChatCommand::parseCommand(std::string data)
             {
                 mode = ALGhostStudio::DRIVE_MIRROR;
             }
+            else if (argument == "reflect")
+            {
+                mode = ALGhostStudio::DRIVE_REFLECT;
+            }
             else if (argument == "truemirror")
             {
                 // [TrueMirror] full post-gaze/IK pose + face stamp from the source
@@ -836,7 +840,7 @@ bool ALChatCommand::parseCommand(std::string data)
                 anim.set(argument, false);
                 if (anim.isNull())
                 {
-                    LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|truemirror|freeze|autoon|autooff|autonomous|follow|relearn|stoplearn|reseed|simloss> "
+                    LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|truemirror|reflect|freeze|autoon|autooff|autonomous|follow|relearn|stoplearn|reseed|simloss> "
                                               "[all|selected]" << LL_ENDL;
                     return true;
                 }

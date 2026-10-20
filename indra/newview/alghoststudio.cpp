@@ -11,6 +11,8 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "alghoststudio.h"
+#include "alreflectmath.h"
+#include "altoolghostedit.h"
 #include "alghostanimassetindex.h" // [GhostPanelPerf] shared animation library
 
 // [AutoAnimate] Bounded LLSD XML persistence.
@@ -1005,6 +1007,10 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     const ELifecycleState state = copy->mState;
     const std::string new_name = copy->mName; // spawn already called makeDefaultName()
     *copy = proto;
+    copy->mReflectMirrorPosition = false;
+    copy->mReflectPlaneValid = false;
+    copy->mReflectHasLastPlane = false;
+    copy->mReflectWasDriven = false;
     copy->mId = new_id;
     copy->mEntityId = entity_id;
     copy->mState = state;
@@ -1494,7 +1500,7 @@ bool ALGhostStudio::applyEntityTransform(const LLUUID& id)
     }
     ghost->setGhostFootPosition(
         gAgent.getPosAgentFromGlobal(inst->mFootGlobal));
-    ghost->setGhostRotation(inst->mRotation);
+    if (!stampOwnsFacing(*inst)) ghost->setGhostRotation(inst->mRotation);
     return true;
 }
 
@@ -1734,7 +1740,7 @@ void ALGhostStudio::updateLookAt()
         // keep-facing as well would just be overwritten by stepTurn a moment
         // later -- worse, it would fight it every frame.
         if (inst.mKeepFacing && inst.mTurnMode == TURN_MODE_OFF &&
-            !trueMirrorOwnsFacing(inst))
+            !stampOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
                 !tracking_groups.insert(inst.mGroupId).second) continue;
@@ -2037,7 +2043,7 @@ void ALGhostStudio::updatePerFrame()
     for (Instance& inst : mInstances)
     {
         // [TrueMirror] the stamped source root owns this clone's facing.
-        if (trueMirrorOwnsFacing(inst))
+        if (stampOwnsFacing(inst))
         {
             continue;
         }
@@ -2114,7 +2120,7 @@ void ALGhostStudio::updatePerFrame()
     {
         if (inst.mKeepFacing && inst.mMotion != MOTION_SPIN
             && inst.mTurnMode == TURN_MODE_OFF
-            && !trueMirrorOwnsFacing(inst))
+            && !stampOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
                 !tracking_groups.insert(inst.mGroupId).second) continue;
@@ -2128,12 +2134,89 @@ void ALGhostStudio::updatePerFrame()
     stepAllTurns();
 }
 
-bool ALGhostStudio::trueMirrorOwnsFacing(const Instance& inst) const
+namespace
+{
+LLVector3d reflectSourceFoot(LLVOAvatar* source)
+{
+    LLVector3 foot = source->getRootJoint()->getWorldPosition();
+    foot.mV[VZ] -= source->getPelvisToFoot();
+    return gAgent.getPosGlobalFromAgent(foot);
+}
+}
+
+void ALGhostStudio::invalidateReflectPlane(const LLUUID& id)
+{
+    if (Instance* inst = getInstance(id)) inst->mReflectPlaneValid = false;
+}
+
+std::string ALGhostStudio::reflectStatus(const Instance& inst) const
+{
+    LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
+    if (!ghost || ghost->getEntityDriveMode() != DRIVE_REFLECT)
+        return "paused: Director switcher re-drive";
+    if (groupForMember(inst.mId))
+        return inst.mReflectMirrorPosition ? "position held: locked group; Face pair unavailable" : "Reflect: pose only; Face pair unavailable: locked group";
+    if (!ghost->reflectSource()) return "holding: source missing";
+    if (!inst.mReflectPlaneValid) return "holding: plane not captured";
+    if (!inst.mReflectMirrorPosition)
+        return inst.mReflectPlaneMode == 1 ? "Reflect: plane live, mirroring pose" : "Reflect: plane fixed, mirroring pose";
+    if (inst.mReflectPlaneMode != 0) return "position held: Fixed plane required";
+    if (inst.mMotion != MOTION_OFF) return "position held: path motion owns placement";
+    if (groupForMember(inst.mId)) return "position held: locked group owns placement";
+    if (inst.mChaosEnabled) return "position held: Chaos owns placement";
+    if (ALToolGhostEdit::getInstance()->getManipProxy().isDraggingInstance(inst.mId))
+        return "position held: Ghost Edit drag owns placement";
+    return "Reflect: 50 bone pairs, plane fixed, mirroring position";
+}
+
+bool ALGhostStudio::reflectOwnsPosition(const Instance& inst) const
+{
+    LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
+    return ghost && ghost->getEntityDriveMode() == DRIVE_REFLECT &&
+        inst.mReflectMirrorPosition && inst.mReflectPlaneMode == 0 &&
+        inst.mReflectPlaneValid && inst.mReflectPlanePoint.isFinite() &&
+        inst.mReflectPlaneNormal.isFinite() && fabsf(inst.mReflectPlaneNormal.mV[VZ]) < 1e-5f &&
+        fabsf(inst.mReflectPlaneNormal.length() - 1.f) < .001f && ghost->reflectSource() &&
+        inst.mMotion == MOTION_OFF && !groupForMember(inst.mId) &&
+        !inst.mChaosEnabled &&
+        !ALToolGhostEdit::getInstance()->getManipProxy().isDraggingInstance(inst.mId);
+}
+
+bool ALGhostStudio::facePair(const LLUUID& id)
+{
+    Instance* inst = getInstance(id);
+    LLGhostAvatar* ghost = resolveEntityClone(id);
+    LLVOAvatar* source = ghost ? ghost->reflectSource() : nullptr;
+    if (!inst || !source || groupForMember(id)) return false;
+    LLVector3 forward = LLVector3::x_axis * source->getRootJoint()->getWorldRotation();
+    forward.mV[VZ] = 0.f;
+    if (!forward.isFinite() || forward.length() < .2f) return false;
+    forward.normalize();
+    static LLCachedControl<F32> distance(gSavedSettings, "GhostReflectFacePairDistance", 2.f);
+    const LLVector3d foot = reflectSourceFoot(source);
+    if (!foot.isFinite() || !std::isfinite((F32)distance)) return false;
+    const LLVector3d clone = foot + LLVector3d(forward * llclamp((F32)distance, .5f, 10.f));
+    inst->setTransform(clone, LLQuaternion(atan2f(-forward.mV[VY], -forward.mV[VX]), LLVector3::z_axis));
+    inst->mReflectPlaneMode = 0;
+    inst->mReflectPlanePoint = (foot + clone) * .5;
+    inst->mReflectPlaneNormal = forward;
+    inst->mReflectPlaneValid = true;
+    inst->mReflectHasLastPlane = true;
+    inst->mReflectPlaneDegenerate = false;
+    // Push the helper's authored facing even with copy-facing disabled.
+    ghost->setGhostRotation(inst->mRotation);
+    if (!setInstanceDriveMode(id, DRIVE_REFLECT)) return false;
+    applyEntityTransform(id);
+    return true;
+}
+
+bool ALGhostStudio::stampOwnsFacing(const Instance& inst) const
 {
     static LLCachedControl<bool> copy_facing(
         gSavedSettings, "GhostTrueMirrorCopyFacing", true);
     return inst.mKind == BACKING_ENTITY_CLONE &&
-           inst.mDriveMode == DRIVE_TRUE_MIRROR && copy_facing;
+           (inst.mDriveMode == DRIVE_TRUE_MIRROR ||
+            (resolveEntityClone(inst.mId) && resolveEntityClone(inst.mId)->getEntityDriveMode() == DRIVE_REFLECT)) && copy_facing;
 }
 
 void ALGhostStudio::updatePostObjectList()
@@ -2155,16 +2238,65 @@ void ALGhostStudio::updatePostObjectList()
     // The ghost self-gates on ITS OWN drive mode, not the instance's: the
     // Director anim switcher can temporarily re-drive a ghost (DIRECTED /
     // FROZEN) without touching the Studio model, and must not be stamped over.
-    for (const Instance& inst : mInstances)
+    for (Instance& inst : mInstances)
     {
-        if (inst.mKind != BACKING_ENTITY_CLONE ||
-            inst.mDriveMode != DRIVE_TRUE_MIRROR)
+        if (inst.mKind != BACKING_ENTITY_CLONE)
         {
             continue;
         }
         if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
         {
-            ghost->applyTrueMirrorStamp();
+            const S32 mode = ghost->getEntityDriveMode();
+            if (mode == DRIVE_REFLECT)
+            {
+                inst.mReflectWasDriven = true;
+                LLVOAvatar* source = ghost->reflectSource();
+                if (!source)
+                {
+                    ghost->applyReflectStamp(inst.mReflectPlaneNormal); // INCONCLUSIVE verdict; no writes
+                    continue; // hold plane, placement and pose together
+                }
+                const LLVector3d foot = reflectSourceFoot(source);
+                ALReflect::Plane plane;
+                plane.valid = inst.mReflectPlaneValid || inst.mReflectHasLastPlane;
+                plane.degenerate = inst.mReflectPlaneDegenerate;
+                plane.point = inst.mReflectPlanePoint;
+                plane.normal = inst.mReflectPlaneNormal;
+                if (!inst.mReflectPlaneValid || (inst.mReflectPlaneMode == 1 && !inst.mReflectMirrorPosition))
+                {
+                    const S32 tier = ALReflect::updatePlane(plane, foot, inst.mFootGlobal,
+                        LLVector3::x_axis * source->getRootJoint()->getWorldRotation(), inst.mReflectPlaneValid && inst.mReflectPlaneMode == 1);
+                    if (!inst.mReflectPlaneValid)
+                        LL_INFOS("GhostReflect") << "plane capture tier=" << tier
+                            << " (0 bisector, 1 forward, 2 last, 3 world +X): "
+                            << (plane.valid && tier >= 0 ? "PASS" : "INCONCLUSIVE") << LL_ENDL;
+                    inst.mReflectPlaneValid = plane.valid;
+                    inst.mReflectHasLastPlane = plane.valid;
+                    inst.mReflectPlaneDegenerate = plane.degenerate;
+                    inst.mReflectPlanePoint = plane.point;
+                    inst.mReflectPlaneNormal = plane.normal;
+                }
+                if (reflectOwnsPosition(inst))
+                {
+                    const LLVector3d mirrored = ALReflect::planeFoot(foot, plane.point, plane.normal);
+                    if (mirrored.isFinite())
+                    {
+                        inst.mFootGlobal = mirrored; // deliberately no proxy revision bump
+                        inst.mChaosHasBase = false;
+                        ghost->setGhostFootPosition(gAgent.getPosAgentFromGlobal(mirrored));
+                    }
+                }
+                if (plane.valid) ghost->applyReflectStamp(plane.normal);
+            }
+            else
+            {
+                if (inst.mReflectWasDriven && mode != DRIVE_FROZEN)
+                {
+                    inst.mReflectPlaneValid = false;
+                    inst.mReflectWasDriven = false;
+                }
+                if (inst.mDriveMode == DRIVE_TRUE_MIRROR) ghost->applyTrueMirrorStamp(); // original eligibility and implementation
+            }
         }
     }
 }
@@ -2189,7 +2321,7 @@ void ALGhostStudio::stepAllTurns()
     for (const Instance& inst : mInstances)
     {
         if (inst.mTurnMode != TURN_MODE_OFF && inst.mMotion != MOTION_SPIN
-            && !trueMirrorOwnsFacing(inst))
+            && !stampOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
                 !turning_groups.insert(inst.mGroupId).second) continue;
@@ -2487,6 +2619,7 @@ bool ALGhostStudio::setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
     {
         ++mInstanceRevision; // [GhostPanelPerf] "frozen" state label follows the drive mode
     }
+    if (mode != DRIVE_REFLECT && mode != DRIVE_FROZEN) inst->mReflectPlaneValid = false;
     inst->mDriveMode = mode;
     inst->mDirectedAnim = mode == DRIVE_DIRECTED ? directed_anim : LLUUID::null;
     ghost->setEntityDriveMode(mode, inst->mDirectedAnim);

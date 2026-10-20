@@ -34,6 +34,7 @@
 #include "alsteppedanimruntime.h"
 
 #include "llvoavatar.h"
+#include "alreflectanim.h"
 
 #include <stdio.h>
 #include <ctype.h>
@@ -7258,7 +7259,14 @@ bool LLVOAvatar::processSingleAnimationStateChange( const LLUUID& anim_id, bool 
             }
         }
 
-        if (startMotion(anim_id))
+        // Reflect consumes only live intent records. An expired STOP or no
+        // intent falls through to the stock original start in this same call.
+        if (isSelf() && ALReflectAnim::instanceExists() &&
+            ALReflectAnim::instance().echo(anim_id, true))
+        {
+            result = true;
+        }
+        else if (startMotion(anim_id))
         {
             result = true;
         }
@@ -7279,7 +7287,9 @@ bool LLVOAvatar::processSingleAnimationStateChange( const LLUUID& anim_id, bool 
             gAgent.sendAnimationRequest(ANIM_AGENT_DO_NOT_DISTURB, ANIM_REQUEST_START);
             return result;
         }
-        stopMotion(anim_id);
+        if (!(isSelf() && ALReflectAnim::instanceExists() &&
+              ALReflectAnim::instance().echo(anim_id, false)))
+            stopMotion(anim_id);
         result = true;
     }
 

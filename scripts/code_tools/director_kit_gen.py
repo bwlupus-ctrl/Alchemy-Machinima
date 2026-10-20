@@ -281,8 +281,9 @@ def validate_data(data: dict) -> None:
     # 2131: Simple Gate 10/19: Gate card 14->7; On cut, 2x Feed from, 2x Gate notes removed.
     # 2132: +1 Viewfinder toggle on Frame & Orbit > Frame format (10/19).
     # 2133: +1 Viewfinder Size slider on Frame & Orbit > Frame format (10/19).
-    if len(pages) != 37 or row_count != 2133:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2133")
+    # 2139: Reflect adds six Clones rows: plane, position, Face pair, distance, recapture, status (10/20).
+    if len(pages) != 37 or row_count != 2139:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2139")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

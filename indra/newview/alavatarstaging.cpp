@@ -87,7 +87,8 @@ namespace
                ghost.mCrowdFacing == ALGhostStudio::FACING_TRACK_SUBJECT ||
                ghost.mCrowdFacing == ALGhostStudio::FACING_WAVE ||
                (ghost.mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
-                ghost.mDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR) ||
+                (ghost.mDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR ||
+                 ghost.mDriveMode == ALGhostStudio::DRIVE_REFLECT)) ||
                ghost.mTurnMode != ALGhostStudio::TURN_MODE_OFF ||
                ghost.mMotion != ALGhostStudio::MOTION_OFF ||
                ghost.mChaosEnabled || ghost.mGroupId.notNull();

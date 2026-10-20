@@ -587,6 +587,12 @@ void ALGhostManipProxy::endDrag(bool commit)
             }
             mSeenRevision = inst->mTransformRevision;
         }
+        const auto& studio_reflect = ALGhostStudio::instance();
+        const auto* reflect_group = studio_reflect.groupForMember(mInstanceId);
+        if (reflect_group && (mInstanceId == reflect_group->mId || !reflect_group->mEditMembers))
+            for (const auto& member : reflect_group->mMembers)
+                ALGhostStudio::instance().invalidateReflectPlane(member.mInstanceId);
+        else ALGhostStudio::instance().invalidateReflectPlane(mInstanceId);
         pushInstanceToProxy();      // re-normalise the proxy: a planted UNIFORM box
                                     // matching the ghost (undoes a Stretch drag's
                                     // per-axis / center-pivot wander on the proxy)
@@ -633,6 +639,18 @@ void ALGhostManipProxy::endDrag(bool commit)
 }
 
 // -----------------------------------------------------------------------------
+bool ALGhostManipProxy::isDraggingInstance(const LLUUID& id) const
+{
+    // Mouse capture is sampled here too: object-list post-pass precedes tick().
+    if (!mEditMode || !(mDragging || manipHasMouseCapture())) return false;
+    const ALGhostStudio& studio = ALGhostStudio::instance();
+    if (id == mInstanceId) return true;
+    const auto* group = studio.groupForMember(mInstanceId);
+    if (!group || (group->mEditMembers && mInstanceId != group->mId)) return false;
+    for (const auto& member : group->mMembers) if (member.mInstanceId == id) return true;
+    return false;
+}
+
 void ALGhostManipProxy::tick()
 {
     if (!mEditMode)
@@ -775,7 +793,7 @@ void ALGhostManipProxy::tick()
         const ALGhostGroupModel::Group* group =
             studio.groupForMember(inst->mId);
         const U64 group_revision = group ? group->mRevision : 0;
-        if (inst->mTransformRevision != mSeenRevision ||
+        if (studio.reflectOwnsPosition(*inst) || inst->mTransformRevision != mSeenRevision ||
             group_revision != mSeenGroupRevision)
         {
             pushInstanceToProxy();

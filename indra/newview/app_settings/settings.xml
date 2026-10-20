@@ -7452,7 +7452,7 @@
     <key>GhostTrueMirrorCopyFacing</key>
     <map>
       <key>Comment</key>
-      <string>[GhostStudio] In TRUE MIRROR drive mode, also copy the source's root (body facing) rotation onto the clone so procedural body turns mirror; the Studio's own keep-facing / turn-to / crowd facing are skipped for that clone. Off = the clone keeps its authored Studio facing and only the pelvis-and-below pose is mirrored. World position is never copied either way.</string>
+      <string>[GhostStudio] In TRUE MIRROR or REFLECT drive mode, also copy the source's root (body facing) rotation onto the clone so procedural body turns mirror; the Studio's own keep-facing / turn-to / crowd facing are skipped for that clone. Off = the clone keeps its authored Studio facing and only the pelvis-and-below pose is mirrored. Reflect may separately mirror position with its per-clone option.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -7463,7 +7463,7 @@
     <key>GhostTrueMirrorCopyFace</key>
     <map>
       <key>Comment</key>
-      <string>[GhostStudio] In TRUE MIRROR drive mode, also copy the source's animated face morphs (Express_* expressions, Blink_* lids, Lipsync_*, and the physics-driven morphs when the clone's physics is on). Off = skeleton only.</string>
+      <string>[GhostStudio] In TRUE MIRROR or REFLECT drive mode, also copy the source's animated face morphs (Express_* expressions, Blink_* lids, Lipsync_*, and the physics-driven morphs when the clone's physics is on). Off = skeleton only.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -30851,5 +30851,9 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+    <key>GhostReflectFacePairDistance</key>
+    <map><key>Comment</key><string>Face pair separation in metres (0.5 to 10, step 0.1).</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2.0</real></map>
+    <key>GhostReflectVerify</key>
+    <map><key>Comment</key><string>Enable periodic Reflect verdicts and inventory round-trip verification; entry/build verdicts always log.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>1</integer></map>
 </map>
 </llsd>

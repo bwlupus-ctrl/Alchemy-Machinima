@@ -339,6 +339,11 @@ private:
     LLCheckBoxCtrl*   mPhysicsCheck = nullptr;
     LLButton*         mAnimPauseBtn = nullptr;
     LLButton*         mAnimResumeBtn = nullptr;
+    LLComboBox*       mReflectPlane = nullptr;
+    LLCheckBoxCtrl*   mReflectPosition = nullptr;
+    LLButton*         mReflectPair = nullptr;
+    LLButton*         mReflectRecapture = nullptr;
+    LLTextBox*        mReflectStatus = nullptr;
     LLComboBox*       mDriveModeCombo = nullptr;
     LLLineEditor*     mDirectedAnimEdit = nullptr;
     LLComboBox*       mAnimationLibraryCombo = nullptr;

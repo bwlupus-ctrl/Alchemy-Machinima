@@ -608,7 +608,7 @@ along a path the same way. Results echo to local chat with a `[Prop Mover]` pref
 
 ## 7. Ghost Studio (clones)
 
-**Open:** Me menu → *Ghost Studio…*, or Director Console → Ghosts. Make copies of
+**Open:** Machinima → *Clone Studio…*, or Director Console → Cast → Clones. Make copies of
 avatars — for crowds, doubles, and stylized effects.
 
 **How to clone an avatar:**
@@ -641,7 +641,7 @@ Silhouette, Toon-Ink, and more. Each clone also has an **animation-speed** spinn
 | `/ghostscale <0.05..150> [all\|selected]` | Resize clone(s) |
 | `/ghostturn [track\|all\|off\|camera\|me\|here]` | Turn clone(s) to face a target |
 | `/ghostlook [off\|camera\|me] [once\|keep] [all]` | Head/eye look-at for clone(s) |
-| `/ghostanim <uuid\|mirror\|freeze> [all\|selected]` | Drive clone animation |
+| `/ghostanim <uuid\|mirror\|truemirror\|reflect\|freeze> [all\|selected]` | Drive clone animation |
 | `/ghostchaos <0..1> [all\|selected]` | Add per-clone variation so a crowd isn't identical |
 | `/ghostrefresh [all\|selected]` | Rebuild clone(s) from the source |
 | `/ghostclear [all\|selected\|test]` | Remove clone(s) |
@@ -650,6 +650,64 @@ Silhouette, Toon-Ink, and more. Each clone also has an **animation-speed** spinn
 Useful settings: `GhostStudioTurnRate`, `GhostStudioTurnEase`,
 `GhostStudioNameplateMode`, `GhostStudioShowFormationPreview`, and
 `GhostDeferredEnable` (route entity clones through scene lighting).
+
+
+### Reflect: mirror motion for a clone
+
+Choose an **Entity clone** in the roster. In **Clone Studio → Pose**, set the
+**Drive** combo to **Reflect**, or click **Face pair**. The same controls are in
+**Director → Cast → Clones → Motion → Reflect** on the v2 page (Drive is under
+**Pose & drive**). Face pair moves only the selected clone in front of its live
+source, faces it, captures a Fixed plane and selects Reflect. **Distance (m)** is
+0.5–10 m (default 2 m); the reset arrow restores 2 m. Locked groups disable Face pair.
+
+Reflect makes a source's right arm become the clone's left arm, with the correct
+reflected rotation. **Fixed** captures the source/clone foot bisector; **Recapture
+plane** captures it again. **Live** follows the bisector with a 0.1–0.3 m hold band.
+Live yaw turns at twice the bearing rate and can whirl when the source passes
+close. **Mirror position** requires Fixed and reflects the source's foot position,
+including its height. It holds while path motion, a locked group, Chaos or a Ghost
+Edit drag owns placement; the status explains why. Drag commit recaptures the plane;
+cancel keeps it. A missing source holds the last pose, plane and position.
+
+`/ghostanim reflect [all|selected]` selects the drive from chat. AutoAnimate is
+dormant in Reflect. Freeze holds the reflected pose; returning to Mirror or Directed
+restores the clone's saved bone positions and attachment overrides. Clones, their
+planes and Mirror position are session-only and are never saved in scenes.
+
+`GhostTrueMirrorCopyFacing` and `GhostTrueMirrorCopyFace` also govern Reflect.
+The new `GhostReflectVerify` setting defaults on and enables five-second verdicts
+and inventory round-trip checks; entry/build verdicts always log as `[GhostReflect]`.
+Settings can also be changed in **Advanced → Show Debug Settings**.
+
+### Reflect: inventory animation playback on yourself
+
+Open an inventory animation and tick **Reflect**, beside **Play priority**. Then
+click **Play Locally** or **Play Inworld**. Inventory right-click **Play Locally** /
+**Play Inworld** uses the same global setting, `AlchemyAnimReflectInventory`
+(default off). The checkbox is shared across preview windows and affects only new
+plays: unticking it leaves current reflected plays unchanged until stopped.
+
+This is local to your viewer. Other viewers see the original animation; no mirrored
+asset is uploaded and no derived animation ID is sent to the region. An uncached
+animation waits for its mirrored copy without flashing the original. Stop or close
+cancels a pending play. A failed copy falls back to normal playback only if the play
+has not been cancelled. An animation already playing outside Reflect stays normal.
+While a reflected in-world play is a member, another source using the same asset
+shares its reflected local playback. Gestures, AO and Switchboard joins are outside
+this toggle's scope.
+
+Both features mirror motion only. Asymmetric hair, straps, tattoos and text keep
+their sides; held props stay in their original hand. Leg bind positions can differ
+by 2–3 mm, and asymmetric mesh overrides can distort slightly. One-sided expressions
+and SALUTE_R / PEACE_R / PALM_R hand poses keep their side. Clone animesh plays
+unmirrored. Uneven-ground foot plants may float or sink because the clone's IK is
+paused. Mutual gaze is correct only at the mirror position; camera gaze becomes gaze
+at the camera's reflected image. Reflect has per-clone pose-stamp cost like True Mirror
+and is not intended for crowds. Self playback mirrors files only; procedural gaze,
+IK, Pose Polish and head turns remain unmirrored. UIs querying the original motion's
+active flag may show it stopped. A Mirror clone of reflected self plays the original;
+True Mirror copies the reflected final pose; a Reflect clone reflects it again.
 
 ---
 

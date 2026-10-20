@@ -28,6 +28,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llagent.h"
+#include "alreflectanim.h"
 
 #include "pipeline.h"
 
@@ -2762,7 +2763,16 @@ void LLAgent::requestStopMotion( LLMotion* motion )
     // Notify all avatars that a motion has stopped.
     // This is needed to clear the animation state bits
     LLUUID anim_state = motion->getID();
-    onAnimStop(motion->getID());
+    const bool derived = ALReflectAnim::instanceExists() && ALReflectAnim::instance().isDerived(anim_state);
+    if (derived || (ALReflectAnim::instanceExists() && ALReflectAnim::instance().contains(anim_state)))
+    {
+        // Includes a failed-build original fallback. Intent changes now; local
+        // cleanup and STOP(original), for Inworld only, are deferred until idle.
+        anim_state = ALReflectAnim::instance().originalFor(anim_state);
+        ALReflectAnim::instance().stop(anim_state, true);
+        return;
+    }
+    onAnimStop(anim_state);
 
     // if motion is not looping, it could have stopped by running out of time
     // so we need to tell the server this
@@ -3396,6 +3406,11 @@ void LLAgent::sendAnimationRequests(const std::vector<LLUUID> &anim_ids, EAnimRe
 
     for (const LLUUID& uuid : anim_ids)
     {
+        if (ALReflectAnim::instanceExists() && ALReflectAnim::instance().isDerived(uuid))
+        {
+            LL_WARNS("GhostReflect") << "FAIL: derived id on the wire (plural request blocked) " << uuid << LL_ENDL;
+            continue;
+        }
         if (uuid.notNull())
         {
             msg->nextBlockFast(_PREHASH_AnimationList);
@@ -3415,6 +3430,11 @@ void LLAgent::sendAnimationRequests(const std::vector<LLUUID> &anim_ids, EAnimRe
 
 void LLAgent::sendAnimationRequest(const LLUUID &anim_id, EAnimRequest request)
 {
+    if (ALReflectAnim::instanceExists() && ALReflectAnim::instance().isDerived(anim_id))
+    {
+        LL_WARNS("GhostReflect") << "FAIL: derived id on the wire (request blocked) " << anim_id << LL_ENDL;
+        return;
+    }
     if (gAgentID.isNull() || anim_id.isNull() || !mRegionp)
     {
         return;

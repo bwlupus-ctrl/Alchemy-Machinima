@@ -63,6 +63,7 @@ public:
     // not yank them back).
     void teardown(bool restore_toolset = true);
 
+    bool isDraggingInstance(const LLUUID& id) const;
     bool isActive() const { return mEditMode; }
     // True once selectProxy() has deliberately handed the transient picker to
     // the stock build toolset. Before that handoff, a deselect means the user

@@ -375,6 +375,7 @@ set(viewer_SOURCE_FILES
     alghostmanipproxy.cpp
     alghostnameplates.cpp
     alghostautoanimmodel.cpp # [AutoAnimate]
+    alreflectanim.cpp
     alghoststudio.cpp
     alghostanimassetindex.cpp
     alworldoverlayviz.cpp
@@ -1302,6 +1303,8 @@ set(viewer_HEADER_FILES
     alghostmanipproxy.h
     alghostnameplates.h
     alghostautoanimmodel.h # [AutoAnimate]
+    alreflectmath.h
+    alreflectanim.h
     alghoststudio.h
     alghostanimassetindex.h
     alworldoverlayviz.h
@@ -2878,6 +2881,7 @@ if (BUILD_TESTING)
 
   # ALGazeMath is deliberately header-only, so register its TUT directly
   # instead of inventing a production .cpp solely for the per-source macro.
+  LL_ADD_INTEGRATION_TEST(alreflectmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(algazemath
     ""
     "${test_libs}"

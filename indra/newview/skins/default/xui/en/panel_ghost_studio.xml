@@ -207,10 +207,10 @@
 
           <panel border="false" follows="all" height="490" label="Pose" layout="topleft" name="pose_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="pose_scroll" reserve_scroll_corner="false" top="0" width="500">
-              <panel background_visible="false" follows="left|top" height="790" layout="topleft" left="0" name="pose_scroll_body" top="0" width="484">
+              <panel background_visible="false" follows="left|top" height="874" layout="topleft" left="0" name="pose_scroll_body" top="0" width="484">
 
         <!-- Pose and animation -->
-        <panel follows="left|top" height="790" layout="topleft" left="0" name="pose_section" top="0" width="484">
+        <panel follows="left|top" height="874" layout="topleft" left="0" name="pose_section" top="0" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="pose_lbl" right="-8" top="8">Pose &amp; Animation</text>
           <button follows="left|top" height="22" label="Grab pose now" layout="topleft" left="8" name="btn_freeze" top="28"
            tool_tip="FREEZE: snapshot the source's current pose into this clone (worn mesh + attachment placement). The clone holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the clone" width="126" />
@@ -222,18 +222,30 @@
            tool_tip="Needs Hold on src change. While a clone's animesh is HELD (source detached/gone), replay each finished one-shot animesh animation so a script-retriggered tail or idle keeps cycling instead of freezing. Looping animations are untouched. Functional repetition, not seamless: a small seam per cycle, and a deliberate one-shot action will repeat too (hence off by default)." width="130" />
           <text follows="left|top|right" height="18" layout="topleft" left="8" name="pose_status" right="-8" text_color="LtGray_50" top="80">Select a clone</text>
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="drive_mode_combo" top="104"
-           tool_tip="Entity animation drive: mirror its source's animations, play a local animation asset, hold the current pose, or TRUE mirror (copy the source's final pose incl. gaze/IK/expressions every frame; heavier)" width="118">
+           tool_tip="Entity animation drive: mirror its source's animations, play a local animation asset, hold the current pose, or TRUE mirror (copy the source's final pose incl. gaze/IK/expressions every frame; heavier), or Reflect (left/right motion mirror; geometry and props stay on their sides)" width="118">
             <combo_box.item label="Mirror" name="drive_mirror" value="0" />
             <combo_box.item label="Directed" name="drive_directed" value="1" />
             <combo_box.item label="Frozen" name="drive_frozen" value="2" />
             <combo_box.item label="True mirror" name="drive_true_mirror" value="3" />
+            <combo_box.item label="Reflect" name="drive_reflect" value="4" />
           </combo_box>
           <check_box follows="left|top" height="18" label="Chaos" layout="topleft" left="134" name="chaos_check" top="106"
            tool_tip="Deterministic per-clone position, yaw and uniform-scale variation" width="66" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" layout="topleft" left="204" max_val="1" min_val="0" name="chaos_slider" right="-32" top="106"
            tool_tip="Chaos amount (0..1); stable for this clone's instance id" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_chaos" right="-8" top="106" tool_tip="Reset chaos amount to default" width="22" />
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="entity_look_combo" top="132"
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="reflect_plane_combo" top="132" width="140"
+           tool_tip="Reflect plane: Fixed holds the captured bisector. Live follows the bisector: yaw turns at twice the bearing rate and whirls near the clone. Live is unavailable with Mirror position.">
+            <combo_box.item label="Plane: Fixed" name="reflect_fixed" value="0" />
+            <combo_box.item label="Plane: Live" name="reflect_live" value="1" />
+          </combo_box>
+          <check_box follows="left|top" height="18" label="Mirror position" layout="topleft" left="156" name="reflect_position_check" top="134" width="132" tool_tip="Reflect the source foot across the Fixed plane. Holds during path motion, Chaos, locked groups and Ghost Edit drags." />
+          <button follows="left|top" height="22" label="Recapture plane" layout="topleft" left="296" name="btn_reflect_recapture" top="132" width="150" tool_tip="Capture a new bisector from the current source and clone foot positions." />
+          <button follows="left|top" height="22" label="Face pair" layout="topleft" left="8" name="btn_reflect_pair" top="160" width="100" tool_tip="Selected entity clone only: stand in front of the source, face it, capture a Fixed plane and enter Reflect. Unavailable for locked groups." />
+          <spinner control_name="GhostReflectFacePairDistance" decimal_digits="1" follows="left|top" height="22" increment="0.1" initial_value="2" label="Distance (m)" label_width="86" layout="topleft" left="116" min_val="0.5" max_val="10" name="reflect_distance_spinner" top="160" width="160" tool_tip="Face pair distance, 0.5 to 10 metres." />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="284" name="reset_reflect_distance" top="162" width="22" tool_tip="Reset Face pair distance to 2 metres." />
+          <text follows="left|top|right" height="18" layout="topleft" left="8" name="reflect_status" right="-8" top="188" tool_tip="Reflect pose and placement ownership status.">Reflect requires an entity clone</text>
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="entity_look_combo" top="216"
            tool_tip="Client-only entity render look. Apparition is scaffolded this pass; advanced shaders are deferred" width="142">
             <combo_box.item label="Normal" name="look_normal" value="0" />
             <combo_box.item label="Apparition" name="look_apparition" value="1" />
@@ -242,74 +254,74 @@
             <combo_box.item label="Toon*" name="look_toon" value="4" />
             <combo_box.item label="Silhouette*" name="look_silhouette" value="5" />
           </combo_box>
-          <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" initial_value="1" label="Anim Speed" label_width="74" layout="topleft" left="158" max_val="4" min_val="0.05" name="anim_speed_spinner" top="132"
+          <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" initial_value="1" label="Anim Speed" label_width="74" layout="topleft" left="158" max_val="4" min_val="0.05" name="anim_speed_spinner" top="216"
            tool_tip="Per-clone animation speed relative to scene tempo. Chaos adds a stable variation of up to plus/minus 15 percent" width="130" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="292" name="reset_anim_speed" top="134" tool_tip="Reset animation speed to default" width="22" />
-          <check_box follows="left|top" height="18" initial_value="true" label="Physics" layout="topleft" left="320" name="physics_check" top="134"
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="292" name="reset_anim_speed" top="218" tool_tip="Reset animation speed to default" width="22" />
+          <check_box follows="left|top" height="18" initial_value="true" label="Physics" layout="topleft" left="320" name="physics_check" top="218"
            tool_tip="Breast, belly and butt physics for each selected entity clone. Physics is calculated separately per clone; disable it for large crowds to reduce CPU cost" width="76" />
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="anim_loop_mode_combo" top="160"
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="anim_loop_mode_combo" top="244"
            tool_tip="Loop re-triggers the clone-owned motion on completion; Play once lets it stop at the end. This does not rewrite baked asset metadata" width="150">
             <combo_box.item label="Loop (re-trigger)" name="anim_loop_retrigger" value="0" />
             <combo_box.item label="Play once" name="anim_play_once" value="1" />
           </combo_box>
-          <button follows="left|top" height="22" label="Pause" layout="topleft" left="166" name="btn_anim_pause" top="160"
+          <button follows="left|top" height="22" label="Pause" layout="topleft" left="166" name="btn_anim_pause" top="244"
            tool_tip="Hold each selected entity clone at its current motion time. This is the existing Frozen drive state" width="62" />
-          <button follows="left|top" height="22" label="Resume" layout="topleft" left="234" name="btn_anim_resume" top="160"
+          <button follows="left|top" height="22" label="Resume" layout="topleft" left="234" name="btn_anim_resume" top="244"
            tool_tip="Resume each selected clone in the Mirror or Directed mode it used before pausing" width="66" />
-          <button follows="left|top" height="22" label="Sync" layout="topleft" left="306" name="btn_anim_sync" top="160"
+          <button follows="left|top" height="22" label="Sync" layout="topleft" left="306" name="btn_anim_sync" top="244"
            tool_tip="Restart all selected clones together without changing speed, pause or drive mode" width="62" />
-          <combo_box follows="left|top|right" height="22" layout="topleft" left="8" name="animation_library_combo" right="-76" top="190" visible="false"
+          <combo_box follows="left|top|right" height="22" layout="topleft" left="8" name="animation_library_combo" right="-76" top="274" visible="false"
            tool_tip="Animations in your own inventory only. Metadata loads asynchronously. Use Refresh after adding animations to inventory" />
-          <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_anim_library_refresh" right="-8" top="190" visible="false"
+          <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_anim_library_refresh" right="-8" top="274" visible="false"
            tool_tip="Re-scan your inventory for animations. The list is not polled automatically" width="64" />
-          <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-8" top="218" visible="false"
+          <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-8" top="302" visible="false"
            tool_tip="Animation asset UUID played only on the selected entity clone; direct UUID paste remains supported" />
-          <text follows="left|top|right" height="34" layout="topleft" left="8" name="anim_metadata_text" right="-8" text_color="LtGray_50" top="244" visible="false">Metadata pending...</text>
+          <text follows="left|top|right" height="34" layout="topleft" left="8" name="anim_metadata_text" right="-8" text_color="LtGray_50" top="328" visible="false">Metadata pending...</text>
           <!-- [AutoAnimate] Learned performance; entity clones only. -->
-          <text follows="left|top" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="autoanim_label" top="282" width="468">AutoAnimate (learned performance)</text>
-          <check_box follows="left|top" height="18" label="AutoAnimate" layout="topleft" left="8" name="autoanim_check" top="302" width="110" />
-          <spinner decimal_digits="0" follows="left|top" height="22" increment="15" initial_value="120" label="Learn s" label_width="45" layout="topleft" left="122" max_val="600" min_val="15" name="autoanim_window_spinner" top="300" width="110" />
-          <button follows="left|top" height="18" label="&#x21BA;" layout="topleft" left="236" name="reset_autoanim_window" top="302" tool_tip="Reset learning window to 120 seconds" width="22" />
-          <button follows="left|top" height="22" label="Stop now" layout="topleft" left="264" name="btn_autoanim_stop" top="300" width="70" />
-          <button follows="left|top" height="22" label="Relearn" layout="topleft" left="340" name="btn_autoanim_relearn" top="300" width="66" />
-          <button follows="left|top" height="22" label="Reseed" layout="topleft" left="412" name="btn_autoanim_reseed" top="300" width="64" />
-          <button follows="left|top" height="22" label="Go autonomous" layout="topleft" left="8" name="btn_autoanim_go" top="330" width="110" />
-          <button follows="left|top" height="22" label="Follow source" layout="topleft" left="122" name="btn_autoanim_follow" top="330" width="100" />
-          <button follows="left|top" height="22" label="Save..." layout="topleft" left="226" name="btn_autoanim_save" top="330" width="60" />
-          <button follows="left|top" height="22" label="Load..." layout="topleft" left="290" name="btn_autoanim_load" top="330" width="60" />
-          <text follows="left|top" height="16" layout="topleft" left="8" name="autoanim_status" top="358" width="468">AutoAnimate off</text>
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="lens_gaze_label" right="-8" top="384">Actor Gaze</text>
-          <check_box follows="left|top" height="18" label="This actor" layout="topleft" left="8" name="lens_gaze_check" top="406"
+          <text follows="left|top" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="autoanim_label" top="366" width="468">AutoAnimate (learned performance)</text>
+          <check_box follows="left|top" height="18" label="AutoAnimate" layout="topleft" left="8" name="autoanim_check" top="386" width="110" />
+          <spinner decimal_digits="0" follows="left|top" height="22" increment="15" initial_value="120" label="Learn s" label_width="45" layout="topleft" left="122" max_val="600" min_val="15" name="autoanim_window_spinner" top="384" width="110" />
+          <button follows="left|top" height="18" label="&#x21BA;" layout="topleft" left="236" name="reset_autoanim_window" top="386" tool_tip="Reset learning window to 120 seconds" width="22" />
+          <button follows="left|top" height="22" label="Stop now" layout="topleft" left="264" name="btn_autoanim_stop" top="384" width="70" />
+          <button follows="left|top" height="22" label="Relearn" layout="topleft" left="340" name="btn_autoanim_relearn" top="384" width="66" />
+          <button follows="left|top" height="22" label="Reseed" layout="topleft" left="412" name="btn_autoanim_reseed" top="384" width="64" />
+          <button follows="left|top" height="22" label="Go autonomous" layout="topleft" left="8" name="btn_autoanim_go" top="414" width="110" />
+          <button follows="left|top" height="22" label="Follow source" layout="topleft" left="122" name="btn_autoanim_follow" top="414" width="100" />
+          <button follows="left|top" height="22" label="Save..." layout="topleft" left="226" name="btn_autoanim_save" top="414" width="60" />
+          <button follows="left|top" height="22" label="Load..." layout="topleft" left="290" name="btn_autoanim_load" top="414" width="60" />
+          <text follows="left|top" height="16" layout="topleft" left="8" name="autoanim_status" top="442" width="468">AutoAnimate off</text>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="lens_gaze_label" right="-8" top="468">Actor Gaze</text>
+          <check_box follows="left|top" height="18" label="This actor" layout="topleft" left="8" name="lens_gaze_check" top="490"
            tool_tip="Client-only post-blend head, neck and eye tracking toward the render camera. Continues while the clone animation is frozen; camera-on-head feedback interlocks suppress it" width="116" />
-          <button follows="left|top" height="22" label="Enable selected" layout="topleft" left="134" name="btn_lens_gaze_selection" top="402"
+          <button follows="left|top" height="22" label="Enable selected" layout="topleft" left="134" name="btn_lens_gaze_selection" top="486"
            tool_tip="Enable camera gaze for every selected entity clone; overlay clones are ignored" width="116" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.25" label="Torso" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_torso" right="-32" top="430"
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.25" label="Torso" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_torso" right="-32" top="514"
            tool_tip="Torso share for selected entity clones. 0 keeps the chest still; 1 lets the torso take the full gaze turn" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_torso" right="-8" top="430" tool_tip="Reset torso gaze to default" width="22" />
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="lens_gaze_target_mode" top="454"
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_torso" right="-8" top="514" tool_tip="Reset torso gaze to default" width="22" />
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="lens_gaze_target_mode" top="538"
            tool_tip="Per-clone gaze target: travel tangent, render camera, a Director cast member, or the stored world point" width="142">
             <combo_box.item label="Travel tangent" name="gaze_tangent" value="0" />
             <combo_box.item label="Camera" name="gaze_camera" value="1" />
             <combo_box.item label="Cast target" name="gaze_cast" value="2" />
             <combo_box.item label="World point" name="gaze_point" value="3" />
           </combo_box>
-          <combo_box follows="left|top|right" height="22" layout="topleft" left="158" name="lens_gaze_cast_target" right="-8" top="454"
+          <combo_box follows="left|top|right" height="22" layout="topleft" left="158" name="lens_gaze_cast_target" right="-8" top="538"
            tool_tip="Director cast member used by Cast target mode" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.65" label="Head / eyes" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_head_eye" right="-32" top="482"
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.65" label="Head / eyes" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_head_eye" right="-32" top="566"
            tool_tip="0 uses eyes only; 1 gives the head and neck their full share" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_head_eye" right="-8" top="482" tool_tip="Reset head and eye gaze to default" width="22" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1" label="Intensity" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_intensity" right="-32" top="504"
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_head_eye" right="-8" top="566" tool_tip="Reset head and eye gaze to default" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1" label="Intensity" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_intensity" right="-32" top="588"
            tool_tip="Overall gaze strength" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_intensity" right="-8" top="504" tool_tip="Reset gaze intensity to default" width="22" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" label="Smoothing" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_smoothing" right="-32" top="526"
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_intensity" right="-8" top="588" tool_tip="Reset gaze intensity to default" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" label="Smoothing" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_smoothing" right="-32" top="610"
            tool_tip="0 is snappy; 1 is very smooth" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_smoothing" right="-8" top="526" tool_tip="Reset gaze smoothing to default" width="22" />
-          <text follows="left|top|right" height="34" layout="topleft" left="8" name="lens_gaze_status" right="-8" text_color="LtGray_50" top="550">Gaze off</text>
-          <text follows="left|top|right" font="SansSerifSmallBold" height="30" layout="topleft" left="8" name="rig_diagnostics_label" right="-100" top="592" word_wrap="true"
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_smoothing" right="-8" top="610" tool_tip="Reset gaze smoothing to default" width="22" />
+          <text follows="left|top|right" height="34" layout="topleft" left="8" name="lens_gaze_status" right="-8" text_color="LtGray_50" top="634">Gaze off</text>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="30" layout="topleft" left="8" name="rig_diagnostics_label" right="-100" top="676" word_wrap="true"
            tool_tip="[GhostPanelPerf] The structure part is re-sampled every 2 s while this editor is on screen. The live render/cull columns (draw pass, texture bindings, pool) are NOT polled: press Refresh to capture them.">Entity clone rig diagnostics (structure; Refresh for live state)</text>
-          <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_rig_diag_refresh" right="-8" top="594"
+          <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_rig_diag_refresh" right="-8" top="678"
            tool_tip="Capture the live render/cull state (draw pass, texture bindings, pool) of the selected entity clone now. It is a snapshot and does not follow the camera" width="64" />
-          <text_editor follows="left|top|right" font="Monospace" height="156" layout="topleft" left="8" max_length="32768" name="rig_diagnostics" read_only="true" right="-8" top="626" word_wrap="false">Select an entity clone to inspect rig and per-face texture state.</text_editor>
+          <text_editor follows="left|top|right" font="Monospace" height="156" layout="topleft" left="8" max_length="32768" name="rig_diagnostics" read_only="true" right="-8" top="710" word_wrap="false">Select an entity clone to inspect rig and per-face texture state.</text_editor>
         </panel>
               </panel>
             </scroll_container>

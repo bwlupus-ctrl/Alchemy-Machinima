@@ -50,7 +50,8 @@ public:
 protected:
 
     LLUUID  mItemID; // Not an item id, but a playing asset id
-    bool    mDidStart;
+    LLUUID  mReflectOriginal; // pending/end UI tracking; never sent
+    bool    mDidStart = false;
     S32     mPriorityOverride = -1; // client-side priority for this play; -1 = baked (no override)
     LLTextBox* pAdvancedStatsTextBox;
 };

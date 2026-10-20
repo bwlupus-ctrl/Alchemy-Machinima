@@ -361,6 +361,43 @@ bool ALPanelGhostStudio::postBuild()
     mAnimPauseBtn = getChild<LLButton>("btn_anim_pause");
     mAnimResumeBtn = getChild<LLButton>("btn_anim_resume");
     mDriveModeCombo = getChild<LLComboBox>("drive_mode_combo");
+    mReflectPlane = getChild<LLComboBox>("reflect_plane_combo");
+    mReflectPosition = getChild<LLCheckBoxCtrl>("reflect_position_check");
+    mReflectPair = getChild<LLButton>("btn_reflect_pair");
+    mReflectRecapture = getChild<LLButton>("btn_reflect_recapture");
+    mReflectStatus = getChild<LLTextBox>("reflect_status");
+    mReflectPlane->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        auto& studio = ALGhostStudio::instance();
+        if (auto* inst = studio.getInstance(studio.getSelected()))
+        {
+            if (inst->mReflectMirrorPosition) return;
+            inst->mReflectPlaneMode = mReflectPlane->getValue().asInteger();
+            inst->mReflectPlaneDegenerate = false;
+            studio.invalidateReflectPlane(inst->mId);
+        }
+    });
+    mReflectPosition->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        auto& studio = ALGhostStudio::instance();
+        if (auto* inst = studio.getInstance(studio.getSelected()))
+        {
+            inst->mReflectMirrorPosition = mReflectPosition->getValue().asBoolean();
+            if (inst->mReflectMirrorPosition && inst->mReflectPlaneMode != 0)
+            { inst->mReflectPlaneMode = 0; inst->mReflectPlaneValid = false; }
+        }
+    });
+    mReflectPair->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        auto& studio = ALGhostStudio::instance();
+        if (!studio.facePair(studio.getSelected()))
+            setTextIfChanged(mReflectStatus, "Face pair held: source missing, steep forward, or locked group");
+    });
+    mReflectRecapture->setCommitCallback([](LLUICtrl*, const LLSD&)
+    {
+        auto& studio = ALGhostStudio::instance();
+        studio.invalidateReflectPlane(studio.getSelected());
+    });
     mDirectedAnimEdit = getChild<LLLineEditor>("directed_anim_editor");
     mAnimationLibraryCombo = getChild<LLComboBox>("animation_library_combo");
     mAnimationLibraryRefreshBtn = getChild<LLButton>("btn_anim_library_refresh");
@@ -742,6 +779,7 @@ bool ALPanelGhostStudio::postBuild()
         { "reset_scale", "scale_spinner" },
         { "reset_effect_fps", "effect_fps_spinner" },
         { "reset_anim_speed", "anim_speed_spinner" },
+        { "reset_reflect_distance", "reflect_distance_spinner" },
         { "reset_autoanim_window", "autoanim_window_spinner" }, // [AutoAnimate]
         { "reset_array_count", "array_count_spinner" },
         { "reset_array_spacing", "array_spacing_spinner" },
@@ -1567,6 +1605,17 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mAnimResumeBtn, entity);
     setEnabledIfChanged(mEntityLookCombo, entity);
     setEnabledIfChanged(mDriveModeCombo, entity);
+    const bool reflect = entity && inst->mDriveMode == ALGhostStudio::DRIVE_REFLECT;
+    const bool reflect_single = entity && !studio.groupForMember(inst->mId);
+    setEnabledIfChanged(mReflectPlane, reflect && !inst->mReflectMirrorPosition);
+    setEnabledIfChanged(mReflectPosition, reflect);
+    setEnabledIfChanged(mReflectRecapture, reflect);
+    setEnabledIfChanged(mReflectPair, reflect_single);
+    setValueIfChanged(mReflectPlane, LLSD(inst ? inst->mReflectPlaneMode : 0));
+    setValueIfChanged(mReflectPosition, LLSD(inst && inst->mReflectMirrorPosition), true);
+    setTextIfChanged(mReflectStatus, entity ? (studio.groupForMember(inst->mId) && !reflect ?
+        "Face pair unavailable: locked group" : reflect ? studio.reflectStatus(*inst) : "Reflect: select Reflect drive or Face pair") :
+        "Reflect requires an entity clone");
     setRowVisibleIfChanged(mDirectedAnimEdit, directed);
     setEnabledIfChanged(mDirectedAnimEdit, directed);
     setRowVisibleIfChanged(mAnimationLibraryCombo, directed);
@@ -2788,6 +2837,7 @@ void ALPanelGhostStudio::refreshAutoAnimate(const ALGhostStudio::Instance* inst)
         else text = llformat("Learned: body %u stands / %u one-shots - %u animesh", status.mBodyStates, status.mBodyOneShots, status.mAnimeshChannels);
         if (inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED) text += " (dormant: Directed)";
         else if (inst->mDriveMode == ALGhostStudio::DRIVE_FROZEN) text += " (dormant: Frozen)";
+        else if (inst->mDriveMode == ALGhostStudio::DRIVE_REFLECT) text += " (dormant: Reflect)";
     }
     setTextIfChanged(mAutoAnimStatus, text);
     setToolTipIfChanged(mAutoAnimStatus, status.mDetail);

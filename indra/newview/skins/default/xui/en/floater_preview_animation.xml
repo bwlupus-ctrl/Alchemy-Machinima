@@ -5,7 +5,7 @@
  layout="topleft"
  name="preview_anim"
  help_topic="preview_anim"
- width="320">
+ width="420">
     <floater.string
      name="Title">
         Animation: [NAME]
@@ -76,7 +76,7 @@
      left="10"
      name="priority_lbl"
      top_pad="7"
-     width="90">
+     width="110">
         Play priority:
     </text>
     <combo_box
@@ -95,6 +95,7 @@
         <combo_box.item label="3 - Higher" name="pri_higher" value="3" />
         <combo_box.item label="4 - Highest" name="pri_highest" value="4" />
     </combo_box>
+    <check_box control_name="AlchemyAnimReflectInventory" follows="left|top" height="20" label="Reflect" layout="topleft" left="286" name="reflect_inventory" top_delta="0" width="100" tool_tip="Plays the animation as its mirror image (left/right swapped). Your viewer only: other people see the original." />
     <text
      type="string"
      length="1"
@@ -105,7 +106,7 @@
      left="10"
      name="desc txt"
      top_pad="7"
-     width="80">
+     width="100">
         Description:
     </text>
     <line_editor
@@ -143,8 +144,9 @@
      layout="topleft"
      left="10"
      name="AdvancedStats"
+     word_wrap="true"
      top_pad="3"
-     width="200">
+     width="400">
 Priority: [PRIORITY]
 Duration: [DURATION]s
 Ease In: [EASE_IN]s
