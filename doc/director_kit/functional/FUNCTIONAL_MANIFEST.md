@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `142461b9ba1ecb16` (1816 interactive rows); 36
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1336 | 38 | 300 | 50 | 96 | 1 | 1821 |
-| v2 | 1696 | 0 | 452 | 70 | 0 | 11 | 2229 |
+| v2 | 1696 | 0 | 452 | 71 | 0 | 11 | 2230 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
@@ -29,7 +29,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | move_tab (Move) | cast_group | 9 | 0 | 5 | 2 | 0 | 0 | 13 | 0 | 5 | 3 | 0 | 0 |
 | path_tab (Path) | cast_group | 31 | 0 | 21 | 3 | 0 | 0 | 40 | 0 | 21 | 4 | 0 | 1 |
 | props_tab (Props) | cast_group | 18 | 0 | 10 | 3 | 0 | 0 | 20 | 0 | 10 | 3 | 0 | 0 |
-| ghosts_tab (Ghosts) | cast_group | 62 | 0 | 48 | 2 | 0 | 0 | 82 | 0 | 57 | 4 | 0 | 0 |
+| ghosts_tab (Ghosts) | cast_group | 62 | 0 | 48 | 2 | 0 | 0 | 82 | 0 | 57 | 5 | 0 | 0 |
 | dance_tab (Dance) | cast_group | 29 | 0 | 38 | 9 | 0 | 0 | 37 | 0 | 38 | 9 | 0 | 0 |
 | animate_tab (Animate) | performance_group | 6 | 0 | 12 | 1 | 0 | 1 | 11 | 0 | 12 | 2 | 0 | 1 |
 | switchboard_tab (Switchboard) | performance_group | 14 | 0 | 14 | 0 | 0 | 0 | 19 | 0 | 14 | 1 | 0 | 0 |
@@ -192,6 +192,7 @@ Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to e
 | vcam_tab | vc_remove_face | Remove face | v2 | destructive (remove) in action name or label |
 | temporal_tab | output_fps_spinner | Out FPS | v2 | not connected yet |
 | temporal_tab | drive_camera_check | Camera | v2 | authored disabled control |
+| ghosts_tab | btn_paste_position | Paste position | v2 | authored disabled control |
 | ghosts_tab | directed_anim_editor | Anim UUID | v2 | file/path text input (would write a host path) |
 | ghosts_tab | crowd_copies_as_combo | Copies as | v2 | authored disabled control |
 | move_tab | custom_anim_editor | Anim UUID | v2 | file/path text input (would write a host path) |

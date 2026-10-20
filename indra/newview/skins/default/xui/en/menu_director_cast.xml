@@ -5,6 +5,9 @@
 <context_menu
  layout="topleft"
  name="DirectorCastContextMenu">
+  <menu_item_call label="Copy position" layout="topleft" name="copy_position">
+    <menu_item_call.on_click function="Director.CopyPosition" />
+  </menu_item_call>
   <menu_item_call
    label="Set Subject A"
    layout="topleft"

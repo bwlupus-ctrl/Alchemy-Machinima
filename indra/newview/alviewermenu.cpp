@@ -31,6 +31,7 @@
 #include "alavataractions.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "alclientheight.h"        // [ClientHeight]
+#include "alghoststudio.h"
 #include "alpaneldanceball.h"      // [DanceBall] right-click roster toggle
 #include "llcontrolavatar.h"        // [AvatarLightResponse] worn-animesh target
 #include "llcinematiccamera.h"  // [Cinematic] locked follow subject
@@ -1116,6 +1117,13 @@ namespace
 // by find_avatar_from_object) > toggle Director cast membership. Same list
 // the Actor Mover roster delegates to, so this and "Actor Mover Target" are
 // aliases; both stay for discoverability.
+    void handle_avatar_copy_position(const LLSD& data)
+    {
+        LLVOAvatar* avatar = data.asString() == "self" ? gAgentAvatarp.get()
+            : find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatar) ALGhostStudio::instance().copyAvatarPosition(avatar->getID());
+    }
+
     void handle_avatar_add_to_cast(const LLSD&)
     {
         LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
@@ -1350,6 +1358,7 @@ void ALViewerMenu::initialize_menus()
     commit.add("Object.PathTarget", boost::bind(&handle_object_path_target, _2));
     enable.add("Object.CheckPathTarget", boost::bind(&check_object_path_target, _2));
     // [Director] cast membership (alias of the Actor Mover roster)
+    commit.add("Avatar.CopyPosition", boost::bind(&handle_avatar_copy_position, _2));
     commit.add("Avatar.AddToCast", boost::bind(&handle_avatar_add_to_cast, _2));
     enable.add("Avatar.CheckAddToCast", boost::bind(&check_avatar_add_to_cast, _2));
     // [DanceBall] session-local multi-avatar dance roster

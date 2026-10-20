@@ -2,6 +2,9 @@
 <context_menu
  layout="topleft"
  name="Self Pie">
+  <menu_item_call label="Copy position" layout="topleft" name="Copy Position">
+    <menu_item_call.on_click function="Avatar.CopyPosition" parameter="self" />
+  </menu_item_call>
   <menu_item_call
     label="My Profile"
     layout="topleft"

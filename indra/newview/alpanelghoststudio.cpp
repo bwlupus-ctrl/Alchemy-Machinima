@@ -438,6 +438,7 @@ bool ALPanelGhostStudio::postBuild()
     mDupInPlaceBtn = getChild<LLButton>("btn_duplicate_in_place");
     mCopyTransformBtn = getChild<LLButton>("btn_copy_transform");
     mPasteTransformBtn = getChild<LLButton>("btn_paste_transform");
+    mPastePositionBtn = getChild<LLButton>("btn_paste_position");
     mLookTargetCombo = getChild<LLComboBox>("look_target_combo");
     mFaceNowBtn = getChild<LLButton>("btn_face_now");
     mKeepFacingCheck = getChild<LLCheckBoxCtrl>("keep_facing_check");
@@ -665,6 +666,7 @@ bool ALPanelGhostStudio::postBuild()
     mDupInPlaceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickDuplicateInPlace(); });
     mCopyTransformBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickCopyTransform(); });
     mPasteTransformBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPasteTransform(); });
+    mPastePositionBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPastePosition(); });
     mLookTargetCombo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onLookTargetCommit(); });
     mFaceNowBtn->setCommitCallback(
@@ -1547,6 +1549,7 @@ void ALPanelGhostStudio::refreshDetail()
         (group ? 128ULL : 0ULL) |
         (member_edit ? 256ULL : 0ULL) |
         (group_header ? 512ULL : 0ULL) |
+        (studio.hasAvatarPosition() ? 2048ULL : 0ULL) |
         ((have && inst->mEntityId.notNull()) ? 1024ULL : 0ULL) |
         (have ? ((U64)inst->mKind + 1ULL) << 12 : 0ULL) |
         (have ? ((U64)inst->mDriveMode + 1ULL) << 16 : 0ULL);
@@ -1683,6 +1686,10 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mDupInPlaceBtn, have);
     setEnabledIfChanged(mCopyTransformBtn, have);
     setEnabledIfChanged(mPasteTransformBtn, have && mHasTransformClipboard);
+    setEnabledIfChanged(mPastePositionBtn, have && studio.hasAvatarPosition());
+    setToolTipIfChanged(mPastePositionBtn, studio.hasAvatarPosition()
+        ? "Paste the copied avatar position and facing; keep clone scale"
+        : "Right-click an avatar > Copy position first");
     setEnabledIfChanged(mArrayCount, have);
     setEnabledIfChanged(mArraySpacing, have);
     setEnabledIfChanged(mArrayLineBtn, have);
@@ -3177,6 +3184,23 @@ void ALPanelGhostStudio::onClickCopyTransform()
             mClipboardRotation, mClipboardScale))
     {
         mHasTransformClipboard = true;
+    }
+}
+
+void ALPanelGhostStudio::onClickPastePosition()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    LLVector3d foot;
+    LLQuaternion rotation;
+    if (!studio.getAvatarPosition(foot, rotation)) return;
+    LLVector3d current_foot;
+    LLQuaternion current_rotation;
+    F32 scale = 1.f;
+    const LLUUID id = selectedUnitId();
+    if (studio.getUnitTransform(id, current_foot, current_rotation, scale))
+    {
+        applyUnitTransform(id, foot, rotation, scale);
+        mDetailDirty = true;
     }
 }
 

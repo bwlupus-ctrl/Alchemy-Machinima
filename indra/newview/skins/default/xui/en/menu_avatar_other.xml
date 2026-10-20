@@ -3,6 +3,9 @@
 <context_menu
  layout="topleft"
  name="Avatar Pie">
+  <menu_item_call label="Copy position" layout="topleft" name="Copy Position">
+    <menu_item_call.on_click function="Avatar.CopyPosition" parameter="other" />
+  </menu_item_call>
     <menu_item_call
      label="View Profile"
      name="Profile...">

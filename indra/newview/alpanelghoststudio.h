@@ -191,6 +191,7 @@ private:
     void onClickUpright();
     void onClickCopyTransform();
     void onClickPasteTransform();
+    void onClickPastePosition();
     void onLookTargetCommit();
     void onClickFaceNow();
     void onKeepFacingCommit();
@@ -375,6 +376,7 @@ private:
     LLButton*         mDupInPlaceBtn = nullptr;
     LLButton*         mCopyTransformBtn = nullptr;
     LLButton*         mPasteTransformBtn = nullptr;
+    LLButton*         mPastePositionBtn = nullptr;
     LLComboBox*       mLookTargetCombo = nullptr;
     LLButton*         mFaceNowBtn = nullptr;
     LLCheckBoxCtrl*   mKeepFacingCheck = nullptr;

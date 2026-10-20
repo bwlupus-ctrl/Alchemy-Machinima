@@ -742,6 +742,27 @@ std::string ALGhostStudio::makeDefaultName() const
     }
 }
 
+bool ALGhostStudio::copyAvatarPosition(const LLUUID& source)
+{
+    LLVector3 foot;
+    LLVOAvatar* avatar = LLDirectorCast::instance().resolve(source);
+    if (!avatar || !source_foot_agent(source, foot)) return false;
+    const LLQuaternion rotation = avatar->getRootJoint()->getWorldRotation();
+    if (!rotation.isFinite()) return false;
+    mAvatarPositionFoot = gAgent.getPosGlobalFromAgent(foot);
+    mAvatarPositionRotation = rotation;
+    mHasAvatarPosition = true;
+    return true;
+}
+
+bool ALGhostStudio::getAvatarPosition(LLVector3d& foot, LLQuaternion& rotation) const
+{
+    if (!mHasAvatarPosition) return false;
+    foot = mAvatarPositionFoot;
+    rotation = mAvatarPositionRotation;
+    return true;
+}
+
 ALGhostStudio::Instance* ALGhostStudio::addInstance(const LLUUID& source)
 {
     LLVector3 foot;

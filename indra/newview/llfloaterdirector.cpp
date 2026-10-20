@@ -1408,6 +1408,10 @@ bool LLFloaterDirector::postBuild()
         registrar.add("Director.SetMarkHere", [this](LLUICtrl*, const LLSD&) { onCastSetMarkHere(); });
         registrar.add("Director.ResetToMark", [this](LLUICtrl*, const LLSD&) { onCastResetToMark(); });
         registrar.add("Director.ClearLocoAnim", [this](LLUICtrl*, const LLSD&) { onCastClearLocoAnim(); });
+        registrar.add("Director.CopyPosition", [this](LLUICtrl*, const LLSD&)
+        {
+            ALGhostStudio::instance().copyAvatarPosition(mCastRightClickId.notNull() ? mCastRightClickId : firstSelectedCastId());
+        });
         registrar.add("Director.CopyUUID", [this](LLUICtrl*, const LLSD&) { onCastCopyUUID(); });
         // [AvatarLightResponse] cast row > Light Response...: null cast id means You
         registrar.add("Director.LightResponse", [this](LLUICtrl*, const LLSD&)
@@ -1895,6 +1899,10 @@ void LLFloaterDirector::bindChrome(LLView* root)
     registrar.add("Director.SetMarkHere", [this](LLUICtrl*, const LLSD&) { onCastSetMarkHere(); });
     registrar.add("Director.ResetToMark", [this](LLUICtrl*, const LLSD&) { onCastResetToMark(); });
     registrar.add("Director.ClearLocoAnim", [this](LLUICtrl*, const LLSD&) { onCastClearLocoAnim(); });
+    registrar.add("Director.CopyPosition", [this](LLUICtrl*, const LLSD&)
+    {
+        ALGhostStudio::instance().copyAvatarPosition(mCastRightClickId.notNull() ? mCastRightClickId : firstSelectedCastId());
+    });
     registrar.add("Director.CopyUUID", [this](LLUICtrl*, const LLSD&) { onCastCopyUUID(); });
     registrar.add("Director.LightResponse", [this](LLUICtrl*, const LLSD&)
     {
@@ -5462,6 +5470,7 @@ const uuid_vec_t& LLFloaterDirector::actorTargetsForPage(const std::string& page
 void LLFloaterDirector::onCastRightClick(LLUICtrl* ctrl, S32 x, S32 y)
 {
     LLScrollListItem* item = mCastList->hitItem(x, y);
+    mCastRightClickId = item ? item->getValue().asUUID() : LLUUID::null;
     LLContextMenu* menu = mCastMenuHandle.get();
     if (item && menu)
     {

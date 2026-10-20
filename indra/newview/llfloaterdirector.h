@@ -377,6 +377,7 @@ private:
     LLButton*         mFocusBtn = nullptr;
     LLTextBox*        mCastHint = nullptr;
     LLHandle<LLContextMenu> mCastMenuHandle;
+    LLUUID mCastRightClickId;
     // per-row last-applied cell state, parallel to the list rows, so cells
     // are only re-set when something actually changed (v2 mover idiom)
     struct CastRowState

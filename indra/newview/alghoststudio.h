@@ -572,6 +572,11 @@ public:
         std::map<LLUUID, LLMatrix4> mFrozenAttachMats;
     };
 
+    // Avatar placement clipboard, shared by all panels; session memory only.
+    bool copyAvatarPosition(const LLUUID& source);
+    bool hasAvatarPosition() const { return mHasAvatarPosition; }
+    bool getAvatarPosition(LLVector3d& foot, LLQuaternion& rotation) const;
+
     // ---- master visibility ----
     // one-click "hide all" that keeps every per-instance enable intact
     // (session-only by design: a persisted hidden-everything would read as
@@ -898,6 +903,9 @@ private:
 
     std::vector<Instance> mInstances;
     bool mShowAll = true;
+    bool mHasAvatarPosition = false;
+    LLVector3d mAvatarPositionFoot;
+    LLQuaternion mAvatarPositionRotation;
     LLUUID mSelected;       // [R2-3] shared edit selection (null = none)
     U64    mSelectionRevision = 0;
     U64    mInstanceRevision = 1;   // [GhostPanelPerf] see getInstanceRevision()

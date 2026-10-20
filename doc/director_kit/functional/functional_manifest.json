@@ -43,8 +43,8 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2147,
-  "entries": 4050,
+  "generated_kit_rows": 2148,
+  "entries": 4051,
   "pages": 37,
   "settings_declared": 3664,
   "xui_files": 842,
@@ -149283,7 +149283,63 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_place:kit:25",
+   "id": "v2:ghosts_tab:btn_paste_position:kit:25",
+   "csv_index": null,
+   "card": "ghost_position",
+   "card_title": "Position",
+   "row_label": "Paste position",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+   "xui_line": null,
+   "widget_name": "btn_paste_position",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "SKIP",
+   "reason": "authored disabled control",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "LLFloaterDirector::bindCameraPage",
+    "commit": true
+   },
+   "restore": {
+    "note": "restore any viewer-local action state"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "code",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "LLFloaterDirector::bindCameraPage",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+   "declared_non_interactive": true
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Ghosts",
+   "group": "cast_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v2:ghosts_tab:btn_place:kit:26",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -149338,7 +149394,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_to_actor:kit:26",
+   "id": "v2:ghosts_tab:btn_to_actor:kit:27",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -149394,7 +149450,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_to_me:kit:27",
+   "id": "v2:ghosts_tab:btn_to_me:kit:28",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -149449,7 +149505,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_drop_ground:kit:28",
+   "id": "v2:ghosts_tab:btn_drop_ground:kit:29",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -149504,7 +149560,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_align_feet:kit:29",
+   "id": "v2:ghosts_tab:btn_align_feet:kit:30",
    "csv_index": null,
    "card": "ghost_snap",
    "card_title": "Place & snap",
@@ -149559,7 +149615,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:look_target_combo:kit:30",
+   "id": "v2:ghosts_tab:look_target_combo:kit:31",
    "csv_index": null,
    "card": "ghost_facing",
    "card_title": "Facing",
@@ -149615,7 +149671,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_face_now:kit:31",
+   "id": "v2:ghosts_tab:btn_face_now:kit:32",
    "csv_index": null,
    "card": "ghost_facing",
    "card_title": "Facing",
@@ -149670,7 +149726,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:keep_facing_check:kit:32",
+   "id": "v2:ghosts_tab:keep_facing_check:kit:33",
    "csv_index": null,
    "card": "ghost_facing",
    "card_title": "Facing",
@@ -149723,7 +149779,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_reset_upright:kit:33",
+   "id": "v2:ghosts_tab:btn_reset_upright:kit:34",
    "csv_index": null,
    "card": "ghost_facing",
    "card_title": "Facing",
@@ -149778,7 +149834,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:style_combo:kit:34",
+   "id": "v2:ghosts_tab:style_combo:kit:35",
    "csv_index": null,
    "card": "ghost_look",
    "card_title": "Clone look",
@@ -149948,7 +150004,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:distort_combo:kit:35",
+   "id": "v2:ghosts_tab:distort_combo:kit:36",
    "csv_index": null,
    "card": "ghost_look",
    "card_title": "Clone look",
@@ -150042,7 +150098,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:distort_amount_slider:kit:36",
+   "id": "v2:ghosts_tab:distort_amount_slider:kit:37",
    "csv_index": null,
    "card": "ghost_look",
    "card_title": "Clone look",
@@ -150095,7 +150151,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:actor_tint_check:kit:37",
+   "id": "v2:ghosts_tab:actor_tint_check:kit:38",
    "csv_index": null,
    "card": "tint",
    "card_title": "Colour & tint",
@@ -150148,7 +150204,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:hue_slider:kit:38",
+   "id": "v2:ghosts_tab:hue_slider:kit:39",
    "csv_index": null,
    "card": "tint",
    "card_title": "Colour & tint",
@@ -150201,7 +150257,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:alpha_slider:kit:39",
+   "id": "v2:ghosts_tab:alpha_slider:kit:40",
    "csv_index": null,
    "card": "tint",
    "card_title": "Colour & tint",
@@ -150254,7 +150310,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:brightness_slider:kit:40",
+   "id": "v2:ghosts_tab:brightness_slider:kit:41",
    "csv_index": null,
    "card": "tint",
    "card_title": "Colour & tint",
@@ -150307,7 +150363,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:pixel_slider:kit:41",
+   "id": "v2:ghosts_tab:pixel_slider:kit:42",
    "csv_index": null,
    "card": "motion_fx",
    "card_title": "Shimmer & glitch",
@@ -150360,7 +150416,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:shimmer_amount_slider:kit:42",
+   "id": "v2:ghosts_tab:shimmer_amount_slider:kit:43",
    "csv_index": null,
    "card": "motion_fx",
    "card_title": "Shimmer & glitch",
@@ -150413,7 +150469,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:shimmer_speed_slider:kit:43",
+   "id": "v2:ghosts_tab:shimmer_speed_slider:kit:44",
    "csv_index": null,
    "card": "motion_fx",
    "card_title": "Shimmer & glitch",
@@ -150466,7 +150522,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:glitch_slider:kit:44",
+   "id": "v2:ghosts_tab:glitch_slider:kit:45",
    "csv_index": null,
    "card": "motion_fx",
    "card_title": "Shimmer & glitch",
@@ -150519,7 +150575,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:effect_fps_spinner:kit:45",
+   "id": "v2:ghosts_tab:effect_fps_spinner:kit:46",
    "csv_index": null,
    "card": "motion_fx",
    "card_title": "Shimmer & glitch",
@@ -150572,7 +150628,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:ghost_btn_freeze:kit:46",
+   "id": "v2:ghosts_tab:ghost_btn_freeze:kit:47",
    "csv_index": null,
    "card": "pose",
    "card_title": "Pose & drive",
@@ -150627,7 +150683,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_live:kit:47",
+   "id": "v2:ghosts_tab:btn_live:kit:48",
    "csv_index": null,
    "card": "pose",
    "card_title": "Pose & drive",
@@ -150682,7 +150738,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:drive_mode_combo:kit:48",
+   "id": "v2:ghosts_tab:drive_mode_combo:kit:49",
    "csv_index": null,
    "card": "pose",
    "card_title": "Pose & drive",
@@ -150760,7 +150816,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:mirror_hold_check:kit:49",
+   "id": "v2:ghosts_tab:mirror_hold_check:kit:50",
    "csv_index": null,
    "card": "pose",
    "card_title": "Pose & drive",
@@ -150815,7 +150871,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:pose_status:kit:50",
+   "id": "v2:ghosts_tab:pose_status:kit:51",
    "csv_index": null,
    "card": "pose",
    "card_title": "Pose & drive",
@@ -150865,7 +150921,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:mirror_repeat_held_check:kit:51",
+   "id": "v2:ghosts_tab:mirror_repeat_held_check:kit:52",
    "csv_index": null,
    "card": "pose",
    "card_title": "Pose & drive",
@@ -150920,7 +150976,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:reflect_plane_combo:kit:52",
+   "id": "v2:ghosts_tab:reflect_plane_combo:kit:53",
    "csv_index": null,
    "card": "reflect",
    "card_title": "Reflect",
@@ -150986,7 +151042,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:reflect_position_check:kit:53",
+   "id": "v2:ghosts_tab:reflect_position_check:kit:54",
    "csv_index": null,
    "card": "reflect",
    "card_title": "Reflect",
@@ -151039,7 +151095,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:mirror_light_rig_check:kit:54",
+   "id": "v2:ghosts_tab:mirror_light_rig_check:kit:55",
    "csv_index": null,
    "card": "reflect",
    "card_title": "Reflect",
@@ -151092,7 +151148,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_reflect_pair:kit:55",
+   "id": "v2:ghosts_tab:btn_reflect_pair:kit:56",
    "csv_index": null,
    "card": "reflect",
    "card_title": "Reflect",
@@ -151147,7 +151203,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:reflect_distance_spinner:kit:56",
+   "id": "v2:ghosts_tab:reflect_distance_spinner:kit:57",
    "csv_index": null,
    "card": "reflect",
    "card_title": "Reflect",
@@ -151202,7 +151258,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_reflect_recapture:kit:57",
+   "id": "v2:ghosts_tab:btn_reflect_recapture:kit:58",
    "csv_index": null,
    "card": "reflect",
    "card_title": "Reflect",
@@ -151257,7 +151313,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:reflect_status:kit:58",
+   "id": "v2:ghosts_tab:reflect_status:kit:59",
    "csv_index": null,
    "card": "reflect",
    "card_title": "Reflect",
@@ -151307,7 +151363,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:chaos_slider:kit:59",
+   "id": "v2:ghosts_tab:chaos_slider:kit:60",
    "csv_index": null,
    "card": "chaos",
    "card_title": "Chaos & speed",
@@ -151360,7 +151416,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:anim_speed_spinner:kit:60",
+   "id": "v2:ghosts_tab:anim_speed_spinner:kit:61",
    "csv_index": null,
    "card": "chaos",
    "card_title": "Chaos & speed",
@@ -151413,7 +151469,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:entity_look_combo:kit:61",
+   "id": "v2:ghosts_tab:entity_look_combo:kit:62",
    "csv_index": null,
    "card": "entity",
    "card_title": "Clone behaviour",
@@ -151495,7 +151551,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:physics_check:kit:62",
+   "id": "v2:ghosts_tab:physics_check:kit:63",
    "csv_index": null,
    "card": "entity",
    "card_title": "Clone behaviour",
@@ -151548,7 +151604,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:anim_loop_mode_combo:kit:63",
+   "id": "v2:ghosts_tab:anim_loop_mode_combo:kit:64",
    "csv_index": null,
    "card": "entity",
    "card_title": "Clone behaviour",
@@ -151614,7 +151670,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_anim_pause:kit:64",
+   "id": "v2:ghosts_tab:btn_anim_pause:kit:65",
    "csv_index": null,
    "card": "ghost_playback",
    "card_title": "Playback",
@@ -151669,7 +151725,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_anim_resume:kit:65",
+   "id": "v2:ghosts_tab:btn_anim_resume:kit:66",
    "csv_index": null,
    "card": "ghost_playback",
    "card_title": "Playback",
@@ -151724,7 +151780,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_anim_sync:kit:66",
+   "id": "v2:ghosts_tab:btn_anim_sync:kit:67",
    "csv_index": null,
    "card": "ghost_playback",
    "card_title": "Playback",
@@ -151779,7 +151835,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:directed_anim_editor:kit:67",
+   "id": "v2:ghosts_tab:directed_anim_editor:kit:68",
    "csv_index": null,
    "card": "anim_asset",
    "card_title": "Animation asset",
@@ -151829,7 +151885,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:animation_library_combo:kit:68",
+   "id": "v2:ghosts_tab:animation_library_combo:kit:69",
    "csv_index": null,
    "card": "anim_asset",
    "card_title": "Animation asset",
@@ -151888,7 +151944,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_anim_library_refresh:kit:69",
+   "id": "v2:ghosts_tab:btn_anim_library_refresh:kit:70",
    "csv_index": null,
    "card": "anim_asset",
    "card_title": "Animation asset",
@@ -151943,7 +151999,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:anim_metadata_text:kit:70",
+   "id": "v2:ghosts_tab:anim_metadata_text:kit:71",
    "csv_index": null,
    "card": "anim_asset",
    "card_title": "Animation asset",
@@ -151993,7 +152049,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:autoanim_window_spinner:kit:71",
+   "id": "v2:ghosts_tab:autoanim_window_spinner:kit:72",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -152046,7 +152102,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_autoanim_go:kit:72",
+   "id": "v2:ghosts_tab:btn_autoanim_go:kit:73",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -152101,7 +152157,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_autoanim_follow:kit:73",
+   "id": "v2:ghosts_tab:btn_autoanim_follow:kit:74",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -152156,7 +152212,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_autoanim_stop:kit:74",
+   "id": "v2:ghosts_tab:btn_autoanim_stop:kit:75",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -152211,7 +152267,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_autoanim_relearn:kit:75",
+   "id": "v2:ghosts_tab:btn_autoanim_relearn:kit:76",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -152266,7 +152322,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:autoanim_status:kit:76",
+   "id": "v2:ghosts_tab:autoanim_status:kit:77",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -152316,7 +152372,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_autoanim_reseed:kit:77",
+   "id": "v2:ghosts_tab:btn_autoanim_reseed:kit:78",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -152371,7 +152427,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_autoanim_save:kit:78",
+   "id": "v2:ghosts_tab:btn_autoanim_save:kit:79",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -152421,7 +152477,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_autoanim_load:kit:79",
+   "id": "v2:ghosts_tab:btn_autoanim_load:kit:80",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -152476,7 +152532,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_lens_gaze_selection:kit:80",
+   "id": "v2:ghosts_tab:btn_lens_gaze_selection:kit:81",
    "csv_index": null,
    "card": "head_gaze",
    "card_title": "Head gaze",
@@ -152532,7 +152588,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:lens_gaze_target_mode:kit:81",
+   "id": "v2:ghosts_tab:lens_gaze_target_mode:kit:82",
    "csv_index": null,
    "card": "head_gaze",
    "card_title": "Head gaze",
@@ -152606,7 +152662,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:lens_gaze_cast_target:kit:82",
+   "id": "v2:ghosts_tab:lens_gaze_cast_target:kit:83",
    "csv_index": null,
    "card": "head_gaze",
    "card_title": "Head gaze",
@@ -152662,7 +152718,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:lens_gaze_torso:kit:83",
+   "id": "v2:ghosts_tab:lens_gaze_torso:kit:84",
    "csv_index": null,
    "card": "head_gaze",
    "card_title": "Head gaze",
@@ -152715,7 +152771,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:lens_gaze_head_eye:kit:84",
+   "id": "v2:ghosts_tab:lens_gaze_head_eye:kit:85",
    "csv_index": null,
    "card": "head_gaze",
    "card_title": "Head gaze",
@@ -152768,7 +152824,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:lens_gaze_intensity:kit:85",
+   "id": "v2:ghosts_tab:lens_gaze_intensity:kit:86",
    "csv_index": null,
    "card": "head_gaze",
    "card_title": "Head gaze",
@@ -152821,7 +152877,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:lens_gaze_smoothing:kit:86",
+   "id": "v2:ghosts_tab:lens_gaze_smoothing:kit:87",
    "csv_index": null,
    "card": "head_gaze",
    "card_title": "Head gaze",
@@ -152874,7 +152930,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:lens_gaze_status:kit:87",
+   "id": "v2:ghosts_tab:lens_gaze_status:kit:88",
    "csv_index": null,
    "card": "head_gaze",
    "card_title": "Head gaze",
@@ -152924,7 +152980,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_array_line:kit:88",
+   "id": "v2:ghosts_tab:btn_array_line:kit:89",
    "csv_index": null,
    "card": "crowd_pattern",
    "card_title": "Crowd pattern",
@@ -152979,7 +153035,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_array_ring:kit:89",
+   "id": "v2:ghosts_tab:btn_array_ring:kit:90",
    "csv_index": null,
    "card": "crowd_pattern",
    "card_title": "Crowd pattern",
@@ -153034,7 +153090,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:array_formation_combo:kit:90",
+   "id": "v2:ghosts_tab:array_formation_combo:kit:91",
    "csv_index": null,
    "card": "crowd_pattern",
    "card_title": "Crowd pattern",
@@ -153192,7 +153248,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:array_count_spinner:kit:91",
+   "id": "v2:ghosts_tab:array_count_spinner:kit:92",
    "csv_index": null,
    "card": "crowd_pattern",
    "card_title": "Crowd pattern",
@@ -153245,7 +153301,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:array_spacing_spinner:kit:92",
+   "id": "v2:ghosts_tab:array_spacing_spinner:kit:93",
    "csv_index": null,
    "card": "crowd_pattern",
    "card_title": "Crowd pattern",
@@ -153298,7 +153354,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_edge_gap_spinner:kit:93",
+   "id": "v2:ghosts_tab:formation_edge_gap_spinner:kit:94",
    "csv_index": null,
    "card": "crowd_layout",
    "card_title": "Layout & heading",
@@ -153351,7 +153407,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_jitter_spinner:kit:94",
+   "id": "v2:ghosts_tab:formation_jitter_spinner:kit:95",
    "csv_index": null,
    "card": "crowd_layout",
    "card_title": "Layout & heading",
@@ -153404,7 +153460,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_seed_spinner:kit:95",
+   "id": "v2:ghosts_tab:formation_seed_spinner:kit:96",
    "csv_index": null,
    "card": "crowd_layout",
    "card_title": "Layout & heading",
@@ -153457,7 +153513,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_terrain_check:kit:96",
+   "id": "v2:ghosts_tab:formation_terrain_check:kit:97",
    "csv_index": null,
    "card": "crowd_layout",
    "card_title": "Layout & heading",
@@ -153510,7 +153566,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_facing_combo:kit:97",
+   "id": "v2:ghosts_tab:formation_facing_combo:kit:98",
    "csv_index": null,
    "card": "crowd_layout",
    "card_title": "Layout & heading",
@@ -153632,7 +153688,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:facing_yaw_offset_spinner:kit:98",
+   "id": "v2:ghosts_tab:facing_yaw_offset_spinner:kit:99",
    "csv_index": null,
    "card": "crowd_layout",
    "card_title": "Layout & heading",
@@ -153685,7 +153741,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_pick_facing_target:kit:99",
+   "id": "v2:ghosts_tab:btn_pick_facing_target:kit:100",
    "csv_index": null,
    "card": "crowd_layout",
    "card_title": "Layout & heading",
@@ -153741,7 +153797,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:preserve_source_tilt_check:kit:100",
+   "id": "v2:ghosts_tab:preserve_source_tilt_check:kit:101",
    "csv_index": null,
    "card": "crowd_layout",
    "card_title": "Layout & heading",
@@ -153794,7 +153850,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_guide_shape_combo:kit:101",
+   "id": "v2:ghosts_tab:formation_guide_shape_combo:kit:102",
    "csv_index": null,
    "card": "crowd_guide",
    "card_title": "Guide & names",
@@ -153864,7 +153920,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_guide_size_spinner:kit:102",
+   "id": "v2:ghosts_tab:formation_guide_size_spinner:kit:103",
    "csv_index": null,
    "card": "crowd_guide",
    "card_title": "Guide & names",
@@ -153917,7 +153973,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:crowd_copies_as_combo:kit:103",
+   "id": "v2:ghosts_tab:crowd_copies_as_combo:kit:104",
    "csv_index": null,
    "card": "crowd_guide",
    "card_title": "Guide & names",
@@ -153988,7 +154044,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:crowd_create_mode_combo:kit:104",
+   "id": "v2:ghosts_tab:crowd_create_mode_combo:kit:105",
    "csv_index": null,
    "card": "crowd_guide",
    "card_title": "Guide & names",
@@ -154058,7 +154114,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:nameplate_mode_combo:kit:105",
+   "id": "v2:ghosts_tab:nameplate_mode_combo:kit:106",
    "csv_index": null,
    "card": "crowd_guide",
    "card_title": "Guide & names",
@@ -154128,7 +154184,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_overlay_palette_combo:kit:106",
+   "id": "v2:ghosts_tab:formation_overlay_palette_combo:kit:107",
    "csv_index": null,
    "card": "crowd_guide",
    "card_title": "Guide & names",
@@ -154208,7 +154264,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_array_build:kit:107",
+   "id": "v2:ghosts_tab:btn_array_build:kit:108",
    "csv_index": null,
    "card": "crowd_preview",
    "card_title": "Preview & create",
@@ -154263,7 +154319,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_crowd_confirm:kit:108",
+   "id": "v2:ghosts_tab:btn_crowd_confirm:kit:109",
    "csv_index": null,
    "card": "crowd_preview",
    "card_title": "Preview & create",
@@ -154318,7 +154374,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_crowd_unpin:kit:109",
+   "id": "v2:ghosts_tab:btn_crowd_unpin:kit:110",
    "csv_index": null,
    "card": "crowd_preview",
    "card_title": "Preview & create",
@@ -154373,7 +154429,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_crowd_cancel:kit:110",
+   "id": "v2:ghosts_tab:btn_crowd_cancel:kit:111",
    "csv_index": null,
    "card": "crowd_preview",
    "card_title": "Preview & create",
@@ -154428,7 +154484,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:crowd_placement_status:kit:111",
+   "id": "v2:ghosts_tab:crowd_placement_status:kit:112",
    "csv_index": null,
    "card": "crowd_preview",
    "card_title": "Preview & create",
@@ -154478,7 +154534,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:crowd_placement_instructions:kit:112",
+   "id": "v2:ghosts_tab:crowd_placement_instructions:kit:113",
    "csv_index": null,
    "card": "crowd_preview",
    "card_title": "Preview & create",
@@ -154528,7 +154584,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:group_edit_members_check:kit:113",
+   "id": "v2:ghosts_tab:group_edit_members_check:kit:114",
    "csv_index": null,
    "card": "group_members",
    "card_title": "Group members",
@@ -154581,7 +154637,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:lock_mode_combo:kit:114",
+   "id": "v2:ghosts_tab:lock_mode_combo:kit:115",
    "csv_index": null,
    "card": "group_members",
    "card_title": "Group members",
@@ -154651,7 +154707,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:group_member_pinned_check:kit:115",
+   "id": "v2:ghosts_tab:group_member_pinned_check:kit:116",
    "csv_index": null,
    "card": "group_members",
    "card_title": "Group members",
@@ -154704,7 +154760,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_group_member_reset:kit:116",
+   "id": "v2:ghosts_tab:btn_group_member_reset:kit:117",
    "csv_index": null,
    "card": "group_members",
    "card_title": "Group members",
@@ -154759,7 +154815,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:brigade_columns_spinner:kit:117",
+   "id": "v2:ghosts_tab:brigade_columns_spinner:kit:118",
    "csv_index": null,
    "card": "crowd_brigade",
    "card_title": "Military brigade",
@@ -154815,7 +154871,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:brigade_rows_spinner:kit:118",
+   "id": "v2:ghosts_tab:brigade_rows_spinner:kit:119",
    "csv_index": null,
    "card": "crowd_brigade",
    "card_title": "Military brigade",
@@ -154871,7 +154927,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:brigade_file_spacing_spinner:kit:119",
+   "id": "v2:ghosts_tab:brigade_file_spacing_spinner:kit:120",
    "csv_index": null,
    "card": "crowd_brigade",
    "card_title": "Military brigade",
@@ -154927,7 +154983,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:brigade_rank_spacing_spinner:kit:120",
+   "id": "v2:ghosts_tab:brigade_rank_spacing_spinner:kit:121",
    "csv_index": null,
    "card": "crowd_brigade",
    "card_title": "Military brigade",
@@ -154983,7 +155039,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:array_parameter_spinner:kit:121",
+   "id": "v2:ghosts_tab:array_parameter_spinner:kit:122",
    "csv_index": null,
    "card": "crowd_brigade",
    "card_title": "Military brigade",
@@ -155039,7 +155095,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:strip_count_spinner:kit:122",
+   "id": "v2:ghosts_tab:strip_count_spinner:kit:123",
    "csv_index": null,
    "card": "pose_strip",
    "card_title": "Pose strip",
@@ -155092,7 +155148,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:strip_interval_spinner:kit:123",
+   "id": "v2:ghosts_tab:strip_interval_spinner:kit:124",
    "csv_index": null,
    "card": "pose_strip",
    "card_title": "Pose strip",
@@ -155145,7 +155201,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_strip_start:kit:124",
+   "id": "v2:ghosts_tab:btn_strip_start:kit:125",
    "csv_index": null,
    "card": "pose_strip",
    "card_title": "Pose strip",
@@ -155200,7 +155256,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_strip_cancel:kit:125",
+   "id": "v2:ghosts_tab:btn_strip_cancel:kit:126",
    "csv_index": null,
    "card": "pose_strip",
    "card_title": "Pose strip",
@@ -155255,7 +155311,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:strip_status:kit:126",
+   "id": "v2:ghosts_tab:strip_status:kit:127",
    "csv_index": null,
    "card": "pose_strip",
    "card_title": "Pose strip",
@@ -155305,7 +155361,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_motion_combo:kit:127",
+   "id": "v2:ghosts_tab:formation_motion_combo:kit:128",
    "csv_index": null,
    "card": "formation_motion",
    "card_title": "Formation motion",
@@ -155390,7 +155446,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_motion_speed:kit:128",
+   "id": "v2:ghosts_tab:formation_motion_speed:kit:129",
    "csv_index": null,
    "card": "formation_motion",
    "card_title": "Formation motion",
@@ -155443,7 +155499,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:formation_motion_amplitude:kit:129",
+   "id": "v2:ghosts_tab:formation_motion_amplitude:kit:130",
    "csv_index": null,
    "card": "formation_motion",
    "card_title": "Formation motion",
@@ -155496,7 +155552,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_formation_motion_apply:kit:130",
+   "id": "v2:ghosts_tab:btn_formation_motion_apply:kit:131",
    "csv_index": null,
    "card": "formation_motion",
    "card_title": "Formation motion",
@@ -155551,7 +155607,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:pose_rate_spinner:kit:131",
+   "id": "v2:ghosts_tab:pose_rate_spinner:kit:132",
    "csv_index": null,
    "card": "formation_motion",
    "card_title": "Formation motion",
@@ -155604,7 +155660,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_group_unit:kit:132",
+   "id": "v2:ghosts_tab:btn_group_unit:kit:133",
    "csv_index": null,
    "card": "directing_unit",
    "card_title": "Group as one unit",
@@ -155659,7 +155715,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_ungroup_unit:kit:133",
+   "id": "v2:ghosts_tab:btn_ungroup_unit:kit:134",
    "csv_index": null,
    "card": "directing_unit",
    "card_title": "Group as one unit",
@@ -155714,7 +155770,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:motion_precedence_help:kit:134",
+   "id": "v2:ghosts_tab:motion_precedence_help:kit:135",
    "csv_index": null,
    "card": "directing_unit",
    "card_title": "Group as one unit",
@@ -155764,7 +155820,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_rig_diag_refresh:kit:135",
+   "id": "v2:ghosts_tab:btn_rig_diag_refresh:kit:136",
    "csv_index": null,
    "card": "ghost_diagnostics",
    "card_title": "Diagnostics",
@@ -155819,7 +155875,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:rig_diagnostics:kit:136",
+   "id": "v2:ghosts_tab:rig_diagnostics:kit:137",
    "csv_index": null,
    "card": "ghost_diagnostics",
    "card_title": "Diagnostics",
@@ -229836,6 +229892,7 @@
    "btn_open_animexp",
    "btn_paste",
    "btn_paste_play",
+   "btn_paste_position",
    "btn_paste_setloco",
    "btn_paste_stop",
    "btn_paste_transform",

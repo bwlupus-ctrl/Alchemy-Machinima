@@ -94,6 +94,8 @@
            tool_tip="Snap the clone onto its source's current feet" width="84" />
           <button follows="left|top" height="22" label="To me" layout="topleft" left="244" name="btn_to_me" top="158"
            tool_tip="Snap the clone onto your avatar's current feet" width="84" />
+          <button follows="left|top" height="22" label="Paste position" layout="topleft" left="334" name="btn_paste_position" top="158"
+           enabled="false" tool_tip="Right-click an avatar &gt; Copy position first" width="112" />
           <text follows="left|top" height="18" layout="topleft" left="8" name="look_target_label" top="190" width="84">Face target</text>
           <combo_box follows="left|top|right" height="22" layout="topleft" left="98" name="look_target_combo" right="-8" top="186"
            tool_tip="Aim at the camera, you, a Director cast member, or another Clone Studio instance" />
