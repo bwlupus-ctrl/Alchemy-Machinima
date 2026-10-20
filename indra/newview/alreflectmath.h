@@ -43,6 +43,16 @@ inline LLQuaternion rootRotation(const LLQuaternion& source, const LLVector3& no
 { return LLQuaternion(F_PI, LLVector3::y_axis) * source * LLQuaternion(F_PI, normal); }
 inline LLVector3 planeVector(const LLVector3& v, const LLVector3& n)
 { return v - n * (2.f * (v * n)); }
+// Gobo mode 1 rotates UVs; other modes use speed for non-rotation effects.
+inline F32 mirrorGoboSpeed(S32 mode, F32 speed)
+{ return mode == 1 ? -speed : speed; }
+// Full 3D point reflection; n must be a unit plane normal. Directions use
+// planeVector, so translation never changes their length or aim.
+inline LLVector3d planePoint(const LLVector3d& v, const LLVector3d& point, const LLVector3& n)
+{
+    const LLVector3d normal(n);
+    return v - normal * (2. * ((v - point) * normal));
+}
 inline LLVector3d planeFoot(const LLVector3d& foot, const LLVector3d& point, const LLVector3& n)
 {
     const F64 d = (foot.mdV[0] - point.mdV[0]) * n.mV[0] +

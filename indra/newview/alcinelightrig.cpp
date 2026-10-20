@@ -11,6 +11,7 @@
 #include "alpresetlook.h"
 
 #include "alcinelightrig.h"
+#include "alreflectmath.h"
 #include "alcinelightrigmanager.h"
 #include "alcinerigrim.h" // [RigRim]
 
@@ -1032,6 +1033,79 @@ ALCineLightRig::ALCineLightRig(ALCineLightRigSlot slot)
 }
 
 ALCineLightRig::~ALCineLightRig() = default;
+
+void ALCineLightRig::mirrorFrom(const ALCineLightRig& source,
+                               const LLVector3d& point, const LLVector3& normal)
+{
+    // Copy the evaluated light objects, including FX, Kelvin/EV conversion,
+    // transitions, cookies and catchlight. No second rig evaluation/anchor.
+    const auto copy = [&](const LLPointer<LLVOVolume>& src,
+                          LLPointer<LLVOVolume>& dst)
+    {
+        if (src.isNull() || src->isDead())
+        {
+            destroyEmitter(dst);
+            return;
+        }
+        if (dst.isNull() || dst->isDead())
+        {
+            destroyEmitter(dst);
+            if (!createEmitter(src->getRegion(), src->isLightSpotlight(),
+                               src->getLightTextureID().asString(), dst)) return;
+        }
+        const LLVector3d position = ALReflect::planePoint(src->getPositionGlobal(), point, normal);
+        const LLVector3 direction = ALReflect::planeVector(
+            LLVector3(0.f, 0.f, -1.f) * src->getRotation(), normal);
+        // Reflect up as well as aim, retaining the cookie's roll. A reflection
+        // reverses handedness; reconstruct the proper light rotation from aim and up.
+        const LLVector3 up = ALReflect::planeVector(LLVector3::y_axis * src->getRotation(), normal);
+        const LLVector3 right = direction % up;
+        const LLQuaternion rotation(right, up, -direction);
+        dst->setPositionGlobal(position, false);
+        dst->setRotation(rotation, false);
+        dst->setScale(src->getScale(), false);
+        // Light setters require the light parameter block to exist first.
+        dst->setIsLight(src->getIsLight());
+        dst->setLightSRGBColor(src->getLightSRGBBaseColor());
+        dst->setLightIntensity(src->getLightIntensity());
+        dst->setLightRadius(src->getLightRadius());
+        dst->setLightFalloff(src->getLightFalloff());
+        dst->setLightCutoff(src->getLightCutoff());
+        dst->setLightTextureID(src->getLightTextureID());
+        dst->setSpotLightParams(src->getSpotLightParams());
+        const LLUUID from = src->getID(), to = dst->getID();
+        if (LLPipeline::hasGoboOverride(from))
+        {
+            auto gobo = LLPipeline::getGoboOverride(from);
+            gobo.mSpeed = ALReflect::mirrorGoboSpeed(gobo.mAnimMode, gobo.mSpeed);
+            // No general cookie UV flip exists; retain the pattern (see report).
+            LLPipeline::setGoboOverride(to, gobo);
+        }
+        else LLPipeline::clearGoboOverride(to);
+        // Copies never enter the shadow auction, regardless of recipient order.
+        // In particular they must not displace the source rig's shadow slots.
+        if (!LLPipeline::isProjectorNoShadow(to))
+            LLPipeline::toggleProjectorCastShadows(to);
+        llassert(LLPipeline::isProjectorNoShadow(to));
+        F32 softness = 0.f;
+        if (LLPipeline::getProjectorShadowSoftness(from, softness))
+            LLPipeline::setProjectorShadowSoftness(to, softness);
+        else LLPipeline::clearProjectorShadowSoftness(to);
+        if (dst->mDrawable.notNull())
+        {
+            gPipeline.updateMoveNormalAsync(dst->mDrawable);
+            dst->mDrawable->setState(LLDrawable::FORCE_INVISIBLE);
+            if (dst->getIsLight() && dst->isLightSpotlight()) dst->updateSpotLightPriority();
+        }
+    };
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        copy(source.mProjectors[i], mProjectors[i]);
+        copy(source.mOmnis[i], mOmnis[i]);
+        mRigRim[i] = source.mRigRim[i];
+    }
+    copy(source.mCatchlight, mCatchlight);
+}
 
 void ALCineLightRig::setAnchor(const LLUUID& id)
 {

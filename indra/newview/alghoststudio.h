@@ -374,6 +374,7 @@ public:
         LLVector3d mReflectPlanePoint;
         LLVector3 mReflectPlaneNormal = LLVector3::x_axis;
         bool mReflectMirrorPosition = false;
+        bool mMirrorLightRig = false; // Per clone, session only; never serialized.
         bool mReflectWasDriven = false;
         // [AutoAnimate] Shared sealed performance; independent runtime recorder and seed.
         bool mAutoAnimate = false;

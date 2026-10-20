@@ -394,4 +394,53 @@ template<> template<> void reflect_object::test<24>()
         ensure("post-loading completion fires exactly once",readyDecision(play,false,false,now).action == Action::NONE);
 }
 
+template<> template<> void reflect_object::test<25>()
+{
+    const LLVector3d point(10., 20., 3.);
+    const LLVector3 normal = LLVector3::x_axis;
+    const LLVector3d p = ALReflect::planePoint(LLVector3d(7., 22., 8.), point, normal);
+    ensure("point reflected across offset plane", (p - LLVector3d(13., 22., 8.)).length() < 1e-6);
+    const LLVector3 d = ALReflect::planeVector(LLVector3(2.f, -3.f, 4.f), normal);
+    ensure("aim reflects without plane translation", (d - LLVector3(-2.f, -3.f, 4.f)).length() < 1e-6f);
+    const LLVector3d tilted = ALReflect::planePoint(LLVector3d(1., 2., 5.), LLVector3d(0., 0., 3.), LLVector3::z_axis);
+    ensure("point helper also handles tilted planes", (tilted - LLVector3d(1., 2., 1.)).length() < 1e-6);
+}
+
+template<> template<> void reflect_object::test<26>()
+{
+    // Actor looks +X, left +Y. Reflection looks -X, so its right is +Y.
+    const LLVector3d key(-2., 1., 4.);
+    const LLVector3d reflected = ALReflect::planePoint(key, LLVector3d::zero, LLVector3::x_axis);
+    ensure("key on actor left becomes key on reflection right", (reflected - LLVector3d(2., 1., 4.)).length() < 1e-6);
+    const LLVector3 reflected_forward = ALReflect::planeVector(LLVector3::x_axis, LLVector3::x_axis);
+    const LLVector3 reflected_right = reflected_forward % LLVector3::z_axis;
+    ensure("key lies on clone right", LLVector3(reflected) * reflected_right > 0.f);
+}
+
+template<> template<> void reflect_object::test<27>()
+{
+    LLVector3 normal(3.f, 4.f, 0.f); normal.normalize();
+    const LLVector3d point(100., 200., -7.);
+    const LLVector3d actor(97., 196., 2.), key(94., 198., 6.);
+    const auto mirror_actor = ALReflect::planePoint(actor, point, normal);
+    const auto mirror_key = ALReflect::planePoint(key, point, normal);
+    ensure("vertical mirror preserves light height", fabs(mirror_key.mdV[2] - key.mdV[2]) < 1e-6);
+    ensure("light to actor distance preserved", fabs((mirror_key - mirror_actor).length() - (key - actor).length()) < 1e-5);
+    const LLVector3 direction(.2f, -.7f, .4f);
+    ensure("direction length preserved", fabs(ALReflect::planeVector(direction, normal).length() - direction.length()) < 1e-6f);
+    ensure("reflection is involutive", (ALReflect::planePoint(mirror_key, point, normal) - key).length() < 1e-5);
+}
+
+template<> template<> void reflect_object::test<28>()
+{
+    for (F32 speed : {-8.f, -1.f, 0.f, 1.f, 8.f})
+    {
+        ensure("rotating gobo reverses direction", ALReflect::mirrorGoboSpeed(1, speed) == -speed);
+        ensure("rotation reflection is involutive",
+            ALReflect::mirrorGoboSpeed(1, ALReflect::mirrorGoboSpeed(1, speed)) == speed);
+        for (S32 mode : {0, 2, 3, 4, 5, 6})
+            ensure("non-rotation gobo speed unchanged", ALReflect::mirrorGoboSpeed(mode, speed) == speed);
+    }
+}
+
 }

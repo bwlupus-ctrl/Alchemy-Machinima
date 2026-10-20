@@ -22,6 +22,7 @@
 #include "alcompassdial.h"          // live direct-manipulation heading control
 #include "alghostanimassetindex.h"
 #include "alghoststudio.h"
+#include "alcinelightrigmanager.h"
 #include "altoolcrowdplace.h"
 #include "altoolghostedit.h"        // [R2-3] persistent in-world edit mode
 #include "altoolghostplace.h"
@@ -363,6 +364,20 @@ bool ALPanelGhostStudio::postBuild()
     mDriveModeCombo = getChild<LLComboBox>("drive_mode_combo");
     mReflectPlane = getChild<LLComboBox>("reflect_plane_combo");
     mReflectPosition = getChild<LLCheckBoxCtrl>("reflect_position_check");
+    mMirrorLightRig = getChild<LLCheckBoxCtrl>("mirror_light_rig_check");
+    mMirrorLightRig->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        auto& studio = ALGhostStudio::instance();
+        if (auto* inst = studio.getInstance(studio.getSelected()))
+        {
+            auto* ghost = dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst->mEntityId));
+            if (inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
+                !ghost || !ghost->isPoseStampDriven()) return;
+            inst->mMirrorLightRig = mMirrorLightRig->getValue().asBoolean();
+            if (!inst->mMirrorLightRig && ALCineLightRigManager::instanceExists())
+                ALCineLightRigManager::instance().removeMirror(inst->mEntityId);
+        }
+    });
     mReflectPair = getChild<LLButton>("btn_reflect_pair");
     mReflectRecapture = getChild<LLButton>("btn_reflect_recapture");
     mReflectStatus = getChild<LLTextBox>("reflect_status");
@@ -1606,6 +1621,9 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mEntityLookCombo, entity);
     setEnabledIfChanged(mDriveModeCombo, entity);
     const bool reflect = entity && inst->mDriveMode == ALGhostStudio::DRIVE_REFLECT;
+    const auto* light_ghost = entity ? dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst->mEntityId)) : nullptr;
+    setEnabledIfChanged(mMirrorLightRig, light_ghost && !light_ghost->isDead() && light_ghost->isPoseStampDriven());
+    setValueIfChanged(mMirrorLightRig, LLSD(inst && inst->mMirrorLightRig), true);
     const bool reflect_single = entity && !studio.groupForMember(inst->mId);
     setEnabledIfChanged(mReflectPlane, reflect && !inst->mReflectMirrorPosition);
     setEnabledIfChanged(mReflectPosition, reflect);

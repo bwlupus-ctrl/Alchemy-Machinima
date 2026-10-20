@@ -10,6 +10,10 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alcinelightrigmanager.h"
+#include "alghoststudio.h"
+#include "alreflectmath.h"
+#include "llghostavatar.h"
+#include "lljoint.h"
 
 #include "llagent.h"
 #include "llagentcamera.h"
@@ -834,6 +838,18 @@ bool ALCineLightRigManager::rigRimParamsFor(
             }
         }
     }
+    for (const auto& entry : mMirrors)
+    {
+        const ALCineLightRig& rig = *entry.second;
+        for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
+        {
+            if (rig.projectorId(light) == id || (include_bounce() && rig.omniId(light) == id))
+            {
+                out = rig.rigRimParams(light);
+                return true;
+            }
+        }
+    }
     return false;
 }
 
@@ -1108,6 +1124,30 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
             rigs.push_back(input);
         }
     }
+    if (!disabled)
+    {
+        for (const auto& entry : mMirrors)
+        {
+            LLVOAvatar* avatar = dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(entry.first));
+            if (!avatar || avatar->isDead()) continue;
+            const ALCineLightRig& rig = *entry.second;
+            ActorOnlyRig input;
+            input.mEnabled = true;
+            input.mActorOnlyAll = true; // Also links every omni and catchlight.
+            input.mCatchlight = rig.catchlightId();
+            for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+            {
+                input.mProjectors[i] = rig.projectorId(i);
+                input.mOmnis[i] = rig.omniId(i);
+            }
+            ActorOnlyIdentity identity;
+            identity.mAvatarId = avatar->getID();
+            identity.mFxOwner = avatar->getActorFxOwnerId();
+            input.mRecipients.push_back(identity);
+            avatars.push_back(avatar);
+            rigs.push_back(input);
+        }
+    }
     mActorOnlyObjectSlots = object_slots;
     mActorOnlyRegistry = buildActorOnlyRegistry(rigs, disabled);
     mActorOnlyRecipients.clear();
@@ -1133,6 +1173,65 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
         mActorOnlyOverflowLogged = true;
     }
     sAnyActorOnly = !mActorOnlyRegistry.mLights.empty();
+}
+
+void ALCineLightRigManager::removeMirror(const LLUUID& clone_id)
+{
+    const auto found = mMirrors.find(clone_id);
+    if (found == mMirrors.end()) return;
+    found->second->shutdown();
+    mMirrors.erase(found);
+    rebuildActorOnlyRegistry();
+}
+
+void ALCineLightRigManager::updateMirrors()
+{
+    static LLCachedControl<bool> mask_disabled(gSavedSettings, "CineLightRigActorMaskDisable", false);
+    std::vector<LLUUID> live;
+    // Actor Mask's debug bypass must never turn derived clone lights into
+    // world lights. Fail closed, including recipient overflow (registry bit 6).
+    if (isSlotLit(SLOT_SELF) && !mask_disabled)
+    {
+        for (const auto& inst : ALGhostStudio::instance().getInstances())
+        {
+            if (!inst.mMirrorLightRig || inst.mKind != ALGhostStudio::BACKING_ENTITY_CLONE) continue;
+            auto* ghost = dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst.mEntityId));
+            if (!ghost || ghost->isDead() || !ghost->isPoseStampDriven()) continue;
+            LLVOAvatar* source = ghost->reflectSource();
+            if (!source) continue;
+            ALReflect::Plane plane;
+            if (ghost->getEntityDriveMode() == ALGhostStudio::DRIVE_REFLECT)
+            {
+                plane.valid = inst.mReflectPlaneValid;
+                plane.point = inst.mReflectPlanePoint;
+                plane.normal = inst.mReflectPlaneNormal;
+            }
+            else
+            {
+                // True Mirror copies pose/facing without a stored plane. Use
+                // the same live vertical source/clone bisector as Reflect.
+                LLVector3 foot = source->getRootJoint()->getWorldPosition();
+                foot.mV[VZ] -= source->getPelvisToFoot();
+                ALReflect::updatePlane(plane, gAgent.getPosGlobalFromAgent(foot), inst.mFootGlobal,
+                    LLVector3::x_axis * source->getRootJoint()->getWorldRotation(), false);
+            }
+            if (!plane.valid || !plane.point.isFinite() || !plane.normal.isFinite() ||
+                fabsf(plane.normal.length() - 1.f) > .001f) continue;
+            auto& copy = mMirrors[inst.mEntityId];
+            if (!copy) copy = std::make_unique<ALCineLightRig>();
+            copy->mirrorFrom(at(SLOT_SELF), plane.point, plane.normal);
+            live.push_back(inst.mEntityId);
+        }
+    }
+    for (auto it = mMirrors.begin(); it != mMirrors.end();)
+    {
+        if (std::find(live.begin(), live.end(), it->first) == live.end())
+        {
+            it->second->shutdown();
+            it = mMirrors.erase(it);
+        }
+        else ++it;
+    }
 }
 
 void ALCineLightRigManager::tick(F64 presentation_time)
@@ -1174,8 +1273,9 @@ void ALCineLightRigManager::tick(F64 presentation_time)
                 break;
         }
     }
-    // [ActorMask] No off-path scans, settings reads, allocations or logging.
-    if (ALCineLightRig::sActorOnlyRequestedSlots || sAnyActorOnly || mActorOnlyObjectSlots)
+    updateMirrors();
+    // [ActorMask] Include session-only derived lights in the existing registry.
+    if (ALCineLightRig::sActorOnlyRequestedSlots || sAnyActorOnly || mActorOnlyObjectSlots || !mMirrors.empty())
         rebuildActorOnlyRegistry();
     // No blanket non-focus suppression: each enabled rig casts per its own
     // ShadowMode and the pipeline caps the total at MAX_SPOT_SHADOWS(10) by
@@ -1289,6 +1389,8 @@ void ALCineLightRigManager::clearShadowSuppression()
 
 void ALCineLightRigManager::shutdown()
 {
+    for (auto& entry : mMirrors) entry.second->shutdown();
+    mMirrors.clear();
     // [ActorMask] Drop retained avatars and light IDs before shutdown.
     sAnyActorOnly = false;
     mActorOnlyRegistry = ActorOnlyRegistry();
@@ -1673,6 +1775,17 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
     // This call owns the frozen no-block / unknown-version / v1 split. All
     // multi-instance reads remain additive and happen only after it returns.
     selected().applySceneData(data);
+    // Accepted scenes replace session-only clone lighting, including scenes
+    // without a rig block. Unsupported versions preserve the live state.
+    if (!data.isMap() || !data.has("version") ||
+        (data["version"].isInteger() && data["version"].asInteger() == 1))
+    {
+        for (auto& entry : mMirrors) entry.second->shutdown();
+        mMirrors.clear();
+        for (auto& inst : ALGhostStudio::instance().getInstances())
+            inst.mMirrorLightRig = false;
+        rebuildActorOnlyRegistry();
+    }
     if (!data.isMap() || !data.has("version"))
     {
         // [ActorMask] An unversioned scene carries no Actor only data: do not

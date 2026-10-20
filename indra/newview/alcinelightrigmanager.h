@@ -14,6 +14,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
+#include <memory>
 #include <string>
 #include <vector> // [ActorMask]
 
@@ -1306,6 +1308,7 @@ public:
     U8 drawByte(const LLDrawInfo& di) const;
     const std::vector<ActorOnlyRecipient>& actorOnlyRecipients() const;
     bool isActorOnlyRecipient(const LLVOAvatar* av) const;
+    void removeMirror(const LLUUID& clone_id);
 
     void tick(F64 presentation_time);
     void shutdown();
@@ -1347,6 +1350,9 @@ private:
 
     // [ActorMask] Rebuilt after rig evaluation, before the Live probe update.
     void rebuildActorOnlyRegistry();
+    void updateMirrors();
+    // Session-only derived copies of Self. Keys are clone runtime avatar IDs.
+    std::map<LLUUID, std::unique_ptr<ALCineLightRig>> mMirrors;
     static bool sAnyActorOnly;
     ALCineLightRigManagerModel::ActorOnlyRegistry mActorOnlyRegistry;
     std::vector<ActorOnlyRecipient> mActorOnlyRecipients;

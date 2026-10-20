@@ -341,6 +341,7 @@ private:
     LLButton*         mAnimResumeBtn = nullptr;
     LLComboBox*       mReflectPlane = nullptr;
     LLCheckBoxCtrl*   mReflectPosition = nullptr;
+    LLCheckBoxCtrl*   mMirrorLightRig = nullptr;
     LLButton*         mReflectPair = nullptr;
     LLButton*         mReflectRecapture = nullptr;
     LLTextBox*        mReflectStatus = nullptr;

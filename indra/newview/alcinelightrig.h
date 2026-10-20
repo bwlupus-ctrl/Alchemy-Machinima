@@ -331,6 +331,10 @@ public:
     // Idempotent and safe on a partial emitter set.
     void shutdown();
 
+    // Derived emitters only: never tick, edit, persist or resolve another rig.
+    void mirrorFrom(const ALCineLightRig& source, const LLVector3d& point,
+                    const LLVector3& normal);
+
 private:
     friend struct ALCineLightRigParamBlob;
     friend class ALCineLightRigManager; // [ActorMask]

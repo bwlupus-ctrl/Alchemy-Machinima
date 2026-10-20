@@ -11,6 +11,7 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "alghoststudio.h"
+#include "alcinelightrigmanager.h"
 #include "alreflectmath.h"
 #include "altoolghostedit.h"
 #include "alghostanimassetindex.h" // [GhostPanelPerf] shared animation library
@@ -1008,6 +1009,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     const std::string new_name = copy->mName; // spawn already called makeDefaultName()
     *copy = proto;
     copy->mReflectMirrorPosition = false;
+    copy->mMirrorLightRig = false;
     copy->mReflectPlaneValid = false;
     copy->mReflectHasLastPlane = false;
     copy->mReflectWasDriven = false;
@@ -2688,6 +2690,8 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
         return;
     }
     ++mInstanceRevision; // [GhostPanelPerf] row removed (groups/recursion below also bump)
+    if (ALCineLightRigManager::instanceExists())
+        ALCineLightRigManager::instance().removeMirror(inst->mEntityId);
     if (inst->mGroupId.notNull())
     {
         const LLUUID group_id = inst->mGroupId;

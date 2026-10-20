@@ -42,6 +42,7 @@
 #include <utility>
 
 #include "alghoststudio.h"
+#include "alcinelightrigmanager.h"
 #include "alghostattachmentenumerator.h"
 #include "alghostmaterialresolver.h"
 #include "llactormover.h"          // walk ownership arbitration: applyOverride() vs the foot-lock
@@ -1474,6 +1475,9 @@ void LLGhostAvatar::synchronizeCloneAnimations(
 
 void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
 {
+    if (mode != ALGhostStudio::DRIVE_REFLECT && mode != ALGhostStudio::DRIVE_TRUE_MIRROR &&
+        ALCineLightRigManager::instanceExists())
+        ALCineLightRigManager::instance().removeMirror(getID());
     mode = llclamp(mode, (S32)ALGhostStudio::DRIVE_MIRROR,
                          (S32)ALGhostStudio::DRIVE_REFLECT);
     if (mode == mEntityDriveMode && directed_anim == mEntityDirectedAnim)
@@ -3430,6 +3434,8 @@ void LLGhostAvatar::markForDeath()
 // virtual
 void LLGhostAvatar::markDead()
 {
+    if (ALCineLightRigManager::instanceExists())
+        ALCineLightRigManager::instance().removeMirror(getID());
     // Cover object-list/region teardown as well as Studio-initiated removal.
     // This is idempotent and erases clone-local ObjectAnimation entries before
     // the base avatar death cascades through any remaining child objects.

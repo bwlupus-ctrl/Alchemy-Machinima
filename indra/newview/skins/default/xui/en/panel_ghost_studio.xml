@@ -245,6 +245,7 @@
           <spinner control_name="GhostReflectFacePairDistance" decimal_digits="1" follows="left|top" height="22" increment="0.1" initial_value="2" label="Distance (m)" label_width="86" layout="topleft" left="116" min_val="0.5" max_val="10" name="reflect_distance_spinner" top="160" width="160" tool_tip="Face pair distance, 0.5 to 10 metres." />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="284" name="reset_reflect_distance" top="162" width="22" tool_tip="Reset Face pair distance to 2 metres." />
           <text follows="left|top|right" height="18" layout="topleft" left="8" name="reflect_status" right="-8" top="188" tool_tip="Reflect pose and placement ownership status.">Reflect requires an entity clone</text>
+          <check_box follows="left|top" height="18" label="Mirror light rig" layout="topleft" left="316" name="mirror_light_rig_check" top="162" width="160" tool_tip="Live reflected copy of your Self Cine Light Rig, lighting only this clone. Available in Reflect and True Mirror." />
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="entity_look_combo" top="216"
            tool_tip="Client-only entity render look. Apparition is scaffolded this pass; advanced shaders are deferred" width="142">
             <combo_box.item label="Normal" name="look_normal" value="0" />
