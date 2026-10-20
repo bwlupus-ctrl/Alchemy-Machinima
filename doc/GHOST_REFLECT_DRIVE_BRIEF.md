@@ -1,6 +1,6 @@
 # Reflect — mirror-image clones (Part A) and mirrored self playback (Part B) — design brief
 
-**Date:** 2026-10-20 (rev 3, after adversarial review rounds 1 and 2)
+**Date:** 2026-10-20 (rev 4, after adversarial review rounds 1–3)
 **Status:** DESIGN ONLY. Nothing implemented, nothing built.
 **Process (per `CLAUDE.md`):** Codex implements from this brief (`--write`, `--prompt-file`), an
 independent Opus sub-agent reviews the code ADVERSARIALLY, loop to 0 must-fix, THEN Claude builds once,
@@ -18,10 +18,13 @@ claim against the code before applying it):
 |---|---|---|---|---|
 | 1 (Part A) | 5 | 8 | 4 | all applied in rev 2 |
 | 2 (rev-2 fixes + new Part B) | 3 (all Part B) | 5 | 10 | all applied in rev 3 |
+| 3 (rev-3 changes only) | 2 (Part B) | 6 | 6 | all applied in rev 4 |
 
-Round 2 verified Part A's maths as correct, including the LL-order root formula. Rev 3 has not been
-re-reviewed. Before handing it to Codex, one more round should confirm that rev 3's Part B state
-machine (§6.4) closes round 2's findings. The disposition log is in the Appendix.
+Round 2 verified Part A's maths, including the LL-order root formula. Round 3 verified the probe
+pipeline order, the natural-end mapping, and that the derived id never reaches the wire. **Rev 4's own
+edits have not been re-reviewed:** §6.3 step 8, the STOPPING rules in §6.4, the restore snapshot in
+§5.2, and the `applyEntityTransform` choke point in §4.7. The `CLAUDE.md` code-review loop must attack
+those first. The disposition log is in the Appendix.
 
 ---
 
@@ -110,12 +113,12 @@ implementation finds it needs one, stop and report back.
 | Face stamp copies `Express_*`, `Blink_*`, `Lipsync_*` and params 1200..1207, by id. | `llghostavatar.cpp:1676-1759` |
 | **`setEntityDriveMode` clamps `mode` to `[DRIVE_MIRROR, DRIVE_TRUE_MIRROR]`.** A new value 4 would silently become True Mirror. It is the only drive-mode clamp. | `llghostavatar.cpp:1468-1471` |
 | Entering True Mirror pauses the clone's controller and stops its eye motion. Leaving it releases the pause. | `llghostavatar.cpp:1489-1494`, `:1537-1559` |
-| No ghost code restores bone positions after a stamp mode ends. | grep; restore candidate `LLVOAvatar::rebuildAttachmentOverrides` `llvoavatar.cpp:7648` |
+| No ghost code restores bone positions after a stamp mode ends. `rebuildAttachmentOverrides` can't (it resets only overridden joints, to a possibly stamped "before" value), so §5.2 uses a snapshot. | grep; `llvoavatar.cpp:7648`; `lljoint.cpp:422-429`, `:488-495` |
 | Actor Mover parks a walk and skips gaze for `isTrueMirrorDriven()` clones. | `llactormover.cpp:4399-4410`, `:5788-5797` |
 | Studio facing writers skip clones where `trueMirrorOwnsFacing(inst)` is true. | `alghoststudio.cpp:1679, 1924, 2002, 2076`; defined `:2016-2022` |
 | **`applyEntityTransform` writes position AND rotation.** `setGhostRotation` calls `mRoot->setWorldRotation(inst.mRotation)`. | `alghoststudio.cpp:1425-1438`, `llghostavatar.cpp:1158-1174` |
 | `Instance::setFootGlobal` bumps `mTransformRevision` and clears `mChaosHasBase`. | `alghoststudio.h:476-482` |
-| **The manip proxy ticks AFTER the post-pass.** It calls `applyEntityTransform` on every drag frame (`:488`), on any revision change (`:748-756`), and at `endDrag` via `transformUnit`/`transformGroup` (`:577`, `:583` → `alghoststudio.cpp:2887-2893`). It only re-pushes the proxy box on a revision change. | `llappviewer.cpp:5417` vs `:5540`; `alghostmanipproxy.cpp:481-488, 577, 583, 748-756` |
+| **The manip proxy ticks AFTER the post-pass**, and reaches the full `applyEntityTransform` (position **and** rotation) from: single drag ticks (`:488`), grouped drag ticks (`:416, 424, 450, 463`), `endDrag` commit and cancel (`:577, 583, 612, 618`), `applyGroupTransforms` (`alghoststudio.cpp:2794-2798`), `transformUnit` (`:2887-2893`), and the revision re-push in its `!dragging` branch (`:741-756`). Code comments say the proxy must not be written mid-drag. | `llappviewer.cpp:5417` vs `:5540`; `alghostmanipproxy.cpp:405, 416-488, 561, 577-618, 741-756` |
 | Formation motion writes `mFootGlobal` every frame. Chaos recomputes from `mChaosBaseFoot`; "chaos on" is `mChaosEnabled`. | `alghoststudio.cpp:2203-2289`; `:2310-2319` |
 | Copies: `duplicateInstance` rejects entity clones. The entity copy funnel is `*copy = proto` at `:965`, reached from `:1028, :3571, :3681, :4576`. | `alghoststudio.cpp:912-916`, `:965` |
 | Other placement writers. | `alghoststudio.cpp:1956, 1972, 2149, 2287, 2331, 2780, 2798, 2893, 3602, 3641, 3693, 4556, 4637` |
@@ -137,13 +140,18 @@ implementation finds it needs one, stop and report back.
 | Precedent for a per-playback client-side option: the priority override, which `draw()` re-applies via `mItemID`. | `llpreviewanim.cpp:116-141`, `:161-179`; `floater_preview_animation.xml:88` |
 | Stop paths: the toggle-off branch and `onClose` call `stopMotion(assetID)` and send STOP. | `llpreviewanim.cpp:144-147`, `:211-219` |
 | **When a non-looping motion ends on its own, the motion controller calls `requestStopMotion`.** On self that reaches `LLAgent::requestStopMotion`, which calls `onAnimStop` and sends STOP for **`motion->getID()`**. | `llmotioncontroller.cpp:544, 663, 749, 800`; `llvoavatarself.cpp:839-844`; `llagent.cpp:2760-2769` |
-| Region echo: `processAnimationStateChanges` stops ids that are in `mPlayingAnimations` but not signalled, and starts signalled ids. **`mPlayingAnimations[id]` is set only if `processSingleAnimationStateChange(id, true)` returns true.** | `llvoavatar.cpp:7085-7126`, `:7158+` |
+| Region echo: `processAnimationStateChanges` stops ids that are in `mPlayingAnimations` but not signalled, and starts signalled ids. **`mPlayingAnimations[id]` is set only if `processSingleAnimationStateChange(id, true)` returns true.** A repeat start of an active motion is a no-op. | `llvoavatar.cpp:7085-7126`, `:7158+`; `llmotioncontroller.cpp:445-449` |
+| **`mSignaledAnimations` is cleared and rebuilt from every AvatarAnimation message** (anim id → sequence id). | `llviewermessage.cpp:4355-4361` |
+| A motion started locally is never in `mPlayingAnimations`, so "Stop Animating Me" doesn't stop it. | `llagent.cpp:4794-4816` |
+| H3's call site runs **inside** the motion controller's active-list iteration. | `llmotioncontroller.cpp:749`, `:800` |
+| Other senders: `sendAnimationRequests` (plural). | `llagent.cpp:3381` |
 | `LLKeyframeMotion::onInitialize` checks the in-memory keyframe cache first. A **second** `onInitialize` on an id with no cached data fetches that id from the asset service. | `llkeyframemotion.cpp:585`, `:551-567`, `:626-633` |
 | `createMotion` followed by a synchronous `deserialize` triggers no fetch. A created, never-started motion has `mStopped = true` and isn't auto-activated. | reviewer-verified: `llkeyframemotion.cpp` first `onInitialize` marks NEEDS_FETCH only; `llmotion.cpp:46` |
-| `deserialize(dp, id, allow_invalid_joints)` caches under `id`. The code's own comment says to use `true` for existing content, and stock playback passes `true`. | `llkeyframemotion.cpp:1885-1888`, `:2694`; `.h:170`, `:3148` |
+| `deserialize(dp, asset_id, allow_invalid_joints)` caches under the motion's own `getID()`. The `asset_id` argument only feeds logs and a stock loop special case. The code's own comment says to use `allow_invalid_joints = true` for existing content, and stock playback does. Alias canonicalisation can already produce duplicate joint names in content that plays fine stock. | `llkeyframemotion.cpp:1885-1888`, `:2147`, `:2694`; `.h:170`, `:3148` |
+| A created motion that is never removed sits in `mLoadingMotions` as NEEDS_FETCH and asks the asset service for its id. | `llmotioncontroller.cpp:827`; `llkeyframemotion.cpp:552-563` |
 | `serialize()` writes exactly what `deserialize()` reads, in order. It needs `mCharacter` and `mJointMotionList`. It dereferences `findCollisionVolume(i)` **without a null check**. | `llkeyframemotion.cpp:2705+`, `:2799`, `:2809` |
 | **Not serialized:** `mPelvisBBox` (recomputed from the `mPelvis` position keys) and curve loop keys (recomputed in `setupPose`). | `llkeyframemotion.cpp:2436-2439`, `:704-705` |
-| Positions are quantised to U16 over ±5 m (one quantum = 10/65535 ≈ 1.53e-4 m, `floor`). | `llquantize.h:60-69` |
+| Positions are quantised to U16 over ±5 m (one quantum = 10/65535 ≈ 1.53e-4 m, `floor`). Rotations are packed as x, y, z (w dropped, recomputed on decode), each U16 over [−1, 1] (one quantum = 2/65535 ≈ 3.05e-5). | `llquantize.h:60-69`; `llquaternion.cpp:939-979` |
 | Constraint volume names ↔ indices share the `mCollisionVolumes` space. Source and BODY-target offsets are **volume-local**. A GROUND-target `mTargetConstraintOffset` is **agent-frame**, added unrotated. `mTargetConstraintDir` is never read at runtime. `JointConstraintSharedData` is a protected nested type. | `llavatarappearance.cpp:1294-1316`; `llavatarjoint.cpp:241-244`; `llkeyframemotion.cpp:1541`; `.h:257` |
 | Local-anim precedent: `createMotion(id)` + `deserialize(bytes, id, …)` + `startMotion(id)`. Its validation **removes the probe motion immediately** after deserialize (`removeMotion` deletes the instance). | `lllocalanim.cpp:477-507`, `:118-135`; `llmotioncontroller.cpp:315-337` |
 | **Load each id exactly once.** `addKeyframeData` overwrites the cache slot without freeing it. | `lllocalanim.cpp:363-368`, `llkeyframemotion.cpp:3211-3214` |
@@ -309,7 +317,8 @@ hold:
 - the source is resolved;
 - the Studio motion mode is OFF;
 - the instance is not in a locked group;
-- `!mChaosEnabled`.
+- `!mChaosEnabled`;
+- the instance is not being dragged in Ghost Edit.
 
 If any of them goes false, the clone **holds where it is** and the status line says why. None of the
 inputs flips from frame to frame (round 2 verified this). Greying the UI is not enough; the predicate is
@@ -324,17 +333,25 @@ the guard.
 - Never `applyEntityTransform` (it also writes `inst.mRotation`), never `setGhostPosition` (it disables
   the foot lock, `llghostavatar.cpp:1052`).
 
-**The manip proxy** runs after the post-pass (§3.1). Gate it on **`stampOwnsFacing(inst)`**, not on
-`reflectOwnsPosition`, because the facing is stamped even with Mirror position off. For such an
-instance:
+**Rotation writes after the post-pass — one choke point.** Inside `applyEntityTransform`, skip
+`setGhostRotation` when `stampOwnsFacing(inst)`; position is still pushed. That covers every caller the
+proxy reaches after the post-pass (§3.1: single and grouped drag ticks, `endDrag` commit and cancel,
+`applyGroupTransforms`, `transformUnit`, the revision re-push) without listing them one by one. A
+per-site "position-only variant" would miss callers; round 3 found four.
 
-- **The drag branch (`:488`) and `endDrag`** (`:577`, `:583` → `transformUnit`/`transformGroup`,
-  `alghoststudio.cpp:2887-2893`) push **position only**: no `setGhostRotation`. Add a position-only
-  variant of `applyEntityTransform` for this.
-- **The revision re-push (`:748-756`)** is position-only too.
-- **While `reflectOwnsPosition` holds:** re-push the proxy box from `inst.mFootGlobal` **every tick**.
-  The no-bump foot write would otherwise leave the box stale, and a drag would pull the clone back to it
-  (`:481`).
+- This also changes **True Mirror**: dragging a True Mirror clone no longer overwrites (and flickers) its
+  stamped facing. It is the one deliberate True Mirror behaviour change in this delivery (§11).
+
+**Drag ownership.** The proxy must not be written mid-drag (comments at `alghostmanipproxy.cpp:405`,
+`:561`).
+
+- While an instance is being dragged, the post-pass **skips its foot push**; the drag owns placement.
+  (The predicate's last bullet.)
+- On `endDrag` **commit**, invalidate the plane: the user moved the clone, and it recaptures lazily. On
+  **cancel**, keep the plane.
+- While `reflectOwnsPosition` holds, re-push the proxy box from `inst.mFootGlobal` every tick, **inside
+  the proxy's `!dragging` branch** (`:741-756`). The no-bump foot write would otherwise leave the box
+  stale, and the next drag would pull the clone back to it (`:481`).
 
 **Copies:** the entity copy funnel (`alghoststudio.cpp:965`, reached from `:1028, :3571, :3681, :4576`)
 must reset `mReflectMirrorPosition = false` and `mReflectPlaneValid = false` on the copy.
@@ -375,7 +392,7 @@ A missed site is a second writer on the clone and fails silently. **The reviewer
 |---|---|
 | `llghostavatar.cpp:1470` clamp | widen |
 | `llghostavatar.cpp:1489-1494` pause release on leaving | release when leaving TRUE_MIRROR **or** REFLECT |
-| leaving REFLECT (same function) | **restore bone positions**: call `rebuildAttachmentOverrides()` (`llvoavatar.cpp:7648`) on the clone. The implementer must verify it is safe on an entity clone and actually restores rest + override positions. If not, state it as a limitation (L11) instead. |
+| entering / leaving REFLECT (same function) | **Bone-position snapshot and restore.** `rebuildAttachmentOverrides` can't do it: `clearAttachmentPosOverrides` resets only joints that have an override, and an override added while stamping captures the stamped value as its "before" position (`lljoint.cpp:422-429`, `:488-495`). `resetSkeleton` needs `mLastProcessedAppearance` (`llvoavatar.cpp:2324`). Instead, keep a per-ghost "reflect snapshot valid" flag. **Snapshot** every bone's position when the ghost enters REFLECT with the flag clear, and set the flag. **Restore** when the ghost enters MIRROR or DIRECTED with the flag set: `clearAttachmentOverrides()`, restore the snapshot, `updateAttachmentOverrides()` (precedent `llghostavatar.cpp:2928`), then clear the flag. FROZEN and TRUE_MIRROR in between leave the flag alone, so freeze keeps the mirrored pose and the restore still happens later. True Mirror alone never sets the flag, so it is unchanged. Inference: the clear step is safe on a ghost; verify. |
 | `llghostavatar.cpp:1537-1559` entry suppression | same as TRUE_MIRROR, plus reset the partner table and verify state |
 | `llghostavatar.cpp:633` AutoAnimate learning presence | **exclude** REFLECT |
 | `llghostavatar.cpp:892-895` `autoAnimOnDriveModeChanged` | treat REFLECT as dormant (like DIRECTED/FROZEN) |
@@ -390,7 +407,8 @@ A missed site is a second writer on the clone and fails silently. **The reviewer
 | `alghoststudio.cpp:965` entity copy funnel | reset Mirror position and plane validity |
 | `alghoststudio.cpp:2203-2289` formation motion, `:2310-2319` chaos | covered by the runtime predicate. Confirm no write while it holds. |
 | `alghoststudio.cpp:1956, 1972, 2149, 2287, 2331, 2780, 2798, 2893, 3602, 3641, 3693, 4556, 4637` `applyEntityTransform` callers | harmless **before** the post-pass. Confirm none runs **after** it in the same frame (the proxy is handled below). |
-| `alghostmanipproxy.cpp:488, 577, 583, 748-756` | position-only for `stampOwnsFacing` instances; per-tick box re-push while `reflectOwnsPosition` (§4.7) |
+| `applyEntityTransform` (`alghoststudio.cpp:1425-1438`) | skip `setGhostRotation` when `stampOwnsFacing` — the single choke point for every post-pass caller (§4.7) |
+| `alghostmanipproxy.cpp:741-756` (`!dragging` branch); drag begin/end | per-tick box re-push while `reflectOwnsPosition`; the post-pass skips the foot push for a dragged instance; `endDrag` commit invalidates the plane (§4.7) |
 | `alpanelghoststudio.cpp:2208-2209`, `:2238-2239` | exclude REFLECT from AutoAnim Go; add `" (dormant: Reflect)"` |
 | `alpanelghoststudio.cpp:1427, 1525` combo sync | value 4 round-trips |
 | `alchatcommand.cpp:820-840` | add `reflect`; update **both** usage strings (`:785`, `:839`) |
@@ -494,12 +512,16 @@ guard the preview's send path with `!isDerived(id)`.
    - **Never start the original on self to obtain it.**
 2. `probe = gAgentAvatarp->createMotion(probe_id)`, with a freshly generated id. `gAgentAvatarp`
    provides the collision-volume names.
-3. `probe->deserialize(bytes, probe_id, /*allow_invalid_joints=*/true)`. Use `true`, matching stock
-   playback (§3.2); with `false`, any animation with an unknown joint name would FAIL.
+3. `probe->deserialize(bytes, original, /*allow_invalid_joints=*/true)`. The cache key is the motion's
+   own id (`probe_id`); the `asset_id` argument only feeds logs and a stock loop special case, so pass
+   the original. Use `true`, matching stock playback (§3.2); with `false`, any animation with an
+   unknown joint name would FAIL.
 4. Get the list with `LLKeyframeDataCache::getKeyframeData(probe_id)` and **mirror it in place**:
    - every `JointMotion`: `mJointName` → partner (§4.4); every `mRotationCurve.mKeys` value → §4.2
      rotation rule; every `mPositionCurve.mKeys` value → y-flip; `mScaleCurve` untouched.
-   - after renaming, **no two JointMotions may share a name**. A duplicate means FAIL.
+   - after renaming, a duplicate name **introduced by the renaming** means FAIL. Compare against the
+     duplicates already present before renaming: alias canonicalisation can produce those in content
+     that plays fine stock (§3.2).
    - every constraint (iterate `mConstraints` with `auto`; the type is protected, and no llcharacter
      edit is needed):
      - source volume index → name → partner → `getCollisionVolumeID`. The same for a BODY target. **An
@@ -515,13 +537,26 @@ guard the preview's send path with `!isDerived(id)`.
      from the mirrored keys (§3.2). The same goes for emote, priority, ease, loop points and duration.
 5. `probe->serialize(dp)` into a buffer sized by `probe->getFileSize()`. These are the mirrored bytes.
 6. `gAgentAvatarp->removeMotion(probe_id)`, **then** `LLKeyframeDataCache::removeKeyframeData(probe_id)`.
-   This order avoids both a use-after-free and a registered motion with a freed list.
-7. **Register:** `createMotion(derived)` + `deserialize(mirrored, derived, true)`, **exactly once** per
-   derived id. The state becomes READY.
+   This order avoids both a use-after-free and a registered motion with a freed list (round 3 verified
+   that neither the removal nor the destructor touches the cache).
+   **Every exit after step 2, including FAIL, runs this step.** A leftover probe would sit in
+   `mLoadingMotions` as NEEDS_FETCH and ask the asset service for a random id (§3.2). The precedent
+   removes its probe unconditionally (`lllocalanim.cpp:118-121`).
+7. **Register:** `createMotion(derived)` + `deserialize(mirrored, original, true)`, **exactly once** per
+   derived id (the motion's id, `derived`, is the cache key). The state becomes READY.
    - **Never `createMotion`/`startMotion(derived)` before READY.** A second `onInitialize` with no
      cached data would fetch the derived id from the asset service (§3.2).
-8. **On FAIL:** log the reasons, **remove X from the Reflect set** (§6.4), play the original through the
-   stock path, and show a one-time notice: "Couldn't reflect <name>; playing it normally."
+8. **On FAIL:** log the reasons and mark the original **FAILED** for the session, so later joins go
+   straight to stock. Then, **only if X is still a member in STARTING and its start was not
+   cancelled:**
+   - remove X from the set;
+   - LOCAL: `startMotion(X)`;
+   - INWORLD: `startMotion(X)` locally **only if X is in `mSignaledAnimations`**. **Never re-send
+     START**: after a user stop, that would restart the animation for everyone;
+   - set `mItemID = X`;
+   - show a one-time notice: "Couldn't reflect <name>; playing it normally."
+
+   If X was already stopped or cancelled, FAIL only logs. Nothing plays later.
 
 ### 6.4 The state machine — three hooks
 
@@ -541,13 +576,19 @@ guard the preview's send path with `!isDerived(id)`.
     reaches the region.
   - It then applies the member STOP rule below to X.
 
-**Join** (H1 only, toggle ON at the moment of play):
+**Join** (H1 only, toggle ON at the moment of play), checked in this order:
 
-- Only if X is **not already active on self**: not playing locally, and not in `mSignaledAnimations` or
-  `mPlayingAnimations` (for example, from a poseball or another preview).
-- Otherwise play stock, unmirrored, and log `already playing; not reflected`. This avoids a mixed state.
-- The toggle changes **only joins**. Unticking never affects existing members, so there's no pop, and
-  stops still map.
+1. **X is already a member** (for example, a second preview of another item with the same asset;
+   previews are keyed by item id, `llinventorybridge.cpp:7280`): route the play through that member.
+   Start nothing new.
+2. **X is a FAILED original** (§6.3 step 8): stock path.
+3. **X is active on self but not a member**: playing locally (`findMotion(X) && !isStopped()`, which
+   also covers a motion still loading), or in `mSignaledAnimations` / `mPlayingAnimations` (a poseball,
+   say). Play stock, unmirrored, and log `already playing; not reflected`. This avoids a mixed state.
+4. Otherwise X joins.
+
+The toggle changes **only joins**. Unticking never affects existing members, so there's no pop, and
+stops still map.
 
 **Start:**
 
@@ -564,15 +605,25 @@ guard the preview's send path with `!isDerived(id)`.
 **Member STOP rule** (every route: H1 toggle-off/`onClose`, the H2 region STOP echo, the H3 natural end,
 and `stopMotionFromSource`, whose region echo reaches H2):
 
-- `stopMotion(X)` **and** `stopMotion(derived)` (both idempotent), and cancel any pending start.
+- `stopMotion(X)` **and** `stopMotion(derived)` (both idempotent), and **cancel** any pending start. A
+  cancelled start never plays, whether the build later READYs or FAILs.
+- **H3 runs inside the motion controller's active-list iteration** (§3.2). Never use `stop_immediate`
+  from H3, and **defer** set changes to the module's idle tick.
 - **Leaving the set:**
-  - **LOCAL** members leave at once.
-  - **INWORLD** members go to STOPPING and leave only when X is **absent from `mSignaledAnimations`**
-    (the region's STOP echo). That way a late START echo still plays mirrored, never unmirrored.
-  - **Safety:** an INWORLD member that has been STOPPING for more than 10 s while X is absent from
-    `mSignaledAnimations` is removed.
-- **FAIL** (§6.3, step 8) removes X at once, before the stock play. So a FAILed original's stops are
-  stock, and a looping original can always stop.
+  - **LOCAL** members leave at once (from H3: at the next idle tick).
+  - **INWORLD** members go to STOPPING and leave **only** on the H2 stop event for X (the region's STOP
+    being processed), **or** once 10 s have passed since the stop **with no START echo for X seen
+    since the stop**. Run that check from the module's idle tick.
+  - Not "X absent from `mSignaledAnimations`": that list is rebuilt from every AvatarAnimation message
+    (§3.2), so X is already absent if the user stops before the START echo arrives, and the late START
+    would then play unmirrored.
+- **A START echo for a STOPPING member** (H2 start; read the sequence id from `mSignaledAnimations[X]`):
+  - the **first** START echo after the stop starts the **derived** copy. It's the late echo of the
+    user's own START, and the region's STOP will follow;
+  - a START with a **different sequence id** from one already seen for this member is a new play from
+    elsewhere (for example, the region coalescing STOP+START). X leaves the set and that start goes
+    stock.
+- **FAIL:** §6.3 step 8.
 
 **Shared playback:** while X is a member, a different source starting the same X (an object script,
 say) shares the one signalled id, so it plays mirrored too (§7, L12).
@@ -609,8 +660,9 @@ say) shares the one signalled id, so it plays mirrored too (§7, L12).
   stay unmirrored.
 - **L10 — Part B:** a UI that asks `isMotionActive(original)` for self sees "not playing" while the
   mirrored copy plays.
-- **L11 — Leaving Reflect** may leave the clone's bones at their mirrored positions (2–3 mm, plus swapped
-  mesh overrides) if `rebuildAttachmentOverrides` proves unsuitable (§5.2).
+- **L11 — Leaving Reflect restores the clone's bone positions from a snapshot** (§5.2). If the
+  override-clear step proves unsafe on a ghost, the clone keeps its mirrored positions (2–3 mm, plus
+  swapped mesh overrides) until it is re-spawned.
 - **L12 — Part B, shared playback:** while a reflected animation is playing, another source starting
   the same animation plays mirrored too, because it is one signalled id.
 
@@ -647,18 +699,25 @@ measurement itself can't be trusted).
 
 5. **Build verdict:** `anim <orig> -> <derived>: joints N (P paired, C centre, U unresolved),
    constraints K (G ground-offset notes), hand pose A->B, built in Z ms -> PASS`, or FAIL with reasons.
-6. **Round-trip check** (when `GhostReflectVerify` is on): decode the **mirrored bytes** into a second
-   scratch motion, and compare against **mirror(decode(original))** computed independently in memory.
-   Key counts must match per joint. Values must match within **2 quanta**: 2 × 1.53e-4 m for
-   positions, and the matching U16 rotation quantum. PASS or FAIL.
-   - This catches a lost or duplicated key, a serialize/deserialize asymmetry, and a wrong constraint
-     remap.
-   - It does **not** prove the reflection is the right one; that's T2/T3.
-   - Dispose of the second scratch motion in the §6.3 step-6 order.
+6. **Round-trip check** (when `GhostReflectVerify` is on):
+   - **Expected side:** a separate scratch decode of the **original** bytes, mirrored by the **pure
+     header's** functions applied to plain copies of the key values. That is independent of the
+     in-place mirroring code (whose list is freed at step 6), so a wrong remap in either shows up.
+   - **Actual side:** a separate scratch decode of the **mirrored bytes**.
+   - Every scratch id is freshly generated; never the derived id (the exactly-once rule).
+   - **Compare** per joint:
+     - key counts equal, keys paired **by order**;
+     - key times within **1 time quantum** (re-encoding drifts some times by one code);
+     - rotations on **x, y, z only**, within **±2 U16 codes** (one code ≈ 3.05e-5). w is dropped on encode
+       and recomputed on decode, so near-180° keys differ in w by far more;
+     - positions within ±2 codes (≈ 3.05e-4 m);
+     - constraint volume names equal to the expected partner names.
+   - PASS or FAIL. It does **not** prove the reflection is the right one; that's T2/T3.
+   - Dispose of both scratch motions in the §6.3 step-6 order.
 7. **Substitution trace:** `self start <orig> as <derived> (local|echo|pending)` and the matching stop,
    with the phase. **An H3 mapping event logs `natural end: STOP(original) sent`.** If a derived id
-   ever reaches `sendAnimationRequest`, log `FAIL: derived id on the wire` (a guard-and-log at that
-   call).
+   ever reaches `sendAnimationRequest` or `sendAnimationRequests` (`llagent.cpp:3381`), log
+   `FAIL: derived id on the wire` (a guard-and-log at both calls).
 
 ---
 
@@ -688,12 +747,16 @@ header's own symbols, for expected values. Each test must fail if the thing it t
   pass through.
 - **T10 Constraint vectors:** source and BODY-target offsets y-flip; a GROUND-target offset is
   unchanged.
-- **T11 Part B set rules** (pure state-machine helper):
-  - join refused when X is already active;
+- **T11 Part B state machine** (pure helper):
+  - a second join of a member routes to the member; a FAILED original goes stock; join is refused when
+    X is active but not a member;
   - toggle-off doesn't affect members;
-  - LOCAL leaves on stop;
-  - INWORLD leaves only when X is absent from the signalled set, or after the 10 s safety window;
-  - FAIL removes at once;
+  - LOCAL leaves on stop (deferred when from H3);
+  - INWORLD leaves on the H2 stop event, or after 10 s with no START echo since the stop, and **not** merely
+    because X is absent from the signalled set;
+  - a STOPPING member's first START echo goes derived; a different sequence id leaves and goes stock;
+  - a cancelled start never plays after READY or FAIL; FAIL after cancel only logs and never re-sends
+    START;
   - a pending INWORLD start reports "handled" (true).
 
 ---
@@ -713,10 +776,12 @@ raises your **right** arm forward.
 - Then:
   - Turn 45° left: the clone turns 45° right.
   - With Mirror position on, step toward the clone: it steps toward you.
-  - **Ghost Edit:** drag the clone with the gizmo. It must keep its mirrored facing throughout and after
-    release.
-  - Switch to True Mirror: it behaves exactly as before.
-  - Leave Reflect: no visible leg or mesh distortion remains (or L11 applies).
+  - **Ghost Edit:** drag the clone with the gizmo, alone and as part of a group. It must keep its
+    mirrored facing throughout and after release, with no flicker.
+  - Switch to True Mirror: it behaves exactly as before, **except** that dragging no longer flickers its
+    facing (§4.7).
+  - Leave Reflect for Mirror: the snapshot restores the bone positions; no leg or mesh distortion
+    remains (or L11 applies). Freeze a Reflect clone: it keeps the mirrored pose.
 
 **Part B.** Tick **Reflect** in the animation preview.
 
@@ -728,6 +793,12 @@ raises your **right** arm forward.
 - Untick mid-play: it keeps reflecting until stopped. The next play is normal.
 - Start the same animation from a poseball first, then press Play in world with Reflect ticked: it plays
   unmirrored, and the log says `already playing; not reflected`.
+- **Stop before the echo:** press Play in world and stop immediately. There's no flash of the
+  unmirrored original.
+- **Uncached and cancelled:** Play locally an animation you've never played, and stop at once. Nothing
+  plays later, even after the build finishes or fails.
+- **Region crossing** while a reflected in-world animation plays: it stays mirrored. (How the region
+  re-signals animations is server-side, so this is an inference to check.)
 - Stop, or close the preview: the animation stops. **No stuck animation**, looping or not. The log shows
   the build PASS and round-trip PASS.
 
@@ -740,9 +811,10 @@ raises your **right** arm forward.
 - `indra/newview/character/*.xml` and `indra/llcharacter/*`: inputs, not edit targets. Part B uses
   `LLKeyframeMotion`'s existing API only.
 - `llvoavatar.cpp`: **only** the H2 guarded branch in `processSingleAnimationStateChange`.
-- `llagent.cpp`: **only** the H3 id mapping in `requestStopMotion` (plus the wire guard-and-log, §8
-  item 7).
-- The TRUE_MIRROR code path's behaviour (§5.3).
+- `llagent.cpp`: **only** the H3 id mapping in `requestStopMotion`, plus the wire guard-and-log at
+  `sendAnimationRequest` and `sendAnimationRequests` (§8 item 7).
+- The TRUE_MIRROR code path's behaviour (§5.3). The **only** allowed True Mirror change is the
+  `applyEntityTransform` rotation skip for stamp-owned facing (§4.7).
 - Never build. Claude builds after review convergence.
 
 ---
@@ -782,7 +854,21 @@ raises your **right** arm forward.
 | M3 | Stop mapping leaves stuck animations (FAIL path, original already active, pending start, early removal) | State machine: stop both ids, pending returns true, FAIL clears, INWORLD leaves on signal absence, join refused when active (§6.4) |
 | S1 | `allow_invalid_joints` should be true | Applied |
 | S2 | Proxy gated on the wrong predicate; drag and `endDrag` write rotation; stale proxy box | Gate on `stampOwnsFacing`; position-only pushes; per-tick re-push (§4.7) |
-| S3 | Leaving REFLECT leaves mirrored bone positions | Restore via `rebuildAttachmentOverrides`, else L11 |
+| S3 | Leaving REFLECT leaves mirrored bone positions | Restore via `rebuildAttachmentOverrides`, else L11 (superseded in rev 4: round 3 showed it can't restore; snapshot instead) |
 | S4 | Round-trip verdict undefined or tolerance below one quantum | Bytes-vs-independent-mirror comparison, key counts, 2 quanta (§8 item 6) |
 | S5 | A GROUND-target offset is agent-frame | Left unchanged and logged |
 | Nits | bbox and loop keys aren't serialized; `setWorldRotation` caveat; copy funnel `:965`; no Director inspector (Animation Explorer needs no mapping); switcher never returns to REFLECT; raise both nested heights; −1 volume check; protected type; no derived `createMotion` before READY; `mItemID` unconditional | Applied |
+
+### Round 3 (applied in rev 4)
+
+| # | Finding | Disposition |
+|---|---|---|
+| M1 | The FAIL path ignored cancellation: a stopped-then-failed play started later, and in-world re-sent START after a user stop | FAIL plays stock only for a live STARTING member; never re-sends START; FAILED originals go stock (§6.3 step 8) |
+| M2 | "Leave when X is absent from `mSignaledAnimations`" fires before the START echo (the list is rebuilt per message), so the late START played unmirrored; START for a STOPPING member undefined | Leave on the H2 stop event or after 10 s with no START echo; first START echo while STOPPING goes derived, a different sequence id leaves and goes stock (§6.4) |
+| S1 | A position-only push at one site misses grouped drag, `endDrag` commit and cancel, `applyGroupTransforms`, `transformUnit` | Single choke point inside `applyEntityTransform`; True Mirror drag change made explicit (§4.7, §11) |
+| S2 | The per-tick box re-push and foot push fought an active drag | Re-push only in the `!dragging` branch; the post-pass skips the foot push while dragging; commit invalidates the plane (§4.7) |
+| S3 | `rebuildAttachmentOverrides` can't restore stamped positions | Snapshot on entering REFLECT, restore on entering MIRROR/DIRECTED, FROZEN exempt (§5.2) |
+| S4 | Round-trip tolerance invalid for w and key times | x, y, z only at ±2 codes; keys paired by order; 1 time quantum (§8 item 6) |
+| S5 | Round-trip expected side unspecified | Independent decode mirrored by the pure header; fresh scratch ids (§8 item 6) |
+| S6 | Joining an existing member could mix the original and the copy | Member plays route through the member; "playing locally" includes loading motions (§6.4 Join) |
+| Nits | Probe removal on every exit; pass the original as `asset_id`; only renaming-introduced duplicates FAIL; H3 iteration safety; guard `sendAnimationRequests`; grouped drag in §3.1 | Applied |
