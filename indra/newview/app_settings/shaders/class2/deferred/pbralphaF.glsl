@@ -26,15 +26,9 @@
 
 
 /*[EXTRA_CODE_HERE]*/
-#ifdef RELIGHT_SHAPE
 #define RELIGHT_PARAM vec4 shape,
 #define RELIGHT_FORWARD shape,
 #define RELIGHT_DATA(i) light_shapes[i],
-#else
-#define RELIGHT_PARAM
-#define RELIGHT_FORWARD
-#define RELIGHT_DATA(i)
-#endif
 
 #ifndef IS_HUD
 
@@ -110,9 +104,7 @@ uniform vec4 light_attenuation[8]; // linear, quadratic, is omni, unused, See: L
 uniform vec3 light_diffuse[8];
 uniform vec2 light_deferred_attenuation[8]; // light size and falloff
 uniform vec4 rig_rim_lights[8]; // [RigRim] per-unit rim params (x gain, y k, z wrap, w back bias), see LLRender::syncLightState()
-#ifdef RELIGHT_SHAPE
 uniform vec4 light_shapes[8];
-#endif
 
 vec3 srgb_to_linear(vec3 c);
 vec3 linear_to_srgb(vec3 c);

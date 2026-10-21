@@ -325,3 +325,72 @@ Validation after fixes:
 No commit, push, stash, viewer build or viewer launch. Full-scene image and
 frame-determinism evidence remains pending the authorized in-world review;
 the helper readbacks do not replace it.
+
+
+## Runtime toggle fix
+
+2026-10-20, against committed Phase 1 HEAD `e0b4c27ddb2`. This section
+supersedes all earlier descriptions of a master permutation/reload.
+
+- Removed the `RenderLightShapeEnable` shader-change listener, the global
+  `RELIGHT_SHAPE` define, and its loader injection. None of the five Relight
+  settings has a reload listener or shader-manager dependency. Toggling the
+  master changes uniforms/upload gates only; it calls neither `setShaders()`
+  nor a GL resource rebuild.
+- The same eight affected GLSL modules now compile their shaped code
+  unconditionally. Added reserved `RELIGHT_ENABLED` / `relight_enabled` in
+  enum/name lockstep. Every shaped entry tests the master before source radius;
+  projector legacy early-outs also run when the master is off. No other shader
+  source was edited. All legacy and shaped expressions match HEAD after
+  removing only the new uniform declaration and master predicates.
+- The existing full/fast/forward bind hook always refreshes the master uniform,
+  including zero while disabled and with Rig Rim off. Stale nonzero GPU shape
+  arrays are ignored. Shape arrays, per-light setters and limits uploads remain
+  skipped while disabled. Disabling neither clears stored shape state nor
+  changes the light hash for shape reasons. Enabling bumps the forward light
+  hash once so programs cached during the disabled interval repopulate shape
+  arrays even if their light records did not otherwise change. Auxiliary-view
+  zero-radius policy is unchanged.
+- Physical falloff and world size remain live per-light data; Near floor and
+  Max boost remain live uniforms/CPU calibration inputs. The source gate checks
+  all five names for reload listeners and shader-manager dependencies. GPU
+  checks vary both falloff modes and change limits on the same linked program.
+- Both known P1s in `materialF.glsl` remain untouched: the shaped legacy
+  specular weighting/clamp issue and the Actor FX glare suppression issue.
+  Whole-expression token comparison also protects these existing expressions.
+
+Listener audit (report only; no unrelated changes):
+
+- `RenderSMAAPredicationThreshold`, `RenderSMAAPredicationScale`, and
+  `RenderSMAAPredicationStrength` were added in April 2026 (`e2d37faecfb9`).
+  Their listeners trigger full reloads, although the three constants are only
+  arithmetic inputs in `SMAACalculatePredicatedThreshold` (`SMAA.glsl:710-711`)
+  and could be uploaded as uniforms. The predication master separately selects
+  a compiled feature; it was not changed.
+- Older scalar candidate: `RenderTerrainPBRTriplanarBlendFactor` (2023) becomes
+  a global compile literal, then a local `sharpness` arithmetic value in
+  `pbrterrainUtilF.glsl:251`; a uniform could replace that numeric literal.
+  `RenderGammaFull` is an older (2022) reload listener with no remaining C++ or
+  GLSL reader found beyond its setting declaration/listener.
+- Recent `RenderGBufferAvatarTag`, weather rain occlusion/lightning quality,
+  projector Dust/ConservativeShadow, and `RenderVisibleDiffuseSidecar` listeners
+  currently select actual shader programs/permutations or render attachments;
+  they are not simply live scalar uploads. All were left unchanged.
+
+Validation:
+
+| Gate | Result / evidence |
+|---|---|
+| Shader validation + `relight_shader_check.py` | PASS: 28 isolated unit/permutation compilations and 42 production program links, with no compile-time master define. Covers the same program variants as the earlier 56/84 run, once each because on/off now share an executable. `.tmp/relight_runtime_shaders_final.log`. |
+| Runtime GPU toggle | PASS: eight production forward evaluator cases across both falloff modes, linked with production utility modules; on/off/on without relinking, stale nonzero shape data, exact legacy zero-radius equality, disabled limits unchanged, and restored shaped output. Same log. |
+| Existing GPU math/readback | PASS: live floor/boost, horizon rejection, calibration, finite math, and 84 repeated deterministic helper readbacks. Same log. |
+| `relight_off_check.py` | PASS: all eight files' full legacy/shaped expression token streams match HEAD after accounting only for the new master; all five settings have no reload listener or shader-manager dependency. `.tmp/relight_runtime_identity.log`. |
+| `alrelightmath` | PASS 8/8; compiled/relinked standalone test only. `.tmp/relight_runtime_math{_compile,_link,}.log`. |
+| Separate `zs_check` calls | PASS: all six touched C++ TUs, one file per invocation. `.tmp/relight_runtime_zs_{llrender,llshadermgr,alcinerigrim,llviewercontrol,llviewershadermgr,pipeline}.log`. |
+| Kit outputs | Regenerated all three generators after the C++ edits; no tracked output differences. All three check modes PASS. `.tmp/relight_runtime_{kit,sources,manifest}*.log`. |
+| `prebuild_guard.ps1 -ChecksOnly` | PASS all 11 gates, using the existing workspace wrapper with `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`. `.tmp/relight_runtime_prebuild.log`. |
+| `git diff --check` | PASS. |
+
+No commit, push, staging, stash, viewer build or viewer launch. Existing unrelated
+work is preserved. Full-scene visual identity and in-world responsiveness still
+require viewer verification; the source/GPU gates do not claim an in-world run.

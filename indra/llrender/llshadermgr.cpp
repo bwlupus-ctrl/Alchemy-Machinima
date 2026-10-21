@@ -725,21 +725,10 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_lev
         extra_code_text[extra_code_count++] = strdup("#define GET_GBUFFER_FLAG(data, flag)    (abs(GBUFFER_UNTAG(data)-(flag)) < 0.1)\n");
     }
 
-    // [RelightQ] Global compile permutation: injected at load time, AFTER every
-    // clearPermutations(). Its values are included in the shader binary hash.
-    for (const auto& entry : LLGLSLShader::sGlobalDefines)
-    {
-        if (entry.first.compare(0, 8, "RELIGHT_") == 0)
-        {
-            const std::string line = "#define " + entry.first + " " + entry.second + "\n";
-            extra_code_text[extra_code_count++] = strdup(line.c_str());
-        }
-    }
     if (defines)
     {
         for (auto iter = defines->begin(); iter != defines->end(); ++iter)
         {
-            if (iter->first.compare(0, 8, "RELIGHT_") == 0) continue;
             std::string define = "#define " + iter->first + " " + iter->second + "\n";
             extra_code_text[extra_code_count++] = (GLchar *) strdup(define.c_str());
         }
@@ -2182,6 +2171,7 @@ void LLShaderMgr::initAttribsAndUniforms()
 
     mReservedUniforms.push_back("light_shape");
     mReservedUniforms.push_back("light_shapes");
+    mReservedUniforms.push_back("relight_enabled");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

@@ -27162,7 +27162,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             // push and the multi-light batch pack/upload below can both skip
             // their rim-specific work when Rig Rim is off, instead of only
             // short-circuiting inside ALCineRigRim::paramsForVolume().
-            const bool shape_active = LLGLSLShader::sGlobalDefines.count("RELIGHT_SHAPE") != 0;
+            const bool shape_active = light_shape_master_enabled();
             const bool rig_rim_active = ALCineRigRim::isEnabled();
 
             gGL.setSceneBlendType(LLRender::BT_ADD);
@@ -27315,7 +27315,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         gDeferredLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
                         // [RigRim]
                         gDeferredLightProgram.uniform4fv(LLShaderMgr::RIG_RIM_LIGHT, 1, ALCineRigRim::paramsForVolume(volume).mV);
-                        if (LLGLSLShader::sGlobalDefines.count("RELIGHT_SHAPE"))
+                        if (light_shape_master_enabled())
                             gDeferredLightProgram.uniform4fv(LLShaderMgr::LIGHT_SHAPE, 1, light_shape_for_volume(volume).mV);
 
                         gGL.syncMatrices();
@@ -28698,7 +28698,7 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     // gDeferredMultiSpotLightProgram (both surface spot loops call this).
     // Not uploaded by setupSpotLightVolumetric: the volumetric march has no rim.
     shader.uniform4fv(LLShaderMgr::RIG_RIM_LIGHT, 1, ALCineRigRim::paramsForVolume(volume).mV);
-    if (LLGLSLShader::sGlobalDefines.count("RELIGHT_SHAPE"))
+    if (light_shape_master_enabled())
         shader.uniform4fv(LLShaderMgr::LIGHT_SHAPE, 1, light_shape_for_volume(volume).mV);
     return lamp_power_scale;
 }

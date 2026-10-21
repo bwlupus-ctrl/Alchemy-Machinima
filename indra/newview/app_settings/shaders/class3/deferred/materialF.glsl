@@ -26,15 +26,11 @@
 
 
 /*[EXTRA_CODE_HERE]*/
-#ifdef RELIGHT_SHAPE
+
+uniform int relight_enabled;
 #define RELIGHT_PARAM vec4 shape,
 #define RELIGHT_FORWARD shape,
 #define RELIGHT_DATA(i) light_shapes[i],
-#else
-#define RELIGHT_PARAM
-#define RELIGHT_FORWARD
-#define RELIGHT_DATA(i)
-#endif
 
 //class1/deferred/materialF.glsl
 
@@ -158,9 +154,7 @@ uniform vec3 light_direction[8];
 uniform vec4 light_attenuation[8];
 uniform vec3 light_diffuse[8];
 uniform vec4 rig_rim_lights[8]; // [RigRim] per-unit rim params (x gain, y k, z wrap, w back bias), see LLRender::syncLightState()
-#ifdef RELIGHT_SHAPE
 uniform vec4 light_shapes[8];
-#endif
 
 float getAmbientClamp();
 void waterClip(vec3 pos);
@@ -186,7 +180,6 @@ vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float rou
 // for non-rig lights.  NOTE: `v` is the eye-space POSITION and `npos` the
 // normalized view vector here (legacy naming).
 
-#ifdef RELIGHT_SHAPE
 vec3 relightUnit(vec3 v, vec3 fallback);
 float relightRatio(vec3 n, vec3 lv, float radius);
 float relightAtten(float d, float range, float falloff, vec4 shape);
@@ -195,7 +188,6 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
     vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
     vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
-#endif
 vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, RELIGHT_PARAM vec4 rim,
     RigRimPixel rim_px // [RigRimQ] per-pixel quality inputs
 #ifdef HAS_ACTOR_FX
@@ -203,8 +195,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
 #endif
 )
 {
-#ifdef RELIGHT_SHAPE
-    if (shape.x > 0.0)
+    if (relight_enabled != 0 && shape.x > 0.0)
     {
         // Invert setupHWLights' attenuation encoding to recover shader range R.
         float range = ((12.0*fa)-9.0)/la;
@@ -241,7 +232,6 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
         }
         return max(col * (classic_mode > 0 ? .9 : 1.0),vec3(0));
     }
-#endif
 
 #ifdef HAS_ACTOR_FX
     float glare_start;

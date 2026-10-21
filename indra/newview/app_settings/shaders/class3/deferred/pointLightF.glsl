@@ -25,6 +25,8 @@
 
 /*[EXTRA_CODE_HERE]*/
 
+uniform int relight_enabled;
+
 out vec4 frag_color;
 
 uniform sampler2D lightFunc;
@@ -74,9 +76,7 @@ bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, o
 // every non-rig light.  Uploaded next to LIGHT_CENTER/LIGHT_SIZE in the
 // deferred box-light loop.  Globals + helper live in deferredUtil.glsl.
 uniform vec4 rig_rim_light;
-#ifdef RELIGHT_SHAPE
 uniform vec4 light_shape;
-#endif
 int rigRimMode();
 // [RigRimQ] per-pixel quality inputs (deferredUtil.glsl; struct must match there)
 #ifndef RIG_RIM_PIXEL_DEFINED
@@ -94,7 +94,6 @@ RigRimPixel rigRimLoadPixel(vec2 tc, vec3 n_sh, float z_view);
 vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim, RigRimPixel px);
 
 
-#ifdef RELIGHT_SHAPE
 vec3 relightUnit(vec3 v, vec3 fallback);
 float relightRatio(vec3 n, vec3 lv, float radius);
 float relightAtten(float d, float range, float falloff, vec4 shape);
@@ -103,7 +102,6 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
     vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
     vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
-#endif
 void main()
 {
     vec3 final_color = vec3(0);
@@ -133,8 +131,7 @@ void main()
     vec3 diffuse = gb.albedo.rgb;
     vec4 spec    = gb.specular;
 
-#ifdef RELIGHT_SHAPE
-    if (light_shape.x > 0.0)
+    if (relight_enabled != 0 && light_shape.x > 0.0)
     {
         vec3 lv = trans_center.xyz-pos;
         if (length(lv) >= size) discard;
@@ -164,7 +161,6 @@ void main()
     }
     else
     {
-#endif
     // Common half vectors calcs
     vec3  lv = trans_center.xyz-pos;
     vec3  h, l, v = -normalize(pos);
@@ -281,9 +277,7 @@ void main()
             discard;
         }
     }
-#ifdef RELIGHT_SHAPE
     }
-#endif
     if (alr_sil && rigRimMode() == 0)
     {
         final_color *= alr_k;

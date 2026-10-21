@@ -25,6 +25,8 @@
 
 /*[EXTRA_CODE_HERE]*/
 
+uniform int relight_enabled;
+
 out vec4 frag_color;
 
 uniform samplerCube environmentMap;
@@ -100,9 +102,7 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
 // globals + helper live in deferredUtil.glsl.  Uploaded by setupSpotLight();
 // zero for every non-rig projector, so only rig fixtures ever add rim.
 uniform vec4 rig_rim_light;
-#ifdef RELIGHT_SHAPE
 uniform vec4 light_shape;
-#endif
 // [RigRim] Rim shadow: 1 = rim shadowed exactly like the light (default, physical).
 // Lower values relax the shadow ONLY near/behind the terminator (n.l < 0.3), where
 // shadow-map self-shadowing erases the wrap zone that a light directly behind the
@@ -125,7 +125,6 @@ RigRimPixel rigRimLoadPixel(vec2 tc, vec3 n_sh, float z_view);
 vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim, RigRimPixel px);
 
 
-#ifdef RELIGHT_SHAPE
 vec3 relightUnit(vec3 v, vec3 fallback);
 float relightRatio(vec3 n, vec3 lv, float radius);
 float relightAtten(float d, float range, float falloff, vec4 shape);
@@ -134,15 +133,12 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
     vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
     vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
-#endif
-#ifdef RELIGHT_SHAPE
 // Projection rays originate at proj_origin; the radial window must retain the
 // legacy light-centre distance from clipProjectedLightVars, in BOTH modes.
 vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
     vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float attenDistance);
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
     vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float attenDistance);
-#endif
 
 void main()
 {
@@ -197,9 +193,7 @@ void main()
     vec3 n = gb.normal;
 
     float dist_atten = calcLegacyDistanceAttenuation(dist, falloff);
-#ifdef RELIGHT_SHAPE
-    if (light_shape.x == 0.0)
-#endif
+    if (relight_enabled == 0 || light_shape.x == 0.0)
     if (dist_atten <= 0.0)
     {
         discard;
@@ -221,9 +215,7 @@ void main()
     lv = proj_origin-pos.xyz;
     vec3  h, l, v = -normalize(pos);
     float nh, nl, nv, vh, lightDist;
-#ifdef RELIGHT_SHAPE
-    if (light_shape.x == 0.0)
-#endif
+    if (relight_enabled == 0 || light_shape.x == 0.0)
     calcHalfVectors(lv, n, v, h, l, nh, nl, nv, vh, lightDist);
 
     vec3 diffuse = gb.albedo.rgb;
@@ -233,8 +225,7 @@ void main()
 
     vec3 amb_rgb = vec3(0);
 
-#ifdef RELIGHT_SHAPE
-    if (light_shape.x > 0.0)
+    if (relight_enabled != 0 && light_shape.x > 0.0)
     {
         // Cookie/cone and the existing projector shadow still gate this light.
         if (proj_tc.x > 0.0 && proj_tc.x < 1.0 && proj_tc.y > 0.0 && proj_tc.y < 1.0)
@@ -312,7 +303,6 @@ void main()
     }
     else
     {
-#endif
     if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
     {
         vec3 orm = spec.rgb;
@@ -457,9 +447,7 @@ void main()
         }
     }
 
-#ifdef RELIGHT_SHAPE
     }
-#endif
     //not sure why, but this line prevents MATBUG-194
     final_color = max(final_color, vec3(0.0));
     // [RigRim] additive on top of the projector's own lighting; the classic_mode

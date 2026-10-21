@@ -907,6 +907,14 @@ bool LLRender::setRigRimActive(bool active, const LLVector4& bind_state)
     return false;
 }
 
+void LLRender::setLightShapeActive(bool active)
+{
+    // Enabling must repopulate even a program bound/cached while disabled.
+    // Disabling neither clears per-light shape state nor changes its hash.
+    if (active && !mLightShapeActive) ++mLightHash;
+    mLightShapeActive = active;
+}
+
 void LLRender::syncLightState()
 {
     LLGLSLShader *shader = LLGLSLShader::sCurBoundShaderPtr;
@@ -927,7 +935,7 @@ void LLRender::syncLightState()
         LLVector3 diffuse_b[LL_NUM_LIGHT_UNITS];
         bool      sun_primary[LL_NUM_LIGHT_UNITS];
         LLVector2 size[LL_NUM_LIGHT_UNITS];
-        const bool shape_active = LLGLSLShader::sGlobalDefines.count("RELIGHT_SHAPE") != 0;
+        const bool shape_active = mLightShapeActive;
         LLVector4 shapes[LL_NUM_LIGHT_UNITS];
         LLVector4 rim[LL_NUM_LIGHT_UNITS]; // [RigRim]
 

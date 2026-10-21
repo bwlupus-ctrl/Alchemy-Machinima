@@ -78,7 +78,7 @@ def production_file(name, level=3):
 
 # Modules from LLShaderMgr::attachShaderFeatures. No generated function stubs:
 # unresolved functions and vertex/fragment interface mismatches must fail linking.
-def link_production(file, defines, label):
+def link_production(file, defines, label, test_fragment=None):
     name=Path(file).name
     forward=name in ('alphaF.glsl','materialF.glsl','pbralphaF.glsl','sharedActorFxPbrF.glsl')
     # Global basic-shader defines accompany the per-program permutations.
@@ -115,7 +115,7 @@ def link_production(file, defines, label):
     for module in fragment:
         path=production_file(module, 1 if module in ('deferred/deferredUtil.glsl','deferred/gbufferUtil.glsl','deferred/globalF.glsl','deferred/shadowUtil.glsl') else 3)
         attach(pr,compile_part(path.read_text(),defines,label+' '+module))
-    text=(root/file).read_text()
+    text=test_fragment if test_fragment is not None else (root/file).read_text()
     if 'USE_INDEXED_TEX' in defines:
         # LLShaderMgr's generated indexed diffuseLookup; use eight channels.
         lookup=''.join('uniform sampler2D tex%d;\n'%i for i in range(8))
@@ -125,12 +125,21 @@ def link_production(file, defines, label):
         lookup+='} return vec4(1,0,1,1); }\n'
         text+='\n'+lookup
     attach(pr,compile_part(text,defines,label))
-    for module in vertices:
-        attach(pr,compile_part(production_file(module).read_text(),defines,label+' '+module,0x8B31))
+    if test_fragment is not None:
+        attach(pr,compile_part('void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.0-1.0,0,1);}',defines,label+' fullscreen',0x8B31))
+    else:
+        for module in vertices:
+            attach(pr,compile_part(production_file(module).read_text(),defines,label+' '+module,0x8B31))
     link(pr);ok=I();getprog(pr,0x8B82,C.byref(ok))
     if not ok.value:
         out=C.create_string_buffer(64000);plog(pr,len(out),None,out)
         raise AssertionError(label+' LINK '+out.value.decode())
+    # Both settings use this exact linked executable, including stale shape
+    # storage when switching off. No compile-time master define is supplied.
+    master=loc(pr,b'relight_enabled')
+    if master >= 0:
+        use(pr)
+        for value in (1,0,1,0): ui(master,value)
     return pr
 
 def production_variants(file):
@@ -165,29 +174,29 @@ def production_variants(file):
 
 count=0
 linked=0
-for enabled in [False,True]:
-    shape='#define RELIGHT_SHAPE 1\n' if enabled else ''
-    for file in files:
-        variants=['']
-        if 'multiPoint' in file:variants=['#define LIGHT_COUNT %d\n'%n for n in [1,8,16]]+['#define LIGHT_COUNT 16\n#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
-        if 'spotLight' in file:variants=['','#define MULTI_SPOTLIGHT 1\n','#define MULTI_SPOTLIGHT 1\n#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
-        if file.endswith('alphaF.glsl'):variants=['#define USE_DIFFUSE_TEX 1\n','#define USE_DIFFUSE_TEX 1\n#define HAS_ACTOR_FX 1\n','#define USE_INDEXED_TEX 1\n#define USE_VERTEX_COLOR 1\n#define HAS_ACTOR_FX 1\n#define HAS_SUN_SHADOW 1\n']
-        if 'materialF' in file:variants=['#define DIFFUSE_ALPHA_MODE %d\n'%n for n in range(4)]+['#define DIFFUSE_ALPHA_MODE 1\n#define HAS_ACTOR_FX 1\n#define HAS_NORMAL_MAP 1\n#define HAS_SPECULAR_MAP 1\n']
-        if 'pbralphaF' in file:variants=['','#define HAS_ACTOR_FX 1\n','#define HAS_ACTOR_FX 1\n#define ALR_RIMSPLIT_PARITY 1\n']
-        if file.endswith('pointLightF.glsl'):variants=['','#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
-        if 'sharedActorFx' in file:variants=['#define HAS_ACTOR_FX 1\n#define SHARED_ACTOR_FX_ALPHA_MODE %d\n'%n for n in [0,1,2]]+['#define HAS_ACTOR_FX 1\n#define SHARED_ACTOR_FX_ALPHA_MODE 2\n#define ALR_RIMSPLIT_PARITY 1\n','#define HAS_ACTOR_FX 1\n#define SHARED_ACTOR_FX_ALPHA_MODE 2\n#define SHARED_ACTOR_FX_SLOT_FILTER 1\n#define GLTF_INDEXED_CHANNELS 8\n#define HAS_SUN_SHADOW 1\n']
-        if 'multiPoint' in file or 'spotLight' in file:
-            variants+=[variants[-1]+'#define main actorMaskedMain\n']
-        for variant in variants:
-            compile_part((root/file).read_text(),shape+variant,file+' enabled='+str(enabled)+' '+variant)
-            count+=1
-            if production_variants(file) is None and not file.endswith("deferredUtil.glsl"):
-                link_production(file,shape+variant,file+" enabled="+str(enabled)+" "+variant)
-                linked+=1
-        for variant in production_variants(file) or []:
-            link_production(file,shape+variant,file+' enabled='+str(enabled)+' '+variant)
+# One unconditional production program; master values are runtime uniforms.
+shape=''
+for file in files:
+    variants=['']
+    if 'multiPoint' in file:variants=['#define LIGHT_COUNT %d\n'%n for n in [1,8,16]]+['#define LIGHT_COUNT 16\n#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
+    if 'spotLight' in file:variants=['','#define MULTI_SPOTLIGHT 1\n','#define MULTI_SPOTLIGHT 1\n#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
+    if file.endswith('alphaF.glsl'):variants=['#define USE_DIFFUSE_TEX 1\n','#define USE_DIFFUSE_TEX 1\n#define HAS_ACTOR_FX 1\n','#define USE_INDEXED_TEX 1\n#define USE_VERTEX_COLOR 1\n#define HAS_ACTOR_FX 1\n#define HAS_SUN_SHADOW 1\n']
+    if 'materialF' in file:variants=['#define DIFFUSE_ALPHA_MODE %d\n'%n for n in range(4)]+['#define DIFFUSE_ALPHA_MODE 1\n#define HAS_ACTOR_FX 1\n#define HAS_NORMAL_MAP 1\n#define HAS_SPECULAR_MAP 1\n']
+    if 'pbralphaF' in file:variants=['','#define HAS_ACTOR_FX 1\n','#define HAS_ACTOR_FX 1\n#define ALR_RIMSPLIT_PARITY 1\n']
+    if file.endswith('pointLightF.glsl'):variants=['','#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
+    if 'sharedActorFx' in file:variants=['#define HAS_ACTOR_FX 1\n#define SHARED_ACTOR_FX_ALPHA_MODE %d\n'%n for n in [0,1,2]]+['#define HAS_ACTOR_FX 1\n#define SHARED_ACTOR_FX_ALPHA_MODE 2\n#define ALR_RIMSPLIT_PARITY 1\n','#define HAS_ACTOR_FX 1\n#define SHARED_ACTOR_FX_ALPHA_MODE 2\n#define SHARED_ACTOR_FX_SLOT_FILTER 1\n#define GLTF_INDEXED_CHANNELS 8\n#define HAS_SUN_SHADOW 1\n']
+    if 'multiPoint' in file or 'spotLight' in file:
+        variants+=[variants[-1]+'#define main actorMaskedMain\n']
+    for variant in variants:
+        compile_part((root/file).read_text(),shape+variant,file+' runtime '+variant)
+        count+=1
+        if production_variants(file) is None and not file.endswith("deferredUtil.glsl"):
+            link_production(file,shape+variant,file+" runtime "+variant)
             linked+=1
-        print('[RelightQ] shader PASS',file,'on' if enabled else 'off',flush=True)
+    for variant in production_variants(file) or []:
+        link_production(file,shape+variant,file+' runtime '+variant)
+        linked+=1
+    print('[RelightQ] shader PASS',file,'runtime master',flush=True)
 print('[RelightQ] shader compilation PASS',count,'production GLSL units/permutations',flush=True)
 
 print('[RelightQ] production program linkage PASS',linked,flush=True)
@@ -292,3 +301,48 @@ for light in [(0,0,0),(0,0,-.1),(0,0,-2),(0,0,2),(1,0,2),(2,0,-.2),(0,0,15)]:
 print('[RelightQ] calibration PASS GPU at d_ref within 1%',flush=True)
 print('[RelightQ] shading maths PASS GPU near cap, wrap, representative point, finite inside/antiparallel',flush=True)
 print('[RelightQ] determinism PASS',checks,'repeated helper readbacks at fixed 1x1 resolution',flush=True)
+
+# Exercise the actual production forward evaluator, linked with its production
+# utility modules, while keeping one executable and deliberately stale shapes.
+runtime_wrapper="""
+uniform vec3 testLight;
+uniform vec4 testShape;
+out vec4 result;
+vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
+    float perceptualRoughness, float metallic, vec3 n, vec3 p, vec3 v,
+    vec3 lp, vec3 ld, vec3 lightColor, float lightSize, float falloff,
+    float is_pointlight, float ambiance, vec4 shape, vec4 rim, float spec_keep);
+void main()
+{
+    vec3 color=pbrCalcPointLightOrSpotLightRimKeepRef(vec3(.6),vec3(.04),.2,0.0,
+        vec3(0,0,1),vec3(0),vec3(0,0,1),testLight,vec3(0,0,-1),vec3(1),
+        15.0,.5,1.0,0.0,testShape,vec4(0),1.0);
+    result=vec4(color,1);
+}
+"""
+pr=link_production('class2/deferred/pbralphaF.glsl','','runtime master readback',runtime_wrapper)
+use(pr)
+master=loc(pr,b'relight_enabled'); assert master >= 0
+uniform2(loc(pr,b'relight_limits'),.1,4.0)
+ui(loc(pr,b'rig_rim_mode'),0)
+runtime_checks=0
+for light in [(0,0,2),(1,0,2),(2,0,-.2),(0,0,-2)]:
+    for physical in [0,1]:
+        shaped=(.3,physical,128/9 if physical else 1,-1)
+        ui(master,1)
+        legacy=sample(light,(0,0,1,-1),1)
+        on=sample(light,shaped,1)
+        # Only the master changes: the nonzero shape is left in GPU storage.
+        ui(master,0)
+        off=sample(light,shaped,1)
+        assert off.tobytes()==legacy.tobytes(),(light,physical,off,legacy)
+        # Dependent limit changes cannot affect the disabled lighting path.
+        uniform2(loc(pr,b'relight_limits'),10.0,0.0)
+        assert sample(light,shaped,1).tobytes()==off.tobytes()
+        uniform2(loc(pr,b'relight_limits'),.1,4.0)
+        ui(master,1)
+        assert sample(light,shaped,1).tobytes()==on.tobytes()
+        if light==(2,0,-.2): assert np.any(on[:3]>off[:3]),(on,off)
+        runtime_checks+=1
+print('[RelightQ] runtime master PASS',runtime_checks,
+      'production forward readbacks: on/off/on, stale shapes, exact legacy and disabled limits; no relink',flush=True)

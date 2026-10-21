@@ -1,3 +1,4 @@
+uniform int relight_enabled;
 /**
  * @file class1/deferred/deferredUtil.glsl
  *
@@ -22,17 +23,10 @@
  * Linden Research, Inc., 945 Battery Street, San Francisco, CA  94111  USA
  * $/LicenseInfo$
  */
-#ifdef RELIGHT_SHAPE
 #define RELIGHT_PARAM vec4 shape,
 #define RELIGHT_FORWARD shape,
 #define RELIGHT_DEFAULT vec4(0.0,0.0,1.0,-1.0),
 #define RELIGHT_DATA(i) light_shapes[i],
-#else
-#define RELIGHT_PARAM
-#define RELIGHT_FORWARD
-#define RELIGHT_DEFAULT
-#define RELIGHT_DATA(i)
-#endif
 
 
 
@@ -868,7 +862,6 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
 }
 
 
-#ifdef RELIGHT_SHAPE
 uniform vec2 relight_limits; // near floor (m), maximum physical boost
 // [RelightQ] Karis 2013 eqs. 10/14; Lagarde & de Rousiers 2014 sphere/disk
 // illuminance. No history, random samples, visibility or render-state work.
@@ -1029,7 +1022,6 @@ vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
 {
     return relightLegacy(glossLut,diffuse,spec,n,v,lv,range,falloff,shape,highlight,length(lv));
 }
-#endif
 // [RigRim] ------------------------------------------------------------------
 // Rig Rim Light (Cine Light Rig, Phase A).  A per-pixel rim LIGHTING term that
 // is evaluated inside every local-light path a rig fixture can reach:
@@ -1428,8 +1420,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
 {
     vec3 color = vec3(0,0,0);
 
-#ifdef RELIGHT_SHAPE
-    if (shape.x > 0.0)
+    if (relight_enabled != 0 && shape.x > 0.0)
     {
         vec3 delta = lp-p;
         vec3 centre = relightUnit(delta,n);
@@ -1447,7 +1438,6 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
         }
         return (direct+rimLight) * (classic_mode > 0 ? .9 : 1.0);
     }
-#endif
     vec3 lv = lp.xyz - p;
 
     float lightDist = length(lv);
@@ -1536,8 +1526,7 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
     rim_raw = vec3(0.0);
     rim_on = false;
 
-#ifdef RELIGHT_SHAPE
-    if (shape.x > 0.0)
+    if (relight_enabled != 0 && shape.x > 0.0)
     {
         vec3 delta = lp-p;
         vec3 centre = relightUnit(delta,n);
@@ -1559,7 +1548,6 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
         light_scale = classic_mode > 0 ? .9 : 1.0;
         return;
     }
-#endif
     vec3 lv = lp.xyz - p;
 
     float lightDist = length(lv);

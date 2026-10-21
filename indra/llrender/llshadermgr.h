@@ -943,6 +943,7 @@ public:
         LENS_PYRAMID4,
         LIGHT_SHAPE,
         LIGHT_SHAPES,
+        RELIGHT_ENABLED,                   // runtime master; stale shape data is ignored while off
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

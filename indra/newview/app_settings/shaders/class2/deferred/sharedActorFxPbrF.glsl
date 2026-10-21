@@ -10,15 +10,9 @@
 
 
 /*[EXTRA_CODE_HERE]*/
-#ifdef RELIGHT_SHAPE
 #define RELIGHT_PARAM vec4 shape,
 #define RELIGHT_FORWARD shape,
 #define RELIGHT_DATA(i) light_shapes[i],
-#else
-#define RELIGHT_PARAM
-#define RELIGHT_FORWARD
-#define RELIGHT_DATA(i)
-#endif
 
 #define SHARED_ACTOR_FX_ALPHA_OPAQUE 0
 #define SHARED_ACTOR_FX_ALPHA_MASK   1
@@ -120,9 +114,7 @@ uniform vec4 light_attenuation[8];
 uniform vec3 light_diffuse[8];
 uniform vec2 light_deferred_attenuation[8];
 uniform vec4 rig_rim_lights[8]; // [RigRim] per-unit rim params, see LLRender::syncLightState()
-#ifdef RELIGHT_SHAPE
 uniform vec4 light_shapes[8];
-#endif
 
 vec3 srgb_to_linear(vec3 c);
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm,

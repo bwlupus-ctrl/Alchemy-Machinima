@@ -417,6 +417,7 @@ public:
     // by the fast-bind invalidation. Returns true when either changes and also
     // bumps the light-state hash so every cached program refreshes together.
     bool setRigRimActive(bool active, const LLVector4& bind_state);
+    void setLightShapeActive(bool active); // [RelightQ] no hash change when disabling
 
     void translateUI(F32 x, F32 y, F32 z);
     void scaleUI(F32 x, F32 y, F32 z);
@@ -580,6 +581,7 @@ private:
     U32 mCurMatHash[NUM_MATRIX_MODES];
     U32 mLightHash;
     LLColor4 mAmbientLightColor;
+    bool mLightShapeActive = false; // [RelightQ] upload gate, independent of shader permutations
     bool mRigRimActive = false; // [RigRim] Round-2 P2 fix, see setRigRimActive()
     LLVector4 mRigRimBindState{0.f, 0.f, 0.f, 0.f};
 
