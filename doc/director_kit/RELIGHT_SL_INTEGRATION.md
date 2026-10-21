@@ -512,3 +512,152 @@ widths, scene save/change/load plus old-scene preservation, live prim scaling on
 child/projector/attachment lights, rig/mirror sizes, and both Preferences status
 master states. Full-frame OFF baseline equality remains unmeasured; standalone
 CPU/GPU OFF bytes and unchanged production GLSL are the evidence recorded here.
+
+## Step 4 (10/21), targeted fix round 4
+
+Implemented approved **B7** across all kit pages. All **48 real card/option
+header switches on 15 pages** are searchable. **14 of the previous 15 reviewed setting headers**
+are Quick-favoritable, including **Soft shadows** and **Light shape**. The other
+34 headers (23 controller-backed, seven code-bound, one tool-arming, three with
+unproven/reloading listeners) remain
+search destinations on their real pages. No commit, push, stash operation,
+viewer build or launch; `.tmp/ref_private/` was not opened. Unrelated work and
+the dirty `vcpkg` submodule are preserved.
+
+`kit_pages.json` now explicitly classifies every **page/widget destination** in
+`header_quick_policy`: `setting`, `controller`, `code`, `tool` or `reload`. Only `setting`
+permits Quick, and it requires a setting binding with no hidden-page-dependent
+commit behavior. Generation rejects missing/unknown classifications and a
+setting-less safe declaration; a new page cannot inherit another page's policy.
+Round 4 P0 fix: Quick eligibility is **default-deny**, independently of static
+listener discovery. `header_quick_allowlist` in `kit_pages.json` contains the
+14 reviewed setting names, one per header, each with a one-line justification.
+A `setting` policy without allowlist membership fails generation; absence of
+listeners never grants membership. Unused allowlist names, duplicate header
+bindings and empty/multiline justifications also fail. New headers require human
+review and an explicit allowlist addition before becoming Quick-safe.
+
+`quick_safety_tripwire` supplements that authority by scanning sources across
+`indra/newview`, including registrations outside `llviewercontrol.cpp`. It
+recognizes `getSignal`, `getCommitSignal` and `getValidateSignal`, resolves
+simple control/name and observer-lambda aliases, and vetoes unresolved controls,
+setting names, signal aliases and callback symbols in reviewed registration
+contexts. The central listener table is scanned in full (its existing external
+RLV constexpr is resolved from `rlvdefines.h`). Literal ranges/prefix exclusions
+and the callback reload trace remain. Setting associations with
+`handleSetShaderChanged`, `setShaders`, `setGraphicsLevel` or
+`handleRenderDeferredChanged` anywhere in newview veto Quick eligibility.
+Resolved existing hint observers for Infrared/Soft edge and the VCam override
+observer for Projector Cones are recorded in the setting justifications; the
+scan is a supplementary tripwire, not a general C++ safety proof.
+
+**14/15 remain Quick-safe; Depth of field is the only dropped header**
+(`lens_group/focus_tab/dof_enable_check`, `RenderDepthOfField`). Its
+`handleReleaseGLBufferChanged` listener calls pipeline GL-buffer teardown/creation
+outside the local source; it has no safe-function approval. It joins the existing
+`reload` exclusion policy (which now also covers unproven listener safety), remains
+searchable on Lens > Focus, and keeps its native-page behavior. Soft shadows and
+Light shape remain on the reviewed allowlist; their runtime paths add no reload dependency.
+Rain occlusion and Cinematic lightning remain excluded.
+
+Regression tests rebind a header to the real `DebugQualityPerformance` setting and
+require rejection: with Preferences open its callback reaches `onChangeQuality`,
+`setGraphicsLevel` in `llfeaturemanager.cpp`, then `setShaders`. Planted unknown
+callbacks on helper and direct-signal registrations must also be rejected, including
+a setting with multiple listeners. Round 4 adds allowlisted rejection fixtures for
+getCommitSignal, getValidateSignal, aliased controls, nonliteral names, dynamic
+direct listeners, signal/callback aliases and unknown callbacks, plus all four
+cross-file reload APIs. These fixtures supply explicit allowlist approval so a
+membership failure cannot mask a parser miss. Unused names, missing reasons,
+shared header bindings and a new listener-free setting are also rejection cases.
+Existing weather/direct/wrapped reload and lambda/connection/chained-setting
+cases remain covered; no previous rejection expectation was relaxed.
+The generated card/option `enable_quick` metadata is checked again by
+`ALKitRow::createHeaderProxy`, including when rebuilding legacy saved favorites.
+Path's Edit in world tool and every Props/Path header therefore cannot receive
+hidden-page Quick commits: no stranded tool or stale sibling-control reread.
+The card menu disables Add switch to Quick for those headers. Both menu enable
+and click guards always permit removal of an existing favorite, including old
+Path/Props or weather favorites. Additions and proxy creation still reject
+unsafe/unknown policies; policy regression cases cover each category.
+
+The generator derives search destinations from real `kit_card` / `kit_option`
+metadata: title, option, tooltip, setting and synonyms. The **48-header pin** and
+**2160 authored body-row pin** remain, with an updated round-4 comment. Existing
+body/external search entries retain their content/order. Duplicate header/body
+or header/option destinations fail generation. The functional manifest records
+all 48 real headers and their Quick policies, independently checking exact
+page/widget/card/setting agreement with the search index.
+
+P2: restored the actual U+203A character in `Light › Rim` in `kit_pages.json`
+and regenerated the Tron page and search index. Scanning every changed JSON/XUI
+file also found older corrupted arrows, degree signs, superscript 2 and accented
+preset names originating in `director_mockup_data.json`; corrected those source
+strings and regenerated rather than patching generated bytes. Changed JSON stays
+LF; the final JSON/XUI mojibake scan is clean.
+
+`navigateTo` now reveals a header before row-setting fallback or the row reveal
+guard, so an unrelated body row cannot block it. Reveal selects the real card's
+mode/chip/option, scrolls to the switch and focuses its button. Changed only now
+includes header-only state; setting headers compare against their saved default,
+and code headers use their switch state. Global changed search checks the
+individual header before any shared-setting body row, including selector options.
+Header flips refresh the filter and page markers through `ALKitShell::runSearch`,
+preserving the indexed widget/setting/synonym matches on external changes and
+Undo. Row changed-filter refresh uses that same path; its narrower helper was
+removed. The favorite action falls back to the active option's switch.
+
+A safe Quick binding uses the source's native **toggle plus one commit**, with
+no second setting binding/write. Generated safe header settings join the existing
+single setting observer for undo. `widget_history=false` on the proxy avoids a
+second widget entry; `ScopedSource` attributes the action to Quick while retaining
+the source page's binding ownership. Live changes, defaults, saved identity,
+removal and Show in Search use the real source; expired handles fail closed.
+Long titles move below runtime header buttons when necessary; preset controls
+get their own lower band. The layout selftest checks full title fit at
+`CARD_MIN_W` with the real font and runtime controls.
+
+`aluiperfselftest` adds `quick_header_proxy`: it builds the real Rim, Props and
+Quick pages, toggles the Light shape Quick widget while its source is hidden,
+asserts exactly one setting signal and source callback, rebuilds Quick and
+checks retained state, rejects a legacy Spin favorite, and checks one-step
+undo/redo with no duplicate history step. Final regressions enable Light shape,
+search `relight` with Changed only, toggle OFF, then Undo and require the card
+to reappear. They also check legacy unsafe removal eligibility and rejected
+additions. The test restores the setting, search/filter state and favorites.
+**Added and syntax-checked; not viewer-executed** under the no-build instruction.
+`director_header_check.py` separately compiles production binding, lookup, reveal,
+safety, changed-state, option-fallback and title-layout methods. The final
+standalone regression also compiles production indexed query/scoring, shell
+refresh/search and page search application, feeds the real generated Light
+shape header fields, then checks enable / `relight` / OFF / Undo's setting
+restore through the flip callback. It executes successfully without a viewer.
+Its checkbox/
+button model writes a real model setting, delivers change notifications and
+executes registered callbacks with asserted model effects; it no longer replaces
+callback execution with a commit counter.
+
+Review item 9 is **not reproduced**: `ALKitPage::draw` calls `pollLiveValue` only
+under the existing `mReadoutClock{10.f}` gate. Header availability refresh is thus
+at most 10 Hz, not every frame; ordinary proxies call `enabledForEdit` on edit
+operations, not from polling. No additional timing or cache behavior was added.
+
+| Required gate | Final-round result / evidence |
+|---|---|
+| `relight_shader_check.py` | **PASS**, exit 0: 31 production GLSL units/permutations, 44 links, 126 rig rows with zero failures, runtime/OFF and area probes. `.tmp/relight_step4_r4_shaders.log`. |
+| `relight_area_check.py` | **PASS**, exit 0: CPU policy/prim-size, workload/K7-K8, split draws, housing/blocker, contact hardening, deterministic gather/filter and camera-motion cases. `.tmp/relight_step4_r4_area.log`. |
+| New header cases | **PASS**, exit 0: production binding, lookup/reveal, live/default state, indexed `relight` Changed-only OFF/Undo restore, unsafe legacy removal/addition policy, option fallback, rebuild, minimum-width title/preset layout and expired source. `.tmp/relight_step4_r4_headers.log`. Viewer end-to-end assertions are added and syntax-checked but unexecuted. |
+| Generator / manifest tests | **PASS**, exit 0: all 48 destinations, 14 allowlisted headers, planted commit/validate/control-alias/name/dynamic/signal/callback rejections, all four cross-file reload APIs, unused/unreviewed names, actual weather/direct/wrapped/cross-file quality and GL-buffer listener rejection, planted unresolved/multiple listeners, lambda/direct-connection/chained-setting parsing, dynamic range/prefix exclusions and unknown-name fail-closed and existing adversarial/rule fixtures. `.tmp/relight_step4_r4_{generator,manifest}_tests.log`. |
+| Math tests | **PASS 16/16** `alrelightmath`, existing standalone executable; no viewer build. `.tmp/relight_step4_r4_math.log`. |
+| OFF / runtime guard | **PASS** `relight_off_check.py`: eight disabled GLSL expression streams equal HEAD, no reload/temporal dependencies. `.tmp/relight_step4_r4_off.log`. |
+| `zs_check.ps1 -Files <one file>` | **PASS**, separate calls for each touched TU: `alkitcard.cpp`, `alkitpage.cpp`, `alkitrow.cpp`, `alkitshell.cpp`, `aluiperfselftest.cpp`. Supported CachePath and TEMP relocated into workspace. `.tmp/relight_step4_r4_zs_{alkitcard,alkitpage,alkitrow,alkitshell,aluiperfselftest}.log`. |
+| Three generators and checks | **PASS**, regenerated after the existing C++ edits and round-4 allowlist/tripwire and encoding changes, each followed by `--check`: kit, page sources and functional manifest. Five existing manifest warnings remain. `.tmp/relight_step4_r4_{kit,sources,manifest}{,_check}.log`. |
+| XUI / LF | **PASS**: `xui_layout_check.py --changed HEAD`, **40 files, zero findings**. All 44 changed JSON/XUI files pass the UTF-8/mojibake scan; changed JSON is LF. `.tmp/relight_step4_r4_xui.log`, `.tmp/relight_step4_r4_contract.log`. Runtime title-fit assertion remains because serialized XUI cannot see header buttons. |
+| `prebuild_guard.ps1 -ChecksOnly` | **PASS all 11 gates**, exit 0; `.tmp/relight_step4_r4_prebuild.log`. ChecksOnly exited before object purge. Installed guard unchanged via the existing supported CachePath wrapper, with `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`. |
+| `git diff --check` | **PASS**, final run after this report update. `.tmp/relight_step4_r4_diff_check.log`. Untracked header test also checked directly for whitespace/conflict markers. |
+
+No production rendering/shader/setting, GPU workload, native shadow allocation,
+slot auction or collector count-before-filter code changed. Both masters OFF
+retain identical rendering sources and paths. No new shader define/reload,
+temporal or frame-history input was introduced. Full-viewer OFF image comparison
+and execution of the new viewer assertions remain unmeasured; no viewer was built.

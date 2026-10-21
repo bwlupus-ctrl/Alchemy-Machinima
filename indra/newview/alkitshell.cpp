@@ -1253,6 +1253,8 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
             ALKitCard* media = page->findCard("media_source");
             widget = media && media->codeVisible() ? "vc_media_name" : "vc_camera_name";
         }
+        if (page->revealHeader(widget))
+            return true;
         ALKitRow*  row  = !widget.empty() ? page->findRow(widget) : page->findRowBySetting(target.setting);
         ALKitCard* card = target.card_id.empty() ? nullptr : page->findCard(target.card_id);
         if (!row && !target.setting.empty())
@@ -1678,8 +1680,12 @@ void ALKitShell::runSearch(const std::string& query)
             [this](const ALKitSearch::Hit& hit)
             {
                 if (ALKitPage* built = findBuiltPage(hit.page_key))
+                {
+                    if (ALKitCard* card = built->findHeaderCard(hit.widget))
+                        return !card->headerChanged(hit.widget);
                     if (ALKitRow* row = !hit.widget.empty() ? built->findRow(hit.widget) : built->findRowBySetting(hit.setting))
                         return !row->amber();
+                }
                 LLControlVariable* control = hit.setting.empty() ? nullptr : gSavedSettings.getControl(hit.setting).get();
                 return !control || ALKitQol::valuesEqual(control->get(), control->getDefault(), hit.decimals);
             }), hits.end());
@@ -1688,7 +1694,7 @@ void ALKitShell::runSearch(const std::string& query)
         if (hit.page_key == page->pageKey())
         {
             hit.row = !hit.widget.empty() ? page->findRow(hit.widget) : page->findRowBySetting(hit.setting);
-            if (hit.row)
+            if (hit.row || page->findHeaderCard(hit.widget))
                 local.push_back(std::move(hit));
         }
     page->applySearch(local);
@@ -2136,7 +2142,11 @@ void ALKitShell::rebuildQuick()
             source_page = findBuiltPage(favorite.page);
         }
         ALKitRow* source = source_page ? source_page->findRow(favorite.widget) : nullptr;
-        if (ALKitRow* proxy = ALKitRow::createProxy(source, "quick_proxy_" + llformat("%d", index++)))
+        const std::string proxy_name = "quick_proxy_" + llformat("%d", index++);
+        ALKitCard* header = source_page ? source_page->findHeaderCard(favorite.widget) : nullptr;
+        ALKitRow* proxy = header ? ALKitRow::createHeaderProxy(source_page, header, favorite.widget, proxy_name)
+                                : ALKitRow::createProxy(source, proxy_name);
+        if (proxy)
             proxies.push_back(proxy);
         else
             LL_WARNS("DirectorKit") << "Quick dropped favorite '" << favorite.page << "' / '" << favorite.widget << "': "
@@ -2157,7 +2167,9 @@ void ALKitShell::showRowInSearch(ALKitRow* row)
     if (ALKitRow* source = row->sourceRow())
         row = source;
     const ALKitRowMeta meta = row->meta();
-    navigateTo(meta.page_key + "/" + meta.widget);
+    const ALKitQol::Favorite destination = row->favoriteKey();
+    navigateTo(ALKitQol::isValidFavorite(destination) ? destination.page + "/" + destination.widget
+                                                    : meta.page_key + "/" + meta.widget);
     if (ALKitPage* page = currentKitPage())
     {
         page->setSearchText(meta.label);
@@ -2212,7 +2224,10 @@ void ALKitShell::refreshChangedMarkers(ALKitRow* changed_row)
             const bool owns_row = current->findRow(changed_row->meta().widget) == changed_row ||
                                   (current->pageKey() == "quick_group/quick_tab" && changed_row->sourceRow());
             if (owns_row)
-                current->refreshChangedFilter(changed_row, mSearch.queryText());
+            {
+                const std::string query = mSearch.queryText();
+                runSearch(query);
+            }
         }
         return;
     }
@@ -2232,6 +2247,13 @@ void ALKitShell::refreshChangedMarkers(ALKitRow* changed_row)
     for (const auto& page : mBuiltPages)
         refreshPageMarker(page.first);
     updatePips();
+    if (mChangedOnly)
+    {
+        // Header flips and undo must use the same setting/widget/synonym index
+        // as the initial search, including when no body row is changed.
+        const std::string query = mSearch.queryText();
+        runSearch(query);
+    }
 }
 
 void ALKitShell::setChangedOnly(bool enabled)

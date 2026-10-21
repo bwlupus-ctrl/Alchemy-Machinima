@@ -1632,7 +1632,7 @@ Computed logic class: **code-driven**; 0/16 rows setting-bound, 15 rows referenc
 | `adv_practicals` / Detail | `sl_gobo_var1` | `slider` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6409` `floater_lightbox_settings`/slider | `ALFloaterLightBox::onSelGoboChanged indra/newview/alfloaterlightbox.cpp:97` | — | — |
 | `adv_practicals` / Thickness | `sl_gobo_var2` | `slider` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6413` `floater_lightbox_settings`/slider | `ALFloaterLightBox::onSelGoboChanged indra/newview/alfloaterlightbox.cpp:98` | — | — |
 | `adv_practicals` / Invert | `sl_gobo_invert` | `toggle` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6420` `floater_lightbox_settings`/check_box | `ALFloaterLightBox::onSelGoboChanged indra/newview/alfloaterlightbox.cpp:100` | — | — |
-| `adv_practicals` / Lightbox â€º | `open_lightbox_sellight` | `button` | — | — | — | — | — |
+| `adv_practicals` / Lightbox › | `open_lightbox_sellight` | `button` | — | — | — | — | — |
 
 ### Actors (`actors_tab`)
 
@@ -1649,7 +1649,7 @@ Computed logic class: **code-driven**; 5/29 rows setting-bound, 23 rows referenc
 | `actor_mask` / Mask bias | `am_bias_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:2252` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5367` `floater_lightbox_settings`/slider | — | `actors_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml:22` | — |
 | `actor_mask` / Reset bias | `am_reset_CineLightRigActorMaskBias` | `button` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5368` `floater_lightbox_settings`/button | `ALFloaterLightBox::onClickResetControlDefault indra/newview/alfloaterlightbox.cpp:80` | — | — |
 | `actor_mask` / Isolation test | `am_test_trigger` | `button` | — | — | — | — | — |
-| `actor_mask` / Lightbox â€º | `open_lightbox_actormask` | `button` | — | — | — | — | — |
+| `actor_mask` / Lightbox › | `open_lightbox_actormask` | `button` | — | — | — | — | — |
 | `avatar_list` / Avatars | `target_list` | `list` | — | `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:44` `panel_avatar_light_response`/scroll_list | `ALPanelAvatarLightResponse::onSelectionChanged indra/newview/alpanelavatarlightresponse.cpp:125` | — | — |
 | `avatar_list` / Only adjusted | `chk_only_adjusted` | `toggle` | — | `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:67` `panel_avatar_light_response`/check_box | `ALPanelAvatarLightResponse::refreshRows indra/newview/alpanelavatarlightresponse.cpp:127` | — | — |
 | `avatar_list` / Refresh | `btn_refresh` | `button` | — | `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml:32` `panel_avatar_light_response`/button | `ALPanelAvatarLightResponse::<inline callback> indra/newview/alpanelavatarlightresponse.cpp:132` | — | — |
@@ -1718,7 +1718,7 @@ Computed logic class: **code-driven**; 68/74 rows setting-bound, 17 rows referen
 | `grade` / Tint | `set_RenderColorGradeWhiteBalanceDuv` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:2361` (Global) | — | — | `image_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:120` | — |
 | `grade` / Lift | `set_RenderColorGradeLift` | `vec3` | `Vector3` `indra/newview/app_settings/settings_alchemy.xml:2372` (Global) | — | — | — | — |
 | `grade` / Gamma | `set_RenderColorGradeGamma` | `vec3` | `Vector3` `indra/newview/app_settings/settings_alchemy.xml:2387` (Global) | — | — | — | — |
-| `grade` / Lightbox â€º | `set_grade_lightbox_link` | `button` | — | — | — | — | — |
+| `grade` / Lightbox › | `set_grade_lightbox_link` | `button` | — | — | — | — | — |
 | `grade_levels` / Gain | `set_RenderColorGradeGain` | `vec3` | `Vector3` `indra/newview/app_settings/settings_alchemy.xml:2402` (Global) | — | — | — | — |
 | `grade_levels` / Grade bright | `set_RenderColorGradeBrightness` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:2439` (Global) | — | — | `image_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:133` | — |
 | `grade_levels` / Grade contrast | `set_RenderColorGradeContrast` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:2450` (Global) | — | — | `image_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:138` | — |
@@ -1773,7 +1773,7 @@ Computed logic class: **code-driven**; 68/74 rows setting-bound, 17 rows referen
 | `slog` / Range | `slog_range_combo` | `combo` | `S32` `indra/newview/app_settings/settings_alchemy.xml:1309` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:836` `floater_lightbox_settings`/combo_box | `ALFloaterLightBox::updateTonemapper indra/newview/alfloaterlightbox.cpp:1610` | `image_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:373` | — |
 | `slog` / Shadow toe | `slog_toe_slider` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:1320` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:861` `floater_lightbox_settings`/slider_bar | `ALFloaterLightBox::updateTonemapper indra/newview/alfloaterlightbox.cpp:1611` | `floater_lightbox_settings` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:875`, `image_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:381` | — |
 | `adv_image` / Lens filters | `set_lens_filters_link` | `link` | — | — | — | — | — |
-| `adv_image` / Lightbox â€º | `open_lightbox_image` | `button` | — | — | — | — | — |
+| `adv_image` / Lightbox › | `open_lightbox_image` | `button` | — | — | — | — | — |
 
 ### Bloom & Glow (`bloom_glow_tab`)
 
@@ -1801,7 +1801,7 @@ Computed logic class: **pure-setting**; 16/17 rows setting-bound, 0 rows referen
 | `prim_glow` / Softness | `glow_width_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:21178` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4246` `floater_lightbox_settings`/slider_bar | — | `floater_lightbox_settings` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4262`, `bloom_glow_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:71` | — |
 | `prim_glow` / Iterations | `glow_iteration_slider` | `slider` | `S32` `indra/newview/app_settings/settings.xml:21071` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4075` `floater_lightbox_settings`/slider_bar | — | `floater_lightbox_settings` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4091`, `bloom_glow_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:76` | — |
 | `prim_glow` / Resolution | `glow_resPow_slider` | `slider` | `S32` `indra/newview/app_settings/settings.xml:21119` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4132` `floater_lightbox_settings`/slider_bar | — | `floater_lightbox_settings` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4148`, `prefs_graphics_advanced` `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:85`, `bloom_glow_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:81` | — |
-| `adv_bloom` / Lightbox â€º | `open_lightbox_glow` | `button` | — | — | — | — | — |
+| `adv_bloom` / Lightbox › | `open_lightbox_glow` | `button` | — | — | — | — | — |
 
 ### Roto Ink (`stylize_tab`)
 
@@ -1892,7 +1892,7 @@ Computed logic class: **code-driven**; 77/80 rows setting-bound, 32 rows referen
 | `timing` / Phase beats | `ri_motion_phase_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:509` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5835` `floater_lightbox_settings`/slider | `ALFloaterLightBox::updateRotoInkAnimVisibility indra/newview/alfloaterlightbox.cpp:923` | `stylize_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml:522` | — |
 | `timing` / Hold frames | `ri_motion_step_combo` | `combo` | `S32` `indra/newview/app_settings/settings.xml:516` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5838` `floater_lightbox_settings`/combo_box | — | `stylize_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml:527` | — |
 | `timing` / Tron clock | `ri_sync_tron_link` | `link` | — | — | — | — | — |
-| `adv_roto` / Lightbox â€º | `open_lightbox_roto` | `button` | — | — | — | — | — |
+| `adv_roto` / Lightbox › | `open_lightbox_roto` | `button` | — | — | — | — | — |
 
 ### Tron (`tron_tab`)
 
@@ -2034,7 +2034,7 @@ Computed logic class: **code-driven**; 123/131 rows setting-bound, 103 rows refe
 | `integration` / No-post scale | `tr_no_post_scale_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:30456` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6313` `floater_lightbox_settings`/slider | — | `tron_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml:682` | — |
 | `integration` / Bloom meter | `tr_bloom_meter_scale_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:30463` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6316` `floater_lightbox_settings`/slider | — | `tron_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml:687` | — |
 | `adv_tron` / Roto Ink | `tr_roto_link` | `link` | — | — | — | — | — |
-| `adv_tron` / Lightbox â€º | `open_lightbox_tron` | `button` | — | — | — | — | — |
+| `adv_tron` / Lightbox › | `open_lightbox_tron` | `button` | — | — | — | — | — |
 
 ### Stepped (`stepped_tab`)
 
@@ -2235,7 +2235,7 @@ Computed logic class: **code-driven**; 52/80 rows setting-bound, 25 rows referen
 | `haze_height` / Falloff /m | `ch_CineHazeHeightFalloff_slider` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4067` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5320` `floater_lightbox_settings`/slider | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:77` | — |
 | `haze_adv` / Debug view | `ch_debug_combo` | `combo` | `S32` `indra/newview/app_settings/settings_alchemy.xml:4115` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5334` `floater_lightbox_settings`/combo_box | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:84` | — |
 | `haze_adv` / Reset haze | `ch_reset_all` | `button` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5288` `floater_lightbox_settings`/button | `ALFloaterLightBox::onCineHazePreset indra/newview/alfloaterlightbox.cpp:102` | — | — |
-| `haze_adv` / Lightbox â€º | `open_lightbox_haze` | `button` | — | — | — | — | — |
+| `haze_adv` / Lightbox › | `open_lightbox_haze` | `button` | — | — | — | — | — |
 | `projector_cones` / Brightness | `ps_BDMergeProjectorVolumetricsMultiplier_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:19332` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:18` `panel_projector_shafts`/slider | — | `floater_lightbox_settings` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4487`, `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:105` | — |
 | `projector_cones` / Haziness | `ps_BDMergeProjectorVolumetricsDensity_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:19523` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:67` `panel_projector_shafts`/slider | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:110` | — |
 | `projector_cones` / Forward glow | `ps_BDMergeProjectorVolumetricsAnisotropy_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:19354` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:24` `panel_projector_shafts`/slider | — | `floater_lightbox_settings` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4569`, `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:115` | — |
@@ -2347,7 +2347,7 @@ Computed logic class: **code-driven**; 37/39 rows setting-bound, 1 rows referenc
 | `tune` / Projector res | `bd_shadow_res_proj` | `number` | `U32` `indra/newview/app_settings/settings.xml:10969` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4032` `floater_lightbox_settings`/spinner | — | `shadows_probes_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml:197` | — |
 | `tune` / Blur size | `shadow_blur_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:20784` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2785` `floater_lightbox_settings`/slider_bar | — | `floater_lightbox_settings` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2800`, `shadows_probes_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml:200` | — |
 | `tune` / Blur distance | `shadow_blurdist_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:20806` (Global) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2838` `floater_lightbox_settings`/slider_bar | — | `floater_lightbox_settings` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2853`, `shadows_probes_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml:205` | — |
-| `tune` / Lightbox â€º | `open_lightbox_shadows` | `button` | — | — | — | — | — |
+| `tune` / Lightbox › | `open_lightbox_shadows` | `button` | — | — | — | — | — |
 
 ### Time (`temporal_tab`)
 

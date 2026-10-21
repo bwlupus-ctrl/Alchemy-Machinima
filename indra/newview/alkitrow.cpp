@@ -94,6 +94,43 @@ private:
     bool mWritable = false;
 };
 
+class ALKitHeaderBinding final : public ALKitBinding
+{
+public:
+    ALKitHeaderBinding(ALKitSwitch* source, const std::string& setting) :
+        mSource(source->getDerivedHandle<ALKitSwitch>()), mSetting(setting) {}
+    LLSD get() const override { return mSource.get() ? mSource.get()->getValue() : LLSD(); }
+    LLSD getDefault() const override
+    {
+        LLControlVariable* control = mSetting.empty() ? nullptr : gSavedSettings.getControl(mSetting).get();
+        return control ? control->getDefault() : LLSD();
+    }
+    bool hasDefault() const override { return getDefault().isDefined(); }
+    bool isDefault(S32 decimals) const override { return !hasDefault() || ALKitBinding::isDefault(decimals); }
+    bool canSet() const override { return mSource.get() && mSource.get()->isInEnabledChain(); }
+    void set(const LLSD& value) override
+    {
+        if (canSet())
+        {
+            // Exactly the source widget's normal path: one commit, no parallel setting binding.
+            // LLCheckBoxCtrl binds its child button. setValue()+onCommit()
+            // alone would change only its view model, leaving the setting stale.
+            if (mSource.get()->isOn() != value.asBoolean())
+                mSource.get()->toggle();
+            mSource.get()->onCommit();
+        }
+    }
+    boost::signals2::connection connectChanged(std::function<void()> callback) override
+    {
+        return mSource.get() ? mSource.get()->setFlipCallback([callback](bool) { callback(); })
+                             : boost::signals2::connection();
+    }
+    std::string describe() const override { return "Quick header switch"; }
+private:
+    LLHandle<ALKitSwitch> mSource;
+    std::string mSetting;
+};
+
 bool baselineEditActive(const LLView* control)
 {
     if (!control)
@@ -822,6 +859,14 @@ void ALKitRow::pollLiveValue()
 {
     if (!mControl)
         return;
+    if (mHeaderProxy)
+    {
+        const bool enabled = enabledForEdit();
+        if (mControl->getEnabled() != enabled)
+            mControl->setEnabled(enabled);
+        if (mBinding && !alSameValue(mControl->getValue(), mBinding->get()))
+            bindingChanged();
+    }
     const LLSD value = mControl->getValue();
     if (!alSameValue(value, mShownValue))
     {
@@ -1101,6 +1146,20 @@ void ALKitRow::replayBoundValue(const LLSD& value)
 
 bool ALKitRow::enabledForEdit() const
 {
+    if (mHeaderProxy)
+    {
+        if (ALKitSwitch* control = mHeaderSource.get())
+        {
+            for (LLView* view = control->getParent(); view; view = view->getParent())
+                if (ALKitPage* page = dynamic_cast<ALKitPage*>(view))
+                {
+                    page->refreshAvailability();
+                    break;
+                }
+            return control->isInEnabledChain();
+        }
+        return false;
+    }
     if (ALKitRow* source = sourceRow())
         return source->enabledForEdit();
     for (LLView* view = getParent(); view; view = view->getParent())
@@ -1118,10 +1177,47 @@ ALKitQol::Favorite ALKitRow::favoriteKey() const
         return ALKitQol::Favorite{}; // invalid: no star, no menu entry, no Quick proxy
     const ALKitQol::Favorite row{ mMeta.page_key, mMeta.widget };
     ALKitRow* source = mSourceRow.get();
+    if (mHeaderProxy)
+        return mHeaderSource.get() ? ALKitQol::Favorite{ mMeta.page_key, mHeaderSource.get()->getName() }
+                                   : ALKitQol::Favorite{};
     const ALKitQol::Favorite source_key = source
         ? ALKitQol::Favorite{ source->mMeta.page_key, source->mMeta.widget }
         : ALKitQol::Favorite{};
     return ALKitQol::sourceFavorite(row, source_key);
+}
+
+ALKitRow* ALKitRow::createHeaderProxy(ALKitPage* page, ALKitCard* card, const std::string& widget,
+                                    const std::string& name)
+{
+    ALKitSwitch* source = card ? card->headerSwitch(widget) : nullptr;
+    if (!page || !source || !card->headerQuickSafe(widget)) return nullptr;
+    Params params;
+    params.name = name;
+    params.rect = LLRect(0, ALKitStyle::ROW_H, 400, 0);
+    params.kind = "toggle";
+    params.widget = name + "_control";
+    params.label = card->headerLabel(widget);
+    params.help = source->getToolTip();
+    params.link_to = page->pageKey() + "/" + widget;
+    params.widget_history = false; // One setting observer owns undo; ScopedSource attributes it to Quick.
+    params.bulk_reset = false;
+    ALKitRow* proxy = new ALKitRow(params);
+    proxy->mHeaderProxy = true;
+    proxy->mHeaderSource = source->getDerivedHandle<ALKitSwitch>();
+    proxy->setOwnerIdentity(page->pageKey(), card->id());
+    ALKitSwitch::Params control_params;
+    control_params.name = params.widget;
+    control_params.rect = LLRect(0, ALKitStyle::SWITCH_H, ALKitStyle::SWITCH_W, 0);
+    ALKitSwitch* control = LLUICtrlFactory::create<ALKitSwitch>(control_params);
+    proxy->addChild(control);
+    proxy->mBinding = std::make_unique<ALKitHeaderBinding>(source, card->headerSetting(widget));
+    proxy->postBuild();
+    proxy->mBindingConnection = proxy->mBinding->connectChanged([proxy]() { proxy->bindingChanged(); });
+    control->setCommitCallback([proxy](LLUICtrl* edited, const LLSD&) { proxy->setBoundValue(edited->getValue()); });
+    ALExposureSettingsHistory::installEditFinalizers(proxy);
+    proxy->bindingChanged();
+    control->setEnabled(proxy->enabledForEdit());
+    return proxy;
 }
 
 ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)

@@ -21,7 +21,7 @@ public:
     {
         Mandatory<std::string> label;
         Mandatory<LLSD>        value;
-        Optional<std::string>  enable_widget, enable_setting;
+        Optional<std::string>  enable_widget, enable_setting, enable_quick;
         Params();
     };
     const LLSD&        optionValue() const { return mValue; }
@@ -29,6 +29,7 @@ public:
     const std::string& optionLabel() const { return mLabel; }
     const std::string& enableWidget() const { return mEnableWidget; }
     const std::string& enableSetting() const { return mEnableSetting; }
+    const std::string& enableQuick() const { return mEnableQuick; }
 
 protected:
     friend class LLUICtrlFactory;
@@ -37,12 +38,13 @@ protected:
         mValue(p.value),
         mLabel(p.label),
         mEnableWidget(p.enable_widget),
-        mEnableSetting(p.enable_setting)
+        mEnableSetting(p.enable_setting),
+        mEnableQuick(p.enable_quick)
     { setMouseOpaque(false); }
 
 private:
     LLSD        mValue;
-    std::string mLabel, mEnableWidget, mEnableSetting;
+    std::string mLabel, mEnableWidget, mEnableSetting, mEnableQuick;
 };
 class ALKitCard : public LLPanel, public ALFlowGridItem
 {
@@ -57,7 +59,7 @@ public:
     struct Params : public LLInitParam::Block<Params, LLPanel::Params>
     {
         Mandatory<std::string> id;
-        Optional<std::string>  title, kind, badge, help, enable_widget, enable_setting, enable_tooltip, sel_label, sel_setting, link_to,
+        Optional<std::string>  title, kind, badge, help, enable_widget, enable_setting, enable_tooltip, enable_quick, sel_label, sel_setting, link_to,
             link_label, target, target_tab, button_label, copy_type;
         Optional<bool>    advanced, full_width;
         Multiple<Summary> summary;
@@ -84,8 +86,16 @@ public:
     void                          restoreOpenState(bool, const LLSD&);
     void                          requestLayout();
     bool                          revealRow(ALKitRow*);
+    ALKitSwitch*                  headerSwitch(const std::string& widget) const;
+    bool                          revealHeader(const std::string& widget);
+    std::string                   headerLabel(const std::string& widget) const;
+    std::string                   headerSetting(const std::string& widget) const;
     const std::vector<ALKitRow*>& rows() const { return mRows; }
-    bool                          changed() const { return mAmberCount > 0; }
+    bool                          changed() const { return mAmberCount > 0 || headerChanged(); }
+    bool                          headerChanged(const std::string& widget = std::string()) const;
+    bool                          headerQuickSafe(const std::string& widget) const;
+    bool                          headerFavoriteAllowed(const std::string& widget, bool existing) const;
+    bool                          headerTitleFits(S32 width) const;
     void                          setQuickRows(std::vector<ALKitRow*> rows);
 
 protected:
@@ -96,6 +106,7 @@ private:
     struct HeaderLayout
     {
         S32 height = 36, title_width = 0, preset_left = 0, preset_width = 0, badge_width = 0;
+        bool title_stacked = false;
     };
     HeaderLayout headerLayout(S32 width) const;
     HeaderLayout mHeaderLayout;
@@ -107,6 +118,7 @@ private:
         LLTextBox*  labelView = nullptr;
         LLTextBox*  valueView = nullptr;
     };
+    ALKitSwitch* activeHeaderSwitch() const;
     void        layoutBody(S32);
     void        syncSelector();
     void        updateResetColor();
@@ -114,7 +126,7 @@ private:
     void        copySettings();
     void        pasteSettings();
     std::string copySourceName() const;
-    std::string mId, mTitle, mKind, mBadge, mBadgeTemplate, mEnableWidget, mEnableSetting, mEnableTooltip, mSelectorLabel, mSelectorSetting, mLinkTo,
+    std::string mId, mTitle, mKind, mBadge, mBadgeTemplate, mEnableWidget, mEnableSetting, mEnableTooltip, mEnableQuick, mSelectorLabel, mSelectorSetting, mLinkTo,
         mLinkLabel, mTarget, mTargetTab, mButtonLabel, mHelp, mCopyType;
     std::unordered_map<std::string, std::string> mBadgeSubstitutions;
     bool                                            mAdvanced = false, mFullWidth = false, mMoreOpen = false, mLayoutPending = false, mBodyOpen = true,

@@ -35,7 +35,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `prim_glow` / `glow_width_slider` (Softness) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4246` | kit `slider` ↔ `RenderGlowWidth` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4262` `glow_width_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:71` `glow_width_slider` |
 | `prim_glow` / `glow_iteration_slider` (Iterations) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4075` | kit `slider` ↔ `RenderGlowIterations` `S32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4091` `glow_iteration_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:76` `glow_iteration_slider` |
 | `prim_glow` / `glow_resPow_slider` (Resolution) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4132` | kit `slider` ↔ `RenderGlowResolutionPow` `S32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4148` `glow_resPow_spinner`, `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:85` `GlowResolution`, `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:81` `glow_resPow_slider` |
-| `adv_bloom` / `open_lightbox_glow` (Lightbox â€º) | none | kit-native action `floater:lightbox/glow_settings`; no duplicate widget is required | none |
+| `adv_bloom` / `open_lightbox_glow` (Lightbox ›) | none | kit-native action `floater:lightbox/glow_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 

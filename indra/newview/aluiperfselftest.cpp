@@ -4446,6 +4446,124 @@ private:
         LLFloater* director = mFloater.get();
         ALKitShell* shell = director ? findFirstView<ALKitShell>(director) : nullptr;
         const std::string original_page = shell ? shell->currentPageKey() : std::string();
+        // End-to-end Quick header regression: real generated pages, real proxy
+        // commit/callback/setting observers and history, including a full rebuild.
+        if (shell)
+        {
+            const std::string quick_key = "quick_group/quick_tab";
+            const std::string source_key = "light_group/light_rim_tab";
+            const std::string unsafe_key = "cast_group/props_tab";
+            const std::string widget = "relight_shape_enable";
+            shell->ensurePageBuilt(source_key);
+            shell->ensurePageBuilt(unsafe_key);
+            shell->ensurePageBuilt(quick_key);
+            ALKitPage* source_page = shell->findBuiltPage(source_key);
+            ALKitPage* props_page = shell->findBuiltPage(unsafe_key);
+            ALKitPage* quick = shell->findBuiltPage(quick_key);
+            ALKitCard* source_card = source_page ? source_page->findHeaderCard(widget) : nullptr;
+            ALKitCard* unsafe_card = props_page ? props_page->findHeaderCard("spin_on_check") : nullptr;
+            ALKitSwitch* source = source_card ? source_card->headerSwitch(widget) : nullptr;
+            ALKitCard* quick_card = quick ? quick->findCard("quick") : nullptr;
+            const bool had_safe = shell->isFavorite(source_key, widget);
+            const bool had_unsafe = shell->isFavorite(unsafe_key, "spin_on_check");
+            if (!had_safe) shell->toggleFavorite(source_key, widget);
+            // Also model a legacy saved unsafe favorite: rebuild must drop it.
+            if (!had_unsafe) shell->toggleFavorite(unsafe_key, "spin_on_check");
+            shell->rebuildQuick();
+            auto find_proxy = [quick_card](const std::string& name) -> ALKitRow*
+            {
+                if (quick_card)
+                    for (ALKitRow* row : quick_card->rows())
+                        if (row->favoriteKey().widget == name) return row;
+                return nullptr;
+            };
+            ALKitRow* proxy = find_proxy(widget);
+            bool ok = source && proxy && unsafe_card && !find_proxy("spin_on_check") &&
+                source_card->headerQuickSafe(widget) && !unsafe_card->headerQuickSafe("spin_on_check") &&
+                !source->isInVisibleChain() && source_card->headerTitleFits(ALKitStyle::CARD_MIN_W) &&
+                unsafe_card->headerTitleFits(ALKitStyle::CARD_MIN_W);
+            LLControlVariable* setting = gSavedSettings.getControl("RenderLightShapeEnable").get(); // ui-draw-lint: allow(setting) one-shot functional oracle, gated by mFunctionalGlobalAssertionsDone
+            const bool original = setting->get().asBoolean();
+            S32 writes = 0, callbacks = 0;
+            boost::signals2::scoped_connection changed = setting->getSignal()->connect(
+                [&writes](LLControlVariable*, const LLSD&, const LLSD&) { ++writes; });
+            boost::signals2::scoped_connection committed;
+            if (source)
+                committed = source->setCommitCallback([&callbacks](LLUICtrl*, const LLSD&) { ++callbacks; });
+            shell->history().finishGesture();
+            const U64 previous_step = shell->history().stepSequence(quick_key, false);
+            if (proxy)
+            {
+                ALKitSwitch* control = dynamic_cast<ALKitSwitch*>(proxy->control());
+                ok = ok && control;
+                if (control)
+                {
+                    control->toggle();
+                    control->onCommit();
+                }
+            }
+            shell->history().finishGesture();
+            ok = ok && writes == 1 && callbacks == 1 &&
+                setting->get().asBoolean() != original &&
+                shell->history().stepSequence(quick_key, false) != previous_step;
+            shell->rebuildQuick(); // old tile is deleted; the new one retains source state
+            proxy = find_proxy(widget);
+            ok = ok && proxy && proxy->boundValue().asBoolean() != original && !find_proxy("spin_on_check");
+            const bool recorded = shell->history().stepSequence(quick_key, false) != previous_step;
+            if (recorded) shell->history().undo(quick_key);
+            ok = ok && setting->get().asBoolean() == original &&
+                shell->history().stepSequence(quick_key, false) == previous_step; // no duplicate widget step
+            if (recorded) shell->history().redo(quick_key);
+            ok = ok && setting->get().asBoolean() != original;
+            if (recorded) shell->history().undo(quick_key);
+            changed.disconnect();
+            committed.disconnect();
+            // Indexed Changed-only regression: "relight" matches the header's
+            // widget/setting, not its Light shape title/help. Undo must reveal it.
+            const std::string original_query = shell->search().queryText();
+            const bool original_changed_only = shell->changedOnly();
+            shell->setChangedOnly(false);
+            shell->navigateTo(source_key + "/" + widget);
+            while (shell->search().tokenizeBatch(400)) {}
+            {
+                ALKitHistory::ScopedSuspend suspend;
+                setting->set(LLSD(false));
+            }
+            if (source)
+            {
+                source->toggle();
+                source->onCommit();
+                shell->history().finishGesture();
+                shell->search().setQuery("relight");
+                shell->setChangedOnly(true);
+                ok = ok && setting->get().asBoolean() && source_card->getVisible();
+                source->toggle();
+                source->onCommit();
+                shell->history().finishGesture();
+                ok = ok && !setting->get().asBoolean() && !source_card->getVisible();
+                shell->history().undo(source_key);
+                ok = ok && setting->get().asBoolean() && source_card->getVisible();
+                shell->history().undo(source_key); // discard the test's enable step too
+            }
+            shell->search().setQuery(original_query);
+            shell->setChangedOnly(!original_changed_only);
+            shell->setChangedOnly(original_changed_only);
+            ok = ok && unsafe_card && unsafe_card->headerFavoriteAllowed("spin_on_check", true) &&
+                !unsafe_card->headerFavoriteAllowed("spin_on_check", false);
+            {
+                ALKitHistory::ScopedSuspend suspend;
+                setting->set(LLSD(original));
+            }
+            if (!had_safe) shell->toggleFavorite(source_key, widget);
+            if (!had_unsafe) shell->toggleFavorite(unsafe_key, "spin_on_check");
+            shell->rebuildQuick();
+            LLSD regression;
+            regression["page"] = "selftest";
+            regression["widget_name"] = "quick_header_proxy";
+            regression["widget_type"] = "unit";
+            regression["exercise"] = "real Quick header: one setting/callback, rebuild, unsafe removal/add rejection, single undo/redo, relight Changed-only undo";
+            addFunctionalResult(regression, ok ? "PASS" : "FAIL", ok ? "" : "Quick header proxy regression failed");
+        }
         if (director && gFloaterView) gFloaterView->bringToFront(director);
         // Quick may be empty on a fresh profile. Build a page with real tab stops.
         if (shell) shell->selectPage("shot_tab");
@@ -5445,6 +5563,8 @@ private:
         {
             page->setSearchText("");
             if (card) page->revealCard(card, false);
+            if (card && card->headerSwitch(control->getName()))
+                page->revealHeader(control->getName());
         }
         // Both calls are required: revealCard establishes mode/chip state and
         // revealRow establishes body/More/option state. Layout is idle-deferred.
@@ -12562,6 +12682,13 @@ private:
         for (size_t i = 0; i < sKitTextRuns.size(); ++i)
         {
             LLView* first = sKitTextRuns[i].mView.get();
+            if (ALKitCard* card = dynamic_cast<ALKitCard*>(first); card && in_floater(card) &&
+                sKitTextRuns[i].mText == card->title() && !card->headerTitleFits(ALKitStyle::CARD_MIN_W))
+            {
+                AuditLeaf title = text_leaf(sKitTextRuns[i]);
+                addFinding("CARD_TITLE_CLIPPED", title, nullptr,
+                           "full title does not fit at minimum card width with runtime header buttons");
+            }
             if (!in_floater(first) || sKitTextRuns[i].mText.empty())
                 continue;
             for (size_t j = i + 1; j < sKitTextRuns.size(); ++j)

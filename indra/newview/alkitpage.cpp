@@ -962,7 +962,7 @@ void ALKitPage::applyModeAndChip(bool request_layout)
                                   std::find(mModeDefs[mModeIndex].cards.begin(), mModeDefs[mModeIndex].cards.end(), pair.first) !=
                                       mModeDefs[mModeIndex].cards.end());
         }
-        bool search = !mSearching;
+        bool search = !mSearching || mHeaderHits.count(pair.first);
         if (!search)
             for (ALKitRow* row : pair.second->rows())
                 if (row->filterVisible())
@@ -987,7 +987,7 @@ void ALKitPage::applyModeAndChip(bool request_layout)
     };
     auto visibleInSearch = [this](const ALKitCard* card)
     {
-        if (!mSearching)
+        if (!mSearching || mHeaderHits.count(card->id()))
             return true;
         for (ALKitRow* row : card->rows())
             if (row->filterVisible())
@@ -1330,6 +1330,27 @@ bool ALKitPage::changed() const
     return false;
 }
 
+ALKitCard* ALKitPage::findHeaderCard(const std::string& widget) const
+{
+    for (const auto& entry : mCards)
+        if (entry.second->headerSwitch(widget))
+            return entry.second;
+    return nullptr;
+}
+
+bool ALKitPage::revealHeader(const std::string& widget)
+{
+    ALKitCard* card = findHeaderCard(widget);
+    if (!card || !card->revealHeader(widget)) return false;
+    mHeaderHits[card->id()] = true;
+    if (!revealCard(card, true)) return false;
+    // Scroll the header itself (a tall card may extend beyond the viewport).
+    ALKitSwitch* control = card->headerSwitch(widget);
+    scrollToView(control);
+    control->setBtnFocus();
+    return true;
+}
+
 void ALKitPage::registerDynamicRow(ALKitRow* row)
 {
     if (row)
@@ -1347,6 +1368,7 @@ void ALKitPage::unregisterDynamicRow(ALKitRow* row)
 
 void ALKitPage::applyLocalFilter(const std::string& query, bool changed_only)
 {
+    mHeaderHits.clear();
     std::string lowered = query;
     LLStringUtil::toLower(lowered);
     const std::vector<std::string> tokens = LLStringUtil::getTokens(lowered, " ");
@@ -1363,37 +1385,38 @@ void ALKitPage::applyLocalFilter(const std::string& query, bool changed_only)
             visible = visible && haystack.find(token) != std::string::npos;
         row->setFilterVisible(visible);
     }
-    applyModeAndChip();
-}
-
-void ALKitPage::refreshChangedFilter(ALKitRow* row, const std::string& query)
-{
-    if (!row)
-        return;
-    std::string lowered = query;
-    LLStringUtil::toLower(lowered);
-    std::string haystack = row->meta().label + " " + row->meta().help + " " + row->meta().keywords;
-    LLStringUtil::toLower(haystack);
-    bool visible = row->amber();
-    for (const std::string& token : LLStringUtil::getTokens(lowered, " "))
-        visible = visible && haystack.find(token) != std::string::npos;
-    row->setFilterVisible(visible);
+    if (changed_only)
+        for (const auto& card : mCards)
+        {
+            std::string haystack = card.second->title() + " " + card.second->helpText();
+            LLStringUtil::toLower(haystack);
+            bool visible = card.second->headerChanged();
+            for (const std::string& token : tokens)
+                visible = visible && haystack.find(token) != std::string::npos;
+            if (visible) mHeaderHits[card.first] = true;
+        }
     applyModeAndChip();
 }
 
 void ALKitPage::applySearch(const ALKitSearch::Hits& hits)
 {
+    mHeaderHits.clear();
     mSearching = true;
     for (auto& p : mRows)
         p.second->setFilterVisible(false);
     for (const auto& h : hits)
+    {
         if (h.row)
             h.row->setFilterVisible(true);
+        else if (ALKitCard* card = findHeaderCard(h.widget))
+            mHeaderHits[card->id()] = true;
+    }
     applyModeAndChip();
 }
 
 void ALKitPage::clearSearch()
 {
+    mHeaderHits.clear();
     mSearching = false;
     for (auto& p : mRows)
         p.second->setFilterVisible(true);

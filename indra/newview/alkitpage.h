@@ -111,6 +111,8 @@ public:
     ALKitRow*          findRow(const std::string&) const;
     ALKitRow*          findRowBySetting(const std::string&) const;
     ALKitCard*         findCard(const std::string&) const;
+    ALKitCard*         findHeaderCard(const std::string&) const;
+    bool               revealHeader(const std::string&);
     const std::string& pageKey() const { return mPage; }
     const std::string& summary() const { return mSummary; }
     void               requestLayout();
@@ -141,7 +143,6 @@ public:
     void               registerDynamicRow(ALKitRow*);
     void               unregisterDynamicRow(ALKitRow*);
     void               applyLocalFilter(const std::string&, bool);
-    void               refreshChangedFilter(ALKitRow*, const std::string&);
     using card_paste_handler_t = std::function<bool(const std::string&, const LLSD&)>;
     void               setCardPasteHandler(card_paste_handler_t handler) { mCardPasteHandler = std::move(handler); }
     bool               pasteCardValues(const std::string& card, const LLSD& values)
@@ -278,6 +279,7 @@ private:
     LLComboBox*                                     mWhoCombo       = nullptr;
     std::unordered_map<std::string, ALKitRow*>      mRows;
     std::unordered_map<std::string, ALKitCard*>     mCards;
+    std::unordered_map<std::string, bool>           mHeaderHits;
     std::vector<boost::signals2::scoped_connection> mConnections;
     card_paste_handler_t                             mCardPasteHandler;
 };

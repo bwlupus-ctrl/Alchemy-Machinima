@@ -566,10 +566,35 @@ def load_generated_kit_pages(xi):
         if not page or page not in index_pages:
             continue
         xml_rows = []
+        headers = []
         for card in kit_page.iter("kit_card"):
             for row in card.iter("kit_row"):
                 xml_rows.append((base, path, kit_page, card, row))
+            # Runtime-created ALKitCard controls are real functional destinations,
+            # even though they are not body kit_rows in the serialized tree.
+            for node in [card] + list(card.findall("kit_option")):
+                widget = node.get("enable_widget", "")
+                if not widget:
+                    continue
+                label = card.get("title", "")
+                if node.tag == "kit_option":
+                    label += " / " + node.get("label", "")
+                setting = node.get("enable_setting", "")
+                header = ET.Element("kit_row", widget=widget, kind="toggle", label=label,
+                                    setting=setting, bind="setting" if setting else "code",
+                                    header_switch="true", header_quick=node.get("enable_quick", ""))
+                headers.append((base, path, kit_page, card, header))
+        # Preserve body-row ordinals/IDs when adding header coverage.
+        xml_rows.extend(headers)
         pages[page] = xml_rows
+    expected_headers = {(kit.get("page"), row.get("widget"), card.get("id"), row.get("setting", ""))
+                        for xml_rows in pages.values() for _base, _path, kit, card, row in xml_rows
+                        if row.get("header_switch") == "true"}
+    indexed_headers = [(fields[0] + "/" + fields[1], fields[8], fields[5], fields[11])
+                       for line in (index_root.text or "").splitlines()
+                       if len(fields := line.split("\t")) == 22 and "h" in fields[13]]
+    if set(indexed_headers) != expected_headers or len(indexed_headers) != len(expected_headers):
+        sys.exit("kit coverage check failed: header switch search/functional manifest drift")
     return pages
 
 
@@ -635,7 +660,11 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
             if page == "vcam_tab" and kind != "readout":
                 owner = "ALPanelDirectorVCam::onControl"
             if binding == "code":
-                if kind == "readout" and child is not None and (child.text or "").strip():
+                if row.get("header_switch") == "true":
+                    owner = binder_by_page.get(page, "")
+                    if owner.startswith("bind"):
+                        owner = "LLFloaterDirector::" + owner
+                elif kind == "readout" and child is not None and (child.text or "").strip():
                     owner = "ALKitRow::postBuild (authored static text)"
                 elif row.get("action") or row.get("link_to") or kind == "link":
                     owner = "ALKitRow::postBuild"
@@ -730,6 +759,12 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 "callbacks": callbacks or None, "owner": owner or None,
                 "evidence": rel(path),
             })
+            if row.get("header_switch") == "true":
+                entry["header_switch"] = True
+                entry["setting_source"] = "kit_card/kit_option enable_setting" if setting else None
+                entry["header_quick"] = row.get("header_quick", "")
+                entry["expect"]["ui"] = ("search reveals and focuses header; Quick commits the real switch"
+                    if row.get("header_quick") == "setting" else "search reveals and focuses header; no Quick tile")
             kit_action = row.get("action", "")
             if kit_action.startswith(("lightbox:", "floater:")):
                 family, destination = kit_action.split(":", 1)
@@ -1503,6 +1538,17 @@ def write_md(entries, meta, skip_rows, page_order, page_meta, synth):
         label, group = page_meta[page]
         w("| %s (%s) | %s | %s |" % (page, label, group, " | ".join(str(x) for x in cells)))
     w("")
+    w("## Card-header switches")
+    w("")
+    w("Every real card/option enable switch is searchable. Only explicitly classified safe setting headers offer Quick tiles; the runtime exercises the real widget. Search/index/manifest drift is fatal.")
+    w("")
+    w("| Page | Header | Widget | Setting / callback owner | Exercise | Quick policy |")
+    w("|---|---|---|---|---|---|")
+    for entry in entries:
+        if entry.get("header_switch"):
+            w("| %s | %s | %s | %s | %s | %s |" % (entry["page"], entry["row_label"],
+                entry["widget_name"], entry.get("setting") or entry.get("owner"), entry["exercise"], entry.get("header_quick")))
+    w("")
     w("## Special probes")
     w("")
     w("| Probe | Version | Page | Widget | Exercise | Expect |")
@@ -1534,7 +1580,7 @@ def write_md(entries, meta, skip_rows, page_order, page_meta, synth):
     w("- Setting min, max and increment come from the XUI element only. Settings XML carries no range.")
     w("- v2 launcher stubs (`v2_launcher_redirect`) host their controls in the v1 owner floater that they open; test them through the launcher.")
     w("- XUI lookup warnings: %d (widgets whose CSV name has no named XUI element, usually unnamed `check_box`/`slider` rows, or settings-only names). The setting still comes from the CSV; the full list is in `meta.warnings` of the JSON." % meta["warning_count"])
-    w("- Coverage check: every interactive legacy CSV row yields one entry per applicable version; every converted v2 page is instead inventoried from its generated `panel_dpage_*.xml` `kit_row` metadata.")
+    w("- Coverage check: every interactive legacy CSV row yields one entry per applicable version; every converted v2 page is instead inventoried from its generated `panel_dpage_*.xml` body rows and card/option header switches.")
     w("")
     return "\n".join(lines).rstrip() + "\n"
 
@@ -1935,7 +1981,8 @@ DIRECTOR_POPOVERS = [
     {"name": "kit_cast_popover", "anchor": "btn_cast_chip", "via": "anchor", "xml": False},
     {"name": "kit_search_results", "anchor": "page_search_editor", "via": "search", "xml": False},
 ]
-DIRECTOR_SEARCH_QUERIES = ["light", "exposure", "reset", "rim", "tron", "gaze", "step", "camera", "color", "shadow"]
+DIRECTOR_SEARCH_QUERIES = ["light", "exposure", "reset", "rim", "tron", "gaze", "step", "camera", "color", "shadow",
+                           "soft shadows", "light shape"]
 
 
 def _load_floater_registry():
@@ -2198,6 +2245,42 @@ def rules_self_test():
 
 def generation_self_test():
     """Exercise actual generated-row policy, units, and large selector shape."""
+    from unittest.mock import patch
+    header_tree = ET.fromstring('''<kit_page page="look_group/image_tab">
+      <kit_card id="fixture" title="Feature" enable_widget="master" enable_setting="Fixture">
+        <kit_row widget="body" kind="toggle" setting="Fixture" bind="setting"/>
+        <kit_option label="One" enable_widget="one" enable_setting="Fixture"/>
+        <kit_option label="Two" enable_widget="two" enable_setting="Fixture"/>
+      </kit_card></kit_page>''')
+    class HeaderXui:
+        paths = {"panel_dpage_fixture.xml": "fixture.xml"}
+        def load(self, _base):
+            return "fixture.xml", header_tree, {}, {}, {}
+    header_index = ET.Element("director_kit_index")
+    def index_line(widget, setting="Fixture"):
+        fields = [""] * 22
+        fields[0], fields[1], fields[5] = "look_group", "image_tab", "fixture"
+        fields[8], fields[11], fields[13] = widget, setting, "h"
+        return "\t".join(fields)
+    good_index = "\n".join(index_line(widget) for widget in ("master", "one", "two"))
+    with patch.object(ET, "parse", return_value=ET.ElementTree(header_index)):
+        header_index.text = good_index
+        inventory = load_generated_kit_pages(HeaderXui())
+        header_entries = build_kit_entries(inventory, [], {"Fixture": {"type": "Boolean", "default": False}}, {})
+        assert [entry["widget_name"] for entry in header_entries] == ["body", "master", "one", "two"]
+        assert all(entry["exercise"] == "toggle" and entry["header_switch"] and
+                   entry["action"] == "RUN" for entry in header_entries[1:])
+        for bad_index in ("\n".join(good_index.splitlines()[:-1]),
+                          good_index + "\n" + index_line("phantom"),
+                          good_index + "\n" + index_line("one"),
+                          good_index.replace("Fixture", "WrongSetting", 1)):
+            header_index.text = bad_index
+            try:
+                load_generated_kit_pages(HeaderXui())
+            except SystemExit:
+                pass
+            else:
+                raise AssertionError("header search/manifest coverage drift was accepted")
     fixture = ET.fromstring('''<kit_page page="look_group/image_tab"><kit_card id="fixture">
       <kit_row kind="toggle" widget="hidden" setting="Fixture" bind="setting" hidden="true"><kit_switch name="hidden" /></kit_row>
       <kit_row kind="toggle" widget="disabled" setting="Fixture" bind="setting"><kit_switch name="disabled" enabled="false" /></kit_row>

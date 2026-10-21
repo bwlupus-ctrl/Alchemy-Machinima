@@ -58,7 +58,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `tune` / `bd_shadow_res_proj` (Projector res) | `spinner` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4032` | kit `number` ↔ `BDMergeProjectorShadowResolution` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml:197` `bd_shadow_res_proj` |
 | `tune` / `shadow_blur_slider` (Blur size) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2785` | kit `slider` ↔ `RenderShadowBlurSize` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2800` `shadow_blur_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml:200` `shadow_blur_slider` |
 | `tune` / `shadow_blurdist_slider` (Blur distance) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2838` | kit `slider` ↔ `RenderShadowBlurDistFactor` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2853` `shadow_blurdist_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml:205` `shadow_blurdist_slider` |
-| `tune` / `open_lightbox_shadows` (Lightbox â€º) | none | kit-native action `floater:lightbox/shadow_settings`; no duplicate widget is required | none |
+| `tune` / `open_lightbox_shadows` (Lightbox ›) | none | kit-native action `floater:lightbox/shadow_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 

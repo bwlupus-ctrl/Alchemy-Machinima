@@ -150,7 +150,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `integration` / `tr_no_post_scale_slider` (No-post scale) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6313` | kit `slider` ↔ `TronNoPostScale` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml:682` `tr_no_post_scale_slider` |
 | `integration` / `tr_bloom_meter_scale_slider` (Bloom meter) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6316` | kit `slider` ↔ `TronBloomMeterScale` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml:687` `tr_bloom_meter_scale_slider` |
 | `adv_tron` / `tr_roto_link` (Roto Ink) | none | kit-native action `link_to:look_group/stylize_tab`; no duplicate widget is required | none |
-| `adv_tron` / `open_lightbox_tron` (Lightbox â€º) | none | kit-native action `floater:lightbox/tron_settings`; no duplicate widget is required | none |
+| `adv_tron` / `open_lightbox_tron` (Lightbox ›) | none | kit-native action `floater:lightbox/tron_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 

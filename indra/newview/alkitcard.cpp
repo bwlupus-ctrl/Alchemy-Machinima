@@ -71,7 +71,7 @@ LLSD typedOptionValue(LLControlVariable* control, const LLSD& value)
 }
 } // namespace
 
-ALKitOption::Params::Params() : label("label"), value("value"), enable_widget("enable_widget", ""), enable_setting("enable_setting", "")
+ALKitOption::Params::Params() : label("label"), value("value"), enable_widget("enable_widget", ""), enable_setting("enable_setting", ""), enable_quick("enable_quick", "")
 {
 }
 
@@ -88,6 +88,7 @@ ALKitCard::Params::Params() :
     enable_widget("enable_widget", ""),
     enable_setting("enable_setting", ""),
     enable_tooltip("enable_tooltip", ""),
+    enable_quick("enable_quick", ""),
     sel_label("sel_label", ""),
     sel_setting("sel_setting", ""),
     link_to("link_to", ""),
@@ -112,6 +113,7 @@ ALKitCard::ALKitCard(const Params& p) :
     mEnableWidget(p.enable_widget),
     mEnableSetting(p.enable_setting),
     mEnableTooltip(p.enable_tooltip),
+    mEnableQuick(p.enable_quick),
     mSelectorLabel(p.sel_label),
     mSelectorSetting(p.sel_setting),
     mLinkTo(p.link_to),
@@ -341,12 +343,13 @@ bool ALKitCard::postBuild()
         });
     addChild(mReset);
 
-    if (!mCopyType.empty())
+    if (!mCopyType.empty() || mEnable || std::any_of(mOptionSwitches.begin(), mOptionSwitches.end(),
+                                                   [](ALKitSwitch* sw) { return sw != nullptr; }))
     {
         bp.name = "kc_" + mId + "_menu";
         bp.label = "...";
         mMenuButton = LLUICtrlFactory::create<LLButton>(bp);
-        mMenuButton->setToolTip(std::string("Copy / paste this card's settings"));
+        mMenuButton->setToolTip(std::string("Card actions / Quick"));
         addChild(mMenuButton);
         LLContextMenu::Params menu_params;
         menu_params.name = "kc_" + mId + "_copy_menu";
@@ -358,6 +361,22 @@ bool ALKitCard::postBuild()
         item.label = "Copy settings";
         item.on_click.function = [this](LLUICtrl*, const LLSD&) { copySettings(); };
         menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
+        item.name = "favorite_header";
+        item.label = "Add switch to Quick";
+        item.on_click.function = [this](LLUICtrl*, const LLSD&)
+        {
+            ALKitSwitch* sw = activeHeaderSwitch();
+            if (!sw) return;
+            for (LLView* view = getParent(); view; view = view->getParent())
+                if (ALKitPage* page = dynamic_cast<ALKitPage*>(view))
+                {
+                    if (ALKitShell* shell = ALKitShell::find(this))
+                        if (headerFavoriteAllowed(sw->getName(), shell->isFavorite(page->pageKey(), sw->getName())))
+                            shell->toggleFavorite(page->pageKey(), sw->getName());
+                    break;
+                }
+        };
+        menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
         item.name = "paste_settings";
         item.label = "Paste settings";
         item.on_click.function = [this](LLUICtrl*, const LLSD&) { pasteSettings(); };
@@ -368,8 +387,33 @@ bool ALKitCard::postBuild()
             {
                 if (LLContextMenu* popup = mCardMenuHandle.get())
                 {
+                    popup->findChild<LLMenuItemGL>("copy_settings")->setVisible(!mCopyType.empty());
                     if (LLMenuItemGL* paste = popup->findChild<LLMenuItemGL>("paste_settings"))
+                    {
+                        paste->setVisible(!mCopyType.empty());
                         paste->setEnabled(sCardClipboard.type == mCopyType && sCardClipboard.values.isArray());
+                    }
+                    if (LLMenuItemGL* favorite = popup->findChild<LLMenuItemGL>("favorite_header"))
+                    {
+                        ALKitSwitch* sw = activeHeaderSwitch();
+                        const bool safe = sw && headerQuickSafe(sw->getName());
+                        favorite->setVisible(sw != nullptr);
+                        favorite->setEnabled(safe);
+                        favorite->setToolTip(LLStringExplicit(safe ? "Control this switch from Quick" :
+                            "Use this switch on its page; it is not eligible for Quick"));
+                        if (sw)
+                            for (LLView* view = getParent(); view; view = view->getParent())
+                                if (ALKitPage* page = dynamic_cast<ALKitPage*>(view))
+                                {
+                                    ALKitShell* shell = ALKitShell::find(this);
+                                    const bool existing = shell && shell->isFavorite(page->pageKey(), sw->getName());
+                                    favorite->setEnabled(headerFavoriteAllowed(sw->getName(), existing));
+                                    if (existing) favorite->setToolTip(LLStringExplicit("Remove this saved switch from Quick"));
+                                    favorite->setLabel(LLStringExplicit(existing
+                                        ? "Remove switch from Quick" : "Add switch to Quick"));
+                                    break;
+                                }
+                    }
                     popup->buildDrawLabels();
                     ALKitMenu::showContextMenu(control, popup, 0, 0);
                 }
@@ -424,6 +468,16 @@ bool ALKitCard::postBuild()
                 updateResetColor();
             }));
     }
+    auto header_changed = [this](bool)
+    {
+        if (ALKitShell* shell = ALKitShell::find(this))
+        {
+            shell->refreshChangedMarkers();
+        }
+    };
+    if (mEnable) mAmberConnections.emplace_back(mEnable->setFlipCallback(header_changed));
+    for (ALKitSwitch* sw : mOptionSwitches)
+        if (sw) mAmberConnections.emplace_back(sw->setFlipCallback(header_changed));
     updateResetColor();
 
     bool has_advanced = false;
@@ -753,16 +807,18 @@ ALKitCard::HeaderLayout ALKitCard::headerLayout(S32 width) const
     const S32 badge = mBadge.empty() ? 0 : (font ? font->getWidth(mBadge) : 80) + 8;
     const S32 count = static_cast<S32>(mHeaderPresets.size());
     const S32 left = ALKitStyle::CARD_PAD_L + title + badge + ALKitStyle::COL_GAP;
-    const bool stacked = count && (right - left - (count - 1) * ALKitStyle::COL_GAP) / count < 96;
+    const bool title_stacked = title > right - ALKitStyle::CARD_PAD_L - badge;
+    const bool stacked = title_stacked || (count && (right - left - (count - 1) * ALKitStyle::COL_GAP) / count < 96);
     const S32 preset_min_left = stacked ? ALKitStyle::CARD_PAD_L : left;
     const S32 preset_right = stacked ? width - ALKitStyle::CARD_PAD_R : right;
     const S32 preset_width = count ? llmax(1, llmin(ALKitStyle::CARD_PRESET_W,
         (preset_right - preset_min_left - (count - 1) * ALKitStyle::COL_GAP) / count)) : 0;
     const S32 preset_left = count ? preset_right - count * preset_width - (count - 1) * ALKitStyle::COL_GAP : preset_right;
-    const S32 title_width = llmax(1, llmin(title, right - ALKitStyle::CARD_PAD_L - badge));
-    return {ALKitStyle::CARD_HDR_H + (stacked ? 28 : 0), title_width, preset_left,
+    const S32 title_right = title_stacked ? width - ALKitStyle::CARD_PAD_R : right;
+    const S32 title_width = llmax(1, llmin(title, title_right - ALKitStyle::CARD_PAD_L));
+    return {ALKitStyle::CARD_HDR_H + (title_stacked ? 24 : 0) + (stacked && count ? 28 : 0), title_width, preset_left,
             preset_width,
-            llmax(0, right - ALKitStyle::CARD_PAD_L - title_width - 8)};
+            llmax(0, title_right - ALKitStyle::CARD_PAD_L - title_width - 8), title_stacked};
 }
 
 S32 ALKitCard::subHeaderHeight(const std::string& title, S32 width, bool first) const
@@ -1188,6 +1244,89 @@ bool ALKitCard::setCodeVisible(bool visible)
     return true;
 }
 
+ALKitSwitch* ALKitCard::activeHeaderSwitch() const
+{
+    if (mEnable) return mEnable;
+    return mActiveOption >= 0 && mActiveOption < (S32)mOptionSwitches.size()
+        ? mOptionSwitches[mActiveOption] : nullptr;
+}
+
+bool ALKitCard::headerQuickSafe(const std::string& widget) const
+{
+    for (ALKitOption* option : mOptions)
+        if (widget == option->enableWidget())
+            return option->enableQuick() == "setting" && !option->enableSetting().empty();
+    return widget == mEnableWidget && mEnableQuick == "setting" && !mEnableSetting.empty();
+}
+
+bool ALKitCard::headerFavoriteAllowed(const std::string& widget, bool existing) const
+{
+    // Old profiles may contain unsafe headers. Always let the user remove them.
+    return existing || headerQuickSafe(widget);
+}
+
+bool ALKitCard::headerChanged(const std::string& widget) const
+{
+    auto changed = [](const std::string& setting, ALKitSwitch* sw)
+    {
+        LLControlVariable* control = gSavedSettings.getControl(setting).get();
+        return sw && (control ? !ALKitQol::valuesEqual(control->get(), control->getDefault(), 0) : sw->isOn());
+    };
+    if ((widget.empty() || widget == mEnableWidget) && changed(mEnableSetting, headerSwitch(mEnableWidget))) return true;
+    for (ALKitOption* option : mOptions)
+        if ((widget.empty() || widget == option->enableWidget()) &&
+            changed(option->enableSetting(), headerSwitch(option->enableWidget()))) return true;
+    return false;
+}
+
+bool ALKitCard::headerTitleFits(S32 width) const
+{
+    const LLFontGL* font = ALKitStyle::sansFont("Kit13", true);
+    return font && headerLayout(width).title_width >= font->getWidth(mTitle);
+}
+
+ALKitSwitch* ALKitCard::headerSwitch(const std::string& widget) const
+{
+    if (!mEnableWidget.empty() && widget == mEnableWidget)
+        return findChild<ALKitSwitch>(widget);
+    for (S32 i = 0; i < (S32)mOptions.size(); ++i)
+        if (!widget.empty() && mOptions[i]->enableWidget() == widget)
+            return mOptionSwitches[i];
+    return nullptr;
+}
+
+std::string ALKitCard::headerLabel(const std::string& widget) const
+{
+    for (ALKitOption* option : mOptions)
+        if (option->enableWidget() == widget)
+            return mTitle + " / " + option->optionLabel();
+    return mTitle;
+}
+
+std::string ALKitCard::headerSetting(const std::string& widget) const
+{
+    for (ALKitOption* option : mOptions)
+        if (option->enableWidget() == widget)
+            return option->enableSetting();
+    return widget == mEnableWidget ? mEnableSetting : std::string();
+}
+
+bool ALKitCard::revealHeader(const std::string& widget)
+{
+    if (!headerSwitch(widget)) return false;
+    for (S32 i = 0; i < (S32)mOptions.size(); ++i)
+        if (mOptions[i]->enableWidget() == widget)
+        {
+            mActiveOption = i;
+            if (!mSelectorSetting.empty())
+                alKitSetTypedControl(gSavedSettings, mSelectorSetting, mOptions[i]->optionValue());
+            syncSelector();
+            break;
+        }
+    requestLayout();
+    return true;
+}
+
 bool ALKitCard::revealRow(ALKitRow* row)
 {
     if (!row || std::find(mRows.begin(), mRows.end(), row) == mRows.end())
@@ -1284,11 +1423,12 @@ void ALKitCard::draw()
     if (const LLFontGL* f = ALKitStyle::sansFont("Kit13", true))
     {
         const S32 title_width = mHeaderLayout.title_width;
-        f->renderUTF8(mTitle, 0, (F32)ALKitStyle::CARD_PAD_L, (F32)(getRect().getHeight() - 23),
+        const S32 title_y = getRect().getHeight() - 23 - (mHeaderLayout.title_stacked ? 24 : 0);
+        f->renderUTF8(mTitle, 0, (F32)ALKitStyle::CARD_PAD_L, (F32)title_y,
                       ALKitStyle::color(ALKitStyle::TEXT_STRONG).get(), LLFontGL::LEFT, LLFontGL::VCENTER, LLFontGL::NORMAL,
                       LLFontGL::NO_SHADOW, S32_MAX, title_width, nullptr, true);
         const S32 title_draw_width = llmin(title_width, f->getWidth(mTitle));
-        const S32 title_bottom     = getRect().getHeight() - 23 - f->getLineHeight() / 2;
+        const S32 title_bottom     = title_y - f->getLineHeight() / 2;
         ALUIPerfSelfTest::recordKitText(this, mTitle,
                                         LLRect(ALKitStyle::CARD_PAD_L, title_bottom + f->getLineHeight(),
                                                ALKitStyle::CARD_PAD_L + title_draw_width, title_bottom),
@@ -1296,7 +1436,7 @@ void ALKitCard::draw()
         if (!mBadge.empty() && mHeaderLayout.badge_width > 0)
         {
             const S32 badge_x = ALKitStyle::CARD_PAD_L + title_draw_width + 8;
-            f->renderUTF8(mBadge, 0, static_cast<F32>(badge_x), static_cast<F32>(getRect().getHeight() - 23),
+            f->renderUTF8(mBadge, 0, static_cast<F32>(badge_x), static_cast<F32>(title_y),
                           ALKitStyle::color(mBadge == "NEW" ? ALKitStyle::ACCENT : ALKitStyle::MUTED).get(), LLFontGL::LEFT,
                           LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW, S32_MAX,
                           mHeaderLayout.badge_width, nullptr, true);

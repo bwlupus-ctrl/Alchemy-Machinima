@@ -291,6 +291,7 @@ def validate_data(data: dict) -> None:
     # 2158: +1 Relight SL-shadow help readout; all existing control destinations retained.
     # 2159: +1 live Relight Preferences status row on the Soft shadows card.
     # 2160: +1 opt-in Size from prim row directly below World light size (Relight B3).
+    # B7 fix round 4 (10/21): reviewed default-deny allowlist adds no body rows; retain 2160.
     if len(pages) != 37 or row_count != 2160:
         raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2160")
     shortcuts: set[tuple[str, str, str]] = set()
@@ -1343,8 +1344,224 @@ def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[lis
     return rows
 
 
+def quick_unsafe_listener_settings(source: str, *, reviewed_observers: bool = False) -> set[str]:
+    """Resolve registrations conservatively; return settings vetoed for Quick.
+
+    Tests/central-table audits exclude all listeners by default. The supplementary
+    scan also resolves inline/aliased observer lambdas for already reviewed names.
+    Unknown controls, names, signals or callback symbols cannot establish safety.
+    """
+    source = re.sub(r'"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/',
+                    lambda m: m[0] if m[0].startswith('"') else ' ', source, flags=re.S)
+
+    def balanced(start: int, opening: str, closing: str) -> str:
+        depth = 1
+        for token in re.finditer(r'"(?:\\.|[^"\\])*"|[' + re.escape(opening + closing) + ']', source[start:]):
+            if token[0] == opening:
+                depth += 1
+            elif token[0] == closing:
+                depth -= 1
+                if not depth:
+                    return source[start:start + token.start()]
+        raise GenError("unbalanced llviewercontrol listener/function")
+
+    functions = {}
+    for match in re.finditer(r'^[ \t]*(?:[\w:<>&*]+[ \t]+)+(\w+)\s*\([^;{}]*\)\s*\{', source, re.M):
+        functions[match[1]] = balanced(match.end(), '{', '}')
+    for match in re.finditer(r'\bauto\s+(\w+)\s*=\s*\[[^\]]*\]\s*\([^;{}]*\)\s*\{', source):
+        functions[match[1]] = balanced(match.end(), '{', '}')
+    listeners = []
+    unresolved = []
+    for match in re.finditer(r'\bsetting_setup_signal_listener\s*\(', source):
+        args = balanced(match.end(), '(', ')')
+        registration = re.match(r'\s*gSavedSettings\s*,\s*([^,]+)\s*,(.*)', args, re.S)
+        if registration:
+            setting = re.fullmatch(r'"([^"]+)"', registration[1].strip())
+            if setting:
+                listeners.append((setting[1], registration[2]))
+            else:
+                # Terrain registrations construct names from a literal prefix and
+                # an index/suffix. Exclude the entire prefix, without guessing bounds.
+                prefix = re.search(r'\bconst\s+auto\s+' + re.escape(registration[1].strip()) +
+                                   r'\s*=\s*std::string\(\s*"([^"]+)"\s*\)\s*\+', source)
+                literal_range = re.search(
+                    r'for\s*\(\s*const\s+char\s*\*\s*' + re.escape(registration[1].strip()) +
+                    r'\s*:\s*\{((?:\s*"[^"]+"\s*,?)+)\}\s*\)\s*$', source[:match.start()])
+                if literal_range:
+                    listeners.extend((name, registration[2]) for name in re.findall(r'"([^"]+)"', literal_range[1]))
+                elif prefix:
+                    listeners.append((prefix[1] + "*", registration[2]))
+                else:
+                    unresolved.append(registration[2])
+    # Expand simple name/control/signal aliases before inspecting signal access.
+    # Anything more complex remains unresolved and rejects, never grants safety.
+    for match in re.finditer(r'\bget(?:Commit|Validate)?Signal\s*\(', source):
+        prefix = source[:match.start()]
+        for _ in range(8):
+            receiver = re.search(r'\b(\w+)\s*->\s*$', prefix)
+            if not receiver:
+                break
+            declarations = list(re.finditer(r'\b' + re.escape(receiver[1]) + r'\s*=\s*([^;{}]+)', prefix[:receiver.start()]))
+            if not declarations:
+                break
+            expression = declarations[-1][1].strip()
+            expression = re.sub(r'\.get\(\)$', '', expression)
+            prefix = prefix[:receiver.start()] + expression + '->'
+        control = re.search(r'gSavedSettings\s*\.\s*getControl\s*\(\s*([^()]+)\s*\)\s*->\s*$', prefix)
+        if control:
+            name = control[1].strip()
+            for _ in range(8):
+                if name.startswith('"'):
+                    break
+                definitions = list(re.finditer(r'\b' + re.escape(name) + r'\s*=\s*("[^"\n]+")', source[:match.start()]))
+                if not definitions:
+                    break
+                name = definitions[-1][1]
+            literal = re.fullmatch(r'"([^"\n]+)"', name)
+            if literal:
+                connection = re.match(r'\s*\)\s*->\s*connect\s*\(', source[match.end():])
+                callback = balanced(match.end() + connection.end(), '(', ')') if connection else ""
+                listeners.append((literal[1], callback))
+            else:
+                unresolved.append(name)
+        elif re.search(r'setting_get_control\(group, setting\)->\s*$', prefix):
+            continue  # helper definition; callers are scanned above
+        else:
+            unresolved.append(prefix[-120:])
+    reload_functions = {"setShaders", "setGraphicsLevel", "handleSetShaderChanged", "handleRenderDeferredChanged"}
+    reload_settings: set[str] = set()
+
+    def reloads(body: str) -> bool:
+        names = set(re.findall(r'\b\w+\b', re.sub(r'"(?:\\.|[^"\\])*"', '', body)))
+        writes = set(re.findall(r'gSavedSettings\s*\.\s*set\w*\s*\(\s*"([^"]+)"', body))
+        return bool(names & reload_functions or writes & reload_settings)
+
+    while True:
+        before = (len(reload_functions), len(reload_settings))
+        reload_functions.update(name for name, body in functions.items() if reloads(body))
+        reload_settings.update(setting for setting, callback in listeners if reloads(callback))
+        if before == (len(reload_functions), len(reload_settings)):
+            if unresolved:
+                raise GenError("listener uses a dynamic setting; resolve it before declaring Quick safety")
+            # The setting allowlist is the authority; unknown callback symbols veto it.
+            def unresolved_callback(callback: str) -> bool:
+                if not reviewed_observers:
+                    return True
+                # A resolved lambda is a reviewed observer; an unknown symbol,
+                # bind wrapper or separated signal alias cannot be approved here.
+                if re.match(r'\s*\[', callback):
+                    return False
+                symbol = callback.strip()
+                alias = re.search(r'\bauto\s+' + re.escape(symbol) + r'\s*=\s*\[', source) if re.fullmatch(r'\w+', symbol) else None
+                return alias is None
+            return reload_settings | {setting for setting, callback in listeners if unresolved_callback(callback)}
+
+
+def quick_safety_tripwire(allowlist: dict[str, str], sources: dict[str, str]) -> set[str]:
+    """Supplementary veto only. No result here can add a setting to Quick."""
+    unsafe = set()
+    sinks = r'\b(?:handleSetShaderChanged|setShaders|setGraphicsLevel|handleRenderDeferredChanged)\b'
+    for path, source in sources.items():
+        source = re.sub(r'"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/',
+                        lambda m: m[0] if m[0].startswith('"') else ' ', source, flags=re.S)
+        relevant = {name for name in allowlist if re.search(r'\b' + re.escape(name) + r'\b', source)}
+        if not relevant and Path(path).name != "llviewercontrol.cpp":
+            continue
+        # Scan registration contexts that name a reviewed setting; the central
+        # registration table is scanned in full, so dynamic additions reject too.
+        contexts = []
+        for match in re.finditer(r'^[ \t]*(?:[\w:<>&*]+[ \t]+)+[\w:]+\s*\([^;{}]*\)\s*\{', source, re.M):
+            depth = 1
+            for token in re.finditer(r'"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/|[{}]', source[match.end():], re.S):
+                if token[0] == '{': depth += 1
+                elif token[0] == '}': depth -= 1
+                if not depth:
+                    body = source[match.start():match.end() + token.end()]
+                    if any(re.search(r'\b' + re.escape(name) + r'\b', body) for name in relevant):
+                        contexts.append(body)
+                    break
+        if not contexts and relevant and re.search(r'\bget(?:Commit|Validate)?Signal\s*\(', source):
+            contexts = [source]  # global/initializer registration: never silently omit it
+        association_contexts = contexts
+        if Path(path).name == "llviewercontrol.cpp":
+            # Resolve the existing external constexpr setting name from its source.
+            definitions = (ROOT / "indra/newview/rlvdefines.h").read_text(encoding="utf-8")
+            value = re.search(r'constexpr std::string_view Main = ("[^"\n]+")', definitions)
+            contexts = [source.replace("RlvSettingNames::Main", value[1]) if value else source]
+        for body in contexts:
+            try:
+                registered = quick_unsafe_listener_settings(body, reviewed_observers=True)
+            except GenError as error:
+                raise GenError(f"Quick tripwire {path}: {error}") from error
+            unsafe.update(registered)
+        # Veto setting/sink associations anywhere in newview, even outside a
+        # listener. Unrelated startup setShaders calls in the same file are not
+        # setting dependencies; registrations above trace callback wrappers.
+        for statement in source.split(';'):
+            if re.search(sinks, statement):
+                unsafe.update(name for name in relevant if '"' + name + '"' in statement)
+        for body in association_contexts:
+            # Track a setting read/name through subsequent statements as well.
+            for sink in re.finditer(sinks, body):
+                unsafe.update(name for name in relevant if '"' + name + '"' in body[:sink.start()])
+    return unsafe
+
+
+def validate_quick_allowlist(allowlist: dict[str, str], used: list[str]) -> None:
+    if not allowlist or any(not isinstance(reason, str) or not reason.strip() or "\n" in reason
+                            for reason in allowlist.values()):
+        raise GenError("header_quick_allowlist requires a one-line review justification per setting")
+    if set(allowlist) - set(used):
+        raise GenError(f"Quick allowlist names unused by a header: {sorted(set(allowlist) - set(used))}")
+    if any(used.count(name) != 1 for name in allowlist):
+        raise GenError("Quick allowlist requires one entry per header (no shared setting names)")
+
+
+def classify_header_quick(root: ET.Element, policies: dict[str, str], page_key: str,
+                          reload_settings: set[str], allowlist: dict[str, str] | None = None) -> None:
+    """An explicit reviewed policy is required for every real header, with no default."""
+    for node in root.iter():
+        widget = node.get("enable_widget") if node.tag in {"kit_card", "kit_option"} else None
+        if widget:
+            destination = page_key + "/" + widget
+            policy = policies.get(destination)
+            if policy not in {"setting", "controller", "tool", "code", "reload"}:
+                raise GenError(f"header {destination} needs explicit header_quick_policy")
+            if policy == "setting" and node.get("enable_setting") not in (allowlist or {}):
+                raise GenError(f"Quick-safe header {destination} is not on header_quick_allowlist")
+            if policy == "setting" and not node.get("enable_setting"):
+                raise GenError(f"Quick-safe header {widget} must bind a setting")
+            if policy == "setting" and any(
+                    node.get("enable_setting") == setting or
+                    (setting.endswith("*") and node.get("enable_setting", "").startswith(setting[:-1]))
+                    for setting in reload_settings):
+                raise GenError(f"Quick-safe header {destination}: {node.get('enable_setting')} has a listener not proven Quick-safe")
+            node.set("enable_quick", policy)
+
+
+def header_destinations(root: ET.Element) -> list[list[str]]:
+    """The real ALKitCard switches, including selector-option headers."""
+    entries = []
+    seen = set()
+    rows = {row.get("widget") for row in root.iter("kit_row")}
+    for card in root.iter("kit_card"):
+        for option, node in [("", card)] + [(str(i), opt) for i, opt in enumerate(card.findall("kit_option"))]:
+            widget = node.get("enable_widget", "")
+            if not widget:
+                continue
+            if widget in seen or widget in rows:
+                raise GenError(f"duplicate header switch destination: {widget}")
+            seen.add(widget)
+            title = card.get("title", "")
+            label = title + (" / " + node.get("label", "") if option else "")
+            entries.append([card.get("id", ""), title, option, widget, label,
+                            node.get("enable_setting", ""), node.get("enable_tooltip", card.get("help", ""))])
+    return entries
+
+
 def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
-                generated_rows: dict[str, set[str]], page_names: dict[str, set[str]] | None = None) -> bytes:
+                generated_rows: dict[str, set[str]], page_names: dict[str, set[str]] | None = None,
+                generated_headers: dict[str, list[list[str]]] | None = None) -> bytes:
     lines: list[str] = []
     synonym_groups = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
     def esc(value) -> str:
@@ -1403,6 +1620,14 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                 indexed_rows[key].add(str(row.get("w", "")))
                 if row.get("show_if") == "never":
                     manifest_only_rows[key].add(str(row.get("w", "")))
+        for card_id, title, option, widget, label, setting, help_text in (generated_headers or {}).get(key, []):
+            fields = [group["name"], page["name"], page.get("label", ""), group.get("label", ""),
+                      "", card_id, title, option, widget, label, "toggle", setting, "0", "h", "", help_text]
+            fields += [synonym_aliases(" ".join(fields[8:16]), synonym_groups), "", "", "", "", "director"]
+            if widget in indexed_rows[key]:
+                raise GenError(f"duplicate header/row search destination: {key}/{widget}")
+            lines.append("\t".join(esc(value) for value in fields))
+            indexed_rows[key].add(widget)
     external_spec = json.loads(EXTERNAL_SEARCH_DATA.read_text(encoding="utf-8"))
     indexed_floaters = {item["name"] for item in external_spec.get("floaters", [])}
     launcher_floaters = set(re.findall(r'LLFloaterReg::showInstance\(\s*"([^"]+)"',
@@ -1417,6 +1642,7 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
         lines.append("\t".join(esc(value) for value in fields))
     for key, widgets in generated_rows.items():
         runtime_indexed = indexed_rows.get(key, set()) - manifest_only_rows.get(key, set())
+        widgets = widgets | {entry[3] for entry in (generated_headers or {}).get(key, [])}
         if classes[key] != "legacy" and runtime_indexed != widgets:
             raise GenError(f"search index/generated row drift on {key}: "
                            f"index-only={sorted(runtime_indexed - widgets)}, "
@@ -1696,6 +1922,13 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     outputs: dict[Path, bytes] = {}
     page_files: dict[str, str] = {}
     generated_rows: dict[str, set[str]] = {}
+    generated_headers: dict[str, list[list[str]]] = {}
+    allowlist = config.get("header_quick_allowlist", {})
+    sources = {str(path.relative_to(ROOT)): path.read_text(encoding="utf-8")
+               for path in (ROOT / "indra/newview").rglob("*")
+               if path.suffix in {".cpp", ".h", ".xml", ".inl"}}
+    reload_settings = quick_safety_tripwire(allowlist, sources)
+    used_header_settings = []
     page_names: dict[str, set[str]] = {}
     report_lines = [note, "", "CLASSIFICATION"]
     for group, raw_page in flatten_pages(data):
@@ -1722,8 +1955,20 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         apply_kit_xui_style(root)
         file_name = page_filename(group["name"], raw_page["name"])
         page_files[key] = file_name
-        outputs[out_dir / file_name] = xml_bytes(root, note)
         generated_rows[key] = {str(node.get("widget")) for node in root.iter("kit_row") if node.get("widget")}
+        used_header_settings.extend(n.get("enable_setting", "") for n in root.iter()
+                                    if n.tag in {"kit_card", "kit_option"} and n.get("enable_widget"))
+        classify_header_quick(root, config.get("header_quick_policy", {}), key, reload_settings, allowlist)
+        # Header setting edits use the same single observer as ordinary setting rows.
+        kit = next(root.iter("kit_page"), None)
+        if kit is not None and not config.get("p0_pages", {}).get(key, {}).get("no_history"):
+            watched = set(filter(None, kit.get("watch_settings", "").split(",")))
+            watched.update(n.get("enable_setting") for n in root.iter()
+                           if n.get("enable_quick") == "setting")
+            if watched:
+                kit.set("watch_settings", ",".join(sorted(watched)))
+        outputs[out_dir / file_name] = xml_bytes(root, note)
+        generated_headers[key] = header_destinations(root)
         page_names[key] = tree_names(root)
         data_rows = sum(1 for _ in all_rows(raw_page))
         pure_kit = all(is_pure_row(row) for row in all_rows(raw_page))
@@ -1738,6 +1983,10 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         runtime_names = names if classification != "legacy" else set()
         names_text = ", ".join(sorted(runtime_names))
         report_lines.append(f"KITNAMES {raw_page['name']}:" + (" " + names_text if names_text else ""))
+    validate_quick_allowlist(allowlist, used_header_settings)
+    # B7 (10/21): 48 real card/option header switches, independently of 2160 body rows.
+    if sum(map(len, generated_headers.values())) != 48:
+        raise GenError("card-header switch coverage drift: expected 48")
     quick = quick_page()
     apply_kit_xui_style(quick)
     page_files["quick_group/quick_tab"] = "panel_dpage_quick.xml"
@@ -1748,7 +1997,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     floater = floater_tree(floater_data, page_files, v1)
     apply_kit_xui_style(floater)
     outputs[out_dir / "floater_director_v2.xml"] = xml_bytes(floater, note)
-    outputs[out_dir / "director_kit_index.xml"] = index_bytes(data, config, classes, note, generated_rows, page_names)
+    outputs[out_dir / "director_kit_index.xml"] = index_bytes(data, config, classes, note, generated_rows, page_names, generated_headers)
     report_lines += ["", "ICON_TEXTURES KitIcon_*_16 Kit_RoundRect4 Kit_RoundRect6 Kit_Pill9 Kit_Circle Kit_SliderTrack Kit_SliderThumb",
                      "TRANSPORT take_timecode uses LLFlycamRecorder playhead at 2 Hz; generated visible",
                      "CONTROL_NAME cine_rimq_actors_alpha: data widget spelling differs; v1 setting CineRigRimActorsOnlyAlpha is authoritative"]
@@ -1760,6 +2009,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
 def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
+        config = json.loads(config_path.read_text(encoding="utf-8"))
         checks = []
         vcam = json.loads(VCAM_DATA.read_text(encoding="utf-8"))
         validate_vcam_page(vcam)
@@ -1784,6 +2034,149 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                 rejects.append(True)
         checks.append(("VCam inline selector, Source names and search (seven regressions rejected)", all(rejects)))
         index_lines = outputs[out_dir / "director_kit_index.xml"].decode("utf-8").splitlines()
+        header_hits = [line.split("\t") for line in index_lines
+                       if len(line.split("\t")) == INDEX_FIELDS and "h" in line.split("\t")[13]]
+        actual_headers = []
+        for path, payload in outputs.items():
+            if path.name.startswith("panel_dpage_"):
+                actual_headers.extend(header_destinations(ET.fromstring(payload)))
+        checks.append(("all 48 real card/option headers have unique search destinations",
+                       len(header_hits) == len(actual_headers) == 48 and
+                       {(h[8], h[11], h[7]) for h in header_hits} ==
+                       {(h[3], h[5], h[2]) for h in actual_headers}))
+        rejects = []
+        for policy in ({}, {"fixture/master": "unknown"}, {"fixture/master": "setting"}, {"other/master": "controller"}):
+            fixture = ET.fromstring('<kit_card enable_widget="master"/>')
+            try:
+                classify_header_quick(fixture, policy, "fixture", set())
+                rejects.append(False)
+            except GenError:
+                rejects.append(True)
+        checks.append(("missing/invalid/per-destination classification and setting-less Quick rejected", all(rejects)))
+        safe_headers = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
+                        for node in ET.fromstring(payload).iter() if node.get("enable_quick") == "setting"]
+        reload_settings = quick_safety_tripwire(config.get("header_quick_allowlist", {}), {str(p): p.read_text(encoding="utf-8") for p in (ROOT / "indra/newview").rglob("*.cpp")})
+        checks.append(("only 14 reviewed setting headers are Quick-safe; allowlist and tripwire agree",
+                       len(safe_headers) == 14 and all(node.get("enable_setting") and
+                       node.get("enable_setting") not in reload_settings for node in safe_headers)))
+        reload_settings |= quick_unsafe_listener_settings((ROOT / "indra/newview/llviewercontrol.cpp").read_text(encoding="utf-8").replace("RlvSettingNames::Main", '"RestrainedLove"'))
+        rejects = []
+        for setting in ("AlchemyWeatherRainOcclusion", "AlchemyWeatherLightningQualityEnabled", "RenderShadowDetail",
+                        "RenderTransparentWater", "RenderEnableEmissiveBuffer", "DebugQualityPerformance",
+                        "RenderDepthOfField"):
+            fixture = ET.fromstring(f'<kit_card enable_widget="master" enable_setting="{setting}"/>')
+            try:
+                classify_header_quick(fixture, {"fixture/master": "setting"}, "fixture", reload_settings, {setting: "reviewed fixture"})
+                rejects.append(False)
+            except GenError:
+                rejects.append(setting in reload_settings)
+        checks.append(("real weather/direct/wrapped/cross-file quality and GL-buffer listeners reject Quick-safe classification", all(rejects)))
+        synthetic = '''
+            void handleRenderDeferredChanged() { manager->setShaders(); }
+            bool wrapper() { handleRenderDeferredChanged(); return true; }
+            void chained() { gSavedSettings.setBOOL("Direct", true); }
+            // setting_setup_signal_listener(gSavedSettings, "Comment", wrapper);
+            void listeners() {
+                setting_setup_signal_listener(gSavedSettings, "Direct", wrapper);
+                setting_setup_signal_listener(gSavedSettings, "Lambda", [](const LLSD&) { manager->setShaders(); });
+                setting_setup_signal_listener(gSavedSettings, "Chained", chained);
+                gSavedSettings.getControl("Connected")->getSignal()->connect(wrapper);
+                setting_setup_signal_listener(gSavedSettings, "Runtime", []() { useUniform(); });
+                setting_setup_signal_listener(gSavedSettings, "Unresolved", missingExternalListener);
+                setting_setup_signal_listener(gSavedSettings, "Unresolved", wrapper);
+                gSavedSettings.getControl("UnknownConnected")->getSignal()->connect(missingExternalListener);
+            }
+        '''
+        checks.append(("listener parser rejects wrappers, lambdas, setting writes and unresolved callbacks; skips comments",
+                       quick_unsafe_listener_settings(synthetic) == {"Direct", "Lambda", "Chained", "Connected", "Runtime", "Unresolved", "UnknownConnected"}))
+        for setting in ("Unresolved", "UnknownConnected"):
+            fixture = ET.fromstring(f'<kit_card enable_widget="master" enable_setting="{setting}"/>')
+            try:
+                classify_header_quick(fixture, {"fixture/master": "setting"}, "fixture",
+                                      quick_unsafe_listener_settings(synthetic), {setting: "reviewed fixture"})
+                rejects_unresolved = False
+            except GenError:
+                rejects_unresolved = True
+            checks.append((f"planted unresolved listener {setting} rejects Quick-safe classification", rejects_unresolved))
+        try:
+            quick_unsafe_listener_settings('setting_setup_signal_listener(gSavedSettings, dynamic_name, handleSetShaderChanged);')
+            rejects_dynamic = False
+        except GenError:
+            rejects_dynamic = True
+        checks.append(("unresolved dynamic listener registration fails closed", rejects_dynamic))
+        dynamic = '''
+            for (const char* setting : {"RangeA", "RangeB"})
+                setting_setup_signal_listener(gSavedSettings, setting, missingExternalListener);
+            const auto terrain_name = std::string("TerrainPrefix") + std::to_string(index);
+            setting_setup_signal_listener(gSavedSettings, terrain_name, missingExternalListener);
+        '''
+        dynamic_settings = quick_unsafe_listener_settings(dynamic)
+        checks.append(("dynamic literal ranges resolved; indexed names exclude the whole prefix",
+                       dynamic_settings == {"RangeA", "RangeB", "TerrainPrefix*"}))
+        fixture = ET.fromstring('<kit_card enable_widget="master" enable_setting="TerrainPrefix99"/>')
+        try:
+            classify_header_quick(fixture, {"fixture/master": "setting"}, "fixture", dynamic_settings, {"TerrainPrefix99": "reviewed fixture"})
+            rejects_prefix = False
+        except GenError:
+            rejects_prefix = True
+        checks.append(("constructed-name listener prefix rejects Quick-safe classification", rejects_prefix))
+        # These fixtures carry actual allowlist approval, so parser misses cannot
+        # be masked by the default-deny membership check.
+        approved = {"Reviewed": "Reviewed runtime setting fixture"}
+        planted = {
+            "getCommitSignal": 'gSavedSettings.getControl("Reviewed")->getCommitSignal()->connect([](auto value) { handleSetShaderChanged(value); });',
+            "getValidateSignal": 'gSavedSettings.getControl("Reviewed")->getValidateSignal()->connect(missing);',
+            "control alias": 'auto control = gSavedSettings.getControl("Reviewed"); control->getSignal()->connect([](auto value) { handleSetShaderChanged(value); });',
+            "nonliteral name": 'const char* name = "Reviewed"; gSavedSettings.getControl(name)->getCommitSignal()->connect([](auto value) { handleSetShaderChanged(value); });',
+            "dynamic direct listener": 'gSavedSettings.getControl(dynamic_name)->getSignal()->connect(missing);',
+            "signal alias": 'auto signal = gSavedSettings.getControl("Reviewed")->getCommitSignal(); signal->connect(missing);',
+            "callback alias": 'auto callback = [](auto value) { handleSetShaderChanged(value); }; gSavedSettings.getControl("Reviewed")->getSignal()->connect(callback);',
+            "unknown callback": 'gSavedSettings.getControl("Reviewed")->getSignal()->connect(missing);',
+        }
+        for label, registration in planted.items():
+            fixture = ET.fromstring('<kit_card enable_widget="master" enable_setting="Reviewed"/>')
+            try:
+                unsafe = quick_safety_tripwire(approved, {"llviewercontrol.cpp": 'void planted() { ' + registration + ' }'})
+                classify_header_quick(fixture, {"fixture/master": "setting"}, "fixture", unsafe, approved)
+                rejected = False
+            except GenError:
+                rejected = True
+            checks.append((f"allowlisted planted {label} rejects", rejected))
+        for sink in ("handleSetShaderChanged", "setShaders", "setGraphicsLevel", "handleRenderDeferredChanged"):
+            unsafe = quick_safety_tripwire(approved, {"outside.cpp": f'void planted() {{ {sink}("Reviewed"); }}'})
+            checks.append((f"cross-file {sink} association vetoes approved setting", "Reviewed" in unsafe))
+            unsafe = quick_safety_tripwire(approved, {"outside.cpp":
+                f'void planted() {{ auto value = gSavedSettings.getBOOL("Reviewed"); {sink}(value); }}'})
+            checks.append((f"cross-statement {sink} association vetoes approved setting", "Reviewed" in unsafe))
+        for label, declared, used in (
+                ("unused name", approved, ["Other"]),
+                ("shared header name", approved, ["Reviewed", "Reviewed"]),
+                ("missing justification", {"Reviewed": ""}, ["Reviewed"])):
+            try:
+                validate_quick_allowlist(declared, used)
+                rejected = False
+            except GenError:
+                rejected = True
+            checks.append((f"allowlist {label} rejects", rejected))
+        fixture = ET.fromstring('<kit_card enable_widget="master" enable_setting="NewSetting"/>')
+        try:
+            classify_header_quick(fixture, {"fixture/master": "setting"}, "fixture", set(), approved)
+            rejected = False
+        except GenError:
+            rejected = True
+        checks.append(("new listener-free setting cannot inherit Quick approval", rejected))
+        checks.append(("Relight masters land on header switches",
+                       {h[9] for h in header_hits if h[11] in
+                        {"RenderAreaShadows", "RenderLightShapeEnable"}} == {"Soft shadows", "Light shape"}))
+        rejects = []
+        for xml in ('<kit_card enable_widget="x"><kit_row widget="x"/></kit_card>',
+                    '<kit_card enable_widget="x"><kit_option enable_widget="x"/></kit_card>'):
+            try:
+                header_destinations(ET.fromstring(xml))
+                rejects.append(False)
+            except GenError:
+                rejects.append(True)
+        checks.append(("duplicate header/row and header/option destinations rejected", all(rejects)))
         name_hits = [line.split("\t") for line in index_lines if "\tvc_camera_name\t" in line or "\tvc_media_name\t" in line]
         checks.append(("one VCam Source Name search hit", len(name_hits) == 1 and name_hits[0][8] == "vc_camera_name"))
         video_hit = next(line.split("\t") for line in index_lines if "\tvc_media_video\t" in line)

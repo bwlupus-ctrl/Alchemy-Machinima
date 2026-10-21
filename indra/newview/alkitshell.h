@@ -94,6 +94,7 @@ public:
     bool                        consumeAnchorClose(ALKitPopover* popover);
     bool                        isFavorite(const std::string&, const std::string&) const;
     void                        toggleFavorite(const std::string&, const std::string&);
+    void                        rebuildQuick();
     void                        showRowInSearch(ALKitRow*);
     void                        refreshChangedMarkers(ALKitRow* changed_row = nullptr);
     void                        setChangedOnly(bool);
@@ -138,7 +139,6 @@ private:
     void                                                 activateSearchResult(const ALKitSearch::Hit&);
     bool                                                 openExternalResult(const ALKitSearch::Hit&);
     void                                                 scheduleSearchBatch();
-    void                                                 rebuildQuick();
     void                                                 buildChangedIndex();
     void                                                 refreshChangedSetting(const std::string&);
     void                                                 refreshPageMarker(const std::string&);

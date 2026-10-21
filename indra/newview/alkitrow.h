@@ -13,6 +13,8 @@ class LLTextBox;
 class LLButton;
 class LLContextMenu;
 class ALKitCard;
+class ALKitPage;
+class ALKitSwitch;
 struct ALKitRowMeta
 {
     std::string kind, widget, label, help, keywords, setting, unit, sub, link_to, action, mirror_setting, default_value;
@@ -99,6 +101,7 @@ public:
     void setSubjectDisplayValues(S32 self_value, S32 subject_a_value,
                                  S32 subject_count);
     static ALKitRow* createProxy(ALKitRow*, const std::string&);
+    static ALKitRow* createHeaderProxy(ALKitPage*, ALKitCard*, const std::string&, const std::string&);
 
 protected:
     friend class LLUICtrlFactory;
@@ -135,6 +138,8 @@ private:
         mMirrorCommitConnection, mHistoryConnection, mValueConnection, mActionConnection;
     LLHandle<LLContextMenu> mContextMenu;
     LLHandle<ALKitRow> mSourceRow;
+    LLHandle<ALKitSwitch> mHeaderSource;
+    bool mHeaderProxy = false;
     amber_signal_t mAmberSignal;
     value_signal_t mValueSignal;
     LLFrameTimer   mFlashTimer;

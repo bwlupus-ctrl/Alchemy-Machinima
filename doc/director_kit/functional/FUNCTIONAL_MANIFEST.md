@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `142461b9ba1ecb16` (1816 interactive rows); 36
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1336 | 38 | 300 | 50 | 96 | 1 | 1821 |
-| v2 | 1717 | 0 | 452 | 71 | 0 | 11 | 2251 |
+| v2 | 1729 | 0 | 452 | 71 | 0 | 11 | 2263 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
@@ -27,10 +27,10 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | Page | Group | v1 RUN | v1 gap | v1 defer | v1 skip | v1 missing | v1 no-ex | v2 RUN | v2 gap | v2 defer | v2 skip | v2 missing | v2 no-ex |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | move_tab (Move) | cast_group | 9 | 0 | 5 | 2 | 0 | 0 | 13 | 0 | 5 | 3 | 0 | 0 |
-| path_tab (Path) | cast_group | 31 | 0 | 21 | 3 | 0 | 0 | 40 | 0 | 21 | 4 | 0 | 1 |
-| props_tab (Props) | cast_group | 18 | 0 | 10 | 3 | 0 | 0 | 20 | 0 | 10 | 3 | 0 | 0 |
-| ghosts_tab (Ghosts) | cast_group | 62 | 0 | 48 | 2 | 0 | 0 | 83 | 0 | 57 | 5 | 0 | 0 |
-| dance_tab (Dance) | cast_group | 29 | 0 | 38 | 9 | 0 | 0 | 37 | 0 | 38 | 9 | 0 | 0 |
+| path_tab (Path) | cast_group | 31 | 0 | 21 | 3 | 0 | 0 | 42 | 0 | 21 | 4 | 0 | 1 |
+| props_tab (Props) | cast_group | 18 | 0 | 10 | 3 | 0 | 0 | 23 | 0 | 10 | 3 | 0 | 0 |
+| ghosts_tab (Ghosts) | cast_group | 62 | 0 | 48 | 2 | 0 | 0 | 86 | 0 | 57 | 5 | 0 | 0 |
+| dance_tab (Dance) | cast_group | 29 | 0 | 38 | 9 | 0 | 0 | 40 | 0 | 38 | 9 | 0 | 0 |
 | animate_tab (Animate) | performance_group | 6 | 0 | 12 | 1 | 0 | 1 | 11 | 0 | 12 | 2 | 0 | 1 |
 | switchboard_tab (Switchboard) | performance_group | 14 | 0 | 14 | 0 | 0 | 0 | 19 | 0 | 14 | 1 | 0 | 0 |
 | gaze_tab (Gaze) | performance_group | 14 | 0 | 101 | 3 | 0 | 0 | 15 | 0 | 107 | 3 | 0 | 0 |
@@ -45,7 +45,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | focus_tab (Focus) | lens_group | 14 | 0 | 0 | 0 | 0 | 0 | 16 | 0 | 0 | 0 | 0 | 0 |
 | filters_tab (Filters) | lens_group | 28 | 0 | 1 | 0 | 0 | 0 | 32 | 0 | 1 | 0 | 0 | 0 |
 | diopter_tab (Diopter) | lens_group | 4 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 |
-| cine_light_rig_tab (Rig) | light_group | 150 | 12 | 4 | 3 | 5 | 0 | 190 | 0 | 4 | 4 | 0 | 1 |
+| cine_light_rig_tab (Rig) | light_group | 150 | 12 | 4 | 3 | 5 | 0 | 191 | 0 | 4 | 4 | 0 | 1 |
 | light_rim_tab (Rim) | light_group | 42 | 0 | 1 | 0 | 0 | 0 | 68 | 0 | 1 | 1 | 0 | 0 |
 | exposure_tab (Exposure) | light_group | 23 | 1 | 0 | 0 | 0 | 0 | 25 | 0 | 0 | 0 | 0 | 0 |
 | practicals_tab (Practicals) | light_group | 12 | 0 | 1 | 1 | 1 | 0 | 14 | 0 | 1 | 1 | 0 | 0 |
@@ -64,63 +64,82 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | scene_options_tab (Scene) | capture_group | 1 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 |
 | director_settings_tab (director_settings_tab) |  | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 | 0 | 3 | 0 | 0 |
 
+## Card-header switches
+
+Every real card/option enable switch is searchable. Only explicitly classified safe setting headers offer Quick tiles; the runtime exercises the real widget. Search/index/manifest drift is fatal.
+
+| Page | Header | Widget | Setting / callback owner | Exercise | Quick policy |
+|---|---|---|---|---|---|
+| frame_orbit_tab | Auto-reframe | auto_frame_enabled | CinematicAutoFrameEnabled | toggle | controller |
+| frame_orbit_tab | Flycam orbit | FlycamOrbitEnabled | FlycamOrbitEnabled | toggle | controller |
+| operator_tab | Operator style | CameraShakeApplyActive | CameraShakeApplyActive | toggle | controller |
+| shot_tab | Camera move | CinematicCamEnabled | CinematicCamEnabled | toggle | controller |
+| shot_tab | Auto switcher | switcher_armed | DirectorSwitcherArmed | toggle | controller |
+| shot_tab | Cut transition | switcher_ease | DirectorSwitcherEaseCuts | toggle | controller |
+| shot_tab | World slow-mo | switcher_ease_freeze | DirectorSwitcherEaseFreeze | toggle | controller |
+| dance_tab | Auto-advance | db_auto_advance | LLFloaterDirector::bindCameraPage | toggle | code |
+| dance_tab | Blocking on | db_blocking_on | LLFloaterDirector::bindCameraPage | toggle | code |
+| dance_tab | Wave | db_wave_enable | LLFloaterDirector::bindCameraPage | toggle | code |
+| ghosts_tab | Chaos & speed | chaos_check | LLFloaterDirector::bindCameraPage | toggle | code |
+| ghosts_tab | Auto-animate | autoanim_check | LLFloaterDirector::bindCameraPage | toggle | code |
+| ghosts_tab | Head gaze | lens_gaze_check | LLFloaterDirector::bindCameraPage | toggle | code |
+| move_tab | Custom walk anim | custom_anim_check | ActorMoverUseCustomAnim | toggle | controller |
+| path_tab | Edit in world | edit_mode_check | LLFloaterDirector::bindPathPage | toggle | tool |
+| path_tab | Pose preview clones | onion_skin_check | PathShowOnionSkin | toggle | controller |
+| path_tab | Node camera | path_camera_enable_check | PathCameraEnabled | toggle | controller |
+| path_tab | Camera sync | sync_take_check | LLFloaterDirector::bindPathPage | toggle | controller |
+| props_tab | Hover | hover_on_check | ALPanelPropMover::postBuild | toggle | controller |
+| props_tab | Rock | rock_on_check | ALPanelPropMover::postBuild | toggle | controller |
+| props_tab | Spin | spin_on_check | ALPanelPropMover::postBuild | toggle | controller |
+| filters_tab | Graduated ND | gradnd_enable_check | RenderGradNDEnabled | toggle | setting |
+| filters_tab | Polarizer | polarizer_enable_check | RenderPolarizerEnabled | toggle | setting |
+| filters_tab | Infrared film | ir_enabled | RenderInfraredEnabled | toggle | setting |
+| filters_tab | Soft edge | softedge_enabled | RenderSoftEdgeEnabled | toggle | setting |
+| focus_tab | Depth of field | dof_enable_check | RenderDepthOfField | toggle | reload |
+| focus_tab | Composition guide | ShowGuides | RenderCompositionGuide | toggle | setting |
+| cine_light_rig_tab | Easy probe | cine_easy_probe_enable | CineLightRigLiveProbeEnabled | toggle | controller |
+| cine_light_rig_tab | Who's lit | cine_group_enable | ALPanelCineLightRig::postBuild | toggle | code |
+| cine_light_rig_tab | Lights / Key | cine_key_on | CineLightRigKeyOn | toggle | controller |
+| cine_light_rig_tab | Lights / Fill | cine_fill_on | CineLightRigFillOn | toggle | controller |
+| cine_light_rig_tab | Lights / Back | cine_rim_on | CineLightRigRimOn | toggle | controller |
+| cine_light_rig_tab | Lights / BG | cine_bg_on | CineLightRigBgOn | toggle | controller |
+| cine_light_rig_tab | Eye catchlight | cine_catchlight | CineLightRigCatchlight | toggle | controller |
+| cine_light_rig_tab | Live probe | cine_live_probe_enable | CineLightRigLiveProbeEnabled | toggle | controller |
+| cine_light_rig_tab | Night mask | cine_night_mask_enable | CineLightRigNightMaskEnabled | toggle | controller |
+| light_rim_tab | Light wrap | cine_rimq_wrap_enable | CineRigRimWrapEnabled | toggle | setting |
+| light_rim_tab | Light shape | relight_shape_enable | RenderLightShapeEnable | toggle | setting |
+| light_rim_tab | Soft shadows | area_shadows_enable | RenderAreaShadows | toggle | setting |
+| gaze_tab | Look at camera | look_at_camera_enabled | DirectorLookAtCameraEnabled | toggle | controller |
+| atmosphere_tab | Projector Cones | projector_cones_enable_check | BDMergeProjectorVolumetrics | toggle | setting |
+| atmosphere_tab | Soft Shadows | soft_shadows_enable_check | BDMergeSoftProjectorShadows | toggle | setting |
+| atmosphere_tab | Fog volumes | localfog_master | BDMergeLocalFogVolumes | toggle | setting |
+| weather_tab | Rain | weather_rain_enabled | AlchemyWeatherRainEnabled | toggle | setting |
+| weather_tab | Splashes | weather_splash_enabled | AlchemyWeatherSplashEnabled | toggle | setting |
+| weather_tab | Rain shelter | weather_rain_occlusion | AlchemyWeatherRainOcclusion | toggle | reload |
+| weather_tab | Lightning | weather_lightning_enabled | AlchemyWeatherLightningEnabled | toggle | setting |
+| weather_tab | Cinematic lightning | weather_lightning_quality_enabled | AlchemyWeatherLightningQualityEnabled | toggle | reload |
+
 ## Special probes
 
 | Probe | Version | Page | Widget | Exercise | Expect |
 |---|---|---|---|---|---|
-| enable_switch | v2 | frame_orbit_tab | auto_frame_enabled | toggle | CinematicAutoFrameEnabled = true |
-| enable_switch | v2 | frame_orbit_tab | FlycamOrbitEnabled | toggle | FlycamOrbitEnabled = true |
-| enable_switch | v2 | operator_tab | CameraShakeApplyActive | toggle | CameraShakeApplyActive = true |
-| enable_switch | v2 | shot_tab | CinematicCamEnabled | toggle | CinematicCamEnabled = true |
-| enable_switch | v2 | shot_tab | switcher_armed | toggle | DirectorSwitcherArmed = true |
-| enable_switch | v2 | shot_tab | switcher_ease | toggle | DirectorSwitcherEaseCuts = true |
-| enable_switch | v2 | shot_tab | switcher_ease_freeze | toggle | DirectorSwitcherEaseFreeze = true |
 | None | v2 | shot_tab | kc_move_settings_selector | select_item | CinematicCamMode = 3 |
 | page_master | v2 | vcam_tab | vc_enable | toggle | PrismLensEnabled = true |
-| enable_switch | v2 | move_tab | custom_anim_check | toggle | ActorMoverUseCustomAnim = true |
-| enable_switch | v2 | path_tab | onion_skin_check | toggle | PathShowOnionSkin = true |
-| enable_switch | v2 | path_tab | path_camera_enable_check | toggle | PathCameraEnabled = true |
-| enable_switch | v2 | filters_tab | gradnd_enable_check | toggle | RenderGradNDEnabled = true |
-| enable_switch | v2 | filters_tab | polarizer_enable_check | toggle | RenderPolarizerEnabled = true |
-| enable_switch | v2 | filters_tab | ir_enabled | toggle | RenderInfraredEnabled = true |
-| enable_switch | v2 | filters_tab | softedge_enabled | toggle | RenderSoftEdgeEnabled = true |
-| enable_switch | v2 | focus_tab | dof_enable_check | toggle | RenderDepthOfField = true |
-| enable_switch | v2 | focus_tab | ShowGuides | toggle | RenderCompositionGuide = true |
 | page_master | v2 | actors_tab | chk_enabled | toggle | AvatarLightResponseEnabled = false |
 | page_master | v2 | cine_light_rig_tab | cine_enabled | toggle | CineLightRigEnabled = true |
-| enable_switch | v2 | cine_light_rig_tab | cine_easy_probe_enable | toggle | CineLightRigLiveProbeEnabled = true |
-| enable_switch | v2 | cine_light_rig_tab | cine_key_on | toggle | CineLightRigKeyOn = false |
-| enable_switch | v2 | cine_light_rig_tab | cine_fill_on | toggle | CineLightRigFillOn = false |
-| enable_switch | v2 | cine_light_rig_tab | cine_rim_on | toggle | CineLightRigRimOn = false |
-| enable_switch | v2 | cine_light_rig_tab | cine_bg_on | toggle | CineLightRigBgOn = true |
-| enable_switch | v2 | cine_light_rig_tab | cine_catchlight | toggle | CineLightRigCatchlight = true |
-| enable_switch | v2 | cine_light_rig_tab | cine_live_probe_enable | toggle | CineLightRigLiveProbeEnabled = true |
-| enable_switch | v2 | cine_light_rig_tab | cine_night_mask_enable | toggle | CineLightRigNightMaskEnabled = true |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:Key | click | DirectorV2SelectedLight = 0 |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:Fill | click | DirectorV2SelectedLight = 1 |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:Back | click | DirectorV2SelectedLight = 2 |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:BG | click | DirectorV2SelectedLight = 3 |
 | page_master | v2 | light_rim_tab | cine_rig_rim_enable | toggle | CineRigRimEnabled = true |
-| enable_switch | v2 | light_rim_tab | cine_rimq_wrap_enable | toggle | CineRigRimWrapEnabled = true |
-| enable_switch | v2 | light_rim_tab | relight_shape_enable | toggle | RenderLightShapeEnable = true |
-| enable_switch | v2 | light_rim_tab | area_shadows_enable | toggle | RenderAreaShadows = true |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:Key | click | DirectorV2SelectedLight = 0 |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:Fill | click | DirectorV2SelectedLight = 1 |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:Back | click | DirectorV2SelectedLight = 2 |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:BG | click | DirectorV2SelectedLight = 3 |
 | preset_strip | v2 | light_rim_tab | preset_strip:rig_rim | select_item | CineRigRimMasterGain = 0.6 |
 | page_master | v2 | stepped_tab | sa_enable | toggle | StepAnimEnabled = true |
-| enable_switch | v2 | gaze_tab | look_at_camera_enabled | toggle | DirectorLookAtCameraEnabled = true |
 | page_master | v2 | polish_tab | polish_master_check | toggle | ALPolishEnabled = false |
-| enable_switch | v2 | atmosphere_tab | projector_cones_enable_check | toggle | BDMergeProjectorVolumetrics = true |
-| enable_switch | v2 | atmosphere_tab | soft_shadows_enable_check | toggle | BDMergeSoftProjectorShadows = true |
-| enable_switch | v2 | atmosphere_tab | localfog_master | toggle | BDMergeLocalFogVolumes = true |
 | page_master | v2 | weather_tab | weather_enabled | toggle | AlchemyWeatherEnabled = true |
-| enable_switch | v2 | weather_tab | weather_rain_enabled | toggle | AlchemyWeatherRainEnabled = false |
-| enable_switch | v2 | weather_tab | weather_splash_enabled | toggle | AlchemyWeatherSplashEnabled = false |
-| enable_switch | v2 | weather_tab | weather_rain_occlusion | toggle | AlchemyWeatherRainOcclusion = true |
-| enable_switch | v2 | weather_tab | weather_lightning_enabled | toggle | AlchemyWeatherLightningEnabled = false |
-| enable_switch | v2 | weather_tab | weather_lightning_quality_enabled | toggle | AlchemyWeatherLightningQualityEnabled = true |
 | page_master | v1 | cine_light_rig_tab | cine_enabled | toggle | CineLightRigEnabled = true |
 | page_master | v1 | light_rim_tab | cine_rig_rim_enable | toggle | CineRigRimEnabled = true |
 | weather_master | v1 | weather_tab | weather_enabled | toggle | AlchemyWeatherEnabled = true |
@@ -222,7 +241,7 @@ Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to e
 - Setting min, max and increment come from the XUI element only. Settings XML carries no range.
 - v2 launcher stubs (`v2_launcher_redirect`) host their controls in the v1 owner floater that they open; test them through the launcher.
 - XUI lookup warnings: 5 (widgets whose CSV name has no named XUI element, usually unnamed `check_box`/`slider` rows, or settings-only names). The setting still comes from the CSV; the full list is in `meta.warnings` of the JSON.
-- Coverage check: every interactive legacy CSV row yields one entry per applicable version; every converted v2 page is instead inventoried from its generated `panel_dpage_*.xml` `kit_row` metadata.
+- Coverage check: every interactive legacy CSV row yields one entry per applicable version; every converted v2 page is instead inventoried from its generated `panel_dpage_*.xml` body rows and card/option header switches.
 
 ## Director rule checks (runtime, `-Functional -DirectorV2` and `-InWorld`)
 
@@ -267,6 +286,6 @@ These run after the manifest rows inside the same session. They are viewer-local
 - no oracle, an oracle that proves nothing, a failed row, or a control with no recorded result FAILS
 - skipped or excluded rows (including every in-world exclusion) are listed as SKIP with their reason, never PASS
 
-Registry: 38 pages in 10 groups (9 rail groups, Settings via the gear), 17 link rows/cards, 6 popovers, 10 search queries.
+Registry: 38 pages in 10 groups (9 rail groups, Settings via the gear), 17 link rows/cards, 6 popovers, 12 search queries.
 
 Known-legacy pages (0 of at most 0; shrink-only): .
