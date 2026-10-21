@@ -1559,7 +1559,7 @@ public:
 
     // copy of the color/depth buffer just before gamma correction
     // for use by SSR
-    // [RelightQ] Main-view-only channels; auxiliary views never inherit them.
+    // [RelightQ] Channels belong to the current view only.
     bool areaShadowsAllowedThisView() const;
     bool areaShadowsActive() const;
     void logRelightTake(const char* trigger) const;
@@ -1576,6 +1576,15 @@ public:
     // Diagnostics only: preserve the last allowed pass across auxiliary views.
     ALRelight::AreaTakeState mRelightAreaTake;
     std::array<LLUUID, MAX_SPOT_SHADOWS> mRelightAreaSlotIDs;
+    // Opt-in Prism transaction; area targets remain owned by the scratch pool.
+    bool mPrismAreaStateSaved = false;
+    bool mPrismAreaTiled = false;
+    bool mPrismSavedAreaValid = false;
+    U32 mPrismSavedAreaCount = 0;
+    std::array<LLUUID, 8> mPrismSavedAreaIDs;
+    ALRelight::AreaTakeState mPrismSavedAreaTake;
+    std::array<LLUUID, MAX_SPOT_SHADOWS> mPrismSavedAreaSlotIDs;
+    ALAreaShadow::FeedPasses mPrismAreaPasses;
     LLRenderTarget          mSceneMap;
 
     // [BDMerge G3.3 Phase 1 item 3] half-resolution scratch target the projector
@@ -2043,14 +2052,18 @@ protected:
     //
     struct Light
     {
-        Light(LLDrawable* ptr, F32 d, F32 f = 0.0f)
+        Light(LLDrawable* ptr, F32 d, F32 f = 0.0f, const LLUUID& area_feed_id = LLUUID::null)
             : drawable(ptr),
               dist(d),
-              fade(f)
+              fade(f),
+              areaFeedID(area_feed_id)
         {}
         LLPointer<LLDrawable> drawable;
         F32 dist;
         F32 fade;
+        // Non-null only for the opt-in, stateless feed collector. Main-view
+        // ties keep their existing pointer order and native auction inputs.
+        LLUUID areaFeedID;
         struct compare
         {
             bool operator()(const Light& a, const Light& b) const
@@ -2059,6 +2072,8 @@ protected:
                     return true;
                 else if ( a.dist > b.dist )
                     return false;
+                else if (a.areaFeedID != b.areaFeedID)
+                    return a.areaFeedID < b.areaFeedID;
                 else
                     return a.drawable < b.drawable;
             }

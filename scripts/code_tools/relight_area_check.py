@@ -65,6 +65,7 @@ assert np.any((blocked[:,:16,0]>0)&(blocked[:,:16,0]<255)),'area penumbra contro
 # this small GPU fixture. Compare all seven persistent channels across K=7/8.
 import runpy
 policy=runpy.run_path(str(Path(__file__).with_name('relight_area_policy_check.py')))['check_policy']()
+runpy.run_path(str(Path(__file__).with_name('relight_vcam_check.py')))['check_vcam']()
 ui(loc(area_gather,b'area_samples'),policy['samples']);ui(loc(area_gather,b'area_steps'),policy['steps'])
 persistent={}
 for visible in (7,8):
@@ -464,3 +465,40 @@ for label,samples,steps,half in [('Low',4,8,True),('Medium',8,12,True),
     assert partial(large)>partial(small),('source radius widens penumbra',label)
     print('[RelightQ] contact hardening PASS %s S=%d steps=%d: contact/separated partial pixels %d/%d; live radius, zero fallback and deterministic raw gather' %
           (label,samples,steps,partial(contact),partial(separated)),flush=True)
+
+# Execute the production allocation/dispatch/ownership blocks with real GL
+# wrappers and allocation counters before the independent camera oracle sweep.
+from relight_vcam_dispatch_check import check_dispatch
+check_dispatch(globals())
+
+# Independent camera alignment oracle sweep (ownership is exercised above).
+for feeds in (1,2,4):
+    for slot in range(feeds):
+        # Use full and odd extents and two distinct eyes from the validated
+        # half-resolution fixture, with both boundaries inside each camera.
+        width,height=((64,48),(63,47),(32,24),(64,48))[slot]
+        frame=1-slot%2
+        fixture=camera_fixture(width,height,frame)
+        current=camera_visibility(fixture,True)
+        view,proj,depth,normals,wall,blocker,light=fixture
+        height,width=depth.shape[:2]
+        light_world=np.array([1.6,0,-2])
+        # Include the production normal receiver offset, as in the existing
+        # camera oracle above; an unoffset wall is a different ray origin.
+        wall_view=np.concatenate([wall,np.ones((height,width,1))],axis=2)@view.T
+        bias=np.maximum(.02,1.5*np.maximum(-2*wall_view[:,:,2]/(proj[0,0]*((width+1)//2)),
+                                          -2*wall_view[:,:,2]/(proj[1,1]*((height+1)//2))))
+        origin=wall.copy();origin[:,:,2]+=bias
+        hit=origin+(light_world-origin)*((-4-origin[:,:,2])/(light_world[2]-origin[:,:,2]))[:,:,None]
+        clip=np.concatenate([hit,np.ones((height,width,1))],axis=2)@(proj@view).T
+        pixel=np.floor((clip[:,:,:2]/clip[:,:,3:]*.5+.5)*np.array([width,height])+1.e-3).astype(int)
+        on_screen=np.all((pixel>=0)&(pixel<np.array([width,height])),axis=2)
+        pixel=np.clip(pixel,0,np.array([width-1,height-1]))
+        expected=on_screen&blocker[pixel[:,:,1],pixel[:,:,0]]&~blocker
+        oracle=np.full_like(current,255);oracle[expected]=0
+        edges,oracle_edges=shadow_edges(current),shadow_edges(oracle)
+        assert len(edges)==len(oracle_edges)==2 and np.max(abs(edges-oracle_edges))<=1,('feed camera alignment',feeds,slot,edges,oracle_edges)
+        stale=camera_visibility(fixture,True,stale=camera_fixture(width,height,1-frame))
+        assert not np.array_equal(current,stale),'feed camera stale-transform negative control'
+        assert np.array_equal(current,camera_visibility(fixture,True)),'feed deterministic current frame'
+    print('[RelightQ] VCam camera oracle PASS %d feeds: own depth/normal/camera/light transforms and odd/divisor extents, half-res <=1px alignment; stale-camera negative controls' % feeds,flush=True)

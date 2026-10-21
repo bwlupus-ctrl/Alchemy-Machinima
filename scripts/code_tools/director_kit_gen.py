@@ -294,8 +294,10 @@ def validate_data(data: dict) -> None:
     # B7 fix round 4 (10/21): reviewed default-deny allowlist adds no body rows; retain 2160.
     # B9 (10/21): read-only take records use the existing transport; no new UI rows, retain 2160.
     # B9 fix round 1: dedicated background take writer adds no widgets; retain 2160.
-    if len(pages) != 37 or row_count != 2160:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2160")
+    # B8 (10/21): +1 opt-in Also in VCam feeds row on the Soft shadows card.
+    # B8 fix round 1: scratch lifetime/isolation/budget fixes add no rows; retain 2161.
+    if len(pages) != 37 or row_count != 2161:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2161")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

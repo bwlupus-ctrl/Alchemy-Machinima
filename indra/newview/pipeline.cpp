@@ -1724,6 +1724,9 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
 // caller outside the acquire/release pair can partially tear down an entry.
 static void release_prism_scratch_entry(LLPipeline::PrismLensScratch& entry)
 {
+    for (auto& target : entry.rt.areaGather) target.release();
+    for (auto& target : entry.rt.areaScratch) target.release();
+    for (auto& target : entry.rt.areaVisibility) target.release();
     entry.rt.actorMask.release(); // [ActorMask] Before shared depth owner
     entry.rt.actorMaskDepthSrc = 0;
     entry.rt.silCover.release(); // [AvatarSilhouette] Before shared depth owner
@@ -11202,6 +11205,8 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             gSavedSettings, "RenderLocalLightCount", 256);
         static LLCachedControl<F32> prism_light_scale(
             gSavedSettings, "AlchemyGlobalLightScale", 1.f);
+        static LLCachedControl<bool> area(gSavedSettings, "RenderAreaShadows", false);
+        const bool stable_area_feed = area() && areaShadowsAllowedThisView();
         if (prism_local_light_count < 1)
         {
             return;
@@ -11269,7 +11274,8 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             if (dist < max_dist || is_spot)
             {
                 // Fully visible avoids setupHWLights' in-place fade-clock write.
-                mNearbyLights.insert(Light(drawable, dist, LIGHT_FADE_TIME));
+                mNearbyLights.insert(Light(drawable, dist, LIGHT_FADE_TIME,
+                    stable_area_feed ? light->getID() : LLUUID::null));
             }
         }
         return;
@@ -11458,6 +11464,21 @@ bool LLPipeline::beginPrismAuxiliaryState()
     }
 
     mPrismAuxiliaryStateActive = true;
+    static LLCachedControl<bool> area(gSavedSettings, "RenderAreaShadows", false);
+    static LLCachedControl<bool> area_feeds(gSavedSettings, "RenderAreaShadowsVCam", false);
+    mPrismAreaStateSaved = area() && area_feeds();
+    if (mPrismAreaStateSaved)
+    {
+        mPrismAreaTiled = LLViewerCamera::instance().getZoomFactor() > 1.f;
+        mPrismSavedAreaValid = mAreaShadowValid;
+        mPrismSavedAreaCount = mAreaShadowCount;
+        mPrismSavedAreaIDs = mAreaShadowIDs;
+        mPrismSavedAreaTake = mRelightAreaTake;
+        mPrismSavedAreaSlotIDs = mRelightAreaSlotIDs;
+        // Geometry/forward consumers must not see the main eye's channels.
+        mAreaShadowValid = false;
+        mAreaShadowCount = 0;
+    }
     mPrismSavedNearbyLights = mNearbyLights;
     // No inherited main-eye entries in the auxiliary list. Main drawable bits
     // remain as-is and are ignored by calcNearbyLights' Prism-only builder.
@@ -11627,6 +11648,16 @@ void LLPipeline::endPrismAuxiliaryState()
     if (!mPrismAuxiliaryStateActive)
     {
         return;
+    }
+
+    if (mPrismAreaStateSaved)
+    {
+        mAreaShadowValid = mPrismSavedAreaValid;
+        mAreaShadowCount = mPrismSavedAreaCount;
+        mAreaShadowIDs = mPrismSavedAreaIDs;
+        mRelightAreaTake = mPrismSavedAreaTake;
+        mRelightAreaSlotIDs = mPrismSavedAreaSlotIDs;
+        mPrismAreaStateSaved = false;
     }
 
     // Discard the temporary source-eye set and restore the main-eye membership.
@@ -26567,8 +26598,14 @@ const char* LLPipeline::actorMaskParityPathInconclusiveReason() const
 // [RelightQ] One view policy for allocation, dispatch and every channel consumer.
 bool LLPipeline::areaShadowsAllowedThisView() const
 {
+    static LLCachedControl<bool> feeds(gSavedSettings, "RenderAreaShadowsVCam", false);
+    // Only the scoped, exact-size camera renderer may opt in. Preview atlas,
+    // probe/mirror and tiled snapshot renders retain their exclusions.
+    const bool feed = feeds() && mPrismAreaStateSaved && !sPrismPreviewRender &&
+        mActivePrismLensScratch && mRT == &mActivePrismLensScratch->rt && mRT != &mMainRT;
     return ALAreaShadow::allowed({gCubeSnapshot, sPrismLensRender, sRenderingHUDs,
-        sImpostorRender, sReflectionRender, LLViewerCamera::instance().getZoomFactor() > 1.f});
+        sImpostorRender, sReflectionRender, LLViewerCamera::instance().getZoomFactor() > 1.f ||
+            (sPrismLensRender && mPrismAreaStateSaved && mPrismAreaTiled)},feed);
 }
 
 bool LLPipeline::areaShadowsActive() const
@@ -26603,7 +26640,7 @@ void LLPipeline::logRelightTake(const char* trigger) const
     LLSD settings;
     for (const char* key : {"RenderLightShapeEnable", "RenderLocalLightPhysicalFalloff",
         "RenderLocalLightDefaultRadius", "RenderLocalLightSizeFromPrim", "RenderLocalLightNearFloor",
-        "RenderLocalLightPhysicalMaxBoost", "RenderAreaShadows", "RenderAreaShadowLights",
+        "RenderLocalLightPhysicalMaxBoost", "RenderAreaShadows", "RenderAreaShadowsVCam", "RenderAreaShadowLights",
         "RenderAreaShadowSamples", "RenderAreaShadowSteps", "RenderAreaShadowMaxDist",
         "RenderAreaShadowThickness", "RenderAreaShadowHalfRes", "RenderAreaShadowDenoise",
         "RenderAreaShadowLightBias", "RenderAreaShadowDebugView", "RenderAreaShadowBudget",
@@ -26667,8 +26704,19 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     bool actor_ready, bool actor_as_world, bool actor_excluded)
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "RenderAreaShadows", false);
+    static LLCachedControl<bool> feeds(gSavedSettings, "RenderAreaShadowsVCam", false);
     mAreaShadowValid = false;
     mAreaShadowCount = 0;
+    if (!enabled() || !feeds())
+    {
+        // Lazy OFF cleanup includes inactive size buckets and partial targets.
+        for (auto& entry : mPrismLensScratchPool)
+        {
+            for (auto* targets : {&entry.rt.areaGather, &entry.rt.areaScratch, &entry.rt.areaVisibility})
+                for (auto& target : *targets)
+                    if (target.isComplete()) target.release();
+        }
+    }
     if (!enabled())
     {
         if (mAreaShadowQueries[0])
@@ -26859,16 +26907,24 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     LLGLDepthTest depth(GL_FALSE,GL_FALSE);
     const U32 width = mRT->deferredScreen.getWidth(), height = mRT->deferredScreen.getHeight();
     static LLCachedControl<S32> budget(gSavedSettings, "RenderAreaShadowBudget", 1500);
-    const auto work = ALAreaShadow::workload({samples(),steps(),half()},width,height,
-        selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)));
+    const auto work = sPrismLensRender ? ALAreaShadow::feedWorkload({samples(),steps(),half()},
+        mMainRT.deferredScreen.getWidth(),mMainRT.deferredScreen.getHeight(),width,height,
+        selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),LLPrismLens::MAX_CAPTURES) :
+        ALAreaShadow::workload({samples(),steps(),half()},width,height,
+            selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)));
     mRelightAreaTake.work = work;
     mRelightAreaTake.planned = true;
     mRelightAreaTake.status = "budget_rejected";
+    if (sPrismLensRender)
+        LL_DEBUGS("RelightQ") << "[RelightQ] VCam budget " << (work.channels ? "PASS" : "SKIP")
+            << " target=" << width << "x" << height << " K=" << selected.size
+            << " S=" << work.q.samples << " steps=" << work.q.steps << " half=" << work.q.half
+            << " iterations=" << work.iterations << " allowance=" << work.budget << LL_ENDL;
     // Include inputs and effective plan so clamp changes (including recovery) log once.
     const std::array<S32,11> plan = {samples(),steps(),half(),(S32)width,(S32)height,
         (S32)selected.size,budget(),work.q.samples,work.q.steps,work.q.half,llclamp(cap(),1,8)};
     static std::array<S32,11> previous = {};
-    if (plan != previous)
+    if (!sPrismLensRender && plan != previous)
     {
         const bool clamped = work.q.samples != samples() || work.q.steps != steps() ||
             work.q.half != half() || !work.channels;
@@ -26883,6 +26939,9 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         previous = plan;
     }
     if (!work.channels) return;
+    // Count actual passes, including repeated renders of one Gate source.
+    // The frame number only resets accounting; it never seeds shader output.
+    if (sPrismLensRender && !mPrismAreaPasses.admit(gFrameCount,LLPrismLens::MAX_CAPTURES)) return;
     mRelightAreaTake.status = "allocation_failed";
     const U32 w = work.q.half ? (width+1)/2 : width, h = work.q.half ? (height+1)/2 : height;
     const U32 planes = (selected.size+3)/4;
@@ -26895,7 +26954,10 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     {
         if (plane >= planes)
         {
-            mRT->areaGather[plane].release(); mRT->areaScratch[plane].release(); mRT->areaVisibility[plane].release();
+            if (!sPrismLensRender)
+            {
+                mRT->areaGather[plane].release(); mRT->areaScratch[plane].release(); mRT->areaVisibility[plane].release();
+            }
             continue;
         }
         if (!ensure(mRT->areaGather[plane],w,h) || !ensure(mRT->areaScratch[plane],w,h) ||
@@ -26910,8 +26972,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     }
     // Asynchronous timestamps: never wait, never nest a TIME_ELAPSED query.
     // Reuse the pair only when its previous result is available.
-    if (!mAreaShadowQueries[0]) glGenQueries(2,mAreaShadowQueries);
-    if (mAreaShadowQueryPending)
+    if (!sPrismLensRender && !mAreaShadowQueries[0]) glGenQueries(2,mAreaShadowQueries);
+    if (!sPrismLensRender && mAreaShadowQueryPending)
     {
         GLint available = GL_FALSE;
         glGetQueryObjectiv(mAreaShadowQueries[1],GL_QUERY_RESULT_AVAILABLE,&available);
@@ -26924,7 +26986,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             mAreaShadowQueryPending = false;
         }
     }
-    const bool measure = !mAreaShadowQueryPending;
+    const bool measure = !sPrismLensRender && !mAreaShadowQueryPending;
     if (measure) glQueryCounter(mAreaShadowQueries[0],GL_TIMESTAMP);
     const F32 resolution_scale = static_cast<F32>(height)/1080.f;
     const F32 filter_setting = denoise();
@@ -27003,7 +27065,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     mAreaShadowValid = true;
     mRelightAreaTake.status = "rendered";
     static LLFrameTimer summary;
-    if (summary.getElapsedTimeF32() >= 1.f)
+    if (!sPrismLensRender && summary.getElapsedTimeF32() >= 1.f)
     {
         LL_INFOS("RelightQ") << "[RelightQ] selection PASS selected=" << selected.size
             << " candidates=" << selected.candidates << " cap=" << (selected.candidates>selected.size)

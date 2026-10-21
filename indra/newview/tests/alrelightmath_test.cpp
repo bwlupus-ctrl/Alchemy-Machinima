@@ -503,6 +503,63 @@ template<> template<> void relight_object::test<20>()
     ensure_equals("all flushed records readable",count,4);
 }
 
+template<> template<> void relight_object::test<22>()
+{
+    // A Gate may render one source repeatedly; bound actual passes, not IDs.
+    ALAreaShadow::FeedPasses passes;
+    for (auto frame : {0u,1u,0xffffffffu,0u})
+    {
+        for (unsigned pass=0; pass<24; ++pass)
+            ensure("actual feed pass cap",passes.admit(frame,8)==(pass<8));
+    }
+    ALAreaShadow::FeedPasses none;
+    ensure("zero feed slots",!none.admit(1,0));
+    // Main's plan never depends on feeds. Fixed eight-way spare allocation
+    // remains safe even if all capture slots render in a future scheduler.
+    for (int preset=0; preset<4; ++preset)
+    for (int budget : {1,100,1500})
+    for (unsigned mainWidth : {1280u,1920u,3840u})
+    for (unsigned cap : {1u,4u,8u})
+    {
+        const auto q = ALAreaShadow::quality(preset);
+        const auto main = ALAreaShadow::workload(q,mainWidth,mainWidth*9/16,cap,budget,cap);
+        for (unsigned feeds : {1u,2u,4u,8u})
+        {
+            std::uint64_t total = main.channels ? main.iterations : 0;
+            for (unsigned slot=0; slot<feeds; ++slot)
+            {
+                const auto feed = ALAreaShadow::feedWorkload(q,mainWidth,mainWidth*9/16,
+                    511+slot*127,287+slot*71,cap,budget,cap,8);
+                ensure("feed allowance",feed.iterations<=feed.budget);
+                if (feed.channels)
+                    ensure("feed draw bound",feed.pixels*feed.channels*feed.q.samples*feed.q.steps<=feed.drawCap);
+                total += feed.channels ? feed.iterations : 0;
+            }
+            ensure("one total budget",total<=main.budget);
+        }
+    }
+    const auto full = ALAreaShadow::Quality{4,8,false};
+    const auto rays = ALAreaShadow::workloadWithin(full,10,10,1,2400,1);
+    ensure("feed rays first",rays.q.samples==1 && rays.q.steps==8 && !rays.q.half);
+    const auto steps = ALAreaShadow::workloadWithin(full,10,10,1,800,1);
+    ensure("feed steps second",steps.q.samples==1 && steps.q.steps==4 && !steps.q.half);
+    const auto half = ALAreaShadow::workloadWithin(full,10,10,1,100,1);
+    ensure("feed half third",half.q.samples==1 && half.q.steps==1 && half.q.half && half.channels);
+    ensure("feed skip last",!ALAreaShadow::workloadWithin(full,10,10,1,1,1).channels);
+    ensure("no main extent skips feeds",!ALAreaShadow::feedWorkload(full,0,0,10,10,1,1500,1,8).channels);
+    for (int bit=0; bit<6; ++bit)
+    {
+        ALAreaShadow::View view;
+        switch (bit) {
+        case 0: view.cube=true; break; case 1: view.prism=true; break;
+        case 2: view.hud=true; break; case 3: view.impostor=true; break;
+        case 4: view.reflection=true; break; case 5: view.tiled=true; break;
+        }
+        ensure("default excluded",!ALAreaShadow::allowed(view));
+        ensure("only Prism opts in",ALAreaShadow::allowed(view,true)==(bit==1));
+    }
+}
+
 template<> template<> void relight_object::test<21>()
 {
     int calls = 0;

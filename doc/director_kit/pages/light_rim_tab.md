@@ -1,7 +1,7 @@
 # Rim — Director Kit page contract
 
 Page key: `light_rim_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (56/59 setting-bound rows; 4 C++-referenced rows).
+Computed class: **code-driven** (57/60 setting-bound rows; 4 C++-referenced rows).
 
 ## Real owners
 
@@ -66,18 +66,19 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `light_shape` / `relight_size_from_prim` (Size from prim) | none | kit `toggle` ↔ `RenderLocalLightSizeFromPrim` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:225` `relight_size_from_prim` |
 | `light_shape` / `relight_near_floor` (Near floor (m)) | none | kit `number` ↔ `RenderLocalLightNearFloor` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:228` `relight_near_floor` |
 | `light_shape` / `relight_max_boost` (Max boost) | none | kit `number` ↔ `RenderLocalLightPhysicalMaxBoost` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:231` `relight_max_boost` |
+| `area_soft_shadows` / `area_shadow_vcam` (Also in VCam feeds) | none | kit `toggle` ↔ `RenderAreaShadowsVCam` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:236` `area_shadow_vcam` |
 | `area_soft_shadows` / `area_shadow_sl_status` (SL status) | none | kit readout ← approved static copy; no runtime writer | none |
-| `area_soft_shadows` / `area_shadow_lights` (Shadowed lights) | none | kit `number` ↔ `RenderAreaShadowLights` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:239` `area_shadow_lights` |
-| `area_soft_shadows` / `area_shadow_quality` (Quality preset) | none | kit `combo` ↔ `RenderAreaShadowQuality` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:242` `area_shadow_quality` |
-| `area_soft_shadows` / `area_shadow_samples` (Rays per light) | none | kit `number` ↔ `RenderAreaShadowSamples` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:253` `area_shadow_samples` |
-| `area_soft_shadows` / `area_shadow_steps` (March steps) | none | kit `number` ↔ `RenderAreaShadowSteps` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:256` `area_shadow_steps` |
-| `area_soft_shadows` / `area_shadow_distance` (Trace distance (m)) | none | kit `number` ↔ `RenderAreaShadowMaxDist` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:259` `area_shadow_distance` |
-| `area_soft_shadows` / `area_shadow_thickness` (Thickness (m)) | none | kit `number` ↔ `RenderAreaShadowThickness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:262` `area_shadow_thickness` |
-| `area_soft_shadows` / `area_shadow_half` (Half resolution) | none | kit `toggle` ↔ `RenderAreaShadowHalfRes` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:265` `area_shadow_half` |
-| `area_soft_shadows` / `area_shadow_denoise` (Denoise radius) | none | kit `number` ↔ `RenderAreaShadowDenoise` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:268` `area_shadow_denoise` |
-| `area_soft_shadows` / `area_shadow_light_bias` (Light end bias (m)) | none | kit `number` ↔ `RenderAreaShadowLightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:271` `area_shadow_light_bias` |
-| `area_soft_shadows` / `area_shadow_debug` (Visibility view) | none | kit `combo` ↔ `RenderAreaShadowDebugView` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:274` `area_shadow_debug` |
-| `area_soft_shadows` / `area_shadow_budget` (Work budget (M)) | none | kit `number` ↔ `RenderAreaShadowBudget` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:289` `area_shadow_budget` |
+| `area_soft_shadows` / `area_shadow_lights` (Shadowed lights) | none | kit `number` ↔ `RenderAreaShadowLights` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:242` `area_shadow_lights` |
+| `area_soft_shadows` / `area_shadow_quality` (Quality preset) | none | kit `combo` ↔ `RenderAreaShadowQuality` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:245` `area_shadow_quality` |
+| `area_soft_shadows` / `area_shadow_samples` (Rays per light) | none | kit `number` ↔ `RenderAreaShadowSamples` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:256` `area_shadow_samples` |
+| `area_soft_shadows` / `area_shadow_steps` (March steps) | none | kit `number` ↔ `RenderAreaShadowSteps` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:259` `area_shadow_steps` |
+| `area_soft_shadows` / `area_shadow_distance` (Trace distance (m)) | none | kit `number` ↔ `RenderAreaShadowMaxDist` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:262` `area_shadow_distance` |
+| `area_soft_shadows` / `area_shadow_thickness` (Thickness (m)) | none | kit `number` ↔ `RenderAreaShadowThickness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:265` `area_shadow_thickness` |
+| `area_soft_shadows` / `area_shadow_half` (Half resolution) | none | kit `toggle` ↔ `RenderAreaShadowHalfRes` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:268` `area_shadow_half` |
+| `area_soft_shadows` / `area_shadow_denoise` (Denoise radius) | none | kit `number` ↔ `RenderAreaShadowDenoise` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:271` `area_shadow_denoise` |
+| `area_soft_shadows` / `area_shadow_light_bias` (Light end bias (m)) | none | kit `number` ↔ `RenderAreaShadowLightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:274` `area_shadow_light_bias` |
+| `area_soft_shadows` / `area_shadow_debug` (Visibility view) | none | kit `combo` ↔ `RenderAreaShadowDebugView` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:277` `area_shadow_debug` |
+| `area_soft_shadows` / `area_shadow_budget` (Work budget (M)) | none | kit `number` ↔ `RenderAreaShadowBudget` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:292` `area_shadow_budget` |
 | `area_soft_shadows` / `area_shadow_sl_help` (SL shadows) | none | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
@@ -95,7 +96,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **57 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **58 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -141,6 +142,7 @@ Manifest size: **57 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `relight_size_from_prim-on` | Only `relight_size_from_prim` is on; dependent visibility is measured. |
 | `card-area_soft_shadows-tallest-850` | Only `area_soft_shadows` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-area_soft_shadows-tallest-1160` | Only `area_soft_shadows` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `area_shadow_vcam-on` | Only `area_shadow_vcam` is on; dependent visibility is measured. |
 | `area_shadow_quality-option-0` | Only `area_shadow_quality` selects `Low`; other selectors remain default. |
 | `area_shadow_quality-option-1` | Only `area_shadow_quality` selects `Medium`; other selectors remain default. |
 | `area_shadow_quality-option-2` | Only `area_shadow_quality` selects `High`; other selectors remain default. |
@@ -170,7 +172,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-60 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+61 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

@@ -21546,6 +21546,13 @@
         <key>Type</key><string>Boolean</string>
         <key>Value</key><integer>0</integer>
     </map>
+    <key>RenderAreaShadowsVCam</key>
+    <map>
+        <key>Comment</key><string>Also trace soft shadows in VCam/Prism camera feeds using only the main view's spare march budget.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>0</integer>
+    </map>
     <key>RenderAreaShadowLights</key>
     <map>
         <key>Comment</key><string>Number of selected shadowed lights (1-8).</string>

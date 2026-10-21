@@ -784,3 +784,159 @@ pose, streaming, exposure and FX still need to be pinned. B1's lens alignment
 and existing screen-space hidden/offscreen limits are unchanged. Full-viewer
 OFF/ON repeated-frame captures and an in-world check of the actual transport
 log events remain unexecuted, as no viewer was built or launched.
+
+## Step 6 (10/21)
+
+Fix round 1 addresses the agreed allocation-churn P0, prepass validity P1,
+production-routing/ownership test P1 and repeated-feed-pass budget P2.
+
+Implemented approved **B8 / D4** as a conservative, runtime-only opt-in on
+`feature/director-kit-p0`. `RenderAreaShadowsVCam` is persistent and defaults
+**OFF**. The real path is **Director > Light > Rim > Advanced > Soft shadows >
+Also in VCam feeds**. This is one generated setting-backed switch, with search,
+reset and watch bindings; its label wraps in a 48-pixel row to avoid elision.
+The row pin/comment is **2161**. Two existing help texts explain the new opt-in.
+The setting is global and is recorded in the existing take-start settings.
+
+No commit, push, stash operation, viewer build or launch. B1 remains parked on
+`wip/relight-b1-lens`; nothing was read or merged from it. `.tmp/ref_private/`
+was not opened. Unrelated files and the dirty `vcpkg` submodule are preserved.
+
+**View isolation.** Only a scoped, non-preview Prism camera render with its
+exact-size scratch pack active may opt in. It executes the existing production
+gather/filter pass after that feed's deferred geometry and before its local
+lighting. Frustum/contribution selection uses the feed's `LLViewerCamera`;
+light positions use its current modelview; deferred shader binding supplies
+its projection, depth, normals and target extent. The two visibility planes,
+gather and scratch targets belong to that auxiliary pack; none aliases the
+main pack. A feed never reads the main visibility planes.
+
+`beginPrismAuxiliaryState` / `endPrismAuxiliaryState` now save/restore area
+validity, channel count, UUID-to-channel assignment, the last main take
+diagnostic and its sampled slot IDs, only when both switches are enabled.
+The existing scope still restores cameras, matrices, nearby lights, native
+projector state and hardware-light records. Area-pass GL state uses its existing
+complete guard. Entry clears validity/count immediately after saving, before
+geometry or forward consumers can bind the main eye's channels. Scope exit
+restores all saved area and take state without releasing targets. Feeds cannot
+create, poll or advance the main area timestamp
+queries, budget-change log state or summary timer. Early returns still close
+the existing Prism scope.
+
+**Deterministic selection.** Area ranking remains unmapped first, contribution,
+then emitting-object UUID. The stateless feed collector additionally carries
+that UUID as its equal-distance admission tie key in an allowed opt-in feed;
+this removes its pointer-order boundary before the unchanged draw-count limit.
+Every main-view and disabled-path entry carries a null key and retains the
+original distance/pointer ordering. Native shadow-map allocation, projector
+slot selection/auction code and count-before-filter ordering are unchanged.
+No timing, retained visibility or prior quality plan enters sampling or quality
+planning. Frame identity only resets the actual-pass budget counter below.
+
+**One workload ceiling.** `ALAreaShadow::workload` retains the committed main
+plan exactly. `feedWorkload` first reserves the iterations of that same plan
+at the main target size and requested K (even when fewer lights are visible).
+It divides only the remainder into **eight fixed equal allowances**, matching
+`MAX_CAPTURES`. Each feed independently reduces samples, then steps, then
+half-res, then skips. Each draw is also bounded by half its feed allowance.
+`FeedPasses` admits at most eight actual shadow passes per frame, including
+multiple renders of the same Gate source. The ninth skips before allocation
+or gather, with invalid channels; a new frame resets only this work counter.
+Failed allocations conservatively consume an allowance. Main actual work + all feed work is at most
+the reserved main work + eight allowances, which is at most
+`RenderAreaShadowBudget`. This bound no longer assumes a scheduler cadence or
+distinct feed IDs; unused allowances are deliberately not redistributed.
+Missing main dimensions reject feed work. A full main reservation can leave
+no feed shadows, without changing the main plan. `RelightQ` debug logging
+reports the feed target, effective plan, iterations and allowance/skip.
+
+**Target ownership.** Gather, scratch and visibility remain on the size-shared
+Prism scratch pack and are reused across updates. Budget admission precedes
+lazy allocation; each resized target allocates once. Feed planes survive a
+temporary K reduction. Either master or feed opt-in OFF lazily releases the
+area arrays over the entire pool, with no GL work on steady OFF updates.
+`release_prism_scratch_entry` releases all three arrays on recycle/eviction;
+`releasePrismLensBuffers` reaches that owner on screen-buffer release and
+last-consumer close. A same-size Gate camera change reuses storage and reruns
+selection/gather/filter with the incoming source. Partial allocation failures
+release the failed pass's area arrays and publish no channels. The pool remains
+bounded to eight size buckets, up to six RGBA8 targets each (24–96 MiB for a
+2048x2048 bucket at half/full trace resolution). Resident VRAM and GPU timings
+still need in-world measurement; the march ceiling does not bound filtering,
+texture traffic or allocation latency on actual transitions.
+
+**Deliberately omitted:** Light shape remains excluded in feeds. Its shared
+forward/hardware-light upload/master state extends beyond this visibility
+transaction, so enabling it was not a trivial safe extension. The area source
+disk still uses existing source-radius metadata independently of that master.
+Preview-atlas-only captures, probes/hero mirrors, HUDs, impostors, water
+reflections and tiled snapshots stay excluded. The original main tiled-snapshot
+flag is retained across a feed camera's zoom reset. Media and Gate composition
+do not have a new camera/depth pass; Gate camera sources receive the opt-in
+when actually rendered. Alpha stays on its existing no-area-visibility path.
+B1's prim-centre projector trace origin, native map bias and screen-space
+hidden/offscreen limitations remain unchanged.
+
+| Required gate | Result / evidence |
+|---|---|
+| `relight_shader_check.py` | **PASS**, exit 0: production compilation/44 links, 126 rig rows with zero failures, runtime OFF cases and all area/VCam cases. RTX 5090 / NVIDIA 610.88 / GL 4.6. `.tmp/relight_fix1_shaders.log`. |
+| `relight_area_check.py` + new cases | **PASS**, exit 0: production dispatch and real GL ownership/state restoration, unchanged main sentinel, zero steady allocations/releases, one allocation per resized target, both planes/K changes, OFF/close/eviction, all six allocation failures/retry, Gate cuts, actual-pass cap and eight rejected mutations. Existing camera <=1px, housing, blocker, radii, contact-hardening and deterministic readbacks pass. `.tmp/relight_fix1_area.log`. |
+| Production CPU fixture | **PASS** `relight_vcam_check.py`, included by both GPU gates: actual view/transaction/comparator/consumer methods, prepass invalidation and main diagnostic/channel restoration; no manually installed feed channels. UUID admission permutations, main/OFF pointer ordering, unsupported views, default-OFF UI, HEAD main-plan identity and shared budgets pass. `.tmp/relight_fix1_area.log`. |
+| Tests | **PASS 22/22** `alrelightmath`, freshly compiled/linked against the existing standalone runner/libraries; no viewer target. Test 22 additionally checks repeated actual passes, frame reset, counter wrap and zero slots. `.tmp/relight_fix1_math{_compile,_link,}.log`. Existing nonfatal `vswhere.exe` diagnostic remains. |
+| OFF/runtime preservation | **PASS** `relight_off_check.py`: eight disabled GLSL expression streams equal HEAD; runtime/no-reload/no-temporal checks pass. GLSL, shader-manager and reload listeners unchanged. `.tmp/relight_fix1_off.log`. Full-viewer baseline identity remains unmeasured. |
+| `zs_check.ps1 -Files <one file>` | **PASS**, separate calls for both touched TUs: `pipeline.cpp` and `tests/alrelightmath_test.cpp`, covering both headers. Supported CachePath/TEMP inside the workspace. `.tmp/relight_fix1_zs_{pipeline,test}.log`. |
+| Three generators and checks | **PASS** regenerated after C++ edits, then each `--check`: `director_kit_gen.py`, `director_page_sources.py`, `director_functional_manifest.py`. Row-pin comment updated, 2161 retained; five existing manifest warnings. `.tmp/relight_fix1_{kit,sources,manifest}{,_check}.log`. |
+| XUI / source contract / JSON LF | **PASS** `xui_layout_check.py --changed HEAD`: 40 touched XUI files, zero findings. All changed JSON files retain LF; no authored UI changes in this fix. `.tmp/relight_fix1_xui.log`, `.tmp/relight_fix1_json.log`. |
+| `prebuild_guard.ps1 -ChecksOnly` | **PASS all 11 gates**, exit 0; required `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`, existing workspace CachePath/TEMP wrapper. Installed guard unchanged; ChecksOnly exits before object purge. `.tmp/relight_fix1_prebuild.log`. |
+| `git diff --check` | **PASS**, final run after report edits; untracked fixtures also checked for whitespace/conflict markers. `.tmp/relight_fix1_diff_check.log`. |
+
+The new `relight_vcam_dispatch_check.py` compiles the production allocation,
+gather/filter dispatch, channel consumer, view predicates, transaction, GL guard
+and release-owner blocks with viewer wrappers backed by the gate's real WGL
+context and production GLSL programs. The main visibility sentinel is produced
+through that same dispatch and passed alongside feed packs, so routing to the
+wrong owner is observable. Allocation counters require zero steady allocations
+and releases (including K changes) and one allocation per resized target.
+The production visibility-sampler binding block also runs after publication,
+and real texture-unit queries verify both planes belong to the active pack.
+All six partial-allocation failure positions, both OFF switches over inactive
+buckets, close/screen teardown, eviction, Gate cuts and nine same-source passes
+are exercised. Eight compiled mutations must fail: per-update release, missing
+dispatch, main-pack dispatch or sampler routing, stale prepass validity, missing eviction cleanup,
+uncapped passes and missing viewport restoration. The independent camera oracle
+retains its one-pixel threshold; the old disconnected main-texture assertion
+and manually installed feed channels were removed. These controlled fixtures
+do not execute the whole viewer scheduler or actual close/Gate UI callbacks;
+source checks verify those teardown routes reach the tested owner. No gate or
+tolerance was weakened. Full-viewer image/state checks remain below.
+
+In-world checks still required after the separately authorized review/build:
+
+1. **Resize:** enable Soft shadows plus Also in VCam feeds, move a feed camera
+   away from the main eye, and change its target size/aspect/resolution divisor
+   repeatedly (including odd extents and large targets). Occlusion must follow
+   that camera; no old-size stripes or main-view change. Watch allocation/VRAM
+   peaks on transitions and steady reuse of the retained targets.
+2. **Close and OFF:** close/delete the active feed, reopen it, then toggle the
+   new setting and Soft shadows separately. Last-consumer close or OFF must
+   release all pooled area targets; no stale
+   channel, delayed main-view change or shader reload. Repeat with both Relight
+   masters OFF and capture a fixed-scene full-viewer OFF-vs-HEAD image diff.
+3. **Multiple feeds:** use 1, 2 and 4 feeds, including two that share a target
+   size, with different cameras and light sets. Check each newly produced feed,
+   channel ownership and byte-identical main visibility at a fixed main camera.
+   Lower Work budget and raise requested K/Cinematic; feeds must degrade/skip
+   while the main plan stays the same. Compare deterministic settled captures
+   and `RelightQ` feed allowance logs; normal Prism cadence can retain older
+   beauty outputs between scheduled updates.
+4. **Gate switching:** cut and transition between camera sources with different
+   sizes/light sets, and between camera/media/empty sources. Check the incoming
+   source's own shadows, outgoing retained output and return to the main view;
+   no cross-source channels or allocation growth after repeated cuts. Also
+   exercise camera feeds used as projector cookies and face/monitor displays.
+5. Repeat with native projector maps off/on, actor-only lights, rig suppression,
+   ordinary points/projectors and tiled snapshots. Confirm main native slot
+   owners/auction behavior and ReShade sidecars remain unchanged. Full-scene
+   determinism still requires pinned scene/streaming/pose/exposure/FX and the
+   native main collector/slot history described under Step 5; this change does
+   not solve those existing full-viewer limits.

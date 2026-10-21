@@ -12,9 +12,9 @@ struct View
     bool cube = false, prism = false, hud = false, impostor = false;
     bool reflection = false, tiled = false;
 };
-inline bool allowed(const View& v)
+inline bool allowed(const View& v, bool feeds = false)
 {
-    return !(v.cube || v.prism || v.hud || v.impostor || v.reflection || v.tiled);
+    return !(v.cube || (v.prism && !feeds) || v.hud || v.impostor || v.reflection || v.tiled);
 }
 inline double contribution(double radius, double distance, double luminance, double attenuation)
 {
@@ -75,8 +75,8 @@ struct Workload
     unsigned channels = 0;
     std::uint64_t pixels = 0, iterations = 0, budget = 0, drawCap = 0;
 };
-inline Workload workload(Quality q, unsigned width, unsigned height, unsigned lights,
-    int millions, unsigned requestedLights)
+inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsigned lights,
+    std::uint64_t budget, unsigned requestedLights)
 {
     Workload w{};
     w.q = {std::clamp(q.samples,1,32),std::clamp(q.steps,1,64),q.half};
@@ -84,7 +84,7 @@ inline Workload workload(Quality q, unsigned width, unsigned height, unsigned li
     // Reserve for the requested cap, never the changing visible set. At least
     // the actual count keeps malformed callers within the hard frame ceiling.
     const unsigned basis = std::max(lights,std::clamp(requestedLights,1u,8u));
-    w.budget = std::uint64_t(std::clamp(millions,1,1500))*1000000;
+    w.budget = std::min(budget,std::uint64_t(1500000000));
     w.drawCap = w.budget/2;
     const auto update = [&]()
     {
@@ -105,6 +105,40 @@ inline Workload workload(Quality q, unsigned width, unsigned height, unsigned li
     const auto perChannel = w.pixels*w.q.samples*w.q.steps;
     w.channels = lights && perChannel ? unsigned(std::min<std::uint64_t>(4,w.drawCap/perChannel)) : 0;
     return w;
+}
+
+inline Workload workload(Quality q, unsigned width, unsigned height, unsigned lights,
+    int millions, unsigned requestedLights)
+{
+    return workloadWithin(q,width,height,lights,
+        std::uint64_t(std::clamp(millions,1,1500))*1000000,requestedLights);
+}
+
+// Frame identity is used only to reset workload accounting, never sampling.
+struct FeedPasses
+{
+    std::uint32_t frame = 0;
+    unsigned passes = 0;
+    bool admit(std::uint32_t currentFrame, unsigned slots)
+    {
+        if (frame != currentFrame) { frame = currentFrame; passes = 0; }
+        if (passes >= slots) return false;
+        ++passes;
+        return true;
+    }
+};
+
+// Reserve the main view's unchanged requested-K plan, then divide only the
+// remainder into fixed allowances. No dependence on active feed count, cadence,
+// timing, prior frames or the main view's changing selected set.
+inline Workload feedWorkload(Quality q, unsigned mainWidth, unsigned mainHeight,
+    unsigned width, unsigned height, unsigned lights, int millions,
+    unsigned requestedLights, unsigned feedSlots)
+{
+    const auto main = workload(q,mainWidth,mainHeight,requestedLights,millions,requestedLights);
+    const auto reserve = main.channels ? main.iterations : 0;
+    const auto allowance = mainWidth && mainHeight && feedSlots ? (main.budget-reserve)/feedSlots : 0;
+    return workloadWithin(q,width,height,lights,allowance,requestedLights);
 }
 
 }
