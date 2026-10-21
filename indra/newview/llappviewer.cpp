@@ -2246,6 +2246,8 @@ bool LLAppViewer::cleanup()
         gDirUtilp->deleteDirAndContents(user_path);
     }
 
+    LLPipeline::flushRelightTakes(); // Drain dedicated take records before worker teardown.
+
     // Delete workers first
     // shotdown all worker threads before deleting them in case of co-dependencies
     mAppCoreHttp.requestStop();

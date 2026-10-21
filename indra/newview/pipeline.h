@@ -51,6 +51,7 @@
 #include "llghostcoverage.h"        // [GhostDeferred] per-category coverage mask
 #include "aldiopterpresetbank.h"    // [Ultimate Diopter] ALDiopterBankKind, §6.3
 #include "aldiopterrelevance.h"     // [Ultimate Diopter] ALDiopterFocusProvenance, wave 2
+#include "alrelighttakerecord.h"
 
 #include <array>
 #include <stack>
@@ -1561,6 +1562,8 @@ public:
     // [RelightQ] Main-view-only channels; auxiliary views never inherit them.
     bool areaShadowsAllowedThisView() const;
     bool areaShadowsActive() const;
+    void logRelightTake(const char* trigger) const;
+    static void flushRelightTakes(); // Shutdown fallback also handles an absent General pool.
     LLVector4 deferredLightShape(const LLVOVolume* volume) const;
     void renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         bool actor_ready, bool actor_as_world, bool actor_excluded);
@@ -1570,6 +1573,9 @@ public:
     bool mAreaShadowQueryPending = false;
     F64 mAreaShadowGPUms = -1.0;
     std::array<LLUUID, 8> mAreaShadowIDs;
+    // Diagnostics only: preserve the last allowed pass across auxiliary views.
+    ALRelight::AreaTakeState mRelightAreaTake;
+    std::array<LLUUID, MAX_SPOT_SHADOWS> mRelightAreaSlotIDs;
     LLRenderTarget          mSceneMap;
 
     // [BDMerge G3.3 Phase 1 item 3] half-resolution scratch target the projector

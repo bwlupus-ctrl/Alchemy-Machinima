@@ -1305,6 +1305,8 @@ set(viewer_HEADER_FILES
     alghostautoanimmodel.h # [AutoAnimate]
     alareashadowmath.h
     alrelightmath.h
+    alrelighttakerecord.h
+    alrelighttakewriter.h
     alreflectmath.h
     alreflectanim.h
     alghoststudio.h

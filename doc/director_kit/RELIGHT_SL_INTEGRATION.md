@@ -661,3 +661,126 @@ slot auction or collector count-before-filter code changed. Both masters OFF
 retain identical rendering sources and paths. No new shader define/reload,
 temporal or frame-history input was introduced. Full-viewer OFF image comparison
 and execution of the new viewer assertions remain unmeasured; no viewer was built.
+
+## Step 5 (10/21)
+
+Implemented the safe, diagnostic portion of approved B9 on
+`feature/director-kit-p0`. B1 remains parked on `wip/relight-b1-lens`; nothing
+from that branch was read or merged. No commit, push, stash operation, viewer
+build or viewer launch. `.tmp/ref_private/` was not opened. Existing unrelated
+files and the dirty `vcpkg` submodule are preserved.
+
+Relight's own area selector already orders by unmapped first, descending
+contribution, then **object UUID** (`ALAreaShadow::before`). No pointer tie was
+found in Relight's ranking, so its ordering is preserved and documented rather
+than replaced. There is one candidate per emitting object, with no face ranking.
+Test 17 instantiates the production selector with real `LLUUID` keys and
+checks all **720 permutations** of six equal-score lights, both across the
+four-channel admission boundary and with all six admitted, including mapped
+ties. Fix round 1 gives the mapped lights LOWER UUIDs, so UUID sorting alone
+fails and unmapped-first ordering is actually exercised. The native collector's
+pointer tie remains untouched.
+
+Successful Director ACTION firing (after its countdown), recorder Record and
+recorder Play/resume now enqueue one-line LLSD notation for the dedicated
+`<user logs dir>/relight_takes.log`. These are reached through the existing Director
+transport and shared Takes/standalone recorder widgets. There is no existing
+take-sidecar mechanism; saved camera-take files and their format are unchanged.
+An ACTION suppresses its nested recorder hooks and queues exactly one record;
+standalone recorder starts retain their own hooks. Each record has a diagnostic
+`record_id`, which is never used as a render seed.
+This ID is a local counter, avoiding any shared random-generator side effects.
+
+The version-1 record contains:
+
+- `settings_at_start`: all **18 Relight controls**, including both masters,
+  source-size mode, falloff, trace/filter/debug controls and workload budget,
+  plus native shadow detail, projector slot cap and local-light count.
+- `area_view`: the **most recent allowed area pass**, explicitly labelled as
+  such, with dimensions, outcome, candidate count and selected UUIDs in channel
+  order (also score and sampled-map membership). Its sampled projector slot
+  owners are stored alongside that pass, including vacant slots.
+- The actual work plan when planning was reached: effective samples, steps,
+  half/full, channels/draw, pixels, iterations, frame budget and draw cap.
+  Exact 64-bit counts are decimal strings because LLSD integers are signed
+  32-bit. Unobserved, disabled, unavailable, empty, rejected and failed states
+  are explicit; a missing plan is not fabricated.
+- `projector_slots_at_start`: current sampled slot owners and native fade
+  values. These are separate from the area-pass owners so a changed assignment
+  cannot silently be presented as belonging to that earlier pass.
+
+The fixed-size diagnostic snapshot copies at most eight candidates and ten
+slot UUIDs per allowed pass, only while Soft shadows is enabled. The reset and
+slot-copy block runs after the existing OFF early return, adding no OFF frame
+work. A disabled transport start constructs an explicit empty disabled area
+record rather than presenting stale selection/work as current. Snapshot fields
+are never read by selection, work admission,
+render-target allocation, uniforms or shaders. There are no new settings,
+shader defines, reload listeners, timing decisions or frame-history inputs to
+rendering. Native allocation, the slot auction and count-before-filter ordering
+are unchanged. The optional settled UI row is omitted: a fade-only observation
+would not establish that the next collector/auction update will retain its set.
+The documented generator row pin stays **2160**, with a fix-round comment; generated
+XUI changes are source-hash updates only.
+
+Test 18 exercises the production record serializer with a synthetic
+1920x1080, three-light Medium selection: channels UUID 1/2/3, the third mapped,
+518400 trace pixels, S8/steps12/half, **149299200** iterations, channels/draw 4,
+1500000000 frame budget and 750000000 draw cap. It distinguishes earlier and
+current slot owners, checks fades/vacancies, round-trips actual LLSD notation,
+preserves a count above 32-bit, and checks absent/rejected plan diagnostics.
+The synthetic record is printed in `.tmp/relight_step5_r1_math.log`.
+
+Fix round 1 replaces the unreliable synchronous LLError record sink. Main-thread
+snapshot construction copies scalar settings into an independent LLSD tree,
+releases all main-thread subtree references, then transfers unique ownership.
+`ALRelight::TakeWriter` holds at most **64 pending records**, evicts the oldest
+when full, and reports the accumulated count as decimal `dropped_records` in
+the next written record (zero otherwise). Failed appends also increment that
+count. General workers serialize, append and flush each record; they never read
+live pipeline/settings state or pass record data through LLError. No main-thread
+viewer-log line is emitted (LLError flushes synchronously); see relight_takes.log.
+
+A short queue mutex covers ownership transfers; a separate **blocking writer
+mutex** covers drains and disk I/O, so contention cannot silently discard a
+record and slow I/O cannot hold the enqueue mutex. Only one General drain is
+scheduled at a time. A missing/closed/full General queue retains pending records
+for the next start or shutdown. Cleanup closes and drains the writer before
+worker teardown; it also works when the pool has already disappeared. Final
+shutdown may wait for disk I/O. File-open/write failure cannot guarantee durable
+output; its drop count is reported if a later record can be written.
+
+New tests 19–21 verify the exact 64-record bound, newest-retained order and
+single-report overflow accounting; a deliberately blocked sink with concurrent
+drains, responsive enqueueing and real file append/flush/notation parsing;
+escaped newlines, no lost or reordered records under contention; one outstanding
+worker, post-failure retry, write-failure accounting, idempotent shutdown without
+a worker and rejection after shutdown. These are standalone writer tests, not
+an executed viewer transport session.
+
+| Required gate | Result / evidence |
+|---|---|
+| `relight_shader_check.py` | **PASS**, exit 0: 31 production GLSL units/permutations, production links, 126 rig rows with zero failures, live master/OFF and area probes. `.tmp/relight_step5_r1_shaders.log`. |
+| `relight_area_check.py` | **PASS**, exit 0: CPU policy/prim-size, K7/K8, split draws, housing/blocker, contact hardening, byte-identical repeated gather/filter and camera-motion cases. `.tmp/relight_step5_r1_area.log`. |
+| Tests and new cases | **PASS 21/21** `alrelightmath`; standalone test recompiled/relinked against existing runner/libraries, no viewer target. Strengthened real UUID permutations, serializer, queue bounds/drop accounting and slow-sink/contention/shutdown cases described above. `.tmp/relight_step5_r1_math{_compile,_link,}.log`. Existing nonfatal `vswhere.exe` diagnostic remains. |
+| OFF / rendering preservation | **PASS** `relight_off_check.py`: eight disabled expression streams equal HEAD, no reload/temporal dependencies. Additional comparison reconstructs the complete HEAD pipeline token stream after removing only diagnostics, verifies the OFF early return precedes snapshot work, checks ACTION owns its one record and transport state/persistence matches HEAD. All shaders, shader-manager and control-listener files are byte-unchanged. `.tmp/relight_step5_r1_off.log`, `.tmp/relight_step5_r1_contract.log`. Full-viewer OFF image identity remains unmeasured. |
+| `zs_check.ps1 -Files <one file>` | **PASS**, separate calls for all five touched C++ TUs: `pipeline.cpp`, `lldirectorcast.cpp`, `llflycamrecorder.cpp`, `llappviewer.cpp`, `tests/alrelightmath_test.cpp`; these cover both diagnostic headers too. Supported CachePath/TEMP relocated into workspace. `.tmp/relight_step5_r1_zs_{pipeline,lldirectorcast,llflycamrecorder,llappviewer,alrelightmath_test}.log`. Pipeline rechecked after moving the snapshot past the OFF return. |
+| Three generators and checks | **PASS**, regenerated after final C++ edits, each followed by `--check`: kit, page sources and functional manifest. Row pin 2160 with fix-round comment; five existing manifest warnings remain. `.tmp/relight_step5_r1_director_{kit_gen,page_sources,functional_manifest}{,_check}.log`. |
+| XUI / JSON LF | **PASS** `xui_layout_check.py --changed HEAD`: **40 files, zero findings**. Changed JSON remains LF. `.tmp/relight_step5_r1_xui.log`, `.tmp/relight_step5_r1_contract.log`. |
+| `prebuild_guard.ps1 -ChecksOnly` | **PASS all 11 gates**, exit 0; `.tmp/relight_step5_r1_prebuild.log`. ChecksOnly exited before object purge. Installed guard unchanged via the existing supported CachePath wrapper, with `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`. |
+| `git diff --check` | **PASS**, final run after this report update. Both untracked diagnostic headers also checked directly for whitespace/conflict markers. `.tmp/relight_step5_r1_diff_check.log`. |
+
+What remains non-reproducible: `mNearbyLights` membership still depends on native
+frame-interval fades, its equal-distance ties still use drawable pointers, and
+projector slot ownership/visibility still follows the native auction and fades.
+Relight cannot stabilize a light excluded before its own ranking, or make an
+identical hybrid image from different native map assignments/fades. Records
+observe those assignments; they do not freeze, restore or replay them. The
+area snapshot can predate a camera/settings change made by a transport start,
+or survive a run of excluded views, which is why its source and current-start
+fields are separate. This is start-event comparison evidence, not per-frame
+capture metadata or a guarantee of repeatable full-shot pixels. Scene, camera,
+pose, streaming, exposure and FX still need to be pinned. B1's lens alignment
+and existing screen-space hidden/offscreen limits are unchanged. Full-viewer
+OFF/ON repeated-frame captures and an in-world check of the actual transport
+log events remain unexecuted, as no viewer was built or launched.

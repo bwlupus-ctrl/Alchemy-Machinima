@@ -28,6 +28,7 @@
 #include "llvovolume.h"
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
+#include "pipeline.h"
 
 #include <algorithm>
 #include <cmath>
@@ -2766,12 +2767,12 @@ void LLDirectorCast::fireAction()
             LL_WARNS("DirectorCast") << "recorder play AND capture armed; capturing"
                                      << LL_ENDL;
         }
-        LLFlycamRecorder::instance().startRecording();
+        LLFlycamRecorder::instance().startRecording(false); // ACTION queues the record below.
         mFiredCapture = true;
     }
     else if (arm_play)
     {
-        LLFlycamRecorder::instance().startPlayback();
+        LLFlycamRecorder::instance().startPlayback(false);
         mFiredPlay = true;
     }
 
@@ -2780,6 +2781,7 @@ void LLDirectorCast::fireAction()
     // this transport gate. Run after mRunning is published so a switcher first
     // armed on this ACTION can identify the transport-owned enable snapshot.
     switcher.onDirectorAction();
+    gPipeline.logRelightTake("director_action");
     LL_INFOS("DirectorCast") << "ACTION: moves " << mFiredMoves
                              << " camera " << mFiredCamera
                              << " play " << mFiredPlay

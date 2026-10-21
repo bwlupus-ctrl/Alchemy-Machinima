@@ -2,7 +2,11 @@
 #include "../test/lltut.h"
 #include "../alrelightmath.h"
 #include "../alareashadowmath.h"
+#include "../alrelighttakerecord.h"
+#include "../alrelighttakewriter.h"
+#include "llsdserialize.h"
 #include <limits>
+#include <future>
 namespace tut
 {
 struct relight_data {};
@@ -310,6 +314,216 @@ template<> template<> void relight_object::test<16>()
              ALRelight::Vec{1,invalid,2},ALRelight::Vec{1,2,invalid}})
             close("invalid scale is bounded zero",primSourceRadius(scale),0);
     close("world radius maximum",primSourceRadius({2,2,2}),1);
+}
+
+template<> template<> void relight_object::test<17>()
+{
+    using namespace ALAreaShadow;
+    const std::array<LLUUID,6> ids{{
+        LLUUID("00000000-0000-0000-0000-000000000001"),
+        LLUUID("00000000-0000-0000-0000-000000000002"),
+        LLUUID("00000000-0000-0000-0000-000000000003"),
+        LLUUID("00000000-0000-0000-0000-000000000004"),
+        LLUUID("00000000-0000-0000-0000-000000000005"),
+        LLUUID("00000000-0000-0000-0000-000000000006")}};
+    std::array<int,6> order{{0,1,2,3,4,5}};
+    unsigned permutations = 0;
+    do
+    {
+        for (unsigned cap : {4u,6u})
+        {
+            Selection<LLUUID> selected;
+            // Mapped UUIDs are LOWER: sorting by UUID alone must fail this test.
+            for (int i : order) selected.add({ids[i],i<2,1.0},cap);
+            ensure_equals("real UUID tied cap",selected.size,cap);
+            for (unsigned i=0; i<cap; ++i)
+                ensure_equals("unmapped first, UUID ties independent of input order",selected.lights[i].id,ids[(i+2)%6]);
+        }
+        ++permutations;
+    } while (std::next_permutation(order.begin(),order.end()));
+    ensure_equals("all six-light permutations",permutations,720u);
+}
+
+template<> template<> void relight_object::test<18>()
+{
+    using namespace ALRelight;
+    const LLUUID a("00000000-0000-0000-0000-000000000001");
+    const LLUUID b("00000000-0000-0000-0000-000000000002");
+    const LLUUID c("00000000-0000-0000-0000-000000000003");
+    AreaTakeState state;
+    state.status = "rendered";
+    state.width = 1920; state.height = 1080;
+    for (const auto& light : {ALAreaShadow::Candidate<LLUUID>{c,true,100.},
+         ALAreaShadow::Candidate<LLUUID>{b,false,1.}, ALAreaShadow::Candidate<LLUUID>{a,false,1.}})
+        state.selected.add(light,8);
+    state.planned = true;
+    state.work = ALAreaShadow::workload(ALAreaShadow::quality(1),1920,1080,3,1500,8);
+    LLSD settings;
+    settings["RenderAreaShadows"] = true;
+    settings["RenderLightShapeEnable"] = false;
+    const std::array<LLUUID,2> areaSlots{{c,LLUUID::null}}, currentSlots{{b,c}};
+    const std::array<float,2> fade{{.5f,1.f}};
+    const LLSD record = takeRecord("synthetic",settings,state,areaSlots,currentSlots,fade);
+    ensure_equals("record schema",record["version"].asInteger(),1);
+    ensure_equals("start trigger",record["trigger"].asString(),std::string("synthetic"));
+    ensure("requested settings preserved",record["settings_at_start"]["RenderAreaShadows"].asBoolean() &&
+        !record["settings_at_start"]["RenderLightShapeEnable"].asBoolean());
+    const LLSD& view = record["area_view"];
+    ensure_equals("snapshot source is explicit",view["source"].asString(),std::string("most_recent_allowed_area_pass"));
+    ensure_equals("render outcome",view["status"].asString(),std::string("rendered"));
+    ensure_equals("actual width",view["width"].asInteger(),1920);
+    ensure_equals("actual height",view["height"].asInteger(),1080);
+    ensure_equals("candidate count",view["candidates"].asInteger(),3);
+    ensure_equals("three selected channels",view["selected"].size(),3);
+    for (int i=0; i<3; ++i)
+    {
+        ensure_equals("channel index",view["selected"][i]["channel"].asInteger(),i);
+        ensure_equals("channel UUID",view["selected"][i]["uuid"].asUUID(),std::array<LLUUID,3>{{a,b,c}}[i]);
+        ensure_equals("native map membership",view["selected"][i]["shadow_map"].asBoolean(),i==2);
+    }
+    ensure_equals("sampled slot at area pass",view["projector_slots"][0]["uuid"].asUUID(),c);
+    ensure_equals("vacant slot retained",view["projector_slots"][1]["uuid"].asUUID(),LLUUID::null);
+    ensure_equals("current sampled slot",record["projector_slots_at_start"][0]["uuid"].asUUID(),b);
+    close("current slot fade",record["projector_slots_at_start"][0]["fade"].asReal(),.5);
+    const LLSD& work = view["work"];
+    ensure_equals("effective samples",work["samples"].asInteger(),8);
+    ensure_equals("effective steps",work["steps"].asInteger(),12);
+    ensure("half resolution",work["half"].asBoolean());
+    ensure_equals("channels per draw",work["channels_per_draw"].asInteger(),4);
+    ensure_equals("literal pixels",work["pixels"].asString(),std::string("518400"));
+    ensure_equals("literal iterations",work["iterations"].asString(),std::string("149299200"));
+    ensure_equals("literal budget",work["budget"].asString(),std::string("1500000000"));
+    ensure_equals("literal draw cap",work["draw_cap"].asString(),std::string("750000000"));
+    std::cout << "[RelightQ] synthetic take-record " << LLSDNotationStreamer(record) << '\n';
+    // Log serialization must preserve the complete record, including UUID types.
+    std::stringstream stream;
+    LLSDSerialize::toNotation(record,stream);
+    LLSD decoded;
+    ensure("notation parses",LLSDSerialize::fromNotation(decoded,stream,stream.str().size())>0);
+    ensure_equals("serialized UUID",decoded["area_view"]["selected"][0]["uuid"].asUUID(),a);
+    ensure_equals("serialized exact work",decoded["area_view"]["work"]["iterations"].asString(),std::string("149299200"));
+    state.work.pixels = 4294967296ull;
+    ensure_equals("64-bit count never truncates",areaTakeRecord(state)["work"]["pixels"].asString(),std::string("4294967296"));
+    const LLSD empty = areaTakeRecord({});
+    ensure_equals("unobserved status",empty["status"].asString(),std::string("not_observed"));
+    ensure("no fabricated plan",!empty["work_planned"].asBoolean() && !empty.has("work"));
+    ensure_equals("no stale selection",empty["selected"].size(),0);
+    for (const char* status : {"disabled", "unavailable_or_no_draw_budget", "no_selected_lights", "allocation_failed"})
+    {
+        AreaTakeState unavailable;
+        unavailable.status = status;
+        ensure_equals("unavailable outcome retained",areaTakeRecord(unavailable)["status"].asString(),std::string(status));
+        ensure("unavailable plan omitted",!areaTakeRecord(unavailable).has("work"));
+    }
+    state.status = "budget_rejected";
+    state.work = ALAreaShadow::workload({1,1,true},3840,2160,8,1,8);
+    const auto rejected = areaTakeRecord(state);
+    ensure("rejected plan recorded",rejected["work_planned"].asBoolean());
+    ensure_equals("rejected dispatch",rejected["work"]["channels_per_draw"].asInteger(),0);
+    ensure_equals("rejected work",rejected["work"]["iterations"].asString(),std::string("0"));
+}
+
+template<> template<> void relight_object::test<19>()
+{
+    std::vector<int> ids;
+    std::vector<std::string> drops;
+    ALRelight::TakeWriter writer([&](const LLSD& record)
+    {
+        ids.push_back(record["id"].asInteger());
+        drops.push_back(record["dropped_records"].asString());
+        return true;
+    });
+    for (int i=0; i<70; ++i)
+    {
+        auto record = std::make_unique<LLSD>();
+        (*record)["id"] = i;
+        ensure("enqueue accepted",writer.enqueue(std::move(record)));
+    }
+    writer.drain();
+    ensure_equals("bounded queue retains 64",ids.size(),ALRelight::TakeWriter::capacity);
+    for (int i=0; i<64; ++i)
+    {
+        ensure_equals("newest records retained in order",ids[i],i+6);
+        ensure_equals("drops reported exactly once on next record",drops[i],std::string(i ? "0" : "6"));
+    }
+}
+
+template<> template<> void relight_object::test<20>()
+{
+    using namespace std::chrono_literals;
+    const auto path = LLFile::tmpdir() + "relight_writer_" + LLUUID::generateNewID().asString() + ".log";
+    struct Cleanup { std::string path; ~Cleanup() { LLFile::remove(path); } } cleanup{path};
+    std::promise<void> entered, release, contender;
+    auto proceed = release.get_future().share();
+    bool first = true;
+    ALRelight::TakeWriter writer([&](const LLSD& record)
+    {
+        if (first)
+        {
+            first = false;
+            entered.set_value();
+            proceed.wait(); // Deterministic slow disk; no sleep-based ordering.
+        }
+        return ALRelight::appendTakeRecord(path,record);
+    });
+    const auto enqueue = [&](int id)
+    {
+        auto record = std::make_unique<LLSD>();
+        (*record)["id"] = id;
+        (*record)["escaped"] = "one\ntwo";
+        return writer.enqueue(std::move(record));
+    };
+    enqueue(0);
+    auto running = std::async(std::launch::async,[&]() { writer.drain(); });
+    entered.get_future().wait();
+    auto competing = std::async(std::launch::async,[&]() { contender.set_value(); writer.drain(); });
+    contender.get_future().wait();
+    const auto blocked = competing.wait_for(20ms);
+    auto producer = std::async(std::launch::async,[&]() { return enqueue(1) && enqueue(2) && enqueue(3); });
+    const auto responsive = producer.wait_for(2s);
+    release.set_value(); // Release before assertions, so failing tests also join cleanly.
+    running.get();
+    competing.get();
+    ensure("writer contention waits instead of dropping",blocked == std::future_status::timeout);
+    ensure("enqueue never waits for slow sink",responsive == std::future_status::ready);
+    ensure("all starts accepted during slow write",producer.get());
+    writer.shutdown();
+    llifstream file(path);
+    std::string line;
+    int count = 0;
+    while (std::getline(file,line))
+    {
+        LLSD record;
+        std::istringstream stream(line);
+        ensure("one parseable notation line per take",LLSDSerialize::fromNotation(record,stream,line.size())>0);
+        ensure_equals("no lost or reordered records under contention",record["id"].asInteger(),count++);
+        ensure_equals("no contention drops",record["dropped_records"].asString(),std::string("0"));
+        ensure_equals("embedded newline remains one record",record["escaped"].asString(),std::string("one\ntwo"));
+    }
+    ensure_equals("all flushed records readable",count,4);
+}
+
+template<> template<> void relight_object::test<21>()
+{
+    int calls = 0;
+    std::string drops;
+    ALRelight::TakeWriter writer([&](const LLSD& record)
+    {
+        drops = record["dropped_records"].asString();
+        return ++calls != 1; // A failed append must also be accounted for.
+    });
+    writer.enqueue(std::make_unique<LLSD>());
+    ensure("first enqueue schedules",writer.requestDrain());
+    ensure("one outstanding worker only",!writer.requestDrain());
+    writer.postFailed(); // General absent, closed or full: preserve pending work.
+    ensure("failed post can be retried",writer.requestDrain());
+    writer.postFailed();
+    writer.enqueue(std::make_unique<LLSD>());
+    writer.shutdown(); // No worker needed; drain and close idempotently.
+    writer.shutdown();
+    ensure_equals("shutdown drains retained records",calls,2);
+    ensure_equals("write failure counted in next record",drops,std::string("1"));
+    ensure("closed writer rejects new work",!writer.enqueue(std::make_unique<LLSD>()));
 }
 
 }

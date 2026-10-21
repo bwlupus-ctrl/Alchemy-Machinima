@@ -31,6 +31,8 @@ template<class ID> inline bool before(const Candidate<ID>& a, const Candidate<ID
 {
     if (a.shadowMap != b.shadowMap) return !a.shadowMap;
     if (a.score != b.score) return a.score > b.score;
+    // Object UUID in production, never collector order or drawable address.
+    // One candidate per emitting object; area channels do not rank faces.
     return a.id < b.id;
 }
 template<class ID> struct Selection

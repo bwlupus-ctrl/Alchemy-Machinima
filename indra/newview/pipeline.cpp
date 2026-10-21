@@ -47,6 +47,9 @@
 #include "alcinelightrigmanager.h"
 #include "alrelightmath.h"
 #include "alareashadowmath.h"
+#include "alrelighttakewriter.h"
+#include "workqueue.h"
+#include "lldir.h"
 #include <optional>
 #include "alcinelightrigmodel.h"
 #include "alprobedirty.h" // [ProbeOnDemand]
@@ -26584,6 +26587,82 @@ LLVector4 LLPipeline::deferredLightShape(const LLVOVolume* volume) const
     return shape;
 }
 
+namespace
+{
+// Created and accessed on the main thread; workers retain their own ownership.
+std::shared_ptr<ALRelight::TakeWriter> sRelightTakeWriter;
+}
+
+void LLPipeline::flushRelightTakes()
+{
+    if (sRelightTakeWriter) sRelightTakeWriter->shutdown();
+}
+
+void LLPipeline::logRelightTake(const char* trigger) const
+{
+    LLSD settings;
+    for (const char* key : {"RenderLightShapeEnable", "RenderLocalLightPhysicalFalloff",
+        "RenderLocalLightDefaultRadius", "RenderLocalLightSizeFromPrim", "RenderLocalLightNearFloor",
+        "RenderLocalLightPhysicalMaxBoost", "RenderAreaShadows", "RenderAreaShadowLights",
+        "RenderAreaShadowSamples", "RenderAreaShadowSteps", "RenderAreaShadowMaxDist",
+        "RenderAreaShadowThickness", "RenderAreaShadowHalfRes", "RenderAreaShadowDenoise",
+        "RenderAreaShadowLightBias", "RenderAreaShadowDebugView", "RenderAreaShadowBudget",
+        "RenderAreaShadowQuality", "RenderShadowDetail", "BDMergeMaxSpotShadows", "RenderLocalLightCount"})
+    {
+        if (LLControlVariable* control = gSavedSettings.getControl(key))
+        {
+            // Copy scalar values, never LLSD references shared with live settings.
+            const LLSD value = control->getValue();
+            switch (value.type())
+            {
+            case LLSD::TypeBoolean: settings[key] = value.asBoolean(); break;
+            case LLSD::TypeInteger: settings[key] = value.asInteger(); break;
+            default: settings[key] = value.asReal(); break;
+            }
+        }
+    }
+    std::array<LLUUID, MAX_SPOT_SHADOWS> slots;
+    std::array<float, MAX_SPOT_SHADOWS> fade{};
+    for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+    {
+        const LLDrawable* drawable = mShadowSpotLight[i];
+        if (drawable && drawable->getVObj()) slots[i] = drawable->getVObj()->getID();
+        fade[i] = mSpotLightFade[i];
+    }
+    // Disabled starts are labelled here; OFF frames do no diagnostic copies.
+    auto area = mRelightAreaTake;
+    auto area_slots = mRelightAreaSlotIDs;
+    if (!gSavedSettings.getBOOL("RenderAreaShadows"))
+    {
+        area = {};
+        area.status = "disabled";
+        area_slots = {};
+    }
+    auto record = std::make_unique<LLSD>(ALRelight::takeRecord(trigger, settings, area,
+        area_slots, slots, fade));
+    settings.clear(); // Drop the last main-thread LLSD subtree reference before transfer.
+    static U64 record_id = 0; // Diagnostic sequence only; do not touch the shared random generator.
+    const auto id = std::to_string(++record_id);
+    (*record)["record_id"] = id;
+    if (!sRelightTakeWriter)
+    {
+        const auto path = gDirUtilp->getExpandedFilename(LL_PATH_LOGS, "relight_takes.log");
+        sRelightTakeWriter = std::make_shared<ALRelight::TakeWriter>([path](const LLSD& take)
+        {
+            return ALRelight::appendTakeRecord(path, take);
+        });
+    }
+    const auto writer = sRelightTakeWriter;
+    if (!writer->enqueue(std::move(record))) return;
+    if (writer->requestDrain())
+    {
+        auto queue = LL::WorkQueue::getInstance("General");
+        if (!queue || !queue->tryPost([writer]() { writer->drain(); })) writer->postFailed();
+    }
+    // No main-thread log line here: LLError flushes synchronously, so the record goes only through
+    // the background writer (relight_takes.log).
+}
+
 void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     bool actor_ready, bool actor_as_world, bool actor_excluded)
 {
@@ -26609,6 +26688,20 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         return;
     }
     const bool allowed = areaShadowsAllowedThisView();
+    if (allowed)
+    {
+        // Reached only while enabled. Auxiliary views cannot overwrite it;
+        // no snapshot field feeds selection, admission, allocation or shading.
+        mRelightAreaTake = {};
+        mRelightAreaTake.status = "unavailable_or_no_draw_budget";
+        mRelightAreaTake.width = mRT->deferredScreen.getWidth();
+        mRelightAreaTake.height = mRT->deferredScreen.getHeight();
+        for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+        {
+            const LLDrawable* drawable = mShadowSpotLight[i];
+            mRelightAreaSlotIDs[i] = drawable && drawable->getVObj() ? drawable->getVObj()->getID() : LLUUID::null;
+        }
+    }
     LL_DEBUGS("RelightQ") << "[RelightQ] allowed-view PASS allowed=" << allowed
         << " cube=" << gCubeSnapshot << " prism=" << sPrismLensRender
         << " hud=" << sRenderingHUDs << " impostor=" << sImpostorRender
@@ -26698,6 +26791,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             luminance,ALRelight::legacy(distance,range,volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)))},
             static_cast<unsigned>(llclamp(cap(),1,8)));
     }
+    mRelightAreaTake.selected = selected;
+    mRelightAreaTake.status = "no_selected_lights";
     if (!selected.size) return;
     if (selected.candidates > static_cast<U32>(llclamp(cap(),1,8)))
         LL_DEBUGS("RelightQ") << "[RelightQ] cap PASS candidates=" << selected.candidates
@@ -26766,6 +26861,9 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     static LLCachedControl<S32> budget(gSavedSettings, "RenderAreaShadowBudget", 1500);
     const auto work = ALAreaShadow::workload({samples(),steps(),half()},width,height,
         selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)));
+    mRelightAreaTake.work = work;
+    mRelightAreaTake.planned = true;
+    mRelightAreaTake.status = "budget_rejected";
     // Include inputs and effective plan so clamp changes (including recovery) log once.
     const std::array<S32,11> plan = {samples(),steps(),half(),(S32)width,(S32)height,
         (S32)selected.size,budget(),work.q.samples,work.q.steps,work.q.half,llclamp(cap(),1,8)};
@@ -26785,6 +26883,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         previous = plan;
     }
     if (!work.channels) return;
+    mRelightAreaTake.status = "allocation_failed";
     const U32 w = work.q.half ? (width+1)/2 : width, h = work.q.half ? (height+1)/2 : height;
     const U32 planes = (selected.size+3)/4;
     const auto ensure = [](LLRenderTarget& target, U32 x, U32 y)
@@ -26902,6 +27001,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     }
     mAreaShadowCount = selected.size;
     mAreaShadowValid = true;
+    mRelightAreaTake.status = "rendered";
     static LLFrameTimer summary;
     if (summary.getElapsedTimeF32() >= 1.f)
     {

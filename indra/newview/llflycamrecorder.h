@@ -83,9 +83,9 @@ public:
     void onIdleFrame();
 
     // ---- transport ----
-    void startRecording();      // clears the current take and records fresh
+    void startRecording(bool log_take = true); // Director ACTION owns its single take record.
     void stopRecording();
-    void startPlayback();       // resumes from the playhead
+    void startPlayback(bool log_take = true); // resumes from the playhead
     void pausePlayback();
     void togglePlayback();      // play/pause convenience for the UI
     void stopPlayback();        // releases the camera, playhead back to 0

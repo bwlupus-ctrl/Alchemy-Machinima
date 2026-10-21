@@ -292,6 +292,8 @@ def validate_data(data: dict) -> None:
     # 2159: +1 live Relight Preferences status row on the Soft shadows card.
     # 2160: +1 opt-in Size from prim row directly below World light size (Relight B3).
     # B7 fix round 4 (10/21): reviewed default-deny allowlist adds no body rows; retain 2160.
+    # B9 (10/21): read-only take records use the existing transport; no new UI rows, retain 2160.
+    # B9 fix round 1: dedicated background take writer adds no widgets; retain 2160.
     if len(pages) != 37 or row_count != 2160:
         raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2160")
     shortcuts: set[tuple[str, str, str]] = set()

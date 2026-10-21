@@ -29,6 +29,7 @@
 #include "llvoavatar.h"
 #include "llvoavatarself.h"     // gAgentAvatarp, isAgentAvatarValid()
 #include "m3math.h"
+#include "pipeline.h"
 
 namespace
 {
@@ -181,7 +182,7 @@ F32 LLFlycamRecorder::getDuration() const
 // ---------------------------------------------------------------------------
 // transport
 // ---------------------------------------------------------------------------
-void LLFlycamRecorder::startRecording()
+void LLFlycamRecorder::startRecording(bool log_take)
 {
     if (mState == STATE_RECORDING)
     {
@@ -198,6 +199,7 @@ void LLFlycamRecorder::startRecording()
     sampleCamera(0.f);
     latchRecordAnchor();
     mStatus = "Recording...";
+    if (log_take) gPipeline.logRelightTake("flycam_recording");
 }
 
 void LLFlycamRecorder::stopRecording()
@@ -212,7 +214,7 @@ void LLFlycamRecorder::stopRecording()
     mStatus = llformat("Recorded %.1f s (%d keys)", getDuration(), getNumKeyframes());
 }
 
-void LLFlycamRecorder::startPlayback()
+void LLFlycamRecorder::startPlayback(bool log_take)
 {
     if (mState == STATE_RECORDING)
     {
@@ -233,6 +235,7 @@ void LLFlycamRecorder::startPlayback()
     LLCameraOperator::instance().reset();
     mState = STATE_PLAYING;
     mStatus = "Playing";
+    if (log_take) gPipeline.logRelightTake("flycam_playback");
 }
 
 void LLFlycamRecorder::pausePlayback()
