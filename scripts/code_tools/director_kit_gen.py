@@ -298,6 +298,9 @@ def validate_data(data: dict) -> None:
     # B8 fix round 1: scratch lifetime/isolation/budget fixes add no rows; retain 2161.
     # Cleanup (10/21): Advanced card order/help and handle caching add no rows; retain 2161.
     # Cleanup fix round 1: surface/preview claims and lazy status fallback add no rows; retain 2161.
+    # Step 2 SL map + contact (10/21): debug-only cap adds no UI rows; retain 2161.
+    # Step 2 fix round 1: fade-aware cap and take logging add no UI rows; retain 2161.
+    # Step 2 fix round 2: single-march visibility blending adds no UI rows; retain 2161.
     if len(pages) != 37 or row_count != 2161:
         raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2161")
     shortcuts: set[tuple[str, str, str]] = set()

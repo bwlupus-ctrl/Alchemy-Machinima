@@ -1018,3 +1018,123 @@ No production shader, sampling/history input, workload planner, native shadow-ma
 allocation, slot auction or count-before-filter ordering changed. These are
 standalone CPU/GL checks; full-viewer OFF image identity, real-window behavior
 and viewer GPU timing remain unmeasured under the no-build instruction.
+
+## Step 2 (SL map + contact, 10/21), fix round 2
+
+Implemented the user-approved third approach from HEAD `a63161d0028` on
+`feature/director-kit-p0`. This supersedes B1's lens/bias alignment plan in
+section 9. The two lens approaches remain parked; no code was merged from
+either WIP branch. Their reviewed failures included half-resolution edge
+displacement, lost penumbrae, receiver acne and erased thin contacts.
+
+**Round 2 mechanism.** Ownership-only shortening dropped shadows at acquisition;
+round 1's fade-interpolated ray length still moved discrete samples across
+blockers. Both length-capping mechanisms have been removed. Mapped projectors
+now march exactly the same full-length rays as points and unmapped projectors:
+HEAD's distance limit, disk samples, step spacing, jitter, normal receiver bias,
+source-local housing exclusion, crossing refinement and early return are kept.
+Each validated hit supplies two visibilities from that one march:
+
+- `full_vis`: HEAD's result (0 for a validated hit, otherwise 1).
+- `contact_vis`: 0 only if that hit's refined `hit_t` is within the contact
+  distance from the existing biased receiver ray origin; otherwise 1.
+
+The gather accumulates each component over the same disk samples, then writes
+`mix(full_vis, contact_vis, fade)` using the owning native slot's fade.
+Fade zero is byte-identical to the unmapped/HEAD trace; fade one is contact-only.
+In between, sample positions and both visibility components remain fixed as
+fade changes. This makes coverage transfer continuous before RGBA8 quantization.
+The blended visibility goes through the existing horizontal/vertical bilateral
+filter and full-resolution upsample once. There are no separately filtered
+components or inconsistent spatial weights. Projector composition stays
+`min(native_map_visibility, screen_visibility)`, with native fade applied in
+its existing location. Beauty shaders and the native map sampler are unchanged.
+
+**Contact density tradeoff.** The contact zone uses HEAD's full-ray step density,
+exactly like unmapped lights. It no longer gets a dense set of steps redistributed
+inside a shortened 0.15 m ray. The 3/5 cm fixtures are missed at Medium's
+12 steps, just as in HEAD; raising steps increases contact coverage within the existing workload planner.
+The 3/5/10 cm positive controls use 64 full-ray steps for both current and
+independently compiled HEAD shaders. This preserves a discriminating near
+contact test without claiming the old shortened-ray density. The inherited
+2 cm receiver-bias floor also remains.
+
+**Setting and ownership.** `RenderAreaShadowMappedContact` is a persisted F32
+setting, default **0.15 m**, read live with no define, reload or new listener.
+Finite values are bounded to 0.001-64 m; nonfinite values use 0.15 m. Requested
+zero/negative values disable settled contact detail (encoded as 0.001 m), while
+the full trace continues to run and supplies fade-zero visibility.
+`pipeline.cpp::renderAreaShadows` uploads four constant contact distances per
+plane in `area_contact_dist` and four independent native fades in
+`area_contact_fade`. Empty/unmapped channel fades are initialized to zero.
+The existing `Candidate::shadowMap` resolves all ten current `mShadowSpotLight`
+entries, including fading owners above a lowered auction cap. The owning slot's
+`mSpotLightFade[slot]` is the same state that `setupSpotLight` consumes. Neither
+is advanced between gather and lighting. VCam reads its swapped owners/fade one
+and restores the main state; the CPU fixture executes the actual native
+save/swap/restore assignments. Take logging includes the contact setting.
+
+There is one trace invocation per disk sample, one unchanged step loop and the
+same validated-hit early return. Classifying its hit adds no depth/normal read,
+refinement, iteration or pass. The full-ray workload is identical to unmapped
+lights; the planner, per-draw/frame ceiling, K reservation and shared main/VCam
+budget are unchanged. No native allocation, auction or count-before-filter
+ordering changed. There is no new timing/history input. Output is deterministic
+given the current native owners/fades; inherited native fade timing remains a
+capture reproducibility limitation. Both masters OFF still dispatch no gather.
+
+**Independent 1080p proof.** `relight_contact_check.py` is invoked by both GPU
+gates. It uses production gather, all three spatial filter/upsample passes and
+the actual native PCF/index dispatch plus extracted projector composition.
+Full and Medium half trace resolution are tested at **1920x1080**. This is a
+controlled map/receiver fixture, not a full viewer map-render capture.
+
+- Ten distinguishable native depth maps and matrices are checked against their
+  own remapped slot-zero references; a compiled wrong-slot mutation must fail.
+  CPU tests cover all slots, both planes, acquisition/eviction, retained zero
+  owners, VCam and zero/nonfinite/live settings. Wrong-fade-slot and binary
+  ownership mutations must fail; binary ownership also fails GPU acquisition.
+- Quarter fades **0, 0.25, 0.5, 0.75, 1** and reverse exercise every slot. Dense
+  **0.001** increments cover all **1,001** fade values, acquisition and eviction,
+  with both a displaced native edge and an independently **lit native map**.
+  The independent gather continuity bound is `ceil(255 * abs(delta_fade))`:
+  at 0.001, at most **1/255**, before spatial rounding. The final RGBA8 image
+  additionally accounts for four quantized writes (H, V, upsample and native
+  hybrid), with a fixed `ceil(255 * abs(delta_fade)) + 4` bound. A trial 2/255
+  final-image limit exposed a 3/255 half-resolution rounding transition. The
+  test also replays such a pair's **same RGBA8 gathers through the same
+  production filters and hybrid in FP32 targets**, enforcing <=1/255 plus
+  floating point epsilon with intermediate quantization removed. This isolates
+  spatial rounding while retaining the strict independent gather coverage bound;
+  no expected visibility is derived from the current trace. Reverse final images
+  must also match acquisition hashes.
+- The previous fade-dependent **length interpolation remains a compiled
+  mutation**. It must fail the same strict adjacent-gather or quantization-aware
+  final-image continuity assertions with a lit native map at both resolutions. Production min-to-multiply mutation
+  still fails a separate fractional-visibility oracle.
+- At fade one, a 1 m blocker outside the 0.15 m contact zone adds no screen edge;
+  each hybrid matches its own native map, with one boundary. The retained
+  full-distance negative control must reproduce two separated boundaries at
+  fade one too. Its displaced native edge leaves a lit gap before the screen
+  shadow so the map cannot conceal the second edge.
+- Points and unmapped projectors retain complete filtered HEAD byte identity;
+  mapped projectors also match HEAD at fade zero. Near contacts, live housing
+  transitions, all existing camera, deterministic readback, budget, K stability
+  and VCam ownership regressions remain covered.
+
+| Required gate | Round 2 result / evidence |
+|---|---|
+| `relight_shader_check.py` | PASS production compilation/linkage/runtime, rig regressions and the complete area/contact suite, including 1,001 fades in both directions at both resolutions, FP32 quantization replay and rejected mutations. `.tmp/relight_contact_r2_shaders.log`. |
+| `relight_area_check.py` + new cases | PASS full/half 1080p: all 1,001 fades in both directions, strict gather <=1/255 per 0.001, final RGBA8 maxima **2/255 full / 3/255 half**. FP32 spatial/hybrid replay at the half-resolution rounding transition is **1.000015/255**, within the strict 1/255 + float epsilon bound. Old length interpolation fails the gather bound with **32/255** at both resolutions; all retained slot/binary/multiply/double-edge/HEAD and existing area/VCam regressions pass. `.tmp/relight_contact_r2_area.log`. |
+| Tests | PASS **22/22** existing standalone `alrelightmath`; generator selftests and manifest rule/generation selftests. CPU contact fixture passes actual slot/fade packing, VCam restore, live settings and rejected mutations. `.tmp/relight_contact_r2_{math,generator_tests,manifest_tests}.log`, GPU logs. |
+| OFF / runtime | PASS eight HEAD disabled expression streams, no reload dependency or temporal input. `.tmp/relight_contact_r2_off.log`. Full viewer OFF frame identity is unmeasured. |
+| `zs_check.ps1 -Files <one file>` | PASS sole touched C++ TU `pipeline.cpp`, separate invocation with supported workspace CachePath/TEMP. `.tmp/relight_contact_r2_zs_pipeline.log`. |
+| Three generators / `--check` | PASS regenerated after C++ edits and each checked. Row pin **2161** retained with a round 2 comment; five existing manifest warnings. `.tmp/relight_contact_r2_{kit,sources,manifest}{,_check}.log`. |
+| XUI / JSON LF | PASS **40 touched XUI files, zero findings**; unchanged real widget trees and LF JSON verified. `.tmp/relight_contact_r2_{xui,contract}.log`. |
+| `prebuild_guard.ps1 -ChecksOnly` | PASS all **11 gates**, required safecrlf environment and supported workspace cache/TEMP wrapper; exits before object purge. `.tmp/relight_contact_r2_prebuild_final.log`. |
+| `git diff --check` | PASS after the final report edit; the new untracked contact fixture is also checked directly for whitespace/conflict markers. `.tmp/relight_contact_r2_diff_check.log`, contract log. |
+
+No commit, push, stash operation, viewer build or launch was performed.
+`.tmp/ref_private/` was not opened; unrelated files and dirty `vcpkg` remain.
+Full-viewer identity, in-world quality and viewer GPU timing remain unmeasured
+under the no-build instruction.

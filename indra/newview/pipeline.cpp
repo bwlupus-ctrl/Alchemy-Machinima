@@ -26656,7 +26656,7 @@ void LLPipeline::logRelightTake(const char* trigger) const
         "RenderLocalLightPhysicalMaxBoost", "RenderAreaShadows", "RenderAreaShadowsVCam", "RenderAreaShadowLights",
         "RenderAreaShadowSamples", "RenderAreaShadowSteps", "RenderAreaShadowMaxDist",
         "RenderAreaShadowThickness", "RenderAreaShadowHalfRes", "RenderAreaShadowDenoise",
-        "RenderAreaShadowLightBias", "RenderAreaShadowDebugView", "RenderAreaShadowBudget",
+        "RenderAreaShadowLightBias", "RenderAreaShadowMappedContact", "RenderAreaShadowDebugView", "RenderAreaShadowBudget",
         "RenderAreaShadowQuality", "RenderShadowDetail", "BDMergeMaxSpotShadows", "RenderLocalLightCount"})
     {
         if (LLControlVariable* control = gSavedSettings.getControl(key))
@@ -26780,6 +26780,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     static LLCachedControl<S32> samples(gSavedSettings, "RenderAreaShadowSamples", 8);
     static LLCachedControl<S32> steps(gSavedSettings, "RenderAreaShadowSteps", 12);
     static LLCachedControl<F32> max_dist(gSavedSettings, "RenderAreaShadowMaxDist", 8.f);
+    static LLCachedControl<F32> mapped_contact(gSavedSettings, "RenderAreaShadowMappedContact", .15f);
     static LLCachedControl<F32> thickness(gSavedSettings, "RenderAreaShadowThickness", .35f);
     static LLCachedControl<bool> half(gSavedSettings, "RenderAreaShadowHalfRes", true);
     static LLCachedControl<F32> denoise(gSavedSettings, "RenderAreaShadowDenoise", 2.f);
@@ -27008,6 +27009,9 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     for (U32 plane=0; plane<planes; ++plane)
     {
         LLVector4 lights[4] = {}; GLuint seeds[4] = {};
+        LLVector4 contact, contact_fade;
+        contact.clear();
+        contact_fade.clear(); // zero preserves full visibility for unmapped lights
         const U32 count = std::min(4u,selected.size-plane*4);
         for (U32 i=0; i<count; ++i)
         {
@@ -27018,6 +27022,19 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             {
                 LLVOVolume* volume = drawable ? drawable->getVOVolume():nullptr;
                 if (!volume || volume->getID()!=id) continue;
+                // Sample the same current slots/fades as setupSpotLight below;
+                // neither changes between this gather and the lighting pass.
+                // VCam has already swapped in its own owners with fade 1.
+                if (selected.lights[plane*4+i].shadowMap)
+                {
+                    F32 fade = 0.f;
+                    for (U32 slot=0; slot<MAX_SPOT_SHADOWS; ++slot)
+                        if (mShadowSpotLight[slot] == drawable) fade = mSpotLightFade[slot];
+                    const F32 contact_setting = mapped_contact();
+                    // <= 1 mm disables contact, including a requested zero.
+                    contact.mV[i] = std::isfinite(contact_setting) ? llclamp(contact_setting,.001f,64.f):.15f;
+                    contact_fade.mV[i] = fade;
+                }
                 const glm::vec3 centre = mul_mat4_vec3(view,glm::make_vec3(drawable->getPositionAgent().mV));
                 lights[i].set(centre.x,centre.y,centre.z,area_source_radius(volume));
                 U32 hash = 2166136261u;
@@ -27030,6 +27047,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         bindDeferredShader(gAreaShadowProgram);
         gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_lights"),4,lights[0].mV);
         gAreaShadowProgram.uniform4uiv(LLStaticHashedString("area_seeds"),1,seeds);
+        gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_contact_dist"),1,contact.mV);
+        gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_contact_fade"),1,contact_fade.mV);
 
         gAreaShadowProgram.uniform1i(LLStaticHashedString("area_samples"),work.q.samples);
         gAreaShadowProgram.uniform1i(LLStaticHashedString("area_steps"),work.q.steps);

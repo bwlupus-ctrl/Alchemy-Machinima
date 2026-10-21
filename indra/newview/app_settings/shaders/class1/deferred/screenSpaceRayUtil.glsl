@@ -41,13 +41,14 @@ float areaReceiverBias(vec2 uv, vec3 pos)
                           length(getPositionWithDepth(uv+vec2(0,pixel.y),depth).xyz-pos));
     return max(0.02,footprint*1.5);
 }
-float areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
-                float light_bias, float max_distance, float thickness, int steps, float offset)
+vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
+                float light_bias, float max_distance, float thickness, int steps, float offset,
+                float contact_distance)
 {
     vec3 delta = target-origin;
     float distance = length(delta);
     float limit = min(max(0.0,distance-end_gap),max_distance);
-    if (limit <= 0.001) return 1.0;
+    if (limit <= 0.001) return vec2(1);
     vec3 direction = delta/max(distance,0.001);
     float dt = limit/float(steps);
     for (int step=0; step<steps; ++step)
@@ -84,8 +85,18 @@ float areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
             if (hit_depth >= 1.0) continue;
             vec3 surface = getPositionWithDepth(hit_uv,hit_depth).xyz;
             if (length(hit-light) > light_bias &&
-                abs(dot(hit-surface,areaNormal(hit_uv))) <= thickness) return 0.0;
+                abs(dot(hit-surface,areaNormal(hit_uv))) <= thickness)
+            {
+                // One unchanged full-length march: classify its validated hit.
+                // Contact shares HEAD's step density, refinement and early-out.
+                return vec2(0.0,contact_distance > 0.001 && hit_t <= contact_distance ? 0.0:1.0);
+            }
         }
     }
-    return 1.0;
+    return vec2(1);
+}
+float areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
+                float light_bias, float max_distance, float thickness, int steps, float offset)
+{
+    return areaTrace(origin,target,light,end_gap,light_bias,max_distance,thickness,steps,offset,0.0).x;
 }

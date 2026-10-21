@@ -5,6 +5,8 @@ in vec2 vary_fragcoord;
 uniform sampler2D depthMap;
 uniform vec4 area_lights[4]; // view-space centre, source radius
 uniform uvec4 area_seeds;   // hash of light UUID, NOT channel
+uniform vec4 area_contact_dist; // contact hit distance; never changes ray samples
+uniform vec4 area_contact_fade; // owning native slot's fade; zero = full visibility
 uniform int area_count;
 uniform int area_first; // first channel in this budget-limited draw
 uniform int area_samples;
@@ -17,8 +19,9 @@ float getLinearDepth(vec2 uv);
 vec3 areaNormal(vec2 uv);
 vec2 areaTexelUV(vec2 uv);
 float areaReceiverBias(vec2 uv, vec3 pos);
-float areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
-                float light_bias, float max_distance, float thickness, int steps, float offset);
+vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
+                float light_bias, float max_distance, float thickness, int steps, float offset,
+                float contact_distance);
 uint areaHash(uint x)
 {
     x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; return x ^ (x >> 16);
@@ -46,6 +49,7 @@ void main()
         // Preserve Phase 1 radii; a point source gets a 10 cm shadow-only disk.
         float source_radius = area_lights[light].w > 0.0 ? area_lights[light].w : 0.1;
         float visibility = 0.0;
+        float contact_visibility = 0.0;
         for (int sample_idx = 0; sample_idx < area_samples; ++sample_idx)
         {
             // Equal-area radial strata and fixed golden-angle azimuths.
@@ -53,9 +57,13 @@ void main()
             float angle = rotation+float(sample_idx)*2.39996322973;
             vec3 target = area_lights[light].xyz+radius*(cos(angle)*tangent+sin(angle)*bitangent);
             float end_gap = max(source_radius,0.1)+area_light_bias;
-            visibility += areaTrace(origin,target,area_lights[light].xyz,end_gap,
-                area_light_bias,area_params.x,area_params.y,area_steps,0.25+0.5*jitter);
+            vec2 traced = areaTrace(origin,target,area_lights[light].xyz,end_gap,
+                area_light_bias,area_params.x,area_params.y,area_steps,0.25+0.5*jitter,area_contact_dist[light]);
+            visibility += traced.x;
+            contact_visibility += traced.y;
         }
-        frag_color[light] = visibility/float(area_samples);
+        // Filter the blended visibility once, with the existing spatial passes.
+        frag_color[light] = mix(visibility/float(area_samples),
+            contact_visibility/float(area_samples),area_contact_fade[light]);
     }
 }

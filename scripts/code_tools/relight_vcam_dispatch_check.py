@@ -130,7 +130,7 @@ struct LLUUID {
     bool operator<(const LLUUID& b) const { return mData[0]<b.mData[0]; }
 };
 const LLUUID LLUUID::null{};
-struct LLVector4 { float mV[4]={}; void set(float x,float y,float z,float r) { mV[0]=x;mV[1]=y;mV[2]=z;mV[3]=r; } };
+struct LLVector4 { float mV[4]={}; void clear() { for(auto& v:mV) v=0; } void set(float x,float y,float z,float r) { mV[0]=x;mV[1]=y;mV[2]=z;mV[3]=r; } };
 namespace glm {
 struct mat4 {};
 struct vec3 { float x,y,z; };
@@ -216,6 +216,7 @@ struct LLPipeline {
     std::array<LLDrawable*,8> mLights;
     static constexpr unsigned MAX_SPOT_SHADOWS=10;
     std::array<LLDrawable*,10> mShadowSpotLight{};
+    float mSpotLightFade[10]={};
     LLPipeline() { for(unsigned i=0;i<8;++i) mLights[i]=&drawables[i]; }
     void setLights(int first,const float* light) {
         for(unsigned i=0;i<8;++i) {

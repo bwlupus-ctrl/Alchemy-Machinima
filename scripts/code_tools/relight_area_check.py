@@ -119,6 +119,14 @@ uf[3](loc(area_gather,b'area_params'),8,.35,.5)
 uf[2](loc(area_gather,b'area_trace_res'),area_size,area_size)
 wall_region=(xx>=-.5)&(xx<=.5)&(abs(yy)<.3)
 wall_lit=area_read()
+# Assigned native-map owners keep the same source-local housing exclusion.
+uf[4](loc(area_gather,b'area_contact_dist'),.15,.15,.15,.15)
+uf[4](loc(area_gather,b'area_contact_fade'),1,1,1,1)
+mapped_wall_lit=area_read()
+assert np.min(mapped_wall_lit[wall_region])>=np.min(wall_lit[wall_region]),'mapped contact preserves housed-lamp pool'
+uf[4](loc(area_gather,b'area_contact_dist'),0,0,0,0)
+uf[4](loc(area_gather,b'area_contact_fade'),0,0,0,0)
+assert np.array_equal(area_read(),wall_lit),'unmapped housing bytes after live mapped/unmapped transition'
 for thick in (.001,.1,.35,1.,4.):
     uf[3](loc(area_gather,b'area_params'),8,thick,.5)
     assert np.array_equal(area_read()[wall_region],wall_lit[wall_region]),'thickness must not change housed-lamp visibility'
@@ -502,3 +510,6 @@ for feeds in (1,2,4):
         assert not np.array_equal(current,stale),'feed camera stale-transform negative control'
         assert np.array_equal(current,camera_visibility(fixture,True)),'feed deterministic current frame'
     print('[RelightQ] VCam camera oracle PASS %d feeds: own depth/normal/camera/light transforms and odd/divisor extents, half-res <=1px alignment; stale-camera negative controls' % feeds,flush=True)
+
+from relight_contact_check import check_contact
+check_contact(globals())

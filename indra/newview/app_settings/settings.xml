@@ -21602,6 +21602,13 @@
         <key>Type</key><string>F32</string>
         <key>Value</key><real>2</real>
     </map>
+    <key>RenderAreaShadowMappedContact</key>
+    <map>
+        <key>Comment</key><string>Contact hit distance in metres for projectors with a native SL shadow map. Native fade blends full and contact-only visibility from one full-length ray; zero disables settled contact detail. Uses the same step density as unmapped lights. Runtime only.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0.15</real>
+    </map>
     <key>RenderAreaShadowLightBias</key>
     <map>
         <key>Comment</key><string>Light-end housing exclusion in metres, independent of blocker depth thickness.</string>
