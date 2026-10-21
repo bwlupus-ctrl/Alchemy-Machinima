@@ -196,10 +196,10 @@ template<> template<> void relight_object::test<12>()
 {
     using namespace ALAreaShadow;
     const auto low=quality(0), medium=quality(1), high=quality(2), cinema=quality(3);
-    ensure("low",low.samples==2 && low.steps==8 && low.half);
-    ensure("default medium",medium.samples==4 && medium.steps==12 && medium.half);
-    ensure("high",high.samples==8 && high.steps==20 && high.half);
-    ensure("cinematic",cinema.samples==16 && cinema.steps==32 && !cinema.half);
+    ensure("low",low.samples==4 && low.steps==8 && low.half);
+    ensure("default medium",medium.samples==8 && medium.steps==12 && medium.half);
+    ensure("high",high.samples==12 && high.steps==20 && high.half);
+    ensure("cinematic",cinema.samples==24 && cinema.steps==32 && !cinema.half);
     ensure_equals("literal integer hash",hash(1),0x688990c0u);
     ensure("different IDs change pattern",hash(1)!=hash(2));
     // Equal-area disk strata: exact mean squared radius, balanced angular sweep.
@@ -214,6 +214,58 @@ template<> template<> void relight_object::test<12>()
         }
         close("uniform radial area",mean,.5);
     }
+}
+
+template<> template<> void relight_object::test<13>()
+{
+    using namespace ALAreaShadow;
+    close("wall lamp default end bias",lightBias(.25f),.25,1.e-7);
+    close("live bias",lightBias(.6f),.6,1.e-7);
+    close("nonfinite bias fallback",lightBias(std::numeric_limits<float>::quiet_NaN()),.25);
+    close("bounded bias",lightBias(100.f),4);
+    close("negative bias",lightBias(-1.f),0);
+}
+
+template<> template<> void relight_object::test<14>()
+{
+    using namespace ALAreaShadow;
+    for (unsigned height : {1080u,1440u,2160u})
+    for (unsigned lights : {4u,8u})
+    for (int preset=0; preset<4; ++preset)
+    for (int budget : {1,100,1500,9999})
+    {
+        const auto a=workload(quality(preset),height*16/9,height,lights,budget);
+        const auto b=workload(quality(preset),height*16/9,height,lights,budget);
+        ensure("deterministic plan",a.q.samples==b.q.samples && a.q.steps==b.q.steps &&
+            a.q.half==b.q.half && a.channels==b.channels && a.iterations==b.iterations);
+        ensure("hard frame ceiling",a.iterations<=a.budget && a.budget<=1500000000ull);
+        if (a.channels)
+        {
+            ensure_equals("literal total",a.iterations,a.pixels*lights*a.q.samples*a.q.steps);
+            unsigned dispatched=0;
+            for (unsigned plane=0; plane<(lights+3)/4; ++plane)
+                for (unsigned first=0; first<std::min(4u,lights-plane*4); first+=a.channels)
+                {
+                    const auto count=std::min(a.channels,std::min(4u,lights-plane*4)-first);
+                    ensure("every split draw bounded",a.pixels*count*a.q.samples*a.q.steps<=a.drawCap);
+                    dispatched+=count;
+                }
+            ensure_equals("all channels exactly once",dispatched,lights);
+        }
+        else ensure_equals("rejected views do no work",a.iterations,std::uint64_t(0));
+    }
+    const auto samples=workload({32,64,false},1920,1080,8,1500);
+    ensure("reduce samples first",samples.q.samples==1 && samples.q.steps==64 && !samples.q.half);
+    const auto steps=workload({32,64,false},3840,2160,8,1500);
+    ensure("then steps",steps.q.samples==1 && steps.q.steps==22 && !steps.q.half);
+    const auto half=workload({32,64,false},3840,2160,8,20);
+    ensure("then half resolution",half.q.samples==1 && half.q.steps==1 && half.q.half && half.channels>0);
+    const auto split=workload({1,64,false},1920,1080,4,600);
+    ensure("split necessary",split.channels==2 && split.q.steps==64);
+    ensure("default 4K below ceiling",workload(quality(1),3840,2160,8,1500).iterations==1393459200ull);
+    ensure("impossible minimum fails closed",!workload({1,1,true},3840,2160,8,1).channels);
+    ensure("oversized input fails closed",!workload({32,64,false},0xffffffffu,0xffffffffu,8,1500).channels);
+    ensure("empty selection",!workload(quality(1),1920,1080,0,1500).channels);
 }
 
 }

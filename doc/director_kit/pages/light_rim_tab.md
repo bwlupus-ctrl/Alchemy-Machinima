@@ -1,7 +1,7 @@
 # Rim — Director Kit page contract
 
 Page key: `light_rim_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (52/53 setting-bound rows; 4 C++-referenced rows).
+Computed class: **code-driven** (55/56 setting-bound rows; 4 C++-referenced rows).
 
 ## Real owners
 
@@ -73,6 +73,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `area_soft_shadows` / `area_shadow_thickness` (Thickness (m)) | none | kit `number` ↔ `RenderAreaShadowThickness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:256` `area_shadow_thickness` |
 | `area_soft_shadows` / `area_shadow_half` (Half resolution) | none | kit `toggle` ↔ `RenderAreaShadowHalfRes` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:259` `area_shadow_half` |
 | `area_soft_shadows` / `area_shadow_denoise` (Denoise radius) | none | kit `number` ↔ `RenderAreaShadowDenoise` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:262` `area_shadow_denoise` |
+| `area_soft_shadows` / `area_shadow_light_bias` (Light end bias (m)) | none | kit `number` ↔ `RenderAreaShadowLightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:265` `area_shadow_light_bias` |
+| `area_soft_shadows` / `area_shadow_debug` (Visibility view) | none | kit `combo` ↔ `RenderAreaShadowDebugView` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:268` `area_shadow_debug` |
+| `area_soft_shadows` / `area_shadow_budget` (Work budget (M)) | none | kit `number` ↔ `RenderAreaShadowBudget` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:283` `area_shadow_budget` |
 
 ## Adapter extraction
 
@@ -89,7 +92,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **47 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **56 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -140,6 +143,15 @@ Manifest size: **47 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `area_shadow_quality-option-3` | Only `area_shadow_quality` selects `Cinematic`; other selectors remain default. |
 | `area_shadow_quality-option-4` | Only `area_shadow_quality` selects `Custom`; other selectors remain default. |
 | `area_shadow_half-on` | Only `area_shadow_half` is on; dependent visibility is measured. |
+| `area_shadow_debug-option-0` | Only `area_shadow_debug` selects `Off`; other selectors remain default. |
+| `area_shadow_debug-option-1` | Only `area_shadow_debug` selects `Light 1`; other selectors remain default. |
+| `area_shadow_debug-option-2` | Only `area_shadow_debug` selects `Light 2`; other selectors remain default. |
+| `area_shadow_debug-option-3` | Only `area_shadow_debug` selects `Light 3`; other selectors remain default. |
+| `area_shadow_debug-option-4` | Only `area_shadow_debug` selects `Light 4`; other selectors remain default. |
+| `area_shadow_debug-option-5` | Only `area_shadow_debug` selects `Light 5`; other selectors remain default. |
+| `area_shadow_debug-option-6` | Only `area_shadow_debug` selects `Light 6`; other selectors remain default. |
+| `area_shadow_debug-option-7` | Only `area_shadow_debug` selects `Light 7`; other selectors remain default. |
+| `area_shadow_debug-option-8` | Only `area_shadow_debug` selects `Light 8`; other selectors remain default. |
 
 ## Parity check
 
@@ -154,7 +166,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-53 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+56 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

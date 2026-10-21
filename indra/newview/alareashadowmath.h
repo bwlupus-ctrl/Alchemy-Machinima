@@ -56,10 +56,50 @@ inline std::uint32_t hash(std::uint32_t x)
     x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; return x ^ (x >> 16);
 }
 struct Quality { int samples, steps; bool half; };
+inline float lightBias(float bias)
+{
+    return std::isfinite(bias) ? std::clamp(bias,0.f,4.f) : .25f;
+}
 inline Quality quality(int preset)
 {
-    constexpr Quality presets[] = {{2,8,true}, {4,12,true}, {8,20,true}, {16,32,false}};
+    constexpr Quality presets[] = {{4,8,true}, {8,12,true}, {12,20,true}, {24,32,false}};
     return presets[std::clamp(preset,0,3)];
 }
+// Runtime work admission. Integer arithmetic and fixed degradation order; no timing input.
+// The setting can lower the safety ceiling, never remove it.
+struct Workload
+{
+    Quality q;
+    unsigned channels = 0;
+    std::uint64_t pixels = 0, iterations = 0, budget = 0, drawCap = 0;
+};
+inline Workload workload(Quality q, unsigned width, unsigned height, unsigned lights, int millions)
+{
+    Workload w{};
+    w.q = {std::clamp(q.samples,1,32),std::clamp(q.steps,1,64),q.half};
+    lights = std::min(lights,8u);
+    w.budget = std::uint64_t(std::clamp(millions,1,1500))*1000000;
+    w.drawCap = w.budget/2;
+    const auto update = [&]()
+    {
+        w.pixels = w.q.half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
+            std::uint64_t(width)*height;
+        w.iterations = w.pixels*lights*w.q.samples*w.q.steps;
+    };
+    // Render-target dimensions are GL-sized; bound pathological pure-function inputs too.
+    if (width > 65536 || height > 65536) return w;
+    update();
+    const auto over = [&]() { return w.iterations>w.budget ||
+        w.pixels*w.q.samples*w.q.steps>w.drawCap; };
+    while (over() && w.q.samples>1) { --w.q.samples; update(); }
+    while (over() && w.q.steps>1) { --w.q.steps; update(); }
+    if (over() && !w.q.half) { w.q.half=true; update(); }
+    // Even one channel/one step cannot fit: skip this view, never exceed the cap.
+    if (over()) { w.iterations=0; return w; }
+    const auto perChannel = w.pixels*w.q.samples*w.q.steps;
+    w.channels = lights && perChannel ? unsigned(std::min<std::uint64_t>(4,w.drawCap/perChannel)) : 0;
+    return w;
+}
+
 }
 #endif

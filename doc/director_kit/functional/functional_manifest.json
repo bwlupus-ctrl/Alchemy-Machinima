@@ -43,10 +43,10 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2161,
-  "entries": 4066,
+  "generated_kit_rows": 2164,
+  "entries": 4069,
   "pages": 37,
-  "settings_declared": 3679,
+  "settings_declared": 3682,
   "xui_files": 842,
   "rim_presets": 40,
   "rim_preset_written_settings": [
@@ -183528,20 +183528,20 @@
    "suspect": false,
    "hazards": [],
    "exercise": "set_value",
-   "test_value": 5,
+   "test_value": 9,
    "expect": {
     "setting": "RenderAreaShadowSamples",
     "type": "S32",
-    "value": 5
+    "value": 9
    },
    "restore": {
     "setting": "RenderAreaShadowSamples",
-    "value": 4
+    "value": 8
    },
    "setting": "RenderAreaShadowSamples",
    "setting_source": "kit_row setting",
    "setting_type": "S32",
-   "default": 4,
+   "default": 8,
    "min": 1.0,
    "max": 32.0,
    "increment": 1.0,
@@ -183820,6 +183820,212 @@
    "min": 0.0,
    "max": 8.0,
    "increment": 0.5,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml"
+  },
+  {
+   "page": "light_rim_tab",
+   "page_label": "Rim",
+   "group": "light_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "light_rim_tab",
+    "via": "tab"
+   },
+   "id": "v2:light_rim_tab:area_shadow_light_bias:kit:55",
+   "csv_index": null,
+   "card": "area_soft_shadows",
+   "card_title": "Soft shadows",
+   "row_label": "Light end bias (m)",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+   "xui_line": null,
+   "widget_name": "area_shadow_light_bias",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.26,
+   "expect": {
+    "setting": "RenderAreaShadowLightBias",
+    "type": "F32",
+    "value": 0.26
+   },
+   "restore": {
+    "setting": "RenderAreaShadowLightBias",
+    "value": 0.25
+   },
+   "setting": "RenderAreaShadowLightBias",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 0.25,
+   "min": 0.0,
+   "max": 4.0,
+   "increment": 0.01,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml"
+  },
+  {
+   "page": "light_rim_tab",
+   "page_label": "Rim",
+   "group": "light_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "light_rim_tab",
+    "via": "tab"
+   },
+   "id": "v2:light_rim_tab:area_shadow_debug:kit:56",
+   "csv_index": null,
+   "card": "area_soft_shadows",
+   "card_title": "Soft shadows",
+   "row_label": "Visibility view",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+   "xui_line": null,
+   "widget_name": "area_shadow_debug",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "Light 1",
+    "value": 1
+   },
+   "expect": {
+    "setting": "RenderAreaShadowDebugView",
+    "type": "S32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "RenderAreaShadowDebugView",
+    "value": 0
+   },
+   "setting": "RenderAreaShadowDebugView",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 0,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Off",
+     "value": "0"
+    },
+    {
+     "label": "Light 1",
+     "value": "1"
+    },
+    {
+     "label": "Light 2",
+     "value": "2"
+    },
+    {
+     "label": "Light 3",
+     "value": "3"
+    },
+    {
+     "label": "Light 4",
+     "value": "4"
+    },
+    {
+     "label": "Light 5",
+     "value": "5"
+    },
+    {
+     "label": "Light 6",
+     "value": "6"
+    },
+    {
+     "label": "Light 7",
+     "value": "7"
+    },
+    {
+     "label": "Light 8",
+     "value": "8"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml"
+  },
+  {
+   "page": "light_rim_tab",
+   "page_label": "Rim",
+   "group": "light_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "light_rim_tab",
+    "via": "tab"
+   },
+   "id": "v2:light_rim_tab:area_shadow_budget:kit:57",
+   "csv_index": null,
+   "card": "area_soft_shadows",
+   "card_title": "Soft shadows",
+   "row_label": "Work budget (M)",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+   "xui_line": null,
+   "widget_name": "area_shadow_budget",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 1451,
+   "expect": {
+    "setting": "RenderAreaShadowBudget",
+    "type": "S32",
+    "value": 1451
+   },
+   "restore": {
+    "setting": "RenderAreaShadowBudget",
+    "value": 1500
+   },
+   "setting": "RenderAreaShadowBudget",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 1500,
+   "min": 1.0,
+   "max": 1500.0,
+   "increment": 50.0,
    "combo_items": [],
    "binding": "setting",
    "link_to": null,
@@ -230550,9 +230756,21 @@
    "animate_tab_logic",
    "animation_library_combo",
    "animation_preview",
+   "area_shadow_budget",
+   "area_shadow_debug",
+   "area_shadow_debug_item_0",
+   "area_shadow_debug_item_1",
+   "area_shadow_debug_item_2",
+   "area_shadow_debug_item_3",
+   "area_shadow_debug_item_4",
+   "area_shadow_debug_item_5",
+   "area_shadow_debug_item_6",
+   "area_shadow_debug_item_7",
+   "area_shadow_debug_item_8",
    "area_shadow_denoise",
    "area_shadow_distance",
    "area_shadow_half",
+   "area_shadow_light_bias",
    "area_shadow_lights",
    "area_shadow_quality",
    "area_shadow_quality_item_0",

@@ -21558,7 +21558,7 @@
         <key>Comment</key><string>Fixed disk rays per selected light (1-32).</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>S32</string>
-        <key>Value</key><integer>4</integer>
+        <key>Value</key><integer>8</integer>
     </map>
     <key>RenderAreaShadowSteps</key>
     <map>
@@ -21576,7 +21576,7 @@
     </map>
     <key>RenderAreaShadowThickness</key>
     <map>
-        <key>Comment</key><string>Depth separation required to count as blocked, in metres.</string>
+        <key>Comment</key><string>Finite blocker depth tolerance in metres, extended by one march step to avoid skipping surfaces.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>F32</string>
         <key>Value</key><real>0.35</real>
@@ -21594,6 +21594,27 @@
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>F32</string>
         <key>Value</key><real>2</real>
+    </map>
+    <key>RenderAreaShadowLightBias</key>
+    <map>
+        <key>Comment</key><string>Light-end housing exclusion in metres, independent of blocker depth thickness.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0.25</real>
+    </map>
+    <key>RenderAreaShadowDebugView</key>
+    <map>
+        <key>Comment</key><string>Grayscale selected-light visibility: 0 off, 1-8 channel. Runtime only.</string>
+        <key>Persist</key><integer>0</integer>
+        <key>Type</key><string>S32</string>
+        <key>Value</key><integer>0</integer>
+    </map>
+    <key>RenderAreaShadowBudget</key>
+    <map>
+        <key>Comment</key><string>Hard area-shadow march budget in millions/frame (1-1500). Each draw is limited to half. Runtime reductions: rays, steps, then half resolution.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>S32</string>
+        <key>Value</key><integer>1500</integer>
     </map>
     <key>RenderAreaShadowQuality</key>
     <map>

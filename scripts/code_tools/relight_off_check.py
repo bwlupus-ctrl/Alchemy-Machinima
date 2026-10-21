@@ -77,7 +77,8 @@ with tempfile.TemporaryDirectory(dir=root/'.tmp',prefix='relight_off_') as tempo
 
 area_settings=('RenderAreaShadows','RenderAreaShadowLights','RenderAreaShadowSamples',
     'RenderAreaShadowSteps','RenderAreaShadowMaxDist','RenderAreaShadowThickness',
-    'RenderAreaShadowHalfRes','RenderAreaShadowDenoise','RenderAreaShadowQuality')
+    'RenderAreaShadowHalfRes','RenderAreaShadowDenoise','RenderAreaShadowQuality',
+    'RenderAreaShadowLightBias','RenderAreaShadowDebugView')
 for setting in area_settings:
     assert setting not in manager, setting+' shader-manager dependency'
     listener=re.search(r'setting_setup_signal_listener\([^;]*"'+setting+r'"[^;]*;',control,re.S)
@@ -87,4 +88,7 @@ for name in ('areaShadowF.glsl','areaShadowFilterF.glsl'):
     text=(root/'indra/newview/app_settings/shaders/class3/deferred'/name).read_text()
     for forbidden in ('noiseSine','modelview_delta','gFrameCount','uniform float time','random('):
         assert forbidden not in text, (name, forbidden)
+text=(root/'indra/newview/app_settings/shaders/class1/deferred/screenSpaceRayUtil.glsl').read_text()
+for forbidden in ('noiseSine','modelview_delta','gFrameCount','uniform float time','random('):
+    assert forbidden not in text, ('screenSpaceRayUtil.glsl',forbidden)
 print('[RelightQ] area settings/current-frame source PASS no reload dependencies, temporal terms or implicit visibility samples')

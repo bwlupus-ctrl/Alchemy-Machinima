@@ -1674,13 +1674,46 @@ def kit_source_pin_findings(root: Node, rules: KitSourcePins | None = None) -> l
     return finalize_findings(findings)
 
 
+def kit_main_column_findings(root: Node) -> list[Finding]:
+    """In-world layout contract: Rim Advanced cards stack in the main column.
+
+    Kit interiors bypass calculate()/check_node(); label-fit alone cannot
+    detect a card placed in the second runtime grid column. Check the actual
+    full_width property consumed by ALKitCard/ALFlowGrid, including zero-size
+    generated page roots. This is a layout policy, not a runtime rect capture.
+    """
+    findings: list[Finding] = []
+    for page in (root, *descendants(root)):
+        if page.tag != "kit_page" or page.attrs.get("page") != "light_group/light_rim_tab":
+            continue
+        required = {"rim_diagnostics", "light_shape", "area_soft_shadows"}
+        cards = {node.attrs.get("id"): node for node in page.children if node.tag == "kit_card"}
+        for card_id in sorted(required):
+            card = cards.get(card_id)
+            if card is None or card.attrs.get("full_width", "false").lower() != "true":
+                findings.append(Finding("kit-card-columns", card.line if card else page.line,
+                    f"{card_id}: Rim Advanced must span the main column (full_width=true); "
+                    "otherwise the runtime two-column grid can move controls off the visible main column"))
+        card_source = ALKIT_CARD_CPP.read_text(encoding="utf-8")
+        card_header = ALKIT_CARD_CPP.with_suffix(".h").read_text(encoding="utf-8")
+        grid_source = ALKIT_PAGE_CPP.with_name("alflowgrid.cpp").read_text(encoding="utf-8")
+        if not all(("mFullWidth(p.full_width)" in card_source,
+                    'mKind == "inline" || mFullWidth' in card_header,
+                    "item.width = available;" in grid_source,
+                    "items[begin].sizing->spansAllColumns()" in grid_source)):
+            findings.append(Finding("kit-card-columns-runtime", page.line,
+                "full-width runtime grid contract changed; review the main-column gate"))
+    return findings
+
+
 def check_file(path: Path, source_index: SourceIndex | None = None,
                dynamic_visibility_override: set[str] | None = None) -> list[Finding]:
     if path.name == KIT_INDEX_NAME:
         return []
     root, overlap_policy = parse_xml(path)
     calculate(root)
-    kit_findings = kit_geometry_findings(root) + label_fit_findings(root, path) + kit_source_pin_findings(root)
+    kit_findings = (kit_geometry_findings(root) + label_fit_findings(root, path)
+                    + kit_source_pin_findings(root) + kit_main_column_findings(root))
     if root.rect is None or root.rect.width <= 0 or root.rect.height <= 0:
         if any(node.legacy_kit for node in (root, *descendants(root))):
             kit_findings.append(Finding(
@@ -1804,6 +1837,24 @@ def run_selftest(json_output: bool) -> int:
     )
     reports: list[dict[str, object]] = []
     passed = True
+    # Negative regression uses the real generated cards: reverting either new
+    # relight full_width flag must fail even though its rows still pass label-fit.
+    rim_path = ALKIT_PAGE_CPP.parent / "skins/default/xui/en/panel_dpage_light_rim.xml"
+    rim_root, _ = parse_xml(rim_path)
+    column_ok = not kit_main_column_findings(rim_root)
+    for card_id in ("light_shape", "area_soft_shadows"):
+        card = next(node for node in descendants(rim_root)
+                    if node.tag == "kit_card" and node.attrs.get("id") == card_id)
+        original = card.attrs.pop("full_width", None)
+        column_ok = column_ok and any(item.kind == "kit-card-columns"
+                                     for item in kit_main_column_findings(rim_root))
+        if original is not None:
+            card.attrs["full_width"] = original
+    passed = passed and column_ok
+    reports.append({"fixture": "Rim Advanced main column", "passed": column_ok})
+    if not json_output:
+        print(f"{'PASS' if column_ok else 'FAIL'} Rim Advanced main column: "
+              "real cards pass; removing either relight span fails")
     for filename, expects_findings, required_kind in cases:
         path = fixture_dir / filename
         try:

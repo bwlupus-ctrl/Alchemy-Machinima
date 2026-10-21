@@ -24452,6 +24452,24 @@ void LLPipeline::renderFinalize()
         gBlitWithEffectsProgram.unbind();
     }
 
+    // [RelightQ] Show the current selected channel after all post/present effects.
+    // Direct grayscale values remain available for tuning. Inactive/excluded views never read stale visibility targets.
+    static LLCachedControl<S32> area_debug(gSavedSettings, "RenderAreaShadowDebugView", 0);
+    if (areaShadowsActive() && area_debug() > 0 && area_debug() <= (S32)mAreaShadowCount)
+    {
+        const S32 channel = area_debug()-1;
+        LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+        LLGLDisable blend(GL_BLEND);
+        gAreaShadowFilterProgram.bind();
+        const S32 unit = gAreaShadowFilterProgram.enableTexture(LLShaderMgr::AREA_SHADOW_SOURCE);
+        mRT->areaVisibility[channel/4].bindTexture(0,unit,LLTexUnit::TFO_POINT);
+        gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_debug_channel"),channel%4+1);
+        mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+        gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_debug_channel"),0);
+        gAreaShadowFilterProgram.disableTexture(LLShaderMgr::AREA_SHADOW_SOURCE);
+        gAreaShadowFilterProgram.unbind();
+    }
+
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
 
     // [F4/F8] campaign item F4/F8: composition guide overlay + DoF focus
@@ -26603,12 +26621,13 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     LL_PROFILE_GPU_ZONE("area shadows");
     LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("area shadows");
     static LLCachedControl<S32> cap(gSavedSettings, "RenderAreaShadowLights", 4);
-    static LLCachedControl<S32> samples(gSavedSettings, "RenderAreaShadowSamples", 4);
+    static LLCachedControl<S32> samples(gSavedSettings, "RenderAreaShadowSamples", 8);
     static LLCachedControl<S32> steps(gSavedSettings, "RenderAreaShadowSteps", 12);
     static LLCachedControl<F32> max_dist(gSavedSettings, "RenderAreaShadowMaxDist", 8.f);
     static LLCachedControl<F32> thickness(gSavedSettings, "RenderAreaShadowThickness", .35f);
     static LLCachedControl<bool> half(gSavedSettings, "RenderAreaShadowHalfRes", true);
     static LLCachedControl<F32> denoise(gSavedSettings, "RenderAreaShadowDenoise", 2.f);
+    static LLCachedControl<F32> light_bias(gSavedSettings, "RenderAreaShadowLightBias", .25f);
     const auto& registry = ALCineLightRigManager::instance();
     LLViewerCamera& camera = LLViewerCamera::instance();
     const auto toggles = [](const LLVOVolume* volume)
@@ -26741,7 +26760,27 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     LLGLDisable blend(GL_BLEND), cull(GL_CULL_FACE), stencil(GL_STENCIL_TEST);
     LLGLDepthTest depth(GL_FALSE,GL_FALSE);
     const U32 width = mRT->deferredScreen.getWidth(), height = mRT->deferredScreen.getHeight();
-    const U32 w = half() ? (width+1)/2 : width, h = half() ? (height+1)/2 : height;
+    static LLCachedControl<S32> budget(gSavedSettings, "RenderAreaShadowBudget", 1500);
+    const auto work = ALAreaShadow::workload({samples(),steps(),half()},width,height,selected.size,budget());
+    // Include inputs and effective plan so clamp changes (including recovery) log once.
+    const std::array<S32,10> plan = {samples(),steps(),half(),(S32)width,(S32)height,
+        (S32)selected.size,budget(),work.q.samples,work.q.steps,work.q.half};
+    static std::array<S32,10> previous = {};
+    if (plan != previous)
+    {
+        const bool clamped = work.q.samples != samples() || work.q.steps != steps() ||
+            work.q.half != half() || !work.channels;
+        if (clamped || previous[0])
+            LL_INFOS("RelightQ") << "[RelightQ] area-shadow budget clamp " << (clamped ? "active" : "released")
+                << " requested=" << samples() << "x" << steps() << " half=" << half()
+                << " effective=" << work.q.samples << "x" << work.q.steps << " half=" << work.q.half
+                << " pixels=" << work.pixels << " K=" << selected.size << " iterations=" << work.iterations
+                << " budget=" << work.budget << " perDraw=" << work.drawCap
+                << " channelsPerDraw=" << work.channels << LL_ENDL;
+        previous = plan;
+    }
+    if (!work.channels) return;
+    const U32 w = work.q.half ? (width+1)/2 : width, h = work.q.half ? (height+1)/2 : height;
     const U32 planes = (selected.size+3)/4;
     const auto ensure = [](LLRenderTarget& target, U32 x, U32 y)
     {
@@ -26785,7 +26824,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     if (measure) glQueryCounter(mAreaShadowQueries[0],GL_TIMESTAMP);
     const F32 resolution_scale = static_cast<F32>(height)/1080.f;
     const F32 filter_setting = denoise();
-    const F32 radius = std::isfinite(filter_setting) ? llclamp(filter_setting*resolution_scale*(half() ? .5f:1.f),0.f,8.f):2.f;
+    const F32 radius = std::isfinite(filter_setting) ? llclamp(filter_setting*resolution_scale*(work.q.half ? .5f:1.f),0.f,8.f):2.f;
     const glm::mat4 view = get_current_modelview();
     for (U32 plane=0; plane<planes; ++plane)
     {
@@ -26812,18 +26851,30 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         bindDeferredShader(gAreaShadowProgram);
         gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_lights"),4,lights[0].mV);
         gAreaShadowProgram.uniform4uiv(LLStaticHashedString("area_seeds"),1,seeds);
-        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_count"),count);
-        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_samples"),llclamp(samples(),1,32));
-        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_steps"),llclamp(steps(),1,64));
+
+        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_samples"),work.q.samples);
+        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_steps"),work.q.steps);
         const F32 distance = max_dist(), thick = thickness();
+        gAreaShadowProgram.uniform1f(LLStaticHashedString("area_light_bias"),ALAreaShadow::lightBias(light_bias()));
+        gAreaShadowProgram.uniform2f(LLStaticHashedString("area_trace_res"),
+            (F32)mRT->areaGather[plane].getWidth(),(F32)mRT->areaGather[plane].getHeight());
         gAreaShadowProgram.uniform3f(LLStaticHashedString("area_params"),
             std::isfinite(distance) ? llclamp(distance,.1f,64.f):8.f,
-            std::isfinite(thick) ? llclamp(thick,.001f,4.f):.35f,resolution_scale*(half() ? .5f:1.f));
-        mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+            std::isfinite(thick) ? llclamp(thick,.001f,4.f):.35f,resolution_scale*(work.q.half ? .5f:1.f));
+        for (U32 first=0; first<count; first+=work.channels)
+        {
+            const U32 last = std::min(count,first+work.channels);
+            glColorMask(first==0,first<=1 && last>1,first<=2 && last>2,first<=3 && last>3);
+            gAreaShadowProgram.uniform1i(LLStaticHashedString("area_first"),first);
+            gAreaShadowProgram.uniform1i(LLStaticHashedString("area_count"),last);
+            mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+        }
+        glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
         unbindDeferredShader(gAreaShadowProgram); mRT->areaGather[plane].flush();
         const auto filter = [&](LLRenderTarget& input, LLRenderTarget& output, F32 x, F32 y)
         {
             output.bindTarget(); bindDeferredShader(gAreaShadowFilterProgram);
+            gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_debug_channel"),0);
             const S32 unit = gAreaShadowFilterProgram.enableTexture(LLShaderMgr::AREA_SHADOW_SOURCE);
             input.bindTexture(0,unit,LLTexUnit::TFO_POINT);
             gAreaShadowFilterProgram.uniform2f(LLStaticHashedString("area_axis"),x,y);
@@ -26851,7 +26902,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     {
         LL_INFOS("RelightQ") << "[RelightQ] selection PASS selected=" << selected.size
             << " candidates=" << selected.candidates << " cap=" << (selected.candidates>selected.size)
-            << " S=" << llclamp(samples(),1,32) << " steps=" << llclamp(steps(),1,64)
+            << " S=" << work.q.samples << " steps=" << work.q.steps
             << " resolution=" << w << "x" << h
             << " GPUms=" << mAreaShadowGPUms
             << " timing=" << (mAreaShadowGPUms >= 0.0 ? "PASS" : "INCONCLUSIVE (query pending)") << LL_ENDL;
