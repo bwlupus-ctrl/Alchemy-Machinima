@@ -949,7 +949,10 @@ float relightRatio(vec3 n, vec3 lv, float radius)
     float d2 = dot(lv,lv);
     if (d2 < radius*radius) return 1.0; // full hemisphere, no centre singularity
     float s2 = min(1.0, radius*radius/max(d2, 1.e-12));
-    return relightSphere(dot(n, relightUnit(lv,n)), s2) / (M_PI * max(s2, 1.e-20));
+    float c = dot(n, relightUnit(lv,n));
+    // Fully visible sphere: return N.L directly, without multiply/divide roundoff.
+    if (c >= sqrt(s2)) return c;
+    return relightSphere(c, s2) / (M_PI * max(s2, 1.e-20));
 }
 float relightAtten(float d, float range, float falloff, vec4 shape)
 {
@@ -1003,8 +1006,12 @@ vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
     vec3 result = diffuse * relightRatio(n,lv,shape.x);
     if (spec.a > 0.0)
     {
-        vec3 l = relightRepresentative(n,v,lv,shape.x);
+        vec3 l = relightUnit(lv,n);
         vec3 h = relightUnit(l+v,n);
+        // Legacy LUT: move the highlight only. Keep the point light's Fresnel,
+        // geometry and angular weight; representative N.L would boost its peak.
+        vec3 representative = relightRepresentative(n,v,lv,shape.x);
+        float lookupNh = max(dot(n,relightUnit(representative+v,n)),0.0);
         float nh = max(dot(n,h),0.0);
         float nl = max(dot(n,l),0.0);
         float nv = max(dot(n,v),0.0);
@@ -1012,7 +1019,7 @@ vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
         float fres = pow(1.0-vh,5.0)*.4+.5;
         float gt = max(0.0,min(2.0*nh*nv/vh,2.0*nh*nl/vh));
         if (nh > 0.0 && nl > 0.0)
-            highlight = min(nl*6.0,1.0)*fres*texture(glossLut,vec2(nh,spec.a)).r*gt/max(nh*nl,1.e-5)*spec.rgb;
+            highlight = min(nl*6.0,1.0)*fres*texture(glossLut,vec2(lookupNh,spec.a)).r*gt/(nh*nl)*spec.rgb;
     }
     highlight *= attenuation;
     return result*attenuation + highlight; // LUT model: no alpha normalization
@@ -1425,7 +1432,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
         vec3 delta = lp-p;
         vec3 centre = relightUnit(delta,n);
         float spot = max(dot(-ld,centre),is_pointlight);
-        float attenuation = relightAtten(length(delta),lightSize,falloff,shape);
+        float attenuation = calcLegacyDistanceAttenuation(length(delta)/lightSize,falloff); // Rig Rim is shape-independent
         vec3 direct = spot*spot*lightColor*3.0 * relightPbr(diffuseColor,specularColor,
             perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep);
         vec3 rimLight = vec3(0);
@@ -1531,7 +1538,7 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
         vec3 delta = lp-p;
         vec3 centre = relightUnit(delta,n);
         float spot = max(dot(-ld,centre),is_pointlight);
-        float attenuation = relightAtten(length(delta),lightSize,falloff,shape);
+        float attenuation = calcLegacyDistanceAttenuation(length(delta)/lightSize,falloff); // Rig Rim is shape-independent
         vec3 direct = spot*spot*lightColor*3.0 * relightPbr(diffuseColor,specularColor,
             perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep);
         vec3 rimLight = vec3(0);

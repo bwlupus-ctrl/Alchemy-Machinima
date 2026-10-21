@@ -143,6 +143,7 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
 // for non-rig lights.  NOTE: `v` is the eye-space POSITION here (legacy naming).
 
 vec3 relightUnit(vec3 v, vec3 fallback);
+float calcLegacyDistanceAttenuation(float distance, float falloff);
 float relightRatio(vec3 n, vec3 lv, float radius);
 float relightAtten(float d, float range, float falloff, vec4 shape);
 vec3 relightRepresentative(vec3 n, vec3 v, vec3 lv, float radius);
@@ -174,7 +175,8 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
 #endif
         if (rigRimMode() != 0)
         {
-            vec3 rim_col = rigRimTermEx(n,view,centre,spot*spot*attenuation*light_col,
+            float rim_atten = calcLegacyDistanceAttenuation(length(delta)/range,falloff);
+            vec3 rim_col = rigRimTermEx(n,view,centre,spot*spot*rim_atten*light_col,
                 diffuse,1.0,rim,rim_px);
             if (rigRimMode() == 2) col = vec3(0);
 #ifdef HAS_ACTOR_FX

@@ -134,4 +134,27 @@ template<> template<> void relight_object::test<8>()
             close("forward/deferred window",2*a*a,ALRelight::legacy(d,15,f));
         }
 }
+
+template<> template<> void relight_object::test<9>()
+{
+    constexpr double pi=3.14159265358979323846;
+    // Reported rig-key geometry. Fully visible sources must preserve N.L
+    // exactly; increasing the radius may only add diffuse at the horizon.
+    for (double distance : {1.0,2.0})
+        for (double radius : {.05,.3,.6})
+            for (double degrees : {0.0,30.0,60.0,85.0,95.0})
+            {
+                const double cosine=std::cos(degrees*pi/180.0);
+                const double ratio=ALRelight::diffuseRatio(cosine,radius,distance);
+                if (cosine >= radius/distance)
+                    close("rig fully visible diffuse equals point exactly",ratio,cosine,0);
+                else
+                    ensure("rig horizon only adds wrap",ratio+1.e-12>=std::max(cosine,0.0));
+                for (double roughness : {.3,.6})
+                {
+                    const double norm=ALRelight::normalization(roughness*roughness,radius,distance);
+                    ensure("rig Karis normalization never boosts",norm>0 && norm<=1);
+                }
+            }
+}
 }

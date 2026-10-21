@@ -140,7 +140,7 @@ void main()
         vec3 highlight;
         vec3 diffuseColor = diffuse;
         float roughness = 1.0-spec.a;
-        float attenuation = relightAtten(length(lv),size,falloff,light_shape);
+        float attenuation = calcLegacyDistanceAttenuation(length(lv)/size,falloff); // Rig Rim only
         if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
         {
             roughness = spec.g;

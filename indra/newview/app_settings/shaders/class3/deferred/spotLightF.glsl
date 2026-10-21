@@ -254,16 +254,19 @@ void main()
             else
             {
                 vec3 highlight;
-                final_color = lamp * shadow * relightLegacy(lightFunc,diffuse,
+                relightLegacy(lightFunc,diffuse,
                     vec4(srgb_to_linear(spec.rgb),spec.a),n,view,delta,size,falloff,light_shape,highlight,dist*size);
                 float wrap = relightRatio(n,delta,light_shape.x);
+                // Match the projector's original per-light specular clamp.
+                final_color = lamp*shadow*diffuse*wrap*attenuation +
+                    clamp(lamp*shadow*highlight,vec3(0),vec3(1));
                 vec3 ambient = getProjectedLightAmbiance((wrap*.5+.5)*proj_ambiance,
                     attenuation,clamp(wrap*attenuation,0.0,1.0),wrap,1.0,proj_tc.xy);
                 final_color += diffuse*ambient*max(dot(-centre,n),0.0);
             }
             if (rigRimMode() != 0)
             {
-                vec3 rim_lit = lamp * attenuation * mix(shadow,1.0,
+                vec3 rim_lit = lamp * dist_atten * mix(shadow,1.0,
                     (1.0-clamp(rig_rim_shadow,0.0,1.0))*(1.0-smoothstep(0.0,.3,dot(n,centre))));
                 rim_color += rigRimTermEx(n,view,centre,rim_lit,diffuseColor,roughness,rig_rim_light,rim_px);
             }

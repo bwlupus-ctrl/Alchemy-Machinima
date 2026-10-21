@@ -74,6 +74,7 @@ inline double diffuseRatio(double cosine, double radius, double distance)
     if (radius <= 0.0) return std::max(cosine, 0.0);
     if (distance < radius) return 1.0; // full hemisphere, also at the centre
     const double s2 = std::min(1.0, radius*radius/std::max(distance*distance, 1.e-12));
+    if (cosine >= std::sqrt(s2)) return cosine;
     return sphere(cosine, s2) / (3.14159265358979323846 * std::max(s2, 1.e-20));
 }
 }

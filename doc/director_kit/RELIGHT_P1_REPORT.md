@@ -394,3 +394,228 @@ Validation:
 No commit, push, staging, stash, viewer build or viewer launch. Existing unrelated
 work is preserved. Full-scene visual identity and in-world responsiveness still
 require viewer verification; the source/GPU gates do not claim an in-world run.
+
+
+## In-world report: less face, more rim/highlights
+
+2026-10-20, diagnosis and fix against committed Phase 1 `81be37dd6d1`.
+This section supersedes the earlier notes leaving the two materialF P1s open.
+
+**Measured result:** Light shape did not reduce front-facing diffuse. The
+fully visible sphere ratio already had the correct `sin^2(sigma)` and pi
+normalization, centre light direction and single legacy distance window.
+The measured deviations were increased legacy highlight energy, missing
+spot/material specular clamps, silhouette glare leakage, and Rig Rim changing
+when physical falloff was selected. The default-mode Rig Rim term was unchanged.
+The user's whole-scene perception of "less face" is not reproduced as a direct
+diffuse loss by these measurements. Broadening a highlight can brighten its
+tails while lowering its peak; diffuse wrap can legitimately increase edge light.
+No exposure gain or diffuse brightness compensation was added.
+
+Method and reproduction:
+
+- `scripts/code_tools/relight_shader_check.py` now executes
+  `relight_rig_check.py` in its WGL context. Actual deferred main bodies and
+  forward per-light functions link against production utility modules. Only
+  G-buffer/surface inputs and light uniforms are controlled fixtures; there is
+  no replacement CPU lighting evaluator or stubbed lighting function.
+- Deferred: multiPoint PBR/legacy loops, point PBR/legacy and spot PBR/legacy.
+  Forward: alphaF (diffuse only), materialF, pbralpha's reference and split
+  evaluators, and shared Actor FX PBR's split evaluator. Box/fullscreen,
+  shadow, skin, material/map and Actor Mask permutations also retain the full
+  production-program compilation/link gate.
+- Source distances 1 and 2 m; source **radii** .05/.3/.6 m (fixture Source size
+  .1/.6/1.2 m); shader range 15 m; legacy falloff .5; white light; base colour
+  .6. Camera-facing reference normal/view +Z, surface position (0,0,-4),
+  light direction +Z; normals rotate in XZ through 0/30/60/85/95 degrees.
+  Thus the camera remains frontal to the reference face while its surface
+  normals span a curved face. PBR roughness .3/.6, metallic 0; legacy gloss
+  .25/.75, specular sRGB .5. The real default 1024x256 gloss LUT is reproduced
+  from `pipeline.cpp:3427`, exponent 368, R16F, clamped addressing and the
+  production filter settings. Diffuse and specular readbacks are isolated
+  through material inputs/spec-keep, and Rim uses the production rim-only mode
+  with nonzero positive controls.
+- Peak = maximum of **each** lobe independently over a -89..89 degree normal
+  sweep at .5 degree intervals. Width is measured at half of each lobe's own
+  peak. A pointwise ON/OFF specular ratio in a tail is not a peak comparison.
+  There are 126 distance/radius/material/path rows, each with five diffuse,
+  specular and Rim pairs plus the dense peak sweep. Additional probes cover
+  tiny-radius grazing, high-intensity clamp, silhouette glare and physical Rim.
+- Before: `python scripts/code_tools/relight_shader_check.py --rig-only
+  --shader-ref 81be37dd6d1 --rig-measure-only --rig-json .tmp/relight_rig_before.json`.
+  This reads committed shader sources directly with `git show`; it does not
+  check out, stash or alter the worktree. Before has **68** regression failures.
+- After/full gate: `python scripts/code_tools/relight_shader_check.py
+  --rig-json .tmp/relight_rig_after.json`. **Zero** regression failures.
+  Raw per-angle values, undefined ratios, peaks, widths and stress readbacks:
+  [before JSON](../../.tmp/relight_rig_before.json),
+  [after JSON](../../.tmp/relight_rig_after.json). Measure-only explicitly records
+  failures; the normal gate asserts them. `--rig-only` skips the large compile
+  permutation sweep for diagnostic iteration; it was not used for the final gate.
+
+Diffuse ON/OFF ratios, physical falloff OFF (all applicable caller/material
+variants agree to float roundoff; displayed precision 6 decimals). Each cell
+is **before -> after**. The 95-degree column is separated below because a true
+point source there contributes zero.
+
+| Distance m | Radius m | 0 degrees | 30 degrees | 60 degrees | 85 degrees |
+|---|---|---|---|---|---|
+| 1 | 0.05 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 |
+| 1 | 0.3 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.338981 -> 1.338981 |
+| 1 | 0.6 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.005424 -> 1.005424 | 2.195716 -> 2.195716 |
+| 2 | 0.05 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 |
+| 2 | 0.3 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.045680 -> 1.045680 |
+| 2 | 0.6 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.000000 -> 1.000000 | 1.338981 -> 1.338981 |
+
+At 95 degrees, multiPoint legacy and forward alpha/material have an exactly
+zero OFF denominator; their ON/OFF ratio is undefined (ON also zero for the
+.05 m sphere, otherwise positive wrap). Point/spot legacy retain their existing
+`1e-6` point N.L floor; PBR retains its `.001` floor. The following are the
+**actual production** ratios for those paths, not ratios against ideal zero.
+These epsilon remnants are left byte-identical when OFF. No normalization bug
+should be inferred from a large ratio against an epsilon denominator.
+
+| Distance m | Radius m | Point/spot legacy 95-degree ratio, before -> after | PBR 95-degree ratio, before -> after |
+|---|---|---|---|
+| 1 | 0.05 | 0.000000 -> 0.000000 | 0.000000 -> 0.000000 |
+| 1 | 0.3 | 29544.087891 -> 29544.087891 | 29.544085 -> 29.544085 |
+| 1 | 0.6 | 104213.531250 -> 104213.531250 | 104.213516 -> 104.213516 |
+| 2 | 0.05 | 0.000000 -> 0.000000 | 0.000000 -> 0.000000 |
+| 2 | 0.3 | 3981.202148 -> 3981.202148 | 3.981202 -> 3.981202 |
+| 2 | 0.6 | 29544.087891 -> 29544.087891 | 29.544085 -> 29.544085 |
+
+Fully visible sources now return N.L directly from `relightRatio`, eliminating
+the needless `pi*s2` multiply/divide roundoff. CPU equality is exact; production
+caller comparisons allow normalization/forward attenuation float roundoff
+(relative tolerance 2e-6). This rounding cleanup does not explain a visible
+brightness change. Only horizon-crossing samples gain diffuse.
+
+Specular **peak** ON/OFF, before -> after. The PBR numbers cover deferred
+multi/point/spot and both forward/native/Actor FX PBR evaluators. Legacy .25
+numbers cover all specular legacy paths; .75 is split where the original
+spot/material clamp changes the baseline peak. AlphaF has no local specular.
+
+| Distance m | Radius m | PBR rough .3 | PBR rough .6 | Legacy gloss .25 | Legacy gloss .75 multi/point | Legacy gloss .75 spot/material |
+|---|---|---|---|---|---|---|
+| 1 | 0.05 | 0.712022 -> 0.712022 | 0.913722 -> 0.913722 | 1.000254 -> 1.000000 | 1.000254 -> 1.000000 | 1.409119 -> 1.000000 |
+| 1 | 0.3 | 0.226848 -> 0.226848 | 0.618978 -> 0.618978 | 1.011106 -> 1.000000 | 1.011106 -> 1.000000 | 1.424406 -> 1.000000 |
+| 1 | 0.6 | 0.101491 -> 0.101491 | 0.433385 -> 0.433385 | 1.053294 -> 1.000000 | 1.053294 -> 1.000000 | 1.483840 -> 1.000000 |
+| 2 | 0.05 | 0.837697 -> 0.837697 | 0.955293 -> 0.955293 | 1.000038 -> 1.000000 | 1.000038 -> 1.000000 | 1.214743 -> 1.000000 |
+| 2 | 0.3 | 0.414266 -> 0.414266 | 0.772957 -> 0.772957 | 1.002442 -> 1.000000 | 1.002442 -> 1.000000 | 1.217662 -> 1.000000 |
+| 2 | 0.6 | 0.226848 -> 0.226848 | 0.618978 -> 0.618978 | 1.011106 -> 1.000000 | 1.011106 -> 1.000000 | 1.228187 -> 1.000000 |
+
+The original PBR code already keeps alpha in D and multiplies only by
+`(alpha/alphaPrime)^2` (`deferredUtil.glsl:989`); it never exceeded the point
+peak in this matrix and is unchanged. Tail increases remain legitimate.
+Legacy now keeps its original centre-based angular, Fresnel and geometry
+weights and authored LUT amplitude; only the LUT highlight-position coordinate
+uses the representative half vector. It receives no alpha normalization.
+This preserves legacy peak amplitude; it does not assert constant integrated
+energy for an unnormalized broadened LUT lobe.
+
+Example angular widths (FWHM degrees, OFF / ON), at 1 m and .6 m source radius:
+
+| Material, deferred point | Before OFF / ON | After OFF / ON |
+|---|---|---|
+| PBR roughness .3 | 6.5 / 43.5 | 6.5 / 43.5 |
+| PBR roughness .6 | 29.5 / 62.5 | 29.5 / 62.5 |
+| Legacy gloss .25 | 28.5 / 58.5 | 28.5 / 60.5 |
+| Legacy gloss .75 | 10.5 / 45.5 | 10.5 / 46.5 |
+
+Rig Rim: mode-0 ON/OFF is 1 before and after at every nonzero Rim sample
+in all paths/materials; zero samples remain zero. Neither diffuse wrap nor
+the representative vector is passed into Rim. With physical falloff ON, the
+old shaped attenuation did change Rim. Extra probe: distance 1.5 m, radius
+.3 m, normal 85 degrees, gain 1, same white cookie/no shadow:
+
+| Caller | Rim before OFF / ON | Rim after OFF / ON |
+|---|---|---|
+| multiPoint legacy | 0.234848544 / 0.144939259 | 0.234848544 / 0.234848544 |
+| multiPoint PBR | 0.234848544 / 0.144939259 | 0.234848544 / 0.234848544 |
+| point legacy | 0.234848544 / 0.144939259 | 0.234848544 / 0.234848544 |
+| point PBR | 0.234848544 / 0.144939259 | 0.234848544 / 0.234848544 |
+| spot legacy | 0.234848544 / 0.144939229 | 0.234848544 / 0.234848544 |
+| spot PBR | 0.234848544 / 0.144939229 | 0.234848544 / 0.234848544 |
+| alpha legacy | 0.234848544 / 0.144939259 | 0.234848544 / 0.234848544 |
+| material legacy | 0.234848544 / 0.144939259 | 0.234848544 / 0.234848544 |
+| pbralpha PBR | 0.234848544 / 0.144939259 | 0.234848544 / 0.234848544 |
+| pbrsplit PBR | 0.234848544 / 0.144939259 | 0.234848544 / 0.234848544 |
+| actorPbr PBR | 0.234848544 / 0.144939259 | 0.234848544 / 0.234848544 |
+
+Known P1 discriminating probes (raw linear output, not peak sweeps):
+
+| Probe | Before OFF / ON | After OFF / ON |
+|---|---|---|
+| material tiny radius 1e-6 m, gloss .05, 85 degrees: specular | 0.000619356 / 0.003716138 | 0.000619356 / 0.000619356 |
+| material tiny radius, sil_keep=0: glare alpha | 0.000000000 / 0.057174247 | 0.000000000 / 0.000000000 |
+| material tiny radius, sil_keep=.25: glare alpha | 0.028587125 / 0.071467809 | 0.028587125 / 0.028587125 |
+| material power 8, falloff 0, gloss .75: per-light specular clamp | 1.000000000 / 25.357692719 | 1.000000000 / 1.000000000 |
+
+Root causes and minimal fixes (line references are current; parenthesized
+references identify the committed faulty expressions):
+
+- **Legacy representative weighting boosted the peak.**
+  `class1/deferred/deferredUtil.glsl:1009-1022` (HEAD `1006-1016`) used the
+  representative direction for N.L and the entire Fresnel/geometry factor.
+  When the representative ray reaches reflection alignment away from normal
+  incidence, that changes the peak weight (up to 1.053294 in the requested
+  matrix). Only the LUT lookup now uses the representative half vector;
+  centre-based weights remain the point-light weights. Removed the shaped
+  `max(nh*nl,1e-5)` weighting floor after positive nh/nl tests, so it cannot
+  darken the tiny-radius grazing limit independently of the legacy formula.
+- **Forward material borrowed deferred specular weighting.**
+  `class3/deferred/materialF.glsl:211-225` (HEAD `210-213`) called
+  `relightLegacy`, which uses `min(N.L*6,1)`; forward instead uses the original
+  `lit=clamp(spot^2*N.L*attenuation,0,1)` with geometry based on its `da`.
+  The old tiny-source 85-degree specular was 6x its point result. The shaped
+  branch now evaluates the forward weights locally, moving only the LUT
+  coordinate and retaining cone dependence. It restores the complete per-light
+  colour clamp [0,1]. No changes to the point/OFF branch.
+- **Projector legacy also lost its per-light specular clamp.**
+  `class3/deferred/spotLightF.glsl:256-263` (HEAD `256-257`) multiplied an
+  unclamped combined legacy helper result by lamp/shadow, unlike the original
+  projector branch. Shaped diffuse and highlight now compose separately;
+  the coloured/shadowed highlight receives the same [0,1] clamp. Together
+  with representative weighting this produced 1.483840 peak ratios at gloss
+  .75/radius .6/distance 1 before the fix.
+- **Actor FX sil_keep missed part of the glare update.**
+  `class3/deferred/materialF.glsl:227-231` (HEAD `215-224`) scaled only the
+  added max-channel glare, leaving `max(glare,speccol.r)` unsuppressed. Shaped
+  glare now snapshots the incoming value, performs the original complete
+  update and scales its entire delta by sil_keep, exactly as the OFF branch.
+  Zero keep now emits zero additional glare; partial keep scales the whole delta.
+- **Rig Rim received physical attenuation.**
+  `class3/deferred/multiPointLightF.glsl:167,222`,
+  `class3/deferred/pointLightF.glsl:143`,
+  `class3/deferred/spotLightF.glsl:269`,
+  `class2/deferred/alphaF.glsl:178`,
+  `class3/deferred/materialF.glsl:238`, and both forward PBR implementations in
+  `class1/deferred/deferredUtil.glsl:1435,1541` fed `relightAtten` into Rim.
+  Mode 0 happened to match; mode 1 did not. Rim now always uses the original
+  legacy distance attenuation, original centre direction and existing cone,
+  cookie, shadow, material/quality inputs. Direct shaped lighting retains its
+  selected falloff. The scalar and split PBR evaluators were both fixed.
+- **No diffuse energy bug found.** `deferredUtil.glsl:935-955` uses the correct
+  analytical sphere integral and `pi*sin^2(sigma)` ratio. `relightPbr` evaluates
+  diffuse with centre direction and specular with the representative direction;
+  no caller feeds a representative direction into diffuse or Rim. The added
+  fully-visible direct-N.L return and matching CPU helper eliminate only
+  rounding, while the existing horizon/inside handling remains intact.
+
+Validation and limits:
+
+| Gate | Result / evidence |
+|---|---|
+| Full `relight_shader_check.py` | PASS: 28 isolated shader/permutation compilations, 42 production program links, plus 8 rig-fixture programs, 126 matrix rows, peak/width scans, positive controls and stress tests. NVIDIA RTX 5090 / OpenGL 4.6 / driver 610.88; `.tmp/relight_rig_shaders_final.log`. |
+| Runtime master and determinism | PASS: original 8 on/off/on production forward probes, stale shape storage and disabled live limits, 84 repeated deterministic helper readbacks; same linked executables. No settings/listener/plumbing changes. |
+| OFF identity | PASS: **1890** recorded OFF component readbacks exactly equal the committed baseline (float32 byte identity); full disabled-expression token checks for all 8 shader modules and five-setting no-reload audit, `.tmp/relight_rig_off.log`. The source guard now compares the disabled branches, allowing the intentional ON fixes. |
+| `alrelightmath` | PASS 9/9. Added the requested rig geometry matrix, exact fully-visible N.L equality, horizon-only wrap and nonboosting Karis factors. Standalone test compiled/relinked with existing runner/libraries; `.tmp/relight_rig_math{_compile,_link,}.log`. |
+| `zs_check` touched C++ | PASS: `tests/alrelightmath_test.cpp`, one TU in its own call; `.tmp/relight_rig_zs.log`. This is the only C++ TU changed for this task; it also covers the changed header. |
+| `prebuild_guard.ps1 -ChecksOnly` | PASS all 11 gates, via the existing workspace wrapper; `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`. `.tmp/relight_rig_prebuild.log`. |
+| `git diff --check` | PASS. |
+
+No commit, push, staging, stash, viewer build or viewer launch. Unrelated
+concurrent work was preserved. Shader readbacks verify these shading contracts;
+the user's full in-world image, tone mapping/post effects and visual response
+still need the normal reviewed viewer build and A/B. The measurements do not
+claim a full-scene screenshot test or an independent Opus review.

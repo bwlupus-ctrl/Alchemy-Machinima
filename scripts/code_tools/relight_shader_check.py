@@ -5,6 +5,17 @@ import ctypes as C
 from ctypes import wintypes as W
 from pathlib import Path
 import numpy as np
+import sys
+import subprocess
+from functools import lru_cache
+
+# Read committed production sources without checking out/stashing the worktree.
+shader_ref=sys.argv[sys.argv.index('--shader-ref')+1] if '--shader-ref' in sys.argv else None
+@lru_cache(maxsize=None)
+def read_shader(path):
+    if shader_ref:
+        return subprocess.check_output(['git','show',shader_ref+':'+Path(path).as_posix()],text=True)
+    return Path(path).read_text()
 
 user=C.WinDLL('user32'); gdi=C.WinDLL('gdi32'); ogl=C.WinDLL('opengl32')
 def api(dll, name, result, *args):
@@ -114,8 +125,8 @@ def link_production(file, defines, label, test_fragment=None):
     pr=program()
     for module in fragment:
         path=production_file(module, 1 if module in ('deferred/deferredUtil.glsl','deferred/gbufferUtil.glsl','deferred/globalF.glsl','deferred/shadowUtil.glsl') else 3)
-        attach(pr,compile_part(path.read_text(),defines,label+' '+module))
-    text=test_fragment if test_fragment is not None else (root/file).read_text()
+        attach(pr,compile_part(read_shader(path),defines,label+' '+module))
+    text=test_fragment if test_fragment is not None else read_shader(root/file)
     if 'USE_INDEXED_TEX' in defines:
         # LLShaderMgr's generated indexed diffuseLookup; use eight channels.
         lookup=''.join('uniform sampler2D tex%d;\n'%i for i in range(8))
@@ -129,7 +140,7 @@ def link_production(file, defines, label, test_fragment=None):
         attach(pr,compile_part('void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.0-1.0,0,1);}',defines,label+' fullscreen',0x8B31))
     else:
         for module in vertices:
-            attach(pr,compile_part(production_file(module).read_text(),defines,label+' '+module,0x8B31))
+            attach(pr,compile_part(read_shader(production_file(module)),defines,label+' '+module,0x8B31))
     link(pr);ok=I();getprog(pr,0x8B82,C.byref(ok))
     if not ok.value:
         out=C.create_string_buffer(64000);plog(pr,len(out),None,out)
@@ -176,7 +187,7 @@ count=0
 linked=0
 # One unconditional production program; master values are runtime uniforms.
 shape=''
-for file in files:
+for file in ([] if '--rig-only' in sys.argv else files):
     variants=['']
     if 'multiPoint' in file:variants=['#define LIGHT_COUNT %d\n'%n for n in [1,8,16]]+['#define LIGHT_COUNT 16\n#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
     if 'spotLight' in file:variants=['','#define MULTI_SPOTLIGHT 1\n','#define MULTI_SPOTLIGHT 1\n#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
@@ -188,7 +199,7 @@ for file in files:
     if 'multiPoint' in file or 'spotLight' in file:
         variants+=[variants[-1]+'#define main actorMaskedMain\n']
     for variant in variants:
-        compile_part((root/file).read_text(),shape+variant,file+' runtime '+variant)
+        compile_part(read_shader(root/file),shape+variant,file+' runtime '+variant)
         count+=1
         if production_variants(file) is None and not file.endswith("deferredUtil.glsl"):
             link_production(file,shape+variant,file+" runtime "+variant)
@@ -203,7 +214,7 @@ print('[RelightQ] production program linkage PASS',linked,flush=True)
 
 # Execute the actual production helper bodies in a tiny test-only float target.
 # This target belongs to this standalone process; no viewer target/state is touched.
-util=(root/'class1/deferred/deferredUtil.glsl').read_text()
+util=read_shader(root/'class1/deferred/deferredUtil.glsl')
 def function(name):
     start=util.index(name)
     start=util.rfind('\n',0,start)+1
@@ -346,3 +357,7 @@ for light in [(0,0,2),(1,0,2),(2,0,-.2),(0,0,-2)]:
         runtime_checks+=1
 print('[RelightQ] runtime master PASS',runtime_checks,
       'production forward readbacks: on/off/on, stale shapes, exact legacy and disabled limits; no relink',flush=True)
+
+# Rig-key regression uses this same WGL context, production linker and target.
+exec(compile(Path(__file__).with_name('relight_rig_check.py').read_text(),
+             'relight_rig_check.py', 'exec'))

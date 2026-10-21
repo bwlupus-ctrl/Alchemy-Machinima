@@ -181,6 +181,7 @@ vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float rou
 // normalized view vector here (legacy naming).
 
 vec3 relightUnit(vec3 v, vec3 fallback);
+float calcLegacyDistanceAttenuation(float distance, float falloff);
 float relightRatio(vec3 n, vec3 lv, float radius);
 float relightAtten(float d, float range, float falloff, vec4 shape);
 vec3 relightRepresentative(vec3 n, vec3 v, vec3 lv, float radius);
@@ -205,24 +206,37 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
         vec3 view = relightUnit(-v,n);
         float spot = max(dot(-ln,centre),is_pointlight);
         float attenuation = relightAtten(length(delta),range,falloff,shape);
-        vec3 highlight;
-        relightLegacy(lightFunc,diffuse,spec,n,view,
-            delta,range,falloff,shape,highlight);
         // Match the forward diffuse clamp as the source radius tends to zero.
-        vec3 col = clamp(spot*spot*attenuation*relightRatio(n,delta,shape.x),0.0,1.0)*light_col*diffuse
-            + spot*spot*light_col*highlight;
-        vec3 speccol = spot*spot*light_col*highlight;
-        float glare_delta = max(speccol.r,max(speccol.g,speccol.b));
+        vec3 col = clamp(spot*spot*attenuation*relightRatio(n,delta,shape.x),0.0,1.0)*light_col*diffuse;
+        // Preserve this forward path's point-light weights (not deferred's
+        // min(N.L*6,1)). Only the LUT coordinate moves to the representative.
+        float da = spot*spot*dot(n,centre);
+        vec3 h = relightUnit(centre+npos,n);
+        float nh = dot(n,h);
+        float nv = dot(n,npos);
+        float vh = dot(npos,h);
+        if (spec.a > 0.0 && da > 0.0 && nh > 0.0 && vh > 0.0)
+        {
+            vec3 representative = relightRepresentative(n,view,delta,shape.x);
+            float lookupNh = max(dot(n,relightUnit(representative+npos,n)),0.0);
+            float fres = pow(1.0-vh,5.0)*.4+.5;
+            float gt = max(0.0,min(2.0*nh*nv/vh,2.0*nh*da/vh));
+            float scol = fres*texture(lightFunc,vec2(lookupNh,spec.a)).r*gt/(nh*da);
+            vec3 speccol = clamp(clamp(da*attenuation,0.0,1.0)*scol*light_col*spec.rgb,vec3(0),vec3(1));
+            col += speccol;
+            float glare_start = glare;
+            glare = max(glare,speccol.r) + max(max(speccol.r,max(speccol.g,speccol.b)),0.0);
+#ifdef HAS_ACTOR_FX
+            if (sil_on) glare = glare_start + (glare-glare_start)*sil_keep;
+#endif
+        }
 #ifdef HAS_ACTOR_FX
         if (sil_on) col *= sil_keep;
 #endif
-#ifdef HAS_ACTOR_FX
-        if (sil_on) glare_delta *= sil_keep;
-#endif
-        glare = max(glare,speccol.r) + max(glare_delta,0.0);
         if (rigRimMode() != 0)
         {
-            vec3 rim_col = rigRimTermEx(n,view,centre,spot*spot*attenuation*light_col,
+            float rim_atten = calcLegacyDistanceAttenuation(length(delta)/range,falloff);
+            vec3 rim_col = rigRimTermEx(n,view,centre,spot*spot*rim_atten*light_col,
                 diffuse,1.0-spec.a,rim,rim_px);
             if (rigRimMode() == 2) col = vec3(0);
 #ifdef HAS_ACTOR_FX

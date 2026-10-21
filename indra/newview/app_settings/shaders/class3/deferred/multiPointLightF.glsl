@@ -164,7 +164,7 @@ void main()
                     perceptualRoughness,metallic,n,view,delta,range,fa,shape,1.0-gb.envIntensity);
                 if (rigRimMode() != 0)
                     rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
-                        relightAtten(length(delta),range,fa,shape)*light_col[light_idx].rgb,
+                        calcLegacyDistanceAttenuation(length(delta)/range,fa)*light_col[light_idx].rgb,
                         diffuseColor,perceptualRoughness,rig_rim_lights[light_idx],rim_px);
                 continue;
             }
@@ -219,7 +219,7 @@ void main()
                     n,view,delta,range,fa,shape,highlight);
                 if (rigRimMode() != 0)
                     rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
-                        relightAtten(length(delta),range,fa,shape)*light_col[i].rgb,
+                        calcLegacyDistanceAttenuation(length(delta)/range,fa)*light_col[i].rgb,
                         diffuse,1.0-spec.a,rig_rim_lights[i],rim_px);
                 continue;
             }
