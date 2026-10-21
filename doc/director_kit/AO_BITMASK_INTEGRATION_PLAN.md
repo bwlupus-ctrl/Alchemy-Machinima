@@ -1377,3 +1377,11 @@ Shipping evidence must include the named positive fixtures, rejected mutations, 
 readbacks, OFF baseline diffs, shader-reload/allocation counters, per-pass p50/p95/p99
 timings and the user's paired look captures. This plan establishes that work; it does
 not claim those implementation gates have already passed.
+
+## User decision (10/21): qualification hardware
+
+The only test machine is an RTX 5090.
+- The hard caps are the hardware-independent work budgets (taps and iterations per frame, deterministic), which bind identically on every GPU.
+- Millisecond targets are measured on the 5090 with a headroom factor for mid-range GPUs (assume about 3-4x slower; for example, Balanced at about 0.4 ms on the 5090 means about 1.5 ms on a 3060-class card).
+- Cinematic may use more on the 5090.
+- Other GPUs are checked from beta-tester Tracy captures and the logged work plan.
