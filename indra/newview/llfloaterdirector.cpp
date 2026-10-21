@@ -1947,6 +1947,9 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
     {
         return;
     }
+    if (page == "light_rim_tab")
+        if (LLTextBox* status = root->findChild<LLTextBox>("area_shadow_sl_status"))
+            mAreaShadowSLStatus = status->getDerivedHandle<LLTextBox>();
     // One-off mapping from the v1 leaf panels in floater_director.xml to the
     // controls re-homed by each generated lazy page. Pages containing only
     // setting-bound kit rows need no Director member binder.
@@ -3122,7 +3125,13 @@ void LLFloaterDirector::refreshLauncherCards()
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshLauncherCards");
     if (!mLauncherClock.due()) return;
     // Read live Preferences on refresh; no setting callback or shader listener.
-    if (LLTextBox* status = findChild<LLTextBox>("area_shadow_sl_status"))
+    LLTextBox* status = mAreaShadowSLStatus.get();
+    if (!status)
+    {
+        status = findChild<LLTextBox>("area_shadow_sl_status");
+        if (status) mAreaShadowSLStatus = status->getDerivedHandle<LLTextBox>();
+    }
+    if (status)
     {
         const S32 detail = gSavedSettings.getS32("RenderShadowDetail");
         const bool soft = gSavedSettings.getBOOL("RenderAreaShadows");

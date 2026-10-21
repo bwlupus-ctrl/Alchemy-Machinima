@@ -183,6 +183,7 @@ public:
     LLRenderTarget& getWaterDisTarget();
     LLRenderTarget& getWaterExclusionMaskTarget();
     void releasePrismLensBuffers();
+    void releaseUnusedPrismAreaTargets(const std::array<std::pair<U32, U32>, LLPrismLens::MAX_CAPTURES>& sizes);
     void releasePrismLensLargeScratch();
     void releasePrismLensOutput(U32 slot);
     void releasePrismLensOutputs();

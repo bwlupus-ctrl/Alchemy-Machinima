@@ -497,6 +497,7 @@ private:
         std::function<std::string()> mFn;
     };
     std::vector<LauncherCard> mLauncherCards;
+    LLHandle<LLTextBox> mAreaShadowSLStatus;
     ALLiveReadoutClock mLauncherClock{2.f};
     LLTimer mBuildTimer;
 

@@ -296,6 +296,8 @@ def validate_data(data: dict) -> None:
     # B9 fix round 1: dedicated background take writer adds no widgets; retain 2160.
     # B8 (10/21): +1 opt-in Also in VCam feeds row on the Soft shadows card.
     # B8 fix round 1: scratch lifetime/isolation/budget fixes add no rows; retain 2161.
+    # Cleanup (10/21): Advanced card order/help and handle caching add no rows; retain 2161.
+    # Cleanup fix round 1: surface/preview claims and lazy status fallback add no rows; retain 2161.
     if len(pages) != 37 or row_count != 2161:
         raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2161")
     shortcuts: set[tuple[str, str, str]] = set()
@@ -1348,7 +1350,8 @@ def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[lis
     return rows
 
 
-def quick_unsafe_listener_settings(source: str, *, reviewed_observers: bool = False) -> set[str]:
+def quick_unsafe_listener_settings(source: str, *, reviewed_observers: bool = False,
+                                   definition_source: str | None = None) -> set[str]:
     """Resolve registrations conservatively; return settings vetoed for Quick.
 
     Tests/central-table audits exclude all listeners by default. The supplementary
@@ -1358,20 +1361,21 @@ def quick_unsafe_listener_settings(source: str, *, reviewed_observers: bool = Fa
     source = re.sub(r'"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/',
                     lambda m: m[0] if m[0].startswith('"') else ' ', source, flags=re.S)
 
-    def balanced(start: int, opening: str, closing: str) -> str:
+    def balanced(start: int, opening: str, closing: str, text: str = source) -> str:
         depth = 1
-        for token in re.finditer(r'"(?:\\.|[^"\\])*"|[' + re.escape(opening + closing) + ']', source[start:]):
+        for token in re.finditer(r'"(?:\\.|[^"\\])*"|[' + re.escape(opening + closing) + ']', text[start:]):
             if token[0] == opening:
                 depth += 1
             elif token[0] == closing:
                 depth -= 1
                 if not depth:
-                    return source[start:start + token.start()]
+                    return text[start:start + token.start()]
         raise GenError("unbalanced llviewercontrol listener/function")
 
     functions = {}
-    for match in re.finditer(r'^[ \t]*(?:[\w:<>&*]+[ \t]+)+(\w+)\s*\([^;{}]*\)\s*\{', source, re.M):
-        functions[match[1]] = balanced(match.end(), '{', '}')
+    definitions = definition_source if definition_source is not None else source
+    for match in re.finditer(r'^[ \t]*(?:[\w:<>&*]+[ \t]+)+([\w:]+)\s*\([^;{}]*\)\s*\{', definitions, re.M):
+        functions[match[1].split('::')[-1]] = balanced(match.end(), '{', '}', definitions)
     for match in re.finditer(r'\bauto\s+(\w+)\s*=\s*\[[^\]]*\]\s*\([^;{}]*\)\s*\{', source):
         functions[match[1]] = balanced(match.end(), '{', '}')
     listeners = []
@@ -1494,7 +1498,8 @@ def quick_safety_tripwire(allowlist: dict[str, str], sources: dict[str, str]) ->
             contexts = [source.replace("RlvSettingNames::Main", value[1]) if value else source]
         for body in contexts:
             try:
-                registered = quick_unsafe_listener_settings(body, reviewed_observers=True)
+                registered = quick_unsafe_listener_settings(body, reviewed_observers=True,
+                                                            definition_source=source)
             except GenError as error:
                 raise GenError(f"Quick tripwire {path}: {error}") from error
             unsafe.update(registered)
@@ -2146,6 +2151,14 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
             except GenError:
                 rejected = True
             checks.append((f"allowlisted planted {label} rejects", rejected))
+        for registration in (
+                'gSavedSettings.getControl("Reviewed")->getSignal()->connect([](auto value) { helper(value); });',
+                'setting_setup_signal_listener(gSavedSettings, "Reviewed", [](auto value) { helper(value); });'):
+            unsafe = quick_safety_tripwire(approved, {"outside.cpp":
+                'void leaf(bool value) { handleSetShaderChanged(value); }\n'
+                'void helper(bool value) { leaf(value); }\n'
+                'void planted() { ' + registration + ' }'})
+            checks.append(("allowlisted helper-wrapped lambda reload rejects", "Reviewed" in unsafe))
         for sink in ("handleSetShaderChanged", "setShaders", "setGraphicsLevel", "handleRenderDeferredChanged"):
             unsafe = quick_safety_tripwire(approved, {"outside.cpp": f'void planted() {{ {sink}("Reviewed"); }}'})
             checks.append((f"cross-file {sink} association vetoes approved setting", "Reviewed" in unsafe))

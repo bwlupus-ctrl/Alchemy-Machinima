@@ -4120,7 +4120,7 @@ private:
             if (recorder.getState() == LLFlycamRecorder::STATE_IDLE &&
                 recorder.getNumKeyframes() == 0)
             {
-                recorder.startRecording();
+                recorder.startRecording(false); // Selftest transport must not emit user take records.
                 mFunctionalFlycamFixture = true;
             }
         }

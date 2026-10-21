@@ -1911,6 +1911,9 @@ struct PrismInstance : LLPrismLens::SourceSlotData
     bool mOutputPreviewQuality = false;
     U32 mOutputWidth = 0;
     U32 mOutputHeight = 0;
+    // Last acquired camera bucket; survives ordinary scheduler gaps.
+    U32 mAreaScratchWidth = 0;
+    U32 mAreaScratchHeight = 0;
     U32 mLastRenderedFrame = 0;
     F64 mRetryAfterTime = 0.0;
     F64 mLastAttemptTime = 0.0;
@@ -5127,6 +5130,13 @@ public:
     }
 
 
+
+    void retainAreaScratch(U32 slot, U32 width, U32 height)
+    {
+        mLenses[slot].mAreaScratchWidth = width;
+        mLenses[slot].mAreaScratchHeight = height;
+        releaseUnusedAreaScratch();
+    }
 
     void markProduced(U32 slot, U32 output_width, U32 output_height)
     {
@@ -8696,6 +8706,18 @@ private:
         ++mRuntimeRevision;
     }
 
+    void releaseUnusedAreaScratch()
+    {
+        std::array<std::pair<U32, U32>, LLPrismLens::MAX_CAPTURES> sizes{};
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        {
+            const auto& capture = mLenses[slot];
+            if (capture.mOccupied && capture.cameraData())
+                sizes[slot] = {capture.mAreaScratchWidth, capture.mAreaScratchHeight};
+        }
+        gPipeline.releaseUnusedPrismAreaTargets(sizes);
+    }
+
     void clearSlot(U32 slot)
     {
         if (slot >= LLPrismLens::MAX_LENSES || !mLenses[slot].mOccupied)
@@ -8734,6 +8756,7 @@ private:
             }
         }
         mLenses[slot] = PrismInstance();
+        releaseUnusedAreaScratch();
         syncMediaTracking();
         mGateGrants.erase(removed_capture_id);
         for (auto& gate : mLenses)
@@ -10831,6 +10854,9 @@ void renderAuxiliaryView()
                 registry.deferRetry(slot, 30);
                 return false;
             }
+            // Preview uses separate scratch; preserve the last real bucket claim.
+            if (!preview_only)
+                registry.retainAreaScratch(slot, render_width, render_height);
             LLPipeline::sPrismLensRender = true;
             LLPipeline::sUseOcclusion = 0;
             LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_PRISM_LENS;

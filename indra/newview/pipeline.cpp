@@ -1956,6 +1956,19 @@ void LLPipeline::bindPrismLensTarget(LLRenderTarget& target)
     target.bindTarget();
 }
 
+void LLPipeline::releaseUnusedPrismAreaTargets(
+    const std::array<std::pair<U32, U32>, LLPrismLens::MAX_CAPTURES>& sizes)
+{
+    for (auto& entry : mPrismLensScratchPool)
+    {
+        if (std::find(sizes.begin(), sizes.end(), std::make_pair(entry.width, entry.height)) != sizes.end())
+            continue;
+        for (auto* targets : {&entry.rt.areaGather, &entry.rt.areaScratch, &entry.rt.areaVisibility})
+            for (auto& target : *targets)
+                if (target.isComplete()) target.release();
+    }
+}
+
 void LLPipeline::releasePrismLensBuffers()
 {
     for (PrismLensScratch& entry : mPrismLensScratchPool)

@@ -22,7 +22,9 @@ def check_dispatch(g):
     begin = begin[begin.index('    static LLCachedControl<bool> area('):begin.index('    mPrismSavedNearbyLights =')]
     end = method(nv / 'pipeline.cpp', 'void LLPipeline::endPrismAuxiliaryState()')
     end = end[end.index('    if (mPrismAreaStateSaved)'):end.index('    // Discard the temporary')]
-    cleanup = render[render.index('    if (!enabled() || !feeds())'):render.index('    if (!enabled())')]
+    entry = render[:render.index('    const auto& registry =')]
+    call_start = lighting.index('        renderAreaShadows(debugLightingTerm()')
+    production_call = lighting[call_start:lighting.index(';', call_start)+1]
     dispatch = render[render.index('    const U32 width = mRT->deferredScreen.getWidth()'):render.index('    static LLFrameTimer summary;')]
     state = render[render.index('    struct State\n'):render.index('    const U32 width = mRT->deferredScreen.getWidth()')]
     release = method(nv / 'pipeline.cpp', 'static void release_prism_scratch_entry(')
@@ -98,7 +100,10 @@ struct Log { template<class T> Log& operator<<(const T&) { return *this; } } log
 #define LL_WARNS(x) logSink
 #define LL_DEBUGS(x) logSink
 #define LL_INFOS(x) logSink
+#define LL_INFOS_ONCE(x) logSink
 #define LL_ENDL 0
+#define LL_PROFILE_GPU_ZONE(x)
+#define LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE(x)
 struct Settings {} gSavedSettings;
 bool master=true,feedSetting=true;
 template<class T> struct LLCachedControl {
@@ -107,6 +112,7 @@ template<class T> struct LLCachedControl {
     T operator()() const {
         if(key=="RenderAreaShadows") return T(master);
         if(key=="RenderAreaShadowsVCam") return T(feedSetting);
+        if(key=="RenderAreaShadowLights") return T(8);
         return value;
     }
 };
@@ -117,11 +123,13 @@ struct LLViewerCamera {
 namespace LLPrismLens { constexpr unsigned MAX_CAPTURES=8; }
 struct LLUUID {
     unsigned char mData[16]={};
+    static const LLUUID null;
     LLUUID(int id=0) { mData[0]=id; }
     bool operator!=(const LLUUID& b) const { return mData[0]!=b.mData[0]; }
     bool operator==(const LLUUID& b) const { return mData[0]==b.mData[0]; }
     bool operator<(const LLUUID& b) const { return mData[0]<b.mData[0]; }
 };
+const LLUUID LLUUID::null{};
 struct LLVector4 { float mV[4]={}; void set(float x,float y,float z,float r) { mV[0]=x;mV[1]=y;mV[2]=z;mV[3]=r; } };
 namespace glm {
 struct mat4 {};
@@ -135,11 +143,14 @@ LLVector4 light_shape_for_volume(const LLVOVolume*) { LLVector4 v;v.mV[3]=-1;ret
 float area_source_radius(LLVOVolume*) { return .001f; }
 struct LLDrawable { LLVOVolume volume; LLVector4 position;
     LLVOVolume* getVOVolume() { return &volume; }
+    const LLVOVolume* getVObj() const { return &volume; }
     LLVector4 getPositionAgent() { return position; }
 };
 struct LLStaticHashedString { const char* text; LLStaticHashedString(const char* s):text(s) {} };
+bool programReady=true;
 struct Shader {
     int program;
+    bool isComplete() const { return programReady; }
     static inline Shader* sCurBoundShaderPtr=nullptr;
     void bind() { cb(3,program,0,0,nullptr,nullptr);sCurBoundShaderPtr=this; }
     static void unbind() { cb(25,0,0,0,nullptr,nullptr);sCurBoundShaderPtr=nullptr; }
@@ -158,6 +169,7 @@ namespace LLTexUnit { constexpr int TFO_POINT=0; }
 namespace LLRender { constexpr int TRIANGLES=4; }
 void glColorMask(bool a,bool b,bool c,bool d) { cb(8,int(a)|(int(b)<<1)|(int(c)<<2)|(int(d)<<3),0,0,nullptr,nullptr); }
 void glGenQueries(int,unsigned*) {}
+void glDeleteQueries(int,unsigned*) {}
 void glGetQueryObjectiv(unsigned,int,int*) {}
 void glGetQueryObjectui64v(unsigned,int,unsigned long long*) {}
 void glQueryCounter(unsigned,int) {}
@@ -175,7 +187,7 @@ struct LLRenderTarget {
     void flush() {}
 };
 struct VB { void setBuffer() {} void drawArrays(int,int,int) { cb(10,0,0,0,nullptr,nullptr); } } vb;
-struct Take { ALAreaShadow::Workload work{}; bool planned=false; std::string status; };
+struct Take { ALAreaShadow::Workload work{}; bool planned=false; std::string status; unsigned width=0,height=0; };
 struct LLPipeline {
     struct RenderTargetPack {
         LLRenderTarget areaGather[2],areaScratch[2],areaVisibility[2];
@@ -202,6 +214,8 @@ struct LLPipeline {
     VB* mScreenTriangleVB=&vb;
     std::array<LLDrawable,8> drawables;
     std::array<LLDrawable*,8> mLights;
+    static constexpr unsigned MAX_SPOT_SHADOWS=10;
+    std::array<LLDrawable*,10> mShadowSpotLight{};
     LLPipeline() { for(unsigned i=0;i<8;++i) mLights[i]=&drawables[i]; }
     void setLights(int first,const float* light) {
         for(unsigned i=0;i<8;++i) {
@@ -216,7 +230,10 @@ struct LLPipeline {
     float max_dist() const { return 8; } float thickness() const { return .1f; }
     void bindDeferredShader(Shader& shader);
     void unbindDeferredShader(Shader&) { Shader::unbind(); }
-    void begin(); void end(); void cleanup(); void dispatch(); void releasePrismLensBuffers();
+    void begin(); void end(); void dispatch(); void releasePrismLensBuffers();
+    void renderAreaShadows(S32,F32,bool,bool,bool,bool);
+    void releaseUnusedPrismAreaTargets(const std::array<std::pair<U32,U32>,8>&);
+    int debugLightingTerm() const { return 0; }
     bool areaShadowsAllowedThisView() const;
     bool areaShadowsActive() const;
     LLVector4 deferredLightShape(const LLVOVolume*) const;
@@ -231,12 +248,21 @@ bool gCubeSnapshot=false;
         'LLVector4 LLPipeline::deferredLightShape('))
     fixture += '\nvoid LLPipeline::begin() {\n'+begin+'}\nvoid LLPipeline::end() {\n'+end+'}\n'
     fixture += '\nvoid LLPipeline::bindDeferredShader(Shader& shader) { shader.bind();\n'+area_binding+'}\n'
-    fixture += '\nvoid LLPipeline::cleanup() {\nauto enabled=[](){return master;};auto feeds=[](){return feedSetting;};\n'+cleanup+'}\n'
     fixture += release + '\n' + method(nv / 'pipeline.cpp', 'void LLPipeline::releasePrismLensBuffers()')
-    fixture += '\nvoid LLPipeline::dispatch() {\nmAreaShadowValid=false;mAreaShadowCount=0;\n'
+    fixture += '\n' + method(nv / 'pipeline.cpp', 'void LLPipeline::releaseUnusedPrismAreaTargets(')
+    # Execute the production entry, including every OFF/view/limit/program gate.
+    # Only scene collection is supplied by the fixed fixture objects.
+    fixture += '\n'+entry
     fixture += 'ALAreaShadow::Selection<LLUUID> selected; selected.size=count;\n'
     fixture += 'for(unsigned i=0;i<count;++i) selected.lights[i].id=drawables[i].volume.id;\n'+state+dispatch
     fixture += r'''
+}
+void LLPipeline::dispatch() {
+    const int effective_local_light_count=count;
+    const float light_scale=1;
+    const bool actor_only=false,actor_mask_ready=false,actor_as_world=false,actor_excluded=false;
+'''+production_call+r'''
+    cb(27,0,0,0,nullptr,nullptr); // Observe the production guard before consumer binding.
     // Execute the actual production visibility consumer binding after publish.
     bindDeferredShader(gAreaShadowProgram);
     routed=cb(26,4,0,0,nullptr,nullptr)==int(mRT->areaVisibility[0].texture) &&
@@ -251,6 +277,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         p.sPrismLensRender=true;
         p.mRT=&p.mPrismLensScratchPool[slot].rt;
         p.mActivePrismLensScratch=&p.mPrismLensScratchPool[slot];
+        p.mActivePrismLensScratch->width=width;p.mActivePrismLensScratch->height=height;
         p.mRT->deferredScreen.width=width;p.mRT->deferredScreen.height=height;
         p.mMainRT.deferredScreen.width=32;p.mMainRT.deferredScreen.height=24;
         p.gFrameCount=frame;p.setLights(17+slot*8,light);
@@ -269,8 +296,12 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         if(p.deferredLightShape(&mainLight).mV[3]!=0) return -5;
         return valid;
     }
-    if(action==1) { feedSetting=false;p.cleanup();feedSetting=true; }
-    if(action==2) { master=false;p.cleanup();master=true; }
+    if(action==1 || action==2) {
+        p.begin();p.sPrismLensRender=true;p.mRT=&p.mPrismLensScratchPool[slot].rt;
+        if(action==1) feedSetting=false;else master=false;
+        p.dispatch();feedSetting=master=true;
+        p.sPrismLensRender=false;p.mRT=&p.mMainRT;p.end();
+    }
     if(action==3) p.releasePrismLensBuffers();
     if(action==4) release_prism_scratch_entry(p.mPrismLensScratchPool[slot]);
     if(action==5) p.count=slot;
@@ -285,6 +316,22 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         for(auto& t:p.mMainRT.areaGather) t.release();
         for(auto& t:p.mMainRT.areaScratch) t.release();
         for(auto& t:p.mMainRT.areaVisibility) t.release();
+    }
+    if(action==8 || action==9 || action==10) {
+        p.begin();p.sPrismLensRender=true;p.mRT=&p.mPrismLensScratchPool[slot].rt;
+        auto count=p.count;
+        if(action==8) p.sPrismPreviewRender=true;
+        if(action==9) p.count=0;
+        if(action==10) programReady=false;
+        p.dispatch();
+        const bool invalid=!p.mAreaShadowValid && !p.mAreaShadowCount;
+        p.count=count;programReady=true;p.sPrismPreviewRender=false;p.sPrismLensRender=false;p.mRT=&p.mMainRT;p.end();
+        return invalid ? 0 : -8;
+    }
+    if(action==11) {
+        std::array<std::pair<U32,U32>,8> sizes{};
+        sizes[slot]={width,height};
+        p.releaseUnusedPrismAreaTargets(sizes);
     }
     return 1;
 }
@@ -335,6 +382,8 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         fail_at=0
         current_program=0
         fixture_data=None
+        dispatch_state=[]
+        observe_state=None
 
         @callback_type
         def callback(event,a,b,c,name,pointer):
@@ -393,6 +442,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
                 if event==26:
                     g['active'](0x84c0+a)
                     value=g['I']();get_int(0x8069,C.byref(value));return value.value
+                if event==27: dispatch_state[:]=observe_state()
                 return 1
             except Exception as error:
                 errors.append(error)
@@ -403,7 +453,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         frame=0
 
         def run(action=0,slot=0,width=64,height=48,eye=0,same_frame=False):
-            nonlocal frame,fixture_data
+            nonlocal frame,fixture_data,observe_state
             if not same_frame: frame+=1
             fixture_data=g['camera_fixture'](width,height,eye)
             view,proj,depth,normals,wall,blocker,light=fixture_data
@@ -418,9 +468,10 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
                 values.extend(raw[14](token) for token in (0x0be2,0x0b44,0x0b90,0x0b71,0x0c11))
                 return values
             before=state_snapshot()
+            observe_state=state_snapshot
             result=lib.run(callback,action,slot,width,height,frame,position.ctypes.data_as(C.POINTER(F)))
             assert not errors,errors
-            if action in (0,6): assert state_snapshot()==before,'production GL state restoration'
+            if action in (0,6): assert dispatch_state==before,'production GL state restoration'
             assert result>=0,('transaction/channel isolation',result)
             return result
 
@@ -441,6 +492,10 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         main_live=live.copy()
         main_visibility=read_last().copy()
         main_allocations=allocations
+        for action in (8,9,10):
+            before=allocations,len(outputs)
+            assert run(action)==0
+            assert (allocations,len(outputs))==before,'production early return dispatched work'
         run(5,1)  # one selected light initially: one trio of targets
         assert run()==1
         assert allocations-main_allocations==3 and len(live-main_live)==3
@@ -481,7 +536,11 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         run(1)
         assert (allocations,releases)==before,'steady OFF has no allocation/deletion'
         run();run(2)  # master OFF
-        assert live==main_live
+        assert not live,'master OFF must release main and feed area targets'
+        assert run(6)==1
+        assert g['np'].array_equal(main_visibility,read_last()),'master OFF/ON changed main output'
+        main_live=live.copy()
+        main_outputs=outputs.copy()
         # Allocation failure after a successful first target must clean all
         # partial allocations and publish no channels, then recover on retry.
         run(5,8)
@@ -494,6 +553,14 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         run(4)  # real recycle/eviction owner
         assert live==main_live
         run();run(slot=1);run(3)  # last consumer closes / releaseScreenBuffers
+        assert live==main_live
+        run(width=63,height=45);run(slot=1)
+        retained=read_last().copy()
+        before=allocations,releases
+        run(11,slot=1)
+        assert allocations==before[0] and releases==before[1]+3
+        assert len(live-main_live)==3 and g['np'].array_equal(retained,read_last()),'unused size pruning touched a live camera bucket'
+        run(3)
         assert live==main_live
         # All eight passes may be the SAME feed in one frame. Ninth skips.
         before_draws=len(outputs)
@@ -514,7 +581,8 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     # production blocks without changing any worktree source.
     mutations = {
         'per_update_release': fixture.replace(end,end+'\nfor(auto& e:mPrismLensScratchPool) for(auto& t:e.rt.areaVisibility) t.release();'),
-        'missing_dispatch': fixture.replace('p.dispatch();','/* dispatch removed */',1),
+        'missing_dispatch': fixture.replace(production_call,'/* production call removed */'),
+        'feed_early_return': fixture.replace('if (!allowed)\n','if (!allowed || sPrismLensRender)\n'),
         'wrong_owner': fixture.replace('p.dispatch();','p.mRT=&p.mMainRT;p.dispatch();',1),
         'wrong_consumer': fixture.replace('if (unit >= 0) mRT->areaVisibility','if (unit >= 0) mMainRT.areaVisibility'),
         'stale_prepass': fixture.replace('mAreaShadowValid = false;\n        mAreaShadowCount = 0;',''),

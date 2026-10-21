@@ -835,7 +835,14 @@ bool ALCineLightRigManager::areaShadowSuppressed(LLVOVolume* volume) const
         // The catchlight's permanent native-map opt-out is structural, not
         // fixture intent. Follow the key's Off/Key/All flag for area shadows.
         if (rig.catchlightId() == volume->getID())
-            return LLPipeline::isProjectorNoShadow(rig.projectorId(0));
+        {
+            const LLViewerObject* key = gObjectList.findObject(rig.projectorId(0));
+            if (key && !key->isDead())
+                return LLPipeline::isProjectorNoShadow(key->getID());
+            const S32 mode = static_cast<Slot>(i) == mSelected
+                ? gSavedSettings.getS32("CineLightRigShadowMode") : mBlobs[i].mShadowMode;
+            return mode <= 0;
+        }
     }
     return LLPipeline::isProjectorShadowSuppressed(volume);
 }
@@ -1419,10 +1426,12 @@ void ALCineLightRigManager::applyShadowSuppression()
         }
         for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
         {
-            const LLUUID id = mInstances[i].projectorId(light);
-            if (id.notNull() && !LLPipeline::isProjectorNoShadow(id))
+            for (const LLUUID& id : {mInstances[i].projectorId(light), mInstances[i].omniId(light)})
             {
-                LLPipeline::toggleProjectorCastShadows(id);
+                if (id.notNull() && !LLPipeline::isProjectorNoShadow(id))
+                {
+                    LLPipeline::toggleProjectorCastShadows(id);
+                }
             }
         }
     }
@@ -1434,10 +1443,12 @@ void ALCineLightRigManager::clearShadowSuppression()
     {
         for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
         {
-            const LLUUID id = mInstances[i].projectorId(light);
-            if (id.notNull() && LLPipeline::isProjectorNoShadow(id))
+            for (const LLUUID& id : {mInstances[i].projectorId(light), mInstances[i].omniId(light)})
             {
-                LLPipeline::toggleProjectorCastShadows(id);
+                if (id.notNull() && LLPipeline::isProjectorNoShadow(id))
+                {
+                    LLPipeline::toggleProjectorCastShadows(id);
+                }
             }
         }
     }

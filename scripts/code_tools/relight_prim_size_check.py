@@ -1,7 +1,7 @@
 """Execute production radius/shape and status code with small CPU objects.
 
 Return the actual float radii to the production sphere/disk GPU fixtures.
-No viewer build; HEAD functions provide an independent OFF byte comparison.
+No viewer build; pre-step-3 functions provide an independent OFF byte comparison.
 """
 from pathlib import Path
 import json
@@ -31,7 +31,7 @@ def check_prim_size():
     assert default.text == 'SL shadows are off in Preferences; Soft shadows is off'
     directory = Path('.tmp/relight_step3_source').resolve()
     directory.mkdir(parents=True, exist_ok=True)
-    baseline = subprocess.check_output(['git', 'show', 'HEAD:indra/newview/pipeline.cpp'], text=True)
+    baseline = subprocess.check_output(['git', 'show', 'abbf6ec0ae5~1:indra/newview/pipeline.cpp'], text=True)
     (directory / 'baseline.cpp').write_text(baseline, encoding='utf-8')
     fixture = r'''
 #include "alrelightmath.h"
@@ -88,12 +88,27 @@ constexpr float DEFERRED_LIGHT_FALLOFF = .5f;
                 body = body.replace('light_shape_for_volume(', 'light_shape_for_volume_baseline(')
             fixture += '\n' + body
     director = method(nv / 'llfloaterdirector.cpp', 'void LLFloaterDirector::refreshLauncherCards()')
-    status = director[director.index('        const S32 detail'):director.index('\n    }')]
+    assert 'mAreaShadowSLStatus.get()' in director
+    binding = method(nv / 'llfloaterdirector.cpp', 'void LLFloaterDirector::bindPage(')
+    assert 'mAreaShadowSLStatus = status->getDerivedHandle<LLTextBox>()' in binding
+    status = director[director.index('    LLTextBox* status = mAreaShadowSLStatus.get();'):
+                      director.index('    for (const LauncherCard& card')]
     fixture += r'''
-struct LLTextBox { std::string text; bool visible = true; };
+struct LLTextBox {
+    std::string text; bool visible = true;
+    template<class T> LLTextBox* getDerivedHandle() { return this; }
+};
+struct StatusHandle {
+    LLTextBox* p=nullptr;
+    LLTextBox* get() { return p; }
+    void operator=(LLTextBox* v) { p=v; }
+} mAreaShadowSLStatus;
+LLTextBox* availableStatus=nullptr;
+int statusLookups=0;
+template<class T> LLTextBox* findChild(const char*) { ++statusLookups;return availableStatus; }
 void setTextIfChanged(LLTextBox* s,const char* t) { s->text=t; }
 struct ALKitRow { static void setControlVisible(LLTextBox* s,bool v) { s->visible=v; } };
-void statusRefresh(LLTextBox* status) {
+void statusRefresh() {
 '''+status+'\n}\n'
     fixture += r'''
 int main() {
@@ -146,9 +161,18 @@ int main() {
         std::cout << (i ? "," : "") << "\"" << names[i] << "\":" << radius;
     }
     std::cout << "}";
+    // Initially missing lazy page: later lookup binds it, then refresh reuses the handle.
+    statusRefresh();assert(statusLookups==1 && !mAreaShadowSLStatus.get());
+    LLTextBox initial;availableStatus=&initial;
+    statusRefresh();assert(statusLookups==2 && mAreaShadowSLStatus.get()==&initial);
+    statusRefresh();assert(statusLookups==2);
+    // Simulate an expired handle after the page is recreated.
+    LLTextBox replacement;availableStatus=&replacement;mAreaShadowSLStatus.p=nullptr;
+    statusRefresh();assert(statusLookups==3 && mAreaShadowSLStatus.get()==&replacement);
     for (int detail : {0,1,2,3}) for (bool soft : {false,true}) {
         settings["RenderShadowDetail"]=detail; settings["RenderAreaShadows"]=soft;
-        LLTextBox status; statusRefresh(&status);
+        LLTextBox& status=replacement; statusRefresh();
+        assert(statusLookups==3);
         assert(status.visible==(detail<2));
         const std::string prefix=detail==0 ? "SL shadows" : "SL projector shadows";
         assert(status.text==prefix+" are off in Preferences; Soft shadows is "+(soft ? "on" : "off"));
@@ -166,7 +190,7 @@ int main() {
     subprocess.run(['cmd', '/d', '/c', str(directory / 'compile.cmd')], check=True)
     radii = json.loads(subprocess.check_output([str(directory / 'source.exe')], text=True))
     print('[RelightQ] prim source CPU PASS: emitting scale, live edit, rig/mirror precedence, '
-          'independent area, HEAD OFF bytes; Preferences detail 0/1/2/3 x Soft shadows OFF/ON', flush=True)
+          'independent area, pre-step-3 OFF bytes; Preferences detail 0/1/2/3 x Soft shadows OFF/ON', flush=True)
     return radii
 
 

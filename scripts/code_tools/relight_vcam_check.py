@@ -7,6 +7,8 @@ from relight_area_policy_check import method
 
 
 def check_vcam():
+    from relight_vcam_lifecycle_check import check_lifecycle
+    check_lifecycle()
     nv = Path('indra/newview')
     pipeline = (nv / 'pipeline.cpp').read_text(encoding='utf-8')
     begin = method(nv / 'pipeline.cpp', 'bool LLPipeline::beginPrismAuxiliaryState()')

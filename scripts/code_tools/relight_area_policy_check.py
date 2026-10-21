@@ -36,8 +36,12 @@ def check_policy():
 #include <iostream>
 #include <set>
 using S32 = int;
-using LLUUID = int;
-struct LLViewerObject { int id; int getID() const { return id; } };
+using U32 = unsigned;
+struct LLUUID {
+    int value=0; LLUUID(int n=0):value(n) {} operator int() const { return value; }
+    bool notNull() const { return value!=0; }
+};
+struct LLViewerObject { int id; bool isDead() const { return false; } int getID() const { return id; } };
 struct LLVOVolume : LLViewerObject {
     LLViewerObject* root = nullptr;
     bool dead = false;
@@ -45,6 +49,12 @@ struct LLVOVolume : LLViewerObject {
     LLViewerObject* getRootEdit() { return root; }
 };
 struct Ptr { LLVOVolume* p = nullptr; LLVOVolume* get() const { return p; } };
+struct Objects {
+    LLVOVolume* key=nullptr;
+    LLVOVolume* findObject(int id) const { return key && key->id==id && !key->isDead() ? key : nullptr; }
+} gObjectList;
+struct Settings { int mode=0; int getS32(const char*) const { return mode; } } gSavedSettings;
+struct ALCineLightRigModel { static constexpr int LIGHT_COUNT=4; };
 struct LLPipeline {
     static inline std::set<int> sNoShadowProjectors;
     static bool isProjectorNoShadow(int id) { return sNoShadowProjectors.count(id); }
@@ -57,21 +67,31 @@ struct ALCineLightRig {
     static constexpr int LIGHT_COUNT = 4;
     Ptr mProjectors[4], mOmnis[4], mCatchlight;
     int catchlightId() const { return mCatchlight.p ? mCatchlight.p->id : 0; }
-    int projectorId(int i) const { return mProjectors[i].p ? mProjectors[i].p->id : 0; }
+    LLUUID projectorId(int i) const { return mProjectors[i].p ? mProjectors[i].p->id : 0; }
+    LLUUID omniId(int i) const { return mOmnis[i].p ? mOmnis[i].p->id : 0; }
     void updateShadowPolicy(S32);
 };
 struct ALCineLightRigManager {
     enum Slot { FIRST };
-    static constexpr int SLOT_COUNT = 1;
-    ALCineLightRig rig;
-    const ALCineLightRig& at(Slot) const { return rig; }
+    static constexpr int SLOT_COUNT = 2;
+    ALCineLightRig mInstances[2]; ALCineLightRig& rig=mInstances[0];
+    Slot mSelected=FIRST;
+    struct Blob { int mShadowMode=0; } mBlobs[2];
+    struct Focus { int mFocus=0; } mFocusState;
+    unsigned enabledMask() const { return 1; }
+    unsigned suppressedSlotMask(unsigned,int focus) const { return focus ? 1 : 0; }
+    unsigned slotToGroupBit(Slot) const { return 1; }
+    const ALCineLightRig& at(Slot slot) const { return mInstances[slot]; }
     bool areaShadowSuppressed(LLVOVolume*) const;
+    void applyShadowSuppression(); void clearShadowSuppression();
 };
 '''
     fixture += '\n'.join([
         method(nv / 'pipeline.cpp', 'bool LLPipeline::isProjectorShadowSuppressed('),
         method(nv / 'alcinelightrig.cpp', 'void ALCineLightRig::updateShadowPolicy('),
         method(nv / 'alcinelightrigmanager.cpp', 'bool ALCineLightRigManager::areaShadowSuppressed('),
+        method(nv / 'alcinelightrigmanager.cpp', 'void ALCineLightRigManager::applyShadowSuppression('),
+        method(nv / 'alcinelightrigmanager.cpp', 'void ALCineLightRigManager::clearShadowSuppression('),
     ])
     fixture += r'''
 int main() {
@@ -101,9 +121,11 @@ int main() {
         manager.rig.mOmnis[i].p=&omnis[i];
     }
     manager.rig.mCatchlight.p=&catchlight;
+    gObjectList.key=&projectors[0];
     LLPipeline::toggleProjectorCastShadows(99); // permanent native-map opt-out
     for (int mode : {0,1,2,0,2,1}) {
         manager.rig.updateShadowPolicy(mode);
+        gSavedSettings.mode=mode;
         for (int i=0; i<4; ++i) {
             const bool off = mode==0 || (mode==1 && i!=0);
             assert(manager.areaShadowSuppressed(&projectors[i]) == off);
@@ -118,6 +140,31 @@ int main() {
     assert(manager.areaShadowSuppressed(&omnis[1]));
     manager.rig.updateShadowPolicy(2);
     assert(!manager.areaShadowSuppressed(&omnis[1]));
+    // Key absent/dead: the rig mode, rather than a missing UUID flag, wins.
+    for (bool dead : {false,true}) {
+        manager.rig.mProjectors[0].p=dead ? &projectors[0] : nullptr;
+        projectors[0].dead=dead;
+        for (int mode : {0,1,2,0}) {
+            gSavedSettings.mode=mode;
+            assert(manager.areaShadowSuppressed(&catchlight)==(mode==0));
+        }
+    }
+    manager.mSelected=static_cast<ALCineLightRigManager::Slot>(1);
+    gSavedSettings.mode=2;
+    manager.mBlobs[0].mShadowMode=0;
+    assert(manager.areaShadowSuppressed(&catchlight));
+    manager.mBlobs[0].mShadowMode=1;
+    assert(!manager.areaShadowSuppressed(&catchlight));
+    manager.mSelected=ALCineLightRigManager::FIRST;
+    // Focus suppression and clearing must reach the surviving bounce as well.
+    projectors[0].dead=false;manager.rig.mProjectors[0].p=&projectors[0];
+    manager.rig.updateShadowPolicy(2);
+    manager.mFocusState.mFocus=1;manager.applyShadowSuppression();
+    for(auto& omni:omnis) assert(manager.areaShadowSuppressed(&omni));
+    assert(manager.areaShadowSuppressed(&projectors[0]));
+    manager.clearShadowSuppression();
+    for(auto& omni:omnis) assert(!manager.areaShadowSuppressed(&omni));
+    assert(!manager.areaShadowSuppressed(&projectors[0]));
     auto seven=ALAreaShadow::workload(ALAreaShadow::quality(3),1920,1080,7,1500,8);
     auto eight=ALAreaShadow::workload(ALAreaShadow::quality(3),1920,1080,8,1500,8);
     assert(seven.q.samples==2 && eight.q.samples==2);

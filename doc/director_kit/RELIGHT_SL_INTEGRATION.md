@@ -940,3 +940,81 @@ In-world checks still required after the separately authorized review/build:
    determinism still requires pinned scene/streaming/pose/exposure/FX and the
    native main collector/slot history described under Step 5; this change does
    not solve those existing full-viewer limits.
+
+## Cleanup (10/21)
+
+Implemented the ten review cleanup items on `feature/director-kit-p0`, against
+`0ad7775b6d9`. B1 remains parked on `wip/relight-b1-lens`; nothing was merged
+from it. No commit, push, stash operation, viewer build or launch.
+`.tmp/ref_private/` was not opened; unrelated work and dirty `vcpkg` remain.
+
+1. Camera feeds and surface lenses retain their last acquired scratch-size
+   claim across normal scheduled updates and preview-only renders. Removal or a
+   successful re-bucket releases the gather, scratch and visibility arrays of
+   sizes with no remaining camera-payload consumer.
+   Media/Gate registry entries cannot retain those area targets. Other scratch
+   resources keep their existing lifetime. Same-size camera consumers retain
+   shared area storage; OFF and full-pool eviction/last-close cleanup remain.
+2. The GL dispatch fixture now executes the production `renderAreaShadows`
+   entry and the actual local-lighting call expression, including OFF, view,
+   light-count and program-readiness gates. Only scene collection is substituted
+   by fixed fixture objects. Removing the real call or adding
+   `|| sPrismLensRender` to the real early return fails the executable checks.
+   The production guard is observed before subsequent consumer binding.
+3. The prim-size OFF comparison is pinned to `abbf6ec0ae5~1`, before Step 3,
+   rather than moving HEAD. Its radius/shape byte checks and no-scale-read
+   assertions pass against that independent baseline.
+4. Catchlights follow the live key's suppression flag when that projector
+   exists. With an absent/dead key they fall back to the selected rig's shadow
+   setting or the inactive rig's stored mode, so Off still suppresses them.
+5. The retained suppression/clear helpers now visit each fixture's bounce omni
+   as well as its projector, including an omni whose projector is absent.
+   `applyShadowSuppression()` has no production callers, so its change is dead
+   code and does not establish live focus suppression. The harmless omni clear
+   remains; no callers were added.
+6. Size from prim help explicitly says it overrides World light size for
+   ordinary SL lights; fixture metadata keeps its existing precedence.
+7. The Preferences status widget is cached when the lazy Rim page binds.
+   Refresh uses the `LLHandle` when valid, falling back to a lazy `findChild`
+   lookup and caching its result when the handle is null or expired.
+8. The supplementary Quick tripwire traces helper definitions outside the
+   listener's registration context. Direct-signal and setup-listener lambdas
+   calling a helper chain that reaches `handleSetShaderChanged` are rejected.
+   The reviewed default-deny allowlist remains the primary authority.
+9. The perf selftest starts its flycam transport fixture with
+   `startRecording(false)`, suppressing user take records.
+10. The real Advanced section now orders **Light shape, Soft shadows,
+    Diagnostics**. The kit source and generated outputs agree. All three
+    generators were regenerated after the C++ edits and pass `--check`.
+    The row pin stays **2161**, with a cleanup comment; changed JSON is LF.
+
+**Fix round 1 (10/21):** the claim collector now uses occupied
+`capture.cameraData()` entries, covering `SURFACE_LENS` as well as camera feeds.
+Media/Gate slots do not retain claims. Preview-only renders skip claim updates
+because they use separate scratch. The production lifecycle fixture exercises a
+surface lens through repeated acquire/retain (one allocation, zero releases),
+same-size camera sharing, removal in either order and last-owner release. It
+also executes the real preview guard for both capture types. A compiled mutation
+restoring the `isCameraFeed()` filter must fail those assertions. The production
+status fixture covers a missing page, later widget lookup, cached refresh and
+an expired handle followed by a replacement widget. Item 5 above corrects the
+prior live-behavior claim; only its standalone helper body was exercised.
+
+All results below were rerun after the round 1 C++ edits.
+
+| Required gate | Result / evidence |
+|---|---|
+| `relight_shader_check.py` | **PASS**, production compile/link/runtime checks, 126 rig rows with zero failures, pinned prim OFF bytes, surface/preview/status cases and rejected claim-filter/dispatch mutations. `.tmp/relight_cleanup_r1_shaders.log`. |
+| `relight_area_check.py`, including new cases | **PASS**, real GL unused-size pruning preserves the live bucket/main output, production entry gates, real-call and early-return mutations, surface/preview lifecycle (including rejected camera-feed-only mutation), lazy status/prim/policy fixtures, workload bounds, housing/blocker, contact hardening, camera alignment and determinism. `.tmp/relight_cleanup_r1_area.log`. |
+| Tests | **PASS 22/22** existing standalone `alrelightmath` runner, no test C++ changed (`.tmp/relight_cleanup_r1_math.log`). Generator selftests, including both helper-wrapped rejection cases, and manifest rule/generation tests pass (`.tmp/relight_cleanup_r1_generator_tests.log`, `.tmp/relight_cleanup_r1_manifest_tests.log`). Production policy fixtures cover live/absent/dead key, selected/inactive rig fallback and the retained suppression/clear helper bodies (no production apply caller); lifecycle fixtures execute real removal/acquisition/re-bucketing with media survivors, surface lenses, previews and shared-size cameras. |
+| `zs_check.ps1 -Files <one file>` | **PASS**, five separate calls: `alcinelightrigmanager.cpp`, `llfloaterdirector.cpp`, `aluiperfselftest.cpp`, `llprismlens.cpp`, `pipeline.cpp`. Each call passed; supported CachePath and TEMP are inside the workspace. `.tmp/relight_cleanup_r1_zs_{manager,director,selftest,prism,pipeline}.log`. |
+| Three generated-output checks | **PASS** kit, page sources and functional manifest; five existing manifest warnings. `.tmp/relight_cleanup_r1_{kit,sources,manifest}{,_check}.log`. Other page changes are generated source hashes or source line references. |
+| XUI / source contract / LF | **PASS**, 40 changed XUI files, zero findings (`.tmp/relight_cleanup_r1_xui.log`). Exact parsed source comparison finds only the three Advanced order indices and one help string changed; LF JSON and unchanged production GLSL verified (`.tmp/relight_cleanup_r1_contract.log`). UI draw lint also passes with zero new findings (`.tmp/relight_cleanup_r1_draw.log`). |
+| OFF / runtime guard | **PASS**, eight disabled GLSL expression streams equal HEAD; no new reload/define or temporal dependencies (`.tmp/relight_cleanup_r1_off.log`). |
+| `prebuild_guard.ps1 -ChecksOnly` | **PASS all 11 gates**, exit 0, installed guard unchanged through the existing supported workspace-cache wrapper, with `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`. Exits before object purge. An initial run without the established workspace Git configuration failed repository discovery; rerunning with that existing wrapper passed all gates. `.tmp/relight_cleanup_r1_prebuild.log`. |
+| `git diff --check` | **PASS** after the final report edit; `.tmp/relight_cleanup_r1_diff_check.log`. The new lifecycle fixture also passes direct whitespace/conflict-marker checks. |
+
+No production shader, sampling/history input, workload planner, native shadow-map
+allocation, slot auction or count-before-filter ordering changed. These are
+standalone CPU/GL checks; full-viewer OFF image identity, real-window behavior
+and viewer GPU timing remain unmeasured under the no-build instruction.
