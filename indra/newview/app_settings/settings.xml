@@ -21644,6 +21644,13 @@
         <key>Type</key><string>F32</string>
         <key>Value</key><real>0</real>
     </map>
+    <key>RenderLocalLightSizeFromPrim</key>
+    <map>
+        <key>Comment</key><string>Use half the emitting prim's smallest dimension as world source radius, capped at 1 metre; rig metadata wins.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>0</integer>
+    </map>
     <key>RenderLocalLightNearFloor</key>
     <map>
         <key>Comment</key><string>Minimum physical falloff distance in metres.</string>

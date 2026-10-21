@@ -3125,9 +3125,12 @@ void LLFloaterDirector::refreshLauncherCards()
     if (LLTextBox* status = findChild<LLTextBox>("area_shadow_sl_status"))
     {
         const S32 detail = gSavedSettings.getS32("RenderShadowDetail");
+        const bool soft = gSavedSettings.getBOOL("RenderAreaShadows");
         setTextIfChanged(status, detail == 0
-            ? "SL shadows are off in Preferences; soft shadows still on"
-            : "SL projector shadows are off in Preferences; soft shadows still on");
+            ? (soft ? "SL shadows are off in Preferences; Soft shadows is on"
+                    : "SL shadows are off in Preferences; Soft shadows is off")
+            : (soft ? "SL projector shadows are off in Preferences; Soft shadows is on"
+                    : "SL projector shadows are off in Preferences; Soft shadows is off"));
         // Hide the whole kit row, including its label, when native maps are on.
         ALKitRow::setControlVisible(status, detail == 0 || detail == 1);
     }
@@ -3725,6 +3728,7 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "RenderLightShapeEnable",
         "RenderLocalLightPhysicalFalloff",
         "RenderLocalLightDefaultRadius",
+        "RenderLocalLightSizeFromPrim",
         "RenderLocalLightNearFloor",
         "RenderLocalLightPhysicalMaxBoost",
         "RenderAreaShadows",

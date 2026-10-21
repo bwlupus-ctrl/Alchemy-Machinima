@@ -435,6 +435,19 @@ def contact_visibility(samples,steps,half,blocker_z,radius):
     uf[1](loc(area_gather,b'area_light_bias'),.25)
     area_inputs(np.array([[.8,0,-1,radius]]*4,np.float32))
     return camera_draw(area_gather,trace,trace)
+# Execute the derived CPU radii through the production disk/contact path with
+# shape disabled (the gather has no shape-master dependency).
+prim_disks = {}
+for name, radius in prim_source_radii.items():
+    actual = contact_visibility(24,32,False,-2.8,radius)
+    expected = {'tiny':.01,'housing':1,'panel':.01,'child':.2,
+                'attachment':.06,'fixture':1.6,'mirror':1.6,'catchlight':.37}[name]
+    assert np.array_equal(actual,contact_visibility(24,32,False,-2.8,expected)),(name,'prim disk upload')
+    prim_disks[name] = actual
+assert np.array_equal(prim_disks['tiny'],prim_disks['panel'])
+assert np.array_equal(prim_disks['fixture'],prim_disks['mirror'])
+assert not np.array_equal(prim_disks['tiny'],prim_disks['housing']),'derived disk radius positive control'
+print('[RelightQ] prim disk runtime PASS tiny/housing/panel/child/attachment/fixture/mirror/catchlight; shape independent',flush=True)
 for label,samples,steps,half in [('Low',4,8,True),('Medium',8,12,True),
                                   ('High',12,20,True),('Cinematic',24,32,False)]:
     contact=contact_visibility(samples,steps,half,-3.8,.3)

@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 root=Path(__file__).resolve().parents[2]
 settings=('RenderLightShapeEnable','RenderLocalLightPhysicalFalloff',
-          'RenderLocalLightDefaultRadius','RenderLocalLightNearFloor',
+          'RenderLocalLightDefaultRadius','RenderLocalLightSizeFromPrim','RenderLocalLightNearFloor',
           'RenderLocalLightPhysicalMaxBoost')
 control=(root/'indra/newview/llviewercontrol.cpp').read_text()
 manager=(root/'indra/newview/llviewershadermgr.cpp').read_text()
@@ -14,7 +14,7 @@ for setting in settings:
     assert not re.search(r'setting_setup_signal_listener\([^;]*"'+setting+r'"',control),setting+' reload listener'
     assert setting not in manager,setting+' shader-manager dependency'
 assert '"RELIGHT_SHAPE"' not in manager, 'global shape permutation'
-print('[RelightQ] five live settings PASS no reload listeners or shader-manager dependencies',flush=True)
+print('[RelightQ] six live settings PASS no reload listeners or shader-manager dependencies',flush=True)
 compiler=next(Path('C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC').glob('*/bin/Hostx64/x64/cl.exe'))
 
 def disabled_source(text):

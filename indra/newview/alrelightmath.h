@@ -10,6 +10,14 @@
 namespace ALRelight
 {
 using Vec = std::array<double, 3>;
+// Inscribed sphere of the emitting prim's own metre scale, never linkset/AABB.
+// Projectors and attachments use the same rotation-independent XYZ convention.
+inline double primSourceRadius(const Vec& scale)
+{
+    for (double dimension : scale)
+        if (!std::isfinite(dimension) || dimension <= 0.0) return 0.0;
+    return std::clamp(0.5 * std::min({scale[0], scale[1], scale[2]}), 0.0, 1.0);
+}
 inline double dot(const Vec& a, const Vec& b) { return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
 inline Vec unit(const Vec& v, const Vec& fallback)
 {

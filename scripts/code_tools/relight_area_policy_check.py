@@ -24,8 +24,10 @@ def check_policy():
     director = method(nv / 'llfloaterdirector.cpp', 'void LLFloaterDirector::refreshLauncherCards()')
     assert 'gSavedSettings.getS32("RenderShadowDetail")' in director
     assert 'ALKitRow::setControlVisible(status, detail == 0 || detail == 1)' in director
-    for text in ('SL shadows are off in Preferences; soft shadows still on',
-                 'SL projector shadows are off in Preferences; soft shadows still on'):
+    for text in ('SL shadows are off in Preferences; Soft shadows is on',
+                 'SL shadows are off in Preferences; Soft shadows is off',
+                 'SL projector shadows are off in Preferences; Soft shadows is on',
+                 'SL projector shadows are off in Preferences; Soft shadows is off'):
         assert text in director
     assert 'setS32' not in director and 'getSignal' not in director
     fixture = r'''

@@ -11734,14 +11734,24 @@ static bool light_shape_enabled()
         !LLPipeline::sRenderingHUDs && !LLPipeline::sImpostorRender && !LLPipeline::sReflectionRender;
 }
 
-static F32 area_source_radius(const LLVOVolume* volume)
+static F32 area_source_radius(const LLVOVolume* volume, F32* reference = nullptr)
 {
     static LLCachedControl<F32> default_radius(gSavedSettings, "RenderLocalLightDefaultRadius", 0.f);
+    static LLCachedControl<bool> from_prim(gSavedSettings, "RenderLocalLightSizeFromPrim", false);
     F32 radius = default_radius();
     radius = std::isfinite(radius) ? llclamp(radius, 0.f, 1.f) : 0.f;
     LLVector4 source;
-    if (volume && ALCineLightRigManager::instance().lightShapeSourceFor(volume->getID(), source) && source.mV[0] >= 0.f)
-        radius = source.mV[0];
+    if (volume && ALCineLightRigManager::instance().lightShapeSourceFor(volume->getID(), source))
+    {
+        // Fixture/mirror metadata wins; negative radius retains the rig's global fallback.
+        if (source.mV[0] >= 0.f) radius = source.mV[0];
+        if (reference) *reference = source.mV[1];
+    }
+    else if (volume && from_prim())
+    {
+        const LLVector3& scale = volume->getScale();
+        radius = static_cast<F32>(ALRelight::primSourceRadius({scale.mV[0], scale.mV[1], scale.mV[2]}));
+    }
     return radius;
 }
 
@@ -11750,18 +11760,10 @@ static LLVector4 light_shape_for_volume(const LLVOVolume* volume)
     const LLVector4 point(0.f, 0.f, 1.f, -1.f);
     if (!light_shape_enabled() || !volume) return point;
     static LLCachedControl<bool> physical(gSavedSettings, "RenderLocalLightPhysicalFalloff", false);
-    static LLCachedControl<F32> default_radius(gSavedSettings, "RenderLocalLightDefaultRadius", 0.f);
     static LLCachedControl<F32> near_floor(gSavedSettings, "RenderLocalLightNearFloor", .1f);
-    const F32 setting_radius = default_radius();
-    F32 radius = std::isfinite(setting_radius) ? llclamp(setting_radius, 0.f, 1.f) : 0.f;
     const F32 range = volume->getLightRadius() * 1.5f;
     F32 reference = range * .5f;
-    LLVector4 source;
-    if (ALCineLightRigManager::instance().lightShapeSourceFor(volume->getID(), source))
-    {
-        if (source.mV[0] >= 0.f) radius = source.mV[0];
-        reference = source.mV[1];
-    }
+    const F32 radius = area_source_radius(volume, &reference);
     if (radius <= 0.f) return point; // exact legacy shading even in physical mode
     const F32 floor_setting = near_floor();
     const F32 floor = std::isfinite(floor_setting) ? llclamp(floor_setting, .0001f, 10.f) : .1f;

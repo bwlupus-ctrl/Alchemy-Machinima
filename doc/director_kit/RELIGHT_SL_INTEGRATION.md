@@ -435,3 +435,80 @@ In-world checks still required (no viewer was built or launched):
    off, pinned scene/pose/exposure/FX/resolution, and repeated identical ON
    frames. Confirm native projector slots and lighting remain unchanged while
    OFF. The standalone fixtures above do not replace this full-frame evidence.
+
+
+## Step 3 (10/21)
+
+Implemented approved B3 as a runtime-only opt-in and corrected the Step 1
+Preferences status text. No commit, push, stash operation, viewer build or
+viewer launch. `.tmp/ref_private/` was not opened. Unrelated work and the dirty
+`vcpkg` submodule remain untouched.
+
+**Control:** Director > Light > Rim > Advanced > Light shape > **Size from prim**,
+directly below World light size. `RenderLocalLightSizeFromPrim` is a persistent
+Boolean, default **OFF**. Its one-sentence help is: "Use half the emitting prim's
+smallest dimension, up to 1 m, while rig lights keep their own size."
+Search keywords include "prim size", "light size" and "bulb size". The row has a
+real generated `kit_switch`, setting binding, reset and page-watch entry.
+
+**Bounding convention and precedence:** `ALRelight::primSourceRadius` in
+`indra/newview/alrelightmath.h` returns `clamp(0.5 * min(scale.xyz), 0, 1)` metres.
+The scale is the individual emitting `LLVOVolume::getScale()`, never its root,
+linkset bounds, render/world AABB or influence radius. A 4 x 3 x 0.02 m panel
+therefore gives 0.01 m; a large housing is capped at 1 m. Meshes use their prim
+bounds rather than attempting to infer luminous faces or occupied geometry.
+Nonfinite/nonpositive dimensions return zero. The existing shadow-only 0.10 m
+disk fallback for a zero radius is unchanged; valid tiny positive bulbs retain
+their actual smaller radius.
+
+Projectors use the same smallest **XYZ** dimension, including thickness, rather
+than a larger XY aperture. Cookies, optical origins and native map behavior
+are unchanged. Attachments use their own authored prim scale in metres, with
+no avatar/bone or linkset bound expansion. Child rotation does not enlarge the
+inscribed sphere; changing the child's own scale takes effect live. Existing
+world/attachment light admission switches still apply. These are conservative
+bounding proxies, not claims that the whole housing is luminous.
+
+`pipeline.cpp::area_source_radius` now supplies both the sphere-shading record
+and gather disk radius, independently of the Light shape master. Fixture source
+metadata wins before reading prim scale, including its existing reference
+brightness distance and source radii above the world-only 1 m cap. Mirror rig
+copies still use their own copied fixture metadata; manager/copy code is
+unchanged. Catchlights/legacy rig metadata with the negative radius sentinel
+retain World light size, preserving their existing global fallback.
+
+The new creative setting is in the shared Director scene allowlist (A1), so
+Save/Load and recovery include it. Existing sparse load behavior leaves it
+untouched in old scenes. No quality/budget ownership, timing/history input,
+shader define, shader listener, reload, uniform, native shadow allocation,
+slot auction or count-before-filter ordering changed. The same bounded disk
+sample/step workload runs; no extra render pass was added.
+
+The Soft shadows Preferences status refresh now reads `RenderAreaShadows` too.
+At native detail 0 it says "SL shadows are off in Preferences; Soft shadows is
+off/on" according to the master; at detail 1 the prefix is "SL projector
+shadows". The entire row remains hidden at detail 2+. The authored default
+text says **Soft shadows is off**, matching the master default. No setting is
+written and no listener was added.
+
+| Required gate | Result / evidence |
+|---|---|
+| `relight_shader_check.py` + new sphere cases | **PASS**, exit 0: 31 production GLSL units/permutations, 44 links, existing 126 rig rows with zero failures; executed CPU-derived radii reach all eight production sphere paths (deferred point/batched point/projector and forward/alpha, legacy/PBR as supported), with explicit-radius equality, large-vs-tiny wrap positive controls and byte-identical master-OFF readbacks. RTX 5090 / NVIDIA 610.88 / GL 4.6. `.tmp/relight_step3_shaders.log`. |
+| `relight_area_check.py` + new disk cases | **PASS**, exit 0: production gather consumes tiny/housing/panel/child/attachment/fixture/mirror/catchlight radii, exact explicit-radius readbacks and discriminating large-vs-tiny disk control. Shape is independent. Existing contact hardening, all presets, K7/K8 stability, housing/blocker, split-draw identity, determinism and moving-camera cases remain green. `.tmp/relight_step3_area.log`. |
+| Math tests | **PASS 16/16** `alrelightmath`: added tiny bulb, large housing clamp, flat panel, scaled child, rotation-invariant dimensions, attachment, conservative projector thickness, zero/negative/NaN/infinite dimensions and the maximum boundary. Only the standalone test TU was compiled/relinked against existing test libraries/runner. `.tmp/relight_step3_math{_compile,_link,}.log`. Existing nonfatal `vswhere.exe` environment diagnostic remains. |
+| Production CPU / OFF / status | **PASS** new `scripts/code_tools/relight_prim_size_check.py`: compiles actual radius/shape functions beside committed HEAD functions, checks OFF byte equality over global radii/physical states/ordinary and rig sources, and proves OFF never reads prim scale. ON checks live edits, shared sphere/disk radii and fixture/mirror/global-fallback precedence. Executes actual status block for native detail 0/1/2/3 x master OFF/ON. Also checks scene allowlist and real generated row/default/keywords. Included by both GPU gates; `.tmp/relight_step3_area.log`. |
+| OFF shader/runtime guard | **PASS** `relight_off_check.py`: all eight disabled GLSL expression streams equal HEAD; all six shape settings, including the new opt-in, have no shader-manager/reload dependencies; existing current-frame checks pass. No production shader file changed. `.tmp/relight_step3_off.log`. |
+| `zs_check.ps1 -Files <one file>` | **PASS**, separate calls for every touched C++ TU: `pipeline.cpp`, `llfloaterdirector.cpp`, `tests/alrelightmath_test.cpp`; also covers the changed math header. Supported CachePath relocated into workspace. `.tmp/relight_step3_zs_{pipeline,director,test}.log`. |
+| Three generators and checks | **PASS** regenerated after final C++ edits, then `director_kit_gen.py --check`, `director_page_sources.py --check`, `director_functional_manifest.py --check`. Row pin/comment is **2160** (+1), 37 authored pages; five existing manifest warnings. `.tmp/relight_step3_{kit,sources,manifest}{,_check}.log`. Other generated panels change their source hashes only. |
+| XUI / authored JSON / LF | **PASS**, `xui_layout_check.py --changed HEAD`: 40 touched XUI files, **0 findings**. Exact parsed source-data comparison confirms only the new toggle and status default changed; all changed JSON is LF. `.tmp/relight_step3_xui.log`, `.tmp/relight_step3_contract.log`. |
+| `prebuild_guard.ps1 -ChecksOnly` | **PASS all 11 gates**, exit 0; `.tmp/relight_step3_prebuild.log`. Installed guard unchanged through the existing workspace CachePath wrapper; `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`. Exited before object purge. |
+| `git diff --check` | **PASS**, final run after this report; `.tmp/relight_step3_diff_check.log`. New test script also checked directly for whitespace because untracked files are outside git diff. |
+
+The CPU fixtures exercise production functions with minimal object stubs; GPU
+fixtures exercise production shader programs in controlled surfaces. They do
+not substitute for an in-world scene round-trip or full-viewer image comparison.
+After the separately authorized build, verify the real row at minimum/default
+widths, scene save/change/load plus old-scene preservation, live prim scaling on
+child/projector/attachment lights, rig/mirror sizes, and both Preferences status
+master states. Full-frame OFF baseline equality remains unmeasured; standalone
+CPU/GPU OFF bytes and unchanged production GLSL are the evidence recorded here.

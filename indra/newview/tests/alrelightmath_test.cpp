@@ -294,4 +294,22 @@ template<> template<> void relight_object::test<15>()
     }
 }
 
+template<> template<> void relight_object::test<16>()
+{
+    using ALRelight::primSourceRadius;
+    close("tiny bulb",primSourceRadius({.02,.04,.06}),.01);
+    close("large housing clamp",primSourceRadius({8,4,6}),1);
+    close("flat panel uses thickness",primSourceRadius({4,3,.02}),.01);
+    close("scaled child own dimensions",primSourceRadius({.8,.6,.4}),.2);
+    close("rotated child same inscribed sphere",primSourceRadius({.4,.8,.6}),.2);
+    close("attachment own dimensions",primSourceRadius({.12,.3,.2}),.06);
+    close("projector conservative XYZ",primSourceRadius({2,2,.1}),.05);
+    for (double invalid : {0.,-1.,std::numeric_limits<double>::infinity(),
+                          std::numeric_limits<double>::quiet_NaN()})
+        for (const ALRelight::Vec scale : {ALRelight::Vec{invalid,1,2},
+             ALRelight::Vec{1,invalid,2},ALRelight::Vec{1,2,invalid}})
+            close("invalid scale is bounded zero",primSourceRadius(scale),0);
+    close("world radius maximum",primSourceRadius({2,2,2}),1);
+}
+
 }

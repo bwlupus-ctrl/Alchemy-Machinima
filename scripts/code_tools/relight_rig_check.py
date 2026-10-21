@@ -163,6 +163,22 @@ for rig_path in ('multiPoint','point','spot','alpha','material','pbralpha','pbrs
         rig_int('projectionMap',2);active(0x84C0)
         rig_int('gobo_pattern',-1);rig_uniform('gobo_anim_params',0,0,1,0)
     for pbr in ([0,1] if deferred else [0] if material or alpha else [1]):
+        # Radii come from executed production CPU functions (not Python maths).
+        # The sphere branch must reproduce explicit-radius shading on every path,
+        # and the large source must wrap further than the tiny bulb.
+        for name, radius in prim_source_radii.items():
+            expected = {'tiny':.01,'housing':1,'panel':.01,'child':.2,
+                        'attachment':.06,'fixture':1.6,'mirror':1.6,'catchlight':.37}[name]
+            actual = rig_read(85,1.5,radius,0,pbr)
+            explicit = rig_read(85,1.5,expected,0,pbr)
+            rig_require(np.array_equal(actual,explicit),(rig_path,pbr,name,'prim sphere upload'))
+            off = rig_read(85,1.5,radius,0,pbr,enabled=0)
+            baseline = rig_read(85,1.5,0,0,pbr,enabled=0)
+            rig_require(np.array_equal(off,baseline),(rig_path,pbr,name,'OFF sphere bytes'))
+        tiny = rig_read(85,1.5,prim_source_radii['tiny'],0,pbr)
+        housing = rig_read(85,1.5,prim_source_radii['housing'],0,pbr)
+        rig_require(housing[0]>tiny[0],(rig_path,pbr,'prim radius sphere wrap positive control'))
+        print('[RelightQ] prim sphere runtime PASS',rig_path,'PBR' if pbr else 'legacy',flush=True)
         for roughness,glossiness in ([(.3,.5),(.6,.5)] if pbr else [(.3,.25),(.3,.75)] if not alpha else [(.3,0)]):
             for distance in (1.,2.):
                 for radius in (.05,.3,.6):

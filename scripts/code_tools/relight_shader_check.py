@@ -8,6 +8,9 @@ import numpy as np
 import sys
 import subprocess
 from functools import lru_cache
+from relight_prim_size_check import check_prim_size
+
+prim_source_radii = check_prim_size()
 
 # Read committed production sources without checking out/stashing the worktree.
 shader_ref=sys.argv[sys.argv.index('--shader-ref')+1] if '--shader-ref' in sys.argv else None
