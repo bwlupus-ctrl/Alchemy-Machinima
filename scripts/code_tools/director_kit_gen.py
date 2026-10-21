@@ -289,8 +289,9 @@ def validate_data(data: dict) -> None:
     # 2156: +2 in-world tuning rows: light end bias and visibility channel.
     # 2157: +1 runtime march-work budget under Soft shadows More options.
     # 2158: +1 Relight SL-shadow help readout; all existing control destinations retained.
-    if len(pages) != 37 or row_count != 2158:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2158")
+    # 2159: +1 live Relight Preferences status row on the Soft shadows card.
+    if len(pages) != 37 or row_count != 2159:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2159")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

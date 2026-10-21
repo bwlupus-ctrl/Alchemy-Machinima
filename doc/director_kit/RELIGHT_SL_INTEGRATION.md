@@ -365,3 +365,73 @@ as proof that the current hybrid already aligns.
    resize/resolution divisor and ReShade depth/normal sidecars. Check capture
    logs for effective workload clamps; measure actual GPU time/VRAM on the
    user's hardware before raising requested quality or enabling many lights.
+
+## 9. User decisions (10/21)
+
+| Item | Decision |
+| --- | --- |
+| B1 | **Align to the SL lens.** Projector contact traces use the native optical origin and bias convention, so edges coincide with the SL map (1080p map+gather fixture, <=1 full-res px, no double edge; housed-lamp pool must not regress). |
+| B2 | **Off means off.** An explicit Cast shadows opt-out and rig Off/Key/All also exclude the light from area shadows before top-K; the rig's bounce/catchlight follow the same setting. |
+| B3 | **Add an opt-in mode** (default off): world light source radius from the emitting prim, safe clamps; rig fixture metadata wins. |
+| B4 | **Independent + status.** No follower; the Soft shadows card shows a status line when Preferences shadows are off or reduced. |
+| B5 | Keep as is. |
+| B6 | Scenes only (as built). |
+| Queued | Cinematic K-change flicker (P1), B7 searchable card-header switches + Quick, B9 repeatable takes, B8 VCam/Prism feed shadows. |
+
+## Step 1 (10/21)
+
+Implemented the three approved items on `feature/director-kit-p0`. The user
+decisions above are preserved. No commit, push, stash operation, viewer build
+or viewer launch; `.tmp/ref_private/` was not opened. Existing unrelated files
+and the dirty `vcpkg` submodule are preserved.
+
+| Item | Change / source anchors |
+|---|---|
+| P1: Cinematic K-change | `indra/newview/alareashadowmath.h:76` accepts the requested light cap separately from selected K. Admission reserves the frame ceiling for that stable cap; effective samples, steps, resolution and channels/draw stay fixed as visibility changes. Actual iteration accounting and dispatch still use selected K. `indra/newview/pipeline.cpp:26765` passes clamped `RenderAreaShadowLights`; `:26780` logs requested K alongside actual K. With requested K=8 at 1920x1080 Cinematic, K=7 and K=8 both use **S=2, steps=32, full resolution**. Actual work is 928,972,800 / 1,061,683,200 iterations; largest draw is 530,841,600, below 1500M/frame and 750M/draw. No hysteresis, timing or output history. |
+| B2: Off means off | `indra/newview/pipeline.cpp:26675` excludes suppressed emitters before contribution ranking/top-K, leaving the next eligible UUID its channel. `indra/newview/alcinelightrigmanager.cpp:829` delegates ordinary lights to the existing emitting-prim/root-edit predicate (`pipeline.cpp:23310`); unflagged SL point lights remain eligible. `indra/newview/alcinelightrig.cpp:1889` applies Off/Key/All flags to both projector and bounce omni, including an omni whose projector is absent. Catchlights follow the key fixture's live flag for area selection. Their permanent native-map exclusion remains intact, so enabling a catchlight for area shadows does not enter it into the native slot auction. Mirror copies remain excluded. Declaration: `alcinelightrigmanager.h:1334`. |
+| B4: Preferences status | `indra/newview/llfloaterdirector.cpp:3125` reads `RenderShadowDetail` during existing refresh and uses the kit conditional-row API: 0 shows “SL shadows are off in Preferences; soft shadows still on”; 1 shows “SL projector shadows are off in Preferences; soft shadows still on”; other values hide the complete row. It writes no setting and adds no listener. Real path: **Director > Light > Rim > Advanced > Soft shadows**, directly on the card before More options. Source: `scripts/code_tools/director_kit/director_mockup_data.json` (`area_shadow_sl_status`); generated widget: `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:232`. Row pin/comment: `scripts/code_tools/director_kit_gen.py:292`, 2159 rows. |
+| Regression coverage | `indra/newview/tests/alrelightmath_test.cpp:271` checks stable per-light plans across visible K=1..requested, requested caps 1/4/8, all presets, 1080p/1440p/4K and budgets 1/100/1500, retaining hard frame/draw bounds. `scripts/code_tools/relight_area_policy_check.py:19` compiles the actual production predicate/rig/manager methods with minimal object stubs and exercises own/root flags, live transitions, next-channel replacement, ordinary points, Off/Key/All, bounce and catchlights. `scripts/code_tools/relight_area_check.py:64` uses its production 1080p Cinematic plan in the small GPU fixture and compares all seven persistent channels across K=7/8. |
+
+The existing native map allocation, slot auction and collector count-before-filter
+ordering are unchanged. No GLSL, shader define, shader-manager binding or setting
+was added or changed. Both masters OFF retain the same shader sources and OFF
+branches; catchlight native-map behavior remains unchanged. Full-viewer image
+identity still requires the in-world baseline check below.
+
+| Gate | Result / evidence |
+|---|---|
+| `relight_shader_check.py` | **PASS**, exit 0: 31 production GLSL units/permutations, 126 rig rows with zero failures, runtime master/OFF probes, all area cases including the new CPU policy and K7/K8 GPU checks. `.tmp/relight_step1_shaders.log`. |
+| `relight_area_check.py` | **PASS**, exit 0: new K7/K8 S2/steps32 plan and seven persistent RGBA channels byte-identical; suppression/replacement/live flag/child-root/rig cases PASS. Existing split draws, housing, independent blocker, all presets, deterministic gather/filter and moving-camera alignment cases remain green. `.tmp/relight_step1_area.log`. The 1080p planner is tested at its real dimensions; GPU readbacks use the existing small fixture, not a full viewer frame. |
+| Tests | **PASS 15/15** `alrelightmath`; standalone test TU recompiled/relinked against existing runner/libraries, no viewer target. `.tmp/relight_step1_math_compile.log`, `relight_step1_math_link.log`, `relight_step1_math.log`. Existing nonfatal `vswhere.exe` environment diagnostic remains. |
+| OFF/runtime preservation | **PASS** `relight_off_check.py`: eight disabled GLSL expression streams equal HEAD, live settings/no-reload/no-temporal checks pass. Production shader files are unchanged. `.tmp/relight_step1_off.log`. Full-scene OFF baseline diff remains unmeasured. |
+| `zs_check.ps1 -Files <one file>` | **PASS**, separate calls for all five touched C++ TUs: `pipeline.cpp`, `alcinelightrig.cpp`, `alcinelightrigmanager.cpp`, `llfloaterdirector.cpp`, `tests/alrelightmath_test.cpp`; also cover the changed headers. `.tmp/relight_step1_zs_{pipeline,rig,manager,director,test}.log`. Existing supported CachePath relocated into workspace. |
+| Three generators | Regenerated after C++ edits; `director_kit_gen.py`, `director_page_sources.py`, `director_functional_manifest.py` and each `--check` **PASS**. 37 authored pages, row pin 2159, five existing manifest warnings. `.tmp/relight_step1_{kit,sources,manifest}{,_check}.log`. Generated hash changes on the other pages are expected. |
+| XUI layout | **PASS** `xui_layout_check.py --changed HEAD`: all 40 regenerated XUI files, **0 findings**. `.tmp/relight_step1_xui.log`. |
+| Source/JSON contract | **PASS** exact parsed-data comparison: one new read-only row and all unrelated source fields preserved; changed JSON files are LF. `.tmp/relight_step1_contract.log`. |
+| `prebuild_guard.ps1 -ChecksOnly` | **PASS all 11 gates**, exit 0; `.tmp/relight_step1_prebuild.log`. Run through the existing workspace CachePath wrapper with `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`. ChecksOnly exited before object purge. |
+| `git diff --check` | **PASS**, final run after this report; `.tmp/relight_step1_diff_check.log`. The new policy fixture is also checked directly for whitespace/conflict markers, since untracked files are not included by git diff. |
+
+In-world checks still required (no viewer was built or launched):
+
+1. At 1080p, requested lights 8/Cinematic/default budget, pan an eighth light
+   into/out of the frustum while watching a persistent light's penumbra and
+   visibility channel. Logs should retain S2/steps32/full; repeat the same
+   settled camera/light set and compare images. Repeat at a lowered budget.
+2. With more eligible lights than K, toggle Cast shadows on a selected light:
+   it must lose its area channel immediately and the next ranked light takes
+   it. Toggle back; verify deterministic ranking. Test a child light with the
+   context flag on the child and separately on its root-edit prim. Unflagged
+   ordinary point lights must still shadow visible opaque receivers.
+3. Cycle rig Off/Key/All live with bounce fills and catchlight enabled: Off
+   admits none, Key admits key and its bounce/catchlight, All admits all eligible
+   fixtures. Verify catchlights still consume no native shadow-map slot and
+   mirror clones stay excluded. Check ordinary and actor-only receivers.
+4. Open the real Soft shadows card and change Preferences shadow quality
+   0 -> 1 -> 2+ -> 0 without closing Director. Verify the two exact status texts
+   and hidden row, including after card collapse/reopen/search, at minimum and
+   default widths. No status code may change a creative/quality setting or add
+   a reload; Preferences retains its existing native reload behavior.
+5. Fixed-camera full-viewer OFF-vs-HEAD image diff with both Relight masters
+   off, pinned scene/pose/exposure/FX/resolution, and repeated identical ON
+   frames. Confirm native projector slots and lighting remain unchanged while
+   OFF. The standalone fixtures above do not replace this full-frame evidence.

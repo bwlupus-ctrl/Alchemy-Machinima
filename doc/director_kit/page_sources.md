@@ -7,7 +7,7 @@ Do not hand-edit. File and line references describe the scanned tree at generati
 
 | Pages | Rows | Distinct owner files | Unresolved rows | Ambiguous rows | Multi-page settings |
 |---:|---:|---:|---:|---:|---:|
-| 37 | 1967 | 33 | 21 | 0 | 21 |
+| 37 | 1968 | 33 | 21 | 0 | 21 |
 
 Classification: pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven.
 
@@ -1507,7 +1507,7 @@ Real owner roots: `panel_cine_light_rig` in `indra/newview/skins/default/xui/en/
 
 C++ owner classes: `ALRigRimController` (5 references).
 
-Computed logic class: **code-driven**; 55/57 rows setting-bound, 4 rows referenced in C++.
+Computed logic class: **code-driven**; 55/58 rows setting-bound, 4 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
@@ -1556,17 +1556,18 @@ Computed logic class: **code-driven**; 55/57 rows setting-bound, 4 rows referenc
 | `light_shape` / World light size (m) | `relight_world_size` | `slider` | `F32` `indra/newview/app_settings/settings.xml:21640` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:220` | — |
 | `light_shape` / Near floor (m) | `relight_near_floor` | `number` | `F32` `indra/newview/app_settings/settings.xml:21647` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:225` | — |
 | `light_shape` / Max boost | `relight_max_boost` | `number` | `F32` `indra/newview/app_settings/settings.xml:21654` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:228` | — |
-| `area_soft_shadows` / Shadowed lights | `area_shadow_lights` | `number` | `S32` `indra/newview/app_settings/settings.xml:21549` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:233` | — |
-| `area_soft_shadows` / Quality preset | `area_shadow_quality` | `combo` | `S32` `indra/newview/app_settings/settings.xml:21619` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:236` | — |
-| `area_soft_shadows` / Rays per light | `area_shadow_samples` | `number` | `S32` `indra/newview/app_settings/settings.xml:21556` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:247` | — |
-| `area_soft_shadows` / March steps | `area_shadow_steps` | `number` | `S32` `indra/newview/app_settings/settings.xml:21563` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:250` | — |
-| `area_soft_shadows` / Trace distance (m) | `area_shadow_distance` | `number` | `F32` `indra/newview/app_settings/settings.xml:21570` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:253` | — |
-| `area_soft_shadows` / Thickness (m) | `area_shadow_thickness` | `number` | `F32` `indra/newview/app_settings/settings.xml:21577` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:256` | — |
-| `area_soft_shadows` / Half resolution | `area_shadow_half` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:21584` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:259` | — |
-| `area_soft_shadows` / Denoise radius | `area_shadow_denoise` | `number` | `F32` `indra/newview/app_settings/settings.xml:21591` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:262` | — |
-| `area_soft_shadows` / Light end bias (m) | `area_shadow_light_bias` | `number` | `F32` `indra/newview/app_settings/settings.xml:21598` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:265` | — |
-| `area_soft_shadows` / Visibility view | `area_shadow_debug` | `combo` | `S32` `indra/newview/app_settings/settings.xml:21605` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:268` | — |
-| `area_soft_shadows` / Work budget (M) | `area_shadow_budget` | `number` | `S32` `indra/newview/app_settings/settings.xml:21612` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:283` | — |
+| `area_soft_shadows` / SL status | `area_shadow_sl_status` | `readout` | — | — | — | — | — |
+| `area_soft_shadows` / Shadowed lights | `area_shadow_lights` | `number` | `S32` `indra/newview/app_settings/settings.xml:21549` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:236` | — |
+| `area_soft_shadows` / Quality preset | `area_shadow_quality` | `combo` | `S32` `indra/newview/app_settings/settings.xml:21619` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:239` | — |
+| `area_soft_shadows` / Rays per light | `area_shadow_samples` | `number` | `S32` `indra/newview/app_settings/settings.xml:21556` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:250` | — |
+| `area_soft_shadows` / March steps | `area_shadow_steps` | `number` | `S32` `indra/newview/app_settings/settings.xml:21563` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:253` | — |
+| `area_soft_shadows` / Trace distance (m) | `area_shadow_distance` | `number` | `F32` `indra/newview/app_settings/settings.xml:21570` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:256` | — |
+| `area_soft_shadows` / Thickness (m) | `area_shadow_thickness` | `number` | `F32` `indra/newview/app_settings/settings.xml:21577` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:259` | — |
+| `area_soft_shadows` / Half resolution | `area_shadow_half` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:21584` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:262` | — |
+| `area_soft_shadows` / Denoise radius | `area_shadow_denoise` | `number` | `F32` `indra/newview/app_settings/settings.xml:21591` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:265` | — |
+| `area_soft_shadows` / Light end bias (m) | `area_shadow_light_bias` | `number` | `F32` `indra/newview/app_settings/settings.xml:21598` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:268` | — |
+| `area_soft_shadows` / Visibility view | `area_shadow_debug` | `combo` | `S32` `indra/newview/app_settings/settings.xml:21605` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:271` | — |
+| `area_soft_shadows` / Work budget (M) | `area_shadow_budget` | `number` | `S32` `indra/newview/app_settings/settings.xml:21612` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:286` | — |
 | `area_soft_shadows` / SL shadows | `area_shadow_sl_help` | `readout` | — | — | — | — | — |
 
 ### Exposure (`exposure_tab`)

@@ -26671,7 +26671,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         LLVOVolume* volume = drawable ? drawable->getVOVolume() : nullptr;
         // Pure filter: no fade, nearby distance, priority update or mute-cache mutation.
         if (!volume || !drawable->isState(LLDrawable::LIGHT) || volume->isHUDAttachment() ||
-            !toggles(volume) || registry.isMirrorLight(volume->getID())) continue;
+            !toggles(volume) || registry.isMirrorLight(volume->getID()) ||
+            registry.areaShadowSuppressed(volume)) continue;
         const F32 range = volume->getLightRadius()*1.5f;
         const LLColor3 color = volume->getLightLinearColor()*light_scale*ALEnvIntensity::localLightEVScale(volume);
         if (range <= .001f || color.magVecSquared() < .001f) continue;
@@ -26761,11 +26762,12 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     LLGLDepthTest depth(GL_FALSE,GL_FALSE);
     const U32 width = mRT->deferredScreen.getWidth(), height = mRT->deferredScreen.getHeight();
     static LLCachedControl<S32> budget(gSavedSettings, "RenderAreaShadowBudget", 1500);
-    const auto work = ALAreaShadow::workload({samples(),steps(),half()},width,height,selected.size,budget());
+    const auto work = ALAreaShadow::workload({samples(),steps(),half()},width,height,
+        selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)));
     // Include inputs and effective plan so clamp changes (including recovery) log once.
-    const std::array<S32,10> plan = {samples(),steps(),half(),(S32)width,(S32)height,
-        (S32)selected.size,budget(),work.q.samples,work.q.steps,work.q.half};
-    static std::array<S32,10> previous = {};
+    const std::array<S32,11> plan = {samples(),steps(),half(),(S32)width,(S32)height,
+        (S32)selected.size,budget(),work.q.samples,work.q.steps,work.q.half,llclamp(cap(),1,8)};
+    static std::array<S32,11> previous = {};
     if (plan != previous)
     {
         const bool clamped = work.q.samples != samples() || work.q.steps != steps() ||
@@ -26775,6 +26777,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 << " requested=" << samples() << "x" << steps() << " half=" << half()
                 << " effective=" << work.q.samples << "x" << work.q.steps << " half=" << work.q.half
                 << " pixels=" << work.pixels << " K=" << selected.size << " iterations=" << work.iterations
+                << " requestedK=" << llclamp(cap(),1,8)
                 << " budget=" << work.budget << " perDraw=" << work.drawCap
                 << " channelsPerDraw=" << work.channels << LL_ENDL;
         previous = plan;

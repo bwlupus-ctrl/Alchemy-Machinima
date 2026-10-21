@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 37,
-    "rows": 1967,
+    "rows": 1968,
     "owner_roots": 33,
     "unresolved_rows": 21,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 1967
+    "independent_json_rows": 1968
   },
   "setting_conflicts": [
     {
@@ -32705,7 +32705,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 283,
+          "line": 286,
           "widget": "area_shadow_budget",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32733,7 +32733,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 268,
+          "line": 271,
           "widget": "area_shadow_debug",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32761,7 +32761,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 262,
+          "line": 265,
           "widget": "area_shadow_denoise",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32789,7 +32789,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 259,
+          "line": 262,
           "widget": "area_shadow_half",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32817,7 +32817,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 265,
+          "line": 268,
           "widget": "area_shadow_light_bias",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32845,7 +32845,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 233,
+          "line": 236,
           "widget": "area_shadow_lights",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32873,7 +32873,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 253,
+          "line": 256,
           "widget": "area_shadow_distance",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32901,7 +32901,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 236,
+          "line": 239,
           "widget": "area_shadow_quality",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32929,7 +32929,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 247,
+          "line": 250,
           "widget": "area_shadow_samples",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32957,7 +32957,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 250,
+          "line": 253,
           "widget": "area_shadow_steps",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32985,7 +32985,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 256,
+          "line": 259,
           "widget": "area_shadow_thickness",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -92552,7 +92552,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 4087,
+              "line": 4090,
               "class": "ALCineLightRig",
               "function": "applyCueSceneState",
               "wired_class": "ALCineLightRig",
@@ -92565,7 +92565,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 4088,
+              "line": 4091,
               "class": "ALCineLightRig",
               "function": "applyCueSceneState",
               "wired_class": "ALCineLightRig",
@@ -92578,7 +92578,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 4090,
+              "line": 4093,
               "class": "ALCineLightRig",
               "function": "applyCueSceneState",
               "wired_class": "ALCineLightRig",
@@ -92591,7 +92591,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 4390,
+              "line": 4393,
               "class": "ALCineLightRig",
               "function": "sceneData",
               "wired_class": "ALCineLightRig",
@@ -125993,7 +125993,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3626,
+              "line": 3636,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -132796,7 +132796,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3614,
+              "line": 3624,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -132887,7 +132887,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3619,
+              "line": 3629,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -132978,7 +132978,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3616,
+              "line": 3626,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -133069,7 +133069,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3620,
+              "line": 3630,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -133160,7 +133160,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3617,
+              "line": 3627,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -133251,7 +133251,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3615,
+              "line": 3625,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -133342,7 +133342,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3618,
+              "line": 3628,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -155544,7 +155544,7 @@
       "label": "Rim",
       "group": "light_group",
       "group_label": "Light",
-      "row_count": 57,
+      "row_count": 58,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_cine_light_rig.xml",
@@ -155564,7 +155564,7 @@
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 55,
-        "setting_coverage": 0.964912,
+        "setting_coverage": 0.948276,
         "cpp_referenced_rows": 4,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -159133,6 +159133,61 @@
           "option_index": null,
           "option_label": null,
           "index": 0,
+          "label": "SL status",
+          "kind": "readout",
+          "widget": "area_shadow_sl_status",
+          "matched_widget": "area_shadow_sl_status",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+              "line": 233,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+                "tag": "panel",
+                "name": "light_rim_tab_logic",
+                "line": 3
+              }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 3125,
+              "class": "LLFloaterDirector",
+              "function": "refreshLauncherCards",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "refreshLauncherCards",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "if (LLTextBox* status = findChild<LLTextBox>(\"area_shadow_sl_status\"))"
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "area_soft_shadows",
+          "card_title": "Soft shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
           "label": "Shadowed lights",
           "kind": "number",
           "widget": "area_shadow_lights",
@@ -159163,7 +159218,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 233,
+              "line": 236,
               "tag": "spinner",
               "control_name": "RenderAreaShadowLights",
               "callbacks": [],
@@ -159180,7 +159235,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 233,
+              "line": 236,
               "widget": "area_shadow_lights",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159196,7 +159251,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 1,
+          "index": 2,
           "label": "Quality preset",
           "kind": "combo",
           "widget": "area_shadow_quality",
@@ -159233,7 +159288,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 236,
+              "line": 239,
               "tag": "combo_box",
               "control_name": "RenderAreaShadowQuality",
               "callbacks": [],
@@ -159250,7 +159305,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 236,
+              "line": 239,
               "widget": "area_shadow_quality",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159266,7 +159321,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 2,
+          "index": 3,
           "label": "Rays per light",
           "kind": "number",
           "widget": "area_shadow_samples",
@@ -159297,7 +159352,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 247,
+              "line": 250,
               "tag": "spinner",
               "control_name": "RenderAreaShadowSamples",
               "callbacks": [],
@@ -159314,7 +159369,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 247,
+              "line": 250,
               "widget": "area_shadow_samples",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159330,7 +159385,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 3,
+          "index": 4,
           "label": "March steps",
           "kind": "number",
           "widget": "area_shadow_steps",
@@ -159361,7 +159416,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 250,
+              "line": 253,
               "tag": "spinner",
               "control_name": "RenderAreaShadowSteps",
               "callbacks": [],
@@ -159378,7 +159433,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 250,
+              "line": 253,
               "widget": "area_shadow_steps",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159394,7 +159449,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 4,
+          "index": 5,
           "label": "Trace distance (m)",
           "kind": "number",
           "widget": "area_shadow_distance",
@@ -159425,7 +159480,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 253,
+              "line": 256,
               "tag": "spinner",
               "control_name": "RenderAreaShadowMaxDist",
               "callbacks": [],
@@ -159442,7 +159497,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 253,
+              "line": 256,
               "widget": "area_shadow_distance",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159458,7 +159513,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 5,
+          "index": 6,
           "label": "Thickness (m)",
           "kind": "number",
           "widget": "area_shadow_thickness",
@@ -159489,7 +159544,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 256,
+              "line": 259,
               "tag": "spinner",
               "control_name": "RenderAreaShadowThickness",
               "callbacks": [],
@@ -159506,7 +159561,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 256,
+              "line": 259,
               "widget": "area_shadow_thickness",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159522,7 +159577,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 6,
+          "index": 7,
           "label": "Half resolution",
           "kind": "toggle",
           "widget": "area_shadow_half",
@@ -159553,7 +159608,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 259,
+              "line": 262,
               "tag": "kit_switch",
               "control_name": "RenderAreaShadowHalfRes",
               "callbacks": [],
@@ -159570,7 +159625,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 259,
+              "line": 262,
               "widget": "area_shadow_half",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159586,7 +159641,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 7,
+          "index": 8,
           "label": "Denoise radius",
           "kind": "number",
           "widget": "area_shadow_denoise",
@@ -159617,7 +159672,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 262,
+              "line": 265,
               "tag": "spinner",
               "control_name": "RenderAreaShadowDenoise",
               "callbacks": [],
@@ -159634,7 +159689,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 262,
+              "line": 265,
               "widget": "area_shadow_denoise",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159650,7 +159705,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 8,
+          "index": 9,
           "label": "Light end bias (m)",
           "kind": "number",
           "widget": "area_shadow_light_bias",
@@ -159681,7 +159736,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 265,
+              "line": 268,
               "tag": "spinner",
               "control_name": "RenderAreaShadowLightBias",
               "callbacks": [],
@@ -159698,7 +159753,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 265,
+              "line": 268,
               "widget": "area_shadow_light_bias",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159714,7 +159769,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 9,
+          "index": 10,
           "label": "Visibility view",
           "kind": "combo",
           "widget": "area_shadow_debug",
@@ -159755,7 +159810,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 268,
+              "line": 271,
               "tag": "combo_box",
               "control_name": "RenderAreaShadowDebugView",
               "callbacks": [],
@@ -159772,7 +159827,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 268,
+              "line": 271,
               "widget": "area_shadow_debug",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159788,7 +159843,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 10,
+          "index": 11,
           "label": "Work budget (M)",
           "kind": "number",
           "widget": "area_shadow_budget",
@@ -159819,7 +159874,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 283,
+              "line": 286,
               "tag": "spinner",
               "control_name": "RenderAreaShadowBudget",
               "callbacks": [],
@@ -159836,7 +159891,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 283,
+              "line": 286,
               "widget": "area_shadow_budget",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -159852,7 +159907,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 11,
+          "index": 12,
           "label": "SL shadows",
           "kind": "readout",
           "widget": "area_shadow_sl_help",
@@ -159874,7 +159929,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 286,
+              "line": 289,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -168138,7 +168193,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 4134,
+              "line": 4137,
               "class": "ALCineLightRig",
               "function": "applyCueSceneState",
               "wired_class": "ALCineLightRig",
@@ -168151,7 +168206,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcinelightrig.cpp",
-              "line": 4392,
+              "line": 4395,
               "class": "ALCineLightRig",
               "function": "sceneData",
               "wired_class": "ALCineLightRig",

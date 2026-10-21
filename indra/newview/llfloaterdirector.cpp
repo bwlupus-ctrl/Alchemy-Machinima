@@ -3121,6 +3121,16 @@ void LLFloaterDirector::refreshLauncherCards()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshLauncherCards");
     if (!mLauncherClock.due()) return;
+    // Read live Preferences on refresh; no setting callback or shader listener.
+    if (LLTextBox* status = findChild<LLTextBox>("area_shadow_sl_status"))
+    {
+        const S32 detail = gSavedSettings.getS32("RenderShadowDetail");
+        setTextIfChanged(status, detail == 0
+            ? "SL shadows are off in Preferences; soft shadows still on"
+            : "SL projector shadows are off in Preferences; soft shadows still on");
+        // Hide the whole kit row, including its label, when native maps are on.
+        ALKitRow::setControlVisible(status, detail == 0 || detail == 1);
+    }
     for (const LauncherCard& card : mLauncherCards)
     {
         if (isWidgetOnScreen(card.mSummary)) setTextIfChanged(card.mSummary, card.mFn());

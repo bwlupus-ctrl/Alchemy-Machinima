@@ -73,11 +73,15 @@ struct Workload
     unsigned channels = 0;
     std::uint64_t pixels = 0, iterations = 0, budget = 0, drawCap = 0;
 };
-inline Workload workload(Quality q, unsigned width, unsigned height, unsigned lights, int millions)
+inline Workload workload(Quality q, unsigned width, unsigned height, unsigned lights,
+    int millions, unsigned requestedLights)
 {
     Workload w{};
     w.q = {std::clamp(q.samples,1,32),std::clamp(q.steps,1,64),q.half};
     lights = std::min(lights,8u);
+    // Reserve for the requested cap, never the changing visible set. At least
+    // the actual count keeps malformed callers within the hard frame ceiling.
+    const unsigned basis = std::max(lights,std::clamp(requestedLights,1u,8u));
     w.budget = std::uint64_t(std::clamp(millions,1,1500))*1000000;
     w.drawCap = w.budget/2;
     const auto update = [&]()
@@ -89,7 +93,7 @@ inline Workload workload(Quality q, unsigned width, unsigned height, unsigned li
     // Render-target dimensions are GL-sized; bound pathological pure-function inputs too.
     if (width > 65536 || height > 65536) return w;
     update();
-    const auto over = [&]() { return w.iterations>w.budget ||
+    const auto over = [&]() { return w.pixels*basis*w.q.samples*w.q.steps>w.budget ||
         w.pixels*w.q.samples*w.q.steps>w.drawCap; };
     while (over() && w.q.samples>1) { --w.q.samples; update(); }
     while (over() && w.q.steps>1) { --w.q.steps; update(); }

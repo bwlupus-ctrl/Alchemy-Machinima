@@ -826,6 +826,20 @@ bool ALCineLightRigManager::isMirrorLight(const LLUUID& id) const
     return false;
 }
 
+bool ALCineLightRigManager::areaShadowSuppressed(LLVOVolume* volume) const
+{
+    if (!volume) return false;
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+    {
+        const ALCineLightRig& rig = at(static_cast<Slot>(i));
+        // The catchlight's permanent native-map opt-out is structural, not
+        // fixture intent. Follow the key's Off/Key/All flag for area shadows.
+        if (rig.catchlightId() == volume->getID())
+            return LLPipeline::isProjectorNoShadow(rig.projectorId(0));
+    }
+    return LLPipeline::isProjectorShadowSuppressed(volume);
+}
+
 bool ALCineLightRigManager::lightShapeSourceFor(const LLUUID& id, LLVector4& out) const
 {
     if (id.isNull()) return false;

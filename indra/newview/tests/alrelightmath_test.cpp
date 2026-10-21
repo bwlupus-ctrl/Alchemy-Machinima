@@ -234,8 +234,8 @@ template<> template<> void relight_object::test<14>()
     for (int preset=0; preset<4; ++preset)
     for (int budget : {1,100,1500,9999})
     {
-        const auto a=workload(quality(preset),height*16/9,height,lights,budget);
-        const auto b=workload(quality(preset),height*16/9,height,lights,budget);
+        const auto a=workload(quality(preset),height*16/9,height,lights,budget,lights);
+        const auto b=workload(quality(preset),height*16/9,height,lights,budget,lights);
         ensure("deterministic plan",a.q.samples==b.q.samples && a.q.steps==b.q.steps &&
             a.q.half==b.q.half && a.channels==b.channels && a.iterations==b.iterations);
         ensure("hard frame ceiling",a.iterations<=a.budget && a.budget<=1500000000ull);
@@ -254,18 +254,44 @@ template<> template<> void relight_object::test<14>()
         }
         else ensure_equals("rejected views do no work",a.iterations,std::uint64_t(0));
     }
-    const auto samples=workload({32,64,false},1920,1080,8,1500);
+    const auto samples=workload({32,64,false},1920,1080,8,1500,8);
     ensure("reduce samples first",samples.q.samples==1 && samples.q.steps==64 && !samples.q.half);
-    const auto steps=workload({32,64,false},3840,2160,8,1500);
+    const auto steps=workload({32,64,false},3840,2160,8,1500,8);
     ensure("then steps",steps.q.samples==1 && steps.q.steps==22 && !steps.q.half);
-    const auto half=workload({32,64,false},3840,2160,8,20);
+    const auto half=workload({32,64,false},3840,2160,8,20,8);
     ensure("then half resolution",half.q.samples==1 && half.q.steps==1 && half.q.half && half.channels>0);
-    const auto split=workload({1,64,false},1920,1080,4,600);
+    const auto split=workload({1,64,false},1920,1080,4,600,4);
     ensure("split necessary",split.channels==2 && split.q.steps==64);
-    ensure("default 4K below ceiling",workload(quality(1),3840,2160,8,1500).iterations==1393459200ull);
-    ensure("impossible minimum fails closed",!workload({1,1,true},3840,2160,8,1).channels);
-    ensure("oversized input fails closed",!workload({32,64,false},0xffffffffu,0xffffffffu,8,1500).channels);
-    ensure("empty selection",!workload(quality(1),1920,1080,0,1500).channels);
+    ensure("default 4K below ceiling",workload(quality(1),3840,2160,8,1500,8).iterations==1393459200ull);
+    ensure("impossible minimum fails closed",!workload({1,1,true},3840,2160,8,1,8).channels);
+    ensure("oversized input fails closed",!workload({32,64,false},0xffffffffu,0xffffffffu,8,1500,8).channels);
+    ensure("empty selection",!workload(quality(1),1920,1080,0,1500,0).channels);
+}
+
+template<> template<> void relight_object::test<15>()
+{
+    using namespace ALAreaShadow;
+    const auto seven=workload(quality(3),1920,1080,7,1500,8);
+    const auto eight=workload(quality(3),1920,1080,8,1500,8);
+    ensure("Cinematic K7/K8 same per-light work",seven.q.samples==2 &&
+        seven.q.samples==eight.q.samples && seven.q.steps==32 &&
+        seven.q.steps==eight.q.steps && seven.q.half==eight.q.half);
+    for (unsigned height : {1080u,1440u,2160u})
+    for (unsigned requested : {1u,4u,8u})
+    for (int preset=0; preset<4; ++preset)
+    for (int budget : {1,100,1500})
+    {
+        const auto full=workload(quality(preset),height*16/9,height,requested,budget,requested);
+        for (unsigned visible=1; visible<=requested; ++visible)
+        {
+            const auto w=workload(quality(preset),height*16/9,height,visible,budget,requested);
+            ensure("visibility never retunes quality",w.q.samples==full.q.samples &&
+                w.q.steps==full.q.steps && w.q.half==full.q.half && w.channels==full.channels);
+            ensure("reserved work bounds actual frame",w.iterations<=full.iterations && w.iterations<=w.budget);
+            ensure("reserved work bounds draw",!w.channels ||
+                w.pixels*w.channels*w.q.samples*w.q.steps<=w.drawCap);
+        }
+    }
 }
 
 }

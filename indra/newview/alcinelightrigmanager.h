@@ -1331,6 +1331,7 @@ public:
     // CineRigRimIncludeBounce, an omni bounce fill) of a currently-lit slot.
     // The catchlight and unlit slots resolve to false.
     bool isMirrorLight(const LLUUID& id) const; // Derived copies never cast area shadows.
+    bool areaShadowSuppressed(LLVOVolume* volume) const;
     bool lightShapeSourceFor(const LLUUID& id, LLVector4& out) const;
     bool rigRimParamsFor(const LLUUID& id, LLVector4& out) const;
     U32 enabledMask() const;

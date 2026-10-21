@@ -61,6 +61,25 @@ area_texture(1,area_depth)
 blocked=area_read()
 assert np.any(blocked[:,:16,0]<255),'positive occlusion control'
 assert np.any((blocked[:,:16,0]>0)&(blocked[:,:16,0]<255)),'area penumbra control'
+# Execute production planning/policy, then use the 1080p Cinematic plan in
+# this small GPU fixture. Compare all seven persistent channels across K=7/8.
+import runpy
+policy=runpy.run_path(str(Path(__file__).with_name('relight_area_policy_check.py')))['check_policy']()
+ui(loc(area_gather,b'area_samples'),policy['samples']);ui(loc(area_gather,b'area_steps'),policy['steps'])
+persistent={}
+for visible in (7,8):
+    planes=[]
+    for plane in (0,1):
+        area_inputs(area_lights,area_ids+plane*100)
+        ui(loc(area_gather,b'area_count'),min(4,visible-plane*4))
+        planes.append(area_read())
+    persistent[visible]=planes
+for channel in range(7):
+    plane,component=divmod(channel,4)
+    assert np.array_equal(persistent[7][plane][:,:,component],persistent[8][plane][:,:,component]),'K7/K8 per-light visibility identity'
+print('[RelightQ] K-change PASS: requested K8, 1080p Cinematic S2/steps32; seven persistent channels byte-identical',flush=True)
+area_inputs();ui(loc(area_gather,b'area_count'),4)
+ui(loc(area_gather,b'area_samples'),8);ui(loc(area_gather,b'area_steps'),24)
 # Budget split draws must preserve each RGBA channel, its UUID seed and stale output.
 color_mask=gl('glColorMask',None,C.c_ubyte,C.c_ubyte,C.c_ubyte,C.c_ubyte)
 for channels in (1,2,3,4):

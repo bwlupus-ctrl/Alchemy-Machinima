@@ -1889,19 +1889,22 @@ bool ALCineLightRig::ensureCatchlight(
 void ALCineLightRig::updateShadowPolicy(S32 shadow_mode)
 {
     const S32 mode = std::clamp(shadow_mode, 0, 2);
+    const auto set_suppressed = [](LLVOVolume* emitter, bool suppress)
+    {
+        if (emitter && !emitter->isDead() &&
+            LLPipeline::isProjectorNoShadow(emitter->getID()) != suppress)
+        {
+            LLPipeline::toggleProjectorCastShadows(emitter->getID());
+        }
+    };
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
-        if (mProjectors[i].isNull() || mProjectors[i]->isDead())
-        {
-            continue;
-        }
-        const LLUUID id = mProjectors[i]->getID();
         const bool suppress = mode == 0 || (mode == 1 && i != 0);
-        if (LLPipeline::isProjectorNoShadow(id) != suppress)
-        {
-            LLPipeline::toggleProjectorCastShadows(id);
-        }
+        set_suppressed(mProjectors[i].get(), suppress);
+        set_suppressed(mOmnis[i].get(), suppress);
     }
+    // Catchlights retain their native-map opt-out; area selection resolves
+    // their key fixture's live flag through areaShadowSuppressed().
 }
 
 void ALCineLightRig::updateProjectorFlags()
