@@ -1,6 +1,7 @@
 #include "linden_common.h"
 #include "../test/lltut.h"
 #include "../alreflectmath.h"
+#include "llquantize.h"
 #include <set>
 #include <limits>
 
@@ -553,6 +554,84 @@ template<> template<> void reflect_object::test<33>()
         ensure("release leaves ordinary placement alone", p == LLVector3d(1., 2., 3.));
         closeVec("release leaves ordinary facing alone", LLVector3::z_axis * q, LLVector3::z_axis);
         ensure("reentry cannot reuse released snapshot", !hold.restore(true, p, q));
+    }
+}
+
+// Exercise the actual .anim component codec, including its two floor passes.
+template<> template<> void reflect_object::test<34>()
+{
+    auto codec = [](LLQuaternion q) {
+        LLVector3 v = q.packToVector3();
+        v.quantize16(-1.f, 1.f, -1.f, 1.f);
+        for (S32 k = 0; k < 3; ++k) v.mV[k] = U16_to_F32(F32_to_U16(v.mV[k], -1.f, 1.f), -1.f, 1.f);
+        q.unpackFromVector3(v); return q;
+    };
+    Random random;
+    for (S32 i = 0; i < 20000; ++i)
+    {
+        LLQuaternion q = random.quat();
+        if (i < 100) q = LLQuaternion(F_PI + (i - 50) * 1e-5f, LLVector3(.3f, .4f, .8660254f));
+        q = codec(q); // original inventory decode
+        const auto expected = ALReflect::rotation(q);
+        const auto actual = codec(expected);
+        ensure("quantized mirrored rotation", ALReflect::sameRotation(expected, actual));
+        const LLQuaternion negative(-actual.mQ[0], -actual.mQ[1], -actual.mQ[2], -actual.mQ[3]);
+        ensure("quaternion double cover", ALReflect::sameRotation(expected, negative));
+        LLVector3 v = random.vec() * 5.f;
+        v.quantize16(-5.f, 5.f, -5.f, 5.f);
+        const auto wanted = ALReflect::vector(v);
+        v = wanted; v.quantize16(-5.f, 5.f, -5.f, 5.f);
+        for (S32 k = 0; k < 3; ++k) v.mV[k] = U16_to_F32(F32_to_U16(v.mV[k], -5.f, 5.f), -5.f, 5.f);
+        ensure("quantized mirrored position", ALReflect::samePosition(wanted, v, 10.f));
+    }
+    const LLQuaternion noncanonical(.2f, -.3f, .4f, -sqrtf(.71f));
+    ensure("negative-w serialized round trip", ALReflect::sameRotation(noncanonical, codec(noncanonical)));
+    const LLQuaternion source(.8f, LLVector3::x_axis);
+    ensure("wrong rotation axis rejected", !ALReflect::sameRotation(ALReflect::rotation(source), source));
+    ensure("wrong position axis rejected", !ALReflect::samePosition(LLVector3(1, -2, 3), LLVector3(-1, 2, 3), 10.f));
+    ensure("wrong partner rejected", !ALReflect::sameTrack("mWristLeft", "mWristLeft", 2, 2, 2, 2));
+    ensure("missing rotation rejected", !ALReflect::sameTrack("mWristLeft", "mWristRight", 2, 1, 2, 2));
+    ensure("missing position rejected", !ALReflect::sameTrack("mWristLeft", "mWristRight", 2, 2, 2, 1));
+}
+template<> template<> void reflect_object::test<35>()
+{
+    bool old_time_code_drift = false, old_keys_collapsed = false;
+    for (F32 duration : {.01f, 1.f, 3.14159f, 60.f, 3600.f})
+    {
+        U16 previous = 0, old_previous = 0;
+        for (U32 code = 2; code < 65536; ++code)
+        {
+            const F32 decoded = U16_to_F32((U16)code, 0.f, duration);
+            const U16 old_packed = F32_to_U16(decoded, 0.f, duration);
+            old_time_code_drift |= old_packed != code;
+            old_keys_collapsed |= old_packed == old_previous;
+            old_previous = old_packed;
+            const U16 packed = F32_to_U16(ALReflect::serializationTime(decoded, duration), 0.f, duration);
+            ensure_equals("same time code", (U32)packed, code);
+            ensure("adjacent keys never collapse", packed > previous);
+            previous = packed;
+        }
+    }
+    ensure("reproduces old time code drift", old_time_code_drift);
+    ensure("reproduces old adjacent-key loss", old_keys_collapsed);
+}
+template<> template<> void reflect_object::test<36>()
+{
+    for (auto route : {ALReflect::Route::LOCAL, ALReflect::Route::INWORLD})
+    {
+        ALReflect::Playback play; play.route = route; play.reflected = false;
+        ensure("tick current play", ALReflect::switchMode(play, true));
+        ensure("tick keeps original during build", play.keepOriginalWhileBuilding);
+        ensure("ready requests mirrored start", ALReflect::readyDecision(play, false, false, 1.).action == ALReflect::Action::ENSURE_DERIVED);
+        play.requested = play.started = true;
+        ensure("untick current play", ALReflect::switchMode(play, false));
+        ensure("untick cancels pending mirrored swap", !play.keepOriginalWhileBuilding);
+        ensure("original needs local start", ALReflect::readyDecision(play, false, false, 2.).action == ALReflect::Action::ENSURE_DERIVED);
+        ensure("route retained", play.route == route);
+        play.intent = ALReflect::decide(play.intent, 0., ALReflect::Event::USER_STOP).intent;
+        ensure("late toggle cannot restart Stop", !ALReflect::switchMode(play, true));
+        ensure("late READY cannot restart Stop", ALReflect::readyDecision(play, false, false, 3.).action == ALReflect::Action::NONE);
+        ensure("late build cannot restart Stop", ALReflect::decide(play.intent, 0., ALReflect::Event::BUILD_READY).action == ALReflect::Action::NONE);
     }
 }
 

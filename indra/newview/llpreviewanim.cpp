@@ -73,6 +73,18 @@ bool LLPreviewAnim::postBuild()
     LLRect rect = getRect();
     reshape(rect.getWidth(), rect.getHeight() - pAdvancedStatsTextBox->getRect().getHeight() - ADVANCED_VPAD, false);
 
+    getChild<LLUICtrl>("reflect_inventory")->setCommitCallback([this](LLUICtrl* ctrl, const LLSD&) {
+        const LLInventoryItem* item = getItem();
+        const bool world = getChild<LLUICtrl>("Inworld")->getValue().asBoolean();
+        const bool local = getChild<LLUICtrl>("Locally")->getValue().asBoolean();
+        if (!item || (!world && !local) || !isAgentAvatarValid()) return;
+        ALReflectAnim& reflect = ALReflectAnim::instance();
+        reflect.setReflected(item->getAssetUUID(), world ? ALReflect::Route::INWORLD : ALReflect::Route::LOCAL,
+                             item->getName(), ctrl->getValue().asBoolean());
+        mReflectOriginal = item->getAssetUUID();
+        mItemID = reflect.previewID(mReflectOriginal);
+        mDidStart = false;
+    });
     return LLPreview::postBuild();
 }
 
@@ -172,7 +184,9 @@ void LLPreviewAnim::draw()
     if (ALReflectAnim::instanceExists())
     {
         if (mReflectOriginal.notNull() && ALReflectAnim::instance().finished(mReflectOriginal)) cleanup();
-        mItemID = ALReflectAnim::instance().previewID(mItemID);
+        const LLUUID current = ALReflectAnim::instance().previewID(mItemID);
+        if (current != mItemID) mDidStart = false;
+        mItemID = current;
     }
     if (!this->mItemID.isNull())
     {

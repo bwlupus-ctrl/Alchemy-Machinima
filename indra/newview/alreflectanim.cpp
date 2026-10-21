@@ -33,34 +33,54 @@ struct Scratch
 
 bool roundTrip(std::vector<U8> original, std::vector<U8> mirrored, const LLUUID& original_id)
 {
+    auto fail = [&](const std::string& detail) {
+        LL_WARNS("GhostReflect") << "round-trip " << original_id << ": " << detail << LL_ENDL;
+        return false;
+    };
     Scratch expected, actual;
-    if (!expected.decode(original, original_id) || !actual.decode(mirrored, original_id)) return false;
+    if (!expected.decode(original, original_id) || !actual.decode(mirrored, original_id)) return fail("decode failed");
     const auto* a = expected.list(); const auto* b = actual.list();
-    if (!a || !b || a->mJointMotionArray.size() != b->mJointMotionArray.size() || a->mConstraints.size() != b->mConstraints.size()) return false;
+    if (!a || !b || a->mJointMotionArray.size() != b->mJointMotionArray.size() || a->mConstraints.size() != b->mConstraints.size()) return fail("joint/constraint count mismatch");
     const F32 time_code = llmax(a->mDuration, .001f) / 65535.f + 1e-6f;
     for (size_t i = 0; i < a->mJointMotionArray.size(); ++i)
     {
         const auto* src = a->mJointMotionArray[i]; const auto* dst = b->mJointMotionArray[i];
-        if (ALReflect::partner(src->mJointName) != dst->mJointName ||
-            src->mRotationCurve.mKeys.size() != dst->mRotationCurve.mKeys.size() ||
-            src->mPositionCurve.mKeys.size() != dst->mPositionCurve.mKeys.size()) return false;
+        const std::string joint = src->mJointName + " -> " + dst->mJointName;
+        if (!ALReflect::sameTrack(src->mJointName, dst->mJointName,
+            src->mRotationCurve.mKeys.size(), dst->mRotationCurve.mKeys.size(),
+            src->mPositionCurve.mKeys.size(), dst->mPositionCurve.mKeys.size()))
+            return fail(joint + " partner/key count mismatch: expected rot/pos " +
+                std::to_string(src->mRotationCurve.mKeys.size()) + "/" + std::to_string(src->mPositionCurve.mKeys.size()) +
+                " actual " + std::to_string(dst->mRotationCurve.mKeys.size()) + "/" + std::to_string(dst->mPositionCurve.mKeys.size()));
         auto r = dst->mRotationCurve.mKeys.begin();
+        size_t index = 0;
         for (const auto& key : src->mRotationCurve.mKeys)
         {
             const LLQuaternion q = ALReflect::rotation(key.second.mRotation);
-            if (fabsf(key.second.mTime - r->second.mTime) > time_code) return false;
-            for (S32 k = 0; k < 3; ++k)
-                if (fabsf(q.mQ[k] - r->second.mRotation.mQ[k]) > 4.f / 65535.f + 1e-6f) return false;
-            ++r;
+            if (fabsf(key.second.mTime - r->second.mTime) > time_code ||
+                !ALReflect::sameRotation(q, r->second.mRotation))
+            {
+                LL_WARNS("GhostReflect") << "round-trip " << original_id << " joint " << joint
+                    << " rotation key " << index << " expected time/q " << key.second.mTime << " / " << q
+                    << " actual " << r->second.mTime << " / " << r->second.mRotation << LL_ENDL;
+                return false;
+            }
+            ++r; ++index;
         }
         auto p = dst->mPositionCurve.mKeys.begin();
+        index = 0;
         for (const auto& key : src->mPositionCurve.mKeys)
         {
             const LLVector3 v = ALReflect::vector(key.second.mPosition);
-            if (fabsf(key.second.mTime - p->second.mTime) > time_code) return false;
-            for (S32 k = 0; k < 3; ++k)
-                if (fabsf(v.mV[k] - p->second.mPosition.mV[k]) > 20.f / 65535.f + 1e-6f) return false;
-            ++p;
+            if (fabsf(key.second.mTime - p->second.mTime) > time_code ||
+                !ALReflect::samePosition(v, p->second.mPosition, 2.f * LL_MAX_PELVIS_OFFSET))
+            {
+                LL_WARNS("GhostReflect") << "round-trip " << original_id << " joint " << joint
+                    << " position key " << index << " expected time/v " << key.second.mTime << " / " << v
+                    << " actual " << p->second.mTime << " / " << p->second.mPosition << LL_ENDL;
+                return false;
+            }
+            ++p; ++index;
         }
     }
     auto other = b->mConstraints.begin();
@@ -73,9 +93,9 @@ bool roundTrip(std::vector<U8> original, std::vector<U8> mirrored, const LLUUID&
             LLJoint* t = gAgentAvatarp->findCollisionVolume(dst);
             return s && t && ALReflect::partner(s->getName()) == t->getName();
         };
-        if (!paired(c->mSourceConstraintVolume, d->mSourceConstraintVolume)) return false;
+        if (!paired(c->mSourceConstraintVolume, d->mSourceConstraintVolume)) return fail("constraint source partner mismatch");
         if (c->mConstraintTargetType == CONSTRAINT_TARGET_TYPE_BODY &&
-            !paired(c->mTargetConstraintVolume, d->mTargetConstraintVolume)) return false;
+            !paired(c->mTargetConstraintVolume, d->mTargetConstraintVolume)) return fail("constraint target partner mismatch");
     }
     return true;
 }
@@ -109,6 +129,7 @@ LLUUID ALReflectAnim::previewID(const LLUUID& id) const
 {
     const LLUUID original = originalFor(id);
     auto asset = mAssets.find(original);
+    if (contains(original) && !mIntents.at(original).reflected) return original;
     if (asset != mAssets.end() && (contains(original) || isDerived(id)))
         return asset->second.state == Build::FAILED ? original : asset->second.derived;
     return id;
@@ -135,6 +156,7 @@ bool ALReflectAnim::pending(const LLUUID& id) const
     const LLUUID original = originalFor(id);
     const auto asset = mAssets.find(original);
     if (!contains(original) || asset == mAssets.end()) return false;
+    if (!mIntents.at(original).reflected) return false;
     if (asset->second.state == Build::PENDING) return true;
     const auto* motion = gAgentAvatarp->findMotion(previewID(original));
     return asset->second.state == Build::READY && (!motion || motion->isStopped());
@@ -156,11 +178,41 @@ bool ALReflectAnim::play(const LLUUID& original, ALReflect::Route route, const s
         LLTimer::getTotalSeconds(), route};
     auto asset = mAssets.find(original);
     if (asset != mAssets.end()) asset->second.stopped = false;
+    if (!enabled)
+    {
+        mIntents.at(original).reflected = false;
+        if (asset != mAssets.end()) gAgentAvatarp->stopMotion(asset->second.derived, true);
+        ensure(original);
+        return true;
+    }
     // Hide the original throughout the build; READY is reconciled below/at idle.
     gAgentAvatarp->stopMotion(original, true);
     if (asset == mAssets.end()) request(original, name);
     ensure(original);
     return true;
+}
+void ALReflectAnim::setReflected(const LLUUID& original, ALReflect::Route route,
+                                 const std::string& name, bool enabled)
+{
+    if (!isAgentAvatarValid() || gDisconnected || isDerived(original)) return;
+    if (mAvatar != gAgentAvatarp->getID()) { clear(); mAvatar = gAgentAvatarp->getID(); }
+    auto found = mIntents.find(original);
+    if (found == mIntents.end())
+    {
+        // Called only by a preview whose Play button is still on.
+        ALReflect::Playback play;
+        play.since = LLTimer::getTotalSeconds(); play.route = route; play.reflected = !enabled;
+        found = mIntents.emplace(original, play).first;
+    }
+    if (!ALReflect::switchMode(found->second, enabled)) return;
+    const auto asset = mAssets.find(original);
+    if (asset != mAssets.end()) asset->second.stopped = false;
+    if (!enabled)
+    {
+        if (asset != mAssets.end()) gAgentAvatarp->stopMotion(asset->second.derived, true);
+    }
+    if (!mAssets.count(original)) request(original, name);
+    ensure(original); // No wire requests, and STOP can never be promoted to PLAY.
 }
 void ALReflectAnim::request(const LLUUID& original, const std::string& name)
 {
@@ -204,11 +256,13 @@ bool ALReflectAnim::mirror(const LLUUID& original, Asset& asset)
             if (name == joint->mJointName) ++centre; else ++paired;
             for (auto& key : joint->mRotationCurve.mKeys)
             {
+                key.second.mTime = ALReflect::serializationTime(key.second.mTime, list->mDuration);
                 key.second.mRotation = ALReflect::rotation(key.second.mRotation);
                 if (!key.second.mRotation.isFinite()) return fail("non-finite rotation");
             }
             for (auto& key : joint->mPositionCurve.mKeys)
             {
+                key.second.mTime = ALReflect::serializationTime(key.second.mTime, list->mDuration);
                 key.second.mPosition = ALReflect::vector(key.second.mPosition);
                 if (!key.second.mPosition.isFinite()) return fail("non-finite position");
             }
@@ -287,6 +341,22 @@ void ALReflectAnim::ensure(const LLUUID& original)
 {
     const auto asset = mAssets.find(original);
     if (!contains(original) || asset == mAssets.end()) return;
+    auto& playback = mIntents.at(original);
+    if (!playback.reflected)
+    {
+        LLMotion* motion = gAgentAvatarp->findMotion(original);
+        const bool active = motion && !motion->isStopped() && gAgentAvatarp->isMotionActive(original);
+        const bool loading = motion && gAgentAvatarp->getMotionController().isMotionLoading(motion);
+        const auto result = ALReflect::readyDecision(playback, active, loading, LLTimer::getTotalSeconds());
+        if (result.action == ALReflect::Action::DEFER_STOP) stop(original, true);
+        else if (result.action == ALReflect::Action::ENSURE_DERIVED)
+        {
+            playback.requested = true;
+            playback.requestedAt = LLTimer::getTotalSeconds();
+            gAgentAvatarp->startMotion(original); // Toggle: local controller only.
+        }
+        return;
+    }
     const bool signaled = gAgentAvatarp->mSignaledAnimations.count(original) != 0;
     if (asset->second.state == Build::FAILED)
     {
@@ -306,14 +376,18 @@ void ALReflectAnim::ensure(const LLUUID& original)
         }
         return;
     }
-    // No unmirrored flash, even when a START arrives during an async build.
+    // A toggle keeps the original running until the derived asset is ready.
+    if (asset->second.state != Build::READY)
+    {
+        if (!playback.keepOriginalWhileBuilding) gAgentAvatarp->stopMotion(original, true);
+        return;
+    }
+    playback.keepOriginalWhileBuilding = false;
     LLMotion* original_motion = gAgentAvatarp->findMotion(original);
     if (original_motion && !original_motion->isStopped()) gAgentAvatarp->stopMotion(original, true);
-    if (asset->second.state != Build::READY) return;
     LLMotion* motion = gAgentAvatarp->findMotion(asset->second.derived);
     const bool active = motion && !motion->isStopped() && gAgentAvatarp->isMotionActive(asset->second.derived);
     const bool loading = motion && gAgentAvatarp->getMotionController().isMotionLoading(motion);
-    auto& playback = mIntents.at(original);
     const F64 now = LLTimer::getTotalSeconds();
     const auto result = ALReflect::readyDecision(playback, active, loading, now);
     if (result.action == ALReflect::Action::DEFER_STOP) { stop(original, true); return; }

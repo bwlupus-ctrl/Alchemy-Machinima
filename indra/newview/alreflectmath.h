@@ -31,6 +31,42 @@ inline LLQuaternion rotation(const LLQuaternion& q)
 { return LLQuaternion(-q.mQ[0], q.mQ[1], -q.mQ[2], q.mQ[3]); }
 inline LLVector3 vector(const LLVector3& v)
 { return LLVector3(v.mV[0], -v.mV[1], v.mV[2]); }
+// serialize() floors twice (quantize16, then packU16); decoding also snaps
+// values within one code of zero. Allow three codes, including float noise.
+inline F32 componentTolerance(F32 range) { return 3.f * range / 65535.f + 1e-6f; }
+inline bool sameRotation(LLQuaternion a, LLQuaternion b)
+{
+    if (!a.isFinite() || !b.isFinite()) return false;
+    a.normalize(); b.normalize();
+    const F64 d = componentTolerance(2.f);
+    // Reconstructing w=sqrt(1-|xyz|^2) is ill-conditioned near pi.
+    // Bound its squared error by the radicand error; away from pi use
+    // |dw| <= |d(radicand)| / |w| for a substantially tighter angular check.
+    const F64 radicand = 2. * sqrt(3.) * d + 3. * d * d;
+    const F64 w = fabs(a.mQ[3]);
+    const F64 dw2 = w > 0. ? llmin(radicand, radicand * radicand / (w * w)) : radicand;
+    F64 dot = 0.;
+    for (S32 k = 0; k < 4; ++k) dot += (F64)a.mQ[k] * b.mQ[k];
+    return 1. - fabs(dot) <= (3. * d * d + dw2) * .5 + 2e-7;
+}
+inline bool samePosition(const LLVector3& a, const LLVector3& b, F32 range)
+{
+    if (!a.isFinite() || !b.isFinite()) return false;
+    for (S32 k = 0; k < 3; ++k)
+        if (fabsf(a.mV[k] - b.mV[k]) > componentTolerance(range)) return false;
+    return true;
+}
+inline bool sameTrack(const std::string& source, const std::string& target,
+                      size_t rotations, size_t actual_rotations, size_t positions, size_t actual_positions)
+{ return partner(source) == target && rotations == actual_rotations && positions == actual_positions; }
+// Source times have already been decoded from U16. Pack inside that same code's
+// bin, rather than on its lower float boundary, to avoid floor losing a code.
+inline F32 serializationTime(F32 time, F32 duration)
+{
+    if (duration <= 0.f) return time;
+    const F32 code = (F32)ll_round(time / duration * 65535.f);
+    return code >= 65535.f ? duration : (code + .25f) * duration / 65535.f;
+}
 inline LLVector3 constraintOffset(const LLVector3& v, bool ground)
 { return ground ? v : vector(v); }
 inline S32 facePartner(S32 id) { return id == 58 ? 59 : id == 59 ? 58 : id; }
@@ -186,7 +222,17 @@ struct Playback
     bool wasLoading = false;
     bool started = false; // Observed active and not stopped after that request.
     bool completed = false;
+    bool reflected = true;
+    bool keepOriginalWhileBuilding = false;
 };
+inline bool switchMode(Playback& play, bool enabled)
+{
+    if (play.intent != Intent::PLAY || play.completed || play.reflected == enabled) return false;
+    play.reflected = enabled;
+    play.keepOriginalWhileBuilding = enabled;
+    play.requested = play.wasLoading = play.started = false;
+    return true;
+}
 inline Decision readyDecision(Playback& play, bool active, bool loading, F64 now)
 {
     if (play.intent != Intent::PLAY || play.completed) return {play.intent, Action::NONE};

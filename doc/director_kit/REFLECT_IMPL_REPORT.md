@@ -526,3 +526,77 @@ stamp. Exercise Studio/proxy pushes during Frozen, resume, Floor → Wall, and
 Reflect → Mirror/Directed/True Mirror; confirm existing facing restoration and
 unaffected Wall/True Mirror, neighboring clones and real avatars. No viewer
 build/launch, commit, push, staging, or stash operation was performed.
+
+
+## In-world fixes 10/20
+
+Fixed the Part B inventory round-trip validator and live preview toggle on
+`feature/director-kit-p0`. This supersedes the earlier join-time-only behavior
+and manual acceptance step 6.
+
+Codec investigation: reflection preserves incoming w; inventory decode reconstructs
+nonnegative w, and `packToVector3()` already normalizes and canonicalizes signs.
+An unexplained negative w from reflection was not established as the cause, so
+no extra canonicalization was added. Validation now compares normalized rotations
+using absolute dot product, with a U16-derived bound including reconstruction
+error near pi and a tighter angular bound away from w=0. Position validation uses
+the actual symmetric [-5,5] range, allowing three U16 steps plus float noise for
+the serializer's two floor passes and the decoder's zero snapping. Negating a
+decoded position does not assume an exactly symmetric output code.
+
+The exhaustive time-code regression reproduces the old decoded-float re-encoding
+drift and adjacent-key collapse. Mirrored scratch keys now serialize from inside
+their original U16 bins. Input duplicate times have already been coalesced by
+stock decode; that decoded inventory remains the comparison baseline. Joint array
+order is preserved by the codec. The validator still requires exact mirrored
+partners at each array index and exact rotation/position key counts. First key
+failure logs WARN with asset, joint, index, expected/actual time and value;
+structural and constraint failures also log their first reason at WARN.
+
+Ticking Reflect during playback keeps the original running during an asynchronous
+build, then stops it locally and starts the READY derived copy. A fresh Reflect
+Play retains its no-flash behavior. Unticking stops the derived locally and starts
+the original locally, including during a pending build. Preview IDs and priority
+observation follow mode swaps without treating them as completion. Active
+LOCAL/INWORLD route and PLAY intent are retained. STOP, natural completion and
+late READY cannot promote playback back to PLAY. Cached completion state is reset
+only on a valid live mode change; another shared-asset Play respects the checkbox.
+
+The toggle uses local motion-controller calls, without region START/STOP. The
+Inworld original stays signaled through a toggle, and existing outbound guards
+continue to prohibit derived IDs. Ordinary user Stop and natural-end behavior
+retain the original-ID stop path.
+
+Validation:
+
+- Separate `zs_check.ps1 -Files <one .cpp>` calls: PASS for `alreflectanim.cpp`,
+  `llpreviewanim.cpp`, and `tests/alreflectmath_test.cpp` (with `-IncludeTests`).
+  Logs: `.tmp/reflect_inworld_zs_{anim,preview,tests}.log`.
+- Standalone alreflectmath compile/link/run: **36/36 PASS**. Logs:
+  `.tmp/reflect_inworld_test_{compile,link}.log`, `.tmp/reflect_inworld_tests.log`.
+  Existing nonfatal vcvars setup message about missing `vswhere.exe` remains.
+- Test 34 runs 20,000 real-style original-decode/mirror/serialize/decode codec
+  cases, including near-pi rotations, negative-w serialization, double cover and
+  quantized positions. Production helpers explicitly reject wrong rotation axis,
+  wrong position axis, wrong partner and missing rotation/position keys.
+- Test 35 checks all U16 codes 2..65535 at five durations, reproduces old time-code
+  drift/collapse, and verifies preserved output codes. Codes near zero already
+  subject to stock zero snapping are not claimed distinct.
+- Test 36 exercises tick/untick, pending-build mode ownership, retained route,
+  Stop and late READY for LOCAL and INWORLD through production state helpers.
+  These are pure codec/state tests, not a live viewer or packet capture.
+- `git diff --check`: PASS. `prebuild_guard` deliberately skipped while the
+  concurrent Relight job edits shader/generated inputs.
+
+In-world retesting remains UNRUN, including the two reported assets
+`58e63007-c4f9-18a8-343c-9c5f526fece7` and
+`58c57348-7488-9150-f419-f03f88deead5`; they were not fetched in this session.
+Require Verify round-trip PASS and visible mirrored playback. Exercise Local and
+Inworld tick/untick, uncached builds, original-until-READY, unchanged region
+playback, no extra wire requests, Stop/close before completion, natural end and
+shared-asset duplicate previews. The reproduced time-code defect is established
+by tests; attribution of each reported real asset awaits that runtime check.
+
+Only the five requested Reflect source/test files and this report were edited.
+No shaders, pipeline, llrender or Relight files were touched. No viewer build,
+prebuild guard, commit, push, staging or stash operation was performed.

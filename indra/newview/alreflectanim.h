@@ -16,6 +16,7 @@ class ALReflectAnim : public LLSingleton<ALReflectAnim>
     ~ALReflectAnim();
 public:
     bool play(const LLUUID& original, ALReflect::Route route, const std::string& name, bool enabled);
+    void setReflected(const LLUUID& original, ALReflect::Route route, const std::string& name, bool enabled);
     bool contains(const LLUUID& original) const
     {
         auto found = mIntents.find(original);
