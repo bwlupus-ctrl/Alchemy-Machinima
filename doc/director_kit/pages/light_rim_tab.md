@@ -1,7 +1,7 @@
 # Rim — Director Kit page contract
 
 Page key: `light_rim_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (55/56 setting-bound rows; 4 C++-referenced rows).
+Computed class: **code-driven** (55/57 setting-bound rows; 4 C++-referenced rows).
 
 ## Real owners
 
@@ -76,6 +76,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `area_soft_shadows` / `area_shadow_light_bias` (Light end bias (m)) | none | kit `number` ↔ `RenderAreaShadowLightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:265` `area_shadow_light_bias` |
 | `area_soft_shadows` / `area_shadow_debug` (Visibility view) | none | kit `combo` ↔ `RenderAreaShadowDebugView` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:268` `area_shadow_debug` |
 | `area_soft_shadows` / `area_shadow_budget` (Work budget (M)) | none | kit `number` ↔ `RenderAreaShadowBudget` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:283` `area_shadow_budget` |
+| `area_soft_shadows` / `area_shadow_sl_help` (SL shadows) | none | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
 
@@ -166,7 +167,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-56 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+57 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 37,
-    "rows": 1966,
+    "rows": 1967,
     "owner_roots": 33,
     "unresolved_rows": 21,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 1966
+    "independent_json_rows": 1967
   },
   "setting_conflicts": [
     {
@@ -155544,7 +155544,7 @@
       "label": "Rim",
       "group": "light_group",
       "group_label": "Light",
-      "row_count": 56,
+      "row_count": 57,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_cine_light_rig.xml",
@@ -155564,7 +155564,7 @@
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 55,
-        "setting_coverage": 0.982143,
+        "setting_coverage": 0.964912,
         "cpp_referenced_rows": 4,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -159846,6 +159846,48 @@
               }
             }
           ]
+        },
+        {
+          "card": "area_soft_shadows",
+          "card_title": "Soft shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 11,
+          "label": "SL shadows",
+          "kind": "readout",
+          "widget": "area_shadow_sl_help",
+          "matched_widget": "area_shadow_sl_help",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+              "line": 286,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+                "tag": "panel",
+                "name": "light_rim_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
         }
       ]
     },

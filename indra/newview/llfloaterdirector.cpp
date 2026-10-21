@@ -3709,6 +3709,18 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "CineLightRigBgBeam",
         "CineLightRigBgGobo",
         "CineLightRigBgOn",
+        // [RelightQ] Creative local-light state follows the scene. Quality,
+        // work budget and debug views remain machine-wide preferences. Sparse
+        // older scenes leave these controls alone via the normal has() check.
+        "RenderLightShapeEnable",
+        "RenderLocalLightPhysicalFalloff",
+        "RenderLocalLightDefaultRadius",
+        "RenderLocalLightNearFloor",
+        "RenderLocalLightPhysicalMaxBoost",
+        "RenderAreaShadows",
+        "RenderAreaShadowMaxDist",
+        "RenderAreaShadowThickness",
+        "RenderAreaShadowLightBias",
         // [RigRim] Rig Rim Light (Phase A).
         "CineRigRimEnabled",
         "CineRigRimMasterGain",

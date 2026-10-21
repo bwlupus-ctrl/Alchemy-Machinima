@@ -7,7 +7,7 @@ Do not hand-edit. File and line references describe the scanned tree at generati
 
 | Pages | Rows | Distinct owner files | Unresolved rows | Ambiguous rows | Multi-page settings |
 |---:|---:|---:|---:|---:|---:|
-| 37 | 1966 | 33 | 21 | 0 | 21 |
+| 37 | 1967 | 33 | 21 | 0 | 21 |
 
 Classification: pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven.
 
@@ -1507,7 +1507,7 @@ Real owner roots: `panel_cine_light_rig` in `indra/newview/skins/default/xui/en/
 
 C++ owner classes: `ALRigRimController` (5 references).
 
-Computed logic class: **code-driven**; 55/56 rows setting-bound, 4 rows referenced in C++.
+Computed logic class: **code-driven**; 55/57 rows setting-bound, 4 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
@@ -1567,6 +1567,7 @@ Computed logic class: **code-driven**; 55/56 rows setting-bound, 4 rows referenc
 | `area_soft_shadows` / Light end bias (m) | `area_shadow_light_bias` | `number` | `F32` `indra/newview/app_settings/settings.xml:21598` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:265` | — |
 | `area_soft_shadows` / Visibility view | `area_shadow_debug` | `combo` | `S32` `indra/newview/app_settings/settings.xml:21605` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:268` | — |
 | `area_soft_shadows` / Work budget (M) | `area_shadow_budget` | `number` | `S32` `indra/newview/app_settings/settings.xml:21612` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:283` | — |
+| `area_soft_shadows` / SL shadows | `area_shadow_sl_help` | `readout` | — | — | — | — | — |
 
 ### Exposure (`exposure_tab`)
 

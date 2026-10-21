@@ -288,8 +288,9 @@ def validate_data(data: dict) -> None:
     # 2154: +8 Soft shadows rows (Phase 2, 10/20); master is a header switch.
     # 2156: +2 in-world tuning rows: light end bias and visibility channel.
     # 2157: +1 runtime march-work budget under Soft shadows More options.
-    if len(pages) != 37 or row_count != 2157:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2157")
+    # 2158: +1 Relight SL-shadow help readout; all existing control destinations retained.
+    if len(pages) != 37 or row_count != 2158:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2158")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
