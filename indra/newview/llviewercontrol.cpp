@@ -36,6 +36,7 @@
 // UseFreezeWorld toggle never persists. See doc/BD_MERGE_PATCHLOG.md.
 
 #include "llviewerprecompiledheaders.h"
+#include "alareashadowmath.h"
 
 #include "llviewercontrol.h"
 
@@ -1121,6 +1122,24 @@ void settings_setup_listeners()
     // Exposure history listens at the setting layer, so every editing surface
     // (including Debug Settings and Lightbox) shares one session history.
     ALExposureSettingsHistory::initialize();
+    // Advanced edits mark the three-setting preset Custom, so selecting the
+    // previous preset again always emits a change and reapplies all three knobs.
+    static bool applying_area_quality = false;
+    setting_setup_signal_listener(gSavedSettings, "RenderAreaShadowQuality", [](const LLSD& value)
+    {
+        if (value.asInteger() == 4) return;
+        const auto quality = ALAreaShadow::quality(value.asInteger());
+        applying_area_quality = true;
+        gSavedSettings.setS32("RenderAreaShadowSamples", quality.samples);
+        gSavedSettings.setS32("RenderAreaShadowSteps", quality.steps);
+        gSavedSettings.setBOOL("RenderAreaShadowHalfRes", quality.half);
+        applying_area_quality = false;
+    });
+    for (const char* setting : {"RenderAreaShadowSamples", "RenderAreaShadowSteps", "RenderAreaShadowHalfRes"})
+        setting_setup_signal_listener(gSavedSettings, setting, [](const LLSD&)
+        {
+            if (!applying_area_quality) gSavedSettings.setS32("RenderAreaShadowQuality", 4);
+        });
     setting_setup_signal_listener(gSavedSettings, "FirstPersonAvatarVisible", handleRenderAvatarMouselookChanged);
     setting_setup_signal_listener(gSavedSettings, "NumpadControl", handleNumpadControlChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderFarClip", handleRenderFarClipChanged);

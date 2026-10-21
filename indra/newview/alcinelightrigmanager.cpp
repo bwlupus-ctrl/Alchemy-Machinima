@@ -813,6 +813,19 @@ bool ALCineLightRigManager::isSlotLit(Slot slot) const
 // and only pay for isSlotLit() (which can resolve the slot's avatar or
 // object target) once a slot's projector/omni id actually matches — matches
 // are rare (0 or 1 per frame) while this runs once per visible local light.
+bool ALCineLightRigManager::isMirrorLight(const LLUUID& id) const
+{
+    if (id.isNull()) return false;
+    for (const auto& entry : mMirrors)
+    {
+        const auto& rig = *entry.second;
+        if (rig.catchlightId() == id) return true;
+        for (S32 i=0; i<ALCineLightRigModel::LIGHT_COUNT; ++i)
+            if (rig.projectorId(i) == id || rig.omniId(i) == id) return true;
+    }
+    return false;
+}
+
 bool ALCineLightRigManager::lightShapeSourceFor(const LLUUID& id, LLVector4& out) const
 {
     if (id.isNull()) return false;

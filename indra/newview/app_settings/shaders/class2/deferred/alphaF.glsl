@@ -158,7 +158,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
 #endif
 )
 {
-    if (relight_enabled != 0 && shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && shape.x > 0.0)
     {
         // Invert setupHWLights' attenuation encoding to recover shader range R.
         float range = ((12.0*fa)-9.0)/la;

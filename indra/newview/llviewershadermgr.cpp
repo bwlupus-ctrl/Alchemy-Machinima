@@ -191,6 +191,7 @@ LLGLSLShader            gDeferredTreeShadowProgram;
 LLGLSLShader            gDeferredSkinnedTreeShadowProgram;
 LLGLSLShader            gDeferredAvatarProgram;
 LLGLSLShader            gDeferredAvatarAlphaProgram;
+LLGLSLShader gAreaShadowProgram, gAreaShadowFilterProgram;
 LLGLSLShader            gDeferredLightProgram;
 LLGLSLShader            gDeferredMultiLightProgram[16];
 LLGLSLShader            gDeferredSpotLightProgram;
@@ -688,6 +689,8 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gDeferredSunProbeProgram);
     mShaderList.push_back(&gHazeProgram);
     mShaderList.push_back(&gHazeWaterProgram);
+    mShaderList.push_back(&gAreaShadowProgram);
+    mShaderList.push_back(&gAreaShadowFilterProgram);
     mShaderList.push_back(&gDeferredSoftenProgram);
     mShaderList.push_back(&gPrismLensProgram);
     mShaderList.push_back(&gPrismMediaCopyProgram);
@@ -1712,6 +1715,8 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredSkinnedBumpProgram.unload();
         gDeferredImpostorProgram.unload();
         gDeferredTerrainProgram.unload();
+        gAreaShadowProgram.unload();
+        gAreaShadowFilterProgram.unload();
         gDeferredLightProgram.unload();
         for (U32 i = 0; i < LL_DEFERRED_MULTI_LIGHT_COUNT; ++i)
         {
@@ -3612,6 +3617,24 @@ bool LLViewerShaderMgr::loadShadersDeferred()
 
     if (success)
     {
+        // [RelightQ] Runtime settings only. Failure disables this optional feature.
+        for (LLGLSLShader* program : {&gAreaShadowProgram, &gAreaShadowFilterProgram})
+        {
+            program->mName = program == &gAreaShadowProgram ? "Area visibility" : "Area bilateral filter";
+            program->mShaderFiles.clear();
+            program->clearPermutations();
+            program->mFeatures.isDeferred = true;
+            program->mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            program->mShaderFiles.push_back(make_pair("deferred/areaShadowV.glsl", GL_VERTEX_SHADER));
+            program->mShaderFiles.push_back(make_pair("deferred/screenSpaceRayUtil.glsl", GL_FRAGMENT_SHADER));
+            program->mShaderFiles.push_back(make_pair(program == &gAreaShadowProgram ?
+                "deferred/areaShadowF.glsl" : "deferred/areaShadowFilterF.glsl", GL_FRAGMENT_SHADER));
+            if (!program->createShader())
+            {
+                LL_WARNS("RelightQ") << "[RelightQ] programs FAIL " << program->mName << LL_ENDL;
+                program->unload();
+            }
+        }
         gDeferredSoftenProgram.mName = "Deferred Soften Shader";
         gDeferredSoftenProgram.mShaderFiles.clear();
         gDeferredSoftenProgram.mFeatures.hasSrgb = true;

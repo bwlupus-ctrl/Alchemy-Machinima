@@ -1303,6 +1303,7 @@ set(viewer_HEADER_FILES
     alghostmanipproxy.h
     alghostnameplates.h
     alghostautoanimmodel.h # [AutoAnimate]
+    alareashadowmath.h
     alrelightmath.h
     alreflectmath.h
     alreflectanim.h

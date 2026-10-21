@@ -1,6 +1,7 @@
 #include "linden_common.h"
 #include "../test/lltut.h"
 #include "../alrelightmath.h"
+#include "../alareashadowmath.h"
 #include <limits>
 namespace tut
 {
@@ -157,4 +158,62 @@ template<> template<> void relight_object::test<9>()
                 }
             }
 }
+template<> template<> void relight_object::test<10>()
+{
+    using namespace ALAreaShadow;
+    const std::array<Candidate<int>,5> input{{{9,true,1000}, {8,false,1},
+        {3,false,5}, {2,false,5}, {1,true,9999}}};
+    std::array<int,5> order{{0,1,2,3,4}};
+    do
+    {
+        Selection<int> selected;
+        for (int index : order) selected.add(input[index],3);
+        ensure_equals("cap",selected.size,3u);
+        ensure_equals("all candidates counted",selected.candidates,5u);
+        ensure_equals("contribution then UUID",selected.lights[0].id,2);
+        ensure_equals("tie by UUID",selected.lights[1].id,3);
+        ensure_equals("leaking beats shadow map",selected.lights[2].id,8);
+    } while (std::next_permutation(order.begin(),order.end()));
+    Selection<int> capped;
+    for (int id=19; id>=0; --id) capped.add({id,false,1},99);
+    ensure_equals("hard eight cap",capped.size,8u);
+    ensure_equals("lowest UUID first",capped.lights[0].id,0);
+    ensure_equals("eighth UUID",capped.lights[7].id,7);
+    ensure_equals("cap logged count",capped.candidates,20u);
+}
+template<> template<> void relight_object::test<11>()
+{
+    using namespace ALAreaShadow;
+    ensure("main view allowed",allowed({}));
+    for (unsigned flags=1; flags<64; ++flags)
+        ensure("every excluded view combination fails closed",!allowed({bool(flags&1),
+            bool(flags&2),bool(flags&4),bool(flags&8),bool(flags&16),bool(flags&32)}));
+    close("literal projected contribution",contribution(4,2,3,.5),3);
+    close("nonfinite contribution rejected",contribution(1,1,std::numeric_limits<double>::infinity(),1),0);
+    close("negative contribution rejected",contribution(1,1,-1,1),0);
+}
+template<> template<> void relight_object::test<12>()
+{
+    using namespace ALAreaShadow;
+    const auto low=quality(0), medium=quality(1), high=quality(2), cinema=quality(3);
+    ensure("low",low.samples==2 && low.steps==8 && low.half);
+    ensure("default medium",medium.samples==4 && medium.steps==12 && medium.half);
+    ensure("high",high.samples==8 && high.steps==20 && high.half);
+    ensure("cinematic",cinema.samples==16 && cinema.steps==32 && !cinema.half);
+    ensure_equals("literal integer hash",hash(1),0x688990c0u);
+    ensure("different IDs change pattern",hash(1)!=hash(2));
+    // Equal-area disk strata: exact mean squared radius, balanced angular sweep.
+    for (int samples : {2,4,8,16,32})
+    {
+        double mean=0;
+        for (int i=0; i<samples; ++i)
+        {
+            const double radius=std::sqrt((i+.5)/samples);
+            ensure("disk sample inside source",radius>0 && radius<1);
+            mean+=radius*radius/samples;
+        }
+        close("uniform radial area",mean,.5);
+    }
+}
+
 }

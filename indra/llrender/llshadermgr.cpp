@@ -2171,6 +2171,9 @@ void LLShaderMgr::initAttribsAndUniforms()
 
     mReservedUniforms.push_back("light_shape");
     mReservedUniforms.push_back("light_shapes");
+    mReservedUniforms.push_back("area_shadow_map0");
+    mReservedUniforms.push_back("area_shadow_map1");
+    mReservedUniforms.push_back("area_source");
     mReservedUniforms.push_back("relight_enabled");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);

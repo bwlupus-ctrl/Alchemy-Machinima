@@ -21539,6 +21539,69 @@
       <key>Value</key>
       <integer>2</integer>
     </map>
+    <key>RenderAreaShadows</key>
+    <map>
+        <key>Comment</key><string>Screen-space soft shadows for selected opaque local lights.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>0</integer>
+    </map>
+    <key>RenderAreaShadowLights</key>
+    <map>
+        <key>Comment</key><string>Number of selected shadowed lights (1-8).</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>S32</string>
+        <key>Value</key><integer>4</integer>
+    </map>
+    <key>RenderAreaShadowSamples</key>
+    <map>
+        <key>Comment</key><string>Fixed disk rays per selected light (1-32).</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>S32</string>
+        <key>Value</key><integer>4</integer>
+    </map>
+    <key>RenderAreaShadowSteps</key>
+    <map>
+        <key>Comment</key><string>Linear depth steps per ray (1-64).</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>S32</string>
+        <key>Value</key><integer>12</integer>
+    </map>
+    <key>RenderAreaShadowMaxDist</key>
+    <map>
+        <key>Comment</key><string>Maximum screen-space ray distance in metres.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>8</real>
+    </map>
+    <key>RenderAreaShadowThickness</key>
+    <map>
+        <key>Comment</key><string>Depth separation required to count as blocked, in metres.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0.35</real>
+    </map>
+    <key>RenderAreaShadowHalfRes</key>
+    <map>
+        <key>Comment</key><string>Trace at half width and height, then bilateral upsample.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>1</integer>
+    </map>
+    <key>RenderAreaShadowDenoise</key>
+    <map>
+        <key>Comment</key><string>Spatial bilateral radius in 1080p pixels; zero disables blur.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>2</real>
+    </map>
+    <key>RenderAreaShadowQuality</key>
+    <map>
+        <key>Comment</key><string>Soft-shadow preset: 0 Low, 1 Medium, 2 High, 3 Cinematic, 4 Custom. Presets set samples, steps and resolution.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>S32</string>
+        <key>Value</key><integer>1</integer>
+    </map>
     <key>RenderLightShapeEnable</key>
     <map>
         <key>Comment</key><string>Sphere shading for local lights.</string>

@@ -285,9 +285,9 @@ def validate_data(data: dict) -> None:
     # 2140: +1 per-clone Mirror light rig checkbox beside Reflect (10/20).
     # 2141: +1 Paste position button in Clones > Position (avatar session clipboard, 10/20).
     # 2142: +1 Wall/Floor orientation choice in Clones > Reflect (10/20).
-    # 2146: +4 Light shape rows; Enable is the card header switch (Phase 1, 10/20).
-    if len(pages) != 37 or row_count != 2146:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2146")
+    # 2154: +8 Soft shadows rows (Phase 2, 10/20); master is a header switch.
+    if len(pages) != 37 or row_count != 2154:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2154")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

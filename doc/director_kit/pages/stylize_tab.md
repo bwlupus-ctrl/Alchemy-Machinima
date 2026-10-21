@@ -99,7 +99,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `timing` / `ri_motion_phase_slider` (Phase beats) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5835` | kit `slider` ↔ `CineOutlineMotionPhase` `F32`; `ALRotoKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateRotoInkAnimVisibility()` (`indra/newview/alfloaterlightbox.cpp:923`) | `indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml:522` `ri_motion_phase_slider` |
 | `timing` / `ri_motion_step_combo` (Hold frames) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5838` | kit `combo` ↔ `CineOutlineMotionStep` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml:527` `ri_motion_step_combo` |
 | `timing` / `ri_sync_tron_link` (Tron clock) | none | kit-native action `link_to:look_group/tron_tab`; no duplicate widget is required | none |
-| `adv_roto` / `open_lightbox_roto` (Lightbox ›) | none | kit-native action `floater:lightbox/rotoink_settings`; no duplicate widget is required | none |
+| `adv_roto` / `open_lightbox_roto` (Lightbox â€º) | none | kit-native action `floater:lightbox/rotoink_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 

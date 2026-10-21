@@ -72,11 +72,11 @@ def rig_int(name,value):
     ui(loc(pr,name.encode()),value)
 
 def rig_read(angle,distance,radius,component,pbr,roughness=.3,glossiness=.5,
-             enabled=1,physical=0,sil_keep=1,power=1,falloff=.5):
+             enabled=1,physical=0,sil_keep=1,power=1,falloff=.5,channel=-1):
     theta=np.deg2rad(angle)
     rig_uniform('testNormal',np.sin(theta),0,np.cos(theta))
     rig_uniform('testLight',0,0,distance)
-    rig_uniform('testShape',radius,physical,1,-1)
+    rig_uniform('testShape',radius,physical,1,channel)
     rig_uniform('testRoughness',roughness);rig_uniform('testGlossiness',glossiness)
     rig_uniform('testSilKeep',sil_keep);rig_uniform('testLightPower',power)
     rig_uniform('testFalloff',falloff)
@@ -215,6 +215,28 @@ for rig_path in ('multiPoint','point','spot','alpha','material','pbralpha','pbrs
         pair=rig_pair(0,1,.3,1,0,glossiness=.75,power=8,falloff=0)
         rig_extra.append(dict(path=rig_path,kind='legacy_clamp',values=[x.tolist() for x in pair]))
         rig_require(pair[1][0]<=1,('material','per-light clamp',pair[1].tolist()))
+    if deferred and not shader_ref:
+        # Production light main bodies consume both RGBA planes, including when
+        # Phase 1 is disabled. OFF and unselected channels must remain identical.
+        shadow_values=np.array([[0,64,128,192],[255,204,153,102]],np.uint8)
+        for plane in range(2):
+            mask=U();genTex(1,C.byref(mask));active(0x84C0+6+plane);bindTex(0x0DE1,mask)
+            param(0x0DE1,0x2801,0x2600);param(0x0DE1,0x2800,0x2600)
+            teximage(0x0DE1,0,0x8058,1,1,0,0x1908,0x1401,shadow_values[plane].ctypes.data)
+            rig_int('area_shadow_map'+str(plane),6+plane)
+        for pbr in (0,1):
+            for shape_master in (0,1):
+                baseline=rig_read(0,1,.3,0,pbr,enabled=shape_master)
+                for channel in range(8):
+                    shaded=rig_read(0,1,.3,0,pbr,enabled=shape_master|2,channel=channel)
+                    expected=baseline*float(shadow_values[channel//4,channel%4])/255
+                    assert np.allclose(shaded,expected,rtol=3.e-6,atol=2.e-7),(rig_path,pbr,shape_master,channel,shaded,expected)
+                unselected=rig_read(0,1,.3,0,pbr,enabled=shape_master|2)
+                assert unselected.tobytes()==baseline.tobytes(),(rig_path,'unselected identity')
+                off=rig_read(0,1,.3,0,pbr,enabled=shape_master,channel=0)
+                assert off.tobytes()==baseline.tobytes(),(rig_path,'stale channel OFF identity')
+        active(0x84C0)
+        print('[RelightQ] area lighting runtime PASS',rig_path,'eight channels, legacy/PBR, shape on/off, stale master and unselected identity',flush=True)
     print('[RelightQ] rig measured',rig_path,flush=True)
     if '--rig-json' in sys.argv:
         Path(sys.argv[sys.argv.index('--rig-json')+1]).write_text(json.dumps(

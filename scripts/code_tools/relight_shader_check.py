@@ -1,4 +1,4 @@
-"""Windows offscreen GPU compile/readback gate for Phase 1 production GLSL.
+"""Windows offscreen GPU compile/readback gate for Phase 1+2 production GLSL.
 No viewer build, launch, or external reference shader is used.
 """
 import ctypes as C
@@ -78,7 +78,9 @@ def compile_part(text, defines, label, stage=0x8B30):
 files=['class1/deferred/deferredUtil.glsl','class3/deferred/multiPointLightF.glsl',
        'class3/deferred/pointLightF.glsl','class3/deferred/spotLightF.glsl',
        'class2/deferred/alphaF.glsl','class3/deferred/materialF.glsl',
-       'class2/deferred/pbralphaF.glsl','class2/deferred/sharedActorFxPbrF.glsl']
+       'class2/deferred/pbralphaF.glsl','class2/deferred/sharedActorFxPbrF.glsl',
+       'class1/deferred/screenSpaceRayUtil.glsl','class3/deferred/areaShadowF.glsl',
+       'class3/deferred/areaShadowFilterF.glsl']
 
 # Resolve shader classes exactly like loadShaderFile (highest available <= level).
 def production_file(name, level=3):
@@ -109,8 +111,11 @@ def link_production(file, defines, label, test_fragment=None):
     if 'HAS_ACTOR_FX' in defines:
         fragment+=['alchemy/actorFxDissolveF.glsl','alchemy/actorFxF.glsl']
     if name=='spotLightF.glsl': fragment+=['deferred/shadowUtil.glsl']
+    if name in ('areaShadowF.glsl','areaShadowFilterF.glsl'):
+        fragment+=['deferred/screenSpaceRayUtil.glsl']
     if name=='spotLightF.glsl': vertex='deferred/multiPointLightV.glsl' if 'MULTI_SPOTLIGHT' in defines else 'deferred/pointLightV.glsl'
     else: vertex='deferred/'+name.replace('F.glsl','V.glsl')
+    if name in ('areaShadowF.glsl','areaShadowFilterF.glsl'): vertex='deferred/areaShadowV.glsl'
     vertices=[vertex,'deferred/textureUtilV.glsl']
     if forward:
         vertices+=['environment/srgbF.glsl','windlight/atmosphericsVarsV.glsl',
@@ -152,6 +157,11 @@ def link_production(file, defines, label, test_fragment=None):
         use(pr)
         for value in (1,0,1,0): ui(master,value)
     return pr
+
+if '--area-only' in sys.argv:
+    exec(compile(Path(__file__).with_name('relight_area_check.py').read_text(),
+                 'relight_area_check.py', 'exec'))
+    sys.exit(0)
 
 def production_variants(file):
     name=Path(file).name
@@ -201,7 +211,7 @@ for file in ([] if '--rig-only' in sys.argv else files):
     for variant in variants:
         compile_part(read_shader(root/file),shape+variant,file+' runtime '+variant)
         count+=1
-        if production_variants(file) is None and not file.endswith("deferredUtil.glsl"):
+        if production_variants(file) is None and not file.endswith(("deferredUtil.glsl","screenSpaceRayUtil.glsl")):
             link_production(file,shape+variant,file+" runtime "+variant)
             linked+=1
     for variant in production_variants(file) or []:
@@ -361,3 +371,7 @@ print('[RelightQ] runtime master PASS',runtime_checks,
 # Rig-key regression uses this same WGL context, production linker and target.
 exec(compile(Path(__file__).with_name('relight_rig_check.py').read_text(),
              'relight_rig_check.py', 'exec'))
+
+if not shader_ref:
+    exec(compile(Path(__file__).with_name('relight_area_check.py').read_text(),
+                 'relight_area_check.py', 'exec'))

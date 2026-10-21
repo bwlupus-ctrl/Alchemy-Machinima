@@ -38,7 +38,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `grade` / `set_RenderColorGradeWhiteBalanceDuv` (Tint) | none | kit `slider` ↔ `RenderColorGradeWhiteBalanceDuv` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:120` `set_RenderColorGradeWhiteBalanceDuv` |
 | `grade` / `set_RenderColorGradeLift` (Lift) | none | kit `vec3` ↔ `RenderColorGradeLift` `Vector3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
 | `grade` / `set_RenderColorGradeGamma` (Gamma) | none | kit `vec3` ↔ `RenderColorGradeGamma` `Vector3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
-| `grade` / `set_grade_lightbox_link` (Lightbox ›) | none | kit-native action `floater:lightbox/colortone_settings`; no duplicate widget is required | none |
+| `grade` / `set_grade_lightbox_link` (Lightbox â€º) | none | kit-native action `floater:lightbox/colortone_settings`; no duplicate widget is required | none |
 | `grade_levels` / `set_RenderColorGradeGain` (Gain) | none | kit `vec3` ↔ `RenderColorGradeGain` `Vector3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
 | `grade_levels` / `set_RenderColorGradeBrightness` (Grade bright) | none | kit `slider` ↔ `RenderColorGradeBrightness` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:133` `set_RenderColorGradeBrightness` |
 | `grade_levels` / `set_RenderColorGradeContrast` (Grade contrast) | none | kit `slider` ↔ `RenderColorGradeContrast` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:138` `set_RenderColorGradeContrast` |
@@ -93,7 +93,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `slog` / `slog_range_combo` (Range) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:836` | kit `combo` ↔ `AlchemyToneMapSLogRange` `S32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1610`) | `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:373` `slog_range_combo` |
 | `slog` / `slog_toe_slider` (Shadow toe) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:861` | kit `slider` ↔ `AlchemyToneMapSLogToe` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1611`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:875` `slog_toe_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml:381` `slog_toe_slider` |
 | `adv_image` / `set_lens_filters_link` (Lens filters) | none | kit-native action `link_to:lens_group/filters_tab`; no duplicate widget is required | none |
-| `adv_image` / `open_lightbox_image` (Lightbox ›) | none | kit-native action `floater:lightbox/colortone_settings`; no duplicate widget is required | none |
+| `adv_image` / `open_lightbox_image` (Lightbox â€º) | none | kit-native action `floater:lightbox/colortone_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 

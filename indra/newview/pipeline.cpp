@@ -46,6 +46,8 @@
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
 #include "alrelightmath.h"
+#include "alareashadowmath.h"
+#include <optional>
 #include "alcinelightrigmodel.h"
 #include "alprobedirty.h" // [ProbeOnDemand]
 #include "aldiopterrelevance.h"      // [Ultimate Diopter] shared armed-state helpers, wave 2
@@ -1371,6 +1373,11 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     mRT->silCover.release();
     mRT->silCoverDepthSrc = 0;
     mSilCoverValid = false;
+    // [RelightQ] Invalidate with this pack, including resolution divisor changes.
+    for (auto& target : mRT->areaGather) target.release();
+    for (auto& target : mRT->areaScratch) target.release();
+    for (auto& target : mRT->areaVisibility) target.release();
+    mAreaShadowValid = false;
     //allocate deferred rendering color buffers
     if (!mRT->deferredScreen.allocate(resX, resY, GL_SRGB8_ALPHA8, true)) return false;
     if (!addDeferredAttachments(mRT->deferredScreen)) return false;
@@ -3179,6 +3186,13 @@ void LLPipeline::releaseShadowBuffers()
 
 void LLPipeline::releaseScreenBuffers()
 {
+    if (mAreaShadowQueries[0])
+    {
+        glDeleteQueries(2,mAreaShadowQueries);
+        mAreaShadowQueries[0] = mAreaShadowQueries[1] = 0;
+    }
+    mAreaShadowQueryPending = mAreaShadowValid = false;
+    mAreaShadowGPUms = -1.0;
     for (auto& target : mCineFlareEnergy) target.release();
     mCineFlareEnergyValid = false;
     mActorMaskQueries.release(); // [ActorMask]
@@ -3191,6 +3205,9 @@ void LLPipeline::releaseScreenBuffers()
     {
         rt.actorMask.release(); // [ActorMask] Before shared depth owner
         rt.actorMaskDepthSrc = 0;
+        for (auto& target : rt.areaGather) target.release();
+        for (auto& target : rt.areaScratch) target.release();
+        for (auto& target : rt.areaVisibility) target.release();
         rt.rigRimAux.release();
         for (auto& target : rt.rigRimSil) target.release();
         for (auto& target : rt.rigRimWrapBlur) target.release();
@@ -11715,6 +11732,17 @@ static bool light_shape_enabled()
 {
     return light_shape_master_enabled() && !gCubeSnapshot && !LLPipeline::sPrismLensRender &&
         !LLPipeline::sRenderingHUDs && !LLPipeline::sImpostorRender && !LLPipeline::sReflectionRender;
+}
+
+static F32 area_source_radius(const LLVOVolume* volume)
+{
+    static LLCachedControl<F32> default_radius(gSavedSettings, "RenderLocalLightDefaultRadius", 0.f);
+    F32 radius = default_radius();
+    radius = std::isfinite(radius) ? llclamp(radius, 0.f, 1.f) : 0.f;
+    LLVector4 source;
+    if (volume && ALCineLightRigManager::instance().lightShapeSourceFor(volume->getID(), source) && source.mV[0] >= 0.f)
+        radius = source.mV[0];
+    return radius;
 }
 
 static LLVector4 light_shape_for_volume(const LLVOVolume* volume)
@@ -24966,6 +24994,16 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
         gGL.getTexUnit(channel)->setTextureFilteringOption(LLTexUnit::TFO_POINT);
     }
 
+    if (areaShadowsActive())
+    {
+        for (U32 plane = 0; plane < 2; ++plane)
+        {
+            const U32 uniform = plane == 0 ? LLShaderMgr::AREA_SHADOW_MAP0 : LLShaderMgr::AREA_SHADOW_MAP1;
+            const S32 unit = shader.enableTexture(uniform);
+            if (unit >= 0) mRT->areaVisibility[plane && mAreaShadowCount > 4 ? 1 : 0].bindTexture(0, unit, LLTexUnit::TFO_POINT);
+        }
+    }
+
     bindLightFunc(shader);
 
     stop_glerror();
@@ -26503,11 +26541,330 @@ const char* LLPipeline::actorMaskParityPathInconclusiveReason() const
     return "no volume-path point in F3";
 }
 
+// [RelightQ] One view policy for allocation, dispatch and every channel consumer.
+bool LLPipeline::areaShadowsAllowedThisView() const
+{
+    return ALAreaShadow::allowed({gCubeSnapshot, sPrismLensRender, sRenderingHUDs,
+        sImpostorRender, sReflectionRender, LLViewerCamera::instance().getZoomFactor() > 1.f});
+}
+
+bool LLPipeline::areaShadowsActive() const
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "RenderAreaShadows", false);
+    return enabled() && mAreaShadowValid && areaShadowsAllowedThisView();
+}
+
+LLVector4 LLPipeline::deferredLightShape(const LLVOVolume* volume) const
+{
+    LLVector4 shape = light_shape_for_volume(volume);
+    // Lookup uses the drawable's OWN UUID. Mirror copies never borrow source channels.
+    if (areaShadowsActive() && volume)
+        for (U32 i = 0; i < mAreaShadowCount; ++i)
+            if (mAreaShadowIDs[i] == volume->getID()) shape.mV[3] = static_cast<F32>(i);
+    return shape;
+}
+
+void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
+    bool actor_ready, bool actor_as_world, bool actor_excluded)
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "RenderAreaShadows", false);
+    mAreaShadowValid = false;
+    mAreaShadowCount = 0;
+    if (!enabled())
+    {
+        if (mAreaShadowQueries[0])
+        {
+            glDeleteQueries(2,mAreaShadowQueries);
+            mAreaShadowQueries[0] = mAreaShadowQueries[1] = 0;
+            mAreaShadowQueryPending = false;
+            mAreaShadowGPUms = -1.0;
+        }
+        // Lazy off-transition cleanup; no GL calls on the steady-state OFF path.
+        if (mMainRT.areaGather[0].isComplete())
+        {
+            for (auto& target : mMainRT.areaGather) target.release();
+            for (auto& target : mMainRT.areaScratch) target.release();
+            for (auto& target : mMainRT.areaVisibility) target.release();
+        }
+        return;
+    }
+    const bool allowed = areaShadowsAllowedThisView();
+    LL_DEBUGS("RelightQ") << "[RelightQ] allowed-view PASS allowed=" << allowed
+        << " cube=" << gCubeSnapshot << " prism=" << sPrismLensRender
+        << " hud=" << sRenderingHUDs << " impostor=" << sImpostorRender
+        << " reflection=" << sReflectionRender << LL_ENDL;
+    if (!allowed)
+    {
+        if (LLViewerCamera::instance().getZoomFactor() > 1.f)
+            LL_INFOS_ONCE("RelightQ") << "[RelightQ] allowed-view PASS tiled snapshot: area shadows disabled" << LL_ENDL;
+        return;
+    }
+    if (limit <= 0 || !gAreaShadowProgram.isComplete() || !gAreaShadowFilterProgram.isComplete()) return;
+    LL_PROFILE_GPU_ZONE("area shadows");
+    LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("area shadows");
+    static LLCachedControl<S32> cap(gSavedSettings, "RenderAreaShadowLights", 4);
+    static LLCachedControl<S32> samples(gSavedSettings, "RenderAreaShadowSamples", 4);
+    static LLCachedControl<S32> steps(gSavedSettings, "RenderAreaShadowSteps", 12);
+    static LLCachedControl<F32> max_dist(gSavedSettings, "RenderAreaShadowMaxDist", 8.f);
+    static LLCachedControl<F32> thickness(gSavedSettings, "RenderAreaShadowThickness", .35f);
+    static LLCachedControl<bool> half(gSavedSettings, "RenderAreaShadowHalfRes", true);
+    static LLCachedControl<F32> denoise(gSavedSettings, "RenderAreaShadowDenoise", 2.f);
+    const auto& registry = ALCineLightRigManager::instance();
+    LLViewerCamera& camera = LLViewerCamera::instance();
+    const auto toggles = [](const LLVOVolume* volume)
+    {
+        if (volume->isAttachment()) return sRenderAttachedLights &&
+            bdmerge_should_render_light(true, volume->getAvatar() == gAgentAvatarp);
+        return volume->isCineRigEmitter() || bdmerge_should_render_light(false, false);
+    };
+    // Read-only intersection with the existing draw collector. Keep its pre-filter
+    // budget count verbatim. Ranking inputs themselves come only from mLights.
+    // A scan avoids a per-frame membership allocation, at O(mLights * nearby).
+    const auto actually_drawn = [&](LLDrawable* candidate, U8 bits)
+    {
+        if (bits && !actor_as_world)
+        {
+            if (!actor_ready || actor_excluded ||
+                !gDeferredMultiLightActorMaskProgram.isComplete() ||
+                !gDeferredMultiSpotLightActorMaskProgram.isComplete() ||
+                !(bits & registry.liveRecipientBits() & ~ALCineLightRigManager::ACTOR_ONLY_ORPHAN_BIT)) return false;
+            for (const auto& entry : mNearbyLights)
+                if (entry.drawable == candidate) return true;
+            return false;
+        }
+        S32 count = 0;
+        for (const auto& entry : mNearbyLights)
+        {
+            LLDrawable* drawable = entry.drawable;
+            LLVOVolume* volume = drawable ? drawable->getVOVolume() : nullptr;
+            if (!volume) continue;
+            const U8 actor_bits = actor_only ? registry.actorOnlyBits(volume->getID()) : 0;
+            if (actor_bits && (!actor_as_world || !(actor_bits & registry.liveRecipientBits()))) continue;
+            if (!toggles(volume)) continue;
+            if (++count > limit) break; // count BEFORE colour/range/frustum, as production
+            if (drawable == candidate) return true;
+        }
+        return false;
+    };
+    ALAreaShadow::Selection<LLUUID> selected;
+    for (LLDrawable* drawable : mLights)
+    {
+        LLVOVolume* volume = drawable ? drawable->getVOVolume() : nullptr;
+        // Pure filter: no fade, nearby distance, priority update or mute-cache mutation.
+        if (!volume || !drawable->isState(LLDrawable::LIGHT) || volume->isHUDAttachment() ||
+            !toggles(volume) || registry.isMirrorLight(volume->getID())) continue;
+        const F32 range = volume->getLightRadius()*1.5f;
+        const LLColor3 color = volume->getLightLinearColor()*light_scale*ALEnvIntensity::localLightEVScale(volume);
+        if (range <= .001f || color.magVecSquared() < .001f) continue;
+        LLVector4a centre, extent;
+        centre.load3(drawable->getPositionAgent().mV); extent.splat(range);
+        if (!camera.AABBInFrustumNoFarClip(centre,extent)) continue;
+        const U8 bits = actor_only ? registry.actorOnlyBits(volume->getID()) : 0;
+        if (!actually_drawn(drawable,bits)) continue;
+        LLVector3 spot;
+        const bool projector = LLPrismLens::projectorRenderParams(volume,spot) &&
+            (volume->isCineRigEmitter() || bdmerge_should_render_projector());
+        bool shadow_map = false;
+        // Match setupSpotLight's actual sampled slots, including fading maps
+        // above a newly lowered auction cap. Do not change the auction itself.
+        if (projector)
+            for (U32 i=0; i<MAX_SPOT_SHADOWS; ++i)
+                if (mShadowSpotLight[i] == drawable) shadow_map = true;
+        const F32 distance = (drawable->getPositionAgent()-camera.getOrigin()).length();
+        const double luminance = .2126*color.mV[0]+.7152*color.mV[1]+.0722*color.mV[2];
+        selected.add({volume->getID(), shadow_map, ALAreaShadow::contribution(range,distance,
+            luminance,ALRelight::legacy(distance,range,volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)))},
+            static_cast<unsigned>(llclamp(cap(),1,8)));
+    }
+    if (!selected.size) return;
+    if (selected.candidates > static_cast<U32>(llclamp(cap(),1,8)))
+        LL_DEBUGS("RelightQ") << "[RelightQ] cap PASS candidates=" << selected.candidates
+            << " K=" << llclamp(cap(),1,8) << " (unshadowed first, contribution, UUID)" << LL_ENDL;
+
+    // Fixed-size state storage: no heap allocation each frame. RT bind/flush saves
+    // FBO/viewport stacks; this guard covers texture wrappers, masks and shader.
+    struct State
+    {
+        std::array<std::optional<LLActorMaskTextureState>, LL_NUM_TEXTURE_LAYERS> textures;
+        LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+        U32 unit = gGL.getCurrentTexUnitIndex();
+        GLint raw_unit = 0;
+        GLboolean mask[4], scissor;
+        std::array<std::array<GLboolean,4>, 32> indexed_masks{};
+        std::array<GLboolean,32> indexed_blend{};
+        std::array<GLenum,32> buffers{};
+        GLint buffer_count = 0, read_buffer = 0, draw_fbo = 0, read_fbo = 0, viewport[4];
+        State()
+        {
+            gGL.flush(); glGetBooleanv(GL_COLOR_WRITEMASK,mask);
+            glGetIntegerv(GL_ACTIVE_TEXTURE,&raw_unit);
+            scissor = glIsEnabled(GL_SCISSOR_TEST);
+            glGetIntegerv(GL_MAX_DRAW_BUFFERS,&buffer_count);
+            buffer_count = llmin(buffer_count,static_cast<GLint>(buffers.size()));
+            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING,&draw_fbo);
+            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING,&read_fbo);
+            glGetIntegerv(GL_READ_BUFFER,&read_buffer);
+            glGetIntegerv(GL_VIEWPORT,viewport);
+            for (GLint i=0; i<buffer_count; ++i)
+            {
+                glGetBooleani_v(GL_COLOR_WRITEMASK,i,indexed_masks[i].data());
+                indexed_blend[i] = glIsEnabledi(GL_BLEND,i);
+                GLint buffer = 0;
+                glGetIntegerv(GL_DRAW_BUFFER0+i,&buffer);
+                buffers[i] = static_cast<GLenum>(buffer);
+            }
+            for (U32 i=0; i<LL_NUM_TEXTURE_LAYERS; ++i) textures[i].emplace(*gGL.getTexUnit(i));
+            glDisable(GL_SCISSOR_TEST);
+            gGL.setColorMask(true,true,true,true);
+        }
+        ~State()
+        {
+            gGL.flush(); LLVertexBuffer::unbind();
+            if (shader) shader->bind(); else LLGLSLShader::unbind();
+            for (U32 i=0; i<LL_NUM_TEXTURE_LAYERS; ++i) textures[i]->restore(*gGL.getTexUnit(i));
+            gGL.getTexUnit(unit)->activate(); glActiveTexture(raw_unit);
+            gGL.setColorMask(mask[0],mask[1],mask[2],mask[3]);
+            for (GLint i=0; i<buffer_count; ++i)
+            {
+                const auto& color = indexed_masks[i];
+                glColorMaski(i,color[0],color[1],color[2],color[3]);
+                if (indexed_blend[i]) glEnablei(GL_BLEND,i); else glDisablei(GL_BLEND,i);
+            }
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER,draw_fbo);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER,read_fbo);
+            if (draw_fbo) glDrawBuffers(buffer_count,buffers.data()); else glDrawBuffer(buffers[0]);
+            glReadBuffer(read_buffer);
+            glViewport(viewport[0],viewport[1],viewport[2],viewport[3]);
+            if (scissor) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+        }
+    } saved;
+    LLGLDisable blend(GL_BLEND), cull(GL_CULL_FACE), stencil(GL_STENCIL_TEST);
+    LLGLDepthTest depth(GL_FALSE,GL_FALSE);
+    const U32 width = mRT->deferredScreen.getWidth(), height = mRT->deferredScreen.getHeight();
+    const U32 w = half() ? (width+1)/2 : width, h = half() ? (height+1)/2 : height;
+    const U32 planes = (selected.size+3)/4;
+    const auto ensure = [](LLRenderTarget& target, U32 x, U32 y)
+    {
+        return (target.isComplete() && target.getWidth()==x && target.getHeight()==y) ||
+            target.allocate(x,y,GL_RGBA8,false);
+    };
+    for (U32 plane=0; plane<2; ++plane)
+    {
+        if (plane >= planes)
+        {
+            mRT->areaGather[plane].release(); mRT->areaScratch[plane].release(); mRT->areaVisibility[plane].release();
+            continue;
+        }
+        if (!ensure(mRT->areaGather[plane],w,h) || !ensure(mRT->areaScratch[plane],w,h) ||
+            !ensure(mRT->areaVisibility[plane],width,height))
+        {
+            LL_WARNS("RelightQ") << "[RelightQ] allocation FAIL" << LL_ENDL;
+            for (auto& target : mRT->areaGather) target.release();
+            for (auto& target : mRT->areaScratch) target.release();
+            for (auto& target : mRT->areaVisibility) target.release();
+            return;
+        }
+    }
+    // Asynchronous timestamps: never wait, never nest a TIME_ELAPSED query.
+    // Reuse the pair only when its previous result is available.
+    if (!mAreaShadowQueries[0]) glGenQueries(2,mAreaShadowQueries);
+    if (mAreaShadowQueryPending)
+    {
+        GLint available = GL_FALSE;
+        glGetQueryObjectiv(mAreaShadowQueries[1],GL_QUERY_RESULT_AVAILABLE,&available);
+        if (available)
+        {
+            GLuint64 begin = 0, end = 0;
+            glGetQueryObjectui64v(mAreaShadowQueries[0],GL_QUERY_RESULT,&begin);
+            glGetQueryObjectui64v(mAreaShadowQueries[1],GL_QUERY_RESULT,&end);
+            mAreaShadowGPUms = static_cast<F64>(end-begin)*1.e-6;
+            mAreaShadowQueryPending = false;
+        }
+    }
+    const bool measure = !mAreaShadowQueryPending;
+    if (measure) glQueryCounter(mAreaShadowQueries[0],GL_TIMESTAMP);
+    const F32 resolution_scale = static_cast<F32>(height)/1080.f;
+    const F32 filter_setting = denoise();
+    const F32 radius = std::isfinite(filter_setting) ? llclamp(filter_setting*resolution_scale*(half() ? .5f:1.f),0.f,8.f):2.f;
+    const glm::mat4 view = get_current_modelview();
+    for (U32 plane=0; plane<planes; ++plane)
+    {
+        LLVector4 lights[4] = {}; GLuint seeds[4] = {};
+        const U32 count = std::min(4u,selected.size-plane*4);
+        for (U32 i=0; i<count; ++i)
+        {
+            const LLUUID& id = selected.lights[plane*4+i].id;
+            mAreaShadowIDs[plane*4+i] = id;
+            // No object-list lookup or borrowed rig source ID: resolve selected drawable.
+            for (LLDrawable* drawable : mLights)
+            {
+                LLVOVolume* volume = drawable ? drawable->getVOVolume():nullptr;
+                if (!volume || volume->getID()!=id) continue;
+                const glm::vec3 centre = mul_mat4_vec3(view,glm::make_vec3(drawable->getPositionAgent().mV));
+                lights[i].set(centre.x,centre.y,centre.z,area_source_radius(volume));
+                U32 hash = 2166136261u;
+                for (U8 byte : id.mData) hash = (hash^byte)*16777619u;
+                seeds[i] = ALAreaShadow::hash(hash);
+                break;
+            }
+        }
+        mRT->areaGather[plane].bindTarget();
+        bindDeferredShader(gAreaShadowProgram);
+        gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_lights"),4,lights[0].mV);
+        gAreaShadowProgram.uniform4uiv(LLStaticHashedString("area_seeds"),1,seeds);
+        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_count"),count);
+        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_samples"),llclamp(samples(),1,32));
+        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_steps"),llclamp(steps(),1,64));
+        const F32 distance = max_dist(), thick = thickness();
+        gAreaShadowProgram.uniform3f(LLStaticHashedString("area_params"),
+            std::isfinite(distance) ? llclamp(distance,.1f,64.f):8.f,
+            std::isfinite(thick) ? llclamp(thick,.001f,4.f):.35f,resolution_scale*(half() ? .5f:1.f));
+        mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+        unbindDeferredShader(gAreaShadowProgram); mRT->areaGather[plane].flush();
+        const auto filter = [&](LLRenderTarget& input, LLRenderTarget& output, F32 x, F32 y)
+        {
+            output.bindTarget(); bindDeferredShader(gAreaShadowFilterProgram);
+            const S32 unit = gAreaShadowFilterProgram.enableTexture(LLShaderMgr::AREA_SHADOW_SOURCE);
+            input.bindTexture(0,unit,LLTexUnit::TFO_POINT);
+            gAreaShadowFilterProgram.uniform2f(LLStaticHashedString("area_axis"),x,y);
+            gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_radius"),radius);
+            mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+            gAreaShadowFilterProgram.disableTexture(LLShaderMgr::AREA_SHADOW_SOURCE);
+            unbindDeferredShader(gAreaShadowFilterProgram); output.flush();
+        };
+        if (radius > 0.f)
+        {
+            filter(mRT->areaGather[plane],mRT->areaScratch[plane],1.f,0.f);
+            filter(mRT->areaScratch[plane],mRT->areaGather[plane],0.f,1.f);
+        }
+        filter(mRT->areaGather[plane],mRT->areaVisibility[plane],0.f,0.f);
+    }
+    if (measure)
+    {
+        glQueryCounter(mAreaShadowQueries[1],GL_TIMESTAMP);
+        mAreaShadowQueryPending = true;
+    }
+    mAreaShadowCount = selected.size;
+    mAreaShadowValid = true;
+    static LLFrameTimer summary;
+    if (summary.getElapsedTimeF32() >= 1.f)
+    {
+        LL_INFOS("RelightQ") << "[RelightQ] selection PASS selected=" << selected.size
+            << " candidates=" << selected.candidates << " cap=" << (selected.candidates>selected.size)
+            << " S=" << llclamp(samples(),1,32) << " steps=" << llclamp(steps(),1,64)
+            << " resolution=" << w << "x" << h
+            << " GPUms=" << mAreaShadowGPUms
+            << " timing=" << (mAreaShadowGPUms >= 0.0 ? "PASS" : "INCONCLUSIVE (query pending)") << LL_ENDL;
+        summary.reset();
+    }
+}
+
 void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 {
     // Coverage is produced later, immediately before this view's fog. Never
     // advertise a previous frame/view while deferred lighting is running.
     mSilCoverValid = false;
+    mAreaShadowValid = false; // [RelightQ] No previous view can advertise channels.
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
     LL_PROFILE_GPU_ZONE("renderDeferredLighting");
 
@@ -26567,6 +26924,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
     } reset_actor_mask{*this};
     if (!sCull)
     {
+        renderAreaShadows(0,1.f,false,false,false,false); // [RelightQ] Off-transition cleanup.
         // [ActorMask] An empty main view still owns the off-transition cleanup.
         if (mActorMaskAllocated && source == ActorMaskViewSource::MAIN &&
             !ALCineLightRigManager::anyActorOnly()) releaseActorMasks();
@@ -27147,6 +27505,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                     .getCinematicLiveProbePinnedLightCount())
                 : 0);
 
+        renderAreaShadows(debugLightingTerm() == 0 ? effective_local_light_count : 0,
+            light_scale, actor_only, actor_mask_ready, actor_as_world, actor_excluded);
+
         // The diagnostic replaces opaque lighting; do not add punctual lights
         // over its display-space result after the soften pass.
         if (debugLightingTerm() == 0 && effective_local_light_count > 0 &&
@@ -27162,7 +27523,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             // push and the multi-light batch pack/upload below can both skip
             // their rim-specific work when Rig Rim is off, instead of only
             // short-circuiting inside ALCineRigRim::paramsForVolume().
-            const bool shape_active = light_shape_master_enabled();
+            const bool shape_active = light_shape_master_enabled() || areaShadowsActive();
             const bool rig_rim_active = ALCineRigRim::isEnabled();
 
             gGL.setSceneBlendType(LLRender::BT_ADD);
@@ -27315,8 +27676,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         gDeferredLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
                         // [RigRim]
                         gDeferredLightProgram.uniform4fv(LLShaderMgr::RIG_RIM_LIGHT, 1, ALCineRigRim::paramsForVolume(volume).mV);
-                        if (light_shape_master_enabled())
-                            gDeferredLightProgram.uniform4fv(LLShaderMgr::LIGHT_SHAPE, 1, light_shape_for_volume(volume).mV);
+                        if (light_shape_master_enabled() || areaShadowsActive())
+                            gDeferredLightProgram.uniform4fv(LLShaderMgr::LIGHT_SHAPE, 1, deferredLightShape(volume).mV);
 
                         gGL.syncMatrices();
 
@@ -27345,7 +27706,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         // [ActorMask] This accepted F3 point will use the stock batch below.
                         if (actor_as_world && actor_bits)
                             mActorMaskF3PointPaths.push_back({ volume->getID(), false });
-                        if (shape_active) light_shapes.push_back(light_shape_for_volume(volume));
+                        if (shape_active) light_shapes.push_back(deferredLightShape(volume));
                         fullscreen_lights.push_back(LLVector4(tc.x, tc.y, tc.z, s));
                         light_colors.push_back(LLVector4(col.mV[0], col.mV[1], col.mV[2], volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)));
                         // [RigRim] Only staged when active; every consumer below checks the
@@ -27571,7 +27932,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                                 LLVector4(color.mV[0], color.mV[1], color.mV[2],
                                     volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)),
                                 rig_rim_active ? ALCineRigRim::paramsForVolume(volume) : LLVector4(0.f, 0.f, 0.f, 0.f),
-                                shape_active ? light_shape_for_volume(volume) : LLVector4(0.f, 0.f, 1.f, -1.f) });
+                                shape_active ? deferredLightShape(volume) : LLVector4(0.f, 0.f, 1.f, -1.f) });
                         }
                     }
 
@@ -28698,8 +29059,8 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     // gDeferredMultiSpotLightProgram (both surface spot loops call this).
     // Not uploaded by setupSpotLightVolumetric: the volumetric march has no rim.
     shader.uniform4fv(LLShaderMgr::RIG_RIM_LIGHT, 1, ALCineRigRim::paramsForVolume(volume).mV);
-    if (light_shape_master_enabled())
-        shader.uniform4fv(LLShaderMgr::LIGHT_SHAPE, 1, light_shape_for_volume(volume).mV);
+    if (light_shape_master_enabled() || areaShadowsActive())
+        shader.uniform4fv(LLShaderMgr::LIGHT_SHAPE, 1, deferredLightShape(volume).mV);
     return lamp_power_scale;
 }
 
@@ -28845,6 +29206,11 @@ void LLPipeline::unbindDeferredShader(LLGLSLShader &shader)
     LLRenderTarget* deferred_light_target = &mRT->deferredLight;
 
     stop_glerror();
+    if (areaShadowsActive())
+    {
+        shader.disableTexture(LLShaderMgr::AREA_SHADOW_MAP0);
+        shader.disableTexture(LLShaderMgr::AREA_SHADOW_MAP1);
+    }
     shader.disableTexture(LLShaderMgr::NORMAL_MAP, deferred_target->getUsage());
     shader.disableTexture(LLShaderMgr::DEFERRED_DIFFUSE, deferred_target->getUsage());
     shader.disableTexture(LLShaderMgr::DEFERRED_SPECULAR, deferred_target->getUsage());

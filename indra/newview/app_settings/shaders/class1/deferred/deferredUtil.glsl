@@ -1427,7 +1427,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
 {
     vec3 color = vec3(0,0,0);
 
-    if (relight_enabled != 0 && shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && shape.x > 0.0)
     {
         vec3 delta = lp-p;
         vec3 centre = relightUnit(delta,n);
@@ -1533,7 +1533,7 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
     rim_raw = vec3(0.0);
     rim_on = false;
 
-    if (relight_enabled != 0 && shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && shape.x > 0.0)
     {
         vec3 delta = lp-p;
         vec3 centre = relightUnit(delta,n);

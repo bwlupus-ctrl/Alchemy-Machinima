@@ -256,7 +256,7 @@ void ALCineRigRim::bindAnimated(LLGLSLShader& shader)
     gGL.setLightShapeActive(shape_enabled());
     // Always refresh the master, including on fast binds and while disabled.
     // Shape arrays and limits remain untouched while off.
-    shader.uniform1i(LLShaderMgr::RELIGHT_ENABLED, shape_enabled() ? 1 : 0);
+    shader.uniform1i(LLShaderMgr::RELIGHT_ENABLED, (shape_enabled() ? 1 : 0) | (gPipeline.areaShadowsActive() ? 2 : 0));
     static const LLStaticHashedString limits("relight_limits");
     if (shape_enabled() && shader.getUniformLocation(limits) >= 0)
     {

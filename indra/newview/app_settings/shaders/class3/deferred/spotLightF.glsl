@@ -26,6 +26,19 @@
 /*[EXTRA_CODE_HERE]*/
 
 uniform int relight_enabled;
+// [RelightQ] The existing master upload carries shape bit 0 and visibility bit 1.
+// Explicit LOD is required in the divergent per-light loops.
+uniform sampler2D area_shadow_map0;
+uniform sampler2D area_shadow_map1;
+float areaShadowVisibility(vec2 uv, float channel)
+{
+    if ((relight_enabled & 2) == 0 || channel < 0.0) return 1.0;
+    int slot = int(channel + 0.5);
+    vec4 mask = slot < 4 ? textureLod(area_shadow_map0, uv, 0.0) :
+                          textureLod(area_shadow_map1, uv, 0.0);
+    return mask[slot & 3];
+}
+
 
 out vec4 frag_color;
 
@@ -181,6 +194,9 @@ void main()
         shadow = clamp(shadow, 0.0, 1.0);
     }
 
+    if ((relight_enabled & 2) != 0 && light_shape.w >= 0.0)
+        shadow = min(shadow, areaShadowVisibility(tc, light_shape.w));
+
     GBufferInfo gb = getGBuffer(tc);
     bool alr_sil = false;
     float alr_k = 1.0;
@@ -193,7 +209,7 @@ void main()
     vec3 n = gb.normal;
 
     float dist_atten = calcLegacyDistanceAttenuation(dist, falloff);
-    if (relight_enabled == 0 || light_shape.x == 0.0)
+    if ((relight_enabled & 1) == 0 || light_shape.x == 0.0)
     if (dist_atten <= 0.0)
     {
         discard;
@@ -215,7 +231,7 @@ void main()
     lv = proj_origin-pos.xyz;
     vec3  h, l, v = -normalize(pos);
     float nh, nl, nv, vh, lightDist;
-    if (relight_enabled == 0 || light_shape.x == 0.0)
+    if ((relight_enabled & 1) == 0 || light_shape.x == 0.0)
     calcHalfVectors(lv, n, v, h, l, nh, nl, nv, vh, lightDist);
 
     vec3 diffuse = gb.albedo.rgb;
@@ -225,7 +241,7 @@ void main()
 
     vec3 amb_rgb = vec3(0);
 
-    if (relight_enabled != 0 && light_shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && light_shape.x > 0.0)
     {
         // Cookie/cone and the existing projector shadow still gate this light.
         if (proj_tc.x > 0.0 && proj_tc.x < 1.0 && proj_tc.y > 0.0 && proj_tc.y < 1.0)

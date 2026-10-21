@@ -287,6 +287,7 @@ extern LLGLSLShader         gDeferredBumpProgram;
 extern LLGLSLShader         gDeferredTerrainProgram;
 extern LLGLSLShader         gDeferredTreeProgram;
 extern LLGLSLShader         gDeferredTreeShadowProgram;
+extern LLGLSLShader gAreaShadowProgram, gAreaShadowFilterProgram;
 extern LLGLSLShader         gDeferredLightProgram;
 extern LLGLSLShader         gDeferredMultiLightProgram[LL_DEFERRED_MULTI_LIGHT_COUNT];
 extern LLGLSLShader         gDeferredSpotLightProgram;

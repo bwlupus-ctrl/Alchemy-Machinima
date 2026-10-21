@@ -18,6 +18,20 @@ print('[RelightQ] five live settings PASS no reload listeners or shader-manager 
 compiler=next(Path('C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC').glob('*/bin/Hostx64/x64/cl.exe'))
 
 def disabled_source(text):
+    # Bit 0 preserves Phase 1. Bit 1 is area visibility on the existing upload.
+    text=text.replace('(relight_enabled & 1)', 'relight_enabled')
+    text=re.sub(r'float areaShadowVisibility\([^{}]+\)\s*\{.*?\n\}', '', text, flags=re.S)
+    text=re.sub(r'uniform sampler2D area_shadow_map[01];', '', text)
+    text=re.sub(r'if \(\(relight_enabled & 2\) != 0 && [^\n]+\)\s*[^;]+;', '', text)
+    for index in ('light_idx','i'):
+        alias='vec4 area_col = light_col['+index+'];'
+        if alias not in text: continue
+        start=text.index(alias)
+        end=text.find('for (int ',start)
+        if end < 0: end=len(text)
+        body=text[start:end].replace(alias,'').replace('area_col','light_col['+index+']')
+        text=text[:start]+body+text[end:]
+
     # Discard only runtime-enabled blocks, and unreachable shaped helpers.
     # Preserve the complete original point branches, including nested else,
     # Actor FX, rim, clamps and final output expressions.
@@ -60,3 +74,17 @@ with tempfile.TemporaryDirectory(dir=root/'.tmp',prefix='relight_off_') as tempo
                 streams.append(re.findall(r'\w+|[^\s]',result.stdout))
             assert streams[0]==streams[1],file+' runtime expression drift: '+str(next((i for i,(a,b) in enumerate(zip(*streams)) if a!=b), 'length'))
         print('[RelightQ] HEAD disabled expression identity PASS',file,flush=True)
+
+area_settings=('RenderAreaShadows','RenderAreaShadowLights','RenderAreaShadowSamples',
+    'RenderAreaShadowSteps','RenderAreaShadowMaxDist','RenderAreaShadowThickness',
+    'RenderAreaShadowHalfRes','RenderAreaShadowDenoise','RenderAreaShadowQuality')
+for setting in area_settings:
+    assert setting not in manager, setting+' shader-manager dependency'
+    listener=re.search(r'setting_setup_signal_listener\([^;]*"'+setting+r'"[^;]*;',control,re.S)
+    if listener:
+        assert setting=='RenderAreaShadowQuality' and 'handleSetShaderChanged' not in listener.group(),setting
+for name in ('areaShadowF.glsl','areaShadowFilterF.glsl'):
+    text=(root/'indra/newview/app_settings/shaders/class3/deferred'/name).read_text()
+    for forbidden in ('noiseSine','modelview_delta','gFrameCount','uniform float time','random('):
+        assert forbidden not in text, (name, forbidden)
+print('[RelightQ] area settings/current-frame source PASS no reload dependencies, temporal terms or implicit visibility samples')

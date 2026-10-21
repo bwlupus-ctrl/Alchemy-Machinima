@@ -943,6 +943,9 @@ public:
         LENS_PYRAMID4,
         LIGHT_SHAPE,
         LIGHT_SHAPES,
+        AREA_SHADOW_MAP0,
+        AREA_SHADOW_MAP1,
+        AREA_SHADOW_SOURCE,
         RELIGHT_ENABLED,                   // runtime master; stale shape data is ignored while off
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;

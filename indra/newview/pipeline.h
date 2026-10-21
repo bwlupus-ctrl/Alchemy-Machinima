@@ -52,6 +52,7 @@
 #include "aldiopterpresetbank.h"    // [Ultimate Diopter] ALDiopterBankKind, §6.3
 #include "aldiopterrelevance.h"     // [Ultimate Diopter] ALDiopterFocusProvenance, wave 2
 
+#include <array>
 #include <stack>
 #include <set>
 #include <map>                      // [GhostDeferred] per-frame instance->coverage map
@@ -1354,6 +1355,8 @@ public:
         // mBloomMip[0] is full-res extract; subsequent levels are halved.
         LLRenderTarget              bloomMip[BLOOM_MAX_MIPS];
         U32                         bloomMipCount = 0;
+        // [RelightQ] Lazily allocated only for an allowed view, never at shader reload.
+        LLRenderTarget areaGather[2], areaScratch[2], areaVisibility[2];
     };
 
     // main full resoltuion render target
@@ -1555,6 +1558,18 @@ public:
 
     // copy of the color/depth buffer just before gamma correction
     // for use by SSR
+    // [RelightQ] Main-view-only channels; auxiliary views never inherit them.
+    bool areaShadowsAllowedThisView() const;
+    bool areaShadowsActive() const;
+    LLVector4 deferredLightShape(const LLVOVolume* volume) const;
+    void renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
+        bool actor_ready, bool actor_as_world, bool actor_excluded);
+    bool mAreaShadowValid = false;
+    U32 mAreaShadowCount = 0;
+    GLuint mAreaShadowQueries[2] = {};
+    bool mAreaShadowQueryPending = false;
+    F64 mAreaShadowGPUms = -1.0;
+    std::array<LLUUID, 8> mAreaShadowIDs;
     LLRenderTarget          mSceneMap;
 
     // [BDMerge G3.3 Phase 1 item 3] half-resolution scratch target the projector

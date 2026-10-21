@@ -26,6 +26,19 @@
 /*[EXTRA_CODE_HERE]*/
 
 uniform int relight_enabled;
+// [RelightQ] The existing master upload carries shape bit 0 and visibility bit 1.
+// Explicit LOD is required in the divergent per-light loops.
+uniform sampler2D area_shadow_map0;
+uniform sampler2D area_shadow_map1;
+float areaShadowVisibility(vec2 uv, float channel)
+{
+    if ((relight_enabled & 2) == 0 || channel < 0.0) return 1.0;
+    int slot = int(channel + 0.5);
+    vec4 mask = slot < 4 ? textureLod(area_shadow_map0, uv, 0.0) :
+                          textureLod(area_shadow_map1, uv, 0.0);
+    return mask[slot & 3];
+}
+
 
 out vec4 frag_color;
 
@@ -152,25 +165,28 @@ void main()
 
         for (int light_idx = 0; light_idx < LIGHT_COUNT; ++light_idx)
         {
-            if (relight_enabled != 0 && light_shapes[light_idx].x > 0.0)
+            vec4 area_col = light_col[light_idx];
+            if ((relight_enabled & 2) != 0 && light_shapes[light_idx].w >= 0.0)
+                area_col.rgb *= areaShadowVisibility(tc, light_shapes[light_idx].w);
+            if ((relight_enabled & 1) != 0 && light_shapes[light_idx].x > 0.0)
             {
                 vec4 shape = light_shapes[light_idx];
                 vec3 delta = light[light_idx].xyz-pos;
                 float range = light[light_idx].w;
-                float fa = light_col[light_idx].a;
+                float fa = area_col.a;
                 if (length(delta) >= range) continue;
                 vec3 view = relightUnit(-pos,n);
-                final_color += light_col[light_idx].rgb * 3.25 * relightPbr(diffuseColor,specularColor,
+                final_color += area_col.rgb * 3.25 * relightPbr(diffuseColor,specularColor,
                     perceptualRoughness,metallic,n,view,delta,range,fa,shape,1.0-gb.envIntensity);
                 if (rigRimMode() != 0)
                     rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
-                        calcLegacyDistanceAttenuation(length(delta)/range,fa)*light_col[light_idx].rgb,
+                        calcLegacyDistanceAttenuation(length(delta)/range,fa)*area_col.rgb,
                         diffuseColor,perceptualRoughness,rig_rim_lights[light_idx],rim_px);
                 continue;
             }
 
-            vec3  lightColor = light_col[ light_idx ].rgb; // Already in linear, see pipeline.cpp: volume->getLightLinearColor();
-            float falloff    = light_col[ light_idx ].a;
+            vec3  lightColor = area_col.rgb; // Already in linear, see pipeline.cpp: volume->getLightLinearColor();
+            float falloff    = area_col.a;
             float lightSize  = light[ light_idx ].w;
             vec3  lv         = light[ light_idx ].xyz - pos;
 
@@ -206,20 +222,23 @@ void main()
         // As of OSX 10.6.7 ATI Apple's crash when using a variable size loop
         for (int i = 0; i < LIGHT_COUNT; ++i)
         {
-            if (relight_enabled != 0 && light_shapes[i].x > 0.0)
+            vec4 area_col = light_col[i];
+            if ((relight_enabled & 2) != 0 && light_shapes[i].w >= 0.0)
+                area_col.rgb *= areaShadowVisibility(tc, light_shapes[i].w);
+            if ((relight_enabled & 1) != 0 && light_shapes[i].x > 0.0)
             {
                 vec4 shape = light_shapes[i];
                 vec3 delta = light[i].xyz-pos;
                 float range = light[i].w;
-                float fa = light_col[i].a;
+                float fa = area_col.a;
                 if (length(delta) >= range) continue;
                 vec3 view = relightUnit(-pos,n);
                 vec3 highlight;
-                final_color += light_col[i].rgb * relightLegacy(lightFunc,diffuse,spec,
+                final_color += area_col.rgb * relightLegacy(lightFunc,diffuse,spec,
                     n,view,delta,range,fa,shape,highlight);
                 if (rigRimMode() != 0)
                     rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
-                        calcLegacyDistanceAttenuation(length(delta)/range,fa)*light_col[i].rgb,
+                        calcLegacyDistanceAttenuation(length(delta)/range,fa)*area_col.rgb,
                         diffuse,1.0-spec.a,rig_rim_lights[i],rim_px);
                 continue;
             }
@@ -235,12 +254,12 @@ void main()
                     float lightDist;
                     calcHalfVectors(lv, n, v, h, l, nh, nl, nv, vh, lightDist);
 
-                    float fa         = light_col[i].a;
+                    float fa         = area_col.a;
                     float dist_atten = calcLegacyDistanceAttenuation(dist, fa);
 
                     float lit = nl * dist_atten;
 
-                    vec3 col = light_col[i].rgb * lit * diffuse;
+                    vec3 col = area_col.rgb * lit * diffuse;
 
                     if (spec.a > 0.0)
                     {
@@ -253,7 +272,7 @@ void main()
                         if (nh > 0.0)
                         {
                             float scol = fres * texture(lightFunc, vec2(nh, spec.a)).r * gt / (nh * nl);
-                            col += lit * scol * light_col[i].rgb * spec.rgb;
+                            col += lit * scol * area_col.rgb * spec.rgb;
                         }
                     }
 
@@ -267,8 +286,8 @@ void main()
                 if (rigRimMode() != 0)
                 {
                     vec3  rim_l     = lv / max(length(lv), 1.0e-6);
-                    float rim_atten = calcLegacyDistanceAttenuation(dist, light_col[i].a);
-                    rim_color += rigRimTermEx(n, v, rim_l, rim_atten * light_col[i].rgb, diffuse, 1.0 - spec.a, rig_rim_lights[i], rim_px);
+                    float rim_atten = calcLegacyDistanceAttenuation(dist, area_col.a);
+                    rim_color += rigRimTermEx(n, v, rim_l, rim_atten * area_col.rgb, diffuse, 1.0 - spec.a, rig_rim_lights[i], rim_px);
                 }
             }
         }

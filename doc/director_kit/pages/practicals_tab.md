@@ -35,7 +35,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `adv_practicals` / `sl_gobo_var1` (Detail) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6409` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:97`) | none |
 | `adv_practicals` / `sl_gobo_var2` (Thickness) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6413` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:98`) | none |
 | `adv_practicals` / `sl_gobo_invert` (Invert) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6420` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:100`) | none |
-| `adv_practicals` / `open_lightbox_sellight` (Lightbox ›) | none | kit-native action `floater:lightbox/sellight_settings`; no duplicate widget is required | none |
+| `adv_practicals` / `open_lightbox_sellight` (Lightbox â€º) | none | kit-native action `floater:lightbox/sellight_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 

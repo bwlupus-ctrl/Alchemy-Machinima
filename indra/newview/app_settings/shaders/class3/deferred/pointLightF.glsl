@@ -26,6 +26,19 @@
 /*[EXTRA_CODE_HERE]*/
 
 uniform int relight_enabled;
+// [RelightQ] The existing master upload carries shape bit 0 and visibility bit 1.
+// Explicit LOD is required in the divergent per-light loops.
+uniform sampler2D area_shadow_map0;
+uniform sampler2D area_shadow_map1;
+float areaShadowVisibility(vec2 uv, float channel)
+{
+    if ((relight_enabled & 2) == 0 || channel < 0.0) return 1.0;
+    int slot = int(channel + 0.5);
+    vec4 mask = slot < 4 ? textureLod(area_shadow_map0, uv, 0.0) :
+                          textureLod(area_shadow_map1, uv, 0.0);
+    return mask[slot & 3];
+}
+
 
 out vec4 frag_color;
 
@@ -131,7 +144,7 @@ void main()
     vec3 diffuse = gb.albedo.rgb;
     vec4 spec    = gb.specular;
 
-    if (relight_enabled != 0 && light_shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && light_shape.x > 0.0)
     {
         vec3 lv = trans_center.xyz-pos;
         if (length(lv) >= size) discard;
@@ -282,6 +295,8 @@ void main()
     {
         final_color *= alr_k;
     }
+    if ((relight_enabled & 2) != 0 && light_shape.w >= 0.0)
+        final_color *= areaShadowVisibility(tc, light_shape.w);
     float final_scale = 1.0;
     if (classic_mode > 0)
         final_scale = 0.9;
