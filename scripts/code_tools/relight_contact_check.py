@@ -206,15 +206,30 @@ def check_contact(g):
     width,height = 1920,1080
     projection = np.eye(4,dtype=np.float32); projection[0,0]=.5; projection[2,2]=-.1
     inverse = np.linalg.inv(projection)
-    # Independently compiled committed baseline, not a test-edited current shader.
-    old_ref=g['shader_ref']
-    try:
-        g['shader_ref']='a63161d0028'; g['read_shader'].cache_clear()
-        baseline=g['link_production']('class3/deferred/areaShadowF.glsl','','HEAD contact baseline')
-    finally:
-        g['shader_ref']=old_ref; g['read_shader'].cache_clear()
     gather=g['area_gather']; filt=g['area_filter']
-    gather_source=Path('indra/newview/app_settings/shaders/class3/deferred/areaShadowF.glsl').read_text()
+    gather_path=Path('indra/newview/app_settings/shaders/class3/deferred/areaShadowF.glsl')
+    gather_source=gather_path.read_text()
+    # Independent PRE-contact gather, using today's trace utility and ONLY
+    # today's per-ray jitter. The shared sampler text makes this a contact
+    # plumbing check only; the independent dense/far/curved oracles live in
+    # relight_thin_check.py. This baseline has no contact classification/fade.
+    baseline_source=subprocess.check_output(['git','show','a63161d0028:'+gather_path.as_posix()],text=True)
+    old_jitter='        float jitter = float((seed >> 16) & 0xffffu)/65536.0;\n'
+    old_phase='area_steps,0.25+0.5*jitter'
+    assert baseline_source.count(old_jitter)==baseline_source.count(old_phase)==1, \
+        'pre-contact sampler adaptation must replace exactly one declaration and phase'
+    # Keep HEAD's jitter declaration for the OFF offset; adapt only the ON block.
+    jitter=gather_source[gather_source.index('            float offset ='):
+                         gather_source.index('            float end_gap =')]
+    baseline_source=baseline_source.replace('uniform int area_steps;','uniform int area_steps;\nuniform bool area_thin_objects;')
+    baseline_source=baseline_source.replace('            float end_gap =',jitter+'            float end_gap =')
+    baseline_source=baseline_source.replace(old_phase,'area_steps,offset')
+    original=g['read_shader']
+    try:
+        g['read_shader']=lambda path: baseline_source if Path(path)==gather_path else original(path)
+        baseline=g['link_production']('class3/deferred/areaShadowF.glsl','','pre-contact gather, current sampler')
+    finally:
+        g['read_shader']=original
     length_source=gather_source.replace('vec2 areaTrace(vec3 origin', 'float areaTrace(vec3 origin')
     # Use scalar HEAD trace signature and round 1's fade-dependent max length.
     begin=length_source.index('float areaTrace(')
@@ -225,7 +240,7 @@ def check_contact(g):
     begin=length_source.index('            vec2 traced =')
     end=length_source.index('        }',begin)
     length_source=length_source[:begin]+'''            visibility += areaTrace(origin,target,area_lights[light].xyz,end_gap,
-                area_light_bias,min(area_params.x,area_contact_dist[light]),area_params.y,area_steps,0.25+0.5*jitter);
+                area_light_bias,min(area_params.x,area_contact_dist[light]),area_params.y,area_steps,offset);
 '''+length_source[end:]
     begin=length_source.index('        // Filter the blended')
     length_source=length_source[:begin]+'''        frag_color[light] = visibility/float(area_samples);
@@ -293,7 +308,9 @@ void main() {
         matrix(pr,b'projection_matrix',projection); matrix(pr,b'inv_proj',inverse)
         ui(loc(pr,b'depthMap'),1);ui(loc(pr,b'normalMap'),2)
         ui(loc(pr,b'area_count'),1);ui(loc(pr,b'area_first'),0)
-        ui(loc(pr,b'area_samples'),8);ui(loc(pr,b'area_steps'),steps)
+        ui(loc(pr,b'area_samples'),8);ui(loc(pr,b'area_steps'),max(steps,32)+48)
+        ui(loc(pr,b'area_near_steps'),48)
+        ui(loc(pr,b'area_thin_objects'),1)
         uf[3](loc(pr,b'area_params'),8,.35,.5 if half else 1)
         uf[1](loc(pr,b'area_light_bias'),.25)
         w,h=(width//2,height//2) if half else (width,height)
@@ -410,7 +427,7 @@ void main() {
                 expected=np.minimum(native_only,traced[:,:,:1])
                 assert np.max(abs(current.astype(int)-expected.astype(int)))<=1,('fade min oracle',slot,fade)
                 if fade==0:
-                    assert np.array_equal(traced,screen(1,0,pr=baseline,half=half)),('fade zero HEAD bytes',slot,half)
+                    assert np.array_equal(traced,screen(1,0,pr=baseline,half=half)),('fade zero uncapped bytes',slot,half)
                     assert np.array_equal(current,hybrid_read(full,slot=-1)),('acquire/evict endpoint',slot,half)
                 if fade==1:
                     assert np.array_equal(current[:,roi],native_only[:,roi]),('settled single map boundary',slot,half)
@@ -428,32 +445,32 @@ void main() {
         for kind,seed in (('point',7),('unmapped projector',54321)):
             current=screen(1,0,half=half,seed=seed)
             head=screen(1,0,pr=baseline,half=half,seed=seed)
-            assert np.array_equal(current,head),(kind,'HEAD output bytes',half)
+            assert np.array_equal(current,head),(kind,'uncapped output bytes',half)
         # Near blockers outside the unchanged receiver normal bias: 3/5/10 cm.
-        # Use the same 64-step density as the HEAD control: shortened rays no
+        # Use the same 64-step density as the uncapped control: shortened rays no
         # longer concentrate 12 steps inside 15 cm. Medium may miss thin gaps.
         # Native map is independently lit so the screen contribution matters.
         for gap in (.03,.05,.10):
             medium=screen(gap,.15,half=half)
             medium_head=screen(gap,0,pr=baseline,half=half)
-            assert np.all(medium>=medium_head),'Medium contact is a subset of HEAD hits'
-            assert np.array_equal(screen(gap,.15,half=half,fade=0),medium_head),'near-gap fade zero HEAD bytes'
-            print('[RelightQ] Medium %.0fcm gap %s: contact/HEAD minimum %d/%d at unchanged 12 steps' %
+            assert np.all(medium>=medium_head),'Medium contact is a subset of uncapped hits'
+            assert np.array_equal(screen(gap,.15,half=half,fade=0),medium_head),'near-gap fade zero uncapped bytes'
+            print('[RelightQ] Medium %.0fcm gap %s: contact/uncapped minimum %d/%d at 48 near + 32 far steps' %
                   (gap*100,'half' if half else 'full',medium[:,(x>-.09)&(x<-.005),0].min(),
                    medium_head[:,(x>-.09)&(x<-.005),0].min()),flush=True)
             contact=screen(gap,.15,half=half,steps=64)
             near_roi=(x>-.09)&(x<-.005)
             assert np.any(contact[:,near_roi,0]<255),('near contact positive',gap,half)
             head=screen(gap,0,pr=baseline,half=half,steps=64)
-            assert np.any(head[:,near_roi,0]<255),'HEAD near-contact positive control'
-            assert np.all(contact[:,near_roi,0]>=head[:,near_roi,0]),'contact is a subset of HEAD hits'
+            assert np.any(head[:,near_roi,0]<255),'uncapped near-contact positive control'
+            assert np.all(contact[:,near_roi,0]>=head[:,near_roi,0]),'contact is a subset of uncapped hits'
             lit=hybrid_read(contact,fade=1,enabled=False,lit_map=True)
             added=hybrid_read(contact,fade=1,lit_map=True)
             assert np.all(lit[:,near_roi]==255) and np.any(added[:,near_roi,0]<255),'contact adds to independently lit map'
             assert np.array_equal(contact,screen(gap,.15,half=half,steps=64)),'contact repeat bytes'
         assert np.all(screen(.10,.001,half=half)[:,roi,0]==255),'zero setting disables mapped contact'
         print('[RelightQ] SL map + contact endpoints PASS 1920x1080 %s: 10 distinct maps/matrices; slot-0 and binary-cap mutations rejected; fades 0/.25/.5/.75/1 acquire/evict, '
-              'far-blocker/full-distance double-edge negative, 3/5/10cm contacts at HEAD step density, unmapped/point HEAD bytes' %
+              'far-blocker/full-distance double-edge negative, 3/5/10cm contacts at full-trace step density, unmapped/point uncapped bytes' %
               ('Medium half' if half else 'full'),flush=True)
         # Preserve round 1's exact length-interpolation mechanism as a mutation.
         # It must fail the SAME adjacent-fade envelope with a lit native map.

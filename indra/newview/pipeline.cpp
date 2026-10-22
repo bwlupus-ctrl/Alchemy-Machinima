@@ -26654,7 +26654,7 @@ void LLPipeline::logRelightTake(const char* trigger) const
     for (const char* key : {"RenderLightShapeEnable", "RenderLocalLightPhysicalFalloff",
         "RenderLocalLightDefaultRadius", "RenderLocalLightSizeFromPrim", "RenderLocalLightNearFloor",
         "RenderLocalLightPhysicalMaxBoost", "RenderAreaShadows", "RenderAreaShadowsVCam", "RenderAreaShadowLights",
-        "RenderAreaShadowSamples", "RenderAreaShadowSteps", "RenderAreaShadowMaxDist",
+        "RenderAreaShadowSamples", "RenderAreaShadowSteps", "RenderAreaShadowThinObjects", "RenderAreaShadowMaxDist",
         "RenderAreaShadowThickness", "RenderAreaShadowHalfRes", "RenderAreaShadowDenoise",
         "RenderAreaShadowLightBias", "RenderAreaShadowMappedContact", "RenderAreaShadowDebugView", "RenderAreaShadowBudget",
         "RenderAreaShadowQuality", "RenderShadowDetail", "BDMergeMaxSpotShadows", "RenderLocalLightCount"})
@@ -26921,11 +26921,19 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     LLGLDepthTest depth(GL_FALSE,GL_FALSE);
     const U32 width = mRT->deferredScreen.getWidth(), height = mRT->deferredScreen.getHeight();
     static LLCachedControl<S32> budget(gSavedSettings, "RenderAreaShadowBudget", 1500);
-    const auto work = sPrismLensRender ? ALAreaShadow::feedWorkload({samples(),steps(),half()},
+    static LLCachedControl<S32> preset(gSavedSettings, "RenderAreaShadowQuality", 1);
+    static LLCachedControl<bool> thin(gSavedSettings, "RenderAreaShadowThinObjects", false);
+    // The authored uniform march is also the fallback when a segmented plan cannot fit.
+    const ALAreaShadow::Quality uniform{samples(),steps(),half()};
+    const auto requested = thin() ? ALAreaShadow::segmented(uniform,preset()) : uniform;
+    const auto work = sPrismLensRender ? ALAreaShadow::feedWorkload(requested,uniform,
         mMainRT.deferredScreen.getWidth(),mMainRT.deferredScreen.getHeight(),width,height,
         selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),LLPrismLens::MAX_CAPTURES) :
-        ALAreaShadow::workload({samples(),steps(),half()},width,height,
+        ALAreaShadow::workloadOrUniform(requested,uniform,width,height,
             selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)));
+    mRelightAreaTake.authoredSteps = uniform.steps; // Sampled by this pass itself.
+    mRelightAreaTake.feed = sPrismLensRender;
+    mRelightAreaTake.segmentedRequested = requested.nearSteps > 0;
     mRelightAreaTake.work = work;
     mRelightAreaTake.planned = true;
     mRelightAreaTake.status = "budget_rejected";
@@ -26940,11 +26948,12 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     static std::array<S32,11> previous = {};
     if (!sPrismLensRender && plan != previous)
     {
-        const bool clamped = work.q.samples != samples() || work.q.steps != steps() ||
+        const auto& wanted = work.q.nearSteps ? requested : uniform; // A fallback compares with the uniform plan.
+        const bool clamped = work.q.samples != samples() || work.q.steps != wanted.steps ||
             work.q.half != half() || !work.channels;
         if (clamped || previous[0])
             LL_INFOS("RelightQ") << "[RelightQ] area-shadow budget clamp " << (clamped ? "active" : "released")
-                << " requested=" << samples() << "x" << steps() << " half=" << half()
+                << " requested=" << samples() << "x" << wanted.steps << " half=" << half()
                 << " effective=" << work.q.samples << "x" << work.q.steps << " half=" << work.q.half
                 << " pixels=" << work.pixels << " K=" << selected.size << " iterations=" << work.iterations
                 << " requestedK=" << llclamp(cap(),1,8)
@@ -27052,6 +27061,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
 
         gAreaShadowProgram.uniform1i(LLStaticHashedString("area_samples"),work.q.samples);
         gAreaShadowProgram.uniform1i(LLStaticHashedString("area_steps"),work.q.steps);
+        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_thin_objects"),work.q.nearSteps > 0);
+        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_near_steps"),work.q.nearSteps);
         const F32 distance = max_dist(), thick = thickness();
         gAreaShadowProgram.uniform1f(LLStaticHashedString("area_light_bias"),ALAreaShadow::lightBias(light_bias()));
         gAreaShadowProgram.uniform2f(LLStaticHashedString("area_trace_res"),

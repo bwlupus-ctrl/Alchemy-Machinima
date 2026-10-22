@@ -163,27 +163,36 @@ int main() {
     // No new capture state, release or channel advertisement with the master OFF.
     gSavedSettings.values["RenderAreaShadows"]=false;p.begin();assert(!p.mPrismAreaStateSaved);
     assert(!p.areaShadowsActive());p.end();
-    // Compare unchanged main planning against the independent committed header.
+    // Legacy uniform planning still matches the committed header exactly.
+    // Segmented plans below reserve main work before admitting any feeds.
     for (int preset=0;preset<4;++preset) for (int budget:{1,100,1500})
+    for (bool half:{false,true})
     for (unsigned width:{1280u,1920u,3840u}) for (unsigned cap:{1u,4u,8u})
     for (unsigned selected=1;selected<=cap;++selected) {
-        auto q=ALAreaShadow::quality(preset);
-        auto main=ALAreaShadow::workload(q,width,width*9/16,selected,budget,cap);
-        auto old=ALAreaShadowBaseline::workload({q.samples,q.steps,q.half},width,width*9/16,selected,budget,cap);
-        assert(main.q.samples==old.q.samples && main.q.steps==old.q.steps && main.q.half==old.q.half);
-        assert(main.channels==old.channels && main.pixels==old.pixels && main.iterations==old.iterations);
+        auto q=ALAreaShadow::quality(preset,true);
+        q.half=half;
+        auto legacyQ=ALAreaShadow::quality(preset);
+        auto headQ=ALAreaShadowBaseline::quality(preset);
+        assert(legacyQ.samples==headQ.samples && legacyQ.steps==headQ.steps && legacyQ.half==headQ.half && !legacyQ.nearSteps);
+        legacyQ.half=headQ.half=half;
+        // The real main plan: segmented, or the authored uniform plan if it cannot fit.
+        auto main=ALAreaShadow::workloadOrUniform(q,legacyQ,width,width*9/16,selected,budget,cap);
+        auto legacy=ALAreaShadow::workload(legacyQ,width,width*9/16,selected,budget,cap);
+        auto old=ALAreaShadowBaseline::workload(headQ,width,width*9/16,selected,budget,cap);
+        assert(legacy.q.samples==old.q.samples && legacy.q.steps==old.q.steps && legacy.q.half==old.q.half);
+        assert(legacy.channels==old.channels && legacy.pixels==old.pixels && legacy.iterations==old.iterations);
         assert(main.budget==old.budget && main.drawCap==old.drawCap);
         for (unsigned feeds:{1u,2u,4u,8u}) {
             auto total=main.channels?main.iterations:0;
             for (unsigned f=0;f<feeds;++f) {
-                auto feed=ALAreaShadow::feedWorkload(q,width,width*9/16,511+f*127,287+f*71,cap,budget,cap,8);
+                auto feed=ALAreaShadow::feedWorkload(q,legacyQ,width,width*9/16,511+f*127,287+f*71,cap,budget,cap,8);
                 assert(feed.iterations<=feed.budget);
                 total+=feed.channels?feed.iterations:0;
             }
             assert(total<=main.budget);
         }
     }
-    std::cout << "[RelightQ] VCam CPU PASS: production view/transaction/comparator, UUID feed admission across permutations and reversed pointers, main/OFF pointer ordering preserved, 1/2/4 feed channel and diagnostic restoration, prepass invalidation, retained targets; HEAD main-plan identity and shared budget for 1/2/4/8 feeds\n";
+    std::cout << "[RelightQ] VCam CPU PASS: production view/transaction/comparator, UUID feed admission across permutations and reversed pointers, main/OFF pointer ordering preserved, 1/2/4 feed channel and diagnostic restoration, prepass invalidation, retained targets; HEAD legacy-plan identity and shared budget for 1/2/4/8 feeds\n";
 }
 '''
     directory = Path('.tmp/relight_step6_cpu').resolve()

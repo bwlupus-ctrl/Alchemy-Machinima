@@ -1513,3 +1513,225 @@ losing the same admitted full/large-cap visibility while POINT retains it.
 No commit, push, stash, viewer build or viewer launch was performed. No read of
 `.tmp/ref_private/` occurred. Prior report edits, unrelated files and dirty
 `vcpkg` are preserved.
+
+
+## Thin occluders (10/21)
+
+**Fix round 6 (10/22):** ten second-round review findings, all in the ON path;
+OFF is unchanged (independent HEAD RGBA8 identity, planner identity).
+
+1. **Feeds keep their shadows.** The segmented main plan filled about the whole
+   1500M budget and never drops steps, so feeds were left 0.9-22M and several
+   got no channel. The main plan now holds back 1/32 of the budget
+   (`kFeedHeadroomDivisor`, 46.9M at the default) and a feed whose segmented
+   plan does not fit falls back to the authored **uniform** march and plan
+   (`feedWorkload(q, uniform, ...)`). The fallback is a plan property: the
+   shader mode uniform follows `work.q.nearSteps > 0`, so a fallback feed also
+   uses the OFF start offset. Test 23 asserts feed channels > 0 for 512x288,
+   640x360, 854x480, 720p and 1080p feeds with 1..K lights, main 1080p and 4K,
+   cap K1/K4/K8, every preset, plus the one-budget total.
+2. **Monotonic presets.** Segmented plans keep full resolution only while 12
+   rays (High's request) fit, so Cinematic is never left with fewer rays than
+   High (it was 4 full-res vs 12 half-res at 1080p K1/K2, 1600x900 K<=3, 720p
+   K<=5). Test 24 sweeps 720p/900p/1080p/1440p/4K x K1..8 x all presets at
+   1500/1400/1200M: effective samples, rays per pixel (full = 4 half) and
+   resolution never decrease with the preset.
+3. **Help.** "Use fewer Shadowed lights or a lower resolution" (preset does not
+   change grain). Settings comment, kit row, index, mockup data and the three
+   generated outputs agree.
+4. **Near spacing.** The near span is **1.85 m**; 46 regular samples are spaced
+   evenly over [2 cm floor, 1.84 m), 3.96 cm apart (a 4 cm rail cannot fall
+   between them; round 5 was 4.26 cm), then the two join samples at 1.84/1.86 m
+   are the last two near steps, so no interval is charged twice and the old
+   6.9 cm hole and the [2 cm, 4.9 cm) gap after the first sample are gone. The
+   straddle is skipped for fewer than four near steps.
+5. **Short rays.** The floor is `min(0.02, near_dist)` and every sample is
+   clamped to `limit`.
+6. **Fail-closed cliff.** Under budget pressure the far segment thins one step
+   at a time **down to the authored uniform count** (never coarser than OFF)
+   after rays and resolution are spent and before the view fails; if the
+   segmented plan still cannot fit (for example Cinematic, whose floor is 32,
+   or a very small budget) the main view and feeds use the uniform plan. ON
+   therefore draws wherever OFF draws. Test 14 asserts this on a grid.
+7. **`relight_thin_check.py` entry point.** Running it directly now launches
+   the GPU harness with `--area-only --thin-only` (it used to import and exit 0).
+8. **Table assertions.** The resolution, far and sample tables are explicit
+   per-row literals for OFF and ON (the `thin || preset != 3` expression could
+   not fail).
+9. **Take record.** `far_steps` is clamped at zero; the record also carries
+   `view` (`main` or `vcam_feed`) and `uniform_fallback`.
+10. **Authored steps.** Each pass records the authored count it read itself
+    (`authored_steps`; feeds share the one global setting) and its view label.
+
+**Fix round 5 (10/22), user decision:** thin-object tracing is now opt-in.
+`RenderAreaShadowThinObjects` is a persisted Boolean, default **false**.
+At the default 1500M budget, the 48+32 march leaves only 1-2 effective rays
+at 4K, so its finer blocker coverage can make soft edges grainier. This
+supersedes the unconditional march and preset changes from the earlier rounds.
+
+**OFF** retains HEAD `d4f4ec1192ff` behavior: preset requests are Low
+4/8/half, Medium 8/12/half, High 12/20/half, Cinematic 24/32/full;
+uniform intervals use the original `0.25+0.5*jitter` start offset. The
+planner still reduces samples, then uniform steps, then resolution. The
+quality listener is identical to HEAD. Toggling Thin objects never rewrites
+saved quality values. With both lighting masters off, the existing disabled
+lighting expression/readback checks continue to cover the unchanged paths.
+
+**ON** uses 48 near steps through min(1.85 m,limit): 46 regular samples evenly
+over [2 cm, join - 1 cm) and the final two straddling the join at -/+1 cm
+(round 6; spacing 3.96 cm), then at least 32 far steps
+for every preset. Near sample distance is floored at **2 cm**, in addition
+to the receiver normal bias (never beyond the ray: `min(0.02, near_dist)`). Custom retains its saved far count; presets
+retain authored counts above 32. Runtime admission upgrades preset far density without
+changing the saved counts. The deterministic pixel-cell/light-UUID phase is
+`.15 + .8 * ((37*i mod N) + u) / N`; the [.15,.95) phase is
+retained with the separate 2 cm minimum sample distance. No timing, frame history, channel or feed-slot input enters sampling.
+Housing exclusion, receiver bias, light-end gap, refinement, contact
+classification and native-fade blending retain their existing operations.
+The mode and near/total counts are runtime uniforms: no shader define,
+reload listener or new shader-manager dependency.
+
+The planner charges `pixels * requested K * samples * (near+far)` and bounds
+every split draw. ON chooses half resolution unless 12 full-resolution rays fit,
+then reduces rays from the original request, then resolution, then thins only
+the far segment toward the authored uniform count (near steps are never
+reduced). A plan that still cannot fit uses the uniform plan, so ON never draws
+less than OFF. The main plan plans against 31/32 of the budget; feed
+reservations still reserve main work first. Native shadow allocation, slot auction and
+count-before-filter ordering are unchanged. These are iteration ceilings,
+not measured GPU time or bounds on refinement/filter reads.
+
+The real UI destination is **Director > Light > Rim > Advanced > Soft shadows
+> Thin objects**, enabled with Soft shadows. Help is: "Catch railings, fences and poles; uses more steps, so soft edges
+get grainier. Use fewer Shadowed lights or a lower resolution." Budget defaults
+to its maximum 1500M; budget help describes the reduction order for both modes
+and the uniform fallback. Search terms are thin, railing, fence, pole, detail. The source
+row binds the setting directly; generated index/page/functional outputs expose
+the real widget. Row pin **2162** has a comment. The setting joins the shared
+Director scene allowlist, so Save/Load/recovery use the normal sparse `has()`
+behavior. Quality and budget remain global. Take records include
+`RenderAreaShadowThinObjects` in `settings_at_start`. Each planned snapshot
+also records `authored_steps`, effective `near_steps`, `far_steps` and total
+`steps`. Authored counts describe the sampled pass even if settings change
+before take start. The Steps settings comment documents far-count semantics.
+
+Production-planner tables, default **1500M/frame, 750M/draw**; ON plans against
+31/32 of the frame (1453M) to leave feed headroom. H/F means
+half/full trace resolution. "Draw M" is the largest actual channel batch.
+The standalone math test asserts literal tables and prints both modes.
+Tests 15/22 cover K7/K8 and feed reservations with Thin objects OFF/ON;
+test 12 includes an authored preset far count of 53.
+
+**OFF - uniform march**
+
+| Output | K | Preset | Effective samples | Steps | Trace | Frame M | Draw M |
+|---|---:|---|---:|---:|---|---:|---:|
+| 1080p | 4 | Low | 4 | 8 | H | 66.4 | 66.4 |
+| 1080p | 4 | Medium | 8 | 12 | H | 199.1 | 199.1 |
+| 1080p | 4 | High | 12 | 20 | H | 497.7 | 497.7 |
+| 1080p | 4 | Cinematic | 5 | 32 | F | 1327.1 | 663.6 |
+| 1080p | 8 | Low | 4 | 8 | H | 132.7 | 66.4 |
+| 1080p | 8 | Medium | 8 | 12 | H | 398.1 | 199.1 |
+| 1080p | 8 | High | 12 | 20 | H | 995.3 | 497.7 |
+| 1080p | 8 | Cinematic | 2 | 32 | F | 1061.7 | 530.8 |
+| 4K | 4 | Low | 4 | 8 | H | 265.4 | 265.4 |
+| 4K | 4 | Medium | 8 | 12 | H | 796.3 | 597.2 |
+| 4K | 4 | High | 9 | 20 | H | 1493.0 | 746.5 |
+| 4K | 4 | Cinematic | 1 | 32 | F | 1061.7 | 530.8 |
+| 4K | 8 | Low | 4 | 8 | H | 530.8 | 265.4 |
+| 4K | 8 | Medium | 7 | 12 | H | 1393.5 | 696.7 |
+| 4K | 8 | High | 4 | 20 | H | 1327.1 | 663.6 |
+| 4K | 8 | Cinematic | 1 | 22 | F | 1459.8 | 729.9 |
+
+**ON - segmented march**
+
+| Output | K | Preset | Effective samples | Near + far steps | Trace | Frame M | Draw M |
+|---|---:|---|---:|---|---|---:|---:|
+| 1080p | 4 | Low | 4 | 48 + 32 | H | 663.6 | 663.6 |
+| 1080p | 4 | Medium | 8 | 48 + 32 | H | 1327.1 | 663.6 |
+| 1080p | 4 | High | 8 | 48 + 32 | H | 1327.1 | 663.6 |
+| 1080p | 4 | Cinematic | 8 | 48 + 32 | H | 1327.1 | 663.6 |
+| 1080p | 8 | Low | 4 | 48 + 32 | H | 1327.1 | 663.6 |
+| 1080p | 8 | Medium | 4 | 48 + 32 | H | 1327.1 | 663.6 |
+| 1080p | 8 | High | 4 | 48 + 32 | H | 1327.1 | 663.6 |
+| 1080p | 8 | Cinematic | 4 | 48 + 32 | H | 1327.1 | 663.6 |
+| 4K | 4 | Low | 2 | 48 + 32 | H | 1327.1 | 663.6 |
+| 4K | 4 | Medium | 2 | 48 + 32 | H | 1327.1 | 663.6 |
+| 4K | 4 | High | 2 | 48 + 32 | H | 1327.1 | 663.6 |
+| 4K | 4 | Cinematic | 2 | 48 + 32 | H | 1327.1 | 663.6 |
+| 4K | 8 | Low | 1 | 48 + 32 | H | 1327.1 | 663.6 |
+| 4K | 8 | Medium | 1 | 48 + 32 | H | 1327.1 | 663.6 |
+| 4K | 8 | High | 1 | 48 + 32 | H | 1327.1 | 663.6 |
+| 4K | 8 | Cinematic | 1 | 48 + 32 | H | 1327.1 | 663.6 |
+
+**Keep and include `scripts/code_tools/relight_thin_check.py` in the eventual
+commit.** Both shader and area gates import it. The new OFF case independently
+links HEAD's gather and trace utility, then compares complete RGBA8 bytes
+against the current executable with the uniform false. It covers every preset,
+full and half resolution, three UUID seeds, unmapped visibility and mapped
+contact fades 0/.25/.5/.75/1, with positive blocked-pixel controls. Values come
+from the production planner. The C++ VCam fixture independently compiles HEAD's
+planner and compares OFF quality, steps, resolution, pixels, channels and total
+iterations across both resolutions, budgets, dimensions, requested K and
+selected counts. ON feed reservations remain bounded by the shared budget.
+
+The prior round's independent oracles run explicitly with the switch **ON**:
+
+- Dense railing: 4 cm rail, fixed 32-ray/64-uniform-step reference with 2 m
+  cap; darkness ratio **[0.8,1.2]**, every preset, three seeds. Known-lit pixels
+  must be 255 and repeated readbacks byte-identical. HEAD must fail at least
+  three presets. The reference is fixed independently of the tested preset.
+- Far panel: 1920x1080 depth, 64 seeds including 1152/12348, every preset at
+  full/half; final may increase HEAD-blocked pixels by at most **2/255**.
+  Independent-phase and quadratic-spacing mutations must fail that same sweep.
+- Join: 4 cm rail centered exactly 1.85 m (the join) from the biased receiver,
+  every preset, full/half, 64 seeds; every tested receiver must shadow. Dropping
+  only the join pair must fail the same fixture.
+- Near sweep (round 6): a 4 cm rail every 5 mm from 9 cm to 1.85 m along a ray
+  with x component 0.3, Low and Cinematic, full/half, two seeds; every disk ray
+  must be blocked (353 positions x 2 x 2 x 2). The round-5 layout (2 m span,
+  4.26 cm spacing, pinned pair replacing two samples) must fail the same sweep
+  (30 rail/preset/seed/pixel cases). Static checks cover the floor and the
+  `limit` clamp, which a pixel cannot observe.
+- Straddle guard (round 6): 0..5 near steps, full/half: a wide wall 1.9 m along
+  the ray stays fully shadowed and a clear ray fully lit.
+- Curved receiver: analytic convex cylinder, every preset/full/half/three
+  seeds; both N.L > .2 and **0 < N.L <= .2** remain **255/255**. The grazing
+  band uses a point-like aperture so every tested ray is unoccluded; a finite
+  disk can physically straddle the terminator.
+- Existing housing, contact/fade continuity, split/K identity, camera/VCam,
+  ownership, restoration and mutation regressions retain their tolerances.
+
+Round 6 gate records are in `.tmp/thin_r6/` (`final_*.log`, `zs_*.log`,
+`*_check.log`, `prebuild.log`); each gate ran once after the final edit and
+regeneration. Findings that drove the changes: the sweep and the join fixtures
+showed the round-5 layout leaves a 6.9 cm hole before the join (the round-5
+mutation fails 30 sweep cases); the join fixture moved from 2 m to the new
+1.85 m join with its zero-visibility assertion unchanged. OFF arithmetic still
+executes only in its own branch; independent HEAD RGBA8 identity passes. The
+dispatch fixture stub gained the `feed` / `segmentedRequested` fields. The two
+full GPU suites retain their 1,001-fade acquisition/eviction checks. Separate Zs
+checks use the installed script, one TU per process, with the cache inside the
+workspace. Standalone test compilation retains the existing nonfatal
+`vswhere.exe` diagnostic. Concurrent runs share fixture directories under
+`.tmp/relight_step*`; run the GPU gates one at a time.
+
+| Gate / acceptance | Final result | Evidence |
+|---|---|---|
+| `relight_shader_check.py`, including OFF bytes and all ON regressions | **PASS** | `final_shaders.log` |
+| `relight_shader_check.py --area-only --thin-only` | **PASS** | `final_shader_thin.log` |
+| `relight_area_check.py` and `--thin-only`, same production-GPU oracles | **PASS** | `final_area.log`, `final_area_thin.log` |
+| `relight_thin_check.py` run directly (new entry point re-launches the harness) | **PASS** | `final_thin_direct.log` |
+| `relight_off_check.py`: disabled expression identity, no reload/temporal dependencies | **PASS** | `final_off.log` |
+| Standalone `alrelightmath` tests: literal tables, feed admission (23), monotonic grid (24), fallback, take record | **PASS 24/24** | `final_math*.log` |
+| Generator selftest; functional rule/generation selftests | **PASS** | `gen_selftest.log`, `manifest_selftest.log` |
+| Separate `zs_check.ps1 -Files <one file>`: pipeline, llfloaterdirector, llviewercontrol, test | **PASS** (4 TUs) | `zs_*.log` |
+| Regenerated three kit outputs; each `--check` | **PASS** | `kit.log`, `sources.log`, `manifest.log`, `*_check.log` |
+| `xui_layout_check.py --changed HEAD` | **PASS, 0 findings / 40 files** | `layout.log` |
+| `prebuild_guard.ps1 -ChecksOnly`, required safecrlf environment | **PASS, all gates** | `prebuild.log` |
+| `git diff --check` and untracked thin-fixture whitespace | **PASS** | `diff_check.log` |
+
+No viewer build/launch, commit, push or stash operation. No private-reference
+access. Synthetic fixtures do not establish whole-viewer image identity or
+continuous intersection of hidden/offscreen geometry; in-world validation
+and measured GPU cost remain outside this no-build task.

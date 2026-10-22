@@ -4,6 +4,8 @@ uniform mat4 projection_matrix;
 uniform sampler2D depthMap;
 uniform sampler2D normalMap;
 uniform vec2 area_trace_res;
+uniform int area_near_steps; // CPU planner: dense near segment (0.02 m .. 1.85 m); 0 = uniform march
+uniform bool area_thin_objects;
 vec4 getPositionWithDepth(vec2 uv, float depth);
 vec4 decodeNormal(vec4 raw);
 // Point depth/normal reads describe the FULL-resolution texel centre, even
@@ -50,10 +52,45 @@ vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
     float limit = min(max(0.0,distance-end_gap),max_distance);
     if (limit <= 0.001) return vec2(1);
     vec3 direction = delta/max(distance,0.001);
+    int near_steps = clamp(area_near_steps,0,steps-1);
+    int far_steps = steps-near_steps;
+    // Thin objects: the first 1.85 m (or the whole ray, if shorter) gets near_steps
+    // samples. The final two straddle the join at -/+1 cm; the others are spaced
+    // evenly over [2 cm floor, join-1 cm), at most 3.96 cm apart, so a 4 cm rail
+    // cannot fall between them. Fewer than four near steps skip the straddle.
+    float near_dist = near_steps > 0 ? min(1.85,limit):0.0;
+    float near_start = min(0.02,near_dist);
+    bool join_pair = near_steps >= 4;
+    int near_regular = join_pair ? near_steps-2:near_steps;
+    float near_end = join_pair ? max(near_start,near_dist-0.01):near_dist;
+    float near_dt = (near_end-near_start)/float(max(near_regular,1));
+    // far_steps is at least HEAD's count over a shorter span; never coarser.
+    float far_dt = (limit-near_dist)/float(far_steps);
     float dt = limit/float(steps);
     for (int step=0; step<steps; ++step)
     {
-        vec3 p = origin+direction*((float(step)+offset)*dt);
+        vec3 p;
+        if (area_thin_objects)
+        {
+            bool near_segment = step < near_steps;
+            if (!near_segment && far_dt <= 0.0) break;
+            dt = near_segment ? near_dt:far_dt;
+            // Regular near samples start at the 2 cm floor (in addition to the
+            // receiver normal bias) and never pass the end of the ray.
+            float t = near_segment ? near_start+(float(step)+offset)*near_dt:
+                near_dist+(float(step-near_steps)+offset)*far_dt;
+            // Straddle the join regardless of jitter or camera-depth direction.
+            // They are the last two near steps, so no interval is charged twice.
+            if (join_pair && step == near_regular) t = max(near_start,near_dist-0.01);
+            if (join_pair && step == near_regular+1) t = near_dist+0.01;
+            t = min(t,limit);
+            p = origin+direction*t;
+        }
+        else
+        {
+            // OFF retains HEAD's uniform spacing and arithmetic exactly.
+            p = origin+direction*((float(step)+offset)*dt);
+        }
         if (p.z >= -0.001) break;
         vec2 uv = generateProjectedPosition(p);
         if (any(lessThan(uv,vec2(0))) || any(greaterThanEqual(uv,vec2(1)))) break;
@@ -87,8 +124,7 @@ vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
             if (length(hit-light) > light_bias &&
                 abs(dot(hit-surface,areaNormal(hit_uv))) <= thickness)
             {
-                // One unchanged full-length march: classify its validated hit.
-                // Contact shares HEAD's step density, refinement and early-out.
+                // Classify the validated hit without changing samples with fade.
                 return vec2(0.0,contact_distance > 0.001 && hit_t <= contact_distance ? 0.0:1.0);
             }
         }

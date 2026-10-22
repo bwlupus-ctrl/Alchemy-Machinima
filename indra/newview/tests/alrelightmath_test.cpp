@@ -199,11 +199,37 @@ template<> template<> void relight_object::test<11>()
 template<> template<> void relight_object::test<12>()
 {
     using namespace ALAreaShadow;
-    const auto low=quality(0), medium=quality(1), high=quality(2), cinema=quality(3);
-    ensure("low",low.samples==4 && low.steps==8 && low.half);
-    ensure("default medium",medium.samples==8 && medium.steps==12 && medium.half);
-    ensure("high",high.samples==12 && high.steps==20 && high.half);
-    ensure("cinematic",cinema.samples==24 && cinema.steps==32 && !cinema.half);
+    const auto low=quality(0,true), medium=quality(1,true), high=quality(2,true), cinema=quality(3,true);
+    ensure("low",low.samples==4 && low.steps==80 && low.half);
+    ensure("default medium",medium.samples==8 && medium.steps==80 && medium.half);
+    ensure("high",high.samples==12 && high.steps==80 && high.half);
+    ensure("cinematic",cinema.samples==24 && cinema.steps==80 && !cinema.half);
+    for (int preset=0;preset<4;++preset)
+    {
+        const int oldFar[] = {8,12,20,32};
+        const auto live=segmented({4,oldFar[preset],true},preset);
+        ensure("saved preset receives runtime density",live.steps==80 && live.nearSteps==48);
+    }
+    const auto authored=segmented({8,53,true},1);
+    ensure("preset keeps larger authored far count",authored.steps==101 && authored.nearSteps==48);
+    const auto custom=segmented({4,12,true},4);
+    ensure("custom far steps preserved",custom.steps-custom.nearSteps==12);
+    // The far segment may only be thinned down to the authored uniform count.
+    ensure("custom far floor is its authored count",custom.minFar==12);
+    ensure("authored far floor survives a larger preset count",authored.minFar==53);
+    const int uniformFar[] = {8,12,20,32};
+    for (int preset=0;preset<4;++preset)
+    {
+        ensure_equals("preset far floor is the uniform count",quality(preset,true).minFar,uniformFar[preset]);
+        ensure_equals("saved preset far floor is the saved count",segmented({4,uniformFar[preset],true},preset).minFar,uniformFar[preset]);
+        ensure_equals("uniform quality has no far floor",quality(preset).minFar,0);
+    }
+    const int uniformSteps[] = {8,12,20,32};
+    for (int preset=0;preset<4;++preset)
+    {
+        const auto off=quality(preset);
+        ensure("default is uniform HEAD quality",off.steps==uniformSteps[preset] && off.nearSteps==0);
+    }
     ensure_equals("literal integer hash",hash(1),0x688990c0u);
     ensure("different IDs change pattern",hash(1)!=hash(2));
     // Equal-area disk strata: exact mean squared radius, balanced angular sweep.
@@ -233,15 +259,37 @@ template<> template<> void relight_object::test<13>()
 template<> template<> void relight_object::test<14>()
 {
     using namespace ALAreaShadow;
+    for (bool thin : {false,true})
     for (unsigned height : {1080u,1440u,2160u})
     for (unsigned lights : {4u,8u})
     for (int preset=0; preset<4; ++preset)
     for (int budget : {1,100,1500,9999})
     {
-        const auto a=workload(quality(preset),height*16/9,height,lights,budget,lights);
-        const auto b=workload(quality(preset),height*16/9,height,lights,budget,lights);
+        const auto a=workload(quality(preset,thin),height*16/9,height,lights,budget,lights);
+        const auto b=workload(quality(preset,thin),height*16/9,height,lights,budget,lights);
         ensure("deterministic plan",a.q.samples==b.q.samples && a.q.steps==b.q.steps &&
             a.q.half==b.q.half && a.channels==b.channels && a.iterations==b.iterations);
+        if (budget==1500 && height!=1440)
+        {
+            // Literal default-budget tables: rows are 1080p/K4,K8,4K/K4,K8; columns are presets.
+            constexpr int onSamples[4][4]={{4,8,8,8},{4,4,4,4},{2,2,2,2},{1,1,1,1}};
+            constexpr int offSamples[4][4]={{4,8,12,5},{4,8,12,2},{4,8,9,1},{4,7,4,1}};
+            constexpr bool onHalf[4][4]={{true,true,true,true},{true,true,true,true},
+                {true,true,true,true},{true,true,true,true}};
+            constexpr bool offHalf[4][4]={{true,true,true,false},{true,true,true,false},
+                {true,true,true,false},{true,true,true,false}};
+            constexpr int onFar[4][4]={{32,32,32,32},{32,32,32,32},{32,32,32,32},{32,32,32,32}};
+            constexpr int offFar[4][4]={{8,12,20,32},{8,12,20,32},{8,12,20,32},{8,12,20,22}};
+            const int row=(height==2160 ? 2:0)+(lights==8 ? 1:0);
+            ensure_equals("effective table samples",a.q.samples,thin ? onSamples[row][preset]:offSamples[row][preset]);
+            ensure_equals("effective table near",a.q.nearSteps,thin ? 48:0);
+            ensure_equals("effective table far",a.q.steps-a.q.nearSteps,thin ? onFar[row][preset]:offFar[row][preset]);
+            ensure_equals("effective table resolution",a.q.half,thin ? onHalf[row][preset]:offHalf[row][preset]);
+            std::cout << "[RelightQ] plan thin=" << thin << " " << height << "p K=" << lights
+                << " preset=" << preset << " S=" << a.q.samples << " near=" << a.q.nearSteps
+                << " far=" << a.q.steps-a.q.nearSteps << " half=" << a.q.half
+                << " iterations=" << a.iterations << " channels=" << a.channels << std::endl;
+        }
         ensure("hard frame ceiling",a.iterations<=a.budget && a.budget<=1500000000ull);
         if (a.channels)
         {
@@ -266,29 +314,74 @@ template<> template<> void relight_object::test<14>()
     ensure("then half resolution",half.q.samples==1 && half.q.steps==1 && half.q.half && half.channels>0);
     const auto split=workload({1,64,false},1920,1080,4,600,4);
     ensure("split necessary",split.channels==2 && split.q.steps==64);
-    ensure("default 4K below ceiling",workload(quality(1),3840,2160,8,1500,8).iterations==1393459200ull);
+    ensure("default OFF 4K matches HEAD",workload(quality(1),3840,2160,8,1500,8).iterations==1393459200ull);
+    ensure("ON 4K below ceiling",workload(quality(1,true),3840,2160,8,1500,8).iterations==1327104000ull);
+    for (int preset=0; preset<4; ++preset)
+    {
+        const auto q=quality(preset,true);
+        const auto w=workload(q,3840,2160,8,1500,8);
+        ensure("near counted, far never degraded",w.q.steps==q.steps && w.q.nearSteps==q.nearSteps);
+        ensure("segmented ceiling",w.iterations<=w.budget);
+    }
+    // Last resort before failing closed: thin only the far segment, never below
+    // the authored uniform count, never the near steps. 4K/K8 at 1000M needs it.
+    {
+        const auto low=workload(quality(0,true),3840,2160,8,1000,8);
+        ensure("far thinned instead of failing closed",low.channels>0 && low.q.nearSteps==48 &&
+            low.q.steps-48<32 && low.q.steps-48>=8 && low.q.samples==1 && low.q.half);
+        ensure("far reduction stays inside the planning limit",low.iterations<=low.budget-low.budget/32);
+        const auto cinematic=workload(quality(3,true),3840,2160,8,1000,8);
+        ensure("Cinematic far floor is its uniform 32: segmented plan fails closed",!cinematic.channels);
+        const auto fallback=workloadOrUniform(quality(3,true),quality(3),3840,2160,8,1000,8);
+        ensure("fallback is the authored uniform plan, never darker than OFF",fallback.channels>0 &&
+            !fallback.q.nearSteps && fallback.q.steps<=32);
+    }
+    // ON never draws fewer shadows than OFF: wherever the uniform plan fits, so does ON,
+    // and a segmented far segment is never coarser than the authored uniform count.
+    for (unsigned height : {720u,1080u,1440u,2160u})
+    for (unsigned lights : {1u,4u,8u})
+    for (int preset=0; preset<4; ++preset)
+    for (int budget : {1,20,100,300,600,1000,1200,1500})
+    {
+        const auto off=workload(quality(preset),height*16/9,height,lights,budget,lights);
+        const auto on=workloadOrUniform(quality(preset,true),quality(preset),height*16/9,height,lights,budget,lights);
+        ensure("ON renders wherever OFF renders",!off.channels || on.channels);
+        if (on.q.nearSteps)
+        {
+            ensure("segmented far never coarser than OFF",on.q.steps-on.q.nearSteps>=quality(preset).steps);
+            ensure("segmented ceiling holds",on.iterations<=on.budget);
+        }
+        else if (on.channels)
+            ensure("fallback is exactly the uniform plan",on.q.steps==off.q.steps &&
+                on.q.samples==off.q.samples && on.q.half==off.q.half && on.channels==off.channels);
+    }
     ensure("impossible minimum fails closed",!workload({1,1,true},3840,2160,8,1,8).channels);
     ensure("oversized input fails closed",!workload({32,64,false},0xffffffffu,0xffffffffu,8,1500,8).channels);
-    ensure("empty selection",!workload(quality(1),1920,1080,0,1500,0).channels);
+    ensure("empty selection",!workload(quality(1,true),1920,1080,0,1500,0).channels);
 }
 
 template<> template<> void relight_object::test<15>()
 {
     using namespace ALAreaShadow;
-    const auto seven=workload(quality(3),1920,1080,7,1500,8);
-    const auto eight=workload(quality(3),1920,1080,8,1500,8);
-    ensure("Cinematic K7/K8 same per-light work",seven.q.samples==2 &&
-        seven.q.samples==eight.q.samples && seven.q.steps==32 &&
-        seven.q.steps==eight.q.steps && seven.q.half==eight.q.half);
+    for (bool thin : {false,true})
+    {
+        const auto seven=workload(quality(3,thin),1920,1080,7,1500,8);
+        const auto eight=workload(quality(3,thin),1920,1080,8,1500,8);
+        ensure("Cinematic K7/K8 same per-light work",seven.q.samples==(thin ? 4:2) &&
+            seven.q.samples==eight.q.samples && seven.q.steps==(thin ? 80:32) &&
+            seven.q.steps==eight.q.steps && seven.q.nearSteps==eight.q.nearSteps &&
+            seven.q.half==eight.q.half && seven.q.half==thin);
+    }
+    for (bool thin : {false,true})
     for (unsigned height : {1080u,1440u,2160u})
     for (unsigned requested : {1u,4u,8u})
     for (int preset=0; preset<4; ++preset)
     for (int budget : {1,100,1500})
     {
-        const auto full=workload(quality(preset),height*16/9,height,requested,budget,requested);
+        const auto full=workload(quality(preset,thin),height*16/9,height,requested,budget,requested);
         for (unsigned visible=1; visible<=requested; ++visible)
         {
-            const auto w=workload(quality(preset),height*16/9,height,visible,budget,requested);
+            const auto w=workload(quality(preset,thin),height*16/9,height,visible,budget,requested);
             ensure("visibility never retunes quality",w.q.samples==full.q.samples &&
                 w.q.steps==full.q.steps && w.q.half==full.q.half && w.channels==full.channels);
             ensure("reserved work bounds actual frame",w.iterations<=full.iterations && w.iterations<=w.budget);
@@ -357,9 +450,12 @@ template<> template<> void relight_object::test<18>()
          ALAreaShadow::Candidate<LLUUID>{b,false,1.}, ALAreaShadow::Candidate<LLUUID>{a,false,1.}})
         state.selected.add(light,8);
     state.planned = true;
-    state.work = ALAreaShadow::workload(ALAreaShadow::quality(1),1920,1080,3,1500,8);
+    state.authoredSteps = 12;
+    state.segmentedRequested = true;
+    state.work = ALAreaShadow::workload(ALAreaShadow::quality(1,true),1920,1080,3,1500,8);
     LLSD settings;
     settings["RenderAreaShadows"] = true;
+    settings["RenderAreaShadowThinObjects"] = true;
     settings["RenderLightShapeEnable"] = false;
     const std::array<LLUUID,2> areaSlots{{c,LLUUID::null}}, currentSlots{{b,c}};
     const std::array<float,2> fade{{.5f,1.f}};
@@ -385,13 +481,19 @@ template<> template<> void relight_object::test<18>()
     ensure_equals("vacant slot retained",view["projector_slots"][1]["uuid"].asUUID(),LLUUID::null);
     ensure_equals("current sampled slot",record["projector_slots_at_start"][0]["uuid"].asUUID(),b);
     close("current slot fade",record["projector_slots_at_start"][0]["fade"].asReal(),.5);
+    ensure("thin mode recorded",record["settings_at_start"]["RenderAreaShadowThinObjects"].asBoolean());
     const LLSD& work = view["work"];
-    ensure_equals("effective samples",work["samples"].asInteger(),8);
-    ensure_equals("effective steps",work["steps"].asInteger(),12);
+    ensure_equals("effective samples",work["samples"].asInteger(),4);
+    ensure_equals("authored far count",work["authored_steps"].asInteger(),12);
+    ensure_equals("effective near steps",work["near_steps"].asInteger(),48);
+    ensure_equals("effective far steps",work["far_steps"].asInteger(),32);
+    ensure("segmented plan is not a fallback",!work["uniform_fallback"].asBoolean());
+    ensure_equals("main view labelled",view["view"].asString(),std::string("main"));
+    ensure_equals("effective steps",work["steps"].asInteger(),80);
     ensure("half resolution",work["half"].asBoolean());
     ensure_equals("channels per draw",work["channels_per_draw"].asInteger(),4);
     ensure_equals("literal pixels",work["pixels"].asString(),std::string("518400"));
-    ensure_equals("literal iterations",work["iterations"].asString(),std::string("149299200"));
+    ensure_equals("literal iterations",work["iterations"].asString(),std::string("497664000"));
     ensure_equals("literal budget",work["budget"].asString(),std::string("1500000000"));
     ensure_equals("literal draw cap",work["draw_cap"].asString(),std::string("750000000"));
     std::cout << "[RelightQ] synthetic take-record " << LLSDNotationStreamer(record) << '\n';
@@ -401,7 +503,7 @@ template<> template<> void relight_object::test<18>()
     LLSD decoded;
     ensure("notation parses",LLSDSerialize::fromNotation(decoded,stream,stream.str().size())>0);
     ensure_equals("serialized UUID",decoded["area_view"]["selected"][0]["uuid"].asUUID(),a);
-    ensure_equals("serialized exact work",decoded["area_view"]["work"]["iterations"].asString(),std::string("149299200"));
+    ensure_equals("serialized exact work",decoded["area_view"]["work"]["iterations"].asString(),std::string("497664000"));
     state.work.pixels = 4294967296ull;
     ensure_equals("64-bit count never truncates",areaTakeRecord(state)["work"]["pixels"].asString(),std::string("4294967296"));
     const LLSD empty = areaTakeRecord({});
@@ -414,6 +516,22 @@ template<> template<> void relight_object::test<18>()
         unavailable.status = status;
         ensure_equals("unavailable outcome retained",areaTakeRecord(unavailable)["status"].asString(),std::string(status));
         ensure("unavailable plan omitted",!areaTakeRecord(unavailable).has("work"));
+    }
+    // A segmented request that fell back is labelled, and far steps never go negative.
+    {
+        AreaTakeState fallback = state;
+        fallback.feed = true;
+        fallback.work = ALAreaShadow::workloadOrUniform(ALAreaShadow::quality(3,true),
+            ALAreaShadow::quality(3),3840,2160,8,1000,8);
+        const auto record = areaTakeRecord(fallback);
+        ensure_equals("feed pass labelled",record["view"].asString(),std::string("vcam_feed"));
+        ensure("fallback labelled",record["work"]["uniform_fallback"].asBoolean());
+        ensure_equals("fallback has no near steps",record["work"]["near_steps"].asInteger(),0);
+        ensure_equals("fallback far is the uniform count",record["work"]["far_steps"].asInteger(),
+            fallback.work.q.steps);
+        fallback.work.q.steps = 10;
+        fallback.work.q.nearSteps = 48;
+        ensure_equals("far steps clamped at zero",areaTakeRecord(fallback)["work"]["far_steps"].asInteger(),0);
     }
     state.status = "budget_rejected";
     state.work = ALAreaShadow::workload({1,1,true},3840,2160,8,1,8);
@@ -516,19 +634,21 @@ template<> template<> void relight_object::test<22>()
     ensure("zero feed slots",!none.admit(1,0));
     // Main's plan never depends on feeds. Fixed eight-way spare allocation
     // remains safe even if all capture slots render in a future scheduler.
+    for (bool thin : {false,true})
     for (int preset=0; preset<4; ++preset)
     for (int budget : {1,100,1500})
     for (unsigned mainWidth : {1280u,1920u,3840u})
     for (unsigned cap : {1u,4u,8u})
     {
-        const auto q = ALAreaShadow::quality(preset);
-        const auto main = ALAreaShadow::workload(q,mainWidth,mainWidth*9/16,cap,budget,cap);
+        const auto q = ALAreaShadow::quality(preset,thin);
+        const auto uniform = ALAreaShadow::quality(preset);
+        const auto main = ALAreaShadow::workloadOrUniform(q,uniform,mainWidth,mainWidth*9/16,cap,budget,cap);
         for (unsigned feeds : {1u,2u,4u,8u})
         {
             std::uint64_t total = main.channels ? main.iterations : 0;
             for (unsigned slot=0; slot<feeds; ++slot)
             {
-                const auto feed = ALAreaShadow::feedWorkload(q,mainWidth,mainWidth*9/16,
+                const auto feed = ALAreaShadow::feedWorkload(q,uniform,mainWidth,mainWidth*9/16,
                     511+slot*127,287+slot*71,cap,budget,cap,8);
                 ensure("feed allowance",feed.iterations<=feed.budget);
                 if (feed.channels)
@@ -546,7 +666,7 @@ template<> template<> void relight_object::test<22>()
     const auto half = ALAreaShadow::workloadWithin(full,10,10,1,100,1);
     ensure("feed half third",half.q.samples==1 && half.q.steps==1 && half.q.half && half.channels);
     ensure("feed skip last",!ALAreaShadow::workloadWithin(full,10,10,1,1,1).channels);
-    ensure("no main extent skips feeds",!ALAreaShadow::feedWorkload(full,0,0,10,10,1,1500,1,8).channels);
+    ensure("no main extent skips feeds",!ALAreaShadow::feedWorkload(full,full,0,0,10,10,1,1500,1,8).channels);
     for (int bit=0; bit<6; ++bit)
     {
         ALAreaShadow::View view;
@@ -558,6 +678,97 @@ template<> template<> void relight_object::test<22>()
         ensure("default excluded",!ALAreaShadow::allowed(view));
         ensure("only Prism opts in",ALAreaShadow::allowed(view,true)==(bit==1));
     }
+}
+
+template<> template<> void relight_object::test<23>()
+{
+    using namespace ALAreaShadow;
+    // Thin ON feed ADMISSION: every preset, main 1080p and 4K at K4/K8, every
+    // feed size from 512x288 to 1080p with every light count, default budget.
+    // The main plan holds 1/32 back and a segmented feed that does not fit falls
+    // back to the authored uniform plan, so a feed never loses its shadows.
+    struct Size { unsigned w,h; };
+    constexpr Size feeds[]={{512,288},{640,360},{854,480},{1280,720},{1920,1080}};
+    unsigned segmentedFeeds=0, fallbackFeeds=0;
+    for (int preset=0; preset<4; ++preset)
+    for (unsigned mainHeight : {1080u,2160u})
+    for (unsigned cap : {1u,4u,8u})
+    {
+        const auto q=quality(preset,true), uniform=quality(preset);
+        const auto main=workloadOrUniform(q,uniform,mainHeight*16/9,mainHeight,cap,1500,cap);
+        ensure("main draws",main.channels>0);
+        for (const auto& size : feeds)
+        for (unsigned lights=1; lights<=cap; ++lights)
+        {
+            const auto feed=feedWorkload(q,uniform,mainHeight*16/9,mainHeight,size.w,size.h,lights,1500,cap,8);
+            ensure("feed channels admitted",feed.channels>0);
+            ensure("feed inside its allowance",feed.iterations<=feed.budget);
+            ensure("feed draw bound",feed.pixels*feed.channels*feed.q.samples*feed.q.steps<=feed.drawCap);
+            // Eight slots plus the main plan stay inside the one frame budget.
+            ensure("one budget for main and eight feeds",main.iterations+8*feed.iterations<=main.budget);
+            if (feed.q.nearSteps) ++segmentedFeeds; else ++fallbackFeeds;
+            // A fallback is exactly the authored uniform plan for that allowance.
+            if (!feed.q.nearSteps)
+            {
+                const auto reserve=main.channels ? main.iterations:0;
+                const auto expected=workloadWithin(uniform,size.w,size.h,lights,(main.budget-reserve)/8,cap);
+                ensure("fallback is the uniform plan",feed.q.samples==expected.q.samples &&
+                    feed.q.steps==expected.q.steps && feed.q.half==expected.q.half &&
+                    feed.channels==expected.channels);
+            }
+        }
+    }
+    ensure("some feeds keep the segmented march",segmentedFeeds>0);
+    ensure("some feeds need the uniform fallback",fallbackFeeds>0);
+    // Main and feeds follow the OFF plan exactly when Thin objects is OFF.
+    for (int preset=0; preset<4; ++preset)
+    {
+        const auto q=quality(preset), same=quality(preset);
+        const auto a=feedWorkload(q,same,1920,1080,640,360,4,1500,4,8);
+        const auto b=workloadWithin(q,640,360,4,(1500000000ull-workload(q,1920,1080,4,1500,4).iterations)/8,4);
+        ensure("OFF feed plan unchanged",a.q.samples==b.q.samples && a.q.steps==b.q.steps &&
+            a.q.half==b.q.half && a.channels==b.channels && a.iterations==b.iterations);
+    }
+}
+
+template<> template<> void relight_object::test<24>()
+{
+    using namespace ALAreaShadow;
+    // Monotonic presets: a higher preset never ends with fewer effective samples,
+    // nor fewer rays per pixel (full resolution counts 4 half-resolution rays), nor
+    // a coarser trace than the preset below it, at any resolution, K or default budget.
+    struct Size { unsigned w,h; };
+    constexpr Size sizes[]={{1280,720},{1600,900},{1920,1080},{2560,1440},{3840,2160}};
+    for (int budget : {1500,1400,1200})
+    for (const auto& size : sizes)
+    for (unsigned lights=1; lights<=8; ++lights)
+    {
+        Workload plan[4];
+        for (int preset=0; preset<4; ++preset)
+        {
+            plan[preset]=workloadOrUniform(quality(preset,true),quality(preset),size.w,size.h,lights,budget,lights);
+            ensure("every preset draws",plan[preset].channels>0);
+            ensure("segmented plan stays inside the frame",plan[preset].iterations<=plan[preset].budget);
+            if (!plan[preset].q.half && plan[preset].q.nearSteps)
+                ensure("segmented full resolution only with at least 12 rays",
+                    plan[preset].q.samples>=kFullResMinSamples);
+        }
+        for (int preset=1; preset<4; ++preset)
+        {
+            const auto& lower=plan[preset-1];
+            const auto& higher=plan[preset];
+            ensure("higher preset keeps effective samples",higher.q.samples>=lower.q.samples);
+            ensure("higher preset keeps rays per pixel",
+                higher.q.samples*(higher.q.half ? 1:4)>=lower.q.samples*(lower.q.half ? 1:4));
+            ensure("higher preset never traces at lower resolution",lower.q.half || !higher.q.half);
+        }
+    }
+    // The previously inverted configurations, literally: Cinematic is now half
+    // resolution with at least High's samples (it was 4 full-res vs 12 half-res).
+    const auto high=workload(quality(2,true),1920,1080,1,1500,1);
+    const auto cinematic=workload(quality(3,true),1920,1080,1,1500,1);
+    ensure("1080p K1 High",high.q.samples==12 && high.q.half);
+    ensure("1080p K1 Cinematic >= High",cinematic.q.samples>=high.q.samples && cinematic.q.half);
 }
 
 template<> template<> void relight_object::test<21>()

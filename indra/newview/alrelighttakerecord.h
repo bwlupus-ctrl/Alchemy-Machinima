@@ -13,6 +13,9 @@ struct AreaTakeState
     const char* status = "not_observed";
     unsigned width = 0, height = 0;
     bool planned = false;
+    int authoredSteps = 0; // Saved uniform/far count read by the sampled area pass itself.
+    bool feed = false;     // The sampled pass was a VCam feed (own plan), not the main view.
+    bool segmentedRequested = false; // Thin objects asked for a segmented plan.
     ALAreaShadow::Selection<LLUUID> selected;
     ALAreaShadow::Workload work{};
 };
@@ -35,13 +38,19 @@ inline LLSD areaTakeRecord(const AreaTakeState& state)
         light["score"] = state.selected.lights[channel].score;
         out["selected"].append(light);
     }
+    out["view"] = state.feed ? "vcam_feed" : "main";
     out["work_planned"] = state.planned;
     if (state.planned)
     {
         const auto& work = state.work;
         LLSD& plan = out["work"];
         plan["samples"] = work.q.samples;
-        plan["steps"] = work.q.steps;
+        plan["authored_steps"] = state.authoredSteps;
+        plan["near_steps"] = work.q.nearSteps;
+        plan["far_steps"] = std::max(0,work.q.steps-work.q.nearSteps);
+        // Segmented was requested but the effective plan is the uniform march.
+        plan["uniform_fallback"] = state.segmentedRequested && !work.q.nearSteps;
+        plan["steps"] = work.q.steps; // Effective total, retained for record readers.
         plan["half"] = work.q.half;
         plan["channels_per_draw"] = static_cast<int>(work.channels);
         // LLSD integers are signed 32-bit. Preserve exact 64-bit counts as text.

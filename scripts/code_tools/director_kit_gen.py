@@ -295,14 +295,18 @@ def validate_data(data: dict) -> None:
     # B9 (10/21): read-only take records use the existing transport; no new UI rows, retain 2160.
     # B9 fix round 1: dedicated background take writer adds no widgets; retain 2160.
     # B8 (10/21): +1 opt-in Also in VCam feeds row on the Soft shadows card.
+    # Thin round 2 (10/22): CPU near/far counts use existing controls; retain 2161.
     # B8 fix round 1: scratch lifetime/isolation/budget fixes add no rows; retain 2161.
     # Cleanup (10/21): Advanced card order/help and handle caching add no rows; retain 2161.
     # Cleanup fix round 1: surface/preview claims and lazy status fallback add no rows; retain 2161.
     # Step 2 SL map + contact (10/21): debug-only cap adds no UI rows; retain 2161.
     # Step 2 fix round 1: fade-aware cap and take logging add no UI rows; retain 2161.
     # Step 2 fix round 2: single-march visibility blending adds no UI rows; retain 2161.
-    if len(pages) != 37 or row_count != 2161:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2161")
+    # Thin round 4 (10/22): +1 opt-in Thin objects row on Soft shadows.
+    # Thin round 5: help/planner corrections add no rows; retain 2162.
+    # Thin round 6 (10/22): help wording and fallback planning add no rows; retain 2162.
+    if len(pages) != 37 or row_count != 2162:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2162")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

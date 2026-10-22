@@ -75,7 +75,7 @@ with tempfile.TemporaryDirectory(dir=root/'.tmp',prefix='relight_off_') as tempo
             assert streams[0]==streams[1],file+' runtime expression drift: '+str(next((i for i,(a,b) in enumerate(zip(*streams)) if a!=b), 'length'))
         print('[RelightQ] HEAD disabled expression identity PASS',file,flush=True)
 
-area_settings=('RenderAreaShadows','RenderAreaShadowsVCam','RenderAreaShadowLights','RenderAreaShadowSamples',
+area_settings=('RenderAreaShadowThinObjects','RenderAreaShadows','RenderAreaShadowsVCam','RenderAreaShadowLights','RenderAreaShadowSamples',
     'RenderAreaShadowSteps','RenderAreaShadowMaxDist','RenderAreaShadowThickness',
     'RenderAreaShadowHalfRes','RenderAreaShadowDenoise','RenderAreaShadowQuality',
     'RenderAreaShadowLightBias','RenderAreaShadowDebugView','RenderAreaShadowMappedContact')

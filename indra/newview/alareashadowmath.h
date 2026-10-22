@@ -57,15 +57,32 @@ inline std::uint32_t hash(std::uint32_t x)
 {
     x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; return x ^ (x >> 16);
 }
-struct Quality { int samples, steps; bool half; };
+// nearSteps > 0 marks the opt-in Thin objects march: that many dense steps over the
+// first 1.85 m, the rest far. minFar is the authored uniform count, the floor the
+// far segment may be thinned to (never coarser than OFF) before a view fails closed.
+struct Quality { int samples, steps; bool half; int nearSteps = 0; int minFar = 0; };
 inline float lightBias(float bias)
 {
     return std::isfinite(bias) ? std::clamp(bias,0.f,4.f) : .25f;
 }
-inline Quality quality(int preset)
+inline Quality quality(int preset, bool thin = false)
 {
     constexpr Quality presets[] = {{4,8,true}, {8,12,true}, {12,20,true}, {24,32,false}};
-    return presets[std::clamp(preset,0,3)];
+    auto q = presets[std::clamp(preset,0,3)];
+    // Opt-in density: 48 near (0.02..min(1.85m,limit)) + 32 far steps.
+    if (thin) { q.minFar=q.steps; q.steps=80; q.nearSteps=48; }
+    return q;
+}
+inline Quality segmented(Quality q, int preset)
+{
+    const auto minimum = quality(preset,true);
+    q.nearSteps = minimum.nearSteps;
+    const int far_steps = std::clamp(q.steps,1,64);
+    // Existing saved preset values get the new far density too. Custom keeps
+    // its authored far count. Persisted uniform counts remain unchanged.
+    q.steps = (preset>=0 && preset<4 ? std::max(far_steps,minimum.steps-minimum.nearSteps):far_steps)+q.nearSteps;
+    q.minFar = far_steps; // The authored uniform count: OFF's step density.
+    return q;
 }
 // Runtime work admission. Integer arithmetic and fixed degradation order; no timing input.
 // The setting can lower the safety ceiling, never remove it.
@@ -75,17 +92,28 @@ struct Workload
     unsigned channels = 0;
     std::uint64_t pixels = 0, iterations = 0, budget = 0, drawCap = 0;
 };
+// Segmented (Thin objects) main plans hold back this fraction (1/32) of the budget
+// for capture feeds, so a 1080p feed with every light still fits its fixed share.
+constexpr std::uint64_t kFeedHeadroomDivisor = 32;
+// Segmented plans keep full resolution only while this many rays per pixel fit
+// (the High preset's request), so Cinematic never ends below High in rays per pixel.
+constexpr int kFullResMinSamples = 12;
+
 inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsigned lights,
-    std::uint64_t budget, unsigned requestedLights)
+    std::uint64_t budget, unsigned requestedLights, bool holdFeedHeadroom = false)
 {
     Workload w{};
-    w.q = {std::clamp(q.samples,1,32),std::clamp(q.steps,1,64),q.half};
+    const int dense = std::clamp(q.nearSteps,0,64);
+    w.q = {std::clamp(q.samples,1,32),std::clamp(q.steps,1,dense ? 128:64),q.half,dense,
+        dense ? std::clamp(q.minFar,1,64):0};
     lights = std::min(lights,8u);
     // Reserve for the requested cap, never the changing visible set. At least
     // the actual count keeps malformed callers within the hard frame ceiling.
     const unsigned basis = std::max(lights,std::clamp(requestedLights,1u,8u));
     w.budget = std::min(budget,std::uint64_t(1500000000));
     w.drawCap = w.budget/2;
+    // Planning limit: the nominal budget minus feed headroom (segmented main only).
+    const std::uint64_t planned = holdFeedHeadroom && dense ? w.budget-w.budget/kFeedHeadroomDivisor : w.budget;
     const auto update = [&]()
     {
         w.pixels = w.q.half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
@@ -95,11 +123,24 @@ inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsig
     // Render-target dimensions are GL-sized; bound pathological pure-function inputs too.
     if (width > 65536 || height > 65536) return w;
     update();
-    const auto over = [&]() { return w.pixels*basis*w.q.samples*w.q.steps>w.budget ||
+    const auto over = [&]() { return w.pixels*basis*w.q.samples*w.q.steps>planned ||
         w.pixels*w.q.samples*w.q.steps>w.drawCap; };
+    // Segmented plans choose half resolution unless 12 full-res rays (High's
+    // request) fit. Choose before reducing samples so the half-res plan keeps
+    // all spare rays: a higher preset never ends with fewer rays per pixel.
+    if (dense && !w.q.half)
+    {
+        const std::uint64_t rays = std::min(w.q.samples,kFullResMinSamples);
+        if (w.pixels*basis*rays*w.q.steps>planned || w.pixels*rays*w.q.steps>w.drawCap)
+        { w.q.half=true; update(); }
+    }
     while (over() && w.q.samples>1) { --w.q.samples; update(); }
-    while (over() && w.q.steps>1) { --w.q.steps; update(); }
+    // Segmented marches preserve their steps until nothing else is left.
+    while (over() && !dense && w.q.steps>1) { --w.q.steps; update(); }
     if (over() && !w.q.half) { w.q.half=true; update(); }
+    // Last resort for a segmented plan: thin only the far segment, down to the
+    // authored uniform count. Never coarser than OFF; near steps stay.
+    while (over() && dense && w.q.steps-dense>w.q.minFar) { --w.q.steps; update(); }
     // Even one channel/one step cannot fit: skip this view, never exceed the cap.
     if (over()) { w.iterations=0; return w; }
     const auto perChannel = w.pixels*w.q.samples*w.q.steps;
@@ -111,7 +152,17 @@ inline Workload workload(Quality q, unsigned width, unsigned height, unsigned li
     int millions, unsigned requestedLights)
 {
     return workloadWithin(q,width,height,lights,
-        std::uint64_t(std::clamp(millions,1,1500))*1000000,requestedLights);
+        std::uint64_t(std::clamp(millions,1,1500))*1000000,requestedLights,true);
+}
+
+// A segmented (Thin objects) plan that cannot fit at all falls back to the authored
+// uniform march and plan, so the switch never removes shadows OFF would draw.
+inline Workload workloadOrUniform(Quality q, Quality uniform, unsigned width, unsigned height,
+    unsigned lights, int millions, unsigned requestedLights)
+{
+    auto w = workload(q,width,height,lights,millions,requestedLights);
+    if (!w.channels && q.nearSteps) w = workload(uniform,width,height,lights,millions,requestedLights);
+    return w;
 }
 
 // Frame identity is used only to reset workload accounting, never sampling.
@@ -130,15 +181,20 @@ struct FeedPasses
 
 // Reserve the main view's unchanged requested-K plan, then divide only the
 // remainder into fixed allowances. No dependence on active feed count, cadence,
-// timing, prior frames or the main view's changing selected set.
-inline Workload feedWorkload(Quality q, unsigned mainWidth, unsigned mainHeight,
+// timing, prior frames or the main view's changing selected set. A segmented
+// (Thin objects) plan that does not fit a feed's allowance falls back to the
+// authored uniform march and plan, so feeds never lose shadows to the switch.
+inline Workload feedWorkload(Quality q, Quality uniform, unsigned mainWidth, unsigned mainHeight,
     unsigned width, unsigned height, unsigned lights, int millions,
     unsigned requestedLights, unsigned feedSlots)
 {
-    const auto main = workload(q,mainWidth,mainHeight,requestedLights,millions,requestedLights);
+    const auto main = workloadOrUniform(q,uniform,mainWidth,mainHeight,requestedLights,millions,requestedLights);
     const auto reserve = main.channels ? main.iterations : 0;
     const auto allowance = mainWidth && mainHeight && feedSlots ? (main.budget-reserve)/feedSlots : 0;
-    return workloadWithin(q,width,height,lights,allowance,requestedLights);
+    auto feed = workloadWithin(q,width,height,lights,allowance,requestedLights);
+    if (!feed.channels && q.nearSteps)
+        feed = workloadWithin(uniform,width,height,lights,allowance,requestedLights);
+    return feed;
 }
 
 }

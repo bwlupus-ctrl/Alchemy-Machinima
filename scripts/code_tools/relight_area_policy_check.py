@@ -19,6 +19,15 @@ def method(path, signature):
 def check_policy():
     nv = Path('indra/newview')
     pipeline = method(nv / 'pipeline.cpp', 'void LLPipeline::renderAreaShadows(')
+    assert 'const ALAreaShadow::Quality uniform{samples(),steps(),half()};' in pipeline
+    assert 'thin() ? ALAreaShadow::segmented(uniform,preset()) : uniform' in pipeline
+    # Main and feed passes both carry the authored uniform plan as their fallback.
+    assert 'ALAreaShadow::workloadOrUniform(requested,uniform,width,height,' in pipeline
+    assert 'ALAreaShadow::feedWorkload(requested,uniform,' in pipeline
+    # The shader mode follows the EFFECTIVE plan, so a fallback is the OFF march.
+    assert 'uniform1i(LLStaticHashedString("area_thin_objects"),work.q.nearSteps > 0)' in pipeline
+    take = method(nv / 'pipeline.cpp', 'void LLPipeline::logRelightTake(')
+    assert '"RenderAreaShadowThinObjects"' in take
     assert pipeline.index('registry.areaShadowSuppressed(volume)') < pipeline.index('selected.add(')
     assert 'selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8))' in pipeline
     director = method(nv / 'llfloaterdirector.cpp', 'void LLFloaterDirector::refreshLauncherCards()')
@@ -165,14 +174,29 @@ int main() {
     manager.clearShadowSuppression();
     for(auto& omni:omnis) assert(!manager.areaShadowSuppressed(&omni));
     assert(!manager.areaShadowSuppressed(&projectors[0]));
-    auto seven=ALAreaShadow::workload(ALAreaShadow::quality(3),1920,1080,7,1500,8);
-    auto eight=ALAreaShadow::workload(ALAreaShadow::quality(3),1920,1080,8,1500,8);
-    assert(seven.q.samples==2 && eight.q.samples==2);
-    assert(seven.q.steps==32 && eight.q.steps==32 && !seven.q.half && !eight.q.half);
+    auto seven=ALAreaShadow::workload(ALAreaShadow::quality(3,true),1920,1080,7,1500,8);
+    auto eight=ALAreaShadow::workload(ALAreaShadow::quality(3,true),1920,1080,8,1500,8);
+    assert(seven.q.samples==4 && eight.q.samples==4);
+    assert(seven.q.steps==80 && eight.q.steps==80 && seven.q.half && eight.q.half);
     assert(seven.iterations<=seven.budget && eight.iterations<=eight.budget);
     assert(seven.pixels*seven.channels*seven.q.samples*seven.q.steps<=seven.drawCap);
     assert(eight.pixels*eight.channels*eight.q.samples*eight.q.steps<=eight.drawCap);
-    std::cout << "{\"samples\":" << seven.q.samples << ",\"steps\":" << seven.q.steps << "}";
+    std::cout << "{\"samples\":" << seven.q.samples << ",\"steps\":" << seven.q.steps << ",\"presets\":[";
+    for (int preset=0;preset<4;++preset) {
+        auto q=ALAreaShadow::quality(preset,true);
+        auto plan=ALAreaShadow::workload(q,1920,1080,4,1500,4);
+        if (preset) std::cout << ",";
+        std::cout << "[" << plan.q.samples << "," << plan.q.steps-q.nearSteps << ","
+            << plan.q.half << "," << q.nearSteps << "]";
+    }
+    std::cout << "],\"off_presets\":[";
+    for (int preset=0;preset<4;++preset) for (bool half:{false,true}) {
+        auto q=ALAreaShadow::quality(preset); q.half=half;
+        auto plan=ALAreaShadow::workload(q,1920,1080,4,1500,4);
+        if (preset || half) std::cout << ",";
+        std::cout << "[" << plan.q.samples << "," << plan.q.steps << "," << plan.q.half << "]";
+    }
+    std::cout << "]}";
 }
 '''
     directory = Path('.tmp/relight_step1_policy').resolve()

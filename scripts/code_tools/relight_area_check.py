@@ -4,7 +4,7 @@ Executed in relight_shader_check.py's WGL context. No viewer is launched.
 if __name__ == '__main__' and 'link_production' not in globals():
     import subprocess, sys
     from pathlib import Path
-    raise SystemExit(subprocess.call([sys.executable,str(Path(__file__).with_name('relight_shader_check.py')),'--area-only']))
+    raise SystemExit(subprocess.call([sys.executable,str(Path(__file__).with_name('relight_shader_check.py')),'--area-only',*sys.argv[1:]]))
 area_size=32
 area_gather=link_production('class3/deferred/areaShadowF.glsl','','area gather production')
 area_filter=link_production('class3/deferred/areaShadowFilterF.glsl','','area filter production')
@@ -14,6 +14,8 @@ area_vertices=np.array([-1,-1,0,3,-1,0,-1,3,0],np.float32)
 bufferdata(0x8892,area_vertices.nbytes,area_vertices.ctypes.data,0x88E4)
 def area_use(pr):
     use(pr)
+    ui(loc(pr,b'area_thin_objects'),0)
+    ui(loc(pr,b'area_near_steps'),0) # isolate each fixture; production dispatch uploads its plan
     index=getattrloc(pr,b'position');assert index>=0
     bindbuf(0x8892,area_vbo);enableattr(index);attrib(index,3,0x1406,0,0,None)
 def area_texture(unit,data,internal=0x8814):
@@ -53,6 +55,13 @@ def area_read():
     read(0,0,area_size,area_size,0x1908,0x1401,pixels.ctypes.data)
     return pixels
 area_inputs()
+# Thin-only uses the same production planner data as the complete suite.
+import runpy
+policy=runpy.run_path(str(Path(__file__).with_name('relight_area_policy_check.py')))['check_policy']()
+if '--thin-only' in sys.argv:
+    from relight_thin_check import check_thin
+    check_thin(globals())
+    sys.exit(0)
 empty=area_read();assert np.all(empty==255),'unblocked plane must be lit'
 # An on-screen foreground slab blocks rays crossing it from the left receiver.
 area_depth[:,16:,:]=.6 # view Z -2
@@ -63,9 +72,9 @@ assert np.any(blocked[:,:16,0]<255),'positive occlusion control'
 assert np.any((blocked[:,:16,0]>0)&(blocked[:,:16,0]<255)),'area penumbra control'
 # Execute production planning/policy, then use the 1080p Cinematic plan in
 # this small GPU fixture. Compare all seven persistent channels across K=7/8.
-import runpy
-policy=runpy.run_path(str(Path(__file__).with_name('relight_area_policy_check.py')))['check_policy']()
 runpy.run_path(str(Path(__file__).with_name('relight_vcam_check.py')))['check_vcam']()
+ui(loc(area_gather,b'area_thin_objects'),1)
+ui(loc(area_gather,b'area_near_steps'),48)
 ui(loc(area_gather,b'area_samples'),policy['samples']);ui(loc(area_gather,b'area_steps'),policy['steps'])
 persistent={}
 for visible in (7,8):
@@ -78,8 +87,10 @@ for visible in (7,8):
 for channel in range(7):
     plane,component=divmod(channel,4)
     assert np.array_equal(persistent[7][plane][:,:,component],persistent[8][plane][:,:,component]),'K7/K8 per-light visibility identity'
-print('[RelightQ] K-change PASS: requested K8, 1080p Cinematic S2/steps32; seven persistent channels byte-identical',flush=True)
+print('[RelightQ] K-change PASS: requested K8, 1080p Cinematic S4/steps80/half; seven persistent channels byte-identical',flush=True)
 area_inputs();ui(loc(area_gather,b'area_count'),4)
+ui(loc(area_gather,b'area_thin_objects'),0)
+ui(loc(area_gather,b'area_near_steps'),0)
 ui(loc(area_gather,b'area_samples'),8);ui(loc(area_gather,b'area_steps'),24)
 # Budget split draws must preserve each RGBA channel, its UUID seed and stale output.
 color_mask=gl('glColorMask',None,C.c_ubyte,C.c_ubyte,C.c_ubyte,C.c_ubyte)
@@ -513,3 +524,6 @@ for feeds in (1,2,4):
 
 from relight_contact_check import check_contact
 check_contact(globals())
+
+from relight_thin_check import check_thin
+check_thin(globals())

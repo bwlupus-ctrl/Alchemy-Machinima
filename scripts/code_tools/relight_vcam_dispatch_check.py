@@ -187,7 +187,7 @@ struct LLRenderTarget {
     void flush() {}
 };
 struct VB { void setBuffer() {} void drawArrays(int,int,int) { cb(10,0,0,0,nullptr,nullptr); } } vb;
-struct Take { ALAreaShadow::Workload work{}; bool planned=false; std::string status; unsigned width=0,height=0; };
+struct Take { ALAreaShadow::Workload work{}; int authoredSteps=0; bool feed=false,segmentedRequested=false; bool planned=false; std::string status; unsigned width=0,height=0; };
 struct LLPipeline {
     struct RenderTargetPack {
         LLRenderTarget areaGather[2],areaScratch[2],areaVisibility[2];

@@ -11,6 +11,7 @@ uniform int area_count;
 uniform int area_first; // first channel in this budget-limited draw
 uniform int area_samples;
 uniform int area_steps;
+uniform bool area_thin_objects;
 uniform vec3 area_params; // max distance, thickness, pixels relative to 1080p
 uniform float area_light_bias; // CPU-sanitized housing metres, independent of thickness
 vec4 getPositionWithDepth(vec2 uv, float depth);
@@ -56,9 +57,19 @@ void main()
             float radius = sqrt((float(sample_idx)+0.5)/float(area_samples))*source_radius;
             float angle = rotation+float(sample_idx)*2.39996322973;
             vec3 target = area_lights[light].xyz+radius*(cos(angle)*tangent+sin(angle)*bitangent);
+            // One pixel/UUID offset, stratified across the disk rays. 37 is
+            // coprime to every supported count (1..32), so this permutes N strata.
+            // Keep step zero away from curved/grazing receivers: [0.15,0.95).
+            float offset = 0.25+0.5*jitter;
+            if (area_thin_objects)
+            {
+                float phase = (float((seed >> 16) & 0xffffu)+0.5)/65536.0;
+                int phase_idx = (sample_idx*37)%area_samples;
+                offset = 0.15+0.8*(float(phase_idx)+phase)/float(area_samples);
+            }
             float end_gap = max(source_radius,0.1)+area_light_bias;
             vec2 traced = areaTrace(origin,target,area_lights[light].xyz,end_gap,
-                area_light_bias,area_params.x,area_params.y,area_steps,0.25+0.5*jitter,area_contact_dist[light]);
+                area_light_bias,area_params.x,area_params.y,area_steps,offset,area_contact_dist[light]);
             visibility += traced.x;
             contact_visibility += traced.y;
         }
