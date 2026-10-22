@@ -1150,3 +1150,11 @@ certain, which is exactly why it is a spike with an exit gate.
   of off-screen occlusion.
 - Confirm the `shadow_clip.w` hole in-world before calling it the cause of the
   10/21 env-light report.
+
+## User decisions (10/22)
+
+- U1: ray floor of 4. Fewer lights, smooth: the remaining lights show no soft shadow, and the status line reports the coverage.
+- U8/U14: Pinned residency. Chosen lights keep world shadows for the whole shot; in heavy scenes the FPS may drop rather than the shadows changing mid-shot.
+- P0 may change the shipped default look (less grain). Thin objects behaviour and OFF identity stay as specified.
+- P0.6 (env-light distance hole): implemented in the Relight ranking + stack-fixes job (10/22), not in P0.
+- Still open: U3/U13 native-slot authority, U15 VO-cache exemption, and the remaining U items. Decide them at the D1 decision point after P1-lite.
