@@ -1,6 +1,103 @@
 # Native XeGTAO framework + visibility-bitmask AO: SL integration plan
 
-## Revision 3 (10/21)
+## Revision 4 (10/22)
+
+Four peer reviews of Revision 3 (Opus, Codex, GLM, DeepSeek) found **no true P0**. Two
+items labelled P0 by one reviewer were adjudicated as a P1 (screen-fixed noise may swim
+under camera motion) and a P2 (wording of the OFF byte-identity promise). All four reviews
+agreed on the same structural problem: the visible payoff sat behind the heaviest framework
+work, and several gates were synthetic-only. Revision 4 therefore **re-phases** the work
+for an early, cheap A/B against the user's reference look, and re-estimates it honestly.
+
+**Numbering.** Phase names in this revision (P0-P4, L1-L5) are Revision 4 numbering.
+Revisions 3 and 2 below are historical and use the older P1-P6 numbering; where they
+differ, Revision 4 governs. The old "P1-A/P1-B" findings are now cited as
+"Decision F-A" and "F-B" (framework decisions); the old "P1-C" variance-sizing finding is
+now section 9.2.
+
+### Revision 4 phase list and effort
+
+| Phase | Deliverable | Effort (engineer-days) |
+|---|---|---|
+| **P0** | Reference-look capture protocol executed; BLEND/alpha coverage survey in the user's scenes; CPU oracle for **bias, variance and motion** on synthetic fixtures plus captured G-buffers | 2-3 (oracle refinements continue inside P1) |
+| **P1** | **Early A/B checkpoint**: native bitmask gather + spatial denoise published into the *existing* light-map green with stock SSAO plumbing; selectable native (linear) vs stock-curve response; user A/B in sunlit + interior scenes. **User go/no-go before P2** | 6-9 |
+| **P2** | Framework: Prepare, allocation predicate, dispatch gate, white init and ownership, first-use warm-up, Actor FX replay AO input, main-view admission, OFF identity, licences, shader cache | 14-20 |
+| **P3** | Calibration against the reference, Director UI, persistence, machine ceilings/profiles | 6-9 |
+| | **Core win = P0-P3** (main view, scalar AO, no feeds/stills/bent) | **28-41** |
+| **P4** | Bent normals + probe specular occlusion (hero-mirror/SSR policy stated explicitly) | 12-16 |
+| L1 | Alpha (BLEND) receivers - indirect terms only, never direct; water stays neutral | 5-8 |
+| L2 | VCam feeds + combined AO/Relight/VCam ledger + capture-governor pin/unpin | 12-16 |
+| L3 | High-resolution stills: snapshot preparation transaction (single target); Cinematic preset | 4-5 |
+| L4 | Sun-blur dispatch cleanup (shrunk: green is already published after the blur) | 1-2 |
+| shared | Cross-scene/hardware qualification allowance for the later items | 5-8 |
+| | **Full scope = core + P4 + L1-L4 + shared** | **67-96** |
+| L5 | Bitmask SSGI (separate approval, not in either total) | 8-15 |
+
+Reviewers ranged 25-35 days (reduced scope) to 60-90 (full scope); the two totals above
+are the corresponding honest figures for this plan's reduced and full scopes. Estimates
+exclude user screenshot turnaround and hardware availability. Padded tiled stills and
+ReShade AO export remain unscoped additions.
+
+### Revision 4 review-item ledger
+
+Sources: **O** = Opus, **C** = Codex, **G** = GLM, **D** = DeepSeek. Every item below is
+adopted unless marked otherwise. "Sec." gives where the resolution lives.
+
+| ID | Sev. | Finding (short) | Resolution | Sec. |
+|---|---|---|---|---|
+| O1 | P1 | Sparse bitmask under-occludes (porous walls/torsos); corner gate High-only | Bias gates (corner, wall, arm-against-torso) at **every** preset; sample-gap linking, thickness floor >= step spacing when linked; thickness sweep to 0.30 m; Low conditional / Horizon-equivalent | 6.1, 9.2, P0-P2 |
+| O2 | P1 | More denoise passes trade away detail; iid model undervalues stratified noise | Filter support capped at +-4 full-res px; per-preset contact-width/crease gate; budget moved from passes to slices (High T=72 to 128, passes 7 to 4); oracle uses the real stratified sequence | 9.2, 9.3 |
+| O3 | P1 | Sigma and pan gates contradict on smooth fixtures | **Primary gate = pan/swim on real captured scenes**; sigma secondary; joint feasibility from cross-offset covariance in P0 | 9.2 |
+| O4 | P1 | Visible win hidden behind stock response (`softenLightF.glsl:137`) | P1 ships a selectable native linear response vs the stock curve; sunlit + interior A/B **before** funding P2 | 3.3, P1 |
+| O5 | P1 | BLEND coverage gap missing (`RenderAutoMaskAlphaDeferred` default 0) | P0 survey of BLEND pixel fraction; auto-mask / per-object Alpha Mode documented as the widening path; L1 | 7, P0 |
+| O6 | P1 | Caps/table vs RTX 5090; "bind identically" vs "Cinematic may use more" | RTX 5090 per-preset thresholds; ceilings are machine settings with a 5090 capture profile and a conservative distributed default | 9.3, 9.4 |
+| O7 | P2 | 24-bit depth step (~3 cm at ~220 m) bands distant terrain | Bias and thickness floor tied to the depth step; distance fade | 6.1 |
+| O8 | P2 | Light map is 8-bit GL_RGBA in non-HDR; "+1/1024" is below a code step | Dither (non-HDR) or HDR-only; gates stated in output code values | 8.2, B12 |
+| O9 | P2 | Old sun-blur phase mostly redundant (green published after blur) | Shrunk to L4, 1-2 days | L4 |
+| O10 | P2 | Main-only P1 needs only AO + Relight main admission | P2 implements the main-view subset; full ledger moves to L2 | 9.4, P2, L2 |
+| O11 | P2 | 40-60 days optimistic | Re-estimated: core 28-41, full 67-96 | 10 |
+| O12 | - | Simplifications (one bitmask gather, drop Low, main only, keep Prepare/white init/OFF) | Adopted: one gather (thickness to infinity = Horizon diagnostic); Low conditional on P0; feeds/governor/tiles/BLEND/sun-blur deferred | 8, 9.3 |
+| O13 | - | Recommended order | Adopted as P0-P3, P4, later | 10 |
+| C1 | P1 | Shared Actor FX replay has no geometry at AO gather time (consumer companions alone cannot give parity) | AO-owned input overlay for replay OPAQUE/MASK actors (depth + normal), budgeted, with Option B fallback | 8.1, P2 |
+| C2 | P1 | Relight plane churn breaks "zero allocation" under the combined plan | Fix is owned by the Relight stack-fixes job (plane 1 retained while cap > 4, allocation from the admitted plan); AO admission consumes the admitted plan read-only; dependency stated | 9.4, P2 |
+| C3 | P1 | Zero compile/alloc calls does not prove "no hitch" | Warm-up draws for every program state during Prepare; cold/warm first-transition CPU and present-interval ceilings | 8.5, P2 |
+| C4 | P2 | Variance sizing does not size for motion | P0 oracle reports cross-offset covariance and signed reference-residual deltas; P1's first deliverable is a production-shader GPU feasibility spike; pass counts conditional | 9.2, P0, P1 |
+| C5 | P2 | Water is not covered by listing BLEND shader families | Water stays **neutral and unchanged**; any future water receiver is its own family | 7, L1 |
+| C6 | P2 | Single-target snapshots need a preparation transaction | L3; interim whole-shot stock fallback and re-prepare on exit in P2 | 7, P2, L3 |
+| C7 | P2 | Conflicting 3070 table vs 5090 appendix | One 5090 table; 3-4x factor is planning guidance only; mid-range INCONCLUSIVE without tester captures | 9.3 |
+| G1 | P1 | Gates synthetic-fixture only | P0 captures a real-content corpus; preset freeze requires real-content ROI and pan results | P0, 9.2 |
+| G2 | P1 | Denoise achievability; Low/Balanced may fail own gates; 3-pass floor asserted; sequence High first | 3-pass floor **withdrawn** (support cap + crease gate instead); Low conditional; P1 builds the High-class configuration only | 9.2, P1 |
+| G3 | P1 | Riskiest framework bundled with the visible payoff | Re-phased: P1 early A/B on stock plumbing; framework is P2 | 10 |
+| G4 | P1 | Section 13 sun contact contradicts "never darken direct light" | Removed from this plan; separate feature with its own decision record if ever wanted | 13 |
+| G5 | P1 | Effort 60-90 realistic | Full scope 67-96; core 28-41 | 10 |
+| G6 | P2 | Variance constants unfitted; Low 0.025 visible grain; portability INCONCLUSIVE | Constants fitted in P0 on real depth; Low conditional; INCONCLUSIVE rule retained; frozen-noise hook retained | 9.2, 10 |
+| D1 | P0 to **P1** | Screen-fixed noise swims under pans | Motion acceptance (pan/track/zoom at 1x/2x/4x); surface-anchored deterministic noise evaluated against screen-anchored by measurement; Low/Balanced withheld until motion passes; stock `aoUtil.glsl:60` reflect convention not copied | 9.1, 9.2 |
+| D2 | P0 to **P2** | Prepared OFF byte-identity contradicts the reservation cost | Defined under frozen texture streaming and guaranteed headroom; otherwise a disclosed cost of Prepare ON | 1, 8 |
+| D3 | P1 | Hero-mirror/SSR replacement stays unoccluded; goal gap | Policy stated explicitly; goal narrowed; P4 gate for partial replacement weights | 5, P4 |
+| D4 | P1 | Alpha receiver "before direct" ambiguous | L1 multiplies **indirect terms only**, never the whole colour | 7, L1 |
+| D5 | P1 | T/p per preset not stated | Table states slices x steps, T, passes, support, E and sigma for every preset | 9.3 |
+| D6 | P2 | Effort optimistic | See O11/G5 | 10 |
+| D7 | P2 | Early A/B consumer step | See G3 | P1 |
+
+**Not adopted verbatim (reason):** DeepSeek's "require either surface-anchored noise or
+materially larger T/p" is not mandated: both anchorings are candidates and P0 measurement
+chooses (decision D4 below). Opus's "drop Low" is adopted conditionally: P0 decides, because
+a Horizon-equivalent Low may still be a useful cheap live option. Deferred, with reason:
+padded tiled stills and ReShade AO export (unscoped, cost without payoff); hero/SSR
+occlusion (needs separate evidence); water receivers (separate shader family, separate
+budget); sun-contact shadows (violates this plan's hard rule, separate decision record).
+
+### Revision 4 contradictions removed
+
+(1) RTX-3070 timing table versus the 5090 decision: one 5090 table. (2) "Bind identically"
+versus "Cinematic may use more": caps are identical per *profile*; the profile is a machine
+setting. (3) Section 13 sun contact versus "never darken direct light": section removed.
+(4) "Byte-identical Prepared OFF" versus the 8N-byte reservation: defined under frozen
+streaming and guaranteed headroom. (5) Sigma 0.025 versus pan p95 0.005: motion is primary.
+(6) Preview/stills "P1 support single-target high-res" versus the snapshot reallocation
+route: stills move to L3.
+
+## Revision 3 (10/21) - historical (old P1-P6 numbering)
 
 - Re-review found **no P0**. This revision addresses P1-A/B/C and the P2 findings;
   Revision 2 below is historical and is superseded where these policies differ.
@@ -18,7 +115,7 @@
   and denoise accounting under the combined 2,000 M tap-equivalent ceiling.
 - Corrected legacy gloss/environment citations to `softenLightF.glsl:341` / `:351`.
 
-## Revision 2 (10/21)
+## Revision 2 (10/21) - historical (old P1-P6 numbering)
 
 - P1 now reserves the existing `deferredLight` whenever native AO is capable (option b),
   repairs both allocation/admission gates and the sun dispatch gate, and explicitly
@@ -34,8 +131,10 @@
 - Counted startup shader companions/cache impact, corrected the two source citations,
   and raised P1–P5 effort to **40–60 engineer-days**, including P1 light-map work.
 
-Date: 2026-10-21. **Planning only; no implementation, build, commit or stash.**
-Audited branch: `feature/director-kit-p0`, HEAD `e0cc289b108f9acd3fe625fd7540ba6f6c79eb80`.
+Date: 2026-10-22 (Revision 4; Revision 3 dated 2026-10-21). **Planning only; no implementation, build, commit or stash.**
+Audited branch: `feature/director-kit-p0`, HEAD `e0cc289b108f9acd3fe625fd7540ba6f6c79eb80` for the Revision 3 citations;
+the review spot-checks and every citation first added in Revision 4 were verified against `git show HEAD:<path>` at
+`d4f4ec1192ffe96d8fd24d948d1207022b1a8f2d`.
 Source references below describe this checkout, not the older line numbers in the Relight brief.
 Paths starting with `class1/`, `class2/` or `class3/` are relative to
 `indra/newview/app_settings/shaders/`; other shortened viewer filenames are relative to
@@ -43,29 +142,52 @@ Paths starting with `class1/`, `class2/` or `class3/` are relative to
 
 ## 1. Recommendation and scope
 
-Implement a native current-frame ambient visibility pass: XeGTAO-style slice setup,
-depth preparation and spatial denoising first, then replace the two horizon extrema with
-finite-thickness visibility sectors. Add bent-normal probe occlusion after scalar AO is
-validated. Keep the stock SSAO branch available throughout rollout.
+Implement a native current-frame ambient visibility pass: XeGTAO-style slice setup and
+depth preparation, finite-thickness visibility-bitmask sectors (one gather; thickness
+tending to infinity is the Horizon diagnostic) and a short spatial denoise. Revision 4
+reaches an A/B against the user's reference look *first* (P1, on the existing stock SSAO
+plumbing), and only then funds the lifecycle framework (P2). Bent-normal probe occlusion
+follows scalar AO (P4). Keep the stock SSAO branch available throughout rollout.
+
+**Scope tiers.** *Core win* (P0-P3, about 28-41 days): main view, scalar AO, deferred
+OPAQUE/MASK plus shared Actor FX replay OPAQUE/MASK, selectable response, Director
+controls. *Full scope* (about 67-96 days) adds bent normals/probe specular, BLEND
+receivers, VCam feeds with the combined ledger, high-resolution stills and the sun-blur
+cleanup. Section 10 gives the phase table.
 
 The user-visible goal is stronger, cleaner contact and cavity definition throughout the
 world, especially around railings, fingers, lace and foliage. This cannot supply every
 kind of game shadow: AO controls nearby **indirect** visibility; sun and local-light
 visibility remain separate. Direct light, light-rig emitters, emission and graphic overlays
-must never be multiplied by this AO. Short-range bounce is P6, not a hidden part of P1.
+must never be multiplied by this AO. Short-range bounce is L5, not a hidden part of any core phase.
 
 **Three independent meanings of OFF:**
 
 1. Native master OFF: execute this revision's original SSAO/shadow path, respecting the
-   user's original `RenderDeferredSSAO` setting. Require byte identity with baseline.
+   user's original `RenderDeferredSSAO` setting. Require render-pipeline byte identity
+   with baseline under the conditions defined below.
 2. Native ON with amount zero: ambient visibility is one and specular visibility is one;
    direct lighting remains unchanged. This is an identity/composition test, not permission
    to run native passes while the native master is OFF.
 3. AO disabled altogether: a proposed native mode, separate from stock SSAO OFF and its
-   historical shadow-blur side effect. Its shadow semantics are defined in P4.
+   historical shadow-blur side effect. Its shadow semantics are defined in L4.
 
 Do not change existing saved settings merely to enter/leave native mode. A user who has
-stock SSAO disabled must still be able to use native AO without triggering its listener.
+stock SSAO disabled must still be able to use native AO without triggering its listener
+(from P2; the P1 checkpoint deliberately requires stock SSAO ON, see P1).
+
+**Byte-identity definition (Revision 4).** Every "byte-identical OFF" statement in this
+plan means *render-pipeline* identity: same inputs, same GPU/driver, pre-tonemap readbacks,
+frozen stock noise, **with texture streaming frozen** (identical resident textures and
+discard levels in the baseline and candidate runs, verified from the bound-texture discard
+list) **and guaranteed headroom** (preparation admission refuses a plan whose reserve
+would leave less than a proposed 256 MiB margin under the existing texture budget, using
+the accounting at `llviewertexture.cpp:654`/`:673`, so the reservation cannot itself change
+streamed discard levels in the test scene). Outside those conditions the Prepare-ON
+reserve (an 8N-byte light map when none existed, plus the AO bundle) shares texture
+accounting and **can** lower streamed-texture quality. That is a disclosed, user-visible
+cost of Prepare ON shown in the Prepare status; it is not an OFF-identity failure. A viewer
+with Prepare OFF carries no native allocation at all and is stock.
 
 ## 2. Source and licensing boundary
 
@@ -98,7 +220,7 @@ in `indra/newview/licenses-win32.txt`, `indra/newview/licenses-linux.txt` and
 `indra/newview/licenses-mac.txt` (all three exist). `doc/licenses/` does not exist and is
 not the shipped-notice destination. The platform manifests already copy these files to
 `licenses.txt` (`viewer_manifest.py:543`, `:852`, `:1121`); inspect each packaged notice in
-P1 acceptance. The licence requires copyright and permission
+P2 acceptance (the P1 checkpoint is a developer build and is not distributed). The licence requires copyright and permission
 notices in copies/substantial portions; retain the warranty disclaimer with the complete
 text. Keep existing viewer LGPL notices in existing files. Do not relabel a port as wholly
 independent or import unrelated sample dependencies/assets. The bitmask implementation
@@ -122,7 +244,7 @@ planning task.
 | A light map is not guaranteed: main allocation requires shadows, stock SSAO or DOF; Prism completeness/allocation requires stock SSAO or shadows (DOF is absent from this Prism predicate). Producer dispatch separately requires stock SSAO outside cubes, shadows or lighting debug, and excludes previews. Preview quality forces the cached SSAO flag false. | `pipeline.cpp:1448`, `:1770`, `:1830`, `:27310`; `llprismpreview.cpp:1453` |
 | Uniform upload scales stock radius and maximum pixel radius for snapshots, uploads factor/inverse and builds a value/saturation matrix. | `pipeline.cpp:25149` |
 
-### 3.2 Shared blur and ShadowDist P1
+### 3.2 Shared blur and ShadowDist (existing phase-1 controls)
 
 `pipeline.cpp:27345` runs horizontal `deferredLight -> screen` then vertical
 `screen -> deferredLight` only while SSAO is enabled, outside cube/preview captures
@@ -137,7 +259,7 @@ plus six taps on either side (`:78`, `:88`, `:103`). Channels share locations an
 rejection, but `.xyxx` weights give green its own kernel weight. Thus stock AO toggling
 also changes sun softening; it is not just an AO quality switch.
 
-ShadowDist P1 changes **red only after the old blur** (`class1/deferred/blurLightF.glsl:121`):
+The existing ShadowDist phase-1 controls change **red only after the old blur** (`class1/deferred/blurLightF.glsl:121`):
 
 - 0: stock shared kernel;
 - 1: dedicated Gaussian sigma in pixels;
@@ -149,8 +271,11 @@ and derives pixels/metre from the bound height and live projection (`pipeline.cp
 The shader caps its sampling radius/budget and uses integer-grid red taps
 (`class1/deferred/blurLightF.glsl:128`). These controls are runtime uniforms, not shader reload switches.
 Their defaults are mode 0, 1 px and 2.5 mm (`app_settings/settings.xml:20817`).
-They remain ineffective when the SSAO blur dispatch gate is false. P4 must preserve
-their useful sun-quality choices even if it retires the coupling workaround.
+They remain ineffective when the SSAO blur dispatch gate is false. L4 must preserve
+their useful sun-quality choices even if it retires the coupling workaround. Until L4,
+native AO never changes sun softness: with stock SSAO off the sun channel is exactly the
+stock no-blur result for that configuration, with stock SSAO on it is the stock blurred
+result, and native green is published *after* that blur.
 
 `RenderDeferredBlurLight` is declared at `app_settings/settings.xml:20700`, but the audited C++ has
 no matching dispatch read/listener; do not mistake it for a functioning decouple switch.
@@ -177,9 +302,21 @@ absolute ceiling. Ambient tint also colors the ceiling. This is not simply `irra
 
 The key advantage over final-image AO already exists in the viewer's irradiance path.
 Improve its visibility and add probe-only specular occlusion; do not introduce a beauty
-multiply. Stock indirect adjustment should initially remain for an interpretable A/B;
-a later native physical multiply/look response must be explicitly selected, not silently
-stacked with `adjustIrradiance`.
+multiply. **Revision 4:** because the visible win otherwise sits behind this curve,
+P1 provides a *selectable* ambient response: 0 = stock `adjustIrradiance` curve
+(default, interpretable A/B), 1 = native linear, `irradiance *= mix(1, visibility,
+amount)` applied to the ambient/probe irradiance only, before Shadow Lift. Exactly one
+response applies; never both stacked. Both leave sun, local lights, emission and rim
+untouched.
+
+**Why the response decides the visible win.** At full occlusion the stock curve
+(`softenLightF.glsl:137`) returns only `ssao_effect_mat * min(irradiance * scale,
+ceiling)`, a bounded darkening of the *ambient term alone* (defaults: scale 0.6, ceiling
+0.18, value 0.8). In a sunlit scene ambient is a minor share of the final pixel, so native
+AO behind the stock curve can look almost unchanged next to a reference that darkens the
+final image. P1 measures this honestly with sunlit and interior A/B before P2 is funded;
+if ambient-only AO is not enough in sun, that is a user decision (D1 below), not a reason
+to multiply direct light.
 
 ### 3.4 Complete SSAO setting and UI inventory
 
@@ -217,7 +354,7 @@ UI/preset surfaces:
   `RenderSSAOEffectValue` / `RenderSSAOEffectSat` bindings (`skins/default/xui/en/floater_lightbox_settings.xml:2916`,
   `:2973`) **do not have matching declarations or C++ adapters in this audited tree**.
   Treat these as unresolved legacy UI bindings, not additional working settings.
-  P5 must bind native appearance values to declared controls and test them end to end.
+  P3 must bind native appearance values to declared controls and test them end to end.
 - Phototools links to Lightbox for full SSAO control
   (`skins/default/xui/en/floater_phototools.xml:353`); it is not a separate native AO panel.
 - Graphics presets explicitly include the old master (`llpresetsmanager.cpp:315`, `:324`).
@@ -268,7 +405,7 @@ Do not conflate these existing mechanisms with native local AO:
 - Captured probe light already contains scene-scale visibility. Additional AO must be
   short-range; screen AO stays excluded from probe baking to prevent feedback/double bake.
 
-P3 hook design:
+P4 hook design:
 
 1. Carry **shading N, diffuse sampling bent N and visibility-cone data separately**.
    Never pass bent N as the one normal argument to the existing probe routine: that
@@ -278,9 +415,18 @@ P3 hook design:
    Select either stock-compatible response or native response, not both.
 3. Calculate a bounded roughness/view/cone specular factor from bent direction + open
    visibility. Multiply **probe/environment radiance before SSR/hero replacement**.
-   Leave punctual BRDF normals, sun visibility and local-light data untouched. Hero
-   mirrors/SSR should initially retain their current policy; extending occlusion to
-   them requires separate evidence, not multiplying the already mixed radiance.
+   Leave punctual BRDF normals, sun visibility and local-light data untouched.
+
+   **Hero-mirror / SSR policy (explicit, Revision 4).** Native AO attenuates (i) ambient
+   irradiance and (ii) the *non-replaced probe radiance* only. Radiance supplied by an
+   SSR hit or a hero-probe replacement is **not** attenuated: an SSR hit is real beauty
+   that already carries its scene occlusion, and a hero probe is a separate render of the
+   scene. The goal "AO applies to reflection probes" therefore means ordinary
+   parallax-corrected probes plus the probe share of a partially replaced pixel:
+   `mix(probe * specFactor, replacement, weight)`, so the factor drops out as the
+   replacement weight reaches one. P4 gates partial weights 0/0.25/0.5/1 and the status
+   text states the limitation. Extending occlusion to hero/SSR needs separate evidence and
+   is not scheduled; never multiply the already mixed radiance.
 4. Preserve authored material diffuse/specular AO. Native specular visibility applies
    once independently; do not also feed `materialAO * nativeAO` into
    `computeSpecularAO`, which would count native AO twice. Correlated baked cavities
@@ -309,7 +455,7 @@ heuristic (`:940`) and `applyLegacyEnvKeep`'s authored `envIntensity` mixing wei
 sample, attenuate in linear space, then re-encode before the original legacy mix.
 Factor=1 bypasses the new conversion for exact identity. Cover deferred legacy,
 forward legacy alpha/material receivers if enabled, and class-2 probes-disabled skies.
-P3 must isolate probe-only tests with ambient held equal: the legacy color-dependent
+P4 must isolate probe-only tests with ambient held equal: the legacy color-dependent
 heuristic and nonlinear environment mix mean a final-beauty subtraction cannot prove
 that an SSR/direct input changed. Direct BRDF inputs and SSR/hero replacement inputs
 must be unchanged independently.
@@ -351,11 +497,54 @@ meaning. Reusing 35 cm would make fingers, railings and hair cards behave like t
 Sharing a setting would also let an AO look unexpectedly alter light shadows.
 
 Propose `RenderNativeAOThicknessM = 0.03 m` as a **calibration starting point**, range
-0.001..0.5 m, finite/clamped, with a separate receiver bias. Test 0.01/0.03/0.10 m across
-SL avatar and architectural scales before selecting a shipping default. Start constant
+0.001..0.5 m, finite/clamped, with a separate receiver bias. Sweep 0.01/0.03/0.10/**0.30** m
+across SL avatar and architectural scales before selecting a shipping default (Revision 4
+extends the sweep to 0.30 m because sparse samples under-occlude at small thickness, see
+6.1). Start constant
 in metres; distance-scaled thickness is an optional separately named parameter, default
 zero, because it changes the look as the camera moves. A single front depth cannot
 identify the true thickness of an arbitrary mesh.
+
+### 6.1 Bias, sparse-sample porosity and depth precision (Revision 4)
+
+**Porosity is bias, not noise.** With 2-8 samples per side per slice, each sample marks
+only the sectors its finite thickness subtends. At 3 cm thickness and sample spacing of
+centimetres to decimetres, a continuous wall, torso or floor is represented by isolated
+slivers; the OR-union leaves most of the hemisphere unmarked, so AO is *systematically too
+weak* regardless of how well the variance is controlled. The sigma model cannot see this.
+
+Mitigations, each selectable and each judged by P0/P1 evidence rather than assumed:
+
+- **Sample-gap linking.** When consecutive samples on one slice side lie on one continuous
+  surface (depth difference consistent with the predicted slope of the macro normal, within
+  a tolerance of one depth step plus the thickness), fill the sectors between the first
+  sample's front angle and the second's before applying thickness. Discontinuities (depth
+  jump larger than the tolerance) do not link, so railings and finger gaps stay open.
+- **Thickness floor.** For *linked* runs, `t_eff = max(t, step spacing in metres at that
+  depth)`. A universal floor is rejected: it would turn railings and hair cards into slabs.
+- Horizon-equivalent mode (thickness to infinity) is a diagnostic for comparison and for
+  the conditional Low preset only.
+
+**Per-preset bias gates (every advertised preset, not only High).** Against a numerically
+integrated reference, at 1/3/10 m, full and half resolution, 1080p and 4K:
+a corner (two perpendicular planes) mean absolute AO error <= 0.05; a floor beside a wall
+at distances 0.1-1 m <= 0.05; an *arm against torso* fixture (4.5 cm cylinder beside a
+15 cm cylinder, gap 0-3 cm) mean absolute error <= 0.07 and darkness (1 - AO) at touch >= 70%
+of the reference; thickness sweep 0.01/0.03/0.10/0.30 m reported for each. A preset that
+fails a bias gate is relabelled, reworked or withheld; it is never excused by its noise gate.
+
+**Depth precision.** The deferred depth is GL non-reverse-Z `DEPTH_COMPONENT24`
+(`indra/llrender/llrendertarget.cpp:130`). The linear step at distance `z` is
+`dz ~= z^2 / (near * 2^24)` for `far >> near`; with a 0.1 m near plane this is ~0.6 cm at
+100 m and ~3 cm near 220 m. Use the live near/far from the projection, and:
+
+- `bias_eff = max(bias, 2 * dz(z))` and `t_eff >= dz(z)` (a sample cannot be thinner than
+  the depth quantum);
+- **distance fade:** multiply the resolved visibility toward 1 with
+  `w = 1 - smoothstep(0.5, 2.0, dz(z) / t)`; at the 3 cm default AO begins to fade near
+  ~160 m and is fully off near ~320 m, preventing banded terrain;
+- gate: terrain/plane fixtures at 50/100/220/400 m show no banding (AO standard deviation
+  within the open-plane gate) and a monotonic fade.
 
 ## 7. Fork interaction policy
 
@@ -363,37 +552,50 @@ identify the true thickness of an arbitrary mesh.
 |---|---|---|
 | Cine Light Rig and Rig Rim | Rig/ActorMask lighting dispatch in `pipeline.cpp:27818`, `:28127`; rim data/helpers `class1/deferred/deferredUtil.glsl:1064`; `alcinelightrigmanager.cpp:879` identifies projector/bounce emitters for rim. `alcinerigrim.cpp:149` gates rim in HUD, probe and alpha passes. | Do not attenuate direct key/fill/rim/background, their synthetic bounce lights, or rim overlays with AO. Ambient/probe illumination on their receivers can change. A light called "bounce" is still evaluated as a local light here. `CineRigRimIncludeProbes` controls whether rim is rendered into probe captures; it is not an extra probe-lighting input. Keep those captures AO-free. Their captured rim contribution can subsequently receive ordinary indirect probe occlusion at a receiver. |
 | Actor Mask | Per-view classification/validity in `pipeline.cpp:27194`, `:27234`, actor-only receiver routing at `:28127`; separate depth-sharing mask lifecycle at `:1371`, `:1444`. | Default world AO applies to opaque avatars as ordinary receivers/occluders. The light-recipient mask is not a blocker-depth mask. A future actor exemption can return visibility=1 for recipients, while retaining their occluder depth. Never remove world depth based on actor bits. HDR tag alone is insufficient for animesh/custom targets. |
-| Actor FX | Deferred PBR changes material normal/ORM/emission (`class1/deferred/pbropaqueF.glsl:137`, `:164`, `:192`); shared replay path `class2/deferred/sharedActorFxPbrF.glsl:597`. | Physical shaded surfaces receive indirect AO. Cover/sensor/flat/emissive treatments retain their authored overrides; do not AO-multiply creative post-light color or emission. Add OPAQUE/MASK replay parity in P1/P3; BLEND follows the alpha policy below. |
+| Actor FX | Deferred PBR changes material normal/ORM/emission (`class1/deferred/pbropaqueF.glsl:137`, `:164`, `:192`); shared replay path `class2/deferred/sharedActorFxPbrF.glsl:597`. | Physical shaded surfaces receive indirect AO. Cover/sensor/flat/emissive treatments retain their authored overrides; do not AO-multiply creative post-light color or emission. Replay OPAQUE/MASK actors enter the AO **input** (depth + normal overlay, 8.1) and consume AO in P2; BLEND follows the alpha policy below. |
 | Tron | Scene-layer dispatch and depth/state rules in `pipeline.cpp:8854`, `:8886`, `:8914`; avatar flag encoding `class1/deferred/globalF.glsl:63`. | AO may change the physical surface behind Tron. Do not attenuate neon/emissive grid, trails, rim tint/pulse, or screen-space graphics. Keep raw normal flags/sidecars intact. |
 | Roto Ink / silhouette | Outline Scene layer at `pipeline.cpp:8834`, `:8919`; other layer handling `:15187`; silhouette carrier decode `class3/deferred/softenLightF.glsl:168`. | Do not alter outline extraction inputs or post outline colors. Shade physical fill before its creative overlay. Preserve silhouette K/R, fullbright and emissive policy; zero-emission and flat-fill fixtures must retain their promised treatment. |
-| VCam / Prism camera feeds | Exact-size pool at `pipeline.cpp:1746`; per-view save/invalidate at `:11479`, restore at `:11668`. Relight Step 6 documentation `doc/director_kit/RELIGHT_SL_INTEGRATION.md:788`. | P1/P2 main only, status says feeds use their existing AO policy. P3 integration substep adds native feed opt-in with pack-local AO resources, view state and fixed allowances. Never sample main AO in a feed. Pool storage is per size bucket, reused sequentially, not permanently one allocation per camera ID. |
+| VCam / Prism camera feeds | Exact-size pool at `pipeline.cpp:1746`; per-view save/invalidate at `:11479`, restore at `:11668`. Relight Step 6 documentation `doc/director_kit/RELIGHT_SL_INTEGRATION.md:788`. | The core phases (P0-P4) are main view only; feeds keep their existing stock AO policy and the status says so. L2 adds native feed opt-in with pack-local AO resources, view state and fixed allowances. Never sample main AO in a feed. Pool storage is per size bucket, reused sequentially, not permanently one allocation per camera ID. |
 | Preview atlas / media / Gate | Preview quality forces SSAO/shadows off and restores them (`llprismpreview.cpp:1443`); raw G is neutralized in `pipeline.cpp:27293`. | Preview remains AO-neutral. Media has no new depth. Gate camera sources run AO only when actually rendered in an eligible scratch view, not again at display composition. |
 | HUD | Deferred lighting asserts `!sRenderingHUDs` (`pipeline.cpp:27246`); Relight policy rejects HUD (`alareashadowmath.h:16`). | Explicitly reject `sRenderingHUDs` at AO allocation admission, dispatch and consumer validity. HUD gets visibility 1 and cannot consume retained world AO even if it shares a target. |
 | Hero-mirror pass / cube captures | Hero swaps to `mHeroProbeRT` (`llheroprobemanager.cpp:309`); mirror identity is `isMirrorPass()` (`llheroprobemanager.h:88`); Actor Mask separately recognizes it (`pipeline.cpp:27199`). | Reject `gCubeSnapshot`, hero pack identity and `isMirrorPass()` independently; hero mirrors are not opted-in VCam feeds. No native AO/bent sampling in captures, no feedback baking. Retain the stock capture sun path. Main-view hero replacement inputs stay unoccluded by probe-only AO. |
 | Impostors | `generateImpostor` sets `sImpostorRender` (`pipeline.cpp:32753`) and renders into avatar-owned targets (`:32900`). | Reject generation/update passes; no native allocation, gather, publication or consumer lookup. An impostor drawn into the ordinary world may receive the world depth-based policy, with its billboard-depth limitation disclosed; do not bake native AO into its cached image. |
-| Water reflection renders | `sReflectionRender` exists at `pipeline.cpp:658`; it is also used by forward impostors (`:32750`). Relight rejects reflection views (`alareashadowmath.h:16`). | Reject reflection flag and any water reflection camera/target route, never infer main view from a false flag alone. This checkout has no separate active water-reflection flag setter beyond the impostor route; use a synthetic reflection-view dispatch fixture as well as real available routes. Ordinary main-view water follows BLEND policy; reflection captures never reuse main AO. |
+| Water reflection renders | `sReflectionRender` exists at `pipeline.cpp:658`; it is also used by forward impostors (`:32750`). Relight rejects reflection views (`alareashadowmath.h:16`). | Reject reflection flag and any water reflection camera/target route, never infer main view from a false flag alone. This checkout has no separate active water-reflection flag setter beyond the impostor route; use a synthetic reflection-view dispatch fixture as well as real available routes. Main-view water has a dedicated post-deferred pool (`lldrawpoolwater.cpp:128`) and dedicated probe consumers (`class3/environment/waterF.glsl:311`, `:313`); it does not inherit changes to `alphaF`, `pbralphaF` or `materialF`. It stays **neutral and unchanged** in every phase of this plan (a later water receiver is its own family, see the alpha policy). Reflection captures never reuse main AO. |
 | DOF scratch reuse | CoF overwrites `deferredLight` at `pipeline.cpp:23727`; DOF samples it at `:23780`, `:23802`. | Finish all light-map consumers before CoF; invalidate published-green lifetime before that overwrite. Keep `aoResolved` separate and valid only for its owning lighting view. Reinitialize R/G/B/A on every later native lighting dispatch; DOF scratch must never be mistaken for last-frame visibility. Do not allocate/rebuild the screen pack for an AO toggle. |
-| High-resolution stills | Snapshot autoscale set/reset `llfloatersnapshot.cpp:778`, `:1343`; projection/pixel kernel handling `pipeline.cpp:27364`, `:27407`. | P1 support single-target high-res renders with actual projection and size. Physical AO radius/thickness are not multiplied by snapshot autoscale; only a reference-pixel cap/filter width uses full output dimensions if needed. Test 1×/2×/4× framing. |
+| High-resolution stills | Snapshot autoscale set/reset `llfloatersnapshot.cpp:778`, `:1343`; projection/pixel kernel handling `pipeline.cpp:27364`, `:27407`. | The single-target route reallocates the screen pack to the still's extent (`llviewerwindow.cpp:6340`), renders immediately (`:6377`) and reallocates the original extent (`:6413`). Core phases force **stock AO for the whole shot** with an explicit status and, on exit, re-prepare the interactive generation outside any take (a snapshot is already a hitch). L3 adds the snapshot preparation transaction (admit and prepare the actual still extent, count snapshot scratch and restoration overlap in the peak, whole-shot stock fallback on failure, reject incompatible requests during a pinned take). Physical AO radius/thickness are never multiplied by snapshot autoscale; only a reference-pixel cap/filter width uses full output dimensions if needed. Test 1×/2×/4× framing in L3. |
 | Tiled snapshots | `llviewerwindow.cpp:6003`, `:6143` loops subimages through `display`; Relight explicitly rejects zoomed tiles (`pipeline.cpp:26619`). | Initially fall back to stock for the **entire tiled shot**, with explicit status. Later use padded tiles with overlap ≥ projected AO reach + all filter support, crop interiors, use global output-pixel noise coordinates. No per-tile unpadded native AO: neighboring off-tile occluders are absent. |
 | ReShade bridge | Depth and preserved normal/albedo sidecars published in `llreshadebridge.cpp:355`; preserve-copy reason `:376`. ABI 1.2 fields/encoding at `llreshadebridgeabi.h:76`, `:162`, `:179`; generation tracking `llreshadebridge.cpp:469`. | Preserve sidecars and layout. Recommend native AO with external MXAO/RTGI AO disabled by the user to avoid stacking. Native AO export is optional later ABI work; do not overwrite ORM red or encoded normal channels. No automatic manipulation of proprietary effects/settings. |
 
 ### Alpha policy: coverage is a real limitation
 
-P1 must include deferred OPAQUE/MASK and matching shared Actor FX replay consumers. A
-MASK hole stays a hole; test both sides of two-sided cards. Blended alpha remains on
-its current unoccluded-indirect path initially, explicitly disclosed in status/help.
-Do not advertise correct AO casting from blended hair just because bitmask AO is enabled.
-
-P2 includes a bounded experiment for alpha **receivers**: only reuse resolved visibility
-when fragment depth/normal match the opaque receiver within a footprint-scaled tolerance;
-otherwise use visibility=1. That prevents wall AO from painting dark patches onto
-foreground hair. This conservative method will reject many hair pixels and is not full
-alpha support. If acceptable, apply it to `alphaF`, `pbralphaF` and shared BLEND alike,
-before direct/emissive contributions, including the legacy material BLEND branch in
-`class3/deferred/materialF.glsl:568`. Make this an independent opt-in until parity passes.
-True alpha occlusion needs a coverage/depth representation (possibly another layer);
-defer that separately with its bandwidth and transparency policy rather than silently
-changing depth writes, alpha cutoff or blending.
+- **Core phases (P1-P4):** deferred OPAQUE and MASK (alpha-tested) surfaces, and shared
+  Actor FX replay OPAQUE/MASK actors, cast and receive AO. A MASK hole stays a hole; test
+  both sides of two-sided cards.
+- **BLEND neither casts nor receives** and stays on its current unoccluded-indirect path,
+  disclosed in status/help. In this fork `RenderAutoMaskAlphaDeferred` defaults to **0**
+  (`app_settings/settings.xml:20961`; its comment says textures keep their authored alpha
+  mode and the per-object Alpha Mode override masks manually). So every texture with an
+  alpha channel in blend mode stays BLEND: much SL hair, lashes, lace, clothing and
+  foliage. That undercuts a "thin content" pitch, so **P0 measures the BLEND pixel
+  fraction** in the user's scenes, and the documented ways to widen coverage are the
+  auto-mask setting and per-object Alpha Mode (masking) where the look allows.
+- **L1 (later) BLEND receivers, indirect terms only.** Reuse resolved visibility only when
+  the fragment's depth/normal match the opaque receiver within a footprint-scaled tolerance,
+  else visibility = 1 (so wall AO never paints foreground hair). Visibility multiplies
+  **only the indirect terms** - ambient/probe irradiance and probe specular - *before* they
+  are summed with direct terms. It never multiplies the final colour, direct sun, local
+  lights, projector, rig, emission or rim (`softenLightF.glsl:294` keeps sun separate and
+  forward paths must keep that separation). Hook points, enumerated per family:
+  `class2/deferred/alphaF.glsl:435` region, `class2/deferred/pbralphaF.glsl:369`,
+  `class3/deferred/materialF.glsl:568`-`:599` (legacy material BLEND), and the four shared
+  Actor FX BLEND replay companions. Independent opt-in until parity passes.
+- **Water** is out of scope and unchanged. If a future experiment includes it, enumerate its
+  shader variants, match receivers at the water fragment's *geometric* coordinates (its
+  distorted probe-lookup coordinates must not become AO lookup coordinates), and budget
+  and test that family separately.
+- True alpha occlusion needs a coverage/depth representation (possibly another layer);
+  defer it with its own bandwidth and transparency policy rather than silently changing
+  depth writes, alpha cutoff or blending.
 
 ## 8. Proposed native passes and resources
 
@@ -412,15 +614,16 @@ or bridge-preservation ownership accidentally.
 
 | Resource / pass | Proposed format, size and contract |
 |---|---|
-| `aoDepth` prepare | R32F linear **positive -view.z**, full extent, five levels initially. Write per-mip explicitly using depth-aware reduction; do not call generic averaged `glGenerateMipmap` for geometry depth. Background sentinel is explicit and never a real blocker. Use base-level depth for finest samples/edge tests. |
-| Gather P1 | Inputs active depth/mips, shading normal and depth-derived macro normal, projection/extent, radius/bias, pixel-stable noise. XeGTAO-style slices and paired radial samples produce visibility in [0,1] plus packed edge confidence. |
-| Gather P2 | Same footprint; per slice a register-local 32-bit occupancy mask of the normal-centered angular hemisphere. Finite front/back interval comes from sample position and assumed thickness behind it along the camera ray. Clip intervals, convert cosine to angular space, classify sector overlap and OR occupancy. Do not reinterpret cosine directly as uniformly spaced angle. |
-| `aoRaw`, `aoScratch` | R16F each for scalar AO at full or ceil-half dimensions. Edge metadata R8 at gather extent. Denoise raw -> scratch -> raw -> scratch at minimum (three full spatial draws without TAA); resolve reads the final ping-pong target. Never sample and render the same image. Retain bilateral/edge validity at each step. |
+| `aoDepth` prepare | R32F linear **positive -view.z**, full extent, five levels initially. Write per-mip explicitly using depth-aware reduction; do not call generic averaged `glGenerateMipmap` for geometry depth. Background sentinel is explicit and never a real blocker. Use base-level depth for finest samples/edge tests. From P2, when replay proxies are active the prepare pass takes the nearer of the deferred depth and the AO input overlay (8.1). |
+| Gather (all phases) | One gather program selected by uniform. Inputs: active depth/mips, shading normal (or overlay normal at replay pixels) and depth-derived macro normal, projection/extent, radius/thickness/bias, noise anchoring (9.1). Per slice a register-local 32-bit occupancy mask of the normal-centered angular hemisphere; the finite front/back interval comes from the sample position and assumed thickness behind it along the camera ray, with sample-gap linking and the thickness floor of 6.1. Clip intervals, convert cosine to angular space, classify sector overlap and OR occupancy. Do not reinterpret cosine directly as uniformly spaced angle. Thickness tending to infinity reproduces horizon behaviour (diagnostic, conditional Low). Outputs visibility in [0,1] plus packed edge confidence. |
+| `aoRaw`, `aoScratch` | R16F each for scalar AO at full or ceil-half dimensions. Edge metadata R8 at gather extent. Denoise raw -> scratch (-> raw -> scratch) for the **preset's pass count (2-4)**; resolve reads the final ping-pong target. The Revision 3 three-pass floor is withdrawn (9.2); total filter support is capped at +-4 full-res px. Never sample and render the same image. Retain bilateral/edge validity at each step. |
 | `aoResolved` | R16F full extent. Joint depth/normal upsample when gather is half resolution. At an edge with no valid source, return neutral visibility instead of spreading foreground occlusion across the background. An optional full-res refinement at depth edges must be separately budgeted. |
-| Bent variant P3 | Replace raw/scratch/resolved scalar formats with RGBA16F: XYZ unnormalized open-direction moment in view space, A scalar visibility. Filter moments, normalize after resolve; do not blur oct-encoded XY directly. Full-resolution resolved result is consumed by native probe shaders. Edge texture remains R8. |
-| Publish | Green-only draw into the active `deferredLight`, sampling the separate resolved target. Save/restore indexed/global color masks and all other GL state. R/B/A are not read-modify-written or rounded again. This preserves the established AO slot without a new G-buffer layout. |
-| Consumer P1/P2 | Existing `adjustIrradiance` behavior, one native green producer replacing stock green. Precompiled native compositor handles configurations where stock `HAS_SSAO` is absent. Original compositor is selected whenever native is OFF. |
-| Consumer P3 | Separate native probe entry points and precompiled native lighting programs. Material normal, authored AO and direct paths retain original roles. Never attach bent data to existing material/bridge channels. |
+| AO input overlay (P2) | Native-only, only when shared-replay proxies are planned: R32F linear depth + RG16F octahedral view normal + private depth buffer, full extent (8.1). Not aliased with any live target. |
+| Bent variant (P4) | Replace raw/scratch/resolved scalar formats with RGBA16F: XYZ unnormalized open-direction moment in view space, A scalar visibility. Filter moments, normalize after resolve; do not blur oct-encoded XY directly. Full-resolution resolved result is consumed by native probe shaders. Edge texture remains R8. |
+| Publish | Green-only draw into the active `deferredLight`, sampling the separate resolved target, **after** the stock shared blur. Save/restore indexed/global color masks and all other GL state. R/B/A are not read-modify-written or rounded again. Non-HDR applies the deterministic dither of 8.2. This preserves the established AO slot without a new G-buffer layout. |
+| Consumer (P1 checkpoint) | Existing soften program with a uniform selecting the ambient response (stock curve / native linear, 3.3). Requires stock SSAO ON so `HAS_SSAO` and the stock green exist. |
+| Consumer (P2) | Precompiled native soften companion handles configurations where stock `HAS_SSAO` is absent; the original compositor is selected whenever native is OFF. Replay OPAQUE/MASK consumer companions (8 programs). |
+| Consumer (P4) | Separate native probe entry points and precompiled native lighting programs. Material normal, authored AO and direct paths retain original roles. Never attach bent data to existing material/bridge channels. |
 
 Use the receiver's view-ray direction for the assumed back extent, with GL eye-space
 signs verified against a constructed slab; a fixed camera -Z offset is not equivalent
@@ -430,7 +633,7 @@ Depth mip safety is important for the bitmask: a coarse filtered depth cannot re
 all narrow gaps in its footprint. Use conservative sample-LOD limits near discontinuities,
 nearest source association and fine-level fallback/refinement. Validate thin fixtures at
 each LOD; XeGTAO horizon heuristics cannot be assumed correct for finite interval masks.
-P2 should first pass with LOD0, then re-enable mip sampling behind those gates.
+The P1 checkpoint should first pass with LOD0, then re-enable mip sampling behind those gates.
 
 Integrate slice contributions with the appropriate projected-normal/cosine weights.
 Use analytic angular-sector weights (or a separately verified approximation), not an
@@ -444,9 +647,66 @@ span explicitly rather than shifting by 32. Clamp/validate inputs, acos argument
 projection division, radius and normals. Empty/sky/outside-view samples are unknown/open,
 not black borders or wraparound blockers. Missing information can leak; it must not NaN.
 
-### Lifetime, runtime selection and failure policy
+### 8.1 AO input geometry for shared-replay actors (Revision 4, from review C1)
 
-**P1-A decision: option (b), reserve `deferredLight` only after explicit preparation.**
+**Problem at HEAD.** When shared Actor FX replay owns an actor, native PBR beauty is
+suppressed in the deferred pass (`lldrawpool.cpp:1123`, `:1159`), so the deferred
+depth/normal the AO gather reads shows the *background* where the actor stands. The replay
+path primes depth only later, while draining alpha (`lldrawpoolalpha.cpp:1265` ->
+`LLActorMover::renderSharedActorStyleDepthPrepass`, `llactormover.cpp:17692`), after the
+proposed gather, and its shader `class1/deferred/sharedActorFxPbrDepthF.glsl:86` carries
+coverage/depth only, not a shading normal. Adding eight replay *consumer* companions
+therefore cannot give casting/receiving parity: the gather would still see through the
+actor. Stock SSAO has the same blindness, so the P1 checkpoint is not a regression, but
+P2 must not claim parity without this strategy.
+
+**Strategy A (P2, preferred): AO-owned input overlay.** Before AO depth prepare, if
+`hasSharedActorStyleProxies()` (zero cost otherwise), render the same replay OPAQUE/MASK
+proxy draws, with the same rigging palette, MASK/dissolve discard rule and two-sided
+normal flip as the depth prepass, using four AO-input companion programs (alpha OPAQUE/MASK
+x unrigged/rigged, forked from `sharedActorFxPbrDepthF/V`) into the overlay: R32F linear
+depth, RG16F octahedral view-space normal (geometric normal; a replay normal map is not
+reproduced, so the hemisphere uses the geometric normal at those pixels) and a private
+depth buffer for actor-vs-actor ordering. Depth prepare then takes the nearer of scene and
+overlay depth; the gather and the replay consumers read overlay normal where the overlay is
+nearer. World pixels beside an actor see the actor as an occluder and vice versa
+(mutual occlusion). Existing depth-prime ownership and ordering are untouched.
+
+**Strategy B (fallback if A exceeds its budget): depth-only overlay** (R32F + private depth;
+8N bytes) with the macro normal reconstructed from depth at replay pixels; no new normal
+output and two fewer programs.
+
+**Budget (proposed, RTX 5090):** overlay pass <= 0.15 ms at 1080p with four typical
+avatar-class replay actors, and <= 0.3 ms p95 including the prepare-pass change in the
+actor-heavy fixture; zero GPU work and zero draw calls when no proxy is active; draw count
+<= that of the existing depth prepass. Extra memory 12N bytes (A: 23.7 MiB at 1080p / 94.9
+MiB at 4K) or 8N bytes (B: 15.8 / 63.3 MiB), charged in the admission ledger and prepared
+at Prepare time (never allocated when an actor first appears).
+
+**Gates:** overlay depth within one depth step and normal within 2 degrees of the same actor
+rendered through the deferred path (geometric-normal comparison for normal-mapped
+materials); MASK holes and dissolve identical to the depth prepass; two-sided and rigged
+cases; background sentinel never visible through an actor; mutual actor/world occlusion at a
+wall corner next to the actor; replay turning on/off mid-view causes zero allocations and no
+stale-validity frame. **Mutations:** skip the overlay; order it after the gather; ignore
+dissolve; drop the rigging palette; each must fail its named fixture.
+
+### 8.2 Light-map precision (Revision 4, from review O8)
+
+`deferredLight` is `GL_RGBA` (8-bit) unless HDR is on, where it is RGBA16F
+(`pipeline.cpp:1388`, allocation `:1450`). In non-HDR the published green is quantised to
+1/255, so AO within 0.4% of open maps to exactly 1 and smooth gradients can band, and the
+Revision 3 pan comparison "stock max +1/1024" is below one code step. Policy: HDR publishes
+unquantised FP16. Non-HDR applies a **deterministic ordered dither** (fixed 4x4 Bayer on
+integer output-pixel coordinates, +-0.5 LSB, pure function, applied once after the final
+resolve and before the green write); non-HDR gates are expressed in output code values
+(a one-step delta is 0.0039, inside the 0.005 p95 pan limit). Alternative, decision B12:
+make native AO HDR-only. Recommendation: the capture profile uses HDR; non-HDR is allowed
+with dither.
+
+### 8.3 Lifetime, runtime selection and failure policy
+
+**Decision F-A: option (b), reserve `deferredLight` only after explicit preparation.**
 Separate static support, preparation intent, admission and active execution:
 
 - `nativeStaticSupported(extent)` uses only the required GL version/extensions,
@@ -458,7 +718,7 @@ Separate static support, preparation intent, admission and active execution:
   required for a bent plan. Each extent/mip must fit static texture/renderbuffer limits
   and checked integer dimensions. Compile/link success is a separate preparation gate.
   Pack/view eligibility is the explicit policy in §7: main, plus opt-in real
-  feed packs after P3; never preview, aux/cube, hero, HUD, impostor or reflection views.
+  feed packs after L2; never preview, aux/cube, hero, HUD, impostor or reflection views.
 - Proposed `RenderNativeAOPrepare` (**Prepare native AO**) is machine-level, default
   **false**; exclude it from scenes, creative presets and Quick. Define reservation
   capability as `nativeStaticSupported && RenderNativeAOPrepare && eligiblePack`.
@@ -485,15 +745,19 @@ Separate static support, preparation intent, admission and active execution:
    Ordinary stock shadows/SSAO/DOF costs remain the baseline. A native-master request
    while unprepared reports "Prepare native AO before enabling" and stays on stock.
 2. User turns Prepare ON outside capture. Freeze the requested eligible extents/formats,
-   algorithms and scalar/bent modes; check static support, then run combined memory/work
-   admission including existing allocations, streamed-texture headroom and transition peak.
+   presets and scalar/bent modes; check static support, then run the main-view
+   memory/work admission (AO + Relight main, read from the Relight *admitted* plan, 9.4),
+   including existing allocations, the 256 MiB streamed-texture headroom margin of the
+   byte-identity definition (1) and the transition peak.
    Display the additional resident bytes and any reduced plan before marking it ready.
 3. Link/load native companions during this explicit prepare step (or startup if Prepare
    was previously saved ON); never reload stock shaders through `setShaders`. Allocate
    each missing/changed native target and required light map **once**, reuse existing
-   stock maps, initialize contents/validity as below, then atomically publish Prepared.
-   Prefer a targeted pack preparation helper; never call `allocateScreenBuffer` merely
-   to add the map. Roll back new resources on failure, leaving the old valid path intact.
+   stock maps, initialize contents/validity as below, run the **warm-up draws of 8.5**,
+   then atomically publish Prepared. Prefer a targeted pack preparation helper; never call
+   `allocateScreenBuffer` merely to add the map. Roll back new resources on failure,
+   leaving the old valid path intact. A snapshot's own `allocateScreenBuffer` calls
+   (7) invalidate Prepared; the interactive generation is re-prepared on snapshot exit.
 4. Pin the admitted plan and capture-governor snapshot before a take. Native execution
    requires `Prepare && nativePreparedForPack && matchingGeneration && eligibleView &&
    RenderNativeAOEnabled` plus valid current-view inputs/programs. Prepared OFF/ON toggles
@@ -514,12 +778,15 @@ target when stock shadows already allocate one. Option (b)'s explicit cost when 
 old gate was false is 8N bytes HDR (15.8 MiB at 1080p / 63.3 MiB at 4K), nominally 4N
 non-HDR; account the actual allocated format. Add the AO bundle (scalar approximately
 17–98 MiB across the listed 1080p/4K modes), not just this map. These bytes share texture
-accounting and can reduce streamed-texture quality (`llviewertexture.cpp:654`, `:673`).
-Only users who explicitly enable Prepare pay this retained OFF cost; stock users with
-Prepare OFF pay no native overhead. Prepared OFF still requires byte-identical rendering
-and zero native execution.
+accounting and can reduce streamed-texture quality (`llviewertexture.cpp:654`, `:673`);
+admission enforces the headroom margin and the Prepare status shows the cost. Only users
+who explicitly enable Prepare pay this retained OFF cost; stock users with Prepare OFF
+pay no native overhead. Prepared OFF requires render-pipeline byte identity **under the
+conditions of the byte-identity definition in section 1 (frozen streaming, guaranteed
+headroom)** and zero native execution; it does not promise unchanged texture residency
+when those conditions do not hold.
 
-**P1-B: reserved storage is not valid lighting content.** `bindDeferredShader`
+**Decision F-B: reserved storage is not valid lighting content.** `bindDeferredShader`
 (`pipeline.cpp:25082`) substitutes white only for an incomplete target; a complete
 unwritten reserve otherwise binds uninitialized data. Clear a newly allocated native-
 reserved light map to **RGBA=(1,1,1,1)** once, with framebuffer/state restoration, before
@@ -553,14 +820,15 @@ that function releases Actor Mask, silCover and area targets (`:1371`, `:1379`).
 - Add an AO resource bundle to `LLPipeline::RenderTargetPack` beside existing per-pack
   resources (`pipeline.h:1361`). Main/aux/probe packs must not share AO validity. Prefer
   validity/extent/view-generation in the owning bundle to another unscoped global bool.
-- Native master defaults false. Proposed controls: `RenderNativeAOEnabled`, algorithm
-  Horizon/Bitmask, radius in metres, thickness in metres, amount, quality, half/full,
-  denoise, probe-occlusion enable, feed enable and debug mode. Names are proposals, not
-  settings that exist today. Creative and quality ownership is separated in P5.
+- Native master defaults false. Proposed controls: `RenderNativeAOEnabled`, ambient response
+  (stock curve / native linear), radius in metres, thickness in metres (Horizon-equivalent
+  at the limit), amount, quality, half/full, denoise, probe-occlusion enable (P4), feed
+  enable (L2) and debug mode. Names are proposals, not
+  settings that exist today. Creative and quality ownership is separated in P3.
 - Compile stock programs normally; precompile native consumer/pass programs only in
   explicit preparation (startup if Prepare is saved ON), after common permutation
   clearing; link failure disables native only. Runtime
-  master/algorithm/amount/debug/probe/feed changes **never call `setShaders`**,
+  master/response/amount/debug/probe/feed changes **never call `setShaders`**,
   relink or attach shaders. Do not route through `RenderDeferredSSAO` or rewrite it.
 - OFF executes original draw programs, uniforms and dispatch gates. Extra native shader
   objects and admitted resident target reserves are allowed; no native pass or native
@@ -568,7 +836,7 @@ that function releases Actor Mask, silCover and area targets (`:1371`, `:1379`).
   configurations that originally had none. OFF retains prepared storage so OFF->ON->OFF
   has zero allocations/releases and cannot hitch through screen-pack reconstruction.
 - Prepare native-only bundles and required light maps only with Prepare ON, at startup
-  or explicit pre-capture extent/format/quality preparation, with both live algorithms using the same storage.
+  or explicit pre-capture extent/format/quality preparation, with scalar and bent modes using the same planned storage.
   Pin the admitted plan before capture; include any scalar/bent formats needed by runtime
   probe toggles. Toggle only among prepared resident states. An unprepared request reports
   unavailable/pending preparation and keeps the current valid path; never allocate or
@@ -587,14 +855,16 @@ that function releases Actor Mask, silCover and area targets (`:1371`, `:1379`).
   culling, blending, draw buffers, color masks and relevant sRGB state. Restore on all
   exits. Do not let AO sampling affect sidecar writes, velocity or Actor Mask state.
 
-P1 can retain the original sun producer where it exists (including its now-unused stock green) until
-green publication. That pays redundant AO during bring-up but preserves an easy shadow
-oracle. A separately precompiled native sun variant with no stock AO evaluation is the
+The P1 checkpoint always retains the original sun producer and shared blur (including the
+now-unused stock green) and publishes native green after them. P2 may keep that arrangement
+until the optimized variant is qualified. That pays redundant AO during bring-up but
+preserves an easy shadow oracle. A separately precompiled native sun variant with no stock AO evaluation is the
 optimization target, gated by identical R/B/A and direct-term results. Do not count the
-redundant version as meeting final performance acceptance. P4 removes the remaining
-blur-dispatch dependency on the old SSAO flag.
+redundant version as meeting final performance acceptance. L4 (shrunk) only removes the
+remaining blur-dispatch dependency on the old SSAO flag; because green is published after
+the blur, native AO is already independent of sun softness.
 
-### Startup shader variants and cache gate
+### 8.4 Startup shader variants and cache gate
 
 `llviewershadermgr.cpp:3638` creates one stock soften program for the current common
 configuration. Classic sky is a runtime `classic_mode` uniform and PBR/legacy selection
@@ -610,43 +880,91 @@ two entries. This adds one linked companion per prepared startup/explicit prepar
 rather than eight programs; Prepare OFF adds none.
 Existing common keys (shadows/probes/SSR/etc.) still produce their own cache entries.
 
-P1's planned additional linked program count per loaded configuration is **15**:
+P2's planned additional linked program count per loaded configuration is **19**:
 five depth/gather/denoise/resolve/publish programs, one no-stock-AO sun producer, one
-soften companion, and eight OPAQUE/MASK Actor FX beauty companions (2 alpha modes ×
-scalar/slot families × unrigged/rigged; loader at `llviewershadermgr.cpp:2691`). Leave
-glow and BLEND unchanged in P1. One gather program selects horizon/bitmask by uniform;
-denoise count is CPU draw count, not a shader permutation. P3 bent output can use a
+soften companion, eight OPAQUE/MASK Actor FX beauty companions (2 alpha modes ×
+scalar/slot families × unrigged/rigged; loader at `llviewershadermgr.cpp:2691`) and four
+AO-input overlay companions (8.1; two fewer and no normal output under Strategy B). The P1
+checkpoint adds only the depth/gather/denoise/resolve/publish set (5) because it reuses the
+stock sun producer and soften program. Leave glow and BLEND unchanged in P2. One gather program (bitmask; thickness tending to infinity reproduces horizon behaviour) serves all presets;
+denoise count is CPU draw count, not a shader permutation. P4 bent output can use a
 runtime output mode with RGBA target binding; budget **zero extra soften companions**
-for bent normals. P2's optional BLEND experiment can add four replay beauty companions
+for bent normals. L1's optional BLEND experiment can add four replay beauty companions
 plus its explicitly enumerated forward consumer families; record those counts before
 enabling the experiment, rather than silently doubling all forward shaders.
 
-These counts imply up to 15 additional cold links and binary-cache records, not an
+These counts imply up to 19 additional cold links and binary-cache records, not an
 honest prediction of seconds or bytes without driver measurements. Binary cache loading
-and saving already exist (`indra/llrender/llglslshader.cpp:457`, `:1071`). In P1 measure
+and saving already exist (`indra/llrender/llglslshader.cpp:457`, `:1071`). In P2 measure
 cold startup and warm-cache startup versus stock, with program/stage counts, cache hits,
-disk bytes and resident program memory. Provisional pass/fail ceilings: native additions
-≤3 s cold, ≤0.5 s warm, ≤32 MiB extra cache per loaded configuration during preparation;
+disk bytes and resident program memory. Provisional pass/fail ceilings (scaled with the
+19/15 program count; if 19 programs cannot meet them, fall back to Strategy B's two fewer
+programs before loosening any ceiling): native additions
+≤4 s cold, ≤0.65 s warm, ≤40 MiB extra cache per loaded configuration during preparation;
 measure startup delta when saved Prepare is ON. With Prepare OFF require zero additional
 native links, cache records and resident program bytes. No compile/link after preparation
 on a native-master toggle.
 Report failures and optimize/fail preparation; do not move first-use compilation into
 a take. Source edits can invalidate existing
 shared-helper cache entries as well; measure total startup delta, not just new links.
-P4 may add one shadow-only filter companion; include that link/cache record in its
+L4 may add one shadow-only filter companion; include that link/cache record in its
 delta. Every later optional forward family must publish its count and repeat the gate.
+
+### 8.5 First-use transitions: no hitch on first enable (Revision 4, from review C3)
+
+Zero compile/link/allocation calls is necessary but not sufficient. The driver can still
+defer program finalisation, framebuffer validation and state creation to the first draw
+(the cached-binary load or compile starts in `indra/llrender/llglslshader.cpp:457`), and
+the 120-second aggregate pacing gate can hide an isolated stall. Therefore:
+
+1. **Warm-up during Prepare.** Before publishing Prepared, issue one representative draw
+   (full extent or a tile, as the state requires) through *every* prepared program and
+   attachment/state combination with the real FBO attachments, viewport, color masks and
+   blend state: depth prepare, gather (scalar; bent when planned), each denoise
+   ping-pong direction, resolve, publish (masked green state), the no-stock-AO sun
+   producer, the soften companion for classic and PBR flag paths, the AO-input overlay
+   companions (OPAQUE/MASK x unrigged/rigged) and the replay consumer companions.
+   Discard results and restore the light map to white.
+2. Prepared is published only after the warm-up completes without GL error.
+3. **Gates (RTX 5090, settled scene, cold and warm program cache).** For the *first*
+   transition OFF -> ON into each execution state - bitmask scalar, bent (P4), replay active
+   (first replay actor appearing), feeds (L2) - the first frame's CPU frame time must be
+   <= the steady native-frame CPU time + 1.0 ms (proposed), no present interval may exceed
+   1.5x the period, and p99 of the following 120 frames must stay <= 1.1x the period.
+   Report cold and warm separately; a cold-cache failure that warm passes blocks only
+   the "no first-run hitch" claim, and is reported rather than hidden.
+4. Reject "exceptional first-use spike relative to steady cost" as a failure even when the
+   aggregate pacing gate passes.
 
 ## 9. Determinism and live-capture performance
 
-### Deterministic inputs and repeatability
+### 9.1 Deterministic inputs and repeatability
 
 `doc/CINE_RELIGHT_QUALITY_BRIEF.md:299` (§6) requires current-frame sampling, fixed pixel
 seeds and no temporal accumulation; `:318` requires OFF image diffs and inert resources.
-For AO there is no light ID: seed only integer output-pixel coordinates and an explicit
-fixed seed. No frame number, clock, channel number, camera UUID, `noiseSine`, `ll_frand`
-texture regeneration or velocity. Freeze XeGTAO's noise index to its non-temporal value
-or use its spatial low-discrepancy sequence with fixed index. An arbitrary pixel hash
-is a diagnostic alternative, not a qualified noise choice. Filtering is spatial only.
+For AO there is no light ID. The noise seed is a **pure function of current-frame inputs
+and an explicit fixed seed**: never a frame number, clock, channel number, camera UUID,
+`noiseSine`, `ll_frand` texture regeneration or velocity. Filtering is spatial only.
+Stock's reflected 128-pixel noise lookup (`class1/deferred/aoUtil.glsl:60`) is not copied.
+
+Two candidate anchorings are compared by **measured pan/swim in P0**, not by preference
+(review D1, O2):
+
+- **(S) Screen-anchored.** XeGTAO's spatial low-discrepancy sequence (R2/Hilbert index of
+  the integer output-pixel coordinate) at a fixed noise index, with the matched 2x2/4x4
+  stratified footprint. The natural baseline; its residual noise stays fixed on the screen
+  while surfaces slide beneath it, which is what can read as swimming. An arbitrary pixel
+  hash is a diagnostic only.
+- **(W) Surface-anchored.** The same sequence indexed by an integer cell of the
+  *reconstructed world position* (camera-relative float plus an integer camera-cell
+  offset uniform to avoid precision loss; cell size about 2-4 projected pixels at that
+  depth, quantised per log-depth bucket so cells do not resize continuously; a normal-facet
+  salt so adjacent faces do not share noise). Still deterministic and history-free, so within
+  these rules; its grain sticks to surfaces during pans. Costs measured in P0: flicker at
+  cell boundaries, depth-bucket seams, grazing-angle stretching.
+
+If neither passes the motion gate for a preset (9.2), that preset gets more samples or is
+withheld; temporal history, TAA or capture post-processing are never used to hide swimming.
 
 For half resolution define exact source texel centers; for tiles use global final-output
 coordinates. Same current inputs/settings/extent/seed on the **same GPU/driver** must
@@ -658,136 +976,170 @@ the G-buffer. Record/freeze those inputs and disable temporal AA/exposure/noisy 
 effects for the test oracle. Native AO must not depend on or enable TAA to reach its
 quality claim. Compare raw AO as well as final images.
 
-**CPU variance sizing first (P1-C):** before selecting production shader presets, run a
-CPU current-frame slice/sector sampler and the actual proposed spatial kernels against
-numerically integrated plane/corner/contact references. Sweep deterministic seeds,
-256 sub-pixel offsets, slopes, distances, full/half/odd extents and both algorithms.
-Measure raw error covariance C and propagated resolved error variance `w^T C w`;
-report bias separately. Compose all denoise/upsample weights, accounting for overlap
-and bilateral rejection: neither `9 * passes` nor depth taps equals independent samples.
-Fit correlation/variance bounds from the worst fixture, then choose slices, steps and
-passes to meet the preset's declared gate **before GPU implementation/timing tuning**.
-Record model inputs and reproducible CPU output; a failed model blocks that preset.
+### 9.2 CPU oracle, quality gates and motion (Revision 4)
 
-For a concrete planning calculation, use raw sigma `0.09 * sqrt(8 / T)`, T depth
-gathers/pixel, covariance inflation 1.25, and a residual correlated sigma floor 0.002.
-For a uniform plane interior, convolve normalized `[1,1,1]/3` p times along each axis;
-`E = 1 / (sum(k_i^2))^2` is the 2D effective spatial sample count. Predict
-`sigma_resolved = sqrt(0.002^2 + 1.25 * 0.09^2 * (8/T) / E)`.
-This analytical CPU calculation was evaluated for the table below; it is a sizing
-assumption, **not a fitted SL covariance model or a GPU pass claim**. Equal 3×3 weights
-are the plane-interior approximation to the proposed bilateral filter; edge rejection,
-half-res interpolation, shared depth samples and angular correlation can reduce E.
-The full CPU reference sweep must replace these assumptions with conservative measured
-bounds before freezing presets. Do not credit upsampling as extra independent samples.
+**One oracle sizes bias, variance and motion before any preset is frozen** (P0; proposed
+`ao_oracle.py`, the successor of `ao_variance_check.py`). Inputs: (i) analytic fixtures -
+plane, corner, sphere, railing, finger gap, arm-against-torso cylinders, 1-4 px creases and
+gaps; (ii) **captured G-buffers**: depth and normal dumps through a debug-only readback
+(never shipped) from at least eight protocol scenes (section 11) at the base camera and at
+0.125/0.25/0.5 px camera offsets along horizontal, vertical and diagonal directions. It
+runs the *real stratified sequence* of 9.1 (both anchorings), the exact proposed bilateral
+filter and the sample-gap-linking sampler of 6.1, against a converged reference (>= 4096
+samples) of the same G-buffer. Outputs per candidate preset: bias per fixture; resolved
+variance `w^T C w` with composed overlap/rejection weights (neither `9 * passes` nor depth
+taps equals independent samples); **cross-offset error covariance** `C(delta)` for the pan
+increments; the signed reference-residual delta distribution
+`(AO[t]-AO[t-1]) - (Ref[t]-Ref[t-1])` (p95 and maximum); contact-width retention; and
+PASS / FAIL / INCONCLUSIVE. A failed model blocks that preset. Record inputs and
+reproducible output.
 
-The original Low (T=8, p=3) has E=26.73 and predicted sigma 0.0196, so a universal 0.005
-gate is withdrawn. At unchanged Low cost it cannot plausibly claim that gate. Balanced
-also has an explicitly relaxed gate; users needing ≤0.005 select qualified High or
-Cinematic and pay their cost. If the fitted model misses even a relaxed gate, increase
-work and re-admit/relabel, or withhold the preset; never silently relax its published gate.
+**Planning model (unfitted constants, disclosed).** Raw sigma `0.09 * sqrt(8 / T)`, T depth
+gathers/pixel, covariance inflation 1.25, residual correlated floor 0.002. For a uniform
+plane interior convolve normalised `[1,1,1]/3` p times per axis; the 2D effective sample
+count is `E = 1 / (sum(k_i^2))^2`: E = 9.00 / 18.17 / 26.73 / 35.13 for p = 1 / 2 / 3 / 4.
+Predict `sigma_resolved = sqrt(0.002^2 + 1.25 * 0.09^2 * (8/T) / E)`. This is a sizing
+assumption, **not a fitted SL covariance model and not a GPU result**; equal 3x3 weights
+approximate the bilateral filter, and edge rejection, half-res interpolation and shared
+depth samples reduce E. P0 replaces the constants with conservative bounds fitted on the
+real-depth corpus; do not credit upsampling as extra independent samples.
 
-**No-TAA spatial floor:** static screen seeds prove repeatability, not spatial stability
-under camera motion. Intel's [denoising discussion](https://github.com/GameTechDev/XeGTAO#denoising)
-describes a spatial filter supplemented by TAA when present; its
-[header version notes](https://github.com/GameTechDev/XeGTAO/blob/master/Source/Rendering/Shaders/XeGTAO.h)
-call out the one-pass case with TAA. This plan therefore requires **at least three
-complete edge-aware spatial denoise passes** without TAA, before depth/normal resolve;
-the model-sized candidates use Low 3, Balanced 4, High 7 and Cinematic 8. One pass
-means one full gather-extent ping-pong draw, not an axis
-or the resolve. This is a conservative SL design floor, not a claim that Intel proves
-three passes sufficient. Every preset must pass its declared gates below; raise spatial samples
-or passes, redesign noise/resolve or withhold that preset if it fails. Never use temporal
-history, TAA or capture postprocessing to hide swimming. Blur cannot erase P2's thin-gap gate.
+**Why motion needs its own sizing (review C4, O3, D1).** If the error difference between
+adjacent sub-pixel camera positions has standard deviation `sigma * sqrt(2*(1-rho))`,
+a p95 of `1.96 * sigma * sqrt(2*(1-rho)) <= 0.005` needs `rho >= 0.994` at Low's modeled
+sigma 0.0237, `rho >= 0.958` at Balanced (0.0088) and `rho >= 0.853` at High (0.0047)
+(Gaussian approximation, a sizing estimate only). On smooth synthetic fixtures the
+screen-fixed error stays strongly correlated and the gates look compatible; textured SL
+geometry decorrelates it. That is why the real-depth corpus, not smooth fixtures, decides.
+Stock itself uses a spatial noise texture, so determinism alone proves repeatability, not
+spatial stability.
 
-- **Plane-variance gate:** at each preset, full/half, 1080p/4K and odd extent, use a
-  256×256 interior ROI on an unoccluded plane at front-facing/30°/60° slopes and 1/3/10 m.
-  Across the resolved visibility pixels require mean ≥0.99, standard deviation ≤0.002
-  and peak-to-peak ≤0.01, over 256 sub-pixel camera positions. Also use a uniformly
-  partially occluded plane ROI to detect noise hidden by saturation: standard deviation
-  of error from its numerical reference ≤0.025 Low, ≤0.010 Balanced, and ≤0.005
-  High/Cinematic. These are explicit quality differences, not universal 0.005 compliance.
-  Report mean error/bias too; require absolute mean error ≤0.005 for every preset.
-  Store raw and resolved distributions, modeled covariance and measured effective E.
-- **Camera-pan gate:** at fixed exposure, no AA jitter/TAA and static geometry, pan in
-  horizontal/vertical/diagonal 0.125/0.25/0.5-pixel increments for 256 frames, then reverse,
-  at 1080p and 4K. For the same screen pixel on valid overlapping receiver interiors,
-  measure `abs(AO[t](p)-AO[t-1](p))`: maximum ≤0.02, p95 ≤0.005, and maximum no larger
-  than stock SSAO's maximum +1/1024 on the identical sweep. Apply these absolute limits
-  only to reference-stable interiors. Compare visibility before
-  stock look shaping, after each algorithm's spatial filtering; freeze stock noise as
-  below and record its measured maxima. For **all contact-crease/rail/finger/corner pan
-  ROIs**, including continuously visible receivers, use excess delta versus a converged
-  current-frame reference: `abs((AO[t]-AO[t-1]) - (Ref[t]-Ref[t-1]))`, maximum ≤0.02
-  and p95 ≤0.005. This signed-delta residual permits genuine reference contact changes
-  above 0.02; an absolute AO-delta 0.02 cutoff does not apply to these ROIs. Label
-  newly revealed pixels/discontinuities separately and apply the same reference-residual
-  gate wherever both frames have valid reference correspondence.
-  A world-aligned diagnostic difference may be computed offline, never used by runtime AO.
-  Hardware-captured 120-second pans must also show no screen-locked pattern or swimming;
-  perceptible artifacts fail even if aggregate statistics pass. Repeat the gates after
-  bitmask and bent changes and for every degraded preset eligible during a take.
+**Filter support is capped (review O2, G2).** Total filter support is at most **+-4 full-res
+px**: full-res gather <= 4 passes, half-res gather <= 2 passes. Revision 3's "at least
+three complete passes" floor is **withdrawn**: it was inferred from an analogy to Intel's
+TAA-supplemented denoising notes and never validated against contact detail, and the
+depth/normal bilateral does not stop blur across creases where depth is continuous
+(finger/palm, cloth folds). The budget goes to gather samples instead. Never use temporal
+history to compensate.
 
-### Requested presets and budgets
+**Gate hierarchy.**
 
-These are **CPU-model-sized candidates and proposed SL validation targets, not measured
-GPU results**. Steps below mean
-samples **per side per slice**; sector count is 32 for every P2 preset. All use fixed
-spatial noise and depth-aware resolve. High is a starting default for fine avatar detail;
-half-res modes are explicitly a speed/detail/noise tradeoff. The CPU sizing gate precedes
-GPU cost qualification; a timing budget never overrides the declared quality gates.
+1. **Primary - pan/swim on real captured scenes.** (a) Offline pan corpora from the
+   protocol scenes: for the same screen pixel on valid overlapping receiver interiors,
+   `abs(AO[t](p)-AO[t-1](p))` maximum <= 0.02, p95 <= 0.005, and maximum no larger than
+   stock SSAO's maximum on the identical sweep (+1/1024 in HDR; +1 code step in non-HDR,
+   8.2). For **all contact-crease/rail/finger/corner ROIs**, including continuously
+   visible receivers, use the reference-residual excess delta above: maximum <= 0.02, p95
+   <= 0.005 (this permits genuine reference contact changes above 0.02). Newly revealed
+   pixels are labelled separately. (b) Hardware-captured 120-second pans on the RTX 5090 at
+   1080p and 4K: horizontal, vertical, diagonal, orbit/track and zoom at 1x/2x/4x speed,
+   reviewed offline and by the user; a perceptible screen-locked pattern, crawl or
+   swimming **fails even if the statistics pass**. A world-aligned diagnostic difference
+   may be computed offline, never used by runtime AO. Repeat after bitmask and bent changes
+   and for every degraded preset eligible during a take.
+2. **Bias and contact (per preset, 6.1).** Corner/wall/arm-torso bias, thin-gap visibility
+   (>= 0.90 in reference-open gaps, no halo > 1 full-res px beyond the reference
+   boundary) and a **contact-width gate**: for 1/2/3/4 px creases and lit gaps at 1080p the
+   filtered half-maximum width is within +-1 px of the reference, and peak crease darkness
+   is >= 80% of the reference. Failure reduces passes or support; it is never fixed by
+   adding passes.
+3. **Secondary - static sigma** (fixture based, kept): on an unoccluded plane at
+   front-facing/30°/60° slopes and 1/3/10 m, 256x256 interior ROI, 256 sub-pixel
+   positions, full/half, 1080p/4K, odd extents: mean >= 0.99, standard deviation <= 0.002,
+   peak-to-peak <= 0.01; on a uniformly partially occluded plane the standard deviation of
+   error from its reference is <= 0.025 Low / <= 0.010 Balanced / <= 0.005 High and
+   Cinematic, with absolute mean error <= 0.005 for every preset. Store raw and resolved
+   distributions, modeled covariance and measured E. **A sigma pass never rescues a
+   motion, bias or contact-width failure** (the Revision 3 sigma/pan contradiction).
+4. **Preset freeze (review G1).** A preset is frozen only after items 1-3 pass on the
+   real-content corpus (alpha cards, foliage, avatars, 100 m+ depth ranges), not only on
+   fixtures. Portability beyond the RTX 5090 is reported INCONCLUSIVE, never PASS.
 
-| Preset | Gather | Slices × steps/side; T | 3×3 denoise passes; E | Modeled sigma / declared partial-plane gate | Main AO p95 target at 1080p / 4K |
+### 9.3 Presets, hardware and budgets (Revision 4)
+
+These are **CPU-model-sized candidates and proposed validation targets, not measured
+GPU results**. T = slices x steps per side x 2 depth gathers per pixel; "passes" = 3x3
+bilateral ping-pong draws in the *gather* domain (each adds +-1 gather-domain px, so +-2
+full-res px for a half-res gather); sector count is 32 for every preset; all use fixed
+deterministic noise (9.1) and a depth-aware resolve. The CPU sizing gate precedes GPU
+cost qualification; a timing budget never overrides the declared quality gates.
+
+| Preset | Gather | Slices x steps/side; T | Passes; full-res support; E | Modeled sigma / partial-plane gate | Availability |
 |---|---|---|---|---|---|
-| Live Low | ceil-half | 2 × 2; 8 | 3; 26.73 | 0.0196 / ≤0.025 | ≤0.9 / ≤1.9 ms |
-| Live Balanced | ceil-half | 4 × 4; 32 | 4; 35.13 | 0.0087 / ≤0.010 | ≤1.8 / ≤4.0 ms |
-| Detail High | full | 6 × 6; 72 | 7; 60.24 | 0.0048 / ≤0.005 | ≤3.0 / ≤9.0 ms; 4K needs raised gather budget |
-| Still / Cinematic | full | 8 × 8; 128 | 8; 68.62 | 0.0036 / ≤0.005 | ≤5.0 / ≤16.0 ms; explicit still budget |
+| Live Low (**conditional**) | ceil-half | 2 x 2; 8 | 2; +-4; 18.17 | 0.0237 / <= 0.025 | Ships only if P0 shows it passes bias, contact-width and motion gates (default expectation: dropped). If kept it runs the gather with thickness forced to infinity (Horizon-equivalent) and makes no thin-gap claim. |
+| Live Balanced | ceil-half | 6 x 5; 60 | 2; +-4; 18.17 | 0.0088 / <= 0.010 | Distributed default; capture profile. |
+| Detail High | full | 8 x 8; 128 | 4; +-4; 35.13 | 0.0047 / <= 0.005 | Capture-5090 profile only (its gather exceeds the distributed cap). |
+| Still / Cinematic | full | 12 x 8; 192 | 4; +-4; 35.13 | 0.0040 / <= 0.005 | Stills only (L3); explicit still budget. |
 
-The Low/Balanced targets cannot claim the 0.005 partially occluded-plane gate within
-these candidate work budgets. All presets still share the stricter open-plane, bias,
-thin-gap, reference-residual pan and visual swimming gates. More passes widen filter
-support (High 7, Cinematic 8 gather pixels per axis before resolve); the CPU contact
-fixtures must reject erased creases or thin gaps. Additional passes reuse ping-pong
-targets, so bundle bytes below do not increase merely with pass count.
+Changes from Revision 3, for audit: High 6x6 with 7 passes (+-7 px) became 8x8 with 4
+passes; Balanced 4x4 half with 4 passes (+-8 full-res px) became 6x5 half with 2 passes;
+Cinematic 8x8 with 8 passes became 12x8 with 4; Low 3 passes became 2. The capped support
+spends budget on samples, not blur. Sigma uses the 9.2 model with its unfitted constants;
+P0 re-issues this table with fitted values before the P1 configuration (the High-class row)
+is frozen. In reply to review D5: the reviewer's estimate that Balanced needs about T=32 at
+p=3 and High about T=128 at p=4 is consistent with these rows.
 
-Targets include depth prepare, gather, spatial filters, resolve and publish, on a declared
-RTX-3070-class test GPU; log actual GPU/driver, clocks, scene, AA, divisor, feeds and
-bent on/off. Bent mode gets a provisional +35% budget; reject a larger increase until
-profiling explains it. Intel's published example timings are only a plausibility check:
-full-resolution high was approximately 0.56 ms at 1080p on RTX 2060 and 1.4 ms at 4K on
-RTX 3070, with directional output roughly +25%; those are different hardware/API tests,
-not an SL guarantee. [Intel XeGTAO measurements](https://github.com/GameTechDev/XeGTAO)
-
-Use a deterministic AO work ceiling based on `pixels * slices * 2 * steps`, plus a
-separate fixed bound for depth/filter/resolve work and bytes. Example starting gather
-ceiling: **160 million gather depth samples only** for main + feeds. It excludes
-denoise, depth preparation and resolve/publish. Low's 27 denoise neighbors/pixel are
-3.375× its 8 gather taps; they are charged only under the combined **2,000 M
-tap-equivalent** ceiling, never hidden in or claimed bounded by the 160 M subceiling.
-
-| Candidate | Gather reads, M at 1080p / 4K | Denoise neighbor reads alone, M at 1080p / 4K | Gather-only 160 M admission, main alone |
-|---|---|---|---|
-| Low | 4.15 / 16.59 | 14.00 / 55.99 | Both fit |
-| Balanced | 16.59 / 66.36 | 18.66 / 74.65 | Both fit |
-| High | 149.30 / 597.20 | 130.64 / 522.55 | 1080p fits with little feed headroom; 4K fails |
-| Cinematic | 265.42 / 1,061.68 | 149.30 / 597.20 | Both fail; explicit still plan only |
-
-Denoise entries count 9 AO neighbor fetches per pass only, a **lower bound**, not total
+**Cost and structural admission.** Gather reads = gather-domain pixels x T; denoise
+neighbor reads = 9 per pass per gather-domain pixel (a **lower bound**, not total
 tap-equivalents: add edge/depth/normal guidance fetches, each target component write,
-mip preparation, gather metadata writes, full-res resolve and publication. Bent output
-writes four components instead of one; count any additional guidance fetches separately
-and publish exact coefficients from final loops.
-The combined ceiling can reject a candidate even when its gather fits. An explicitly
-qualified still plan may raise the gather subceiling to **1,200 M**; combined 2,000 M
-work, resident bytes and timing still apply unless separately declared and qualified.
-Full 4K High is therefore unavailable under the default live gather cap, and Cinematic
-is never an automatic live fallback. A modeled 0.005 preset is not promised within
-the Low/Balanced live budget at 4K.
-Use 64-bit arithmetic and ceil-half extents. Only prequalified presets meeting the
-spatial gates may be admitted; do not cut denoise below its floor or improvise a sparse
-sample count to fit. Apply the combined degradation order below before capture, never
-feed GPU timing into pixel quality during a take. Preserve requested/effective values.
+mip preparation, gather metadata writes, full-res resolve and publication; bent writes four
+components; publish exact coefficients from the final loops).
+
+| Preset | Gather reads, M, 1080p / 4K | Denoise neighbor reads, M, 1080p / 4K |
+|---|---|---|
+| Low | 4.15 / 16.59 | 9.33 / 37.32 |
+| Balanced | 31.10 / 124.42 | 9.33 / 37.32 |
+| High | 265.42 / 1,061.68 | 74.65 / 298.60 |
+| Cinematic | 398.13 / 1,592.52 | 74.65 / 298.60 |
+
+**RTX 5090 thresholds (replace the Revision 3 RTX-3070-class table; review C7, O6).**
+The only qualification machine is the RTX 5090 (user decision 10/21, folded in here).
+Milliseconds are GPU-timestamp p95 of depth prepare + gather + denoise + resolve + publish
+at the protocol scenes, with the AO-input overlay reported separately (<= 0.3 ms, 8.1).
+Log GPU/driver, clocks, scene, AA, divisor, feeds and bent on/off.
+
+| Preset | p95 at 1080p | p95 at 4K | Fits distributed default (live gather <= 160 M)? | Fits Capture-5090 profile? |
+|---|---|---|---|---|
+| Low (conditional) | <= 0.2 ms | <= 0.5 ms | yes | yes |
+| Balanced | <= 0.4 ms | <= 1.2 ms | yes (31 / 124 M) | yes |
+| Detail High | <= 1.0 ms | <= 3.5 ms | **no** (265 / 1,062 M) | yes (live gather <= 1,200 M) |
+| Still / Cinematic | <= 2.0 ms | <= 6.5 ms | 1080p only (still <= 1,200 M); 4K no | yes (still gather <= 1,700 M) |
+
+Balanced 0.4 ms at 1080p is the user's 10/21 planning figure. All thresholds are
+provisional: first measured by the P1 production-shader spike; changed only by a recorded
+decision, never loosened silently to pass. Bent mode gets a provisional +35% budget;
+reject a larger increase until profiling explains it. Intel's published example timings
+(full-resolution high about 0.56 ms at 1080p on RTX 2060 and 1.4 ms at 4K on RTX 3070,
+directional output about +25%; [Intel XeGTAO measurements](https://github.com/GameTechDev/XeGTAO))
+are only a plausibility check: different hardware/API tests, not an SL guarantee.
+
+**Ceilings are machine settings with two named profiles.** Work ceilings are deterministic
+(taps and iterations per frame) and bind identically on every GPU *for a given profile*;
+what differs between machines is which profile the machine setting selects. Scenes and
+looks can never raise a profile.
+
+| Ceiling | Distributed default (conservative) | Capture-5090 profile (machine opt-in, qualified by 5090 captures) |
+|---|---|---|
+| Live gather subceiling (gather depth reads only; excludes denoise, depth prep, resolve/publish) | 160 M | 1,200 M |
+| Qualified still gather subceiling | 1,200 M | 1,700 M |
+| Combined tap-equivalents per frame (AO + Relight, plus VCam after L2) | 2,000 M | 4,000 M |
+| Relight own iteration subceiling | 1,500 M | 1,500 M |
+| Combined resident and transition peak / feed AO subset | 768 MiB / 256 MiB | 768 MiB / 256 MiB |
+
+Denoise is charged only under the combined ceiling, never hidden in the gather subceiling.
+Use 64-bit arithmetic and ceil-half extents. Only prequalified presets meeting the spatial
+gates may be admitted; do not cut denoise below its qualified pass count or improvise a
+sparse sample count to fit. Apply the degradation order of 9.4 before capture, never feed
+GPU timing into pixel quality during a take. Preserve requested/effective values.
+
+**Other GPUs.** The 3-4x slower assumption for mid-range cards (Balanced about 0.4 ms on
+the 5090 means about 1.5 ms on a 3060-class card) is *planning guidance only*. This plan
+qualifies no other GPU: mid-range performance is **INCONCLUSIVE** until beta-tester
+captures exist - at least two testers on distinct GPU families (one mid-range NVIDIA and one
+AMD or Intel), each running the section 11 scenes at Balanced with a Tracy capture and the
+logged work plan (requested/effective preset, resident bytes, tap-equivalents, p95 GPU
+times). Only then may a mid-range claim be made, against the 5090 thresholds scaled by the
+measured factor. The distributed default stays conservative until then.
 
 Main reservation comes first. Feeds receive fixed allowances from the remainder, bounded
 by eight **actual AO view passes**, including repeated Gate renders, as Step 6 does
@@ -814,9 +1166,11 @@ resident-bundle stress case, not a claim that camera IDs each own a pack. Charge
 real resident target once for memory, but every actual rendered view pass for work.
 Include pinned preview/capture targets that coexist, not just the reusable scratch pool.
 
-### Hard combined admission: AO + Relight soft shadows + VCam
+### 9.4 Combined admission: AO + Relight soft shadows (+ VCam after L2)
 
-P1 establishes one pure, allocation-free preflight ledger; P3 extends it to native feeds.
+P2 establishes one pure, allocation-free preflight ledger for the **main view** (AO + Relight
+main work and bytes); L2 extends it to native feeds and all VCam targets, which is why the
+core phases do not need the full combined ledger or governor integration (review O10).
 Use `alareashadowmath.h:78`, `:118`, `:134` as the pattern: 64-bit integer bounds, reserve
 main requested-cap work first, fixed remaining feed allowances, count repeated Gate
 renders, and reject a view's admission before the take when its minimum cannot fit.
@@ -829,17 +1183,36 @@ passes to slots by the stable capture-slot ordering below; each repeat render co
 its own pass slot. Memory is admitted by actual resident size buckets, not divided by
 camera count; reserve its main share before admitting feed buckets.
 
-The following are proposed release ceilings, not current enforcement or measurements;
-machine settings may lower them. Raising them is a separately qualified capture plan.
+**Relight interplay (Revision 4, from review C2).** At HEAD the Relight area-shadow pass
+derives its plane count from the *currently selected* light count (`const U32 planes =
+(selected.size+3)/4;`, `pipeline.cpp:26961`), releases the surplus main-view plane when
+the selected set shrinks (`:26973`) and allocates missing targets on demand. With a
+requested cap above four, ordinary light-visibility changes can cross the
+one-plane/two-plane boundary during a take, which defeats "zero allocation" however the
+capture resolution is pinned. **This is being fixed in the Relight stack-fixes job**: plane 1
+is retained while the requested cap exceeds four and Relight consumes the admitted plan
+rather than the selected set, including its OFF cleanup ownership (`pipeline.cpp:26742`)
+and its 0/1/4/5/8 selected-light and mapped-light-eligibility allocation-counter tests.
+AO does not edit Relight code. AO admission *consumes the admitted Relight plan read-only*
+(bytes and tap-equivalents at the requested cap). Dependency for P2 acceptance: until that
+job lands, AO admission conservatively charges two planes whenever the requested cap
+exceeds four, and any combined zero-allocation claim is reported INCONCLUSIVE rather than
+PASS; AO's own allocation counters must still stay flat under selected-light transitions.
+
+The following are proposed release ceilings, not current enforcement or measurements. The
+values shown are the **distributed default**; machine settings may lower them, and the
+Capture-5090 profile of 9.3 raises specific ceilings only as listed there.
 
 | Gate or diagnostic | Accounting / consequence |
 |---|---|
 | Combined resident and transition peak ≤768 MiB; feed AO subset ≤256 MiB | Sum **main + all resident feeds** AO depth/mips/edges/ping-pong/resolve, Relight gather/scratch/visibility for every channel, native-required `deferredLight` reserves, and all VCam G-buffer/depth/beauty/light/water/capture/preview targets. Include post attachments, retained OFF/prepared bundles, alignment/driver allocation estimates and simultaneous old/new resources. Count shared depth/targets once. Existing main beauty/G-buffer is a baseline outside this incremental ledger; it still counts in total VRAM/headroom. Target success alone is not admission. |
-| Combined scheduled texture work ≤2,000 million tap-equivalents/frame | For AO **and** Relight main/feeds, sum worst-case depth gathers (including mip prep and hit refinement), all filter/resolve/publish reads/writes; add every scheduled VCam fullscreen/post/copy pass at its reserved dimensions. One texture read or render-target component write is one equivalent; dynamic-loop passes use their maximum bound. Publish the per-pass coefficient table from production shader loops; an unknown coefficient is a failed admission. Retain live AO gather ≤160 M (explicit qualified still plan ≤1,200 M) and Relight's own ≤1,500 M iteration subceilings as additional limits, not substitutes for this sum. Denoise is excluded from the gather subceiling and included here in full. |
+| Combined scheduled texture work ≤2,000 million tap-equivalents/frame (4,000 M in the Capture-5090 profile) | For AO **and** Relight main/feeds, sum worst-case depth gathers (including mip prep and hit refinement), all filter/resolve/publish reads/writes; add every scheduled VCam fullscreen/post/copy pass at its reserved dimensions. One texture read or render-target component write is one equivalent; dynamic-loop passes use their maximum bound. Publish the per-pass coefficient table from production shader loops; an unknown coefficient is a failed admission. Retain the live AO gather subceiling (160 M distributed default, 1,200 M Capture-5090 profile; stills per 9.3) and Relight's own ≤1,500 M iteration subceiling as additional limits, not substitutes for this sum. Denoise is excluded from the gather subceiling and included here in full. |
 | Feed raster work: **report-only** thresholds 4,096 draw calls / 8 M submitted triangles per frame; hard ≤8 actual AO/Relight feed passes | Geometry cost depends on content and is not bounded by texture taps. Record counts, threshold overruns and frame-time impact for qualification, including repeated Gate renders. They may fail a pre-take workload qualification but never reject, freeze, resize or reschedule a feed mid-take. Do not make per-frame admission depend on draw-list contents. The eight-pass cap is a static schedule bound; reject a ninth scheduled pass before the take, with a runtime guard against schedule corruption before drawing/allocating. |
-| Measured combined GPU delta p95 ≤4 ms at 1080p60 / ≤6 ms at 4K30 | Compare AO + Relight soft shadows + all admitted VCam work enabled versus the same main scene with those costs disabled. Also pass the full-frame 2 ms headroom and present-interval gates below. The structural limits do not predict milliseconds; a plan that fails either timing or structural limits fails qualification. 4K60 needs its own measured qualification. |
+| Measured combined GPU delta p95 ≤4 ms at 1080p60 / ≤6 ms at 4K30 (RTX 5090) | Compare AO + Relight soft shadows + all admitted VCam work enabled versus the same main scene with those costs disabled. Also pass the full-frame 2 ms headroom and present-interval gates below. The structural limits do not predict milliseconds; a plan that fails either timing or structural limits fails qualification. 4K60 needs its own measured qualification. |
 
-**Deterministic degradation, before preparation/take:** reserve the requested main AO
+**Deterministic degradation, before preparation/take (feed rules apply from L2; the core
+phases have only the main view, whose own ladder is High -> Balanced -> Low if shipped ->
+stock):** reserve the requested main AO
 and main Relight plans first. **Use capture slot order only**: lower numbered occupied
 slots have precedence, higher numbered slots degrade first. There is no explicit capture
 priority field in `llprismlens.h`, and this plan adds none. Pin the slot map; repeated
@@ -864,7 +1237,7 @@ or an AO override of capture settings. Iterate reprepare outside capture until b
 plans fit, or reject capture admission with a reason. Freeze the final resolution,
 cadence entitlements, slot map and worst-frame schedule at take start; suspend adaptive
 governor changes until the take ends. Status may continue reporting timing/pressure.
-This requires explicit governor pin/unpin integration in P3, not an assumption that
+This requires explicit governor pin/unpin integration in L2, not an assumption that
 today's runtime fields already freeze it. Neither planner may overwrite the other's
 plan mid-take; catastrophic GL/resource loss ends the qualified take with a logged
 fallback, rather than silently changing quality or freezing selected feeds.
@@ -877,7 +1250,7 @@ would exceed the peak limit must free old storage first. No quality or allocatio
 during a take. All retained residents, including an AO-disabled but prepared feed, still
 count: disabling execution alone cannot solve a byte overrun.
 
-Acceptance must cover 1/2/4/8 feeds with AO + Relight together, mixed real pool sizes,
+L2 acceptance must cover 1/2/4/8 feeds with AO + Relight together, mixed real pool sizes,
 2048² stress accounting, HDR/non-HDR, main 4K bent, odd extents, pinned preview/outputs,
 repeat Gate renders and a deliberately over-cap plan. Log requested/effective plans,
 per-owner bytes/peak bytes and scheduled work; every ledger entry and every ceiling
@@ -887,7 +1260,7 @@ that omit Relight/feed beauty bytes, count IDs rather than passes, hide transiti
 overlap or redistribute unused reservations must fail. Hardware recording is qualified
 against this combined plan, not against an AO-only wall benchmark.
 
-### Frame limiter and VRAM governor
+### 9.5 Frame limiter and VRAM governor
 
 The limiter waits at frame end and counts VSync/background time already elapsed;
 slow frames skip waiting (`llappviewer.cpp:1811`). It cannot recover GPU time spent
@@ -917,7 +1290,23 @@ with a logged whole-view fallback and capture-quality warning, never stale data.
 
 Effort is experienced graphics-engineer days, including automated fixtures and review
 but excluding user screenshot turnaround/hardware availability. Phases are independently
-reviewable; the order is deliberate. Gates below are future work, **not tests run by this
+reviewable; the order is deliberate: **the cheapest evidence comes first and each phase
+ends in a decision point** (P0 exit gate, P1 user go/no-go, P2/P3 acceptance).
+
+| Phase | Effort | Cumulative | Decision at the end |
+|---|---|---|---|
+| P0 reference look, BLEND survey, oracle | 2-3 | 2-3 | Does at least one High-class preset jointly pass bias, variance, contact and motion on real depth? |
+| P1 early A/B checkpoint | 6-9 | 8-12 | **User go/no-go (D1)** before any framework spend |
+| P2 framework | 14-20 | 22-32 | Shippable main-view native AO, default OFF |
+| P3 calibration + UI + persistence | 6-9 | **28-41 core win** | Ship core |
+| P4 bent normals + probe specular | 12-16 | 40-57 | Separate approval |
+| L1 alpha receivers | 5-8 | | Only if the P0 survey justifies it |
+| L2 feeds + combined ledger + governor | 12-16 | | Only if VCam feeds need native AO |
+| L3 stills / snapshot transaction | 4-5 | | Only if stills need native AO |
+| L4 sun-blur cleanup | 1-2 | | Optional |
+| shared qualification allowance | 5-8 | **67-96 full scope** | |
+
+L5 (bitmask SSGI, 8-15) is separate and not in either total. Gates below are future work, **not tests run by this
 planning task**. No check may silently pass when a GL capability or image oracle is absent:
 report INCONCLUSIVE and do not ship the corresponding claim.
 
@@ -925,22 +1314,27 @@ report INCONCLUSIVE and do not ship the corresponding claim.
 
 Extend the style of `scripts/code_tools/relight_area_check.py:1`: a real GL context linking
 production shaders (`:9`), controlled depth/normal/material inputs, framebuffer readbacks,
-and current-camera negative controls (`:510`). Add proposed `ao_variance_check.py`
-(CPU reference/covariance sizing before preset freeze), `ao_bitmask_check.py`,
+and current-camera negative controls (`:510`). Add proposed `ao_oracle.py`
+(CPU reference sizing of bias, variance and motion before preset freeze, 9.2), `ao_bitmask_check.py`,
 `ao_dispatch_check.py` and pure math TUT cases. Dispatch/ownership tests must exercise
 production routing as `scripts/code_tools/relight_vcam_dispatch_check.py:14` does, not a copied mock that
 publishes validity manually. Its executable mutation pattern (`:581`) is the model.
 
-Every phase inherits:
+Every phase inherits the clauses below, except that **P0 and P1 are exempt from the
+preparation, zero-allocation and OFF-matrix clauses by design** (P1 allocates lazily on
+first enable, requires stock SSAO ON and is a developer checkpoint, not a shippable
+feature). They are *not* exempt from determinism, direct-light, bias, contact-width or
+motion gates.
 
-- Native OFF versus clean baseline at this HEAD: byte-equal raw light-map and stable
+- Native OFF versus clean baseline at this HEAD (under the section 1 byte-identity
+  conditions: frozen streaming, guaranteed headroom): byte-equal raw light-map and stable
   pre-post beauty readbacks, SSAO true/false × shadows 0/sun/local × HDR/non-HDR ×
   classic/PBR skies. Also ON->OFF restoration, water/alpha/replay, and resize/camera cuts.
   For configurations with no baseline light map, compare the original neutral inputs
   and beauty; the new reserved texture must not introduce a stock read/dispatch.
   Freeze baseline noise for equal-input comparisons with the production-inert hook below;
   native reproducibility also tests across restarts. Compare pre-tonemap values.
-- Master/algorithm/amount/debug/probe/feed runtime toggles: **zero shader reloads,
+- Master/amount/response/debug/probe/feed runtime toggles (from P2): **zero shader reloads,
   compiles, links, allocations/releases, screen-pack rebuilds and legacy-setting writes**
   for a prepared resident plan. Count calls, do not infer from UI smoothness. Resource
   preparation happens only with Prepare ON, at startup or an explicit extent/format/plan
@@ -978,314 +1372,377 @@ and inspect release compile definitions/preprocessed path to prove it is compile
 The primary OFF byte-identity gate also runs without any hook active. Fixing the native
 seed never changes stock noise generation or invalidates the OFF oracle.
 
-### P1 — Horizon baseline and native runtime framework
+### P0 - Reference look, coverage survey and CPU oracle (2-3 days; no viewer code)
 
-**Effect:** cleaner spatial AO in opaque/MASK world and avatars, using XeGTAO-style
-slices, fixed noise and edge-aware denoise. Master OFF restores stock SSAO exactly.
+**Effect:** none visible. It buys the evidence every later decision depends on and can end
+the project cheaply.
 
-**Files:** `pipeline.cpp/.h` including **main allocation `:1448`, Prism completeness
-`:1770` / allocation `:1830`, producer dispatch `:27310`, preview `:27295` and cube/view
-gates**, `bindDeferredShader :25082` and explicit light/DOF binding validity, targeted
-preparation/lifecycle and combined admission ledger;
-`llprismpreview.cpp` for preview-policy verification at `:1453` (preserve its override);
-`llviewershadermgr.cpp/.h`; proposed
+**Deliverables:**
+
+1. **Reference-look capture protocol executed** (section 11): the user's iMMERSE ON/OFF
+   pairs for the named scenes, including at least two sunlit exteriors with an avatar and a
+   nearby railing/wall, three interiors with corners and furniture, close avatar
+   fingers/face/hair, and a foliage/fence scene; camera bookmarks and frozen settings so
+   the same views are re-shot natively in P1.
+2. **BLEND/alpha coverage survey** in those scenes (review O5): the fraction of visible
+   pixels whose final surface is OPAQUE, MASK or BLEND, split by pool (hair, lashes, lace,
+   clothing, foliage, water, other), using a throwaway debug coverage count (not shipped).
+   Record `RenderAutoMaskAlphaDeferred` = 0 (`settings.xml:20961`) and re-measure with
+   auto-mask / per-object Alpha Mode masking to show how much coverage can be widened.
+   The result sets L1's priority and the honest "thin content" claim.
+3. **CPU oracle** (9.2): bias + variance + **motion** (cross-offset covariance, signed
+   reference-residual deltas) on analytic fixtures *and* captured G-buffers, using the real
+   stratified sequence and both noise anchorings; per-preset PASS/FAIL/INCONCLUSIVE; fitted
+   model constants; thickness default candidates; verdict on conditional Low; the choice of
+   noise anchoring (S) or (W).
+
+**Exit gate:** at least one full-resolution High-class configuration is predicted to pass
+bias (6.1), variance, contact-width and motion gates on the real-depth corpus. If none does,
+**stop and report** with the options: raise T, change the anchoring, or accept a visibly
+noisier look with the user's sign-off. Do not start P1 on a failed oracle.
+
+**Risk / effort:** low, **2-3 days** for the protocol, survey and a first oracle on synthetic
+fixtures plus captured G-buffers; oracle refinement continues inside P1 (counted there).
+
+### P1 - Early A/B checkpoint: native bitmask on the existing plumbing (6-9 days)
+
+**Effect:** the first visible native AO, cheaply, so the user can compare it with the
+reference before more is funded (reviews G3, D7, O4).
+
+**Scope.** Main view only. One bitmask gather (6.1: linking, thickness floor, depth
+precision) in the **P0-selected High-class configuration only** (GLM: sequence High first),
+the capped bilateral denoise, resolve, and a **green-only publish into the existing
+`deferredLight`** *after* the stock shared blur (so the stock sun/blur is untouched and
+native AO cannot change sun softness). Native is active only when the user's existing
+stock SSAO setting is **ON**: the allocation gate (`pipeline.cpp:1448`), dispatch gate
+(`:27310`) and blur (`:27345`) are already true and are **not modified**; the soften
+program already has `HAS_SSAO` and reads green. Stock SSAO is still computed and
+overwritten - a bring-up cost accepted at the checkpoint. Native working targets are
+allocated lazily on first enable (a hitch is accepted; developer/debug only; no Prepare,
+no ledger). Native OFF leaves every stock path untouched.
+
+**Selectable response (debug setting):** `0` = stock `adjustIrradiance` curve
+(`softenLightF.glsl:137`), `1` = native linear `irradiance *= mix(1, visibility, amount)`
+on ambient/probe irradiance only, before Shadow Lift; direct sun, local lights, emission
+and rim unchanged. For the checkpoint the selector is one uniform inside the existing
+soften program; the companion-program decision is made in P2.
+
+**Excluded views and known limits.** Preview, cube, hero, HUD, impostor and reflection views
+and snapshots (native forced to stock) skip native entirely. Shared-replay OPAQUE/MASK
+actors are not in the AO input - exactly as with stock SSAO, so this is not a regression -
+fixed by 8.1 in P2. BLEND is unchanged. No feeds.
+
+**First deliverable inside P1 (review C4): a production-shader GPU feasibility spike** -
+the real gather + denoise at 1080p/4K on the RTX 5090 with GPU timestamps and a pan
+capture - before the surrounding wiring is finished. Compare with the P0 prediction; a
+large mismatch stops the phase and re-sizes the presets.
+
+**Files:** `pipeline.cpp/.h` (publish draw, lazy targets, debug settings), proposed
 `alnativeaomath.h`, `class1/deferred/nativeAOUtil.glsl`, `nativeAODepthF.glsl`,
 `nativeAOGatherF.glsl`, `nativeAODenoiseF.glsl`, `nativeAOResolveF.glsl`,
-`nativeAOPublishF.glsl`; native permutations of `class3/deferred/softenLightF.glsl`
-and `class2/deferred/sharedActorFxPbrF.glsl`; `app_settings/settings.xml`;
+`nativeAOPublishF.glsl`, the soften response uniform in `class3/deferred/softenLightF.glsl`,
+`llviewershadermgr.cpp/.h`, `app_settings/settings.xml` (debug settings), harness files.
+No Director UI, no licences (developer build only), no Prepare.
+
+**Acceptance (checkpoint, High-class configuration):**
+
+- Plane AO >= 0.99, sky exactly 1, no NaN; corner measurably darker than the plane
+  (>= 0.10 in the specified geometry); CPU hemisphere reference mean absolute error <= 0.05
+  on plane/corner/sphere; **bias gates of 6.1** (corner, floor-wall, arm-against-torso)
+  and the thickness sweep 0.01/0.03/0.10/0.30 m with sample-gap linking on and off.
+- Thin fixtures: railing/finger-gap reference-open gaps >= 0.90, no halo > 1 full-res px,
+  contact junction still loses >= 0.10; contact-width gate; LOD0 first, then mips.
+- Depth-precision fade fixtures at 50/100/220/400 m (6.1).
+- **Primary motion gate** (9.2) on the protocol scenes, then the secondary sigma gate; the
+  chosen noise anchoring (S or W) is confirmed on hardware captures.
+- Determinism: 100 repeat byte-equal AO readbacks, finite/bounded, no history/velocity reads,
+  no synchronous queries; native direct-light inputs unchanged (the common clause);
+  stock R/B/A byte-identical after publish.
+- Native OFF byte identity in the default configurations (SSAO on/off x HDR) under the
+  section 1 conditions - trivially, because native code is unreachable.
+- Timing on the RTX 5090 reported against the 9.3 thresholds (not a P1 pass/fail).
+- **Mutations that must fail:** reverse GL z convention; publish into R as well as G;
+  filter the native green through the stock blur (AO filtered twice); disable sample-gap
+  linking silently; AND instead of OR; shift by 32; cosine treated as angle; multiply beauty
+  instead of irradiance.
+
+**User A/B and decision D1.** Re-shoot the P0 scenes natively and deliver, per scene, four
+images: stock + reference OFF, stock + reference ON, native with the stock curve, native
+with the linear response (plus the debug visibility image). The user chooses:
+(a) **GO** - fund P2 and P3; (b) **ADJUST** - re-tune radius/thickness/response, up to 2
+extra days, then re-decide; (c) **NARROW** - ambient-only AO is visibly too weak in sunlit
+scenes: either accept that, or open a *separate* sun-contact-shadow feature with its own
+decision record (section 13) - this plan will not darken direct light; (d) **STOP**.
+
+**Risk / effort:** medium (GL conventions, bitmask math, bias), **6-9 days**. The gather,
+denoise and math header, the oracle and the harness are reused by P2; the lazy-allocation
+and stock-SSAO-required glue is discarded.
+
+### P2 - Native AO framework (14-20 days)
+
+**Effect:** shippable main-view native AO (default OFF) with no hitch on first use, no
+resource churn on toggles, stock restored exactly when OFF, and replay actors participating.
+Funded only after D1.
+
+**Contents:** (1) **Prepare native AO** (machine setting, default OFF), static support,
+latched reservation intent, main-view admission (AO + Relight main from the *admitted*
+plan, 9.4, headroom margin of section 1), atomic Prepared. (2) Allocation predicates
+(`pipeline.cpp:1448`; Prism completeness `:1770` and allocation `:1830` only for pack
+fixtures), dispatch repair (`:27310`) with the no-stock-AO sun producer, white
+initialization and lighting/DOF ownership (Decision F-B). (3) **First-use warm-up and
+cold/warm ceilings** (8.5). (4) **Shared-replay AO input overlay** and the eight replay
+consumer companions (8.1). (5) The OFF identity matrix. (6) Presets Balanced and High (and
+Low only if P0 kept it) with their 5090 gates and the two ceiling profiles (9.3). (7) Dither
+or HDR-only policy (8.2). (8) Snapshot interim: stock whole shot and re-prepare on exit (7).
+(9) MIT notices and the shader-cache gate (19 programs, 8.4). (10) Relight dependency (9.4).
+
+**Files:** as Revision 3's framework list - `pipeline.cpp/.h` (allocation `:1448`, Prism
+`:1770`/`:1830`, dispatch `:27310`, preview `:27295`, `bindDeferredShader :25082`,
+preparation/lifecycle, main-view ledger); `llprismpreview.cpp` (preview override at
+`:1453`, preserved); `llviewershadermgr.cpp/.h`; the P1 shaders plus
+`nativeAOReplayInputF/V.glsl` (four variants); native permutations of
+`class3/deferred/softenLightF.glsl` and `class2/deferred/sharedActorFxPbrF.glsl`;
+`llactormover.cpp/.h` (AO-input draw of the proxies); `app_settings/settings.xml`;
 `indra/llrender/llshadermgr.cpp/.h` if reserved uniforms are needed;
 `indra/llrender/llrendertarget.cpp/.h` if mip ownership requires it;
-`indra/newview/licenses-win32.txt`, `indra/newview/licenses-linux.txt`,
-`indra/newview/licenses-mac.txt`, with existing `viewer_manifest.py` package mappings
-verified; the proposed harness files and test-target compile-definition plumbing for
-noise capture/replay if needed. Prefer a shared native-only
-utility over changing stock helper expressions. No full Director UI yet; debug settings
-and an effective-status diagnostic suffice for the first A/B.
+`indra/newview/licenses-win32.txt`, `licenses-linux.txt`, `licenses-mac.txt` with the
+`viewer_manifest.py` mappings verified; harness files and the test-target noise capture
+plumbing. Prefer a shared native-only utility over changing stock helper expressions.
 
-**Risk / effort:** high (GL conventions, light-map allocation/dispatch, OFF isolation,
-spatial stability, combined ledger and target preparation), **12–17 days**. Light-map
-target work and its preview/cube regressions belong here, not deferred to P4.
+**Risk / effort:** high, **14-20 days** (lifecycle and light-map work 6-8; replay AO input
+and consumers 4-6; first-use warm-up and shader cache 2-3; OFF matrix and harness 2-3).
 
 **Acceptance:**
 
-- Plane AO ≥0.99, sky visibility exactly 1, no NaNs; interior corner is measurably darker
-  than the plane (visibility difference ≥0.10 in a specified radius/geometry fixture).
-  A CPU hemisphere reference gives mean absolute visibility error ≤0.05 on known opaque
-  plane/corner/sphere fixtures at High; save the fixture dimensions and radius with results.
-- Every advertised preset first passes the CPU covariance/reference sizing sweep, then
-  §9's **per-preset** partially occluded-plane sigma gate, common open-plane/bias gates,
-  stable-interior pan gate against stock and contact-crease **reference excess-delta**
-  gate, with TAA disabled. Candidate denoise draws: Low 3, Balanced 4, High 7, Cinematic 8.
-  A deterministic but visibly screen-locked/swimming image fails. Cost tables and
-  admission coefficients must match the fitted, qualified preset, not these assumptions.
+- Everything the P1 acceptance requires for the preset(s) shipped, repeated per preset
+  (Balanced, High): per-preset bias and contact-width gates, primary motion gate on the real
+  corpus, secondary sigma, frozen only after the real-content ROI (9.2 item 4).
 - **Preparation gates:** fresh stock startup with Prepare OFF has zero additional native
   targets, native links/cache records and reserve-map bytes. Unsupported GL/extent rejects
   preparation without partial resources. Prepare ON allocates each missing target once,
-  clears new maps white and publishes Prepared only on complete success; repeat the same
-  request without allocations. Verify explicit failed-admission/failed-link rollback.
-  Sweep live VRAM/governor pressure after preparation: static support, reservation and
-  pack IDs never flip; no `allocateScreenBuffer` call, automatic retry or mid-take teardown.
-  Prepare OFF tears down outside capture only; scenes/presets cannot enable Prepare.
-- **Reserved OFF content:** with no stock producer, first prepared OFF must bind white
-  through soften beauty/debug and explicit lighting bindings. Repeat ON->OFF with dirty
-  RGBA sentinels, previous DOF scratch, reuse/resize/GL restore and HDR/non-HDR. Beauty and
-  debug equal the original white-fallback baseline; no native pass/clear each OFF frame.
-  DOF combine reads only completed current CoF/beauty scratch and matches stock output.
-  Mutations removing allocation white clear, bypassing OFF binding validity, or accepting
-  Lighting/Neutral as valid DOF scratch must fail their respective ownership gates.
-- **Allocation/dispatch hole:** stock SSAO=false × shadows=0 × DOF=false × debug=0,
-  native ON produces a complete, correctly sized light map and non-neutral G on a corner;
-  R/B/A stay exactly neutral. Repeat HDR/non-HDR, odd/divisor sizes and 100 prepared
-  OFF/ON toggles: zero allocation/release, `allocateScreenBuffer`, shader-reload/link or
-  legacy-setting calls; Actor Mask, silCover and area target IDs/depth sharing unchanged.
-  Assert both allocation gates and the dispatch gate independently; disabling any one
-  must fail. Verify the future feed preparation predicate with scratch-pack fixtures in P1;
-  actual native feed exposure waits for P3 isolation.
-- With stale nonwhite sentinels preloaded, preview remains neutral under
-  `sPrismPreviewRender` even when master ON and shaders capable; `gCubeSnapshot`, hero
-  mirror, HUD, impostor and reflection views execute no native passes/lookups. Exercise
-  flags independently and nested early exits; restore main validity and view state.
-- DOF ON/OFF: CoF scratch can overwrite `deferredLight` only after lighting consumers;
-  next native view reinitializes it, retains correct corner AO and shows no previous-frame
-  CoF sentinel. No `aoResolved` alias with DOF or area targets.
-- Combined-budget preflight rejects over-cap storage/work before allocation/draw,
-  including reserved OFF targets. Shipped platform `licenses.txt` contains the complete
-  pinned XeGTAO MIT notice. Startup counts/time/cache pass §8's shader gate.
-- Full/half and odd 63×47, 1920×1080, 3840×2160 reconstructions have ≤1 full-res pixel edge
-  alignment error. Near/far/FOV/off-axis tests reconstruct a known plane within depth-format
-  precision (explicitly derived tolerance), without a screen-space radius sign flip.
-- Deferred versus shared OPAQUE/MASK replay indirect result agrees within one RGBA8
-  quantization step or the corresponding FP tolerance. Blend remains the documented baseline.
-- Actual stock R/B/A light-map channels remain byte-identical after green publication.
-  Meet timing budgets after replacing redundant stock AO computation, not before.
-- **Mutations that must fail:** reverse GL z convention; use main projection in another
-  view; remove gather dispatch; publish into R as well as G; force validity before a
-  failed allocation; multiply beauty instead of irradiance; call `setShaders` on toggle;
-  allocate the scratch target each frame. Also require OFF byte gates above.
+  clears new maps white, runs the warm-up and publishes Prepared only on complete success;
+  repeating the request allocates nothing. Failed admission/link rolls back. Sweep live
+  VRAM/governor pressure after preparation: static support, reservation and pack IDs never
+  flip; no `allocateScreenBuffer`, automatic retry or mid-take teardown. Prepare OFF tears
+  down outside capture only; scenes/presets cannot enable Prepare.
+- **First-use gates** (8.5): cold and warm first-transition CPU and present-interval
+  ceilings for bitmask scalar and for replay activation.
+- **OFF identity** under the section 1 byte-identity conditions, including the
+  Prepared-OFF case with the 8N reserve and the frozen-streaming / headroom proofs; the
+  complete matrix SSAO x shadow x HDR x sky x DOF x resize x restart x DOF-scratch ownership
+  x ON->OFF.
+- **Reserved OFF content, allocation/dispatch hole, excluded views, DOF** - the Revision 3
+  gates are retained: with no stock producer the first prepared OFF binds white through
+  soften beauty/debug and explicit lighting bindings, ON->OFF with dirty RGBA sentinels
+  and DOF scratch equals the white-fallback baseline; with stock SSAO=false x shadows=0 x
+  DOF=false x debug=0, native ON produces a complete correctly sized light map and
+  non-neutral G while R/B/A stay exactly neutral, 100 prepared OFF/ON toggles do zero
+  allocation/release/`allocateScreenBuffer`/reload/link/legacy-setting calls, and Actor
+  Mask, silCover and area targets are unchanged; each of the two allocation gates and the
+  dispatch gate fails independently when disabled; preview stays neutral with stale
+  sentinels; `gCubeSnapshot`, hero mirror, HUD, impostor and reflection execute no native
+  passes; DOF CoF scratch overwrites `deferredLight` only after lighting consumers and the
+  next native view reinitialises it; no `aoResolved` alias with DOF or area targets.
+- **Replay parity (8.1):** AO-input depth/normal readbacks with replay active; background
+  sentinels never visible through an actor; mutual actor/world occlusion; dissolve, MASK
+  holes, two-sided and rigged cases; the deferred versus shared OPAQUE/MASK replay
+  indirect result within one RGBA8 quantisation step (or the FP tolerance); overlay budget
+  <= 0.3 ms; no allocation when a replay actor appears.
+- **Main-view admission:** the preflight rejects over-cap bytes/work before allocation and
+  draw, including reserved OFF targets and the overlay; AO admission consumes the admitted
+  Relight plan (9.4); the Relight dependency is landed or reported INCONCLUSIVE.
+- **Snapshots:** a native-on snapshot is a whole-shot stock fallback with a status; after it
+  the interactive generation is re-prepared once, zero leaks, valid generation ID.
+- **Reconstruction:** full/half and odd 63x47, 1920x1080, 3840x2160 have <= 1 full-res
+  pixel edge alignment error; near/far/FOV/off-axis reconstruct a known plane within the
+  derived depth-format tolerance, with no screen-radius sign flip.
+- **Performance:** RTX 5090 thresholds of 9.3 for the shipped presets after replacing the
+  redundant stock AO computation; combined delta p95 and the 9.5 frame-pacing gates;
+  the notices in `licenses.txt`; the 19-program startup gate of 8.4.
+- **Mutations that must fail:** use the main projection in another view; remove gather
+  dispatch; force validity before a failed allocation; call `setShaders` on toggle;
+  allocate the scratch target each frame; skip the warm-up; skip the replay overlay or order
+  it after the gather; bypass the headroom check; Relight plan ignored by admission.
 
-### P2 — Visibility bitmask and finite thickness
+### P3 - Calibration, Director UI, persistence, ceilings (6-9 days)
 
-**Effect:** reduced dark halos behind narrow geometry, lit gaps between railing bars
-and fingers, with a controllable thickness compromise. Horizon remains a diagnostic
-comparison option. AO is still indirect-only.
+**Effect:** the core win is controllable and matches the reference as closely as the
+ambient-only design allows: a searchable/favoritable native AO control with honest
+quality/view status, saved creative looks, scene restoration and calibrated look presets.
 
-**Files:** native gather/util/math, settings, harness/TUT fixtures; native alpha consumer
-variants in `class2/deferred/alphaF.glsl`, `pbralphaF.glsl`, `sharedActorFxPbrF.glsl` and
-`class3/deferred/materialF.glsl` only
-for the optional receiver experiment. No transparent caster or new G-buffer layout.
+**Calibration (2-3 days):** using the P0 captures, freeze the thickness default, radius
+and the Natural / Defined / Reference-match looks and the final response choice
+(section 11 targets: contact-ROI ratio within +-10%, contact width within +-2 px at
+1080p); record image IDs and settings. Add the machine settings for the two ceiling
+profiles of 9.3 (Capture-5090 is opt-in and never loaded from a scene or look).
 
-**Risk / effort:** high (sector math, finite-thickness leaks, sparse data and motion), **7–10 days**.
-
-**Acceptance:**
-
-- Pure interval oracle: empty/full masks, endpoint rounding, zero/32-bit spans, overlap
-  union, both slice directions and grazing normals. Union is order independent; duplicating
-  a sample cannot add occlusion twice. Angular/cosine-weight integral agrees with dense
-  numerical integration with mean error ≤0.02 and maximum error ≤0.05 for a fixed sweep
-  of analytic angular intervals at 32 sectors. Publish the sector-boundary quantization
-  error separately; revise the approximation/sector resolution if these gates fail.
-- In synthetic railing and finger-gap fixtures, 1–3 cm foreground blockers sit at a
-  specified separation from a background receiver; reference-open gaps retain ≥0.90
-  visibility, with no halo extending >1 full-res pixel beyond the reference boundary
-  at High. A contact junction still loses ≥0.10 visibility. Record camera/radius/thickness,
-  compare both raw and filtered results, and repeat at 1/3/10 m and both resolutions.
-- Fence/lace alpha-test textures retain all reference-open holes wider than 2 pixels
-  at full resolution. Half-res subpixel failures are reported and cannot qualify as
-  equivalent to High. Solid-wall/corner fixtures remain within 0.05 mean absolute AO
-  error; a smaller thickness cannot be accepted solely because it brightens every scene.
-- Thickness sweep 0.01/0.03/0.10 m is finite and stable, with explicit thick-wall leakage
-  examples. Repeat thin cases with LOD0 then mip sampling; coarse LOD cannot erase the
-  lit-gap gate. A fixed-pixel denoiser must not reintroduce a horizon-shaped halo.
-- Optional blended receiver gate: foreground hair over an occluded wall uses neutral AO
-  when depth mismatches; matching replay surfaces agree. Test legacy/PBR hair, lashes,
-  lace and water. If this gate fails, ship the opt-in disabled and label the limitation.
-- **Mutations:** infinite-thickness/back angle = horizon; reversed front/back angles;
-  AND instead of OR; shift by 32; cosine treated as angle; mask reinitialized per sample;
-  duplicate samples counted twice; bilateral rejection disabled; alpha blindly samples
-  wall AO. Each must trip a named fixture. Determinism/OFF/reload/allocation gates remain.
-
-### P3 — Bent normals, probe specular occlusion and view isolation
-
-**Effect:** indirect light follows open directions; probe reflections lose implausible
-brightness inside close creases while direct highlights remain. Optional native AO in
-real VCam camera feeds uses each camera's own depth and projection.
-
-**Files:** native gather/filter/resolve formats and math; native permutations/entry points
-in `class3/deferred/reflectionProbeF.glsl`, `class2/deferred/reflectionProbeF.glsl`,
-`class1/deferred/deferredUtil.glsl`, `class3/deferred/softenLightF.glsl`, forward/replay
-consumers; pipeline target-pack lifecycle and `begin/endPrismAuxiliaryState`; viewer shader
-manager, combined AO/Relight/VCam ledger and admission wiring, `llprismlens.h` and the
-capture-governor implementation for snapshot/pin/unpin integration, settings and AO
-dispatch/VCam harnesses. Include the separate legacy gloss/environment overloads and class-2 conversion
-policy in §5. If texture-unit/link limits are exceeded,
-reduce native bindings or fail native only, not stock shaders.
-
-**Risk / effort:** high (probe/SSR separation, artistic compatibility, auxiliary state),
-**10–15 days**, including a separately gated **3–4 day feed/budget substep** within this estimate.
-
-**Acceptance:**
-
-- Open plane bent N dot shading N ≥0.999; asymmetric blocker bends toward the known
-  opening; unit length error ≤1e-3 after resolve; zero moment never yields NaN. Symmetric
-  blockers do not introduce a preferred screen direction. Repeated output is byte-identical.
-- Roughness sweep 0.05/0.25/0.5/1.0 × view-angle sweep: probe specular factor [0,1], open
-  case =1; a blocked-cone fixture reduces only its expected indirect reflection. Compare
-  materialAO 1/0.5 and native visibility 1/0.5 against a composition oracle to catch squaring.
-- Direct sun glint and local-light glint remain unchanged. SSR-only and hero-only fixtures
-  hold ambient inputs equal and are unchanged by probe-only occlusion; compare direct
-  inputs before legacy energy/recombination heuristics. Test `glossenv` and `legacyenv`
-  independently across spec.a=0/>0, envIntensity=0/0.5/1, SSR on/off and hero replacement.
-  A post-mix AO multiply must fail; class-2 sRGB round-trip at factor=1 must be bypassed.
-  Probe capture buffers are unchanged, and classic
-  sky/probes-disabled fallback is finite and preserves the intended ambient-only scope.
-- Actor FX shared replay parity; Tron/rim/emissive and silhouette invariants; every
-  receiver policy tested under HDR and non-HDR without misreading flags/carriers.
-- Feeds: 1/2/4/8 views, odd/divisor sizes, same-size Gate source cut, repeated source renders,
-  allocation failure at every target, resize, eviction and last close. Main AO sentinel
-  unchanged, no stale validity, correct incoming camera, ≤1 pixel reconstruction alignment,
-  zero steady allocations/releases, exactly one allocation per changed target. Ninth actual
-  pass is rejected before allocation. Main+feed work and resident bytes stay within ceilings.
-  Pass the combined AO + Relight + VCam ledger/timing gates and every excluded-view/DOF
-  gate from P1 with nested feed/preview/hero passes. All qualified feed presets pass their
-  declared no-TAA variance gates and the common pan/visual gates. Change draw/triangle
-  counts mid-take past report thresholds: feed cadence/quality stays pinned and updates
-  continue. Verify slot-order degradation, capture-governor handoff and pin/unpin, plus
-  timing/VRAM pressure changes that cannot mutate an admitted take. Degraded feeds cannot
-  ship visible swimming.
-- **Mutations:** bent N used as direct BRDF normal; AO applied twice through ORM; specular
-  occlusion after SSR mix; shared replay skipped; feed aliases main target; main validity
-  restored too early/not restored; source switch reuses old result; budget counts feed IDs
-  instead of actual renders; partial allocation publishes validity. All must fail.
-
-### P4 — Independent AO and sun-shadow filtering
-
-**Effect:** changing AO no longer changes sun shadow softness. Sun filtering remains
-usable with native AO off/zero, with a clearly defined compatibility mode.
-
-**Files:** `pipeline.cpp/.h`, native sun producer variant, `class1/deferred/blurLightF.glsl`
-or new native shadow-only filter, shader manager, settings, shadow/AO fixtures. Legacy
-SSAO path and its old semantics remain untouched while compatibility is offered.
-
-**Risk / effort:** medium-high (existing looks depend on blur coupling), **4–6 days**.
-
-**Acceptance:**
-
-- Native mode AO algorithm/amount/denoise changes do not change the sun channel; shadow
-  soften changes do not change native AO. Verify exact channel readbacks, not visual judgment.
-- Modes 0/1/2/3 have documented migration: stock-equivalent shadow kernel, pixel sigma,
-  world-mm sigma and none. Preserve meaningful pixel/mm controls as sun settings. Retire
-  the label/workaround only after parity; do not delete users' saved values prematurely.
-- Native mode works with legacy `RenderDeferredSSAO=false`, native shadow quality 0 or
-  enabled, with no shader reload. Native master OFF still restores old blur gating and
-  byte-identical stock output. An explicit future migration to independent shadows is
-  versioned/opt-in so old scenes do not silently change.
-- High-res 1×/2×/4× sun sigma agrees in world units; pixel mode scales as documented.
-  The stock-equivalent branch agrees with baseline kernel within one output quantization
-  step, while native AO is filtered once by its own denoiser.
-- **Mutations:** retain the SSAO flag as the only native shadow-blur dispatch gate;
-  AO accidentally filtered twice; shadow-only filter writes green; millimetres autoscaled
-  twice. Each must fail its independence/scale gate. Review performance after removing
-  redundant shared-green processing.
-
-### P5 — Director controls, appearance presets, persistence and capture qualification
-
-**Effect:** a searchable/favoritable native AO control with honest quality/view status,
-saved creative looks and scene restoration; calibrated screenshot-only look presets.
-
-**Files:** settings and native AO preset helper; `llfloaterdirector.cpp`,
-`alkitpresets.cpp`, `alpresetlook.h`, `llpresetsmanager.cpp`; source generator
-`scripts/code_tools/director_kit_gen.py`, `scripts/code_tools/director_kit/kit_pages.json`
-and its actual page data providers; generated World Shadows XUI/index; Preferences and
-Lightbox XUI/adapters as appropriate. Update relevant Director manifests/fixtures and
-take-start metadata. Do not hand-edit only generated XUI/index and leave sources stale.
-
-**Risk / effort:** medium (ownership, old scenes, Quick safety), **4–6 days**, plus
-**3–6 days** of cross-scene/performance/look and hardware-capture motion qualification
-shared with earlier phases.
+**UI, persistence (4-6 days).** As Revision 3's Director phase: files `llfloaterdirector.cpp`,
+`alkitpresets.cpp`, `alpresetlook.h`, `llpresetsmanager.cpp`; generator
+`scripts/code_tools/director_kit_gen.py` and `scripts/code_tools/director_kit/kit_pages.json`
+with its page data providers; generated World Shadows XUI/index; Preferences and Lightbox
+XUI/adapters; Director manifests/fixtures and take-start metadata. Do not hand-edit only
+generated XUI/index and leave sources stale.
 
 Current search parses the v3/22-field generated index (`alkitsearch.cpp:67`, `:136`);
 Quick proxies refer back to actual source rows (`alkitshell.cpp:2121`). Header Quick is
 default deny, with listener tripwires, explicit per-setting review reasons and uniqueness
-checks (`scripts/code_tools/director_kit_gen.py:1356`, `:1471`, `:1522`, `:1533`). New master is **not Quick-safe
-just because it is a bool**: prove its listeners do not reload shaders/recreate global
-buffers and that prepared master toggles allocate nothing. Unprepared requests must
-report pending preparation instead of allocating from the toggle. Keep it denied until reviewed. Existing
-`RenderDeferredSSAO` stays unsafe. Update generator count/fixtures only for real additions;
-do not rename a nonexistent widget to make indexing pass.
+checks (`scripts/code_tools/director_kit_gen.py:1356`, `:1471`, `:1522`, `:1533`). The new
+master is **not Quick-safe just because it is a bool**: prove its listeners do not reload
+shaders/recreate global buffers and that prepared master toggles allocate nothing.
+Unprepared requests report pending preparation instead of allocating from the toggle. Keep
+it denied until reviewed. Existing `RenderDeferredSSAO` stays unsafe. Update generator
+count/fixtures only for real additions; do not rename a nonexistent widget to make indexing
+pass.
 
-Scene persistence is an explicit allowlist (`llfloaterdirector.cpp:3603`, `:4098`, `:4360`),
-not every `Render*` setting. Existing Relight creative settings are included, while quality
-is machine-wide (`:3734`). Look ownership intentionally excludes masters, quality,
-targeting and shader-compile settings (`alkitpresets.cpp:61`). Follow these boundaries:
+Scene persistence is an explicit allowlist (`llfloaterdirector.cpp:3603`, `:4098`,
+`:4360`), not every `Render*` setting. Existing Relight creative settings are included,
+while quality is machine-wide (`:3734`). Look ownership intentionally excludes masters,
+quality, targeting and shader-compile settings (`alkitpresets.cpp:61`). Boundaries:
 
-- AO look family owns radius, amount, thickness, chosen response and optional bent
+- The AO look family owns radius, amount, thickness, chosen response and optional bent
   appearance controls; no master, feed enable, budget or quality changes on look load.
   Keep quality preset and appearance preset visibly distinct.
-- Scenes explicitly save native master/algorithm and creative AO parameters. Proposed
-  migration: a scene with no AO block selects stock compatibility, avoiding inherited
-  native AO from the previously loaded scene. Show this policy in release notes; do not
-  reset unrelated legacy SSAO/preferences or camera placement.
+- Scenes explicitly save native master and creative AO parameters. A scene with no AO block
+  selects stock compatibility, avoiding inherited native AO from the previously loaded
+  scene; show this policy in release notes; do not reset unrelated legacy SSAO/preferences
+  or camera placement.
 - Graphics preferences save quality/full-half/denoise and memory/work limits deliberately.
-  Prepare is a separate machine preference default OFF; scenes/looks/graphics quality
-  preset loads cannot turn it on or trigger preparation. Expose its pre-take cost/status
-  and teardown explicitly. Scene load never raises machine ceilings; a scene requesting
+  Prepare is a separate machine preference default OFF; scenes, looks and graphics quality
+  preset loads cannot turn it on or trigger preparation. Expose pre-take cost/status and
+  teardown. Scene load never raises machine ceilings or the profile; a scene requesting
   native while unprepared stays on stock and reports pending preparation. Take-start
-  metadata records Prepare/prepared generation, requested and effective quality,
-  per-preset sigma gate, seed, radius/thickness, pinned governor plan, view policy and fallback reasons, following
-  `pipeline.cpp:26651` and `alrelighttakerecord.h:56`.
+  metadata records Prepare/prepared generation, profile, requested and effective quality,
+  per-preset gates, seed and anchoring, radius/thickness, view policy and fallback reasons,
+  following `pipeline.cpp:26651` and `alrelighttakerecord.h:56`.
+- The legacy Lightbox `RenderSSAOEffectValue`/`RenderSSAOEffectSat` bindings (3.4) stay
+  unresolved legacy UI and are not reused.
 
 **Acceptance:**
 
-- Search finds "AO", "ambient occlusion", "GTAO", "bitmask", "thin objects", "probe
-  occlusion" and lands on a real widget. Row/header, reset, undo, changed-only state,
-  Quick proxy and status agree. Existing generator/parity/functional checks pass.
-- Save/load a creative preset without changing master, quality, budgets, subjects or
-  feed enable. Scene roundtrip restores creative state; an old sparse scene after an
-  AO-heavy scene returns to the documented stock state. Unknown keys are ignored safely.
-  Custom quality numeric knobs roundtrip without preset listeners overwriting them.
-- Toggle native master/algorithm/appearance through Preferences, Lightbox, Director and
-  Quick after explicit preparation: reload count zero and zero allocation/release for
-  prepared runtime toggles. Prepare remains excluded from Quick/scenes/looks and its
-  default-OFF startup incurs no native allocation/link/cache cost.
-  Explicit pre-take quality preparation allocates at most once per affected target;
-  300 subsequent updates allocate zero. Reset works on actual declared settings.
-- Match-look captures and 120-second frame-pacing/VRAM runs pass §9/§11. Publish requested
-  versus effective state and any excluded alpha/tile/feed modes, not a misleading "Ultra".
-- **Mutations:** add shader reload listener to an allowlisted native header; index a
-  nonexistent widget; write master/quality from look load; omit new scene key; old scene
-  retains previous native enable; status reports requested quality as effective after a
-  budget clamp. Each must fail its specific ownership/UI oracle.
+- Search finds "AO", "ambient occlusion", "GTAO", "bitmask", "thin objects" and (after P4)
+  "probe occlusion" and lands on a real widget; row/header, reset, undo, changed-only
+  state, Quick proxy and status agree; generator/parity/functional checks pass.
+- Save/load a creative preset without changing master, quality, budgets, subjects or feed
+  enable; scene roundtrip restores creative state; an old sparse scene after an AO-heavy
+  scene returns to the documented stock state; unknown keys are ignored; custom numeric
+  knobs roundtrip without preset listeners overwriting them.
+- Toggling master/response/appearance through Preferences, Lightbox, Director and Quick after
+  explicit preparation: reload count zero and zero allocation/release; Prepare and the
+  ceiling profile remain excluded from Quick/scenes/looks; the default-OFF startup incurs no
+  native allocation/link/cache cost; pre-take quality preparation allocates at most once
+  per affected target and 300 updates allocate zero; reset works on declared settings.
+- Match-look captures and 120-second frame-pacing/VRAM runs pass 9.5 and 11; publish
+  requested versus effective state and the excluded alpha/tile/feed/water modes, not a
+  misleading "Ultra".
+- **Mutations:** shader-reload listener on an allowlisted native header; an index entry for
+  a nonexistent widget; master/quality written from look load; omitted scene key; an old
+  scene retaining the previous native enable; status reporting requested quality as
+  effective after a budget clamp; scene load switching the ceiling profile.
 
-### P6 — Later optional bitmask SSGI
+**Risk / effort:** medium, **6-9 days** (UI/persistence 4-6, calibration 2-3), excluding
+user screenshot turnaround.
 
-**Effect:** short-range diffuse bounce using visible newly covered sectors. Separate
-master and strength, default OFF; AO remains usable without it.
+### P4 - Bent normals, probe specular occlusion (12-16 days; separate approval)
 
-**Files:** future source-radiance target and gather, bitmask utilities, diffuse-only
-composition, target lifecycle, settings/UI/persistence and SSGI harnesses. Coordinate with
-existing SSGI designs; do not reuse the final toned/graded/ReShade beauty as a light source.
+**Effect:** indirect light follows open directions; ordinary probe reflections lose
+implausible brightness inside close creases while direct highlights remain. Hero-mirror/SSR
+replacement radiance is unoccluded by policy (section 5).
 
-**Risk / effort:** high, **8–15 additional days** after separate design/approval. This
-estimate is less certain than P1–P5. Needs a current-frame scene-linear source with
-explicit direct/emissive ownership, first-hit/sector ownership, albedo/energy controls,
-and an account of existing probe irradiance. No feedback of the previous SSGI result,
-no temporal history, no double-counted probes and no new direct-light AO modulation.
+**Files:** native gather/filter/resolve formats and math; native permutations/entry points
+in `class3/deferred/reflectionProbeF.glsl`, `class2/deferred/reflectionProbeF.glsl`,
+`class1/deferred/deferredUtil.glsl`, `class3/deferred/softenLightF.glsl`, replay consumers;
+the separate legacy gloss/environment overloads and class-2 conversion policy of section 5;
+settings and harnesses. If texture-unit/link limits are exceeded, reduce native bindings or
+fail native only, not stock shaders.
 
-**Acceptance:** colored-wall bounce reaches only reference-visible nearby surfaces;
-wall-occluded receiver remains at baseline within one RGBA8 step; duplicate/overlapping
-samples cannot add energy twice; source intensity sweep is bounded/monotonic; SSGI OFF
-is byte-identical to AO-only. Determinism, zero allocations, no reload and separate GPU
-budget apply. **Mutations:** previous-frame source, already-composited bounce as source,
-double sector ownership, final-beauty AO multiply and unoccluded color leaking through a
-solid-wall fixture must fail. A detailed probe/SSGI energy oracle is required before coding.
+**Risk / effort:** high (probe/SSR separation, four consumer families at
+`class3/deferred/reflectionProbeF.glsl:763`-`:934`, class-2 sRGB round-trip, artistic
+compatibility), **12-16 days**; reviewers warn the lower end holds only without regression
+surprises.
 
-**Estimated P1–P5 total: 40–60 engineer-days** including the shared qualification allowance;
-roughly 8–12 working weeks for one engineer, about 1.4× the prior 28–44 day estimate.
-P1 12–17 + P2 7–10 + P3 10–15 + P4 4–6 + P5 4–6 + shared 3–6 = 40–60.
-This includes P1 light-map preparation/dispatch, motion qualification, separate legacy
-probe design and combined admission; it is a planning estimate, not a commitment.
-An initially useful P1+P2 main-view scalar implementation is about 19–27 days. Transparent
-casters, padded tiled rendering and optional ReShade export are additional scope.
+**Acceptance:**
+
+- Open plane bent N dot shading N >= 0.999; asymmetric blocker bends toward the known
+  opening; unit length error <= 1e-3 after resolve; zero moment never yields NaN; symmetric
+  blockers introduce no preferred screen direction; byte-identical repeats.
+- Roughness 0.05/0.25/0.5/1.0 x view-angle sweep: probe specular factor in [0,1], open
+  case = 1; a blocked-cone fixture reduces only its expected indirect reflection. Compare
+  materialAO 1/0.5 and native visibility 1/0.5 against a composition oracle to catch squaring.
+- Direct sun glint and local-light glint unchanged. SSR-only and hero-only fixtures hold
+  ambient equal and are unchanged by probe-only occlusion; **partial replacement weights
+  0/0.25/0.5/1** show `mix(probe * factor, replacement, weight)` exactly; `glossenv` and
+  `legacyenv` tested independently across spec.a = 0/>0, envIntensity = 0/0.5/1, SSR on/off
+  and hero replacement; a post-mix AO multiply must fail; the class-2 sRGB round-trip at
+  factor = 1 is bypassed. Probe capture buffers are unchanged; classic sky/probes-disabled
+  fallback is finite and ambient-only in scope.
+- Shared replay parity; Tron/rim/emissive and silhouette invariants; every receiver policy
+  under HDR and non-HDR without misreading flags/carriers. Cost within the +35% bent budget.
+- **Mutations:** bent N used as direct BRDF normal; AO applied twice through ORM; specular
+  occlusion after the SSR mix; hero replacement multiplied by AO; replay consumers skipped.
+
+### Later items (each requires its own approval and effort confirmation)
+
+**L1 - Alpha (BLEND) receivers, indirect only (5-8 days).** The opt-in receiver of the alpha
+policy (section 7): visibility multiplies ambient/probe irradiance and probe specular terms
+before they are summed, never the final colour or any direct term. Files:
+`class2/deferred/alphaF.glsl`, `pbralphaF.glsl`, `class3/deferred/materialF.glsl` (BLEND
+branch), `sharedActorFxPbrF.glsl` BLEND variants (four companions). Gate: foreground hair
+over an occluded wall uses neutral AO when depth mismatches; matching replay surfaces agree;
+legacy/PBR hair, lashes and lace tested; **direct sun, local light and emission inputs
+readback-equal** (D4); if the gate fails ship it disabled and label the limitation. Water is
+excluded; a water receiver would be a separate, separately budgeted family (7). Priority is
+set by the P0 BLEND survey.
+
+**L2 - VCam feeds, combined ledger, capture-governor pin (12-16 days).** Native AO in real
+camera feeds using each feed's own depth/projection: pack-local AO resources, the full
+combined AO + Relight + VCam ledger of 9.4, capture-slot-order degradation, governor
+pin/unpin (`llprismlens.h:353`-`:385`), Prepare-time feed preparation predicate (Prism
+`:1770`/`:1830`), and the feed acceptance of Revision 3 P3 (1/2/4/8 feeds, mixed sizes, Gate
+repeats, allocation failure at every target, resize, eviction, last close, ninth pass
+rejected, report-only raster thresholds, no mid-take changes). Mutations: feed aliases main
+target; budget counts IDs not passes; partial allocation publishes validity.
+
+**L3 - High-resolution stills, snapshot transaction, Cinematic preset (4-5 days).** Single-
+target snapshots: admit and prepare the actual still extent before `allocateScreenBuffer`
+(`llviewerwindow.cpp:6340`), include snapshot scratch and restoration overlap in peak
+accounting, render (`:6377`), restore and re-prepare the interactive generation
+(`:6413`), whole-shot stock fallback on failure, reject incompatible requests during a
+pinned take; 1x/2x/4x framing; Cinematic preset against the still ceilings. Tiled stills
+stay a whole-shot stock fallback; padded tiles (overlap >= projected AO reach + all filter
+support, global output-pixel noise coordinates) are a separately estimated item.
+
+**L4 - Sun-blur dispatch cleanup (1-2 days; shrunk).** Because green is published after
+the shared blur, native AO is already independent of sun softness. What remains is that the
+blur dispatch is still gated on the stock SSAO flag, so the existing sun-softening modes
+0-3 are unreachable when native runs with stock SSAO off. Add a dispatch condition (and, if
+wanted, a shadow-only filter companion) preserving modes 0/1/2/3 and saved values. Gate: exact
+channel readbacks show AO changes do not alter sun and sun-soften changes do not alter native
+AO; mutation: the SSAO flag as the only gate; millimetres autoscaled twice.
+
+**L5 - Later optional bitmask SSGI (8-15 additional days, separate approval).** Short-range
+diffuse bounce using visible newly covered sectors. Separate master and strength, default
+OFF; AO remains usable without it. Files: future source-radiance target and gather, bitmask
+utilities, diffuse-only composition, target lifecycle, settings/UI/persistence and
+harnesses; coordinate with existing SSGI designs and do not reuse the final
+toned/graded/ReShade beauty as a light source. Needs a current-frame scene-linear source
+with explicit direct/emissive ownership, first-hit/sector ownership, albedo/energy controls
+and an account of existing probe irradiance. No previous-frame feedback, temporal history,
+double-counted probes or new direct-light AO modulation. Acceptance: colored-wall bounce
+reaches only reference-visible nearby surfaces; a wall-occluded receiver stays at baseline
+within one RGBA8 step; duplicate samples cannot add energy twice; source intensity sweep
+bounded and monotonic; SSGI OFF byte-identical to AO-only. Mutations: previous-frame
+source, already-composited bounce as source, double sector ownership, final-beauty AO
+multiply, unoccluded colour leaking through a solid wall. A detailed probe/SSGI energy
+oracle is required before coding.
+
+### Effort summary (Revision 4)
+
+Core win: P0 2-3 + P1 6-9 + P2 14-20 + P3 6-9 = **28-41 engineer-days** (about 6-8 working
+weeks for one engineer), main view, scalar AO, deferred and replay OPAQUE/MASK, response
+choice, Director controls. Full scope: core + P4 12-16 + L1 5-8 + L2 12-16 + L3 4-5 + L4 1-2
++ shared qualification allowance 5-8 = **67-96 engineer-days**. Reviewers' ranges were 25-35
+(reduced scope) to 60-90 (full scope). L5 adds 8-15 and is excluded from both totals. This
+is a planning estimate, not a commitment; each later item is re-estimated before approval.
 
 ## 11. Screenshot-only "match the look" protocol
 
@@ -1294,17 +1751,23 @@ scene, resolution, exposure, sky, materials and light-rig state. No proprietary 
 shader text, disassembly or implementation description is requested or inspected.
 Reference images are user-provided visual targets only.
 
+**Use by phase (Revision 4).** P0 executes this protocol and fixes the camera bookmarks and
+frozen settings; P1 re-shoots a four-scene subset (sunlit wall + railing, interior corner,
+avatar fingers/face, foliage/fence) as the A/B the user decides on (D1); P3 runs the
+calibration targets below. The A/B in sunlit scenes is deliberately the first thing
+shown, because ambient-only AO may under-deliver there (section 3.3).
+
 For each scene retain four labeled images: (A) viewer stock + external AO OFF,
 (B) same viewer stock + user's reference effect ON, (C) native AO + external AO OFF,
 (D) native AO debug visibility/bent normal. Also capture native master OFF to verify
 baseline restoration. External non-AO grading may stay active only if identical in all
 beauty comparisons. If the user's RTGI switch couples bounce and AO, record that and
-compare the AO/contact component separately; P1–P5 cannot match bounce color changes.
+compare the AO/contact component separately; P1–P4 cannot match bounce color changes.
 
-Required scenes: indoor corner/under furniture; sunlit white wall with a nearby railing;
+Required scenes: indoor corner/under furniture; two sunlit exteriors (high and low sun), each with a white wall, a nearby railing and an avatar;
 close avatar fingers/face/eyelashes/hair; alpha-mask fence and foliage; glossy PBR clothing
 beside legacy glossy prims; nighttime rig with point/projector highlights; emission/Tron/
-Roto silhouette; large populated region; 1/4/8 camera feeds; high-res and tiled stills.
+Roto silhouette; large populated region; 1/4/8 camera feeds and high-res/tiled stills (reference only; native feeds and stills are L2/L3).
 Settle textures/probes and freeze world animation where feasible; take an ungraded
 scene-linear diagnostic alongside display-referred screenshots.
 
@@ -1322,54 +1785,69 @@ IDs and settings so later shader changes can repeat the comparison.
 
 These choices are recorded for implementation, **not permission to make changes now**.
 Recommendations supply a concrete starting design; unapproved alternatives are not
-silently treated as agreed requirements.
+silently treated as agreed requirements. Rows changed in Revision 4 are marked (R4).
 
 | ID | Decision | Recommendation / consequence |
 |---|---|---|
-| B1 | Replace stock SSAO permanently or keep it selectable? | Keep Stock / Native Horizon / Native Bitmask during rollout, native master default OFF. Once qualified, bitmask can become the preferred choice with explicit migration. Retaining stock makes old scenes and OFF comparisons meaningful. |
-| B2 | Default thickness and intended scene scale? | Start 3 cm, calibrate 1/3/10 cm screenshot sets. Keep Relight thickness separate. No automatic distance scaling initially. Walls versus lace cannot share a physically correct inferred thickness from one depth layer. |
+| B1 (R4) | Replace stock SSAO permanently or keep it selectable? | Keep Stock / Native during rollout, native master default OFF. There is one bitmask gather; thickness tending to infinity is the Horizon diagnostic, not a separate algorithm. Once qualified, native can become the preferred choice with explicit migration. |
+| B2 (R4) | Default thickness and intended scene scale? | Start 3 cm; sweep 1/3/10/30 cm in P0-P1 and freeze in P3. Keep Relight thickness separate. Depth-step floor and distance fade apply (6.1). No automatic distance scaling of the physical thickness. |
 | B3 | Should avatars under Actor Mask receive AO? | Yes, like other physical surfaces; Actor Mask remains local-light recipient selection. Offer a later receiver exemption only if desired; avatars/world still occlude each other. Flat Cover/silhouette/emission retain creative policy. |
 | B4 | Expose native AO to ReShade? | Initially no new ABI texture; user disables external MXAO/RTGI AO while native is enabled. Later optional append-only ABI AO visibility/bent-normal semantics need generation/validity, own lifetime and consumer agreement. Never store it in material AO. |
-| B5 | VCam coverage versus live performance? | Main only first; explicit real-feed opt-in after P3 isolation and combined budgets. Preview/media remain neutral. Feed status can report stock fallback, rather than silently sampling main AO. |
-| B6 | Blended hair and alpha? | Keep current BLEND baseline; test the conservative receiver opt-in. Correct translucent casting is a separately scoped depth/coverage project. Alpha-tested geometry is included from P1. |
-| B7 | Native ambient response: stock-compatible floor/HSV or physical visibility multiply? | Retain stock response for P1/P2 A/B; introduce a named native response/look only after screenshots. Neither can affect direct or emission; use exactly one diffuse response. |
+| B5 (R4) | VCam coverage versus live performance? | Core phases are main view only. Native feeds are L2, an explicit opt-in after the combined ledger and governor pin exist. Preview/media remain neutral; feed status reports stock fallback rather than sampling main AO. |
+| B6 (R4) | Blended hair and alpha? | Keep the BLEND baseline. P0 measures how much of the user's content is BLEND (default `RenderAutoMaskAlphaDeferred` = 0). L1 is an optional indirect-terms-only receiver. Water stays neutral. Alpha-tested geometry is included from P1. |
+| B7 (R4) | Native ambient response: stock-compatible floor/HSV or linear visibility multiply? | **Selectable in P1** (default stock curve); the user compares both against the reference; final default chosen in P3. Exactly one response applies and neither touches direct light or emission. |
 | B8 | Old scene without AO keys: inherit current native AO or stock? | Select stock compatibility for old sparse scenes. Creative presets exclude master/quality; scenes own the master, machine owns cost ceilings. |
-| B9 | Tiled stills: accept stock fallback initially or fund padded tiles? | Explicit whole-shot stock fallback initially. Add padded native tiles only with seam-free capture gates and a separate effort estimate. |
-| B10 | Hardware and recording target for shipping qualification? | Declare primary GPU and 1080p60/4K30 or 4K60 requirement before tuning. Start High full at 1080p, Balanced half at 4K live; use measured headroom, not Intel's standalone timings, to choose the user's preset. |
-| B11 | Permit relaxed Low/Balanced noise gates, or require sigma ≤0.005 in every advertised preset? | Recommend explicitly labeled Low ≤0.025 and Balanced ≤0.010, High/Cinematic ≤0.005, conditional on the CPU/GPU and common motion/detail gates. If every preset must reach 0.005, withdraw Low/Balanced until redesigned/rebudgeted; default live 4K currently has no modeled 0.005 preset under the 160 M gather ceiling. This is a quality/cost choice before implementation, not a passed qualification. |
+| B9 (R4) | Hi-res and tiled stills? | Core phases: explicit whole-shot stock fallback for any snapshot. L3 adds native single-target stills via a preparation transaction. Padded tiles only with seam-free capture gates and a separate estimate. |
+| B10 (R4) | Hardware and recording target? | The only qualification machine is the RTX 5090 (10/21). Use the 9.3 thresholds. Recommended capture settings: High at 1080p, Balanced at 4K until measured, under the opt-in Capture-5090 profile. The distributed default offers Balanced only. Mid-range is INCONCLUSIVE without tester captures. |
+| B11 (R4) | Relaxed Low/Balanced noise gates, or sigma <= 0.005 everywhere? | Low is conditional (<= 0.025, Horizon-equivalent only); Balanced <= 0.010; High and Cinematic <= 0.005. Sigma is *secondary*: pan/swim on real captured scenes, bias and contact-width gates decide. If every preset must reach 0.005, withdraw Low and Balanced. |
+| B12 (new) | Non-HDR 8-bit light map: dither or HDR-only? | Recommend HDR for the capture profile; allow non-HDR with the deterministic dither of 8.2. HDR-only is the simpler, stricter alternative. |
+| B13 (new) | Ceilings: one conservative profile or an opt-in 5090 profile? | Both: distributed default (160 M live gather, 2,000 M combined) and a machine-setting Capture-5090 profile (1,200 M live, 4,000 M combined). Scenes and looks can never select it. |
+| B14 (new) | Hero-mirror/SSR radiance stays unoccluded? | Yes (section 5): SSR hits and hero probes already carry their own scene occlusion; only ordinary probe radiance and the probe share of partial replacement are attenuated. |
 
 No choice here permits proprietary code reuse, temporal AO accumulation or final-image
 darkening. Those are fixed constraints.
 
-## 13. Sun contact shadows alongside AO
+## 13. Sun contact shadows: removed from this plan (Revision 4)
 
-After scalar AO is stable, a separate current-frame sun/moon contact visibility pass
-can reuse `screenSpaceRayUtil.glsl` reconstruction/refinement concepts, tracing a short
-distance toward `light_dir`. Combine validated contact visibility with native sun-map
-visibility conservatively (for example `min(map, contact)`), keeping the shadow map's
-offscreen coverage. Use its own enable, distance, bias/thickness, spatial filter and
-budget; do not treat AO visibility as directional sun visibility. Hook the result into
-light-map **red**, before its independent P4 sun filter, while AO remains in green.
-It must not darken local lights or probe irradiance. Thin-chain/finger contact, map-only
-parity at distance zero, offscreen fallback, camera-motion alignment and no double edge
-are required gates, analogous to Relight contact checks. This is adjacent future work,
-not included in the P1–P5 effort.
+Revision 3's section 13 proposed a current-frame sun/moon contact-visibility pass written
+into light-map **red**, before the sun filter. Red feeds `scol` and so `sun_contrib`
+(`softenLightF.glsl:294`): that machinery darkens **direct** sun, which contradicts this
+plan's fixed rule that direct light, light-rig emitters, emission and graphic overlays are
+never multiplied by AO-derived visibility (reviews G4, and the DeepSeek/Codex direct-light
+checks). It was labelled "adjacent", yet it was specified here. It is therefore removed:
+
+- Nothing in P0-P4 or L1-L4 reads or writes light-map red, traces toward `light_dir`, or
+  alters sun/moon visibility. The native publish writes **green only**; "publish into R as
+  well as G" is a standing mutation that must fail.
+- If, after the P1 A/B, the user wants sunlit contact definition that ambient-only AO cannot
+  supply (decision D1, outcome NARROW), it becomes a **separate feature with its own
+  decision record**: what it darkens, light-map red ownership, interaction with the
+  ShadowDist modes, offscreen fallback, camera-motion alignment, no double edge, contact
+  gates analogous to Relight's, budget and effort - and no dependency on this plan's
+  phases. The concepts in `screenSpaceRayUtil.glsl` (snapped depth texel, receiver
+  footprint, refined hit) are reference material for that record, not commitments.
 
 ## 14. Principal risks and release conditions
 
 | Risk | Specific mitigation / release condition |
 |---|---|
 | Halos / foreground AO bleeding | Correct finite intervals, edge/normal-aware filtering, actual sample coordinates, neutral invalid-neighbor resolve. Thin-gap and halo-width gates at full/half/mips. |
+| Sparse-sample porosity (systematic under-occlusion) | Sample-gap linking, thickness floor for linked runs, thickness sweep to 0.30 m, corner/wall/arm-torso bias gates at **every** preset (6.1); Low conditional. |
 | Thick-object light leaks | Fixed thickness is an approximation, not geometry knowledge. Thick-wall reference fixtures and bounded radius; document leakage rather than hiding it with a final-image multiply. |
-| Hair, alpha and missing backfaces | Separate OPAQUE/MASK/BLEND expectations, depth-safe receiver option, no transparent caster claim without additional depth representation. |
+| Hair, alpha and missing backfaces | Separate OPAQUE/MASK/BLEND expectations; P0 measures the BLEND fraction (default `RenderAutoMaskAlphaDeferred` = 0); L1 receivers indirect-only; water neutral; no transparent caster claim without an additional depth representation. |
+| Replay actors invisible to the AO input | AO-owned input overlay (8.1), budgeted, with a depth-only fallback; stock SSAO has the same blindness so P1 is not a regression. |
 | Normal-map self-occlusion / bent artifacts | Separate macro and shading normals, bounded bias/hemisphere correction, cosine-weighted moment oracle and zero-moment fallback. |
-| Probe/material/SSGI double counting | Keep authored AO, native visibility, probe influence and later bounce as distinct inputs. Probe-only specular hook before SSR replacement; never bake screen AO into probes. |
-| Cost in large scenes / crowds | Pixel/sample ceiling bounds gather but not whole rendering/texture misses. Measure dense SL regions, alpha overdraw, probes, Relight and feeds together; enforce memory/filter ceilings and stable capture plans. |
-| Large radius / depth mip loss | Physical short-range radius, projected cap, edge-LOD refinement, visibility masks tested against LOD0. Padded tiles or explicit fallback. |
+| Probe/material/SSGI double counting; hero/SSR | Keep authored AO, native visibility, probe influence and later bounce distinct. Probe-only specular hook before SSR replacement; hero/SSR radiance explicitly unoccluded; never bake screen AO into probes. |
+| Cost in large scenes / crowds | Pixel/sample ceiling bounds gather but not whole rendering/texture misses. Measure dense SL regions, alpha overdraw, probes, Relight and feeds together; ceilings as machine settings with two profiles; stable capture plans. |
+| Hardware generality | Only the RTX 5090 is qualified; other GPUs INCONCLUSIVE until tester captures; conservative distributed default. |
+| Large radius / depth mip loss; distant banding | Physical short-range radius, projected cap, edge-LOD refinement, depth-step bias floor and distance fade; padded tiles or explicit fallback. |
 | Shader portability / texture units | Raster-first GLSL, safe unsigned masks, native-only capability fallback, real links on NVIDIA/AMD/Intel as available; no unsupported-device "PASS" from a CPU-only model. |
-| Toggle hitches / resource churn | Default-OFF explicit Prepare; static GL/extent support and latched admitted resources, never live governor-driven allocation predicates. Prepared light map/bundles retained across native OFF; white initialization and lighting/DOF ownership gates; zero allocation/reload toggles, 300-frame/120-second evidence and pool ownership tests. |
-| Screen-locked noise / motion swimming without TAA | CPU covariance sizing before preset freeze; candidate denoise passes 3/4/7/8 and disclosed per-preset plane gates. Common stable-interior pan limits, contact-crease reference excess-delta gates and hardware-capture inspection; reject unqualified degraded presets or erased thin gaps. |
-| Combined AO / Relight / VCam overcommit | Hard combined resident/transition-peak bytes and worst-frame work, main-first reservations and feed-first deterministic reduction; no timing-driven quality changes or per-frame eviction churn. |
+| Toggle hitches / resource churn / first-use hitch | Default-OFF explicit Prepare; static GL/extent support and latched admitted resources, never live governor-driven allocation predicates; warm-up draws for every program state and cold/warm first-transition ceilings (8.5); prepared light map/bundles retained across native OFF; white initialization and lighting/DOF ownership gates; zero allocation/reload toggles, 300-frame/120-second evidence. |
+| Prepared OFF is not byte-identical under streaming | Identity is defined under frozen texture streaming and guaranteed headroom (section 1); otherwise the reserve is a disclosed cost shown in the Prepare status. |
+| Screen-locked noise / motion swimming without TAA | Primary gate = pan/swim on real captured scenes plus hardware pans; P0 oracle with cross-offset covariance and the real stratified sequence; surface-anchored candidate; filter support <= +-4 px with contact-width gate; Low/Balanced withheld until motion passes. |
+| Relight plane churn breaks zero-allocation | Fixed in the Relight stack-fixes job; AO consumes the admitted plan read-only; combined claim INCONCLUSIVE until it lands (9.4). |
+| Combined AO / Relight / VCam overcommit | Main-view ledger in P2, full ledger with main-first reservations and feed-first deterministic reduction in L2; no timing-driven quality changes or per-frame eviction churn. |
+| Ambient-only AO too weak in sunlit scenes | P1 A/B before P2 funding; user decision D1; no direct-light darkening under this plan (section 13). |
 | Creative looks regress | Direct/emissive/rim/Tron/silhouette invariants, shared Actor FX parity, screenshot ROIs, versioned scene migration and preserved stock path. |
 | Overclaimed determinism | Equal-input AO readbacks across runs, frozen seed, no history; record whole-viewer input differences and never imply camera-only or cross-driver bit identity. |
 
@@ -1378,10 +1856,21 @@ readbacks, OFF baseline diffs, shader-reload/allocation counters, per-pass p50/p
 timings and the user's paired look captures. This plan establishes that work; it does
 not claim those implementation gates have already passed.
 
-## User decision (10/21): qualification hardware
+## Decisions the user needs to make (Revision 4)
 
-The only test machine is an RTX 5090.
-- The hard caps are the hardware-independent work budgets (taps and iterations per frame, deterministic), which bind identically on every GPU.
-- Millisecond targets are measured on the 5090 with a headroom factor for mid-range GPUs (assume about 3-4x slower; for example, Balanced at about 0.4 ms on the 5090 means about 1.5 ms on a 3060-class card).
-- Cinematic may use more on the 5090.
-- Other GPUs are checked from beta-tester Tracy captures and the logged work plan.
+Folded-in 10/21 decision: the only test machine is an RTX 5090; hard caps are
+hardware-independent deterministic work budgets per profile; millisecond targets are
+measured on the 5090 (9.3); other GPUs are checked from beta-tester Tracy captures and the
+logged work plan, and are INCONCLUSIVE until then.
+
+| ID | Decision | When | Recommendation |
+|---|---|---|---|
+| D0 | Approve P0 (2-3 days, no viewer code) and supply the reference ON/OFF captures of section 11 | Now | Approve; it is the cheapest evidence and can stop the project. |
+| D1 | After the P1 A/B: GO (fund P2-P3), ADJUST, NARROW or STOP | After P1 | The key decision. Judge the sunlit scenes first. NARROW means accept ambient-only AO or commission the separate sun-contact feature of section 13. |
+| D2 | Low preset: drop, or keep as Horizon-equivalent only | After P0 | Drop unless the oracle shows it passes bias, contact-width and motion. |
+| D3 | Noise anchoring: screen-anchored or surface-anchored | After P0 | Let the measured pan/swim result decide; the user reviews the paired pan captures. |
+| D4 | Adopt the opt-in Capture-5090 ceiling profile and the 9.3 5090 thresholds | Before P2 | Adopt; keep the distributed default conservative. |
+| D5 | Non-HDR light map: dither or HDR-only | Before P2 | HDR for the capture profile; dither otherwise. |
+| D6 | Scope after the core win: P4 bent/probe, L1 alpha receivers, L2 feeds, L3 stills | After P3 | P4 first; L1 priority from the P0 BLEND survey; L2/L3 only on demand. |
+| D7 | Accept hero-mirror/SSR radiance unoccluded | Before P4 | Accept (B14). |
+| D8 | Confirm the Relight stack-fixes job lands before P2 acceptance | Before P2 | Confirm; otherwise the combined zero-allocation claim stays INCONCLUSIVE. |
