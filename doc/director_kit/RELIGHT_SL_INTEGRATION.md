@@ -1138,3 +1138,378 @@ No commit, push, stash operation, viewer build or launch was performed.
 `.tmp/ref_private/` was not opened; unrelated files and dirty `vcpkg` remain.
 Full-viewer identity, in-world quality and viewer GPU timing remain unmeasured
 under the no-build instruction.
+
+## Env lights regression (10/21)
+
+### Diagnosis and disposition
+
+Compared working build `c6c0ae0af63` with running build `e0cc289b108` and
+inspected HEAD `c69d8e94fd6`. HEAD has no runtime/script difference from the
+running build. **No certain cause was established; no runtime or tracked test
+change was made.** The diagnostic fixture and logs are under `.tmp/relight_env*`.
+The reported mapped-contact override of 8 m and shadowed-light cap of 8 are
+accepted as negative results, not proposed again as fixes.
+
+One newly effective exclusion is reproducible: step 1 makes an emitter's own
+or root-edit object's session **Cast shadows off** flag exclude its area-shadow
+channel. With an empty flag set, both an ordinary non-rig world point and a
+non-rig world projector receive channels in both builds. There is no evidence
+that the affected in-world objects actually have those flags. Removing the
+filter would undo the intended Cast shadows policy, so that is not a justified
+fix on the available evidence.
+
+### Production path and eliminated mechanisms
+
+| Stage / suspect | Evidence |
+|---|---|
+| Selection, `pipeline.cpp:26789` onward | `toggles()` admits ordinary world lights through `bdmerge_should_render_light(false,false)`; attachments have independent toggles, and synthetic rig emitters bypass the world toggle. `actually_drawn()` intersects with `mNearbyLights`, retaining the native count-before-colour/range/frustum limit. These main-view policies are unchanged across the range. |
+| Actor-only bits | World lights with zero actor bits use the world collector branch. An unrelated actor-only rig does not give world objects actor bits. The diagnostic executes the actual selector with actor-mask programs ready and unavailable; both world emitters retain channels. |
+| New suppression, `pipeline.cpp:26832`, `alcinelightrigmanager.cpp:829`, `pipeline.cpp:23359` | Ordinary objects fall through to `isProjectorShadowSuppressed()`: exact own UUID, then exact root-edit UUID. A flagged linked-build root can therefore suppress all its emitting children. There is no region-wide wildcard or region-ID insertion in this predicate. Rig policy writers use registered projector/omni/catchlight IDs. `applyShadowSuppression()` has no active call site; its retained helper only touches registered rig IDs. An unrelated root flag does not suppress the fixture's world lights. |
+| Distance / priority / requested K | Relight still ranks unmapped first, descending contribution, then emitting-object UUID. Main `calcNearbyLights()` ordering and its native membership/fade behavior are unchanged. Requested K now controls work degradation, not the draw-collector limit and not which admitted UUID is published. It can reduce sampling; see the separate hypothesis below. |
+| Channel publication and lookup | Selection stores `volume->getID()`; gather resolves that same UUID against `mLights`, stores it in `mAreaShadowIDs`, uploads its centre/radius and UUID seed, then publishes count/valid after filtering. `deferredLightShape()` compares the same emitting volume's own UUID, including children. It assigns `.w` independently of source radius, so a zero-radius ordinary point still gets a channel and the gather's 10 cm fallback. No root/source UUID substitution was found. |
+| Point dispatch | Outside the light box, the volume point draw uploads `LIGHT_SHAPE` from `deferredLightShape(volume)` (`pipeline.cpp:27930`). Inside it, `light_shapes` is appended in parallel with accepted fullscreen lights, copied to `shapes[count]`, and uploaded with the matching light batch (`pipeline.cpp:27959`, `28039`, `28077`). There is no world/rig distinction in this packing. |
+| Projector dispatch | Both volume and fullscreen projector draws call `setupSpotLight()`, whose `LIGHT_SHAPE` upload uses the same volume (`pipeline.cpp:29313`). Native slot/fade lookup uses the drawable, independently of the area channel. |
+| Shader consumers / uniforms | The shared bind hook uploads Relight bit 1 from `areaShadowsActive()` on normal and fast binds. The active render-target pack supplies `area_shadow_map0/1`. Point, multi-point and spot shaders read shape `.w`, select plane by channel < 4, component by channel & 3, and apply visibility. These consumer files did not change in the suspect range. |
+| Step 5 snapshot / allowed hoist | Allowed-view evaluation still precedes selection and dispatch; the new take snapshot is written after OFF/view gates. Snapshot data is not read by selection, admission or shading. No main-view change to the allowed predicate was found. |
+| Step 6 auxiliary lifetime | With both masters enabled, begin saves valid/count/IDs, clears validity/count, and end restores all three plus diagnostic state. The fixture executes these actual blocks and the real lookup after restoring different auxiliary IDs. With feeds disabled, auxiliary invalidation is harmless to this ordering: `llviewerdisplay.cpp:944` runs Prism before main rendering; main deferred lighting resets validity at entry and rebuilds channels at `pipeline.cpp:27758`, immediately before light draws. No auxiliary/mirror/probe invocation was found between that gather and its opaque light consumers. A global invalidation there would also remove rig area channels. |
+| Step 2 mapped contact | Ordinary points and unmapped projectors keep full visibility tracing; contact/fade packing is zero for them. The existing GPU fixture compares their filtered bytes with pre-step-2 `a63161d0028`; its shader sources are unchanged from `c6c0ae0af63`. Native-mapped projectors alone receive contact distance and slot fade. The user's contact-cap result is retained as a ruled-out explanation. |
+
+### Diagnostic fixture and results
+
+Run `python .tmp/relight_env_diag.py` from the repo root. This compiles only
+standalone fixtures, not the viewer. It extracts the actual collection block
+from **each** build, compiles production suppression/lookup methods and current
+auxiliary save/restore blocks with small object wrappers, and uses the actual
+publication statements. Camera/frustum, nearby membership and object properties
+are supplied inputs; it does not recreate a live simulator's native collector.
+The old-build comparison substitutes the old selector, not an entire old viewer.
+
+Fixture emitters: world point UUID 10, child world projector UUID 20 under root
+100, synthetic rig emitter UUID 30 and attached emitter UUID 40, equal scores,
+shuffled `mLights`, and native draw limit 256. Results in
+`.tmp/relight_env_selection.log`:
+
+- Both builds: point channel **0**, world child projector channel **1**, rig
+  channel 2 and attachment channel 3. Giving the projector a sampled native
+  shadow slot moves it to channel **3**, and its lookup still matches.
+- Both world channels survive actual auxiliary save/clear/restore, unrelated
+  root flags, actor-only readiness changes and K=4/K=8 work admission.
+- Today's selector alone excludes the world point when UUID 10 is flagged,
+  or the child projector when root UUID 100 is flagged. Removing the flag
+  restores eligibility immediately. The old selector ignores those flags.
+- Both selectors exclude later world entries when the native collector limit
+  is 2, including when the first two entries are dark. Raising that limit to 4
+  admits both world lights. This is the unchanged native count-before-filter
+  behavior, distinct from `RenderAreaShadowLights`.
+- Turning the world-light class off excludes both world objects while leaving
+  the rig and attachment eligible in both builds. This also removes their
+  illumination; it is relevant only if the lights themselves are missing.
+
+### Ranked remaining hypotheses
+
+1. **Own/root session shadow suppression.** This is the only reproduced new
+   selection exclusion matching world objects losing channels while unrelated
+   rig/attachment lights retain them. A root flag covers a linked build's child
+   emitters; it is not evidence of a region-wide flag. A fresh login clears the
+   session set, so failure on newly rezzed unlinked lights after login would
+   strongly downgrade this explanation.
+2. **Requested-K degradation with the actual Custom settings / scene geometry.**
+   `RenderAreaShadowQuality=4` means **Custom**, not Cinematic. Its callback does
+   not apply samples, steps or resolution. These actual settings and framebuffer
+   dimensions were not supplied. The planner comparison proves that channels
+   survive while sampling may decrease: at 1920x1080 full-resolution Cinematic,
+   one visible light goes from 11x32 to 5x32 for requested K=4; at 3840x2160 it
+   goes from 2x32 to 1x32. K=8 at 3840x2160 becomes 1x22. Medium defaults at
+   1080p remain 8x12 half-resolution. This can affect thin/distant blockers, but
+   the fixture does not reproduce the reported total world-light failure.
+3. **World-light toggle or native nearby membership/draw limit.** These can
+   distinguish world lights from rigs/attachments, but no change to their main
+   policy was found. The toggle is unlikely if world illumination remains.
+   The native `RenderLocalLightCount` is a separate limit from shadowed top K.
+4. **Unobserved auxiliary/render-path lifetime issue.** Downranked by call order,
+   successful production transaction/GL ownership tests and continuing avatar
+   area shadows. No specific failing main-view sequence was found. A full
+   viewer capture could still reveal a sequence absent from these fixtures.
+
+### Exact in-world checks
+
+Record original values before temporary changes and restore them afterward.
+
+1. Compare the existing failure with a **fresh login**, all VCam/Prism camera
+   feeds closed and `RenderAreaShadowsVCam=false`. Fresh login clears session
+   Cast shadows flags. Check one newly rezzed **unlinked** point light, then one
+   newly rezzed projector. A recovery confined to this test points to session
+   flags or auxiliary state; a failure on fresh objects rules out inherited
+   linked-root flags for those objects.
+2. For an affected linked projector, select the **root** normally and inspect
+   right-click **Cast Shadows**; check it if unchecked. Also inspect the emitting
+   child through Edit linked / the Practicals or Lightbox selected-light control.
+   The UI checks the selected object's own flag, while rendering also checks its
+   root, so a checked child alone does not clear a suppressed root. Compare the
+   same light before/after, then compare a fresh unlinked copy. No repeat of the
+   mapped-contact or top-K=8 experiment is needed.
+3. Use opaque matte floor and blocker prims, both visible in the main camera,
+   with a single nearby world emitter and the rig disabled through its UI.
+   Example: 10 m floor, 0.4 x 0.4 x 0.8 m blocker resting on it, light 1 m to the
+   side and 1.5 m above the floor, light radius 5 m. Keep the light/blocker/floor
+   in view and compare `RenderAreaShadows` OFF/ON. Test point and downward-facing
+   white-cookie projector separately. This avoids judging only transparent
+   hair/clothing, which do not consume these opaque screen-space channels.
+4. Verify `BDMergeLightToggles=false` temporarily, or
+   `BDMergeRenderWorldLights=true` if keeping that master on. Confirm the world
+   emitter still illuminates the floor. Temporarily use High quality (preset 2:
+   12 samples, 20 steps, half resolution), `RenderAreaShadowBudget=1500`, and
+   `RenderLocalLightCount=256`. This tests the unknown Custom plan and native
+   collector limit without assuming Quality=4 means a particular plan.
+5. At the settled failing view, briefly start/stop the existing Takes recorder
+   to enqueue a snapshot into the viewer log directory's `relight_takes.log`.
+   Copy the emitting prim's key (and root key for linked lights) and compare it
+   with `area_view.selected[].uuid/channel`. Record `area_view.status`, candidate
+   count, effective work, dimensions, `settings_at_start`, sampled map ownership
+   and fades. This snapshot describes the **most recent allowed area pass**.
+   If the world UUID is absent, investigate admission/suppression; if present,
+   set `RenderAreaShadowDebugView` to **channel + 1**, then return it to 0.
+   White visibility with an admitted UUID directs investigation to ray coverage;
+   a visible shadow in this debug view but absent in lighting directs it to
+   lookup/uniform/consumer state. Move the camera inside then outside the point
+   light's 1.5 x radius box while retaining the same fixture in view to compare
+   fullscreen multi-point with the volume point path. Finally reopen feeds one
+   at a time with feed shadows enabled and repeat the UUID/debug check.
+
+### Validation and limits
+
+- Production selection comparison and planner matrix: **PASS**;
+  `.tmp/relight_env_diag.py`, `.tmp/relight_env_selection.log`.
+- `relight_area_check.py`: **PASS**, including its production CPU policy,
+  prim-size, VCam lifecycle/view, dispatch/GL ownership and contact sub-harnesses;
+  `.tmp/relight_env_area.log`. Real GPU coverage includes channels/UUID
+  permutations, point/unmapped filtered byte identity, camera movement, main/feed
+  ownership, rejected mutations and all 1,001 fades in both directions at full
+  and half resolution. The respective final continuity maxima are 2/255 and
+  3/255; FP32 quantization replay is 1.000015/255 within the existing epsilon.
+- `relight_shader_check.py --shader-ref HEAD`: **PASS**, 31 production GLSL
+  units/permutations, 44 program links, live/OFF readbacks and 126 surface/rig
+  matrix rows with zero failures; `.tmp/relight_env_shader_surface.log`. HEAD's
+  runtime/shader sources equal the running build. This mode omits the separate
+  area suite. An earlier duplicate invocation reached that suite and was
+  interrupted; its partial log is `.tmp/relight_env_shader.log` and is not
+  counted as a completed gate.
+- OFF gate: **PASS** all eight disabled expression streams and live-setting
+  checks; `.tmp/relight_env_off.log`. No runtime code was changed; full-viewer
+  OFF framebuffer identity was not measured.
+- Existing standalone `alrelightmath` executable: **22/22 PASS**;
+  `.tmp/relight_env_math.log`. Generator and manifest selftests pass;
+  `.tmp/relight_env_generator_tests.log`, `.tmp/relight_env_manifest_tests.log`.
+- All three generator `--check` modes pass: kit and page sources through the
+  guard, functional manifest separately (`.tmp/relight_env_manifest_check.log`).
+- `prebuild_guard.ps1 -ChecksOnly`: **all 11 gates PASS**, using the existing
+  workspace CachePath/TEMP wrapper with `GIT_CONFIG_COUNT=1`,
+  `GIT_CONFIG_KEY_0=core.safecrlf`, `GIT_CONFIG_VALUE_0=false`;
+  `.tmp/relight_env_prebuild.log`. Compile gate reports no changed runtime TUs
+  since `e0cc289b108`; there is no touched C++ TU requiring a separate Zs check.
+- `git diff --check`: **PASS** after the findings appendix; final evidence in
+  `.tmp/relight_env_diff_check.log`.
+
+No commit, push, stash, viewer build or viewer launch was performed.
+`.tmp/ref_private/` was not opened. Existing unrelated files and dirty submodules
+are preserved. Live scene membership, session flags and the user's actual GPU
+frame remain unobserved; the passing fixtures do not prove an in-world fix.
+
+### Round 2: same world emitter, PROJECTOR versus POINT
+
+**Disposition:** no certain cause of the complete reported failure was found.
+No runtime or tracked test was changed. The new diagnostic fixtures are
+`.tmp/relight_env_r2_diag.py` and `.tmp/relight_env_r2_bind.py`; their logs use
+the same basename. This round accepts the user's negative results for contact
+8 m and shadowed lights 8. It does not propose repeating those changes.
+
+The additional facts materially change the earlier ranking: the same light
+still illuminates and gains soft shadows when switched to POINT. Own/root
+shadow suppression applies equally to both classifications, so it is no
+longer the leading explanation. The known sampling-budget/noise topic is
+separate. `CineLightRigShadowMode=1` controls registered rig fixtures, not
+ordinary world projectors. Quality 4 is Custom; it does not specify a sample
+or step count.
+
+#### End-to-end source comparison
+
+Compared `c6c0ae0af63` with `e0cc289b108`. HEAD `c69d8e94fd6` has no runtime or
+script difference from `e0cc289b108`.
+
+1. **Admission:** `renderAreaShadows()` still starts with `mLights`, requires
+   LIGHT state, non-HUD, enabled class, positive range/colour and camera-frustum
+   intersection, and intersects with the native `mNearbyLights` draw budget.
+   `toggles()` and `actually_drawn()` have no projector-only exclusion. Their
+   count-before-colour/range/frustum behavior is unchanged. Step 1 added
+   `registry.areaShadowSuppressed(volume)` alongside mirror exclusion.
+   `projectorRenderParams()` recognizes a real enabled spotlight immediately,
+   before checking Prism enablement or bindings; selection and the world draw
+   use that same classification and projector toggle. No new classification
+   rejection was found.
+2. **Native ownership and channel assignment:** a projector is mapped only
+   when its exact drawable equals one of all ten current `mShadowSpotLight`
+   owners. Projector classification alone does not mark it mapped. Pending
+   targets are not owners. Selection ranks unmapped before mapped, then score,
+   then emitting UUID, as yesterday. A mapped projector can consequently lose
+   top-K admission to unmapped lights. This priority is not new in step 2.
+   Gather publication and `deferredLightShape()` use the emitting prim's own
+   UUID, including children; `.w` is assigned independently of source radius.
+3. **Gather in step 2:** every sample still executes the full ray. `areaTrace`
+   returns `.x = full_vis` and `.y = contact_vis` from its first validated hit.
+   The gather accumulates each and writes
+   `mix(full_vis, contact_vis, area_contact_fade[channel])`. The one blended
+   component is filtered H/V and upsampled; those operations do not select
+   `.x` or `.y` again. The contact uniform is `area_contact_dist`, packed from
+   `RenderAreaShadowMappedContact` only for a mapped candidate. Its fade comes
+   from that drawable's current owning `mSpotLightFade[slot]`, not channel
+   number, pending target, rig mode, or the complement uploaded to lighting.
+   Both contact and fade start at zero for unmapped/empty channels.
+4. **Contact range:** finite contact settings clamp to 0.001-64 m; nonfinite
+   uses 0.15 m. The independent `area_params.x` trace limit clamps to 0.1-64 m.
+   Ray length is `min(max(distance(target,origin)-end_gap,0), area_params.x)`.
+   `end_gap = max(source_radius,0.1) + area_light_bias`. The contact test is
+   `contact_distance > 0.001 && hit_t <= contact_distance`. `hit_t` is measured
+   along the disk-sample ray from the **biased receiver origin**, not from the
+   light, and not simply camera-depth separation. There is no hidden 0.15 m
+   clamp and no contact-dependent ray shortening or step redistribution.
+   A contact cap of 8 exactly recovers the full component whenever the trace
+   limit is at most 8 (including MaxDist 8). For MaxDist above 8, only hits
+   within 8 along the receiver ray are guaranteed equivalent. Thus 8 is not
+   universally identical to a possible 64 m full trace.
+5. **Projector consumer:** `spotLightF.glsl` is unchanged across the two builds.
+   It first computes native visibility
+   `clamp(sampleSpotShadow(...) + (1-native_fade), 0, 1)` for a valid slot.
+   It then computes `min(native_visibility, filtered_screen_visibility)` when
+   bit 1 of `relight_enabled` is set and `light_shape.w >= 0`. The consumed
+   screen component is the filtered gather blend, not unconditionally contact.
+   With no slot native visibility starts at 1, so the hybrid retains the full
+   screen shadow. `min` cannot brighten away an existing screen shadow; a hard
+   native edge can nevertheless dominate the appearance.
+6. **World draws and binding:** both volume and fullscreen projector loops
+   call `bindDeferredShader()` and `setupSpotLight()`. The latter uploads
+   `LIGHT_SHAPE = deferredLightShape(volume)` while either shape or area is
+   active, and resets native index/fade to -1/1 for an unmapped draw. The common
+   deferred binder binds `AREA_SHADOW_MAP0/1` for spot programs too, selecting
+   the second plane only when count exceeds four. `bindGlobals()` reaches
+   `bindAnimated()` even with Rim mode zero; it refreshes the runtime master
+   as `(shape ? 1 : 0) | (area_active ? 2 : 0)`. Full production volume and
+   fullscreen programs, both auxiliary and fallback permutations, link in both
+   builds with live locations for master, shape, both area samplers, native
+   slot/fade and Rim mode. No missing spot permutation or bind was found.
+
+#### Step 1 suppression writers
+
+`sNoShadowProjectors` is a session UUID set, cleared on relog. The mutation
+entry point inserts/removes exactly its argument; there is no world, region or
+root wildcard. `isProjectorShadowSuppressed()` checks emitter UUID, then
+`getRootEdit()` UUID, without testing point versus projector.
+
+- Rig Off/Key/All updates only its owned projector/omni emitters. Key mode
+  suppresses non-key fixtures. Mirror/catchlight writers likewise use their
+  created emitter IDs; area catchlight policy follows the registered key.
+- Focus suppression's `applyShadowSuppression()` remains a retained helper
+  with no active call site. Its body and clearing helper address registered
+  rig emitter IDs, not object-target or focus-target UUIDs.
+- A world projector **or its root can enter the set** through the explicit
+  Cast Shadows UI. Context-menu iteration flags selected roots; Practicals and
+  Lightbox flag the primary selected object. A flagged root therefore affects
+  child emitters. The UI's checked state only tests the selected object's own
+  flag. This exclusion is real but, for unchanged emitter/root IDs and flags,
+  also suppresses POINT. The fixture executes and asserts that equivalence.
+
+#### Requested fixture and observations
+
+The CPU comparison extracts and compiles each revision's real selector plus
+production suppression, publication and lookup methods with supplied object,
+camera and nearby wrappers. It covers a world child projector, the same UUID
+switched to point, with/without an owner, and own/root flags. Both builds admit
+unflagged world point and projector channels. Current suppression rejects both
+classifications equally. A crowded case with eight unmapped competitors and
+K=8 excludes the owned world projector, then admits that same UUID at channel
+zero when switched to point. This also happens in both builds. The independent
+binding fixture executes production
+area binding, spot slot/fade upload, shape upload and runtime-master statements
+for K=1/4/5/8, both planes, every channel, all ten slots, no slot, and fades 0/1.
+
+The GPU fixture runs production gather, filters and extracted native-map/hybrid
+composition at 1920x1080, full and half trace resolution, using yesterday's
+independently compiled committed shaders as the baseline. The scene has a
+visible foreground blocker plane 1 m from receiver Z=-4, a world light at
+(1,0,-2), zero configured source radius (the production 10 cm fallback disk),
+8 samples, 12 steps and MaxDist 8. The native map is independently all-lit so
+it cannot hide a lost screen shadow. This is a controlled receiver/map fixture,
+not a captured viewer scene or an actual native map render.
+
+| World projector | Native fade | Contact 0.15 | Contact 8 |
+|---|---:|---|---|
+| No native slot | 0 | Soft shadow; baseline bytes | Soft shadow; baseline bytes |
+| No native slot | 1 (irrelevant; packed as 0) | Soft shadow; baseline bytes | Soft shadow; baseline bytes |
+| Native slot 9 | 0 | Soft shadow; baseline bytes | Soft shadow; baseline bytes |
+| Native slot 9 | 1 | No screen shadow for this distant hit, expected | Soft shadow; baseline bytes |
+
+All 16 combinations pass, including deterministic replay and disabled hybrid
+ignoring stale area inputs. CPU packing separately covers all ten native slots,
+both planes, live caps, main/VCam save/swap/restore and rejected wrong-fade-slot
+and binary-ownership mutations. The reported large-cap failure is **not**
+reproduced. There is no failing production regression case supporting a fix.
+
+#### Remaining hypotheses, ranked against the complete new facts
+
+1. **Mapped demotion outside the actual selected top K.** The same UUID becomes
+   an unmapped-priority candidate as POINT, while an owned projector ranks
+   after all unmapped candidates. The crowded production-selector fixture
+   reproduces this at cap 8 in both builds. Even cap 8 cannot include it if
+   eight higher ranked candidates remain. This needs a different live
+   candidate/ownership set to explain yesterday versus today; it is not
+   evidence for changing selection policy. The user's actual selected UUID
+   list is not available in this round.
+2. **Unobserved projector consumer state in the live render sequence.** A lost
+   `.w`/area master or overwritten visibility binding could preserve ordinary
+   illumination and point shadows and ignore contact changes. No such sequence
+   or changed statement was found; extracted binding tests and both revisions'
+   full linked programs pass. This ranks by fit to the observations, not by a
+   reproduced defect. Full-viewer interleaving remains outside these fixtures.
+3. **Contact-only policy in the effective failing pass.** This is the strongest
+   known projector-specific behavior change at the default 0.15 cap: a settled
+   mapped projector no longer receives distant screen shadows. It cannot
+   explain a consumed cap 8 with validated hit distances <=8. Only a different
+   effective pass setting or longer receiver-ray hits with MaxDist >8 would
+   keep that explanation viable. The user's unsuccessful override is accepted,
+   and this report does not establish either condition.
+
+Own/root suppression is substantially downranked by the same-emitter switch;
+world-toggle rejection conflicts with continuing illumination. Custom sampling
+and the known K-budget noise change do not by themselves explain a projector
+losing the same admitted full/large-cap visibility while POINT retains it.
+
+#### Round 2 validation
+
+- New selector/channel, spot binding and 16-case GPU matrix: PASS;
+  `.tmp/relight_env_r2_{diag,bind}.log`.
+- OFF gate: PASS all eight disabled shader expression streams and live-setting
+  checks; `.tmp/relight_env_r2_off.log`. No runtime changed, so this round adds
+  no OFF-path difference. Full viewer framebuffer identity remains unmeasured.
+- Existing standalone math runner: PASS 22/22;
+  `.tmp/relight_env_r2_math.log`. Generator selftests and manifest rule/generation
+  selftests pass; `.tmp/relight_env_r2_{generator_tests,manifest_tests}.log`.
+- All three generators `--check`: PASS without regeneration;
+  `.tmp/relight_env_r2_{kit,sources,manifest}_check.log` (five existing manifest
+  warnings).
+- Installed `prebuild_guard.ps1 -ChecksOnly`: PASS all 11 gates, required
+  `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.safecrlf`,
+  `GIT_CONFIG_VALUE_0=false`, and the existing workspace CachePath/TEMP wrapper;
+  `.tmp/relight_env_r2_prebuild.log`. The compile gate reports no changed C++
+  TUs since the running build. No touched `.cpp` needs a separate `zs_check`.
+- All ten `relight_*_check.py` gates: PASS. The full shader driver executes area,
+  policy, prim-size, rig, contact, VCam, dispatch and lifecycle gates; OFF runs
+  separately. `.tmp/relight_env_r2_shaders.log` exits 0, including 1,001 fades
+  at 0.001 increments in both directions at full and half resolution. Strict
+  gather maximum is 1/255; final maxima are 2/255 full and 3/255 half. The half
+  FP32 replay is 1.000015/255, within float epsilon of the strict 1/255 bound.
+  Wrong-slot/fade, binary ownership, length interpolation, multiply composition
+  and existing dispatch/lifecycle mutations are rejected.
+- Final `git diff --check`: PASS; `.tmp/relight_env_r2_diff_check.log`.
+
+No commit, push, stash, viewer build or viewer launch was performed. No read of
+`.tmp/ref_private/` occurred. Prior report edits, unrelated files and dirty
+`vcpkg` are preserved.
