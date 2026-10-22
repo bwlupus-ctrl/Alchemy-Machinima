@@ -12,6 +12,7 @@ struct AreaTakeState
 {
     const char* status = "not_observed";
     unsigned width = 0, height = 0;
+    unsigned frame = 0;    // gFrameCount of the sampled pass: a reader can tell a stale record.
     bool planned = false;
     int authoredSteps = 0; // Saved uniform/far count read by the sampled area pass itself.
     bool feed = false;     // The sampled pass was a VCam feed (own plan), not the main view.
@@ -27,6 +28,7 @@ inline LLSD areaTakeRecord(const AreaTakeState& state)
     out["status"] = state.status;
     out["width"] = static_cast<int>(state.width);
     out["height"] = static_cast<int>(state.height);
+    out["frame"] = static_cast<int>(state.frame);
     out["candidates"] = static_cast<int>(state.selected.candidates);
     out["selected"] = LLSD::emptyArray();
     for (unsigned channel = 0; channel < state.selected.size; ++channel)

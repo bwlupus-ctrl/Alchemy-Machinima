@@ -14,6 +14,8 @@ uniform int area_steps;
 uniform bool area_thin_objects;
 uniform vec3 area_params; // max distance, thickness, pixels relative to 1080p
 uniform float area_light_bias; // CPU-sanitized housing metres, independent of thickness
+uniform vec2 area_native_clip; // the native spot sampler's shadow_clip.z/.w; w <= z (default 0) = valid everywhere
+uniform float area_native_offset; // the native sampler's spot_shadow_offset (metres along the normal); default 0
 vec4 getPositionWithDepth(vec2 uv, float depth);
 vec2 generateProjectedPosition(vec3 pos);
 float getLinearDepth(vec2 uv);
@@ -27,6 +29,25 @@ uint areaHash(uint x)
 {
     x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; return x ^ (x >> 16);
 }
+// Weight of the native SL projector shadow at this receiver depth. shadowUtil.glsl
+// sampleSpotShadow() ramps to LIT over the last half of [clip.z, clip.w] (u = .5 .. 1), so
+// the screen trace takes over across u = .25 .. .45, finished BEFORE that ramp starts (the
+// 0.05 margin absorbs the bilateral filter, whose radius reaches 8 px and would otherwise
+// leak a few /255 of the lit side): a mapped light's contact fade is scaled by this weight,
+// and for a blocker both systems see every term of min(native, screen) stays dark
+// (ALAreaShadow::nativeShadowStrength). The window MUST match ALAreaShadow::kHandoverStart
+// (0.25) and kHandoverEnd (0.45): the slope below is 1/(0.45-0.25) = 5. The depth passed in
+// is the SHIFTED receiver depth the native sampler compares (pos += norm *
+// spot_shadow_offset first; ALAreaShadow::nativeReceiverDepth), never the raw one. A
+// non-finite depth (NaN/Inf from a bad reconstruction) means strength 1.0, like the CPU
+// isfinite rule.
+float areaNativeStrength(float depth)
+{
+    if (isnan(depth) || isinf(depth)) return 1.0;
+    if (area_native_clip.x <= 0.0 || area_native_clip.y <= area_native_clip.x) return 1.0;
+    float u = (depth-area_native_clip.x)/(area_native_clip.y-area_native_clip.x);
+    return 1.0-clamp((u-0.25)*5.0,0.0,1.0);
+}
 void main()
 {
     vec2 uv = areaTexelUV(vary_fragcoord);
@@ -34,7 +55,9 @@ void main()
     frag_color = vec4(1);
     if (depth >= 1.0) return;
     vec3 pos = getPositionWithDepth(uv,depth).xyz;
-    vec3 origin = pos+areaNormal(uv)*areaReceiverBias(uv,pos);
+    vec3 normal = areaNormal(uv);
+    vec3 origin = pos+normal*areaReceiverBias(uv,pos);
+    float native_strength = areaNativeStrength(-(pos.z+normal.z*area_native_offset));
     // Spatial noise cells scale with render resolution; no time/frame inputs.
     uvec2 pixel = uvec2(floor(gl_FragCoord.xy/max(area_params.z,0.125)));
     for (int light = area_first; light < area_count; ++light)
@@ -75,6 +98,6 @@ void main()
         }
         // Filter the blended visibility once, with the existing spatial passes.
         frag_color[light] = mix(visibility/float(area_samples),
-            contact_visibility/float(area_samples),area_contact_fade[light]);
+            contact_visibility/float(area_samples),area_contact_fade[light]*native_strength);
     }
 }

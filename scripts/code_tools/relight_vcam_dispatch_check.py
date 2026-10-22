@@ -43,6 +43,7 @@ def check_dispatch(g):
 #include <cstdint>
 #include <iostream>
 #include <optional>
+#include <sstream>
 #include <string>
 using U32=unsigned; using U8=unsigned char; using GLuint=unsigned;
 using S32=int; using F32=float; using F64=double; using GLint=int;
@@ -96,6 +97,7 @@ struct LLGLDepthTest : LLGLDisable { LLGLDepthTest(int,int):LLGLDisable(GL_DEPTH
 struct LLVertexBuffer { static void unbind() {} };
 template<class T> T llmin(T a,T b) { return std::min(a,b); }
 template<class T> T llclamp(T v,T a,T b) { return std::clamp(v,a,b); }
+template<class T> T llmax(T a,T b) { return std::max(a,b); }
 struct Log { template<class T> Log& operator<<(const T&) { return *this; } } logSink;
 #define LL_WARNS(x) logSink
 #define LL_DEBUGS(x) logSink
@@ -187,10 +189,11 @@ struct LLRenderTarget {
     void flush() {}
 };
 struct VB { void setBuffer() {} void drawArrays(int,int,int) { cb(10,0,0,0,nullptr,nullptr); } } vb;
-struct Take { ALAreaShadow::Workload work{}; int authoredSteps=0; bool feed=false,segmentedRequested=false; bool planned=false; std::string status; unsigned width=0,height=0; };
+struct Take { ALAreaShadow::Workload work{}; int authoredSteps=0; bool feed=false,segmentedRequested=false; bool planned=false; std::string status; unsigned width=0,height=0,frame=0; };
 struct LLPipeline {
     struct RenderTargetPack {
         LLRenderTarget areaGather[2],areaScratch[2],areaVisibility[2];
+        bool areaAllocFailed=false; // log state only
         LLRenderTarget actorMask,silCover,screen,deferredScreen,deferredLight;
         unsigned actorMaskDepthSrc=0,silCoverDepthSrc=0,width=0,height=0;
     } mMainRT;
@@ -209,6 +212,8 @@ struct LLPipeline {
     Take mRelightAreaTake,mRelightFeedAreaTake,mPrismSavedAreaTake;
     std::array<LLUUID,10> mRelightAreaSlotIDs{},mPrismSavedAreaSlotIDs{};
     ALAreaShadow::FeedPasses mPrismAreaPasses;
+    // Stand-in for the native sampler's shadow_clip; the production dispatch must upload z and w.
+    LLVector4 nativeSpotShadowClip() const { LLVector4 v; v.mV[2]=64; v.mV[3]=128; return v; }
     unsigned mAreaShadowQueries[2]={}; bool mAreaShadowQueryPending=false;
     double mAreaShadowGPUms=-1;
     VB* mScreenTriangleVB=&vb;
@@ -225,6 +230,7 @@ struct LLPipeline {
         }
     }
     unsigned gFrameCount=0, count=8;
+    static inline F32 RenderSpotShadowOffset=0.04f; // the native sampler's receiver offset (settings default)
     bool half() const { return true; } int samples() const { return 8; }
     int steps() const { return 12; } int cap() const { return 8; }
     float denoise() const { return 2; } float light_bias() const { return .25f; }
@@ -267,7 +273,7 @@ void LLPipeline::dispatch() {
     // Execute the actual production visibility consumer binding after publish.
     bindDeferredShader(gAreaShadowProgram);
     routed=cb(26,4,0,0,nullptr,nullptr)==int(mRT->areaVisibility[0].texture) &&
-        cb(26,5,0,0,nullptr,nullptr)==int(mRT->areaVisibility[count>4 ? 1 : 0].texture);
+        cb(26,5,0,0,nullptr,nullptr)==int(mRT->areaVisibility[mAreaShadowCount>4 ? 1 : 0].texture);
 }
 '''
     fixture += r'''
@@ -287,9 +293,17 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         p.dispatch();
         int valid=p.mAreaShadowValid;
         if(valid && !p.routed) return -6;
-        if(valid) for(unsigned i=0;i<p.count;++i)
-            if(p.mAreaShadowCount!=p.count || p.mAreaShadowIDs[i]!=p.drawables[i].volume.id ||
-                p.deferredLightShape(&p.drawables[i].volume).mV[3]!=float(i)) return -2;
+        // A failed second plane keeps plane 0 only (the four most important lights); the others
+        // fall back to no soft shadow (-1), never to a stale channel.
+        const unsigned expect=(p.count>4 && !p.mRT->areaVisibility[1].isComplete()) ? 4u : p.count;
+        if(valid) {
+            if(p.mAreaShadowCount!=expect) return -2;
+            for(unsigned i=0;i<p.count;++i) {
+                if(i<expect && (p.mAreaShadowIDs[i]!=p.drawables[i].volume.id ||
+                    p.deferredLightShape(&p.drawables[i].volume).mV[3]!=float(i))) return -2;
+                if(i>=expect && p.deferredLightShape(&p.drawables[i].volume).mV[3]!=-1) return -2;
+            }
+        }
         p.sPrismLensRender=false;p.mRT=&p.mMainRT;p.end();
         if(!p.mAreaShadowValid || p.mAreaShadowCount!=2) return -3;
         if(p.deferredLightShape(&p.drawables[0].volume).mV[3]!=-1) return -4;
@@ -306,6 +320,13 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     if(action==3) p.releasePrismLensBuffers();
     if(action==4) release_prism_scratch_entry(p.mPrismLensScratchPool[slot]);
     if(action==5) p.count=slot;
+    if(action==13) {
+        p.mRT=&p.mMainRT;p.sPrismLensRender=false;p.count=slot;
+        p.mRT->deferredScreen.width=width;p.mRT->deferredScreen.height=height;
+        p.setLights(101,light);
+        p.dispatch();p.sPrismLensRender=true;
+        return p.mAreaShadowValid;
+    }
     if(action==6) {
         p.mRT=&p.mMainRT;p.sPrismLensRender=false;p.count=2;
         p.mRT->deferredScreen.width=width;p.mRT->deferredScreen.height=height;
@@ -379,8 +400,10 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         live=set()
         resource_sets.append(live)
         outputs=[]
+        seen={}
         errors=[]
         fail_at=0
+        fail_from=0
         current_program=0
         fixture_data=None
         dispatch_state=[]
@@ -392,7 +415,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
             try:
                 if event==0:
                     allocations+=1
-                    if allocations==fail_at: return 0
+                    if allocations==fail_at or (fail_from and allocations>=fail_from): return 0
                     texture=g['area_texture'](0,g['np'].zeros((b,a,4),g['np'].float32),0x8058)
                     live.add(texture.value)
                     return texture.value
@@ -418,8 +441,12 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
                     g['ui'](g['loc'](current_program,b'normalMap'),2)
                     g['ui'](g['loc'](current_program,b'area_source'),3)
                 if event==4: g['ui'](g['loc'](current_program,name),a)
-                if event==5: g['uf'][a](g['loc'](current_program,name),*C.cast(pointer,C.POINTER(F))[:a])
-                if event==6: g['uniform4fv'](g['loc'](current_program,name),a,C.cast(pointer,C.POINTER(F)))
+                if event==5:
+                    seen[name.decode()]=list(C.cast(pointer,C.POINTER(F))[:a])
+                    g['uf'][a](g['loc'](current_program,name),*C.cast(pointer,C.POINTER(F))[:a])
+                if event==6:
+                    seen[name.decode()]=list(C.cast(pointer,C.POINTER(F))[:4*a])
+                    g['uniform4fv'](g['loc'](current_program,name),a,C.cast(pointer,C.POINTER(F)))
                 if event==7: g['uniform4uiv'](g['loc'](current_program,name),a,C.cast(pointer,C.POINTER(U)))
                 if event==8: color_mask(*[bool(a&(1<<i)) for i in range(4)])
                 if event==9:
@@ -489,6 +516,12 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         # Render and retain MAIN through the SAME production dispatch/owner.
         # Every feed receives this pack as well as its own pack.
         assert run(6)==1
+        # The production dispatch uploads the native map's clip and receiver offset (housing is the global
+        # light bias only: no per-light box is uploaded).
+        assert 'area_box' not in seen,('no per-light housing box uniform',seen.get('area_box'))
+        assert seen.get('area_native_clip')==[64.0,128.0],('native clip upload',seen.get('area_native_clip'))
+        assert len(seen.get('area_native_offset',[]))==1 and abs(seen['area_native_offset'][0]-0.04)<1.e-6,\
+            ('native receiver offset upload',seen.get('area_native_offset'))
         main_outputs=outputs.copy()
         main_live=live.copy()
         main_visibility=read_last().copy()
@@ -542,12 +575,40 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         assert g['np'].array_equal(main_visibility,read_last()),'master OFF/ON changed main output'
         main_live=live.copy()
         main_outputs=outputs.copy()
-        # Allocation failure after a successful first target must clean all
-        # partial allocations and publish no channels, then recover on retry.
+        # Allocation failure (K 8, two planes). Plane 0 failing leaves nothing behind and no soft
+        # shadows this frame; plane 1 failing keeps plane 0 (the four most important lights)
+        # instead of releasing everything. Every failure is retried on the next frame.
         run(5,8)
         for failed_target in range(1,7):
+            run(1)  # clean state: every target index is attempted from scratch
+            assert live==main_live
             fail_at=allocations+failed_target
-            assert run()==0 and live==main_live,('partial allocation cleanup',failed_target)
+            result=run()
+            if failed_target<=3:
+                assert result==0 and live==main_live,('plane 0 allocation failure cleanup',failed_target)
+            else:
+                assert result==1 and len(live-main_live)==3,('plane 1 failure keeps plane 0',failed_target)
+            fail_at=0
+            before=allocations
+            assert run()==1 and len(live-main_live)==6,('the next frame retries and recovers',failed_target)
+        # Equivalent inputs give equivalent output regardless of failure history: after any number
+        # of failed frames the first successful frame is byte-identical to a fresh one, and every
+        # failed frame attempted the allocation again (nothing is remembered).
+        run(1);assert live==main_live
+        run(5,8)
+        assert run()==1
+        fresh=read_last().copy()
+        run(1);assert live==main_live
+        for pattern,expect in ((1,0),(4,1)):  # plane 0 never allocates / only plane 1 never allocates
+            fail_from=allocations+pattern
+            for _ in range(5):
+                before=allocations
+                assert run()==expect,('persistent failure renders only what fits',pattern)
+                assert allocations>before,'a failed allocation is retried every frame'
+            fail_from=0
+            assert run()==1,('the first frame with memory renders at once',pattern)
+            assert g['np'].array_equal(fresh,read_last()),('output after a failure history equals a fresh frame',pattern)
+            run(1);assert live==main_live
         fail_at=0
         run(5,1)
         assert run()==1 and len(live-main_live)==3
@@ -576,6 +637,24 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         assert g['np'].array_equal(main_visibility,read_last()),'feeds overwrote main production visibility'
         run(7)
         assert not live
+        # Main view, requested K 8: the spare plane survives a fifth light leaving the frustum
+        # (no free and reallocation of three RGBA8 targets) and returns without allocating.
+        assert run(13,6)==1
+        kept=allocations,releases
+        assert run(13,3)==1 and (allocations,releases)==kept,'spare plane churned when a fifth light left'
+        assert run(13,6)==1 and (allocations,releases)==kept,'spare plane reallocated for the returning light'
+        # Plane 0 failing leaves an already-allocated spare plane 1 alone: back at the old size only plane 0
+        # is rebuilt (three targets), not both planes (the hitch the spare plane exists to avoid).
+        spare=len(live)
+        fail_at=allocations+1          # the resize reallocates plane 0 first, and that fails
+        assert run(13,6,width=80,height=60)==0
+        fail_at=0
+        assert len(live)==spare-3,('plane 0 released, plane 1 kept',len(live),spare)
+        before=allocations
+        assert run(13,6)==1 and allocations-before==3 and len(live)==spare,\
+            ('plane 0 failure freed the spare plane',allocations-before)
+        run(7)
+        assert not live
 
     exercise(compile_fixture(fixture,'dispatch'))
     # Executable mutations: compile the same assertions against broken
@@ -590,6 +669,14 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         'missing_eviction': fixture.replace('for (auto& target : entry.rt.areaVisibility) target.release();',''),
         'unbounded_passes': fixture.replace('if (sPrismLensRender && !mPrismAreaPasses.admit(gFrameCount,LLPrismLens::MAX_CAPTURES)) return;',''),
         'missing_gl_restore': fixture.replace('glViewport(viewport[0],viewport[1],viewport[2],viewport[3]);',''),
+        'native_clip_dropped': fixture.replace('gAreaShadowProgram.uniform2f(LLStaticHashedString("area_native_clip"),native_clip.mV[2],native_clip.mV[3]);',''),
+        'sticky_failure': fixture.replace('take.status = "allocation_failed";',
+            'take.status = "allocation_failed"; static unsigned sticky_frame = 0; if (sticky_frame && gFrameCount - sticky_frame < 300) return;').replace(
+            'plane_ok[plane] = false;','plane_ok[plane] = false; sticky_frame = gFrameCount ? gFrameCount : 1;'),
+        'plane1_failure_drops_all': fixture.replace('plane_ok[plane] = false;','plane_ok[plane] = false; plane_ok[0] = false;'),
+        'plane0_failure_frees_spare': fixture.replace('if (!plane_ok[0]) break;','if (!plane_ok[0]) { release_plane(1); break; }'),
+        'native_offset_dropped': fixture.replace('gAreaShadowProgram.uniform1f(LLStaticHashedString("area_native_offset"),\n            std::isfinite(RenderSpotShadowOffset) ? RenderSpotShadowOffset : 0.f);',''),
+        'spare_plane_churn': fixture.replace('const U32 kept = llmax(planes_wanted,static_cast<U32>(llclamp(cap(),1,8)) > 4 ? 2u : 1u);','const U32 kept = planes_wanted;'),
     }
     for label,mutated in mutations.items():
         assert mutated!=fixture,label
@@ -604,4 +691,9 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
                 for texture in resources:
                     handle=U(texture);delete_tex(1,C.byref(handle))
                 resources.clear()
+    # The production uploads above leave a native clip on the shared linked gather; later fixtures
+    # assume the GL defaults (no cutoff, no receiver offset).
+    g['area_use'](g['area_gather'])
+    g['uf'][2](g['loc'](g['area_gather'],b'area_native_clip'),0,0)
+    g['uf'][1](g['loc'](g['area_gather'],b'area_native_offset'),0)
     print('[RelightQ] VCam production dispatch/GL ownership PASS: zero steady allocations/releases, one allocation per target on resize; Gate cuts, OFF pool cleanup, failure/retry, eviction, close, actual-pass cap and negative mutations',flush=True)

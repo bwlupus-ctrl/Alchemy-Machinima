@@ -7,6 +7,8 @@
 #include "llsdserialize.h"
 #include <limits>
 #include <future>
+#include <functional>
+#include <vector>
 namespace tut
 {
 struct relight_data {};
@@ -165,6 +167,7 @@ template<> template<> void relight_object::test<9>()
 template<> template<> void relight_object::test<10>()
 {
     using namespace ALAreaShadow;
+    // Importance first, then the stable UUID; a native map neither helps nor hurts here.
     const std::array<Candidate<int>,5> input{{{9,true,1000}, {8,false,1},
         {3,false,5}, {2,false,5}, {1,true,9999}}};
     std::array<int,5> order{{0,1,2,3,4}};
@@ -174,9 +177,9 @@ template<> template<> void relight_object::test<10>()
         for (int index : order) selected.add(input[index],3);
         ensure_equals("cap",selected.size,3u);
         ensure_equals("all candidates counted",selected.candidates,5u);
-        ensure_equals("contribution then UUID",selected.lights[0].id,2);
-        ensure_equals("tie by UUID",selected.lights[1].id,3);
-        ensure_equals("leaking beats shadow map",selected.lights[2].id,8);
+        ensure_equals("highest importance first, mapped or not",selected.lights[0].id,1);
+        ensure_equals("mapped light of lower importance second",selected.lights[1].id,9);
+        ensure_equals("tie by UUID",selected.lights[2].id,2);
     } while (std::next_permutation(order.begin(),order.end()));
     Selection<int> capped;
     for (int id=19; id>=0; --id) capped.add({id,false,1},99);
@@ -192,9 +195,15 @@ template<> template<> void relight_object::test<11>()
     for (unsigned flags=1; flags<64; ++flags)
         ensure("every excluded view combination fails closed",!allowed({bool(flags&1),
             bool(flags&2),bool(flags&4),bool(flags&8),bool(flags&16),bool(flags&32)}));
-    close("literal projected contribution",contribution(4,2,3,.5),3);
-    close("nonfinite contribution rejected",contribution(1,1,std::numeric_limits<double>::infinity(),1),0);
-    close("negative contribution rejected",contribution(1,1,-1,1),0);
+    // importance = luminance * range / max(distance, range/2), x1.25 when unmapped.
+    close("literal importance, saturated near the light",importance(3,10,2,true),6);
+    close("literal importance, far light",importance(1,10,20,true),.5);
+    close("literal unmapped bonus",importance(1,10,20,false),.625);
+    ensure("outside the range is not zero",importance(1,6,8,true) > 0);
+    close("nonfinite luminance rejected",importance(std::numeric_limits<double>::infinity(),1,1,true),0);
+    close("negative luminance rejected",importance(-1,1,1,true),0);
+    close("zero range rejected",importance(1,0,1,true),0);
+    close("nonfinite distance rejected",importance(1,1,std::numeric_limits<double>::quiet_NaN(),true),0);
 }
 template<> template<> void relight_object::test<12>()
 {
@@ -435,11 +444,12 @@ template<> template<> void relight_object::test<17>()
         for (unsigned cap : {4u,6u})
         {
             Selection<LLUUID> selected;
-            // Mapped UUIDs are LOWER: sorting by UUID alone must fail this test.
+            // Equal importance: the stable UUID order decides, whatever the input order or
+            // the native-map flag (the first two are mapped; unmapped-first would put them last).
             for (int i : order) selected.add({ids[i],i<2,1.0},cap);
             ensure_equals("real UUID tied cap",selected.size,cap);
             for (unsigned i=0; i<cap; ++i)
-                ensure_equals("unmapped first, UUID ties independent of input order",selected.lights[i].id,ids[(i+2)%6]);
+                ensure_equals("UUID ties independent of input order and map flag",selected.lights[i].id,ids[i]);
         }
         ++permutations;
     } while (std::next_permutation(order.begin(),order.end()));
@@ -455,6 +465,7 @@ template<> template<> void relight_object::test<18>()
     AreaTakeState state;
     state.status = "rendered";
     state.width = 1920; state.height = 1080;
+    state.frame = 4242;
     for (const auto& light : {ALAreaShadow::Candidate<LLUUID>{c,true,100.},
          ALAreaShadow::Candidate<LLUUID>{b,false,1.}, ALAreaShadow::Candidate<LLUUID>{a,false,1.}})
         state.selected.add(light,8);
@@ -483,9 +494,12 @@ template<> template<> void relight_object::test<18>()
     for (int i=0; i<3; ++i)
     {
         ensure_equals("channel index",view["selected"][i]["channel"].asInteger(),i);
-        ensure_equals("channel UUID",view["selected"][i]["uuid"].asUUID(),std::array<LLUUID,3>{{a,b,c}}[i]);
-        ensure_equals("native map membership",view["selected"][i]["shadow_map"].asBoolean(),i==2);
+        // Importance order: c (100) first although it owns the native map, then a, b by UUID.
+        ensure_equals("channel UUID",view["selected"][i]["uuid"].asUUID(),std::array<LLUUID,3>{{c,a,b}}[i]);
+        ensure_equals("native map membership",view["selected"][i]["shadow_map"].asBoolean(),i==0);
+        close("logged importance score",view["selected"][i]["score"].asReal(),i==0 ? 100. : 1.);
     }
+    ensure_equals("sampled frame logged",view["frame"].asInteger(),4242);
     ensure_equals("sampled slot at area pass",view["projector_slots"][0]["uuid"].asUUID(),c);
     ensure_equals("vacant slot retained",view["projector_slots"][1]["uuid"].asUUID(),LLUUID::null);
     ensure_equals("current sampled slot",record["projector_slots_at_start"][0]["uuid"].asUUID(),b);
@@ -511,7 +525,7 @@ template<> template<> void relight_object::test<18>()
     LLSDSerialize::toNotation(record,stream);
     LLSD decoded;
     ensure("notation parses",LLSDSerialize::fromNotation(decoded,stream,stream.str().size())>0);
-    ensure_equals("serialized UUID",decoded["area_view"]["selected"][0]["uuid"].asUUID(),a);
+    ensure_equals("serialized UUID",decoded["area_view"]["selected"][0]["uuid"].asUUID(),c);
     ensure_equals("serialized exact work",decoded["area_view"]["work"]["iterations"].asString(),std::string("497664000"));
     state.work.pixels = 4294967296ull;
     ensure_equals("64-bit count never truncates",areaTakeRecord(state)["work"]["pixels"].asString(),std::string("4294967296"));
@@ -802,8 +816,21 @@ template<> template<> void relight_object::test<24>()
         // Thin objects and is out of scope); the monotonic rule covers the segmented rows.
         if (!plan[0].q.nearSteps) { ++uniformRows; continue; }
         ++segmentedRows;
-        for (int preset=1; preset<4; ++preset)
-            ensure("segmented far steps are common to every preset",plan[preset].q.steps==plan[0].q.steps);
+        for (int preset=0; preset<4; ++preset)
+        {
+            // Independent cost recomputation: pixels from the target size, not from the plan.
+            const std::uint64_t pixels = plan[preset].q.half ? std::uint64_t((size.w+1)/2)*((size.h+1)/2) :
+                std::uint64_t(size.w)*size.h;
+            ensure("plan cost recomputed from the target size",plan[preset].iterations ==
+                pixels*lights*plan[preset].q.samples*plan[preset].q.steps);
+            ensure("the plan fits the requested-K reservation",
+                pixels*lights*plan[preset].q.samples*plan[preset].q.steps <= plan[preset].budget);
+            // Degradation order: the far segment is thinned only after rays and resolution are spent.
+            if (plan[preset].q.steps-plan[preset].q.nearSteps < 32)
+                ensure("far steps thin only as a last resort",plan[preset].q.samples==1 && plan[preset].q.half);
+            ensure("far steps never below the common floor",
+                plan[preset].q.steps-plan[preset].q.nearSteps >= kThinFarFloor);
+        }
         for (int preset=1; preset<4; ++preset)
         {
             const auto& lower=plan[preset-1];
@@ -822,6 +849,16 @@ template<> template<> void relight_object::test<24>()
     const auto cinematic=workload(quality(3,true),1920,1080,1,1500,1);
     ensure("1080p K1 High",high.q.samples==12 && high.q.half);
     ensure("1080p K1 Cinematic >= High",cinematic.q.samples>=high.q.samples && cinematic.q.half);
+    // Literal cross-preset sample rows at the default 1500M budget (Low, Medium, High, Cinematic).
+    struct Row { unsigned height, cap; int samples[4]; };
+    constexpr Row rows[]={{1080,4,{4,8,8,8}},{1080,8,{4,4,4,4}},{2160,4,{2,2,2,2}},{2160,8,{1,1,1,1}}};
+    for (const auto& row : rows)
+        for (int preset=0; preset<4; ++preset)
+        {
+            const auto plan=workloadOrUniform(quality(preset,true),quality(preset),row.height*16/9,row.height,
+                row.cap,1500,row.cap);
+            ensure_equals("literal effective samples per preset",plan.q.samples,row.samples[preset]);
+        }
 }
 
 template<> template<> void relight_object::test<25>()
@@ -859,8 +896,19 @@ template<> template<> void relight_object::test<25>()
             // Never zero when OFF draws, never above the shared budget.
             ensure("ON feed draws wherever the OFF feed draws",!off.channels || on.channels>0);
             ensure("ON allowance is at least min(OFF allowance, 2048x2048 minimum)",
-                onAllowance>=std::min(offAllowance,need) && on.budget==onAllowance);
-            ensure("feed stays inside its allowance",on.iterations<=onAllowance);
+                onAllowance>=std::min(offAllowance,need));
+            // Independent checks from the target size and the test's own allowance, not from
+            // the plan's own budget/iterations fields.
+            const std::uint64_t feedPixels = on.q.half ? std::uint64_t((size.w+1)/2)*((size.h+1)/2) :
+                std::uint64_t(size.w)*size.h;
+            const std::uint64_t perChannel = feedPixels*on.q.samples*on.q.steps;
+            if (on.channels)
+            {
+                ensure("feed cost recomputed from the target size",on.iterations==perChannel*lights);
+                ensure("feed plan reserves the requested K inside the allowance",perChannel*cap<=onAllowance);
+                ensure("feed draw bound recomputed",perChannel*on.channels<=onAllowance/2);
+                ensure("feed channel count is maximal",on.channels==4 || perChannel*(on.channels+1)>onAllowance/2);
+            }
             ensure("one budget for main and every feed slot",onReserve+kFeedSlots*on.iterations<=onMain.budget);
             // Main fell back to the OFF plan: the feed is exactly the OFF feed.
             if (!onMain.q.nearSteps && !on.q.nearSteps)
@@ -882,6 +930,9 @@ template<> template<> void relight_object::test<25>()
     ensure("grid covers segmented main plans",segmentedMain>0);
     ensure("grid covers uniform main fallbacks",uniformMain>0);
     ensure("grid size",cases>10000 && offDraws>0);
+    // Feeds are deliberately NOT compared across presets: a feed's allowance is what its preset's
+    // main plan leaves over, so a higher preset's feed can have fewer rays by design (the
+    // admission guarantee above is the invariant). The preset-ordered sample rows are the main view's (test 24).
     std::cout << "[RelightQ] feed admission grid cases=" << cases << " OFF-draws=" << offDraws
         << " ON-channels-below-OFF=" << fewerChannels << " ON-rays-below-OFF=" << fewerRays
         << " segmentedMain=" << segmentedMain << " uniformMain=" << uniformMain << std::endl;
@@ -897,6 +948,664 @@ template<> template<> void relight_object::test<25>()
         ensure("1500M: ON feed keeps its shadows",big.channels>0 && big.budget>=feedReservation(1920,1080,
             1500000000ull,8,kFeedSlots)/kFeedSlots);
     }
+}
+
+namespace
+{
+struct Lamp { int id; double luminance, range, distance; bool mapped; };
+// Superseded rankings, kept only so the fixtures below prove they would catch a regression.
+double oldLegacyScore(const Lamp& l)
+{
+    const double score = l.range/std::max(l.distance,.01)*l.luminance*ALRelight::legacy(l.distance,l.range,.5);
+    return std::isfinite(score) ? std::max(0.0,score) : 0.0;
+}
+bool unmappedFirst(const ALAreaShadow::Candidate<int>& a, const ALAreaShadow::Candidate<int>& b)
+{
+    if (a.shadowMap != b.shadowMap) return !a.shadowMap;
+    if (a.score != b.score) return a.score > b.score;
+    return a.id < b.id;
+}
+ALAreaShadow::Selection<int> choose(const std::vector<Lamp>& lamps, unsigned cap,
+    const std::function<double(const Lamp&)>& score, bool unmapped_first = false)
+{
+    ALAreaShadow::Selection<int> out;
+    for (const auto& l : lamps)
+    {
+        const ALAreaShadow::Candidate<int> candidate{l.id,l.mapped,score(l)};
+        if (unmapped_first) out.add(candidate,cap,unmappedFirst); else out.add(candidate,cap);
+    }
+    return out;
+}
+double referenceImportance(const Lamp& l)
+{
+    return ALAreaShadow::importance(l.luminance,l.range,l.distance,l.mapped ? 1.0 : 0.0);
+}
+bool has(const ALAreaShadow::Selection<int>& s, int id)
+{
+    for (unsigned i=0; i<s.size; ++i) if (s.lights[i].id==id) return true;
+    return false;
+}
+// Eight dim nearby unmapped points plus one bright world projector (the highest UUID, so the
+// stable tie-break cannot rescue it) that owns a native map, 18 m away: OUTSIDE its own
+// 15 m range, where the old camera-point score was 0.
+std::vector<Lamp> projectorFixture()
+{
+    std::vector<Lamp> lamps;
+    for (int i=1; i<=8; ++i) lamps.push_back({i,.3,7.5,3.0+.4*i,false});
+    lamps.push_back({9,4.0,15.0,18.0,true});
+    return lamps;
+}
+}
+
+template<> template<> void relight_object::test<26>()
+{
+    using namespace ALAreaShadow;
+    const auto lamps = projectorFixture();
+    const auto score = [](const Lamp& l) { return referenceImportance(l); };
+    for (unsigned cap : {4u,8u})
+    {
+        const auto selected = choose(lamps,cap,score);
+        ensure("bright mapped projector admitted",has(selected,9));
+        ensure_equals("it ranks first by importance",selected.lights[0].id,9);
+        ensure_equals("all nine candidates counted",selected.candidates,9u);
+        // Mutations that must fail this same expectation.
+        ensure("restoring unmapped-first drops the projector",!has(choose(lamps,cap,score,true),9));
+        ensure("restoring the camera-point legacy score drops the projector",
+            !has(choose(lamps,cap,oldLegacyScore),9));
+    }
+    // Order is stable under input permutations (the real comparator), K=4 and K=8. A deterministic
+    // sample stands in for all 362,880 orders: the identity, the reverse and 5,000 Fisher-Yates
+    // shuffles driven by a fixed xorshift stream (no std::shuffle: its result is implementation
+    // defined). The comparator is a strict total order (score, then UUID), so any order dependence
+    // shows in a few shuffles; the tie fixture below checks every order of the equal-score lamps.
+    ALAreaShadow::Selection<int> reference[2] = {choose(lamps,4,score),choose(lamps,8,score)};
+    const auto agrees = [&](const std::vector<int>& order, const std::function<double(const Lamp&)>& rank,
+        bool expect_same)
+    {
+        std::vector<Lamp> shuffled;
+        for (int index : order) shuffled.push_back(lamps[index]);
+        bool same = true;
+        for (int k=0; k<2; ++k)
+        {
+            const auto selected = choose(shuffled,k ? 8u:4u,rank);
+            if (selected.size != reference[k].size) { same = false; continue; }
+            for (unsigned i=0; i<selected.size; ++i)
+                if (selected.lights[i].id != reference[k].lights[i].id ||
+                    selected.lights[i].score != reference[k].lights[i].score) same = false;
+        }
+        if (expect_same) ensure("same selection, order and logged score under permutation",same);
+        return same;
+    };
+    std::vector<int> order{0,1,2,3,4,5,6,7,8};
+    unsigned permutations = 0;
+    agrees(order,score,true); ++permutations;                      // identity
+    std::reverse(order.begin(),order.end());
+    agrees(order,score,true); ++permutations;                      // reverse
+    std::uint32_t state = 0x9E3779B9u;
+    const auto next = [&state]() { state ^= state << 13; state ^= state >> 17; state ^= state << 5; return state; };
+    for (unsigned n=0; n<5000; ++n)
+    {
+        for (int i=0; i<9; ++i) order[i] = i;
+        for (int i=8; i>0; --i) std::swap(order[i],order[next() % unsigned(i+1)]);
+        agrees(order,score,true); ++permutations;
+    }
+    ensure_equals("identity + reverse + 5000 fixed shuffles",permutations,5002u);
+    // Power: the sampled set still rejects an order-dependent comparator. Dropping the UUID tie
+    // break (stable insertion keeps the first arrival) must be visible in some shuffle of equal lamps.
+    {
+        const std::vector<Lamp> tied{{1,1.0,10,5,false},{2,1.0,10,5,false},{3,1.0,10,5,false},{4,1.0,10,5,false}};
+        std::vector<int> t{0,1,2,3};
+        const auto first = choose(tied,2,score);
+        bool order_dependent_without_tiebreak = false;
+        do
+        {
+            std::vector<Lamp> shuffled;
+            for (int index : t) shuffled.push_back(tied[index]);
+            const auto selected = choose(shuffled,2,score);
+            for (unsigned i=0; i<selected.size; ++i)
+                ensure_equals("equal scores: the UUID decides in every order",selected.lights[i].id,first.lights[i].id);
+            ALAreaShadow::Selection<int> no_tiebreak;
+            for (const auto& l : shuffled)
+                no_tiebreak.add({l.id,l.mapped,score(l)},2,[](const ALAreaShadow::Candidate<int>& a,
+                    const ALAreaShadow::Candidate<int>& b) { return a.score > b.score; });
+            if (no_tiebreak.lights[0].id != first.lights[0].id || no_tiebreak.lights[1].id != first.lights[1].id)
+                order_dependent_without_tiebreak = true;
+        } while (std::next_permutation(t.begin(),t.end()));
+        ensure("dropping the UUID tie break is caught (mutation rejected)",order_dependent_without_tiebreak);
+    }
+    // Determinism: identical inputs, identical selection and scores, call after call.
+    const auto first = choose(lamps,8,score), second = choose(lamps,8,score);
+    for (unsigned i=0; i<first.size; ++i)
+        ensure("identical selection for identical inputs",first.lights[i].id==second.lights[i].id &&
+            first.lights[i].score==second.lights[i].score && first.lights[i].shadowMap==second.lights[i].shadowMap);
+    // Ties still break by UUID; the unmapped bonus is bounded (a light 30 % more important wins).
+    ensure("a mapped light 30 % more important outranks an unmapped one",
+        choose({{1,1.0,10,5,false},{2,1.3,10,5,true}},1,score).lights[0].id==2);
+    ensure("an unmapped light within the bonus outranks a mapped one",
+        choose({{1,1.0,10,5,false},{2,1.2,10,5,true}},1,score).lights[0].id==1);
+}
+
+template<> template<> void relight_object::test<27>()
+{
+    using namespace ALAreaShadow;
+    // Dolly across the range boundary: a camera walks 0..40 m along z past a row of lamps
+    // (3 m to the side, so the camera is never closer than 3 m). Whenever the selected set
+    // changes between two 1 cm steps, the light that entered and the light that left must be
+    // visibly comparable (reference importance within 2 %): no channel pops among lights that
+    // differ, and no light is dropped merely because the camera left or entered its range.
+    struct Placed { int id; double luminance, range, z; bool mapped; };
+    const std::vector<Placed> placed = {{1,1.0,10,6,false},{2,1.4,6,12,false},{3,.6,12,20,true},
+        {4,2.0,9,28,false},{5,.9,8,34,true},{6,1.2,14,9,false}};
+    const auto lamps_at = [&](double camera_z)
+    {
+        std::vector<Lamp> lamps;
+        for (const auto& p : placed)
+            lamps.push_back({p.id,p.luminance,p.range,std::hypot(3.0,p.z-camera_z),p.mapped});
+        return lamps;
+    };
+    const auto run = [&](const std::function<double(const Lamp&)>& score, bool unmapped_first)
+    {
+        unsigned flips = 0, incomparable = 0;
+        for (unsigned cap : {2u,3u,4u})
+        {
+            auto previous = choose(lamps_at(0),cap,score,unmapped_first);
+            for (int step=1; step<=4000; ++step)
+            {
+                const auto lamps = lamps_at(step*.01);
+                const auto current = choose(lamps,cap,score,unmapped_first);
+                for (unsigned i=0; i<current.size; ++i)
+                {
+                    if (has(previous,current.lights[i].id)) continue;
+                    // Entered. Find what left.
+                    for (unsigned j=0; j<previous.size; ++j)
+                    {
+                        if (has(current,previous.lights[j].id)) continue;
+                        const Lamp *in=nullptr,*out=nullptr;
+                        for (const auto& l : lamps)
+                        {
+                            if (l.id==current.lights[i].id) in=&l;
+                            if (l.id==previous.lights[j].id) out=&l;
+                        }
+                        const double a=referenceImportance(*in), b=referenceImportance(*out);
+                        if (std::abs(a-b) > .02*std::max(a,b)) ++incomparable;
+                        ++flips;
+                    }
+                }
+                previous=current;
+            }
+        }
+        return std::make_pair(flips,incomparable);
+    };
+    const auto importance_run = run([](const Lamp& l) { return referenceImportance(l); },false);
+    ensure("the dolly actually changes the selection",importance_run.first>0);
+    ensure_equals("importance: every swap is between comparable lights",importance_run.second,0u);
+    const auto legacy_run = run(oldLegacyScore,false);
+    ensure("camera-point legacy score pops a visibly different light (mutation rejected)",legacy_run.second>0);
+    std::cout << "[RelightQ] dolly 0..40 m, K 2/3/4 x 4000 steps: importance " << importance_run.first
+        << " swaps, " << importance_run.second << " between visibly different lights; camera-point legacy "
+        << legacy_run.first << " swaps, " << legacy_run.second << " between visibly different lights" << std::endl;
+    // Importance is continuous and non-increasing in distance, and never zero outside the range.
+    double previous = std::numeric_limits<double>::infinity();
+    for (int i=0; i<=40000; ++i)
+    {
+        const double score = ALAreaShadow::importance(1.0,10.0,i*.001,1.0);
+        ensure("importance is non-increasing in distance",score<=previous+1.e-15);
+        ensure("importance is positive past the range boundary",score>0);
+        if (i) ensure("importance has no step at any distance",std::abs(score-previous) <= previous*.001);
+        previous=score;
+    }
+}
+
+template<> template<> void relight_object::test<28>()
+{
+    using namespace ALAreaShadow;
+    // Stale mapped projectors: detail 2 -> 1 -> 0 with a previously slotted projector.
+    ensure("detail 2, rendered, complete, in range: mapped",nativeMapSampled(2,3,4,true,true));
+    ensure("detail 1 (projector shadows off): unmapped",!nativeMapSampled(1,3,4,true,true));
+    ensure("detail 0: unmapped",!nativeMapSampled(0,3,4,true,true));
+    ensure("slot above the live limit: unmapped",!nativeMapSampled(2,4,4,true,true));
+    ensure("map not complete: unmapped",!nativeMapSampled(2,3,4,false,true));
+    ensure("map not rendered this frame: unmapped",!nativeMapSampled(2,3,4,true,false));
+    for (int detail : {2,1,0,1,2})
+    {
+        const bool sampled = nativeMapSampled(detail,0,2,true,detail>1);
+        // An unmapped projector packs contact 0 / fade 0: its full soft shadow is kept.
+        Candidate<int> candidate{1,sampled,importance(1,10,5,sampled)};
+        ensure("mapped only while detail > 1",candidate.shadowMap==(detail>1));
+    }
+    // Native hand-over: the screen trace takes over across u = (depth-clip.z)/(clip.w-clip.z) in
+    // [.25,.45], finished before the native sampler's own fade-to-lit starts at u = .5 (the 0.05
+    // margin absorbs the bilateral filter, which blends a few /255 across a depth step).
+    // areaShadowF.glsl hard-codes the same window: (u-0.25)*5.0 = 1/(kHandoverEnd-kHandoverStart).
+    close("hand-over starts at u = .25",kHandoverStart,.25);
+    close("hand-over ends at u = .45",kHandoverEnd,.45);
+    ensure("the hand-over ends before the native ramp starts (margin >= .05)",kHandoverEnd <= .5-.05+1.e-12);
+    close("the shader slope is the reciprocal of the window",1.0/(kHandoverEnd-kHandoverStart),5.0);
+    close("unset clip is valid everywhere",nativeShadowStrength(50,0,0),1);
+    close("malformed clip is valid everywhere",nativeShadowStrength(50,60,40),1);
+    close("near receivers keep the native shadow",nativeShadowStrength(10,64,128),1);
+    close("start of the hand-over (u = .25)",nativeShadowStrength(80,64,128),1);
+    close("middle of the hand-over (u = .35)",nativeShadowStrength(86.4,64,128),.5);
+    close("end of the hand-over (u = .45)",nativeShadowStrength(92.8,64,128),0);
+    close("the old end (u = .5) is long since handed over",nativeShadowStrength(96,64,128),0);
+    close("beyond the hand-over",nativeShadowStrength(112,64,128),0);
+    close("at shadow_clip.w the native map is lit",nativeShadowStrength(128,64,128),0);
+    close("beyond shadow_clip.w",nativeShadowStrength(500,64,128),0);
+    // A non-finite depth is "native valid" (strength 1), the same rule as the shader's isnan/isinf guard.
+    const double inf_value = std::numeric_limits<double>::infinity(), nan_value = std::numeric_limits<double>::quiet_NaN();
+    close("NaN depth: native valid",nativeShadowStrength(nan_value,64,128),1);
+    close("+Inf depth: native valid",nativeShadowStrength(inf_value,64,128),1);
+    close("-Inf depth: native valid",nativeShadowStrength(-inf_value,64,128),1);
+    double last = 1.0;
+    for (int i=0; i<=20000; ++i)
+    {
+        const double depth = 50+i*.005, s = nativeShadowStrength(depth,64,128);
+        ensure("strength is non-increasing",s<=last+1.e-15);
+        ensure("strength is continuous (no step anywhere)",std::abs(s-last)<=.005/((kHandoverEnd-kHandoverStart)*64)+1.e-12);
+        // The native sampler adds light only from u = .5; the screen term is gone by then, with margin.
+        const double u = (depth-64)/(128-64);
+        if (u >= .45) ensure("the screen hand-over is complete before the native ramp",s==0.0);
+        if (u > .5) ensure("the native ramp rises only where the hand-over is done",nativeSpotShadow(0,depth,64,128) >= 0.0 && s==0.0);
+        last=s;
+    }
+}
+
+namespace
+{
+// The final value a receiver gets from the spot shader: min(native + shadow_fade, screen), the
+// production composition (spotLightF.glsl), with the native value from the pure sampler model.
+double finalComposite(double pcf, double depth, double clipZ, double clipW, double blend, double fade,
+    double fullTrace, double contactTrace, double (*strength)(double,double,double))
+{
+    const double native = std::clamp(ALAreaShadow::nativeSpotShadow(pcf,depth,clipZ,clipW,blend)+(1.0-fade),0.0,1.0);
+    // The gather's blend: mix(full, contact, fade * strength).
+    const double screen = fullTrace + (contactTrace-fullTrace) * fade * strength(depth,clipZ,clipW);
+    return std::min(native,screen);
+}
+// The superseded strength: the screen term took over across the SAME half as the native ramp.
+double oldStrength(double depth, double clipZ, double clipW)
+{
+    const double u = (depth-clipZ)/(clipW-clipZ);
+    return 1.0-std::clamp(2.0*u-1.0,0.0,1.0);
+}
+double validEverywhere(double, double, double) { return 1.0; }
+}
+
+template<> template<> void relight_object::test<30>()
+{
+    using namespace ALAreaShadow;
+    // Independent combined-output oracle: the FINAL composite (native map + shadow_fade, then
+    // the screen visibility, as composed in the spot shaders) swept across the whole native
+    // cutoff, for every combination of "who sees the blocker". The native sampler is the pure
+    // model of shadowUtil.glsl (its ramp to lit AND the /weight term), not the gather's own
+    // strength function.
+    struct Clip { double z, w, blend; };
+    const Clip clips[] = {{64,128,.25},{30,40,.25},{32,200,.1},{10,20,.08},{64,96,.25}};
+    unsigned cases = 0;
+    for (const Clip& clip : clips)
+    {
+        const double step = (clip.w-clip.z)/4000.0, from = clip.z*.5, to = clip.w*1.5;
+        for (double fade : {1.0,.75,.5,.25,0.0})
+        {
+            struct Scene { const char* name; double pcf, full, contact; };
+            for (const Scene& s : {Scene{"blocker seen by both",0.0,0.0,1.0},
+                                   Scene{"blocker seen by both, partly by contact",0.0,0.0,.5},
+                                   Scene{"only the screen trace sees it",1.0,0.0,1.0},
+                                   Scene{"only the native map sees it",0.0,1.0,1.0},
+                                   Scene{"nothing blocks",1.0,1.0,1.0}})
+            {
+                double previous = -1.0, start = 0.0, end = 0.0, peak = 0.0;
+                for (double d = from; d <= to; d += step)
+                {
+                    const double v = finalComposite(s.pcf,d,clip.z,clip.w,clip.blend,fade,s.full,s.contact,nativeShadowStrength);
+                    ensure("final composite is a visibility",v>=0.0 && v<=1.0);
+                    // Continuous: nothing moves faster than the native ramp plus the hand-over
+                    // (a few percent per sample), so no step and no one-sample pop.
+                    if (previous>=0.0) ensure("final composite has no step",std::abs(v-previous)<=.06);
+                    if (previous<0.0) start = v;
+                    end = v; peak = std::max(peak,v); previous = v; ++cases;
+                }
+                if (s.pcf==0.0 && s.full==0.0)
+                    // The reported band: for a blocker both systems see, the composite is never
+                    // brighter than the brighter of its two endpoints.
+                    ensure("never brighter than both endpoints for a shared blocker",peak<=std::max(start,end)+1.e-9);
+                if (s.pcf==1.0 && s.full==0.0 && fade==1.0)
+                {
+                    ensure("past the native map the full trace decides",end<=1.e-9);
+                    ensure("inside the native map only contact adds",std::abs(start-s.contact)<=1.e-9);
+                }
+                if (s.pcf==0.0 && s.full==1.0)
+                    ensure("a native-only blocker follows the stock native ramp to lit",end>=1.0-1.e-9);
+                if (s.pcf==1.0 && s.full==1.0) ensure("nothing blocks: always lit",peak>=1.0-1.e-9 && start>=1.0-1.e-9 && end>=1.0-1.e-9);
+            }
+        }
+    }
+    // Mutation: the superseded strength (screen took over WITH the native ramp) meets it mid-way.
+    {
+        const Clip clip = clips[0];
+        double peak = 0.0;
+        for (double d = clip.z*.5; d <= clip.w*1.5; d += .01)
+            peak = std::max(peak,finalComposite(0.0,d,clip.z,clip.w,clip.blend,1.0,0.0,1.0,oldStrength));
+        ensure("the old hand-over transmits a bright band (mutation rejected)",peak>.45);
+        double hold = 0.0;
+        for (double d = clip.z*.5; d <= clip.w*1.5; d += .01)
+            hold = std::max(hold,finalComposite(0.0,d,clip.z,clip.w,clip.blend,1.0,0.0,1.0,nativeShadowStrength));
+        ensure("the new hand-over transmits nothing",hold<=1.e-9);
+        // Never handing over (the pre-hand-over behaviour) keeps the contact term past the map,
+        // where the trace sees a blocker the native map no longer covers: the fixture catches it.
+        const double kept = finalComposite(1.0,clip.w*1.2,clip.z,clip.w,clip.blend,1.0,0.0,1.0,validEverywhere);
+        ensure("never handing over lights a screen-only blocker past the map (mutation rejected)",kept>=1.0-1.e-9);
+    }
+    std::cout << "[RelightQ] native hand-over oracle: " << cases << " samples over 5 clips x 5 fades x 5 scenes, "
+        << "shared blocker never brighter than its endpoints" << std::endl;
+    // The receiver offset. sampleSpotShadow first moves the receiver along its normal by
+    // spot_shadow_offset and ramps to lit by THAT depth, so the hand-over must be evaluated there
+    // (nativeReceiverDepth). A tilted receiver with the default 0.04 m or the maximum 0.15 m offset
+    // otherwise meets the native ramp mid-way and lights a shared blocker (GPU: 10/255 and 40/255).
+    {
+        close("facing receiver moves toward the camera",nativeReceiverDepth(-4,1,.15),3.85);
+        close("receiver tilted away moves deeper",nativeReceiverDepth(-4,-.7071,.15),4+.7071*.15);
+        close("no offset, no shift",nativeReceiverDepth(-4,-.7071,0),4);
+        close("a non-finite normal does not shift",nativeReceiverDepth(-4,std::numeric_limits<double>::quiet_NaN(),.15),4);
+        const Clip tilted[] = {{4,5,.25},{30,40,.25},{64,128,.25},{10,20,.08}};
+        unsigned sweeps = 0;
+        double superseded_peak = 0.0;
+        for (const Clip& clip : tilted)
+            for (double offset : {0.0,.04,.15})
+                for (double normal_z : {1.0,.7071,0.0,-.7071,-1.0})
+                    for (double fade : {1.0,.5})
+                    {
+                        double peak = 0.0, start = -1.0, end = 0.0, raw_peak = 0.0, raw_start = -1.0, raw_end = 0.0;
+                        const double step = (clip.w-clip.z)/4000.0;
+                        for (double d = clip.z*.5; d <= clip.w*1.5; d += step)
+                        {
+                            const double shifted = nativeReceiverDepth(-d,normal_z,offset);
+                            // Shared blocker: the native map shadows it (pcf 0); the trace sees it past contact.
+                            const double native = std::clamp(nativeSpotShadow(0.0,shifted,clip.z,clip.w,clip.blend)+(1.0-fade),0.0,1.0);
+                            const double screen = 1.0 * fade * nativeShadowStrength(shifted,clip.z,clip.w);
+                            const double v = std::min(native,screen);
+                            // The superseded form: the strength at the unshifted depth.
+                            const double raw_screen = fade * nativeShadowStrength(d,clip.z,clip.w);
+                            const double raw = std::min(native,raw_screen);
+                            if (start < 0.0) { start = v; raw_start = raw; }
+                            end = v; raw_end = raw;
+                            peak = std::max(peak,v); raw_peak = std::max(raw_peak,raw);
+                        }
+                        // Never brighter than the brighter endpoint (fade 1: the peak is exactly 0).
+                        ensure("shifted hand-over: shared blocker never brighter than its endpoints",peak <= std::max(start,end)+1.e-9);
+                        if (fade == 1.0) ensure("shifted hand-over: shared blocker peak is 0",peak <= 1.e-9);
+                        if (offset > 0.0 && normal_z < -.5 && fade == 1.0 && clip.w-clip.z <= 1.0)
+                            superseded_peak = std::max(superseded_peak,raw_peak-std::max(raw_start,raw_end));
+                        ++sweeps;
+                    }
+        ensure("the unshifted hand-over lights a tilted shared blocker (mutation rejected)",superseded_peak > .1);
+        std::cout << "[RelightQ] receiver-offset hand-over oracle: " << sweeps << " sweeps over 4 clips x offsets {0,.04,.15} x "
+            << "5 normals x 2 fades, shared-blocker peak 0 (unshifted peak " << superseded_peak << ")" << std::endl;
+    }
+    // The sampler model itself: literal values pinned to shadowUtil.glsl.
+    close("model: nearer than the ramp is the map's own PCF",ALAreaShadow::nativeSpotShadow(.3,70,64,128),.3);
+    close("model: three quarters through adds half",ALAreaShadow::nativeSpotShadow(0,112,64,128),.5);
+    close("model: lit at shadow_clip.w",ALAreaShadow::nativeSpotShadow(0,128,64,128),1);
+    close("model: beyond shadow_clip.w is lit",ALAreaShadow::nativeSpotShadow(0,500,64,128),1);
+    // /weight: clip (30,40), blend .25: u = .5 at depth 35, W(36) = 1 - (37.5-36)/15 = .9; add = .2.
+    close("model: the /weight term amplifies the ramp",ALAreaShadow::nativeSpotShadow(0,36,30,40),.2/.9);
+}
+
+template<> template<> void relight_object::test<31>()
+{
+    // Housing is the committed GLOBAL light-bias sphere (RenderAreaShadowLightBias): occluders within
+    // `bias` of the light centre are ignored and each ray stops floor + bias short of its target, with
+    // floor = max(source radius, 0.1 m) counted once. Per-light housing shapes (a bounding sphere, an
+    // oriented box, a capped box) were tried and each erased real blockers or left a seam, so none is
+    // modelled. A large emitting prim shadowing its own light is a documented limitation: the user raises
+    // Light bias. This test is a CPU march of the shader's rule against slabs given as axis-aligned boxes.
+    struct Slab { double lo[3], hi[3]; };
+    const auto inside = [](const Slab& s, const double p[3])
+    { return p[0]>=s.lo[0]&&p[0]<=s.hi[0]&&p[1]>=s.lo[1]&&p[1]<=s.hi[1]&&p[2]>=s.lo[2]&&p[2]<=s.hi[2]; };
+    using Gap = std::function<double(const double*,const double*)>;
+    using Housed = std::function<bool(const double*)>;
+    const auto blocked = [&](const Slab& slab, const double origin[3], const double target[3],
+        const Gap& end_gap, const Housed& housed)
+    {
+        const double d[3] = {target[0]-origin[0],target[1]-origin[1],target[2]-origin[2]};
+        const double length = std::sqrt(d[0]*d[0]+d[1]*d[1]+d[2]*d[2]);
+        const double limit = std::max(0.0,length-end_gap(origin,target));
+        if (limit <= .001) return false;
+        for (int i=0; i<4000; ++i)
+        {
+            const double t = limit*(i+.5)/4000.0;
+            const double p[3] = {origin[0]+d[0]/length*t,origin[1]+d[1]/length*t,origin[2]+d[2]/length*t};
+            if (inside(slab,p) && !housed(p)) return true;
+        }
+        return false;
+    };
+    const double bias = .25;
+    // The shader's rule: a sphere of radius `housing` around the light, end gap floor + housing.
+    struct Rule { Gap gap; Housed housed; };
+    const auto sphere = [&](const double light[3], double floor_gap, double housing)
+    {
+        return Rule{[=](const double*,const double*) { return floor_gap+housing; },
+                    [=](const double* p) { return std::sqrt((p[0]-light[0])*(p[0]-light[0])+(p[1]-light[1])*(p[1]-light[1])+
+                                                            (p[2]-light[2])*(p[2]-light[2])) <= housing; }};
+    };
+    const auto march = [&](const Slab& slab, const double origin[3], const double light[3], const Rule& rule)
+    { return blocked(slab,origin,light,rule.gap,rule.housed); };
+
+    // (1) The housed wall lamp: a small bulb inside a separate 0.30 x 0.30 x 0.40 m casing. The ray stops
+    // floor + bias short of the light, before it can reach the casing, so the wall keeps its light.
+    {
+        const double light[3] = {0,0,0}, origin[3] = {.5,0,1};
+        const Slab casing = {{-.15,-.15,-.2},{.15,.15,.2}};
+        ensure("wall lamp: the casing around the bulb does not block (HEAD sphere)",
+            !march(casing,origin,light,sphere(light,.1,bias)));
+        // No housing at all (bias 0) lets the casing shadow its own bulb: the fixture discriminates.
+        ensure("wall lamp: without any housing the casing shadows the wall (fixture discriminates)",
+            march(casing,origin,light,sphere(light,.1,0.0)));
+        close("end gap is floor + bias",sphere(light,.1,bias).gap(origin,light),.35);
+    }
+    // (2) A big rig softbox (source 2 and 4 m across) on a 2-3 m orbit still casts soft shadows on
+    // the actor. Rig fixtures are synthetic emitters: the global bias only, the source radius counted
+    // ONCE in the end gap (not added again as housing).
+    {
+        const double origin[3] = {0,0,0};
+        for (double radius : {1.0,2.0})
+            for (double orbit : {2.5,3.0})
+            {
+                const double centre[3] = {0,0,orbit};
+                const Slab blocker = {{0,-3,.45},{3,3,.5}}; // half-plane, 0.45 m from the actor
+                unsigned shadowed = 0, samples = 16;
+                for (unsigned i=0; i<samples; ++i)
+                {
+                    const double r = std::sqrt((i+.5)/samples)*radius, a = i*2.39996322973;
+                    const double target[3] = {r*std::cos(a),r*std::sin(a),centre[2]};
+                    const auto once = [&](const double*,const double*) { return std::max(radius,.1)+bias; };
+                    const Housed bare = [&](const double* p) { return std::sqrt(p[0]*p[0]+p[1]*p[1]+(p[2]-centre[2])*(p[2]-centre[2])) <= bias; };
+                    if (blocked(blocker,origin,target,once,bare)) ++shadowed;
+                }
+                ensure("softbox: part of the source is shadowed",shadowed>0);
+                ensure("softbox: soft (the rest of the source still lights the actor)",shadowed<samples);
+                // Mutation: the source radius added again as housing (the double count) removes it.
+                unsigned doubled = 0;
+                for (unsigned i=0; i<samples; ++i)
+                {
+                    const double r = std::sqrt((i+.5)/samples)*radius, a = i*2.39996322973;
+                    const double target[3] = {r*std::cos(a),r*std::sin(a),centre[2]};
+                    const auto twice = [&](const double*,const double*) { return std::max(radius,.1)+std::max(bias,std::min(radius,1.5)); };
+                    const Housed big = [&](const double* p) { return std::sqrt(p[0]*p[0]+p[1]*p[1]+(p[2]-centre[2])*(p[2]-centre[2])) <= std::max(bias,std::min(radius,1.5)); };
+                    if (blocked(blocker,origin,target,twice,big)) ++doubled;
+                }
+                if (radius*2 >= orbit) ensure("the double-counted housing erased the softbox shadow (mutation rejected)",doubled<shadowed);
+            }
+    }
+    // (3) A hollow 8 x 8 x 3 m room prim with the light at its centre: independent actor-sized blockers
+    // shadow receivers both NEAR the light and 3+ m from it (the capped-box housing lost the far ones:
+    // Codex's GPU repro, visibility 0.000 -> 1.000). The sphere keeps both; an oversized housing (the
+    // superseded 1.5 m caps) erases the blocker that lies inside it, so the fixture discriminates.
+    {
+        const double light[3] = {0,0,1.5};
+        const double near_actor[3] = {.8,0,.3}, far_wall[3] = {3.5,0,1.5}, far_floor[3] = {3.2,0,.1};
+        const Slab hat_brim = {{.35,-.5,.7},{.55,.5,.9}};     // 0.6 m from the light, between the near actor and it
+        const Slab passer_by = {{1.2,-.5,.9},{1.4,.5,2.1}};   // 1.2 m from the light, between it and the far wall
+        const Rule head = sphere(light,.1,bias), oversized = sphere(light,.1,1.5);
+        ensure("room prim: a prop shadows the actor near the light",march(hat_brim,near_actor,light,head));
+        ensure("room prim: an independent blocker shadows a receiver 3.5 m from the light",march(passer_by,far_wall,light,head));
+        ensure("room prim: ... and one on the floor 3.2 m away",march(passer_by,far_floor,light,head));
+        ensure("room prim: an oversized housing erases the far blocker (fixture discriminates)",
+            !march(passer_by,far_wall,light,oversized));
+        ensure("room prim: an oversized housing erases the near prop (fixture discriminates)",
+            !march(hat_brim,near_actor,light,oversized));
+        // The receiver beside a wall/ceiling emitter prim: its own surface 0.2 m away is inside the bias
+        // sphere, so only a blocker outside 0.25 m shadows it.
+        const double beside[3] = {.5,.2,2.9}, panel_light[3] = {0,0,3};
+        const Slab blocker = {{.42,-1,2.85},{.46,1,3.0}};
+        ensure("receiver beside a ceiling panel prim is shadowed by a blocker outside the bias",
+            march(blocker,beside,panel_light,sphere(panel_light,.1,bias)));
+    }
+}
+
+template<> template<> void relight_object::test<32>()
+{
+    using namespace ALAreaShadow;
+    // Allocation: a failure is retried every frame and nothing remembers it, so the drawable
+    // result depends on this frame's outcome only.
+    ensure_equals("nothing wanted",drawablePlanes(0,true,true),0u);
+    ensure_equals("one plane ok",drawablePlanes(1,true,true),1u);
+    ensure_equals("one plane failed",drawablePlanes(1,false,true),0u);
+    ensure_equals("two planes ok",drawablePlanes(2,true,true),2u);
+    ensure_equals("plane 1 failed keeps plane 0 (four lights)",drawablePlanes(2,true,false),1u);
+    ensure_equals("plane 0 failed keeps nothing",drawablePlanes(2,false,true),0u);
+    ensure_equals("both failed",drawablePlanes(2,false,false),0u);
+    ensure_equals("plane 1 is not consulted for one plane",drawablePlanes(1,true,false),1u);
+    ensure_equals("channels follow the planes",drawableChannels(8,1),4u);
+    ensure_equals("fewer lights than the planes",drawableChannels(3,2),3u);
+    ensure_equals("no planes, no channels",drawableChannels(8,0),0u);
+    // History independence. The removed policy blocked the same request for 300 frames after a
+    // failure, so a frame whose allocation SUCCEEDS rendered nothing (this is the superseded model,
+    // kept to prove the fixture catches it). The current policy has no state: any frame whose
+    // outcome is "both planes ok" yields the same planes as a fresh run, after any history.
+    struct SupersededBackoff
+    {
+        unsigned failedFrame = 0; bool failed = false;
+        unsigned planes(unsigned frame, unsigned wanted, bool ok0, bool ok1)
+        {
+            if (failed && frame - failedFrame < 300) return 0;
+            const unsigned result = drawablePlanes(wanted,ok0,ok1);
+            if (result < wanted) { failed = true; failedFrame = frame; } else failed = false;
+            return result;
+        }
+    };
+    SupersededBackoff old;
+    old.planes(100,2,true,false);                       // frame 100: plane 1 fails
+    const unsigned fresh = drawablePlanes(2,true,true);
+    unsigned historyDependent = 0, current = 0;
+    for (unsigned frame = 101; frame < 400; ++frame)    // memory is available again
+    {
+        if (old.planes(frame,2,true,true) != fresh) ++historyDependent;
+        if (drawablePlanes(2,true,true) != fresh) ++current;
+    }
+    ensure("the superseded backoff renders differently for equal inputs (mutation rejected)",historyDependent == 299);
+    ensure_equals("the current policy renders the same after a failure",current,0u);
+}
+
+template<> template<> void relight_object::test<33>()
+{
+    using namespace ALAreaShadow;
+    // The unmapped bonus is continuous in the native weight (slot fade x cutoff validity).
+    close("unmapped bonus",importance(1,10,5,0.0)/importance(1,10,5,1.0),1.25);
+    close("fully mapped has none",importance(1,10,5,1.0),importance(1,10,5,5.0));
+    close("non-finite weight counts as unmapped",importance(1,10,5,std::numeric_limits<double>::quiet_NaN()),importance(1,10,5,0.0));
+    // A slot is acquired: the fade runs 0 -> 1. The score at fade 0 equals the unmapped score
+    // (no step when the slot is acquired) and falls smoothly to the mapped score.
+    double previous = importance(1,10,5,0.0);
+    for (int i=1; i<=1000; ++i)
+    {
+        const double score = importance(1,10,5,i/1000.0);
+        ensure("score falls smoothly while the slot fades in",score<=previous && previous-score<=.0003*previous+1.e-12);
+        previous = score;
+    }
+    // Slot fade in with no top-K eviction pop: K = 4, three strong lights, a mapped light M whose
+    // slot is acquired and fades in, and an unmapped neighbour U that sits between M's scores.
+    // The selection may change only where the two scores cross, so the two lights are comparable
+    // at the swap. The old binary bonus (1.0 the moment a slot is acquired, even at fade 0)
+    // swaps them at once with an 11 % gap, the visible pop.
+    const auto m_in = [&](double weight)
+    {
+        Selection<int> out;
+        out.add({1,false,importance(3.0,10,5,0.0)},4);
+        out.add({2,false,importance(3.0,10,5,0.0)*.99},4);
+        out.add({3,false,importance(3.0,10,5,0.0)*.98},4);
+        out.add({4,true,importance(1.0,10,5,weight)},4);
+        out.add({5,false,importance(1.0,10,5,0.0)*.9},4);
+        return out.lights[3].id==4;
+    };
+    const double u_score = importance(1.0,10,5,0.0)*.9;
+    for (bool binary : {false,true})
+    {
+        unsigned swaps = 0, incomparable = 0;
+        bool previous_in = m_in(0.0);                    // before acquisition: unmapped
+        ensure("M leads before acquisition",previous_in);
+        for (int i=0; i<=1000; ++i)                      // acquisition at fade 0, then the fade
+        {
+            const double weight = binary ? 1.0 : i/1000.0;
+            const bool now = m_in(weight);
+            if (now != previous_in)
+            {
+                ++swaps;
+                const double m_score = importance(1.0,10,5,weight);
+                if (std::abs(m_score-u_score) > .01*std::max(m_score,u_score)) ++incomparable;
+            }
+            previous_in = now;
+        }
+        if (binary) ensure("the binary bonus pops visibly different lights (mutation rejected)",incomparable>0);
+        else ensure("the continuous bonus swaps only comparable lights, once",incomparable==0 && swaps==1);
+    }
+    // Crossing the native shadow distance: weight = fade x validity, continuous in depth.
+    double last = importance(1,10,5,1.0*nativeShadowStrength(40,64,128));
+    for (int i=0; i<=40000; ++i)
+    {
+        const double score = importance(1,10,5,1.0*nativeShadowStrength(40+i*.003,64,128));
+        ensure("score is continuous across the native cutoff",std::abs(score-last)<=.0002*last);
+        last = score;
+    }
+    ensure("beyond the map the light counts as unmapped",importance(1,10,5,1.0*nativeShadowStrength(300,64,128))==importance(1,10,5,0.0));
+}
+
+template<> template<> void relight_object::test<29>()
+{
+    using namespace ALAreaShadow;
+    // With the VCam switch OFF the main view passes feedSlots = 0 and reserves nothing.
+    ensure_equals("no feed slots, no reservation",feedReservation(1920,1080,300000000ull,4,0),0ull);
+    const std::uint64_t reserved = feedReservation(1920,1080,300000000ull,4,kFeedSlots);
+    ensure_equals("300M/1080p/K4 reserves 8 x 2048x2048 minimum (11 % of the budget)",reserved,
+        8ull*kFeedGuaranteePixels*4);
+    ensure("that is about 11 %",reserved*100/300000000ull==11);
+    bool strictlyMore = false;
+    for (int preset=0; preset<4; ++preset)
+        for (unsigned cap : {1u,4u,8u})
+            for (unsigned height : {1080u,2160u})
+                for (int budget : {100,300,600,1000,1500})
+                {
+                    const unsigned width = height*16/9;
+                    const auto q = segmented(quality(preset),preset), uniform = quality(preset);
+                    const auto off = workloadOrUniform(q,uniform,width,height,cap,budget,cap,0);
+                    const auto on = workloadOrUniform(q,uniform,width,height,cap,budget,cap,kFeedSlots);
+                    // Zero slots plan against the full budget: exactly the unreserved segmented plan.
+                    const auto direct = workloadWithin(q,width,height,cap,std::uint64_t(budget)*1000000ull,cap,0);
+                    if (direct.channels)
+                        ensure("no reservation: the full-budget plan",off.q.samples==direct.q.samples &&
+                            off.q.steps==direct.q.steps && off.q.half==direct.q.half && off.channels==direct.channels);
+                    ensure("zero slots never plan below the reserved plan's rays",
+                        off.q.nearSteps>=on.q.nearSteps && off.channels>0);
+                    if (off.q.nearSteps && (!on.q.nearSteps || off.q.samples*(off.q.half ? 1:4) >
+                        on.q.samples*(on.q.half ? 1:4))) strictlyMore = true;
+                    // Thin OFF is the committed plan: the slot count never matters.
+                    const auto plain0 = workload(uniform,width,height,cap,budget,cap,0);
+                    const auto plain8 = workload(uniform,width,height,cap,budget,cap,kFeedSlots);
+                    ensure("OFF plan ignores feed slots",plain0.q.samples==plain8.q.samples &&
+                        plain0.q.steps==plain8.q.steps && plain0.q.half==plain8.q.half &&
+                        plain0.iterations==plain8.iterations);
+                }
+    ensure("some configuration gains rays or keeps the segmented march without feeds",strictlyMore);
 }
 
 template<> template<> void relight_object::test<21>()

@@ -21562,7 +21562,7 @@
     </map>
     <key>RenderAreaShadowLights</key>
     <map>
-        <key>Comment</key><string>Number of selected shadowed lights (1-8).</string>
+        <key>Comment</key><string>Number of shadowed lights (1-8). The most important lights (bright, large, close) get them, whether or not they have a native SL shadow map.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>S32</string>
         <key>Value</key><integer>4</integer>
@@ -21618,7 +21618,7 @@
     </map>
     <key>RenderAreaShadowLightBias</key>
     <map>
-        <key>Comment</key><string>Light-end housing exclusion in metres, independent of blocker depth thickness.</string>
+        <key>Comment</key><string>Light-end housing exclusion in metres, independent of blocker depth thickness. Raise it when a large glowing prim (a lit room shell, a big softbox) shadows its own light.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>F32</string>
         <key>Value</key><real>0.25</real>

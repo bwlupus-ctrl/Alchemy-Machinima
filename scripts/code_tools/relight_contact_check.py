@@ -17,6 +17,11 @@ def check_contact_cpu():
     packing = pipeline[pipeline.index('                // Sample the same current slots/fades'):
                        pipeline.index('                const glm::vec3 centre =')]
     setup = method(Path('indra/newview/pipeline.cpp'), 'F32 LLPipeline::setupSpotLight(')
+    # The production member that decides whether a slot's native map is really sampled (stale
+    # owners after detail 2 -> 1 -> 0 stay unmapped); compiled below with minimal stubs.
+    sampled = method(Path('indra/newview/pipeline.cpp'), 'bool LLPipeline::spotShadowMapSampled(')
+    assert 'ALAreaShadow::nativeMapSampled(RenderShadowDetail, slot, bdmergeMaxSpotShadows(),' in sampled
+    assert 'mPrismSpotShadowFrame[slot] : mSpotShadowFrame[slot]' in sampled
     assert '1.f-mSpotLightFade[s_idx]' in setup
     # The native generation/fade update precedes deferred lighting; the gather
     # and setupSpotLight consume the same state, with no auction/fade mutation.
@@ -31,6 +36,11 @@ def check_contact_cpu():
     aux = aux[:aux.index('        set_current_modelview(view);')]
     take = method(Path('indra/newview/pipeline.cpp'), 'void LLPipeline::logRelightTake(')
     keys = take[take.index('    for (const char* key : {'):take.index('    std::array<LLUUID, MAX_SPOT_SHADOWS> slots;')]
+    # The render stamps are written right after each native map is really rendered, and nowhere else.
+    assert source.count(' mSpotShadowFrame[i] = gFrameCount;') == 1  # leading space: mPrism... ends in 'm'
+    assert source.index('flush_shadow_target(mSpotShadow[i]);') < source.index(' mSpotShadowFrame[i] = gFrameCount;')
+    assert source.count('mPrismSpotShadowFrame[i] = gFrameCount;') == 1
+    assert source.index('mPrismSpotShadow[i].flush();') < source.index('mPrismSpotShadowFrame[i] = gFrameCount;')
     fixture = r'''
 #include "alareashadowmath.h"
 #include <cassert>
@@ -55,7 +65,22 @@ struct Settings {
     LLControlVariable control;
     LLControlVariable* getControl(const char*) { return &control; }
 } gSavedSettings;
+struct LLRenderTarget { bool complete=true; bool isComplete() const { return complete; } };
+unsigned gFrameCount=100, gSlotLimit=10;
+unsigned bdmergeMaxSpotShadows() { return gSlotLimit; }
+struct LLPipeline {
+    static constexpr U32 MAX_SPOT_SHADOWS=10;
+    static inline int RenderShadowDetail=2;
+    bool sPrismLensRender=false;
+    LLRenderTarget mSpotShadow[10], mPrismSpotShadow[10];
+    U32 mSpotShadowFrame[10]={}, mPrismSpotShadowFrame[10]={};
+    bool spotShadowMapSampled(U32 slot) const;
+};
+''' + sampled + r'''
 int main() {
+    LLPipeline pipe;
+    for(unsigned i=0;i<10;++i) pipe.mSpotShadowFrame[i]=pipe.mPrismSpotShadowFrame[i]=gFrameCount;
+    auto spotShadowMapSampled=[&](U32 slot) { return pipe.spotShadowMapSampled(slot); };
     constexpr unsigned MAX_SPOT_SHADOWS=10;
     int objects[11]={}; int* mShadowSpotLight[10]={};
     int* mTargetShadowSpotLight[10]={}; float mSpotLightFade[10]={};
@@ -101,7 +126,12 @@ int main() {
             }
             unsigned i=(slot+3)%10; int* drawable=objects+10;
 ''' + aux + r'''
+            pipe.sPrismLensRender=true; // the aux map is the one sampled under Prism
+            pipe.mPrismSpotShadowFrame[i]=gFrameCount-1; // a stale aux map is unmapped
+            assert(!mapped(drawable,true));
+            pipe.mPrismSpotShadowFrame[i]=gFrameCount;
             plane=0; selected.lights[0].shadowMap=mapped(drawable,true);
+            pipe.sPrismLensRender=false;
             assert(pack(drawable).first.mV[0]==.15f && pack(drawable).second.mV[0]==1.f);
             assert(pack(objects+slot).second.mV[0]==0.f); // main owner has no aux map
             for(unsigned i=0;i<MAX_SPOT_SHADOWS;++i) {
@@ -112,6 +142,37 @@ int main() {
             for(unsigned i=0;i<8;++i) selected.lights[i].shadowMap=i==slot%8;
         }
     }
+    // Stale mapped projectors: a projector that held a slot keeps its FULL soft shadow once the
+    // native map is no longer sampled (detail 2 -> 1 -> 0, a lowered slot limit, an incomplete
+    // or unrendered map): unmapped, contact 0, fade 0.
+    for(unsigned slot:{0u,3u,9u}) {
+        for(auto& owner:mShadowSpotLight) owner=nullptr;
+        for(auto& f:mSpotLightFade) f=0.f;
+        mShadowSpotLight[slot]=objects+slot; mSpotLightFade[slot]=1.f;
+        auto pack_one=[&](bool mapped_now) {
+            for(unsigned i=0;i<8;++i) selected.lights[i].shadowMap=false;
+            plane=0; selected.lights[0].shadowMap=mapped_now;
+            return pack(objects+slot);
+        };
+        for(int detail:{2,1,0,1,2}) {
+            LLPipeline::RenderShadowDetail=detail; gSlotLimit=10;
+            const bool m=mapped(objects+slot,true);
+            assert(m==(detail>1));
+            auto packed=pack_one(m);
+            assert(packed.first.mV[0]==(m ? .15f:0.f));
+            assert(packed.second.mV[0]==(m ? 1.f:0.f)); // unmapped: fade 0 = the full trace
+        }
+        LLPipeline::RenderShadowDetail=2;
+        assert(mapped(objects+slot,true));
+        gSlotLimit=slot; assert(!mapped(objects+slot,true)); gSlotLimit=10; // above the live limit
+        pipe.mSpotShadow[slot].complete=false; assert(!mapped(objects+slot,true));
+        pipe.mSpotShadow[slot].complete=true;
+        pipe.mSpotShadowFrame[slot]=gFrameCount-1; assert(!mapped(objects+slot,true));
+        pipe.mSpotShadowFrame[slot]=gFrameCount;
+        assert(mapped(objects+slot,true));
+        assert(!mapped(objects+slot,false)); // not a projector
+    }
+    for(auto& owner:mShadowSpotLight) owner=nullptr;
     plane=0; selected.lights[0].shadowMap=true;
     mShadowSpotLight[9]=objects+9; mSpotLightFade[9]=1;
     for(float value:{0.f,-1.f,.01f,.15f,8.f,100.f,
@@ -160,6 +221,13 @@ int main() {
         result = subprocess.run([str(directory/'contact.exe')], capture_output=True)
         assert result.returncode != 0, name + ' mutation escaped'
         print('[RelightQ] contact CPU mutation rejected: ' + name, flush=True)
+    mutant = fixture.replace(classify, classify.replace(' && spotShadowMapSampled(i)', ''))
+    assert mutant != fixture
+    (directory/'contact.cpp').write_text(mutant, encoding='utf-8')
+    subprocess.run(['cmd','/d','/c',str(directory/'compile.cmd')], check=True, capture_output=True)
+    result = subprocess.run([str(directory/'contact.exe')], capture_output=True)
+    assert result.returncode != 0, 'stale_mapped mutation escaped'
+    print('[RelightQ] contact CPU mutation rejected: stale_mapped (native map not sampled)', flush=True)
     (directory/'contact.cpp').write_text(fixture, encoding='utf-8')
     settings = ET.parse('indra/newview/app_settings/settings.xml').getroot().find('map')
     children = list(settings)

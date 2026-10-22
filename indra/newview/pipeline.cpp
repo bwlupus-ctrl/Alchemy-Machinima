@@ -26621,6 +26621,29 @@ bool LLPipeline::areaShadowsAllowedThisView() const
             (sPrismLensRender && mPrismAreaStateSaved && mPrismAreaTiled)},feed);
 }
 
+// [RelightQ] True while this slot's NATIVE map is really sampled in the current view: shadows
+// above "projector shadows off", slot inside the live limit, and the map rendered this frame
+// (the aux map under Prism) and complete. A stale owner (detail 2 -> 1 -> 0, a lowered limit,
+// a skipped render) stays unmapped on the soft-shadow side. Reads only; native upkeep untouched.
+bool LLPipeline::spotShadowMapSampled(U32 slot) const
+{
+    if (slot >= MAX_SPOT_SHADOWS) return false;
+    const LLRenderTarget& map = sPrismLensRender ? mPrismSpotShadow[slot] : mSpotShadow[slot];
+    const U32 stamp = sPrismLensRender ? mPrismSpotShadowFrame[slot] : mSpotShadowFrame[slot];
+    return ALAreaShadow::nativeMapSampled(RenderShadowDetail, slot, bdmergeMaxSpotShadows(),
+        map.isComplete(), stamp == gFrameCount);
+}
+
+// [RelightQ] The shadow_clip the native spot sampler reads in this view (uploadShadowUniforms /
+// the stock upload), so the gather and sampleSpotShadow agree on where the native map ends.
+LLVector4 LLPipeline::nativeSpotShadowClip() const
+{
+    const RenderTargetPack& pack = (sPrismLensRender || mProbeShadowSampleMode == 1) ? mMainRT : *mRT;
+    if (mShadowEngaged && pack.shadowMeta.validCascades != 0 && mProbeShadowSampleMode == 0)
+        return pack.shadowMeta.clip;
+    return mSunClipPlanes;
+}
+
 bool LLPipeline::areaShadowsActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "RenderAreaShadows", false);
@@ -26694,6 +26717,8 @@ void LLPipeline::logRelightTake(const char* trigger) const
         feed = {};
     auto record = std::make_unique<LLSD>(ALRelight::takeRecord(trigger, settings, area,
         area_slots, slots, fade, &feed));
+    // The take's own frame: area_view/feed_view carry the frame they were sampled on.
+    (*record)["frame_at_start"] = static_cast<int>(gFrameCount);
     settings.clear(); // Drop the last main-thread LLSD subtree reference before transfer.
     static U64 record_id = 0; // Diagnostic sequence only; do not touch the shared random generator.
     const auto id = std::to_string(++record_id);
@@ -26761,6 +26786,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         // Reached only while enabled. no snapshot field feeds selection, admission,
         // allocation or shading.
         take = {};
+        take.frame = gFrameCount;
         take.status = "unavailable_or_no_draw_budget";
         take.width = mRT->deferredScreen.getWidth();
         take.height = mRT->deferredScreen.getHeight();
@@ -26831,6 +26857,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         return false;
     };
     ALAreaShadow::Selection<LLUUID> selected;
+    // Where the native spot map ends (the shadow_clip the native sampler reads): ranking input.
+    const LLVector4 selection_clip = nativeSpotShadowClip();
     for (LLDrawable* drawable : mLights)
     {
         LLVOVolume* volume = drawable ? drawable->getVOVolume() : nullptr;
@@ -26850,15 +26878,32 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         const bool projector = LLPrismLens::projectorRenderParams(volume,spot) &&
             (volume->isCineRigEmitter() || bdmerge_should_render_projector());
         bool shadow_map = false;
-        // Match setupSpotLight's actual sampled slots, including fading maps
-        // above a newly lowered auction cap. Do not change the auction itself.
+        F32 native_fade = 0.f;
+        // Mapped only while the slot's native map is really sampled this view (detail > 1,
+        // slot below the live limit, map rendered this frame and complete). A stale owner
+        // left by a lower RenderShadowDetail is unmapped: fade 0, full soft-shadow trace.
+        // Slot upkeep and the auction themselves are not touched.
         if (projector)
             for (U32 i=0; i<MAX_SPOT_SHADOWS; ++i)
-                if (mShadowSpotLight[i] == drawable) shadow_map = true;
+                if (mShadowSpotLight[i] == drawable && spotShadowMapSampled(i))
+                {
+                    shadow_map = true;
+                    native_fade = mSpotLightFade[i];
+                    break; // a drawable owns at most one slot: the first sampled one decides
+                }
         const F32 distance = (drawable->getPositionAgent()-camera.getOrigin()).length();
         const double luminance = .2126*color.mV[0]+.7152*color.mV[1]+.0722*color.mV[2];
-        selected.add({volume->getID(), shadow_map, ALAreaShadow::contribution(range,distance,
-            luminance,ALRelight::legacy(distance,range,volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)))},
+        // How much of this light the native map covers now: the slot's fade (0 while it fades
+        // in) times the native map's validity at the light's own view depth. The unmapped bonus
+        // below scales with (1 - weight), so acquiring/losing a slot or crossing the native
+        // shadow distance moves the score continuously (never a step that could pop a channel).
+        const F32 view_depth = (drawable->getPositionAgent()-camera.getOrigin())*camera.getAtAxis();
+        const double native_weight = shadow_map ? llclamp(native_fade,0.f,1.f) *
+            ALAreaShadow::nativeShadowStrength(view_depth,selection_clip.mV[2],selection_clip.mV[3]) : 0.0;
+        // Importance ranking (ALAreaShadow::importance): luminance * range / max(distance,
+        // range/2), bounded bonus for the part no native map covers; UUID breaks ties.
+        // This frame's inputs only.
+        selected.add({volume->getID(), shadow_map, ALAreaShadow::importance(luminance,range,distance,native_weight)},
             static_cast<unsigned>(llclamp(cap(),1,8)));
     }
     take.selected = selected;
@@ -26866,7 +26911,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     if (!selected.size) return;
     if (selected.candidates > static_cast<U32>(llclamp(cap(),1,8)))
         LL_DEBUGS("RelightQ") << "[RelightQ] cap PASS candidates=" << selected.candidates
-            << " K=" << llclamp(cap(),1,8) << " (unshadowed first, contribution, UUID)" << LL_ENDL;
+            << " K=" << llclamp(cap(),1,8) << " (importance, UUID)" << LL_ENDL;
 
     // Fixed-size state storage: no heap allocation each frame. RT bind/flush saves
     // FBO/viewport stacks; this guard covers texture wrappers, masks and shader.
@@ -26935,11 +26980,13 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     const ALAreaShadow::Quality uniform{samples(),steps(),half()};
     const auto requested = thin() ? ALAreaShadow::segmented(uniform,preset()) : uniform;
     static_assert(ALAreaShadow::kFeedSlots == LLPrismLens::MAX_CAPTURES, "feed slot count");
+    // No feed can run while the VCam switch is off, so the main view reserves no feed share then.
+    const unsigned feed_slots = feeds() ? LLPrismLens::MAX_CAPTURES : 0;
     const auto work = sPrismLensRender ? ALAreaShadow::feedWorkload(requested,uniform,
         mMainRT.deferredScreen.getWidth(),mMainRT.deferredScreen.getHeight(),width,height,
         selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),LLPrismLens::MAX_CAPTURES) :
         ALAreaShadow::workloadOrUniform(requested,uniform,width,height,
-            selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),LLPrismLens::MAX_CAPTURES);
+            selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),feed_slots);
     take.authoredSteps = uniform.steps; // Sampled by this pass itself.
     take.feed = sPrismLensRender;
     take.segmentedRequested = requested.nearSteps > 0;
@@ -26956,6 +27003,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         (S32)selected.size,budget(),work.q.samples,work.q.steps,work.q.half,llclamp(cap(),1,8),
         thin(),work.q.nearSteps};
     static std::array<S32,13> previous = {};
+    static bool previous_clamped = false;
     if (!sPrismLensRender && plan != previous)
     {
         const auto& wanted = work.q.nearSteps ? requested : uniform; // A fallback compares with the uniform plan.
@@ -26963,8 +27011,12 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         const bool thin_dropped = requested.nearSteps > 0 && !work.q.nearSteps;
         const bool clamped = work.q.samples != samples() || work.q.steps != wanted.steps ||
             work.q.half != half() || !work.channels || thin_dropped;
-        if (clamped || previous[0])
-            LL_INFOS("RelightQ") << "[RelightQ] area-shadow budget clamp " << (clamped ? "active" : "released")
+        // A synchronous INFO flush only when the clamp state flips (active <-> released);
+        // selection-size changes while clamped stay DEBUG so a recording hitches on no log write.
+        if (clamped || previous_clamped)
+        {
+            std::ostringstream message;
+            message << "[RelightQ] area-shadow budget clamp " << (clamped ? "active" : "released")
                 << " requested=" << samples() << "x" << wanted.steps << " half=" << half()
                 << " effective=" << work.q.samples << "x" << work.q.steps << " half=" << work.q.half
                 << " pixels=" << work.pixels << " K=" << selected.size << " iterations=" << work.iterations
@@ -26972,7 +27024,11 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 << " thin=" << thin() << " nearSteps=" << work.q.nearSteps
                 << " thinDropped=" << thin_dropped
                 << " budget=" << work.budget << " perDraw=" << work.drawCap
-                << " channelsPerDraw=" << work.channels << LL_ENDL;
+                << " channelsPerDraw=" << work.channels;
+            if (clamped != previous_clamped) LL_INFOS("RelightQ") << message.str() << LL_ENDL;
+            else LL_DEBUGS("RelightQ") << message.str() << LL_ENDL;
+        }
+        previous_clamped = clamped;
         previous = plan;
     }
     if (!work.channels) return;
@@ -26981,32 +27037,57 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     if (sPrismLensRender && !mPrismAreaPasses.admit(gFrameCount,LLPrismLens::MAX_CAPTURES)) return;
     take.status = "allocation_failed";
     const U32 w = work.q.half ? (width+1)/2 : width, h = work.q.half ? (height+1)/2 : height;
-    const U32 planes = (selected.size+3)/4;
+    const U32 planes_wanted = (selected.size+3)/4;
+    // The spare plane stays allocated for as long as the requested cap can need it, so a fifth
+    // light crossing the frustum edge does not free and reallocate three RGBA8 targets (a
+    // hitch while recording). It is allocated at the first fifth light and drawn only when used.
+    const U32 kept = llmax(planes_wanted,static_cast<U32>(llclamp(cap(),1,8)) > 4 ? 2u : 1u);
     const auto ensure = [](LLRenderTarget& target, U32 x, U32 y)
     {
         return (target.isComplete() && target.getWidth()==x && target.getHeight()==y) ||
             target.allocate(x,y,GL_RGBA8,false);
     };
+    const auto release_plane = [&](U32 plane)
+    {
+        mRT->areaGather[plane].release(); mRT->areaScratch[plane].release(); mRT->areaVisibility[plane].release();
+    };
+    // Nothing remembers a failure: rendering depends on this frame's inputs and on whether the
+    // allocation succeeds NOW, never on an earlier failure. A failed plane 0 gives no soft shadows
+    // this frame (an already-allocated plane 1 is left alone, so the next frame does not have to
+    // reallocate it); a failed plane 1 keeps the four most important lights. Either retries next frame.
+    bool plane_ok[2] = {true,true};
     for (U32 plane=0; plane<2; ++plane)
     {
-        if (plane >= planes)
+        if (plane >= kept)
         {
-            if (!sPrismLensRender)
-            {
-                mRT->areaGather[plane].release(); mRT->areaScratch[plane].release(); mRT->areaVisibility[plane].release();
-            }
+            if (!sPrismLensRender) release_plane(plane);
             continue;
         }
+        if (plane >= planes_wanted) continue; // Retained spare plane: not drawn this frame.
+        if (!plane_ok[0]) break;              // Plane 0 failed: nothing is drawn, plane 1 is neither built nor freed.
         if (!ensure(mRT->areaGather[plane],w,h) || !ensure(mRT->areaScratch[plane],w,h) ||
             !ensure(mRT->areaVisibility[plane],width,height))
         {
-            LL_WARNS("RelightQ") << "[RelightQ] allocation FAIL" << LL_ENDL;
-            for (auto& target : mRT->areaGather) target.release();
-            for (auto& target : mRT->areaScratch) target.release();
-            for (auto& target : mRT->areaVisibility) target.release();
-            return;
+            plane_ok[plane] = false;
+            release_plane(plane);
         }
     }
+    const U32 planes = ALAreaShadow::drawablePlanes(planes_wanted,plane_ok[0],plane_ok[1]);
+    const U32 channels = ALAreaShadow::drawableChannels(selected.size,planes);
+    // One log line per transition, per pack: logging state only, it never feeds rendering.
+    const bool alloc_failed = planes < planes_wanted;
+    if (alloc_failed != mRT->areaAllocFailed)
+    {
+        mRT->areaAllocFailed = alloc_failed;
+        if (alloc_failed)
+            LL_WARNS("RelightQ") << "[RelightQ] allocation FAIL " << (sPrismLensRender ? "VCam feed" : "main view")
+                << " target=" << w << "x" << h << " planes=" << planes << "/" << planes_wanted
+                << (planes ? " (the four most important lights keep soft shadows)" : " (no soft shadows this frame)")
+                << "; retrying next frame" << LL_ENDL;
+        else
+            LL_DEBUGS("RelightQ") << "[RelightQ] allocation recovered planes=" << planes << LL_ENDL;
+    }
+    if (!planes) return;
     // Asynchronous timestamps: never wait, never nest a TIME_ELAPSED query.
     // Reuse the pair only when its previous result is available.
     if (!sPrismLensRender && !mAreaShadowQueries[0]) glGenQueries(2,mAreaShadowQueries);
@@ -27029,13 +27110,15 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     const F32 filter_setting = denoise();
     const F32 radius = std::isfinite(filter_setting) ? llclamp(filter_setting*resolution_scale*(work.q.half ? .5f:1.f),0.f,8.f):2.f;
     const glm::mat4 view = get_current_modelview();
+    // Where the native spot map ends (the same shadow_clip the native sampler reads).
+    const LLVector4 native_clip = nativeSpotShadowClip();
     for (U32 plane=0; plane<planes; ++plane)
     {
         LLVector4 lights[4] = {}; GLuint seeds[4] = {};
         LLVector4 contact, contact_fade;
         contact.clear();
         contact_fade.clear(); // zero preserves full visibility for unmapped lights
-        const U32 count = std::min(4u,selected.size-plane*4);
+        const U32 count = std::min(4u,channels-plane*4);
         for (U32 i=0; i<count; ++i)
         {
             const LLUUID& id = selected.lights[plane*4+i].id;
@@ -27072,6 +27155,13 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         gAreaShadowProgram.uniform4uiv(LLStaticHashedString("area_seeds"),1,seeds);
         gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_contact_dist"),1,contact.mV);
         gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_contact_fade"),1,contact_fade.mV);
+        // The screen trace takes over from the native map before its fade-to-lit starts
+        // (mapped lights only: fade is 0 otherwise).
+        gAreaShadowProgram.uniform2f(LLStaticHashedString("area_native_clip"),native_clip.mV[2],native_clip.mV[3]);
+        // The hand-over is evaluated at the depth the native sampler compares: the receiver moved
+        // along its normal by this same offset (sampleSpotShadow: pos += norm * spot_shadow_offset).
+        gAreaShadowProgram.uniform1f(LLStaticHashedString("area_native_offset"),
+            std::isfinite(RenderSpotShadowOffset) ? RenderSpotShadowOffset : 0.f);
 
         gAreaShadowProgram.uniform1i(LLStaticHashedString("area_samples"),work.q.samples);
         gAreaShadowProgram.uniform1i(LLStaticHashedString("area_steps"),work.q.steps);
@@ -27118,13 +27208,14 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         glQueryCounter(mAreaShadowQueries[1],GL_TIMESTAMP);
         mAreaShadowQueryPending = true;
     }
-    mAreaShadowCount = selected.size;
+    mAreaShadowCount = channels;
     mAreaShadowValid = true;
-    take.status = "rendered";
+    take.status = channels < selected.size ? "rendered_plane0_only" : "rendered";
     static LLFrameTimer summary;
     if (!sPrismLensRender && summary.getElapsedTimeF32() >= 1.f)
     {
-        LL_INFOS("RelightQ") << "[RelightQ] selection PASS selected=" << selected.size
+        // DEBUG: a once-per-second INFO line is a synchronous flush on the main thread.
+        LL_DEBUGS("RelightQ") << "[RelightQ] selection PASS selected=" << selected.size
             << " candidates=" << selected.candidates << " cap=" << (selected.candidates>selected.size)
             << " S=" << work.q.samples << " steps=" << work.q.steps
             << " resolution=" << w << "x" << h
@@ -32147,6 +32238,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
                 RenderSpotLight = nullptr;
 
                 flush_shadow_target(mSpotShadow[i]);
+                mSpotShadowFrame[i] = gFrameCount; // [RelightQ] read-only stamp, see spotShadowMapSampled
             }
         }
     }
@@ -32573,6 +32665,7 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
         RenderSpotLight = nullptr;
 
         mPrismSpotShadow[i].flush();
+        mPrismSpotShadowFrame[i] = gFrameCount; // [RelightQ] read-only stamp, see spotShadowMapSampled
     }
 
     gGL.setColorMask(true, true);

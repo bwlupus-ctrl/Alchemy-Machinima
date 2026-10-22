@@ -3742,6 +3742,8 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "RenderLocalLightPhysicalMaxBoost",
         "RenderAreaShadows",
         "RenderAreaShadowThinObjects",
+        "RenderAreaShadowLights",
+        "RenderAreaShadowMappedContact",
         "RenderAreaShadowMaxDist",
         "RenderAreaShadowThickness",
         "RenderAreaShadowLightBias",

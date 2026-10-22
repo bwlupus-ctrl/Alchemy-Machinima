@@ -1808,3 +1808,428 @@ edit; the GPU gates ran one at a time):
 
 The dispatch fixture stub gained `mRelightFeedAreaTake`. No viewer build/launch,
 commit, push or stash; no private-reference access.
+
+## Importance ranking + stack review fixes (10/22)
+
+User decision: rank every shadowed light **by on-screen importance, regardless of whether it
+has a native SL map**. The Opus + GLM full-stack review fixes and the small items from the
+Thin objects reviews ride in the same round, followed by **fix round 1** (section 4) for the Codex,
+GLM and Opus reviews of that change, **round 2** (section 5), and the final **round 3** (section 7: per-light
+housing reverted, hand-over margin, small fixes). Start: HEAD `84a3f731d1c`. No commit, push, stash,
+viewer build or viewer launch; `.tmp/ref_private/` was not opened; everything below is runtime-only
+and deterministic (no history, hysteresis or timing in any ranking, sampling or allocation input).
+
+### 1. Ranking formula (`NV/alareashadowmath.h`, `ALAreaShadow::importance`)
+
+```
+importance = luminance * range / max(distance, range / 2) * (1 + 0.25 * (1 - nativeWeight))
+nativeWeight = slot fade (0..1) * native-map validity at the light's own view depth (0..1); 0 when unmapped
+```
+
+* `luminance`: Rec.709 luminance of the linear colour x `AlchemyGlobalLightScale` x the emitter's
+  Local lights EV scale (this frame's value, exactly what the old score used).
+* `range`: the influence range (`getLightRadius() * 1.5`, metres); `distance`: camera to light centre.
+* The camera term saturates at `range / 2`, so it is **never zero because the camera is outside the
+  range** (the old `ALRelight::legacy(distance, range, falloff)` was 0 beyond the range, so practicals
+  5-10 m away tied at 0 and were ranked by UUID alone, and dollying across one lamp's boundary popped
+  another lamp's shadow). The score is continuous and non-increasing in distance.
+* The unmapped bonus is bounded (at most x1.25: it never outranks a light more than 25 % more
+  important) and **continuous**: it scales with `1 - nativeWeight`, where the weight is the slot fade
+  times the native-map validity at the light (the hand-over weight of section 4.3, evaluated at the
+  light's view depth). Acquiring a slot (the fade runs 0 -> 1), losing it, and a light crossing the
+  native shadow distance therefore move the score smoothly; the earlier binary flag dropped the score
+  25 % the instant a slot was acquired, even at fade 0.
+* Order: descending importance, then the stable emitting-object UUID. The native map is **reported**
+  (`shadow_map`) but no longer ranked ("unmapped first" is gone). Step 1 rules are unchanged:
+  suppressed lights are excluded before top-K, per-light work is planned from the requested K, mirror
+  lights are excluded, actor-only handling and the count-before-filter production semantics stay, and a
+  mapped projector, once admitted, keeps the step 2 "SL map + contact" composition.
+* Take records log the importance as `score` for each selected light (at most eight entries), next to
+  `shadow_map` and `candidates`.
+* The "Shadowed lights" row help (and the setting comment) no longer says leaking lights get priority:
+  "Choose up to eight lights. The most important lights (bright, large, close) get soft shadows."
+
+Proof (alrelightmath tests 26, 27 and 33, plus `relight_rank_check.py` source mutations):
+
+* Eight dim unmapped points (luminance 0.3, range 7.5, 3.4-6.2 m) plus one bright mapped world projector
+  (luminance 4, range 15, **18 m away, outside its own range, highest UUID**): the projector is admitted
+  and ranks first at K=4 and K=8. Restoring unmapped-first, and restoring the camera-point legacy score,
+  each drop it at both K values: both mutants fail.
+* The same nine lights in all 362,880 input orders, K=4 and K=8: identical selection, order and scores;
+  identical inputs give identical output call after call.
+* Dolly 0-40 m past six lamps (K 2/3/4, 4,000 steps of 1 cm): importance had 9 selection changes, **0**
+  between visibly different lights (reference importance within 2 %); the camera-point legacy score had
+  17 changes, all 17 between visibly different lights (mutation rejected). Importance is also verified
+  step-free and positive at every one of 40,001 distances.
+* Slot fade in with no top-K eviction pop (test 33): K=4, three strong lights, a mapped light whose slot is
+  acquired and fades 0 -> 1 against an unmapped neighbour that sits between its scores. The continuous
+  bonus changes the selection once, at the crossing, between lights whose scores differ by under 1 %; the
+  old binary bonus swaps them at the moment of acquisition with an 11 % gap (mutation rejected). The score
+  at fade 0 equals the unmapped score and falls smoothly (at most 0.03 % per 0.001 of fade) to the mapped score.
+
+### 2. Stack review fixes
+
+* **P1 stale "mapped" projectors.** A slot now counts as mapped only if `RenderShadowDetail > 1`, the slot
+  is below `bdmergeMaxSpotShadows()`, and its map was **rendered this frame and is complete**
+  (`LLPipeline::spotShadowMapSampled`; the Prism aux map under a feed). Two read-only per-slot frame
+  stamps are written right after each map renders (`generateSunShadow`, `generatePrismSpotShadows`);
+  they never feed native slot upkeep, allocation or auction (the §10 rule holds). Otherwise the light is
+  unmapped: contact 0, fade 0, full soft-shadow trace. The pure rule is `ALAreaShadow::nativeMapSampled`.
+  Regression (contact fixture, slots 0/3/9, plus the math test): a projector that held a slot keeps
+  its full soft shadow through detail 2 -> 1 -> 0 -> 1 -> 2, above a lowered slot limit, with an
+  incomplete map, with a stale frame stamp and with a stale Prism aux map; the classification mutation
+  (stale owners count as mapped) is rejected.
+* **Second-plane churn.** Plane 1 stays allocated while the requested cap is > 4 (allocated at the first
+  fifth light, drawn only when used); the dispatch fixture shows a fifth light leaving and returning
+  allocates and releases **nothing**. Mutation `spare_plane_churn` is rejected. Allocation failure
+  handling is in section 4.1 (no backoff: a failure is retried on the next frame).
+* **Logging.** The 1 Hz selection line is now `LL_DEBUGS("RelightQ")`; the budget clamp line is INFO
+  only when the clamp state flips (active <-> released), DEBUG otherwise (it previously logged on every
+  plan change because of a stale `previous[0]` test); the rig's per-update projector dump
+  (`alcinelightrig.cpp`, "light i id= ... noShadow=") is `LL_DEBUGS("CineRigShadow")`, still behind
+  `MachinimaDebugLogging`. The allocation-failure warning logs once per failure transition per pack.
+* **Housing exclusion**: round 1 made it per light (the emitting prim's oriented box, section 4.2) and round 2 capped it
+  (section 5.1). **Round 3 reverted it completely**: housing is again HEAD's global Light bias sphere (section 7.1).
+* **Scene allowlist.** `RenderAreaShadowLights` and `RenderAreaShadowMappedContact` join the Director scene
+  allowlist (sparse `has()` load, like the others).
+* **`multiPointLightF` loop: nothing to change.** `gDeferredMultiLightProgram[count-1]` is compiled with
+  `LIGHT_COUNT == count` (one program per batch size, `pipeline.cpp` fullscreen-lights batch), so the
+  loop already runs the active count; a runtime bound would only change a stock shader without benefit.
+* **Budget ceiling (not measured).** The hard ceiling is the existing 1500M iterations/frame (750M per
+  draw), preserved. One iteration is a point depth fetch, a view-space reconstruction and a compare
+  (about 50 ALU ops). **Estimate, not a measurement** (no viewer build, no GPU capture): on the RTX 5090
+  the full ceiling is roughly 1-5 ms/frame (ALU about 0.7 ms and texture about 0.9 ms ideal, 3-5x for
+  divergent loops and cache misses), plus the small filter passes; a GPU with a tenth of that throughput
+  could spend 10-50 ms at the same ceiling, which is why `RenderAreaShadowBudget` stays the user-visible lever.
+  The Codex review's own 1080p, half-resolution, Thin/K4 gather-only probe measured 6.38 ms on the RTX 5090,
+  above that estimate: treat the estimate as optimistic until an in-world timing pass (`mAreaShadowGPUms`
+  already measures it). A per-pixel cap was **not** implemented: it would change the OFF plans, and HEAD OFF
+  plan identity is a tested promise (`relight_vcam_check.py` compares the planner to HEAD).
+
+### 3. Small items from the Thin objects reviews
+
+* **Feed share with the VCam switch off.** The main view passes `feedSlots = 0` when
+  `RenderAreaShadowsVCam` is off (test 29): no reservation (it was 33.55M, 11.2 % of the budget at
+  300M/1080p/K4). Zero slots plan against the whole budget, equal the unreserved plan, and never plan
+  below the reserved one; Thin OFF plans ignore the slot count (grid: 4 presets x K 1/4/8 x 1080p/4K x
+  5 budgets).
+* **Stale feed record.** Every area take now carries the `frame` it was sampled on, and the record has a
+  `frame_at_start`, so a feed record from long before the take is recognisable.
+* **Tests 24/25 tautologies replaced.** Test 24: plan cost recomputed from the target size, the degradation
+  order (far steps thin only at 1 ray and half resolution), the common far floor, and literal per-preset
+  sample rows (1080p K4 4/8/8/8, K8 4/4/4/4; 4K K4 2/2/2/2, K8 1/1/1/1). Test 25: the feed cost, requested-K
+  reservation, draw bound and channel count are recomputed independently from the target size and the
+  test's own allowance. (Feeds are deliberately **not** compared across presets: a feed gets what its
+  preset's main plan leaves, so a cross-preset feed monotonicity would be a false invariant; it failed
+  when tried.)
+* **Native projector shadow cutoff** (likely the "environment lights lost soft shadows" report).
+  `shadowUtil.glsl` `sampleSpotShadow` returns lit beyond `shadow_clip.w`, and ramps the native shadow to
+  lit over the last half of `[clip.z, clip.w]`, while the soft side kept such a mapped projector
+  contact-only. The gather receives the same clip (`nativeSpotShadowClip()`, the value `uploadShadowUniforms`
+  uploads) as `area_native_clip` and hands the mapped light over to the full trace; the redesigned,
+  continuous hand-over is section 4.3. Native allocation and auction untouched.
+
+### 4. Fix round 1 (Codex P0 x2 / P1 x2, GLM, Opus)
+
+#### 4.1 No allocation backoff (Codex P0, GLM P1)
+
+`ALAreaShadow::AllocBackoff`, `kAllocRetryFrames` and `LLPipeline::mAreaAllocBackoff` are **removed**: rendering
+no longer depends on failure history (the 300-frame window made two identical requests render differently
+depending on a failure 299 frames earlier, and one pack's success cleared another pack's failure).
+
+* A failed allocation retries on the **next frame** (the pre-change behaviour). **Plane 0 failing** releases
+  plane 0's targets, gives no soft shadows this frame, and the pass returns (`mAreaShadowValid` stays false);
+  an already-allocated plane 1 is **left alone** (round 2, section 5.4) so the next frame does not rebuild it.
+  **Plane 1 failing** releases only plane 1 and renders plane 0: the four most important lights keep their soft
+  shadows and the others have no channel (`ALAreaShadow::drawablePlanes` / `drawableChannels`; the consumer
+  binds plane 1 only while `mAreaShadowCount > 4`, so it is never bound). The take status is `rendered_plane0_only`.
+* One warning per failure **transition**, per pack: `RenderTargetPack::areaAllocFailed` is log state only,
+  never read by rendering, so main and every VCam feed pack are independent (this is also the "shared per-view
+  state must be per-pack" item; the remaining statics in the pass, `previous`/`previous_clamped`/`summary`, are
+  main-view-only logging and are guarded by `!sPrismLensRender`).
+* Tests: the old backoff test is gone. Dispatch fixture (production code, real GL): for a K=8 feed every one of
+  the six target allocations is failed in turn: plane-0 failures leave nothing live and render nothing, plane-1
+  failures keep plane 0 (3 targets) and render four lights, and the very next frame recovers all six targets.
+  Persistent failure for five frames (plane 0 never allocates; only plane 1 never allocates) retries the
+  allocation **every frame**, and the first frame with memory is **byte-identical to a fresh frame** (history
+  independence). Test 32 pins the policy and replays the superseded 300-frame model to show it renders differently
+  for equal inputs. New dispatch mutations rejected: `sticky_failure` (a history-dependent early return) and
+  `plane1_failure_drops_all`; `no_alloc_backoff` / `failure_not_recorded` no longer exist.
+
+#### 4.2 Housing is the emitting prim's oriented box (Codex P0, Opus P1)
+
+> **SUPERSEDED in round 3 (section 7.1).** Everything in this subsection (the `area_box` uniform, `housingBox`,
+> `areaInHousing`, `areaBoxEndGap`, `area_housing_box`) was removed; housing is HEAD's global bias sphere again. Kept
+> as the record of what was tried.
+
+The bounding-sphere radius (`0.5*|scale|`, capped 1.5 m) is gone (`area_housing_radius`, `housingRadius`,
+`kHousingCap`, the `area_housing` uniform). It rejected every occluder inside the sphere and shortened every
+ray by it, so a 0.02 x 3 x 0.02 m emitting strip erased any slab within 1.5 m of its centre (Codex measured
+minimum visibility 0.000 -> 1.000 on the production gather).
+
+New model (`area_housing_box` in `pipeline.cpp`, `ALAreaShadow::housingBox`, `areaInHousing` /
+`areaBoxEndGap` in the shaders), per channel, this frame's transforms only:
+
+* **Per-light data**: `area_box[4n..4n+3]` = prim centre + active flag, then each unit view-space axis with its
+  half extent (`0.5 * scale`, capped 1.5 m since round 2; it was 32 m). Runtime uniform, no shader variant.
+* **Rejection**: an occluder (and a validated hit) is ignored only if it lies inside the prim's oriented box
+  **expanded by the light bias** (`|local_k| <= half_k + bias`). The box expanded by the bias contains the old
+  bias sphere, so the housed wall lamp is never exposed more than before.
+* **End gap**: the ray stops where it enters that expanded box (slab test in the oriented frame), never
+  shorter than the source floor `max(source radius, 0.1 m)`; a ray that never enters the box keeps the floor.
+* **No box (flag 0)**: prims with **no opaque face** (every face absent, or in an alpha pool: an invisible light
+  prim writes no depth, so it cannot shadow itself) and **rig fixtures / catchlights** (synthetic emitters)
+  keep the committed arithmetic exactly: bias sphere, `end_gap = max(source radius, 0.1) + bias`. A rig
+  fixture's source radius is therefore counted **once** (the uncommitted change had added it as housing
+  as well, double counting it).
+* Regressions on the production gather (`relight_rank_check.py`) with CPU twins in test 31: a 1 m cube
+  "lightbox" no longer shadows its own light (min 0.000 -> 1.000); a 0.02 x 3 x 0.02 m strip keeps an
+  independent slab 0.5 m beside it (min stays 0.000; the superseded sphere erased it, shown with a
+  cube stand-in); a 2 x 2 m panel is shadowed by a blocker 0.8 m below it (min 0.000; erased by the old sphere);
+  the housed wall lamp keeps its pool with its bulb's box; a rig softbox of radius 1 / 1.5 / 2 m on a 3 m orbit
+  stays a soft shadow (dark and lit regions plus more than eight partial pixels), and in the CPU twin the
+  double-counted housing removes it (mutation rejected). The box is oriented (rotated-prim cases), per
+  channel, and zero flag = HEAD bytes.
+
+#### 4.3 Native hand-over (Codex P1, Opus P2)
+
+The old hand-over scaled the mapped light's contact fade by `1 - clamp(2u-1, 0, 1)`, `u = (depth - clip.z) /
+(clip.w - clip.z)`, which is the **same half** in which `sampleSpotShadow` ramps the native shadow to lit. For a
+blocker both systems see, native visibility rose as `t` while the screen visibility fell as `1 - t`, so the
+final `min()` transmitted 50 % light mid-way between two dark endpoints (reproduced on the production gather;
+the earlier sweep only compared the interpolation with itself).
+
+* **Design**: the screen term now takes over across `u in [0.25, 0.5]` (`kHandoverStart/End`; **round 3 ends it at
+  0.45**, section 7.2), finished **before** the native ramp starts at `u = 0.5`. Inside the window the native value is still its own shadow
+  and beyond it the screen visibility is the full trace, so for a shared blocker every term of
+  `min(native + shadow_fade, screen)` is dark across the whole transition, while a native-only blocker
+  keeps the stock ramp to lit and a screen-only blocker follows the continuous hand-over to the full trace.
+  Unset or malformed clips (GL default 0,0) are "valid everywhere" (HEAD bytes).
+* **Independent combined-output oracle** (`relight_rank_check.py`, GPU): the production gather feeds the
+  production spot-light composition (`spotLightF.glsl`'s own `min(shadow, areaShadowVisibility)` and real
+  `sampleSpotShadow`, linked as in the contact gate), swept over 256 receivers 4-9.9 m deep for 3 clips
+  (including one where the cascade-blend weight `W` is below 1 while the ramp runs), 3 fades and 4 scenes
+  (shared blocker, screen-only, native-only, nothing): the gather follows the strength within 3/255, the
+  composition equals `min(native model + shadow_fade, screen)` within 3/255 (the model includes the
+  `/weight` term, `ALAreaShadow::nativeSpotShadow`), no step exceeds 1.5x the hand-over slope, and a shared
+  blocker is **never brighter than the brighter endpoint** (peak 0.000; the superseded hand-over peaks at 0.427).
+  CPU twin: tests 28 and 30 (1.47M samples over 5 clips x 5 fades x 5 scenes).
+* **Unmapped bonus** is now continuous (section 1, Opus P2); the regression is test 33.
+
+#### 4.4 Other
+
+* Opus P2 shared per-view state: the only one was the allocation backoff (removed above).
+* No §10 change: native slot upkeep, allocation and auction are untouched; no shader permutation or reload
+  dependency was added (`relight_off_check.py`), the new gather uniforms are runtime-only, and the uniforms
+  declared in both linked gather files are intentional.
+
+### 5. Fix round 2 (Opus P1, Codex P1, DeepSeek, GLM)
+
+No reviewer found a P0. Items in the brief's order.
+
+#### 5.1 A large emitting prim no longer erases its own room (Opus P1, treated as a blocker)
+
+> **SUPERSEDED in round 3 (section 7.1).** The capped box and its per-ray fallback were removed with the rest of the
+> per-light housing; the room-prim cases survive as regressions against the global sphere.
+
+With `kHousingMaxHalf = 32 m`, a light on the root of a mesh house, a hollow room prim or a sky dome (8 x 8 x 3 m,
+light at the centre) rejected every blocker inside the box **and** gave any receiver inside the box `tmin < 0`,
+so `end_gap = length`: a zero-length ray, fully lit. A receiver within 0.25 m of a wall or ceiling emitter prim
+was never shadowed either. Three rules, each with a CPU twin and a GPU regression:
+
+* **(a) Cap**: `kHousingMaxHalf = 1.5` (the old sphere's cap). The 3 m strip (half 1.5) and the 2 x 2 m panel
+  (half 1.0) are untouched; an 8 x 8 x 3 m room gets a 1.5 m cube box (`insideHousing` at 3 m from the light is false).
+* **(b) Receiver inside the expanded box uses the bias sphere for that ray.** `areaShadowF.glsl` main tests the
+  ray origin once per light (`areaInHousing(origin, ...)`) and, if inside, clears the box flag for that light's rays:
+  the occluder test is the committed `length(p - light) <= bias` and `end_gap = max(source radius, 0.1) + bias`.
+  CPU mirror: `insideExpandedBox`, `housingForRay`, and `housingEndGap` returns `floor + bias` for an origin inside
+  (the old "whole ray is housing" expectation in test 31 is replaced by `.35`; that is the rule change, not a
+  loosened check).
+* **(c) No box for rigged drawables**: `area_housing_box` returns before reading any transform when
+  `volume->isRiggedMesh() || drawable->isState(LLDrawable::RIGGED)` (prim scale and position do not match rendered
+  geometry, and `getRenderRotation` is identity for rigged), `housingBox(..., rigged)` gives an inactive box.
+* Regressions (`relight_rank_check.py`, production gather, GPU): an 8 x 8 x 3 m room prim (box half extents 1.5)
+  with the receivers inside it: the slab shadows (min 0.000) and, linked without the per-ray fallback (mutation),
+  the same fixture is fully lit (1.000); a 1.2 x 1.2 x 0.2 m sconce 0.25 m off the wall: the wall beside it is
+  shadowed **exactly like the bias sphere** (mean difference < 1/255) by a slab 0.14 m above the wall, and lit without the
+  fallback. The 1.25 m cube and 1.17 m cube fixtures that stood in for the superseded sphere now do so through that same
+  no-fallback mutation (the receivers sit inside those boxes). CPU twins (test 31): the same room with a prop,
+  a receiver beside a ceiling panel prim, rigged = no box, no opaque face = no box. Static source checks
+  pin the rigged early-return order, the cap and the `if (box inside) sphere` text, each with a rejected mutation.
+
+#### 5.2 Hand-over at the native sampler's shifted receiver depth (Codex P1)
+
+`sampleSpotShadow` first moves the receiver, `pos += norm * spot_shadow_offset`, and ramps to lit by **that** depth.
+The gather evaluated the hand-over at `-pos.z`, so a tilted receiver met the native ramp mid-way: Codex measured
+a bright band peaking at 10/255 (default offset 0.04 m) and 40/255 (UI maximum 0.15 m) on clip (4, 5) with the
+normal (0.707, 0, -0.707).
+
+* `areaShadowF.glsl`: `native_strength = areaNativeStrength(-(pos.z + normal.z * area_native_offset))`, with the
+  runtime uniform `area_native_offset` = `RenderSpotShadowOffset` (the value the stock upload sends; non-finite sent as 0).
+  CPU mirror `ALAreaShadow::nativeReceiverDepth(viewZ, normalZ, offset)`.
+* **Oracle** (`relight_rank_check.py`, combined output): normals (0,0,1), (0.707,0,-0.707), (0.707,0,0.707) x
+  offsets {0, 0.04, 0.15} (and -0.04 / -0.15 for the facing normal: the same deeper shift without starting the ray behind
+  its own surface; a back-facing normal self-hits in this fixture) x 3 clips/blends x 3 fades x 4 scenes through the
+  production gather **and** the production spot-light composition, with the independent native model fed the shifted
+  depth. The gather follows the shifted strength within 3/255, the composition equals `min(native + fade, screen)`,
+  and a shared blocker's peak is **0.000** at fade 1 for every offset and normal. The fixture's `area_trace_res`
+  is now production-like (the 2 cm receiver-bias floor; the 256 x 8 grid's footprint was ~0.4 m).
+  Mutation: the same gather linked with `-pos.z` peaks at 0.039 (0.04 m) and 0.149 (0.15 m) on the tilted
+  clip (4, 5) case. Gather level (d2): offsets 0.04 and 0.15 follow `native_strength(depth - offset)`; the unshifted
+  gather is off by more than 12/255.
+* CPU twin: test 30 (receiver-offset oracle over 4 clips x 3 offsets x 5 normals x 2 fades: peak 0 for the shifted form,
+  0.23 for the unshifted one) and `nativeReceiverDepth` literals.
+
+#### 5.3 Ranking weight through validity loss (DeepSeek P1): documented, not changed
+
+`native_weight = fade * strength` while the slot is sampled, `0` when `spotShadowMapSampled` flips false
+(shadow detail lowered, slot lost to the live limit, map not rendered this frame). That one-frame drop of the
+25 % bonus is real. Carrying the old fade through the flip needs the previous frame (history, which this ranking
+forbids) and would rank a light by a native shadow it no longer has (its contact fade and trace are already
+the full unmapped form on that frame). It only happens on a user action or a lost slot, never from camera or light
+motion, so it is documented at `ALAreaShadow::importance` as the one remaining step rather than papered over.
+
+#### 5.4 Plane 0 failure keeps an allocated plane 1 (GLM P2)
+
+`if (!plane_ok[0]) break;` replaces `release_plane(1); break;`: when plane 0 fails, an already-allocated spare plane is
+neither built nor freed, so the next frame rebuilds plane 0's three targets only. Dispatch fixture: a K=8 feed/main with
+both planes live, a resize whose plane 0 allocation fails (plane 0 released, plane 1 kept: live textures -3), and back at
+the old size exactly 3 allocations restore it. Mutation `plane0_failure_frees_spare` is rejected;
+`plane1_failure_drops_all` now flips the plane-1 failure into a plane-0 failure.
+
+#### 5.5 Test 26 (GLM P2)
+
+362,880 permutations x 2 caps x Selection inserts became the identity, the reverse and 5,000 fixed Fisher-Yates
+shuffles (own xorshift32 stream; `std::shuffle` is implementation defined). Power is kept: the comparator is a strict
+total order (score, then UUID), the equal-score fixture of four lamps is checked in **all 24** orders, and a
+comparator without the UUID tie break is shown to be order dependent on that fixture (mutation rejected).
+
+#### 5.6 Unit axes (DeepSeek P2)
+
+> Moot after round 3 (section 7.1): `housingBox` no longer exists.
+
+`housingBox` **normalises** its axes (a scaled axis gives the same box) and returns no box for a zero-length or non-finite
+axis. The production caller already passes unit axes; this makes the pure function safe on its own.
+
+#### 5.7 Slot fade-in transient (Opus P2, optional): documented, not changed
+
+At slot fade `f` = 0.5 a shared blocker still reads about 50 % through the composite (`min(native + (1 - f), screen)`,
+`screen = f * s`). The fix named in the brief, `mix(full, min(native_unfaded, contact), f * s)`, needs the full-trace and
+contact visibilities separately in the spot shaders, but the gather packs only their mix into one channel. Splitting
+them means a second visibility channel set (memory, bandwidth and a consumer change in three lighting shaders), which is
+not trivially safe. The transient exists at HEAD and only happens while a slot fades in, so it is left.
+
+
+### 6. Gates of round 2 (historical; the current gates are section 7.5)
+
+| Gate | Result | Log (`.tmp/rank_r3/`) |
+|---|---|---|
+| `relight_shader_check.py` (full: production shaders, OFF bytes, rig, area, contact, thin, housing box and room/sconce regressions, shifted-depth hand-over, combined oracle) | **PASS** | `final_shaders.log` |
+| `relight_shader_check.py --area-only --thin-only` | **PASS** | `final_shader_thin.log` |
+| `relight_area_check.py` (policy, VCam CPU/dispatch fixtures with 16 mutations, contact CPU, thin, rank) | **PASS** | `final_area.log` |
+| `relight_thin_check.py` direct; `relight_rank_check.py` direct (`--rank-only`); `relight_off_check.py` (OFF identity harness) | **PASS**; **PASS**; **PASS** | `final_thin_direct.log`, `final_rank_direct.log`, `final_off.log` |
+| Standalone `alrelightmath` tests | **PASS 33/33** (30 gains the receiver-offset oracle, 31 the room / panel-neighbour / rigged / unit-axes cases, 26 sampled permutations plus the 24-order tie fixture) | `math.log`, `math_compile.log` |
+| `zs_check.ps1 -Files <one file>` | **PASS** `pipeline.cpp`, `llfloaterdirector.cpp`, `alcinelightrig.cpp`, `llviewercontrol.cpp`, `tests/alrelightmath_test.cpp` (separate calls) | `zs_*.log`, `zs_rc.txt` |
+| Three generators `--check` (`director_page_sources.py` regenerated first: it pins `pipeline.cpp` citations) | **PASS** x3 | `director_kit_gen_check.log`, `director_page_sources_check.log`, `director_functional_manifest_check.log` |
+| `prebuild_guard.ps1 -ChecksOnly` (`GIT_CONFIG_COUNT=1`, `core.safecrlf=false`) | **PASS**, all 11 gates, exits before the object purge | `prebuild.log` |
+| `git diff --check` | **PASS** | `diff_check.log` |
+
+Key numbers (production gather + production spot-light composition, RTX 5090): shared-blocker peak **0.000** at every
+receiver offset (0 / 0.04 / 0.15, and -0.04 / -0.15) and normal; the unshifted hand-over peaks 0.039 / 0.149 on the
+tilted clip (4, 5) case (the superseded round-1 form 0.427); an actor inside the 8 x 8 x 3 m room prim keeps its
+shadow (min 0.000; 1.000 without the per-ray fallback). Static checks pin eleven source mutations; the VCam dispatch
+fixture rejects all 16 of its mutations, including `plane0_failure_frees_spare` and `native_offset_dropped`.
+
+Logs are in `.tmp/rank_r3/`. New file to include in the commit: `scripts/code_tools/relight_rank_check.py`
+(also run by `relight_area_check.py`; it re-launches the GPU harness with `--area-only --rank-only` when run
+directly). Updated gate fixtures: `relight_vcam_dispatch_check.py` (adds the receiver-offset upload, the
+spare-plane-survives-plane-0-failure scenario and two mutations), `relight_thin_check.py` (the review-HEAD shim also
+supplies the sphere-only `areaInHousing` the current gather now calls), `relight_contact_check.py` (its rejected
+length-interpolation variant re-declares `areaInHousing`). Not measured: whole-viewer image identity, in-world
+quality, GPU timing, and the real `shadow_clip` / `spot_shadow_offset` values in a live scene.
+
+### 7. Fix round 3 (final): per-light housing reverted, hand-over margin, small fixes
+
+Inputs: the Codex, GLM, DeepSeek and Opus reviews of round 2. No commit, push, stash, viewer build or viewer launch;
+`.tmp/ref_private/` and ReShade/iMMERSE files were not opened. Everything is runtime-only and deterministic.
+
+#### 7.1 Housing is HEAD's again (decision by the lead)
+
+Three designs of per-light housing each introduced a new visible artefact: the half-diagonal sphere erased blockers; the
+oriented box wiped actor shadows inside room prims, drew a hard seam at the box edge and a dark ring around sconces; the capped
+box lost blockers just outside the cap (Codex GPU repro on the production gather: light (1, 0, -2.5), receivers z = -4, x < -.78,
+independent blocker at z = -3, visibility 0.000 -> 1.000 at 4/8, 8/12 and 16/64 rays/steps). So housing is again **only** the global
+Light bias sphere (`RenderAreaShadowLightBias`) and HEAD's end gap `max(source radius, 0.1) + bias`:
+
+* Removed: `area_box`, `areaInHousing`, `areaBoxEndGap`, `area_housing_box` (pipeline.cpp), `HousingBox`, `housingBox`,
+  `housingForRay`, `housingEndGap`, `insideExpandedBox`, `insideHousing`, `kHousingMaxHalf`, the opaque-face counting, the box
+  upload and the per-ray fallback. `screenSpaceRayUtil.glsl` is **byte-identical to HEAD** and the gather's housing lines are
+  HEAD's verbatim (`relight_rank_check.py` compares both against `git show HEAD:` and bans every removed name in all five files).
+* The rig source radius is counted **once**, as at HEAD (end gap `max(radius, 0.1) + bias`; nothing is added as housing).
+* **Documented known limitation:** a LARGE emitting prim (a lit room shell, a big softbox, a sky dome) can shadow its own light.
+  The remedy is the user raising **Light end bias** on the Soft shadows card; its help text (kit row, `settings.xml` comment and the
+  regenerated kit files) now says so: "Raise it if a lamp, or a large glowing prim such as a lit room shell or big softbox, shadows
+  itself; large values can miss nearby blockers."
+* Tests: the housing-box tests (math test 31, the box GPU cases, the dispatch fixture's `area_housing_box` stub, `housing_dropped`
+  mutation and `area_box` upload assertions, the `areaInHousing` shims in the thin and contact gates) are gone. Kept: the housed
+  wall lamp (CPU + GPU pool stays lit with HEAD's sphere), the rig softbox radius 1 / 1.5 / 2 m staying soft, and Codex's room-prim
+  cases as regressions that pass with the sphere: independent blockers shadow receivers **near** the light (inside what the capped box
+  covered) and **far** from it (outside), at 4/8, 8/12 and 16/64 rays/steps on the GPU (min visibility 0.000 in both), and in the CPU
+  march. Discriminating fixtures: an oversized housing (a 1.5 m sphere) erases the far blocker (visibility 1.000 on the GPU), and with
+  no housing at all the wall-lamp casing shadows its own bulb.
+
+#### 7.2 Hand-over margin (Opus P2)
+
+`areaNativeStrength` reached 0 exactly at u = 0.5, where the native ramp starts, and the bilateral filter (radius up to 8 px) leaks a
+few /255 across it. The screen hand-over now ends at **u = 0.45** (`kHandoverStart/End` = .25 / .45 in the header, `(u-0.25)*5.0` in the
+shader; each cross-references the other, and `relight_rank_check.py` pins header, shader, its own mirror and the C++ test).
+
+The combined-output oracle now runs **with the production filter**: the production gather -> blur x -> blur y -> upsample chain at radius 2
+(the default `RenderAreaShadowDenoise`) and 8 (the maximum), then the production spot-light composition, for every normal / offset /
+clip / fade / scene (1188 sweeps). Results:
+
+* Shared-blocker peak **0.000** (<= 1/255) for every clip range >= 2 m at any radius, and for every range at radius <= 2.
+* **Exception, measured:** a 1 m clip range (4, 5) at radius 8 peaks at **2/255** (two columns of margin only); the oracle bounds that
+  combination at 3/255, the previous gate. A realistic native shadow range is far larger, and the default radius is 2.
+* Mutation: the previous window (ending at u = .5) peaks 6/255 through the radius-8 filter and is rejected; the superseded hand-over
+  (with the native ramp) peaks 0.427.
+* The margin heals a receiver shift of up to 0.05 of the clip range, so the unshifted-depth mutation is now only visibly wrong on the
+  0.15 m maximum offset (peak 0.071 on a 1 m range) or on a 0.4 m range at 0.04 m (peak 0.063); both are still rejected, with the fixed
+  gather at <= 1/255 (<= 3/255 on the 0.4 m range). The earlier floors (5/255 and 20/255 on the 1 m range at 0.04 and 0.15 m) were
+  replaced by these because the new margin removes most of that leak by design.
+* Raw-gather checks are unchanged (follows the strength within 0.92/255). A filtered column is checked to lie within the range of the
+  unfiltered curve over +-radius columns (the blur is a convex combination), instead of the raw curve, which smoothing rounds on purpose.
+* C++ test 28: window literals at u = .25 / .35 / .45, `1/(End-Start) = 5`, the margin `>= .05`, and strength 0 wherever the native ramp rises.
+
+#### 7.3 Small fixes
+
+* GLM P2: `break;` after `native_fade = mSpotLightFade[i];` in the slot loop (a drawable owns one slot; the first sampled one decides).
+  Pinned by a source check with a mutation.
+* DeepSeek P2: `areaNativeStrength` returns 1.0 for a non-finite depth (`isnan || isinf`), matching the CPU `isfinite` rule
+  (`nativeShadowStrength`; NaN / +Inf / -Inf pinned in test 28; the shader guard and its mutation are pinned in the rank gate).
+
+Kept unchanged: importance ranking, mapped validity, native-cutoff hand-over at the shifted depth, continuous bonus, plane retention,
+no backoff, logging, scene allowlist, feed reservation and the take-record fields. No Section 10 change: native slot upkeep, allocation and
+auction are untouched; the budget is unchanged. OFF is byte-identical (the OFF harness passes; the ray utility is HEAD's, the gather
+differs from HEAD only by the two runtime hand-over uniforms and their strength term).
+
+#### 7.4 Not measured
+
+Whole-viewer image identity, in-world appearance of a large emitter with Light end bias raised, GPU timing.
+
+#### 7.5 Gates (each run once after the final edit; GPU gates one at a time; logs in `.tmp/rank_r4/`)
+
+| Gate | Result | Log |
+|---|---|---|
+| `relight_shader_check.py` (full) | **PASS** | `final_shaders.log` |
+| `relight_shader_check.py --area-only --thin-only` | **PASS** | `final_shader_thin.log` |
+| `relight_area_check.py` (incl. rank; VCam dispatch rejects all 15 remaining mutations) | **PASS** | `final_area.log` |
+| `relight_thin_check.py`; `relight_rank_check.py`; `relight_off_check.py` | **PASS**; **PASS**; **PASS** | `final_thin_direct.log`, `final_rank_direct.log`, `final_off.log` |
+| Standalone `alrelightmath` tests | **PASS 33/33** | `math.log`, `math_compile.log` |
+| `zs_check` per touched .cpp (pipeline, alrelightmath_test; llfloaterdirector, alcinelightrig, llviewercontrol too) | **PASS** x5 | `zs_*.log`, `zs_rc.txt` |
+| Three generators `--check` (kit regenerated first for the help text, page sources regenerated for the shifted `pipeline.cpp` citations) | **PASS** x3 | `director_kit_gen_check.log`, `director_page_sources_check.log`, `director_functional_manifest_check.log` |
+| `prebuild_guard.ps1 -ChecksOnly` (`GIT_CONFIG_COUNT=1`, `core.safecrlf=false`) | **PASS**, all gates | `prebuild.log` |
+| `git diff --check` | **PASS** | `diff_check.log` |
+
+Files to include in the commit beyond round 2: none new (`scripts/code_tools/relight_rank_check.py` is still the new file). Reverted to
+HEAD content: `screenSpaceRayUtil.glsl`, `relight_thin_check.py`.

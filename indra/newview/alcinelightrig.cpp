@@ -1955,12 +1955,15 @@ void ALCineLightRig::updateProjectorFlags()
                                  !mProjectors[i]->isDead();
             if (!present)
             {
-                LL_INFOS("CineRigShadow") << "light " << i
+                LL_DEBUGS("CineRigShadow") << "light " << i
                     << " projector ABSENT" << LL_ENDL;
                 continue;
             }
             const LLUUID id = mProjectors[i]->getID();
-            LL_INFOS("CineRigShadow") << "light " << i
+            // DEBUG tag, not INFO: every INFO line is a synchronous log flush on the main thread
+            // (this dump ran about five lines a second while recording). Enable the
+            // "CineRigShadow" debug tag together with MachinimaDebugLogging to see it.
+            LL_DEBUGS("CineRigShadow") << "light " << i
                 << " id=" << id.asString().substr(0, 8)
                 << " noShadow=" << LLPipeline::isProjectorNoShadow(id)
                 << " shaftPipe=" << LLPipeline::isVolumetricShaftEnabled(id)

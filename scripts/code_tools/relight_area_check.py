@@ -62,6 +62,10 @@ if '--thin-only' in sys.argv:
     from relight_thin_check import check_thin
     check_thin(globals())
     sys.exit(0)
+if '--rank-only' in sys.argv:
+    from relight_rank_check import check_rank
+    check_rank(globals())
+    sys.exit(0)
 empty=area_read();assert np.all(empty==255),'unblocked plane must be lit'
 # An on-screen foreground slab blocks rays crossing it from the left receiver.
 area_depth[:,16:,:]=.6 # view Z -2
@@ -527,3 +531,6 @@ check_contact(globals())
 
 from relight_thin_check import check_thin
 check_thin(globals())
+
+from relight_rank_check import check_rank
+check_rank(globals())

@@ -16,10 +16,38 @@ inline bool allowed(const View& v, bool feeds = false)
 {
     return !(v.cube || (v.prism && !feeds) || v.hud || v.impostor || v.reflection || v.tiled);
 }
-inline double contribution(double radius, double distance, double luminance, double attenuation)
+// Importance ranking (10/22). Every light that could receive a soft-shadow channel is
+// ranked by how much it matters on screen, whether or not it owns a native SL shadow
+// map (the older "unmapped first" rule let eight nearby practicals push out a bright
+// mapped projector). Inputs are this frame's only:
+//   luminance    : Rec.709 luminance of the linear colour x light scale x EV scale;
+//   range        : the light's influence range (radius * 1.5, metres);
+//   distance     : camera to light centre (metres);
+//   nativeWeight : how much of the light is covered by a native SL map right now, 0..1.
+//   importance = luminance * range / max(distance, range / 2) * (1 + kUnmappedBonus * (1 - nativeWeight))
+// The camera term saturates at range / 2 instead of testing "inside the range", so a
+// lamp 5-10 m away is never worth 0 merely because the camera is outside its range and
+// dollying across a range boundary changes nothing. The score is continuous and
+// non-increasing in distance; there is no history, hysteresis or timing.
+// The bonus is bounded and CONTINUOUS in nativeWeight: the pipeline passes the slot fade
+// times the cutoff validity at the light, so acquiring or losing a slot (the fade runs
+// 0 -> 1) and a light crossing the native shadow distance move the score smoothly, never a
+// 25 % step that could pop a channel. A light with no native map has weight 0; at 0.25 it
+// never outranks a light more than 25 % more important.
+// The one remaining step: when a slot's map STOPS being sampled (nativeMapSampled flips false:
+// Preferences shadow detail lowered, the slot lost to the live limit, or a map not rendered
+// that frame) the light genuinely has no native shadow from that frame on, so its weight is 0
+// and the bonus returns in one frame. Holding the old fade through that flip would need the
+// previous frame (history, which the ranking forbids) and would rank a light by a shadow it no
+// longer has; it only happens on a user action or a lost slot, and is documented as such.
+constexpr double kUnmappedBonus = 0.25;
+inline double importance(double luminance, double range, double distance, double nativeWeight)
 {
-    const double score = radius / std::max(distance, .01) * luminance * attenuation;
-    return std::isfinite(score) ? std::max(0.0, score) : 0.0;
+    if (!(luminance > 0.0) || !(range > 0.0)) return 0.0;
+    const double weight = std::isfinite(nativeWeight) ? std::clamp(nativeWeight, 0.0, 1.0) : 0.0;
+    const double score = luminance * range / std::max(distance, range * 0.5) *
+        (1.0 + kUnmappedBonus * (1.0 - weight));
+    return std::isfinite(score) ? score : 0.0;
 }
 template<class ID> struct Candidate
 {
@@ -27,9 +55,9 @@ template<class ID> struct Candidate
     bool shadowMap = false;
     double score = 0.0;
 };
+// Descending importance, then the stable UUID. shadowMap is reported, never ranked.
 template<class ID> inline bool before(const Candidate<ID>& a, const Candidate<ID>& b)
 {
-    if (a.shadowMap != b.shadowMap) return !a.shadowMap;
     if (a.score != b.score) return a.score > b.score;
     // Object UUID in production, never collector order or drawable address.
     // One candidate per emitting object; area channels do not rank faces.
@@ -41,10 +69,16 @@ template<class ID> struct Selection
     unsigned size = 0, candidates = 0;
     void add(const Candidate<ID>& light, unsigned cap)
     {
+        add(light, cap, [](const Candidate<ID>& a, const Candidate<ID>& b) { return before(a, b); });
+    }
+    // The comparator parameter exists so tests can prove their fixtures reject a
+    // superseded ordering; production always uses before().
+    template<class Before> void add(const Candidate<ID>& light, unsigned cap, Before ranks_first)
+    {
         cap = std::clamp(cap, 1u, 8u);
         ++candidates;
         unsigned at = 0;
-        while (at < size && !before(light, lights[at])) ++at;
+        while (at < size && !ranks_first(light, lights[at])) ++at;
         if (at >= cap) return;
         const unsigned last = std::min(size, cap - 1);
         for (unsigned i = last; i > at; --i) lights[i] = lights[i-1];
@@ -52,6 +86,70 @@ template<class ID> struct Selection
         size = std::min(size + 1, cap);
     }
 };
+// A slot's native SL map counts as mapped only while it is really sampled: shadows above
+// "projector shadows off" (detail > 1), the slot inside the live slot limit, and its map
+// rendered this frame and complete. Otherwise (a stale owner left after detail 2 -> 1 -> 0,
+// a slot above a lowered limit, a failed/skipped render) the light is unmapped: contact fade
+// 0, full soft-shadow trace. Pure so the policy is testable; the pipeline supplies the inputs.
+inline bool nativeMapSampled(int shadowDetail, unsigned slot, unsigned slotLimit,
+    bool complete, bool renderedThisFrame)
+{
+    return shadowDetail > 1 && slot < slotLimit && complete && renderedThisFrame;
+}
+// The native spot sampler (shadowUtil.glsl sampleSpotShadow) as a pure function, for the
+// tests' independent oracles: given the map's own PCF result, it returns lit beyond
+// shadow_clip.w, and otherwise (pcf*W + add)/W with add = max(2u-1,0),
+// u = (depth-clip.z)/(clip.w-clip.z), and W the cascade-blend weight
+// 1 - max(clip.z*(1+blend) - depth,0)/(2*blend*clip.z). The caller adds shadow_fade and clamps.
+inline double nativeSpotShadow(double pcf, double depth, double clipZ, double clipW, double blend = 0.25)
+{
+    if (!(depth < clipW)) return 1.0;
+    const double u = (depth - clipZ) / (clipW - clipZ);
+    const double add = std::max(2.0 * u - 1.0, 0.0);
+    const double weight = 1.0 - std::max(clipZ * (1.0 + blend) - depth, 0.0) / (2.0 * blend * clipZ);
+    return std::abs(weight) > 1.e-9 ? (pcf * weight + add) / weight : pcf;
+}
+// Native hand-over (the weight of the NATIVE map in a mapped light's screen visibility).
+// A mapped light's screen term is contact-only while its native map is valid; past the
+// map it must become the full trace. The native sampler itself ramps TO LIT over the
+// last half of [clip.z, clip.w] (u from .5 to 1), so the hand-over must be finished
+// before that ramp starts, or the two meet mid-way and their final min() lets light
+// through a shadow both systems see (the reported bright band). Here the screen term
+// takes over across u in [kHandoverStart, kHandoverEnd] = [.25, .45]: 1 (native valid) at
+// the start, 0 (full trace) at the end. Inside it the native value is still its own
+// shadow (the ramp has not begun) and beyond it the screen visibility is the full trace,
+// so for a blocker both systems see, every term of min(native, screen) is dark all the way.
+// Unset or malformed clip values (the GL default 0,0) mean the native map is valid everywhere.
+// The window ends at .45, not .5 (the ramp's start): the bilateral filter (radius up to 8 px)
+// blends a few percent of the lit side across a depth step, so strength reaching 0 exactly at the ramp
+// start leaked a few /255. The shader (areaNativeStrength in areaShadowF.glsl) hard-codes the same
+// window: keep kHandoverStart/kHandoverEnd and its (u-0.25)*5.0 in sync (relight_rank_check.py pins both).
+constexpr double kHandoverStart = 0.25, kHandoverEnd = 0.45;
+inline double nativeShadowStrength(double viewDepth, double clipZ, double clipW)
+{
+    if (!(clipZ > 0.0) || !(clipW > clipZ) || !std::isfinite(viewDepth)) return 1.0;
+    const double u = (viewDepth - clipZ) / (clipW - clipZ);
+    return 1.0 - std::clamp((u - kHandoverStart) / (kHandoverEnd - kHandoverStart), 0.0, 1.0);
+}
+// The depth the native sampler itself compares: sampleSpotShadow first moves the receiver
+// along its normal, pos += norm * spot_shadow_offset, and ramps to lit by THAT depth. The
+// hand-over must be evaluated at the same shifted depth or a tilted receiver (the offset is
+// up to 0.15 m) meets the native ramp mid-way and lets light through a shared blocker.
+// viewZ is the view-space z of the receiver (negative in front of the camera), normalZ the z
+// of its unit view-space normal; the result is the positive depth the sampler compares.
+inline double nativeReceiverDepth(double viewZ, double normalZ, double offset)
+{
+    const double shifted = viewZ + (std::isfinite(normalZ) && std::isfinite(offset) ? normalZ * offset : 0.0);
+    return -shifted;
+}
+// Housing of the emitting prim is NOT modelled per light. The gather ignores occluders within
+// the global light bias (RenderAreaShadowLightBias, "Light bias" on the Soft shadows card) of the
+// light centre and stops each ray floor + bias short of its target, exactly as before this
+// change (floor = max(source radius, 0.1 m); a rig source radius is counted once, there).
+// Per-light housing shapes (bounding sphere, oriented box, capped box) were tried and each one
+// erased real blockers or left a visible seam; the cost is a documented limitation: a LARGE
+// emitting prim (a lit room shell, a big softbox) can shadow its own light until the user raises
+// Light bias. See RELIGHT_SL_INTEGRATION.md.
 // Integer avalanche also used by the GLSL disk sampler. Seed by ID, never slot.
 inline std::uint32_t hash(std::uint32_t x)
 {
@@ -196,6 +294,20 @@ inline Workload workloadOrUniform(Quality q, Quality uniform, unsigned width, un
     auto w = workload(q,width,height,lights,millions,requestedLights,feedSlots);
     if (!w.channels && q.nearSteps) w = workload(uniform,width,height,lights,millions,requestedLights,feedSlots);
     return w;
+}
+
+// Planes the pipeline can actually draw after target allocation. A failed allocation is
+// retried on the next frame (nothing remembers it): plane 0 failing leaves no soft shadows
+// this frame; plane 1 failing keeps the four most important lights (plane 0) instead of
+// dropping everything. Pure so the policy is testable.
+inline unsigned drawablePlanes(unsigned planesWanted, bool plane0Ok, bool plane1Ok)
+{
+    if (!planesWanted || !plane0Ok) return 0;
+    return (planesWanted > 1 && !plane1Ok) ? 1 : std::min(planesWanted, 2u);
+}
+inline unsigned drawableChannels(unsigned selected, unsigned planes)
+{
+    return std::min(selected, planes * 4u);
 }
 
 // Frame identity is used only to reset workload accounting, never sampling.

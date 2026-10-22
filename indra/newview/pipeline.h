@@ -1359,6 +1359,8 @@ public:
         U32                         bloomMipCount = 0;
         // [RelightQ] Lazily allocated only for an allowed view, never at shader reload.
         LLRenderTarget areaGather[2], areaScratch[2], areaVisibility[2];
+        // Log state only (one warning per allocation-failure transition of THIS pack); never read by rendering.
+        bool areaAllocFailed = false;
     };
 
     // main full resoltuion render target
@@ -1554,6 +1556,15 @@ public:
     // mSpotShadow in releaseSpotShadowTargets. getSpotShadowTarget redirects
     // here while sPrismLensRender is set.
     LLRenderTarget          mPrismSpotShadow[MAX_SPOT_SHADOWS];
+    // [RelightQ] gFrameCount on which each slot's map was last rendered: the main maps in
+    // generateSunShadow, the Prism aux maps in generatePrismSpotShadows. Read only by the
+    // soft-shadow side (spotShadowMapSampled); it never feeds native slot upkeep or auction.
+    U32                     mSpotShadowFrame[MAX_SPOT_SHADOWS] = {};
+    U32                     mPrismSpotShadowFrame[MAX_SPOT_SHADOWS] = {};
+    // True while the slot's NATIVE map is really sampled this view (see ALAreaShadow::nativeMapSampled).
+    bool spotShadowMapSampled(U32 slot) const;
+    // The shadow_clip the native spot sampler reads in this view (where the native map ends).
+    LLVector4 nativeSpotShadowClip() const;
 
     LLRenderTarget          mPbrBrdfLut;
     LLRenderTarget          mWaterExclusionMask;
