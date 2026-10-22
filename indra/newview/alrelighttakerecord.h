@@ -62,9 +62,12 @@ inline LLSD areaTakeRecord(const AreaTakeState& state)
     return out;
 }
 
+// The main view's record is "area_view". The most recent VCam feed pass, if any, is a
+// separate labelled "feed_view" and never touches the main view's fields.
 template<std::size_t N> inline LLSD takeRecord(const char* trigger, const LLSD& settings,
     const AreaTakeState& area, const std::array<LLUUID, N>& areaSlots,
-    const std::array<LLUUID, N>& currentSlots, const std::array<float, N>& fade)
+    const std::array<LLUUID, N>& currentSlots, const std::array<float, N>& fade,
+    const AreaTakeState* feed = nullptr)
 {
     LLSD out;
     out["version"] = 1;
@@ -72,6 +75,12 @@ template<std::size_t N> inline LLSD takeRecord(const char* trigger, const LLSD& 
     out["settings_at_start"] = settings;
     out["area_view"] = areaTakeRecord(area);
     out["area_view"]["projector_slots"] = LLSD::emptyArray();
+    if (feed && std::string(feed->status) != "not_observed")
+    {
+        out["feed_view"] = areaTakeRecord(*feed);
+        out["feed_view"]["source"] = "most_recent_vcam_feed_area_pass";
+        out["feed_view"]["view"] = "vcam_feed";
+    }
     out["projector_slots_at_start"] = LLSD::emptyArray();
     for (std::size_t i = 0; i < N; ++i)
     {

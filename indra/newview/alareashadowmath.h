@@ -58,8 +58,9 @@ inline std::uint32_t hash(std::uint32_t x)
     x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; return x ^ (x >> 16);
 }
 // nearSteps > 0 marks the opt-in Thin objects march: that many dense steps over the
-// first 1.85 m, the rest far. minFar is the authored uniform count, the floor the
-// far segment may be thinned to (never coarser than OFF) before a view fails closed.
+// first 1.85 m, the rest far. minFar is the authored uniform count. Under budget
+// pressure the far segment may be thinned to min(minFar, kThinFarFloor) before a view
+// falls back to the uniform march; the floor is COMMON to every preset.
 struct Quality { int samples, steps; bool half; int nearSteps = 0; int minFar = 0; };
 inline float lightBias(float bias)
 {
@@ -92,15 +93,22 @@ struct Workload
     unsigned channels = 0;
     std::uint64_t pixels = 0, iterations = 0, budget = 0, drawCap = 0;
 };
-// Segmented (Thin objects) main plans hold back this fraction (1/32) of the budget
-// for capture feeds, so a 1080p feed with every light still fits its fixed share.
-constexpr std::uint64_t kFeedHeadroomDivisor = 32;
+// Capture-feed slots sharing the frame budget (LLPrismLens::MAX_CAPTURES; asserted in
+// pipeline.cpp).
+constexpr unsigned kFeedSlots = 8;
+// Segmented plans thin their far segment to at most this many steps (Low's uniform
+// far count, 8): every preset shares one floor, so no preset loses the segmented march
+// while a lower one keeps it, and the floor is never coarser than OFF Low.
+constexpr int kThinFarFloor = 8;
+// A feed target is at most 2048x2048 (largest camera capacity); its half-resolution
+// pixel count is what the feed guarantee below is sized for.
+constexpr std::uint64_t kFeedGuaranteePixels = 1024ull*1024ull;
 // Segmented plans keep full resolution only while this many rays per pixel fit
 // (the High preset's request), so Cinematic never ends below High in rays per pixel.
 constexpr int kFullResMinSamples = 12;
 
 inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsigned lights,
-    std::uint64_t budget, unsigned requestedLights, bool holdFeedHeadroom = false)
+    std::uint64_t budget, unsigned requestedLights, std::uint64_t feedHoldBack = 0)
 {
     Workload w{};
     const int dense = std::clamp(q.nearSteps,0,64);
@@ -112,8 +120,8 @@ inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsig
     const unsigned basis = std::max(lights,std::clamp(requestedLights,1u,8u));
     w.budget = std::min(budget,std::uint64_t(1500000000));
     w.drawCap = w.budget/2;
-    // Planning limit: the nominal budget minus feed headroom (segmented main only).
-    const std::uint64_t planned = holdFeedHeadroom && dense ? w.budget-w.budget/kFeedHeadroomDivisor : w.budget;
+    // Planning limit: the nominal budget minus the feed reservation (segmented main only).
+    const std::uint64_t planned = dense ? w.budget-std::min(feedHoldBack,w.budget) : w.budget;
     const auto update = [&]()
     {
         w.pixels = w.q.half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
@@ -138,9 +146,10 @@ inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsig
     // Segmented marches preserve their steps until nothing else is left.
     while (over() && !dense && w.q.steps>1) { --w.q.steps; update(); }
     if (over() && !w.q.half) { w.q.half=true; update(); }
-    // Last resort for a segmented plan: thin only the far segment, down to the
-    // authored uniform count. Never coarser than OFF; near steps stay.
-    while (over() && dense && w.q.steps-dense>w.q.minFar) { --w.q.steps; update(); }
+    // Last resort for a segmented plan: thin only the far segment, down to the common
+    // floor min(authored count, kThinFarFloor), never coarser than OFF Low; near steps stay.
+    const int farFloor = dense ? std::min(w.q.minFar,kThinFarFloor) : 0;
+    while (over() && dense && w.q.steps-dense>farFloor) { --w.q.steps; update(); }
     // Even one channel/one step cannot fit: skip this view, never exceed the cap.
     if (over()) { w.iterations=0; return w; }
     const auto perChannel = w.pixels*w.q.samples*w.q.steps;
@@ -148,20 +157,44 @@ inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsig
     return w;
 }
 
-inline Workload workload(Quality q, unsigned width, unsigned height, unsigned lights,
-    int millions, unsigned requestedLights)
+// Feed guarantee. A uniform (OFF) feed plan draws if and only if its allowance is at
+// least pixels(half) * max(requested lights, 2): one ray, one step, half resolution.
+// That is the most any feed up to 2048x2048 can need to draw at all. A segmented main
+// plan holds back kFeedSlots * min(OFF feed allowance, that need), so with Thin ON every
+// feed gets at least min(its Thin OFF allowance, need) and still draws wherever OFF
+// draws. The OFF feed allowance is (budget - OFF main reservation) / slots. The bound is
+// preset independent: every OFF main plan that draws costs at least the cheapest one
+// (1 ray, 1 step, half resolution), so allowance(OFF) <= (budget - that) / slots for every
+// preset, and segmented admission does not depend on the preset either.
+inline std::uint64_t feedReservation(unsigned mainWidth, unsigned mainHeight, std::uint64_t budget,
+    unsigned requestedLights, unsigned feedSlots)
 {
-    return workloadWithin(q,width,height,lights,
-        std::uint64_t(std::clamp(millions,1,1500))*1000000,requestedLights,true);
+    if (!mainWidth || !mainHeight || !feedSlots) return 0;
+    budget = std::min(budget,std::uint64_t(1500000000));
+    const auto cheapest = workloadWithin({1,1,true},mainWidth,mainHeight,requestedLights,budget,requestedLights);
+    const auto reserve = cheapest.channels ? cheapest.iterations : 0;
+    const std::uint64_t allowance = (budget-reserve)/feedSlots;
+    const std::uint64_t need = kFeedGuaranteePixels*std::max(std::clamp(requestedLights,1u,8u),2u);
+    return feedSlots*std::min(allowance,need);
+}
+
+// The OFF main plan (nearSteps == 0) is the committed plan, unchanged. A segmented
+// plan is admitted only inside budget - feedReservation(); else the caller falls back.
+inline Workload workload(Quality q, unsigned width, unsigned height, unsigned lights,
+    int millions, unsigned requestedLights, unsigned feedSlots = kFeedSlots)
+{
+    const std::uint64_t budget = std::uint64_t(std::clamp(millions,1,1500))*1000000;
+    return workloadWithin(q,width,height,lights,budget,requestedLights,
+        q.nearSteps > 0 ? feedReservation(width,height,budget,requestedLights,feedSlots) : 0);
 }
 
 // A segmented (Thin objects) plan that cannot fit at all falls back to the authored
 // uniform march and plan, so the switch never removes shadows OFF would draw.
 inline Workload workloadOrUniform(Quality q, Quality uniform, unsigned width, unsigned height,
-    unsigned lights, int millions, unsigned requestedLights)
+    unsigned lights, int millions, unsigned requestedLights, unsigned feedSlots = kFeedSlots)
 {
-    auto w = workload(q,width,height,lights,millions,requestedLights);
-    if (!w.channels && q.nearSteps) w = workload(uniform,width,height,lights,millions,requestedLights);
+    auto w = workload(q,width,height,lights,millions,requestedLights,feedSlots);
+    if (!w.channels && q.nearSteps) w = workload(uniform,width,height,lights,millions,requestedLights,feedSlots);
     return w;
 }
 
@@ -183,12 +216,16 @@ struct FeedPasses
 // remainder into fixed allowances. No dependence on active feed count, cadence,
 // timing, prior frames or the main view's changing selected set. A segmented
 // (Thin objects) plan that does not fit a feed's allowance falls back to the
-// authored uniform march and plan, so feeds never lose shadows to the switch.
+// authored uniform march and plan. A segmented main plan only exists inside
+// budget - feedReservation(), and a main plan that cannot fit there is the uniform
+// (OFF) plan, so with Thin ON every feed gets at least min(its OFF allowance, the
+// minimum a 2048x2048 feed needs) and draws wherever the OFF feed draws. It may get
+// fewer rays than OFF when the main view spends the difference.
 inline Workload feedWorkload(Quality q, Quality uniform, unsigned mainWidth, unsigned mainHeight,
     unsigned width, unsigned height, unsigned lights, int millions,
     unsigned requestedLights, unsigned feedSlots)
 {
-    const auto main = workloadOrUniform(q,uniform,mainWidth,mainHeight,requestedLights,millions,requestedLights);
+    const auto main = workloadOrUniform(q,uniform,mainWidth,mainHeight,requestedLights,millions,requestedLights,feedSlots);
     const auto reserve = main.channels ? main.iterations : 0;
     const auto allowance = mainWidth && mainHeight && feedSlots ? (main.budget-reserve)/feedSlots : 0;
     auto feed = workloadWithin(q,width,height,lights,allowance,requestedLights);

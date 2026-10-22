@@ -1517,13 +1517,68 @@ No commit, push, stash, viewer build or viewer launch was performed. No read of
 
 ## Thin occluders (10/21)
 
+**Fix round 7 (10/22):** the Thin objects switch could still strip VCam feeds of
+their area shadows once `RenderAreaShadowBudget` was lowered (about 930M and
+below at 1080p/K8; for example Low, 250M, 1920x1080 main, K8, 1280x720 feed: ON
+left 1.18M per feed against 14.66M with OFF, so even the uniform fallback failed
+and the feed published no shadows). OFF is unchanged (HEAD RGBA8 identity, HEAD
+planner identity).
+
+1. **Feed guarantee replaces the flat 1/32 holdback** (`kFeedHeadroomDivisor` is
+   gone). The OFF feed allowance is `(budget - OFF main reservation) / 8`. A feed
+   draws at all (uniform plan: 1 ray, 1 step, half resolution) once its
+   allowance reaches `pixels(half) * max(requested K, 2)`; for a 2048x2048 feed,
+   the largest camera capacity, that is `1,048,576 * max(K,2)`. A segmented
+   main plan now plans against `budget - feedReservation()` with
+   `feedReservation = 8 * min(OFF allowance, that need)`. The OFF allowance is
+   bounded by the cheapest OFF main plan (1 ray, 1 step, half resolution), which
+   keeps the reservation and therefore segmented admission **independent of the
+   preset**. A segmented plan that does not fit inside it is the uniform (OFF)
+   main plan, deterministically, and the feeds then get exactly the OFF
+   allowance. So with Thin ON every feed gets **at least
+   `min(its Thin OFF allowance, the 2048x2048 minimum)`** and draws wherever the
+   OFF feed draws. Above that minimum the main view may spend the rest, so a
+   feed can have fewer rays (and fewer channels per draw) than OFF; it never has
+   none. The reservation is at most 67.1M (K8) or 16.8M (K1).
+   Example, Low, 1080p main, K8, 1280x720 feed: **250M** OFF 14.66M, ON 14.66M
+   (the main view falls back to the uniform plan); **1500M** OFF 170.9M, ON
+   21.6M (segmented main keeps its 1327M; the feed still draws, 4 channels).
+   Test 25 sweeps budgets 100/300/600/1000/1500 x main 1080p/1440p/4K x K1..8 x
+   all presets x feeds 512x288, 640x360, 854x480, 720p, 1080p and 2048x2048,
+   asserting feed channels > 0 wherever OFF > 0, ON allowance >= min(OFF
+   allowance, minimum), one shared budget, and exact OFF plans after a main
+   fallback. The raw per-draw channel count is *not* asserted `>=` OFF (it is
+   anti-monotonic in the allowance: a smaller allowance trims rays and so puts
+   more lights in one draw); the test prints how often ON has fewer.
+2. **Common far floor.** All presets thin the far segment, as a last resort and
+   one step at a time, to `min(authored count, 8)` (`kThinFarFloor`, Low's
+   uniform far count): never coarser than OFF Low. High and Cinematic no longer
+   fail the segmented march while Low keeps it (their floors were 20 and 32).
+   Segmented admission is therefore identical for every preset and the far step
+   count is common to all of them. Test 24 now sweeps 100..1500M (and 720p-4K,
+   K1..8): every preset draws, segmented-ness is common, far steps are common
+   and samples, rays per pixel and resolution do not decrease with the preset.
+   Uniform-fallback rows are the OFF plan; its preset inversion at tight budgets
+   (for example 4K/K8/1000M uniform: Medium 5x12 vs High 3x20) predates this
+   switch and is out of scope here. Test 14 was updated for the new floor
+   (the "Cinematic far floor is its uniform 32" expectation described the old rule).
+3. **Budget log.** A Thin request that fell back to the uniform march is now a
+   clamp (`thinDropped=1`), and the tracked plan includes `thin` and the
+   effective `nearSteps`, so toggling the switch or crossing the fallback logs
+   once.
+4. **Take record.** Feed passes write their own `mRelightFeedAreaTake`. The main
+   view's record (and projector slots) is no longer written by feeds at all;
+   `area_view` stays the main view. The most recent feed pass is a separate
+   `feed_view` (`source` `most_recent_vcam_feed_area_pass`, `view` `vcam_feed`),
+   present only while Soft shadows and the VCam feed switch are on.
+
 **Fix round 6 (10/22):** ten second-round review findings, all in the ON path;
 OFF is unchanged (independent HEAD RGBA8 identity, planner identity).
 
 1. **Feeds keep their shadows.** The segmented main plan filled about the whole
    1500M budget and never drops steps, so feeds were left 0.9-22M and several
-   got no channel. The main plan now holds back 1/32 of the budget
-   (`kFeedHeadroomDivisor`, 46.9M at the default) and a feed whose segmented
+   got no channel. The main plan now holds back a feed reservation (round 7
+   replaced the flat 1/32 with `feedReservation()`) and a feed whose segmented
    plan does not fit falls back to the authored **uniform** march and plan
    (`feedWorkload(q, uniform, ...)`). The fallback is a plan property: the
    shader mode uniform follows `work.q.nearSteps > 0`, so a fallback feed also
@@ -1548,7 +1603,8 @@ OFF is unchanged (independent HEAD RGBA8 identity, planner identity).
 5. **Short rays.** The floor is `min(0.02, near_dist)` and every sample is
    clamped to `limit`.
 6. **Fail-closed cliff.** Under budget pressure the far segment thins one step
-   at a time **down to the authored uniform count** (never coarser than OFF)
+   at a time **down to the common floor** (round 7; round 6 used the authored
+   uniform count, which left Cinematic with a floor of 32)
    after rays and resolution are spent and before the view fails; if the
    segmented plan still cannot fit (for example Cinematic, whose floor is 32,
    or a very small budget) the main view and feeds use the uniform plan. ON
@@ -1594,10 +1650,10 @@ reload listener or new shader-manager dependency.
 The planner charges `pixels * requested K * samples * (near+far)` and bounds
 every split draw. ON chooses half resolution unless 12 full-resolution rays fit,
 then reduces rays from the original request, then resolution, then thins only
-the far segment toward the authored uniform count (near steps are never
+the far segment toward the common floor, 8 (near steps are never
 reduced). A plan that still cannot fit uses the uniform plan, so ON never draws
-less than OFF. The main plan plans against 31/32 of the budget; feed
-reservations still reserve main work first. Native shadow allocation, slot auction and
+less than OFF. The segmented main plan plans against the budget minus the feed
+reservation (at most 67.1M); feed allowances still reserve main work first. Native shadow allocation, slot auction and
 count-before-filter ordering are unchanged. These are iteration ceilings,
 not measured GPU time or bounds on refinement/filter reads.
 
@@ -1616,7 +1672,7 @@ also records `authored_steps`, effective `near_steps`, `far_steps` and total
 before take start. The Steps settings comment documents far-count semantics.
 
 Production-planner tables, default **1500M/frame, 750M/draw**; ON plans against
-31/32 of the frame (1453M) to leave feed headroom. H/F means
+the frame minus the feed reservation (1433M at K8, 1466M at K4). H/F means
 half/full trace resolution. "Draw M" is the largest actual channel batch.
 The standalone math test asserts literal tables and prints both modes.
 Tests 15/22 cover K7/K8 and feed reservations with Thin objects OFF/ON;
@@ -1735,3 +1791,20 @@ No viewer build/launch, commit, push or stash operation. No private-reference
 access. Synthetic fixtures do not establish whole-viewer image identity or
 continuous intersection of hidden/offscreen geometry; in-world validation
 and measured GPU cost remain outside this no-build task.
+
+**Round 7 gate records** are in `.tmp/thin_r7/` (each gate ran once after the final
+edit; the GPU gates ran one at a time):
+
+| Gate | Result | Log |
+|---|---|---|
+| `relight_shader_check.py`; `--area-only --thin-only` | **PASS**; **PASS** | `shaders_full.log`, `shader_thin.log` |
+| `relight_area_check.py` (includes the VCam CPU/dispatch fixtures and the HEAD planner identity) | **PASS** | `area.log` |
+| `relight_thin_check.py` run directly; `relight_off_check.py` | **PASS**; **PASS** | `thin_direct.log`, `off.log` |
+| Standalone `alrelightmath` tests | **PASS 25/25** (new: 25 feed admission grid; 14, 18, 23, 24 updated) | `math.log` |
+| `zs_check.ps1` per touched TU: `pipeline.cpp`, `alrelightmath_test.cpp` | **PASS** (2 TUs) | `zs_pipeline.log`, `zs_alrelightmath_test.log` |
+| Kit generator `--check` x3 (kit gen, page sources, functional manifest) | **PASS** | `director_*_check.log` |
+| `prebuild_guard.ps1 -ChecksOnly` (safecrlf environment) | **PASS, all gates** | `prebuild.log` |
+| `git diff --check` | **PASS** | `diff_check.log` |
+
+The dispatch fixture stub gained `mRelightFeedAreaTake`. No viewer build/launch,
+commit, push or stash; no private-reference access.

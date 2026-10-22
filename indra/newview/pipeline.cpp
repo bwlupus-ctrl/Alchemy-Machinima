@@ -26682,14 +26682,18 @@ void LLPipeline::logRelightTake(const char* trigger) const
     // Disabled starts are labelled here; OFF frames do no diagnostic copies.
     auto area = mRelightAreaTake;
     auto area_slots = mRelightAreaSlotIDs;
+    auto feed = mRelightFeedAreaTake;
     if (!gSavedSettings.getBOOL("RenderAreaShadows"))
     {
         area = {};
         area.status = "disabled";
         area_slots = {};
     }
+    // Feed record only while area shadows AND the VCam feed switch are on.
+    if (!gSavedSettings.getBOOL("RenderAreaShadows") || !gSavedSettings.getBOOL("RenderAreaShadowsVCam"))
+        feed = {};
     auto record = std::make_unique<LLSD>(ALRelight::takeRecord(trigger, settings, area,
-        area_slots, slots, fade));
+        area_slots, slots, fade, &feed));
     settings.clear(); // Drop the last main-thread LLSD subtree reference before transfer.
     static U64 record_id = 0; // Diagnostic sequence only; do not touch the shared random generator.
     const auto id = std::to_string(++record_id);
@@ -26748,20 +26752,24 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         }
         return;
     }
+    // A VCam feed pass writes its own record; the main view's take record (and slot
+    // ids) are never overwritten by it.
+    auto& take = sPrismLensRender ? mRelightFeedAreaTake : mRelightAreaTake;
     const bool allowed = areaShadowsAllowedThisView();
     if (allowed)
     {
-        // Reached only while enabled. Auxiliary views cannot overwrite it;
-        // no snapshot field feeds selection, admission, allocation or shading.
-        mRelightAreaTake = {};
-        mRelightAreaTake.status = "unavailable_or_no_draw_budget";
-        mRelightAreaTake.width = mRT->deferredScreen.getWidth();
-        mRelightAreaTake.height = mRT->deferredScreen.getHeight();
-        for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
-        {
-            const LLDrawable* drawable = mShadowSpotLight[i];
-            mRelightAreaSlotIDs[i] = drawable && drawable->getVObj() ? drawable->getVObj()->getID() : LLUUID::null;
-        }
+        // Reached only while enabled. no snapshot field feeds selection, admission,
+        // allocation or shading.
+        take = {};
+        take.status = "unavailable_or_no_draw_budget";
+        take.width = mRT->deferredScreen.getWidth();
+        take.height = mRT->deferredScreen.getHeight();
+        if (!sPrismLensRender)
+            for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+            {
+                const LLDrawable* drawable = mShadowSpotLight[i];
+                mRelightAreaSlotIDs[i] = drawable && drawable->getVObj() ? drawable->getVObj()->getID() : LLUUID::null;
+            }
     }
     LL_DEBUGS("RelightQ") << "[RelightQ] allowed-view PASS allowed=" << allowed
         << " cube=" << gCubeSnapshot << " prism=" << sPrismLensRender
@@ -26853,8 +26861,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             luminance,ALRelight::legacy(distance,range,volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)))},
             static_cast<unsigned>(llclamp(cap(),1,8)));
     }
-    mRelightAreaTake.selected = selected;
-    mRelightAreaTake.status = "no_selected_lights";
+    take.selected = selected;
+    take.status = "no_selected_lights";
     if (!selected.size) return;
     if (selected.candidates > static_cast<U32>(llclamp(cap(),1,8)))
         LL_DEBUGS("RelightQ") << "[RelightQ] cap PASS candidates=" << selected.candidates
@@ -26926,37 +26934,43 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // The authored uniform march is also the fallback when a segmented plan cannot fit.
     const ALAreaShadow::Quality uniform{samples(),steps(),half()};
     const auto requested = thin() ? ALAreaShadow::segmented(uniform,preset()) : uniform;
+    static_assert(ALAreaShadow::kFeedSlots == LLPrismLens::MAX_CAPTURES, "feed slot count");
     const auto work = sPrismLensRender ? ALAreaShadow::feedWorkload(requested,uniform,
         mMainRT.deferredScreen.getWidth(),mMainRT.deferredScreen.getHeight(),width,height,
         selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),LLPrismLens::MAX_CAPTURES) :
         ALAreaShadow::workloadOrUniform(requested,uniform,width,height,
-            selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)));
-    mRelightAreaTake.authoredSteps = uniform.steps; // Sampled by this pass itself.
-    mRelightAreaTake.feed = sPrismLensRender;
-    mRelightAreaTake.segmentedRequested = requested.nearSteps > 0;
-    mRelightAreaTake.work = work;
-    mRelightAreaTake.planned = true;
-    mRelightAreaTake.status = "budget_rejected";
+            selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),LLPrismLens::MAX_CAPTURES);
+    take.authoredSteps = uniform.steps; // Sampled by this pass itself.
+    take.feed = sPrismLensRender;
+    take.segmentedRequested = requested.nearSteps > 0;
+    take.work = work;
+    take.planned = true;
+    take.status = "budget_rejected";
     if (sPrismLensRender)
         LL_DEBUGS("RelightQ") << "[RelightQ] VCam budget " << (work.channels ? "PASS" : "SKIP")
             << " target=" << width << "x" << height << " K=" << selected.size
             << " S=" << work.q.samples << " steps=" << work.q.steps << " half=" << work.q.half
             << " iterations=" << work.iterations << " allowance=" << work.budget << LL_ENDL;
     // Include inputs and effective plan so clamp changes (including recovery) log once.
-    const std::array<S32,11> plan = {samples(),steps(),half(),(S32)width,(S32)height,
-        (S32)selected.size,budget(),work.q.samples,work.q.steps,work.q.half,llclamp(cap(),1,8)};
-    static std::array<S32,11> previous = {};
+    const std::array<S32,13> plan = {samples(),steps(),half(),(S32)width,(S32)height,
+        (S32)selected.size,budget(),work.q.samples,work.q.steps,work.q.half,llclamp(cap(),1,8),
+        thin(),work.q.nearSteps};
+    static std::array<S32,13> previous = {};
     if (!sPrismLensRender && plan != previous)
     {
         const auto& wanted = work.q.nearSteps ? requested : uniform; // A fallback compares with the uniform plan.
+        // A Thin objects request that fell back to the uniform march is a clamp too.
+        const bool thin_dropped = requested.nearSteps > 0 && !work.q.nearSteps;
         const bool clamped = work.q.samples != samples() || work.q.steps != wanted.steps ||
-            work.q.half != half() || !work.channels;
+            work.q.half != half() || !work.channels || thin_dropped;
         if (clamped || previous[0])
             LL_INFOS("RelightQ") << "[RelightQ] area-shadow budget clamp " << (clamped ? "active" : "released")
                 << " requested=" << samples() << "x" << wanted.steps << " half=" << half()
                 << " effective=" << work.q.samples << "x" << work.q.steps << " half=" << work.q.half
                 << " pixels=" << work.pixels << " K=" << selected.size << " iterations=" << work.iterations
                 << " requestedK=" << llclamp(cap(),1,8)
+                << " thin=" << thin() << " nearSteps=" << work.q.nearSteps
+                << " thinDropped=" << thin_dropped
                 << " budget=" << work.budget << " perDraw=" << work.drawCap
                 << " channelsPerDraw=" << work.channels << LL_ENDL;
         previous = plan;
@@ -26965,7 +26979,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // Count actual passes, including repeated renders of one Gate source.
     // The frame number only resets accounting; it never seeds shader output.
     if (sPrismLensRender && !mPrismAreaPasses.admit(gFrameCount,LLPrismLens::MAX_CAPTURES)) return;
-    mRelightAreaTake.status = "allocation_failed";
+    take.status = "allocation_failed";
     const U32 w = work.q.half ? (width+1)/2 : width, h = work.q.half ? (height+1)/2 : height;
     const U32 planes = (selected.size+3)/4;
     const auto ensure = [](LLRenderTarget& target, U32 x, U32 y)
@@ -27106,7 +27120,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     }
     mAreaShadowCount = selected.size;
     mAreaShadowValid = true;
-    mRelightAreaTake.status = "rendered";
+    take.status = "rendered";
     static LLFrameTimer summary;
     if (!sPrismLensRender && summary.getElapsedTimeF32() >= 1.f)
     {

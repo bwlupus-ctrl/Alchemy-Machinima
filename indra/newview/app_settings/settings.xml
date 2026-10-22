@@ -21576,7 +21576,7 @@
     </map>
     <key>RenderAreaShadowSteps</key>
     <map>
-        <key>Comment</key><string>Linear depth steps per ray (1-64). With Thin objects on this is the authored far count: presets use at least 32 far steps, Custom keeps this count, and 48 near steps are added at runtime. A heavy view may thin the far steps back down to this count, never below it.</string>
+        <key>Comment</key><string>Linear depth steps per ray (1-64). With Thin objects on this is the authored far count: presets use at least 32 far steps, Custom keeps this count, and 48 near steps are added at runtime. A heavy view may thin the far steps down to 8 (or this count if lower), never coarser than the Low preset.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>S32</string>
         <key>Value</key><integer>12</integer>
@@ -21632,7 +21632,7 @@
     </map>
     <key>RenderAreaShadowBudget</key>
     <map>
-        <key>Comment</key><string>Hard area-shadow march budget in millions/frame (1-1500). Each draw is limited to half. Runtime reductions: rays, then resolution; steps also decrease with Thin objects off, and with it on they thin back to the authored count last. A Thin objects plan that still cannot fit uses the uniform march.</string>
+        <key>Comment</key><string>Hard area-shadow march budget in millions/frame (1-1500). Each draw is limited to half. Runtime reductions: rays, then resolution; steps also decrease with Thin objects off, and with it on the far steps thin last, to at most 8 (every preset shares that floor). A Thin objects plan that still cannot fit uses the uniform march. With Thin objects on, the main view leaves each VCam feed at least the budget share it would get with it off (up to what a 2048x2048 feed needs), or falls back to the uniform march.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>S32</string>
         <key>Value</key><integer>1500</integer>

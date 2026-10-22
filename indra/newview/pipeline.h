@@ -1576,6 +1576,8 @@ public:
     std::array<LLUUID, 8> mAreaShadowIDs;
     // Diagnostics only: preserve the last allowed pass across auxiliary views.
     ALRelight::AreaTakeState mRelightAreaTake;
+    // Most recent VCam feed pass, kept apart so feeds never overwrite the main view's record.
+    ALRelight::AreaTakeState mRelightFeedAreaTake;
     std::array<LLUUID, MAX_SPOT_SHADOWS> mRelightAreaSlotIDs;
     // Opt-in Prism transaction; area targets remain owned by the scratch pool.
     bool mPrismAreaStateSaved = false;

@@ -323,21 +323,29 @@ template<> template<> void relight_object::test<14>()
         ensure("near counted, far never degraded",w.q.steps==q.steps && w.q.nearSteps==q.nearSteps);
         ensure("segmented ceiling",w.iterations<=w.budget);
     }
-    // Last resort before failing closed: thin only the far segment, never below
-    // the authored uniform count, never the near steps. 4K/K8 at 1000M needs it.
+    // Last resort before failing closed: thin only the far segment, down to the COMMON
+    // floor (Low's uniform far count, 8: never coarser than OFF Low), never the near
+    // steps. 4K/K8 at 1000M needs it, and every preset gets the same segmented march.
     {
-        const auto low=workload(quality(0,true),3840,2160,8,1000,8);
-        ensure("far thinned instead of failing closed",low.channels>0 && low.q.nearSteps==48 &&
-            low.q.steps-48<32 && low.q.steps-48>=8 && low.q.samples==1 && low.q.half);
-        ensure("far reduction stays inside the planning limit",low.iterations<=low.budget-low.budget/32);
-        const auto cinematic=workload(quality(3,true),3840,2160,8,1000,8);
-        ensure("Cinematic far floor is its uniform 32: segmented plan fails closed",!cinematic.channels);
-        const auto fallback=workloadOrUniform(quality(3,true),quality(3),3840,2160,8,1000,8);
+        ensure_equals("common far floor is OFF Low's far count",kThinFarFloor,quality(0).steps);
+        const auto reserved=feedReservation(3840,2160,1000000000ull,8,kFeedSlots);
+        for (int preset=0; preset<4; ++preset)
+        {
+            const auto plan=workload(quality(preset,true),3840,2160,8,1000,8);
+            ensure("far thinned instead of failing closed",plan.channels>0 && plan.q.nearSteps==48 &&
+                plan.q.steps-48==kThinFarFloor && plan.q.samples==1 && plan.q.half);
+            ensure("far reduction stays inside the planning limit",plan.iterations<=plan.budget-reserved);
+            ensure("the feed reservation is held back",reserved>0 && plan.iterations<=plan.budget-reserved);
+            ensure("every preset keeps the segmented march",
+                workloadOrUniform(quality(preset,true),quality(preset),3840,2160,8,1000,8).q.nearSteps==48);
+        }
+        // A budget the segmented plan cannot fit: the authored uniform plan, never darker than OFF.
+        const auto fallback=workloadOrUniform(quality(3,true),quality(3),3840,2160,8,300,8);
         ensure("fallback is the authored uniform plan, never darker than OFF",fallback.channels>0 &&
             !fallback.q.nearSteps && fallback.q.steps<=32);
     }
     // ON never draws fewer shadows than OFF: wherever the uniform plan fits, so does ON,
-    // and a segmented far segment is never coarser than the authored uniform count.
+    // and a segmented far segment is never coarser than the common floor (OFF Low's 8).
     for (unsigned height : {720u,1080u,1440u,2160u})
     for (unsigned lights : {1u,4u,8u})
     for (int preset=0; preset<4; ++preset)
@@ -348,7 +356,8 @@ template<> template<> void relight_object::test<14>()
         ensure("ON renders wherever OFF renders",!off.channels || on.channels);
         if (on.q.nearSteps)
         {
-            ensure("segmented far never coarser than OFF",on.q.steps-on.q.nearSteps>=quality(preset).steps);
+            ensure("segmented far never coarser than the common floor",
+                on.q.steps-on.q.nearSteps>=std::min(quality(preset).steps,kThinFarFloor));
             ensure("segmented ceiling holds",on.iterations<=on.budget);
         }
         else if (on.channels)
@@ -522,7 +531,7 @@ template<> template<> void relight_object::test<18>()
         AreaTakeState fallback = state;
         fallback.feed = true;
         fallback.work = ALAreaShadow::workloadOrUniform(ALAreaShadow::quality(3,true),
-            ALAreaShadow::quality(3),3840,2160,8,1000,8);
+            ALAreaShadow::quality(3),3840,2160,8,300,8);
         const auto record = areaTakeRecord(fallback);
         ensure_equals("feed pass labelled",record["view"].asString(),std::string("vcam_feed"));
         ensure("fallback labelled",record["work"]["uniform_fallback"].asBoolean());
@@ -532,6 +541,36 @@ template<> template<> void relight_object::test<18>()
         fallback.work.q.steps = 10;
         fallback.work.q.nearSteps = 48;
         ensure_equals("far steps clamped at zero",areaTakeRecord(fallback)["work"]["far_steps"].asInteger(),0);
+    }
+    // The main view's record stays the take record; a feed pass is a separate, labelled
+    // "feed_view" and never changes any main field.
+    {
+        const LLSD before = takeRecord("synthetic",settings,state,areaSlots,currentSlots,fade);
+        ensure("no feed record unless a feed pass was observed",!before.has("feed_view"));
+        AreaTakeState idle;
+        ensure("unobserved feed omitted",
+            !takeRecord("synthetic",settings,state,areaSlots,currentSlots,fade,&idle).has("feed_view"));
+        AreaTakeState feedPass;
+        feedPass.status = "rendered";
+        feedPass.feed = true;
+        feedPass.width = 640; feedPass.height = 360;
+        feedPass.planned = true;
+        feedPass.authoredSteps = 20;
+        feedPass.work = ALAreaShadow::workloadOrUniform(ALAreaShadow::quality(2,true),
+            ALAreaShadow::quality(2),640,360,4,300,4);
+        const LLSD both = takeRecord("synthetic",settings,state,areaSlots,currentSlots,fade,&feedPass);
+        ensure_equals("main width untouched",both["area_view"]["width"].asInteger(),1920);
+        ensure_equals("main view label untouched",both["area_view"]["view"].asString(),std::string("main"));
+        ensure_equals("main status untouched",both["area_view"]["status"].asString(),before["area_view"]["status"].asString());
+        ensure_equals("main plan untouched",both["area_view"]["work"]["iterations"].asString(),
+            before["area_view"]["work"]["iterations"].asString());
+        ensure_equals("main selection untouched",both["area_view"]["selected"].size(),before["area_view"]["selected"].size());
+        ensure_equals("feed view labelled",both["feed_view"]["view"].asString(),std::string("vcam_feed"));
+        ensure_equals("feed view source",both["feed_view"]["source"].asString(),
+            std::string("most_recent_vcam_feed_area_pass"));
+        ensure_equals("feed view own size",both["feed_view"]["width"].asInteger(),640);
+        ensure("feed view own plan",both["feed_view"]["work"]["iterations"].asString()!=
+            both["area_view"]["work"]["iterations"].asString());
     }
     state.status = "budget_rejected";
     state.work = ALAreaShadow::workload({1,1,true},3840,2160,8,1,8);
@@ -685,8 +724,8 @@ template<> template<> void relight_object::test<23>()
     using namespace ALAreaShadow;
     // Thin ON feed ADMISSION: every preset, main 1080p and 4K at K4/K8, every
     // feed size from 512x288 to 1080p with every light count, default budget.
-    // The main plan holds 1/32 back and a segmented feed that does not fit falls
-    // back to the authored uniform plan, so a feed never loses its shadows.
+    // The main plan holds back the feed reservation and a segmented feed that does not
+    // fit falls back to the authored uniform plan, so a feed never loses its shadows.
     struct Size { unsigned w,h; };
     constexpr Size feeds[]={{512,288},{640,360},{854,480},{1280,720},{1920,1080}};
     unsigned segmentedFeeds=0, fallbackFeeds=0;
@@ -739,7 +778,10 @@ template<> template<> void relight_object::test<24>()
     // a coarser trace than the preset below it, at any resolution, K or default budget.
     struct Size { unsigned w,h; };
     constexpr Size sizes[]={{1280,720},{1600,900},{1920,1080},{2560,1440},{3840,2160}};
-    for (int budget : {1500,1400,1200})
+    // Budgets run from 100M to the default: tight budgets thin the far segment to the
+    // common floor, which every preset shares, so segmentation never depends on the preset.
+    unsigned segmentedRows=0, uniformRows=0;
+    for (int budget : {1500,1400,1200,1000,800,600,450,300,200,100})
     for (const auto& size : sizes)
     for (unsigned lights=1; lights<=8; ++lights)
     {
@@ -754,6 +796,15 @@ template<> template<> void relight_object::test<24>()
                     plan[preset].q.samples>=kFullResMinSamples);
         }
         for (int preset=1; preset<4; ++preset)
+            ensure("no preset loses the segmented march while a lower one keeps it",
+                (plan[preset].q.nearSteps>0)==(plan[0].q.nearSteps>0));
+        // Uniform rows are the OFF plan (its preset inversion at tight budgets predates
+        // Thin objects and is out of scope); the monotonic rule covers the segmented rows.
+        if (!plan[0].q.nearSteps) { ++uniformRows; continue; }
+        ++segmentedRows;
+        for (int preset=1; preset<4; ++preset)
+            ensure("segmented far steps are common to every preset",plan[preset].q.steps==plan[0].q.steps);
+        for (int preset=1; preset<4; ++preset)
         {
             const auto& lower=plan[preset-1];
             const auto& higher=plan[preset];
@@ -763,12 +814,89 @@ template<> template<> void relight_object::test<24>()
             ensure("higher preset never traces at lower resolution",lower.q.half || !higher.q.half);
         }
     }
+    ensure("segmented rows are exercised",segmentedRows>0);
+    ensure("fallback rows are exercised",uniformRows>0);
     // The previously inverted configurations, literally: Cinematic is now half
     // resolution with at least High's samples (it was 4 full-res vs 12 half-res).
     const auto high=workload(quality(2,true),1920,1080,1,1500,1);
     const auto cinematic=workload(quality(3,true),1920,1080,1,1500,1);
     ensure("1080p K1 High",high.q.samples==12 && high.q.half);
     ensure("1080p K1 Cinematic >= High",cinematic.q.samples>=high.q.samples && cinematic.q.half);
+}
+
+template<> template<> void relight_object::test<25>()
+{
+    using namespace ALAreaShadow;
+    // Lowered budgets: with Thin ON every feed gets at least the allowance it would get
+    // with Thin OFF (capped at what a 2048x2048 feed needs to draw at all), so it draws
+    // wherever the OFF feed draws. Main 1080p/1440p/4K x K1..8 x every preset x feeds
+    // from 512x288 to 1080p (and the 2048x2048 bound) at budgets 100..1500M.
+    struct Size { unsigned w,h; };
+    constexpr Size feeds[]={{512,288},{640,360},{854,480},{1280,720},{1920,1080},{2048,2048}};
+    unsigned cases=0, offDraws=0, fewerChannels=0, fewerRays=0, segmentedMain=0, uniformMain=0;
+    for (int budget : {100,300,600,1000,1500})
+    for (unsigned mainHeight : {1080u,1440u,2160u})
+    for (unsigned cap=1; cap<=8; ++cap)
+    for (int preset=0; preset<4; ++preset)
+    {
+        const unsigned mainWidth=mainHeight*16/9;
+        const auto uniform=quality(preset), q=segmented(uniform,preset), same=quality(preset);
+        const auto onMain=workloadOrUniform(q,uniform,mainWidth,mainHeight,cap,budget,cap);
+        const auto offMain=workload(same,mainWidth,mainHeight,cap,budget,cap);
+        if (onMain.q.nearSteps) ++segmentedMain; else ++uniformMain;
+        ensure("ON main draws wherever OFF main draws",!offMain.channels || onMain.channels);
+        const std::uint64_t offReserve=offMain.channels ? offMain.iterations:0;
+        const std::uint64_t offAllowance=(offMain.budget-offReserve)/kFeedSlots;
+        const std::uint64_t need=kFeedGuaranteePixels*std::max(cap,2u);
+        const std::uint64_t onReserve=onMain.channels ? onMain.iterations:0;
+        const std::uint64_t onAllowance=(onMain.budget-onReserve)/kFeedSlots;
+        for (const auto& size : feeds)
+        for (unsigned lights=1; lights<=cap; ++lights)
+        {
+            const auto on=feedWorkload(q,uniform,mainWidth,mainHeight,size.w,size.h,lights,budget,cap,kFeedSlots);
+            const auto off=feedWorkload(same,same,mainWidth,mainHeight,size.w,size.h,lights,budget,cap,kFeedSlots);
+            ++cases;
+            // Never zero when OFF draws, never above the shared budget.
+            ensure("ON feed draws wherever the OFF feed draws",!off.channels || on.channels>0);
+            ensure("ON allowance is at least min(OFF allowance, 2048x2048 minimum)",
+                onAllowance>=std::min(offAllowance,need) && on.budget==onAllowance);
+            ensure("feed stays inside its allowance",on.iterations<=onAllowance);
+            ensure("one budget for main and every feed slot",onReserve+kFeedSlots*on.iterations<=onMain.budget);
+            // Main fell back to the OFF plan: the feed is exactly the OFF feed.
+            if (!onMain.q.nearSteps && !on.q.nearSteps)
+                ensure("OFF-main feed is exactly the OFF feed",on.q.samples==off.q.samples &&
+                    on.q.steps==off.q.steps && on.q.half==off.q.half && on.channels==off.channels);
+            if (off.channels)
+            {
+                ++offDraws;
+                // Channels are lights traced per draw; a feed with a smaller allowance may
+                // use fewer per draw but never zero. Counted, reported, not hidden.
+                if (on.channels<off.channels) ++fewerChannels;
+                if (on.q.samples*(on.q.half ? 1:4)<off.q.samples*(off.q.half ? 1:4)) ++fewerRays;
+            }
+        }
+        // Thin OFF is the committed plan: its feed allowance is exactly the OFF formula.
+        const auto off=feedWorkload(same,same,mainWidth,mainHeight,640,360,cap,budget,cap,kFeedSlots);
+        ensure("OFF feed allowance unchanged",off.budget==(offMain.budget-offReserve)/kFeedSlots);
+    }
+    ensure("grid covers segmented main plans",segmentedMain>0);
+    ensure("grid covers uniform main fallbacks",uniformMain>0);
+    ensure("grid size",cases>10000 && offDraws>0);
+    std::cout << "[RelightQ] feed admission grid cases=" << cases << " OFF-draws=" << offDraws
+        << " ON-channels-below-OFF=" << fewerChannels << " ON-rays-below-OFF=" << fewerRays
+        << " segmentedMain=" << segmentedMain << " uniformMain=" << uniformMain << std::endl;
+    // The reported example: Low, 250M, 1080p main, K8, 1280x720 feed. The old 1/32 holdback
+    // left 1.18M per feed (no shadows) against 14.66M with Thin OFF.
+    {
+        const auto uniform=quality(0), q=segmented(uniform,0);
+        const auto on=feedWorkload(q,uniform,1920,1080,1280,720,8,250,8,kFeedSlots);
+        const auto off=feedWorkload(uniform,uniform,1920,1080,1280,720,8,250,8,kFeedSlots);
+        ensure("250M: OFF feed allowance is 14.66M",off.budget==14661200ull && off.channels>0);
+        ensure("250M: ON feed allowance is no smaller",on.budget>=off.budget && on.channels>0);
+        const auto big=feedWorkload(q,uniform,1920,1080,1280,720,8,1500,8,kFeedSlots);
+        ensure("1500M: ON feed keeps its shadows",big.channels>0 && big.budget>=feedReservation(1920,1080,
+            1500000000ull,8,kFeedSlots)/kFeedSlots);
+    }
 }
 
 template<> template<> void relight_object::test<21>()

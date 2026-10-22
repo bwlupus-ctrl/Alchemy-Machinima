@@ -206,7 +206,7 @@ struct LLPipeline {
     bool mAreaShadowValid=true,mPrismSavedAreaValid=false;
     unsigned mAreaShadowCount=2,mPrismSavedAreaCount=0;
     std::array<LLUUID,8> mAreaShadowIDs{},mPrismSavedAreaIDs{};
-    Take mRelightAreaTake,mPrismSavedAreaTake;
+    Take mRelightAreaTake,mRelightFeedAreaTake,mPrismSavedAreaTake;
     std::array<LLUUID,10> mRelightAreaSlotIDs{},mPrismSavedAreaSlotIDs{};
     ALAreaShadow::FeedPasses mPrismAreaPasses;
     unsigned mAreaShadowQueries[2]={}; bool mAreaShadowQueryPending=false;
