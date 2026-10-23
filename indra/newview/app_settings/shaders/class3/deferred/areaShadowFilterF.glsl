@@ -18,6 +18,7 @@ uniform vec4 area_world_info[4];  // per channel: x first atlas tile row (2 k), 
 uniform uvec4 area_world_seed;    // per channel: light UUID hash (the rotation's Cranley-Patterson shift)
 uniform vec3 area_world_rot[3];   // ROWS of the view -> agent rotation (the columns of the view matrix's 3x3): agent = (dot(r0,v), dot(r1,v), dot(r2,v))
 uniform sampler2D area_world_atlas; // D32F atlas, 1632 x 1088 per light, compare mode NONE
+uniform int area_world_debug;     // diagnostic (RenderAreaShadowWorldDebug), 0 = normal: 1 world visibility only, 2 face / 5, 3 receiver depth minus atlas depth
 vec3 areaNormal(vec2 uv);
 vec2 areaTexelUV(vec2 uv);
 vec4 getPositionWithDepth(vec2 uv, float depth);
@@ -241,6 +242,28 @@ float awVisibility(int c)
     }
     return lit/float(AW_FILTER_TAPS);
 }
+// Diagnostic values for the channel's visibility (RenderAreaShadowWorldDebug, runtime only): 1 the world term alone, 2 the face index as grey (face / 5),
+// 3 receiver axial depth minus the atlas texel's axial depth at the receiver's own texel: 0.5 = the receiver is the recorded surface, brighter = a blocker
+// in front (scale 5 per metre), black = nothing recorded there.
+float awDebugValue(int c, int mode)
+{
+    if (mode == 1) return awVisibility(c);
+    vec4 light = area_world_light[c];
+    vec3 dv = area_p-light.xyz;
+    vec3 d = vec3(dot(area_world_rot[0],dv),dot(area_world_rot[1],dv),dot(area_world_rot[2],dv));
+    int face = awFace(d);
+    if (mode == 2) return float(face)/5.0;
+    float zr = dot(d,AW_AXIS[face]);
+    float near = area_world_info[c].y;
+    if (!(zr > near)) return 0.0;
+    vec2 tile = vec2(AW_TILE*float(face%3),AW_TILE*(area_world_info[c].x+float(face/3)));
+    vec2 centre = vec2(AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_RIGHT[face])/zr,
+                       AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_UP[face])/zr);
+    float stored = texelFetch(area_world_atlas,ivec2(floor(tile+centre)),0).r;
+    if (stored >= 1.0) return 0.0;
+    float za = awLinear(vec4(stored),near,light.w).x;
+    return clamp(0.5+5.0*(zr-za),0.0,1.0);
+}
 #endif
 void main()
 {
@@ -332,6 +355,7 @@ void main()
     // (A pixel whose window depth is exactly 0 sits on the near plane: its position is clamped, not a surface, so no map can judge it.)
     if (all(equal(area_axis,vec2(0))) && !area_sky && depth > 0.0)
         for (int c = 0; c < 4; ++c)
-            if (area_world[c] > 0.5) frag_color[c] = min(frag_color[c],awVisibility(c));
+            if (area_world[c] > 0.5)
+                frag_color[c] = area_world_debug > 0 ? awDebugValue(c,area_world_debug) : min(frag_color[c],awVisibility(c));
 #endif
 }

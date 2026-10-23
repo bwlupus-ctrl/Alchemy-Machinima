@@ -3170,8 +3170,7 @@ void LLFloaterDirector::refreshLauncherCards()
         if (isWidgetOnScreen(world_status))
         {
             const bool world_on = gSavedSettings.getBOOL("RenderAreaShadows") && gSavedSettings.getBOOL("RenderAreaShadowCubeMaps"); // ui-draw-lint: allow(setting) 2 s launcher clock, on screen only
-            setTextIfChanged(world_status, ALWorldShadow::worldShadowText(
-                world_on ? gPipeline.mWorldShadowState : ALWorldShadow::State::Off, gPipeline.mWorldShadowLights));
+            setTextIfChanged(world_status, world_on ? gPipeline.worldShadowReadout() : ALWorldShadow::worldShadowText(ALWorldShadow::State::Off));
         }
     }
 }

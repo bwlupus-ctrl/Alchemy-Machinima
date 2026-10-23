@@ -35,18 +35,20 @@ import relight_3d_tasks as T  # noqa: E402
 REPO = Path(__file__).resolve().parents[2]
 BASE = 'e150b927cf4'
 SOURCES = ['screen', 'screen_bias005', 'cube', 'cube_near025', 'cube_near010']
-LABELS = {'screen': 'screen-space (today)', 'screen_bias005': 'screen-space, Light bias 5 cm', 'cube': 'cube maps (per-light near: emitter inscribed radius + 1 cm, floor 5 cm)',
+LABELS = {'screen': 'screen-space (today)', 'screen_bias005': 'screen-space, Light bias 5 cm', 'cube': 'cube maps (per-light near: emitter AABB Chebyshev reach + 1 cm, floor 5 cm)',
           'cube_near025': 'cube maps, near 25 cm (superseded rule)', 'cube_near010': 'cube maps, near 10 cm'}
 SHEET_POSES = {'W': ['W_orbit_low_002', 'W_orbit_low_007', 'W_orbit_eye_005', 'W_dolly_004', 'W_vent_002', 'W_vent_006'],
                'WS': ['WS_orbit_low_004', 'WS_orbit_eye_005', 'WS_vent_004'],
                'WB': ['WB_orbit_low_002', 'WB_orbit_low_007', 'WB_orbit_eye_005', 'WB_dolly_004', 'WB_vent_002', 'WB_vent_006'],
                'WD': ['WD_orbit_low_002', 'WD_orbit_low_007', 'WD_orbit_eye_005', 'WD_dolly_004', 'WD_vent_002', 'WD_vent_006'],
                'WI': ['WI_orbit_low_002', 'WI_orbit_low_007', 'WI_orbit_eye_005', 'WI_dolly_004', 'WI_vent_002', 'WI_vent_006']}
+for _n in ('WE', 'WR', 'WP', 'WK'):
+    SHEET_POSES[_n] = [i.replace('WI', _n) for i in SHEET_POSES['WI']]
 
 
-def regions(pos, surf, names):
+def regions(pos, surf, names, wall_z0=2.40):
     x, y, z = pos[..., 0], pos[..., 1], pos[..., 2]
-    wall = (np.abs(y - 5.0) < 0.03) & (np.abs(x) < 1.0) & (z > 2.40) & (z < 3.30)
+    wall = (np.abs(y - 5.0) < 0.03) & (np.abs(x) < 1.0) & (z > wall_z0) & (z < 3.30)
     ids = [i for i, n in enumerate(names) if n.startswith('vent') or n.startswith('vlo') or n == 'wall_side']
     vent_hi = np.isin(surf, ids) & (y > 4.0) & (y < 4.7) & (z > 2.0) & (z < 2.45)
     vent = np.isin(surf, ids) & (y > 4.0) & (y < 4.7) & (z > 1.0) & (z < 1.45)
@@ -57,7 +59,7 @@ def regions(pos, surf, names):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--scenes', default='W,WS,WB,WD,WI')
+    ap.add_argument('--scenes', default='W,WS,WB,WD,WI,WE,WR,WP,WK')
     ap.add_argument('--out', default=str(REPO / '.tmp' / 'cube_r1' / 'sheets_W'))
     ap.add_argument('--cache', default=str(REPO / '.tmp' / 'ref3d_cache'))
     ap.add_argument('--scale', type=float, default=1.5)
@@ -100,7 +102,7 @@ def main():
                 prods[src] = cube.visibility(frame, cube_cfgs[src])[:, fj, fi]
             gt = r['gt']
             L = gt['lights'][0]
-            regs = regions(gt['pos'], gt['surf'], names)
+            regs = regions(gt['pos'], gt['surf'], names, getattr(sc, 'wall_z0', 2.40))
             for reg, mask in regs.items():
                 m = mask & L['cand']
                 if m.sum() < 150:

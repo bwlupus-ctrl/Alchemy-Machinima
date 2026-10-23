@@ -134,6 +134,44 @@ def check_near_and_state():
     assert uses == 3, 'worldShadowLightNear: expected the definition, the raster job and the resolve (3 mentions), got %d' % uses
     assert 'world_info[i].set(static_cast<F32>(ALWorldShadow::kRowsPerLight*world_slot),worldShadowLightNear(' in pipe, 'the resolve must use the per-light near'
     assert 'ALWorldShadow::nearPlane())' not in pipe, 'a raw global near plane crept back in'
+    # Round 5: the near is the Chebyshev reach of the emitter's WORLD AABB (+ small enclosing linkset siblings), never an inscribed radius / scale axis.
+    fn = pipe[pipe.index('static F32 worldShadowLightNear('):]
+    fn = fn[:fn.index('\n}\n')]
+    for needle in ('world_shadow_extents(drawable, lo, hi)', 'ALWorldShadow::chebyshevReach(lo, hi, p)', 'ALWorldShadow::siblingReach(', 'getRootEdit()', 'getChildren()',
+                   'ALWorldShadow::emitterNearPlane('):
+        assert needle in fn, 'worldShadowLightNear lost ' + needle
+    assert 'getSpatialExtents()' in pipe[pipe.index('static bool world_shadow_extents('):pipe.index('static F32 worldShadowLightNear(')], 'the AABB must come from the drawable extents'
+    assert 'llmin(scale' not in fn and 'min_scale' not in fn, 'the round-4 inscribed (smallest scale axis) rule crept back'
+    assert 'inline double emitterNearPlane(double setting, double emitterReach, double lightRadius)' in header and 'emitterReach + 0.01' in header, 'header rule'
+    # raster and resolve: BOTH call it with the LIGHT'S OWN drawable (selected by the light's UUID) and the same getLightRadius(), so the values are identical.
+    assert re.search(r'getVObj\(\)->getID\(\) == mWorldShadowResident\.id\[k\]\) \{ found = drawable; break; \}', pipe), 'raster: the job drawable must be selected by the resident UUID'
+    assert 'const F32 radius = found->getVOVolume()->getLightRadius();' in pipe and 'radius, worldShadowLightNear(found, radius)}' in pipe, 'raster near call'
+    assert re.search(r'volume->getID\(\)!=id\) continue;', pipe) and 'worldShadowLightNear(drawable,volume->getLightRadius())' in pipe, 'resolve near call'
+    # Round 5 root cause: the rotation upload is packed explicitly (never a memcpy of a glm::mat3), by the SAME rule in C++, the unit test and the harness.
+    assert 'std::memcpy(world_rot' not in pipe and 'ALWorldShadow::packViewRotation(view,world_rot)' in pipe, 'world_rot must use packViewRotation'
+    assert 'out[3*column + row] = static_cast<float>(view[column][row]);' in header, 'packViewRotation rule'
+    sys.path.insert(0, str(REPO / 'scripts/code_tools'))
+    import numpy as np
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('relight_3d_gl_pack', str(REPO / 'scripts/code_tools/relight_3d_gl.py'))
+    src_gl = text(REPO / 'scripts/code_tools/relight_3d_gl.py')
+    ns = {'np': np}
+    exec(src_gl[src_gl.index('def pack_view_rotation('):src_gl.index('\nclass ', src_gl.index('def pack_view_rotation('))], ns)
+    Rm = [[.8, -.48, .36], [.6, .64, -.48], [0, .6, .8]]
+    view = np.eye(4)
+    view[:3, :3] = Rm
+    packed = ns['pack_view_rotation'](view)
+    expected = [.8, .6, 0, -.48, .64, .6, .36, -.48, .8]
+    assert np.allclose(packed, expected, atol=1e-6), ('harness packing differs from the pinned vector', packed)
+    test = text(NV / 'tests/alrelightmath_test.cpp')
+    assert 'const float expected[9] = {.8f,.6f,0.f, -.48f,.64f,.6f, .36f,-.48f,.8f};' in test, 'the C++ test lost the pinned vector'
+    assert 'wrot = pack_view_rotation(cam.view)' in src_gl, 'the harness must upload the packed rotation'
+    # the harness mirror
+    src = text(REPO / 'scripts/code_tools/relight_3d_cube_source.py')
+    mirror = src[src.index('def emitter_near('):src.index('def light_tiles(')]
+    for needle in ('chebyshev_reach(lo, hi, light.pos)', 'sibling_encloses_light(lo, hi, light.pos)', 'reach + 0.01', 'min(n, 1.0)', '0.9 * float(light.range)'):
+        assert needle in mirror, 'harness emitter_near lost ' + needle
+    assert 'largest extent' in src and 'float(np.max(hi - lo)) < 1.0' in src, 'harness sibling rule'
     body = pipe[pipe.index('void LLPipeline::generateWorldShadowCubes('):]
     body = body[:body.index('void LLPipeline::renderGroups(')]
     g = body.index('WorldShadowStateGuard state_guard;')
@@ -141,6 +179,44 @@ def check_near_and_state():
     assert g < first_gl, 'the state guard must exist before the first GL work (allocation, release, render)'
     assert 'if (mShader) mShader->bind(); else LLGLSLShader::unbind();' in pipe, 'the guard must rebind or unbind the entry program'
     print('[world] near + state PASS: one per-light near for raster and resolve, state guard before the first GL work', flush=True)
+
+
+def check_rotation_independence():
+    """User note 10/23: point lights are omnidirectional, projectors take their direction from the prim rotation. The cube is VISIBILITY only: its six
+    faces stay WORLD-axis aligned for any projector rotation (the cone/texture belongs to the normal light path), and the only rotation that matters is
+    the emitter prim's WORLD AABB (the near plane). Nothing in the cube path may read a light/prim rotation."""
+    pipe = text(NV / 'pipeline.cpp')
+    zones = [pipe[pipe.index('static bool world_shadow_extents('):pipe.index('// [P1-lite] Residency eligibility')],
+             pipe[pipe.index('void LLPipeline::generateWorldShadowCubes('):pipe.index('void LLPipeline::renderGroups(')]]
+    for z in zones:
+        for forbidden in ('getRotation', 'getRenderRotation', 'getWorldRotation', 'getAngularVelocity', 'getSpotLightDir', 'getLightDirection', 'getProjectorDir'):
+            assert forbidden not in z, 'the cube path reads a rotation: ' + forbidden
+    sys.path.insert(0, str(REPO / 'scripts/code_tools'))
+    import numpy as np
+    import relight_3d_scene as S
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('cube_source_rot', str(REPO / 'scripts/code_tools/relight_3d_cube_source.py'))
+    sys.modules['__main__'].VisibilitySource = getattr(sys.modules['__main__'], 'VisibilitySource', object)
+    cs = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cs)
+    sc = S.SCENES['WR']()
+    base = sc.light_sets[0][0]
+    # a projector pointing 30 degrees down at 45 degrees yaw, same position: identical near, identical six faces (the cone is not part of the cube)
+    d = (np.cos(np.radians(-30)) * np.cos(np.radians(45)), np.cos(np.radians(-30)) * np.sin(np.radians(45)), np.sin(np.radians(-30)))
+    proj = S.Light(base.name, base.pos, base.radius, base.range, kind='projector', dir=tuple(float(v) for v in d), cone=35.0, ignore=base.ignore, seed=base.seed)
+    assert cs.emitter_near(sc, proj) == cs.emitter_near(sc, base), 'projector rotation changed the near plane'
+    near = cs.emitter_near(sc, base)
+    skip = {i for i, p in enumerate(sc.prims) if p.cull == 'back' and cs._inside(p, base.pos)}
+    for face in range(6):
+        a = cs.raster_face(sc, base, face, near, base.range * 1.5, skip)
+        b = cs.raster_face(sc, proj, face, near, proj.range * 1.5, skip)
+        assert np.array_equal(a, b), 'the projector cube face %d differs from the point light cube' % face
+    # the rotated emitter prim: near = its WORLD AABB reach (a 0.12 m box turned 45 degrees reaches 6 sqrt(2) cm) + 1 cm
+    prim = sc.prims[sc.prim_index('bulb')]
+    lo, hi = prim.aabb()
+    assert abs(float(np.max(hi - np.array(base.pos))) - 0.06 * 2 ** 0.5) < 1e-9, 'rotated prim world AABB'
+    assert abs(near - (0.06 * 2 ** 0.5 + 0.01)) < 1e-9, ('rotated emitter near', near)
+    print('[world] rotation independence PASS: the cube path reads no rotation; a rotated projector builds the same six world-axis faces and near as the point light; the rotated emitter near is its world AABB reach', flush=True)
 
 
 def function_range(src, signature):
@@ -172,6 +248,7 @@ check_face_tables()
 check_constants()
 check_camera_id()
 check_near_and_state()
+check_rotation_independence()
 check_mask_sync()
 check_section10()
 print('[world] static pins PASS', flush=True)

@@ -100,17 +100,48 @@ inline double nearPlane() { return kNearPlane; }
 // Runtime near plane from RenderAreaShadowWorldNear (metres): clamped to 2 cm..1 m, non-finite = the default. The no-argument form is the default (harness, tests).
 inline double nearPlane(double setting)
 { return std::isfinite(setting) ? std::min(std::max(setting, 0.02), 1.0) : kNearPlane; }
-// Per-light near plane (10/23 lead decision): the floor is the RenderAreaShadowWorldNear setting; the light sits at its object's centre, so a closed
-// emitter (a bulb) encloses it and fills every face when double-sided or inward-wound. The near plane therefore clears the emitter's inscribed sphere
-// (half of the smallest scale axis) plus 1 cm; clamped to 1 m and to 0.9 x the light radius. Separate shade prims further out still cast.
+// Per-light near plane (10/23 lead decision, round 5): the floor is the RenderAreaShadowWorldNear setting; the light sits at its object's centre, so a closed
+// emitter (a bulb) encloses it and fills every face when double-sided or inward-wound. The six faces clip by AXIAL depth, so the region left out is the world-axis
+// CUBE |p|inf < near (not a sphere): the near plane clears the emitter's REACH = the Chebyshev distance max_i max(hi_i - p_i, p_i - lo_i) from the light to the farthest
+// extent of the emitter's world AABB, plus 1 cm. Clamped to 1 m and to 0.9 x the light radius. Separate shade prims further out still cast.
 // The raster AND the resolve use this same value (the resolve linearises depth with it).
-inline double emitterNearPlane(double setting, double emitterMinScale, double lightRadius)
+inline double chebyshevReach(const double lo[3], const double hi[3], const double p[3])
+{
+    double r = 0.0;
+    for (int i = 0; i < 3; ++i) r = std::max(r, std::max(hi[i] - p[i], p[i] - lo[i]));
+    return r;
+}
+// A sibling link of the light's prim counts for the near plane when its world AABB contains the light and its largest extent is under 1 m (a bulb or glass around a
+// tiny/invisible light link); a big sibling (a wall, a floor) never does.
+inline bool siblingEnclosesLight(const double lo[3], const double hi[3], const double p[3])
+{
+    double largest = 0.0;
+    for (int i = 0; i < 3; ++i)
+    {
+        if (!(p[i] >= lo[i] && p[i] <= hi[i])) return false;
+        largest = std::max(largest, hi[i] - lo[i]);
+    }
+    return largest < 1.0;
+}
+// The reach a sibling link adds: its Chebyshev reach when it encloses the light, else nothing.
+inline double siblingReach(const double lo[3], const double hi[3], const double p[3])
+{ return siblingEnclosesLight(lo, hi, p) ? chebyshevReach(lo, hi, p) : 0.0; }
+inline double emitterNearPlane(double setting, double emitterReach, double lightRadius)
 {
     double n = nearPlane(setting);
-    if (std::isfinite(emitterMinScale) && emitterMinScale > 0.0) n = std::max(n, 0.5 * emitterMinScale + 0.01);
+    if (std::isfinite(emitterReach) && emitterReach > 0.0) n = std::max(n, emitterReach + 0.01);
     n = std::min(n, 1.0);
     if (std::isfinite(lightRadius) && lightRadius > 0.0) n = std::min(n, 0.9 * lightRadius);
     return n;
+}
+// View -> agent rotation for the resolve: out = three vec3 ROWS of the inverse (= the three COLUMNS of the view matrix's 3x3), packed tight as
+// out[3*column + row] = view[column][row]. `Mat` is indexed [column][row] (glm::mat4). Do NOT memcpy a glm::mat3: with the aligned gentypes the mat3
+// columns are 16 bytes wide, so a 36 byte copy scrambles the rows (round 5 root cause: 51 % of floor pixels dark instead of 9 %).
+template<class Mat> inline void packViewRotation(const Mat& view, float out[9])
+{
+    for (int column = 0; column < 3; ++column)
+        for (int row = 0; row < 3; ++row)
+            out[3*column + row] = static_cast<float>(view[column][row]);
 }
 inline double farPlane(double lightRadius) { return 1.5 * std::max(lightRadius, 0.0); }
 
@@ -191,8 +222,34 @@ enum class State
     NoLight,       // on, nothing to choose (no eligible light, point or projector, in view)
     LowMemory,     // the atlas could not be allocated
     OverBudget,    // the resolve ledger rejected every light at this resolution
-    On,            // `lights` lights resident and rendered
+    On,            // `lights` lights rendered a cube THIS frame (round 5: rendered, not merely pinned)
+    Pinned,        // lights are pinned but none rendered a cube this frame (native map, out of view, not found...): see SlotReason
 };
+// Why a pinned slot did (not) render a cube this frame; the readout and the throttled log print it.
+enum class SlotReason : unsigned char
+{
+    None,           // the slot holds no light
+    Rendered,       // its six faces were rendered this frame
+    NotFound,       // the pinned UUID is not among the lights this frame
+    NotEligible,    // found, but not world-eligible now (attachment, actor-only, mirror copy, suppressed, no range)
+    NativeMap,      // a projector that currently samples a native SL shadow map keeps that path
+    OutOfView,      // outside the camera frustum: its six passes are skipped
+    BadRange,       // far plane not beyond the near plane
+};
+inline const char* slotReasonText(SlotReason r)
+{
+    switch (r)
+    {
+    case SlotReason::None: return "empty";
+    case SlotReason::Rendered: return "rendering";
+    case SlotReason::NotFound: return "light not found";
+    case SlotReason::NotEligible: return "not eligible";
+    case SlotReason::NativeMap: return "native map";
+    case SlotReason::OutOfView: return "out of view";
+    case SlotReason::BadRange: return "range inside the near plane";
+    }
+    return "?";
+}
 // Director readout under World shadows. Pure so the wording is testable.
 inline std::string worldShadowText(State state, unsigned lights = 0)
 {
@@ -203,6 +260,7 @@ inline std::string worldShadowText(State state, unsigned lights = 0)
     case State::NoLight: return "no light in view";
     case State::LowMemory: return "not enough video memory";
     case State::OverBudget: return "over the work budget at this size";
+    case State::Pinned: return "pinned but not rendering";
     case State::On:
     {
         const unsigned n = std::clamp(lights, 1u, kMaxLights);
@@ -211,6 +269,28 @@ inline std::string worldShadowText(State state, unsigned lights = 0)
     }
     }
     return "off";
+}
+// Round 5 readout: counts the lights that RENDERED a cube this frame (`rendered`), names the pinned lights (labels[k] for slot k, empty slots have reason None)
+// and says why a pinned light is not rendering. Pure so the wording is testable.
+inline std::string worldShadowReport(State state, unsigned rendered, const std::string* labels, const SlotReason* reasons, unsigned slots)
+{
+    if (state != State::On && state != State::Pinned) return worldShadowText(state, rendered);
+    std::string out;
+    if (rendered > 0)
+    {
+        out = worldShadowText(State::On, rendered) + ":";
+        for (unsigned k = 0; k < slots; ++k)
+            if (reasons[k] == SlotReason::Rendered) out += " " + labels[k] + ";";
+        out.back() = '.';
+    }
+    for (unsigned k = 0; k < slots; ++k)
+    {
+        if (reasons[k] == SlotReason::None || reasons[k] == SlotReason::Rendered) continue;
+        out += (out.empty() ? "" : " ") + std::string("light ") + std::to_string(k + 1) + "/" + std::to_string(slots) + " pinned but not rendering: " + labels[k] +
+            " (" + slotReasonText(reasons[k]) + ").";
+    }
+    if (out.empty()) out = worldShadowText(State::Pinned);
+    return out;
 }
 }
 #endif

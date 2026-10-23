@@ -6,7 +6,7 @@
 What it stands in for, and what it does NOT:
   * The RASTER of the six widened faces is a CPU ray cast (this module): for every light that is world-resident, six
     544 x 544 faces from the shared face table (the Python mirror below; pinned against alworldshadowmath.h and the GLSL
-    table by relight_shader_check.py), front faces only, the near cube clipped (per light: the emitter's inscribed radius + 1 cm, floor 5 cm), the emitting prim a NORMAL caster
+    table by relight_shader_check.py), front faces only, the near cube clipped (per light: the emitter's world-AABB Chebyshev reach + 1 cm, floor 5 cm), the emitting prim a NORMAL caster
     (cull 'none' prims cast from inside), the result a D32F window-depth atlas laid out exactly like LLPipeline::generateWorldShadowCubes (tile column
     f % 3, row 2k + f / 3, 1632 wide). The viewer renders the same faces with the production shadow pass; the harness
     cannot, so the raster is a stated stand-in (analytic scenes: exact depth at texel centres).
@@ -132,17 +132,42 @@ def raster_face(scene, light, face, near, far, skip):
     return dep.reshape(TILE, TILE).astype(np.float32)
 
 
+def chebyshev_reach(lo, hi, p):
+    """alworldshadowmath.h chebyshevReach: max_i max(hi_i - p_i, p_i - lo_i), the Chebyshev distance from p to the farthest extent of the box [lo, hi]."""
+    lo, hi, p = (np.asarray(v, np.float64) for v in (lo, hi, p))
+    return float(np.max(np.maximum(hi - p, p - lo)))
+
+
+def sibling_encloses_light(lo, hi, p):
+    """alworldshadowmath.h siblingEnclosesLight: the world AABB contains the light and its largest extent is under 1 m."""
+    lo, hi, p = (np.asarray(v, np.float64) for v in (lo, hi, p))
+    return bool(np.all(p >= lo) and np.all(p <= hi) and float(np.max(hi - lo)) < 1.0)
+
+
 def emitter_near(scene, light, floor=NEAR):
-    """alworldshadowmath.h emitterNearPlane: max(setting floor, the emitter's inscribed radius + 1 cm), <= 1 m, <= 0.9 x the light radius.
-    The inscribed radius is half the emitter's smallest scale axis (a sphere: r; a box: its smallest half extent; a capsule: r). Kept literal here."""
-    insc = 0.0
-    idx = scene.prim_index(light.ignore) if light.ignore else -1
-    if idx >= 0:
+    """alworldshadowmath.h emitterNearPlane (round 5): max(setting floor, the emitter's REACH + 1 cm), <= 1 m, <= 0.9 x the light radius.
+    The six faces clip by AXIAL depth, so the region left out is the world-axis CUBE |p|inf < near: the reach is the Chebyshev distance from the light to the
+    farthest extent of the emitting prim's WORLD AABB (pipeline.cpp: drawable->getSpatialExtents()), plus the same for the light's linkset SIBLINGS (the other
+    names of Light.ignore) whose AABB contains the light and whose largest extent is < 1 m. Kept literal here.
+    RELIGHT_CUBE_NEAR_RULE=inscribed restores the round-4 rule (half the smallest scale axis): the MUTATION that the corner gates must fail on."""
+    names = [n for n in light.ignore.split(',') if n] if light.ignore else []
+    reach = 0.0
+    legacy = os.environ.get('RELIGHT_CUBE_NEAR_RULE', '') == 'inscribed'
+    for k, name in enumerate(names):
+        idx = scene.prim_index(name)
+        if idx < 0:
+            continue
         p = scene.prims[idx]
-        insc = p.r if p.kind in ('sphere', 'capsule') else float(min(p.h))
+        lo, hi = p.aabb()
+        if legacy:
+            if k == 0:
+                reach = (p.r if p.kind in ('sphere', 'capsule') else float(min(p.h)))
+            continue
+        if k == 0 or sibling_encloses_light(lo, hi, light.pos):
+            reach = max(reach, chebyshev_reach(lo, hi, light.pos))
     n = floor
-    if insc > 0.0:
-        n = max(n, insc + 0.01)
+    if reach > 0.0:
+        n = max(n, reach + 0.01)
     n = min(n, 1.0)
     if light.range > 0.0:
         n = min(n, 0.9 * float(light.range))

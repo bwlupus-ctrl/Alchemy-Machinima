@@ -43,11 +43,11 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2221,
-  "entries": 4090,
+  "generated_kit_rows": 2222,
+  "entries": 4091,
   "pages": 37,
-  "settings_declared": 3689,
-  "xui_files": 842,
+  "settings_declared": 3690,
+  "xui_files": 841,
   "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
@@ -184644,7 +184644,83 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_budget:kit:65",
+   "id": "v2:light_rim_tab:area_shadow_world_debug:kit:65",
+   "csv_index": null,
+   "card": "area_soft_shadows",
+   "card_title": "Soft shadows",
+   "row_label": "World view",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+   "xui_line": null,
+   "widget_name": "area_shadow_world_debug",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "World visibility only",
+    "value": 1
+   },
+   "expect": {
+    "setting": "RenderAreaShadowWorldDebug",
+    "type": "S32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "RenderAreaShadowWorldDebug",
+    "value": 0
+   },
+   "setting": "RenderAreaShadowWorldDebug",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 0,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Off",
+     "value": "0"
+    },
+    {
+     "label": "World visibility only",
+     "value": "1"
+    },
+    {
+     "label": "Face (grey = face / 5)",
+     "value": "2"
+    },
+    {
+     "label": "Depth difference",
+     "value": "3"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml"
+  },
+  {
+   "page": "light_rim_tab",
+   "page_label": "Rim",
+   "group": "light_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "light_rim_tab",
+    "via": "tab"
+   },
+   "id": "v2:light_rim_tab:area_shadow_budget:kit:66",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184699,7 +184775,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_sl_help:kit:66",
+   "id": "v2:light_rim_tab:area_shadow_sl_help:kit:67",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184749,7 +184825,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_wrap_enable:kit:67",
+   "id": "v2:light_rim_tab:cine_rimq_wrap_enable:kit:68",
    "csv_index": null,
    "card": "rim_wrap",
    "card_title": "Light wrap",
@@ -184807,7 +184883,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_shape_enable:kit:68",
+   "id": "v2:light_rim_tab:relight_shape_enable:kit:69",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -184865,7 +184941,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadows_enable:kit:69",
+   "id": "v2:light_rim_tab:area_shadows_enable:kit:70",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -232188,6 +232264,11 @@
    "area_shadow_thin_objects",
    "area_shadow_vcam",
    "area_shadow_world",
+   "area_shadow_world_debug",
+   "area_shadow_world_debug_item_0",
+   "area_shadow_world_debug_item_1",
+   "area_shadow_world_debug_item_2",
+   "area_shadow_world_debug_item_3",
    "area_shadow_world_lights",
    "area_shadow_world_status",
    "arm_camera_check",

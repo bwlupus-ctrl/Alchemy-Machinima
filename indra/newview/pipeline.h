@@ -1609,6 +1609,9 @@ public:
     ALWorldShadow::State mWorldShadowState = ALWorldShadow::State::Off;
     U32 mWorldShadowLights = 0;
     F32 mWorldShadowCpuMs = 0.f;
+    // Round 5: per pinned slot, why it did (not) render a cube this frame; mWorldShadowLights counts the slots that DID.
+    ALWorldShadow::SlotReason mWorldShadowReason[ALWorldShadow::kMaxLights] = {};
+    std::string worldShadowReadout() const;   // the Director wording: rendered count, pinned light names, reasons (read-only, 2 s clock)
     bool worldShadowOwned(const LLUUID& id, U32& slot) const; // true when `id` owns a cube rendered THIS frame
     void releaseWorldShadowTargets();
     GLuint mAreaShadowQueries[2] = {};

@@ -38,6 +38,7 @@ class Prim:
     group: str = ''                # key-blocker group for on/off-screen reporting
     cull: str = 'back'             # cube raster: 'back' = front faces only (a closed prim enclosing the light casts nothing from inside);
                                    # 'none' = double-sided or inward-wound (its enclosing surface FACES the light and casts)
+    link: str = ''                 # linkset id: prims sharing it are links of one object (the per-light near plane counts small enclosing siblings)
 
     def rot(self):
         t = math.radians(self.yaw)
@@ -57,7 +58,9 @@ class Prim:
     def spec(self):
         base = [self.name, self.kind, list(map(float, self.c)), list(map(float, self.h)), self.yaw, self.r,
                 list(map(float, self.a)), list(map(float, self.b))]
-        return base if self.cull == 'back' else base + [self.cull]
+        if self.cull != 'back':
+            base = base + [self.cull]
+        return base + [self.link] if self.link else base
 
 
 def isect(p, o, d, eps=1e-5):
@@ -226,6 +229,10 @@ class Scene:
                 return i
         return -1
 
+    def prim_indices(self, spec):
+        """Light.ignore is one prim name or a comma list (the emitting link first, then linkset siblings that wrap the light): their indices."""
+        return [i for i in (self.prim_index(n) for n in spec.split(',') if n) if i >= 0] if spec else []
+
     def signature(self):
         blob = json.dumps([[p.spec() for p in self.prims], [[l.spec() for l in ls] for ls in self.light_sets],
                            self.probes.round(4).tolist(), TRACER_VERSION], sort_keys=True)
@@ -345,7 +352,7 @@ def scene_railing_objects():
     return sc
 
 
-def scene_corner(sealed=False, bulb=False, bulb_cull='back', name=None):
+def scene_corner(sealed=False, bulb=False, bulb_cull='back', name=None, emitter='sphere'):
     """W / WS. An inside corner under a roof overhang, modelled on the user's in-world screenshots (10/21): a small wall lamp above a recessed door, a
     louvered vent on the adjacent wall about 1.2 m from the lamp, crates and a vertical pipe on the floor, a railing in front. The lamp is a tiny emitter
     prim (`bulb`, never shadows its own light) 0.12 m off the wall, 2.2 m up, INSIDE a separate open-bottom shade (W: four 0.15 m panels and a top plate,
@@ -355,8 +362,13 @@ def scene_corner(sealed=False, bulb=False, bulb_cull='back', name=None):
     WB: scene W with the light inside a CLOSED glass-bulb sphere prim of radius 0.08 m that IS the emitting prim (it never shadows its own light) plus
     the separate shade: the bulb must not black the light out (the pool below the lamp stays lit) while the shade still darkens the wall above.
     WD / WI: scene WB with the bulb DOUBLE-SIDED (WD) or INWARD-WOUND (WI): the surface enclosing the light faces it, so the shadow pass does not cull it
-    (lldrawpool.cpp turns culling off for double-sided glTF). The per-light near plane (emitter inscribed radius + 1 cm) must keep the bulb out of the cube:
+    (lldrawpool.cpp turns culling off for double-sided glTF). The per-light near plane (the emitter's world-AABB Chebyshev reach + 1 cm) must keep the bulb out of the cube:
     the pool below the lamp stays lit and the shade still darkens the wall above. The bulb radius of WB/WD/WI is 0.08 m (16 cm glass bulb).
+    Round 5 emitter scenes (the face clip is by AXIAL depth, so the near plane must clear the emitter's world-AABB Chebyshev reach, not an inscribed sphere):
+    WE: an ELONGATED double-sided bulb (capsule 0.10 x 0.10 x 0.16); WR: a double-sided 0.12 m box ROTATED 45 degrees; WP: a double-sided ceiling PANEL
+    0.4 x 0.4 x 0.1 (the lamp is 0.18 m further from the wall and the shade is a 0.6 m wide, 0.55 m deep hood that starts beyond the panel's reach);
+    WK: LINKSET: the light sits on a tiny single-sided link (r 1 cm) inside a separate double-sided 0.08 m bulb sphere, a sibling link (Light.ignore lists both).
+    Each must keep the pool below the lamp lit (within 0.05 of the ground truth) and the shade must still darken the wall above.
     Key blocker group: the vent slats (the lamp group is excluded from pose gating, like scene C's)."""
     P = Prim
     pr = [
@@ -387,16 +399,36 @@ def scene_corner(sealed=False, bulb=False, bulb_cull='back', name=None):
     pr += _railing('rail', [(-3.0 + 1.2 * k, 0.4) for k in range(6)], 'railing')
     # lamp: bulb = the emitter prim (ignored by the light), shade or housing = separate blockers
     lx, ly, lz = 0.0, 4.88, 2.2
-    pr.append(P('bulb', 'sphere', (1, 1, 0.8), c=(lx, ly, lz), r=0.08 if bulb else 0.02, group='lamp', cull=bulb_cull))
+    sw, sf, st = 0.105, 0.105, 0.10      # shade: half width, front distance from the light, top above the light
+    ignore, wall_z0 = 'bulb', 2.40
+    if emitter == 'sphere':
+        pr.append(P('bulb', 'sphere', (1, 1, 0.8), c=(lx, ly, lz), r=0.08 if bulb else 0.02, group='lamp', cull=bulb_cull))
+    elif emitter == 'capsule':     # WE: 0.10 x 0.10 x 0.16 double-sided: the bottom cap is 8 cm below the light, the inscribed radius only 5 cm
+        pr.append(P('bulb', 'capsule', (1, 1, 0.8), a=(lx, ly, lz - 0.03), b=(lx, ly, lz + 0.03), r=0.05, group='lamp', cull='none'))
+    elif emitter == 'box45':       # WR: a 0.12 m cube turned 45 degrees: its edges reach 8.5 cm along X and Y, its faces only 6 cm
+        pr.append(P('bulb', 'obb', (1, 1, 0.8), c=(lx, ly, lz), h=(0.06, 0.06, 0.06), yaw=45.0, group='lamp', cull='none'))
+    elif emitter == 'panel':       # WP: 0.4 x 0.4 x 0.1 double-sided ceiling panel; the lamp comes 18 cm off the wall and the hood clears the 21 cm cube
+        ly = 4.70
+        sw, sf, st = 0.30, 0.30, 0.25
+        wall_z0 = 2.55
+        pr.append(P('bulb', 'obb', (1, 1, 0.8), c=(lx, ly, lz), h=(0.2, 0.2, 0.05), group='lamp', cull='none'))
+    elif emitter == 'link':        # WK: the light is on a tiny single-sided link inside a separate double-sided bulb link
+        pr.append(P('link', 'sphere', (1, 1, 0.8), c=(lx, ly, lz), r=0.01, group='lamp', cull='back', link='L'))
+        pr.append(P('bulb', 'sphere', (1, 1, 0.8), c=(lx, ly, lz), r=0.08, group='lamp', cull='none', link='L'))
+        ignore = 'link,bulb'
+    else:
+        raise ValueError(emitter)
     t = 0.005
     if not sealed:
         # open-bottom shade 0.2 m wide, 0.15 m tall (the light sits 0.05 above its lower rim): top plate + front/left/right panels, no back (the wall)
-        top, bottom = lz + 0.10, lz - 0.05
+        top, bottom = lz + st, lz - 0.05
         hz = (top - bottom) / 2
-        pr += [P('shade_top', 'obb', (0.2, 0.22, 0.3), c=(lx, ly + 0.01, top), h=(0.105, 0.115, t), group='lamp'),
-               P('shade_front', 'obb', (0.2, 0.22, 0.3), c=(lx, ly - 0.105, bottom + hz), h=(0.105, t, hz), group='lamp'),
-               P('shade_left', 'obb', (0.2, 0.22, 0.3), c=(lx - 0.105, ly + 0.01, bottom + hz), h=(t, 0.115, hz), group='lamp'),
-               P('shade_right', 'obb', (0.2, 0.22, 0.3), c=(lx + 0.105, ly + 0.01, bottom + hz), h=(t, 0.115, hz), group='lamp')]
+        yb, ye = ly - sf, 5.005
+        yc, hy = round(0.5 * (yb + ye), 6), round(0.5 * (ye - yb), 6)
+        pr += [P('shade_top', 'obb', (0.2, 0.22, 0.3), c=(lx, yc, top), h=(sw, hy, t), group='lamp'),
+               P('shade_front', 'obb', (0.2, 0.22, 0.3), c=(lx, yb, bottom + hz), h=(sw, t, hz), group='lamp'),
+               P('shade_left', 'obb', (0.2, 0.22, 0.3), c=(lx - sw, yc, bottom + hz), h=(t, hy, hz), group='lamp'),
+               P('shade_right', 'obb', (0.2, 0.22, 0.3), c=(lx + sw, yc, bottom + hz), h=(t, hy, hz), group='lamp')]
     else:
         # sealed box housing 0.2 x 0.2 x 0.2 around the light: top, front, back, left, right panels; the bottom face is open
         top, bottom = lz + 0.10, lz - 0.10
@@ -407,7 +439,7 @@ def scene_corner(sealed=False, bulb=False, bulb_cull='back', name=None):
                P('house_left', 'obb', (0.2, 0.22, 0.3), c=(lx - 0.105, ly, bottom + hz), h=(t, 0.105, hz), group='lamp'),
                P('house_right', 'obb', (0.2, 0.22, 0.3), c=(lx + 0.105, ly, bottom + hz), h=(t, 0.105, hz), group='lamp')]
     name = name or ('WS' if sealed else ('WB' if bulb else 'W'))
-    lamp = Light('lamp', (lx, ly, lz), 0.05, 7.0, ignore='bulb', seed=fnv_seed(name + ':lamp'))
+    lamp = Light('lamp', (lx, ly, lz), 0.05, 7.0, ignore=ignore, seed=fnv_seed(name + ':lamp'))
     groups = {'vent': ['vlo%d' % k for k in range(10)], 'vent_hi': ['vent%d' % k for k in range(10)], 'crates': ['crate1', 'crate2', 'crate3'], 'pipe': ['pipe_v'],
               'railing': [q.name for q in pr if q.group == 'railing'], 'lamp': [q.name for q in pr if q.group == 'lamp']}
     sc = Scene(name, pr, [[lamp]], [], groups, _floor_probes(-2.6, 2.6, 0.3, 4.6, 0.1))
@@ -428,7 +460,10 @@ def scene_corner(sealed=False, bulb=False, bulb_cull='back', name=None):
         poses.append(Pose('%s_vent_%03d' % (name, k), name, 'vent', k, eye, tuple(vc), 0, 'vent'))
     sc.poses = poses
     sc.pool = {}
-    sc.description = ('inside corner under a roof overhang, lamp ' + ('sealed in a box housing (open bottom)' if sealed else ('in a closed 0.08 m glass bulb (the emitting prim' + ('' if bulb_cull == 'back' else ', surface facing the light') + ') and an open-bottom shade' if bulb else 'in an open-bottom shade')) +
+    sc.wall_z0 = wall_z0       # lower edge of the corner report's wall_above region (above the shade top)
+    sc.emitter_note = {'sphere': '', 'capsule': 'ELONGATED double-sided 0.10 x 0.10 x 0.16 bulb', 'box45': 'double-sided 0.12 m box turned 45 degrees',
+                       'panel': 'double-sided 0.4 x 0.4 x 0.1 ceiling panel', 'link': 'tiny link inside a double-sided bulb sibling link'}[emitter]
+    sc.description = (('[%s] ' % sc.emitter_note if sc.emitter_note else '') + 'inside corner under a roof overhang, lamp ' + ('sealed in a box housing (open bottom)' if sealed else ('in a closed 0.08 m glass bulb (the emitting prim' + ('' if bulb_cull == 'back' else ', surface facing the light') + ') and an open-bottom shade' if bulb else 'in an open-bottom shade')) +
                       ' above a recessed door, louvered vent on the side wall, crates, pipe, railing')
     return sc
 
@@ -515,7 +550,9 @@ def scene_balcony():
 
 SCENES = {'R': scene_room, 'A': scene_railing, 'A2': scene_railing_objects, 'B': scene_sphere, 'C': scene_balcony,
           'W': scene_corner, 'WS': lambda: scene_corner(True), 'WB': lambda: scene_corner(False, True), 'WD': lambda: scene_corner(False, True, 'none', 'WD'),
-          'WI': lambda: scene_corner(False, True, 'none', 'WI')}
+          'WI': lambda: scene_corner(False, True, 'none', 'WI'),
+          'WE': lambda: scene_corner(False, True, 'none', 'WE', 'capsule'), 'WR': lambda: scene_corner(False, True, 'none', 'WR', 'box45'),
+          'WP': lambda: scene_corner(False, True, 'none', 'WP', 'panel'), 'WK': lambda: scene_corner(False, True, 'none', 'WK', 'link')}
 
 
 # --------------------------------------------------------------------------- camera / G-buffer
@@ -694,8 +731,8 @@ def trace_light(scene, light, P, N, pix_id, S=256, cam=None, zbuf=None, thicknes
     if n == 0:
         return {'vis': vis, 'nblk': nblk, 'reasons': reasons, 'tmean': tmean}
     r, th = _disk_samples(S)
-    ign = scene.prim_index(light.ignore) if light.ignore else -1
-    prims = [(i, p, p.aabb()) for i, p in enumerate(scene.prims) if i != ign]
+    ign = set(scene.prim_indices(light.ignore))
+    prims = [(i, p, p.aabb()) for i, p in enumerate(scene.prims) if i not in ign]
     Lc = np.array(light.pos, np.float32)
     per = max(1, chunk_rays // S)
     for c0 in range(0, n, per):

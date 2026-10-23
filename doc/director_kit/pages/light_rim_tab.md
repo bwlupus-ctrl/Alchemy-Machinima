@@ -1,7 +1,7 @@
 # Rim — Director Kit page contract
 
 Page key: `light_rim_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (60/65 setting-bound rows; 4 C++-referenced rows).
+Computed class: **code-driven** (61/66 setting-bound rows; 4 C++-referenced rows).
 
 ## Real owners
 
@@ -83,7 +83,8 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `area_soft_shadows` / `area_shadow_denoise` (Denoise radius) | none | kit `number` ↔ `RenderAreaShadowDenoise` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:286` `area_shadow_denoise` |
 | `area_soft_shadows` / `area_shadow_light_bias` (Light end bias (m)) | none | kit `number` ↔ `RenderAreaShadowLightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:289` `area_shadow_light_bias` |
 | `area_soft_shadows` / `area_shadow_debug` (Visibility view) | none | kit `combo` ↔ `RenderAreaShadowDebugView` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:292` `area_shadow_debug` |
-| `area_soft_shadows` / `area_shadow_budget` (Work budget (M)) | none | kit `number` ↔ `RenderAreaShadowBudget` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:307` `area_shadow_budget` |
+| `area_soft_shadows` / `area_shadow_world_debug` (World view) | none | kit `combo` ↔ `RenderAreaShadowWorldDebug` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:307` `area_shadow_world_debug` |
+| `area_soft_shadows` / `area_shadow_budget` (Work budget (M)) | none | kit `number` ↔ `RenderAreaShadowBudget` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:317` `area_shadow_budget` |
 | `area_soft_shadows` / `area_shadow_sl_help` (SL shadows) | none | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
@@ -101,7 +102,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **60 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **64 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -165,6 +166,10 @@ Manifest size: **60 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `area_shadow_debug-option-6` | Only `area_shadow_debug` selects `Light 6`; other selectors remain default. |
 | `area_shadow_debug-option-7` | Only `area_shadow_debug` selects `Light 7`; other selectors remain default. |
 | `area_shadow_debug-option-8` | Only `area_shadow_debug` selects `Light 8`; other selectors remain default. |
+| `area_shadow_world_debug-option-0` | Only `area_shadow_world_debug` selects `Off`; other selectors remain default. |
+| `area_shadow_world_debug-option-1` | Only `area_shadow_world_debug` selects `World visibility only`; other selectors remain default. |
+| `area_shadow_world_debug-option-2` | Only `area_shadow_world_debug` selects `Face (grey = face / 5)`; other selectors remain default. |
+| `area_shadow_world_debug-option-3` | Only `area_shadow_world_debug` selects `Depth difference`; other selectors remain default. |
 
 ## Parity check
 
@@ -179,7 +184,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-69 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+70 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

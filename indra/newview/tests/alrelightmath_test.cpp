@@ -8,6 +8,7 @@
 #include "../alrelighttakewriter.h"
 #include "llsdserialize.h"
 #include <limits>
+#include <cstring>
 #include <numeric>
 #include <future>
 #include <functional>
@@ -2854,11 +2855,102 @@ template<> template<> void relight_object::test<37>()
     // Near plane = max(5 cm, housing bias).
     close("near plane is a fixed 5 cm (decoupled from the Light bias)",nearPlane(),0.05,1.e-12);
     close("near plane constant",kNearPlane,0.05,1.e-12);
-    close("emitter near: small emitter keeps the floor",emitterNearPlane(0.05,0.04,7.0),0.05,1.e-12);
-    close("emitter near: 16 cm bulb clears its inscribed sphere + 1 cm",emitterNearPlane(0.05,0.16,7.0),0.09,1.e-12);
+    // Round 5: the near plane clears the emitter's world-AABB CHEBYSHEV reach + 1 cm (the faces clip by axial depth: the cleared region is a world-axis cube).
+    const auto reach_of = [](std::array<double,3> lo, std::array<double,3> hi, std::array<double,3> p)
+    { return chebyshevReach(lo.data(),hi.data(),p.data()); };
+    const std::array<double,3> origin = {0,0,0};
+    close("emitter near: no emitter keeps the floor",emitterNearPlane(0.05,0.0,7.0),0.05,1.e-12);
+    close("emitter near: small emitter keeps the floor",emitterNearPlane(0.05,0.02,7.0),0.05,1.e-12);
+    close("emitter near: 16 cm sphere bulb = reach 8 cm + 1 cm",emitterNearPlane(0.05,reach_of({-.08,-.08,-.08},{.08,.08,.08},origin),7.0),0.09,1.e-12);
+    close("emitter near: ELONGATED 0.10 x 0.10 x 0.16 bulb reaches 8 cm down (the inscribed rule gave 6 cm and blacked out a cone)",
+          emitterNearPlane(0.05,reach_of({-.05,-.05,-.08},{.05,.05,.08},origin),7.0),0.09,1.e-12);
+    close("emitter near: 0.4 x 0.4 x 0.1 ceiling panel reaches 20 cm sideways (the inscribed rule gave 6 cm)",
+          emitterNearPlane(0.05,reach_of({-.2,-.2,-.05},{.2,.2,.05},origin),7.0),0.21,1.e-12);
+    close("emitter near: a 12 cm box turned 45 degrees has a world AABB half of 6 sqrt(2) cm",
+          emitterNearPlane(0.05,reach_of({-.06*std::sqrt(2.),-.06*std::sqrt(2.),-.06},{.06*std::sqrt(2.),.06*std::sqrt(2.),.06},origin),7.0),.06*std::sqrt(2.)+.01,1.e-12);
+    close("emitter near: the in-world 0.5 m box turned 45 degrees (light at its centre): corners reach 0.354 m, near 0.364 m",
+          emitterNearPlane(0.05,reach_of({-.25*std::sqrt(2.),-.25*std::sqrt(2.),-.25},{.25*std::sqrt(2.),.25*std::sqrt(2.),.25},origin),7.0),.25*std::sqrt(2.)+.01,1.e-12);
+    close("emitter near: an off-centre light uses the FARTHEST extent",reach_of({-.02,-.02,-.02},{.18,.02,.02},origin),.18,1.e-12);
+    close("emitter near: the extent behind the light counts too",reach_of({-.3,-.02,-.02},{.05,.02,.02},origin),.3,1.e-12);
     close("emitter near: huge emitter clamps to 1 m",emitterNearPlane(0.05,10.0,7.0),1.0,1.e-12);
     close("emitter near: below 0.9 x the light radius",emitterNearPlane(0.05,0.4,0.2),0.18,1.e-12);
     close("emitter near: the setting is a floor",emitterNearPlane(0.5,0.04,7.0),0.5,1.e-12);
+    close("emitter near: a non-finite reach is ignored",emitterNearPlane(0.05,std::numeric_limits<double>::quiet_NaN(),7.0),0.05,1.e-12);
+    // The containment property: the cleared cube holds EVERY corner of the emitter's AABB (so no double-sided face of it can survive the clip).
+    for (const auto& box : {std::array<double,6>{-.05,-.05,-.08,.05,.05,.08}, std::array<double,6>{-.2,-.2,-.05,.2,.2,.05}, std::array<double,6>{-.01,-.3,-.02,.4,.1,.02}})
+    {
+        const double lo[3] = {box[0],box[1],box[2]}, hi[3] = {box[3],box[4],box[5]}, p[3] = {0,0,0};
+        const double n = emitterNearPlane(0.05,chebyshevReach(lo,hi,p),7.0);
+        for (int c = 0; c < 8; ++c)
+            for (int axis = 0; axis < 3; ++axis)
+                ensure("every AABB corner is inside the cleared cube",std::fabs(((c >> axis) & 1) ? hi[axis] : lo[axis]) < n);
+    }
+    // Setting clamps (negative, NaN, infinite, > 1): the floor is 2 cm .. 1 m, non-finite = the 5 cm default.
+    close("near setting: negative -> 2 cm",nearPlane(-1.0),0.02,1.e-12);
+    close("near setting: zero -> 2 cm",nearPlane(0.0),0.02,1.e-12);
+    close("near setting: NaN -> the default",nearPlane(std::numeric_limits<double>::quiet_NaN()),0.05,1.e-12);
+    close("near setting: +inf -> the default",nearPlane(std::numeric_limits<double>::infinity()),0.05,1.e-12);
+    close("near setting: > 1 -> 1 m",nearPlane(5.0),1.0,1.e-12);
+    close("near setting: in range is kept",nearPlane(0.3),0.3,1.e-12);
+    close("emitter near: a raised setting is clamped before the light-radius cap",emitterNearPlane(5.0,0.0,0.5),0.45,1.e-12);
+    // Linkset siblings: the light's own link is tiny; a small sibling whose AABB contains the light adds its reach; a big or non-enclosing one does not.
+    {
+        const double own_lo[3] = {-.01,-.01,-.01}, own_hi[3] = {.01,.01,.01}, p[3] = {0,0,0};
+        const double bulb_lo[3] = {-.08,-.08,-.08}, bulb_hi[3] = {.08,.08,.08};
+        const double wall_lo[3] = {-1.5,-.1,-1.5}, wall_hi[3] = {1.5,.1,1.5};
+        const double aside_lo[3] = {.2,-.05,-.05}, aside_hi[3] = {.3,.05,.05};
+        const double edge_lo[3] = {-.5,-.5,-.5}, edge_hi[3] = {.5,.5,.5};
+        const double just_lo[3] = {-.49,-.49,-.49}, just_hi[3] = {.49,.49,.49};
+        ensure("sibling: an enclosing 16 cm bulb counts",siblingEnclosesLight(bulb_lo,bulb_hi,p));
+        ensure("sibling: a wall 3 m wide does not",!siblingEnclosesLight(wall_lo,wall_hi,p));
+        ensure("sibling: a small prim that does not contain the light does not",!siblingEnclosesLight(aside_lo,aside_hi,p));
+        ensure("sibling: exactly 1 m is out (largest extent must be < 1 m)",!siblingEnclosesLight(edge_lo,edge_hi,p));
+        ensure("sibling: 0.98 m is in",siblingEnclosesLight(just_lo,just_hi,p));
+        double reach = chebyshevReach(own_lo,own_hi,p);
+        close("linkset: the tiny link alone keeps the floor",emitterNearPlane(0.05,reach,7.0),0.05,1.e-12);
+        reach = std::max(reach,siblingReach(bulb_lo,bulb_hi,p));
+        reach = std::max(reach,siblingReach(wall_lo,wall_hi,p));
+        reach = std::max(reach,siblingReach(aside_lo,aside_hi,p));
+        close("linkset: the tiny link inside a double-sided 16 cm bulb sibling clears the bulb",emitterNearPlane(0.05,reach,7.0),0.09,1.e-12);
+        // Raster and resolve share ONE function of the light's own drawable (the child prim) and its siblings; the root prim's big scale never enters.
+        const double raster_near = emitterNearPlane(0.05,reach,7.0), resolve_near = emitterNearPlane(0.05,reach,7.0);
+        close("child-prim light: raster near == resolve near",raster_near,resolve_near,0.0);
+        const double root_axis_reach = chebyshevReach(wall_lo,wall_hi,p);
+        ensure("child-prim light: the near follows the child, not a 3 m root (that would clamp to 1 m)",raster_near < 0.1 && emitterNearPlane(0.05,root_axis_reach,7.0) == 1.0);
+    }
+    // View -> agent rotation packing (round 5 ROOT CAUSE). R = Rz(36.87) * Rx(36.87) (3-4-5 so every entry is exact); glm is [column][row].
+    {
+        const double Rm[3][3] = {{.8,-.48,.36},{.6,.64,-.48},{0,.6,.8}};
+        std::array<std::array<float,4>,4> view{};
+        for (int c = 0; c < 3; ++c) for (int r = 0; r < 3; ++r) view[c][r] = static_cast<float>(Rm[r][c]);
+        view[3][3] = 1.f;
+        float packed[9];
+        packViewRotation(view,packed);
+        // PINNED test vector (relight_world_check.py compares the harness packing with these nine numbers): the three columns of R.
+        const float expected[9] = {.8f,.6f,0.f, -.48f,.64f,.6f, .36f,-.48f,.8f};
+        for (int i = 0; i < 9; ++i) close("packed rotation entry",packed[i],expected[i],1.e-6);
+        // The reconstructed agent axes: a view-space vector v = R e_i must come back as e_i through the three rows (agent_k = dot(row_k, v)).
+        const auto rebuild = [&](const float* rows)
+        {
+            for (int i = 0; i < 3; ++i)
+            {
+                double v[3] = {Rm[0][i],Rm[1][i],Rm[2][i]};
+                for (int k = 0; k < 3; ++k)
+                {
+                    const double agent = rows[3*k]*v[0] + rows[3*k+1]*v[1] + rows[3*k+2]*v[2];
+                    if (std::fabs(agent - (i == k ? 1.0 : 0.0)) > 1.e-5) return false;
+                }
+            }
+            return true;
+        };
+        ensure("packed rows rebuild the agent axes",rebuild(packed));
+        // NEGATIVE CONTROL: the old code memcpy'd 36 bytes of an aligned glm::mat3 (three 16 byte columns): it must NOT rebuild them.
+        float aligned[12] = {};
+        for (int c = 0; c < 3; ++c) for (int r = 0; r < 3; ++r) aligned[4*c + r] = static_cast<float>(Rm[r][c]);
+        float old_copy[9];
+        std::memcpy(old_copy,aligned,sizeof(old_copy));
+        ensure("the old aligned-mat3 memcpy scrambles the rows",!rebuild(old_copy));
+    }
     close("far plane",farPlane(10.0),15.0,1.e-12);
 }
 template<> template<> void relight_object::test<38>()
@@ -2911,6 +3003,19 @@ template<> template<> void relight_object::test<38>()
     ensure_equals("text on 1",worldShadowText(State::On,1),std::string("on 1 light (6 faces at 512)"));
     ensure_equals("text on 2",worldShadowText(State::On,2),std::string("on 2 lights (12 faces at 512)"));
     ensure_equals("text on 0 reads as 1",worldShadowText(State::On,0),std::string("on 1 light (6 faces at 512)"));
+    // Round 5 readout: counts RENDERED lights, names the pinned ones, says why one is not rendering.
+    {
+        const std::string labels[2] = {"lamp (abcd1234)", "light 99887766"};
+        const SlotReason both[2] = {SlotReason::Rendered, SlotReason::Rendered};
+        const SlotReason one[2] = {SlotReason::Rendered, SlotReason::NativeMap};
+        const SlotReason none[2] = {SlotReason::OutOfView, SlotReason::None};
+        ensure_equals("report: two rendered",worldShadowReport(State::On,2,labels,both,2),std::string("on 2 lights (12 faces at 512): lamp (abcd1234); light 99887766."));
+        ensure_equals("report: one rendered, one pinned on a native map",worldShadowReport(State::On,1,labels,one,2),
+            std::string("on 1 light (6 faces at 512): lamp (abcd1234). light 2/2 pinned but not rendering: light 99887766 (native map)."));
+        ensure_equals("report: pinned, none rendering",worldShadowReport(State::Pinned,0,labels,none,2),
+            std::string("light 1/2 pinned but not rendering: lamp (abcd1234) (out of view)."));
+        ensure_equals("report: other states keep the plain wording",worldShadowReport(State::Choosing,0,labels,none,2),std::string("choosing a light"));
+    }
 }
 template<> template<> void relight_object::test<39>()
 {

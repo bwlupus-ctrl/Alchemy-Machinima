@@ -19,6 +19,16 @@ REPO = Path(__file__).resolve().parents[2]
 SHADERS = 'indra/newview/app_settings/shaders'
 
 
+def pack_view_rotation(view):
+    """The SAME rule as alworldshadowmath.h packViewRotation: out[3*column + row] = glmView[column][row]. `view` is the harness's row-major 4x4
+    (view[row, column]), so glm's [column][row] is view[row, column]. Pinned against the C++ test vector by relight_world_check.py."""
+    out = np.zeros(9, np.float32)
+    for column in range(3):
+        for row in range(3):
+            out[3 * column + row] = view[row][column]
+    return out
+
+
 class SourceTree:
     """Read repo files at a git ref (or the working tree for ref == 'WORKTREE')."""
 
@@ -320,7 +330,7 @@ class AreaRunner:
         assert 1 <= count <= 4
         # view -> agent rotation M = R^T (R = the world -> view rotation). The shader takes the ROWS of M as three vec3: row j of M
         # is column j of R, i.e. row j of R^T.
-        wrot = np.ascontiguousarray(np.asarray(cam.view[:3, :3], np.float64).T, np.float32)
+        wrot = pack_view_rotation(cam.view)
         if world is not None:
             atlas = np.ascontiguousarray(world['atlas'], np.float32)
             self._texture('atlas', 4, 0x8CAC, atlas.shape[1], atlas.shape[0], 0x1902, 0x1406, atlas)

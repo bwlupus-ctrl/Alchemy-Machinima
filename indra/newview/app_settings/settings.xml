@@ -21576,10 +21576,17 @@
     </map>
     <key>RenderAreaShadowWorldNear</key>
     <map>
-        <key>Comment</key><string>World (cube) shadow near distance: geometry closer than this to the light never casts. Raise it if a lamp inside a hollow or double-sided bulb goes dark.</string>
+        <key>Comment</key><string>World (cube) shadow near-distance FLOOR in metres (0.02-1). The cube already clears each light's own emitter automatically (its world bounding box plus 1 cm, up to 1 m); this is a last-resort override. Values close to the light's height above the floor put the floor on the near plane and the shadow looks cast from below. Persists across sessions.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>F32</string>
         <key>Value</key><real>0.05</real>
+    </map>
+    <key>RenderAreaShadowWorldDebug</key>
+    <map>
+        <key>Comment</key><string>World (cube) shadow diagnostic written into the soft-shadow visibility of the lights that own a cube (read it with Visibility view): 0 off, 1 world visibility only (no contact term), 2 face index (grey = face / 5), 3 receiver depth minus atlas depth (0.5 = on the surface, white = a blocker in front, black = nothing recorded). Runtime only.</string>
+        <key>Persist</key><integer>0</integer>
+        <key>Type</key><string>S32</string>
+        <key>Value</key><integer>0</integer>
     </map>
     <key>RenderAreaShadowLights</key>
     <map>
