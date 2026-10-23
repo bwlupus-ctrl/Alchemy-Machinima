@@ -179,7 +179,7 @@ float awPlane(vec3 n, vec3 ax, vec3 rt, vec3 up, float nd, vec2 slope, float zr,
     if (!(den < -1.e-3)) return zr;
     return clamp(nd/den,zr-cap,zr+cap);
 }
-float awVisibility(int c)
+float awFaceVisibility(int c)
 {
     vec4 light = area_world_light[c];
     vec3 dv = area_p-light.xyz;
@@ -241,6 +241,139 @@ float awVisibility(int c)
         lit += awTap(tile+centre+off,lo,hi,inv_size,zp,bias,near,far);
     }
     return lit/float(AW_FILTER_TAPS);
+}
+// One footprint in direction space. Every tap selects its own face, so both the
+// blocker search and PCF cross all twelve edges and eight corners continuously.
+// Compare each gathered texel against the receiver plane at THAT texel's ray.
+vec2 awDirectionTap(int c, vec3 ray, vec3 normal, float nd, float bias, vec3 direction, float distance, float blend, bool search)
+{
+    int face = awFace(ray);
+    vec3 ax = AW_AXIS[face], rt = AW_RIGHT[face], up = AW_UP[face];
+    float cosine = dot(ray,ax);
+    vec2 centre = AW_HALF_TILE+AW_HALF_USABLE*vec2(dot(ray,rt),dot(ray,up))/cosine;
+    vec2 base = floor(centre-0.5), fr = centre-0.5-base;
+    vec2 tile = vec2(AW_TILE*float(face%3),AW_TILE*(area_world_info[c].x+float(face/3)));
+    vec4 z = awGather(tile+base+1.0,1.0/vec2(textureSize(area_world_atlas,0)),area_world_info[c].y,area_world_light[c].w);
+    vec2 slope = (base+0.5-AW_HALF_TILE)/AW_HALF_USABLE;
+    vec3 v = ax+slope.x*rt+slope.y*up;
+    float den = dot(normal,v), dr = dot(normal,rt)/AW_HALF_USABLE, du = dot(normal,up)/AW_HALF_USABLE;
+    vec4 dens = vec4(den+du,den+dr+du,den+dr,den);
+    // A ray parallel to / behind the receiver plane cannot reveal a blocker on it.
+    vec4 plane = vec4(nd)/min(dens,vec4(-1.e-5));
+    float depth_scale = dot(ray,direction)/cosine;
+    if (blend < 1.0)
+    {
+        // At the band's inner edge this is exactly the old face footprint;
+        // positions, receiver plane and depth units morph together, once per tap.
+        float centre_cosine = dot(direction,ax);
+        float zr = distance*centre_cosine;
+        vec2 receiver_slope = vec2(dot(direction,rt),dot(direction,up))/centre_cosine;
+        vec2 ray_slope = vec2(dot(ray,rt),dot(ray,up))/cosine;
+        float cap = AW_TAN_CAP*(2.0*zr/AW_USABLE)*(length(ray_slope-receiver_slope)*AW_HALF_USABLE+1.0);
+        float old_plane = awPlane(normal,ax,rt,up,nd,ray_slope,zr,cap);
+        plane = mix(vec4(old_plane),plane,blend);
+        depth_scale = mix(1.0/centre_cosine,depth_scale,blend);
+    }
+    vec4 blocked = vec4(lessThan(z,plane-bias*mix(1.0,cosine,blend)))*mix(vec4(1.0),vec4(lessThan(dens,vec4(-1.e-5))),blend);
+    if (search)
+        return vec2(dot(z,blocked)*depth_scale,dot(blocked,vec4(1.0)));
+    return vec2(1.0-mix(mix(blocked.w,blocked.z,fr.x),mix(blocked.x,blocked.y,fr.x),fr.y),0.0);
+}
+float awDirectionVisibility(int c, float blend)
+{
+    vec4 light = area_world_light[c];
+    vec3 dv = area_p-light.xyz;
+    vec3 d = vec3(dot(area_world_rot[0],dv),dot(area_world_rot[1],dv),dot(area_world_rot[2],dv));
+    float dist = length(d);
+    float far = light.w;
+    if (!(dist > 1.e-4) || dist > far) return 1.0;
+    vec3 n_a = vec3(dot(area_world_rot[0],area_n_geo),dot(area_world_rot[1],area_n_geo),dot(area_world_rot[2],area_n_geo));
+    float nl = dot(n_a,-d/dist);
+    if (nl <= 0.0) return 1.0;
+    float near = area_world_info[c].y;
+    float r_map = area_world_info[c].z;
+    // Normal offset along the geometric normal, sized by the texel footprint at this depth (never beyond 5 cm).
+    float z0 = dot(d,AW_AXIS[awFace(d)]);
+    float texel_w = 2.0*z0/AW_USABLE;
+    d += n_a*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP);
+    int face = awFace(d);
+    float zr = dot(d,AW_AXIS[face]);
+    if (!(zr > near)) return 1.0;
+    texel_w = 2.0*zr/AW_USABLE;
+    float tan_t = sqrt(max(1.0-nl*nl,0.0))/max(nl,1.e-3);
+    float bias = AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
+    dist = length(d);
+    vec3 direction = d/dist;
+    // Frisvad's continuous orthonormal basis (only singular at the south pole,
+    // away from every face boundary). Phase varies smoothly in WORLD metres;
+    // no face/cell hash can jump between two micrometre-separated receivers.
+    float a = 1.0/max(1.0+direction.z,1.e-6);
+    vec3 rt = direction.z < -0.99999 ? vec3(0,-1,0) : vec3(1.0-direction.x*direction.x*a,-direction.x*direction.y*a,-direction.x);
+    vec3 up = cross(direction,rt);
+    vec3 old_rt = AW_RIGHT[face], old_up = AW_UP[face];
+    vec2 centre = AW_HALF_TILE+AW_HALF_USABLE*vec2(dot(d,old_rt),dot(d,old_up))/zr;
+    uvec2 cell = uvec2(ivec2(floor(centre)));
+    uint old_h = cell.x*AW_R2_A+cell.y*AW_R2_B+uint(face)*0x9e3779b9u+area_world_seed[c];
+    float old_rot = float(old_h >> 16)*(6.28318530718/65536.0);
+    float nd = dot(n_a,d);
+    uint h = area_world_seed[c];
+    float rot = float(h >> 16)*(6.28318530718/65536.0);
+    rot += dot(d,vec3(0.13,0.21,0.37));
+    // Blocker search: where does the source disk see blockers? Search plane z_s, radius R_s texels.
+    float z_s = max(near,r_map+0.05);
+    float search = max(r_map*max(dist-z_s,0.0)/(z_s*dist),2.0/AW_USABLE);
+    // Small sources retain the existing local-cache footprint. Larger authored
+    // apertures grow the bound in proportion to their radius (up to 2 m).
+    bool large = r_map > 0.25;
+    float max_angular = (2.0*AW_MAX_RADIUS/AW_USABLE)*(large ? r_map/0.1 : 1.0);
+    search = min(search,max_angular);
+    float old_search = clamp(r_map*max(zr-z_s,0.0)/(2.0*z_s*zr)*AW_USABLE,1.0,AW_MAX_RADIUS)*(2.0*zr/(AW_USABLE*dist));
+    int search_taps = large ? AW_SEARCH_TAPS/2 : AW_SEARCH_TAPS;
+    float blocker_sum = 0.0;
+    float blocker_n = 0.0;
+    for (int k = 0; k < search_taps; ++k)
+    {
+        vec2 off = search*awVogel(k,search_taps,rot,true);
+        vec2 old_off = old_search*awVogel(k,search_taps,old_rot,true);
+        vec3 tap = mix(old_off.x*old_rt+old_off.y*old_up,off.x*rt+off.y*up,blend);
+        vec2 hit = awDirectionTap(c,normalize(direction+tap),n_a,nd,bias,direction,dist,blend,true);
+        blocker_sum += hit.x;
+        blocker_n += hit.y;
+    }
+    if (blocker_n < 0.5) return 1.0;
+    float z_b = max(blocker_sum/blocker_n,near);
+    // Penumbra radius on the receiver plane -> texels of this face at the receiver's axial depth.
+    float radius = max(r_map*max(dist-z_b,0.0)/(z_b*dist),2.0/AW_USABLE);
+    radius = min(radius,max_angular);
+    float old_radius = clamp(r_map*max(zr-z_b*zr/dist,0.0)/(z_b*zr/dist)*AW_USABLE/(2.0*zr),1.0,AW_MAX_RADIUS)*(2.0*zr/(AW_USABLE*dist));
+    int filter_taps = large ? AW_FILTER_TAPS/2 : AW_FILTER_TAPS;
+    float lit = 0.0;
+    for (int k = 0; k < filter_taps; ++k)
+    {
+        vec2 off = radius*awVogel(k,filter_taps,rot,false);
+        vec2 old_off = old_radius*awVogel(k,filter_taps,old_rot,false);
+        vec3 tap = mix(old_off.x*old_rt+old_off.y*old_up,off.x*rt+off.y*up,blend);
+        lit += awDirectionTap(c,normalize(direction+tap),n_a,nd,bias,direction,dist,blend,false).x;
+    }
+    return lit/float(filter_taps);
+}
+// Interior small-source footprints use the original cache-local projection.
+// In the last two receiver texels, morph the SAME taps into direction space;
+// taps cross faces using the real 16-texel raster gutters. No second evaluation,
+// no new tap-count boundary: at most 16+32 gathers anywhere (8+16 for softboxes).
+float awVisibility(int c)
+{
+    vec3 dv = area_p-area_world_light[c].xyz;
+    vec3 d = vec3(dot(area_world_rot[0],dv),dot(area_world_rot[1],dv),dot(area_world_rot[2],dv));
+    vec3 normal = vec3(dot(area_world_rot[0],area_n_geo),dot(area_world_rot[1],area_n_geo),dot(area_world_rot[2],area_n_geo));
+    d += normal*min(AW_NORMAL_TEXELS*2.0*dot(d,AW_AXIS[awFace(d)])/AW_USABLE,AW_NORMAL_CAP);
+    vec3 a = abs(d);
+    float major = max(a.x,max(a.y,a.z));
+    float second = min(max(a.x,a.y),min(max(a.y,a.z),max(a.x,a.z)));
+    float edge = second/max(major,1.e-6);
+    if (area_world_info[c].z > 0.25) return awDirectionVisibility(c,1.0);
+    if (edge <= 0.9921875) return awFaceVisibility(c);
+    return awDirectionVisibility(c,smoothstep(0.9921875,1.0,edge));
 }
 // Diagnostic values for the channel's visibility (RenderAreaShadowWorldDebug, runtime only): 1 the world term alone, 2 the face index as grey (face / 5),
 // 3 receiver axial depth minus the atlas texel's axial depth at the receiver's own texel: 0.5 = the receiver is the recorded surface, brighter = a blocker

@@ -612,6 +612,7 @@ void LLDrawable::makeStatic(bool warning_enabled)
 F32 LLDrawable::updateXform(bool undamped)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWABLE;
+    if (mVObjp) mVObjp->invalidateWorldShadowBounds();
 
     bool damped = !undamped;
 
@@ -1041,6 +1042,7 @@ bool LLDrawable::updateGeometry()
 
 void LLDrawable::shiftPos(const LLVector4a &shift_vector)
 {
+    if (mVObjp) mVObjp->invalidateWorldShadowBounds();
     if (isDead())
     {
         LL_WARNS() << "Shifting dead drawable" << LL_ENDL;
@@ -1106,6 +1108,18 @@ const LLVector3& LLDrawable::getBounds(LLVector3& min, LLVector3& max) const
 {
     mXform.getMinMax(min,max);
     return mXform.getPositionW();
+}
+
+void LLDrawable::setSpatialExtents(const LLVector3& min, const LLVector3& max)
+{
+    LLViewerOctreeEntryData::setSpatialExtents(min,max);
+    if (mVObjp) mVObjp->invalidateWorldShadowBounds();
+}
+
+void LLDrawable::setSpatialExtents(const LLVector4a& min, const LLVector4a& max)
+{
+    LLViewerOctreeEntryData::setSpatialExtents(min,max);
+    if (mVObjp) mVObjp->invalidateWorldShadowBounds();
 }
 
 void LLDrawable::updateSpatialExtents()

@@ -99,11 +99,9 @@ void main()
         float source_radius = area_lights[light].w > 0.0 ? area_lights[light].w : 0.1;
         float visibility = 0.0;
         float contact_visibility = 0.0;
-        // World-owned channel (P1-lite): the march only supplies the CONTACT term, so a hit must be a surface really touching the
-        // receiver: the acceptance thickness tightens to max(4 footprints, 5 cm) (areaReceiverBias = 1.5 footprints, 2 cm floor) instead of
-        // the user's 0.35 m, which accepted a silhouette 0.3 m in front as a contact blocker and printed camera-dependent false-dark spots.
-        // Every other channel keeps the user's thickness unchanged.
-        float thickness = area_world[light] > 0.5 ? min(area_params.y,max(areaReceiverBias(uv,pos)*(4.0/1.5),0.05)) : area_params.y;
+        // World contact accepts a surface within 5 mm of the refined hit plane;
+        // a camera-sized tolerance admits foreground silhouettes as contact.
+        float thickness = area_world[light] > 0.5 ? min(area_params.y,0.005) : area_params.y;
         for (int sample_idx = 0; sample_idx < area_samples; ++sample_idx)
         {
             // Equal-area radial strata and fixed golden-angle azimuths.
@@ -130,7 +128,17 @@ void main()
             // regular ray of a boundary light marches exactly as many steps as the regular light beside it, and the
             // planner charges the light max(Thin steps, regular steps).
             bool regular_ray = area_thin_objects && ray_u < area_regular_mix[light];
-            vec2 traced = regular_ray ?
+            vec2 traced;
+            if (area_world[light] > 0.5)
+            {
+                // World channels need only the blind/contact band. A full Thin
+                // march accepts unrelated foreground silhouettes as contact;
+                // use the same short, bounded march with either Thin setting.
+                traced = areaTrace(origin,target,area_lights[light].xyz,end_gap,
+                    area_light_bias,min(area_params.x,area_contact_dist[light]),thickness,
+                    min(area_steps,12),0.25+0.5*jitter,area_contact_dist[light],false);
+            }
+            else traced = regular_ray ?
                 areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,area_params.x,thickness,
                     clamp(area_rest_steps,1,64),0.25+0.5*jitter,area_contact_dist[light],false) :
                 areaTrace(origin,target,area_lights[light].xyz,end_gap,

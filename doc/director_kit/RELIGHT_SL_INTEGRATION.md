@@ -2836,6 +2836,10 @@ See the table in the reply to the lead; the gates run once after the last edit w
 
 ## World shadows P1-lite (10/23): cube shadow maps for the top 1-2 lights (point or projector)
 
+**Current maintenance record: section 12 below.** Sections 1-11 retain the earlier
+implementation and measurements; section 12 supersedes their source-radius,
+seam, contact, residency, enclosure-cache, snapshot and teardown descriptions.
+
 Branch `wip/cube-p1lite` (worktree `I:\alchemy-machinima-cube`), rebased onto the committed Phase 0 `e150b927cf4` (it was written on the mid-round snapshot `b0bb2d24f18`). Plan of record:
 `RELIGHT_WORLD_SHADOWS_PLAN.md` rev 2, section 2 and "Phase P1-lite". Nothing pushed, built or stashed. All new settings default OFF and the OFF output is
 byte-identical to the base (section 6). Runtime uniforms only: no define, no permutation, no reload, no listener.
@@ -3061,3 +3065,121 @@ R and C pass the HEAD ratchet for `cube` and `cube+thin` at the default N = 2 (`
 gathers: 1.26 ms; ceiling 3 ms). The raster is structural and NOT measurable in the harness: 12 face passes per frame (6 per light, never demoted), each one the production shadow pass over the casters inside 1.5 x
 the light radius, 13.55 MiB atlas + 1.13 MiB scratch. The viewer publishes its CPU milliseconds in `mWorldShadowCpuMs` and has Tracy zones `WorldShadow::render/light/face`; the in-world Tracy capture in an
 avatar scene (decision D1) is still to be taken.
+
+### 12. Maintenance against the shipped `7d18dfa3b93` viewer (10/23)
+
+Worktree `I:\alchemy-machinima-cube`, branch `wip/cube-p1lite`. No push or full
+viewer build. The changes are local and uncommitted: the sandbox denies writes
+to this linked worktree's Git index under
+`I:\alchemy-machinima\.git\worktrees\alchemy-machinima-cube`. Staging was attempted
+with explicit pathspecs. The real branch HEAD remains `7d18dfa3b93`.
+
+The first implementation step was the permanent real-GL gate,
+`scripts/code_tools/relight_world_gl_check.py`. Run it with Python on Windows;
+`--glm-include <installed include directory>` supplies GLM when an existing build
+or the syntax-check flags cache cannot locate it. It fails, rather than skips,
+when hardware GL, image copies, the compiler or GLM is unavailable. Outputs go
+under `.tmp/relight_world_gl`; it never builds the viewer.
+
+The shadow atlas is **not** generated on the CPU. Production `shadowV.glsl`,
+`shadowF.glsl` and Actor FX dissolve code rasterize all six **544 x 544 D32F**
+faces. Real `glCopyImageSubData` calls fill the production atlas layout; the
+production gather, bilateral passes and full-resolution resolve consume that
+GPU texture directly. An MSVC helper, `relight_world_gl_host.cpp`, uses aligned
+GLM and production `packViewRotation`, `transformedAabb` and `emitterNearPlane`.
+The old aligned-mat3 copy is a required rejected control. Only receiver
+G-buffers and fixture geometry are synthetic. Unit tests 37-40 run verbatim
+through `relight_world_math_check.py`, including the production attachment
+scope, residency and cache helpers.
+
+| Fix | Implementation and coverage |
+|---|---|
+| Face seams | In the last two receiver texels before a face boundary, morph one footprint into a continuous world-direction basis. Each tap chooses its own face; blocker depths, receiver planes and PCF positions use consistent units. There is no second evaluation. The GL gate probes all twelve signed edges and eight corners in penumbra at micrometre spacing. |
+| Own attachments in mouselook | The cube pass uses the native shadow pass's avatar-valid, non-animating mouselook/first-person predicate and third-person attachment visibility scope. RAII restores the camera's actual mode. The production scope is unit-tested, its call site is pinned, and `generateSunShadow` is unchanged. |
+| Large softboxes | Upload the rig's full source radius, capped at **2 m**. Large sources use a direction-space aperture and a source-scaled footprint bound, with **8 blocker + 16 PCF gathers**; small sources retain at most **16 + 32**. No mip allocation, extra raster faces or larger resolve ledger. A 1 m source has an analytic straight-edge penumbra gate. Cost checks cover two 1 m and two 2 m sources, including forced blockers everywhere. |
+| Thin camera flicker | World channels trace only the contact band, with at most twelve uniform steps and a fixed 5 mm hit-plane tolerance. Thin's dense march and per-ray offset cannot change that estimator. Other channels retain their existing trace. Both production Default plans are gated, including byte-identical full images over the twelve-pose B orbit. |
+| Native-map slot deadlock | Acquiring a sampled native SL map clears the cube pin and stamp. Residency excludes sampled native owners and can fill the vacated slot from the unmapped ranking. Native allocation and auction code are unchanged. Unit tests cover replacement and subsequent native-map loss. |
+| Child 65+ enclosure | The sibling walk has no cap. A fixed two-entry near cache is keyed by light/root identity, root bounds revision, light radius and near floor. Link/reparent/unlink events, both drawable extent setters, transforms and origin shifts invalidate it. Unit tests cover children 65 and 255, resize/unlink invalidation and reuse without another walk. |
+| GL teardown | `releaseGLBuffers` and `releaseShadowBuffers` release atlas and scratch targets. Release invalidates frame stamps, counts, failure state and reasons, while retaining session pins. Call sites are pinned and compile-checked. |
+| High-resolution snapshots | Snapshots do not update residency or claim stale cube ownership, including when capture dimensions would plan zero lights. Target release preserves pins. Ordinary main-view rendering retains its existing work-budget policy. Integration contracts check these paths. |
+
+Real-GL measurements: **RTX 5090, OpenGL 4.6, NVIDIA 621.01**. Darkness is the
+share of visible floor within 8 m whose visibility is below 0.5, at 640 x 360.
+Flicker uses the original world probes and production plans at 1920 x 1080.
+
+| GL fixture / control | Result |
+|---|---:|
+| Empty floor | 0.00067% dark |
+| Floor + capsule | 8.17718% dark |
+| Rotated single-sided emitter + capsule | 8.23777% dark |
+| Rotated double-sided emitter + capsule | 8.23777% dark |
+| Projector pitched -30 degrees, yawed 45 degrees, via cube | Byte-identical to the corresponding point-light cube |
+| Translated active emitter, nearby capsule | 15.40930% dark |
+| Six-camera yaw/pitch sweep | Empty floor at most 0.00071% dark; capsule shadows present in every view |
+| Old-packing negative control | **35.01396% false dark; rejected** |
+| Every edge / every corner | At most **1/255**, limit 2/255 |
+
+| Metric | Shipped shader | Maintained shader |
+|---|---:|---:|
+| Exhaustive edge / corner discontinuity | 19/255 / 45/255 (earlier isolated probe: 7/255) | 1/255 / 1/255 |
+| 1 m source, 10-90% penumbra width; physical 1.03057 m | 0.22266 m (78.4% too narrow) | **0.91866 m (10.9% too narrow)**; limit 20% |
+| B low-orbit flicker, cube | 0.05710 | **0.04305**; limit 0.06 |
+| B low-orbit flicker, cube + Thin | 0.07737 | **0.04305**; limit 0.06 |
+
+The contact-disabled world-only diagnostic is reported separately from the two
+shipped acceptance configurations. Its worst 1080p pair reads 0.07404; rerendering
+that same pair at 4K reads **0.01492**. The permanent resolution control requires
+at least a 20% reduction, providing direct evidence of receiver-pixel/probe
+interpolation aliasing. This does not change the cube or cube+Thin limits.
+
+The 640-pose CPU-atlas corpus still complements the real-GL gate: both `cube`
+and `cube+thin` pass all **44** acceptance checks. Missing scenes/configurations
+now fail. A/A2/B worst flicker is 0.04368 / 0.05369 / 0.04300. The R/C ratchets
+pass, but their camera p95 metrics remain **0.14080 / 0.11836** with the short
+contact estimator; those metrics are not hard-gated by the existing ratchets.
+This remains a contact-stability limitation in those complex room fixtures.
+
+The final expanded cost run measures the 1080p area pass at **1.03x** Phase 0
+(ceiling 2.5x). At 4K with two residents, resolve is **0.710 ms**, forced small
+source worst case **1.566 ms**, forced 1 m source worst case **1.318 ms**, and
+forced 2 m source worst case **1.356 ms**, all below 3 ms. Raster remains bounded
+to twelve face passes; busy-avatar scene cost still needs an in-viewer Tracy
+capture. The standalone gate executes opaque and double-sided synthetic
+casters, not the viewer's avatar/rigged/alpha scene graph. Attachment and snapshot
+integration therefore have executed helper tests plus source and syntax coverage,
+rather than an instantiated viewer session.
+
+Validation artifacts are in `.tmp/relight_world_gl`: `results.json`,
+`acceptance_final/results.json`, `cube_gates_final.log`, `cube_off_final.log`,
+`world_cost_final.log`, `zs_final.log`, `math_final.log`, and the legacy/corner
+logs. The existing OFF gate passes **724/724** comparisons and its mutation.
+Syntax checking passes **7/7** translation units. Section 10, native shadow
+allocation and `generateSunShadow` remain untouched; toggles need no shader
+reload. The legacy baseline checks use a temporary Git metadata overlay with
+HEAD at `4dd9ff661c1`; the actual worktree HEAD is never moved.
+
+Final validation:
+
+| Check | Result |
+|---|---|
+| Permanent real-GL gate | **52/52 PASS**, including production packing/extents/copy wiring; GPU-unavailable negative control fails loudly with nonzero status |
+| `relight_3d_cube_gates.py`, 640 poses, both required configurations | **44/44 PASS** |
+| Nine housing-region reports | **25/25 PASS**, including every emitter pool |
+| `relight_cube_off_check.py` | **724 byte-identical comparisons**, mutation rejected |
+| Full `relight_shader_check.py` chain at pre-P0 baseline | **PASS, native exit 0**, 838.6 s; `shader_legacy_clean.log` and `shader_legacy_clean_status.json` |
+| Separate baseline OFF and cost checks | **PASS** |
+| Expanded world cost, through 2 m source radius | **PASS** |
+| Cube determinism | **21/21** repeated pairs byte-identical |
+| Production math tests 37-40 | **PASS** |
+| Worktree `zs_check` | **7/7 PASS**, plus a final pipeline check after snapshot-policy refinement |
+| Three kit generators with `--check` | **PASS** after regeneration; 40 XUI files and the report changed only their generated source-hash header |
+| XUI / UI draw lint | **40 files, zero layout findings** / **zero new lint findings** |
+| `git diff --check` | **PASS** |
+
+Legacy fixture maintenance was necessary: the dispatch adapter now supplies the
+existing cached-control conversion, matrix column indexing and near helper;
+the contact mutation replaces the entire estimator rather than stopping at an
+inner brace; the rank pin checks the new world-only branch while retaining the
+ordinary trace's arguments. No existing numerical limit was relaxed. The clean
+legacy runner captures native status directly, avoiding PowerShell's false
+failure status when redirected Git warnings become error records.

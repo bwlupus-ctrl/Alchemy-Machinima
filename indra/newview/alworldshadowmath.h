@@ -17,6 +17,17 @@
 #include <string>
 namespace ALWorldShadow
 {
+// The viewer supplies its native attachment visibility update. The scope also
+// restores on early exits; OFF frames never construct it.
+template<class Apply> struct AttachmentVisibilityScope
+{
+    bool active;
+    Apply apply;
+    AttachmentVisibilityScope(bool enabled, Apply update) : active(enabled), apply(update) { if (active) apply(true); }
+    ~AttachmentVisibilityScope() { if (active) apply(false); }
+    AttachmentVisibilityScope(const AttachmentVisibilityScope&) = delete;
+    AttachmentVisibilityScope& operator=(const AttachmentVisibilityScope&) = delete;
+};
 // ---------------------------------------------------------------------------------------------------- geometry
 constexpr unsigned kFaces = 6;          // faces per light
 constexpr unsigned kMaxLights = 2;      // resident lights (setting 1-2)
@@ -129,8 +140,27 @@ template<class T> inline void transformedAabb(const T m[4][4], const double lo[3
         }
     }
 }
-// Upper bound on the links of a linkset one near-plane evaluation looks at (a 255-link build is not walked per light per frame).
-constexpr unsigned kMaxSiblingLinks = 64;
+// Two resident-light entries. A linkset revision invalidates the cached near;
+// unchanged static linksets need no sibling walk, changed ones are walked in full.
+template<class Key> struct NearCache
+{
+    struct Entry { Key key{}; std::uint64_t revision = 0; double radius = 0, floor = 0, value = 0; bool valid = false; };
+    std::array<Entry,kMaxLights> entries{};
+    unsigned next = 0;
+    const double* find(const Key& key, std::uint64_t revision, double radius, double floor) const
+    {
+        for (const auto& e : entries)
+            if (e.valid && e.key == key && e.revision == revision && e.radius == radius && e.floor == floor) return &e.value;
+        return nullptr;
+    }
+    void store(const Key& key, std::uint64_t revision, double radius, double floor, double value)
+    {
+        Entry* slot = nullptr;
+        for (auto& e : entries) if (e.valid && e.key == key) { slot = &e; break; }
+        if (!slot) slot = &entries[next++ % kMaxLights];
+        *slot = {key,revision,radius,floor,value,true};
+    }
+};
 // A sibling link of the light's prim counts for the near plane when its world AABB contains the light and its largest extent is under 1 m (a bulb or glass around a
 // tiny/invisible light link); a big sibling (a wall, a floor) never does.
 inline bool siblingEnclosesLight(const double lo[3], const double hi[3], const double p[3])

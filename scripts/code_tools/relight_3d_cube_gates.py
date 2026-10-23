@@ -3,7 +3,8 @@
     py -3 -I scripts/code_tools/relight_3d_cube_gates.py .tmp/cube_r1/full3/results.json [--report .tmp/cube_r1/sheets_W/region_report.txt]
     py -3 -I scripts/code_tools/relight_3d_cube_gates.py --report-only .tmp/cube_r5/sheets_W/region_report.txt      (the corner gates alone; the mutation runs use this)
 
-Config `cube` = the shipped defaults (N = 2 resident lights, face near plane 5 cm, emitter excluded). Gates, each a number from the harness:
+Configs `cube` and `cube+thin` are both required, with complete A/A2/B/R/C coverage.
+`cube` = the shipped defaults (N = 2 resident lights, face near plane 5 cm). Gates, each a number from the harness:
   B   mae_on mean <= 0.051, worst pose <= 0.145;  A  mae_on mean <= 0.12, worst <= 0.238;  A2 (railing + receivers) mae_on mean <= 0.12, worst <= 0.238
   false_dark (acne) worst <= 0.02 and leak_on worst <= 0.05 on A, A2 and B;   C lamp pool dark <= 0.02
   camera-only flicker: pop <= 0.05 everywhere; p95 <= 0.05 on A, and <= 0.06 on B and A2 with the EXPLICIT NOTE below
@@ -42,29 +43,29 @@ def main():
             fails.append(label)
 
     agg = {} if report_only else json.loads(Path(args[0]).read_text())['agg']
-    for scene in () if report_only else ('B', 'A', 'A2'):
-        a = agg.get('%s|cube' % scene)
-        if not a:
-            continue
-        mean, worst = LIMITS[scene]
-        check('%s mae_on mean' % scene, a['mae_on_mean'], mean)
-        check('%s mae_on worst pose' % scene, a['mae_on_worst'], worst)
-        check('%s false_dark (acne) worst' % scene, a['false_dark_worst'], 0.02)
-        check('%s leak_on worst' % scene, a['leak_on_worst'], 0.05)
-        check('%s camera flicker p95 worst' % scene, a['flicker_p95_worst'], FLICKER_P95[scene])
-        check('%s camera flicker pop worst' % scene, a['flicker_pop_worst'], 0.05)
-    a = agg.get('C|cube')
-    if a:
-        check('C lamp pool dark worst', a['pool_dark_worst'], 0.02)
-        check('C false_dark worst (ratchet limit, tightest baseline)', a['false_dark_worst'], 0.0091)
-    for scene in () if report_only else ('R', 'C'):
-        if '%s|cube' % scene in agg:
-            # the harness ratchet is evaluated per scene/config inside results.json only as a count: re-derive from the summary file next to it
-            summary = (Path(args[0]).parent / 'summary.txt').read_text()
-            bad = [m for m in re.findall(r'^  FAIL (\S+)\s+(\S+)\s+(\S+)', summary, re.M) if m[0] == scene and m[1] == 'cube']
-            rows.append('  %-4s %-58s %s' % ('FAIL' if bad else 'ok', '%s ratchet (tightest HEAD limit) for `cube`' % scene, 'failures: %s' % [m[2] for m in bad] if bad else 'none'))
-            if bad:
-                fails.append('%s ratchet' % scene)
+    for cfg in () if report_only else ('cube','cube+thin'):
+        for scene in ('B','A','A2','R','C'):
+            a = agg.get('%s|%s' % (scene,cfg))
+            label = scene+' '+cfg
+            if not a:
+                check(label+' required fixture present',float('nan'),0.)
+                continue
+            if scene in LIMITS:
+                mean, worst = LIMITS[scene]
+                check(label+' mae_on mean',a['mae_on_mean'],mean)
+                check(label+' mae_on worst pose',a['mae_on_worst'],worst)
+                check(label+' false_dark (acne) worst',a['false_dark_worst'],.02)
+                check(label+' leak_on worst',a['leak_on_worst'],.05)
+                check(label+' camera flicker p95 worst',a['flicker_p95_worst'],FLICKER_P95[scene])
+                check(label+' camera flicker pop worst',a['flicker_pop_worst'],.05)
+            if scene == 'C':
+                check(label+' lamp pool dark worst',a['pool_dark_worst'],.02)
+                check(label+' false_dark worst (ratchet limit)',a['false_dark_worst'],.0091)
+            if scene in ('R','C'):
+                summary = (Path(args[0]).parent / 'summary.txt').read_text()
+                bad = [m for m in re.findall(r'^  FAIL (\S+)\s+(\S+)\s+(\S+)',summary,re.M) if m[0] == scene and m[1] == cfg]
+                rows.append('  %-4s %-58s %s' % ('FAIL' if bad else 'ok',label+' ratchet','failures: %s' % [m[2] for m in bad] if bad else 'none'))
+                if bad: fails.append(label+' ratchet')
     if report_only or '--report' in sys.argv:
         path = Path(sys.argv[sys.argv.index('--report-only' if report_only else '--report') + 1])
         text = path.read_text()

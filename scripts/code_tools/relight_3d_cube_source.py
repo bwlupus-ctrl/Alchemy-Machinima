@@ -297,7 +297,7 @@ class CubeSource(VisibilitySource):
                     continue
                 far = float(L.range)
                 channels.append({'row': rows[i], 'near': emitter_near(frame.scene, L, params['near']), 'far': far,
-                                 'r_map': float(min(L.radius if L.radius > 0 else 0.1, 0.25)),
+                                 'r_map': float(min(L.radius if L.radius > 0 else 0.1, 2.0)),
                                  'contact': contact_distance(far) if params['contact'] else 0.0,
                                  'seed': int(L.seed)})
             world = {'atlas': atlas, 'channels': channels}

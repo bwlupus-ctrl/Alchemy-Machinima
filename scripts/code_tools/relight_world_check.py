@@ -137,13 +137,14 @@ def check_near_and_state():
     # Round 5: the near is the Chebyshev reach of the emitter's WORLD AABB (+ small enclosing linkset siblings), never an inscribed radius / scale axis.
     fn = pipe[pipe.index('static F32 worldShadowLightNearUncached('):]
     fn = fn[:fn.index('\n}\n')]
-    # Round 6 P0: an ACTIVE drawable's extents are in its bridge's LOCAL frame -> the 8 corners go through getRenderMatrix() (transformedAabb); the sibling walk is capped; the near is memoised per frame.
+    # Active extents are bridge-local: transform all corners. Complete sibling
+    # coverage is cached by linkset revision, rather than capped or walked each frame.
     ext = pipe[pipe.index('static bool world_shadow_extents('):pipe.index('static F32 worldShadowLightNearUncached(')]
     assert 'drawable->isActive()' in ext and 'ALWorldShadow::transformedAabb(drawable->getRenderMatrix().mMatrix' in ext, 'active drawable extents must be carried through the render matrix'
-    assert 'ALWorldShadow::kMaxSiblingLinks' in fn, 'the sibling walk must stay capped'
+    assert 'kMaxSiblingLinks' not in fn and 'walked' not in fn, 'all linkset siblings must be covered'
     memo = pipe[pipe.index('static F32 worldShadowLightNear('):]
     memo = memo[:memo.index('\n}\n')]
-    assert 'gFrameCount' in memo and 'worldShadowLightNearUncached(' in memo, 'the near must be memoised per frame'
+    assert 'NearCache<' in memo and 'worldShadowBoundsRevision()' in memo and 'worldShadowLightNearUncached(' in memo, 'the near must be invalidation cached'
     for needle in ('world_shadow_extents(drawable, lo, hi)', 'ALWorldShadow::chebyshevReach(lo, hi, p)', 'ALWorldShadow::siblingReach(', 'getRootEdit()', 'getChildren()',
                    'ALWorldShadow::emitterNearPlane('):
         assert needle in fn, 'worldShadowLightNear lost ' + needle

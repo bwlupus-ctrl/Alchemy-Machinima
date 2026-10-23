@@ -67,12 +67,16 @@ def main():
             runner.run(cam, d32, n16, lights, plan, scale=scale, world=world, stats=st)
             return st
 
-        def channels(n):
-            return [{'row': 2 * k, 'near': near, 'far': far, 'r_map': 0.1, 'contact': CS.contact_distance(far), 'seed': int(lights[k].seed)} if k < n else None
+        def channels(n, radius=0.1):
+            return [{'row': 2 * k, 'near': near, 'far': far, 'r_map': radius, 'contact': CS.contact_distance(far), 'seed': int(lights[k].seed)} if k < n else None
                     for k in range(4)]
         variants = {'base': (base_runner, None), 'world1': (work_runner, {'atlas': atlas, 'channels': channels(1)}),
                     'world2': (work_runner, {'atlas': atlas, 'channels': channels(2)}),
-                    'worst2': (work_runner, {'atlas': worst_atlas, 'channels': channels(2)})}
+                    'worst2': (work_runner, {'atlas': worst_atlas, 'channels': channels(2)}),
+                    'softbox2': (work_runner, {'atlas': atlas, 'channels': channels(2,1.0)}),
+                    'softboxWorst2': (work_runner, {'atlas': worst_atlas, 'channels': channels(2,1.0)}),
+                    'twoMetre2': (work_runner, {'atlas': atlas, 'channels': channels(2,2.0)}),
+                    'twoMetreWorst2': (work_runner, {'atlas': worst_atlas, 'channels': channels(2,2.0)})}
         res = {}
         for name, (runner, world) in variants.items():
             tot = best(lambda: sum(run(runner, world).values()))
@@ -81,7 +85,7 @@ def main():
         base_tot, base_ups = res['base']
         print('[world-cost] %s %dx%d plan %d rays x %d steps %s: base area pass %.3f ms (upsample %.3f)' % (
             label, W, H, plan['samples'], plan['steps'], 'half' if plan['half'] else 'full', base_tot, base_ups), flush=True)
-        for name in ('world1', 'world2', 'worst2'):
+        for name in ('world1', 'world2', 'worst2', 'softbox2', 'softboxWorst2', 'twoMetre2', 'twoMetreWorst2'):
             tot, ups = res[name]
             resolve = ups - base_ups
             print('[world-cost] %s %-6s area pass %.3f ms (%.2fx base) | upsample %.3f ms | RESOLVE %.3f ms' % (
@@ -93,7 +97,9 @@ def main():
     r4k = [r for r in rows if r[0] == '4K' and r[1] == 'world2'][0]
     r4kw = [r for r in rows if r[0] == '4K' and r[1] == 'worst2'][0]
     assert r1080[2] <= RATIO_CEILING, ('area pass at Medium 1080p K4 N=2 exceeds %.1fx the base pass' % RATIO_CEILING, r1080)
-    assert r4k[3] <= RESOLVE_CEILING_MS and r4kw[3] <= RESOLVE_CEILING_MS, ('resolve at 4K N=2 exceeds %.1f ms' % RESOLVE_CEILING_MS, r4k, r4kw)
+    for row in rows:
+        if row[0] == '4K':
+            assert row[3] <= RESOLVE_CEILING_MS, ('resolve at 4K exceeds %.1f ms' % RESOLVE_CEILING_MS,row)
     print('[world-cost] PASS: area pass %.2fx base at Medium 1080p K4 N=2 (ceiling %.1fx); resolve at 4K N=2 %.3f ms (worst case %.3f ms; ceiling %.1f ms)' % (
         r1080[2], RATIO_CEILING, r4k[3], r4kw[3], RESOLVE_CEILING_MS), flush=True)
     return 0

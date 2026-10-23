@@ -3065,6 +3065,7 @@ void LLPipeline::refreshCachedSettings()
 void LLPipeline::releaseGLBuffers()
 {
     assertInitialized();
+    releaseWorldShadowTargets();
 
     if (mNoiseMap)
     {
@@ -3180,6 +3181,7 @@ void LLPipeline::releaseLUTBuffers()
 
 void LLPipeline::releaseShadowBuffers()
 {
+    releaseWorldShadowTargets();
     // Sun shadows are allocated through mRT->shadow[], and mRT is swapped
     // between packs during cube snapshots, so any of the capture packs may
     // hold allocations. releaseSunShadowTargets() only handles the active
@@ -26793,10 +26795,8 @@ static F32 worldShadowLightNearUncached(LLDrawable* drawable, F32 light_radius, 
                     if (world_shadow_extents(sibling->mDrawable.get(), slo, shi)) reach = std::max(reach, ALWorldShadow::siblingReach(slo, shi, p));
                 };
                 consider(root);
-                U32 walked = 0;   // capped: a huge linkset is not walked in full for every light on every call
                 for (const LLPointer<LLViewerObject>& child : root->getChildren())
                 {
-                    if (++walked > ALWorldShadow::kMaxSiblingLinks) break;
                     consider(child.get());
                 }
             }
@@ -26805,20 +26805,22 @@ static F32 worldShadowLightNearUncached(LLDrawable* drawable, F32 light_radius, 
     return static_cast<F32>(ALWorldShadow::emitterNearPlane(static_cast<double>(near_floor), reach, static_cast<double>(light_radius)));
 }
 
-// Memoised per frame: the raster and the resolve (and the job list) ask for the same light several times a frame, and the linkset walk is the expensive part.
-// Keyed on the drawable, the light radius and the near setting, stamped with gFrameCount; a stale or different key recomputes.
+// Rebuild on linkset membership, drawable extents or transform changes. Complete
+// sibling coverage without repeatedly walking an unchanged linkset each frame.
 static F32 worldShadowLightNear(LLDrawable* drawable, F32 light_radius)
 {
     static LLCachedControl<F32> near_setting(gSavedSettings, "RenderAreaShadowWorldNear", 0.05f);
-    struct Entry { const LLDrawable* drawable = nullptr; U32 frame = 0; F32 radius = 0.f, floor_value = 0.f, value = 0.f; };
-    static Entry cache[ALWorldShadow::kMaxLights];
-    static U32 next = 0;
+    static ALWorldShadow::NearCache<std::pair<LLUUID,LLUUID>> cache;
     const F32 floor_value = near_setting();
-    for (const Entry& entry : cache)
-        if (drawable && entry.drawable == drawable && entry.frame == static_cast<U32>(gFrameCount) && entry.radius == light_radius && entry.floor_value == floor_value) return entry.value;
+    LLViewerObject* object = drawable ? drawable->getVObj().get() : nullptr;
+    LLViewerObject* root = object ? object->getRootEdit() : nullptr;
+    const auto key = std::make_pair(object ? object->getID() : LLUUID::null, root ? root->getID() : LLUUID::null);
+    const U64 revision = root ? root->worldShadowBoundsRevision() : 0;
+    // Initial tag 1 has not seen a bounds event: don't cache an unbuilt drawable.
+    if (revision > 1)
+        if (const double* hit = cache.find(key,revision,light_radius,floor_value)) return static_cast<F32>(*hit);
     const F32 value = worldShadowLightNearUncached(drawable, light_radius, floor_value);
-    Entry& slot = cache[next++ % ALWorldShadow::kMaxLights];
-    slot = { drawable, static_cast<U32>(gFrameCount), light_radius, floor_value, value };
+    if (revision > 1) cache.store(key,revision,light_radius,floor_value,value);
     return value;
 }
 
@@ -26879,7 +26881,7 @@ static bool world_shadow_eligible(LLDrawable* drawable)
 // True when `id` owns a world cube map that was rendered THIS frame (the stamp equals gFrameCount) and is still allocated.
 bool LLPipeline::worldShadowOwned(const LLUUID& id, U32& slot) const
 {
-    if (!mWorldShadowAtlas.isComplete()) return false;
+    if (gSnapshot || !mWorldShadowAtlas.isComplete()) return false;
     for (U32 k = 0; k < ALWorldShadow::kMaxLights; ++k)
         if (mWorldShadowResident.held[k] && mWorldShadowResident.id[k] == id && mWorldShadowFrame[k] == gFrameCount)
         {
@@ -27078,11 +27080,13 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             world_candidates.add(candidate, 8); // this frame's ranking of the lights that could become resident
         }
     }
-    if (cube_main)
+    if (cube_main && !gSnapshot)
     {
         // [P1-lite] Pinned residency. An empty slot takes the best eligible light of THIS frame's ranking that is not already
         // resident; a held slot clears only when its light is no longer an eligible light in mLights, or when the planned
         // light count drops below its index. No timing, cost or rank input once held: a shot never swaps lights.
+        // Snapshot frames skip this block, preserving every pin even when the
+        // temporary capture dimensions would plan fewer (or zero) lights.
         const U32 planned = ALWorldShadow::plannedLights(mRT->deferredScreen.getWidth(),mRT->deferredScreen.getHeight(),
             static_cast<U32>(llclamp(cube_lights(),1,static_cast<S32>(ALWorldShadow::kMaxLights))));
         LLUUID ranked[8];
@@ -27091,7 +27095,13 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         ALWorldShadow::updateResidency(mWorldShadowResident,planned,[&](const LLUUID& id)
         {
             for (LLDrawable* drawable : mLights)
-                if (drawable && drawable->getVObj() && drawable->getVObj()->getID() == id) return world_shadow_eligible(drawable);
+                if (drawable && drawable->getVObj() && drawable->getVObj()->getID() == id)
+                {
+                    if (!world_shadow_eligible(drawable)) return false;
+                    for (U32 slot=0; slot<MAX_SPOT_SHADOWS; ++slot)
+                        if (mShadowSpotLight[slot] == drawable && spotShadowMapSampled(slot)) return false;
+                    return true;
+                }
             return false;
         },ranked,world_candidates.size);
         for (U32 k=0; k<ALWorldShadow::kMaxLights; ++k)
@@ -27442,7 +27452,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                     world_flags.mV[i] = 1.f;
                     world_light[i].set(centre.x,centre.y,centre.z,far_m);
                     world_info[i].set(static_cast<F32>(ALWorldShadow::kRowsPerLight*world_slot),worldShadowLightNear(drawable,volume->getLightRadius()),
-                        llmin(source > 0.f ? source : .1f,.25f),0.f);
+                        llmin(source > 0.f ? source : .1f,2.f),0.f);
                     world_seed[i] = seeds[i];
                     contact.mV[i] = static_cast<F32>(ALWorldShadow::contactDistance(mapped_contact(),far_m));
                     contact_fade.mV[i] = 0.f;
@@ -33072,6 +33082,11 @@ void LLPipeline::releaseWorldShadowTargets()
     mWorldShadowScratch.release();
     mWorldShadowAtlasLights = 0;
     for (U32& stamp : mWorldShadowFrame) stamp = 0;
+    mWorldShadowLights = 0;
+    mWorldShadowAllocFailed = false;
+    for (auto& reason : mWorldShadowReason) reason = ALWorldShadow::SlotReason::None;
+    mWorldShadowState = mWorldShadowResident.count() ? ALWorldShadow::State::Pinned : ALWorldShadow::State::Off;
+    mWorldShadowCpuMs = 0.f;
 }
 
 namespace
@@ -33234,7 +33249,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
         return;
     }
     // Main view only: probes, mirrors, snapshots, HUDs, impostors and the VCam passes never render or own a cube.
-    if (!sRenderDeferred || gCubeSnapshot || sReflectionRender || sPrismLensRender || sRenderingHUDs || sImpostorRender ||
+    if (!sRenderDeferred || gSnapshot || gCubeSnapshot || sReflectionRender || sPrismLensRender || sRenderingHUDs || sImpostorRender ||
         mRT != &mMainRT || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD) return;
 
     // Round 6: stale reasons never survive into this frame, whichever early return below is taken (the readout then shows no reason rather than a stale "rendered").
@@ -33338,7 +33353,14 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
         bool native_mapped = false; // a projector with a sampled native SL map keeps that path; its cube would be unused
         for (U32 slot = 0; slot < MAX_SPOT_SHADOWS; ++slot)
             if (mShadowSpotLight[slot] == found && spotShadowMapSampled(slot)) { native_mapped = true; break; }
-        if (native_mapped) { mWorldShadowReason[k] = ALWorldShadow::SlotReason::NativeMap; continue; }
+        if (native_mapped)
+        {
+            mWorldShadowReason[k] = ALWorldShadow::SlotReason::NativeMap;
+            mWorldShadowResident.held[k] = false;
+            mWorldShadowResident.id[k] = LLUUID::null;
+            mWorldShadowFrame[k] = 0;
+            continue; // renderAreaShadows can fill this slot from the unmapped ranking this frame
+        }
         const F32 radius = found->getVOVolume()->getLightRadius();
         LLVector4a centre, extent;
         centre.load3(found->getPositionAgent().mV);
@@ -33357,6 +33379,17 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     }
 
     LLDisableOcclusionCulling no_occlusion;
+    // Same mouselook scope as the native pass, after its early returns and
+    // before any cube culling. Hidden first-person bridges must be visible to
+    // the shadow pass; restore the actual camera mode on every exit.
+    ALWorldShadow::AttachmentVisibilityScope attachment_visibility(
+        isAgentAvatarValid() && !gAgentCamera.getCameraAnimating() &&
+        gAgentCamera.getCameraMode() == CAMERA_MODE_MOUSELOOK && LLVOAvatar::sVisibleInFirstPerson,
+        [](bool shadow_pass)
+        {
+            if (isAgentAvatarValid()) gAgentAvatarp->updateAttachmentVisibility(
+                shadow_pass ? CAMERA_MODE_THIRD_PERSON : gAgentCamera.getCameraMode());
+        });
     const glm::mat4 saved_proj = get_current_projection();
     const glm::mat4 saved_view = get_current_modelview();
     S32 saved_viewport[4];

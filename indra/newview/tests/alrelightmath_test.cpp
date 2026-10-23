@@ -3012,7 +3012,36 @@ template<> template<> void relight_object::test<37>()
         // Identity matrix leaves the box alone.
         xform(make(0,0,0,0),box_lo,box_hi,olo,ohi);
         for (int i = 0; i < 3; ++i) { close("identity: min",olo[i],box_lo[i],1.e-7); close("identity: max",ohi[i],box_hi[i],1.e-7); }
-        ensure("sibling walk cap is a sane bound",kMaxSiblingLinks >= 16 && kMaxSiblingLinks <= 255);
+        // Enclosure beyond the old 64-child limit, cached until a linkset event.
+        NearCache<int> cache;
+        unsigned walks = 0;
+        const auto query = [&](unsigned revision, unsigned bulb_link, double bulb_half)
+        {
+            if (const double* hit = cache.find(7,revision,10.0,.05)) return *hit;
+            ++walks;
+            double reach = 0.;
+            const double p[3] = {0,0,0};
+            for (unsigned link = 0; link < 255; ++link)
+            {
+                double lo[3] = {2,2,2}, hi[3] = {2.1,2.1,2.1};
+                if (link == bulb_link)
+                    for (int axis=0; axis<3; ++axis) { lo[axis] = -bulb_half; hi[axis] = bulb_half; }
+                reach = std::max(reach,siblingReach(lo,hi,p));
+            }
+            const double value = emitterNearPlane(.05,reach,10.0);
+            cache.store(7,revision,10.0,.05,value);
+            return value;
+        };
+        close("child 65 counts",query(1,64,.35),.36);
+        close("unchanged linkset reuses cached bounds",query(1,64,.35),.36);
+        ensure_equals("one full walk across frames",walks,1u);
+        close("child 255 counts after membership change",query(2,254,.35),.36);
+        close("resizing the enclosing sibling invalidates",query(3,254,.45),.46);
+        close("unlinking the bulb invalidates",query(4,999,.45),.05);
+        ensure_equals("only invalidations rebuild",walks,4u);
+        ensure("light radius invalidates",cache.find(7,4,9.,.05)==nullptr);
+        ensure("near floor invalidates",cache.find(7,4,10.,.1)==nullptr);
+        ensure("new root/light identity invalidates",cache.find(8,4,10.,.05)==nullptr);
     }
 }
 template<> template<> void relight_object::test<38>()
@@ -3111,6 +3140,27 @@ template<> template<> void relight_object::test<39>()
         updateResidency(held,1,[](int){return true;},order,4);
         ensure("held light survives every candidate order",held.held[0] && held.id[0]==2);
     } while (std::next_permutation(order,order+4));
+    // Acquiring a sampled native map releases the pin; another eligible light
+    // takes it, without altering the native allocation or auction.
+    const int unmapped[2] = {3,4};
+    updateResidency(held,1,[](int id){return id!=2;},unmapped,2);
+    ensure_equals("native-mapped pin releases immediately",held.id[0],3);
+    updateResidency(held,1,[](int){return true;},first,4);
+    ensure_equals("losing the native map does not dislodge another pin",held.id[0],3);
+    // Attachment visibility uses the exact production RAII scope, including
+    // early return and disabled scopes; no viewer/GL globals in this test.
+    int mode = 1, calls = 0;
+    const auto update = [&](bool shadow) { mode = shadow ? 3 : 1; ++calls; };
+    const auto pass = [&]()
+    {
+        AttachmentVisibilityScope scope(true,update);
+        ensure_equals("mouselook attachments visible to shadow cull",mode,3);
+        return;
+    };
+    pass();
+    ensure_equals("early exit restores mouselook visibility",mode,1);
+    { AttachmentVisibilityScope scope(false,update); }
+    ensure_equals("other camera modes make no visibility updates",calls,2);
 }
 template<> template<> void relight_object::test<40>()
 {

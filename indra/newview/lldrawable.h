@@ -182,6 +182,8 @@ public:
 
     const LLVector3& getBounds(LLVector3& min, LLVector3& max) const;
     virtual void updateSpatialExtents();
+    void setSpatialExtents(const LLVector3& min, const LLVector3& max);
+    void setSpatialExtents(const LLVector4a& min, const LLVector4a& max);
     virtual void updateBinRadius();
 
     void setRenderType(S32 type)                { mRenderType = type; }

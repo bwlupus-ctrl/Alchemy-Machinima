@@ -315,6 +315,10 @@ public:
     virtual void addChild(LLViewerObject *childp);
     virtual void removeChild(LLViewerObject *childp);
     const_child_list_t& getChildren() const {   return mChildList; }
+    // Changes to link membership, drawable bounds or transforms invalidate the
+    // two resident lights' enclosure cache. Stored on the edit root.
+    void invalidateWorldShadowBounds();
+    U64 worldShadowBoundsRevision() const { return mWorldShadowBoundsRevision; }
     S32 numChildren() const { return static_cast<S32>(mChildList.size()); }
     void addThisAndAllChildren(std::vector<LLViewerObject*>& objects);
     void addThisAndNonJointChildren(std::vector<LLViewerObject*>& objects);
@@ -1122,6 +1126,8 @@ public:
     // the amount of GPU time (in ms) it took to render this object according to LLPipeline::profileAvatar
     // -1.f if no profile data available
     F32 mGPURenderTime = -1.f;
+private:
+    U64 mWorldShadowBoundsRevision = 1;
 };
 
 ///////////////////

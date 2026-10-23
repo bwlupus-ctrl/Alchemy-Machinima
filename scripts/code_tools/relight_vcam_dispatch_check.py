@@ -114,6 +114,7 @@ bool master=true,feedSetting=true,thinSetting=false; int budgetSetting=1500;
 template<class T> struct LLCachedControl {
     std::string key; T value;
     LLCachedControl(Settings&,const char* k,T v):key(k),value(v) {}
+    operator T() const { return operator()(); }
     T operator()() const {
         if(key=="RenderAreaShadows") return T(master);
         if(key=="RenderAreaShadowsVCam") return T(feedSetting);
@@ -152,7 +153,10 @@ struct LLUUID {
 const LLUUID LLUUID::null{};
 struct LLVector4 { float mV[4]={}; void clear() { for(auto& v:mV) v=0; } void set(float x,float y,float z,float r) { mV[0]=x;mV[1]=y;mV[2]=z;mV[3]=r; } };
 namespace glm {
-struct mat4 {};
+struct mat4 {
+    float m[4][4]={{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
+    const float* operator[](int column) const { return m[column]; }
+};
 struct vec3 { float x,y,z; };
 vec3 make_vec3(const float* p) { return {p[0],p[1],p[2]}; }
 struct mat3 { float m[9]={}; mat3(const mat4&) {} };
@@ -241,6 +245,7 @@ struct LLPipeline {
     // P1-lite world maps: the fixture runs with them OFF (cube_main is false); these only let the world branches compile.
     LLRenderTarget mWorldShadowAtlas; bool mWorldShadowUniformsLive=false;
     bool worldShadowOwned(const LLUUID&,U32&) const { return false; }
+    static F32 worldShadowLightNear(LLDrawable*,F32) { return 0.05f; } // world branch is OFF; real near is executed by world_gl_check
     double mAreaShadowGPUms=-1;
     VB* mScreenTriangleVB=&vb;
     std::array<LLDrawable,8> drawables;

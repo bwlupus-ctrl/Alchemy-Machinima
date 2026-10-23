@@ -957,12 +957,25 @@ bool LLViewerObject::crossesParcelBounds()
     return mRegionp && mRegionp->objectsCrossParcel(boxes);
 }
 
+void LLViewerObject::invalidateWorldShadowBounds()
+{
+    // Process-unique tags also invalidate a recreated object with the same UUID.
+    // Geometry/linkset mutations occur on the viewer thread.
+    static U64 serial = 1;
+    const U64 revision = ++serial;
+    LLViewerObject* root = getRootEdit();
+    if (root) root->mWorldShadowBoundsRevision = revision;
+    mWorldShadowBoundsRevision = revision;
+}
+
 bool LLViewerObject::setParent(LLViewerObject* parent)
 {
     if(mParent != parent)
     {
+        invalidateWorldShadowBounds();
         LLViewerObject* old_parent = (LLViewerObject*)mParent ;
         bool ret = LLPrimitive::setParent(parent);
+        invalidateWorldShadowBounds();
         if(ret && old_parent && parent)
         {
             old_parent->removeChild(this) ;
@@ -992,6 +1005,7 @@ void LLViewerObject::addChild(LLViewerObject *childp)
     if(childp->setParent(this))
     {
         mChildList.push_back(childp);
+        invalidateWorldShadowBounds();
         childp->afterReparent();
 
         if (childp->isAvatar())
@@ -1021,6 +1035,7 @@ void LLViewerObject::removeChild(LLViewerObject *childp)
             }
 
             mChildList.erase(i);
+            invalidateWorldShadowBounds();
 
             if(childp->getParent() == this)
             {

@@ -319,8 +319,11 @@ def check_contact(g):
     length_source=length_source[:begin]+'''float areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
         float light_bias, float max_distance, float thickness, int steps, float offset);
 '''+length_source[end:]
-    begin=length_source.index('            vec2 traced =')
-    end=length_source.index('        }',begin)
+    begin=length_source.index('            vec2 traced')
+    # Replace the whole estimator, including the world-only branch. Searching
+    # for the first brace would stop inside that branch and corrupt the mutant.
+    last='            contact_visibility += traced.y;\n'
+    end=length_source.index(last,begin)+len(last)
     length_source=length_source[:begin]+'''            visibility += areaTrace(origin,target,area_lights[light].xyz,end_gap,
                 area_light_bias,min(area_params.x,area_contact_dist[light]),area_params.y,area_steps,offset);
 '''+length_source[end:]

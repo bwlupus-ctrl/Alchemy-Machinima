@@ -232,8 +232,11 @@ def check_rank_sources():
     assert '            float end_gap = max(source_radius,0.1)+area_light_bias;\n' in gather_now, 'gather end gap must be HEAD\'s'
     # P1-lite: the thickness argument is the per-light `thickness` variable, which is the user's area_params.y for EVERY channel except
     # a world-owned one (a world channel only supplies the contact term and tightens it): OFF is HEAD's argument byte for byte.
-    assert ('        float thickness = area_world[light] > 0.5 ? min(area_params.y,max(areaReceiverBias(uv,pos)*(4.0/1.5),0.05)) : area_params.y;\n') in gather_now, \
+    assert ('        float thickness = area_world[light] > 0.5 ? min(area_params.y,0.005) : area_params.y;\n') in gather_now, \
         'the world thickness must default to HEAD\'s area_params.y'
+    assert 'area_light_bias,min(area_params.x,area_contact_dist[light]),thickness,' in gather_now and \
+        'min(area_steps,12),0.25+0.5*jitter,area_contact_dist[light],false);' in gather_now, \
+        'world contact must be bounded and independent of the Thin marcher'
     assert ('                areaTrace(origin,target,area_lights[light].xyz,end_gap,\n'
             '                    area_light_bias,area_params.x,thickness,area_steps,offset,area_contact_dist[light]);\n') in gather_now, \
         'the unchanged march must keep HEAD\'s arguments (thickness = area_params.y unless world-owned)'

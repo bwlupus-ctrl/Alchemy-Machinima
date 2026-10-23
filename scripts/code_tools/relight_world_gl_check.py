@@ -1,0 +1,483 @@
+"""Mandatory real-GPU regression gate for the P1-lite world shadow path (Windows/WGL).
+
+python scripts/code_tools/relight_world_gl_check.py [--glm-include DIR] [--out DIR]
+
+No CPU shadow atlas: production shadowV/F + Actor FX module rasterize six 544^2
+D32F faces; glCopyImageSubData populates the production atlas. The production
+gather/filter/resolve consume it. Host rotation bytes come from the compiled C++
+production packing helper with the viewer's aligned GLM definitions. G-buffer
+receivers alone are analytic. Missing GL, compiler, or GLM is a FAILURE, never SKIP.
+"""
+import argparse
+import ctypes as C
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import relight_3d_gl as G
+import relight_3d_scene as S
+import relight_3d_cube_source as CS
+import relight_3d_plan as PL
+import relight_3d_tasks as T
+import relight_3d_reference as R
+import relight_3d_metrics as M
+import relight_world_math_check as WM
+
+REPO = G.REPO
+
+
+def lifecycle_checks():
+    """Viewer-only integration contracts supplement the executed C++ unit scopes.
+
+    The standalone context cannot instantiate avatars or LLPipeline. Pin the
+    actual event/call sites too, so the tested helpers cannot become disconnected.
+    """
+    pipe = (REPO / 'indra/newview/pipeline.cpp').read_text()
+    def body(start, end): return pipe[pipe.index(start):pipe.index(end,pipe.index(start))]
+    cube = body('void LLPipeline::generateWorldShadowCubes(', 'void LLPipeline::renderGroups(')
+    residency = body('if (cube_main && !gSnapshot)', 'take.worldOn = cube_main;')
+    release = body('void LLPipeline::releaseWorldShadowTargets()', '\nnamespace')
+    # Tie the executed host helper and GL copy to the viewer call sites. A
+    # correct helper left unused by a reverted pipeline must fail this gate too.
+    assert 'ALWorldShadow::packViewRotation(view,world_rot)' in pipe and 'std::memcpy(world_rot' not in pipe
+    extents = body('static bool world_shadow_extents(', 'static F32 worldShadowLightNearUncached(')
+    assert 'drawable->isActive()' in extents and 'ALWorldShadow::transformedAabb(drawable->getRenderMatrix().mMatrix' in extents
+    assert pipe.count('worldShadowLightNear(') == 3, 'raster and resolve must both use the production near'
+    assert 'ALWorldShadow::tileSlot(job.slot, face)' in cube
+    copy = 'glCopyImageSubData(mWorldShadowScratch.getDepth(),GL_TEXTURE_2D,0,0,0,0,mWorldShadowAtlas.getDepth(),GL_TEXTURE_2D,0,tile.x,tile.y,0,ALWorldShadow::kTile,ALWorldShadow::kTile,1);'
+    assert copy in re.sub(r'\s+','',cube), 'viewer atlas copy differs from the real-GL reproduction'
+    assert 'AttachmentVisibilityScope attachment_visibility(' in cube
+    assert cube.index('AttachmentVisibilityScope') < cube.index('renderShadow(view, proj, shadow_cam')
+    for condition in ('!gAgentCamera.getCameraAnimating()', 'CAMERA_MODE_MOUSELOOK', 'LLVOAvatar::sVisibleInFirstPerson',
+                      'shadow_pass ? CAMERA_MODE_THIRD_PERSON : gAgentCamera.getCameraMode()'):
+        assert condition in cube, 'native attachment scope lost '+condition
+    assert 'gSnapshot ||' in cube and 'ALWorldShadow::plannedLights(' in residency
+    assert 'spotShadowMapSampled(slot)) return false;' in residency
+    assert 'mWorldShadowResident.held[k] = false;' in cube and 'mWorldShadowFrame[k] = 0;' in cube
+    for signature,end in [('void LLPipeline::releaseGLBuffers()', 'void LLPipeline::releaseLUTBuffers()'),
+                          ('void LLPipeline::releaseShadowBuffers()', 'void LLPipeline::releaseScreenBuffers()')]:
+        assert 'releaseWorldShadowTargets();' in body(signature,end), 'world targets missing from teardown'
+    assert 'mWorldShadowResident =' not in release and 'stamp = 0' in release, 'teardown must invalidate stamps and preserve session pins'
+    assert 'llmin(source > 0.f ? source : .1f,2.f)' in pipe, 'production softbox radius clamp regressed'
+    obj = (REPO / 'indra/newview/llviewerobject.cpp').read_text()
+    draw = (REPO / 'indra/newview/lldrawable.cpp').read_text()
+    for signature in ('bool LLViewerObject::setParent(', 'void LLViewerObject::addChild(', 'void LLViewerObject::removeChild('):
+        start = obj.index(signature); fn = obj[start:obj.index('\n}\n',start)]
+        assert 'invalidateWorldShadowBounds();' in fn, 'linkset invalidation lost '+signature
+    for signature in ('F32 LLDrawable::updateXform(', 'void LLDrawable::setSpatialExtents(const LLVector3&',
+                      'void LLDrawable::setSpatialExtents(const LLVector4a&', 'void LLDrawable::shiftPos('):
+        start = draw.index(signature); fn = draw[start:draw.index('\n}\n',start)]
+        assert 'invalidateWorldShadowBounds();' in fn, 'drawable invalidation lost '+signature
+    return [dict(name=n,passed=True) for n in ('attachment_scope_integration','native_map_pin_release',
+            'complete_linkset_cache_invalidation','GL_teardown','snapshot_pin_preservation','production_softbox_radius',
+            'production_packing_and_extents_wiring','production_atlas_copy_wiring')]
+
+
+def build_host(out, glm_include):
+    if not glm_include:
+        # Reuse installed dependencies, read-only; never invoke a viewer build.
+        candidates = list(REPO.glob('build-*/vcpkg_installed/*/include'))
+        cache = Path.home() / 'cxs/zs_flags_cache_cube.json'
+        if cache.exists():
+            candidates += [Path(p) for p in re.findall(r'/external:I \\"([^"\\]+)', cache.read_text())]
+        glm_include = next((p for p in candidates if (p / 'glm/glm.hpp').exists()), None)
+    assert glm_include and (Path(glm_include) / 'glm/glm.hpp').exists(), 'FAIL: provide --glm-include (installed GLM headers)'
+    src = REPO / 'scripts/code_tools/relight_world_gl_host.cpp'
+    exe = out / 'world_gl_host.exe'
+    vswhere = Path(os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')) / 'Microsoft Visual Studio/Installer/vswhere.exe'
+    vs = subprocess.check_output([str(vswhere), '-latest', '-property', 'installationPath'], text=True).strip()
+    vcvars = Path(vs) / 'VC/Auxiliary/Build/vcvars64.bat'
+    cmd = out / 'build_host.cmd'
+    cmd.write_text('@echo off\ncall "%s" >nul 2>&1\ncl /nologo /std:c++20 /EHsc /I "%s" /I "%s" "%s" /Fe:"%s" /Fo:"%s"\n' %
+                   (vcvars, glm_include, REPO / 'indra/newview', src, exe, out / 'world_gl_host.obj'))
+    r = subprocess.run([str(cmd)], cwd=out, capture_output=True, text=True, shell=True)
+    assert r.returncode == 0, 'host compile FAIL:\n' + r.stdout + r.stderr
+    return subprocess.Popen([str(exe)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+
+
+def mesh(prim):
+    """Outward triangle mesh; no emitter exclusion, including double-sided shells."""
+    if prim.kind == 'obb':
+        verts = []
+        for axis in range(3):
+            a, b = (axis + 1) % 3, (axis + 2) % 3
+            for sign in (-1, 1):
+                q = []
+                for x, y in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                    p = np.zeros(3); p[axis] = sign; p[a] = x; p[b] = y
+                    q.append(p * prim.h)
+                if sign < 0: q.reverse()
+                verts += [q[i] for i in (0, 1, 2, 0, 2, 3)]
+        return np.asarray(verts) @ prim.rot().T + prim.c
+    # Capsule/sphere, 64x48: tessellated actual geometry, never analytic shadow depth.
+    a = np.array(prim.a if prim.kind == 'capsule' else prim.c)
+    b = np.array(prim.b if prim.kind == 'capsule' else prim.c)
+    assert np.linalg.norm((b - a)[:2]) < 1e-8, 'fixture capsule is vertical'
+    rings = []
+    for theta in np.linspace(0, np.pi, 49):
+        centre = b if theta <= np.pi / 2 else a
+        rings.append([centre + prim.r * np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)])
+                      for phi in np.linspace(0, 2*np.pi, 65)])
+    verts = []
+    for j in range(48):
+        for i in range(64):
+            verts.extend([rings[j][i], rings[j+1][i], rings[j+1][i+1], rings[j][i], rings[j+1][i+1], rings[j][i+1]])
+    return np.asarray(verts)
+
+
+class Raster:
+    def __init__(self, runner):
+        self.r, self.gl = runner, runner.gl
+        gl = self.gl
+        self.program = gl.program()
+        for path, stage in [('class1/deferred/shadowV.glsl', 0x8B31), ('class1/deferred/shadowF.glsl', 0x8B30),
+                            ('class1/alchemy/actorFxDissolveF.glsl', 0x8B30)]:
+            gl.attach(self.program, runner._compile(runner.tree.read(G.SHADERS + '/' + path), path, stage))
+        gl.link(self.program)
+        ok = gl.I(); gl.getprog(self.program, 0x8B82, C.byref(ok))
+        assert ok.value, 'production shadow program link failed'
+        self.enable = gl.fn('glEnable', None, gl.U)
+        self.clear = gl.fn('glClear', None, gl.U)
+        self.clear_depth = gl.fn('glClearDepth', None, C.c_double)
+        self.depth_mask = gl.fn('glDepthMask', None, C.c_ubyte)
+        self.depth_func = gl.fn('glDepthFunc', None, gl.U)
+        self.draw_buffer = gl.fn('glDrawBuffer', None, gl.U)
+        self.read_buffer = gl.fn('glReadBuffer', None, gl.U)
+        self.copy = gl.fn('glCopyImageSubData', None, gl.U, gl.U, gl.I, gl.I, gl.I, gl.I,
+                          gl.U, gl.U, gl.I, gl.I, gl.I, gl.I, gl.I, gl.I, gl.I)
+        self.error = gl.fn('glGetError', gl.U)
+        self.fbo = gl.U(); gl.gen_fbo(1, C.byref(self.fbo))
+        self.vbo = gl.U(); gl.gen_buf(1, C.byref(self.vbo))
+
+    def atlas(self, scene, light, near):
+        gl, r = self.gl, self.r
+        scratch = r._texture('raster_scratch', 5, 0x8CAC, CS.TILE, CS.TILE, 0x1902, 0x1406, None)
+        atlas = r._texture('raster_atlas', 6, 0x8CAC, CS.ATLAS_W, CS.ATLAS_H_PER_LIGHT, 0x1902, 0x1406, None)
+        gl.bind_fbo(0x8D40, self.fbo)
+        gl.fbo_tex(0x8D40, 0x8D00, 0x0DE1, scratch, 0)
+        self.draw_buffer(0); self.read_buffer(0)
+        assert gl.fbo_status(0x8D40) == 0x8CD5, 'D32F framebuffer incomplete'
+        self.enable(0x0B71); self.depth_mask(1); self.depth_func(0x0201)
+        for cap in (0x0C11, 0x864F, 0x8F9D): gl.disable(cap)  # scissor, polygon offset, depth clamp
+        gl.viewport(0, 0, CS.TILE, CS.TILE)
+        gl.use(self.program)
+        gl.ui(gl.loc(self.program, b'actorFxEnabled'), 0)
+        far = light.range
+        P = np.zeros((4, 4)); P[0, 0] = P[1, 1] = 1 / CS.TAN_HALF
+        P[2, 2] = -(far+near)/(far-near); P[2, 3] = -2*far*near/(far-near); P[3, 2] = -1
+        for face in range(6):
+            axis, right, up = CS.face_basis(face)
+            V = np.eye(4); V[:3, :3] = [right, up, -axis]; V[:3, 3] = -V[:3, :3] @ light.pos
+            r._mat(self.program, b'modelview_projection_matrix', P @ V)
+            self.clear_depth(1.0); self.clear(0x100)
+            for prim in scene.prims:
+                self.enable(0x0B44) if prim.cull == 'back' else gl.disable(0x0B44)
+                data = np.ascontiguousarray(mesh(prim), np.float32)
+                gl.bind_buf(0x8892, self.vbo); gl.buffer_data(0x8892, data.nbytes, data.ctypes.data, 0x88E4)
+                idx = gl.attr_loc(self.program, b'position'); gl.enable_attr(idx); gl.attr_ptr(idx, 3, 0x1406, 0, 0, None)
+                gl.draw(4, 0, len(data))
+            self.copy(scratch, 0x0DE1, 0, 0, 0, 0, atlas, 0x0DE1, 0, (face % 3)*CS.TILE, (face // 3)*CS.TILE, 0, CS.TILE, CS.TILE, 1)
+            assert self.error() == 0, 'GL error during face raster/copy'
+        # Resolve binds the actual GPU atlas, not a CPU readback/re-upload.
+        gl.disable(0x0B71); gl.disable(0x0B44)
+        gl.bind_fbo(0x8D40, r.fbo)
+        return atlas
+
+
+class RealRunner(G.AreaRunner):
+    def __init__(self, tree, host, gl=None):
+        super().__init__(tree,gl=gl)
+        self.host, self.old_packing = host, False
+        self.gpu_atlas = None
+
+    def _texture(self, key, unit, internal, w, h, fmt, typ, data, nearest=True):
+        if key == 'atlas' and self.gpu_atlas is not None:
+            self.gl.active(0x84C0 + unit); self.gl.bind_tex(0x0DE1, self.gpu_atlas)
+            return self.gpu_atlas
+        return super()._texture(key, unit, internal, w, h, fmt, typ, data, nearest)
+
+    def packed(self, view):
+        self.host.stdin.write(' '.join(map(str, view.ravel())) + '\n'); self.host.stdin.flush()
+        vals = np.array(list(map(float, self.host.stdout.readline().split())), np.float32)
+        assert vals.size == 18, 'C++ packing helper failed'
+        correct, old = vals[:9], vals[9:]
+        assert np.allclose(correct, G.pack_view_rotation(view), atol=1e-7), 'host and harness packing differ'
+        return old if self.old_packing else correct
+
+    def run(self, cam, *args, **kwargs):
+        packed = self.packed(cam.view)
+        pack = G.pack_view_rotation
+        G.pack_view_rotation = lambda _: packed
+        try: return super().run(cam, *args, **kwargs)
+        finally: G.pack_view_rotation = pack
+
+
+class Probe:
+    """Isolate the unchanged production awVisibility at exact world receivers.
+
+    This removes pixel-centre interpolation from the micrometre seam measurement;
+    raster, atlas, packing and every resolve function remain production code.
+    """
+    def __init__(self, runner):
+        self.r = runner
+        text = runner.tree.read(G.SHADERS + '/class3/deferred/areaShadowFilterF.glsl')
+        body = '''uniform sampler2D probe_positions;
+uniform int probe_plane;
+void main() {
+    area_p = texelFetch(probe_positions,ivec2(gl_FragCoord.xy),0).xyz;
+    area_n_geo = probe_plane != 0 ? vec3(0,0,1) : -normalize(area_p-area_world_light[0].xyz);
+    frag_color = vec4(vec3(awVisibility(0)),1);
+}'''
+        self.program = runner._link('class3/deferred/areaShadowFilterF.glsl', [(text, text[:text.index('void main()')] + body)])
+
+    def run(self, positions, light, near, plane=False):
+        r, pr = self.r, self.program
+        gl = r.gl
+        data = np.asarray(positions, np.float32).reshape(1, -1, 3)
+        r._texture('probe_positions', 7, 0x8815, data.shape[1], 1, 0x1907, 0x1406, data)
+        r._target('probe_output', data.shape[1], 1); r._begin(pr)
+        gl.ui(gl.loc(pr, b'probe_positions'), 7); gl.ui(gl.loc(pr, b'probe_plane'), int(plane))
+        gl.ui(gl.loc(pr, b'area_world_atlas'), 4)
+        gl.active(0x84C4); gl.bind_tex(0x0DE1, r.gpu_atlas)
+        info = np.zeros((4, 4), np.float32); info[0] = (0, near, light.radius, 0)
+        lights = np.zeros((4, 4), np.float32); lights[0] = (*light.pos, light.range)
+        seed = np.array([light.seed, 0, 0, 0], np.uint32)
+        rot = r.packed(np.eye(4))
+        for name, value in [(b'area_world_info', info), (b'area_world_light', lights)]:
+            gl.u4fv(gl.loc(pr, name), 4, value.ctypes.data_as(C.POINTER(gl.F)))
+        gl.u4uiv(gl.loc(pr, b'area_world_seed'), 1, seed.ctypes.data_as(C.POINTER(gl.U)))
+        gl.u3fv(gl.loc(pr, b'area_world_rot'), 3, rot.ctypes.data_as(C.POINTER(gl.F)))
+        gl.draw(4, 0, 3); gl.finish()
+        result = np.empty((1, data.shape[1], 4), np.uint8)
+        gl.read(0, 0, data.shape[1], 1, 0x1908, 0x1401, result.ctypes.data)
+        return result[0, :, 0].astype(float)/255
+
+
+def seam_checks(r, raster, probe):
+    rows = []
+    # All 12 signed edges, sampled along the whole edge including both corner
+    # approaches; a sphere silhouette deliberately places the probes in penumbra.
+    for omitted in range(3):
+        axes = [i for i in range(3) if i != omitted]
+        for s0 in (-1, 1):
+            for s1 in (-1, 1):
+                worst = 0.
+                for along in (-.99, -.6, 0., .6, .99):
+                    d = np.zeros(3); d[axes] = (s0, s1); d[omitted] = along
+                    d = S.unit(d)
+                    tangent = np.zeros(3); tangent[omitted] = 1; tangent = S.unit(tangent-d*np.dot(tangent,d))
+                    sphere = S.Prim('sphere', 'sphere', c=tuple(2*d+.37*tangent), r=.4)
+                    light = S.Light('seam', (0,0,0), .1, 10., seed=123)
+                    sc = S.Scene('seam', [sphere], [[light]], [], {}, np.empty((0,3)))
+                    r.gpu_atlas = raster.atlas(sc, light, .05)
+                    points = []
+                    for offset in np.linspace(-.24,.24,33):
+                        p = 4*d+offset*tangent
+                        step = np.zeros(3); step[axes] = (s0*1.e-6,-s1*1.e-6)
+                        points.extend([p-step,p+step])
+                    v = probe.run(points, light, .05).reshape(-1,2)
+                    worst = max(worst,float(np.max(np.abs(v[:,0]-v[:,1])))*255)
+                rows.append(dict(name='edge_%d_%d_%d' % (omitted,s0,s1), delta_255=worst, passed=worst <= 2.00001))
+    for sx in (-1,1):
+        for sy in (-1,1):
+            for sz in (-1,1):
+                d = S.unit([sx,sy,sz]); t = S.unit(np.cross(d,[0,0,1]))
+                light = S.Light('corner', (0,0,0), .1, 10., seed=123)
+                worst = 0.
+                for offset in np.linspace(.28,.48,21):
+                    sc = S.Scene('corner', [S.Prim('sphere','sphere',c=tuple(2*d+offset*t),r=.4)], [[light]], [], {}, np.empty((0,3)))
+                    r.gpu_atlas = raster.atlas(sc,light,.05)
+                    points = [4*d + np.eye(3)[i]*[sx,sy,sz][i]*1.e-6 for i in range(3)]
+                    v = probe.run(points,light,.05)
+                    worst = max(worst,float(np.ptp(v))*255)
+                rows.append(dict(name='corner_%d_%d_%d' % (sx,sy,sz), delta_255=worst, passed=worst <= 2.00001))
+    return rows
+
+
+def softbox_check(r, raster, probe):
+    light = S.Light('one_metre_softbox',(0,0,3.5),1.,10.,seed=123)
+    blocker = S.Prim('half_plane','obb',c=(-10,0,1.49),h=(10,10,.01),cull='none')
+    sc = S.Scene('softbox',[blocker],[[light]],[],{},np.empty((0,3)))
+    r.gpu_atlas = raster.atlas(sc,light,.05)
+    x = np.linspace(-1.5,1.5,1201)
+    v = probe.run(np.column_stack([x,x*0,x*0]),light,.05,True)
+    # A uniform disk's analytic straight-edge CDF; 10..90% spans 1.374 of
+    # its projected radius R*(receiver-blocker)/blocker = .75 metres here.
+    expected = 2*.687048826*.75
+    smooth = np.convolve(np.pad(v,8,mode='edge'),np.ones(17)/17,mode='valid')
+    lo = np.interp(.1,np.maximum.accumulate(smooth),x)
+    hi = np.interp(.9,np.maximum.accumulate(smooth),x)
+    width = float(hi-lo)
+    return dict(name='softbox_1m',width_m=width,physical_width_m=expected,error_fraction=abs(width/expected-1),passed=abs(width/expected-1)<=.2)
+
+
+def flicker_checks(r, raster, out):
+    """The original B_camorbit_low orbit at 1080p, using real raster depth.
+
+    Same world probes, disk ground truth, 95th percentile and visibility sampling
+    as the 3D acceptance harness. Require BOTH production quality plans.
+    """
+    sc = S.scene_sphere()
+    poses = [p for p in sc.poses if p.group == 'camorbit_low']
+    assert len(poses) == 12
+    light = sc.light_sets[poses[0].cfg][0]
+    near = CS.emitter_near(sc, light)
+    r.gpu_atlas = raster.atlas(sc, light, near)
+    plans, source = PL.compute_plans(r.tree, out)
+    assert source != 'fallback', 'production planner must compile'
+    pts = sc.probes
+    gt = S.trace_light(sc,light,pts,np.tile([0.,0.,1.],(len(pts),1)),np.arange(len(pts),dtype=np.uint32),S=256)
+    gt = (1.-gt['nblk'].astype(np.float32)/256)[None,:]
+    seq = {cfg: [] for cfg in ('cube','cube+thin','cube_worldonly')}
+    identical = True
+    for pose in poses:
+        cam = S.Camera(pose.eye,pose.target,1920,1080,pose.vfov)
+        g = S.cast_primary(sc,cam)
+        _,depth,norm = S.encode_gbuffer(cam,g)
+        xy = T.probe_projection(sc,cam,g)
+        for cfg in seq:
+            world = {'atlas': np.empty((CS.ATLAS_H_PER_LIGHT,CS.ATLAS_W),np.float32),'channels':
+                     [dict(row=0,near=near,far=light.range,r_map=light.radius,contact=0. if cfg == 'cube_worldonly' else CS.contact_distance(light.range),seed=light.seed)]}
+            plan = plans['Default+Thin' if cfg == 'cube+thin' else 'Default'][1]
+            v = r.run(cam,depth,norm,[light],plan,world=world)
+            if cfg == 'cube': regular_image = v
+            if cfg == 'cube+thin': identical &= np.array_equal(v,regular_image)
+            _,pv = R.sample_full(v,(np.array([0]),np.array([0])),xy)
+            seq[cfg].append(dict(probe=pv,cls=np.zeros_like(pv,dtype=np.uint8),cfg=0))
+    rows = []
+    for cfg, frames in seq.items():
+        pairs = M.temporal(frames,[True]*len(frames),{0:gt})
+        (out / ('flicker_pairs_'+cfg+'.json')).write_text(json.dumps(pairs,indent=2))
+        assert len(pairs) == 11 and 'p95' in pairs[3], 'incomplete camera orbit coverage'
+        measured = [p for p in pairs if 'p95' in p]
+        assert len(measured) >= 6, 'too few shared visible probes in the orbit'
+        worst = max(p['p95'] for p in measured); pop = max(p['pop'] for p in measured)
+        row = dict(name='B_camorbit_low_'+cfg,p95=worst,pop=pop,pair_003_004=pairs[3]['p95'])
+        # Acceptance is the two shipped configurations, as in cube_gates. The
+        # contact-disabled debug path diagnoses raster/probe aliasing separately.
+        if cfg != 'cube_worldonly': row['passed'] = worst<=.06 and pop<=.05
+        rows.append(row)
+    rows.append(dict(name='cube_vs_thin_full_images',frames=len(poses),passed=bool(identical)))
+    # Resolve the contact-disabled diagnostic's worst 1080p pair again at 4K.
+    # A world transform error survives this; pixel-centre interpolation aliasing
+    # shrinks as the same physical penumbra spans more receiver pixels.
+    worst_pair = max(measured,key=lambda p:p['p95'])
+    high = []
+    for pose in poses[worst_pair['i']:worst_pair['i']+2]:
+        cam = S.Camera(pose.eye,pose.target,3840,2160,pose.vfov)
+        g = S.cast_primary(sc,cam); _,depth,norm = S.encode_gbuffer(cam,g)
+        xy = T.probe_projection(sc,cam,g)
+        world = {'atlas':np.empty((CS.ATLAS_H_PER_LIGHT,CS.ATLAS_W),np.float32),'channels':
+                 [dict(row=0,near=near,far=light.range,r_map=light.radius,contact=0.,seed=light.seed)]}
+        v = r.run(cam,depth,norm,[light],plans['Default'][1],world=world)
+        _,pv = R.sample_full(v,(np.array([0]),np.array([0])),xy)
+        high.append(dict(probe=pv,cls=np.zeros_like(pv,dtype=np.uint8),cfg=0))
+    hi = M.temporal(high,[True,True],{0:gt})[0]
+    rows.append(dict(name='worldonly_resolution_control',pair=worst_pair['i'],p95_1080=worst_pair['p95'],p95_4k=hi['p95'],
+                     passed=hi['p95'] < .8*worst_pair['p95']))
+    return rows
+
+
+def fixture(capsule=True, emitter=None, translated=False, projector=False):
+    pos = (0., 0., 1.)
+    prims = [S.Prim('floor', 'obb', c=(0, 0, -.1), h=(15, 15, .1))]
+    if capsule: prims.append(S.Prim('capsule', 'capsule', a=(.85 if translated else 1.5, 0, .25), b=(.85 if translated else 1.5, 0, 1.55), r=.25))
+    if emitter: prims.append(S.Prim('bulb', 'obb', c=pos, h=(.25, .25, .25), yaw=40, cull=emitter))
+    light = S.Light('lamp', pos, .1, 10., ignore='bulb' if emitter else '', seed=123,
+                    kind='projector' if projector else 'point', dir=(.612372, .612372, -.5))
+    sc = S.Scene('realGL', prims, [[light]], [], {}, np.zeros((0, 3)))
+    return sc, light
+
+
+def evaluate(r, raster, scene, light, yaw=-54.462, pitch=28.635, contact=0., thin=False):
+    t, p = np.radians([yaw, pitch])
+    cam = S.Camera((6*np.cos(p)*np.cos(t), 6*np.cos(p)*np.sin(t), 6*np.sin(p)), (0, 0, .4), 640, 360)
+    g = S.cast_primary(scene, cam)
+    _, depth, norm = S.encode_gbuffer(cam, g)
+    near = CS.emitter_near(scene, light)
+    if light.ignore:
+        # An active emitter stores LOCAL extents. Send its render matrix and
+        # extents through the production C++ transform/near helpers too.
+        emitter = scene.prims[scene.prim_index(light.ignore)]
+        matrix = np.eye(4); matrix[:3,:3] = emitter.rot().T; matrix[3,:3] = emitter.c
+        values = [*matrix.ravel(), *(-np.array(emitter.h)), *emitter.h, *light.pos, light.range/1.5, .05]
+        native = float(subprocess.check_output([r.host.args[0],'--bounds'],input=' '.join(map(str,values)),text=True))
+        assert abs(native-near) < 1e-6, 'active emitter bounds/near differ between host and raster'
+        near = native
+    r.gpu_atlas = raster.atlas(scene, light, near)
+    world = {'atlas': np.empty((CS.ATLAS_H_PER_LIGHT, CS.ATLAS_W), np.float32), 'channels':
+             [dict(row=0, near=near, far=light.range, r_map=min(light.radius, 2.), contact=contact, seed=light.seed)]}
+    plan = dict(samples=8, steps=12, half=True, near_steps=16 if thin else 0)
+    v = r.run(cam, depth, norm, [light], plan, world=world)[0]
+    mask = (g['surf'] == 0) & (np.linalg.norm(g['pos'][..., :2], axis=2) < 8.)
+    assert np.count_nonzero(mask) > 1000, 'fixture has insufficient floor coverage'
+    return v, mask, 100 * float(np.mean(v[mask] < .5))
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--glm-include'); ap.add_argument('--out', default='.tmp/relight_world_gl')
+    ap.add_argument('--shader-ref',default='WORKTREE')
+    args = ap.parse_args()
+    out = Path(args.out).resolve(); out.mkdir(parents=True, exist_ok=True)
+    WM.check(out / 'math')
+    contracts = lifecycle_checks()
+    host = build_host(out, args.glm_include)
+    rows = []
+    try:
+        gl = G.GL()
+        assert not any(x in gl.renderer.lower() for x in ('gdi generic','llvmpipe','softpipe','swiftshader','lavapipe','software','basic render')), 'FAIL: hardware GPU unavailable'
+        r = RealRunner(G.SourceTree(args.shader_ref), host, gl=gl)
+        print('[world-gl] GPU:', r.gl.renderer, flush=True)
+        raster = Raster(r)
+        reference = None
+        for name, kw in [('empty_floor', dict(capsule=False)), ('capsule', {}),
+                         ('rotated_single', dict(emitter='back')), ('rotated_double', dict(emitter='none')),
+                         ('rotated_projector', dict(emitter='none', projector=True)),
+                         ('translated_active', dict(emitter='none', translated=True))]:
+            sc, light = fixture(**kw)
+            v, mask, dark = evaluate(r, raster, sc, light)
+            ok = dark < .1 if not kw.get('capsule', True) else 1 < dark < 30
+            if name == 'rotated_double': reference = v
+            if name == 'rotated_projector': ok &= np.array_equal(v, reference)
+            rows.append(dict(name=name, dark_percent=dark, passed=bool(ok)))
+            print('[world-gl]', rows[-1], flush=True)
+        for yaw, pitch in [(-54.462, 28.635), (0, 20), (45, 35), (90, 60), (135, 25), (225, 45)]:
+            for capsule in (False, True):
+                sc, light = fixture(capsule=capsule)
+                _, _, dark = evaluate(r, raster, sc, light, yaw, pitch)
+                rows.append(dict(name='sweep_%g_%g_%s' % (yaw, pitch, capsule), dark_percent=dark,
+                                 passed=bool(dark < .1 if not capsule else dark > .1)))
+        sc, light = fixture(capsule=False)
+        r.old_packing = True
+        _, _, dark = evaluate(r, raster, sc, light)
+        rows.append(dict(name='old_packing_negative_control', dark_percent=dark, rejected=bool(dark >= .1), passed=bool(dark > 10)))
+        r.old_packing = False
+        probe = Probe(r)
+        rows.extend(seam_checks(r,raster,probe))
+        rows.append(softbox_check(r,raster,probe))
+        for row in rows[19:]: print('[world-gl]',row,flush=True)
+        flicker = flicker_checks(r,raster,out)
+        rows.extend(row for row in flicker if 'passed' in row)
+        diagnostics = [row for row in flicker if 'passed' not in row]
+        for row in flicker: print('[world-gl]',row,flush=True)
+        rows.extend(contracts)
+        result = dict(renderer=r.gl.renderer, rows=rows, diagnostics=diagnostics, passed=all(x['passed'] for x in rows))
+        (out / 'results.json').write_text(json.dumps(result, indent=2))
+        print('[world-gl] %s (%d checks); results: %s' % ('PASS' if result['passed'] else 'FAIL', len(rows), out / 'results.json'))
+        return 0 if result['passed'] else 1
+    finally:
+        host.terminate(); host.wait()
+
+
+if __name__ == '__main__':
+    try: sys.exit(main())
+    except Exception as exc:
+        print('[world-gl] FAIL (gate could not run):', exc, file=sys.stderr)
+        raise
