@@ -2854,6 +2854,11 @@ template<> template<> void relight_object::test<37>()
     // Near plane = max(5 cm, housing bias).
     close("near plane is a fixed 5 cm (decoupled from the Light bias)",nearPlane(),0.05,1.e-12);
     close("near plane constant",kNearPlane,0.05,1.e-12);
+    close("emitter near: small emitter keeps the floor",emitterNearPlane(0.05,0.04,7.0),0.05,1.e-12);
+    close("emitter near: 16 cm bulb clears its inscribed sphere + 1 cm",emitterNearPlane(0.05,0.16,7.0),0.09,1.e-12);
+    close("emitter near: huge emitter clamps to 1 m",emitterNearPlane(0.05,10.0,7.0),1.0,1.e-12);
+    close("emitter near: below 0.9 x the light radius",emitterNearPlane(0.05,0.4,0.2),0.18,1.e-12);
+    close("emitter near: the setting is a floor",emitterNearPlane(0.5,0.04,7.0),0.5,1.e-12);
     close("far plane",farPlane(10.0),15.0,1.e-12);
 }
 template<> template<> void relight_object::test<38>()

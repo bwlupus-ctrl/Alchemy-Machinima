@@ -106,6 +106,43 @@ def check_mask_sync():
     print('[world] render-type mask PASS: generateWorldShadowCubes copies generateSunShadow\'s list verbatim (%d types)' % sun.count('RENDER_TYPE'), flush=True)
 
 
+def check_camera_id(display_src=None):
+    """generateWorldShadowCubes returns early unless sCurCameraID == CAMERA_WORLD, and generateSunShadow leaves a shadow ID: the call site
+    must set CAMERA_WORLD immediately before the call and restore the saved ID right after it."""
+    src = display_src if display_src is not None else text(NV / 'llviewerdisplay.cpp')
+    call = 'gPipeline.generateWorldShadowCubes('
+    assert src.count(call) == 1, 'exactly one generateWorldShadowCubes call site expected'
+    i = src.index(call)
+    before = re.sub(r'\s+', '', src[:i])
+    assert before.endswith('LLViewerCamera::sCurCameraID=LLViewerCamera::CAMERA_WORLD;'), 'camera ID is not set to CAMERA_WORLD immediately before generateWorldShadowCubes'
+    assert 'saved_camera_id=LLViewerCamera::sCurCameraID;LLViewerCamera::sCurCameraID=LLViewerCamera::CAMERA_WORLD;' in before[-200:], 'the previous camera ID is not saved before the override'
+    after = re.sub(r'\s+', '', src[i:i + 400])
+    assert 'LLViewerCamera::sCurCameraID=saved_camera_id;' in after.split('generateWeatherRainOcclusion')[0], 'the saved camera ID is not restored right after the call'
+    pipe = text(NV / 'pipeline.cpp')
+    guard = pipe[pipe.index('void LLPipeline::generateWorldShadowCubes('):]
+    assert 'LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD' in guard[:3500], 'the CAMERA_WORLD guard in pipeline.cpp must stay'
+    print('[world] camera id PASS: CAMERA_WORLD is set immediately before generateWorldShadowCubes and the saved ID restored; the pipeline guard stays', flush=True)
+
+
+def check_near_and_state():
+    """Round 4: the per-light near plane is computed ONCE (worldShadowLightNear) and used by the raster AND the resolve; the function restores the
+    entry shader program and texture units on every exit through an RAII guard created right after the early returns."""
+    pipe = text(NV / 'pipeline.cpp')
+    header = text(NV / 'alworldshadowmath.h')
+    assert 'inline double emitterNearPlane(' in header, 'emitterNearPlane missing'
+    uses = pipe.count('worldShadowLightNear(')
+    assert uses == 3, 'worldShadowLightNear: expected the definition, the raster job and the resolve (3 mentions), got %d' % uses
+    assert 'world_info[i].set(static_cast<F32>(ALWorldShadow::kRowsPerLight*world_slot),worldShadowLightNear(' in pipe, 'the resolve must use the per-light near'
+    assert 'ALWorldShadow::nearPlane())' not in pipe, 'a raw global near plane crept back in'
+    body = pipe[pipe.index('void LLPipeline::generateWorldShadowCubes('):]
+    body = body[:body.index('void LLPipeline::renderGroups(')]
+    g = body.index('WorldShadowStateGuard state_guard;')
+    first_gl = body.index('const U32 width = ')
+    assert g < first_gl, 'the state guard must exist before the first GL work (allocation, release, render)'
+    assert 'if (mShader) mShader->bind(); else LLGLSLShader::unbind();' in pipe, 'the guard must rebind or unbind the entry program'
+    print('[world] near + state PASS: one per-light near for raster and resolve, state guard before the first GL work', flush=True)
+
+
 def function_range(src, signature):
     i = src.index(signature)
     j = src.index('\n}\n', i) + 3
@@ -133,6 +170,8 @@ def check_section10():
 
 check_face_tables()
 check_constants()
+check_camera_id()
+check_near_and_state()
 check_mask_sync()
 check_section10()
 print('[world] static pins PASS', flush=True)

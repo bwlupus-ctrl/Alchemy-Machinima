@@ -6,8 +6,8 @@
 What it stands in for, and what it does NOT:
   * The RASTER of the six widened faces is a CPU ray cast (this module): for every light that is world-resident, six
     544 x 544 faces from the shared face table (the Python mirror below; pinned against alworldshadowmath.h and the GLSL
-    table by relight_shader_check.py), front faces only, the near cube clipped, the emitting prim (Light.ignore) left
-    out, the result a D32F window-depth atlas laid out exactly like LLPipeline::generateWorldShadowCubes (tile column
+    table by relight_shader_check.py), front faces only, the near cube clipped (per light: the emitter's inscribed radius + 1 cm, floor 5 cm), the emitting prim a NORMAL caster
+    (cull 'none' prims cast from inside), the result a D32F window-depth atlas laid out exactly like LLPipeline::generateWorldShadowCubes (tile column
     f % 3, row 2k + f / 3, 1632 wide). The viewer renders the same faces with the production shadow pass; the harness
     cannot, so the raster is a stated stand-in (analytic scenes: exact depth at texel centres).
   * Everything downstream is PRODUCTION: the WORKTREE areaShadowF.glsl gather (contact term for the world channel) and
@@ -41,7 +41,7 @@ else:
 
 np.seterr(over='ignore', invalid='ignore', divide='ignore')
 
-CUBE_VERSION = 'cube-raster-2'
+CUBE_VERSION = 'cube-raster-3'
 USABLE, GUTTER = 512, 16
 TILE = USABLE + 2 * GUTTER          # 544
 TAN_HALF = TILE / USABLE            # 1.0625: tan of half the widened FOV
@@ -132,18 +132,34 @@ def raster_face(scene, light, face, near, far, skip):
     return dep.reshape(TILE, TILE).astype(np.float32)
 
 
-def light_tiles(scene, light, near, far, cache_dir, noignore=False):
-    """(6, TILE, TILE) D32F window depth for one light; memory + disk cached on scene content."""
-    key = hashlib.sha1(repr((scene.signature(), light.spec(), near, far, noignore, CUBE_VERSION)).encode()).hexdigest()[:16]
+def emitter_near(scene, light, floor=NEAR):
+    """alworldshadowmath.h emitterNearPlane: max(setting floor, the emitter's inscribed radius + 1 cm), <= 1 m, <= 0.9 x the light radius.
+    The inscribed radius is half the emitter's smallest scale axis (a sphere: r; a box: its smallest half extent; a capsule: r). Kept literal here."""
+    insc = 0.0
+    idx = scene.prim_index(light.ignore) if light.ignore else -1
+    if idx >= 0:
+        p = scene.prims[idx]
+        insc = p.r if p.kind in ('sphere', 'capsule') else float(min(p.h))
+    n = floor
+    if insc > 0.0:
+        n = max(n, insc + 0.01)
+    n = min(n, 1.0)
+    if light.range > 0.0:
+        n = min(n, 0.9 * float(light.range))
+    return n
+
+
+def light_tiles(scene, light, near, far, cache_dir):
+    """(6, TILE, TILE) D32F window depth for one light (near = the per-light value, see emitter_near); memory + disk cached on scene content."""
+    key = hashlib.sha1(repr((scene.signature(), light.spec(), near, far, CUBE_VERSION)).encode()).hexdigest()[:16]
     path = Path(cache_dir) / ('cube_%s_%s.npy' % (scene.name, key))
     if path.exists():
         return np.load(path)
-    # The emitting prim never casts in its own cube (RenderSpotLight in production). A prim that ENCLOSES the light casts nothing either, whatever
-    # the hook does: every triangle of a closed bulb is back-facing from inside and the shadow pass culls back faces (`noignore` = diagnostic: no
-    # explicit exclusion, only that culling).
-    skip = {scene.prim_index(light.ignore)} if (light.ignore and not noignore) else set()
-    skip.discard(-1)
-    skip |= {i for i, p in enumerate(scene.prims) if _inside(p, light.pos)}
+    # NO explicit emitter exclusion: RenderSpotLight only drops the emitter's own per-drawable sorted geometry, never merged batches or double-sided /
+    # inward-wound glTF, so the emitter is modelled as a normal caster and the per-light NEAR plane (emitter_near) is what keeps a bulb out. The only
+    # skip is the back-face cull of production: a single-sided closed prim (cull 'back') that ENCLOSES the light casts nothing from inside; a prim with
+    # cull 'none' (double-sided or inward-wound) does cast, from inside, at its enclosing surface.
+    skip = {i for i, p in enumerate(scene.prims) if p.cull == 'back' and _inside(p, light.pos)}
     tiles = np.stack([raster_face(scene, light, f, near, far, skip) for f in range(6)])
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + '.%d.tmp.npy' % os.getpid())
@@ -167,10 +183,9 @@ class CubeSource(VisibilitySource):
                ('cube1', 'Default', 1, True, False),
                ('cube_worldonly', 'Default', 2, False, False),
                ('cube_fixedrot', 'Default', 2, True, True),
-               # scene W/WB diagnostics: the superseded near plane rule max(5 cm, Light bias) = 25 cm, a 10 cm plane, and no explicit emitter exclusion
+               # scene W/WB diagnostics: the superseded near plane rule max(5 cm, Light bias) = 25 cm, and a 10 cm floor
                ('cube_near025', 'Default', 2, True, False, {'near': 0.25}),
-               ('cube_near010', 'Default', 2, True, False, {'near': 0.10}),
-               ('cube_noignore', 'Default', 2, True, False, {'noignore': True})]
+               ('cube_near010', 'Default', 2, True, False, {'near': 0.10})]
 
     def prepare(self, ctx):
         args = ctx['args']
@@ -195,8 +210,7 @@ class CubeSource(VisibilitySource):
     def configs(self, ctx):
         return [(c[0], {'plan': c[1], 'n': c[2], 'contact': c[3], 'fixedrot': c[4],
                         'near': (c[5] if len(c) > 5 else {}).get('near', NEAR),
-                        'bias': (c[5] if len(c) > 5 else {}).get('bias', LIGHT_BIAS),
-                        'noignore': (c[5] if len(c) > 5 else {}).get('noignore', False)}) for c in self.enabled]
+                        'bias': (c[5] if len(c) > 5 else {}).get('bias', LIGHT_BIAS)}) for c in self.enabled]
 
     def plan_text(self, name):
         for c in self.CONFIGS:
@@ -215,9 +229,9 @@ class CubeSource(VisibilitySource):
                        key=lambda i: (-importance(frame.lights[i], eye), frame.lights[i].name))
         return order[:n]
 
-    def atlas_for(self, scene, lights, picked, near=NEAR, noignore=False):
+    def atlas_for(self, scene, lights, picked, near=NEAR):
         """(atlas float32 (H, 1632), rows {light index: tile row}) for the picked lights; cached per light set."""
-        key = (scene.name, near, noignore, tuple((tuple(lights[i].pos), lights[i].ignore, float(lights[i].range)) for i in picked))
+        key = (scene.name, near, tuple((tuple(lights[i].pos), lights[i].ignore, float(lights[i].range)) for i in picked))
         hit = self.atlas_cache.get(key)
         if hit is not None:
             return hit
@@ -226,7 +240,7 @@ class CubeSource(VisibilitySource):
         for k, li in enumerate(picked):
             L = lights[li]
             far = float(L.range)
-            tiles = light_tiles(scene, L, near, far, self.cache_dir, noignore)
+            tiles = light_tiles(scene, L, emitter_near(scene, L, near), far, self.cache_dir)
             for f in range(6):
                 x, y = (f % 3) * TILE, (2 * k + f // 3) * TILE
                 atlas[y:y + TILE, x:x + TILE] = tiles[f]
@@ -250,14 +264,14 @@ class CubeSource(VisibilitySource):
             runner.filter = self.filter_fixed
         world = None
         if picked:
-            atlas, rows = self.atlas_for(frame.scene, lights, picked, params['near'], params['noignore'])
+            atlas, rows = self.atlas_for(frame.scene, lights, picked, params['near'])
             channels = []
             for i, L in enumerate(lights):
                 if i not in rows:
                     channels.append(None)
                     continue
                 far = float(L.range)
-                channels.append({'row': rows[i], 'near': near_plane(params['near']), 'far': far,
+                channels.append({'row': rows[i], 'near': emitter_near(frame.scene, L, params['near']), 'far': far,
                                  'r_map': float(min(L.radius if L.radius > 0 else 0.1, 0.25)),
                                  'contact': contact_distance(far) if params['contact'] else 0.0,
                                  'seed': int(L.seed)})

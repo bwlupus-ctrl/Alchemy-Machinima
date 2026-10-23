@@ -97,6 +97,21 @@ inline double linearize(double d, double n, double f)
 // shade or housing 9-11 cm from the light (scene W: wall above the lamp lit 1.0 against a ground truth of 0.0); 5 cm restores it. Far = 1.5 x the light radius.
 constexpr double kNearPlane = 0.05;
 inline double nearPlane() { return kNearPlane; }
+// Runtime near plane from RenderAreaShadowWorldNear (metres): clamped to 2 cm..1 m, non-finite = the default. The no-argument form is the default (harness, tests).
+inline double nearPlane(double setting)
+{ return std::isfinite(setting) ? std::min(std::max(setting, 0.02), 1.0) : kNearPlane; }
+// Per-light near plane (10/23 lead decision): the floor is the RenderAreaShadowWorldNear setting; the light sits at its object's centre, so a closed
+// emitter (a bulb) encloses it and fills every face when double-sided or inward-wound. The near plane therefore clears the emitter's inscribed sphere
+// (half of the smallest scale axis) plus 1 cm; clamped to 1 m and to 0.9 x the light radius. Separate shade prims further out still cast.
+// The raster AND the resolve use this same value (the resolve linearises depth with it).
+inline double emitterNearPlane(double setting, double emitterMinScale, double lightRadius)
+{
+    double n = nearPlane(setting);
+    if (std::isfinite(emitterMinScale) && emitterMinScale > 0.0) n = std::max(n, 0.5 * emitterMinScale + 0.01);
+    n = std::min(n, 1.0);
+    if (std::isfinite(lightRadius) && lightRadius > 0.0) n = std::min(n, 0.9 * lightRadius);
+    return n;
+}
 inline double farPlane(double lightRadius) { return 1.5 * std::max(lightRadius, 0.0); }
 
 // ---------------------------------------------------------------------------------------------------- bias

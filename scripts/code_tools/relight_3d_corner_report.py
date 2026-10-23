@@ -34,12 +34,14 @@ import relight_3d_tasks as T  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 BASE = 'e150b927cf4'
-SOURCES = ['screen', 'screen_bias005', 'cube', 'cube_near025', 'cube_near010', 'cube_noignore']
-LABELS = {'screen': 'screen-space (today)', 'screen_bias005': 'screen-space, Light bias 5 cm', 'cube': 'cube maps (near 5 cm, emitter excluded)',
-          'cube_near025': 'cube maps, near 25 cm (superseded rule)', 'cube_near010': 'cube maps, near 10 cm', 'cube_noignore': 'cube maps, no emitter exclusion (culling only)'}
+SOURCES = ['screen', 'screen_bias005', 'cube', 'cube_near025', 'cube_near010']
+LABELS = {'screen': 'screen-space (today)', 'screen_bias005': 'screen-space, Light bias 5 cm', 'cube': 'cube maps (per-light near: emitter inscribed radius + 1 cm, floor 5 cm)',
+          'cube_near025': 'cube maps, near 25 cm (superseded rule)', 'cube_near010': 'cube maps, near 10 cm'}
 SHEET_POSES = {'W': ['W_orbit_low_002', 'W_orbit_low_007', 'W_orbit_eye_005', 'W_dolly_004', 'W_vent_002', 'W_vent_006'],
                'WS': ['WS_orbit_low_004', 'WS_orbit_eye_005', 'WS_vent_004'],
-               'WB': ['WB_orbit_low_002', 'WB_orbit_low_007', 'WB_orbit_eye_005', 'WB_dolly_004', 'WB_vent_002', 'WB_vent_006']}
+               'WB': ['WB_orbit_low_002', 'WB_orbit_low_007', 'WB_orbit_eye_005', 'WB_dolly_004', 'WB_vent_002', 'WB_vent_006'],
+               'WD': ['WD_orbit_low_002', 'WD_orbit_low_007', 'WD_orbit_eye_005', 'WD_dolly_004', 'WD_vent_002', 'WD_vent_006'],
+               'WI': ['WI_orbit_low_002', 'WI_orbit_low_007', 'WI_orbit_eye_005', 'WI_dolly_004', 'WI_vent_002', 'WI_vent_006']}
 
 
 def regions(pos, surf, names):
@@ -55,7 +57,7 @@ def regions(pos, surf, names):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--scenes', default='W,WS,WB')
+    ap.add_argument('--scenes', default='W,WS,WB,WD,WI')
     ap.add_argument('--out', default=str(REPO / '.tmp' / 'cube_r1' / 'sheets_W'))
     ap.add_argument('--cache', default=str(REPO / '.tmp' / 'ref3d_cache'))
     ap.add_argument('--scale', type=float, default=1.5)

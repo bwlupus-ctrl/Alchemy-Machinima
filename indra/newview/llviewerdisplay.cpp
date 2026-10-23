@@ -868,7 +868,12 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                     gPipeline.generateSunShadow(*LLViewerCamera::getInstance());
                     // [P1-lite] World cube shadow maps (main path only, before the Prism aux pass). Returns before any GL call
                     // while the setting is off.
+                    // generateSunShadow leaves sCurCameraID on a SUN/SPOT shadow ID and the reset to CAMERA_WORLD comes later; the cube pass
+                    // requires CAMERA_WORLD, so set it for the call and restore what generateWeatherRainOcclusion saw before.
+                    const LLViewerCamera::eCameraID saved_camera_id = LLViewerCamera::sCurCameraID;
+                    LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
                     gPipeline.generateWorldShadowCubes(*LLViewerCamera::getInstance());
+                    LLViewerCamera::sCurCameraID = saved_camera_id;
                     gPipeline.generateWeatherRainOcclusion(
                         *LLViewerCamera::getInstance());
                 }

@@ -21574,6 +21574,13 @@
         <key>Type</key><string>S32</string>
         <key>Value</key><integer>2</integer>
     </map>
+    <key>RenderAreaShadowWorldNear</key>
+    <map>
+        <key>Comment</key><string>World (cube) shadow near distance: geometry closer than this to the light never casts. Raise it if a lamp inside a hollow or double-sided bulb goes dark.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0.05</real>
+    </map>
     <key>RenderAreaShadowLights</key>
     <map>
         <key>Comment</key><string>Number of shadowed lights (1-8). The most important lights (bright, large, close) get them, whether or not they have a native SL shadow map.</string>

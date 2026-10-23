@@ -26743,6 +26743,21 @@ void LLPipeline::logRelightTake(const char* trigger) const
     // the background writer (relight_takes.log).
 }
 
+// [P1-lite] The cube face near plane: RenderAreaShadowWorldNear (clamped 2 cm..1 m) is the floor.
+// The per-light value additionally clears the emitter (see ALWorldShadow::emitterNearPlane): the raster and the resolve both call this.
+static F32 worldShadowLightNear(LLDrawable* drawable, F32 light_radius)
+{
+    static LLCachedControl<F32> near_setting(gSavedSettings, "RenderAreaShadowWorldNear", 0.05f);
+    F32 min_scale = 0.f;
+    if (LLViewerObject* object = drawable ? drawable->getVObj().get() : nullptr)
+    {
+        const LLVector3 scale = object->getScale();
+        min_scale = llmin(scale.mV[VX], scale.mV[VY], scale.mV[VZ]);
+    }
+    return static_cast<F32>(ALWorldShadow::emitterNearPlane(static_cast<double>(near_setting()), static_cast<double>(min_scale),
+        static_cast<double>(light_radius)));
+}
+
 // [P1-lite] Residency eligibility (alworldshadowmath.h): a world light, point OR projector (user decision 10/23: the top-ranked lights get
 // world shadows whichever kind they are), not an attachment, not actor-only, not a mirror copy and not suppressed. Pure reads of the light and
 // the rig registry; used for the pinned slots (clear when it stops being eligible) and for choosing a light. A projector that currently owns
@@ -27261,10 +27276,9 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // The native sampler's receiver offset; the gather AND the filter evaluate the hand-over at the depth it compares.
     const F32 native_offset = std::isfinite(RenderSpotShadowOffset) ? RenderSpotShadowOffset : 0.f;
     // [P1-lite] The world resolve's inputs: the view -> agent rotation as three row vectors (the columns of the view matrix's 3x3) and
-    // the face near plane (a fixed 5 cm: alworldshadowmath.h nearPlane).
+    // the face near plane (per light: worldShadowLightNear).
     float world_rot[9];
     std::memcpy(world_rot,glm::value_ptr(glm::mat3(view)),sizeof(world_rot));
-    const F32 world_near = static_cast<F32>(ALWorldShadow::nearPlane());
     for (U32 plane=0; plane<planes; ++plane)
     {
         LLVector4 lights[4] = {}; GLuint seeds[4] = {};
@@ -27324,7 +27338,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                     const F32 source = area_source_radius(volume);
                     world_flags.mV[i] = 1.f;
                     world_light[i].set(centre.x,centre.y,centre.z,far_m);
-                    world_info[i].set(static_cast<F32>(ALWorldShadow::kRowsPerLight*world_slot),world_near,
+                    world_info[i].set(static_cast<F32>(ALWorldShadow::kRowsPerLight*world_slot),worldShadowLightNear(drawable,volume->getLightRadius()),
                         llmin(source > 0.f ? source : .1f,.25f),0.f);
                     world_seed[i] = seeds[i];
                     contact.mV[i] = static_cast<F32>(ALWorldShadow::contactDistance(mapped_contact(),far_m));
@@ -32968,6 +32982,10 @@ struct WorldShadowGLState
     LLDrawable* spot_light = nullptr;
     U32 res_x = 0, res_y = 0, fbo = 0;
     LLGLSLShader* shader = nullptr;
+    static constexpr U32 kTexUnits = 16;
+    U32 tex[kTexUnits] = {};
+    LLTexUnit::eTextureType tex_type[kTexUnits] = {};
+    U32 tex_active = 0;
     void capture()
     {
         glGetIntegerv(GL_VIEWPORT, viewport);
@@ -32993,6 +33011,12 @@ struct WorldShadowGLState
         res_y = LLRenderTarget::sCurResY;
         fbo = LLRenderTarget::sCurFBO;
         shader = LLGLSLShader::sCurBoundShaderPtr;
+        for (U32 i = 0; i < kTexUnits; ++i)
+        {
+            tex[i] = gGL.getTexUnit(i)->getCurrTexture();
+            tex_type[i] = gGL.getTexUnit(i)->getCurrType();
+        }
+        tex_active = gGL.getCurrentTexUnitIndex();
     }
     void compare(const WorldShadowGLState& after) const
     {
@@ -33022,7 +33046,57 @@ struct WorldShadowGLState
         if (res_x != after.res_x || res_y != after.res_y) fail("render target resolution");
         if (fbo != after.fbo) fail("render target FBO");
         if (shader != after.shader) fail("bound shader");
+        for (U32 i = 0; i < kTexUnits; ++i)
+            if (tex[i] != after.tex[i] || tex_type[i] != after.tex_type[i]) { fail("texture binding"); break; }
+        if (tex_active != after.tex_active) fail("active texture unit (wrapper)");
     }
+};
+// [P1-lite] RAII: whatever path generateWorldShadowCubes leaves by after its first GL work, the shader program bound at entry and the texture
+// units 0..15 are put back (renderShadow leaves its own program bound; the allocation path binds and unbinds unit 0), then under gDebugGL the
+// whole snapshot is compared.
+class WorldShadowStateGuard
+{
+public:
+    WorldShadowStateGuard()
+    {
+        mShader = LLGLSLShader::sCurBoundShaderPtr;
+        mActive = gGL.getCurrentTexUnitIndex();
+        for (U32 i = 0; i < WorldShadowGLState::kTexUnits; ++i)
+        {
+            mTex[i] = gGL.getTexUnit(i)->getCurrTexture();
+            mType[i] = gGL.getTexUnit(i)->getCurrType();
+        }
+        if (gDebugGL) mBefore.capture();
+    }
+    ~WorldShadowStateGuard()
+    {
+        if (LLGLSLShader::sCurBoundShaderPtr != mShader)
+        {
+            if (mShader) mShader->bind(); else LLGLSLShader::unbind();
+        }
+        for (U32 i = 0; i < WorldShadowGLState::kTexUnits; ++i)
+        {
+            LLTexUnit* unit = gGL.getTexUnit(i);
+            if (unit->getCurrTexture() == mTex[i] && unit->getCurrType() == mType[i]) continue;
+            if (mTex[i]) unit->bindManual(mType[i], mTex[i]);
+            else unit->unbind(unit->getCurrType());
+        }
+        gGL.getTexUnit(mActive)->activate();
+        if (gDebugGL)
+        {
+            WorldShadowGLState after;
+            after.capture();
+            mBefore.compare(after);
+        }
+    }
+    WorldShadowStateGuard(const WorldShadowStateGuard&) = delete;
+    WorldShadowStateGuard& operator=(const WorldShadowStateGuard&) = delete;
+private:
+    LLGLSLShader* mShader = nullptr;
+    U32 mActive = 0;
+    U32 mTex[WorldShadowGLState::kTexUnits] = {};
+    LLTexUnit::eTextureType mType[WorldShadowGLState::kTexUnits] = {};
+    WorldShadowGLState mBefore;
 };
 }
 
@@ -33057,6 +33131,8 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     if (!sRenderDeferred || gCubeSnapshot || sReflectionRender || sPrismLensRender || sRenderingHUDs || sImpostorRender ||
         mRT != &mMainRT || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD) return;
 
+    WorldShadowStateGuard state_guard; // restores the entry program and texture bindings on EVERY exit below, then the debug compare
+
     const U32 width = mRT->deferredScreen.getWidth(), height = mRT->deferredScreen.getHeight();
     const U32 planned = ALWorldShadow::plannedLights(width, height,
         static_cast<U32>(llclamp(lights_setting(), 1, static_cast<S32>(ALWorldShadow::kMaxLights))));
@@ -33077,8 +33153,6 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("WorldShadow::render");
     LL_PROFILE_GPU_ZONE("WorldShadow::render");
     LLTimer cpu_timer;
-    WorldShadowGLState before;
-    if (gDebugGL) before.capture();
 
     // Atlas: a fixed function of the planned light count (6.77 / 13.55 MiB) plus one 544^2 scratch tile (1.13 MiB). Allocation
     // failure gives no cube this frame (the channel then falls back to the full screen trace) and is retried next frame.
@@ -33117,7 +33191,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
 
     // The resident lights that are in view (the same frustum test the soft-shadow selection uses, so a selected light always has
     // its cube): lights outside it shade nothing visible, so their six passes are skipped.
-    struct Job { U32 slot; LLDrawable* drawable; LLVector3 origin; F32 radius; };
+    struct Job { U32 slot; LLDrawable* drawable; LLVector3 origin; F32 radius; F32 near_plane; };
     std::array<Job, ALWorldShadow::kMaxLights> jobs;
     U32 job_count = 0, resident_count = 0;
     for (U32 k = 0; k < ALWorldShadow::kMaxLights && k < planned; ++k)
@@ -33137,7 +33211,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
         centre.load3(found->getPositionAgent().mV);
         extent.splat(radius * 1.5f);
         if (!camera.AABBInFrustumNoFarClip(centre, extent)) continue;
-        jobs[job_count++] = {k, found, found->getPositionAgent(), radius};
+        jobs[job_count++] = {k, found, found->getPositionAgent(), radius, worldShadowLightNear(found, radius)};
     }
     mWorldShadowState = ALWorldShadow::State::On;
     mWorldShadowLights = resident_count;
@@ -33227,13 +33301,13 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     gGL.setColorMask(false, false);
 
     static LLCullResult sWorldCull[ALWorldShadow::kMaxLights];
-    const F32 near_plane = static_cast<F32>(ALWorldShadow::nearPlane());
     const F32 fov = static_cast<F32>(ALWorldShadow::widenedFovRadians());
     for (U32 j = 0; j < job_count; ++j)
     {
         const Job& job = jobs[j];
         LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("WorldShadow::light");
         const F32 far_plane = static_cast<F32>(ALWorldShadow::farPlane(job.radius));
+        const F32 near_plane = job.near_plane;
         if (!(far_plane > near_plane)) continue;
         const glm::vec3 origin = glm::make_vec3(job.origin.mV);
         const glm::mat4 proj = glm::perspective(fov, 1.f, near_plane, far_plane);
@@ -33255,7 +33329,9 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
             mWorldShadowScratch.getViewport(gGLViewport);
             mWorldShadowScratch.clear();
             LLViewerCamera::sCurCameraID = static_cast<LLViewerCamera::eCameraID>(LLViewerCamera::CAMERA_WORLD_SHADOW0 + job.slot);
-            RenderSpotLight = job.drawable; // the emitting prim never shadows its own light
+            // RenderSpotLight only drops the emitting drawable's own sorted geometry; merged batches, double-sided glTF and hollow prims
+            // around the lamp still cast: the per-light near plane (clears the emitter's inscribed sphere, floor RenderAreaShadowWorldNear) keeps a bulb's own shell out.
+            RenderSpotLight = job.drawable;
             renderShadow(view, proj, shadow_cam, sWorldCull[job.slot], false);
             RenderSpotLight = nullptr;
             mWorldShadowScratch.flush();
@@ -33286,12 +33362,6 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     LLViewerCamera::sCurCameraID = saved_camera_id;
     RenderSpotLight = nullptr;
     mWorldShadowCpuMs = static_cast<F32>(cpu_timer.getElapsedTimeF64() * 1000.0);
-    if (gDebugGL)
-    {
-        WorldShadowGLState after;
-        after.capture();
-        before.compare(after);
-    }
 }
 
 void LLPipeline::renderGroups(LLRenderPass* pass, U32 type, bool texture)
