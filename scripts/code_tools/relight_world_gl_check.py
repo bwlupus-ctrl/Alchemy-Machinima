@@ -1,6 +1,6 @@
 """Mandatory real-GPU regression gate for the P1-lite world shadow path (Windows/WGL).
 
-python scripts/code_tools/relight_world_gl_check.py [--glm-include DIR] [--out DIR]
+python scripts/code_tools/relight_world_gl_check.py [--glm-include DIR] [--out DIR] [--images DIR]
 
 No CPU shadow atlas: production shadowV/F + Actor FX module rasterize six 544^2
 D32F faces; glCopyImageSubData populates the production atlas. The production
@@ -604,10 +604,148 @@ def evaluate(r, raster, scene, light, yaw=-54.462, pitch=28.635, contact=0., thi
     return v, mask, 100 * float(np.mean(v[mask] < .5))
 
 
+def image_fixtures():
+    """Illustrations only: no changes to the acceptance fixtures or their limits."""
+    for name, title, kw in [
+            ('01_point_capsule', 'Floor + 1.8 m capsule; point light 1 m above floor', {}),
+            ('02_rotated_box', 'Capsule + 0.5 m box emitter, yaw 40 degrees (double-sided)', dict(emitter='none')),
+            ('03_projector', 'Cube projector: pitch -30 degrees, yaw 45 degrees', dict(emitter='none', projector=True))]:
+        sc, light = fixture(**kw)
+        target = (1.4, .25, .35)
+        if kw.get('projector'):
+            # Stage the image's capsule inside the cone, so its floor shadow is
+            # visible; the gate's projector fixture remains untouched.
+            sc.prims[1].a = (1.1, 1.1, .25); sc.prims[1].b = (1.1, 1.1, 1.55)
+            target = (1.6, 1.2, .35)
+        yield name, title, sc, light, target, 5.8, CS.emitter_near(sc, light)
+    sc, _ = fixture()
+    light = S.Light('softbox', (0, 0, 3.5), 2., 10., seed=123)
+    sc.light_sets = [[light]]
+    yield '04_softbox_2m', 'Capsule under a 2 m source-radius softbox, height 3.5 m', sc, light, (1.6, .1, .4), 5.8, .05
+    # Same light, sphere and receiver neighbourhood as codex_corner(). Add a
+    # virtual receiver floor through its probes, for the perspective G-buffer
+    # only. The original sphere-only shadow raster fixture stays exact.
+    d = S.unit([-1, -1, -1]); centre = 2*d + .4*S.unit(np.cross(d, [0, 0, 1]))
+    z = float(4*d[2])
+    light = S.Light('corner', (0, 0, 0), 2., 10., seed=123)
+    sc = S.Scene('corner_images', [
+        S.Prim('floor', 'obb', c=(0, 0, z-.1), h=(15, 15, .1)),
+        S.Prim('sphere', 'sphere', c=tuple(centre), r=.4)], [[light]], [], {}, np.empty((0, 3)))
+    yield '05_three_face_corner', 'Three-face corner: reviewed sphere / light / receiver fixture; source radius 2 m', sc, light, (-2.1, -1.8, z+.3), 4.2, .05
+
+
+def save_images(r, raster, directory):
+    """Opt-in pictures from real raster/copies and the unmodified production resolve.
+
+    The first column uses the gate's 256-ray disk oracle at each lit pixel.
+    World-only sets the actual production debug uniform (not an approximation).
+    Packing/debug overrides are reset; none of these values enter the gate rows.
+    """
+    from PIL import Image, ImageDraw, ImageFont
+
+    directory = Path(directory).resolve(); directory.mkdir(parents=True, exist_ok=True)
+    def font(size):
+        try: return ImageFont.truetype('C:/Windows/Fonts/arial.ttf', size)
+        except OSError: return ImageFont.load_default(size=size)
+    heading, label, small = font(22), font(19), font(16)
+    W, H, gap, top, footer = 640, 400, 8, 104, 98
+    titles = ('Ray-traced ground truth', 'OLD broken packing', 'CURRENT production', 'World-only (debug = 1)', 'Error: CURRENT - truth')
+    saved_packing = r.old_packing
+    debug_loc = r.gl.loc(r.filter, b'area_world_debug')
+    try:
+        for name, title, sc, light, target, distance, near in image_fixtures():
+            print('[world-gl images] rendering', name, flush=True)
+            # Equal horizontal and vertical offsets give a 45 degree down view.
+            az = np.radians(-65.)
+            eye = np.array(target) + distance*np.array([np.cos(az), np.sin(az), 1.])
+            cam = S.Camera(eye, target, W, H, vfov=52.)
+            g = S.cast_primary(sc, cam); _, depth, norm = S.encode_gbuffer(cam, g)
+            raster_scene = sc
+            if name == '05_three_face_corner':
+                raster_scene = S.Scene('corner', sc.prims[1:], [[light]], [], {}, np.empty((0, 3)))
+            r.gpu_atlas = raster.atlas(raster_scene, light, near)
+            world = {'atlas': np.empty((CS.ATLAS_H_PER_LIGHT, CS.ATLAS_W), np.float32), 'channels':
+                     [dict(row=0, near=near, far=light.range, r_map=min(light.radius, 2.),
+                           contact=CS.contact_distance(light.range), seed=light.seed)]}
+            plan = dict(samples=8, steps=12, half=True, near_steps=0)
+            def resolve(old=False, debug=0):
+                r.old_packing = old
+                r.gl.use(r.filter); r.gl.ui(debug_loc, debug)
+                return r.run(cam, depth, norm, [light], plan, world=world)[0]
+            old = resolve(old=True)
+            current = resolve()
+            world_only = resolve(debug=1)
+            r.gl.use(r.filter); r.gl.ui(debug_loc, 0); r.old_packing = saved_packing
+
+            hit = g['surf'] != 255
+            pts, normals = g['pos'][hit], g['nrm'][hit]
+            lighting, _ = S.unshadowed(light, pts, normals)
+            active = lighting > 1.e-5
+            truth = np.ones((H, W), np.float32)
+            hit_truth = np.ones(len(pts), np.float32)
+            hit_truth[active] = S.trace_light(sc, light, pts[active], normals[active],
+                np.flatnonzero(hit).astype(np.uint32)[active], S=256)['vis']
+            truth[hit] = hit_truth
+            l0 = np.zeros((H, W), np.float32); l0[hit] = lighting
+            albedo = np.zeros((H, W, 3), np.float32)
+            for i, prim in enumerate(sc.prims):
+                color = (.62, .66, .72) if prim.name == 'floor' else (.72, .39, .19)
+                albedo[g['surf'] == i] = color
+            def shaded(visibility):
+                # A faint ambient fill keeps the geometry readable in full shadow.
+                linear = albedo*(.035 + 1.35*l0*visibility)[..., None]
+                rgb = np.clip(linear, 0, 1)**(1/2.2)
+                rgb[~hit] = (.065, .08, .11)
+                return np.uint8(np.clip(rgb[::-1]*255, 0, 255))
+            error = np.zeros((H, W, 3), np.float32)
+            delta = np.where(hit & (l0 > .001), current-truth, 0.)
+            error[..., 0] = np.maximum(delta, 0)
+            error[..., 2] = np.maximum(-delta, 0)
+            panels = [shaded(v) for v in (truth, old, current, world_only)]
+            panels.append(np.uint8(np.clip(error[::-1]*255, 0, 255)))
+            sheet = Image.new('RGB', (5*W+6*gap, top+H+footer), '#141b27')
+            draw = ImageDraw.Draw(sheet)
+            draw.text((gap, 10), title, font=heading, fill='white')
+            draw.text((gap, 40), 'REAL GL | %s | 6 x 544^2 depth faces -> GPU atlas copies -> production resolve | 45 deg perspective' % r.gl.renderer,
+                      font=small, fill='#bdc9db')
+            for i, (caption, pixels) in enumerate(zip(titles, panels)):
+                x = gap+i*(W+gap)
+                draw.text((x, 77), caption, font=label, fill='white')
+                sheet.paste(Image.fromarray(pixels), (x, top))
+            # Marker is a presentation overlay only, never caster geometry. In
+            # the corner sheet its ring locates the exact three-face meeting.
+            marker = 4*S.unit([-1, -1, -1]) if name == '05_three_face_corner' else np.array(light.pos)
+            px, py, _ = cam.project(np.array([marker]))
+            mx, my = float(px[0]), float(H-py[0])
+            if 8 < mx < W-8 and 8 < my < H-8:
+                for i in range(4):
+                    x, y = gap+i*(W+gap)+mx, top+my
+                    draw.ellipse((x-5, y-5, x+5, y+5), outline='#ffe19a', width=2)
+            y = top+H+10
+            draw.text((gap, y), 'Lighting columns: Lambert x distance falloff x visibility; same exposure and ambient fill. Truth: existing 256-ray disk oracle.', font=small, fill='#bdc9db')
+            draw.text((gap, y+25), 'Error: red = lit where truth is dark; blue = dark where truth is lit. Linear visibility difference, scale 0..1; black = agreement / unlit.', font=small, fill='#bdc9db')
+            note = 'Gold ring: light centre. Error compares production visibility against the oracle at the same pixel centres.'
+            if light.kind == 'projector':
+                note = 'Gold ring: light centre. Projector cone is applied to lighting, while cube visibility remains omnidirectional.'
+            if name == '05_three_face_corner':
+                # The exact micrometre measurements are also useful when the
+                # subpixel seam is too small to distinguish in the screenshot.
+                view = np.eye(4); view[:3, :3] = cam.view[:3, :3]
+                values = Probe(r).run([marker-np.eye(3)[i]*1.e-6 for i in range(3)], light, near, view=view)*255
+                note = 'Gold ring: three-face meeting on virtual receiver floor (sphere-only atlas). Probes 1 um apart (0..255): %s; spread %.2f.' % (', '.join('%.2f' % v for v in values), np.ptp(values))
+            draw.text((gap, y+50), note, font=small, fill='#ffe19a')
+            path = directory / (name+'.png'); sheet.save(path)
+            print('[world-gl images] saved', path, flush=True)
+    finally:
+        r.old_packing = saved_packing
+        r.gl.use(r.filter); r.gl.ui(debug_loc, 0)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--glm-include'); ap.add_argument('--out', default='.tmp/relight_world_gl')
     ap.add_argument('--shader-ref',default='WORKTREE')
+    ap.add_argument('--images', metavar='DIR', help='also save five labelled real-GL contact sheets (does not affect gate checks)')
     args = ap.parse_args()
     out = Path(args.out).resolve(); out.mkdir(parents=True, exist_ok=True)
     WM.check(out / 'math')
@@ -682,6 +820,8 @@ def main():
         rows.extend(contracts)
         result = dict(renderer=r.gl.renderer, rows=rows, diagnostics=diagnostics, passed=all(x['passed'] for x in rows))
         (out / 'results.json').write_text(json.dumps(result, indent=2))
+        if args.images:
+            save_images(r, raster, args.images)
         print('[world-gl] %s (%d checks); results: %s' % ('PASS' if result['passed'] else 'FAIL', len(rows), out / 'results.json'))
         return 0 if result['passed'] else 1
     finally:
