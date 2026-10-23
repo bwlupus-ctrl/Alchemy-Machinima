@@ -296,19 +296,23 @@ template<class ID> struct Residency
 };
 // World-shadow PICKS (user decision 10/23): a session set of light ids the user ticked ("World Shadow" in the object menu). Picked lights take
 // the world slots FIRST (up to the planned count); when more lights are picked than there are slots the importance ranking decides; the slots
-// that are left fill from the frame's ranking exactly as before. `pickedRanked` is the in-view picked candidates best first (importance, then
-// id), `ranked` the frame's ranking of every eligible candidate (picked or not), best first, `isPicked(id)` the pick set.
+// that are left fill from the frame's ranking exactly as before. `pickedRanked` is EVERY in-view eligible pick, best first (importance, then
+// id; up to kMaxPicks, never truncated to the 8 channels), so "not in pickedRanked" can only mean "not a candidate this frame" (out of view);
+// `ranked` is the frame's ranking of every eligible candidate (picked or not), best first, `isPicked(id)` the pick set.
 //  * A pick takes the lowest empty slot, else it evicts the NON-picked resident that ranks worst (not in `ranked` = worst, ties: the higher
-//    slot), never a picked one: a held pick never swaps because the camera moved.
-//  * `repick` is true on the frame the pick set changed (tick / untick / scene load). Over-subscribed picks are then decided again by the
-//    ranking: a picked resident that is in `pickedRanked` but outside its first `lights` entries is released and the better picks take over.
-//    A picked resident that is not in `pickedRanked` (out of view) keeps its slot.
+//    slot).
+//  * Among picks nothing swaps because the camera moved: a pick that is already present and lost its chance stays out. A pick may DISPLACE a
+//    resident pick only when `mayDisplace(id)` says so: on the frame the pick set changed (tick / untick / scene load: every pick) and when the
+//    pick returns into view after being absent (the caller passes it as "not present last frame"). It then takes the slot of the resident pick
+//    that ranks lowest in `pickedRanked`, and only if that resident ranks BELOW it; a resident pick that is not in `pickedRanked` (out of view)
+//    ranks below every present pick, so a present pick can claim the slot of an out-of-view one when it is allowed to displace.
 //  * Unticking releases: a slot held because its light was picked (byPick) is freed the moment the pick goes, and refills from the ranking.
 //    A light that was already resident on its own merits and is then picked becomes a pick-held slot (so unticking it releases it too).
-//  * With an empty pick set (pickedCount == 0, isPicked false) this is exactly updateResidency below.
+//  * With an empty pick set (pickedCount == 0, isPicked false) this is exactly the pre-pick updateResidency (alrelightmath_test.cpp keeps an
+//    independent copy of that function and compares slot contents and change counts).
 // Returns the number of slots that changed. No time, cost or frame input.
-template<class ID, class Eligible, class Picked, class Ranked>
-inline unsigned updateResidencyPicked(Residency<ID>& r, unsigned lights, Eligible stillEligible, Picked isPicked, bool repick,
+template<class ID, class Eligible, class Picked, class Displace, class Ranked>
+inline unsigned updateResidencyPicked(Residency<ID>& r, unsigned lights, Eligible stillEligible, Picked isPicked, Displace mayDisplace,
     const Ranked* pickedRanked, unsigned pickedCount, const Ranked* ranked, unsigned rankedCount)
 {
     unsigned changed = 0;
@@ -320,13 +324,6 @@ inline unsigned updateResidencyPicked(Residency<ID>& r, unsigned lights, Eligibl
         if (!r.held[i]) r.byPick[i] = false;
         else if (isPicked(r.id[i])) r.byPick[i] = true;
     }
-    if (repick)
-        for (unsigned i = 0; i < lights; ++i)
-        {
-            if (!r.held[i] || !isPicked(r.id[i])) continue;
-            for (unsigned c = lights; c < pickedCount; ++c)
-                if (pickedRanked[c] == r.id[i]) { r.held[i] = false; r.byPick[i] = false; r.id[i] = ID{}; ++changed; break; }
-        }
     for (unsigned c = 0; c < pickedCount; ++c)
     {
         if (r.contains(pickedRanked[c])) continue;
@@ -345,7 +342,20 @@ inline unsigned updateResidencyPicked(Residency<ID>& r, unsigned lights, Eligibl
                 if (slot < 0 || position >= worst) { slot = static_cast<int>(i); worst = position; }
             }
         }
-        if (slot < 0) break;   // every slot holds a pick: nothing a pick may evict
+        if (slot < 0 && mayDisplace(pickedRanked[c]))
+        {
+            unsigned worst = 0;
+            for (unsigned i = 0; i < lights; ++i)
+            {
+                if (!r.held[i]) continue;   // every slot is held here, and every held one is a pick
+                unsigned position = pickedCount;   // not among the present picks (out of view): below every present pick
+                for (unsigned j = 0; j < pickedCount; ++j)
+                    if (pickedRanked[j] == r.id[i]) { position = j; break; }
+                if (position <= c) continue;       // never displace a pick that ranks as well or better
+                if (slot < 0 || position >= worst) { slot = static_cast<int>(i); worst = position; }
+            }
+        }
+        if (slot < 0) continue;   // nothing this pick may take (a later pick may still be allowed to displace)
         r.id[slot] = pickedRanked[c]; r.held[slot] = true; r.byPick[slot] = true; ++changed;
     }
     for (unsigned i = 0; i < lights; ++i)
@@ -359,7 +369,7 @@ inline unsigned updateResidencyPicked(Residency<ID>& r, unsigned lights, Eligibl
 template<class ID, class Eligible, class Ranked>
 inline unsigned updateResidency(Residency<ID>& r, unsigned lights, Eligible stillEligible, const Ranked* ranked, unsigned rankedCount)
 {
-    return updateResidencyPicked(r, lights, stillEligible, [](const ID&) { return false; }, false, static_cast<const Ranked*>(nullptr), 0u, ranked, rankedCount);
+    return updateResidencyPicked(r, lights, stillEligible, [](const ID&) { return false; }, [](const ID&) { return false; }, static_cast<const Ranked*>(nullptr), 0u, ranked, rankedCount);
 }
 
 // A projector that samples a native SL shadow map keeps its "SL map + contact" path and is not world-eligible, UNLESS it is picked: the
@@ -389,6 +399,83 @@ inline std::string pickReport(const std::string* labels, const bool* away, unsig
         out += (i ? "; " : "") + labels[i] + (away[i] ? " (away)" : "");
     return out + ".";
 }
+// The same wording clipped for the fixed-height Director row: identical to pickReport while it fits in `maxChars`, else as many whole entries as
+// fit (at least one) followed by "+N more (hover for all)". The row's tooltip carries the complete pickReport, so no pick or "(away)" marker is
+// ever unreachable.
+inline std::string pickSummary(const std::string* labels, const bool* away, unsigned count, std::size_t maxChars)
+{
+    const std::string full = pickReport(labels, away, count);
+    if (full.size() <= maxChars) return full;
+    std::string out = "Picked: ";
+    unsigned shown = 0;
+    for (unsigned i = 0; i < count; ++i)
+    {
+        const std::string entry = (i ? "; " : "") + labels[i] + (away[i] ? " (away)" : "");
+        const unsigned left = count - i - 1;
+        const std::size_t suffix = left ? std::string("; +" + std::to_string(left) + " more (hover for all).").size() : 1u;
+        if (shown > 0 && out.size() + entry.size() + suffix > maxChars) break;
+        out += entry;
+        ++shown;
+    }
+    return shown < count ? out + "; +" + std::to_string(count - shown) + " more (hover for all)." : out + ".";
+}
+// A light's display name: the name remembered at pick time, else the one known now, else "light <id8>". `known_now` is the selected object's
+// own name, or for a child prim of a linkset that was not itself named (ObjectProperties only names the selected nodes) the linkset root's
+// name with the child's id ("Wall lamp (linked 1234abcd)"); empty when nothing is known.
+inline std::string pickNameNow(const std::string& own_name, const std::string& root_name, const std::string& id8)
+{
+    if (!own_name.empty()) return own_name;
+    if (!root_name.empty()) return root_name + " (linked " + id8 + ")";
+    return std::string();
+}
+inline std::string pickLabel(const std::string& remembered, const std::string& known_now, const std::string& id8)
+{
+    if (!remembered.empty()) return remembered;
+    if (!known_now.empty()) return known_now;
+    return "light " + id8;
+}
+// What one click on the right-click "World Shadow" item does to a selection of `selected` lights, `alreadyPicked` of which are picked, with
+// `picksNow` picks in the session set. True = release the selected lights, false = pick them (as many as the cap leaves room for). Every
+// selected light picked releases them all; a MIXED selection picks the rest, unless the cap leaves no room for all of them, in which case the
+// click releases the picked ones (so a mixed selection at the cap can never stick on "pick, which the cap refuses").
+inline bool pickToggleReleases(unsigned selected, unsigned alreadyPicked, unsigned picksNow)
+{
+    if (selected == 0) return false;
+    if (alreadyPicked >= selected) return true;
+    const unsigned room = picksNow >= kMaxPicks ? 0u : kMaxPicks - picksNow;
+    return alreadyPicked > 0 && selected - alreadyPicked > room;
+}
+// Which picked lights have their soft-shadow channel owned by the world cube, per VIEW and per FRAME. Only the live main-view pass writes it
+// (begin -> add -> commit at the end of the pass); it is read in that same view and frame only, so a VCam feed, a probe, a mirror or a
+// snapshot pass can neither inherit the main view's ownership (their lighting keeps the native map) nor clear it for the main view. `view` is
+// an opaque identity of the render target pack the pass drew into.
+template<class ID> struct PickedOwnership
+{
+    std::array<ID, kMaxLights> id{};
+    unsigned count = 0;
+    std::uint64_t frame = 0;
+    const void* view = nullptr;
+    bool committed = false;
+    void begin(std::uint64_t pass_frame, const void* pass_view) { id = {}; count = 0; frame = pass_frame; view = pass_view; committed = false; }
+    void add(const ID& x) { if (count < kMaxLights) id[count++] = x; }
+    void commit(std::uint64_t pass_frame, const void* pass_view) { if (pass_view && view == pass_view && frame == pass_frame) committed = true; }
+    bool owns(const ID& x, std::uint64_t at_frame, const void* at_view) const
+    {
+        if (!committed || !at_view || view != at_view || frame != at_frame) return false;
+        for (unsigned i = 0; i < count; ++i)
+            if (id[i] == x) return true;
+        return false;
+    }
+};
+// The in-view eligible picks of the previous arbitration: a pick that is in pickedRanked now but was not here has just RETURNED (or was just
+// picked), which is what lets it displace a lower-ranked resident pick (updateResidencyPicked mayDisplace).
+template<class ID> struct PickPresence
+{
+    std::array<ID, kMaxPicks> id{};
+    unsigned count = 0;
+    bool contains(const ID& x) const { for (unsigned i = 0; i < count; ++i) if (id[i] == x) return true; return false; }
+    void assign(const ID* ids, unsigned n) { count = std::min(n, kMaxPicks); for (unsigned i = 0; i < count; ++i) id[i] = ids[i]; }
+};
 
 // ---------------------------------------------------------------------------------------------------- readout
 enum class State

@@ -1960,6 +1960,9 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
             mWorldShadowPicks = picks->getDerivedHandle<LLTextBox>();
         if (LLButton* clear = root->findChild<LLButton>("area_shadow_world_clear_picks"))
             clear->setCommitCallback([](LLUICtrl*, const LLSD&) { LLPipeline::clearWorldShadowPicks(); });
+        // A deleted light cannot be told from one that is only out of range, so the stale ("(away)") picks are released by the user.
+        if (LLButton* clear_away = root->findChild<LLButton>("area_shadow_world_clear_away_picks"))
+            clear_away->setCommitCallback([](LLUICtrl*, const LLSD&) { LLPipeline::clearAwayWorldShadowPicks(); });
     }
     // One-off mapping from the v1 leaf panels in floater_director.xml to the
     // controls re-homed by each generated lazy page. Pages containing only
@@ -3183,7 +3186,13 @@ void LLFloaterDirector::refreshLauncherCards()
     if (LLTextBox* picks_status = mWorldShadowPicks.get())
     {
         if (isWidgetOnScreen(picks_status))
-            setTextIfChanged(picks_status, LLPipeline::worldShadowPickReport());
+        {
+            // The row is a fixed 64 px: it shows as many names as fit, and its tooltip carries the complete list (every name and "(away)").
+            std::string full;
+            setTextIfChanged(picks_status, LLPipeline::worldShadowPickReport(&full));
+            if (picks_status->getToolTip() != full)
+                picks_status->setToolTip(full);
+        }
     }
 }
 

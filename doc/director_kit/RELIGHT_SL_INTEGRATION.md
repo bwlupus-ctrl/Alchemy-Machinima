@@ -3231,34 +3231,47 @@ relog (`clearVolumetricShafts`), and every real change bumps `worldShadowPickRev
 | Case | Result |
 |---|---|
 | Picked lights vs the ranking | Picks take the slots first, up to the planned count (`RenderAreaShadowCubeLights`). |
-| More picks than slots | The existing importance ranking decides (brightest, closest; UUID breaks ties). A held pick does not swap as the camera moves; a pick-set change (tick, untick, scene load) lets the ranking re-decide the over-subscribed set. |
+| More picks than slots | The existing importance ranking decides (brightest, closest; UUID breaks ties), over EVERY eligible in-view pick (up to the 32 cap, not only the 8 channels). A held pick does not swap as the camera moves; a pick may displace a resident pick that ranks below it only on the frame the pick set changed (tick, untick, scene load: every pick) or when that pick has just returned into view. |
 | Fewer picks than slots | The remaining slots fill from the frame's ranking exactly as before. |
 | A new pick, no free slot | It evicts the worst-ranked NON-picked resident; a pick never evicts a pick. |
 | Untick | A slot held because of a pick is released that frame and refills from the ranking. |
-| Pick away from the region | The slot is released (the light is not in `mLights`), the pick stays in the set, listed "(away)"; it takes a slot back, ahead of the ranking, the frame it is a candidate again. |
-| A pick out of view | Keeps its slot; its six passes are skipped, as for any resident out of view. |
+| Pick away from the region | The slot is released (the light is not in `mLights`), the pick stays in the set, listed "(away)"; it takes a slot back, ahead of the ranking, the frame it is a candidate again, and it displaces a lower-ranked resident pick when it returns (fix round 1: with picks A > B > C and two slots, A leaving lets C in, A returning takes C's slot back). |
+| A pick out of view | Keeps its slot; its six passes are skipped, as for any resident out of view. It ranks below every in-view pick, so an in-view pick that is allowed to displace (above) can claim its slot. |
 
-A pick outside the top 8 of the importance ranking still ranks: `renderAreaShadows` keeps a separate best-first list of the picked candidates.
+Fix round 1: `renderAreaShadows` ranks ALL the eligible in-view picks (`ALAreaShadow::Ranking`, up to `kMaxPicks`) instead of the best 8, so a pick outside the first 8 still has a
+rank and a resident pick missing from the list can only mean "out of view", never "truncated"; the losing residents of an over-subscribed set are released on re-pick. Picks are
+scored as world-owned (`ALAreaShadow::pickedImportance`: no native map, no native fade) whether or not their cube has rendered yet, so a newly picked native projector does not
+rank below picks that already own a cube.
 
 **A picked projector with a native SL shadow map is world-owned** (user decision 10/23). `worldEligibleWithNative(native, picked)` replaces the three native-map
 exclusions (the candidate filter, round 7's pin-release lambda, the raster loop's `NativeMap` release). While the cube of a picked projector was rendered this frame,
 its soft-shadow channel is unmapped (`channelUsesNativeMap`): no native fade, no contact fade, the resolve takes the world visibility. The native map is
 still allocated and fed by the auction (section 10 untouched, pinned by `relight_world_check.py`). To avoid double edges the lighting pass also stops sampling it for that
-light: `setupSpotLight` uploads `proj_shadow_idx = -1` when `worldChannelOwnsPickedLight(id)` (the list of picked lights whose channel was world-owned in the main view's
-last `renderAreaShadows` pass; empty without picks; never set in a VCam feed pass). The volumetric shaft march keeps using the native map. A picked projector with no
-cube this frame (first frame after the pick, allocation failure, no slot) keeps today's "SL map + contact" path.
+light: `setupSpotLight` uploads `proj_shadow_idx = -1` when `worldChannelOwnsPickedLight(id)`. Fix round 1: that answer is scoped to the VIEW and the FRAME
+(`ALWorldShadow::PickedOwnership`). Only the live main-view `renderAreaShadows` pass writes it (begin, add, commit at the end of the pass); it answers only for that pass's render target
+pack and `gFrameCount`, never during a VCam feed, probe, mirror, HUD, impostor or snapshot lighting pass, and none of those passes writes or clears it. A snapshot is never "picked"
+for the native hand-over: it renders no cube of its own (`worldShadowOwned` would answer from the last live frame), so it keeps the fresh native map. The volumetric shaft march
+keeps using the native map. A picked projector with no cube this frame (first frame after the pick, allocation failure, no slot) keeps today's "SL map + contact" path.
+
+**Menu details (fix round 1).** A mixed selection toggles by `ALWorldShadow::pickToggleReleases`: all picked releases them all; otherwise the rest are picked, unless the 32-pick
+cap leaves no room for all of them, in which case the click releases the picked ones (a mixed selection at the cap can no longer stick on a refused "pick"). A child prim of a linkset
+that is not itself named in the selection takes its linkset root's name ("Wall lamp (linked 1234abcd)") instead of an empty one.
 
 **Director.** Light > Rim > Soft shadows, after the World shadows readout: **World picks** (the picked lights by object name, "(away)" for a pick whose object is
-not in the region; the name is remembered at pick time, else the selected object's name, else `light <id8>`) and **Clear world-shadow picks**
-(`LLPipeline::clearWorldShadowPicks`). Both are kit rows (`area_shadow_world_picks`, `area_shadow_world_clear_picks`); the row pin is 2169 and the button has an explicit
-scoped binding in `director_page_sources.py`.
+not in the region; the name is remembered at pick time, else the selected object's name, else its linkset root's, else `light <id8>`), **Clear world-shadow picks**
+(`LLPipeline::clearWorldShadowPicks`) and, fix round 1, **Clear away picks** (`LLPipeline::clearAwayWorldShadowPicks`: releases the picks whose object is not in the region now; a deleted
+light cannot be told from one that is only out of range, so stale picks are released by the user instead of counting against the cap and riding along in every saved scene).
+All three are kit rows (`area_shadow_world_picks`, `area_shadow_world_clear_picks`, `area_shadow_world_clear_away_picks`); the row pin is 2170 and both buttons have explicit scoped
+bindings in `director_page_sources.py`. The picks row is a fixed 64 px: it shows as many whole names as fit (`ALWorldShadow::pickSummary`, then "+N more (hover for all)") and its
+tooltip carries the complete list with every "(away)" marker.
 
 **Scene.** Save Scene stores `scene["world_shadow_picks"]`, an array of object UUIDs (sorted, de-duplicated, at most 32; omitted when empty). Load Scene replaces the session
 picks with the stored list after the scene passed validation; an old scene (no key) or a malformed value loads with no picks, so the previous scene's picks never leak. The
 pick revision is part of the scene dirty stamp. `ALWorldShadow::normalizePicks` is the one normaliser (unit test 41 pins the save -> load fixed point).
 
 **Gates.** Unit test 41 (picks first, over-subscription by importance, under-subscription auto fill, eviction order, untick release, a picked projector with a native map still
-world-owned and an unpicked one released, away picks, no-picks identity with `updateResidency`, scene list round trip and cap, wording; two mutations rejected). Real-GL
+world-owned and an unpicked one released, away picks, no-picks identity with `updateResidency` checked against an independent copy of the pre-pick function (slot contents and change counts), scene list round trip and cap, wording; two mutations rejected) and unit test 42 (fix round 1:
+returning picks reclaim priority, all picks ranked past 8 and out-of-view residents released on re-pick, consistent pick scoring, per-view/frame ownership interleaving a main pass with a VCam, probe and snapshot pass, toggle at the cap, names, clipped row). Real-GL
 `relight_world_gl_check.py`: `picked_native_projector_resolves_through_cube` (a projector uploaded the way a picked native-mapped light is resolves byte-identically to the point-light cube) and
 `unpicked_native_projector_keeps_native_path` (the same projector with native hand-over uniforms takes nothing from the cube), plus the lifecycle pins for the new exemptions.
 `relight_world_check.py` pins the menu wiring (item directly after Volumetric Shaft, registrations, raw selection, no permission gate), the session set and its clearing, the residency

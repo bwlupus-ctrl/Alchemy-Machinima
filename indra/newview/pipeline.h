@@ -438,10 +438,11 @@ public:
     static void  setWorldShadowPick(const LLUUID& id, bool picked, const std::string& name = std::string());
     static bool  isWorldShadowPicked(const LLUUID& id);
     static void  clearWorldShadowPicks();
+    static void  clearAwayWorldShadowPicks();                          // releases the picks whose object is not in the region now (stale / deleted lights)
     static std::vector<LLUUID> worldShadowPickList();                  // normalised: sorted, no nulls, capped (ALWorldShadow::normalizePicks)
     static void  setWorldShadowPicks(const std::vector<LLUUID>& ids);  // replaces the set (scene load); names of kept picks survive
     static U64   worldShadowPickRevision();
-    static std::string worldShadowPickReport();                        // "Picked: lamp; light 1234abcd (away)."
+    static std::string worldShadowPickReport(std::string* full = nullptr); // "Picked: lamp; light 1234abcd (away)." clipped for the row; *full = the complete list (tooltip)
     // Temporary viewer-local VCam overrides. Return true when acquire enabled
     // the per-light flag or master; release restores only untouched auto edits.
     static bool  acquireVCamVolumetrics(const LLUUID& id, bool allow_light = true);
@@ -1628,11 +1629,13 @@ public:
     ALWorldShadow::SlotReason mWorldShadowReason[ALWorldShadow::kMaxLights] = {};
     std::string worldShadowReadout() const;   // the Director wording: rendered count, pinned light names, reasons (read-only, 2 s clock)
     bool worldShadowOwned(const LLUUID& id, U32& slot) const; // true when `id` owns a cube rendered THIS frame (a snapshot: the last live frame)
-    // [World Shadow pick] The PICKED lights whose soft-shadow channel is world-owned in the main view's last renderAreaShadows pass. A picked
-    // projector in this list stops sampling its native SL map in the lighting pass (its world channel owns it: no double edges); the native
-    // map is still allocated and fed. Empty (so inert) when no light is picked. mWorldPickRevisionSeen drives the residency re-decision.
-    std::array<LLUUID, ALWorldShadow::kMaxLights> mWorldPickedChannels;
-    U32 mWorldPickedChannelCount = 0;
+    // [World Shadow pick] The PICKED lights whose soft-shadow channel is world-owned in the LIVE MAIN VIEW's renderAreaShadows pass of THIS frame,
+    // recorded per view and frame (ALWorldShadow::PickedOwnership): only that pass writes it, and it answers only for that view and frame, so a
+    // VCam feed, probe, mirror or snapshot pass never inherits it and never clears it. A picked projector in the record stops sampling its native
+    // SL map in the lighting pass (its world channel owns it: no double edges); the native map is still allocated and fed. Empty (so inert)
+    // when no light is picked. mWorldPickRevisionSeen / mWorldPickPresent drive the residency re-decision (pick-set change, pick returning).
+    ALWorldShadow::PickedOwnership<LLUUID> mWorldPickedOwned;
+    ALWorldShadow::PickPresence<LLUUID> mWorldPickPresent;
     U64 mWorldPickRevisionSeen = 0;
     bool worldChannelOwnsPickedLight(const LLUUID& id) const;
     // Idempotent. clear_failure: an explicit teardown / budget change forgets an allocation failure; the allocation RETRY path passes false so the

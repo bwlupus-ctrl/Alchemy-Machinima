@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `142461b9ba1ecb16` (1816 interactive rows); 36
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1336 | 38 | 300 | 50 | 96 | 1 | 1821 |
-| v2 | 1737 | 0 | 452 | 72 | 0 | 11 | 2272 |
+| v2 | 1737 | 0 | 452 | 73 | 0 | 11 | 2273 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
@@ -46,7 +46,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | filters_tab (Filters) | lens_group | 28 | 0 | 1 | 0 | 0 | 0 | 32 | 0 | 1 | 0 | 0 | 0 |
 | diopter_tab (Diopter) | lens_group | 4 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 |
 | cine_light_rig_tab (Rig) | light_group | 150 | 12 | 4 | 3 | 5 | 0 | 191 | 0 | 4 | 4 | 0 | 1 |
-| light_rim_tab (Rim) | light_group | 42 | 0 | 1 | 0 | 0 | 0 | 76 | 0 | 1 | 2 | 0 | 0 |
+| light_rim_tab (Rim) | light_group | 42 | 0 | 1 | 0 | 0 | 0 | 76 | 0 | 1 | 3 | 0 | 0 |
 | exposure_tab (Exposure) | light_group | 23 | 1 | 0 | 0 | 0 | 0 | 25 | 0 | 0 | 0 | 0 | 0 |
 | practicals_tab (Practicals) | light_group | 12 | 0 | 1 | 1 | 1 | 0 | 14 | 0 | 1 | 1 | 0 | 0 |
 | actors_tab (Actors) | light_group | 15 | 0 | 8 | 2 | 2 | 0 | 28 | 0 | 2 | 6 | 0 | 0 |
@@ -228,6 +228,7 @@ Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to e
 | cine_light_rig_tab | cine_cookie | Cookie UUID | v2 | file/path text input (would write a host path) |
 | light_rim_tab | cine_rimq_actors_alpha | Alpha actors | v2 | authored hidden row |
 | light_rim_tab | area_shadow_world_clear_picks | Clear picks | v2 | destructive (clear) in action name or label |
+| light_rim_tab | area_shadow_world_clear_away_picks | Clear away picks | v2 | destructive (clear) in action name or label |
 | bloom_glow_tab | set_RenderBloomHDR | HDR bloom | v2 | not connected yet |
 | animate_tab | paste_uuid_editor | Asset UUID | v2 | file/path text input (would write a host path) |
 | switchboard_tab | anim_slot_uuid | Anim UUID | v2 | file/path text input (would write a host path) |

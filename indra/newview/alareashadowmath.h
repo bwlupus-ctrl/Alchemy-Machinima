@@ -50,6 +50,13 @@ inline double importance(double luminance, double range, double distance, double
         (1.0 + kUnmappedBonus * (1.0 - weight));
     return std::isfinite(score) ? score : 0.0;
 }
+// [World Shadow pick] A PICKED light is scored as world-owned: no native map and no native fade, whether or not its cube has rendered yet,
+// so a newly picked native projector is not penalised against picks that already own a cube (the arbitration between picks must not depend
+// on which of them happens to be resident). Only the ranking among picks uses it; a channel's own ranking still scores the real state.
+inline double pickedImportance(double luminance, double range, double distance)
+{
+    return importance(luminance, range, distance, 0.0);
+}
 template<class ID> struct Candidate
 {
     ID id{};
@@ -90,6 +97,24 @@ template<class ID> struct Selection
         for (unsigned i = last; i > at; --i) lights[i] = lights[i-1];
         lights[at] = light;
         size = std::min(size + 1, cap);
+    }
+};
+// [World Shadow pick] The same ordering as Selection, but it keeps EVERY candidate up to N (Selection keeps the best 8): the picks are ranked
+// completely (up to the pick cap), so a pick outside the first 8 still has a rank and "not in the list" can only mean "not a candidate".
+template<class ID, unsigned N> struct Ranking
+{
+    std::array<Candidate<ID>, N> lights{};
+    unsigned size = 0, candidates = 0;
+    void add(const Candidate<ID>& light)
+    {
+        ++candidates;
+        unsigned at = 0;
+        while (at < size && !before(light, lights[at])) ++at;
+        if (at >= N) return;
+        const unsigned last = std::min(size, N - 1);
+        for (unsigned i = last; i > at; --i) lights[i] = lights[i-1];
+        lights[at] = light;
+        size = std::min(size + 1, N);
     }
 };
 // A slot's native SL map counts as mapped only while it is really sampled: shadows above

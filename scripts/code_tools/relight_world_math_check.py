@@ -1,4 +1,4 @@
-"""Compile/run production world maths tests 37..41 without a viewer build.
+"""Compile/run production world maths tests 37..42 without a viewer build.
 
 python scripts/code_tools/relight_world_math_check.py [--out DIR]
 The assertions are extracted verbatim from alrelightmath_test.cpp. The small TUT
@@ -35,7 +35,7 @@ using relight_object = test_group<relight_data>::object;
 void close(const char* m,double a,double b,double tol=1.e-10) { ensure(m,std::isfinite(a)&&std::abs(a-b)<=tol); }
 '''
     cpp = out / 'world_math.cpp'
-    cpp.write_text(shim+tests+'\n}\nint main() { tut::relight_object o; o.test<37>(); o.test<38>(); o.test<39>(); o.test<40>(); o.test<41>(); std::puts("[world-math] PASS tests 37..41"); }\n')
+    cpp.write_text(shim+tests+'\n}\nint main() { tut::relight_object o; o.test<37>(); o.test<38>(); o.test<39>(); o.test<40>(); o.test<41>(); o.test<42>(); std::puts("[world-math] PASS tests 37..42"); }\n')
     vswhere = Path(os.environ.get('ProgramFiles(x86)','C:/Program Files (x86)')) / 'Microsoft Visual Studio/Installer/vswhere.exe'
     vs = subprocess.check_output([str(vswhere),'-latest','-property','installationPath'],text=True).strip()
     cmd = out / 'world_math.cmd'; exe = out / 'world_math.exe'

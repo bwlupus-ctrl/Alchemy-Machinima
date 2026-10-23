@@ -750,8 +750,15 @@ namespace
             for (const WorldShadowPickLight& known : lights)
                 if (known.mId == pVol->getID())
                     return;
+            // The name: the light's own selection node, else (a child prim of a linkset that is not itself selected has no named node) its
+            // linkset root's, else empty (the pipeline then keeps an earlier name or shows "light <id8>").
             const LLSelectNode* pNameNode = hSel->findNode(pVol);
-            lights.push_back({pVol->getID(), pNameNode ? pNameNode->mName : std::string()});
+            std::string root_name;
+            if (LLViewerObject* pRoot = pVol->getRootEdit())
+                if (pRoot != pVol)
+                    if (const LLSelectNode* pRootNode = hSel->findNode(pRoot)) root_name = pRootNode->mName;
+            lights.push_back({pVol->getID(), ALWorldShadow::pickNameNow(pNameNode ? pNameNode->mName : std::string(), root_name,
+                                                                         pVol->getID().asString().substr(0, 8))});
         };
         for (LLObjectSelection::iterator itObj = hSel->begin(), endObj = hSel->end(); itObj != endObj; ++itObj)
         {
@@ -771,12 +778,16 @@ namespace
         const std::vector<WorldShadowPickLight> lights = selected_world_shadow_lights();
         if (lights.empty())
             return;
-        // One state for the whole selection: all picked -> release them all; otherwise pick them all.
-        bool all_picked = true;
+        // One state for the whole selection (ALWorldShadow::pickToggleReleases): all picked -> release them all; otherwise pick the rest, unless
+        // the pick cap leaves no room for all of them, in which case the click releases the picked ones. A mixed selection at the cap
+        // therefore never sticks on a "pick" that the cap refuses; the next click picks what fits.
+        unsigned already_picked = 0;
         for (const WorldShadowPickLight& light : lights)
-            all_picked = all_picked && LLPipeline::isWorldShadowPicked(light.mId);
+            already_picked += LLPipeline::isWorldShadowPicked(light.mId) ? 1u : 0u;
+        const bool release = ALWorldShadow::pickToggleReleases(static_cast<unsigned>(lights.size()), already_picked,
+                                                               static_cast<unsigned>(LLPipeline::worldShadowPickList().size()));
         for (const WorldShadowPickLight& light : lights)
-            LLPipeline::setWorldShadowPick(light.mId, !all_picked, light.mName);
+            LLPipeline::setWorldShadowPick(light.mId, !release, light.mName);
     }
 
     bool enable_object_world_shadow()

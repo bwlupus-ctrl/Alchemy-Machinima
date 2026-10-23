@@ -3221,6 +3221,7 @@ template<> template<> void relight_object::test<41>()
     // World-shadow PICKS: residency rule (updateResidencyPicked), the native-map rule, the scene list and the wording.
     const auto always = [](int){ return true; };
     const auto none_picked = [](int){ return false; };
+    const auto rp = [](bool all) { return [all](int) { return all; }; };   // "may displace": every pick (a pick-set change) or none
     const auto held_ids = [](const Residency<int>& r) { return std::array<int,2>{{r.held[0]?r.id[0]:0, r.held[1]?r.id[1]:0}}; };
     // Picks first: ranking says 1,2,3,4 but 3 and 4 are picked (pickedRanked is the picks best first).
     {
@@ -3228,7 +3229,7 @@ template<> template<> void relight_object::test<41>()
         const int ranked[4] = {1,2,3,4};
         const int picked[2] = {3,4};
         const auto is_picked = [](int id){ return id==3 || id==4; };
-        updateResidencyPicked(r,2,always,is_picked,true,picked,2,ranked,4);
+        updateResidencyPicked(r,2,always,is_picked,rp(true),picked,2,ranked,4);
         ensure("picked lights take the slots before the ranking does",r.held[0] && r.held[1] && r.id[0]==3 && r.id[1]==4);
     }
     // Over-subscription: three picks, two slots. The ranking (pickedRanked order) decides: the best two win.
@@ -3237,18 +3238,18 @@ template<> template<> void relight_object::test<41>()
         const int ranked[4] = {6,5,7,1};
         const int picked[3] = {6,5,7};
         const auto is_picked = [](int id){ return id==5 || id==6 || id==7; };
-        updateResidencyPicked(r,2,always,is_picked,true,picked,3,ranked,4);
+        updateResidencyPicked(r,2,always,is_picked,rp(true),picked,3,ranked,4);
         ensure("the two best picks win",held_ids(r)[0]==6 && held_ids(r)[1]==5);
         // The camera moves and 7 now outranks 5: a held pick never swaps on its own (no repick)...
         const int ranked2[4] = {7,6,5,1};
         const int picked2[3] = {7,6,5};
-        ensure_equals("a held pick does not swap when the ranking drifts",updateResidencyPicked(r,2,always,is_picked,false,picked2,3,ranked2,4),0u);
+        ensure_equals("a held pick does not swap when the ranking drifts",updateResidencyPicked(r,2,always,is_picked,rp(false),picked2,3,ranked2,4),0u);
         ensure("still 6 and 5",held_ids(r)[0]==6 && held_ids(r)[1]==5);
         // ...but when the pick set changes the over-subscription is decided again by the ranking.
-        updateResidencyPicked(r,2,always,is_picked,true,picked2,3,ranked2,4);
+        updateResidencyPicked(r,2,always,is_picked,rp(true),picked2,3,ranked2,4);
         ensure("a pick-set change re-decides by importance",r.held[0] && r.held[1] && r.contains(7) && r.contains(6) && !r.contains(5));
         // The same ranking again changes nothing.
-        ensure_equals("repick with the same ranking is a fixed point",updateResidencyPicked(r,2,always,is_picked,true,picked2,3,ranked2,4),0u);
+        ensure_equals("repick with the same ranking is a fixed point",updateResidencyPicked(r,2,always,is_picked,rp(true),picked2,3,ranked2,4),0u);
     }
     // Under-subscription: one pick, the other slot fills from the ranking exactly as today.
     {
@@ -3256,12 +3257,12 @@ template<> template<> void relight_object::test<41>()
         const int ranked[3] = {1,2,9};
         const int picked[1] = {9};
         const auto is_picked = [](int id){ return id==9; };
-        updateResidencyPicked(r,2,always,is_picked,true,picked,1,ranked,3);
+        updateResidencyPicked(r,2,always,is_picked,rp(true),picked,1,ranked,3);
         ensure("the pick holds slot 0",r.held[0] && r.id[0]==9);
         ensure("the free slot takes the best ranked light that is not resident",r.held[1] && r.id[1]==1);
         // N = 1: the pick wins the only slot.
         Residency<int> one;
-        updateResidencyPicked(one,1,always,is_picked,true,picked,1,ranked,3);
+        updateResidencyPicked(one,1,always,is_picked,rp(true),picked,1,ranked,3);
         ensure("N = 1: the pick, not the best ranked light",one.held[0] && one.id[0]==9 && !one.held[1]);
     }
     // A new pick evicts the worst-ranked NON-picked resident; a pick never evicts a picked resident.
@@ -3272,16 +3273,16 @@ template<> template<> void relight_object::test<41>()
         ensure("auto fill: 1 and 2",held_ids(r)[0]==1 && held_ids(r)[1]==2);
         const int picked[1] = {9};
         const auto is_picked = [](int id){ return id==9; };
-        updateResidencyPicked(r,2,always,is_picked,true,picked,1,ranked,4);
+        updateResidencyPicked(r,2,always,is_picked,rp(true),picked,1,ranked,4);
         ensure("the pick evicted the worse of the two auto lights (2), kept the better (1)",held_ids(r)[0]==1 && held_ids(r)[1]==9);
         const int picked2[2] = {9,3};
         const auto is_picked2 = [](int id){ return id==9 || id==3; };
-        updateResidencyPicked(r,2,always,is_picked2,true,picked2,2,ranked,4);
+        updateResidencyPicked(r,2,always,is_picked2,rp(true),picked2,2,ranked,4);
         ensure("a second pick evicts the remaining auto light",r.contains(9) && r.contains(3) && !r.contains(1));
         const int ranked3[4] = {5,9,3,1};
         const int picked3[3] = {5,9,3};
         const auto is_picked3 = [](int id){ return id==9 || id==3 || id==5; };
-        updateResidencyPicked(r,2,always,is_picked3,false,picked3,3,ranked3,4);
+        updateResidencyPicked(r,2,always,is_picked3,rp(false),picked3,3,ranked3,4);
         ensure("picks never evict picks (no repick)",r.contains(9) && r.contains(3) && !r.contains(5));
     }
     // A picked projector that owns a native map is still world-owned; an unpicked one keeps its native path (round 7 pin release).
@@ -3295,9 +3296,9 @@ template<> template<> void relight_object::test<41>()
         const int picked[1] = {9};
         const auto is_picked = [](int id){ return id==9; };
         const auto eligible = [&](int id){ return worldEligibleWithNative(native(id),is_picked(id)); };
-        updateResidencyPicked(r,2,eligible,is_picked,true,picked,1,ranked,2);
+        updateResidencyPicked(r,2,eligible,is_picked,rp(true),picked,1,ranked,2);
         ensure("a picked projector with a native map holds a slot",r.contains(9));
-        updateResidencyPicked(r,2,eligible,is_picked,false,picked,1,ranked,2);
+        updateResidencyPicked(r,2,eligible,is_picked,rp(false),picked,1,ranked,2);
         ensure("and keeps it frame after frame",r.contains(9));
         // The same projector unpicked is released and not chosen again.
         Residency<int> u = r;
@@ -3316,12 +3317,12 @@ template<> template<> void relight_object::test<41>()
         const int ranked[3] = {1,2,9};
         const int picked[1] = {9};
         const auto is_picked = [](int id){ return id==9; };
-        updateResidencyPicked(r,2,always,is_picked,true,picked,1,ranked,3);
+        updateResidencyPicked(r,2,always,is_picked,rp(true),picked,1,ranked,3);
         ensure("pick resident",r.contains(9));
         const int ranked_away[2] = {1,2};
-        updateResidencyPicked(r,2,[](int id){ return id!=9; },is_picked,false,static_cast<const int*>(nullptr),0,ranked_away,2);
+        updateResidencyPicked(r,2,[](int id){ return id!=9; },is_picked,rp(false),static_cast<const int*>(nullptr),0,ranked_away,2);
         ensure("away: the slot is released and refilled from the ranking",!r.contains(9) && r.contains(1) && r.contains(2));
-        updateResidencyPicked(r,2,always,is_picked,false,picked,1,ranked,3);
+        updateResidencyPicked(r,2,always,is_picked,rp(false),picked,1,ranked,3);
         ensure("back in the region: the pick takes a slot again",r.contains(9) && r.count()==2);
     }
     // Unticking releases: a slot held because of a pick frees when the pick goes and refills from the ranking.
@@ -3330,9 +3331,9 @@ template<> template<> void relight_object::test<41>()
         const int ranked[3] = {1,2,9};
         const int picked[1] = {9};
         const auto is_picked = [](int id){ return id==9; };
-        updateResidencyPicked(r,2,always,is_picked,true,picked,1,ranked,3);
+        updateResidencyPicked(r,2,always,is_picked,rp(true),picked,1,ranked,3);
         ensure("picked 9 and auto 1",r.contains(9) && r.contains(1) && r.byPick[0] && !r.byPick[1]);
-        updateResidencyPicked(r,2,always,none_picked,true,static_cast<const int*>(nullptr),0,ranked,3);
+        updateResidencyPicked(r,2,always,none_picked,rp(true),static_cast<const int*>(nullptr),0,ranked,3);
         ensure("untick: 9 is released and the slot refills from the ranking",!r.contains(9) && r.contains(1) && r.contains(2) && !r.byPick[0] && !r.byPick[1]);
         // A light that was resident on its own merits and is then picked becomes pick-held; unticking releases it.
         Residency<int> a;
@@ -3340,29 +3341,57 @@ template<> template<> void relight_object::test<41>()
         updateResidency(a,2,always,auto_ranked,3);
         const int pick_two[1] = {2};
         const auto picked_two = [](int id){ return id==2; };
-        updateResidencyPicked(a,2,always,picked_two,true,pick_two,1,auto_ranked,3);
+        updateResidencyPicked(a,2,always,picked_two,rp(true),pick_two,1,auto_ranked,3);
         ensure("already resident, now picked: marked pick-held, no slot change",a.contains(1) && a.contains(2) && a.byPick[1] && !a.byPick[0]);
         const int later_ranked[3] = {1,3,2};
-        updateResidencyPicked(a,2,always,none_picked,true,static_cast<const int*>(nullptr),0,later_ranked,3);
+        updateResidencyPicked(a,2,always,none_picked,rp(true),static_cast<const int*>(nullptr),0,later_ranked,3);
         ensure("unpicked: released and replaced by the best other light",a.contains(1) && a.contains(3) && !a.contains(2));
         // Never picked: the pick flags stay false whatever happens (the OFF identity of the bookkeeping).
         Residency<int> n;
         updateResidency(n,2,always,auto_ranked,3);
         ensure("no picks ever: no pick-held slot",!n.byPick[0] && !n.byPick[1]);
     }
-    // No picks: identical to updateResidency over a sequence of rankings (the OFF identity of the rule).
+    // No picks: identical to the PRE-FEATURE updateResidency over long sequences (the OFF identity of the rule). `legacy` is an independent copy of
+    // that function as it was before picks existed (commit 0ca20ee26e1): updateResidency now forwards to updateResidencyPicked, so comparing the two
+    // would be self-referential. Slot contents AND change counts are compared at every step, across rankings, eligibility sets and light counts.
     {
-        Residency<int> a, b;
+        const auto legacy = [](Residency<int>& r, unsigned lights, auto stillEligible, const int* ranked, unsigned rankedCount) -> unsigned
+        {
+            unsigned changed = 0;
+            lights = std::min(lights, kMaxLights);
+            for (unsigned i = 0; i < kMaxLights; ++i)
+                if (r.held[i] && (i >= lights || !stillEligible(r.id[i]))) { r.held[i] = false; r.id[i] = 0; ++changed; }
+            for (unsigned i = 0; i < lights; ++i)
+            {
+                if (r.held[i]) continue;
+                for (unsigned c = 0; c < rankedCount; ++c)
+                    if (!r.contains(ranked[c])) { r.id[i] = ranked[c]; r.held[i] = true; ++changed; break; }
+            }
+            return changed;
+        };
+        Residency<int> reference, forwarded, picked_path;
         int order[4] = {1,2,3,4};
         unsigned step = 0;
         do
         {
-            const unsigned lights = 1 + (step++ & 1);
-            const auto eligible = [&](int id){ return id != (3 - (int)(step & 3)); };
-            updateResidency(a,lights,eligible,order,4);
-            updateResidencyPicked(b,lights,eligible,none_picked,(step&1)!=0,static_cast<const int*>(nullptr),0,order,4);
-            ensure("no picks: the same residency as before picks existed",a.held==b.held && a.id==b.id);
+            for (unsigned lights = 0; lights <= 3; ++lights)
+                for (unsigned mask = 0; mask < 16; ++mask)
+                {
+                    ++step;
+                    const auto eligible = [mask](int id) { return (mask >> (id - 1) & 1u) != 0; };
+                    const unsigned expected = legacy(reference,lights,eligible,order,4);
+                    ensure_equals("no picks: updateResidency changes the same slots as the pre-feature function",updateResidency(forwarded,lights,eligible,order,4),expected);
+                    ensure_equals("no picks: updateResidencyPicked changes the same slots as the pre-feature function",
+                        updateResidencyPicked(picked_path,lights,eligible,none_picked,rp((step&1)!=0),static_cast<const int*>(nullptr),0,order,4),expected);
+                    for (unsigned k = 0; k < kMaxLights; ++k)
+                    {
+                        ensure("no picks: same held slots (forwarded)",reference.held[k] == forwarded.held[k] && (!reference.held[k] || reference.id[k] == forwarded.id[k]));
+                        ensure("no picks: same held slots (picked path)",reference.held[k] == picked_path.held[k] && (!reference.held[k] || reference.id[k] == picked_path.id[k]));
+                        ensure("no picks: no pick-held slot is ever recorded",!forwarded.byPick[k] && !picked_path.byPick[k]);
+                    }
+                }
         } while (std::next_permutation(order,order+4));
+        ensure("the sequence ran (24 rankings x 4 light counts x 16 eligibility sets)",step == 24u * 4u * 16u);
     }
     // Scene list: normalised (sorted, de-duplicated, nulls dropped, capped) and a fixed point of save -> load.
     {
@@ -3385,6 +3414,189 @@ template<> template<> void relight_object::test<41>()
         const bool away[3] = {false,true,false};
         ensure_equals("report: names and (away)",pickReport(labels,away,3),std::string("Picked: Wall lamp; light 1234abcd (away); Spot."));
         ensure_equals("report: empty",pickReport(labels,away,0),std::string("none picked"));
+    }
+}
+
+template<> template<> void relight_object::test<42>()
+{
+    using namespace ALWorldShadow;
+    // World Shadow pick, fix round 1: returning picks, the complete pick ranking, consistent scoring, per-view/frame ownership, the toggle at the
+    // cap, names and the clipped row.
+    const auto always = [](int){ return true; };
+    const auto rp = [](bool all) { return [all](int) { return all; }; };
+    const auto held2 = [](const Residency<int>& r) { return std::array<int,2>{{r.held[0]?r.id[0]:0, r.held[1]?r.id[1]:0}}; };
+    // 1. A returning pick reclaims priority. Picks A=1 > B=2 > C=3, two slots.
+    {
+        const auto is_picked = [](int id){ return id>=1 && id<=3; };
+        const int ranked[3] = {1,2,3};
+        const int all3[3] = {1,2,3};
+        Residency<int> r;
+        updateResidencyPicked(r,2,always,is_picked,rp(true),all3,3,ranked,3);
+        ensure("A and B hold the two slots",r.contains(1) && r.contains(2) && !r.contains(3));
+        // A leaves the region (not eligible): its slot goes to C...
+        const int b_c[2] = {2,3};
+        updateResidencyPicked(r,2,[](int id){ return id != 1; },is_picked,rp(false),b_c,2,ranked,3);
+        ensure("A away: C takes the freed slot",r.contains(2) && r.contains(3) && !r.contains(1));
+        // ...and the camera drift among the picks that are all present changes nothing.
+        const int c_b[2] = {3,2};
+        ensure_equals("present picks never swap on drift",updateResidencyPicked(r,2,[](int id){ return id != 1; },is_picked,rp(false),c_b,2,ranked,3),0u);
+        // A comes back: it has just returned, it outranks B and C, so it takes the slot of the lowest ranked resident pick (C).
+        const auto returned = [](int id) { return id == 1; };
+        updateResidencyPicked(r,2,always,is_picked,returned,all3,3,ranked,3);
+        ensure("A returns and reclaims priority from C",r.contains(1) && r.contains(2) && !r.contains(3));
+        // A pick that returns but ranks BELOW every resident pick takes nothing.
+        Residency<int> low;
+        updateResidencyPicked(low,2,always,is_picked,rp(true),all3,3,ranked,3);
+        const int a_b_c_low[3] = {1,2,3};
+        ensure_equals("a returning pick that ranks lowest changes nothing",updateResidencyPicked(low,2,always,is_picked,[](int id){ return id == 3; },a_b_c_low,3,ranked,3),0u);
+        // Only the returning pick may displace: a loser that stayed in view keeps losing even while another pick returns.
+        Residency<int> mixed;
+        const int first[3] = {2,3,4};
+        const auto picked234 = [](int id){ return id>=2 && id<=4; };
+        updateResidencyPicked(mixed,2,always,picked234,rp(true),first,3,ranked,3);   // 2 and 3 resident, 4 present but without a slot
+        const int with_return[4] = {1,4,2,3};   // 1 returns; 4 (still present) now outranks the residents 2, 3 only by drift
+        const auto picked1234 = [](int id){ return id>=1 && id<=4; };
+        updateResidencyPicked(mixed,2,always,picked1234,[](int id){ return id == 1; },with_return,4,ranked,3);
+        ensure("the returning pick displaces the lowest resident, the drifting loser does not",mixed.contains(1) && mixed.contains(2) && !mixed.contains(3) && !mixed.contains(4));
+    }
+    // 2. Every pick is ranked, past the eighth: residents ranked 9th and 10th are released on a re-pick, and an out-of-view resident does not block the
+    //    best pick. (Before fix round 1 the ranking was cut at 8 entries, and a resident missing from it was taken for "out of view".)
+    {
+        std::vector<int> ids;
+        for (int id = 1; id <= 12; ++id) ids.push_back(id);
+        const auto is_picked = [](int id){ return id>=1 && id<=12; };
+        const int ranked[1] = {1};
+        Residency<int> r;
+        const int worst[2] = {11,12};
+        updateResidencyPicked(r,2,always,is_picked,rp(true),worst,2,ranked,1);
+        ensure("the two worst picks hold the slots first",held2(r)[0]==11 && held2(r)[1]==12);
+        updateResidencyPicked(r,2,always,is_picked,rp(true),ids.data(),static_cast<unsigned>(ids.size()),ranked,1);
+        ensure("a re-pick over all twelve picks releases the 11th and 12th for the best two",r.contains(1) && r.contains(2) && !r.contains(11) && !r.contains(12));
+        ALAreaShadow::Ranking<int,kMaxPicks> list;
+        for (int id = 1; id <= 20; ++id) list.add({id, false, 100.0 - id, false});
+        ensure_equals("the pick ranking keeps all twenty candidates",list.size,20u);
+        ensure("and keeps them best first",list.lights[0].id==1 && list.lights[8].id==9 && list.lights[19].id==20);
+        ALAreaShadow::Selection<int> channels;
+        for (int id = 1; id <= 20; ++id) channels.add({id, false, 100.0 - id, false}, 8);
+        ensure_equals("while the 8-channel selection still stops at eight",channels.size,8u);
+        // An out-of-view resident pick (not in pickedRanked) is released for a pick that may displace; it keeps its slot otherwise.
+        Residency<int> v;
+        const int out_view_ranked[2] = {2,3};
+        const int seed[2] = {1,2};
+        const auto picked123 = [](int id){ return id>=1 && id<=3; };
+        updateResidencyPicked(v,2,always,picked123,rp(true),seed,2,ranked,1);
+        ensure_equals("a pick that may not displace leaves the out-of-view resident alone",updateResidencyPicked(v,2,always,picked123,rp(false),out_view_ranked,2,ranked,1),0u);
+        ensure("1 (out of view) and 2 still hold",v.contains(1) && v.contains(2));
+        updateResidencyPicked(v,2,always,picked123,[](int id){ return id == 3; },out_view_ranked,2,ranked,1);
+        ensure("a newly picked light in view claims the out-of-view resident's slot",v.contains(2) && v.contains(3) && !v.contains(1));
+    }
+    // 3. Consistent scoring: a picked light is scored as world-owned whether or not its cube has rendered, so a newly picked native projector is not
+    //    penalised against a pick that already owns a cube.
+    {
+        const double luminance = .8, range = 6., distance = 5.;
+        const double native_weighted = ALAreaShadow::importance(luminance,range,distance,1.0);      // the old score of a picked native projector
+        const double resident_pick = ALAreaShadow::importance(luminance,range,distance,0.0);        // a pick whose native map was already dropped
+        const double newly_picked = ALAreaShadow::pickedImportance(luminance,range,distance);
+        ensure("a newly picked native projector scores exactly like a resident pick",newly_picked == resident_pick);
+        ensure("the native-weighted score would have ranked it below the resident pick",native_weighted < resident_pick);
+        // The bug shape: a brighter newly picked native projector against a dimmer resident pick.
+        const double bright_native_old = ALAreaShadow::importance(luminance * 1.2,range,distance,1.0);
+        const double dim_resident = ALAreaShadow::importance(luminance,range,distance,0.0);
+        ensure("old scoring: the 20 % brighter newly picked projector lost to the dimmer resident pick",bright_native_old < dim_resident);
+        ensure("new scoring: it wins",ALAreaShadow::pickedImportance(luminance * 1.2,range,distance) > dim_resident);
+    }
+    // 4. Ownership is per VIEW and per FRAME: a main pass interleaved with VCam, probe and snapshot passes.
+    {
+        PickedOwnership<int> own;
+        int main_view = 0, vcam_view = 0;
+        const std::uint64_t frame = 100;
+        own.begin(frame,&main_view);
+        own.add(7);
+        ensure("an unfinished pass owns nothing yet",!own.owns(7,frame,&main_view));
+        // A VCam feed pass runs now. It neither writes nor commits the main record, and it never reads ownership from it.
+        own.commit(frame,&vcam_view);
+        ensure("a VCam commit does not commit the main pass",!own.owns(7,frame,&main_view));
+        own.commit(frame,&main_view);
+        ensure("the main pass owns the picked light after it finished",own.owns(7,frame,&main_view));
+        ensure("the VCam view never inherits the main view's ownership",!own.owns(7,frame,&vcam_view));
+        own.commit(frame,&vcam_view);
+        ensure("a VCam pass finishing afterwards does not clear the main view's ownership",own.owns(7,frame,&main_view));
+        ensure("a probe or snapshot pass of the same frame has no view of its own to answer for",!own.owns(7,frame,nullptr));
+        ensure("the next frame starts empty",!own.owns(7,frame + 1,&main_view));
+        // Next frame: the main pass begins again and finds the light no longer world-owned; the record from the previous frame is gone.
+        own.begin(frame + 1,&main_view);
+        ensure("the previous frame's ownership is gone the moment the pass begins",!own.owns(7,frame,&main_view) && !own.owns(7,frame + 1,&main_view));
+        own.add(8);
+        own.commit(frame + 1,&main_view);
+        ensure("the new frame owns what its pass recorded",own.owns(8,frame + 1,&main_view) && !own.owns(7,frame + 1,&main_view));
+        // The ownership list is bounded by the channel count.
+        PickedOwnership<int> full;
+        full.begin(1,&main_view);
+        for (int id = 1; id <= 9; ++id) full.add(id);
+        full.commit(1,&main_view);
+        ensure_equals("the record holds at most the cube light slots",full.count,static_cast<unsigned>(kMaxLights));
+    }
+    // 5. Presence: a pick is "returning" when it was not among the previous arbitration's present picks.
+    {
+        PickPresence<int> was;
+        const int before[2] = {1,2};
+        was.assign(before,2);
+        ensure("1 and 2 were present",was.contains(1) && was.contains(2));
+        ensure("3 was not present: it returns",!was.contains(3));
+        std::vector<int> many;
+        for (int id = 1; id <= 100; ++id) many.push_back(id);
+        was.assign(many.data(),static_cast<unsigned>(many.size()));
+        ensure_equals("presence is bounded by the pick cap",was.count,kMaxPicks);
+    }
+    // 6. The toggle at the cap: a mixed selection never sticks.
+    {
+        ensure("every selected light picked: release",pickToggleReleases(3,3,10));
+        ensure("none picked, room: pick",!pickToggleReleases(3,0,10));
+        ensure("mixed with room for the rest: pick the rest",!pickToggleReleases(3,1,10));
+        ensure("mixed and the cap leaves no room for the rest: release",pickToggleReleases(3,1,32));
+        ensure("an empty selection does nothing",!pickToggleReleases(0,0,0));
+        // Simulate repeated clicks on the selection {31,32,33} with 31 already picked and 31 other picks: every click must change the set.
+        std::vector<int> set;
+        for (int id = 1; id <= 31; ++id) set.push_back(id);
+        const int selection[3] = {31,32,33};
+        for (int click = 0; click < 8; ++click)
+        {
+            unsigned already = 0;
+            for (int id : selection) already += std::find(set.begin(),set.end(),id) != set.end() ? 1u : 0u;
+            const bool release = pickToggleReleases(3,already,static_cast<unsigned>(set.size()));
+            const std::vector<int> before_click = set;
+            for (int id : selection)
+            {
+                const auto at = std::find(set.begin(),set.end(),id);
+                if (release) { if (at != set.end()) set.erase(at); }
+                else if (at == set.end() && set.size() < kMaxPicks) set.push_back(id);
+            }
+            ensure("every click on a mixed selection at the cap changes the pick set (never stuck)",set != before_click);
+        }
+    }
+    // 7. Names: a child prim without a named node falls back to its linkset root, then to the remembered name, then to the id.
+    {
+        ensure_equals("own name wins",pickNameNow("Lamp","Fixture","1234abcd"),std::string("Lamp"));
+        ensure_equals("a child prim takes its linkset root's name",pickNameNow("","Fixture","1234abcd"),std::string("Fixture (linked 1234abcd)"));
+        ensure("nothing known yields an empty name (so an earlier one is kept)",pickNameNow("","","1234abcd").empty());
+        ensure_equals("the remembered name wins",pickLabel("Remembered","Known now","1234abcd"),std::string("Remembered"));
+        ensure_equals("then the one known now",pickLabel("","Known now","1234abcd"),std::string("Known now"));
+        ensure_equals("then the id",pickLabel("","","1234abcd"),std::string("light 1234abcd"));
+    }
+    // 8. The fixed-height row: identical while it fits, else whole entries plus "+N more", and the full report keeps everything.
+    {
+        std::vector<std::string> labels;
+        bool away[30] = {};
+        for (unsigned i = 0; i < 30; ++i) { labels.push_back("Street lamp number " + std::to_string(i)); away[i] = (i % 3) == 0; }
+        ensure_equals("fits: identical to the complete report",pickSummary(labels.data(),away,2,100),pickReport(labels.data(),away,2));
+        const std::string clipped = pickSummary(labels.data(),away,30,100);
+        ensure("clipped to the row",clipped.size() <= 100 + 30);
+        ensure("clipped text says how many are hidden",clipped.find("more (hover for all).") != std::string::npos && clipped.find("+") != std::string::npos);
+        ensure("clipped text starts with the first pick",clipped.find("Street lamp number 0 (away)") != std::string::npos);
+        const std::string full = pickReport(labels.data(),away,30);
+        ensure("the complete report lists the last pick and its (away) marker",full.find("Street lamp number 29;") == std::string::npos &&
+            full.find("Street lamp number 29.") != std::string::npos && full.find("Street lamp number 27 (away)") != std::string::npos);
+        ensure("one long name is still shown whole",pickSummary(labels.data(),away,1,10).find("Street lamp number 0 (away)") != std::string::npos);
     }
 }
 

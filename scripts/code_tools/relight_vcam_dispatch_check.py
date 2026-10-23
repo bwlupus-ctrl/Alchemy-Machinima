@@ -245,8 +245,9 @@ struct LLPipeline {
     // P1-lite world maps: the fixture runs with them OFF (cube_main is false); these only let the world branches compile.
     LLRenderTarget mWorldShadowAtlas; bool mWorldShadowUniformsLive=false;
     bool worldShadowOwned(const LLUUID&,U32&) const { return false; }
-    // World Shadow pick: nothing is picked here (cube_main is false); these only let the pick branches compile.
-    std::array<LLUUID,2> mWorldPickedChannels{}; unsigned mWorldPickedChannelCount=0;
+    // World Shadow pick: nothing is picked here (cube_main is false); these only let the pick branches compile. The ownership record is the
+    // production struct (begin on a live main-view pass, commit at the end of the pass), so the dispatch below runs the real begin/commit.
+    ALWorldShadow::PickedOwnership<LLUUID> mWorldPickedOwned; bool gSnapshot=false;
     static bool isWorldShadowPicked(const LLUUID&) { return false; }
     static F32 worldShadowLightNear(LLDrawable*,F32) { return 0.05f; } // world branch is OFF; real near is executed by world_gl_check
     double mAreaShadowGPUms=-1;

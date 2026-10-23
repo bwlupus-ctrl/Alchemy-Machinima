@@ -22986,6 +22986,19 @@ void LLPipeline::clearWorldShadowPicks()
     ++sWorldShadowPickRevision;
 }
 
+// Release the picks whose object is not in the region now. A deleted light can never be told from one that is merely out of range (both are
+// "not in the object list"), so the user decides: this is the release path for stale picks, which would otherwise count against the cap and
+// ride along in every saved scene. Picks whose object is present are untouched.
+void LLPipeline::clearAwayWorldShadowPicks()
+{
+    std::vector<LLUUID> away;
+    for (const LLUUID& id : sWorldShadowPicks)
+        if (!gObjectList.findObject(id))
+            away.push_back(id);
+    for (const LLUUID& id : away)
+        setWorldShadowPick(id, false);
+}
+
 std::vector<LLUUID> LLPipeline::worldShadowPickList()
 {
     return ALWorldShadow::normalizePicks(std::vector<LLUUID>(sWorldShadowPicks.begin(), sWorldShadowPicks.end()));
@@ -26919,7 +26932,7 @@ std::string LLPipeline::worldShadowReadout() const
 
 // [World Shadow pick] The Director row: the picked lights by object name (the name remembered at pick time, else the selected object's
 // name, else "light <uuid8>"), "(away)" for a pick whose object is not in the region. Read-only; called on the Director's 2 s clock.
-std::string LLPipeline::worldShadowPickReport()
+std::string LLPipeline::worldShadowPickReport(std::string* full)
 {
     const std::vector<LLUUID> picks = worldShadowPickList();
     std::vector<std::string> labels;
@@ -26929,27 +26942,41 @@ std::string LLPipeline::worldShadowPickReport()
     {
         LLViewerObject* object = gObjectList.findObject(picks[i]);
         away[i] = object == nullptr;
-        std::string name;
+        std::string remembered;
         const auto cached = sWorldShadowPickNames.find(picks[i]);
         if (cached != sWorldShadowPickNames.end())
-            name = cached->second;
-        if (name.empty() && object)
-            if (LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->findNode(object)) name = node->mName;
-        labels.push_back(name.empty() ? "light " + picks[i].asString().substr(0, 8) : name);
+            remembered = cached->second;
+        // Known now: the object's own selection name, else (a child prim of a linkset is named only when it is itself selected) its linkset
+        // root's selection name. Names exist only for selected objects, so a light picked from another selection keeps the remembered name.
+        std::string known_now;
+        if (remembered.empty() && object)
+        {
+            LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();
+            std::string own_name, root_name;
+            if (LLSelectNode* node = selection->findNode(object)) own_name = node->mName;
+            if (LLViewerObject* root = object->getRootEdit())
+                if (root != object)
+                    if (LLSelectNode* root_node = selection->findNode(root)) root_name = root_node->mName;
+            known_now = ALWorldShadow::pickNameNow(own_name, root_name, picks[i].asString().substr(0, 8));
+        }
+        labels.push_back(ALWorldShadow::pickLabel(remembered, known_now, picks[i].asString().substr(0, 8)));
     }
-    return ALWorldShadow::pickReport(labels.data(), away.get(), static_cast<unsigned>(picks.size()));
+    const unsigned count = static_cast<unsigned>(picks.size());
+    if (full) *full = ALWorldShadow::pickReport(labels.data(), away.get(), count);
+    // ~100 characters is what the 64 px word-wrapped row shows; the tooltip holds the rest.
+    return ALWorldShadow::pickSummary(labels.data(), away.get(), count, 100);
 }
 
-// True when `id` is a PICKED light whose soft-shadow channel is world-owned in the main view's last renderAreaShadows pass (its cube was
-// rendered this frame and the channel resolves from it). Cheap and false when no light is picked.
+// True when `id` is a PICKED light whose soft-shadow channel is world-owned in THIS view and THIS frame: the live main view's
+// renderAreaShadows pass of gFrameCount recorded it (its cube was rendered this frame and the channel resolves from it) and finished. The
+// record is keyed by the render target pack of that pass, so a VCam feed, probe, mirror, HUD, impostor or snapshot lighting pass (whatever
+// ran last) answers false and keeps the native map; none of them writes or clears the record. Cheap and false when no light is picked.
 bool LLPipeline::worldChannelOwnsPickedLight(const LLUUID& id) const
 {
-    if (mWorldPickedChannelCount == 0 || sPrismLensRender || !areaShadowsActive())
+    if (mWorldPickedOwned.count == 0 || sPrismLensRender || gSnapshot || gCubeSnapshot || sReflectionRender || sRenderingHUDs ||
+        sImpostorRender || !areaShadowsActive())
         return false;
-    for (U32 i = 0; i < mWorldPickedChannelCount; ++i)
-        if (mWorldPickedChannels[i] == id)
-            return true;
-    return false;
+    return mWorldPickedOwned.owns(id, gFrameCount, mRT);
 }
 
 // Throttled diagnostics (the caller allows one line per 2 s): pinned UUIDs and names, job count, per-job origin/near/far, glGetError after each
@@ -27009,7 +27036,6 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     static LLCachedControl<bool> feeds(gSavedSettings, "RenderAreaShadowsVCam", false);
     mAreaShadowValid = false;
     mAreaShadowCount = 0;
-    if (!sPrismLensRender) mWorldPickedChannelCount = 0;   // [World Shadow pick] rebuilt by this main-view pass; a VCam feed pass never touches it
     if (!enabled() || !feeds())
     {
         // Lazy OFF cleanup includes inactive size buckets and partial targets.
@@ -27132,7 +27158,13 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     static LLCachedControl<S32> cube_lights(gSavedSettings, "RenderAreaShadowCubeLights", 2);
     const bool cube_main = cube_on() && !sPrismLensRender;
     ALAreaShadow::Selection<LLUUID> world_candidates;
-    ALAreaShadow::Selection<LLUUID> world_picked;   // [World Shadow pick] the picked lights among them, best first (a pick outside the top 8 still ranks)
+    // [World Shadow pick] EVERY eligible in-view pick (up to the pick cap, not the 8 channels), best first, each scored as world-owned
+    // (ALAreaShadow::pickedImportance): the arbitration between picks sees the complete ranking, and a pick's score never depends on whether
+    // its cube happens to have rendered yet.
+    ALAreaShadow::Ranking<LLUUID, ALWorldShadow::kMaxPicks> world_picked;
+    // [World Shadow pick] The ownership record of this view and frame: rebuilt by the live main-view pass only (a VCam feed, probe, mirror or
+    // snapshot pass neither writes nor clears it), committed when the pass has produced its channels (worldChannelOwnsPickedLight).
+    if (!sPrismLensRender && !gSnapshot) mWorldPickedOwned.begin(gFrameCount, mRT);
     // Where the native spot map ends (the shadow_clip the native sampler reads): ranking input.
     const LLVector4 selection_clip = nativeSpotShadowClip();
     for (LLDrawable* drawable : mLights)
@@ -27168,13 +27200,15 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                     break; // a drawable owns at most one slot: the first sampled one decides
                 }
         const F32 distance = (drawable->getPositionAgent()-camera.getOrigin()).length();
-        // [World Shadow pick] A PICKED projector whose cube was rendered THIS frame (generateWorldShadowCubes ran earlier in the frame, so the
-        // stamp is current) is owned by the world channel even though it samples a native map: its soft-shadow channel is unmapped (no native
-        // fade, no contact fade) so the resolve uses the cube's visibility alone. The native map is still allocated and fed by the auction
-        // (section 10 untouched); only this light's channel stops using it. A picked projector without a cube this frame (first frame
-        // after the pick, allocation failure, no slot) keeps today's "SL map + contact" path. false for every light when nothing is picked.
+        // [World Shadow pick] A PICKED projector whose cube was rendered THIS frame for THIS view (generateWorldShadowCubes ran earlier in the
+        // frame, so the stamp is current) is owned by the world channel even though it samples a native map: its soft-shadow channel is unmapped
+        // (no native fade, no contact fade) so the resolve uses the cube's visibility alone. The native map is still allocated and fed by the
+        // auction (section 10 untouched); only this light's channel stops using it. A picked projector without a cube this frame (first frame
+        // after the pick, allocation failure, no slot) keeps today's "SL map + contact" path. A snapshot never counts as picked here: it renders no
+        // cube of its own (worldShadowOwned would answer from the last live frame), so it keeps the fresh native map. false for every light
+        // when nothing is picked.
         // (Placed after the native classification above on purpose: that block is executed on its own by relight_contact_check.py.)
-        const bool picked = cube_main && isWorldShadowPicked(volume->getID());
+        const bool picked = cube_main && !gSnapshot && isWorldShadowPicked(volume->getID());
         const bool native_sampled = shadow_map;
         if (shadow_map && picked)
         {
@@ -27208,7 +27242,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         {
             candidate.world = false;
             world_candidates.add(candidate, 8); // this frame's ranking of the lights that could become resident
-            if (picked) world_picked.add(candidate, 8);
+            if (picked)
+                world_picked.add({volume->getID(), false, ALAreaShadow::pickedImportance(luminance, range, distance), false});
         }
     }
     if (cube_main && !gSnapshot)
@@ -27220,15 +27255,18 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         // temporary capture dimensions would plan fewer (or zero) lights.
         const U32 planned = ALWorldShadow::plannedLights(mRT->deferredScreen.getWidth(),mRT->deferredScreen.getHeight(),
             static_cast<U32>(llclamp(cube_lights(),1,static_cast<S32>(ALWorldShadow::kMaxLights))));
-        LLUUID ranked[8], picked_ranked[8];
+        LLUUID ranked[8], picked_ranked[ALWorldShadow::kMaxPicks];
         for (U32 i=0; i<world_candidates.size; ++i) ranked[i] = world_candidates.lights[i].id;
         for (U32 i=0; i<world_picked.size; ++i) picked_ranked[i] = world_picked.lights[i].id;
         const auto resident_before = mWorldShadowResident;
-        // [World Shadow pick] Picked lights take the slots first (importance among picks, then the usual fill); a pick-set change on this
-        // frame (tick, untick, scene load) lets the ranking re-decide an over-subscribed set. With no picks this is exactly the residency
-        // rule before picks existed (alworldshadowmath.h updateResidency forwards to the same function).
+        // [World Shadow pick] Picked lights take the slots first (importance among ALL the eligible in-view picks, then the usual fill). A pick may
+        // displace a resident pick that ranks below it only when it is allowed to: on the frame the pick set changed (tick, untick, scene load) or
+        // when it has just returned into view (it was not among last arbitration's present picks); a pick that stayed in view never swaps because
+        // the camera moved. With no picks this is exactly the residency rule before picks existed (alworldshadowmath.h updateResidency forwards
+        // to the same function).
         const bool repick = mWorldPickRevisionSeen != sWorldShadowPickRevision;
         mWorldPickRevisionSeen = sWorldShadowPickRevision;
+        const ALWorldShadow::PickPresence<LLUUID> present_before = mWorldPickPresent;
         ALWorldShadow::updateResidencyPicked(mWorldShadowResident,planned,[&](const LLUUID& id)
         {
             for (LLDrawable* drawable : mLights)
@@ -27242,7 +27280,10 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                     return ALWorldShadow::worldEligibleWithNative(native_sampled,isWorldShadowPicked(id));
                 }
             return false;
-        },[](const LLUUID& id) { return isWorldShadowPicked(id); },repick,picked_ranked,world_picked.size,ranked,world_candidates.size);
+        },[](const LLUUID& id) { return isWorldShadowPicked(id); },
+        [&](const LLUUID& id) { return repick || !present_before.contains(id); },
+        picked_ranked,world_picked.size,ranked,world_candidates.size);
+        mWorldPickPresent.assign(picked_ranked,world_picked.size);
         for (U32 k=0; k<ALWorldShadow::kMaxLights; ++k)
             if (resident_before.held[k] != mWorldShadowResident.held[k] || resident_before.id[k] != mWorldShadowResident.id[k])
             {
@@ -27599,8 +27640,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                     world_any = true;
                     // [World Shadow pick] a picked light whose channel resolves from its cube this frame stops sampling its native map in
                     // the lighting pass (setupSpotLight): the cube is its shadow, not a second edge on top of the SL map.
-                    if (mWorldPickedChannelCount < mWorldPickedChannels.size() && isWorldShadowPicked(id))
-                        mWorldPickedChannels[mWorldPickedChannelCount++] = id;
+                    if (!gSnapshot && isWorldShadowPicked(id))
+                        mWorldPickedOwned.add(id);
                 }
                 break;
             }
@@ -27718,6 +27759,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     }
     mAreaShadowCount = channels;
     mAreaShadowValid = true;
+    if (!sPrismLensRender && !gSnapshot) mWorldPickedOwned.commit(gFrameCount, mRT);   // [World Shadow pick] this view's ownership is now final
     // Published only now: the lights that really got a visible soft-shadow channel after allocation and drawing (a
     // light faded below 1/255 is not one), and how many of them march Thin objects quality.
     if (!sPrismLensRender)
