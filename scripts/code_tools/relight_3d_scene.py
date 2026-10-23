@@ -342,6 +342,89 @@ def scene_railing_objects():
     return sc
 
 
+def scene_corner(sealed=False):
+    """W / WS. An inside corner under a roof overhang, modelled on the user's in-world screenshots (10/21): a small wall lamp above a recessed door, a
+    louvered vent on the adjacent wall about 1.2 m from the lamp, crates and a vertical pipe on the floor, a railing in front. The lamp is a tiny emitter
+    prim (`bulb`, never shadows its own light) 0.12 m off the wall, 2.2 m up, INSIDE a separate open-bottom shade (W: four 0.15 m panels and a top plate,
+    0.2 m wide) or, for WS, SEALED inside a small box housing that has an open bottom face only. The shade/housing is a different prim from the emitter,
+    so it blocks (ground truth: the wall above the lamp is dark, the wall only receives light through the open bottom).
+    Overhang: 0.6 m out, underside 1.2 m above the lamp. Vent: 10 slats, 1.5 cm thick, 4 cm apart, standing 4 cm off the wall.
+    Key blocker group: the vent slats (the lamp group is excluded from pose gating, like scene C's)."""
+    P = Prim
+    pr = [
+        P('floor', 'obb', (0.5, 0.5, 0.46), c=(0, 2.5, -0.15), h=(3.2, 2.5, 0.15)),
+        # back wall (y = 5.0 face) in three pieces around the door opening, lintel above it, the door panel recessed 0.25 m
+        P('wall_l', 'obb', (0.55, 0.57, 0.52), c=(-1.825, 5.2, 1.9), h=(1.375, 0.2, 1.9)),
+        P('wall_r', 'obb', (0.55, 0.57, 0.52), c=(1.825, 5.2, 1.9), h=(1.375, 0.2, 1.9)),
+        P('lintel', 'obb', (0.55, 0.57, 0.52), c=(0.0, 5.2, 2.9), h=(0.45, 0.2, 0.9)),
+        P('door', 'obb', (0.32, 0.22, 0.14), c=(0.0, 5.3, 1.0), h=(0.45, 0.05, 1.0)),
+        # the roof overhang: 0.6 m out from the wall, underside at z = 3.4 (1.2 m above the lamp)
+        P('overhang', 'obb', (0.35, 0.33, 0.30), c=(0.0, 4.7, 3.45), h=(3.2, 0.7, 0.05)),
+        # the adjacent wall (inside corner), face at x = 1.1, facing -x
+        P('wall_side', 'obb', (0.5, 0.56, 0.6), c=(1.3, 3.9, 1.9), h=(0.2, 1.1, 1.9)),
+    ]
+    # louvered vent on the side wall: 10 slats, 1.5 cm thick, 4 cm pitch, 4 cm deep, 0.7 m wide, starting 2.0 m up
+    for k in range(10):
+        z = 2.0 + 0.04 * k + 0.0075
+        pr.append(P('vent%d' % k, 'obb', (0.62, 0.64, 0.66), c=(1.08, 4.35, z), h=(0.02, 0.35, 0.0075), group='vent_hi'))
+    # a second louver block 1.0 m lower: the open-bottom shade lights it (the upper block is level with the lamp, which a 26 degree shade hood blocks)
+    for k in range(10):
+        z = 1.0 + 0.04 * k + 0.0075
+        pr.append(P('vlo%d' % k, 'obb', (0.62, 0.64, 0.66), c=(1.08, 4.35, z), h=(0.02, 0.35, 0.0075), group='vent'))
+    # crates and a 0.3 m pipe on the floor
+    pr += [P('crate1', 'obb', (0.55, 0.42, 0.25), c=(-1.9, 4.2, 0.4), h=(0.4, 0.4, 0.4), yaw=8, group='crates'),
+           P('crate2', 'obb', (0.5, 0.4, 0.25), c=(-1.25, 4.3, 0.3), h=(0.3, 0.3, 0.3), yaw=-5, group='crates'),
+           P('crate3', 'obb', (0.52, 0.4, 0.22), c=(-1.85, 4.22, 1.1), h=(0.35, 0.35, 0.3), yaw=15, group='crates'),
+           P('pipe_v', 'capsule', (0.3, 0.3, 0.34), r=0.15, a=(0.75, 4.6, 0.15), b=(0.75, 4.6, 1.5), group='pipe')]
+    pr += _railing('rail', [(-3.0 + 1.2 * k, 0.4) for k in range(6)], 'railing')
+    # lamp: bulb = the emitter prim (ignored by the light), shade or housing = separate blockers
+    lx, ly, lz = 0.0, 4.88, 2.2
+    pr.append(P('bulb', 'sphere', (1, 1, 0.8), c=(lx, ly, lz), r=0.02, group='lamp'))
+    t = 0.005
+    if not sealed:
+        # open-bottom shade 0.2 m wide, 0.15 m tall (the light sits 0.05 above its lower rim): top plate + front/left/right panels, no back (the wall)
+        top, bottom = lz + 0.10, lz - 0.05
+        hz = (top - bottom) / 2
+        pr += [P('shade_top', 'obb', (0.2, 0.22, 0.3), c=(lx, ly + 0.01, top), h=(0.105, 0.115, t), group='lamp'),
+               P('shade_front', 'obb', (0.2, 0.22, 0.3), c=(lx, ly - 0.105, bottom + hz), h=(0.105, t, hz), group='lamp'),
+               P('shade_left', 'obb', (0.2, 0.22, 0.3), c=(lx - 0.105, ly + 0.01, bottom + hz), h=(t, 0.115, hz), group='lamp'),
+               P('shade_right', 'obb', (0.2, 0.22, 0.3), c=(lx + 0.105, ly + 0.01, bottom + hz), h=(t, 0.115, hz), group='lamp')]
+    else:
+        # sealed box housing 0.2 x 0.2 x 0.2 around the light: top, front, back, left, right panels; the bottom face is open
+        top, bottom = lz + 0.10, lz - 0.10
+        hz = (top - bottom) / 2
+        pr += [P('house_top', 'obb', (0.2, 0.22, 0.3), c=(lx, ly, top), h=(0.105, 0.105, t), group='lamp'),
+               P('house_front', 'obb', (0.2, 0.22, 0.3), c=(lx, ly - 0.105, bottom + hz), h=(0.105, t, hz), group='lamp'),
+               P('house_back', 'obb', (0.2, 0.22, 0.3), c=(lx, ly + 0.105, bottom + hz), h=(0.105, t, hz), group='lamp'),
+               P('house_left', 'obb', (0.2, 0.22, 0.3), c=(lx - 0.105, ly, bottom + hz), h=(t, 0.105, hz), group='lamp'),
+               P('house_right', 'obb', (0.2, 0.22, 0.3), c=(lx + 0.105, ly, bottom + hz), h=(t, 0.105, hz), group='lamp')]
+    name = 'WS' if sealed else 'W'
+    lamp = Light('lamp', (lx, ly, lz), 0.05, 7.0, ignore='bulb', seed=fnv_seed(name + ':lamp'))
+    groups = {'vent': ['vlo%d' % k for k in range(10)], 'vent_hi': ['vent%d' % k for k in range(10)], 'crates': ['crate1', 'crate2', 'crate3'], 'pipe': ['pipe_v'],
+              'railing': [q.name for q in pr if q.group == 'railing'], 'lamp': [q.name for q in pr if q.group == 'lamp']}
+    sc = Scene(name, pr, [[lamp]], [], groups, _floor_probes(-2.6, 2.6, 0.3, 4.6, 0.1))
+    poses = []
+    centre = (0.4, 4.9, 2.4)
+    # orbit: in front of the wall, eye height / low (looking UP at the wall above the lamp)
+    poses += _orbit(name, 'orbit_eye', centre, 3.6, 1.7, 12, start=-65.0, span=75.0)
+    poses += _orbit(name, 'orbit_low', (0.0, 4.9, 2.9), 3.2, 0.6, 12, start=-65.0, span=75.0)
+    # dolly along the room toward the wall, looking at the lamp
+    for k in range(9):
+        x = -2.4 + 3.4 * k / 8
+        poses.append(Pose('%s_dolly_%03d' % (name, k), name, 'dolly', k, (x, 1.6, 1.5), (0.2, 4.9, 2.5), 0, 'dolly'))
+    # the vent: an arc around it, seen from inside the room (the side wall faces -x)
+    vc = np.array([1.1, 4.35, 1.6])
+    for k in range(10):
+        a = math.radians(-60.0 + 7.0 * k)
+        eye = (vc[0] - 2.3 * math.cos(a), vc[1] + 2.3 * math.sin(a), 1.4)
+        poses.append(Pose('%s_vent_%03d' % (name, k), name, 'vent', k, eye, tuple(vc), 0, 'vent'))
+    sc.poses = poses
+    sc.pool = {}
+    sc.description = ('inside corner under a roof overhang, lamp ' + ('sealed in a box housing (open bottom)' if sealed else 'in an open-bottom shade') +
+                      ' above a recessed door, louvered vent on the side wall, crates, pipe, railing')
+    return sc
+
+
 def scene_sphere():
     """B. 0.5 m sphere on a floor; light flies a circle (8 angles x 3 heights + 12 synced) while the camera orbits."""
     pr = [Prim('floor', 'obb', (0.5, 0.5, 0.48), c=(0, 0, -0.15), h=(8.0, 8.0, 0.15)),
@@ -422,7 +505,8 @@ def scene_balcony():
     return sc
 
 
-SCENES = {'R': scene_room, 'A': scene_railing, 'A2': scene_railing_objects, 'B': scene_sphere, 'C': scene_balcony}
+SCENES = {'R': scene_room, 'A': scene_railing, 'A2': scene_railing_objects, 'B': scene_sphere, 'C': scene_balcony,
+          'W': scene_corner, 'WS': lambda: scene_corner(True)}
 
 
 # --------------------------------------------------------------------------- camera / G-buffer

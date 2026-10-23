@@ -2834,32 +2834,32 @@ See the table in the reply to the lead; the gates run once after the last edit w
 | `prebuild_guard.ps1 -ChecksOnly` | **PASS**, all gates | `prebuild.log` |
 | `git diff --check` | **PASS** | `diff_check.log` |
 
-## World shadows P1-lite (10/23): cube shadow maps for the top 1-2 point lights
+## World shadows P1-lite (10/23): cube shadow maps for the top 1-2 lights (point or projector)
 
-Branch `wip/cube-p1lite` (worktree `I:\alchemy-machinima-cube`), base snapshot `b0bb2d24f18` (P0 round 5 in progress). Plan of record:
+Branch `wip/cube-p1lite` (worktree `I:\alchemy-machinima-cube`), rebased onto the committed Phase 0 `e150b927cf4` (it was written on the mid-round snapshot `b0bb2d24f18`). Plan of record:
 `RELIGHT_WORLD_SHADOWS_PLAN.md` rev 2, section 2 and "Phase P1-lite". Nothing pushed, built or stashed. All new settings default OFF and the OFF output is
 byte-identical to the base (section 6). Runtime uniforms only: no define, no permutation, no reload, no listener.
 
 ### 1. What the user gets
 
 Light > Rim > Soft shadows card, after "Thin objects": **World shadows** (switch), **World lights** (1-2, searchable as "world-shadow lights"), and a readout
-("off", "choosing a light", "no point light in view", "not enough video memory", "over the work budget at this size", "on 1 light (6 faces at 512)").
-Help: "The most important point light gets a 3D shadow map: blockers anywhere around it cast, even off-screen, and the shadow stays put while you cam. Six
+("off", "choosing a light", "no light in view", "not enough video memory", "over the work budget at this size", "on 1 light (6 faces at 512)").
+Help: "The most important light (point or projector) gets a 3D shadow map: blockers anywhere around it cast, even off-screen, and the shadow stays put while you cam. Six
 shadow passes per light. Switch off and on to choose the light again." The SL status row appends "; World shadows still work" while the switch is on
 (the world pass does not depend on `RenderShadowDetail`). Both settings join the Director scene allowlist and the take record (which also logs the
 resident UUIDs and a per-channel `world` flag). Settings: `RenderAreaShadowCubeMaps` (bool, OFF), `RenderAreaShadowCubeLights` (S32 1-2, default 1).
 
 What changes in the picture, for the RESIDENT light only: its shadows come from blockers that are off-screen, behind the camera or hidden; its soft edge
 stays fixed on the floor while the camera orbits; railings cast whole shadows; edges are sharp at contact and soften with distance (the source radius is
-clamped at 0.25 m on the map side). Every other light keeps today's screen-space shadows. Projectors, attachment lights, actor-only lights, mirror copies,
-VCam feeds and snapshots are out of scope (follow-ups).
+clamped at 0.25 m on the map side). Every other light keeps today's screen-space shadows. Attachment lights, actor-only lights, mirror copies,
+VCam feeds and snapshots are out of scope (follow-ups); projectors were added on 10/23 (section 9).
 
 ### 2. Architecture (what was built)
 
 | Piece | Where | Notes |
 |---|---|---|
 | Pure maths | `alworldshadowmath.h` | face table (probe cube order, `right = axis x up`, rows of `glm::lookAt` = `(right, up, -axis)`), widened FOV `2 atan(544/512)` = 93.47 deg, tile grid (3 x 2 tiles of 544 per light, 1632 x 1088 per light), receiver -> tile mapping, depth linearisation, bias constants, blind band `blindBandMax`, `contactDistance`, resolve ledger (pixels x lights x 48 gathers, ceiling 1.0 G), pinned residency, readout wording. |
-| Residency (U8 Pinned) | `LLPipeline::renderAreaShadows` | Two session slots (never saved). An empty slot takes the best eligible point light of that frame's ranking not already resident; a slot clears only when its light stops being an eligible light in `mLights`, the planned count drops below its index, or the setting goes off. `ALAreaShadow::Candidate::world` orders resident lights first (`before()`); all flags false = the old order (720-permutation test). Main view only. |
+| Residency (U8 Pinned) | `LLPipeline::renderAreaShadows` | Two session slots (never saved). An empty slot takes the best eligible light (point or projector, see section 9) of that frame's ranking not already resident; a slot clears only when its light stops being an eligible light in `mLights`, the planned count drops below its index, or the setting goes off. `ALAreaShadow::Candidate::world` orders resident lights first (`before()`); all flags false = the old order (720-permutation test). Main view only. |
 | Cube raster | `LLPipeline::generateWorldShadowCubes`, called after `generateSunShadow` in `llviewerdisplay.cpp` | Six face passes per resident light in view, every frame, with `renderShadow` and its native defaults (so avatars, rigged meshes, alpha mask/blend, GLTF and grass cast as for a native projector), `RenderSpotLight = drawable` (the emitting prim never shadows its light), a 544^2 D32F scratch target, then `glCopyImageSubData` into the atlas tile (keeps `DEFERRED_SHADOW_TARGET_WIDTH` and the full-target clear correct). Near = `max(0.05, RenderAreaShadowLightBias)` (a CUBE of half-size near around the light is left out, not a sphere), far = 1.5 x the light radius. Camera IDs `CAMERA_WORLD_SHADOW0/1` are reused by the six sequential passes of one light: verified safe, the shadow culler's `earlyFail` never reads the per-camera visibility stamps and every pass rebuilds its `LLCullResult`; the Prism aux pass reuses `CAMERA_SPOT_SHADOW0+i` the same way. |
 | State hygiene | same | Saves/restores modelview, projection, GL matrix stacks, viewport, render-target resolution, colour mask, scissor, camera ID, `RenderSpotLight`. Under `gDebugGL` a before/after snapshot logs `[RelightQ] state-restore FAIL <item>`. Tracy zones `WorldShadow::render/light/face` + a GPU zone; CPU ms in `mWorldShadowCpuMs`. |
 | Atlas | `mWorldShadowAtlas`, `mWorldShadowScratch` | 6.77 / 13.55 MiB + 1.13 MiB scratch, allocated lazily for the planned light count, compare mode NONE, nearest, clamp (set in `generateWorldShadowCubes`, NOT in `allocateShadowBuffer`). Released lazily on the OFF transition (the only GL call on the OFF path); allocation failure = no cube this frame, status "not enough video memory", retried next frame, the channel falls back to the full screen trace. |
@@ -2942,3 +2942,44 @@ worktree HEAD is the base snapshot): `relight_off_check`, `relight_rank_check` (
 `relight_cost_check` PASS. `relight_grain_check` FAILS the same way on the unmodified base snapshot (`8x56 Thin beside 8x32 regular half: the rail fixture must separate
 the regular and the Thin march (max difference 96/255)`, threshold 100, reproduced in a clean worktree of `b0bb2d24f18`); it is a P0-round-5 matter and not part of this
 change. `relight_area_check` chains after it and is therefore not reached.
+
+### 9. Round 2 (10/23): projectors, the rebase, B flicker
+
+* **Projectors are world-eligible** (user decision 10/23: the top-ranked lights get world shadows whether they are point lights or projectors). Rule chosen for section 10:
+  a projector that owns a SAMPLED native SL shadow map at that moment (`spotShadowMapSampled`) keeps its existing "SL map + contact" path: it is never chosen, never
+  world-owned and its six cube passes are skipped while it does; it ranks like any other light. A pinned projector that later acquires a slot simply falls back to its native
+  path for as long as it holds it (no double edges, the native auction and fades untouched), and is world-owned again when the slot goes. Readout wording: "no light in view".
+  Harness (no native maps there): scene R, N = 2 (both lights get a cube): mae 0.031 / worst 0.055 (was 0.437 with the projector on the screen path), leak 0.011, acne 0.002;
+  the Default setting N = 1 shadows one of the two lights only, so R passes the ratchet at N = 2 and not at N = 1 (one of its two lights stays screen-space).
+* **Rebased** onto `e150b927cf4` (conflicts only in generated kit files, regenerated). The existing suite passes with `HEAD` pointed at the pre-P0 commit `4dd9ff661c1` (the checks
+  diff against it): `relight_shader_check` FULL chain (area, thin, rank, grain, orbit, contact, cost, `relight_world_check`) exit 0, `relight_off_check`, `relight_cost_check`.
+  The grain check's rail-fixture failure was a mid-round artefact of the old base, as expected.
+* **B camera flicker** (0.057 on `camorbit_low`, gate 0.05) is documented as MEASUREMENT-LIMITED, not fixed: contact term off 0.048; penumbra twice as wide 0.031; the contact term
+  adds 0.009 and the Thin plan's extra contact march 0.020. No principled change was found (anything that lowers it widens or blurs the penumbra and costs accuracy, or clips contact noise).
+
+### 10. Scene W: a lamp in a shade in a corner, and the face near plane
+
+Scenes `W` (open-bottom shade) and `WS` (the light SEALED in a 0.2 m box housing with an open bottom face) model the user's corner (`.tmp/cube_r1/ref_user/`): a wall lamp 0.12 m off the wall
+2.2 m up, above a recessed door, a roof overhang 0.6 m out 1.2 m above the lamp, a louvered vent on the adjacent wall (two blocks of 10 slats, 1.5 cm thick, 4 cm apart, 4 cm proud; the
+upper block level with the lamp, the lower block 1 m lower), crates, a 0.3 m pipe, a railing. The emitter is a tiny separate `bulb` prim; the shade/housing is a different prim, so it
+BLOCKS in the ground truth: the wall above the lamp is DARK. 43 poses each (eye and low orbits looking up at the wall above the lamp, a dolly, an arc around the vent). Report:
+`relight_3d_corner_report.py`, sheets (ground truth | screen-space | cube | cube near 5 cm) in `.tmp/cube_r1/sheets_W/`, logs `w_cube.log`, `w_screen.log`, `w_report.log`.
+
+| Region / scene | ground truth | screen-space today | screen, Light bias 5 cm | cube, near 25 cm (shipped rule) | cube, near 5 cm | cube, near 10 cm |
+|---|---|---|---|---|---|---|
+| W whole-scene mae_on | | 0.758 | | 0.750 | **0.103** | 0.475 |
+| WS whole-scene mae_on | | 0.863 | | 0.858 | **0.055** | 0.487 |
+| W/WS wall above the lamp: mean visibility (GT-dark pixels left lit) | 0.000 | 1.000 (100 %) | 0.988 (98 %) | 1.000 (100 %) | **0.000 (0 %)** | 0.909 (90 %) |
+| W upper vent (level with the lamp), mean visibility (GT-dark left lit) | 0.012 | 0.984 (99 %) | 0.948 (93 %) | 0.940 (92 %) | **0.013 (1 %)** | 0.695 (52 %) |
+| W lower vent, louver mae / contrast std (GT 0.381) | mean 0.270 | 0.295 / 0.442 | 0.320 / 0.438 | 0.069 / 0.450 | 0.070 / 0.452 | 0.070 / 0.452 |
+| WS lower vent mae (GT mean 0.101) | | 0.447 | 0.471 | 0.232 | **0.096** | 0.187 |
+
+Findings: (1) with the shipped rule (near = max(5 cm, Light bias 25 cm)) the cube loses the effect completely: the shade and housing panels sit 9-11 cm from the light, inside the clipped cube, so the wall above
+the lamp reads 1.0 where the truth is 0.0. (2) Today's screen-space ALREADY loses it (1.000): the gather skips occluders within the Light bias of the light centre, and lowering that to 5 cm barely helps (0.988), so
+the screen trace cannot see through to the shade at all; the user's 10/21 build, which darkened the wall, predates the global housing bias. (3) The cube with the near plane at 5 cm restores it exactly (0.000, mae 0.103 / 0.055), keeps the louver
+shadows on the lower vent (contrast 0.45 vs 0.38) and is the only variant that darkens the upper vent correctly. (4) 10 cm is fragile: the panels sit at 9.5-10.5 cm, so it is a partial loss (0.909 lit).
+Side effect of near 5 cm: a thin false-dark (blue) band at the lower edge of the lit pool on the side wall in some poses (worst pose mae 0.147 / 0.114).
+
+Options (NOT implemented; the lead decides): **A** near fixed at 5 cm, decoupled from `RenderAreaShadowLightBias` (which keeps governing the screen trace only): the numbers above, one line in `nearPlane()` and its call sites, no new setting.
+**B** near = max(5 cm, a per-light distance taken from the emitting prim's own bounds): collapses to A here (the emitter is a 2 cm bulb) and is moot for a large emitting prim, which `RenderSpotLight` already excludes by identity; it adds code for no measured gain.
+**C** keep 25 cm and add a "World near" slider (default 5 cm, advanced) as the escape hatch for fixtures that must not block their own light (a sloppy globe mesh wrapping the bulb as a SEPARATE prim would now correctly cast): A plus the old behaviour on request. Recommendation: A, with C as the follow-up if a scene needs it.

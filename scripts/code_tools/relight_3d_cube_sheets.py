@@ -27,6 +27,7 @@ BASE = 'e150b927cf4'
 POSES = {
     'A2': ['A2_orbit_eye_near_000', 'A2_orbit_eye_near_006', 'A2_orbit_eye_far_003', 'A2_orbit_mid_near_002', 'A2_orbit_mid_far_009',
            'A2_orbit_high_near_005'],
+    'R': ['R_orbit_000', 'R_orbit_007', 'R_orbit_012', 'R_orbit_018'],
     'A': ['A_orbit_eye_near_000', 'A_orbit_eye_near_006', 'A_orbit_eye_far_003', 'A_orbit_mid_near_002', 'A_orbit_mid_far_009',
           'A_orbit_high_near_005'],
 }
@@ -34,7 +35,7 @@ POSES = {
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--scenes', default='A2,A')
+    ap.add_argument('--scenes', default='A2,A,R')
     ap.add_argument('--out', default=str(REPO / '.tmp' / 'cube_r1' / 'sheets_A2'))
     ap.add_argument('--cache', default=str(REPO / '.tmp' / 'ref3d_cache'))
     ap.add_argument('--scale', type=int, default=2)
@@ -48,8 +49,8 @@ def main():
     spec.loader.exec_module(mod)
     cube = mod.CubeSource()
     cube.prepare({'args': types.SimpleNamespace(shader_ref='WORKTREE'), 'out': str(REPO / '.tmp' / 'cube_r1' / 'sheetout')})
-    cube.enabled = [c for c in cube.CONFIGS if c[0] == 'cube']
-    cube_cfg = cube.configs({})[0]
+    cube.enabled = [c for c in cube.CONFIGS if c[0] in ('cube', 'cube2')]
+    cube_cfgs = {c[0]: c for c in cube.configs({})}
     base_tree = G.SourceTree(BASE)
     base_runner = G.AreaRunner(base_tree, gl=cube.runner.gl)
     plans_base, _ = PL.compute_plans(base_tree, REPO / '.tmp' / 'cube_r1')
@@ -69,7 +70,8 @@ def main():
             lights = sc.light_sets[pose.cfg]
             frame = types.SimpleNamespace(scene=sc, pose=pose, cam=cam, lights=lights, depth32=depth32, norm16=norm16)
             screen = base_runner.run(cam, depth32, norm16, lights, plans_base['Default'][len(lights)])[:, fj, fi]
-            cubev = cube.visibility(frame, cube_cfg)[:, fj, fi]
+            # scene R has two lights (a point light and a projector): N = 2 so both get a cube (user decision 10/23); the others have one light
+            cubev = cube.visibility(frame, cube_cfgs['cube2' if len(lights) > 1 else 'cube'])[:, fj, fi]
             gt = r['gt']
             albedo = [p.albedo for p in sc.prims]
             gt_vis = [L['vis'] * L['cand'] + (~L['cand']) for L in gt['lights']]
@@ -93,7 +95,7 @@ def main():
             gap, head = 8, 62
             sheet = Image.new('RGB', (3 * w + 4 * gap, head + 2 * h + 3 * gap), (18, 18, 20))
             dr = ImageDraw.Draw(sheet)
-            dr.text((gap, 6), '%s  [%s]  eye (%.1f, %.1f, %.1f)   light (%.1f, %.1f, %.1f)' % (pose.id, sc.description, *pose.eye, *lights[0].pos),
+            dr.text((gap, 6), '%s  [%s]  eye (%.1f, %.1f, %.1f)   light 0 (%.1f, %.1f, %.1f)' % (pose.id, sc.description, *pose.eye, *lights[0].pos),
                     fill=(240, 240, 240), font=SH._font(18))
             dr.text((gap, 32), 'top: ground truth | ' + ' | '.join(texts), fill=(220, 220, 170), font=SH._font(14))
             dr.text((gap, head - 16), 'ground truth (ray traced)', fill=(150, 200, 150), font=SH._font(13))

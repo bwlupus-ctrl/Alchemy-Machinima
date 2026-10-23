@@ -162,6 +162,10 @@ class CubeSource(VisibilitySource):
                ('cube2', 'Default', 2, True, False),
                ('cube_worldonly', 'Default', 1, False, False),
                ('cube2_worldonly', 'Default', 2, False, False),
+               # scene W diagnostics: the face near plane (and the screen trace's housing bias) at 5 cm instead of the default 25 cm
+               ('cube_near005', 'Default', 1, True, False, {'near': 0.05, 'bias': 0.05}),
+               ('cube2_near005', 'Default', 2, True, False, {'near': 0.05, 'bias': 0.05}),
+               ('cube2_near010', 'Default', 2, True, False, {'near': 0.10, 'bias': 0.10}),
                ('cube_fixedrot', 'Default', 1, True, True)]
 
     def prepare(self, ctx):
@@ -185,7 +189,9 @@ class CubeSource(VisibilitySource):
         self.enabled = [c for c in self.CONFIGS if not only or c[0] in only.split(',')]
 
     def configs(self, ctx):
-        return [(c[0], {'plan': c[1], 'n': c[2], 'contact': c[3], 'fixedrot': c[4]}) for c in self.enabled]
+        return [(c[0], {'plan': c[1], 'n': c[2], 'contact': c[3], 'fixedrot': c[4],
+                        'near': (c[5] if len(c) > 5 else {}).get('near', LIGHT_BIAS),
+                        'bias': (c[5] if len(c) > 5 else {}).get('bias', LIGHT_BIAS)}) for c in self.enabled]
 
     def plan_text(self, name):
         for c in self.CONFIGS:
@@ -204,9 +210,9 @@ class CubeSource(VisibilitySource):
                        key=lambda i: (-importance(frame.lights[i], eye), frame.lights[i].name))
         return order[:n]
 
-    def atlas_for(self, scene, lights, picked):
+    def atlas_for(self, scene, lights, picked, bias=LIGHT_BIAS):
         """(atlas float32 (H, 1632), rows {light index: tile row}) for the picked lights; cached per light set."""
-        key = (scene.name, tuple((tuple(lights[i].pos), lights[i].ignore, float(lights[i].range)) for i in picked))
+        key = (scene.name, bias, tuple((tuple(lights[i].pos), lights[i].ignore, float(lights[i].range)) for i in picked))
         hit = self.atlas_cache.get(key)
         if hit is not None:
             return hit
@@ -214,7 +220,7 @@ class CubeSource(VisibilitySource):
         rows = {}
         for k, li in enumerate(picked):
             L = lights[li]
-            near, far = near_plane(), float(L.range)
+            near, far = near_plane(bias), float(L.range)
             tiles = light_tiles(scene, L, near, far, self.cache_dir)
             for f in range(6):
                 x, y = (f % 3) * TILE, (2 * k + f // 3) * TILE
@@ -239,20 +245,20 @@ class CubeSource(VisibilitySource):
             runner.filter = self.filter_fixed
         world = None
         if picked:
-            atlas, rows = self.atlas_for(frame.scene, lights, picked)
+            atlas, rows = self.atlas_for(frame.scene, lights, picked, params['bias'])
             channels = []
             for i, L in enumerate(lights):
                 if i not in rows:
                     channels.append(None)
                     continue
                 far = float(L.range)
-                channels.append({'row': rows[i], 'near': near_plane(), 'far': far,
+                channels.append({'row': rows[i], 'near': near_plane(params['bias']), 'far': far,
                                  'r_map': float(min(L.radius if L.radius > 0 else 0.1, 0.25)),
                                  'contact': contact_distance(far) if params['contact'] else 0.0,
                                  'seed': int(L.seed)})
             world = {'atlas': atlas, 'channels': channels}
         try:
-            return runner.run(frame.cam, frame.depth32, frame.norm16, lights, plan, world=world)
+            return runner.run(frame.cam, frame.depth32, frame.norm16, lights, plan, world=world, light_bias=params['bias'])
         finally:
             runner.filter = production_filter
 
