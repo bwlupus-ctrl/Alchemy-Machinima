@@ -77,8 +77,7 @@ void main()
     if (depth >= 1.0) return;
     vec3 pos = getPositionWithDepth(uv,depth).xyz;
     vec3 normal = areaNormal(uv);
-    float receiver_bias = areaReceiverBias(uv,pos);
-    vec3 origin = pos+normal*receiver_bias;
+    vec3 origin = pos+normal*areaReceiverBias(uv,pos);
     float native_strength = areaNativeStrength(-(pos.z+normal.z*area_native_offset));
     // Spatial noise cells scale with render resolution (one cell per pixel below 1); no time/frame inputs.
     uvec2 pixel = uvec2(floor(gl_FragCoord.xy/max(area_params.z,1.0)));
@@ -99,10 +98,10 @@ void main()
         float visibility = 0.0;
         float contact_visibility = 0.0;
         // World-owned channel (P1-lite): the march only supplies the CONTACT term, so a hit must be a surface really touching the
-        // receiver: the acceptance thickness tightens to max(4 footprints, 5 cm) (receiver_bias = 1.5 footprints, 2 cm floor) instead of
+        // receiver: the acceptance thickness tightens to max(4 footprints, 5 cm) (areaReceiverBias = 1.5 footprints, 2 cm floor) instead of
         // the user's 0.35 m, which accepted a silhouette 0.3 m in front as a contact blocker and printed camera-dependent false-dark spots.
         // Every other channel keeps the user's thickness unchanged.
-        float thickness = area_world[light] > 0.5 ? min(area_params.y,max(receiver_bias*(4.0/1.5),0.05)) : area_params.y;
+        float thickness = area_world[light] > 0.5 ? min(area_params.y,max(areaReceiverBias(uv,pos)*(4.0/1.5),0.05)) : area_params.y;
         for (int sample_idx = 0; sample_idx < area_samples; ++sample_idx)
         {
             // Equal-area radial strata and fixed golden-angle azimuths.

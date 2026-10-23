@@ -327,6 +327,21 @@ def scene_railing():
     return sc
 
 
+def scene_railing_objects():
+    """A2. Scene A (the same railing, light and orbit poses) plus RECEIVER objects behind the railing, on the far side from the light, so the
+    railing's shadow falls across them: a 0.8 m crate whose near face is 1.0 m behind the railing (the shadow on a vertical face and wrapping
+    from the floor onto the box) and a 0.5 m sphere (a curved receiver) beside it. Both cast their own shadows onto the floor as well.
+    The key blocker group is still the railing only, so the pose gating and the metrics are scene A's."""
+    sc = scene_railing()
+    sc.name = 'A2'
+    sc.prims += [Prim('crate', 'obb', (0.62, 0.46, 0.30), c=(0.8, 1.5, 0.4), h=(0.6, 0.5, 0.4), yaw=12),
+                 Prim('ball', 'sphere', (0.82, 0.78, 0.66), c=(-1.1, 1.45, 0.25), r=0.25)]
+    sc.light_sets = [[Light('point', (-1.0, -1.7, 1.5), 0.1, 12.0, seed=fnv_seed('A2:point'))]]
+    sc.poses = [Pose(p.id.replace('A_', 'A2_', 1), 'A2', p.group, p.idx, p.eye, p.target, p.cfg, p.tag) for p in sc.poses]
+    sc.description = 'balcony railing + a crate and a sphere behind it (the railing shadow falls across them), side point light'
+    return sc
+
+
 def scene_sphere():
     """B. 0.5 m sphere on a floor; light flies a circle (8 angles x 3 heights + 12 synced) while the camera orbits."""
     pr = [Prim('floor', 'obb', (0.5, 0.5, 0.48), c=(0, 0, -0.15), h=(8.0, 8.0, 0.15)),
@@ -407,7 +422,7 @@ def scene_balcony():
     return sc
 
 
-SCENES = {'R': scene_room, 'A': scene_railing, 'B': scene_sphere, 'C': scene_balcony}
+SCENES = {'R': scene_room, 'A': scene_railing, 'A2': scene_railing_objects, 'B': scene_sphere, 'C': scene_balcony}
 
 
 # --------------------------------------------------------------------------- camera / G-buffer
