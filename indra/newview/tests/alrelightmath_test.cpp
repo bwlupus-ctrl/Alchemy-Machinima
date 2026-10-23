@@ -2852,8 +2852,8 @@ template<> template<> void relight_object::test<37>()
     for (double z : {0.3, 1.0, 4.5, 19.0}) close("linearise round trip",linearize(depthFromLinear(z,0.25,20.0),0.25,20.0),z,1.e-9);
     close("cleared depth reads far",linearize(1.0,0.25,20.0),20.0,1.e-9);
     // Near plane = max(5 cm, housing bias).
-    close("near default",nearPlane(0.25),0.25,1.e-12);
-    close("near floor",nearPlane(0.01),0.05,1.e-12);
+    close("near plane is a fixed 5 cm (decoupled from the Light bias)",nearPlane(),0.05,1.e-12);
+    close("near plane constant",kNearPlane,0.05,1.e-12);
     close("far plane",farPlane(10.0),15.0,1.e-12);
 }
 template<> template<> void relight_object::test<38>()

@@ -13,6 +13,8 @@ Region metrics (grid pixels of the ground-truth G-buffer, per pose with >= 150 r
               reported: mean visibility (GT vs source), MAE, and the share of GT-dark (< 0.5) pixels the source leaves lit (> 0.75);
   vent        the LOWER louvered vent on the side wall (slats and the wall behind them, y 4.0..4.7, z 1.0..1.45; the open-bottom shade lights it):
               reported: MAE, and the visibility CONTRAST (standard deviation over the region, GT vs source) = how much of the louver shadow survives;
+  pool        the door and the wall beside it below the lamp (|x| < 0.8, 1.2 < z < 1.9): the ground truth is LIT (the open bottom of the shade lights it); a bulb that
+              blacked the light out would read dark here;
   vent_hi     the upper vent (z 2.0..2.45, level with the lamp: the shade hood blocks it in the ground truth).
 """
 import argparse
@@ -32,10 +34,12 @@ import relight_3d_tasks as T  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 BASE = 'e150b927cf4'
-SOURCES = ['screen', 'screen_bias005', 'cube', 'cube_near005', 'cube2_near010']
-LABELS = {'screen': 'screen-space (today)', 'screen_bias005': 'screen-space, Light bias 5 cm', 'cube': 'cube maps (near 25 cm)', 'cube_near005': 'cube maps, near 5 cm', 'cube2_near010': 'cube maps, near 10 cm'}
+SOURCES = ['screen', 'screen_bias005', 'cube', 'cube_near025', 'cube_near010', 'cube_noignore']
+LABELS = {'screen': 'screen-space (today)', 'screen_bias005': 'screen-space, Light bias 5 cm', 'cube': 'cube maps (near 5 cm, emitter excluded)',
+          'cube_near025': 'cube maps, near 25 cm (superseded rule)', 'cube_near010': 'cube maps, near 10 cm', 'cube_noignore': 'cube maps, no emitter exclusion (culling only)'}
 SHEET_POSES = {'W': ['W_orbit_low_002', 'W_orbit_low_007', 'W_orbit_eye_005', 'W_dolly_004', 'W_vent_002', 'W_vent_006'],
-               'WS': ['WS_orbit_low_004', 'WS_orbit_eye_005', 'WS_vent_004']}
+               'WS': ['WS_orbit_low_004', 'WS_orbit_eye_005', 'WS_vent_004'],
+               'WB': ['WB_orbit_low_002', 'WB_orbit_low_007', 'WB_orbit_eye_005', 'WB_dolly_004', 'WB_vent_002', 'WB_vent_006']}
 
 
 def regions(pos, surf, names):
@@ -44,12 +48,14 @@ def regions(pos, surf, names):
     ids = [i for i, n in enumerate(names) if n.startswith('vent') or n.startswith('vlo') or n == 'wall_side']
     vent_hi = np.isin(surf, ids) & (y > 4.0) & (y < 4.7) & (z > 2.0) & (z < 2.45)
     vent = np.isin(surf, ids) & (y > 4.0) & (y < 4.7) & (z > 1.0) & (z < 1.45)
-    return {'wall_above': wall, 'vent': vent, 'vent_hi': vent_hi}
+    # the pool the open-bottom shade lights: the door and the wall beside it, 0.3 .. 1.0 m below the lamp (the ground truth is LIT here)
+    pool = (surf != 255) & (np.abs(x) < 0.8) & (z > 1.2) & (z < 1.9) & (y > 4.9)
+    return {'wall_above': wall, 'pool': pool, 'vent': vent, 'vent_hi': vent_hi}
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--scenes', default='W,WS')
+    ap.add_argument('--scenes', default='W,WS,WB')
     ap.add_argument('--out', default=str(REPO / '.tmp' / 'cube_r1' / 'sheets_W'))
     ap.add_argument('--cache', default=str(REPO / '.tmp' / 'ref3d_cache'))
     ap.add_argument('--scale', type=float, default=1.5)
@@ -78,7 +84,7 @@ def main():
     for name in args.scenes.split(','):
         sc = T.get_scene(name)
         names = [p.name for p in sc.prims]
-        acc = {(src, reg): [] for src in SOURCES for reg in ('wall_above', 'vent', 'vent_hi')}
+        acc = {(src, reg): [] for src in SOURCES for reg in ('wall_above', 'pool', 'vent', 'vent_hi')}
         for pidx, pose in enumerate(sc.poses):
             r = T.pose_task((name, pidx, opt))
             with np.load(r['gb']) as z:
@@ -117,10 +123,10 @@ def main():
                 sheet = Image.new('RGB', (4 * w + 5 * gap, head + 2 * h + 3 * gap), (18, 18, 20))
                 dr = ImageDraw.Draw(sheet)
                 dr.text((gap, 6), '%s  [%s]' % (pose.id, sc.description), fill=(240, 240, 240), font=SH._font(18))
-                dr.text((gap, 30), 'eye (%.1f, %.1f, %.1f) target (%.1f, %.1f, %.1f); columns: ground truth | screen-space (today) | cube maps (near 25 cm) | cube maps, near 5 cm; '
+                dr.text((gap, 30), 'eye (%.1f, %.1f, %.1f) target (%.1f, %.1f, %.1f); columns: ground truth | screen-space (today) | cube maps, near 25 cm (superseded) | cube maps, near 5 cm (new); '
                         'bottom: error views (red = left lit, blue = false dark)' % (*pose.eye, *pose.target), fill=(220, 220, 170), font=SH._font(13))
                 cols = [('ground truth (ray traced)', gt_img, SH.diff_image(gt, [gt['lights'][0]['vis']], gt_img))]
-                for src in ('screen', 'cube', 'cube_near005'):
+                for src in ('screen', 'cube_near025', 'cube'):
                     Lg = gt['lights'][0]
                     msk = Lg['cand'] & (Lg['vis'] < 0.98)
                     mae = float(np.abs(prods[src][0] - Lg['vis'])[msk].mean()) if msk.any() else float('nan')
@@ -133,7 +139,7 @@ def main():
                 sheet.save(out / ('%s.png' % pose.id), compress_level=4)
             Path(r['gb']).unlink(missing_ok=True)
         P('=== scene %s: %s (%d poses) ===' % (name, sc.description, len(sc.poses)))
-        for reg in ('wall_above', 'vent', 'vent_hi'):
+        for reg in ('wall_above', 'pool', 'vent', 'vent_hi'):
             P('  region %s (per-pose >= 150 px, pixel-weighted over poses; GT mean/std vs source)' % reg)
             P('    %-16s %5s %9s %9s %7s %9s %9s %12s' % ('source', 'poses', 'GT mean', 'src mean', 'MAE', 'GT std', 'src std', 'GT-dark lit'))
             for src in SOURCES:

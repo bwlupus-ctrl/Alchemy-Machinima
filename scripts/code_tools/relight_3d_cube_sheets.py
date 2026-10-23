@@ -49,7 +49,7 @@ def main():
     spec.loader.exec_module(mod)
     cube = mod.CubeSource()
     cube.prepare({'args': types.SimpleNamespace(shader_ref='WORKTREE'), 'out': str(REPO / '.tmp' / 'cube_r1' / 'sheetout')})
-    cube.enabled = [c for c in cube.CONFIGS if c[0] in ('cube', 'cube2')]
+    cube.enabled = [c for c in cube.CONFIGS if c[0] == 'cube']
     cube_cfgs = {c[0]: c for c in cube.configs({})}
     base_tree = G.SourceTree(BASE)
     base_runner = G.AreaRunner(base_tree, gl=cube.runner.gl)
@@ -70,8 +70,8 @@ def main():
             lights = sc.light_sets[pose.cfg]
             frame = types.SimpleNamespace(scene=sc, pose=pose, cam=cam, lights=lights, depth32=depth32, norm16=norm16)
             screen = base_runner.run(cam, depth32, norm16, lights, plans_base['Default'][len(lights)])[:, fj, fi]
-            # scene R has two lights (a point light and a projector): N = 2 so both get a cube (user decision 10/23); the others have one light
-            cubev = cube.visibility(frame, cube_cfgs['cube2' if len(lights) > 1 else 'cube'])[:, fj, fi]
+            # the setting default N = 2 (scene R has a point light and a projector: both get a cube)
+            cubev = cube.visibility(frame, cube_cfgs['cube'])[:, fj, fi]
             gt = r['gt']
             albedo = [p.albedo for p in sc.prims]
             gt_vis = [L['vis'] * L['cand'] + (~L['cand']) for L in gt['lights']]

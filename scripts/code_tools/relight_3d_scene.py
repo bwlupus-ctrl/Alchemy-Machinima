@@ -342,13 +342,15 @@ def scene_railing_objects():
     return sc
 
 
-def scene_corner(sealed=False):
+def scene_corner(sealed=False, bulb=False):
     """W / WS. An inside corner under a roof overhang, modelled on the user's in-world screenshots (10/21): a small wall lamp above a recessed door, a
     louvered vent on the adjacent wall about 1.2 m from the lamp, crates and a vertical pipe on the floor, a railing in front. The lamp is a tiny emitter
     prim (`bulb`, never shadows its own light) 0.12 m off the wall, 2.2 m up, INSIDE a separate open-bottom shade (W: four 0.15 m panels and a top plate,
     0.2 m wide) or, for WS, SEALED inside a small box housing that has an open bottom face only. The shade/housing is a different prim from the emitter,
     so it blocks (ground truth: the wall above the lamp is dark, the wall only receives light through the open bottom).
     Overhang: 0.6 m out, underside 1.2 m above the lamp. Vent: 10 slats, 1.5 cm thick, 4 cm apart, standing 4 cm off the wall.
+    WB: scene W with the light inside a CLOSED glass-bulb sphere prim of radius 0.10 m that IS the emitting prim (it never shadows its own light) plus
+    the separate shade: the bulb must not black the light out (the pool below the lamp stays lit) while the shade still darkens the wall above.
     Key blocker group: the vent slats (the lamp group is excluded from pose gating, like scene C's)."""
     P = Prim
     pr = [
@@ -379,7 +381,7 @@ def scene_corner(sealed=False):
     pr += _railing('rail', [(-3.0 + 1.2 * k, 0.4) for k in range(6)], 'railing')
     # lamp: bulb = the emitter prim (ignored by the light), shade or housing = separate blockers
     lx, ly, lz = 0.0, 4.88, 2.2
-    pr.append(P('bulb', 'sphere', (1, 1, 0.8), c=(lx, ly, lz), r=0.02, group='lamp'))
+    pr.append(P('bulb', 'sphere', (1, 1, 0.8), c=(lx, ly, lz), r=0.10 if bulb else 0.02, group='lamp'))
     t = 0.005
     if not sealed:
         # open-bottom shade 0.2 m wide, 0.15 m tall (the light sits 0.05 above its lower rim): top plate + front/left/right panels, no back (the wall)
@@ -398,7 +400,7 @@ def scene_corner(sealed=False):
                P('house_back', 'obb', (0.2, 0.22, 0.3), c=(lx, ly + 0.105, bottom + hz), h=(0.105, t, hz), group='lamp'),
                P('house_left', 'obb', (0.2, 0.22, 0.3), c=(lx - 0.105, ly, bottom + hz), h=(t, 0.105, hz), group='lamp'),
                P('house_right', 'obb', (0.2, 0.22, 0.3), c=(lx + 0.105, ly, bottom + hz), h=(t, 0.105, hz), group='lamp')]
-    name = 'WS' if sealed else 'W'
+    name = 'WS' if sealed else ('WB' if bulb else 'W')
     lamp = Light('lamp', (lx, ly, lz), 0.05, 7.0, ignore='bulb', seed=fnv_seed(name + ':lamp'))
     groups = {'vent': ['vlo%d' % k for k in range(10)], 'vent_hi': ['vent%d' % k for k in range(10)], 'crates': ['crate1', 'crate2', 'crate3'], 'pipe': ['pipe_v'],
               'railing': [q.name for q in pr if q.group == 'railing'], 'lamp': [q.name for q in pr if q.group == 'lamp']}
@@ -420,7 +422,7 @@ def scene_corner(sealed=False):
         poses.append(Pose('%s_vent_%03d' % (name, k), name, 'vent', k, eye, tuple(vc), 0, 'vent'))
     sc.poses = poses
     sc.pool = {}
-    sc.description = ('inside corner under a roof overhang, lamp ' + ('sealed in a box housing (open bottom)' if sealed else 'in an open-bottom shade') +
+    sc.description = ('inside corner under a roof overhang, lamp ' + ('sealed in a box housing (open bottom)' if sealed else ('in a closed 0.10 m glass bulb (the emitting prim) and an open-bottom shade' if bulb else 'in an open-bottom shade')) +
                       ' above a recessed door, louvered vent on the side wall, crates, pipe, railing')
     return sc
 
@@ -506,7 +508,7 @@ def scene_balcony():
 
 
 SCENES = {'R': scene_room, 'A': scene_railing, 'A2': scene_railing_objects, 'B': scene_sphere, 'C': scene_balcony,
-          'W': scene_corner, 'WS': lambda: scene_corner(True)}
+          'W': scene_corner, 'WS': lambda: scene_corner(True), 'WB': lambda: scene_corner(False, True)}
 
 
 # --------------------------------------------------------------------------- camera / G-buffer

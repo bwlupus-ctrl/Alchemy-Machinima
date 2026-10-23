@@ -47,7 +47,8 @@ TILE = USABLE + 2 * GUTTER          # 544
 TAN_HALF = TILE / USABLE            # 1.0625: tan of half the widened FOV
 ATLAS_W = 3 * TILE                  # 1632
 ATLAS_H_PER_LIGHT = 2 * TILE        # 1088
-LIGHT_BIAS = 0.25                   # RenderAreaShadowLightBias default (harness runs production defaults)
+LIGHT_BIAS = 0.25                   # RenderAreaShadowLightBias default: governs the SCREEN trace (the gather's housing skip) only
+NEAR = 0.05                         # the cube face near plane: a fixed 5 cm (alworldshadowmath.h kNearPlane), decoupled from the Light bias
 USER_CONTACT = 0.15                 # RenderAreaShadowMappedContact default
 
 # Probe cube order +X -X +Y -Y +Z -Z (LLCubeMapArray::sTargets) and the probe up vectors (LLViewerWindow::cubeSnapshot).
@@ -63,8 +64,8 @@ def face_basis(face):
     return a, r, np.cross(r, a)
 
 
-def near_plane(light_bias=LIGHT_BIAS):
-    return max(0.05, light_bias)
+def near_plane(near=NEAR):
+    return near
 
 
 def texel_world(z):
@@ -131,13 +132,16 @@ def raster_face(scene, light, face, near, far, skip):
     return dep.reshape(TILE, TILE).astype(np.float32)
 
 
-def light_tiles(scene, light, near, far, cache_dir):
+def light_tiles(scene, light, near, far, cache_dir, noignore=False):
     """(6, TILE, TILE) D32F window depth for one light; memory + disk cached on scene content."""
-    key = hashlib.sha1(repr((scene.signature(), light.spec(), near, far, CUBE_VERSION)).encode()).hexdigest()[:16]
+    key = hashlib.sha1(repr((scene.signature(), light.spec(), near, far, noignore, CUBE_VERSION)).encode()).hexdigest()[:16]
     path = Path(cache_dir) / ('cube_%s_%s.npy' % (scene.name, key))
     if path.exists():
         return np.load(path)
-    skip = {scene.prim_index(light.ignore)} if light.ignore else set()
+    # The emitting prim never casts in its own cube (RenderSpotLight in production). A prim that ENCLOSES the light casts nothing either, whatever
+    # the hook does: every triangle of a closed bulb is back-facing from inside and the shadow pass culls back faces (`noignore` = diagnostic: no
+    # explicit exclusion, only that culling).
+    skip = {scene.prim_index(light.ignore)} if (light.ignore and not noignore) else set()
     skip.discard(-1)
     skip |= {i for i, p in enumerate(scene.prims) if _inside(p, light.pos)}
     tiles = np.stack([raster_face(scene, light, f, near, far, skip) for f in range(6)])
@@ -157,16 +161,16 @@ def importance(light, eye):
 class CubeSource(VisibilitySource):
     name = 'cube'
     # name -> (plan name, resident lights, contact term on, fixed rotation)
-    CONFIGS = [('cube', 'Default', 1, True, False),
-               ('cube+thin', 'Default+Thin', 1, True, False),
-               ('cube2', 'Default', 2, True, False),
-               ('cube_worldonly', 'Default', 1, False, False),
-               ('cube2_worldonly', 'Default', 2, False, False),
-               # scene W diagnostics: the face near plane (and the screen trace's housing bias) at 5 cm instead of the default 25 cm
-               ('cube_near005', 'Default', 1, True, False, {'near': 0.05, 'bias': 0.05}),
-               ('cube2_near005', 'Default', 2, True, False, {'near': 0.05, 'bias': 0.05}),
-               ('cube2_near010', 'Default', 2, True, False, {'near': 0.10, 'bias': 0.10}),
-               ('cube_fixedrot', 'Default', 1, True, True)]
+    # name -> (plan, resident lights, contact term, fixed rotation [, options]). The setting default is N = 2 (user decision 10/23).
+    CONFIGS = [('cube', 'Default', 2, True, False),
+               ('cube+thin', 'Default+Thin', 2, True, False),
+               ('cube1', 'Default', 1, True, False),
+               ('cube_worldonly', 'Default', 2, False, False),
+               ('cube_fixedrot', 'Default', 2, True, True),
+               # scene W/WB diagnostics: the superseded near plane rule max(5 cm, Light bias) = 25 cm, a 10 cm plane, and no explicit emitter exclusion
+               ('cube_near025', 'Default', 2, True, False, {'near': 0.25}),
+               ('cube_near010', 'Default', 2, True, False, {'near': 0.10}),
+               ('cube_noignore', 'Default', 2, True, False, {'noignore': True})]
 
     def prepare(self, ctx):
         args = ctx['args']
@@ -190,8 +194,9 @@ class CubeSource(VisibilitySource):
 
     def configs(self, ctx):
         return [(c[0], {'plan': c[1], 'n': c[2], 'contact': c[3], 'fixedrot': c[4],
-                        'near': (c[5] if len(c) > 5 else {}).get('near', LIGHT_BIAS),
-                        'bias': (c[5] if len(c) > 5 else {}).get('bias', LIGHT_BIAS)}) for c in self.enabled]
+                        'near': (c[5] if len(c) > 5 else {}).get('near', NEAR),
+                        'bias': (c[5] if len(c) > 5 else {}).get('bias', LIGHT_BIAS),
+                        'noignore': (c[5] if len(c) > 5 else {}).get('noignore', False)}) for c in self.enabled]
 
     def plan_text(self, name):
         for c in self.CONFIGS:
@@ -210,9 +215,9 @@ class CubeSource(VisibilitySource):
                        key=lambda i: (-importance(frame.lights[i], eye), frame.lights[i].name))
         return order[:n]
 
-    def atlas_for(self, scene, lights, picked, bias=LIGHT_BIAS):
+    def atlas_for(self, scene, lights, picked, near=NEAR, noignore=False):
         """(atlas float32 (H, 1632), rows {light index: tile row}) for the picked lights; cached per light set."""
-        key = (scene.name, bias, tuple((tuple(lights[i].pos), lights[i].ignore, float(lights[i].range)) for i in picked))
+        key = (scene.name, near, noignore, tuple((tuple(lights[i].pos), lights[i].ignore, float(lights[i].range)) for i in picked))
         hit = self.atlas_cache.get(key)
         if hit is not None:
             return hit
@@ -220,8 +225,8 @@ class CubeSource(VisibilitySource):
         rows = {}
         for k, li in enumerate(picked):
             L = lights[li]
-            near, far = near_plane(bias), float(L.range)
-            tiles = light_tiles(scene, L, near, far, self.cache_dir)
+            far = float(L.range)
+            tiles = light_tiles(scene, L, near, far, self.cache_dir, noignore)
             for f in range(6):
                 x, y = (f % 3) * TILE, (2 * k + f // 3) * TILE
                 atlas[y:y + TILE, x:x + TILE] = tiles[f]
@@ -245,14 +250,14 @@ class CubeSource(VisibilitySource):
             runner.filter = self.filter_fixed
         world = None
         if picked:
-            atlas, rows = self.atlas_for(frame.scene, lights, picked, params['bias'])
+            atlas, rows = self.atlas_for(frame.scene, lights, picked, params['near'], params['noignore'])
             channels = []
             for i, L in enumerate(lights):
                 if i not in rows:
                     channels.append(None)
                     continue
                 far = float(L.range)
-                channels.append({'row': rows[i], 'near': near_plane(params['bias']), 'far': far,
+                channels.append({'row': rows[i], 'near': near_plane(params['near']), 'far': far,
                                  'r_map': float(min(L.radius if L.radius > 0 else 0.1, 0.25)),
                                  'contact': contact_distance(far) if params['contact'] else 0.0,
                                  'seed': int(L.seed)})

@@ -26897,7 +26897,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // [P1-lite] World cube maps: main-view passes only (a VCam feed pass never picks, owns or reorders anything; its channels upload
     // area_world = 0 and rank exactly as with the maps off).
     static LLCachedControl<bool> cube_on(gSavedSettings, "RenderAreaShadowCubeMaps", false);
-    static LLCachedControl<S32> cube_lights(gSavedSettings, "RenderAreaShadowCubeLights", 1);
+    static LLCachedControl<S32> cube_lights(gSavedSettings, "RenderAreaShadowCubeLights", 2);
     const bool cube_main = cube_on() && !sPrismLensRender;
     ALAreaShadow::Selection<LLUUID> world_candidates;
     // Where the native spot map ends (the shadow_clip the native sampler reads): ranking input.
@@ -27261,10 +27261,10 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // The native sampler's receiver offset; the gather AND the filter evaluate the hand-over at the depth it compares.
     const F32 native_offset = std::isfinite(RenderSpotShadowOffset) ? RenderSpotShadowOffset : 0.f;
     // [P1-lite] The world resolve's inputs: the view -> agent rotation as three row vectors (the columns of the view matrix's 3x3) and
-    // the face near plane (the housing bias, never below 5 cm: alworldshadowmath.h nearPlane).
+    // the face near plane (a fixed 5 cm: alworldshadowmath.h nearPlane).
     float world_rot[9];
     std::memcpy(world_rot,glm::value_ptr(glm::mat3(view)),sizeof(world_rot));
-    const F32 world_near = static_cast<F32>(ALWorldShadow::nearPlane(ALAreaShadow::lightBias(light_bias())));
+    const F32 world_near = static_cast<F32>(ALWorldShadow::nearPlane());
     for (U32 plane=0; plane<planes; ++plane)
     {
         LLVector4 lights[4] = {}; GLuint seeds[4] = {};
@@ -33040,8 +33040,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
 {
     static LLCachedControl<bool> cubes(gSavedSettings, "RenderAreaShadowCubeMaps", false);
     static LLCachedControl<bool> soft(gSavedSettings, "RenderAreaShadows", false);
-    static LLCachedControl<S32> lights_setting(gSavedSettings, "RenderAreaShadowCubeLights", 1);
-    static LLCachedControl<F32> light_bias(gSavedSettings, "RenderAreaShadowLightBias", .25f);
+    static LLCachedControl<S32> lights_setting(gSavedSettings, "RenderAreaShadowCubeLights", 2);
     if (!cubes() || !soft())
     {
         // OFF: no GL call unless the atlas is still allocated (the lazy release on the off transition, the same precedent as the
@@ -33228,7 +33227,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     gGL.setColorMask(false, false);
 
     static LLCullResult sWorldCull[ALWorldShadow::kMaxLights];
-    const F32 near_plane = static_cast<F32>(ALWorldShadow::nearPlane(ALAreaShadow::lightBias(light_bias())));
+    const F32 near_plane = static_cast<F32>(ALWorldShadow::nearPlane());
     const F32 fov = static_cast<F32>(ALWorldShadow::widenedFovRadians());
     for (U32 j = 0; j < job_count; ++j)
     {

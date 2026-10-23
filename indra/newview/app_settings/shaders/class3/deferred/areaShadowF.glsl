@@ -83,6 +83,8 @@ void main()
     uvec2 pixel = uvec2(floor(gl_FragCoord.xy/max(area_params.z,1.0)));
     for (int light = area_first; light < area_count; ++light)
     {
+        // A pixel at window depth 0 is clamped to the near plane (the viewer clips such geometry): a world channel has no contact term there either.
+        if (depth <= 0.0 && area_world[light] > 0.5) continue;
         vec3 delta = area_lights[light].xyz-origin;
         if (length(delta) < 0.0001) continue;
         vec3 direction = normalize(delta);

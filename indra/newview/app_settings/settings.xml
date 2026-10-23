@@ -21569,10 +21569,10 @@
     </map>
     <key>RenderAreaShadowCubeLights</key>
     <map>
-        <key>Comment</key><string>How many lights (point or projector) get a world shadow map (1-2). Each costs six shadow passes and 6.8 MiB of video memory.</string>
+        <key>Comment</key><string>How many lights (point or projector) get a world shadow map (1-2, default 2). Each costs six shadow passes and 6.8 MiB of video memory.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>S32</string>
-        <key>Value</key><integer>1</integer>
+        <key>Value</key><integer>2</integer>
     </map>
     <key>RenderAreaShadowLights</key>
     <map>

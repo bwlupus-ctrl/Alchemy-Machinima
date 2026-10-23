@@ -92,10 +92,11 @@ inline double depthFromLinear(double z, double n, double f)
 { return 0.5 * ((f + n) / (f - n) - 2.0*f*n / ((f - n) * z)) + 0.5; }
 inline double linearize(double d, double n, double f)
 { return 2.0*f*n / ((f + n) - (2.0*d - 1.0) * (f - n)); }
-// Face near plane = max(0.05 m, the housing bias): matches today's screen-trace housing rule (the region left out is a
-// CUBE of half-size `near` around the light, not a sphere). Far = 1.5 x the light radius.
-inline double nearPlane(double lightBias)
-{ return std::max(0.05, std::isfinite(lightBias) ? lightBias : 0.25); }
+// Face near plane: a FIXED 5 cm (user decision 10/23), decoupled from the Light bias setting (which keeps governing the screen trace only).
+// The region left out is a CUBE of half-size 5 cm around the light, not a sphere. A 25 cm plane (the earlier max(5 cm, Light bias) rule) erased a lamp
+// shade or housing 9-11 cm from the light (scene W: wall above the lamp lit 1.0 against a ground truth of 0.0); 5 cm restores it. Far = 1.5 x the light radius.
+constexpr double kNearPlane = 0.05;
+inline double nearPlane() { return kNearPlane; }
 inline double farPlane(double lightRadius) { return 1.5 * std::max(lightRadius, 0.0); }
 
 // ---------------------------------------------------------------------------------------------------- bias

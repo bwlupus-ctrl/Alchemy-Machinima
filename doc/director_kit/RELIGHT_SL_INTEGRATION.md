@@ -2847,7 +2847,7 @@ Light > Rim > Soft shadows card, after "Thin objects": **World shadows** (switch
 Help: "The most important light (point or projector) gets a 3D shadow map: blockers anywhere around it cast, even off-screen, and the shadow stays put while you cam. Six
 shadow passes per light. Switch off and on to choose the light again." The SL status row appends "; World shadows still work" while the switch is on
 (the world pass does not depend on `RenderShadowDetail`). Both settings join the Director scene allowlist and the take record (which also logs the
-resident UUIDs and a per-channel `world` flag). Settings: `RenderAreaShadowCubeMaps` (bool, OFF), `RenderAreaShadowCubeLights` (S32 1-2, default 1).
+resident UUIDs and a per-channel `world` flag). Settings: `RenderAreaShadowCubeMaps` (bool, OFF), `RenderAreaShadowCubeLights` (S32 1-2, **default 2** since 10/23).
 
 What changes in the picture, for the RESIDENT light only: its shadows come from blockers that are off-screen, behind the camera or hidden; its soft edge
 stays fixed on the floor while the camera orbits; railings cast whole shadows; edges are sharp at contact and soften with distance (the source radius is
@@ -2860,7 +2860,7 @@ VCam feeds and snapshots are out of scope (follow-ups); projectors were added on
 |---|---|---|
 | Pure maths | `alworldshadowmath.h` | face table (probe cube order, `right = axis x up`, rows of `glm::lookAt` = `(right, up, -axis)`), widened FOV `2 atan(544/512)` = 93.47 deg, tile grid (3 x 2 tiles of 544 per light, 1632 x 1088 per light), receiver -> tile mapping, depth linearisation, bias constants, blind band `blindBandMax`, `contactDistance`, resolve ledger (pixels x lights x 48 gathers, ceiling 1.0 G), pinned residency, readout wording. |
 | Residency (U8 Pinned) | `LLPipeline::renderAreaShadows` | Two session slots (never saved). An empty slot takes the best eligible light (point or projector, see section 9) of that frame's ranking not already resident; a slot clears only when its light stops being an eligible light in `mLights`, the planned count drops below its index, or the setting goes off. `ALAreaShadow::Candidate::world` orders resident lights first (`before()`); all flags false = the old order (720-permutation test). Main view only. |
-| Cube raster | `LLPipeline::generateWorldShadowCubes`, called after `generateSunShadow` in `llviewerdisplay.cpp` | Six face passes per resident light in view, every frame, with `renderShadow` and its native defaults (so avatars, rigged meshes, alpha mask/blend, GLTF and grass cast as for a native projector), `RenderSpotLight = drawable` (the emitting prim never shadows its light), a 544^2 D32F scratch target, then `glCopyImageSubData` into the atlas tile (keeps `DEFERRED_SHADOW_TARGET_WIDTH` and the full-target clear correct). Near = `max(0.05, RenderAreaShadowLightBias)` (a CUBE of half-size near around the light is left out, not a sphere), far = 1.5 x the light radius. Camera IDs `CAMERA_WORLD_SHADOW0/1` are reused by the six sequential passes of one light: verified safe, the shadow culler's `earlyFail` never reads the per-camera visibility stamps and every pass rebuilds its `LLCullResult`; the Prism aux pass reuses `CAMERA_SPOT_SHADOW0+i` the same way. |
+| Cube raster | `LLPipeline::generateWorldShadowCubes`, called after `generateSunShadow` in `llviewerdisplay.cpp` | Six face passes per resident light in view, every frame, with `renderShadow` and its native defaults (so avatars, rigged meshes, alpha mask/blend, GLTF and grass cast as for a native projector), `RenderSpotLight = drawable` (the emitting prim never shadows its light), a 544^2 D32F scratch target, then `glCopyImageSubData` into the atlas tile (keeps `DEFERRED_SHADOW_TARGET_WIDTH` and the full-target clear correct). Near = a FIXED 5 cm (`kNearPlane`, decoupled from `RenderAreaShadowLightBias` by the 10/23 decision; a CUBE of half-size 5 cm around the light is left out, not a sphere), far = 1.5 x the light radius. Camera IDs `CAMERA_WORLD_SHADOW0/1` are reused by the six sequential passes of one light: verified safe, the shadow culler's `earlyFail` never reads the per-camera visibility stamps and every pass rebuilds its `LLCullResult`; the Prism aux pass reuses `CAMERA_SPOT_SHADOW0+i` the same way. |
 | State hygiene | same | Saves/restores modelview, projection, GL matrix stacks, viewport, render-target resolution, colour mask, scissor, camera ID, `RenderSpotLight`. Under `gDebugGL` a before/after snapshot logs `[RelightQ] state-restore FAIL <item>`. Tracy zones `WorldShadow::render/light/face` + a GPU zone; CPU ms in `mWorldShadowCpuMs`. |
 | Atlas | `mWorldShadowAtlas`, `mWorldShadowScratch` | 6.77 / 13.55 MiB + 1.13 MiB scratch, allocated lazily for the planned light count, compare mode NONE, nearest, clamp (set in `generateWorldShadowCubes`, NOT in `allocateShadowBuffer`). Released lazily on the OFF transition (the only GL call on the OFF path); allocation failure = no cube this frame, status "not enough video memory", retried next frame, the channel falls back to the full screen trace. |
 | Validity | `worldShadowOwned()` | A channel is world-owned only when its slot's stamp equals `gFrameCount` and the UUID matches (a validity stamp only, like `mSpotShadowFrame`). The cube renders the frame AFTER the latch, so there is one frame of screen trace at the latch. |
@@ -2882,11 +2882,11 @@ VCam feeds and snapshots are out of scope (follow-ups); projectors were added on
 
 `CubeSource` stands in for the RASTER only: a CPU ray cast of six widened 544^2 faces per resident light (the shared face table, front faces only, near cube clipped,
 the emitting prim excluded, cached per light set) uploaded as a D32F atlas. The WORKTREE gather + filter shaders are the production ones, driven with exactly the uniforms
-`renderAreaShadows` uploads. Configs: `cube` (Default plan, N = 1), `cube+thin`, `cube2` (N = 2), diagnostics `cube_worldonly` (no contact term), `cube_fixedrot`,
-`cube2_worldonly`, `cube_allkinds` (`CUBE_ALLKINDS=1`: projectors get a cube too; proves the R failures below are the projector's screen path). Residency in the harness is
+`renderAreaShadows` uploads. Configs (10/23): `cube` (the setting default, N = 2, near 5 cm, emitter excluded), `cube+thin`, `cube1` (N = 1), diagnostics `cube_worldonly` (no contact term), `cube_fixedrot`,
+`cube_near025` (the superseded 25 cm rule), `cube_near010`, `cube_noignore` (no explicit emitter exclusion). `CUBE_POINTONLY=1` restores point-only residency. Residency in the harness is
 the highest production importance of the pose (unit luminance); scenes A and B have one light, so it cannot change inside their camera groups.
 
-### 5. Results (logs `.tmp/cube_r1/full1.log`, `allk.log`; screen-space baseline = P0 `Default`: B 0.085, A 0.20)
+### 5. Results (FIRST round, N = 1 and the 25 cm near rule; the current numbers are in section 11; logs `.tmp/cube_r1/full1.log`, `allk.log`; screen-space baseline = P0 `Default`: B 0.085, A 0.20)
 
 | Gate | `cube` | `cube+thin` | Limit |
 |---|---|---|---|
@@ -2983,3 +2983,60 @@ Side effect of near 5 cm: a thin false-dark (blue) band at the lower edge of the
 Options (NOT implemented; the lead decides): **A** near fixed at 5 cm, decoupled from `RenderAreaShadowLightBias` (which keeps governing the screen trace only): the numbers above, one line in `nearPlane()` and its call sites, no new setting.
 **B** near = max(5 cm, a per-light distance taken from the emitting prim's own bounds): collapses to A here (the emitter is a 2 cm bulb) and is moot for a large emitting prim, which `RenderSpotLight` already excludes by identity; it adds code for no measured gain.
 **C** keep 25 cm and add a "World near" slider (default 5 cm, advanced) as the escape hatch for fixtures that must not block their own light (a sloppy globe mesh wrapping the bulb as a SEPARATE prim would now correctly cast): A plus the old behaviour on request. Recommendation: A, with C as the follow-up if a scene needs it.
+
+### 11. Round 3 (10/23): near plane 5 cm, emitter never casts, N = 2 default, final numbers
+
+**Decisions applied.** (1) The face near plane is a FIXED 5 cm (`ALWorldShadow::kNearPlane`), decoupled from Light bias (which keeps governing the screen trace only). (2) The light's own
+emitting prim never casts in its own cube. (3) The default number of world lights is **2** (`RenderAreaShadowCubeLights`, settings default, kit default, harness `cube`).
+
+**How "the emitter never casts" is implemented, and the limit of it.** The existing hook is `LLPipeline::RenderSpotLight` (set to the light's drawable around every cube pass; `stateSort(LLDrawable*)`
+skips it). That hook only reaches geometry that is enqueued PER FACE (alpha pools, avatars, trees); the opaque, mask and GLTF geometry the shadow pass draws comes from the spatial groups' draw
+infos, which are merged batches of many prims (`LLDrawInfo` has one vertex range, no per-prim list), so there is NO per-object exclusion hook for batched draws, and building one means splitting index
+ranges inside the ~13 draw sites of `lldrawpool.cpp` (not minimal, not testable without the viewer). What does hold, with no code: the shadow pass renders FRONT faces only, so a CLOSED prim that
+ENCLOSES the light (a glass bulb, a sealed box) is back-facing from inside and casts nothing. Scene WB proves that in the harness with the explicit exclusion switched off (`cube_noignore` = `cube`,
+identical numbers). The case that is NOT covered: an emitting prim that does not enclose the light (the emitter IS an open shade or cone mesh): it still casts in the batched passes. Follow-up options if that
+fixture shows up in-world: an emitter-OBB test in the resolve (skip blockers whose reconstructed world point lies inside the emitter's oriented bounds, about 20 flops per gathered texel, fragile where
+the shade touches the bulb), or per-prim index-range splitting in the batch draws.
+
+**Scene WB** (`W` with the light inside a closed 0.10 m glass-bulb sphere that IS the emitting prim, plus the separate open-bottom shade). Region metrics, `cube` (near 5 cm) against today's screen-space
+and the superseded 25 cm rule (`w_report.log`, sheets in `.tmp/cube_r1/sheets_W/WB_*.png`):
+
+| WB region | ground truth | screen-space today | cube near 25 cm | cube near 5 cm (shipped) | cube, no explicit exclusion |
+|---|---|---|---|---|---|
+| wall above the lamp, mean visibility | 0.000 | 1.000 | 1.000 | **0.000** | 0.000 |
+| pool below the lamp (door + wall, GT LIT), mean visibility / MAE | 0.693 | 0.989 / 0.296 | 0.999 / 0.306 | **0.740 / 0.094** | 0.740 / 0.094 |
+| upper vent (level with the lamp), mean visibility | 0.012 | 0.983 | 0.940 | **0.012** | 0.012 |
+| lower vent louvers, MAE (contrast std GT 0.381) | 0.270 mean | 0.296 (0.442) | 0.069 | **0.069 (0.450)** | 0.069 |
+
+The bulb does not black the light out: WB's pool and louver numbers equal W's. W, WS and WB whole-scene mae_on: 0.103 / 0.055 / 0.103 (worst pose 0.147 / 0.114 / 0.147); the 25 cm rule: 0.750 / 0.858 / 0.750.
+The harness' own acceptance for the corner is in `relight_3d_cube_gates.py` (wall above the lamp <= 0.05 mean visibility, lower-vent louver MAE <= 0.10).
+
+**Pool-edge band at 5 cm (the thin false-dark band at the lower edge of the lit pool).** Cause identified, not cheap to remove: a blocker 10 cm from a 5 cm source throws a penumbra about 1.2 m
+wide at 2.4 m, the resolve caps the PCF radius at 12 texels (about 0.11 m there, bounded by the 16 texel gutter), so the pool edge is sharper than the ground truth's. That is the P2 wide-penumbra
+hand-off (plan section 2.6.3, U16), not a bias or near-plane effect; raising the cap needs a larger gutter or the screen-space hand-off. Left as is and documented.
+
+**A fix that belongs to the harness, not the renderer:** the gather also gives a world channel no contact term at a pixel whose window depth is 0 (clamped to the near plane, as the viewer clips such
+geometry): scene C pose 12 puts the camera inside a wall, and the Thin contact march false-darkened those pixels (C `cube+thin` false_dark 0.0146 > 0.0091). OFF is unchanged (the guard needs `area_world`).
+
+**B camera flicker acceptance (explicit, user decision 10/23).** Target 0.05; measured 0.057 (B `camorbit_low`, A2 0.053; A 0.043). It is MEASUREMENT-LIMITED: contact term off 0.048; a penumbra twice as
+wide 0.031; the cause is the grazing floor pixel (~3 cm) against an ~8 cm penumbra, not camera dependence of the world term. `relight_3d_cube_gates.py` holds A to 0.05 and B and A2 to 0.06, a recorded
+relaxation (the note sits in that file's docstring), and keeps the pop limit at 0.05 everywhere.
+
+**Final harness table** (`cube` = N 2, near 5 cm; `.tmp/cube_r1/full3.log`; mae_on mean / worst pose, camera flicker p95, acne worst, leak worst):
+
+| Scene | mae_on mean / worst | flicker p95 | acne | leak | screen-space today (Default) |
+|---|---|---|---|---|---|
+| A | 0.039 / 0.071 | 0.043 | 0.005 | 0.008 | 0.20 (brief) |
+| A2 | 0.039 / 0.073 | 0.053 | 0.006 | 0.030 | 0.267 / worst 0.379 |
+| B | 0.030 / 0.069 | 0.057 | 0.000 | 0.000 | 0.085 (brief) |
+| C | 0.062 / 0.069 | 0.070 | 0.002 | 0.012 | not re-measured |
+| R | 0.031 / 0.055 | 0.082 | 0.002 | 0.011 | not re-measured |
+| W / WS / WB | 0.103 / 0.055 / 0.103 (worst 0.147 / 0.114 / 0.147) | n/a | 0.003 / 0.000 / 0.003 | 0.013 / 0.016 / 0.013 | 0.758 / 0.863 / 0.758 |
+
+R and C pass the HEAD ratchet for `cube` and `cube+thin` at the default N = 2 (`cube1`, N = 1, still fails R: one of its two lights stays screen-space; reported for comparison).
+(Screen-space column: A and B are the brief's P0 baselines, A2 and W/WS/WB were measured in this work; C and R were not re-measured.)
+
+**Cost at the default N = 2** (`relight_cost_check.py --world`, 1080p K4 Medium): area pass 1.17x the P0 pass (ceiling 2.5x); resolve 0.16 ms at 1080p and 0.59 ms at 4K (worst case, every pixel running all 48
+gathers: 1.26 ms; ceiling 3 ms). The raster is structural and NOT measurable in the harness: 12 face passes per frame (6 per light, never demoted), each one the production shadow pass over the casters inside 1.5 x
+the light radius, 13.55 MiB atlas + 1.13 MiB scratch. The viewer publishes its CPU milliseconds in `mWorldShadowCpuMs` and has Tracy zones `WorldShadow::render/light/face`; the in-world Tracy capture in an
+avatar scene (decision D1) is still to be taken.
