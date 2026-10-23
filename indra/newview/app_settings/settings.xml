@@ -21560,6 +21560,20 @@
         <key>Type</key><string>Boolean</string>
         <key>Value</key><integer>0</integer>
     </map>
+    <key>RenderAreaShadowCubeMaps</key>
+    <map>
+        <key>Comment</key><string>World shadows (needs Soft shadows). The most important point light gets a 3D shadow map: blockers anywhere around it cast, even off-screen, and the shadow stays put while you cam. Six shadow passes per light. Switch off and on to choose the light again. Off by default.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>0</integer>
+    </map>
+    <key>RenderAreaShadowCubeLights</key>
+    <map>
+        <key>Comment</key><string>How many point lights get a world shadow map (1-2). Each costs six shadow passes and 6.8 MiB of video memory.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>S32</string>
+        <key>Value</key><integer>1</integer>
+    </map>
     <key>RenderAreaShadowLights</key>
     <map>
         <key>Comment</key><string>Number of shadowed lights (1-8). The most important lights (bright, large, close) get them, whether or not they have a native SL shadow map.</string>

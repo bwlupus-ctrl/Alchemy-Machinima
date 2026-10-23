@@ -2,11 +2,13 @@
 #include "../test/lltut.h"
 #include "../alrelightmath.h"
 #include "../alareashadowmath.h"
+#include "../alworldshadowmath.h"
 #include "../llprismlens.h"
 #include "../alrelighttakerecord.h"
 #include "../alrelighttakewriter.h"
 #include "llsdserialize.h"
 #include <limits>
+#include <numeric>
 #include <future>
 #include <functional>
 #include <vector>
@@ -2789,6 +2791,184 @@ template<> template<> void relight_object::test<34>()
     close("zero skips the blur",filterRadius(0.f,2.f,false),0.0,1.e-6);
     close("maximum 8",filterRadius(8.f,2.f,false),8.0,1.e-6);
     close("nonfinite setting falls back to 2",filterRadius(std::numeric_limits<float>::quiet_NaN(),1.f,false),2.0,1.e-6);
+}
+// ---- [P1-lite] world cube shadow maps: pure maths (alworldshadowmath.h) and the residency ordering of the soft-shadow ranking.
+// The independent oracles below are literals and closed forms, never the header's own expressions.
+template<> template<> void relight_object::test<37>()
+{
+    using namespace ALWorldShadow;
+    // Face table: orthonormal right/up/axis, and exactly the rows glm::lookAt builds: view rows (right, up, -axis). The literals are the
+    // probe cube order +X -X +Y -Y +Z -Z with the probe up vectors; areaShadowFilterF.glsl carries the same table (text-pinned by
+    // relight_shader_check.py).
+    const double axis[6][3] = {{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
+    const double right[6][3] = {{0,0,-1},{0,0,1},{1,0,0},{1,0,0},{1,0,0},{-1,0,0}};
+    const double up[6][3] = {{0,-1,0},{0,-1,0},{0,0,1},{0,0,-1},{0,-1,0},{0,-1,0}};
+    for (unsigned f=0; f<6; ++f)
+    {
+        const Vec3 a = faceAxis(f), r = faceRight(f), u = faceUp(f);
+        for (int c=0; c<3; ++c)
+        {
+            const double ac = c==0?a.x:(c==1?a.y:a.z), rc = c==0?r.x:(c==1?r.y:r.z), uc = c==0?u.x:(c==1?u.y:u.z);
+            close("axis literal",ac,axis[f][c],1.e-12);
+            close("right literal",rc,right[f][c],1.e-12);
+            close("up literal",uc,up[f][c],1.e-12);
+        }
+        close("axis . right",dot(a,r),0.0,1.e-12);
+        close("axis . up",dot(a,u),0.0,1.e-12);
+        close("right . up",dot(r,u),0.0,1.e-12);
+        // right-handed view basis (right, up, -axis): right x up = -axis
+        const Vec3 c = cross(r,u);
+        close("right x up = -axis (x)",c.x,-a.x,1.e-12);
+        close("right x up = -axis (y)",c.y,-a.y,1.e-12);
+        close("right x up = -axis (z)",c.z,-a.z,1.e-12);
+    }
+    // Widened FOV: 2*atan(544/512) = 93.47 degrees; the usable 512 interior is exactly the 90 degree face.
+    close("widened FOV degrees",widenedFovDegrees(),93.4714,1.e-3);
+    const FaceSample s0 = faceSample({1.0, 0.0, -1.0}), s1 = faceSample({1.0, 0.0, 1.0}); // +X: right = -Z, slopes +1 and -1 (the usable edges)
+    close("usable edge texel (low)",std::min(s0.x,s1.x),double(kGutter),1.e-9);
+    close("usable edge texel (high)",std::max(s0.x,s1.x),double(kGutter+kUsable),1.e-9);
+    close("usable edge equals helper",usableEdgeTexel(),double(kGutter+kUsable),1.e-12);
+    // The two usable-edge rays (1,0,-1) and (1,0,1) are 90 degrees apart to 1e-5.
+    const double dotv = 1.0*1.0 + 0.0 + (-1.0)*1.0;
+    close("edge rays are orthogonal",std::acos(dotv/(std::sqrt(2.0)*std::sqrt(2.0))),kPi/2.0,1.e-5);
+    // Round trip receiver -> tile texel -> ray: the texel maps back to the same direction up to scale, on every face.
+    for (unsigned f=0; f<6; ++f)
+    {
+        const Vec3 a = faceAxis(f), r = faceRight(f), u = faceUp(f);
+        const Vec3 d{3.0*a.x+0.4*r.x-0.7*u.x, 3.0*a.y+0.4*r.y-0.7*u.y, 3.0*a.z+0.4*r.z-0.7*u.z};
+        const FaceSample s = faceSample(d);
+        ensure_equals("face of an on-axis-major direction",s.face,f);
+        close("axial depth",s.z,3.0,1.e-12);
+        close("texel x",s.x,0.5*kTile+0.5*kUsable*(0.4/3.0),1.e-9);
+        close("texel y",s.y,0.5*kTile+0.5*kUsable*(-0.7/3.0),1.e-9);
+    }
+    // Ties go to the lower face index; the major axis decides.
+    ensure_equals("tie x/y -> +X",faceSample({1,1,0}).face,0u);
+    ensure_equals("-Y major",faceSample({0.2,-3,0.5}).face,3u);
+    ensure_equals("-Z major",faceSample({0.2,0.5,-3}).face,5u);
+    // Depth linearisation: z = 2fn/((f+n) - (2d-1)(f-n)); d(near)=0, d(far)=1, round trip.
+    close("d at near",depthFromLinear(0.25,0.25,20.0),0.0,1.e-12);
+    close("d at far",depthFromLinear(20.0,0.25,20.0),1.0,1.e-12);
+    for (double z : {0.3, 1.0, 4.5, 19.0}) close("linearise round trip",linearize(depthFromLinear(z,0.25,20.0),0.25,20.0),z,1.e-9);
+    close("cleared depth reads far",linearize(1.0,0.25,20.0),20.0,1.e-9);
+    // Near plane = max(5 cm, housing bias).
+    close("near default",nearPlane(0.25),0.25,1.e-12);
+    close("near floor",nearPlane(0.01),0.05,1.e-12);
+    close("far plane",farPlane(10.0),15.0,1.e-12);
+}
+template<> template<> void relight_object::test<38>()
+{
+    using namespace ALWorldShadow;
+    // Atlas grid: 3 x 2 tiles of 544 per light (1632 x 1088), face f of light k at column f%3, row 2k+f/3; byte literals.
+    ensure_equals("atlas width",kAtlasWidth,1632u);
+    ensure_equals("atlas height 1 light",atlasHeight(1),1088u);
+    ensure_equals("atlas height 2 lights",atlasHeight(2),2176u);
+    close("1 light MiB",double(atlasBytes(1))/1048576.0,6.7734,1.e-3);
+    close("2 lights MiB",double(atlasBytes(2))/1048576.0,13.5469,1.e-3);
+    close("scratch MiB",double(scratchBytes())/1048576.0,1.1289,1.e-3);
+    bool seen[2*6] = {};
+    for (unsigned k=0; k<2; ++k) for (unsigned f=0; f<6; ++f)
+    {
+        const TileSlot t = tileSlot(k,f);
+        ensure("tile origin multiple of 544",t.x%544==0 && t.y%544==0);
+        ensure("tile inside the atlas",t.x+544<=kAtlasWidth && t.y+544<=atlasHeight(2));
+        const unsigned index = (t.y/544)*3+t.x/544;
+        ensure("tile slots are distinct",!seen[index]);
+        seen[index] = true;
+        ensure_equals("column",t.x/544,f%3);
+        ensure_equals("row",t.y/544,2*k+f/3);
+    }
+    // Ledger: pixels x lights x 48 gathers against 1.0 G. 1080p/4K keep 2 lights, 8K keeps 1, an absurd target none.
+    ensure_equals("ledger literal 1080p x1",resolveCost(1920,1080,1),99532800ull);
+    ensure_equals("planned 1080p",plannedLights(1920,1080,2),2u);
+    ensure_equals("planned 4K",plannedLights(3840,2160,2),2u);   // 796 M
+    ensure_equals("planned 5K falls to 1",plannedLights(5120,2880,2),1u); // 1.42 G for 2, 0.71 G for 1
+    ensure_equals("planned 8K is over budget",plannedLights(7680,4320,2),0u); // 1.59 G even for 1
+    ensure_equals("planned absurd",plannedLights(30000,30000,2),0u);
+    ensure_equals("request clamps to 1..2",plannedLights(1920,1080,9),2u);
+    ensure_equals("request clamps up",plannedLights(1920,1080,0),1u);
+    ensure_equals("raster passes",facePasses(2),12u);
+    // Contact hand-off band: the user's mapped contact, never below the map's blind band, clamped to [2 cm, 0.5 m].
+    close("texel at 10 m",texelWorld(10.0),20.0/512.0,1.e-12);
+    close("normal offset capped at 5 cm",normalOffset(100.0),0.05,1.e-12);
+    close("blind band at 10 m",blindBandMax(10.0),0.0390625+0.003+0.0390625*2.0,1.e-9);
+    close("contact keeps the user's value",contactDistance(0.15,10.0),0.15,1.e-12);
+    close("contact never below the band",contactDistance(0.01,10.0),blindBandMax(10.0),1.e-12);
+    close("contact clamp high",contactDistance(4.0,10.0),0.5,1.e-12);
+    close("contact clamp low",contactDistance(0.0,0.1),0.02,1.e-12);
+    close("compare bias at grazing is capped",compareBias(5.0,100.0),0.003+texelWorld(5.0)*8.0,1.e-12);
+    close("compare bias face-on",compareBias(5.0,0.0),0.003,1.e-12);
+    // Readout wording.
+    ensure_equals("text off",worldShadowText(State::Off),std::string("off"));
+    ensure_equals("text choosing",worldShadowText(State::Choosing),std::string("choosing a light"));
+    ensure_equals("text no light",worldShadowText(State::NoPointLight),std::string("no point light in view"));
+    ensure_equals("text memory",worldShadowText(State::LowMemory),std::string("not enough video memory"));
+    ensure_equals("text on 1",worldShadowText(State::On,1),std::string("on 1 light (6 faces at 512)"));
+    ensure_equals("text on 2",worldShadowText(State::On,2),std::string("on 2 lights (12 faces at 512)"));
+    ensure_equals("text on 0 reads as 1",worldShadowText(State::On,0),std::string("on 1 light (6 faces at 512)"));
+}
+template<> template<> void relight_object::test<39>()
+{
+    using namespace ALWorldShadow;
+    // Pinned residency: fill while empty with the best candidate not already resident; a held slot clears only when its light is no
+    // longer eligible or the planned count drops; ranks never swap a held light.
+    Residency<int> r;
+    const int ranked1[3] = {7, 3, 5};
+    ensure_equals("first frame fills 1 slot",updateResidency(r,1,[](int){return true;},ranked1,3),1u);
+    ensure("slot 0 holds the best",r.held[0] && r.id[0]==7 && !r.held[1]);
+    const int ranked2[3] = {3, 7, 5}; // ranks changed: nothing swaps
+    ensure_equals("ranks never swap a held light",updateResidency(r,1,[](int){return true;},ranked2,3),0u);
+    ensure("still 7",r.id[0]==7);
+    ensure_equals("raising N fills the other slot with the best NOT resident",updateResidency(r,2,[](int){return true;},ranked2,3),1u);
+    ensure("slot 1 takes 3",r.held[1] && r.id[1]==3 && r.id[0]==7);
+    const int ranked_eligible[2] = {3, 5}; // the caller ranks ELIGIBLE lights only (7 is gone)
+    ensure_equals("a light that stops being eligible clears (and is replaced)",
+        updateResidency(r,2,[](int id){return id!=7;},ranked_eligible,2),2u);
+    ensure("slot 0 refilled with the best other",r.held[0] && r.id[0]==5 && r.id[1]==3);
+    ensure_equals("dropping N clears the high slot",updateResidency(r,1,[](int){return true;},ranked2,3),1u);
+    ensure("slot 1 empty",!r.held[1] && r.held[0]);
+    ensure_equals("no candidates leaves an empty slot empty",updateResidency(r,2,[](int){return true;},ranked2,0),0u);
+    ensure_equals("count",r.count(),1u);
+    // The candidate order of the whole cycle never matters for a held light: every permutation of 4 candidates keeps slot 0.
+    int order[4] = {1,2,3,4};
+    Residency<int> held;
+    const int first[4] = {2,1,3,4};
+    updateResidency(held,1,[](int){return true;},first,4);
+    do
+    {
+        updateResidency(held,1,[](int){return true;},order,4);
+        ensure("held light survives every candidate order",held.held[0] && held.id[0]==2);
+    } while (std::next_permutation(order,order+4));
+}
+template<> template<> void relight_object::test<40>()
+{
+    using namespace ALAreaShadow;
+    // With every world flag false the ranking is exactly the order before P1-lite (importance, then UUID): all 720 permutations of 6
+    // candidates of tied and untied scores give the identical selection. A resident (world) candidate sorts first whatever its score.
+    std::array<Candidate<int>,6> base{{{1,false,5.0},{2,false,5.0},{3,false,2.0,true},{4,false,9.0},{5,false,9.0},{6,false,0.5}}};
+    const auto reference = [&](bool world)
+    {
+        Selection<int> s;
+        std::array<Candidate<int>,6> list = base;
+        for (auto& c : list) c.world = world ? c.world : false;
+        for (const auto& c : list) s.add(c,4);
+        return s;
+    };
+    const Selection<int> off = reference(false);
+    // Independent oracle for the old order: score descending, id ascending, top 4.
+    const int expected_off[4] = {4,5,1,2};
+    for (unsigned i=0; i<4; ++i) ensure_equals("OFF ordering equals importance then id",off.lights[i].id,expected_off[i]);
+    std::array<int,6> perm{0,1,2,3,4,5};
+    do
+    {
+        Selection<int> shuffled;
+        for (int i : perm) { Candidate<int> c = base[i]; c.world = false; shuffled.add(c,4); }
+        for (unsigned i=0; i<4; ++i) ensure_equals("permutation identity (world flags false)",shuffled.lights[i].id,off.lights[i].id);
+        Selection<int> with_world;
+        for (int i : perm) with_world.add(base[i],4);
+        ensure_equals("a resident light always ranks first",with_world.lights[0].id,3);
+        for (unsigned i=1; i<4; ++i) ensure_equals("the rest keeps its order",with_world.lights[i].id,expected_off[i-1]);
+    } while (std::next_permutation(perm.begin(),perm.end()));
 }
 
 }

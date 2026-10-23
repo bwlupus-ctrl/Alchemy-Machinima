@@ -26680,7 +26680,8 @@ void LLPipeline::logRelightTake(const char* trigger) const
         "RenderAreaShadowSamples", "RenderAreaShadowSteps", "RenderAreaShadowThinObjects", "RenderAreaShadowMaxDist",
         "RenderAreaShadowThickness", "RenderAreaShadowHalfRes", "RenderAreaShadowDenoise",
         "RenderAreaShadowLightBias", "RenderAreaShadowMappedContact", "RenderAreaShadowDebugView", "RenderAreaShadowBudget",
-        "RenderAreaShadowQuality", "RenderShadowDetail", "BDMergeMaxSpotShadows", "RenderLocalLightCount"})
+        "RenderAreaShadowQuality", "RenderShadowDetail", "BDMergeMaxSpotShadows", "RenderLocalLightCount",
+        "RenderAreaShadowCubeMaps", "RenderAreaShadowCubeLights"})
     {
         if (LLControlVariable* control = gSavedSettings.getControl(key))
         {
@@ -26740,6 +26741,35 @@ void LLPipeline::logRelightTake(const char* trigger) const
     }
     // No main-thread log line here: LLError flushes synchronously, so the record goes only through
     // the background writer (relight_takes.log).
+}
+
+// [P1-lite] Residency eligibility (alworldshadowmath.h): a POINT light (not a projector), not an attachment, not actor-only, not a
+// mirror copy and not suppressed. Pure reads of the light and the rig registry; used for the pinned slots (clear when it stops
+// being eligible) and for choosing a light.
+static bool world_shadow_eligible(LLDrawable* drawable)
+{
+    LLVOVolume* volume = drawable ? drawable->getVOVolume() : nullptr;
+    if (!volume || !drawable->isState(LLDrawable::LIGHT) || volume->isHUDAttachment() || volume->isAttachment()) return false;
+    if (!(volume->isCineRigEmitter() || bdmerge_should_render_light(false, false))) return false;
+    const auto& registry = ALCineLightRigManager::instance();
+    if (registry.isMirrorLight(volume->getID()) || registry.areaShadowSuppressed(volume) ||
+        registry.actorOnlyBits(volume->getID())) return false;
+    LLVector3 spot;
+    if (LLPrismLens::projectorRenderParams(volume, spot)) return false;
+    return volume->getLightRadius() * 1.5f > .001f;
+}
+
+// True when `id` owns a world cube map that was rendered THIS frame (the stamp equals gFrameCount) and is still allocated.
+bool LLPipeline::worldShadowOwned(const LLUUID& id, U32& slot) const
+{
+    if (!mWorldShadowAtlas.isComplete()) return false;
+    for (U32 k = 0; k < ALWorldShadow::kMaxLights; ++k)
+        if (mWorldShadowResident.held[k] && mWorldShadowResident.id[k] == id && mWorldShadowFrame[k] == gFrameCount)
+        {
+            slot = k;
+            return true;
+        }
+    return false;
 }
 
 void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
@@ -26865,6 +26895,12 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         return false;
     };
     ALAreaShadow::Selection<LLUUID> selected;
+    // [P1-lite] World cube maps: main-view passes only (a VCam feed pass never picks, owns or reorders anything; its channels upload
+    // area_world = 0 and rank exactly as with the maps off).
+    static LLCachedControl<bool> cube_on(gSavedSettings, "RenderAreaShadowCubeMaps", false);
+    static LLCachedControl<S32> cube_lights(gSavedSettings, "RenderAreaShadowCubeLights", 1);
+    const bool cube_main = cube_on() && !sPrismLensRender;
+    ALAreaShadow::Selection<LLUUID> world_candidates;
     // Where the native spot map ends (the shadow_clip the native sampler reads): ranking input.
     const LLVector4 selection_clip = nativeSpotShadowClip();
     for (LLDrawable* drawable : mLights)
@@ -26911,9 +26947,47 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         // Importance ranking (ALAreaShadow::importance): luminance * range / max(distance,
         // range/2), bounded bonus for the part no native map covers; UUID breaks ties.
         // This frame's inputs only.
-        selected.add({volume->getID(), shadow_map, ALAreaShadow::importance(luminance,range,distance,native_weight)},
-            static_cast<unsigned>(llclamp(cap(),1,8)));
+        ALAreaShadow::Candidate<LLUUID> candidate{volume->getID(), shadow_map,
+            ALAreaShadow::importance(luminance,range,distance,native_weight)};
+        // [P1-lite] A resident light orders first (it holds its channel by residency, never by score); false for every light
+        // while the world maps are off or in a feed pass, which is exactly the ranking before P1-lite.
+        candidate.world = cube_main && mWorldShadowResident.contains(candidate.id);
+        selected.add(candidate, static_cast<unsigned>(llclamp(cap(),1,8)));
+        if (cube_main && world_shadow_eligible(drawable))
+        {
+            candidate.world = false;
+            world_candidates.add(candidate, 8); // this frame's ranking of the lights that could become resident
+        }
     }
+    if (cube_main)
+    {
+        // [P1-lite] Pinned residency. An empty slot takes the best eligible light of THIS frame's ranking that is not already
+        // resident; a held slot clears only when its light is no longer an eligible light in mLights, or when the planned
+        // light count drops below its index. No timing, cost or rank input once held: a shot never swaps lights.
+        const U32 planned = ALWorldShadow::plannedLights(mRT->deferredScreen.getWidth(),mRT->deferredScreen.getHeight(),
+            static_cast<U32>(llclamp(cube_lights(),1,static_cast<S32>(ALWorldShadow::kMaxLights))));
+        LLUUID ranked[8];
+        for (U32 i=0; i<world_candidates.size; ++i) ranked[i] = world_candidates.lights[i].id;
+        const auto resident_before = mWorldShadowResident;
+        ALWorldShadow::updateResidency(mWorldShadowResident,planned,[&](const LLUUID& id)
+        {
+            for (LLDrawable* drawable : mLights)
+                if (drawable && drawable->getVObj() && drawable->getVObj()->getID() == id) return world_shadow_eligible(drawable);
+            return false;
+        },ranked,world_candidates.size);
+        for (U32 k=0; k<ALWorldShadow::kMaxLights; ++k)
+            if (resident_before.held[k] != mWorldShadowResident.held[k] || resident_before.id[k] != mWorldShadowResident.id[k])
+            {
+                mWorldShadowFrame[k] = 0; // a stamp belongs to the previous occupant of the slot
+                LL_INFOS("RelightQ") << "[RelightQ] world-shadow residency slot " << k << (mWorldShadowResident.held[k] ?
+                    " pinned " : " cleared ") << (mWorldShadowResident.held[k] ? mWorldShadowResident.id[k] : resident_before.id[k]) << LL_ENDL;
+            }
+        mWorldShadowEligible = world_candidates.candidates;
+    }
+    take.worldOn = cube_main;
+    if (cube_main)
+        for (U32 k=0; k<ALWorldShadow::kMaxLights; ++k)
+            take.worldResident[k] = mWorldShadowResident.held[k] ? mWorldShadowResident.id[k] : LLUUID::null;
     take.selected = selected;
     take.status = "no_selected_lights";
     if (!selected.size) return;
@@ -27185,9 +27259,18 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     const LLVector4 native_clip = nativeSpotShadowClip();
     // The native sampler's receiver offset; the gather AND the filter evaluate the hand-over at the depth it compares.
     const F32 native_offset = std::isfinite(RenderSpotShadowOffset) ? RenderSpotShadowOffset : 0.f;
+    // [P1-lite] The world resolve's inputs: the view -> agent rotation as three row vectors (the columns of the view matrix's 3x3) and
+    // the face near plane (the housing bias, never below 5 cm: alworldshadowmath.h nearPlane).
+    float world_rot[9];
+    std::memcpy(world_rot,glm::value_ptr(glm::mat3(view)),sizeof(world_rot));
+    const F32 world_near = static_cast<F32>(ALWorldShadow::nearPlane(ALAreaShadow::lightBias(light_bias())));
     for (U32 plane=0; plane<planes; ++plane)
     {
         LLVector4 lights[4] = {}; GLuint seeds[4] = {};
+        LLVector4 world_flags, world_light[4], world_info[4];
+        GLuint world_seed[4] = {};
+        world_flags.clear();
+        bool world_any = false;
         LLVector4 contact, contact_fade, dropout;
         contact.clear();
         contact_fade.clear(); // zero preserves full visibility for unmapped lights
@@ -27229,11 +27312,35 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 U32 hash = 2166136261u;
                 for (U8 byte : id.mData) hash = (hash^byte)*16777619u;
                 seeds[i] = ALAreaShadow::hash(hash);
+                // [P1-lite] World-owned channel: its light's cube was rendered THIS frame (stamp == gFrameCount, UUID matches). The
+                // gather then outputs the CONTACT term only (contact distance = max(user, the map's blind band)), the resident light
+                // is never faded out (it holds its place by residency), and the resolve takes the rest from the map. Anything else
+                // (stamp missing: first frame after the latch, allocation failure, light out of view) keeps today's full trace.
+                U32 world_slot = 0;
+                if (cube_main && worldShadowOwned(id,world_slot))
+                {
+                    const F32 far_m = static_cast<F32>(ALWorldShadow::farPlane(volume->getLightRadius()));
+                    const F32 source = area_source_radius(volume);
+                    world_flags.mV[i] = 1.f;
+                    world_light[i].set(centre.x,centre.y,centre.z,far_m);
+                    world_info[i].set(static_cast<F32>(ALWorldShadow::kRowsPerLight*world_slot),world_near,
+                        llmin(source > 0.f ? source : .1f,.25f),0.f);
+                    world_seed[i] = seeds[i];
+                    contact.mV[i] = static_cast<F32>(ALWorldShadow::contactDistance(mapped_contact(),far_m));
+                    contact_fade.mV[i] = 0.f;
+                    dropout.mV[i] = 0.f;
+                    world_any = true;
+                }
                 break;
             }
         }
+        // World uniforms are uploaded on every pass that has a world channel, and ONCE MORE with zeros on the pass after the last
+        // one that had (the programs keep their values): so no stale channel survives a toggle or a VCam feed pass, and a steady OFF
+        // frame makes no extra GL call at all.
+        const bool upload_world = world_any || mWorldShadowUniformsLive;
         mRT->areaGather[plane].bindTarget();
         bindDeferredShader(gAreaShadowProgram);
+        if (upload_world) gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_world"),1,world_flags.mV);
         gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_lights"),4,lights[0].mV);
         gAreaShadowProgram.uniform4uiv(LLStaticHashedString("area_seeds"),1,seeds);
         gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_contact_dist"),1,contact.mV);
@@ -27296,7 +27403,30 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             // ... for the channels that have a native map only: the stop scales with each channel's contact fade, so a light
             // with no native projector map (fade 0) keeps its whole kernel across the band.
             gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_contact_fade"),1,contact_fade.mV);
+            // [P1-lite] The full-resolution world resolve lives in the upsample branch (axis 0,0) only.
+            const bool upsample = x == 0.f && y == 0.f;
+            bool world_atlas = false;
+            if (upsample && upload_world)
+            {
+                gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_world"),1,world_flags.mV);
+                gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_world_light"),4,world_light[0].mV);
+                gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_world_info"),4,world_info[0].mV);
+                gAreaShadowFilterProgram.uniform4uiv(LLStaticHashedString("area_world_seed"),1,world_seed);
+                gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString("area_world_rot"),3,world_rot);
+                if (world_any)
+                {
+                    const S32 atlas_unit = gAreaShadowFilterProgram.enableTexture(LLShaderMgr::AREA_WORLD_ATLAS);
+                    if (atlas_unit > -1)
+                    {
+                        gGL.getTexUnit(atlas_unit)->bind(&mWorldShadowAtlas,true);
+                        gGL.getTexUnit(atlas_unit)->setTextureFilteringOption(LLTexUnit::TFO_POINT);
+                        gGL.getTexUnit(atlas_unit)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+                        world_atlas = true;
+                    }
+                }
+            }
             mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+            if (world_atlas) gAreaShadowFilterProgram.disableTexture(LLShaderMgr::AREA_WORLD_ATLAS);
             gAreaShadowFilterProgram.disableTexture(LLShaderMgr::AREA_SHADOW_SOURCE);
             unbindDeferredShader(gAreaShadowFilterProgram); output.flush();
         };
@@ -27306,6 +27436,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             filter(mRT->areaScratch[plane],mRT->areaGather[plane],0.f,1.f);
         }
         filter(mRT->areaGather[plane],mRT->areaVisibility[plane],0.f,0.f);
+        mWorldShadowUniformsLive = world_any; // zeros were just uploaded when the last live pass ended
     }
     if (measure)
     {
@@ -32813,6 +32944,350 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
     LLRenderTarget::sCurResX = saved_cur_res_x;
     LLRenderTarget::sCurResY = saved_cur_res_y;
     LLViewerCamera::sCurCameraID = saved_camera_id;
+}
+
+void LLPipeline::releaseWorldShadowTargets()
+{
+    mWorldShadowAtlas.release();
+    mWorldShadowScratch.release();
+    mWorldShadowAtlasLights = 0;
+    for (U32& stamp : mWorldShadowFrame) stamp = 0;
+}
+
+namespace
+{
+// [P1-lite] Debug-only GL state snapshot for generateWorldShadowCubes: under gDebugGL the state before and after must match, and a
+// mismatch logs "[RelightQ] state-restore FAIL <item>" (CLAUDE.md rule 1: shared GL state is reviewed against the beauty pass).
+struct WorldShadowGLState
+{
+    GLint viewport[4] = {}, draw_fbo = 0, read_fbo = 0, depth_func = 0, active_unit = 0, program = 0;
+    GLboolean mask[4] = {}, scissor = 0, cull = 0, depth_test = 0, depth_mask = 0, blend = 0, offset = 0, stencil = 0, clamp = 0;
+    glm::mat4 view, proj;
+    LLViewerCamera::eCameraID camera_id = LLViewerCamera::CAMERA_WORLD;
+    LLDrawable* spot_light = nullptr;
+    U32 res_x = 0, res_y = 0, fbo = 0;
+    LLGLSLShader* shader = nullptr;
+    void capture()
+    {
+        glGetIntegerv(GL_VIEWPORT, viewport);
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
+        glGetIntegerv(GL_DEPTH_FUNC, &depth_func);
+        glGetIntegerv(GL_ACTIVE_TEXTURE, &active_unit);
+        glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+        glGetBooleanv(GL_COLOR_WRITEMASK, mask);
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_mask);
+        scissor = glIsEnabled(GL_SCISSOR_TEST);
+        cull = glIsEnabled(GL_CULL_FACE);
+        depth_test = glIsEnabled(GL_DEPTH_TEST);
+        blend = glIsEnabled(GL_BLEND);
+        offset = glIsEnabled(GL_POLYGON_OFFSET_FILL);
+        stencil = glIsEnabled(GL_STENCIL_TEST);
+        clamp = glIsEnabled(GL_DEPTH_CLAMP);
+        view = get_current_modelview();
+        proj = get_current_projection();
+        camera_id = LLViewerCamera::sCurCameraID;
+        spot_light = LLPipeline::RenderSpotLight;
+        res_x = LLRenderTarget::sCurResX;
+        res_y = LLRenderTarget::sCurResY;
+        fbo = LLRenderTarget::sCurFBO;
+        shader = LLGLSLShader::sCurBoundShaderPtr;
+    }
+    void compare(const WorldShadowGLState& after) const
+    {
+        const auto fail = [](const char* item)
+        {
+            LL_WARNS("RelightQ") << "[RelightQ] state-restore FAIL " << item << LL_ENDL;
+        };
+        if (std::memcmp(viewport, after.viewport, sizeof(viewport))) fail("viewport");
+        if (draw_fbo != after.draw_fbo) fail("draw framebuffer");
+        if (read_fbo != after.read_fbo) fail("read framebuffer");
+        if (depth_func != after.depth_func) fail("depth func");
+        if (active_unit != after.active_unit) fail("active texture unit");
+        if (program != after.program) fail("shader program");
+        if (std::memcmp(mask, after.mask, sizeof(mask))) fail("color mask");
+        if (depth_mask != after.depth_mask) fail("depth mask");
+        if (scissor != after.scissor) fail("scissor test");
+        if (cull != after.cull) fail("cull face");
+        if (depth_test != after.depth_test) fail("depth test");
+        if (blend != after.blend) fail("blend");
+        if (offset != after.offset) fail("polygon offset");
+        if (stencil != after.stencil) fail("stencil test");
+        if (clamp != after.clamp) fail("depth clamp");
+        if (view != after.view) fail("modelview matrix");
+        if (proj != after.proj) fail("projection matrix");
+        if (camera_id != after.camera_id) fail("camera id");
+        if (spot_light != after.spot_light) fail("RenderSpotLight");
+        if (res_x != after.res_x || res_y != after.res_y) fail("render target resolution");
+        if (fbo != after.fbo) fail("render target FBO");
+        if (shader != after.shader) fail("bound shader");
+    }
+};
+}
+
+// [P1-lite] World cube shadow maps for the top 1-2 RESIDENT point lights (alworldshadowmath.h). Six face passes per light, every
+// frame, with the production shadow pass (renderShadow with the native defaults, so avatars, rigged meshes, alpha mask/blend, GLTF
+// and grass cast exactly as for a native projector), into one 544^2 scratch tile that is copied into the 1632 x 1088N depth atlas.
+// Face = widened FOV 2*atan(544/512) so the 16 texel gutter holds REAL depth of the face's own projection.
+// Hard rules: returns before ANY GL call while RenderAreaShadowCubeMaps is off (the one exception is the lazy release on the
+// off transition); never writes mSunShadowMatrix, mShadowModelview/mShadowProjection, the native slots or their fades; section
+// 10 (allocation, the auction, slot count, count-before-filter, generateSunShadow, allocateShadowBuffer) is untouched.
+// Camera IDs: CAMERA_WORLD_SHADOW0+k is reused by the six sequential cull+render passes of light k. That is safe: the shadow culler
+// (LLOctreeCullShadow) never reads the per-camera visibility stamps (earlyFail is false), every pass rebuilds its own LLCullResult
+// (updateCull clears it) and stateSort re-stamps the groups it keeps; the Prism aux pass reuses CAMERA_SPOT_SHADOW0+i the same way.
+void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
+{
+    static LLCachedControl<bool> cubes(gSavedSettings, "RenderAreaShadowCubeMaps", false);
+    static LLCachedControl<bool> soft(gSavedSettings, "RenderAreaShadows", false);
+    static LLCachedControl<S32> lights_setting(gSavedSettings, "RenderAreaShadowCubeLights", 1);
+    static LLCachedControl<F32> light_bias(gSavedSettings, "RenderAreaShadowLightBias", .25f);
+    if (!cubes() || !soft())
+    {
+        // OFF: no GL call unless the atlas is still allocated (the lazy release on the off transition, the same precedent as the
+        // area planes); nothing at all on a steady OFF frame.
+        if (mWorldShadowAtlas.isComplete() || mWorldShadowScratch.isComplete()) releaseWorldShadowTargets();
+        if (mWorldShadowResident.count()) { mWorldShadowResident = {}; for (U32& stamp : mWorldShadowFrame) stamp = 0; }
+        mWorldShadowState = ALWorldShadow::State::Off;
+        mWorldShadowLights = 0;
+        mWorldShadowAllocFailed = false;
+        mWorldShadowEligible = 0;
+        return;
+    }
+    // Main view only: probes, mirrors, snapshots, HUDs, impostors and the VCam passes never render or own a cube.
+    if (!sRenderDeferred || gCubeSnapshot || sReflectionRender || sPrismLensRender || sRenderingHUDs || sImpostorRender ||
+        mRT != &mMainRT || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD) return;
+
+    const U32 width = mRT->deferredScreen.getWidth(), height = mRT->deferredScreen.getHeight();
+    const U32 planned = ALWorldShadow::plannedLights(width, height,
+        static_cast<U32>(llclamp(lights_setting(), 1, static_cast<S32>(ALWorldShadow::kMaxLights))));
+    if (!planned)
+    {
+        if (mWorldShadowAtlas.isComplete()) releaseWorldShadowTargets();
+        mWorldShadowState = ALWorldShadow::State::OverBudget;
+        mWorldShadowLights = 0;
+        return;
+    }
+    if (!mWorldShadowResident.count())
+    {
+        mWorldShadowState = mWorldShadowEligible ? ALWorldShadow::State::Choosing : ALWorldShadow::State::NoPointLight;
+        mWorldShadowLights = 0;
+        return;
+    }
+
+    LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("WorldShadow::render");
+    LL_PROFILE_GPU_ZONE("WorldShadow::render");
+    LLTimer cpu_timer;
+    WorldShadowGLState before;
+    if (gDebugGL) before.capture();
+
+    // Atlas: a fixed function of the planned light count (6.77 / 13.55 MiB) plus one 544^2 scratch tile (1.13 MiB). Allocation
+    // failure gives no cube this frame (the channel then falls back to the full screen trace) and is retried next frame.
+    if (mWorldShadowAtlasLights != planned || !mWorldShadowAtlas.isComplete() || !mWorldShadowScratch.isComplete())
+    {
+        releaseWorldShadowTargets();
+        const bool ok = glCopyImageSubData &&
+            mWorldShadowAtlas.allocate(ALWorldShadow::kAtlasWidth, ALWorldShadow::atlasHeight(planned), 0, true, false,
+                LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_NONE, LLRenderTarget::DEPTH_FMT_32F) &&
+            mWorldShadowScratch.allocate(ALWorldShadow::kTile, ALWorldShadow::kTile, 0, true, false,
+                LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_NONE, LLRenderTarget::DEPTH_FMT_32F);
+        if (!ok)
+        {
+            releaseWorldShadowTargets();
+            if (!mWorldShadowAllocFailed)
+                LL_WARNS("RelightQ") << "[RelightQ] world-shadow allocation FAIL (atlas " << ALWorldShadow::kAtlasWidth << "x"
+                    << ALWorldShadow::atlasHeight(planned) << " D32F); no world shadows this frame, retrying next frame" << LL_ENDL;
+            mWorldShadowAllocFailed = true;
+            mWorldShadowState = ALWorldShadow::State::LowMemory;
+            mWorldShadowLights = 0;
+            return;
+        }
+        mWorldShadowAllocFailed = false;
+        // Raw depth, nearest, clamp, compare mode NONE (the resolve reads metres with textureGather). A separate function from
+        // allocateShadowBuffer, which is section 10 and stays untouched.
+        for (LLRenderTarget* target : {&mWorldShadowAtlas, &mWorldShadowScratch})
+        {
+            gGL.getTexUnit(0)->bind(target, true);
+            gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_POINT);
+            gGL.getTexUnit(0)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+            gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+        }
+        mWorldShadowAtlasLights = planned;
+    }
+
+    // The resident lights that are in view (the same frustum test the soft-shadow selection uses, so a selected light always has
+    // its cube): lights outside it shade nothing visible, so their six passes are skipped.
+    struct Job { U32 slot; LLDrawable* drawable; LLVector3 origin; F32 radius; };
+    std::array<Job, ALWorldShadow::kMaxLights> jobs;
+    U32 job_count = 0, resident_count = 0;
+    for (U32 k = 0; k < ALWorldShadow::kMaxLights && k < planned; ++k)
+    {
+        if (!mWorldShadowResident.held[k]) continue;
+        ++resident_count;
+        LLDrawable* found = nullptr;
+        for (LLDrawable* drawable : mLights)
+            if (drawable && drawable->getVObj() && drawable->getVObj()->getID() == mWorldShadowResident.id[k]) { found = drawable; break; }
+        if (!found || !world_shadow_eligible(found)) continue;
+        const F32 radius = found->getVOVolume()->getLightRadius();
+        LLVector4a centre, extent;
+        centre.load3(found->getPositionAgent().mV);
+        extent.splat(radius * 1.5f);
+        if (!camera.AABBInFrustumNoFarClip(centre, extent)) continue;
+        jobs[job_count++] = {k, found, found->getPositionAgent(), radius};
+    }
+    mWorldShadowState = ALWorldShadow::State::On;
+    mWorldShadowLights = resident_count;
+    if (!job_count) { mWorldShadowCpuMs = 0.f; return; }
+
+    LLDisableOcclusionCulling no_occlusion;
+    const glm::mat4 saved_proj = get_current_projection();
+    const glm::mat4 saved_view = get_current_modelview();
+    S32 saved_viewport[4];
+    for (U32 v = 0; v < 4; ++v) saved_viewport[v] = gGLViewport[v];
+    const U32 saved_res_x = LLRenderTarget::sCurResX, saved_res_y = LLRenderTarget::sCurResY;
+    const LLViewerCamera::eCameraID saved_camera_id = LLViewerCamera::sCurCameraID;
+    // The main view's scissor is off while shadows render (generateSunShadow's rule); restored below.
+    const bool saved_scissor = glIsEnabled(GL_SCISSOR_TEST) == GL_TRUE;
+    if (saved_scissor) glDisable(GL_SCISSOR_TEST);
+
+    // The SAME shadow render-type mask generateSunShadow pushes. KEEP IN SYNC (relight_shader_check.py compares the two lists).
+    pushRenderTypeMask();
+    andRenderTypeMask(LLPipeline::RENDER_TYPE_SIMPLE,
+                    LLPipeline::RENDER_TYPE_ALPHA,
+                    LLPipeline::RENDER_TYPE_ALPHA_PRE_WATER,
+                    LLPipeline::RENDER_TYPE_ALPHA_POST_WATER,
+                    LLPipeline::RENDER_TYPE_GRASS,
+                    LLPipeline::RENDER_TYPE_GLTF_PBR,
+                    LLPipeline::RENDER_TYPE_FULLBRIGHT,
+                    LLPipeline::RENDER_TYPE_BUMP,
+                    LLPipeline::RENDER_TYPE_VOLUME,
+                    LLPipeline::RENDER_TYPE_AVATAR,
+                    LLPipeline::RENDER_TYPE_CONTROL_AV,
+                    LLPipeline::RENDER_TYPE_TREE,
+                    LLPipeline::RENDER_TYPE_TERRAIN,
+                    LLPipeline::RENDER_TYPE_WATER,
+                    LLPipeline::RENDER_TYPE_VOIDWATER,
+                    LLPipeline::RENDER_TYPE_PASS_ALPHA,
+                    LLPipeline::RENDER_TYPE_PASS_ALPHA_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_ALPHA_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_GRASS,
+                    LLPipeline::RENDER_TYPE_PASS_SIMPLE,
+                    LLPipeline::RENDER_TYPE_PASS_BUMP,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT,
+                    LLPipeline::RENDER_TYPE_PASS_SHINY,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_SHINY,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_EMISSIVE,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_BLEND,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_EMISSIVE,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_BLEND,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_EMISSIVE,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_BLEND,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_EMISSIVE,
+                    LLPipeline::RENDER_TYPE_PASS_ALPHA_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_ALPHA_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SIMPLE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_BUMP_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SHINY_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_SHINY_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_EMISSIVE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_BLEND_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_SPECMAP_EMISSIVE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_BLEND_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMMAP_EMISSIVE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_BLEND_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_MASK_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_NORMSPEC_EMISSIVE_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_GLTF_PBR,
+                    LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_RIGGED,
+                    LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK,
+                    LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK_RIGGED,
+                    END_RENDER_TYPES);
+    gGL.setColorMask(false, false);
+
+    static LLCullResult sWorldCull[ALWorldShadow::kMaxLights];
+    const F32 near_plane = static_cast<F32>(ALWorldShadow::nearPlane(ALAreaShadow::lightBias(light_bias())));
+    const F32 fov = static_cast<F32>(ALWorldShadow::widenedFovRadians());
+    for (U32 j = 0; j < job_count; ++j)
+    {
+        const Job& job = jobs[j];
+        LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("WorldShadow::light");
+        const F32 far_plane = static_cast<F32>(ALWorldShadow::farPlane(job.radius));
+        if (!(far_plane > near_plane)) continue;
+        const glm::vec3 origin = glm::make_vec3(job.origin.mV);
+        const glm::mat4 proj = glm::perspective(fov, 1.f, near_plane, far_plane);
+        for (U32 face = 0; face < ALWorldShadow::kFaces; ++face)
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("WorldShadow::face");
+            const ALWorldShadow::Vec3 axis = ALWorldShadow::faceAxis(face), up = ALWorldShadow::faceUp(face);
+            const glm::mat4 view = glm::lookAt(origin,
+                origin + glm::vec3(static_cast<F32>(axis.x), static_cast<F32>(axis.y), static_cast<F32>(axis.z)),
+                glm::vec3(static_cast<F32>(up.x), static_cast<F32>(up.y), static_cast<F32>(up.z)));
+            set_current_modelview(view);
+            set_current_projection(proj);
+            LLCamera shadow_cam = camera;
+            shadow_cam.setFar(far_plane);
+            shadow_cam.setOrigin(job.origin);
+            LLViewerCamera::updateFrustumPlanes(shadow_cam, false, false, true);
+
+            mWorldShadowScratch.bindTarget();
+            mWorldShadowScratch.getViewport(gGLViewport);
+            mWorldShadowScratch.clear();
+            LLViewerCamera::sCurCameraID = static_cast<LLViewerCamera::eCameraID>(LLViewerCamera::CAMERA_WORLD_SHADOW0 + job.slot);
+            RenderSpotLight = job.drawable; // the emitting prim never shadows its own light
+            renderShadow(view, proj, shadow_cam, sWorldCull[job.slot], false);
+            RenderSpotLight = nullptr;
+            mWorldShadowScratch.flush();
+
+            const ALWorldShadow::TileSlot tile = ALWorldShadow::tileSlot(job.slot, face);
+            glCopyImageSubData(mWorldShadowScratch.getDepth(), GL_TEXTURE_2D, 0, 0, 0, 0,
+                mWorldShadowAtlas.getDepth(), GL_TEXTURE_2D, 0, tile.x, tile.y, 0,
+                ALWorldShadow::kTile, ALWorldShadow::kTile, 1);
+        }
+        mWorldShadowFrame[job.slot] = gFrameCount;
+    }
+
+    gGL.setColorMask(true, true);
+    if (saved_scissor) glEnable(GL_SCISSOR_TEST);
+    popRenderTypeMask();
+
+    // Re-install the main camera state (matrices, GL stacks, viewport, render-target resolution, camera ID).
+    set_current_modelview(saved_view);
+    set_current_projection(saved_proj);
+    gGL.matrixMode(LLRender::MM_PROJECTION);
+    gGL.loadMatrix(glm::value_ptr(saved_proj));
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGL.loadMatrix(glm::value_ptr(saved_view));
+    for (U32 v = 0; v < 4; ++v) gGLViewport[v] = saved_viewport[v];
+    glViewport(gGLViewport[0], gGLViewport[1], gGLViewport[2], gGLViewport[3]);
+    LLRenderTarget::sCurResX = saved_res_x;
+    LLRenderTarget::sCurResY = saved_res_y;
+    LLViewerCamera::sCurCameraID = saved_camera_id;
+    RenderSpotLight = nullptr;
+    mWorldShadowCpuMs = static_cast<F32>(cpu_timer.getElapsedTimeF64() * 1000.0);
+    if (gDebugGL)
+    {
+        WorldShadowGLState after;
+        after.capture();
+        before.compare(after);
+    }
 }
 
 void LLPipeline::renderGroups(LLRenderPass* pass, U32 type, bool texture)

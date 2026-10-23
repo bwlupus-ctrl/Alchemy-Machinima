@@ -1953,6 +1953,8 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
             mAreaShadowSLStatus = status->getDerivedHandle<LLTextBox>();
         if (LLTextBox* coverage = root->findChild<LLTextBox>("area_shadow_coverage"))
             mAreaShadowCoverage = coverage->getDerivedHandle<LLTextBox>();
+        if (LLTextBox* world = root->findChild<LLTextBox>("area_shadow_world_status"))
+            mWorldShadowStatus = world->getDerivedHandle<LLTextBox>();
     }
     // One-off mapping from the v1 leaf panels in floater_director.xml to the
     // controls re-homed by each generated lazy page. Pages containing only
@@ -3139,11 +3141,14 @@ void LLFloaterDirector::refreshLauncherCards()
     {
         const S32 detail = gSavedSettings.getS32("RenderShadowDetail");
         const bool soft = gSavedSettings.getBOOL("RenderAreaShadows");
-        setTextIfChanged(status, detail == 0
+        std::string sl_text = detail == 0
             ? (soft ? "SL shadows are off in Preferences; Soft shadows is on"
                     : "SL shadows are off in Preferences; Soft shadows is off")
             : (soft ? "SL projector shadows are off in Preferences; Soft shadows is on"
-                    : "SL projector shadows are off in Preferences; Soft shadows is off"));
+                    : "SL projector shadows are off in Preferences; Soft shadows is off");
+        // [P1-lite] World shadows (3D point-light maps) do not depend on the native SL shadow maps.
+        if (gSavedSettings.getBOOL("RenderAreaShadowCubeMaps")) sl_text += "; World shadows still work"; // ui-draw-lint: allow(setting) 2 s launcher clock, as the reads above
+        setTextIfChanged(status, sl_text);
         // Hide the whole kit row, including its label, when native maps are on.
         ALKitRow::setControlVisible(status, detail == 0 || detail == 1);
     }
@@ -3158,6 +3163,17 @@ void LLFloaterDirector::refreshLauncherCards()
         setTextIfChanged(coverage, ALAreaShadow::coverageText(gSavedSettings.getBOOL("RenderAreaShadows"),
             gPipeline.mAreaShadowAdmitted, gPipeline.mAreaShadowWanted,
             gPipeline.mAreaShadowThin, gPipeline.mAreaShadowThinRequested, gPipeline.mAreaShadowLowMemory));
+    // [P1-lite] World shadows readout: pure wording from the main view's last pass (ALWorldShadow::worldShadowText). It says
+    // "off" whenever either switch is off, even if the pipeline state is stale from an earlier frame. Read here only.
+    if (LLTextBox* world_status = mWorldShadowStatus.get())
+    {
+        if (isWidgetOnScreen(world_status))
+        {
+            const bool world_on = gSavedSettings.getBOOL("RenderAreaShadows") && gSavedSettings.getBOOL("RenderAreaShadowCubeMaps"); // ui-draw-lint: allow(setting) 2 s launcher clock, on screen only
+            setTextIfChanged(world_status, ALWorldShadow::worldShadowText(
+                world_on ? gPipeline.mWorldShadowState : ALWorldShadow::State::Off, gPipeline.mWorldShadowLights));
+        }
+    }
 }
 
 void LLFloaterDirector::draw()
@@ -3754,6 +3770,8 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "RenderAreaShadows",
         "RenderAreaShadowThinObjects",
         "RenderAreaShadowLights",
+        "RenderAreaShadowCubeMaps",
+        "RenderAreaShadowCubeLights",
         "RenderAreaShadowMappedContact",
         "RenderAreaShadowMaxDist",
         "RenderAreaShadowThickness",

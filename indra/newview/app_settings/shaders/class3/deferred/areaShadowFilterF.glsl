@@ -10,6 +10,14 @@ uniform int area_debug_channel; // 0: filter normally, 1..4: exact grayscale vis
 uniform vec2 area_native_clip; // the gather's copy: the native spot sampler's shadow_clip.z/.w; w <= z (default 0) = valid everywhere
 uniform float area_native_offset; // the gather's copy: the native sampler's spot_shadow_offset
 uniform vec4 area_contact_fade; // the gather's copy, per channel: the owning native slot's fade; 0 = no native map (the hand-over stop is off)
+// P1-lite world shadows (upsample pass only; zeros = byte-identical to a build without them). KEEP the face table, the bias constants
+// and the tap counts in sync with alworldshadowmath.h (relight_shader_check.py pins them).
+uniform vec4 area_world;          // per channel: 1 = this channel's light owns a world cube map this frame
+uniform vec4 area_world_light[4]; // per channel: view-space centre xyz, far plane (metres)
+uniform vec4 area_world_info[4];  // per channel: x first atlas tile row (2 k), y near plane, z map-side source radius, w unused
+uniform uvec4 area_world_seed;    // per channel: light UUID hash (the rotation's Cranley-Patterson shift)
+uniform vec3 area_world_rot[3];   // ROWS of the view -> agent rotation (the columns of the view matrix's 3x3): agent = (dot(r0,v), dot(r1,v), dot(r2,v))
+uniform sampler2D area_world_atlas; // D32F atlas, 1632 x 1088 per light, compare mode NONE
 vec3 areaNormal(vec2 uv);
 vec2 areaTexelUV(vec2 uv);
 vec4 getPositionWithDepth(vec2 uv, float depth);
@@ -107,6 +115,133 @@ vec4 areaWeight(vec2 uv, float reach, out float ns_q, out float geo_q)
     vec4 stop = mix(vec4(1.0),vec4(cut),clamp(area_contact_fade,0.0,1.0));
     return vec4(geo_q)*stop;
 }
+
+#if __VERSION__ >= 400
+// ------------------------------------------------------------------------------------------------------------------
+// World cube shadow resolve (P1-lite). Full resolution, never blurred: vis = min(upsampled screen contact, world).
+// Face f: look axis, right, up (alworldshadowmath.h kFaceTable; the probe cube order +X -X +Y -Y +Z -Z).
+const vec3 AW_AXIS[6]  = vec3[6](vec3(1,0,0), vec3(-1,0,0), vec3(0,1,0), vec3(0,-1,0), vec3(0,0,1), vec3(0,0,-1));
+const vec3 AW_RIGHT[6] = vec3[6](vec3(0,0,-1), vec3(0,0,1), vec3(1,0,0), vec3(1,0,0), vec3(1,0,0), vec3(-1,0,0));
+const vec3 AW_UP[6]    = vec3[6](vec3(0,-1,0), vec3(0,-1,0), vec3(0,0,1), vec3(0,0,-1), vec3(0,-1,0), vec3(0,-1,0));
+// 512 usable texels + 16 gutter per side: tile 544, texel = 272 + 256 * (x / z)  (alworldshadowmath.h faceSample).
+const float AW_TILE = 544.0, AW_HALF_TILE = 272.0, AW_HALF_USABLE = 256.0, AW_USABLE = 512.0;
+// One constant set for every scene (kNormalOffsetTexels, kNormalOffsetCap, kConstantBias, kSlopeTexels, kTanCap).
+const float AW_NORMAL_TEXELS = 1.0, AW_NORMAL_CAP = 0.05, AW_BIAS_CONST = 0.003, AW_BIAS_SLOPE = 1.0, AW_TAN_CAP = 8.0;
+const float AW_MAX_RADIUS = 12.0;  // texels; 12 + 2 <= the 16 texel gutter
+const int AW_SEARCH_TAPS = 16, AW_FILTER_TAPS = 32;
+const uint AW_R2_A = 3242174889u, AW_R2_B = 2447445413u;
+int awFace(vec3 d)
+{
+    vec3 a = abs(d);
+    if (a.x >= a.y && a.x >= a.z) return d.x >= 0.0 ? 0 : 1;
+    if (a.y >= a.z) return d.y >= 0.0 ? 2 : 3;
+    return d.z >= 0.0 ? 4 : 5;
+}
+// Metres along the face axis for a window depth d (the inverse of the face projection).
+vec4 awLinear(vec4 d, float n, float f)
+{
+    return (2.0*f*n)/((f+n)-(2.0*d-1.0)*(f-n));
+}
+// Vogel disk tap k of n on the unit disk, turned by rot. includeCentre: tap 0 sits at the centre.
+vec2 awVogel(int k, int n, float rot, bool includeCentre)
+{
+    float r = sqrt((float(k)+(includeCentre ? 0.0 : 0.5))/float(n));
+    float a = float(k)*2.39996322973+rot;
+    return r*vec2(cos(a),sin(a));
+}
+// Linearised metres of the 2x2 texel footprint around the texel CORNER `corner` (atlas texels). The gather is
+// addressed at an exact texel corner, never at a free coordinate, so the driver's footprint rounding cannot pick a
+// different quad.
+vec4 awGather(vec2 corner, vec2 inv_size, float n, float f)
+{
+    return awLinear(textureGather(area_world_atlas,corner*inv_size),n,f);
+}
+// Lit fraction of one bilinear compare tap (atlas texel coordinates p, texel centres at +0.5): a texel is lit when its
+// blocker depth is not nearer than the receiver minus the bias, in metres.
+float awTap(vec2 p, vec2 lo, vec2 hi, vec2 inv_size, float zr, float bias, float n, float f)
+{
+    vec2 q = clamp(p-0.5,lo,hi);
+    vec2 base = floor(q);
+    vec2 fr = q-base;
+    vec4 z = awGather(base+1.0,inv_size,n,f);   // x=(0,1) y=(1,1) z=(1,0) w=(0,0)
+    vec4 lit = vec4(greaterThanEqual(z,vec4(zr-bias)));
+    return mix(mix(lit.w,lit.z,fr.x),mix(lit.x,lit.y,fr.x),fr.y);
+}
+// Receiver-plane depth (Isidoro 2006): the axial depth at which the ray of face slope `slope` meets the receiver's tangent
+// plane (normal n, plane through the offset receiver: nd = n . (P' - C)). Comparing each tap against ITS OWN plane depth
+// instead of the centre's keeps a floor seen at a grazing angle from shadowing itself across the filter footprint (a
+// constant bias would need to grow with the tap distance). Capped at the slope cap per texel of tap distance, and the
+// centre depth where the ray is parallel to the plane.
+float awPlane(vec3 n, vec3 ax, vec3 rt, vec3 up, float nd, vec2 slope, float zr, float cap)
+{
+    float den = dot(n,ax+slope.x*rt+slope.y*up);
+    if (!(den < -1.e-3)) return zr;
+    return clamp(nd/den,zr-cap,zr+cap);
+}
+float awVisibility(int c)
+{
+    vec4 light = area_world_light[c];
+    vec3 dv = area_p-light.xyz;
+    vec3 d = vec3(dot(area_world_rot[0],dv),dot(area_world_rot[1],dv),dot(area_world_rot[2],dv));
+    float dist = length(d);
+    float far = light.w;
+    if (!(dist > 1.e-4) || dist > far) return 1.0;
+    vec3 n_a = vec3(dot(area_world_rot[0],area_n_geo),dot(area_world_rot[1],area_n_geo),dot(area_world_rot[2],area_n_geo));
+    float nl = dot(n_a,-d/dist);
+    if (nl <= 0.0) return 1.0;
+    float near = area_world_info[c].y;
+    float r_map = area_world_info[c].z;
+    // Normal offset along the geometric normal, sized by the texel footprint at this depth (never beyond 5 cm).
+    float z0 = dot(d,AW_AXIS[awFace(d)]);
+    float texel_w = 2.0*z0/AW_USABLE;
+    d += n_a*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP);
+    int face = awFace(d);
+    float zr = dot(d,AW_AXIS[face]);
+    if (!(zr > near)) return 1.0;
+    texel_w = 2.0*zr/AW_USABLE;
+    float tan_t = sqrt(max(1.0-nl*nl,0.0))/max(nl,1.e-3);
+    float bias = AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
+    vec2 tile = vec2(AW_TILE*float(face%3),AW_TILE*(area_world_info[c].x+float(face/3)));
+    vec2 centre = vec2(AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_RIGHT[face])/zr,
+                       AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_UP[face])/zr);
+    vec2 lo = tile, hi = tile+vec2(AW_TILE-2.0);   // base texel range that keeps the 2x2 footprint inside the tile
+    vec2 inv_size = 1.0/vec2(textureSize(area_world_atlas,0));
+    vec3 ax = AW_AXIS[face], rt = AW_RIGHT[face], up = AW_UP[face];
+    float nd = dot(n_a,d);
+    // The rotation belongs to the receiver's shadow texel: camera-invariant, no time input (R2 rank + light shift).
+    uvec2 cell = uvec2(ivec2(floor(centre)));
+    uint h = cell.x*AW_R2_A+cell.y*AW_R2_B+uint(face)*0x9e3779b9u+area_world_seed[c];
+    float rot = float(h >> 16)*(6.28318530718/65536.0);
+    // Blocker search: where does the source disk see blockers? Search plane z_s, radius R_s texels.
+    float z_s = max(near,r_map+0.05);
+    float search = clamp(r_map*max(zr-z_s,0.0)/(2.0*z_s*zr)*AW_USABLE,1.0,AW_MAX_RADIUS);
+    float blocker_sum = 0.0;
+    float blocker_n = 0.0;
+    for (int k = 0; k < AW_SEARCH_TAPS; ++k)
+    {
+        vec2 off = search*awVogel(k,AW_SEARCH_TAPS,rot,true);
+        vec2 p = tile+centre+off;
+        vec2 base = floor(clamp(p-0.5,lo,hi));
+        vec4 z = awGather(base+1.0,inv_size,near,far);
+        float zp = awPlane(n_a,ax,rt,up,nd,(centre+off-AW_HALF_TILE)/AW_HALF_USABLE,zr,AW_TAN_CAP*texel_w*(length(off)+1.0));
+        vec4 blocked = vec4(lessThan(z,vec4(zp-bias)));
+        blocker_sum += dot(z,blocked);
+        blocker_n += blocked.x+blocked.y+blocked.z+blocked.w;
+    }
+    if (blocker_n < 0.5) return 1.0;
+    float z_b = max(blocker_sum/blocker_n,near);
+    // Penumbra radius on the receiver plane -> texels of this face at the receiver's axial depth.
+    float radius = clamp(r_map*max(zr-z_b,0.0)/z_b*AW_USABLE/(2.0*zr),1.0,AW_MAX_RADIUS);
+    float lit = 0.0;
+    for (int k = 0; k < AW_FILTER_TAPS; ++k)
+    {
+        vec2 off = radius*awVogel(k,AW_FILTER_TAPS,rot,false);
+        float zp = awPlane(n_a,ax,rt,up,nd,(centre+off-AW_HALF_TILE)/AW_HALF_USABLE,zr,AW_TAN_CAP*texel_w*(length(off)+1.0));
+        lit += awTap(tile+centre+off,lo,hi,inv_size,zp,bias,near,far);
+    }
+    return lit/float(AW_FILTER_TAPS);
+}
+#endif
 void main()
 {
     vec2 uv = vary_fragcoord;
@@ -192,4 +327,11 @@ void main()
                       weight.y > 1.e-8 ? sum.y/weight.y : fallback.y,
                       weight.z > 1.e-8 ? sum.z/weight.z : fallback.z,
                       weight.w > 1.e-8 ? sum.w/weight.w : fallback.w);
+#if __VERSION__ >= 400
+    // World-owned channels: the world map decides everything beyond the contact band, at full resolution and unblurred.
+    // (A pixel whose window depth is exactly 0 sits on the near plane: its position is clamped, not a surface, so no map can judge it.)
+    if (all(equal(area_axis,vec2(0))) && !area_sky && depth > 0.0)
+        for (int c = 0; c < 4; ++c)
+            if (area_world[c] > 0.5) frag_color[c] = min(frag_color[c],awVisibility(c));
+#endif
 }

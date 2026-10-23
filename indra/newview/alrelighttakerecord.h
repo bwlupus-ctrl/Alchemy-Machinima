@@ -19,6 +19,10 @@ struct AreaTakeState
     bool segmentedRequested = false; // Thin objects asked for a segmented plan.
     ALAreaShadow::Selection<LLUUID> selected;
     ALAreaShadow::Workload work{};
+    // P1-lite world cube maps (main view): whether the setting was on for this pass and the pinned resident lights (null = empty
+    // slot). Diagnostics only.
+    bool worldOn = false;
+    std::array<LLUUID, 2> worldResident{};
 };
 
 inline LLSD areaTakeRecord(const AreaTakeState& state)
@@ -38,9 +42,15 @@ inline LLSD areaTakeRecord(const AreaTakeState& state)
         light["uuid"] = state.selected.lights[channel].id;
         light["shadow_map"] = state.selected.lights[channel].shadowMap;
         light["score"] = state.selected.lights[channel].score;
+        light["world"] = state.selected.lights[channel].world;
         out["selected"].append(light);
     }
     out["view"] = state.feed ? "vcam_feed" : "main";
+    out["world_shadows"] = state.worldOn;
+    out["world_resident"] = LLSD::emptyArray();
+    if (state.worldOn)
+        for (const LLUUID& id : state.worldResident)
+            out["world_resident"].append(id);
     out["work_planned"] = state.planned;
     if (state.planned)
     {

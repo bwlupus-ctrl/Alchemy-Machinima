@@ -307,8 +307,9 @@ def validate_data(data: dict) -> None:
     # Thin round 6 (10/22): help wording and fallback planning add no rows; retain 2162.
     # P0 grain fix (10/22): +1 live Coverage readout on the Soft shadows card ("Soft shadows on 2 of 8
     # lights"): under budget pressure the least important lights lose their soft shadow instead of grain.
-    if len(pages) != 37 or row_count != 2163:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2163")
+    # World shadows (P1-lite, 10/23): +3 rows on Soft shadows (World shadows toggle, World-shadow lights, readout).
+    if len(pages) != 37 or row_count != 2166:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2166")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

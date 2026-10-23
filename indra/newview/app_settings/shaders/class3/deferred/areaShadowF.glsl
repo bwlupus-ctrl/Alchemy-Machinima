@@ -7,6 +7,7 @@ uniform vec4 area_lights[4]; // view-space centre, source radius
 uniform uvec4 area_seeds;   // hash of light UUID, NOT channel
 uniform vec4 area_contact_dist; // contact hit distance; never changes ray samples
 uniform vec4 area_contact_fade; // owning native slot's fade; zero = full visibility
+uniform vec4 area_world; // P1-lite: 1 = this channel's light owns a world cube map this frame; the channel then outputs the CONTACT term only (the resolve takes the rest from the map)
 uniform vec4 area_dropout; // per-channel fade-out: 0 = full soft shadow (default); 1 = none. 1 - the smooth group fade strength of that channel's light (admitted lights near the first dropped one fade, so none pops)
 uniform vec4 area_regular_mix; // per-channel share of this light's rays that march the REGULAR way inside a Thin objects draw: 0 = all Thin (default); 1 = all regular. 1 - max(0.5, smoothstep(1, 1.05, score / score of the first regular light)) in production (the CPU's regularShare: tied lamps keep half of their rays Thin); at 1 the Thin light IS the regular light byte for byte (the same ray count, strata and offsets), which is what makes the two marches meet at the Thin/regular boundary
 uniform int area_rest_steps; // the regular march's step count for those rays (only read where area_regular_mix > 0)
@@ -76,7 +77,8 @@ void main()
     if (depth >= 1.0) return;
     vec3 pos = getPositionWithDepth(uv,depth).xyz;
     vec3 normal = areaNormal(uv);
-    vec3 origin = pos+normal*areaReceiverBias(uv,pos);
+    float receiver_bias = areaReceiverBias(uv,pos);
+    vec3 origin = pos+normal*receiver_bias;
     float native_strength = areaNativeStrength(-(pos.z+normal.z*area_native_offset));
     // Spatial noise cells scale with render resolution (one cell per pixel below 1); no time/frame inputs.
     uvec2 pixel = uvec2(floor(gl_FragCoord.xy/max(area_params.z,1.0)));
@@ -96,6 +98,11 @@ void main()
         float source_radius = area_lights[light].w > 0.0 ? area_lights[light].w : 0.1;
         float visibility = 0.0;
         float contact_visibility = 0.0;
+        // World-owned channel (P1-lite): the march only supplies the CONTACT term, so a hit must be a surface really touching the
+        // receiver: the acceptance thickness tightens to max(4 footprints, 5 cm) (receiver_bias = 1.5 footprints, 2 cm floor) instead of
+        // the user's 0.35 m, which accepted a silhouette 0.3 m in front as a contact blocker and printed camera-dependent false-dark spots.
+        // Every other channel keeps the user's thickness unchanged.
+        float thickness = area_world[light] > 0.5 ? min(area_params.y,max(receiver_bias*(4.0/1.5),0.05)) : area_params.y;
         for (int sample_idx = 0; sample_idx < area_samples; ++sample_idx)
         {
             // Equal-area radial strata and fixed golden-angle azimuths.
@@ -123,16 +130,16 @@ void main()
             // planner charges the light max(Thin steps, regular steps).
             bool regular_ray = area_thin_objects && ray_u < area_regular_mix[light];
             vec2 traced = regular_ray ?
-                areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,area_params.x,area_params.y,
+                areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,area_params.x,thickness,
                     clamp(area_rest_steps,1,64),0.25+0.5*jitter,area_contact_dist[light],false) :
                 areaTrace(origin,target,area_lights[light].xyz,end_gap,
-                    area_light_bias,area_params.x,area_params.y,area_steps,offset,area_contact_dist[light]);
+                    area_light_bias,area_params.x,thickness,area_steps,offset,area_contact_dist[light]);
             visibility += traced.x;
             contact_visibility += traced.y;
         }
         // Filter the blended visibility once, with the existing spatial passes.
         // area_dropout > 0 on the admitted channels whose light is nearly as important as the first dropped one (smooth group fade).
         frag_color[light] = mix(mix(visibility/float(area_samples),
-            contact_visibility/float(area_samples),area_contact_fade[light]*native_strength),1.0,area_dropout[light]);
+            contact_visibility/float(area_samples),max(area_contact_fade[light]*native_strength,area_world[light])),1.0,area_dropout[light]);
     }
 }

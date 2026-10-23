@@ -127,6 +127,7 @@ class GL:
         self.matrix = g('glUniformMatrix4fv', None, I, I, U, C.POINTER(F))
         self.u4fv = g('glUniform4fv', None, I, I, C.POINTER(F))
         self.u4uiv = g('glUniform4uiv', None, I, I, C.POINTER(U))
+        self.u3fv = g('glUniform3fv', None, I, I, C.POINTER(F))
         self.gen_tex = g('glGenTextures', None, I, C.POINTER(U))
         self.del_tex = g('glDeleteTextures', None, I, C.POINTER(U))
         self.bind_tex = g('glBindTexture', None, U, U)
@@ -213,7 +214,7 @@ class AreaRunner:
             raise AssertionError(label + ' ' + out.value.decode())
         return sh
 
-    def _link(self, file):
+    def _link(self, file, subs=()):
         gl = self.gl
         name = Path(file).name
         fragment = list(self.FRAGMENT_COMMON) + ['deferred/screenSpaceRayUtil.glsl']
@@ -222,7 +223,11 @@ class AreaRunner:
         for module in fragment:
             path = self._production_file(module, 1 if module in self.LEVEL1 else 3)
             gl.attach(pr, self._compile(self.tree.read(path), name + ' ' + module))
-        gl.attach(pr, self._compile(self.tree.read(SHADERS + '/' + file), name))
+        text = self.tree.read(SHADERS + '/' + file)
+        for old, new in subs:  # diagnostic shader variants only (harness experiments), never production text
+            assert old in text, old
+            text = text.replace(old, new)
+        gl.attach(pr, self._compile(text, name))
         for module in vertices:
             path = self._production_file(module)
             gl.attach(pr, self._compile(self.tree.read(path), name + ' ' + module, 0x8B31))
@@ -278,8 +283,12 @@ class AreaRunner:
         return tex
 
     def run(self, cam, depth32, norm16, lights, plan, scale=1.0, light_bias=0.25, max_dist=8.0, thickness=0.35,
-            denoise=2.0):
-        """One RenderAreaShadows frame. plan: dict(samples, steps, half, near_steps). Returns (L,H,W) float32 [0,1]."""
+            denoise=2.0, world=None):
+        """One RenderAreaShadows frame. plan: dict(samples, steps, half, near_steps). Returns (L,H,W) float32 [0,1].
+
+        world (P1-lite cube path): None = the screen path only (HEAD shaders ignore the world uniforms anyway), else
+        {'atlas': float32 (H, 1632) D32F window depth, 'channels': [per light: None, or dict(row, near, far, r_map,
+        contact, seed)]}. Uploads exactly what LLPipeline::renderAreaShadows uploads on every pass."""
         gl = self.gl
         Wd, Hd = cam.W, cam.H
         half = bool(plan['half'])
@@ -288,6 +297,15 @@ class AreaRunner:
         self._texture('norm', 2, 0x805B, Wd, Hd, 0x1908, 0x1403, norm16)
         count = len(lights)
         assert 1 <= count <= 4
+        # view -> agent rotation M = R^T (R = the world -> view rotation). The shader takes the ROWS of M as three vec3: row j of M
+        # is column j of R, i.e. row j of R^T.
+        wrot = np.ascontiguousarray(np.asarray(cam.view[:3, :3], np.float64).T, np.float32)
+        if world is not None:
+            atlas = np.ascontiguousarray(world['atlas'], np.float32)
+            self._texture('atlas', 4, 0x8CAC, atlas.shape[1], atlas.shape[0], 0x1902, 0x1406, atlas)
+        else:
+            self._texture('atlas', 4, 0x8CAC, 4, 4, 0x1902, 0x1406, np.ones((4, 4), np.float32))
+        gl.active(0x84C1)
         arr = np.zeros((4, 4), np.float32)
         seeds = np.zeros(4, np.uint32)
         for i, l in enumerate(lights):
@@ -316,6 +334,22 @@ class AreaRunner:
         gl.uf[1](gl.loc(pr, b'area_light_bias'), light_bias)
         gl.uf[2](gl.loc(pr, b'area_trace_res'), float(tw), float(th))
         gl.uf[3](gl.loc(pr, b'area_params'), max_dist, thickness, scale * (0.5 if half else 1.0))
+        wflags = np.zeros(4, np.float32)
+        wcontact = np.zeros(4, np.float32)
+        winfo = np.zeros((4, 4), np.float32)
+        wlight = np.zeros((4, 4), np.float32)
+        wseed = np.zeros(4, np.uint32)
+        if world is not None:
+            for i, ch in enumerate(world['channels'][:count]):
+                if ch is None:
+                    continue
+                wflags[i] = 1.0
+                wcontact[i] = ch['contact']
+                winfo[i] = (ch['row'], ch['near'], ch['r_map'], 0.0)
+                wlight[i] = (arr[i, 0], arr[i, 1], arr[i, 2], ch['far'])
+                wseed[i] = ch['seed']
+        gl.u4fv(gl.loc(pr, b'area_world'), 1, wflags.ctypes.data_as(C.POINTER(gl.F)))
+        gl.u4fv(gl.loc(pr, b'area_contact_dist'), 1, wcontact.ctypes.data_as(C.POINTER(gl.F)))
         gl.color_mask(1, 1, 1, 1)
         gl.draw(4, 0, 3)
         # pass 2/3: separable blur (only when radius > 0), then full-resolution bilateral upsample
@@ -333,6 +367,12 @@ class AreaRunner:
             gl.ui(gl.loc(fr, b'area_debug_channel'), 0)
             gl.uf[2](gl.loc(fr, b'area_axis'), ax, ay)
             gl.uf[1](gl.loc(fr, b'area_radius'), radius)
+            gl.u4fv(gl.loc(fr, b'area_world'), 1, wflags.ctypes.data_as(C.POINTER(gl.F)))
+            gl.u4fv(gl.loc(fr, b'area_world_light'), 4, wlight.ctypes.data_as(C.POINTER(gl.F)))
+            gl.u4fv(gl.loc(fr, b'area_world_info'), 4, winfo.ctypes.data_as(C.POINTER(gl.F)))
+            gl.u4uiv(gl.loc(fr, b'area_world_seed'), 1, wseed.ctypes.data_as(C.POINTER(gl.U)))
+            gl.u3fv(gl.loc(fr, b'area_world_rot'), 3, wrot.ctypes.data_as(C.POINTER(gl.F)))
+            gl.ui(gl.loc(fr, b'area_world_atlas'), 4)
             gl.active(0x84C3)
             gl.bind_tex(0x0DE1, self.textures[src_key][0])
             gl.draw(4, 0, 3)

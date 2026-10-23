@@ -55,10 +55,15 @@ template<class ID> struct Candidate
     ID id{};
     bool shadowMap = false;
     double score = 0.0;
+    // P1-lite: this light is RESIDENT in a world cube map (pinned for the session). A resident light always gets a channel
+    // while at least one light is admitted: it holds its place by residency, never by score. false for every light when the
+    // world maps are off, which is exactly the ordering before P1-lite (alrelightmath_test.cpp pins the permutation identity).
+    bool world = false;
 };
-// Descending importance, then the stable UUID. shadowMap is reported, never ranked.
+// Resident (world) lights first, then descending importance, then the stable UUID. shadowMap is reported, never ranked.
 template<class ID> inline bool before(const Candidate<ID>& a, const Candidate<ID>& b)
 {
+    if (a.world != b.world) return a.world;
     if (a.score != b.score) return a.score > b.score;
     // Object UUID in production, never collector order or drawable address.
     // One candidate per emitting object; area channels do not rank faces.

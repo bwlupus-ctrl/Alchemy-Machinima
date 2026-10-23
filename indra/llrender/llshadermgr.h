@@ -947,6 +947,7 @@ public:
         AREA_SHADOW_MAP1,
         AREA_SHADOW_SOURCE,
         RELIGHT_ENABLED,                   // runtime master; stale shape data is ignored while off
+        AREA_WORLD_ATLAS,                  // P1-lite world cube shadow atlas (D32F, compare mode none)
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

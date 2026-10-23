@@ -866,6 +866,9 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                 { //for some reason, ATI 4800 series will error out if you
                   //try to generate a shadow before the first frame is through
                     gPipeline.generateSunShadow(*LLViewerCamera::getInstance());
+                    // [P1-lite] World cube shadow maps (main path only, before the Prism aux pass). Returns before any GL call
+                    // while the setting is off.
+                    gPipeline.generateWorldShadowCubes(*LLViewerCamera::getInstance());
                     gPipeline.generateWeatherRainOcclusion(
                         *LLViewerCamera::getInstance());
                 }

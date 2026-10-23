@@ -65,6 +65,8 @@ public:
         CAMERA_WATER1,
         CAMERA_WEATHER_RAIN_OCCLUSION,
         CAMERA_PRISM_LENS,
+        CAMERA_WORLD_SHADOW0, // [P1-lite] world cube shadow maps, one ID per resident light, reused by its six sequential face passes
+        CAMERA_WORLD_SHADOW1,
         NUM_CAMERAS
     } eCameraID;
 

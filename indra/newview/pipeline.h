@@ -52,6 +52,7 @@
 #include "aldiopterpresetbank.h"    // [Ultimate Diopter] ALDiopterBankKind, §6.3
 #include "aldiopterrelevance.h"     // [Ultimate Diopter] ALDiopterFocusProvenance, wave 2
 #include "alrelighttakerecord.h"
+#include "alworldshadowmath.h"   // [P1-lite] world cube shadow maps
 
 #include <array>
 #include <stack>
@@ -798,6 +799,9 @@ public:
     void postDeferredGammaCorrect(LLRenderTarget* screen_target);
 
     void generateSunShadow(LLCamera& camera, bool clip_only = false);
+    // [P1-lite] World cube shadow maps for the top 1-2 resident point lights (alworldshadowmath.h). Main view only; returns before
+    // any GL call while RenderAreaShadowCubeMaps is off. Never touches the native sun/projector slots, fades or matrices.
+    void generateWorldShadowCubes(LLCamera& camera);
     // [Prism spot shadows Stage 2] Generate projector/spot shadow maps for the
     // Prism auxiliary capture into the dedicated mPrismSpotShadow[] targets.
     // Called only from LLPrismLens::renderAuxiliaryView, inside the auxiliary
@@ -1589,6 +1593,24 @@ public:
     // mAreaShadowLowMemory: this pass could not allocate its targets (the Coverage row reads "low video memory").
     U32 mAreaShadowWanted = 0, mAreaShadowAdmitted = 0, mAreaShadowThin = 0;
     bool mAreaShadowThinRequested = false, mAreaShadowLowMemory = false;
+    // [P1-lite] World cube shadow maps. The atlas holds 6 tiles per resident light (3 columns x 2 rows of 544^2 D32F, 1632 x 1088 per
+    // light); the scratch target is one tile that renderShadow draws into (so DEFERRED_SHADOW_TARGET_WIDTH and the full-target clear stay
+    // correct), copied into the atlas tile. mWorldShadowResident is the pinned residency (session only, never saved);
+    // mWorldShadowFrame[k] is the gFrameCount of the frame whose faces of slot k were last rendered: a channel is world-owned only while
+    // that equals gFrameCount.
+    LLRenderTarget mWorldShadowAtlas, mWorldShadowScratch;
+    ALWorldShadow::Residency<LLUUID> mWorldShadowResident;
+    U32 mWorldShadowFrame[ALWorldShadow::kMaxLights] = {};
+    U32 mWorldShadowAtlasLights = 0;           // lights the atlas was allocated for (0 = not allocated)
+    bool mWorldShadowAllocFailed = false;
+    bool mWorldShadowUniformsLive = false;     // the area programs hold non-zero world uniforms (zeros are re-uploaded once on the way out)
+    U32 mWorldShadowEligible = 0;              // eligible point lights the main pass saw (readout: no point light in view)
+    // Read by the Director readout only (ALWorldShadow::worldShadowText); never fed back to rendering.
+    ALWorldShadow::State mWorldShadowState = ALWorldShadow::State::Off;
+    U32 mWorldShadowLights = 0;
+    F32 mWorldShadowCpuMs = 0.f;
+    bool worldShadowOwned(const LLUUID& id, U32& slot) const; // true when `id` owns a cube rendered THIS frame
+    void releaseWorldShadowTargets();
     GLuint mAreaShadowQueries[2] = {};
     bool mAreaShadowQueryPending = false;
     F64 mAreaShadowGPUms = -1.0;
