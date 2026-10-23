@@ -26748,17 +26748,28 @@ void LLPipeline::logRelightTake(const char* trigger) const
 // SAME drawable (the light's own, matched by UUID) and the same light radius, so they always agree. The face clip is by axial depth, so the
 // cleared region is a world-axis CUBE: the reach is the Chebyshev distance from the light to the farthest corner of the emitter's WORLD AABB
 // (drawable->getSpatialExtents()), plus, for a light on a link of a linkset, the same for small sibling links whose AABB contains the light.
+// Round 6 P0: the extents of an ACTIVE drawable (moving / selected-in-edit object, attachment, linkset being edited) are in its spatial bridge's LOCAL frame, not
+// agent space. getRenderMatrix() is that frame's local -> agent matrix (the bridge itself uses the root's world matrix, LLSpatialBridge::updateSpatialExtents), so an
+// active drawable's 8 extent corners go through it (ALWorldShadow::transformedAabb); an inactive drawable's extents are already agent space and are used as they are.
 static bool world_shadow_extents(LLDrawable* drawable, double lo[3], double hi[3])
 {
     const LLVector4a* e = drawable ? drawable->getSpatialExtents() : nullptr;
     if (!e || !e[0].isFinite3() || !e[1].isFinite3()) return false;
-    for (U32 i = 0; i < 3; ++i) { lo[i] = e[0].getF32ptr()[i]; hi[i] = e[1].getF32ptr()[i]; }
-    return lo[0] <= hi[0] && lo[1] <= hi[1] && lo[2] <= hi[2];
+    double local_lo[3], local_hi[3];
+    for (U32 i = 0; i < 3; ++i) { local_lo[i] = e[0].getF32ptr()[i]; local_hi[i] = e[1].getF32ptr()[i]; }
+    if (!(local_lo[0] <= local_hi[0] && local_lo[1] <= local_hi[1] && local_lo[2] <= local_hi[2])) return false;
+    if (drawable->isActive())
+    {
+        ALWorldShadow::transformedAabb(drawable->getRenderMatrix().mMatrix, local_lo, local_hi, lo, hi);
+        for (U32 i = 0; i < 3; ++i) if (!std::isfinite(lo[i]) || !std::isfinite(hi[i])) return false;
+        return true;
+    }
+    for (U32 i = 0; i < 3; ++i) { lo[i] = local_lo[i]; hi[i] = local_hi[i]; }
+    return true;
 }
 
-static F32 worldShadowLightNear(LLDrawable* drawable, F32 light_radius)
+static F32 worldShadowLightNearUncached(LLDrawable* drawable, F32 light_radius, F32 near_floor)
 {
-    static LLCachedControl<F32> near_setting(gSavedSettings, "RenderAreaShadowWorldNear", 0.05f);
     double reach = 0.0;
     if (LLViewerObject* object = drawable ? drawable->getVObj().get() : nullptr)
     {
@@ -26782,11 +26793,33 @@ static F32 worldShadowLightNear(LLDrawable* drawable, F32 light_radius)
                     if (world_shadow_extents(sibling->mDrawable.get(), slo, shi)) reach = std::max(reach, ALWorldShadow::siblingReach(slo, shi, p));
                 };
                 consider(root);
-                for (const LLPointer<LLViewerObject>& child : root->getChildren()) consider(child.get());
+                U32 walked = 0;   // capped: a huge linkset is not walked in full for every light on every call
+                for (const LLPointer<LLViewerObject>& child : root->getChildren())
+                {
+                    if (++walked > ALWorldShadow::kMaxSiblingLinks) break;
+                    consider(child.get());
+                }
             }
         }
     }
-    return static_cast<F32>(ALWorldShadow::emitterNearPlane(static_cast<double>(near_setting()), reach, static_cast<double>(light_radius)));
+    return static_cast<F32>(ALWorldShadow::emitterNearPlane(static_cast<double>(near_floor), reach, static_cast<double>(light_radius)));
+}
+
+// Memoised per frame: the raster and the resolve (and the job list) ask for the same light several times a frame, and the linkset walk is the expensive part.
+// Keyed on the drawable, the light radius and the near setting, stamped with gFrameCount; a stale or different key recomputes.
+static F32 worldShadowLightNear(LLDrawable* drawable, F32 light_radius)
+{
+    static LLCachedControl<F32> near_setting(gSavedSettings, "RenderAreaShadowWorldNear", 0.05f);
+    struct Entry { const LLDrawable* drawable = nullptr; U32 frame = 0; F32 radius = 0.f, floor_value = 0.f, value = 0.f; };
+    static Entry cache[ALWorldShadow::kMaxLights];
+    static U32 next = 0;
+    const F32 floor_value = near_setting();
+    for (const Entry& entry : cache)
+        if (drawable && entry.drawable == drawable && entry.frame == static_cast<U32>(gFrameCount) && entry.radius == light_radius && entry.floor_value == floor_value) return entry.value;
+    const F32 value = worldShadowLightNearUncached(drawable, light_radius, floor_value);
+    Entry& slot = cache[next++ % ALWorldShadow::kMaxLights];
+    slot = { drawable, static_cast<U32>(gFrameCount), light_radius, floor_value, value };
+    return value;
 }
 
 // Round 5: a human label for a pinned light: the object name when it is selected (names exist only for selected objects), else "light <uuid8>".
@@ -33203,6 +33236,9 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     // Main view only: probes, mirrors, snapshots, HUDs, impostors and the VCam passes never render or own a cube.
     if (!sRenderDeferred || gCubeSnapshot || sReflectionRender || sPrismLensRender || sRenderingHUDs || sImpostorRender ||
         mRT != &mMainRT || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD) return;
+
+    // Round 6: stale reasons never survive into this frame, whichever early return below is taken (the readout then shows no reason rather than a stale "rendered").
+    for (U32 k = 0; k < ALWorldShadow::kMaxLights; ++k) mWorldShadowReason[k] = ALWorldShadow::SlotReason::None;
 
     WorldShadowStateGuard state_guard; // restores the entry program and texture bindings on EVERY exit below, then the debug compare
 

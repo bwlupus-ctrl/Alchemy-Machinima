@@ -259,7 +259,8 @@ float awDebugValue(int c, int mode)
     vec2 tile = vec2(AW_TILE*float(face%3),AW_TILE*(area_world_info[c].x+float(face/3)));
     vec2 centre = vec2(AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_RIGHT[face])/zr,
                        AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_UP[face])/zr);
-    float stored = texelFetch(area_world_atlas,ivec2(floor(tile+centre)),0).r;
+    // Clamped to this face's own tile: a grazing ray must not read a neighbouring tile.
+    float stored = texelFetch(area_world_atlas,ivec2(clamp(floor(tile+centre),tile,tile+vec2(AW_TILE-1.0))),0).r;
     if (stored >= 1.0) return 0.0;
     float za = awLinear(vec4(stored),near,light.w).x;
     return clamp(0.5+5.0*(zr-za),0.0,1.0);

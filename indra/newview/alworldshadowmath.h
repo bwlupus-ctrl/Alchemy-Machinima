@@ -13,6 +13,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <string>
 namespace ALWorldShadow
 {
@@ -111,6 +112,25 @@ inline double chebyshevReach(const double lo[3], const double hi[3], const doubl
     for (int i = 0; i < 3; ++i) r = std::max(r, std::max(hi[i] - p[i], p[i] - lo[i]));
     return r;
 }
+// Agent-space AABB of a local-space AABB (round 6 P0). The extents of an ACTIVE drawable (moving or selected-in-edit object, attachment, linkset being edited) are kept in
+// its spatial bridge's LOCAL frame; LLDrawable::getRenderMatrix() is that frame's local -> agent matrix (LLMatrix4: row vectors, v' = v * M, translation in row 3, `m` is
+// [row][col]). The 8 corners go through it and the min/max is taken. Inactive drawables already hold agent-space extents and skip this.
+template<class T> inline void transformedAabb(const T m[4][4], const double lo[3], const double hi[3], double outLo[3], double outHi[3])
+{
+    for (int i = 0; i < 3; ++i) { outLo[i] = std::numeric_limits<double>::infinity(); outHi[i] = -std::numeric_limits<double>::infinity(); }
+    for (int c = 0; c < 8; ++c)
+    {
+        const double v[3] = {(c & 1) ? hi[0] : lo[0], (c & 2) ? hi[1] : lo[1], (c & 4) ? hi[2] : lo[2]};
+        for (int j = 0; j < 3; ++j)
+        {
+            const double w = v[0]*static_cast<double>(m[0][j]) + v[1]*static_cast<double>(m[1][j]) + v[2]*static_cast<double>(m[2][j]) + static_cast<double>(m[3][j]);
+            outLo[j] = std::min(outLo[j], w);
+            outHi[j] = std::max(outHi[j], w);
+        }
+    }
+}
+// Upper bound on the links of a linkset one near-plane evaluation looks at (a 255-link build is not walked per light per frame).
+constexpr unsigned kMaxSiblingLinks = 64;
 // A sibling link of the light's prim counts for the near plane when its world AABB contains the light and its largest extent is under 1 m (a bulb or glass around a
 // tiny/invisible light link); a big sibling (a wall, a floor) never does.
 inline bool siblingEnclosesLight(const double lo[3], const double hi[3], const double p[3])

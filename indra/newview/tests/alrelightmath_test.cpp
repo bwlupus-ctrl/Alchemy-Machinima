@@ -2952,6 +2952,68 @@ template<> template<> void relight_object::test<37>()
         ensure("the old aligned-mat3 memcpy scrambles the rows",!rebuild(old_copy));
     }
     close("far plane",farPlane(10.0),15.0,1.e-12);
+    // Round 6 P0: ACTIVE drawables keep their extents in the bridge's LOCAL frame; transformedAabb carries the 8 corners through the render matrix (LLMatrix4 layout:
+    // [row][col], row vectors v' = v * M, translation in row 3) into the agent-space AABB the near plane and the sibling containment need.
+    {
+        const double pi = 3.14159265358979323846;
+        const auto make = [pi](double yaw_deg, double tx, double ty, double tz)
+        {   // rotation about Z by yaw in the row-vector convention (x' = x c - y s, y' = x s + y c) + translation in row 3
+            const double r = yaw_deg * pi / 180.0, c = std::cos(r), s = std::sin(r);
+            std::array<std::array<float,4>,4> m{};
+            m[0] = {static_cast<float>(c), static_cast<float>(s), 0.f, 0.f};
+            m[1] = {static_cast<float>(-s), static_cast<float>(c), 0.f, 0.f};
+            m[2] = {0.f, 0.f, 1.f, 0.f};
+            m[3] = {static_cast<float>(tx), static_cast<float>(ty), static_cast<float>(tz), 1.f};
+            return m;
+        };
+        const auto xform = [](const std::array<std::array<float,4>,4>& m, const double lo[3], const double hi[3], double olo[3], double ohi[3])
+        {
+            float raw[4][4];
+            for (int i = 0; i < 4; ++i) for (int j = 0; j < 4; ++j) raw[i][j] = m[i][j];
+            transformedAabb(raw, lo, hi, olo, ohi);
+        };
+        const double box_lo[3] = {-.25,-.25,-.25}, box_hi[3] = {.25,.25,.25};
+        double olo[3], ohi[3];
+        // Analytic: a box with half-size h turned by yaw about Z has world half-extent h (|cos| + |sin|) in X and Y and h in Z.
+        const double yaw = 40.0;
+        const double half = .25 * (std::fabs(std::cos(yaw * pi / 180.0)) + std::fabs(std::sin(yaw * pi / 180.0)));
+        xform(make(yaw,0,0,0),box_lo,box_hi,olo,ohi);
+        for (int i = 0; i < 2; ++i) { close("rotated active root: AABB min",olo[i],-half,1.e-6); close("rotated active root: AABB max",ohi[i],half,1.e-6); }
+        close("rotated active root: Z unchanged",ohi[2],.25,1.e-6);
+        // The false-floor-shadow fixture: the light at the agent origin in that rotated emitter must get reach 0.352 -> near 0.362 (local, unrotated bounds gave 0.26).
+        const double origin[3] = {0,0,0};
+        close("rotated active emitter: near 0.362 (not the local-space 0.26)",emitterNearPlane(0.05,chebyshevReach(olo,ohi,origin),7.0),half + 0.01,1.e-6);
+        close("rotated active emitter: the LOCAL box would have given 0.26",emitterNearPlane(0.05,chebyshevReach(box_lo,box_hi,origin),7.0),0.26,1.e-12);
+        // Translated active root at (0,0,1), light at its centre: the reach is 0.25, not the 1.25 the untransformed local box gave from a light at z = 1.
+        const double at1[3] = {0,0,1};
+        xform(make(0,0,0,1),box_lo,box_hi,olo,ohi);
+        close("translated active root: AABB min z",olo[2],.75,1.e-6);
+        close("translated active root: AABB max z",ohi[2],1.25,1.e-6);
+        close("translated active emitter: reach 0.25 -> near 0.26",emitterNearPlane(0.05,chebyshevReach(olo,ohi,at1),7.0),.26,1.e-6);
+        close("translated active emitter: the LOCAL box would clamp to 1 m",emitterNearPlane(0.05,chebyshevReach(box_lo,box_hi,at1),7.0),1.0,1.e-12);
+        // Rotated AND translated: corners match the analytic agent AABB (centre moves with the translation, half-extent with the rotation).
+        xform(make(yaw,3,-2,5),box_lo,box_hi,olo,ohi);
+        close("rotated+translated: min x",olo[0],3-half,1.e-6); close("rotated+translated: max x",ohi[0],3+half,1.e-6);
+        close("rotated+translated: min y",olo[1],-2-half,1.e-6); close("rotated+translated: max y",ohi[1],-2+half,1.e-6);
+        close("rotated+translated: min z",olo[2],4.75,1.e-6); close("rotated+translated: max z",ohi[2],5.25,1.e-6);
+        // A CHILD link of a rotated, translated active root: its extents sit at a local offset (0.5, 0, 0) inside the root's frame; the render matrix is the ROOT's.
+        const double child_lo[3] = {.45,-.05,-.05}, child_hi[3] = {.55,.05,.05};
+        xform(make(90,10,20,30),child_lo,child_hi,olo,ohi);   // 90 degrees: local +X (0.5) lands on world +Y
+        close("active child: centre x",.5*(olo[0]+ohi[0]),10.0,1.e-5);
+        close("active child: centre y",.5*(olo[1]+ohi[1]),20.5,1.e-5);
+        close("active child: centre z",.5*(olo[2]+ohi[2]),30.0,1.e-5);
+        close("active child: half y",.5*(ohi[1]-olo[1]),.05,1.e-5);
+        // The sibling containment test sees the agent-space box: a 16 cm bulb link, rotated and translated with its root, still encloses a light at its centre.
+        const double bulb_lo[3] = {-.08,-.08,-.08}, bulb_hi[3] = {.08,.08,.08};
+        xform(make(40,3,-2,5),bulb_lo,bulb_hi,olo,ohi);
+        const double light_at[3] = {3,-2,5};
+        ensure("active sibling: encloses the light in agent space",siblingEnclosesLight(olo,ohi,light_at));
+        ensure("active sibling: the untransformed local box does not",!siblingEnclosesLight(bulb_lo,bulb_hi,light_at));
+        // Identity matrix leaves the box alone.
+        xform(make(0,0,0,0),box_lo,box_hi,olo,ohi);
+        for (int i = 0; i < 3; ++i) { close("identity: min",olo[i],box_lo[i],1.e-7); close("identity: max",ohi[i],box_hi[i],1.e-7); }
+        ensure("sibling walk cap is a sane bound",kMaxSiblingLinks >= 16 && kMaxSiblingLinks <= 255);
+    }
 }
 template<> template<> void relight_object::test<38>()
 {
