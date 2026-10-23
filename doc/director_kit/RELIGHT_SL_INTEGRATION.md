@@ -2926,3 +2926,19 @@ the highest production importance of the pose (unit luminance); scenes A and B h
 * Contact is still the existing half-resolution march (P3 replaces it); the world term is written to 8-bit visibility planes.
 * Follow-ups, as in the brief: Re-pick button, attachment/face lights, feeds, snapshots, projectors (P4), per-pixel `d_c` (P3), `glPolygonOffset`, VO-cache counts (U15), seam and production-caster fixtures in-world, GPU timestamps for the raster.
 * Review: Codex + Opus + GLM + DeepSeek reviews of this change are still to be run (CLAUDE.md), then ONE build.
+
+### 8. Scene A2 (railing + receivers behind it) and the existing suite
+
+**A2** (`relight_3d_scene.py:scene_railing_objects`, harness only): scene A plus a 0.8 m crate (near face 1.0 m behind the railing) and a 0.5 m sphere on the
+far side from the light, so the railing's shadow falls across a vertical face, a curved surface and wraps from the floor onto them; both also cast onto the
+floor. Same 72 orbit poses as A. 72 poses, `cube` / screen-space `Default` (P0 base shaders): mae_on mean **0.039** / 0.267, worst pose 0.073 / 0.379, leak worst
+0.030 / 0.731, acne worst 0.006 / 0.054, camera flicker p95 0.053 / 0.745, penumbra coverage near/far 0.91 / 0.92. Thin objects screen march (`Default+Thin`):
+0.170 / worst 0.231 / leak 0.356. Contact sheets (ground truth | screen-space | cube maps, plus error views) for 6 poses of A2 and of A: `.tmp/cube_r1/sheets_A2/`
+(`scripts/code_tools/relight_3d_cube_sheets.py`). Logs: `a2cube.log`, `a2screen.log`.
+
+**Existing relight suite** (run with `HEAD` pointed at the pre-P0 commit `4dd9ff661c1` by a temporary `git reset --soft`, because the checks diff against `HEAD`, and in this
+worktree HEAD is the base snapshot): `relight_off_check`, `relight_rank_check` (its pin of the gather's `areaTrace` call now follows the per-light
+`thickness`, which is `area_params.y` for every channel except a world-owned one), `relight_thin_check`, `relight_orbit_check`, `relight_contact_check`,
+`relight_cost_check` PASS. `relight_grain_check` FAILS the same way on the unmodified base snapshot (`8x56 Thin beside 8x32 regular half: the rail fixture must separate
+the regular and the Thin march (max difference 96/255)`, threshold 100, reproduced in a clean worktree of `b0bb2d24f18`); it is a P0-round-5 matter and not part of this
+change. `relight_area_check` chains after it and is therefore not reached.
