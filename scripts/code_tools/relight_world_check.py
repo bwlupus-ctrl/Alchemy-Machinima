@@ -14,7 +14,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2] if '__file__' in globals() and Path(__file__).name == 'relight_world_check.py' else Path('.').resolve()
 if not (REPO / 'indra').exists():
     REPO = Path('.').resolve()
-BASE = sys.argv[sys.argv.index('--base') + 1] if '--base' in sys.argv else 'b0bb2d24f18'
+BASE = sys.argv[sys.argv.index('--base') + 1] if '--base' in sys.argv else 'e150b927cf4'
 NV = REPO / 'indra/newview'
 GLSL = NV / 'app_settings/shaders/class3/deferred'
 

@@ -2901,7 +2901,7 @@ template<> template<> void relight_object::test<38>()
     // Readout wording.
     ensure_equals("text off",worldShadowText(State::Off),std::string("off"));
     ensure_equals("text choosing",worldShadowText(State::Choosing),std::string("choosing a light"));
-    ensure_equals("text no light",worldShadowText(State::NoPointLight),std::string("no point light in view"));
+    ensure_equals("text no light",worldShadowText(State::NoLight),std::string("no light in view"));
     ensure_equals("text memory",worldShadowText(State::LowMemory),std::string("not enough video memory"));
     ensure_equals("text on 1",worldShadowText(State::On,1),std::string("on 1 light (6 faces at 512)"));
     ensure_equals("text on 2",worldShadowText(State::On,2),std::string("on 2 lights (12 faces at 512)"));

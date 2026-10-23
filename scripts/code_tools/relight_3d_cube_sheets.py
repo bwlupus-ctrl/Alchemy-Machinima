@@ -23,7 +23,7 @@ import relight_3d_sheets as SH  # noqa: E402
 import relight_3d_tasks as T  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
-BASE = 'b0bb2d24f18'
+BASE = 'e150b927cf4'
 POSES = {
     'A2': ['A2_orbit_eye_near_000', 'A2_orbit_eye_near_006', 'A2_orbit_eye_far_003', 'A2_orbit_mid_near_002', 'A2_orbit_mid_far_009',
            'A2_orbit_high_near_005'],

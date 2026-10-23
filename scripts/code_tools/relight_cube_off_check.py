@@ -24,7 +24,7 @@ import numpy as np  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 SPAWN = mp.get_context('spawn')
-BASE_DEFAULT = 'b0bb2d24f18'   # the base snapshot: P0 + limiter working tree, the last commit WITHOUT P1-lite
+BASE_DEFAULT = 'e150b927cf4'   # Relight Phase 0 as committed, the last commit WITHOUT P1-lite
 
 
 def gbuffer_task(args):

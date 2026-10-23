@@ -26743,9 +26743,10 @@ void LLPipeline::logRelightTake(const char* trigger) const
     // the background writer (relight_takes.log).
 }
 
-// [P1-lite] Residency eligibility (alworldshadowmath.h): a POINT light (not a projector), not an attachment, not actor-only, not a
-// mirror copy and not suppressed. Pure reads of the light and the rig registry; used for the pinned slots (clear when it stops
-// being eligible) and for choosing a light.
+// [P1-lite] Residency eligibility (alworldshadowmath.h): a world light, point OR projector (user decision 10/23: the top-ranked lights get
+// world shadows whichever kind they are), not an attachment, not actor-only, not a mirror copy and not suppressed. Pure reads of the light and
+// the rig registry; used for the pinned slots (clear when it stops being eligible) and for choosing a light. A projector that currently owns
+// a NATIVE SL shadow map is not world-owned while it does (section 10: its SL map + contact path is untouched): see the callers.
 static bool world_shadow_eligible(LLDrawable* drawable)
 {
     LLVOVolume* volume = drawable ? drawable->getVOVolume() : nullptr;
@@ -26754,8 +26755,6 @@ static bool world_shadow_eligible(LLDrawable* drawable)
     const auto& registry = ALCineLightRigManager::instance();
     if (registry.isMirrorLight(volume->getID()) || registry.areaShadowSuppressed(volume) ||
         registry.actorOnlyBits(volume->getID())) return false;
-    LLVector3 spot;
-    if (LLPrismLens::projectorRenderParams(volume, spot)) return false;
     return volume->getLightRadius() * 1.5f > .001f;
 }
 
@@ -26951,9 +26950,11 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             ALAreaShadow::importance(luminance,range,distance,native_weight)};
         // [P1-lite] A resident light orders first (it holds its channel by residency, never by score); false for every light
         // while the world maps are off or in a feed pass, which is exactly the ranking before P1-lite.
-        candidate.world = cube_main && mWorldShadowResident.contains(candidate.id);
+        // A projector that owns a native SL shadow map RIGHT NOW (shadow_map) keeps its SL map + contact path (section 10): never world-owned
+        // and never chosen while it does; it ranks like any other light.
+        candidate.world = cube_main && !shadow_map && mWorldShadowResident.contains(candidate.id);
         selected.add(candidate, static_cast<unsigned>(llclamp(cap(),1,8)));
-        if (cube_main && world_shadow_eligible(drawable))
+        if (cube_main && !shadow_map && world_shadow_eligible(drawable))
         {
             candidate.world = false;
             world_candidates.add(candidate, 8); // this frame's ranking of the lights that could become resident
@@ -27317,7 +27318,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 // is never faded out (it holds its place by residency), and the resolve takes the rest from the map. Anything else
                 // (stamp missing: first frame after the latch, allocation failure, light out of view) keeps today's full trace.
                 U32 world_slot = 0;
-                if (cube_main && worldShadowOwned(id,world_slot))
+                if (cube_main && !selected.lights[plane*4+i].shadowMap && worldShadowOwned(id,world_slot))
                 {
                     const F32 far_m = static_cast<F32>(ALWorldShadow::farPlane(volume->getLightRadius()));
                     const F32 source = area_source_radius(volume);
@@ -33069,7 +33070,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     }
     if (!mWorldShadowResident.count())
     {
-        mWorldShadowState = mWorldShadowEligible ? ALWorldShadow::State::Choosing : ALWorldShadow::State::NoPointLight;
+        mWorldShadowState = mWorldShadowEligible ? ALWorldShadow::State::Choosing : ALWorldShadow::State::NoLight;
         mWorldShadowLights = 0;
         return;
     }
@@ -33128,6 +33129,10 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
         for (LLDrawable* drawable : mLights)
             if (drawable && drawable->getVObj() && drawable->getVObj()->getID() == mWorldShadowResident.id[k]) { found = drawable; break; }
         if (!found || !world_shadow_eligible(found)) continue;
+        bool native_mapped = false; // a projector with a sampled native SL map keeps that path; its cube would be unused
+        for (U32 slot = 0; slot < MAX_SPOT_SHADOWS; ++slot)
+            if (mShadowSpotLight[slot] == found && spotShadowMapSampled(slot)) { native_mapped = true; break; }
+        if (native_mapped) continue;
         const F32 radius = found->getVOVolume()->getLightRadius();
         LLVector4a centre, extent;
         centre.load3(found->getPositionAgent().mV);

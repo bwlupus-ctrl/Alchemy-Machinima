@@ -140,7 +140,7 @@ inline unsigned plannedLights(unsigned width, unsigned height, unsigned requeste
 inline unsigned facePasses(unsigned lights) { return kFaces * std::min(lights, kMaxLights); }
 
 // ---------------------------------------------------------------------------------------------------- residency
-// Pinned residency (user decision 10/22, U8): two session slots. A slot is FILLED only while empty, from the frame's
+// Pinned residency (user decision 10/22, U8; projectors included by decision 10/23): two session slots. A slot is FILLED only while empty, from the frame's
 // ranked candidates (best first) with the best one not already resident; it is CLEARED only when its id is no longer an
 // eligible light, or when it lies beyond the planned light count. No timing, cost or rank input once held, so a shot
 // never swaps lights. Returns the number of slots that changed.
@@ -172,7 +172,7 @@ enum class State
 {
     Off,           // the setting is off
     Choosing,      // on, no light chosen yet
-    NoPointLight,  // on, nothing to choose (no eligible point light yet)
+    NoLight,       // on, nothing to choose (no eligible light, point or projector, in view)
     LowMemory,     // the atlas could not be allocated
     OverBudget,    // the resolve ledger rejected every light at this resolution
     On,            // `lights` lights resident and rendered
@@ -184,7 +184,7 @@ inline std::string worldShadowText(State state, unsigned lights = 0)
     {
     case State::Off: return "off";
     case State::Choosing: return "choosing a light";
-    case State::NoPointLight: return "no point light in view";
+    case State::NoLight: return "no light in view";
     case State::LowMemory: return "not enough video memory";
     case State::OverBudget: return "over the work budget at this size";
     case State::On:

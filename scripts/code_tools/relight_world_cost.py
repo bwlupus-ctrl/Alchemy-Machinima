@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
-BASE = 'b0bb2d24f18'
+BASE = 'e150b927cf4'
 RATIO_CEILING = 2.5
 RESOLVE_CEILING_MS = 3.0
 

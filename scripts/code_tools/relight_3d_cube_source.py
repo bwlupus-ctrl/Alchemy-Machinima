@@ -16,7 +16,7 @@ What it stands in for, and what it does NOT:
 
 Configs (see configs()): cube (Default plan), cube+thin, cube2 (two resident lights), and the diagnostics cube_worldonly
 (no contact term) and cube_fixedrot (rotation candidate (c): no per-texel rotation).
-Residency here is the harness stand-in for Pinned: the highest-importance eligible (point) lights of the POSE, by the
+Residency here is the harness stand-in for Pinned: the highest-importance eligible lights (point or projector) of the POSE, by the
 production importance formula with unit luminance. Camera-only groups of scenes A and B have a single light, so the pick
 cannot change inside them.
 """
@@ -162,7 +162,6 @@ class CubeSource(VisibilitySource):
                ('cube2', 'Default', 2, True, False),
                ('cube_worldonly', 'Default', 1, False, False),
                ('cube2_worldonly', 'Default', 2, False, False),
-               ('cube_allkinds', 'Default', 2, True, False),   # diagnostic only: projectors get a cube too (production keeps them on the screen path until P4)
                ('cube_fixedrot', 'Default', 1, True, True)]
 
     def prepare(self, ctx):
@@ -198,8 +197,10 @@ class CubeSource(VisibilitySource):
     # ---- residency stand-in
     def resident(self, frame, n):
         eye = frame.cam.eye
-        allkinds = os.environ.get('CUBE_ALLKINDS') == '1'
-        order = sorted((i for i, l in enumerate(frame.lights) if allkinds or l.kind == 'point'),
+        # Point lights AND projectors are eligible (user decision 10/23). The harness has no native SL maps, so no projector is excluded;
+        # CUBE_POINTONLY=1 restores the earlier point-only residency (diagnostic).
+        pointonly = os.environ.get('CUBE_POINTONLY') == '1'
+        order = sorted((i for i, l in enumerate(frame.lights) if not pointonly or l.kind == 'point'),
                        key=lambda i: (-importance(frame.lights[i], eye), frame.lights[i].name))
         return order[:n]
 
