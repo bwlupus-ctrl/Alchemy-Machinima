@@ -83,9 +83,36 @@ uniform float projvol_g;          // Henyey-Greenstein anisotropy (forward scatt
 uniform float projvol_feather;    // item 6: angular cone-edge softness (0 = hard)
 uniform int   projvol_shadow_samples; // item 7: occlusion sub-taps per march step
 uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static 2=animated;
-                                  // C++ may promote 1 to 2 behind the temporal guard
-uniform float projvol_frame;      // item 2: temporal seed (frame counter, wrapped)
+                                  // static is never promoted, including with history
+uniform float projvol_frame;      // presentation-time phase (60 Hz, wrapped)
 uniform float projvol_max;        // item 1: HDR headroom clamp (large in linear HDR)
+uniform vec2  projvol_half_res;    // zero = full res; otherwise actual march dimensions
+// Keep the recording/default program free of the experimental kernels' register
+// pressure. renderProjectorVolumetric rebuilds only this program when entering
+// or leaving the A/B group; the three individual levers remain runtime uniforms.
+#if defined(PROJVOL_INTEGRATION_AB) && PROJVOL_INTEGRATION_AB
+uniform int   projvol_equiangular;
+uniform int   projvol_airborne_tap;
+uniform int   projvol_cookie_footprint;
+#else
+const int projvol_equiangular = 0;
+const int projvol_airborne_tap = 0;
+const int projvol_cookie_footprint = 0;
+#endif
+uniform mat4  proj_mat;
+uniform sampler2D depthMap;
+uniform sampler2D projectionMap;
+uniform mat4 shadow_matrix[14];
+uniform sampler2DShadow shadowMap4;
+uniform sampler2DShadow shadowMap5;
+uniform sampler2DShadow shadowMap6;
+uniform sampler2DShadow shadowMap7;
+uniform sampler2DShadow shadowMap8;
+uniform sampler2DShadow shadowMap9;
+uniform sampler2DShadow shadowMap10;
+uniform sampler2DShadow shadowMap11;
+uniform sampler2DShadow shadowMap12;
+uniform sampler2DShadow shadowMap13;
 
 // [BDMerge G3.3 Batch A] look-neutral performance gates.
 uniform int   projvol_frustum_clip;       // E1: 0 = sphere bounds; !=0 = frustum-clipped [t0,t1] (default)
@@ -266,9 +293,13 @@ float interleavedGradientNoise(vec2 p)
 
 // deferredUtil.glsl
 vec4 getPosition(vec2 pos_screen);
+vec4 getPositionWithDepth(vec2 pos_screen, float depth);
 bool clipProjectedLightVars(vec3 center, vec3 pos, out float dist, out float l_dist, out vec3 lv, out vec4 proj_tc);
 vec3 getProjectedLightDiffuseColor(float light_distance, vec2 projected_uv);
 vec4 getTexture2DLodDiffuse(vec2 tc, float lod); // gobo sample WITHOUT the light color
+vec4 sampleGobo(vec2 uv, float lod);
+vec2 animatedGoboUV(vec2 uv);
+vec3 srgb_to_linear(vec3 col);
 float calcLegacyDistanceAttenuation(float distance, float falloff);
 vec4 getNorm(vec2 screenpos); // [Rim] real view-space G-buffer normal (deferredUtil)
 
@@ -284,6 +315,47 @@ vec3 projGoboTexture(float light_distance, vec2 projected_uv)
 }
 // shadowUtil.glsl
 float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen);
+
+// Airborne A/B: one hardware bilinear depth comparison, no surface receiver
+// bias, penumbra fill or camera-cascade fade. Surface rims keep sampleSpotShadow.
+float projvolAirborneShadow(vec4 clip)
+{
+    if (clip.w <= 1e-5) return 0.0;
+    vec3 q = clip.xyz / clip.w;
+    if (any(lessThan(q, vec3(0.0))) || any(greaterThan(q.xy, vec2(1.0)))) return 0.0;
+    q.z = min(q.z, 1.0);
+    if (proj_shadow_idx == 0) return texture(shadowMap4, q);
+    if (proj_shadow_idx == 1) return texture(shadowMap5, q);
+    if (proj_shadow_idx == 2) return texture(shadowMap6, q);
+    if (proj_shadow_idx == 3) return texture(shadowMap7, q);
+    if (proj_shadow_idx == 4) return texture(shadowMap8, q);
+    if (proj_shadow_idx == 5) return texture(shadowMap9, q);
+    if (proj_shadow_idx == 6) return texture(shadowMap10, q);
+    if (proj_shadow_idx == 7) return texture(shadowMap11, q);
+    if (proj_shadow_idx == 8) return texture(shadowMap12, q);
+    return texture(shadowMap13, q);
+}
+
+// Two-point Gauss-Legendre integrates only the smooth, cheap terms. Shadow,
+// cookie and heterogeneous medium are sampled once per segment.
+float projvolAnalytic(vec3 d, float t, vec4 projected)
+{
+    if (projected.z < 0.0 || projected.w <= 1e-5) return 0.0;
+    vec2 uv = projected.xy / projected.w;
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 0.0;
+    vec3 delta = d * t - center;
+    float r = max(length(delta), 1e-5);
+    float cosT = dot(delta / r, -d);
+    float g = projvol_g;
+    float phase = (1.0 - g*g) / (4.0*M_PI*pow(max(1.0+g*g-2.0*g*cosT, 1e-4), 1.5));
+    float feather = 1.0;
+    if (projvol_feather > 0.0)
+    {
+        vec2 edge = min(uv, vec2(1.0)-uv);
+        feather = smoothstep(0.0, projvol_feather, min(edge.x, edge.y));
+    }
+    return calcLegacyDistanceAttenuation(r / size, falloff) * phase * feather;
+}
 #ifdef PROJVOL_CONSERVATIVE_SHADOW
 // [ConservativeShadow] volume-march variant: no receiver bias, out-of-map = 0,
 // tight PCF, occluded-center leak clamp, no sun-cascade fade (shadowUtil.glsl).
@@ -312,6 +384,31 @@ void main()
     // View-space surface position at this pixel (opaque depth defines the far
     // limit of the march - never scatter behind solid geometry).
     vec4  pos       = getPosition(tc);
+    ivec2 depth_res = textureSize(depthMap, 0);
+    // Odd viewport dimensions do not map to aligned 2x2 footprints; retain the
+    // centered depth there rather than mislabeling a neighboring surface.
+    if (projvol_half_res.x > 0.0 && ((depth_res.x | depth_res.y) & 1) == 0)
+    {
+        // Alternate near/far termination from each 2x2 footprint. Reconstruct
+        // on the HALF texel's ray, and repeat this exact selection in upsample.
+        ivec2 p = ivec2(gl_FragCoord.xy);
+        ivec2 res = depth_res;
+        ivec2 base = ivec2(vec2(p) * vec2(res) / projvol_half_res);
+        vec4 z;
+        z.x = texelFetch(depthMap, clamp(base, ivec2(0), res-1), 0).r;
+        z.y = texelFetch(depthMap, clamp(base+ivec2(1,0), ivec2(0), res-1), 0).r;
+        z.z = texelFetch(depthMap, clamp(base+ivec2(0,1), ivec2(0), res-1), 0).r;
+        z.w = texelFetch(depthMap, clamp(base+ivec2(1,1), ivec2(0), res-1), 0).r;
+        float near_z = min(min(z.x,z.y), min(z.z,z.w));
+        float far_z = max(max(z.x,z.y), max(z.z,z.w));
+        vec4 near_pos = getPositionWithDepth(tc, near_z);
+        vec4 far_pos = getPositionWithDepth(tc, far_z);
+        float near_d = length(near_pos.xyz);
+        // Keep the centered depth on continuous/sloped surfaces. Min/max is
+        // needed only at an actual silhouette, where the footprint spans layers.
+        if (length(far_pos.xyz)-near_d > max(near_d*0.02, 0.03))
+            pos = ((p.x ^ p.y) & 1) == 0 ? near_pos : far_pos;
+    }
     float t_surface = length(pos.xyz);
     if (t_surface <= 0.0)
     {
@@ -356,9 +453,8 @@ void main()
     // so the clipped interval is a strict SUPERSET of the lit interval. The FAR
     // plane (index 5) is deliberately skipped - the sphere of influence extends
     // past the projector's far clip and the per-sample test still lights those
-    // samples, so clipping far would remove lit space. A degenerate/empty refined
-    // interval falls back to the sphere bounds (never a worse result than today).
-    // At the gate default (off) this whole block is skipped -> byte-identical.
+    // samples, so clipping far would remove lit space. A missed convex frustum
+    // has neither airborne light nor a surface rim anywhere on this ray.
     if (projvol_frustum_clip != 0)
     {
         float ct0 = t0;
@@ -386,6 +482,11 @@ void main()
         {
             t0 = ct0;
             t1 = ct1;
+        }
+        else
+        {
+            frag_color = vec4(0.0);
+            return;
         }
     }
 
@@ -440,9 +541,7 @@ void main()
     // lever left 0. Sharing the offset across each hardware 2x2 quad keeps the
     // march cache/lane-coherent while the dither/temporal averaging hides the
     // coarser pattern. Shader modes: 0 = off (centred 0.5), 1 = static, 2 =
-    // animated (golden-ratio per-frame walk). With its anti-banding guard enabled,
-    // C++ sends 2 for static mode only while the RGBA16F temporal resolve can
-    // average successive phases.
+    // animated (golden-ratio presentation-time walk). Mode 1 always stays static.
     float roffset;
     if (projvol_dither == 0)
     {
@@ -450,7 +549,8 @@ void main()
     }
     else
     {
-        float ign = interleavedGradientNoise(floor(gl_FragCoord.xy * 0.5));
+        float ign = interleavedGradientNoise(floor(gl_FragCoord.xy *
+                    (projvol_half_res.x > 0.0 ? 1.0 : 0.5)));
         if (projvol_dither == 2)
         {
             ign = fract(ign + projvol_frame * 0.61803399); // golden-ratio temporal walk
@@ -475,9 +575,47 @@ void main()
     float depth_w = 0.0;
     float w_sum   = 0.0;
 
+    // All transformed coordinates are affine along a view ray. The opt-in
+    // airborne path reuses these derivatives instead of per-step mat4 products.
+    vec4 projector_origin = vec4(0.0), projector_rate = vec4(0.0);
+    if (projvol_airborne_tap != 0 || projvol_equiangular != 0 || projvol_cookie_footprint != 0)
+    {
+        projector_origin = proj_mat[3];
+        projector_rate = proj_mat * vec4(d, 0.0);
+    }
+    vec4 shadow_origin = vec4(0.0), shadow_rate = vec4(0.0);
+    vec3 world_origin = vec3(0.0), world_rate = vec3(0.0);
+    if (projvol_airborne_tap != 0)
+    {
+        shadow_origin = shadow_matrix[4 + clamp(proj_shadow_idx, 0, 9)][3];
+        shadow_rate = shadow_matrix[4 + clamp(proj_shadow_idx, 0, 9)] * vec4(d, 0.0);
+        world_origin = projvol_inv_modelview[3].xyz;
+        world_rate = mat3(projvol_inv_modelview) * d;
+    }
+    float D = 0.1;
+    vec2 angles = vec2(0.0);
+    if (projvol_equiangular != 0)
+    {
+        D = sqrt(max(dot(C,C)-b*b, 0.01)); // >= 0.1 metres
+        angles = vec2(atan(t0-b, D), atan(t1-b, D));
+    }
+
     for (int i = 0; i < shaft_steps; ++i)
     {
         float t    = t0 + (float(i) + roffset) * dt;
+        float segment_dt = dt;
+        float segment_start = t0 + float(i) * dt;
+        if (projvol_equiangular != 0)
+        {
+            float inv_steps = 1.0 / max(float(shaft_steps), 1.0);
+            segment_start = b + D*tan(mix(angles.x, angles.y, float(i)*inv_steps));
+            float segment_end = b + D*tan(mix(angles.x, angles.y, float(i+1)*inv_steps));
+            // Pin endpoints to avoid atan/tan roundoff outside the clipped cone.
+            if (i == 0) segment_start = t0;
+            if (i == shaft_steps-1) segment_end = t1;
+            segment_dt = max(segment_end-segment_start, 0.0);
+            t = segment_start + roffset * segment_dt;
+        }
         vec3  spos = d * t;               // view-space sample point
 
         // Frustum clip + projector coords, reusing spotLightF's exact math.
@@ -486,7 +624,18 @@ void main()
         vec3  lv;
         vec4  proj_tc;
         float dist, l_dist;
-        if (clipProjectedLightVars(C, spos, dist, l_dist, lv, proj_tc))
+        bool clipped;
+        if (projvol_airborne_tap != 0)
+        {
+            lv = C - spos;
+            dist = length(lv) / size;
+            l_dist = -dot(lv, proj_n);
+            proj_tc = projector_origin + projector_rate*t;
+            clipped = dist >= 1.0 || proj_tc.z < 0.0 || proj_tc.w <= 1e-5;
+            proj_tc.xyz /= max(proj_tc.w, 1e-5);
+        }
+        else clipped = clipProjectedLightVars(C, spos, dist, l_dist, lv, proj_tc);
+        if (clipped)
         {
             continue;
         }
@@ -534,6 +683,13 @@ void main()
         // sub-taps spread across the step so thin occluders (bars/foliage) resolve
         // into sharp god-ray bands instead of being blurred by the coarse march.
         float vis;
+        float shadow_t = (projvol_equiangular != 0) ? segment_start + 0.5*segment_dt : t;
+        vec3 shadow_pos = d * shadow_t;
+        if (projvol_airborne_tap != 0)
+        {
+            vis = projvolAirborneShadow(shadow_origin + shadow_rate*shadow_t);
+        }
+        else
         // [BDMerge G3.3 Batch A - E2] One IGN-jittered shadow tap instead of N
         // sub-taps. spos = d*(t0+(i+roffset)*dt) already carries the per-quad
         // (2x2, see DitherQuad above) interleaved-gradient offset ALONG the step,
@@ -551,16 +707,16 @@ void main()
 #ifdef PROJVOL_CONSERVATIVE_SHADOW
         if (projvol_conservative_shadow != 0)
         {
-            if (projvol_shadow_jitter_tap != 0 || projvol_shadow_samples <= 1)
+            if (projvol_equiangular != 0 || projvol_shadow_jitter_tap != 0 || projvol_shadow_samples <= 1)
             {
-                vis = sampleSpotShadowConservative(spos, proj_shadow_idx);
+                vis = sampleSpotShadowConservative(shadow_pos, proj_shadow_idx);
             }
             else
             {
                 vis = 0.0;
                 for (int s = 0; s < projvol_shadow_samples; ++s)
                 {
-                    float ts   = t + (float(s) - float(projvol_shadow_samples - 1) * 0.5) * (dt / float(projvol_shadow_samples));
+                    float ts   = t + (float(s) - float(projvol_shadow_samples - 1) * 0.5) * (segment_dt / float(projvol_shadow_samples));
                     vec3  sp   = d * ts;
                     vis       += sampleSpotShadowConservative(sp, proj_shadow_idx);
                 }
@@ -569,16 +725,16 @@ void main()
         }
         else
 #endif
-        if (projvol_shadow_jitter_tap != 0 || projvol_shadow_samples <= 1)
+        if (projvol_equiangular != 0 || projvol_shadow_jitter_tap != 0 || projvol_shadow_samples <= 1)
         {
-            vis = sampleSpotShadow(spos, vec3(0.0), proj_shadow_idx, tc);
+            vis = sampleSpotShadow(shadow_pos, vec3(0.0), proj_shadow_idx, tc);
         }
         else
         {
             vis = 0.0;
             for (int s = 0; s < projvol_shadow_samples; ++s)
             {
-                float ts   = t + (float(s) - float(projvol_shadow_samples - 1) * 0.5) * (dt / float(projvol_shadow_samples));
+                float ts   = t + (float(s) - float(projvol_shadow_samples - 1) * 0.5) * (segment_dt / float(projvol_shadow_samples));
                 vec3  sp   = d * ts;
                 vis       += sampleSpotShadow(sp, vec3(0.0), proj_shadow_idx, tc);
             }
@@ -592,7 +748,28 @@ void main()
         // Gobo/cone-edge shaped in-scatter. TEXTURE ONLY here - the light color is
         // applied once to the whole shaft below so changing the projector's Light
         // Color visibly re-tints the beam (fix: was baked into the cookie sample).
-        vec3 cookie = projGoboTexture(l_dist, proj_tc.xy);
+        vec3 cookie;
+        if (projvol_cookie_footprint != 0)
+        {
+            // Segment UV span, not implicit derivatives inside a divergent loop.
+            // Keep the existing optical focus/edge law: it uses proj_lod as a
+            // feather scale, so feeding footprint LOD into it changes the cone.
+            vec4 qa = projector_origin + projector_rate*segment_start;
+            vec4 qb = projector_origin + projector_rate*(segment_start+segment_dt);
+            vec2 span = animatedGoboUV(qb.xy/max(qb.w,1e-5)) -
+                        animatedGoboUV(qa.xy/max(qa.w,1e-5));
+            float footprint_lod = log2(max(length(span*vec2(textureSize(projectionMap,0))), 1.0));
+            float focus_lod = clamp((l_dist-proj_focus)/proj_range, 0.0, 1.0)*proj_lod;
+            vec4 filtered = sampleGobo(proj_tc.xy, max(focus_lod, footprint_lod));
+            // RGB conversion + premultiplied alpha, matching projGoboTexture.
+            vec3 filtered_rgb = srgb_to_linear(filtered.rgb) * filtered.a;
+            // getTexture2DLodDiffuse multiplies its edge factor into RGB AND A.
+            float edge = min(min(proj_tc.x,1.0-proj_tc.x), min(proj_tc.y,1.0-proj_tc.y));
+            float feather = 0.25*min(focus_lod/max(proj_lod*0.5,1e-6),1.0);
+            float edge_weight = feather > 0.0 ? clamp(edge/feather,0.0,1.0) : 1.0;
+            cookie = filtered_rgb * edge_weight * edge_weight;
+        }
+        else cookie = projGoboTexture(l_dist, proj_tc.xy);
 
         // [Phase 3] Participating-medium density modulation for this sample. The
         // global haziness master, the animated noise medium and the height fog all
@@ -602,7 +779,9 @@ void main()
         if (projvol_noise_strength > 0.0 || projvol_fog_strength > 0.0 || dust_active)
         {
             // Agent-space (world, Z-up) position of this airborne sample.
-            vec3 wpos = (projvol_inv_modelview * vec4(spos, 1.0)).xyz;
+            vec3 wpos = (projvol_airborne_tap != 0)
+                      ? world_origin + world_rate*t
+                      : (projvol_inv_modelview * vec4(spos, 1.0)).xyz;
 
             // [item 1] Animated 3D noise -> drifting dust motes / gentle turbulence.
             // World-anchored + slowly scrolled so motes sit in the air and drift,
@@ -684,6 +863,19 @@ void main()
         // (the classic crisp black occluder shadow).
         vec3 scatter = mix(cookie * projvol_shadow_tint, cookie, vis);
         vec3 scatter_sample = atten * phase * scatter * edge_feather * density;
+        float moment_t = t;
+        if (projvol_equiangular != 0)
+        {
+            const float gauss = 0.28867513459; // 1/(2*sqrt(3))
+            float mid = segment_start + 0.5*segment_dt;
+            float ta = mid-gauss*segment_dt;
+            float tb = mid+gauss*segment_dt;
+            float fa = projvolAnalytic(d, ta, projector_origin+projector_rate*ta);
+            float fb = projvolAnalytic(d, tb, projector_origin+projector_rate*tb);
+            float analytic = 0.5*(fa+fb);
+            scatter_sample = analytic * scatter * density * segment_dt;
+            moment_t = (fa+fb > 1e-8) ? (fa*ta+fb*tb)/(fa+fb) : mid;
+        }
         accum += scatter_sample;
 
         // Reproject the BEAM, not the wall. The RGB composite applies projector
@@ -693,7 +885,7 @@ void main()
         {
             float sample_luma = dot(scatter_sample * color,
                                     vec3(0.2126, 0.7152, 0.0722));
-            depth_w += sample_luma * t;
+            depth_w += sample_luma * moment_t;
             w_sum   += sample_luma;
         }
 
@@ -709,7 +901,8 @@ void main()
         // expression as the composite, so it can never trigger before the true value
         // is clamped (breaking early would then be visible). Break AFTER the sample's
         // contribution is added, matching the composite's factors precisely.
-        if (all(greaterThanEqual(accum * dt * PROJVOL_SCATTER * godray_multiplier * color, vec3(projvol_max))))
+        if (projvol_temporal_beam_depth == 0 && all(greaterThanEqual(accum *
+            (projvol_equiangular != 0 ? 1.0 : dt) * PROJVOL_SCATTER * godray_multiplier * color, vec3(projvol_max))))
         {
             break;
         }
@@ -721,7 +914,7 @@ void main()
     // the whole accumulated (texture-only) shaft. `color` is the linear light
     // diffuse already lerped toward the art-direction tint in C++, so the shaft
     // base is the true light color and the tint layers on top of it.
-    float march_scale = dt * PROJVOL_SCATTER * godray_multiplier;
+    float march_scale = (projvol_equiangular != 0 ? 1.0 : dt) * PROJVOL_SCATTER * godray_multiplier;
     vec3 shaft = accum * march_scale * color;
     vec2 sil_cov = (alr_sil_active & 32) != 0
         ? texture(silCoverMap, tc).rg : vec2(0.0);

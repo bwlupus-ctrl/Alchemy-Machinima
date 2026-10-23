@@ -19365,7 +19365,7 @@
   <key>BDMergeProjectorVolumetricsDither</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Phase 1] Projector shaft march-start dither. 0 = off (banding at low sample counts), 1 = static interleaved-gradient noise (recording-safe), 2 = animated low-discrepancy phases. When BDMergeProjectorVolumetricsTemporalDither is enabled, static mode is promoted to animated only while temporal accumulation can integrate it. Default 1.</string>
+      <string>Projector shaft march-start dither. 0 = centered, 1 = static interleaved-gradient noise (recording-safe), 2 = explicitly animated. Mode 1 ALWAYS stays static, including with temporal accumulation; TemporalDither never promotes it. Mode 2 uses LLPresentationTime presentation_time quantized to 60 Hz and wrapped to 1024 phases: paused presentation time and repeated renders share a phase. For byte-stable static captures use mode 0 or 1, disable temporal history, and stop animated media/gobos. Default 1.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -19376,7 +19376,7 @@
   <key>BDMergeProjectorVolumetricsTemporalDither</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Precision] Temporal projector anti-banding guard. When enabled and temporal accumulation is active, dither mode 1 cycles low-discrepancy march phases so the RGBA16F history converges ray-step bands into a smoother shaft without extra samples, texture reads, or buffers. Direct/non-temporal rendering remains static. Disable for an absolutely frozen recording pattern. Default on.</string>
+      <string>Legacy compatibility setting, retained for saved presets. No longer promotes static dither mode 1 to animated. Choose Dither=2 explicitly for presentation-clock animation, or Dither=1 for a fixed recording pattern.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -19471,6 +19471,38 @@
       <string>Boolean</string>
       <key>Value</key>
       <integer>1</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsEquiangular</key>
+  <map>
+      <key>Comment</key>
+      <string>A/B shaft integration: equi-angular segment boundaries around the projector center (perpendicular distance clamped to 0.1 m), exact segment-length weights, two-point Gauss-Legendre attenuation/phase/edge evaluation and one midpoint shadow evaluation per segment. Cookie and medium use the selected static/animated offset inside each segment. May undersample shadow/cookie/density detail in long tail segments. Entering/leaving the Equiangular/AirborneTap/CookieFootprint group rebuilds just the shaft shader once, keeping all three OFF free of experimental register pressure. Default OFF pending scene-specific A/B.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsAirborneTap</key>
+  <map>
+      <key>Comment</key>
+      <string>A/B airborne shadows: one hardware bilinear sampler2DShadow tap per segment, affine projector/shadow/world ray transforms hoisted out of the march. Overrides airborne ShadowSamples and ConservativeShadow kernels; surface rim retains the surface PCF. Omits surface receiver bias, penumbra fill and camera-cascade fade. Changes shaft shadow softness. Entering/leaving the experimental group rebuilds just this shader once. Default OFF; choose after visual A/B.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsCookieFootprint</key>
+  <map>
+      <key>Comment</key>
+      <string>A/B gobo anti-aliasing: minimum texture LOD from each ray segment's projected UV span, in addition to optical focus and existing gobo filtering. Preserves the optical cone-edge feather law. Can soften/darken fine cookie detail with existing mipmaps; procedural gobos retain their analytic pattern. Entering/leaving the experimental group rebuilds just this shader once. Default OFF pending shot-specific A/B.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsPyramidScissor</key>
+  <map>
+      <key>Comment</key>
+      <string>Bound shafts using the actual offset projector eye plus four far-cap vertices, clipped to the camera near plane. Cap conservatively encloses the influence sphere (shafts can extend beyond the shadow far plane); artist distance cap applies only without a surface rim. One march texel of reconstruction support is included. OFF restores the sphere-box bound for A/B. Also affects adaptive sample coverage. Default ON.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
   </map>
   <key>BDMergeProjectorVolumetricsShadowJitterTap</key>
   <map>

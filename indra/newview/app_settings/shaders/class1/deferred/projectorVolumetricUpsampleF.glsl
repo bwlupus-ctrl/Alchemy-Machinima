@@ -50,10 +50,35 @@ in vec2 vary_fragcoord;
 uniform sampler2D projectionMap;
 // dimensions of that half-res map (half of the scene buffer), for locating taps.
 uniform vec2 projvol_half_res;
+uniform sampler2D depthMap;
 
 // deferredUtil.glsl - view-space position reconstruction from the full-res depth,
 // and the half-res shaft sampler (projectionMap).
 vec4 getPosition(vec2 pos_screen);
+vec4 getPositionWithDepth(vec2 pos_screen, float depth);
+
+float projvolTapDepth(ivec2 p)
+{
+    // Match the march's checkerboard depth exactly. Alpha is reserved for the
+    // additive beam moment/history, so depth must not be stored there.
+    ivec2 res = textureSize(depthMap, 0);
+    if (((res.x | res.y) & 1) != 0)
+        return length(getPosition((vec2(p)+0.5)/projvol_half_res).xyz);
+    ivec2 base = ivec2(vec2(p) * vec2(res) / projvol_half_res);
+    vec4 z;
+    z.x = texelFetch(depthMap, clamp(base, ivec2(0), res-1), 0).r;
+    z.y = texelFetch(depthMap, clamp(base+ivec2(1,0), ivec2(0), res-1), 0).r;
+    z.z = texelFetch(depthMap, clamp(base+ivec2(0,1), ivec2(0), res-1), 0).r;
+    z.w = texelFetch(depthMap, clamp(base+ivec2(1,1), ivec2(0), res-1), 0).r;
+    float near_z = min(min(z.x,z.y), min(z.z,z.w));
+    float far_z = max(max(z.x,z.y), max(z.z,z.w));
+    vec2 uv = (vec2(p)+0.5)/projvol_half_res;
+    float near_d = length(getPositionWithDepth(uv, near_z).xyz);
+    float far_d = length(getPositionWithDepth(uv, far_z).xyz);
+    if (far_d-near_d > max(near_d*0.02, 0.03))
+        return ((p.x ^ p.y) & 1) == 0 ? near_d : far_d;
+    return length(getPosition(uv).xyz);
+}
 
 void main()
 {
@@ -90,11 +115,12 @@ void main()
     for (int j = 0; j < 2; ++j)
     for (int i = 0; i < 2; ++i)
     {
-        vec2  tap_texel = base + vec2(float(i), float(j)) + 0.5;
+        ivec2 tap_p = clamp(ivec2(base) + ivec2(i,j), ivec2(0), ivec2(hres)-1);
+        vec2  tap_texel = vec2(tap_p) + 0.5;
         vec2  tap_uv    = tap_texel / hres;
 
         vec3  c     = texture(projectionMap, tap_uv).rgb;
-        float d_tap = length(getPosition(tap_uv).xyz);
+        float d_tap = projvolTapDepth(tap_p);
 
         // Bilinear footprint weight.
         float wx = (i == 0) ? (1.0 - frac.x) : frac.x;
