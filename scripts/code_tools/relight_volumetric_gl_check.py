@@ -31,6 +31,7 @@ SHAFT = 'class3/deferred/projectorVolumetricF.glsl'
 UP = 'class1/deferred/projectorVolumetricUpsampleF.glsl'
 BASE = 'c4d3614d3e7'
 ROUND1 = '167d3c5c44f'
+ROUND2 = '3439a7e8c3d'
 BLOOM = 'class1/deferred/projectorVolumetricBloomFeedF.glsl'
 G.PREAMBLE += '\n#define SPOT_SHADOW 1\n'
 
@@ -128,7 +129,7 @@ class Runner(G.AreaRunner):
 
     def run(self, fixture, half=False, steps=24, dither=0, frame=0, equi=0,
             air=0, footprint=0, rim=0, soft=True, cookie=False, shadows=True, rect=None, beam=0, conservative=0, maximum=100, bloom=False,
-            planes_override=None, count=False, layers=1):
+            planes_override=None, count=False, layers=1, cap=0, rim_rect=None):
         cam,g,depth,norm,light = fixture
         gl = self.gl; W,H = cam.W,cam.H
         tw,th = (W//2,H//2) if half else (W,H)
@@ -170,6 +171,7 @@ class Runner(G.AreaRunner):
             self.uf(pr,name,*val)
         for name,val in {'size':12,'falloff':.3,'godray_multiplier':6,'projvol_g':.8,
                          'projvol_max':maximum,'projvol_density':1,'projvol_feather':.035,
+                         'projvol_max_distance':cap,
                          'proj_focus':12 if cookie else 0,'proj_lod':9,'proj_range':12,'projvol_frame':frame,
                          'projvol_rim_strength':rim if not half or not self.modern else 0,
                          'projvol_rim_power':2,'projvol_rim_wrap':.5,'projvol_rim_threshold':0,
@@ -223,7 +225,7 @@ class Runner(G.AreaRunner):
                 self._begin(pr)
                 self.enable(0x0BE2); self.blend(1,1)
                 if self.host is not None:
-                    r = rect if rect is not None else (0,0,tw,th)
+                    r = rim_rect if rim_rect is not None else rect if rect is not None else (0,0,tw,th)
                     commands=host_request(self.host,'R',[int(rect is not None),*r,tw,th,W,H,rim])
                     self.execute(pr,commands,stats,'rim_ms')
                 else:
@@ -279,6 +281,7 @@ class Runner(G.AreaRunner):
             elif op=='texture':
                 self.ui(pr,'diffuseMap',8)
                 self.gl.active(0x84C8); self.gl.bind_tex(0x0DE1,self.textures['rim_source'][0])
+            elif op=='buffer': self._begin(pr)
             elif op=='draw': self.draw(stats,key)
             else: raise AssertionError(op)
 
@@ -356,7 +359,7 @@ def edge_mask(g):
     return edge
 
 
-def build_scissor_host(out, glm_include, mutation=None):
+def build_scissor_host(out, glm_include, mutation=None, ref='WORKTREE'):
     """Compile the actual production near-plane clipping helper, not a Python port."""
     if glm_include is None:
         cache = Path.home()/'cxs/zs_flags_cache_cube.json'
@@ -365,9 +368,16 @@ def build_scissor_host(out, glm_include, mutation=None):
         candidates = re.findall(r'"([A-Z]:[^"\r\n]+)"',flags)
         glm_include = next((Path(p) for p in candidates if (Path(p)/'glm/glm.hpp').exists()),None)
     assert glm_include and (glm_include/'glm/glm.hpp').exists(), 'provide --glm-include'
-    pipe = (G.REPO/'indra/newview/pipeline.cpp').read_text()
+    pipe = G.SourceTree(ref).read('indra/newview/pipeline.cpp')
     start=pipe.index('static bool projvolClipPyramidBounds(')
     helper=pipe[start:pipe.index('// End standalone-tested projector decisions.',start)]
+    if mutation=='near_coverage':
+        old=G.SourceTree(ROUND2).read('indra/newview/pipeline.cpp')
+        a='static bool projvolSphereBounds('; b='static U32 projvolAdaptiveResolution('
+        helper=helper[:helper.index(a)]+old[old.index(a):old.index(b)]+helper[helper.index(b):]
+    if mutation=='rim_buffer': helper=helper.replace('    triangle->setBuffer();', '    /* missing buffer */')
+    march_rim=re.search(r'llclamp\(e_max_dist, 0.f, 64.f\), (.*?), tgt_w, tgt_h, pyramid\)',pipe).group(1)
+    if mutation=='march_cap': march_rim='e_rimStrength > 0.f'
     if mutation=='pyramid': helper=helper.replace('const F32 fx = fy * scale.x / scale.y;', 'const F32 fx = 0.f;')
     if mutation=='rim': helper=helper.replace('triangle->drawArrays(LLRender::TRIANGLES, 0, 3);','')
     if mutation=='rim_scissor': helper=helper.replace('if (bounds_valid)', 'if (false)')
@@ -404,7 +414,10 @@ void uniform1i(const std::string& n,int x){std::cout<<"i "<<n<<" "<<x<<";";}
 void uniform1f(const std::string& n,float x){std::cout<<"f "<<n<<" "<<x<<";";}
 void uniform2f(const std::string& n,float x,float y){std::cout<<"f "<<n<<" "<<x<<" "<<y<<";";}
 };
-struct LLVertexBuffer { void drawArrays(int,int,int){std::cout<<"draw;";} };
+struct LLVertexBuffer {
+void setBuffer(){std::cout<<"buffer;";}
+void drawArrays(int,int,int){std::cout<<"draw;";}
+};
 void glScissor(int x,int y,int w,int h){std::cout<<"scissor "<<x<<" "<<y<<" "<<w<<" "<<h<<";";}
 '''+helper
     source += r'''
@@ -416,11 +429,17 @@ else if(op=="R"){bool valid;float x,y,w,h,mw,mh,rim;int W,H;std::cin>>valid>>x>>
 projvolDrawFullResRim(shader,&triangle,true,valid,glm::vec4(x,y,x+w,y+h),mw,mh,W,H,rim);std::cout<<std::endl;}
 else if(op=="F"){bool valid;float x,y,feed,ana;std::cin>>valid>>x>>y>>feed>>ana;LLRenderTarget rim;
 projvolDrawRimTexture(shader,&triangle,&rim,valid,glm::vec2(x,y),feed,ana);std::cout<<std::endl;}
-else if(op=="B"){float w,h,fov,radius,cap;bool rim;glm::vec3 position,scale;glm::mat4 rotation,view,proj;
+else if(op=="A"){float w,h,radius;glm::vec3 c;glm::mat4 proj;std::cin>>w>>h>>radius>>c.x>>c.y>>c.z;matrix(proj);
+glm::vec4 sphere;bool ok=projvolSphereBounds(c,radius,proj,w,h,sphere);
+std::cout<<ok<<" "<<sphere.x<<" "<<sphere.y<<" "<<sphere.z<<" "<<sphere.w<<" "
+<<projvolAdaptiveResolution(true,ok,sphere,h,6,16)<<std::endl;}
+else if(op=="B" || op=="C"){float w,h,fov,radius,cap;bool rim;glm::vec3 position,scale;glm::mat4 rotation,view,proj;
 std::cin>>w>>h>>fov>>radius>>cap>>rim;
 for(int k=0;k<3;++k)std::cin>>position[k];for(int k=0;k<3;++k)std::cin>>scale[k];
 matrix(rotation);matrix(view);matrix(proj);glm::vec4 bounds,sphere;
-bool ok=projvolPyramidGeometry(position,scale,fov,rotation,view,proj,radius,cap,rim,w,h,bounds);
+bool halfres=true;float e_rimStrength=rim?1.f:0.f;
+bool include_rim=op=="C" ? ('''+march_rim+r''') : rim;
+bool ok=projvolPyramidGeometry(position,scale,fov,rotation,view,proj,radius,cap,include_rim,w,h,bounds);
 bounds=glm::clamp(glm::vec4(floorf(bounds.x)-1,floorf(bounds.y)-1,ceilf(bounds.z)+1,ceilf(bounds.w)+1),glm::vec4(0),glm::vec4(w,h,w,h));
 bool sphere_valid=projvolSphereBounds(glm::vec3(view*glm::vec4(position,1)),radius,proj,w,h,sphere);
 // settings.xml recording defaults
@@ -446,14 +465,14 @@ else return 2;
 
 
 
-def production_bounds(host,fixture,half):
+def production_bounds(host,fixture,half,cap=0,rim=True,op='B'):
     cam,_,_,_,light=fixture
     w,h=(cam.W//2,cam.H//2) if half else (cam.W,cam.H)
     rotation=np.eye(4); rotation[:3,:3]=np.linalg.inv(light['view'])[:3,:3]
     scale=light.get('scale',(.3*np.tan(light['fov']/2),)*2+(.3,))
-    values=[w,h,light['fov'],12,0,1,*light.get('sphere_pos',light['pos']),*scale,
+    values=[w,h,light['fov'],12,cap,int(rim),*light.get('sphere_pos',light['pos']),*scale,
             *rotation.T.ravel(),*cam.view.T.ravel(),*cam.proj.T.ravel()]
-    return host_request(host,'B',values)
+    return host_request(host,op,values)
 
 
 def scissor_rect(host,fixture,half):
@@ -706,12 +725,176 @@ def sheet(path, panels):
     out.save(path)
 
 
+def border_plane_fixture(fixture, edge, motion):
+    """An affine window-depth plane grazing each viewport edge, in motion."""
+    cam,_,_,_,light=fixture
+    delta=(cam.r if edge in ('left','right') else cam.u)*motion
+    c=S.Camera(cam.eye+delta,cam.eye+cam.f+delta,cam.W,cam.H,far=1000)
+    y,x=np.mgrid[:c.H,:c.W]
+    inward={'left':(x+.5)/c.W,'right':1-(x+.5)/c.W,
+            'bottom':(y+.5)/c.H,'top':1-(y+.5)/c.H}[edge]
+    zf=(1+motion)/(.004+.5*inward)
+    g=dict(zf=zf,nrm=np.broadcast_to(-c.f,(c.H,c.W,3)).copy(),surf=np.zeros((c.H,c.W),np.int32))
+    _,depth,norm=S.encode_gbuffer(c,g)
+    return c,g,depth,norm,light
+
+
+def round2_checks(args,gl,host,runners,report):
+    def check(name,passed,**kw):
+        report['checks'].append(dict(name='round2/'+name,passed=bool(passed),**kw))
+        print('round2/'+name,'PASS' if passed else 'FAIL',kw,flush=True)
+    old_out=args.out/'round2_before'; old_out.mkdir(exist_ok=True)
+    oldhost=build_scissor_host(old_out,args.glm_include,ref=ROUND2)
+    old=Runner(G.SourceTree(ROUND2),gl); after=runners['after']
+    centered=Runner(CenteredTree('WORKTREE'),gl)
+    scenes=fixtures(args.width,args.height); outside=scenes['outside']
+    pipe=(G.REPO/'indra/newview/pipeline.cpp').read_text()
+    body=pipe[pipe.index('void LLPipeline::renderProjectorVolumetric('):pipe.index('void LLPipeline::feedProjectorVolumetricBloom(')]
+
+    # Claim 3: execute the actual march's include-rim expression from C++ with
+    # the actual pyramid geometry. Then replay separate march/rim scissors on GL.
+    def rect(v):
+        x,y,z,w=map(int,v[1:5]);return x,y,max(0,z-x),max(0,w-y)
+    cap=3
+    before=production_bounds(oldhost,outside,True,cap=cap,op='C')
+    capped=production_bounds(host,outside,True,cap=cap,op='C')
+    uncapped=production_bounds(host,outside,True,cap=cap,rim=True)
+    area=lambda v:rect(v)[2]*rect(v)[3]
+    ref,_,_=after.run(outside,half=True,rim=1,cap=cap)
+    im,_,_=after.run(outside,half=True,rim=1,cap=cap,rect=rect(capped),rim_rect=rect(uncapped))
+    independent=('rim_bounds_valid, rim_bounds' in body and
+                 body.index('rim_draws.push_back(')<body.index('if (max_x <= min_x || max_y <= min_y)') and
+                 'if (halfres && mProjVolRimValid) mProjVolHalfValid = true;' in body)
+    check('capped_march_separate_rim',area(capped)<area(uncapped) and np.array_equal(im,ref) and independent,
+          before_fragments=area(before),after_fragments=area(capped),rim_fragments=area(uncapped),bytes_equal=im.tobytes()==ref.tobytes())
+    check('before_rejected/march_cap',area(before)==area(uncapped) and area(capped)<area(before))
+    inside=scenes['inside']; m=production_bounds(host,inside,True,cap=1,op='C'); r=production_bounds(host,inside,True,cap=1)
+    ref,_,_=after.run(inside,steps=0,rim=1,cap=1)
+    im,_,_=after.run(inside,half=True,steps=0,rim=1,cap=1,rect=rect(m),rim_rect=rect(r))
+    check('empty_capped_march_preserves_rim',area(m)==0 and np.max(ref[:,:,:3])>0 and np.array_equal(im,ref),
+          march_rect=rect(m),rim_rect=rect(r),lit_pixels=int(np.count_nonzero(im[:,:,:3].max(2))))
+
+    # Claim 7: bind()/unbind() in the viewer resets the VB binding, including
+    # when both programs use the same position attribute. Trace the production
+    # helper instead of relying on Runner._begin(), which ordinarily hides it.
+    def rim_buffer_ok(h):
+        cmds=host_request(h,'F',[1,0,0,1,1]); ops=[c[0] for c in cmds]
+        return 'buffer' in ops and ops.index('buffer')<ops.index('draw')
+    shader_cpp=(G.REPO/'indra/llrender/llglslshader.cpp').read_text()
+    bind=shader_cpp[shader_cpp.index('void LLGLSLShader::bind()'):shader_cpp.index('void LLGLSLShader::bind(U8')]
+    before_buffer=rim_buffer_ok(oldhost); after_buffer=rim_buffer_ok(host)
+    check('rim_composite_vertex_buffer',after_buffer and 'LLVertexBuffer::unbind();' in bind,
+          before_bound=before_buffer,after_bound=after_buffer)
+    check('before_rejected/rim_buffer',not before_buffer and after_buffer)
+
+    # Claim 9: densely sweep a camera-plane crossing with an off-axis sphere.
+    # Check raw coverage as well as the quantized integer step budget. New
+    # bounds must enclose every old valid bound throughout the transition.
+    cam=outside[0]; h=args.height//2; w=args.width//2
+    def sphere(hst,closest):
+        return host_request(hst,'A',[w,h,1,0,1.5,-1-closest,*cam.proj.T.ravel()])
+    closest=np.unique(np.r_[np.linspace(-.05,.6,1001),.0001-1e-6,.0001+1e-6,.25-1e-6,.25+1e-6,.5-1e-6,.5+1e-6])
+    prev=np.array([sphere(oldhost,d) for d in closest]); now=np.array([sphere(host,d) for d in closest])
+    def coverage(v):return np.where(v[:,0]>0,np.clip((v[:,4]-v[:,2])/h,0,1),1)
+    old_jump=float(np.max(np.abs(np.diff(coverage(prev))))); jump=float(np.max(np.abs(np.diff(coverage(now)))))
+    valid=prev[:,0]>0
+    conservative=bool(np.all(now[valid,1:3]<=prev[valid,1:3]+1e-3) and np.all(now[valid,3:5]>=prev[valid,3:5]-1e-3))
+    continuous=jump<.01 and np.max(np.abs(np.diff(now[:,5])))<=1 and conservative
+    check('continuous_near_plane_budget',continuous,before_max_coverage_jump=old_jump,after_max_coverage_jump=jump,
+          before_max_step_jump=float(np.max(np.abs(np.diff(prev[:,5])))),after_max_step_jump=float(np.max(np.abs(np.diff(now[:,5])))),conservative=conservative)
+    check('before_rejected/near_coverage',old_jump>.1 and continuous)
+
+    # Claim 8: centered-depth control on a moving plane at ALL four edges.
+    # Odd sizes intentionally bypass min/max selection; also run an even-sized
+    # control there so this regression remains sensitive at the odd-size gate.
+    captures={}; edge_failures={}; edge_success={}
+    sizes=[(args.width,args.height)]
+    if args.width%2 or args.height%2:sizes.append((args.width//2*2,args.height//2*2))
+    for W,H in sizes:
+        base=outside if (W,H)==(args.width,args.height) else fixtures(W,H)['outside']
+        for edge in ('left','right','bottom','top'):
+            old_errors=[]; errors=[]; panels=[]
+            for motion in (-.0002,0,.0002):
+                f=border_plane_fixture(base,edge,motion)
+                old.run(f,half=True,steps=0); a=old.termination.copy()
+                after.run(f,half=True,steps=0); b=after.termination.copy()
+                centered.run(f,half=True,steps=0); c=centered.termination.copy()
+                mask=np.zeros_like(c,dtype=bool)
+                if edge=='left':mask[1:-1,0]=True
+                elif edge=='right':mask[1:-1,-1]=True
+                elif edge=='bottom':mask[0,1:-1]=True
+                else:mask[-1,1:-1]=True
+                old_errors.append(float(np.max(np.abs(a-c)[mask])))
+                errors.append(float(np.max(np.abs(b-c)[mask])))
+                key=f'{W}x{H}_{edge}_{motion}'
+                captures[key+'_before']=a;captures[key+'_after']=b;captures[key+'_centered']=c
+                # Bright residuals expose alternating border termination in the
+                # before capture, with the same fixed scale for all motions.
+                for label,v in (('before',a),('after',b)):
+                    rgb=np.repeat(np.minimum(np.abs(v-c),10)[:,:,None],3,2)
+                    panels.append((f'{label} {edge} {motion:+.4f}m',rgb))
+            key=f'{W}x{H}/{edge}';edge_failures[key]=max(old_errors);edge_success[key]=max(errors)
+            check('border_motion/'+key,max(errors)<1e-4,before_max_depth_error=old_errors,after_max_depth_error=errors)
+            sheet(args.out/'images'/f'border_motion_{W}x{H}_{edge}.png',panels)
+    np.savez_compressed(args.out/'border_motion_termination.npz',**captures)
+    check('before_rejected/border_neighbours',max(edge_failures.values())>.01 and max(edge_success.values())<1e-4)
+
+    # Refuted claims still get explicit contracts and relevant GL observations.
+    after.run(outside,half=True,rect=(4,4,8,8)); term=after.termination.copy()
+    mask=np.ones_like(term,dtype=bool);mask[4:12,4:12]=False
+    rt=(G.REPO/'indra/llrender/llrendertarget.cpp').read_text()
+    rtbind=rt[rt.index('void LLRenderTarget::bindTarget()'):rt.index('void LLRenderTarget::clear(')]
+    clear=body[body.index('march_target->bindTarget();'):body.index('LLGLDepthTest depth(GL_FALSE);')]
+    check('termination_clear_outside_scissor',np.all(term[mask]==0) and
+          'LLGLDisable no_scissor(GL_SCISSOR_TEST);' in clear and 'gGL.setColorMask(true, true);' in clear and
+          'march_target->clear(GL_COLOR_BUFFER_BIT);' in clear and 'if (!halfres) glDrawBuffer' in clear,
+          outside_depth_max=float(np.max(term[mask])))
+    check('draw_buffers_reset_on_bind','glDrawBuffers(static_cast<GLsizei>(mTex.size()), drawbuffers);' in rtbind)
+    a,_,_=after.run(outside,steps=0,rim=1,cap=0)
+    b,_,_=after.run(outside,steps=0,rim=1,cap=.1)
+    setup=pipe[pipe.index('F32 LLPipeline::setupSpotLightVolumetric('):pipe.index('void LLPipeline::unbindDeferredShader(')]
+    rimloop=body[body.index('for (const auto& rim : rim_draws)'):body.index('if (dust_on)',body.index('for (const auto& rim : rim_draws)'))]
+    check('rim_batch_state_complete',np.array_equal(a,b) and
+          'setupSpotLightVolumetric(' in rimloop and 'rim.power' in rimloop and 'rim.wrap' in rimloop and 'rim.softness' in rimloop and
+          all(s in setup for s in ('PROJECTOR_MATRIX','PROJVOL_FRUSTUM_PLANES','PROJECTOR_SHADOW_INDEX','bindProjectorCookie')),
+          shaft_cap_changes_rim=not np.array_equal(a,b))
+    _,raw,_=after.run(outside,half=True,steps=0,rim=1)
+    # The final contains the full-res rim, but the half-res march remains black.
+    after.read_buffer(0x8CE0);gl.bind_fbo(0x8D40,after.fbo)
+    gl.fbo_tex(0x8D40,0x8CE0,0x0DE1,after.textures['march'][0],0)
+    march=np.empty((args.height//2,args.width//2,4),np.float32)
+    gl.read(0,0,args.width//2,args.height//2,0x1908,0x1406,march.ctypes.data)
+    check('half_res_rim_zero_per_cone',np.max(march[:,:,:3])==0 and np.max(raw.view(np.float16)[:,:,:3])>0 and
+          'PROJVOL_RIM_STRENGTH, halfres ? 0.f : llmax(e_rimStrength, 0.f)' in body)
+    ext=gl.fn('glGetString',C.c_char_p,gl.U)(0x1F03).split()
+    check('desktop_r32f_replacement_blend',after.error()==0 and 'OpenGL ES' not in gl.renderer,
+          renderer=gl.renderer,EXT_float_blend=b'GL_EXT_float_blend' in ext)
+
+    # Round-2 mutations execute the same C++/GLSL changes in isolation in memory.
+    for mutation in ('march_cap','rim_buffer','near_coverage'):
+        out=args.out/('mutation_'+mutation);out.mkdir(exist_ok=True)
+        mh=build_scissor_host(out,args.glm_include,mutation)
+        if mutation=='march_cap':killed=area(production_bounds(mh,outside,True,cap=cap,op='C'))>=area(uncapped)
+        elif mutation=='rim_buffer':killed=not rim_buffer_ok(mh)
+        else:
+            v=np.array([sphere(mh,d) for d in (.0001-1e-6,.0001+1e-6)])
+            killed=abs(coverage(v)[0]-coverage(v)[1])>.1
+        mh.stdin.close();assert mh.wait(timeout=5)==0
+        check('mutation_killed/'+mutation,killed)
+    # Reverting the GLSL neighbour guards is the independently compiled ROUND2
+    # shader above; all four even-sized edge fixtures must reject that mutation.
+    check('mutation_killed/border_neighbours',all(v>.01 for k,v in edge_failures.items() if
+          all(int(n)%2==0 for n in k.split('/')[0].split('x'))))
+    oldhost.stdin.close();assert oldhost.wait(timeout=5)==0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--width',type=int,default=640); ap.add_argument('--height',type=int,default=360)
     ap.add_argument('--repeats',type=int,default=9); ap.add_argument('--out',type=Path,default=G.REPO/'.tmp/volumetric_gl')
     ap.add_argument('--glm-include',type=Path)
     ap.add_argument('--round1-only',action='store_true',help='run only the review-round regression suite')
+    ap.add_argument('--round2-only',action='store_true',help='run only the second review-round regression suite')
     args = ap.parse_args(); args.out=args.out.resolve(); args.out.mkdir(parents=True,exist_ok=True)
     images = args.out/'images'; images.mkdir(exist_ok=True)
     gl = G.GL(); print('GL:',gl.renderer,flush=True)
@@ -734,8 +917,9 @@ def main():
         report['measurements'].append(dict(name=label,**med,total_ms=sum(med.values()),range_ms=spread,repeats=args.repeats))
         print(label,med,flush=True)
         return im,raw
-    if args.round1_only:
-        round1_checks(args,gl,host,runners,report,measure)
+    if args.round1_only or args.round2_only:
+        if args.round1_only:round1_checks(args,gl,host,runners,report,measure)
+        if args.round2_only:round2_checks(args,gl,host,runners,report)
         host.stdin.close(); assert host.wait(timeout=5)==0
         report['passed']=all(c['passed'] for c in report['checks'])
         (args.out/'report.json').write_text(json.dumps(report,indent=2)+'\n')
@@ -861,6 +1045,7 @@ def main():
         im,_,_=r.run(fixture,half=True,equi=1,air=1,conservative=1,beam=1)
         report['checks'].append(dict(name='permutation/'+name,passed=bool(np.isfinite(im).all())))
     round1_checks(args,gl,host,runners,report,measure)
+    round2_checks(args,gl,host,runners,report)
     host.stdin.close(); assert host.wait(timeout=5)==0
     report['passed']=all(c['passed'] for c in report['checks'])
     (args.out/'report.json').write_text(json.dumps(report,indent=2)+'\n')

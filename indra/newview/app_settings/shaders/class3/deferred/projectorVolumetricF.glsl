@@ -420,11 +420,16 @@ void main()
             {
                 ivec2 q = base + ivec2(i,j);
                 float c = texelFetch(depthMap, clamp(q, ivec2(0), res-1), 0).r;
-                vec2 dd;
-                dd.x = texelFetch(depthMap, clamp(q-ivec2(1,0), ivec2(0), res-1), 0).r
-                     + texelFetch(depthMap, clamp(q+ivec2(1,0), ivec2(0), res-1), 0).r - 2.0*c;
-                dd.y = texelFetch(depthMap, clamp(q-ivec2(0,1), ivec2(0), res-1), 0).r
-                     + texelFetch(depthMap, clamp(q+ivec2(0,1), ivec2(0), res-1), 0).r - 2.0*c;
+                // A repeated edge texel turns a second derivative into a first
+                // derivative. Test only axes with both opposite neighbours;
+                // the other pixel in the footprint still tests that axis.
+                vec2 dd = vec2(0.0);
+                if (q.x > 0 && q.x < res.x-1)
+                    dd.x = texelFetch(depthMap, q-ivec2(1,0), 0).r
+                         + texelFetch(depthMap, q+ivec2(1,0), 0).r - 2.0*c;
+                if (q.y > 0 && q.y < res.y-1)
+                    dd.y = texelFetch(depthMap, q-ivec2(0,1), 0).r
+                         + texelFetch(depthMap, q+ivec2(0,1), 0).r - 2.0*c;
                 residual = max(residual, max(abs(dd.x), abs(dd.y)));
             }
             bool discontinuity = residual > max((far_z-near_z)*0.25, 2e-6);

@@ -22032,19 +22032,33 @@ static bool projvolPyramidGeometry(const glm::vec3& position, const glm::vec3& s
 static bool projvolSphereBounds(const glm::vec3& c, F32 radius, const glm::mat4& proj,
                                 F32 width, F32 height, glm::vec4& bounds)
 {
+    // Expand conservatively to full coverage BEFORE a box corner reaches the
+    // camera plane. Perspective division is then always well conditioned, and
+    // the adaptive budget cannot jump from partial coverage to the fallback.
+    const glm::vec4 full(0.f, 0.f, width, height);
+    const F32 near_w = llmax(fabsf(proj[3][2] / (proj[2][2] - 1.f)), 0.0001f);
+    const F32 min_w = (proj * glm::vec4(c, 1.f)).w - radius *
+        (fabsf(proj[0][3]) + fabsf(proj[1][3]) + fabsf(proj[2][3]));
+    if (min_w <= near_w)
+    {
+        bounds = full;
+        return true;
+    }
     bounds = glm::vec4(width, height, 0.f, 0.f);
     for (S32 cx = -1; cx <= 1; cx += 2)
     for (S32 cy = -1; cy <= 1; cy += 2)
     for (S32 cz = -1; cz <= 1; cz += 2)
     {
         const glm::vec4 clip = proj * glm::vec4(c + glm::vec3(cx,cy,cz)*radius, 1.f);
-        if (clip.w <= 0.0001f) return false;
         const F32 px = (clip.x/clip.w*0.5f+0.5f)*width;
         const F32 py = (clip.y/clip.w*0.5f+0.5f)*height;
         bounds.x = llmin(bounds.x,px); bounds.z = llmax(bounds.z,px);
         bounds.y = llmin(bounds.y,py); bounds.w = llmax(bounds.w,py);
     }
     bounds = glm::clamp(bounds, glm::vec4(0.f), glm::vec4(width,height,width,height));
+    F32 expand = llclamp((2.f*near_w-min_w)/near_w, 0.f, 1.f);
+    expand = expand*expand*(3.f-2.f*expand);
+    bounds = glm::mix(bounds, full, expand);
     return true;
 }
 
@@ -22102,6 +22116,7 @@ static void projvolDrawRimTexture(LLGLSLShader& shader, LLVertexBuffer* triangle
     shader.uniform2f(LLShaderMgr::BLOOM_TEXEL_SIZE, texel.x, texel.y);
     shader.uniform1f(LLShaderMgr::PROJVOL_BLOOM_FEED, feed);
     shader.uniform1f(LLShaderMgr::PROJVOL_BLOOM_ANAMORPHIC, anamorphic);
+    triangle->setBuffer(); // shader bind/unbind invalidates the vertex-buffer binding
     triangle->drawArrays(LLRender::TRIANGLES, 0, 3);
 }
 // End standalone-tested projector decisions.
@@ -22749,12 +22764,30 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
         {
             glm::vec4 pyramid;
             if (projvolPyramidBounds(drawablep, mat, proj, radius,
-                llclamp(e_max_dist, 0.f, 64.f), e_rimStrength > 0.f, tgt_w, tgt_h, pyramid))
+                llclamp(e_max_dist, 0.f, 64.f), !halfres && e_rimStrength > 0.f, tgt_w, tgt_h, pyramid))
             {
                 bounds = glm::vec4(floorf(pyramid.x)-1.f, floorf(pyramid.y)-1.f,
                                    ceilf(pyramid.z)+1.f, ceilf(pyramid.w)+1.f);
                 bounds_valid = true;
             }
+        }
+
+        // The full-res surface rim is uncapped. Queue it independently, even
+        // when the capped half-res shaft lies entirely outside the viewport.
+        if (halfres && e_rimStrength > 0.f)
+        {
+            glm::vec4 rim_bounds = sphere;
+            bool rim_bounds_valid = sphere_valid;
+            glm::vec4 pyramid;
+            if (pyramid_scissor() && projvolPyramidBounds(drawablep, mat, proj, radius,
+                0.f, true, tgt_w, tgt_h, pyramid))
+            {
+                rim_bounds = glm::vec4(floorf(pyramid.x)-1.f, floorf(pyramid.y)-1.f,
+                                       ceilf(pyramid.z)+1.f, ceilf(pyramid.w)+1.f);
+                rim_bounds_valid = true;
+            }
+            rim_draws.push_back({drawablep, i, c, col, radius, e_rimStrength,
+                e_rimPower, e_rimWrap, e_rimSoftness, rim_bounds_valid, rim_bounds});
         }
         F32 min_x = bounds.x, min_y = bounds.y, max_x = bounds.z, max_y = bounds.w;
 
@@ -22800,13 +22833,6 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, radius);
         gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
-
-        if (halfres && e_rimStrength > 0.f)
-        {
-            rim_draws.push_back({drawablep, i, c, col, radius, e_rimStrength,
-                e_rimPower, e_rimWrap, e_rimSoftness, bounds_valid,
-                glm::vec4(min_x,min_y,max_x,max_y)});
-        }
 
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
     }
@@ -23058,6 +23084,11 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
         // fullscreen path composites in place and has no reusable shaft texture.
         mProjVolHalfValid = true;
     }
+
+    // An offscreen capped shaft can still have a visible uncapped rim. The
+    // half-res texture was cleared this frame, so it is a valid black bloom
+    // source even when no shaft was drawn; keep the separate rim feed eligible.
+    if (halfres && mProjVolRimValid) mProjVolHalfValid = true;
 
     gGL.setColorMask(true, true);
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
