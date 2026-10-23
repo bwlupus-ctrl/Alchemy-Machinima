@@ -55,29 +55,14 @@ uniform sampler2D depthMap;
 // deferredUtil.glsl - view-space position reconstruction from the full-res depth,
 // and the half-res shaft sampler (projectionMap).
 vec4 getPosition(vec2 pos_screen);
-vec4 getPositionWithDepth(vec2 pos_screen, float depth);
 
+// Chosen by the march before any light-specific early return. R32F uses
+// replacement blending so overlapping cones share one camera depth, not a sum.
+// lightMap is an otherwise unused reserved sampler in this pass.
+uniform sampler2D lightMap;
 float projvolTapDepth(ivec2 p)
 {
-    // Match the march's checkerboard depth exactly. Alpha is reserved for the
-    // additive beam moment/history, so depth must not be stored there.
-    ivec2 res = textureSize(depthMap, 0);
-    if (((res.x | res.y) & 1) != 0)
-        return length(getPosition((vec2(p)+0.5)/projvol_half_res).xyz);
-    ivec2 base = ivec2(vec2(p) * vec2(res) / projvol_half_res);
-    vec4 z;
-    z.x = texelFetch(depthMap, clamp(base, ivec2(0), res-1), 0).r;
-    z.y = texelFetch(depthMap, clamp(base+ivec2(1,0), ivec2(0), res-1), 0).r;
-    z.z = texelFetch(depthMap, clamp(base+ivec2(0,1), ivec2(0), res-1), 0).r;
-    z.w = texelFetch(depthMap, clamp(base+ivec2(1,1), ivec2(0), res-1), 0).r;
-    float near_z = min(min(z.x,z.y), min(z.z,z.w));
-    float far_z = max(max(z.x,z.y), max(z.z,z.w));
-    vec2 uv = (vec2(p)+0.5)/projvol_half_res;
-    float near_d = length(getPositionWithDepth(uv, near_z).xyz);
-    float far_d = length(getPositionWithDepth(uv, far_z).xyz);
-    if (far_d-near_d > max(near_d*0.02, 0.03))
-        return ((p.x ^ p.y) & 1) == 0 ? near_d : far_d;
-    return length(getPosition(uv).xyz);
+    return texelFetch(lightMap, p, 0).r;
 }
 
 void main()

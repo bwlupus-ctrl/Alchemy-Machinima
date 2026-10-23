@@ -38,7 +38,10 @@
 
 /*[EXTRA_CODE_HERE]*/
 
-out vec4 frag_color;
+layout(location = 0) out vec4 frag_color;
+// Half-res MRT only: replace (never add) the camera's chosen termination.
+// Direct/rim draws enable attachment 0 only, protecting scene sidecars.
+layout(location = 1) out float projvol_termination;
 
 in vec2 vary_fragcoord;
 
@@ -390,10 +393,10 @@ void main()
     if (projvol_half_res.x > 0.0 && ((depth_res.x | depth_res.y) & 1) == 0)
     {
         // Alternate near/far termination from each 2x2 footprint. Reconstruct
-        // on the HALF texel's ray, and repeat this exact selection in upsample.
+        // on the HALF texel's ray, and cache this exact selection for upsample.
         ivec2 p = ivec2(gl_FragCoord.xy);
         ivec2 res = depth_res;
-        ivec2 base = ivec2(vec2(p) * vec2(res) / projvol_half_res);
+        ivec2 base = p * 2;
         vec4 z;
         z.x = texelFetch(depthMap, clamp(base, ivec2(0), res-1), 0).r;
         z.y = texelFetch(depthMap, clamp(base+ivec2(1,0), ivec2(0), res-1), 0).r;
@@ -406,10 +409,31 @@ void main()
         float near_d = length(near_pos.xyz);
         // Keep the centered depth on continuous/sloped surfaces. Min/max is
         // needed only at an actual silhouette, where the footprint spans layers.
+        // Window depth is affine over a projected plane. A first derivative
+        // alone mistakes a grazing wall for a silhouette; compare the footprint
+        // to its immediate neighbours and require a change in that derivative.
         if (length(far_pos.xyz)-near_d > max(near_d*0.02, 0.03))
-            pos = ((p.x ^ p.y) & 1) == 0 ? near_pos : far_pos;
+        {
+            float residual = 0.0;
+            for (int j = 0; j < 2; ++j)
+            for (int i = 0; i < 2; ++i)
+            {
+                ivec2 q = base + ivec2(i,j);
+                float c = texelFetch(depthMap, clamp(q, ivec2(0), res-1), 0).r;
+                vec2 dd;
+                dd.x = texelFetch(depthMap, clamp(q-ivec2(1,0), ivec2(0), res-1), 0).r
+                     + texelFetch(depthMap, clamp(q+ivec2(1,0), ivec2(0), res-1), 0).r - 2.0*c;
+                dd.y = texelFetch(depthMap, clamp(q-ivec2(0,1), ivec2(0), res-1), 0).r
+                     + texelFetch(depthMap, clamp(q+ivec2(0,1), ivec2(0), res-1), 0).r - 2.0*c;
+                residual = max(residual, max(abs(dd.x), abs(dd.y)));
+            }
+            bool discontinuity = residual > max((far_z-near_z)*0.25, 2e-6);
+            if (discontinuity)
+                pos = ((p.x ^ p.y) & 1) == 0 ? near_pos : far_pos;
+        }
     }
     float t_surface = length(pos.xyz);
+    projvol_termination = t_surface;
     if (t_surface <= 0.0)
     {
         frag_color = vec4(0.0);
@@ -453,8 +477,8 @@ void main()
     // so the clipped interval is a strict SUPERSET of the lit interval. The FAR
     // plane (index 5) is deliberately skipped - the sphere of influence extends
     // past the projector's far clip and the per-sample test still lights those
-    // samples, so clipping far would remove lit space. A missed convex frustum
-    // has neither airborne light nor a surface rim anywhere on this ray.
+    // samples, so clipping far would remove lit space. This bounds airborne
+    // integration; surface rims retain their own projector evaluation below.
     if (projvol_frustum_clip != 0)
     {
         float ct0 = t0;
@@ -483,10 +507,16 @@ void main()
             t0 = ct0;
             t1 = ct1;
         }
-        else
+        else if (projvol_rim_strength <= 0.0)
         {
             frag_color = vec4(0.0);
             return;
+        }
+        else
+        {
+            // Surface rim has its own projector test. In particular AirborneTap
+            // may reject an air interval that still has a valid surface rim.
+            t1 = t0;
         }
     }
 
@@ -495,7 +525,7 @@ void main()
     // Clip the march interval against that far plane so the full sample budget
     // stays concentrated in the visible part of the beam. Surface lighting and
     // the post-march rim evaluation remain intentionally uncapped.
-    bool shaft_empty = false;
+    bool shaft_empty = t1 <= t0;
     if (projvol_max_distance > 0.0)
     {
         float axis_origin = -dot(C, proj_n);
@@ -901,7 +931,9 @@ void main()
         // expression as the composite, so it can never trigger before the true value
         // is clamped (breaking early would then be visible). Break AFTER the sample's
         // contribution is added, matching the composite's factors precisely.
-        if (projvol_temporal_beam_depth == 0 && all(greaterThanEqual(accum *
+        // Ordinary integration retains the saturation break, including beam
+        // depth. Equi-angular beam moments require the complete integral.
+        if ((projvol_equiangular == 0 || projvol_temporal_beam_depth == 0) && all(greaterThanEqual(accum *
             (projvol_equiangular != 0 ? 1.0 : dt) * PROJVOL_SCATTER * godray_multiplier * color, vec3(projvol_max))))
         {
             break;
