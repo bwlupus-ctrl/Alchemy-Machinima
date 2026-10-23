@@ -728,6 +728,73 @@ namespace
         return pObj && LLPipeline::isVolumetricShaftEnabled(pObj->getID());
     }
 
+    // [World Shadow pick] Right-click "World Shadow" check item, beside "Volumetric Shaft". Session-only, client-side only, any owner and any
+    // permissions (the raw selection, like the shaft item: no ObjectProperties or mValid needed). It picks LIGHT prims by their own object id,
+    // point lights and projectors alike: the selected prims and the children of each selected object (a light is often a child of a fixture).
+    // Picked lights get the world (cube) shadow slots first (LLPipeline::toggleWorldShadowPick, alworldshadowmath.h updateResidencyPicked).
+    struct WorldShadowPickLight { LLUUID mId; std::string mName; };
+    std::vector<WorldShadowPickLight> selected_world_shadow_lights()
+    {
+        std::vector<WorldShadowPickLight> lights;
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+            return lights;
+        const auto add_light = [&](LLViewerObject* pObj)
+        {
+            LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
+            if (!pVol || pVol->getID().isNull())
+                return;
+            LLVector3 spot_params;
+            if (!pVol->getIsLight() && !LLPrismLens::projectorRenderParams(pVol, spot_params))
+                return;
+            for (const WorldShadowPickLight& known : lights)
+                if (known.mId == pVol->getID())
+                    return;
+            const LLSelectNode* pNameNode = hSel->findNode(pVol);
+            lights.push_back({pVol->getID(), pNameNode ? pNameNode->mName : std::string()});
+        };
+        for (LLObjectSelection::iterator itObj = hSel->begin(), endObj = hSel->end(); itObj != endObj; ++itObj)
+        {
+            const LLSelectNode* pNode = *itObj;
+            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
+            if (!pObj)
+                continue;
+            add_light(pObj);
+            for (const LLPointer<LLViewerObject>& pChildPtr : pObj->getChildren())
+                add_light(pChildPtr.get());
+        }
+        return lights;
+    }
+
+    void handle_object_world_shadow(const LLSD& /*sdParam*/)
+    {
+        const std::vector<WorldShadowPickLight> lights = selected_world_shadow_lights();
+        if (lights.empty())
+            return;
+        // One state for the whole selection: all picked -> release them all; otherwise pick them all.
+        bool all_picked = true;
+        for (const WorldShadowPickLight& light : lights)
+            all_picked = all_picked && LLPipeline::isWorldShadowPicked(light.mId);
+        for (const WorldShadowPickLight& light : lights)
+            LLPipeline::setWorldShadowPick(light.mId, !all_picked, light.mName);
+    }
+
+    bool enable_object_world_shadow()
+    {
+        return !selected_world_shadow_lights().empty();
+    }
+
+    bool check_object_world_shadow()
+    {
+        const std::vector<WorldShadowPickLight> lights = selected_world_shadow_lights();
+        if (lights.empty())
+            return false;
+        for (const WorldShadowPickLight& light : lights)
+            if (!LLPipeline::isWorldShadowPicked(light.mId))
+                return false;
+        return true;
+    }
+
     // [BDMerge G3.3 Batch 3] Right-click "Cast Shadows" toggle. Session-only
     // per-projector opt-OUT of shadow-slot eligibility: an unchecked projector
     // still lights the scene but casts no shadow and frees its slot. Default
@@ -1371,6 +1438,10 @@ void ALViewerMenu::initialize_menus()
     commit.add("Object.VolumetricShaft", boost::bind(&handle_object_volumetric_shaft, _2));
     enable.add("Object.EnableVolumetricShaft", boost::bind(&enable_object_volumetric_shaft));
     enable.add("Object.CheckVolumetricShaft", boost::bind(&check_object_volumetric_shaft));
+    // [World Shadow pick] beside Volumetric Shaft: session-only per-light opt-in for the world (cube) shadow slots
+    commit.add("Object.WorldShadow", boost::bind(&handle_object_world_shadow, _2));
+    enable.add("Object.EnableWorldShadow", boost::bind(&enable_object_world_shadow));
+    enable.add("Object.CheckWorldShadow", boost::bind(&check_object_world_shadow));
 // [BDMerge G3.3 Batch 3] session-only per-projector cast-shadows opt-out toggle
     commit.add("Object.CastShadows", boost::bind(&handle_object_cast_shadows, _2));
     enable.add("Object.EnableCastShadows", boost::bind(&enable_object_cast_shadows));

@@ -324,11 +324,13 @@ private:
         U64 mPrism = 1;
         U64 mRig = 1;
         U64 mLightResponse = 1;
+        U64 mWorldPicks = 0;     // [World Shadow pick] LLPipeline::worldShadowPickRevision(): the picks are scene data
         bool operator==(const SceneChangeStamp& other) const
         {
             return mSettings == other.mSettings && mCast == other.mCast &&
                    mPaths == other.mPaths && mPrism == other.mPrism &&
-                   mRig == other.mRig && mLightResponse == other.mLightResponse;
+                   mRig == other.mRig && mLightResponse == other.mLightResponse &&
+                   mWorldPicks == other.mWorldPicks;
         }
         bool operator!=(const SceneChangeStamp& other) const { return !(*this == other); }
     };
@@ -500,6 +502,7 @@ private:
     LLHandle<LLTextBox> mAreaShadowSLStatus;
     LLHandle<LLTextBox> mAreaShadowCoverage; // "Soft shadows on 2 of 8 lights"
     LLHandle<LLTextBox> mWorldShadowStatus;  // [P1-lite] "on 1 light (6 faces at 512)"
+    LLHandle<LLTextBox> mWorldShadowPicks;   // [World Shadow pick] "Picked: Wall lamp; Spot (away)."
     ALLiveReadoutClock mLauncherClock{2.f};
     LLTimer mBuildTimer;
 

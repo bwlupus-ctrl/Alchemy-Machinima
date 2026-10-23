@@ -367,6 +367,7 @@ class AreaRunner:
         gl.uf[3](gl.loc(pr, b'area_params'), max_dist, thickness, scale * (0.5 if half else 1.0))
         wflags = np.zeros(4, np.float32)
         wcontact = np.zeros(4, np.float32)
+        wfade = np.zeros(4, np.float32)   # area_contact_fade: the owning NATIVE slot's fade (0 = unmapped, the default every existing fixture keeps)
         winfo = np.zeros((4, 4), np.float32)
         wlight = np.zeros((4, 4), np.float32)
         wseed = np.zeros(4, np.uint32)
@@ -374,13 +375,16 @@ class AreaRunner:
             for i, ch in enumerate(world['channels'][:count]):
                 if ch is None:
                     continue
-                wflags[i] = 1.0
+                # 'owned': False models a projector that keeps its native SL map (SL map + contact): not world-owned, contact fade set.
+                wflags[i] = 1.0 if ch.get('owned', True) else 0.0
+                wfade[i] = ch.get('contact_fade', 0.0)
                 wcontact[i] = ch['contact']
                 winfo[i] = (ch['row'], ch['near'], ch['r_map'], 0.0)
                 wlight[i] = (arr[i, 0], arr[i, 1], arr[i, 2], ch['far'])
                 wseed[i] = ch['seed']
         gl.u4fv(gl.loc(pr, b'area_world'), 1, wflags.ctypes.data_as(C.POINTER(gl.F)))
         gl.u4fv(gl.loc(pr, b'area_contact_dist'), 1, wcontact.ctypes.data_as(C.POINTER(gl.F)))
+        gl.u4fv(gl.loc(pr, b'area_contact_fade'), 1, wfade.ctypes.data_as(C.POINTER(gl.F)))
         gl.color_mask(1, 1, 1, 1)
         self._timed('gather_ms', stats, lambda: gl.draw(4, 0, 3))
         # pass 2/3: separable blur (only when radius > 0), then full-resolution bilateral upsample
@@ -399,6 +403,7 @@ class AreaRunner:
             gl.uf[2](gl.loc(fr, b'area_axis'), ax, ay)
             gl.uf[1](gl.loc(fr, b'area_radius'), radius)
             gl.u4fv(gl.loc(fr, b'area_world'), 1, wflags.ctypes.data_as(C.POINTER(gl.F)))
+            gl.u4fv(gl.loc(fr, b'area_contact_fade'), 1, wfade.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4fv(gl.loc(fr, b'area_world_light'), 4, wlight.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4fv(gl.loc(fr, b'area_world_info'), 4, winfo.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4uiv(gl.loc(fr, b'area_world_seed'), 1, wseed.ctypes.data_as(C.POINTER(gl.U)))

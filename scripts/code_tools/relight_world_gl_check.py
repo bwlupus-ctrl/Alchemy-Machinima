@@ -60,7 +60,12 @@ def lifecycle_checks():
         assert condition in cube, 'native attachment scope lost '+condition
     assert 'gAgentCamera.getCameraMode()' not in cube[cube.index('updateAttachmentVisibility(mode)'):cube.index('const glm::mat4 saved_proj')], 'the restore mode must be captured at construction, not read at exit'
     assert 'gSnapshot ||' in cube and 'ALWorldShadow::plannedLights(' in residency
-    assert 'spotShadowMapSampled(slot)) return false;' in residency
+    # Round 7's pin release stays (an UNPICKED projector that samples a native map releases its pin) and a PICKED one is exempt:
+    # the release is one rule, ALWorldShadow::worldEligibleWithNative, exercised by unit test 41.
+    assert 'spotShadowMapSampled(slot)) { native_sampled = true; break; }' in residency, 'native sampling must still be detected'
+    assert 'return ALWorldShadow::worldEligibleWithNative(native_sampled,isWorldShadowPicked(id));' in residency, 'pin release: unpicked releases, picked is exempt'
+    assert 'inline bool worldEligibleWithNative(bool nativeSampled, bool picked) { return picked || !nativeSampled; }' in (REPO / 'indra/newview/alworldshadowmath.h').read_text()
+    assert 'native_mapped && !ALWorldShadow::worldEligibleWithNative(native_mapped, isWorldShadowPicked(mWorldShadowResident.id[k]))' in cube, 'raster loop: a picked projector keeps its cube'
     assert 'mWorldShadowResident.held[k] = false;' in cube and 'mWorldShadowFrame[k] = 0;' in cube
     for signature,end in [('void LLPipeline::releaseGLBuffers()', 'void LLPipeline::releaseLUTBuffers()'),
                           ('void LLPipeline::releaseShadowBuffers()', 'void LLPipeline::releaseScreenBuffers()')]:
@@ -104,7 +109,7 @@ def lifecycle_checks():
     for signature in ('F32 LLDrawable::updateXform(', 'void LLDrawable::shiftPos('):
         start = draw.index(signature); fn = draw[start:draw.index('\n}\n',start)]
         assert 'invalidateWorldShadowBounds();' in fn, 'drawable invalidation lost '+signature
-    return [dict(name=n,passed=True) for n in ('attachment_scope_integration','native_map_pin_release',
+    return [dict(name=n,passed=True) for n in ('attachment_scope_integration','native_map_pin_release','picked_projector_pin_release_exemption',
             'complete_linkset_cache_invalidation','GL_teardown','snapshot_pin_preservation','production_softbox_radius',
             'production_packing_and_extents_wiring','production_atlas_copy_wiring')]
 
@@ -579,7 +584,7 @@ def fixture(capsule=True, emitter=None, translated=False, projector=False):
     return sc, light
 
 
-def evaluate(r, raster, scene, light, yaw=-54.462, pitch=28.635, contact=0., thin=False):
+def evaluate(r, raster, scene, light, yaw=-54.462, pitch=28.635, contact=0., thin=False, channel=None):
     t, p = np.radians([yaw, pitch])
     cam = S.Camera((6*np.cos(p)*np.cos(t), 6*np.cos(p)*np.sin(t), 6*np.sin(p)), (0, 0, .4), 640, 360)
     g = S.cast_primary(scene, cam)
@@ -596,7 +601,7 @@ def evaluate(r, raster, scene, light, yaw=-54.462, pitch=28.635, contact=0., thi
         near = native
     r.gpu_atlas = raster.atlas(scene, light, near)
     world = {'atlas': np.empty((CS.ATLAS_H_PER_LIGHT, CS.ATLAS_W), np.float32), 'channels':
-             [dict(row=0, near=near, far=light.range, r_map=min(light.radius, 2.), contact=contact, seed=light.seed)]}
+             [dict(row=0, near=near, far=light.range, r_map=min(light.radius, 2.), contact=contact, seed=light.seed, **(channel or {}))]}
     plan = dict(samples=8, steps=12, half=True, near_steps=16 if thin else 0)
     v = r.run(cam, depth, norm, [light], plan, world=world)[0]
     mask = (g['surf'] == 0) & (np.linalg.norm(g['pos'][..., :2], axis=2) < 8.)
@@ -770,6 +775,20 @@ def main():
             if name == 'rotated_projector': ok &= np.array_equal(v, reference)
             rows.append(dict(name=name, dark_percent=dark, passed=bool(ok)))
             print('[world-gl]', rows[-1], flush=True)
+        # World Shadow pick: a PICKED projector that owns a native SL shadow map is resolved through the cube. The viewer uploads for it exactly a
+        # world-owned channel (area_world 1, contact_fade 0, contact = the map's blind band / the mapped contact); the same projector UNPICKED keeps
+        # "SL map + contact" (area_world 0, contact_fade = its slot's fade) and so takes nothing from the cube. Same projector, same camera.
+        mapped_contact = .15
+        sc, light = fixture(emitter='none', projector=True)
+        v_native, mask, dark_native = evaluate(r, raster, sc, light, channel=dict(owned=False, contact_fade=1.0), contact=mapped_contact)
+        v_picked, _, dark_picked = evaluate(r, raster, sc, light, channel=dict(owned=True, contact_fade=0.0), contact=mapped_contact)
+        sc_pt, light_pt = fixture(emitter='none')
+        v_point, _, dark_point = evaluate(r, raster, sc_pt, light_pt, contact=mapped_contact)
+        rows.append(dict(name='picked_native_projector_resolves_through_cube', dark_percent=dark_picked, point_cube_dark_percent=dark_point,
+                         passed=bool(1 < dark_picked < 30 and np.array_equal(v_picked, v_point))))
+        rows.append(dict(name='unpicked_native_projector_keeps_native_path', dark_percent=dark_native, cube_dark_percent=dark_picked,
+                         passed=bool(dark_native < .5 and dark_picked - dark_native > 1 and not np.array_equal(v_native, v_picked))))
+        for row in rows[-2:]: print('[world-gl]', row, flush=True)
         for yaw, pitch in [(-54.462, 28.635), (0, 20), (45, 35), (90, 60), (135, 25), (225, 45)]:
             for capsule in (False, True):
                 sc, light = fixture(capsule=capsule)

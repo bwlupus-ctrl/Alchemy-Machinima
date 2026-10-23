@@ -252,11 +252,75 @@ def check_section10():
     print('[world] section 10 PASS: allocateShadowBuffer, generateSunShadow, generatePrismSpotShadows have no diff against %s; no auction/slot-count line added' % BASE, flush=True)
 
 
+def check_picks():
+    """World Shadow pick (10/23): the right-click item beside Volumetric Shaft, the session set, the residency rule (picks first, importance among
+    picks, auto fill for the rest, a picked projector world-owned although it has a native map), the lighting-pass hand-over, and the scene key."""
+    menu = text(NV / 'skins/default/xui/en/menu_object.xml')
+    close = '</menu_item_check>'
+    shaft_end = menu.index(close, menu.index('name="Object Volumetric Shaft"')) + len(close)
+    world = menu.index('name="Object World Shadow"')
+    world_open = menu.rindex('<menu_item_check', 0, world)
+    assert shaft_end < world_open and '<menu_item' not in menu[shaft_end:world_open], 'the World Shadow item must sit right after the Volumetric Shaft item'
+    item = menu[world_open:menu.index(close, world)]
+    assert 'label="World Shadow"' in item, 'menu label'
+    for fn in ('Object.WorldShadow', 'Object.CheckWorldShadow', 'Object.EnableWorldShadow'):
+        assert 'function="' + fn + '"' in item, 'menu item lost ' + fn
+    cpp = text(NV / 'alviewermenu.cpp')
+    for reg in ('commit.add("Object.WorldShadow"', 'enable.add("Object.EnableWorldShadow"', 'enable.add("Object.CheckWorldShadow"'):
+        assert reg in cpp, 'alviewermenu.cpp lost ' + reg
+    block = cpp[cpp.index('struct WorldShadowPickLight'):cpp.index('// [BDMerge G3.3 Batch 3] Right-click "Cast Shadows" toggle')]
+    assert 'LLPipeline::setWorldShadowPick(' in block and 'LLPipeline::isWorldShadowPicked(' in block, 'handler must write the pipeline pick set'
+    assert 'getIsLight()' in block and 'LLPrismLens::projectorRenderParams' in block, 'point lights AND projectors'
+    # client-side only, any owner / permissions: the RAW selection (begin/end), no properties or modify gate
+    assert 'hSel->begin()' in block and 'valid_begin' not in block and 'canModify' not in block and 'mValid' not in block, 'the pick must not need ObjectProperties or modify rights'
+    pipe = text(NV / 'pipeline.cpp')
+    header = text(NV / 'alworldshadowmath.h')
+    hdr_pipe = text(NV / 'pipeline.h')
+    for api in ('toggleWorldShadowPick', 'setWorldShadowPick', 'isWorldShadowPicked', 'clearWorldShadowPicks', 'worldShadowPickList', 'setWorldShadowPicks', 'worldShadowPickRevision', 'worldShadowPickReport'):
+        assert re.search(r'^\s+static [^;\n]*\b' + api + r'\(', hdr_pipe, re.M), 'pipeline.h lost the static ' + api
+    clear_all = pipe[pipe.index('void LLPipeline::clearVolumetricShafts()'):]
+    clear_all = clear_all[:clear_all.index('\n}\n')]
+    assert 'clearWorldShadowPicks();' in clear_all, 'picks must clear on relog with the shaft flags (session-only)'
+    # residency: picks first through updateResidencyPicked; the old function is the no-picks case of it
+    assert re.search(r'inline unsigned updateResidency\(.*?\)\s*\{\s*return updateResidencyPicked\(r, lights, stillEligible, \[\]\(const ID&\) \{ return false; \}, false, static_cast<const Ranked\*>\(nullptr\), 0u, ranked, rankedCount\);', header, re.S), \
+        'updateResidency must forward to updateResidencyPicked with no picks (OFF identity)'
+    assert 'ALWorldShadow::updateResidencyPicked(mWorldShadowResident,planned,' in pipe and 'repick,picked_ranked,world_picked.size,ranked,world_candidates.size' in pipe, 'renderAreaShadows must run the picks-first residency'
+    assert 'if (picked) world_picked.add(candidate, 8);' in pipe and 'ALAreaShadow::Selection<LLUUID> world_picked;' in pipe, 'a pick outside the top 8 must still rank'
+    assert 'mWorldPickRevisionSeen != sWorldShadowPickRevision' in pipe, 'a pick-set change re-decides an over-subscribed set'
+    # the native-map exemptions: the candidate filter, the pin-release lambda, the raster loop, the channel
+    assert 'cube_main && ALWorldShadow::worldEligibleWithNative(native_sampled,picked) && world_shadow_eligible(drawable)' in pipe, 'candidate filter'
+    assert 'return ALWorldShadow::worldEligibleWithNative(native_sampled,isWorldShadowPicked(id));' in pipe, 'round 7 pin release must exempt a picked projector'
+    assert 'native_mapped && !ALWorldShadow::worldEligibleWithNative(native_mapped, isWorldShadowPicked(mWorldShadowResident.id[k]))' in pipe, 'generateWorldShadowCubes must keep the cube of a picked projector'
+    assert 'ALWorldShadow::channelUsesNativeMap(true,true,worldShadowOwned(volume->getID(),owned_slot))' in pipe, 'a picked projector whose cube rendered this frame must not use its native map in the channel'
+    assert 'const bool picked = cube_main && isWorldShadowPicked(volume->getID());' in pipe, 'picks only matter in the main view'
+    # the lighting pass hands the picked, world-owned projector's shadow to the cube; the native allocation / auction lines are not touched
+    assert 'worldChannelOwnsPickedLight(volume->getID())' in pipe and 'world_owned_pick ? -1 : s_idx' in pipe, 'setupSpotLight hand-over'
+    assert 'if (!sPrismLensRender) mWorldPickedChannelCount = 0;' in pipe, 'the owned list is rebuilt by main-view passes only'
+    assert re.search(r'if \(mWorldPickedChannelCount < mWorldPickedChannels\.size\(\) && isWorldShadowPicked\(id\)\)\s*mWorldPickedChannels\[mWorldPickedChannelCount\+\+\] = id;', pipe), 'only a world-owned channel is recorded'
+    # the Director: scene key, load order, dirty stamp, rows
+    ui = text(NV / 'llfloaterdirector.cpp')
+    cap = ui[ui.index('LLSD LLFloaterDirector::captureSceneData()'):ui.index('bool LLFloaterDirector::saveScene(')]
+    assert 'scene["world_shadow_picks"] = picks;' in cap and 'LLPipeline::worldShadowPickList()' in cap, 'Save Scene must store the pick list'
+    load = ui[ui.index('bool LLFloaterDirector::loadScene('):ui.index('LLFloaterDirector::RecoveryServiceState& LLFloaterDirector::recoveryServiceState()')]
+    assert 'scene["world_shadow_picks"]' in load and 'LLPipeline::setWorldShadowPicks(picks);' in load, 'Load Scene must restore the pick list'
+    assert load.index('LLPipeline::setWorldShadowPicks(picks);') > load.index('LLPrismLens::applySceneData(scene, &prism_reason)'), 'picks are replaced only after the scene passed validation'
+    assert 'if (stored.isArray())' in load and 'picks.size() < 4 * ALWorldShadow::kMaxPicks' in load, 'a malformed or oversized list is bounded'
+    # unconditional: an old scene (no key) must CLEAR the previous scene's picks
+    assert re.search(r'\n        LLPipeline::setWorldShadowPicks\(picks\);\n    \}', load), 'setWorldShadowPicks must run whether or not the key exists (outside the isArray branch)'
+    assert 'stamp.mWorldPicks = LLPipeline::worldShadowPickRevision();' in ui and 'mWorldPicks == other.mWorldPicks' in text(NV / 'llfloaterdirector.h'), 'picks are scene data for the dirty stamp'
+    assert 'clear->setCommitCallback([](LLUICtrl*, const LLSD&) { LLPipeline::clearWorldShadowPicks(); });' in ui and 'LLPipeline::worldShadowPickReport()' in ui, 'Director row + button'
+    page = text(NV / 'skins/default/xui/en/panel_dpage_light_rim.xml')
+    for widget in ('area_shadow_world_picks', 'area_shadow_world_clear_picks'):
+        assert 'name="' + widget + '"' in page, 'kit page lost ' + widget
+    print('[world] picks PASS: menu item beside Volumetric Shaft (any owner), session set cleared with the shaft flags, picks-first residency (OFF = updateResidency), picked projector exempt from the native pin release and the channel, lighting-pass hand-over, scene key save/load/clear, Director row + button', flush=True)
+
+
 check_face_tables()
 check_constants()
 check_camera_id()
 check_near_and_state()
 check_rotation_independence()
 check_mask_sync()
+check_picks()
 check_section10()
 print('[world] static pins PASS', flush=True)

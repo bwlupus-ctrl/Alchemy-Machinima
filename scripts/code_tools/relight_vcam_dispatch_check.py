@@ -245,6 +245,9 @@ struct LLPipeline {
     // P1-lite world maps: the fixture runs with them OFF (cube_main is false); these only let the world branches compile.
     LLRenderTarget mWorldShadowAtlas; bool mWorldShadowUniformsLive=false;
     bool worldShadowOwned(const LLUUID&,U32&) const { return false; }
+    // World Shadow pick: nothing is picked here (cube_main is false); these only let the pick branches compile.
+    std::array<LLUUID,2> mWorldPickedChannels{}; unsigned mWorldPickedChannelCount=0;
+    static bool isWorldShadowPicked(const LLUUID&) { return false; }
     static F32 worldShadowLightNear(LLDrawable*,F32) { return 0.05f; } // world branch is OFF; real near is executed by world_gl_check
     double mAreaShadowGPUms=-1;
     VB* mScreenTriangleVB=&vb;

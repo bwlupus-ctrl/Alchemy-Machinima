@@ -428,6 +428,20 @@ public:
     static void  toggleVolumetricShaft(const LLUUID& id, bool user_edit = true);
     static bool  isVolumetricShaftEnabled(const LLUUID& id);
     static void  clearVolumetricShafts();
+    // [World Shadow pick] Session-only per-light opt-in for the world (cube) shadow slots: the right-click "World Shadow" check item,
+    // beside "Volumetric Shaft". Keyed by the LIGHT prim's own object id (a point light or a projector, any owner or permissions; the
+    // pick touches nothing on the object). Picked lights take the slots first (alworldshadowmath.h updateResidencyPicked). The set is NOT
+    // persisted in the viewer settings: a Director scene stores it (scene["world_shadow_picks"]) and it is cleared on relog via
+    // clearVolumetricShafts(). Every change bumps worldShadowPickRevision() (scene dirty stamp, residency re-decision, Director row).
+    // `name` is remembered for the Director row (names exist only for selected objects); an empty name keeps the old one.
+    static void  toggleWorldShadowPick(const LLUUID& id, const std::string& name = std::string());
+    static void  setWorldShadowPick(const LLUUID& id, bool picked, const std::string& name = std::string());
+    static bool  isWorldShadowPicked(const LLUUID& id);
+    static void  clearWorldShadowPicks();
+    static std::vector<LLUUID> worldShadowPickList();                  // normalised: sorted, no nulls, capped (ALWorldShadow::normalizePicks)
+    static void  setWorldShadowPicks(const std::vector<LLUUID>& ids);  // replaces the set (scene load); names of kept picks survive
+    static U64   worldShadowPickRevision();
+    static std::string worldShadowPickReport();                        // "Picked: lamp; light 1234abcd (away)."
     // Temporary viewer-local VCam overrides. Return true when acquire enabled
     // the per-light flag or master; release restores only untouched auto edits.
     static bool  acquireVCamVolumetrics(const LLUUID& id, bool allow_light = true);
@@ -1614,6 +1628,13 @@ public:
     ALWorldShadow::SlotReason mWorldShadowReason[ALWorldShadow::kMaxLights] = {};
     std::string worldShadowReadout() const;   // the Director wording: rendered count, pinned light names, reasons (read-only, 2 s clock)
     bool worldShadowOwned(const LLUUID& id, U32& slot) const; // true when `id` owns a cube rendered THIS frame (a snapshot: the last live frame)
+    // [World Shadow pick] The PICKED lights whose soft-shadow channel is world-owned in the main view's last renderAreaShadows pass. A picked
+    // projector in this list stops sampling its native SL map in the lighting pass (its world channel owns it: no double edges); the native
+    // map is still allocated and fed. Empty (so inert) when no light is picked. mWorldPickRevisionSeen drives the residency re-decision.
+    std::array<LLUUID, ALWorldShadow::kMaxLights> mWorldPickedChannels;
+    U32 mWorldPickedChannelCount = 0;
+    U64 mWorldPickRevisionSeen = 0;
+    bool worldChannelOwnsPickedLight(const LLUUID& id) const;
     // Idempotent. clear_failure: an explicit teardown / budget change forgets an allocation failure; the allocation RETRY path passes false so the
     // "allocation FAIL" warning is logged once per failure streak, not on every retry frame (the latch clears on success, OFF or teardown).
     void releaseWorldShadowTargets(bool clear_failure = true);
@@ -2556,6 +2577,9 @@ public:
     // [BDMerge G3.3 Phase 2] session-only opt-in set of projector object UUIDs
     // (not persisted; see toggleVolumetricShaft/clearVolumetricShafts).
     static std::set<LLUUID> sVolumetricShaftObjects;
+    static std::set<LLUUID> sWorldShadowPicks;                   // [World Shadow pick] session-only, see toggleWorldShadowPick
+    static std::map<LLUUID, std::string> sWorldShadowPickNames;  // display names remembered at pick time (never rendering input)
+    static U64 sWorldShadowPickRevision;
 
     // [BDMerge G3.3 Batch 3] session-only opt-OUT set of projector object UUIDs
     // that should light but cast NO shadow (not persisted; see

@@ -142,7 +142,7 @@ KIT_ACTION_OVERRIDES = {
 
 def model_binding_override(page: str, widget: str) -> dict | None:
     def binding(file_name: str, line: int, class_name: str, function: str, pattern: str | None = None) -> dict:
-        if class_name == "ALPanelGhostStudio":
+        if class_name in ("ALPanelGhostStudio", "LLPipeline"):
             source = (ROOT / file_name).read_text(encoding="utf-8")
             match = re.search(r"(?m)^.*\b" + re.escape(class_name + "::" + function) + r"\s*\(", source)
             if match is None:
@@ -219,6 +219,11 @@ def model_binding_override(page: str, widget: str) -> dict | None:
     if page == "cine_light_rig_tab" and widget == "cine_live_probe_refresh_now":
         return binding("indra/newview/alpanelcinelightrig.cpp", 899,
                        "LLReflectionMapManager", "requestCinematicLiveProbeRefresh")
+    if page == "light_rim_tab" and widget == "area_shadow_world_clear_picks":
+        # World Shadow pick: the Clear button (bound in LLFloaterDirector::bindPage) calls this; the line is found by name.
+        hit = binding("indra/newview/pipeline.cpp", 0, "LLPipeline", "clearWorldShadowPicks")
+        hit.update(wired_class="LLFloaterDirector", wired_function="bindPage", text="explicit scoped binding: the Director commit callback clears the picks")
+        return hit
     if page == "light_rim_tab" and widget == "cine_rimq_enable_tag":
         return {
             "file": "indra/newview/alrigrimcontroller.cpp", "line": 124,

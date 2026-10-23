@@ -1955,6 +1955,11 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
             mAreaShadowCoverage = coverage->getDerivedHandle<LLTextBox>();
         if (LLTextBox* world = root->findChild<LLTextBox>("area_shadow_world_status"))
             mWorldShadowStatus = world->getDerivedHandle<LLTextBox>();
+        // [World Shadow pick] the picked lights by name, and the button that releases them all (the same call as unticking each one).
+        if (LLTextBox* picks = root->findChild<LLTextBox>("area_shadow_world_picks"))
+            mWorldShadowPicks = picks->getDerivedHandle<LLTextBox>();
+        if (LLButton* clear = root->findChild<LLButton>("area_shadow_world_clear_picks"))
+            clear->setCommitCallback([](LLUICtrl*, const LLSD&) { LLPipeline::clearWorldShadowPicks(); });
     }
     // One-off mapping from the v1 leaf panels in floater_director.xml to the
     // controls re-homed by each generated lazy page. Pages containing only
@@ -3173,6 +3178,13 @@ void LLFloaterDirector::refreshLauncherCards()
             setTextIfChanged(world_status, world_on ? gPipeline.worldShadowReadout() : ALWorldShadow::worldShadowText(ALWorldShadow::State::Off));
         }
     }
+    // [World Shadow pick] The picked lights by object name, "(away)" when the object is not in the region. Pure wording from the session
+    // pick set (ALWorldShadow::pickReport); built on this 2 s clock, on screen only, and written only when it changed.
+    if (LLTextBox* picks_status = mWorldShadowPicks.get())
+    {
+        if (isWidgetOnScreen(picks_status))
+            setTextIfChanged(picks_status, LLPipeline::worldShadowPickReport());
+    }
 }
 
 void LLFloaterDirector::draw()
@@ -4123,6 +4135,18 @@ LLSD LLFloaterDirector::captureSceneData()
     }
     if (ALCineLightRigManager::instanceExists())
         scene["light_rig"] = ALCineLightRigManager::instance().sceneData();
+    // [World Shadow pick] The lights picked with the right-click "World Shadow" item, as object UUIDs (sorted, so a scene is byte-stable).
+    // Omitted when nothing is picked: an old scene and a scene without picks read the same.
+    {
+        const std::vector<LLUUID> world_shadow_picks = LLPipeline::worldShadowPickList();
+        if (!world_shadow_picks.empty())
+        {
+            LLSD picks = LLSD::emptyArray();
+            for (const LLUUID& id : world_shadow_picks)
+                picks.append(id);
+            scene["world_shadow_picks"] = picks;
+        }
+    }
 
     // ... plus everything settings-backed
     LLSD settings = LLSD::emptyMap();
@@ -4532,6 +4556,22 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
     // FX phase, plus a denormalized base setup for self-contained scenes.
     ALCineLightRigManager::instance().applySceneData(scene["light_rig"]);
 
+    // [World Shadow pick] Replace the session picks with this scene's list. An old scene (no key) or a malformed value loads with NO picks,
+    // so the previous scene's picks never leak into this one. A pick whose object is not in the region stays in the list as "(away)" and
+    // takes its world slot back when the object appears. The list is normalised (nulls dropped, de-duplicated, capped) and read at most
+    // 4 x the cap entries, whatever the file holds.
+    {
+        std::vector<LLUUID> picks;
+        const LLSD& stored = scene["world_shadow_picks"];
+        if (stored.isArray())
+        {
+            for (LLSD::array_const_iterator it = stored.beginArray(); it != stored.endArray() &&
+                 picks.size() < 4 * ALWorldShadow::kMaxPicks; ++it)
+                picks.push_back(it->asUUID());
+        }
+        LLPipeline::setWorldShadowPicks(picks);
+    }
+
     // named preset first (its apply path writes CinematicCam* including the
     // mode), THEN the scene's explicit mode wins
     if (scene["cinecam_preset"].isString())
@@ -4615,6 +4655,7 @@ LLFloaterDirector::SceneChangeStamp LLFloaterDirector::currentSceneStamp()
         stamp.mRig = ALCineLightRigManager::instance().configurationRevision();
     if (ALAvatarLightResponse::instanceExists())
         stamp.mLightResponse = ALAvatarLightResponse::instance().revision();
+    stamp.mWorldPicks = LLPipeline::worldShadowPickRevision();   // [World Shadow pick] the picks are scene data
     return stamp;
 }
 

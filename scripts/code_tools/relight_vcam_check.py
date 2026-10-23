@@ -41,7 +41,7 @@ def check_vcam():
 #include <map>
 #include <string>
 #include <iostream>
-using U32=unsigned; using LLUUID=int; using GLint=int; using F32=float;
+using U32=unsigned; using U64=unsigned long long; using LLUUID=int; using GLint=int; using F32=float;
 struct Settings { std::map<std::string,bool> values; } gSavedSettings;
 template<class T> struct LLCachedControl {
     const char* key;

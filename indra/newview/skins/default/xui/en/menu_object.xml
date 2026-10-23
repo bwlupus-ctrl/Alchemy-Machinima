@@ -278,6 +278,20 @@
     <menu_item_check.on_enable
         function="Object.EnableVolumetricShaft" />
   </menu_item_check>
+  <!-- [World Shadow pick] Machinima: purely client-side opt-in to the world (cube) shadow slots, for any
+       point light or projector regardless of ownership or mod permission (enable = the selection holds a
+       light, no canModify). Picked lights take the slots first; untick to release. Session-only; a Director
+       scene stores the picks. -->
+  <menu_item_check
+      label="World Shadow"
+      name="Object World Shadow">
+    <menu_item_check.on_click
+        function="Object.WorldShadow" />
+    <menu_item_check.on_check
+        function="Object.CheckWorldShadow" />
+    <menu_item_check.on_enable
+        function="Object.EnableWorldShadow" />
+  </menu_item_check>
   <!-- [BDMerge F4] per-projector Hero Beam. When the froxel volumetrics master is on,
        a hero-flagged projector renders its SHARP per-cone shaft on top of the soft
        froxel atmosphere (other projectors stay soft-in-grid). Inert with froxel off.

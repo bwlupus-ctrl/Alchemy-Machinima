@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <vector>
 namespace ALWorldShadow
 {
 // The viewer supplies its native attachment visibility update (apply(mode)). The scope applies `shadow_mode` on entry and, on EVERY exit (also
@@ -289,16 +290,64 @@ template<class ID> struct Residency
 {
     std::array<ID, kMaxLights> id{};
     std::array<bool, kMaxLights> held{};
+    std::array<bool, kMaxLights> byPick{};   // the slot is held BECAUSE its light is picked (World Shadow pick): unticking releases it. All false without picks.
     unsigned count() const { unsigned n = 0; for (bool h : held) n += h ? 1u : 0u; return n; }
     bool contains(const ID& x) const { for (unsigned i = 0; i < kMaxLights; ++i) if (held[i] && id[i] == x) return true; return false; }
 };
-template<class ID, class Eligible, class Ranked>
-inline unsigned updateResidency(Residency<ID>& r, unsigned lights, Eligible stillEligible, const Ranked* ranked, unsigned rankedCount)
+// World-shadow PICKS (user decision 10/23): a session set of light ids the user ticked ("World Shadow" in the object menu). Picked lights take
+// the world slots FIRST (up to the planned count); when more lights are picked than there are slots the importance ranking decides; the slots
+// that are left fill from the frame's ranking exactly as before. `pickedRanked` is the in-view picked candidates best first (importance, then
+// id), `ranked` the frame's ranking of every eligible candidate (picked or not), best first, `isPicked(id)` the pick set.
+//  * A pick takes the lowest empty slot, else it evicts the NON-picked resident that ranks worst (not in `ranked` = worst, ties: the higher
+//    slot), never a picked one: a held pick never swaps because the camera moved.
+//  * `repick` is true on the frame the pick set changed (tick / untick / scene load). Over-subscribed picks are then decided again by the
+//    ranking: a picked resident that is in `pickedRanked` but outside its first `lights` entries is released and the better picks take over.
+//    A picked resident that is not in `pickedRanked` (out of view) keeps its slot.
+//  * Unticking releases: a slot held because its light was picked (byPick) is freed the moment the pick goes, and refills from the ranking.
+//    A light that was already resident on its own merits and is then picked becomes a pick-held slot (so unticking it releases it too).
+//  * With an empty pick set (pickedCount == 0, isPicked false) this is exactly updateResidency below.
+// Returns the number of slots that changed. No time, cost or frame input.
+template<class ID, class Eligible, class Picked, class Ranked>
+inline unsigned updateResidencyPicked(Residency<ID>& r, unsigned lights, Eligible stillEligible, Picked isPicked, bool repick,
+    const Ranked* pickedRanked, unsigned pickedCount, const Ranked* ranked, unsigned rankedCount)
 {
     unsigned changed = 0;
     lights = std::min(lights, kMaxLights);
     for (unsigned i = 0; i < kMaxLights; ++i)
-        if (r.held[i] && (i >= lights || !stillEligible(r.id[i]))) { r.held[i] = false; r.id[i] = ID{}; ++changed; }
+    {
+        if (r.held[i] && (i >= lights || !stillEligible(r.id[i]) || (r.byPick[i] && !isPicked(r.id[i]))))
+        { r.held[i] = false; r.id[i] = ID{}; ++changed; }
+        if (!r.held[i]) r.byPick[i] = false;
+        else if (isPicked(r.id[i])) r.byPick[i] = true;
+    }
+    if (repick)
+        for (unsigned i = 0; i < lights; ++i)
+        {
+            if (!r.held[i] || !isPicked(r.id[i])) continue;
+            for (unsigned c = lights; c < pickedCount; ++c)
+                if (pickedRanked[c] == r.id[i]) { r.held[i] = false; r.byPick[i] = false; r.id[i] = ID{}; ++changed; break; }
+        }
+    for (unsigned c = 0; c < pickedCount; ++c)
+    {
+        if (r.contains(pickedRanked[c])) continue;
+        int slot = -1;
+        for (unsigned i = 0; i < lights; ++i)
+            if (!r.held[i]) { slot = static_cast<int>(i); break; }
+        if (slot < 0)
+        {
+            unsigned worst = 0;
+            for (unsigned i = 0; i < lights; ++i)
+            {
+                if (!r.held[i] || isPicked(r.id[i])) continue;
+                unsigned position = rankedCount;
+                for (unsigned j = 0; j < rankedCount; ++j)
+                    if (ranked[j] == r.id[i]) { position = j; break; }
+                if (slot < 0 || position >= worst) { slot = static_cast<int>(i); worst = position; }
+            }
+        }
+        if (slot < 0) break;   // every slot holds a pick: nothing a pick may evict
+        r.id[slot] = pickedRanked[c]; r.held[slot] = true; r.byPick[slot] = true; ++changed;
+    }
     for (unsigned i = 0; i < lights; ++i)
     {
         if (r.held[i]) continue;
@@ -306,6 +355,39 @@ inline unsigned updateResidency(Residency<ID>& r, unsigned lights, Eligible stil
             if (!r.contains(ranked[c])) { r.id[i] = ranked[c]; r.held[i] = true; ++changed; break; }
     }
     return changed;
+}
+template<class ID, class Eligible, class Ranked>
+inline unsigned updateResidency(Residency<ID>& r, unsigned lights, Eligible stillEligible, const Ranked* ranked, unsigned rankedCount)
+{
+    return updateResidencyPicked(r, lights, stillEligible, [](const ID&) { return false; }, false, static_cast<const Ranked*>(nullptr), 0u, ranked, rankedCount);
+}
+
+// A projector that samples a native SL shadow map keeps its "SL map + contact" path and is not world-eligible, UNLESS it is picked: the
+// world channel then owns it (user decision 10/23). A point light never samples a native map. The native map itself is still allocated and
+// fed by the auction either way (section 10); a picked projector whose cube was rendered this frame (cubeOwned) only stops using it for its soft-shadow channel and its
+// lighting-pass shadow term while its cube is rendered this frame.
+inline bool worldEligibleWithNative(bool nativeSampled, bool picked) { return picked || !nativeSampled; }
+inline bool channelUsesNativeMap(bool nativeSampled, bool picked, bool cubeOwned) { return nativeSampled && !(picked && cubeOwned); }
+
+// The pick list as stored in a scene: sorted, de-duplicated, null ids dropped, at most kMaxPicks. Pure so a save -> load round trip
+// (encode, decode, normalise again) is a fixed point and a malformed list cannot grow the session set without bound.
+constexpr unsigned kMaxPicks = 32;
+template<class ID> inline std::vector<ID> normalizePicks(std::vector<ID> ids)
+{
+    ids.erase(std::remove(ids.begin(), ids.end(), ID{}), ids.end());
+    std::sort(ids.begin(), ids.end());
+    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+    if (ids.size() > kMaxPicks) ids.resize(kMaxPicks);
+    return ids;
+}
+// Director wording for the picks row. `labels[i]` is the light's name (or "light <id8>"), `away[i]` true when the object is not in the region.
+inline std::string pickReport(const std::string* labels, const bool* away, unsigned count)
+{
+    if (count == 0) return "none picked";
+    std::string out = "Picked: ";
+    for (unsigned i = 0; i < count; ++i)
+        out += (i ? "; " : "") + labels[i] + (away[i] ? " (away)" : "");
+    return out + ".";
 }
 
 // ---------------------------------------------------------------------------------------------------- readout

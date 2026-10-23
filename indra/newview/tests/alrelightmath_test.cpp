@@ -3215,5 +3215,177 @@ template<> template<> void relight_object::test<40>()
         for (unsigned i=1; i<4; ++i) ensure_equals("the rest keeps its order",with_world.lights[i].id,expected_off[i-1]);
     } while (std::next_permutation(perm.begin(),perm.end()));
 }
+template<> template<> void relight_object::test<41>()
+{
+    using namespace ALWorldShadow;
+    // World-shadow PICKS: residency rule (updateResidencyPicked), the native-map rule, the scene list and the wording.
+    const auto always = [](int){ return true; };
+    const auto none_picked = [](int){ return false; };
+    const auto held_ids = [](const Residency<int>& r) { return std::array<int,2>{{r.held[0]?r.id[0]:0, r.held[1]?r.id[1]:0}}; };
+    // Picks first: ranking says 1,2,3,4 but 3 and 4 are picked (pickedRanked is the picks best first).
+    {
+        Residency<int> r;
+        const int ranked[4] = {1,2,3,4};
+        const int picked[2] = {3,4};
+        const auto is_picked = [](int id){ return id==3 || id==4; };
+        updateResidencyPicked(r,2,always,is_picked,true,picked,2,ranked,4);
+        ensure("picked lights take the slots before the ranking does",r.held[0] && r.held[1] && r.id[0]==3 && r.id[1]==4);
+    }
+    // Over-subscription: three picks, two slots. The ranking (pickedRanked order) decides: the best two win.
+    {
+        Residency<int> r;
+        const int ranked[4] = {6,5,7,1};
+        const int picked[3] = {6,5,7};
+        const auto is_picked = [](int id){ return id==5 || id==6 || id==7; };
+        updateResidencyPicked(r,2,always,is_picked,true,picked,3,ranked,4);
+        ensure("the two best picks win",held_ids(r)[0]==6 && held_ids(r)[1]==5);
+        // The camera moves and 7 now outranks 5: a held pick never swaps on its own (no repick)...
+        const int ranked2[4] = {7,6,5,1};
+        const int picked2[3] = {7,6,5};
+        ensure_equals("a held pick does not swap when the ranking drifts",updateResidencyPicked(r,2,always,is_picked,false,picked2,3,ranked2,4),0u);
+        ensure("still 6 and 5",held_ids(r)[0]==6 && held_ids(r)[1]==5);
+        // ...but when the pick set changes the over-subscription is decided again by the ranking.
+        updateResidencyPicked(r,2,always,is_picked,true,picked2,3,ranked2,4);
+        ensure("a pick-set change re-decides by importance",r.held[0] && r.held[1] && r.contains(7) && r.contains(6) && !r.contains(5));
+        // The same ranking again changes nothing.
+        ensure_equals("repick with the same ranking is a fixed point",updateResidencyPicked(r,2,always,is_picked,true,picked2,3,ranked2,4),0u);
+    }
+    // Under-subscription: one pick, the other slot fills from the ranking exactly as today.
+    {
+        Residency<int> r;
+        const int ranked[3] = {1,2,9};
+        const int picked[1] = {9};
+        const auto is_picked = [](int id){ return id==9; };
+        updateResidencyPicked(r,2,always,is_picked,true,picked,1,ranked,3);
+        ensure("the pick holds slot 0",r.held[0] && r.id[0]==9);
+        ensure("the free slot takes the best ranked light that is not resident",r.held[1] && r.id[1]==1);
+        // N = 1: the pick wins the only slot.
+        Residency<int> one;
+        updateResidencyPicked(one,1,always,is_picked,true,picked,1,ranked,3);
+        ensure("N = 1: the pick, not the best ranked light",one.held[0] && one.id[0]==9 && !one.held[1]);
+    }
+    // A new pick evicts the worst-ranked NON-picked resident; a pick never evicts a picked resident.
+    {
+        Residency<int> r;
+        const int ranked[4] = {1,2,3,9};
+        updateResidency(r,2,always,ranked,4);
+        ensure("auto fill: 1 and 2",held_ids(r)[0]==1 && held_ids(r)[1]==2);
+        const int picked[1] = {9};
+        const auto is_picked = [](int id){ return id==9; };
+        updateResidencyPicked(r,2,always,is_picked,true,picked,1,ranked,4);
+        ensure("the pick evicted the worse of the two auto lights (2), kept the better (1)",held_ids(r)[0]==1 && held_ids(r)[1]==9);
+        const int picked2[2] = {9,3};
+        const auto is_picked2 = [](int id){ return id==9 || id==3; };
+        updateResidencyPicked(r,2,always,is_picked2,true,picked2,2,ranked,4);
+        ensure("a second pick evicts the remaining auto light",r.contains(9) && r.contains(3) && !r.contains(1));
+        const int ranked3[4] = {5,9,3,1};
+        const int picked3[3] = {5,9,3};
+        const auto is_picked3 = [](int id){ return id==9 || id==3 || id==5; };
+        updateResidencyPicked(r,2,always,is_picked3,false,picked3,3,ranked3,4);
+        ensure("picks never evict picks (no repick)",r.contains(9) && r.contains(3) && !r.contains(5));
+    }
+    // A picked projector that owns a native map is still world-owned; an unpicked one keeps its native path (round 7 pin release).
+    {
+        const auto native = [](int id){ return id==9; };
+        ensure("unpicked + native: not eligible (releases the pin)",!worldEligibleWithNative(true,false));
+        ensure("picked + native: still eligible",worldEligibleWithNative(true,true));
+        ensure("no native map: always eligible",worldEligibleWithNative(false,false) && worldEligibleWithNative(false,true));
+        Residency<int> r;
+        const int ranked[2] = {9,1};
+        const int picked[1] = {9};
+        const auto is_picked = [](int id){ return id==9; };
+        const auto eligible = [&](int id){ return worldEligibleWithNative(native(id),is_picked(id)); };
+        updateResidencyPicked(r,2,eligible,is_picked,true,picked,1,ranked,2);
+        ensure("a picked projector with a native map holds a slot",r.contains(9));
+        updateResidencyPicked(r,2,eligible,is_picked,false,picked,1,ranked,2);
+        ensure("and keeps it frame after frame",r.contains(9));
+        // The same projector unpicked is released and not chosen again.
+        Residency<int> u = r;
+        const int ranked_u[1] = {1};
+        updateResidency(u,2,[&](int id){ return worldEligibleWithNative(native(id),false); },ranked_u,1);
+        ensure("unpicked: the native-mapped projector is released",!u.contains(9) && u.contains(1));
+        ensure("channel: unpicked native map keeps the SL path",channelUsesNativeMap(true,false,true));
+        ensure("channel: picked but no cube this frame keeps the SL path",channelUsesNativeMap(true,true,false));
+        ensure("channel: picked + cube rendered is owned by the cube",!channelUsesNativeMap(true,true,true));
+        ensure("channel: no native map stays unmapped",!channelUsesNativeMap(false,true,true) && !channelUsesNativeMap(false,false,false));
+    }
+    // Away picks: the light leaves the region (not eligible), the slot is released; the pick (a set outside this rule) remains, and the light takes a slot back
+    // the frame it is a candidate again, ahead of the ranking.
+    {
+        Residency<int> r;
+        const int ranked[3] = {1,2,9};
+        const int picked[1] = {9};
+        const auto is_picked = [](int id){ return id==9; };
+        updateResidencyPicked(r,2,always,is_picked,true,picked,1,ranked,3);
+        ensure("pick resident",r.contains(9));
+        const int ranked_away[2] = {1,2};
+        updateResidencyPicked(r,2,[](int id){ return id!=9; },is_picked,false,static_cast<const int*>(nullptr),0,ranked_away,2);
+        ensure("away: the slot is released and refilled from the ranking",!r.contains(9) && r.contains(1) && r.contains(2));
+        updateResidencyPicked(r,2,always,is_picked,false,picked,1,ranked,3);
+        ensure("back in the region: the pick takes a slot again",r.contains(9) && r.count()==2);
+    }
+    // Unticking releases: a slot held because of a pick frees when the pick goes and refills from the ranking.
+    {
+        Residency<int> r;
+        const int ranked[3] = {1,2,9};
+        const int picked[1] = {9};
+        const auto is_picked = [](int id){ return id==9; };
+        updateResidencyPicked(r,2,always,is_picked,true,picked,1,ranked,3);
+        ensure("picked 9 and auto 1",r.contains(9) && r.contains(1) && r.byPick[0] && !r.byPick[1]);
+        updateResidencyPicked(r,2,always,none_picked,true,static_cast<const int*>(nullptr),0,ranked,3);
+        ensure("untick: 9 is released and the slot refills from the ranking",!r.contains(9) && r.contains(1) && r.contains(2) && !r.byPick[0] && !r.byPick[1]);
+        // A light that was resident on its own merits and is then picked becomes pick-held; unticking releases it.
+        Residency<int> a;
+        const int auto_ranked[3] = {1,2,3};
+        updateResidency(a,2,always,auto_ranked,3);
+        const int pick_two[1] = {2};
+        const auto picked_two = [](int id){ return id==2; };
+        updateResidencyPicked(a,2,always,picked_two,true,pick_two,1,auto_ranked,3);
+        ensure("already resident, now picked: marked pick-held, no slot change",a.contains(1) && a.contains(2) && a.byPick[1] && !a.byPick[0]);
+        const int later_ranked[3] = {1,3,2};
+        updateResidencyPicked(a,2,always,none_picked,true,static_cast<const int*>(nullptr),0,later_ranked,3);
+        ensure("unpicked: released and replaced by the best other light",a.contains(1) && a.contains(3) && !a.contains(2));
+        // Never picked: the pick flags stay false whatever happens (the OFF identity of the bookkeeping).
+        Residency<int> n;
+        updateResidency(n,2,always,auto_ranked,3);
+        ensure("no picks ever: no pick-held slot",!n.byPick[0] && !n.byPick[1]);
+    }
+    // No picks: identical to updateResidency over a sequence of rankings (the OFF identity of the rule).
+    {
+        Residency<int> a, b;
+        int order[4] = {1,2,3,4};
+        unsigned step = 0;
+        do
+        {
+            const unsigned lights = 1 + (step++ & 1);
+            const auto eligible = [&](int id){ return id != (3 - (int)(step & 3)); };
+            updateResidency(a,lights,eligible,order,4);
+            updateResidencyPicked(b,lights,eligible,none_picked,(step&1)!=0,static_cast<const int*>(nullptr),0,order,4);
+            ensure("no picks: the same residency as before picks existed",a.held==b.held && a.id==b.id);
+        } while (std::next_permutation(order,order+4));
+    }
+    // Scene list: normalised (sorted, de-duplicated, nulls dropped, capped) and a fixed point of save -> load.
+    {
+        const std::vector<int> raw{9,5,0,5,3,9};
+        const std::vector<int> norm = normalizePicks(raw);
+        ensure("normalised pick list",norm==std::vector<int>({3,5,9}));
+        std::vector<std::string> stored;                 // what the scene file holds
+        for (int id : norm) stored.push_back(std::to_string(id));
+        std::vector<int> loaded;
+        for (const std::string& s : stored) loaded.push_back(std::atoi(s.c_str()));
+        ensure("save -> load round trip is a fixed point",normalizePicks(loaded)==norm);
+        ensure("an old scene (no key) loads with no picks",normalizePicks(std::vector<int>()).empty());
+        std::vector<int> many;
+        for (int i = 1; i <= 100; ++i) many.push_back(i);
+        ensure_equals("the list is capped",normalizePicks(many).size(),static_cast<size_t>(kMaxPicks));
+    }
+    // Wording.
+    {
+        const std::string labels[3] = {"Wall lamp","light 1234abcd","Spot"};
+        const bool away[3] = {false,true,false};
+        ensure_equals("report: names and (away)",pickReport(labels,away,3),std::string("Picked: Wall lamp; light 1234abcd (away); Spot."));
+        ensure_equals("report: empty",pickReport(labels,away,0),std::string("none picked"));
+    }
+}
 
 }
