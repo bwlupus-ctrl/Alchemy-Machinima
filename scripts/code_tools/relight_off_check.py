@@ -78,7 +78,8 @@ with tempfile.TemporaryDirectory(dir=root/'.tmp',prefix='relight_off_') as tempo
 area_settings=('RenderAreaShadowThinObjects','RenderAreaShadows','RenderAreaShadowsVCam','RenderAreaShadowLights','RenderAreaShadowSamples',
     'RenderAreaShadowSteps','RenderAreaShadowMaxDist','RenderAreaShadowThickness',
     'RenderAreaShadowHalfRes','RenderAreaShadowDenoise','RenderAreaShadowQuality',
-    'RenderAreaShadowLightBias','RenderAreaShadowDebugView','RenderAreaShadowMappedContact')
+    'RenderAreaShadowLightBias','RenderAreaShadowDebugView','RenderAreaShadowMappedContact',
+    'RenderAreaShadowCubeMaps','RenderAreaShadowCubeLights')  # P1-lite world cube maps: runtime uniforms only, no reload
 for setting in area_settings:
     assert setting not in manager, setting+' shader-manager dependency'
     listener=re.search(r'setting_setup_signal_listener\([^;]*"'+setting+r'"[^;]*;',control,re.S)

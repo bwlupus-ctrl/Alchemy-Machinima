@@ -106,7 +106,7 @@ struct StatusHandle {
 LLTextBox* availableStatus=nullptr;
 int statusLookups=0;
 template<class T> LLTextBox* findChild(const char*) { ++statusLookups;return availableStatus; }
-void setTextIfChanged(LLTextBox* s,const char* t) { s->text=t; }
+void setTextIfChanged(LLTextBox* s,const std::string& t) { s->text=t; }
 struct ALKitRow { static void setControlVisible(LLTextBox* s,bool v) { s->visible=v; } };
 void statusRefresh() {
 '''+status+'\n}\n'
@@ -115,7 +115,8 @@ int main() {
     auto& settings=gSavedSettings.values;
     settings={{"RenderLocalLightDefaultRadius",.37}, {"RenderLocalLightSizeFromPrim",0},
         {"RenderLocalLightNearFloor",.1}, {"RenderLocalLightPhysicalMaxBoost",4},
-        {"RenderLocalLightPhysicalFalloff",0}, {"RenderAreaShadows",0}, {"RenderShadowDetail",0}};
+        {"RenderLocalLightPhysicalFalloff",0}, {"RenderAreaShadows",0}, {"RenderShadowDetail",0},
+        {"RenderAreaShadowCubeMaps",0}};
     // All use the emitting object's scale. The child root/rotation/attachment
     // transform deliberately has no part in the radius API.
     LLVOVolume lights[]={{1,{{.02f,.04f,.06f}}}, {2,{{8,4,6}}},
@@ -176,6 +177,10 @@ int main() {
         assert(status.visible==(detail<2));
         const std::string prefix=detail==0 ? "SL shadows" : "SL projector shadows";
         assert(status.text==prefix+" are off in Preferences; Soft shadows is "+(soft ? "on" : "off"));
+        // P1-lite: the world maps do not depend on the native SL shadows, and the row says so while they are on.
+        settings["RenderAreaShadowCubeMaps"]=1; statusRefresh();
+        assert(status.text==prefix+" are off in Preferences; Soft shadows is "+(soft ? "on" : "off")+"; World shadows still work");
+        settings["RenderAreaShadowCubeMaps"]=0;
     }
 }
 '''

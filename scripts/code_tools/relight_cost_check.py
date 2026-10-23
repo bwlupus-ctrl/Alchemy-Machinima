@@ -292,5 +292,9 @@ def check_cost(g):
 
 if __name__ == '__main__':
     import sys
+    if '--world' in sys.argv:  # P1-lite: the world resolve at N = 1/2, 1080p and 4K (relight_world_cost.py)
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import relight_world_cost
+        raise SystemExit(relight_world_cost.main())
     raise SystemExit(subprocess.call([sys.executable, str(Path(__file__).with_name('relight_shader_check.py')),
                                       '--area-only', '--cost-only', *sys.argv[1:]]))

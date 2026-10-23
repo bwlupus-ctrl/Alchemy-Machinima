@@ -162,6 +162,7 @@ class CubeSource(VisibilitySource):
                ('cube2', 'Default', 2, True, False),
                ('cube_worldonly', 'Default', 1, False, False),
                ('cube2_worldonly', 'Default', 2, False, False),
+               ('cube_allkinds', 'Default', 2, True, False),   # diagnostic only: projectors get a cube too (production keeps them on the screen path until P4)
                ('cube_fixedrot', 'Default', 1, True, True)]
 
     def prepare(self, ctx):
@@ -197,7 +198,8 @@ class CubeSource(VisibilitySource):
     # ---- residency stand-in
     def resident(self, frame, n):
         eye = frame.cam.eye
-        order = sorted((i for i, l in enumerate(frame.lights) if l.kind == 'point'),
+        allkinds = os.environ.get('CUBE_ALLKINDS') == '1'
+        order = sorted((i for i, l in enumerate(frame.lights) if allkinds or l.kind == 'point'),
                        key=lambda i: (-importance(frame.lights[i], eye), frame.lights[i].name))
         return order[:n]
 
@@ -255,3 +257,33 @@ class CubeSource(VisibilitySource):
 
 
 Source = CubeSource
+
+
+def determinism_check():
+    """The same pose twice (fresh atlas each time) gives byte-identical output, for every cube config; also the harness hook for CI."""
+    import types
+    import relight_3d_tasks as T
+    sys.modules['__main__'].VisibilitySource = object if not hasattr(sys.modules['__main__'], 'VisibilitySource') else sys.modules['__main__'].VisibilitySource
+    src = CubeSource()
+    src.prepare({'args': types.SimpleNamespace(shader_ref='WORKTREE'), 'out': str(Path(__file__).resolve().parents[2] / '.tmp' / 'cube_r1' / 'detout')})
+    n = 0
+    for scene, pose_name in (('B', 'B_camorbit_low_003'), ('A', 'A_orbit_eye_far_000'), ('C', 'C_orbit_005')):
+        sc = T.get_scene(scene)
+        pose = [p for p in sc.poses if p.id == pose_name][0]
+        cam = S.Camera(pose.eye, pose.target, 1920, 1080, pose.vfov)
+        g = S.cast_primary(sc, cam)
+        _, d32, n16 = S.encode_gbuffer(cam, g)
+        frame = types.SimpleNamespace(scene=sc, pose=pose, cam=cam, lights=sc.light_sets[pose.cfg], depth32=d32, norm16=n16)
+        for cfg in src.configs({}):
+            a = src.visibility(frame, cfg)
+            src.atlas_cache.clear()
+            b = src.visibility(frame, cfg)
+            assert a.tobytes() == b.tobytes(), ('NOT deterministic', pose_name, cfg[0])
+            n += 1
+    print('[cube] determinism PASS: %d (pose, config) pairs byte-identical on repeat (fresh atlas each run)' % n, flush=True)
+
+
+if __name__ == '__main__':
+    if '--determinism' in sys.argv:
+        _m = sys.modules['__main__']
+        determinism_check()

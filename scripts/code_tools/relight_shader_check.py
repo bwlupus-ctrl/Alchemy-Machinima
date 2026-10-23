@@ -378,3 +378,5 @@ exec(compile(Path(__file__).with_name('relight_rig_check.py').read_text(),
 if not shader_ref:
     exec(compile(Path(__file__).with_name('relight_area_check.py').read_text(),
                  'relight_area_check.py', 'exec'))
+    exec(compile(Path(__file__).with_name('relight_world_check.py').read_text(),
+                 'relight_world_check.py', 'exec'))

@@ -2833,3 +2833,96 @@ See the table in the reply to the lead; the gates run once after the last edit w
 | `xui_layout_check.py --changed HEAD` | 0 findings (40 files) | `xui_layout.log` |
 | `prebuild_guard.ps1 -ChecksOnly` | **PASS**, all gates | `prebuild.log` |
 | `git diff --check` | **PASS** | `diff_check.log` |
+
+## World shadows P1-lite (10/23): cube shadow maps for the top 1-2 point lights
+
+Branch `wip/cube-p1lite` (worktree `I:\alchemy-machinima-cube`), base snapshot `b0bb2d24f18` (P0 round 5 in progress). Plan of record:
+`RELIGHT_WORLD_SHADOWS_PLAN.md` rev 2, section 2 and "Phase P1-lite". Nothing pushed, built or stashed. All new settings default OFF and the OFF output is
+byte-identical to the base (section 6). Runtime uniforms only: no define, no permutation, no reload, no listener.
+
+### 1. What the user gets
+
+Light > Rim > Soft shadows card, after "Thin objects": **World shadows** (switch), **World lights** (1-2, searchable as "world-shadow lights"), and a readout
+("off", "choosing a light", "no point light in view", "not enough video memory", "over the work budget at this size", "on 1 light (6 faces at 512)").
+Help: "The most important point light gets a 3D shadow map: blockers anywhere around it cast, even off-screen, and the shadow stays put while you cam. Six
+shadow passes per light. Switch off and on to choose the light again." The SL status row appends "; World shadows still work" while the switch is on
+(the world pass does not depend on `RenderShadowDetail`). Both settings join the Director scene allowlist and the take record (which also logs the
+resident UUIDs and a per-channel `world` flag). Settings: `RenderAreaShadowCubeMaps` (bool, OFF), `RenderAreaShadowCubeLights` (S32 1-2, default 1).
+
+What changes in the picture, for the RESIDENT light only: its shadows come from blockers that are off-screen, behind the camera or hidden; its soft edge
+stays fixed on the floor while the camera orbits; railings cast whole shadows; edges are sharp at contact and soften with distance (the source radius is
+clamped at 0.25 m on the map side). Every other light keeps today's screen-space shadows. Projectors, attachment lights, actor-only lights, mirror copies,
+VCam feeds and snapshots are out of scope (follow-ups).
+
+### 2. Architecture (what was built)
+
+| Piece | Where | Notes |
+|---|---|---|
+| Pure maths | `alworldshadowmath.h` | face table (probe cube order, `right = axis x up`, rows of `glm::lookAt` = `(right, up, -axis)`), widened FOV `2 atan(544/512)` = 93.47 deg, tile grid (3 x 2 tiles of 544 per light, 1632 x 1088 per light), receiver -> tile mapping, depth linearisation, bias constants, blind band `blindBandMax`, `contactDistance`, resolve ledger (pixels x lights x 48 gathers, ceiling 1.0 G), pinned residency, readout wording. |
+| Residency (U8 Pinned) | `LLPipeline::renderAreaShadows` | Two session slots (never saved). An empty slot takes the best eligible point light of that frame's ranking not already resident; a slot clears only when its light stops being an eligible light in `mLights`, the planned count drops below its index, or the setting goes off. `ALAreaShadow::Candidate::world` orders resident lights first (`before()`); all flags false = the old order (720-permutation test). Main view only. |
+| Cube raster | `LLPipeline::generateWorldShadowCubes`, called after `generateSunShadow` in `llviewerdisplay.cpp` | Six face passes per resident light in view, every frame, with `renderShadow` and its native defaults (so avatars, rigged meshes, alpha mask/blend, GLTF and grass cast as for a native projector), `RenderSpotLight = drawable` (the emitting prim never shadows its light), a 544^2 D32F scratch target, then `glCopyImageSubData` into the atlas tile (keeps `DEFERRED_SHADOW_TARGET_WIDTH` and the full-target clear correct). Near = `max(0.05, RenderAreaShadowLightBias)` (a CUBE of half-size near around the light is left out, not a sphere), far = 1.5 x the light radius. Camera IDs `CAMERA_WORLD_SHADOW0/1` are reused by the six sequential passes of one light: verified safe, the shadow culler's `earlyFail` never reads the per-camera visibility stamps and every pass rebuilds its `LLCullResult`; the Prism aux pass reuses `CAMERA_SPOT_SHADOW0+i` the same way. |
+| State hygiene | same | Saves/restores modelview, projection, GL matrix stacks, viewport, render-target resolution, colour mask, scissor, camera ID, `RenderSpotLight`. Under `gDebugGL` a before/after snapshot logs `[RelightQ] state-restore FAIL <item>`. Tracy zones `WorldShadow::render/light/face` + a GPU zone; CPU ms in `mWorldShadowCpuMs`. |
+| Atlas | `mWorldShadowAtlas`, `mWorldShadowScratch` | 6.77 / 13.55 MiB + 1.13 MiB scratch, allocated lazily for the planned light count, compare mode NONE, nearest, clamp (set in `generateWorldShadowCubes`, NOT in `allocateShadowBuffer`). Released lazily on the OFF transition (the only GL call on the OFF path); allocation failure = no cube this frame, status "not enough video memory", retried next frame, the channel falls back to the full screen trace. |
+| Validity | `worldShadowOwned()` | A channel is world-owned only when its slot's stamp equals `gFrameCount` and the UUID matches (a validity stamp only, like `mSpotShadowFrame`). The cube renders the frame AFTER the latch, so there is one frame of screen trace at the latch. |
+| Gather | `areaShadowF.glsl` | `uniform vec4 area_world`: the mix weight becomes `max(contact_fade * native_strength, area_world)`, so a world channel outputs the CONTACT term. For a world channel the march thickness tightens to `max(4 footprints, 5 cm)` (the user's 0.35 m accepted silhouettes in front as contact blockers: camera-dependent false-dark spots). Host: contact distance `clamp(max(mapped contact, blind band), 0.02, 0.5)`, dropout 0. |
+| Resolve | `areaShadowFilterF.glsl`, upsample branch only | Full resolution, never blurred: `out = min(upsampled contact, worldVis)`. Face = major axis; normal offset `min(1 texel, 5 cm)` along the geometric normal; compare against the **receiver-plane depth of each tap** (exact plane through the offset receiver, capped at 8 per texel of tap distance) plus `b = 3 mm + texel_w * min(tan, 8)`; 16-tap blocker search (Vogel disk with the centre, radius `r_map (z_r - z_s)/(2 z_s z_r) * 512` texels, 1-12), penumbra radius `r_map (z_r - z_b)/z_b * 512/(2 z_r)` (1-12 texels, 12 + 2 <= the 16 texel gutter), 32 bilinear compares by `textureGather` addressed at exact texel corners. Rotation: R2 rank of the receiver's face texel + the UUID hash (camera-invariant, no time input). Guarded by `#if __VERSION__ >= 400`. A pixel at window depth 0 (clamped to the near plane) is skipped. |
+| Uniforms | `pipeline.cpp` | `area_world` is uploaded on every pass that has a world channel and once with zeros on the pass after the last one (a feed pass, a toggle), so no stale channel survives and a steady OFF frame makes no extra GL call. `AREA_WORLD_ATLAS` is a reserved sampler (appended after `RELIGHT_ENABLED`). `area_world_rot` is three row vectors (no new matrix API). |
+
+### 3. Deliberate differences from the brief (with the harness evidence)
+
+1. **Per-tap receiver-plane depth** instead of one constant slope bias. With the brief's constant bias the floor of scene A shadowed itself across the filter
+   footprint (floor texels toward the light counted as blockers, shrinking the penumbra): scene A mean MAE 0.184, flicker 0.096. With the plane depth: 0.053 then 0.039 (section 5).
+2. **Normal offset 1.0 texel**, not 1.5 (sweep on A+B: 1.5 -> A 0.053 / B 0.044; 1.0 -> 0.039 / 0.030; 0.5 -> 0.028 / 0.017 but camera flicker rises on B; 0 -> 0.039 / 0.013 with A flicker 0.096). One constant set for every scene.
+3. **Tightened contact thickness** for world channels (above). Camera-only flicker of scene B fell from 0.212 to 0.057.
+4. **`B_max` uses a tan cap of 2** (receivers up to ~63 deg from the light), 0.12 m at 10 m, so the contact distance stays 0.15 m (the user's mapped-contact default) instead of saturating at the 0.5 m clamp.
+5. **Rotation (b) kept.** (c) fixed disk: A worst-pose edge p95 60 px (banding hole) against 12.4 px, MAE equal (0.038 vs 0.039), B flicker equal (0.056 vs 0.057). Decision recorded in `.tmp/cube_r1/full1.log`.
+6. Nothing was cut: N = 1-2, the blocker search and the variable-radius PCF are all in.
+
+### 4. 3D harness (`relight_3d_reference.py --shader-ref WORKTREE --source scripts/code_tools/relight_3d_cube_source.py:CubeSource`)
+
+`CubeSource` stands in for the RASTER only: a CPU ray cast of six widened 544^2 faces per resident light (the shared face table, front faces only, near cube clipped,
+the emitting prim excluded, cached per light set) uploaded as a D32F atlas. The WORKTREE gather + filter shaders are the production ones, driven with exactly the uniforms
+`renderAreaShadows` uploads. Configs: `cube` (Default plan, N = 1), `cube+thin`, `cube2` (N = 2), diagnostics `cube_worldonly` (no contact term), `cube_fixedrot`,
+`cube2_worldonly`, `cube_allkinds` (`CUBE_ALLKINDS=1`: projectors get a cube too; proves the R failures below are the projector's screen path). Residency in the harness is
+the highest production importance of the pose (unit luminance); scenes A and B have one light, so it cannot change inside their camera groups.
+
+### 5. Results (logs `.tmp/cube_r1/full1.log`, `allk.log`; screen-space baseline = P0 `Default`: B 0.085, A 0.20)
+
+| Gate | `cube` | `cube+thin` | Limit |
+|---|---|---|---|
+| B mae_on mean / worst pose | 0.030 / 0.069 | 0.030 / 0.069 | 0.051 / 0.145 |
+| A mae_on mean / worst pose | 0.039 / 0.071 | 0.039 / 0.071 | 0.12 / 0.238 |
+| A camera-only flicker p95 worst / pop | 0.043 / 0.005 | 0.045 / 0.005 | 0.05 / 0.05 |
+| B camera-only flicker p95 worst / pop | **0.057** / 0.013 | **0.077** / 0.013 | 0.05 / 0.05 |
+| false_dark (acne) worst, A / B / C | 0.005 / 0.000 / 0.003 | 0.012 / 0.000 / 0.015 | 0.02 |
+| leak_on worst, A / B | 0.008 / 0.000 | 0.004 / 0.000 | 0.05 |
+| C lamp pool dark | 0.000 | 0.000 | 0.02 |
+
+* **Flicker misses its gate narrowly on scene B `camorbit_low`** and is measurement-limited, not a world-space dependence: with the contact term off it is 0.048; with a 2x wider
+  penumbra it falls to 0.031. The grazing floor pixel is ~3 cm across against an ~8 cm penumbra, so the probe's bilinear read of pixel centres alone moves the p95 by ~0.05. The Thin plan's
+  extra 0.02 is the Thin contact march (screen) in that group.
+* **Ratchet (tightest HEAD limit) on R and C**: `cube` passes A, B and C (C false_dark 0.003 vs 0.0091; `cube2` C: mae 0.062, leak 0.012). It FAILS on R (mae 0.437 > 0.218, leak 0.322,
+  false_dark 0.035, pen_cover_far 0.606) and `cube+thin` fails C false_dark 0.0149 > 0.0091, because the second light of R is a PROJECTOR (and of C the non-resident lamp keeps the Thin
+  screen march): with `cube_allkinds` R passes everything (mae 0.031, worst 0.055, leak 0.011, acne 0.002). Projector world tiles are P4.
+* **leak_exp** (off-screen / hidden blockers that are fully dark in the ground truth but left lit; the brief put the screen-space baseline of R/C near 80 %): R 0 % when every light has a cube (`cube_allkinds`; `cube` shows 24 % because the projector's blockers stay unseen), C 0-1 %, A 3 % (0 % with Thin), B 0 %.
+* Determinism: `relight_3d_cube_source.py --determinism` = 21 (pose, config) pairs byte-identical on repeat.
+* Contact `false_dark` at one pose of C (camera inside a wall, pixel depth clamped to the near plane) was a harness artefact; the resolve skips depth 0.
+
+### 6. Other gates
+
+| Gate | Result |
+|---|---|
+| OFF identity, `relight_cube_off_check.py` | **724 / 724** (181 poses x 4 configs) RGBA8 outputs byte-identical between `b0bb2d24f18` and WORKTREE with `area_world = 0`; mutation (non-zero `area_world` + blocker atlas) differs; static: no GL call before the early return except the guarded lazy release, uniforms guarded, no reload listener or shader-manager dependency |
+| Static pins, `relight_world_check.py` (also run by `relight_shader_check.py`) | face table C++ == GLSL == harness mirror; constants (tile, gutter >= kernel + 2, bias set, 16 + 32 taps = the ledger); the render-type mask equals `generateSunShadow`'s verbatim; section 10: no diff in `allocateShadowBuffer`, `generateSunShadow`, `generatePrismSpotShadows`, no auction/slot-count line |
+| Cost, `relight_cost_check.py --world` | 1080p K4 Medium (8 rays x 12 steps, half), area pass N=1 1.11x, **N=2 1.18x the P0 pass** (ceiling 2.5x); resolve N=2 0.16 ms at 1080p, **0.59 ms at 4K** (ceiling 3 ms), worst case (every pixel runs all 48 gathers) 1.29 ms at 4K. Raster: 12 face passes at N=2, structural; in-viewer Tracy is report-only and still to be taken (D1) |
+| Tests | `alrelightmath_test.cpp` test<37>-<40> (face table, FOV, tile slots, depth, ledger, bias, readout, residency, `before()` permutation identity); run through a standalone shim (`.tmp/cube_r1/tut/mk.py`): PASS |
+| Compile | `zs_check` (copy re-pointed at the worktree: `.tmp/cube_r1/zs.sh`) PASS for `pipeline.cpp`, `llviewerdisplay.cpp`, `llfloaterdirector.cpp`, `llshadermgr.cpp`, `alrelightmath_test.cpp` |
+| Generators | `director_kit_gen`, `director_page_sources`, `director_functional_manifest` with `--check` PASS; row pin +3; `xui_layout_check` 0 findings; `ui_draw_lint` no new findings |
+
+### 7. Not done / open risks (for D1)
+
+* The viewer was not built or run. In-world checks needed: the sphere + flying-light orbit, the railing-to-floor orbit, avatars and attachments casting (production casters), a Tracy capture in a busy avatar scene (CPU/GPU ms of 6 face passes), `glCopyImageSubData` availability (a missing function reads as the allocation-failure status), and a 1000-frame `gDebugGL` state-restore run.
+* One frame of screen trace at the latch (the cube renders the frame after the latch); a resident light that leaves the view stops rendering and re-renders the frame it re-enters.
+* Contact is still the existing half-resolution march (P3 replaces it); the world term is written to 8-bit visibility planes.
+* Follow-ups, as in the brief: Re-pick button, attachment/face lights, feeds, snapshots, projectors (P4), per-pixel `d_c` (P3), `glPolygonOffset`, VO-cache counts (U15), seam and production-caster fixtures in-world, GPU timestamps for the raster.
+* Review: Codex + Opus + GLM + DeepSeek reviews of this change are still to be run (CLAUDE.md), then ONE build.

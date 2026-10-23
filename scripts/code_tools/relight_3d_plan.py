@@ -53,13 +53,15 @@ def _vcvars():
     return None
 
 
-def compute_plans(tree, work_dir):
-    """Returns ({config name: {lights: plan dict}}, source string)."""
+def compute_plans(tree, work_dir, width=1920, height=1080):
+    """Returns ({config name: {lights: plan dict}}, source string). width/height: the target the planner is asked about."""
     header = tree.read('indra/newview/alareashadowmath.h')
     # The production radius policy when the header defines one, else the formula inlined in pipeline.cpp at that commit.
     radius_expr = ('ALAreaShadow::filterRadius(2.f, 1.f, w.q.half)' if 'filterRadius(' in header else
                    'std::min(8.f, std::max(0.f, 2.f * 1.f * (w.q.half ? .5f : 1.f)))')
     cpp = CPP.replace('RADIUS_EXPR', radius_expr)
+    if (width, height) != (1920, 1080):
+        cpp = cpp.replace('1920, 1080', '%d, %d' % (width, height)).replace('filterRadius(2.f, 1.f,', 'filterRadius(2.f, %.4ff,' % (height / 1080.0))
     key = hashlib.sha1((header + cpp).encode()).hexdigest()[:12]
     d = Path(work_dir) / 'plan' / key
     cache = d / 'plans.json'

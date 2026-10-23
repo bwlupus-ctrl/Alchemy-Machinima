@@ -37,7 +37,9 @@ def check_dispatch(g):
 
     fixture = r'''
 #include "alareashadowmath.h"
+#include "alworldshadowmath.h"
 #include <array>
+#include <cstring>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -75,7 +77,8 @@ void glDrawBuffer(unsigned n) { cb(22,n,0,0,nullptr,nullptr); }
 void glReadBuffer(unsigned n) { cb(23,n,0,0,nullptr,nullptr); }
 void glViewport(int x,int y,int w,int h) { int p[]={x,y,w,h};cb(24,0,0,0,nullptr,p); }
 void glColorMask(bool,bool,bool,bool);
-struct Unit { int index; void activate() { glActiveTexture(0x84c0+index); } };
+struct Unit { int index; void activate() { glActiveTexture(0x84c0+index); }
+    template<class T> void bind(T*,bool) {} void setTextureFilteringOption(int) {} void setTextureAddressMode(int) {} };
 struct GL {
     std::array<Unit,6> units={Unit{0},Unit{1},Unit{2},Unit{3},Unit{4},Unit{5}};
     void flush() {}
@@ -152,10 +155,12 @@ namespace glm {
 struct mat4 {};
 struct vec3 { float x,y,z; };
 vec3 make_vec3(const float* p) { return {p[0],p[1],p[2]}; }
+struct mat3 { float m[9]={}; mat3(const mat4&) {} };
+inline const float* value_ptr(const mat3& v) { return v.m; }
 }
 glm::mat4 get_current_modelview() { return {}; }
 glm::vec3 mul_mat4_vec3(glm::mat4,glm::vec3 p) { return p; }
-struct LLVOVolume { LLUUID id; LLUUID getID() const { return id; } };
+struct LLVOVolume { LLUUID id; LLUUID getID() const { return id; } float getLightRadius() const { return 5.f; } };
 LLVector4 light_shape_for_volume(const LLVOVolume*) { LLVector4 v;v.mV[3]=-1;return v; }
 float area_source_radius(LLVOVolume*) { return .001f; }
 struct LLDrawable { LLVOVolume volume; LLVector4 position;
@@ -177,12 +182,13 @@ struct Shader {
     void uniform3f(LLStaticHashedString s,float x,float y,float z) { float p[]={x,y,z};cb(5,3,0,0,s.text,p); }
     void uniform4fv(LLStaticHashedString s,int n,const float* p) { cb(6,n,0,0,s.text,p); }
     void uniform4uiv(LLStaticHashedString s,int n,const unsigned* p) { cb(7,n,0,0,s.text,p); }
+    void uniform3fv(LLStaticHashedString,int,const float*) {} // the world resolve's rotation (never uploaded with the maps off)
     int enableTexture(int uniform) { return uniform==0 ? 3 : 3+uniform; }
     void disableTexture(int) {}
 } gAreaShadowProgram{0},gAreaShadowFilterProgram{1};
 using LLGLSLShader=Shader;
-namespace LLShaderMgr { constexpr int AREA_SHADOW_SOURCE=0,AREA_SHADOW_MAP0=1,AREA_SHADOW_MAP1=2; }
-namespace LLTexUnit { constexpr int TFO_POINT=0; }
+namespace LLShaderMgr { constexpr int AREA_SHADOW_SOURCE=0,AREA_SHADOW_MAP0=1,AREA_SHADOW_MAP1=2,AREA_WORLD_ATLAS=3; }
+namespace LLTexUnit { constexpr int TFO_POINT=0,TAM_CLAMP=1; }
 namespace LLRender { constexpr int TRIANGLES=4; }
 void glColorMask(bool a,bool b,bool c,bool d) { cb(8,int(a)|(int(b)<<1)|(int(c)<<2)|(int(d)<<3),0,0,nullptr,nullptr); }
 void glGenQueries(int,unsigned*) {}
@@ -232,6 +238,9 @@ struct LLPipeline {
     // Stand-in for the native sampler's shadow_clip; the production dispatch must upload z and w.
     LLVector4 nativeSpotShadowClip() const { LLVector4 v; v.mV[2]=64; v.mV[3]=128; return v; }
     unsigned mAreaShadowQueries[2]={}; bool mAreaShadowQueryPending=false;
+    // P1-lite world maps: the fixture runs with them OFF (cube_main is false); these only let the world branches compile.
+    LLRenderTarget mWorldShadowAtlas; bool mWorldShadowUniformsLive=false;
+    bool worldShadowOwned(const LLUUID&,U32&) const { return false; }
     double mAreaShadowGPUms=-1;
     VB* mScreenTriangleVB=&vb;
     std::array<LLDrawable,8> drawables;
@@ -283,7 +292,7 @@ bool gCubeSnapshot=false;
     fixture += 'selected.lights[0].shadowMap=true; mShadowSpotLight[0]=&drawables[0]; mSpotLightFade[0]=.75f;\n'
     # Importance scores for the smooth group fade: light i has score 8 - 0.02 i, so every admitted light is within 5 percent of
     # the first dropped one whenever lights are dropped, and fades.
-    fixture += 'for(unsigned i=0;i<8;++i) selected.lights[i].score=8.0-0.02*i;\n'+state+dispatch
+    fixture += 'for(unsigned i=0;i<8;++i) selected.lights[i].score=8.0-0.02*i;\nconst bool cube_main=false;\n'+state+dispatch
     fixture += r'''
 }
 void LLPipeline::dispatch() {

@@ -151,6 +151,10 @@ class GL:
         self.draw = g('glDrawArrays', None, U, I, I)
         self.color_mask = g('glColorMask', None, C.c_ubyte, C.c_ubyte, C.c_ubyte, C.c_ubyte)
         self.pixel_store = g('glPixelStorei', None, U, I)
+        self.gen_queries = g('glGenQueries', None, I, C.POINTER(U))
+        self.begin_query = g('glBeginQuery', None, U, U)
+        self.end_query = g('glEndQuery', None, U)
+        self.query_u64 = g('glGetQueryObjectui64v', None, U, U, C.POINTER(C.c_uint64))
 
     def fn(self, name, result, *args):
         ptr = self._getproc(name.encode())
@@ -168,9 +172,9 @@ class AreaRunner:
                        'deferred/deferredUtil.glsl', 'deferred/gbufferUtil.glsl']
     LEVEL1 = ('deferred/deferredUtil.glsl', 'deferred/gbufferUtil.glsl', 'deferred/globalF.glsl', 'deferred/shadowUtil.glsl')
 
-    def __init__(self, tree):
+    def __init__(self, tree, gl=None):
         self.tree = tree
-        self.gl = GL()
+        self.gl = gl or GL()  # a caller comparing two source trees shares ONE context
         gl = self.gl
         self._cache = {}
         self.gather = self._link('class3/deferred/areaShadowF.glsl')
@@ -241,6 +245,21 @@ class AreaRunner:
         return pr
 
     # ---- helpers
+    def _timed(self, key, stats, fn):
+        if stats is None:
+            fn()
+            return
+        gl = self.gl
+        q = C.c_uint()
+        gl.gen_queries(1, C.byref(q))
+        gl.begin_query(0x88BF, q)
+        fn()
+        gl.end_query(0x88BF)
+        gl.finish()
+        r = C.c_uint64(0)
+        gl.query_u64(q, 0x8866, C.byref(r))
+        stats[key] = stats.get(key, 0.0) + r.value * 1.e-6
+
     def _texture(self, key, unit, internal, w, h, fmt, typ, data, nearest=True):
         gl = self.gl
         tex = self.textures.get(key)
@@ -283,12 +302,14 @@ class AreaRunner:
         return tex
 
     def run(self, cam, depth32, norm16, lights, plan, scale=1.0, light_bias=0.25, max_dist=8.0, thickness=0.35,
-            denoise=2.0, world=None):
+            denoise=2.0, world=None, stats=None):
         """One RenderAreaShadows frame. plan: dict(samples, steps, half, near_steps). Returns (L,H,W) float32 [0,1].
 
         world (P1-lite cube path): None = the screen path only (HEAD shaders ignore the world uniforms anyway), else
         {'atlas': float32 (H, 1632) D32F window depth, 'channels': [per light: None, or dict(row, near, far, r_map,
-        contact, seed)]}. Uploads exactly what LLPipeline::renderAreaShadows uploads on every pass."""
+        contact, seed)]}. Uploads exactly what LLPipeline::renderAreaShadows uploads on every pass.
+
+        stats: a dict to fill with GPU milliseconds of the draws (gather_ms, blur_ms, upsample_ms) via GL_TIME_ELAPSED queries."""
         gl = self.gl
         Wd, Hd = cam.W, cam.H
         half = bool(plan['half'])
@@ -351,7 +372,7 @@ class AreaRunner:
         gl.u4fv(gl.loc(pr, b'area_world'), 1, wflags.ctypes.data_as(C.POINTER(gl.F)))
         gl.u4fv(gl.loc(pr, b'area_contact_dist'), 1, wcontact.ctypes.data_as(C.POINTER(gl.F)))
         gl.color_mask(1, 1, 1, 1)
-        gl.draw(4, 0, 3)
+        self._timed('gather_ms', stats, lambda: gl.draw(4, 0, 3))
         # pass 2/3: separable blur (only when radius > 0), then full-resolution bilateral upsample
         scratch = None
 
@@ -375,7 +396,7 @@ class AreaRunner:
             gl.ui(gl.loc(fr, b'area_world_atlas'), 4)
             gl.active(0x84C3)
             gl.bind_tex(0x0DE1, self.textures[src_key][0])
-            gl.draw(4, 0, 3)
+            self._timed('upsample_ms' if (ax == 0.0 and ay == 0.0) else 'blur_ms', stats, lambda: gl.draw(4, 0, 3))
 
         # ping-pong: gather -> scratch(x) -> gather(y) -> visibility(full res)
         # the targets must not alias their own input, so bind distinct textures per pass

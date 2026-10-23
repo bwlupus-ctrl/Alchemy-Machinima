@@ -35,6 +35,7 @@ def check_vcam():
     main_fields = main_fields[0:main_fields.index('    GLuint mAreaShadowQueries')] + main_fields[main_fields.index('    std::array<LLUUID, 8> mAreaShadowIDs;'):]
     fixture = r'''
 #include "alareashadowmath.h"
+#include "alworldshadowmath.h"
 #include "baseline.h"
 #include <cassert>
 #include <map>
