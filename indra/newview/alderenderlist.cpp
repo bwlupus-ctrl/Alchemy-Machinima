@@ -238,7 +238,9 @@ void ALDerenderList::removeObject(ALDerenderEntry::EEntryType eType, const LLUUI
 void ALDerenderList::removeObjects(ALDerenderEntry::EEntryType eType, const uuid_vec_t& idsObject)
 {
     bool fSave = false;
-    std::map<LLViewerRegion*, std::list<U32>> idRegionObjectMap; // TYPE_OBJECT
+    // One set of local IDs per region (TYPE_OBJECT and TYPE_AVATAR): every entry removed in
+    // this call goes out as one batch per region, with no duplicate IDs.
+    std::map<LLViewerRegion*, std::set<U32>> idRegionObjectMap;
 
     for (const auto& idObject : idsObject)
     {
@@ -252,20 +254,40 @@ void ALDerenderList::removeObjects(ALDerenderEntry::EEntryType eType, const uuid
             case ALDerenderEntry::TYPE_OBJECT:
                 {
                     ALDerenderObject* pObjEntry = static_cast<ALDerenderObject*>(pEntry.get());
-                    if (0 == pObjEntry->idRegion)
-                        continue;
-
-                    if (LLViewerRegion* pRegion = LLWorld::getInstance()->getRegionFromHandle(pObjEntry->idRegion))
+                    // An entry loaded from disk and not seen yet this session has no
+                    // region: it is still removed below, there is just nothing to re-request.
+                    if (0 != pObjEntry->idRegion)
                     {
-                        std::list<U32>& idsLocal = idRegionObjectMap[pRegion];
-                        if (pObjEntry->idRootLocal)
-                            idsLocal.push_back(pObjEntry->idRootLocal);
-                        idsLocal.splice(idsLocal.end(), pObjEntry->idsChildLocal);
+                        if (LLViewerRegion* pRegion = LLWorld::getInstance()->getRegionFromHandle(pObjEntry->idRegion))
+                        {
+                            std::set<U32>& idsLocal = idRegionObjectMap[pRegion];
+                            if (pObjEntry->idRootLocal)
+                                idsLocal.insert(pObjEntry->idRootLocal);
+                            idsLocal.insert(pObjEntry->idsChildLocal.begin(), pObjEntry->idsChildLocal.end());
+                        }
+                    }
+                }
+                break;
+            case ALDerenderEntry::TYPE_AVATAR:
+                {
+                    // Same as objects: ask the simulator to send the avatar and all of its
+                    // attachment prims again so they return without waiting for a relog.
+                    // idRegion is 0 only for an entry loaded from disk whose avatar has not
+                    // sent an update since (processAvatarUpdate records it): nothing to ask then.
+                    ALDerenderAvatar* pAvEntry = static_cast<ALDerenderAvatar*>(pEntry.get());
+                    if (0 != pAvEntry->idRegion)
+                    {
+                        if (LLViewerRegion* pRegion = LLWorld::getInstance()->getRegionFromHandle(pAvEntry->idRegion))
+                        {
+                            std::set<U32>& idsLocal = idRegionObjectMap[pRegion];
+                            if (pAvEntry->idLocal)
+                                idsLocal.insert(pAvEntry->idLocal);
+                            idsLocal.insert(pAvEntry->idsChildLocal.begin(), pAvEntry->idsChildLocal.end());
+                        }
                     }
                 }
                 break;
             default:
-            case ALDerenderEntry::TYPE_AVATAR:
             case ALDerenderEntry::TYPE_NONE:
                 break;
         }
@@ -274,7 +296,7 @@ void ALDerenderList::removeObjects(ALDerenderEntry::EEntryType eType, const uuid
         m_Entries.erase(itEntry);
     }
 
-    // TYPE_OBJECT
+    // TYPE_OBJECT and TYPE_AVATAR
     for (const auto& data_pair : idRegionObjectMap)
     {
         LLViewerRegion* pRegion = data_pair.first;
@@ -286,6 +308,17 @@ void ALDerenderList::removeObjects(ALDerenderEntry::EEntryType eType, const uuid
     if (fSave)
         save();
     s_ChangeSignal();
+}
+
+void ALDerenderList::purgeSessionEntries()
+{
+    // Session entries are never written to the file, so this does not save.
+    const size_t nBefore = m_Entries.size();
+    m_Entries.remove_if([](const std::unique_ptr<ALDerenderEntry>& e) { return !e->isPersistent(); });
+    if (m_Entries.size() != nBefore)
+    {
+        s_ChangeSignal();
+    }
 }
 
 // ============================================================================
@@ -350,18 +383,74 @@ bool ALDerenderList::addAvatar(const LLUUID& idAvatar, const std::string& strNam
         return false;
 
     auto pEntry = std::make_unique<ALDerenderAvatar>(idAvatar, strName, fPersist);
+
+    LLViewerObject* pObj = gObjectList.findObject(idAvatar);
+    uuid_vec_t idsKilled; // the avatar's attachment prims, deselected below along with the avatar
+    if (pObj)
+    {
+        // Remember where the avatar and ALL of its descendant prims are (attachment roots
+        // and the child prims of multi-prim attachments) before they are killed, so
+        // removing the entry can ask the simulator to send them again.
+        if (const LLViewerRegion* pRegion = pObj->getRegion())
+        {
+            pEntry->idRegion = pRegion->getHandle();
+            pEntry->idLocal = pObj->getLocalID();
+        }
+        std::vector<LLViewerObject*> stack;
+        for (const auto& pChild : pObj->getChildren())
+            stack.push_back(pChild.get());
+        while (!stack.empty())
+        {
+            LLViewerObject* pDesc = stack.back();
+            stack.pop_back();
+            if (!pDesc)
+                continue;
+            if (pEntry->idRegion)
+                pEntry->idsChildLocal.push_back(pDesc->getLocalID());
+            idsKilled.push_back(pDesc->getID());
+            for (const auto& pSub : pDesc->getChildren())
+                stack.push_back(pSub.get());
+        }
+    }
     m_Entries.push_back(std::move(pEntry));
 
-    if (LLViewerObject* pObj = gObjectList.findObject(idAvatar))
+    if (pObj)
     {
         if (gShowObjectUpdates)
             gPipeline.addDebugBlip(pObj->getPositionAgent(), LLColor4(0.f, 1.f, 0.f, 1.f));
         gObjectList.killObject(pObj);
+        LLSelectMgr::getInstance()->removeObjectFromSelections(idAvatar);
+        // killObject() killed the attachments with it: drop them from the selection too,
+        // or a selected attachment stays behind as a dead node.
+        for (const LLUUID& idKilled : idsKilled)
+            LLSelectMgr::getInstance()->removeObjectFromSelections(idKilled);
     }
 
     if (fPersist)
         save();
     s_ChangeSignal();
+    return true;
+}
+
+bool ALDerenderList::processAvatarUpdate(U64 idRegion, const LLUUID& idAvatar, U32 idLocal)
+{
+    if (m_Entries.empty())
+        return false;
+
+    entry_list_t::iterator itEntry = findEntry(ALDerenderEntry::TYPE_AVATAR, idAvatar);
+    if (m_Entries.end() == itEntry)
+        return false;
+
+    // Record where the simulator has the avatar now, so Restore can ask for it again
+    // (an entry loaded from disk has no region until its avatar sends an update).
+    ALDerenderAvatar* pAvEntry = static_cast<ALDerenderAvatar*>(itEntry->get());
+    if ((pAvEntry->idRegion != idRegion) || (pAvEntry->idLocal != idLocal))
+    {
+        pAvEntry->idRegion = idRegion;
+        pAvEntry->idLocal = idLocal;
+        // Attachment prim IDs recorded for an earlier region/local ID no longer apply.
+        pAvEntry->idsChildLocal.clear();
+    }
     return true;
 }
 

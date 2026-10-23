@@ -411,7 +411,9 @@ void ALPanelDerenderList::onSelectionRemove()
         idsObject.push_back((*itItem)->getValue().asUUID());
     }
 
+    // The list holds objects and avatars; an id only matches entries of its own type.
     ALDerenderList::instance().removeObjects(ALDerenderEntry::TYPE_OBJECT, idsObject);
+    ALDerenderList::instance().removeObjects(ALDerenderEntry::TYPE_AVATAR, idsObject);
 }
 
 void ALPanelDerenderList::refresh()
@@ -432,6 +434,11 @@ void ALPanelDerenderList::refresh()
             {
                 auto pObjEntry = static_cast<ALDerenderObject*>(pEntry.get());
                 sdColumns[1]["value"] = llformat("%s <%f, %f, %f>", pObjEntry->strRegionName.c_str(), ll_round(pObjEntry->posRegion.mV[VX]), ll_round(pObjEntry->posRegion.mV[VY]), ll_round(pObjEntry->posRegion.mV[VZ]));
+            }
+            else
+            {
+                // sdColumns is reused across rows: without this an avatar row would show the previous row's location.
+                sdColumns[1]["value"] = LLStringUtil::null;
             }
             sdColumns[2]["value"] = (pEntry->isPersistent()) ? LLTrans::getString("Permanent") : LLTrans::getString("Temporary");
 

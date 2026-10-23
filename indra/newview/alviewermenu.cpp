@@ -44,6 +44,7 @@
 #include "alfloaterparticleeditor.h"
 #include "llagent.h"
 #include "llagentcamera.h"
+#include "llavatarnamecache.h"
 #include "llappviewer.h"
 #include "llavatarpropertiesprocessor.h"
 #include "llhudobject.h"
@@ -596,6 +597,54 @@ namespace
     bool enable_object_derender()
     {
         return ALDerenderList::canAddSelection();
+    }
+
+    // The avatar of the primary selected object (the avatar itself, or the wearer of a
+    // selected attachment), or null. The selection handle can be null during menu teardown.
+    static LLVOAvatar* selected_primary_avatar()
+    {
+        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
+        if (hSel.isNull())
+        {
+            return nullptr;
+        }
+        return find_avatar_from_object(hSel->getPrimaryObject());
+    }
+
+    // Derender another avatar (or the wearer of an attachment) from the
+    // right-click menus. "persistent" is saved, anything else is this session only.
+    void handle_avatar_derender(const LLSD& sdParam)
+    {
+        LLVOAvatar* avatarp = selected_primary_avatar();
+        if (!avatarp || avatarp->isSelf() || avatarp->isControlAvatar() || avatarp->isGhostAvatar())
+        {
+            return;
+        }
+
+        // Take everything needed from the avatar first: addAvatar() kills it.
+        const LLUUID idAvatar = avatarp->getID();
+        std::string strName;
+        LLAvatarName avName;
+        if (LLAvatarNameCache::get(idAvatar, &avName))
+        {
+            strName = avName.getCompleteName();
+        }
+        if (strName.empty())
+        {
+            strName = avatarp->getFullname();
+        }
+
+        if (ALDerenderList::instance().addAvatar(idAvatar, strName, "persistent" == sdParam.asString()))
+        {
+            ALFloaterBlocked::showDerenderAndSelect(idAvatar);
+        }
+    }
+
+    bool enable_avatar_derender()
+    {
+        LLVOAvatar* avatarp = selected_primary_avatar();
+        return avatarp && !avatarp->isSelf() && !avatarp->isControlAvatar() && !avatarp->isGhostAvatar()
+            && !ALDerenderList::instance().isDerendered(ALDerenderEntry::TYPE_AVATAR, avatarp->getID());
     }
 // [/SL:KB]
 
@@ -1312,6 +1361,10 @@ void ALViewerMenu::initialize_menus()
 // [SL:KB] - Patch: World-Derender | Checked: 2011-12-15 (Catznip-3.2)
     commit.add("Object.Derender", boost::bind(&handle_object_derender, _2));
     enable.add("Object.EnableDerender", boost::bind(&enable_object_derender));
+    // The radar menu registers "Avatar.Derender" in its own scoped registrar, so
+    // these use distinct names to never collide with it.
+    commit.add("Avatar.DerenderSelected", boost::bind(&handle_avatar_derender, _2));
+    enable.add("Avatar.EnableDerenderSelected", boost::bind(&enable_avatar_derender));
     // [/SL:KB]
 
 // [BDMerge G3.3 Phase 2] session-only per-projector volumetric shaft toggle

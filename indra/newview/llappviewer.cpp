@@ -269,6 +269,7 @@
 #include "lldeferredsounds.h"
 #include "pipeline.h"
 #include "llprismlens.h"
+#include "alderenderlist.h"
 #include "llgesturemgr.h"
 #include "llsky.h"
 #include "llvlcomposition.h"
@@ -1481,6 +1482,27 @@ static bool frameLimiterEnabled()
     return enabled;
 }
 
+static S32 frameLimiterFps()
+{
+    static LLCachedControl<U32> limit_fps(gSavedSettings, "FramerateLimitFPS", 60);
+    return (S32)limit_fps;
+}
+
+// [FrameLimiter] Opt-in driver pacing (wglSwapIntervalEXT); off = CPU pacing only.
+static bool frameLimiterVSyncLock()
+{
+    static LLCachedControl<bool> lock(gSavedSettings, "FrameLimiterVSyncLock", false);
+    return lock;
+}
+
+// [FrameLimiter] The CACHED viewer VSync setting (never a WGL query). With VSync on and the cap at or
+// above the exact refresh of the window's monitor the cap uses HEAD's end-of-frame wait (nothing else).
+static bool frameLimiterVSyncSetting()
+{
+    static LLCachedControl<bool> vsync(gSavedSettings, "RenderVSyncEnable", true);
+    return vsync;
+}
+
 bool LLAppViewer::doFrame()
 {
     LL_PROFILE_ZONE_SCOPED;
@@ -1488,6 +1510,13 @@ bool LLAppViewer::doFrame()
 
     // [FrameLimiter] One cached bool per frame; the pacer anchors itself on the previous deadline.
     const bool frame_limiter_on = frameLimiterEnabled();
+    // [FrameLimiter] The wait is taken just before the present (swap() in
+    // llviewerdisplay.cpp); the end-of-frame wait below only runs when nothing
+    // was presented this frame. The cached VSync setting (and the window monitor's exact refresh, read
+    // in beginFrame) only tells the pacer when to use HEAD's scheduling instead: VSync on and the cap at
+    // the refresh = HEAD's end-of-frame wait on every frame, no wait before the present.
+    ALFrameLimiter::beginFrame(frame_limiter_on, frameLimiterFps(), frameLimiterVSyncLock(),
+                               frameLimiterVSyncSetting());
 
     resumeMainloopTimeout("Main:doFrameStart");
 
@@ -1808,16 +1837,21 @@ bool LLAppViewer::doFrame()
                 LLLFSThread::sLocal->pause();
             }
 
-            // [FrameLimiter] Last thing in the frame, so VSync's swap wait and the
-            // background/minimised yield above already count as elapsed time (no
-            // double wait), and a slow frame gets no wait and no catch-up.
-            if (frame_limiter_on && !LLApp::isExiting())
+            // [FrameLimiter] Fallback pacing: a frame that presented was already paced
+            // just before SwapBuffers (this returns 0 then). A frame that did not
+            // present (minimised or hidden window, skipped display) is paced here,
+            // so VSync's swap wait and the background/minimised yield above already
+            // count as elapsed time (no double wait), and a slow frame gets no wait
+            // and no catch-up.
+            // fallbackPending() is false for a frame that presented (paced there), so no
+            // zero-length sleep record is made on presented frames; except under HEAD's scheduling
+            // (VSync on, cap at the refresh), where every frame is paced here exactly as in HEAD.
+            if (frame_limiter_on && ALFrameLimiter::fallbackPending() && !LLApp::isExiting())
             {
-                static LLCachedControl<U32> limit_fps(gSavedSettings, "FramerateLimitFPS", 60);
                 // Recorded as sleep (like the background yield) so AutoTune does not read the
                 // deliberate wait as a slow frame and keep lowering quality toward TargetFPS.
                 LLPerfStats::RecordSceneTime T(LLPerfStats::StatType_t::RENDER_SLEEP);
-                ALFrameLimiter::endFrameWait((S32)limit_fps);
+                ALFrameLimiter::endFrameWait(frameLimiterFps());
             }
 
             {
@@ -6367,6 +6401,13 @@ void LLAppViewer::disconnectViewer()
     // carry object UUID bindings into a different account or relog session;
     // saved Director scene files remain available for an explicit reload.
     LLPrismLens::clearDesignations();
+
+    // Session derenders (objects and avatars) belong to this session only; a
+    // relog in the same process must not carry them over. Permanent entries stay.
+    if (ALDerenderList::instanceExists())
+    {
+        ALDerenderList::getInstance()->purgeSessionEntries();
+    }
 
     // save inventory if appropriate
     if (gInventory.isInventoryUsable()

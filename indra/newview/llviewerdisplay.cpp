@@ -42,6 +42,7 @@
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "llappviewer.h"
+#include "alframelimiter.h" // [FrameLimiter] pace the present
 #include "llcoord.h"
 #include "llcriticaldamp.h"
 #include "llcubemap.h"
@@ -229,7 +230,12 @@ void display_startup()
     LLGLState::checkStates();
 
     if (gViewerWindow && gViewerWindow->getWindow())
-    gViewerWindow->getWindow()->swapBuffers();
+    {
+        // [FrameLimiter] The login screen presents here, outside swap(): it goes through the
+        // same pacedPresent() as every other present (CPU wait or driver pre-wait, and the
+        // driver safety net sees these presents too). Cap off: just the swap.
+        ALFrameLimiter::pacedPresent([] { gViewerWindow->getWindow()->swapBuffers(); });
+    }
 
     glClear(GL_DEPTH_BUFFER_BIT);
 }
@@ -460,7 +466,9 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Resize Window");
         gGL.flush();
         glClear(GL_COLOR_BUFFER_BIT);
-        gViewerWindow->getWindow()->swapBuffers();
+        // [FrameLimiter] This resize frame presents here, outside swap(): pace it the
+        // same way (each present has its own deadline) so it cannot burst after the previous present.
+        ALFrameLimiter::pacedPresent([] { gViewerWindow->getWindow()->swapBuffers(); });
         LLPipeline::refreshCachedSettings();
         gPipeline.resizeScreenTexture();
         gResizeScreenTexture = false;
@@ -1927,12 +1935,22 @@ void render_ui(F32 zoom_factor, int subfield)
 
 void swap()
 {
-    LLPerfStats::RecordSceneTime T ( LLPerfStats::StatType_t::RENDER_SWAP ); // render time capture - Swap buffer time - can signify excessive data transfer to/from GPU
-    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Swap");
-    LL_PROFILE_GPU_ZONE("swap");
+    // [FrameLimiter] Pace the present itself, so the present interval is the cap
+    // interval whatever the work before the swap cost. Cap off: just the swap (no wait; the
+    // swap is recorded exactly as before); each present in a frame is paced. The wait runs before the swap
+    // timer starts. Driver pacing: the swap blocks to every Nth vblank by design, so it is
+    // recorded as sleep (like the CPU wait), not as a slow swap: AutoTune must not lower
+    // quality because of the cap.
     if (gDisplaySwapBuffers)
     {
-        gViewerWindow->getWindow()->swapBuffers();
+        ALFrameLimiter::pacedPresent([]
+        {
+            LLPerfStats::RecordSceneTime T ( ALFrameLimiter::driverPacing() ? LLPerfStats::StatType_t::RENDER_SLEEP
+                                                                            : LLPerfStats::StatType_t::RENDER_SWAP ); // render time capture - Swap buffer time - can signify excessive data transfer to/from GPU
+            LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Swap");
+            LL_PROFILE_GPU_ZONE("swap");
+            gViewerWindow->getWindow()->swapBuffers();
+        });
     }
     gDisplaySwapBuffers = true;
 }

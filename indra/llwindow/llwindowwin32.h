@@ -38,6 +38,8 @@
 #include "llmutex.h"
 #include "workqueue.h"
 
+#include <atomic>
+
 // Hack for async host by name
 #define LL_WM_HOST_RESOLVED      (WM_APP + 1)
 typedef void (*LLW32MsgCallback)(const MSG &msg);
@@ -141,6 +143,34 @@ public:
     U32 getRawWParam() { return mRawWParam; }
 
     void initWatchdog() override;
+
+    // [FrameLimiter] Used by the frame rate cap (newview/alframelimiter.cpp). Main thread only.
+    // True when the viewer's VSync is on, the swap-interval extension is usable and the GL context is current on this thread.
+    bool isFrameVSyncActive() const;
+    // True when the window is visible, not minimised and is the foreground window (the frame
+    // limiter's driver safety net only measures then).
+    bool isFrameWindowMeasurable() const;
+    // Refresh rate of the monitor the window is on, as numerator/denominator
+    // (60000/1001 for 59.94 Hz). exact == false means an integer fallback
+    // (EnumDisplaySettings: 59.94 Hz reads as 59 or 60). Cheap per call: it
+    // re-queries only when the window's monitor changed or after WM_DISPLAYCHANGE.
+    // Returns false when no refresh rate could be read.
+    bool getFrameRefresh(U32& numerator, U32& denominator, bool& exact);
+    // The swap interval the frame limiter set and that is still in force (0 = none,
+    // the viewer's own VSync setting). toggleVSync() (the VSync setting changing, or
+    // the GL context being rebuilt) clears it.
+    int  getFrameSwapInterval() const { return mFrameSwapInterval; }
+    // n >= 1: request swap interval n (read back to verify; on failure the viewer's own
+    // interval is restored and false is returned). n == 0: restore the interval the
+    // viewer's VSync setting expects (1 with VSync on, else 0).
+    bool setFrameSwapInterval(int n);
+    // Change counters the frame limiter keys its driver-pacing failure state on. The
+    // environment generation changes when the GL context is rebuilt or VSync is toggled
+    // (toggleVSync), on WM_DISPLAYCHANGE and when the window moves to another monitor; the
+    // focus generation changes on activation and focus messages and on a minimise / restore from
+    // minimised (not on every size message).
+    unsigned getFrameEnvGeneration() const { return mFrameEnvGeneration.load(); }
+    unsigned getFrameFocusGeneration() const { return mFrameFocusGeneration.load(); }
 
 protected:
     LLWindowWin32(LLWindowCallbacks* callbacks,
@@ -247,6 +277,22 @@ protected:
     U32             mRawLParam;
 
     bool            mMouseVanish;
+
+    // [FrameLimiter] VSync as the viewer set it, the limiter's driver swap interval,
+    // and the cached refresh rate of the window's monitor.
+    bool            mVSyncEnabled = false;
+    int             mFrameSwapInterval = 0;
+    int             mFrameRefusalLoggedN = 0;   // the N whose refusal was already logged (log once per N)
+    HMONITOR        mRefreshMonitor = nullptr;
+    bool            mRefreshQueried = false;
+    U32             mRefreshNum = 0;
+    U32             mRefreshDen = 0;
+    bool            mRefreshExact = false;
+    std::atomic<bool> mDisplayConfigDirty { true };   // set on WM_DISPLAYCHANGE (window thread)
+    unsigned long long mRefreshRetryMs = 0;           // next refresh query while the rate is unknown
+    bool            mRefreshFailLogged = false;
+    std::atomic<unsigned> mFrameEnvGeneration { 0 };
+    std::atomic<unsigned> mFrameFocusGeneration { 0 };
 
     static HMODULE sGLDLLHandle;
 

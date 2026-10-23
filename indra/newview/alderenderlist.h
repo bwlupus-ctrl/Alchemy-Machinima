@@ -148,6 +148,16 @@ public:
         : ALDerenderEntry(TYPE_AVATAR, sdData)
     {
     }
+
+    // Where the avatar (and its attachments) lived when it was derendered, so
+    // that removing the entry can ask the simulator to send them again. Not
+    // persisted: an entry loaded from disk has idRegion == 0 until the avatar's
+    // next full update arrives (it is recorded by processAvatarUpdate() while
+    // that update is suppressed).
+    // idsChildLocal holds every descendant prim (multi-prim attachments included).
+    U64            idRegion = 0;
+    U32            idLocal = 0;
+    std::list<U32> idsChildLocal;
 };
 
 // ============================================================================
@@ -176,6 +186,9 @@ public:
     bool                isDerendered(ALDerenderEntry::EEntryType eType, const LLUUID& idEntry) { return findEntry(eType, idEntry) != m_Entries.end(); }
     void removeObject(ALDerenderEntry::EEntryType eType, const LLUUID& idObject);
     void removeObjects(ALDerenderEntry::EEntryType eType, const uuid_vec_t& idsObject);
+    // Drop every session (non-persistent) entry without touching the saved
+    // file. Called when the session ends so a relog starts clean.
+    void purgeSessionEntries();
 
     // Add a live avatar to the derender list (radar port). Kills the current
     // LLVOAvatar instance immediately if present; whether the avatar stays
@@ -183,6 +196,10 @@ public:
     // matching check in LLViewerObjectList::processObjectUpdate(). Returns
     // false if the avatar is already derendered or is the agent's own avatar.
     bool addAvatar(const LLUUID& idAvatar, const std::string& strName, bool fPersist);
+    // An update arrived for this avatar. Returns true (suppress it) when the
+    // avatar is derendered, and records its current region and local ID so that
+    // removing the entry can re-request it, also for an entry loaded from disk.
+    bool processAvatarUpdate(U64 idRegion, const LLUUID& idAvatar, U32 idLocal);
 protected:
     entry_list_t::iterator findEntry(ALDerenderEntry::EEntryType eType, const LLUUID& idEntry);
     entry_list_t::iterator findObjectEntry(U64 idRegion, const LLUUID& idObject, U32 idRootLocal);

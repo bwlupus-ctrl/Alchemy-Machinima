@@ -2114,8 +2114,226 @@ void LLWindowWin32::destroySharedContext(void* contextPtr)
     }
 }
 
+// [FrameLimiter] Refresh rate of one monitor. First choice: the active display
+// path whose source matches the monitor's GDI device, whose target refresh rate
+// is an exact fraction (60000/1001). Fallback: the integer EnumDisplaySettings
+// reports (inexact: 59.94 Hz reads as 59 or 60).
+static bool queryMonitorRefresh(HMONITOR monitor, U32& numerator, U32& denominator, bool& exact)
+{
+    numerator = denominator = 0;
+    exact = false;
+    MONITORINFOEXW info;
+    ZeroMemory(&info, sizeof(info));
+    info.cbSize = sizeof(info);
+    if (!monitor || !GetMonitorInfoW(monitor, reinterpret_cast<MONITORINFO*>(&info)))
+    {
+        return false;
+    }
+
+    for (int attempt = 0; attempt < 3; ++attempt)
+    {
+        UINT32 num_paths = 0;
+        UINT32 num_modes = 0;
+        if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &num_paths, &num_modes) != ERROR_SUCCESS)
+        {
+            break;
+        }
+        std::vector<DISPLAYCONFIG_PATH_INFO> paths(num_paths);
+        std::vector<DISPLAYCONFIG_MODE_INFO> modes(num_modes);
+        const LONG rc = QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &num_paths, paths.data(),
+                                           &num_modes, modes.data(), nullptr);
+        if (rc == ERROR_INSUFFICIENT_BUFFER)
+        {
+            continue; // the configuration changed between the two calls
+        }
+        if (rc != ERROR_SUCCESS)
+        {
+            break;
+        }
+        paths.resize(num_paths);
+        modes.resize(num_modes);
+        for (const DISPLAYCONFIG_PATH_INFO& path : paths)
+        {
+            DISPLAYCONFIG_SOURCE_DEVICE_NAME source;
+            ZeroMemory(&source, sizeof(source));
+            source.header.type      = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+            source.header.size      = sizeof(source);
+            source.header.adapterId = path.sourceInfo.adapterId;
+            source.header.id        = path.sourceInfo.id;
+            if (DisplayConfigGetDeviceInfo(&source.header) != ERROR_SUCCESS ||
+                wcscmp(source.viewGdiDeviceName, info.szDevice) != 0)
+            {
+                continue;
+            }
+            // Cloned displays: two paths can share one source name; the first match wins
+            // (clones share a refresh rate in practice).
+            DISPLAYCONFIG_RATIONAL rate = path.targetInfo.refreshRate;
+            if (rate.Numerator == 0 || rate.Denominator == 0)
+            {
+                // Some drivers leave the path's refresh rate at 0/0; the target mode's
+                // video signal info carries the vertical sync frequency as a fraction.
+                const UINT32 mode_idx = path.targetInfo.modeInfoIdx;
+                if (mode_idx != DISPLAYCONFIG_PATH_MODE_IDX_INVALID && mode_idx < modes.size() &&
+                    modes[mode_idx].infoType == DISPLAYCONFIG_MODE_INFO_TYPE_TARGET)
+                {
+                    rate = modes[mode_idx].targetMode.targetVideoSignalInfo.vSyncFreq;
+                }
+            }
+            if (rate.Numerator > 0 && rate.Denominator > 0)
+            {
+                numerator   = rate.Numerator;
+                denominator = rate.Denominator;
+                exact       = true;
+                return true;
+            }
+            break;
+        }
+        break;
+    }
+
+    DEVMODEW mode;
+    ZeroMemory(&mode, sizeof(mode));
+    mode.dmSize = sizeof(mode);
+    if (EnumDisplaySettingsW(info.szDevice, ENUM_CURRENT_SETTINGS, &mode) && mode.dmDisplayFrequency > 1)
+    {
+        numerator   = mode.dmDisplayFrequency; // 0 and 1 mean "hardware default"
+        denominator = 1;
+        exact       = false;
+        return true;
+    }
+    return false;
+}
+
+bool LLWindowWin32::isFrameVSyncActive() const
+{
+    // wglSwapIntervalEXT acts on the calling thread's current context. The viewer's render
+    // context (mhRC, made current by createContext()) stays current on the main thread for the
+    // whole session and nothing releases it between frames, so this holds at the top of doFrame().
+    // It is checked against THIS window's own context, not "any current context": were another
+    // context (media, a secondary GL context) ever current on this thread, the interval would be
+    // applied to that one, the window would stay at its own interval, and the safety net would
+    // condemn a healthy driver. With any other context (or none) current, driver pacing is simply
+    // not chosen (CPU pacing) instead of the interval call being applied to the wrong context or
+    // failing and being counted as a driver refusal.
+    return mVSyncEnabled && wglSwapIntervalEXT != nullptr && wglGetSwapIntervalEXT != nullptr &&
+           mhRC != 0 && wglGetCurrentContext() == mhRC;
+}
+
+bool LLWindowWin32::isFrameWindowMeasurable() const
+{
+    // Visible, not minimised and the foreground window. A window another window covers (or one
+    // that is not focused) can have a swap that stops blocking at the vblank; the frame limiter
+    // uses CPU pacing and does not measure then. Topmost overlays that cover a focused window
+    // are not detected (the driver pre-wait, once the driver looks suspicious, bounds the rate).
+    return mWindowHandle != nullptr && IsWindowVisible(mWindowHandle) && !IsIconic(mWindowHandle) &&
+           GetForegroundWindow() == mWindowHandle;
+}
+
+bool LLWindowWin32::getFrameRefresh(U32& numerator, U32& denominator, bool& exact)
+{
+    if (!mWindowHandle)
+    {
+        return false;
+    }
+    HMONITOR monitor = MonitorFromWindow(mWindowHandle, MONITOR_DEFAULTTONEAREST);
+    const bool display_changed = mDisplayConfigDirty.exchange(false);
+    const bool monitor_changed = (monitor != mRefreshMonitor);
+    if (monitor_changed)
+    {
+        mFrameEnvGeneration.fetch_add(1); // a failure seen on another monitor says nothing about this one
+    }
+    const unsigned long long now_ms = GetTickCount64();
+    // mRefreshQueried means "a refresh rate is known". A failed query leaves it false and is
+    // retried at most once a second (never marked done), so one transient failure at startup
+    // cannot disable driver pacing for the session.
+    if (monitor_changed || display_changed || (!mRefreshQueried && now_ms >= mRefreshRetryMs))
+    {
+        mRefreshMonitor = monitor;
+        mRefreshQueried = queryMonitorRefresh(monitor, mRefreshNum, mRefreshDen, mRefreshExact);
+        mRefreshRetryMs = mRefreshQueried ? 0 : now_ms + 1000;
+        if (mRefreshQueried)
+        {
+            mRefreshFailLogged = false;
+            LL_INFOS("Window") << "Frame limiter: window monitor refresh "
+                               << (mRefreshDen ? (F64)mRefreshNum / (F64)mRefreshDen : 0.0) << " Hz ("
+                               << (mRefreshExact ? "exact" : "integer fallback") << ")" << LL_ENDL;
+        }
+        else if (!mRefreshFailLogged)
+        {
+            mRefreshFailLogged = true;
+            LL_WARNS("Window") << "Frame limiter: could not read the window monitor refresh rate; "
+                               << "CPU pacing, retrying every second" << LL_ENDL;
+        }
+    }
+    numerator   = mRefreshNum;
+    denominator = mRefreshDen;
+    exact       = mRefreshExact;
+    return mRefreshNum > 0 && mRefreshDen > 0;
+}
+
+bool LLWindowWin32::setFrameSwapInterval(int n)
+{
+    if (wglSwapIntervalEXT == nullptr)
+    {
+        mFrameSwapInterval = 0;
+        return n <= 0;
+    }
+    // wglSwapIntervalEXT acts on the calling thread's CURRENT context. Were another context (media,
+    // a secondary GL context) current here, the call would hit that one and the window's own would
+    // keep (or never get) the interval, while the limiter believed it had set / restored it. So on
+    // a mismatch do nothing, report false and keep the stored state: the limiter retries next frame
+    // (a restore) or stays on CPU pacing (a request; isFrameVSyncActive() already refuses to choose
+    // driver pacing without the window's own context current).
+    if (mhRC == 0 || wglGetCurrentContext() != mhRC)
+    {
+        return false;
+    }
+    if (n <= 0)
+    {
+        // Back to what the viewer's own VSync setting expects, verified by reading it back (as the request
+        // path does): a driver that drops the call would leave the display paced at the limiter's N while
+        // the viewer believes VSync is back. On a mismatch keep the stored interval and return false, so the
+        // limiter's pending restore retries every frame.
+        const int expected = mVSyncEnabled ? 1 : 0;
+        wglSwapIntervalEXT(expected);
+        if (wglGetSwapIntervalEXT != nullptr && wglGetSwapIntervalEXT() != expected)
+        {
+            return false;
+        }
+        mFrameSwapInterval = 0;
+        return true;
+    }
+    if (!mVSyncEnabled || wglGetSwapIntervalEXT == nullptr)
+    {
+        return false;
+    }
+    if (wglSwapIntervalEXT(n) && wglGetSwapIntervalEXT() == n)
+    {
+        mFrameSwapInterval = n;
+        mFrameRefusalLoggedN = 0;
+        return true;
+    }
+    if (mFrameRefusalLoggedN != n)
+    {
+        // Once per refused N (the limiter retries every ~10 s; a stubborn driver must not warn each time).
+        mFrameRefusalLoggedN = n;
+        LL_WARNS("Window") << "Frame limiter: the driver refused swap interval " << n
+                           << "; using CPU pacing" << LL_ENDL;
+    }
+    mFrameSwapInterval = 0;
+    wglSwapIntervalEXT(1);
+    return false;
+}
+
 void LLWindowWin32::toggleVSync(bool enable_vsync)
 {
+    // [FrameLimiter] The viewer's own VSync setting takes over. A driver swap interval set
+    // by the frame limiter is dropped here (this also runs when the GL context is rebuilt,
+    // which resets the interval); the limiter re-applies it on the next frame if still needed.
+    mVSyncEnabled = enable_vsync;
+    mFrameSwapInterval = 0;
+    mFrameRefusalLoggedN = 0; // a new context / VSync state: a refusal is news again
+    mFrameEnvGeneration.fetch_add(1); // new VSync state or a new GL context: re-arm driver pacing
     if (wglSwapIntervalEXT == nullptr)
     {
         LL_INFOS("Window") << "VSync: wglSwapIntervalEXT not initialized" << LL_ENDL;
@@ -2590,6 +2808,7 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
         case WM_ACTIVATEAPP:
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32("mwp - WM_ACTIVATEAPP");
+            window_imp->mFrameFocusGeneration.fetch_add(1); // [FrameLimiter] re-arm driver pacing
             window_imp->post([=]()
                 {
                     // This message should be sent whenever the app gains or loses focus.
@@ -2633,6 +2852,7 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
         case WM_ACTIVATE:
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32("mwp - WM_ACTIVATE");
+            window_imp->mFrameFocusGeneration.fetch_add(1); // [FrameLimiter] re-arm driver pacing
             window_imp->post([=]()
                 {
                     // Can be one of WA_ACTIVE, WA_CLICKACTIVE, or WA_INACTIVE
@@ -3181,6 +3401,13 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
         case WM_SIZE:
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32("mwp - WM_SIZE");
+            // [FrameLimiter] Only a minimise, or a restore / maximise out of the minimised state,
+            // is a visibility change that re-arms driver pacing. Not every WM_SIZE: an interactive
+            // resize sends one per mouse move and would keep wiping the safety net's measurement.
+            if (w_param == SIZE_MINIMIZED || window_imp->mLastSizeWParam == SIZE_MINIMIZED)
+            {
+                window_imp->mFrameFocusGeneration.fetch_add(1);
+            }
             window_imp->updateWindowRect();
 
             // There's an odd behavior with WM_SIZE that I would call a bug. If
@@ -3246,6 +3473,8 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
 
         case WM_DISPLAYCHANGE:
         {
+            window_imp->mDisplayConfigDirty.store(true); // [FrameLimiter] re-read the monitor refresh rate
+            window_imp->mFrameEnvGeneration.fetch_add(1);
             WINDOW_IMP_POST(window_imp->mCallbacks->handleDisplayChanged());
             return 0;
         }
@@ -3253,6 +3482,7 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
         case WM_SETFOCUS:
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32("mwp - WM_SETFOCUS");
+            window_imp->mFrameFocusGeneration.fetch_add(1); // [FrameLimiter] re-arm driver pacing
             WINDOW_IMP_POST(window_imp->mCallbacks->handleFocus(window_imp));
             return 0;
         }
@@ -3260,6 +3490,7 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
         case WM_KILLFOCUS:
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32("mwp - WM_KILLFOCUS");
+            window_imp->mFrameFocusGeneration.fetch_add(1); // [FrameLimiter] re-arm driver pacing
             WINDOW_IMP_POST(window_imp->mCallbacks->handleFocusLost(window_imp));
             return 0;
         }

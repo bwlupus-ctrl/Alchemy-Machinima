@@ -404,6 +404,24 @@
        function="EnableMuteParticle" />
     </menu_item_call>
     <menu_item_call
+     label="Derender (this session)"
+     name="Avatar Session Derender">
+      <menu_item_call.on_click
+       function="Avatar.DerenderSelected"
+       parameter="temporary" />
+      <menu_item_call.on_enable
+       function="Avatar.EnableDerenderSelected" />
+    </menu_item_call>
+    <menu_item_call
+     label="Derender (permanent)"
+     name="Avatar Permanent Derender">
+      <menu_item_call.on_click
+       function="Avatar.DerenderSelected"
+       parameter="persistent" />
+      <menu_item_call.on_enable
+       function="Avatar.EnableDerenderSelected" />
+    </menu_item_call>
+    <menu_item_call
      label="Report"
      name="abuse">
       <menu_item_call.on_click
