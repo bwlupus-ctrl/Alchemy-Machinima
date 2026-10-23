@@ -3012,36 +3012,57 @@ template<> template<> void relight_object::test<37>()
         // Identity matrix leaves the box alone.
         xform(make(0,0,0,0),box_lo,box_hi,olo,ohi);
         for (int i = 0; i < 3; ++i) { close("identity: min",olo[i],box_lo[i],1.e-7); close("identity: max",ohi[i],box_hi[i],1.e-7); }
-        // Enclosure beyond the old 64-child limit, cached until a linkset event.
+        // Enclosure beyond the old 64-child limit, cached until a linkset event. This drives the PRODUCTION templates the viewer calls
+        // (linksetSiblingReach for the uncapped walk, cachedNear for the memo, stampBounds / nextBoundsRevision for the invalidation tags),
+        // not a local copy: a cap, a skipped link or a changed cache rule in the header changes these results.
+        struct Link { double lo[3], hi[3]; };
         NearCache<int> cache;
-        unsigned walks = 0;
-        const auto query = [&](unsigned revision, unsigned bulb_link, double bulb_half)
+        unsigned walks = 0, visited_last = 0;
+        std::uint64_t revision = nextBoundsRevision();            // a freshly constructed object: a unique nonzero tag, cacheable at once
+        const double near_origin[3] = {0,0,0};
+        const auto query = [&](std::uint64_t tag, unsigned bulb_link, double bulb_half, unsigned links = 255)
         {
-            if (const double* hit = cache.find(7,revision,10.0,.05)) return *hit;
-            ++walks;
-            double reach = 0.;
-            const double p[3] = {0,0,0};
-            for (unsigned link = 0; link < 255; ++link)
+            return cachedNear(cache,7,tag,10.0,.05,[&]()
             {
-                double lo[3] = {2,2,2}, hi[3] = {2.1,2.1,2.1};
-                if (link == bulb_link)
-                    for (int axis=0; axis<3; ++axis) { lo[axis] = -bulb_half; hi[axis] = bulb_half; }
-                reach = std::max(reach,siblingReach(lo,hi,p));
-            }
-            const double value = emitterNearPlane(.05,reach,10.0);
-            cache.store(7,revision,10.0,.05,value);
-            return value;
+                ++walks;
+                std::vector<Link> list(links);
+                for (unsigned link = 0; link < links; ++link)
+                {
+                    list[link] = {{2,2,2},{2.1,2.1,2.1}};
+                    if (link == bulb_link)
+                        for (int axis=0; axis<3; ++axis) { list[link].lo[axis] = -bulb_half; list[link].hi[axis] = bulb_half; }
+                }
+                const double reach = linksetSiblingReach(
+                    [&](const auto& visit) { for (const Link& link : list) visit(link); },
+                    [](const Link& link, double lo[3], double hi[3]) { for (int axis=0; axis<3; ++axis) { lo[axis] = link.lo[axis]; hi[axis] = link.hi[axis]; } return true; },
+                    near_origin,&visited_last);
+                return emitterNearPlane(.05,reach,10.0);
+            });
         };
-        close("child 65 counts",query(1,64,.35),.36);
-        close("unchanged linkset reuses cached bounds",query(1,64,.35),.36);
+        close("child 65 counts",query(revision,64,.35),.36);
+        ensure_equals("every link was visited (no cap)",visited_last,255u);
+        close("unchanged linkset reuses cached bounds (revision 1 of a fresh object)",query(revision,64,.35),.36);
         ensure_equals("one full walk across frames",walks,1u);
-        close("child 255 counts after membership change",query(2,254,.35),.36);
-        close("resizing the enclosing sibling invalidates",query(3,254,.45),.46);
-        close("unlinking the bulb invalidates",query(4,999,.45),.05);
+        std::uint64_t own = revision, root_tag = 0;
+        stampBounds(own,&root_tag);                               // a link / unlink / transform / extents event stamps the object AND its root
+        ensure("stampBounds stamps both with the same new unique tag",own == root_tag && own > revision);
+        close("child 255 counts after membership change",query(root_tag,254,.35),.36);
+        ensure_equals("visited all 255 again",visited_last,255u);
+        std::uint64_t next_tag = root_tag;
+        stampBounds(next_tag,nullptr);                            // an object that is its own root has no separate root tag
+        ensure("an own-root stamp is unique too",next_tag > root_tag);
+        close("resizing the enclosing sibling invalidates",query(next_tag,254,.45),.46);
+        std::uint64_t unlink_tag = next_tag;
+        stampBounds(unlink_tag,nullptr);
+        close("unlinking the bulb invalidates",query(unlink_tag,999,.45),.05);
         ensure_equals("only invalidations rebuild",walks,4u);
-        ensure("light radius invalidates",cache.find(7,4,9.,.05)==nullptr);
-        ensure("near floor invalidates",cache.find(7,4,10.,.1)==nullptr);
-        ensure("new root/light identity invalidates",cache.find(8,4,10.,.05)==nullptr);
+        close("tag 0 (no root) is never cached",query(0,64,.35),.36);
+        close("tag 0 again walks again",query(0,64,.35),.36);
+        ensure_equals("tag 0 walks every time",walks,6u);
+        ensure("light radius invalidates",cache.find(7,unlink_tag,9.,.05)==nullptr);
+        ensure("near floor invalidates",cache.find(7,unlink_tag,10.,.1)==nullptr);
+        ensure("new root/light identity invalidates",cache.find(8,unlink_tag,10.,.05)==nullptr);
+        ensure("revisions are process-unique and increasing",nextBoundsRevision() > unlink_tag);
     }
 }
 template<> template<> void relight_object::test<38>()
@@ -3147,20 +3168,22 @@ template<> template<> void relight_object::test<39>()
     ensure_equals("native-mapped pin releases immediately",held.id[0],3);
     updateResidency(held,1,[](int){return true;},first,4);
     ensure_equals("losing the native map does not dislodge another pin",held.id[0],3);
-    // Attachment visibility uses the exact production RAII scope, including
-    // early return and disabled scopes; no viewer/GL globals in this test.
-    int mode = 1, calls = 0;
-    const auto update = [&](bool shadow) { mode = shadow ? 3 : 1; ++calls; };
+    // Attachment visibility uses the exact production RAII scope, including early return, disabled scopes and a camera mode that changes
+    // mid-pass; no viewer/GL globals in this test.
+    int camera_mode = 1, applied = 1, calls = 0;
+    const auto update = [&](int mode) { applied = mode; ++calls; };
     const auto pass = [&]()
     {
-        AttachmentVisibilityScope scope(true,update);
-        ensure_equals("mouselook attachments visible to shadow cull",mode,3);
+        AttachmentVisibilityScope scope(true,camera_mode,3,update);   // construction captures mode 1
+        ensure_equals("mouselook attachments visible to shadow cull",applied,3);
+        camera_mode = 2;                                              // the user leaves mouselook while the cube passes run
         return;
     };
     pass();
-    ensure_equals("early exit restores mouselook visibility",mode,1);
-    { AttachmentVisibilityScope scope(false,update); }
+    ensure_equals("early exit restores the mode captured at construction, not the live one",applied,1);
+    { AttachmentVisibilityScope scope(false,camera_mode,3,update); }
     ensure_equals("other camera modes make no visibility updates",calls,2);
+    ensure_equals("a disabled scope leaves the camera alone",applied,1);
 }
 template<> template<> void relight_object::test<40>()
 {

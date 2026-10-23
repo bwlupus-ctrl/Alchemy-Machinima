@@ -149,6 +149,9 @@ public:
     void setBinRadius(F32 rad)  {mEntry->mBinRadius = rad;}
     void setSpatialExtents(const LLVector3& min, const LLVector3& max);
     void setSpatialExtents(const LLVector4a& min, const LLVector4a& max);
+    // Called after EVERY write of the entry's extents (both setSpatialExtents overloads and shift), whatever the static type of the caller:
+    // LLDrawable overrides it to invalidate the world-shadow bounds cache. Keep it O(1).
+    virtual void onSpatialExtentsChanged() {}
     void setPositionGroup(const LLVector4a& pos);
 
     virtual void setGroup(LLViewerOctreeGroup* group);

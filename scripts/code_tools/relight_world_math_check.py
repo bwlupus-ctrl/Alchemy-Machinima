@@ -23,6 +23,7 @@ def check(out):
 #include <cstdlib>
 #include <cstring>
 #include <numeric>
+#include <vector>
 #include "alareashadowmath.h"
 #include "alworldshadowmath.h"
 namespace tut {

@@ -42,7 +42,7 @@ def lifecycle_checks():
     def body(start, end): return pipe[pipe.index(start):pipe.index(end,pipe.index(start))]
     cube = body('void LLPipeline::generateWorldShadowCubes(', 'void LLPipeline::renderGroups(')
     residency = body('if (cube_main && !gSnapshot)', 'take.worldOn = cube_main;')
-    release = body('void LLPipeline::releaseWorldShadowTargets()', '\nnamespace')
+    release = body('void LLPipeline::releaseWorldShadowTargets(bool clear_failure)', '\nnamespace')
     # Tie the executed host helper and GL copy to the viewer call sites. A
     # correct helper left unused by a reverted pipeline must fail this gate too.
     assert 'ALWorldShadow::packViewRotation(view,world_rot)' in pipe and 'std::memcpy(world_rot' not in pipe
@@ -55,8 +55,10 @@ def lifecycle_checks():
     assert 'AttachmentVisibilityScope attachment_visibility(' in cube
     assert cube.index('AttachmentVisibilityScope') < cube.index('renderShadow(view, proj, shadow_cam')
     for condition in ('!gAgentCamera.getCameraAnimating()', 'CAMERA_MODE_MOUSELOOK', 'LLVOAvatar::sVisibleInFirstPerson',
-                      'shadow_pass ? CAMERA_MODE_THIRD_PERSON : gAgentCamera.getCameraMode()'):
+                      'const ECameraMode attachment_mode = gAgentCamera.getCameraMode();', 'attachment_mode, CAMERA_MODE_THIRD_PERSON,',
+                      'updateAttachmentVisibility(mode)'):
         assert condition in cube, 'native attachment scope lost '+condition
+    assert 'gAgentCamera.getCameraMode()' not in cube[cube.index('updateAttachmentVisibility(mode)'):cube.index('const glm::mat4 saved_proj')], 'the restore mode must be captured at construction, not read at exit'
     assert 'gSnapshot ||' in cube and 'ALWorldShadow::plannedLights(' in residency
     assert 'spotShadowMapSampled(slot)) return false;' in residency
     assert 'mWorldShadowResident.held[k] = false;' in cube and 'mWorldShadowFrame[k] = 0;' in cube
@@ -64,14 +66,42 @@ def lifecycle_checks():
                           ('void LLPipeline::releaseShadowBuffers()', 'void LLPipeline::releaseScreenBuffers()')]:
         assert 'releaseWorldShadowTargets();' in body(signature,end), 'world targets missing from teardown'
     assert 'mWorldShadowResident =' not in release and 'stamp = 0' in release, 'teardown must invalidate stamps and preserve session pins'
+    # Idempotent release; the allocation retry keeps the failure latch (one warning per failure streak), explicit teardown / OFF / success clear it.
+    assert 'target->getFBO() || target->getDepth() || target->isComplete()' in release and 'if (clear_failure) mWorldShadowAllocFailed = false;' in release, 'release must be idempotent and honour the latch'
+    assert cube.count('releaseWorldShadowTargets(false);') == 2 and 'mWorldShadowAllocFailed = false;' in cube, 'retry path must keep the failure latch and success must clear it'
+    # Snapshots sample the last live frame's stamps instead of dropping the world channel.
+    owned = body('bool LLPipeline::worldShadowOwned(', 'void LLPipeline::renderAreaShadows(')
+    assert 'gSnapshot ? mWorldShadowLiveFrame : gFrameCount' in owned and 'mWorldShadowLiveFrame = gFrameCount;' in cube, 'snapshot stamp sampling lost'
+    assert 'if (gSnapshot || !mWorldShadowAtlas' not in owned, 'a snapshot must not drop the world channel'
     assert 'llmin(source > 0.f ? source : .1f,2.f)' in pipe, 'production softbox radius clamp regressed'
     obj = (REPO / 'indra/newview/llviewerobject.cpp').read_text()
     draw = (REPO / 'indra/newview/lldrawable.cpp').read_text()
+    objh = (REPO / 'indra/newview/llviewerobject.h').read_text()
+    drawh = (REPO / 'indra/newview/lldrawable.h').read_text()
+    octh = (REPO / 'indra/newview/llvieweroctree.h').read_text()
+    octc = (REPO / 'indra/newview/llvieweroctree.cpp').read_text()
+    # The revision: seeded process-unique at construction (a static linkset is cacheable at once), stamped O(1) through the shared header.
+    assert 'U64 mWorldShadowBoundsRevision = nextWorldShadowRevision();' in objh, 'revision must be seeded at construction'
+    fn = obj[obj.index('void LLViewerObject::invalidateWorldShadowBounds()'):]; fn = fn[:fn.index('\n}\n')]
+    assert 'ALWorldShadow::stampBounds(' in fn and 'getRootEdit()' in fn and 'static U64 serial' not in fn, 'invalidation must be the O(1) shared stamp'
+    assert 'ALWorldShadow::cachedNear(' in body('static F32 worldShadowLightNear(', '// Round 5: a human label') and 'revision > 1' not in pipe, 'the near cache must key on any valid revision'
+    assert 'ALWorldShadow::linksetSiblingReach(' in body('static F32 worldShadowLightNearUncached(', 'static F32 worldShadowLightNear('), 'the uncapped shared sibling walk lost'
+    # EVERY write of an octree entry's extents goes through the one hook, whatever the caller's static type: the base setters and shift() all
+    # call it, LLDrawable overrides it, and no other translation unit writes entry extents.
+    assert 'virtual void onSpatialExtentsChanged()' in octh and 'void onSpatialExtentsChanged() override;' in drawh, 'extents hook declaration lost'
+    for signature in ('void LLViewerOctreeEntryData::setSpatialExtents(const LLVector3&', 'void LLViewerOctreeEntryData::setSpatialExtents(const LLVector4a&',
+                      'void LLViewerOctreeEntryData::shift('):
+        start = octc.index(signature); text_fn = octc[start:octc.index('\n}\n',start)]
+        assert 'onSpatialExtentsChanged();' in text_fn, 'extents write without the hook: '+signature
+    hook = draw[draw.index('void LLDrawable::onSpatialExtentsChanged()'):]; hook = hook[:hook.index('\n}\n')]
+    assert 'invalidateWorldShadowBounds();' in hook, 'LLDrawable hook must invalidate'
+    for source in (REPO / 'indra/newview').glob('*.cpp'):
+        if source.name == 'llvieweroctree.cpp': continue
+        assert 'mEntry->mExtents' not in source.read_text(errors='ignore'), 'another writer of entry extents: '+source.name
     for signature in ('bool LLViewerObject::setParent(', 'void LLViewerObject::addChild(', 'void LLViewerObject::removeChild('):
         start = obj.index(signature); fn = obj[start:obj.index('\n}\n',start)]
         assert 'invalidateWorldShadowBounds();' in fn, 'linkset invalidation lost '+signature
-    for signature in ('F32 LLDrawable::updateXform(', 'void LLDrawable::setSpatialExtents(const LLVector3&',
-                      'void LLDrawable::setSpatialExtents(const LLVector4a&', 'void LLDrawable::shiftPos('):
+    for signature in ('F32 LLDrawable::updateXform(', 'void LLDrawable::shiftPos('):
         start = draw.index(signature); fn = draw[start:draw.index('\n}\n',start)]
         assert 'invalidateWorldShadowBounds();' in fn, 'drawable invalidation lost '+signature
     return [dict(name=n,passed=True) for n in ('attachment_scope_integration','native_map_pin_release',
@@ -236,9 +266,14 @@ void main() {
 }'''
         self.program = runner._link('class3/deferred/areaShadowFilterF.glsl', [(text, text[:text.index('void main()')] + body)])
 
-    def run(self, positions, light, near, plane=False):
+    def run(self, positions, light, near, plane=False, view=None):
+        """view: optional 4x4 rotation (view = agent -> view space, no translation). Positions and the light go through it and the
+        production packed rotation carries it back, so the resolve sees a rotated camera exactly as the viewer feeds it."""
         r, pr = self.r, self.program
         gl = r.gl
+        view = np.eye(4) if view is None else np.asarray(view, np.float64)
+        positions = np.asarray(positions, np.float64).reshape(-1, 3) @ view[:3, :3].T
+        light_pos = view[:3, :3] @ np.asarray(light.pos, np.float64)
         data = np.asarray(positions, np.float32).reshape(1, -1, 3)
         r._texture('probe_positions', 7, 0x8815, data.shape[1], 1, 0x1907, 0x1406, data)
         r._target('probe_output', data.shape[1], 1); r._begin(pr)
@@ -246,9 +281,9 @@ void main() {
         gl.ui(gl.loc(pr, b'area_world_atlas'), 4)
         gl.active(0x84C4); gl.bind_tex(0x0DE1, r.gpu_atlas)
         info = np.zeros((4, 4), np.float32); info[0] = (0, near, light.radius, 0)
-        lights = np.zeros((4, 4), np.float32); lights[0] = (*light.pos, light.range)
+        lights = np.zeros((4, 4), np.float32); lights[0] = (*light_pos, light.range)
         seed = np.array([light.seed, 0, 0, 0], np.uint32)
-        rot = r.packed(np.eye(4))
+        rot = r.packed(view)
         for name, value in [(b'area_world_info', info), (b'area_world_light', lights)]:
             gl.u4fv(gl.loc(pr, name), 4, value.ctypes.data_as(C.POINTER(gl.F)))
         gl.u4uiv(gl.loc(pr, b'area_world_seed'), 1, seed.ctypes.data_as(C.POINTER(gl.U)))
@@ -259,62 +294,210 @@ void main() {
         return result[0, :, 0].astype(float)/255
 
 
+SEAM_LIMIT = 2.00001    # 2/255
+SEAM_RADII = (.1, 1., 2.)
+
+
+def rotated_view():
+    """A fixed, nontrivial camera rotation (yaw/pitch/roll), no translation: the production packing carries it back to the agent frame."""
+    y, p, q = np.radians([37.3, -21.7, 11.1])
+    rz = np.array([[np.cos(y), -np.sin(y), 0], [np.sin(y), np.cos(y), 0], [0, 0, 1]])
+    ry = np.array([[np.cos(p), 0, np.sin(p)], [0, 1, 0], [-np.sin(p), 0, np.cos(p)]])
+    rx = np.array([[1, 0, 0], [0, np.cos(q), -np.sin(q)], [0, np.sin(q), np.cos(q)]])
+    view = np.eye(4); view[:3, :3] = rz @ ry @ rx
+    return view
+
+
+SEAM_VIEWS = (('identity', np.eye(4)), ('rotated', rotated_view()))
+
+
+class MutantTree(G.SourceTree):
+    """The worktree with named substitutions applied to areaShadowFilterF.glsl: a CONTROL, never production text. A control is only
+    meaningful if its target text still exists, so a vanished target is a gate failure."""
+    def __init__(self, base, subs):
+        super().__init__(base.ref)
+        self.subs = subs
+
+    def read(self, path):
+        text = super().read(path)
+        if Path(path).name == 'areaShadowFilterF.glsl':
+            for old, new in self.subs:
+                assert old in text, 'mutation target vanished from the shader: ' + old
+                text = text.replace(old, new)
+        return text
+
+
+def mutant(r, subs):
+    """(runner, raster, probe) on the mutated shader text, sharing the GL context and host."""
+    m = RealRunner(MutantTree(r.tree, subs), r.host, gl=r.gl)
+    return m, Raster(m), Probe(m)
+
+
+# The pre-fix behaviours, as shader-text controls. Each MUST be rejected by the check named in main().
+MUT_HARD_FACE = [('vec3 w = smoothstep(vec3(AW_OVERLAP*major),vec3(major),a);',
+                  'vec3 w = vec3(a.x >= a.y && a.x >= a.z ? 1.0 : 0.0, (a.x < a.y && a.y >= a.z) ? 1.0 : 0.0, (a.x < a.z && a.y < a.z) ? 1.0 : 0.0);')]
+MUT_NO_PLANE_GUARD = [('vec4 plane = mix(vec4(zr),clamp(vec4(nd)/min(dens,vec4(-1.e-3)),vec4(zr-cap),vec4(zr+cap)),vec4(lessThan(dens,vec4(-1.e-3))));',
+                       'vec4 plane = vec4(nd)/min(dens,vec4(-1.e-5));')]
+MUT_WIDE_OVERLAP = [('const float AW_OVERLAP = 0.95;', 'const float AW_OVERLAP = 0.5;')]
+# COST upper bound only (relight_world_cost.py): every tap reads all three faces, as if every receiver ray sat on a cube corner.
+MUT_ALL_FACES = [('const float AW_OVERLAP = 0.95;', 'const float AW_OVERLAP = 0.0;')]
+MUT_TWO_FACES = [('vec3 w = smoothstep(vec3(AW_OVERLAP*major),vec3(major),a);', 'vec3 w = vec3(1.0,1.0,0.0);')]   # every tap reads two faces, as if every receiver ray sat on a cube edge
+MUT_WIDE_UNCLAMPED = MUT_WIDE_OVERLAP + [('vec2 q = clamp(centre-0.5,vec2(0.0),vec2(AW_TILE-2.0));', 'vec2 q = centre-0.5;')]
+
+
 def seam_checks(r, raster, probe):
-    rows = []
+    """Face-boundary continuity of the production resolve at micrometre spacing, for 0.1, 1 and 2 m sources and an identity and a rotated
+    camera. The atlas does not depend on the source radius, so each scene is rasterised once. Rows: the historical per-edge / per-corner
+    rows (0.1 m, identity) plus one aggregate row per (feature class, radius, view)."""
+    detail, worst = {}, {}
+    def record(kind, key, radius, vname, delta):
+        worst[(kind, radius, vname)] = max(worst.get((kind, radius, vname), 0.), delta)
+        if radius == .1 and vname == 'identity':
+            detail[(kind, key)] = max(detail.get((kind, key), 0.), delta)
+    def lights(radius): return S.Light('seam', (0, 0, 0), radius, 10., seed=123)
     # All 12 signed edges, sampled along the whole edge including both corner
     # approaches; a sphere silhouette deliberately places the probes in penumbra.
     for omitted in range(3):
         axes = [i for i in range(3) if i != omitted]
         for s0 in (-1, 1):
             for s1 in (-1, 1):
-                worst = 0.
                 for along in (-.99, -.6, 0., .6, .99):
                     d = np.zeros(3); d[axes] = (s0, s1); d[omitted] = along
                     d = S.unit(d)
                     tangent = np.zeros(3); tangent[omitted] = 1; tangent = S.unit(tangent-d*np.dot(tangent,d))
                     sphere = S.Prim('sphere', 'sphere', c=tuple(2*d+.37*tangent), r=.4)
-                    light = S.Light('seam', (0,0,0), .1, 10., seed=123)
-                    sc = S.Scene('seam', [sphere], [[light]], [], {}, np.empty((0,3)))
-                    r.gpu_atlas = raster.atlas(sc, light, .05)
+                    sc = S.Scene('seam', [sphere], [[lights(.1)]], [], {}, np.empty((0,3)))
+                    r.gpu_atlas = raster.atlas(sc, lights(.1), .05)
                     points = []
                     for offset in np.linspace(-.24,.24,33):
                         p = 4*d+offset*tangent
                         step = np.zeros(3); step[axes] = (s0*1.e-6,-s1*1.e-6)
                         points.extend([p-step,p+step])
-                    v = probe.run(points, light, .05).reshape(-1,2)
-                    worst = max(worst,float(np.max(np.abs(v[:,0]-v[:,1])))*255)
-                rows.append(dict(name='edge_%d_%d_%d' % (omitted,s0,s1), delta_255=worst, passed=worst <= 2.00001))
+                    for radius in SEAM_RADII:
+                        for vname, view in SEAM_VIEWS:
+                            v = probe.run(points, lights(radius), .05, view=view).reshape(-1,2)
+                            record('edge', (omitted, s0, s1), radius, vname, float(np.max(np.abs(v[:,0]-v[:,1])))*255)
     for sx in (-1,1):
         for sy in (-1,1):
             for sz in (-1,1):
                 d = S.unit([sx,sy,sz]); t = S.unit(np.cross(d,[0,0,1]))
-                light = S.Light('corner', (0,0,0), .1, 10., seed=123)
-                worst = 0.
                 for offset in np.linspace(.28,.48,21):
-                    sc = S.Scene('corner', [S.Prim('sphere','sphere',c=tuple(2*d+offset*t),r=.4)], [[light]], [], {}, np.empty((0,3)))
-                    r.gpu_atlas = raster.atlas(sc,light,.05)
+                    sc = S.Scene('corner', [S.Prim('sphere','sphere',c=tuple(2*d+offset*t),r=.4)], [[lights(.1)]], [], {}, np.empty((0,3)))
+                    r.gpu_atlas = raster.atlas(sc,lights(.1),.05)
                     points = [4*d + np.eye(3)[i]*[sx,sy,sz][i]*1.e-6 for i in range(3)]
-                    v = probe.run(points,light,.05)
-                    worst = max(worst,float(np.ptp(v))*255)
-                rows.append(dict(name='corner_%d_%d_%d' % (sx,sy,sz), delta_255=worst, passed=worst <= 2.00001))
+                    for radius in SEAM_RADII:
+                        for vname, view in SEAM_VIEWS:
+                            record('corner', (sx,sy,sz), radius, vname, float(np.ptp(probe.run(points,lights(radius),.05,view=view)))*255)
+    rows = []
+    for omitted in range(3):
+        for s0 in (-1, 1):
+            for s1 in (-1, 1):
+                delta = detail[('edge', (omitted, s0, s1))]
+                rows.append(dict(name='edge_%d_%d_%d' % (omitted,s0,s1), delta_255=delta, passed=delta <= SEAM_LIMIT))
+    for sx in (-1,1):
+        for sy in (-1,1):
+            for sz in (-1,1):
+                delta = detail[('corner', (sx,sy,sz))]
+                rows.append(dict(name='corner_%d_%d_%d' % (sx,sy,sz), delta_255=delta, passed=delta <= SEAM_LIMIT))
+    for (kind, radius, vname), delta in sorted(worst.items()):
+        if radius == .1 and vname == 'identity': continue      # the per-feature rows above
+        rows.append(dict(name='%ss_r%g_%s' % (kind, radius, vname), delta_255=delta, passed=delta <= SEAM_LIMIT))
     return rows
 
 
-def softbox_check(r, raster, probe):
-    light = S.Light('one_metre_softbox',(0,0,3.5),1.,10.,seed=123)
+def codex_corner(r, raster, probe, radius=2., view=None):
+    """Review round 5's exact reproduction: seed 123, light at the origin, near 0.05, a radius 0.4 sphere at (-1.437543, -0.871858, -1.154701),
+    receivers 1 micrometre from 4 * normalize(-1,-1,-1) along each of the three dominant axes. Returns the 3 visibilities in 1/255."""
+    d = S.unit([-1,-1,-1])
+    centre = 2*d+.4*S.unit(np.cross(d,[0,0,1]))
+    assert np.allclose(centre, (-1.437543,-0.871858,-1.154701), atol=2.e-6), 'fixture no longer the reviewed one'
+    light = S.Light('corner', (0,0,0), radius, 10., seed=123)
+    r.gpu_atlas = raster.atlas(S.Scene('corner', [S.Prim('sphere','sphere',c=tuple(centre),r=.4)], [[light]], [], {}, np.empty((0,3))), light, .05)
+    return probe.run([4*d-np.eye(3)[i]*1.e-6 for i in range(3)], light, .05, view=view)*255
+
+
+def bleed_atlas(r, legit=(0, 4)):
+    """A synthetic atlas: every texel is clear (window depth 1) except the tiles of the faces NOT in `legit`, which hold a blocker 0.1 m
+    from the light. The legit faces' tiles (+X and +Z) are the only data a receiver on the +X/+Z cube edge may read, so any darkening is a
+    read of another face's tile through the atlas neighbours: right of the +Z tile (face 4, row 1) is the -Z tile (face 5)."""
+    data = np.ones((CS.ATLAS_H_PER_LIGHT, CS.ATLAS_W), np.float32)
+    for face in range(6):
+        if face not in legit:
+            x, y = (face % 3)*CS.TILE, (face // 3)*CS.TILE
+            data[y:y+CS.TILE, x:x+CS.TILE] = .5
+    return r._texture('raster_atlas', 6, 0x8CAC, CS.ATLAS_W, CS.ATLAS_H_PER_LIGHT, 0x1902, 0x1406, data)
+
+
+def bleed_value(r, probe, radius=.3):
+    """Minimum visibility of receivers along the +X/+Z cube edge (and +-Y offsets), source `radius` (the direction path, footprint <= 0.14 rad,
+    so only the +X and +Z faces are ever legitimately read). 1 = no darkening."""
+    light = S.Light('bleed', (0,0,0), radius, 10., seed=123)
+    r.gpu_atlas = bleed_atlas(r)
+    pts = []
+    for az in np.linspace(-.02, .02, 9):          # radians either side of the 45 degree edge plane
+        for el in np.linspace(-.08, .08, 9):
+            a = np.pi/4+az
+            pts.append(4*np.array([np.cos(a)*np.cos(el), np.sin(el), np.sin(a)*np.cos(el)]))
+    return float(np.min(probe.run(pts, light, .05)))
+
+
+def softbox_check(r, raster, probe, radius):
+    """A half-plane blocker under a source of the given radius: the 10-90 % width against the analytic uniform-disk straight edge, the rms
+    against its full CDF, and the umbra (no leak through the halved blocker search the large-source path uses)."""
+    light = S.Light('softbox_%gm' % radius,(0,0,3.5),radius,10.,seed=123)
     blocker = S.Prim('half_plane','obb',c=(-10,0,1.49),h=(10,10,.01),cull='none')
     sc = S.Scene('softbox',[blocker],[[light]],[],{},np.empty((0,3)))
     r.gpu_atlas = raster.atlas(sc,light,.05)
-    x = np.linspace(-1.5,1.5,1201)
+    x = np.linspace(-4,4,1601)
     v = probe.run(np.column_stack([x,x*0,x*0]),light,.05,True)
-    # A uniform disk's analytic straight-edge CDF; 10..90% spans 1.374 of
-    # its projected radius R*(receiver-blocker)/blocker = .75 metres here.
-    expected = 2*.687048826*.75
+    # The receiver at x sees source-disk points sx > k*|x|... (k = 3.5/1.49 - 1) for x < 0: the visible disk fraction is the analytic CDF.
+    u = np.clip(-(3.5/1.49-1)*x/radius, -1, 1)
+    analytic = (np.arccos(u)-u*np.sqrt(1-u*u))/np.pi
+    # A uniform disk's analytic straight-edge CDF; 10..90% spans 1.374 of its projected radius R*(receiver-blocker)/blocker.
+    expected = 2*.687048826*radius*.75
     smooth = np.convolve(np.pad(v,8,mode='edge'),np.ones(17)/17,mode='valid')
     lo = np.interp(.1,np.maximum.accumulate(smooth),x)
     hi = np.interp(.9,np.maximum.accumulate(smooth),x)
     width = float(hi-lo)
-    return dict(name='softbox_1m',width_m=width,physical_width_m=expected,error_fraction=abs(width/expected-1),passed=abs(width/expected-1)<=.2)
+    rms = float(np.sqrt(np.mean((v-analytic)**2)))
+    umbra = float(np.max(v[analytic < 1.e-3]))
+    lit = float(np.min(v[analytic > 1-1.e-3]))
+    ok = abs(width/expected-1) <= .2 and rms <= .05 and umbra <= .02 and lit >= .98
+    return dict(name='softbox_%gm' % radius if radius != 1 else 'softbox_1m',width_m=width,physical_width_m=expected,error_fraction=abs(width/expected-1),
+                rms_vs_analytic=rms,umbra_max=umbra,lit_min=lit,passed=bool(ok))
+
+
+GRAZING_LIMIT = .25      # percent of the visible floor reading dark (false dark) on an EMPTY floor
+
+
+def grazing_value(r, raster, radius):
+    """Worst false-dark percentage on an empty floor lit by a source of `radius` 5 cm and 20 cm above it, so every receiver within 8 m is
+    seen at a grazing angle (1.4 degrees at 2 m... 0.3 degrees at 8 m), over six camera views. A 2 m source fans its footprint 43 degrees."""
+    worst = 0.
+    for height in (.05, .2):
+        prims = [S.Prim('floor', 'obb', c=(0, 0, -.1), h=(15, 15, .1))]
+        light = S.Light('lamp', (0., 0., height), radius, 10., seed=123)
+        sc = S.Scene('graze', prims, [[light]], [], {}, np.zeros((0, 3)))
+        for yaw, pitch in [(-54.462, 28.635), (0, 20), (45, 35), (90, 60), (135, 25), (225, 45)]:
+            worst = max(worst, evaluate(r, raster, sc, light, yaw, pitch)[2])
+    return worst
+
+
+def planner_control(out):
+    """The gate must reject the captured fallback table: force the planner adapter's compile to be unavailable (no MSVC, no cache) and require
+    that the production-planner requirement raises."""
+    saved = PL._vcvars
+    PL._vcvars = lambda: None
+    try:
+        result = PL.compute_plans_status(G.SourceTree('WORKTREE'), Path(out) / 'plan_control')
+    finally:
+        PL._vcvars = saved
+    assert not result.compiled and result.source.startswith('FALLBACK'), 'control did not reach the fallback table'
+    try:
+        PL.require_compiled(result)
+    except AssertionError:
+        return True
+    return False
 
 
 def flicker_checks(r, raster, out):
@@ -329,8 +512,9 @@ def flicker_checks(r, raster, out):
     light = sc.light_sets[poses[0].cfg][0]
     near = CS.emitter_near(sc, light)
     r.gpu_atlas = raster.atlas(sc, light, near)
-    plans, source = PL.compute_plans(r.tree, out)
-    assert source != 'fallback', 'production planner must compile'
+    # The captured fallback table is NOT the production planner: a failed adapter compile fails the gate (also for a cached table, which only
+    # a successful compile ever writes). planner_control() proves this requirement rejects the fallback.
+    plans = PL.require_compiled(PL.compute_plans_status(r.tree, out)).plans
     pts = sc.probes
     gt = S.trace_light(sc,light,pts,np.tile([0.,0.,1.],(len(pts),1)),np.arange(len(pts),dtype=np.uint32),S=256)
     gt = (1.-gt['nblk'].astype(np.float32)/256)[None,:]
@@ -460,9 +644,37 @@ def main():
         rows.append(dict(name='old_packing_negative_control', dark_percent=dark, rejected=bool(dark >= .1), passed=bool(dark > 10)))
         r.old_packing = False
         probe = Probe(r)
+        first = len(rows)
         rows.extend(seam_checks(r,raster,probe))
-        rows.append(softbox_check(r,raster,probe))
-        for row in rows[19:]: print('[world-gl]',row,flush=True)
+        # Review round 5's exact 2 m reproduction (25/255 before round 8), identity and rotated camera, at the reviewed 1 and 2 m sources.
+        for radius in (1., 2.):
+            for vname, view in SEAM_VIEWS:
+                v = codex_corner(r,raster,probe,radius,view)
+                rows.append(dict(name='codex_corner_%gm_%s' % (radius,vname),values_255=[round(float(x),2) for x in v],delta_255=float(np.ptp(v)),
+                                 passed=bool(np.ptp(v) <= SEAM_LIMIT)))
+        rows.append(softbox_check(r,raster,probe,1.))
+        rows.append(softbox_check(r,raster,probe,2.))
+        # Grazing receivers on an empty floor (plane guard / cap), and a tile-bleed fixture (blocker only in the neighbouring tiles).
+        for radius in (1., 2.):
+            dark = grazing_value(r,raster,radius)
+            rows.append(dict(name='grazing_%gm_empty_floor' % radius,dark_percent=dark,limit_percent=GRAZING_LIMIT,passed=bool(dark <= GRAZING_LIMIT)))
+        lit = bleed_value(r,probe)
+        rows.append(dict(name='tile_bleed_neighbour_blocker',min_visibility=lit,passed=bool(lit >= .99)))
+        # CONTROLS: the pre-fix behaviours as shader-text mutations. Each MUST be rejected (its row passes only when the gate catches it).
+        m, mraster, mprobe = mutant(r,MUT_HARD_FACE)
+        v = codex_corner(m,mraster,mprobe,2.)
+        rows.append(dict(name='control_hard_face_choice_rejected',delta_255=float(np.ptp(v)),passed=bool(np.ptp(v) > SEAM_LIMIT)))
+        m, mraster, mprobe = mutant(r,MUT_NO_PLANE_GUARD)
+        dark = grazing_value(m,mraster,2.)
+        rows.append(dict(name='control_unguarded_plane_rejected',dark_percent=dark,passed=bool(dark > GRAZING_LIMIT)))
+        m, mraster, mprobe = mutant(r,MUT_WIDE_UNCLAMPED)
+        lit = bleed_value(m,mprobe)
+        rows.append(dict(name='control_unclamped_tile_read_rejected',min_visibility=lit,passed=bool(lit < .9)))
+        m, mraster, mprobe = mutant(r,MUT_WIDE_OVERLAP)
+        lit = bleed_value(m,mprobe)
+        rows.append(dict(name='control_tile_clamp_holds_with_wide_overlap',min_visibility=lit,passed=bool(lit >= .99)))
+        rows.append(dict(name='control_planner_fallback_rejected',passed=bool(planner_control(out))))
+        for row in rows[first:]: print('[world-gl]',row,flush=True)
         flicker = flicker_checks(r,raster,out)
         rows.extend(row for row in flicker if 'passed' in row)
         diagnostics = [row for row in flicker if 'passed' not in row]

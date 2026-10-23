@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from typing import NamedTuple
 
 from relight_3d_gl import REPO
 
@@ -53,8 +54,33 @@ def _vcvars():
     return None
 
 
+class PlanResult(NamedTuple):
+    """Structured outcome of the planner adapter. compiled is True only when the production header produced the table
+    (compiled now, or loaded from a cache that only a successful compile writes); False means the captured HEAD table."""
+    plans: dict
+    source: str
+    compiled: bool
+    error: str
+
+
+def require_compiled(result):
+    """Gates that claim the PRODUCTION plan call this: the captured fallback table is not the production planner."""
+    if not result.compiled:
+        raise AssertionError('production planner did not compile (%s); the captured HEAD table is not accepted' % (result.error or 'fallback table'))
+    return result
+
+
 def compute_plans(tree, work_dir, width=1920, height=1080):
-    """Returns ({config name: {lights: plan dict}}, source string). width/height: the target the planner is asked about."""
+    """Returns ({config name: {lights: plan dict}}, source string). width/height: the target the planner is asked about.
+
+    Legacy two-value form (other harnesses tolerate the fallback table and print its source label); a gate that needs the
+    production planner uses compute_plans_status() + require_compiled()."""
+    result = compute_plans_status(tree, work_dir, width, height)
+    return result.plans, result.source
+
+
+def compute_plans_status(tree, work_dir, width=1920, height=1080):
+    """compute_plans with a structured PlanResult (compiled flag + error text)."""
     header = tree.read('indra/newview/alareashadowmath.h')
     # The production radius policy when the header defines one, else the formula inlined in pipeline.cpp at that commit.
     radius_expr = ('ALAreaShadow::filterRadius(2.f, 1.f, w.q.half)' if 'filterRadius(' in header else
@@ -66,9 +92,10 @@ def compute_plans(tree, work_dir, width=1920, height=1080):
     d = Path(work_dir) / 'plan' / key
     cache = d / 'plans.json'
     rows = None
+    compiled, error = True, ''
     source = 'compiled alareashadowmath.h @%s' % tree.commit()
     if cache.exists():
-        rows = json.loads(cache.read_text())
+        rows = json.loads(cache.read_text())      # written only after a successful compile of this exact header + adapter
     else:
         try:
             vc = _vcvars()
@@ -85,6 +112,7 @@ def compute_plans(tree, work_dir, width=1920, height=1080):
         except Exception as exc:  # pragma: no cover - environment dependent
             print('[ref3d] WARNING: could not compile production planner (%s); using captured HEAD table' % exc, flush=True)
             rows = FALLBACK
+            compiled, error = False, str(exc)
             source = 'FALLBACK table captured at HEAD 4dd9ff661c1 (header not compiled)'
     plans = {}
     for name, preset, thin in CONFIGS:
@@ -95,4 +123,4 @@ def compute_plans(tree, work_dir, width=1920, height=1080):
                 plans[name][r['lights']] = {'samples': r['samples'], 'steps': r['steps'], 'half': bool(r['half']),
                                             'near_steps': r['near'], 'channels': r['channels'],
                                             'radius': r.get('radius', 1.0 if r['half'] else 2.0)}
-    return plans, source
+    return PlanResult(plans, source, compiled, error)

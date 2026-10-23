@@ -38,6 +38,13 @@ def main():
     base_tree, work_tree = G.SourceTree(BASE), G.SourceTree('WORKTREE')
     base_runner = G.AreaRunner(base_tree)
     work_runner = G.AreaRunner(work_tree, gl=base_runner.gl)
+    # Bounds for the cross-face blend (round 8). The real blend reads ONE face except within 5 % of a cube boundary (about 10 % of directions
+    # read two, a corner patch of well under 1 % reads three). twoFaces: the same programs with EVERY direction-space tap reading two faces, as if
+    # every receiver ray of every pixel sat on a cube edge - a bound no scene reaches, asserted against the 3 ms ceiling. allFaces: every tap reads
+    # all three, as if every ray sat on a cube corner - reported only (a patch, never a whole screen).
+    import relight_world_gl_check as WG
+    twofaces_runner = G.AreaRunner(WG.MutantTree(work_tree, WG.MUT_TWO_FACES), gl=base_runner.gl)
+    allfaces_runner = G.AreaRunner(WG.MutantTree(work_tree, WG.MUT_ALL_FACES), gl=base_runner.gl)
     print('[world-cost] GL %s' % base_runner.gl.renderer, flush=True)
     sc = S.scene_sphere()
     lights = [S.Light('point', (2.0 * np.cos(t), 2.0 * np.sin(t), 1.6), 0.1, 10.0, seed=S.fnv_seed('B:%d' % i))
@@ -76,7 +83,11 @@ def main():
                     'softbox2': (work_runner, {'atlas': atlas, 'channels': channels(2,1.0)}),
                     'softboxWorst2': (work_runner, {'atlas': worst_atlas, 'channels': channels(2,1.0)}),
                     'twoMetre2': (work_runner, {'atlas': atlas, 'channels': channels(2,2.0)}),
-                    'twoMetreWorst2': (work_runner, {'atlas': worst_atlas, 'channels': channels(2,2.0)})}
+                    'twoMetreWorst2': (work_runner, {'atlas': worst_atlas, 'channels': channels(2,2.0)}),
+                    'twoFacesWorst1m': (twofaces_runner, {'atlas': worst_atlas, 'channels': channels(2,1.0)}),
+                    'twoFacesWorst2m': (twofaces_runner, {'atlas': worst_atlas, 'channels': channels(2,2.0)}),
+                    'allFacesWorst1m': (allfaces_runner, {'atlas': worst_atlas, 'channels': channels(2,1.0)}),
+                    'allFacesWorst2m': (allfaces_runner, {'atlas': worst_atlas, 'channels': channels(2,2.0)})}
         res = {}
         for name, (runner, world) in variants.items():
             tot = best(lambda: sum(run(runner, world).values()))
@@ -85,7 +96,7 @@ def main():
         base_tot, base_ups = res['base']
         print('[world-cost] %s %dx%d plan %d rays x %d steps %s: base area pass %.3f ms (upsample %.3f)' % (
             label, W, H, plan['samples'], plan['steps'], 'half' if plan['half'] else 'full', base_tot, base_ups), flush=True)
-        for name in ('world1', 'world2', 'worst2', 'softbox2', 'softboxWorst2', 'twoMetre2', 'twoMetreWorst2'):
+        for name in ('world1', 'world2', 'worst2', 'softbox2', 'softboxWorst2', 'twoMetre2', 'twoMetreWorst2', 'twoFacesWorst1m', 'twoFacesWorst2m', 'allFacesWorst1m', 'allFacesWorst2m'):
             tot, ups = res[name]
             resolve = ups - base_ups
             print('[world-cost] %s %-6s area pass %.3f ms (%.2fx base) | upsample %.3f ms | RESOLVE %.3f ms' % (
@@ -98,7 +109,7 @@ def main():
     r4kw = [r for r in rows if r[0] == '4K' and r[1] == 'worst2'][0]
     assert r1080[2] <= RATIO_CEILING, ('area pass at Medium 1080p K4 N=2 exceeds %.1fx the base pass' % RATIO_CEILING, r1080)
     for row in rows:
-        if row[0] == '4K':
+        if row[0] == '4K' and not row[1].startswith('allFaces'):   # allFaces* is the unreachable all-corner bound: reported, not asserted
             assert row[3] <= RESOLVE_CEILING_MS, ('resolve at 4K exceeds %.1f ms' % RESOLVE_CEILING_MS,row)
     print('[world-cost] PASS: area pass %.2fx base at Medium 1080p K4 N=2 (ceiling %.1fx); resolve at 4K N=2 %.3f ms (worst case %.3f ms; ceiling %.1f ms)' % (
         r1080[2], RATIO_CEILING, r4k[3], r4kw[3], RESOLVE_CEILING_MS), flush=True)

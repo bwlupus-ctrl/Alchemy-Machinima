@@ -1110,15 +1110,8 @@ const LLVector3& LLDrawable::getBounds(LLVector3& min, LLVector3& max) const
     return mXform.getPositionW();
 }
 
-void LLDrawable::setSpatialExtents(const LLVector3& min, const LLVector3& max)
+void LLDrawable::onSpatialExtentsChanged()
 {
-    LLViewerOctreeEntryData::setSpatialExtents(min,max);
-    if (mVObjp) mVObjp->invalidateWorldShadowBounds();
-}
-
-void LLDrawable::setSpatialExtents(const LLVector4a& min, const LLVector4a& max)
-{
-    LLViewerOctreeEntryData::setSpatialExtents(min,max);
     if (mVObjp) mVObjp->invalidateWorldShadowBounds();
 }
 

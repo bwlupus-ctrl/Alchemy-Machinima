@@ -56,6 +56,7 @@
 #include "object_flags.h"
 
 #include "alassetblocklist.h"
+#include "alworldshadowmath.h"
 #include "llaudiosourcevo.h"
 #include "llagent.h"
 #include "llagentcamera.h"
@@ -957,15 +958,18 @@ bool LLViewerObject::crossesParcelBounds()
     return mRegionp && mRegionp->objectsCrossParcel(boxes);
 }
 
+U64 LLViewerObject::nextWorldShadowRevision()
+{
+    return ALWorldShadow::nextBoundsRevision();
+}
+
 void LLViewerObject::invalidateWorldShadowBounds()
 {
-    // Process-unique tags also invalidate a recreated object with the same UUID.
-    // Geometry/linkset mutations occur on the viewer thread.
-    static U64 serial = 1;
-    const U64 revision = ++serial;
+    // O(1): one process-unique tag (atomic counter) on this object and on its edit root, found by a parent walk (no recursion, no allocation).
+    // The tags are unique, so a recreated object with a recycled UUID never matches a stale cache entry. The revision FIELDS themselves are only
+    // written by viewer-thread events (linkset, transform and extents changes).
     LLViewerObject* root = getRootEdit();
-    if (root) root->mWorldShadowBoundsRevision = revision;
-    mWorldShadowBoundsRevision = revision;
+    ALWorldShadow::stampBounds(mWorldShadowBoundsRevision, root && root != this ? &root->mWorldShadowBoundsRevision : nullptr);
 }
 
 bool LLViewerObject::setParent(LLViewerObject* parent)

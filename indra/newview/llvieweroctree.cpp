@@ -361,12 +361,14 @@ void LLViewerOctreeEntryData::setSpatialExtents(const LLVector3& min, const LLVe
 {
     mEntry->mExtents[0].load3(min.mV);
     mEntry->mExtents[1].load3(max.mV);
+    onSpatialExtentsChanged();
 }
 
 void LLViewerOctreeEntryData::setSpatialExtents(const LLVector4a& min, const LLVector4a& max)
 {
     mEntry->mExtents[0] = min;
     mEntry->mExtents[1] = max;
+    onSpatialExtentsChanged();
 }
 
 void LLViewerOctreeEntryData::setPositionGroup(const LLVector4a& pos)
@@ -390,6 +392,7 @@ void LLViewerOctreeEntryData::shift(const LLVector4a &shift_vector)
     mEntry->mExtents[0].add(shift_vector);
     mEntry->mExtents[1].add(shift_vector);
     mEntry->mPositionGroup.add(shift_vector);
+    onSpatialExtentsChanged();
 }
 
 LLViewerOctreeGroup* LLViewerOctreeEntryData::getGroup()const

@@ -1601,6 +1601,7 @@ public:
     LLRenderTarget mWorldShadowAtlas, mWorldShadowScratch;
     ALWorldShadow::Residency<LLUUID> mWorldShadowResident;
     U32 mWorldShadowFrame[ALWorldShadow::kMaxLights] = {};
+    U32 mWorldShadowLiveFrame = 0;             // gFrameCount of the last NON-snapshot main frame generateWorldShadowCubes ran on: a snapshot samples the stamps of that frame
     U32 mWorldShadowAtlasLights = 0;           // lights the atlas was allocated for (0 = not allocated)
     bool mWorldShadowAllocFailed = false;
     bool mWorldShadowUniformsLive = false;     // the area programs hold non-zero world uniforms (zeros are re-uploaded once on the way out)
@@ -1612,8 +1613,10 @@ public:
     // Round 5: per pinned slot, why it did (not) render a cube this frame; mWorldShadowLights counts the slots that DID.
     ALWorldShadow::SlotReason mWorldShadowReason[ALWorldShadow::kMaxLights] = {};
     std::string worldShadowReadout() const;   // the Director wording: rendered count, pinned light names, reasons (read-only, 2 s clock)
-    bool worldShadowOwned(const LLUUID& id, U32& slot) const; // true when `id` owns a cube rendered THIS frame
-    void releaseWorldShadowTargets();
+    bool worldShadowOwned(const LLUUID& id, U32& slot) const; // true when `id` owns a cube rendered THIS frame (a snapshot: the last live frame)
+    // Idempotent. clear_failure: an explicit teardown / budget change forgets an allocation failure; the allocation RETRY path passes false so the
+    // "allocation FAIL" warning is logged once per failure streak, not on every retry frame (the latch clears on success, OFF or teardown).
+    void releaseWorldShadowTargets(bool clear_failure = true);
     GLuint mAreaShadowQueries[2] = {};
     bool mAreaShadowQueryPending = false;
     F64 mAreaShadowGPUms = -1.0;

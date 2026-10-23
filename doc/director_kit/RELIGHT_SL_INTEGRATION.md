@@ -3183,3 +3183,34 @@ inner brace; the rank pin checks the new world-only branch while retaining the
 ordinary trace's arguments. No existing numerical limit was relaxed. The clean
 legacy runner captures native status directly, avoiding PowerShell's false
 failure status when redirected Git warnings become error records.
+
+### 13. Fix round 8 (10/23): review round 5 findings (Codex, Argon, GLM, DeepSeek) on `53ab8903007`
+
+Worktree `I:\alchemy-machinima-cube`, branch `wip/cube-p1lite`. No push, no viewer build. Every P0 below has a failing-before
+and a passing-after check in the real-GL gate `scripts/code_tools/relight_world_gl_check.py` (RTX 5090, OpenGL 4.6, NVIDIA 621.01).
+
+| Item | Finding | Fix | Gate |
+|---|---|---|---|
+| A | `awDirectionTap`: unclamped atlas base; `nd / min(dens, -1e-5)` explodes at grazing angles, every tap reads blocked | `awFaceTap` clamps the base exactly like `awTap` and mirrors `awPlane` per corner texel (centre depth when `!(den < -1e-3)`, clamp `zr +- cap`) | grazing 1 and 2 m on an empty floor (light 5 and 20 cm above it): **2.54 % false dark before, 0.17 % after** (limit 0.25 %); tile-bleed fixture (blockers only in the neighbouring tiles): min visibility 1.0 |
+| B | 2 m source: 25/255 at three-face corners (1 m: 5/255); hard face selection changed which texel lattice a tap read and so a handful of binary blocker flags | each tap keeps ONE world direction and is read from every face whose axis component is within 5 % of the dominant one (the 16 texel gutter makes that valid), blended with a smoothstep weight that is 1 on the dominant axis (a partition of unity: two faces per edge tap, three per corner tap) | every edge and corner at 0.1, 1 and 2 m, identity and rotated camera: **0/255** (limit 2/255); Codex's exact reproduction (seed 123, sphere (-1.437543, -0.871858, -1.154701)): **214/215/239 before, 223/223/223 after** |
+| C | the gate accepted the captured FALLBACK table when the planner header did not compile | `relight_3d_plan.compute_plans_status()` returns a structured `PlanResult` (compiled flag, error); the gate calls `require_compiled()` (also for a cached table, which only a successful compile writes) | `control_planner_fallback_rejected`: the compile is forced unavailable and the requirement MUST raise |
+| D | `old_plane` mixed the receiver's `d` with the tap's face axis; `AW_AXIS[awFace(d)]` jumps at corners | the receiver is expressed in each tap face's own axes (`centre_cosine` clamped at 0.1); the normal offset uses the dominant component directly (identical value, no face lookup) | covered by the seam rows |
+| E | the near cache never cached revision 1 (freshly rezzed static linksets walked every frame, unbounded) | `mWorldShadowBoundsRevision` is seeded from the process-unique counter at construction; `ALWorldShadow::cachedNear` caches at any nonzero tag. Unlink / reparent ordering checked: `setParent` stamps before and after `LLPrimitive::setParent`, `removeChild` and `addChild` stamp, so the old and the new edit root are both re-stamped on every path | unit test 37 (255 links, stamps) |
+| F | a high-resolution snapshot dropped the world channel | `worldShadowOwned` samples the stamps of the last live frame (`mWorldShadowLiveFrame`) while `gSnapshot` | lifecycle pin |
+| G | extent writers other than the two `LLDrawable` overloads | `LLViewerOctreeEntryData::onSpatialExtentsChanged()` is called by both `setSpatialExtents` overloads and `shift()` (every write of an entry's extents, any pointer type); `LLDrawable` overrides it; the gate scans for any other writer of `mEntry->mExtents` | lifecycle pins |
+| H | invalidation cost with World shadows OFF; non-atomic serial | `stampBounds` = one relaxed atomic increment, two stores, one parent walk (`getRootEdit`); no recursion, allocation or lock | unit test 37 |
+| I | allocation-failure log spam | `releaseWorldShadowTargets(bool clear_failure = true)`: the retry path passes `false`; success, OFF and explicit teardown clear the latch | lifecycle pin |
+| J | `AttachmentVisibilityScope` read the camera mode at destruction | the scope captures the restore mode by value at construction | unit test 39 changes the mode mid-pass |
+| K | test 37 re-implemented the walk and cache | it drives the production templates `linksetSiblingReach`, `cachedNear`, `stampBounds` (the viewer calls the same ones), and the gate pins the call sites and the extents writers | test 37, lifecycle |
+| L | large sources halve the blocker taps (8 + 16) | measured, no change: against the analytic straight-edge CDF of a uniform disk the rms error of the 2 m profile is 0.029 (16 + 32 taps: 0.021), the umbra maximum is 0.0 and the lit minimum 1.0 | `softbox_1m`, `softbox_2m` (width, rms <= 0.05, umbra <= 0.02, lit >= 0.98) |
+| M | possible double release | the release is idempotent: a target with no FBO, depth texture or colour attachment is not released again | lifecycle pin |
+
+Controls that must be rejected (shader-text mutations of the pre-fix behaviour, `MutantTree` in the gate; a vanished mutation target fails the gate):
+hard face choice (corner 25/255), unguarded plane (2.54 % false dark), widened overlap with the tile clamp removed (min visibility 0.8), and the
+planner fallback. The same widened overlap WITH the clamp stays at 1.0, so the clamp is what holds the tile. The latent tile read cannot occur in the
+shipped overlap (5 %), so the bleed fixture has no failing-before on `53ab8903007`; it guards the new blend.
+
+Cost (`relight_cost_check.py --world`, 4K, two resident lights, GPU ms of the resolve): small sources worst case 1.76 ms (was 1.57), forced 1 m 1.70 (1.32),
+forced 2 m 1.67 (1.36). A loop over the three axes with dynamically indexed vectors cost +70 % at 4K (register pressure); three explicit calls cost +15 %. Bounds
+that no scene reaches: every tap reading two faces (every ray on a cube edge) 2.15 ms, asserted against the 3 ms ceiling; every tap reading all three (every ray
+on a corner) 3.44 ms, reported only (a corner patch is well under 1 % of the directions).

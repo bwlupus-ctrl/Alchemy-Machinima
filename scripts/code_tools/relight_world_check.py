@@ -145,7 +145,7 @@ def check_near_and_state():
     memo = pipe[pipe.index('static F32 worldShadowLightNear('):]
     memo = memo[:memo.index('\n}\n')]
     assert 'NearCache<' in memo and 'worldShadowBoundsRevision()' in memo and 'worldShadowLightNearUncached(' in memo, 'the near must be invalidation cached'
-    for needle in ('world_shadow_extents(drawable, lo, hi)', 'ALWorldShadow::chebyshevReach(lo, hi, p)', 'ALWorldShadow::siblingReach(', 'getRootEdit()', 'getChildren()',
+    for needle in ('world_shadow_extents(drawable, lo, hi)', 'ALWorldShadow::chebyshevReach(lo, hi, p)', 'ALWorldShadow::linksetSiblingReach(', 'getRootEdit()', 'getChildren()',
                    'ALWorldShadow::emitterNearPlane('):
         assert needle in fn, 'worldShadowLightNear lost ' + needle
     assert 'getSpatialExtents()' in pipe[pipe.index('static bool world_shadow_extents('):pipe.index('static F32 worldShadowLightNear(')], 'the AABB must come from the drawable extents'

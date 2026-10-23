@@ -26788,17 +26788,18 @@ static F32 worldShadowLightNearUncached(LLDrawable* drawable, F32 light_radius, 
         {
             if (root != object || !object->getChildren().empty())   // in a linkset: small sibling links that enclose the light count too
             {
-                const auto consider = [&](LLViewerObject* sibling)
-                {
-                    if (!sibling || sibling == object || sibling->mDrawable.isNull()) return;
-                    double slo[3], shi[3];
-                    if (world_shadow_extents(sibling->mDrawable.get(), slo, shi)) reach = std::max(reach, ALWorldShadow::siblingReach(slo, shi, p));
-                };
-                consider(root);
-                for (const LLPointer<LLViewerObject>& child : root->getChildren())
-                {
-                    consider(child.get());
-                }
+                // EVERY link (no cap), through the shared template the unit tests drive: the root first, then each child.
+                reach = std::max(reach, ALWorldShadow::linksetSiblingReach(
+                    [&](const auto& visit)
+                    {
+                        visit(root);
+                        for (const LLPointer<LLViewerObject>& child : root->getChildren()) visit(child.get());
+                    },
+                    [&](LLViewerObject* sibling, double lo_s[3], double hi_s[3])
+                    {
+                        return sibling && sibling != object && sibling->mDrawable.notNull() && world_shadow_extents(sibling->mDrawable.get(), lo_s, hi_s);
+                    },
+                    p));
             }
         }
     }
@@ -26815,13 +26816,12 @@ static F32 worldShadowLightNear(LLDrawable* drawable, F32 light_radius)
     LLViewerObject* object = drawable ? drawable->getVObj().get() : nullptr;
     LLViewerObject* root = object ? object->getRootEdit() : nullptr;
     const auto key = std::make_pair(object ? object->getID() : LLUUID::null, root ? root->getID() : LLUUID::null);
+    // Every object carries a process-unique tag from construction and gets a new one on each linkset / transform / extents event, so ANY nonzero
+    // tag is a valid cache key (0 = no root). A drawable whose extents are not built yet is re-walked as soon as they are: building them is
+    // an extents event.
     const U64 revision = root ? root->worldShadowBoundsRevision() : 0;
-    // Initial tag 1 has not seen a bounds event: don't cache an unbuilt drawable.
-    if (revision > 1)
-        if (const double* hit = cache.find(key,revision,light_radius,floor_value)) return static_cast<F32>(*hit);
-    const F32 value = worldShadowLightNearUncached(drawable, light_radius, floor_value);
-    if (revision > 1) cache.store(key,revision,light_radius,floor_value,value);
-    return value;
+    return static_cast<F32>(ALWorldShadow::cachedNear(cache,key,revision,static_cast<double>(light_radius),static_cast<double>(floor_value),
+        [&]() { return static_cast<double>(worldShadowLightNearUncached(drawable, light_radius, floor_value)); }));
 }
 
 // Round 5: a human label for a pinned light: the object name when it is selected (names exist only for selected objects), else "light <uuid8>".
@@ -26878,12 +26878,17 @@ static bool world_shadow_eligible(LLDrawable* drawable)
     return volume->getLightRadius() * 1.5f > .001f;
 }
 
-// True when `id` owns a world cube map that was rendered THIS frame (the stamp equals gFrameCount) and is still allocated.
+// True when `id` owns a world cube map that was rendered THIS frame (the stamp equals gFrameCount) and is still allocated. During a
+// snapshot no cube is rendered (the capture dimensions/passes differ), but the atlas still holds the last live frame's valid maps and the
+// pins are preserved: the snapshot samples the stamps of that last live frame (mWorldShadowLiveFrame), so a high-resolution snapshot keeps
+// the world shadows the live view shows. A slot that did not render on that frame (stamp older) is not owned.
 bool LLPipeline::worldShadowOwned(const LLUUID& id, U32& slot) const
 {
-    if (gSnapshot || !mWorldShadowAtlas.isComplete()) return false;
+    if (!mWorldShadowAtlas.isComplete()) return false;
+    const U32 valid_stamp = gSnapshot ? mWorldShadowLiveFrame : gFrameCount;
+    if (gSnapshot && valid_stamp == 0) return false;
     for (U32 k = 0; k < ALWorldShadow::kMaxLights; ++k)
-        if (mWorldShadowResident.held[k] && mWorldShadowResident.id[k] == id && mWorldShadowFrame[k] == gFrameCount)
+        if (mWorldShadowResident.held[k] && mWorldShadowResident.id[k] == id && mWorldShadowFrame[k] == valid_stamp)
         {
             slot = k;
             return true;
@@ -33076,14 +33081,16 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
     LLViewerCamera::sCurCameraID = saved_camera_id;
 }
 
-void LLPipeline::releaseWorldShadowTargets()
+void LLPipeline::releaseWorldShadowTargets(bool clear_failure)
 {
-    mWorldShadowAtlas.release();
-    mWorldShadowScratch.release();
+    // Idempotent: the teardown paths (releaseGLBuffers and releaseShadowBuffers) and the allocation retry path may reach this repeatedly; a target
+    // with no FBO, depth texture or colour attachment is not released again (no GL call, no byte-count underflow).
+    for (LLRenderTarget* target : {&mWorldShadowAtlas, &mWorldShadowScratch})
+        if (target->getFBO() || target->getDepth() || target->isComplete()) target->release();
     mWorldShadowAtlasLights = 0;
     for (U32& stamp : mWorldShadowFrame) stamp = 0;
     mWorldShadowLights = 0;
-    mWorldShadowAllocFailed = false;
+    if (clear_failure) mWorldShadowAllocFailed = false;   // the retry path keeps the latch: one warning per failure streak
     for (auto& reason : mWorldShadowReason) reason = ALWorldShadow::SlotReason::None;
     mWorldShadowState = mWorldShadowResident.count() ? ALWorldShadow::State::Pinned : ALWorldShadow::State::Off;
     mWorldShadowCpuMs = 0.f;
@@ -33251,6 +33258,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     // Main view only: probes, mirrors, snapshots, HUDs, impostors and the VCam passes never render or own a cube.
     if (!sRenderDeferred || gSnapshot || gCubeSnapshot || sReflectionRender || sPrismLensRender || sRenderingHUDs || sImpostorRender ||
         mRT != &mMainRT || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD) return;
+    mWorldShadowLiveFrame = gFrameCount;   // a snapshot samples the stamps of this frame (worldShadowOwned)
 
     // Round 6: stale reasons never survive into this frame, whichever early return below is taken (the readout then shows no reason rather than a stale "rendered").
     for (U32 k = 0; k < ALWorldShadow::kMaxLights; ++k) mWorldShadowReason[k] = ALWorldShadow::SlotReason::None;
@@ -33291,7 +33299,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     // failure gives no cube this frame (the channel then falls back to the full screen trace) and is retried next frame.
     if (mWorldShadowAtlasLights != planned || !mWorldShadowAtlas.isComplete() || !mWorldShadowScratch.isComplete())
     {
-        releaseWorldShadowTargets();
+        releaseWorldShadowTargets(false);   // a retry: the failure latch (and so the single warning) survives it
         const bool ok = glCopyImageSubData &&
             mWorldShadowAtlas.allocate(ALWorldShadow::kAtlasWidth, ALWorldShadow::atlasHeight(planned), 0, true, false,
                 LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_NONE, LLRenderTarget::DEPTH_FMT_32F) &&
@@ -33299,7 +33307,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
                 LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_NONE, LLRenderTarget::DEPTH_FMT_32F);
         if (!ok)
         {
-            releaseWorldShadowTargets();
+            releaseWorldShadowTargets(false);
             if (!mWorldShadowAllocFailed)
                 LL_WARNS("RelightQ") << "[RelightQ] world-shadow allocation FAIL (atlas " << ALWorldShadow::kAtlasWidth << "x"
                     << ALWorldShadow::atlasHeight(planned) << " D32F); no world shadows this frame, retrying next frame" << LL_ENDL;
@@ -33382,13 +33390,14 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     // Same mouselook scope as the native pass, after its early returns and
     // before any cube culling. Hidden first-person bridges must be visible to
     // the shadow pass; restore the actual camera mode on every exit.
+    const ECameraMode attachment_mode = gAgentCamera.getCameraMode();   // captured ONCE: this is what the scope restores, whatever the mode does meanwhile
     ALWorldShadow::AttachmentVisibilityScope attachment_visibility(
         isAgentAvatarValid() && !gAgentCamera.getCameraAnimating() &&
-        gAgentCamera.getCameraMode() == CAMERA_MODE_MOUSELOOK && LLVOAvatar::sVisibleInFirstPerson,
-        [](bool shadow_pass)
+        attachment_mode == CAMERA_MODE_MOUSELOOK && LLVOAvatar::sVisibleInFirstPerson,
+        attachment_mode, CAMERA_MODE_THIRD_PERSON,
+        [](ECameraMode mode)
         {
-            if (isAgentAvatarValid()) gAgentAvatarp->updateAttachmentVisibility(
-                shadow_pass ? CAMERA_MODE_THIRD_PERSON : gAgentCamera.getCameraMode());
+            if (isAgentAvatarValid()) gAgentAvatarp->updateAttachmentVisibility(mode);
         });
     const glm::mat4 saved_proj = get_current_projection();
     const glm::mat4 saved_view = get_current_modelview();

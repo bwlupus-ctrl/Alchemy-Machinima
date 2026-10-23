@@ -319,6 +319,7 @@ public:
     // two resident lights' enclosure cache. Stored on the edit root.
     void invalidateWorldShadowBounds();
     U64 worldShadowBoundsRevision() const { return mWorldShadowBoundsRevision; }
+    static U64 nextWorldShadowRevision();
     S32 numChildren() const { return static_cast<S32>(mChildList.size()); }
     void addThisAndAllChildren(std::vector<LLViewerObject*>& objects);
     void addThisAndNonJointChildren(std::vector<LLViewerObject*>& objects);
@@ -1127,7 +1128,7 @@ public:
     // -1.f if no profile data available
     F32 mGPURenderTime = -1.f;
 private:
-    U64 mWorldShadowBoundsRevision = 1;
+    U64 mWorldShadowBoundsRevision = nextWorldShadowRevision();   // process-unique from construction: a static linkset is cacheable at once
 };
 
 ///////////////////

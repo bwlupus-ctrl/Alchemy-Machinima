@@ -11,20 +11,24 @@
 #define AL_WORLD_SHADOW_MATH_H
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <string>
 namespace ALWorldShadow
 {
-// The viewer supplies its native attachment visibility update. The scope also
-// restores on early exits; OFF frames never construct it.
-template<class Apply> struct AttachmentVisibilityScope
+// The viewer supplies its native attachment visibility update (apply(mode)). The scope applies `shadow_mode` on entry and, on EVERY exit (also
+// an early return), `restore_mode`, which is CAPTURED BY VALUE AT CONSTRUCTION: a camera mode that changes while the cube passes run must not
+// change what is restored. OFF frames and disabled scopes never apply anything.
+template<class Mode, class Apply> struct AttachmentVisibilityScope
 {
     bool active;
+    Mode restore;
     Apply apply;
-    AttachmentVisibilityScope(bool enabled, Apply update) : active(enabled), apply(update) { if (active) apply(true); }
-    ~AttachmentVisibilityScope() { if (active) apply(false); }
+    AttachmentVisibilityScope(bool enabled, Mode restore_mode, Mode shadow_mode, Apply update) : active(enabled), restore(restore_mode), apply(update)
+    { if (active) apply(shadow_mode); }
+    ~AttachmentVisibilityScope() { if (active) apply(restore); }
     AttachmentVisibilityScope(const AttachmentVisibilityScope&) = delete;
     AttachmentVisibilityScope& operator=(const AttachmentVisibilityScope&) = delete;
 };
@@ -161,6 +165,21 @@ template<class Key> struct NearCache
         *slot = {key,revision,radius,floor,value,true};
     }
 };
+// Process-unique bounds-revision tags. Every LLViewerObject takes one at construction (so a freshly rezzed static linkset is cacheable at once and a recreated
+// object with a recycled UUID never matches a stale entry) and a new one on every linkset / transform / extents event (stampBounds). Tag 0 means "no root".
+// The counter is atomic and relaxed: the writers are viewer-thread events, but a tag must stay unique even if one is ever raised elsewhere.
+inline std::uint64_t nextBoundsRevision()
+{
+    static std::atomic<std::uint64_t> serial{1};
+    return serial.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+// O(1) invalidation: one new tag on the object and on its edit root (null when the object is its own root). No recursion, no allocation, no lock.
+inline void stampBounds(std::uint64_t& own, std::uint64_t* root)
+{
+    const std::uint64_t tag = nextBoundsRevision();
+    if (root) *root = tag;
+    own = tag;
+}
 // A sibling link of the light's prim counts for the near plane when its world AABB contains the light and its largest extent is under 1 m (a bulb or glass around a
 // tiny/invisible light link); a big sibling (a wall, a floor) never does.
 inline bool siblingEnclosesLight(const double lo[3], const double hi[3], const double p[3])
@@ -176,6 +195,31 @@ inline bool siblingEnclosesLight(const double lo[3], const double hi[3], const d
 // The reach a sibling link adds: its Chebyshev reach when it encloses the light, else nothing.
 inline double siblingReach(const double lo[3], const double hi[3], const double p[3])
 { return siblingEnclosesLight(lo, hi, p) ? chebyshevReach(lo, hi, p) : 0.0; }
+// The reach the siblings of a linkset add, over EVERY link (a 255-link build is covered; there is no cap). visit(f) calls f(link) for the root and each child;
+// box(link, lo, hi) fills the link's agent-space AABB and returns false when it has none (or is the light's own link).
+template<class Visit, class Box> inline double linksetSiblingReach(Visit&& visit, Box&& box, const double p[3], unsigned* visited = nullptr)
+{
+    double reach = 0.0;
+    unsigned count = 0;
+    visit([&](auto&& link)
+    {
+        ++count;
+        double lo[3], hi[3];
+        if (box(link, lo, hi)) reach = std::max(reach, siblingReach(lo, hi, p));
+    });
+    if (visited) *visited = count;
+    return reach;
+}
+// The memoised near of one light: `revision` is the edit root's current tag (0 = no root: never cached). Any other tag is a valid key, because every object
+// is stamped at construction and re-stamped by every event that can change the answer. walk() is the full, uncapped sibling walk.
+template<class Key, class Walk> inline double cachedNear(NearCache<Key>& cache, const Key& key, std::uint64_t revision, double radius, double floor, Walk&& walk)
+{
+    if (revision != 0)
+        if (const double* hit = cache.find(key, revision, radius, floor)) return *hit;
+    const double value = walk();
+    if (revision != 0) cache.store(key, revision, radius, floor, value);
+    return value;
+}
 inline double emitterNearPlane(double setting, double emitterReach, double lightRadius)
 {
     double n = nearPlane(setting);
