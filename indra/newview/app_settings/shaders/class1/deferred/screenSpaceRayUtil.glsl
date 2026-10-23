@@ -43,16 +43,18 @@ float areaReceiverBias(vec2 uv, vec3 pos)
                           length(getPositionWithDepth(uv+vec2(0,pixel.y),depth).xyz-pos));
     return max(0.02,footprint*1.5);
 }
+// `thin` selects the opt-in Thin objects march (dense near segment) for THIS ray. A hybrid plan marches the rays of a Thin light
+// that sits next to the Thin/regular boundary the regular way (thin = false), which is the uniform march exactly.
 vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
                 float light_bias, float max_distance, float thickness, int steps, float offset,
-                float contact_distance)
+                float contact_distance, bool thin)
 {
     vec3 delta = target-origin;
     float distance = length(delta);
     float limit = min(max(0.0,distance-end_gap),max_distance);
     if (limit <= 0.001) return vec2(1);
     vec3 direction = delta/max(distance,0.001);
-    int near_steps = clamp(area_near_steps,0,steps-1);
+    int near_steps = thin ? clamp(area_near_steps,0,steps-1) : 0;
     int far_steps = steps-near_steps;
     // Thin objects: the first 1.85 m (or the whole ray, if shorter) gets near_steps
     // samples. The final two straddle the join at -/+1 cm; the others are spaced
@@ -70,7 +72,7 @@ vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
     for (int step=0; step<steps; ++step)
     {
         vec3 p;
-        if (area_thin_objects)
+        if (thin)
         {
             bool near_segment = step < near_steps;
             if (!near_segment && far_dt <= 0.0) break;
@@ -130,6 +132,12 @@ vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
         }
     }
     return vec2(1);
+}
+vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
+                float light_bias, float max_distance, float thickness, int steps, float offset,
+                float contact_distance)
+{
+    return areaTrace(origin,target,light,end_gap,light_bias,max_distance,thickness,steps,offset,contact_distance,area_thin_objects);
 }
 float areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
                 float light_bias, float max_distance, float thickness, int steps, float offset)

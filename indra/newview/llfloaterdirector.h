@@ -498,6 +498,7 @@ private:
     };
     std::vector<LauncherCard> mLauncherCards;
     LLHandle<LLTextBox> mAreaShadowSLStatus;
+    LLHandle<LLTextBox> mAreaShadowCoverage; // "Soft shadows on 2 of 8 lights"
     ALLiveReadoutClock mLauncherClock{2.f};
     LLTimer mBuildTimer;
 

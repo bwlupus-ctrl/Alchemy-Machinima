@@ -62,6 +62,18 @@ if '--thin-only' in sys.argv:
     from relight_thin_check import check_thin
     check_thin(globals())
     sys.exit(0)
+if '--orbit-only' in sys.argv:
+    from relight_orbit_check import check_orbit
+    check_orbit(globals())
+    sys.exit(0)
+if '--grain-only' in sys.argv:
+    from relight_grain_check import check_grain
+    check_grain(globals())
+    sys.exit(0)
+if '--cost-only' in sys.argv:
+    from relight_cost_check import check_cost
+    check_cost(globals())
+    sys.exit(0)
 if '--rank-only' in sys.argv:
     from relight_rank_check import check_rank
     check_rank(globals())
@@ -91,7 +103,7 @@ for visible in (7,8):
 for channel in range(7):
     plane,component=divmod(channel,4)
     assert np.array_equal(persistent[7][plane][:,:,component],persistent[8][plane][:,:,component]),'K7/K8 per-light visibility identity'
-print('[RelightQ] K-change PASS: requested K8, 1080p Cinematic S4/steps80/half; seven persistent channels byte-identical',flush=True)
+print('[RelightQ] K-change PASS: requested K8, 1080p Cinematic Thin S5/steps64/half (ray-floor ladder); seven persistent channels byte-identical',flush=True)
 area_inputs();ui(loc(area_gather,b'area_count'),4)
 ui(loc(area_gather,b'area_thin_objects'),0)
 ui(loc(area_gather,b'area_near_steps'),0)
@@ -436,6 +448,10 @@ for frame in range(2):
     source_pixels=camera_draw(source_probe,4,4,probe=True)
     assert np.all(source_pixels[:,:,:3]==0),('camera-invariant source exclusion',frame,source_pixels[0,0])
 print('[RelightQ] source-local exclusion PASS: real blocker near emitter camera depth retained in both camera views',flush=True)
+from relight_orbit_check import check_orbit
+check_orbit(globals())
+from relight_cost_check import check_cost
+check_cost(globals())
 print('[RelightQ] area runtime PASS production gather/filter RGBA8, blocker, penumbra, off-screen lit, ID/channel permutation',flush=True)
 print('[RelightQ] determinism PASS fixed 32x32 production visibility and bilateral programs, repeated byte-identical RGBA8 readbacks',flush=True)
 
@@ -493,6 +509,8 @@ for label,samples,steps,half in [('Low',4,8,True),('Medium',8,12,True),
 # wrappers and allocation counters before the independent camera oracle sweep.
 from relight_vcam_dispatch_check import check_dispatch
 check_dispatch(globals())
+if '--dispatch-only' in sys.argv:
+    sys.exit(0)
 
 # Independent camera alignment oracle sweep (ownership is exercised above).
 for feeds in (1,2,4):
@@ -534,3 +552,6 @@ check_thin(globals())
 
 from relight_rank_check import check_rank
 check_rank(globals())
+
+from relight_grain_check import check_grain
+check_grain(globals())

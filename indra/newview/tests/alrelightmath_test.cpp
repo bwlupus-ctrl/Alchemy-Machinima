@@ -2,6 +2,7 @@
 #include "../test/lltut.h"
 #include "../alrelightmath.h"
 #include "../alareashadowmath.h"
+#include "../llprismlens.h"
 #include "../alrelighttakerecord.h"
 #include "../alrelighttakewriter.h"
 #include "llsdserialize.h"
@@ -14,6 +15,54 @@ namespace tut
 struct relight_data {};
 using relight_group = test_group<relight_data>;
 using relight_object = relight_group::object;
+
+namespace
+{
+// The P0.1 acceptance predicate, computed from the target size and the budget only (never from the plan's
+// own cost fields): a main-view plan draws if and only if ONE light fits at the floors (4 rays, Thin: 48 near
+// + the common far floor, else the floor of 8 steps) at half resolution, inside its planning limit and its
+// per-draw cap; and a plan that draws never has fewer rays or steps than those floors.
+bool oneLightFits(ALAreaShadow::Quality asked, unsigned width, unsigned height, int millions, std::uint64_t holdBack)
+{
+    using namespace ALAreaShadow;
+    const int farMin = asked.nearSteps ? std::min(asked.minFar,kThinFarFloor) : std::min(asked.steps,kThinFarFloor);
+    const int steps = asked.nearSteps+farMin;
+    const std::uint64_t pixels = std::uint64_t((width+1)/2)*((height+1)/2); // the floor plan is half resolution
+    const std::uint64_t budget = std::uint64_t(millions)*1000000ull;
+    const std::uint64_t planned = asked.nearSteps ? budget-std::min(holdBack,budget) : budget;
+    const std::uint64_t floorCost = pixels*std::min(asked.samples,kRayFloor)*steps;
+    return floorCost<=planned && floorCost<=budget/2;
+}
+bool floorsHold(const ALAreaShadow::Workload& w, ALAreaShadow::Quality asked)
+{
+    using namespace ALAreaShadow;
+    if (!w.channels) return true;
+    const int farMin = w.q.nearSteps ? std::min(asked.minFar,kThinFarFloor) : std::min(asked.steps,kThinFarFloor);
+    return w.q.samples>=std::min(asked.samples,kRayFloor) && w.q.steps-w.q.nearSteps>=farMin;
+}
+// The hybrid's regular group, against the authored uniform march: the same ray and step floors, no near segment,
+// the shared resolution. A plan without rest lights has nothing to check.
+bool restFloorsHold(const ALAreaShadow::Workload& w, ALAreaShadow::Quality uniform)
+{
+    using namespace ALAreaShadow;
+    if (!w.channels || w.lead>=w.admitted) return true;
+    return w.rest.samples>=std::min(uniform.samples,kRayFloor) && w.rest.steps>=std::min(uniform.steps,kThinFarFloor) &&
+        w.rest.nearSteps==0 && w.rest.half==w.q.half && w.restChannels>0;
+}
+// Trace pixels of a plan, from the target size (never from the plan's own pixel field).
+std::uint64_t planPixels(const ALAreaShadow::Workload& w, unsigned width, unsigned height)
+{
+    return w.q.half ? std::uint64_t((width+1)/2)*((height+1)/2) : std::uint64_t(width)*height;
+}
+// Cost of a plan for `lights` selected lights, recomputed from the target size: the lead lights march w.q, the other
+// admitted lights march w.rest. Fix round 5: a Thin light of a hybrid also marches regular rays at the regular step count, so it is
+// charged the larger of the two step counts (rest.steps is 0 for a plan without rest lights).
+std::uint64_t planCost(const ALAreaShadow::Workload& w, unsigned width, unsigned height, unsigned lights)
+{
+    const std::uint64_t lead = std::min(lights,w.lead), all = std::min(lights,w.admitted);
+    return planPixels(w,width,height)*(lead*w.q.samples*std::max(w.q.steps,w.rest.steps)+(all-lead)*w.rest.samples*w.rest.steps);
+}
+}
 relight_group relight_tests("alrelightmath");
 static void close(const char* label, double a, double b, double tolerance = 1.e-10)
 { ensure(label, std::isfinite(a) && std::abs(a-b) <= tolerance); }
@@ -281,55 +330,84 @@ template<> template<> void relight_object::test<14>()
         if (budget==1500 && height!=1440)
         {
             // Literal default-budget tables: rows are 1080p/K4,K8,4K/K4,K8; columns are presets.
-            constexpr int onSamples[4][4]={{4,8,8,8},{4,4,4,4},{2,2,2,2},{1,1,1,1}};
-            constexpr int offSamples[4][4]={{4,8,12,5},{4,8,12,2},{4,8,9,1},{4,7,4,1}};
+            // Planner ladder with the ray floor (RELIGHT_WORLD_SHADOWS_PLAN P0.1): resolution, rays
+            // to 8, steps, rays to 4, steps to 8, then fewer lights. HEAD's 1-2 rays at 4K are gone.
+            constexpr int onSamples[4][4]={{4,8,8,8},{4,5,5,5},{4,4,4,4},{4,4,4,4}};
+            constexpr int offSamples[4][4]={{4,8,12,22},{4,8,12,11},{4,8,9,8},{4,8,8,5}};
             constexpr bool onHalf[4][4]={{true,true,true,true},{true,true,true,true},
                 {true,true,true,true},{true,true,true,true}};
-            constexpr bool offHalf[4][4]={{true,true,true,false},{true,true,true,false},
-                {true,true,true,false},{true,true,true,false}};
-            constexpr int onFar[4][4]={{32,32,32,32},{32,32,32,32},{32,32,32,32},{32,32,32,32}};
-            constexpr int offFar[4][4]={{8,12,20,32},{8,12,20,32},{8,12,20,32},{8,12,20,22}};
+            constexpr bool offHalf[4][4]={{true,true,true,true},{true,true,true,true},
+                {true,true,true,true},{true,true,true,true}};
+            constexpr int onFar[4][4]={{32,32,32,32},{32,16,16,16},{8,8,8,8},{8,8,8,8}};
+            constexpr int offFar[4][4]={{8,12,20,32},{8,12,20,32},{8,12,20,22},{8,11,11,16}};
+            constexpr unsigned onAdmitted[4]={4,8,3,3}; // Thin ON at 4K shadows 3 lights
             const int row=(height==2160 ? 2:0)+(lights==8 ? 1:0);
+            ensure_equals("effective table admitted",a.admitted,thin ? onAdmitted[row]:lights);
             ensure_equals("effective table samples",a.q.samples,thin ? onSamples[row][preset]:offSamples[row][preset]);
             ensure_equals("effective table near",a.q.nearSteps,thin ? 48:0);
             ensure_equals("effective table far",a.q.steps-a.q.nearSteps,thin ? onFar[row][preset]:offFar[row][preset]);
             ensure_equals("effective table resolution",a.q.half,thin ? onHalf[row][preset]:offHalf[row][preset]);
             std::cout << "[RelightQ] plan thin=" << thin << " " << height << "p K=" << lights
-                << " preset=" << preset << " S=" << a.q.samples << " near=" << a.q.nearSteps
+                << " preset=" << preset << " A=" << a.admitted << " S=" << a.q.samples << " near=" << a.q.nearSteps
                 << " far=" << a.q.steps-a.q.nearSteps << " half=" << a.q.half
                 << " iterations=" << a.iterations << " channels=" << a.channels << std::endl;
         }
         ensure("hard frame ceiling",a.iterations<=a.budget && a.budget<=1500000000ull);
         if (a.channels)
         {
-            ensure_equals("literal total",a.iterations,a.pixels*lights*a.q.samples*a.q.steps);
+            // The pipeline keeps the A highest-ranked lights; the rest get no soft shadow.
+            const unsigned kept=std::min(lights,a.admitted);
+            ensure("admitted lights are 1..K",a.admitted>=1 && a.admitted<=lights);
+            ensure_equals("literal total",a.iterations,a.pixels*kept*a.q.samples*a.q.steps);
             unsigned dispatched=0;
-            for (unsigned plane=0; plane<(lights+3)/4; ++plane)
-                for (unsigned first=0; first<std::min(4u,lights-plane*4); first+=a.channels)
+            for (unsigned plane=0; plane<(kept+3)/4; ++plane)
+                for (unsigned first=0; first<std::min(4u,kept-plane*4); first+=a.channels)
                 {
-                    const auto count=std::min(a.channels,std::min(4u,lights-plane*4)-first);
+                    const auto count=std::min(a.channels,std::min(4u,kept-plane*4)-first);
                     ensure("every split draw bounded",a.pixels*count*a.q.samples*a.q.steps<=a.drawCap);
                     dispatched+=count;
                 }
-            ensure_equals("all channels exactly once",dispatched,lights);
+            ensure_equals("all channels exactly once",dispatched,kept);
+            // Ray floor: fewer rays than the floor only when ONE light at the floors cannot fit.
+            if (a.q.samples<kRayFloor)
+            {
+                const int farFloor=a.q.nearSteps ? std::min(quality(preset,thin).minFar,kThinFarFloor):
+                    std::min(quality(preset).steps,kThinFarFloor);
+                const std::uint64_t pixels=std::uint64_t((height*16/9+1)/2)*((height+1)/2);
+                ensure("below the ray floor only when one light at the floors cannot fit",
+                    pixels*kRayFloor*(a.q.nearSteps+farFloor)>a.budget-(thin ? feedReservation(height*16/9,height,
+                    a.budget,lights,kFeedSlots):0) ||
+                    pixels*kRayFloor*(a.q.nearSteps+farFloor)>a.drawCap);
+            }
         }
         else ensure_equals("rejected views do no work",a.iterations,std::uint64_t(0));
     }
+    // Ladder order on a custom plan: resolution, then rays to 8, then steps (down to max(8,
+    // steps/2)), then rays to 4, then steps to 8, then lights. 518400 px x 8 lights x 8 rays x 45 steps.
     const auto samples=workload({32,64,false},1920,1080,8,1500,8);
-    ensure("reduce samples first",samples.q.samples==1 && samples.q.steps==64 && !samples.q.half);
+    ensure("resolution, rays to 8, then steps",samples.q.samples==8 && samples.q.steps==45 && samples.q.half &&
+        samples.admitted==8);
     const auto steps=workload({32,64,false},3840,2160,8,1500,8);
-    ensure("then steps",steps.q.samples==1 && steps.q.steps==22 && !steps.q.half);
-    const auto half=workload({32,64,false},3840,2160,8,20,8);
+    ensure("then rays to the floor and steps to 8",steps.q.samples==4 && steps.q.steps==22 && steps.q.half &&
+        steps.admitted==8);
+    // Below the floors a capture FEED keeps the previous order (rays, steps, half); the MAIN view draws nothing.
+    const auto half=workload({32,64,false},3840,2160,8,20,8,kFeedSlots,false);
     ensure("then half resolution",half.q.samples==1 && half.q.steps==1 && half.q.half && half.channels>0);
+    const auto none=workload({32,64,false},3840,2160,8,20,8);
+    ensure("main view below the floors: no soft shadow, never a sub-floor ray",none.channels==0 && none.admitted==0 &&
+        none.iterations==0);
     const auto split=workload({1,64,false},1920,1080,4,600,4);
     ensure("split necessary",split.channels==2 && split.q.steps==64);
-    ensure("default OFF 4K matches HEAD",workload(quality(1),3840,2160,8,1500,8).iterations==1393459200ull);
-    ensure("ON 4K below ceiling",workload(quality(1,true),3840,2160,8,1500,8).iterations==1327104000ull);
+    // 2073600 px x 8 lights x 8 rays x 11 steps (HEAD planned 7 rays x 12 steps here).
+    ensure("OFF 4K Medium: 8 rays x 11 steps",workload(quality(1),3840,2160,8,1500,8).iterations==1459814400ull);
+    // 2073600 px x 3 lights x 4 rays x 56 steps: Thin ON shadows 3 of 8 lights at 4K.
+    ensure("ON 4K keeps 4 rays for 3 lights",workload(quality(1,true),3840,2160,8,1500,8).iterations==1393459200ull);
     for (int preset=0; preset<4; ++preset)
     {
         const auto q=quality(preset,true);
         const auto w=workload(q,3840,2160,8,1500,8);
-        ensure("near counted, far never degraded",w.q.steps==q.steps && w.q.nearSteps==q.nearSteps);
+        ensure("near never thinned, far to the common floor",w.q.nearSteps==q.nearSteps &&
+            w.q.steps-w.q.nearSteps==kThinFarFloor && w.q.samples==kRayFloor && w.admitted==3);
         ensure("segmented ceiling",w.iterations<=w.budget);
     }
     // Last resort before failing closed: thin only the far segment, down to the COMMON
@@ -341,12 +419,32 @@ template<> template<> void relight_object::test<14>()
         for (int preset=0; preset<4; ++preset)
         {
             const auto plan=workload(quality(preset,true),3840,2160,8,1000,8);
-            ensure("far thinned instead of failing closed",plan.channels>0 && plan.q.nearSteps==48 &&
-                plan.q.steps-48==kThinFarFloor && plan.q.samples==1 && plan.q.half);
+            ensure("far thinned and lights dropped instead of failing closed",plan.channels>0 &&
+                plan.q.nearSteps==48 && plan.q.steps-48==kThinFarFloor && plan.q.samples==kRayFloor &&
+                plan.q.half && plan.admitted==2);
             ensure("far reduction stays inside the planning limit",plan.iterations<=plan.budget-reserved);
             ensure("the feed reservation is held back",reserved>0 && plan.iterations<=plan.budget-reserved);
-            ensure("every preset keeps the segmented march",
-                workloadOrUniform(quality(preset,true),quality(preset),3840,2160,8,1000,8).q.nearSteps==48);
+            // Without VCam feeds (no feed slots, so no cap at the OFF cost) every preset keeps the segmented march here
+            // on its top lights (a hybrid: the other lights keep the regular march). With feeds the Thin or hybrid plan
+            // is capped at the OFF main plan's cost (fix round 3), which a 4K K8 view at 1000M leaves no room under.
+            const auto hybrid=workloadOrUniform(quality(preset,true),quality(preset),3840,2160,8,1000,8,0);
+            const auto off=workload(quality(preset),3840,2160,8,1000,8,0);
+            // The regular lights keep EXACTLY the OFF march and the Thin lights get what is left of the budget: here only Low's
+            // 4 x 8 march leaves room for one Thin light; the other presets' OFF plans use the budget and stay as they are.
+            ensure("Thin never admits fewer lights than OFF without feeds",hybrid.admitted>=off.admitted);
+            if (hybrid.q.nearSteps)
+                ensure("a hybrid keeps the OFF march for its regular lights",hybrid.q.nearSteps==48 && hybrid.lead>=1 &&
+                    hybrid.lead<hybrid.admitted && hybrid.rest.samples==off.q.samples && hybrid.rest.steps==off.q.steps &&
+                    hybrid.rest.half==off.q.half && hybrid.q.half==off.q.half);
+            else
+                ensure("no room for a Thin light: exactly the OFF plan",hybrid.q.samples==off.q.samples &&
+                    hybrid.q.steps==off.q.steps && hybrid.q.half==off.q.half && hybrid.admitted==off.admitted &&
+                    hybrid.iterations==off.iterations);
+            ensure("Low keeps one Thin light beside its regular lights",preset!=0 || (hybrid.lead==1 && hybrid.admitted==8));
+            const auto capped=workloadOrUniform(quality(preset,true),quality(preset),3840,2160,8,1000,8);
+            const auto regular=workload(quality(preset),3840,2160,8,1000,8);
+            ensure("with feeds the plan costs no more than the OFF plan",capped.admitted==regular.admitted &&
+                capped.iterations<=regular.iterations);
         }
         // A budget the segmented plan cannot fit: the authored uniform plan, never darker than OFF.
         const auto fallback=workloadOrUniform(quality(3,true),quality(3),3840,2160,8,300,8);
@@ -385,10 +483,10 @@ template<> template<> void relight_object::test<15>()
     {
         const auto seven=workload(quality(3,thin),1920,1080,7,1500,8);
         const auto eight=workload(quality(3,thin),1920,1080,8,1500,8);
-        ensure("Cinematic K7/K8 same per-light work",seven.q.samples==(thin ? 4:2) &&
-            seven.q.samples==eight.q.samples && seven.q.steps==(thin ? 80:32) &&
+        ensure("Cinematic K7/K8 same per-light work",seven.q.samples==(thin ? 5:11) &&
+            seven.q.samples==eight.q.samples && seven.q.steps==(thin ? 64:32) &&
             seven.q.steps==eight.q.steps && seven.q.nearSteps==eight.q.nearSteps &&
-            seven.q.half==eight.q.half && seven.q.half==thin);
+            seven.q.half==eight.q.half && seven.q.half && seven.admitted==eight.admitted);
     }
     for (bool thin : {false,true})
     for (unsigned height : {1080u,1440u,2160u})
@@ -402,6 +500,7 @@ template<> template<> void relight_object::test<15>()
             const auto w=workload(quality(preset,thin),height*16/9,height,visible,budget,requested);
             ensure("visibility never retunes quality",w.q.samples==full.q.samples &&
                 w.q.steps==full.q.steps && w.q.half==full.q.half && w.channels==full.channels);
+            ensure("visibility never changes the admitted light count",w.admitted==full.admitted);
             ensure("reserved work bounds actual frame",w.iterations<=full.iterations && w.iterations<=w.budget);
             ensure("reserved work bounds draw",!w.channels ||
                 w.pixels*w.channels*w.q.samples*w.q.steps<=w.drawCap);
@@ -506,13 +605,14 @@ template<> template<> void relight_object::test<18>()
     close("current slot fade",record["projector_slots_at_start"][0]["fade"].asReal(),.5);
     ensure("thin mode recorded",record["settings_at_start"]["RenderAreaShadowThinObjects"].asBoolean());
     const LLSD& work = view["work"];
-    ensure_equals("effective samples",work["samples"].asInteger(),4);
+    ensure_equals("effective samples",work["samples"].asInteger(),5);
     ensure_equals("authored far count",work["authored_steps"].asInteger(),12);
     ensure_equals("effective near steps",work["near_steps"].asInteger(),48);
-    ensure_equals("effective far steps",work["far_steps"].asInteger(),32);
+    ensure_equals("effective far steps",work["far_steps"].asInteger(),16);
     ensure("segmented plan is not a fallback",!work["uniform_fallback"].asBoolean());
     ensure_equals("main view labelled",view["view"].asString(),std::string("main"));
-    ensure_equals("effective steps",work["steps"].asInteger(),80);
+    ensure_equals("effective steps",work["steps"].asInteger(),64);
+    ensure_equals("admitted lights",work["admitted"].asInteger(),8);
     ensure("half resolution",work["half"].asBoolean());
     ensure_equals("channels per draw",work["channels_per_draw"].asInteger(),4);
     ensure_equals("literal pixels",work["pixels"].asString(),std::string("518400"));
@@ -676,15 +776,32 @@ template<> template<> void relight_object::test<20>()
 
 template<> template<> void relight_object::test<22>()
 {
-    // A Gate may render one source repeatedly; bound actual passes, not IDs.
-    ALAreaShadow::FeedPasses passes;
-    for (auto frame : {0u,1u,0xffffffffu,0u})
+    // A Gate may render one source repeatedly. Fix round 5 (GLM, DeepSeek P1): passes are admitted by FEED IDENTITY, once per live
+    // feed per frame, so a re-rendered source cannot use up another live feed's pass, and a feed outside the set draws nothing.
     {
-        for (unsigned pass=0; pass<24; ++pass)
-            ensure("actual feed pass cap",passes.admit(frame,8)==(pass<8));
+        ALAreaShadow::FeedPasses passes;
+        ALAreaShadow::FeedSet live;
+        live.add(1024,576,5); live.add(640,360,2); live.add(512,288,7);
+        for (auto frame : {0u,1u,0xffffffffu,0u})
+        {
+            // Source 5 renders four times: only its first pass runs; the two other live feeds still get theirs.
+            for (unsigned repeat=0; repeat<4; ++repeat)
+                ensure("a live feed's first pass is admitted, its repeats are not",passes.admit(frame,5,live)==(repeat==0));
+            ensure("the next live feed is not starved by the repeats",passes.admit(frame,2,live));
+            ensure("a feed outside the live set draws nothing",!passes.admit(frame,3,live));
+            ensure("the last live feed is admitted",passes.admit(frame,7,live));
+            ensure("each live feed has had exactly one pass",!passes.admit(frame,2,live) && !passes.admit(frame,7,live));
+        }
+        // The count-based admission of the previous round (a repeat of feed 5 took feed 2's place) is what this replaces.
+        ALAreaShadow::FeedPasses counted;
+        unsigned admittedPasses = 0;
+        for (unsigned identity : {5u,5u,5u,2u,7u}) admittedPasses += counted.admit(9,identity,live) ? 1:0;
+        ensure("three live feeds, three passes, whatever the render order",admittedPasses==3);
+        ALAreaShadow::FeedPasses none;
+        ensure("no live feed: no pass",!none.admit(1,0,ALAreaShadow::FeedSet()));
+        ensure("a plain-count set names the slots 0..count-1",ALAreaShadow::FeedPasses().admit(1,2,ALAreaShadow::FeedSet(3)) &&
+            !ALAreaShadow::FeedPasses().admit(1,3,ALAreaShadow::FeedSet(3)));
     }
-    ALAreaShadow::FeedPasses none;
-    ensure("zero feed slots",!none.admit(1,0));
     // Main's plan never depends on feeds. Fixed eight-way spare allocation
     // remains safe even if all capture slots render in a future scheduler.
     for (bool thin : {false,true})
@@ -712,13 +829,18 @@ template<> template<> void relight_object::test<22>()
         }
     }
     const auto full = ALAreaShadow::Quality{4,8,false};
+    // Above the floors the ladder drops resolution first and keeps every ray (HEAD: rays first).
     const auto rays = ALAreaShadow::workloadWithin(full,10,10,1,2400,1);
-    ensure("feed rays first",rays.q.samples==1 && rays.q.steps==8 && !rays.q.half);
-    const auto steps = ALAreaShadow::workloadWithin(full,10,10,1,800,1);
+    ensure("feed resolution first, rays kept",rays.q.samples==4 && rays.q.steps==8 && rays.q.half);
+    // Below the floors (one light at 4 rays x 8 steps cannot fit) the previous order applies.
+    const auto steps = ALAreaShadow::workloadWithin(full,10,10,1,800,1,0,false);
     ensure("feed steps second",steps.q.samples==1 && steps.q.steps==4 && !steps.q.half);
-    const auto half = ALAreaShadow::workloadWithin(full,10,10,1,100,1);
+    const auto half = ALAreaShadow::workloadWithin(full,10,10,1,100,1,0,false);
     ensure("feed half third",half.q.samples==1 && half.q.steps==1 && half.q.half && half.channels);
-    ensure("feed skip last",!ALAreaShadow::workloadWithin(full,10,10,1,1,1).channels);
+    ensure("feed skip last",!ALAreaShadow::workloadWithin(full,10,10,1,1,1,0,false).channels);
+    // The main view (floors) draws nothing at those budgets instead.
+    ensure("main view below the floors draws nothing",!ALAreaShadow::workloadWithin(full,10,10,1,800,1).channels &&
+        !ALAreaShadow::workloadWithin(full,10,10,1,100,1).channels && ALAreaShadow::workloadWithin(full,10,10,1,800,1).admitted==0);
     ensure("no main extent skips feeds",!ALAreaShadow::feedWorkload(full,full,0,0,10,10,1,1500,1,8).channels);
     for (int bit=0; bit<6; ++bit)
     {
@@ -749,22 +871,31 @@ template<> template<> void relight_object::test<23>()
     {
         const auto q=quality(preset,true), uniform=quality(preset);
         const auto main=workloadOrUniform(q,uniform,mainHeight*16/9,mainHeight,cap,1500,cap);
+        const auto offMain=workload(uniform,mainHeight*16/9,mainHeight,cap,1500,cap);
         ensure("main draws",main.channels>0);
+        ensure("a Thin or hybrid main never costs more than the OFF main while feeds can run",
+            main.iterations<=offMain.iterations);
         for (const auto& size : feeds)
         for (unsigned lights=1; lights<=cap; ++lights)
         {
             const auto feed=feedWorkload(q,uniform,mainHeight*16/9,mainHeight,size.w,size.h,lights,1500,cap,8);
-            ensure("feed channels admitted",feed.channels>0);
+            const auto offFeed=feedWorkload(uniform,uniform,mainHeight*16/9,mainHeight,size.w,size.h,lights,1500,cap,8);
+            // Fix round 3: the feed gets EXACTLY the allowance it gets with Thin OFF, so it draws wherever the OFF feed draws
+            // and admits at least its lights (a main that eats the whole budget leaves the OFF feed nothing too).
+            ensure("feed gets exactly the OFF allowance",feed.budget==offFeed.budget);
+            ensure("feed channels admitted wherever the OFF feed draws",!offFeed.channels || feed.channels>0);
+            ensure("feed admits at least the OFF feed's lights",(feed.channels ? feed.admitted:0)>=(offFeed.channels ? offFeed.admitted:0));
             ensure("feed inside its allowance",feed.iterations<=feed.budget);
             ensure("feed draw bound",feed.pixels*feed.channels*feed.q.samples*feed.q.steps<=feed.drawCap);
             // Eight slots plus the main plan stay inside the one frame budget.
             ensure("one budget for main and eight feeds",main.iterations+8*feed.iterations<=main.budget);
+            if (!feed.channels) continue;
             if (feed.q.nearSteps) ++segmentedFeeds; else ++fallbackFeeds;
             // A fallback is exactly the authored uniform plan for that allowance.
             if (!feed.q.nearSteps)
             {
-                const auto reserve=main.channels ? main.iterations:0;
-                const auto expected=workloadWithin(uniform,size.w,size.h,lights,(main.budget-reserve)/8,cap);
+                const auto reserve=offMain.channels ? offMain.iterations:0;
+                const auto expected=workloadWithin(uniform,size.w,size.h,lights,(main.budget-reserve)/8,cap,0,false);
                 ensure("fallback is the uniform plan",feed.q.samples==expected.q.samples &&
                     feed.q.steps==expected.q.steps && feed.q.half==expected.q.half &&
                     feed.channels==expected.channels);
@@ -778,7 +909,7 @@ template<> template<> void relight_object::test<23>()
     {
         const auto q=quality(preset), same=quality(preset);
         const auto a=feedWorkload(q,same,1920,1080,640,360,4,1500,4,8);
-        const auto b=workloadWithin(q,640,360,4,(1500000000ull-workload(q,1920,1080,4,1500,4).iterations)/8,4);
+        const auto b=workloadWithin(q,640,360,4,(1500000000ull-workload(q,1920,1080,4,1500,4).iterations)/8,4,0,false);
         ensure("OFF feed plan unchanged",a.q.samples==b.q.samples && a.q.steps==b.q.steps &&
             a.q.half==b.q.half && a.channels==b.channels && a.iterations==b.iterations);
     }
@@ -794,7 +925,11 @@ template<> template<> void relight_object::test<24>()
     constexpr Size sizes[]={{1280,720},{1600,900},{1920,1080},{2560,1440},{3840,2160}};
     // Budgets run from 100M to the default: tight budgets thin the far segment to the
     // common floor, which every preset shares, so segmentation never depends on the preset.
-    unsigned segmentedRows=0, uniformRows=0;
+    // Without VCam feeds (slots 0) the Thin planner is preset independent; with feeds (slots 8) a Thin or hybrid plan is capped
+    // at the cost of the OFF plan of its own preset (fix round 3), so which presets keep Thin depends on the preset by design and
+    // the preset-ordered rules below apply to the rows where every preset keeps it.
+    unsigned segmentedRows=0, uniformRows=0, emptyRows=0, cappedThinPlans=0;
+    for (unsigned slots : {0u,kFeedSlots})
     for (int budget : {1500,1400,1200,1000,800,600,450,300,200,100})
     for (const auto& size : sizes)
     for (unsigned lights=1; lights<=8; ++lights)
@@ -802,32 +937,61 @@ template<> template<> void relight_object::test<24>()
         Workload plan[4];
         for (int preset=0; preset<4; ++preset)
         {
-            plan[preset]=workloadOrUniform(quality(preset,true),quality(preset),size.w,size.h,lights,budget,lights);
-            ensure("every preset draws",plan[preset].channels>0);
+            plan[preset]=workloadOrUniform(quality(preset,true),quality(preset),size.w,size.h,lights,budget,lights,slots);
+            // The main view draws exactly when one light fits at the floors (Thin, else the uniform fallback).
+            ensure("every preset draws wherever one light fits at the floors",(plan[preset].channels>0) ==
+                (oneLightFits(quality(preset,true),size.w,size.h,budget,feedReservation(size.w,size.h,
+                    std::uint64_t(budget)*1000000ull,lights,slots)) || oneLightFits(quality(preset),size.w,size.h,budget,0)));
             ensure("segmented plan stays inside the frame",plan[preset].iterations<=plan[preset].budget);
+            ensure("the regular group keeps the floors",restFloorsHold(plan[preset],quality(preset)));
             if (!plan[preset].q.half && plan[preset].q.nearSteps)
                 ensure("segmented full resolution only with at least 12 rays",
                     plan[preset].q.samples>=kFullResMinSamples);
         }
-        for (int preset=1; preset<4; ++preset)
-            ensure("no preset loses the segmented march while a lower one keeps it",
-                (plan[preset].q.nearSteps>0)==(plan[0].q.nearSteps>0));
+        bool allSegmented=true;
+        for (int preset=0; preset<4; ++preset) allSegmented = allSegmented && plan[preset].q.nearSteps>0;
+        for (int preset=0; preset<4; ++preset)
+        {
+            // Fix round 3: which presets keep a Thin light depends on the preset (the regular lights keep exactly the OFF march of
+            // their own preset and the Thin lights get only what is left), so the preset-independence rule is gone; what holds
+            // instead: Thin never admits fewer lights than OFF, the regular lights ARE the OFF march, and with feeds a Thin
+            // or hybrid plan never costs more than its preset's OFF plan.
+            const auto off=workload(quality(preset),size.w,size.h,lights,budget,lights,slots);
+            ensure("Thin ON admits at least what OFF admits",plan[preset].admitted>=off.admitted);
+            if (plan[preset].q.nearSteps && plan[preset].lead<plan[preset].admitted)
+                ensure("the regular lights keep exactly the OFF march",plan[preset].rest.samples==off.q.samples &&
+                    plan[preset].rest.steps==off.q.steps && plan[preset].rest.half==off.q.half &&
+                    plan[preset].admitted==off.admitted);
+            if (slots && plan[preset].q.nearSteps)
+            {
+                ++cappedThinPlans;
+                ensure("a capped plan never costs more than its preset's OFF plan",
+                    planCost(plan[preset],size.w,size.h,8)<=regularCost(off));
+            }
+        }
+        // The floors are shared by every preset: a size and budget that cannot afford one light draws nothing for all.
+        if (!plan[0].channels) { ++emptyRows; continue; }
         // Uniform rows are the OFF plan (its preset inversion at tight budgets predates
         // Thin objects and is out of scope); the monotonic rule covers the segmented rows.
-        if (!plan[0].q.nearSteps) { ++uniformRows; continue; }
+        if (!allSegmented) { ++uniformRows; continue; }
         ++segmentedRows;
         for (int preset=0; preset<4; ++preset)
         {
             // Independent cost recomputation: pixels from the target size, not from the plan.
-            const std::uint64_t pixels = plan[preset].q.half ? std::uint64_t((size.w+1)/2)*((size.h+1)/2) :
-                std::uint64_t(size.w)*size.h;
             ensure("plan cost recomputed from the target size",plan[preset].iterations ==
-                pixels*lights*plan[preset].q.samples*plan[preset].q.steps);
+                planCost(plan[preset],size.w,size.h,lights));
             ensure("the plan fits the requested-K reservation",
-                pixels*lights*plan[preset].q.samples*plan[preset].q.steps <= plan[preset].budget);
+                planCost(plan[preset],size.w,size.h,lights) <= plan[preset].budget);
+            // Fewer lights only after every rung above was spent.
+            if (plan[preset].admitted < lights)
+                ensure("lights drop only at the floors",plan[preset].q.samples==kRayFloor && plan[preset].q.half);
             // Degradation order: the far segment is thinned only after rays and resolution are spent.
+            // Ladder rungs 3 and 5: far steps thin only at half resolution with rays already at 8
+            // (rung 2), and below 16 only with rays at the floor of 4 (rung 4).
             if (plan[preset].q.steps-plan[preset].q.nearSteps < 32)
-                ensure("far steps thin only as a last resort",plan[preset].q.samples==1 && plan[preset].q.half);
+                ensure("far steps thin only after the rays reached 8",plan[preset].q.samples<=kRayRungSamples && plan[preset].q.half);
+            if (plan[preset].q.steps-plan[preset].q.nearSteps < 16)
+                ensure("far steps below 16 only at the ray floor",plan[preset].q.samples<=kRayFloor);
             ensure("far steps never below the common floor",
                 plan[preset].q.steps-plan[preset].q.nearSteps >= kThinFarFloor);
         }
@@ -842,7 +1006,9 @@ template<> template<> void relight_object::test<24>()
         }
     }
     ensure("segmented rows are exercised",segmentedRows>0);
+    ensure("Thin plans with feeds are exercised",cappedThinPlans>0);
     ensure("fallback rows are exercised",uniformRows>0);
+    ensure("rows below the floors are exercised (nothing drawn)",emptyRows>0);
     // The previously inverted configurations, literally: Cinematic is now half
     // resolution with at least High's samples (it was 4 full-res vs 12 half-res).
     const auto high=workload(quality(2,true),1920,1080,1,1500,1);
@@ -850,15 +1016,22 @@ template<> template<> void relight_object::test<24>()
     ensure("1080p K1 High",high.q.samples==12 && high.q.half);
     ensure("1080p K1 Cinematic >= High",cinematic.q.samples>=high.q.samples && cinematic.q.half);
     // Literal cross-preset sample rows at the default 1500M budget (Low, Medium, High, Cinematic).
+    // Fix round 3: the Thin march of a plan depends on whether VCam feeds can run. Without feeds (slots 0) the Thin lights get what the
+    // OFF plan leaves; with feeds (slots 8) a Thin or hybrid plan never costs more than the OFF plan of its preset, so only the
+    // plans that fit under it keep the Thin march (the 4x8 / 8x12 / 9x20 / 8x22 entries are the OFF plans themselves).
     struct Row { unsigned height, cap; int samples[4]; };
-    constexpr Row rows[]={{1080,4,{4,8,8,8}},{1080,8,{4,4,4,4}},{2160,4,{2,2,2,2}},{2160,8,{1,1,1,1}}};
-    for (const auto& row : rows)
-        for (int preset=0; preset<4; ++preset)
-        {
-            const auto plan=workloadOrUniform(quality(preset,true),quality(preset),row.height*16/9,row.height,
-                row.cap,1500,row.cap);
-            ensure_equals("literal effective samples per preset",plan.q.samples,row.samples[preset]);
-        }
+    // Fix round 4: a hybrid's Thin lights march the regular ray count, so 4K Medium K4 (OFF 8x12; the Thin march of the previous
+    // rounds used 4 rays there) has no room for a Thin light beside three regular ones and is exactly the OFF plan (8 rays).
+    constexpr Row noFeeds[]={{1080,4,{4,8,9,9}},{1080,8,{4,5,5,5}},{2160,4,{4,8,9,8}},{2160,8,{4,8,8,5}}};
+    constexpr Row withFeeds[]={{1080,4,{4,8,4,8}},{1080,8,{4,8,4,5}},{2160,4,{4,8,9,8}},{2160,8,{4,8,8,5}}};
+    for (unsigned slots : {0u,kFeedSlots})
+        for (const auto& row : (slots ? withFeeds:noFeeds))
+            for (int preset=0; preset<4; ++preset)
+            {
+                const auto plan=workloadOrUniform(quality(preset,true),quality(preset),row.height*16/9,row.height,
+                    row.cap,1500,row.cap,slots);
+                ensure_equals("literal effective samples per preset",plan.q.samples,row.samples[preset]);
+            }
 }
 
 template<> template<> void relight_object::test<25>()
@@ -886,7 +1059,10 @@ template<> template<> void relight_object::test<25>()
         const std::uint64_t offAllowance=(offMain.budget-offReserve)/kFeedSlots;
         const std::uint64_t need=kFeedGuaranteePixels*std::max(cap,2u);
         const std::uint64_t onReserve=onMain.channels ? onMain.iterations:0;
-        const std::uint64_t onAllowance=(onMain.budget-onReserve)/kFeedSlots;
+        // Fix round 3: a Thin or hybrid main plan costs no more than the OFF main plan, and the feeds' allowance is exactly the
+        // one they get with Thin OFF.
+        ensure("a Thin or hybrid main never costs more than the OFF main",onReserve<=offReserve);
+        const std::uint64_t onAllowance=offAllowance;
         for (const auto& size : feeds)
         for (unsigned lights=1; lights<=cap; ++lights)
         {
@@ -895,8 +1071,10 @@ template<> template<> void relight_object::test<25>()
             ++cases;
             // Never zero when OFF draws, never above the shared budget.
             ensure("ON feed draws wherever the OFF feed draws",!off.channels || on.channels>0);
-            ensure("ON allowance is at least min(OFF allowance, 2048x2048 minimum)",
-                onAllowance>=std::min(offAllowance,need));
+            ensure("ON allowance is exactly the OFF allowance (so at least min(OFF allowance, 2048x2048 minimum))",
+                on.budget==off.budget && on.budget==onAllowance && onAllowance>=std::min(offAllowance,need));
+            ensure("ON feed admits at least the lights the OFF feed admits",
+                (on.channels ? on.admitted:0)>=(off.channels ? off.admitted:0));
             // Independent checks from the target size and the test's own allowance, not from
             // the plan's own budget/iterations fields.
             const std::uint64_t feedPixels = on.q.half ? std::uint64_t((size.w+1)/2)*((size.h+1)/2) :
@@ -904,14 +1082,21 @@ template<> template<> void relight_object::test<25>()
             const std::uint64_t perChannel = feedPixels*on.q.samples*on.q.steps;
             if (on.channels)
             {
-                ensure("feed cost recomputed from the target size",on.iterations==perChannel*lights);
-                ensure("feed plan reserves the requested K inside the allowance",perChannel*cap<=onAllowance);
+                ensure("feed cost recomputed from the target size",on.iterations==planCost(on,size.w,size.h,lights));
+                ensure("feed plan reserves its admitted lights inside the allowance",
+                    planCost(on,size.w,size.h,cap)<=onAllowance);
                 ensure("feed draw bound recomputed",perChannel*on.channels<=onAllowance/2);
                 ensure("feed channel count is maximal",on.channels==4 || perChannel*(on.channels+1)>onAllowance/2);
+                if (on.lead<on.admitted)
+                {
+                    const std::uint64_t restPerChannel = feedPixels*on.rest.samples*on.rest.steps;
+                    ensure("feed regular group draw bound",restPerChannel*on.restChannels<=onAllowance/2);
+                    ensure("feed regular group channel count is maximal",on.restChannels==4 || restPerChannel*(on.restChannels+1)>onAllowance/2);
+                }
             }
             ensure("one budget for main and every feed slot",onReserve+kFeedSlots*on.iterations<=onMain.budget);
             // Main fell back to the OFF plan: the feed is exactly the OFF feed.
-            if (!onMain.q.nearSteps && !on.q.nearSteps)
+            if (!onMain.q.nearSteps && !on.q.nearSteps && onMain.admitted==offMain.admitted)
                 ensure("OFF-main feed is exactly the OFF feed",on.q.samples==off.q.samples &&
                     on.q.steps==off.q.steps && on.q.half==off.q.half && on.channels==off.channels);
             if (off.channels)
@@ -947,6 +1132,71 @@ template<> template<> void relight_object::test<25>()
         const auto big=feedWorkload(q,uniform,1920,1080,1280,720,8,1500,8,kFeedSlots);
         ensure("1500M: ON feed keeps its shadows",big.channels>0 && big.budget>=feedReservation(1920,1080,
             1500000000ull,8,kFeedSlots)/kFeedSlots);
+    }
+    // Fix round 3 (Codex P0 / Opus P0): Thin ON used to REMOVE VCam feed shadows, because the Thin or hybrid main plan spent more
+    // than the OFF main and left the feeds less. The user decision has no feed exception: a Thin or hybrid main is capped at the
+    // OFF main's cost while feed slots exist, so the feeds get EXACTLY the OFF allowance. The two reported cases, literally:
+    {
+        // Codex: 720p main, Low, K3, 400M, eight feed slots, 1024x1024 feed. OFF 3 feed lights, Thin ON used to give 2
+        // (allowances 47.2352M and 22.352M).
+        const auto uniform=quality(0), q=segmented(uniform,0);
+        const auto on=feedWorkload(q,uniform,1280,720,1024,1024,3,400,3,kFeedSlots);
+        const auto off=feedWorkload(uniform,uniform,1280,720,1024,1024,3,400,3,kFeedSlots);
+        ensure("Codex case: OFF feed admits 3 lights on 47.2352M",off.channels>0 && off.admitted==3 && off.budget==47235200ull);
+        ensure("Codex case: Thin ON gets the same allowance and the same 3 lights",on.budget==off.budget && on.channels>0 &&
+            on.admitted==3);
+        // Opus: 1080p main, Medium, K4, 1500M, 1024x1024 feed: OFF 4 of 4, Thin ON used to give 2 of 4.
+        const auto uniformM=quality(1), qm=segmented(uniformM,1);
+        const auto onM=feedWorkload(qm,uniformM,1920,1080,1024,1024,4,1500,4,kFeedSlots);
+        const auto offM=feedWorkload(uniformM,uniformM,1920,1080,1024,1024,4,1500,4,kFeedSlots);
+        ensure("Opus case: OFF feed admits 4 of 4",offM.channels>0 && offM.admitted==4);
+        ensure("Opus case: Thin ON gets the same allowance and admits 4 of 4",onM.budget==offM.budget && onM.channels>0 && onM.admitted==4);
+    }
+    // The sweep (actual feedWorkload counts): every preset x main 720p..4K x K in {1,3,4,8} x feed sizes x the whole budget slider
+    // 1..1500 M. Thin ON admits at least what Thin OFF admits in the feed; the allowance is the OFF allowance; a Thin or hybrid
+    // main never costs more than the OFF main and the main plus eight feeds stay inside the frame budget. Admission of the feed is
+    // NOT monotone in the BUDGET slider for Thin OFF either, because the main plan takes its share first and the feed's allowance
+    // can fall (HEAD's own reservation cliffs, all-or-nothing, listed by test 36); it IS monotone in the feed allowance itself (fix
+    // round 5: a feed has no light-dropping rung, test 36). Here: Thin ON has no non-monotone step that Thin OFF does not have.
+    {
+        struct FeedSize { unsigned w,h; };
+        constexpr FeedSize sizes[]={{512,288},{1024,1024},{1920,1080}};
+        unsigned long rows=0, onBelow=0, offNonMonotone=0, onNonMonotone=0, extraNonMonotone=0, thinFeedRows=0;
+        for (unsigned mainHeight : {720u,1080u,2160u})
+        for (unsigned cap : {1u,3u,4u,8u})
+        for (int preset=0; preset<4; ++preset)
+        for (const auto& size : sizes)
+        {
+            const unsigned mainWidth=mainHeight*16/9;
+            const auto uniform=quality(preset), q=segmented(uniform,preset);
+            unsigned previousOn=0, previousOff=0;
+            for (int budget=1; budget<=1500; ++budget)
+            {
+                const auto on=feedWorkload(q,uniform,mainWidth,mainHeight,size.w,size.h,cap,budget,cap,kFeedSlots);
+                const auto off=feedWorkload(uniform,uniform,mainWidth,mainHeight,size.w,size.h,cap,budget,cap,kFeedSlots);
+                const auto onMain=workloadOrUniform(q,uniform,mainWidth,mainHeight,cap,budget,cap);
+                const auto offMain=workload(uniform,mainWidth,mainHeight,cap,budget,cap);
+                const unsigned a=on.channels ? on.admitted:0, b=off.channels ? off.admitted:0;
+                ++rows;
+                if (on.q.nearSteps) ++thinFeedRows;
+                ensure("sweep: the feed gets exactly the OFF allowance",on.budget==off.budget);
+                ensure("sweep: Thin ON admits at least the feed lights Thin OFF admits",a>=b);
+                onBelow += a<b ? 1:0;
+                ensure("sweep: a Thin or hybrid main never costs more than the OFF main",
+                    (onMain.channels ? onMain.iterations:0)<=(offMain.channels ? offMain.iterations:0));
+                ensure("sweep: main and eight feeds inside the frame budget",
+                    (onMain.channels ? onMain.iterations:0)+kFeedSlots*(on.channels ? on.iterations:0)<=onMain.budget);
+                if (b<previousOff) ++offNonMonotone;
+                if (a<previousOn) { ++onNonMonotone; if (b>=previousOff) ++extraNonMonotone; }
+                previousOn=a; previousOff=b;
+            }
+        }
+        ensure("sweep size",rows==3ul*4*4*3*1500);
+        ensure("Thin ON has no feed admission drop that Thin OFF does not have",extraNonMonotone==0);
+        ensure("Thin ON feeds are exercised by the sweep",thinFeedRows>0);
+        std::cout << "[RelightQ] feed sweep rows=" << rows << " thin-feed-rows=" << thinFeedRows << " ON-below-OFF=" << onBelow
+            << " OFF-admission-drops=" << offNonMonotone << " ON-admission-drops=" << onNonMonotone
+            << " ON-drops-not-in-OFF=" << extraNonMonotone << std::endl;
     }
 }
 
@@ -1591,11 +1841,14 @@ template<> template<> void relight_object::test<29>()
                     const auto on = workloadOrUniform(q,uniform,width,height,cap,budget,cap,kFeedSlots);
                     // Zero slots plan against the full budget: exactly the unreserved segmented plan.
                     const auto direct = workloadWithin(q,width,height,cap,std::uint64_t(budget)*1000000ull,cap,0);
-                    if (direct.channels)
+                    const auto uniformMain = workloadWithin(uniform,width,height,cap,std::uint64_t(budget)*1000000ull,cap,0);
+                    if (direct.channels && direct.admitted>=uniformMain.admitted)
                         ensure("no reservation: the full-budget plan",off.q.samples==direct.q.samples &&
                             off.q.steps==direct.q.steps && off.q.half==direct.q.half && off.channels==direct.channels);
+                    // (The main view draws only where one light fits at the floors: zero slots draw wherever
+                    // the reserved plan draws.)
                     ensure("zero slots never plan below the reserved plan's rays",
-                        off.q.nearSteps>=on.q.nearSteps && off.channels>0);
+                        off.q.nearSteps>=on.q.nearSteps && (off.channels>0 || !on.channels));
                     if (off.q.nearSteps && (!on.q.nearSteps || off.q.samples*(off.q.half ? 1:4) >
                         on.q.samples*(on.q.half ? 1:4))) strictlyMore = true;
                     // Thin OFF is the committed plan: the slot count never matters.
@@ -1629,6 +1882,913 @@ template<> template<> void relight_object::test<21>()
     ensure_equals("shutdown drains retained records",calls,2);
     ensure_equals("write failure counted in next record",drops,std::string("1"));
     ensure("closed writer rejects new work",!writer.enqueue(std::make_unique<LLSD>()));
+}
+
+namespace
+{
+// The planner at 4dd9ff661c1 (before P0.1), verbatim apart from the name: the superseded
+// "rays first" order. Kept only so the ray-floor fixture below proves it catches a regression.
+ALAreaShadow::Workload headWorkloadWithin(ALAreaShadow::Quality q, unsigned width, unsigned height,
+    unsigned lights, std::uint64_t budget, unsigned requestedLights, std::uint64_t feedHoldBack = 0)
+{
+    using namespace ALAreaShadow;
+    Workload w{};
+    const int dense = std::clamp(q.nearSteps,0,64);
+    w.q = {std::clamp(q.samples,1,32),std::clamp(q.steps,1,dense ? 128:64),q.half,dense,
+        dense ? std::clamp(q.minFar,1,64):0};
+    lights = std::min(lights,8u);
+    const unsigned basis = std::max(lights,std::clamp(requestedLights,1u,8u));
+    w.budget = std::min(budget,std::uint64_t(1500000000));
+    w.drawCap = w.budget/2;
+    const std::uint64_t planned = dense ? w.budget-std::min(feedHoldBack,w.budget) : w.budget;
+    const auto update = [&]()
+    {
+        w.pixels = w.q.half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
+            std::uint64_t(width)*height;
+        w.iterations = w.pixels*lights*w.q.samples*w.q.steps;
+    };
+    update();
+    const auto over = [&]() { return w.pixels*basis*w.q.samples*w.q.steps>planned ||
+        w.pixels*w.q.samples*w.q.steps>w.drawCap; };
+    if (dense && !w.q.half)
+    {
+        const std::uint64_t rays = std::min(w.q.samples,kFullResMinSamples);
+        if (w.pixels*basis*rays*w.q.steps>planned || w.pixels*rays*w.q.steps>w.drawCap)
+        { w.q.half=true; update(); }
+    }
+    while (over() && w.q.samples>1) { --w.q.samples; update(); }
+    while (over() && !dense && w.q.steps>1) { --w.q.steps; update(); }
+    if (over() && !w.q.half) { w.q.half=true; update(); }
+    const int farFloor = dense ? std::min(w.q.minFar,kThinFarFloor) : 0;
+    while (over() && dense && w.q.steps-dense>farFloor) { --w.q.steps; update(); }
+    if (over()) { w.iterations=0; return w; }
+    const auto perChannel = w.pixels*w.q.samples*w.q.steps;
+    w.channels = lights && perChannel ? unsigned(std::min<std::uint64_t>(4,w.drawCap/perChannel)) : 0;
+    w.admitted = lights;
+    return w;
+}
+}
+
+template<> template<> void relight_object::test<35>()
+{
+    using namespace ALAreaShadow;
+    // Fix round 4. The main view and the feeds plan from the feeds LIVE this frame (count and target sizes), not from eight assumed
+    // 2048x2048 slots. Everything below uses the real header.
+    struct Scenario { const char* name; FeedSet set; };
+    std::vector<Scenario> scenarios;
+    scenarios.push_back({"no live feed",FeedSet()});
+    { FeedSet f; f.add(1024,576); scenarios.push_back({"1 x 1024x576",f}); }
+    { FeedSet f; f.add(1280,720); scenarios.push_back({"1 x 1280x720",f}); }
+    { FeedSet f; f.add(1280,720); f.add(1280,720); scenarios.push_back({"2 x 1280x720",f}); }
+    { FeedSet f; f.add(1920,1080); scenarios.push_back({"1 x 1920x1080",f}); }
+    { FeedSet f; f.add(1920,1080); f.add(512,288); f.add(640,360); scenarios.push_back({"mixed 1080p+512+640",f}); }
+    scenarios.push_back({"8 x 2048x2048",FeedSet(kFeedSlots)});
+    ensure("a plain count is that many 2048x2048 feeds",FeedSet(3).count==3 && FeedSet(3).extent[2].w==2048 && FeedSet(3).extent[2].h==2048 &&
+        FeedSet(0).count==0 && FeedSet(99).count==kFeedSlots);
+    FeedSet capSet;
+    for (unsigned i=0; i<12; ++i) capSet.add(100,100);
+    ensure("a feed set holds at most eight feeds",capSet.count==kFeedSlots);
+    unsigned long rows=0, onBelowOff=0, offDrops=0, onDrops=0, extraDrops=0, visibleDependent=0, reserveDiffers=0, coverageRows=0;
+    std::vector<unsigned long> thinRows(scenarios.size(),0);
+    for (unsigned height : {720u,1080u,1440u,2160u})
+    for (unsigned cap : {1u,3u,4u,8u})
+    for (int preset=0; preset<4; ++preset)
+    for (std::size_t sc=0; sc<scenarios.size(); ++sc)
+    {
+        const unsigned width=height*16/9;
+        const auto uniform=quality(preset), q=segmented(uniform,preset);
+        const FeedSet& set=scenarios[sc].set;
+        unsigned previousOn=0, previousOff=0;
+        std::vector<unsigned> previousFeedOn(set.count,0), previousFeedOff(set.count,0);
+        for (int budget=1; budget<=1500; ++budget)
+        {
+            const std::uint64_t capped=std::uint64_t(budget)*1000000ull;
+            const auto on=workloadOrUniform(q,uniform,width,height,cap,budget,cap,set);
+            const auto off=workload(uniform,width,height,cap,budget,cap);
+            ++rows;
+            const unsigned a=on.channels ? on.admitted:0, b=off.channels ? off.admitted:0;
+            onBelowOff += a<b ? 1:0;
+            ensure("main: Thin ON admits at least what Thin OFF admits",a>=b);
+            ensure("main: Thin ON draws wherever Thin OFF draws",!off.channels || on.channels);
+            if (a<previousOn) ++onDrops;
+            if (b<previousOff) ++offDrops;
+            ensure("main: admission is monotone in the budget for ON",a>=previousOn);
+            previousOn=a; previousOff=b;
+            if (on.channels && on.q.nearSteps>0) ++thinRows[sc];
+            if (on.channels && on.q.nearSteps>0 && on.lead<on.admitted)
+                ensure("a hybrid's Thin group marches the regular ray count",on.q.samples==on.rest.samples);
+            // The plan, and the budget it reserves, never depend on how many lights are visible (A and the marches are planned
+            // from the requested cap): the DeepSeek reading, a smaller visible set shrinking the reserve, cannot happen.
+            for (unsigned visible : {1u,std::max(1u,cap/2)})
+            {
+                const auto v=workloadOrUniform(q,uniform,width,height,visible,budget,cap,set);
+                const auto offVisible=workload(uniform,width,height,visible,budget,cap);
+                visibleDependent += (v.admitted!=on.admitted || v.q.samples!=on.q.samples || v.q.steps!=on.q.steps ||
+                    v.lead!=on.lead || v.rest.samples!=on.rest.samples || basisCost(v)!=basisCost(on)) ? 1:0;
+                reserveDiffers += regularCost(offVisible)!=regularCost(off) ? 1:0;
+                ensure("the visible set never makes a plan cost more than its reservation",v.iterations<=basisCost(v));
+            }
+            // The one frame budget: the main plan's reservation plus what every live feed actually plans for, with the
+            // cap of lights (the worst case of a feed) and with one visible light.
+            if (set.count)
+            {
+                std::uint64_t total=basisCost(on), totalOne=basisCost(on);
+                for (unsigned i=0; i<set.count; ++i)
+                {
+                    const auto feed=feedWorkload(q,uniform,width,height,set.extent[i].w,set.extent[i].h,cap,budget,cap,set);
+                    const auto offFeed=feedWorkload(uniform,uniform,width,height,set.extent[i].w,set.extent[i].h,cap,budget,cap,set);
+                    const auto feedOne=feedWorkload(q,uniform,width,height,set.extent[i].w,set.extent[i].h,1,budget,cap,set);
+                    const unsigned fa=feed.channels ? feed.admitted:0, fb=offFeed.channels ? offFeed.admitted:0;
+                    ensure("feed: the allowance is exactly the Thin-OFF allowance",feed.budget==offFeed.budget);
+                    ensure("feed: Thin ON admits at least the lights Thin OFF admits",fa>=fb);
+                    ensure("feed: inside its allowance",basisCost(feed)<=feed.budget);
+                    ensure("feed: inside its own bound",basisCost(feed)<=feedSpendBound(q,set.extent[i].w,set.extent[i].h,cap));
+                    if (fa<previousFeedOn[i]) { ++extraDrops; if (fb>=previousFeedOff[i]) {} else --extraDrops; }
+                    previousFeedOn[i]=fa; previousFeedOff[i]=fb;
+                    total+=basisCost(feed);
+                    totalOne+=feedOne.channels ? feedOne.iterations:0;
+                }
+                ensure("main + every live feed inside the frame budget (planning basis)",total<=capped);
+                ensure("main + every live feed inside the frame budget (one visible light per feed)",totalOne<=capped);
+                // The reservation formula holds: the Thin or hybrid main plan never exceeds budget - what the feeds can spend,
+                // unless it is the Thin-OFF plan itself (the fallback, which the feeds' allowance is computed from).
+                if (on.q.nearSteps>0)
+                    ensure("a Thin or hybrid main plan stays inside the budget the feeds leave",
+                        basisCost(on)<=capped-feedSpend(q,capped,regularCost(off),cap,set));
+            }
+            else
+                ensure("no live feed: the main plan is the one with no feed reservation",
+                    workloadOrUniform(q,uniform,width,height,cap,budget,cap,FeedSet(0u)).iterations==on.iterations);
+        }
+    }
+    ensure("sweep size",rows==4ul*4*4*scenarios.size()*1500);
+    ensure("Thin ON feed admission has no drop that Thin OFF does not have",extraDrops==0);
+    ensure("the visible set never changes a plan",visibleDependent==0);
+    ensure("the reserve is the same quantity for any visible set",reserveDiffers==0);
+    // Thin coverage by scenario: with no live feed the main view has the whole budget; a few small feeds leave most of it; the
+    // old worst case (8 x 2048x2048) leaves least. (Thin rows = rows with any Thin light.)
+    ensure("no live feed keeps the most Thin rows",thinRows[0]>=thinRows[1] && thinRows[0]>=thinRows[2] && thinRows[0]>=thinRows[6]);
+    ensure("a small live feed keeps more Thin rows than the worst case",thinRows[1]>thinRows[6]);
+    ensure("a single 1280x720 feed keeps more Thin rows than the worst case",thinRows[2]>thinRows[6]);
+    ensure("the worst case is the capped plan of the previous round",thinRows[6]>0);
+    // The literal cases of the reviews (1500M, default budget):
+    {
+        // Codex: 4K Medium K4 had Thin 4x64 against regular 8x12 (endpoint 22/255 apart after filtering). Now no Thin light fits
+        // beside the regular ones at the regular ray count: exactly the Thin-OFF plan, no mismatch left.
+        const auto plan=workloadOrUniform(quality(1,true),quality(1),3840,2160,4,1500,4,FeedSet());
+        ensure("4K Medium K4: no Thin light at the regular ray count, exactly the Thin-OFF plan",
+            plan.q.nearSteps==0 && plan.q.samples==8 && plan.q.steps==12 && plan.admitted==4 && plan.lead==4);
+        // 4K Low K4: three Thin lights beside one regular light, same ray count, far steps thinned to fit.
+        const auto low=workloadOrUniform(quality(0,true),quality(0),3840,2160,4,1500,4,FeedSet());
+        ensure("4K Low K4: 3 Thin + 1 regular at 4 rays each",low.q.nearSteps==48 && low.lead==3 && low.admitted==4 &&
+            low.q.samples==4 && low.rest.samples==4 && low.rest.steps==8);
+        // 1080p Medium K4 with VCam feeds: no live feed, one small feed, one 720p feed keep the Thin march; one 1080p feed saturates.
+        const auto none=workloadOrUniform(quality(1,true),quality(1),1920,1080,4,1500,4,FeedSet());
+        FeedSet small; small.add(1024,576);
+        FeedSet hd; hd.add(1920,1080);
+        const auto withSmall=workloadOrUniform(quality(1,true),quality(1),1920,1080,4,1500,4,small);
+        const auto withHd=workloadOrUniform(quality(1,true),quality(1),1920,1080,4,1500,4,hd);
+        ensure("1080p Medium K4, no live feed: every light Thin",none.q.nearSteps==48 && none.lead==4);
+        ensure("1080p Medium K4, one small live feed: every light still Thin",withSmall.q.nearSteps==48 && withSmall.lead==4 &&
+            basisCost(withSmall)<=basisCost(none));
+        ensure("1080p Medium K4, one 1080p live feed: the feed can use its whole allowance, so the OFF plan",withHd.q.nearSteps==0 &&
+            withHd.admitted==4);
+        // The eight-slot assumption of every earlier round, literally: the same OFF plan whatever Thin is set to.
+        const auto worst=workloadOrUniform(quality(1,true),quality(1),1920,1080,4,1500,4,FeedSet(kFeedSlots));
+        ensure("1080p Medium K4 with 8 assumed 2048x2048 feeds: the OFF plan",worst.q.nearSteps==0 && worst.admitted==4);
+    }
+    // The budget invariant with a deliberately mismatched basis: the old cap quantity regularCost(off) and the reserve
+    // feedWorkload makes are one expression, and a smaller cap (the visible-set cost off.iterations) would cost Thin light budget.
+    {
+        const auto uniform=quality(1);
+        const auto fullBasis=workload(uniform,1920,1080,8,1500,8);
+        const auto visibleOne=workload(uniform,1920,1080,1,1500,8);
+        ensure("the main OFF plan reserves the same for one visible light",regularCost(fullBasis)==regularCost(visibleOne) &&
+            visibleOne.iterations<regularCost(visibleOne));
+    }
+    std::cout << "[RelightQ] live feed sweep rows=" << rows << " ON-below-OFF=" << onBelowOff << " main-ON-admission-drops=" << onDrops
+        << " OFF-admission-drops=" << offDrops << " feed-ON-drops-not-in-OFF=" << extraDrops << " visible-dependent-plans=" << visibleDependent
+        << " Thin-rows per scenario:";
+    for (std::size_t sc=0; sc<scenarios.size(); ++sc) std::cout << " [" << scenarios[sc].name << "]=" << thinRows[sc];
+    std::cout << std::endl;
+    (void)coverageRows;
+}
+
+template<> template<> void relight_object::test<36>()
+{
+    using namespace ALAreaShadow;
+    // Fix round 5.
+    // (1) Codex P0: the 55M -> 56M feed-admission drop that fix round 3-4 introduced (the light-dropping rung applied to feed plans).
+    // 720p Low K3, eight slots, a 512x512 feed: HEAD keeps all 3 lights (2 rays x 8 steps) at both budgets.
+    {
+        const auto uniform=quality(0);
+        const auto at55=feedWorkload(uniform,uniform,1280,720,512,512,3,55,3,kFeedSlots);
+        const auto at56=feedWorkload(uniform,uniform,1280,720,512,512,3,56,3,kFeedSlots);
+        ensure("55M -> 56M: the feed allowance rises",at56.budget>at55.budget);
+        ensure("55M -> 56M: all 3 lights at both budgets (HEAD's fixed-K fallback)",at55.channels && at55.admitted==3 &&
+            at56.channels && at56.admitted==3);
+        ensure("55M -> 56M: HEAD's 2 rays x 8 steps at both",at55.q.samples==2 && at55.q.steps==8 && at56.q.samples==2 && at56.q.steps==8);
+        // A feed plan has no light-dropping rung: it admits all K lights or none, at any allowance.
+        const auto sixteen=workloadWithin(uniform,512,512,3,4235200ull,3,0,false);
+        ensure("a feed never drops lights (no rung 6)",sixteen.channels && sixteen.admitted==3);
+        // The main view keeps rung 6 (fewer lights, never fewer rays) at the same allowance.
+        const auto main=workloadWithin(uniform,512,512,3,4235200ull,3,0,true);
+        ensure("the main view still drops lights at the floors",main.channels && main.admitted<3 && main.q.samples>=kRayFloor);
+    }
+    // (2) Feed admission is monotone in the feed ALLOWANCE (exhaustive over the allowance for every preset, feed size, K and visible
+    // count, for the Thin OFF plan and the Thin ON hybrid plan), and is all-or-nothing: A is K or 0.
+    {
+        struct Size { unsigned w,h; };
+        constexpr Size sizes[]={{512,288},{512,512},{640,360},{1024,1024},{1920,1080},{2048,2048}};
+        unsigned long rows=0, partial=0;
+        for (int preset=0; preset<4; ++preset)
+        for (const auto& size : sizes)
+        for (unsigned cap=1; cap<=8; ++cap)
+        for (unsigned visible : {1u,cap})
+        {
+            const auto uniform=quality(preset), q=segmented(uniform,preset);
+            unsigned previousOff=0, previousOn=0;
+            for (std::uint64_t allowance=0; allowance<=80000000ull; allowance+=20000)
+            {
+                const auto off=workloadWithin(uniform,size.w,size.h,visible,allowance,cap,0,false);
+                const auto on=hybridWithin(q,uniform,size.w,size.h,visible,allowance,cap,0,false);
+                const unsigned a=off.channels ? off.admitted:0, b=on.channels ? on.admitted:0;
+                ++rows;
+                ensure("feed admission is monotone in the allowance (Thin OFF)",a>=previousOff);
+                ensure("feed admission is monotone in the allowance (Thin ON)",b>=previousOn);
+                if (a && a!=cap) ++partial;
+                if (b && b!=cap) ++partial;
+                ensure("Thin ON feed admits at least what Thin OFF admits at the same allowance",b>=a);
+                previousOff=a; previousOn=b;
+            }
+        }
+        ensure("feed allowance sweep size",rows==4ul*6*8*2*4001);
+        ensure("a feed admits all K lights or none",partial==0);
+        std::cout << "[RelightQ] feed allowance sweep rows=" << rows << " admission-drops-when-the-allowance-rose=0 partial-admissions=" << partial << std::endl;
+    }
+    // (3) Over the BUDGET slider the main plan takes its share first, so the feed's allowance itself can fall: HEAD's own reservation
+    // cliffs (HEAD 720p Low K3 512x512: 11M -> 12M, 16M -> 17M and 22M -> 23M all go 3 -> 0). Every drop must be exactly such a cliff:
+    // the allowance FELL at that step and the feed goes to nothing (never a partial count); an admission drop with a rising allowance
+    // is the defect this round fixes. Counted and printed, for Thin OFF and Thin ON feeds.
+    {
+        struct Size { unsigned w,h; };
+        constexpr Size sizes[]={{512,288},{512,512},{1024,1024},{1920,1080}};
+        unsigned long rows=0, cliffsOff=0, cliffsOn=0, risingDrops=0, partialDrops=0;
+        std::vector<int> literal;
+        for (unsigned mainHeight : {720u,1080u,1440u,2160u})
+        for (unsigned cap : {1u,3u,4u,8u})
+        for (int preset=0; preset<4; ++preset)
+        for (const auto& size : sizes)
+        {
+            const unsigned mainWidth=mainHeight*16/9;
+            const auto uniform=quality(preset), q=segmented(uniform,preset);
+            unsigned previousOff=0, previousOn=0; std::uint64_t previousAllowance=0;
+            for (int budget=1; budget<=1500; ++budget)
+            {
+                const auto off=feedWorkload(uniform,uniform,mainWidth,mainHeight,size.w,size.h,cap,budget,cap,kFeedSlots);
+                const auto on=feedWorkload(q,uniform,mainWidth,mainHeight,size.w,size.h,cap,budget,cap,kFeedSlots);
+                const unsigned a=off.channels ? off.admitted:0, b=on.channels ? on.admitted:0;
+                ++rows;
+                if (a<previousOff)
+                {
+                    ++cliffsOff;
+                    if (off.budget>=previousAllowance) ++risingDrops;
+                    if (a) ++partialDrops;
+                    if (mainHeight==720 && preset==0 && cap==3 && size.w==512 && size.h==512) literal.push_back(budget);
+                }
+                if (b<previousOn)
+                {
+                    ++cliffsOn;
+                    if (on.budget>=previousAllowance) ++risingDrops;
+                    if (b) ++partialDrops;
+                }
+                previousOff=a; previousOn=b; previousAllowance=off.budget;
+            }
+        }
+        ensure("no feed admission drop while the allowance rose or stayed",risingDrops==0);
+        ensure("every feed admission drop is an all-or-nothing reservation cliff",partialDrops==0);
+        ensure("the reservation cliffs are exercised",cliffsOff>0 && cliffsOn>0);
+        // 720p Low K3 512x512, the case of the review: the cliffs of the current planner (HEAD has 11M, 16M and 22M), none at 55M -> 56M.
+        ensure("720p Low K3 512x512: the only cliffs are 15M and 23M (main plan steps), none at 56M",
+            literal==std::vector<int>({15,23}));
+        std::cout << "[RelightQ] feed budget sweep rows=" << rows << " reservation-cliffs Thin-OFF=" << cliffsOff << " Thin-ON=" << cliffsOn
+            << " drops-with-a-rising-allowance=" << risingDrops << " partial-drops=" << partialDrops << " 720p-Low-K3-512x512 cliffs at (M):";
+        for (int b : literal) std::cout << " " << b;
+        std::cout << std::endl;
+    }
+    // (4) Opus P0: the main plan does not depend on the presented FPS or the dolly distance. The reservation of a live feed is its FIXED
+    // capacity target (liveFeedReservationExtent), not the per-frame target, which PrismAdaptivePerformance scales with the frame rate and
+    // which follows the on-screen size of the displays. For a fixed set of live slots the main plan is the same for every adaptive
+    // resolution scale and every display size, in every preset x main size x K x budget.
+    {
+        ensure("1024 capacity, 16:9 reservation is 1024x576",LLPrismLens::liveFeedReservationExtent(1024,16.f/9.f)==std::array<U32,2>({1024,576}));
+        ensure("2048 capacity, square reservation is 2048x2048",LLPrismLens::liveFeedReservationExtent(2048,1.f)==std::array<U32,2>({2048,2048}));
+        ensure("a malformed aspect is clamped (1:4 at most)",LLPrismLens::liveFeedReservationExtent(1024,0.f)[0]==256);
+        struct Slot { unsigned id, capacity; float aspect; };
+        const std::vector<std::vector<Slot>> liveSets={
+            {{0,1024,16.f/9.f}},
+            {{0,1024,16.f/9.f},{3,2048,1.f}},
+            {{1,1024,4.f/3.f},{2,1024,16.f/9.f},{6,2048,16.f/9.f}}};
+        unsigned long rows=0, mutatedDiffers=0, nonConservative=0;
+        for (const auto& slots : liveSets)
+        for (unsigned mainHeight : {720u,1080u,2160u})
+        for (unsigned cap : {1u,4u,8u})
+        for (int preset=0; preset<4; ++preset)
+        for (int budget : {200,400,800,1500})
+        {
+            const unsigned mainWidth=mainHeight*16/9;
+            const auto uniform=quality(preset), q=segmented(uniform,preset);
+            FeedSet fixedSet;
+            for (const auto& slot : slots)
+            {
+                const auto extent=LLPrismLens::liveFeedReservationExtent(slot.capacity,slot.aspect);
+                fixedSet.add(extent[0],extent[1],slot.id);
+            }
+            const auto reference=workloadOrUniform(q,uniform,mainWidth,mainHeight,cap,budget,cap,fixedSet);
+            bool anyMutatedDiffers=false;
+            for (float scale=.3f; scale<=1.001f; scale+=.05f)
+            for (unsigned displayWidth : {96u,256u,640u,1280u,2560u})
+            {
+                // What the per-frame preparation does: the displays' demand times the adaptive scale, fitted into the capacity.
+                FeedSet perFrame, again;
+                for (const auto& slot : slots)
+                {
+                    const unsigned demandW=std::max(1u,unsigned(displayWidth*scale+.5f)),
+                        demandH=std::max(1u,unsigned(displayWidth*scale/slot.aspect+.5f));
+                    const auto target=LLPrismLens::cameraTargetSize(demandW,demandH,slot.aspect,slot.capacity);
+                    const auto extent=LLPrismLens::liveFeedReservationExtent(slot.capacity,slot.aspect);
+                    nonConservative += (target[0]>extent[0] || target[1]>extent[1]) ? 1:0;
+                    perFrame.add(target[0],target[1],slot.id);
+                    again.add(extent[0],extent[1],slot.id);
+                }
+                // Production: the extents do not move with the scale or the displays, so neither does the plan.
+                const auto plan=workloadOrUniform(q,uniform,mainWidth,mainHeight,cap,budget,cap,again);
+                ensure("the main plan is the same at every adaptive scale and display size",
+                    plan.admitted==reference.admitted && plan.lead==reference.lead && plan.q.samples==reference.q.samples &&
+                    plan.q.steps==reference.q.steps && plan.q.half==reference.q.half && plan.rest.samples==reference.rest.samples &&
+                    plan.rest.steps==reference.rest.steps && plan.channels==reference.channels && plan.iterations==reference.iterations);
+                // Mutation: the previous round reserved from the per-frame target.
+                const auto mutated=workloadOrUniform(q,uniform,mainWidth,mainHeight,cap,budget,cap,perFrame);
+                if (mutated.admitted!=reference.admitted || mutated.lead!=reference.lead || mutated.q.samples!=reference.q.samples ||
+                    mutated.q.steps!=reference.q.steps || mutated.q.half!=reference.q.half) anyMutatedDiffers=true;
+                ++rows;
+            }
+            mutatedDiffers += anyMutatedDiffers ? 1:0;
+        }
+        ensure("the reservation extent is never smaller than a per-frame target",nonConservative==0);
+        ensure("reserving from the per-frame target makes the main plan follow the frame rate (mutation rejected)",mutatedDiffers>0);
+        std::cout << "[RelightQ] fixed-capacity reservation rows=" << rows << " plans identical across every scale and display size; per-frame-target mutation changes the plan in "
+            << mutatedDiffers << " of " << (liveSets.size()*3*3*4*4) << " (set, size, K, preset, budget) cells" << std::endl;
+    }
+    // (5) DeepSeek P1: a hybrid's Thin lights also march the regular step count; the cost is charged at the larger of the two.
+    {
+        // A synthetic OFF plan with 64 regular steps beside a Thin march that thins to 56 total (48 near + 8 far): the case where the
+        // shader's old clamp to the Thin draw's steps would have shortened the boundary light's regular rays.
+        const Quality uniform{4,64,true};
+        const Quality thin{4,56,true,48,8}; // a Thin request whose total (48 near + 8 far) is below the regular 64
+        const auto off=workloadWithin(uniform,1920,1080,4,1500000000ull,4,0,true);
+        ensure("the OFF plan keeps 64 steps here",off.channels && off.q.steps==64 && off.admitted==4);
+        Workload hybrid{};
+        const std::uint64_t planned=1500000000ull;
+        ensure("a hybrid forms",hybridPlan(hybrid,thin,off,1920,1080,4,2,planned));
+        const std::uint64_t px=hybrid.pixels;
+        ensure("the Thin lights are charged max(Thin steps, regular steps)",
+            hybrid.iterations==px*(2ull*hybrid.q.samples*std::max(hybrid.q.steps,hybrid.rest.steps)+2ull*hybrid.rest.samples*hybrid.rest.steps));
+        ensure("... which differs from the Thin steps alone where the regular count is larger",hybrid.rest.steps>hybrid.q.steps ?
+            hybrid.iterations>px*(2ull*hybrid.q.samples*hybrid.q.steps+2ull*hybrid.rest.samples*hybrid.rest.steps) : true);
+        ensure("basisCost agrees with the plan",basisCost(hybrid)==hybrid.iterations);
+        {
+            // A room that fits two Thin lights at their 56 Thin steps (232 M) but not at the 64 regular steps they also march (265 M):
+            // the larger count is charged, so two do not fit and one does.
+            const std::uint64_t restCost=2ull*px*off.q.samples*off.q.steps;
+            Workload tight{};
+            ensure("two Thin lights charged at 64 steps do not fit a room sized for 56",
+                !hybridPlan(tight,thin,off,1920,1080,4,2,restCost+250000000ull));
+            ensure("... one does",hybridPlan(tight,thin,off,1920,1080,4,1,3ull*px*off.q.samples*off.q.steps+150000000ull));
+        }
+        ensure("the draw channel count is sized from the charged cost",hybrid.channels==std::min<std::uint64_t>(4,hybrid.drawCap/
+            (px*std::uint64_t(hybrid.q.samples)*std::max(hybrid.q.steps,hybrid.rest.steps))));
+        // Exhaustive: no plan of a Custom-quality sweep is charged less than the steps its rays really march, and it fits.
+        unsigned long hybrids=0, restLarger=0;
+        for (unsigned height : {720u,1080u,1440u,2160u})
+        for (unsigned cap : {2u,3u,4u,8u})
+        for (int samples : {2,4,6,8})
+        for (int steps : {32,48,56,60,64})
+        for (bool half : {true,false})
+        for (int budget : {100,200,300,400,600,800,1000,1200,1500})
+        {
+            const Quality custom{samples,steps,half};
+            const auto plan=workloadOrUniform(segmented(custom,7),custom,height*16/9,height,cap,budget,cap,FeedSet());
+            if (!plan.channels || !plan.q.nearSteps || plan.lead>=plan.admitted) continue;
+            ++hybrids;
+            restLarger += plan.rest.steps>plan.q.steps-plan.q.nearSteps ? 1:0;
+            const std::uint64_t marched=planPixels(plan,height*16/9,height)*(std::uint64_t(plan.lead)*plan.q.samples*std::max(plan.q.steps,plan.rest.steps)+
+                std::uint64_t(plan.admitted-plan.lead)*plan.rest.samples*plan.rest.steps);
+            ensure("a hybrid is charged at least what its rays march",basisCost(plan)>=marched && plan.iterations<=basisCost(plan));
+            ensure("a hybrid stays inside the frame budget",basisCost(plan)<=plan.budget);
+        }
+        ensure("Custom hybrids are exercised",hybrids>0 && restLarger>0);
+        std::cout << "[RelightQ] hybrid step-charge sweep custom hybrids=" << hybrids << " with-regular-steps-above-the-Thin-far-steps=" << restLarger << std::endl;
+    }
+}
+
+template<> template<> void relight_object::test<34>()
+{
+    using namespace ALAreaShadow;
+    unsigned rows = 0, headBreaks = 0, thinRows = 0, mutatedVisible = 0, mutatedNear = 0;
+    // The Thin near-segment rule, as ONE predicate: a plan that keeps the segmented march keeps all 48 near steps.
+    const auto nearStays = [](const Workload& w) { return w.q.nearSteps == 48 && w.q.steps >= w.q.nearSteps; };
+    for (bool thin : {false,true})
+    for (unsigned height : {720u,1080u,1440u,2160u})
+    for (unsigned requested=1; requested<=8; ++requested)
+    for (int preset=0; preset<4; ++preset)
+    {
+        const unsigned width = height*16/9;
+        const auto uniform = quality(preset);
+        const auto asked = thin ? segmented(uniform,preset) : uniform;
+        const std::uint64_t hold = thin ? feedReservation(width,height,1500000000ull,requested,kFeedSlots) : 0;
+        const auto plan = workloadOrUniform(asked,uniform,width,height,requested,1500,requested);
+        ++rows;
+        ensure("the ray and step floors hold, with no exception",floorsHold(plan,plan.q.nearSteps ? asked : uniform));
+        ensure("the regular group keeps the floors too",restFloorsHold(plan,uniform));
+        ensure("a plan draws exactly when one light fits at the floors",
+            (plan.channels>0)==(oneLightFits(asked,width,height,1500,hold) || oneLightFits(uniform,width,height,1500,0)));
+        ensure("admitted lights 1..K when drawing, 0 otherwise",plan.channels ?
+            (plan.admitted>=1 && plan.admitted<=requested) : plan.admitted==0);
+        ensure("frame and draw ceilings",plan.iterations<=plan.budget &&
+            plan.pixels*plan.q.samples*plan.q.steps<=plan.drawCap &&
+            (plan.lead>=plan.admitted || plan.pixels*plan.rest.samples*plan.rest.steps<=plan.drawCap));
+        ensure("a plan that draws leads with at least one light, never more than it admits",
+            !plan.channels || (plan.lead>=1 && plan.lead<=plan.admitted));
+        if (plan.q.nearSteps)
+        {
+            ++thinRows;
+            ensure("Thin near steps stay 48",nearStays(plan));
+            ensure("Thin far never below the common floor",
+                plan.q.steps-plan.q.nearSteps>=std::min(uniform.steps,kThinFarFloor));
+        }
+        // A is a function of (preset, size, K, budget, Thin) only: the visible set never moves it.
+        const unsigned visible[] = {1u,requested/2+1,requested};
+        for (unsigned count : visible)
+        {
+            const auto v = workloadOrUniform(asked,uniform,width,height,count,1500,requested);
+            ensure("A independent of the visible-set size",v.admitted==plan.admitted &&
+                v.q.samples==plan.q.samples && v.q.steps==plan.q.steps && v.q.half==plan.q.half);
+            // Mutation: planning the reservation from the visible count instead of the cap.
+            const auto m = workloadOrUniform(asked,uniform,width,height,count,1500,count);
+            mutatedVisible += (m.admitted!=plan.admitted || m.q.samples!=plan.q.samples ||
+                m.q.steps!=plan.q.steps) ? 1:0;
+        }
+        // Mutation: a planner that thins the Thin near segment. The plan it would return (24 near steps, the 24 saved
+        // steps given back to the budget) must be rejected by the very predicate every production plan passes above.
+        if (thin && plan.q.nearSteps)
+        {
+            auto thinned = plan;
+            thinned.q.nearSteps = 24;
+            thinned.q.steps -= 24;
+            mutatedNear += nearStays(thinned) ? 0:1;
+        }
+        // The previous rays-first planner must break the floor somewhere (4K Cinematic: 1 ray).
+        const auto head = headWorkloadWithin(asked,width,height,requested,1500000000ull,requested,hold);
+        if (head.channels && !floorsHold(head,asked)) ++headBreaks;
+    }
+    ensure("grid size",rows==2*4*8*4);
+    ensure("Thin rows exercised",thinRows>0);
+    ensure("the rays-first planner fails the ray floor",headBreaks>0);
+    ensure("visible-set mutation is caught",mutatedVisible>0);
+    ensure("near-step mutation is caught in every Thin row",mutatedNear==thinRows);
+    // The reported example, literally: 4K Cinematic K8 was 1 ray; now 5 rays for all 8 lights.
+    const auto cinematic = workload(quality(3),3840,2160,8,1500,8,0);
+    const auto head = headWorkloadWithin(quality(3),3840,2160,8,1500000000ull,8);
+    ensure("4K Cinematic K8 is smooth now",cinematic.q.samples==5 && cinematic.admitted==8);
+    ensure("the old plan was a single ray there",head.q.samples==1);
+    // Fix round 1 (review P0 5): below the floors the main view admits NOTHING; it never restores sub-floor rays.
+    // 4K, K8, 20M: the previous planner returned A = 8 lights with 1 ray and 1 step.
+    {
+        const auto tiny = workloadOrUniform(quality(1),quality(1),3840,2160,8,20,8);
+        ensure("4K K8 20M: no soft shadow at all",tiny.channels==0 && tiny.admitted==0 && tiny.iterations==0);
+        const auto old = headWorkloadWithin(quality(1),3840,2160,8,20000000ull,8);
+        ensure("the previous planner drew 8 lights with 1 ray and 1 step there",old.channels>0 && old.admitted==8 &&
+            old.q.samples==1 && old.q.steps==1);
+        // A capture feed keeps the previous order below the floors (its guarantee depends on it).
+        const auto feed = workloadWithin(quality(1),3840,2160,8,20000000ull,8,0,false);
+        ensure("a feed still draws below the floors",feed.channels>0 && feed.q.samples<kRayFloor);
+    }
+    // Fix round 1 (review P0 5): more budget never admits fewer lights. Every preset x 720p..4K x K1-8 x Thin
+    // ON/OFF over the whole slider range 1..1500 M (this found the 67-133 M cliff of the first planner:
+    // sub-floor plans admitting all K lights, then the floors admitting fewer, and the Thin fallback).
+    {
+        unsigned sweeps = 0, cliffsAtTheFallback = 0, lostLights = 0;
+        for (bool thin : {false,true})
+        for (unsigned height : {720u,1080u,1440u,2160u})
+        for (unsigned requested=1; requested<=8; ++requested)
+        for (int preset=0; preset<4; ++preset)
+        for (unsigned slots : {0u,kFeedSlots})
+        {
+            const unsigned width = height*16/9;
+            const auto uniform = quality(preset);
+            const auto asked = thin ? segmented(uniform,preset) : uniform;
+            unsigned previous = 0, previousSamples = 0;
+            for (int millions=1; millions<=1500; ++millions)
+            {
+                const auto plan = workloadOrUniform(asked,uniform,width,height,requested,millions,requested,slots);
+                const unsigned a = plan.channels ? plan.admitted : 0;
+                if (plan.channels && plan.admitted<requested) ++lostLights;
+                ensure("more budget never admits fewer lights",a>=previous);
+                ensure("ceilings over the whole slider",plan.iterations<=plan.budget);
+                ensure("floors over the whole slider",floorsHold(plan,plan.q.nearSteps ? asked : uniform));
+                // Thin ON hybrids (the top lights Thin, the others regular) are part of the sweep.
+                if (thin && !slots && plan.channels && plan.lead<plan.admitted) ++cliffsAtTheFallback;
+                previous = a; previousSamples = plan.q.samples;
+                ++sweeps;
+            }
+            (void)previousSamples;
+        }
+        ensure("budget sweep size",sweeps==2*4*8*4*2*1500);
+        ensure("Thin ON hybrids are exercised by the sweep",cliffsAtTheFallback>0);
+        ensure("some rows lose lights instead of rays",lostLights>0);
+    }
+    // Thin objects never removes a shadow that Thin OFF draws (user decision 10/22): at every budget, resolution, K, preset,
+    // feed reservation and visible-set size, the Thin plan admits at least as many lights as the OFF plan, and the admission is
+    // monotone in the budget for both. Two mutations: the pure Thin plan with a uniform fallback only when nothing fits (the
+    // first version of the fallback), and the same fallback capped at what Thin admits the moment it fits (the previous round).
+    {
+        unsigned rows = 0, fewerPure = 0, fewerCapped = 0, hybrids = 0, restSqueezed = 0, restRows = 0, thinWithFeeds = 0, raysWouldDiffer = 0;
+        for (unsigned height : {720u,1080u,1440u,2160u})
+        for (unsigned requested : {1u,3u,4u,8u})
+        for (int preset=0; preset<4; ++preset)
+        for (unsigned slots : {0u,kFeedSlots})
+        {
+            const unsigned width = height*16/9;
+            const auto uniform = quality(preset), asked = segmented(uniform,preset);
+            unsigned previousOn = 0, previousOff = 0;
+            for (int millions=1; millions<=1500; ++millions)
+            for (unsigned visible : {requested,1u})
+            {
+                const auto on = workloadOrUniform(asked,uniform,width,height,visible,millions,requested,slots);
+                const auto off = workloadOrUniform(uniform,uniform,width,height,visible,millions,requested,slots);
+                ensure("Thin ON admits at least what Thin OFF admits",on.admitted>=off.admitted);
+                ensure("Thin ON draws wherever Thin OFF draws",!off.channels || on.channels);
+                if (visible==requested)
+                {
+                    ensure("Thin ON admission is monotone in the budget",on.admitted>=previousOn);
+                    ensure("Thin OFF admission is monotone in the budget",off.admitted>=previousOff);
+                    previousOn = on.admitted; previousOff = off.admitted;
+                }
+                ensure("nothing drawn admits nothing",on.channels || (!on.admitted && !on.lead));
+                if (on.channels)
+                {
+                    ensure("lead lights 1..admitted",on.lead>=1 && on.lead<=on.admitted);
+                    ensure("both groups keep the floors",floorsHold(on,on.q.nearSteps ? asked : uniform) && restFloorsHold(on,uniform));
+                    ensure("the plan cost recomputed from the target size",on.iterations==planCost(on,width,height,visible));
+                    // Fix round 3 (Opus P1): the regular lights of a hybrid march EXACTLY the Thin-OFF plan, in every row (rays,
+                    // steps, resolution); the Thin lights get only what that leaves, possibly none.
+                    if (on.lead<on.admitted)
+                    {
+                        ++restRows;
+                        ensure("the regular group is exactly the Thin-OFF plan (rays, steps, resolution)",
+                            on.rest.samples==off.q.samples && on.rest.steps==off.q.steps && on.rest.half==off.q.half &&
+                            on.q.half==off.q.half && on.restChannels==off.channels && on.admitted==off.admitted);
+                        // Fix round 4 (Codex P0, GLM/DeepSeek P1): the Thin group marches EXACTLY the regular ray count (same disk
+                        // strata), so a boundary light at share 1 is the regular light's estimator; only the far steps differ.
+                        ensure("the Thin group of a hybrid marches the regular ray count",on.q.samples==on.rest.samples);
+                        // Mutation: the Thin ladder's own ray count (the previous round) differs from the regular one in these rows.
+                        const auto pureAsked = workload(asked,width,height,visible,millions,requested,slots);
+                        raysWouldDiffer += pureAsked.channels && pureAsked.q.samples!=on.rest.samples ? 1:0;
+                        // Mutation: the superseded planner squeezed the regular group to the floors to fit more Thin lights.
+                        restSqueezed += (off.q.samples>std::min(uniform.samples,kRayFloor) ||
+                            off.q.steps>std::min(uniform.steps,kThinFarFloor)) ? 1:0;
+                    }
+                    if (slots && on.q.nearSteps)
+                    {
+                        ++thinWithFeeds;
+                        // While feeds can run, a Thin or hybrid plan never costs more than the Thin-OFF plan.
+                        ensure("with feeds a Thin or hybrid plan costs no more than the Thin-OFF plan",
+                            planCost(on,width,height,on.admitted)<=planCost(off,width,height,off.admitted));
+                    }
+                    if (on.lead<on.admitted)
+                    {
+                        ++hybrids;
+                        const std::uint64_t reserve = feedReservation(width,height,std::uint64_t(millions)*1000000ull,requested,slots);
+                        const std::uint64_t full = planCost(on,width,height,on.admitted);
+                        ensure("a hybrid with Thin lights stays inside the planning limit",
+                            full<=std::uint64_t(millions)*1000000ull-std::min(reserve,std::uint64_t(millions)*1000000ull));
+                        ensure("hybrid draws stay inside the per-draw cap",
+                            planPixels(on,width,height)*on.q.samples*on.q.steps<=on.drawCap &&
+                            planPixels(on,width,height)*on.rest.samples*on.rest.steps<=on.drawCap);
+                        ensure("only Thin lights march the near segment",on.q.nearSteps==48 && on.rest.nearSteps==0);
+                    }
+                }
+                // Mutation 1: the pure Thin plan, the uniform plan only when Thin does not fit at all.
+                auto pure = workload(asked,width,height,visible,millions,requested,slots);
+                if (!pure.channels) pure = workload(uniform,width,height,visible,millions,requested,slots);
+                fewerPure += pure.admitted<off.admitted ? 1:0;
+                ++rows;
+            }
+        }
+        // The cap of the previous round, rebuilt literally: the uniform plan limited to the Thin plan's admission at its first fit.
+        for (int preset=0; preset<4; ++preset)
+        {
+            const auto uniform = quality(preset), asked = segmented(uniform,preset);
+            unsigned firstFit = 0;
+            for (int millions=1500; millions>=1; --millions) if (workload(asked,3840,2160,8,millions,8,kFeedSlots).channels) firstFit = workload(asked,3840,2160,8,millions,8,kFeedSlots).admitted;
+            for (int millions=1; millions<=1500; ++millions)
+            {
+                auto capped = workload(uniform,3840,2160,8,millions,8,kFeedSlots);
+                if (!workload(asked,3840,2160,8,millions,8,kFeedSlots).channels && firstFit) capped.admitted = std::min(capped.admitted,firstFit);
+                const auto off = workload(uniform,3840,2160,8,millions,8,kFeedSlots);
+                fewerCapped += capped.channels && capped.admitted<off.admitted ? 1:0;
+            }
+        }
+        ensure("sweep rows",rows>0);
+        ensure("hybrid rows are exercised",hybrids>0 && restRows==hybrids);
+        ensure("Thin plans with feeds are exercised",thinWithFeeds>0);
+        ensure("the regular-group-at-the-floors planner of the previous round squeezes the OFF march (mutation rejected)",restSqueezed>0);
+        ensure("the Thin ladder's own ray count differs from the regular one in some hybrid rows (mutation rejected)",raysWouldDiffer>0);
+        ensure("the pure Thin plan with a uniform fallback loses lights against OFF (mutation rejected)",fewerPure>0);
+        ensure("the capped fallback of the previous round loses lights against OFF (mutation rejected)",fewerCapped>0);
+        std::cout << "[RelightQ] Thin hybrid sweep rows=" << rows << " hybridRows=" << hybrids << " thinRowsWithFeeds=" << thinWithFeeds
+            << " previous-round-squeezed-OFF-march-rows=" << restSqueezed << " thin-ladder-rays-would-differ-rows=" << raysWouldDiffer
+            << " pure-plan-below-OFF=" << fewerPure << " capped-fallback-below-OFF=" << fewerCapped << std::endl;
+    }
+    // Coverage wording (the 0-of-N case reads as nothing is drawn, not as a fraction).
+    ensure_equals("coverage off",coverageText(false,2,8),std::string("Soft shadows are off"));
+    ensure_equals("coverage partial",coverageText(true,2,8),std::string("Soft shadows on 2 of 8 lights (work budget)"));
+    ensure_equals("coverage full",coverageText(true,8,8),std::string("Soft shadows on 8 lights"));
+    ensure_equals("coverage one",coverageText(true,1,1),std::string("Soft shadows on 1 light"));
+    ensure_equals("coverage no lights selected",coverageText(true,0,0),std::string("No lights are selected for soft shadows"));
+    ensure_equals("coverage nothing renders (budget)",coverageText(true,0,8),std::string("No soft shadows right now (work budget)"));
+    ensure_equals("coverage nothing renders (allocation)",coverageText(true,0,8,0,false,true),std::string("No soft shadows right now (low video memory)"));
+    ensure_equals("coverage partial (allocation)",coverageText(true,4,8,0,false,true),std::string("Soft shadows on 4 of 8 lights (low video memory)"));
+    // Fix round 4 (GLM P2): fewer lights rendered than wanted is NOT a memory effect unless the pass says it failed to allocate
+    // (a plane or draw truncated by the budget is a work-budget effect). Fix round 5 (GLM P2): the dead `planned` parameter is gone.
+    ensure_equals("coverage: rendered below wanted without an allocation failure is a work-budget effect",coverageText(true,4,8),
+        std::string("Soft shadows on 4 of 8 lights (work budget)"));
+    ensure_equals("coverage: nothing rendered, Thin requested, still a work-budget effect",coverageText(true,0,8,0,true),
+        std::string("No soft shadows right now (work budget)"));
+    ensure_equals("coverage with thin-quality lights",coverageText(true,8,8,3),std::string("Soft shadows on 8 of 8 lights (3 thin-quality)"));
+    ensure_equals("coverage with every light thin",coverageText(true,4,4,4),std::string("Soft shadows on 4 of 4 lights (4 thin-quality)"));
+    ensure_equals("coverage partial with thin-quality lights",coverageText(true,2,8,2),std::string("Soft shadows on 2 of 8 lights (work budget, 2 thin-quality)"));
+    ensure_equals("coverage thin count ignored when off",coverageText(false,8,8,3),std::string("Soft shadows are off"));
+    // lights == 0: nothing is drawn, so nothing is admitted either (the record's "A = 0 when nothing draws" invariant).
+    {
+        const auto none = workload(quality(1),1920,1080,0,1500,4);
+        ensure("no lights: no channels, no admission",none.channels==0 && none.admitted==0 && none.lead==0 && none.iterations==0);
+        const auto noneThin = workloadOrUniform(quality(1,true),quality(1),1920,1080,0,1500,4);
+        ensure("no lights, Thin: no channels, no admission",noneThin.channels==0 && noneThin.admitted==0 && noneThin.lead==0);
+    }
+    // The floors, written as literals (4 rays, 8 far steps, 48 near steps): a predicate that shares the planner's constants
+    // would follow a change of both; these rows do not. Default budget, 4K K8 (every group on the floors) and 1080p K8.
+    // With VCam feeds off (slots 0) Low keeps two Thin lights beside six regular ones at 4K K8; the other presets' OFF plans use
+    // the budget (their regular lights keep that march), so they have no Thin light there. With feeds on, 1080p K8 is Thin for
+    // High and Cinematic only (the cap at the OFF cost), and the plan is the OFF plan otherwise.
+    for (int preset=0; preset<4; ++preset)
+    {
+        const auto uniform = quality(preset), asked = segmented(uniform,preset);
+        const auto k8 = workloadOrUniform(asked,uniform,3840,2160,8,1500,8,0);
+        const auto k8off = workload(uniform,3840,2160,8,1500,8,0);
+        ensure("literal floors, 4K K8: 8 lights, rays >= 4",k8.channels>0 && k8.admitted==8 && k8.q.samples>=4 &&
+            (k8.lead==k8.admitted || k8.rest.samples>=4));
+        ensure("literal floors, 4K K8: far steps >= 8, near 48 on a Thin plan",(k8.q.nearSteps==48 && k8.q.steps-48>=8 &&
+            (k8.lead==k8.admitted || k8.rest.steps>=8)) || (k8.q.nearSteps==0 && k8.q.steps>=8));
+        ensure("literal floors, 4K K8: the regular lights are the OFF march",k8.lead==k8.admitted ? (k8.q.nearSteps==0 ||
+            k8.q.samples>=4) : (k8.rest.samples==k8off.q.samples && k8.rest.steps==k8off.q.steps));
+        if (preset==0)
+            ensure("literal floors, 4K K8 Low: Thin lights lead the regular 4 x 8 ones",k8.lead==2 && k8.admitted==8 &&
+                k8.rest.samples==4 && k8.rest.steps==8 && k8.q.samples==4 && k8.q.steps==66 && k8.q.nearSteps==48);
+        const auto k8hd = workloadOrUniform(asked,uniform,1920,1080,8,1500,8,0);
+        ensure("literal floors, 1080p K8 without feeds: every light Thin",k8hd.admitted==8 && k8hd.lead==8 && k8hd.q.samples>=4 && k8hd.q.steps>=56);
+        const auto k8feeds = workloadOrUniform(asked,uniform,1920,1080,8,1500,8,kFeedSlots);
+        ensure("literal 1080p K8 with feeds: High and Cinematic keep Thin, Low and Medium are the OFF plan",
+            (preset>=2) == (k8feeds.q.nearSteps==48) && k8feeds.admitted==8);
+    }
+    // Smooth group fade: every admitted light i keeps strength smoothstep(1, 1.05, score[i] / score[first dropped]).
+    {
+        ensure("equal importance: faded out",admissionStrength(1.0,1.0)==0.0);
+        ensure("5 percent ahead: full strength",admissionStrength(1.05,1.0)==1.0 && admissionStrength(1.5,1.0)==1.0);
+        ensure("half way: half strength",std::abs(admissionStrength(1.025,1.0)-0.5)<1.e-12);
+        ensure("nothing dropped has importance: full strength",admissionStrength(0.0,0.0)==1.0 && admissionStrength(1.0,0.0)==1.0);
+        ensure("a light with no importance is gone",admissionStrength(0.0,1.0)==0.0);
+        double last = 0.0, worstStep = 0.0;
+        for (int i=0; i<=2500; ++i)
+        {
+            const double v = admissionStrength(1.0+i*0.0001,1.0);
+            ensure("strength is monotone in the margin",v>=last && v>=0.0 && v<=1.0);
+            worstStep = std::max(worstStep,v-last);
+            last = v;
+        }
+        ensure("strength is continuous",worstStep<0.005);
+        // The per-light strengths of a ranked score list with `admitted` lights kept, the way renderAreaShadows computes them.
+        const auto strengths = [](std::vector<double> scores, unsigned admitted)
+        {
+            std::vector<double> out(admitted,1.0);
+            if (admitted<scores.size())
+                for (unsigned i=0; i<admitted; ++i) out[i] = admissionStrength(scores[i],scores[admitted]);
+            return out;
+        };
+        // Codex's case: A = 3, scores [2, 1.100001, 1.099999, 1]. Swapping the middle two lights (a rank swap WITHIN the
+        // admitted set) changes no strength by more than 1e-4: each light keeps its own strength, the reference is unchanged.
+        // With the 5 percent window both lights are clear of the threshold (full strength); the same swap 3 percent above the
+        // threshold, where the strength slope is steepest (1.5 / 0.05 = 30 per unit of ratio), moves a 2e-6 score change by
+        // about 6e-5, so the bound is 1e-3 there (the 25 percent window needed 1e-4: the narrower window is 5x steeper).
+        {
+            const auto nearBefore = strengths({2.0,1.0300001,1.0299999,1.0},3);
+            const auto nearAfter = strengths({2.0,1.0299999,1.0300001,1.0},3);
+            ensure("near the threshold: a swap within the admitted set changes no strength",
+                std::abs(nearBefore[1]-nearAfter[2])<1.e-3 && std::abs(nearBefore[2]-nearAfter[1])<1.e-3);
+            ensure("near the threshold: the lights are partly faded",nearBefore[1]>0.6 && nearBefore[1]<0.7);
+            const auto before = strengths({2.0,1.100001,1.099999,1.0},3);
+            const auto after = strengths({2.0,1.099999,1.100001,1.0},3);
+            ensure("the clear leader is at full strength",before[0]==1.0 && after[0]==1.0);
+            // The light that was second is now third: its strength moves with the light, not with the rank.
+            ensure("a swap within the admitted set changes no strength",std::abs(before[1]-after[2])<1.e-4 && std::abs(before[2]-after[1])<1.e-4);
+            ensure("clear of the threshold both lights keep full strength",before[1]==1.0 && before[2]==1.0);
+            // The old rule (only the last admitted channel fades) jumps on the swap near the threshold: mutation rejected.
+            const auto lastOnly = [](std::vector<double> scores, unsigned admitted)
+            {
+                std::vector<double> out(admitted,1.0);
+                out[admitted-1] = admissionStrength(scores[admitted-1],scores[admitted]);
+                return out;
+            };
+            const auto oldBefore = lastOnly({2.0,1.0300001,1.0299999,1.0},3), oldAfter = lastOnly({2.0,1.0299999,1.0300001,1.0},3);
+            ensure("the last-channel-only fade pops on the same swap (mutation rejected)",
+                std::abs(oldBefore[1]-oldAfter[2])>0.3 || std::abs(oldBefore[2]-oldAfter[1])>0.3);
+        }
+        // Continuity along a motion: three lights whose scores cross the first dropped light's score and each other. No
+        // light's strength changes by more than one small step per tiny score step, at any rank swap.
+        {
+            double worst = 0.0;
+            std::vector<double> previous;
+            for (int i=0; i<=6000; ++i)
+            {
+                const double t = i/6000.0;
+                const std::vector<double> scores = {2.0-t*1.2,1.6-t*0.2,1.0+t*0.3,1.0};  // lights cross each other and the reference
+                std::vector<double> sorted = scores;
+                std::sort(sorted.begin(),sorted.begin()+3,std::greater<double>());
+                // strengths by light identity: the reference is the first dropped score (the fixed fourth light here)
+                std::vector<double> now;
+                for (unsigned light=0; light<3; ++light) now.push_back(admissionStrength(scores[light],sorted[3]));
+                if (!previous.empty()) for (unsigned light=0; light<3; ++light) worst = std::max(worst,std::abs(now[light]-previous[light]));
+                previous = now;
+            }
+            ensure("no strength jumps while lights cross",worst<0.01);
+        }
+        // Dropping out of the admitted set: the dropped light becomes the reference, so the ranks crossing at the boundary
+        // pass through strength 0 on both sides (the swap of the last admitted and the first dropped light).
+        {
+            double previousA = -1.0, previousB = -1.0, worstJump = 0.0;
+            for (int i=0; i<=4000; ++i)
+            {
+                const double scoreA = 1.0+0.0005*(i-2000)*0.5, scoreB = 1.0;      // A passes B at i = 2000
+                const double a = scoreA>=scoreB ? admissionStrength(scoreA,scoreB) : 0.0;
+                const double b = scoreB>scoreA ? admissionStrength(scoreB,scoreA) : 0.0;
+                if (previousA>=0.0) worstJump = std::max(worstJump,std::max(std::abs(a-previousA),std::abs(b-previousB)));
+                previousA = a; previousB = b;
+            }
+            ensure("a light never pops when two lights swap rank at the coverage boundary",worstJump<0.01);
+        }
+        // Mutation: the unfaded rule (full strength to the end) pops from 1 to 0 at the swap.
+        double popJump = 0.0, previousUnfaded = -1.0;
+        for (int i=0; i<=4000; ++i)
+        {
+            const double scoreA = 1.0+0.0005*(i-2000)*0.5, scoreB = 1.0;
+            const double unfaded = scoreA>=scoreB ? 1.0 : 0.0;
+            if (previousUnfaded>=0.0) popJump = std::max(popJump,std::abs(unfaded-previousUnfaded));
+            previousUnfaded = unfaded;
+        }
+        ensure("the unfaded rule pops (mutation rejected)",popJump>=1.0);
+        // A strength below 1/255 is not a rendered light.
+        ensure("faded below one 8-bit step is not visible",!admissionVisible(admissionStrength(1.0,1.0)) &&
+            !admissionVisible(admissionStrength(1.0005,1.0)) && admissionVisible(admissionStrength(1.02,1.0)) && admissionVisible(1.0));
+        // Eight lamps whose scores are 3 percent apart, budget for three (user/lead decision 10/22): the cluster stays lit. The top two
+        // admitted lights keep full strength; only the third, within 5 percent of the first dropped light, fades (to 0.648).
+        {
+            std::vector<double> lamps;
+            for (int i=0; i<8; ++i) lamps.push_back(10.0*std::pow(1.03,-i));
+            const auto cluster = strengths(lamps,3);
+            ensure("cluster: the top two admitted lights keep full strength",cluster[0]>=0.99 && cluster[1]>=0.99);
+            ensure("cluster: only the light within 5 percent of the threshold fades",cluster[2]<0.99 && cluster[2]>0.6 && cluster[2]<0.7);
+            ensure("cluster: the lights count as rendered",admissionVisible(cluster[0]) && admissionVisible(cluster[1]) && admissionVisible(cluster[2]));
+        }
+    }
+    // Tied lamps (lead decision 10/22, on the user's behalf): importance is constant within range / 2 of the camera, so identical
+    // nearby lamps tie EXACTLY and the raw fade would take every admitted light of the cluster to 0. An ADMITTED light keeps at least
+    // half strength: max(0.5, smoothstep(1, 1.05, ratio)).
+    {
+        ensure("raw fade of an exact tie is 0 (the cluster that vanished)",admissionStrength(1.0,1.0)==0.0);
+        ensure("admitted tie keeps half strength",admittedStrength(1.0,1.0)==0.5 && admittedStrength(1.0,1.0)==kAdmissionFloor);
+        ensure("admitted: 5 percent ahead keeps full strength",admittedStrength(1.05,1.0)==1.0 && admittedStrength(3.0,1.0)==1.0);
+        ensure("admitted: nothing dropped has importance: full strength",admittedStrength(1.0,0.0)==1.0 && admittedStrength(0.0,0.0)==1.0);
+        ensure("admitted: a light with no importance is still gone",admittedStrength(0.0,1.0)==0.0);
+        ensure("admitted: the floor is visible",admissionVisible(admittedStrength(1.0,1.0)));
+        // Eight identical lamps, budget for three: every admitted light stays lit at 0.5 (the raw rule gave 0, 0, 0).
+        {
+            const std::vector<double> ties(8,5.0);
+            for (unsigned i=0; i<3; ++i)
+            {
+                ensure("tie cluster: raw strength 0 (mutation rejected)",admissionStrength(ties[i],ties[3])==0.0);
+                ensure("tie cluster: every admitted light keeps strength 0.5 and is rendered",admittedStrength(ties[i],ties[3])==0.5 &&
+                    admissionVisible(admittedStrength(ties[i],ties[3])));
+            }
+        }
+        // Continuity: monotone in the margin, no step larger than the raw term's, and a swap WITHIN the admitted set (an order
+        // statistic reference) changes no strength.
+        double last = 0.0, worstStep = 0.0;
+        for (int i=0; i<=2500; ++i)
+        {
+            const double v = admittedStrength(1.0+i*0.0001,1.0);
+            ensure("admitted strength is monotone in the margin and in [0.5, 1]",v>=last-1.e-15 && v>=0.5 && v<=1.0);
+            worstStep = std::max(worstStep,i ? v-last:0.0);
+            last = v;
+        }
+        ensure("admitted strength is continuous",worstStep<0.005);
+        const auto admitted = [](std::vector<double> scores, unsigned count)
+        {
+            std::vector<double> out(count,1.0);
+            if (count<scores.size()) for (unsigned i=0; i<count; ++i) out[i] = admittedStrength(scores[i],scores[count]);
+            return out;
+        };
+        const auto before = admitted({2.0,1.0300001,1.0299999,1.0},3), after = admitted({2.0,1.0299999,1.0300001,1.0},3);
+        ensure("admitted: a swap within the admitted set changes no strength",
+            std::abs(before[1]-after[2])<1.e-3 && std::abs(before[2]-after[1])<1.e-3);
+        // Thin/regular boundary (Opus P1): the last Thin light and the first regular light swap places. The Thin light marches
+        // the share 1 - smoothstep(1, 1.05, score / score of the first regular light) of its rays the regular way, so at the tie
+        // it IS regular (share 1), a clear leader is all Thin (share 0), and the share is continuous in between.
+        {
+            ensure("a clear leader is all Thin",thinWeight(1.06,1.0)==1.0 && thinWeight(5.0,1.0)==1.0 &&
+                regularShare(1.06,1.0)==0.0 && regularShare(5.0,1.0)==0.0);
+            // Fix round 4 (Opus P1; lead decision 10/23): the regular share is 1 - max(0.5, thinWeight), mirroring the admission
+            // floor. An exact tie used to make every Thin light 100 percent regular while Coverage still said "thin-quality".
+            ensure("a Thin light that ties the first regular light marches half of its rays regular",
+                thinWeight(1.0,1.0)==0.5 && regularShare(1.0,1.0)==0.5 && thinWeight(1.0,1.0)==kAdmissionFloor);
+            ensure("the regular share never exceeds one half for a light with importance",regularShare(1.0,1.0)<=0.5 &&
+                regularShare(1.0001,1.0)<=0.5 && regularShare(1.02,1.0)<=0.5);
+            ensure("no regular light follows (or it has no importance): all Thin",thinWeight(1.0,0.0)==1.0 && regularShare(1.0,0.0)==0.0);
+            // Counted as thin-quality only while the regular share is below one half: a tie is not.
+            ensure("thin-quality counts a clear leader, not a tie",thinQuality(regularShare(5.0,1.0)) && !thinQuality(regularShare(1.0,1.0)) &&
+                thinQuality(regularShare(1.03,1.0)));
+            // A cluster of eight identical sconces within range / 2 of the camera, budget for a 3 Thin + 1 regular hybrid (Opus P1):
+            // every Thin light ties the first regular one, so none of the three counts as thin-quality (Coverage reads "0 thin-quality").
+            {
+                const std::vector<double> tied(4,5.0);
+                unsigned thinQualityLights = 0;
+                for (unsigned i=0; i<3; ++i) thinQualityLights += thinQuality(regularShare(tied[i],tied[3])) ? 1:0;
+                ensure("tied Thin lights are not counted as thin-quality",thinQualityLights==0);
+                ensure_equals("and the Coverage row says so",coverageText(true,4,4,thinQualityLights,true),
+                    std::string("Soft shadows on 4 of 4 lights (0 thin-quality)"));
+            }
+            // The lights hold their roles while they trade places: the higher is the Thin one (rank lead-1) and the lower the first
+            // regular one. The Thin share of the Thin light is continuous while it stays above the other (it never moves for a
+            // swap inside the Thin set), and at the crossing itself the two lights trade 0.5 for 0: the floor's documented pop.
+            double worst = 0.0, crossing = 0.0, previous = -1.0;
+            for (int i=0; i<=4000; ++i)
+            {
+                const double a = 1.0+0.00002*(i-2000), b = 1.0;           // A passes B at i = 2000
+                const double share = a>=b ? thinWeight(a,b) : thinWeight(b,a) ;  // the Thin light's own Thin share, higher one
+                const double roleShare = a>=b ? thinWeight(a,b) : 0.0;    // light A: Thin while it is the higher, regular below
+                if (previous>=0.0)
+                {
+                    if (i==2000) crossing = std::abs(roleShare-previous);   // A drops from the Thin set to the regular one
+                    else worst = std::max(worst,std::abs(roleShare-previous));
+                }
+                ensure("the Thin share is monotone in the margin and in [0.5, 1]",share>=0.5 && share<=1.0);
+                previous = roleShare;
+            }
+            ensure("the Thin share is continuous while the Thin light stays ahead",worst<0.005);
+            ensure("a boundary crossing pops by exactly one half (the floor, documented)",std::abs(crossing-0.5)<0.005);
+            // Mutation: the unblended boundary (all Thin to the end, then all regular) pops by 1.
+            double pop = 0.0, prev = -1.0;
+            for (int i=0; i<=4000; ++i)
+            {
+                const double share = (1.0+0.00002*(i-2000)) >= 1.0 ? 1.0 : 0.0;
+                if (prev>=0.0) pop = std::max(pop,std::abs(share-prev));
+                prev = share;
+            }
+            ensure("the unblended Thin/regular boundary pops (mutation rejected)",pop>=1.0);
+        }
+    }
+    // Coverage row wording: a Thin request that fell back entirely says so, and an allocation failure says so explicitly.
+    ensure_equals("coverage: Thin requested, none thin-quality",coverageText(true,8,8,0,true),
+        std::string("Soft shadows on 8 of 8 lights (0 thin-quality)"));
+    ensure_equals("coverage: Thin requested, one light, none thin-quality",coverageText(true,1,1,0,true),
+        std::string("Soft shadows on 1 of 1 light (0 thin-quality)"));
+    ensure_equals("coverage: Thin requested, partial, none thin-quality",coverageText(true,2,8,0,true),
+        std::string("Soft shadows on 2 of 8 lights (work budget, 0 thin-quality)"));
+    ensure_equals("coverage: Thin not requested, none thin-quality",coverageText(true,8,8,0,false),std::string("Soft shadows on 8 lights"));
+    ensure_equals("coverage: nothing renders, Thin requested",coverageText(true,0,8,0,true),
+        std::string("No soft shadows right now (work budget)"));
+    ensure_equals("coverage: explicit low-memory flag (early return before any drawing)",coverageText(true,0,8,0,true,true),
+        std::string("No soft shadows right now (low video memory)"));
+    ensure_equals("coverage: the flag wins over a planned count of 0",coverageText(true,0,8,0,false,true),
+        std::string("No soft shadows right now (low video memory)"));
+    // P0.2 blur radius: at least 2 trace pixels whenever the blur is on (HEAD: 1 at 1080p half-res).
+    close("1080p half raised to 2",filterRadius(2.f,1.f,true),2.0,1.e-6);
+    close("4K half",filterRadius(2.f,2.f,true),2.0,1.e-6);
+    close("4K full",filterRadius(2.f,2.f,false),4.0,1.e-6);
+    close("small feed raised to 2",filterRadius(1.f,.33f,true),2.0,1.e-6);
+    close("zero skips the blur",filterRadius(0.f,2.f,false),0.0,1.e-6);
+    close("maximum 8",filterRadius(8.f,2.f,false),8.0,1.e-6);
+    close("nonfinite setting falls back to 2",filterRadius(std::numeric_limits<float>::quiet_NaN(),1.f,false),2.0,1.e-6);
 }
 
 }

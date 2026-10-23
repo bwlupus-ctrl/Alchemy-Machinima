@@ -26780,6 +26780,14 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // A VCam feed pass writes its own record; the main view's take record (and slot
     // ids) are never overwritten by it.
     auto& take = sPrismLensRender ? mRelightFeedAreaTake : mRelightAreaTake;
+    // Coverage of the main view's pass (Director status line): cleared on entry so that no early return below
+    // (disabled, no budget, nothing selected, allocation failure) can advertise an earlier frame; it is published
+    // again as the pass learns what it will draw (planned) and what it really drew (admitted).
+    if (!sPrismLensRender)
+    {
+        mAreaShadowWanted = mAreaShadowAdmitted = mAreaShadowThin = 0;
+        mAreaShadowThinRequested = mAreaShadowLowMemory = false;
+    }
     const bool allowed = areaShadowsAllowedThisView();
     if (allowed)
     {
@@ -26980,37 +26988,92 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     const ALAreaShadow::Quality uniform{samples(),steps(),half()};
     const auto requested = thin() ? ALAreaShadow::segmented(uniform,preset()) : uniform;
     static_assert(ALAreaShadow::kFeedSlots == LLPrismLens::MAX_CAPTURES, "feed slot count");
-    // No feed can run while the VCam switch is off, so the main view reserves no feed share then.
-    const unsigned feed_slots = feeds() ? LLPrismLens::MAX_CAPTURES : 0;
+    // The feeds that are LIVE this frame (fix rounds 4-5). No feed can run while the VCam switch is off, so the main view reserves
+    // nothing then. With it on, the main view holds back what the feeds the Prism registry prepared THIS frame can spend: their
+    // count and their FIXED capacity target sizes (current state only, never the FPS-scaled per-frame target). The set is read
+    // from the registry ONCE per gFrameCount and the main plan and every feed pass of that frame reuse that same snapshot (the
+    // registry prepares every slot before the first area pass of a frame), so the budget split cannot change between the passes of
+    // one frame. "Live" means prepared this frame at full quality: it includes a camera whose source is offline or invalid (a held
+    // publication still reserves its budget), and a VCam display entering or leaving view changes the set, hence the main plan.
+    // A feed that is not live reserves nothing, and turning one on can therefore lower the main view's Thin quality (never the
+    // number of lights it shadows). A feed pass is admitted by its feed identity (the registry slot), at most once per frame; a
+    // pass of a feed that is not in the snapshot draws nothing.
+    ALAreaShadow::FeedSet live_feeds;
+    if (feeds())
+    {
+        if (mAreaLiveFeedsFrame != gFrameCount)
+        {
+            mAreaLiveFeedsFrame = gFrameCount;
+            mAreaLiveFeeds = ALAreaShadow::FeedSet();
+            U32 feed_widths[LLPrismLens::MAX_CAPTURES] = {}, feed_heights[LLPrismLens::MAX_CAPTURES] = {};
+            U32 feed_slots[LLPrismLens::MAX_CAPTURES] = {};
+            const U32 live = LLPrismLens::liveAreaFeeds(feed_widths,feed_heights,feed_slots);
+            for (U32 i=0; i<live; ++i) mAreaLiveFeeds.add(feed_widths[i],feed_heights[i],feed_slots[i]);
+        }
+        live_feeds = mAreaLiveFeeds;
+    }
     const auto work = sPrismLensRender ? ALAreaShadow::feedWorkload(requested,uniform,
         mMainRT.deferredScreen.getWidth(),mMainRT.deferredScreen.getHeight(),width,height,
-        selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),LLPrismLens::MAX_CAPTURES) :
+        selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),live_feeds) :
         ALAreaShadow::workloadOrUniform(requested,uniform,width,height,
-            selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),feed_slots);
+            selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),live_feeds);
     take.authoredSteps = uniform.steps; // Sampled by this pass itself.
     take.feed = sPrismLensRender;
     take.segmentedRequested = requested.nearSteps > 0;
     take.work = work;
     take.planned = true;
     take.status = "budget_rejected";
+    // P0.1: the planner ladder admits A <= K lights (from the requested cap, never from the visible
+    // set). The lowest ranked lose their soft shadow; the Director status line reports the coverage.
+    const U32 wanted_lights = selected.size;
+    // Smooth group fade (frame-pure: this frame's ranking scores only). While lights are dropped, every admitted light
+    // keeps strength max(0.5, smoothstep(1, 1.05, score / score of the first dropped light)), so lights that trade places at
+    // the coverage boundary fade instead of one popping (the 0.5 floor keeps a cluster of exactly tied lamps lit: lead
+    // decision 10/22); swapping two admitted lights changes no strength. 1 when nothing is dropped.
+    // See ALAreaShadow::admittedStrength(). Uploaded per channel (area_dropout = 1 - strength).
+    std::array<double,8> admission;
+    admission.fill(1.0);
+    if (work.channels && work.admitted && work.admitted < wanted_lights)
+        for (U32 i=0; i<work.admitted; ++i)
+            admission[i] = ALAreaShadow::admittedStrength(selected.lights[i].score,selected.lights[work.admitted].score);
+    // Thin/regular boundary of a hybrid plan: the share of each Thin light's rays that march the regular way is
+    // 1 - max(0.5, smoothstep(1, 1.05, score / score of the first regular light)) (ALAreaShadow::regularShare; the 0.5 floor mirrors
+    // the admission floor, lead decision 10/23), so tied lamps keep half of their rays Thin and the Coverage row counts a light as
+    // thin-quality only while this share is below one half. The regular rays use the regular ray count and strata (hybridPlan). 0 for
+    // every other channel.
+    std::array<double,8> regular_mix;
+    regular_mix.fill(0.0);
+    if (work.channels && work.q.nearSteps > 0 && work.lead < work.admitted && work.lead < wanted_lights)
+        for (U32 i=0; i<work.lead; ++i)
+            regular_mix[i] = ALAreaShadow::regularShare(selected.lights[i].score,selected.lights[work.lead].score);
+    if (work.channels) selected.size = std::min<U32>(selected.size,work.admitted);
+    if (!sPrismLensRender)
+    {
+        // Published before any early return below, so a plan of 0 or a failed allocation reads its own reason.
+        mAreaShadowWanted = wanted_lights;
+        mAreaShadowThinRequested = requested.nearSteps > 0;
+    }
     if (sPrismLensRender)
         LL_DEBUGS("RelightQ") << "[RelightQ] VCam budget " << (work.channels ? "PASS" : "SKIP")
             << " target=" << width << "x" << height << " K=" << selected.size
             << " S=" << work.q.samples << " steps=" << work.q.steps << " half=" << work.q.half
             << " iterations=" << work.iterations << " allowance=" << work.budget << LL_ENDL;
     // Include inputs and effective plan so clamp changes (including recovery) log once.
-    const std::array<S32,13> plan = {samples(),steps(),half(),(S32)width,(S32)height,
+    const std::array<S32,15> plan = {samples(),steps(),half(),(S32)width,(S32)height,
         (S32)selected.size,budget(),work.q.samples,work.q.steps,work.q.half,llclamp(cap(),1,8),
-        thin(),work.q.nearSteps};
-    static std::array<S32,13> previous = {};
+        thin(),work.q.nearSteps,(S32)work.admitted,(S32)work.lead};
+    static std::array<S32,15> previous = {};
     static bool previous_clamped = false;
     if (!sPrismLensRender && plan != previous)
     {
         const auto& wanted = work.q.nearSteps ? requested : uniform; // A fallback compares with the uniform plan.
         // A Thin objects request that fell back to the uniform march is a clamp too.
         const bool thin_dropped = requested.nearSteps > 0 && !work.q.nearSteps;
+        // Thin objects hybrid: the top lights march Thin, the other admitted lights the regular way.
+        const bool thin_partial = work.q.nearSteps > 0 && work.lead < work.admitted;
         const bool clamped = work.q.samples != samples() || work.q.steps != wanted.steps ||
-            work.q.half != half() || !work.channels || thin_dropped;
+            work.q.half != half() || !work.channels || thin_dropped || thin_partial ||
+            work.admitted < static_cast<unsigned>(llclamp(cap(),1,8));
         // A synchronous INFO flush only when the clamp state flips (active <-> released);
         // selection-size changes while clamped stay DEBUG so a recording hitches on no log write.
         if (clamped || previous_clamped)
@@ -27021,6 +27084,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 << " effective=" << work.q.samples << "x" << work.q.steps << " half=" << work.q.half
                 << " pixels=" << work.pixels << " K=" << selected.size << " iterations=" << work.iterations
                 << " requestedK=" << llclamp(cap(),1,8)
+                << " admit=" << work.admitted << "/" << llclamp(cap(),1,8) << " thinLights=" << (work.q.nearSteps ? work.lead : 0)
+                << " rest=" << (work.lead < work.admitted ? work.rest.samples : 0) << "x" << (work.lead < work.admitted ? work.rest.steps : 0)
                 << " thin=" << thin() << " nearSteps=" << work.q.nearSteps
                 << " thinDropped=" << thin_dropped
                 << " budget=" << work.budget << " perDraw=" << work.drawCap
@@ -27032,9 +27097,14 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         previous = plan;
     }
     if (!work.channels) return;
-    // Count actual passes, including repeated renders of one Gate source.
-    // The frame number only resets accounting; it never seeds shader output.
-    if (sPrismLensRender && !mPrismAreaPasses.admit(gFrameCount,LLPrismLens::MAX_CAPTURES)) return;
+    // Admit by feed identity (the registry slot of the pass being rendered), once per frame, only for a feed of the frame's
+    // live snapshot: a repeated render of one Gate source cannot use up another live feed's pass. The frame number only resets
+    // accounting; it never seeds shader output.
+    if (sPrismLensRender)
+    {
+        const S32 feed_slot = LLPrismLens::activeAreaFeedSlot();
+        if (feed_slot < 0 || !mPrismAreaPasses.admit(gFrameCount,static_cast<unsigned>(feed_slot),live_feeds)) return;
+    }
     take.status = "allocation_failed";
     const U32 w = work.q.half ? (width+1)/2 : width, h = work.q.half ? (height+1)/2 : height;
     const U32 planes_wanted = (selected.size+3)/4;
@@ -27087,6 +27157,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         else
             LL_DEBUGS("RelightQ") << "[RelightQ] allocation recovered planes=" << planes << LL_ENDL;
     }
+    if (!sPrismLensRender) mAreaShadowLowMemory = alloc_failed;
     if (!planes) return;
     // Asynchronous timestamps: never wait, never nest a TIME_ELAPSED query.
     // Reuse the pair only when its previous result is available.
@@ -27108,17 +27179,29 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     if (measure) glQueryCounter(mAreaShadowQueries[0],GL_TIMESTAMP);
     const F32 resolution_scale = static_cast<F32>(height)/1080.f;
     const F32 filter_setting = denoise();
-    const F32 radius = std::isfinite(filter_setting) ? llclamp(filter_setting*resolution_scale*(work.q.half ? .5f:1.f),0.f,8.f):2.f;
+    const F32 radius = ALAreaShadow::filterRadius(filter_setting,resolution_scale,work.q.half);
     const glm::mat4 view = get_current_modelview();
     // Where the native spot map ends (the same shadow_clip the native sampler reads).
     const LLVector4 native_clip = nativeSpotShadowClip();
+    // The native sampler's receiver offset; the gather AND the filter evaluate the hand-over at the depth it compares.
+    const F32 native_offset = std::isfinite(RenderSpotShadowOffset) ? RenderSpotShadowOffset : 0.f;
     for (U32 plane=0; plane<planes; ++plane)
     {
         LLVector4 lights[4] = {}; GLuint seeds[4] = {};
-        LLVector4 contact, contact_fade;
+        LLVector4 contact, contact_fade, dropout;
         contact.clear();
         contact_fade.clear(); // zero preserves full visibility for unmapped lights
-        const U32 count = std::min(4u,channels-plane*4);
+        dropout.clear();      // zero = full soft shadow; 1 - strength of this channel's light (smooth group fade)
+        // The plane's channel count, never more than the lights that are really selected after the truncation to the
+        // admitted set (selected.lights is indexed by plane*4+i below).
+        const U32 count = plane*4 < channels ? std::min(4u,std::min<U32>(channels,selected.size)-plane*4) : 0u;
+        LLVector4 regular;
+        regular.clear(); // zero = every ray of a Thin light marches Thin
+        for (U32 i=0; i<count; ++i)
+        {
+            dropout.mV[i] = static_cast<F32>(1.0-admission[plane*4+i]);
+            regular.mV[i] = static_cast<F32>(regular_mix[plane*4+i]);
+        }
         for (U32 i=0; i<count; ++i)
         {
             const LLUUID& id = selected.lights[plane*4+i].id;
@@ -27155,18 +27238,17 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         gAreaShadowProgram.uniform4uiv(LLStaticHashedString("area_seeds"),1,seeds);
         gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_contact_dist"),1,contact.mV);
         gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_contact_fade"),1,contact_fade.mV);
+        gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_dropout"),1,dropout.mV);
+        // Hybrid plans: the share of each Thin light's rays that march the regular way, and that march's step count.
+        gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_regular_mix"),1,regular.mV);
+        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_rest_steps"),work.lead < work.admitted ? work.rest.steps : 0);
         // The screen trace takes over from the native map before its fade-to-lit starts
         // (mapped lights only: fade is 0 otherwise).
         gAreaShadowProgram.uniform2f(LLStaticHashedString("area_native_clip"),native_clip.mV[2],native_clip.mV[3]);
         // The hand-over is evaluated at the depth the native sampler compares: the receiver moved
         // along its normal by this same offset (sampleSpotShadow: pos += norm * spot_shadow_offset).
-        gAreaShadowProgram.uniform1f(LLStaticHashedString("area_native_offset"),
-            std::isfinite(RenderSpotShadowOffset) ? RenderSpotShadowOffset : 0.f);
+        gAreaShadowProgram.uniform1f(LLStaticHashedString("area_native_offset"),native_offset);
 
-        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_samples"),work.q.samples);
-        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_steps"),work.q.steps);
-        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_thin_objects"),work.q.nearSteps > 0);
-        gAreaShadowProgram.uniform1i(LLStaticHashedString("area_near_steps"),work.q.nearSteps);
         const F32 distance = max_dist(), thick = thickness();
         gAreaShadowProgram.uniform1f(LLStaticHashedString("area_light_bias"),ALAreaShadow::lightBias(light_bias()));
         gAreaShadowProgram.uniform2f(LLStaticHashedString("area_trace_res"),
@@ -27174,13 +27256,28 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         gAreaShadowProgram.uniform3f(LLStaticHashedString("area_params"),
             std::isfinite(distance) ? llclamp(distance,.1f,64.f):8.f,
             std::isfinite(thick) ? llclamp(thick,.001f,4.f):.35f,resolution_scale*(work.q.half ? .5f:1.f));
-        for (U32 first=0; first<count; first+=work.channels)
+        // Thin objects hybrid: the first work.lead lights march with work.q, the others with work.rest. A plan that is not a
+        // hybrid has work.lead == work.admitted, so the second group is empty. Every draw keeps to its group's per-draw cap.
+        const struct { U32 begin, end; const ALAreaShadow::Quality& march; U32 per_draw; } groups[2] = {
+            {0, work.lead, work.q, work.channels},
+            {work.lead, 8, work.rest, work.restChannels}};
+        for (const auto& group : groups)
         {
-            const U32 last = std::min(count,first+work.channels);
-            glColorMask(first==0,first<=1 && last>1,first<=2 && last>2,first<=3 && last>3);
-            gAreaShadowProgram.uniform1i(LLStaticHashedString("area_first"),first);
-            gAreaShadowProgram.uniform1i(LLStaticHashedString("area_count"),last);
-            mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+            const U32 base = plane*4;
+            const U32 lo = llclamp(group.begin,base,base+count)-base, hi = llclamp(group.end,base,base+count)-base;
+            if (lo >= hi || !group.per_draw) continue;
+            gAreaShadowProgram.uniform1i(LLStaticHashedString("area_samples"),group.march.samples);
+            gAreaShadowProgram.uniform1i(LLStaticHashedString("area_steps"),group.march.steps);
+            gAreaShadowProgram.uniform1i(LLStaticHashedString("area_thin_objects"),group.march.nearSteps > 0);
+            gAreaShadowProgram.uniform1i(LLStaticHashedString("area_near_steps"),group.march.nearSteps);
+            for (U32 first=lo; first<hi; first+=group.per_draw)
+            {
+                const U32 last = std::min(hi,first+group.per_draw);
+                glColorMask(first==0,first<=1 && last>1,first<=2 && last>2,first<=3 && last>3);
+                gAreaShadowProgram.uniform1i(LLStaticHashedString("area_first"),first);
+                gAreaShadowProgram.uniform1i(LLStaticHashedString("area_count"),last);
+                mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+            }
         }
         glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
         unbindDeferredShader(gAreaShadowProgram); mRT->areaGather[plane].flush();
@@ -27192,6 +27289,13 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             input.bindTexture(0,unit,LLTexUnit::TFO_POINT);
             gAreaShadowFilterProgram.uniform2f(LLStaticHashedString("area_axis"),x,y);
             gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_radius"),radius);
+            // The bilateral pass runs after the gather has mixed native and screen visibility: it stops at the hand-over
+            // band with the gather's own window, or a traced pixel would average contact-only taps (P0 fix round 1).
+            gAreaShadowFilterProgram.uniform2f(LLStaticHashedString("area_native_clip"),native_clip.mV[2],native_clip.mV[3]);
+            gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_native_offset"),native_offset);
+            // ... for the channels that have a native map only: the stop scales with each channel's contact fade, so a light
+            // with no native projector map (fade 0) keeps its whole kernel across the band.
+            gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_contact_fade"),1,contact_fade.mV);
             mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
             gAreaShadowFilterProgram.disableTexture(LLShaderMgr::AREA_SHADOW_SOURCE);
             unbindDeferredShader(gAreaShadowFilterProgram); output.flush();
@@ -27210,6 +27314,20 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     }
     mAreaShadowCount = channels;
     mAreaShadowValid = true;
+    // Published only now: the lights that really got a visible soft-shadow channel after allocation and drawing (a
+    // light faded below 1/255 is not one), and how many of them march Thin objects quality.
+    if (!sPrismLensRender)
+    {
+        U32 rendered = 0, thin_rendered = 0;
+        for (U32 i=0; i<channels; ++i)
+            if (ALAreaShadow::admissionVisible(admission[i]))
+            {
+                ++rendered;
+                if (work.q.nearSteps > 0 && i < work.lead && ALAreaShadow::thinQuality(regular_mix[i])) ++thin_rendered;
+            }
+        mAreaShadowAdmitted = rendered;
+        mAreaShadowThin = thin_rendered;
+    }
     take.status = channels < selected.size ? "rendered_plane0_only" : "rendered";
     static LLFrameTimer summary;
     if (!sPrismLensRender && summary.getElapsedTimeF32() >= 1.f)

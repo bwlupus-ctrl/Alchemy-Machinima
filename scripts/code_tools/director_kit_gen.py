@@ -305,8 +305,10 @@ def validate_data(data: dict) -> None:
     # Thin round 4 (10/22): +1 opt-in Thin objects row on Soft shadows.
     # Thin round 5: help/planner corrections add no rows; retain 2162.
     # Thin round 6 (10/22): help wording and fallback planning add no rows; retain 2162.
-    if len(pages) != 37 or row_count != 2162:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2162")
+    # P0 grain fix (10/22): +1 live Coverage readout on the Soft shadows card ("Soft shadows on 2 of 8
+    # lights"): under budget pressure the least important lights lose their soft shadow instead of grain.
+    if len(pages) != 37 or row_count != 2163:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2163")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

@@ -25,16 +25,44 @@ def check_thin(g):
         finally:
             g['read_shader'] = original
 
+    # P0.2 replaced the per-cell white noise by the R2 rank under every march. The pinned baselines below are
+    # the committed samplers (review HEAD d4f4ec1192ff; pre-P0 4dd9ff661c1) with ONLY that noise block adopted,
+    # so the byte and per-pixel comparisons keep isolating what they always isolated: the march, the Thin
+    # switch and the contact plumbing. (relight_grain_check owns the P0 behaviour.)
+    source = original(gather)
+    current_noise = source[source.index('        uvec2 block = pixel >> 3u;'):source.index('        // Preserve Phase 1 radii')]
+
+    def with_p0_noise(text):
+        a = text.index('        uint seed = areaHash(')
+        b = text.index('        // Preserve Phase 1 radii')
+        text = text[:a] + current_noise + text[b:]
+        assert text.count('max(area_params.z,0.125)') == 1
+        text = text.replace('max(area_params.z,0.125)', 'max(area_params.z,1.0)')
+        marker = 'float areaReceiverBias(vec2 uv, vec3 pos);'
+        assert text.count(marker) == 1
+        return text.replace(marker, marker + '\nconst uint AREA_R2_A = 3242174889u;\nconst uint AREA_R2_B = 2447445413u;')
+
+    def head_trace_call(text):
+        """The current gather with HEAD's single trace call. The hybrid boundary's regular rays call the current ray utility's per-ray
+        `thin` overload, which the PINNED older utilities (used by the mutations below) do not have; those mutations keep their older
+        utility and so need the gather's single call, which is exactly what a plan without a hybrid boundary executes."""
+        a = text.index('            // Thin/regular boundary (hybrid plans)')
+        b = text.index('            visibility += traced.x;')
+        return text[:a] + ('            vec2 traced = areaTrace(origin,target,area_lights[light].xyz,end_gap,\n'
+                           '                area_light_bias,area_params.x,area_params.y,area_steps,offset,area_contact_dist[light]);\n') + text[b:]
+
+    heads[gather] = with_p0_noise(heads[gather])
+    pre_p0 = {p: subprocess.check_output(['git', 'show', '4dd9ff661c1:' + p.as_posix()], text=True) for p in (gather, trace)}
+    pre_p0[gather] = with_p0_noise(pre_p0[gather])
     head = compile_variant('review HEAD uniform/common phase', heads)
-    current_head = compile_variant('HEAD OFF byte baseline', {p: subprocess.check_output(
-        ['git','show','HEAD:'+p.as_posix()],text=True) for p in (gather,trace)})
+    current_head = compile_variant('pre-P0 OFF byte baseline', pre_p0)
     # Independent-phase round-1 mutation, including its original uniform march.
     start = original(gather).index('            float offset =')
     end = original(gather).index('            float end_gap =')
     independent = original(gather)[:start]+'''            uint ray_seed = areaHash(seed ^ areaHash(uint(sample_idx)+0x9e3779b9u));
             float offset = (float(ray_seed & 0xffffu)+0.5)/65536.0;
 '''+original(gather)[end:]
-    independent = compile_variant('independent phases mutation', {gather: independent, trace: heads[trace]})
+    independent = compile_variant('independent phases mutation', {gather: head_trace_call(independent), trace: heads[trace]})
     interval = '    float dt = limit/float(steps);'
     sample = '        vec3 p = origin+direction*((float(step)+offset)*dt);'
     assert heads[trace].count(interval) == heads[trace].count(sample) == 1
@@ -49,7 +77,7 @@ def check_thin(g):
         interval_start = interval_end;
         previous_t = t;
         vec3 p = origin+direction*t;''')
-    quadratic = compile_variant('quadratic spacing mutation', {trace: quadratic})
+    quadratic = compile_variant('quadratic spacing mutation', {gather: head_trace_call(original(gather)), trace: quadratic})
     # Independent negative control: drop the join straddle; all 48 near samples are
     # then regular and none is pinned either side of the join.
     joined_trace = original(trace)
@@ -60,7 +88,7 @@ def check_thin(g):
     # and the 2 cm floor never overshoots a ray shorter than 2 cm.
     for text in ('float near_start = min(0.02,near_dist);', 't = min(t,limit);',
                  'float near_dist = near_steps > 0 ? min(1.85,limit):0.0;',
-                 'int near_steps = clamp(area_near_steps,0,steps-1);',
+                 'int near_steps = thin ? clamp(area_near_steps,0,steps-1) : 0;',
                  'float near_end = join_pair ? max(near_start,near_dist-0.01):near_dist;'):
         assert text in joined_trace, text
     # Round-5 layout (2 m span, 47 gaps of 4.26 cm, pinned pair at 1.99/2.01 replacing
@@ -81,7 +109,7 @@ def check_thin(g):
     r5_spacing = compile_variant('round-5 near spacing mutation', {trace: r5_trace})
     final = g['area_gather']
     # Fixed 64-step UNIFORM trace with today's disk/phase sampler, no near segment.
-    dense = compile_variant('fixed dense uniform 64-step reference', {trace: heads[trace]})
+    dense = compile_variant('fixed dense uniform 64-step reference', {gather: head_trace_call(original(gather)), trace: heads[trace]})
     # Effective 1080p/K4 counts are returned by the production C++ planner.
     presets = [(name,*plan) for name,plan in zip(
         ('Low','Medium','High','Cinematic'),g['policy']['presets'])]
@@ -139,7 +167,10 @@ def check_thin(g):
     for preset,label in enumerate(('Low','Medium','High','Cinematic')):
         for half in (False,True):
             samples,steps,planned_half=g['policy']['off_presets'][preset*2+int(half)]
-            assert bool(planned_half)==half
+            # P0.1 rung 1: a full-resolution request is planned at half resolution unless 12 rays still fit (any preset:
+            # High at 1080p with four lights already needs half); a half request is never planned at full. Both
+            # resolutions are still byte-compared with the planned counts.
+            assert bool(planned_half)==half or (not half and planned_half),(label,half,planned_half)
             for fade in (0,.25,.5,.75,1):
                 for seed in (12345,1152,12348):
                     args=(samples,steps,half,seed,[.8,0,-4+np.sqrt(2.5**2-.8**2),.1])

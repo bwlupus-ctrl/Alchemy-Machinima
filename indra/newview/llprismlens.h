@@ -643,6 +643,16 @@ inline std::array<U32, 2> cameraTargetSize(U32 required_width, U32 required_heig
     return { llclamp(static_cast<U32>(ll_round(ideal_width)), 64u, camera_cap),
              llclamp(static_cast<U32>(ll_round(ideal_height)), 64u, camera_cap) };
 }
+// The target an area-shadow budget RESERVES for a live camera feed: the largest target of the feed's aspect inside the slot's
+// output capacity. It depends on the capacity and the aspect only, never on the on-screen size of the displays or on the
+// PrismAdaptivePerformance resolution scale (which follows the presented FPS), so the main view's plan cannot follow the
+// frame rate or the dolly distance. The target a pass really renders at (cameraTargetSize of the displays' demand, scaled)
+// is never larger, so the reservation is conservative.
+inline std::array<U32, 2> liveFeedReservationExtent(U32 capacity, F32 aspect)
+{
+    capacity = llmax(capacity, 64u);
+    return cameraTargetSize(capacity, capacity, llmax(.25f, aspect), capacity);
+}
 
 // Capacity changes request a render; the held picture survives until publication.
 template<typename Output, typename Request>
@@ -1639,6 +1649,13 @@ void markProjectorConsumed(const LLVOVolume* volume);
 bool getProjectorFeed(const ProjectorHandle& binding, ProjectorFeed& feed);
 bool projectorFeedFor(const LLVOVolume* volume, ProjectorFeed& feed);
 bool captureOutputSize(const CaptureHandle& capture, U32& width, U32& height);
+// Area shadows (Relight Phase 0): the camera feeds that can run a soft-shadow pass THIS frame (prepared this frame at full
+// quality, not preview-only, not the test pattern): how many, and for each one its registry slot (its identity) and its FIXED
+// capacity target (cameraTargetSize at the slot's output capacity and aspect: never the FPS-scaled per-frame target, so the
+// main view's soft-shadow plan does not depend on the presented frame rate). Current state only.
+U32 liveAreaFeeds(U32 (&widths)[MAX_CAPTURES], U32 (&heights)[MAX_CAPTURES], U32 (&slots)[MAX_CAPTURES]);
+// The registry slot of the camera feed being rendered right now (-1 outside a scheduled feed render).
+S32 activeAreaFeedSlot();
 // Canonical render-side query. Real spotlights return their object params;
 // bound point lights return a viewer-local 60-degree cone. UI/build code must
 // continue to query LLVOVolume directly so the object remains untouched.

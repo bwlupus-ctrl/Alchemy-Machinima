@@ -141,8 +141,47 @@ def check_rank_sources():
     assert 'out["frame"] = static_cast<int>(state.frame);' in record
     # The upload plumbing points reach the gather.
     assert 'area_native_clip' in pipeline and 'nativeSpotShadowClip()' in pipeline
-    assert 'const unsigned feed_slots = feeds() ? LLPrismLens::MAX_CAPTURES : 0;' in pipeline
-    assert 'selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),feed_slots)' in pipeline
+    # Fix rounds 4-5: the main view and every feed pass plan from the feeds LIVE this frame (count and FIXED capacity target sizes,
+    # current state only), not from eight assumed 2048x2048 slots; the set is read from the registry once per frame, and a feed pass
+    # is admitted by feed identity (its registry slot), at most once per live feed.
+    assert 'ALAreaShadow::FeedSet live_feeds;' in pipeline
+    assert 'LLPrismLens::liveAreaFeeds(feed_widths,feed_heights,feed_slots)' in pipeline
+    assert 'if (mAreaLiveFeedsFrame != gFrameCount)' in pipeline and 'live_feeds = mAreaLiveFeeds;' in pipeline
+    assert 'selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),live_feeds)' in pipeline
+    assert 'mPrismAreaPasses.admit(gFrameCount,static_cast<unsigned>(feed_slot),live_feeds)' in pipeline
+    assert 'LLPrismLens::MAX_CAPTURES)) return' not in pipeline and 'feeds() ? LLPrismLens::MAX_CAPTURES : 0' not in pipeline
+    # Fix round 5 (Opus P0): the reservation of a live feed is its FIXED capacity target, never the per-frame target that
+    # PrismAdaptivePerformance scales with the presented FPS (nor the on-screen size of the displays).
+    prism = (nv / 'llprismlens.cpp').read_text(encoding='utf-8')
+    live_body = method(nv / 'llprismlens.cpp', '    U32 liveAreaFeeds(U32 (&widths)[LLPrismLens::MAX_CAPTURES]').replace('\r\n', '\n')
+    assert 'LLPrismLens::liveFeedReservationExtent(' in live_body and 'outputCapacity(slot)' in live_body
+    extent_lines = [line for line in live_body.splitlines() if line.strip().startswith(('widths[count]', 'heights[count]'))]
+    assert len(extent_lines) == 2 and all('fixed[' in line for line in extent_lines), extent_lines
+    assert 'mResolutionScale' not in live_body and 'gFPS' not in live_body and 'AppliedResolutionScale' not in live_body
+    assert 'widths[count] = lens.mFrame.mTargetWidth' not in prism
+    # Fix round 4 (GLM P1): the bilateral filter samples depthMap (areaGeoNormal / areaWeight). It is bound by the SAME deferred
+    # binder every other deferred program uses: the filter pass calls bindDeferredShader(gAreaShadowFilterProgram), which enables
+    # DEFERRED_DEPTH ("depthMap") on the deferred target, and the program is created deferred.
+    binder = method(nv / 'pipeline.cpp', 'void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target, LLRenderTarget* depth_target)').replace('\r\n', '\n')
+    assert 'shader.enableTexture(LLShaderMgr::DEFERRED_DEPTH, deferred_target->getUsage())' in binder
+    assert 'gGL.getTexUnit(channel)->bind(deferred_target, true);' in binder
+    assert 'output.bindTarget(); bindDeferredShader(gAreaShadowFilterProgram);' in pipeline
+    shader_mgr = (nv / 'llviewershadermgr.cpp').read_text(encoding='utf-8')
+    assert 'for (LLGLSLShader* program : {&gAreaShadowProgram, &gAreaShadowFilterProgram})' in shader_mgr and \
+        'program->mFeatures.isDeferred = true;' in shader_mgr
+    assert 'mReservedUniforms.push_back("depthMap");' in (Path('indra/llrender/llshadermgr.cpp')).read_text(encoding='utf-8')
+    filter_glsl = (nv / 'app_settings/shaders/class3/deferred/areaShadowFilterF.glsl').read_text(encoding='utf-8')
+    assert 'uniform sampler2D depthMap;' in filter_glsl
+    def depth_bound(render_text, binder_text):
+        return ('output.bindTarget(); bindDeferredShader(gAreaShadowFilterProgram);' in render_text and
+                'shader.enableTexture(LLShaderMgr::DEFERRED_DEPTH, deferred_target->getUsage())' in binder_text)
+    assert depth_bound(pipeline, binder)
+    assert not depth_bound(pipeline.replace('output.bindTarget(); bindDeferredShader(gAreaShadowFilterProgram);',
+                                            'output.bindTarget(); gAreaShadowFilterProgram.bind();'), binder), \
+        'mutation survived: filter drawn without the deferred binder'
+    assert not depth_bound(pipeline, binder.replace('shader.enableTexture(LLShaderMgr::DEFERRED_DEPTH, deferred_target->getUsage())',
+                                                    'shader.enableTexture(LLShaderMgr::DEFERRED_SPECULAR, deferred_target->getUsage())')), \
+        'mutation survived: binder without the depth bind'
     # No rendering may depend on failure history: no backoff type, member or retry window anywhere.
     for text in ('AllocBackoff', 'kAllocRetryFrames', 'mAreaAllocBackoff', 'allocation_backoff'):
         assert text not in pipeline_all and text not in header and text not in pipeline_h, \
@@ -161,16 +200,41 @@ def check_rank_sources():
         for label, body in (('pipeline.cpp', pipeline_all), ('alareashadowmath.h', header), ('areaShadowF.glsl', glsl),
                             ('screenSpaceRayUtil.glsl', trace), ('pipeline.h', pipeline_h)):
             assert word not in body, 'per-light housing must stay removed: %s in %s' % (word, label)
-    # The ray utility is byte-identical to HEAD, and the gather keeps HEAD's housing arithmetic verbatim.
+    # The ray utility is HEAD's: the only difference is the per-ray `thin` argument the hybrid plans need (fix round 3: the rays of
+    # a Thin light next to the Thin/regular boundary march the regular way). Undoing exactly those four edits must give HEAD's
+    # file byte for byte, so nothing else in the trace changed; the 10-argument entry point forwards the uniform.
     def head_text(path):
         return subprocess.check_output(['git', 'show', 'HEAD:' + path.as_posix()]).decode('utf-8').replace('\r\n', '\n')
-    assert trace.replace('\r\n', '\n') == head_text(glsl_dir / 'class1/deferred/screenSpaceRayUtil.glsl'), \
-        'screenSpaceRayUtil.glsl must be byte-identical to HEAD'
+    thin_edits = (
+        ('// `thin` selects the opt-in Thin objects march (dense near segment) for THIS ray. A hybrid plan marches the rays of a Thin light\n'
+         '// that sits next to the Thin/regular boundary the regular way (thin = false), which is the uniform march exactly.\n', ''),
+        ('                float contact_distance, bool thin)\n{', '                float contact_distance)\n{'),
+        ('int near_steps = thin ? clamp(area_near_steps,0,steps-1) : 0;', 'int near_steps = clamp(area_near_steps,0,steps-1);'),
+        ('        if (thin)\n        {\n            bool near_segment', '        if (area_thin_objects)\n        {\n            bool near_segment'),
+        ('vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,\n'
+         '                float light_bias, float max_distance, float thickness, int steps, float offset,\n'
+         '                float contact_distance)\n{\n'
+         '    return areaTrace(origin,target,light,end_gap,light_bias,max_distance,thickness,steps,offset,contact_distance,area_thin_objects);\n}\n', ''))
+    restored = trace.replace('\r\n', '\n')
+    for new_text, old_text in thin_edits:
+        assert restored.count(new_text) == 1, 'ray utility: expected edit missing: ' + new_text[:60]
+        restored = restored.replace(new_text, old_text, 1)
+    assert restored == head_text(glsl_dir / 'class1/deferred/screenSpaceRayUtil.glsl'), \
+        'screenSpaceRayUtil.glsl may differ from HEAD only by the per-ray thin argument'
     head_gather = head_text(glsl_dir / 'class3/deferred/areaShadowF.glsl')
     housing_lines = ('            float end_gap = max(source_radius,0.1)+area_light_bias;\n'
                      '            vec2 traced = areaTrace(origin,target,area_lights[light].xyz,end_gap,\n'
                      '                area_light_bias,area_params.x,area_params.y,area_steps,offset,area_contact_dist[light]);\n')
-    assert housing_lines in head_gather and housing_lines in glsl.replace('\r\n', '\n'), 'gather housing must be HEAD\'s'
+    assert housing_lines in head_gather, 'HEAD housing lines moved'
+    # The gather keeps HEAD's housing arithmetic: the same end gap, and BOTH march branches (the unchanged one, and the hybrid
+    # boundary's regular rays) pass that end gap and the global light bias.
+    gather_now = glsl.replace('\r\n', '\n')
+    assert '            float end_gap = max(source_radius,0.1)+area_light_bias;\n' in gather_now, 'gather end gap must be HEAD\'s'
+    assert ('                areaTrace(origin,target,area_lights[light].xyz,end_gap,\n'
+            '                    area_light_bias,area_params.x,area_params.y,area_steps,offset,area_contact_dist[light]);\n') in gather_now, \
+        'the unchanged march must keep HEAD\'s arguments'
+    assert 'areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,area_params.x,area_params.y,' in gather_now, \
+        'the regular boundary rays must keep the housing arithmetic'
     # The hand-over is evaluated at the native sampler's shifted receiver depth, from the same offset.
     assert 'areaNativeStrength(-(pos.z+normal.z*area_native_offset))' in glsl and 'uniform float area_native_offset;' in glsl
     assert 'LLStaticHashedString("area_native_offset")' in pipeline and 'RenderSpotShadowOffset' in pipeline
@@ -200,7 +264,7 @@ def check_rank_sources():
         assert not ok, 'source mutation survived: ' + label
     print('[RelightQ] rank sources PASS: importance score with a continuous native weight, no unmapped-first or legacy '
           'camera-point term, sampled-map rule, feed slots 0 with the VCam switch off, no allocation backoff, '
-          'plane-1 fallback, HEAD housing (global bias sphere; ray utility byte-identical to HEAD), hand-over window .25 .. .45 '
+          'plane-1 fallback, HEAD housing (global bias sphere; ray utility identical to HEAD except the per-ray thin argument), hand-over window .25 .. .45 '
           'with the NaN guard, shifted-depth hand-over, plane 0 failure keeps plane 1; mutations rejected', flush=True)
 
 
@@ -412,6 +476,7 @@ def check_rank(g):
                                                                               raw_worst * 255), flush=True)
 
     check_combined(g)
+    check_grazing_handover(g)
 
 
 def check_combined(g):
@@ -523,8 +588,10 @@ void main() {
         texel = np.full((1, 1), value, np.float32)
         g['teximage'](0x0DE1, 0, 0x81A6, 1, 1, 0, 0x1902, 0x1406, texel.ctypes.data)
 
-    def run_filter(pixels, radius):
-        """The production filter chain (renderAreaShadows): blur x, blur y, then the full-resolution upsample."""
+    def run_filter(pixels, radius, clip=(0.0, 0.0), offset=0.0, fade=1.0):
+        """The production filter chain (renderAreaShadows): blur x, blur y, then the full-resolution upsample.
+        The filter takes the same native hand-over inputs as the gather (area_native_clip/offset) and the per-channel
+        contact fade (channel 0 here: the light under test owns a native map when fade > 0)."""
         current = pixels
         for axis in (((1, 0), (0, 1)) if radius > 0 else ()) + ((0, 0),):
             upload(3, current.astype(np.float32) / 255, 0x8058)
@@ -534,6 +601,9 @@ void main() {
             ui(loc(area_filter, b'normalMap'), 2)
             ui(loc(area_filter, b'area_source'), 3)
             ui(loc(area_filter, b'area_debug_channel'), 0)
+            uf[2](loc(area_filter, b'area_native_clip'), *clip)
+            uf[1](loc(area_filter, b'area_native_offset'), offset)
+            uf[4](loc(area_filter, b'area_contact_fade'), fade, fade, fade, fade)
             uf[2](loc(area_filter, b'area_axis'), *axis)
             uf[1](loc(area_filter, b'area_radius'), radius)
             current = draw(area_filter)
@@ -570,7 +640,7 @@ void main() {
         pixels = draw(program)
         # radius None: the raw gather. Otherwise through the production bilateral filter at that radius
         # (2 = the default RenderAreaShadowDenoise, 8 = its maximum), which the lighting shaders actually sample.
-        return pixels[:, :, 0] if radius is None else run_filter(pixels, radius)[:, :, 0]
+        return pixels[:, :, 0] if radius is None else run_filter(pixels, radius, clip, offset, fade)[:, :, 0]
 
     def composed(visibility_bytes, clip, fade, blend, offset=0.0):
         upload(4, np.repeat(visibility_bytes[:, :, None], 4, axis=2).astype(np.float32) / 255, 0x8058)
@@ -737,6 +807,103 @@ void main() {
     g['area_use'](gather)
     uf[2](loc(gather, b'area_native_clip'), 0, 0)
     uf[1](loc(gather, b'area_native_offset'), 0)
+
+
+def check_grazing_handover(g):
+    """Opus's grazing-floor fixture (RELIGHT_WORLD_SHADOWS_PLAN Phase 0, fix round 1): a real 1080p perspective view of a
+    floor from an eye height of 1.7 m, traced at half resolution, through the production bilateral filter at the default
+    radius 2. One trace pixel spans metres of depth there, so the filter reaches across the whole native hand-over band
+    (u = .25 .. .45 of the native range) even though the band is wide in metres. The raw gather image of a blocker both
+    systems see is exactly the hand-over weight itself (screen term = fade * strength; the trace sees the blocker
+    everywhere), so the filtered image over the receivers where the native map has already faded to LIT (u >= .5) must
+    stay dark: it may carry at most 1/255 (the committed shared-blocker bound). The native clip pairs are Opus's
+    27/64, 54/128 and 110/256 m. Mutation: the filter without the one-sided hand-over stop (the Phase 0 diff before this
+    round) must leak well above the bound."""
+    np = g['np']
+    import relight_scene_fixture as S
+    from relight_grain_check import Rig
+    rig = Rig(g)
+    width, height, offset, radius = 1920, 1080, .04, 2.0
+    floor = S.plane((0, 0, 0), (0, 1, 0), 0)
+    cam = S.camera(np, (0.0, 1.7, 0.0), 0.0, -4.0, 0.0, width, height, fov_deg=60.0, near=.1, far=400.0)
+    scene = S.cast(np, cam, [floor])
+    view = cam['view']
+    homogeneous = np.concatenate([scene['world'], np.ones(scene['world'].shape[:2] + (1,))], axis=2)
+    view_depth = -(homogeneous @ view.T)[:, :, 2]                       # positive distance along the view axis
+    normal_z = float((view[:3, :3] @ np.array([0.0, 1.0, 0.0]))[2])     # the floor's view-space normal z
+    solid = (scene['ident'] >= 0) & (scene['depth'][:, :, 0] < 1.0)
+    assert 0.02 < normal_z < 0.2 and solid.sum() > 100000, ('grazing floor fixture', normal_z, int(solid.sum()))
+    # The depth texel a half-resolution trace pixel reads is (2j + 1, 2i + 1) (areaTexelUV).
+    trace_depth = view_depth[1::2, 1::2]
+    trace_solid = solid[1::2, 1::2]
+    shifted = trace_depth - normal_z * offset                           # the depth the native sampler compares
+    full_shifted = view_depth - normal_z * offset
+    mutated_text = rig.text('filter')
+    anchor = 'float cut = mix(1.0,float(ns_q <= area_ns_p+1.0/64.0),1.0-smoothstep(0.0,0.5,area_ns_p));'
+    assert mutated_text.count(anchor) == 1, 'hand-over stop anchor'
+    no_stop = rig.variant('filter without the hand-over stop (mutation)',
+                          {rig.paths['filter']: mutated_text.replace(anchor, 'float cut = 1.0;')},
+                          'class3/deferred/areaShadowFilterF.glsl')
+    # Fix round 2 (Opus/GLM/DeepSeek P1): the stop is PER CHANNEL, scaled by the channel's contact fade. The scalar form
+    # (one depth mask for all four channels) cuts the taps of a light with no native map as well.
+    stop_anchor = 'vec4 stop = mix(vec4(1.0),vec4(cut),clamp(area_contact_fade,0.0,1.0));'
+    assert mutated_text.count(stop_anchor) == 1, 'per-channel stop anchor'
+    scalar_stop = rig.variant('filter with a scalar hand-over stop (mutation)',
+                              {rig.paths['filter']: mutated_text.replace(stop_anchor, 'vec4 stop = vec4(cut);')},
+                              'class3/deferred/areaShadowFilterF.glsl')
+    results, unmapped = [], []
+    for clip in ((27.0, 64.0), (54.0, 128.0), (110.0, 256.0)):
+        strength = np.vectorize(lambda d: native_strength(d, *clip))(shifted)
+        raw = np.zeros(shifted.shape + (4,), np.float32)
+        raw[:, :, :] = np.where(trace_solid, strength, 1.0)[:, :, None]    # fade 1: the screen term is the strength itself
+        u_full = (full_shifted - clip[0]) / (clip[1] - clip[0])
+        lit_side = solid & (u_full >= .5)                                    # the native map has already faded to lit here
+        assert lit_side.sum() > 50, ('the grazing fixture has receivers past the native ramp start', clip, int(lit_side.sum()))
+        peaks = []
+        for filt in (g['area_filter'], no_stop):
+            out = rig.filter_only(scene, raw, radius, clip, offset, filt)[:, :, 0]
+            peaks.append(float(out[lit_side].max()) / 255.0)
+        results.append((clip, int(lit_side.sum()), peaks[0], peaks[1]))
+        assert peaks[0] <= 1.0 / 255 + 1.e-6, ('shared blocker leaks through the production filter on a grazing floor', clip, peaks[0] * 255)
+        assert peaks[1] > 3.0 / 255, ('the filter without the hand-over stop leaks (mutation rejected)', clip, peaks[1] * 255)
+        # The same leak with a light that owns NO native map in the neighbouring channel: channel 0 (mapped) keeps its 0/255
+        # (the channels are filtered independently), and channel 1 (unmapped, fade 0) is not cut at all.
+        noise = np.random.default_rng(11).random(shifted.shape).astype(np.float32)
+        raw_mixed = raw.copy()
+        raw_mixed[:, :, 1] = np.where(trace_solid, np.clip(0.5 + 0.25 * (noise - 0.5), 0, 1), 1.0)   # unmapped: a noisy, valid trace everywhere
+        mixed = rig.filter_only(scene, raw_mixed, radius, clip, offset, g['area_filter'], fade=(1.0, 0.0, 0.0, 0.0))
+        assert float(mixed[:, :, 0][lit_side].max()) / 255.0 <= 1.0 / 255 + 1.e-6, ('mapped channel leaks beside an unmapped one', clip)
+        stopless = rig.filter_only(scene, raw_mixed, radius, (0.0, 0.0), offset, g['area_filter'], fade=(1.0, 0.0, 0.0, 0.0))
+        band = solid & (u_full >= .15) & (u_full <= .6)          # the hand-over band and the margin the kernel reaches around it
+        assert band.sum() > 200, ('the grazing fixture has receivers in the hand-over band', clip, int(band.sum()))
+        # (1) An unmapped channel is byte-identical with and without the native clip: the stop is fully off for it.
+        assert np.array_equal(mixed[:, :, 1], stopless[:, :, 1]), ('an unmapped light must be untouched by the native clip', clip,
+                                                                    int(np.abs(mixed[:, :, 1].astype(int) - stopless[:, :, 1]).max()))
+        # (2) Its grain does not rise inside the band: the filtered noise (the unfiltered pattern is 0.5 +- 0.125) in the band
+        # is the same as the stop-free render's; with the scalar stop it rises.
+        scalar = rig.filter_only(scene, raw_mixed, radius, clip, offset, scalar_stop, fade=(1.0, 0.0, 0.0, 0.0))
+
+        # The scalar stop only changes the pixels whose kernel it cuts; the grain is measured where it does (the pixels whose
+        # value differs between the scalar and the production filter), and must not rise there in the production filter.
+        cut = band & (np.abs(scalar[:, :, 1].astype(int) - mixed[:, :, 1].astype(int)) >= 3)
+
+        def grain(image, mask):
+            return float(np.sqrt(np.mean((image[:, :, 1][mask].astype(float) - 127.5) ** 2)))
+
+        assert cut.sum() > 50, ('the scalar stop cuts kernels in the band', clip, int(cut.sum()))
+        rms_production, rms_scalar = grain(mixed, cut), grain(scalar, cut)
+        assert grain(mixed, band) <= grain(stopless, band) + 1.e-9, ('unmapped grain rises in the band', clip)
+        print('[RelightQ] unmapped band probe clip %g/%g: band %d px, cut %d px, rms production %.2f scalar %.2f' %
+              (clip[0], clip[1], int(band.sum()), int(cut.sum()), rms_production, rms_scalar), flush=True)
+        assert rms_scalar >= 1.2 * rms_production, ('the scalar stop raises the grain of an unmapped light in the band (mutation rejected)',
+                                                    clip, rms_scalar, rms_production)
+        unmapped.append((clip, int(cut.sum()), rms_production, rms_scalar))
+    print('[RelightQ] grazing-floor hand-over PASS: 1080p half-res trace, eye 1.7 m, filter radius 2; shared-blocker leak past the native ramp '
+          '(limit 1/255): ' + ', '.join('clip %g/%g: %.2f/255 (%d px; without the stop %.1f/255)' % (c[0], c[1], p * 255, n, q * 255)
+                                          for c, n, p, q in results), flush=True)
+    print('[RelightQ] unmapped light across the hand-over band PASS (per-channel stop): channel 1 (no native map) is byte-identical with and without '
+          'the native clip, its grain in the band equals the stop-free render and the scalar stop raises it: ' +
+          ', '.join('clip %g/%g: %.2f vs %.2f /255 rms (%d px)' % (c[0], c[1], a, b, n) for c, n, a, b in unmapped), flush=True)
 
 
 if __name__ == '__main__':

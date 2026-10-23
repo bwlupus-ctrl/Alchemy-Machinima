@@ -25,7 +25,7 @@ def check_policy():
     assert 'ALAreaShadow::workloadOrUniform(requested,uniform,width,height,' in pipeline
     assert 'ALAreaShadow::feedWorkload(requested,uniform,' in pipeline
     # The shader mode follows the EFFECTIVE plan, so a fallback is the OFF march.
-    assert 'uniform1i(LLStaticHashedString("area_thin_objects"),work.q.nearSteps > 0)' in pipeline
+    assert 'uniform1i(LLStaticHashedString("area_thin_objects"),group.march.nearSteps > 0)' in pipeline
     take = method(nv / 'pipeline.cpp', 'void LLPipeline::logRelightTake(')
     assert '"RenderAreaShadowThinObjects"' in take
     assert pipeline.index('registry.areaShadowSuppressed(volume)') < pipeline.index('selected.add(')
@@ -176,8 +176,9 @@ int main() {
     assert(!manager.areaShadowSuppressed(&projectors[0]));
     auto seven=ALAreaShadow::workload(ALAreaShadow::quality(3,true),1920,1080,7,1500,8);
     auto eight=ALAreaShadow::workload(ALAreaShadow::quality(3,true),1920,1080,8,1500,8);
-    assert(seven.q.samples==4 && eight.q.samples==4);
-    assert(seven.q.steps==80 && eight.q.steps==80 && seven.q.half && eight.q.half);
+    assert(seven.q.samples==5 && eight.q.samples==5); // ray-floor ladder (was 4 rays x 80 steps)
+    assert(seven.q.steps==64 && eight.q.steps==64 && seven.q.half && eight.q.half);
+    assert(seven.admitted==8 && eight.admitted==8);
     assert(seven.iterations<=seven.budget && eight.iterations<=eight.budget);
     assert(seven.pixels*seven.channels*seven.q.samples*seven.q.steps<=seven.drawCap);
     assert(eight.pixels*eight.channels*eight.q.samples*eight.q.steps<=eight.drawCap);
@@ -195,6 +196,37 @@ int main() {
         auto plan=ALAreaShadow::workload(q,1920,1080,4,1500,4);
         if (preset || half) std::cout << ",";
         std::cout << "[" << plan.q.samples << "," << plan.q.steps << "," << plan.q.half << "]";
+    }
+    std::cout << "],\"grid\":[";
+    // [thin, height, K, preset, feeds, samples, steps, near, half, admitted, channels, iterations, lead, rest samples,
+    // rest steps, rest channels]: the first lead lights march the plan columns, the others the rest columns.
+    // The production planner for every preset x height x K x Thin x feed reservation, exactly as
+    // renderAreaShadows calls it (main view, default 1500M budget). The P0 grain check re-derives
+    // each row with an independent ladder implementation and compares.
+    bool firstRow=true;
+    for (int thin=0; thin<2; ++thin) for (unsigned height : {720u,1080u,1440u,2160u})
+    for (unsigned cap=1; cap<=8; ++cap) for (int preset=0; preset<4; ++preset) for (int feeds=0; feeds<2; ++feeds) {
+        const auto uniform=ALAreaShadow::quality(preset);
+        const auto requested=thin ? ALAreaShadow::segmented(uniform,preset) : uniform;
+        const auto plan=ALAreaShadow::workloadOrUniform(requested,uniform,height*16/9,height,cap,1500,cap,
+            feeds ? ALAreaShadow::kFeedSlots : 0);
+        if (!firstRow) std::cout << ",";
+        firstRow=false;
+        std::cout << "[" << thin << "," << height << "," << cap << "," << preset << "," << feeds << ","
+            << plan.q.samples << "," << plan.q.steps << "," << plan.q.nearSteps << "," << plan.q.half << ","
+            << plan.admitted << "," << plan.channels << "," << plan.iterations << ","
+            << plan.lead << "," << plan.rest.samples << "," << plan.rest.steps << "," << plan.restChannels << "]";
+    }
+    std::cout << "],\"radius\":[";
+    {
+        const float settings[]={0.f,1.f,2.f,4.f,8.f};
+        bool firstRadius=true;
+        for (float setting : settings) for (float scale : {.333f,1.f,2.f}) for (bool half : {false,true}) {
+            if (!firstRadius) std::cout << ",";
+            firstRadius=false;
+            std::cout << "[" << setting << "," << scale << "," << half << ","
+                << ALAreaShadow::filterRadius(setting,scale,half) << "]";
+        }
     }
     std::cout << "]}";
 }

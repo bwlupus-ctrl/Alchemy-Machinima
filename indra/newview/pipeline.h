@@ -1581,6 +1581,14 @@ public:
         bool actor_ready, bool actor_as_world, bool actor_excluded);
     bool mAreaShadowValid = false;
     U32 mAreaShadowCount = 0;
+    // Main view only, one pass: lights the ranking selected (Wanted), and lights that really got a visible soft-shadow
+    // channel after planning, the fade, allocation and drawing (Admitted).
+    // Cleared on entry of every pass. Read by the Director status line only (ALAreaShadow::coverageText).
+    // mAreaShadowThin: how many of the rendered lights march Thin objects quality (the rest march the regular way).
+    // mAreaShadowThinRequested: the Thin objects switch is on (so a plan with no Thin light reads "0 thin-quality").
+    // mAreaShadowLowMemory: this pass could not allocate its targets (the Coverage row reads "low video memory").
+    U32 mAreaShadowWanted = 0, mAreaShadowAdmitted = 0, mAreaShadowThin = 0;
+    bool mAreaShadowThinRequested = false, mAreaShadowLowMemory = false;
     GLuint mAreaShadowQueries[2] = {};
     bool mAreaShadowQueryPending = false;
     F64 mAreaShadowGPUms = -1.0;
@@ -1599,6 +1607,10 @@ public:
     ALRelight::AreaTakeState mPrismSavedAreaTake;
     std::array<LLUUID, MAX_SPOT_SHADOWS> mPrismSavedAreaSlotIDs;
     ALAreaShadow::FeedPasses mPrismAreaPasses;
+    // The VCam feeds live this frame, read from the Prism registry ONCE per gFrameCount (fix round 5) and reused by the main
+    // plan and by every feed pass of that frame, so the budget split cannot change between the passes of one frame.
+    ALAreaShadow::FeedSet mAreaLiveFeeds;
+    U32 mAreaLiveFeedsFrame = ~0u;
     LLRenderTarget          mSceneMap;
 
     // [BDMerge G3.3 Phase 1 item 3] half-resolution scratch target the projector

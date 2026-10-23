@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <string>
 namespace ALAreaShadow
 {
 struct View
@@ -190,10 +191,45 @@ struct Workload
     Quality q;
     unsigned channels = 0;
     std::uint64_t pixels = 0, iterations = 0, budget = 0, drawCap = 0;
+    // A: lights that keep a soft-shadow channel (see the ladder below). A is planned from
+    // the requested cap, never the visible set; iterations count min(visible, A) lights.
+    // 0 whenever nothing draws (channels == 0).
+    unsigned admitted = 0;
+    // Thin objects hybrid. The `lead` highest ranked admitted lights march with q; the other
+    // admitted lights (admitted - lead) march with `rest` (the regular, Thin-OFF march) in draws of
+    // restChannels lights. Both share one resolution (q.half == rest.half). Every plan that is
+    // not a hybrid has lead == admitted and no rest lights.
+    unsigned lead = 0;
+    Quality rest{};
+    unsigned restChannels = 0;
 };
 // Capture-feed slots sharing the frame budget (LLPrismLens::MAX_CAPTURES; asserted in
 // pipeline.cpp).
 constexpr unsigned kFeedSlots = 8;
+// The capture feeds that can run an area-shadow pass THIS frame (fix rounds 4-5): how many, each one's identity (the Prism
+// registry slot) and its render target size for the RESERVATION. Built from the current state only (the pipeline reads it from the
+// Prism registry once per frame, frame-stamped, and every pass of that frame reuses the same set), never from history.
+// The extent is the feed's FIXED capacity target (LLPrismLens::cameraTargetSize at the slot's output capacity and its aspect), never
+// the per-frame target, which PrismAdaptivePerformance scales with the presented FPS (fix round 5): the main plan must not depend on
+// timing. The real target of a pass is always <= its capacity, so the reservation stays conservative. A plain slot count means that
+// many feeds of the largest target (2048 x 2048), the worst case every earlier round planned for.
+struct FeedSet
+{
+    struct Extent { unsigned w = 0, h = 0; };
+    unsigned count = 0;
+    std::array<Extent,kFeedSlots> extent{};
+    std::array<unsigned,kFeedSlots> id{};
+    FeedSet() = default;
+    FeedSet(unsigned slots) : count(std::min(slots,kFeedSlots))
+    {
+        for (unsigned i = 0; i < count; ++i) { extent[i] = {2048u,2048u}; id[i] = i; }
+    }
+    void add(unsigned width, unsigned height) { add(width,height,count); }
+    void add(unsigned width, unsigned height, unsigned identity)
+    {
+        if (count < kFeedSlots && width && height) { extent[count] = {width,height}; id[count] = identity; ++count; }
+    }
+};
 // Segmented plans thin their far segment to at most this many steps (Low's uniform
 // far count, 8): every preset shares one floor, so no preset loses the segmented march
 // while a lower one keeps it, and the floor is never coarser than OFF Low.
@@ -205,17 +241,43 @@ constexpr std::uint64_t kFeedGuaranteePixels = 1024ull*1024ull;
 // (the High preset's request), so Cinematic never ends below High in rays per pixel.
 constexpr int kFullResMinSamples = 12;
 
+// Ray floor (user decision 10/22): a soft-shadow penumbra estimated from fewer than 4 rays
+// per pixel is grain, so under budget pressure the LIGHT COUNT falls before the rays do. The
+// lights that lose their soft shadow are the lowest ranked; the status line reports the coverage.
+constexpr int kRayFloor = 4;
+// Rung 2 of the ladder keeps this many rays before any steps are given up.
+constexpr int kRayRungSamples = 8;
+
+// Planner ladder. A pure, integer function of (preset quality, width, height, requested cap K,
+// budget, feed hold-back): no timing, frame or visible-set input. A fixed order of rungs; the
+// first plan that fits at A = K lights wins:
+//   1 resolution  full resolution only while kFullResMinSamples rays still fit, else half;
+//   2 rays        down to min(requested, 8);
+//   3 steps       down to max(8, steps / 2)  (Thin objects: the far segment, same rule);
+//   4 rays        down to min(requested, kRayFloor);
+//   5 steps       down to 8 (Thin objects: the common far floor; near steps never thin);
+//   6 lights      MAIN view only (floors = true): A falls one at a time down to 1 (the lowest ranked lose soft shadows).
+// Below that (one light at the floors still does not fit, or its single draw exceeds the per-draw
+// cap) the MAIN view draws nothing: A = 0, never a sub-floor ray or step count, so
+// more budget can never mean fewer lights. A Thin objects request that reaches that point is planned
+// by hybridWithin() (below): Thin never admits fewer lights than the regular plan. A capture FEED
+// (floors = false, fix round 5) has NO rung 6: when all K lights do not fit at the floors it keeps HEAD's fixed-K fallback
+// unchanged, from the requested plan: rays and steps fall to 1 for all K lights, then fail closed. A feed therefore admits all
+// K lights or none, never a count in between, and its admission cannot fall when its allowance rises. The feed guarantee
+// below depends on that fallback.
 inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsigned lights,
-    std::uint64_t budget, unsigned requestedLights, std::uint64_t feedHoldBack = 0)
+    std::uint64_t budget, unsigned requestedLights, std::uint64_t feedHoldBack = 0, bool floors = true)
 {
     Workload w{};
     const int dense = std::clamp(q.nearSteps,0,64);
     w.q = {std::clamp(q.samples,1,32),std::clamp(q.steps,1,dense ? 128:64),q.half,dense,
         dense ? std::clamp(q.minFar,1,64):0};
+    const Quality asked = w.q;
     lights = std::min(lights,8u);
     // Reserve for the requested cap, never the changing visible set. At least
     // the actual count keeps malformed callers within the hard frame ceiling.
     const unsigned basis = std::max(lights,std::clamp(requestedLights,1u,8u));
+    unsigned admitted = basis;
     w.budget = std::min(budget,std::uint64_t(1500000000));
     w.drawCap = w.budget/2;
     // Planning limit: the nominal budget minus the feed reservation (segmented main only).
@@ -224,22 +286,60 @@ inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsig
     {
         w.pixels = w.q.half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
             std::uint64_t(width)*height;
-        w.iterations = w.pixels*lights*w.q.samples*w.q.steps;
+        w.iterations = w.pixels*std::min(lights,admitted)*w.q.samples*w.q.steps;
     };
     // Render-target dimensions are GL-sized; bound pathological pure-function inputs too.
     if (width > 65536 || height > 65536) return w;
     update();
-    const auto over = [&]() { return w.pixels*basis*w.q.samples*w.q.steps>planned ||
-        w.pixels*w.q.samples*w.q.steps>w.drawCap; };
-    // Segmented plans choose half resolution unless 12 full-res rays (High's
-    // request) fit. Choose before reducing samples so the half-res plan keeps
-    // all spare rays: a higher preset never ends with fewer rays per pixel.
-    if (dense && !w.q.half)
+    const auto drawn = [&]() { return w.pixels*w.q.samples*w.q.steps<=w.drawCap; };
+    const auto over = [&]() { return w.pixels*admitted*w.q.samples*w.q.steps>planned || !drawn(); };
+    const auto finish = [&]()
     {
-        const std::uint64_t rays = std::min(w.q.samples,kFullResMinSamples);
-        if (w.pixels*basis*rays*w.q.steps>planned || w.pixels*rays*w.q.steps>w.drawCap)
-        { w.q.half=true; update(); }
+        const auto perChannel = w.pixels*w.q.samples*w.q.steps;
+        w.channels = lights && perChannel ? unsigned(std::min<std::uint64_t>(4,w.drawCap/perChannel)) : 0;
+        // Nothing draws (no light, or a draw above the per-draw cap): no light is admitted either.
+        w.admitted = w.channels ? admitted : 0;
+        w.lead = w.admitted;
+        return w;
+    };
+    // Segmented plans choose half resolution unless 12 full-res rays (High's request) fit.
+    const auto resolution = [&]()
+    {
+        if (!w.q.half)
+        {
+            const std::uint64_t rays = std::min(w.q.samples,kFullResMinSamples);
+            if (w.pixels*basis*rays*w.q.steps>planned || w.pixels*rays*w.q.steps>w.drawCap)
+            { w.q.half=true; update(); }
+        }
+    };
+    // Rung 1. Uniform plans too: Cinematic keeps its full resolution only while 12 rays fit.
+    resolution();
+    const int farMin = dense ? std::max(1,std::min(w.q.minFar,kThinFarFloor)) :
+        std::min(w.q.steps,kThinFarFloor);
+    const int thin = w.q.steps-dense; // the part of the march a step rung may thin
+    const int halfSteps = std::min(thin,std::max(farMin,thin/2));
+    const auto rays = [&](int floor) { while (over() && w.q.samples>floor) { --w.q.samples; update(); } };
+    const auto steps = [&](int floor) { while (over() && w.q.steps-dense>floor) { --w.q.steps; update(); } };
+    rays(std::min(w.q.samples,kRayRungSamples));
+    steps(halfSteps);
+    rays(std::min(w.q.samples,kRayFloor));
+    steps(std::min(thin,farMin));
+    if (!over()) return finish();
+    // Rung 6 (main view only; a feed keeps HEAD's fixed-K fallback below). Fewer lights, never fewer rays. Only when the
+    // per-draw cap is already met: a light count cannot cure an oversized single draw.
+    if (floors && drawn())
+    {
+        while (over() && admitted>1) { --admitted; update(); }
+        if (!over()) return finish();
     }
+    // Below the floors. The main view admits no light rather than restore sub-floor rays (the user's
+    // "fewer lights, smooth" decision); the coverage readout reports it.
+    if (floors) { w.iterations = 0; w.admitted = 0; w.channels = 0; return w; }
+    // A capture feed: the previous planner from the requested plan, for all K lights.
+    admitted = basis;
+    w.q = asked;
+    update();
+    if (dense) resolution();
     while (over() && w.q.samples>1) { --w.q.samples; update(); }
     // Segmented marches preserve their steps until nothing else is left.
     while (over() && !dense && w.q.steps>1) { --w.q.steps; update(); }
@@ -250,50 +350,282 @@ inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsig
     while (over() && dense && w.q.steps-dense>farFloor) { --w.q.steps; update(); }
     // Even one channel/one step cannot fit: skip this view, never exceed the cap.
     if (over()) { w.iterations=0; return w; }
-    const auto perChannel = w.pixels*w.q.samples*w.q.steps;
-    w.channels = lights && perChannel ? unsigned(std::min<std::uint64_t>(4,w.drawCap/perChannel)) : 0;
-    return w;
+    return finish();
 }
 
 // Feed guarantee. A uniform (OFF) feed plan draws if and only if its allowance is at
 // least pixels(half) * max(requested lights, 2): one ray, one step, half resolution.
 // That is the most any feed up to 2048x2048 can need to draw at all. A segmented main
-// plan holds back kFeedSlots * min(OFF feed allowance, that need), so with Thin ON every
-// feed gets at least min(its Thin OFF allowance, need) and still draws wherever OFF
-// draws. The OFF feed allowance is (budget - OFF main reservation) / slots. The bound is
-// preset independent: every OFF main plan that draws costs at least the cheapest one
-// (1 ray, 1 step, half resolution), so allowance(OFF) <= (budget - that) / slots for every
-// preset, and segmented admission does not depend on the preset either.
+// plan holds back the sum over the LIVE feeds of min(OFF feed allowance, that feed's need), so
+// with Thin ON every feed gets at least min(its Thin OFF allowance, need) and still draws
+// wherever OFF draws. The OFF feed allowance is (budget - OFF main reservation) / live feeds.
+// The bound is preset independent: every OFF main plan that draws costs at least the cheapest
+// one (1 ray, 1 step, half resolution), so allowance(OFF) <= (budget - that) / live feeds for
+// every preset, and segmented admission does not depend on the preset either. (This is the
+// floor-level guarantee; the exact one, every feed keeping its full Thin-OFF allowance, is
+// feedSpend() below.)
 inline std::uint64_t feedReservation(unsigned mainWidth, unsigned mainHeight, std::uint64_t budget,
-    unsigned requestedLights, unsigned feedSlots)
+    unsigned requestedLights, const FeedSet& feeds)
 {
-    if (!mainWidth || !mainHeight || !feedSlots) return 0;
+    if (!mainWidth || !mainHeight || !feeds.count) return 0;
     budget = std::min(budget,std::uint64_t(1500000000));
     const auto cheapest = workloadWithin({1,1,true},mainWidth,mainHeight,requestedLights,budget,requestedLights);
     const auto reserve = cheapest.channels ? cheapest.iterations : 0;
-    const std::uint64_t allowance = (budget-reserve)/feedSlots;
-    const std::uint64_t need = kFeedGuaranteePixels*std::max(std::clamp(requestedLights,1u,8u),2u);
-    return feedSlots*std::min(allowance,need);
+    const std::uint64_t allowance = (budget-reserve)/feeds.count;
+    std::uint64_t sum = 0;
+    for (unsigned i = 0; i < feeds.count; ++i)
+    {
+        // What THIS feed needs to draw at all: one ray, one step, half resolution, for max(K, 2) lights.
+        const std::uint64_t half = std::min(((std::uint64_t(feeds.extent[i].w)+1)/2)*((std::uint64_t(feeds.extent[i].h)+1)/2),
+            kFeedGuaranteePixels);
+        sum += std::min(allowance,half*std::max(std::clamp(requestedLights,1u,8u),2u));
+    }
+    return sum;
+}
+// The most a live feed's plan can ever cost (fix round 4): its target at the requested march's resolution, for K lights, at the
+// requested rays and steps. Every plan a feed can get (pure Thin, the regular fallback, a hybrid) only ever lowers these, and a
+// feed plans for at most the requested cap K, so a feed never spends more than this however large its allowance is.
+inline std::uint64_t feedSpendBound(const Quality& request, unsigned width, unsigned height, unsigned requestedLights)
+{
+    const int dense = std::clamp(request.nearSteps,0,64);
+    const std::uint64_t samples = std::clamp(request.samples,1,32), steps = std::clamp(request.steps,1,dense ? 128:64);
+    const std::uint64_t pixels = request.half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
+        std::uint64_t(width)*height;
+    return pixels*std::clamp(requestedLights,1u,8u)*samples*steps;
+}
+// What the live feeds can spend in one frame when each gets its Thin-OFF allowance (budget - the Thin-OFF main plan's cost) / count.
+// A feed spends at most min(allowance, its bound); when EVERY feed is bound by its allowance the whole pool
+// (budget - regularMain) is spent (the integer remainder of the division included). The Thin or hybrid main plan may use
+// everything else: with no live feed it is the whole budget, with a few small feeds most of it.
+inline std::uint64_t feedSpend(const Quality& request, std::uint64_t budget, std::uint64_t regularMain,
+    unsigned requestedLights, const FeedSet& feeds)
+{
+    if (!feeds.count) return 0;
+    budget = std::min(budget,std::uint64_t(1500000000));
+    const std::uint64_t pool = budget-std::min(regularMain,budget), allowance = pool/feeds.count;
+    std::uint64_t sum = 0;
+    bool saturated = true;
+    for (unsigned i = 0; i < feeds.count; ++i)
+    {
+        const std::uint64_t bound = feedSpendBound(request,feeds.extent[i].w,feeds.extent[i].h,requestedLights);
+        if (bound < allowance) { saturated = false; sum += bound; } else sum += allowance;
+    }
+    return saturated ? pool : sum;
 }
 
-// The OFF main plan (nearSteps == 0) is the committed plan, unchanged. A segmented
+// The OFF main plan (nearSteps == 0) is the regular plan. It is NOT the pre-P0 plan: P0.1 applies the resolution rung and the
+// ray/step floors to uniform plans too, by design (user decision 10/22: "P0 may change the default look"). A segmented
 // plan is admitted only inside budget - feedReservation(); else the caller falls back.
 inline Workload workload(Quality q, unsigned width, unsigned height, unsigned lights,
-    int millions, unsigned requestedLights, unsigned feedSlots = kFeedSlots)
+    int millions, unsigned requestedLights, const FeedSet& feeds = FeedSet(kFeedSlots), bool floors = true)
 {
     const std::uint64_t budget = std::uint64_t(std::clamp(millions,1,1500))*1000000;
     return workloadWithin(q,width,height,lights,budget,requestedLights,
-        q.nearSteps > 0 ? feedReservation(width,height,budget,requestedLights,feedSlots) : 0);
+        q.nearSteps > 0 ? feedReservation(width,height,budget,requestedLights,feeds) : 0,floors);
 }
 
-// A segmented (Thin objects) plan that cannot fit at all falls back to the authored
-// uniform march and plan, so the switch never removes shadows OFF would draw.
-inline Workload workloadOrUniform(Quality q, Quality uniform, unsigned width, unsigned height,
-    unsigned lights, int millions, unsigned requestedLights, unsigned feedSlots = kFeedSlots)
+// Thin objects hybrid (user decision 10/22; fix rounds 3-4). Thin objects must NEVER remove a shadow that Thin OFF would draw, and the
+// lights that cannot get the Thin march still get the REGULAR (Thin-OFF) march, exactly as Thin OFF would march them:
+//   A (admitted lights) = max(A_thin, A_off), where A_thin is the pure Thin plan's admission (0 when it does not fit) and
+//   A_off the Thin-OFF plan's at the same budget. Both are monotone in the budget, so A is too.
+//   * A_thin >= A_off and the Thin plan draws: the Thin plan itself (every admitted light marches Thin).
+//   * otherwise A = A_off and the hybrid: the regular group (the A - nT lowest ranked admitted lights) keeps EXACTLY the Thin-OFF
+//     plan's per-light quality (rays, steps and resolution: it is the OFF plan, never degraded to make room), and the nT Thin
+//     lights (the highest ranked) get only what the budget leaves over: the largest nT that fits is used, nT = 0 (no Thin light
+//     at all, the Coverage row says "0 thin-quality") is exactly the Thin-OFF plan. The Thin lights share the OFF plan's
+//     resolution AND ITS RAY COUNT (fix round 4: the two groups' disk strata must match so that a Thin light that ties the first
+//     regular light marches the regular light's estimator exactly; the Thin lights degrade only in their far steps, down to the
+//     common floor). If the OFF ray count leaves no room for a Thin light, fewer Thin lights are used, down to none.
+// While VCam feeds are LIVE the Thin or hybrid main plan also holds back what those feeds can spend (fix round 4, feedSpend()):
+// every live feed keeps its Thin-OFF allowance (budget - the Thin-OFF main plan's cost) / count, exactly as with Thin OFF, so a feed
+// admits at least the lights it admits with Thin OFF (there is no feed exception), and the main plan may use the rest. A feed cannot
+// spend more than its own bound (feedSpendBound: target x K x requested rays x steps), so a few small feeds leave most of the
+// budget to the main view; with no live feed the main view has the whole budget. Turning a feed on therefore CAN lower the main
+// view's Thin quality (the reservation grows with each live feed); it never lowers the number of lights the main view shadows.
+// The cost the planner charges a regular (Thin-OFF) plan: admitted lights x its per-light march (planning basis, never the visible
+// set). This is the SAME quantity feedWorkload() reserves for the main plan (the OFF main plan planned for the requested K lights).
+inline std::uint64_t regularCost(const Workload& w)
 {
-    auto w = workload(q,width,height,lights,millions,requestedLights,feedSlots);
-    if (!w.channels && q.nearSteps) w = workload(uniform,width,height,lights,millions,requestedLights,feedSlots);
-    return w;
+    return w.channels ? w.pixels*w.admitted*w.q.samples*w.q.steps : 0;
+}
+// What any plan reserves from the frame budget: every admitted light at its group's march (the lead lights q, the rest lights
+// `rest`), whatever the visible set. Equal to regularCost() for a plan that is not a hybrid.
+inline std::uint64_t basisCost(const Workload& w)
+{
+    if (!w.channels) return 0;
+    const std::uint64_t lead = std::min(w.lead,w.admitted);
+    // A hybrid's Thin lights may also march the regular step count (fix round 5): they are charged the larger of the two.
+    return w.pixels*(lead*w.q.samples*std::max(w.q.steps,w.rest.steps)+
+        (w.admitted-lead)*std::uint64_t(w.rest.samples)*w.rest.steps);
+}
+inline bool hybridPlan(Workload& out, Quality thin, const Workload& off, unsigned width, unsigned height,
+    unsigned lights, unsigned thinLights, std::uint64_t planned)
+{
+    const unsigned admitted = off.admitted;
+    if (!off.channels || !thinLights || thinLights > admitted || width > 65536 || height > 65536) return false;
+    const int dense = std::clamp(thin.nearSteps,0,64);
+    if (!dense) return false;
+    // The Thin lights march EXACTLY the regular ray count (same disk strata, same resolution); only their steps differ.
+    Quality t{off.q.samples,std::clamp(thin.steps,1,128),off.q.half,dense,std::clamp(thin.minFar,1,64)};
+    const bool half = off.q.half;
+    const std::uint64_t px = half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
+        std::uint64_t(width)*height;
+    const std::uint64_t nT = thinLights, nR = admitted-thinLights;
+    const std::uint64_t perRest = px*std::uint64_t(off.q.samples)*off.q.steps;
+    if (!perRest) return false;
+    // The regular group is the Thin-OFF plan, unchanged; the Thin lights get what is left.
+    const std::uint64_t restCost = nR*perRest;
+    if (restCost > planned) return false;
+    const std::uint64_t room = planned-restCost, drawCap = off.drawCap;
+    // Fix round 5 (DeepSeek P1): a Thin light near the boundary also marches regular rays, with the regular (Thin-OFF) step count
+    // `restSteps` (the shader no longer clamps it to the Thin draw's steps). Where that count exceeds the Thin march's, the cost of
+    // the light is the larger of the two: every Thin light is charged samples x max(Thin steps, regular steps), in perThin, the
+    // channel count, iterations and basisCost() alike.
+    const int restSteps = std::clamp(off.q.steps,1,64);
+    const auto perThin = [&]() { return px*std::uint64_t(t.samples)*std::max(t.steps,restSteps); };
+    const auto over = [&]() { return nT*perThin() > room || perThin() > drawCap; };
+    // Far steps only: down to the common floor (near steps never thin).
+    const int thinPart = t.steps-dense;
+    const int farMin = std::max(1,std::min(t.minFar,kThinFarFloor));
+    // (Once the Thin steps are no more than the regular count, thinning them further saves nothing: perThin is the larger.)
+    while (over() && t.steps>restSteps && t.steps-dense>std::min(thinPart,farMin)) --t.steps;
+    if (over()) return false;
+    out = Workload{};
+    out.q = t;
+    out.rest = off.q;
+    out.rest.half = half;
+    out.pixels = px;
+    out.budget = off.budget;
+    out.drawCap = drawCap;
+    out.admitted = admitted;
+    out.lead = thinLights;
+    out.channels = unsigned(std::min<std::uint64_t>(4,drawCap/perThin()));
+    out.restChannels = off.channels;
+    const std::uint64_t leadLights = std::min<std::uint64_t>(lights,thinLights);
+    const std::uint64_t drawnLights = std::min<std::uint64_t>(lights,admitted);
+    out.iterations = px*(leadLights*std::uint64_t(t.samples)*std::max(t.steps,restSteps)+
+        (drawnLights-leadLights)*std::uint64_t(off.q.samples)*off.q.steps);
+    return true;
+}
+
+// The Thin objects plan: pure Thin, the regular (Thin-OFF) plan, or the hybrid of the two (see above).
+// `uniform` is the authored regular march; floors = false is a capture feed (the previous sub-floor behaviour of the
+// two component plans is kept, and the hybrid only forms inside the floors). `feeds` are the feeds LIVE this frame: the plan
+// holds back what they can spend (feedSpend), on top of feedHoldBack (the floor-level guarantee, feedReservation).
+inline Workload hybridWithin(Quality thin, Quality uniform, unsigned width, unsigned height, unsigned lights,
+    std::uint64_t budget, unsigned requestedLights, std::uint64_t feedHoldBack, bool floors, const FeedSet& feeds = FeedSet())
+{
+    const auto off = workloadWithin(uniform,width,height,lights,budget,requestedLights,0,floors);
+    const std::uint64_t capped = std::min(budget,std::uint64_t(1500000000));
+    const std::uint64_t hold = std::max(std::min(feedHoldBack,capped),
+        feedSpend(thin,capped,regularCost(off),requestedLights,feeds));
+    const std::uint64_t planned = capped-hold;
+    // The pure Thin plan plans against the same limit (workloadWithin holds back `hold` of its budget).
+    const auto pure = workloadWithin(thin,width,height,lights,budget,requestedLights,hold,floors);
+    if (pure.channels && pure.admitted >= off.admitted) return pure;
+    if (!off.channels) return pure.channels ? pure : off;
+    Workload hybrid{};
+    for (unsigned thinLights = off.admitted; thinLights >= 1; --thinLights)
+        if (hybridPlan(hybrid,thin,off,width,height,lights,thinLights,planned)) return hybrid;
+    return off;
+}
+
+// The OFF main plan (nearSteps == 0) is the regular plan (see workload()). A segmented (Thin objects) request is planned by
+// hybridWithin() inside budget - feedReservation() and, while feeds are live, inside what they leave (feedSpend).
+inline Workload workloadOrUniform(Quality q, Quality uniform, unsigned width, unsigned height,
+    unsigned lights, int millions, unsigned requestedLights, const FeedSet& feeds = FeedSet(kFeedSlots), bool floors = true)
+{
+    if (!(q.nearSteps > 0)) return workload(q,width,height,lights,millions,requestedLights,feeds,floors);
+    const std::uint64_t budget = std::uint64_t(std::clamp(millions,1,1500))*1000000;
+    return hybridWithin(q,uniform,width,height,lights,budget,requestedLights,
+        feedReservation(width,height,budget,requestedLights,feeds),floors,feeds);
+}
+
+// Bilateral blur radius, in TRACE pixels. The user's Denoise radius scales with the target
+// height and halves at half resolution (a trace pixel is then two screen pixels). P0.2: whenever
+// the blur is on at all it spans at least kMinFilterRadius trace pixels, so the Gaussian
+// (sigma = r / sqrt 2) reaches past the correlation length of the R2 noise; zero still skips it.
+// This is a deliberate STEP at the lowest setting: a Denoise value that scales to a radius between 0 and
+// the floor reads as the floor (a small setting is never "a little blur" of an unfiltered noise pattern),
+// and only an exact 0 turns the blur off. The Director help says so.
+constexpr float kMinFilterRadius = 2.f;
+inline float filterRadius(float setting, float resolutionScale, bool half)
+{
+    if (!std::isfinite(setting) || !std::isfinite(resolutionScale)) return 2.f;
+    const float scaled = std::clamp(setting*resolutionScale*(half ? .5f:1.f),0.f,8.f);
+    return scaled > 0.f ? std::clamp(scaled,kMinFilterRadius,8.f) : 0.f;
+}
+
+// Smooth group fade (user decision 10/22). While lights are dropped for want of budget, every ADMITTED light i keeps its soft
+// shadow at strength smoothstep(1, 1.05, score[i] / score[first dropped]): 1 for a light more than 5 percent more important than the
+// first dropped one, falling to 0 as the two become equally important (lead decision 10/22: the window was 25 percent, which faded
+// a whole cluster of near-equal lamps almost out; 5 percent only touches the lights right at the threshold), so a soft shadow fades instead of vanishing when the camera
+// moves and the ranks change at the coverage boundary. The reference is an order statistic (the first dropped light's score), so
+// swapping two lights WITHIN the admitted set changes no strength; and every term is this frame's score (frame-pure). It is 1
+// when nothing is dropped, and when the first dropped light carries no importance (next <= 0): nothing to swap with.
+constexpr double kAdmissionWindow = 0.05;
+inline double admissionStrength(double score, double next)
+{
+    if (!(next > 0.0)) return 1.0;
+    if (!(score > 0.0)) return 0.0;
+    const double t = std::clamp((score/next-1.0)/kAdmissionWindow,0.0,1.0);
+    return t*t*(3.0-2.0*t);
+}
+// Tied lamps (lead decision 10/22, on the user's behalf): importance is constant within range / 2 of the camera, so identical
+// nearby lamps tie EXACTLY, and the raw fade above then takes every admitted light of the cluster to 0 ("No soft shadows right
+// now"). An ADMITTED light is therefore never faded below half strength: strength = max(0.5, smoothstep(1, 1.05, ratio)).
+// This accepts at most a half-strength pop at an exact boundary swap and keeps the strength continuous within the admitted set
+// (the raw term is an order statistic; the floor is a constant). A light with no importance (score <= 0) stays gone.
+constexpr double kAdmissionFloor = 0.5;
+inline double admittedStrength(double score, double next)
+{
+    const double raw = admissionStrength(score,next);
+    return (score > 0.0 && next > 0.0) ? std::max(kAdmissionFloor,raw) : raw;
+}
+// Thin/regular boundary (fix rounds 3-4): in a hybrid plan the Thin light i marches the fraction w of its rays the Thin way,
+// w = max(0.5, smoothstep(1, 1.05, s_i / s_firstRegular)) (the floor mirrors the admission floor above: lead decision 10/23, round 4);
+// the other rays of that light, its regular share 1 - w <= 0.5, march the regular (Thin-OFF) way, with the regular ray count and
+// strata (hybridPlan). Within the Thin set nothing moves when two Thin lights swap (an order statistic again), a clear leader
+// is all Thin (w = 1; so is a light when nothing regular follows or the first regular light has no importance). At a rank swap
+// between the last Thin light and the first regular light the two lights trade a regular share of 0.5 for 0 (and back): the
+// boundary pops by HALF of that light's rays, which the floor accepts, exactly like the admission floor at every admitted/dropped
+// crossing (the 0.5 floor pops by 0.5 at ANY coverage-boundary crossing, not only at exact ties: a leaving light goes
+// 0.5 -> 0). Without the floor an exact tie made every Thin light 100 percent regular while the Coverage row still said
+// "thin-quality".
+inline double thinWeight(double score, double firstRegular) { return admittedStrength(score,firstRegular); }
+inline double regularShare(double score, double firstRegular) { return 1.0-thinWeight(score,firstRegular); }
+// A Thin light counts as thin-quality (Coverage row) only while most of its rays march Thin: its regular share is below one half.
+constexpr double kThinQualityShare = 0.5;
+inline bool thinQuality(double share) { return share < kThinQualityShare; }
+// A strength below one 8-bit step draws nothing visible: such a light is not counted as rendered.
+constexpr double kAdmissionVisible = 1.0/255.0;
+inline bool admissionVisible(double strength) { return strength >= kAdmissionVisible; }
+
+// Director status line for the light coverage of the main view: wanted = lights the importance
+// ranking selected (at most the requested cap), rendered = lights that really got a visible soft-shadow channel this
+// frame (the planner ladder, the fade and allocation can lower it), thin = how many of those march Thin objects quality. thinRequested: the Thin objects switch is on, so "(0
+// thin-quality)" is said when it fell back entirely (instead of reading like Thin OFF). lowMemory: the pass could not allocate
+// its targets (an explicit flag from the pipeline, so an early return reads "low video memory", never "work budget").
+// Pure so the wording is testable.
+inline std::string coverageText(bool soft, unsigned rendered, unsigned wanted, unsigned thin = 0,
+    bool thinRequested = false, bool lowMemory = false)
+{
+    if (!soft) return "Soft shadows are off";
+    if (!wanted) return "No lights are selected for soft shadows";
+    // "low video memory" only when the pass really failed to allocate (the pipeline's explicit flag): a plan that admits fewer
+    // lights than wanted, or that drops a plane or a draw, is a work-budget effect, never a memory one.
+    const std::string why = lowMemory ? "low video memory" : "work budget";
+    const std::string noun = wanted == 1 ? " light" : " lights";
+    const bool say = thin || (thinRequested && rendered);
+    const std::string quality = std::to_string(thin) + " thin-quality";
+    if (rendered >= wanted)
+    {
+        if (!say) return "Soft shadows on " + std::to_string(wanted) + noun;
+        return "Soft shadows on " + std::to_string(rendered) + " of " + std::to_string(wanted) + noun + " (" + quality + ")";
+    }
+    if (!rendered) return "No soft shadows right now (" + why + ")";
+    return "Soft shadows on " + std::to_string(rendered) + " of " + std::to_string(wanted) + " lights (" + why +
+        (say ? ", " + quality : std::string()) + ")";
 }
 
 // Planes the pipeline can actually draw after target allocation. A failed allocation is
@@ -310,40 +642,48 @@ inline unsigned drawableChannels(unsigned selected, unsigned planes)
     return std::min(selected, planes * 4u);
 }
 
-// Frame identity is used only to reset workload accounting, never sampling.
+// Frame identity is used only to reset workload accounting, never sampling. Feed passes are admitted by FEED IDENTITY (fix round 5),
+// not by a bare count: a pass runs only for a feed that is in this frame's live set, and at most once per frame, so one source
+// rendered twice (a Gate may re-render its source) can never use up the pass of another live feed and starve it, and the passes
+// of a frame can never outnumber the live set the budget was divided by.
 struct FeedPasses
 {
     std::uint32_t frame = 0;
-    unsigned passes = 0;
-    bool admit(std::uint32_t currentFrame, unsigned slots)
+    unsigned served = 0; // bit i: the live feed at position i of the set has had its pass this frame
+    bool admit(std::uint32_t currentFrame, unsigned identity, const FeedSet& live)
     {
-        if (frame != currentFrame) { frame = currentFrame; passes = 0; }
-        if (passes >= slots) return false;
-        ++passes;
-        return true;
+        if (frame != currentFrame) { frame = currentFrame; served = 0; }
+        for (unsigned i = 0; i < live.count; ++i)
+        {
+            if (live.id[i] != identity) continue;
+            if (served & (1u << i)) return false;
+            served |= 1u << i;
+            return true;
+        }
+        return false;
     }
 };
 
-// Reserve the main view's unchanged requested-K plan, then divide only the
-// remainder into fixed allowances. No dependence on active feed count, cadence,
-// timing, prior frames or the main view's changing selected set. A segmented
-// (Thin objects) plan that does not fit a feed's allowance falls back to the
-// authored uniform march and plan. A segmented main plan only exists inside
-// budget - feedReservation(), and a main plan that cannot fit there is the uniform
-// (OFF) plan, so with Thin ON every feed gets at least min(its OFF allowance, the
-// minimum a 2048x2048 feed needs) and draws wherever the OFF feed draws. It may get
-// fewer rays than OFF when the main view spends the difference.
+// Reserve the regular (Thin-OFF) main plan for the requested K, then divide only the
+// remainder into fixed allowances, one per LIVE feed (fix round 4: `feeds` is the set of feeds live this frame, a plain count
+// meaning that many 2048x2048 feeds). No dependence on cadence, timing, prior frames or the main view's changing selected set.
+// A segmented (Thin objects) plan is the pure Thin plan, the authored uniform plan or the hybrid of the two (hybridWithin), so
+// a feed never admits fewer lights than the OFF feed.
+// The reservation is that of the regular (Thin-OFF) main plan, whatever Thin objects is set to: regularCost(main) is EXACTLY the
+// quantity hybridWithin() subtracts from the budget for the feeds' pool (the Thin-OFF main plan planned for the requested K, the
+// admitted lights at its per-light march; fix round 4 made the two the same expression), and a Thin or hybrid main plan
+// holds back what the live feeds can spend of that pool (feedSpend). With Thin ON every feed therefore gets EXACTLY the
+// allowance it gets with Thin OFF (there is no feed exception), the one frame budget still holds (basisCost(main) + the
+// feeds' spend <= budget), and the feed admits at least the lights the OFF feed admits (hybridWithin at an equal allowance).
 inline Workload feedWorkload(Quality q, Quality uniform, unsigned mainWidth, unsigned mainHeight,
     unsigned width, unsigned height, unsigned lights, int millions,
-    unsigned requestedLights, unsigned feedSlots)
+    unsigned requestedLights, const FeedSet& feeds)
 {
-    const auto main = workloadOrUniform(q,uniform,mainWidth,mainHeight,requestedLights,millions,requestedLights,feedSlots);
-    const auto reserve = main.channels ? main.iterations : 0;
-    const auto allowance = mainWidth && mainHeight && feedSlots ? (main.budget-reserve)/feedSlots : 0;
-    auto feed = workloadWithin(q,width,height,lights,allowance,requestedLights);
-    if (!feed.channels && q.nearSteps)
-        feed = workloadWithin(uniform,width,height,lights,allowance,requestedLights);
-    return feed;
+    const auto main = workload(uniform,mainWidth,mainHeight,requestedLights,millions,requestedLights,feeds);
+    const auto allowance = mainWidth && mainHeight && feeds.count ? (main.budget-regularCost(main))/feeds.count : 0;
+    // floors = false: a feed keeps the previous planner below the floors (the guarantee above).
+    if (!(q.nearSteps > 0)) return workloadWithin(q,width,height,lights,allowance,requestedLights,0,false);
+    return hybridWithin(q,uniform,width,height,lights,allowance,requestedLights,0,false);
 }
 
 }

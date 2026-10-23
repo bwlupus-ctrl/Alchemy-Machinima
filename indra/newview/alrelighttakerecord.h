@@ -55,6 +55,15 @@ inline LLSD areaTakeRecord(const AreaTakeState& state)
         plan["steps"] = work.q.steps; // Effective total, retained for record readers.
         plan["half"] = work.q.half;
         plan["channels_per_draw"] = static_cast<int>(work.channels);
+        plan["admitted"] = static_cast<int>(work.admitted); // lights that keep a soft-shadow channel
+        // Thin objects hybrid: the first `lead` lights march the plan above, the rest march `rest_*` (the regular march).
+        plan["lead"] = static_cast<int>(work.lead);
+        if (work.lead < work.admitted)
+        {
+            plan["rest_samples"] = work.rest.samples;
+            plan["rest_steps"] = work.rest.steps;
+            plan["rest_channels_per_draw"] = static_cast<int>(work.restChannels);
+        }
         // LLSD integers are signed 32-bit. Preserve exact 64-bit counts as text.
         plan["pixels"] = std::to_string(work.pixels);
         plan["iterations"] = std::to_string(work.iterations);

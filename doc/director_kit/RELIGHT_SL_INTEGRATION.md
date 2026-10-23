@@ -839,9 +839,11 @@ at the main target size and requested K (even when fewer lights are visible).
 It divides only the remainder into **eight fixed equal allowances**, matching
 `MAX_CAPTURES`. Each feed independently reduces samples, then steps, then
 half-res, then skips. Each draw is also bounded by half its feed allowance.
-`FeedPasses` admits at most eight actual shadow passes per frame, including
-multiple renders of the same Gate source. The ninth skips before allocation
-or gather, with invalid channels; a new frame resets only this work counter.
+`FeedPasses` admits each LIVE feed, by identity (its Prism registry slot), at most
+once per frame (fix round 5, section 12; it was a bare pass count of eight):
+a repeated render of the same Gate source, or a pass of a feed outside the frame's
+live set, skips before allocation or gather, with invalid channels; a new frame
+resets only this work counter.
 Failed allocations conservatively consume an allowance. Main actual work + all feed work is at most
 the reserved main work + eight allowances, which is at most
 `RenderAreaShadowBudget`. This bound no longer assumes a scheduler cadence or
@@ -2233,3 +2235,601 @@ Whole-viewer image identity, in-world appearance of a large emitter with Light e
 
 Files to include in the commit beyond round 2: none new (`scripts/code_tools/relight_rank_check.py` is still the new file). Reverted to
 HEAD content: `screenSpaceRayUtil.glsl`, `relight_thin_check.py`.
+
+## World shadows Phase 0 (10/22)
+
+Phase 0 of `RELIGHT_WORLD_SHADOWS_PLAN.md` (Revision 2): grain and acne fixes for the CURRENT screen-space soft shadows. Runtime uniforms only
+(no define, no reload), deterministic (no frame/time input), no change to native shadow allocation, the auction or count-before-filter,
+Soft shadows OFF byte-identical (the OFF harness and `relight_off_check.py` pass). User decisions applied: ray floor 4 (fewer lights, smooth),
+P0 may change the default look, Thin objects keeps its 48 near + far floor and its railing/join/feed guarantees, P0.6 not redone.
+Branch `feature/director-kit-p0`, base `4dd9ff661c1` (per-light housing stays the global Light-bias sphere). Nothing committed, built or stashed.
+This section is the state after **fix round 3** (reviews: Codex, Opus, GLM, DeepSeek, three times). Section 8 lists what round 1 changed; section 9 what round 2 changed (four user decisions of 10/22: cost, accuracy, Thin hybrid, smooth fade); **section 10 what round 3 changed** and supersedes sections 9.3 (the hybrid's regular group, the feed text), 9.4 (the fade floor) and 9.5 (the coverage table) where they differ. The tables below are brought up to date, the earlier values are kept where they still hold.
+
+### 1. What changed, per item
+
+| Item | Change | Files |
+|---|---|---|
+| P0.1 planner ladder | `workloadWithin` runs a fixed integer ladder: (1) full resolution only while 12 rays still fit, else half; (2) rays down to 8; (3) steps down to max(8, steps/2) (Thin: the far segment, same rule); (4) rays down to 4; (5) steps down to 8 (Thin: the common far floor `min(minFar, 8)`, near stays 48); (6) lights: A falls one at a time down to 1. **Below the floors the MAIN view admits no light** (`A = 0`, nothing drawn): never a sub-floor ray or step, and more budget never admits fewer lights. A Thin objects request is planned by `hybridWithin` (sections 9.3 and 10): Thin never admits fewer lights than Thin OFF; the lights the budget cannot cover at Thin quality march EXACTLY the Thin-OFF plan, and while VCam feeds can run a Thin or hybrid main never costs more than the Thin-OFF main. **The OFF (uniform) plan is NOT the pre-P0 plan:** P0.1 applies the resolution rung and the floors to uniform plans too, by design (user decision: "P0 may change the default look"); only Soft shadows OFF is byte-identical. A capture FEED keeps the previous sub-floor degradation (its guarantee depends on it). `Workload.admitted` = A (from the requested cap K, never the visible set); the pipeline keeps the A highest-ranked lights, the rest get no soft shadow. | `alareashadowmath.h`, `pipeline.cpp`, `alrelighttakerecord.h` |
+| Admission fade | **Smooth group fade (round 2):** every admitted light fades with `smoothstep(1, 1.05, score[i] / score[first dropped])` (per-channel uniform `area_dropout`, frame-pure, 1 when nothing is dropped; window narrowed from 1.25 to 1.05 by the lead on 10/22; **round 3: never below 0.5 for an admitted light**, section 10.5), so lights that trade places at the coverage boundary fade instead of one popping, and a swap within the admitted set changes no strength (section 9.4). Round 1 faded only the last admitted channel. | `alareashadowmath.h` (`admissionStrength`), `areaShadowF.glsl`, `pipeline.cpp` |
+| Status line | Readout row **Coverage** on the Soft shadows card: "Soft shadows on 8 lights" / "Soft shadows on 2 of 8 lights (work budget)" / "No soft shadows right now (work budget | low video memory)" / "Soft shadows are off" (`ALAreaShadow::coverageText`); with Thin objects "Soft shadows on 8 of 8 lights (3 thin-quality)" (the lights that march the Thin objects march; "(0 thin-quality)" when Thin fell back entirely; an explicit low-memory flag from the pass gives "low video memory" on every early return). The pass clears the main-view coverage on entry, publishes the planned count after planning and the count actually drawn after allocation and drawing (a light faded below 1/255 is not counted), so early returns and allocation failures never leave a stale value; the row is bound with its page (`bindPage`). Logged as `admit=A/K` in the existing clamp line. | `llfloaterdirector.cpp/.h`, `pipeline.cpp/.h`, kit data |
+| P0.2 noise | Rotation and ray start of every noise cell come from the R2 rank `frac(shift + a1 x + a2 y)` in exact 32-bit integer arithmetic (a1 = 1/phi2, a2 = 1/phi2^2); the ray start uses the lattice turned by 90 degrees (the first version's start lattice made rotation + start depend on x + y alone and printed 45-degree stripes), and the per-light Cranley-Patterson shift (light UUID hash, never the channel) is re-rolled per 8x8 block so no lattice line stays coherent beyond 8 cells. Blur radius is at least 2 trace pixels whenever the blur is on (`ALAreaShadow::filterRadius`; HEAD was 1 at 1080p half-res); zero skips it. The step at the lowest setting is deliberate and documented (a Denoise value that scales below 2 trace pixels reads as 2; the Director help says so). | `areaShadowF.glsl`, `alareashadowmath.h`, `pipeline.cpp` |
+| P0.3 filter edge-stops | Geometric normal from depth (min-difference derivative, one trace pixel apart; planarity test with a distance clamp for steep slopes) and a plane-distance weight with a per-tap tolerance (half a footprint at the first tap, growing to 2 footprints with the tap distance, floor 2 cm) replace the raw linear-depth weight; the normal-mapped normal only vetoes taps more than ~60 degrees apart, no longer `pow(dot, 32)`. A one-sided **hand-over stop** (`area_native_clip`/`area_native_offset`, the gather's own window, uploaded for every filter pass) keeps a traced pixel from averaging contact-only taps across the native hand-over band; **per channel (round 2):** the stop scales with each channel's contact fade (`area_contact_fade` goes to the filter too), so a light with no native map keeps its whole kernel across the band, and the all-taps-rejected fallback is per channel (centre tap / lowest hand-over weight among the taps that were on the centre's surface, else the pixel's own texel, never a bilinear mix; round 3). Known limit, measured: a crease only cuts once its plane offset exceeds the tolerance (a lit face and a shadowed face meeting at 30 degrees still blend over about 2 trace pixels; the old normal-mapped stop cut them but left brick and fabric speckled). | `areaShadowFilterF.glsl` |
+| P0.4 horizon | **Not adopted.** Radiance reference (deterministic quasi-Monte Carlo, true disk light over the geometric horizon, 48 cases: distance 4/8 m x source 0.1/0.3/1 m x Light shape OFF/ON x flat/tilt toward/away/side normal map): skipping below-horizon rays and renormalizing wins 24 of 48 but with the shading normal tilted 25 degrees toward the light the dark side leaks, worst 23.8/255 against HEAD's 5.8/255. The plan's rule fails, so the gather keeps HEAD's behaviour. Reproducible: `relight_horizon_study.py`, asserted in the grain gate. | `relight_horizon_study.py` |
+| P0.5 geometric offset | **Deferred (reverted).** No fixture was found where HEAD's shading-normal receiver offset causes acne that P0.5 cures (normal-mapped blockers and receivers, even with extreme tilts, are clean on HEAD), and the geometric-normal reconstruction in the candidate refinement and validation cost about a third of the gather (1.33-1.37x HEAD at Medium 1080p K4 with it). `screenSpaceRayUtil.glsl` is byte-identical to HEAD again and the gather's receiver offset is HEAD's. Revisit with a real fixture. | (none) |
+
+### 2. Before / after
+
+Grain = RMS (8 light UUIDs) of the final filtered image around the penumbra of a half-plane blocker lit by a 0.3 m disk, /255, one wall
+fixture at 1080p and 4K (`relight_grain_check.py`). Pre-P0 = commit `4dd9ff661c1` planner + shaders + radius. The first numbers are the ensemble
+spread around the images' own mean (what the gate measured before fix round 1); the second are the gate's current metric, the error against a 64-ray
+reference at the plan's own march (it also sees a bias).
+
+| Case | Pre-P0 (spread / error) | P0 before round 1 (spread) | P0 now (spread / error) |
+|---|---|---|---|
+| 4K Cinematic K8 | 23.5 / 24.8 (1 ray x 22 steps full-res, r=4) | 3.5 | 3.7 / **3.8** (5 rays x 16 steps half, r=2, all 8 lights) |
+| 4K Cinematic K4 | 23.1 / 24.8 | 2.6 | 3.1 / **3.1** (8 rays x 22 half) |
+| 4K Thin K8 and K4 | 21.1 / 23.1 (K8), 11.7 / 12.4 (K4) | 2.7 | 3.5 / **6.3** (4 rays x 56, 3 lights) |
+| 4K Low | 10.4 / 10.4 | 5.2 | 5.9 / **5.9** |
+| 1080p Low | 17.5 / 17.5 (radius 1) | 5.7 | 5.7 / **5.8** |
+| 1080p Medium K4 | 7.4 / 7.3 | 2.6 | 3.1 / **3.1** |
+| 1080p Thin Medium K8 | 11.6 / 11.8 (4 rays) | 2.0 | 3.1 / **4.2** (5 rays x 64) |
+| Normal-mapped wall, Medium (7-8 rays x 12) | 8.1 (flat 4.7) | 2.8 | same as flat (gate: <= 1.15 x flat + 0.3) |
+| Grazing floor (~87 degrees), Medium | 7.6 | 2.0 | **2.3** |
+
+Worst P0 configuration: 6.3/255 (4K Thin), 5.9 (4K Low); limit 8, Medium 1080p K4 limit 6 (3.1). Pre-P0 fails 12 of the 28 effective configurations. The small rise of the
+spread against the earlier numbers (2.6 -> 3.1 at Medium) is the price of the block-wise shift that removes the lattice stripes (section 4, spectrum).
+Edge location, contrast and width: against the analytic profile at a converged march (64 rays x 512 steps) the edge is within **1 full-resolution pixel**
+(measured 0.09 px at 1080p, 0.65 px at 4K), width within 1 percent of the analytic, umbra 0, lit 255. At the PLAN's own march the edge is set by the march: at 64 steps
+it is 4 px off (1080p) and at 8-16 steps tens of pixels, before and after P0 alike (equal plans: mean edge within 1 cm of the pre-P0 shader, 80 rows x 8 seeds).
+
+### 3. Effective coverage (default 1500 M budget, VCam feeds OFF, requested cap K)
+
+Cells: admitted/K lights, rays, steps (Thin: near 48 + far, e.g. 64 = 48 + 16). Columns Low | Medium | High | Cinematic.
+
+| Screen, K, Thin | Low | Medium | High | Cinematic |
+|---|---|---|---|---|
+| 1080p K4 OFF | 4/4, 4 x 8 | 4/4, 8 x 12 | 4/4, 12 x 20 | 4/4, 22 x 32 |
+| 1080p K4 ON | 4/4, 4 x 80 | 4/4, 8 x 80 | 4/4, 9 x 80 | 4/4, 9 x 80 |
+| 1080p K8 OFF | 8/8, 4 x 8 | 8/8, 8 x 12 | 8/8, 12 x 20 | 8/8, 11 x 32 |
+| 1080p K8 ON | 8/8, 4 x 80 | 8/8, 5 x 64 | 8/8, 5 x 64 | 8/8, 5 x 64 |
+| 4K K4 OFF | 4/4, 4 x 8 | 4/4, 8 x 12 | 4/4, 9 x 20 | 4/4, 8 x 22 |
+| 4K K4 ON | **4/4**: 3 Thin 4 x 57 + 1 regular 4 x 8 | 4/4, 8 x 12 (the OFF plan, 0 thin-quality; round 4: no Thin light fits at the regular 8 rays) | 4/4, 9 x 20 (the OFF plan, 0 thin-quality) | 4/4, 8 x 22 (OFF, 0 thin-quality) |
+| 4K K8 OFF | 8/8, 4 x 8 | 8/8, 8 x 11 | 8/8, 8 x 11 | 8/8, 5 x 16 |
+| 4K K8 ON | **8/8**: 2 Thin 4 x 66 + 6 regular 4 x 8 | 8/8, 8 x 11 (OFF, 0 thin-quality) | same | 8/8, 5 x 16 (OFF, 0 thin-quality) |
+
+**Fix round 4:** a hybrid's Thin lights march the regular ray count (section 11.1), so 4K K4 Medium, which had 2 Thin lights at 4 x 64 beside regular 8 x 12 in round 3, is now the OFF plan; every other cell is unchanged. VCam feeds are planned from the feeds LIVE that frame (section 11.4); the "with VCam feeds ON" sentence below is the round-3 worst case (eight assumed 2048 x 2048 feeds) and the live-feed table is in section 11.4.
+
+**Fix round 3:** the regular lights march exactly the Thin-OFF plan of their preset, and the Thin lights get only what that leaves, so where the OFF plan already uses the budget (4K High and Cinematic, 4K K8 Medium) Thin ON is the OFF plan and the row says "0 thin-quality" (round 2 had squeezed the regular lights to 4 x 8 there to give the top lights the Thin march: 4K K4 Cinematic's fourth light 8 x 22 -> 4 x 8, grain about 3.5 -> 5.9/255). With VCam feeds ON (the VCam switch) a Thin or hybrid plan is also capped at the Thin-OFF cost (section 10.1): 1080p K4 and K8 keep Thin for High and Cinematic only (4 x 60 and 8 x 80 / 5 x 64), Low and Medium are the OFF plans; at 4K every preset is the OFF plan.
+
+Half resolution everywhere (a full-resolution request survives only where 12 full-res rays fit, which no 1080p or 4K row allows). The table is for VCam feeds OFF. The full grid
+(720p, 1080p, 1440p, 4K x K1-8 x Thin x feed reservation, 512 rows) is re-derived by an independent closed-form ladder in the gate and printed in `final_grain.log`.
+The admitted lights are preset-independent where the floors bind (round 1 admitted 3 lights at 4 rays x 56 steps at 4K Thin; rounds 2 and 3 keep every OFF light), so the quality preset does not buy lights; fewer
+Shadowed lights, Thin objects off, a lower resolution or a larger Work budget do (the Director help says so). Below the floors (a tiny budget, e.g. 4K K8 with 20 M) the main
+view shows no soft shadows at all rather than the previous 8 lights x 1 ray x 1 step; a budget sweep (every preset x 720p..4K x K1-8 x Thin x 1..1500 M, C++ test 34) proves the
+admitted count never falls as the budget grows.
+
+### 4. Gates (new `relight_grain_check.py`, `relight_cost_check.py`, `relight_scene_fixture.py`, `relight_horizon_study.py`, `relight_orbit_check.py`)
+
+* **Planner (round 2: Thin hybrid, section 9.3; rows carry the lead count and the regular march, and Thin ON admits at least what OFF admits):** every production row equals an independent ladder; rays >= floor or one light at the floors cannot fit; A independent of the visible set; Thin near = 48 and far >=
+  `min(minFar, 8)`; frame and draw ceilings; monotone admission over the whole budget slider; the main view admits 0 below the floors while a feed still degrades. Mutations rejected:
+  rays-first order, A from the visible set, a planner that thins the Thin near segment (the plan it returns is rejected by the predicate every production plan passes), the uncapped
+  Thin fallback (drops lights as the budget grows). C++ test 34 re-checks this with a verbatim copy of the pre-P0 planner (it breaks the floor in 52 rows).
+* **Oracles (independent of the shader filter):** analytic disk-light profile by dense quadrature at a converged march: edge within **1 px**, 10-90 percent width within 20 percent,
+  umbra <= 3/255, lit >= 252/255, full and half resolution at 1080p and 4K. Mutations rejected: a receiver bias pointing into the surface (lit minimum 0), a light 10 cm off (edge 31 px),
+  an unconverged 64-step march (edge 4 px).
+* **Noise:** error against a 64-ray reference at each plan's own march, all <= 8/255 and Medium 1080p K4 <= 6/255, plus the spread; pre-P0 must fail 4K Cinematic (24.8) and never be further from the
+  reference than P0 by more than 0.5. Receivers: flat, normal-mapped, grazing 87 degrees (pre-P0 3.2x worse); lit speckle below 250/255 = 0.
+* **Spectrum (plan O6; round 2 adds the shared-structure test, section 9.2; round 3 replaces its per-row fit by one global 2-D fit and adds the y, diagonal and row-parity mutants, section 10.2):** the penumbra patch minus its expected value (mean of the other seeds, which carries the ramp and the march bias) is bounded at **every non-DC bin by 2/255**
+  (R2 Low 1.76, Medium 1.09; bands f < .04 / .04-.08 / .08-.15 / >= .15 cycle per pixel: 1.68 / 1.76 / 1.25 / 0.11) and the line/noise ratio <= 11 (3.3 / 3.0). Mutations rejected: the 4x4
+  interleave (8.8 and 4.2, ratio 67), the x+y-degenerate rank of the first version (5.0 and 2.6, ratio 13), a 3/255 stripe at 0.094 cycle/px built into the production filter (section 9.2; the round-1 injection added the pattern after the detrend and tested only the threshold). Measured fact behind the
+  block-wise shift: lattice constants alone cannot do it (a 90-degree-turned start lattice, a blue-noise tile of 32x32, tiles of 6-16 cells all measured; only random block shifts took Low under 2/255).
+* **Hand-over (`relight_rank_check.py`):** the original bounds are restored (shared-blocker leak <= 1/255 at the default radius and any native range, <= 3/255 elsewhere, the 0.4 m range case). New
+  fixture: a real 1080p perspective floor at eye 1.7 m through the production filter at radius 2 with native clip pairs 27/64, 54/128, 110/256 m: 0.00/255 leak past the native ramp; the filter
+  without the hand-over stop leaks 16, 36 and 66/255 (mutation rejected). Round 2: the stop is per channel; on the same floor an unmapped channel beside a mapped one is byte-identical with and without the native clip, its grain in the band equals the stop-free render, and the scalar-stop mutant raises it by 1.5-1.7x (rejected).
+* **Cost (`relight_cost_check.py`, GL timestamp queries, the production gather + filter of each version at its own effective plan, best of alternating batches, more batches while above the
+  target):** reported against 1.15, fails above 2.5 x HEAD (user decision 10/22); see sections 6 and 9.
+* **Orbit sweep (moving camera):** 192 camera poses; determinism, negative controls fire (95/94/143 of 151), the P0 pipeline is no worse than pre-P0 (worst 12 px for both; mean 3.41 both; 82 poses within 1 px both).
+
+### 5. Existing tests that pinned the old planner or sampler (re-pinned, not weakened)
+
+* Math tests 14, 15, 18, 22, 24, 25: the default-budget tables, the "reduce rays first" order and the K7/K8 per-light literals now state the ladder results. The sub-floor feed cases are unchanged.
+  Test 34 and the sweep are new.
+* `relight_vcam_check.py`: identity with the pre-P0 header where the ladder does not apply; where the main view admits nothing the old planner would have drawn, the test asserts admitted 0 / iterations 0.
+* `relight_thin_check.py`: a full-resolution request may be planned at half for any preset (ladder rung 1); the baselines adopt only the P0 noise block, so byte comparisons still isolate the march.
+* `relight_contact_check.py` / `relight_vcam_dispatch_check.py`: adopt the noise block's new anchor; the dispatch fixture now also pins the filter's native clip/offset uploads and the dropout uniform, each with a dropped-upload mutation.
+* `relight_rank_check.py`: **no threshold is relaxed any more** (round 0 had accommodated the radius-8 corner at 14-16/255 and the 0.4 m case at 4/255; the hand-over stop removes the leak and the original 3/255, 1/255
+  and 0.4 m bounds hold).
+* `director_kit_gen.py` row pin 2162 -> 2163 (+1 Coverage readout), with a comment.
+
+### 6. Cost
+
+Plan target: gather + filter <= 1.15 x HEAD. **User decision 10/22** ("i can accept a cost penalty, so long as it works"): `relight_cost_check.py` REPORTS the ratio against that target and fails only above a hard ceiling of **2.5 x HEAD**; the +50 % rays control must read at least 1.05 x the plan's own ratio (relative; the old "must exceed the limit" line is dropped); the frame and draw budget assertions stay. Measured with GL timestamps, one query per draw, whole frames, the effective plan of each version, alternating batches, minima, RTX 5090 (the viewer, AlchemyTest.exe, was NOT running during the round-2 runs):
+
+| Config | HEAD plan | P0 plan | HEAD ms | P0 ms | Ratio |
+|---|---|---|---|---|---|
+| Medium 1080p K4 | 8 rays x 12 steps half, r=1 | same plan, r=2 | 0.838 | 0.920 | **1.098** (gather 1.008x; filter 1.69x of a small part: 0.079 -> 0.133 ms) |
+| Cinematic 4K K8 | 1 ray x 22 steps full, r=4 | 5 rays x 16 steps half, r=2 | 4.053 | 5.336 | **1.317** (gather 1.485x: 5 rays at a quarter of the pixels against one full-resolution ray; filter 0.80x) |
+
+The round-1 note that read 0.73-1.02 at 4K Cinematic K8 was wrong: its HEAD baseline was a noisy 5.4-7.5 ms (the one-ray HEAD plan varies run to run), against 4.05-4.12 ms in every round-2 run. Codex measured 1.308 x and 1.300 x with the viewer running on the same GPU; this round reproduces it (1.297 x and 1.317 x in two runs). Medium 1080p K4 is inside the 1.15 target (1.10 x); 4K Cinematic K8 exceeds it by the accepted margin and is far below the 2.5 x ceiling. The control (+50 % rays) reads 1.64 x and 1.96 x HEAD, 1.5 x and 1.5 x the plans' own ratios. Before fix round 1 the same Medium configuration read 1.33-1.37 x (P0.5, deferred); the Thin plans are measured in section 10.8.
+
+### 7. Not measured
+
+In-world appearance, the viewer image identity, a HEAD-failing fixture for P0.5, and the cost at configurations other than the five of section 10.8 (other K). Round 2: the hybrid and the group fade are verified through the production dispatch in the gate harness, not in the viewer; the per-channel hand-over stop and the unmapped-band grain only on synthetic floors.
+
+### 8. Fix round 1 (10/22) - what the review findings changed
+
+| # | Finding | Result |
+|---|---|---|
+| 1 | Hand-over leak through the bilateral filter (14-16/255 at clip (4,5); 7-29/255 on a real grazing floor) | One-sided native stop in the filter (same window as the gather, uniforms uploaded for every filter pass), original bounds restored, Opus's grazing-floor fixture added (fails without the stop: 16/36/66, passes with it: 0.00). |
+| 2 | GPU cost 1.33-1.37x | P0.5 deferred; 1.07-1.10x at Medium 1080p K4 (4K Cinematic K8 0.73-1.02x); cost gate added. |
+| 3 | Grain gate accuracy relaxed (9/17 px edge, noise around own mean) | Edge oracle at a converged march with the 1 px bound; error against a 64-ray reference at each plan's march; the no-shift test uses 80 rows (the pre-P0 mean edge was itself noisy at 16). |
+| 4 | Spectrum gate blind below 0.15; x+y-degenerate rank | Detrended, every non-DC bin <= 2/255, ratio kept; start lattice turned 90 degrees and block-wise shifts; mutations incl. the degenerate rank and an injected 0.094-cycle pattern. |
+| 5 | Planner sub-floor fallback, 67-133 M cliff | Main view admits 0 below the floors; admission monotone in the budget (sweep test); Thin fallback capped. |
+| 6 | Light pops at the coverage boundary | `admissionStrength` fade on the last admitted channel, tested incl. the unfaded mutation. |
+| 7 | Coverage row stale | Cleared on entry, planned and rendered counts published, bound with the page, wording for 0. |
+| 8 | P0.5 without a discriminating fixture | Deferred (reverted). |
+| 9 | 3D harness hard-coded radius 1 | `relight_3d_plan.py` returns the radius of the tree's own policy (HEAD 1, P0 2 at 1080p half), `relight_3d_gl.py` uses it. |
+| P2 | test 34 tautology; help texts; edge-on fallback; creases; radius jump | Real mutation of the near rule; Coverage, Thin objects, Work budget and Denoise help rewritten (kit regenerated, settings comments too); planarity test with agreeing one-sided differences replaces the edge-on fallback; per-tap tolerance (crease limit measured and documented, not cut below ~27 degrees); the radius step documented. |
+
+### 9. Fix round 2 (10/22) - what the second round of reviews changed
+
+Reviews: Codex (P0 x3, P1), Opus (P1 x4, P2), GLM, DeepSeek. Four user decisions were made in chat on 10/22 and are authoritative; where one of them changes a gate, the plan's original wording is kept next to it.
+
+#### 9.1 User decisions
+
+| Decision | Applied as |
+|---|---|
+| **U-cost**: "i can accept a cost penalty, so long as it works" | `relight_cost_check.py` REPORTS the gather + filter ratio against the plan's 1.15 target and FAILS only above a hard ceiling of **2.5 x HEAD**. The frame and draw budget assertions (planner gate: `iterations <= 1500 M`, one draw `<= 750 M`) are unchanged. The sensitivity control stays but is relative: the +50 % rays plan must read **at least 1.05 x the plan's own ratio**; the old "must exceed the limit" assertion is gone. |
+| **U-accuracy**: Phase 0 is judged on GRAIN | The grain gate is unchanged: error against a 64-ray reference at each plan's OWN steps (<= 6/255 at Medium 1080p K4, <= 8/255 elsewhere). New **report-only** line per effective plan: the error against the TRUE 64-ray x 64-step reference. The coarse-step march bias it shows is left to the world-space phase. **Gate redefined by user decision 10/22**; the plan's original wording (64 rays / 64 steps within the same bounds) is kept in the log line, not enforced. |
+| **U-thin**: hybrid | Thin objects ON never admits fewer lights than Thin OFF. When the budget cannot cover every admitted light at Thin quality, the top lights by importance get the Thin march and the others the regular march (section 9.3). |
+| **U-fade**: smooth group fade | Every admitted light fades with `smoothstep(1, 1.05, score[i] / score[first dropped])`, per channel (section 9.4). The window was first 1.25; narrowed to 1.05 on 10/22 by the lead (a cluster of near-equal lamps faded almost out). |
+
+#### 9.2 Findings and results
+
+| # | Finding | Result |
+|---|---|---|
+| P0 1 | Spectrum gate tautology (Codex P0, Opus P1): the detrend subtracted the other seeds' mean, which cancels any screen pattern shared by every light UUID (a fixed 3/255 stripe at 0.094 cycles/px in the production filter passed) | A second spectrum test, **shared structure**: the mean of the rendered images over the seeds minus an INDEPENDENT expected profile, the analytic disk-light profile of the geometry (never a render) fitted per row by a blur, a scale, a shift, a gain and an offset (7 numbers, none of which can follow a narrow stripe), at a converged march so the plan's march bias is not mistaken for noise structure. Every non-DC bin <= 2/255. The mutant is a **production-filter shader variant** that adds the 3/255 stripe to the rendered full-resolution image, measured through the same chain: it must fail (reads 3.0/255). The seed-mean test alone still reads 1.75 on it: blind to it, as the reviews said. The honest spectrum stays under 2/255 without touching the noise: Low 1.84/255 (the seed-mean test: 1.76), Medium 0.64/255 (1.09). The old after-the-fact `pattern` injection is gone. |
+| P1 2 | The native stop was one scalar depth mask for all four channels (GLM, DeepSeek, Opus: 1.3-1.6x grain, up to 7.2/255, in a 2-24 row band for a light with no native map) | `areaShadowFilterF.glsl`: the weight is a `vec4` and the stop is `mix(1, stop, clamp(area_contact_fade, 0, 1))` per channel (`area_contact_fade` is uploaded to the filter next to the clip and offset); `sum` and `weight` are accumulated per channel. Fully off for a channel whose fade is 0. New fixture on the grazing floor (eye 1.7 m, clips 27/64, 54/128, 110/256): a mapped channel keeps its 0.00/255 leak beside an unmapped one; the unmapped channel is **byte-identical with and without the native clip** and its grain in the band equals the stop-free render (rms of the cut pixels 4.07, 3.88 and 4.27/255 for the three clips, against 6.28, 6.15 and 7.19 with the scalar stop); the scalar-stop mutant raises it by 1.5-1.7x (rejected). |
+| P2 3 | The all-taps-rejected fallback `textureLod(area_source, uv)` bypassed the stop | Per channel. The separable passes always keep their centre tap (weight 1), so the fallback is the centre texel and is unreachable; the upsample falls back to the bilinear tap with the lowest hand-over weight (the most traced one), never a mix. |
+| P2 4 | Test 34: `mutatedVisible` never asserted; the oracle mirrors the planner's constants | `ensure("visible-set mutation is caught", mutatedVisible > 0)` is asserted (the line was already in the file when this round started and is kept); literal floor rows (4 rays, 8 far steps, 48 near steps, written as numbers) added for 4K K8 and 1080p K8, every preset. |
+| P2 5 | `lights == 0` path admitted >= 1 with `channels == 0` | `finish()` sets `admitted = channels ? admitted : 0` (and `lead`); tested for the uniform and the Thin plan. |
+| P1 | Codex 4: fading only the last admitted channel pops between retained lights (A = 3, scores [2, 1.100001, 1.099999, 1]: a 0.65 jump on a swap of the middle two) | Smooth group fade, section 9.4. |
+| P1 | Opus 1, the Thin fallback cap loses lights for nothing | Replaced by the hybrid, section 9.3 (`segmentedFirstAdmission` and the cap are gone). |
+| P1 | Codex 1/2 (accuracy against 64 x 64, cost 1.30 x at 4K Cinematic K8) | User decisions U-accuracy and U-cost. Codex's 1.30 x is reproduced below. |
+
+#### 9.3 Thin objects hybrid (`hybridWithin`, `hybridPlan` in `alareashadowmath.h`)
+
+* A (admitted lights) = **max(A_thin, A_off)**: A_thin is the pure Thin plan's admission (0 when it does not fit inside budget - feed reservation) and A_off the Thin-OFF plan's at the same budget. Both are monotone in the budget, so A is too; Thin ON never admits fewer lights than OFF.
+* If the pure Thin plan draws and admits at least what OFF admits, it is the plan (every admitted light marches Thin). Otherwise A = A_off and the **largest nT** such that `nT` Thin lights and `A - nT` regular lights fit together is searched (nT = A down to 1; nT = 0 is exactly the Thin-OFF plan). The two groups share one resolution (they are drawn into the same targets) and degrade together on the ladder: rays to 8; the Thin far steps to half and the regular steps to their floor; rays to 4; the Thin far steps to their floor. **Superseded in round 3 (section 10.3): the regular group is the Thin-OFF plan, never degraded; only the Thin lights are squeezed.**
+* Cost: a hybrid with Thin lights stays inside budget - feed reservation, which keeps the feed guarantee (every feed draws wherever the OFF feed draws, test 25). The Thin-OFF plan, nT = 0, is unchanged. A feed pass uses the same planner (`feedWorkload` -> `hybridWithin`, `floors = false`). (Round 3 removed the exception that stood here: a Thin main that spent more than the OFF main left its feeds less and cost them lights; there is no feed exception, section 10.1.)
+* `Workload` carries `lead` (the top `lead` lights march `q`), `rest` and `restChannels` (the others march the regular way). Every other plan has `lead == admitted`.
+* **Pipeline**: the planes are separate draws and so are the groups. Per plane the gather loops over the group ranges, sets `area_samples`, `area_steps`, `area_thin_objects` and `area_near_steps` per group (runtime uniforms, no shader reload), and splits draws at each group's own per-draw channel cap; the colour mask writes only the group's channels. A plan that is not a hybrid draws exactly as before.
+* **Coverage row** now reads, e.g., "Soft shadows on 8 of 8 lights (2 thin-quality)" (section 9.5).
+* Gates: C++ test 34 sweeps every preset x 720p..4K x K in {1,3,4,8} x feed reservation 0/8 x visible-set size x budget 1..1500 M (384 000 rows, 77 688 of them hybrids) and asserts both invariants (Thin ON admits at least what OFF admits; admission is monotone in the budget for both), the floors of both groups, the planning limit and per-draw caps of every hybrid, the cost recomputed from the target size. Mutations rejected: the pure Thin plan with a uniform fallback only where Thin does not fit (79 752 rows below OFF) and the capped fallback of round 1 (3 184 rows below OFF). `relight_grain_check.py` re-derives all 512 default-budget rows (now with `lead` and the regular march) by an independent enumeration of the ladder states, asserts Thin ON >= OFF for every height, K, preset and feed reservation, and rejects the no-hybrid mutant. `relight_vcam_dispatch_check.py` runs the production dispatch at a budget that makes a hybrid (Thin ON, 400 M, 1280x720): two marches in separate draws, Thin lights first and lowest indices, every channel drawn once, floors held, near segment only on Thin lights; four more dispatch mutations (rest march ignored, lead march ignored, ...) are rejected.
+
+#### 9.4 Smooth group fade
+
+`ALAreaShadow::admissionStrength(score, firstDropped)` = `smoothstep(1, 1.05, score / firstDropped)` (`kAdmissionWindow = 0.05`), 1 when `firstDropped <= 0` (and when nothing is dropped). The reference is an order statistic (the first dropped light's score), so a rank swap WITHIN the admitted set changes no strength: Codex's case (A = 3, [2, 1.100001, 1.099999, 1]) now gives strengths 1, 1, 1 on either order, and the same swap 3 percent above the threshold ([2, 1.0300001, 1.0299999, 1], strength 0.648) moves no strength by more than 1e-3 (the test bound; measured about 6e-5: the narrower window is 5x steeper, maximum slope 30 per unit of ratio, so the old 1e-4 bound became 1e-3 for a 2e-6 score change); the last-channel-only rule jumps by 0.35 there (mutation rejected). Eight lamps 3 percent apart with budget for three: the top two keep full strength, only the third (within 5 percent of the threshold) fades to 0.648. Frame-pure: this frame's scores only. Uploaded per channel as `area_dropout = 1 - strength` in the plane and channel order actually drawn; a plane that fails allocation fades only the channels that are drawn. A light with strength below 1/255 is not counted as rendered in the Coverage row (`admissionVisible`). The dispatch fixture pins the per-channel upload (and rejects a last-channel-only upload).
+
+#### 9.5 Effective coverage with Thin objects (round 2; superseded by the table in section 3 and section 10.3. Default 1500 M budget, VCam feeds OFF; "T" = lights that march Thin objects quality, the rest march the regular plan)
+
+| Screen, K | Thin OFF (all presets) | Thin ON (all presets) |
+|---|---|---|
+| 1080p K4 | 4 of 4 | 4 of 4 (4 thin-quality) |
+| 1080p K8 | 8 of 8 | 8 of 8 (8 thin-quality; Low 4 rays x 80, others 5 rays x 64) |
+| 4K K4 | 4 of 4 | **4 of 4 (3 thin-quality)**, Thin 4 rays x 57, the fourth light regular 4 x 8 (was 3 of 4) |
+| 4K K8 | 8 of 8 | **8 of 8 (2 thin-quality)**, Thin 4 rays x 64-66, six regular 4 x 8 (was 3 of 8) |
+
+At 4K the lights beyond the Thin ones keep the regular Low march (4 rays x 8 steps) because the budget cannot give every light 48 near steps; at 1080p everything fits Thin. The full 512-row grid is in `final_grain.log`.
+
+#### 9.6 Numbers
+
+**Cost** (section 6): Medium 1080p K4 **1.098 x** HEAD (0.920 vs 0.838 ms), Cinematic 4K K8 **1.317 x** (5.336 vs 4.053 ms), target 1.15 reported, ceiling 2.5; the control reads 1.64 x and 1.96 x.
+
+**Grain** (RMS over 8 light UUIDs of the final filtered image against a 64-ray reference at the plan's own march, /255; limit 8, Medium 1080p K4 limit 6). The gate is unchanged by this round; only the plans are new (Thin ON at 4K is now a hybrid), so the table is round 1 -> round 2:
+
+| Case | Round 1 error (spread) | Round 2 error (spread) |
+|---|---|---|
+| 4K Cinematic K8 / Medium K4 / Low (Thin OFF) | 3.8 (3.7) / 3.1 (3.1) / 5.9 (5.9) | 3.80 (3.69) / 3.11 (3.10) / 5.90 (5.85) |
+| 1080p Low / Medium K4 / Thin Medium K8 | 5.8 / 3.1 / 4.2 | 5.75 (5.69) / 3.12 (3.08) / 4.23 (3.05) |
+| 4K Thin K8: the Thin lights | 6.3 (3.5), 3 lights 4 x 56 | **5.31 (3.77)** 4 x 64 (Low 4.65 (3.28) 4 x 66); the six regular lights 4 x 8: 5.90 (5.85) |
+| 4K Thin K4: the Thin lights | 6.3 (3.5), 3 lights 4 x 56 | **6.76 (3.89)** 4 x 57; the fourth, regular light 4 x 8: 5.90 |
+| Grazing floor (~87 degrees) | 2.3 | 2.34 |
+
+Worst: **6.76/255** (the Thin lights at 4K K4, 4 rays x 57 steps), round 1: 6.32. Medium 1080p K4: 3.12. Pre-P0 still fails 12 configurations (4K Cinematic 24.8).
+
+**Spectrum** (every non-DC bin, limit 2/255): seed-mean detrend Low 1.76, Medium 1.09 (line ratio 3.3 and 3.0, limit 11); **shared structure against the analytic profile (independent detrend): Low 1.84 (band f < .04; .04-.08 0.71; .08-.15 0.26; >= .15 0.18), Medium 0.64** at a fit of blur 2.0 px, scale 1.000, shift -0.5 px. The production-filter stripe mutant (3/255 at 0.094 cycle/px in the rendered output) reads **3.00 and 2.98** and fails; 4x4 interleave 8.77 / 4.23 and the x+y-degenerate rank 4.99 / 2.64 still fail.
+
+**Error against the true 64 x 64 reference (REPORT ONLY, not gated; gate redefined by user decision 10/22)**, so the march bias stays visible: 1080p Low (4 x 8) **36.81**, Medium K4 (8 x 12) **26.26**, High (12 x 20) 17.93, Cinematic K8 (11 x 32) 11.93, Cinematic K4 (22 x 32) 11.71; Thin lights 1080p 3.5-9.3 (4 x 80: 4.44, 8 x 80: 3.64, 5 x 64: 9.29); 4K Low/Medium K4 (4-8 x 8-12) 36.50 / 26.34, 4K 8 x 11 **51.02** (the worst), Cinematic K8 (5 x 16) 34.78, Cinematic K4 (8 x 22) 9.97, High K4 (9 x 20) 18.24, 4K Thin lights 4 x 57: 24.35, 4 x 64: 9.38, 4 x 66: 6.60. Codex's numbers (26/255 at Medium, 37 at Low) are reproduced exactly. Nearly all of it is bias (`mean offset` in the log): the march is too coarse, not noisy. The world-space phase is where it is fixed.
+
+**Group fade window (lead decision 10/22):** with the first 25 percent window a cluster of near-equal lamps with some dropped faded almost out (the dispatch fixture's scores 8 - 0.02 i gave strengths 0.0003-0.0027 at A = 3). The window is now 5 percent: lights more than 5 percent ahead of the first dropped light are untouched, only those right at the threshold fade, so a cluster is slightly lighter overall (the dispatch fixture's near-tied lights, all within 1 percent, still fade: 0.007-0.06).
+
+#### 9.7 Gates of round 2 (historical; the current gates are section 12.9; logs in `.tmp/ws_p0_r3/`)
+
+| Gate | Result | Log |
+|---|---|---|
+| `relight_shader_check.py` (full) | **PASS** (715 s) | `final_shaders.log` |
+| `relight_shader_check.py --area-only --thin-only` | **PASS** | `final_shader_thin.log` |
+| `relight_area_check.py` (includes `relight_vcam_check` and `relight_vcam_dispatch_check` with the hybrid dispatch and 4 new mutants, `relight_contact_check`, orbit, cost, grain, thin, rank) | **PASS** (715 s) | `final_area.log` |
+| `relight_thin_check.py`; `relight_off_check.py`; `relight_rank_check.py` | **PASS**; **PASS**; **PASS** (unmapped-band fixture added) | `final_thin.log`, `final_off.log`, `final_rank.log` |
+| `relight_grain_check.py`; `relight_orbit_check.py`; orbit vs pre-P0 shaders; `relight_cost_check.py`; `relight_vcam_check.py` | **PASS** x5 | `final_grain.log`, `final_orbit.log`, `final_orbit_head.log`, `final_cost.log`, `final_vcam.log` |
+| `relight_contact_check.py`, `relight_vcam_dispatch_check.py` | run inside the area and shader checks above (no stand-alone entry point) | `final_area.log` |
+| Standalone `alrelightmath` tests | **PASS 34/34** | `math.log`, `math_compile.log`, `math_link.log` |
+| `zs_check` per touched .cpp (pipeline, llfloaterdirector, alrelightmath_test) | **PASS** x3 | `zs_*.log` |
+| Three generators `--check` (kit regenerated first, then page sources and manifest) | **PASS** x3 | `director_*_check.log` |
+| `xui_layout_check.py --changed HEAD` | 0 findings (43 files) | `xui_layout.log` |
+| `prebuild_guard.ps1 -ChecksOnly` | **all gates OK except the compile gate**, which stops only at `tests/alframelimiter_test.cpp` (another session's unfinished frame-limiter work: `FramePacer::beginFrame/waitOnce` missing); this change's three TUs (pipeline, llfloaterdirector, alrelightmath_test) PASS in it; kit gen, kit lint, parity, XUI selftest, page sources, themes OK | `prebuild.log` |
+| `git diff --check` | **PASS** | `diff_check.log` |
+
+Notes: line endings. The files changed by this round are LF in the working tree like the index (an earlier tool had left some of them CRLF; git normalises both). Other sessions edit unrelated files of this tree at the same time (`alframelimiter.*`, `alderenderlist.*`, `llviewerdisplay.cpp`, menu XML, ...); none of them is touched by this change.
+
+### 10. Fix round 3 (10/22) - what the third round of reviews changed
+
+Reviews: Codex (P0 x2, P2), Opus (P0, P1 x3, P2), GLM (P1, P2), DeepSeek (P1, P2). Logs and scripts: `.tmp/ws_p0_r4/`. The user decisions of section 9.1 stand.
+
+| # | Finding | Result |
+|---|---|---|
+| P0 1 | Thin ON removed VCam feed shadows (Codex: 720p Low K3 400 M, 8 feed slots, 1024 x 1024 feed: OFF 3 feed lights, ON 2; Opus: 1080p Medium K4 1500 M: 4 of 4 against 2 of 4; 70 of 512 default combinations) | Section 10.1: while feed slots exist a Thin or hybrid main is capped at the Thin-OFF main's cost and the feeds get EXACTLY the OFF allowance. 0 of 512 combinations lose a light at 1500, 1000, 600 and 300 M. The section 9.3 "feed exception" text is gone. |
+| P0 2 | Spectrum gate blind to horizontal structure (per-row mean and per-row fit cancelled y-stripes, a multiplicative y-stripe, +3/255 on every 8th row) | Section 10.2: one global fit of the geometry-derived 2-D expectation plus a quadratic drift in y; seven new production-filter shader mutants, all rejected. The honest spectrum is unchanged (Low 1.85, Medium 0.65 /255): the noise needed no change and no limit was loosened. |
+| P1 3 | The hybrid's regular group was grainier than Thin OFF (4K K4 Cinematic's fourth light 8 x 22 -> 4 x 8, grain 3.5 -> 5.9) | Section 10.3: the regular group is EXACTLY the Thin-OFF plan; the Thin lights get the leftover (possibly none). Asserted in every row of the C++ sweep (384 000 rows) and of the independent grid. |
+| P1 4 | Thin/regular boundary pop under an in-set swap | Section 10.4: each Thin light marches the share `1 - smoothstep(1, 1.05, s_i / s_firstRegular)` of its rays the regular way. Exact at both ends, one ray per step in between, GPU-tested. |
+| P1 5 | Tied lamps vanish: identical nearby lamps tie exactly and the group fade took the whole admitted cluster to 0 | Section 10.5 (LEAD DECISION on the user's behalf): an admitted light never fades below 0.5. |
+| P1 6 | The upsample fallback took the lowest-weight tap even when its geometric weight was rejected (across the edge, or sky) | Only taps with a geometric weight above 0.05 count; otherwise the pixel's own texel. Thin-wall and object-against-sky fixtures; the previous fallback is rejected on both. |
+| P2 | Coverage row, early returns, OOB, division guard, comments, cost control | Section 10.6. |
+
+#### 10.1 Feeds: the Thin or hybrid main is capped at the Thin-OFF main (`hybridWithin(..., capAtRegular)`, `feedWorkload`)
+
+> **Refined in round 4 (section 11.4).** The cap is no longer taken for eight assumed 2048 x 2048 feed slots: `capAtRegular` is gone, the main plan holds back what the feeds LIVE that frame can spend (`feedSpend`). With the old worst case (eight assumed 2048 x 2048 feeds) it is still exactly this cap; the feed allowance rule (exactly the Thin-OFF allowance, no feed exception) is unchanged.
+
+* `regularCost(w)` = pixels x admitted x rays x steps of the regular main plan. `workloadOrUniform` passes `capAtRegular = feedSlots > 0`; `hybridWithin` then plans the pure Thin plan and every hybrid inside `min(budget - feedReservation, regularCost(OFF main))`. The OFF main is planned from the requested K, never the visible set, so the cap is frame-pure.
+* `feedWorkload` computes the feeds' allowance from the Thin-OFF main plan whatever Thin objects is set to, so a feed gets exactly the allowance it gets with Thin OFF; the Thin main costs no more than the OFF main, so main plus eight feeds stay inside the one frame budget; and `hybridWithin` at an equal allowance admits at least what the OFF feed admits.
+* Cost of the rule, measured: with feeds OFF 62 percent of the sweep's main rows keep a Thin march, with feeds ON 25 percent (the Thin lights have to fit under the OFF cost, so Low and Medium rarely do; High and Cinematic at 1080p keep it).
+* Feed tables, Thin ON vs OFF (`feeds_r4.out`; main 720p..4K x feed 512 x 512, 1024 x 1024, 1080p, 2048 x 2048 x 4 presets x K1-8, 512 combinations per budget): feed lights ON < OFF in **0 of 512** at 1500, 1000, 600 and 300 M (round 2: 70, 66, 46, 30), the allowance identical in all 512. Codex's case: 47.2352 M per feed, ON 3 lights (1 x 60 Thin), OFF 3 (4 x 8) (round 2: 22.352 M, 2 lights). Opus's case (1080p Medium K4 1500 M, 1024 x 1024 feed): 162.617 M, ON 4 lights, OFF 4 (round 2: 21.6 M, 2 lights). 1080p Medium K8: 137.734 M, 8 and 8 (round 2: 2 of 8).
+* Admission of a FEED is not monotone in the budget for Thin OFF either (below the floors a feed admits every light at one ray and one step, above them fewer at the floors; that sub-floor planner is unchanged by design, 1 884 steps in the sweep). The asserted invariants are: ON >= OFF at every budget, and ON has no admission drop that OFF does not have (0 extra). The main view's admission IS monotone for both (the 384 000-row sweep).
+* Tests: math test 25 asserts the exact allowance, ON >= OFF admission, ON main <= OFF main, the frame total, Codex's and Opus's cases literally, and a 216 000-row feedWorkload sweep (3 mains x K {1,3,4,8} x 4 presets x 3 feed sizes x the whole slider); test 24 and 34 run with and without feed slots; the independent grid in `relight_grain_check.py` asserts the cost cap in all 512 rows.
+
+#### 10.2 Spectrum gate (`relight_grain_check.py`, shared structure)
+
+* The 2-D expectation is the analytic disk-light visible fraction for EVERY row of the patch (the receiver's own height against the light), never a render. ONE global fit (blur, scale, shift by the smallest residual; gain and offset by least squares) on the row-averaged image, applied to every row, then only a smooth quadratic drift in y (three numbers, at most 0.10/255 here) is removed. Nothing that varies along a row OR along a column can be absorbed.
+* Limits: no bin above 2/255 (the plan's), and above 0.08 cycle/px none above 0.5/255 (new, tighter: the honest high bands read 0.26 and 0.19 at most; a +3/255 line on every 8th row reads 0.75).
+* Honest values (unchanged noise): Low 1.85/255 (bands f < .04 1.85, .04-.08 0.69, .08-.15 0.26, >= .15 0.18), Medium 0.65 (0.65 / 0.45 / 0.19 / 0.18); drift 0.10 / 0.09.
+* Production-filter shader mutants, injected into the rendered image before any measurement (peaks Low / Medium /255): x-stripe 0.094 c/px 3.01 / 2.99; **y-stripe 0.078 c/px 2.83 / 2.94; y-stripe 0.094 3.01 / 3.01; y-stripe 0.03 3.04 / 3.00; multiplicative y-stripe (8/255 of the value) 4.02 / 4.00; diagonal 0.094 2.36 / 2.43; row parity +-3/255 5.98 / 5.99; +3/255 on every 8th row 0.75 in the two upper bands**; all fail. (The round-2 gate read 1.81 / 0.66 on the 0.078 y-stripe.) The 4x4 interleave and the x+y-degenerate rank still fail (8.77 / 4.23, 4.99 / 2.64).
+* A second scene with a horizontal edge was not added: the global 2-D fit already sees every y structure.
+
+#### 10.3 Regular group = Thin-OFF plan (`hybridPlan`)
+
+`hybridWithin` computes the OFF plan first; `hybridPlan(out, thin, off, ..., thinLights, planned)` keeps `rest = off.q` (rays, steps, resolution, per-draw channels) and gives `thinLights` Thin lights the leftover `planned - nR x px x rw`, degrading only the Thin march (rays to 8, far steps to half, rays to 4, far steps to their floor, never below the floors). At full resolution the Thin lights keep it only while 12 rays fit; otherwise that nT is dropped. The search takes the largest nT that fits; nT = 0 is exactly the Thin-OFF plan. DeepSeek's rung-3 ordering finding no longer applies (nothing is degraded jointly), and the division `drawCap / (px x rays x steps)` is guarded (`perRest == 0` returns false before any division).
+
+Coverage with feeds OFF (1500 M): see the table in section 3. Cost of the rule: fewer Thin lights, never fewer or grainier regular ones. Grain: the regular lights read exactly the Thin-OFF values (4K K4 Cinematic 3.14 /255, as OFF; round 2: 5.90 for its fourth light); the Thin lights at 4K read 6.76 (4 x 57), 5.31 (4 x 64), 4.65 (4 x 66) /255, all under the limit 8 (Medium 1080p K4 3.12 <= 6).
+
+#### 10.4 Thin/regular boundary (`thinWeight`, `area_regular_mix`, `area_rest_steps`)
+
+> **Refined in round 4 (sections 11.1 and 11.3).** The Thin group now marches the regular ray count, and the regular share is `1 - max(0.5, smoothstep(...))` (so it is never above 0.5 and a tie keeps half of the rays Thin). The text below is the round-3 design.
+
+* A Thin light i in a hybrid plan marches the share `m_i = 1 - smoothstep(1, 1.05, s_i / s_firstRegular)` of its rays the REGULAR way (the first regular light's score is the reference, an order statistic: swapping two Thin lights changes nothing). The rays are chosen by their stratum (`ray_u < m_i`, the ray's phase index and the pixel phase), so the share is exact in expectation and moves by one ray per 1/rays step; a regular ray uses the uniform offset and `min(area_rest_steps, area_steps)` steps. Cost: every ray costs at most a Thin ray (the regular count is clamped to the Thin count), so the budget holds with no reservation.
+* At a rank swap between the last Thin light and the first regular light the Thin light is entirely regular (share 1); a clear leader (> 5 percent ahead) is all Thin (share 0). Uniforms are runtime (`area_regular_mix` vec4 per channel, `area_rest_steps`), default 0 = every other plan marches exactly as before.
+* `screenSpaceRayUtil.glsl` gets a per-ray `thin` argument (the 10-argument entry point forwards `area_thin_objects`); `relight_rank_check.py` now asserts that undoing exactly those four edits gives HEAD's file byte for byte (it used to assert byte identity with HEAD), and the gather's housing lines in both march branches. `relight_thin_check.py` builds its pinned-older-utility mutants with the gather's single HEAD call (`head_trace_call`).
+* Gates: C++ (`thinWeight` continuity under a swap, the unblended mutation pops by 1); GPU on the 4 cm rail (the regular march misses it, the Thin march catches it, 191/255 apart): share 1 is the regular light byte for byte, share 0 the pure Thin light, eight steps of 1/8 move at most 32/255 (one ray), steps of 1/64 at most 32; the all-rays-at-once mutant pops 191/255, the share-ignoring mutant breaks the identity; the dispatch fixture pins the per-channel upload of the share (from scores, last plane), the step count, and rejects four mutations (upload dropped, last channel only, rank instead of score, step count dropped).
+
+#### 10.5 Tied lamps (lead decision on the user's behalf, 10/22)
+
+Importance is constant within range / 2 of the camera, so identical nearby lamps tie EXACTLY, and `smoothstep(1, 1.05, 1)` is 0: with A < visible every admitted light of the cluster faded out ("No soft shadows right now"). `admittedStrength(score, next) = max(0.5, smoothstep(1, 1.05, score / next))` for an admitted light with importance (a light with score <= 0 stays gone; `admissionStrength` stays the raw term and drives `thinWeight`). This accepts at most a half-strength pop at an exact boundary swap and keeps the strength continuous inside the admitted set (an order statistic and a constant). Tests: eight identical lamps with budget for three keep 0.5, 0.5, 0.5 and count as rendered (the raw rule gave 0, 0, 0: mutation rejected); the 3-percent cluster is unchanged (1, 1, 0.648); the dispatch fixture's near-tied scores now upload dropouts in (0.45, 0.5] and reject the unfloored rule.
+
+#### 10.6 P2 items
+
+* Coverage: "(0 thin-quality)" when Thin was requested and fell back entirely (`mAreaShadowThinRequested`); `coverageText(..., thinRequested, lowMemory)` with an explicit `mAreaShadowLowMemory` published before the early return after planning, so an allocation failure reads "low video memory" and a budget plan of 0 reads "work budget". (wanted and planned were already published before allocation; the dead `planned == ~0u` default is kept for the pure tests.)
+* The plane loop count is clamped by `selected.size` after the truncation (`count = plane x 4 < channels ? min(4, min(channels, size) - plane x 4) : 0`).
+* `hybridPlan` divisions guarded; the header comments and the Work budget / Thin objects settings text no longer say the OFF plan is unchanged (P0.1 applies the resolution rung and the floors to uniform plans too, by design; the Work budget comment states the cap and the rule); kit regenerated, page sources and manifest regenerate unchanged.
+* Cost control: `(3 s + 1) // 2` rays (8 -> 12, never the 13 of `int(1.5 s) + 1`), the actual counts printed; Thin ON and hybrid timing added (section 10.8).
+
+#### 10.7 Grain
+
+Worst P0 configuration unchanged at **6.76/255** (the 4K K4 Low Thin lights, 4 x 57), limit 8; Medium 1080p K4 3.12 (limit 6); worst noise 5.85. Round 2 -> round 3 where plans changed: 4K Cinematic K4 as Thin ON 3.14 (was 5.90 for its fourth light), 4K K8 Medium/High as Thin ON 3.22 (was 5.90 for six regular lights). Error against the true 64 x 64 reference (report only): worst 51.02 (4K, 8 x 11) as before.
+
+#### 10.8 Cost (`relight_cost_check.py`, RTX 5090, viewer not running)
+
+| Config | HEAD plan | P0 plan | HEAD ms | P0 ms | Ratio |
+|---|---|---|---|---|---|
+| Medium 1080p K4 | 8 x 12 half | same, r=2 | 0.845 | 0.919 | 1.087 |
+| Cinematic 4K K8 | 1 x 22 full | 5 x 16 half | 4.070 | 5.349 | 1.314 |
+| Thin Medium 1080p K4 (pure Thin) | 8 x 80 half | same | 3.940 | 4.175 | 1.060 |
+| Thin Low 4K K4 (hybrid: 3 Thin 4 x 57 + 1 regular 4 x 8) | 2 x 80 half | | 4.265 | 4.832 | 1.133 |
+| Thin Low 4K K8 (hybrid: 2 Thin 4 x 66 + 6 regular 4 x 8) | 1 x 80 half | | 4.713 | 5.489 | 1.165 |
+
+Target 1.15 exceeded at Cinematic 4K K8 and the K8 hybrid, accepted (U-cost); ceiling 2.5. The +50 % control (12, 8, 12, 6 and 6 rays, i.e. (3 s + 1) // 2 of 8, 5, 8, 4, 4) reads 1.28-1.96 x its own ratio. Codex's separate measurement (hybrid about 1.14 x at 4K K4/K8, gather draws 2 -> 4) agrees.
+
+#### 10.9 Gates of round 3 (historical; the current gates are section 12.9; logs in `.tmp/ws_p0_r4/`)
+
+| Gate | Result | Log |
+|---|---|---|
+| `relight_shader_check.py` (full; includes the area suite with the production dispatch, contact, orbit, cost, grain, thin and rank) | **PASS** (772 s) | `final_shaders.log` |
+| `relight_shader_check.py --area-only --thin-only` | **PASS** | `final_shader_thin.log` |
+| `relight_area_check.py` | **PASS** (791 s) | `final_area.log` |
+| `relight_thin_check.py`; `relight_off_check.py`; `relight_rank_check.py` | **PASS**; **PASS**; **PASS** | `final_thin.log`, `final_off.log`, `final_rank.log` |
+| `relight_grain_check.py`; `relight_orbit_check.py`; orbit vs pre-P0 shaders; `relight_cost_check.py`; `relight_vcam_check.py` | **PASS** x5 | `final_grain.log`, `final_orbit.log`, `final_orbit_head.log`, `final_cost.log`, `final_vcam.log` |
+| `relight_contact_check.py`, `relight_vcam_dispatch_check.py` | inside the area and shader checks above (no stand-alone entry point) | `final_area.log` |
+| Standalone `alrelightmath` tests | **PASS 34/34** | `math.log`, `math_compile.log`, `math_link.log` |
+| `zs_check` per touched .cpp (pipeline, llfloaterdirector, alrelightmath_test) | **PASS** x3 | `zs_*.log`, `zs_rc.txt` |
+| Three generators `--check` (kit regenerated first: the source-bundle hash covers settings.xml) | **PASS** x3 | `director_*_check.log` |
+| `xui_layout_check.py --changed HEAD` | 0 findings (43 files) | `xui_layout.log` |
+| `prebuild_guard.ps1 -ChecksOnly` | **all gates OK**, including the compile gate (`-Base 4dd9ff661c1 -IncludeTests`) | `prebuild.log` |
+| `git diff --check` | **PASS** | `diff_check.log` |
+
+Notes: the first full run of this round failed only on a syntax slip in a message string of `relight_rank_check.py` (fixed, rank, shader and area gates rerun; the others were unaffected). Other sessions edit unrelated files of this tree (`alframelimiter.*`, `alderenderlist.*`, `llviewerdisplay.cpp`, menu XML, ...); none of them is touched by this change.
+
+### 11. Fix round 4 (10/23) - what the fourth round of reviews changed
+
+Reviews: Codex (P0 x2), Opus (NO P0; P1 x1, P2 x5), GLM (P1 x2, P2 x2), DeepSeek (P0, P1 x2, P2 x3). Logs and scripts: `.tmp/ws_p0_r5/`. The user decisions of section 9.1 and the lead decisions of sections 10 and 11 stand. Lead decisions of this round (10/23): the hybrid's Thin group uses the regular ray count; the regular share of a Thin light is `1 - max(0.5, thinWeight)`; the feed reservation counts the feeds that are live; feed monotonicity is a pre-existing planner limit (section 11.7).
+
+| # | Finding | Result |
+|---|---|---|
+| P0 1 | Boundary ray-count mismatch (Codex: 4K Medium K4, Thin 4 x 64 beside regular 8 x 12, endpoints 22/255 apart filtered; GLM, DeepSeek P1; Opus P2) | Section 11.1: the Thin group of a hybrid marches EXACTLY the regular (Thin-OFF) ray count; only the far steps differ. If that leaves no room for a Thin light the plan has fewer Thin lights, down to none. The boundary light at share 1 is the regular light's estimator byte for byte (raw) and within 0/255 after the production filter, on all 7 production hybrid plans of the grid. |
+| P0 2 | Feed-cap quantity mismatch (DeepSeek: `regularCost(off)` vs `main.iterations`) | Section 11.2: they ARE the same quantity (the Thin-OFF main planned for the requested K, whatever the visible set); both now use `regularCost()`. The proposed cap at `off.iterations` is the one that would be wrong (visible-set dependent). New sweep: main + every live feed <= budget, with the cap of lights and with one visible light, 0 violations in 672 000 rows. |
+| P1 3 | Tied lamps: `thinWeight` had no floor, so exact ties made every Thin light 100 percent regular while Coverage said "thin-quality" (Opus) | Section 11.3: regular share `1 - max(0.5, thinWeight)`; a light counts as thin-quality only while that share is below 0.5. |
+| P1 4 | VCam ON makes Thin objects do nothing (Opus P2-4; the planner reserved for 8 slots x 2048 x 2048) | Section 11.4: the reservation is for the feeds LIVE that frame (count and render target sizes), current state only. |
+| P2 5 | Spectrum drift unbounded; Hann scalloping lets a 2.6/255 half-bin diagonal read 1.88 (Opus) | Section 11.5: drift <= 0.5/255 asserted (reads 0.10 / 0.09); the peak and band reads are zero-padded 2x (the half-bin diagonal reads 2.48 and fails). |
+| P2 6 | Upsample fallback: bilinear `textureLod`, chosen globally (DeepSeek) | Section 11.6: `texelFetch` everywhere, chosen per channel. |
+| P1 7 | The filter program's `depthMap` may be unbound (GLM) | Section 11.6: bound; where, and a static pin with two mutations. |
+| P2 8 | "low video memory" shown for a budget effect (GLM) | Section 11.6: only the explicit allocation-failure flag says it. |
+| P2 9 | Documentation of the 0.5 floor and of the Custom step clamp (Opus) | Section 11.7. |
+| LEAD OVERRULE | Feed admission is not monotone in the budget (Codex P0-2) | Section 11.7: pre-existing planner limit, deferred. |
+
+#### 11.1 Boundary: the Thin group marches the regular ray count (`hybridPlan`, `areaShadowF.glsl`)
+
+* `hybridPlan` starts the Thin lights at `off.q.samples` (the regular, Thin-OFF ray count, which is also the number of disk strata the shader loops over) and never changes it; the ladder is reduced to the far steps (down to the common floor of 8, near steps never thin). The previous Thin ray ladder (rays to 8, to 4) is gone, so DeepSeek's rung-3 ordering remark is moot. The largest number of Thin lights that fits is used, down to none (exactly the Thin-OFF plan).
+* Effect on the default 1500 M grid (VCam feeds OFF): 4K K4 Medium is now the OFF plan (it was 2 Thin lights at 4 x 64 beside 2 regular 8 x 12; the sections 3 and 10 tables are corrected); every other row is unchanged (Low keeps its 3 + 1 and 2 + 6 hybrids at 4 rays). The hybrid sweep of 384 000 rows has 11 588 hybrids (18 944 before) and asserts `thin.samples == rest.samples` in every one; 1 940 of them would have a different Thin ray count under the previous ladder (the mutation, also rejected by a header mutant: lowering the Thin rays first fails tests 24, 34 and 35).
+* GPU: `relight_grain_check.py` section 6b runs the boundary on the 7 distinct production hybrid plans of the grid (4 x 56 / 57 / 66 / 70 / 74 / 78 Thin beside 4 x 8, and 8 x 65 beside 8 x 12, all half resolution), not on a hand-made pair: share 1 equals the regular light byte for byte on the raw gather, **the production-filtered endpoints differ by 0/255 (limit 1)**, share 0 is the pure Thin light, and the raw and the filtered boundary move by at most one ray (raw 64 or 32/255, filtered 37 or 29/255) per 1/rays step. The previous round's plan (Thin 4 x 64 beside regular 8 x 12) on the same fixture differs by 6/255 filtered (22/255 in Codex's 4K scene), above the gate's threshold of 4, so it is a rejected mutation. Shader mutants unchanged: switching all rays at once pops 191/255, ignoring the share breaks the identity.
+* The step clamp at the boundary (Opus P2-5): documented here in round 4 (a regular ray of a Thin light marched `min(area_rest_steps, area_steps)` steps, so a Custom uniform count above the Thin light's steps, 64 against 48 + 8, marched 56). **Removed in round 5 (section 12.4):** the shader now marches the regular step count unclamped (at most 64) and the planner charges the Thin light the larger of the two.
+
+#### 11.2 Feed-cap quantity (DeepSeek P0), reconciled
+
+`hybridWithin` used to cap at `regularCost(off)` = pixels x admitted x rays x steps, `feedWorkload` reserved `main.iterations`. DeepSeek read the second as `min(visible, admitted)` lights and saw 398 M against 99.5 M with two visible lights. That is not what is computed: `feedWorkload` plans its main with the REQUESTED K as the light count (`workload(uniform, ..., requestedLights, ..., requestedLights)`), so `min(K, admitted) == admitted` and both are the Thin-OFF main planned for K. To make this structural, `feedWorkload` now subtracts `regularCost(main)` (the same function the cap and the new `feedSpend` use), and the main-view `off` plan of `hybridWithin` is independent of how many lights are visible (test 35: the reserve `regularCost` is identical for 1, K/2 and K visible lights in all 672 000 rows, and no plan changes with the visible set). The suggested cap at `off.iterations` is the wrong one: `off.iterations` counts only the visible lights, so the Thin plan would depend on the visible set (frame-pure but not stable: the plan would change when a light leaves the frustum). Mutating the reservation to it is rejected by tests 34 and 35. Assertion over the sweep (test 35, 4 mains 720p..4K x K {1,3,4,8} x 4 presets x 7 feed sets x the whole 1..1500 M slider, 672 000 rows): `basisCost(main) + sum over live feeds of basisCost(feed) <= budget` with every feed planned for K lights and again with one visible light per feed (`basisCost` = every admitted light at its group's march, whatever the visible set), including mains with fewer visible lights than K. 0 violations. (Mutation: reserving nothing for the live feeds fails tests 14, 22, 23, 24, 25, 34 and 35.)
+
+#### 11.3 Tied lamps and the Thin share (`regularShare`, `thinQuality`)
+
+`thinWeight(score, firstRegular)` is now `admittedStrength` (floor 0.5, like the admission), `regularShare = 1 - thinWeight` (never above 0.5 for a light with importance; 0 when no regular light follows). The pipeline uploads the regular share per channel and counts a Thin light as thin-quality in the Coverage row only when `regularShare < 0.5` (`thinQuality`): a fully tied cluster reads "(0 thin-quality)". Test: four identical sconces (3 Thin + 1 regular) count 0 thin-quality; mutation without the floor is rejected (test 34); the dispatch fixture uploads `1 - max(0.5, ...)` per channel and plane, and rejects the unfloored rule.
+
+#### 11.4 Feeds that are live (`FeedSet`, `feedSpend`, `LLPrismLens::liveAreaFeeds`)
+
+**Round 5 supersedes two details of this section** (12.1 and 12.3): the extent of a live feed is its FIXED capacity target, not the per-frame render target named below (that one follows the presented FPS), and the set is read from the registry once per frame and a pass is admitted by feed identity. The feed table below uses the per-frame sizes of round 4 and is replaced by the table in 12.1.
+
+* `FeedSet` = the live feeds' count and render target sizes (at most 8; a plain `unsigned` still means that many 2048 x 2048 feeds, the previous assumption, so every earlier test is unchanged). The pipeline builds it from the Prism registry: camera feeds prepared THIS frame at full quality (not preview-only, not the test pattern), `mFrame.mFrame == gFrameCount`, target size. Current state only; the main view and every feed pass of one frame read the same set, and a feed pass that is not in the set (a stale frame) is refused. `capAtRegular` is gone. The main plan's feed pass limit is the live count (`FeedPasses::admit(frame, live_feeds.count)`).
+* Each live feed keeps EXACTLY its Thin-OFF allowance `(budget - regularCost(Thin-OFF main)) / live feeds` (unchanged rule, no feed exception). A feed cannot spend more than `feedSpendBound` = its target (at the request's resolution) x K x requested rays x requested steps, so the main plan holds back `feedSpend` = sum over live feeds of `min(allowance, bound)`, or the whole pool when every feed is bound by its allowance (then the main plan is capped at the Thin-OFF cost, exactly the round-3 rule). With no live feed the main view has the whole budget.
+* **Documented consequence:** turning a camera feed ON can lower the main view's Thin quality (the reservation grows with each live feed up to the pool); it never lowers the number of lights the main view shadows (the regular group is the Thin-OFF plan) nor a feed's lights. Adding a feed can also raise it, because each feed's allowance shrinks with the count.
+* Invariants re-run under the new reservation (test 35, 672 000 rows, the seven feed sets of the table below): Thin ON main admits >= Thin OFF and draws wherever OFF draws (0 violations), main admission is monotone in the budget (0 drops), the feed's allowance is exactly the Thin-OFF allowance, Thin ON feed admission >= OFF (0 rows), no feed admission drop that OFF does not have (0), the frame total above, the feed inside its own bound.
+* Thin coverage, default 1500 M (admitted lights, Thin lights, Thin rays; "rest" is the regular group; `probe2.out`):
+
+| Screen, K | Feeds | Low | Medium | High | Cinematic |
+|---|---|---|---|---|---|
+| 1080p K4 | no live feed | 4/4, all Thin 4r | 4/4, all Thin 8r | 4/4, all Thin 9r | 4/4, all Thin 9r |
+| 1080p K4 | 1 x 1024x576 | 4/4, all Thin 4r | 4/4, all Thin 8r | 4/4, all Thin 7r | 4/4, all Thin 8r |
+| 1080p K4 | 1 x 1280x720 | 4/4, all Thin 4r | 4/4, all Thin 6r | 4/4, all Thin 4r | 4/4, all Thin 8r |
+| 1080p K4 | 2 x 1280x720 | 4/4, all Thin 4r | 4/4, OFF plan (0 Thin) | 4/4, all Thin 4r | 4/4, all Thin 8r |
+| 1080p K4 | 1 x 1920x1080 | 4/4, all Thin 4r | 4/4, OFF plan (0 Thin) | 4/4, all Thin 4r | 4/4, all Thin 8r |
+| 1080p K4 | 2 x 1920x1080 | 4/4, 1 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, all Thin 4r | 4/4, all Thin 8r |
+| 1080p K4 | 8 x 2048x2048 (old worst case) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, all Thin 4r | 4/4, all Thin 8r |
+| 1080p K8 | no live feed | 8/8, all Thin 4r | 8/8, all Thin 5r | 8/8, all Thin 5r | 8/8, all Thin 5r |
+| 1080p K8 | 1 x 1024x576 | 8/8, all Thin 4r | 8/8, 1 Thin 8r + rest 8x12 | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 1080p K8 | 1 x 1280x720 | 8/8, 7 Thin 4r + rest 4x8 | 8/8, OFF plan (0 Thin) | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 1080p K8 | 2 x 1280x720 | 8/8, 1 Thin 4r + rest 4x8 | 8/8, OFF plan (0 Thin) | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 1080p K8 | 1 x 1920x1080 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 1080p K8 | 2 x 1920x1080 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 1080p K8 | 8 x 2048x2048 (old worst case) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 2160p K4 | no live feed | 4/4, 3 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 1 x 1024x576 | 4/4, 2 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 1 x 1280x720 | 4/4, 2 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 2 x 1280x720 | 4/4, 1 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 1 x 1920x1080 | 4/4, 1 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 2 x 1920x1080 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 8 x 2048x2048 (old worst case) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K8 | no live feed | 8/8, 2 Thin 4r + rest 4x8 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 1 x 1024x576 | 8/8, 1 Thin 4r + rest 4x8 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 1 x 1280x720 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 2 x 1280x720 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 1 x 1920x1080 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 2 x 1920x1080 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 8 x 2048x2048 (old worst case) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+
+Set against the previous planner (eight assumed 2048 x 2048 feeds, last row of each block, which is exactly the round-3 cap): at 1080p K4 a single 1024 x 576 or 1280 x 720 feed leaves Thin on every light for every preset, two 720p feeds or one 1080p feed take Medium back to the OFF plan (their allowance can use the whole pool), and at 4K only Low keeps any Thin light with a small feed (the OFF plan uses nearly the whole budget at 4K Medium and above). Rows counted over the whole sweep (Thin lights present): no live feed 55 698, one 1024 x 576 feed 49 472, one 720p feed 46 228, two 720p feeds 39 345, one 1080p feed 38 012, a mixed 1080p + 512 + 640 set 48 205, eight 2048 x 2048 24 042.
+
+#### 11.5 Spectrum gate (`relight_grain_check.py`)
+
+* The fitted quadratic y-drift is asserted <= 0.5/255 (new `SPECTRUM_DRIFT`); honest readings Low 0.10, Medium 0.09 (a 3/255 y-wave of up to one cycle per patch read 1.63 and a 6/255 y-ramp 0.00 before, and passed).
+* The peak and band reads are taken on a grid zero-padded 2x in both axes (the line ratio keeps the unpadded bins its limits were calibrated on). The honest values did not move: Low 1.85/255 (limit 2.0, **margin 0.15**; bands f < .04 1.85, .04-.08 0.74, .08-.15 0.26, >= .15 0.18), Medium 0.66/255 (margin 1.34); seed-mean detrend R2 Low 1.77, Medium 1.11 (limit 2.0), line ratios 3.3 and 3.0 (limit 11). The new mutant, a 2.6/255 diagonal stripe whose frequency lies half-way between two bins of the patch in both axes, reads **2.48 / 2.49** (limit 2.0, margin 0.48) and fails; Opus measured 1.88 for it under the unpadded Hann read. All earlier mutants still fail: x-stripe 3.01 / 2.99, y-stripes 2.83-3.04, multiplicative y-stripe 4.02, diagonal 2.78 / 2.87, row parity 5.98, +3/255 on every 8th row 0.75 in the two upper bands (limit 0.5), interleave 8.77 / 4.23, x+y-degenerate rank 5.83 / 2.83.
+* Opus's remaining notes: a +-3/255 8x8 block pattern reads 0.81 in the spectrum and every 16th row +3/255 reads 0.38. **This section wrongly said both were caught** (by the RMS gate and the 0.5 band limit): neither was (Opus, round 5: the 8x8 block moves the RMS 6.76 -> 7.40 under the limit of 8, and the comb stays under 0.5; 4x4 blocks and every 32nd row +6 were blind too). Round 5 adds a block-structure read and a row read that fail all of them (section 12.5).
+
+#### 11.6 Upsample fallback, `depthMap`, Coverage label
+
+* `areaShadowFilterF.glsl`: every fallback value is a `texelFetch` of ONE source texel (the pixel's own texel, and the chosen tap), and the choice is made PER CHANNEL: among the taps that were geometrically on the centre's surface a channel with a native map (contact fade > 0) takes the lowest hand-over weight, a channel without one the nearest tap (key `ns * fade - 0.001 * bilinear`, vec4). In the harness the filtered-vs-fetched own texel changes 0 strip pixels (the production filter inputs are bound `TFO_POINT`, so the two are equal there): this is robustness against the sampler state, not a measured fix. The per-channel choice is likewise equal to the global one wherever it can matter (a channel with fade < 1 keeps non-zero weights and never reaches the fallback); the thin-wall and object-against-sky fixtures and the previous-fallback mutant (no geometric gate) are unchanged and pass.
+* `depthMap` in the filter (GLM P1): it IS bound. `pipeline.cpp:27272` draws the filter with `bindDeferredShader(gAreaShadowFilterProgram)`, which enables `LLShaderMgr::DEFERRED_DEPTH` (the reserved uniform `"depthMap"`, `llshadermgr.cpp:1526`) on the deferred target at `pipeline.cpp:25024-25030`, and the program is created deferred (`llviewershadermgr.cpp:3621-3626`, `isDeferred = true`). No code change; `relight_rank_check.py` now pins all four facts with two mutations (filter drawn without the deferred binder; binder without the depth bind).
+* Coverage: `coverageText` says "low video memory" only for the explicit allocation-failure flag (`mAreaShadowLowMemory`). The old second clause (`rendered < min(wanted, planned)`) is gone: a plan that admits fewer lights, or a draw or plane cut by the budget, is a work-budget effect.
+
+#### 11.7 Documentation items and the lead overrule
+
+* The 0.5 floor pops by 0.5 at EVERY coverage-boundary crossing, not only at exact ties: when a light crosses from admitted to dropped (or back) its strength goes 0.5 <-> 0, and the Thin share of a light crossing between the last Thin light and the first regular light goes 0.5 <-> 0. What stays continuous is the strength WITHIN the admitted set (an order statistic and a constant), which is what the previous rounds' continuity tests cover. The floor is the lead's decision of 10/22 and 10/23 (tied lamps would otherwise vanish as a group).
+* Not changed (noted): DeepSeek P1 that `lead` is a step function of the budget and of the target size (changing the Work budget or the resolution moves a light from Thin to regular in one frame; both are user actions, like a preset change); GLM's note that the resolution rung, the `max(area_params.z, 1.0)` noise cell and the 2 px filter floor change the Soft-shadows-ON image of the default plan (these are the P0.1 and P0.2 changes of sections 1 and 8; Soft shadows OFF stays byte-identical); DeepSeek P2 that the "planned" test cannot fail while `kAdmissionFloor` is above 1/255 (it is a pure-function property, kept for the case the floor changes).
+* **Lead decision 10/23 (corrected in round 5): the budget-slider feed cliffs are a pre-existing planner limit, but the 55 M -> 56 M drop was NOT.** Codex P0-2 (720p main, Low, K3, eight slots, 512 x 512 feed, 55 M -> 56 M: the allowance rises 4.1102 M -> 4.2352 M and the admission fell 3 -> 2) was called pre-existing in round 4. That was wrong: HEAD keeps 3 lights (2 x 8) at both budgets, and the drop came from the light-dropping rung of the P0.1 ladder (rung 6) being applied to feed plans too (Codex round 5 reproduced it with HEAD's planner against all 512 cached rows). Round 5 applies rung 6 to the main view only (section 12.2); what remains of the old text are HEAD's reservation cliffs, listed precisely there. The assertions "Thin ON >= Thin OFF" and "ON never drops where OFF does not" stay.
+
+#### 11.8 Grain and cost
+
+Grain: worst P0 reference error **6.76/255** (the 4K K4 Low Thin lights, 4 x 57; limit 8), noise 5.85, Medium 1080p K4 3.12 (limit 6): unchanged, because only the plans the fix touches (4K K4 Medium, now the OFF plan, 3.14 /255 class) changed. Grazing floor 2.34 (pre-P0 7.59). Cost (RTX 5090, viewer not running, `final_cost.log`): Medium 1080p K4 1.088x HEAD (0.925 vs 0.850 ms); Cinematic 4K K8 1.335x (5.411 vs 4.054 ms); Thin Medium 1080p K4 (pure Thin) 1.057x (4.185 vs 3.961 ms); Thin Low 4K K4 hybrid (3 Thin 4 x 57 + 1 regular 4 x 8) 1.147x (4.795 vs 4.179 ms); Thin Low 4K K8 hybrid (2 Thin 4 x 66 + 6 regular 4 x 8) 1.169x (5.521 vs 4.723 ms); hard ceiling 2.5, user-accepted target 1.15 exceeded as before at Cinematic 4K K8 and the K8 hybrid. The +50 percent control (rays x 3/2 + 1/2) reads 1.54, 1.97, 1.55, 1.62 and 1.51 x its own ratio (limit 1.05). The boundary change moved no cost: 4K Medium K4 is the OFF plan now and is not in the table.
+
+#### 11.9 Gates of round 4 (historical; the current gates are section 12.9; logs in `.tmp/ws_p0_r5/`)
+
+| Gate | Result | Log |
+|---|---|---|
+| `relight_shader_check.py` (full; includes the area suite with the production dispatch, contact, orbit, cost, grain, thin and rank) | **PASS** (796 s) | `final_shaders.log` |
+| `relight_shader_check.py --area-only --thin-only` | **PASS** (12 s) | `final_shader_thin.log` |
+| `relight_area_check.py` (production dispatch with 40+ mutations, contact) | **PASS** (814 s) | `final_area.log` |
+| `relight_thin_check.py`; `relight_off_check.py`; `relight_rank_check.py` | **PASS**; **PASS**; **PASS** | `final_thin.log`, `final_off.log`, `final_rank.log` |
+| `relight_grain_check.py`; `relight_orbit_check.py`; orbit vs pre-P0 shaders; `relight_cost_check.py`; `relight_vcam_check.py` | **PASS** x5 | `final_grain.log`, `final_orbit.log`, `final_orbit_head.log`, `final_cost.log`, `final_vcam.log` |
+| `relight_contact_check.py`, `relight_vcam_dispatch_check.py` | inside the area and shader checks above (no stand-alone entry point) | `final_area.log`, `final_shaders.log` |
+| Standalone `alrelightmath` tests | **PASS 35/35** (new test 35, 672 000 rows) | `math.log`, `math_compile.log`, `math_link.log` |
+| Header mutations (`mutate_math.py`): feed spend ignored; cap at the visible-set cost; Thin rays lowered first; unfloored regular share; memory label from the heuristic | all five **rejected** (tests 14, 22-25, 34, 35) | `mutate_math.out` |
+| `zs_check` per touched .cpp (pipeline, llprismlens, alrelightmath_test) | **PASS** x3 | `zs_*.log`, `zs_rc.txt` |
+| Three generators `--check` | **PASS** x3 (the settings text change needed no regeneration) | `director_kit_gen_check.log`, `director_page_sources_check.log`, `director_functional_manifest_check.log` |
+| `xui_layout_check.py --changed HEAD` | 0 findings (43 files) | `xui_layout.log` |
+| `prebuild_guard.ps1 -ChecksOnly` | **all gates OK** (it did not fail on the other session's `alframelimiter` files) | `prebuild.log` |
+| `git diff --check` | **PASS** | `diff_check.log` |
+
+Notes: the first full area run of this round failed on a dispatch fixture mutant (`regular_mix_not_per_channel`) that survived because the fixture only looked at the LAST plane's regular-share upload, which holds no Thin light in the fixture's hybrid (Medium needs 8 Thin rays now, so the lead is 2 of 8): the fixture now records every plane's upload, and all mutants are rejected. Edits the permission system denied: none. Other sessions edit unrelated files of this tree (`alframelimiter.*`, `alderenderlist.*`, `llviewerdisplay.cpp`, menu XML, `indra/llwindow/*`, ...); none is touched by this change.
+
+### 12. Fix round 5 (10/23) - what the fifth round of reviews changed
+
+Reviews: Codex (P0 x1), Opus (P0 x1, P2 x5), GLM (P1 x1, P2 x2), DeepSeek (P1 x2, P2 x3). Logs and scripts: `.tmp/ws_p0_r6/`. The user decisions of section 9.1 and the lead decisions of sections 10 and 11 stand. Math tests: 36/36 (new test 36, test 22 rewritten, test 35 unchanged); the pre-existing Python mirror of the planner (`relight_grain_check.py`) follows the header.
+
+| # | Finding | Result |
+|---|---|---|
+| P0 1 | The main Thin plan depends on the presented FPS (Opus): a live feed was reserved at its PER-FRAME target, which `PrismAdaptivePerformance` scales with the frame rate | Section 12.1: each live feed is reserved at its FIXED capacity target (`liveFeedReservationExtent`); the main plan is identical across every adaptive scale and display size. |
+| P0 2 | The 55 M -> 56 M feed-admission drop is introduced by Phase 0 (Codex): rung 6 (fewer lights) applied to feed plans | Section 12.2: rung 6 is main-view only; a feed keeps HEAD's fixed-K fallback. Admission is monotone in the feed allowance (1 536 384 rows, 0 drops); the budget-slider cliffs that remain are HEAD's reservation cliffs, listed. Section 11.7 corrected. |
+| P1 3 | The live feed set is re-queried per pass; passes admitted by a bare count (GLM, DeepSeek) | Section 12.3: one snapshot per `gFrameCount`, passes admitted by feed identity. |
+| P1 4 | Hybrid regular rays clamp their steps to the Thin draw's; the plan undercharges them (DeepSeek) | Section 12.4: unclamped (<= 64), charged `max(Thin steps, regular steps)` everywhere. |
+| P2 5 | Spectrum gate blind to 8x8 / 4x4 blocks and every 16th / 32nd row; the drift assertion never exercised alone (Opus) | Section 12.5: block-structure and row reads; a y-ramp mutant that fails on the drift alone; section 11.5 corrected. |
+| P2 6 | Upsample fallback own texel in a different base alignment than the bilinear neighbourhood (DeepSeek) | Section 12.6. |
+| P2 7 | `coverageText` `planned` parameter dead (GLM) | Removed with its caller argument and `mAreaShadowPlanned`. |
+| P2 8 | Doc: "live" includes offline sources; a display entering view changes the plan; pipeline comment (Opus) | Section 12.7. |
+
+#### 12.1 The main plan does not follow the frame rate (`liveFeedReservationExtent`, `LLPrismLens::liveAreaFeeds`)
+
+* **The defect.** The reservation sized each live feed by `mFrame.mTargetWidth/Height`, which is `bucketedTargetExtent(on-screen display size x prismAppliedResolutionScale())`; with `PrismAdaptivePerformance` on (the default) the scale is driven by `gFPSClamped`. At 1080p K8 Medium with one VCam display about 700 px wide, an FPS dip that takes the scale to 0.7 moved the feed from 1024 to 512 pixels, and the main view went from "1 Thin + 7 regular" to "8 Thin at 4 x 64": every light's ray count halved (a positive feedback loop: low FPS shrinks the feed, the main view spends the freed budget, FPS drops again). That broke the "no timing input" rule and the frame-purity condition of this plan.
+* **The fix.** `liveAreaFeeds` now reports, for each live feed, the FIXED capacity target `LLPrismLens::liveFeedReservationExtent(outputCapacity(slot), aspect)` = `cameraTargetSize(cap, cap, aspect, cap)` (the largest target of the feed's aspect inside the slot's output capacity; capacity 1024: 1024 x 576 at 16:9; 2048: 2048 x 1152), plus the feed's registry slot. It depends on the capacity and the aspect only: not on the displays' on-screen size (so not on the dolly distance either), not on the adaptive resolution scale. The real target of a pass is never larger (asserted over a scale x display grid), so the reservation stays conservative. `outputCapacity` itself follows the user's projector resolution setting and the Gate's held output, never a timer.
+* **Test (math test 36, part 4; `relight_rank_check.py`).** For three fixed sets of live slots (1024 / 1024 + 2048 / 1024 + 1024 + 2048, mixed aspects), every preset x main size (720p, 1080p, 4K) x K x budget: the main plan (admitted, lead, Thin and regular rays and steps, resolution, channels, iterations) is identical for every adaptive scale 0.30 .. 1.00 (15 values) and every display size (96 .. 2560 px) - 32 400 rows, 0 differences. The mutation that reserves from the per-frame target (what the previous round did) changes the plan in 126 of 432 (set, size, K, preset, budget) cells, so the test can fail. Literal: 1024 capacity at 16:9 reserves 1024 x 576, 2048 square 2048 x 2048, a malformed aspect clamps at 1:4. Static pins: the `liveAreaFeeds` extents come from `liveFeedReservationExtent(outputCapacity(slot), ...)` and from nothing named `mResolutionScale`, `gFPS` or `AppliedResolutionScale`; a header mutant halving the capacity fails test 36.
+* **Thin coverage, default 1500 M, with fixed-capacity reservations** (admitted / K, how many of those march Thin, Thin rays; "rest" is the regular group; `probe4.out`). The earlier table in 11.4 used per-frame sizes and is replaced by this one:
+
+| Screen, K | Feeds | Low | Medium | High | Cinematic |
+|---|---|---|---|---|---|
+| 1080p K4 | no live feed | 4/4, all Thin 4r | 4/4, all Thin 8r | 4/4, all Thin 9r | 4/4, all Thin 9r |
+| 1080p K4 | 1 x 1024x576 (capacity 1024) | 4/4, all Thin 4r | 4/4, all Thin 8r | 4/4, all Thin 7r | 4/4, all Thin 8r |
+| 1080p K4 | 2 x 1024x576 | 4/4, all Thin 4r | 4/4, all Thin 5r | 4/4, all Thin 4r | 4/4, all Thin 8r |
+| 1080p K4 | 1 x 2048x1152 (capacity 2048) | 4/4, all Thin 4r | 4/4, OFF plan (0 Thin) | 4/4, all Thin 4r | 4/4, all Thin 8r |
+| 1080p K4 | 8 x 2048x2048 (old worst case) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, all Thin 4r | 4/4, all Thin 8r |
+| 1080p K8 | no live feed | 8/8, all Thin 4r | 8/8, all Thin 5r | 8/8, all Thin 5r | 8/8, all Thin 5r |
+| 1080p K8 | 1 x 1024x576 (capacity 1024) | 8/8, all Thin 4r | 8/8, 1 Thin 8r + rest 8x12 | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 1080p K8 | 2 x 1024x576 | 8/8, 6 Thin 4r + rest 4x8 | 8/8, OFF plan (0 Thin) | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 1080p K8 | 1 x 2048x1152 (capacity 2048) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 1080p K8 | 8 x 2048x2048 (old worst case) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, all Thin 4r | 8/8, all Thin 5r |
+| 2160p K4 | no live feed | 4/4, 3 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 1 x 1024x576 (capacity 1024) | 4/4, 2 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 2 x 1024x576 | 4/4, 2 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 1 x 2048x1152 (capacity 2048) | 4/4, 1 Thin 4r + rest 4x8 | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K4 | 8 x 2048x2048 (old worst case) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) | 4/4, OFF plan (0 Thin) |
+| 2160p K8 | no live feed | 8/8, 2 Thin 4r + rest 4x8 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 1 x 1024x576 (capacity 1024) | 8/8, 1 Thin 4r + rest 4x8 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 2 x 1024x576 | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 1 x 2048x1152 (capacity 2048) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+| 2160p K8 | 8 x 2048x2048 (old worst case) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) | 8/8, OFF plan (0 Thin) |
+
+Reading: the sizes are now a property of the camera (its capacity), so the quality of the main view no longer changes with where the camera is or how fast the viewer runs. A capacity-1024 camera costs the main view less than a capacity-2048 one (a 2048 projector output is the user's own choice); turning a feed on can still lower the main view's Thin quality, never its number of lights (section 11.4).
+
+#### 12.2 Feed admission never falls when the allowance rises (`workloadWithin`, rung 6 is main-view only)
+
+* **The defect (Codex).** Phase 0 applied the light-dropping rung (rung 6) of the P0.1 ladder to feed plans too. 720p Low K3, eight slots, a 512 x 512 feed: at 55 M the feed gets 4.1102 M and plans 3 lights at 2 x 8 (HEAD's plan); at 56 M it gets 4.2352 M and the P0 ladder, which now reaches rung 6 before HEAD's fixed-K fallback, planned 2 lights at 4 x 8 (HEAD: still 3, as HEAD's lights per draw change from 1 to 2). Section 11.7 had called this transition pre-existing; it was not (corrected there).
+* **The fix.** `if (floors && drawn())` before rung 6: only the main view (`floors = true`) drops lights. A capture feed (`floors = false`) runs rungs 1-5 (a plan that fits all K lights at the floors is the same plan as before) and otherwise keeps HEAD's fixed-K fallback from the requested plan: rays and steps fall to 1 for all K lights, then fail closed. A feed therefore admits all K lights or none (never a count in between), and its admission is monotone in its allowance. The same holds for the Thin ON hybrid feed plan (`hybridWithin(..., floors = false)`).
+* **Assertion 1 - the literal case** (test 36, part 1): 55 M and 56 M both admit 3 lights at 2 x 8; the allowance rises; `workloadWithin(..., 4.2352 M, floors = false)` admits 3 and the same call with `floors = true` still drops lights (2 at 4 x 8, never below the 4-ray floor).
+* **Assertion 2 - monotone in the feed ALLOWANCE** (test 36, part 2): every preset x feed size (512 x 288 .. 2048 x 2048, 6 sizes) x K 1..8 x visible count {1, K} x allowance 0 .. 80 M in 20 000 steps, for the Thin OFF plan and the Thin ON hybrid plan: **1 536 384 rows, 0 admission drops when the allowance rose, 0 partial admissions** (admission is K or 0), and Thin ON >= Thin OFF at the same allowance in every row. The mutant that gives feeds rung 6 again fails test 36.
+* **Assertion 3 - what is left over the BUDGET slider** (test 36, part 3): the main plan takes its share first (`regularCost(main)`), so the feed's allowance `(budget - regularCost(main)) / live feeds` itself can FALL as the slider rises. Over 4 mains x K {1,3,4,8} x 4 presets x 4 feed sizes x the whole 1..1500 M slider (384 000 rows, `feedWorkload` as the pipeline calls it) there are **2 955 admission drops for Thin OFF and the same 2 955 for Thin ON; every one coincides with a FALLING allowance and goes to nothing (none partial, none with a rising or equal allowance)**. These are the pre-existing reservation cliffs, an all-or-nothing effect of the main plan switching on:
+  * HEAD, 720p Low K3, 512 x 512 feed: 11 M -> 12 M, 16 M -> 17 M and 22 M -> 23 M, each 3 -> 0 lights (HEAD's main OFF plan jumps up and takes the whole budget at those steps; allowances 0.684 M -> 0.118 M, 0.618 M -> 0.051 M, 0.676 M -> 0.110 M).
+  * Current planner, same case: 14 M -> 15 M and 22 M -> 23 M (3 -> 0; allowances 1.750 M -> 0.032 M and 0.907 M -> 0.110 M). Mechanism at 15 M: one light at the floors needs 7.37 M for its single draw, but the per-draw cap is half the budget, so below 14.75 M the main plan draws nothing and reserves nothing; at 15 M it draws 2 lights (14.7 M), leaving (15 M - 14.7 M) / 8 = 31.8 K per feed. There is none at 55 M -> 56 M.
+  * Over the wider grid of `probe1.cpp` / `probe2.cpp` (4 mains x K {1,2,3,4,5,6,8} x 4 presets x 4 feed sizes x 1500 budgets = 672 000 rows): HEAD 5 323 cliffs, the current planner 5 878; in both, all go to zero and all coincide with a falling allowance (0 with a rising one). The count differs because the P0.1 main ladder (resolution rung, floors) moves where the main plan switches on; the mechanism is HEAD's. Fixing the main-plan switch-on (a smoother reservation) is a separate planner change, deferred.
+  * The sweep of test 25 keeps its assertions (Thin ON feed admission >= Thin OFF; no drop that OFF does not have) and its comment now says this.
+
+#### 12.3 One live-feed snapshot per frame, passes admitted by feed identity (`FeedSet.id`, `FeedPasses::admit`)
+
+* `renderAreaShadows` reads the live set from the Prism registry once per `gFrameCount` (`mAreaLiveFeeds`, `mAreaLiveFeedsFrame` in `LLPipeline`) and uses that snapshot for the main plan and for every feed pass of the frame. Opus confirmed the existing order is safe (the registry prepares every slot at the start of `renderAuxiliaryView`, and only one aux render runs per frame, before the main view); this makes it structural, so a feed that becomes live between the main plan and its own pass can no longer break "main + live feeds <= budget" (GLM, DeepSeek).
+* `FeedPasses::admit(frame, identity, live)` replaces the count: a pass runs only for a feed that is in the frame's live set, and only once per frame, so one Gate source rendered repeatedly cannot use up another live feed's pass (GLM P2). The identity is the registry slot (`FeedSet.id`; `LLPrismLens::activeAreaFeedSlot()` for the pass being rendered, set by `ScopedActivePrismSlot`). A pass of a slot outside the snapshot (a preview-only update, a stale frame) draws nothing.
+* Tests: math test 22 (a source rendered four times gets one pass, the next live feeds still get theirs, a feed outside the set gets none); the production dispatch fixture (`relight_vcam_dispatch_check.py`, real `renderAreaShadows` text): with all eight slots live a repeated slot-0 pass is refused 7 times and slots 1..7 are all admitted in the same frame, two live feeds admit exactly two passes, an unlisted slot is refused, and the registry is queried once per frame. Four new mutants are rejected (`unbounded_passes`, `passes_not_by_identity`, `live_feeds_ignored`, `live_set_read_every_pass`); header mutants fail test 22.
+
+#### 12.4 Hybrid regular rays march the regular step count and are charged for it (`hybridPlan`, `areaShadowF.glsl`)
+
+* The shader no longer clamps `area_rest_steps` to the Thin draw's `area_steps`; it clamps to 64, the largest uniform step count (the CPU already clamps the OFF plan to it). `hybridPlan` charges every Thin light `samples x max(Thin steps, regular steps)` in `perThin` (the fit test and the per-draw cap), the draw's channel count, `iterations` and `basisCost`; the far-step thinning loop stops once the Thin steps are no larger than the regular ones (further thinning saves nothing). The Python mirror of the planner (`thin_group`) follows.
+* In the presets the regular count is below the Thin total (48 + 8 = 56 against 8 .. 32), so no preset plan changes; the case DeepSeek describes (regular steps above the Thin draw's) is Custom with more than 56 regular steps, and the case "regular steps above the Thin FAR steps" (Cinematic uniform 32 against a far floor of 8) occurs in preset plans.
+* Tests. Math test 36, part 5: a synthetic OFF plan of 64 steps beside a Thin request of 56 total - two Thin lights are charged at 64, so a room sized for 56 (232 M) refuses two (265 M needed) and accepts one; the draw channel count and `basisCost` use the larger count; a Custom sweep (4 mains x K x 4 rays x 5 step counts x 2 resolutions x 9 budgets, 134 hybrids, **130 with the regular steps above the Thin far steps**) asserts that every plan is charged at least what its rays march and stays inside the frame budget. GPU (`relight_grain_check.py`, boundary): two more rows (Thin 4 x 56 beside regular 4 x 64, regular steps above the whole Thin draw; and Thin 4 x 56 beside regular 4 x 32, regular steps above the Thin far steps, the Cinematic uniform count), each with share 1 equal to the regular light byte for byte, filtered endpoint 0/255 (limit 1), continuity (a first attempt with 8 rays failed the fixture's own check that the rail separates the two marches, 96/255 against a minimum of 100, and was replaced by 4 rays); a shader mutant that clamps the regular steps to the Thin draw's breaks the identity of the first.
+
+#### 12.5 Spectrum gate: blocks, rows and the drift on its own (`relight_grain_check.py`)
+
+* **New reads of the shared residual** (after the smooth y-drift), beside the spectrum, the drift bound and the bands, for each plan (Low, Medium):
+  * **Block structure.** The square root of the cross-covariance, between two independent halves of the seeds (even and odd), of the HIGH-PASSED block means (each block mean minus the mean of its four neighbours), for blocks of 4, 8 and 16 pixels. The plain block RMS cannot separate a block pattern from the honest noise of the seed mean (Low reads 1.9/255 at 4 x 4 with no mutation); the half-to-half covariance cancels the render noise, and the high-pass removes the smooth misfit of the plan's own penumbra (1.7/255 on the plain block means, equal at every block size). Honest reading: Low 0.31 / 0.63 / 0.95, Medium 0.14 / 0.32 / 0.24 /255; limits **0.8 / 1.2 / 1.5**.
+  * **Row comb.** The largest single row mean: honest 0.41 (Low), 0.28 (Medium); limit **1.0**.
+* **New mutants** (production-filter shader variants adding the structure to the final image, same chain), and which part fails them:
+
+| Mutant | Spectrum peak (Low, Medium) | Block read 4 / 8 / 16, Low | Block read, Medium | Row read (Low, Medium) | Caught by |
+|---|---|---|---|---|---|
+| 4 x 4 blocks, random +-3/255 | 1.97, 0.81 (blind) | 1.71 / 1.27 / 1.15 (limit 0.8 at 4 x 4) | 1.71 / 1.17 / 0.75 | 0.76, 0.84 | block read (4 x 4) |
+| 8 x 8 blocks, random +-3/255 | 1.95, 1.06 (blind) | 1.32 / 2.28 / 1.89 (limit 1.2 at 8 x 8) | 1.26 / 2.14 / 1.56 | 1.27, 1.38 | block read, and also the drift, the row read and the spectrum |
+| +3/255 on every 16th row | 1.85, 0.66 (the honest values) | 0.37 / 0.64 / 0.95 | 0.25 / 0.37 / 0.24 | **2.83, 2.57** (limit 1.0) | row read |
+| +6/255 on every 32nd row | 1.85, 0.66 (the honest values) | 0.42 / 0.65 / 0.97 | 0.32 / 0.39 / 0.31 | **5.48, 5.14** (limit 1.0) | row read |
+
+  Opus's blind mutants are all caught: the 4 x 4 and 8 x 8 blocks by the block read, every 16th row (+3/255) and every 32nd row (+6/255) by the row read; the earlier stripes also trip the new reads, none passes.
+* **The drift on its own.** The stripe loop never exercised the `SPECTRUM_DRIFT` assertion alone. A linear ramp in y across the patch (-3/255 .. +3/255), added to the rendered mean in memory (a shader ramp would clip against the 0 and 1 of the shadowed and lit sides of the patch and stop being a pure function of y), reads **no spectral line** (peaks 1.85 and 0.66, the honest values) and fails **only** the drift assertion (drift 3.10 and 2.96, limit 0.50): the test asserts both. The y-stripe 0.03 c/px mutant also trips it now.
+* **Section 11.5 corrected** (above): neither the 8x8 block nor the 16th-row comb was caught by the previous gate.
+* Honest spectrum unchanged: shared structure Low 1.85/255 (limit 2.0, margin 0.15), Medium 0.66/255; seed-mean detrend Low 1.77, Medium 1.11; drift 0.10 / 0.09 (limit 0.5); the half-bin diagonal mutant 2.48 / 2.49.
+
+#### 12.6 Upsample fallback, own texel in the bilinear base alignment (`areaShadowFilterF.glsl`)
+
+The pixel's own texel is now the nearest tap of the same four-tap neighbourhood the bilinear weights use (`base + (f >= 0.5)`, after the `areaTexelUV` base shift), instead of `floor(uv * res)`, which ignores the shift: the two agree on an even-sized target and differ on half of the pixels of an odd-sized one (255 wide: the trace texels sit on the even full-resolution pixels, an odd pixel is a tie). Tie rule: the higher texel, with the `areaTexelUV` tolerance (`f >= 0.5 - 1e-3`). GPU fixture: the thin wall and the thin object against the sky on an even (256 x 44) and an odd (255 x 45) target take exactly the texel an independent float64 model of the alignment names; the mutant with `floor(uv * res)` differs in 29 strip pixels on the odd target (wall and sky) and in none on the even one; the earlier mutants (no geometric gate; a filtered `textureLod`) still fail/are reported as before; pixels away from the strip are unchanged.
+
+#### 12.7 Documentation, Coverage and small items
+
+* "Live" (section 11.4, `pipeline.cpp`): a feed is live when the registry PREPARED it this frame at full quality. That includes a camera whose source is offline or invalid (it keeps a held publication and still reserves its share of the budget although it renders nothing), and it depends on the camera and the displays: a VCam display entering or leaving view, or the user switching a feed on or off, changes the live set and therefore the main plan (never the number of lights it shadows). The comment in `renderAreaShadows` said "a pass that is not in the set is refused"; it now describes identity admission exactly (12.3).
+* `coverageText(soft, rendered, wanted, thin, thinRequested, lowMemory)`: the dead `planned` parameter is removed with the caller's argument and the `mAreaShadowPlanned` member (published, never read). `wanted` and `thinRequested` are still published before any early return; the wording and its tests are unchanged.
+
+#### 12.8 Grain and cost
+
+Grain (`final_grain.log`): unchanged, because no plan of the default grid changed: worst P0 reference error **6.76/255** (limit 8), noise 5.85, Medium 1080p K4 3.12 (limit 6), grazing floor 2.34 (pre-P0 7.59); the report-only line against the true 64 x 64 reference reads 51.02/255 worst (not gated, user decision 10/22). The planner mirror re-derives every row of the 2 x 4 x 8 x 4 x 2 grid, including the new step charge (`thin_group`).
+
+Cost (RTX 5090, viewer not running, `final_cost.log`; the five plans are the same as in round 4, so differences are run-to-run noise): Medium 1080p K4 **1.114x** HEAD (0.923 vs 0.828 ms); Cinematic 4K K8 **1.315x** (5.400 vs 4.106 ms); Thin Medium 1080p K4 (pure Thin) **1.052x** (4.168 vs 3.963 ms); Thin Low 4K K4 hybrid (3 Thin 4 x 57 + 1 regular 4 x 8) **1.154x** (4.824 vs 4.180 ms); Thin Low 4K K8 hybrid (2 Thin 4 x 66 + 6 regular 4 x 8) **1.171x** (5.530 vs 4.724 ms); hard ceiling 2.5; the user-accepted target of 1.15x is exceeded at Cinematic 4K K8 and the two Low hybrids as before. The +50 percent rays control reads 1.58, 1.95, 1.56, 1.64 and 1.51 x its own ratio (limit 1.05). The feed change costs nothing at render time (it removes a rung from feed plans, never adds work); a feed now admits all K lights where it used to drop some below the floors, inside the same allowance and the same per-feed bound.
+
+#### 12.9 Gates (each run once after the final edit; GPU gates one at a time; logs in `.tmp/ws_p0_r6/`)
+
+| Gate | Result | Log |
+|---|---|---|
+| `relight_shader_check.py` (full; includes the area suite with the production dispatch, contact, orbit, cost, grain, thin and rank) | **PASS** (900 s) | `final_shaders.log` |
+| `relight_shader_check.py --area-only --thin-only` | **PASS** (15 s) | `final_shader_thin.log` |
+| `relight_area_check.py` (production dispatch with 31 mutations incl. the 4 new ones, contact) | **PASS** (920 s) | `final_area.log` |
+| `relight_thin_check.py`; `relight_off_check.py`; `relight_rank_check.py` | **PASS**; **PASS**; **PASS** | `final_thin.log`, `final_off.log`, `final_rank.log` |
+| `relight_grain_check.py`; `relight_orbit_check.py`; orbit vs pre-P0 shaders; `relight_cost_check.py`; `relight_vcam_check.py` | **PASS** x5 | `final_grain.log`, `final_orbit.log`, `final_orbit_head.log`, `final_cost.log`, `final_vcam.log` |
+| `relight_contact_check.py`, `relight_vcam_dispatch_check.py` | inside the area and shader checks above (no stand-alone entry point; `relight_area_check.py --dispatch-only` is a new developer shortcut that stops after the dispatch check, 2 min) | `final_area.log`, `final_shaders.log`, `dev_dispatch.log` |
+| Standalone `alrelightmath` tests | **PASS 36/36** (new test 36; test 22 rewritten) | `math.log`, `math_compile.log`, `math_link.log` |
+| Header mutations (`mutate_math.py`): feed rung 6 restored; Thin lights charged at Thin steps only; `basisCost` without the max; repeated feed pass admitted; unlisted feed admitted; reservation extent at half capacity | all six **rejected** (tests 22, 36) | `mutate_math.out` |
+| `zs_check` per touched .cpp (pipeline, llprismlens, llfloaterdirector, alrelightmath_test) | **PASS** x4 | `zs_*.log`, `zs_rc.txt` |
+| Three generators `--check` | **PASS** x3 (see the note) | `director_kit_gen_check.log`, `director_page_sources_check.log`, `director_functional_manifest_check.log` |
+| `xui_layout_check.py --changed HEAD` | 0 findings (43 files) | `xui_layout.log` |
+| `prebuild_guard.ps1 -ChecksOnly` | **all gates OK** (it did not fail on the other session's `alframelimiter` files) | `prebuild.log` |
+| `git diff --check` | **PASS** | `diff_check.log` |
+
+Notes: (1) the first full run failed on a fixture of this round (a synthetic 8 x 56 Thin beside 8 x 32 regular boundary row separated the two marches by 96/255 on the rail fixture, below that fixture's own minimum of 100); the row became 4 rays and every gate was rerun from the start. (2) `llfloaterdirector.cpp` is part of the Director kit generator's source bundle, so removing the `planned` argument changed the bundle hash in the header of the 41 generated files (XUI pages, `director_kit_index.xml`, `floater_director_v2.xml`, `gen_report.txt`); `director_kit_gen.py` was run once to regenerate them (only the hash line differs) and the three `--check` runs then pass. (3) Edits the permission system denied: none. Other sessions edit unrelated files of this tree (`alframelimiter.*`, `alderenderlist.*`, `llviewerdisplay.cpp`, menu XML, `indra/llwindow/*`, ...); none is touched by this change.
+
+### 13. Fix round 6 (10/23) - change of plan: VCam feed soft shadows default OFF
+
+**User decision 10/23:** "Let's test the main feed. We are waiting too long on vcam. We will cut the new vcam feature if we have to." **VCam feed soft shadows default OFF pending the feed-budget fix (user decision 10/23).** Round 6 was therefore stopped before any planner change landed; the tree's planner, tests and gates are exactly those of round 5 (section 12). Nothing of the HEAD-parity work below was kept.
+
+* **The setting.** `RenderAreaShadowsVCam` ("Also in VCam feeds", Soft shadows card). Its default is `false` (it already was `false` at HEAD; only its settings.xml comment changed, to say that the default is OFF pending the feed-budget fix and what turning it on costs). The pipeline reads it in two places that both fail closed: `areaShadowsAllowedThisView()` (no feed pass is allowed) and `renderAreaShadows` (`if (feeds())` before the live-feed snapshot).
+* **With it OFF no feed reservation or hold-back is applied.** `live_feeds` stays the empty `FeedSet`, `feedReservation()` returns 0 for an empty set, `feedSpend()` returns 0, so the main plan (OFF, Thin and hybrid) is planned against the WHOLE budget exactly as in a build without VCam feeds. `relight_vcam_check.py` runs the view policy in both states of the setting (a feed view is refused when it is off).
+* **With it ON** the round-5 behaviour is unchanged. Known limitation (not fixed): at some budgets a live feed can get FEWER lights than at HEAD, and a feed switched on can lower the main view's quality.
+
+#### 13.1 Findings of the round-6 reviews that are NOT fixed (for the later feed-budget fix)
+
+* **Root cause (Codex P0, Opus P0, GLM P1).** The P0.1 OFF main ladder spends more of the budget than HEAD's OFF main (HEAD walked rays and steps down to 1 before it dropped anything), so the feed allowance `(budget - regularCost(main)) / n` shrinks: 720p Low K3, eight 512 x 512 feeds, 15 M: HEAD 3 lights, now 0; 1440p Cinematic K7, one live feed, 1500 M: HEAD 7, now 0. Section 12.2's "the mechanism is HEAD's" is wrong at 1500 M (a level loss, not a switch-on cliff), and the accepted `{15,23}` pin in test 36 hides the 15 M case.
+* **A fix that was prototyped, swept and then REVERTED** (so it is a ready starting point): plan the OFF main plan inside `budget - feedReservation()` too (`workloadWithin` subtracts the hold-back for uniform plans as well; `workload()` passes `feedReservation` for every `q`; `hybridWithin` plans its `off` plan with the same hold-back, so `hybridWithin` and `feedWorkload` use ONE OFF plan; `hybridWithin` returns `off` for feeds, `floors = false`, before the hybrid loop - DeepSeek P1). With the round-5 `feedReservation` (sum over the live feeds of `min(allowance, need)`) a MIXED live set (for example 2048 + 1:1 + 4:1 feeds, or 512 + 2048) still drew fewer lights than HEAD (the allowance is one number for all feeds, so the reservation must cover the largest need); with `feedReservation = n * min(max_i need_i, (budget - c) / 8)` (c = the cheapest main plan, 8 = the slots HEAD divided by) the sweep (5 mains x 8 uniform marches x K 1..8 x 15 live sets x visible {K, 1} x every 13th budget, 1 113 600 rows, 3 712 000 feed rows) found 0 Thin ON < OFF, 0 non-monotone main, 0 frame-budget violations, 0 feeds below HEAD (eight slots) and 0 below HEAD at the live count. The full 1..1500 M sweep and the dependent math-test rewrites (tests 14, 15, 24, 29, 35, 36 assume the un-held OFF main) were not finished. Script: `.tmp/ws_p0_r7/sweep9.cpp` (HEAD planner copy: `head_ns.h`).
+* **Liveness (DeepSeek P1 vs Opus).** By reading the code, not by a test: `prepareCameraCapture` runs for every slot every frame in `renderAuxiliaryView`, which `llviewerdisplay.cpp` calls BEFORE the main view, and stamps `mFrame.mFrame = gFrameCount` / `mPrepared` from stable state (the displays' visibility, `captureWorkRequired`), never from whether the scheduled render ran (that is a separate path, `render_one`). A slot that renders every 4th frame is therefore live on all frames; the claim that the plan oscillates at the capture cadence is not supported. A unit test for it (a pure predicate in `llprismlens.h`) was not written. Offline, unbound or invalid sources return before `mPrepared = true`, so they are NOT live and reserve nothing; the round-5 wording (section 12.7 and the `pipeline.cpp` comment, "includes a camera whose source is offline or invalid") is wrong on that point and still stands uncorrected in this build. A Gate crossfade can switch a source's inherited capacity 1024 <-> 2048 (`llprismlens.cpp` ~6334), so the live reservation, and with it the main plan, steps at the start and end of a crossfade. These matter only with the setting ON.
+* **Not done:** the spectrum column-mean read (Opus: an every-16th-column +3/255 comb and a penumbra-confined row comb pass; the honest spectrum margin stays 0.15/255) and the Coverage-row fixes for cube/HUD views and stale numbers (DeepSeek P2).
+
+#### 13.2 Gates of this build (logs in `.tmp/ws_p0_r7/`)
+
+See the table in the reply to the lead; the gates run once after the last edit were: `relight_shader_check.py` (full), `relight_area_check.py`, `relight_off_check.py`, `relight_grain_check.py`, the math tests, `zs_check` on the touched .cpp files, the three kit generators `--check`, `xui_layout_check.py`, `prebuild_guard.ps1 -ChecksOnly` and `git diff --check`.
+
+### 14. Gates of round 1 (historical; the current gates are section 12.9; logs in `.tmp/ws_p0_r2/`)
+
+| Gate | Result | Log |
+|---|---|---|
+| `relight_shader_check.py` (full) | **PASS** | `final_shaders.log` |
+| `relight_shader_check.py --area-only --thin-only` | **PASS** | `final_shader_thin.log` |
+| `relight_area_check.py` (includes orbit, cost, grain, thin, rank) | **PASS** | `final_area.log` |
+| `relight_thin_check.py`; `relight_off_check.py`; `relight_rank_check.py` | **PASS**; **PASS**; **PASS** | `final_thin.log`, `final_off.log`, `final_rank.log` |
+| `relight_grain_check.py`; `relight_orbit_check.py`; orbit vs pre-P0 shaders; `relight_cost_check.py` | **PASS** x4 | `final_grain.log`, `final_orbit.log`, `final_orbit_head.log`, `final_cost.log` |
+| Standalone `alrelightmath` tests | **PASS 34/34** | `math.log`, `math_compile.log`, `math_link.log` |
+| `zs_check` per touched .cpp (pipeline, llfloaterdirector, alrelightmath_test) | **PASS** x3 | `zs_*.log` |
+| Three generators `--check` (kit regenerated first, then page sources and manifest) | **PASS** x3 | `director_*_check.log` |
+| `xui_layout_check.py --changed HEAD` | 0 findings (40 files) | `xui_layout.log` |
+| `prebuild_guard.ps1 -ChecksOnly` | **PASS**, all gates | `prebuild.log` |
+| `git diff --check` | **PASS** | `diff_check.log` |

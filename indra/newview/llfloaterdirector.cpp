@@ -1948,8 +1948,12 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         return;
     }
     if (page == "light_rim_tab")
+    {
         if (LLTextBox* status = root->findChild<LLTextBox>("area_shadow_sl_status"))
             mAreaShadowSLStatus = status->getDerivedHandle<LLTextBox>();
+        if (LLTextBox* coverage = root->findChild<LLTextBox>("area_shadow_coverage"))
+            mAreaShadowCoverage = coverage->getDerivedHandle<LLTextBox>();
+    }
     // One-off mapping from the v1 leaf panels in floater_director.xml to the
     // controls re-homed by each generated lazy page. Pages containing only
     // setting-bound kit rows need no Director member binder.
@@ -3147,6 +3151,13 @@ void LLFloaterDirector::refreshLauncherCards()
     {
         if (isWidgetOnScreen(card.mSummary)) setTextIfChanged(card.mSummary, card.mFn());
     }
+    // P0.1: how many of the selected lights really have a soft shadow (rendered, not merely planned). Pure
+    // text from the main view's last pass (ALAreaShadow::coverageText); read here only, never fed back to
+    // rendering. The row is bound with the page (bindPage); a page that was never opened is not looked up.
+    if (LLTextBox* coverage = mAreaShadowCoverage.get())
+        setTextIfChanged(coverage, ALAreaShadow::coverageText(gSavedSettings.getBOOL("RenderAreaShadows"),
+            gPipeline.mAreaShadowAdmitted, gPipeline.mAreaShadowWanted,
+            gPipeline.mAreaShadowThin, gPipeline.mAreaShadowThinRequested, gPipeline.mAreaShadowLowMemory));
 }
 
 void LLFloaterDirector::draw()

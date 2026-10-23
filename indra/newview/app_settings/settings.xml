@@ -21548,14 +21548,14 @@
     </map>
     <key>RenderAreaShadowsVCam</key>
     <map>
-        <key>Comment</key><string>Also trace soft shadows in VCam/Prism camera feeds using only the main view's spare march budget.</string>
+        <key>Comment</key><string>Also trace soft shadows in VCam/Prism camera feeds using only the main view's spare march budget. Default OFF pending the feed-budget fix (user decision 10/23): while it is off no feed budget is held back and the main view plans with the whole budget. Turned on, a feed can get fewer lights than before at some budgets, and turning a feed on can lower the main view's quality.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>Boolean</string>
         <key>Value</key><integer>0</integer>
     </map>
     <key>RenderAreaShadowThinObjects</key>
     <map>
-        <key>Comment</key><string>Catch railings, fences and poles; uses more steps, so soft edges get grainier. Use fewer Shadowed lights or a lower resolution.</string>
+        <key>Comment</key><string>Catch railings, fences and poles. Each light costs more work, so when the work budget cannot cover every light this way, the most important lights get the Thin march and the others keep the regular soft shadow (see Coverage). Turning this on never removes a soft shadow. Use fewer Shadowed lights or a lower resolution to give more lights the Thin march.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>Boolean</string>
         <key>Value</key><integer>0</integer>
@@ -21632,7 +21632,7 @@
     </map>
     <key>RenderAreaShadowBudget</key>
     <map>
-        <key>Comment</key><string>Hard area-shadow march budget in millions/frame (1-1500). Each draw is limited to half. Runtime reductions: rays, then resolution; steps also decrease with Thin objects off, and with it on the far steps thin last, to at most 8 (every preset shares that floor). A Thin objects plan that still cannot fit uses the uniform march. With Thin objects on, the main view leaves each VCam feed at least the budget share it would get with it off (up to what a 2048x2048 feed needs), or falls back to the uniform march.</string>
+        <key>Comment</key><string>Hard area-shadow march budget in millions/frame (1-1500). Each draw is limited to half. Runtime reductions, in order: resolution, rays (down to 8), steps, rays (down to the floor of 4), steps (down to 8; with Thin objects on only the far steps thin, every preset shares that floor), then the least important lights lose their soft shadow (never fewer rays). With Thin objects on, the lights that the budget cannot cover at Thin quality keep exactly the regular march they get with it off (the most important lights get the Thin march with what is left; Thin never admits fewer lights than off), and while VCam soft shadows are on, the main view leaves what the camera feeds that are live that frame can spend (each live feed gets exactly the budget share, and the lights, it gets with Thin objects off), so turning a feed on can lower the main view's Thin quality; with no live feed the main view has the whole budget. The Thin lights of a mixed plan march the same ray count as the regular ones, so only their steps differ. The regular march itself changed in this version: it now also drops to half resolution before it loses rays, and holds the floors above.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>S32</string>
         <key>Value</key><integer>1500</integer>

@@ -292,6 +292,20 @@ def check_contact(g):
     baseline_source=baseline_source.replace('uniform int area_steps;','uniform int area_steps;\nuniform bool area_thin_objects;')
     baseline_source=baseline_source.replace('            float end_gap =',jitter+'            float end_gap =')
     baseline_source=baseline_source.replace(old_phase,'area_steps,offset')
+    # P0.2 (R2 noise) changed the sampler under the contact plumbing. The baseline keeps the committed
+    # pre-contact STRUCTURE (no contact classification, no fade mix) but takes today's noise block and
+    # cell rule, so the byte comparison still isolates the contact plumbing and nothing else.
+    def swap(text,old_text,new_text):
+        assert text.count(old_text)==1,old_text
+        return text.replace(old_text,new_text)
+    baseline_source=swap(baseline_source,'float areaReceiverBias(vec2 uv, vec3 pos);',
+        'float areaReceiverBias(vec2 uv, vec3 pos);\nconst uint AREA_R2_A = 3242174889u;\nconst uint AREA_R2_B = 2447445413u;')
+    baseline_source=swap(baseline_source,'max(area_params.z,0.125)','max(area_params.z,1.0)')
+    noise_begin=gather_source.index('        uvec2 block = pixel >> 3u;')
+    noise_end=gather_source.index('        // Preserve Phase 1 radii')
+    old_noise_begin=baseline_source.index('        uint seed = areaHash(')
+    old_noise_end=baseline_source.index('        // Preserve Phase 1 radii')
+    baseline_source=baseline_source[:old_noise_begin]+gather_source[noise_begin:noise_end]+baseline_source[old_noise_end:]
     original=g['read_shader']
     try:
         g['read_shader']=lambda path: baseline_source if Path(path)==gather_path else original(path)

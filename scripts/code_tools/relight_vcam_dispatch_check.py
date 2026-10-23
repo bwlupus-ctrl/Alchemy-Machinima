@@ -107,7 +107,7 @@ struct Log { template<class T> Log& operator<<(const T&) { return *this; } } log
 #define LL_PROFILE_GPU_ZONE(x)
 #define LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE(x)
 struct Settings {} gSavedSettings;
-bool master=true,feedSetting=true;
+bool master=true,feedSetting=true,thinSetting=false; int budgetSetting=1500;
 template<class T> struct LLCachedControl {
     std::string key; T value;
     LLCachedControl(Settings&,const char* k,T v):key(k),value(v) {}
@@ -115,6 +115,8 @@ template<class T> struct LLCachedControl {
         if(key=="RenderAreaShadows") return T(master);
         if(key=="RenderAreaShadowsVCam") return T(feedSetting);
         if(key=="RenderAreaShadowLights") return T(8);
+        if(key=="RenderAreaShadowThinObjects") return T(thinSetting);
+        if(key=="RenderAreaShadowBudget") return T(budgetSetting);
         return value;
     }
 };
@@ -123,6 +125,19 @@ struct LLViewerCamera {
     float getZoomFactor() const { return 1; }
 };
 namespace LLPrismLens { constexpr unsigned MAX_CAPTURES=8; }
+// The Prism registry's live camera feeds of this frame (fix rounds 4-5): count, fixed capacity target sizes and slot identities (0..n-1),
+// settable by the harness, and the slot of the feed render that is running (set by the harness for each pass).
+unsigned liveFeedCount=8;
+int activeFeedSlot=0;
+unsigned liveFeedQueries=0;
+namespace LLPrismLens {
+inline U32 liveAreaFeeds(U32 (&widths)[MAX_CAPTURES],U32 (&heights)[MAX_CAPTURES],U32 (&slots)[MAX_CAPTURES]) {
+    ++liveFeedQueries;
+    for(unsigned i=0;i<liveFeedCount;++i) { widths[i]=64;heights[i]=48;slots[i]=i; }
+    return liveFeedCount;
+}
+inline S32 activeAreaFeedSlot() { return activeFeedSlot; }
+}
 struct LLUUID {
     unsigned char mData[16]={};
     static const LLUUID null;
@@ -207,11 +222,13 @@ struct LLPipeline {
     bool sPrismPreviewRender=false,sRenderingHUDs=false,sImpostorRender=false,sReflectionRender=false;
     bool routed=false;
     bool mAreaShadowValid=true,mPrismSavedAreaValid=false;
-    unsigned mAreaShadowCount=2,mPrismSavedAreaCount=0;
+    unsigned mAreaShadowCount=2,mPrismSavedAreaCount=0,mAreaShadowWanted=0,mAreaShadowAdmitted=0,mAreaShadowThin=0;
+    bool mAreaShadowThinRequested=false,mAreaShadowLowMemory=false;
     std::array<LLUUID,8> mAreaShadowIDs{},mPrismSavedAreaIDs{};
     Take mRelightAreaTake,mRelightFeedAreaTake,mPrismSavedAreaTake;
     std::array<LLUUID,10> mRelightAreaSlotIDs{},mPrismSavedAreaSlotIDs{};
     ALAreaShadow::FeedPasses mPrismAreaPasses;
+    ALAreaShadow::FeedSet mAreaLiveFeeds; unsigned mAreaLiveFeedsFrame=~0u;
     // Stand-in for the native sampler's shadow_clip; the production dispatch must upload z and w.
     LLVector4 nativeSpotShadowClip() const { LLVector4 v; v.mV[2]=64; v.mV[3]=128; return v; }
     unsigned mAreaShadowQueries[2]={}; bool mAreaShadowQueryPending=false;
@@ -261,7 +278,12 @@ bool gCubeSnapshot=false;
     # Only scene collection is supplied by the fixed fixture objects.
     fixture += '\n'+entry
     fixture += 'ALAreaShadow::Selection<LLUUID> selected; selected.size=count;\n'
-    fixture += 'for(unsigned i=0;i<count;++i) selected.lights[i].id=drawables[i].volume.id;\n'+state+dispatch
+    fixture += 'for(unsigned i=0;i<count;++i) selected.lights[i].id=drawables[i].volume.id;\n'
+    # Light 0 owns native slot 0 (fade .75); the others have no native map.
+    fixture += 'selected.lights[0].shadowMap=true; mShadowSpotLight[0]=&drawables[0]; mSpotLightFade[0]=.75f;\n'
+    # Importance scores for the smooth group fade: light i has score 8 - 0.02 i, so every admitted light is within 5 percent of
+    # the first dropped one whenever lights are dropped, and fades.
+    fixture += 'for(unsigned i=0;i<8;++i) selected.lights[i].score=8.0-0.02*i;\n'+state+dispatch
     fixture += r'''
 }
 void LLPipeline::dispatch() {
@@ -288,6 +310,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         p.mRT->deferredScreen.width=width;p.mRT->deferredScreen.height=height;
         p.mMainRT.deferredScreen.width=32;p.mMainRT.deferredScreen.height=24;
         p.gFrameCount=frame;p.setLights(17+slot*8,light);
+        activeFeedSlot=slot;
         p.begin();
         if(p.areaShadowsActive() || p.mAreaShadowCount || p.deferredLightShape(&p.drawables[0].volume).mV[3]!=-1) return -1;
         p.dispatch();
@@ -320,6 +343,18 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     if(action==3) p.releasePrismLensBuffers();
     if(action==4) release_prism_scratch_entry(p.mPrismLensScratchPool[slot]);
     if(action==5) p.count=slot;
+    if(action==15) liveFeedCount=slot;
+    if(action==16) return int(liveFeedQueries);
+    if(action==14) {
+        // Thin objects ON at a work budget (millions, = slot) that cannot cover every light at Thin quality.
+        p.mRT=&p.mMainRT;p.sPrismLensRender=false;p.count=8;
+        p.mRT->deferredScreen.width=width;p.mRT->deferredScreen.height=height;
+        p.setLights(101,light);
+        thinSetting=true;feedSetting=false;budgetSetting=slot;
+        p.dispatch();
+        thinSetting=false;feedSetting=true;budgetSetting=1500;p.sPrismLensRender=true;
+        return p.mAreaShadowValid;
+    }
     if(action==13) {
         p.mRT=&p.mMainRT;p.sPrismLensRender=false;p.count=slot;
         p.mRT->deferredScreen.width=width;p.mRT->deferredScreen.height=height;
@@ -401,6 +436,8 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         resource_sets.append(live)
         outputs=[]
         seen={}
+        history={}   # every vec4 upload by name, in order (one per plane): the `seen` value is the LAST plane's
+        calls=[]
         errors=[]
         fail_at=0
         fail_from=0
@@ -440,18 +477,25 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
                     g['ui'](g['loc'](current_program,b'depthMap'),1)
                     g['ui'](g['loc'](current_program,b'normalMap'),2)
                     g['ui'](g['loc'](current_program,b'area_source'),3)
-                if event==4: g['ui'](g['loc'](current_program,name),a)
+                if event==4:
+                    calls.append(('i',name.decode(),a))
+                    g['ui'](g['loc'](current_program,name),a)
                 if event==5:
-                    seen[name.decode()]=list(C.cast(pointer,C.POINTER(F))[:a])
+                    seen[('filter:' if current_program==g['area_filter'] else '')+name.decode()]=list(C.cast(pointer,C.POINTER(F))[:a])
                     g['uf'][a](g['loc'](current_program,name),*C.cast(pointer,C.POINTER(F))[:a])
                 if event==6:
-                    seen[name.decode()]=list(C.cast(pointer,C.POINTER(F))[:4*a])
+                    seen[('filter:' if current_program==g['area_filter'] else '')+name.decode()]=list(C.cast(pointer,C.POINTER(F))[:4*a])
+                    history.setdefault(('filter:' if current_program==g['area_filter'] else '')+name.decode(),[]).append(list(C.cast(pointer,C.POINTER(F))[:4*a]))
                     g['uniform4fv'](g['loc'](current_program,name),a,C.cast(pointer,C.POINTER(F)))
                 if event==7: g['uniform4uiv'](g['loc'](current_program,name),a,C.cast(pointer,C.POINTER(U)))
-                if event==8: color_mask(*[bool(a&(1<<i)) for i in range(4)])
+                if event==8:
+                    calls.append(('mask',a))
+                    color_mask(*[bool(a&(1<<i)) for i in range(4)])
                 if event==9:
                     g['active'](0x84C0+b);g['bindTex'](0x0DE1,a)
-                if event==10: g['draw'](4,0,3)
+                if event==10:
+                    calls.append(('draw',))
+                    g['draw'](4,0,3)
                 if event==11: raw[11](a,C.cast(pointer,C.POINTER(g['I'])))
                 if event==12: raw[12](a,pointer)
                 if event==13: raw[13](a,b,pointer)
@@ -522,6 +566,17 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         assert seen.get('area_native_clip')==[64.0,128.0],('native clip upload',seen.get('area_native_clip'))
         assert len(seen.get('area_native_offset',[]))==1 and abs(seen['area_native_offset'][0]-0.04)<1.e-6,\
             ('native receiver offset upload',seen.get('area_native_offset'))
+        # The bilateral filter takes the same hand-over inputs (P0 fix round 1): without them its one-sided hand-over stop is
+        # inert and contact-only taps leak across the band. Every pass of it carries them; the dropout uniform reaches the gather.
+        assert seen.get('filter:area_native_clip')==[64.0,128.0],('filter native clip upload',seen.get('filter:area_native_clip'))
+        assert len(seen.get('filter:area_native_offset',[]))==1 and abs(seen['filter:area_native_offset'][0]-0.04)<1.e-6,\
+            ('filter native receiver offset upload',seen.get('filter:area_native_offset'))
+        assert seen.get('area_dropout')==[0.0,0.0,0.0,0.0],('admission dropout upload',seen.get('area_dropout'))
+        # Fix round 2: the filter takes the per-channel contact fade (a light with no native map keeps its whole kernel across
+        # the hand-over band). Light 0 is mapped (native slot 0 at fade .75), the others are not.
+        assert seen.get('area_contact_fade')==[0.75,0.0,0.0,0.0],('gather contact fade upload',seen.get('area_contact_fade'))
+        assert seen.get('filter:area_contact_fade')==[0.75,0.0,0.0,0.0],('filter contact fade upload',seen.get('filter:area_contact_fade'))
+
         main_outputs=outputs.copy()
         main_live=live.copy()
         main_visibility=read_last().copy()
@@ -624,13 +679,32 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         assert len(live-main_live)==3 and g['np'].array_equal(retained,read_last()),'unused size pruning touched a live camera bucket'
         run(3)
         assert live==main_live
-        # All eight passes may be the SAME feed in one frame. Ninth skips.
+        # Fix round 5 (GLM, DeepSeek P1): feed passes are admitted by FEED IDENTITY (the registry slot), once per frame. With all eight
+        # slots live, a Gate that renders the SAME source over and over gets only its first pass; the other live feeds still get theirs.
         before_draws=len(outputs)
         assert run()==1
-        for _ in range(7): assert run(same_frame=True)==1
         draws=len(outputs)
-        assert draws>before_draws and run(same_frame=True)==0 and len(outputs)==draws
+        assert draws>before_draws
+        for _ in range(7): assert run(same_frame=True)==0 and len(outputs)==draws,'a repeat of one feed used another live feed\'s pass'
+        for other in range(1,8):
+            assert run(slot=other,same_frame=True)==1,('a live feed was starved by the repeats of another',other)
+        assert run(slot=3,same_frame=True)==0
         assert run()==1  # next frame resets accounting, no stale visibility
+        # Fix rounds 4-5: a feed pass is planned from the feeds LIVE this frame. With none live (a stale frame) the pass is refused and
+        # draws nothing; with two live (slots 0 and 1), a pass of any other feed, or a third pass, is refused.
+        run(15,0)
+        draws=len(outputs)
+        assert run()==0 and len(outputs)==draws,'a feed pass with no live feed drew work'
+        run(15,2)
+        assert run()==1 and run(slot=1,same_frame=True)==1 and run(same_frame=True)==0 and run(slot=1,same_frame=True)==0,\
+            'passes per frame are one per live feed'
+        assert run(slot=5,same_frame=True)==0,'a feed that is not in the live set drew work'
+        # The live set is read from the registry ONCE per frame (the main plan and every feed pass reuse the snapshot).
+        queries=run(16)
+        run(15,3)
+        assert run()==1 and run(slot=2,same_frame=True)==1
+        assert run(16)-queries==1,'the live feed set was read more than once in a frame'
+        run(15,8)
         run(3)
         assert live==main_live
         outputs.append(main_outputs[-1])
@@ -655,6 +729,98 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
             ('plane 0 failure freed the spare plane',allocations-before)
         run(7)
         assert not live
+        def gather_draws():
+            """The gather draws of one dispatch, in order: (samples, steps, thin, near, first, last, plane), plane counted from
+            the draws themselves (a plane's draws have strictly increasing first channels)."""
+            state_ints={}
+            out=[]
+            previous_first=-1
+            plane=-1
+            for i,call in enumerate(calls):
+                if call[0]=='i': state_ints[call[1]]=call[2]
+                if call[0]=='draw' and i>0 and calls[i-1][0]=='i' and calls[i-1][1]=='area_count':
+                    first=state_ints['area_first']
+                    if first<=previous_first or plane<0: plane+=1
+                    previous_first=first
+                    out.append((state_ints['area_samples'],state_ints['area_steps'],state_ints['area_thin_objects'],
+                                state_ints['area_near_steps'],first,state_ints['area_count'],plane))
+            return out
+
+        def hybrid_dispatch(millions,width=1280,height=720):
+            calls.clear()
+            history.clear()
+            assert run(14,millions,width,height)==1
+            draws=gather_draws()
+            assert draws,'the hybrid dispatch drew nothing'
+            channels={}
+            for samples,steps,thin,near,first,last,plane in draws:
+                for c in range(first,last):
+                    assert plane*4+c not in channels,('a channel is drawn twice',plane*4+c)
+                    channels[plane*4+c]=(samples,steps,thin,near)
+            return draws,channels
+
+        # Thin objects hybrid through the production dispatch (fix round 2, U-thin): at a work budget that cannot cover every
+        # light at Thin quality the highest ranked lights march Thin objects and the others the regular march, in separate
+        # draws with their own uniforms; every admitted channel is drawn exactly once, the Thin ones first.
+        draws,channels=hybrid_dispatch(400)
+        marches=sorted(set(channels.values()))
+        thin_channels=sorted(c for c,m in channels.items() if m[2]==1)
+        rest_channels=sorted(c for c,m in channels.items() if m[2]==0)
+        assert sorted(channels)==list(range(len(channels))) and len(channels)==8,('every admitted light is drawn once',sorted(channels))
+        assert thin_channels and rest_channels and thin_channels==list(range(len(thin_channels))),\
+            ('the top ranked lights march Thin, the others regular',thin_channels,rest_channels)
+        assert all(channels[c][3]==48 for c in thin_channels) and all(channels[c][3]==0 for c in rest_channels),'near segment only on Thin lights'
+        assert len(marches)==2 and all(m[0]>=4 for m in marches),('both groups keep at least 4 rays',marches)
+        assert min(channels[c][1] for c in rest_channels)>=8 and min(channels[c][1]-48 for c in thin_channels)>=8,'step floors'
+        hybrid_marches=marches
+        # Lights dropped for want of budget: every admitted light fades (smooth group fade, smoothstep(1, 1.05, score / first
+        # dropped score)), uploaded per channel.
+        draws,channels=hybrid_dispatch(24)
+        admitted=len(channels)
+        assert 1<=admitted<8,('this budget drops lights',admitted)
+        expect=[]
+        last_plane=(admitted-1)//4        # the dispatch observation holds the LAST plane's upload
+        for i in range(last_plane*4,admitted):
+            ratio=(8.0-0.02*i)/(8.0-0.02*admitted)
+            t=min(max((ratio-1.0)/0.05,0.0),1.0)
+            # Lead decision 10/22 (tied lamps): an admitted light never fades below half strength.
+            expect.append(1.0-max(0.5,t*t*(3.0-2.0*t)))
+        got=seen.get('area_dropout')
+        assert got is not None and all(abs(got[i]-expect[i])<1.e-5 for i in range(len(expect))) and all(v==0.0 for v in got[len(expect):]),\
+            ('per-channel smooth group fade upload',got,expect)
+        assert all(0.45<v<=0.5 for v in got[:len(expect)]),\
+            'every admitted light within 5 percent of the first dropped one stays lit at half strength (the tied-lamps floor), never faded out'
+        # Hybrid boundary (fix round 4): the Thin lights upload the share of rays that march the regular way,
+        # 1 - max(0.5, smoothstep(1, 1.05, score / score of the first regular light)), per channel (the tied-lamps floor); the
+        # regular march's step count follows.
+        draws,channels=hybrid_dispatch(400)
+        thin_channels=sorted(c for c,m in channels.items() if m[2]==1)
+        lead=len(thin_channels)
+        assert 1<=lead<len(channels),('this budget makes a hybrid',lead,len(channels))
+        planes=(len(channels)+3)//4
+        uploads=history.get('area_regular_mix',[])[-planes:]      # one upload per plane, in plane order
+        assert len(uploads)==planes,('one regular-share upload per plane',len(uploads),planes)
+        mix=uploads[-1]
+        want_all=[]
+        for plane in range(planes):
+            want=[]
+            for i in range(plane*4,plane*4+4):
+                if i<lead:
+                    ratio=(8.0-0.02*i)/(8.0-0.02*lead)
+                    t=min(max((ratio-1.0)/0.05,0.0),1.0)
+                    want.append(1.0-max(0.5,t*t*(3.0-2.0*t)))
+                else: want.append(0.0)
+            want_all.append(want)
+            assert all(abs(uploads[plane][i]-want[i])<1.e-5 for i in range(4)),('regular-march share upload, plane',plane,uploads[plane],want)
+        assert any(v>0.0 for plane in want_all for v in plane),('the Thin lights carry a regular share',want_all)
+        assert all(v<=0.5+1.e-6 for plane in uploads for v in plane),('a Thin light never marches more than half of its rays regular',uploads)
+        # The Thin and the regular group march the SAME ray count (the disk strata must match at the boundary).
+        assert len({m[0] for m in marches})==1,('both groups of a hybrid march the same ray count',marches)
+        rest_steps=[call[2] for call in calls if call[0]=='i' and call[1]=='area_rest_steps']
+        rest_march=[m for m in channels.values() if m[2]==0][0]
+        assert rest_steps and rest_steps[-1]==rest_march[1],('regular-march step count upload',rest_steps,rest_march)
+        run(7)
+        assert not live
 
     exercise(compile_fixture(fixture,'dispatch'))
     # Executable mutations: compile the same assertions against broken
@@ -667,7 +833,10 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         'wrong_consumer': fixture.replace('if (unit >= 0) mRT->areaVisibility','if (unit >= 0) mMainRT.areaVisibility'),
         'stale_prepass': fixture.replace('mAreaShadowValid = false;\n        mAreaShadowCount = 0;',''),
         'missing_eviction': fixture.replace('for (auto& target : entry.rt.areaVisibility) target.release();',''),
-        'unbounded_passes': fixture.replace('if (sPrismLensRender && !mPrismAreaPasses.admit(gFrameCount,LLPrismLens::MAX_CAPTURES)) return;',''),
+        'unbounded_passes': fixture.replace('if (feed_slot < 0 || !mPrismAreaPasses.admit(gFrameCount,static_cast<unsigned>(feed_slot),live_feeds)) return;',''),
+        'passes_not_by_identity': fixture.replace('mPrismAreaPasses.admit(gFrameCount,static_cast<unsigned>(feed_slot),live_feeds)','mPrismAreaPasses.admit(gFrameCount,live_feeds.id[0],live_feeds)'),
+        'live_feeds_ignored': fixture.replace('for (U32 i=0; i<live; ++i) mAreaLiveFeeds.add(feed_widths[i],feed_heights[i],feed_slots[i]);',''),
+        'live_set_read_every_pass': fixture.replace('if (mAreaLiveFeedsFrame != gFrameCount)','if (true)'),
         'missing_gl_restore': fixture.replace('glViewport(viewport[0],viewport[1],viewport[2],viewport[3]);',''),
         'native_clip_dropped': fixture.replace('gAreaShadowProgram.uniform2f(LLStaticHashedString("area_native_clip"),native_clip.mV[2],native_clip.mV[3]);',''),
         'sticky_failure': fixture.replace('take.status = "allocation_failed";',
@@ -675,7 +844,22 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
             'plane_ok[plane] = false;','plane_ok[plane] = false; sticky_frame = gFrameCount ? gFrameCount : 1;'),
         'plane1_failure_drops_all': fixture.replace('plane_ok[plane] = false;','plane_ok[plane] = false; plane_ok[0] = false;'),
         'plane0_failure_frees_spare': fixture.replace('if (!plane_ok[0]) break;','if (!plane_ok[0]) { release_plane(1); break; }'),
-        'native_offset_dropped': fixture.replace('gAreaShadowProgram.uniform1f(LLStaticHashedString("area_native_offset"),\n            std::isfinite(RenderSpotShadowOffset) ? RenderSpotShadowOffset : 0.f);',''),
+        'native_offset_dropped': fixture.replace('gAreaShadowProgram.uniform1f(LLStaticHashedString("area_native_offset"),native_offset);',''),
+        'filter_native_clip_dropped': fixture.replace('gAreaShadowFilterProgram.uniform2f(LLStaticHashedString("area_native_clip"),native_clip.mV[2],native_clip.mV[3]);',''),
+        'filter_native_offset_dropped': fixture.replace('gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_native_offset"),native_offset);',''),
+        'dropout_dropped': fixture.replace('gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_dropout"),1,dropout.mV);',''),
+        'dropout_not_per_channel': fixture.replace('            dropout.mV[i] = static_cast<F32>(1.0-admission[plane*4+i]);',
+            '            if (i+1==count) dropout.mV[i] = static_cast<F32>(1.0-admission[plane*4+i]);'),
+        'tie_floor_dropped': fixture.replace('ALAreaShadow::admittedStrength(','ALAreaShadow::admissionStrength('),
+        'regular_mix_dropped': fixture.replace('gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_regular_mix"),1,regular.mV);',''),
+        'regular_mix_not_per_channel': fixture.replace('            regular.mV[i] = static_cast<F32>(regular_mix[plane*4+i]);',
+            '            if (i+1==count) regular.mV[i] = static_cast<F32>(regular_mix[plane*4+i]);'),
+        'regular_steps_dropped': fixture.replace('gAreaShadowProgram.uniform1i(LLStaticHashedString("area_rest_steps"),work.lead < work.admitted ? work.rest.steps : 0);',''),
+        'regular_mix_from_rank_not_score': fixture.replace('ALAreaShadow::regularShare(selected.lights[i].score,selected.lights[work.lead].score)','ALAreaShadow::regularShare(1.0,0.0)'),
+        'regular_share_floor_dropped': fixture.replace('ALAreaShadow::regularShare(selected.lights[i].score,selected.lights[work.lead].score)','1.0-ALAreaShadow::admissionStrength(selected.lights[i].score,selected.lights[work.lead].score)'),
+        'filter_contact_fade_dropped': fixture.replace('gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_contact_fade"),1,contact_fade.mV);',''),
+        'hybrid_rest_march_ignored': fixture.replace('{work.lead, 8, work.rest, work.restChannels}','{work.lead, 8, work.q, work.restChannels}'),
+        'hybrid_lead_march_ignored': fixture.replace('{0, work.lead, work.q, work.channels}','{0, work.lead, work.rest, work.channels}'),
         'spare_plane_churn': fixture.replace('const U32 kept = llmax(planes_wanted,static_cast<U32>(llclamp(cap(),1,8)) > 4 ? 2u : 1u);','const U32 kept = planes_wanted;'),
     }
     for label,mutated in mutations.items():
@@ -696,4 +880,13 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     g['area_use'](g['area_gather'])
     g['uf'][2](g['loc'](g['area_gather'],b'area_native_clip'),0,0)
     g['uf'][1](g['loc'](g['area_gather'],b'area_native_offset'),0)
+    # ... and the per-channel uniforms (a mapped light 0 at fade .75, the group fade, the Thin march of the hybrid dispatch).
+    for name in (b'area_contact_fade',b'area_dropout',b'area_contact_dist',b'area_regular_mix'):
+        g['uf'][4](g['loc'](g['area_gather'],name),0,0,0,0)
+    for name in (b'area_thin_objects',b'area_near_steps',b'area_rest_steps'):
+        g['ui'](g['loc'](g['area_gather'],name),0)
+    g['area_use'](g['area_filter'])
+    g['uf'][2](g['loc'](g['area_filter'],b'area_native_clip'),0,0)
+    g['uf'][1](g['loc'](g['area_filter'],b'area_native_offset'),0)
+    g['uf'][4](g['loc'](g['area_filter'],b'area_contact_fade'),0,0,0,0)
     print('[RelightQ] VCam production dispatch/GL ownership PASS: zero steady allocations/releases, one allocation per target on resize; Gate cuts, OFF pool cleanup, failure/retry, eviction, close, actual-pass cap and negative mutations',flush=True)

@@ -5264,6 +5264,41 @@ public:
         return slot >= 0 && getOutputRegion(static_cast<U32>(slot), width, height);
     }
 
+    // The slot of the scheduled render that is running now, or -1.
+    S32 activeCaptureSlot() const { return mActiveSlot; }
+
+    // Camera feeds that can run an area-shadow pass THIS frame: prepared this frame at full quality (the preview atlas and the
+    // test pattern never get area shadows). Current state only, stamped with the frame, so the main view and every feed pass of
+    // one frame read the same set and the area-shadow budget split stays frame-pure.
+    // The extent reported for a feed is its FIXED capacity target: the largest target of its aspect inside the slot's output
+    // capacity (the same cameraTargetSize arithmetic the preparation uses, asked for the capacity itself). The per-frame
+    // target (mFrame.mTargetWidth) is scaled by prismAppliedResolutionScale(), which PrismAdaptivePerformance drives from the
+    // presented FPS, and by the on-screen size of the displays; reserving from it made the main view's Thin plan follow the
+    // frame rate and the dolly distance (fix round 5). The capacity is never smaller than the real target, so the reservation
+    // stays conservative.
+    U32 liveAreaFeeds(U32 (&widths)[LLPrismLens::MAX_CAPTURES], U32 (&heights)[LLPrismLens::MAX_CAPTURES],
+                      U32 (&slots)[LLPrismLens::MAX_CAPTURES]) const
+    {
+        U32 count = 0;
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        {
+            const PrismInstance& lens = mLenses[slot];
+            if (!lens.mOccupied || !lens.isCameraFeed() || lens.mPreviewOnly || !lens.mFrame.mPrepared ||
+                lens.mFrame.mFrame != gFrameCount || lens.cameraData()->mSettings.mTestPattern ||
+                !lens.mFrame.mTargetWidth || !lens.mFrame.mTargetHeight)
+            {
+                continue;
+            }
+            const auto fixed = LLPrismLens::liveFeedReservationExtent(
+                outputCapacity(slot), lens.cameraData()->mSettings.mOutputAspect);
+            widths[count] = fixed[0];
+            heights[count] = fixed[1];
+            slots[count] = slot;
+            ++count;
+        }
+        return count;
+    }
+
     bool getOutputOrientation(U32 slot, F32 scale[2], F32 offset[2]) const
     {
         if (slot >= LLPrismLens::MAX_LENSES || !mLenses[slot].mHasOutput)
@@ -10570,6 +10605,16 @@ bool projectorFeedFor(const LLVOVolume* volume, ProjectorFeed& feed)
 bool captureOutputSize(const CaptureHandle& capture, U32& width, U32& height)
 {
     return PrismLensRegistry::instance().captureOutputSize(capture, width, height);
+}
+
+U32 liveAreaFeeds(U32 (&widths)[MAX_CAPTURES], U32 (&heights)[MAX_CAPTURES], U32 (&slots)[MAX_CAPTURES])
+{
+    return PrismLensRegistry::instance().liveAreaFeeds(widths, heights, slots);
+}
+
+S32 activeAreaFeedSlot()
+{
+    return PrismLensRegistry::instance().activeCaptureSlot();
 }
 
 bool projectorRenderParams(const LLVOVolume* volume, LLVector3& params)

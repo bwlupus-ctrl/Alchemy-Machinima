@@ -18,7 +18,7 @@ def check_vcam():
     # No alternate binding route: dispatch and consumers use the same active pack.
     render = method(nv / 'pipeline.cpp', 'void LLPipeline::renderAreaShadows(')
     assert 'sPrismLensRender ? ALAreaShadow::feedWorkload(' in render
-    assert 'mPrismAreaPasses.admit(gFrameCount,LLPrismLens::MAX_CAPTURES)' in render
+    assert 'mPrismAreaPasses.admit(gFrameCount,static_cast<unsigned>(feed_slot),live_feeds)' in render
     assert 'const glm::mat4 view = get_current_modelview();' in render
     assert 'mul_mat4_vec3(view,glm::make_vec3(drawable->getPositionAgent().mV))' in render
     assert 'LLViewerCamera& camera = LLViewerCamera::instance();' in render
@@ -179,8 +179,28 @@ int main() {
         auto main=ALAreaShadow::workloadOrUniform(q,legacyQ,width,width*9/16,selected,budget,cap);
         auto legacy=ALAreaShadow::workload(legacyQ,width,width*9/16,selected,budget,cap);
         auto old=ALAreaShadowBaseline::workload(headQ,width,width*9/16,selected,budget,cap);
-        assert(legacy.q.samples==old.q.samples && legacy.q.steps==old.q.steps && legacy.q.half==old.q.half);
-        assert(legacy.channels==old.channels && legacy.pixels==old.pixels && legacy.iterations==old.iterations);
+        // P0.1 (ray floor, RELIGHT_WORLD_SHADOWS_PLAN) replaced the budget-pressure ORDER of the uniform
+        // plan. The committed header at 4dd9ff661c1 is still the oracle for everything the ladder does not
+        // touch: an undegraded plan, and the regime below the ray floor (one light at 4 rays cannot fit),
+        // which runs the old algorithm unchanged. Elsewhere the new plan must keep the floor.
+        const bool undegraded=old.q.samples==legacyQ.samples && old.q.steps==legacyQ.steps && old.q.half==legacyQ.half;
+        const bool belowFloor=legacy.q.samples<std::min(legacyQ.samples,ALAreaShadow::kRayFloor);
+        if (!old.channels) {
+            // Even 1 ray x 1 step cannot fit: the floors cannot either, nothing is drawn (the q fields of a plan that
+            // draws nothing are unspecified).
+            assert(!legacy.channels && legacy.iterations==0 && old.iterations==0);
+        } else if (undegraded || belowFloor) {
+            assert(legacy.q.samples==old.q.samples && legacy.q.steps==old.q.steps && legacy.q.half==old.q.half);
+            assert(legacy.channels==old.channels && legacy.pixels==old.pixels && legacy.iterations==old.iterations);
+        } else if (!legacy.channels) {
+            // Fix round 1 (review P0 5): below the ray/step floors the MAIN view admits no light at all (never a
+            // sub-floor ray); the previous planner would still have drawn.
+            assert(legacy.admitted==0 && legacy.iterations==0);
+        } else {
+            assert(legacy.channels>0 && legacy.admitted>=1 && legacy.admitted<=cap);
+            assert(legacy.q.samples>=std::min(legacyQ.samples,ALAreaShadow::kRayFloor));
+            assert(legacy.iterations<=legacy.budget);
+        }
         assert(main.budget==old.budget && main.drawCap==old.drawCap);
         for (unsigned feeds:{1u,2u,4u,8u}) {
             auto total=main.channels?main.iterations:0;
@@ -192,12 +212,12 @@ int main() {
             assert(total<=main.budget);
         }
     }
-    std::cout << "[RelightQ] VCam CPU PASS: production view/transaction/comparator, UUID feed admission across permutations and reversed pointers, main/OFF pointer ordering preserved, 1/2/4 feed channel and diagnostic restoration, prepass invalidation, retained targets; HEAD legacy-plan identity and shared budget for 1/2/4/8 feeds\n";
+    std::cout << "[RelightQ] VCam CPU PASS: production view/transaction/comparator, UUID feed admission across permutations and reversed pointers, main/OFF pointer ordering preserved, 1/2/4 feed channel and diagnostic restoration, prepass invalidation, retained targets; pre-P0 legacy-plan identity where the ladder does not apply (ray floor elsewhere) and shared budget for 1/2/4/8 feeds\n";
 }
 '''
     directory = Path('.tmp/relight_step6_cpu').resolve()
     directory.mkdir(parents=True, exist_ok=True)
-    baseline = subprocess.check_output(['git','show','HEAD:indra/newview/alareashadowmath.h'],text=True)
+    baseline = subprocess.check_output(['git','show','4dd9ff661c1:indra/newview/alareashadowmath.h'],text=True)  # pre-P0 planner, pinned
     baseline = baseline.replace('AL_AREA_SHADOW_MATH_H','AL_AREA_SHADOW_BASELINE_H').replace(
         'namespace ALAreaShadow','namespace ALAreaShadowBaseline')
     (directory / 'baseline.h').write_text(baseline,encoding='utf-8')
