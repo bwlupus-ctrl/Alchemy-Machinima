@@ -4519,9 +4519,6 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") == 1 ? "0" : "1");
         gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_HARD_BEAM",
             gSavedSettings.getU32("BDMergeProjectorVolumetricsBeamShadows") == 1 ? "1" : "0");
-        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_FINE_MEDIUM",
-            gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") != 1 &&
-            gSavedSettings.getF32("BDMergeProjectorVolumetricsNoiseStrength") > 0.5f ? "1" : "0");
         // [BDMerge G3.3 Dust / review fix] Dust is a compile-time permutation:
         // with the lever OFF the sampler3D projvol_dust_map (and all dust code)
         // does not exist in the program, so no fragment texture unit is consumed

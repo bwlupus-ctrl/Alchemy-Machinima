@@ -2957,7 +2957,6 @@ void LLPipeline::refreshCachedSettings()
     {
         gPipeline.mProjVolEngineDirty = true;
         BDMergeProjectorVolumetricsEngine = shaft_engine;
-        gSavedSettings.setString("BDMergeProjectorVolumetricsPreset", "");
     }
     BDMergeProjectorVolumetrics = gSavedSettings.getBOOL("BDMergeProjectorVolumetrics");
     BDMergeProjectorVolumetricsResolution = gSavedSettings.getU32("BDMergeProjectorVolumetricsResolution");
@@ -22324,11 +22323,10 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
     const U32 quality = llclamp((U32)definition,0u,3u);
     const bool hard_variant = beam_shadows == 1;
     const bool budget_variant = quality != 1;
-    const bool fine_variant = budget_variant && BDMergeProjectorVolumetricsNoiseStrength > 0.5f;
     const U32 integration_mask = (equiangular() ? 1u : 0u) |
         (airborne_tap() ? 2u : 0u) | (cookie_footprint() ? 4u : 0u);
     const U32 variant_mask = integration_mask | (budget_variant ? 8u : 0u) |
-        (hard_variant ? 16u : 0u) | (fine_variant ? 32u : 0u);
+        (hard_variant ? 16u : 0u);
     static U32 previous_integration_mask = 0;
     // Aux restores the main view's history-valid bit on exit; only the main
     // call consumes this transition, otherwise aux could hide the invalidation.
@@ -22349,8 +22347,7 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
     };
     const bool variant_matches = permutation_on("PROJVOL_INTEGRATION_AB") == (integration_mask != 0) &&
         permutation_on("PROJVOL_BUDGET_ENABLE") == budget_variant &&
-        permutation_on("PROJVOL_HARD_BEAM") == hard_variant &&
-        permutation_on("PROJVOL_FINE_MEDIUM") == fine_variant;
+        permutation_on("PROJVOL_HARD_BEAM") == hard_variant;
     if (!variant_matches &&
         !gDeferredProjectorVolumetricProgram.mShaderFiles.empty())
     {
@@ -22360,7 +22357,6 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
         gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_INTEGRATION_AB", integration_variant);
         gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_BUDGET_ENABLE",budget_variant ? "1" : "0");
         gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_HARD_BEAM",hard_variant ? "1" : "0");
-        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_FINE_MEDIUM",fine_variant ? "1" : "0");
         const bool loaded = gDeferredProjectorVolumetricProgram.createShader();
         if (!loaded || gDeferredProjectorVolumetricProgram.mShaderLevel != shader_level)
         {
@@ -22749,7 +22745,8 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
     if (!aux_direct && quality != 1 && beam_shadows == 1)
     {
         mProjectorShaftCost.hard_detail = max_res;
-        mProjectorShaftCost.shadow_taps = llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);
+        mProjectorShaftCost.shadow_taps = BDMergeProjectorVolumetricsShadowJitterTap ? 1u :
+            llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);
     }
 
     // Deliberately reserve against ALL flagged influence bounds, before shadow
@@ -22763,7 +22760,8 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
         for (LLDrawable* candidate : mLights)
         {
             LLVOVolume* v = candidate->getVOVolume();
-            if (!v || !v->isLightSpotlight()) continue;
+            LLVector3 params;
+            if (!LLPrismLens::projectorRenderParams(v, params)) continue;
             LLUUID id = v->getID();
             if (!isVolumetricShaftEnabled(id))
             {

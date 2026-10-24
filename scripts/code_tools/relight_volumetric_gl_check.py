@@ -72,6 +72,7 @@ class Runner(G.AreaRunner):
         self.termination = None
         self.shaft, self.up = self.link(SHAFT, True), self.link(UP, False)
         self.performance_variants = 'PROJVOL_BUDGET_ENABLE' in shaft_source
+        self.fine_permutation = 'PROJVOL_FINE_MEDIUM' in shaft_source
         self.variants = {(False,False,False,False):self.shaft}
         self.ab=None
         self.fbo, self.vbo = gl.U(), gl.U()
@@ -156,7 +157,8 @@ class Runner(G.AreaRunner):
         marched = self.target('march',tw,th,half and self.mrt)
         pr = self.shaft
         integration = bool(equi or air or footprint) and self.modern
-        fine = budget_steps>0 and (uniforms or {}).get('projvol_noise_strength',0.)>.5
+        # Density is a runtime control; it must not select a shader or reset history.
+        fine = self.fine_permutation and budget_steps>0 and (uniforms or {}).get('projvol_noise_strength',0.)>.5
         variant = (integration,bool(budget_steps>0),bool(hard_beam),bool(fine))
         if self.performance_variants or integration:
             if variant not in self.variants:
@@ -1736,6 +1738,7 @@ def main():
     ap.add_argument('--engines-only',action='store_true',help='frozen Classic/New GL identity, engine switches, presets and scenes')
     ap.add_argument('--performance-only',action='store_true',help='Full identity, continuous-budget motion and hard-beam regression gates')
     ap.add_argument('--performance-cost-only',action='store_true',help='1/3/6 overlapping cones at this resolution, Full/Auto/Fast, soft/hard beam shadows')
+    ap.add_argument('--review-fix-only',action='store_true',help='FIX1 regressions, including explicit startup defines and compiled UI/reservation decisions')
     args = ap.parse_args(); args.out=args.out.resolve(); args.out.mkdir(parents=True,exist_ok=True)
     images = args.out/'images'; images.mkdir(exist_ok=True)
     gl = G.GL(); print('GL:',gl.renderer,flush=True)
@@ -1748,14 +1751,18 @@ def main():
         (args.out/'report.json').write_text(json.dumps(report,indent=2)+'\n')
         print('PASS' if report['passed'] else 'FAIL',args.out/'report.json',flush=True)
         return 0 if report['passed'] else 1
-    if args.performance_only or args.performance_cost_only:
+    if args.performance_only or args.performance_cost_only or args.review_fix_only:
         from relight_volumetric_perf import performance_checks
         host = build_scissor_host(args.out,args.glm_include)
         report = dict(renderer=gl.renderer,size=[args.width,args.height],baseline='13028c968b4',
                       timing='warmed GL_TIME_ELAPSED medians; no upload/readback/CPU cost; fixture costs, not viewer FPS',
                       checks=[],measurements=[])
         try:
-            performance_checks(sys.modules[__name__],args,gl,host,report)
+            if args.review_fix_only:
+                from relight_volumetric_fix1_check import review_checks
+                review_checks(sys.modules[__name__],args,gl,host,report)
+            else:
+                performance_checks(sys.modules[__name__],args,gl,host,report)
         finally:
             host.stdin.close(); assert host.wait(timeout=5)==0
         report['passed'] = all(c['passed'] for c in report['checks'])

@@ -60,7 +60,19 @@ def cpp_checks(V, args, check):
     src = tree.read(PIPE); old = ref.read(PIPE)
     for name in ['renderProjectorVolumetric', 'feedProjectorVolumetricBloom', 'setupSpotLightVolumetric']:
         check('frozen_cpp/' + name, function(src, name.replace('Volumetric', 'VolumetricClassic') if name != 'feedProjectorVolumetricBloom' else 'feedProjectorVolumetricBloomClassic') == rename(function(old, name)))
-    check('new_cpp/dispatch', function(src, 'renderProjectorVolumetricNew').replace('renderProjectorVolumetricNew(', 'renderProjectorVolumetric(') == function(V.G.SourceTree(NEW).read(PIPE), 'renderProjectorVolumetric'))
+    # Require the pinned dispatch with ONLY the reviewed reservation and shader
+    # key fixes. Full's GL identity is checked below across every authored look.
+    expected=function(V.G.SourceTree(NEW).read(PIPE), 'renderProjectorVolumetric')
+    expected=expected.replace('    const bool fine_variant = budget_variant && BDMergeProjectorVolumetricsNoiseStrength > 0.5f;\n','')
+    expected=expected.replace('(hard_variant ? 16u : 0u) | (fine_variant ? 32u : 0u);','(hard_variant ? 16u : 0u);')
+    expected=expected.replace('permutation_on("PROJVOL_HARD_BEAM") == hard_variant &&\n        permutation_on("PROJVOL_FINE_MEDIUM") == fine_variant;',
+                              'permutation_on("PROJVOL_HARD_BEAM") == hard_variant;')
+    expected=expected.replace('        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_FINE_MEDIUM",fine_variant ? "1" : "0");\n','')
+    expected=expected.replace('            if (!v || !v->isLightSpotlight()) continue;',
+                              '            LLVector3 params;\n            if (!LLPrismLens::projectorRenderParams(v, params)) continue;')
+    expected=expected.replace('        mProjectorShaftCost.shadow_taps = llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);',
+                              '        mProjectorShaftCost.shadow_taps = BDMergeProjectorVolumetricsShadowJitterTap ? 1u :\n            llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);')
+    check('new_cpp/dispatch', function(src, 'renderProjectorVolumetricNew').replace('renderProjectorVolumetricNew(', 'renderProjectorVolumetric(') == expected)
     stub = r'''
 #include <algorithm>
 #include <array>
@@ -150,8 +162,18 @@ void renderProjectorVolumetricNew(LLRenderTarget*,bool){engine=1;}
 U32 LLPipeline::BDMergeProjectorVolumetricsEngine=1;
 void refresh(){
 '''+refresh.replace('BDMergeProjectorVolumetricsEngine','LLPipeline::BDMergeProjectorVolumetricsEngine').replace('"LLPipeline::BDMergeProjectorVolumetricsEngine"','"BDMergeProjectorVolumetricsEngine"')+'}\n'+wrapper
+    reviewed=V.G.SourceTree('dbcec8d2b36').read(PIPE)
+    reviewed_refresh=reviewed[reviewed.index('    const U32 shaft_engine ='):reviewed.index('    BDMergeProjectorVolumetrics = gSavedSettings.getBOOL')]
+    switch_stub+='\nvoid reviewedRefresh(){'+reviewed_refresh.replace('BDMergeProjectorVolumetricsEngine','LLPipeline::BDMergeProjectorVolumetricsEngine').replace('"LLPipeline::BDMergeProjectorVolumetricsEngine"','"BDMergeProjectorVolumetricsEngine"')+'}\n'
     main = r'''
 int main(){
+newDefaults();LLPipeline::BDMergeProjectorVolumetricsEngine=1;
+LLSD savedClassic=LLSD::emptyMap();savedClassic["engine"]=0;savedClassic["preset"]="2";
+ALProjectorShaftPresets::applySceneData(savedClassic);reviewedRefresh();
+assert(gSavedSettings.getString("BDMergeProjectorVolumetricsPreset").empty()); // negative control
+LLPipeline::BDMergeProjectorVolumetricsEngine=1;
+ALProjectorShaftPresets::applySceneData(savedClassic);refresh();
+assert(gSavedSettings.getString("BDMergeProjectorVolumetricsPreset")=="2");
 for(int p=0;p<8;++p){
  oldDefaults(); Original::apply(p); auto expected=gSavedSettings.controls;
  newDefaults();gSavedSettings.setU32("BDMergeProjectorVolumetricsEngine",0);
@@ -162,6 +184,7 @@ for(int p=0;p<8;++p){
  }
  assert(gSavedSettings.getBOOL("BDMergeProjectorVolumetricsDust")==expected["BDMergeProjectorVolumetricsDust"].value.asBoolean());
  auto scene=ALProjectorShaftPresets::sceneData();newDefaults();ALProjectorShaftPresets::applySceneData(scene);
+ refresh(); // The renderer refreshes cached settings on the next frame.
  assert(gSavedSettings.getU32("BDMergeProjectorVolumetricsEngine")==0);
  assert(gSavedSettings.getString("BDMergeProjectorVolumetricsPreset")==std::to_string(p));
  for(const char* name:Classic::SHAFT_SETTINGS) assert(gSavedSettings.controls[name].value==expected[name].value);
@@ -169,6 +192,7 @@ for(int p=0;p<8;++p){
 for(const auto& look:ALProjectorShaftLooks::looks()){
  newDefaults(); assert(ALProjectorShaftPresets::apply(look.id));auto saved=ALProjectorShaftPresets::sceneData();
  gSavedSettings.setU32("BDMergeProjectorVolumetricsEngine",0);ALProjectorShaftPresets::applySceneData(saved);
+ refresh();
  assert(gSavedSettings.getU32("BDMergeProjectorVolumetricsEngine")==1);
  assert(gSavedSettings.getString("BDMergeProjectorVolumetricsPreset")==look.id);
  assert(ALProjectorShaftPresets::sceneData()==saved);
@@ -216,9 +240,13 @@ def engine_checks(V, args, gl, report):
     def new_registration(src,end):
         return src[src.index('        gDeferredProjectorVolumetricProgram.mName ='):
                    src.index(end,src.index('        gDeferredProjectorVolumetricProgram.mName ='))].rstrip()
+    expected_registration=new_registration(baseline_manager,'        // Cinematic weather').replace('''        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_FINE_MEDIUM",
+            gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") != 1 &&
+            gSavedSettings.getF32("BDMergeProjectorVolumetricsNoiseStrength") > 0.5f ? "1" : "0");
+''','')
     check('new_shader_registration_unchanged',
           new_registration(manager,'        // Four optional Classic programs') ==
-          new_registration(baseline_manager,'        // Cinematic weather'))
+          expected_registration)
     check('unrelated_shader_cache_features_unchanged',tree.read('indra/llrender/llglslshader.h') ==
           V.G.SourceTree(NEW).read('indra/llrender/llglslshader.h'))
     check('classic_frozen_utility_registration',
@@ -277,10 +305,11 @@ def engine_checks(V, args, gl, report):
                     check('classic_bytes/%s/%s/%s'%(name,half,rim),a.tobytes()==b.tobytes())
             for look in V.parse_looks()['looks']:
                 spec=V.look_spec(V.look_state(look,defaults))
-                # Exercise Auto's actual fractional budget and both beam kernels.
+                # Full is the immutable New reference. Budgeted integration has
+                # dedicated before-fails/after-passes FIX1 radiance regressions.
                 for hard in (False,True):
-                    _,a,_=V.render_look(before,fixture,spec,budget_steps=5.75,hard_beam=hard)
-                    _,b,_=V.render_look(after,fixture,spec,budget_steps=5.75,hard_beam=hard)
+                    _,a,_=V.render_look(before,fixture,spec,hard_beam=hard)
+                    _,b,_=V.render_look(after,fixture,spec,hard_beam=hard)
                     check('new_bytes/%s/%s/hard=%s'%(name,look['id'],hard),a.tobytes()==b.tobytes())
         fixture=fixtures['outside']; frames=V.micro_frames(fixture,count=9)
         # Classic temporal references include the original first-frame behavior.

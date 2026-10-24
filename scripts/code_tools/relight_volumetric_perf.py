@@ -6,6 +6,42 @@ import numpy as np
 
 BASE = '13028c968b4'
 
+# The pre-fix 4K capture's largest Full p10/p90 deviation was 8.0%; allow 10%
+# for warmed median noise. This is a bound on cost, not a target speed-up.
+COST_TOLERANCE = .10
+# Only Fast-vs-Auto gets a small warmed timing allowance. Both must actually
+# beat Full. The old 10% bracket remains an independent, unmodified gate.
+ORDER_NOISE_MS = .03
+ORDER_NOISE_FRACTION = .02
+SIX_CONE_COST_RATIO = .60
+TARGET_4K_MS = {('Auto','soft'):6.7, ('Fast','soft'):7.8,
+                ('Auto','hard'):7.0, ('Fast','hard'):6.3}
+
+
+def cost_bounds(measurements):
+    failures=[]
+    for n in (1,3,6):
+        for shadows in ('soft','hard'):
+            group={m['mode']:m for m in measurements if m['cones']==n and m['shadows']==shadows}
+            full=group.get('Full',{}).get('median_ms',0.)
+            for mode in ('Auto','Fast'):
+                actual=group.get(mode,{}).get('median_ms',float('inf'))
+                if not (0. < actual <= full*(1.+COST_TOLERANCE)):
+                    failures.append(dict(cones=n,shadows=shadows,mode=mode,median_ms=actual,full_ms=full))
+                if not (0. < actual <= full):
+                    failures.append(dict(rule='cheaper_than_Full',cones=n,shadows=shadows,mode=mode,
+                                         median_ms=actual,full_ms=full))
+                if n==6 and not (0. < actual <= full*SIX_CONE_COST_RATIO):
+                    failures.append(dict(rule='six_cone_saving',cones=n,shadows=shadows,mode=mode,
+                                         median_ms=actual,full_ms=full,maximum_ratio=SIX_CONE_COST_RATIO))
+            auto=group.get('Auto',{}).get('median_ms',0.)
+            fast=group.get('Fast',{}).get('median_ms',float('inf'))
+            noise=max(ORDER_NOISE_MS,auto*ORDER_NOISE_FRACTION)
+            if not (0. < fast <= auto+noise):
+                failures.append(dict(rule='Fast_before_Auto',cones=n,shadows=shadows,mode='Fast',
+                                     median_ms=fast,auto_ms=auto,noise_ms=noise))
+    return failures
+
 
 def performance_checks(V, args, gl, host, report):
     def check(name, passed, **data):
@@ -64,10 +100,42 @@ def performance_checks(V, args, gl, host, report):
                     result=timed(after,mode,n,hard)
                     report['measurements'].append(dict(cones=n,mode=name,shadows='hard' if hard else 'soft',**result))
                     print(name,n,'hard' if hard else 'soft',result,flush=True)
-        check('cost_bracket',len(report['measurements'])==21,size=[args.width,args.height],warmups=8,samples=max(args.repeats,15),
+        failures=cost_bounds(report['measurements'])
+        check('cost_bracket',len(report['measurements'])==21 and not failures,
+              tolerance=COST_TOLERANCE,order_noise_ms=ORDER_NOISE_MS,order_noise_fraction=ORDER_NOISE_FRACTION,
+              six_cone_maximum_ratio=SIX_CONE_COST_RATIO,failures=failures,size=[args.width,args.height],warmups=8,samples=max(args.repeats,15),
               controls=dict(Resolution=32,ShadowSamples=2,SoftProjectorShadows=True,BloomFeed=1.85,TemporalBlend=.86,TemporalReject=3.),
               fixture='Cinematic Haze medium, identical inside cones, no rim; GPU draw costs only')
+        inflated=[dict(m,median_ms=m['median_ms']*10 if m['mode']=='Auto' else m['median_ms']) for m in report['measurements']]
+        rejected=cost_bounds(inflated)
+        check('cost_bracket_negative_control',len({(v['cones'],v['shadows']) for v in rejected if v['mode']=='Auto'})==6,
+              inflated_auto_factor=10.,rejected=rejected)
+        # Freeze the actual FIX1 regressions, rather than only a cartoon 10x
+        # slowdown. This must fail ordering and savings while the old gate passes.
+        fix1=[]
+        for mode,shadow,values in (
+            ('Full','soft',(2.792,7.402,14.444)),('Full','hard',(1.809,4.541,8.722)),
+            ('Auto','soft',(2.480,6.024,6.582)),('Auto','hard',(1.866,4.760,9.100)),
+            ('Fast','soft',(1.875,4.770,13.804)),('Fast','hard',(1.866,4.753,9.163))):
+            fix1.extend(dict(mode=mode,shadows=shadow,cones=n,median_ms=ms) for n,ms in zip((1,3,6),values))
+        rejected=cost_bounds(fix1)
+        old_bracket_passes=all(next(m['median_ms'] for m in fix1 if m['cones']==n and m['shadows']==shadow and m['mode']==mode)
+                              <=next(m['median_ms'] for m in fix1 if m['cones']==n and m['shadows']==shadow and m['mode']=='Full')*(1.+COST_TOLERANCE)
+                              for n in (1,3,6) for shadow in ('soft','hard') for mode in ('Auto','Fast'))
+        check('FIX1_cost_negative_control',
+              old_bracket_passes and any(v.get('rule')=='Fast_before_Auto' and v['cones']==6 and v['shadows']=='soft' for v in rejected) and
+              all(any(v.get('rule')=='six_cone_saving' and v['mode']==mode and v['shadows']==shadow for v in rejected)
+                  for mode,shadow in (('Fast','soft'),('Auto','hard'),('Fast','hard'))),
+              old_bracket_passes=old_bracket_passes,rejected=rejected)
+        if (args.width,args.height)==(4096,2160):
+            misses=[dict(mode=m['mode'],shadows=m['shadows'],median_ms=m['median_ms'],target_ms=TARGET_4K_MS[m['mode'],m['shadows']])
+                    for m in report['measurements'] if m['cones']==6 and (m['mode'],m['shadows']) in TARGET_4K_MS
+                    and m['median_ms']>TARGET_4K_MS[m['mode'],m['shadows']]]
+            check('4K_targets',not misses,failures=misses)
         return
+
+    from relight_volumetric_fix1_check import review_checks
+    review_checks(V,args,gl,host,report)
 
     # Full proves byte identity against the requested commit, including raw MRT,
     # full-res surface rims and bloom, not a same-source toggle comparison.

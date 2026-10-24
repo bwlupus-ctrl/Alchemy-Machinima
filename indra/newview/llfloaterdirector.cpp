@@ -3185,12 +3185,12 @@ void LLFloaterDirector::addLauncherCard(const std::string& id,
 void LLFloaterDirector::refreshLauncherCards()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshLauncherCards");
-    if (!mLauncherClock.due()) return;
     if (LLTextBox* cost = mShaftCost.get())
     {
         if (isWidgetOnScreen(cost) && mShaftCostClock.due())
             setTextIfChanged(cost,gPipeline.projectorShaftCostReadout());
     }
+    if (!mLauncherClock.due()) return;
     // Read live Preferences on refresh; no setting callback or shader listener.
     LLTextBox* status = mAreaShadowSLStatus.get();
     if (!status)
@@ -3902,7 +3902,11 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
     {
         std::vector<std::string> v = settings;
         const auto& shafts = ALProjectorShaftPresets::trackedSettings();
-        v.insert(v.end(), shafts.begin(), shafts.end());
+        // Engine and preset have one authoritative owner: projector_shafts.
+        // Do not replay stale duplicate selectors from scene["settings"].
+        for (const auto& name : shafts)
+            if (name != "BDMergeProjectorVolumetricsEngine" && name != "BDMergeProjectorVolumetricsPreset")
+                v.push_back(name);
         const std::vector<std::string>& roto = ALRotoInk::settings();
         v.insert(v.end(), roto.begin(), roto.end());
         const std::vector<std::string>& tron = ALTron::settings();

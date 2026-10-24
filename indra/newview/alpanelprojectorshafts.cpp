@@ -32,6 +32,8 @@ bool ALPanelProjectorShafts::postBuild()
     });
     mEngineConnection = gSavedSettings.getControl("BDMergeProjectorVolumetricsEngine")->getSignal()->connect(
         [this](LLControlVariable*, const LLSD&, const LLSD&) { refreshPresets(); });
+    mPresetConnection = gSavedSettings.getControl("BDMergeProjectorVolumetricsPreset")->getSignal()->connect(
+        [this](LLControlVariable*, const LLSD&, const LLSD&) { refreshPresets(); });
     refreshPresets();
     return LLPanel::postBuild();
 }
@@ -49,7 +51,8 @@ void ALPanelProjectorShafts::refreshPresets()
     {
         for (const auto& look : ALProjectorShaftLooks::looks()) mPreset->add(look.label, LLSD(look.id));
     }
-    mPreset->selectFirstItem();
+    if (!mPreset->setSelectedByValue(gSavedSettings.getString("BDMergeProjectorVolumetricsPreset"), true))
+        mPreset->selectFirstItem();
 }
 
 void ALPanelProjectorShafts::onVisibilityChange(bool visible)

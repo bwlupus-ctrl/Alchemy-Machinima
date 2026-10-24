@@ -18,6 +18,7 @@ private:
     void refreshPresets();
     LLComboBox* mPreset = nullptr;
     boost::signals2::scoped_connection mEngineConnection;
+    boost::signals2::scoped_connection mPresetConnection;
     LLTextBox* mShaftCost = nullptr;
     LLView* mFlowGrid = nullptr;
     ALLiveReadoutClock mCostClock{0.5f}; // same launcher-clock pattern, every 2 s
