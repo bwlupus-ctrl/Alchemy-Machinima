@@ -22109,6 +22109,11 @@ static F32 projvolCoverage(bool valid, const glm::vec4& sphere, F32 width, F32 h
            llclamp((sphere.w-sphere.y)/llmax(height,1.f),0.f,1.f);
 }
 
+static U32 projvolEffectiveDefinition(U32 definition, bool hard)
+{
+    return hard ? 1u : llclamp(definition,0u,3u);
+}
+
 static F32 projvolStepBudget(U32 definition, bool adaptive, F32 coverage,
                              F32 height, U32 min_res, U32 max_res,
                              F32 max_steps, F32 big_cap, F32 frame_budget,
@@ -22320,8 +22325,9 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
     static LLCachedControl<bool> pyramid_scissor(gSavedSettings, "BDMergeProjectorVolumetricsPyramidScissor", true);
     static LLCachedControl<U32> definition(gSavedSettings, "BDMergeProjectorVolumetricsDefinition", 0);
     static LLCachedControl<U32> beam_shadows(gSavedSettings, "BDMergeProjectorVolumetricsBeamShadows", 0);
-    const U32 quality = llclamp((U32)definition,0u,3u);
     const bool hard_variant = beam_shadows == 1;
+    // Hard always uses Full's adaptive steps and bypasses every cap/reservation.
+    const U32 quality = projvolEffectiveDefinition(definition,hard_variant);
     const bool budget_variant = quality != 1;
     const U32 integration_mask = (equiangular() ? 1u : 0u) |
         (airborne_tap() ? 2u : 0u) | (cookie_footprint() ? 4u : 0u);
@@ -22742,13 +22748,6 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
     const F32 frame_limit = finite_cap(frame_budget,48.f,1024.f);
     static const LLStaticHashedString sBeamShadows("projvol_hard_beam_shadows");
     gDeferredProjectorVolumetricProgram.uniform1i(sBeamShadows, beam_shadows == 1 ? 1 : 0);
-    if (!aux_direct && quality != 1 && beam_shadows == 1)
-    {
-        mProjectorShaftCost.hard_detail = max_res;
-        mProjectorShaftCost.shadow_taps = BDMergeProjectorVolumetricsShadowJitterTap ? 1u :
-            llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);
-    }
-
     // Deliberately reserve against ALL flagged influence bounds, before shadow
     // admission or pyramid/scissor rejection. An entering cone's clipped sphere
     // area starts at zero, so it cannot suddenly steal another cone's budget.

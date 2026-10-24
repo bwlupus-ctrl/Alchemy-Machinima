@@ -9,21 +9,34 @@ BASE = '13028c968b4'
 # The pre-fix 4K capture's largest Full p10/p90 deviation was 8.0%; allow 10%
 # for warmed median noise. This is a bound on cost, not a target speed-up.
 COST_TOLERANCE = .10
-# Only Fast-vs-Auto gets a small warmed timing allowance. Both must actually
-# beat Full. The old 10% bracket remains an independent, unmodified gate.
+# Soft Fast-vs-Auto gets a small warmed timing allowance. Both beat Full.
 ORDER_NOISE_MS = .03
 ORDER_NOISE_FRACTION = .02
+# Hard runs the identical Full program. FIX4's 720p/4K sweep measured a 1.35%
+# maximum warmed-median spread: allow 2%, with the existing 0.03 ms floor for
+# sub-ms draws. Reports retain p10/p90 and measured spread; no Hard saving gate.
+HARD_COST_TOLERANCE = .02
 SIX_CONE_COST_RATIO = .60
-TARGET_4K_MS = {('Auto','soft'):6.7, ('Fast','soft'):7.8,
-                ('Auto','hard'):7.0, ('Fast','hard'):6.3}
+TARGET_4K_MS = {('Auto','soft'):6.7, ('Fast','soft'):7.8}
+
+
+def hard_cost_noise(full):
+    return max(ORDER_NOISE_MS, full*HARD_COST_TOLERANCE)
 
 
 def cost_bounds(measurements):
     failures=[]
-    for n in (1,3,6):
+    for n in sorted({m['cones'] for m in measurements}):
         for shadows in ('soft','hard'):
             group={m['mode']:m for m in measurements if m['cones']==n and m['shadows']==shadows}
             full=group.get('Full',{}).get('median_ms',0.)
+            if shadows == 'hard':
+                for mode in ('Auto','Fast'):
+                    actual=group.get(mode,{}).get('median_ms',float('inf'))
+                    if not (0. < actual and abs(actual-full) <= hard_cost_noise(full)):
+                        failures.append(dict(rule='Hard_equals_Full',cones=n,shadows=shadows,mode=mode,
+                                             median_ms=actual,full_ms=full,noise_ms=hard_cost_noise(full)))
+                continue
             for mode in ('Auto','Fast'):
                 actual=group.get(mode,{}).get('median_ms',float('inf'))
                 if not (0. < actual <= full*(1.+COST_TOLERANCE)):
@@ -59,6 +72,14 @@ def performance_checks(V, args, gl, host, report):
         return float(np.clip((v[3]-v[1])/w,0,1)*np.clip((v[4]-v[2])/h,0,1)) if v[0] else 1.
 
     scenes = V.fixtures(args.width,args.height)
+    pipe=(V.G.REPO/'indra/newview/pipeline.cpp').read_text(encoding='utf-8')
+    effective={f'{mode}/{int(hard)}':V.host_request(host,'K',[mode,int(hard)])[0]
+               for mode in (0,1,2,3) for hard in (False,True)}
+    check('Hard_Full_allocation',all(effective[f'{mode}/1']==1 and effective[f'{mode}/0']==mode
+          for mode in (0,1,2,3)) and
+          'const U32 quality = projvolEffectiveDefinition(definition,hard_variant);' in pipe and
+          'if (quality != 1 && frame_limit > 0.f)' in pipe,
+          effective_definition=effective)
     recovery=V.host_request(host,'V',[])
     shader_mgr=(V.G.REPO/'indra/newview/llviewershadermgr.cpp').read_text(encoding='utf-8')
     check('variant_failure_reload_recovery',recovery==[0.,0.,0.,1.,3.,1.] and 'gPipeline.projectorVolumetricShaderLoaded(success,' in shader_mgr,
@@ -77,6 +98,11 @@ def performance_checks(V, args, gl, host, report):
         after = rig.runners(spec['dust'])['after']; before = V.Runner(V.G.SourceTree(BASE),gl)
         before.host = host
         f = scenes['inside']; cov = sphere(f)
+        def summarize(runs, steps):
+            totals=[sum(s.values()) for s in runs]
+            return dict(steps_per_cone=steps,
+                        median_ms=float(np.median(totals)),p10_p90_ms=np.percentile(totals,[10,90]).tolist(),
+                        stages_ms={k:float(np.median([s.get(k,0) for s in runs])) for k in runs[0]})
         def timed(runner, mode, n, hard):
             steps = budget(mode,cov,args.height//2,32,n*cov)
             history = np.zeros((args.height//2,args.width//2,4),np.float32)
@@ -87,28 +113,54 @@ def performance_checks(V, args, gl, host, report):
                 stats['temporal_ms']=runner.temporal_ms
                 runner.bloom_feed(f,1.85,1.,stats)
                 if k>=8:runs.append(stats)
-            totals=[sum(s.values()) for s in runs]
-            return dict(steps_per_cone=steps if mode!=1 else 32.,
-                        median_ms=float(np.median(totals)),p10_p90_ms=np.percentile(totals,[10,90]).tolist(),
-                        stages_ms={k:float(np.median([s.get(k,0) for s in runs])) for k in runs[0]})
-        for n in (1,3,6):
+            return summarize(runs,steps if mode!=1 and not hard else 32.)
+        def interleaved_hard(n):
+            # The same Full Hard kernel must agree within 2%. Rotate the order
+            # each round so clock/thermal drift cannot bias whole mode blocks.
+            # Preserve the eight warmups and >=15 samples per mode, all stages,
+            # and independent temporal histories used by the Soft measurements.
+            modes=(1,0,3)
+            counts={m:budget(m,cov,args.height//2,32,n*cov) for m in modes}
+            histories={m:np.zeros((args.height//2,args.width//2,4),np.float32) for m in modes}
+            runs={m:[] for m in modes}
+            for k in range(8+max(args.repeats,15)):
+                for j in range(3):
+                    mode=modes[(k+j)%3]
+                    _,_,stats=V.render_look(after,f,spec,layers=n,budget_steps=counts[mode],hard_beam=True)
+                    histories[mode]=after.temporal_resolve(f,histories[mode],f[0],k>0,blend=.86,reject=3.)
+                    stats['temporal_ms']=after.temporal_ms
+                    after.bloom_feed(f,1.85,1.,stats)
+                    if k>=8:runs[mode].append(stats)
+            return {m:summarize(runs[m],32.) for m in modes}
+        for n in (1,3,6,10):
             original=timed(before,1,n,False)
             report['measurements'].append(dict(cones=n,mode='baseline',shadows='soft',**original))
             print('baseline',n,original,flush=True)
             for mode,name in ((1,'Full'),(0,'Auto'),(3,'Fast')):
-                for hard in (False,True):
-                    result=timed(after,mode,n,hard)
-                    report['measurements'].append(dict(cones=n,mode=name,shadows='hard' if hard else 'soft',**result))
-                    print(name,n,'hard' if hard else 'soft',result,flush=True)
+                result=timed(after,mode,n,False)
+                report['measurements'].append(dict(cones=n,mode=name,shadows='soft',**result))
+                print(name,n,'soft',result,flush=True)
+            hard=interleaved_hard(n)
+            for mode,name in ((1,'Full'),(0,'Auto'),(3,'Fast')):
+                result=hard[mode]
+                report['measurements'].append(dict(cones=n,mode=name,shadows='hard',**result))
+                print(name,n,'hard',result,flush=True)
         failures=cost_bounds(report['measurements'])
-        check('cost_bracket',len(report['measurements'])==21 and not failures,
+        hard_full={m['cones']:m['median_ms'] for m in report['measurements']
+                   if m['shadows']=='hard' and m['mode']=='Full'}
+        hard_spread=max(abs(m['median_ms']/hard_full[m['cones']]-1.)
+                        for m in report['measurements'] if m['shadows']=='hard')
+        check('cost_bracket',len(report['measurements'])==28 and not failures,
               tolerance=COST_TOLERANCE,order_noise_ms=ORDER_NOISE_MS,order_noise_fraction=ORDER_NOISE_FRACTION,
+              hard_equality_fraction=HARD_COST_TOLERANCE,hard_equality_floor_ms=ORDER_NOISE_MS,
+              measured_hard_median_spread_fraction=hard_spread,
+              hard_sampling='interleaved, rotating Full/Auto/Fast order each round',
               six_cone_maximum_ratio=SIX_CONE_COST_RATIO,failures=failures,size=[args.width,args.height],warmups=8,samples=max(args.repeats,15),
               controls=dict(Resolution=32,ShadowSamples=2,SoftProjectorShadows=True,BloomFeed=1.85,TemporalBlend=.86,TemporalReject=3.),
               fixture='Cinematic Haze medium, identical inside cones, no rim; GPU draw costs only')
         inflated=[dict(m,median_ms=m['median_ms']*10 if m['mode']=='Auto' else m['median_ms']) for m in report['measurements']]
         rejected=cost_bounds(inflated)
-        check('cost_bracket_negative_control',len({(v['cones'],v['shadows']) for v in rejected if v['mode']=='Auto'})==6,
+        check('cost_bracket_negative_control',len({(v['cones'],v['shadows']) for v in rejected if v['mode']=='Auto'})==8,
               inflated_auto_factor=10.,rejected=rejected)
         # Freeze the actual FIX1 regressions, rather than only a cartoon 10x
         # slowdown. This must fail ordering and savings while the old gate passes.
@@ -124,9 +176,23 @@ def performance_checks(V, args, gl, host, report):
                               for n in (1,3,6) for shadow in ('soft','hard') for mode in ('Auto','Fast'))
         check('FIX1_cost_negative_control',
               old_bracket_passes and any(v.get('rule')=='Fast_before_Auto' and v['cones']==6 and v['shadows']=='soft' for v in rejected) and
-              all(any(v.get('rule')=='six_cone_saving' and v['mode']==mode and v['shadows']==shadow for v in rejected)
-                  for mode,shadow in (('Fast','soft'),('Auto','hard'),('Fast','hard'))),
+              any(v.get('rule')=='six_cone_saving' and v['mode']=='Fast' and v['shadows']=='soft' for v in rejected),
               old_bracket_passes=old_bracket_passes,rejected=rejected)
+        # The old Hard regressions still fail the Soft savings requirement when
+        # treated as Soft costs. Hard itself now requires equality, not savings.
+        soft_control=[dict(m,shadows='soft') for m in fix1 if m['shadows']=='hard']
+        soft_control += [dict(m,median_ms=next(f['median_ms'] for f in fix1 if f['shadows']=='hard'
+                         and f['mode']=='Full' and f['cones']==m['cones'])) for m in fix1 if m['shadows']=='hard']
+        rejected=cost_bounds(soft_control)
+        check('FIX1_Hard_costs_fail_Soft_gate',all(any(v.get('rule')=='six_cone_saving' and v['mode']==mode
+              and v['shadows']=='soft' for v in rejected) for mode in ('Auto','Fast')),rejected=rejected)
+        inflated=[dict(m,median_ms=hard_full[m['cones']]+1.01*hard_cost_noise(hard_full[m['cones']])
+                       if m['shadows']=='hard' and m['mode']=='Auto' else m['median_ms'])
+                  for m in report['measurements']]
+        rejected=cost_bounds(inflated)
+        check('Hard_Auto_over_tolerance_negative_control',all(any(v.get('rule')=='Hard_equals_Full'
+              and v['mode']=='Auto' and v['cones']==n for v in rejected) for n in (1,3,6,10)),
+              excess_tolerance_factor=1.01,rejected=rejected)
         if (args.width,args.height)==(4096,2160):
             misses=[dict(mode=m['mode'],shadows=m['shadows'],median_ms=m['median_ms'],target_ms=TARGET_4K_MS[m['mode'],m['shadows']])
                     for m in report['measurements'] if m['cones']==6 and (m['mode'],m['shadows']) in TARGET_4K_MS
@@ -309,12 +375,19 @@ def performance_checks(V, args, gl, host, report):
     check('low_count_shadow_filtering',low_max<=V.MOTION_PIXEL_BOUND,
           bound=V.MOTION_PIXEL_BOUND,centers=low)
 
-    # A Hard shortcut must not silently bypass the global integration caps.
+    # Hard must be byte-identical to Full for every Definition/cap, including
+    # raw MRT and termination. Soft retains its capped integration checks above.
     for name,f in (('b:cinematic',scenes['inside']),('b:dust_storm',back)):
         sp=specs[name];runner=rig.runners(sp['dust'])['after']
-        definition=[V.render_look(runner,f,sp,budget_steps=n,hard_beam=True)[0] for n in (12.,4.)]
-        check('hard_caps_change_integration/'+name,definition[0].tobytes()!=definition[1].tobytes(),
-              max_pixel_change=float(np.max(np.abs(definition[0]-definition[1]))))
+        failures=[]
+        for steps in (32,41,47,55,64):
+            full,raw,_=V.render_look(runner,f,sp,steps=steps,hard_beam=True)
+            termination=runner.termination.tobytes()
+            for cap in (0.,.01,4.,12.,48.):
+                im,actual,_=V.render_look(runner,f,sp,steps=steps,budget_steps=cap,hard_beam=True)
+                if (full.tobytes(),raw.tobytes(),termination)!=(im.tobytes(),actual.tobytes(),runner.termination.tobytes()):
+                    failures.append(dict(steps=steps,cap=cap))
+        check('Hard_Full_byte_identity/'+name,not failures,failures=failures)
 
     # Thin occluders: measure transported dark lane samples normalized by the
     # same camera's unobstructed beam. Bound compares Hard to today's Soft;

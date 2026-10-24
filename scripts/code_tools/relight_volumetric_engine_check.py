@@ -60,8 +60,8 @@ def cpp_checks(V, args, check):
     src = tree.read(PIPE); old = ref.read(PIPE)
     for name in ['renderProjectorVolumetric', 'feedProjectorVolumetricBloom', 'setupSpotLightVolumetric']:
         check('frozen_cpp/' + name, function(src, name.replace('Volumetric', 'VolumetricClassic') if name != 'feedProjectorVolumetricBloom' else 'feedProjectorVolumetricBloomClassic') == rename(function(old, name)))
-    # Require the pinned dispatch with ONLY the reviewed reservation and shader
-    # key fixes. Full's GL identity is checked below across every authored look.
+    # Require the pinned dispatch with only reviewed reservation, shader keys
+    # and Full-only Hard changes. GL identity covers every authored look below.
     expected=function(V.G.SourceTree(NEW).read(PIPE), 'renderProjectorVolumetric')
     expected=expected.replace('    const bool fine_variant = budget_variant && BDMergeProjectorVolumetricsNoiseStrength > 0.5f;\n','')
     expected=expected.replace('(hard_variant ? 16u : 0u) | (fine_variant ? 32u : 0u);','(hard_variant ? 16u : 0u);')
@@ -72,6 +72,18 @@ def cpp_checks(V, args, check):
                               '            LLVector3 params;\n            if (!LLPrismLens::projectorRenderParams(v, params)) continue;')
     expected=expected.replace('        mProjectorShaftCost.shadow_taps = llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);',
                               '        mProjectorShaftCost.shadow_taps = BDMergeProjectorVolumetricsShadowJitterTap ? 1u :\n            llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);')
+    expected=expected.replace('''    const U32 quality = llclamp((U32)definition,0u,3u);
+    const bool hard_variant = beam_shadows == 1;''','''    const bool hard_variant = beam_shadows == 1;
+    // Hard always uses Full's adaptive steps and bypasses every cap/reservation.
+    const U32 quality = projvolEffectiveDefinition(definition,hard_variant);''')
+    expected=expected.replace('''    if (!aux_direct && quality != 1 && beam_shadows == 1)
+    {
+        mProjectorShaftCost.hard_detail = max_res;
+        mProjectorShaftCost.shadow_taps = BDMergeProjectorVolumetricsShadowJitterTap ? 1u :
+            llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);
+    }
+
+''','')
     check('new_cpp/dispatch', function(src, 'renderProjectorVolumetricNew').replace('renderProjectorVolumetricNew(', 'renderProjectorVolumetric(') == expected)
     stub = r'''
 #include <algorithm>
@@ -243,7 +255,9 @@ def engine_checks(V, args, gl, report):
     expected_registration=new_registration(baseline_manager,'        // Cinematic weather').replace('''        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_FINE_MEDIUM",
             gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") != 1 &&
             gSavedSettings.getF32("BDMergeProjectorVolumetricsNoiseStrength") > 0.5f ? "1" : "0");
-''','')
+''','').replace('gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") == 1 ? "0" : "1");',
+    'gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") == 1 ||\n'
+    '            gSavedSettings.getU32("BDMergeProjectorVolumetricsBeamShadows") == 1 ? "0" : "1");')
     check('new_shader_registration_unchanged',
           new_registration(manager,'        // Four optional Classic programs') ==
           expected_registration)

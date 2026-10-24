@@ -79,6 +79,12 @@ uniform sampler2D silCoverMap;
 // Shared godray controls (this program uploads its OWN values into these).
 uniform int   godray_res;         // raymarch sample count (bounded local march;
                                   // Phase 1 item 5: adaptively scaled per cone in C++)
+// Definition accelerates Soft only. Even a stale budget permutation must use
+// the exact Full Hard program, with no capped integration or extra registers.
+#if defined(PROJVOL_HARD_BEAM) && PROJVOL_HARD_BEAM
+#undef PROJVOL_BUDGET_ENABLE
+#define PROJVOL_BUDGET_ENABLE 0
+#endif
 #if defined(PROJVOL_BUDGET_ENABLE) && PROJVOL_BUDGET_ENABLE
 uniform float projvol_budget_steps; // 0 = rim-only; >0 = continuous cap
 #else
@@ -358,10 +364,20 @@ float projvolAnalytic(vec3 d, float t, vec4 projected)
     vec2 uv = projected.xy / projected.w;
     if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 0.0;
     vec3 delta = d * t - center;
+#if defined(PROJVOL_BUDGET_ENABLE) && PROJVOL_BUDGET_ENABLE
+    float radius2 = max(dot(delta,delta),1e-10);
+    float inv_radius = inversesqrt(radius2);
+    float r = radius2*inv_radius;
+    float cosT = dot(delta,-d)*inv_radius;
+    float g = projvol_g;
+    float inv_phase = inversesqrt(max(1.0+g*g-2.0*g*cosT,1e-4));
+    float phase = ((1.0-g*g)/(4.0*M_PI))*inv_phase*inv_phase*inv_phase;
+#else
     float r = max(length(delta), 1e-5);
     float cosT = dot(delta / r, -d);
     float g = projvol_g;
     float phase = (1.0 - g*g) / (4.0*M_PI*pow(max(1.0+g*g-2.0*g*cosT, 1e-4), 1.5));
+#endif
     float feather = 1.0;
     if (projvol_feather > 0.0)
     {
@@ -424,9 +440,27 @@ if (projvol_noise_strength > 0.0 || projvol_fog_strength > 0.0 || dust_active)
     if (projvol_noise_strength > 0.0)
     {
         vec3  np    = wpos * projvol_noise_scale + projvol_wind * projvol_time;
-        float n     = projvolFbm(np);                 // ~[0,1], mean ~0.5
-        float mote  = 1.0 + projvol_noise_strength * (n * 2.0 - 1.0);
-        density    *= max(mote, 0.0);
+#if defined(PROJVOL_BUDGET_ENABLE) && PROJVOL_BUDGET_ENABLE
+        float strength = projvol_noise_strength;
+        float first = projvolValueNoise(np);
+        float low = 1.0+strength*(first-1.0);
+        float high = low+0.75*strength;
+        // Harmonic midpoint minimizes the worst relative error for the two
+        // uncomputed octaves. At strength <= .12 their error is <= 4.865%.
+        // The continuous blend thereafter decreases that bound to zero at .22.
+        float mote = 2.0*low*high/max(low+high,1e-8);
+        float detail = clamp((strength-0.12)/0.1,0.0,1.0);
+        if (detail > 0.0)
+        {
+            float residual = 0.5*projvolValueNoise(np*2.02)
+                           + 0.25*projvolValueNoise(np*(2.02*2.02));
+            mote = mix(mote,low+strength*residual,detail);
+        }
+#else
+        float n = projvolFbm(np);
+        float mote = 1.0+projvol_noise_strength*(n*2.0-1.0);
+#endif
+        density *= max(mote,0.0);
     }
 
     // [item 2] Height fog: denser near the ground reference, thinning with
@@ -709,13 +743,6 @@ void main()
 #endif
     bool fine_detail = dust_active ||
         projvol_equiangular != 0 || projvol_cookie_footprint != 0 || projvol_airborne_tap != 0;
-    // Weak noise can use a cheaper fixed medium partition. Blend continuously
-    // into the fine medium before strong or high-frequency noise; fog and dust
-    // always retain it. Sparse weak nodes must not brighten dense shadow lanes.
-    // This is a runtime weight, never a shader/history selection key.
-    float medium_detail = (dust_active || projvol_fog_strength > 0.0) ? 1.0 :
-        max(smoothstep(0.125,0.5,projvol_noise_strength),
-            smoothstep(1.2,2.0,projvol_noise_scale)*smoothstep(0.0,0.125,projvol_noise_strength));
 
     vec3 accum = vec3(0.0);
 
@@ -770,146 +797,87 @@ void main()
         shaft_steps = shadow_base+shadow_splits+(shadow_blend > 0.0 ? 2 : 0);
     }
 
+    if (budgeted && shaft_steps > 0 && !fine_detail && projvol_hard_beam_shadows == 0)
+    {
+        // Fixed visibility, cookie and local-medium nodes remove budget-driven
+        // field switches, including the zero-fog analytic discontinuity.
+        int fine_count = min(godray_res,8);
+        float fine_dt = march_len/max(float(fine_count),1.0);
+        for (int j = 0; j < fine_count; ++j)
+        {
+            float start = t0+float(j)*fine_dt;
+            float ft = start+roffset*fine_dt;
+            vec4 fp = proj_mat*vec4(d*ft,1.0);
+            vec2 uv = fp.xy/max(fp.w,1e-5);
+            if (fp.z < 0.0 || fp.w <= 1e-5 || any(lessThan(uv,vec2(0.0))) || any(greaterThan(uv,vec2(1.0)))) continue;
+            float analytic = projvolAnalytic(d,ft,fp);
+            float visibility = 0.0;
+            int taps = projvol_shadow_jitter_tap != 0 ? 1 : max(projvol_shadow_samples,1);
+            for (int k = 0; k < taps; ++k)
+            {
+                float ts = start+(float(k)+roffset)*fine_dt/float(taps);
+#ifdef PROJVOL_CONSERVATIVE_SHADOW
+                if (projvol_conservative_shadow != 0)
+                    visibility += sampleSpotShadowConservative(d*ts,proj_shadow_idx);
+                else
+#endif
+                    visibility += sampleSpotShadow(d*ts,vec3(0.0),proj_shadow_idx,tc);
+            }
+            vec3 cookie = projGoboTexture(-dot(center-d*ft,proj_n),uv);
+            float medium = projvolMedium((projvol_inv_modelview*vec4(d*ft,1.0)).xyz);
+            vec3 value = fine_dt*analytic*medium*mix(cookie*projvol_shadow_tint,cookie,visibility/float(taps));
+            accum += value;
+            if (projvol_temporal_beam_depth != 0)
+            {
+                float luma = dot(value*color,vec3(0.2126,0.7152,0.0722));
+                depth_w += luma*ft;
+                w_sum += luma;
+            }
+        }
+        accum /= dt;
+        depth_w /= dt;
+        w_sum /= dt;
+        shaft_steps = 0;
+    }
+
     if (budgeted && shaft_steps > 0 && projvol_hard_beam_shadows != 0 &&
         projvol_equiangular == 0 && projvol_cookie_footprint == 0)
     {
-        // Hard visibility and heterogeneous medium share fixed fine cells.
-        // Visit each once, independently of the radiance budget. At low budgets
-        // only the smooth attenuation/phase term uses a quadratic interpolant;
-        // rapidly varying light falls back continuously to exact evaluation.
-        // Uniform runtime branches keep the weak kernel's fine loop free of
-        // noise evaluation. Blend complete premultiplied integrals, so changing
-        // noise strength never selects a shader or introduces a field jump.
-        if (medium_detail < 1.0)
+        // One fixed lattice jointly integrates visibility, cookie, local medium
+        // and analytic radiance. Budget and medium controls never move its nodes
+        // or select another estimate; every expensive quantity is evaluated once.
+        // Keep this bound uniform: a literal 64 invites the driver to unroll
+        // the entire shadow/noise kernel, increasing code and register pressure.
+        int fine_count = max(godray_res,64);
+        float fine_dt = march_len/float(fine_count);
+        for (int j = 0; j < fine_count; ++j)
         {
-            float fine_dt = march_len/max(float(godray_res),1.0);
-            int cached_segment = -1;
-            vec3 radiance_nodes = vec3(0.0);
-            float radiance_start = t0, radiance_length = dt;
-            // Evaluate weak-medium nodes outside the fine loop. Keeping the costly
-            // noise function out of its loop-carried state also reduces registers.
-            vec2 weak_medium = vec2(projvol_density);
-            if (projvol_noise_strength > 0.0)
+            float start = t0+float(j)*fine_dt;
+            float ft = t0+(float(j)+roffset)*fine_dt;
+            vec4 fp = proj_mat*vec4(d*ft,1.0);
+            vec2 uv = fp.xy/max(fp.w,1e-5);
+            if (fp.z < 0.0 || fp.w <= 1e-5 || any(lessThan(uv,vec2(0.0))) || any(greaterThan(uv,vec2(1.0)))) continue;
+            float visibility = 0.0;
+            int taps = projvol_shadow_jitter_tap != 0 ? 1 : max(projvol_shadow_samples,1);
+            for (int s = 0; s < taps; ++s)
             {
-                weak_medium.x = projvolMedium(world_origin+world_rate*(t0+0.25*march_len));
-                weak_medium.y = projvolMedium(world_origin+world_rate*(t0+0.75*march_len));
+                float ts = start+(float(s)+roffset)*fine_dt/float(taps);
+                visibility += projvolHardShadow(d*ts,shadow_origin+shadow_rate*ts);
             }
-            for (int j = 0; j < godray_res; ++j)
+            // A black shadow contributes neither radiance nor its moment.
+            // Reject it before evaluating cookie, phase and the local medium.
+            if (visibility <= 0.0 && projvol_shadow_tint <= 0.0) continue;
+            float analytic = projvolAnalytic(d,ft,fp);
+            if (analytic <= 0.0) continue;
+            vec3 cookie = projGoboTexture(-dot(center-d*ft,proj_n),uv);
+            float medium = projvolMedium((projvol_inv_modelview*vec4(d*ft,1.0)).xyz);
+            vec3 value = fine_dt*analytic*medium*mix(cookie*projvol_shadow_tint,cookie,visibility/float(taps));
+            accum += value;
+            if (projvol_temporal_beam_depth != 0)
             {
-                float start = t0+float(j)*fine_dt;
-                float ft = start+roffset*fine_dt;
-                vec4 fp = projector_origin+projector_rate*ft;
-                vec2 uv = fp.xy/max(fp.w,1e-5);
-                if (fp.z < 0.0 || fp.w <= 1e-5 || any(lessThan(uv,vec2(0.0))) || any(greaterThan(uv,vec2(1.0)))) continue;
-                float analytic = 0.0;
-                // Above five, the straight fine-cell kernel is cheaper than
-                // maintaining interpolants and already meets the Full cost bound.
-                float exact_weight = smoothstep(4.0,5.0,step_count);
-                if (step_count < 5.0)
-                {
-                    int segment = int(floor((ft-t0)/max(dt,1e-6)));
-                    if (segment != cached_segment)
-                    {
-                        radiance_start = t0+float(segment)*dt;
-                        radiance_length = min(dt,t1-radiance_start);
-                        float mid = radiance_start+0.5*radiance_length;
-                        float end = radiance_start+radiance_length;
-                        radiance_nodes = vec3(
-                            projvolAnalytic(d,radiance_start,projector_origin+projector_rate*radiance_start),
-                            projvolAnalytic(d,mid,projector_origin+projector_rate*mid),
-                            projvolAnalytic(d,end,projector_origin+projector_rate*end));
-                        cached_segment = segment;
-                    }
-                    float x = clamp((ft-radiance_start)/max(radiance_length,1e-6),0.0,1.0);
-                    analytic = max(dot(radiance_nodes,vec3(2.0*x*x-3.0*x+1.0,4.0*x*(1.0-x),2.0*x*x-x)),0.0);
-                    float largest = max(max(radiance_nodes.x,radiance_nodes.y),radiance_nodes.z);
-                    float curvature = abs(radiance_nodes.x-2.0*radiance_nodes.y+radiance_nodes.z)/max(largest,1e-8);
-                    exact_weight = max(exact_weight,smoothstep(0.3,0.6,curvature));
-                }
-                if (exact_weight > 0.0)
-                    analytic = mix(analytic,projvolAnalytic(d,ft,fp),exact_weight);
-                float visibility = 0.0;
-                int taps = projvol_shadow_jitter_tap != 0 ? 1 : max(projvol_shadow_samples,1);
-                for (int s = 0; s < taps; ++s)
-                {
-                    float ts = start+(float(s)+roffset)*fine_dt/float(taps);
-                    visibility += projvolHardShadow(d*ts,shadow_origin+shadow_rate*ts);
-                }
-                vec3 cookie = projGoboTexture(-dot(center-d*ft,proj_n),uv);
-                // Interpolate the weak medium on fixed chord nodes, independent
-                // of the shadow/radiance budget. Keep medium and visibility jointly
-                // weighted in each fine cell, including the premultiplied moment.
-                float cell = (float(j)+roffset)/max(float(godray_res),1.0);
-                float medium = mix(weak_medium.x,weak_medium.y,clamp(2.0*cell-0.5,0.0,1.0));
-                vec3 value = fine_dt*analytic*medium*mix(cookie*projvol_shadow_tint,cookie,visibility/float(taps));
-                value *= 1.0-medium_detail;
-                accum += value;
-                if (projvol_temporal_beam_depth != 0)
-                {
-                    float luma = dot(value*color,vec3(0.2126,0.7152,0.0722));
-                    depth_w += luma*ft;
-                    w_sum += luma;
-                }
-            }
-        }
-        if (medium_detail > 0.0)
-        {
-            float fine_dt = march_len/max(float(godray_res),1.0);
-            int cached_segment = -1;
-            vec3 radiance_nodes = vec3(0.0);
-            float radiance_start = t0, radiance_length = dt;
-            for (int j = 0; j < godray_res; ++j)
-            {
-                float start = t0+float(j)*fine_dt;
-                float ft = start+roffset*fine_dt;
-                vec4 fp = projector_origin+projector_rate*ft;
-                vec2 uv = fp.xy/max(fp.w,1e-5);
-                if (fp.z < 0.0 || fp.w <= 1e-5 || any(lessThan(uv,vec2(0.0))) || any(greaterThan(uv,vec2(1.0)))) continue;
-                float analytic = 0.0;
-                // Above five, the straight fine-cell kernel is cheaper than
-                // maintaining interpolants and already meets the Full cost bound.
-                float exact_weight = smoothstep(4.0,5.0,step_count);
-                if (step_count < 5.0)
-                {
-                    int segment = int(floor((ft-t0)/max(dt,1e-6)));
-                    if (segment != cached_segment)
-                    {
-                        radiance_start = t0+float(segment)*dt;
-                        radiance_length = min(dt,t1-radiance_start);
-                        float mid = radiance_start+0.5*radiance_length;
-                        float end = radiance_start+radiance_length;
-                        radiance_nodes = vec3(
-                            projvolAnalytic(d,radiance_start,projector_origin+projector_rate*radiance_start),
-                            projvolAnalytic(d,mid,projector_origin+projector_rate*mid),
-                            projvolAnalytic(d,end,projector_origin+projector_rate*end));
-                        cached_segment = segment;
-                    }
-                    float x = clamp((ft-radiance_start)/max(radiance_length,1e-6),0.0,1.0);
-                    analytic = max(dot(radiance_nodes,vec3(2.0*x*x-3.0*x+1.0,4.0*x*(1.0-x),2.0*x*x-x)),0.0);
-                    float largest = max(max(radiance_nodes.x,radiance_nodes.y),radiance_nodes.z);
-                    float curvature = abs(radiance_nodes.x-2.0*radiance_nodes.y+radiance_nodes.z)/max(largest,1e-8);
-                    exact_weight = max(exact_weight,smoothstep(0.3,0.6,curvature));
-                }
-                if (exact_weight > 0.0)
-                    analytic = mix(analytic,projvolAnalytic(d,ft,fp),exact_weight);
-                float visibility = 0.0;
-                int taps = projvol_shadow_jitter_tap != 0 ? 1 : max(projvol_shadow_samples,1);
-                for (int s = 0; s < taps; ++s)
-                {
-                    float ts = start+(float(s)+roffset)*fine_dt/float(taps);
-                    visibility += projvolHardShadow(d*ts,shadow_origin+shadow_rate*ts);
-                }
-                vec3 cookie = projGoboTexture(-dot(center-d*ft,proj_n),uv);
-                float medium = projvolMedium(world_origin+world_rate*ft);
-                vec3 value = fine_dt*analytic*medium*mix(cookie*projvol_shadow_tint,cookie,visibility/float(taps));
-                value *= medium_detail;
-                accum += value;
-                if (projvol_temporal_beam_depth != 0)
-                {
-                    float luma = dot(value*color,vec3(0.2126,0.7152,0.0722));
-                    depth_w += luma*ft;
-                    w_sum += luma;
-                }
+                float luma = dot(value*color,vec3(0.2126,0.7152,0.0722));
+                depth_w += luma*ft;
+                w_sum += luma;
             }
         }
         // The common uniform-distance composite multiplies the integral by dt.
@@ -975,8 +943,8 @@ void main()
             segment_start = b + D*tan(mix(angles.x, angles.y, start));
             float segment_end = b + D*tan(mix(angles.x, angles.y, endpoint));
             // Pin endpoints to avoid atan/tan roundoff outside the clipped cone.
-            if (start == 0.0) segment_start = t0;
-            if (endpoint == 1.0) segment_end = t1;
+            if (budgeted ? start == 0.0 : i == 0) segment_start = t0;
+            if (budgeted ? endpoint == 1.0 : i == shaft_steps-1) segment_end = t1;
             segment_dt = max(segment_end-segment_start, 0.0);
             t = segment_start + roffset * segment_dt;
         }
@@ -1244,7 +1212,7 @@ void main()
         // fold into one scalar that scales the in-scatter. Defaults keep this at
         // exactly projvol_density (1.0) -> a flat, uniform cone (the shipped look).
         float density = projvol_density;
-        if ((!budgeted || (!fine_detail && projvol_hard_beam_shadows == 0)) &&
+        if (!budgeted &&
             (projvol_noise_strength > 0.0 || projvol_fog_strength > 0.0 || dust_active))
         {
             // Agent-space (world, Z-up) position of this airborne sample.
@@ -1352,27 +1320,13 @@ void main()
             scatter_sample = analytic * scatter * density * segment_dt;
             moment_t = (fa+fb > 1e-8) ? (fa*ta+fb*tb)/(fa+fb) : mid;
         }
-        if (budgeted && !fine_detail && projvol_hard_beam_shadows == 0 && step_count > 4.0)
+        if (budgeted && projvol_hard_beam_shadows == 0)
         {
-            // Smooth ordinary beams need only two cheap analytic evaluations;
-            // sparse dust and hard shadows retain the independent fine cells.
-            const float gauss = 0.28867513459;
-            float mid = segment_start+0.5*segment_dt;
-            float ta = mid-gauss*segment_dt, tb = mid+gauss*segment_dt;
-            float fa = projvolAnalytic(d,ta,proj_mat*vec4(d*ta,1.0));
-            float fb = projvolAnalytic(d,tb,proj_mat*vec4(d*tb,1.0));
-            float analytic = 0.5*(fa+fb);
-            float analytic_moment = 0.5*(fa*ta+fb*tb);
-            scatter_sample = analytic*scatter*density*(segment_dt/dt);
-            moment_t = analytic > 1e-8 ? analytic_moment/analytic : mid;
-        }
-        if (budgeted && projvol_hard_beam_shadows == 0 && (fine_detail || medium_detail > 0.0 || step_count < 5.0))
-        {
-            // These cells are independent of capped shadow steps. Weak smooth
-            // media need at most 20; authored fine detail retains Samples.
+            // These cells are independent of capped shadow steps. Authored fine
+            // detail retains Samples; ordinary beams use the fixed kernel above.
             // At most fine_count + coarse_steps cells
             // are visited across the complete chord, rather than N per step.
-            int fine_count = fine_detail ? godray_res : min(godray_res,20);
+            int fine_count = fine_detail ? godray_res : min(godray_res,8);
             float fine_dt = march_len / max(float(fine_count), 1.0);
             float first = clamp((segment_start-t0)/max(fine_dt,1e-6),0.0,float(fine_count));
             float last = clamp((segment_start+segment_dt-t0)/max(fine_dt,1e-6),first,float(fine_count));
@@ -1412,9 +1366,7 @@ void main()
                     fine_moment = fa+fb > 1e-8 ? (fa*ta+fb*tb)/(fa+fb) : mid;
                 }
                 vec3 wpos = (projvol_inv_modelview*vec4(d*ft,1.0)).xyz;
-                float medium = density;
-                if (fine_detail || medium_detail > 0.0)
-                    medium = mix(density,projvolMedium(wpos),fine_detail ? 1.0 : medium_detail);
+                float medium = projvolMedium(wpos);
                 // Preserve the look's cookie filtering experiment where used.
                 vec3 fc = projvol_cookie_footprint != 0 ? cookie :
                     projGoboTexture(-dot(center-d*ft,proj_n),fp.xy/max(fp.w,1e-5));
@@ -1425,14 +1377,8 @@ void main()
             vec3 refined_sample = integrated / (projvol_equiangular != 0 ? 1.0 : dt);
             float refined_luma = dot(refined_sample*color,vec3(0.2126,0.7152,0.0722));
             float refined_moment = integrated_moment / (projvol_equiangular != 0 ? 1.0 : dt);
-            // Low budgets converge smoothly to a fixed medium lattice.
-            // Mix premultiplied moments with the same RGB weight.
-            float refinement = fine_detail ? 1.0 : max(medium_detail,1.0-smoothstep(4.0,5.0,step_count));
-            float old_luma = dot(scatter_sample*color,vec3(0.2126,0.7152,0.0722));
-            float moment = mix(old_luma*moment_t,refined_moment,refinement);
-            scatter_sample = mix(scatter_sample,refined_sample,refinement);
-            float sample_luma = mix(old_luma,refined_luma,refinement);
-            moment_t = sample_luma > 1e-8 ? moment/sample_luma : t;
+            scatter_sample = refined_sample;
+            moment_t = refined_luma > 1e-8 ? refined_moment/refined_luma : t;
         }
         if (budgeted && projvol_hard_beam_shadows != 0)
         {

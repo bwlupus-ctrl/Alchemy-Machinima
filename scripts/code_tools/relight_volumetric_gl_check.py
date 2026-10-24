@@ -150,7 +150,12 @@ class Runner(G.AreaRunner):
         gl.param(0x0DE1,0x2801,0x2601); gl.param(0x0DE1,0x2800,0x2601)
         ck = np.ones((512,512,4),np.float32)
         if cookie:
-            y,x = np.mgrid[:512,:512]; pattern = ((x//3+y//3)%2).astype(np.float32)
+            y,x = np.mgrid[:512,:512]
+            if cookie == 'gobo':
+                pattern = ((np.sin(x*.071)*np.cos(y*.093) > .2) &
+                           ((x-256)**2+(y-256)**2 < 240**2)).astype(np.float32)
+            else:
+                pattern = ((x//3+y//3)%2).astype(np.float32)
             ck[:,:,:3] = pattern[:,:,None]
         self._texture('cookie',4,0x8058,512,512,0x1908,0x1406,ck)
         self.mips(0x0DE1); gl.param(0x0DE1,0x2801,0x2703)
@@ -461,6 +466,11 @@ std::cout<<projvolStepBudget(mode,adaptive,coverage,height,lo,hi,maximum,cap,bud
 else if(op=="Q"){bool rim;unsigned mode,legacy,look;float budget;std::cin>>rim>>mode>>legacy>>look>>budget;
 projvolUploadStepBudget(shader,rim,mode,legacy,look,budget);std::cout<<std::endl;}
 ''' if 'static F32 projvolStepBudget(' in helper else ''
+    if 'static U32 projvolEffectiveDefinition(' in helper:
+        budget_op += r'''
+else if(op=="K"){unsigned mode;bool hard;std::cin>>mode>>hard;
+std::cout<<projvolEffectiveDefinition(mode,hard)<<std::endl;}
+'''
     if 'static bool projvolVariantReady(' in helper:
         header = G.SourceTree(ref).read('indra/newview/pipeline.h')
         loaded = re.search(r'void projectorVolumetricShaderLoaded\([^)]*\)\s*\{(.*?)\n    \}',header,re.S).group(1)
@@ -1737,7 +1747,7 @@ def main():
     ap.add_argument('--looks-only',action='store_true',help='run only the Light > Projector Shafts look gate')
     ap.add_argument('--engines-only',action='store_true',help='frozen Classic/New GL identity, engine switches, presets and scenes')
     ap.add_argument('--performance-only',action='store_true',help='Full identity, continuous-budget motion and hard-beam regression gates')
-    ap.add_argument('--performance-cost-only',action='store_true',help='1/3/6 overlapping cones at this resolution, Full/Auto/Fast, soft/hard beam shadows')
+    ap.add_argument('--performance-cost-only',action='store_true',help='1/3/6/10 overlapping cones at this resolution, Full/Auto/Fast, soft/hard beam shadows')
     ap.add_argument('--review-fix-only',action='store_true',help='FIX1 regressions, including explicit startup defines and compiled UI/reservation decisions')
     args = ap.parse_args(); args.out=args.out.resolve(); args.out.mkdir(parents=True,exist_ok=True)
     images = args.out/'images'; images.mkdir(exist_ok=True)
