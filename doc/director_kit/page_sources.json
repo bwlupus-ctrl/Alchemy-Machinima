@@ -151693,7 +151693,7 @@
           "option_index": null,
           "option_label": null,
           "index": 7,
-          "label": "Detail bias master",
+          "label": "Detail shadow bias",
           "kind": "toggle",
           "widget": "cine_detail_bias",
           "matched_widget": "cine_detail_bias",
@@ -161433,7 +161433,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 27518,
+              "line": 27523,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -161500,7 +161500,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 23342,
+              "line": 23344,
               "class": "LLPipeline",
               "function": "clearWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -161567,7 +161567,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 23354,
+              "line": 23356,
               "class": "LLPipeline",
               "function": "clearAwayWorldShadowPicks",
               "wired_class": "LLFloaterDirector",

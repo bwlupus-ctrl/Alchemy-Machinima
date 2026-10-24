@@ -1939,7 +1939,7 @@ void ALCineLightRig::updateProjectorFlags()
         }
         const LLUUID id = mProjectors[i]->getID();
         LLPipeline::setProjectorDetailShadows(id, mCurrentLive[i].mDetailShadows);
-        LLPipeline::setRigWorldShadowPick(id, mCurrentLive[i].mWorldShadowPick);
+        LLPipeline::setRigWorldShadowPick(id, mCurrentLive[i].mWorldShadowPick, i);
         // Keep the temporary VCam override separate from scene/rig intent.
         // Replaying the rig each frame must not undo an untouched auto-enable.
         const bool shaft_enabled = mShaftEnabled[i] ||

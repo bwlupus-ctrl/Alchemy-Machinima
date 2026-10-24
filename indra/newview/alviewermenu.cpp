@@ -781,11 +781,12 @@ namespace
         // One state for the whole selection (ALWorldShadow::pickToggleReleases): all picked -> release them all; otherwise pick the rest, unless
         // the pick cap leaves no room for all of them, in which case the click releases the picked ones. A mixed selection at the cap
         // therefore never sticks on a "pick" that the cap refuses; the next click picks what fits.
+        const auto manual = LLPipeline::manualWorldShadowPickList();
         unsigned already_picked = 0;
         for (const WorldShadowPickLight& light : lights)
-            already_picked += LLPipeline::isWorldShadowPicked(light.mId) ? 1u : 0u;
+            already_picked += std::find(manual.begin(), manual.end(), light.mId) != manual.end() ? 1u : 0u;
         const bool release = ALWorldShadow::pickToggleReleases(static_cast<unsigned>(lights.size()), already_picked,
-                                                               static_cast<unsigned>(LLPipeline::worldShadowPickList().size()));
+                                                               static_cast<unsigned>(manual.size()));
         for (const WorldShadowPickLight& light : lights)
             LLPipeline::setWorldShadowPick(light.mId, !release, light.mName);
     }
@@ -800,8 +801,9 @@ namespace
         const std::vector<WorldShadowPickLight> lights = selected_world_shadow_lights();
         if (lights.empty())
             return false;
+        const auto manual = LLPipeline::manualWorldShadowPickList();
         for (const WorldShadowPickLight& light : lights)
-            if (!LLPipeline::isWorldShadowPicked(light.mId))
+            if (std::find(manual.begin(), manual.end(), light.mId) == manual.end())
                 return false;
         return true;
     }

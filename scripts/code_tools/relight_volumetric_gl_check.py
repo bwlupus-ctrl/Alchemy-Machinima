@@ -1685,6 +1685,25 @@ def looks_checks(args, gl, host, report):
         size=[args.width, args.height], cost_enforced=full_hd)
 
 
+def detail_identity_checks(args, gl, report):
+    """Flagged/unflagged airborne outputs must match the pre-detail revision."""
+    reference='13028c968b4'
+    base=Runner(G.SourceTree(reference),gl)
+    current=Runner(G.SourceTree(args.detail_shader_ref),gl)
+    for name,fixture in fixtures(args.width,args.height).items():
+        for half in (False,True):
+            for soft in (False,True):
+                for air in (0,1):
+                    controls=dict(half=half,soft=soft,air=air,steps=24,dither=1)
+                    uniforms={'spot_shadow_detail[0]':0.,'spot_shadow_offset':.04,'spot_shadow_bias':-.0005}
+                    _,expected,_=base.run(fixture,uniforms=uniforms,**controls)
+                    for flag in (False,True):
+                        _,actual,_=current.run(fixture,uniforms=dict(uniforms,**{'spot_shadow_detail[0]':float(flag)}),**controls)
+                        report['checks'].append(dict(name=f'detail_BASE_bytes/{name}/half={half}/soft={soft}/air={air}/flag={flag}',
+                                                     passed=actual.tobytes()==expected.tobytes(),baseline=reference))
+    print('[volumetric detail BASE identity]',all(c['passed'] for c in report['checks'] if c['name'].startswith('detail_BASE_bytes/')),flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--width',type=int,default=640); ap.add_argument('--height',type=int,default=360)
@@ -1693,10 +1712,18 @@ def main():
     ap.add_argument('--round1-only',action='store_true',help='run only the review-round regression suite')
     ap.add_argument('--round2-only',action='store_true',help='run only the second review-round regression suite')
     ap.add_argument('--looks-only',action='store_true',help='run only the Light > Projector Shafts look gate')
+    ap.add_argument('--detail-identity-only',action='store_true',help='run only the BASE-pinned airborne detail identity regression')
+    ap.add_argument('--detail-shader-ref',default='WORKTREE',help='revision under test for airborne detail identity')
     args = ap.parse_args(); args.out=args.out.resolve(); args.out.mkdir(parents=True,exist_ok=True)
     images = args.out/'images'; images.mkdir(exist_ok=True)
     gl = G.GL(); print('GL:',gl.renderer,flush=True)
     assert 'RTX 5090' in gl.renderer, 'FAIL: expected RTX 5090'
+    if args.detail_identity_only:
+        report=dict(renderer=gl.renderer,checks=[])
+        detail_identity_checks(args,gl,report)
+        report['passed']=all(c['passed'] for c in report['checks'])
+        (args.out/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+        return 0 if report['passed'] else 1
     if args.looks_only:
         host=build_scissor_host(args.out,args.glm_include)
         report = dict(renderer=gl.renderer,size=[args.width,args.height],
@@ -1714,6 +1741,7 @@ def main():
     scenes = fixtures(args.width,args.height)
     report = dict(renderer=gl.renderer,baseline=BASE,size=[args.width,args.height],
                   timing='median of warmed GL_TIME_ELAPSED draws; no upload/readback/CPU cost',checks=[],measurements=[])
+    detail_identity_checks(args,gl,report)
     def measure(label, runner, fixture, **kw):
         runner.run(fixture,**kw) # shader/driver warmup excluded
         times=[]

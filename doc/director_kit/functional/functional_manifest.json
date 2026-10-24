@@ -174483,7 +174483,7 @@
    "csv_index": null,
    "card": "rig_aim",
    "card_title": "Aim & shadows",
-   "row_label": "Detail bias master",
+   "row_label": "Detail shadow bias",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
    "xui_line": null,
    "widget_name": "cine_detail_bias",
@@ -174497,20 +174497,20 @@
    "suspect": false,
    "hazards": [],
    "exercise": "toggle",
-   "test_value": true,
+   "test_value": false,
    "expect": {
     "setting": "RenderSpotShadowDetailBias",
     "type": "Boolean",
-    "value": true
+    "value": false
    },
    "restore": {
     "setting": "RenderSpotShadowDetailBias",
-    "value": false
+    "value": true
    },
    "setting": "RenderSpotShadowDetailBias",
    "setting_source": "kit_row setting",
    "setting_type": "Boolean",
-   "default": false,
+   "default": true,
    "min": null,
    "max": null,
    "increment": null,

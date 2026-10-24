@@ -3,7 +3,7 @@
 PYTHONUTF8=1 python scripts/code_tools/rig_shadow_presets_check.py
 No viewer build. Uses the production loader/model, WGL lighting/shadow shaders,
 and the existing .06 p95/.05 pop motion limits. Missing measurements FAIL.
-Artifacts (including FAIL results) go to .tmp/rig_shadow. The adaptive-bias master is explicitly enabled for this suite. Saved world-pick
+Artifacts (including FAIL results) go to .tmp/rig_shadow. Uses the shipped cold-default bias master. Saved world-pick
 intent controls ON; native-only OFF remains a separate measured path.
 """
 import argparse
@@ -130,6 +130,49 @@ def cpp_data(value, path, lines):
         lines.append(f'{path}=LLSD({expr});')
 
 
+def baseline_model_outputs(out, presets, baseline):
+    """Compile BASE and WORKTREE loaders/models separately; compare all outputs.
+
+    Explicit members avoid struct padding and preserve every float's exact value.
+    Neither binary can include the other revision's model header or implementation.
+    """
+    from relight_3d_gl import SourceTree
+    outputs=[]
+    for ref, rows in ((BASE,baseline),('WORKTREE',presets[:len(baseline)])):
+        tree=SourceTree(ref);d=out/'regression'/ref;d.mkdir(parents=True,exist_ok=True)
+        for name in ('alcinelightrigmodel.h','alcinelightrigmodel.cpp'):
+            (d/name).write_text(tree.read('indra/newview/'+name),encoding='utf-8')
+        (d/'stdtypes.h').write_text('#pragma once\n#include <cstdint>\nusing F32=float;using F64=double;using S32=int;using U32=uint32_t;using U64=uint64_t;using S64=int64_t;using U8=uint8_t;\n')
+        (d/'linden_common.h').write_text('#include "stdtypes.h"\n')
+        src=tree.read('indra/newview/alcinelightrig.cpp')
+        signatures=[f'S32 {n}Index(const std::string& name)' for n in ('profile','beam','gobo','gel','fixtureGel','fixturePreset','flickerProgram')]
+        loader='\n'.join(function(src,s) for s in signatures)
+        loader+='\n'+function(src,'bool setupFromLLSD(const LLSD& data, Setup& output)')
+        lines=[SHIM,loader,'void dump(const RigFrame& f){std::cout<<std::hexfloat;']
+        members=('mOffX','mOffY','mOffZ','mAimX','mAimY','mAimZ','mSR','mSG','mSB','mIntensity','mLightRadius','mFalloff','mFovRad','mOn','mClipped','mGobo')
+        lines.append('for(int k=0;k<8;++k){const auto& e=k<4?f.mProj[k]:f.mOmni[k-4];')
+        lines.extend(f'std::cout<<e.{m}<<",";' for m in members)
+        lines.append('}for(auto v:f.mDerivedShadowSoftness)std::cout<<v<<",";std::cout<<f.mCatchlightSizeScale<<"\\n";}')
+        for i,row in enumerate(rows):
+            lines.append(f'void regression_{i}(){{LLSD a;')
+            cpp_data(row,'a',lines)
+            lines.append('Setup s;assert(setupFromLLSD(a,s));LightBase live[4];computeLive(s,{},live);RigFrame f;render(s.mRadius,live,{},f);dump(f);}')
+        lines.append('int main(){'+''.join(f'regression_{i}();' for i in range(len(rows)))+'}')
+        lines.append('#include "alcinelightrigmodel.cpp"')
+        (d/'regression.cpp').write_text('\n'.join(lines),encoding='utf-8')
+        vc=r'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat'
+        cmd=d/'build.cmd'
+        cmd.write_text(f'@echo off\ncall "{vc}" >nul\ncl /nologo /std:c++20 /utf-8 /EHsc /I"{d}" /I"{ROOT/"indra/newview"}" "{d/"regression.cpp"}" /Fe:"{d/"regression.exe"}" /Fo:"{d/"regression.obj"}"\nexit /b %ERRORLEVEL%\n')
+        build=subprocess.run(['cmd','/d','/c',str(cmd)],capture_output=True,text=True)
+        (d/'build.log').write_text(build.stdout+build.stderr,encoding='utf-8')
+        assert build.returncode==0,build.stdout+build.stderr
+        run=subprocess.run([str(d/'regression.exe')],capture_output=True,text=True)
+        assert run.returncode==0,run.stderr
+        (d/'outputs.txt').write_text(run.stdout,encoding='utf-8');outputs.append(run.stdout.splitlines())
+    assert len(outputs[0])==113 and outputs[0]==outputs[1], 'BASE model outputs changed for existing presets'
+    print('[shadow-presets] 113 BASE-revision loader/model outputs byte-identical',flush=True)
+
+
 def compile_model(out, presets, baseline, defaults):
     """Only storage/LLSD parsing is doubled; execute loader, math and ranking."""
     d = out / 'model'
@@ -144,19 +187,11 @@ def compile_model(out, presets, baseline, defaults):
     loader += '\n'+function(src, 'bool setupFromLLSD(const LLSD& data, Setup& output)')
     loader += '\n'+function(src, 'LLSD lightToLLSD(const LightBase& light)')
     lines = [SHIM, loader]
-    # Execute every original row before/after through the same production path.
-    for i, (old, current) in enumerate(zip(baseline, presets)):
-        # One function per row bounds the debug compiler's temporary storage;
-        # putting all 113 initializers in main exceeds Windows' 1 MB stack.
-        lines.append(f'void regression_{i}(){{ LLSD a,b;')
-        cpp_data(old, 'a', lines)
-        cpp_data(current, 'b', lines)
-        lines.append('Setup sa,sb;assert(setupFromLLSD(a,sa)&&setupFromLLSD(b,sb));LightBase la[4],lb[4];computeLive(sa,{},la);computeLive(sb,{},lb);RigFrame fa,fb;render(sa.mRadius,la,{},fa);render(sb.mRadius,lb,{},fb);assert(std::memcmp(&fa,&fb,sizeof(fa))==0);}')
+    baseline_model_outputs(out,presets,baseline)
     lines.append('int main(){std::cout<<std::setprecision(9);')
     lines += ['assert(!ALWorldShadow::worldEligibleWithNative(true,false));',
               'assert(ALWorldShadow::worldEligibleWithNative(true,true));',
               'assert(!ALWorldShadow::channelUsesNativeMap(true,true,true));']
-    lines += [f'regression_{i}();' for i in range(len(baseline))]
     lines.append('std::cout<<"[";')
     for j, p in enumerate(presets[len(baseline):]):
         lines.append('{LLSD a;')
@@ -210,10 +245,9 @@ def main():
             assert l['gobo_idx']==0 and l['gel_idx']==0
             assert .01<=l['source_size_m']<=4
     defaults = settings_defaults()
-    assert defaults['RenderSpotShadowDetailBias'] is False
-    # The opt-in suite enables the master explicitly; the default/off identity
-    # is checked separately against HEAD, with both fixture flag states.
-    defaults['RenderSpotShadowDetailBias'] = True
+    assert defaults['RenderSpotShadowDetailBias'] is True, 'cold-default activation'
+    from rig_shadow_review_check import check as review_check
+    assert review_check(out)['passed'], 'review source contracts'
     pipeline=(ROOT/'indra/newview/pipeline.cpp').read_text(encoding='utf-8')
     assert 'const bool world_owned_pick = s_idx >= 0 && worldChannelOwnsPickedLight(volume->getID());' in pipeline
     assert 'shader.uniform1i(LLShaderMgr::PROJECTOR_SHADOW_INDEX, world_owned_pick ? -1 : s_idx);' in pipeline

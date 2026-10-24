@@ -1,4 +1,4 @@
-"""Realistic 1/2/3 m detail, independent acne, deformation and HEAD identity.
+"""Realistic 1/2/3 m detail, independent acne, deformation and BASE identity.
 
 Production raster/shaders only. The deforming fixture applies a continuous
 affine skinning shear to caster triangles, ray intersections, receiver positions
@@ -19,10 +19,11 @@ import relight_3d_cube_source as CS
 import relight_world_gl_check as WG
 
 
-def evaluate(defaults,out):
+def evaluate(defaults,out,shader_ref='WORKTREE'):
     out=Path(out)/'detail';out.mkdir(parents=True,exist_ok=True)
-    defaults=dict(defaults,RenderSpotShadowDetailBias=True)
-    r=R.Runner();scene=R.proxy()
+    defaults=dict(defaults)
+    assert defaults["RenderSpotShadowDetailBias"] is True, "cold default must activate flagged fixtures"
+    r=R.Runner(shader_ref);scene=R.proxy()
     plan=PL.require_compiled(PL.compute_plans_status(r.tree,out)).plans['Default'][2]
     cam=S.Camera((3.5,0,1.65),(0,0,1.2),1920,1080,36)
     base=S.cast_primary(scene,cam);head=np.array([0.,0.,1.67])
@@ -34,17 +35,27 @@ def evaluate(defaults,out):
     probe_positions=base['pos'][::3,::3].reshape(-1,3)
     probe_normals=base['nrm'][::3,::3].reshape(-1,3)
     use=np.isin(base['surf'][::3,::3].ravel(),[1,2,3,4,5])
+    # Measure the same continuous material points beside depth/silhouette
+    # discontinuities separately; interior averages can hide 2x2 quad crawl.
+    edges=np.zeros(base['surf'].shape,bool)
+    for axis in (0,1):
+        for shift in (-1,1):
+            edges |= np.linalg.norm(base['pos']-np.roll(base['pos'],shift,axis),axis=2)>.02
+    band=edges.copy()
+    for axis in (0,1):
+        for shift in range(-4,5):band |= np.roll(edges,shift,axis)
+    silhouette_probes=band[::3,::3].ravel()[use]
     probe_positions=probe_positions[use];probe_normals=probe_normals[use]
     def light_at(distance):
         e=dict(pos=head+direction*distance,radius=.01,range=19.8,fov=.2,falloff=.5,
                color=np.ones(3),softness=0.,detail_shadows=True)
         light=S.Light('detail key',e['pos'],.01,19.8,'projector',S.unit(R.CENTRE-e['pos']),math.degrees(.1),seed=S.fnv_seed('rig-shadow-stable-0'))
         return e,light
-    def world(cam,d,n,light,detail):
+    def world(cam,d,n,light,detail,master=True):
         r.gpu_atlas=r.raster.atlas(scene,light,.135)
         ch=dict(row=0,near=.135,far=light.range,r_map=light.radius,
                 contact=CS.contact_distance(light.range),seed=light.seed,owned=True,
-                contact_fade=0.,detail_shadows=detail)
+                contact_fade=0.,detail_shadows=detail and master)
         return r.run(cam,d,n,[light],plan,world=dict(atlas=np.empty((CS.ATLAS_H_PER_LIGHT,CS.ATLAS_W),np.float32),channels=[ch]),look=dict(reach=0.))[0]
     def native_contact(cam,d,n,light):
         # Real first-frame/allocation fallback: native sampling plus the
@@ -60,10 +71,12 @@ def evaluate(defaults,out):
         nl=(g['nrm']*ray).sum(2);grazing=lit&(nl<.25)
         row=dict(path=path,distance_m=D,pose=pose,clear_pixels=int(lit.sum()),
                  acne_false_dark_percent=float((v[lit]<.5).mean()*100) if lit.any() else None,
+                 mean_lit_visibility=float(v[lit].mean()) if lit.any() else None,
                  grazing_clear_pixels=int(grazing.sum()),grazing_false_dark_percent=float((v[grazing]<.5).mean()*100) if grazing.any() else None,
                  retention={key:dict(expected=int(witness[key].sum()),retained=int((witness[key]&(v<.5)).sum())) for key in ('nose_brow','jaw')})
         if row['clear_pixels']<100: failures.append(f'{D}m {path} {pose}: insufficient clear receivers')
         elif row['acne_false_dark_percent']>.02: failures.append(f'{D}m {path} {pose}: acne')
+        if row['mean_lit_visibility'] is not None and row['mean_lit_visibility']<.98:failures.append(f'{D}m {path} {pose}: partial acne')
         if path.startswith('detail'):
             for key,m in row['retention'].items():
                 if m['expected']<30 or m['retained']<.85*m['expected']:failures.append(f'{D}m {path} {pose}: {key} retention')
@@ -130,8 +143,12 @@ def evaluate(defaults,out):
             delta=np.abs(b['value'][valid]-a['value'][valid])
             m=dict(distance_m=D,path=path,pair=i,probes=int(valid.sum()),p95=float(np.percentile(delta,95)),pop=float((delta>.25).mean()))
             if m['probes']<100 or m['p95']>R.MOTION_P95 or m['pop']>R.MOTION_POP:failures.append(f'{D}m {path} deform motion')
+            edge=valid&silhouette_probes
+            edge_delta=np.abs(b['value'][edge]-a['value'][edge])
+            m.update(silhouette_probes=int(edge.sum()),silhouette_p95=float(np.percentile(edge_delta,95)),silhouette_pop=float((edge_delta>.25).mean()))
+            if edge.sum()<30 or m['silhouette_p95']>R.MOTION_P95 or m['silhouette_pop']>R.MOTION_POP:failures.append(f'{D}m {path} silhouette quad crawl')
             motion.append(m)
-    # Compare default/off and unflagged paths with HEAD on the exact same GL
+    # Compare master-off and unflagged paths with BASE on the exact same GL
     # context, maps and receivers. No per-context texture/program aliasing.
     g=static['g'];d=static['d'];n=static['n'];e=static['e'];light=static['light']
     r.native_map(scene,light,.2,1920)
@@ -140,19 +157,35 @@ def evaluate(defaults,out):
     vcur_soft=r.native_visibility(cam,d,n,dict(e,detail_shadows=False),dict(defaults,BDMergeSoftProjectorShadows=True))
     vmaster_soft=r.native_visibility(cam,d,n,e,dict(defaults,RenderSpotShadowDetailBias=False,BDMergeSoftProjectorShadows=True))
     wcur=world(cam,d,n,light,False)
+    wmaster=world(cam,d,n,light,True,False)
     tree=r.tree;visibility=r.visibility;filt=r.filter
-    r.tree=G.SourceTree('HEAD')
-    r.visibility=r.link_text('''out vec4 frag_color;uniform vec2 screen_res;
-vec4 getPosition(vec2 p);vec4 getNorm(vec2 p);float sampleSpotShadow(vec3 p,vec3 n,int i,vec2 uv);
-void main(){vec2 uv=gl_FragCoord.xy/screen_res;frag_color=vec4(sampleSpotShadow(getPosition(uv).xyz,getNorm(uv).xyz,0,uv));}''','HEAD detail identity',extra=r.FRAGMENT_COMMON+['deferred/shadowUtil.glsl'],defines='#define SPOT_SHADOW 1\n')
+    from rig_shadow_presets_check import BASE
+    aircur={}
+    for flag in (False,True):
+        for soft in (False,True):
+            aircur[flag,soft]=r.native_visibility(cam,d,n,dict(e,detail_shadows=flag),dict(defaults,BDMergeSoftProjectorShadows=soft),airborne=True)
+    r.tree=G.SourceTree(BASE)
+    r.visibility=r.link_text(r.visibility_source,'BASE detail identity',extra=r.FRAGMENT_COMMON+['deferred/shadowUtil.glsl'],defines='#define SPOT_SHADOW 1\n')
     r.filter=r._link('class3/deferred/areaShadowFilterF.glsl')
-    vhead=r.native_visibility(cam,d,n,e,defaults);whead=world(cam,d,n,light,False)
-    vhead_soft=r.native_visibility(cam,d,n,e,dict(defaults,BDMergeSoftProjectorShadows=True))
+    base_e=dict(e,detail_shadows=False)
+    base_defaults=dict(defaults,RenderSpotShadowDetailBias=False)
+    vhead=r.native_visibility(cam,d,n,base_e,base_defaults);whead=world(cam,d,n,light,False,False)
+    vhead_soft=r.native_visibility(cam,d,n,base_e,dict(base_defaults,BDMergeSoftProjectorShadows=True))
     identity=dict(unflagged_native=bool(np.array_equal(vcur,vhead)),master_off_native=bool(np.array_equal(vmaster,vhead)),unflagged_world=bool(np.array_equal(wcur,whead)))
+    identity['master_off_world']=bool(np.array_equal(wmaster,whead))
     identity.update(unflagged_soft=bool(np.array_equal(vcur_soft,vhead_soft)),master_off_soft=bool(np.array_equal(vmaster_soft,vhead_soft)))
+    for (flag,soft),current in aircur.items():
+        baseline=r.native_visibility(cam,d,n,dict(base_e,detail_shadows=flag),dict(base_defaults,BDMergeSoftProjectorShadows=soft),airborne=True)
+        identity[f'airborne_flag_{flag}_soft_{soft}']=bool(np.array_equal(current,baseline))
     r.tree=tree;r.visibility=visibility;r.filter=filt
-    if not all(identity.values()):failures.append('unflagged/default HEAD byte identity')
-    result=dict(passed=not failures,rows=rows,motion=motion,head_identity=identity,failures=failures,
+    if not all(identity.values()):failures.append('unflagged/master-off/airborne BASE byte identity')
+    from rig_shadow_grazing_check import evaluate as grazing_check
+    grazing=grazing_check(defaults,out/'grazing',shader_ref)
+    if not grazing['passed']:failures.append('broad-FOV grazing partial attenuation')
+    from rig_shadow_receiver_check import evaluate as receiver_check
+    receiver=receiver_check(out/'receiver',shader_ref)
+    if not receiver['passed']:failures.append('normal-map orientation/projector apex')
+    result=dict(passed=not failures,shader_ref=shader_ref,grazing=grazing,receiver=receiver,rows=rows,motion=motion,base_identity=identity,identity_reference=BASE,failures=failures,
                 fixture='24cm head, 20.4mm nose, 10mm brows; affine skinning shear 0/0.002/0.004 at 60 Hz; independently intersected geometry and full production raster',
                 limits=dict(retention=.85,acne_false_dark_percent=.02,motion_p95=.06,motion_pop=.05))
     (out/'results.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n',encoding='utf-8')
@@ -162,5 +195,10 @@ void main(){vec2 uv=gl_FragCoord.xy/screen_res;frag_color=vec4(sampleSpotShadow(
 
 if __name__=='__main__':
     from rig_shadow_presets_check import settings_defaults,ROOT
-    result=evaluate(settings_defaults(),ROOT/'.tmp/rig_shadow')
+    import argparse
+    ap=argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--shader-ref',default='WORKTREE')
+    ap.add_argument('--out',default='.tmp/rig_shadow')
+    args=ap.parse_args()
+    result=evaluate(settings_defaults(),ROOT/args.out,args.shader_ref)
     raise SystemExit(0 if result['passed'] else 1)

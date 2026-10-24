@@ -9,11 +9,15 @@ import subprocess
 import re
 
 
-def check(out):
+def check(out, source_ref="WORKTREE"):
     from rig_shadow_presets_check import ROOT, function
     out=Path(out)/'flags';out.mkdir(parents=True,exist_ok=True)
-    source=(ROOT/'indra/newview/pipeline.cpp').read_text(encoding='utf-8')
-    rig=(ROOT/'indra/newview/alcinelightrig.cpp').read_text(encoding='utf-8')
+    from relight_3d_gl import SourceTree
+    tree=SourceTree(source_ref)
+    source=tree.read('indra/newview/pipeline.cpp')
+    rig=tree.read('indra/newview/alcinelightrig.cpp')
+    menu=tree.read('indra/newview/alviewermenu.cpp')
+    ordered='S32 fixture_priority' in source
     update=function(rig,'void ALCineLightRig::updateProjectorFlags()')
     assert update.count('setRigWorldShadowPick(')==1
     assert update.count('setProjectorDetailShadows(')==1
@@ -27,6 +31,7 @@ def check(out):
            'void LLPipeline::setProjectorDetailShadows(']
     shim=r'''
 #include <set>
+#include <algorithm>
 #include <map>
 #include <iostream>
 #include <cassert>
@@ -38,12 +43,13 @@ std::ostream& operator<<(std::ostream& o,const LLUUID& id){return o<<id.value;}
 #define LL_WARNS(x) std::cerr
 #define LL_ENDL std::endl
 struct LLPipeline {
- static inline std::set<LLUUID> sWorldShadowPicks,sRigWorldShadowPicks;
+ static inline std::set<LLUUID> sWorldShadowPicks;
+ RIG_STORAGE
  static inline std::set<LLUUID> sDetailShadowProjectors;
  static inline std::map<LLUUID,F32> sSoftness;
  static inline std::map<LLUUID,std::string> sWorldShadowPickNames;
  static inline U64 sWorldShadowPickRevision=0;
- static void setRigWorldShadowPick(const LLUUID&,bool);
+ RIG_SIGNATURE
  static void setWorldShadowPick(const LLUUID&,bool,const std::string& name="");
  static void toggleWorldShadowPick(const LLUUID&,const std::string& name="");
  static bool isWorldShadowPicked(const LLUUID&);
@@ -69,6 +75,20 @@ struct ALCineLightRig {
  bool mShaftEnabled[4]={},mHeroEnabled[4]={};F32 mShadowSoftness[4]={};
  void updateProjectorFlags();
 };
+'''
+    shim=shim.replace('RIG_STORAGE','static inline std::map<LLUUID,S32> sRigWorldShadowPicks;' if ordered else 'static inline std::set<LLUUID> sRigWorldShadowPicks;')
+    shim=shim.replace('RIG_SIGNATURE','static void setRigWorldShadowPick(const LLUUID&,bool,S32=3);' if ordered else 'static void setRigWorldShadowPick(const LLUUID&,bool);')
+    import textwrap
+    menu_start=menu.index('    void handle_object_world_shadow(')
+    menu_end=menu.index('    // [BDMerge G3.3 Batch 3]',menu_start)
+    menu_source=textwrap.dedent(menu[menu_start:menu_end])
+    handler=function(menu_source,'void handle_object_world_shadow(')
+    checked=function(menu_source,'bool check_object_world_shadow(')
+    menu_shim=r'''
+struct LLSD {};
+struct WorldShadowPickLight {LLUUID mId;std::string mName;};
+std::vector<WorldShadowPickLight> selected;
+std::vector<WorldShadowPickLight> selected_world_shadow_lights(){return selected;}
 '''
     tests=r'''
 int main(){
@@ -119,10 +139,29 @@ int main(){
  assert(P::isWorldShadowPicked(key)&&P::sDetailShadowProjectors.count(key)&&P::sSoftness[key]==3.f);
  rig.mCurrentLive[0]={false,false};rig.updateProjectorFlags();
  assert(!P::isWorldShadowPicked(key)&&!P::sDetailShadowProjectors.count(key)&&P::isWorldShadowPicked(manual));
+ // Execute the actual menu handler with 31 manual + 1 rig preference.
+ P::clearWorldShadowPicks();P::sRigWorldShadowPicks.clear();
+ for(int i=100;i<131;++i)P::setWorldShadowPick(LLUUID{i},true);
+ P::setRigWorldShadowPick(key,true);
+ selected={{{100},"old"},{{131},"new"}};
+ handle_object_world_shadow({});
+ auto manual_after=P::manualWorldShadowPickList();
+ bool capacity=manual_after.size()==32 && std::find(manual_after.begin(),manual_after.end(),LLUUID{100})!=manual_after.end()
+     && std::find(manual_after.begin(),manual_after.end(),LLUUID{131})!=manual_after.end();
+ P::setWorldShadowPick(LLUUID{131},false); // Admit the rig preference independently of the capacity assertion.
+ selected={{key,"rig only"}};bool membership=!check_object_world_shadow();
+ P::clearWorldShadowPicks();P::sRigWorldShadowPicks.clear();
+ for(int i=100;i<131;++i)P::setWorldShadowPick(LLUUID{i},true);
+ RIG_PRIORITY_TEST
+ auto picks=P::worldShadowPickList();
+ bool priority=std::find(picks.begin(),picks.end(),LLUUID{90})!=picks.end() && std::find(picks.begin(),picks.end(),LLUUID{1})==picks.end();
+ std::cerr<<"manual capacity="<<capacity<<" membership="<<membership<<" fixture priority="<<priority<<std::endl;
+ assert(capacity && membership && priority);
  std::cout<<"[shadow-flags] PASS production crisp/soft update loop, cold arbitration, provenance, manual save/load, stable/new-ID respawn, cleanup, first-frame fallback\n";
 }
 '''
-    (out/'flags.cpp').write_text(shim+'\n'.join(function(source,n) for n in names)+update_loop+tests,encoding='utf-8')
+    tests=tests.replace('RIG_PRIORITY_TEST','P::setRigWorldShadowPick(LLUUID{1},true,2);P::setRigWorldShadowPick(LLUUID{90},true,0);' if ordered else 'P::setRigWorldShadowPick(LLUUID{1},true);P::setRigWorldShadowPick(LLUUID{90},true);')
+    (out/'flags.cpp').write_text(shim+'\n'.join(function(source,n) for n in names)+update_loop+menu_shim+handler+checked+tests,encoding='utf-8')
     vc=r'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat'
     cmd=out/'build.cmd'
     cmd.write_text(f'@echo off\ncall "{vc}" >nul\ncl /nologo /std:c++20 /EHsc /I"{ROOT/"indra/newview"}" "{out/"flags.cpp"}" /Fe:"{out/"flags.exe"}" /Fo:"{out/"flags.obj"}"\nif errorlevel 1 exit /b %ERRORLEVEL%\n"{out/"flags.exe"}"\n')
@@ -130,7 +169,7 @@ int main(){
     (out/'build.log').write_text(result.stdout+result.stderr,encoding='utf-8')
     assert result.returncode==0,result.stdout+result.stderr
     assert 'const LLUUID id = mProjectors[i]->getID();' in update
-    assert 'setRigWorldShadowPick(id, mCurrentLive[i].mWorldShadowPick)' in update
+    assert ('setRigWorldShadowPick(id, mCurrentLive[i].mWorldShadowPick, i)' if ordered else 'setRigWorldShadowPick(id, mCurrentLive[i].mWorldShadowPick)') in update
     assert 'setProjectorDetailShadows(id, mCurrentLive[i].mDetailShadows)' in update
     assert 'mOmnis' not in update
     destroy=function(rig,'void ALCineLightRig::destroyEmitter(')
@@ -143,4 +182,10 @@ int main(){
     assert len(re.findall(r'"[^"]+"',actor_names))==5
     assert 'DetailShadows' not in actor_names and 'WorldShadowPick' not in actor_names
     print(result.stdout.strip(),flush=True)
-    return dict(passed=True,cold_arbitration=True,manual_provenance=True,stable_and_new_id_respawn=True,first_frame_fallback=True,viewer_call_sites=True)
+    return dict(passed=True,cold_arbitration=True,manual_provenance=True,manual_menu_capacity=True,manual_menu_membership=True,fixture_priority=True,stable_and_new_id_respawn=True,first_frame_fallback=True,viewer_call_sites=True)
+
+
+if __name__=='__main__':
+    import argparse
+    ap=argparse.ArgumentParser();ap.add_argument('--source-ref',default='WORKTREE');ap.add_argument('--out',default='.tmp/rig_shadow/fix2')
+    args=ap.parse_args();check(args.out,args.source_ref)

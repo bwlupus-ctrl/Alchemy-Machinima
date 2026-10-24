@@ -59,7 +59,7 @@ struct ALCineLightRigParamBlob
         S32 mGelSlot[ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT] = {};
         F32 mSourceSizeM = 0.10f;
         S32 mFixturePreset = 0;
-        // Appended last so the positional aggregate-initialized mLights[]
+        // Trailing defaults keep the positional aggregate-initialized mLights[]
         // array below (which only lists its first 11 members) is unaffected.
         F32 mOffsetZ = 0.f;
         // [RigRim] per-light rim params (Phase A). Gain 0 is the exact
@@ -71,8 +71,8 @@ struct ALCineLightRigParamBlob
         F32 mRimSharpness = kDefaultRimSharpness;
         F32 mRimWrap = kDefaultRimWrap;
         F32 mRimBackBias = kDefaultRimBackBias;
-        // [ActorMask] Appended last: the positional mLights[] rows below list
-        // only their first 11 members, so this stays default-false.
+        // The positional mLights[] rows specify only the first 11 members.
+        // These trailing actor/detail/world flags are omitted and default false.
         bool mActorOnly = false;
         bool mDetailShadows = false;
         bool mWorldShadowPick = false;

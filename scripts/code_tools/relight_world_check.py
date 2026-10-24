@@ -315,7 +315,11 @@ def check_picks():
     for reg in ('commit.add("Object.WorldShadow"', 'enable.add("Object.EnableWorldShadow"', 'enable.add("Object.CheckWorldShadow"'):
         assert reg in cpp, 'alviewermenu.cpp lost ' + reg
     block = cpp[cpp.index('struct WorldShadowPickLight'):cpp.index('// [BDMerge G3.3 Batch 3] Right-click "Cast Shadows" toggle')]
-    assert 'LLPipeline::setWorldShadowPick(' in block and 'LLPipeline::isWorldShadowPicked(' in block, 'handler must write the pipeline pick set'
+    assert 'LLPipeline::setWorldShadowPick(' in block, 'handler must write the manual pipeline pick set'
+    # The menu edits manual intent. Rig preferences must neither consume its
+    # capacity nor make its checkbox appear manually selected (FIX2).
+    assert 'LLPipeline::manualWorldShadowPickList()' in block and 'LLPipeline::isWorldShadowPicked(' not in block, 'menu membership must be manual, independently of rig preferences'
+    assert 'static_cast<unsigned>(manual.size())' in block and 'std::find(manual.begin(), manual.end(), light.mId)' in block, 'menu capacity and membership must use the same manual set'
     assert 'getIsLight()' in block and 'LLPrismLens::projectorRenderParams' in block, 'point lights AND projectors'
     # fix round 1: a mixed selection at the cap releases instead of sticking; a child prim without a named node falls back to its linkset root
     assert 'ALWorldShadow::pickToggleReleases(' in block and 'all_picked' not in block, 'the toggle must be the pure pickToggleReleases rule (a mixed selection at the cap must not stick)'

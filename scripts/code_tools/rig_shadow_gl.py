@@ -100,15 +100,17 @@ class Runner(G.AreaRunner):
         self.native=None
         self.spot=self.light_program('spotLightF.glsl')
         self.point=self.light_program('pointLightF.glsl')
-        self.visibility=self.link_text('''
+        self.visibility_source='''
 out vec4 frag_color;
 uniform int probe_native;
+uniform int probe_airborne;
 uniform vec2 screen_res;
 vec4 getPosition(vec2 p); vec4 getNorm(vec2 p);
 float sampleSpotShadow(vec3 p,vec3 n,int i,vec2 uv);
 void main(){vec2 tc=gl_FragCoord.xy/screen_res;vec3 p=getPosition(tc).xyz;
-float v=probe_native!=0?sampleSpotShadow(p,getNorm(tc).xyz,0,tc):1.;frag_color=vec4(v);}
-''', 'native visibility',extra=self.FRAGMENT_COMMON+['deferred/shadowUtil.glsl'],defines='#define SPOT_SHADOW 1\n')
+float v=probe_native!=0?sampleSpotShadow(p,probe_airborne!=0?vec3(0):getNorm(tc).xyz,0,tc):1.;frag_color=vec4(v);}
+'''
+        self.visibility=self.link_text(self.visibility_source,'native visibility',extra=self.FRAGMENT_COMMON+['deferred/shadowUtil.glsl'],defines='#define SPOT_SHADOW 1\n')
         # Compile the unchanged production operator, not a Python tone curve.
         tone=self.tree.read(G.SHADERS+'/class1/deferred/tonemapUtilF.glsl')
         # LPM is a separately linked production module, including unused modes.
@@ -218,10 +220,11 @@ void main(){gl_Position=vec4(position,1);vary_fragcoord=gl_Position;trans_center
         assert np.all(np.isfinite(data)), 'nonfinite production output'
         return data
 
-    def native_visibility(self,cam,depth,norm,e,defaults):
+    def native_visibility(self,cam,depth,norm,e,defaults,airborne=False):
         pr=self.visibility;self.target_float(cam);self._begin(pr)
         self.inputs(pr,cam,depth,norm);self.native_uniforms(pr,cam,e,defaults)
         self.gl.ui(self.gl.loc(pr,b'probe_native'),1)
+        self.gl.ui(self.gl.loc(pr,b'probe_airborne'),int(airborne))
         return self.read_float(cam)[...,0]
 
     def lighting(self,cam,depth,norm,e,k,visibility,native,defaults):

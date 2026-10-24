@@ -456,7 +456,7 @@ std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 std::set<LLUUID> LLPipeline::sWorldShadowPicks;                    // [World Shadow pick] session-only
 std::map<LLUUID, std::string> LLPipeline::sWorldShadowPickNames;
 U64 LLPipeline::sWorldShadowPickRevision = 0;
-std::set<LLUUID> LLPipeline::sRigWorldShadowPicks;
+std::map<LLUUID, S32> LLPipeline::sRigWorldShadowPicks;
 std::set<LLUUID> LLPipeline::sDetailShadowProjectors;
 std::set<LLUUID> LLPipeline::sNoShadowProjectors; // [BDMerge Batch 3] cast-shadows opt-out
 std::set<LLUUID> LLPipeline::sHeroProjectors;     // [BDMerge F4] Hero Beam per-cone opt-in
@@ -23276,12 +23276,14 @@ bool LLPipeline::isVolumetricShaftEnabled(const LLUUID& id)
 }
 
 // [World Shadow pick] The session pick set. Every change that really alters the set bumps the revision; a no-op write does not.
-void LLPipeline::setRigWorldShadowPick(const LLUUID& id, bool picked)
+void LLPipeline::setRigWorldShadowPick(const LLUUID& id, bool picked, S32 fixture_priority)
 {
     if (id.isNull()) return;
-    if ((sRigWorldShadowPicks.count(id) != 0) == picked) return;
+    const auto found = sRigWorldShadowPicks.find(id);
+    if (picked ? (found != sRigWorldShadowPicks.end() && found->second == fixture_priority)
+               : found == sRigWorldShadowPicks.end()) return;
     const auto before = worldShadowPickList();
-    if (picked) sRigWorldShadowPicks.insert(id);
+    if (picked) sRigWorldShadowPicks[id] = fixture_priority;
     else sRigWorldShadowPicks.erase(id);
     // Provenance alone must not re-pick/reorder an unchanged manual set.
     if (before != worldShadowPickList()) ++sWorldShadowPickRevision;
@@ -23296,7 +23298,7 @@ void LLPipeline::setProjectorDetailShadows(const LLUUID& id, bool enabled)
 
 bool LLPipeline::projectorDetailShadows(const LLUUID& id)
 {
-    static LLCachedControl<bool> detail(gSavedSettings, "RenderSpotShadowDetailBias", false);
+    static LLCachedControl<bool> detail(gSavedSettings, "RenderSpotShadowDetailBias", true);
     return detail && sDetailShadowProjectors.count(id) != 0;
 }
 
@@ -23363,13 +23365,16 @@ void LLPipeline::clearAwayWorldShadowPicks()
 
 std::vector<LLUUID> LLPipeline::worldShadowPickList()
 {
-    std::vector<LLUUID> picks(sWorldShadowPicks.begin(), sWorldShadowPicks.end());
-    for (const LLUUID& id : sRigWorldShadowPicks)
+    std::vector<LLUUID> picks = manualWorldShadowPickList();
+    std::vector<std::pair<LLUUID, S32>> rig(sRigWorldShadowPicks.begin(), sRigWorldShadowPicks.end());
+    // Select by fixture role before applying the cap: Key > Fill > Rim > Bg.
+    std::stable_sort(rig.begin(), rig.end(), [](const auto& a, const auto& b) { return a.second < b.second; });
+    for (const auto& entry : rig)
     {
         if (picks.size() >= ALWorldShadow::kMaxPicks) break;
-        if (sWorldShadowPicks.count(id) == 0) picks.push_back(id);
+        if (sWorldShadowPicks.count(entry.first) == 0) picks.push_back(entry.first);
     }
-    return ALWorldShadow::normalizePicks(picks);
+    return picks; // Already unique/capped; UUID normalisation must not choose the winners.
 }
 
 std::vector<LLUUID> LLPipeline::manualWorldShadowPickList()
