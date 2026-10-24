@@ -417,6 +417,22 @@ public:
     // reintroduces uncontrolled bloom leakage.
     void feedProjectorVolumetricBloom();
 
+    // Last main-view march only; auxiliary views never overwrite the UI model.
+    struct ProjectorShaftCost
+    {
+        U32 visible = 0, inside = 0;
+        U32 hard_detail = 0, shadow_taps = 0;
+        std::vector<F32> steps;
+    };
+    const ProjectorShaftCost& projectorShaftCost() const { return mProjectorShaftCost; }
+    std::string projectorShaftCostReadout() const;
+    ProjectorShaftCost mProjectorShaftCost;
+    bool mProjVolVariantFailed = false;
+    void projectorVolumetricShaderLoaded(bool success, S32 actual_level, S32 requested_level)
+    {
+        mProjVolVariantFailed = !success || actual_level != requested_level;
+    }
+
     // [BDMerge G3.3 Phase 2] Session-only per-projector art-direction flag.
     // A projector emits a volumetric shaft only when its object UUID has been
     // opted in this session via the right-click "Volumetric Shaft" toggle.
@@ -732,7 +748,8 @@ public:
     // [BDMerge G3.3] side-effect-free variant of setupSpotLight for the
     // finalize-stage volumetric pass: uploads only geometry + cookie (NO
     // mTargetShadowSpotLight priority reshuffle - R1), shadow slot passed in.
-    F32 setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot);
+    F32 setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot,
+                                 bool* camera_inside = nullptr, F32 max_distance = 0.f);
 
     void unbindDeferredShader(LLGLSLShader& shader);
 

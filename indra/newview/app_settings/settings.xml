@@ -19318,6 +19318,61 @@
       <key>Value</key>
       <integer>0</integer>
   </map>
+  <key>BDMergeProjectorVolumetricsDefinition</key>
+  <map>
+      <key>Comment</key>
+      <string>Auto scales definition with march height (1080 rows is the reference), then applies the caps. Balanced uses 85% and Fast 65% of Auto, including the frame budget. Full keeps the original adaptive look samples and bypasses caps. Caps limit march segments; particles and strong dust retain fine density detail, and Hard retains extra depth checks for thin blockers. Changing looks keeps these global controls. Global quality preference; not owned by shaft looks or scene files.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsMaxSteps</key>
+  <map>
+      <key>Comment</key>
+      <string>Limit each cone without changing the look's Samples. 0 uses the look default. Full bypasses this cap. Global quality preference; not owned by shaft looks or scene files.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsBigConeCap</key>
+  <map>
+      <key>Comment</key>
+      <string>Lower definition smoothly as a cone fills the screen. 0 is off; 1 approaches Min samples. Starts at 25% influence coverage. Full bypasses this cap. Global quality preference; not owned by shaft looks or scene files.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.6</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsFrameBudget</key>
+  <map>
+      <key>Comment</key>
+      <string>Total fractional steps shared by cones, weighted by continuous screen coverage. 0 is unlimited. Conservative bounds reserve shares before culling and shadow-slot selection, preventing edge pops. Full bypasses this cap. Global quality preference; not owned by shaft looks or scene files.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>48</real>
+  </map>
+  <key>BDMergeProjectorVolumetricsBeamShadows</key>
+  <map>
+      <key>Comment</key>
+      <string>Soft keeps today's beam shadows. Hard uses cheap hard depth taps while surfaces and rim stay soft. Both use the capped march; Hard retains extra fine depth checks, weighted by light intensity, to protect thin bars. Shadow taps controls these checks too. Global quality preference; not owned by shaft looks or scene files.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+  </map>
   <key>BDMergeProjectorVolumetricsResolution</key>
   <map>
       <key>Comment</key>
@@ -19398,7 +19453,7 @@
   <key>BDMergeProjectorVolumetricsShadowSamples</key>
   <map>
       <key>Comment</key>
-      <string>[BDMerge G3.3 Phase 1] Projector shaft occlusion sub-taps per march step (1-4; default 1). 1 = one shadow tap per step (cheap). Higher values sub-sample the shadow map between march steps so thin occluders (bars, foliage) resolve into crisp god-ray bands through the beam. Cost scales with this x resolution x projector count.</string>
+      <string>Base projector shaft shadow samples per march segment (1-4; default 1). Very low single-tap Soft budgets retain extra dithered filtering; Hard retains fine depth checks. Higher base values improve thin blockers at added cost. Total work also depends on march budget, look Samples and overlapping cones.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

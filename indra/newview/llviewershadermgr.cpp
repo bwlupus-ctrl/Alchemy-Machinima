@@ -4503,6 +4503,13 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         // Match the deactivated A/B variant exactly in the binary-cache key.
         // Absent and explicit "0" hash differently: first OFF must reuse startup.
         gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_INTEGRATION_AB", "0");
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_BUDGET_ENABLE",
+            gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") == 1 ? "0" : "1");
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_HARD_BEAM",
+            gSavedSettings.getU32("BDMergeProjectorVolumetricsBeamShadows") == 1 ? "1" : "0");
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_FINE_MEDIUM",
+            gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") != 1 &&
+            gSavedSettings.getF32("BDMergeProjectorVolumetricsNoiseStrength") > 0.5f ? "1" : "0");
         // [BDMerge G3.3 Dust / review fix] Dust is a compile-time permutation:
         // with the lever OFF the sampler3D projvol_dust_map (and all dust code)
         // does not exist in the program, so no fragment texture unit is consumed
@@ -4531,6 +4538,15 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredProjectorVolumetricProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricF.glsl", GL_FRAGMENT_SHADER));
         gDeferredProjectorVolumetricProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gDeferredProjectorVolumetricProgram.createShader();
+        gPipeline.projectorVolumetricShaderLoaded(success,gDeferredProjectorVolumetricProgram.mShaderLevel,
+            mShaderLevel[SHADER_DEFERRED]);
+        if (gPipeline.mProjVolVariantFailed)
+        {
+            // A later mode change must retry the requested class, never bless
+            // a successful class1 black stub left by startup fallback.
+            gDeferredProjectorVolumetricProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            success = false;
+        }
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricProgram.mName << "', disabling!" << LL_ENDL;

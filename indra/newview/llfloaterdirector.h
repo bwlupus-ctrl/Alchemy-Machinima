@@ -504,6 +504,8 @@ private:
     LLHandle<LLTextBox> mWorldShadowStatus;  // [P1-lite] "on 1 light (6 faces at 512)"
     LLHandle<LLTextBox> mWorldShadowPicks;   // [World Shadow pick] "Picked: Wall lamp; Spot (away)."
     ALLiveReadoutClock mLauncherClock{2.f};
+    LLHandle<LLTextBox> mShaftCost;
+    ALLiveReadoutClock mShaftCostClock{0.5f}; // every 2 s, visible readout only
     LLTimer mBuildTimer;
 
     // Animate tab

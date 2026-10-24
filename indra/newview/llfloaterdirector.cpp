@@ -1947,6 +1947,12 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
     {
         return;
     }
+    if (page == "projector_shafts_tab")
+    {
+        if (LLTextBox* cost = root->findChild<LLTextBox>("ps_shaft_cost"))
+            mShaftCost = cost->getDerivedHandle<LLTextBox>();
+        mShaftCostClock.forceDue();
+    }
     if (page == "light_rim_tab")
     {
         if (LLComboBox* presets = root->findChild<LLComboBox>("relight_shape_preset"))
@@ -3171,6 +3177,11 @@ void LLFloaterDirector::refreshLauncherCards()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshLauncherCards");
     if (!mLauncherClock.due()) return;
+    if (LLTextBox* cost = mShaftCost.get())
+    {
+        if (isWidgetOnScreen(cost) && mShaftCostClock.due())
+            setTextIfChanged(cost,gPipeline.projectorShaftCostReadout());
+    }
     // Read live Preferences on refresh; no setting callback or shader listener.
     LLTextBox* status = mAreaShadowSLStatus.get();
     if (!status)

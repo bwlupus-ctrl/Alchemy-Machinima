@@ -71,6 +71,8 @@ class Runner(G.AreaRunner):
         self.host = None
         self.termination = None
         self.shaft, self.up = self.link(SHAFT, True), self.link(UP, False)
+        self.performance_variants = 'PROJVOL_BUDGET_ENABLE' in shaft_source
+        self.variants = {(False,False,False,False):self.shaft}
         self.ab=None
         self.fbo, self.vbo = gl.U(), gl.U()
         gl.gen_fbo(1, C.byref(self.fbo)); gl.gen_buf(1, C.byref(self.vbo))
@@ -134,7 +136,8 @@ class Runner(G.AreaRunner):
 
     def run(self, fixture, half=False, steps=24, dither=0, frame=0, equi=0,
             air=0, footprint=0, rim=0, soft=True, cookie=False, shadows=True, rect=None, beam=0, conservative=0, maximum=100, bloom=False,
-            planes_override=None, count=False, layers=1, cap=0, rim_rect=None, uniforms=None):
+            planes_override=None, count=False, layers=1, cap=0, rim_rect=None, uniforms=None,
+            budget_steps=0., hard_beam=False):
         cam,g,depth,norm,light = fixture
         gl = self.gl; W,H = cam.W,cam.H
         tw,th = (W//2,H//2) if half else (W,H)
@@ -152,14 +155,19 @@ class Runner(G.AreaRunner):
         self.mips(0x0DE1); gl.param(0x0DE1,0x2801,0x2703)
         marched = self.target('march',tw,th,half and self.mrt)
         pr = self.shaft
-        if (equi or air or footprint) and self.modern:
-            if self.ab is None:
+        integration = bool(equi or air or footprint) and self.modern
+        fine = budget_steps>0 and (uniforms or {}).get('projvol_noise_strength',0.)>.5
+        variant = (integration,bool(budget_steps>0),bool(hard_beam),bool(fine))
+        if self.performance_variants or integration:
+            if variant not in self.variants:
                 saved=G.PREAMBLE
                 try:
-                    G.PREAMBLE=self.preamble+'\n#define PROJVOL_INTEGRATION_AB 1\n'
-                    self.ab=self.link(SHAFT,True)
+                    G.PREAMBLE=self.preamble+'\n'+''.join('#undef %s\n#define %s %d\n'%(key,key,int(value)) for key,value in zip(
+                        ('PROJVOL_INTEGRATION_AB','PROJVOL_BUDGET_ENABLE','PROJVOL_HARD_BEAM','PROJVOL_FINE_MEDIUM'),variant))
+                    self.variants[variant]=self.link(SHAFT,True)
                 finally: G.PREAMBLE=saved
-            pr=self.ab
+            pr=self.variants[variant]
+            if integration:self.ab=pr
         self._begin(pr)
         self._mat(pr,b'inv_proj',np.linalg.inv(cam.proj))
         self._mat(pr,b'projvol_inv_modelview',np.linalg.inv(cam.view))
@@ -183,6 +191,8 @@ class Runner(G.AreaRunner):
                          'soft_shadow_scale':4,'soft_shadow_max':8,'shadow_split_blend':.25,
                          'gobo_intensity':1}.items(): self.uf(pr,name,val)
         self.uf(pr,'projvol_half_res',*( (tw,th) if half and self.modern else (0,0)))
+        self.uf(pr,'projvol_budget_steps',float(budget_steps))
+        self.ui(pr,'projvol_hard_beam_shadows',int(hard_beam))
         self.uf(pr,'proj_shadow_res',*shadow.shape[::-1]); self.uf(pr,'shadow_clip',16,32,48,64)
         self.uf(pr,'gobo_anim_params',0,0,1,0) # production default zoom is 1, not an unset uniform's 0
         for name,val in {'depthMap':1,'normalMap':2,'projectionMap':4,'proj_shadow_idx':0,
@@ -258,7 +268,7 @@ class Runner(G.AreaRunner):
         assert np.isfinite(image).all(), 'NaN/Inf in production output'
         return image,raw,stats
 
-    def temporal_resolve(self, fixture, previous, previous_camera, valid):
+    def temporal_resolve(self, fixture, previous, previous_camera, valid, blend=.75, reject=3.5):
         cam=fixture[0]; gl=self.gl; w,h=cam.W//2,cam.H//2
         if not hasattr(self,'temporal_program'):
             self.temporal_program=self.link('class1/deferred/projectorVolumetricTemporalF.glsl',False)
@@ -273,11 +283,11 @@ class Runner(G.AreaRunner):
         self.ui(pr,'depthMap',1);self.ui(pr,'normalMap',2);self.ui(pr,'projectionMap',5);self.ui(pr,'projvol_history',9)
         self.ui(pr,'projvol_temporal_beam_depth',1)
         self.uf(pr,'projvol_half_res',w,h)
-        self.uf(pr,'projvol_temporal_blend',.75 if valid else 0)
-        self.uf(pr,'projvol_temporal_reject',3.5)
+        self.uf(pr,'projvol_temporal_blend',blend if valid else 0)
+        self.uf(pr,'projvol_temporal_reject',reject)
         gl.active(0x84C5);gl.bind_tex(0x0DE1,self.textures['march'][0])
         gl.param(0x0DE1,0x2801,0x2600);gl.param(0x0DE1,0x2800,0x2600)
-        self.draw({},'temporal_ms');gl.finish()
+        timing = {}; self.draw(timing,'temporal_ms'); self.temporal_ms = timing['temporal_ms']; gl.finish()
         out=np.empty((h,w,4),np.float32)
         gl.read(0,0,w,h,0x1908,0x1406,out.ctypes.data)
         assert self.error()==0
@@ -343,7 +353,7 @@ def host_request(host,op,values):
     host.stdin.write(op+' '+' '.join(map(str,values))+'\n'); host.stdin.flush()
     line=host.stdout.readline(); assert line, 'C++ host exited'
     line=line.strip()
-    if op in ('U','R','F'): return [cmd.split() for cmd in line.split(';') if cmd]
+    if op in ('U','R','F','Q'): return [cmd.split() for cmd in line.split(';') if cmd]
     return list(map(float,line.split()))
 
 
@@ -442,6 +452,32 @@ void drawArrays(int,int,int){std::cout<<"draw;";}
 };
 void glScissor(int x,int y,int w,int h){std::cout<<"scissor "<<x<<" "<<y<<" "<<w<<" "<<h<<";";}
 '''+helper
+    budget_op = r'''
+else if(op=="P"){unsigned mode,lo,hi;bool adaptive;float coverage,height,maximum,cap,budget,total;
+std::cin>>mode>>adaptive>>coverage>>height>>lo>>hi>>maximum>>cap>>budget>>total;
+std::cout<<projvolStepBudget(mode,adaptive,coverage,height,lo,hi,maximum,cap,budget,total)<<std::endl;}
+else if(op=="Q"){bool rim;unsigned mode,legacy,look;float budget;std::cin>>rim>>mode>>legacy>>look>>budget;
+projvolUploadStepBudget(shader,rim,mode,legacy,look,budget);std::cout<<std::endl;}
+''' if 'static F32 projvolStepBudget(' in helper else ''
+    if 'static bool projvolVariantReady(' in helper:
+        header = G.SourceTree(ref).read('indra/newview/pipeline.h')
+        loaded = re.search(r'void projectorVolumetricShaderLoaded\([^)]*\)\s*\{(.*?)\n    \}',header,re.S).group(1)
+        manager = G.SourceTree(ref).read('indra/newview/llviewershadermgr.cpp')
+        restore = re.search(r'if \(gPipeline.mProjVolVariantFailed\)\s*\{(.*?)\n        \}',manager,re.S).group(1)
+        budget_op += r'''
+else if(op=="V"){bool mProjVolVariantFailed=true;
+auto reload=[&](bool success,int actual_level,int requested_level){'''+loaded+r'''};
+std::cout<<projvolVariantReady(mProjVolVariantFailed,true)<<" ";
+reload(false,3,3);std::cout<<projvolVariantReady(mProjVolVariantFailed,true)<<" ";
+reload(true,1,3);std::cout<<projvolVariantReady(mProjVolVariantFailed,true)<<" ";
+reload(true,3,3);std::cout<<projvolVariantReady(mProjVolVariantFailed,true)<<" ";
+struct {int mShaderLevel=1;} gDeferredProjectorVolumetricProgram;
+int mShaderLevel[1]={3};const int SHADER_DEFERRED=0;bool success=true;
+reload(success,1,3);
+if(mProjVolVariantFailed){'''+restore+r'''}
+int retry=gDeferredProjectorVolumetricProgram.mShaderLevel;
+reload(true,retry,3);std::cout<<retry<<" "<<projvolVariantReady(mProjVolVariantFailed,true)<<std::endl;}
+'''
     source += r'''
 void matrix(glm::mat4& m){for(int c=0;c<4;++c)for(int r=0;r<4;++r)std::cin>>m[c][r];}
 int main(){std::cout<<std::setprecision(9); std::string op; LLGLSLShader shader; LLVertexBuffer triangle;
@@ -469,6 +505,7 @@ U32 steps='''+adaptive+r''';
 std::cout<<ok<<" "<<bounds.x<<" "<<bounds.y<<" "<<bounds.z<<" "<<bounds.w<<" "<<steps<<" "
 <<projvolAdaptiveResolution(true,ok,bounds,h,min_res,max_res)<<std::endl;
 }
+'''+budget_op+r'''
 else return 2;
 }}
 '''
@@ -1279,7 +1316,7 @@ def timed_look(runner, fixture, spec, repeats, **over):
     return med, float(np.median(totals)), [float(min(totals)), float(max(totals))]
 
 
-def backlit_fixture(w, h, occluders=True, bar_radius=.035):
+def backlit_fixture(w, h, occluders=True, bar_radius=.035, blocker_fraction=1.):
     """Reference-style fan: low projector aimed up behind seven thin vertical/diagonal bars.
 
     The camera looks toward the lamp from below the cone axis. Unlike looking
@@ -1292,9 +1329,12 @@ def backlit_fixture(w, h, occluders=True, bar_radius=.035):
     for i in range(7):
         x = (i-3)*.24
         dx = (0., .3, -.2)[i % 3]
-        top = (x+dx, 1.2, 1.8); tops.append(top)
+        lamp = np.array([0.,0.,.18])
+        top = lamp+(np.array([x+dx,1.2,1.8])-lamp)*blocker_fraction
+        bottom = lamp+(np.array([x,1.2,.65])-lamp)*blocker_fraction
+        tops.append(top)
         if occluders:
-            prims.append(S.Prim('bar%d' % i, 'capsule', r=bar_radius, a=(x, 1.2, .65), b=top))
+            prims.append(S.Prim('bar%d' % i, 'capsule', r=bar_radius*blocker_fraction, a=bottom, b=top))
     scene = S.Scene('backlit', prims, [], [], {}, np.empty((0, 3)))
     pos = np.array([0., 0., .18]); direction = S.unit([0., 1., 1.4])
     lc = S.Camera(pos, pos+direction*4, 1024, 1024, vfov=60, near=.1, far=12)
@@ -1693,10 +1733,26 @@ def main():
     ap.add_argument('--round1-only',action='store_true',help='run only the review-round regression suite')
     ap.add_argument('--round2-only',action='store_true',help='run only the second review-round regression suite')
     ap.add_argument('--looks-only',action='store_true',help='run only the Light > Projector Shafts look gate')
+    ap.add_argument('--performance-only',action='store_true',help='Full identity, continuous-budget motion and hard-beam regression gates')
+    ap.add_argument('--performance-cost-only',action='store_true',help='1/3/6 overlapping cones at this resolution, Full/Auto/Fast, soft/hard beam shadows')
     args = ap.parse_args(); args.out=args.out.resolve(); args.out.mkdir(parents=True,exist_ok=True)
     images = args.out/'images'; images.mkdir(exist_ok=True)
     gl = G.GL(); print('GL:',gl.renderer,flush=True)
     assert 'RTX 5090' in gl.renderer, 'FAIL: expected RTX 5090'
+    if args.performance_only or args.performance_cost_only:
+        from relight_volumetric_perf import performance_checks
+        host = build_scissor_host(args.out,args.glm_include)
+        report = dict(renderer=gl.renderer,size=[args.width,args.height],baseline='13028c968b4',
+                      timing='warmed GL_TIME_ELAPSED medians; no upload/readback/CPU cost; fixture costs, not viewer FPS',
+                      checks=[],measurements=[])
+        try:
+            performance_checks(sys.modules[__name__],args,gl,host,report)
+        finally:
+            host.stdin.close(); assert host.wait(timeout=5)==0
+        report['passed'] = all(c['passed'] for c in report['checks'])
+        (args.out/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+        print('PASS' if report['passed'] else 'FAIL',args.out/'report.json',flush=True)
+        return 0 if report['passed'] else 1
     if args.looks_only:
         host=build_scissor_host(args.out,args.glm_include)
         report = dict(renderer=gl.renderer,size=[args.width,args.height],

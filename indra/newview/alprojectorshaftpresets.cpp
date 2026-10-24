@@ -76,6 +76,7 @@ const std::vector<std::string>& pageSettings()
                  "BDMergeProjectorVolumetricsMinResolution", "BDMergeProjectorVolumetricsDither",
                  "BDMergeProjectorVolumetricsTemporalDither", "BDMergeProjectorVolumetricsFogBase",
                  "BDMergeProjectorVolumetricsPyramidScissor",
+                 "BDMergeProjectorVolumetricsDefinition", "BDMergeProjectorVolumetricsMaxSteps", "BDMergeProjectorVolumetricsBigConeCap", "BDMergeProjectorVolumetricsFrameBudget", "BDMergeProjectorVolumetricsBeamShadows",
                  "BDMergeSoftShadowSun", "BDMergeGoboAnisotropic",
                  "BDMergeFroxelWindAzimuth", "BDMergeFroxelWindElevation", "BDMergeFroxelWindInverted"})
             result.emplace_back(name);

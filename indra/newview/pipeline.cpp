@@ -22092,6 +22092,55 @@ static U32 projvolAdaptiveResolution(bool adaptive, bool sphere_valid,
     return llclamp((U32)(scaled+0.5f),min_res,max_res);
 }
 
+// Continuous influence coverage, independent of rounded scissors, pyramid
+// visibility and shadow-slot admission. Reserve shares before any draw rejects.
+static F32 projvolCoverage(bool valid, const glm::vec4& sphere, F32 width, F32 height)
+{
+    if (!valid) return 1.f;
+    return llclamp((sphere.z-sphere.x)/llmax(width,1.f),0.f,1.f) *
+           llclamp((sphere.w-sphere.y)/llmax(height,1.f),0.f,1.f);
+}
+
+static F32 projvolStepBudget(U32 definition, bool adaptive, F32 coverage,
+                             F32 height, U32 min_res, U32 max_res,
+                             F32 max_steps, F32 big_cap, F32 frame_budget,
+                             F32 total_coverage)
+{
+    // Full bypasses all caps; its integer adaptive rule remains untouched.
+    if (definition == 1) return 0.f;
+    const F32 quality = definition == 3 ? 0.65f : definition == 2 ? 0.85f : 1.f;
+    const F32 scale = llclamp(height/1080.f, 0.f, 1.f);
+    const F32 own = adaptive ? (F32)min_res + (F32)(max_res-min_res)*sqrtf(coverage) : (F32)max_res;
+    const F32 scaled = ((F32)min_res + (own-(F32)min_res)*scale)*quality;
+    F32 steps = scaled;
+    if (max_steps > 0.f) steps = llmin(steps, max_steps);
+    // Smoothly approach the cap from 25% to full screen area. The cap never
+    // raises the look's own budget, even below its old adaptive floor.
+    F32 large = llclamp((coverage-0.25f)/0.75f,0.f,1.f);
+    large = large*large*(3.f-2.f*large);
+    const F32 capped = ((F32)min_res + (F32)(max_res-min_res)*(1.f-big_cap)*scale)*quality;
+    steps = llmin(steps, scaled + (capped-scaled)*large);
+    if (frame_budget > 0.f)
+        steps = llmin(steps, frame_budget*quality*coverage/llmax(total_coverage,0.000001f));
+    return llmax(steps,0.f);
+}
+
+static void projvolUploadStepBudget(LLGLSLShader& shader, bool rim_only,
+                                    U32 definition, U32 legacy_steps, U32 look_steps,
+                                    F32 budget)
+{
+    static const LLStaticHashedString sBudgetSteps("projvol_budget_steps");
+    shader.uniform1i(LLShaderMgr::GODRAY_RES,
+        rim_only || (definition != 1 && budget <= 0.f) ? 0 :
+        (S32)(definition == 1 ? legacy_steps : look_steps));
+    shader.uniform1f(sBudgetSteps,budget);
+}
+
+static bool projvolVariantReady(bool failed, bool matches)
+{
+    return !failed || !matches;
+}
+
 // These small production upload/draw routines are also executed by the standalone
 // GL gate's C++ host. Its trace drives actual WGL uniforms, scissors and draws.
 static void projvolUploadRecordingUniforms(LLGLSLShader& shader, U32 dither,
@@ -22123,6 +22172,8 @@ static void projvolDrawFullResRim(LLGLSLShader& shader, LLVertexBuffer* triangle
     static const LLStaticHashedString sMarchHalfRes("projvol_half_res");
     shader.uniform2f(sMarchHalfRes, 0.f, 0.f);
     shader.uniform1i(LLShaderMgr::GODRAY_RES, 0);
+    static const LLStaticHashedString sBudgetSteps("projvol_budget_steps");
+    shader.uniform1f(sBudgetSteps, 0.f);
     shader.uniform1i(LLShaderMgr::PROJVOL_TEMPORAL_BEAM_DEPTH, 0);
     shader.uniform1f(LLShaderMgr::PROJVOL_RIM_STRENGTH, llmax(strength, 0.f));
     triangle->drawArrays(LLRender::TRIANGLES, 0, 3);
@@ -22140,6 +22191,17 @@ static void projvolDrawRimTexture(LLGLSLShader& shader, LLVertexBuffer* triangle
     triangle->drawArrays(LLRender::TRIANGLES, 0, 3);
 }
 // End standalone-tested projector decisions.
+
+std::string LLPipeline::projectorShaftCostReadout() const
+{
+    if (!mProjectorShaftCost.visible) return "0 visible / 0 inside / no steps";
+    std::string text = llformat("%u visible / %u inside / steps:",
+        mProjectorShaftCost.visible,mProjectorShaftCost.inside);
+    for (F32 steps : mProjectorShaftCost.steps) text += llformat(" %.1f",steps);
+    if (mProjectorShaftCost.hard_detail)
+        text += llformat(" / hard detail: %u x %u taps",mProjectorShaftCost.hard_detail,mProjectorShaftCost.shadow_taps);
+    return text;
+}
 
 static bool projvolPyramidBounds(LLDrawable* drawable, const glm::mat4& view,
                                 const glm::mat4& projection, F32 radius,
@@ -22202,6 +22264,13 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
     if (!aux_direct) mProjVolRimValid = false;
     mProjVolShaftSrc = nullptr;
 
+    if (!aux_direct)
+    {
+        mProjectorShaftCost.visible = mProjectorShaftCost.inside = 0;
+        mProjectorShaftCost.hard_detail = mProjectorShaftCost.shadow_taps = 0;
+        mProjectorShaftCost.steps.clear(); // retain capacity across frames
+    }
+
     if (!BDMergeProjectorVolumetrics || RenderShadowDetail <= 0 || gCubeSnapshot ||
         sPrismPreviewRender)
     {
@@ -22213,45 +22282,61 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
     static LLCachedControl<bool> airborne_tap(gSavedSettings, "BDMergeProjectorVolumetricsAirborneTap", false);
     static LLCachedControl<bool> cookie_footprint(gSavedSettings, "BDMergeProjectorVolumetricsCookieFootprint", false);
     static LLCachedControl<bool> pyramid_scissor(gSavedSettings, "BDMergeProjectorVolumetricsPyramidScissor", true);
+    static LLCachedControl<U32> definition(gSavedSettings, "BDMergeProjectorVolumetricsDefinition", 0);
+    static LLCachedControl<U32> beam_shadows(gSavedSettings, "BDMergeProjectorVolumetricsBeamShadows", 0);
+    const U32 quality = llclamp((U32)definition,0u,3u);
+    const bool hard_variant = beam_shadows == 1;
+    const bool budget_variant = quality != 1;
+    const bool fine_variant = budget_variant && BDMergeProjectorVolumetricsNoiseStrength > 0.5f;
     const U32 integration_mask = (equiangular() ? 1u : 0u) |
         (airborne_tap() ? 2u : 0u) | (cookie_footprint() ? 4u : 0u);
+    const U32 variant_mask = integration_mask | (budget_variant ? 8u : 0u) |
+        (hard_variant ? 16u : 0u) | (fine_variant ? 32u : 0u);
     static U32 previous_integration_mask = 0;
     // Aux restores the main view's history-valid bit on exit; only the main
     // call consumes this transition, otherwise aux could hide the invalidation.
-    if (!aux_direct && previous_integration_mask != integration_mask)
+    if (!aux_direct && previous_integration_mask != variant_mask)
     {
         mProjVolHistoryValid = false;
-        previous_integration_mask = integration_mask;
+        previous_integration_mask = variant_mask;
     }
     // A dormant experimental kernel still increases shader register pressure.
     // Specialize only this local program, using its existing files/features and
     // binary cache. Shader-manager startup explicitly uses the same "0" key;
     // shader reload/context reset is therefore handled without a static latch.
     const std::string integration_variant = integration_mask ? "1" : "0";
-    static bool integration_variant_failed = false;
-    const auto variant = gDeferredProjectorVolumetricProgram.mDefines.find("PROJVOL_INTEGRATION_AB");
-    const bool variant_on = variant != gDeferredProjectorVolumetricProgram.mDefines.end() && variant->second == "1";
-    if (variant_on != (integration_mask != 0) &&
+    auto permutation_on = [](const char* name)
+    {
+        const auto value = gDeferredProjectorVolumetricProgram.mDefines.find(name);
+        return value != gDeferredProjectorVolumetricProgram.mDefines.end() && value->second == "1";
+    };
+    const bool variant_matches = permutation_on("PROJVOL_INTEGRATION_AB") == (integration_mask != 0) &&
+        permutation_on("PROJVOL_BUDGET_ENABLE") == budget_variant &&
+        permutation_on("PROJVOL_HARD_BEAM") == hard_variant &&
+        permutation_on("PROJVOL_FINE_MEDIUM") == fine_variant;
+    if (!variant_matches &&
         !gDeferredProjectorVolumetricProgram.mShaderFiles.empty())
     {
         gGL.flush();
         mProjVolHistoryValid = false;
         const S32 shader_level = gDeferredProjectorVolumetricProgram.mShaderLevel;
         gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_INTEGRATION_AB", integration_variant);
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_BUDGET_ENABLE",budget_variant ? "1" : "0");
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_HARD_BEAM",hard_variant ? "1" : "0");
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_FINE_MEDIUM",fine_variant ? "1" : "0");
         const bool loaded = gDeferredProjectorVolumetricProgram.createShader();
         if (!loaded || gDeferredProjectorVolumetricProgram.mShaderLevel != shader_level)
         {
             // Never accept a silent class1 black-stub fallback for a failed A/B.
             // Keep the failed variant latched until the levers change/reload.
             gDeferredProjectorVolumetricProgram.mShaderLevel = shader_level;
-            integration_variant_failed = true;
-            LL_WARNS() << "Projector volumetric A/B shader failed; toggle the A/B levers off or reload shaders." << LL_ENDL;
+            mProjVolVariantFailed = true;
+            LL_WARNS() << "Projector shaft shader failed; change Definition, beam shadows or A/B options, or reload shaders." << LL_ENDL;
             return;
         }
-        integration_variant_failed = false;
+        mProjVolVariantFailed = false;
     }
-    if (integration_variant_failed && variant != gDeferredProjectorVolumetricProgram.mDefines.end() &&
-        variant->second == integration_variant) return;
+    if (!projvolVariantReady(mProjVolVariantFailed,variant_matches)) return;
     if (!gDeferredProjectorVolumetricProgram.isComplete())
     {
         mProjVolHistoryValid = false;
@@ -22612,6 +22697,54 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
     const U32 max_res = llclamp(BDMergeProjectorVolumetricsResolution, (U32)4, (U32)64);
     const U32 min_res = llclamp(BDMergeProjectorVolumetricsMinResolution, (U32)4, max_res);
 
+    static LLCachedControl<F32> max_steps(gSavedSettings, "BDMergeProjectorVolumetricsMaxSteps", 0.f);
+    static LLCachedControl<F32> big_cap(gSavedSettings, "BDMergeProjectorVolumetricsBigConeCap", 0.6f);
+    static LLCachedControl<F32> frame_budget(gSavedSettings, "BDMergeProjectorVolumetricsFrameBudget", 48.f);
+    auto finite_cap = [](F32 value, F32 fallback, F32 maximum)
+    {
+        return std::isfinite(value) ? llclamp(value,0.f,maximum) : fallback;
+    };
+    const F32 step_limit = finite_cap(max_steps,0.f,64.f);
+    const F32 large_limit = finite_cap(big_cap,0.6f,1.f);
+    const F32 frame_limit = finite_cap(frame_budget,48.f,1024.f);
+    static const LLStaticHashedString sBeamShadows("projvol_hard_beam_shadows");
+    gDeferredProjectorVolumetricProgram.uniform1i(sBeamShadows, beam_shadows == 1 ? 1 : 0);
+    if (!aux_direct && quality != 1 && beam_shadows == 1)
+    {
+        mProjectorShaftCost.hard_detail = max_res;
+        mProjectorShaftCost.shadow_taps = llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);
+    }
+
+    // Deliberately reserve against ALL flagged influence bounds, before shadow
+    // admission or pyramid/scissor rejection. An entering cone's clipped sphere
+    // area starts at zero, so it cannot suddenly steal another cone's budget.
+    // Offscreen conservative bounds may reserve work; shadow-slot churn cannot
+    // change the denominator. No history or camera-motion-dependent smoothing.
+    F64 total_coverage = 0.0;
+    if (quality != 1 && frame_limit > 0.f)
+    {
+        for (LLDrawable* candidate : mLights)
+        {
+            LLVOVolume* v = candidate->getVOVolume();
+            if (!v || !v->isLightSpotlight()) continue;
+            LLUUID id = v->getID();
+            if (!isVolumetricShaftEnabled(id))
+            {
+                LLViewerObject* root = v->getRootEdit();
+                if (!root || !isVolumetricShaftEnabled(root->getID())) continue;
+                id = root->getID();
+            }
+            if (ALCineLightRigManager::anyActorOnly() &&
+                ALCineLightRigManager::instance().actorOnlyBits(v->getID())) continue;
+            if (BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
+                mFroxelInjectedProjectors.count(id) != 0) continue;
+            glm::vec4 sphere;
+            const bool valid = projvolSphereBounds(mul_mat4_vec3(mat,glm::vec3(candidate->getPositionAgent())),
+                v->getLightRadius()*1.5f,proj,tgt_w,tgt_h,sphere);
+            total_coverage += projvolCoverage(valid,sphere,tgt_w,tgt_h);
+        }
+    }
+
     struct RimDraw
     {
         LLDrawable* drawable;
@@ -22692,6 +22825,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
         const F32 e_rimPower    = has_ov ? ov.rimPower    : BDMergeProjectorVolumetricsRimPower;
         const F32 e_rimWrap     = has_ov ? ov.rimWrap     : BDMergeProjectorVolumetricsRimWrap;
         const F32 e_rimSoftness = has_ov ? ov.rimSoftness : BDMergeProjectorVolumetricsRimSoftness;
+        const F32 e_max_dist = has_ov ? ov.maxDistance : BDMergeProjectorVolumetricsMaxDistance;
 
         // [BDMerge Froxel F2] A projector injected into the froxel light grid this
         // frame lights via the grid (soft, volumetric) - marching its shaft here too
@@ -22715,12 +22849,13 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
 
         // Side-effect-free geometry + cookie upload; slot passed in directly
         // (NO mTargetShadowSpotLight priority reshuffle - R1).
+        bool camera_inside = false;
         const F32 lamp_power_scale = setupSpotLightVolumetric(
-            gDeferredProjectorVolumetricProgram, drawablep, (S32)i);
+            gDeferredProjectorVolumetricProgram, drawablep, (S32)i, &camera_inside,
+            llclamp(e_max_dist,0.f,64.f));
 
         // Remaining per-cone override levers (brightness/feather/g/density/tint).
         const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
-        const F32 e_max_dist = has_ov ? ov.maxDistance  : BDMergeProjectorVolumetricsMaxDistance;
         const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
         const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
         const F32 e_density  = has_ov ? ov.density       : BDMergeProjectorVolumetricsDensity;
@@ -22844,10 +22979,20 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
         // toward the floor. Bounded march means even the floor stays clean.
         const U32 cone_res = projvolAdaptiveResolution(BDMergeProjectorVolumetricsAdaptive,
             sphere_valid, sphere, tgt_h, min_res, max_res);
+        const F32 coverage = projvolCoverage(sphere_valid,sphere,tgt_w,tgt_h);
+        const F32 budget = projvolStepBudget(quality,BDMergeProjectorVolumetricsAdaptive,
+            coverage,tgt_h,min_res,max_res,step_limit,large_limit,frame_limit,(F32)total_coverage);
         // [BDMerge Froxel F2] Rim-only demotion: res 0 skips the march loop entirely
         // (shaft = 0; the shader's dt guard handles the division) so only the surface
         // rim evaluates - the beam itself lives in the froxel grid.
-        gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::GODRAY_RES, froxel_rim_only ? 0 : (S32)cone_res);
+        projvolUploadStepBudget(gDeferredProjectorVolumetricProgram,froxel_rim_only,
+            quality,cone_res,max_res,budget);
+        if (!aux_direct && !froxel_rim_only)
+        {
+            ++mProjectorShaftCost.visible;
+            if (camera_inside && glm::length(c) < radius) ++mProjectorShaftCost.inside;
+            mProjectorShaftCost.steps.push_back(quality == 1 ? (F32)cone_res : budget);
+        }
 
         gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(c));
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, radius);
@@ -30541,7 +30686,8 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
 // it from renderFinalize would double-apply the swap and corrupt next-frame shadow
 // slot assignment. Uses get_current_modelview() (== gGLModelView, the camera view
 // matrix) so proj_mat is consistent with getPosition()'s view-space reconstruction.
-F32 LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot)
+F32 LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot,
+                                       bool* camera_inside, F32 max_distance)
 {
     //construct frustum
     LLVOVolume* volume = drawablep->getVOVolume();
@@ -30607,6 +30753,16 @@ F32 LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawa
 
     F32 proj_range = far_clip - near_clip;
     glm::mat4 light_proj = glm::perspective(fovy, aspect, near_clip, far_clip);
+
+    if (camera_inside)
+    {
+        // Camera is view-space origin. Match the march's five half-spaces
+        // (far plane deliberately ignored; the influence sphere bounds range).
+        const glm::vec4 q = (light_proj * screen_to_light)[3];
+        const F32 axis_distance = -screen_to_light[3].z - (dist-scale.mV[VZ]*0.5f);
+        *camera_inside = q.w > 0.f && fabsf(q.x) <= q.w && fabsf(q.y) <= q.w && q.z >= -q.w &&
+            (max_distance <= 0.f || axis_distance <= max_distance);
+    }
 
     // [BDMerge G3.3 Batch A - E1] Frustum-clipped march bounds. Extract the
     // projector's 6 frustum planes in VIEW space - the exact space the shaft

@@ -315,8 +315,9 @@ def validate_data(data: dict) -> None:
     # Light-shape refinement (10/23): +2 rows (Highlight softness, native preset action combo).
     # Haiku kit batch (10/23): +13 rows (World near clip, Projector contact, VSync lock, VCam local video + cache/download limits, Settings Performance card with 3 rows, 4 projector shaft A/B rows).
     # Projector Shafts page (10/23): 41 shaft rows move from Atmosphere, +10 new rows (Halo stretch, 5 rim, 4 dust particles), page 37 -> 38; 2191 -> 2201.
-    if len(pages) != 38 or row_count != 2201:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2201")
+    # Shaft Performance (10/24): five global caps/selectors + cost readout; two existing rows move. 2201 -> 2207.
+    if len(pages) != 38 or row_count != 2207:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2207")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2317,7 +2318,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         page_settings.add(shaft_page.get("master_setting"))
         checks.append(("shaft page history covers all controls without expanding look ownership",
                        page_settings == owned | {"BDMergeProjectorVolumetricsDust"} | extras and
-                       len(extras) == 18 and not (owned & extras)))
+                       len(extras) == 23 and not (owned & extras)))
         ghosts = ET.fromstring(outputs[out_dir / "panel_dpage_cast_ghosts.xml"], parser=parser())
         rotation_rows = [row for row in ghosts.iter("kit_row") if row.get("widget") in
                          {"yaw_spinner", "pitch_spinner", "roll_spinner"}]
