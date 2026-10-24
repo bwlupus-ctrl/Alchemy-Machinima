@@ -254,9 +254,13 @@ void ALCineRigRim::bindAnimated(LLGLSLShader& shader)
     // Limits are live uniforms, independent of light hashes and shader reloads.
     static LLCachedControl<bool> shape_enabled(gSavedSettings, "RenderLightShapeEnable", false);
     gGL.setLightShapeActive(shape_enabled());
+    // Match pipeline.cpp light_shape_enabled: deferred auxiliary views need
+    // the same sized projector image. Rim and area-shadow policy is separate.
+    const bool shape_active = shape_enabled() &&
+        !LLPipeline::sRenderingHUDs && !LLPipeline::sImpostorRender;
     // Always refresh the master, including on fast binds and while disabled.
     // Shape arrays and limits remain untouched while off.
-    shader.uniform1i(LLShaderMgr::RELIGHT_ENABLED, (shape_enabled() ? 1 : 0) | (gPipeline.areaShadowsActive() ? 2 : 0));
+    shader.uniform1i(LLShaderMgr::RELIGHT_ENABLED, (shape_active ? 1 : 0) | (gPipeline.areaShadowsActive() ? 2 : 0));
     static const LLStaticHashedString limits("relight_limits");
     if (shape_enabled() && shader.getUniformLocation(limits) >= 0)
     {

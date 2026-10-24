@@ -11806,7 +11806,7 @@ void LLPipeline::endCinematicProbeCapture()
     mCinematicProbeCaptureActive = false;
 }
 
-// [RelightQ] Phase 1 only. Auxiliary views retain their existing local shading.
+// [RelightQ] Source sizing also applies to deferred auxiliary views.
 static bool light_shape_master_enabled()
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "RenderLightShapeEnable", false);
@@ -11815,8 +11815,8 @@ static bool light_shape_master_enabled()
 
 static bool light_shape_enabled()
 {
-    return light_shape_master_enabled() && !gCubeSnapshot && !LLPipeline::sPrismLensRender &&
-        !LLPipeline::sRenderingHUDs && !LLPipeline::sImpostorRender && !LLPipeline::sReflectionRender;
+    return light_shape_master_enabled() &&
+        !LLPipeline::sRenderingHUDs && !LLPipeline::sImpostorRender;
 }
 
 static F32 area_source_radius(const LLVOVolume* volume, F32* reference = nullptr)

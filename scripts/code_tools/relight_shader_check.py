@@ -211,7 +211,7 @@ count=0
 linked=0
 # One unconditional production program; master values are runtime uniforms.
 shape=''
-for file in ([] if '--rig-only' in sys.argv else files):
+for file in ([] if '--rig-only' in sys.argv or '--dots-only' in sys.argv else files):
     variants=['']
     if 'multiPoint' in file:variants=['#define LIGHT_COUNT %d\n'%n for n in [1,8,16]]+['#define LIGHT_COUNT 16\n#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
     if 'spotLight' in file:variants=['','#define MULTI_SPOTLIGHT 1\n','#define MULTI_SPOTLIGHT 1\n#define RIG_RIM_AUX 1\n#define HAS_EMISSIVE 1\n']
@@ -385,6 +385,10 @@ print('[RelightQ] runtime master PASS',runtime_checks,
 # Rig-key regression uses this same WGL context, production linker and target.
 exec(compile(Path(__file__).with_name('relight_shape_gl_check.py').read_text(),
              'relight_shape_gl_check.py', 'exec'))
+if '--dots-only' in sys.argv:
+    exec(compile(Path(__file__).with_name('relight_dots_gl_check.py').read_text(),
+                 'relight_dots_gl_check.py', 'exec'))
+    raise SystemExit(0)
 if '--shape-only' in sys.argv:
     raise SystemExit(0)
 exec(compile(Path(__file__).with_name('relight_rig_check.py').read_text(),

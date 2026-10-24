@@ -153,6 +153,52 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
     vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float attenDistance);
 
+uniform float relight_highlight_scale;
+
+vec3 relightProjectorImage(vec3 pos, vec3 n, float gloss, float environment,
+                         float visibility, out float directKeep)
+{
+    directKeep = 1.0;
+    vec3 ref = reflect(normalize(pos), n);
+    float ds = dot(ref, proj_n);
+    if (ds >= 0.0) return vec3(0);
+    vec3 pfinal = pos + ref * dot(proj_p-pos, proj_n)/ds;
+    vec4 stc = proj_mat * vec4(pfinal, 1.0);
+    if (stc.z <= 0.0) return vec3(0);
+
+    // A source-plane filter footprint: source radius plus the reflected
+    // microfacet cone (reflection doubles its angle). Softness controls the
+    // material cone; the physical emitter retains its size even at zero.
+    float roughness = 1.0-clamp(gloss, 0.0, 1.0);
+    float radius = light_shape.x + 2.0*roughness*roughness *
+        abs(dot(proj_p-pos, proj_n))*relight_highlight_scale;
+    vec2 uv = stc.xy/stc.w;
+    if (radius == 0.0)
+    {
+        if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return vec3(0);
+        return color.rgb * texture2DLodSpecular(uv, (1-gloss)*(proj_lod*0.6)).rgb * visibility * environment;
+    }
+    vec3 row_w = vec3(proj_mat[0].w, proj_mat[1].w, proj_mat[2].w);
+    vec3 row_u = vec3(proj_mat[0].x, proj_mat[1].x, proj_mat[2].x)-0.5*row_w;
+    vec3 row_v = vec3(proj_mat[0].y, proj_mat[1].y, proj_mat[2].y)-0.5*row_w;
+    row_u -= proj_n*dot(row_u, proj_n);
+    row_v -= proj_n*dot(row_v, proj_n);
+    vec2 footprint = vec2(1.0) + 2.0*radius *
+        vec2(length(row_u), length(row_v))/max(abs(stc.w), 1.e-6);
+    float area = footprint.x*footprint.y;
+    // Split the environment share from the direct BRDF as the footprint
+    // broadens, continuously restoring BOTH original terms at zero width.
+    directKeep = 1.0-environment*(1.0-inversesqrt(area));
+    uv = vec2(0.5)+(uv-vec2(0.5))/footprint;
+    if (any(lessThanEqual(uv, vec2(0))) || any(greaterThanEqual(uv, vec2(1))))
+        return vec3(0);
+    // Dilate the already gloss-filtered cookie, including its legacy edge
+    // window. The inverse Jacobian preserves its integrated linear energy;
+    // keeping that LOD avoids changing the window or desaturating its colours.
+    return color * texture2DLodSpecular(uv, (1.0-gloss)*(proj_lod*0.6)).rgb *
+        visibility*environment/area;
+}
+
 void main()
 {
     vec3 final_color = vec3(0,0,0);
@@ -241,6 +287,12 @@ void main()
 
     vec3 amb_rgb = vec3(0);
 
+    float directKeep = 1.0;
+    vec3 projectorImage = vec3(0);
+    if ((relight_enabled & 1) != 0 && gb.envIntensity > 0.0 &&
+        !GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
+        projectorImage = relightProjectorImage(pos, n, spec.a, gb.envIntensity, shadow, directKeep);
+
     if ((relight_enabled & 1) != 0 && (light_shape.x > 0.0 || light_shape.y > 0.0))
     {
         // Cookie/cone and the existing projector shadow still gate this light.
@@ -275,7 +327,7 @@ void main()
                 float wrap = relightRatio(n,delta,light_shape.x);
                 // Match the projector's original per-light specular clamp.
                 final_color = lamp*shadow*diffuse*wrap*attenuation +
-                    clamp(lamp*shadow*highlight,vec3(0),vec3(1));
+                    clamp(lamp*shadow*highlight,vec3(0),vec3(1))*directKeep;
                 vec3 ambient = getProjectedLightAmbiance((wrap*.5+.5)*proj_ambiance,
                     attenuation,clamp(wrap*attenuation,0.0,1.0),wrap,1.0,proj_tc.xy);
                 final_color += diffuse*ambient*max(dot(-centre,n),0.0);
@@ -285,38 +337,6 @@ void main()
                 vec3 rim_lit = lamp * attenuation * mix(shadow,1.0,
                     (1.0-clamp(rig_rim_shadow,0.0,1.0))*(1.0-smoothstep(0.0,.3,dot(n,centre))));
                 rim_color += rigRimTermEx(n,view,centre,rim_lit,diffuseColor,roughness,rig_rim_light,rim_px);
-            }
-        }
-        if (!GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
-        {
-            float envIntensity = gb.envIntensity;
-            if (envIntensity > 0.0)
-            {
-                vec3 ref = reflect(relightUnit(pos,n), n);
-
-                //project from point pos in direction ref to plane proj_p, proj_n
-                vec3 pdelta = proj_p-pos;
-                float ds = dot(ref, proj_n);
-
-                if (ds < 0.0)
-                {
-                    vec3 pfinal = pos + ref * dot(pdelta, proj_n)/ds;
-
-                    vec4 stc = (proj_mat * vec4(pfinal.xyz, 1.0));
-
-                    if (stc.z > 0.0)
-                    {
-                        stc /= stc.w;
-
-                        if (stc.x < 1.0 &&
-                            stc.y < 1.0 &&
-                            stc.x > 0.0 &&
-                            stc.y > 0.0)
-                        {
-                            final_color += color.rgb * texture2DLodSpecular(stc.xy, (1 - spec.a) * (proj_lod * 0.6)).rgb * shadow * envIntensity;
-                        }
-                    }
-                }
             }
         }
     }
@@ -432,11 +452,13 @@ void main()
                 float scol = fres*texture(lightFunc, vec2(nh, spec.a)).r*gt/(nh*nl);
                 vec3 speccol = dlit*scol*spec.rgb*shadow;
                 speccol = clamp(speccol, vec3(0), vec3(1));
+                if ((relight_enabled & 1) != 0) speccol *= directKeep;
                 final_color += speccol;
             }
         }
 
-        if (envIntensity > 0.0)
+        // The disabled feature retains the original projector reflection.
+        if ((relight_enabled & 1) == 0 && envIntensity > 0.0)
         {
             vec3 ref = reflect(normalize(pos), n);
 
@@ -467,6 +489,7 @@ void main()
     }
 
     }
+    if ((relight_enabled & 1) != 0) final_color += projectorImage;
     //not sure why, but this line prevents MATBUG-194
     final_color = max(final_color, vec3(0.0));
     // [RigRim] additive on top of the projector's own lighting; the classic_mode
