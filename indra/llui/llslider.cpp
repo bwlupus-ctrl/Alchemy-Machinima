@@ -63,7 +63,8 @@ LLSlider::Params::Params()
     mouse_up_callback("mouse_up_callback"),
     wheel_adjust("wheel_adjust", false),
     wheel_fine_div("wheel_fine_div", 0.f), // [EnvIntensity v2]
-    wheel_step("wheel_step", 0.f) // [SliderWheelStep]
+    wheel_step("wheel_step", 0.f), // [SliderWheelStep]
+    quadratic("quadratic", false)
 {}
 
 LLSlider::LLSlider(const LLSlider::Params& p)
@@ -76,6 +77,7 @@ LLSlider::LLSlider(const LLSlider::Params& p)
                     : LLSliderWheel::WHEEL_UNSET),
     mWheelFineDiv(llmax(0.f, (F32)p.wheel_fine_div)), // [EnvIntensity v2]
     mWheelStep(llmax(0.f, (F32)p.wheel_step)), // [SliderWheelStep]
+    mQuadratic(p.quadratic),
     mThumbOutlineColor(p.thumb_outline_color()),
     mThumbCenterColor(p.thumb_center_color()),
     mTrackColor(p.track_color()),
@@ -130,7 +132,7 @@ void LLSlider::setValue(F32 value, bool from_event, bool precision_override)
 
     // [BDMerge C8] Allow callers (typed text-field commits) to bypass increment
     // rounding. Drag/keyboard/scroll paths never pass precision_override=true.
-    if (!precision_override)
+    if (!precision_override && !mQuadratic)
     {
         // Round to nearest increment (bias towards rounding down)
         value -= mMinValue;
@@ -159,7 +161,7 @@ void LLSlider::setValue(F32 value, bool from_event, bool precision_override)
 void LLSlider::updateThumbRect()
 {
     const S32 DEFAULT_THUMB_SIZE = 16;
-    F32 t = (getValueF32() - mMinValue) / (mMaxValue - mMinValue);
+    F32 t = valueToFraction(getValueF32());
 
     S32 thumb_width = mThumbImage ? mThumbImage->getWidth() : DEFAULT_THUMB_SIZE;
     S32 thumb_height = mThumbImage ? mThumbImage->getHeight() : DEFAULT_THUMB_SIZE;
@@ -230,6 +232,31 @@ void LLSlider::setValue(const LLSD& value)
     }
 }
 
+F32 LLSlider::valueToFraction(F32 value) const
+{
+    F32 fraction = (value - mMinValue) / (mMaxValue - mMinValue);
+    return mQuadratic ? sqrtf(llclamp(fraction, 0.f, 1.f)) : fraction;
+}
+
+F32 LLSlider::valueFromFraction(F32 fraction) const
+{
+    if (mQuadratic)
+    {
+        fraction = llclamp(fraction, 0.f, 1.f);
+        if (mIncrement > 0.f)
+        {
+            fraction = llclamp(ll_round(fraction, mIncrement), 0.f, 1.f);
+        }
+        fraction *= fraction;
+    }
+    return fraction * (mMaxValue - mMinValue) + mMinValue;
+}
+
+F32 LLSlider::steppedValue(F32 delta) const
+{
+    return mQuadratic ? valueFromFraction(valueToFraction(getValueF32()) + delta) : getValueF32() + delta;
+}
+
 void LLSlider::setValueAndCommit(F32 value)
 {
     F32 old_value = getValueF32();
@@ -256,7 +283,7 @@ bool LLSlider::handleHover(S32 x, S32 y, MASK mask)
             x = llclamp( x, left_edge, right_edge );
 
             F32 t = F32(x - left_edge) / (right_edge - left_edge);
-            setValueAndCommit(t * (mMaxValue - mMinValue) + mMinValue );
+            setValueAndCommit(valueFromFraction(t));
         }
         else // mOrientation == VERTICAL
         {
@@ -268,7 +295,7 @@ bool LLSlider::handleHover(S32 x, S32 y, MASK mask)
             y = llclamp(y, top_edge, bottom_edge);
 
             F32 t = F32(y - top_edge) / (bottom_edge - top_edge);
-            setValueAndCommit(t * (mMaxValue - mMinValue) + mMinValue );
+            setValueAndCommit(valueFromFraction(t));
         }
         getWindow()->setCursor(UI_CURSOR_ARROW);
         LL_DEBUGS("UserInput") << "hover handled by " << getName() << " (active)" << LL_ENDL;
@@ -355,12 +382,12 @@ bool LLSlider::handleKeyHere(KEY key, MASK mask)
     {
     case KEY_DOWN:
     case KEY_LEFT:
-        setValueAndCommit(getValueF32() - getIncrement());
+        setValueAndCommit(steppedValue(-getIncrement()));
         handled = true;
         break;
     case KEY_UP:
     case KEY_RIGHT:
-        setValueAndCommit(getValueF32() + getIncrement());
+        setValueAndCommit(steppedValue(getIncrement()));
         handled = true;
         break;
     default:
@@ -522,7 +549,7 @@ bool LLSlider::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
             // [SliderWheelStep] explicit per-notch step from XUI; Shift keeps the fine increment.
             step = ctrl_alt ? mWheelStep * 10.f : mWheelStep;
         }
-        changed = applyWheelValue(getValueF32() - delta.mClicks * step, false);
+        changed = applyWheelValue(steppedValue(-delta.mClicks * step), false);
     }
     if (changed)
     {
@@ -592,7 +619,7 @@ bool LLSlider::handleScrollWheelStock(S32 x, S32 y, LLScrollDelta delta)
         {
             step *= 10.f;
         }
-        F32 new_val = getValueF32() - delta.mClicks * step;
+        F32 new_val = steppedValue(-delta.mClicks * step);
         setValueAndCommit(new_val);
         return true;
     }
@@ -611,7 +638,7 @@ bool LLSlider::handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta)
     {
         if (mOrientation == HORIZONTAL)
         {
-            F32 new_val = getValueF32() - delta.mClicks * getIncrement();
+            F32 new_val = steppedValue(-delta.mClicks * getIncrement());
             setValueAndCommit(new_val);
             return true;
         }
@@ -631,7 +658,7 @@ bool LLSlider::handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta)
     }
     // H-wheel: one increment per notch, no modifiers (as today).
     LLHandle<LLSlider> h = getDerivedHandle<LLSlider>(); // before ANY foreign code (4.2b)
-    if (applyWheelValue(getValueF32() - delta.mClicks * getIncrement(), false))
+    if (applyWheelValue(steppedValue(-delta.mClicks * getIncrement()), false))
     {
         if (LLSlider* s = LLSliderWheel::alive(h))
         {

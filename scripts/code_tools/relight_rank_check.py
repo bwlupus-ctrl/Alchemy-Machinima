@@ -6,7 +6,7 @@ rejected. GPU side, on the production gather (and, for the last block, the produ
 composition):
 
 * housing is the committed GLOBAL light-bias sphere (RenderAreaShadowLightBias) and end gap
-  floor + bias, byte-identical to HEAD (per-light housing shapes were removed: each one erased real
+  floor + bias, byte-identical to the pre-hybrid baseline (per-light housing shapes were removed: each one erased real
   blockers or left a seam). Regressions: the housed wall lamp keeps its pool, a big rig softbox
   (source radius counted once) still casts soft shadows, and independent blockers inside a large
   room prim shadow receivers both near the light and 3+ m from it (Codex's room-prim repro,
@@ -28,6 +28,9 @@ import sys
 
 # Mirror of ALAreaShadow::kHandoverStart / kHandoverEnd; check_rank_sources pins them to the header AND the shader.
 HANDOVER_START, HANDOVER_END = 0.25, 0.45
+# Parent of the Thin-hybrid change. Undoing the hybrid edits must reproduce
+# these exact bytes; moving HEAD already contains those edits after commit.
+PRE_HYBRID_REF = '4dd9ff661c15838423d22a09ceec32722ec6a693'
 
 
 def native_strength(depth, clip_z, clip_w):
@@ -188,7 +191,7 @@ def check_rank_sources():
             'allocation backoff must stay removed: ' + text
     assert 'ALAreaShadow::drawablePlanes(planes_wanted,plane_ok[0],plane_ok[1])' in pipeline
     assert 'mRT->areaAllocFailed' in pipeline and 'bool areaAllocFailed = false;' in pipeline_h
-    # Housing is HEAD's: the global light-bias sphere and end gap floor + bias. No per-light housing of any
+    # Housing is the pre-hybrid baseline's: the global light-bias sphere and end gap floor + bias. No per-light housing of any
     # shape (bounding sphere, oriented box, capped box) survives anywhere, in any file.
     glsl_dir = nv / 'app_settings/shaders'
     glsl = (glsl_dir / 'class3/deferred/areaShadowF.glsl').read_text(encoding='utf-8')
@@ -200,11 +203,11 @@ def check_rank_sources():
         for label, body in (('pipeline.cpp', pipeline_all), ('alareashadowmath.h', header), ('areaShadowF.glsl', glsl),
                             ('screenSpaceRayUtil.glsl', trace), ('pipeline.h', pipeline_h)):
             assert word not in body, 'per-light housing must stay removed: %s in %s' % (word, label)
-    # The ray utility is HEAD's: the only difference is the per-ray `thin` argument the hybrid plans need (fix round 3: the rays of
-    # a Thin light next to the Thin/regular boundary march the regular way). Undoing exactly those four edits must give HEAD's
+    # The ray utility is the pre-hybrid baseline plus the per-ray `thin` argument (fix round 3: the rays of
+    # a Thin light next to the Thin/regular boundary march the regular way). Undoing exactly these edits must give the baseline's
     # file byte for byte, so nothing else in the trace changed; the 10-argument entry point forwards the uniform.
-    def head_text(path):
-        return subprocess.check_output(['git', 'show', 'HEAD:' + path.as_posix()]).decode('utf-8').replace('\r\n', '\n')
+    def baseline_text(path):
+        return subprocess.check_output(['git', 'show', PRE_HYBRID_REF + ':' + path.as_posix()]).decode('utf-8').replace('\r\n', '\n')
     thin_edits = (
         ('// `thin` selects the opt-in Thin objects march (dense near segment) for THIS ray. A hybrid plan marches the rays of a Thin light\n'
          '// that sits next to the Thin/regular boundary the regular way (thin = false), which is the uniform march exactly.\n', ''),
@@ -219,27 +222,27 @@ def check_rank_sources():
     for new_text, old_text in thin_edits:
         assert restored.count(new_text) == 1, 'ray utility: expected edit missing: ' + new_text[:60]
         restored = restored.replace(new_text, old_text, 1)
-    assert restored == head_text(glsl_dir / 'class1/deferred/screenSpaceRayUtil.glsl'), \
-        'screenSpaceRayUtil.glsl may differ from HEAD only by the per-ray thin argument'
-    head_gather = head_text(glsl_dir / 'class3/deferred/areaShadowF.glsl')
+    assert restored == baseline_text(glsl_dir / 'class1/deferred/screenSpaceRayUtil.glsl'), \
+        'screenSpaceRayUtil.glsl may differ from the pre-hybrid baseline only by the per-ray thin argument'
+    head_gather = baseline_text(glsl_dir / 'class3/deferred/areaShadowF.glsl')
     housing_lines = ('            float end_gap = max(source_radius,0.1)+area_light_bias;\n'
                      '            vec2 traced = areaTrace(origin,target,area_lights[light].xyz,end_gap,\n'
                      '                area_light_bias,area_params.x,area_params.y,area_steps,offset,area_contact_dist[light]);\n')
-    assert housing_lines in head_gather, 'HEAD housing lines moved'
-    # The gather keeps HEAD's housing arithmetic: the same end gap, and BOTH march branches (the unchanged one, and the hybrid
+    assert housing_lines in head_gather, 'pre-hybrid housing lines moved'
+    # The gather keeps the pre-hybrid housing arithmetic: the same end gap, and BOTH march branches (the unchanged one, and the hybrid
     # boundary's regular rays) pass that end gap and the global light bias.
     gather_now = glsl.replace('\r\n', '\n')
-    assert '            float end_gap = max(source_radius,0.1)+area_light_bias;\n' in gather_now, 'gather end gap must be HEAD\'s'
+    assert '            float end_gap = max(source_radius,0.1)+area_light_bias;\n' in gather_now, 'gather end gap must be the pre-hybrid baseline\'s'
     # P1-lite: the thickness argument is the per-light `thickness` variable, which is the user's area_params.y for EVERY channel except
-    # a world-owned one (a world channel only supplies the contact term and tightens it): OFF is HEAD's argument byte for byte.
+    # a world-owned one (a world channel only supplies the contact term and tightens it): OFF is the pre-hybrid argument byte for byte.
     assert ('        float thickness = area_world[light] > 0.5 ? min(area_params.y,0.005) : area_params.y;\n') in gather_now, \
-        'the world thickness must default to HEAD\'s area_params.y'
+        'the world thickness must default to the pre-hybrid area_params.y'
     assert 'area_light_bias,min(area_params.x,area_contact_dist[light]),thickness,' in gather_now and \
         'min(area_steps,12),0.25+0.5*jitter,area_contact_dist[light],false);' in gather_now, \
         'world contact must be bounded and independent of the Thin marcher'
     assert ('                areaTrace(origin,target,area_lights[light].xyz,end_gap,\n'
             '                    area_light_bias,area_params.x,thickness,area_steps,offset,area_contact_dist[light]);\n') in gather_now, \
-        'the unchanged march must keep HEAD\'s arguments (thickness = area_params.y unless world-owned)'
+        'the unchanged march must keep the pre-hybrid arguments (thickness = area_params.y unless world-owned)'
     assert 'areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,area_params.x,thickness,' in gather_now, \
         'the regular boundary rays must keep the housing arithmetic'
     # The hand-over is evaluated at the native sampler's shifted receiver depth, from the same offset.
@@ -271,7 +274,7 @@ def check_rank_sources():
         assert not ok, 'source mutation survived: ' + label
     print('[RelightQ] rank sources PASS: importance score with a continuous native weight, no unmapped-first or legacy '
           'camera-point term, sampled-map rule, feed slots 0 with the VCam switch off, no allocation backoff, '
-          'plane-1 fallback, HEAD housing (global bias sphere; ray utility identical to HEAD except the per-ray thin argument), hand-over window .25 .. .45 '
+          'plane-1 fallback, pre-hybrid housing (global bias sphere; ray utility identical to the baseline except the per-ray thin argument), hand-over window .25 .. .45 '
           'with the NaN guard, shifted-depth hand-over, plane 0 failure keeps plane 1; mutations rejected', flush=True)
 
 

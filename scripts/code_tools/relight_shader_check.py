@@ -44,8 +44,13 @@ print('GL',getstr(0x1F02).decode(),getstr(0x1F01).decode(),flush=True)
 shader=gl('glCreateShader',U,U); source=gl('glShaderSource',None,U,I,C.POINTER(C.c_char_p),C.POINTER(I));compile_=gl('glCompileShader',None,U)
 getshader=gl('glGetShaderiv',None,U,U,C.POINTER(I));slog=gl('glGetShaderInfoLog',None,U,I,C.POINTER(I),C.c_char_p)
 program=gl('glCreateProgram',U);attach=gl('glAttachShader',None,U,U);link=gl('glLinkProgram',None,U);getprog=gl('glGetProgramiv',None,U,U,C.POINTER(I));plog=gl('glGetProgramInfoLog',None,U,I,C.POINTER(I),C.c_char_p)
-bindattr=gl('glBindAttribLocation',None,U,U,C.c_char_p);use=gl('glUseProgram',None,U)
+bindattr=gl('glBindAttribLocation',None,U,U,C.c_char_p);use_raw=gl('glUseProgram',None,U)
 loc=gl('glGetUniformLocation',I,U,C.c_char_p); uf=[None]+[gl('glUniform%df'%n,None,I,*([F]*n)) for n in range(1,5)];ui=gl('glUniform1i',None,I,I)
+def use(pr):
+    use_raw(pr)
+    # Mirror the shared production bind hook, including its default scale.
+    uf[1](loc(pr,b'relight_highlight_scale'),1.0)
+    uf[1](loc(pr,b'relight_legacy_exponent'),368.0)
 matrix=gl('glUniformMatrix4fv',None,I,I,U,C.POINTER(F));matrix3=gl('glUniformMatrix3fv',None,I,I,U,C.POINTER(F))
 genTex=gl('glGenTextures',None,I,C.POINTER(U));bindTex=gl('glBindTexture',None,U,U);teximage=gl('glTexImage2D',None,U,I,I,I,I,I,U,U,P);param=gl('glTexParameteri',None,U,U,I);active=gl('glActiveTexture',None,U)
 genfbo=gl('glGenFramebuffers',None,I,C.POINTER(U));bindfbo=gl('glBindFramebuffer',None,U,U);attachment=gl('glFramebufferTexture2D',None,U,U,U,U,I);status=gl('glCheckFramebufferStatus',U,U)
@@ -372,6 +377,10 @@ print('[RelightQ] runtime master PASS',runtime_checks,
       'production forward readbacks: on/off/on, stale shapes, exact legacy and disabled limits; no relink',flush=True)
 
 # Rig-key regression uses this same WGL context, production linker and target.
+exec(compile(Path(__file__).with_name('relight_shape_gl_check.py').read_text(),
+             'relight_shape_gl_check.py', 'exec'))
+if '--shape-only' in sys.argv:
+    raise SystemExit(0)
 exec(compile(Path(__file__).with_name('relight_rig_check.py').read_text(),
              'relight_rig_check.py', 'exec'))
 

@@ -62,6 +62,7 @@ public:
         Optional<F32>           wheel_fine_div;
         // [SliderWheelStep] passthrough to LLSlider::Params::wheel_step; 0 = automatic.
         Optional<F32>           wheel_step;
+        Optional<bool>          quadratic;
 
         Optional<LLUIColor>     text_color,
                                 text_disabled_color;
@@ -85,6 +86,7 @@ public:
             wheel_adjust("wheel_adjust", false),
             wheel_fine_div("wheel_fine_div", 0.f),
             wheel_step("wheel_step", 0.f),
+            quadratic("quadratic", false),
             text_color("text_color"),
             text_disabled_color("text_disabled_color"),
             slider_bar("slider_bar"),

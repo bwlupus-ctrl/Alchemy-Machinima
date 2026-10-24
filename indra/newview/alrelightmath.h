@@ -28,10 +28,15 @@ inline Vec representative(const Vec& n, const Vec& v, const Vec& light, double r
 {
     const double nv = dot(n,v);
     const Vec ray{2.0*nv*n[0]-v[0],2.0*nv*n[1]-v[1],2.0*nv*n[2]-v[2]};
-    const double projection = std::max(dot(light,ray),0.0);
-    const Vec delta{ray[0]*projection-light[0],ray[1]*projection-light[1],ray[2]*projection-light[2]};
-    const double t = std::min(radius/std::max(std::sqrt(dot(delta,delta)),1.e-6),1.0);
-    return unit(Vec{light[0]+delta[0]*t,light[1]+delta[1]*t,light[2]+delta[2]*t},n);
+    const double distance = std::sqrt(dot(light,light));
+    if (distance == 0.0) return n; // direction is undefined only at the centre
+    const Vec centre{light[0]/distance,light[1]/distance,light[2]/distance};
+    const double projection = dot(centre,ray); // signed Karis closest-line point
+    const Vec delta{ray[0]*projection-centre[0],ray[1]*projection-centre[1],ray[2]*projection-centre[2]};
+    // Contact regularization: keep >=5% of the centre direction, even inside
+    // the sphere. This bounds angular sensitivity and cannot produce a zero.
+    const double t = std::min(std::min(radius/distance,.95)/std::max(std::sqrt(dot(delta,delta)),1.e-6),1.0);
+    return unit(Vec{centre[0]+delta[0]*t,centre[1]+delta[1]*t,centre[2]+delta[2]*t},n);
 }
 inline double legacy(double d, double range, double falloff)
 {
@@ -39,17 +44,19 @@ inline double legacy(double d, double range, double falloff)
     const double a = std::clamp(1.0 - (d / range + falloff) / (1.0 + falloff), 0.0, 1.0);
     return 2.0 * a * a;
 }
-inline double physical(double d, double range, double radius, double floor)
+inline double physical(double d, double range, double /*radius*/, double floor)
 {
     if (range <= 0.0 || d >= range) return 0.0;
     const double q = d / range;
     const double w = std::max(0.0, 1.0 - q*q*q*q);
-    const double near_distance = std::max({radius, floor, 0.0001});
+    // Source size belongs to the angular integral. Only the near floor
+    // regularizes distance, so resizing a source cannot change exposure.
+    const double near_distance = std::max(floor, 0.0001);
     return w*w / std::max(d*d, near_distance*near_distance);
 }
-inline double gain(double reference, double range, double falloff, double radius, double floor)
+inline double gain(double reference, double range, double falloff, double /*radius*/, double floor)
 {
-    const double p = physical(reference, range, radius, floor);
+    const double p = physical(reference, range, 0.0, floor);
     return p > 0.0 ? legacy(reference, range, falloff) / p : 0.0;
 }
 inline double capped(double d, double range, double falloff, double radius, double floor, double calibration, double boost)

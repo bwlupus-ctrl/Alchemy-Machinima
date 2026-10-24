@@ -134,7 +134,11 @@ int main() {
             const float a=area_source_radius(&v), b=area_source_radius_baseline(&v);
             assert(std::memcmp(&a,&b,sizeof(a))==0);
             const auto x=light_shape_for_volume(&v), y=light_shape_for_volume_baseline(&v);
-            assert(std::memcmp(x.mV,y.mV,sizeof(x.mV))==0);
+            if (physical && a<=0) {
+                assert(x.mV[0]==0 && x.mV[1]==1 && x.mV[3]==-1);
+                float reference=7.5f; area_source_radius(&v,&reference);
+                assert(x.mV[2]==static_cast<float>(ALRelight::gain(reference,15,.5,0,.1)));
+            } else assert(std::memcmp(x.mV,y.mV,sizeof(x.mV))==0);
             assert(v.scaleReads==0); // OFF never inspects prim dimensions
         }
     }
@@ -188,7 +192,7 @@ int main() {
     vcvars = next((Path(os.environ['ProgramFiles']) / 'Microsoft Visual Studio').glob(
         '*/Community/VC/Auxiliary/Build/vcvars64.bat'))
     (directory / 'compile.cmd').write_text(
-        f'@echo off\ncall "{vcvars}" >nul\n'
+        f'@echo off\ncall "{vcvars}" >nul 2>&1\n'
         f'cl /nologo /std:c++17 /EHsc /I"{nv.resolve()}" '
         f'/Fo"{directory / "source.obj"}" /Fe"{directory / "source.exe"}" '
         f'"{directory / "source.cpp"}"\nexit /b %ERRORLEVEL%\n', encoding='utf-8')

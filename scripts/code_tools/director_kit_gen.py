@@ -312,8 +312,9 @@ def validate_data(data: dict) -> None:
     # World Shadow pick fix round 1 (10/23): +1 row (Clear away picks: the release path for stale / deleted picks).
     # World Shadow pick fix round 2 (10/23): +1 row (List picks: the complete pick list in nearby chat; the row tooltip is capped).
     # Soft shadow LOOK controls (10/23): +5 rows (Shadow strength, Shadow contrast, Screen-space detail, World shadow amount, Screen-space amount).
-    if len(pages) != 37 or row_count != 2176:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2176")
+    # Light-shape refinement (10/23): +2 rows (Highlight softness, native preset action combo).
+    if len(pages) != 37 or row_count != 2178:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2178")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -652,6 +653,9 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     if kind == "slider":
         attrs["show_text"] = "true"
         attrs["text_width"] = "52"
+        if row.get("quadratic"):
+            attrs["quadratic"] = "true"
+            attrs["can_edit_text"] = "true"
         if row.get("volume_text"):
             attrs["volume_text"] = "true"
             attrs["can_edit_text"] = "false"

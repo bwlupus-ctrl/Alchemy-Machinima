@@ -19,7 +19,7 @@ class ALKitHistory;
 namespace ALPresetLook
 {
 enum Family { RIM, ROTO, TRON, INFRARED, SOFT_EDGE, HAZE, FLARE, NIGHT_MASK, LIGHT_RIG,
-              GRAD_ND, POLARIZER, LENS_FILTER, SHAKE, WEIGHTED, DRONE, RIM_CUSTOM, TRON_PALETTE };
+              GRAD_ND, POLARIZER, LENS_FILTER, SHAKE, WEIGHTED, DRONE, RIM_CUSTOM, TRON_PALETTE, LIGHT_SHAPE };
 const std::vector<std::string>& owned(Family family);
 const std::vector<std::string>& infraredGrainSettings();
 std::vector<std::string> fixtureSettings(const std::string& prefix);

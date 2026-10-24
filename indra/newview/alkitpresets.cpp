@@ -70,6 +70,9 @@ const std::vector<std::string>& owned(Family family)
     std::vector<std::string> keys;
     switch (family)
     {
+    case LIGHT_SHAPE:
+        keys = {"RenderLocalLightDefaultRadius", "RenderLocalLightHighlightScale"};
+        break;
     case RIM:
         keys = select({"CineRigRim"}, {"CineRigRimEnabled", "CineRigRimDebug", "CineRigRimIncludeProbes", "CineRigRimTron", "CineRigRimActorsOnly"});
         break;

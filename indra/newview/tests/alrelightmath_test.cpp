@@ -81,6 +81,46 @@ template<> template<> void relight_object::test<1>()
         close("calibration",gain*ALRelight::physical(reference,15,.3,.1),ALRelight::legacy(reference,15,.5));
     }
 }
+// Light-shape refinement: sizes must change angular extent, never calibration.
+template<> template<> void relight_object::test<41>()
+{
+    for (double range : {.2,.6,2.0,15.0})
+        for (double reference : {range*.1,range*.5,range*.9})
+            for (double radius : {0.0,.0001,.01,.03,.12,.45,.9,1.0})
+            {
+                const double gain = ALRelight::gain(reference,range,.5,radius,.1);
+                close("radius independent calibration",gain,ALRelight::gain(reference,range,.5,0,.1));
+                const double expected = ALRelight::capped(reference,range,.5,0,.1,gain,100);
+                close("reference illuminance within two percent",
+                    ALRelight::capped(reference,range,.5,radius,.1,gain,100),expected,expected*.02);
+                close("zero to small physical radius",
+                    ALRelight::physical(reference,range,radius,.1),ALRelight::physical(reference,range,0,.1));
+            }
+}
+
+template<> template<> void relight_object::test<42>()
+{
+    using namespace ALRelight;
+    const Vec n{0,0,1}, v{0,0,1};
+    // Reflection points away. Crossing the sphere used to replace -Z with +Z.
+    for (double z : {-.5,-1.0,-1.5})
+    {
+        const double d = std::abs(z);
+        const Vec a = representative(n,v,Vec{.0001,0,z},d-1.e-6);
+        const Vec b = representative(n,v,Vec{.0001,0,z},d+1.e-6);
+        ensure("continuous across back-facing source boundary",dot(a,b)>.9999);
+    }
+    // Signed closest-line projection remains on the light's side of the line.
+    const Vec back = representative(n,v,Vec{1,0,-2},2.0);
+    ensure("back-facing reflection never collapses to normal",back[2]<-.99);
+    for (double radius : {.01,.5,1.0})
+        for (double x : {-1.e-6,0.0,1.e-6})
+        {
+            const Vec r = representative(n,v,Vec{radius*.5,0,x},radius);
+            close("finite unit representative",dot(r,r),1.0,1.e-8);
+        }
+}
+
 template<> template<> void relight_object::test<2>()
 {
     double previous = std::numeric_limits<double>::infinity();

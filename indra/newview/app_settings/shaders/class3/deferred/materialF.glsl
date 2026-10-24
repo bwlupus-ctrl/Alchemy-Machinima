@@ -185,6 +185,8 @@ float calcLegacyDistanceAttenuation(float distance, float falloff);
 float relightRatio(vec3 n, vec3 lv, float radius);
 float relightAtten(float d, float range, float falloff, vec4 shape);
 vec3 relightRepresentative(vec3 n, vec3 v, vec3 lv, float radius);
+float relightSpecularRadius(vec4 shape);
+float relightLegacyNormalization(float glossiness, float radius, float distance);
 vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
     vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
@@ -196,7 +198,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
 #endif
 )
 {
-    if ((relight_enabled & 1) != 0 && shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && (shape.x > 0.0 || shape.y > 0.0))
     {
         // Invert setupHWLights' attenuation encoding to recover shader range R.
         float range = ((12.0*fa)-9.0)/la;
@@ -217,11 +219,14 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
         float vh = dot(npos,h);
         if (spec.a > 0.0 && da > 0.0 && nh > 0.0 && vh > 0.0)
         {
-            vec3 representative = relightRepresentative(n,view,delta,shape.x);
+            float specRadius = relightSpecularRadius(shape);
+            vec3 representative = relightRepresentative(n,view,delta,specRadius);
             float lookupNh = max(dot(n,relightUnit(representative+npos,n)),0.0);
             float fres = pow(1.0-vh,5.0)*.4+.5;
             float gt = max(0.0,min(2.0*nh*nv/vh,2.0*nh*da/vh));
             float scol = fres*texture(lightFunc,vec2(lookupNh,spec.a)).r*gt/(nh*da);
+            float norm = relightLegacyNormalization(spec.a,specRadius,length(delta));
+            scol *= norm*norm;
             vec3 speccol = clamp(clamp(da*attenuation,0.0,1.0)*scol*light_col*spec.rgb,vec3(0),vec3(1));
             col += speccol;
             float glare_start = glare;
@@ -235,7 +240,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
 #endif
         if (rigRimMode() != 0)
         {
-            float rim_atten = calcLegacyDistanceAttenuation(length(delta)/range,falloff);
+            float rim_atten = attenuation;
             vec3 rim_col = rigRimTermEx(n,view,centre,spot*spot*rim_atten*light_col,
                 diffuse,1.0-spec.a,rim,rim_px);
             if (rigRimMode() == 2) col = vec3(0);

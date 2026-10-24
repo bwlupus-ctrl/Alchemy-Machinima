@@ -863,6 +863,8 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
 
 
 uniform vec2 relight_limits; // near floor (m), maximum physical boost
+uniform float relight_highlight_scale; // specular radius only; .w is a shadow channel
+uniform float relight_legacy_exponent; // same exponent used to build the gloss LUT
 // [RelightQ] Karis 2013 eqs. 10/14; Lagarde & de Rousiers 2014 sphere/disk
 // illuminance. No history, random samples, visibility or render-state work.
 vec3 relightUnit(vec3 v, vec3 fallback)
@@ -960,16 +962,37 @@ float relightAtten(float d, float range, float falloff, vec4 shape)
     if (shape.y == 0.0) return calcLegacyDistanceAttenuation(d/range, falloff);
     float q = d/range;
     float window = max(1.0-q*q*q*q, 0.0);
-    float near = max(shape.x, relight_limits.x);
+    float near = max(relight_limits.x, 1.e-4); // size changes softness, not exposure
     float physical = window*window / max(d*d, near*near);
     return min(shape.z*physical, relight_limits.y*calcLegacyDistanceAttenuation(0.0, falloff));
 }
 vec3 relightRepresentative(vec3 n, vec3 v, vec3 lv, float radius)
 {
     vec3 ray = reflect(-v,n);
-    // Move TOWARD the closest point on the forward reflection ray.
-    vec3 delta = ray * max(dot(lv,ray), 0.0) - lv;
-    return relightUnit(lv + delta * min(radius/max(length(delta), 1.e-6), 1.0), n);
+    float d = length(lv);
+    if (d == 0.0) return n; // direction undefined only at the source centre
+    vec3 centre = lv/d;
+    vec3 delta = ray * dot(centre,ray) - centre; // signed Karis closest-line point
+    // A 5% contact guard bounds angular sensitivity through/inside the source.
+    // Work in unit-distance coordinates so no millimetre fallback shell appears.
+    float t = min(min(radius/d,.95)/max(length(delta),1.e-6),1.0);
+    return relightUnit(centre + delta*t, n);
+}
+float relightSpecularRadius(vec4 shape)
+{
+    return shape.x * relight_highlight_scale;
+}
+float relightNormalization(float alpha, float radius, float distance)
+{
+    float widened = clamp(alpha + radius/(3.0*max(distance,1.e-4)),0.0,1.0);
+    float norm = alpha/max(widened,1.e-6);
+    return norm;
+}
+float relightLegacyNormalization(float glossiness, float radius, float distance)
+{
+    // Match the LUT's Blinn exponent to microfacet width before Karis widening.
+    float alpha = sqrt(2.0/(glossiness*glossiness*relight_legacy_exponent+2.0));
+    return relightNormalization(alpha,radius,distance);
 }
 vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
                 vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float attenDistance)
@@ -977,14 +1000,14 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
     if (dot(n,lv) <= -shape.x) return vec3(0); // whole sphere below horizon
     float d = length(lv);
     vec3 centre = relightUnit(lv,n);
-    vec3 representative = relightRepresentative(n,v,lv,shape.x);
+    float specRadius = relightSpecularRadius(shape);
+    vec3 representative = relightRepresentative(n,v,lv,specRadius);
     float nl; vec3 diff, unused, spec;
     relightPunctual(diffuseColor,specularColor,roughness,metallic,n,v,centre,nl,diff,unused);
     relightPunctual(diffuseColor,specularColor,roughness,metallic,n,v,representative,nl,unused,spec);
     float alpha = pow(max(roughness, MIN_PBR_ROUGHNESS), 2.0);
     // Verified Karis eq. 10: r/(3d), NOT r/(2d). Original alpha stays in D.
-    float widened = clamp(alpha + shape.x/(3.0*max(d,1.e-4)), 0.0, 1.0);
-    float norm = alpha / max(widened,1.e-6);
+    float norm = relightNormalization(alpha,specRadius,d);
     float attenuation = relightAtten(attenDistance,range,falloff,shape);
     // Mode 0: E_sphere/(pi*sin^2 sigma) replaces N.L, retaining legacy falloff.
     // Mode 1: algebraically E_sphere * window*gain /
@@ -1010,7 +1033,8 @@ vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
         vec3 h = relightUnit(l+v,n);
         // Legacy LUT: move the highlight only. Keep the point light's Fresnel,
         // geometry and angular weight; representative N.L would boost its peak.
-        vec3 representative = relightRepresentative(n,v,lv,shape.x);
+        float specRadius = relightSpecularRadius(shape);
+        vec3 representative = relightRepresentative(n,v,lv,specRadius);
         float lookupNh = max(dot(n,relightUnit(representative+v,n)),0.0);
         float nh = max(dot(n,h),0.0);
         float nl = max(dot(n,l),0.0);
@@ -1020,9 +1044,11 @@ vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
         float gt = max(0.0,min(2.0*nh*nv/vh,2.0*nh*nl/vh));
         if (nh > 0.0 && nl > 0.0)
             highlight = min(nl*6.0,1.0)*fres*texture(glossLut,vec2(lookupNh,spec.a)).r*gt/(nh*nl)*spec.rgb;
+        float norm = relightLegacyNormalization(spec.a,specRadius,length(lv));
+        highlight *= norm*norm;
     }
     highlight *= attenuation;
-    return result*attenuation + highlight; // LUT model: no alpha normalization
+    return result*attenuation + highlight;
 }
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
                   vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight)
@@ -1427,12 +1453,12 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
 {
     vec3 color = vec3(0,0,0);
 
-    if ((relight_enabled & 1) != 0 && shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && (shape.x > 0.0 || shape.y > 0.0))
     {
         vec3 delta = lp-p;
         vec3 centre = relightUnit(delta,n);
         float spot = max(dot(-ld,centre),is_pointlight);
-        float attenuation = calcLegacyDistanceAttenuation(length(delta)/lightSize,falloff); // Rig Rim is shape-independent
+        float attenuation = relightAtten(length(delta),lightSize,falloff,shape); // same physical model as direct light
         vec3 direct = spot*spot*lightColor*3.0 * relightPbr(diffuseColor,specularColor,
             perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep);
         vec3 rimLight = vec3(0);
@@ -1533,12 +1559,12 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
     rim_raw = vec3(0.0);
     rim_on = false;
 
-    if ((relight_enabled & 1) != 0 && shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && (shape.x > 0.0 || shape.y > 0.0))
     {
         vec3 delta = lp-p;
         vec3 centre = relightUnit(delta,n);
         float spot = max(dot(-ld,centre),is_pointlight);
-        float attenuation = calcLegacyDistanceAttenuation(length(delta)/lightSize,falloff); // Rig Rim is shape-independent
+        float attenuation = relightAtten(length(delta),lightSize,falloff,shape); // same physical model as direct light
         vec3 direct = spot*spot*lightColor*3.0 * relightPbr(diffuseColor,specularColor,
             perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep);
         vec3 rimLight = vec3(0);

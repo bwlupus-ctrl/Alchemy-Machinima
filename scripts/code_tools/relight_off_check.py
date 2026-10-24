@@ -7,19 +7,22 @@ import tempfile
 root=Path(__file__).resolve().parents[2]
 settings=('RenderLightShapeEnable','RenderLocalLightPhysicalFalloff',
           'RenderLocalLightDefaultRadius','RenderLocalLightSizeFromPrim','RenderLocalLightNearFloor',
-          'RenderLocalLightPhysicalMaxBoost')
+          'RenderLocalLightPhysicalMaxBoost','RenderLocalLightHighlightScale')
 control=(root/'indra/newview/llviewercontrol.cpp').read_text()
 manager=(root/'indra/newview/llviewershadermgr.cpp').read_text()
 for setting in settings:
     assert not re.search(r'setting_setup_signal_listener\([^;]*"'+setting+r'"',control),setting+' reload listener'
     assert setting not in manager,setting+' shader-manager dependency'
 assert '"RELIGHT_SHAPE"' not in manager, 'global shape permutation'
-print('[RelightQ] six live settings PASS no reload listeners or shader-manager dependencies',flush=True)
+print('[RelightQ] seven live settings PASS no reload listeners or shader-manager dependencies',flush=True)
 compiler=next(Path('C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC').glob('*/bin/Hostx64/x64/cl.exe'))
 
 def disabled_source(text):
     # Bit 0 preserves Phase 1. Bit 1 is area visibility on the existing upload.
     text=text.replace('(relight_enabled & 1)', 'relight_enabled')
+    # Runtime-only shape uniforms/declarations carry no disabled expressions.
+    text=re.sub(r'uniform float relight_(?:highlight_scale|legacy_exponent);[^\n]*', '', text)
+    text=re.sub(r'float relight(?:SpecularRadius|LegacyNormalization)\([^;{}]*\);', '', text)
     text=re.sub(r'float areaShadowVisibility\([^{}]+\)\s*\{.*?\n\}', '', text, flags=re.S)
     text=re.sub(r'uniform sampler2D area_shadow_map[01];', '', text)
     text=re.sub(r'if \(\(relight_enabled & 2\) != 0 && [^\n]+\)\s*[^;]+;', '', text)
@@ -50,6 +53,7 @@ def disabled_source(text):
             if following: end+=following.end()
             text=text[:match.start()]+text[end:]
     text=re.sub(r'if\s*\(relight_enabled == 0 \|\| light_shape.x == 0.0\)\s*','',text)
+    text=re.sub(r'if\s*\(relight_enabled == 0 \|\| \(light_shape.x == 0.0 && light_shape.y == 0.0\)\)\s*','',text)
     # An added forward declaration has no executable expression.
     text=re.sub(r'float calcLegacyDistanceAttenuation\([^;{}]*\);','',text)
     return text
