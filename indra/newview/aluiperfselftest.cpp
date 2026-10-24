@@ -8985,9 +8985,9 @@ private:
                 prefix = "weather";
                 gate_expected = !gSavedSettings.getBOOL("AlchemyWeatherEnabled");
             }
-            else if (page_name == "atmosphere_tab" || page_name == "cine_light_rig_tab")
+            else if (page_name == "projector_shafts_tab" || page_name == "cine_light_rig_tab")
             {
-                prefix = page_name == "atmosphere_tab" ? "atmosphere" : "cine_light_rig";
+                prefix = page_name == "projector_shafts_tab" ? "projector_shafts" : "cine_light_rig";
                 gate_expected = gPipeline.actorOnlyVolumetricLightCount() > 0;
             }
             if (page && !prefix.empty())
@@ -8998,7 +8998,7 @@ private:
                 if (!banner_ok)
                     assertion_failure = prefix + " banner visibility disagrees with its gate predicate";
                 if (banner &&
-                    (page_name == "atmosphere_tab" || page_name == "cine_light_rig_tab"))
+                    (page_name == "projector_shafts_tab" || page_name == "cine_light_rig_tab"))
                 {
                     const U32 count = gPipeline.actorOnlyVolumetricLightCount();
                     LLTextBox* text = banner->findChild<LLTextBox>(prefix + "_gate_text", true);

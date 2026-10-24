@@ -163,7 +163,8 @@ std::string migrate_tab_name(const std::string& name)
 std::string legacy_tab_name(const std::string& name)
 {
     if (name == "shot_tab") return "camera_tab";
-    if (name == "atmosphere_tab") return "projector_volumetrics_tab";
+    if (name == "atmosphere_tab") return "atmospheric_volumes_tab";
+    if (name == "projector_shafts_tab") return "projector_volumetrics_tab";
     return name;
 }
 

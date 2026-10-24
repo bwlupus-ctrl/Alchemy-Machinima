@@ -608,7 +608,7 @@ bool ALKitPage::postBuild()
         gate_text = "Light Rig is off: rim has no effect";
     else if (mPage == "world_group/weather_tab")
         gate_text = "Weather is off";
-    else if (mPage == "world_group/atmosphere_tab" || mPage == "light_group/cine_light_rig_tab")
+    else if (mPage == "light_group/projector_shafts_tab" || mPage == "light_group/cine_light_rig_tab")
         gate_text = "Light masking is on: projector volumetrics hidden";
     if (!gate_text.empty())
     {
