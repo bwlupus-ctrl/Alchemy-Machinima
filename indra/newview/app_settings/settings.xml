@@ -19307,6 +19307,20 @@
       <key>Value</key>
       <real>1.0</real>
   </map>
+  <key>BDMergeProjectorVolumetricsEngine</key>
+  <map>
+    <key>Comment</key><string>Projector shaft engine: 0 Classic (frozen before 10/23), 1 New.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>U32</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>BDMergeProjectorVolumetricsPreset</key>
+  <map>
+    <key>Comment</key><string>Last applied shaft preset id, saved with Director scenes.</string>
+    <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>String</string>
+    <key>Value</key><string></string>
+  </map>
   <key>BDMergeProjectorVolumetrics</key>
   <map>
       <key>Comment</key>

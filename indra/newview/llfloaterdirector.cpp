@@ -1081,15 +1081,22 @@ private:
 class ALProjectorShaftPresetProvider final : public ALKitPresetProvider
 {
 public:
-    ALProjectorShaftPresetProvider() : mStore("projector_shafts", ALProjectorShaftPresets::trackedSettings()) {}
+    ALProjectorShaftPresetProvider()
+        : mStore("projector_shafts", ALProjectorShaftPresets::trackedSettings()),
+          mClassicStore("projector_shafts_classic", ALProjectorShaftPresets::trackedSettings()) {}
     const std::string& key() const override { return mKey; }
     void list(std::vector<Entry>& out) const override
     {
-        for (const ALProjectorShaftLooks::Look& look : ALProjectorShaftLooks::looks())
+        if (ALProjectorShaftPresets::classicEngine())
+        {
+            const auto& labels = ALProjectorShaftPresets::classicLabels();
+            for (size_t i = 0; i < labels.size(); ++i) out.push_back({std::to_string(i), labels[i], true});
+        }
+        else for (const ALProjectorShaftLooks::Look& look : ALProjectorShaftLooks::looks())
         {
             out.push_back({ look.id, look.label, true, look.description });
         }
-        for (const std::string& name : mStore.names())
+        for (const std::string& name : store().names())
         {
             out.push_back({ "u:" + name, name, false });
         }
@@ -1100,24 +1107,26 @@ public:
         {
             // Route through applyValues so the Dust permutation is written once, last, and only if it changes.
             LLSD values;
-            return mStore.values(id.substr(2), values) && ALProjectorShaftPresets::applyValues(values);
+            return store().values(id.substr(2), values) && ALProjectorShaftPresets::applyValues(values);
         }
         // Built-in: "b:*" ids, and the legacy "0".."7" ids a session may still hold.
         return ALProjectorShaftPresets::apply(id);
     }
     bool canSaveUser() const override { return true; }
-    bool saveUser(const std::string& name) override { return mStore.save(name); }
+    bool saveUser(const std::string& name) override { return store().save(name); }
     bool canDelete(const std::string& id) const override { return id.compare(0, 2, "u:") == 0; }
-    bool deleteUser(const std::string& id) override { return canDelete(id) && mStore.remove(id.substr(2)); }
-    U64 revision() const override { return mStore.revision(); }
+    bool deleteUser(const std::string& id) override { return canDelete(id) && store().remove(id.substr(2)); }
+    U64 revision() const override { return store().revision(); }
     const std::vector<std::string>& trackedSettings() const override
     {
         return ALProjectorShaftPresets::trackedSettings();
     }
 
 private:
+    ALKitSnapshotStore& store() const { return ALProjectorShaftPresets::classicEngine() ? mClassicStore : mStore; }
     std::string                mKey = "projector_shafts";
     mutable ALKitSnapshotStore mStore;
+    mutable ALKitSnapshotStore mClassicStore;
 };
 
 void applySteppedConfig(const ALSteppedAnim::Config& c)
@@ -3892,6 +3901,8 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
     static const std::vector<std::string> settings_with_roto = []
     {
         std::vector<std::string> v = settings;
+        const auto& shafts = ALProjectorShaftPresets::trackedSettings();
+        v.insert(v.end(), shafts.begin(), shafts.end());
         const std::vector<std::string>& roto = ALRotoInk::settings();
         v.insert(v.end(), roto.begin(), roto.end());
         const std::vector<std::string>& tron = ALTron::settings();
@@ -4222,6 +4233,7 @@ LLSD LLFloaterDirector::captureSceneData()
         }
     }
     scene["settings"] = settings;
+    scene["projector_shafts"] = ALProjectorShaftPresets::sceneData();
 
     // CineCam: active mode, and the ACTIVE named preset when one is selected
     // in the shared params panel (stored by name; applied via the panel on load)
@@ -4472,6 +4484,8 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
     // cast, marks, loco anims, subjects -- data only, nothing moves; members
     // not in world stay in the cast grayed "(away)"
     cast.applySceneData(scene);
+
+    ALProjectorShaftPresets::applySceneData(scene["projector_shafts"]);
 
     // only apply keys this floater owns: a scene file is data, not commands
     if (scene["settings"].isMap())

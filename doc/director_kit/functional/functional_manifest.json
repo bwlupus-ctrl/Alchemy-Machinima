@@ -44,10 +44,10 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2274,
-  "entries": 4136,
+  "generated_kit_rows": 2275,
+  "entries": 4137,
   "pages": 38,
-  "settings_declared": 3706,
+  "settings_declared": 3708,
   "xui_files": 842,
   "rim_presets": 40,
   "rim_preset_written_settings": [
@@ -181056,7 +181056,75 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMultiplier_slider:kit:0",
+   "id": "v2:projector_shafts_tab:ps_shaft_engine:kit:0",
+   "csv_index": null,
+   "card": "shaft_look",
+   "card_title": "Look",
+   "row_label": "Shaft engine",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+   "xui_line": null,
+   "widget_name": "ps_shaft_engine",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "Classic",
+    "value": 0
+   },
+   "expect": {
+    "setting": "BDMergeProjectorVolumetricsEngine",
+    "type": "U32",
+    "value": 0
+   },
+   "restore": {
+    "setting": "BDMergeProjectorVolumetricsEngine",
+    "value": 1
+   },
+   "setting": "BDMergeProjectorVolumetricsEngine",
+   "setting_source": "kit_row setting",
+   "setting_type": "U32",
+   "default": 1,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "New",
+     "value": "1"
+    },
+    {
+     "label": "Classic",
+     "value": "0"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml"
+  },
+  {
+   "page": "projector_shafts_tab",
+   "page_label": "projector_shafts_tab",
+   "group": "",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "projector_shafts_tab",
+    "via": "tab"
+   },
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMultiplier_slider:kit:1",
    "csv_index": null,
    "card": "shaft_look",
    "card_title": "Look",
@@ -181111,7 +181179,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDensity_slider:kit:1",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDensity_slider:kit:2",
    "csv_index": null,
    "card": "shaft_look",
    "card_title": "Look",
@@ -181166,7 +181234,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsAnisotropy_slider:kit:2",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsAnisotropy_slider:kit:3",
    "csv_index": null,
    "card": "shaft_look",
    "card_title": "Look",
@@ -181221,7 +181289,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_tint_swatch:kit:3",
+   "id": "v2:projector_shafts_tab:ps_tint_swatch:kit:4",
    "csv_index": null,
    "card": "shaft_look",
    "card_title": "Look",
@@ -181294,7 +181362,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsTintStrength_slider:kit:4",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsTintStrength_slider:kit:5",
    "csv_index": null,
    "card": "shaft_look",
    "card_title": "Look",
@@ -181349,7 +181417,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsBloomFeed_slider:kit:5",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsBloomFeed_slider:kit:6",
    "csv_index": null,
    "card": "shaft_look",
    "card_title": "Look",
@@ -181404,7 +181472,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsBloomFeedAnamorphic_slider:kit:6",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsBloomFeedAnamorphic_slider:kit:7",
    "csv_index": null,
    "card": "shaft_look",
    "card_title": "Look",
@@ -181459,7 +181527,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMaxLuminance_slider:kit:7",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMaxLuminance_slider:kit:8",
    "csv_index": null,
    "card": "shaft_look",
    "card_title": "Look",
@@ -181514,7 +181582,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMaxDistance_slider:kit:8",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMaxDistance_slider:kit:9",
    "csv_index": null,
    "card": "shaft_beam",
    "card_title": "Beam",
@@ -181569,7 +181637,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFeather_slider:kit:9",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFeather_slider:kit:10",
    "csv_index": null,
    "card": "shaft_beam",
    "card_title": "Beam",
@@ -181624,7 +181692,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimStrength_slider:kit:10",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimStrength_slider:kit:11",
    "csv_index": null,
    "card": "shaft_beam",
    "card_title": "Beam",
@@ -181679,7 +181747,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimPower_slider:kit:11",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimPower_slider:kit:12",
    "csv_index": null,
    "card": "shaft_beam",
    "card_title": "Beam",
@@ -181734,7 +181802,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimWrap_slider:kit:12",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimWrap_slider:kit:13",
    "csv_index": null,
    "card": "shaft_beam",
    "card_title": "Beam",
@@ -181789,7 +181857,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimSoftness_slider:kit:13",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimSoftness_slider:kit:14",
    "csv_index": null,
    "card": "shaft_beam",
    "card_title": "Beam",
@@ -181844,7 +181912,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimThreshold_slider:kit:14",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsRimThreshold_slider:kit:15",
    "csv_index": null,
    "card": "shaft_beam",
    "card_title": "Beam",
@@ -181899,7 +181967,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsNoiseStrength_slider:kit:15",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsNoiseStrength_slider:kit:16",
    "csv_index": null,
    "card": "shaft_dust",
    "card_title": "Dust",
@@ -181954,7 +182022,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsNoiseScale_slider:kit:16",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsNoiseScale_slider:kit:17",
    "csv_index": null,
    "card": "shaft_dust",
    "card_title": "Dust",
@@ -182009,7 +182077,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsNoiseSpeed_slider:kit:17",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsNoiseSpeed_slider:kit:18",
    "csv_index": null,
    "card": "shaft_dust",
    "card_title": "Dust",
@@ -182064,7 +182132,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDust_check:kit:18",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDust_check:kit:19",
    "csv_index": null,
    "card": "shaft_dust",
    "card_title": "Dust",
@@ -182119,7 +182187,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDustIntensity_slider:kit:19",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDustIntensity_slider:kit:20",
    "csv_index": null,
    "card": "shaft_dust",
    "card_title": "Dust",
@@ -182174,7 +182242,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDustScale_slider:kit:20",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDustScale_slider:kit:21",
    "csv_index": null,
    "card": "shaft_dust",
    "card_title": "Dust",
@@ -182229,7 +182297,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDustDrift_slider:kit:21",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDustDrift_slider:kit:22",
    "csv_index": null,
    "card": "shaft_dust",
    "card_title": "Dust",
@@ -182284,7 +182352,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFogStrength_slider:kit:22",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFogStrength_slider:kit:23",
    "csv_index": null,
    "card": "shaft_fog",
    "card_title": "Ground fog",
@@ -182339,7 +182407,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFogGroundDensity_slider:kit:23",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFogGroundDensity_slider:kit:24",
    "csv_index": null,
    "card": "shaft_fog",
    "card_title": "Ground fog",
@@ -182394,7 +182462,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFogFalloff_slider:kit:24",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFogFalloff_slider:kit:25",
    "csv_index": null,
    "card": "shaft_fog",
    "card_title": "Ground fog",
@@ -182449,7 +182517,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFogBase_slider:kit:25",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFogBase_slider:kit:26",
    "csv_index": null,
    "card": "shaft_fog",
    "card_title": "Ground fog",
@@ -182504,7 +182572,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeFroxelWindAzimuth_slider:kit:26",
+   "id": "v2:projector_shafts_tab:ps_BDMergeFroxelWindAzimuth_slider:kit:27",
    "csv_index": null,
    "card": "shaft_wind",
    "card_title": "Wind",
@@ -182559,7 +182627,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeFroxelWindElevation_slider:kit:27",
+   "id": "v2:projector_shafts_tab:ps_BDMergeFroxelWindElevation_slider:kit:28",
    "csv_index": null,
    "card": "shaft_wind",
    "card_title": "Wind",
@@ -182614,7 +182682,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeFroxelWindInverted_check:kit:28",
+   "id": "v2:projector_shafts_tab:ps_BDMergeFroxelWindInverted_check:kit:29",
    "csv_index": null,
    "card": "shaft_wind",
    "card_title": "Wind",
@@ -182669,7 +182737,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsShadowTint_slider:kit:29",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsShadowTint_slider:kit:30",
    "csv_index": null,
    "card": "shaft_shadows",
    "card_title": "Shadows in the beam",
@@ -182724,7 +182792,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeSoftShadowSoftness_slider:kit:30",
+   "id": "v2:projector_shafts_tab:ps_BDMergeSoftShadowSoftness_slider:kit:31",
    "csv_index": null,
    "card": "soft_shadows",
    "card_title": "Soft projector shadows",
@@ -182779,7 +182847,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeSoftShadowMaxPenumbra_slider:kit:31",
+   "id": "v2:projector_shafts_tab:ps_BDMergeSoftShadowMaxPenumbra_slider:kit:32",
    "csv_index": null,
    "card": "soft_shadows",
    "card_title": "Soft projector shadows",
@@ -182834,7 +182902,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeSoftShadowFill_slider:kit:32",
+   "id": "v2:projector_shafts_tab:ps_BDMergeSoftShadowFill_slider:kit:33",
    "csv_index": null,
    "card": "soft_shadows",
    "card_title": "Soft projector shadows",
@@ -182889,7 +182957,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:soft_shadow_sun_check:kit:33",
+   "id": "v2:projector_shafts_tab:soft_shadow_sun_check:kit:34",
    "csv_index": null,
    "card": "soft_shadows",
    "card_title": "Soft projector shadows",
@@ -182944,7 +183012,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsResolution_slider:kit:34",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsResolution_slider:kit:35",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -182999,7 +183067,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_temporal_check:kit:35",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_temporal_check:kit:36",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183054,7 +183122,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsTemporalBlend_slider:kit:36",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsTemporalBlend_slider:kit:37",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183109,7 +183177,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_adaptive_check:kit:37",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_adaptive_check:kit:38",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183164,7 +183232,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsTemporalReject_slider:kit:38",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsTemporalReject_slider:kit:39",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183219,7 +183287,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_temporal_beam_depth_check:kit:39",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_temporal_beam_depth_check:kit:40",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183274,7 +183342,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_scissor_check:kit:40",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_scissor_check:kit:41",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183329,7 +183397,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMinResolution_slider:kit:41",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMinResolution_slider:kit:42",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183384,7 +183452,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDither_slider:kit:42",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDither_slider:kit:43",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183439,7 +183507,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_temporal_dither_check:kit:43",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_temporal_dither_check:kit:44",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183494,7 +183562,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:gobo_anisotropic_check:kit:44",
+   "id": "v2:projector_shafts_tab:gobo_anisotropic_check:kit:45",
    "csv_index": null,
    "card": "shaft_quality",
    "card_title": "Beam quality",
@@ -183549,7 +183617,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_equiangular_check:kit:45",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_equiangular_check:kit:46",
    "csv_index": null,
    "card": "shaft_ab",
    "card_title": "Engine A/B (experimental)",
@@ -183604,7 +183672,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_airborne_tap_check:kit:46",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_airborne_tap_check:kit:47",
    "csv_index": null,
    "card": "shaft_ab",
    "card_title": "Engine A/B (experimental)",
@@ -183659,7 +183727,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_cookie_footprint_check:kit:47",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_cookie_footprint_check:kit:48",
    "csv_index": null,
    "card": "shaft_ab",
    "card_title": "Engine A/B (experimental)",
@@ -183714,7 +183782,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_pyramid_scissor_check:kit:48",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_pyramid_scissor_check:kit:49",
    "csv_index": null,
    "card": "shaft_ab",
    "card_title": "Engine A/B (experimental)",
@@ -183769,7 +183837,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDefinition:kit:49",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsDefinition:kit:50",
    "csv_index": null,
    "card": "shaft_performance",
    "card_title": "Performance",
@@ -183845,7 +183913,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMaxSteps:kit:50",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsMaxSteps:kit:51",
    "csv_index": null,
    "card": "shaft_performance",
    "card_title": "Performance",
@@ -183900,7 +183968,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsBigConeCap:kit:51",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsBigConeCap:kit:52",
    "csv_index": null,
    "card": "shaft_performance",
    "card_title": "Performance",
@@ -183955,7 +184023,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFrameBudget:kit:52",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsFrameBudget:kit:53",
    "csv_index": null,
    "card": "shaft_performance",
    "card_title": "Performance",
@@ -184010,7 +184078,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsBeamShadows:kit:53",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsBeamShadows:kit:54",
    "csv_index": null,
    "card": "shaft_performance",
    "card_title": "Performance",
@@ -184078,7 +184146,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsShadowSamples_slider:kit:54",
+   "id": "v2:projector_shafts_tab:ps_BDMergeProjectorVolumetricsShadowSamples_slider:kit:55",
    "csv_index": null,
    "card": "shaft_performance",
    "card_title": "Performance",
@@ -184133,7 +184201,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_volumetrics_half_res_check:kit:55",
+   "id": "v2:projector_shafts_tab:projector_volumetrics_half_res_check:kit:56",
    "csv_index": null,
    "card": "shaft_performance",
    "card_title": "Performance",
@@ -184188,7 +184256,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:ps_shaft_cost:kit:56",
+   "id": "v2:projector_shafts_tab:ps_shaft_cost:kit:57",
    "csv_index": null,
    "card": "shaft_performance",
    "card_title": "Performance",
@@ -184238,7 +184306,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:soft_shadows_enable_check:kit:57",
+   "id": "v2:projector_shafts_tab:soft_shadows_enable_check:kit:58",
    "csv_index": null,
    "card": "soft_shadows",
    "card_title": "Soft projector shadows",
@@ -184296,7 +184364,7 @@
     "page_view": "projector_shafts_tab",
     "via": "tab"
    },
-   "id": "v2:projector_shafts_tab:projector_cones_enable_check:kit:58",
+   "id": "v2:projector_shafts_tab:projector_cones_enable_check:kit:59",
    "csv_index": null,
    "card": "",
    "card_title": "Page master",
@@ -236835,6 +236903,9 @@
    "ps_BDMergeSoftShadowMaxPenumbra_slider",
    "ps_BDMergeSoftShadowSoftness_slider",
    "ps_shaft_cost",
+   "ps_shaft_engine",
+   "ps_shaft_engine_item_0",
+   "ps_shaft_engine_item_1",
    "ps_tint_swatch",
    "quick_group",
    "quick_kit",

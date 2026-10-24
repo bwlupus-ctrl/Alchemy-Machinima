@@ -16,13 +16,19 @@
 
 namespace ALProjectorShaftPresets
 {
-// Applies a built-in look. Accepts a "b:*" id or a legacy "0".."7" id. An unknown id writes nothing
+bool classicEngine();
+const std::vector<std::string>& classicLabels();
+LLSD sceneData();
+void applySceneData(const LLSD& data);
+
+// Classic accepts its original "0".."7" ids. New accepts "b:*" and maps legacy "0".."7" ids.
+// An unknown id writes nothing
 // and returns false.
 bool apply(const std::string& id);
 // Applies a saved user look: reset the owned set, then the map's values (missing keys keep the
 // default). The Dust permutation is written once, last, and only if it changes.
 bool applyValues(const LLSD& values);
-// Owned set plus the Dust permutation: what a user look saves and what the strip tracks.
+// Union of both engines' settings plus engine/id metadata for snapshots and strip watches.
 const std::vector<std::string>& trackedSettings();
 // All page controls for page history; look ownership stays narrower.
 const std::vector<std::string>& pageSettings();

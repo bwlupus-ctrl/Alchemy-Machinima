@@ -343,6 +343,10 @@ extern LLGLSLShader         gTronWorldProgram;
 // [TronT3] Tron light-cycle trail ribbons (immediate-mode strips drawn inside renderTronWorld)
 extern LLGLSLShader         gTronTrailProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
+extern LLGLSLShader         gDeferredProjectorVolumetricClassicProgram;
+extern LLGLSLShader         gDeferredProjectorVolumetricClassicUpsampleProgram;
+extern LLGLSLShader         gDeferredProjectorVolumetricClassicTemporalProgram;
+extern LLGLSLShader         gDeferredProjectorVolumetricClassicBloomFeedProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 extern LLGLSLShader         gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]

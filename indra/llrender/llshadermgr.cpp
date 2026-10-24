@@ -260,7 +260,10 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
     }
 
     // we want this BEFORE shadows and AO because those facilities use pos/norm access
-    if (features->isDeferred || features->hasReflectionProbes)
+    // Classic projector programs supply their frozen utility in mShaderFiles.
+    // Use a permutation marker so unrelated programs retain their feature hash.
+    if ((features->isDeferred || features->hasReflectionProbes) &&
+        shader->mDefines.count("PROJVOL_CLASSIC_UTIL") == 0)
     {
         if (!shader->attachFragmentObject("deferred/deferredUtil.glsl"))
         {

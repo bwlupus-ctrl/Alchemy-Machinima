@@ -316,8 +316,9 @@ def validate_data(data: dict) -> None:
     # Haiku kit batch (10/23): +13 rows (World near clip, Projector contact, VSync lock, VCam local video + cache/download limits, Settings Performance card with 3 rows, 4 projector shaft A/B rows).
     # Projector Shafts page (10/23): 41 shaft rows move from Atmosphere, +10 new rows (Halo stretch, 5 rim, 4 dust particles), page 37 -> 38; 2191 -> 2201.
     # Shaft Performance (10/24): five global caps/selectors + cost readout; two existing rows move. 2201 -> 2207.
-    if len(pages) != 38 or row_count != 2207:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2207")
+    # Shaft engine selector (10/24): one row, 2207 -> 2208.
+    if len(pages) != 38 or row_count != 2208:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2208")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2318,7 +2319,21 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         page_settings.add(shaft_page.get("master_setting"))
         checks.append(("shaft page history covers all controls without expanding look ownership",
                        page_settings == owned | {"BDMergeProjectorVolumetricsDust"} | extras and
-                       len(extras) == 23 and not (owned & extras)))
+                       len(extras) == 24 and not (owned & extras)))
+        shaft_rows = list(shafts.iter("kit_row"))
+        engine_control = shaft_rows[0].find("combo_box")
+        new_only = {"BDMergeProjectorVolumetrics" + suffix for suffix in (
+            "Definition", "MaxSteps", "BigConeCap", "FrameBudget", "BeamShadows",
+            "Equiangular", "AirborneTap", "CookieFootprint", "PyramidScissor")}
+        gated = [node for node in shafts.iter() if
+                 node.get("enabled_control") == "BDMergeProjectorVolumetricsEngine"]
+        checks.append(("shaft engine is first, New defaults on, only New controls are gated",
+                       shaft_rows[0].get("setting") == "BDMergeProjectorVolumetricsEngine" and
+                       engine_control is not None and
+                       [(n.get("label"), n.get("value")) for n in engine_control.findall("combo_box.item")] ==
+                       [("New", "1"), ("Classic", "0")] and
+                       {node.get("control_name") for node in gated} == new_only and len(gated) == 9 and
+                       all("New engine only" in node.get("tool_tip", "") for node in gated)))
         ghosts = ET.fromstring(outputs[out_dir / "panel_dpage_cast_ghosts.xml"], parser=parser())
         rotation_rows = [row for row in ghosts.iter("kit_row") if row.get("widget") in
                          {"yaw_spinner", "pitch_spinner", "roll_spinner"}]

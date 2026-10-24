@@ -403,6 +403,10 @@ public:
     // projector-volumetric temporal accumulation. Default false = the unchanged
     // main-view call, byte-identical to before.
     void renderProjectorVolumetric(LLRenderTarget* target, bool aux_direct = false);
+    void renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_direct);
+    void renderProjectorVolumetricClassic(LLRenderTarget* target, bool aux_direct);
+    void feedProjectorVolumetricBloomClassic();
+    F32 setupSpotLightVolumetricClassic(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot);
     // Viewer-native rain/lightning composite. Runs before HDR exposure and bloom
     // so lightning participates in the same photographic response as scene lights.
     void renderWeather(LLRenderTarget* target);
@@ -2516,6 +2520,8 @@ public:
     static F32 RenderVolumetricLightingMultiplier;
     static F32 RenderVolumetricLightingFalloffMultiplier;
     // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
+    static U32 BDMergeProjectorVolumetricsEngine;
+    bool mProjVolEngineDirty = false;
     static bool BDMergeProjectorVolumetrics;
     static U32 BDMergeProjectorVolumetricsResolution;
     static F32 BDMergeProjectorVolumetricsMultiplier;

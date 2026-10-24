@@ -3,6 +3,8 @@
 #include "alpanelprojectorshafts.h"
 #include "alpanelcinecamparams.h"
 #include "alprojectorshaftpresets.h"
+#include "alprojectorshaftlooks.h"
+#include "llviewercontrol.h"
 #include "llcombobox.h"
 #include "llprofiler.h"
 #include "lltextbox.h"
@@ -23,11 +25,31 @@ bool ALPanelProjectorShafts::postBuild()
     mShaftCost = getChild<LLTextBox>("ps_shaft_cost");
     mFlowGrid = getChildView("ps_flow_grid");
     reshape(getRect().getWidth(),getRect().getHeight());
-    getChild<LLComboBox>("ps_preset")->setCommitCallback([](LLUICtrl* control, const LLSD&)
+    mPreset = getChild<LLComboBox>("ps_preset");
+    mPreset->setCommitCallback([](LLUICtrl* control, const LLSD&)
     {
         ALProjectorShaftPresets::apply(control->getValue().asString());
     });
+    mEngineConnection = gSavedSettings.getControl("BDMergeProjectorVolumetricsEngine")->getSignal()->connect(
+        [this](LLControlVariable*, const LLSD&, const LLSD&) { refreshPresets(); });
+    refreshPresets();
     return LLPanel::postBuild();
+}
+
+void ALPanelProjectorShafts::refreshPresets()
+{
+    mPreset->clearRows();
+    mPreset->add("Custom", LLSD(""));
+    if (ALProjectorShaftPresets::classicEngine())
+    {
+        const auto& labels = ALProjectorShaftPresets::classicLabels();
+        for (size_t i = 0; i < labels.size(); ++i) mPreset->add(labels[i], LLSD(std::to_string(i)));
+    }
+    else
+    {
+        for (const auto& look : ALProjectorShaftLooks::looks()) mPreset->add(look.label, LLSD(look.id));
+    }
+    mPreset->selectFirstItem();
 }
 
 void ALPanelProjectorShafts::onVisibilityChange(bool visible)

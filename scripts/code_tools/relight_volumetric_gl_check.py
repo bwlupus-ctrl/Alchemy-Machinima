@@ -1733,12 +1733,21 @@ def main():
     ap.add_argument('--round1-only',action='store_true',help='run only the review-round regression suite')
     ap.add_argument('--round2-only',action='store_true',help='run only the second review-round regression suite')
     ap.add_argument('--looks-only',action='store_true',help='run only the Light > Projector Shafts look gate')
+    ap.add_argument('--engines-only',action='store_true',help='frozen Classic/New GL identity, engine switches, presets and scenes')
     ap.add_argument('--performance-only',action='store_true',help='Full identity, continuous-budget motion and hard-beam regression gates')
     ap.add_argument('--performance-cost-only',action='store_true',help='1/3/6 overlapping cones at this resolution, Full/Auto/Fast, soft/hard beam shadows')
     args = ap.parse_args(); args.out=args.out.resolve(); args.out.mkdir(parents=True,exist_ok=True)
     images = args.out/'images'; images.mkdir(exist_ok=True)
     gl = G.GL(); print('GL:',gl.renderer,flush=True)
     assert 'RTX 5090' in gl.renderer, 'FAIL: expected RTX 5090'
+    if args.engines_only:
+        from relight_volumetric_engine_check import engine_checks
+        report = dict(renderer=gl.renderer,size=[args.width,args.height],classic='c4d3614d3e7',new='824f65e6df7',checks=[])
+        engine_checks(sys.modules[__name__],args,gl,report)
+        report['passed'] = all(c['passed'] for c in report['checks'])
+        (args.out/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+        print('PASS' if report['passed'] else 'FAIL',args.out/'report.json',flush=True)
+        return 0 if report['passed'] else 1
     if args.performance_only or args.performance_cost_only:
         from relight_volumetric_perf import performance_checks
         host = build_scissor_host(args.out,args.glm_include)
