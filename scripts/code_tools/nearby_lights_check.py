@@ -66,8 +66,19 @@ struct LLViewerObject {
     bool isCineRigEmitter() const { return rig; }
     LLVOAvatar* getAvatar() const { return avatar; }
 };
+struct LLColor3 {
+    F32 mV[3] = {1, 1, 1};
+    LLColor3 operator*(F32 f) const {
+        LLColor3 result = *this;
+        result *= f;
+        return result;
+    }
+    void operator*=(F32 f) { for (auto& v : mV) v *= f; }
+    F32 magVecSquared() const { return mV[0]*mV[0]+mV[1]*mV[1]+mV[2]*mV[2]; }
+};
 struct LLColor4 {
     F32 mV[4] = {1, 1, 1, 0};
+    LLColor4(const LLColor3& c) : mV{c.mV[0], c.mV[1], c.mV[2], 1} {}
     LLColor4 operator*(F32 f) const {
         LLColor4 result = *this;
         result *= f;
@@ -80,7 +91,7 @@ struct LLVOVolume : LLViewerObject {
     F32 position = 0;
     int id = 0;
     int getID() const { return id; }
-    LLColor4 getLightLinearColor() const { return {}; }
+    LLColor3 getLightLinearColor() const { return {}; }
     F32 getLightRadius() const { return 1; }
 };
 struct LLDrawable {
@@ -258,7 +269,8 @@ def main():
     selection = braced(setup_source, selection_start)
     # Verify the real main-view call site updates before forward-light selection.
     assert 'calcNearbyLights(camera);\n    setupHWLights();' in source
-    program = FIXTURES + light + r'''
+    selection_color = braced(source, source.index('static LLColor3 local_light_selection_color('))
+    program = FIXTURES + selection_color + '\n' + light + r'''
 using light_set_t = std::set<Light, Light::compare>;
 light_set_t mNearbyLights;
 void update(F32 cam_pos, F32 max_dist, bool next_frame = true) {

@@ -6,6 +6,13 @@ the original production sources. No shader lighting formula is copied here.
 """
 import json
 
+if 'link_production' not in globals():
+    import subprocess
+    import sys
+    from pathlib import Path
+    raise SystemExit(subprocess.call([sys.executable, str(Path(__file__).with_name(
+        'relight_shader_check.py')), '--shape-only', *sys.argv[1:]]))
+
 shape_failures = []
 shape_measurements = {}
 
