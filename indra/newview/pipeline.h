@@ -442,7 +442,8 @@ public:
     static std::vector<LLUUID> worldShadowPickList();                  // normalised: sorted, no nulls, capped (ALWorldShadow::normalizePicks)
     static void  setWorldShadowPicks(const std::vector<LLUUID>& ids);  // replaces the set (scene load); names of kept picks survive
     static U64   worldShadowPickRevision();
-    static std::string worldShadowPickReport(std::string* full = nullptr); // "Picked: lamp; light 1234abcd (away)." clipped for the row; *full = the complete list (tooltip)
+    static std::string worldShadowPickReport(std::string* tooltip = nullptr); // "Picked: lamp; light 1234abcd (away)." clipped for the row; *tooltip = the list capped to ~12 lines
+    static std::vector<std::string> worldShadowPickChatLines();        // the COMPLETE list, one line per pick ("(away)" kept): the "List picks" button prints it to chat
     // Temporary viewer-local VCam overrides. Return true when acquire enabled
     // the per-light flag or master; release restores only untouched auto edits.
     static bool  acquireVCamVolumetrics(const LLUUID& id, bool allow_light = true);
@@ -1646,6 +1647,9 @@ public:
     ALWorldShadow::PickPresence<LLUUID> mWorldPickPresent;
     U64 mWorldPickRevisionSeen = 0;
     bool worldChannelOwnsPickedLight(const LLUUID& id) const;
+    // The ONE predicate for the pick ownership record: begin, add and commit in renderAreaShadows and the reader (worldChannelOwnsPickedLight)
+    // all use it. True only for the live main view's own pass (main render targets; not a VCam feed, snapshot, probe, mirror, HUD or impostor pass).
+    bool isLiveMainAreaShadowPass() const;
     // Idempotent. clear_failure: an explicit teardown / budget change forgets an allocation failure; the allocation RETRY path passes false so the
     // "allocation FAIL" warning is logged once per failure streak, not on every retry frame (the latch clears on success, OFF or teardown).
     void releaseWorldShadowTargets(bool clear_failure = true);

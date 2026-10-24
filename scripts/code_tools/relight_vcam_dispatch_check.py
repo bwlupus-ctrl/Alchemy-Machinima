@@ -248,6 +248,7 @@ struct LLPipeline {
     // World Shadow pick: nothing is picked here (cube_main is false); these only let the pick branches compile. The ownership record is the
     // production struct (begin on a live main-view pass, commit at the end of the pass), so the dispatch below runs the real begin/commit.
     ALWorldShadow::PickedOwnership<LLUUID> mWorldPickedOwned; bool gSnapshot=false;
+    bool isLiveMainAreaShadowPass() const;   // the production body is compiled below
     static bool isWorldShadowPicked(const LLUUID&) { return false; }
     static F32 worldShadowLightNear(LLDrawable*,F32) { return 0.05f; } // world branch is OFF; real near is executed by world_gl_check
     double mAreaShadowGPUms=-1;
@@ -287,6 +288,7 @@ bool gCubeSnapshot=false;
     fixture += '\n'.join(method(nv / 'pipeline.cpp', signature) for signature in (
         'bool LLPipeline::areaShadowsAllowedThisView() const',
         'bool LLPipeline::areaShadowsActive() const',
+        'bool LLPipeline::isLiveMainAreaShadowPass() const',
         'LLVector4 LLPipeline::deferredLightShape('))
     fixture += '\nvoid LLPipeline::begin() {\n'+begin+'}\nvoid LLPipeline::end() {\n'+end+'}\n'
     fixture += '\nvoid LLPipeline::bindDeferredShader(Shader& shader) { shader.bind();\n'+area_binding+'}\n'
@@ -301,7 +303,10 @@ bool gCubeSnapshot=false;
     fixture += 'selected.lights[0].shadowMap=true; mShadowSpotLight[0]=&drawables[0]; mSpotLightFade[0]=.75f;\n'
     # Importance scores for the smooth group fade: light i has score 8 - 0.02 i, so every admitted light is within 5 percent of
     # the first dropped one whenever lights are dropped, and fades.
-    fixture += 'for(unsigned i=0;i<8;++i) selected.lights[i].score=8.0-0.02*i;\nconst bool cube_main=false;\n'+state+dispatch
+    fixture += 'for(unsigned i=0;i<8;++i) selected.lights[i].score=8.0-0.02*i;\nconst bool cube_main=false;\n'
+    # The production ownership-record prologue (the shared live-main predicate, then begin) sits before the sliced dispatch body, which adds and commits.
+    fixture += 'const bool pick_record_pass = isLiveMainAreaShadowPass();\nif (pick_record_pass) mWorldPickedOwned.begin(gFrameCount, mRT);\n'
+    fixture += state+dispatch
     fixture += r'''
 }
 void LLPipeline::dispatch() {
@@ -331,7 +336,11 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         activeFeedSlot=slot;
         p.begin();
         if(p.areaShadowsActive() || p.mAreaShadowCount || p.deferredLightShape(&p.drawables[0].volume).mV[3]!=-1) return -1;
+        const auto record_before=p.mWorldPickedOwned;
         p.dispatch();
+        // A VCam feed pass neither begins, writes nor commits the main view's pick record.
+        if(p.mWorldPickedOwned.frame!=record_before.frame || p.mWorldPickedOwned.view!=record_before.view || p.mWorldPickedOwned.committed!=record_before.committed ||
+           p.mWorldPickedOwned.active!=record_before.active || p.mWorldPickedOwned.count!=record_before.count) return -9;
         int valid=p.mAreaShadowValid;
         if(valid && !p.routed) return -6;
         // A failed second plane keeps plane 0 only (the four most important lights); the others
@@ -385,6 +394,8 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         p.mRT->deferredScreen.width=width;p.mRT->deferredScreen.height=height;
         p.setLights(101,light);
         p.dispatch();p.sPrismLensRender=true;
+        // The live main pass records and commits ownership for exactly (this frame, the main render targets).
+        if(p.mAreaShadowValid && (!p.mWorldPickedOwned.committed || p.mWorldPickedOwned.active || p.mWorldPickedOwned.view!=&p.mMainRT || p.mWorldPickedOwned.frame!=p.gFrameCount)) return -9;
         return p.mAreaShadowValid;
     }
     if(action==7) {

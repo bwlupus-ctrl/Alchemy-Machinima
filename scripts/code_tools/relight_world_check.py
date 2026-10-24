@@ -330,7 +330,7 @@ def check_picks():
     # residency: picks first through updateResidencyPicked; the old function is the no-picks case of it
     assert re.search(r'inline unsigned updateResidency\(.*?\)\s*\{\s*return updateResidencyPicked\(r, lights, stillEligible, \[\]\(const ID&\) \{ return false; \}, \[\]\(const ID&\) \{ return false; \}, static_cast<const Ranked\*>\(nullptr\), 0u, ranked, rankedCount\);', header, re.S), \
         'updateResidency must forward to updateResidencyPicked with no picks and no displacement (OFF identity)'
-    assert 'ALWorldShadow::updateResidencyPicked(mWorldShadowResident,planned,' in pipe and 'picked_ranked,world_picked.size,ranked,world_candidates.size);' in pipe, 'renderAreaShadows must run the picks-first residency'
+    assert 'ALWorldShadow::updateResidencyPicked(mWorldShadowResident,planned,' in pipe and 'picked_ranked,world_picked.size,ranked,world_candidates.size,repick);' in pipe, 'renderAreaShadows must run the picks-first residency and pass repick (the re-pick cleanup of out-of-view picks)'
     # fix round 1: ALL the eligible in-view picks are ranked (not the best 8), each scored as world-owned whether or not its cube has rendered
     assert 'ALAreaShadow::Ranking<LLUUID, ALWorldShadow::kMaxPicks> world_picked;' in pipe and 'LLUUID ranked[8], picked_ranked[ALWorldShadow::kMaxPicks];' in pipe, 'every eligible pick must rank (a pick outside the top 8 still has a rank)'
     assert 'world_picked.add({volume->getID(), false, ALAreaShadow::pickedImportance(luminance, range, distance), false});' in pipe, 'picks are scored as world-owned (no native weight)'
@@ -348,13 +348,24 @@ def check_picks():
     assert 'worldChannelOwnsPickedLight(volume->getID())' in pipe and 'world_owned_pick ? -1 : s_idx' in pipe, 'setupSpotLight hand-over'
     # fix round 1: ownership is per VIEW and per FRAME (ALWorldShadow::PickedOwnership), written by the live main-view pass only
     assert 'mWorldPickedChannel' not in pipe and 'mWorldPickedChannel' not in hdr_pipe, 'the single global owned list (overwritten by whichever pass ran last) is gone'
-    assert 'if (!sPrismLensRender && !gSnapshot) mWorldPickedOwned.begin(gFrameCount, mRT);' in pipe, 'only the live main-view pass starts the record'
-    assert re.search(r'if \(!gSnapshot && isWorldShadowPicked\(id\)\)\s*mWorldPickedOwned\.add\(id\);', pipe), 'only a world-owned channel of a live main-view pass is recorded'
-    assert 'if (!sPrismLensRender && !gSnapshot) mWorldPickedOwned.commit(gFrameCount, mRT);' in pipe, 'the record is final only when the pass produced its channels'
+    # fix round 2: ONE predicate (isLiveMainAreaShadowPass) for begin, add, commit AND the reader; add() carries the (frame, view) token
+    live = pipe[pipe.index('bool LLPipeline::isLiveMainAreaShadowPass() const'):]
+    live = live[:live.index('\n}\n')]
+    for guard in ('mRT == &mMainRT', '!sPrismLensRender', '!gSnapshot', '!gCubeSnapshot', '!sReflectionRender', '!sRenderingHUDs', '!sImpostorRender'):
+        assert guard in live, 'the live-main-pass predicate must exclude every non-main pass: ' + guard
+    assert 'bool isLiveMainAreaShadowPass() const;' in hdr_pipe, 'predicate declared'
+    assert 'const bool pick_record_pass = isLiveMainAreaShadowPass();' in pipe, 'renderAreaShadows evaluates the shared predicate once for the record'
+    assert 'if (pick_record_pass) mWorldPickedOwned.begin(gFrameCount, mRT);' in pipe, 'only the live main-view pass starts the record'
+    assert re.search(r'if \(pick_record_pass && isWorldShadowPicked\(id\)\)\s*mWorldPickedOwned\.add\(id, gFrameCount, mRT\);', pipe), 'only a world-owned channel of the live main-view pass is recorded, under the pass token'
+    assert 'if (pick_record_pass) mWorldPickedOwned.commit(gFrameCount, mRT);' in pipe, 'the record is final only when the pass produced its channels'
+    assert pipe.count('mWorldPickedOwned.begin(') == 1 and pipe.count('mWorldPickedOwned.add(') == 1 and pipe.count('mWorldPickedOwned.commit(') == 1, 'one writer site each'
+    assert 'sPrismLensRender && !gSnapshot) mWorldPickedOwned' not in pipe, 'no private partial guard on the record'
     owner = pipe[pipe.index('bool LLPipeline::worldChannelOwnsPickedLight('):]
     owner = owner[:owner.index('\n}\n')]
-    for guard in ('sPrismLensRender', 'gSnapshot', 'gCubeSnapshot', 'sReflectionRender', 'sRenderingHUDs', 'sImpostorRender', 'areaShadowsActive()', 'mWorldPickedOwned.owns(id, gFrameCount, mRT)'):
+    for guard in ('!isLiveMainAreaShadowPass()', 'areaShadowsActive()', 'mWorldPickedOwned.owns(id, gFrameCount, mRT)'):
         assert guard in owner, 'the lighting-pass hand-over must answer only for the live main view and this frame: ' + guard
+    mathh = text(NV / 'alworldshadowmath.h')
+    assert 'bool add(const ID& x, std::uint64_t pass_frame, const void* pass_view)' in mathh and 'if (!active ||' in mathh, 'PickedOwnership::add must reject calls without a matching open begin'
     assert 'ALWorldShadow::PickedOwnership<LLUUID> mWorldPickedOwned;' in hdr_pipe and 'ALWorldShadow::PickPresence<LLUUID> mWorldPickPresent;' in hdr_pipe, 'pipeline.h members'
     # the Director: scene key, load order, dirty stamp, rows
     ui = text(NV / 'llfloaterdirector.cpp')
@@ -367,12 +378,14 @@ def check_picks():
     # unconditional: an old scene (no key) must CLEAR the previous scene's picks
     assert re.search(r'\n        LLPipeline::setWorldShadowPicks\(picks\);\n    \}', load), 'setWorldShadowPicks must run whether or not the key exists (outside the isArray branch)'
     assert 'stamp.mWorldPicks = LLPipeline::worldShadowPickRevision();' in ui and 'mWorldPicks == other.mWorldPicks' in text(NV / 'llfloaterdirector.h'), 'picks are scene data for the dirty stamp'
-    assert 'clear->setCommitCallback([](LLUICtrl*, const LLSD&) { LLPipeline::clearWorldShadowPicks(); });' in ui and 'LLPipeline::worldShadowPickReport(&full)' in ui, 'Director row + button'
+    assert 'area_shadow_world_list_picks' in ui and 'LLPipeline::worldShadowPickChatLines()' in ui, 'the List picks button prints the complete list to nearby chat (the tooltip is capped)'
+    assert 'pickLines(labels.data(), away.get(), count, 12, 60)' in pipe, 'the picks tooltip is capped to 12 lines'
+    assert 'clear->setCommitCallback([](LLUICtrl*, const LLSD&) { LLPipeline::clearWorldShadowPicks(); });' in ui and 'LLPipeline::worldShadowPickReport(&tooltip)' in ui, 'Director row + button'
     # fix round 1: the stale-pick release path and the full list in the row's tooltip (the row is a fixed 64 px)
     assert 'clear_away->setCommitCallback([](LLUICtrl*, const LLSD&) { LLPipeline::clearAwayWorldShadowPicks(); });' in ui, 'Clear away picks button'
-    assert 'picks_status->setToolTip(full);' in ui, 'the complete pick list must be reachable in the tooltip'
+    assert 'picks_status->setToolTip(tooltip);' in ui, 'the row tooltip shows the capped list (the complete list is the List picks button)'
     page = text(NV / 'skins/default/xui/en/panel_dpage_light_rim.xml')
-    for widget in ('area_shadow_world_picks', 'area_shadow_world_clear_picks', 'area_shadow_world_clear_away_picks'):
+    for widget in ('area_shadow_world_picks', 'area_shadow_world_list_picks', 'area_shadow_world_clear_picks', 'area_shadow_world_clear_away_picks'):
         assert 'name="' + widget + '"' in page, 'kit page lost ' + widget
     print('[world] picks PASS: menu item beside Volumetric Shaft (any owner), session set cleared with the shaft flags, picks-first residency (OFF = updateResidency), picked projector exempt from the native pin release and the channel, lighting-pass hand-over, scene key save/load/clear, Director row + button', flush=True)
 

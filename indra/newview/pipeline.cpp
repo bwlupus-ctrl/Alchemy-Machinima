@@ -26946,19 +26946,19 @@ std::string LLPipeline::worldShadowReadout() const
 
 // [World Shadow pick] The Director row: the picked lights by object name (the name remembered at pick time, else the selected object's
 // name, else "light <uuid8>"), "(away)" for a pick whose object is not in the region. Read-only; called on the Director's 2 s clock.
-std::string LLPipeline::worldShadowPickReport(std::string* full)
+static void world_shadow_pick_labels(std::vector<std::string>& labels, std::unique_ptr<bool[]>& away)
 {
-    const std::vector<LLUUID> picks = worldShadowPickList();
-    std::vector<std::string> labels;
-    std::unique_ptr<bool[]> away(new bool[picks.size() + 1]);
+    const std::vector<LLUUID> picks = LLPipeline::worldShadowPickList();
+    away.reset(new bool[picks.size() + 1]);
+    labels.clear();
     labels.reserve(picks.size());
     for (size_t i = 0; i < picks.size(); ++i)
     {
         LLViewerObject* object = gObjectList.findObject(picks[i]);
         away[i] = object == nullptr;
         std::string remembered;
-        const auto cached = sWorldShadowPickNames.find(picks[i]);
-        if (cached != sWorldShadowPickNames.end())
+        const auto cached = LLPipeline::sWorldShadowPickNames.find(picks[i]);
+        if (cached != LLPipeline::sWorldShadowPickNames.end())
             remembered = cached->second;
         // Known now: the object's own selection name, else (a child prim of a linkset is named only when it is itself selected) its linkset
         // root's selection name. Names exist only for selected objects, so a light picked from another selection keeps the remembered name.
@@ -26975,10 +26975,35 @@ std::string LLPipeline::worldShadowPickReport(std::string* full)
         }
         labels.push_back(ALWorldShadow::pickLabel(remembered, known_now, picks[i].asString().substr(0, 8)));
     }
-    const unsigned count = static_cast<unsigned>(picks.size());
-    if (full) *full = ALWorldShadow::pickReport(labels.data(), away.get(), count);
-    // ~100 characters is what the 64 px word-wrapped row shows; the tooltip holds the rest.
+}
+
+std::string LLPipeline::worldShadowPickReport(std::string* tooltip)
+{
+    std::vector<std::string> labels;
+    std::unique_ptr<bool[]> away;
+    world_shadow_pick_labels(labels, away);
+    const unsigned count = static_cast<unsigned>(labels.size());
+    // The tooltip is capped (~12 lines, long names cut): 32 long-named picks would be taller than the screen. The complete list is the
+    // "List picks" button (worldShadowPickChatLines).
+    if (tooltip) *tooltip = ALWorldShadow::joinLines(ALWorldShadow::pickLines(labels.data(), away.get(), count, 12, 60));
+    // ~100 characters is what the 64 px word-wrapped row shows.
     return ALWorldShadow::pickSummary(labels.data(), away.get(), count, 100);
+}
+
+std::vector<std::string> LLPipeline::worldShadowPickChatLines()
+{
+    std::vector<std::string> labels;
+    std::unique_ptr<bool[]> away;
+    world_shadow_pick_labels(labels, away);
+    return ALWorldShadow::pickLines(labels.data(), away.get(), static_cast<unsigned>(labels.size()), 0, 0);
+}
+
+// The ONE predicate behind the pick ownership record: begin, add and commit in renderAreaShadows and the reader below all use it. True only
+// for the live main view's own pass (main render targets; not a VCam feed, snapshot, probe, mirror, HUD or impostor pass). renderAreaShadows
+// already returns early for most of those (areaShadowsAllowedThisView), so this is the explicit contract, not a patch for a known leak.
+bool LLPipeline::isLiveMainAreaShadowPass() const
+{
+    return mRT == &mMainRT && !sPrismLensRender && !gSnapshot && !gCubeSnapshot && !sReflectionRender && !sRenderingHUDs && !sImpostorRender;
 }
 
 // True when `id` is a PICKED light whose soft-shadow channel is world-owned in THIS view and THIS frame: the live main view's
@@ -26987,8 +27012,7 @@ std::string LLPipeline::worldShadowPickReport(std::string* full)
 // ran last) answers false and keeps the native map; none of them writes or clears the record. Cheap and false when no light is picked.
 bool LLPipeline::worldChannelOwnsPickedLight(const LLUUID& id) const
 {
-    if (mWorldPickedOwned.count == 0 || sPrismLensRender || gSnapshot || gCubeSnapshot || sReflectionRender || sRenderingHUDs ||
-        sImpostorRender || !areaShadowsActive())
+    if (mWorldPickedOwned.count == 0 || !isLiveMainAreaShadowPass() || !areaShadowsActive())
         return false;
     return mWorldPickedOwned.owns(id, gFrameCount, mRT);
 }
@@ -27178,7 +27202,9 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     ALAreaShadow::Ranking<LLUUID, ALWorldShadow::kMaxPicks> world_picked;
     // [World Shadow pick] The ownership record of this view and frame: rebuilt by the live main-view pass only (a VCam feed, probe, mirror or
     // snapshot pass neither writes nor clears it), committed when the pass has produced its channels (worldChannelOwnsPickedLight).
-    if (!sPrismLensRender && !gSnapshot) mWorldPickedOwned.begin(gFrameCount, mRT);
+    // One predicate for begin, add, commit and the reader (isLiveMainAreaShadowPass); add() additionally rejects a call without this begin.
+    const bool pick_record_pass = isLiveMainAreaShadowPass();
+    if (pick_record_pass) mWorldPickedOwned.begin(gFrameCount, mRT);
     // Where the native spot map ends (the shadow_clip the native sampler reads): ranking input.
     const LLVector4 selection_clip = nativeSpotShadowClip();
     for (LLDrawable* drawable : mLights)
@@ -27296,7 +27322,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             return false;
         },[](const LLUUID& id) { return isWorldShadowPicked(id); },
         [&](const LLUUID& id) { return repick || !present_before.contains(id); },
-        picked_ranked,world_picked.size,ranked,world_candidates.size);
+        picked_ranked,world_picked.size,ranked,world_candidates.size,repick);
         mWorldPickPresent.assign(picked_ranked,world_picked.size);
         for (U32 k=0; k<ALWorldShadow::kMaxLights; ++k)
             if (resident_before.held[k] != mWorldShadowResident.held[k] || resident_before.id[k] != mWorldShadowResident.id[k])
@@ -27654,8 +27680,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                     world_any = true;
                     // [World Shadow pick] a picked light whose channel resolves from its cube this frame stops sampling its native map in
                     // the lighting pass (setupSpotLight): the cube is its shadow, not a second edge on top of the SL map.
-                    if (!gSnapshot && isWorldShadowPicked(id))
-                        mWorldPickedOwned.add(id);
+                    if (pick_record_pass && isWorldShadowPicked(id))
+                        mWorldPickedOwned.add(id, gFrameCount, mRT);
                 }
                 break;
             }
@@ -27773,7 +27799,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     }
     mAreaShadowCount = channels;
     mAreaShadowValid = true;
-    if (!sPrismLensRender && !gSnapshot) mWorldPickedOwned.commit(gFrameCount, mRT);   // [World Shadow pick] this view's ownership is now final
+    if (pick_record_pass) mWorldPickedOwned.commit(gFrameCount, mRT);   // [World Shadow pick] this view's ownership is now final
     // Published only now: the lights that really got a visible soft-shadow channel after allocation and drawing (a
     // light faded below 1/255 is not one), and how many of them march Thin objects quality.
     if (!sPrismLensRender)

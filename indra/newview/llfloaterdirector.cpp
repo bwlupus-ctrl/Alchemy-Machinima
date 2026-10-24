@@ -67,6 +67,7 @@
 #include "lldndbutton.h"
 #include "llcinematiccamera.h"
 #include "llfile.h"                 // LLFile::mkdir/remove, ll*fstream
+#include "llfloaterimnearbychat.h"   // [World Shadow pick] the List picks button prints the complete list to nearby chat
 #include "llfloaterreg.h"
 #include "llflycamrecorder.h"
 #include "llghostavatar.h"
@@ -1958,6 +1959,21 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         // [World Shadow pick] the picked lights by name, and the button that releases them all (the same call as unticking each one).
         if (LLTextBox* picks = root->findChild<LLTextBox>("area_shadow_world_picks"))
             mWorldShadowPicks = picks->getDerivedHandle<LLTextBox>();
+        if (LLButton* list = root->findChild<LLButton>("area_shadow_world_list_picks"))
+            list->setCommitCallback([](LLUICtrl*, const LLSD&)
+            {
+                // The complete pick list (the row's tooltip is capped), one nearby-chat line per pick, local only.
+                LLFloaterIMNearbyChat* nearby_chat = LLFloaterReg::getTypedInstance<LLFloaterIMNearbyChat>("nearby_chat");
+                if (!nearby_chat) return;
+                for (const std::string& line : LLPipeline::worldShadowPickChatLines())
+                {
+                    LLChat chat;
+                    chat.mText = "[World Shadow] " + line;
+                    chat.mSourceType = CHAT_SOURCE_SYSTEM;
+                    chat.mChatType = CHAT_TYPE_NORMAL;
+                    nearby_chat->addMessage(chat);
+                }
+            });
         if (LLButton* clear = root->findChild<LLButton>("area_shadow_world_clear_picks"))
             clear->setCommitCallback([](LLUICtrl*, const LLSD&) { LLPipeline::clearWorldShadowPicks(); });
         // A deleted light cannot be told from one that is only out of range, so the stale ("(away)") picks are released by the user.
@@ -3187,11 +3203,12 @@ void LLFloaterDirector::refreshLauncherCards()
     {
         if (isWidgetOnScreen(picks_status))
         {
-            // The row is a fixed 64 px: it shows as many names as fit, and its tooltip carries the complete list (every name and "(away)").
-            std::string full;
-            setTextIfChanged(picks_status, LLPipeline::worldShadowPickReport(&full));
-            if (picks_status->getToolTip() != full)
-                picks_status->setToolTip(full);
+            // The row is a fixed 64 px: it shows as many names as fit. Its tooltip is the list capped to ~12 lines ("... and N more");
+            // the complete list (every name and "(away)") is the List picks button, which prints it to nearby chat.
+            std::string tooltip;
+            setTextIfChanged(picks_status, LLPipeline::worldShadowPickReport(&tooltip));
+            if (picks_status->getToolTip() != tooltip)
+                picks_status->setToolTip(tooltip);
         }
     }
 }

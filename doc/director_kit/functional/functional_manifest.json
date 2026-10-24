@@ -43,8 +43,8 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2225,
-  "entries": 4094,
+  "generated_kit_rows": 2226,
+  "entries": 4095,
   "pages": 37,
   "settings_declared": 3691,
   "xui_files": 841,
@@ -183923,7 +183923,60 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_clear_picks:kit:53",
+   "id": "v2:light_rim_tab:area_shadow_world_list_picks:kit:53",
+   "csv_index": null,
+   "card": "area_soft_shadows",
+   "card_title": "Soft shadows",
+   "row_label": "List picks",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+   "xui_line": null,
+   "widget_name": "area_shadow_world_list_picks",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "ALRigRimController::attach",
+    "commit": true
+   },
+   "restore": {
+    "note": "restore any viewer-local action state"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "code",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "ALRigRimController::attach",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml"
+  },
+  {
+   "page": "light_rim_tab",
+   "page_label": "Rim",
+   "group": "light_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "light_rim_tab",
+    "via": "tab"
+   },
+   "id": "v2:light_rim_tab:area_shadow_world_clear_picks:kit:54",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -183973,7 +184026,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_clear_away_picks:kit:54",
+   "id": "v2:light_rim_tab:area_shadow_world_clear_away_picks:kit:55",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184023,7 +184076,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_vcam:kit:55",
+   "id": "v2:light_rim_tab:area_shadow_vcam:kit:56",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184078,7 +184131,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_sl_status:kit:56",
+   "id": "v2:light_rim_tab:area_shadow_sl_status:kit:57",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184128,7 +184181,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_coverage:kit:57",
+   "id": "v2:light_rim_tab:area_shadow_coverage:kit:58",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184178,7 +184231,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_lights:kit:58",
+   "id": "v2:light_rim_tab:area_shadow_lights:kit:59",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184233,7 +184286,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_quality:kit:59",
+   "id": "v2:light_rim_tab:area_shadow_quality:kit:60",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184313,7 +184366,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_samples:kit:60",
+   "id": "v2:light_rim_tab:area_shadow_samples:kit:61",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184368,7 +184421,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_steps:kit:61",
+   "id": "v2:light_rim_tab:area_shadow_steps:kit:62",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184423,7 +184476,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_distance:kit:62",
+   "id": "v2:light_rim_tab:area_shadow_distance:kit:63",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184478,7 +184531,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_thickness:kit:63",
+   "id": "v2:light_rim_tab:area_shadow_thickness:kit:64",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184533,7 +184586,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_half:kit:64",
+   "id": "v2:light_rim_tab:area_shadow_half:kit:65",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184588,7 +184641,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_denoise:kit:65",
+   "id": "v2:light_rim_tab:area_shadow_denoise:kit:66",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184643,7 +184696,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_light_bias:kit:66",
+   "id": "v2:light_rim_tab:area_shadow_light_bias:kit:67",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184698,7 +184751,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_debug:kit:67",
+   "id": "v2:light_rim_tab:area_shadow_debug:kit:68",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184794,7 +184847,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_debug:kit:68",
+   "id": "v2:light_rim_tab:area_shadow_world_debug:kit:69",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184870,7 +184923,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_budget:kit:69",
+   "id": "v2:light_rim_tab:area_shadow_budget:kit:70",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184925,7 +184978,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_sl_help:kit:70",
+   "id": "v2:light_rim_tab:area_shadow_sl_help:kit:71",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -184975,7 +185028,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_wrap_enable:kit:71",
+   "id": "v2:light_rim_tab:cine_rimq_wrap_enable:kit:72",
    "csv_index": null,
    "card": "rim_wrap",
    "card_title": "Light wrap",
@@ -185033,7 +185086,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_shape_enable:kit:72",
+   "id": "v2:light_rim_tab:relight_shape_enable:kit:73",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -185091,7 +185144,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadows_enable:kit:73",
+   "id": "v2:light_rim_tab:area_shadows_enable:kit:74",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -232422,6 +232475,7 @@
    "area_shadow_world_debug_item_2",
    "area_shadow_world_debug_item_3",
    "area_shadow_world_lights",
+   "area_shadow_world_list_picks",
    "area_shadow_world_picks",
    "area_shadow_world_status",
    "arm_camera_check",

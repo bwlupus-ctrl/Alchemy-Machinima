@@ -308,18 +308,30 @@ template<class ID> struct Residency
 //    ranks below every present pick, so a present pick can claim the slot of an out-of-view one when it is allowed to displace.
 //  * Unticking releases: a slot held because its light was picked (byPick) is freed the moment the pick goes, and refills from the ranking.
 //    A light that was already resident on its own merits and is then picked becomes a pick-held slot (so unticking it releases it too).
+//  * Re-pick cleanup: on a frame where the pick set changed (repick), a picked resident that is not among the present picks (out of view) is
+//    released before the arbitration, so it cannot block an automatic light; it returns later as a returning pick. Without repick it keeps its slot.
 //  * With an empty pick set (pickedCount == 0, isPicked false) this is exactly the pre-pick updateResidency (alrelightmath_test.cpp keeps an
 //    independent copy of that function and compares slot contents and change counts).
 // Returns the number of slots that changed. No time, cost or frame input.
 template<class ID, class Eligible, class Picked, class Displace, class Ranked>
 inline unsigned updateResidencyPicked(Residency<ID>& r, unsigned lights, Eligible stillEligible, Picked isPicked, Displace mayDisplace,
-    const Ranked* pickedRanked, unsigned pickedCount, const Ranked* ranked, unsigned rankedCount)
+    const Ranked* pickedRanked, unsigned pickedCount, const Ranked* ranked, unsigned rankedCount, bool repick = false)
 {
     unsigned changed = 0;
     lights = std::min(lights, kMaxLights);
     for (unsigned i = 0; i < kMaxLights; ++i)
     {
-        if (r.held[i] && (i >= lights || !stillEligible(r.id[i]) || (r.byPick[i] && !isPicked(r.id[i]))))
+        // repick = the pick set changed this frame (tick, untick, scene load). A picked resident that is no longer among the present picks
+        // (out of view) is released BEFORE the arbitration and the automatic fill, so it cannot hold a slot against an automatic light while the
+        // user is reshaping the set; it is a returning pick (and may displace) when it comes back into view.
+        bool absent_pick = false;
+        if (repick && r.held[i] && isPicked(r.id[i]))
+        {
+            absent_pick = true;
+            for (unsigned j = 0; j < pickedCount; ++j)
+                if (pickedRanked[j] == r.id[i]) { absent_pick = false; break; }
+        }
+        if (r.held[i] && (i >= lights || !stillEligible(r.id[i]) || (r.byPick[i] && !isPicked(r.id[i])) || absent_pick))
         { r.held[i] = false; r.id[i] = ID{}; ++changed; }
         if (!r.held[i]) r.byPick[i] = false;
         else if (isPicked(r.id[i])) r.byPick[i] = true;
@@ -400,8 +412,15 @@ inline std::string pickReport(const std::string* labels, const bool* away, unsig
     return out + ".";
 }
 // The same wording clipped for the fixed-height Director row: identical to pickReport while it fits in `maxChars`, else as many whole entries as
-// fit (at least one) followed by "+N more (hover for all)". The row's tooltip carries the complete pickReport, so no pick or "(away)" marker is
-// ever unreachable.
+// fit (at least one) followed by "+N more (hover for all)". When even the first entry does not fit, its label is cut with an ellipsis (never
+// inside a UTF-8 sequence), keeping its "(away)" marker. The result NEVER exceeds `maxChars` bytes. The row's tooltip carries the pick list, so no
+// pick or "(away)" marker is unreachable.
+inline std::size_t utf8CutPoint(const std::string& text, std::size_t at)
+{
+    if (at >= text.size()) return text.size();
+    while (at > 0 && (static_cast<unsigned char>(text[at]) & 0xC0u) == 0x80u) --at;   // never split a multibyte sequence
+    return at;
+}
 inline std::string pickSummary(const std::string* labels, const bool* away, unsigned count, std::size_t maxChars)
 {
     const std::string full = pickReport(labels, away, count);
@@ -410,14 +429,56 @@ inline std::string pickSummary(const std::string* labels, const bool* away, unsi
     unsigned shown = 0;
     for (unsigned i = 0; i < count; ++i)
     {
-        const std::string entry = (i ? "; " : "") + labels[i] + (away[i] ? " (away)" : "");
+        std::string entry = (i ? "; " : "") + labels[i] + (away[i] ? " (away)" : "");
         const unsigned left = count - i - 1;
         const std::size_t suffix = left ? std::string("; +" + std::to_string(left) + " more (hover for all).").size() : 1u;
         if (shown > 0 && out.size() + entry.size() + suffix > maxChars) break;
+        if (shown == 0 && out.size() + entry.size() + suffix > maxChars)
+        {
+            // The first entry alone is too long: cut its label (not its marker) and say so.
+            const std::string marker = away[i] ? " (away)" : "";
+            const std::string ellipsis = "...";
+            const std::size_t fixed = out.size() + marker.size() + ellipsis.size() + suffix;
+            const std::size_t room = maxChars > fixed ? maxChars - fixed : 0;
+            entry = labels[i].substr(0, utf8CutPoint(labels[i], room)) + ellipsis + marker;
+        }
         out += entry;
         ++shown;
     }
-    return shown < count ? out + "; +" + std::to_string(count - shown) + " more (hover for all)." : out + ".";
+    out = shown < count ? out + "; +" + std::to_string(count - shown) + " more (hover for all)." : out + ".";
+    if (out.size() > maxChars) out.resize(utf8CutPoint(out, maxChars));   // a budget too small for even the frame of the wording
+    return out;
+}
+// The pick list as lines: a header, one line per pick, "(away)" kept. `maxLines` (0 = all) caps the TOTAL line count (header + picks + the
+// "... and N more" line), `maxEntryChars` (0 = whole) cuts a long pick label with an ellipsis (never inside a UTF-8 sequence, never the marker).
+// The tooltip of the Director row uses a cap (a tooltip taller than the screen is unreadable); the "List picks" button prints all of it to chat.
+inline std::vector<std::string> pickLines(const std::string* labels, const bool* away, unsigned count, unsigned maxLines, std::size_t maxEntryChars)
+{
+    std::vector<std::string> out;
+    if (count == 0) { out.push_back("none picked"); return out; }
+    out.push_back("Picked lights (" + std::to_string(count) + "):");
+    if (maxLines != 0 && maxLines < 3) maxLines = 3;
+    unsigned shown = count;
+    if (maxLines != 0 && count > maxLines - 1) shown = maxLines - 2;   // header + shown + the "more" line == maxLines
+    for (unsigned i = 0; i < shown; ++i)
+    {
+        const std::string marker = away[i] ? " (away)" : "";
+        std::string label = labels[i];
+        if (maxEntryChars != 0 && label.size() + marker.size() > maxEntryChars)
+        {
+            const std::size_t room = maxEntryChars > marker.size() + 3 ? maxEntryChars - marker.size() - 3 : 0;
+            label = label.substr(0, utf8CutPoint(label, room)) + "...";
+        }
+        out.push_back(label + marker);
+    }
+    if (shown < count) out.push_back("... and " + std::to_string(count - shown) + " more (press List picks for all)");
+    return out;
+}
+inline std::string joinLines(const std::vector<std::string>& lines)
+{
+    std::string out;
+    for (std::size_t i = 0; i < lines.size(); ++i) out += (i ? "\n" : "") + lines[i];
+    return out;
 }
 // A light's display name: the name remembered at pick time, else the one known now, else "light <id8>". `known_now` is the selected object's
 // own name, or for a child prim of a linkset that was not itself named (ObjectProperties only names the selected nodes) the linkset root's
@@ -456,9 +517,21 @@ template<class ID> struct PickedOwnership
     std::uint64_t frame = 0;
     const void* view = nullptr;
     bool committed = false;
-    void begin(std::uint64_t pass_frame, const void* pass_view) { id = {}; count = 0; frame = pass_frame; view = pass_view; committed = false; }
-    void add(const ID& x) { if (count < kMaxLights) id[count++] = x; }
-    void commit(std::uint64_t pass_frame, const void* pass_view) { if (pass_view && view == pass_view && frame == pass_frame) committed = true; }
+    bool active = false;   // a begin() is open for (frame, view): add() answers only to that pass, commit() closes it
+    void begin(std::uint64_t pass_frame, const void* pass_view) { id = {}; count = 0; frame = pass_frame; view = pass_view; committed = false; active = pass_view != nullptr; }
+    // Rejected (false) without a matching open begin(): a pass that never began the record, or a different frame / view, cannot write into it.
+    bool add(const ID& x, std::uint64_t pass_frame, const void* pass_view)
+    {
+        if (!active || !pass_view || view != pass_view || frame != pass_frame || count >= kMaxLights) return false;
+        id[count++] = x;
+        return true;
+    }
+    void commit(std::uint64_t pass_frame, const void* pass_view)
+    {
+        if (!active || !pass_view || view != pass_view || frame != pass_frame) return;
+        committed = true;
+        active = false;
+    }
     bool owns(const ID& x, std::uint64_t at_frame, const void* at_view) const
     {
         if (!committed || !at_view || view != at_view || frame != at_frame) return false;

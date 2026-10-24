@@ -224,6 +224,11 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         hit = binding("indra/newview/pipeline.cpp", 0, "LLPipeline", "clearWorldShadowPicks")
         hit.update(wired_class="LLFloaterDirector", wired_function="bindPage", text="explicit scoped binding: the Director commit callback clears the picks")
         return hit
+    if page == "light_rim_tab" and widget == "area_shadow_world_list_picks":
+        # World Shadow pick fix round 2: the List picks button (bound in LLFloaterDirector::bindPage) prints the complete pick list to nearby chat.
+        hit = binding("indra/newview/pipeline.cpp", 0, "LLPipeline", "worldShadowPickChatLines")
+        hit.update(wired_class="LLFloaterDirector", wired_function="bindPage", text="explicit scoped binding: the Director commit callback prints the pick list to nearby chat")
+        return hit
     if page == "light_rim_tab" and widget == "area_shadow_world_clear_away_picks":
         # World Shadow pick fix round 1: the Clear away picks button (bound in LLFloaterDirector::bindPage) releases the picks whose object is gone.
         hit = binding("indra/newview/pipeline.cpp", 0, "LLPipeline", "clearAwayWorldShadowPicks")

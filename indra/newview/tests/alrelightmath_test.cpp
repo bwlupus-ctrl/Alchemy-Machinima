@@ -3490,6 +3490,34 @@ template<> template<> void relight_object::test<42>()
         updateResidencyPicked(v,2,always,picked123,[](int id){ return id == 3; },out_view_ranked,2,ranked,1);
         ensure("a newly picked light in view claims the out-of-view resident's slot",v.contains(2) && v.contains(3) && !v.contains(1));
     }
+    // 2b. Re-pick cleanup (under-subscribed): picks A,B resident; A leaves view; the pick set changes (here a third light is picked), and an
+    //     automatic light C is waiting. Without cleanup A (out of view) holds its slot against C; with it the slot is released first.
+    {
+        Residency<int> r;
+        const int ranked[3] = {5,6,7};            // 5 is the best automatic light, 6 and 7 follow
+        const int both[2] = {1,2};
+        const auto picked12 = [](int id){ return id==1 || id==2; };
+        updateResidencyPicked(r,2,always,picked12,rp(true),both,2,ranked,3);
+        ensure("A=1 and B=2 resident",r.contains(1) && r.contains(2) && r.byPick[0] && r.byPick[1]);
+        // 1 leaves view (not in pickedRanked, still picked); the pick set is unchanged: it keeps its slot (no cleanup without a re-pick).
+        const int only2[1] = {2};
+        ensure_equals("no pick-set change: the out-of-view pick keeps its slot",updateResidencyPicked(r,2,always,picked12,rp(false),only2,1,ranked,3,false),0u);
+        ensure("1 still resident",r.contains(1) && r.contains(2));
+        // The pick set changes (a light 9, not eligible/out of view, is ticked): 1 is released BEFORE the fill, so automatic light 5 takes its slot.
+        const auto picked129 = [](int id){ return id==1 || id==2 || id==9; };
+        const unsigned changed = updateResidencyPicked(r,2,always,picked129,rp(true),only2,1,ranked,3,true);
+        ensure("re-pick: the out-of-view pick is released and the automatic light fills its slot",!r.contains(1) && r.contains(2) && r.contains(5) && changed == 2u);
+        ensure("the in-view pick kept its slot and stays pick-held",r.byPick[0] != r.byPick[1] && (r.id[0] == 2 ? r.byPick[0] : r.byPick[1]));
+        // The same call with repick = false (the old behaviour) would have blocked the automatic light: the failing-before shape.
+        Residency<int> old;
+        updateResidencyPicked(old,2,always,picked12,rp(true),both,2,ranked,3);
+        updateResidencyPicked(old,2,always,picked129,rp(true),only2,1,ranked,3,false);
+        ensure("without the cleanup the out-of-view pick blocks the automatic light",old.contains(1) && !old.contains(5));
+        // It returns into view later: a returning pick may displace, and the freed light does not block it.
+        const int back[2] = {1,2};
+        updateResidencyPicked(r,2,always,picked129,rp(true),back,2,ranked,3);
+        ensure("the returning pick takes a slot back from the automatic light",r.contains(1) && r.contains(2) && !r.contains(5));
+    }
     // 3. Consistent scoring: a picked light is scored as world-owned whether or not its cube has rendered, so a newly picked native projector is not
     //    penalised against a pick that already owns a cube.
     {
@@ -3510,14 +3538,18 @@ template<> template<> void relight_object::test<42>()
         PickedOwnership<int> own;
         int main_view = 0, vcam_view = 0;
         const std::uint64_t frame = 100;
+        ensure("add() without any begin() is rejected",!own.add(5,frame,&main_view) && own.count == 0);
         own.begin(frame,&main_view);
-        own.add(7);
+        ensure("add() under the matching begin() is accepted",own.add(7,frame,&main_view));
         ensure("an unfinished pass owns nothing yet",!own.owns(7,frame,&main_view));
         // A VCam feed pass runs now. It neither writes nor commits the main record, and it never reads ownership from it.
         own.commit(frame,&vcam_view);
         ensure("a VCam commit does not commit the main pass",!own.owns(7,frame,&main_view));
+        ensure("add() from another view is rejected while the main pass is open",!own.add(9,frame,&vcam_view) && own.count == 1);
+        ensure("add() from another frame is rejected while the main pass is open",!own.add(9,frame + 1,&main_view) && own.count == 1);
         own.commit(frame,&main_view);
         ensure("the main pass owns the picked light after it finished",own.owns(7,frame,&main_view));
+        ensure("add() after commit() is rejected (the record is final)",!own.add(9,frame,&main_view) && own.count == 1 && own.owns(7,frame,&main_view));
         ensure("the VCam view never inherits the main view's ownership",!own.owns(7,frame,&vcam_view));
         own.commit(frame,&vcam_view);
         ensure("a VCam pass finishing afterwards does not clear the main view's ownership",own.owns(7,frame,&main_view));
@@ -3526,15 +3558,41 @@ template<> template<> void relight_object::test<42>()
         // Next frame: the main pass begins again and finds the light no longer world-owned; the record from the previous frame is gone.
         own.begin(frame + 1,&main_view);
         ensure("the previous frame's ownership is gone the moment the pass begins",!own.owns(7,frame,&main_view) && !own.owns(7,frame + 1,&main_view));
-        own.add(8);
+        ensure("the new begin() opens the record again",own.add(8,frame + 1,&main_view));
         own.commit(frame + 1,&main_view);
         ensure("the new frame owns what its pass recorded",own.owns(8,frame + 1,&main_view) && !own.owns(7,frame + 1,&main_view));
         // The ownership list is bounded by the channel count.
         PickedOwnership<int> full;
         full.begin(1,&main_view);
-        for (int id = 1; id <= 9; ++id) full.add(id);
+        for (int id = 1; id <= 9; ++id) full.add(id,1,&main_view);
         full.commit(1,&main_view);
         ensure_equals("the record holds at most the cube light slots",full.count,static_cast<unsigned>(kMaxLights));
+        // A probe / mirror / HUD / impostor-style pass (another view, no begin of its own because the live-main predicate refuses it) runs before and
+        // after the main pass in the same frame: every write it attempts is rejected and the main record is bit-for-bit unchanged.
+        PickedOwnership<int> rec;
+        int probe_view = 0, hud_view = 0, impostor_view = 0;
+        const std::uint64_t f = 500;
+        for (int* v : {&probe_view,&hud_view,&impostor_view})
+            ensure("before the main pass: no begin, so no write",!rec.add(99,f,v));
+        rec.commit(f,&probe_view);
+        ensure("before the main pass: a stray commit opens nothing",!rec.committed && !rec.owns(99,f,&main_view));
+        rec.begin(f,&main_view);
+        ensure("main add 1",rec.add(1,f,&main_view));
+        for (int* v : {&probe_view,&hud_view,&impostor_view})
+            ensure("during the main pass: a foreign view cannot write",!rec.add(98,f,v));
+        ensure("main add 2",rec.add(2,f,&main_view));
+        rec.commit(f,&main_view);
+        const PickedOwnership<int> before = rec;
+        for (int* v : {&probe_view,&hud_view,&impostor_view})
+        {
+            ensure("after the main pass: a foreign view cannot write",!rec.add(97,f,v));
+            rec.commit(f,v);
+            ensure("after the main pass: a foreign view never inherits it",!rec.owns(1,f,v));
+        }
+        ensure("after the main pass: the same view cannot write again this frame",!rec.add(96,f,&main_view));
+        ensure("the main record is unchanged by every foreign pass",rec.count == before.count && rec.id == before.id && rec.frame == before.frame &&
+            rec.view == before.view && rec.committed == before.committed && rec.active == before.active);
+        ensure("and still answers for the main view",rec.owns(1,f,&main_view) && rec.owns(2,f,&main_view) && !rec.owns(97,f,&main_view));
     }
     // 5. Presence: a pick is "returning" when it was not among the previous arbitration's present picks.
     {
@@ -3590,13 +3648,65 @@ template<> template<> void relight_object::test<42>()
         for (unsigned i = 0; i < 30; ++i) { labels.push_back("Street lamp number " + std::to_string(i)); away[i] = (i % 3) == 0; }
         ensure_equals("fits: identical to the complete report",pickSummary(labels.data(),away,2,100),pickReport(labels.data(),away,2));
         const std::string clipped = pickSummary(labels.data(),away,30,100);
-        ensure("clipped to the row",clipped.size() <= 100 + 30);
+        ensure("clipped to the row",clipped.size() <= 100);
         ensure("clipped text says how many are hidden",clipped.find("more (hover for all).") != std::string::npos && clipped.find("+") != std::string::npos);
         ensure("clipped text starts with the first pick",clipped.find("Street lamp number 0 (away)") != std::string::npos);
         const std::string full = pickReport(labels.data(),away,30);
         ensure("the complete report lists the last pick and its (away) marker",full.find("Street lamp number 29;") == std::string::npos &&
             full.find("Street lamp number 29.") != std::string::npos && full.find("Street lamp number 27 (away)") != std::string::npos);
-        ensure("one long name is still shown whole",pickSummary(labels.data(),away,1,10).find("Street lamp number 0 (away)") != std::string::npos);
+        // Bounded for ANY input: one very long name is cut with an ellipsis, keeps its (away) marker, and never exceeds maxChars.
+        const std::string longname(200,'x');
+        const std::string one[1] = {longname};
+        const bool away_one[1] = {true};
+        const std::string cut = pickSummary(one,away_one,1,100);
+        ensure("one 200-char name: bounded by maxChars",cut.size() <= 100);
+        ensure("one 200-char name: ellipsis, marker and the frame kept",cut.find("...") != std::string::npos && cut.find(" (away)") != std::string::npos && cut.rfind("Picked: ",0) == 0 && cut.back() == '.');
+        const bool no_away[1] = {false};
+        const std::string cut2 = pickSummary(one,no_away,1,100);
+        ensure("one 200-char name (not away): bounded and ellipsised",cut2.size() <= 100 && cut2.find("...") != std::string::npos && cut2.find("(away)") == std::string::npos);
+        // A long first name among several, with the "+N more" suffix.
+        const std::string many[3] = {longname,"B","C"};
+        const bool away3[3] = {false,true,false};
+        const std::string cut3 = pickSummary(many,away3,3,100);
+        ensure("long first of three: bounded and says how many are hidden",cut3.size() <= 100 && cut3.find("more (hover for all).") != std::string::npos);
+        // UTF-8: a name of 3-byte characters is never cut inside a character, whatever the budget.
+        std::string wide;
+        for (int i = 0; i < 60; ++i) wide += "\xE3\x81\x82";   // 60 x HIRAGANA A (3 bytes each)
+        const std::string wide_one[1] = {wide};
+        for (std::size_t budget = 12; budget <= 100; ++budget)
+        {
+            const std::string out = pickSummary(wide_one,away_one,1,budget);
+            bool well_formed = out.size() <= budget;
+            for (std::size_t i = 0; i < out.size() && well_formed; ++i)
+            {
+                const unsigned char b = static_cast<unsigned char>(out[i]);
+                const std::size_t need = b < 0x80 ? 0 : (b >= 0xE0 && b < 0xF0 ? 2 : 99);   // only 3-byte sequences exist here
+                if (b >= 0x80 && (b & 0xC0) == 0x80) { well_formed = false; break; }        // a stray continuation byte
+                if (need == 99) { well_formed = false; break; }
+                for (std::size_t k = 1; k <= need; ++k)
+                    if (i + k >= out.size() || (static_cast<unsigned char>(out[i + k]) & 0xC0) != 0x80) { well_formed = false; break; }
+                i += need;
+            }
+            ensure("a multibyte name is cut on a character boundary within the budget",well_formed);
+        }
+        ensure("a budget smaller than the frame of the wording still never exceeds it",pickSummary(one,away_one,1,5).size() <= 5);
+        // The tooltip: capped to ~12 lines however many picks, long names cut; the complete list is the chat listing.
+        std::vector<std::string> big_labels;
+        bool big_away[32] = {};
+        for (unsigned i = 0; i < 32; ++i) { big_labels.push_back("A very long street lamp name that goes on and on for the whole fixture row " + std::to_string(i)); big_away[i] = (i % 2) == 0; }
+        const std::vector<std::string> tip_lines = pickLines(big_labels.data(),big_away,32,12,60);
+        ensure_equals("the tooltip has at most 12 lines",tip_lines.size(),12u);
+        ensure("the tooltip says how many more",tip_lines.back().find("... and 22 more") == 0);
+        bool tip_short = true;
+        for (const std::string& line : tip_lines) tip_short = tip_short && line.size() <= 70;
+        ensure("tooltip lines are short",tip_short);
+        ensure("the tooltip keeps the (away) marker of a shown pick",tip_lines[1].find(" (away)") != std::string::npos);
+        const std::vector<std::string> all_lines = pickLines(big_labels.data(),big_away,32,0,0);
+        ensure_equals("the chat listing has a header and every pick",all_lines.size(),33u);
+        ensure("the chat listing has the last pick whole with its text",all_lines.back() == big_labels[31]);
+        ensure("a short list is not capped",pickLines(big_labels.data(),big_away,5,12,60).size() == 6u);
+        ensure_equals("nothing picked",pickLines(big_labels.data(),big_away,0,12,60).front(),std::string("none picked"));
+        ensure("joined lines use newlines",joinLines(tip_lines).find('\n') != std::string::npos);
     }
 }
 
