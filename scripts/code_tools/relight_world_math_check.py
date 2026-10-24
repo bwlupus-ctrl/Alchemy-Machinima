@@ -38,7 +38,11 @@ void close(const char* m,double a,double b,double tol=1.e-10) { ensure(m,std::is
     # Execute the actual scene-load settings loop and migration with tiny value/control adapters.
     # Load every sparse combination after non-default live values, including an absent settings map.
     director = (REPO / 'indra/newview/llfloaterdirector.cpp').read_text()
-    load = director[director.index('    // only apply keys this floater owns:'):director.index('    // [RigRim] P1-C fix:')]
+    # End at the LOOK reset loop itself; later scene migrations have their own
+    # dependencies and must not accidentally become part of this small adapter.
+    look_reset = director.index('    for (const char* setting : {"RenderAreaShadowStrength"')
+    look_end = director.index('\n    }\n', look_reset) + len('\n    }\n')
+    load = director[director.index('    // only apply keys this floater owns:'):look_end]
     scene_shim = r'''#include <map>
 #include <string>
 namespace scene_regression {

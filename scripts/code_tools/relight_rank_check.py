@@ -203,9 +203,9 @@ def check_rank_sources():
         for label, body in (('pipeline.cpp', pipeline_all), ('alareashadowmath.h', header), ('areaShadowF.glsl', glsl),
                             ('screenSpaceRayUtil.glsl', trace), ('pipeline.h', pipeline_h)):
             assert word not in body, 'per-light housing must stay removed: %s in %s' % (word, label)
-    # The ray utility is the pre-hybrid baseline plus the per-ray `thin` argument (fix round 3: the rays of
-    # a Thin light next to the Thin/regular boundary march the regular way). Undoing exactly these edits must give the baseline's
-    # file byte for byte, so nothing else in the trace changed; the 10-argument entry point forwards the uniform.
+    # The ray utility is the pre-hybrid baseline plus the per-ray `thin` argument
+    # and exactly the reach-march fix from 7725252f1da. Undoing both must recover
+    # the baseline byte for byte; no other trace changes are permitted.
     def baseline_text(path):
         return subprocess.check_output(['git', 'show', PRE_HYBRID_REF + ':' + path.as_posix()]).decode('utf-8').replace('\r\n', '\n')
     thin_edits = (
@@ -218,12 +218,41 @@ def check_rank_sources():
          '                float light_bias, float max_distance, float thickness, int steps, float offset,\n'
          '                float contact_distance)\n{\n'
          '    return areaTrace(origin,target,light,end_gap,light_bias,max_distance,thickness,steps,offset,contact_distance,area_thin_objects);\n}\n', ''))
-    restored = trace.replace('\r\n', '\n')
-    for new_text, old_text in thin_edits:
-        assert restored.count(new_text) == 1, 'ray utility: expected edit missing: ' + new_text[:60]
-        restored = restored.replace(new_text, old_text, 1)
-    assert restored == baseline_text(glsl_dir / 'class1/deferred/screenSpaceRayUtil.glsl'), \
-        'screenSpaceRayUtil.glsl may differ from the pre-hybrid baseline only by the per-ray thin argument'
+    reach_edits = (
+        ('                float contact_distance, bool thin, float minimum_distance)\n{',
+         '                float contact_distance, bool thin)\n{'),
+        ('            // The extra world reach must keep searching past contact candidates\n'
+         "            // rejected by the contact march's tighter surface tolerance.\n"
+         '            if (minimum_distance > 0.0 && hit_t <= minimum_distance) continue;\n', ''),
+        ('vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,\n'
+         '                float light_bias, float max_distance, float thickness, int steps, float offset,\n'
+         '                float contact_distance, bool thin)\n{\n'
+         '    return areaTrace(origin,target,light,end_gap,light_bias,max_distance,thickness,steps,offset,contact_distance,thin,0.0);\n}\n', ''))
+    ray_baseline = baseline_text(glsl_dir / 'class1/deferred/screenSpaceRayUtil.glsl')
+
+    def ray_source_pinned(source):
+        restored = source.replace('\r\n', '\n')
+        # Remove the forwarding overload before restoring the original signature.
+        for new_text, old_text in (*reversed(reach_edits), *thin_edits):
+            assert restored.count(new_text) == 1, 'ray utility: expected edit missing: ' + new_text[:60]
+            restored = restored.replace(new_text, old_text, 1)
+        assert restored == ray_baseline, \
+            'screenSpaceRayUtil.glsl may differ from the pre-hybrid baseline only by the per-ray thin argument and the exact reach-march fix'
+
+    ray_source_pinned(trace)
+    reverted_reach = trace.replace('\r\n', '\n')
+    for new_text, old_text in reversed(reach_edits):
+        assert reverted_reach.count(new_text) == 1, 'reach-revert mutation anchor missing'
+        reverted_reach = reverted_reach.replace(new_text, old_text, 1)
+    for label, mutated in (('stray ray utility edit', trace + '\n// stray edit\n'),
+                           ('reverted reach-march fix', reverted_reach)):
+        assert mutated != trace, 'mutation anchor missing: ' + label
+        try:
+            ray_source_pinned(mutated)
+        except AssertionError:
+            print('[RelightQ] ray utility pin rejected: ' + label, flush=True)
+        else:
+            raise AssertionError('ray utility mutation survived: ' + label)
     head_gather = baseline_text(glsl_dir / 'class3/deferred/areaShadowF.glsl')
     housing_lines = ('            float end_gap = max(source_radius,0.1)+area_light_bias;\n'
                      '            vec2 traced = areaTrace(origin,target,area_lights[light].xyz,end_gap,\n'
@@ -274,7 +303,7 @@ def check_rank_sources():
         assert not ok, 'source mutation survived: ' + label
     print('[RelightQ] rank sources PASS: importance score with a continuous native weight, no unmapped-first or legacy '
           'camera-point term, sampled-map rule, feed slots 0 with the VCam switch off, no allocation backoff, '
-          'plane-1 fallback, pre-hybrid housing (global bias sphere; ray utility identical to the baseline except the per-ray thin argument), hand-over window .25 .. .45 '
+          'plane-1 fallback, pre-hybrid housing (global bias sphere; ray utility baseline plus per-ray thin argument and exact reach-march fix), hand-over window .25 .. .45 '
           'with the NaN guard, shifted-depth hand-over, plane 0 failure keeps plane 1; mutations rejected', flush=True)
 
 
