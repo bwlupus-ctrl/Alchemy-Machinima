@@ -121,6 +121,7 @@ uniform int   soft_shadow_taps;   // Vogel tap count (clamped to SOFT_SHADOW_VOG
 // Per projector-shadow slot. Zero is a strict sentinel for the existing
 // global behavior; positive values override only the penumbra growth scale.
 uniform float spot_shadow_softness[10];
+uniform float spot_shadow_detail[10];
 
 // 12-tap Poisson-ish disk for the widened soft-shadow PCF kernel.
 const vec2 SOFT_SHADOW_DISK[12] = vec2[12](
@@ -447,11 +448,28 @@ bool sunUnitsCascade(int i)
     return (shadow_units_mode != 0) && ((shadow_units_scope == 0) || (i == 0));
 }
 
-float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 pos_screen, float projector_softness)
+float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 pos_screen, float projector_softness, int index)
 {
 #if defined(SPOT_SHADOW)
+    float axial_depth = stc.w;
     stc.xyz /= stc.w;
     stc.z += spot_shadow_bias * bias_scale;
+    bool detail = spot_shadow_detail[index] > 0.5;
+    vec2 plane = vec2(0.0);
+    float plane_cap = 0.0;
+    if (detail)
+    {
+        // Receiver-plane compare correction, bounded to 2.5 mm per tap. This
+        // changes bias only; every kernel position/count/filter stays intact.
+        vec3 dx = dFdx(stc.xyz), dy = dFdy(stc.xyz);
+        float det = dx.x*dy.y-dx.y*dy.x;
+        if (abs(det) > 1.e-14)
+            plane = vec2(dy.y*dx.z-dx.y*dy.z,dx.x*dy.z-dy.x*dx.z)/det;
+        mat4 m = shadow_matrix[4+index];
+        vec3 axis = normalize(vec3(m[0].w,m[1].w,m[2].w));
+        float kz = dot(vec3(m[0].z,m[1].z,m[2].z),axis);
+        plane_cap = abs(kz-stc.z)/max(axial_depth,1.e-4)*0.0025;
+    }
 
     // [BDMerge Batch 2 / Cinematic Lighting 2.0] Soft projector shadows.
     // A bounded blocker search estimates receiver-minus-occluder separation,
@@ -490,7 +508,7 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
                 float r = sqrt((float(i) + 0.5) * inv_n);
                 float theta = float(i) * SOFT_SHADOW_GOLDEN_ANGLE + phi;
                 vec2 o = r * vec2(cos(theta), sin(theta)) * texel;
-                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z + clamp(dot(plane,o),-plane_cap,plane_cap)));
             }
             shadow *= inv_n;
         }
@@ -501,7 +519,7 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
             {
                 vec2 o = SOFT_SHADOW_DISK[i] * texel;
                 o.x += (jit - 0.5) * texel.x;
-                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z + clamp(dot(plane,o),-plane_cap,plane_cap)));
             }
             shadow /= 12.0;
         }
@@ -516,18 +534,19 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
         return clamp(shadow, 0.0, 1.0);
     }
 
+    vec2 unsnapped = stc.xy;
     stc.x = floor(proj_shadow_res.x * stc.x + fract(pos_screen.y*0.666666666)) / proj_shadow_res.x; // snap
 
-    float cs = texture(shadowMap, stc.xyz);
+    float cs = texture(shadowMap, detail ? vec3(stc.xy,stc.z+clamp(dot(plane,stc.xy-unsnapped),-plane_cap,plane_cap)) : stc.xyz);
     float shadow = cs;
 
     vec2 off = 1.0/proj_shadow_res;
     off.y *= 1.5;
 
-    shadow += texture(shadowMap, stc.xyz+vec3(off.x*2.0, off.y, 0.0));
-    shadow += texture(shadowMap, stc.xyz+vec3(off.x, -off.y, 0.0));
-    shadow += texture(shadowMap, stc.xyz+vec3(-off.x, off.y, 0.0));
-    shadow += texture(shadowMap, stc.xyz+vec3(-off.x*2.0, -off.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3(off.x*2.0, off.y, clamp(dot(plane,stc.xy-unsnapped+vec2(off.x*2.0,off.y)),-plane_cap,plane_cap)));
+    shadow += texture(shadowMap, stc.xyz+vec3(off.x, -off.y, clamp(dot(plane,stc.xy-unsnapped+vec2(off.x,-off.y)),-plane_cap,plane_cap)));
+    shadow += texture(shadowMap, stc.xyz+vec3(-off.x, off.y, clamp(dot(plane,stc.xy-unsnapped+vec2(-off.x,off.y)),-plane_cap,plane_cap)));
+    shadow += texture(shadowMap, stc.xyz+vec3(-off.x*2.0, -off.y, clamp(dot(plane,stc.xy-unsnapped+vec2(-off.x*2.0,-off.y)),-plane_cap,plane_cap)));
     return shadow*0.2;
 #else
     return 1.0;
@@ -1016,11 +1035,41 @@ int directionalShadowCascade(vec3 pos, vec3 norm)
 #endif
 }
 
+// The actual generated projector matrix includes optical setback and FOV.
+// Its rows recover axial depth and metres/texel without guessing light range.
+vec4 detailSpotReceiver(vec3 pos, vec3 norm, int index)
+{
+    mat4 m = shadow_matrix[4+index];
+    vec3 axis = vec3(m[0].w,m[1].w,m[2].w);
+    vec3 right = 2.0*vec3(m[0].x,m[1].x,m[2].x)-axis;
+    vec3 up = 2.0*vec3(m[0].y,m[1].y,m[2].y)-axis;
+    vec4 lp = m*vec4(pos,1.0);
+    float texel = max(2.0*lp.w/(length(right)*proj_shadow_res.x),
+                      2.0*lp.w/(length(up)*proj_shadow_res.y));
+    vec3 geo = cross(dFdx(pos),dFdy(pos));
+    geo = dot(geo,geo) > 1.e-16 ? normalize(geo) : norm;
+    if (dot(geo,norm) < 0.0) geo = -geo;
+    float nl = clamp(abs(dot(geo,normalize(axis))),0.05,1.0);
+    float slope = min(sqrt(max(1.0-nl*nl,0.0))/nl,4.0);
+    // Coarser footprints need more raster coverage; transition continuously
+    // across 0.25..0.45 mm/texel and retain a strict contact-loss ceiling.
+    float coarse = clamp((texel-0.00025)/0.0002,0.0,1.0);
+    float offset = clamp(texel*(1.0+1.5*coarse+0.125*slope),0.00015,0.00125);
+    float depth_m = clamp(texel*(0.10+0.05*slope),0.000025,0.00015);
+    lp = m*vec4(pos+geo*offset,1.0);
+    vec4 toward = m*vec4(-normalize(axis)*depth_m,0.0);
+    float depth = (lp.z+toward.z)/(lp.w+toward.w)-lp.z/lp.w;
+    lp.z += (depth-spot_shadow_bias*0.8)*lp.w;
+    return lp;
+}
+
 float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
 {
 #if defined(SPOT_SHADOW)
     float shadow = 0.0f;
-    pos += norm * spot_shadow_offset;
+    bool detail = spot_shadow_detail[index] > 0.5;
+    vec3 original_pos = pos;
+    if (!detail) pos += norm * spot_shadow_offset;
 
     vec4 spos = vec4(pos,1.0);
     if (spos.z > -shadow_clip.w)
@@ -1040,53 +1089,53 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
             // LLPipeline::spotShadowMapIndex(): spot slot s -> shadowMap[4 + s].
             if (index == 0)
             {
-                lpos = shadow_matrix[4]*spos;
-                shadow += pcfSpotShadow(shadowMap4, lpos, 0.8, spos.xy, spot_shadow_softness[0])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,0) : shadow_matrix[4]*spos;
+                shadow += pcfSpotShadow(shadowMap4, lpos, 0.8, spos.xy, spot_shadow_softness[0],0)*w;
             }
             else if (index == 1)
             {
-                lpos = shadow_matrix[5]*spos;
-                shadow += pcfSpotShadow(shadowMap5, lpos, 0.8, spos.xy, spot_shadow_softness[1])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,1) : shadow_matrix[5]*spos;
+                shadow += pcfSpotShadow(shadowMap5, lpos, 0.8, spos.xy, spot_shadow_softness[1],1)*w;
             }
             else if (index == 2)
             {
-                lpos = shadow_matrix[6]*spos;
-                shadow += pcfSpotShadow(shadowMap6, lpos, 0.8, spos.xy, spot_shadow_softness[2])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,2) : shadow_matrix[6]*spos;
+                shadow += pcfSpotShadow(shadowMap6, lpos, 0.8, spos.xy, spot_shadow_softness[2],2)*w;
             }
             else if (index == 3)
             {
-                lpos = shadow_matrix[7]*spos;
-                shadow += pcfSpotShadow(shadowMap7, lpos, 0.8, spos.xy, spot_shadow_softness[3])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,3) : shadow_matrix[7]*spos;
+                shadow += pcfSpotShadow(shadowMap7, lpos, 0.8, spos.xy, spot_shadow_softness[3],3)*w;
             }
             else if (index == 4)
             {
-                lpos = shadow_matrix[8]*spos;
-                shadow += pcfSpotShadow(shadowMap8, lpos, 0.8, spos.xy, spot_shadow_softness[4])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,4) : shadow_matrix[8]*spos;
+                shadow += pcfSpotShadow(shadowMap8, lpos, 0.8, spos.xy, spot_shadow_softness[4],4)*w;
             }
             else if (index == 5)
             {
-                lpos = shadow_matrix[9]*spos;
-                shadow += pcfSpotShadow(shadowMap9, lpos, 0.8, spos.xy, spot_shadow_softness[5])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,5) : shadow_matrix[9]*spos;
+                shadow += pcfSpotShadow(shadowMap9, lpos, 0.8, spos.xy, spot_shadow_softness[5],5)*w;
             }
             else if (index == 6)
             {
-                lpos = shadow_matrix[10]*spos;
-                shadow += pcfSpotShadow(shadowMap10, lpos, 0.8, spos.xy, spot_shadow_softness[6])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,6) : shadow_matrix[10]*spos;
+                shadow += pcfSpotShadow(shadowMap10, lpos, 0.8, spos.xy, spot_shadow_softness[6],6)*w;
             }
             else if (index == 7)
             {
-                lpos = shadow_matrix[11]*spos;
-                shadow += pcfSpotShadow(shadowMap11, lpos, 0.8, spos.xy, spot_shadow_softness[7])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,7) : shadow_matrix[11]*spos;
+                shadow += pcfSpotShadow(shadowMap11, lpos, 0.8, spos.xy, spot_shadow_softness[7],7)*w;
             }
             else if (index == 8)
             {
-                lpos = shadow_matrix[12]*spos;
-                shadow += pcfSpotShadow(shadowMap12, lpos, 0.8, spos.xy, spot_shadow_softness[8])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,8) : shadow_matrix[12]*spos;
+                shadow += pcfSpotShadow(shadowMap12, lpos, 0.8, spos.xy, spot_shadow_softness[8],8)*w;
             }
             else
             {
-                lpos = shadow_matrix[13]*spos;
-                shadow += pcfSpotShadow(shadowMap13, lpos, 0.8, spos.xy, spot_shadow_softness[9])*w;
+                lpos = detail ? detailSpotReceiver(original_pos,norm,9) : shadow_matrix[13]*spos;
+                shadow += pcfSpotShadow(shadowMap13, lpos, 0.8, spos.xy, spot_shadow_softness[9],9)*w;
             }
             weight += w;
             shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);

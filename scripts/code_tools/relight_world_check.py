@@ -373,7 +373,11 @@ def check_picks():
     # the Director: scene key, load order, dirty stamp, rows
     ui = text(NV / 'llfloaterdirector.cpp')
     cap = ui[ui.index('LLSD LLFloaterDirector::captureSceneData()'):ui.index('bool LLFloaterDirector::saveScene(')]
-    assert 'scene["world_shadow_picks"] = picks;' in cap and 'LLPipeline::worldShadowPickList()' in cap, 'Save Scene must store the pick list'
+    assert 'scene["world_shadow_picks"] = picks;' in cap and 'LLPipeline::manualWorldShadowPickList()' in cap, 'Save Scene must store manual picks separately from rig intent'
+    assert 'LLPipeline::worldShadowPickList()' not in cap, 'transient rig emitter picks must not become manual picks on scene load'
+    manual = pipe[pipe.index('std::vector<LLUUID> LLPipeline::manualWorldShadowPickList()'):]
+    manual = manual[:manual.index('\n}\n')]
+    assert 'sWorldShadowPicks' in manual and 'sRigWorldShadowPicks' not in manual, 'manual persistence must exclude the rig-owned registry'
     load = ui[ui.index('bool LLFloaterDirector::loadScene('):ui.index('LLFloaterDirector::RecoveryServiceState& LLFloaterDirector::recoveryServiceState()')]
     assert 'scene["world_shadow_picks"]' in load and 'LLPipeline::setWorldShadowPicks(picks);' in load, 'Load Scene must restore the pick list'
     assert load.index('LLPipeline::setWorldShadowPicks(picks);') > load.index('LLPrismLens::applySceneData(scene, &prism_reason)'), 'picks are replaced only after the scene passed validation'

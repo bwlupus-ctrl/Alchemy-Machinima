@@ -1788,6 +1788,249 @@
         <map><key>yaw</key><real>0</real><key>pitch</key><real>-20</real><key>profile_idx</key><integer>4</integer><key>profile_name</key><string>6500K Cool</string><key>ev</key><real>-2.5</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>false</boolean></map>
       </array>
     </map>
+    <!-- Shadow Sculpt: fixture source_size_m is diameter; static projectors, no FX.
+         Native key shadows remain in use unless the key is explicitly World-picked.
+         Bundled setup rows cannot author bounce globals or the World pick. -->
+    <map>
+      <key>name</key><string>Shadow Sculpt - Crisp Brow Cut</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>Close side key cuts a brow shadow; 2 cm aperture, restrained fill.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.6</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>4.5</real>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>-57</real><key>pitch</key><real>36</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.02</real></map>
+        <map><key>yaw</key><real>-20.0</real><key>pitch</key><real>10.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-4.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>-45.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Crisp Fabric Rake</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>Close broad cone rakes the fabric folds while preserving crisp facial relief; 2 cm aperture.</string>
+      <key>radius</key><real>0.8</real>
+      <key>master_ev</key><real>-0.3</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><integer>5</integer>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>60</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>0</integer><key>beam_name</key><string>Standard</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.02</real></map>
+        <map><key>yaw</key><real>-20.0</real><key>pitch</key><real>10.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-5.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>-82.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Crisp Cheek Chisel</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>Close high side key chisels cheek and jaw; 2 cm aperture.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.3</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><integer>5</integer>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>55</real><key>pitch</key><real>36</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.02</real></map>
+        <map><key>yaw</key><real>-20.0</real><key>pitch</key><real>10.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-5.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>-18.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Crisp Low Three Quarter</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>Low side key keeps the nose contour and a deep short side; 2 cm aperture.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.6</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>4.5</real>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>-55</real><key>pitch</key><real>28</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.02</real></map>
+        <map><key>yaw</key><real>-20.0</real><key>pitch</key><real>10.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-4.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>52.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Soft Deep Window</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>One-metre window source at two metres preserves soft facial relief.</string>
+      <key>radius</key><real>2.0</real>
+      <key>master_ev</key><real>-0.7</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><integer>4</integer>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>-55</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
+        <map><key>yaw</key><real>-20.0</real><key>pitch</key><real>10.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-4.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>-48.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Soft Overhead Carve</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>High three-quarter 70 cm source carves the jaw with a soft transition.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.5</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>4.5</real>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>45</real><key>pitch</key><real>55</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.7</real></map>
+        <map><key>yaw</key><real>-20.0</real><key>pitch</key><real>10.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-4.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>-12.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Soft Grazing Skin</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>Side window wraps skin relief while keeping a measurable key shadow.</string>
+      <key>radius</key><real>2.0</real>
+      <key>master_ev</key><real>-0.4</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>4.5</real>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>55</real><key>pitch</key><real>35</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.7</real></map>
+        <map><key>yaw</key><real>-20.0</real><key>pitch</key><real>10.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-4.5</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>-72.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Soft Low Contour</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>Close lower window key separates the nose contour with a soft shadow.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.8</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><integer>4</integer>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>-55</real><key>pitch</key><real>30</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.7</real></map>
+        <map><key>yaw</key><real>-20.0</real><key>pitch</key><real>10.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-4.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>48.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Edge Twin Kickers</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>Twin rear kickers keep the front quiet; broad aperture steadies cast shadows.</string>
+      <key>radius</key><real>2.0</real>
+      <key>master_ev</key><real>-0.4</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><integer>5</integer>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>132</real><key>pitch</key><real>18</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.7</real></map>
+        <map><key>yaw</key><real>68.0</real><key>pitch</key><real>8.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-5.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>-132.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Edge Crown Blade</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>High rear key traces the crown; broad aperture steadies cast shadows.</string>
+      <key>radius</key><real>2.5</real>
+      <key>master_ev</key><real>-0.3</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><integer>5</integer>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>162</real><key>pitch</key><real>48</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.7</real></map>
+        <map><key>yaw</key><real>68.0</real><key>pitch</key><real>8.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-5.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>-162.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Edge Single Sliver</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>Single rear side key leaves a thin visible sliver; soft cast shadow.</string>
+      <key>radius</key><real>1.5</real>
+      <key>master_ev</key><real>-0.4</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><integer>5</integer>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>112</real><key>pitch</key><real>8</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.7</real></map>
+        <map><key>yaw</key><real>68.0</real><key>pitch</key><real>8.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-5.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>-112.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Shadow Sculpt - Edge Low Separation</string>
+      <key>category</key><string>Shadow Sculpt</string>
+      <key>intent</key><string>Low rear key separates the silhouette; soft stable world cast shadow.</string>
+      <key>radius</key><real>2.0</real>
+      <key>master_ev</key><real>-0.4</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><integer>5</integer>
+      <key>lights</key><array>
+        <map>
+          <key>world_shadow_pick</key><boolean>true</boolean><key>yaw</key><real>-140</real><key>pitch</key><real>-5</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>0.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.7</real></map>
+        <map><key>yaw</key><real>68.0</real><key>pitch</key><real>8.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-5.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>140.0</real><key>pitch</key><real>20.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.8</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+        <map><key>yaw</key><real>0.0</real><key>pitch</key><real>0.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-8.0</real><key>beam_idx</key><integer>2</integer><key>beam_name</key><string>Snoot</string><key>on</key><boolean>false</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
+      </array>
+    </map>
   </array>
 </map>
 </llsd>

@@ -199,13 +199,17 @@ float awFaceVisibility(int c)
     // Normal offset along the geometric normal, sized by the texel footprint at this depth (never beyond 5 cm).
     float z0 = dot(d,AW_AXIS[awFace(d)]);
     float texel_w = 2.0*z0/AW_USABLE;
-    d += n_a*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP);
+    d += n_a*(area_world_info[c].w > 0.5
+        ? clamp(0.10*texel_w,0.00025,0.0025)
+        : min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP));
     int face = awFace(d);
     float zr = dot(d,AW_AXIS[face]);
     if (!(zr > near)) return 1.0;
     texel_w = 2.0*zr/AW_USABLE;
     float tan_t = sqrt(max(1.0-nl*nl,0.0))/max(nl,1.e-3);
-    float bias = AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
+    float bias = area_world_info[c].w > 0.5
+        ? clamp(0.0005+0.10*texel_w*min(tan_t,AW_TAN_CAP),0.0005,0.003)
+        : AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
     vec2 tile = vec2(AW_TILE*float(face%3),AW_TILE*(area_world_info[c].x+float(face/3)));
     vec2 centre = vec2(AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_RIGHT[face])/zr,
                        AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_UP[face])/zr);
@@ -323,13 +327,17 @@ float awDirectionVisibility(int c, float blend)
     // Normal offset along the geometric normal, sized by the texel footprint at this depth (never beyond 5 cm).
     float z0 = max(abs(d.x),max(abs(d.y),abs(d.z)));   // the dominant component: continuous across every edge and corner
     float texel_w = 2.0*z0/AW_USABLE;
-    d += n_a*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP);
+    d += n_a*(area_world_info[c].w > 0.5
+        ? clamp(0.10*texel_w,0.00025,0.0025)
+        : min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP));
     int face = awFace(d);
     float zr = dot(d,AW_AXIS[face]);
     if (!(zr > near)) return 1.0;
     texel_w = 2.0*zr/AW_USABLE;
     float tan_t = sqrt(max(1.0-nl*nl,0.0))/max(nl,1.e-3);
-    float bias = AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
+    float bias = area_world_info[c].w > 0.5
+        ? clamp(0.0005+0.10*texel_w*min(tan_t,AW_TAN_CAP),0.0005,0.003)
+        : AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
     dist = length(d);
     vec3 direction = d/dist;
     // Frisvad's continuous orthonormal basis (only singular at the south pole,
@@ -394,7 +402,10 @@ float awVisibility(int c)
     vec3 dv = area_p-area_world_light[c].xyz;
     vec3 d = vec3(dot(area_world_rot[0],dv),dot(area_world_rot[1],dv),dot(area_world_rot[2],dv));
     vec3 normal = vec3(dot(area_world_rot[0],area_n_geo),dot(area_world_rot[1],area_n_geo),dot(area_world_rot[2],area_n_geo));
-    d += normal*min(AW_NORMAL_TEXELS*2.0*max(abs(d.x),max(abs(d.y),abs(d.z)))/AW_USABLE,AW_NORMAL_CAP);
+    float texel_w = 2.0*max(abs(d.x),max(abs(d.y),abs(d.z)))/AW_USABLE;
+    d += normal*(area_world_info[c].w > 0.5
+        ? clamp(0.10*texel_w,0.00025,0.0025)
+        : min(AW_NORMAL_TEXELS*2.0*max(abs(d.x),max(abs(d.y),abs(d.z)))/AW_USABLE,AW_NORMAL_CAP));
     vec3 a = abs(d);
     float major = max(a.x,max(a.y,a.z));
     float second = min(max(a.x,a.y),min(max(a.y,a.z),max(a.x,a.z)));

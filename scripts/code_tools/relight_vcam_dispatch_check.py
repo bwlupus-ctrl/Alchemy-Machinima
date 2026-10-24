@@ -26,6 +26,12 @@ def check_dispatch(g):
     call_start = lighting.index('        renderAreaShadows(debugLightingTerm()')
     production_call = lighting[call_start:lighting.index(';', call_start)+1]
     dispatch = render[render.index('    const U32 width = mRT->deferredScreen.getWidth()'):render.index('    static LLFrameTimer summary;')]
+    # Quality planning also reads the world-shadow enable. Its declaration is
+    # in the selection block omitted from this dispatch-only fixture; retain
+    # the production declaration so LOOK reach uses the real setting here too.
+    cube_control = '    static LLCachedControl<bool> cube_on(gSavedSettings, "RenderAreaShadowCubeMaps", false);'
+    assert cube_control in render
+    dispatch = cube_control + '\n' + dispatch
     state = render[render.index('    struct State\n'):render.index('    const U32 width = mRT->deferredScreen.getWidth()')]
     release = method(nv / 'pipeline.cpp', 'static void release_prism_scratch_entry(')
     assert 'release_prism_scratch_entry(*target);' in method(nv / 'pipeline.cpp', 'bool LLPipeline::acquirePrismLensScratch(')
@@ -250,6 +256,7 @@ struct LLPipeline {
     ALWorldShadow::PickedOwnership<LLUUID> mWorldPickedOwned; bool gSnapshot=false;
     bool isLiveMainAreaShadowPass() const;   // the production body is compiled below
     static bool isWorldShadowPicked(const LLUUID&) { return false; }
+    static bool projectorDetailShadows(const LLUUID&) { return false; } // default/off dispatch parity
     static F32 worldShadowLightNear(LLDrawable*,F32) { return 0.05f; } // world branch is OFF; real near is executed by world_gl_check
     double mAreaShadowGPUms=-1;
     VB* mScreenTriangleVB=&vb;

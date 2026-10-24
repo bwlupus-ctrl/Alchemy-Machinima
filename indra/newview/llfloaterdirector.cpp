@@ -4188,7 +4188,7 @@ LLSD LLFloaterDirector::captureSceneData()
     // [World Shadow pick] The lights picked with the right-click "World Shadow" item, as object UUIDs (sorted, so a scene is byte-stable).
     // Omitted when nothing is picked: an old scene and a scene without picks read the same.
     {
-        const std::vector<LLUUID> world_shadow_picks = LLPipeline::worldShadowPickList();
+        const std::vector<LLUUID> world_shadow_picks = LLPipeline::manualWorldShadowPickList();
         if (!world_shadow_picks.empty())
         {
             LLSD picks = LLSD::emptyArray();

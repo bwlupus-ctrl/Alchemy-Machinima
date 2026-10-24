@@ -74,6 +74,8 @@ struct ALCineLightRigParamBlob
         // [ActorMask] Appended last: the positional mLights[] rows below list
         // only their first 11 members, so this stays default-false.
         bool mActorOnly = false;
+        bool mDetailShadows = false;
+        bool mWorldShadowPick = false;
     };
 
     // [RigRim] P1-B fix: per-light default rim gain, indexed. The Light
@@ -284,6 +286,8 @@ struct ALCineLightRigParamBlob
                 settings.getF32(prefix + "SourceSizeM");
             blob.mLights[i].mFixturePreset =
                 settings.getS32(prefix + "FixturePreset");
+            blob.mLights[i].mDetailShadows = settings.getBOOL(prefix + "DetailShadows");
+            blob.mLights[i].mWorldShadowPick = settings.getBOOL(prefix + "WorldShadowPick");
             blob.mLights[i].mActorOnly =
                 settings.getBOOL(prefix + "ActorOnly"); // [ActorMask]
         }
@@ -379,6 +383,8 @@ struct ALCineLightRigParamBlob
             settings.setF32(prefix + "SourceSizeM", mLights[i].mSourceSizeM);
             settings.setS32(
                 prefix + "FixturePreset", mLights[i].mFixturePreset);
+            settings.setBOOL(prefix + "DetailShadows", mLights[i].mDetailShadows);
+            settings.setBOOL(prefix + "WorldShadowPick", mLights[i].mWorldShadowPick);
             settings.setBOOL(
                 prefix + "ActorOnly", mLights[i].mActorOnly); // [ActorMask]
         }
@@ -457,6 +463,8 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
         light["kelvin"] = mLights[i].mKelvin;
         light["source_size_m"] = mLights[i].mSourceSizeM;
         light["fixture_preset"] = mLights[i].mFixturePreset;
+        light["detail_shadows"] = mLights[i].mDetailShadows;
+        light["world_shadow_pick"] = mLights[i].mWorldShadowPick;
         light["actor_only"] = mLights[i].mActorOnly; // [ActorMask]
         // [RigRim] per-light rim params (Phase A).
         light["rim_gain"] = mLights[i].mRimGain;
@@ -597,6 +605,8 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
                 blob.mLights[i].mFixturePreset =
                     light["fixture_preset"].asInteger();
             // [ActorMask] Absent (old scene) means false: a world light.
+            blob.mLights[i].mDetailShadows = light.has("detail_shadows") && light["detail_shadows"].asBoolean();
+            blob.mLights[i].mWorldShadowPick = light.has("world_shadow_pick") && light["world_shadow_pick"].asBoolean();
             blob.mLights[i].mActorOnly = light.has("actor_only")
                 ? light["actor_only"].asBoolean() : false;
             // [RigRim] P1-B fix: absent = the per-light CONTRACT default

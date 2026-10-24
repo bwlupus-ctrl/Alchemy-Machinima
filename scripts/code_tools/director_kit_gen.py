@@ -315,8 +315,9 @@ def validate_data(data: dict) -> None:
     # Light-shape refinement (10/23): +2 rows (Highlight softness, native preset action combo).
     # Haiku kit batch (10/23): +13 rows (World near clip, Projector contact, VSync lock, VCam local video + cache/download limits, Settings Performance card with 3 rows, 4 projector shaft A/B rows).
     # Projector Shafts page (10/23): 41 shaft rows move from Atmosphere, +10 new rows (Halo stretch, 5 rim, 4 dust particles), page 37 -> 38; 2191 -> 2201.
-    if len(pages) != 38 or row_count != 2201:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2201")
+    # Shadow detail: +8 per-fixture flags and +1 bias master (2201 -> 2210).
+    if len(pages) != 38 or row_count != 2210:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2210")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
