@@ -753,7 +753,8 @@ public:
     // finalize-stage volumetric pass: uploads only geometry + cookie (NO
     // mTargetShadowSpotLight priority reshuffle - R1), shadow slot passed in.
     F32 setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot,
-                                 bool* camera_inside = nullptr, F32 max_distance = 0.f);
+                                 bool* camera_inside = nullptr, F32 max_distance = 0.f,
+                                 F32* camera_margin = nullptr);
 
     void unbindDeferredShader(LLGLSLShader& shader);
 

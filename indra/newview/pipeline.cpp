@@ -22138,6 +22138,76 @@ static F32 projvolStepBudget(U32 definition, bool adaptive, F32 coverage,
     return llmax(steps,0.f);
 }
 
+// FIX5: the sixteen-node kernel is an accuracy floor, NOT the requested cap.
+// Normalized GPU work: phase/medium=4, PCF=1, bilinear=1/12.
+// Full=N*(4+authored_taps*filter); Soft=2+1.40*(16*4+31*filter).
+// The 40% specialized-node margin covers the measured ALU/register overhead.
+// Charge sixteen fine nodes and all fifteen possible visibility refinements,
+// never the requested cap. Smooth shadow cells need no refinement lookup.
+// WGL calibration (RTX 5090, 720p/4K, inside, 32 samples, PCF, two taps):
+// Six-cone default <= 0.60 including resolve. Require >= 25% modeled headroom.
+// Never amortize detail options, cookies, fog or strong/high-frequency noise.
+// Camera containment/facing is conservative; the sweep crosses both boundaries
+// and requires the two estimates to match the existing 5% pixel-change bound.
+static bool projvolSoftBudgetAllowed(U32 authored, F32 budget, bool airborne,
+                                     bool equiangular, bool footprint, bool extra_detail,
+                                     bool cookie, bool soft_filter, U32 shadow_taps,
+                                     F32 noise, F32 noise_scale, F32 fog,
+                                     bool inside, F32 margin_ratio, F32 facing, F32 distance_ratio, U32 dither)
+{
+    if (authored < 32 || shadow_taps > 2 || !soft_filter || !(budget > 0.f) || airborne || equiangular || footprint ||
+        extra_detail || cookie || !inside || !(margin_ratio >= 0.05f) ||
+        !(facing >= 0.95f) || !(distance_ratio >= 1.f/6.f && distance_ratio <= 0.25f) || dither > 1 ||
+        !(noise <= 0.125f) || !(noise_scale <= 1.2f) || fog != 0.f) return false;
+    const F32 taps = (F32)llclamp(shadow_taps,1u,4u);
+    const F32 filter = soft_filter ? 1.f : 1.f/12.f;
+    const F32 node = 4.f + taps*filter;
+    const F32 full_cost = (F32)authored*node;
+    const F32 soft_cost = 2.f + 1.40f*(16.f*4.f+31.f*filter);
+    return soft_cost <= 0.75f*full_cost;
+}
+
+static F32 projvolCameraMargin(const glm::mat4& clip, F32 radius)
+{
+    const glm::vec4 r0(clip[0][0],clip[1][0],clip[2][0],clip[3][0]);
+    const glm::vec4 r1(clip[0][1],clip[1][1],clip[2][1],clip[3][1]);
+    const glm::vec4 r2(clip[0][2],clip[1][2],clip[2][2],clip[3][2]);
+    const glm::vec4 r3(clip[0][3],clip[1][3],clip[2][3],clip[3][3]);
+    const glm::vec4 planes[] = {r3+r0,r3-r0,r3+r1,r3-r1,r3+r2};
+    F32 margin = radius;
+    for (const auto& plane : planes)
+        margin = llmin(margin,plane.w/llmax(glm::length(glm::vec3(plane)),1e-6f));
+    return margin;
+}
+
+static U32 projvolConeDefinition(U32 definition, bool budgeted, F32 budget)
+{
+    // A rejected zero share remains rim-only even in the Full fallback program.
+    return budgeted || (definition != 1 && budget <= 0.f) ? definition : 1u;
+}
+
+static bool projvolFullCostIsUnclamped(const glm::vec3& center, const glm::mat4& inverse_projection,
+                                      F32 radius, F32 g, F32 gain, F32 maximum)
+{
+    // The N-node cost is valid only when Full cannot saturate and exit early.
+    // Rear-facing lamp rays have cos(scatter) <= 0 throughout their chord.
+    // Every view ray lies in the positive cone of these four corner rays.
+    if (!(radius > 0.f) || !(g >= 0.f && g < 1.f) || !(gain >= 0.f) ||
+        !(maximum > 0.f) || !std::isfinite(gain) || !std::isfinite(maximum)) return false;
+    for (S32 x = -1; x <= 1; x += 2)
+    for (S32 y = -1; y <= 1; y += 2)
+    {
+        const glm::vec4 q = inverse_projection*glm::vec4((F32)x,(F32)y,0.f,1.f);
+        if (!(q.w > 0.f) || !(q.z < 0.f) || !(glm::dot(center,glm::vec3(q)/q.w) <= 0.f)) return false;
+    }
+    const F32 phase = (1.f-g*g)/(12.56637061435917f*powf(1.f+g*g,1.5f));
+    // Attenuation <= 2, chord <= 2*radius, PROJVOL_SCATTER = 0.35.
+    // Gain includes brightness, density, maximum noise and light RGB. Keep a
+    // factor-two margin for floating point accumulation and the clamp boundary.
+    const F32 envelope = 2.f*(2.f*radius)*0.35f*phase*gain;
+    return std::isfinite(envelope) && envelope <= 0.5f*maximum;
+}
+
 static void projvolUploadStepBudget(LLGLSLShader& shader, bool rim_only,
                                     U32 definition, U32 legacy_steps, U32 look_steps,
                                     F32 budget)
@@ -22382,6 +22452,29 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
         return;
     }
 
+    if (budget_variant)
+    {
+        auto defines = gDeferredProjectorVolumetricProgram.mDefines;
+        defines["PROJVOL_BUDGET_ENABLE"] = "0";
+        auto& full = gDeferredProjectorVolumetricFullProgram;
+        if (!full.isComplete() || full.mDefines != defines ||
+            full.mShaderLevel != gDeferredProjectorVolumetricProgram.mShaderLevel)
+        {
+            full.unload();
+            full.mName = "Projector Volumetric Full Fallback Shader";
+            full.mFeatures = gDeferredProjectorVolumetricProgram.mFeatures;
+            full.mShaderFiles = gDeferredProjectorVolumetricProgram.mShaderFiles;
+            full.mDefines = defines;
+            full.mShaderLevel = gDeferredProjectorVolumetricProgram.mShaderLevel;
+            const S32 level = full.mShaderLevel;
+            if (!full.createShader() || full.mShaderLevel != level)
+            {
+                mProjVolHistoryValid = false;
+                return;
+            }
+        }
+    }
+
     LL_PROFILE_GPU_ZONE("renderProjectorVolumetric");
 
     // Match the deferred spot loop's light-color scale (no cube snapshot here -
@@ -22517,268 +22610,8 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
         loadProjVolDustMap();
     }
 
-    bindDeferredShader(gDeferredProjectorVolumetricProgram); // binds the full per-slot shadow set
-
-    // Shared (per-frame) uniforms - GODRAY_RES is uploaded per cone below because
-    // item 5 scales it adaptively. [Batch 1 C] GODRAY_MULTIPLIER / PROJVOL_FEATHER /
-    // PROJVOL_G / PROJVOL_DENSITY moved to per-cone uploads so a projector's
-    // per-UUID override can replace them independently of the globals.
-    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_SHADOW_SAMPLES, (S32)llclamp(BDMergeProjectorVolumetricsShadowSamples, (U32)1, (U32)4));
-    // Recording contract: static mode remains static, including with temporal
-    // history. Explicit animated mode follows the frozen presentation clock,
-    // quantized at 60 Hz, so pause/repeated auxiliary renders share a phase.
-    projvolUploadRecordingUniforms(gDeferredProjectorVolumetricProgram,
-        BDMergeProjectorVolumetricsDither, temporal,
-        LLPresentationTime::currentFrame().presentation_time);
-    static const LLStaticHashedString sEquiangular("projvol_equiangular");
-    static const LLStaticHashedString sAirborneTap("projvol_airborne_tap");
-    static const LLStaticHashedString sCookieFootprint("projvol_cookie_footprint");
-    static const LLStaticHashedString sMarchHalfRes("projvol_half_res");
-    gDeferredProjectorVolumetricProgram.uniform1i(sEquiangular, equiangular() ? 1 : 0);
-    gDeferredProjectorVolumetricProgram.uniform1i(sAirborneTap, airborne_tap() ? 1 : 0);
-    gDeferredProjectorVolumetricProgram.uniform1i(sCookieFootprint, cookie_footprint() ? 1 : 0);
-    gDeferredProjectorVolumetricProgram.uniform2f(sMarchHalfRes, halfres ? tgt_w : 0.f, halfres ? tgt_h : 0.f);
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_MAX, BDMergeProjectorVolumetricsMaxLuminance);
-    // [BDMerge G3.3 Batch A] look-neutral performance gates. E1 frustum clip
-    // (default on) refines [t0,t1] against the projector's frustum (the
-    // per-cone planes are uploaded in setupSpotLightVolumetric); E2 replaces the
-    // shadow sub-tap loop with one IGN-jittered tap. E4 (luminance early-out) needs
-    // no uniform - it is provably invisible via the existing projvol_max clamp.
-    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_FRUSTUM_CLIP, BDMergeProjectorVolumetricsFrustumClip ? 1 : 0);
-    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_SHADOW_JITTER_TAP, BDMergeProjectorVolumetricsShadowJitterTap ? 1 : 0);
-    // [BDMerge G3.3 Batch B - R1] Beam-depth reprojection: the march writes its
-    // luminance-premultiplied first distance moment to ALPHA only when this is 1.
-    // Upload 1 ONLY on the temporal path (which requires halfres, so the march writes
-    // to mProjVolHalf - never the additive scene buffer). On the direct/non-halfres
-    // path `temporal` is false here, so the gate stays 0 and alpha stays 0 - the
-    // additive composite is never corrupted and the output is byte-identical.
-    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_TEMPORAL_BEAM_DEPTH, (temporal && BDMergeProjectorVolumetricsTemporalBeamDepth) ? 1 : 0);
-    // [Batch 1 B] gobo-colored occluder shadows: 0 = classic hard black shadow
-    // (the shipped look), >0 lets occluded march samples carry a dimmed, gobo-shaped
-    // colored contribution ("stained glass" banding) instead of pure black.
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_SHADOW_TINT, llclamp(BDMergeProjectorVolumetricsShadowTint, 0.f, 1.f));
-
-    // [BDMerge G3.3 Rim] Physical surface-coupled rim / wrap glow. Driven entirely
-    // by this projector's own light at the surface (cookie x atten x its shadow map)
-    // and the real G-buffer normal, added into the additive HDR shaft so it rides
-    // the existing bloom-feed into a soft halo. Strength 0 (default) = no-op.
-    // [F4] Rim STRENGTH/POWER/WRAP/SOFTNESS are now uploaded PER-CONE (override-aware)
-    // in the cone loop below; only the quality-gate THRESHOLD stays global here.
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_THRESHOLD, llmax(BDMergeProjectorVolumetricsRimThreshold, 0.f));
-
-    // [Phase 3] atmosphere levers (all no-ops at their defaults). The inverse
-    // modelview turns a view-space march sample back into agent(world, Z-up) space
-    // so the noise medium is world-anchored (drifts, never crawls) and the height
-    // fog keys off true altitude. projvol_time is continuous seconds (wrapped) for a
-    // smooth noise scroll - NOT the wrapped frame counter used by the dither.
     glm::mat4 inv_mv = glm::inverse(mat);
-    gDeferredProjectorVolumetricProgram.uniformMatrix4fv(LLShaderMgr::PROJVOL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
-    // Presentation clock (matches FROXEL_TIME): shaft dust/noise freezes and
-    // slows with Director world time instead of crawling through bullet time.
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_TIME,
-        static_cast<F32>(std::fmod(
-            LLPresentationTime::currentFrame().presentation_time, 3600.0)));
-    // [Batch 1 C] PROJVOL_DENSITY moved to the per-cone upload (overridable).
-    // [F4 flattening REMOVED] F4 zeroed the per-cone noise/fog (and forced density 1)
-    // whenever the froxel master was on, to prevent double-fog. In practice it stole
-    // the beam-dust look entirely (in-world report: "can't enable the dust" - the
-    // user's beams live on per-cone noise). Per-cone media levers now work regardless
-    // of froxel; whether beams carry their own dust on top of the shared air is the
-    // artist's call, not the renderer's.
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_STRENGTH, llclamp(BDMergeProjectorVolumetricsNoiseStrength, 0.f, 1.f));
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SCALE, llmax(BDMergeProjectorVolumetricsNoiseScale, 0.f));
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_NOISE_SPEED, BDMergeProjectorVolumetricsNoiseSpeed);
-    // [F5 follow-up] Shared dust-wind direction for the BEAM dust (same
-    // BDMergeFroxelWind* trio the froxel air uses - one coherent air), scaled by the
-    // per-cone NoiseSpeed so beams keep their own speed/reverse control. Replaces
-    // the old hardwired (1,1,1) diagonal drift; steer it from the Lightbox Froxel
-    // tab's Wind sliders (they apply to beam dust whether or not froxel is on).
-    {
-        F32 wdir[3];
-        bdmerge_dust_wind_dir(wdir); // unit dir from Azimuth/Elevation/Inverted
-        const F32 s = BDMergeProjectorVolumetricsNoiseSpeed;
-        gDeferredProjectorVolumetricProgram.uniform3f(LLShaderMgr::PROJVOL_WIND, wdir[0] * s, wdir[1] * s, wdir[2] * s);
-    }
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_STRENGTH, llclamp(BDMergeProjectorVolumetricsFogStrength, 0.f, 1.f));
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_GROUND, llmax(BDMergeProjectorVolumetricsFogGroundDensity, 0.f));
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_FALLOFF, llmax(BDMergeProjectorVolumetricsFogFalloff, 0.01f));
-    gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FOG_BASE, BDMergeProjectorVolumetricsFogBase);
-
-    // [BDMerge G3.3 ConservativeShadow] Airborne-march shadow sampler A/B gate.
-    // [Review fix] OPT-IN, default OFF: the conservative sampler replaces the
-    // wide 12/Vogel-tap penumbra of EVERY marching projector with a tight 5-tap
-    // kernel, and the hero-shaft root cause is UNCONFIRMED - so it must not be a
-    // default-on global change. OFF (default) = the legacy lit-surface sampler,
-    // byte-identical to the shipped look for all normal soft-shadow shafts.
-    // ON (hero-shaft experiment) = the conservative volume sampler in
-    // shadowUtil.glsl plus the shader's on-axis numerical guards, for in-world
-    // A/B of the shaft leaking through an occluder's center.
-    // [Round-2 fix] Conservative-shadow is now a compile-time PERMUTATION
-    // (PROJVOL_CONSERVATIVE_SHADOW, mirroring the Dust permutation below): with
-    // the lever OFF the uniform and every conservative branch are compiled OUT,
-    // so the default-off march is instruction-identical to the legacy path, not
-    // merely equivalent. Only upload the runtime gate when the lever is on (the
-    // uniform does not exist in the OFF program). An ON-permutation program
-    // whose gate somehow went un-uploaded reads the GL default 0 and falls back
-    // to the legacy branch - fail-safe across the toggle/rebuild window.
-    if (BDMergeProjectorVolumetricsConservativeShadow)
-    {
-        gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_CONSERVATIVE_SHADOW, 1);
-    }
-
-    // [BDMerge G3.3 Dust] Baked 64^3 dust-volume particulate breakup. The shader
-    // gate (projvol_dust) is only raised while the volume is actually live in GL
-    // AND verifiably bound this pass, so a missing/corrupt asset - or a failed
-    // channel/bind - degrades to exactly the shipped look instead of sampling an
-    // unbound unit into the density. Wind: the same shared
-    // Azimuth/Elevation/Inverted air direction the fbm beam noise drifts with
-    // (bdmerge_dust_wind_dir - one coherent air), scaled by DustDrift (m/s) and
-    // folded on the CPU; the shader advects world-space metres with projvol_time
-    // (continuous seconds, uploaded above), matching the asset's
-    // sampleDustVolume3D reference helper units.
-    //
-    // [Review fix - sampler slot] Dust is now a compile-time PERMUTATION of
-    // projectorVolumetricF.glsl (PROJVOL_DUST_ENABLE, keyed off the same setting
-    // in llviewershadermgr.cpp; toggling it rebuilds shaders via
-    // handleSetShaderChanged). With Dust OFF the program contains no sampler3D at
-    // all - no fragment texture unit is consumed - and everything below except
-    // the one gate upload (a no-op on the compiled-out uniform) is skipped, so
-    // dust-off costs neither a sampler slot nor per-pass uniform work.
-    //
-    // [Review fix - Inf/NaN] The three dust levers are persisted F32s: sanitize
-    // to finite, documented ranges on upload so an extreme/corrupt value can
-    // never reach the shader (wind*time or world*scale -> Inf -> fract(Inf) =
-    // NaN poisoning the march, unbounded intensity -> unbounded density).
-    F32 dust_intensity = BDMergeProjectorVolumetricsDustIntensity;
-    // [Round-2 fix] cap = 2.0, matching the declared settings.xml range (0.0-2.0)
-    // and the shader's documented ~0..2 domain - the code used to allow 4.0,
-    // letting a hand-edited settings file push past the tuned range.
-    dust_intensity = llfinite(dust_intensity) ? llclamp(dust_intensity, 0.f, 2.f) : 0.f;
-    bool dust_on = BDMergeProjectorVolumetricsDust &&
-                   mProjVolDustMap != 0 &&
-                   dust_intensity > 0.f;
-    if (dust_on)
-    {
-        // Filtering/wrap (LINEAR + REPEAT) are texture-object state set at load.
-        // Drain stale errors BEFORE enableTexture(), because it activates the
-        // sampler's unit and updates the cached active-unit index even when that
-        // activation fails. The checks below must attribute that error to this
-        // dust bind instead of letting bindManual() trust a stale cache entry.
-        for (S32 drain = 0; drain < 8 && glGetError() != GL_NO_ERROR; ++drain)
-        {
-        }
-        S32 dust_channel = gDeferredProjectorVolumetricProgram.enableTexture(LLShaderMgr::PROJVOL_DUST_MAP, LLTexUnit::TT_TEXTURE_3D);
-        const GLenum activation_err = glGetError();
-        bool bind_failed = activation_err != GL_NO_ERROR;
-        if (!bind_failed && dust_channel < 0)
-        {
-            // Sampler not present in this program (permutation off / rebuild in
-            // flight): gate the effect off this pass but KEEP the loaded volume -
-            // the rebuilt shader picks it up next frame.
-            dust_on = false;
-        }
-        else if (!bind_failed)
-        {
-            // [Round-2 fix] bindManual() == true is NOT a successful GL bind: it
-            // returns false only for an invalid texture-unit index and never
-            // checks GL errors after glBindTexture (llrender.cpp). Verify with an
-            // explicit glGetError(): an invalidated texture name or driver bind
-            // error must never leave dust_on true sampling an unbound/incomplete
-            // texture.
-            bool bound = gGL.getTexUnit(dust_channel)->bindManual(LLTexUnit::TT_TEXTURE_3D, mProjVolDustMap);
-            const GLenum bind_err = glGetError();
-            bind_failed = !bound || bind_err != GL_NO_ERROR;
-        }
-        if (bind_failed)
-        {
-            // Activation or bind failure: never march with the gate up over a dead
-            // sampler. Release the handle so every later dust_on test is false
-            // (clean OFF until the GL context is rebuilt; the loader is
-            // one-attempt-per-context by design). disableTexture first so the
-            // unit's currency cache cannot keep pointing at the deleted name.
-            LL_WARNS_ONCE() << "[BDMerge Dust] dust volume bind failed - disabling dust" << LL_ENDL;
-            gDeferredProjectorVolumetricProgram.disableTexture(LLShaderMgr::PROJVOL_DUST_MAP, LLTexUnit::TT_TEXTURE_3D);
-            LLImageGL::deleteTextures(1, &mProjVolDustMap);
-            mProjVolDustMap = 0;
-            dust_on = false;
-        }
-    }
-    gDeferredProjectorVolumetricProgram.uniform1i(LLShaderMgr::PROJVOL_DUST, dust_on ? 1 : 0);
-    if (dust_on)
-    {
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DUST_INTENSITY, dust_intensity);
-
-        F32 dust_scale = BDMergeProjectorVolumetricsDustScale;
-        dust_scale = llfinite(dust_scale) ? llclamp(dust_scale, 0.f, 64.f) : 0.5f;
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DUST_SCALE, dust_scale);
-
-        F32 drift = BDMergeProjectorVolumetricsDustDrift;
-        drift = llfinite(drift) ? llclamp(drift, -10.f, 10.f) : 0.f;
-        F32 wdir[3];
-        bdmerge_dust_wind_dir(wdir); // unit dir from Azimuth/Elevation/Inverted
-        F32 wx = wdir[0] * drift;
-        F32 wy = wdir[1] * drift;
-        F32 wz = wdir[2] * drift;
-        if (!llfinite(wx) || !llfinite(wy) || !llfinite(wz))
-        {
-            // The direction comes from sinf/cosf of the shared (persisted) froxel
-            // wind Azimuth/Elevation - a corrupt value there is NaN through a
-            // different door. Frozen dust beats a NaN-poisoned march.
-            wx = wy = wz = 0.f;
-        }
-        gDeferredProjectorVolumetricProgram.uniform3f(LLShaderMgr::PROJVOL_DUST_WIND, wx, wy, wz);
-    }
-
-    gDeferredProjectorVolumetricProgram.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
-
-    mScreenTriangleVB->setBuffer();
-
-    const U32 max_res = llclamp(BDMergeProjectorVolumetricsResolution, (U32)4, (U32)64);
-    const U32 min_res = llclamp(BDMergeProjectorVolumetricsMinResolution, (U32)4, max_res);
-
-    static LLCachedControl<F32> max_steps(gSavedSettings, "BDMergeProjectorVolumetricsMaxSteps", 0.f);
-    static LLCachedControl<F32> big_cap(gSavedSettings, "BDMergeProjectorVolumetricsBigConeCap", 0.6f);
-    static LLCachedControl<F32> frame_budget(gSavedSettings, "BDMergeProjectorVolumetricsFrameBudget", 48.f);
-    auto finite_cap = [](F32 value, F32 fallback, F32 maximum)
-    {
-        return std::isfinite(value) ? llclamp(value,0.f,maximum) : fallback;
-    };
-    const F32 step_limit = finite_cap(max_steps,0.f,64.f);
-    const F32 large_limit = finite_cap(big_cap,0.6f,1.f);
-    const F32 frame_limit = finite_cap(frame_budget,48.f,1024.f);
-    static const LLStaticHashedString sBeamShadows("projvol_hard_beam_shadows");
-    gDeferredProjectorVolumetricProgram.uniform1i(sBeamShadows, beam_shadows == 1 ? 1 : 0);
-    // Deliberately reserve against ALL flagged influence bounds, before shadow
-    // admission or pyramid/scissor rejection. An entering cone's clipped sphere
-    // area starts at zero, so it cannot suddenly steal another cone's budget.
-    // Offscreen conservative bounds may reserve work; shadow-slot churn cannot
-    // change the denominator. No history or camera-motion-dependent smoothing.
-    F64 total_coverage = 0.0;
-    if (quality != 1 && frame_limit > 0.f)
-    {
-        for (LLDrawable* candidate : mLights)
-        {
-            LLVOVolume* v = candidate->getVOVolume();
-            LLVector3 params;
-            if (!LLPrismLens::projectorRenderParams(v, params)) continue;
-            LLUUID id = v->getID();
-            if (!isVolumetricShaftEnabled(id))
-            {
-                LLViewerObject* root = v->getRootEdit();
-                if (!root || !isVolumetricShaftEnabled(root->getID())) continue;
-                id = root->getID();
-            }
-            if (ALCineLightRigManager::anyActorOnly() &&
-                ALCineLightRigManager::instance().actorOnlyBits(v->getID())) continue;
-            if (BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
-                mFroxelInjectedProjectors.count(id) != 0) continue;
-            glm::vec4 sphere;
-            const bool valid = projvolSphereBounds(mul_mat4_vec3(mat,glm::vec3(candidate->getPositionAgent())),
-                v->getLightRadius()*1.5f,proj,tgt_w,tgt_h,sphere);
-            total_coverage += projvolCoverage(valid,sphere,tgt_w,tgt_h);
-        }
-    }
-
+    const glm::mat4 inverse_projection = glm::inverse(proj);
     struct RimDraw
     {
         LLDrawable* drawable;
@@ -22790,312 +22623,614 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
         glm::vec4 bounds;
     };
     std::vector<RimDraw> rim_draws;
-    // Attachment 1 is camera depth shared by all lights, so replacement rather
-    // than additive blending is essential. No global blend calls inside the loop.
-    if (halfres) glBlendFunci(1, GL_ONE, GL_ZERO);
-
-    // Shadow-casting projectors only (slots 0..N-1). mShadowSpotLight[] is
-    // populated during generateSunShadow earlier this frame and valid here.
-    for (U32 i = 0; i < bdmergeMaxSpotShadows(); ++i)
+    // Batch each cone exactly once by its CPU decision. Both programs retain
+    // their own uniforms/textures; Full is the unchanged Full permutation.
+    for (U32 program_index = 0; program_index < (budget_variant ? 2u : 1u); ++program_index)
     {
-        LLDrawable* drawablep = mShadowSpotLight[i];
-        if (drawablep == NULL)
+        LLGLSLShader& shaft_shader = program_index == 0 ?
+            gDeferredProjectorVolumetricProgram : gDeferredProjectorVolumetricFullProgram;
+        march_target->bindTarget();
+        if (!halfres) glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        gGL.setColorMask(true, temporal && BDMergeProjectorVolumetricsTemporalBeamDepth);
+        bindDeferredShader(shaft_shader); // binds the full per-slot shadow set
+
+        // Shared (per-frame) uniforms - GODRAY_RES is uploaded per cone below because
+        // item 5 scales it adaptively. [Batch 1 C] GODRAY_MULTIPLIER / PROJVOL_FEATHER /
+        // PROJVOL_G / PROJVOL_DENSITY moved to per-cone uploads so a projector's
+        // per-UUID override can replace them independently of the globals.
+        shaft_shader.uniform1i(LLShaderMgr::PROJVOL_SHADOW_SAMPLES, (S32)llclamp(BDMergeProjectorVolumetricsShadowSamples, (U32)1, (U32)4));
+        // Recording contract: static mode remains static, including with temporal
+        // history. Explicit animated mode follows the frozen presentation clock,
+        // quantized at 60 Hz, so pause/repeated auxiliary renders share a phase.
+        projvolUploadRecordingUniforms(shaft_shader,
+            BDMergeProjectorVolumetricsDither, temporal,
+            LLPresentationTime::currentFrame().presentation_time);
+        static const LLStaticHashedString sEquiangular("projvol_equiangular");
+        static const LLStaticHashedString sAirborneTap("projvol_airborne_tap");
+        static const LLStaticHashedString sCookieFootprint("projvol_cookie_footprint");
+        static const LLStaticHashedString sMarchHalfRes("projvol_half_res");
+        shaft_shader.uniform1i(sEquiangular, equiangular() ? 1 : 0);
+        shaft_shader.uniform1i(sAirborneTap, airborne_tap() ? 1 : 0);
+        shaft_shader.uniform1i(sCookieFootprint, cookie_footprint() ? 1 : 0);
+        shaft_shader.uniform2f(sMarchHalfRes, halfres ? tgt_w : 0.f, halfres ? tgt_h : 0.f);
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_MAX, BDMergeProjectorVolumetricsMaxLuminance);
+        // [BDMerge G3.3 Batch A] look-neutral performance gates. E1 frustum clip
+        // (default on) refines [t0,t1] against the projector's frustum (the
+        // per-cone planes are uploaded in setupSpotLightVolumetric); E2 replaces the
+        // shadow sub-tap loop with one IGN-jittered tap. E4 (luminance early-out) needs
+        // no uniform - it is provably invisible via the existing projvol_max clamp.
+        shaft_shader.uniform1i(LLShaderMgr::PROJVOL_FRUSTUM_CLIP, BDMergeProjectorVolumetricsFrustumClip ? 1 : 0);
+        shaft_shader.uniform1i(LLShaderMgr::PROJVOL_SHADOW_JITTER_TAP, BDMergeProjectorVolumetricsShadowJitterTap ? 1 : 0);
+        // [BDMerge G3.3 Batch B - R1] Beam-depth reprojection: the march writes its
+        // luminance-premultiplied first distance moment to ALPHA only when this is 1.
+        // Upload 1 ONLY on the temporal path (which requires halfres, so the march writes
+        // to mProjVolHalf - never the additive scene buffer). On the direct/non-halfres
+        // path `temporal` is false here, so the gate stays 0 and alpha stays 0 - the
+        // additive composite is never corrupted and the output is byte-identical.
+        shaft_shader.uniform1i(LLShaderMgr::PROJVOL_TEMPORAL_BEAM_DEPTH, (temporal && BDMergeProjectorVolumetricsTemporalBeamDepth) ? 1 : 0);
+        // [Batch 1 B] gobo-colored occluder shadows: 0 = classic hard black shadow
+        // (the shipped look), >0 lets occluded march samples carry a dimmed, gobo-shaped
+        // colored contribution ("stained glass" banding) instead of pure black.
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_SHADOW_TINT, llclamp(BDMergeProjectorVolumetricsShadowTint, 0.f, 1.f));
+
+        // [BDMerge G3.3 Rim] Physical surface-coupled rim / wrap glow. Driven entirely
+        // by this projector's own light at the surface (cookie x atten x its shadow map)
+        // and the real G-buffer normal, added into the additive HDR shaft so it rides
+        // the existing bloom-feed into a soft halo. Strength 0 (default) = no-op.
+        // [F4] Rim STRENGTH/POWER/WRAP/SOFTNESS are now uploaded PER-CONE (override-aware)
+        // in the cone loop below; only the quality-gate THRESHOLD stays global here.
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_RIM_THRESHOLD, llmax(BDMergeProjectorVolumetricsRimThreshold, 0.f));
+
+        // [Phase 3] atmosphere levers (all no-ops at their defaults). The inverse
+        // modelview turns a view-space march sample back into agent(world, Z-up) space
+        // so the noise medium is world-anchored (drifts, never crawls) and the height
+        // fog keys off true altitude. projvol_time is continuous seconds (wrapped) for a
+        // smooth noise scroll - NOT the wrapped frame counter used by the dither.
+        shaft_shader.uniformMatrix4fv(LLShaderMgr::PROJVOL_INV_MODELVIEW, 1, false, glm::value_ptr(inv_mv));
+        // Presentation clock (matches FROXEL_TIME): shaft dust/noise freezes and
+        // slows with Director world time instead of crawling through bullet time.
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_TIME,
+            static_cast<F32>(std::fmod(
+                LLPresentationTime::currentFrame().presentation_time, 3600.0)));
+        // [Batch 1 C] PROJVOL_DENSITY moved to the per-cone upload (overridable).
+        // [F4 flattening REMOVED] F4 zeroed the per-cone noise/fog (and forced density 1)
+        // whenever the froxel master was on, to prevent double-fog. In practice it stole
+        // the beam-dust look entirely (in-world report: "can't enable the dust" - the
+        // user's beams live on per-cone noise). Per-cone media levers now work regardless
+        // of froxel; whether beams carry their own dust on top of the shared air is the
+        // artist's call, not the renderer's.
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_NOISE_STRENGTH, llclamp(BDMergeProjectorVolumetricsNoiseStrength, 0.f, 1.f));
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_NOISE_SCALE, llmax(BDMergeProjectorVolumetricsNoiseScale, 0.f));
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_NOISE_SPEED, BDMergeProjectorVolumetricsNoiseSpeed);
+        // [F5 follow-up] Shared dust-wind direction for the BEAM dust (same
+        // BDMergeFroxelWind* trio the froxel air uses - one coherent air), scaled by the
+        // per-cone NoiseSpeed so beams keep their own speed/reverse control. Replaces
+        // the old hardwired (1,1,1) diagonal drift; steer it from the Lightbox Froxel
+        // tab's Wind sliders (they apply to beam dust whether or not froxel is on).
         {
-            continue;
+            F32 wdir[3];
+            bdmerge_dust_wind_dir(wdir); // unit dir from Azimuth/Elevation/Inverted
+            const F32 s = BDMergeProjectorVolumetricsNoiseSpeed;
+            shaft_shader.uniform3f(LLShaderMgr::PROJVOL_WIND, wdir[0] * s, wdir[1] * s, wdir[2] * s);
         }
-        // Skip slots whose shadow map was never allocated this frame.
-        LLRenderTarget* shadow_target = getSpotShadowTarget(i);
-        if (shadow_target == NULL || shadow_target->getWidth() == 0)
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_FOG_STRENGTH, llclamp(BDMergeProjectorVolumetricsFogStrength, 0.f, 1.f));
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_FOG_GROUND, llmax(BDMergeProjectorVolumetricsFogGroundDensity, 0.f));
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_FOG_FALLOFF, llmax(BDMergeProjectorVolumetricsFogFalloff, 0.01f));
+        shaft_shader.uniform1f(LLShaderMgr::PROJVOL_FOG_BASE, BDMergeProjectorVolumetricsFogBase);
+
+        // [BDMerge G3.3 ConservativeShadow] Airborne-march shadow sampler A/B gate.
+        // [Review fix] OPT-IN, default OFF: the conservative sampler replaces the
+        // wide 12/Vogel-tap penumbra of EVERY marching projector with a tight 5-tap
+        // kernel, and the hero-shaft root cause is UNCONFIRMED - so it must not be a
+        // default-on global change. OFF (default) = the legacy lit-surface sampler,
+        // byte-identical to the shipped look for all normal soft-shadow shafts.
+        // ON (hero-shaft experiment) = the conservative volume sampler in
+        // shadowUtil.glsl plus the shader's on-axis numerical guards, for in-world
+        // A/B of the shaft leaking through an occluder's center.
+        // [Round-2 fix] Conservative-shadow is now a compile-time PERMUTATION
+        // (PROJVOL_CONSERVATIVE_SHADOW, mirroring the Dust permutation below): with
+        // the lever OFF the uniform and every conservative branch are compiled OUT,
+        // so the default-off march is instruction-identical to the legacy path, not
+        // merely equivalent. Only upload the runtime gate when the lever is on (the
+        // uniform does not exist in the OFF program). An ON-permutation program
+        // whose gate somehow went un-uploaded reads the GL default 0 and falls back
+        // to the legacy branch - fail-safe across the toggle/rebuild window.
+        if (BDMergeProjectorVolumetricsConservativeShadow)
         {
-            continue;
-        }
-        LLVOVolume* volume = drawablep->getVOVolume();
-        if (volume == NULL)
-        {
-            continue;
-        }
-        // [ActorMask] Actor-only lights render no per-cone shaft or volumetric
-        // surface rim: those passes are not actor-masked and light the set.
-        if (ALCineLightRigManager::anyActorOnly() &&
-            ALCineLightRigManager::instance().actorOnlyBits(volume->getID()))
-        {
-            continue;
+            shaft_shader.uniform1i(LLShaderMgr::PROJVOL_CONSERVATIVE_SHADOW, 1);
         }
 
-        // [Phase 2 item 1] Session-only art-direction filter: a projector emits
-        // a shaft only after its object UUID has been opted in this session via
-        // the right-click "Volumetric Shaft" toggle. Empty set => nothing marches
-        // (off by default). The context menu flags root prims, but the light
-        // feature can live on either the root or a child, so match both the
-        // light-source prim's own ID and its root-edit ID.
-        LLUUID matched_id;
+        // [BDMerge G3.3 Dust] Baked 64^3 dust-volume particulate breakup. The shader
+        // gate (projvol_dust) is only raised while the volume is actually live in GL
+        // AND verifiably bound this pass, so a missing/corrupt asset - or a failed
+        // channel/bind - degrades to exactly the shipped look instead of sampling an
+        // unbound unit into the density. Wind: the same shared
+        // Azimuth/Elevation/Inverted air direction the fbm beam noise drifts with
+        // (bdmerge_dust_wind_dir - one coherent air), scaled by DustDrift (m/s) and
+        // folded on the CPU; the shader advects world-space metres with projvol_time
+        // (continuous seconds, uploaded above), matching the asset's
+        // sampleDustVolume3D reference helper units.
+        //
+        // [Review fix - sampler slot] Dust is now a compile-time PERMUTATION of
+        // projectorVolumetricF.glsl (PROJVOL_DUST_ENABLE, keyed off the same setting
+        // in llviewershadermgr.cpp; toggling it rebuilds shaders via
+        // handleSetShaderChanged). With Dust OFF the program contains no sampler3D at
+        // all - no fragment texture unit is consumed - and everything below except
+        // the one gate upload (a no-op on the compiled-out uniform) is skipped, so
+        // dust-off costs neither a sampler slot nor per-pass uniform work.
+        //
+        // [Review fix - Inf/NaN] The three dust levers are persisted F32s: sanitize
+        // to finite, documented ranges on upload so an extreme/corrupt value can
+        // never reach the shader (wind*time or world*scale -> Inf -> fract(Inf) =
+        // NaN poisoning the march, unbounded intensity -> unbounded density).
+        F32 dust_intensity = BDMergeProjectorVolumetricsDustIntensity;
+        // [Round-2 fix] cap = 2.0, matching the declared settings.xml range (0.0-2.0)
+        // and the shader's documented ~0..2 domain - the code used to allow 4.0,
+        // letting a hand-edited settings file push past the tuned range.
+        dust_intensity = llfinite(dust_intensity) ? llclamp(dust_intensity, 0.f, 2.f) : 0.f;
+        bool dust_on = BDMergeProjectorVolumetricsDust &&
+                       mProjVolDustMap != 0 &&
+                       dust_intensity > 0.f;
+        if (dust_on)
         {
-            if (isVolumetricShaftEnabled(volume->getID()))
+            // Filtering/wrap (LINEAR + REPEAT) are texture-object state set at load.
+            // Drain stale errors BEFORE enableTexture(), because it activates the
+            // sampler's unit and updates the cached active-unit index even when that
+            // activation fails. The checks below must attribute that error to this
+            // dust bind instead of letting bindManual() trust a stale cache entry.
+            for (S32 drain = 0; drain < 8 && glGetError() != GL_NO_ERROR; ++drain)
             {
-                matched_id = volume->getID();
             }
-            else if (LLViewerObject* root = volume->getRootEdit())
+            S32 dust_channel = shaft_shader.enableTexture(LLShaderMgr::PROJVOL_DUST_MAP, LLTexUnit::TT_TEXTURE_3D);
+            const GLenum activation_err = glGetError();
+            bool bind_failed = activation_err != GL_NO_ERROR;
+            if (!bind_failed && dust_channel < 0)
             {
-                if (isVolumetricShaftEnabled(root->getID()))
-                    matched_id = root->getID();
+                // Sampler not present in this program (permutation off / rebuild in
+                // flight): gate the effect off this pass but KEEP the loaded volume -
+                // the rebuilt shader picks it up next frame.
+                dust_on = false;
             }
-            if (matched_id.isNull())
+            else if (!bind_failed)
+            {
+                // [Round-2 fix] bindManual() == true is NOT a successful GL bind: it
+                // returns false only for an invalid texture-unit index and never
+                // checks GL errors after glBindTexture (llrender.cpp). Verify with an
+                // explicit glGetError(): an invalidated texture name or driver bind
+                // error must never leave dust_on true sampling an unbound/incomplete
+                // texture.
+                bool bound = gGL.getTexUnit(dust_channel)->bindManual(LLTexUnit::TT_TEXTURE_3D, mProjVolDustMap);
+                const GLenum bind_err = glGetError();
+                bind_failed = !bound || bind_err != GL_NO_ERROR;
+            }
+            if (bind_failed)
+            {
+                // Activation or bind failure: never march with the gate up over a dead
+                // sampler. Release the handle so every later dust_on test is false
+                // (clean OFF until the GL context is rebuilt; the loader is
+                // one-attempt-per-context by design). disableTexture first so the
+                // unit's currency cache cannot keep pointing at the deleted name.
+                LL_WARNS_ONCE() << "[BDMerge Dust] dust volume bind failed - disabling dust" << LL_ENDL;
+                shaft_shader.disableTexture(LLShaderMgr::PROJVOL_DUST_MAP, LLTexUnit::TT_TEXTURE_3D);
+                LLImageGL::deleteTextures(1, &mProjVolDustMap);
+                mProjVolDustMap = 0;
+                dust_on = false;
+            }
+        }
+        shaft_shader.uniform1i(LLShaderMgr::PROJVOL_DUST, dust_on ? 1 : 0);
+        if (dust_on)
+        {
+            shaft_shader.uniform1f(LLShaderMgr::PROJVOL_DUST_INTENSITY, dust_intensity);
+
+            F32 dust_scale = BDMergeProjectorVolumetricsDustScale;
+            dust_scale = llfinite(dust_scale) ? llclamp(dust_scale, 0.f, 64.f) : 0.5f;
+            shaft_shader.uniform1f(LLShaderMgr::PROJVOL_DUST_SCALE, dust_scale);
+
+            F32 drift = BDMergeProjectorVolumetricsDustDrift;
+            drift = llfinite(drift) ? llclamp(drift, -10.f, 10.f) : 0.f;
+            F32 wdir[3];
+            bdmerge_dust_wind_dir(wdir); // unit dir from Azimuth/Elevation/Inverted
+            F32 wx = wdir[0] * drift;
+            F32 wy = wdir[1] * drift;
+            F32 wz = wdir[2] * drift;
+            if (!llfinite(wx) || !llfinite(wy) || !llfinite(wz))
+            {
+                // The direction comes from sinf/cosf of the shared (persisted) froxel
+                // wind Azimuth/Elevation - a corrupt value there is NaN through a
+                // different door. Frozen dust beats a NaN-poisoned march.
+                wx = wy = wz = 0.f;
+            }
+            shaft_shader.uniform3f(LLShaderMgr::PROJVOL_DUST_WIND, wx, wy, wz);
+        }
+
+        shaft_shader.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+
+        mScreenTriangleVB->setBuffer();
+
+        const U32 max_res = llclamp(BDMergeProjectorVolumetricsResolution, (U32)4, (U32)64);
+        const U32 min_res = llclamp(BDMergeProjectorVolumetricsMinResolution, (U32)4, max_res);
+
+        static LLCachedControl<F32> max_steps(gSavedSettings, "BDMergeProjectorVolumetricsMaxSteps", 0.f);
+        static LLCachedControl<F32> big_cap(gSavedSettings, "BDMergeProjectorVolumetricsBigConeCap", 0.6f);
+        static LLCachedControl<F32> frame_budget(gSavedSettings, "BDMergeProjectorVolumetricsFrameBudget", 48.f);
+        auto finite_cap = [](F32 value, F32 fallback, F32 maximum)
+        {
+            return std::isfinite(value) ? llclamp(value,0.f,maximum) : fallback;
+        };
+        const F32 step_limit = finite_cap(max_steps,0.f,64.f);
+        const F32 large_limit = finite_cap(big_cap,0.6f,1.f);
+        const F32 frame_limit = finite_cap(frame_budget,48.f,1024.f);
+        static const LLStaticHashedString sBeamShadows("projvol_hard_beam_shadows");
+        shaft_shader.uniform1i(sBeamShadows, beam_shadows == 1 ? 1 : 0);
+        // Deliberately reserve against ALL flagged influence bounds, before shadow
+        // admission or pyramid/scissor rejection. An entering cone's clipped sphere
+        // area starts at zero, so it cannot suddenly steal another cone's budget.
+        // Offscreen conservative bounds may reserve work; shadow-slot churn cannot
+        // change the denominator. No history or camera-motion-dependent smoothing.
+        F64 total_coverage = 0.0;
+        if (quality != 1 && frame_limit > 0.f)
+        {
+            for (LLDrawable* candidate : mLights)
+            {
+                LLVOVolume* v = candidate->getVOVolume();
+                LLVector3 params;
+                if (!LLPrismLens::projectorRenderParams(v, params)) continue;
+                LLUUID id = v->getID();
+                if (!isVolumetricShaftEnabled(id))
+                {
+                    LLViewerObject* root = v->getRootEdit();
+                    if (!root || !isVolumetricShaftEnabled(root->getID())) continue;
+                    id = root->getID();
+                }
+                if (ALCineLightRigManager::anyActorOnly() &&
+                    ALCineLightRigManager::instance().actorOnlyBits(v->getID())) continue;
+                if (BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
+                    mFroxelInjectedProjectors.count(id) != 0) continue;
+                glm::vec4 sphere;
+                const bool valid = projvolSphereBounds(mul_mat4_vec3(mat,glm::vec3(candidate->getPositionAgent())),
+                    v->getLightRadius()*1.5f,proj,tgt_w,tgt_h,sphere);
+                total_coverage += projvolCoverage(valid,sphere,tgt_w,tgt_h);
+            }
+        }
+
+        // Attachment 1 is camera depth shared by all lights, so replacement rather
+        // than additive blending is essential. No global blend calls inside the loop.
+        if (halfres) glBlendFunci(1, GL_ONE, GL_ZERO);
+
+        // Shadow-casting projectors only (slots 0..N-1). mShadowSpotLight[] is
+        // populated during generateSunShadow earlier this frame and valid here.
+        for (U32 i = 0; i < bdmergeMaxSpotShadows(); ++i)
+        {
+            LLDrawable* drawablep = mShadowSpotLight[i];
+            if (drawablep == NULL)
             {
                 continue;
             }
-        }
-
-        // [Batch 1 C / F4] Per-projector override, resolved UP FRONT: the rim-only
-        // demotion below needs the EFFECTIVE (override-aware) rim strength, and the
-        // rim uniforms are now uploaded per-cone (see [F4] below). If this flagged
-        // projector has a captured override, use its values in place of the global
-        // sliders for this cone; otherwise fall back to the globals. Overridable
-        // levers: brightness, feather, forward-glow (g), density, tint + tint
-        // strength, and [F4] rim strength/power/wrap/softness (RimThreshold stays
-        // global - a quality gate, not a per-light art lever).
-        VolumetricShaftOverride ov;
-        const bool has_ov = getVolumetricShaftOverride(matched_id, ov);
-        const F32 e_rimStrength = has_ov ? ov.rimStrength : BDMergeProjectorVolumetricsRimStrength;
-        const F32 e_rimPower    = has_ov ? ov.rimPower    : BDMergeProjectorVolumetricsRimPower;
-        const F32 e_rimWrap     = has_ov ? ov.rimWrap     : BDMergeProjectorVolumetricsRimWrap;
-        const F32 e_rimSoftness = has_ov ? ov.rimSoftness : BDMergeProjectorVolumetricsRimSoftness;
-        const F32 e_max_dist = has_ov ? ov.maxDistance : BDMergeProjectorVolumetricsMaxDistance;
-
-        // [BDMerge Froxel F2] A projector injected into the froxel light grid this
-        // frame lights via the grid (soft, volumetric) - marching its shaft here too
-        // would double-light. BUT the surface-coupled RIM/wrap glow (and the
-        // bloom-feed halo it rides into) is a per-cone SURFACE effect the grid can't
-        // reproduce, so instead of skipping the cone entirely we demote it to a
-        // RIM-ONLY pass: GODRAY_RES is forced to 0 below (march loop never runs,
-        // shaft = 0) and only the rim block evaluates at the capped surface. If the
-        // rim is off there is nothing per-cone left to draw - skip. [F4] The test now
-        // uses the EFFECTIVE rim strength so a per-light rim=0 skips cleanly even when
-        // the global is up, and a per-light rim>0 still draws when the global is 0.
-        // (Hero-flagged projectors are never injected -> never rim-only -> they march
-        // fully here.) The injected set is empty whenever the froxel master or lights
-        // lever is off, so the per-cone path is unchanged in that case.
-        const bool froxel_rim_only = BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
-            mFroxelInjectedProjectors.count(matched_id) != 0;
-        if (froxel_rim_only && e_rimStrength <= 0.f)
-        {
-            continue;
-        }
-
-        // Side-effect-free geometry + cookie upload; slot passed in directly
-        // (NO mTargetShadowSpotLight priority reshuffle - R1).
-        bool camera_inside = false;
-        const F32 lamp_power_scale = setupSpotLightVolumetric(
-            gDeferredProjectorVolumetricProgram, drawablep, (S32)i, &camera_inside,
-            llclamp(e_max_dist,0.f,64.f));
-
-        // Remaining per-cone override levers (brightness/feather/g/density/tint).
-        const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
-        const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
-        const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
-        const F32 e_density  = has_ov ? ov.density       : BDMergeProjectorVolumetricsDensity;
-        const LLColor3 e_tint = has_ov ? ov.tint        : BDMergeProjectorVolumetricsTint;
-        const F32 e_tintStr  = has_ov ? ov.tintStrength : BDMergeProjectorVolumetricsTintStrength;
-
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
-        static const LLStaticHashedString sProjVolMaxDistance(
-            "projvol_max_distance");
-        gDeferredProjectorVolumetricProgram.uniform1f(
-            sProjVolMaxDistance, llclamp(e_max_dist, 0.f, 64.f));
-        // [BDMerge F4] Per-cone media flattening when the froxel master is ON: the
-        // shared atmosphere (density/height-fog/noise) now lives in the froxel grid,
-        // so a per-cone march (hero cone or rim-only cone) marching its OWN fog on top
-        // would double-fog. Upload a FLAT medium (density 1, noise/fog strengths 0 -
-        // the latter two are the global uploads gated the same way above) regardless
-        // of the per-cone media sliders/overrides. When froxel is OFF this is exactly
-        // the old per-cone density path (override-aware), byte-identical.
-        // [F4 flattening REMOVED] density lever live regardless of froxel (see the
-        // noise/fog note at the per-frame uploads above).
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_DENSITY, llmax(e_density, 0.f));
-
-        // [BDMerge F4] Per-projector RIM overrides, uploaded per-cone (moved from the
-        // global pre-loop block). Effective values were resolved up front so the
-        // rim-only demotion could consult the strength. Identical to the global path
-        // when no override is captured -> default behavior unchanged.
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_STRENGTH, halfres ? 0.f : llmax(e_rimStrength, 0.f));
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(e_rimPower, 0.01f));
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(e_rimWrap, 0.f, 1.f));
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_SOFTNESS, llclamp(e_rimSoftness, 0.f, 1.f));
-
-        // [EnvIntensity v2] per-emitter Local lights EV folded into ONE scale used
-        // for both the light colour and the shaft-tint term (exactly once).
-        const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume) *
-            lamp_power_scale;
-        LLColor3  col = volume->getLightLinearColor() * ls;
-        // [Phase 2 item 2 / Batch 1 C] Shaft tint (global or per-projector override):
-        // pull the shaft color toward the art-direction tint so it can differ from
-        // the light's own color. At TintStrength 0 (default) this is a no-op and
-        // shafts carry pure light color per the locked design.
-        if (e_tintStr > 0.f)
-        {
-            const F32 t = llclamp(e_tintStr, 0.f, 1.f);
-            col = col * (1.f - t) + e_tint * (ls * t);
-        }
-        glm::vec3 c(drawablep->getPositionAgent());
-        c = mul_mat4_vec3(mat, c); // agent -> view space
-
-        // Sphere of influence radius, matching the shader's LIGHT_SIZE.
-        const F32 radius = volume->getLightRadius() * 1.5f;
-
-        // Preserve the pre-pyramid sphere coverage for the default adaptive
-        // budget. Tightening only the scissor must not change interior samples.
-        glm::vec4 sphere;
-        const bool sphere_valid = projvolSphereBounds(c, radius, proj, tgt_w, tgt_h, sphere);
-        glm::vec4 bounds = sphere;
-        bool bounds_valid = sphere_valid;
-        if (pyramid_scissor())
-        {
-            glm::vec4 pyramid;
-            if (projvolPyramidBounds(drawablep, mat, proj, radius,
-                llclamp(e_max_dist, 0.f, 64.f), !halfres && e_rimStrength > 0.f, tgt_w, tgt_h, pyramid))
+            // Skip slots whose shadow map was never allocated this frame.
+            LLRenderTarget* shadow_target = getSpotShadowTarget(i);
+            if (shadow_target == NULL || shadow_target->getWidth() == 0)
             {
-                bounds = glm::vec4(floorf(pyramid.x)-1.f, floorf(pyramid.y)-1.f,
-                                   ceilf(pyramid.z)+1.f, ceilf(pyramid.w)+1.f);
-                bounds_valid = true;
+                continue;
             }
-        }
-
-        // The full-res surface rim is uncapped. Queue it independently, even
-        // when the capped half-res shaft lies entirely outside the viewport.
-        if (halfres && e_rimStrength > 0.f)
-        {
-            glm::vec4 rim_bounds = sphere;
-            bool rim_bounds_valid = sphere_valid;
-            glm::vec4 pyramid;
-            if (pyramid_scissor() && projvolPyramidBounds(drawablep, mat, proj, radius,
-                0.f, true, tgt_w, tgt_h, pyramid))
+            LLVOVolume* volume = drawablep->getVOVolume();
+            if (volume == NULL)
             {
-                rim_bounds = glm::vec4(floorf(pyramid.x)-1.f, floorf(pyramid.y)-1.f,
+                continue;
+            }
+            // [ActorMask] Actor-only lights render no per-cone shaft or volumetric
+            // surface rim: those passes are not actor-masked and light the set.
+            if (ALCineLightRigManager::anyActorOnly() &&
+                ALCineLightRigManager::instance().actorOnlyBits(volume->getID()))
+            {
+                continue;
+            }
+
+            // [Phase 2 item 1] Session-only art-direction filter: a projector emits
+            // a shaft only after its object UUID has been opted in this session via
+            // the right-click "Volumetric Shaft" toggle. Empty set => nothing marches
+            // (off by default). The context menu flags root prims, but the light
+            // feature can live on either the root or a child, so match both the
+            // light-source prim's own ID and its root-edit ID.
+            LLUUID matched_id;
+            {
+                if (isVolumetricShaftEnabled(volume->getID()))
+                {
+                    matched_id = volume->getID();
+                }
+                else if (LLViewerObject* root = volume->getRootEdit())
+                {
+                    if (isVolumetricShaftEnabled(root->getID()))
+                        matched_id = root->getID();
+                }
+                if (matched_id.isNull())
+                {
+                    continue;
+                }
+            }
+
+            // [Batch 1 C / F4] Per-projector override, resolved UP FRONT: the rim-only
+            // demotion below needs the EFFECTIVE (override-aware) rim strength, and the
+            // rim uniforms are now uploaded per-cone (see [F4] below). If this flagged
+            // projector has a captured override, use its values in place of the global
+            // sliders for this cone; otherwise fall back to the globals. Overridable
+            // levers: brightness, feather, forward-glow (g), density, tint + tint
+            // strength, and [F4] rim strength/power/wrap/softness (RimThreshold stays
+            // global - a quality gate, not a per-light art lever).
+            VolumetricShaftOverride ov;
+            const bool has_ov = getVolumetricShaftOverride(matched_id, ov);
+            const F32 e_rimStrength = has_ov ? ov.rimStrength : BDMergeProjectorVolumetricsRimStrength;
+            const F32 e_rimPower    = has_ov ? ov.rimPower    : BDMergeProjectorVolumetricsRimPower;
+            const F32 e_rimWrap     = has_ov ? ov.rimWrap     : BDMergeProjectorVolumetricsRimWrap;
+            const F32 e_rimSoftness = has_ov ? ov.rimSoftness : BDMergeProjectorVolumetricsRimSoftness;
+            const F32 e_max_dist = has_ov ? ov.maxDistance : BDMergeProjectorVolumetricsMaxDistance;
+
+            // [BDMerge Froxel F2] A projector injected into the froxel light grid this
+            // frame lights via the grid (soft, volumetric) - marching its shaft here too
+            // would double-light. BUT the surface-coupled RIM/wrap glow (and the
+            // bloom-feed halo it rides into) is a per-cone SURFACE effect the grid can't
+            // reproduce, so instead of skipping the cone entirely we demote it to a
+            // RIM-ONLY pass: GODRAY_RES is forced to 0 below (march loop never runs,
+            // shaft = 0) and only the rim block evaluates at the capped surface. If the
+            // rim is off there is nothing per-cone left to draw - skip. [F4] The test now
+            // uses the EFFECTIVE rim strength so a per-light rim=0 skips cleanly even when
+            // the global is up, and a per-light rim>0 still draws when the global is 0.
+            // (Hero-flagged projectors are never injected -> never rim-only -> they march
+            // fully here.) The injected set is empty whenever the froxel master or lights
+            // lever is off, so the per-cone path is unchanged in that case.
+            const bool froxel_rim_only = BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
+                mFroxelInjectedProjectors.count(matched_id) != 0;
+            if (froxel_rim_only && e_rimStrength <= 0.f)
+            {
+                continue;
+            }
+
+            // Side-effect-free geometry + cookie upload; slot passed in directly
+            // (NO mTargetShadowSpotLight priority reshuffle - R1).
+            bool camera_inside = false;
+            F32 camera_margin = 0.f;
+            const F32 lamp_power_scale = setupSpotLightVolumetric(
+                shaft_shader, drawablep, (S32)i, &camera_inside,
+                llclamp(e_max_dist,0.f,64.f), &camera_margin);
+
+            glm::vec3 c(drawablep->getPositionAgent());
+            c = mul_mat4_vec3(mat, c); // agent -> view space
+
+            const F32 radius = volume->getLightRadius() * 1.5f;
+
+            // Preserve the pre-pyramid sphere coverage for the default adaptive
+            // budget. Tightening only the scissor must not change interior samples.
+            glm::vec4 sphere;
+            const bool sphere_valid = projvolSphereBounds(c, radius, proj, tgt_w, tgt_h, sphere);
+            const U32 cone_res = projvolAdaptiveResolution(BDMergeProjectorVolumetricsAdaptive,
+                sphere_valid, sphere, tgt_h, min_res, max_res);
+            const F32 coverage = projvolCoverage(sphere_valid,sphere,tgt_w,tgt_h);
+            const F32 budget = projvolStepBudget(quality,BDMergeProjectorVolumetricsAdaptive,
+                coverage,tgt_h,min_res,max_res,step_limit,large_limit,frame_limit,(F32)total_coverage);
+            const LLVector3 forward = LLVector3(0.f,0.f,-1.f)*volume->getRenderRotation();
+            const glm::vec3 view_axis = glm::mat3(mat)*glm::vec3(forward.mV[0],forward.mV[1],forward.mV[2]);
+            LLPrismLens::ProjectorFeed soft_feed;
+            const bool has_cookie = volume->getLightTextureID().notNull() ||
+                hasGoboOverride(volume->getID()) || LLPrismLens::projectorFeedFor(volume,soft_feed);
+            // Remaining per-cone override levers (brightness/feather/g/density/tint).
+            const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
+            const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
+            const F32 e_g        = has_ov ? ov.anisotropy   : BDMergeProjectorVolumetricsAnisotropy;
+            const F32 e_density  = has_ov ? ov.density       : BDMergeProjectorVolumetricsDensity;
+            const LLColor3 e_tint = has_ov ? ov.tint        : BDMergeProjectorVolumetricsTint;
+            const F32 e_tintStr  = has_ov ? ov.tintStrength : BDMergeProjectorVolumetricsTintStrength;
+
+            // [EnvIntensity v2] per-emitter Local lights EV folded into ONE scale used
+            // for both the light colour and the shaft-tint term (exactly once).
+            const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume) *
+                lamp_power_scale;
+            LLColor3  col = volume->getLightLinearColor() * ls;
+            // [Phase 2 item 2 / Batch 1 C] Shaft tint (global or per-projector override):
+            // pull the shaft color toward the art-direction tint so it can differ from
+            // the light's own color. At TintStrength 0 (default) this is a no-op and
+            // shafts carry pure light color per the locked design.
+            if (e_tintStr > 0.f)
+            {
+                const F32 t = llclamp(e_tintStr, 0.f, 1.f);
+                col = col * (1.f - t) + e_tint * (ls * t);
+            }
+            const F32 color_max = llmax(col.mV[0],llmax(col.mV[1],col.mV[2]));
+            const F32 gain = e_mult*llmax(e_density,0.f)*
+                (1.f+llclamp(BDMergeProjectorVolumetricsNoiseStrength,0.f,1.f))*color_max*
+                llmax(1.f,BDMergeProjectorVolumetricsShadowTint);
+            const bool use_budget = budget_variant && e_mult >= 0.f &&
+                col.mV[0] >= 0.f && col.mV[1] >= 0.f && col.mV[2] >= 0.f &&
+                volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF) >= 0.f &&
+                projvolFullCostIsUnclamped(c,inverse_projection,radius,e_g,gain,
+                    BDMergeProjectorVolumetricsMaxLuminance) &&
+                projvolSoftBudgetAllowed(cone_res,budget,
+                airborne_tap(),equiangular(),cookie_footprint(),
+                dust_on || !BDMergeProjectorVolumetricsFrustumClip ||
+                    BDMergeProjectorVolumetricsConservativeShadow || BDMergeSoftShadowVogel ||
+                    BDMergeProjectorVolumetricsShadowJitterTap ||
+                    e_max_dist > 0.f,has_cookie,
+                BDMergeSoftProjectorShadows,BDMergeProjectorVolumetricsShadowJitterTap ? 1u :
+                    BDMergeProjectorVolumetricsShadowSamples,
+                BDMergeProjectorVolumetricsNoiseStrength,BDMergeProjectorVolumetricsNoiseScale,
+                BDMergeProjectorVolumetricsFogStrength,camera_inside,camera_margin/radius,
+                -view_axis.z,glm::length(c)/radius,
+                BDMergeProjectorVolumetricsDither);
+            if (budget_variant && use_budget != (program_index == 0)) continue;
+            const U32 cone_quality = projvolConeDefinition(quality,use_budget,budget);
+
+            shaft_shader.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);
+            shaft_shader.uniform1f(LLShaderMgr::PROJVOL_FEATHER, e_feather);
+            shaft_shader.uniform1f(LLShaderMgr::PROJVOL_G, e_g);
+            static const LLStaticHashedString sProjVolMaxDistance(
+                "projvol_max_distance");
+            shaft_shader.uniform1f(
+                sProjVolMaxDistance, llclamp(e_max_dist, 0.f, 64.f));
+            // [BDMerge F4] Per-cone media flattening when the froxel master is ON: the
+            // shared atmosphere (density/height-fog/noise) now lives in the froxel grid,
+            // so a per-cone march (hero cone or rim-only cone) marching its OWN fog on top
+            // would double-fog. Upload a FLAT medium (density 1, noise/fog strengths 0 -
+            // the latter two are the global uploads gated the same way above) regardless
+            // of the per-cone media sliders/overrides. When froxel is OFF this is exactly
+            // the old per-cone density path (override-aware), byte-identical.
+            // [F4 flattening REMOVED] density lever live regardless of froxel (see the
+            // noise/fog note at the per-frame uploads above).
+            shaft_shader.uniform1f(LLShaderMgr::PROJVOL_DENSITY, llmax(e_density, 0.f));
+
+            // [BDMerge F4] Per-projector RIM overrides, uploaded per-cone (moved from the
+            // global pre-loop block). Effective values were resolved up front so the
+            // rim-only demotion could consult the strength. Identical to the global path
+            // when no override is captured -> default behavior unchanged.
+            shaft_shader.uniform1f(LLShaderMgr::PROJVOL_RIM_STRENGTH, halfres ? 0.f : llmax(e_rimStrength, 0.f));
+            shaft_shader.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(e_rimPower, 0.01f));
+            shaft_shader.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(e_rimWrap, 0.f, 1.f));
+            shaft_shader.uniform1f(LLShaderMgr::PROJVOL_RIM_SOFTNESS, llclamp(e_rimSoftness, 0.f, 1.f));
+
+            glm::vec4 bounds = sphere;
+            bool bounds_valid = sphere_valid;
+            if (pyramid_scissor())
+            {
+                glm::vec4 pyramid;
+                if (projvolPyramidBounds(drawablep, mat, proj, radius,
+                    llclamp(e_max_dist, 0.f, 64.f), !halfres && e_rimStrength > 0.f, tgt_w, tgt_h, pyramid))
+                {
+                    bounds = glm::vec4(floorf(pyramid.x)-1.f, floorf(pyramid.y)-1.f,
                                        ceilf(pyramid.z)+1.f, ceilf(pyramid.w)+1.f);
-                rim_bounds_valid = true;
+                    bounds_valid = true;
+                }
             }
-            rim_draws.push_back({drawablep, i, c, col, radius, e_rimStrength,
-                e_rimPower, e_rimWrap, e_rimSoftness, rim_bounds_valid, rim_bounds});
-        }
-        F32 min_x = bounds.x, min_y = bounds.y, max_x = bounds.z, max_y = bounds.w;
 
-        if (bounds_valid)
-        {
-            min_x = llclamp(min_x, 0.f, tgt_w); max_x = llclamp(max_x, 0.f, tgt_w);
-            min_y = llclamp(min_y, 0.f, tgt_h); max_y = llclamp(max_y, 0.f, tgt_h);
-            // Cone projects entirely off screen -> nothing to march.
-            if (max_x <= min_x || max_y <= min_y)
+            // The full-res surface rim is uncapped. Queue it independently, even
+            // when the capped half-res shaft lies entirely outside the viewport.
+            if (halfres && e_rimStrength > 0.f)
             {
-                continue;
+                glm::vec4 rim_bounds = sphere;
+                bool rim_bounds_valid = sphere_valid;
+                glm::vec4 pyramid;
+                if (pyramid_scissor() && projvolPyramidBounds(drawablep, mat, proj, radius,
+                    0.f, true, tgt_w, tgt_h, pyramid))
+                {
+                    rim_bounds = glm::vec4(floorf(pyramid.x)-1.f, floorf(pyramid.y)-1.f,
+                                           ceilf(pyramid.z)+1.f, ceilf(pyramid.w)+1.f);
+                    rim_bounds_valid = true;
+                }
+                rim_draws.push_back({drawablep, i, c, col, radius, e_rimStrength,
+                    e_rimPower, e_rimWrap, e_rimSoftness, rim_bounds_valid, rim_bounds});
             }
-        }
-        else
-        {
-            min_x = 0.f; min_y = 0.f; max_x = tgt_w; max_y = tgt_h;
-            union_full = true; // this cone couldn't be bounded -> upsample full screen
+            F32 min_x = bounds.x, min_y = bounds.y, max_x = bounds.z, max_y = bounds.w;
+
+            if (bounds_valid)
+            {
+                min_x = llclamp(min_x, 0.f, tgt_w); max_x = llclamp(max_x, 0.f, tgt_w);
+                min_y = llclamp(min_y, 0.f, tgt_h); max_y = llclamp(max_y, 0.f, tgt_h);
+                // Cone projects entirely off screen -> nothing to march.
+                if (max_x <= min_x || max_y <= min_y)
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                min_x = 0.f; min_y = 0.f; max_x = tgt_w; max_y = tgt_h;
+                union_full = true; // this cone couldn't be bounded -> upsample full screen
+            }
+
+            // Grow the upsample union (march-target pixel space).
+            union_min_x = llmin(union_min_x, min_x); union_max_x = llmax(union_max_x, max_x);
+            union_min_y = llmin(union_min_y, min_y); union_max_y = llmax(union_max_y, max_y);
+            ++cones_drawn;
+
+            if (BDMergeProjectorVolumetricsScissor)
+            {
+                glScissor((GLint)min_x, (GLint)min_y,
+                          (GLsizei)llceil(max_x - min_x), (GLsizei)llceil(max_y - min_y));
+            }
+
+            // [Phase 1 item 5] adaptive sample count: scale by the on-screen coverage
+            // of the cone (fraction of screen height its projected box spans). A cone
+            // filling the view marches the full Resolution; a small/distant one drops
+            // toward the floor. Bounded march means even the floor stays clean.
+            // [BDMerge Froxel F2] Rim-only demotion: res 0 skips the march loop entirely
+            // (shaft = 0; the shader's dt guard handles the division) so only the surface
+            // rim evaluates - the beam itself lives in the froxel grid.
+            projvolUploadStepBudget(shaft_shader,froxel_rim_only,
+                cone_quality,cone_res,max_res,budget);
+            if (!aux_direct && !froxel_rim_only)
+            {
+                ++mProjectorShaftCost.visible;
+                if (camera_inside && glm::length(c) < radius) ++mProjectorShaftCost.inside;
+                mProjectorShaftCost.steps.push_back(cone_quality != 1 && budget <= 0.f ? 0.f :
+                    use_budget ? 16.f : (F32)cone_res);
+            }
+
+            shaft_shader.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(c));
+            shaft_shader.uniform1f(LLShaderMgr::LIGHT_SIZE, radius);
+            shaft_shader.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
+            shaft_shader.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
+
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
         }
 
-        // Grow the upsample union (march-target pixel space).
-        union_min_x = llmin(union_min_x, min_x); union_max_x = llmax(union_max_x, max_x);
-        union_min_y = llmin(union_min_y, min_y); union_max_y = llmax(union_max_y, max_y);
-        ++cones_drawn;
+        if (halfres) glBlendFunci(1, GL_ONE, GL_ONE);
 
+        // Restore full-screen scissor for anything downstream that assumes it (the
+        // LLGLEnable above only toggles the enable bit, not the rectangle).
         if (BDMergeProjectorVolumetricsScissor)
         {
-            glScissor((GLint)min_x, (GLint)min_y,
-                      (GLsizei)llceil(max_x - min_x), (GLsizei)llceil(max_y - min_y));
+            glScissor(0, 0, (GLsizei)march_target->getWidth(), (GLsizei)march_target->getHeight());
         }
 
-        // [Phase 1 item 5] adaptive sample count: scale by the on-screen coverage
-        // of the cone (fraction of screen height its projected box spans). A cone
-        // filling the view marches the full Resolution; a small/distant one drops
-        // toward the floor. Bounded march means even the floor stays clean.
-        const U32 cone_res = projvolAdaptiveResolution(BDMergeProjectorVolumetricsAdaptive,
-            sphere_valid, sphere, tgt_h, min_res, max_res);
-        const F32 coverage = projvolCoverage(sphere_valid,sphere,tgt_w,tgt_h);
-        const F32 budget = projvolStepBudget(quality,BDMergeProjectorVolumetricsAdaptive,
-            coverage,tgt_h,min_res,max_res,step_limit,large_limit,frame_limit,(F32)total_coverage);
-        // [BDMerge Froxel F2] Rim-only demotion: res 0 skips the march loop entirely
-        // (shaft = 0; the shader's dt guard handles the division) so only the surface
-        // rim evaluates - the beam itself lives in the froxel grid.
-        projvolUploadStepBudget(gDeferredProjectorVolumetricProgram,froxel_rim_only,
-            quality,cone_res,max_res,budget);
-        if (!aux_direct && !froxel_rim_only)
+        march_target->flush();
+
+        // Batch all full-res surface draws after the march: one FBO transition for
+        // the group. A reusable rim texture is needed only when BloomFeed is enabled.
+        if (halfres && !rim_draws.empty() && program_index+1 == (budget_variant ? 2u : 1u))
         {
-            ++mProjectorShaftCost.visible;
-            if (camera_inside && glm::length(c) < radius) ++mProjectorShaftCost.inside;
-            mProjectorShaftCost.steps.push_back(quality == 1 ? (F32)cone_res : budget);
+            const bool want_rim_feed = BDMergeProjectorVolumetricsBloomFeed > 0.f &&
+                gDeferredProjectorVolumetricBloomFeedProgram.isComplete();
+            bool rim_feed = want_rim_feed && mProjVolRim.getWidth() == target->getWidth() &&
+                            mProjVolRim.getHeight() == target->getHeight() && mProjVolRim.getNumTextures() > 0;
+            if (want_rim_feed && !rim_feed)
+            {
+                mProjVolRim.release();
+                rim_feed = mProjVolRim.allocate(target->getWidth(), target->getHeight(), GL_RGBA16F);
+            }
+            LLRenderTarget* rim_target = rim_feed ? &mProjVolRim : target;
+            rim_target->bindTarget();
+            glDrawBuffer(GL_COLOR_ATTACHMENT0);
+            gGL.setColorMask(true, false);
+            if (rim_feed)
+            {
+                LLGLDisable no_scissor(GL_SCISSOR_TEST);
+                glClearColor(0.f,0.f,0.f,0.f);
+                rim_target->clear(GL_COLOR_BUFFER_BIT);
+            }
+            for (const auto& rim : rim_draws)
+            {
+                setupSpotLightVolumetric(shaft_shader, rim.drawable, rim.slot);
+                shaft_shader.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(rim.center));
+                shaft_shader.uniform1f(LLShaderMgr::LIGHT_SIZE, rim.radius);
+                shaft_shader.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, rim.color.mV);
+                shaft_shader.uniform1f(LLShaderMgr::LIGHT_FALLOFF,
+                    rim.drawable->getVOVolume()->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
+                shaft_shader.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(rim.power,0.01f));
+                shaft_shader.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(rim.wrap,0.f,1.f));
+                shaft_shader.uniform1f(LLShaderMgr::PROJVOL_RIM_SOFTNESS, llclamp(rim.softness,0.f,1.f));
+                projvolDrawFullResRim(shaft_shader, mScreenTriangleVB,
+                    BDMergeProjectorVolumetricsScissor, rim.bounds_valid, rim.bounds,
+                    tgt_w,tgt_h,target->getWidth(),target->getHeight(),rim.strength);
+            }
+            if (BDMergeProjectorVolumetricsScissor)
+                glScissor(0,0,target->getWidth(),target->getHeight());
+            rim_target->flush();
+            mProjVolRimValid = rim_feed;
         }
-
-        gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(c));
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, radius);
-        gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
-        gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
-
-        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
-    }
-
-    if (halfres) glBlendFunci(1, GL_ONE, GL_ONE);
-
-    // Restore full-screen scissor for anything downstream that assumes it (the
-    // LLGLEnable above only toggles the enable bit, not the rectangle).
-    if (BDMergeProjectorVolumetricsScissor)
-    {
-        glScissor(0, 0, (GLsizei)march_target->getWidth(), (GLsizei)march_target->getHeight());
-    }
-
-    march_target->flush();
-
-    // Batch all full-res surface draws after the march: one FBO transition for
-    // the group. A reusable rim texture is needed only when BloomFeed is enabled.
-    if (halfres && !rim_draws.empty())
-    {
-        const bool want_rim_feed = BDMergeProjectorVolumetricsBloomFeed > 0.f &&
-            gDeferredProjectorVolumetricBloomFeedProgram.isComplete();
-        bool rim_feed = want_rim_feed && mProjVolRim.getWidth() == target->getWidth() &&
-                        mProjVolRim.getHeight() == target->getHeight() && mProjVolRim.getNumTextures() > 0;
-        if (want_rim_feed && !rim_feed)
+        if (dust_on)
         {
-            mProjVolRim.release();
-            rim_feed = mProjVolRim.allocate(target->getWidth(), target->getHeight(), GL_RGBA16F);
+            shaft_shader.disableTexture(LLShaderMgr::PROJVOL_DUST_MAP, LLTexUnit::TT_TEXTURE_3D);
         }
-        LLRenderTarget* rim_target = rim_feed ? &mProjVolRim : target;
-        rim_target->bindTarget();
-        glDrawBuffer(GL_COLOR_ATTACHMENT0);
-        gGL.setColorMask(true, false);
-        if (rim_feed)
-        {
-            LLGLDisable no_scissor(GL_SCISSOR_TEST);
-            glClearColor(0.f,0.f,0.f,0.f);
-            rim_target->clear(GL_COLOR_BUFFER_BIT);
-        }
-        for (const auto& rim : rim_draws)
-        {
-            setupSpotLightVolumetric(gDeferredProjectorVolumetricProgram, rim.drawable, rim.slot);
-            gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(rim.center));
-            gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, rim.radius);
-            gDeferredProjectorVolumetricProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, rim.color.mV);
-            gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF,
-                rim.drawable->getVOVolume()->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
-            gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_POWER, llmax(rim.power,0.01f));
-            gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(rim.wrap,0.f,1.f));
-            gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_SOFTNESS, llclamp(rim.softness,0.f,1.f));
-            projvolDrawFullResRim(gDeferredProjectorVolumetricProgram, mScreenTriangleVB,
-                BDMergeProjectorVolumetricsScissor, rim.bounds_valid, rim.bounds,
-                tgt_w,tgt_h,target->getWidth(),target->getHeight(),rim.strength);
-        }
-        if (BDMergeProjectorVolumetricsScissor)
-            glScissor(0,0,target->getWidth(),target->getHeight());
-        rim_target->flush();
-        mProjVolRimValid = rim_feed;
+        shaft_shader.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+        unbindDeferredShader(shaft_shader);
+
     }
-    if (dust_on)
-    {
-        gDeferredProjectorVolumetricProgram.disableTexture(LLShaderMgr::PROJVOL_DUST_MAP, LLTexUnit::TT_TEXTURE_3D);
-    }
-    gDeferredProjectorVolumetricProgram.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
-    unbindDeferredShader(gDeferredProjectorVolumetricProgram);
 
     if (halfres && mProjVolRimValid)
     {
@@ -31717,7 +31852,7 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
 // slot assignment. Uses get_current_modelview() (== gGLModelView, the camera view
 // matrix) so proj_mat is consistent with getPosition()'s view-space reconstruction.
 F32 LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot,
-                                       bool* camera_inside, F32 max_distance)
+                                       bool* camera_inside, F32 max_distance, F32* camera_margin)
 {
     //construct frustum
     LLVOVolume* volume = drawablep->getVOVolume();
@@ -31783,6 +31918,11 @@ F32 LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawa
 
     F32 proj_range = far_clip - near_clip;
     glm::mat4 light_proj = glm::perspective(fovy, aspect, near_clip, far_clip);
+
+    if (camera_margin)
+    {
+        *camera_margin = projvolCameraMargin(light_proj * screen_to_light,s);
+    }
 
     if (camera_inside)
     {

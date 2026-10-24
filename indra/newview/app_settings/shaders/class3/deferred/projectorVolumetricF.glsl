@@ -799,33 +799,66 @@ void main()
 
     if (budgeted && shaft_steps > 0 && !fine_detail && projvol_hard_beam_shadows == 0)
     {
-        // Fixed visibility, cookie and local-medium nodes remove budget-driven
-        // field switches, including the zero-fog analytic discontinuity.
-        int fine_count = min(godray_res,8);
+        // CPU admission charges sixteen phase/medium nodes and up to thirty-one
+        // PCF lookups. A changing visibility interval receives a smooth Simpson
+        // correction without another medium or cookie lattice.
+        int fine_count = min(godray_res,16);
         float fine_dt = march_len/max(float(fine_count),1.0);
+        float fine_offset = 0.5+(roffset-0.5)*float(fine_count)/48.0;
+        bool previous_valid = false;
+        vec3 previous_radiance = vec3(0.0);
+        float previous_visibility = 0.0, previous_t = 0.0;
         for (int j = 0; j < fine_count; ++j)
         {
-            float start = t0+float(j)*fine_dt;
-            float ft = start+roffset*fine_dt;
+            float ft = t0+(float(j)+fine_offset)*fine_dt;
             vec4 fp = proj_mat*vec4(d*ft,1.0);
             vec2 uv = fp.xy/max(fp.w,1e-5);
             if (fp.z < 0.0 || fp.w <= 1e-5 || any(lessThan(uv,vec2(0.0))) || any(greaterThan(uv,vec2(1.0)))) continue;
             float analytic = projvolAnalytic(d,ft,fp);
-            float visibility = 0.0;
-            int taps = projvol_shadow_jitter_tap != 0 ? 1 : max(projvol_shadow_samples,1);
-            for (int k = 0; k < taps; ++k)
-            {
-                float ts = start+(float(k)+roffset)*fine_dt/float(taps);
-#ifdef PROJVOL_CONSERVATIVE_SHADOW
-                if (projvol_conservative_shadow != 0)
-                    visibility += sampleSpotShadowConservative(d*ts,proj_shadow_idx);
-                else
-#endif
-                    visibility += sampleSpotShadow(d*ts,vec3(0.0),proj_shadow_idx,tc);
-            }
             vec3 cookie = projGoboTexture(-dot(center-d*ft,proj_n),uv);
             float medium = projvolMedium((projvol_inv_modelview*vec4(d*ft,1.0)).xyz);
-            vec3 value = fine_dt*analytic*medium*mix(cookie*projvol_shadow_tint,cookie,visibility/float(taps));
+            vec3 radiance = (analytic*medium)*cookie;
+            float visibility = 0.0, mid_visibility = 0.0, refinement = 0.0;
+            float mid_t = 0.5*(previous_t+ft);
+            // Keep one static PCF call site: duplicating shadowUtil's indexed
+            // dispatch increases instruction footprint and register pressure.
+            // The uniform bound prevents literal-two unrolling; both exits
+            // guarantee at most the current and one midpoint lookup.
+            for (int k = 0; k < max(projvol_shadow_samples,2); ++k)
+            {
+                float ts = k == 0 ? ft : mid_t;
+                float sampled = sampleSpotShadow(d*ts,vec3(0.0),proj_shadow_idx,tc);
+                if (k == 0)
+                {
+                    visibility = sampled;
+                    refinement = previous_valid ? smoothstep(0.03,0.08,abs(visibility-previous_visibility)) : 0.0;
+                    if (refinement <= 0.0) break;
+                }
+                else
+                {
+                    mid_visibility = sampled;
+                    break;
+                }
+            }
+            vec3 shaded = radiance*mix(vec3(projvol_shadow_tint),vec3(1.0),visibility);
+            if (refinement > 0.0)
+            {
+                vec3 previous_value = previous_radiance*mix(vec3(projvol_shadow_tint),vec3(1.0),previous_visibility);
+                vec3 mid_value = 0.5*(previous_radiance+radiance)*
+                    mix(vec3(projvol_shadow_tint),vec3(1.0),mid_visibility);
+                vec3 correction = (2.0/3.0)*fine_dt*refinement*(mid_value-0.5*(previous_value+shaded));
+                accum += correction;
+                if (projvol_temporal_beam_depth != 0)
+                {
+                    const vec3 luma_weights = vec3(0.2126,0.7152,0.0722);
+                    w_sum += dot(correction*color,luma_weights);
+                    depth_w += (2.0/3.0)*fine_dt*refinement*
+                        (dot(mid_value*color,luma_weights)*mid_t-
+                         0.5*(dot(previous_value*color,luma_weights)*previous_t+
+                              dot(shaded*color,luma_weights)*ft));
+                }
+            }
+            vec3 value = fine_dt*shaded;
             accum += value;
             if (projvol_temporal_beam_depth != 0)
             {
@@ -833,6 +866,9 @@ void main()
                 depth_w += luma*ft;
                 w_sum += luma;
             }
+            previous_valid = true;
+            previous_radiance = radiance;
+            previous_visibility = visibility; previous_t = ft;
         }
         accum /= dt;
         depth_w /= dt;

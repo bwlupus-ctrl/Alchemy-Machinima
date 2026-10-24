@@ -114,9 +114,9 @@ def performance_checks(V, args, gl, host, report):
                 runner.bloom_feed(f,1.85,1.,stats)
                 if k>=8:runs.append(stats)
             return summarize(runs,steps if mode!=1 and not hard else 32.)
-        def interleaved_hard(n):
-            # The same Full Hard kernel must agree within 2%. Rotate the order
-            # each round so clock/thermal drift cannot bias whole mode blocks.
+        def interleaved(n, hard):
+            # Alternate Full/Auto/Fast for Soft and Hard. Rotate the order each
+            # round so background GPU work cannot bias whole mode blocks.
             # Preserve the eight warmups and >=15 samples per mode, all stages,
             # and independent temporal histories used by the Soft measurements.
             modes=(1,0,3)
@@ -126,21 +126,22 @@ def performance_checks(V, args, gl, host, report):
             for k in range(8+max(args.repeats,15)):
                 for j in range(3):
                     mode=modes[(k+j)%3]
-                    _,_,stats=V.render_look(after,f,spec,layers=n,budget_steps=counts[mode],hard_beam=True)
+                    _,_,stats=V.render_look(after,f,spec,layers=n,budget_steps=counts[mode],hard_beam=hard)
                     histories[mode]=after.temporal_resolve(f,histories[mode],f[0],k>0,blend=.86,reject=3.)
                     stats['temporal_ms']=after.temporal_ms
                     after.bloom_feed(f,1.85,1.,stats)
                     if k>=8:runs[mode].append(stats)
-            return {m:summarize(runs[m],32.) for m in modes}
+            return {m:summarize(runs[m],32. if hard or m==1 else counts[m]) for m in modes}
         for n in (1,3,6,10):
             original=timed(before,1,n,False)
             report['measurements'].append(dict(cones=n,mode='baseline',shadows='soft',**original))
             print('baseline',n,original,flush=True)
+            soft=interleaved(n,False)
             for mode,name in ((1,'Full'),(0,'Auto'),(3,'Fast')):
-                result=timed(after,mode,n,False)
+                result=soft[mode]
                 report['measurements'].append(dict(cones=n,mode=name,shadows='soft',**result))
                 print(name,n,'soft',result,flush=True)
-            hard=interleaved_hard(n)
+            hard=interleaved(n,True)
             for mode,name in ((1,'Full'),(0,'Auto'),(3,'Fast')):
                 result=hard[mode]
                 report['measurements'].append(dict(cones=n,mode=name,shadows='hard',**result))
@@ -155,6 +156,7 @@ def performance_checks(V, args, gl, host, report):
               hard_equality_fraction=HARD_COST_TOLERANCE,hard_equality_floor_ms=ORDER_NOISE_MS,
               measured_hard_median_spread_fraction=hard_spread,
               hard_sampling='interleaved, rotating Full/Auto/Fast order each round',
+              soft_sampling='interleaved, rotating Full/Auto/Fast order each round',
               six_cone_maximum_ratio=SIX_CONE_COST_RATIO,failures=failures,size=[args.width,args.height],warmups=8,samples=max(args.repeats,15),
               controls=dict(Resolution=32,ShadowSamples=2,SoftProjectorShadows=True,BloomFeed=1.85,TemporalBlend=.86,TemporalReject=3.),
               fixture='Cinematic Haze medium, identical inside cones, no rim; GPU draw costs only')

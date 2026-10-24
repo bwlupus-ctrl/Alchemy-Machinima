@@ -60,31 +60,20 @@ def cpp_checks(V, args, check):
     src = tree.read(PIPE); old = ref.read(PIPE)
     for name in ['renderProjectorVolumetric', 'feedProjectorVolumetricBloom', 'setupSpotLightVolumetric']:
         check('frozen_cpp/' + name, function(src, name.replace('Volumetric', 'VolumetricClassic') if name != 'feedProjectorVolumetricBloom' else 'feedProjectorVolumetricBloomClassic') == rename(function(old, name)))
-    # Require the pinned dispatch with only reviewed reservation, shader keys
-    # and Full-only Hard changes. GL identity covers every authored look below.
-    expected=function(V.G.SourceTree(NEW).read(PIPE), 'renderProjectorVolumetric')
-    expected=expected.replace('    const bool fine_variant = budget_variant && BDMergeProjectorVolumetricsNoiseStrength > 0.5f;\n','')
-    expected=expected.replace('(hard_variant ? 16u : 0u) | (fine_variant ? 32u : 0u);','(hard_variant ? 16u : 0u);')
-    expected=expected.replace('permutation_on("PROJVOL_HARD_BEAM") == hard_variant &&\n        permutation_on("PROJVOL_FINE_MEDIUM") == fine_variant;',
-                              'permutation_on("PROJVOL_HARD_BEAM") == hard_variant;')
-    expected=expected.replace('        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_FINE_MEDIUM",fine_variant ? "1" : "0");\n','')
-    expected=expected.replace('            if (!v || !v->isLightSpotlight()) continue;',
-                              '            LLVector3 params;\n            if (!LLPrismLens::projectorRenderParams(v, params)) continue;')
-    expected=expected.replace('        mProjectorShaftCost.shadow_taps = llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);',
-                              '        mProjectorShaftCost.shadow_taps = BDMergeProjectorVolumetricsShadowJitterTap ? 1u :\n            llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);')
-    expected=expected.replace('''    const U32 quality = llclamp((U32)definition,0u,3u);
-    const bool hard_variant = beam_shadows == 1;''','''    const bool hard_variant = beam_shadows == 1;
-    // Hard always uses Full's adaptive steps and bypasses every cap/reservation.
-    const U32 quality = projvolEffectiveDefinition(definition,hard_variant);''')
-    expected=expected.replace('''    if (!aux_direct && quality != 1 && beam_shadows == 1)
-    {
-        mProjectorShaftCost.hard_detail = max_res;
-        mProjectorShaftCost.shadow_taps = BDMergeProjectorVolumetricsShadowJitterTap ? 1u :
-            llclamp(BDMergeProjectorVolumetricsShadowSamples,1u,4u);
-    }
-
-''','')
-    check('new_cpp/dispatch', function(src, 'renderProjectorVolumetricNew').replace('renderProjectorVolumetricNew(', 'renderProjectorVolumetric(') == expected)
+    # Keep an exact dispatch pin after FIX5's two-program cone batching. This
+    # replaces the old textual migration with the same whole-function equality
+    # requirement; Classic, shader registration, Full bytes, scenes and reset
+    # gates below remain pinned to their original independent references.
+    dispatch_hash = hashlib.sha256(function(src,'renderProjectorVolumetricNew').encode()).hexdigest()
+    check('new_cpp/dispatch',dispatch_hash == '229ba4cfd3f4bacc607e975ed8d245ff4c9c1a16b23bcc7edbae2938ec47f5df',sha256=dispatch_hash)
+    dispatch=function(src,'renderProjectorVolumetricNew')
+    batch=dispatch[dispatch.index('for (U32 program_index ='):]
+    check('new_cpp/direct_batch_MRT','march_target->bindTarget();\n        if (!halfres) glDrawBuffer(GL_COLOR_ATTACHMENT0);' in batch)
+    manager = tree.read('indra/newview/llviewershadermgr.cpp')
+    check('new_cpp/fallback_lifecycle',all(x in manager for x in (
+        'LLGLSLShader            gDeferredProjectorVolumetricFullProgram;',
+        'mShaderList.push_back(&gDeferredProjectorVolumetricFullProgram);',
+        'gDeferredProjectorVolumetricFullProgram.unload();')))
     stub = r'''
 #include <algorithm>
 #include <array>

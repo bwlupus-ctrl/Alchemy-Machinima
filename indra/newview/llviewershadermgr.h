@@ -348,6 +348,7 @@ extern LLGLSLShader         gDeferredProjectorVolumetricClassicUpsampleProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricClassicTemporalProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricClassicBloomFeedProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
+extern LLGLSLShader         gDeferredProjectorVolumetricFullProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 extern LLGLSLShader         gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]
 extern LLGLSLShader         gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]

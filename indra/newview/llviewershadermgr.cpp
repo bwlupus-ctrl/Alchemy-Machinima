@@ -279,6 +279,7 @@ LLGLSLShader            gTronWorldProgram;
 LLGLSLShader            gTronTrailProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 LLGLSLShader            gDeferredProjectorVolumetricProgram;
+LLGLSLShader            gDeferredProjectorVolumetricFullProgram;
 LLGLSLShader            gDeferredProjectorVolumetricClassicProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 LLGLSLShader            gDeferredProjectorVolumetricClassicUpsampleProgram; // [BDMerge G3.3 P1 item 3]
@@ -728,6 +729,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     // [BDMerge G3.3] projector volumetrics links the same atmospherics/deferred
     // util set as G3.2, so register it too (keeps linked util externs satisfied).
     mShaderList.push_back(&gDeferredProjectorVolumetricProgram);
+    mShaderList.push_back(&gDeferredProjectorVolumetricFullProgram);
     mShaderList.push_back(&gDeferredProjectorVolumetricClassicProgram);
     mShaderList.push_back(&gDeferredProjectorVolumetricUpsampleProgram); // [BDMerge G3.3 P1 item 3]
     mShaderList.push_back(&gDeferredProjectorVolumetricClassicUpsampleProgram); // [BDMerge G3.3 P1 item 3]
@@ -1812,6 +1814,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gTronWorldProgram.unload(); // [TronT1]
         gTronTrailProgram.unload(); // [TronT3]
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
+        gDeferredProjectorVolumetricFullProgram.unload();
         gDeferredProjectorVolumetricClassicProgram.unload(); // [BDMerge G3.3]
         gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
         gDeferredProjectorVolumetricClassicUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]

@@ -72,6 +72,7 @@ class Runner(G.AreaRunner):
         self.termination = None
         self.shaft, self.up = self.link(SHAFT, True), self.link(UP, False)
         self.performance_variants = 'PROJVOL_BUDGET_ENABLE' in shaft_source
+        self.cpu_fallback = self.performance_variants and 'static bool projvolSoftBudgetAllowed(' in tree.read('indra/newview/pipeline.cpp')
         self.fine_permutation = 'PROJVOL_FINE_MEDIUM' in shaft_source
         self.variants = {(False,False,False,False):self.shaft}
         self.ab=None
@@ -162,6 +163,33 @@ class Runner(G.AreaRunner):
         marched = self.target('march',tw,th,half and self.mrt)
         pr = self.shaft
         integration = bool(equi or air or footprint) and self.modern
+        requested_budget = budget_steps
+        if self.cpu_fallback and budget_steps > 0 and not hard_beam:
+            assert self.host is not None, 'CPU fallback requires the production decision host'
+            u = uniforms or {}
+            inside = bool(np.all(light['planes'][:5] @ np.array([*cam.eye,1.]) >= 0))
+            unbias = np.diag([2.,2.,2.,1.]); unbias[:3,3] = -1.
+            clip = unbias @ light['matrix'] @ np.linalg.inv(cam.view)
+            margin = host_request(self.host,'M',[12.,*clip.T.ravel()])[0]/12.
+            facing = float(np.dot(cam.f,light['dir']))
+            allowed = host_request(self.host, 'L', [steps,budget_steps,air,equi,footprint,
+                int((u.get('projvol_dust',0) != 0 and u.get('projvol_dust_intensity',0.) > 0) or
+                    not u.get('projvol_frustum_clip',1) or conservative or u.get('soft_shadow_vogel',0) or
+                    u.get('projvol_shadow_jitter_tap',0) or cap > 0),
+                int(bool(cookie)),int(soft),int(u.get('projvol_shadow_samples',1)),
+                u.get('projvol_noise_strength',0.),u.get('projvol_noise_scale',0.),
+                u.get('projvol_fog_strength',0.),int(inside),margin,facing,float(np.linalg.norm(cam.eye-light['pos'])/12.),dither])[0]
+            if allowed:
+                rgb = u.get('color',(1.,.8,.55))
+                multiplier = u.get('godray_multiplier',6.)
+                gain = multiplier*max(u.get('projvol_density',1.),0.)*(1+np.clip(u.get('projvol_noise_strength',0.),0,1))*max(rgb)*max(1.,u.get('projvol_shadow_tint',0.))
+                center = (cam.view @ np.array([*light['pos'],1.]))[:3]
+                allowed = multiplier >= 0 and min(rgb) >= 0 and u.get('falloff',.3) >= 0 and host_request(self.host,'N',[
+                    *center,u.get('size',12.),u.get('projvol_g',.8),gain,u.get('projvol_max',maximum),
+                    *np.linalg.inv(cam.proj).T.ravel()])[0]
+            if not allowed: budget_steps = 0.
+        self.last_soft_decision = dict(requested=requested_budget, budgeted=bool(budget_steps > 0 and not hard_beam),
+                                       nodes=16 if budget_steps > 0 and not hard_beam else steps)
         # Density is a runtime control; it must not select a shader or reset history.
         fine = self.fine_permutation and budget_steps>0 and (uniforms or {}).get('projvol_noise_strength',0.)>.5
         variant = (integration,bool(budget_steps>0),bool(hard_beam),bool(fine))
@@ -410,6 +438,10 @@ def build_scissor_host(out, glm_include, mutation=None, ref='WORKTREE'):
     pipe = G.SourceTree(ref).read('indra/newview/pipeline.cpp')
     start=pipe.index('static bool projvolClipPyramidBounds(')
     helper=pipe[start:pipe.index('// End standalone-tested projector decisions.',start)]
+    if mutation == 'zero_fallback':
+        previous = helper
+        helper = helper.replace('budgeted || (definition != 1 && budget <= 0.f)', 'budgeted')
+        assert helper != previous, 'zero-share mutation did not change production dispatch'
     if mutation=='near_coverage':
         old=G.SourceTree(ROUND2).read('indra/newview/pipeline.cpp')
         a='static bool projvolSphereBounds('; b='static U32 projvolAdaptiveResolution('
@@ -470,6 +502,25 @@ projvolUploadStepBudget(shader,rim,mode,legacy,look,budget);std::cout<<std::endl
         budget_op += r'''
 else if(op=="K"){unsigned mode;bool hard;std::cin>>mode>>hard;
 std::cout<<projvolEffectiveDefinition(mode,hard)<<std::endl;}
+'''
+    if 'static bool projvolSoftBudgetAllowed(' in helper:
+        budget_op += r'''
+else if(op=="L"){unsigned authored,taps,dither;float budget,noise,scale,fog,margin,facing,distance;bool air,equi,foot,dust,cookie,soft,inside;
+std::cin>>authored>>budget>>air>>equi>>foot>>dust>>cookie>>soft>>taps>>noise>>scale>>fog>>inside>>margin>>facing>>distance>>dither;
+std::cout<<projvolSoftBudgetAllowed(authored,budget,air,equi,foot,dust,cookie,soft,taps,noise,scale,fog,inside,margin,facing,distance,dither)<<std::endl;}
+'''
+        budget_op += r'''
+else if(op=="M"){float radius;glm::mat4 clip;std::cin>>radius;matrix(clip);
+std::cout<<projvolCameraMargin(clip,radius)<<std::endl;}
+'''
+        budget_op += r'''
+else if(op=="D"){unsigned mode;bool budgeted;float budget;std::cin>>mode>>budgeted>>budget;
+std::cout<<projvolConeDefinition(mode,budgeted,budget)<<std::endl;}
+'''
+        budget_op += r'''
+else if(op=="N"){glm::vec3 center;glm::mat4 inverse_projection;float radius,g,gain,maximum;
+std::cin>>center.x>>center.y>>center.z>>radius>>g>>gain>>maximum;matrix(inverse_projection);
+std::cout<<projvolFullCostIsUnclamped(center,inverse_projection,radius,g,gain,maximum)<<std::endl;}
 '''
     if 'static bool projvolVariantReady(' in helper:
         header = G.SourceTree(ref).read('indra/newview/pipeline.h')

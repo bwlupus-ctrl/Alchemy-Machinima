@@ -38,6 +38,23 @@ def review_checks(V, args, gl, host, report):
     startup.host=host
     zero=V.render_look(startup,f,sp,steps=0,budget_steps=0.)[1]
     check('startup_budget_zero_share',np.count_nonzero(zero)==0,nonzero_values=int(np.count_nonzero(zero)))
+    zero_out=args.out/'zero_fallback';zero_out.mkdir(exist_ok=True)
+    bad_zero=V.build_scissor_host(zero_out,args.glm_include,mutation='zero_fallback')
+    zero_definitions={}
+    try:
+        for name,h in (('production',host),('mutated',bad_zero)):
+            rows=[]
+            for mode in (0,1,2,3):
+                effective=int(V.host_request(h,'D',[mode,0,0.])[0])
+                commands=V.host_request(h,'Q',[0,effective,24,32,0.])
+                actual=int(next(c[2] for c in commands if c[:2]==['i','godray_res']))
+                rows.append(dict(requested=mode,effective=effective,steps=actual))
+            zero_definitions[name]=rows
+    finally:
+        bad_zero.stdin.close();assert bad_zero.wait(timeout=5)==0
+    check('fallback_preserves_zero_share',all(r['steps']==(24 if r['requested']==1 else 0)
+        for r in zero_definitions['production']),results=zero_definitions)
+    check('zero_fallback_negative_control',all(r['steps']==24 for r in zero_definitions['mutated']))
     transitions={}
     moving_frames=V.micro_frames(f)
     moving_bands=[V.LaneBand(frame,V.render_look(after,frame,sp,shadows=False)[0]) for frame in moving_frames]
