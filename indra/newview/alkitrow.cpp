@@ -1189,14 +1189,16 @@ ALKitQol::Favorite ALKitRow::favoriteKey() const
 ALKitRow* ALKitRow::createHeaderProxy(ALKitPage* page, ALKitCard* card, const std::string& widget,
                                     const std::string& name)
 {
-    ALKitSwitch* source = card ? card->headerSwitch(widget) : nullptr;
-    if (!page || !source || !card->headerQuickSafe(widget)) return nullptr;
+    if (!page) return nullptr;
+    ALKitSwitch* source = card ? card->headerSwitch(widget) : page->masterSwitch();
+    if (!source || (card ? !card->headerQuickSafe(widget)
+                        : (!page->isMasterWidget(widget) || !page->masterQuickSafe() || page->masterSetting().empty()))) return nullptr;
     Params params;
     params.name = name;
     params.rect = LLRect(0, ALKitStyle::ROW_H, 400, 0);
     params.kind = "toggle";
     params.widget = name + "_control";
-    params.label = card->headerLabel(widget);
+    params.label = card ? card->headerLabel(widget) : page->masterLabel();
     params.help = source->getToolTip();
     params.link_to = page->pageKey() + "/" + widget;
     params.widget_history = false; // One setting observer owns undo; ScopedSource attributes it to Quick.
@@ -1204,13 +1206,13 @@ ALKitRow* ALKitRow::createHeaderProxy(ALKitPage* page, ALKitCard* card, const st
     ALKitRow* proxy = new ALKitRow(params);
     proxy->mHeaderProxy = true;
     proxy->mHeaderSource = source->getDerivedHandle<ALKitSwitch>();
-    proxy->setOwnerIdentity(page->pageKey(), card->id());
+    proxy->setOwnerIdentity(page->pageKey(), card ? card->id() : std::string());
     ALKitSwitch::Params control_params;
     control_params.name = params.widget;
     control_params.rect = LLRect(0, ALKitStyle::SWITCH_H, ALKitStyle::SWITCH_W, 0);
     ALKitSwitch* control = LLUICtrlFactory::create<ALKitSwitch>(control_params);
     proxy->addChild(control);
-    proxy->mBinding = std::make_unique<ALKitHeaderBinding>(source, card->headerSetting(widget));
+    proxy->mBinding = std::make_unique<ALKitHeaderBinding>(source, card ? card->headerSetting(widget) : page->masterSetting());
     proxy->postBuild();
     proxy->mBindingConnection = proxy->mBinding->connectChanged([proxy]() { proxy->bindingChanged(); });
     control->setCommitCallback([proxy](LLUICtrl* edited, const LLSD&) { proxy->setBoundValue(edited->getValue()); });

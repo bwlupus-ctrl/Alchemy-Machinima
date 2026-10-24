@@ -1,6 +1,7 @@
 {
  "version": 1,
  "header_quick_allowlist": {
+  "BDMergeProjectorVolumetrics": "Reviewed: runtime shaft master; no shader-reload listener; Quick forwards the original switch commit.",
   "RenderGradNDEnabled": "Reviewed: no listeners; plain runtime setting.",
   "RenderPolarizerEnabled": "Reviewed: no listeners; plain runtime setting.",
   "RenderInfraredEnabled": "Reviewed: runtime filter; resolved Lens Looks hint observer only.",
@@ -16,6 +17,7 @@
   "AlchemyWeatherLightningEnabled": "Reviewed: no listeners; plain runtime setting."
  },
  "header_quick_policy": {
+  "light_group/projector_shafts_tab/projector_cones_enable_check": "setting",
   "camera_group/frame_orbit_tab/auto_frame_enabled": "controller",
   "camera_group/frame_orbit_tab/FlycamOrbitEnabled": "controller",
   "camera_group/operator_tab/CameraShakeApplyActive": "controller",

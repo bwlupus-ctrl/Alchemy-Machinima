@@ -76,6 +76,7 @@ uniform int   projvol_temporal_beam_depth;
 
 // deferredUtil.glsl - view-space position reconstruction from the full-res depth.
 vec4 getPosition(vec2 pos_screen);
+vec4 getNorm(vec2 pos_screen);
 
 void main()
 {
@@ -156,6 +157,10 @@ void main()
     // "looks like the current frame".
     vec3 nmin = cur;
     vec3 nmax = cur;
+    vec3 current_sum = cur * 4.0;
+    float current_weight = 4.0;
+    float surface_coherence = 1.0;
+    vec3 current_normal = normalize(getNorm(tc).xyz);
     vec2 texel = 1.0 / projvol_half_res;
     for (int j = -1; j <= 1; ++j)
     for (int i = -1; i <= 1; ++i)
@@ -164,6 +169,19 @@ void main()
         vec3 n = texture(projectionMap, tc + vec2(float(i), float(j)) * texel).rgb;
         nmin = min(nmin, n);
         nmax = max(nmax, n);
+        if (abs(i) + abs(j) == 1)
+        {
+            float neighbor_depth = length(getPosition(tc + vec2(float(i), float(j)) * texel).xyz);
+            // A continuous bilateral weight avoids both crossing silhouettes
+            // and popping a tap on/off as a sloped surface crosses a threshold.
+            float depth_delta = (neighbor_depth - d_cur) / (0.02 * max(d_cur, 1.0));
+            float same_surface = exp(-depth_delta * depth_delta);
+            vec3 neighbor_normal = normalize(getNorm(tc + vec2(float(i), float(j)) * texel).xyz);
+            same_surface *= pow(max(dot(current_normal, neighbor_normal), 0.0), 16.0);
+            surface_coherence = min(surface_coherence, same_surface);
+            current_sum += n * same_surface;
+            current_weight += same_surface;
+        }
     }
     vec3 hclamp = clamp(hist.rgb, nmin, nmax);
 
@@ -183,9 +201,27 @@ void main()
         float lh = dot(hclamp, vec3(0.2126, 0.7152, 0.0722));
         float change = abs(lc - lh) / (lc + lh + 1e-3);   // 0 steady .. ~1 fully changed
         w *= exp(-projvol_temporal_reject * change);
+        // Static dither is locked to the screen. The first subpixel camera move
+        // bilinearly filters its history for the first time, even after a long
+        // stationary pre-roll. Do not suddenly replace that pattern with a
+        // differently filtered one: reject history that differs by 2% of the
+        // current peak channel (with a smooth 1%-2% transition). Small residuals
+        // still accumulate; large lighting changes and cuts use current radiance.
+        // Keep reject == 0 as the explicit legacy behavior.
+        vec3 delta = abs(hclamp - cur);
+        float relative_delta = max(delta.r, max(delta.g, delta.b)) /
+                               max(max(cur.r, max(cur.g, cur.b)), 1e-4);
+        w *= 1.0 - smoothstep(0.01, 0.02, relative_delta);
     }
 
-    vec3  outc = mix(cur, hclamp, w);
+    // Seed and subsequent frames use the same small cross prefilter. Otherwise
+    // an invalid/cut frame contains raw dither while the first moving history
+    // is bilinearly filtered, changing the noise bandwidth in one frame.
+    // Keep the entire footprint unfiltered at silhouettes: filtering just the
+    // surviving taps would change the filter as geometry enters/leaves a pixel.
+    vec3 current_filtered = (projvol_temporal_reject > 0.0)
+                         ? mix(cur, current_sum / current_weight, surface_coherence) : cur;
+    vec3 outc = mix(current_filtered, hclamp, w);
 
     // Store accumulated shaft + this frame's depth for next frame's disocclusion.
     // [R1] d_store is the surface distance (legacy) or the beam distance (gate on).

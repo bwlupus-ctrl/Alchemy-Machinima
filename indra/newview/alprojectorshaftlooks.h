@@ -48,8 +48,6 @@ const char* dustSetting();
 // "0".."7" are the built-in ids of the previous 8 presets; "b:*" ids map to themselves; anything
 // else maps to "" (nothing to apply).
 std::string canonicalLookId(const std::string& id);
-// The old Lightbox combo integers (-1 = Custom, no-op).
-std::string canonicalLookId(S32 legacy_combo_value);
 }
 
 #endif // AL_PROJECTOR_SHAFT_LOOKS_H

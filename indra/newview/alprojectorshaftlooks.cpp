@@ -144,7 +144,7 @@ static const Value kLookDreamMist[] = {
 
 // 8. Silhouette Rays
 static const Value kLookSilhouette[] = {
-    {"BDMergeProjectorVolumetricsMultiplier", Type::F32, {1.4f}},
+    {"BDMergeProjectorVolumetricsMultiplier", Type::F32, {1.3f}},
     {"BDMergeProjectorVolumetricsResolution", Type::U32, {40.f}},
     {"BDMergeProjectorVolumetricsAnisotropy", Type::F32, {0.88f}},
     {"BDMergeProjectorVolumetricsFeather", Type::F32, {0.1f}},
@@ -401,12 +401,4 @@ std::string canonicalLookId(const std::string& id)
     return std::string();
 }
 
-std::string canonicalLookId(S32 legacy_combo_value)
-{
-    if (legacy_combo_value < 0)
-    {
-        return std::string();
-    }
-    return canonicalLookId(std::to_string(legacy_combo_value));
-}
 }

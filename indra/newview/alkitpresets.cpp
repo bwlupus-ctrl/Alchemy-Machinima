@@ -162,7 +162,7 @@ std::vector<std::string> pageSettings(const std::string& page)
     if (page == "camera_group/takes_tab") { add(owned(WEIGHTED)); add(owned(DRONE)); }
     if (page == "light_group/cine_light_rig_tab") { add(owned(LIGHT_RIG)); add(owned(FLARE)); add(owned(NIGHT_MASK)); }
     if (page == "world_group/atmosphere_tab") add(owned(HAZE));
-    if (page == "light_group/projector_shafts_tab") add(ALProjectorShaftPresets::trackedSettings());
+    if (page == "light_group/projector_shafts_tab") add(ALProjectorShaftPresets::pageSettings());
     if (page == "world_group/weather_tab") add(ALPanelWeatherSettings::trackedSettings());
     if (page == "look_group/stepped_tab") { add(ALSteppedAnim::presetSettings()); keys.emplace_back("StepAnimEnabled"); }
     return keys;

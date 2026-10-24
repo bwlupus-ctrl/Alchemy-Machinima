@@ -101,6 +101,7 @@ public:
     void setSubjectDisplayValues(S32 self_value, S32 subject_a_value,
                                  S32 subject_count);
     static ALKitRow* createProxy(ALKitRow*, const std::string&);
+    // A null card selects the page's setting-bound master switch.
     static ALKitRow* createHeaderProxy(ALKitPage*, ALKitCard*, const std::string&, const std::string&);
 
 protected:

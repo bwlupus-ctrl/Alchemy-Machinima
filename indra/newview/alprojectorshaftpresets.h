@@ -24,6 +24,8 @@ bool apply(const std::string& id);
 bool applyValues(const LLSD& values);
 // Owned set plus the Dust permutation: what a user look saves and what the strip tracks.
 const std::vector<std::string>& trackedSettings();
+// All page controls for page history; look ownership stays narrower.
+const std::vector<std::string>& pageSettings();
 }
 
 #endif // AL_PROJECTOR_SHAFT_PRESETS_H

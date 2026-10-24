@@ -70,6 +70,12 @@ template<> template<> void alkitqol_object::test<6>()
     add("world_group/atmosphere_tab", "gobo_anisotropic_check");
     add("world_group/atmosphere_tab", "projector_volumetrics_half_res_check");
     add("world_group/atmosphere_tab", "ps_BDMergeFroxelWindAzimuth_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeFroxelWindElevation_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeFroxelWindInverted_check");
+    add("world_group/atmosphere_tab", "ps_BDMergeSoftShadowSoftness_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeSoftShadowMaxPenumbra_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeSoftShadowFill_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeFroxelDensity_slider");
     // Atmosphere keeps its own rows.
     add("world_group/atmosphere_tab", "ch_CineHazeStrength_slider");
     add("world_group/atmosphere_tab", "localfog_master");
@@ -88,6 +94,12 @@ template<> template<> void alkitqol_object::test<6>()
         { shafts, "gobo_anisotropic_check" },
         { shafts, "projector_volumetrics_half_res_check" },
         { shafts, "ps_BDMergeFroxelWindAzimuth_slider" },
+        { shafts, "ps_BDMergeFroxelWindElevation_slider" },
+        { shafts, "ps_BDMergeFroxelWindInverted_check" },
+        { shafts, "ps_BDMergeSoftShadowSoftness_slider" },
+        { shafts, "ps_BDMergeSoftShadowMaxPenumbra_slider" },
+        { shafts, "ps_BDMergeSoftShadowFill_slider" },
+        { "world_group/atmosphere_tab", "ps_BDMergeFroxelDensity_slider" },
         { "world_group/atmosphere_tab", "ch_CineHazeStrength_slider" },
         { "world_group/atmosphere_tab", "localfog_master" },
         { "light_group/practicals_tab", "ps_BDMergeProjectorVolumetricsMultiplier_slider" },

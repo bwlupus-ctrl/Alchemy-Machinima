@@ -93,7 +93,12 @@ inline bool isValidFavorite(const Favorite& favorite)
 // against the old page follows its row. Only the moved widgets are rewritten; Atmosphere keeps its own.
 inline bool isProjectorShaftWidget(const std::string& widget)
 {
-    return widget.rfind("ps_", 0) == 0 || widget.rfind("projector_volumetrics_", 0) == 0 ||
+    return widget.rfind("ps_BDMergeProjectorVolumetrics", 0) == 0 || widget == "ps_tint_swatch" ||
+           widget == "ps_BDMergeFroxelWindAzimuth_slider" || widget == "ps_BDMergeFroxelWindElevation_slider" ||
+           widget == "ps_BDMergeFroxelWindInverted_check" ||
+           widget == "ps_BDMergeSoftShadowSoftness_slider" || widget == "ps_BDMergeSoftShadowMaxPenumbra_slider" ||
+           widget == "ps_BDMergeSoftShadowFill_slider" ||
+           widget.rfind("projector_volumetrics_", 0) == 0 ||
            widget == "projector_cones_enable_check" || widget == "soft_shadows_enable_check" ||
            widget == "soft_shadow_sun_check" || widget == "gobo_anisotropic_check";
 }

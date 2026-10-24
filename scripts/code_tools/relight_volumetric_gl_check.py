@@ -270,7 +270,7 @@ class Runner(G.AreaRunner):
         self._mat(pr,b'projvol_inv_modelview',np.linalg.inv(cam.view))
         self._mat(pr,b'projvol_prev_viewproj',previous_camera.proj@previous_camera.view)
         self._mat(pr,b'projvol_prev_modelview',previous_camera.view)
-        self.ui(pr,'depthMap',1);self.ui(pr,'projectionMap',5);self.ui(pr,'projvol_history',9)
+        self.ui(pr,'depthMap',1);self.ui(pr,'normalMap',2);self.ui(pr,'projectionMap',5);self.ui(pr,'projvol_history',9)
         self.ui(pr,'projvol_temporal_beam_depth',1)
         self.uf(pr,'projvol_half_res',w,h)
         self.uf(pr,'projvol_temporal_blend',.75 if valid else 0)
@@ -1004,7 +1004,7 @@ def parse_looks():
 def settings_defaults():
     text = (G.REPO/SETTINGS_XML).read_text(encoding='utf-8')
     out = {}
-    for m in re.finditer(r'<key>(BDMergeProjectorVolumetrics\w*|BDMergeSoft\w+)</key>\s*<map>(.*?)</map>', text, re.S):
+    for m in re.finditer(r'<key>(BDMergeProjectorVolumetrics\w*|BDMergeSoft\w+|RenderSpotShadowBias|RenderSpotShadowOffset)</key>\s*<map>(.*?)</map>', text, re.S):
         body = m.group(2)
         typ = re.search(r'<key>Type</key>\s*<string>(\w+)</string>', body).group(1)
         val = re.search(r'<key>Value</key>\s*(.*)$', body, re.S).group(1)
@@ -1041,6 +1041,8 @@ def look_spec(state):
         'soft_shadow_scale': state['BDMergeSoftShadowSoftness'][0],
         'soft_shadow_max': max(state['BDMergeSoftShadowMaxPenumbra'][0], 1.),
         'soft_shadow_fill': clamp(state['BDMergeSoftShadowFill'][0], 0, 1),
+        'spot_shadow_bias': state['RenderSpotShadowBias'][0],
+        'spot_shadow_offset': state['RenderSpotShadowOffset'][0],
         'projvol_time': 0.0,   # frozen: the medium is judged on geometry stability, not on its animation
     }
     if dust:
@@ -1171,6 +1173,99 @@ def render_look(runner, fixture, spec, **over):
     return runner.run(fixture, uniforms=spec['uniforms'], **kw)
 
 
+def temporal_sequence(runner, frames, spec, budgets, preroll=0):
+    """Viewer order: raw half-res march, resolve, retain history. Include every moving pair.
+
+    A stationary pre-roll is a separate experiment, never a replacement for the
+    cold/cut start. Screen-locked dither must survive the first move in BOTH cases.
+    """
+    cam = frames[0][0]
+    history = np.zeros((cam.H//2, cam.W//2, 4), np.float32)
+    previous = cam; valid = False; result = []
+    for k in [0]*preroll + list(range(len(frames))):
+        f = frames[k]
+        render_look(runner, f, spec, steps=budgets[k][0], frame=k)
+        history = runner.temporal_resolve(f, history, previous, valid)
+        previous = f[0]; valid = True
+        result.append(history[:, :, :3].copy())
+    return result[preroll:]
+
+
+def motion_fractions(images):
+    return [float(c/max(n, 1)) for c, n in
+            (shaft_changes(a, b) for a, b in zip(images, images[1:]))]
+
+
+class UnfilteredHistoryTree(G.SourceTree):
+    """Negative control: the original temporal rejection, before the first-move fix."""
+    def read(self, path):
+        src = super().read(path)
+        if Path(path).name == 'projectorVolumetricTemporalF.glsl':
+            guard = '        w *= 1.0 - smoothstep(0.01, 0.02, relative_delta);'
+            assert guard in src
+            src = src.replace(guard, '')
+            src, count = re.subn(r'vec3 current_filtered = .*?;', 'vec3 current_filtered = cur;', src, flags=re.S)
+            assert count == 1
+        return src
+
+
+class FlickeringRimTree(G.SourceTree):
+    """Inject a real radiance pop to prove the surface stability check detects flicker."""
+    def read(self, path):
+        src = super().read(path)
+        if Path(path).as_posix().endswith(SHAFT):
+            line = '                shaft += rim;'
+            assert line in src
+            src = src.replace(line, '                rim *= 1.0 + 0.2 * mod(projvol_frame, 2.0);\n'+line)
+        return src
+
+
+def rim_surface_probes(runner, frames, spec):
+    """Track the SAME visible world surfaces, instead of comparing moving silhouette coverage.
+
+    A 3x3 camera aimed at each point evaluates that point at the exact centre
+    pixel through production depth/normal decoding and rim GLSL. Only the eye
+    moves. The 5% radiance and 0.1% changed-sample limits are unchanged from P2:
+    <=144 probes means even one unstable probe fails. Analytic visibility removes
+    only real disocclusions, independently of the measured radiance.
+    """
+    f = frames[0]; scene = f[4]['scene']
+    rim = render_look(runner, f, spec, half=False, steps=0)[0]
+    lit = luminance(rim) > 1e-4
+    unshadowed = render_look(runner, f, spec, half=False, steps=0, shadows=False)[0]
+    visibility = luminance(rim)/np.maximum(luminance(unshadowed), 1e-8)
+    points = []
+    for surf in np.unique(f[1]['surf'][lit]):
+        if surf == 255:
+            continue
+        ids = np.flatnonzero(lit & (f[1]['surf'] == surf))
+        chosen = ids[np.linspace(0, len(ids)-1, min(24, len(ids))).astype(int)]
+        points.extend(f[1]['pos'].reshape(-1, 3)[chosen])
+        # Include actual shadow boundaries, not just uniformly spaced lit points.
+        # A camera-dependent PCF footprint is easiest to miss on fully lit surfaces.
+        edge_ids = np.flatnonzero(lit & (f[1]['surf'] == surf) & (visibility > .02) & (visibility < .98))
+        if len(edge_ids):
+            chosen = edge_ids[np.linspace(0, len(edge_ids)-1, min(24, len(edge_ids))).astype(int)]
+            points.extend(f[1]['pos'].reshape(-1, 3)[chosen])
+    images = []; visibility = []
+    for k, frame in enumerate(frames):
+        values = []; visible = []
+        for point in points:
+            cam = S.Camera(frame[0].eye, point, 3, 3)
+            g = S.cast_primary(scene, cam); _, depth, normal = S.encode_gbuffer(cam, g)
+            probe = (cam, g, depth, normal, f[4])
+            values.append(render_look(runner, probe, spec, half=False, steps=0, frame=k)[0][1, 1, :3])
+            visible.append(np.linalg.norm(g['pos'][1, 1]-point) < 1e-3)
+        images.append(values); visibility.append(visible)
+    images = np.asarray(images)
+    persistent = np.all(visibility, axis=0) & (images[0].max(1) > 1e-4)
+    delta = np.max(np.abs(np.diff(images, axis=0)), 2)/np.maximum(images[:-1].max(2), 1e-4)
+    measured = delta[:, persistent]
+    return dict(probes=int(persistent.sum()), occluded_probes=int(len(points)-persistent.sum()),
+                max_relative_change=float(measured.max()) if measured.size else 1.,
+                max_pair_fraction=float((measured > .05).mean(1).max()) if measured.size else 1.)
+
+
 def timed_look(runner, fixture, spec, repeats, **over):
     """Median GPU ms of march + upsample + rim + bloom-feed (warmup excluded). Returns (median stats dict, total)."""
     def once():
@@ -1184,26 +1279,35 @@ def timed_look(runner, fixture, spec, repeats, **over):
     return med, float(np.median(totals)), [float(min(totals)), float(max(totals))]
 
 
-def backlit_fixture(w, h):
-    """Floor, a dark back wall and 7 thin vertical bars between a hot backlight and the camera (the lane fixture)."""
+def backlit_fixture(w, h, occluders=True, bar_radius=.035):
+    """Reference-style fan: low projector aimed up behind seven thin vertical/diagonal bars.
+
+    The camera looks toward the lamp from below the cone axis. Unlike looking
+    straight down the cone, the upper rays enter the haze beyond the bars, so
+    light in front of the occluders cannot fill all of their dark lanes.
+    """
     prims = [S.Prim('floor', 'obb', c=(0, 3, -.2), h=(15, 15, .2)),
-             S.Prim('wall', 'obb', albedo=(.03, .03, .03), c=(0, -1.5, 2.5), h=(15, .1, 2.5))]
+             S.Prim('wall', 'obb', c=(0, -1, 3), h=(15, .1, 3))]
+    tops = []
     for i in range(7):
-        prims.append(S.Prim('bar%d' % i, 'obb', c=((i-3)*.35, 1.2, 1.2), h=(.025, .025, 1.2)))
+        x = (i-3)*.24
+        dx = (0., .3, -.2)[i % 3]
+        top = (x+dx, 1.2, 1.8); tops.append(top)
+        if occluders:
+            prims.append(S.Prim('bar%d' % i, 'capsule', r=bar_radius, a=(x, 1.2, .65), b=top))
     scene = S.Scene('backlit', prims, [], [], {}, np.empty((0, 3)))
-    pos = np.array([0., 0., .6]); tilt = np.deg2rad(8.)
-    direction = S.unit([0., np.cos(tilt), np.sin(tilt)])
-    lc = S.Camera(pos, pos+direction*4, 768, 768, vfov=60, near=.15, far=12)
+    pos = np.array([0., 0., .18]); direction = S.unit([0., 1., 1.4])
+    lc = S.Camera(pos, pos+direction*4, 1024, 1024, vfov=60, near=.1, far=12)
     lg = S.cast_primary(scene, lc)
     zf = np.where(np.isfinite(lg['zf']), lg['zf'], 12)
-    z = (12+.15)/(12-.15)-2*12*.15/((12-.15)*zf)
+    z = (12+.1)/(12-.1)-2*12*.1/((12-.1)*zf)
     depth = np.ascontiguousarray(np.clip(z*.5+.5, 0, 1), np.float32)
     bias = np.eye(4); bias[:3, :3] *= .5; bias[:3, 3] = .5
     vp = lc.proj@lc.view
     planes = np.array([vp[3]+vp[0], vp[3]-vp[0], vp[3]+vp[1], vp[3]-vp[1], vp[3]+vp[2], vp[3]-vp[2]])
     light = dict(pos=pos, dir=direction, matrix=bias@vp, planes=planes, depth=depth, scene=scene, view=lc.view,
-                 fov=np.deg2rad(60.))
-    cam = S.Camera((0.3, 7., 1.4), (0., 0., .6), w, h)
+                 fov=np.deg2rad(60.), lane_tops=np.array(tops))
+    cam = S.Camera((.2, 5., 1.4), (0., .1, 1.5), w, h)
     g = S.cast_primary(scene, cam); _, d, n = S.encode_gbuffer(cam, g)
     return cam, g, d, n, light
 
@@ -1213,33 +1317,58 @@ def luminance(im):
 
 
 class LaneBand:
-    """Rows between the lamp apex and the bar tops; columns inside the unshadowed cone (taken from a shadow-free render)."""
-    def __init__(self, fixture, unshadowed):
-        cam, _, _, _, light = fixture
-        px, py, _ = cam.project(np.array([light['pos'], (0., 1.2, 2.4)]))
-        self.j0, self.j1 = int(py[0])+3, int(py[1])-1
-        assert 8 <= self.j1-self.j0, 'lane band is empty: apex rows %s' % (py,)
-        col = luminance(unshadowed)[self.j0:self.j1].mean(0)
-        self.cols = col > .05*col.max()
-        assert self.cols.sum() > 50, 'cone mask is empty'
-        self.apex_row = float(py[0])
-        self.unshadowed = luminance(unshadowed)
+    """Radial columns above ALL bar tops, normalized by the same camera without shadows.
 
-    def contrast(self, im, scale=1, normalized=False):
-        """C = 1 - P10/P90 of the column-mean luminance (the plan's definition). normalized=True divides each column by the
-        same column of the shadow-free render first, which removes the beam's own brightness profile and keeps only what
-        the occluders cut out (lane depth)."""
-        j0, j1 = self.j0//scale, max(self.j1//scale, self.j0//scale+2)
-        cols = self.cols[::scale][:im.shape[1]]
-        col = luminance(im)[j0:j1].mean(0)[cols]
+    Rays diverge from the projected lamp, so averaging ordinary image columns
+    washes the fan out. Removing the unshadowed profile prevents beam falloff
+    from passing. No opaque bar pixels participate in this air-only measurement.
+    """
+    def __init__(self, fixture, unshadowed):
+        self.cam = cam = fixture[0]
+        px, py, _ = cam.project(np.array([fixture[4]['pos']]))
+        _, tops, _ = cam.project(fixture[4]['lane_tops'])
+        self.j0 = int(tops.max()) + max(3, round(cam.H*.01))
+        self.j1 = int(cam.H*.94)
+        assert self.j1-self.j0 >= 20, 'air lane band above the bars is empty'
+        rows = np.arange(self.j0, self.j1)
+        slopes = np.linspace(-2.5, 2.5, 501)
+        self.y = np.broadcast_to(rows, (len(slopes), len(rows)))
+        self.x = px[0]+slopes[:, None]*(rows[None, :]-py[0])
+        ref = self.samples(unshadowed)
+        self.valid = (self.x > 1) & (self.x < cam.W-2) & (ref > .05*ref.max())
+        self.cols = self.valid.sum(1) >= .8*len(rows)
+        assert self.cols.sum() > 50, 'radial cone mask is empty'
+        self.reference = self.column_mean(ref)
+
+    def samples(self, im):
+        # Map pixel centres by UV, including odd full/half target dimensions.
+        h, w = im.shape[:2]
+        x = (self.x+.5)*w/self.cam.W-.5
+        y = (self.y+.5)*h/self.cam.H-.5
+        x = np.clip(x, 0, w-1); y = np.clip(y, 0, h-1)
+        x0 = x.astype(int); y0 = y.astype(int)
+        x1 = np.minimum(x0+1, w-1); y1 = np.minimum(y0+1, h-1)
+        fx = x-x0; fy = y-y0; lum = luminance(im)
+        return (lum[y0, x0]*(1-fx)+lum[y0, x1]*fx)*(1-fy) + (lum[y1, x0]*(1-fx)+lum[y1, x1]*fx)*fy
+
+    def column_mean(self, samples):
+        return (samples*self.valid).sum(1)/np.maximum(self.valid.sum(1), 1)
+
+    def profile(self, im, normalized=True):
+        col = self.column_mean(self.samples(im))
         if normalized:
-            ref = self.unshadowed
-            if scale > 1:
-                hh, ww = ref.shape[0]//scale*scale, ref.shape[1]//scale*scale
-                ref = ref[:hh, :ww].reshape(hh//scale, scale, ww//scale, scale).mean((1, 3))
-            col = col/np.maximum(ref[j0:j1].mean(0)[cols], 1e-9)
-        p10, p90 = np.percentile(col, 10), np.percentile(col, 90)
+            col = col/np.maximum(self.reference, 1e-9)
+        return col[self.cols]
+
+    def contrast(self, im, scale=1, normalized=True):
+        p10, p90 = np.percentile(self.profile(im, normalized), [10, 90])
         return float(1-p10/p90) if p90 > 0 else 0.
+
+    def lane_count(self, im):
+        col = self.profile(im)
+        smooth = np.convolve(col, np.ones(5)/5, mode='valid')
+        dark = smooth < .65*np.percentile(smooth, 90)
+        return int(np.count_nonzero(dark[1:] & ~dark[:-1]) + bool(dark[0]))
 
 
 def grid_sheet(path, tiles, cols=4, tile_w=480):
@@ -1287,6 +1416,16 @@ def looks_checks(args, gl, host, report):
     check('uniform_names_documented', not wrong, wrong=wrong)
 
     rig = LookRig(gl, host)
+    # Compile the shared shadow module with BOTH production shadow paths present,
+    # even though this fixture only draws projectors.
+    shadow_probe = rig.runners(False)['after']
+    saved_preamble = G.PREAMBLE
+    try:
+        G.PREAMBLE += '\n#undef SUN_SHADOW\n#define SUN_SHADOW 1\n'
+        shadow_probe._compile(shadow_util, 'shared shadowUtil: SUN_SHADOW + SPOT_SHADOW')
+    finally:
+        G.PREAMBLE = saved_preamble
+    check('shared_sun_spot_shadow_module_compiles', True)
     check('synthetic_dust_volume', rig.mote_texels > 0, mote_texels_over_0p78=rig.mote_texels,
           note='SYNTHETIC seeded 64^3 volume; dust cost is indicative only')
     t0 = time.time()
@@ -1308,41 +1447,65 @@ def looks_checks(args, gl, host, report):
             _, b, _ = render_look(after, scenes[pose], spec, frame=2)
             p1[pose] = a.tobytes() == b.tobytes()
         check(lid+'/P1_static', all(p1.values()), poses=p1)
-        # P2 motion pop at production budgets (sphere steps), plain and through the temporal resolve.
-        # The enforced image is the shaft BODY: the full-resolution surface rim is a one-pixel edge that, like any real
-        # silhouette, changes ~1% of pixels by >5% when the camera slides 0.33 px, so it is measured separately
-        # (rim_pair_fraction, informational). The temporal pair 0 only seeds the accumulator (history starts empty at
-        # blend 0): it is recorded as seed_pair_fraction and excluded; pairs 1..7 are the motion measurement.
-        p2 = {}
+        # P2: every one of the eight transitions, both immediately after a cut
+        # and after stationary viewer-order history. Rims have an independent
+        # world-surface test so translating a silhouette is not called flicker.
+        p2 = {}; rim_probes = {}
         for pose, fs in frames.items():
             budgets = [production_steps(host, f, spec['resolution']) for f in fs]
             sphere = [b[0] for b in budgets]
             imgs = [render_look(after, f, spec, steps=b[0], rim=0.)[0] for f, b in zip(fs, budgets)]
-            pair = [shaft_changes(imgs[i], imgs[i+1]) for i in range(len(imgs)-1)]
+            pair = motion_fractions(imgs)
             rim_fraction = None
             if spec['kwargs']['rim'] > 0:
                 rimmed = [render_look(after, f, spec, steps=b[0])[0] for f, b in zip(fs, budgets)]
-                rim_fraction = float(max(c/max(l, 1) for c, l in (shaft_changes(rimmed[i], rimmed[i+1]) for i in range(len(rimmed)-1))))
-            history = np.zeros((fs[0][0].H//2, fs[0][0].W//2, 4), np.float32); previous = None; hist = []
-            for k, f in enumerate(fs):
-                render_look(after, f, spec, steps=budgets[k][0])
-                history = after.temporal_resolve(f, history, f[0] if previous is None else previous, k > 0); previous = f[0]
-                hist.append(history[:, :, :3].copy())
-            tpair = [shaft_changes(hist[i], hist[i+1]) for i in range(len(hist)-1)]
+                rim_fraction = max(motion_fractions(rimmed))
+                rim_probes[pose] = rim_surface_probes(after, fs, spec)
+            hist = temporal_sequence(after, fs, spec, budgets)
+            warm = temporal_sequence(after, fs, spec, budgets, preroll=3)
+            tpair = motion_fractions(hist); wpair = motion_fractions(warm)
             p2[pose] = dict(
                 steps=sphere, max_step_delta=int(max(abs(sphere[i+1]-sphere[i]) for i in range(len(sphere)-1))),
-                max_pair_fraction=float(max(c/max(l, 1) for c, l in pair)),
-                max_temporal_fraction=float(max(c/max(l, 1) for c, l in tpair[1:])),
-                seed_pair_fraction=float(tpair[0][0]/max(tpair[0][1], 1)), rim_pair_fraction=rim_fraction,
-                lit_pixels=pair[0][1])
+                max_pair_fraction=max(pair), max_temporal_fraction=max(tpair),
+                max_warm_temporal_fraction=max(wpair), temporal_pairs=tpair, warm_temporal_pairs=wpair,
+                seed_pair_fraction=tpair[0], rim_pair_fraction=rim_fraction,
+                lit_pixels=shaft_changes(imgs[0], imgs[1])[1])
         res['P2'] = p2
         check(lid+'/P2_motion', all(v['max_step_delta'] <= 1 and v['max_pair_fraction'] <= MOTION_PIXEL_BOUND and
-                                    v['max_temporal_fraction'] <= MOTION_PIXEL_BOUND for v in p2.values()),
+                                    v['max_temporal_fraction'] <= MOTION_PIXEL_BOUND and
+                                    v['max_warm_temporal_fraction'] <= MOTION_PIXEL_BOUND and
+                                    (v['rim_pair_fraction'] is None or v['rim_pair_fraction'] <= MOTION_PIXEL_BOUND) and
+                                    len(v['temporal_pairs']) == len(v['warm_temporal_pairs']) == 8 for v in p2.values()),
               bound=MOTION_PIXEL_BOUND, **{p+'_max_pair': round(v['max_pair_fraction'], 6) for p, v in p2.items()},
               **{p+'_max_temporal': round(v['max_temporal_fraction'], 6) for p, v in p2.items()},
+              **{p+'_max_warm_temporal': round(v['max_warm_temporal_fraction'], 6) for p, v in p2.items()},
               **{p+'_max_step_delta': v['max_step_delta'] for p, v in p2.items()},
-              **{p+'_seed_pair': round(v['seed_pair_fraction'], 6) for p, v in p2.items()},
-              **({p+'_rim_pair': round(v['rim_pair_fraction'], 6) for p, v in p2.items()} if spec['kwargs']['rim'] > 0 else {}))
+              **{p+'_seed_pair': round(v['seed_pair_fraction'], 6) for p, v in p2.items()})
+        if rim_probes:
+            res['rim_probes'] = rim_probes
+            check(lid+'/P2_rim_surface_stability', all(v['probes'] >= 16 and v['max_pair_fraction'] <= MOTION_PIXEL_BOUND
+                                                      for v in rim_probes.values()),
+                  bound=MOTION_PIXEL_BOUND, screen_coverage_fraction={p: v['rim_pair_fraction'] for p, v in p2.items()},
+                  probes=rim_probes)
+            if lid == 'b:silhouette':
+                flickering = Runner(FlickeringRimTree('WORKTREE'), gl)
+                injected = rim_surface_probes(flickering, frames['inside'], spec)
+                check('rim_injected_flicker_negative_control', injected['probes'] >= 16 and
+                      injected['max_pair_fraction'] > MOTION_PIXEL_BOUND,
+                      injected=injected, bound=MOTION_PIXEL_BOUND)
+        if lid == 'b:clean':
+            old = Runner(UnfilteredHistoryTree('WORKTREE'), gl)
+            proof = {}
+            for pose, fs in frames.items():
+                budgets = [production_steps(host, f, spec['resolution']) for f in fs]
+                cold = motion_fractions(temporal_sequence(old, fs, spec, budgets))
+                warm = motion_fractions(temporal_sequence(old, fs, spec, budgets, preroll=3))
+                proof[pose] = dict(cold_first=cold[0], stationary_preroll_first=warm[0])
+            check('first_move_is_engine_artifact',
+                  max(v['stationary_preroll_first'] for v in proof.values()) > MOTION_PIXEL_BOUND and
+                  all(abs(v['cold_first']-v['stationary_preroll_first']) < 1e-5 for v in proof.values()),
+                  original_shader=proof, bound=MOTION_PIXEL_BOUND,
+                  note='Original shader fails after stationary pre-roll too; no transition may be excluded')
         # P3 termination crawl (geometry: the look's uniforms with the medium stripped), P4 medium crawl (full look)
         def crawl(sp):
             depth_err = []; mae = []; mutant = []
@@ -1421,68 +1584,102 @@ def looks_checks(args, gl, host, report):
 
     # ---- backlit-occluder fixture, Silhouette Rays
     sil = next(l for l in cfg['looks'] if l['id'] == 'b:silhouette')
-    state = look_state(sil, defaults); spec = look_spec(state); rs = rig.runners(spec['dust']); after = rs['after']
+    state = look_state(sil, defaults); spec = look_spec(state); after = rig.runners(spec['dust'])['after']
     back = backlit_fixture(args.width, args.height)
-    unshadowed, _, _ = render_look(after, back, spec, shadows=False, rim=0.)
+    removed = backlit_fixture(args.width, args.height, occluders=False)
+    unshadowed = render_look(after, back, spec, shadows=False, rim=0.)[0]
+    removed_img = render_look(after, removed, spec, rim=0.)[0]
     band = LaneBand(back, unshadowed)
-    base_img, _, _ = render_look(after, back, spec)
+    base_img = render_look(after, back, spec)[0]
     contrast0 = band.contrast(base_img)
+    control = band.contrast(unshadowed)
+    # The removed fixture is evaluated against the SAME shadow-free reference;
+    # using a control as its own denominator would make its failure tautological.
+    removed_contrast = band.contrast(removed_img)
+    lanes = band.lane_count(base_img)
+    check('backlit/a_lane_contrast', contrast0 >= LANE_CONTRAST_MIN and lanes >= 3,
+          normalized_contrast=contrast0, required=LANE_CONTRAST_MIN, dark_lanes=lanes,
+          air_band_rows=[band.j0, band.j1], radial_columns=int(band.cols.sum()))
+    check('backlit/a2_occluders_removed_negative_control',
+          removed_contrast < LANE_CONTRAST_MIN and control < LANE_CONTRAST_MIN and
+          contrast0-removed_contrast >= LANE_CONTRAST_MIN,
+          no_occluders=removed_contrast, no_shadows=control, with_occluders=contrast0,
+          note='Both controls must FAIL the same normalized lane threshold')
     bframes = micro_frames(back)
     budgets = [production_steps(host, f, spec['resolution']) for f in bframes]
-    imgs = [render_look(after, f, spec, steps=b[0])[0] for f, b in zip(bframes, budgets)]
-    contrasts = [band.contrast(im) for im in imgs]
-    drift = max(abs(c/contrasts[0]-1) for c in contrasts) if contrasts[0] > 0 else 1.
-    pair = [shaft_changes(imgs[i], imgs[i+1]) for i in range(len(imgs)-1)]
-    pair_fraction = float(max(c/max(l, 1) for c, l in pair))
-    history = np.zeros((bframes[0][0].H//2, bframes[0][0].W//2, 4), np.float32); previous = None; hist = []
-    for k, f in enumerate(bframes):
-        render_look(after, f, spec, steps=budgets[k][0])
-        history = after.temporal_resolve(f, history, f[0] if previous is None else previous, k > 0); previous = f[0]
-        hist.append(history[:, :, :3].copy())
-    t_contrast = [band.contrast(h, scale=2) for h in hist]
-    t_drift = max(abs(c/t_contrast[0]-1) for c in t_contrast) if t_contrast[0] > 0 else 1.
-    tpair = [shaft_changes(hist[i], hist[i+1]) for i in range(len(hist)-1)]
-    t_fraction = float(max(c/max(l, 1) for c, l in tpair))
-    lit = base_img[:, :, :3].max(2) > 1e-4
-    at_clamp = float(np.count_nonzero(lit & (base_img[:, :, :3].max(2) >= spec['kwargs']['maximum']*.999))/max(lit.sum(), 1))
-    check('backlit/a_lane_contrast', contrast0 >= LANE_CONTRAST_MIN, contrast=contrast0, required=LANE_CONTRAST_MIN,
-          band_rows=[band.j0, band.j1], cone_columns=int(band.cols.sum()))
-    # The plan's literal column-mean metric is dominated by the beam's own falloff, so it cannot tell lanes from no lanes:
-    # the shadow-free control scores nearly the same. Recorded for the lead (NOT enforced: the fixture, not a look, is the
-    # limit; thin 5 cm bars 1.2 m from the lamp cut only a few percent out of any camera ray).
-    control = band.contrast(unshadowed)
-    norm0 = band.contrast(base_img, normalized=True)
-    check('backlit/a2_lane_discrimination_recorded', True, literal_contrast=contrast0, literal_control_no_shadows=control,
-          normalized_lane_depth=norm0, discriminates=bool(contrast0-control > .1),
-          note='ESCALATE: the plan fixture does not produce fanning lanes; literal C passes without any lanes')
-    check('backlit/b_motion_stable', drift <= LANE_DRIFT_MAX and pair_fraction <= MOTION_PIXEL_BOUND and
-          t_drift <= LANE_DRIFT_MAX and t_fraction <= MOTION_PIXEL_BOUND,
-          contrast_drift=drift, max_pair_fraction=pair_fraction, temporal_contrast_drift=t_drift,
-          temporal_pair_fraction=t_fraction, contrasts=[round(c, 4) for c in contrasts])
-    check('backlit/c_core_not_flattened', at_clamp < CLAMP_FRACTION_MAX, fraction_at_clamp=at_clamp,
-          limit=CLAMP_FRACTION_MAX, max_luminance=spec['kwargs']['maximum'])
+    imgs = []; bands = []
+    for f, budget in zip(bframes, budgets):
+        ref = render_look(after, f, spec, steps=budget[0], shadows=False, rim=0.)[0]
+        bands.append(LaneBand(f, ref))
+        imgs.append(render_look(after, f, spec, steps=budget[0], rim=0.)[0])
+    hist = temporal_sequence(after, bframes, spec, budgets)
+    contrasts = [b.contrast(im) for b, im in zip(bands, imgs)]
+    t_contrast = [b.contrast(im) for b, im in zip(bands, hist)]
+    drift = max(abs(c/contrasts[0]-1) for c in contrasts)
+    t_drift = max(abs(c/t_contrast[0]-1) for c in t_contrast)
+    # Measure the transported fan, not movement of its silhouette across fixed
+    # screen pixels. Every radial column is normalized by its matching camera's
+    # unshadowed beam. The original >5% / <=0.1% bound remains: with <=501
+    # columns a single unstable lane column fails. Report raw coverage separately.
+    common = np.logical_and.reduce([b.cols for b in bands])
+    def fan_profiles(images):
+        return [b.column_mean(b.samples(im))[common]/np.maximum(b.reference[common], 1e-9)
+                for b, im in zip(bands, images)]
+    def fan_motion(images):
+        profiles = np.asarray(fan_profiles(images))
+        return [float(np.mean(np.abs(b-a) > .05*np.maximum(a, 1e-4)))
+                for a, b in zip(profiles, profiles[1:])]
+    pair = fan_motion(imgs); tpair = fan_motion(hist)
+    pair_fraction = max(pair); t_fraction = max(tpair)
+    # A real rendered 20% brightness pop must fail this transported metric.
+    pop_spec = dict(spec, uniforms=dict(spec['uniforms']))
+    pop_spec['uniforms']['godray_multiplier'] *= 1.2
+    popped = list(imgs); popped[1] = render_look(after, bframes[1], pop_spec, steps=budgets[1][0], rim=0.)[0]
+    pop_fraction = max(fan_motion(popped))
+    check('backlit/b_motion_stable', drift <= LANE_DRIFT_MAX and t_drift <= LANE_DRIFT_MAX and
+          pair_fraction <= MOTION_PIXEL_BOUND and t_fraction <= MOTION_PIXEL_BOUND and
+          len(pair) == len(tpair) == 8 and pop_fraction > MOTION_PIXEL_BOUND,
+          contrast_drift=drift, temporal_contrast_drift=t_drift,
+          max_pair_fraction=pair_fraction, temporal_pair_fraction=t_fraction, injected_pop_fraction=pop_fraction,
+          raw_screen_coverage_fraction=max(motion_fractions(imgs)),
+          contrasts=[round(c, 4) for c in contrasts], pairs=pair, temporal_pairs=tpair)
+    clamp_fractions = {}
+    def clamp_fraction(im):
+        peak = im[:, :, :3].max(2); lit = peak > 1e-4
+        return float(np.count_nonzero(lit & (peak >= spec['kwargs']['maximum']*.999))/max(lit.sum(), 1))
+    for pose, f in dict(scenes, backlit=back).items():
+        clamp_fractions[pose] = clamp_fraction(render_look(after, f, spec)[0])
+    at_clamp = max(clamp_fractions.values())
+    check('backlit/c_core_not_flattened', at_clamp < CLAMP_FRACTION_MAX,
+          fraction_at_clamp=at_clamp, poses=clamp_fractions, limit=CLAMP_FRACTION_MAX,
+          max_luminance=spec['kwargs']['maximum'])
+    sweep = {}
+    for multiplier in (1.3, 1.4, 2.2):
+        candidate = dict(spec, uniforms=dict(spec['uniforms']))
+        candidate['uniforms']['godray_multiplier'] = FIXTURE_BRIGHTNESS*multiplier
+        fractions = {pose: clamp_fraction(render_look(after, f, candidate)[0])
+                     for pose, f in dict(scenes, backlit=back).items()}
+        sweep[str(multiplier)] = dict(max_fraction=max(fractions.values()), poses=fractions)
     soft_spec = dict(spec, kwargs=dict(spec['kwargs'], soft=True))
-    soft_img, _, _ = render_look(after, back, soft_spec)
-    full_img, _, _ = render_look(after, back, spec, half=False)
+    soft_img = render_look(after, back, soft_spec)[0]
+    full_img = render_look(after, back, spec, half=False)[0]
     c_soft, c_full = band.contrast(soft_img), band.contrast(full_img)
-    check('backlit/d_documented_limits', c_soft < contrast0 and c_full >= contrast0-1e-4, contrast_soft_on=c_soft,
-          contrast_soft_off=contrast0, contrast_full_res=c_full, contrast_half_res=contrast0,
-          normalized_soft_on=band.contrast(soft_img, normalized=True), normalized_soft_off=norm0,
-          normalized_full_res=band.contrast(full_img, normalized=True),
-          note='Soft shadows ON must lower lane contrast; the full-res march must not lower it (1e-4 float slack)')
+    check('backlit/d_documented_limits', c_soft < contrast0 and c_full >= contrast0-1e-4,
+          contrast_soft_on=c_soft, contrast_soft_off=contrast0, contrast_full_res=c_full,
+          note='Soft shadows ON must lower normalized contrast; full res must not lower it (1e-4 float slack)')
     air_spec = dict(spec, kwargs=dict(spec['kwargs'], air=1))
-    air_img, _, _ = render_look(after, back, air_spec)
+    air_img = render_look(after, back, air_spec)[0]
     air_ms = timed_look(after, back, air_spec, args.repeats)[1]; off_ms = timed_look(after, back, spec, args.repeats)[1]
-    check('backlit/e_airborne_recorded', True, contrast_airborne=band.contrast(air_img), airborne_ms=air_ms, off_ms=off_ms,
-          note='recorded for the lead; no auto-switch')
-    tiles.append(('Silhouette Rays: backlit bars (contrast %.2f)' % contrast0, base_img))
+    tiles.append(('Silhouette Rays: backlit fan (normalized %.2f)' % contrast0, base_img))
     grid_sheet(images/'looks_contact_sheet.png', tiles)
-    sheet(images/'looks_backlit_silhouette.png', [('half-res + production', base_img), ('no shadows (cone mask)', unshadowed),
-                                                   ('soft shadows ON', soft_img), ('full-res march', full_img)])
+    sheet(images/'looks_backlit_silhouette.png', [('backlit fan', base_img), ('occluders removed', removed_img),
+                                               ('soft shadows ON', soft_img), ('full-res march', full_img)])
     report['looks'] = dict(table=results, backlit=dict(
-        lane_contrast=contrast0, lane_contrast_control=control, lane_depth_normalized=norm0, motion_contrasts=contrasts, contrast_drift=drift, pair_fraction=pair_fraction,
+        lane_contrast=contrast0, lane_contrast_control=control, no_occluders_contrast=removed_contrast, dark_lanes=lanes,
+        motion_contrasts=contrasts, contrast_drift=drift, pair_fraction=pair_fraction,
         temporal_contrast_drift=t_drift, temporal_pair_fraction=t_fraction, fraction_at_clamp=at_clamp,
-        contrast_soft_on=c_soft, contrast_full_res=c_full, airborne_ms=air_ms, off_ms=off_ms),
+        multiplier_sweep=sweep, contrast_soft_on=c_soft, contrast_full_res=c_full,
+        contrast_airborne=band.contrast(air_img), airborne_ms=air_ms, off_ms=off_ms),
         thresholds=dict(motion_pixel_bound=MOTION_PIXEL_BOUND, lane_contrast_min=LANE_CONTRAST_MIN,
                         lane_drift_max=LANE_DRIFT_MAX, clamp_fraction_max=CLAMP_FRACTION_MAX, tier_ceiling_ms=TIER_CEILING_MS),
         size=[args.width, args.height], cost_enforced=full_hd)

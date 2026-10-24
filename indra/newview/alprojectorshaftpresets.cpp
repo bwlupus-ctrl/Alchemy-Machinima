@@ -62,6 +62,28 @@ const std::vector<std::string>& trackedSettings()
     return settings;
 }
 
+const std::vector<std::string>& pageSettings()
+{
+    static const std::vector<std::string> settings = []
+    {
+        std::vector<std::string> result = trackedSettings();
+        // Page history covers every control, including controls that looks must leave alone.
+        for (const char* name : {
+                 "BDMergeProjectorVolumetrics", "BDMergeProjectorVolumetricsHalfRes",
+                 "BDMergeProjectorVolumetricsTemporal", "BDMergeProjectorVolumetricsTemporalBlend",
+                 "BDMergeProjectorVolumetricsTemporalReject", "BDMergeProjectorVolumetricsTemporalBeamDepth",
+                 "BDMergeProjectorVolumetricsScissor", "BDMergeProjectorVolumetricsAdaptive",
+                 "BDMergeProjectorVolumetricsMinResolution", "BDMergeProjectorVolumetricsDither",
+                 "BDMergeProjectorVolumetricsTemporalDither", "BDMergeProjectorVolumetricsFogBase",
+                 "BDMergeProjectorVolumetricsPyramidScissor",
+                 "BDMergeSoftShadowSun", "BDMergeGoboAnisotropic",
+                 "BDMergeFroxelWindAzimuth", "BDMergeFroxelWindElevation", "BDMergeFroxelWindInverted"})
+            result.emplace_back(name);
+        return result;
+    }();
+    return settings;
+}
+
 bool apply(const std::string& id)
 {
     // Validate before touching anything: an unknown id (including Custom) writes nothing.
@@ -125,6 +147,7 @@ bool applyValues(const LLSD& values)
 
     ALPresetLook::Load load;
     resetOwned();
+    gSavedSettings.setBOOL("BDMergeProjectorVolumetrics", true);
     for (const std::string& name : ALProjectorShaftLooks::ownedSettings())
     {
         if (!values.has(name) || values[name].isUndefined())

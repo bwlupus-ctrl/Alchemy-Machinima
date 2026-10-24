@@ -152,7 +152,6 @@ void alprojectorshaftlooks_object::test<4>()
     for (int i = 0; i < 8; ++i)
     {
         ensure_equals("legacy string id", ALProjectorShaftLooks::canonicalLookId(std::to_string(i)), std::string(expected[i]));
-        ensure_equals("legacy combo int", ALProjectorShaftLooks::canonicalLookId((S32)i), std::string(expected[i]));
     }
     for (const Look& look : ALProjectorShaftLooks::looks())
     {
@@ -163,8 +162,6 @@ void alprojectorshaftlooks_object::test<4>()
     ensure_equals("empty is unknown", ALProjectorShaftLooks::canonicalLookId(""), std::string());
     ensure_equals("x is unknown", ALProjectorShaftLooks::canonicalLookId("x"), std::string());
     ensure_equals("unknown b: id is unknown", ALProjectorShaftLooks::canonicalLookId("b:nope"), std::string());
-    ensure_equals("combo -1 is Custom", ALProjectorShaftLooks::canonicalLookId((S32)-1), std::string());
-    ensure_equals("combo 8 is unknown", ALProjectorShaftLooks::canonicalLookId((S32)8), std::string());
 }
 
 template<> template<>

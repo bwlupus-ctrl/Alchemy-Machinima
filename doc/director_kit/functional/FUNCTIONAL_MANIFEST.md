@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `142461b9ba1ecb16` (1816 interactive rows); 37
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1336 | 38 | 300 | 50 | 96 | 1 | 1821 |
-| v2 | 1766 | 0 | 454 | 73 | 0 | 11 | 2304 |
+| v2 | 1769 | 0 | 456 | 73 | 0 | 11 | 2309 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
@@ -33,7 +33,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | dance_tab (Dance) | cast_group | 29 | 0 | 38 | 9 | 0 | 0 | 40 | 0 | 38 | 9 | 0 | 0 |
 | animate_tab (Animate) | performance_group | 6 | 0 | 12 | 1 | 0 | 1 | 11 | 0 | 12 | 2 | 0 | 1 |
 | switchboard_tab (Switchboard) | performance_group | 14 | 0 | 14 | 0 | 0 | 0 | 19 | 0 | 14 | 1 | 0 | 0 |
-| gaze_tab (Gaze) | performance_group | 14 | 0 | 101 | 3 | 0 | 0 | 15 | 0 | 107 | 3 | 0 | 0 |
+| gaze_tab (Gaze) | performance_group | 14 | 0 | 101 | 3 | 0 | 0 | 15 | 0 | 108 | 3 | 0 | 0 |
 | polish_tab (Polish) | performance_group | 13 | 0 | 1 | 0 | 0 | 0 | 15 | 0 | 1 | 0 | 0 | 0 |
 | gaze_cues_tab (Gaze Cues) | performance_group | 0 | 0 | 2 | 1 | 2 | 0 | 0 | 0 | 4 | 1 | 0 | 0 |
 | shot_tab (Shot) | camera_group | 287 | 16 | 5 | 5 | 15 | 0 | 334 | 0 | 2 | 5 | 0 | 4 |
@@ -44,7 +44,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | vcam_tab (VCam) | camera_group | 2 | 0 | 0 | 0 | 0 | 0 | 70 | 0 | 141 | 3 | 0 | 4 |
 | focus_tab (Focus) | lens_group | 14 | 0 | 0 | 0 | 0 | 0 | 16 | 0 | 0 | 0 | 0 | 0 |
 | filters_tab (Filters) | lens_group | 28 | 0 | 1 | 0 | 0 | 0 | 32 | 0 | 1 | 0 | 0 | 0 |
-| diopter_tab (Diopter) | lens_group | 4 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 |
+| diopter_tab (Diopter) | lens_group | 4 | 0 | 0 | 0 | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
 | cine_light_rig_tab (Rig) | light_group | 150 | 12 | 4 | 3 | 5 | 0 | 191 | 0 | 4 | 4 | 0 | 1 |
 | light_rim_tab (Rim) | light_group | 42 | 0 | 1 | 0 | 0 | 0 | 86 | 0 | 1 | 3 | 0 | 0 |
 | exposure_tab (Exposure) | light_group | 23 | 1 | 0 | 0 | 0 | 0 | 25 | 0 | 0 | 0 | 0 | 0 |
@@ -53,10 +53,10 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | light_cues_tab (Light Cues) | light_group | 0 | 0 | 4 | 1 | 0 | 0 | 0 | 0 | 4 | 1 | 0 | 0 |
 | image_tab (Image) | look_group | 20 | 2 | 0 | 0 | 52 | 0 | 85 | 0 | 2 | 0 | 0 | 0 |
 | bloom_glow_tab (Bloom & Glow) | look_group | 7 | 0 | 0 | 0 | 10 | 0 | 16 | 0 | 0 | 1 | 0 | 0 |
-| stylize_tab (Roto Ink) | look_group | 78 | 0 | 0 | 1 | 2 | 0 | 79 | 0 | 0 | 1 | 0 | 0 |
-| tron_tab (Tron) | look_group | 124 | 3 | 0 | 3 | 2 | 0 | 126 | 0 | 0 | 3 | 0 | 0 |
+| stylize_tab (Roto Ink) | look_group | 78 | 0 | 0 | 1 | 2 | 0 | 80 | 0 | 0 | 1 | 0 | 0 |
+| tron_tab (Tron) | look_group | 124 | 3 | 0 | 3 | 2 | 0 | 127 | 0 | 0 | 3 | 0 | 0 |
 | stepped_tab (Stepped) | look_group | 37 | 3 | 3 | 2 | 0 | 0 | 63 | 0 | 6 | 2 | 0 | 0 |
-| actor_style_tab (Actor FX) | look_group | 0 | 0 | 15 | 1 | 0 | 0 | 1 | 0 | 16 | 1 | 0 | 0 |
+| actor_style_tab (Actor FX) | look_group | 0 | 0 | 15 | 1 | 0 | 0 | 1 | 0 | 17 | 1 | 0 | 0 |
 | weather_tab (Weather) | world_group | 51 | 0 | 0 | 1 | 0 | 0 | 56 | 0 | 0 | 1 | 0 | 0 |
 | atmosphere_tab (Atmosphere) | world_group | 72 | 1 | 1 | 2 | 1 | 0 | 21 | 0 | 0 | 1 | 0 | 0 |
 | shadows_probes_tab (Shadows) | world_group | 37 | 0 | 0 | 0 | 2 | 0 | 39 | 0 | 0 | 0 | 0 | 0 |
@@ -78,6 +78,7 @@ Every real card/option enable switch is searchable. Only explicitly classified s
 | shot_tab | Auto switcher | switcher_armed | DirectorSwitcherArmed | toggle | controller |
 | shot_tab | Cut transition | switcher_ease | DirectorSwitcherEaseCuts | toggle | controller |
 | shot_tab | World slow-mo | switcher_ease_freeze | DirectorSwitcherEaseFreeze | toggle | controller |
+| vcam_tab | Virtual Cam | vc_enable | PrismLensEnabled | toggle | code |
 | dance_tab | Auto-advance | db_auto_advance | LLFloaterDirector::bindCameraPage | toggle | code |
 | dance_tab | Blocking on | db_blocking_on | LLFloaterDirector::bindCameraPage | toggle | code |
 | dance_tab | Wave | db_wave_enable | LLFloaterDirector::bindCameraPage | toggle | code |
@@ -92,12 +93,14 @@ Every real card/option enable switch is searchable. Only explicitly classified s
 | props_tab | Hover | hover_on_check | ALPanelPropMover::postBuild | toggle | controller |
 | props_tab | Rock | rock_on_check | ALPanelPropMover::postBuild | toggle | controller |
 | props_tab | Spin | spin_on_check | ALPanelPropMover::postBuild | toggle | controller |
+| diopter_tab | Diopter | diopter_enabled | CineDiopterEnabled | toggle | code |
 | filters_tab | Graduated ND | gradnd_enable_check | RenderGradNDEnabled | toggle | setting |
 | filters_tab | Polarizer | polarizer_enable_check | RenderPolarizerEnabled | toggle | setting |
 | filters_tab | Infrared film | ir_enabled | RenderInfraredEnabled | toggle | setting |
 | filters_tab | Soft edge | softedge_enabled | RenderSoftEdgeEnabled | toggle | setting |
 | focus_tab | Depth of field | dof_enable_check | RenderDepthOfField | toggle | reload |
 | focus_tab | Composition guide | ShowGuides | RenderCompositionGuide | toggle | setting |
+| actors_tab | Light response | chk_enabled | AvatarLightResponseEnabled | toggle | code |
 | cine_light_rig_tab | Easy probe | cine_easy_probe_enable | CineLightRigLiveProbeEnabled | toggle | controller |
 | cine_light_rig_tab | Who's lit | cine_group_enable | ALPanelCineLightRig::postBuild | toggle | code |
 | cine_light_rig_tab | Lights / Key | cine_key_on | CineLightRigKeyOn | toggle | controller |
@@ -107,40 +110,42 @@ Every real card/option enable switch is searchable. Only explicitly classified s
 | cine_light_rig_tab | Eye catchlight | cine_catchlight | CineLightRigCatchlight | toggle | controller |
 | cine_light_rig_tab | Live probe | cine_live_probe_enable | CineLightRigLiveProbeEnabled | toggle | controller |
 | cine_light_rig_tab | Night mask | cine_night_mask_enable | CineLightRigNightMaskEnabled | toggle | controller |
+| cine_light_rig_tab | Light rig | cine_enabled | CineLightRigEnabled | toggle | code |
 | projector_shafts_tab | Soft projector shadows | soft_shadows_enable_check | BDMergeSoftProjectorShadows | toggle | setting |
+| projector_shafts_tab | Shafts | projector_cones_enable_check | BDMergeProjectorVolumetrics | toggle | setting |
 | light_rim_tab | Light wrap | cine_rimq_wrap_enable | CineRigRimWrapEnabled | toggle | setting |
 | light_rim_tab | Light shape | relight_shape_enable | RenderLightShapeEnable | toggle | setting |
 | light_rim_tab | Soft shadows | area_shadows_enable | RenderAreaShadows | toggle | setting |
+| light_rim_tab | Rim light | cine_rig_rim_enable | CineRigRimEnabled | toggle | code |
+| actor_style_tab | Actor FX | actor_style_enabled | LLFloaterDirector::bindActorStylePage | toggle | code |
+| stepped_tab | Stepped animation | sa_enable | StepAnimEnabled | toggle | code |
+| stylize_tab | Roto Ink | ri_enable | CineOutlineEnabled | toggle | code |
+| tron_tab | Tron | tr_enable | TronEnabled | toggle | code |
 | gaze_tab | Look at camera | look_at_camera_enabled | DirectorLookAtCameraEnabled | toggle | controller |
+| gaze_tab | Gaze | gaze_enable_check | LLFloaterDirector::bindCameraPage | toggle | code |
+| polish_tab | Pose polish | polish_master_check | ALPolishEnabled | toggle | code |
 | atmosphere_tab | Fog volumes | localfog_master | BDMergeLocalFogVolumes | toggle | setting |
 | weather_tab | Rain | weather_rain_enabled | AlchemyWeatherRainEnabled | toggle | setting |
 | weather_tab | Splashes | weather_splash_enabled | AlchemyWeatherSplashEnabled | toggle | setting |
 | weather_tab | Rain shelter | weather_rain_occlusion | AlchemyWeatherRainOcclusion | toggle | reload |
 | weather_tab | Lightning | weather_lightning_enabled | AlchemyWeatherLightningEnabled | toggle | setting |
 | weather_tab | Cinematic lightning | weather_lightning_quality_enabled | AlchemyWeatherLightningQualityEnabled | toggle | reload |
+| weather_tab | Weather | weather_enabled | AlchemyWeatherEnabled | toggle | code |
 
 ## Special probes
 
 | Probe | Version | Page | Widget | Exercise | Expect |
 |---|---|---|---|---|---|
 | None | v2 | shot_tab | kc_move_settings_selector | select_item | CinematicCamMode = 3 |
-| page_master | v2 | vcam_tab | vc_enable | toggle | PrismLensEnabled = true |
-| page_master | v2 | actors_tab | chk_enabled | toggle | AvatarLightResponseEnabled = false |
-| page_master | v2 | cine_light_rig_tab | cine_enabled | toggle | CineLightRigEnabled = true |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:Key | click | DirectorV2SelectedLight = 0 |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:Fill | click | DirectorV2SelectedLight = 1 |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:Back | click | DirectorV2SelectedLight = 2 |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:BG | click | DirectorV2SelectedLight = 3 |
-| page_master | v2 | projector_shafts_tab | projector_cones_enable_check | toggle | BDMergeProjectorVolumetrics = true |
-| page_master | v2 | light_rim_tab | cine_rig_rim_enable | toggle | CineRigRimEnabled = true |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:Key | click | DirectorV2SelectedLight = 0 |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:Fill | click | DirectorV2SelectedLight = 1 |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:Back | click | DirectorV2SelectedLight = 2 |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:BG | click | DirectorV2SelectedLight = 3 |
 | preset_strip | v2 | light_rim_tab | preset_strip:rig_rim | select_item | CineRigRimMasterGain = 0.6 |
-| page_master | v2 | stepped_tab | sa_enable | toggle | StepAnimEnabled = true |
-| page_master | v2 | polish_tab | polish_master_check | toggle | ALPolishEnabled = false |
-| page_master | v2 | weather_tab | weather_enabled | toggle | AlchemyWeatherEnabled = true |
 | page_master | v1 | cine_light_rig_tab | cine_enabled | toggle | CineLightRigEnabled = true |
 | page_master | v1 | light_rim_tab | cine_rig_rim_enable | toggle | CineRigRimEnabled = true |
 | weather_master | v1 | weather_tab | weather_enabled | toggle | AlchemyWeatherEnabled = true |
