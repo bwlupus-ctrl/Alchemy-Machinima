@@ -4590,7 +4590,7 @@ private:
             ALKitRow* proxy = find_proxy();
             bool ok = page && page->isMasterWidget(migrated.widget) && proxy && setting;
             if (proxy)
-                if (ALKitSwitch* control = proxy->findChild<ALKitSwitch>(proxy->meta().widget))
+                if (ALKitSwitch* control = proxy->findChild<ALKitSwitch>(proxy->meta().widget)) // ui-draw-lint: allow(lookup) one-shot functional oracle, gated by mFunctionalGlobalAssertionsDone
                 {
                     ALKitHistory::ScopedSource source(quick);
                     control->toggle();
