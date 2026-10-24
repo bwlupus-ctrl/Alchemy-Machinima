@@ -35,8 +35,60 @@ template<class T> struct test_group { struct object : T { template<int N> void t
 using relight_object = test_group<relight_data>::object;
 void close(const char* m,double a,double b,double tol=1.e-10) { ensure(m,std::isfinite(a)&&std::abs(a-b)<=tol); }
 '''
+    # Execute the actual scene-load settings loop and migration with tiny value/control adapters.
+    # Load every sparse combination after non-default live values, including an absent settings map.
+    director = (REPO / 'indra/newview/llfloaterdirector.cpp').read_text()
+    load = director[director.index('    // only apply keys this floater owns:'):director.index('    // [RigRim] P1-C fix:')]
+    scene_shim = r'''#include <map>
+#include <string>
+namespace scene_regression {
+struct Value {
+    bool map = true;
+    std::map<std::string,double> values;
+    bool isMap() const { return map; }
+    bool has(const std::string& key) const { return values.count(key) != 0; }
+    double operator[](const std::string& key) const { return values.at(key); }
+};
+struct Scene { Value settings; Value& operator[](const char*) { return settings; } };
+struct LLControlVariable {
+    double value, identity;
+    void setValue(double v) { value = v; }
+    void resetToDefault(bool) { value = identity; }
+};
+struct Controls {
+    std::map<std::string,LLControlVariable> values;
+    LLControlVariable* getControl(const std::string& key) { return &values.at(key); }
+};
+const std::vector<std::string>& sceneSettingsList() {
+    static const std::vector<std::string> names = {"RenderAreaShadowStrength", "RenderAreaShadowContrast",
+        "RenderAreaShadowWorldScreenReach", "RenderAreaShadowWorldAmount", "RenderAreaShadowScreenAmount"};
+    return names;
+}
+void check() {
+    for (unsigned mask = 0; mask < 33; ++mask) {
+        Controls gSavedSettings;
+        Scene scene;
+        scene.settings.map = mask != 32;
+        unsigned i = 0;
+        for (const auto& key : sceneSettingsList()) {
+            gSavedSettings.values[key] = {.37, i == 2 ? 0. : 1.};
+            if (mask != 32 && (mask & (1u << i))) scene.settings.values[key] = .6;
+            ++i;
+        }
+''' + load + r'''
+        i = 0;
+        for (const auto& key : sceneSettingsList()) {
+            const double expected = mask != 32 && (mask & (1u << i)) ? .6 : (i == 2 ? 0. : 1.);
+            tut::ensure("old/sparse scene resets each missing look key, preserves every authored key",gSavedSettings.getControl(key)->value == expected);
+            ++i;
+        }
+    }
+    std::puts("[scene-load] PASS 32 sparse maps + missing settings after non-default values");
+}
+}
+'''
     cpp = out / 'world_math.cpp'
-    cpp.write_text(shim+tests+'\n}\nint main() { tut::relight_object o; o.test<37>(); o.test<38>(); o.test<39>(); o.test<40>(); o.test<41>(); o.test<42>(); o.test<43>(); std::puts("[world-math] PASS tests 37..43"); }\n')
+    cpp.write_text(shim+tests+'\n}\n'+scene_shim+'\nint main() { scene_regression::check(); tut::relight_object o; o.test<37>(); o.test<38>(); o.test<39>(); o.test<40>(); o.test<41>(); o.test<42>(); o.test<43>(); std::puts("[world-math] PASS tests 37..43"); }\n')
     vswhere = Path(os.environ.get('ProgramFiles(x86)','C:/Program Files (x86)')) / 'Microsoft Visual Studio/Installer/vswhere.exe'
     vs = subprocess.check_output([str(vswhere),'-latest','-property','installationPath'],text=True).strip()
     cmd = out / 'world_math.cmd'; exe = out / 'world_math.exe'

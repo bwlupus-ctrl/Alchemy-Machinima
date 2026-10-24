@@ -3802,6 +3802,49 @@ template<> template<> void relight_object::test<43>()
     int previous = 0; bool steps_monotone = true;
     for (int i = 0; i <= 80; ++i) { const int s = reachSteps(48,i*.1f); steps_monotone = steps_monotone && s >= previous && s <= 48; previous = s; }
     ensure("steps grow with the reach and never pass the authored count",steps_monotone);
+
+    // 8. Both marches count against the frame AND each draw, even on clear rays.
+    ensure_equals("reach 2, 12 authored: 12 contact + 12 extra",marchWork({8,12,true,0,0,2.f}),24);
+    ensure_equals("reach 8, 32 authored: 12 contact + 32 extra",marchWork({8,32,true,0,0,8.f}),44);
+    ensure_equals("reach 8, 64 authored: 12 contact + 64 extra",marchWork({8,64,true,0,0,8.f}),76);
+    for (float reach : {2.f,8.f})
+    {
+        const Quality q{4,8,true,0,0,reach}; // 2500 pixels x 4 rays x (8 + 8) = 160000 per light
+        const auto under = workloadWithin(q,100,100,1,319999,1);
+        const auto edge = workloadWithin(q,100,100,1,320000,1);
+        ensure("one iteration under the per-draw boundary fails closed",!under.channels && under.iterations == 0);
+        ensure("the exact per-draw boundary admits one light",edge.channels == 1 && edge.iterations == 160000 && edge.drawCap == 160000);
+        const auto frame_under = workloadWithin(q,100,100,4,639999,4);
+        const auto frame_edge = workloadWithin(q,100,100,4,640000,4);
+        ensure("one iteration under the frame boundary drops a light",frame_under.admitted == 3 && frame_under.iterations == 480000);
+        ensure("the exact frame boundary admits all four",frame_edge.admitted == 4 && frame_edge.iterations == 640000);
+        for (bool thin : {false,true}) for (int authored : {12,32,64}) for (int millions : {1,8,64,256,1500})
+        {
+            Quality uniform{8,authored,true,0,0,reach};
+            const Quality request = thin ? segmented(uniform,-1) : uniform;
+            FeedSet feeds; feeds.add(640,360,0); feeds.add(1024,768,1);
+            const auto main = workloadOrUniform(request,uniform,1920,1080,4,millions,4,feeds);
+            std::uint64_t total = basisCost(main);
+            if (main.channels)
+            {
+                ensure("reach group draw stays inside its ceiling",main.pixels*main.q.samples*std::max(marchWork(main.q),marchWork(main.rest))*main.channels <= main.drawCap);
+                ensure("reported reach iterations stay inside frame budget",main.iterations <= main.budget);
+            }
+            for (unsigned f = 0; f < feeds.count; ++f)
+            {
+                const auto feed = feedWorkload(request,uniform,1920,1080,feeds.extent[f].w,feeds.extent[f].h,4,millions,4,feeds);
+                total += basisCost(feed);
+                ensure("feed reach iterations fit allowance",feed.iterations <= feed.budget);
+                if (feed.channels) ensure("feed reach draw fits ceiling",feed.pixels*feed.q.samples*std::max(marchWork(feed.q),marchWork(feed.rest))*feed.channels <= feed.drawCap);
+            }
+            ensure("main plus live feeds fit the one reach-aware budget",total <= std::uint64_t(millions)*1000000);
+        }
+    }
+    const auto old_edge = workloadWithin({4,8,true},100,100,1,160000,1);
+    ensure("reach zero keeps the original draw boundary",old_edge.channels == 1 && old_edge.iterations == 80000);
+    for (int steps : {1,8,12,32,64,80,128})
+        ensure_equals("reach zero keeps exactly the old per-ray cost",marchWork({8,steps,true}),steps);
+
 }
 
 }

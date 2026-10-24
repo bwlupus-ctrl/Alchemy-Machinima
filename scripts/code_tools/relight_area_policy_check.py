@@ -19,7 +19,8 @@ def method(path, signature):
 def check_policy():
     nv = Path('indra/newview')
     pipeline = method(nv / 'pipeline.cpp', 'void LLPipeline::renderAreaShadows(')
-    assert 'const ALAreaShadow::Quality uniform{samples(),steps(),half()};' in pipeline
+    assert 'const ALAreaShadow::Quality uniform{samples(),steps(),half(),0,0,' in pipeline
+    assert 'cube_on() ? ALAreaShadow::lookReach(look_reach()) : 0.f' in pipeline
     assert 'thin() ? ALAreaShadow::segmented(uniform,preset()) : uniform' in pipeline
     # Main and feed passes both carry the authored uniform plan as their fallback.
     assert 'ALAreaShadow::workloadOrUniform(requested,uniform,width,height,' in pipeline

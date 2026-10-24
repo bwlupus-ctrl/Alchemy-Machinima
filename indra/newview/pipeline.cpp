@@ -7,7 +7,7 @@
  * Copyright (C) 2010, Linden Research, Inc.
  *
  * Alchemy Viewer Source Code
- * Copyright © 2026, Rye <rye@alchemyviewer.org>
+ * Copyright Â© 2026, Rye <rye@alchemyviewer.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1605,7 +1605,7 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         mWaterDis.allocate(resX, resY, screenFormat, true);
 
         // RAW pre-on-lens scene snapshot for the ReShade bridge. Full-res, same
-        // HDR color format as mRT->screen (GL_RGBA16F), color-only (no depth —
+        // HDR color format as mRT->screen (GL_RGBA16F), color-only (no depth â€”
         // it is only ever a blit destination / bridge-published texture).
         // HDR-path-only: the non-HDR path releases it, so mReShadeRawSceneValid
         // can never become true there and the bridge falls back to mRT->screen.
@@ -13169,17 +13169,6 @@ void LLPipeline::renderGLTFObjects(U32 type, bool texture, bool rigged)
     gGLLastMatrix = NULL;
 }
 
-void LLPipeline::recordWorldShadowRiggedDraw(const LLDrawInfo& params)
-{
-    // Called after submission, including scalar/indexed legacy and PBR paths.
-    // No GL queries and no per-draw settings reads. Native/beauty are inert.
-    if (sWorldShadowDrawCounts && params.mAvatar.notNull() && params.mCount)
-    {
-        ++sWorldShadowDrawCounts->riggedBatches;
-        if (params.mAvatar->isSelf()) ++sWorldShadowDrawCounts->selfRigged;
-    }
-}
-
 // Currently only used for shadows -Cosmic,2023-04-19
 void LLPipeline::renderAlphaObjects(bool rigged)
 {
@@ -13484,13 +13473,13 @@ void LLPipeline::generateLuminance(LLRenderTarget* src, LLRenderTarget* dst)
         static LLStaticHashedString diffuse_luminance_scale_s("diffuse_luminance_scale");
         gLuminanceProgram.uniform1f(diffuse_luminance_scale_s, diffuse_luminance_scale);
 
-        // [Night Mask B1] bloomMip[0] sampled above is LAST frame's bloom —
+        // [Night Mask B1] bloomMip[0] sampled above is LAST frame's bloom â€”
         // generateBloomHDR() for the CURRENT frame runs later in renderFinalize,
         // after applyOnLensFilters. When Night Mask is active, that bloom was
         // built from the MASKED scene, so feeding it into this frame's
         // metering indirectly lowers next-frame metering and exposure
         // creeps up over time as a feedback loop. Scale the emissive/bloom
-        // term by mNightMaskFrame.mBloomScale — an exponential ramp toward
+        // term by mNightMaskFrame.mBloomScale â€” an exponential ramp toward
         // (mActive ? 0 : 1) computed once this frame by updateNightMaskAnchor()
         // (called just above generateLuminance in renderFinalize, the FINAL
         // will-render resolve applyOnLensFilters also reads via mActive, so
@@ -13659,7 +13648,7 @@ namespace
     }
 
     // Apply a Duv offset perpendicular to the Planckian locus via a central-
-    // difference tangent in CIE 1960 u,v space (O(h²) accurate). Returns the
+    // difference tangent in CIE 1960 u,v space (O(hÂ²) accurate). Returns the
     // new CIE xy chromaticity.
     inline void cg_apply_duv(F32 cct, F32 duv, F32& out_x, F32& out_y)
     {
@@ -14070,8 +14059,8 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             F32 strength = cine_source_mode ? 0.f : llclamp(lens_flare_strength(), 0.f, 1.f);
             shader->uniform1f(LLShaderMgr::LENS_FLARE_STRENGTH, strength);
 
-            // Shared optical shape uniforms — streak/glow/ghost/halo/starburst/
-            // occlusion — drive BOTH the sun flare and every rig-projector
+            // Shared optical shape uniforms â€” streak/glow/ghost/halo/starburst/
+            // occlusion â€” drive BOTH the sun flare and every rig-projector
             // flare (flareForSource() is one body called once per source, sun
             // included). Gate on EITHER master being on: gating solely on the
             // sun's strength left these at stale/GLSL-default values whenever
@@ -14097,7 +14086,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                 shader->uniform1f(LLShaderMgr::LENS_FLARE_GLOW_FALLOFF, llclamp(lens_flare_glow_falloff(), 1.f, 30.f));
                 shader->uniform1f(LLShaderMgr::LENS_FLARE_GLOW, llclamp(lens_flare_glow(), 0.f, 5.f));
 
-                // Optional ghosts & halo — intensity doubles as the on/off switch.
+                // Optional ghosts & halo â€” intensity doubles as the on/off switch.
                 shader->uniform1f(LLShaderMgr::LENS_FLARE_GHOST, llclamp(lens_flare_ghost(), 0.f, 5.f));
                 shader->uniform1i(LLShaderMgr::LENS_FLARE_GHOST_COUNT, llclamp(lens_flare_ghost_count(), 0, 8));
                 shader->uniform1f(LLShaderMgr::LENS_FLARE_GHOST_SPACING, llclamp(lens_flare_ghost_spacing(), 0.1f, 1.f));
@@ -14119,7 +14108,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
 
             if (strength > 0.f)
             {
-                // Project sun direction to screen UV — sun-only positioning;
+                // Project sun direction to screen UV â€” sun-only positioning;
                 // untouched from the original single-source implementation.
                 LLEnvironment& environment = LLEnvironment::instance();
                 bool sun_up = environment.getIsSunUp();
@@ -14133,7 +14122,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                     glm::vec2 sun_ndc = glm::vec2(sun_clip.x, sun_clip.y) / sun_clip.z;
                     glm::vec2 sun_uv = sun_ndc * 0.5f + 0.5f;
 
-                    // Soft fade as sun approaches screen edges — generous margin
+                    // Soft fade as sun approaches screen edges â€” generous margin
                     // lets the streak persist even when the sun is slightly off-screen.
                     F32 edge_fade = 1.f;
                     F32 margin = 0.2f;
@@ -14153,7 +14142,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
 
                 shader->uniform1f(LLShaderMgr::LENS_FLARE_SUN_VISIBILITY, mLensFlareSunVisibility);
 
-                // Sun-only tint — the rig sources carry their own per-source
+                // Sun-only tint â€” the rig sources carry their own per-source
                 // color in uCineFlareColor[i].rgb instead.
                 LLColor4 light_color = linearColor3(sun_up ? mSunDiffuse : mMoonDiffuse);
                 shader->uniform3f(LLShaderMgr::LENS_FLARE_LIGHT_COLOR, light_color.mV[0], light_color.mV[1], light_color.mV[2]);
@@ -14164,12 +14153,12 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             }
         }
 
-        // Cine-rig lens flare — polished-stack element uniforms (Group 2/3/4).
+        // Cine-rig lens flare â€” polished-stack element uniforms (Group 2/3/4).
         // Driven unconditionally: these gate the SUN flare's new elements too,
         // not just the rig path. Every new element default is 0 (or 1.0 for
         // uLensFlareMaster, the pure multiplier), so with default settings
         // this uploads zeros/one and the shader's own per-element
-        // `if (amount > 0)` guards make it a no-op — byte-parity with the
+        // `if (amount > 0)` guards make it a no-op â€” byte-parity with the
         // pre-existing sun-only flare output is preserved.
         {
             static LLCachedControl<F32> lens_flare_ghost_chroma(gSavedSettings, "RenderLensFlareGhostChroma", 0.f);
@@ -14195,7 +14184,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             static LLCachedControl<F32> lens_flare_master(gSavedSettings, "RenderLensFlareMaster", 1.f);
             // Same any_flare gate as the legacy shared-shape block above,
             // recomputed locally (independent LLCachedControl reads of the
-            // same two keys — cheap, and keeps this block self-contained).
+            // same two keys â€” cheap, and keeps this block self-contained).
             static LLCachedControl<F32> lens_flare_strength_gate(gSavedSettings, "RenderLensFlareStrength", 0.f);
             static LLCachedControl<F32> cine_flare_strength_gate2(gSavedSettings, "RenderCineLensFlareStrength", 0.f);
             const bool any_flare = (llclamp(lens_flare_strength_gate(), 0.f, 1.f) > 0.f) ||
@@ -14228,7 +14217,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             }
         }
 
-        // Cine-rig lens flare — rig projector sources (Group 1). Gated on the
+        // Cine-rig lens flare â€” rig projector sources (Group 1). Gated on the
         // rig-flare master, RenderCineLensFlareStrength: 0 (default) uploads
         // uCineFlareCount=0 and skips enumeration entirely, so the shader's
         // additive rig loop (`if (uCineFlareCount > 0)`) is exact byte-parity
@@ -14256,9 +14245,9 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             // not a per-frame lerp, so the look is stable across frame rates.
             static LLCachedControl<F32> cine_flare_release(gSavedSettings, "RenderCineLensFlareRelease", 0.45f);
 
-            // mCineFlareVisibility is sized by STABLE (slot, light) identity —
+            // mCineFlareVisibility is sized by STABLE (slot, light) identity â€”
             // ALCineLightRigManager::SLOT_COUNT * ALCineLightRigModel::LIGHT_COUNT
-            // — not by the <=8 packed upload slot. Indexing by pack order let a
+            // â€” not by the <=8 packed upload slot. Indexing by pack order let a
             // projector that dropped out (off/null/behind-camera) hand its
             // smoothed visibility to whichever OTHER light happened to shift
             // into that upload slot next frame, causing cross-light flicker
@@ -14314,15 +14303,15 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                     std::isfinite(cine_flare_release()) ? llclamp(cine_flare_release(), 0.f, 2.f) : .450f);
 
                 ALCineLightRigManager& rig_mgr = ALCineLightRigManager::instance();
-                // Visit every (slot, light) pair every frame — even past the
-                // <=8 upload cap — so every stable smoothing slot gets a
+                // Visit every (slot, light) pair every frame â€” even past the
+                // <=8 upload cap â€” so every stable smoothing slot gets a
                 // proper this-frame target and decays correctly instead of
                 // freezing at a stale value. 5*4 = 20 cheap iterations; not a
                 // perf concern next to the rest of a render frame.
                 for (S32 slot_i = 0; slot_i < ALCineLightRigManager::SLOT_COUNT; ++slot_i)
                 {
                     ALCineLightRigManager::Slot slot = static_cast<ALCineLightRigManager::Slot>(slot_i);
-                    // isSlotLit() (not enabledMask() alone) matches Path A —
+                    // isSlotLit() (not enabledMask() alone) matches Path A â€”
                     // only currently-live rigs contribute a source this frame.
                     const bool slot_lit = rig_mgr.isSlotLit(slot);
                     const ALCineLightRig* rig = slot_lit ? &rig_mgr.at(slot) : nullptr;
@@ -14341,15 +14330,15 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                         {
                             const ALCineLightRigModel::EmitterState& emitter = frame->mProj[light_i];
                             // projectorId(i), not a tag scan (Path B), so omni
-                            // fills + the catchlight — which share the same
-                            // local object tag — never flare. A freshly-
+                            // fills + the catchlight â€” which share the same
+                            // local object tag â€” never flare. A freshly-
                             // created projector is null for a few retry
                             // ticks; treat that exactly like "no source"
                             // rather than erroring. Whether a lit fixture
                             // actually flares is now decided by the SHADER's
                             // on-screen HDR luma probe against
                             // uCineFlareThreshold, not a CPU intensity guess
-                            // — only skip truly-dark (mIntensity<=0) fixtures
+                            // â€” only skip truly-dark (mIntensity<=0) fixtures
                             // here so they don't even get projected.
                             LLUUID id = (emitter.mOn && emitter.mIntensity > 0.f)
                                 ? rig->projectorId(light_i) : LLUUID::null;
@@ -14400,7 +14389,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
 
                                         target_visibility = edge_fade;
                                         // Color.rgb = BASE linear color (unscaled
-                                        // by intensity) — the shader now derives
+                                        // by intensity) â€” the shader now derives
                                         // brightness from its isolated shaft HDR
                                         // luma probe, so the fixture's configured
                                         // intensity must NOT re-multiply it here.
@@ -14436,7 +14425,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
 
                         // Smooth every stable slot every frame the rig master
                         // is on, regardless of whether it has a valid source
-                        // this frame — target is 0 when off/null/behind-camera,
+                        // this frame â€” target is 0 when off/null/behind-camera,
                         // so an absent projector's OWN slot decays toward 0
                         // instead of a different light inheriting its value.
                         mCineFlareVisibility[stable_idx] = ALFlareEnergy::apply(
@@ -14753,7 +14742,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             // --- Linear-space grading (pre-tonemap) ---
             // White balance: resolve (CCT offset, Duv) into a linear-sRGB gain
             // on the CPU. Duv is exposed to artists on a friendly [-1, 1]
-            // scale and scaled into CIE 1960 uv units (±0.02) here.
+            // scale and scaled into CIE 1960 uv units (Â±0.02) here.
             static LLCachedControl<F32>       cg_wb_cct(gSavedSettings, "RenderColorGradeWhiteBalanceCCT", 0.f);
             static LLCachedControl<F32>       cg_wb_duv(gSavedSettings, "RenderColorGradeWhiteBalanceDuv", 0.f);
             const F32 wb_cct = llclamp((F32)cg_wb_cct(), -5000.0f, 5000.0f);
@@ -14761,7 +14750,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             const LLVector3 wb_gain = cg_compute_white_balance_gain(wb_cct, wb_duv);
             shader->uniform3fv(LLShaderMgr::COLOR_GRADE_WHITE_BALANCE_GAIN, 1, wb_gain.mV);
 
-            // Lift / Gamma / Gain — gamma is inverted on the CPU.
+            // Lift / Gamma / Gain â€” gamma is inverted on the CPU.
             static LLCachedControl<LLVector3> cg_lift(gSavedSettings, "RenderColorGradeLift", LLVector3(0.f, 0.f, 0.f));
             static LLCachedControl<LLVector3> cg_gamma_cc(gSavedSettings, "RenderColorGradeGamma", LLVector3(1.f, 1.f, 1.f));
             static LLCachedControl<LLVector3> cg_gain(gSavedSettings, "RenderColorGradeGain", LLVector3(1.f, 1.f, 1.f));
@@ -14785,7 +14774,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             shader->uniform3fv(LLShaderMgr::COLOR_GRADE_GAIN,         1, gain_arr);
 
             // --- Split toning ---
-            // Tints → ratios: `tint / max(dot(tint, LUMA), 1e-4)` precomputed.
+            // Tints â†’ ratios: `tint / max(dot(tint, LUMA), 1e-4)` precomputed.
             // Identity (tint == vec3(0.5)) maps to ratio == vec3(1).
             static LLCachedControl<LLColor3> split_shadow_tint(gSavedSettings, "RenderSplitToneShadowTint", LLColor3(0.5f, 0.5f, 0.5f));
             static LLCachedControl<LLColor3> split_highlight_tint(gSavedSettings, "RenderSplitToneHighlightTint", LLColor3(0.5f, 0.5f, 0.5f));
@@ -14915,11 +14904,11 @@ void LLPipeline::copyScreenSpaceReflections(LLRenderTarget* src, LLRenderTarget*
 // position/yaw smoothing, and fills mNightMaskFrame for THIS frame. Called
 // once from renderFinalize(), before generateLuminance() (B1: bloom-metering
 // scale) and applyOnLensFilters() (the darkening pass itself) so both read one
-// coherent resolve instead of each independently re-deriving it — a second
+// coherent resolve instead of each independently re-deriving it â€” a second
 // independent resolve would double-step the exponential smoothing below.
 //
 // M3: deliberately independent of ALCineLightRig's liveProbeCentre/rig-offset
-// state — that state is gated on the Live Probe rig slot being enabled and
+// state â€” that state is gated on the Live Probe rig slot being enabled and
 // tracks that rig's own offsets, neither of which Night Mask should inherit.
 void LLPipeline::updateNightMaskAnchor()
 {
@@ -15002,7 +14991,7 @@ void LLPipeline::updateNightMaskAnchor()
 
     // m-a: llclamp() passes NaN through unchanged (lldefs.h), so sanitize
     // every scalar with a finite check (non-finite -> the setting's own
-    // default) BEFORE clamping — a corrupted settings file must degrade to
+    // default) BEFORE clamping â€” a corrupted settings file must degrade to
     // the default look, never propagate NaN into shader uniforms.
     const auto finite_or = [](F32 v, F32 fallback)
     { return std::isfinite(v) ? v : fallback; };
@@ -15037,7 +15026,7 @@ void LLPipeline::updateNightMaskAnchor()
     state.mTintLinear = linearColor3(tint_raw);
 
     // M3: independent anchor resolution via the same Director Cast lookup the
-    // Live Probe target combo uses (0 Self, 1-4 Subject A-D) — NOT
+    // Live Probe target combo uses (0 Self, 1-4 Subject A-D) â€” NOT
     // ALCineLightRig::resolveSlotAvatar()/liveProbeCentre().
     LLDirectorCast& cast = LLDirectorCast::instance();
     LLVOAvatar* avatar = nullptr;
@@ -15103,7 +15092,7 @@ void LLPipeline::updateNightMaskAnchor()
 
     // Short critically-damped/exp-lerp smoothing, matching
     // ALCineLightRig::tickShared()'s damping idiom exactly (alpha = 1 -
-    // exp(-dt/damping)). "Short" per the design review — a fixed constant,
+    // exp(-dt/damping)). "Short" per the design review â€” a fixed constant,
     // not a user-exposed setting (this is deliberately not in the settings
     // block the review specified).
     constexpr F32 NIGHT_MASK_DAMPING_SEC = 0.15f;
@@ -15126,7 +15115,7 @@ void LLPipeline::updateNightMaskAnchor()
     }
     state.mLastTime = now;
 
-    // B1(c): a non-identity-tint check — tint_strength>0 with a WHITE
+    // B1(c): a non-identity-tint check â€” tint_strength>0 with a WHITE
     // (1,1,1) linear tint is a no-op multiply, so it must not count as
     // "contributing" on its own. M6 no-op parity with applyGradND's own
     // convention otherwise: darkness>=1 AND no desaturation AND no non-white
@@ -15146,7 +15135,7 @@ void LLPipeline::updateNightMaskAnchor()
     }
 
     // M5: transform the agent-space anchor with the SAME saved frame matrices
-    // the weather pass uses (pipeline.cpp ~13702-13706) — renderFinalize runs
+    // the weather pass uses (pipeline.cpp ~13702-13706) â€” renderFinalize runs
     // after render_ui() has begun touching the live GL matrix stack, so the
     // live stack is not trustworthy here.
     const glm::mat4 modelview = glm::make_mat4(gGLLastModelView);
@@ -15190,31 +15179,31 @@ void LLPipeline::updateNightMaskAnchor()
 //
 // Night Mask (subject-anchored darkness mask) is the THIRD on-lens filter,
 // evaluated FIRST inside the shared fragment shader (before GradND/Polarizer)
-// — see the M8 ordering note further down for how its ReShade raw-scene
+// â€” see the M8 ordering note further down for how its ReShade raw-scene
 // capture ordering differs from GradND/Polarizer's.
 //
 // M2: two later passes deliberately BYPASS Night Mask and are not expected to
-// change for v1 — a shaft punching through the darkened region, or a lens
+// change for v1 â€” a shaft punching through the darkened region, or a lens
 // artifact ignoring it entirely, is the intended look, not a bug:
 //   - the legacy sun godray pass (renderFinalize, display-stage placement,
-//     "[BDMerge G3.2] volumetric lighting / godrays") — an atmospheric shaft
+//     "[BDMerge G3.2] volumetric lighting / godrays") â€” an atmospheric shaft
 //     is meant to visibly punch through a darkened background.
-//   - lens flare, composited inside colorCorrectF (computeLensFlare) — a lens
+//   - lens flare, composited inside colorCorrectF (computeLensFlare) â€” a lens
 //     artifact belongs to the CAMERA, not the scene, so it sits entirely
 //     outside the world-lighting fake Night Mask represents.
 //
 // [RotoInk] renderCineOutline's relationship to Night Mask is no longer fixed
-// — it now depends on CineOutlineLayer (LLPipeline::resolveRotoInkLayer),
+// â€” it now depends on CineOutlineLayer (LLPipeline::resolveRotoInkLayer),
 // which the Lightbox "Ink layer" combo controls:
-//   - Scene (0, inside renderGeomPostDeferred) and Camera (1, the default —
+//   - Scene (0, inside renderGeomPostDeferred) and Camera (1, the default â€”
 //     right after generateExposure, BEFORE this function) both run before
 //     Night Mask, so it (and GradND/Polarizer/the ReShade raw capture) darkens
 //     and tints the ink along with the rest of the scene, as if it had been
 //     captured with it.
 //   - Over atmosphere (2, after feedProjectorVolumetricBloom) runs after this
-//     function has finished, so it keeps the OLD bypass behaviour — the ink
+//     function has finished, so it keeps the OLD bypass behaviour â€” the ink
 //     reads on top of Night Mask, a director-facing overlay rather than scene
-//     light — while still compositing under bloom feed and pre-tonemap grade.
+//     light â€” while still compositing under bloom feed and pre-tonemap grade.
 //   - Overlay (3, HDR path only, post colorCorrect) is fully outside this
 //     function's reach either way: flat, display-referred lines with no
 //     grade/bloom, forced back to Camera whenever tonemap type 8 (S-Log3) is
@@ -15224,16 +15213,16 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     if (!gOnLensFiltersProgram.isComplete())
         return;
 
-    // Cheap enable gate FIRST — when all three filters are off this returns before
+    // Cheap enable gate FIRST â€” when all three filters are off this returns before
     // any GPU profiling zone, settings resolve, copy, or draw, keeping the disabled
     // hot path minimal. mNightMaskFrame.mActive was already resolved once this
     // frame by updateNightMaskAnchor() (called from renderFinalize before this),
-    // so folding it in here costs nothing extra — and per the design review (m2),
+    // so folding it in here costs nothing extra â€” and per the design review (m2),
     // a missing-target/HDR-off Night Mask must not suppress an independently
     // enabled GradND/Polarizer, which this OR naturally preserves: an inert Night
     // Mask simply contributes no additional reason to run.
     //
-    // B1(a): mActive is the FINAL will-render decision — updateNightMaskAnchor()
+    // B1(a): mActive is the FINAL will-render decision â€” updateNightMaskAnchor()
     // duplicates BOTH gates immediately below (program completeness and the
     // "no post-processing" snapshot gate) into its own resolve before setting
     // mActive, specifically so this function's copies of those same gates can
@@ -15357,7 +15346,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     p_glare_thr   = llclamp(p_glare_thr, 0.5f, 8.f);
     p_glare_depth = llclamp(p_glare_depth, 0.5f, 1.f);
 
-    // Nothing to do — skip the pass entirely (byte-identical, zero cost).
+    // Nothing to do â€” skip the pass entirely (byte-identical, zero cost).
     if (density <= 0.f && p_strength <= 0.f && !night_active && !ir_active && !grads_active)
         return;
 
@@ -15377,7 +15366,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     // anchor was transformed with (gGLLastProjection), not the live GL stack
     // render_ui() has already touched. Uploaded into the DEDICATED
     // night_mask_inv_proj uniform, never the managed inv_proj/
-    // INVERSE_PROJECTION_MATRIX — LLVertexBuffer::drawArrays()'s
+    // INVERSE_PROJECTION_MATRIX â€” LLVertexBuffer::drawArrays()'s
     // gGL.syncMatrices() call re-uploads the managed inv_proj from the LIVE
     // projection whenever its hash differs from what this shader last saw,
     // which happens INSIDE drawArrays() and would silently clobber an
@@ -15393,14 +15382,14 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
 
     // ReShade decouple: past every early-out, this pass WILL modify `screen`.
     // M8 ordering: Night Mask is a world-lighting fake, not a camera-lens
-    // artifact — ReShade (RTGI-style effects) MUST see it baked into the raw
+    // artifact â€” ReShade (RTGI-style effects) MUST see it baked into the raw
     // scene it receives, unlike GradND/Polarizer, which stay decoupled (a lens
     // filter does not change surface-to-surface bounce, so RTGI must reflect
     // the UNFILTERED surfaces for those two). When Night Mask is active this
     // pass therefore runs in TWO draws through the shared shader/program:
     //   1) Night Mask only, baked back into `screen`
     //   2) raw-scene capture (mask included, GradND/Polarizer NOT yet applied)
-    //   3) GradND/Polarizer only (Night Mask forced off — already applied)
+    //   3) GradND/Polarizer only (Night Mask forced off â€” already applied)
     // When Night Mask is inactive this collapses to the original single draw
     // with the capture BEFORE it, byte-identical to the pre-Night-Mask code.
     static LLCachedControl<bool> reshade_decouple(gSavedSettings, "RenderReShadeDecoupleOnLens", true);
@@ -15509,7 +15498,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
             gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_SUN,        sun_u, sun_v, has_sun, aspect);
 
             // m-e: draw_night false uploads strength-0 Night Mask uniforms by
-            // design (identity path — see applyNightMask's active<=0.5
+            // design (identity path â€” see applyNightMask's active<=0.5
             // early-out), exactly like a GradND/Polarizer-only draw uploads
             // density/strength 0 above.
             const bool draw_night = include_night && night_active;
@@ -15529,7 +15518,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
                     gOnLensFiltersProgram.uniformMatrix3fv(LLShaderMgr::NIGHT_MASK_BOX_BASIS,
                         1, false, glm::value_ptr(night_box_basis));
                 }
-                // Major1: upload the DEDICATED night_mask_inv_proj uniform —
+                // Major1: upload the DEDICATED night_mask_inv_proj uniform â€”
                 // NOT the managed INVERSE_PROJECTION_MATRIX/inv_proj, which
                 // gGL.syncMatrices() (called inside the drawArrays() below)
                 // can silently re-upload from the LIVE projection AFTER this
@@ -15547,7 +15536,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
         mWaterDis.flush();
 
         // Copy the filtered scene back into `screen` for the downstream passes
-        // (bloom/flare/tonemap). Use a raw COLOR-only framebuffer blit — NOT
+        // (bloom/flare/tonemap). Use a raw COLOR-only framebuffer blit â€” NOT
         // copyRenderTarget, whose shader samples deferredScreen's depth (which
         // `screen` shares), reintroducing the depth feedback loop. A blit samples no
         // textures, so it is feedback-free. The attachment-0-only helper
@@ -15580,7 +15569,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     else
     {
         // Unchanged existing behavior: capture BEFORE the single GradND/
-        // Polarizer draw — byte-identical to the pre-Night-Mask code path.
+        // Polarizer draw â€” byte-identical to the pre-Night-Mask code path.
         if (want_raw_capture)
         {
             capture_raw_scene();
@@ -16230,9 +16219,9 @@ static void alDiopterResolveLook(U32 preset_id, ALDiopterLook& o)
     // stays on the user's sliders so a preset survives being moved to a new
     // shot. Same contract as the GradND/Polarizer preset switches.
     //
-    // Every non-Custom preset fully owns the warp block — the eight fields
+    // Every non-Custom preset fully owns the warp block â€” the eight fields
     // that can arm or phase the warp (fold, twist, lobe amount, pattern
-    // mode/zoom, ring/lobe phase, feed) — like the reference resolver, which
+    // mode/zoom, ring/lobe phase, feed) â€” like the reference resolver, which
     // assigns every field: neutralize first, then let each case set what it
     // uses. Otherwise leftover slider state re-arms or re-phases the annulus
     // warp under a preset, making the same preset render differently for
@@ -16405,7 +16394,7 @@ static void alDiopterResolveLook(U32 preset_id, ALDiopterLook& o)
     }
 }
 
-// [Ultimate Diopter] §5.3 / wave-2 floater state -- published every frame by
+// [Ultimate Diopter] Â§5.3 / wave-2 floater state -- published every frame by
 // alDiopterResolveBaseFocus() via the call-swap-6 site in
 // renderUltimateDiopter, since the floater's refresh runs outside that
 // function. Conservative initial value (MANUAL, the factory slider default)
@@ -16424,7 +16413,7 @@ void LLPipeline::materializeDiopterPreset(U32 preset_id, const std::string& edit
     // auto-Custom listener without this guard. RAII (not a raw flag write)
     // because the abort path (alDiopterAbortPresetSelection,
     // aldiopterpresetbank.cpp) can nest a second materialize-guard scope
-    // inside this one -- see §6.3.
+    // inside this one -- see Â§6.3.
     ALScopedPresetMaterializing guard;
 
     auto putU = [&edited_control](const char* name, U32 v)
@@ -16482,7 +16471,7 @@ void LLPipeline::materializeDiopterPreset(U32 preset_id, const std::string& edit
     putF("CineDiopterSeamGhostPx", look.mSeamPx);
 }
 
-// [Ultimate Diopter] §5.3 / call-swap 6 -- the base-focus resolver, extracted
+// [Ultimate Diopter] Â§5.3 / call-swap 6 -- the base-focus resolver, extracted
 // verbatim from the branch structure that used to live inline in
 // renderUltimateDiopter, so the renderer and the wave-2 floater
 // (ALFloaterUltimateDiopter) can never disagree about which state produced
@@ -16924,7 +16913,7 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
     // alDiopterResolveBaseFocus() (below renderUltimateDiopter's caller-side
     // helpers) so the wave-2 floater can read the SAME provenance the
     // renderer resolved this frame instead of re-deriving it from
-    // gSavedSettings + camera state and risking drift (design doc §5.3).
+    // gSavedSettings + camera state and risking drift (design doc Â§5.3).
     F32 base_focus_m;
     ALDiopterFocusProvenance base_focus_prov;
     alDiopterResolveBaseFocus((F32)f_base_m, (U32)f_focus_mode, dof_focus_live,
@@ -16948,7 +16937,7 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
     F32 edge_vig = strength_d * 0.02f * character * (F32)g_vig_scale;
 
     // [Ultimate Diopter] call-swap 7 -- Layer-3 runtime differential (design
-    // doc §2.3): assert the shared UI-facing predicate helpers agree with
+    // doc Â§2.3): assert the shared UI-facing predicate helpers agree with
     // this frame's actual armed state, so a future edit to either side that
     // breaks the other is caught in a debug build rather than only by the
     // (separate) 1580-case sweep corpus.
@@ -16983,7 +16972,7 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
     // farthest frame corner, so every downstream radius consumer
     // (glassRefract radius, halo band outer, hollow outer) reaches edge to
     // edge automatically. The Size slider is intentionally inert in this
-    // mode — the glass has no boundary for it to size — but the animated
+    // mode â€” the glass has no boundary for it to size â€” but the animated
     // size_scale (Pulse:Size, Stutter Size) still breathes the falloff
     // reach so size-targeted motion is not silently dead.
     F32 glass_radius = eff_size;
@@ -17372,8 +17361,8 @@ struct ALKaleidoMotionState
 };
 
 // Line-faithful port of the reference's 12-way motion block (PS_Kaleido
-// "motion" section). Motion displacement vectors are client-native y-up —
-// the house convention the diopter's Sweep/Path already use — so a sweep
+// "motion" section). Motion displacement vectors are client-native y-up â€”
+// the house convention the diopter's Sweep/Path already use â€” so a sweep
 // angle of +45 deg moves up-right on screen. t_now is the freeze-aware
 // clock; Track uses the focus uv from alKaleidoFocusUV (falls back to the
 // manual center when invalid, replacing the reference's tracker texture).
@@ -17563,7 +17552,7 @@ void LLPipeline::materializeKaleidoPreset(U32 preset_id, const std::string& edit
     // only fires on change), but changed fields would re-enter the
     // auto-Custom listener without this guard. RAII (not a raw flag write)
     // for the same nesting-safety reason as materializeDiopterPreset -- see
-    // §6.3.
+    // Â§6.3.
     ALScopedPresetMaterializing guard;
 
     auto putU = [&edited_control](const char* name, U32 v)
@@ -17630,7 +17619,7 @@ void LLPipeline::materializeKaleidoPreset(U32 preset_id, const std::string& edit
     putF("CineDiopterKalCellTint", look.mCellTint);
 }
 
-// [Ultimate Diopter] §6.3 piece 2f's write-back revert failure path
+// [Ultimate Diopter] Â§6.3 piece 2f's write-back revert failure path
 // (alDiopterAbortPresetSelection) now lives in aldiopterpresetbank.cpp,
 // alongside the rest of the guard/reason state machine (Codex review
 // finding F6) -- moved out of this file so it, and
@@ -18514,7 +18503,7 @@ S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellips
         // test below, same as before). A box that merely straddles the
         // camera's depth PLANE while sitting off to the side gets clipped
         // to the near plane instead, and its clipped screen bounds go
-        // through the SAME ±1.2 NDC test as an ordinary in-front box -- so
+        // through the SAME Â±1.2 NDC test as an ordinary in-front box -- so
         // it's rejected here, like anything else fully outside the frame,
         // instead of surviving to starve the cap.
         const bool camera_inside = straddling && camera_inside_box(c.mCenter, c.mHalfExtents);
@@ -24112,7 +24101,7 @@ void LLPipeline::renderFinalize()
 
         // Night Mask: resolve the target/anchor/smoothing ONCE this frame,
         // before generateLuminance() (B1 bloom-metering fix) and
-        // applyOnLensFilters() (the darkening pass) both consume it — see the
+        // applyOnLensFilters() (the darkening pass) both consume it â€” see the
         // comment on updateNightMaskAnchor() for why they must share one
         // resolve rather than each independently re-deriving it.
         updateNightMaskAnchor();
@@ -24170,8 +24159,8 @@ void LLPipeline::renderFinalize()
             renderCineOutline(&mRT->screen);
         }
 
-        // On-lens filters (Graduated ND + Polarizer) run HERE — after exposure is
-        // metered from the clean scene, but before bloom/flare are generated — so
+        // On-lens filters (Graduated ND + Polarizer) run HERE â€” after exposure is
+        // metered from the clean scene, but before bloom/flare are generated â€” so
         // those optics respect the filtered scene like a real on-lens filter.
         // Self-gates to a no-op when both filters are disabled.
         applyOnLensFilters(&mRT->screen);
@@ -27414,7 +27403,9 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     static LLCachedControl<S32> preset(gSavedSettings, "RenderAreaShadowQuality", 1);
     static LLCachedControl<bool> thin(gSavedSettings, "RenderAreaShadowThinObjects", false);
     // The authored uniform march is also the fallback when a segmented plan cannot fit.
-    const ALAreaShadow::Quality uniform{samples(),steps(),half()};
+    // Charge the requested reach conservatively, including the main reservation calculated by feeds.
+    const ALAreaShadow::Quality uniform{samples(),steps(),half(),0,0,
+        cube_on() ? ALAreaShadow::lookReach(look_reach()) : 0.f};
     const auto requested = thin() ? ALAreaShadow::segmented(uniform,preset()) : uniform;
     static_assert(ALAreaShadow::kFeedSlots == LLPrismLens::MAX_CAPTURES, "feed slot count");
     // The feeds that are LIVE this frame (fix rounds 4-5). No feed can run while the VCam switch is off, so the main view reserves
@@ -33479,6 +33470,39 @@ public:
 private:
     LLPipeline::WorldShadowDrawCounts* mPrevious;
 };
+// Count the cube's sorted rigged caster maps here, once per face. Shared
+// submission endpoints stay untouched for native shadows and beauty batches.
+void countWorldShadowRiggedMaps(LLCullResult& result, LLPipeline::WorldShadowDrawCounts& counts)
+{
+    static const U32 types[] = {
+        LLRenderPass::PASS_SIMPLE_RIGGED, LLRenderPass::PASS_FULLBRIGHT_RIGGED,
+        LLRenderPass::PASS_SHINY_RIGGED, LLRenderPass::PASS_BUMP_RIGGED,
+        LLRenderPass::PASS_FULLBRIGHT_SHINY_RIGGED, LLRenderPass::PASS_MATERIAL_RIGGED,
+        LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE_RIGGED, LLRenderPass::PASS_SPECMAP_RIGGED,
+        LLRenderPass::PASS_SPECMAP_EMISSIVE_RIGGED, LLRenderPass::PASS_NORMMAP_RIGGED,
+        LLRenderPass::PASS_NORMMAP_EMISSIVE_RIGGED, LLRenderPass::PASS_NORMSPEC_RIGGED,
+        LLRenderPass::PASS_NORMSPEC_EMISSIVE_RIGGED, LLRenderPass::PASS_GLTF_PBR_RIGGED,
+        LLRenderPass::PASS_ALPHA_MASK_RIGGED, LLRenderPass::PASS_ALPHA_RIGGED,
+        LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED, LLRenderPass::PASS_NORMSPEC_MASK_RIGGED,
+        LLRenderPass::PASS_MATERIAL_ALPHA_MASK_RIGGED, LLRenderPass::PASS_SPECMAP_MASK_RIGGED,
+        LLRenderPass::PASS_NORMMAP_MASK_RIGGED, LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED
+    };
+    for (U32 type : types)
+    {
+        if (!gPipeline.hasRenderType(type)) continue;
+        auto* end = result.endRenderMap(type);
+        for (auto* it = result.beginRenderMap(type); it != end; )
+        {
+            const LLDrawInfo& params = **it;
+            LLCullResult::increment_iterator(it, end);
+            if (params.mAvatar.notNull() && params.mCount)
+            {
+                ++counts.riggedBatches;
+                if (params.mAvatar->isSelf()) ++counts.selfRigged;
+            }
+        }
+    }
+}
 }
 
 // [P1-lite] World cube shadow maps for the top 1-2 RESIDENT point lights (alworldshadowmath.h). Six face passes per light, every
@@ -33782,6 +33806,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
             // around the lamp still cast: the per-light near plane (clears the emitter's world-AABB Chebyshev reach, floor RenderAreaShadowWorldNear) keeps a bulb's own shell out.
             RenderSpotLight = job.drawable;
             renderShadow(view, proj, shadow_cam, sWorldCull[job.slot], false);
+            countWorldShadowRiggedMaps(sWorldCull[job.slot],draw_counts[j]);
             RenderSpotLight = nullptr;
             mWorldShadowScratch.flush();
 
@@ -34727,7 +34752,7 @@ S32 LLPipeline::uploadPrismPreviewColorGradeUniforms(LLGLSLShader& target_shader
         // --- Linear-space grading (pre-tonemap) ---
         // White balance: resolve (CCT offset, Duv) into a linear-sRGB gain
         // on the CPU. Duv is exposed to artists on a friendly [-1, 1]
-        // scale and scaled into CIE 1960 uv units (Â±0.02) here.
+        // scale and scaled into CIE 1960 uv units (Ã‚Â±0.02) here.
         static LLCachedControl<F32>       cg_wb_cct(gSavedSettings, "RenderColorGradeWhiteBalanceCCT", 0.f);
         static LLCachedControl<F32>       cg_wb_duv(gSavedSettings, "RenderColorGradeWhiteBalanceDuv", 0.f);
         const F32 wb_cct = llclamp((F32)cg_wb_cct(), -5000.0f, 5000.0f);

@@ -131,12 +131,15 @@ def check_rigged_alpha_casters(pipeline_src=None):
     scope = pipe[pipe.index('class WorldShadowDrawScope'):pipe.index('// [P1-lite] World cube shadow maps')]
     assert 'sWorldShadowDrawCounts = &counts;' in scope and 'sWorldShadowDrawCounts = mPrevious;' in scope, 'cube draw context must restore on exit'
     draws = text(NV / 'lldrawpool.cpp')
-    endpoints = ('pushMaskBatchesIndexed', 'pushBatch', 'pushUntexturedBatch', 'pushGLTFBatchIndexed', 'pushGLTFBatch', 'pushUntexturedGLTFBatch')
-    for name in endpoints:
-        start = draws.index('void LLRenderPass::' + name + '(')
-        fn = draws[start:draws.index('\n}\n', start)]
-        assert fn.count('recordWorldShadowRiggedDraw(params);') == 1, 'missing/duplicate submitted rigged counter: ' + name
-        assert fn.index('drawRange(') < fn.index('recordWorldShadowRiggedDraw(params);'), 'counting an attempted draw: ' + name
+    assert 'recordWorldShadowRiggedDraw' not in draws, 'native/beauty endpoints must carry no cube counter calls'
+    counter = pipe[pipe.index('void countWorldShadowRiggedMaps('):pipe.index('// [P1-lite] World cube shadow maps')]
+    for pass_type in ('PASS_ALPHA_RIGGED', 'PASS_SIMPLE_RIGGED', 'PASS_ALPHA_MASK_RIGGED',
+                      'PASS_GLTF_PBR_RIGGED', 'PASS_GLTF_PBR_ALPHA_MASK_RIGGED'):
+        assert pass_type in counter, 'missing cube rigged caster map: ' + pass_type
+    assert 'params.mAvatar.notNull() && params.mCount' in counter and '++counts.riggedBatches;' in counter
+    assert 'if (params.mAvatar->isSelf()) ++counts.selfRigged;' in counter
+    assert pipe.count('countWorldShadowRiggedMaps(') == 2, 'counter must run only in the cube caller'
+    assert 'renderShadow(view, proj, shadow_cam, sWorldCull[job.slot], false);\n            countWorldShadowRiggedMaps(sWorldCull[job.slot],draw_counts[j]);' in cube
     avatar = text(NV / 'lldrawpoolavatar.cpp')
     start = avatar.index('void LLDrawPoolAvatar::renderShadow(')
     avatar = avatar[start:avatar.index('\n}\n', start)]

@@ -1276,7 +1276,6 @@ public:
         U32 avatarBodies = 0, riggedBatches = 0, selfBodies = 0, selfRigged = 0;
     };
     static WorldShadowDrawCounts* sWorldShadowDrawCounts;
-    static void recordWorldShadowRiggedDraw(const LLDrawInfo& params);
     // [AlphaShadowCap] 0 = none, 1 = rain (reject attachments), 2 = attachments only,
     // 3 = attachments only + debug accounting (chosen once per pass, so debug-off
     // draws never touch the counters).

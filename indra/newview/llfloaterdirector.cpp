@@ -4459,6 +4459,18 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
         }
     }
 
+    // Missing soft-shadow LOOK keys mean their original identity, independently
+    // of which other keys a scene saved. Never inherit the previous scene's look.
+    for (const char* setting : {"RenderAreaShadowStrength", "RenderAreaShadowContrast",
+             "RenderAreaShadowWorldScreenReach", "RenderAreaShadowWorldAmount", "RenderAreaShadowScreenAmount"})
+    {
+        if (!scene["settings"].isMap() || !scene["settings"].has(setting))
+        {
+            if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                ctrl->resetToDefault(true);
+        }
+    }
+
     // [RigRim] P1-C fix: a scene saved before Rig Rim existed (or any scene
     // whose settings map simply omits it) has no "CineRigRimEnabled" key.
     // The loop above only ever SETS a key it finds, so leaving the rest

@@ -36,6 +36,9 @@ vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
 vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
                 float light_bias, float max_distance, float thickness, int steps, float offset,
                 float contact_distance, bool thin);
+vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
+                float light_bias, float max_distance, float thickness, int steps, float offset,
+                float contact_distance, bool thin, float minimum_distance);
 uint areaHash(uint x)
 {
     x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; return x ^ (x >> 16);
@@ -157,7 +160,7 @@ void main()
                     {
                         int reach_steps = min(area_steps,12)+int(ceil(float(max(area_steps-12,0))*clamp(reach_limit*0.125,0.0,1.0)));
                         vec2 beyond = areaTrace(origin,target,area_lights[light].xyz,end_gap,
-                            area_light_bias,reach_limit,area_params.y,reach_steps,0.25+0.5*jitter,area_contact_dist[light],false);
+                            area_light_bias,reach_limit,area_params.y,reach_steps,0.25+0.5*jitter,area_contact_dist[light],false,area_contact_dist[light]);
                         if (beyond.x < 0.5 && beyond.y > 0.5) extra_dark += 1.0;
                     }
                 }

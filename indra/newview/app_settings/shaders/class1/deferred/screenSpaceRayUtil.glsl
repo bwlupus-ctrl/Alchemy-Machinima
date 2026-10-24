@@ -47,7 +47,7 @@ float areaReceiverBias(vec2 uv, vec3 pos)
 // that sits next to the Thin/regular boundary the regular way (thin = false), which is the uniform march exactly.
 vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
                 float light_bias, float max_distance, float thickness, int steps, float offset,
-                float contact_distance, bool thin)
+                float contact_distance, bool thin, float minimum_distance)
 {
     vec3 delta = target-origin;
     float distance = length(delta);
@@ -116,6 +116,9 @@ vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
             if (abs(slope) < 1.e-4) continue;
             float hit_t = dot(occluder-origin,normal)/slope;
             if (hit_t < 0.0 || hit_t > limit) continue;
+            // The extra world reach must keep searching past contact candidates
+            // rejected by the contact march's tighter surface tolerance.
+            if (minimum_distance > 0.0 && hit_t <= minimum_distance) continue;
             vec3 hit = origin+direction*hit_t;
             vec2 hit_uv = generateProjectedPosition(hit);
             if (any(lessThan(hit_uv,vec2(0))) || any(greaterThanEqual(hit_uv,vec2(1)))) continue;
@@ -132,6 +135,12 @@ vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
         }
     }
     return vec2(1);
+}
+vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
+                float light_bias, float max_distance, float thickness, int steps, float offset,
+                float contact_distance, bool thin)
+{
+    return areaTrace(origin,target,light,end_gap,light_bias,max_distance,thickness,steps,offset,contact_distance,thin,0.0);
 }
 vec2 areaTrace(vec3 origin, vec3 target, vec3 light, float end_gap,
                 float light_bias, float max_distance, float thickness, int steps, float offset,

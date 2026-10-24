@@ -371,24 +371,25 @@ SEAM_VIEWS = (('identity', np.eye(4)), ('rotated', rotated_view()))
 
 
 class MutantTree(G.SourceTree):
-    """The worktree with named substitutions applied to areaShadowFilterF.glsl: a CONTROL, never production text. A control is only
+    """The worktree with named substitutions in one selected shader module: a CONTROL, never production text. A control is only
     meaningful if its target text still exists, so a vanished target is a gate failure."""
-    def __init__(self, base, subs):
+    def __init__(self, base, subs, filename="areaShadowFilterF.glsl"):
         super().__init__(base.ref)
         self.subs = subs
+        self.filename = filename
 
     def read(self, path):
         text = super().read(path)
-        if Path(path).name == 'areaShadowFilterF.glsl':
+        if Path(path).name == self.filename:
             for old, new in self.subs:
                 assert old in text, 'mutation target vanished from the shader: ' + old
                 text = text.replace(old, new)
         return text
 
 
-def mutant(r, subs):
+def mutant(r, subs, filename="areaShadowFilterF.glsl"):
     """(runner, raster, probe) on the mutated shader text, sharing the GL context and host."""
-    m = RealRunner(MutantTree(r.tree, subs), r.host, gl=r.gl)
+    m = RealRunner(MutantTree(r.tree, subs, filename), r.host, gl=r.gl)
     return m, Raster(m), Probe(m)
 
 
@@ -615,7 +616,9 @@ def flicker_checks(r, raster, out):
     pts = sc.probes
     gt = S.trace_light(sc,light,pts,np.tile([0.,0.,1.],(len(pts),1)),np.arange(len(pts),dtype=np.uint32),S=256)
     gt = (1.-gt['nblk'].astype(np.float32)/256)[None,:]
-    seq = {cfg: [] for cfg in ('cube','cube+thin','cube_worldonly')}
+    reach_configs = {'cube_reach%g_steps%d' % (reach, steps): (reach, steps)
+                     for reach in (2.,8.) for steps in (32,64)}
+    seq = {cfg: [] for cfg in ('cube','cube+thin',*reach_configs,'cube_worldonly')}
     identical = True
     for pose in poses:
         cam = S.Camera(pose.eye,pose.target,1920,1080,pose.vfov)
@@ -626,7 +629,15 @@ def flicker_checks(r, raster, out):
             world = {'atlas': np.empty((CS.ATLAS_H_PER_LIGHT,CS.ATLAS_W),np.float32),'channels':
                      [dict(row=0,near=near,far=light.range,r_map=light.radius,contact=0. if cfg == 'cube_worldonly' else CS.contact_distance(light.range),seed=light.seed)]}
             plan = plans['Default+Thin' if cfg == 'cube+thin' else 'Default'][1]
-            v = r.run(cam,depth,norm,[light],plan,world=world)
+            look = dict()
+            if cfg in reach_configs:
+                reach, steps = reach_configs[cfg]
+                plan = dict(plan, steps=steps)
+                look = dict(reach=reach)
+            v = r.run(cam,depth,norm,[light],plan,world=world,look=look)
+            if cfg in reach_configs:
+                repeated = r.run(cam,depth,norm,[light],plan,world=world,look=look)
+                assert np.array_equal(v,repeated), 'reach sampling crawls at an unchanged camera'
             if cfg == 'cube': regular_image = v
             if cfg == 'cube+thin': identical &= np.array_equal(v,regular_image)
             _,pv = R.sample_full(v,(np.array([0]),np.array([0])),xy)
@@ -641,8 +652,10 @@ def flicker_checks(r, raster, out):
         worst = max(p['p95'] for p in measured); pop = max(p['pop'] for p in measured)
         row = dict(name='B_camorbit_low_'+cfg,p95=worst,pop=pop,pair_003_004=pairs[3]['p95'])
         # Acceptance is the two shipped configurations, as in cube_gates. The
-        # contact-disabled debug path diagnoses raster/probe aliasing separately.
-        if cfg != 'cube_worldonly': row['passed'] = worst<=.06 and pop<=.05
+        # contact-disabled path diagnoses aliasing; reach at 30 degree jumps is
+        # diagnostic too (the frame-motion gate below keeps the same limits).
+        if cfg not in reach_configs and cfg != 'cube_worldonly': row['passed'] = worst<=.06 and pop<=.05
+        if cfg in reach_configs: row['camera_jump_degrees'] = 30
         rows.append(row)
     rows.append(dict(name='cube_vs_thin_full_images',frames=len(poses),passed=bool(identical)))
     # Resolve the contact-disabled diagnostic's worst 1080p pair again at 4K.
@@ -662,6 +675,60 @@ def flicker_checks(r, raster, out):
     hi = M.temporal(high,[True,True],{0:gt})[0]
     rows.append(dict(name='worldonly_resolution_control',pair=worst_pair['i'],p95_1080=worst_pair['p95'],p95_4k=hi['p95'],
                      passed=hi['p95'] < .8*worst_pair['p95']))
+    return rows
+
+
+def reach_motion_checks(r, raster, out):
+    """Frame-sized 0.1 degree camera motion at all 12 azimuths of B's low orbit.
+
+    Reproject the same visible world probes. Keep the existing p95/pop limits;
+    the separate 30 degree orbit diagnostics measure large viewpoint changes.
+    No temporal history: an unchanged camera must reproduce every byte too.
+    """
+    sc = S.scene_sphere()
+    poses = [p for p in sc.poses if p.group == 'camorbit_low']
+    light = sc.light_sets[poses[0].cfg][0]
+    near = CS.emitter_near(sc,light)
+    r.gpu_atlas = raster.atlas(sc,light,near)
+    configs = [(reach,steps) for reach in (2.,8.) for steps in (32,64)]
+    measured = {cfg: [] for cfg in configs}
+    pts = sc.probes
+    gt = S.trace_light(sc,light,pts,np.tile([0.,0.,1.],(len(pts),1)),np.arange(len(pts),dtype=np.uint32),S=256)
+    gt = (1.-gt['nblk'].astype(np.float32)/256)[None,:]
+    world = {'atlas': np.empty((CS.ATLAS_H_PER_LIGHT,CS.ATLAS_W),np.float32),'channels':
+             [dict(row=0,near=near,far=light.range,r_map=light.radius,contact=CS.contact_distance(light.range),seed=light.seed)]}
+    deterministic = True
+    a = np.radians(.1)
+    rotate = np.array([[np.cos(a),-np.sin(a),0.],[np.sin(a),np.cos(a),0.],[0.,0.,1.]])
+    for pose in poses:
+        seq = {cfg: [] for cfg in configs}
+        centre = np.array(pose.target)
+        for eye in (pose.eye, centre + rotate @ (np.array(pose.eye)-centre)):
+            cam = S.Camera(eye,pose.target,1920,1080,pose.vfov)
+            g = S.cast_primary(sc,cam)
+            assert T.blocker_info(sc,cam,g)['sphere']['status'] == 'on', 'motion fixture lost the on-screen blocker'
+            _,depth,norm = S.encode_gbuffer(cam,g)
+            xy = T.probe_projection(sc,cam,g)
+            for reach,steps in configs:
+                plan = dict(samples=8,steps=steps,half=True,near_steps=0)
+                look = dict(reach=reach)
+                v = r.run(cam,depth,norm,[light],plan,world=world,look=look)
+                repeated = r.run(cam,depth,norm,[light],plan,world=world,look=look)
+                deterministic &= np.array_equal(v,repeated)
+                _,pv = R.sample_full(v,(np.array([0]),np.array([0])),xy)
+                seq[(reach,steps)].append(dict(probe=pv,cls=np.zeros_like(pv,dtype=np.uint8),cfg=0))
+        for cfg in configs:
+            pair = M.temporal(seq[cfg],[True,True],{0:gt})[0]
+            pair['azimuth'] = pose.id
+            measured[cfg].append(pair)
+    rows = [dict(name='look_reach_motion_no_static_crawl',passed=bool(deterministic))]
+    for (reach,steps),pairs in measured.items():
+        (out / ('reach_motion_%g_steps%d.json' % (reach,steps))).write_text(json.dumps(pairs,indent=2))
+        active = [p for p in pairs if 'p95' in p]
+        worst = max(p['p95'] for p in active); pop = max(p['pop'] for p in active)
+        rows.append(dict(name='look_reach%g_steps%d_reprojected_frame_motion' % (reach,steps),
+                         p95=worst,pop=pop,pairs=len(active),camera_step_degrees=.1,
+                         passed=bool(len(active) >= 6 and worst <= .06 and pop <= .05)))
     return rows
 
 
@@ -879,6 +946,36 @@ def look_frame(r, raster, light, capsule_in_gbuffer=True, capsule_in_cube=True, 
 def dark_percent(v, mask): return 100 * float(np.mean(v[mask] < .5))
 
 
+def reach_growth_checks(r, raster):
+    _, light = fixture()
+    rows = []
+    for reach in (2.,8.):
+        images = []
+        for steps in (32,64):
+            v0, mask, _ = look_frame(r,raster,light,capsule_in_cube=False,steps=steps)
+            v, _, _ = look_frame(r,raster,light,capsule_in_cube=False,steps=steps,look=dict(reach=reach))
+            off, _, _ = look_frame(r,raster,light,capsule_in_cube=False,steps=steps,look=dict(reach=reach,screen_amount=0.))
+            rows.append(dict(name='look_reach%g_steps%d_adds_darkness_keeps_contact' % (reach,steps),
+                             passed=bool(np.all(v <= v0 + 1.e-6) and np.array_equal(off,v0) and np.sum((v0-v)[mask]) > 100.),
+                             extra_depth=float(np.sum((v0-v)[mask]))))
+            images.append(v)
+        changed = int(np.count_nonzero(np.abs(images[0]-images[1])[mask] > LOOK_ONE))
+        rows.append(dict(name='look_reach%g_32_to_64_changes_sampling' % reach, passed=changed >= 100, changed_pixels=changed))
+    return rows
+
+
+def reach_regression(r, raster):
+    _, light = fixture()
+    old, old_raster, _ = mutant(r, [('if (minimum_distance > 0.0 && hit_t <= minimum_distance) continue;', '')], 'screenSpaceRayUtil.glsl')
+    args = dict(capsule_in_cube=False,look=dict(reach=4.,world_amount=0.))
+    fixed, mask, _ = look_frame(r,raster,light,**args)
+    stopped, _, _ = look_frame(old,old_raster,light,**args)
+    x,y = 401,125  # reviewed floor pixel: the old march stops on an in-band candidate
+    return dict(name='look_reach_searches_past_rejected_in_band_hit',
+                passed=bool(mask[y,x] and abs(stopped[y,x]-154/255) < 1.e-6 and abs(fixed[y,x]-58/255) < 1.e-6),
+                pixel=[int(x),int(y)], before=float(stopped[y,x]), after=float(fixed[y,x]))
+
+
 def look_checks(r, raster, mut_runner=None, mut_raster=None):
     rows = []
     _, light = fixture()
@@ -983,6 +1080,13 @@ def look_checks(r, raster, mut_runner=None, mut_raster=None):
         v_mut, _, _ = look_frame(mut_runner, mut_raster, light, look=dict(strength=.5))
         ratio = float(np.sum(1 - v_mut[mask]) / max(np.sum(1 - v_none[mask]), 1.e-9))
         row('control_ignored_strength_rejected', abs(ratio - .5) > .05, depth_ratio=ratio)
+    rows.extend(reach_growth_checks(r,raster))
+    rows.append(reach_regression(r,raster))
+    frozen, frozen_raster, _ = mutant(r, [('int reach_steps = min(area_steps,12)+int(ceil(float(max(area_steps-12,0))*clamp(reach_limit*0.125,0.0,1.0)));',
+                                         'int reach_steps = min(area_steps,12);')], 'areaShadowF.glsl')
+    frozen_rows = reach_growth_checks(frozen,frozen_raster)
+    growth = [row for row in frozen_rows if '32_to_64' in row['name']]
+    row('control_frozen_reach_steps_rejected', len(growth) == 2 and all(not item['passed'] for item in growth), rejected=growth)
     look_frame(r, raster, light)       # leave the programs holding the identity (default) uniforms for the rest of the gate
     return rows
 
@@ -992,7 +1096,7 @@ def look_cost(r, raster, repeats=5):
     steps: the worst case for the extra march). Diagnostic only."""
     _, light = fixture()
     out = {}
-    for steps in (12, 32):
+    for steps in (12, 32, 64):
         for reach in (0., 2., 8.):
             look_frame(r, raster, light, capsule_in_cube=False, look=dict(reach=reach), size=(1920, 1080), steps=steps)     # warm-up
             samples = []
@@ -1106,6 +1210,9 @@ def main():
         diagnostics = [row for row in flicker if 'passed' not in row]
         diagnostics.append(look_diagnostic)
         for row in flicker: print('[world-gl]',row,flush=True)
+        motion = reach_motion_checks(r,raster,out)
+        rows.extend(motion)
+        for row in motion: print('[world-gl]',row,flush=True)
         rows.extend(contracts)
         result = dict(renderer=r.gl.renderer, rows=rows, diagnostics=diagnostics, passed=all(x['passed'] for x in rows))
         (out / 'results.json').write_text(json.dumps(result, indent=2))

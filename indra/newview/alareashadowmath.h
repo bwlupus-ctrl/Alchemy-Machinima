@@ -190,7 +190,7 @@ inline std::uint32_t hash(std::uint32_t x)
 // first 1.85 m, the rest far. minFar is the authored uniform count. Under budget
 // pressure the far segment may be thinned to min(minFar, kThinFarFloor) before a view
 // falls back to the uniform march; the floor is COMMON to every preset.
-struct Quality { int samples, steps; bool half; int nearSteps = 0; int minFar = 0; };
+struct Quality { int samples, steps; bool half; int nearSteps = 0; int minFar = 0; float screenReach = 0.f; };
 inline float lightBias(float bias)
 {
     return std::isfinite(bias) ? std::clamp(bias,0.f,4.f) : .25f;
@@ -225,6 +225,15 @@ inline int reachSteps(int authored, float limitMetres)
     const int base = std::min(authored,12);
     const int more = std::max(authored-12,0);
     return base+static_cast<int>(std::ceil(static_cast<float>(more)*std::clamp(limitMetres*.125f,0.f,1.f)));
+}
+// Conservative per-ray work for a group that may contain world-owned channels.
+// Those channels run contact AND reach; other channels retain their original march.
+// Reserve the larger cost for every requested light so changing ownership cannot
+// break a frame/draw ceiling. Reach zero retains the original integer cost exactly.
+inline int marchWork(const Quality& q)
+{
+    const float reach = lookReach(q.screenReach);
+    return reach > 0.f ? std::max(q.steps,std::min(q.steps,12)+reachSteps(q.steps,reach)) : q.steps;
 }
 // Final visibility of one channel: contrast first (pow, skipped at exactly 1), then strength (mix(1, v, s), skipped at exactly 1).
 inline float lookApply(float v, const float look[3])
@@ -350,7 +359,7 @@ inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsig
     Workload w{};
     const int dense = std::clamp(q.nearSteps,0,64);
     w.q = {std::clamp(q.samples,1,32),std::clamp(q.steps,1,dense ? 128:64),q.half,dense,
-        dense ? std::clamp(q.minFar,1,64):0};
+        dense ? std::clamp(q.minFar,1,64):0,lookReach(q.screenReach)};
     const Quality asked = w.q;
     lights = std::min(lights,8u);
     // Reserve for the requested cap, never the changing visible set. At least
@@ -365,16 +374,16 @@ inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsig
     {
         w.pixels = w.q.half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
             std::uint64_t(width)*height;
-        w.iterations = w.pixels*std::min(lights,admitted)*w.q.samples*w.q.steps;
+        w.iterations = w.pixels*std::min(lights,admitted)*w.q.samples*marchWork(w.q);
     };
     // Render-target dimensions are GL-sized; bound pathological pure-function inputs too.
     if (width > 65536 || height > 65536) return w;
     update();
-    const auto drawn = [&]() { return w.pixels*w.q.samples*w.q.steps<=w.drawCap; };
-    const auto over = [&]() { return w.pixels*admitted*w.q.samples*w.q.steps>planned || !drawn(); };
+    const auto drawn = [&]() { return w.pixels*w.q.samples*marchWork(w.q)<=w.drawCap; };
+    const auto over = [&]() { return w.pixels*admitted*w.q.samples*marchWork(w.q)>planned || !drawn(); };
     const auto finish = [&]()
     {
-        const auto perChannel = w.pixels*w.q.samples*w.q.steps;
+        const auto perChannel = w.pixels*w.q.samples*marchWork(w.q);
         w.channels = lights && perChannel ? unsigned(std::min<std::uint64_t>(4,w.drawCap/perChannel)) : 0;
         // Nothing draws (no light, or a draw above the per-draw cap): no light is admitted either.
         w.admitted = w.channels ? admitted : 0;
@@ -387,7 +396,7 @@ inline Workload workloadWithin(Quality q, unsigned width, unsigned height, unsig
         if (!w.q.half)
         {
             const std::uint64_t rays = std::min(w.q.samples,kFullResMinSamples);
-            if (w.pixels*basis*rays*w.q.steps>planned || w.pixels*rays*w.q.steps>w.drawCap)
+            if (w.pixels*basis*rays*marchWork(w.q)>planned || w.pixels*rays*marchWork(w.q)>w.drawCap)
             { w.q.half=true; update(); }
         }
     };
@@ -470,7 +479,7 @@ inline std::uint64_t feedSpendBound(const Quality& request, unsigned width, unsi
     const std::uint64_t samples = std::clamp(request.samples,1,32), steps = std::clamp(request.steps,1,dense ? 128:64);
     const std::uint64_t pixels = request.half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
         std::uint64_t(width)*height;
-    return pixels*std::clamp(requestedLights,1u,8u)*samples*steps;
+    return pixels*std::clamp(requestedLights,1u,8u)*samples*marchWork({int(samples),int(steps),request.half,dense,request.minFar,request.screenReach});
 }
 // What the live feeds can spend in one frame when each gets its Thin-OFF allowance (budget - the Thin-OFF main plan's cost) / count.
 // A feed spends at most min(allowance, its bound); when EVERY feed is bound by its allowance the whole pool
@@ -525,7 +534,7 @@ inline Workload workload(Quality q, unsigned width, unsigned height, unsigned li
 // set). This is the SAME quantity feedWorkload() reserves for the main plan (the OFF main plan planned for the requested K lights).
 inline std::uint64_t regularCost(const Workload& w)
 {
-    return w.channels ? w.pixels*w.admitted*w.q.samples*w.q.steps : 0;
+    return w.channels ? w.pixels*w.admitted*w.q.samples*marchWork(w.q) : 0;
 }
 // What any plan reserves from the frame budget: every admitted light at its group's march (the lead lights q, the rest lights
 // `rest`), whatever the visible set. Equal to regularCost() for a plan that is not a hybrid.
@@ -534,8 +543,8 @@ inline std::uint64_t basisCost(const Workload& w)
     if (!w.channels) return 0;
     const std::uint64_t lead = std::min(w.lead,w.admitted);
     // A hybrid's Thin lights may also march the regular step count (fix round 5): they are charged the larger of the two.
-    return w.pixels*(lead*w.q.samples*std::max(w.q.steps,w.rest.steps)+
-        (w.admitted-lead)*std::uint64_t(w.rest.samples)*w.rest.steps);
+    return w.pixels*(lead*w.q.samples*std::max(marchWork(w.q),marchWork(w.rest))+
+        (w.admitted-lead)*std::uint64_t(w.rest.samples)*marchWork(w.rest));
 }
 inline bool hybridPlan(Workload& out, Quality thin, const Workload& off, unsigned width, unsigned height,
     unsigned lights, unsigned thinLights, std::uint64_t planned)
@@ -545,12 +554,12 @@ inline bool hybridPlan(Workload& out, Quality thin, const Workload& off, unsigne
     const int dense = std::clamp(thin.nearSteps,0,64);
     if (!dense) return false;
     // The Thin lights march EXACTLY the regular ray count (same disk strata, same resolution); only their steps differ.
-    Quality t{off.q.samples,std::clamp(thin.steps,1,128),off.q.half,dense,std::clamp(thin.minFar,1,64)};
+    Quality t{off.q.samples,std::clamp(thin.steps,1,128),off.q.half,dense,std::clamp(thin.minFar,1,64),lookReach(thin.screenReach)};
     const bool half = off.q.half;
     const std::uint64_t px = half ? ((std::uint64_t(width)+1)/2)*((std::uint64_t(height)+1)/2) :
         std::uint64_t(width)*height;
     const std::uint64_t nT = thinLights, nR = admitted-thinLights;
-    const std::uint64_t perRest = px*std::uint64_t(off.q.samples)*off.q.steps;
+    const std::uint64_t perRest = px*std::uint64_t(off.q.samples)*marchWork(off.q);
     if (!perRest) return false;
     // The regular group is the Thin-OFF plan, unchanged; the Thin lights get what is left.
     const std::uint64_t restCost = nR*perRest;
@@ -561,7 +570,7 @@ inline bool hybridPlan(Workload& out, Quality thin, const Workload& off, unsigne
     // the light is the larger of the two: every Thin light is charged samples x max(Thin steps, regular steps), in perThin, the
     // channel count, iterations and basisCost() alike.
     const int restSteps = std::clamp(off.q.steps,1,64);
-    const auto perThin = [&]() { return px*std::uint64_t(t.samples)*std::max(t.steps,restSteps); };
+    const auto perThin = [&]() { return px*std::uint64_t(t.samples)*std::max(marchWork(t),marchWork(off.q)); };
     const auto over = [&]() { return nT*perThin() > room || perThin() > drawCap; };
     // Far steps only: down to the common floor (near steps never thin).
     const int thinPart = t.steps-dense;
@@ -582,8 +591,8 @@ inline bool hybridPlan(Workload& out, Quality thin, const Workload& off, unsigne
     out.restChannels = off.channels;
     const std::uint64_t leadLights = std::min<std::uint64_t>(lights,thinLights);
     const std::uint64_t drawnLights = std::min<std::uint64_t>(lights,admitted);
-    out.iterations = px*(leadLights*std::uint64_t(t.samples)*std::max(t.steps,restSteps)+
-        (drawnLights-leadLights)*std::uint64_t(off.q.samples)*off.q.steps);
+    out.iterations = px*(leadLights*std::uint64_t(t.samples)*std::max(marchWork(t),marchWork(off.q))+
+        (drawnLights-leadLights)*std::uint64_t(off.q.samples)*marchWork(off.q));
     return true;
 }
 
