@@ -1079,7 +1079,7 @@ vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
 //   b     = smoothstep(b0, b0 + backSoft, -(v.l))      back-light-ness
 //   rim   = masterGain * gain * c_l * g * w_l * b * mix(1, diffuseColor, tint)
 // c_l is the light's colour x distance attenuation x cone/gobo x shadow EXACTLY
-// as the calling path already computed it, but WITHOUT the 3.25 / 3.0 legacy
+// as the calling path already computed it, but WITHOUT the 3.25 legacy
 // balance magic, so gain = 1 means "rim peak ~ this light's own diffuse peak".
 //
 // Energy / balance: the RIM fixture already lights the subject through the
@@ -1459,7 +1459,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
         vec3 centre = relightUnit(delta,n);
         float spot = max(dot(-ld,centre),is_pointlight);
         float attenuation = relightAtten(length(delta),lightSize,falloff,shape); // same physical model as direct light
-        vec3 direct = spot*spot*lightColor*3.0 * relightPbr(diffuseColor,specularColor,
+        vec3 direct = spot*spot*lightColor*3.25 * relightPbr(diffuseColor,specularColor,
             perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep);
         vec3 rimLight = vec3(0);
         bool hasRim = rig_rim_mode != 0;
@@ -1487,7 +1487,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
         // spot*spot => GL_SPOT_EXPONENT=2
         float spot_atten = spot*spot;
 
-        vec3 intensity = spot_atten * dist_atten * lightColor * 3.0; //magic number to balance with legacy materials
+        vec3 intensity = spot_atten * dist_atten * lightColor * 3.25; // match deferred pointLightF
 
         float nl = 0;
         vec3 diffPunc = vec3(0);
@@ -1565,7 +1565,7 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
         vec3 centre = relightUnit(delta,n);
         float spot = max(dot(-ld,centre),is_pointlight);
         float attenuation = relightAtten(length(delta),lightSize,falloff,shape); // same physical model as direct light
-        vec3 direct = spot*spot*lightColor*3.0 * relightPbr(diffuseColor,specularColor,
+        vec3 direct = spot*spot*lightColor*3.25 * relightPbr(diffuseColor,specularColor,
             perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep);
         vec3 rimLight = vec3(0);
         bool hasRim = rig_rim_mode != 0;
@@ -1597,7 +1597,7 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
         // spot*spot => GL_SPOT_EXPONENT=2
         float spot_atten = spot*spot;
 
-        vec3 intensity = spot_atten * dist_atten * lightColor * 3.0; //magic number to balance with legacy materials
+        vec3 intensity = spot_atten * dist_atten * lightColor * 3.25; // match deferred pointLightF
 
         float nl = 0;
         vec3 diffPunc = vec3(0);
