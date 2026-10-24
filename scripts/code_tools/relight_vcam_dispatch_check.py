@@ -250,6 +250,7 @@ struct LLPipeline {
     // P1-lite world maps: the fixture runs with them OFF (cube_main is false); these only let the world branches compile.
     LLRenderTarget mWorldShadowAtlas; bool mWorldShadowUniformsLive=false;
     bool worldShadowOwned(const LLUUID&,U32&) const { return false; }
+    static bool projectorDetailShadows(const LLUUID&) { return false; } // cube branch is OFF; default detail flag
     // World Shadow pick: nothing is picked here (cube_main is false); these only let the pick branches compile. The ownership record is the
     // production struct (begin on a live main-view pass, commit at the end of the pass), so the dispatch below runs the real begin/commit.
     ALWorldShadow::PickedOwnership<LLUUID> mWorldPickedOwned; bool gSnapshot=false;
@@ -925,3 +926,13 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     g['uf'][1](g['loc'](g['area_filter'],b'area_native_offset'),0)
     g['uf'][4](g['loc'](g['area_filter'],b'area_contact_fade'),0,0,0,0)
     print('[RelightQ] VCam production dispatch/GL ownership PASS: zero steady allocations/releases, one allocation per target on resize; Gate cuts, OFF pool cleanup, failure/retry, eviction, close, actual-pass cap and negative mutations',flush=True)
+
+
+if __name__ == '__main__':
+    # The assertions need the real WGL host and production area fixtures.
+    # A direct invocation must execute them, rather than just define the gate.
+    import runpy
+    import sys
+    host = Path(__file__).with_name('relight_shader_check.py')
+    sys.argv = [str(host), '--area-only', '--dispatch-only', *sys.argv[1:]]
+    runpy.run_path(str(host), run_name='__main__')

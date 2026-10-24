@@ -10790,6 +10790,14 @@ void LLPipeline::setupAvatarLights(bool for_edit)
     }
 }
 
+// Exposure changes radiance, never light membership, shadow ranking, admission or
+// Thin quality. Use the EV-zero colour for colour-based draw/area selection decisions;
+// keep localLightEVScale only on uploaded radiance (and probe radiance signatures).
+static LLColor3 local_light_selection_color(const LLVOVolume* volume, F32 light_scale)
+{
+    return volume->getLightLinearColor() * light_scale;
+}
+
 static F32 calc_light_dist(LLVOVolume* light, const LLVector3& cam_pos, F32 max_dist)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -10907,7 +10915,7 @@ static F32 bdmerge_snapshot_autoscale_multiplier()
 // [LiveProbeRefresh] Change signature of the non-rig local lights a cinematic
 // live-probe capture uses. It re-derives the capture's own selection instead of
 // approximating it: the cinematic branch of calcNearbyLights (same drawable /
-// attachment / bdmerge / ignored-light filters, same scaled-colour and radius
+// attachment / bdmerge / ignored-light filters, same pre-EV colour and radius
 // floors, same calc_light_dist metric measured from the capture origin, pinned
 // lights first, spot lights always kept), with pinned-only when
 // RenderLocalLightCount is below 1. It deliberately does NOT truncate to the
@@ -11019,8 +11027,7 @@ void LLPipeline::appendCinematicProbeLightSignature(
             continue;
         }
         const F32 light_radius = light->getLightRadius() * 1.5f;
-        const F32 ls = ls_global * ALEnvIntensity::localLightEVScale(light);
-        const LLColor3 light_color = light->getLightLinearColor() * ls;
+        const LLColor3 light_color = local_light_selection_color(light, ls_global);
         if (light_radius <= 0.001f || light_color.magVecSquared() < 0.001f)
         {
             continue;
@@ -11199,9 +11206,7 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             }
 
             const F32 light_radius = light->getLightRadius() * 1.5f;
-            // [EnvIntensity v2] per-emitter Local lights EV folded into the scale once
-            const F32 ls = (F32)cine_light_scale * ALEnvIntensity::localLightEVScale(light);
-            const LLColor3 light_color = light->getLightLinearColor() * ls;
+            const LLColor3 light_color = local_light_selection_color(light, (F32)cine_light_scale);
             if (light_radius <= 0.001f ||
                 light_color.magVecSquared() < 0.001f)
             {
@@ -11288,9 +11293,7 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             }
 
             const F32 light_radius = light->getLightRadius() * 1.5f;
-            // [EnvIntensity v2] per-emitter Local lights EV folded into the scale once
-            const F32 ls = (F32)prism_light_scale * ALEnvIntensity::localLightEVScale(light);
-            const LLColor3 light_color = light->getLightLinearColor() * ls;
+            const LLColor3 light_color = local_light_selection_color(light, (F32)prism_light_scale);
             if (light_radius <= 0.001f ||
                 light_color.magVecSquared() < 0.001f)
             {
@@ -12116,6 +12119,7 @@ void LLPipeline::setupHWLights()
             // [EnvIntensity v2] per-emitter Local lights EV folded into the scale once
             // (multiplies both the capture mLightScale and AlchemyGlobalLightScale branches)
             const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(light);
+            LLColor3 selection_color = local_light_selection_color(light, light_scale);
             LLColor4  light_color = light->getLightLinearColor() * ls;
             light_color.mV[3] = 0.0f;
 
@@ -12133,9 +12137,10 @@ void LLPipeline::setupHWLights()
                 }
                 fade = llclamp(fade,0.f,1.f);
                 light_color *= fade;
+                selection_color *= fade;
             }
 
-            if (light_color.magVecSquared() < 0.001f)
+            if (selection_color.magVecSquared() < 0.001f)
             {
                 continue;
             }
@@ -12206,6 +12211,7 @@ void LLPipeline::setupHWLights()
             }
             else if (!light->isCineRigEmitter() && !bdmerge_should_render_light(false, false)) continue;
             const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(light);
+            LLColor3 selection_color = local_light_selection_color(light, light_scale);
             LLColor4 color = light->getLightLinearColor() * ls;
             color.mV[3] = 0.f;
             F32 fade = entry.fade;
@@ -12220,10 +12226,11 @@ void LLPipeline::setupHWLights()
                     fade = 1.f + fade / LIGHT_FADE_TIME;
                 }
                 color *= llclamp(fade, 0.f, 1.f);
+                selection_color *= llclamp(fade, 0.f, 1.f);
             }
             if (!build_sets) continue;
             const F32 radius = light->getLightRadius() * (sRenderDeferred ? 1.5f : 1.f);
-            if (color.magVecSquared() < 0.001f || radius <= 0.001f) continue;
+            if (selection_color.magVecSquared() < 0.001f || radius <= 0.001f) continue;
             write_local_light(light, color, radius, 2);
             LLRender::light_state_snapshot_t captured;
             LLColor4 unused_ambient;
@@ -27766,7 +27773,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             !toggles(volume) || registry.isMirrorLight(volume->getID()) ||
             registry.areaShadowSuppressed(volume)) continue;
         const F32 range = volume->getLightRadius()*1.5f;
-        const LLColor3 color = volume->getLightLinearColor()*light_scale*ALEnvIntensity::localLightEVScale(volume);
+        const LLColor3 color = local_light_selection_color(volume, light_scale);
         if (range <= .001f || color.magVecSquared() < .001f) continue;
         LLVector4a centre, extent;
         centre.load3(drawable->getPositionAgent().mV); extent.splat(range);
@@ -29159,7 +29166,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                     const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
                     LLColor3 col = volume->getLightLinearColor() * ls;
 
-                    if (col.magVecSquared() < 0.001f)
+                    if (local_light_selection_color(volume, light_scale).magVecSquared() < 0.001f)
                     {
                         continue;
                     }
@@ -29445,7 +29452,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
                         const LLColor3 color = volume->getLightLinearColor() * ls;
                         const F32 size = volume->getLightRadius() * 1.5f;
-                        if (color.magVecSquared() < 0.001f || size <= 0.001f) continue;
+                        if (local_light_selection_color(volume, light_scale).magVecSquared() < 0.001f || size <= 0.001f) continue;
                         LLVector4a center, extent;
                         center.load3(drawable->getPositionAgent().mV);
                         extent.splat(size);

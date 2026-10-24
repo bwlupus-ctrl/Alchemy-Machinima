@@ -21,7 +21,9 @@ inline bool allowed(const View& v, bool feeds = false)
 // ranked by how much it matters on screen, whether or not it owns a native SL shadow
 // map (the older "unmapped first" rule let eight nearby practicals push out a bright
 // mapped projector). Inputs are this frame's only:
-//   luminance    : Rec.709 luminance of the linear colour x light scale x EV scale;
+//   luminance    : Rec.709 luminance of the linear colour x light scale, BEFORE Local lights EV;
+//                 exposure changes radiance only, preserving channels and their quality/strength
+//                 even when rig lights are excluded from the exposure adjustment;
 //   range        : the light's influence range (radius * 1.5, metres);
 //   distance     : camera to light centre (metres);
 //   nativeWeight : how much of the light is covered by a native SL map right now, 0..1.
