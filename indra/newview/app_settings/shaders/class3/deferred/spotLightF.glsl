@@ -287,38 +287,9 @@ void main()
                 rim_color += rigRimTermEx(n,view,centre,rim_lit,diffuseColor,roughness,rig_rim_light,rim_px);
             }
         }
-        if (!GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
-        {
-            float envIntensity = gb.envIntensity;
-            if (envIntensity > 0.0)
-            {
-                vec3 ref = reflect(relightUnit(pos,n), n);
-
-                //project from point pos in direction ref to plane proj_p, proj_n
-                vec3 pdelta = proj_p-pos;
-                float ds = dot(ref, proj_n);
-
-                if (ds < 0.0)
-                {
-                    vec3 pfinal = pos + ref * dot(pdelta, proj_n)/ds;
-
-                    vec4 stc = (proj_mat * vec4(pfinal.xyz, 1.0));
-
-                    if (stc.z > 0.0)
-                    {
-                        stc /= stc.w;
-
-                        if (stc.x < 1.0 &&
-                            stc.y < 1.0 &&
-                            stc.x > 0.0 &&
-                            stc.y > 0.0)
-                        {
-                            final_color += color.rgb * texture2DLodSpecular(stc.xy, (1 - spec.a) * (proj_lod * 0.6)).rgb * shadow * envIntensity;
-                        }
-                    }
-                }
-            }
-        }
+        // relightLegacy already integrates the source highlight. The separate
+        // near-plane projector image ignores source size and material width,
+        // adding a hard bright dot even to a low-shiny, unmapped prim.
     }
     else
     {
@@ -436,7 +407,10 @@ void main()
             }
         }
 
-        if (envIntensity > 0.0)
+        // Apply the same policy at zero radius / zero softness: the BRDF tends
+        // continuously to a point highlight without restoring the emitter dot.
+        // The disabled feature retains the original projector reflection.
+        if ((relight_enabled & 1) == 0 && envIntensity > 0.0)
         {
             vec3 ref = reflect(normalize(pos), n);
 
