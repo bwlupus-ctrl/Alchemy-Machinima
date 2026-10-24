@@ -223,7 +223,7 @@ public:
 
     void bindScreenToTexture();
     void renderFinalize();
-    void copyScreenSpaceReflections(LLRenderTarget* src, LLRenderTarget* dst);
+    void copyScreenSpaceReflections(LLRenderTarget* src, LLRenderTarget* dst, LLRenderTarget* color_src = nullptr);
     void generateLuminance(LLRenderTarget* src, LLRenderTarget* dst);
     void generateExposure(LLRenderTarget* src, LLRenderTarget* dst, bool use_history = true);
     void colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool tonemap, bool colorgrade);
@@ -751,6 +751,8 @@ public:
     bool mActorMaskValid = false; // valid only during this lighting/forward view
     bool mRigRimAuxValid = false;
     bool mRigRimSilValid = false;
+    bool mRigRimWrapSceneValid = false;
+    bool mRigRimWrapDebugValid = false;
     S32 mRigRimSubjectSource = 0;
     U64 mRigRimStatusRevision = 0;
     U32 mRigRimStatusFrame = ~0u;
@@ -759,6 +761,7 @@ public:
     const std::string& rigRimStatus() const { return mRigRimStatus; }
     bool ensureRigRimAux();
     bool ensureRigRimWrap();
+    void renderRigRimWrap(bool debug_only);
     void releaseRigRimAux();
     U64 mActorMaskViewId = 0;
     bool mActorMaskAllocated = false;
@@ -1327,6 +1330,8 @@ public:
         LLRenderTarget          rigRimAux;
         LLRenderTarget          rigRimSil[2];
         LLRenderTarget          rigRimWrapBlur[2];
+        LLRenderTarget          rigRimWrapScene; // full-res pre-wrap RGB; avoids framebuffer feedback
+        LLRenderTarget          rigRimWrapDebug; // optional full-res pre-alpha term for debug view 5
         LLRenderTarget          silCover; // [AvatarSilhouette] RG8; shared depth, never owned
         U32                     silCoverDepthSrc = 0;
         LLRenderTarget          deferredLight;

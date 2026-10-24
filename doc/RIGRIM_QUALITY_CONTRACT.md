@@ -1,5 +1,52 @@
 # Rig Rim Quality — shader/C++ contract (WP0/WP1, Fable, 2026-10-09)
 
+**2026-10-23 alpha-fringe correction (supersedes the historical C-pass placement
+and GL-state pseudocode below):** beauty C1-C3 now run through
+`renderRigRimWrap(false)` at the first `POOL_ALPHA_PRE_WATER` boundary in
+`renderGeomPostDeferred`, after forward opaque pools and before transparency.
+Blended hair cannot feed white colour into the background blur, and its normal
+coverage blend occludes opaque wrap. Use live `gGLProjection` there; the end-of-scene
+snapshot has not updated `gGLLastProjection` yet. The helper preserves the parent
+target stack, routes only attachment 0, and saves/restores that index's blend,
+equations and colour mask without nesting the pool loop's sidecar guard.
+`renderRigRimWrap(true)` retains Wrap-only debug in `renderFinalize`; other debug
+views retain their placement. Rim OFF returns before allocation or GL work.
+`scripts/code_tools/rim_alpha_gl_check.py` exercises production shaders, alpha
+ramps and the production C++ state transaction on real WGL. This fixes a spatial
+compositing defect; Steady has no temporal history.
+
+**2026-10-23 wrap-strength correction (supersedes the historical raw-additive
+math below):** the RGB increment is `max(bg - fg, 0) * k`, where
+`k = min(0.6, a*a * sqrt(clamp(Master, 0, 4)) * prox * graze * gate)`.
+`a` is Amount clamped to 0..1. Background is blurred, clamped per channel to
+`CineRigRimWrapClamp` (now 0.5..1), then desaturated. Each channel approaches a
+brighter background; a brighter foreground channel stays unchanged. Master is
+the overall rim level; its square root retains useful wrap at low Master.
+
+`diffuseRect` / `DEFERRED_DIFFUSE` reads the exact unblurred pre-wrap foreground
+from a dedicated full-resolution RGBA16F `rigRimWrapScene` snapshot, mip 0,
+point sampled. Fixed-function blending cannot clamp `bg - destination` per
+channel, and sampling the active screen texture is undefined; this portable
+implementation therefore needs one full-resolution colour blit. It costs 8
+bytes/pixel of scratch memory (about 63 MiB at 4K) plus copy bandwidth when wrap
+runs. Allocation failure skips wrap. The copy reads attachment 0 explicitly;
+the helper also restores read-buffer routing. BT_ADD, RGB-only writes, the glow
+channel, and the pre-alpha beauty placement remain as above. No work occurs
+with Wrap OFF or Amount zero.
+
+Director and Lightbox Amount use 0..1 in 0.01 steps; default 0.5 becomes 0.25.
+Old settings, scenes and custom presets have no amount-version marker: the
+setting-layer callback preserves numeric values in 0..1, saturates values above
+1, floors negatives to zero, and replaces non-finite values with zero. It runs
+at startup and on every subsequent setting write, so repeated loads are stable.
+The new squared curve applies to all values; legacy raw-glow brightness is
+intentionally reduced. Legacy Clamp values above 1 saturate at upload and in the
+shader. Clamp stays a Debug setting, without another Director row.
+
+All 40 built-ins retain their widths, blur, saturation and other rim settings;
+Amount is retuned to roughly half, with every Clamp set to 1. The complete
+old/new values are recorded in the table at the end of this contract.
+
 Design: `C:\Users\xianw\cxs\rim_quality_design.md`. This document is the complete
 interface between the shaders (DONE, listed in §1) and the C++ package (Codex,
 WP2). A C++ implementer must not need to read the shaders to wire them.
@@ -63,7 +110,7 @@ lens = 14 new entries.
 | 4 | `RIG_RIM_AUX_MAP` | `"rigRimAuxMap"` | sampler2D | deferredUtil (light programs), rigRimWrapF, rigRimDebugF |
 | 5 | `RIG_RIM_SIL_MAP` | `"rigRimSilMap"` | sampler2D | deferredUtil (light programs), rigRimSilDtF (its input), rigRimWrapF, rigRimDebugF |
 | 6 | `RIG_RIM_WRAP` | `"rig_rim_wrap"` | vec4 | rigRimWrapF |
-| 7 | `RIG_RIM_WRAP2` | `"rig_rim_wrap2"` | vec4 | rigRimWrapBlurF (xy), rigRimWrapF (z,w) |
+| 7 | `RIG_RIM_WRAP2` | `"rig_rim_wrap2"` | vec4 | rigRimWrapBlurF (xy), rigRimWrapF (x,z,w) |
 | 8 | `RIG_RIM_WRAP_SRC` | `"rigRimWrapSrc"` | sampler2D | rigRimWrapBlurF (input), rigRimWrapF (blurred scene) |
 | 9–14 | Lens Looks block, see `doc/LENS_LOOKS_CONTRACT.md` §2 (`ON_LENS_ALBEDO`, `LENS_PYRAMID0..4`) | | | |
 
@@ -87,12 +134,13 @@ rig_rim_aux_params
                  y seed threshold (relative tangent-plane residual; default 0.02)
                  z seed softness 0..1 (default 0.5)
                  w debug view id for rigRimDebugF (2 band, 3 smooth normal, 4 subject)
-rig_rim_wrap     x strength (0..2)   y reach in half-res texels   z saturation 0..1   w HDR clamp (per channel)
+rig_rim_wrap     x perceptual amount (0..1)   y reach in half-res texels   z saturation 0..1   w background clamp (0.5..1)
 rig_rim_wrap2    xy uv step per tap for the Gaussian pass being drawn, in QUARTER-res texels (review P2-2):
                    C1 (downsample permutation): unused (upload 0,0)
                    C2 horizontal: (blur_q / rigRimWrapBlur[0].getWidth(), 0)
                    C3a vertical : (0, blur_q / rigRimWrapBlur[0].getHeight())
                    blur_q = CineRigRimWrapBlur (quarter texels per tap; 1.0 ~ sigma 2 quarter texels ~ 8 full px)
+                 x Master gain (0..4) in the composite program only
                  z debug 1 => the wrap composite outputs the wrap term alone (host draws it with blend OFF)
                  w subject gate 0/1 (ActorsOnly: wrap *= subject)
 ```
@@ -104,6 +152,7 @@ Textures:
 | `rigRimAuxMap` | `mMainRT.rigRimAux` | `GL_RGBA16` (unorm) | deferredScreen w × h | `TFO_POINT` |
 | `rigRimSilMap` | `mMainRT.rigRimSil[0]` (final), `[1]` (ping) | `GL_RGBA16F` | ⌈w/2⌉ × ⌈h/2⌉ | `TFO_POINT` (mandatory: offset/depth must not blend across seeds) |
 | `rigRimWrapSrc` | `mMainRT.rigRimWrapBlur[0]` (final + C2 input), `[1]` (C3a input) | `GL_R11F_G11F_B10F` (`GL_RGBA16F` if the 11/11/10 allocation fails) | ⌈w/4⌉ × ⌈h/4⌉ | `TFO_BILINEAR` |
+| `diffuseRect` | `mMainRT.rigRimWrapScene` | `GL_RGBA16F` | screen w × h | `TFO_POINT` |
 
 Encodings: aux `xy` = octahedral smooth normal (eye space) in 0..1, `z` =
 Toksvig |n̄| 0..1, `w` = subject 0/1. Sil `xy` = **signed offset to the nearest
@@ -392,11 +441,11 @@ frame at the §4.1 site (mirror `releaseActorMasks()`); also from
 | `CineRigRimActorsOnly` | BOOL | false | | `rig_rim_quality.w`, `rig_rim_wrap2.w`, subject source (§4.1) |
 | `CineRigRimActorsOnlyAlpha` | BOOL | false | Phase 2, greyed out | (unused) |
 | `CineRigRimWrapEnabled` | BOOL | false | | runs C1–C3 |
-| `CineRigRimWrapStrength` | F32 | 0.5 | 0..2 | `rig_rim_wrap.x` |
+| `CineRigRimWrapStrength` | F32 | 0.25 | 0..1, step 0.01 | `rig_rim_wrap.x`, squared in shader |
 | `CineRigRimWrapWidth` | F32 | 2.0 | 0.5..8 (× band width) | `rig_rim_wrap.y` reach texels |
 | `CineRigRimWrapBlur` | F32 | 1.0 | 0..3 | `blur_q = value` (quarter-res texels per tap, both axes) → `rig_rim_wrap2.xy` of C2 / C3a |
 | `CineRigRimWrapSaturation` | F32 | 0.7 | 0..1 | `rig_rim_wrap.z` |
-| `CineRigRimWrapClamp` | F32 | 4.0 | 0.5..32 (no UI) | `rig_rim_wrap.w` |
+| `CineRigRimWrapClamp` | F32 | 1.0 | 0.5..1 (no UI) | `rig_rim_wrap.w` |
 | `CineRigRimDebugView` | U32 | 0 | 0 Off, 1 Rim only, 2 Silhouette band, 3 Smooth normal, 4 Subject mask, 5 Wrap only | §4.4 |
 
 Director: append the new keys at `llfloaterdirector.cpp` 1030–1057 and the
@@ -462,3 +511,77 @@ Targets (4K, 5090): A ≈ 0.07 ms, B1–B3 ≈ 0.08 ms (B2/B3 are 2×49 texelFet
 8. `fwidth()` in the forward shaders is now evaluated unconditionally at main scope (hoisted, review P2-5) — residual cost a few ALU ops in mode 0.
 9. Forward-alpha `rig_rim_quality` upload lives in `ALCineRigRim::bindGlobals` (§4.2, review B2) — if WP2 forgets it, Smooth/Steady silently do nothing on alpha; the in-world check is a normal-mapped alpha-blend surface with Smooth = 1.
 10. One-nearest-seed suppression next to overlapping limbs (§11).
+
+## 13. Wrap-strength preset retune (2026-10-23)
+
+| Preset | Amount old → new | Clamp old → new |
+|---|---:|---:|
+| Subtle Edge | 0.25 → 0.12 | 2 → 1 |
+| Soft Portrait Wrap | 0.65 → 0.33 | 4 → 1 |
+| Strong Backlight | 0.55 → 0.28 | 6 → 1 |
+| Hair Shine | 0.25 → 0.12 | 4 → 1 |
+| Silhouette Glow (any angle) | 0.8 → 0.4 | 6 → 1 |
+| Neon / Stage | 0.25 → 0.12 | 8 → 1 |
+| Dreamy Halo | 1.1 → 0.55 | 6 → 1 |
+| Noir Kicker | 0.25 → 0.12 | 2 → 1 |
+| Two-Sided Kick | 0.25 → 0.12 | 4 → 1 |
+| Fashion Edge | 0.35 → 0.17 | 4 → 1 |
+| Sci-Fi Hologram | 0.7 → 0.35 | 6 → 1 |
+| Candle Glow | 0.5 → 0.25 | 4 → 1 |
+| Metal Sheen | 0.25 → 0.12 | 4 → 1 |
+| Skin Sheen | 0.25 → 0.12 | 3 → 1 |
+| Soft Fill Wrap | 0.65 → 0.33 | 4 → 1 |
+| Horror Edge | 0.25 → 0.12 | 4 → 1 |
+| Moonlit Rim | 0.35 → 0.17 | 3 → 1 |
+| Glass Shell | 0.25 → 0.12 | 4 → 1 |
+| Tron Suit Kick | 0.25 → 0.12 | 6 → 1 |
+| Ares Red Backlight | 0.25 → 0.12 | 6 → 1 |
+| Golden Hour Flare | 1.4 → 0.7 | 8 → 1 |
+| Glacial Frost Edge | 0.25 → 0.12 | 2 → 1 |
+| Strobe Cut | 0.25 → 0.12 | 4 → 1 |
+| Aquatic Caustic Rim | 0.9 → 0.45 | 6 → 1 |
+| Ember Lick | 0.75 → 0.38 | 5 → 1 |
+| Overcast Diffusion | 0.6 → 0.3 | 2.5 → 1 |
+| Clamshell Beauty Edge | 0.5 → 0.25 | 3.5 → 1 |
+| Limelight Beam | 0.8 → 0.4 | 7 → 1 |
+| Crypt Pale Glow | 0.7 → 0.35 | 3 → 1 |
+| Rain Slick Glaze | 0.25 → 0.12 | 4 → 1 |
+| Dusk Horizon Kick | 1.1 → 0.55 | 6.5 → 1 |
+| Spectral Silhouette | 1.6 → 0.8 | 4.5 → 1 |
+| Natural Separation | 0.3 → 0.15 | 3 → 1 |
+| Dialogue Two-Shot | 0.3 → 0.15 | 3 → 1 |
+| Interview Hair Light | 0.35 → 0.17 | 3.5 → 1 |
+| Window Backlight | 0.5 → 0.25 | 5 → 1 |
+| Overcast Outdoor | 0.2 → 0.1 | 2 → 1 |
+| Night Street Edge | 0.3 → 0.15 | 5 → 1 |
+| Lamp Practical | 0.4 → 0.2 | 4 → 1 |
+| Dark Background Lift | 0.25 → 0.12 | 3 → 1 |
+
+## 14. Pre-alpha wrap history, debug and rasterization (2026-10-23)
+
+This scheduling/resource description supersedes the older renderFinalize-only
+wrap descriptions in §§4.3–5. C1–C3 run at the pre-alpha pool boundary in
+`renderGeomPostDeferred`, with the live projection, before haze/water/hair.
+Beauty adds the term there so subsequent alpha coverage occludes it.
+
+SSR still captures at its existing post-alpha boundary. When this main view
+produced wrap, its color source is the existing `rigRimWrapScene` pre-alpha
+snapshot; its depth source remains the post-alpha screen. Thus history excludes
+wrap and alpha color on wrap-enabled frames. The existing color/depth blit is
+split into two calls, without another image copy, target or increase in copied
+pixel bytes. Wrap/Rim off uses the original screen color/depth copy. Validity
+resets at every MAIN lighting entry, including early-outs and disabled frames.
+
+Debug view 5 shades C3 once at that same pre-alpha boundary into the optional
+full-res RGBA16F `rigRimWrapDebug`, then copies its RGB late using `gCopyProgram`.
+It never blurs hair/weather or recomputes the term late. Cost: one display draw
+and 8 bytes/pixel (63.3 MiB at 3840×2160), allocated on first use of view 5 and
+retained until target cleanup/resize. The indexed state transaction saves both
+polygon modes, forces GL_FILL for all wrap/blur/display draws, then restores the
+incoming modes, alongside blend/masks/routing. Auxiliary MRTs and glow survive.
+
+`rim_alpha_gl_check.py` checks production shaders, the extracted C++ state
+transaction, SSR helper and capture call against real WGL FBOs. It covers
+successive reflective frames, a camera cut with history retained, Wrap/Rim
+toggle-off on the next frame, exact post-alpha depth, cached debug identity,
+wireframe, both blur formats, and the existing halo/strength/off-byte gates.

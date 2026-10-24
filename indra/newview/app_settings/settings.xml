@@ -3067,11 +3067,11 @@
     <key>CineRigRimActorsOnly</key><map><key>Comment</key><string>[RigRimQ] Gate deferred rim to avatars/Actor Mask, falling back world-wide</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
     <key>CineRigRimActorsOnlyAlpha</key><map><key>Comment</key><string>[RigRimQ] Phase 2 forward-alpha actor gate; currently unused</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
     <key>CineRigRimWrapEnabled</key><map><key>Comment</key><string>[RigRimQ] Enable HDR light wrap</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
-    <key>CineRigRimWrapStrength</key><map><key>Comment</key><string>[RigRimQ] Wrap amount, 0..2</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.5</real></map>
+    <key>CineRigRimWrapStrength</key><map><key>Comment</key><string>[RigRimQ] Perceptual wrap amount, 0..1 (squared, scaled by Rim Master); legacy values clamp to 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.25</real></map>
     <key>CineRigRimWrapWidth</key><map><key>Comment</key><string>[RigRimQ] Wrap reach in band widths, 0.5..8</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2</real></map>
     <key>CineRigRimWrapBlur</key><map><key>Comment</key><string>[RigRimQ] Quarter-resolution wrap blur, 0..3</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1</real></map>
     <key>CineRigRimWrapSaturation</key><map><key>Comment</key><string>[RigRimQ] Wrap colour saturation, 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.7</real></map>
-    <key>CineRigRimWrapClamp</key><map><key>Comment</key><string>[RigRimQ] HDR wrap clamp, 0.5..32</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>4</real></map>
+    <key>CineRigRimWrapClamp</key><map><key>Comment</key><string>[RigRimQ] Linear background wrap ceiling, 0.5..1 (legacy larger values saturate at 1)</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1</real></map>
     <key>CineRigRimDebugView</key><map><key>Comment</key><string>[RigRimQ] 0 off, 1 rim, 2 band, 3 smooth normal, 4 subject, 5 wrap</string><key>Persist</key><integer>0</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
     <key>CineRigRimShadow</key>
     <map>
