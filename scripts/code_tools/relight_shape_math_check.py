@@ -20,7 +20,7 @@ def check(math_ref=None):
             if math_ref else (ROOT/header).read_text())
     (out/'alrelightmath.h').write_text(text)
     tests = (ROOT/'indra/newview/tests/alrelightmath_test.cpp').read_text()
-    numbers = [*range(1, 10), 41, 42]
+    numbers = [*range(1, 10), 44, 45]
     bodies = []
     for number in numbers:
         match = re.search(r'template<> template<> void relight_object::test<'+str(number)+r'>\(\)', tests)

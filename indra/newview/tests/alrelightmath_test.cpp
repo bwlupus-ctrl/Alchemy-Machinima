@@ -82,7 +82,7 @@ template<> template<> void relight_object::test<1>()
     }
 }
 // Light-shape refinement: sizes must change angular extent, never calibration.
-template<> template<> void relight_object::test<41>()
+template<> template<> void relight_object::test<44>()
 {
     for (double range : {.2,.6,2.0,15.0})
         for (double reference : {range*.1,range*.5,range*.9})
@@ -98,7 +98,7 @@ template<> template<> void relight_object::test<41>()
             }
 }
 
-template<> template<> void relight_object::test<42>()
+template<> template<> void relight_object::test<45>()
 {
     using namespace ALRelight;
     const Vec n{0,0,1}, v{0,0,1};
