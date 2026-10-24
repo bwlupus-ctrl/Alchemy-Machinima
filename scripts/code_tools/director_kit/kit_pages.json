@@ -9,7 +9,6 @@
   "CineRigRimWrapEnabled": "Reviewed: no listeners; plain runtime setting.",
   "RenderLightShapeEnable": "Reviewed: no listeners; plain runtime setting.",
   "RenderAreaShadows": "Reviewed: no listeners; plain runtime setting.",
-  "BDMergeProjectorVolumetrics": "Reviewed: runtime uniform; cached-setting refresh and VCam override observer, no reload.",
   "BDMergeSoftProjectorShadows": "Reviewed: no listeners; plain runtime setting.",
   "BDMergeLocalFogVolumes": "Reviewed: no listeners; plain runtime setting.",
   "AlchemyWeatherRainEnabled": "Reviewed: no listeners; plain runtime setting.",
@@ -56,9 +55,8 @@
   "light_group/light_rim_tab/cine_rimq_wrap_enable": "setting",
   "light_group/light_rim_tab/relight_shape_enable": "setting",
   "light_group/light_rim_tab/area_shadows_enable": "setting",
+  "light_group/projector_shafts_tab/soft_shadows_enable_check": "setting",
   "performance_group/gaze_tab/look_at_camera_enabled": "controller",
-  "world_group/atmosphere_tab/projector_cones_enable_check": "setting",
-  "world_group/atmosphere_tab/soft_shadows_enable_check": "setting",
   "world_group/atmosphere_tab/localfog_master": "setting",
   "world_group/weather_tab/weather_rain_enabled": "setting",
   "world_group/weather_tab/weather_splash_enabled": "setting",
@@ -196,7 +194,6 @@
   },
   "world_group/atmosphere_tab": {
    "v1_sources": [],
-   "preset": {"mode": "provider", "provider": "projector_shafts"},
    "omit_rows": ["localfog_volume_list", "localfog_add", "localfog_duplicate", "localfog_delete", "localfog_enabled", "localfog_label",
                  "localfog_shape", "localfog_move_camera", "localfog_center_x", "localfog_center_y", "localfog_center_z",
                  "localfog_size_x", "localfog_size_y", "localfog_size_z", "localfog_rotation_x", "localfog_rotation_y", "localfog_rotation_z",
@@ -397,6 +394,16 @@
   "light_group/practicals_tab": {
    "v1_sources": ["panel_practicals_src.xml"],
    "root_class": "panel_practicals", "root_name": "practicals_tab_logic",
+   "label_names": {}
+  },
+  "light_group/projector_shafts_tab": {
+   "v1_sources": [],
+   "preset": {"mode": "provider", "provider": "projector_shafts"},
+   "row_overrides": {
+    "ps_BDMergeProjectorVolumetricsDustIntensity_slider": {"enabled_control": "BDMergeProjectorVolumetricsDust"},
+    "ps_BDMergeProjectorVolumetricsDustScale_slider": {"enabled_control": "BDMergeProjectorVolumetricsDust"},
+    "ps_BDMergeProjectorVolumetricsDustDrift_slider": {"enabled_control": "BDMergeProjectorVolumetricsDust"}
+   },
    "label_names": {}
   },
   "performance_group/gaze_cues_tab": {
@@ -791,6 +798,35 @@
   "reset_lens_gaze_torso": "icon reset button of a Clone Studio row; the kit row draws its own reset glyph (its default is the control's XUI initial value) and resets through the same commit",
   "reset_lens_gaze_head_eye": "icon reset button of a Clone Studio row; the kit row draws its own reset glyph (its default is the control's XUI initial value) and resets through the same commit",
   "reset_lens_gaze_intensity": "icon reset button of a Clone Studio row; the kit row draws its own reset glyph (its default is the control's XUI initial value) and resets through the same commit",
-  "reset_lens_gaze_smoothing": "icon reset button of a Clone Studio row; the kit row draws its own reset glyph (its default is the control's XUI initial value) and resets through the same commit"
+  "reset_lens_gaze_smoothing": "icon reset button of a Clone Studio row; the kit row draws its own reset glyph (its default is the control's XUI initial value) and resets through the same commit",
+  "ps_preset": "replaced by the kit preset strip (provider projector_shafts)",
+  "ps_reset_BDMergeFroxelWindAzimuth": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeFroxelWindElevation": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsAnisotropy": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsBloomFeed": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsDensity": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsDither": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsFeather": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsFogBase": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsFogFalloff": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsFogGroundDensity": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsFogStrength": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsMaxDistance": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsMaxLuminance": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsMinResolution": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsMultiplier": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsNoiseScale": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsNoiseSpeed": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsNoiseStrength": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsResolution": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsShadowSamples": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsShadowTint": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsTemporalBlend": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsTemporalReject": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsTint": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeProjectorVolumetricsTintStrength": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeSoftShadowFill": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeSoftShadowMaxPenumbra": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit",
+  "ps_reset_BDMergeSoftShadowSoftness": "icon reset button of a projector-shaft row; the kit row draws its own reset glyph and resets to the setting default through the same commit"
  }
 }

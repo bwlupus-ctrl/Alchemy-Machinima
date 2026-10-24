@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `142461b9ba1ecb16` (1816 interactive rows); 37
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1336 | 38 | 300 | 50 | 96 | 1 | 1821 |
-| v2 | 1756 | 0 | 454 | 73 | 0 | 11 | 2294 |
+| v2 | 1766 | 0 | 454 | 73 | 0 | 11 | 2304 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
@@ -58,10 +58,11 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | stepped_tab (Stepped) | look_group | 37 | 3 | 3 | 2 | 0 | 0 | 63 | 0 | 6 | 2 | 0 | 0 |
 | actor_style_tab (Actor FX) | look_group | 0 | 0 | 15 | 1 | 0 | 0 | 1 | 0 | 16 | 1 | 0 | 0 |
 | weather_tab (Weather) | world_group | 51 | 0 | 0 | 1 | 0 | 0 | 56 | 0 | 0 | 1 | 0 | 0 |
-| atmosphere_tab (Atmosphere) | world_group | 72 | 1 | 1 | 2 | 1 | 0 | 64 | 0 | 0 | 1 | 0 | 0 |
+| atmosphere_tab (Atmosphere) | world_group | 72 | 1 | 1 | 2 | 1 | 0 | 21 | 0 | 0 | 1 | 0 | 0 |
 | shadows_probes_tab (Shadows) | world_group | 37 | 0 | 0 | 0 | 2 | 0 | 39 | 0 | 0 | 0 | 0 | 0 |
 | temporal_tab (Time) | capture_group | 13 | 0 | 0 | 0 | 0 | 0 | 20 | 0 | 0 | 2 | 0 | 0 |
 | scene_options_tab (Scene) | capture_group | 1 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 |
+| projector_shafts_tab (projector_shafts_tab) |  | 0 | 0 | 0 | 0 | 0 | 0 | 53 | 0 | 0 | 0 | 0 | 0 |
 | director_settings_tab (director_settings_tab) |  | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 | 0 | 3 | 0 | 0 |
 
 ## Card-header switches
@@ -106,12 +107,11 @@ Every real card/option enable switch is searchable. Only explicitly classified s
 | cine_light_rig_tab | Eye catchlight | cine_catchlight | CineLightRigCatchlight | toggle | controller |
 | cine_light_rig_tab | Live probe | cine_live_probe_enable | CineLightRigLiveProbeEnabled | toggle | controller |
 | cine_light_rig_tab | Night mask | cine_night_mask_enable | CineLightRigNightMaskEnabled | toggle | controller |
+| projector_shafts_tab | Soft projector shadows | soft_shadows_enable_check | BDMergeSoftProjectorShadows | toggle | setting |
 | light_rim_tab | Light wrap | cine_rimq_wrap_enable | CineRigRimWrapEnabled | toggle | setting |
 | light_rim_tab | Light shape | relight_shape_enable | RenderLightShapeEnable | toggle | setting |
 | light_rim_tab | Soft shadows | area_shadows_enable | RenderAreaShadows | toggle | setting |
 | gaze_tab | Look at camera | look_at_camera_enabled | DirectorLookAtCameraEnabled | toggle | controller |
-| atmosphere_tab | Projector Cones | projector_cones_enable_check | BDMergeProjectorVolumetrics | toggle | setting |
-| atmosphere_tab | Soft Shadows | soft_shadows_enable_check | BDMergeSoftProjectorShadows | toggle | setting |
 | atmosphere_tab | Fog volumes | localfog_master | BDMergeLocalFogVolumes | toggle | setting |
 | weather_tab | Rain | weather_rain_enabled | AlchemyWeatherRainEnabled | toggle | setting |
 | weather_tab | Splashes | weather_splash_enabled | AlchemyWeatherSplashEnabled | toggle | setting |
@@ -131,6 +131,7 @@ Every real card/option enable switch is searchable. Only explicitly classified s
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:Fill | click | DirectorV2SelectedLight = 1 |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:Back | click | DirectorV2SelectedLight = 2 |
 | selector_segment | v2 | cine_light_rig_tab | kc_lights:BG | click | DirectorV2SelectedLight = 3 |
+| page_master | v2 | projector_shafts_tab | projector_cones_enable_check | toggle | BDMergeProjectorVolumetrics = true |
 | page_master | v2 | light_rim_tab | cine_rig_rim_enable | toggle | CineRigRimEnabled = true |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:Key | click | DirectorV2SelectedLight = 0 |
 | selector_segment | v2 | light_rim_tab | kc_per_light_rim:Fill | click | DirectorV2SelectedLight = 1 |
@@ -288,6 +289,6 @@ These run after the manifest rows inside the same session. They are viewer-local
 - no oracle, an oracle that proves nothing, a failed row, or a control with no recorded result FAILS
 - skipped or excluded rows (including every in-world exclusion) are listed as SKIP with their reason, never PASS
 
-Registry: 38 pages in 10 groups (9 rail groups, Settings via the gear), 17 link rows/cards, 6 popovers, 12 search queries.
+Registry: 39 pages in 10 groups (9 rail groups, Settings via the gear), 17 link rows/cards, 6 popovers, 12 search queries.
 
 Known-legacy pages (0 of at most 0; shrink-only): .

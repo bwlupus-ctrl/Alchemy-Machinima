@@ -45,8 +45,8 @@ EXPECTED_SHORTCUTS = {
     ("shot_tab", "CinematicCamArcDuration", "moves_tab/hero_arc_duration"),
     ("shot_tab", "CinematicCamArcGeneratorAngle", "moves_tab/hero_arc_angle"),
     ("shot_tab", "CinematicCamArcHeightDrift", "moves_tab/hero_arc_height_drift"),
-    ("cine_light_rig_tab", "cine_easy_cone_feather", "atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider"),
-    ("cine_light_rig_tab", "cine_easy_shaft_length", "atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider"),
+    ("cine_light_rig_tab", "cine_easy_cone_feather", "projector_shafts_tab/ps_BDMergeProjectorVolumetricsFeather_slider"),
+    ("cine_light_rig_tab", "cine_easy_shaft_length", "projector_shafts_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider"),
     # 10/13: the user approved 5 image_tab -> exposure_tab shortcuts. exposure_tab became a kit page
     # 10/15, and the user then asked for them in an Easy card at the top of Look > Image.
     ("image_tab", "tonemap_type_combo", "exposure_tab/exp_tonemap_type"),
@@ -314,8 +314,9 @@ def validate_data(data: dict) -> None:
     # Soft shadow LOOK controls (10/23): +5 rows (Shadow strength, Shadow contrast, Screen-space detail, World shadow amount, Screen-space amount).
     # Light-shape refinement (10/23): +2 rows (Highlight softness, native preset action combo).
     # Haiku kit batch (10/23): +13 rows (World near clip, Projector contact, VSync lock, VCam local video + cache/download limits, Settings Performance card with 3 rows, 4 projector shaft A/B rows).
-    if len(pages) != 37 or row_count != 2191:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2191")
+    # Projector Shafts page (10/23): 41 shaft rows move from Atmosphere, +10 new rows (Halo stretch, 5 rim, 4 dust particles), page 37 -> 38; 2191 -> 2201.
+    if len(pages) != 38 or row_count != 2201:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2201")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1912,6 +1913,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "lens_group/focus_tab": "kit (P0)", "lens_group/filters_tab": "kit (P0)",
                 "lens_group/diopter_tab": "kit (P0)", "world_group/weather_tab": "kit (P0)",
                 "world_group/atmosphere_tab": "kit (P0)", "world_group/shadows_probes_tab": "kit (P0)",
+                "light_group/projector_shafts_tab": "kit (P0)",
                 "look_group/bloom_glow_tab": "pure kit (new)",
                 "look_group/stepped_tab": "kit (P0)",
                 "camera_group/shot_tab": "kit (P0)", "camera_group/moves_tab": "kit (P0)",
@@ -1943,7 +1945,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # 10/15 batch 2, cast_group/props_tab: legacy 5 -> 4.
     # 10/15 batch 3, cast_group/dance_tab: legacy 2 -> 1.
     # 10/15 batch 3, cast_group/ghosts_tab: legacy 1 -> 0 (no legacy page remains).
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 36, "pure kit (new)": 1}):
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 37, "pure kit (new)": 1}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -2013,8 +2015,9 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         report_lines.append(f"KITNAMES {raw_page['name']}:" + (" " + names_text if names_text else ""))
     validate_quick_allowlist(allowlist, used_header_settings)
     # B7 (10/21): 48 real card/option header switches, independently of 2160 body rows.
-    if sum(map(len, generated_headers.values())) != 48:
-        raise GenError("card-header switch coverage drift: expected 48")
+    # Projector Shafts page (10/23): the Projector Cones card switch became the page master (48 -> 47).
+    if sum(map(len, generated_headers.values())) != 47:
+        raise GenError("card-header switch coverage drift: expected 47")
     quick = quick_page()
     apply_kit_xui_style(quick)
     page_files["quick_group/quick_tab"] = "panel_dpage_quick.xml"
@@ -2068,8 +2071,8 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         for path, payload in outputs.items():
             if path.name.startswith("panel_dpage_"):
                 actual_headers.extend(header_destinations(ET.fromstring(payload)))
-        checks.append(("all 48 real card/option headers have unique search destinations",
-                       len(header_hits) == len(actual_headers) == 48 and
+        checks.append(("all 47 real card/option headers have unique search destinations",
+                       len(header_hits) == len(actual_headers) == 47 and
                        {(h[8], h[11], h[7]) for h in header_hits} ==
                        {(h[3], h[5], h[2]) for h in actual_headers}))
         rejects = []
@@ -2084,8 +2087,9 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         safe_headers = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                         for node in ET.fromstring(payload).iter() if node.get("enable_quick") == "setting"]
         reload_settings = quick_safety_tripwire(config.get("header_quick_allowlist", {}), {str(p): p.read_text(encoding="utf-8") for p in (ROOT / "indra/newview").rglob("*.cpp")})
-        checks.append(("only 14 reviewed setting headers are Quick-safe; allowlist and tripwire agree",
-                       len(safe_headers) == 14 and all(node.get("enable_setting") and
+        # Projector Shafts page (10/23): the Projector Cones header became a page master, 14 -> 13.
+        checks.append(("only 13 reviewed setting headers are Quick-safe; allowlist and tripwire agree",
+                       len(safe_headers) == 13 and all(node.get("enable_setting") and
                        node.get("enable_setting") not in reload_settings for node in safe_headers)))
         reload_settings |= quick_unsafe_listener_settings((ROOT / "indra/newview/llviewercontrol.cpp").read_text(encoding="utf-8").replace("RlvSettingNames::Main", '"RestrainedLove"'))
         rejects = []
@@ -2217,7 +2221,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("one VCam Source Name search hit", len(name_hits) == 1 and name_hits[0][8] == "vc_camera_name"))
         video_hit = next(line.split("\t") for line in index_lines if "\tvc_media_video\t" in line)
         checks.append(("Video search excludes cue synonyms", not {"cue", "keyframe", "mark"} & set(video_hit[16].lower().split())))
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 36, "pure kit (new)": 1})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 37, "pure kit (new)": 1})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -2289,7 +2293,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("look Tron page is a generated kit page (no launcher)",
                        not launcher_cards and len(list(tron.iter("kit_row"))) > 100
                        and any(node.get("page") == "look_group/tron_tab" for node in tron.iter("kit_page"))))
-        checks.append(("38 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 38))
+        checks.append(("39 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 39))
         synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
         exposure_aliases = synonym_aliases("Exposure", synonyms).split()
         checks.append(("synonym expansion is bidirectional and index-ready",
