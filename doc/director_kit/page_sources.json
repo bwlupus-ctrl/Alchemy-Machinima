@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 38,
-    "rows": 2008,
+    "rows": 2009,
     "owner_roots": 33,
     "unresolved_rows": 22,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2008
+    "independent_json_rows": 2009
   },
   "setting_conflicts": [
     {
@@ -46125,7 +46125,7 @@
       "label": "Move",
       "group": "cast_group",
       "group_label": "Cast",
-      "row_count": 19,
+      "row_count": 20,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -46151,14 +46151,14 @@
         },
         {
           "class": "ALPanelActorMover",
-          "reference_count": 7
+          "reference_count": 9
         }
       ],
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 8,
-        "setting_coverage": 0.421053,
-        "cpp_referenced_rows": 11,
+        "setting_coverage": 0.4,
+        "cpp_referenced_rows": 12,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
@@ -46208,7 +46208,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 39,
+              "line": 43,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -46219,7 +46219,7 @@
             },
             {
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 40,
+              "line": 44,
               "class": "ALPanelActorMover",
               "function": "onScopeCommit",
               "wired_class": "ALPanelActorMover",
@@ -46341,7 +46341,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 56,
+              "line": 66,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -46352,7 +46352,7 @@
             },
             {
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 64,
+              "line": 74,
               "class": "ALPanelActorMover",
               "function": "onClickWalk",
               "wired_class": "ALPanelActorMover",
@@ -46420,7 +46420,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 57,
+              "line": 67,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -46431,7 +46431,7 @@
             },
             {
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 59,
+              "line": 69,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -46442,7 +46442,7 @@
             },
             {
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 65,
+              "line": 75,
               "class": "ALPanelActorMover",
               "function": "onClickStop",
               "wired_class": "ALPanelActorMover",
@@ -48174,6 +48174,71 @@
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
               "line": 110,
               "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+                "tag": "panel",
+                "name": "move_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "my_avatar",
+          "card_title": "My avatar",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "My heading",
+          "kind": "dial",
+          "widget": "my_heading_dial",
+          "matched_widget": "my_heading_dial",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactormover.cpp",
+              "line": 59,
+              "class": "ALPanelActorMover",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorMover",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mMyHeadingDial = findChild<ALCompassDial>(\"my_heading_dial\");"
+            },
+            {
+              "file": "indra/newview/alpanelactormover.cpp",
+              "line": 62,
+              "class": "ALPanelActorMover",
+              "function": "onMyHeadingCommit",
+              "wired_class": "ALPanelActorMover",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mMyHeadingDial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onMyHeadingCommit(); });"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+              "line": 115,
+              "tag": "compass_dial",
               "control_name": null,
               "callbacks": [],
               "root": {
@@ -56774,7 +56839,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 57,
+              "line": 67,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -56787,7 +56852,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 59,
+              "line": 69,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -56800,7 +56865,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 65,
+              "line": 75,
               "class": "ALPanelActorMover",
               "function": "onClickStop",
               "wired_class": "ALPanelActorMover",
@@ -60396,7 +60461,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 45,
+              "line": 49,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -60409,7 +60474,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 46,
+              "line": 50,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -60422,7 +60487,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 53,
+              "line": 57,
               "class": "ALPanelActorMover",
               "function": "onDialCommit",
               "wired_class": "ALPanelActorMover",
@@ -135552,7 +135617,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 57,
+              "line": 67,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -135565,7 +135630,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 59,
+              "line": 69,
               "class": "ALPanelActorMover",
               "function": "postBuild",
               "wired_class": "ALPanelActorMover",
@@ -135578,7 +135643,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelactormover.cpp",
-              "line": 65,
+              "line": 75,
               "class": "ALPanelActorMover",
               "function": "onClickStop",
               "wired_class": "ALPanelActorMover",

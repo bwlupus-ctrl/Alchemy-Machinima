@@ -7,7 +7,7 @@ Do not hand-edit. File and line references describe the scanned tree at generati
 
 | Pages | Rows | Distinct owner files | Unresolved rows | Ambiguous rows | Multi-page settings |
 |---:|---:|---:|---:|---:|---:|
-| 38 | 2008 | 33 | 22 | 0 | 21 |
+| 38 | 2009 | 33 | 22 | 0 | 21 |
 
 Classification: pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven.
 
@@ -43,15 +43,15 @@ Classification: pure-setting iff >=90% rows are setting-bound and no row widget 
 
 Real owner roots: `panel_actor_mover` in `indra/newview/skins/default/xui/en/panel_actor_mover.xml:19` (11 matched rows), `floater_director` in `indra/newview/skins/default/xui/en/floater_director.xml:15` (8 matched rows).
 
-C++ owner classes: `LLFloaterDirector` (31 references), `ALPanelActorMover` (7 references).
+C++ owner classes: `LLFloaterDirector` (31 references), `ALPanelActorMover` (9 references).
 
-Computed logic class: **code-driven**; 8/19 rows setting-bound, 11 rows referenced in C++.
+Computed logic class: **code-driven**; 8/20 rows setting-bound, 12 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
-| `walk_who` / Who | `scope_radio` | `combo` | `Boolean` `indra/newview/app_settings/settings.xml:7351` (Global) | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:29` `panel_actor_mover`/radio_group | `ALPanelActorMover::onScopeCommit indra/newview/alpanelactormover.cpp:40` | — | — |
-| `walk_who` / Walk | `btn_walk` | `button` | — | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:290` `panel_actor_mover`/button | `ALPanelActorMover::onClickWalk indra/newview/alpanelactormover.cpp:64` | — | — |
-| `walk_who` / Stop / Release | `btn_stop` | `button` | — | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:299` `panel_actor_mover`/button | `ALPanelActorMover::onClickStop indra/newview/alpanelactormover.cpp:65` | — | — |
+| `walk_who` / Who | `scope_radio` | `combo` | `Boolean` `indra/newview/app_settings/settings.xml:7351` (Global) | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:29` `panel_actor_mover`/radio_group | `ALPanelActorMover::onScopeCommit indra/newview/alpanelactormover.cpp:44` | — | — |
+| `walk_who` / Walk | `btn_walk` | `button` | — | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:290` `panel_actor_mover`/button | `ALPanelActorMover::onClickWalk indra/newview/alpanelactormover.cpp:74` | — | — |
+| `walk_who` / Stop / Release | `btn_stop` | `button` | — | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:299` `panel_actor_mover`/button | `ALPanelActorMover::onClickStop indra/newview/alpanelactormover.cpp:75` | — | — |
 | `straight` / Speed | `speed_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:7263` (Global) | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:116` `panel_actor_mover`/slider | — | `panel_actor_mover` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:132`, `move_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:23` | — |
 | `straight` / Distance | `dist_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:7274` (Global) | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:158` `panel_actor_mover`/slider | — | `panel_actor_mover` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:174`, `move_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:29` | — |
 | `straight` / Heading | `heading_spinner` | `dial` | `F32` `indra/newview/app_settings/settings.xml:7285` (Global) | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:78` `panel_actor_mover`/spinner | — | `move_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:35` | — |
@@ -68,6 +68,7 @@ Computed logic class: **code-driven**; 8/19 rows setting-bound, 11 rows referenc
 | `groups` / Rename to | `group_rename_editor` | `text` | — | `indra/newview/skins/default/xui/en/floater_director.xml:477` `floater_director`/line_editor | `LLFloaterDirector::onClickGroupRename indra/newview/llfloaterdirector.cpp:1467`, `LLFloaterDirector::onClickGroupRename indra/newview/llfloaterdirector.cpp:2422` | — | — |
 | `groups` / Rename | `btn_group_rename` | `button` | — | `indra/newview/skins/default/xui/en/floater_director.xml:488` `floater_director`/button | `LLFloaterDirector::onClickGroupRename indra/newview/llfloaterdirector.cpp:1468`, `LLFloaterDirector::onClickGroupRename indra/newview/llfloaterdirector.cpp:2423` | — | — |
 | `groups` / Dissolve | `btn_group_dissolve` | `button` | — | `indra/newview/skins/default/xui/en/floater_director.xml:467` `floater_director`/button | `LLFloaterDirector::onClickGroupDissolve indra/newview/llfloaterdirector.cpp:1469`, `LLFloaterDirector::onClickGroupDissolve indra/newview/llfloaterdirector.cpp:2424` | — | — |
+| `my_avatar` / My heading | `my_heading_dial` | `dial` | — | — | `ALPanelActorMover::onMyHeadingCommit indra/newview/alpanelactormover.cpp:62` | — | — |
 
 ### Path (`path_tab`)
 

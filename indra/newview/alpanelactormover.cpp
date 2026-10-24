@@ -13,10 +13,14 @@
 
 #include "alkitpage.h"
 #include "alcompassdial.h"          // ALCompassDial custom widget (heading dial)
+#include "fsposeranimator.h"
 #include "llactormover.h"
+#include "llagent.h"
+#include "llagentcamera.h"
 #include "llbutton.h"
 #include "llradiogroup.h"
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
+#include "llvoavatarself.h"
 
 // both the standalone Actor Mover floater and the Director Console Move tab
 // instantiate this class via <panel class="panel_actor_mover" .../>. The injector
@@ -52,6 +56,12 @@ bool ALPanelActorMover::postBuild()
     {
         mHeadingDial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDialCommit(); });
     }
+    mMyHeadingDial = findChild<ALCompassDial>("my_heading_dial");
+    if (mMyHeadingDial)
+    {
+        mMyHeadingDial->setCommitCallback([this](LLUICtrl*, const LLSD&) { onMyHeadingCommit(); });
+        refreshMyHeading();
+    }
 
     mWalkBtn = getChild<LLButton>("btn_walk");
     // Kit widget names are unique across Director pages and Camera > Takes owns "btn_stop", so
@@ -70,6 +80,10 @@ bool ALPanelActorMover::postBuild()
 void ALPanelActorMover::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
+    if (mMyHeadingDial && isWidgetOnScreen(mMyHeadingDial) && mMyHeadingClock.due())
+    {
+        refreshMyHeading();
+    }
     static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
     static LLCachedControl<F32>  heading(gSavedSettings, "ActorMoverHeading", 0.f);
 
@@ -126,6 +140,55 @@ void ALPanelActorMover::onDialCommit()
         return;
     }
     gSavedSettings.setF32("ActorMoverHeading", (F32)mHeadingDial->getValue().asReal());
+}
+
+const char* ALPanelActorMover::myHeadingDisabledReason() const
+{
+    if (!isAgentAvatarValid()) return "My heading is unavailable until your avatar is ready.";
+    if (gAgent.isSitting()) return "Not available while seated: the seat owns your avatar's rotation.";
+    // Mouselook owns pitch as well as yaw; an upright absolute heading would erase its pitch.
+    if (gAgentCamera.cameraMouselook()) return "Leave mouselook to use My heading.";
+    if (LLActorMover::instance().isDriving(gAgent.getID()))
+        return "Stop / Release Actor Mover before turning your avatar.";
+    // The query uses the shared motion registry, including poses left playing with the UI hidden.
+    static const FSPoserAnimator poser;
+    if (poser.isPosingAvatar(gAgentAvatarp)) return "Stop posing your avatar before using My heading.";
+    if (gAgent.rotateGrabbed()) return "Your turn controls are held by a script.";
+    return nullptr;
+}
+
+void ALPanelActorMover::refreshMyHeading()
+{
+    const char* reason = myHeadingDisabledReason();
+    setEnabledIfChanged(mMyHeadingDial, reason == nullptr);
+    setToolTipIfChanged(mMyHeadingDial, reason ? reason :
+        "Drag the needle to turn your avatar in-world, as if you turned with the keys. Others see it. "
+        "The wheel trims 5 degrees per click. Not available while seated.");
+    if (isAgentAvatarValid() && !mMyHeadingDial->hasMouseCapture())
+    {
+        LLVector3 at = gAgent.getFrameAgent().getAtAxis();
+        if (gAgentAvatarp->getParent())
+        {
+            // Seated agent axes are parent-local; project only after returning to world space.
+            at *= static_cast<LLViewerObject*>(gAgentAvatarp->getParent())->getRenderRotation();
+        }
+        const F32 degrees = atan2f(at.mV[VY], at.mV[VX]) * RAD_TO_DEG;
+        // Keyboard focus on the dial must not freeze live readback; only a drag owns the needle.
+        setValueIfChanged(mMyHeadingDial, LLSD(degrees), true);
+    }
+}
+
+void ALPanelActorMover::onMyHeadingCommit()
+{
+    // Recheck at commit: seating or a tool taking ownership can race the 10 Hz UI refresh.
+    if (!mMyHeadingDial || myHeadingDisabledReason()) return;
+    const F32 radians = (F32)mMyHeadingDial->getValue().asReal() * DEG_TO_RAD;
+    // Share keyboard camera preparation (including its preference and autopilot cancellation).
+    // Zero yaw avoids adding a relative turn; refocus may reset axes, so set heading afterwards.
+    gAgent.moveYaw(0.f);
+    // Same frame as keyboard yaw / slamLookAt. A horizontal unit look vector removes tilt;
+    // normal AgentUpdate publishes this frame as BodyRotation.
+    gAgent.resetAxes(LLVector3(cosf(radians), sinf(radians), 0.f));
 }
 
 uuid_vec_t ALPanelActorMover::selectedTargets() const

@@ -34,6 +34,7 @@
 
 #include "llpanel.h"
 #include "lluuid.h"     // uuid_vec_t
+#include "aluirefresh.h"
 
 class ALCompassDial;
 class ALKitPage;
@@ -59,6 +60,9 @@ public:
 private:
     void onScopeCommit();
     void onDialCommit();
+    void onMyHeadingCommit();
+    void refreshMyHeading();
+    const char* myHeadingDisabledReason() const;
     uuid_vec_t selectedTargets() const;
     void onClickWalk();
     void onClickStop();
@@ -69,6 +73,8 @@ private:
     ALKitPage*    mKitPage = nullptr;
     LLRadioGroup*  mScopeRadio = nullptr;
     ALCompassDial* mHeadingDial = nullptr;
+    ALCompassDial* mMyHeadingDial = nullptr;
+    ALLiveReadoutClock mMyHeadingClock{10.f};
     LLButton*      mWalkBtn = nullptr;
     LLButton*      mStopBtn = nullptr;
 
