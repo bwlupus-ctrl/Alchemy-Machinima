@@ -4500,6 +4500,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gDeferredProjectorVolumetricProgram.addPermutation("HAS_EMISSIVE", "1");
         }
         gDeferredProjectorVolumetricProgram.addPermutation("SPOT_SHADOW", "1");
+        // Match the deactivated A/B variant exactly in the binary-cache key.
+        // Absent and explicit "0" hash differently: first OFF must reuse startup.
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_INTEGRATION_AB", "0");
         // [BDMerge G3.3 Dust / review fix] Dust is a compile-time permutation:
         // with the lever OFF the sampler3D projvol_dust_map (and all dust code)
         // does not exist in the program, so no fragment texture unit is consumed

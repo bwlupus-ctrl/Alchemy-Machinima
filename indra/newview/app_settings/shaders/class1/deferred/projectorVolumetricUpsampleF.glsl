@@ -50,10 +50,20 @@ in vec2 vary_fragcoord;
 uniform sampler2D projectionMap;
 // dimensions of that half-res map (half of the scene buffer), for locating taps.
 uniform vec2 projvol_half_res;
+uniform sampler2D depthMap;
 
 // deferredUtil.glsl - view-space position reconstruction from the full-res depth,
 // and the half-res shaft sampler (projectionMap).
 vec4 getPosition(vec2 pos_screen);
+
+// Chosen by the march before any light-specific early return. R32F uses
+// replacement blending so overlapping cones share one camera depth, not a sum.
+// lightMap is an otherwise unused reserved sampler in this pass.
+uniform sampler2D lightMap;
+float projvolTapDepth(ivec2 p)
+{
+    return texelFetch(lightMap, p, 0).r;
+}
 
 void main()
 {
@@ -90,11 +100,12 @@ void main()
     for (int j = 0; j < 2; ++j)
     for (int i = 0; i < 2; ++i)
     {
-        vec2  tap_texel = base + vec2(float(i), float(j)) + 0.5;
+        ivec2 tap_p = clamp(ivec2(base) + ivec2(i,j), ivec2(0), ivec2(hres)-1);
+        vec2  tap_texel = vec2(tap_p) + 0.5;
         vec2  tap_uv    = tap_texel / hres;
 
         vec3  c     = texture(projectionMap, tap_uv).rgb;
-        float d_tap = length(getPosition(tap_uv).xyz);
+        float d_tap = projvolTapDepth(tap_p);
 
         // Bilinear footprint weight.
         float wx = (i == 0) ? (1.0 - frac.x) : frac.x;

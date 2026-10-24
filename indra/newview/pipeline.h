@@ -1680,7 +1680,9 @@ public:
     // volumetric cones march into (RGBA16F, rgb = additive shaft). Depth-aware
     // bilateral upsample composites it onto mRT->screen. Allocated on demand in
     // renderProjectorVolumetric, released in releaseGLBuffers/destroyGL.
-    LLRenderTarget          mProjVolHalf;
+    LLRenderTarget          mProjVolHalf; // attachment 1: R32F termination (replace blend)
+    LLRenderTarget          mProjVolRim;  // optional full-res BloomFeed source
+    bool                    mProjVolRimValid = false;
     // Half-resolution rain scratch. It is allocated only while weather rain is
     // enabled and released with the other GL buffers.
     LLRenderTarget          mWeatherRainHalf;
