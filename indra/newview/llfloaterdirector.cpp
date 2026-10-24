@@ -47,6 +47,7 @@
 #include "alcinehaze.h"                // Atmosphere > Depth Haze reset and reference height
 #include "allenslooks.h"               // Lens > Filters infrared and soft-edge preset actions
 #include "alpanelweathersettings.h"    // World > Weather strike and reset-all
+#include "alprojectorshaftlooks.h"
 #include "alprojectorshaftpresets.h"   // Atmosphere projector-shaft presets
 #include <boost/signals2.hpp>
 #include <cmath>
@@ -162,7 +163,8 @@ std::string migrate_tab_name(const std::string& name)
 std::string legacy_tab_name(const std::string& name)
 {
     if (name == "shot_tab") return "camera_tab";
-    if (name == "atmosphere_tab") return "projector_volumetrics_tab";
+    if (name == "atmosphere_tab") return "atmospheric_volumes_tab";
+    if (name == "projector_shafts_tab") return "projector_volumetrics_tab";
     return name;
 }
 
@@ -1083,14 +1085,9 @@ public:
     const std::string& key() const override { return mKey; }
     void list(std::vector<Entry>& out) const override
     {
-        static const char* const labels[] = {
-            "Fast Preview", "Balanced", "Cinematic", "Hazy Stage",
-            "Clear Air", "Searchlight", "Dust Storm", "Dream Mist"
-        };
-        for (S32 preset = ALProjectorShaftPresets::FAST_PREVIEW;
-             preset <= ALProjectorShaftPresets::DREAM_MIST; ++preset)
+        for (const ALProjectorShaftLooks::Look& look : ALProjectorShaftLooks::looks())
         {
-            out.push_back({ llformat("%d", preset), labels[preset], true });
+            out.push_back({ look.id, look.label, true, look.description });
         }
         for (const std::string& name : mStore.names())
         {
@@ -1099,12 +1096,14 @@ public:
     }
     bool apply(const std::string& id) override
     {
-        if (id.size() == 1 && id[0] >= '0' && id[0] <= '7')
+        if (id.compare(0, 2, "u:") == 0)
         {
-            ALProjectorShaftPresets::apply(id[0] - '0');
-            return true;
+            // Route through applyValues so the Dust permutation is written once, last, and only if it changes.
+            LLSD values;
+            return mStore.values(id.substr(2), values) && ALProjectorShaftPresets::applyValues(values);
         }
-        return id.compare(0, 2, "u:") == 0 && mStore.load(id.substr(2));
+        // Built-in: "b:*" ids, and the legacy "0".."7" ids a session may still hold.
+        return ALProjectorShaftPresets::apply(id);
     }
     bool canSaveUser() const override { return true; }
     bool saveUser(const std::string& name) override { return mStore.save(name); }

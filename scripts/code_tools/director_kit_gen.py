@@ -45,8 +45,8 @@ EXPECTED_SHORTCUTS = {
     ("shot_tab", "CinematicCamArcDuration", "moves_tab/hero_arc_duration"),
     ("shot_tab", "CinematicCamArcGeneratorAngle", "moves_tab/hero_arc_angle"),
     ("shot_tab", "CinematicCamArcHeightDrift", "moves_tab/hero_arc_height_drift"),
-    ("cine_light_rig_tab", "cine_easy_cone_feather", "atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider"),
-    ("cine_light_rig_tab", "cine_easy_shaft_length", "atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider"),
+    ("cine_light_rig_tab", "cine_easy_cone_feather", "projector_shafts_tab/ps_BDMergeProjectorVolumetricsFeather_slider"),
+    ("cine_light_rig_tab", "cine_easy_shaft_length", "projector_shafts_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider"),
     # 10/13: the user approved 5 image_tab -> exposure_tab shortcuts. exposure_tab became a kit page
     # 10/15, and the user then asked for them in an Easy card at the top of Look > Image.
     ("image_tab", "tonemap_type_combo", "exposure_tab/exp_tonemap_type"),
@@ -314,8 +314,9 @@ def validate_data(data: dict) -> None:
     # Soft shadow LOOK controls (10/23): +5 rows (Shadow strength, Shadow contrast, Screen-space detail, World shadow amount, Screen-space amount).
     # Light-shape refinement (10/23): +2 rows (Highlight softness, native preset action combo).
     # Haiku kit batch (10/23): +13 rows (World near clip, Projector contact, VSync lock, VCam local video + cache/download limits, Settings Performance card with 3 rows, 4 projector shaft A/B rows).
-    if len(pages) != 37 or row_count != 2191:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2191")
+    # Projector Shafts page (10/23): 41 shaft rows move from Atmosphere, +10 new rows (Halo stretch, 5 rim, 4 dust particles), page 37 -> 38; 2191 -> 2201.
+    if len(pages) != 38 or row_count != 2201:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2201")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1549,29 +1550,42 @@ def classify_header_quick(root: ET.Element, policies: dict[str, str], page_key: 
                           reload_settings: set[str], allowlist: dict[str, str] | None = None) -> None:
     """An explicit reviewed policy is required for every real header, with no default."""
     for node in root.iter():
-        widget = node.get("enable_widget") if node.tag in {"kit_card", "kit_option"} else None
+        master = node.tag == "kit_page"
+        widget = node.get("master_widget") if master else node.get("enable_widget") if node.tag in {"kit_card", "kit_option"} else None
         if widget:
             destination = page_key + "/" + widget
             policy = policies.get(destination)
+            if master and policy is None:
+                node.set("master_quick", "code")
+                continue
+            setting = node.get("master_setting" if master else "enable_setting", "")
             if policy not in {"setting", "controller", "tool", "code", "reload"}:
                 raise GenError(f"header {destination} needs explicit header_quick_policy")
-            if policy == "setting" and node.get("enable_setting") not in (allowlist or {}):
+            if policy == "setting" and setting not in (allowlist or {}):
                 raise GenError(f"Quick-safe header {destination} is not on header_quick_allowlist")
-            if policy == "setting" and not node.get("enable_setting"):
+            if policy == "setting" and not setting:
                 raise GenError(f"Quick-safe header {widget} must bind a setting")
             if policy == "setting" and any(
-                    node.get("enable_setting") == setting or
-                    (setting.endswith("*") and node.get("enable_setting", "").startswith(setting[:-1]))
-                    for setting in reload_settings):
-                raise GenError(f"Quick-safe header {destination}: {node.get('enable_setting')} has a listener not proven Quick-safe")
-            node.set("enable_quick", policy)
+                    setting == unsafe or (unsafe.endswith("*") and setting.startswith(unsafe[:-1]))
+                    for unsafe in reload_settings):
+                raise GenError(f"Quick-safe header {destination}: {setting} has a listener not proven Quick-safe")
+            node.set("master_quick" if master else "enable_quick", policy)
 
 
 def header_destinations(root: ET.Element) -> list[list[str]]:
-    """The real ALKitCard switches, including selector-option headers."""
+    """Page masters and ALKitCard switches, including selector-option headers."""
     entries = []
     seen = set()
     rows = {row.get("widget") for row in root.iter("kit_row")}
+    for page in root.iter("kit_page"):
+        widget = page.get("master_widget", "")
+        if not widget:
+            continue
+        if widget in seen or widget in rows:
+            raise GenError(f"duplicate page master destination: {widget}")
+        seen.add(widget)
+        entries.append(["", "Page master", "", widget, page.get("master_label", ""),
+                        page.get("master_setting", ""), page.get("master_tooltip", "Page master switch")])
     for card in root.iter("kit_card"):
         for option, node in [("", card)] + [(str(i), opt) for i, opt in enumerate(card.findall("kit_option"))]:
             widget = node.get("enable_widget", "")
@@ -1912,6 +1926,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "lens_group/focus_tab": "kit (P0)", "lens_group/filters_tab": "kit (P0)",
                 "lens_group/diopter_tab": "kit (P0)", "world_group/weather_tab": "kit (P0)",
                 "world_group/atmosphere_tab": "kit (P0)", "world_group/shadows_probes_tab": "kit (P0)",
+                "light_group/projector_shafts_tab": "kit (P0)",
                 "look_group/bloom_glow_tab": "pure kit (new)",
                 "look_group/stepped_tab": "kit (P0)",
                 "camera_group/shot_tab": "kit (P0)", "camera_group/moves_tab": "kit (P0)",
@@ -1943,7 +1958,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # 10/15 batch 2, cast_group/props_tab: legacy 5 -> 4.
     # 10/15 batch 3, cast_group/dance_tab: legacy 2 -> 1.
     # 10/15 batch 3, cast_group/ghosts_tab: legacy 1 -> 0 (no legacy page remains).
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 36, "pure kit (new)": 1}):
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 37, "pure kit (new)": 1}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -1986,6 +2001,8 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         generated_rows[key] = {str(node.get("widget")) for node in root.iter("kit_row") if node.get("widget")}
         used_header_settings.extend(n.get("enable_setting", "") for n in root.iter()
                                     if n.tag in {"kit_card", "kit_option"} and n.get("enable_widget"))
+        used_header_settings.extend(n.get("master_setting", "") for n in root.iter("kit_page")
+                                    if n.get("master_widget"))
         classify_header_quick(root, config.get("header_quick_policy", {}), key, reload_settings, allowlist)
         # Header setting edits use the same single observer as ordinary setting rows.
         kit = next(root.iter("kit_page"), None)
@@ -1993,6 +2010,8 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
             watched = set(filter(None, kit.get("watch_settings", "").split(",")))
             watched.update(n.get("enable_setting") for n in root.iter()
                            if n.get("enable_quick") == "setting")
+            if kit.get("master_quick") == "setting":
+                watched.add(kit.get("master_setting"))
             if watched:
                 kit.set("watch_settings", ",".join(sorted(watched)))
         outputs[out_dir / file_name] = xml_bytes(root, note)
@@ -2013,8 +2032,11 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         report_lines.append(f"KITNAMES {raw_page['name']}:" + (" " + names_text if names_text else ""))
     validate_quick_allowlist(allowlist, used_header_settings)
     # B7 (10/21): 48 real card/option header switches, independently of 2160 body rows.
-    if sum(map(len, generated_headers.values())) != 48:
-        raise GenError("card-header switch coverage drift: expected 48")
+    # Projector Shafts page (10/23): the Projector Cones card switch became the page master (48 -> 47).
+    card_headers = sum(bool(entry[0]) for entries in generated_headers.values() for entry in entries)
+    page_masters = sum(not entry[0] for entries in generated_headers.values() for entry in entries)
+    if (card_headers, page_masters) != (47, 13):
+        raise GenError(f"header switch coverage drift: {card_headers} cards / {page_masters} masters; expected 47/13")
     quick = quick_page()
     apply_kit_xui_style(quick)
     page_files["quick_group/quick_tab"] = "panel_dpage_quick.xml"
@@ -2068,8 +2090,8 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         for path, payload in outputs.items():
             if path.name.startswith("panel_dpage_"):
                 actual_headers.extend(header_destinations(ET.fromstring(payload)))
-        checks.append(("all 48 real card/option headers have unique search destinations",
-                       len(header_hits) == len(actual_headers) == 48 and
+        checks.append(("all 47 card/option headers and 13 page masters have unique search destinations",
+                       len(header_hits) == len(actual_headers) == 60 and
                        {(h[8], h[11], h[7]) for h in header_hits} ==
                        {(h[3], h[5], h[2]) for h in actual_headers}))
         rejects = []
@@ -2082,11 +2104,13 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                 rejects.append(True)
         checks.append(("missing/invalid/per-destination classification and setting-less Quick rejected", all(rejects)))
         safe_headers = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
-                        for node in ET.fromstring(payload).iter() if node.get("enable_quick") == "setting"]
+                        for node in ET.fromstring(payload).iter()
+                        if node.get("enable_quick") == "setting" or node.get("master_quick") == "setting"]
         reload_settings = quick_safety_tripwire(config.get("header_quick_allowlist", {}), {str(p): p.read_text(encoding="utf-8") for p in (ROOT / "indra/newview").rglob("*.cpp")})
-        checks.append(("only 14 reviewed setting headers are Quick-safe; allowlist and tripwire agree",
-                       len(safe_headers) == 14 and all(node.get("enable_setting") and
-                       node.get("enable_setting") not in reload_settings for node in safe_headers)))
+        # Projector Shafts page (10/23): the Projector Cones header became a page master, 14 -> 13.
+        checks.append(("only 14 reviewed setting headers/masters are Quick-safe; allowlist and tripwire agree",
+                       len(safe_headers) == 14 and all((node.get("enable_setting") or node.get("master_setting")) and
+                       (node.get("enable_setting") or node.get("master_setting")) not in reload_settings for node in safe_headers)))
         reload_settings |= quick_unsafe_listener_settings((ROOT / "indra/newview/llviewercontrol.cpp").read_text(encoding="utf-8").replace("RlvSettingNames::Main", '"RestrainedLove"'))
         rejects = []
         for setting in ("AlchemyWeatherRainOcclusion", "AlchemyWeatherLightningQualityEnabled", "RenderShadowDetail",
@@ -2217,7 +2241,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("one VCam Source Name search hit", len(name_hits) == 1 and name_hits[0][8] == "vc_camera_name"))
         video_hit = next(line.split("\t") for line in index_lines if "\tvc_media_video\t" in line)
         checks.append(("Video search excludes cue synonyms", not {"cue", "keyframe", "mark"} & set(video_hit[16].lower().split())))
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 36, "pure kit (new)": 1})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 37, "pure kit (new)": 1})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -2273,6 +2297,27 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                            len(list(row)) == 1 and list(row)[0].tag == "spinner" and
                            list(row)[0].get("control_name") == row.get("setting")
                            for row in rig_ev_rows)))
+        shafts = ET.fromstring(outputs[out_dir / "panel_dpage_light_projector_shafts.xml"], parser=parser())
+        shaft_page = next(shafts.iter("kit_page"))
+        shaft_master = [entry for entry in header_destinations(shafts) if entry[3] == "projector_cones_enable_check"]
+        checks.append(("migrated shaft master favorite has a searchable setting-bound page master",
+                       len(shaft_master) == 1 and shaft_master[0][5] == "BDMergeProjectorVolumetrics" and
+                       shaft_page.get("master_widget") == "projector_cones_enable_check" and
+                       shaft_page.get("master_quick") == "setting" and
+                       b"projector_cones_enable_check\tShafts\ttoggle\tBDMergeProjectorVolumetrics" in
+                       outputs[out_dir / "director_kit_index.xml"]))
+        # Page history must include every setting in the generated page, while a look
+        # deliberately excludes quality/calibration. Check the two lists against XUI.
+        presets = (ROOT / "indra/newview/alprojectorshaftpresets.cpp").read_text(encoding="utf-8")
+        looks = (ROOT / "indra/newview/alprojectorshaftlooks.cpp").read_text(encoding="utf-8")
+        owned = set(re.findall(r'"(BDMerge\w+)"', looks.split('kOwned[] = {', 1)[1].split('};', 1)[0]))
+        extras = set(re.findall(r'"(BDMerge\w+)"', presets.split('pageSettings()', 1)[1].split('bool apply(', 1)[0]))
+        page_settings = {node.get("control_name") for node in shafts.iter() if node.get("control_name")}
+        page_settings.update(node.get("enable_setting") for node in shafts.iter() if node.get("enable_setting"))
+        page_settings.add(shaft_page.get("master_setting"))
+        checks.append(("shaft page history covers all controls without expanding look ownership",
+                       page_settings == owned | {"BDMergeProjectorVolumetricsDust"} | extras and
+                       len(extras) == 18 and not (owned & extras)))
         ghosts = ET.fromstring(outputs[out_dir / "panel_dpage_cast_ghosts.xml"], parser=parser())
         rotation_rows = [row for row in ghosts.iter("kit_row") if row.get("widget") in
                          {"yaw_spinner", "pitch_spinner", "roll_spinner"}]
@@ -2289,7 +2334,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("look Tron page is a generated kit page (no launcher)",
                        not launcher_cards and len(list(tron.iter("kit_row"))) > 100
                        and any(node.get("page") == "look_group/tron_tab" for node in tron.iter("kit_page"))))
-        checks.append(("38 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 38))
+        checks.append(("39 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 39))
         synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
         exposure_aliases = synonym_aliases("Exposure", synonyms).split()
         checks.append(("synonym expansion is bidirectional and index-ready",

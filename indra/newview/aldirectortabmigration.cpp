@@ -19,7 +19,8 @@ std::string migrateTabName(const std::string& name)
 {
     if (name == "camera_tab") return "shot_tab";
     if (name == "lens_group/vcam_tab" || name == "camera_group/vcam_tab") return "vcam_tab";
-    if (name == "projector_volumetrics_tab" || name == "atmospheric_volumes_tab") return "atmosphere_tab";
+    if (name == "projector_volumetrics_tab") return "projector_shafts_tab";
+    if (name == "atmospheric_volumes_tab") return "atmosphere_tab";
     return name;
 }
 

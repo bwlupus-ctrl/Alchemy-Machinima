@@ -3,7 +3,7 @@
 
 Checks (DIRECTOR_KIT_P0_SPEC.md section 6.2 unless noted):
 
-  0  the machine authority lists exactly 37 pages (35 per USER_DECISIONS_20261010.md, + Stepped 10/14, + Director Settings 10/15)
+  0  the machine authority lists exactly 38 pages (35 per USER_DECISIONS_20261010.md, + Stepped 10/14, + Director Settings 10/15, + Projector Shafts 10/23)
   1  every v1 widget name is a v2 name, or matches a parity_allow glob with a reason
   2  every v1 control_name is bound by some control_name in v2; declared shortcuts
      (shortcut_of) are ordinary bindings and duplicate bindings are not reported here
@@ -13,7 +13,7 @@ Checks (DIRECTOR_KIT_P0_SPEC.md section 6.2 unless noted):
      values (sections 3.4 and 6.1 rule 10). New selectors have no v1 combo oracle.
 
 The P0 gate is exactly ``--groups light_group`` and its v1 scope is the recursively expanded
-Director leaf tree required by P0 spec section 6.2. ``--all`` checks all 37 pages: unchanged
+Director leaf tree required by P0 spec section 6.2. ``--all`` checks all 38 pages: unchanged
 legacy pages against their v1 leaves and converted/new pages against their declared owners.
 
 Usage::
@@ -52,7 +52,7 @@ CPP_PATTERNS = KIT_DIR / "cpp_name_patterns.json"
 GEN_REPORT = KIT_DIR / "gen_report.txt"
 V2_FLOATER = "floater_director_v2.xml"
 V1_FLOATER = XUI_DIR / "floater_director.xml"
-EXPECTED_PAGES = 37  # 36 plus the non-rail Director Settings page (user request 10/15)
+EXPECTED_PAGES = 38  # 36 plus the non-rail Director Settings page (user request 10/15), plus Light > Projector Shafts (10/23)
 ROLLOUT_WP = {
     "cast_group": "WP7", "performance_group": "WP8",
     "camera_group": "WP9", "lens_group": "WP9",
@@ -1012,7 +1012,7 @@ def selftest() -> int:
 
     # Check 0 (page count)
     expect("check 0 fail: 34 pages", len(page_count_findings(34)) == 1)
-    expect("check 0 pass: 37 pages", page_count_findings(37) == [])
+    expect("check 0 pass: 38 pages", page_count_findings(38) == [])
 
     # End-to-end on fixture page_sources and fixture xui trees
     def e2e_paths(sub: str) -> Paths:
@@ -1043,7 +1043,7 @@ def selftest() -> int:
     # Smoke run on the real repository (v1 side must load; v2 may be absent)
     try:
         real = evaluate(Paths(), None)
-        expect("--all on the real tree: 37 pages, v1 side loads, status is a known state",
+        expect("--all on the real tree: 38 pages, v1 side loads, status is a known state",
                len(real["pages"]) == EXPECTED_PAGES and real["counts"]["v1_names"] > 0
                and real["status"] in ("V2_NOT_GENERATED", "PASS", "FAIL"), real["status"])
     except ParityError as exc:
@@ -1060,7 +1060,7 @@ def main(argv: Optional[list] = None) -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--groups", metavar="GROUP[,GROUP...]",
                       help="page groups to check, e.g. light_group; 'all' means --all")
-    mode.add_argument("--all", action="store_true", help="check all 37 pages in page_sources.json")
+    mode.add_argument("--all", action="store_true", help="check all 38 pages in page_sources.json")
     mode.add_argument("--selftest", action="store_true", help="run the fixture tests and exit")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
     args = parser.parse_args(argv)

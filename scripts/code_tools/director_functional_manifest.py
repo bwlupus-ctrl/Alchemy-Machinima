@@ -586,6 +586,14 @@ def load_generated_kit_pages(xi):
                 headers.append((base, path, kit_page, card, header))
         # Preserve body-row ordinals/IDs when adding header coverage.
         xml_rows.extend(headers)
+        widget = kit_page.get("master_widget", "")
+        if widget:
+            setting = kit_page.get("master_setting", "")
+            master = ET.Element("kit_row", widget=widget, kind="toggle", label=kit_page.get("master_label", ""),
+                                setting=setting, bind="setting" if setting else "code",
+                                header_switch="true", header_quick=kit_page.get("master_quick", "code"))
+            master_card = ET.Element("kit_card", id="", title="Page master")
+            xml_rows.append((base, path, kit_page, master_card, master))
         pages[page] = xml_rows
     expected_headers = {(kit.get("page"), row.get("widget"), card.get("id"), row.get("setting", ""))
                         for xml_rows in pages.values() for _base, _path, kit, card, row in xml_rows
@@ -657,7 +665,7 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
 
             owner = ""
             callbacks = ""
-            if page == "vcam_tab" and kind != "readout":
+            if page == "vcam_tab" and kind != "readout" and binding != "setting":
                 owner = "ALPanelDirectorVCam::onControl"
             if binding == "code":
                 if row.get("header_switch") == "true":
@@ -2246,7 +2254,7 @@ def rules_self_test():
 def generation_self_test():
     """Exercise actual generated-row policy, units, and large selector shape."""
     from unittest.mock import patch
-    header_tree = ET.fromstring('''<kit_page page="look_group/image_tab">
+    header_tree = ET.fromstring('''<kit_page page="look_group/image_tab" master_widget="page_master" master_setting="Fixture">
       <kit_card id="fixture" title="Feature" enable_widget="master" enable_setting="Fixture">
         <kit_row widget="body" kind="toggle" setting="Fixture" bind="setting"/>
         <kit_option label="One" enable_widget="one" enable_setting="Fixture"/>
@@ -2257,17 +2265,18 @@ def generation_self_test():
         def load(self, _base):
             return "fixture.xml", header_tree, {}, {}, {}
     header_index = ET.Element("director_kit_index")
-    def index_line(widget, setting="Fixture"):
+    def index_line(widget, setting="Fixture", card="fixture"):
         fields = [""] * 22
-        fields[0], fields[1], fields[5] = "look_group", "image_tab", "fixture"
+        fields[0], fields[1], fields[5] = "look_group", "image_tab", card
         fields[8], fields[11], fields[13] = widget, setting, "h"
         return "\t".join(fields)
     good_index = "\n".join(index_line(widget) for widget in ("master", "one", "two"))
+    good_index += "\n" + index_line("page_master", card="")
     with patch.object(ET, "parse", return_value=ET.ElementTree(header_index)):
         header_index.text = good_index
         inventory = load_generated_kit_pages(HeaderXui())
         header_entries = build_kit_entries(inventory, [], {"Fixture": {"type": "Boolean", "default": False}}, {})
-        assert [entry["widget_name"] for entry in header_entries] == ["body", "master", "one", "two"]
+        assert [entry["widget_name"] for entry in header_entries] == ["body", "master", "one", "two", "page_master"]
         assert all(entry["exercise"] == "toggle" and entry["header_switch"] and
                    entry["action"] == "RUN" for entry in header_entries[1:])
         for bad_index in ("\n".join(good_index.splitlines()[:-1]),

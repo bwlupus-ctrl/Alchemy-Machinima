@@ -45,6 +45,8 @@ public:
     std::vector<std::string> names() const;
     bool                     save(const std::string&);
     bool                     load(const std::string&);
+    // The saved values for a user preset (a map keyed by setting name), without applying them.
+    bool                     values(const std::string&, LLSD&) const;
     bool                     remove(const std::string&);
     U64                      revision() const { return mRevision; }
 

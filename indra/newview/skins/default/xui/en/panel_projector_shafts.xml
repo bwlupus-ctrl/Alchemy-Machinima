@@ -2,16 +2,21 @@
 <panel class="panel_projector_shafts" follows="left|top|right" height="1198" layout="topleft" name="panel_projector_shafts" width="352">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="330" layout="topleft" font="SansSerifBold" value="Projector Shafts (Set Lights)" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="56" layout="topleft" value="Preset:" />
-			<combo_box follows="left|top" height="22" left="70" top_pad="-19" width="254" layout="topleft" name="ps_preset" tool_tip="Apply a complete projector-shaft starting point; Froxel/Voxel Air settings are not changed.">
-				<combo_box.item label="Custom" name="ps_preset_custom" value="-1" />
-				<combo_box.item label="Fast Preview" name="ps_preset_fast" value="0" />
-				<combo_box.item label="Balanced" name="ps_preset_balanced" value="1" />
-				<combo_box.item label="Cinematic" name="ps_preset_cinematic" value="2" />
-				<combo_box.item label="Hazy Stage" name="ps_preset_hazy" value="3" />
-				<combo_box.item label="Clear Air" name="ps_preset_clear" value="4" />
-				<combo_box.item label="Searchlight" name="ps_preset_searchlight" value="5" />
-				<combo_box.item label="Dust Storm" name="ps_preset_dust_storm" value="6" />
-				<combo_box.item label="Dream Mist" name="ps_preset_dream_mist" value="7" />
+			<combo_box follows="left|top" height="22" left="70" top_pad="-19" width="254" layout="topleft" name="ps_preset" tool_tip="Apply a complete projector-shaft look. Quality settings and Froxel/Voxel Air are not changed.">
+				<combo_box.item label="Custom" name="ps_preset_custom" value="" />
+				<combo_box.item label="Clean Beam" name="ps_preset_clean" value="b:clean" />
+				<combo_box.item label="Cinematic Haze" name="ps_preset_cinematic" value="b:cinematic" />
+				<combo_box.item label="Stage Haze" name="ps_preset_stage" value="b:stage" />
+				<combo_box.item label="Clear Night Air" name="ps_preset_clear_night" value="b:clear_night" />
+				<combo_box.item label="Searchlight" name="ps_preset_searchlight" value="b:searchlight" />
+				<combo_box.item label="Dust Storm" name="ps_preset_dust_storm" value="b:dust_storm" />
+				<combo_box.item label="Dream Mist" name="ps_preset_dream_mist" value="b:dream_mist" />
+				<combo_box.item label="Silhouette Rays" name="ps_preset_silhouette" value="b:silhouette" />
+				<combo_box.item label="Pipe Lights in Fog" name="ps_preset_pipe_fog" value="b:pipe_fog" />
+				<combo_box.item label="Smoky Club" name="ps_preset_smoky_club" value="b:smoky_club" />
+				<combo_box.item label="Cathedral God Rays" name="ps_preset_cathedral" value="b:cathedral" />
+				<combo_box.item label="Underwater" name="ps_preset_underwater" value="b:underwater" />
+				<combo_box.item label="Stained Glass" name="ps_preset_stained_glass" value="b:stained_glass" />
 			</combo_box>
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="330" layout="topleft" label="Enable volumetric projector cones" control_name="BDMergeProjectorVolumetrics" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Brightness:" />

@@ -199,6 +199,7 @@ ALKitPage::Params::Params() :
     master_setting("master_setting", ""),
     master_label("master_label", ""),
     master_tooltip("master_tooltip", ""),
+    master_quick("master_quick", "code"),
     modes("modes", ""),
     mode_setting("mode_setting", ""),
     mode_widget("mode_widget", ""),
@@ -230,6 +231,7 @@ ALKitPage::ALKitPage(const Params& p) :
     mMasterSetting(p.master_setting),
     mMasterLabel(p.master_label),
     mMasterTooltip(p.master_tooltip),
+    mMasterQuick(p.master_quick),
     mModes(p.modes),
     mModeSetting(p.mode_setting),
     mModeWidget(p.mode_widget),
@@ -350,6 +352,8 @@ bool ALKitPage::postBuild()
     watched.insert(watched.end(), preset_settings.begin(), preset_settings.end());
     if (!mModeSetting.empty())
         watched.push_back(mModeSetting);
+    if (!mMasterSetting.empty())
+        watched.push_back(mMasterSetting);
 
     std::vector<LLView*> xml_children;
     for (LLView* c : *getChildList())
@@ -608,7 +612,7 @@ bool ALKitPage::postBuild()
         gate_text = "Light Rig is off: rim has no effect";
     else if (mPage == "world_group/weather_tab")
         gate_text = "Weather is off";
-    else if (mPage == "world_group/atmosphere_tab" || mPage == "light_group/cine_light_rig_tab")
+    else if (mPage == "light_group/projector_shafts_tab" || mPage == "light_group/cine_light_rig_tab")
         gate_text = "Light masking is on: projector volumetrics hidden";
     if (!gate_text.empty())
     {
@@ -1340,6 +1344,11 @@ ALKitCard* ALKitPage::findHeaderCard(const std::string& widget) const
 
 bool ALKitPage::revealHeader(const std::string& widget)
 {
+    if (isMasterWidget(widget))
+    {
+        mMaster->setBtnFocus();
+        return true;
+    }
     ALKitCard* card = findHeaderCard(widget);
     if (!card || !card->revealHeader(widget)) return false;
     mHeaderHits[card->id()] = true;

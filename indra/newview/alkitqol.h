@@ -89,6 +89,27 @@ inline bool isValidFavorite(const Favorite& favorite)
            favorite.widget.rfind("quick_proxy_", 0) != 0;
 }
 
+// The projector-shaft rows moved from World > Atmosphere to Light > Projector Shafts. A favorite stored
+// against the old page follows its row. Only the moved widgets are rewritten; Atmosphere keeps its own.
+inline bool isProjectorShaftWidget(const std::string& widget)
+{
+    return widget.rfind("ps_BDMergeProjectorVolumetrics", 0) == 0 || widget == "ps_tint_swatch" ||
+           widget == "ps_BDMergeFroxelWindAzimuth_slider" || widget == "ps_BDMergeFroxelWindElevation_slider" ||
+           widget == "ps_BDMergeFroxelWindInverted_check" ||
+           widget == "ps_BDMergeSoftShadowSoftness_slider" || widget == "ps_BDMergeSoftShadowMaxPenumbra_slider" ||
+           widget == "ps_BDMergeSoftShadowFill_slider" ||
+           widget.rfind("projector_volumetrics_", 0) == 0 ||
+           widget == "projector_cones_enable_check" || widget == "soft_shadows_enable_check" ||
+           widget == "soft_shadow_sun_check" || widget == "gobo_anisotropic_check";
+}
+
+inline Favorite migrateFavorite(Favorite favorite)
+{
+    if (favorite.page == "world_group/atmosphere_tab" && isProjectorShaftWidget(favorite.widget))
+        favorite.page = "light_group/projector_shafts_tab";
+    return favorite;
+}
+
 inline std::vector<Favorite> favoritesFromLLSD(const LLSD& value)
 {
     std::vector<Favorite> result;
@@ -96,7 +117,7 @@ inline std::vector<Favorite> favoritesFromLLSD(const LLSD& value)
         return result;
     for (LLSD::array_const_iterator it = value.beginArray(); it != value.endArray(); ++it)
     {
-        Favorite favorite{ (*it)["page"].asString(), (*it)["widget"].asString() };
+        Favorite favorite = migrateFavorite(Favorite{ (*it)["page"].asString(), (*it)["widget"].asString() });
         if (isValidFavorite(favorite) &&
             std::find(result.begin(), result.end(), favorite) == result.end())
             result.push_back(std::move(favorite));

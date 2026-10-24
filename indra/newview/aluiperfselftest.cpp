@@ -4564,6 +4564,65 @@ private:
             regression["exercise"] = "real Quick header: one setting/callback, rebuild, unsafe removal/add rejection, single undo/redo, relight Changed-only undo";
             addFunctionalResult(regression, ok ? "PASS" : "FAIL", ok ? "" : "Quick header proxy regression failed");
         }
+        if (shell)
+        {
+            const ALKitQol::Favorite migrated = ALKitQol::migrateFavorite(
+                { "world_group/atmosphere_tab", "projector_cones_enable_check" });
+            const std::string quick_key = "quick_group/quick_tab";
+            shell->ensurePageBuilt(migrated.page);
+            shell->ensurePageBuilt(quick_key);
+            ALKitPage* page = shell->findBuiltPage(migrated.page);
+            ALKitPage* quick = shell->findBuiltPage(quick_key);
+            ALKitCard* card = quick ? quick->findCard("quick") : nullptr;
+            const bool had_favorite = shell->isFavorite(migrated.page, migrated.widget);
+            if (!had_favorite) shell->toggleFavorite(migrated.page, migrated.widget);
+            shell->rebuildQuick();
+            auto find_proxy = [card, &migrated]() -> ALKitRow*
+            {
+                if (card)
+                    for (ALKitRow* row : card->rows())
+                        if (row->favoriteKey() == migrated) return row;
+                return nullptr;
+            };
+            LLControlVariable* setting = gSavedSettings.getControl("BDMergeProjectorVolumetrics").get(); // ui-draw-lint: allow(setting) one-shot functional oracle, gated by mFunctionalGlobalAssertionsDone
+            const bool original = setting && setting->get().asBoolean();
+            const U64 previous_step = shell->history().stepSequence(quick_key, false);
+            ALKitRow* proxy = find_proxy();
+            bool ok = page && page->isMasterWidget(migrated.widget) && proxy && setting;
+            if (proxy)
+                if (ALKitSwitch* control = proxy->findChild<ALKitSwitch>(proxy->meta().widget))
+                {
+                    ALKitHistory::ScopedSource source(quick);
+                    control->toggle();
+                    control->onCommit();
+                }
+            shell->history().finishGesture();
+            ok = ok && setting->get().asBoolean() != original && page->masterSwitch()->isOn() != original;
+            shell->rebuildQuick();
+            proxy = find_proxy();
+            ok = ok && proxy && proxy->boundValue().asBoolean() != original;
+            while (shell->search().tokenizeBatch(400)) {}
+            const auto hits = shell->search().query("projector_cones_enable_check");
+            ok = ok && std::any_of(hits.begin(), hits.end(), [&migrated](const ALKitSearch::Hit& hit)
+                { return hit.page_key == migrated.page && hit.widget == migrated.widget; }) &&
+                shell->navigateTo(migrated.page + "/" + migrated.widget);
+            if (shell->history().stepSequence(quick_key, false) != previous_step)
+                shell->history().undo(quick_key);
+            ok = ok && setting->get().asBoolean() == original;
+            if (setting)
+            {
+                ALKitHistory::ScopedSuspend suspend;
+                setting->set(LLSD(original));
+            }
+            if (!had_favorite) shell->toggleFavorite(migrated.page, migrated.widget);
+            shell->rebuildQuick();
+            LLSD regression;
+            regression["page"] = "selftest";
+            regression["widget_name"] = "quick_page_master_proxy";
+            regression["widget_type"] = "unit";
+            regression["exercise"] = "migrated shaft master: Quick switch, source sync, rebuild, search/reveal, undo";
+            addFunctionalResult(regression, ok ? "PASS" : "FAIL", ok ? "" : "Quick page master regression failed");
+        }
         if (director && gFloaterView) gFloaterView->bringToFront(director);
         // Quick may be empty on a fresh profile. Build a page with real tab stops.
         if (shell) shell->selectPage("shot_tab");
@@ -8985,9 +9044,9 @@ private:
                 prefix = "weather";
                 gate_expected = !gSavedSettings.getBOOL("AlchemyWeatherEnabled");
             }
-            else if (page_name == "atmosphere_tab" || page_name == "cine_light_rig_tab")
+            else if (page_name == "projector_shafts_tab" || page_name == "cine_light_rig_tab")
             {
-                prefix = page_name == "atmosphere_tab" ? "atmosphere" : "cine_light_rig";
+                prefix = page_name == "projector_shafts_tab" ? "projector_shafts" : "cine_light_rig";
                 gate_expected = gPipeline.actorOnlyVolumetricLightCount() > 0;
             }
             if (page && !prefix.empty())
@@ -8998,7 +9057,7 @@ private:
                 if (!banner_ok)
                     assertion_failure = prefix + " banner visibility disagrees with its gate predicate";
                 if (banner &&
-                    (page_name == "atmosphere_tab" || page_name == "cine_light_rig_tab"))
+                    (page_name == "projector_shafts_tab" || page_name == "cine_light_rig_tab"))
                 {
                     const U32 count = gPipeline.actorOnlyVolumetricLightCount();
                     LLTextBox* text = banner->findChild<LLTextBox>(prefix + "_gate_text", true);

@@ -3,7 +3,7 @@
     ["exposure", "ev", "brightness"],
     ["brightness", "lamp", "power", "intensity", "picture ev"],
     ["shadow", "shadows", "probe", "shadow map"],
-    ["fog", "haze", "atmosphere", "shafts", "volumetric"],
+    ["fog", "haze", "atmosphere", "shafts", "volumetric", "rays", "godrays", "beams", "shaft"],
     ["glow", "bloom", "halation"],
     ["color", "colour", "tint", "gel", "hue"],
     ["rim", "backlight", "edge light"],

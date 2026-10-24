@@ -161,7 +161,8 @@ std::vector<std::string> pageSettings(const std::string& page)
     if (page == "camera_group/operator_tab") add(owned(SHAKE));
     if (page == "camera_group/takes_tab") { add(owned(WEIGHTED)); add(owned(DRONE)); }
     if (page == "light_group/cine_light_rig_tab") { add(owned(LIGHT_RIG)); add(owned(FLARE)); add(owned(NIGHT_MASK)); }
-    if (page == "world_group/atmosphere_tab") { add(owned(HAZE)); add(ALProjectorShaftPresets::trackedSettings()); }
+    if (page == "world_group/atmosphere_tab") add(owned(HAZE));
+    if (page == "light_group/projector_shafts_tab") add(ALProjectorShaftPresets::pageSettings());
     if (page == "world_group/weather_tab") add(ALPanelWeatherSettings::trackedSettings());
     if (page == "look_group/stepped_tab") { add(ALSteppedAnim::presetSettings()); keys.emplace_back("StepAnimEnabled"); }
     return keys;
@@ -329,6 +330,14 @@ bool ALKitSnapshotStore::load(const std::string& name)
                 control->set(values[setting]);
             }
     }
+    return true;
+}
+
+bool ALKitSnapshotStore::values(const std::string& name, LLSD& out) const
+{
+    if (!ensureLoaded() || !mCache.has(name) || !mCache[name].isMap())
+        return false;
+    out = mCache[name];
     return true;
 }
 

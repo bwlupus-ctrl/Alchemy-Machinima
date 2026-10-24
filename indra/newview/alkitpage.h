@@ -96,7 +96,7 @@ public:
     struct Params : public LLInitParam::Block<Params, LLPanel::Params>
     {
         Mandatory<std::string> page;
-        Optional<std::string>  summary, master_widget, master_setting, master_label, master_tooltip, modes, mode_setting, mode_widget,
+        Optional<std::string>  summary, master_widget, master_setting, master_label, master_tooltip, master_quick, modes, mode_setting, mode_widget,
             mode_on, mode_tooltip, mode_adapter, who_label, who_picker, who_adapter, preset_mode, preset_provider,
             watch_settings, chip_mode, undo_context;
         Optional<bool>    legacy, actor_target, actor_target_synthetic;
@@ -154,6 +154,10 @@ public:
     LLButton*          whoChip() const { return mWhoChip; }
     LLLineEditor*      searchEditor() const { return mSearch; }
     ALKitSwitch*       masterSwitch() const { return mMaster; }
+    bool               isMasterWidget(const std::string& widget) const { return mMaster && widget == mMasterWidget; }
+    const std::string& masterSetting() const { return mMasterSetting; }
+    const std::string& masterLabel() const { return mMasterLabel; }
+    bool               masterQuickSafe() const { return mMasterQuick == "setting"; }
     LLButton*          undoButton() const { return mUndo; }
     LLButton*          redoButton() const { return mRedo; }
     LLButton*          resetButton() const { return mResetPage; }
@@ -207,7 +211,7 @@ private:
     void        applyCastSelection(const uuid_vec_t& ids);
     bool        selectWhoValue(const LLSD& value);
     std::string prefix() const;
-    std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mModes, mModeSetting,
+    std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mMasterQuick, mModes, mModeSetting,
         mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;
     std::function<bool(ALKitRow*)> mRowRevealGuard;
     bool mLegacy = false, mActorTargetPage = false, mActorTargetSynthetic = false, mActorTargetAway = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,

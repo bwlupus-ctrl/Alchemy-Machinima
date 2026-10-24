@@ -38,8 +38,8 @@ PAGE_EXCLUSIONS = {
 # selector's mode-specific block. The named home remains canonical for search
 # and undo attribution; kit_lint rejects every unlisted second writer.
 SHORTCUTS = {
-    ("cine_light_rig_tab", "cine_easy_cone_feather"): "atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider",
-    ("cine_light_rig_tab", "cine_easy_shaft_length"): "atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider",
+    ("cine_light_rig_tab", "cine_easy_cone_feather"): "projector_shafts_tab/ps_BDMergeProjectorVolumetricsFeather_slider",
+    ("cine_light_rig_tab", "cine_easy_shaft_length"): "projector_shafts_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider",
     ("shot_tab", "CinematicCamJoint"): "frame_orbit_tab/CinematicCamJoint",
     ("shot_tab", "CinematicCamVertigoDuration"): "moves_tab/zolly_duration",
     ("shot_tab", "CinematicCamVertigoDirection"): "moves_tab/zolly_direction",
@@ -382,7 +382,7 @@ STRIP = {
     "light_group/exposure_tab": ("env_intensity", []),
     "light_group/actors_tab": ("@combo_preset", ["combo_preset", "btn_apply_preset"]),
     "world_group/weather_tab": ("weather", ["weather_preset_combo", "weather_preset_save", "weather_preset_delete"]),
-    "world_group/atmosphere_tab": ("proj_shafts", ["ps_preset"]),
+    "light_group/projector_shafts_tab": ("proj_shafts", ["ps_preset"]),
     "camera_group/operator_tab": ("@preset_combo", ["preset_combo", "btn_preset_save", "btn_preset_delete"]),
     "performance_group/gaze_tab": ("@gaze_performance_combo", ["gaze_performance_combo", "reset_gaze_performance"]),
     "lens_group/diopter_tab": ("diopter_bank", []),

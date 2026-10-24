@@ -1694,7 +1694,7 @@ void ALKitShell::runSearch(const std::string& query)
         if (hit.page_key == page->pageKey())
         {
             hit.row = !hit.widget.empty() ? page->findRow(hit.widget) : page->findRowBySetting(hit.setting);
-            if (hit.row || page->findHeaderCard(hit.widget))
+            if (hit.row || page->findHeaderCard(hit.widget) || page->isMasterWidget(hit.widget))
                 local.push_back(std::move(hit));
         }
     page->applySearch(local);
@@ -2144,7 +2144,8 @@ void ALKitShell::rebuildQuick()
         ALKitRow* source = source_page ? source_page->findRow(favorite.widget) : nullptr;
         const std::string proxy_name = "quick_proxy_" + llformat("%d", index++);
         ALKitCard* header = source_page ? source_page->findHeaderCard(favorite.widget) : nullptr;
-        ALKitRow* proxy = header ? ALKitRow::createHeaderProxy(source_page, header, favorite.widget, proxy_name)
+        ALKitRow* proxy = header || (source_page && source_page->isMasterWidget(favorite.widget))
+                                ? ALKitRow::createHeaderProxy(source_page, header, favorite.widget, proxy_name)
                                 : ALKitRow::createProxy(source, proxy_name);
         if (proxy)
             proxies.push_back(proxy);

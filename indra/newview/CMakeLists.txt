@@ -412,6 +412,7 @@ set(viewer_SOURCE_FILES
     alpanelprojectorshafts.cpp
     alpanelcinelightrig.cpp
     alprobedirty.cpp # [ProbeOnDemand]
+    alprojectorshaftlooks.cpp
     alprojectorshaftpresets.cpp
     alpanelcinecamparams.cpp
     alpanellensgaze.cpp
@@ -1362,6 +1363,7 @@ set(viewer_HEADER_FILES
     alpanelcinelightrig.h
     alprobedirty.h # [ProbeOnDemand]
     alprobeschedule.h # [ProbeOnDemand]
+    alprojectorshaftlooks.h
     alprojectorshaftpresets.h
     alpanelcinecamparams.h
     algazemath.h
@@ -2788,6 +2790,7 @@ if (BUILD_TESTING)
     aldirectorswitchermodel.cpp
     aldirectorqol.cpp
     aldirectortabmigration.cpp
+    alprojectorshaftlooks.cpp
     aldanceballmodel.cpp
     alavatarstagingmodel.cpp
     alweathermodel.cpp

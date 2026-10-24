@@ -55,4 +55,55 @@ template<> template<> void alkitqol_object::test<5>()
     ensure_equals("junk Quick favorites are removed", cleaned.size(), size_t(1));
     ensure_equals("valid favorite survives cleanup", cleaned[0].widget, std::string("vc_exposure"));
 }
+
+template<> template<> void alkitqol_object::test<6>()
+{
+    LLSD stored = LLSD::emptyArray();
+    auto add = [&stored](const char* page, const char* widget)
+    {
+        stored.append(LLSD().with("page", page).with("widget", widget));
+    };
+    add("world_group/atmosphere_tab", "ps_BDMergeProjectorVolumetricsMultiplier_slider");
+    add("world_group/atmosphere_tab", "projector_cones_enable_check");
+    add("world_group/atmosphere_tab", "soft_shadows_enable_check");
+    add("world_group/atmosphere_tab", "soft_shadow_sun_check");
+    add("world_group/atmosphere_tab", "gobo_anisotropic_check");
+    add("world_group/atmosphere_tab", "projector_volumetrics_half_res_check");
+    add("world_group/atmosphere_tab", "ps_BDMergeFroxelWindAzimuth_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeFroxelWindElevation_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeFroxelWindInverted_check");
+    add("world_group/atmosphere_tab", "ps_BDMergeSoftShadowSoftness_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeSoftShadowMaxPenumbra_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeSoftShadowFill_slider");
+    add("world_group/atmosphere_tab", "ps_BDMergeFroxelDensity_slider");
+    // Atmosphere keeps its own rows.
+    add("world_group/atmosphere_tab", "ch_CineHazeStrength_slider");
+    add("world_group/atmosphere_tab", "localfog_master");
+    // Another page with a lookalike widget name is not rewritten.
+    add("light_group/practicals_tab", "ps_BDMergeProjectorVolumetricsMultiplier_slider");
+    // After migration a stored duplicate of the same row collapses.
+    add("light_group/projector_shafts_tab", "ps_BDMergeProjectorVolumetricsMultiplier_slider");
+
+    const std::vector<ALKitQol::Favorite> cleaned = ALKitQol::favoritesFromLLSD(stored);
+    const std::string shafts = "light_group/projector_shafts_tab";
+    const std::vector<ALKitQol::Favorite> expected = {
+        { shafts, "ps_BDMergeProjectorVolumetricsMultiplier_slider" },
+        { shafts, "projector_cones_enable_check" },
+        { shafts, "soft_shadows_enable_check" },
+        { shafts, "soft_shadow_sun_check" },
+        { shafts, "gobo_anisotropic_check" },
+        { shafts, "projector_volumetrics_half_res_check" },
+        { shafts, "ps_BDMergeFroxelWindAzimuth_slider" },
+        { shafts, "ps_BDMergeFroxelWindElevation_slider" },
+        { shafts, "ps_BDMergeFroxelWindInverted_check" },
+        { shafts, "ps_BDMergeSoftShadowSoftness_slider" },
+        { shafts, "ps_BDMergeSoftShadowMaxPenumbra_slider" },
+        { shafts, "ps_BDMergeSoftShadowFill_slider" },
+        { "world_group/atmosphere_tab", "ps_BDMergeFroxelDensity_slider" },
+        { "world_group/atmosphere_tab", "ch_CineHazeStrength_slider" },
+        { "world_group/atmosphere_tab", "localfog_master" },
+        { "light_group/practicals_tab", "ps_BDMergeProjectorVolumetricsMultiplier_slider" },
+    };
+    ensure("moved favorites follow their rows, others stay, duplicates collapse", cleaned == expected);
+}
 } // namespace tut
