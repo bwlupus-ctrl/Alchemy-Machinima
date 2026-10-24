@@ -27,7 +27,9 @@
 // [RigRimQ] Light wrap composite (doc/RIGRIM_QUALITY_CONTRACT.md, pass C3).
 //
 // Full-res, additive (BT_ADD, colour mask RGB only) onto mRT->screen at the
-// head of renderFinalize's HDR block, right after renderWeather().  For every
+// pre-alpha pool boundary in renderGeomPostDeferred. Wrap-only debug remains
+// in renderFinalize. The beauty source excludes blended hair; subsequent
+// source-alpha blending occludes this opaque-surface light normally. For every
 // pixel inside the silhouette band on the NEAR side of its nearest seed, the
 // blurred background just beyond that seed is folded onto the edge, scaled by
 // the grazing factor of the smooth normal:
@@ -44,16 +46,16 @@
 // Inputs: rigRimAuxMap / rigRimSilMap (deferredUtil.glsl declarations; the
 // host guarantees both are valid for THIS main view), rigRimWrapSrc (the
 // quarter-res blurred scene = rigRimWrapBlur[0] after C3a, BILINEAR), depth via
-// deferredUtil (same binding / matrix hazard class as renderCineOutline at
-// this point in the frame).  All map reads are textureLod(..., 0): this
+// deferredUtil. Beauty uses the live scene projection at this boundary.
+// All map reads are textureLod(..., 0): this
 // fragment is in non-uniform flow.
 //   rig_rim_wrap   x strength, y reach (half-res texels), z saturation 0..1, w clamp (HDR)
 //   rig_rim_wrap2  z debug (1 = output the wrap term only; host draws with blend OFF),
 //                  w subject gate 0/1 (ActorsOnly)
 //
 // Program: isDeferred.  Vertex: deferred/postDeferredNoTCV.glsl.
-// GL: blend ON BT_ADD, colour mask (true,true,true,false), depth off,
-// cull off; restore BT_ALPHA and full colour mask afterwards.
+// GL: additive blend and RGB-only mask on attachment 0, depth/cull off.
+// The host restores indexed state and routing, preserving sidecar/parity.
 
 out vec4 frag_color;
 

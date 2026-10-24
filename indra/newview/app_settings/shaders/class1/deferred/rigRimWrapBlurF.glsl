@@ -30,6 +30,8 @@
 //   C1  RIG_RIM_WRAP_DOWNSAMPLE : src = mRT->screen (full-res HDR), dst = rigRimWrapBlur[0]
 //       4x4 box prefilter (4 bilinear taps at +-1 full-res px around the
 //       quarter-texel centre); rig_rim_wrap2.xy unused.
+//       Beauty runs before alpha pools: blended hair is neither a background
+//       blur source nor an unoccluded recipient. Wrap-only debug runs later.
 //   C2  (none)                  : src = rigRimWrapBlur[0], dst = rigRimWrapBlur[1]
 //       horizontal 9-tap Gaussian; rig_rim_wrap2.xy = (blur_q / blur0_w, 0)
 //   C3a (none)                  : src = rigRimWrapBlur[1], dst = rigRimWrapBlur[0]

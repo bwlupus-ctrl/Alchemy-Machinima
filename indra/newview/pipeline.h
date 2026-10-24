@@ -743,6 +743,7 @@ public:
     const std::string& rigRimStatus() const { return mRigRimStatus; }
     bool ensureRigRimAux();
     bool ensureRigRimWrap();
+    void renderRigRimWrap(bool debug_only);
     void releaseRigRimAux();
     U64 mActorMaskViewId = 0;
     bool mActorMaskAllocated = false;

@@ -1,5 +1,20 @@
 # Rig Rim Quality — shader/C++ contract (WP0/WP1, Fable, 2026-10-09)
 
+**2026-10-23 alpha-fringe correction (supersedes the historical C-pass placement
+and GL-state pseudocode below):** beauty C1-C3 now run through
+`renderRigRimWrap(false)` at the first `POOL_ALPHA_PRE_WATER` boundary in
+`renderGeomPostDeferred`, after forward opaque pools and before transparency.
+Blended hair cannot feed white colour into the background blur, and its normal
+coverage blend occludes opaque wrap. Use live `gGLProjection` there; the end-of-scene
+snapshot has not updated `gGLLastProjection` yet. The helper preserves the parent
+target stack, routes only attachment 0, and saves/restores that index's blend,
+equations and colour mask without nesting the pool loop's sidecar guard.
+`renderRigRimWrap(true)` retains Wrap-only debug in `renderFinalize`; other debug
+views retain their placement. Rim OFF returns before allocation or GL work.
+`scripts/code_tools/rim_alpha_gl_check.py` exercises production shaders, alpha
+ramps and the production C++ state transaction on real WGL. This fixes a spatial
+compositing defect; Steady has no temporal history.
+
 Design: `C:\Users\xianw\cxs\rim_quality_design.md`. This document is the complete
 interface between the shaders (DONE, listed in §1) and the C++ package (Codex,
 WP2). A C++ implementer must not need to read the shaders to wire them.

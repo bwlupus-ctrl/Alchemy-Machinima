@@ -8850,6 +8850,10 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
         if (cur_type >= water_haze_pass && !done_roto_ink_scene)
         {
             done_roto_ink_scene = true;
+            // Wrap uses opaque depth/normal coverage. Resolve it before any
+            // alpha so hair occludes it and cannot feed its own colour back
+            // through the background blur. The helper gates other views/OFF.
+            renderRigRimWrap(false);
             // Guard against renderGeomPostDeferred's other callers (impostors,
             // reflection/hero probes, HUDs) -- this call site must only ever
             // fire for the main view's own screen target, matching the
@@ -23824,6 +23828,151 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
     }
 }
 
+void LLPipeline::renderRigRimWrap(bool debug_only)
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "CineRigRimWrapEnabled", false);
+    static LLCachedControl<F32> strength(gSavedSettings, "CineRigRimWrapStrength", .5f);
+    static LLCachedControl<U32> debug_view(gSavedSettings, "CineRigRimDebugView", 0);
+    if (!enabled() || strength() <= 0.f || (debug_view() == 5) != debug_only ||
+        mRT != &mMainRT || gCubeSnapshot || sPrismLensRender || sImpostorRender ||
+        sRenderingHUDs || !mRigRimAuxValid || !mRigRimSilValid ||
+        !ALCineRigRim::isEnabled() || !worldHDREnabled() ||
+        !gRigRimWrapProgram.isComplete() || !gRigRimWrapBlurProgram[0].isComplete() ||
+        !gRigRimWrapBlurProgram[1].isComplete() || !ensureRigRimWrap())
+    {
+        return;
+    }
+    LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("rig rim wrap");
+    static LLCachedControl<F32> reach(gSavedSettings, "CineRigRimWrapWidth", 2.f);
+    static LLCachedControl<F32> blur(gSavedSettings, "CineRigRimWrapBlur", 1.f);
+    static LLCachedControl<F32> saturation(gSavedSettings, "CineRigRimWrapSaturation", .7f);
+    static LLCachedControl<F32> hdr_clamp(gSavedSettings, "CineRigRimWrapClamp", 4.f);
+    static LLCachedControl<F32> width(gSavedSettings, "CineRigRimSilhouetteWidth", 3.f);
+    static LLCachedControl<U32> units(gSavedSettings, "CineRigRimSilhouetteUnits", 0);
+    static LLCachedControl<F32> soft(gSavedSettings, "CineRigRimSilhouetteSoft", .5f);
+    static LLCachedControl<F32> gap(gSavedSettings, "CineRigRimSilhouetteGap", .08f);
+    static LLCachedControl<bool> actors(gSavedSettings, "CineRigRimActorsOnly", false);
+    const auto finite_or = [](F32 value, F32 fallback)
+    {
+        return std::isfinite(value) ? value : fallback;
+    };
+    F32 distance = 3.f;
+    if (LLVOAvatar* avatar = LLDirectorCast::instance().resolveSubjectA())
+    {
+        if (LLJoint* head = avatar->getJoint("mHead"))
+            distance = llmax(.1f, dist_vec(head->getWorldPosition(), gAgentCamera.getCameraPositionAgent()));
+    }
+    // The beauty call is before the end-of-scene matrix snapshot: Last still
+    // belongs to the previous frame there. Debug runs later in renderFinalize.
+    const F32 projection_y = debug_only ? gGLLastProjection[5] : gGLProjection[5];
+    const F32 h = (F32)mMainRT.deferredScreen.getHeight();
+    const F32 texels_per_m = h * projection_y * .25f;
+    const bool cm = units() == 0;
+    const F32 width_value = llclamp(finite_or(width, 3.f), .2f, 30.f);
+    const F32 width_x = cm ? width_value * .01f : width_value * (h / 1080.f) *
+        bdmerge_snapshot_autoscale_multiplier() * .5f;
+    const F32 softness = llclamp(finite_or(soft, .5f), 0.f, 1.f);
+    const F32 band = llmin(24.f / (1.f + softness), cm ? width_x * texels_per_m / distance : width_x);
+
+    gGL.flush();
+    const bool already_bound = LLRenderTarget::getCurrentBoundTarget() == &mRT->screen;
+    if (!already_bound) mRT->screen.bindTarget();
+    {
+        // The pool loop already owns the indexed sidecar guard. Do not nest
+        // another guard or change global blend/mask state: that also changes
+        // the parity attachment. Restrict routing and touch only index zero,
+        // restoring its raw state without changing LLRender's cached state.
+        struct State
+        {
+            GLboolean blend = glIsEnabledi(GL_BLEND, 0);
+            GLboolean mask[4];
+            GLint src_rgb, dst_rgb, src_alpha, dst_alpha, eq_rgb, eq_alpha;
+            std::array<GLenum, 4> buffers{};
+            U32 count;
+            explicit State(U32 n) : count(n)
+            {
+                llassert(n <= buffers.size());
+                glGetBooleani_v(GL_COLOR_WRITEMASK, 0, mask);
+                glGetIntegeri_v(GL_BLEND_SRC_RGB, 0, &src_rgb);
+                glGetIntegeri_v(GL_BLEND_DST_RGB, 0, &dst_rgb);
+                glGetIntegeri_v(GL_BLEND_SRC_ALPHA, 0, &src_alpha);
+                glGetIntegeri_v(GL_BLEND_DST_ALPHA, 0, &dst_alpha);
+                glGetIntegeri_v(GL_BLEND_EQUATION_RGB, 0, &eq_rgb);
+                glGetIntegeri_v(GL_BLEND_EQUATION_ALPHA, 0, &eq_alpha);
+                for (U32 i = 0; i < count; ++i)
+                {
+                    GLint buffer = GL_NONE;
+                    glGetIntegerv(GL_DRAW_BUFFER0 + i, &buffer);
+                    buffers[i] = static_cast<GLenum>(buffer);
+                }
+            }
+            ~State()
+            {
+                if (blend) glEnablei(GL_BLEND, 0); else glDisablei(GL_BLEND, 0);
+                glColorMaski(0, mask[0], mask[1], mask[2], mask[3]);
+                glBlendFuncSeparatei(0, src_rgb, dst_rgb, src_alpha, dst_alpha);
+                glBlendEquationSeparatei(0, eq_rgb, eq_alpha);
+                glDrawBuffers(count, buffers.data());
+            }
+        } saved(mRT->screen.getNumTextures());
+        LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+        LLGLDisable cull(GL_CULL_FACE);
+        glDisablei(GL_BLEND, 0);
+        glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        const F32 blur_q = llclamp(finite_or(blur, 1.f), 0.f, 3.f);
+        {
+            LL_PROFILE_GPU_ZONE("rig rim wrap blur");
+            mMainRT.rigRimWrapBlur[0].bindTarget();
+            gRigRimWrapBlurProgram[0].bind();
+            gRigRimWrapBlurProgram[0].bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC, &mRT->screen, false, LLTexUnit::TFO_BILINEAR);
+            gRigRimWrapBlurProgram[0].uniform4f(LLShaderMgr::RIG_RIM_WRAP2, 0.f, 0.f, 0.f, 0.f);
+            mScreenTriangleVB->setBuffer();
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+            gRigRimWrapBlurProgram[0].unbind();
+            mMainRT.rigRimWrapBlur[0].flush();
+
+            mMainRT.rigRimWrapBlur[1].bindTarget();
+            gRigRimWrapBlurProgram[1].bind();
+            gRigRimWrapBlurProgram[1].bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC, &mMainRT.rigRimWrapBlur[0], false, LLTexUnit::TFO_BILINEAR);
+            gRigRimWrapBlurProgram[1].uniform4f(LLShaderMgr::RIG_RIM_WRAP2, blur_q / mMainRT.rigRimWrapBlur[0].getWidth(), 0.f, 0.f, 0.f);
+            mScreenTriangleVB->setBuffer();
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+            mMainRT.rigRimWrapBlur[1].flush();
+
+            mMainRT.rigRimWrapBlur[0].bindTarget();
+            gRigRimWrapBlurProgram[1].bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC, &mMainRT.rigRimWrapBlur[1], false, LLTexUnit::TFO_BILINEAR);
+            gRigRimWrapBlurProgram[1].uniform4f(LLShaderMgr::RIG_RIM_WRAP2, 0.f, blur_q / mMainRT.rigRimWrapBlur[0].getHeight(), 0.f, 0.f);
+            mScreenTriangleVB->setBuffer();
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+            gRigRimWrapBlurProgram[1].unbind();
+            mMainRT.rigRimWrapBlur[0].flush();
+        }
+        {
+            LL_PROFILE_GPU_ZONE("rig rim wrap");
+            // flush() restores the screen and its full MRT routing. Narrow
+            // AFTER the blur so no auxiliary attachment receives this pass.
+            const GLenum attachment = GL_COLOR_ATTACHMENT0;
+            glDrawBuffers(1, &attachment);
+            glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+            if (!debug_only) glEnablei(GL_BLEND, 0);
+            glBlendEquationSeparatei(0, GL_FUNC_ADD, GL_FUNC_ADD);
+            glBlendFuncSeparatei(0, GL_ONE, GL_ONE, GL_ONE, GL_ONE);
+            bindDeferredShader(gRigRimWrapProgram);
+            gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP, &mMainRT.rigRimAux, false, LLTexUnit::TFO_POINT);
+            gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_SIL_MAP, &mMainRT.rigRimSil[0], false, LLTexUnit::TFO_POINT);
+            gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC, &mMainRT.rigRimWrapBlur[0], false, LLTexUnit::TFO_BILINEAR);
+            gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_SIL, width_x, softness, llclamp(finite_or(gap, .08f), .01f, .5f), cm ? texels_per_m : 0.f);
+            gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP, llclamp(finite_or(strength, .5f), 0.f, 2.f), llclamp(finite_or(reach, 2.f), .5f, 8.f) * band, llclamp(finite_or(saturation, .7f), 0.f, 1.f), llclamp(finite_or(hdr_clamp, 4.f), .5f, 32.f));
+            gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP2, 0.f, 0.f, debug_only ? 1.f : 0.f, actors() ? 1.f : 0.f);
+            mScreenTriangleVB->setBuffer();
+            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+            unbindDeferredShader(gRigRimWrapProgram);
+            LLVertexBuffer::unbind();
+        }
+    }
+    if (!already_bound) mRT->screen.flush();
+}
+
 void LLPipeline::renderFinalize()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
@@ -23908,21 +24057,13 @@ void LLPipeline::renderFinalize()
 
     if (hdr)
     {
-        // Rig Rim light wrap and quality debug views are scene light, so they
-        // run before luminance metering just like weather.
-        static LLCachedControl<bool> rr_wrap(gSavedSettings, "CineRigRimWrapEnabled", false);
-        static LLCachedControl<F32> rr_strength(gSavedSettings, "CineRigRimWrapStrength", .5f);
-        static LLCachedControl<F32> rr_reach(gSavedSettings, "CineRigRimWrapWidth", 2.f);
-        static LLCachedControl<F32> rr_blur(gSavedSettings, "CineRigRimWrapBlur", 1.f);
-        static LLCachedControl<F32> rr_sat(gSavedSettings, "CineRigRimWrapSaturation", .7f);
-        static LLCachedControl<F32> rr_clamp(gSavedSettings, "CineRigRimWrapClamp", 4.f);
+        // Rig Rim quality debug views run before luminance metering.
         static LLCachedControl<F32> rr_width(gSavedSettings, "CineRigRimSilhouetteWidth", 3.f);
         static LLCachedControl<U32> rr_units(gSavedSettings, "CineRigRimSilhouetteUnits", 0);
         static LLCachedControl<F32> rr_soft(gSavedSettings, "CineRigRimSilhouetteSoft", .5f);
         static LLCachedControl<F32> rr_gap(gSavedSettings, "CineRigRimSilhouetteGap", .08f);
         static LLCachedControl<F32> rr_seed(gSavedSettings, "CineRigRimSilhouetteSeedThreshold", .02f);
         static LLCachedControl<F32> rr_seed_soft(gSavedSettings, "CineRigRimSilhouetteSeedSoft", .5f);
-        static LLCachedControl<bool> rr_actors(gSavedSettings, "CineRigRimActorsOnly", false);
         static LLCachedControl<U32> rr_debug(gSavedSettings, "CineRigRimDebugView", 0);
         const auto finite_or = [](F32 value, F32 fallback)
         {
@@ -23930,70 +24071,22 @@ void LLPipeline::renderFinalize()
         };
         const bool rim_context = mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender &&
             !sImpostorRender && !sRenderingHUDs && mRigRimAuxValid;
-        const bool debug_wrap = rr_debug() == 5;
-        F32 rim_subject_distance = 3.f;
         F32 rim_h = 0.f;
         F32 rim_texels_per_m = 0.f;
         F32 rim_width_x = 0.f;
-        F32 rim_band_texels = 0.f;
         const bool rim_cm = rr_units() == 0;
-        const bool need_rim_metrics = rim_context &&
-            ((rr_wrap() && rr_strength() > 0.f) || (rr_debug() >= 2 && rr_debug() <= 4));
+        const bool need_rim_metrics = rim_context && rr_debug() >= 2 && rr_debug() <= 4;
         if (need_rim_metrics)
         {
-            if (LLVOAvatar* avatar = LLDirectorCast::instance().resolveSubjectA())
-            {
-                if (LLJoint* head = avatar->getJoint("mHead"))
-                {
-                    rim_subject_distance = llmax(.1f, dist_vec(head->getWorldPosition(),
-                        gAgentCamera.getCameraPositionAgent()));
-                }
-            }
             rim_h = (F32)mMainRT.deferredScreen.getHeight();
             rim_texels_per_m = rim_h * gGLLastProjection[5] * .25f;
             const F32 width = llclamp(finite_or((F32)rr_width,3.f),.2f,30.f);
             rim_width_x = rim_cm ? width*.01f : width*(rim_h/1080.f)*
                 bdmerge_snapshot_autoscale_multiplier()*.5f;
-            rim_band_texels = llmin(24.f/(1.f+llclamp(finite_or((F32)rr_soft,.5f),0.f,1.f)),
-                rim_cm ? rim_width_x*rim_texels_per_m/rim_subject_distance : rim_width_x);
         }
-        if (rim_context && rr_wrap() && rr_strength() > 0.f && mRigRimSilValid &&
-            gRigRimWrapProgram.isComplete() && gRigRimWrapBlurProgram[0].isComplete() &&
-            gRigRimWrapBlurProgram[1].isComplete() && ensureRigRimWrap())
-        {
-            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderFinalize - rig rim wrap");
-            const F32 blur_q = llclamp(finite_or((F32)rr_blur,1.f),0.f,3.f);
-            { LL_PROFILE_GPU_ZONE("rig rim wrap blur"); LLGLDisable b(GL_BLEND); LLGLDepthTest d(GL_FALSE,GL_FALSE);
-              mMainRT.rigRimWrapBlur[0].bindTarget(); gRigRimWrapBlurProgram[0].bind();
-              gRigRimWrapBlurProgram[0].bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC,&mRT->screen,false,LLTexUnit::TFO_BILINEAR);
-              gRigRimWrapBlurProgram[0].uniform4f(LLShaderMgr::RIG_RIM_WRAP2,0.f,0.f,0.f,0.f);
-              mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); gRigRimWrapBlurProgram[0].unbind(); mMainRT.rigRimWrapBlur[0].flush();
-              mMainRT.rigRimWrapBlur[1].bindTarget(); gRigRimWrapBlurProgram[1].bind();
-              gRigRimWrapBlurProgram[1].bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC,&mMainRT.rigRimWrapBlur[0],false,LLTexUnit::TFO_BILINEAR);
-              gRigRimWrapBlurProgram[1].uniform4f(LLShaderMgr::RIG_RIM_WRAP2,blur_q/mMainRT.rigRimWrapBlur[0].getWidth(),0.f,0.f,0.f);
-              mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); mMainRT.rigRimWrapBlur[1].flush();
-              mMainRT.rigRimWrapBlur[0].bindTarget();
-              gRigRimWrapBlurProgram[1].bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC,&mMainRT.rigRimWrapBlur[1],false,LLTexUnit::TFO_BILINEAR);
-              gRigRimWrapBlurProgram[1].uniform4f(LLShaderMgr::RIG_RIM_WRAP2,0.f,blur_q/mMainRT.rigRimWrapBlur[0].getHeight(),0.f,0.f);
-              mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); gRigRimWrapBlurProgram[1].unbind(); mMainRT.rigRimWrapBlur[0].flush(); }
-            { LL_PROFILE_GPU_ZONE("rig rim wrap"); mRT->screen.bindTarget();
-              const U32 guarded[]={SL_SIDECAR_ATTACHMENT,SL_COVERAGE_ATTACHMENT,ALR_RIM_PARITY_ATTACHMENT};
-              const U32 guarded_count=llmin(mRT->screen.getNumTextures()-1,(U32)LL_ARRAY_SIZE(guarded));
-              LLScopedIndexedDrawBufferGuard guard(guarded_count>0,guarded,guarded_count);
-              gGL.setColorMask(true,false); LLGLDepthTest d(GL_FALSE,GL_FALSE); LLGLDisable c(GL_CULL_FACE);
-              std::optional<LLGLEnable> add; std::optional<LLGLDisable> replace;
-              if(debug_wrap) replace.emplace(GL_BLEND); else { add.emplace(GL_BLEND); gGL.setSceneBlendType(LLRender::BT_ADD); }
-              bindDeferredShader(gRigRimWrapProgram);
-              gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP,&mMainRT.rigRimAux,false,LLTexUnit::TFO_POINT);
-              gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_SIL_MAP,&mMainRT.rigRimSil[0],false,LLTexUnit::TFO_POINT);
-              gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC,&mMainRT.rigRimWrapBlur[0],false,LLTexUnit::TFO_BILINEAR);
-              gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_SIL,rim_width_x,
-                  llclamp(finite_or((F32)rr_soft,.5f),0.f,1.f),llclamp(finite_or((F32)rr_gap,.08f),.01f,.5f),rim_cm?rim_texels_per_m:0.f);
-              gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP,llclamp(finite_or((F32)rr_strength,.5f),0.f,2.f),llclamp(finite_or((F32)rr_reach,2.f),.5f,8.f)*rim_band_texels,llclamp(finite_or((F32)rr_sat,.7f),0.f,1.f),llclamp(finite_or((F32)rr_clamp,4.f),.5f,32.f));
-              gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP2,0.f,0.f,debug_wrap?1.f:0.f,rr_actors()?1.f:0.f);
-              mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); unbindDeferredShader(gRigRimWrapProgram); mRT->screen.flush();
-              gGL.setSceneBlendType(LLRender::BT_ALPHA); gGL.setColorMask(true,true); }
-        }
+        // Beauty wrap was resolved before transparency. Keep the isolated
+        // Wrap-only developer view at its original post-scene location.
+        renderRigRimWrap(true);
         if (rim_context && rr_debug() >= 2 && rr_debug() <= 4 &&
             (rr_debug()!=2 || mRigRimSilValid) && gRigRimDebugProgram.isComplete())
         {
