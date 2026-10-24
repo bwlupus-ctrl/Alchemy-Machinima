@@ -3813,6 +3813,12 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "RenderAreaShadowMaxDist",
         "RenderAreaShadowThickness",
         "RenderAreaShadowLightBias",
+        // Soft shadow LOOK controls: scene-saved like the settings above (Quality and Work budget stay global).
+        "RenderAreaShadowStrength",
+        "RenderAreaShadowContrast",
+        "RenderAreaShadowWorldScreenReach",
+        "RenderAreaShadowWorldAmount",
+        "RenderAreaShadowScreenAmount",
         // [RigRim] Rig Rim Light (Phase A).
         "CineRigRimEnabled",
         "CineRigRimMasterGain",

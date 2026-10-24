@@ -79,7 +79,8 @@ area_settings=('RenderAreaShadowThinObjects','RenderAreaShadows','RenderAreaShad
     'RenderAreaShadowSteps','RenderAreaShadowMaxDist','RenderAreaShadowThickness',
     'RenderAreaShadowHalfRes','RenderAreaShadowDenoise','RenderAreaShadowQuality',
     'RenderAreaShadowLightBias','RenderAreaShadowDebugView','RenderAreaShadowMappedContact',
-    'RenderAreaShadowCubeMaps','RenderAreaShadowCubeLights')  # P1-lite world cube maps: runtime uniforms only, no reload
+    'RenderAreaShadowCubeMaps','RenderAreaShadowCubeLights',  # P1-lite world cube maps: runtime uniforms only, no reload
+    'RenderAreaShadowStrength','RenderAreaShadowContrast','RenderAreaShadowWorldScreenReach','RenderAreaShadowWorldAmount','RenderAreaShadowScreenAmount')  # soft shadow LOOK: runtime uniforms only, no reload
 for setting in area_settings:
     assert setting not in manager, setting+' shader-manager dependency'
     listener=re.search(r'setting_setup_signal_listener\([^;]*"'+setting+r'"[^;]*;',control,re.S)

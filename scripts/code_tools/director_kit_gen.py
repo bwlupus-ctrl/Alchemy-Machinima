@@ -311,8 +311,9 @@ def validate_data(data: dict) -> None:
     # World Shadow pick (10/23): +2 rows on Soft shadows (World picks readout, Clear world-shadow picks button).
     # World Shadow pick fix round 1 (10/23): +1 row (Clear away picks: the release path for stale / deleted picks).
     # World Shadow pick fix round 2 (10/23): +1 row (List picks: the complete pick list in nearby chat; the row tooltip is capped).
-    if len(pages) != 37 or row_count != 2171:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2171")
+    # Soft shadow LOOK controls (10/23): +5 rows (Shadow strength, Shadow contrast, Screen-space detail, World shadow amount, Screen-space amount).
+    if len(pages) != 37 or row_count != 2176:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2176")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

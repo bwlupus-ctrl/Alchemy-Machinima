@@ -109,9 +109,20 @@ def lifecycle_checks():
     for signature in ('F32 LLDrawable::updateXform(', 'void LLDrawable::shiftPos('):
         start = draw.index(signature); fn = draw[start:draw.index('\n}\n',start)]
         assert 'invalidateWorldShadowBounds();' in fn, 'drawable invalidation lost '+signature
+    # Soft shadow LOOK controls: the five settings reach the shaders through the one sanitizing helper, are scene-saved, and keep their defaults.
+    assert 'ALAreaShadow::lookUniform(look_strength(),look_contrast(),look_world_amount(),look);' in pipe, 'look uniform packing lost'
+    assert 'gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString("area_look"),1,look)' in pipe, 'area_look upload lost'
+    assert 'LLStaticHashedString("area_screen_reach"),world_any ? look_reach_m:0.f,look_screen)' in pipe, 'area_screen_reach upload lost'
+    director = (REPO / 'indra/newview/llfloaterdirector.cpp').read_text()
+    settings = (REPO / 'indra/newview/app_settings/settings.xml').read_text()
+    for name, default in (('RenderAreaShadowStrength','1'),('RenderAreaShadowContrast','1'),('RenderAreaShadowWorldScreenReach','0'),
+                          ('RenderAreaShadowWorldAmount','1'),('RenderAreaShadowScreenAmount','1')):
+        assert '"%s",' % name in director, 'not scene-saved: ' + name
+        m = re.search(r'<key>%s</key>\s*<map>.*?<key>Type</key><string>F32</string>\s*<key>Value</key><real>([^<]+)</real>' % name, settings, re.S)
+        assert m and float(m.group(1)) == float(default), 'default drifted: ' + name
     return [dict(name=n,passed=True) for n in ('attachment_scope_integration','native_map_pin_release','picked_projector_pin_release_exemption',
             'complete_linkset_cache_invalidation','GL_teardown','snapshot_pin_preservation','production_softbox_radius',
-            'production_packing_and_extents_wiring','production_atlas_copy_wiring')]
+            'production_packing_and_extents_wiring','production_atlas_copy_wiring','soft_shadow_look_wiring')]
 
 
 def build_host(out, glm_include):
@@ -827,6 +838,173 @@ def save_images(r, raster, directory):
         r.gl.use(r.filter); r.gl.ui(debug_loc, 0)
 
 
+# ---------------------------------------------------------------------------------------------------------------- soft shadow LOOK
+# Shadow strength / Shadow contrast / Screen-space detail (reach) / World shadow amount / Screen-space amount, through the PRODUCTION gather
+# and filter programs on the real raster. The reach gates use a "blind" cube (the atlas is rasterised WITHOUT the capsule while the G-buffer
+# has it: a blocker the depth buffer sees and the cube does not), so only the screen-space reach can darken the floor behind it.
+LOOK_ONE = 1.01 / 255       # one 8-bit step plus rounding slack
+LOOK_CURVE = 1.6 / 255      # a slope-2 curve of an already 8-bit value: 2 * 0.5/255 + 0.5/255 plus slack
+_LOOK_GBUFFERS = {}
+LOOK_BASE = '18a07a3aca5'   # the commit before the LOOK controls: its shaders are the byte reference at the defaults
+
+
+def look_frame(r, raster, light, capsule_in_gbuffer=True, capsule_in_cube=True, look=dict(), owned=True, size=(640, 360), yaw=-54.462, pitch=28.635,
+               steps=12, stats=None):
+    """One resolved frame. Returns (visibility (H, W), floor mask, G-buffer). Uploads exactly what renderAreaShadows would (the contact band
+    is the production CS.contact_distance). look=dict() (the default) uploads every LOOK uniform at its default; look=None uploads NONE of them,
+    which is only a program that was never given them while no earlier frame uploaded any (the programs keep their uniforms)."""
+    t, p = np.radians([yaw, pitch])
+    cam = S.Camera((6*np.cos(p)*np.cos(t), 6*np.cos(p)*np.sin(t), 6*np.sin(p)), (0, 0, .4), size[0], size[1])
+    full, _ = fixture(capsule=True)
+    cube_scene, _ = fixture(capsule=capsule_in_cube)
+    gbuf_scene = full if capsule_in_gbuffer else fixture(capsule=False)[0]
+    key = (capsule_in_gbuffer, size, yaw, pitch)
+    if key not in _LOOK_GBUFFERS:
+        g = S.cast_primary(gbuf_scene, cam)
+        _, d32, n16 = S.encode_gbuffer(cam, g)
+        _LOOK_GBUFFERS[key] = (g, d32, n16)
+    g, depth, norm = _LOOK_GBUFFERS[key]
+    near = CS.emitter_near(cube_scene, light)
+    r.gpu_atlas = raster.atlas(cube_scene, light, near)
+    world = {'atlas': np.empty((CS.ATLAS_H_PER_LIGHT, CS.ATLAS_W), np.float32), 'channels':
+             [dict(row=0, near=near, far=light.range, r_map=min(light.radius, 2.), contact=CS.contact_distance(light.range), seed=light.seed,
+                   owned=owned)]}
+    plan = dict(samples=8, steps=steps, half=True, near_steps=0)
+    v = r.run(cam, depth, norm, [light], plan, world=world if owned else None, look=look, stats=stats)[0]
+    mask = (g['surf'] == 0) & (np.linalg.norm(g['pos'][..., :2], axis=2) < 8.)
+    assert np.count_nonzero(mask) > 1000, 'fixture has insufficient floor coverage'
+    return v, mask, g
+
+
+def dark_percent(v, mask): return 100 * float(np.mean(v[mask] < .5))
+
+
+def look_checks(r, raster, mut_runner=None, mut_raster=None):
+    rows = []
+    _, light = fixture()
+    def row(name, ok, **kw): rows.append(dict(name=name, passed=bool(ok), **kw))
+    # 0. Defaults: every LOOK uniform uploaded at its default is byte-identical to a program that was never given them.
+    v_none, mask, g = look_frame(r, raster, light, look=None)         # the very first look frame: the programs were never given a LOOK uniform
+    v_def, _, _ = look_frame(r, raster, light, look=dict())
+    row('look_defaults_byte_identical_world_channel', np.array_equal(v_none, v_def), dark_percent=dark_percent(v_none, mask))
+    v_none_s, _, _ = look_frame(r, raster, light, owned=False, look=dict())
+    v_def_s, _, _ = look_frame(r, raster, light, owned=False, look=dict(strength=1., contrast=1., world_amount=1., reach=0., screen_amount=1.))
+    row('look_defaults_byte_identical_unmapped_channel', np.array_equal(v_none_s, v_def_s), dark_percent=dark_percent(v_none_s, mask))
+    # 0b. ... and byte-identical to the shaders of the commit before the LOOK controls existed (LOOK_BASE), on the same frames.
+    base = RealRunner(G.SourceTree(LOOK_BASE), r.host, gl=r.gl)
+    base_raster = Raster(base)
+    same = []
+    for owned in (True, False):
+        for in_cube in (True, False):
+            a, _, _ = look_frame(r, raster, light, owned=owned, capsule_in_cube=in_cube)
+            b, _, _ = look_frame(base, base_raster, light, owned=owned, capsule_in_cube=in_cube, look=None)
+            same.append(bool(np.array_equal(a, b)))
+    row('look_defaults_byte_identical_to_pre_look_shaders', all(same), frames=same, base=LOOK_BASE)
+    # 1. Strength: v' = mix(1, v, s). 0.5 halves the shadow depth; 0 is no soft shadow; unmapped lights are scaled too.
+    for owned, base, tag in ((True, v_none, 'world'), (False, v_none_s, 'unmapped')):
+        v_half, _, _ = look_frame(r, raster, light, owned=owned, look=dict(strength=.5))
+        depth_ratio = float(np.sum(1 - v_half[mask]) / max(np.sum(1 - base[mask]), 1.e-9))
+        err = float(np.max(np.abs(v_half - (1 + base) / 2)))
+        row('look_strength_half_halves_depth_' + tag, abs(depth_ratio - .5) <= .01 and err <= LOOK_ONE, depth_ratio=depth_ratio, max_err=err)
+        v_zero, _, _ = look_frame(r, raster, light, owned=owned, look=dict(strength=0.))
+        row('look_strength_zero_no_shadow_' + tag, bool(np.all(v_zero == 1.)), min_visibility=float(v_zero.min()))
+    # 2. Contrast: v'' = pow(v, c). 2 darkens the penumbra midpoint, 0.5 gentles it; umbra and lit side stay.
+    v_c2, _, _ = look_frame(r, raster, light, look=dict(contrast=2.))
+    v_c05, _, _ = look_frame(r, raster, light, look=dict(contrast=.5))
+    # pow(v, 2) has slope <= 2 and pow(v, .5) is checked in the inverse domain (its slope is unbounded at 0): budget 1.5/255 + slack.
+    err2 = float(np.max(np.abs(v_c2 - v_none ** 2)))
+    err05 = float(np.max(np.abs(v_c05 ** 2 - v_none)))
+    mid = mask & (v_none >= .3) & (v_none <= .7)
+    row('look_contrast_matches_pow_and_darkens_midpoint',
+        err2 <= LOOK_CURVE and err05 <= LOOK_CURVE and np.count_nonzero(mid) >= 20 and float(np.mean(v_c2[mid])) < float(np.mean(v_none[mid])) - .05 and
+        float(np.mean(v_c05[mid])) > float(np.mean(v_none[mid])) + .05 and float(np.max(v_c2[v_none == 0])) <= LOOK_CURVE and float(np.min(v_c2[v_none == 1])) >= 1 - LOOK_CURVE,
+        max_err_c2=err2, max_err_c05=err05, midpoint_pixels=int(np.count_nonzero(mid)),
+        mid_mean=dict(c1=float(np.mean(v_none[mid])), c2=float(np.mean(v_c2[mid])), c05=float(np.mean(v_c05[mid]))))
+    v_both, _, _ = look_frame(r, raster, light, look=dict(contrast=2., strength=.5))
+    err_both = float(np.max(np.abs(v_both - (1 + v_none ** 2) / 2)))
+    row('look_contrast_then_strength_order', err_both <= LOOK_CURVE, max_err=err_both)
+    # 3. World amount: world' = mix(1, world, a) BEFORE min(); 0.5 halves the WORLD depth only; 0 leaves just the contact band.
+    v_w0, _, _ = look_frame(r, raster, light, look=dict(world_amount=0.))
+    v_wh, _, _ = look_frame(r, raster, light, look=dict(world_amount=.5))
+    contact_lit = (v_w0 >= 1 - 1.e-6) & (v_none < .9)           # the contact band is clear here: the world term alone decides
+    err_w = float(np.max(np.abs(v_wh[contact_lit] - (1 + v_none[contact_lit]) / 2))) if np.any(contact_lit) else 9.
+    dark_full, dark_w0 = dark_percent(v_none, mask), dark_percent(v_w0, mask)
+    row('look_world_amount_zero_keeps_contact_band', 0 < dark_w0 < .3 * dark_full and bool(np.all(v_w0 >= v_none - 1.e-6)),
+        dark_percent_world_amount_0=dark_w0, dark_percent_full=dark_full)
+    row('look_world_amount_half_halves_world_depth_only', np.count_nonzero(contact_lit) > 100 and err_w <= LOOK_ONE and bool(np.all(v_wh >= v_none - 1.e-6)),
+        pixels=int(np.count_nonzero(contact_lit)), max_err=err_w)
+    # 4. Screen-space detail (reach) on a blind cube: the floor behind the capsule is lit by the cube, only the reach can darken it.
+    kw = dict(capsule_in_cube=False)
+    v0, _, _ = look_frame(r, raster, light, **kw)
+    v0e, _, _ = look_frame(r, raster, light, look=dict(reach=0.), **kw)
+    row('look_reach_zero_byte_identical_blind_cube', np.array_equal(v0, v0e), dark_percent=dark_percent(v0, mask))
+    results = {}
+    for reach in (1., 2., 4., 8.):
+        results[reach], _, _ = look_frame(r, raster, light, look=dict(reach=reach), **kw)
+    dark = {k: dark_percent(v, mask) for k, v in results.items()}
+    row('look_reach_darkens_corner_fixture_that_reach_zero_leaves_lit', dark[4.] > dark_percent(v0, mask) + 1. and dark_percent(v0, mask) < .5,
+        dark_percent_by_reach=dict([('0', dark_percent(v0, mask))] + [(str(k), v) for k, v in dark.items()]))
+    row('look_reach_only_adds_darkness', all(bool(np.all(v <= v0 + 1.e-6)) for v in results.values()),
+        worst_brightening=max(float(np.max(v - v0)) for v in results.values()))
+    # Pure screen-space reference: the same blocker traced by the unmapped (full screen) path. Reach 8 should approach its look.
+    v_screen, _, _ = look_frame(r, raster, light, owned=False, capsule_in_cube=False)
+    dark_screen = dark_percent(v_screen, mask)
+    row('look_reach_8_approaches_pure_screen_space', abs(dark[8.] - dark_screen) <= max(1.5, .35 * dark_screen),
+        dark_percent_reach8=dark[8.], dark_percent_pure_screen=dark_screen)
+    # Screen amount: 0 + reach 4 == reach 0 exactly (the contact band is untouched); 0.5 adds about half the extra darkness.
+    v_s0, _, _ = look_frame(r, raster, light, look=dict(reach=4., screen_amount=0.), **kw)
+    v_sh, _, _ = look_frame(r, raster, light, look=dict(reach=4., screen_amount=.5), **kw)
+    extra_full = float(np.sum((v0 - results[4.])[mask])); extra_half = float(np.sum((v0 - v_sh)[mask]))
+    row('look_screen_amount_zero_equals_reach_zero', np.array_equal(v_s0, v0))
+    row('look_screen_amount_half_adds_half_the_darkness', extra_full > 0 and .35 <= extra_half / extra_full <= .65 and bool(np.all(v_sh <= v0 + 1.e-6)) and bool(np.all(v_sh >= results[4.] - 1.e-6)),
+        ratio=extra_half / max(extra_full, 1.e-9))
+    # An EMPTY floor at the longest reach: no darker than the pure screen-space path (the old look, the same thickness and march) on the same
+    # fixtures. (A 1 m source 5 cm above the floor puts half its disk under the floor, so the old look itself reads ~1 % dark there: the reach may
+    # add nothing beyond what that look already does, up to the grazing gate's 0.25 percentage points (the contact band's finer 5 mm march and the reach march
+    # both read the floor; the world path's own grazing gate runs separately with the reach off).)
+    worst_reach, worst_screen, over = 0., 0., 0.
+    for height in (.05, .2):
+        lamp = S.Light('lamp', (0., 0., height), 1., 10., seed=123)
+        for yaw, pitch in [(-54.462, 28.635), (0, 20), (45, 35), (90, 60), (135, 25), (225, 45)]:
+            args = dict(capsule_in_gbuffer=False, capsule_in_cube=False, yaw=yaw, pitch=pitch)
+            v_reach, empty_mask, _ = look_frame(r, raster, lamp, look=dict(reach=8.), **args)
+            v_scr, _, _ = look_frame(r, raster, lamp, owned=False, **args)
+            a, b = dark_percent(v_reach, empty_mask), dark_percent(v_scr, empty_mask)
+            worst_reach, worst_screen, over = max(worst_reach, a), max(worst_screen, b), max(over, a - b)
+    row('look_reach_8_empty_floor_no_darker_than_pure_screen_space', over <= GRAZING_LIMIT, limit_percent=GRAZING_LIMIT, worst_dark_percent_reach8=worst_reach,
+        worst_dark_percent_pure_screen=worst_screen, worst_excess_percent=over)
+    # Mix controls together: world 0 + screen 1 + reach 0 is the contact band alone; screen amount never removes the band.
+    v_mix, _, _ = look_frame(r, raster, light, look=dict(world_amount=0., screen_amount=0., reach=4.))
+    v_mix_ref, _, _ = look_frame(r, raster, light, look=dict(world_amount=0.))
+    row('look_screen_amount_zero_keeps_contact_band_with_world_off', np.array_equal(v_mix, v_mix_ref) and dark_percent(v_mix, mask) > 0,
+        dark_percent=dark_percent(v_mix, mask))
+    # CONTROL: a build that ignores Shadow strength must be rejected by the strength gate.
+    if mut_runner is not None:
+        v_mut, _, _ = look_frame(mut_runner, mut_raster, light, look=dict(strength=.5))
+        ratio = float(np.sum(1 - v_mut[mask]) / max(np.sum(1 - v_none[mask]), 1.e-9))
+        row('control_ignored_strength_rejected', abs(ratio - .5) > .05, depth_ratio=ratio)
+    look_frame(r, raster, light)       # leave the programs holding the identity (default) uniforms for the rest of the gate
+    return rows
+
+
+def look_cost(r, raster, repeats=5):
+    """GPU milliseconds of the gather at 1080p (half-resolution trace), the blind-cube fixture (nothing hits, so every ray marches its full
+    steps: the worst case for the extra march). Diagnostic only."""
+    _, light = fixture()
+    out = {}
+    for steps in (12, 32):
+        for reach in (0., 2., 8.):
+            look_frame(r, raster, light, capsule_in_cube=False, look=dict(reach=reach), size=(1920, 1080), steps=steps)     # warm-up
+            samples = []
+            for _ in range(repeats):
+                stats = {}
+                look_frame(r, raster, light, capsule_in_cube=False, look=dict(reach=reach), size=(1920, 1080), steps=steps, stats=stats)
+                samples.append(stats['gather_ms'])
+            out['steps%d_reach%g_gather_ms' % (steps, reach)] = round(float(np.median(samples)), 3)
+    look_frame(r, raster, light)
+    return dict(name='look_cost_1080p_gather_ms', **out)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--glm-include'); ap.add_argument('--out', default='.tmp/relight_world_gl')
@@ -870,6 +1048,13 @@ def main():
         rows.append(dict(name='unpicked_native_projector_keeps_native_path', dark_percent=dark_native, cube_dark_percent=dark_picked,
                          passed=bool(dark_native < .5 and dark_picked - dark_native > 1 and not np.array_equal(v_native, v_picked))))
         for row in rows[-2:]: print('[world-gl]', row, flush=True)
+        # Soft shadow LOOK controls (strength, contrast, reach, World / Screen amounts), plus the control that a build ignoring Shadow strength is rejected.
+        mut_r, mut_raster, _ = mutant(r, [('if (area_look.x != 0.0) frag_color = mix(vec4(1.0),frag_color,1.0-area_look.x);', '')])
+        look_rows = look_checks(r, raster, mut_r, mut_raster)
+        rows.extend(look_rows)
+        for row in look_rows: print('[world-gl]', row, flush=True)
+        look_diagnostic = look_cost(r, raster)
+        print('[world-gl]', look_diagnostic, flush=True)
         for yaw, pitch in [(-54.462, 28.635), (0, 20), (45, 35), (90, 60), (135, 25), (225, 45)]:
             for capsule in (False, True):
                 sc, light = fixture(capsule=capsule)
@@ -919,6 +1104,7 @@ def main():
         flicker = flicker_checks(r,raster,out)
         rows.extend(row for row in flicker if 'passed' in row)
         diagnostics = [row for row in flicker if 'passed' not in row]
+        diagnostics.append(look_diagnostic)
         for row in flicker: print('[world-gl]',row,flush=True)
         rows.extend(contracts)
         result = dict(renderer=r.gl.renderer, rows=rows, diagnostics=diagnostics, passed=all(x['passed'] for x in rows))

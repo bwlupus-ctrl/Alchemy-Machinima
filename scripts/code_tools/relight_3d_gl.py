@@ -312,14 +312,18 @@ class AreaRunner:
         return tex
 
     def run(self, cam, depth32, norm16, lights, plan, scale=1.0, light_bias=0.25, max_dist=8.0, thickness=0.35,
-            denoise=2.0, world=None, stats=None):
+            denoise=2.0, world=None, stats=None, look=None):
         """One RenderAreaShadows frame. plan: dict(samples, steps, half, near_steps). Returns (L,H,W) float32 [0,1].
 
         world (P1-lite cube path): None = the screen path only (HEAD shaders ignore the world uniforms anyway), else
         {'atlas': float32 (H, 1632) D32F window depth, 'channels': [per light: None, or dict(row, near, far, r_map,
         contact, seed)]}. Uploads exactly what LLPipeline::renderAreaShadows uploads on every pass.
 
-        stats: a dict to fill with GPU milliseconds of the draws (gather_ms, blur_ms, upsample_ms) via GL_TIME_ELAPSED queries."""
+        stats: a dict to fill with GPU milliseconds of the draws (gather_ms, blur_ms, upsample_ms) via GL_TIME_ELAPSED queries.
+
+        look: None = upload none of the soft-shadow LOOK uniforms (a program that was never given them: the identity), else a dict of any of
+        strength (1), contrast (1), world_amount (1), reach (0, metres), screen_amount (1): uploaded exactly as renderAreaShadows does
+        (area_look = 1 - strength, contrast - 1, 1 - world amount; area_screen_reach = reach, screen amount)."""
         gl = self.gl
         Wd, Hd = cam.W, cam.H
         half = bool(plan['half'])
@@ -382,6 +386,11 @@ class AreaRunner:
                 winfo[i] = (ch['row'], ch['near'], ch['r_map'], 0.0)
                 wlight[i] = (arr[i, 0], arr[i, 1], arr[i, 2], ch['far'])
                 wseed[i] = ch['seed']
+        lk = None
+        if look is not None:
+            lk = dict(strength=1.0, contrast=1.0, world_amount=1.0, reach=0.0, screen_amount=1.0)
+            lk.update(look)
+            gl.uf[2](gl.loc(pr, b'area_screen_reach'), float(np.clip(lk['reach'], 0.0, 8.0)), float(np.clip(lk['screen_amount'], 0.0, 1.0)))
         gl.u4fv(gl.loc(pr, b'area_world'), 1, wflags.ctypes.data_as(C.POINTER(gl.F)))
         gl.u4fv(gl.loc(pr, b'area_contact_dist'), 1, wcontact.ctypes.data_as(C.POINTER(gl.F)))
         gl.u4fv(gl.loc(pr, b'area_contact_fade'), 1, wfade.ctypes.data_as(C.POINTER(gl.F)))
@@ -402,6 +411,10 @@ class AreaRunner:
             gl.ui(gl.loc(fr, b'area_debug_channel'), 0)
             gl.uf[2](gl.loc(fr, b'area_axis'), ax, ay)
             gl.uf[1](gl.loc(fr, b'area_radius'), radius)
+            if lk is not None:
+                vec = np.array([1.0 - np.clip(lk['strength'], 0.0, 1.0), np.clip(lk['contrast'], 0.25, 4.0) - 1.0,
+                                1.0 - np.clip(lk['world_amount'], 0.0, 1.0)], np.float32)
+                gl.u3fv(gl.loc(fr, b'area_look'), 1, vec.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4fv(gl.loc(fr, b'area_world'), 1, wflags.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4fv(gl.loc(fr, b'area_contact_fade'), 1, wfade.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4fv(gl.loc(fr, b'area_world_light'), 4, wlight.ctypes.data_as(C.POINTER(gl.F)))

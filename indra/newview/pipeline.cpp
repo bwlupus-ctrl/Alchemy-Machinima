@@ -27152,6 +27152,12 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     static LLCachedControl<bool> half(gSavedSettings, "RenderAreaShadowHalfRes", true);
     static LLCachedControl<F32> denoise(gSavedSettings, "RenderAreaShadowDenoise", 2.f);
     static LLCachedControl<F32> light_bias(gSavedSettings, "RenderAreaShadowLightBias", .25f);
+    // [Soft shadow look] strength / contrast / world amount shape the final visibility (area_look); reach + screen amount feed the world channels' extra screen trace.
+    static LLCachedControl<F32> look_strength(gSavedSettings, "RenderAreaShadowStrength", 1.f);
+    static LLCachedControl<F32> look_contrast(gSavedSettings, "RenderAreaShadowContrast", 1.f);
+    static LLCachedControl<F32> look_reach(gSavedSettings, "RenderAreaShadowWorldScreenReach", 0.f);
+    static LLCachedControl<F32> look_world_amount(gSavedSettings, "RenderAreaShadowWorldAmount", 1.f);
+    static LLCachedControl<F32> look_screen_amount(gSavedSettings, "RenderAreaShadowScreenAmount", 1.f);
     const auto& registry = ALCineLightRigManager::instance();
     LLViewerCamera& camera = LLViewerCamera::instance();
     const auto toggles = [](const LLVOVolume* volume)
@@ -27612,6 +27618,11 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // the face near plane (per light: worldShadowLightNear).
     float world_rot[9];
     ALWorldShadow::packViewRotation(view,world_rot);   // explicit packing: never a memcpy of a (possibly 16-byte-column) glm::mat3
+    // [Soft shadow look] sanitized once per pass; every value at its default uploads exact zeros / the screen amount, and the shaders then run today's arithmetic.
+    float look[3];
+    ALAreaShadow::lookUniform(look_strength(),look_contrast(),look_world_amount(),look);
+    const F32 look_reach_m = ALAreaShadow::lookReach(look_reach());
+    const F32 look_screen = ALAreaShadow::lookAmount(look_screen_amount());
     for (U32 plane=0; plane<planes; ++plane)
     {
         LLVector4 lights[4] = {}; GLuint seeds[4] = {};
@@ -27710,6 +27721,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
 
         const F32 distance = max_dist(), thick = thickness();
         gAreaShadowProgram.uniform1f(LLStaticHashedString("area_light_bias"),ALAreaShadow::lightBias(light_bias()));
+        // Only a world-owned channel reads it (reach 0 = the contact band march alone); a pass without a world channel never needs it.
+        gAreaShadowProgram.uniform2f(LLStaticHashedString("area_screen_reach"),world_any ? look_reach_m:0.f,look_screen);
         gAreaShadowProgram.uniform2f(LLStaticHashedString("area_trace_res"),
             (F32)mRT->areaGather[plane].getWidth(),(F32)mRT->areaGather[plane].getHeight());
         gAreaShadowProgram.uniform3f(LLStaticHashedString("area_params"),
@@ -27757,6 +27770,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_contact_fade"),1,contact_fade.mV);
             // [P1-lite] The full-resolution world resolve lives in the upsample branch (axis 0,0) only.
             const bool upsample = x == 0.f && y == 0.f;
+            if (upsample) gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString("area_look"),1,look);
             bool world_atlas = false;
             if (upsample && upload_world)
             {

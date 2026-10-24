@@ -21651,6 +21651,41 @@
         <key>Type</key><string>F32</string>
         <key>Value</key><real>0.25</real>
     </map>
+    <key>RenderAreaShadowStrength</key>
+    <map>
+        <key>Comment</key><string>Soft shadow strength (0-1, default 1). The final soft-shadow visibility becomes mix(1, visibility, strength): 1 is the full shadow, 0.6 a lighter, filmic one, 0 no soft shadow at all (the work still runs at 0). World shadows and the contact band are scaled with it. Look setting, saved with the Director scene.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>1</real>
+    </map>
+    <key>RenderAreaShadowContrast</key>
+    <map>
+        <key>Comment</key><string>Soft shadow contrast (0.25-4, default 1). Shapes the penumbra without changing the light size: visibility becomes pow(visibility, contrast) before Shadow strength. Above 1 = a harder, darker edge; below 1 = a gentler one; exactly 1 changes nothing. Look setting, saved with the Director scene.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>1</real>
+    </map>
+    <key>RenderAreaShadowWorldScreenReach</key>
+    <map>
+        <key>Comment</key><string>Screen-space detail for World shadows in metres (0-8, default 0 = off). Lights that own a world shadow map normally add only a thin 2 cm to 0.5 m screen-space contact band. Above 0 the screen trace also looks this far (never past Trace distance), so corners, vents and the wall above a lamp get the old screen-space darkening on top of the stable world shadow. It only ever adds darkening. Shadows from things off screen or behind the camera can come and go when the camera moves. Look setting, saved with the Director scene.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0</real>
+    </map>
+    <key>RenderAreaShadowWorldAmount</key>
+    <map>
+        <key>Comment</key><string>World shadow amount (0-1, default 1) for lights with a world shadow map: world visibility becomes mix(1, world, amount) before it is combined with the screen-space term. 1 = full world shadow, 0 = none (the screen-space contact band stays). Look setting, saved with the Director scene.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>1</real>
+    </map>
+    <key>RenderAreaShadowScreenAmount</key>
+    <map>
+        <key>Comment</key><string>Screen-space amount (0-1, default 1) for lights with a world shadow map: scales only the screen-space darkening that Screen-space detail adds beyond the contact band. 0 = none of it (the 2 cm to 0.5 m contact band is never removed). Look setting, saved with the Director scene.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>1</real>
+    </map>
     <key>RenderAreaShadowDebugView</key>
     <map>
         <key>Comment</key><string>Grayscale selected-light visibility: 0 off, 1-8 channel. Runtime only.</string>

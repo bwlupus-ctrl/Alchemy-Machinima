@@ -3709,5 +3709,99 @@ template<> template<> void relight_object::test<42>()
         ensure("joined lines use newlines",joinLines(tip_lines).find('\n') != std::string::npos);
     }
 }
+// ---- Soft shadow LOOK controls (Shadow strength / contrast, Screen-space detail, World shadow amount, Screen-space amount): alareashadowmath.h.
+// The oracles are literals and closed forms, never the header's own expressions.
+template<> template<> void relight_object::test<43>()
+{
+    using namespace ALAreaShadow;
+    const auto bits = [](float v) { std::uint32_t u; std::memcpy(&u,&v,sizeof u); return u; };
+    float identity[3];
+    lookUniform(1.f,1.f,1.f,identity);
+    ensure("defaults upload exact zeros",identity[0] == 0.f && identity[1] == 0.f && identity[2] == 0.f);
+    // 1. Every control at its default is the identity, bit for bit, over a dense sweep (and over the byte values the target holds).
+    bool exact = true;
+    for (int i = 0; i <= 4096; ++i)
+    {
+        const float v = static_cast<float>(i)/4096.f;
+        exact = exact && bits(lookApply(v,identity)) == bits(v) && bits(worldAmountApply(v,identity)) == bits(v) &&
+            bits(screenTerm(v,0.f,1.f)) == bits(v) && bits(screenTerm(v,0.f,0.f)) == bits(v) && bits(screenTerm(v,0.f,.37f)) == bits(v);
+    }
+    ensure("strength 1, contrast 1, world amount 1 and an empty reach term change no bit",exact);
+    ensure_equals("reach 0 = no reach march",reachLimit(0.f,.15f,8.f),0.f);
+    ensure_equals("a reach inside the contact band = no reach march",reachLimit(.1f,.15f,8.f),0.f);
+    ensure_equals("a reach at the contact distance = no reach march",reachLimit(.15f,.15f,8.f),0.f);
+    close("reach 2 m",reachLimit(2.f,.15f,8.f),2.0,1.e-6);
+    close("reach is capped by Trace distance",reachLimit(6.f,.15f,3.f),3.0,1.e-6);
+    // 2. Sanitizers: a non-finite value is the default; out-of-range values clamp.
+    const float nan = std::numeric_limits<float>::quiet_NaN(), inf = std::numeric_limits<float>::infinity();
+    ensure_equals("NaN strength = 1",lookStrength(nan),1.f);
+    ensure_equals("inf contrast = 1",lookContrast(inf),1.f);
+    ensure_equals("NaN reach = 0",lookReach(nan),0.f);
+    ensure_equals("NaN amount = 1",lookAmount(nan),1.f);
+    ensure_equals("strength clamps to 0..1",lookStrength(2.f),1.f);
+    ensure_equals("strength clamps below",lookStrength(-1.f),0.f);
+    ensure_equals("contrast clamps to 0.25",lookContrast(.01f),.25f);
+    ensure_equals("contrast clamps to 4",lookContrast(40.f),4.f);
+    ensure_equals("reach clamps to 8",lookReach(50.f),8.f);
+    ensure_equals("reach clamps to 0",lookReach(-3.f),0.f);
+    // 3. Strength: v' = mix(1, v, s). 0.5 halves the shadow DEPTH (1 - v); 0 is no shadow; 1 is today.
+    float half_strength[3], none[3], contrast2[3], contrast_half[3];
+    lookUniform(.5f,1.f,1.f,half_strength);
+    lookUniform(0.f,1.f,1.f,none);
+    lookUniform(1.f,2.f,1.f,contrast2);
+    lookUniform(1.f,.5f,1.f,contrast_half);
+    close("strength 0.5 halves the depth of a 0.2 visibility",lookApply(.2f,half_strength),.6,1.e-6);
+    close("strength 0.5 halves the depth of a full shadow",lookApply(0.f,half_strength),.5,1.e-6);
+    close("strength 0.5 leaves lit pixels lit",lookApply(1.f,half_strength),1.0,1.e-7);
+    ensure_equals("strength 0 removes the shadow",lookApply(0.f,none),1.f);
+    ensure_equals("strength 0 removes a partial shadow",lookApply(.37f,none),1.f);
+    // 4. Contrast: v'' = pow(v, c). 2 darkens the penumbra midpoint, 0.5 gentles it, both keep the umbra and the lit side.
+    close("contrast 2 darkens the midpoint",lookApply(.5f,contrast2),.25,1.e-6);
+    close("contrast 0.5 lightens the midpoint",lookApply(.5f,contrast_half),std::sqrt(.5),1.e-6);
+    ensure_equals("contrast keeps the umbra",lookApply(0.f,contrast2),0.f);
+    ensure_equals("contrast keeps the lit side",lookApply(1.f,contrast2),1.f);
+    bool monotone = true;
+    for (int i = 1; i <= 1000; ++i)
+        monotone = monotone && lookApply(i/1000.f,contrast2) >= lookApply((i-1)/1000.f,contrast2) && lookApply(i/1000.f,contrast2) <= i/1000.f + 1.e-7f;
+    ensure("contrast 2 is monotone and never lighter",monotone);
+    // Order: contrast first, then strength. v=0.5, c=2, s=0.5 -> pow = 0.25 -> mix(1,.25,.5) = 0.625 (the other order gives 0.5625).
+    float both[3];
+    lookUniform(.5f,2.f,1.f,both);
+    close("contrast then strength",lookApply(.5f,both),.625,1.e-6);
+    // 5. World amount: mix(1, world, a). 0.5 halves the WORLD depth only; 0 leaves no world shadow; the screen term is not touched.
+    float world_half[3], world_none[3];
+    lookUniform(1.f,1.f,.5f,world_half);
+    lookUniform(1.f,1.f,0.f,world_none);
+    close("world amount 0.5 halves the world depth",worldAmountApply(.2f,world_half),.6,1.e-6);
+    ensure_equals("world amount 0 = no world shadow",worldAmountApply(0.f,world_none),1.f);
+    ensure_equals("world amount does not touch the final look",lookApply(.2f,world_half),.2f);
+    close("world 0.5 + screen contact 0.7: the final is the darker of the two",std::min(worldAmountApply(.2f,world_half),.7f),.6,1.e-6);
+    // 6. Screen term: the contact band (always full) minus the reach march's extra darkening scaled by Screen amount.
+    close("reach darkens: contact 1, a quarter of the rays hit beyond the band",screenTerm(1.f,.25f,1.f),.75,1.e-7);
+    close("screen amount 0.5 halves that darkening",screenTerm(1.f,.25f,.5f),.875,1.e-7);
+    ensure_equals("screen amount 0 equals no reach (the contact band stays)",screenTerm(.6f,.25f,0.f),.6f);
+    ensure_equals("screen amount 0 keeps a full contact shadow",screenTerm(0.f,0.f,0.f),0.f);
+    ensure_equals("the term never goes below 0",screenTerm(.2f,.5f,1.f),0.f);
+    bool never_brighter = true;
+    for (int c = 0; c <= 10; ++c) for (int e = 0; e <= 10 - c; ++e) for (int a = 0; a <= 4; ++a)
+    {
+        const float contact = 1.f-c/10.f, extra = e/10.f;
+        const float s = screenTerm(contact,extra,a/4.f);
+        never_brighter = never_brighter && s <= contact + 1.e-7f && s >= 0.f;
+        for (int w = 0; w <= 4; ++w)
+            never_brighter = never_brighter && std::min(w/4.f,s) <= s + 1.e-7f && std::min(w/4.f,s) <= w/4.f + 1.e-7f;
+    }
+    ensure("min(world, screen) never brightens and the reach only adds darkening",never_brighter);
+    // 7. Reach steps: 12 at no reach, growing to the authored count at 8 m (never above it, never below 12 or the authored count if lower).
+    ensure_equals("authored 12 stays 12 at any reach",reachSteps(12,8.f),12);
+    ensure_equals("authored 8 stays 8",reachSteps(8,8.f),8);
+    ensure_equals("authored 32 at reach 0 = 12",reachSteps(32,0.f),12);
+    ensure_equals("authored 32 at reach 8 = 32",reachSteps(32,8.f),32);
+    ensure_equals("authored 32 at reach 4 = 22",reachSteps(32,4.f),22);
+    ensure_equals("authored 64 at reach 2 = 25",reachSteps(64,2.f),25);
+    int previous = 0; bool steps_monotone = true;
+    for (int i = 0; i <= 80; ++i) { const int s = reachSteps(48,i*.1f); steps_monotone = steps_monotone && s >= previous && s <= 48; previous = s; }
+    ensure("steps grow with the reach and never pass the authored count",steps_monotone);
+}
 
 }

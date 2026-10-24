@@ -20,6 +20,10 @@ uniform vec3 area_params; // max distance, thickness, pixels relative to 1080p
 uniform float area_light_bias; // CPU-sanitized housing metres, independent of thickness
 uniform vec2 area_native_clip; // the native spot sampler's shadow_clip.z/.w; w <= z (default 0) = valid everywhere
 uniform float area_native_offset; // the native sampler's spot_shadow_offset (metres along the normal); default 0
+// [Soft shadow look] WORLD-owned channels only. x = Screen-space detail, the reach in metres of an extra screen trace beyond the contact band (RenderAreaShadowWorldScreenReach);
+// 0 (also the value of a program that was never given it) = off: the march below is exactly the contact band march of a build without it. y = Screen-space amount 0..1: scales
+// only the darkening of that extra trace (never the contact band). Kept in sync with ALAreaShadow::reachLimit / reachSteps / screenTerm (alareashadowmath.h).
+uniform vec2 area_screen_reach;
 vec4 getPositionWithDepth(vec2 uv, float depth);
 vec2 generateProjectedPosition(vec3 pos);
 float getLinearDepth(vec2 uv);
@@ -99,6 +103,7 @@ void main()
         float source_radius = area_lights[light].w > 0.0 ? area_lights[light].w : 0.1;
         float visibility = 0.0;
         float contact_visibility = 0.0;
+        float extra_dark = 0.0; // rays whose first hit lies BEYOND the contact band (the reach march of a world channel; 0 without a reach)
         // World contact accepts a surface within 5 mm of the refined hit plane;
         // a camera-sized tolerance admits foreground silhouettes as contact.
         float thickness = area_world[light] > 0.5 ? min(area_params.y,0.005) : area_params.y;
@@ -137,6 +142,25 @@ void main()
                 traced = areaTrace(origin,target,area_lights[light].xyz,end_gap,
                     area_light_bias,min(area_params.x,area_contact_dist[light]),thickness,
                     min(area_steps,12),0.25+0.5*jitter,area_contact_dist[light],false);
+                // [Soft shadow look] Screen-space detail: a SECOND, separate march over the reach (the contact march above keeps its own
+                // 12 steps over the contact band, so the blind-band cover never gets sparser as the reach grows). It runs only for a ray the
+                // contact band left clear, and a hit it validates beyond the contact distance darkens "extra" (this ray is then counted
+                // once: contact or extra, never both). It is the old screen-space look on purpose, so it uses the user's Thickness
+                // (area_params.y), not the contact band's 5 mm: a 5 mm tolerance rejects every curved blocker (the tangent plane of a
+                // capsule leaves it) and the reach would barely darken anything. The foreground-silhouette concern above is the contact
+                // band's: the reach term only ever ADDS darkening, is opt-in and is scaled by Screen-space amount. Same non-Thin march.
+                // Its steps grow from 12 to the authored count as the reach grows.
+                if (area_screen_reach.x > area_contact_dist[light] && traced.y > 0.5)
+                {
+                    float reach_limit = min(area_params.x,area_screen_reach.x);
+                    if (reach_limit > area_contact_dist[light])
+                    {
+                        int reach_steps = min(area_steps,12)+int(ceil(float(max(area_steps-12,0))*clamp(reach_limit*0.125,0.0,1.0)));
+                        vec2 beyond = areaTrace(origin,target,area_lights[light].xyz,end_gap,
+                            area_light_bias,reach_limit,area_params.y,reach_steps,0.25+0.5*jitter,area_contact_dist[light],false);
+                        if (beyond.x < 0.5 && beyond.y > 0.5) extra_dark += 1.0;
+                    }
+                }
             }
             else traced = regular_ray ?
                 areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,area_params.x,thickness,
@@ -148,7 +172,10 @@ void main()
         }
         // Filter the blended visibility once, with the existing spatial passes.
         // area_dropout > 0 on the admitted channels whose light is nearly as important as the first dropped one (smooth group fade).
+        float contact_average = contact_visibility/float(area_samples);
+        // [Soft shadow look] the world channel's screen term = the contact band (always full) minus the reach march's extra darkening scaled by Screen-space amount.
+        if (extra_dark > 0.0) contact_average = max(contact_average-area_screen_reach.y*(extra_dark/float(area_samples)),0.0);
         frag_color[light] = mix(mix(visibility/float(area_samples),
-            contact_visibility/float(area_samples),max(area_contact_fade[light]*native_strength,area_world[light])),1.0,area_dropout[light]);
+            contact_average,max(area_contact_fade[light]*native_strength,area_world[light])),1.0,area_dropout[light]);
     }
 }

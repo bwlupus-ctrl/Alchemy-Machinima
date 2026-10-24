@@ -19,6 +19,9 @@ uniform uvec4 area_world_seed;    // per channel: light UUID hash (the rotation'
 uniform vec3 area_world_rot[3];   // ROWS of the view -> agent rotation (the columns of the view matrix's 3x3): agent = (dot(r0,v), dot(r1,v), dot(r2,v))
 uniform sampler2D area_world_atlas; // D32F atlas, 1632 x 1088 per light, compare mode NONE
 uniform int area_world_debug;     // diagnostic (RenderAreaShadowWorldDebug), 0 = normal: 1 world visibility only, 2 face / 5, 3 receiver depth minus atlas depth
+// [Soft shadow look] upsample pass only; DEVIATIONS from identity so zero (a program never given it) = today's output: x = 1 - Shadow strength,
+// y = Shadow contrast - 1, z = 1 - World shadow amount (the world term of world-owned channels). KEEP IN SYNC with ALAreaShadow::lookUniform / lookApply (alareashadowmath.h).
+uniform vec3 area_look;
 vec3 areaNormal(vec2 uv);
 vec2 areaTexelUV(vec2 uv);
 vec4 getPositionWithDepth(vec2 uv, float depth);
@@ -515,6 +518,14 @@ void main()
     if (all(equal(area_axis,vec2(0))) && !area_sky && depth > 0.0)
         for (int c = 0; c < 4; ++c)
             if (area_world[c] > 0.5)
-                frag_color[c] = area_world_debug > 0 ? awDebugValue(c,area_world_debug) : min(frag_color[c],awVisibility(c));
+                frag_color[c] = area_world_debug > 0 ? awDebugValue(c,area_world_debug) : min(frag_color[c],area_look.z != 0.0 ? mix(1.0,awVisibility(c),1.0-area_look.z) : awVisibility(c));
 #endif
+    // [Soft shadow look] Applied ONCE to the final per-channel visibility (after the blur, the upsample and the world resolve, before the lighting
+    // pass multiplies it into the light): Contrast first, v = pow(v, contrast); then Strength, v = mix(1, v, strength). Each is skipped at exactly
+    // its identity (area_look is all zero = today's bytes). The World diagnostic views are shown raw.
+    if (all(equal(area_axis,vec2(0))) && area_world_debug == 0)
+    {
+        if (area_look.y != 0.0) frag_color = pow(max(frag_color,vec4(0.0)),vec4(1.0+area_look.y));
+        if (area_look.x != 0.0) frag_color = mix(vec4(1.0),frag_color,1.0-area_look.x);
+    }
 }

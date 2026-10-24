@@ -195,6 +195,55 @@ inline float lightBias(float bias)
 {
     return std::isfinite(bias) ? std::clamp(bias,0.f,4.f) : .25f;
 }
+// ---------------------------------------------------------------------------------------------------- soft shadow LOOK
+// Five LOOK settings (RenderAreaShadowStrength / Contrast / WorldScreenReach / WorldAmount / ScreenAmount). Every one defaults to
+// "no change", and the shaders then run byte-for-byte today's arithmetic (branches, never a multiply by one). The uniforms are
+// DEVIATIONS from identity so a program that was never given them (a harness, a reload) is the identity too. KEEP IN SYNC with
+// areaShadowF.glsl (the world channel's reach march and extra term) and areaShadowFilterF.glsl (area_look); relight_shader_check.py pins both.
+inline float lookStrength(float s) { return std::isfinite(s) ? std::clamp(s,0.f,1.f) : 1.f; }
+inline float lookContrast(float c) { return std::isfinite(c) ? std::clamp(c,.25f,4.f) : 1.f; }
+inline float lookReach(float r)    { return std::isfinite(r) ? std::clamp(r,0.f,8.f) : 0.f; }
+inline float lookAmount(float a)   { return std::isfinite(a) ? std::clamp(a,0.f,1.f) : 1.f; }
+// area_look = (1 - strength, contrast - 1, 1 - world amount): all zero = identity.
+inline void lookUniform(float strength, float contrast, float worldAmount, float out[3])
+{
+    out[0] = 1.f-lookStrength(strength);
+    out[1] = lookContrast(contrast)-1.f;
+    out[2] = 1.f-lookAmount(worldAmount);
+}
+// GLSL mix(x, y, a) = x * (1 - a) + y * a, in float.
+inline float mixf(float x, float y, float a) { return x*(1.f-a)+y*a; }
+// The world channel's screen-space trace distance beyond the contact band: 0 = the contact march alone (today). Capped by Trace distance.
+inline float reachLimit(float reach, float contact, float traceDistance)
+{
+    const float r = lookReach(reach);
+    return r > contact ? std::min(traceDistance,r) : 0.f;
+}
+// Steps of the reach march: 12 (or the authored count if lower) at no reach, growing linearly to the authored count at 8 m.
+inline int reachSteps(int authored, float limitMetres)
+{
+    const int base = std::min(authored,12);
+    const int more = std::max(authored-12,0);
+    return base+static_cast<int>(std::ceil(static_cast<float>(more)*std::clamp(limitMetres*.125f,0.f,1.f)));
+}
+// Final visibility of one channel: contrast first (pow, skipped at exactly 1), then strength (mix(1, v, s), skipped at exactly 1).
+inline float lookApply(float v, const float look[3])
+{
+    if (look[1] != 0.f) v = std::pow(std::max(v,0.f),1.f+look[1]);
+    if (look[0] != 0.f) v = mixf(1.f,v,1.f-look[0]);
+    return v;
+}
+// The world term, weakened by its amount: mix(1, world, amount).
+inline float worldAmountApply(float world, const float look[3])
+{
+    return look[2] != 0.f ? mixf(1.f,world,1.f-look[2]) : world;
+}
+// A world channel's screen term: the contact band (always full) minus the extra darkening of the reach march scaled by Screen amount.
+// contactAvg and extraDark are fractions of the rays (a ray is counted in exactly one of: contact hit, extra hit, none).
+inline float screenTerm(float contactAvg, float extraDark, float screenAmount)
+{
+    return std::max(contactAvg-screenAmount*extraDark,0.f);
+}
 inline Quality quality(int preset, bool thin = false)
 {
     constexpr Quality presets[] = {{4,8,true}, {8,12,true}, {12,20,true}, {24,32,false}};
