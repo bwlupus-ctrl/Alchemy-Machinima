@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 38,
-    "rows": 2007,
+    "rows": 2008,
     "owner_roots": 33,
     "unresolved_rows": 22,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2007
+    "independent_json_rows": 2008
   },
   "setting_conflicts": [
     {
@@ -4406,6 +4406,34 @@
         {
           "file": "indra/newview/app_settings/settings.xml",
           "line": 31054,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "BDMergeAlphaAttachmentSort",
+      "pages": [
+        "actor_style_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+          "line": 94,
+          "widget": "alpha_attachment_sort",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+            "tag": "panel",
+            "name": "actor_style_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 10837,
           "group": "Global",
           "type": "Boolean"
         }
@@ -160605,7 +160633,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 27469,
+              "line": 27484,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -160672,7 +160700,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 23313,
+              "line": 23328,
               "class": "LLPipeline",
               "function": "clearWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -160739,7 +160767,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 23325,
+              "line": 23340,
               "class": "LLPipeline",
               "function": "clearAwayWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -203384,7 +203412,7 @@
       "label": "Actor FX",
       "group": "look_group",
       "group_label": "Look",
-      "row_count": 18,
+      "row_count": 19,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -203403,8 +203431,8 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 0,
-        "setting_coverage": 0.0,
+        "setting_bound_rows": 1,
+        "setting_coverage": 0.052632,
         "cpp_referenced_rows": 18,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -204226,6 +204254,70 @@
           "other_writers": []
         },
         {
+          "card": "avatar_rendering",
+          "card_title": "Avatar rendering (all)",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Alpha attachment sort (legacy)",
+          "kind": "toggle",
+          "widget": "alpha_attachment_sort",
+          "matched_widget": "alpha_attachment_sort",
+          "declared_setting": "BDMergeAlphaAttachmentSort",
+          "resolved_setting": "BDMergeAlphaAttachmentSort",
+          "setting_candidates": [
+            "BDMergeAlphaAttachmentSort"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 10837,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+              "line": 94,
+              "tag": "kit_switch",
+              "control_name": "BDMergeAlphaAttachmentSort",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+                "tag": "panel",
+                "name": "actor_style_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+              "line": 94,
+              "widget": "alpha_attachment_sort",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+                "tag": "panel",
+                "name": "actor_style_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
           "card": "color",
           "card_title": "Colour",
           "option_index": null,
@@ -204300,7 +204392,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 94,
+              "line": 99,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -204390,7 +204482,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 97,
+              "line": 102,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -204480,7 +204572,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 102,
+              "line": 107,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -204570,7 +204662,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 109,
+              "line": 114,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -204660,7 +204752,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 114,
+              "line": 119,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -204750,7 +204842,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 119,
+              "line": 124,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -204840,7 +204932,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 124,
+              "line": 129,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -204940,7 +205032,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 129,
+              "line": 134,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -205030,7 +205122,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 144,
+              "line": 149,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -205120,7 +205212,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-              "line": 149,
+              "line": 154,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -206370,7 +206462,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20556,
+              "line": 20571,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -206617,7 +206709,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20558,
+              "line": 20573,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -206786,7 +206878,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20561,
+              "line": 20576,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -206877,7 +206969,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20562,
+              "line": 20577,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -206968,7 +207060,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20563,
+              "line": 20578,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -207059,7 +207151,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20564,
+              "line": 20579,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -207150,7 +207242,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20565,
+              "line": 20580,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -207241,7 +207333,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20566,
+              "line": 20581,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -207332,7 +207424,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20567,
+              "line": 20582,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -207501,7 +207593,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20574,
+              "line": 20589,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -207592,7 +207684,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20576,
+              "line": 20591,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -207995,7 +208087,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21025,
+              "line": 21040,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -208334,7 +208426,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21026,
+              "line": 21041,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -208425,7 +208517,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21024,
+              "line": 21039,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209062,7 +209154,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21036,
+              "line": 21051,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209387,7 +209479,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21043,
+              "line": 21058,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",

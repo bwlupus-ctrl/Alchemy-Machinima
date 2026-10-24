@@ -57,6 +57,8 @@ uniform mat3 env_mat;
 uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform int classic_mode;
+// Particle ribbons supply a camera-facing normal independently of winding.
+uniform int particle_normal;
 
 #ifdef USE_DIFFUSE_TEX
 uniform sampler2D diffuseMap;
@@ -169,7 +171,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
         float spot = max(dot(-ln,centre),is_pointlight);
         float attenuation = relightAtten(length(delta),range,falloff,shape);
         vec3 highlight;
-        vec3 col = clamp(spot*spot*attenuation*relightRatio(n,delta,shape.x),0.0,1.0)*light_col*diffuse;
+        vec3 col = max(spot*spot*attenuation*relightRatio(n,delta,shape.x),0.0)*light_col*diffuse;
 #ifdef HAS_ACTOR_FX
         if (sil_on) col *= sil_keep;
 #endif
@@ -252,7 +254,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
         float amb_da = 0.0;//ambiance;
         if (da > 0)
         {
-            lit = clamp(da * dist_atten, 0.0, 1.0);
+            lit = max(da * dist_atten, 0.0);
             col = lit * light_col * diffuse;
             amb_da += (da*0.5+0.5) * ambiance;
         }
@@ -316,7 +318,9 @@ void main()
     // clip against water plane unless this is a legacy avatar skin
     waterClip(pos.xyz);
 #endif
-    vec3 norm = vary_norm;
+    vec3 norm = normalize(vary_norm);
+    // As in pbralphaF: culling controls whether a back face can reach lighting.
+    norm *= (gl_FrontFacing || particle_normal != 0) ? 1.0 : -1.0;
 
     // [RigRimQ] Toksvig input, unconditional at main scope and BEFORE the alpha
     // discards below (review P2-5); unused unless rig_rim_mode != 0.

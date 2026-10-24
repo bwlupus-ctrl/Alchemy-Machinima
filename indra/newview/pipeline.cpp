@@ -8581,6 +8581,17 @@ void LLPipeline::renderGeomVelocity()
         }
     }
 
+    for (LLGLSLShader& shader : gVelocityMaterialProgram)
+    {
+        if (shader.isComplete())
+        {
+            shader.bind();
+            shader.uniformMatrix4fv(sLastProjectionMatrixUnjittered,
+                                     1, GL_FALSE, last_projection);
+            shader.unbind();
+        }
+    }
+
     gGL.setColorMask(true, true);
     LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL); // test against scene depth, no write
 
@@ -11300,7 +11311,7 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             const F32 dist = calc_light_dist(light, cam_pos, max_dist);
             if (dist < max_dist || is_spot)
             {
-                // Fully visible avoids setupHWLights' in-place fade-clock write.
+                // Auxiliary lights do not participate in the main-view fade clock.
                 mNearbyLights.insert(Light(drawable, dist, LIGHT_FADE_TIME,
                     stable_area_feed ? light->getID() : LLUUID::null));
             }
@@ -11328,13 +11339,21 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
         }
 
         // UPDATE THE EXISTING NEARBY LIGHTS
+        // Advance every eligible main-view light once per frame, including
+        // lights sorted behind the six HW slots and actor-only lights. Repeated
+        // view setups only read this clock; auxiliary collectors return above.
+        const bool advance_fades = mNearbyLightFadeFrame != gFrameCount;
+        mNearbyLightFadeFrame = gFrameCount;
+        // Distance is the set's sort key, so update extracted nodes and reinsert them
+        // in current distance order without allocating new nodes each frame.
+        light_set_t updated_lights;
         for (light_set_t::iterator iter = mNearbyLights.begin();
             iter != mNearbyLights.end();)
         {
             const Light* light = &(*iter);
             LLDrawable* drawable = light->drawable;
             const LLViewerObject *vobj = light->drawable->getVObj();
-            if(vobj && vobj->isAttachment())
+            if (vobj && vobj->isAttachment())
             {
                 if (!sRenderAttachedLights)
                 {
@@ -11342,7 +11361,6 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                     iter = mNearbyLights.erase(iter);
                     continue;
                 }
-
                 LLVOAvatar *avatar = vobj->getAvatar();
 
                 // [BDMerge A5.6] independent own/other attached-light toggles
@@ -11386,38 +11404,39 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
 
             F32 dist = calc_light_dist(volight, cam_pos, max_dist);
             F32 fade = light->fade;
-            // actual fade gets decreased/increased by setupHWLights
-            // light->fade value is 'time'.
-            // >=0 and light will become visible as value increases
-            // <0 and light will fade out
+            // Nonnegative fades in, negative fades out. Reverse direction
+            // without a visibility jump before advancing this frame's clock.
             if (dist < max_dist)
             {
                 if (fade < 0)
                 {
-                    // mark light to fade in
-                    // if fade was -LIGHT_FADE_TIME - it was fully invisible
-                    // if fade -0 - it was fully visible
-                    // visibility goes up from 0 to LIGHT_FADE_TIME.
                     fade += LIGHT_FADE_TIME;
                 }
             }
             else
             {
-                // mark light to fade out
-                // visibility goes down from -0 to -LIGHT_FADE_TIME.
                 if (fade >= LIGHT_FADE_TIME)
                 {
-                    fade = -0.0001f; // was fully visible
+                    fade = -0.0001f;
                 }
                 else if (fade >= 0)
                 {
-                    // 0.75 visible light should stay 0.75 visible, but should reverse direction
                     fade -= LIGHT_FADE_TIME;
                 }
             }
 
-            ++iter; // Advance to next light
+            if (advance_fades && fade < LIGHT_FADE_TIME)
+            {
+                const F32 dt = gFrameIntervalSeconds.value();
+                fade = fade >= 0.f ? llmin(fade + dt, LIGHT_FADE_TIME) : fade - dt;
+            }
+
+            light_set_t::node_type node = mNearbyLights.extract(iter++);
+            node.value().dist = dist;
+            node.value().fade = fade;
+            updated_lights.insert(std::move(node));
         }
+        mNearbyLights.swap(updated_lights);
 
         // FIND NEW LIGHTS THAT ARE IN RANGE
         for (LLDrawable::ordered_drawable_set_t::iterator iter = mLights.begin();
@@ -12105,12 +12124,10 @@ void LLPipeline::setupHWLights()
                 if (fade >= 0.f)
                 {
                     fade = fade / LIGHT_FADE_TIME;
-                    ((Light*) (&(*iter)))->fade += gFrameIntervalSeconds.value();
                 }
                 else
                 {
                     fade = 1.f + fade / LIGHT_FADE_TIME;
-                    ((Light*) (&(*iter)))->fade -= gFrameIntervalSeconds.value();
                 }
                 fade = llclamp(fade,0.f,1.f);
                 light_color *= fade;
@@ -12153,8 +12170,8 @@ void LLPipeline::setupHWLights()
     // [ActorMask] Independent uncapped scan, after world units and padding.
     if (actor_only && !actor_as_world && effective_local_light_count >= 1)
     {
-        // [ActorMask] Advance fades in every world-fade setup, including before
-        // classification. Only a valid mask view may build light sets.
+        // [ActorMask] Fades were advanced with the entire main nearby list.
+        // Only a valid mask view may build light sets.
         const bool build_sets = mActorMaskView == ActorMaskView::MASK &&
             mActorMaskValid && !sImpostorRender;
         const auto& registry = ALCineLightRigManager::instance();
@@ -12169,7 +12186,7 @@ void LLPipeline::setupHWLights()
 
         struct Candidate { U8 bits; LLLightState unit; LLColor4 color; };
         std::vector<Candidate> candidates;
-        // Nearest-first. Each actor fade advances once, even for shared sets.
+        // Nearest-first. Shared sets read the same per-frame fade.
         for (const auto& entry : mNearbyLights)
         {
             LLVOVolume* light = entry.drawable->getVOVolume();
@@ -12195,16 +12212,14 @@ void LLPipeline::setupHWLights()
                 if (fade >= 0.f)
                 {
                     fade /= LIGHT_FADE_TIME;
-                    const_cast<Light&>(entry).fade += gFrameIntervalSeconds.value();
                 }
                 else
                 {
                     fade = 1.f + fade / LIGHT_FADE_TIME;
-                    const_cast<Light&>(entry).fade -= gFrameIntervalSeconds.value();
                 }
                 color *= llclamp(fade, 0.f, 1.f);
             }
-            if (!build_sets) continue; // [ActorMask] Fade-only before classification.
+            if (!build_sets) continue;
             const F32 radius = light->getLightRadius() * (sRenderDeferred ? 1.5f : 1.f);
             if (color.magVecSquared() < 0.001f || radius <= 0.001f) continue;
             write_local_light(light, color, radius, 2);

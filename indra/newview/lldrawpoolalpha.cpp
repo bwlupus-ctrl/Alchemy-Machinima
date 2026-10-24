@@ -337,6 +337,18 @@ void LLDrawPoolAlpha::renderVelocity(S32 pass)
         return;
     }
 
+    // Material coverage replays forward lighting as well as texture alpha.
+    gPipeline.enableLightsDynamic();
+    F32 water_sign = getType() == LLDrawPool::POOL_ALPHA_PRE_WATER ? -1.f : 1.f;
+    if (LLPipeline::sUnderWaterRender) water_sign *= -1.f;
+    for (U32 mask = LLMaterial::DIFFUSE_ALPHA_MODE_BLEND;
+         mask < LLMaterial::SHADER_COUNT; mask += 4)
+    {
+        // Match beauty's view uniforms, clipping and fast-bind reset. The
+        // helper also primes the rigged variant with the same environment.
+        prepare_alpha_shader(&gVelocityMaterialProgram[mask], true, water_sign);
+    }
+    LLGLSLShader::unbind();
     LLGLEnable cull(GL_CULL_FACE);
 
     // [AlphaVel] Reproduce beauty's native alpha ordering so replace-only
@@ -384,7 +396,7 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
     U64 last_mesh_id = 0;
     bool skip_last_skin = false;
 
-    auto bind_program = [&](LLGLSLShader& base) -> LLGLSLShader*
+    auto bind_program = [&](LLGLSLShader& base, bool material = false) -> LLGLSLShader*
     {
         LLGLSLShader* shader = rigged ? base.mRiggedVariant : &base;
         if (!shader || !shader->isComplete())
@@ -393,7 +405,14 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
         }
         if (shader != active_shader)
         {
-            base.bind(rigged);
+            if (material)
+            {
+                gPipeline.bindDeferredShaderFast(*shader);
+            }
+            else
+            {
+                base.bind(rigged);
+            }
             LLRenderPass::bindVelocityUniforms(*shader);
             shader->uniform1i(sTextureAlphaOnly, 0);
             active_shader = shader;
@@ -535,7 +554,10 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
             }
 
             const bool indexed_pbr = pbr && params.mGLTFMaterialList.size() > 1;
-            const bool indexed_legacy = !pbr &&
+            const bool material_velocity = !pbr && params.mMaterial &&
+                params.mShaderMask < LLMaterial::SHADER_COUNT &&
+                (params.mShaderMask & 0x3) == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND;
+            const bool indexed_legacy = !pbr && !material_velocity &&
                 (params.mMaterialSlotList.size() > 1 || params.mTextureList.size() > 1);
             constexpr S32 VELOCITY_ALPHA_SLOTS = 8;
             const S32 indexed_limit = llmin(VELOCITY_ALPHA_SLOTS,
@@ -558,7 +580,11 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
                 continue;
             }
             LLGLSLShader* shader = nullptr;
-            if (indexed_pbr)
+            if (material_velocity)
+            {
+                shader = bind_program(gVelocityMaterialProgram[params.mShaderMask], true);
+            }
+            else if (indexed_pbr)
             {
                 shader = bind_program(gVelocityPBRAlphaIndexedProgram);
             }
@@ -589,7 +615,23 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
 
             bool double_sided = params.mGLTFMaterial.notNull() &&
                                 params.mGLTFMaterial->mDoubleSided;
-            if (indexed_pbr)
+            if (material_velocity)
+            {
+                static const LLStaticHashedString sVelocityAlphaCutoff("velocity_alpha_cutoff");
+                shader->uniform1f(sVelocityAlphaCutoff, VELOCITY_ALPHA_CUTOFF);
+                shader->uniform4fv(LLShaderMgr::SPECULAR_COLOR, 1, params.mSpecColor.mV);
+                shader->uniform1f(LLShaderMgr::ENVIRONMENT_INTENSITY, params.mEnvIntensity);
+                shader->uniform1f(LLShaderMgr::EMISSIVE_BRIGHTNESS, params.mFullbright ? 1.f : 0.f);
+                shader->bindTexture(LLShaderMgr::DIFFUSE_MAP, params.mTexture.notNull()
+                    ? params.mTexture.get() : LLViewerFetchedTexture::sWhiteImagep.get());
+                shader->bindTexture(LLShaderMgr::BUMP_MAP, params.mNormalMap.notNull()
+                    ? params.mNormalMap.get() : LLViewerFetchedTexture::sFlatNormalImagep.get());
+                shader->bindTexture(LLShaderMgr::SPECULAR_MAP, params.mSpecularMap.notNull()
+                    ? params.mSpecularMap.get() : LLViewerFetchedTexture::sWhiteImagep.get());
+                gPipeline.selectForwardLightSet(
+                    ALCineLightRigManager::instance().drawByte(params));
+            }
+            else if (indexed_pbr)
             {
                 const S32 count = list_size;
                 F32 cutoffs[VELOCITY_ALPHA_SLOTS] = { 0.f };
@@ -1644,6 +1686,8 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                     continue;
                 }
 
+                static const LLStaticHashedString sParticleNormal("particle_normal");
+                current_shader->uniform1i(sParticleNormal, is_particle_or_hud_particle ? 1 : 0);
                 bool tex_setup = TexSetup(&params, (mat != nullptr));
                 bool actor_fx_glow = false;
 

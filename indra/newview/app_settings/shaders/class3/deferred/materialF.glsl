@@ -208,8 +208,8 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
         vec3 view = relightUnit(-v,n);
         float spot = max(dot(-ln,centre),is_pointlight);
         float attenuation = relightAtten(length(delta),range,falloff,shape);
-        // Match the forward diffuse clamp as the source radius tends to zero.
-        vec3 col = clamp(spot*spot*attenuation*relightRatio(n,delta,shape.x),0.0,1.0)*light_col*diffuse;
+        // Keep HDR diffuse irradiance, as deferred pointLightF does.
+        vec3 col = max(spot*spot*attenuation*relightRatio(n,delta,shape.x),0.0)*light_col*diffuse;
         // Preserve this forward path's point-light weights (not deferred's
         // min(N.L*6,1)). Only the LUT coordinate moves to the representative.
         float da = spot*spot*dot(n,centre);
@@ -305,7 +305,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
         float amb_da = ambiance;
         if (da >= 0)
         {
-            lit = clamp(da * dist_atten, 0.0, 1.0);
+            lit = max(da * dist_atten, 0.0);
             col = lit * light_col * diffuse;
             amb_da += (da*0.5 + 0.5) * ambiance;
         }
@@ -414,6 +414,12 @@ in vec3 vary_normal;
 in vec4 vertex_color;
 in vec2 vary_texcoord0;
 
+#ifdef MATERIAL_VELOCITY
+in vec4 vary_cur_clip;
+in vec4 vary_last_clip;
+uniform float velocity_alpha_cutoff;
+#endif
+
 // get the transformed normal and apply glossiness component from normal map
 vec3 getNormal(inout float glossiness, vec2 normal_uv)
 {
@@ -484,7 +490,7 @@ float getShadow(vec3 pos, vec3 norm)
 {
 #ifdef HAS_SUN_SHADOW
     #if (DIFFUSE_ALPHA_MODE == DIFFUSE_ALPHA_MODE_BLEND)
-        return sampleDirectionalShadow(pos, norm, vary_texcoord0.xy);
+        return sampleDirectionalShadow(pos, norm, gl_FragCoord.xy / screen_res);
     #else
         return 1;
     #endif
@@ -545,6 +551,8 @@ void main()
     float env = env_intensity * spec.a;
     float glossiness = specular_color.a;
     vec3 norm = getNormal(glossiness, fx_normal_uv);
+    // Match PBR and the masked path; single-sided draws retain their cull state.
+    norm *= gl_FrontFacing ? 1.0 : -1.0;
 #ifdef HAS_ACTOR_FX
     float actor_fx_material_response = actorFxAuthoredMaterialResponse();
     spec.rgb *= actor_fx_material_response;
@@ -600,7 +608,7 @@ void main()
     vec3 ambenv = amblit;
     vec3 glossenv = vec3(0.0);
     vec3 legacyenv = vec3(0.0);
-    sampleReflectionProbesLegacy(ambenv, glossenv, legacyenv, pos.xy*0.5+0.5, pos.xyz, norm.xyz, glossiness, env, true, amblit_linear);
+    sampleReflectionProbesLegacy(ambenv, glossenv, legacyenv, gl_FragCoord.xy / screen_res, pos.xyz, norm.xyz, glossiness, env, true, amblit_linear);
     ambenv = applyShadowLift(ambenv, norm.xyz, light_dir, shadow); // [EnvIntensity v2] no SSAO here; last irradiance-side op
 
     color = ambenv;
@@ -644,7 +652,10 @@ void main()
             float gt = max(0,(min(gtdenom * nv / vh, gtdenom * nl / vh)));
 
             float scol = shadow*fres*texture(lightFunc, vec2(nh, glossiness)).r*gt/(nh*nl);
-            color.rgb += lit*scol*sunlit_linear.rgb*spec.rgb;
+            vec3 spec_contrib = lit*scol*sunlit_linear.rgb*spec.rgb;
+            color.rgb += spec_contrib;
+            // Let a sun glint remain visible on clear blended material.
+            glare = max(max(spec_contrib.r, spec_contrib.g), spec_contrib.b);
         }
 
         // add radiance map
@@ -662,8 +673,7 @@ void main()
         applyLegacyEnvKeep(color, legacyenv, spec, pos.xyz, norm.xyz, env, alr_keep);
 
         float cur_glare = max(max(legacyenv.r, legacyenv.g), legacyenv.b);
-        cur_glare = clamp(cur_glare, 0, 1);
-        cur_glare *= env * alr_keep;
+        cur_glare = max(cur_glare, 0.0) * env * 4.0 * alr_keep;
         glare += cur_glare;
     }
 
@@ -689,7 +699,7 @@ void main()
     RigRimPixel rim_px = rigRimNeutralPixel(norm.xyz);
     if (rigRimMode() != 0)
     {
-        rim_px = rigRimForwardPixel(norm.xyz, vary_normal, rim_fw);
+        rim_px = rigRimForwardPixel(norm.xyz, vary_normal * (gl_FrontFacing ? 1.0 : -1.0), rim_fw);
     }
 
 // [RigRim] trailing rig_rim_lights[i] argument (+ [RigRimQ] rim_px)
@@ -748,6 +758,15 @@ void main()
     if (alrDebug()) color = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
 #endif
     frag_color = max(vec4(color * final_scale, al), vec4(0));
+
+#ifdef MATERIAL_VELOCITY
+    // Reuse effective beauty coverage, including sun/local/environment glare,
+    // emissive suppression, Actor FX and vertex alpha. Texture alpha alone
+    // leaves background motion on otherwise dominant reflective glass.
+    if (al < velocity_alpha_cutoff) discard;
+    frag_color = vec4(vary_cur_clip.xy / vary_cur_clip.w
+                    - vary_last_clip.xy / vary_last_clip.w, 0.0, 1.0);
+#endif
 
 #ifdef HAS_VISIBLE_DIFFUSE
     // Same contract as alphaF.glsl: RGB = LINEAR diffuse reflectance of THIS

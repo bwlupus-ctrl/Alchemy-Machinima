@@ -4,6 +4,11 @@
 **Origin:** port of the AYAstorm double-alpha fix (mayatonton/phoenix-firestorm PR #122),
 adapted to our stock alpha baseline.
 
+**Director v2:** Look > Actor FX > Look > Avatar rendering (all) > Alpha attachment sort.
+This existing avatar appearance page already hosts Render mode and Opacity under Actor look;
+the adjacent card identifies the sorting toggle as applying to all avatars, independently
+of the selected actor's FX. Default off. Search: alpha sort eyelashes brows hair double alpha ayastorm.
+
 ## Problem it addresses
 Stock above-water alpha renders **rigged first (writes depth), then all non-rigged**. Rigged
 hair writing depth can z-reject non-rigged alpha behind it, and worn **non-rigged attachment**

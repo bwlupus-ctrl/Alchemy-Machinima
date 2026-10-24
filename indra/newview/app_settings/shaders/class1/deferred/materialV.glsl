@@ -73,6 +73,18 @@ out vec2 vary_texcoord2;
 out vec4 vertex_color;
 out vec2 vary_texcoord0;
 
+#ifdef MATERIAL_VELOCITY
+uniform mat4 projection_matrix_unjittered;
+uniform mat4 last_projection_matrix_unjittered;
+uniform mat4 last_modelview_matrix;
+uniform mat4 last_object_matrix;
+out vec4 vary_cur_clip;
+out vec4 vary_last_clip;
+#ifdef HAS_SKIN
+mat4 getLastObjectSkinnedTransform();
+#endif
+#endif
+
 void main()
 {
 #ifdef HAS_ACTOR_FX
@@ -133,5 +145,18 @@ void main()
 
 #if !defined(HAS_SKIN)
     vary_position = (modelview_matrix*vec4(position.xyz, 1.0)).xyz;
+#endif
+
+#ifdef MATERIAL_VELOCITY
+    // Rasterize with the identical beauty position above; motion uses the
+    // unjittered endpoints and the same history as the other velocity pools.
+    vary_cur_clip = projection_matrix_unjittered * vec4(vary_position, 1.0);
+#ifdef HAS_SKIN
+    mat4 previous_object = getLastObjectSkinnedTransform();
+#else
+    mat4 previous_object = last_object_matrix;
+#endif
+    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix
+        * previous_object * vec4(position, 1.0);
 #endif
 }

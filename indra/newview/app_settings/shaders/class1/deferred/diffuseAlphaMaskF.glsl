@@ -56,6 +56,8 @@ void main()
     frag_data[0] = vec4(col.rgb, 0.0);
     frag_data[1] = vec4(0,0,0,0); // spec
     vec3 nvn = normalize(vary_normal);
+    // Match forward alpha when a card is rendered with culling disabled.
+    nvn *= gl_FrontFacing ? 1.0 : -1.0;
 #ifdef HAS_SKIN
     // [TronA0] rigged mesh: avatar geometry -> tagged flag
     frag_data[2] = encodeNormal(nvn.xyz, 0, gbufferAvatarFlag(GBUFFER_FLAG_HAS_ATMOS));

@@ -1,7 +1,7 @@
 # Actor FX — Director Kit page contract
 
 Page key: `actor_style_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (0/18 setting-bound rows; 18 C++-referenced rows).
+Computed class: **code-driven** (1/19 setting-bound rows; 18 C++-referenced rows).
 
 ## Real owners
 
@@ -28,6 +28,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `look` / `actor_style_mode` (Render mode) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1553` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `look` / `actor_style_alpha` (Opacity) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1623` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `look` / `actor_style_dissolve_progress` (Dissolve) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1624` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `avatar_rendering` / `alpha_attachment_sort` (Alpha attachment sort (legacy)) | none | kit `toggle` ↔ `BDMergeAlphaAttachmentSort` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml:94` `alpha_attachment_sort` |
 | `color` / `actor_style_use_actor_hue` (Use actor hue) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1618` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `color` / `actor_style_hue` (Custom hue) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1622` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `color` / `actor_style_brightness` (Brightness) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1644` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
@@ -56,7 +57,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **71 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **74 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -111,6 +112,9 @@ Manifest size: **71 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `actor_style_look-option-37` | Only `actor_style_look` selects `Tron Suit`; other selectors remain default. |
 | `actor_style_mode-option-0` | Only `actor_style_mode` selects `Layer`; other selectors remain default. |
 | `actor_style_mode-option-1` | Only `actor_style_mode` selects `Cover`; other selectors remain default. |
+| `card-avatar_rendering-tallest-850` | Only `avatar_rendering` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-avatar_rendering-tallest-1160` | Only `avatar_rendering` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `alpha_attachment_sort-on` | Only `alpha_attachment_sort` is on; dependent visibility is measured. |
 | `card-color-tallest-850` | Only `color` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-color-tallest-1160` | Only `color` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `actor_style_use_actor_hue-on` | Only `actor_style_use_actor_hue` is on; dependent visibility is measured. |
@@ -145,7 +149,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-20 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+21 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 
