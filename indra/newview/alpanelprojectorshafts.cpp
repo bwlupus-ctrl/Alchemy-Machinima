@@ -20,7 +20,7 @@ bool ALPanelProjectorShafts::postBuild()
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALPanelProjectorShafts postBuild");
     getChild<LLComboBox>("ps_preset")->setCommitCallback([](LLUICtrl* control, const LLSD&)
     {
-        ALProjectorShaftPresets::apply(control->getValue().asInteger());
+        ALProjectorShaftPresets::apply(control->getValue().asString());
     });
     return LLPanel::postBuild();
 }

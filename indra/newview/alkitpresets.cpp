@@ -332,6 +332,14 @@ bool ALKitSnapshotStore::load(const std::string& name)
     return true;
 }
 
+bool ALKitSnapshotStore::values(const std::string& name, LLSD& out) const
+{
+    if (!ensureLoaded() || !mCache.has(name) || !mCache[name].isMap())
+        return false;
+    out = mCache[name];
+    return true;
+}
+
 bool ALKitSnapshotStore::remove(const std::string& name)
 {
     if (!ensureLoaded())
