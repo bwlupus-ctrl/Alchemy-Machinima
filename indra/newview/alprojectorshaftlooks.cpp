@@ -104,7 +104,7 @@ static const Value kLookDustStorm[] = {
     {"BDMergeProjectorVolumetricsNoiseScale", Type::F32, {0.35f}},
     {"BDMergeProjectorVolumetricsNoiseSpeed", Type::F32, {0.45f}},
     {"BDMergeProjectorVolumetricsDust", Type::BOOL, {1.f}},
-    {"BDMergeProjectorVolumetricsDustIntensity", Type::F32, {1.f}},
+    {"BDMergeProjectorVolumetricsDustIntensity", Type::F32, {0.85f}},
     {"BDMergeProjectorVolumetricsDustScale", Type::F32, {0.6f}},
     {"BDMergeProjectorVolumetricsDustDrift", Type::F32, {0.35f}},
     {"BDMergeProjectorVolumetricsFogStrength", Type::F32, {0.55f}},
