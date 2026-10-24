@@ -556,3 +556,32 @@ Targets (4K, 5090): A ≈ 0.07 ms, B1–B3 ≈ 0.08 ms (B2/B3 are 2×49 texelFet
 | Night Street Edge | 0.3 → 0.15 | 5 → 1 |
 | Lamp Practical | 0.4 → 0.2 | 4 → 1 |
 | Dark Background Lift | 0.25 → 0.12 | 3 → 1 |
+
+## 14. Pre-alpha wrap history, debug and rasterization (2026-10-23)
+
+This scheduling/resource description supersedes the older renderFinalize-only
+wrap descriptions in §§4.3–5. C1–C3 run at the pre-alpha pool boundary in
+`renderGeomPostDeferred`, with the live projection, before haze/water/hair.
+Beauty adds the term there so subsequent alpha coverage occludes it.
+
+SSR still captures at its existing post-alpha boundary. When this main view
+produced wrap, its color source is the existing `rigRimWrapScene` pre-alpha
+snapshot; its depth source remains the post-alpha screen. Thus history excludes
+wrap and alpha color on wrap-enabled frames. The existing color/depth blit is
+split into two calls, without another image copy, target or increase in copied
+pixel bytes. Wrap/Rim off uses the original screen color/depth copy. Validity
+resets at every MAIN lighting entry, including early-outs and disabled frames.
+
+Debug view 5 shades C3 once at that same pre-alpha boundary into the optional
+full-res RGBA16F `rigRimWrapDebug`, then copies its RGB late using `gCopyProgram`.
+It never blurs hair/weather or recomputes the term late. Cost: one display draw
+and 8 bytes/pixel (63.3 MiB at 3840×2160), allocated on first use of view 5 and
+retained until target cleanup/resize. The indexed state transaction saves both
+polygon modes, forces GL_FILL for all wrap/blur/display draws, then restores the
+incoming modes, alongside blend/masks/routing. Auxiliary MRTs and glow survive.
+
+`rim_alpha_gl_check.py` checks production shaders, the extracted C++ state
+transaction, SSR helper and capture call against real WGL FBOs. It covers
+successive reflective frames, a camera cut with history retained, Wrap/Rim
+toggle-off on the next frame, exact post-alpha depth, cached debug identity,
+wireframe, both blur formats, and the existing halo/strength/off-byte gates.

@@ -3,7 +3,7 @@
 Runs production wrap + blur shaders and rigRimTermEx, with straight-alpha
 blending over an opaque red silhouette. Only scene/depth/normal/DT inputs are
 fixtures. The production C++ call site determines whether wrap runs before or
-after transparency. --shader-ref HEAD reproduces the old order without edits.
+after transparency. --shader-ref reads any committed version without edits.
 No viewer build. Missing GL or an unrecognised call site is a FAILURE.
 """
 import argparse
@@ -22,9 +22,10 @@ import relight_3d_gl as G
 def check_state(runner, tree, out):
     """Execute the production C++ State transaction in this real WGL context.
 
-    The DLL contains the exact production struct; the surrounding draw is a
-    clear to attachment zero. Verify GL state AND sentinel MRT contents. No
-    viewer objects or global LLRender cache are mocked or instantiated here.
+    The DLL contains the exact production struct; its state test draws a
+    clear to attachment zero and verifies sentinel MRT contents. The SSR test
+    also extracts the production helper/call, with a small target wrapper over
+    real color/depth FBOs. No viewer or LLRender cache is instantiated.
     """
     pipe = tree.read('indra/newview/pipeline.cpp')
     begin = pipe.index('struct State', pipe.index('void LLPipeline::renderRigRimWrap('))
@@ -45,6 +46,8 @@ def check_state(runner, tree, out):
                glBlendFuncSeparatei=('void', 'GLuint, GLenum, GLenum, GLenum, GLenum'),
                glBlendEquationSeparatei=('void', 'GLuint, GLenum, GLenum'),
                glDrawBuffers=('void', 'GLsizei, const GLenum*'),
+               glBindFramebuffer=('void', 'GLenum, GLuint'),
+               glBlitFramebuffer=('void', 'GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum'),
                glClearBufferfv=('void', 'GLenum, GLint, const GLfloat*'))
     declarations = '\n'.join('using P_%s=%s(APIENTRY*)(%s); auto %s=reinterpret_cast<P_%s>(wglGetProcAddress("%s"));' %
                              (name, ret, args, name, name, name) for name, (ret, args) in api.items())
@@ -62,7 +65,51 @@ extern "C" __declspec(dllexport) void cycle(unsigned count) {
     const GLfloat value[4] = {.9f,.8f,.7f,0.f};
     glClearBufferfv(0x1800, 0, value);
 }
+extern "C" __declspec(dllexport) State* begin() { return new State(1); }
+extern "C" __declspec(dllexport) void end(State* saved) { delete saved; }
 '''
+    # Execute the production SSR helper AND its actual finalize call. Targets
+    # are tiny real color/depth FBOs, so source/depth selection is not merely a
+    # Python rendering of a policy inferred from a setting or shader name.
+    ssr = pipe[pipe.index('void LLPipeline::copyScreenSpaceReflections('):pipe.index('// Night Mask:')]
+    declaration = ssr[:ssr.index('\n{')].replace('LLPipeline::', '') + ';'
+    finalize = pipe[pipe.index('void LLPipeline::renderFinalize()'):]
+    call = finalize[finalize.index('copyScreenSpaceReflections('):]
+    call = call[:call.index(';')+1]
+    src += '''
+#define LL_PROFILE_GPU_ZONE(x)
+struct LLGLDepthTest { LLGLDepthTest(GLboolean, GLboolean, GLenum) {} };
+bool RenderScreenSpaceReflections = true, gCubeSnapshot = false;
+struct LLRenderTarget {
+    GLuint fbo; int width, height;
+    int getWidth() const { return width; }
+    int getHeight() const { return height; }
+    void copyContents(LLRenderTarget& source, int sx0, int sy0, int sx1, int sy1,
+                      int dx0, int dy0, int dx1, int dy1, unsigned mask, unsigned filter) {
+        GLint read, draw;
+        glGetIntegerv(0x8CAA, &read); glGetIntegerv(0x8CA6, &draw);
+        glBindFramebuffer(0x8CA8, source.fbo); glBindFramebuffer(0x8CA9, fbo);
+        glBlitFramebuffer(sx0, sy0, sx1, sy1, dx0, dy0, dx1, dy1, mask, filter);
+        glBindFramebuffer(0x8CA8, read); glBindFramebuffer(0x8CA9, draw);
+    }
+};
+struct LLPipeline {
+    struct Targets { LLRenderTarget screen, rigRimWrapScene; } mMainRT, *mRT = &mMainRT;
+    LLRenderTarget mSceneMap;
+    bool mRigRimWrapSceneValid;
+''' + declaration + '\n};\n' + ssr + '''
+extern "C" __declspec(dllexport) void capture(unsigned scene, unsigned prewrap, unsigned history,
+                                            int w, int h, bool valid) {
+    LLPipeline pipeline;
+    pipeline.mMainRT = {{scene, w, h}, {prewrap, w, h}};
+    pipeline.mSceneMap = {history, w, h};
+    pipeline.mRigRimWrapSceneValid = valid;
+    auto& mMainRT = pipeline.mMainRT;
+    auto mRT = pipeline.mRT;
+    auto& mSceneMap = pipeline.mSceneMap;
+    auto mRigRimWrapSceneValid = pipeline.mRigRimWrapSceneValid;
+    // Qualify only the method call; keep the production arguments verbatim.
+    pipeline.''' + call + '\n}\n'
     source, dll = out / 'state.cpp', out / 'state.dll'
     source.write_text(src)
     vcvars = next((Path(os.environ['ProgramFiles']) / 'Microsoft Visual Studio').glob('*/Community/VC/Auxiliary/Build/vcvars64.bat'))
@@ -73,6 +120,13 @@ extern "C" __declspec(dllexport) void cycle(unsigned count) {
     assert compile_run.returncode == 0, compile_run.stdout + compile_run.stderr
     native = C.CDLL(str(dll))
     native.cycle.argtypes = [C.c_uint]
+    native.cycle.restype = None
+    native.begin.restype = C.c_void_p
+    native.end.argtypes = [C.c_void_p]
+    native.end.restype = None
+    native.capture.argtypes = [C.c_uint, C.c_uint, C.c_uint, C.c_int, C.c_int, C.c_bool]
+    native.capture.restype = None
+    runner.state_native = native
     gl = runner.gl
     getint = gl.fn('glGetIntegerv', None, gl.U, C.POINTER(gl.I))
     geti = gl.fn('glGetIntegeri_v', None, gl.U, gl.U, C.POINTER(gl.I))
@@ -109,8 +163,13 @@ extern "C" __declspec(dllexport) void cycle(unsigned count) {
             read = gl.I()
             getint(0x0C02, C.byref(read))
             answer.append((tuple(m), is_enabled(0x0BE2, i), tuple(values), route.value, read.value))
-        return answer
+        polygon = (gl.I*2)()
+        getint(0x0B40, polygon)
+        return answer, tuple(polygon)
     for iteration in range(4):
+        gl.fn('glPolygonMode', None, gl.U, gl.U)(0x0408, (0x1B02, 0x1B01, 0x1B00, 0x1B01)[iteration])
+        if iteration == 3:
+            gl.fn('glPolygonMode', None, gl.U, gl.U)(0x0404, 0x1B00)
         for i in range(4):
             (enable if (i+iteration)%2 else disable)(0x0BE2, i)
             mask(i, 1, i%2, iteration%2, 1)
@@ -135,6 +194,7 @@ extern "C" __declspec(dllexport) void cycle(unsigned count) {
     gl.color_mask(1, 1, 1, 1)
     equation(0, 0x8006, 0x8006)
     gl.disable(0x0BE2)
+    gl.fn('glPolygonMode', None, gl.U, gl.U)(0x0408, 0x1B02)
     assert gl.fn('glGetError', gl.U)() == 0, 'GL error in production state transaction'
     print('PASS: exact production C++ state transaction, four MRTs, masks/blend/equations/routing/glow')
 
@@ -174,6 +234,15 @@ void main() {
 }
 '''
         self.hair = self.link_pass(None, source=hair)
+        # Exact production debug display shader and vertex path.
+        pr = self.gl.program()
+        for name, stage in (('copyV.glsl', 0x8B31), ('copyF.glsl', 0x8B30)):
+            self.gl.attach(pr, self._compile(tree.read(G.SHADERS + '/class1/interface/' + name), name, stage))
+        self.gl.link(pr)
+        ok = self.gl.I()
+        self.gl.getprog(pr, 0x8B82, C.byref(ok))
+        assert ok.value, 'production copy program failed to link'
+        self.copy = pr
 
     def link_pass(self, name, defines='', common=False, source=None):
         gl, pr = self.gl, self.gl.program()
@@ -219,15 +288,44 @@ void main() {
         assert np.all(np.isfinite(out)), 'non-finite shader output'
         return out
 
+    def capture_history(self, scene, snapshot, depth, coverage, w, h):
+        gl = self.gl
+        history = self._texture('history', 7, 0x8814, w, h, 0x1908, 0x1406, None)
+        # Deliberately distinguish live post-alpha depth from the depthless
+        # pre-wrap snapshot. Reusing that snapshot must not lose SSR depth.
+        live = np.ascontiguousarray(np.where(coverage > .5, .35, depth), np.float32)
+        dep = self._texture('live_depth', 7, 0x8CAC, w, h, 0x1902, 0x1406, live)
+        out_depth = self._texture('history_depth', 7, 0x8CAC, w, h, 0x1902, 0x1406, None)
+        if not hasattr(self, 'history_fbos'):
+            self.history_fbos = (gl.U*3)()
+            gl.gen_fbo(3, self.history_fbos)
+        for fbo, color, d in zip(self.history_fbos, (scene, snapshot or scene, history), (dep, 0, out_depth)):
+            gl.bind_fbo(0x8D40, fbo)
+            gl.fbo_tex(0x8D40, 0x8CE0, 0x0DE1, color, 0)
+            gl.fbo_tex(0x8D40, 0x8D00, 0x0DE1, d, 0)
+            assert gl.fbo_status(0x8D40) == 0x8CD5
+        self.state_native.capture(*self.history_fbos, w, h, snapshot is not None)
+        copied_depth = np.empty((h, w), np.float32)
+        gl.read(0, 0, w, h, 0x1902, 0x1406, copied_depth.ctypes.data)
+        self.history_depth_exact = np.array_equal(copied_depth, live)
+        self.target(history, w, h)
+        self.history = self.pixels(w, h)
+
     def frame(self, coverage, early, enabled=True, wrap_on=True, internal=0x881A,
               no_band=False, projection_y=1, amount=.25, master=.05,
-              hdr_clamp=1, foreground=(.055, .009, .006), background=(2, 2, 2)):
+              hdr_clamp=1, foreground=(.055, .009, .006), background=(2, 2, 2),
+              review=None, debug=False, wireframe=False, reflection=None):
         gl = self.gl
         h, w = coverage.shape
         qw, qh = (w + 3) // 4, (h + 3) // 4
         body = np.zeros((h, w, 4), np.float32)
         body[:, :96] = [*foreground, .37]  # opaque body + glow tag
         body[:, 96:, :3] = background
+        if reflection is not None:
+            # A reflective background samples the prior history's subject edge.
+            # The reflection hit coordinate is a fixture, like depth/normal/DT;
+            # production wrap shading, snapshot and copy remain real GPU work.
+            body[:, 96:, :3] += reflection[:, 94:95, :3]
         depth = np.full((h, w), .5, np.float32)
         depth[:, 96:] = 1
         aux = np.zeros_like(body)
@@ -249,6 +347,23 @@ void main() {
         q = [self._texture('q%d' % i, 7, internal, qw, qh, 0x1908, 0x1406, None) for i in range(2)]
         gl.color_mask(1, 1, 1, 1)
         gl.disable(0x0BE2)
+        snapshot, cached = None, None
+        self.wrap_draws = self.blur_draws = 0
+        self.polygon_restored = True
+        polygon = gl.fn('glPolygonMode', None, gl.U, gl.U)
+        def begin_pass():
+            polygon(0x0408, 0x1B01 if wireframe else 0x1B02)
+            return self.state_native.begin() if review is not None else None
+
+        def end_pass(state):
+            if state is not None:
+                self.state_native.end(state)
+            mode = (gl.I*2)()
+            gl.fn('glGetIntegerv', None, gl.U, C.POINTER(gl.I))(0x0B40, mode)
+            self.polygon_restored &= tuple(mode) == ((0x1B01,)*2 if wireframe else (0x1B02,)*2)
+            # Hair geometry is a filled fixture; only the fullscreen passes are
+            # under test here, not the intentionally different wireframe mesh.
+            polygon(0x0408, 0x1B02)
 
         def hair():
             self.target(scene, w, h)
@@ -265,8 +380,10 @@ void main() {
             gl.disable(0x0BE2)
 
         def wrap():
+            nonlocal snapshot, cached
             if not enabled or not wrap_on or amount <= 0 or master <= 0:
                 return
+            state = begin_pass()
             # The production pass takes an independent full-res scene snapshot.
             # Copy actual rendered pixels (including hair in the late negative
             # control), rather than regenerating the foreground from fixtures.
@@ -283,7 +400,10 @@ void main() {
                 self.sampler(pr, 'rigRimWrapSrc', src, 0, True)
                 self.uniform(pr, 'rig_rim_wrap2', *step, 0, 0)
                 gl.draw(4, 0, 3)
-            self.target(scene, w, h)
+                self.blur_draws += 1
+            if debug:
+                cached = self._texture('debug', 7, 0x881A, w, h, 0x1908, 0x1406, None)
+            self.target(cached if debug else scene, w, h)
             self._begin(self.wrap)
             for unit, (name, t) in enumerate((('rigRimWrapSrc', q[0]), ('depthMap', dep),
                                              ('rigRimAuxMap', normal), ('rigRimSilMap', seeds),
@@ -292,23 +412,48 @@ void main() {
             self.uniform(self.wrap, 'screen_res', w, h)
             self.uniform(self.wrap, 'rig_rim_sil', 4, .5, .08, 0)
             self.uniform(self.wrap, 'rig_rim_wrap', amount, 4, .5, hdr_clamp)
-            self.uniform(self.wrap, 'rig_rim_wrap2', master, 0, 0, 1)
+            self.uniform(self.wrap, 'rig_rim_wrap2', master, 0, int(debug), 1)
             inv = np.diag([1, 1/projection_y, 1, 1]).astype(np.float32)
             inv[2, 3] = -4  # fixture view depth 4 at window depth .5
             self._mat(self.wrap, b'inv_proj', inv)
-            self.enable(0x0BE2)
+            if not debug:
+                self.enable(0x0BE2)
             self.blend(1, 1, 1, 1)
             gl.color_mask(1, 1, 1, 0)
             gl.draw(4, 0, 3)
+            self.wrap_draws += 1
             gl.color_mask(1, 1, 1, 1)
             gl.disable(0x0BE2)
+            end_pass(state)
 
-        if early:
+        if debug and review is not None:
+            if review['cached_debug']:
+                wrap()
+                hair()
+            else:
+                hair()
+                wrap()
+        elif early:
             wrap()
             hair()
         else:
             hair()
             wrap()
+        if review is not None:
+            # The existing post-alpha SSR capture selects the production source.
+            self.capture_history(scene, snapshot, depth, coverage, w, h)
+            if debug and cached is not None:
+                self.target(cached, w, h)
+                self.debug_term = self.pixels(w, h)
+                self.target(scene, w, h)
+                state = begin_pass()
+                self._begin(self.copy)
+                self.sampler(self.copy, 'diffuseMap', cached, 0)
+                gl.disable(0x0BE2)
+                gl.color_mask(1, 1, 1, 0)
+                gl.draw(4, 0, 3)
+                gl.color_mask(1, 1, 1, 1)
+                end_pass(state)
         self.target(scene, w, h)
         result = self.pixels(w, h)
         assert self.get_error() == 0, 'GL error in production shader fixture'
@@ -329,8 +474,16 @@ def production_order(tree):
         assert 'renderRigRimWrap(true);' in finalize
         assert 'gRigRimWrapBlurProgram[0].bind()' not in finalize
         helper = pipe[pipe.index('void LLPipeline::renderRigRimWrap('):pipe.index('void LLPipeline::renderFinalize()')]
-        assert '(debug_view() == 5) != debug_only' in helper
-        assert 'debug_only ? gGLLastProjection[5] : gGLProjection[5]' in helper
+        if 'mRigRimWrapDebugValid' in helper:
+            assert 'debug_only && (debug_view() != 5 || !mRigRimWrapDebugValid)' in helper
+            assert 'const F32 projection_y = gGLProjection[5];' in helper
+            display = helper[helper.index('if (debug_only)'):helper.index('// One-sided lerp')]
+            assert 'gCopyProgram.bind()' in display and 'rigRimWrapDebug' in display
+            assert 'gRigRimWrapProgram.bind' not in display
+            assert helper.count('gRigRimWrapBlurProgram[0].bind()') == 1
+        else:
+            assert '(debug_view() == 5) != debug_only' in helper
+            assert 'debug_only ? gGLLastProjection[5] : gGLProjection[5]' in helper
         assert helper.index('!ALCineRigRim::isEnabled()') < helper.index('gGL.flush();')
         # No global mask/blend writes or nested indexed guard in this window.
         for forbidden in ('gGL.setColorMask(', 'gGL.blendFunc(', 'gGL.setSceneBlendType(',
@@ -408,6 +561,95 @@ def check_strength(runner, storage):
     return dict(measurements=measurements, subtle_edge_peak_gain=subtle_gain, checks=checks)
 
 
+def check_review(runner, tree, coverage, storage):
+    """Three P2 regressions, driven by the production host schedule/state.
+
+    Shader draws, history copies and cached-term display execute on WGL. Only
+    reflection hit locations and scene geometry are fixtures. The State scope
+    is compiled verbatim from the selected C++ revision by check_state().
+    """
+    pipe = tree.read('indra/newview/pipeline.cpp')
+    helper = pipe[pipe.index('void LLPipeline::renderRigRimWrap('):pipe.index('void LLPipeline::renderFinalize()')]
+    finalize = pipe[pipe.index('void LLPipeline::renderFinalize()'):pipe.index('void LLPipeline::renderFinalize()') + 22000]
+    policy = dict(clean_history='mRigRimWrapSceneValid ? &mMainRT.rigRimWrapScene : nullptr' in finalize,
+                  cached_debug='if (cache_debug) mMainRT.rigRimWrapDebug.bindTarget();' in helper)
+    if policy['clean_history']:
+        copy = pipe[pipe.index('void LLPipeline::copyScreenSpaceReflections('):pipe.index('// Night Mask:')]
+        assert 'dst->copyContents(*color_src,' in copy
+        assert 'color_src ? GL_DEPTH_BUFFER_BIT : GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT' in copy
+        assert helper.index('copyColorToAttachment0(mRT->screen,') < helper.index('mRigRimWrapSceneValid = true;')
+        reset = pipe[pipe.index('if (source == ActorMaskViewSource::MAIN && mRT == &mMainRT)'):]
+        reset = reset[:reset.index('\n    }')]
+        assert 'mRigRimWrapSceneValid = false;' in reset
+        assert 'mRigRimWrapDebugValid = false;' in reset
+    else:
+        assert 'copyScreenSpaceReflections(&mRT->screen, &mSceneMap);' in finalize
+    if policy['cached_debug']:
+        assert 'if (!cache_debug) glEnablei(GL_BLEND, 0);' in helper
+        assert 'mRigRimWrapDebugValid = true;' in helper
+        assert helper.index('if (debug_only)') < helper.index('gCopyProgram.bind()') < helper.index('// One-sided lerp')
+        assert 'gRigRimWrapProgram' not in helper[helper.index('if (debug_only)'):helper.index('// One-sided lerp')]
+    else:
+        assert '(debug_view() == 5) != debug_only' in helper
+    zero = np.zeros_like(coverage)
+    checks, errors = {}, {}
+    actual_history = expected_history = None
+    for frame, wrap_on in enumerate((True, True, True, True, False, True, False)):
+        # Camera cut: new projection, foreground and background, with the prior
+        # history still present. Then toggle Wrap and Rim OFF on later frames.
+        cut = frame >= 2
+        options = dict(internal=storage, review=policy, amount=.75, master=1,
+                       projection_y=1.7 if cut else 1,
+                       foreground=(.03, .015, .01) if cut else (.02, .02, .02),
+                       background=(.25, .6, .15) if cut else (.4, .5, .3),
+                       enabled=frame != 6, wrap_on=wrap_on)
+        actual = runner.frame(zero, True, reflection=actual_history, **options)
+        actual_history = runner.history.copy()
+        checks['SSR/post_alpha_depth_frame%d' % frame] = runner.history_depth_exact
+        options['wrap_on'] = False
+        expected = runner.frame(zero, True, reflection=expected_history, **options)
+        expected_history = runner.history.copy()
+        error = float(np.max(np.abs(actual_history - expected_history)))
+        label = ('successive_0', 'successive_1', 'camera_cut', 'after_cut',
+                 'wrap_toggle_off_next_frame', 'wrap_on_again', 'rim_toggle_off_next_frame')[frame]
+        checks['SSR/' + label] = error == 0
+        errors['SSR/' + label] = error
+        if frame in (4, 6):
+            checks['SSR/' + label + '_beauty'] = actual.tobytes() == expected.tobytes()
+        if frame == 0:
+            checks['SSR/beauty_positive_control'] = bool(np.max(actual[..., :3] - expected[..., :3]) > .001)
+
+    options = dict(internal=storage, review=policy, amount=.75, master=1)
+    debug = runner.frame(coverage, True, debug=True, **options)
+    term = runner.debug_term.copy()
+    checks['debug/display_exact_cached_term'] = np.array_equal(debug[..., :3], term[..., :3])
+    checks['debug/single_preparation'] = runner.wrap_draws == 1 and runner.blur_draws == 3
+    bare_debug = runner.frame(zero, True, debug=True, **options)
+    error = float(np.max(np.abs(debug[..., :3] - bare_debug[..., :3])))
+    checks['debug/pre_alpha_term_independent_of_hair'] = error == 0
+    errors['debug/pre_alpha_term_independent_of_hair'] = error
+    beauty = runner.frame(coverage, True, **options)
+    beauty_history = runner.history.copy()
+    checks['SSR/post_alpha_depth_with_hair'] = runner.history_depth_exact
+    off = runner.frame(coverage, True, wrap_on=False, **options)
+    checks['off/wrap_history_byte_identical_to_scene'] = runner.history.tobytes() == off.tobytes()
+    rim_off = runner.frame(coverage, True, enabled=False, **options)
+    checks['off/rim_history_byte_identical_to_scene'] = runner.history.tobytes() == rim_off.tobytes()
+    runner.frame(zero, True, wrap_on=False, **options)
+    checks['SSR/pre_alpha_color_when_wrap_active'] = np.array_equal(beauty_history, runner.history)
+    solid = runner.frame(zero, True, **options)
+    line = runner.frame(zero, True, wireframe=True, **options)
+    checks['wireframe/filled_fullscreen_matches_fill'] = np.array_equal(solid, line)
+    checks['wireframe/restores_polygon_mode'] = runner.polygon_restored
+    errors['wireframe/filled_fullscreen_matches_fill'] = float(np.max(np.abs(solid - line)))
+    wire_debug = runner.frame(coverage, True, debug=True, wireframe=True, **options)
+    checks['wireframe/debug_matches_fill'] = np.array_equal(wire_debug[..., :3], debug[..., :3])
+    checks['wireframe/debug_restores_polygon_mode'] = runner.polygon_restored
+    # Keep this value live so a broken fixture cannot pass by drawing nothing.
+    checks['debug/positive_control'] = bool(np.max(debug[..., :3]) > .001 and np.max(beauty[..., :3] - off[..., :3]) > .001)
+    return dict(policy=policy, checks=checks, errors=errors)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--shader-ref', default='WORKTREE')
@@ -470,11 +712,14 @@ def main():
             alpha_error = max(alpha_error, float(np.max(np.abs((lit-unlit)[..., :3] - alpha*delta[..., :3]))))
         checks['rim_proportional_to_coverage'] = alpha_error < 1e-6
         strength = check_strength(runner, storage)
+        review = check_review(runner, tree, coverage, storage) if early else None
         rows.append(dict(storage=name, transparent_leak=leak, opaque_overlay=over,
                          max_error=error, alpha_proportional_error=alpha_error, checks=checks,
-                         strength=strength))
+                         strength=strength, review=review))
         failures += [name + ': ' + k for k, passed in checks.items() if not passed]
         failures += [name + ': ' + k for k, passed in strength['checks'].items() if not passed]
+        if review:
+            failures += [name + ': ' + k for k, passed in review['checks'].items() if not passed]
         for label, pixels in (('actual', actual), ('expected', expected)):
             srgb = np.clip(pixels[..., :3], 0, 1) ** (1/2.2)
             Image.fromarray(np.uint8(srgb * 255 + .5)).resize((512, 384)).save(args.out / (name + '_' + label + '.png'))
