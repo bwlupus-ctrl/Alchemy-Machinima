@@ -166,7 +166,12 @@ void ALPanelActorMover::refreshMyHeading()
         "The wheel trims 5 degrees per click. Not available while seated.");
     if (isAgentAvatarValid() && !mMyHeadingDial->hasMouseCapture())
     {
-        const LLVector3& at = gAgent.getFrameAgent().getAtAxis();
+        LLVector3 at = gAgent.getFrameAgent().getAtAxis();
+        if (gAgentAvatarp->getParent())
+        {
+            // Seated agent axes are parent-local; project only after returning to world space.
+            at *= static_cast<LLViewerObject*>(gAgentAvatarp->getParent())->getRenderRotation();
+        }
         const F32 degrees = atan2f(at.mV[VY], at.mV[VX]) * RAD_TO_DEG;
         // Keyboard focus on the dial must not freeze live readback; only a drag owns the needle.
         setValueIfChanged(mMyHeadingDial, LLSD(degrees), true);
@@ -178,8 +183,11 @@ void ALPanelActorMover::onMyHeadingCommit()
     // Recheck at commit: seating or a tool taking ownership can race the 10 Hz UI refresh.
     if (!mMyHeadingDial || myHeadingDisabledReason()) return;
     const F32 radians = (F32)mMyHeadingDial->getValue().asReal() * DEG_TO_RAD;
+    // Share keyboard camera preparation (including its preference and autopilot cancellation).
+    // Zero yaw avoids adding a relative turn; refocus may reset axes, so set heading afterwards.
+    gAgent.moveYaw(0.f);
     // Same frame as keyboard yaw / slamLookAt. A horizontal unit look vector removes tilt;
-    // normal AgentUpdate publishes this frame as BodyRotation. Camera follow stays stock.
+    // normal AgentUpdate publishes this frame as BodyRotation.
     gAgent.resetAxes(LLVector3(cosf(radians), sinf(radians), 0.f));
 }
 

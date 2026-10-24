@@ -86,6 +86,62 @@ class MyHeadingTest(unittest.TestCase):
         self.assertIn('addQuatFast(_PREHASH_BodyRotation, body_rotation)', network)
         self.assertNotIn('gAgentCamera.', COMMIT)  # camera follows the ordinary agent frame
 
+    def test_keyboard_turn_preparation_precedes_absolute_heading(self):
+        # Zero yaw shares keyboard preparation without scheduling another turn.
+        self.assertIn('gAgent.moveYaw(0.f);', COMMIT)
+        self.assertLess(COMMIT.index('myHeadingDisabledReason()'),
+                        COMMIT.index('gAgent.moveYaw(0.f);'))
+        self.assertLess(COMMIT.index('gAgent.moveYaw(0.f);'),
+                        COMMIT.index('gAgent.resetAxes('))
+        agent = read('indra/newview/llagent.cpp')
+        yaw = function(agent, 'void LLAgent::moveYaw(F32 mag, bool reset_view)')
+        self.assertIn('moveYaw(F32 mag, bool reset_view = true)',
+                      read('indra/newview/llagent.h'))
+        self.assertRegex(yaw, r'if \(reset_view\)\s*\{\s*'
+                             r'gAgentCamera.resetView\(mMovementResetCamera\);')
+        self.assertIn('gAgentCamera.setYawKey(mag);', yaw)
+        camera = read('indra/newview/llagentcamera.cpp')
+        reset = function(camera, 'void LLAgentCamera::resetView(')
+        # Autopilot stops even when the movement camera preference is off.
+        self.assertRegex(reset, r'if \(gAgent.getAutoPilot\(\)\)\s*\{\s*'
+                               r'gAgent.stopAutoPilot\(true\);')
+        self.assertLess(reset.index('gAgent.stopAutoPilot(true);'),
+                        reset.index('if (reset_camera'))
+        self.assertIn('setFocusOnAvatar(true, ANIMATE);', reset)
+        focus = function(camera, 'void LLAgentCamera::setFocusOnAvatar(')
+        self.assertIn('gAgent.resetAxes(at_axis);', focus)
+        # That refocus can overwrite the body frame, so the absolute write must be last.
+        self.assertNotIn('gAgent.moveYaw', COMMIT[COMMIT.index('gAgent.resetAxes('):])
+
+    def test_seated_readback_rotates_into_world_before_projection(self):
+        self.assertIn('LLVector3 at = gAgent.getFrameAgent().getAtAxis();', REFRESH)
+        self.assertRegex(re.sub(r'//[^\n]*', '', REFRESH),
+                                 r'if \(gAgentAvatarp->getParent\(\)\)\s*\{\s*'
+                                 r'at \*= static_cast<LLViewerObject\*>\('
+                                 r'gAgentAvatarp->getParent\(\)\)->getRenderRotation\(\);')
+        self.assertLess(REFRESH.index('at *='), REFRESH.index('const F32 degrees'))
+        self.assertNotIn('at.mV[VZ] =', REFRESH)  # project only after parent rotation
+        # Apply the source's vector *= rotation operation to known parent matrices.
+        class Axis(tuple):
+            def __mul__(self, rotation):
+                return Axis(sum(rotation[i][j] * self[j] for j in range(3))
+                            for i in range(3))
+
+        operation = re.search(r'at \*= (.*);', REFRESH)[1]
+        operation = operation.replace(
+            'static_cast<LLViewerObject*>(gAgentAvatarp->getParent())->getRenderRotation()',
+            'rotation')
+        for local, rotation, expected in [
+                ((1, 0, 0), ((0, -1, 0), (1, 0, 0), (0, 0, 1)), 90),
+                ((0, 1, 0), ((0, -1, 0), (1, 0, 0), (0, 0, 1)), 180),
+                # Tilted seat: local Z contributes to world XY before atan2.
+                ((.6, 0, .8), ((0, -1, 0), (.6, 0, -.8), (.8, 0, .6)), -90)]:
+            world = evaluate('at * (' + operation + ')', at=Axis(local), rotation=rotation)
+            seated = heading(world)
+            self.assertAlmostEqual(seated, expected)
+            # Standing removes the parent and leaves the same world frame.
+            self.assertAlmostEqual(heading(look(seated)), seated)
+
     def test_commit_guards_seated_and_owned(self):
         check = COMMIT.index('if (!mMyHeadingDial || myHeadingDisabledReason()) return;')
         self.assertLess(check, COMMIT.index('gAgent.resetAxes'))
