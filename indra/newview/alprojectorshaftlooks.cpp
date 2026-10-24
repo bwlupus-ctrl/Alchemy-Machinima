@@ -28,7 +28,7 @@ static const Value kLookClean[] = {
 // 2. Cinematic Haze
 static const Value kLookCinematic[] = {
     {"BDMergeProjectorVolumetricsMultiplier", Type::F32, {1.15f}},
-    {"BDMergeProjectorVolumetricsResolution", Type::U32, {28.f}},
+    {"BDMergeProjectorVolumetricsResolution", Type::U32, {24.f}},
     {"BDMergeProjectorVolumetricsAnisotropy", Type::F32, {0.74f}},
     {"BDMergeProjectorVolumetricsFeather", Type::F32, {0.14f}},
     {"BDMergeProjectorVolumetricsDensity", Type::F32, {1.25f}},
@@ -47,7 +47,7 @@ static const Value kLookCinematic[] = {
 // 3. Stage Haze
 static const Value kLookStage[] = {
     {"BDMergeProjectorVolumetricsMultiplier", Type::F32, {1.25f}},
-    {"BDMergeProjectorVolumetricsResolution", Type::U32, {28.f}},
+    {"BDMergeProjectorVolumetricsResolution", Type::U32, {24.f}},
     {"BDMergeProjectorVolumetricsAnisotropy", Type::F32, {0.82f}},
     {"BDMergeProjectorVolumetricsFeather", Type::F32, {0.18f}},
     {"BDMergeProjectorVolumetricsDensity", Type::F32, {2.2f}},
@@ -104,7 +104,7 @@ static const Value kLookDustStorm[] = {
     {"BDMergeProjectorVolumetricsNoiseScale", Type::F32, {0.35f}},
     {"BDMergeProjectorVolumetricsNoiseSpeed", Type::F32, {0.45f}},
     {"BDMergeProjectorVolumetricsDust", Type::BOOL, {1.f}},
-    {"BDMergeProjectorVolumetricsDustIntensity", Type::F32, {1.6f}},
+    {"BDMergeProjectorVolumetricsDustIntensity", Type::F32, {1.f}},
     {"BDMergeProjectorVolumetricsDustScale", Type::F32, {0.6f}},
     {"BDMergeProjectorVolumetricsDustDrift", Type::F32, {0.35f}},
     {"BDMergeProjectorVolumetricsFogStrength", Type::F32, {0.55f}},
@@ -123,7 +123,7 @@ static const Value kLookDustStorm[] = {
 static const Value kLookDreamMist[] = {
     {"BDMergeProjectorVolumetricsMaxDistance", Type::F32, {18.f}},
     {"BDMergeProjectorVolumetricsMultiplier", Type::F32, {0.9f}},
-    {"BDMergeProjectorVolumetricsResolution", Type::U32, {28.f}},
+    {"BDMergeProjectorVolumetricsResolution", Type::U32, {24.f}},
     {"BDMergeProjectorVolumetricsAnisotropy", Type::F32, {0.74f}},
     {"BDMergeProjectorVolumetricsFeather", Type::F32, {0.34f}},
     {"BDMergeProjectorVolumetricsDensity", Type::F32, {0.65f}},
@@ -144,11 +144,11 @@ static const Value kLookDreamMist[] = {
 
 // 8. Silhouette Rays
 static const Value kLookSilhouette[] = {
-    {"BDMergeProjectorVolumetricsMultiplier", Type::F32, {2.2f}},
+    {"BDMergeProjectorVolumetricsMultiplier", Type::F32, {1.4f}},
     {"BDMergeProjectorVolumetricsResolution", Type::U32, {40.f}},
     {"BDMergeProjectorVolumetricsAnisotropy", Type::F32, {0.88f}},
     {"BDMergeProjectorVolumetricsFeather", Type::F32, {0.1f}},
-    {"BDMergeProjectorVolumetricsDensity", Type::F32, {1.8f}},
+    {"BDMergeProjectorVolumetricsDensity", Type::F32, {1.6f}},
     {"BDMergeProjectorVolumetricsNoiseStrength", Type::F32, {0.f}},
     {"BDMergeProjectorVolumetricsFogStrength", Type::F32, {0.f}},
     {"BDMergeProjectorVolumetricsBloomFeed", Type::F32, {0.6f}},
@@ -182,7 +182,6 @@ static const Value kLookPipeFog[] = {
     {"BDMergeSoftShadowSoftness", Type::F32, {3.f}},
     {"BDMergeSoftShadowMaxPenumbra", Type::F32, {6.f}},
     {"BDMergeSoftShadowFill", Type::F32, {0.15f}},
-    {"BDMergeProjectorVolumetricsEquiangular", Type::BOOL, {1.f}},
 };
 
 // 10. Smoky Club
@@ -203,7 +202,6 @@ static const Value kLookSmokyClub[] = {
     {"BDMergeProjectorVolumetricsMaxLuminance", Type::F32, {24.f}},
     {"BDMergeProjectorVolumetricsShadowSamples", Type::U32, {1.f}},
     {"BDMergeSoftProjectorShadows", Type::BOOL, {0.f}},
-    {"BDMergeProjectorVolumetricsAirborneTap", Type::BOOL, {1.f}},
 };
 
 // 11. Cathedral God Rays
@@ -270,7 +268,6 @@ static const Value kLookStainedGlass[] = {
     {"BDMergeSoftShadowSoftness", Type::F32, {1.5f}},
     {"BDMergeSoftShadowMaxPenumbra", Type::F32, {4.f}},
     {"BDMergeSoftShadowFill", Type::F32, {0.05f}},
-    {"BDMergeProjectorVolumetricsCookieFootprint", Type::BOOL, {1.f}},
 };
 
 // Looks: id, label, description, values.

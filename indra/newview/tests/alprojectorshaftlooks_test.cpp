@@ -170,11 +170,14 @@ void alprojectorshaftlooks_object::test<4>()
 template<> template<>
 void alprojectorshaftlooks_object::test<5>()
 {
-    set_test_name("A/B switches only in the four named looks");
+    set_test_name("A/B switches only where the GL gate proved them");
+    // The plan proposed Equiangular on Searchlight and Pipe Lights, AirborneTap on Smoky Club and
+    // CookieFootprint on Stained Glass. relight_volumetric_gl_check.py (P6) measured the proofs: only the
+    // Searchlight Equiangular passes (about 3.5x lower RMSE vs a 1024-step reference); the other three failed
+    // (Pipe Lights 1.32x < 1.5x, Smoky Club cost ratio 1.10 > 0.8, Stained Glass MAE ratio 3.75 > 1.2) and are
+    // OFF in the table. The gate also fails if a proof outcome and the table disagree.
     std::map<std::string, std::string> expected = {
-        {P + "Equiangular", "b:searchlight,b:pipe_fog"},
-        {P + "AirborneTap", "b:smoky_club"},
-        {P + "CookieFootprint", "b:stained_glass"},
+        {P + "Equiangular", "b:searchlight"},
     };
     std::map<std::string, std::string> found;
     for (const Look& look : ALProjectorShaftLooks::looks())
@@ -188,7 +191,7 @@ void alprojectorshaftlooks_object::test<5>()
             list += (list.empty() ? "" : ",") + std::string(look.id);
         }
     }
-    ensure("A/B usage matches the plan", found == expected);
+    ensure("A/B usage matches the GL gate proofs", found == expected);
 }
 
 template<> template<>
