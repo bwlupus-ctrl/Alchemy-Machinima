@@ -256,6 +256,7 @@ struct LLPipeline {
     bool isLiveMainAreaShadowPass() const;   // the production body is compiled below
     static bool isWorldShadowPicked(const LLUUID&) { return false; }
     static F32 worldShadowLightNear(LLDrawable*,F32) { return 0.05f; } // world branch is OFF; real near is executed by world_gl_check
+    static bool projectorDetailShadows(const LLUUID&) { return false; } // world branch is OFF; no detail-projector registry in this fixture
     double mAreaShadowGPUms=-1;
     VB* mScreenTriangleVB=&vb;
     std::array<LLDrawable,8> drawables;

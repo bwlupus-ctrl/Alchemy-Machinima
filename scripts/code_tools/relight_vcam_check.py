@@ -25,7 +25,7 @@ def check_vcam():
     assert 'const bool measure = !sPrismLensRender && !mAreaShadowQueryPending;' in render
     assert 'if (!sPrismLensRender && mAreaShadowQueryPending)' in render
     shape = method(nv / 'pipeline.cpp', 'static bool light_shape_enabled()')
-    assert '!LLPipeline::sPrismLensRender' in shape
+    shape_master = method(nv / 'pipeline.cpp', 'static bool light_shape_master_enabled()')
     header = (nv / 'pipeline.h').read_text(encoding='utf-8')
     comparator = method(nv / 'pipeline.h', '            bool operator()(const Light& a, const Light& b) const')
     assert 'stable_area_feed ? light->getID() : LLUUID::null' in pipeline
@@ -74,13 +74,14 @@ struct LLPipeline {
     RenderTargetPack* mRT=&mMainRT;
     Scratch* mActivePrismLensScratch=nullptr;
     static constexpr unsigned MAX_SPOT_SHADOWS=10;
-    bool sPrismLensRender=false,sPrismPreviewRender=false,sRenderingHUDs=false;
-    bool sImpostorRender=false,sReflectionRender=false;
+    static inline bool sPrismLensRender=false,sPrismPreviewRender=false,sRenderingHUDs=false;
+    static inline bool sImpostorRender=false,sReflectionRender=false;
     bool areaShadowsAllowedThisView() const;
     bool areaShadowsActive() const;
     LLVector4 deferredLightShape(const LLVOVolume*) const;
     void begin(); void end();
 '''+main_fields+fields+'};\n'
+    fixture += shape_master+'\n'+shape+'\n'
     fixture += '\n'.join(method(nv / 'pipeline.cpp', signature) for signature in (
         'bool LLPipeline::areaShadowsAllowedThisView() const',
         'bool LLPipeline::areaShadowsActive() const',
@@ -89,6 +90,19 @@ struct LLPipeline {
     fixture += '\nstruct Light { float dist; int drawable; int areaFeedID; };\nstruct Compare {\n'+comparator+'\n};\n'
     fixture += r'''
 int main() {
+    // Source sizing applies to main, Prism, cube/probe and reflection views;
+    // HUD/impostor exclusions and the area-shadow master remain independent.
+    for (int mask=0;mask<128;++mask) {
+        gSavedSettings.values["RenderLightShapeEnable"]=mask&1;
+        gCubeSnapshot=mask&2;LLPipeline::sPrismLensRender=mask&4;
+        LLPipeline::sRenderingHUDs=mask&8;LLPipeline::sImpostorRender=mask&16;
+        LLPipeline::sReflectionRender=mask&32;
+        gSavedSettings.values["RenderAreaShadows"]=mask&64;
+        assert(light_shape_enabled()==bool((mask&1) && !(mask&24)));
+    }
+    gCubeSnapshot=LLPipeline::sPrismLensRender=LLPipeline::sRenderingHUDs=false;
+    LLPipeline::sImpostorRender=LLPipeline::sReflectionRender=false;
+    std::cout << "[RelightQ] VCam source sizing PASS: 128 production view/master cases; area shadows independent\n";
     // Execute the production collector comparator. Distance still wins; UUID
     // resolves equal-distance feed admission, before the unchanged draw limit.
     // Main/OFF entries all carry null IDs and retain the exact pointer order.
