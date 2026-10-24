@@ -20511,6 +20511,69 @@
     <integer>0</integer>
   </map>
 
+    <key>RenderSpotShadowDetailBias</key>
+    <map>
+        <key>Comment</key><string>Kill switch for bounded receiver bias; enabled by default and affects only rig lights with Detail shadows enabled.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><boolean>1</boolean>
+    </map>
+    <key>CineLightRigKeyDetailShadows</key>
+    <map>
+        <key>Comment</key><string>Use bounded texel and geometric-slope receiver bias (requires RenderSpotShadowDetailBias).</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><boolean>0</boolean>
+    </map>
+    <key>CineLightRigKeyWorldShadowPick</key>
+    <map>
+        <key>Comment</key><string>Prefer this fixture projector in explicit World Shadow arbitration; preserves manual picks.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><boolean>0</boolean>
+    </map>
+    <key>CineLightRigFillDetailShadows</key>
+    <map>
+        <key>Comment</key><string>Use bounded texel and geometric-slope receiver bias (requires RenderSpotShadowDetailBias).</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><boolean>0</boolean>
+    </map>
+    <key>CineLightRigFillWorldShadowPick</key>
+    <map>
+        <key>Comment</key><string>Prefer this fixture projector in explicit World Shadow arbitration; preserves manual picks.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><boolean>0</boolean>
+    </map>
+    <key>CineLightRigRimDetailShadows</key>
+    <map>
+        <key>Comment</key><string>Use bounded texel and geometric-slope receiver bias (requires RenderSpotShadowDetailBias).</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><boolean>0</boolean>
+    </map>
+    <key>CineLightRigRimWorldShadowPick</key>
+    <map>
+        <key>Comment</key><string>Prefer this fixture projector in explicit World Shadow arbitration; preserves manual picks.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><boolean>0</boolean>
+    </map>
+    <key>CineLightRigBgDetailShadows</key>
+    <map>
+        <key>Comment</key><string>Use bounded texel and geometric-slope receiver bias (requires RenderSpotShadowDetailBias).</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><boolean>0</boolean>
+    </map>
+    <key>CineLightRigBgWorldShadowPick</key>
+    <map>
+        <key>Comment</key><string>Prefer this fixture projector in explicit World Shadow arbitration; preserves manual picks.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><boolean>0</boolean>
+    </map>
   <key>RenderSpotShadowBias</key>
   <map>
     <key>Comment</key>

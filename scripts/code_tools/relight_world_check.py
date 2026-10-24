@@ -315,7 +315,11 @@ def check_picks():
     for reg in ('commit.add("Object.WorldShadow"', 'enable.add("Object.EnableWorldShadow"', 'enable.add("Object.CheckWorldShadow"'):
         assert reg in cpp, 'alviewermenu.cpp lost ' + reg
     block = cpp[cpp.index('struct WorldShadowPickLight'):cpp.index('// [BDMerge G3.3 Batch 3] Right-click "Cast Shadows" toggle')]
-    assert 'LLPipeline::setWorldShadowPick(' in block and 'LLPipeline::isWorldShadowPicked(' in block, 'handler must write the pipeline pick set'
+    assert 'LLPipeline::setWorldShadowPick(' in block, 'handler must write the manual pipeline pick set'
+    # The menu edits manual intent. Rig preferences must neither consume its
+    # capacity nor make its checkbox appear manually selected (FIX2).
+    assert 'LLPipeline::manualWorldShadowPickList()' in block and 'LLPipeline::isWorldShadowPicked(' not in block, 'menu membership must be manual, independently of rig preferences'
+    assert 'static_cast<unsigned>(manual.size())' in block and 'std::find(manual.begin(), manual.end(), light.mId)' in block, 'menu capacity and membership must use the same manual set'
     assert 'getIsLight()' in block and 'LLPrismLens::projectorRenderParams' in block, 'point lights AND projectors'
     # fix round 1: a mixed selection at the cap releases instead of sticking; a child prim without a named node falls back to its linkset root
     assert 'ALWorldShadow::pickToggleReleases(' in block and 'all_picked' not in block, 'the toggle must be the pure pickToggleReleases rule (a mixed selection at the cap must not stick)'
@@ -373,7 +377,11 @@ def check_picks():
     # the Director: scene key, load order, dirty stamp, rows
     ui = text(NV / 'llfloaterdirector.cpp')
     cap = ui[ui.index('LLSD LLFloaterDirector::captureSceneData()'):ui.index('bool LLFloaterDirector::saveScene(')]
-    assert 'scene["world_shadow_picks"] = picks;' in cap and 'LLPipeline::worldShadowPickList()' in cap, 'Save Scene must store the pick list'
+    assert 'scene["world_shadow_picks"] = picks;' in cap and 'LLPipeline::manualWorldShadowPickList()' in cap, 'Save Scene must store manual picks separately from rig intent'
+    assert 'LLPipeline::worldShadowPickList()' not in cap, 'transient rig emitter picks must not become manual picks on scene load'
+    manual = pipe[pipe.index('std::vector<LLUUID> LLPipeline::manualWorldShadowPickList()'):]
+    manual = manual[:manual.index('\n}\n')]
+    assert 'sWorldShadowPicks' in manual and 'sRigWorldShadowPicks' not in manual, 'manual persistence must exclude the rig-owned registry'
     load = ui[ui.index('bool LLFloaterDirector::loadScene('):ui.index('LLFloaterDirector::RecoveryServiceState& LLFloaterDirector::recoveryServiceState()')]
     assert 'scene["world_shadow_picks"]' in load and 'LLPipeline::setWorldShadowPicks(picks);' in load, 'Load Scene must restore the pick list'
     assert load.index('LLPipeline::setWorldShadowPicks(picks);') > load.index('LLPrismLens::applySceneData(scene, &prism_reason)'), 'picks are replaced only after the scene passed validation'

@@ -318,8 +318,9 @@ def validate_data(data: dict) -> None:
     # Alpha port follow-up (10/24): +1 default-off Alpha attachment sort toggle on Look > Actor FX.
     # Alpha fix round 1: annotate that row's interleaved-alpha dependency; no added rows (2202).
     # My heading (10/24): +1 world-space self-avatar dial on Cast > Move; 2202 -> 2203.
-    if len(pages) != 38 or row_count != 2203:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2203")
+    # Shadow detail (10/24): +8 per-fixture Detail/World shadow flags and +1 Detail shadow bias master; 2203 -> 2212.
+    if len(pages) != 38 or row_count != 2212:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2212")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2292,6 +2293,16 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("all compass dials use kit geometry without duplicate readout",
                        bool(dials) and all(node.get("kit_geometry") == "true" and node.get("show_readout") == "false" for node in dials)))
         rig = ET.fromstring(outputs[out_dir / "panel_dpage_light_cine_light_rig.xml"], parser=parser())
+        shadow_settings = {f"CineLightRig{role}{flag}" for role in ("Key", "Fill", "Rim", "Bg")
+                           for flag in ("DetailShadows", "WorldShadowPick")} | {"RenderSpotShadowDetailBias"}
+        shadow_rows = [node for node in rig.iter("kit_row") if node.get("setting") in shadow_settings]
+        checks.append(("Rig detail/world toggles and bias master are bound and searchable",
+                       len(shadow_rows) == 9 and {node.get("setting") for node in shadow_rows} == shadow_settings and
+                       all(node.get("kind") == "toggle" and node.get("bind") == "setting" and
+                           node.find("kit_switch").get("control_name") == node.get("setting") and
+                           node.get("setting").encode() in outputs[out_dir / "director_kit_index.xml"]
+                           for node in shadow_rows) and
+                       any(node.get("label") == "Detail shadow bias" for node in shadow_rows)))
         rig_ev_rows = [node for node in rig.iter("kit_row") if node.get("widget") in {
             "cine_key_ev", "cine_fill_ev", "cine_rim_ev", "cine_bg_ev", "cine_catchlight_ev"}]
         checks.append(("Rig EV rows retain setting-bound numeric spinners",

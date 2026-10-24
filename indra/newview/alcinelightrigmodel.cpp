@@ -272,6 +272,8 @@ LightBase cleanLight(const LightBase& input, F32 min_ev = MIN_EV)
     output.mFixturePreset = std::clamp(
         input.mFixturePreset, 0, FIXTURE_PRESET_COUNT - 1);
     output.mActorOnly = input.mActorOnly; // [ActorMask]
+    output.mDetailShadows = input.mDetailShadows;
+    output.mWorldShadowPick = input.mWorldShadowPick;
     return output;
 }
 
@@ -432,6 +434,8 @@ void copyCleanLights(const LightBase input[LIGHT_COUNT],
         output[i].mSourceSizeM = safe.mSourceSizeM;
         output[i].mFixturePreset = safe.mFixturePreset;
         output[i].mActorOnly = safe.mActorOnly; // [ActorMask]
+        output[i].mDetailShadows = safe.mDetailShadows;
+        output[i].mWorldShadowPick = safe.mWorldShadowPick;
     }
 }
 
@@ -1081,6 +1085,8 @@ void computeLive(const Setup& setup, const Transforms& transforms,
         out[i].mSourceSizeM = base.mSourceSizeM;
         out[i].mFixturePreset = base.mFixturePreset;
         out[i].mActorOnly = base.mActorOnly; // [ActorMask]
+        out[i].mDetailShadows = base.mDetailShadows;
+        out[i].mWorldShadowPick = base.mWorldShadowPick;
     }
     if (safe_setup.mRatioLock)
     {
@@ -1149,6 +1155,10 @@ LightBase blendLight(const LightBase& start, const LightBase& target,
         ? safe_target.mFixturePreset : safe_start.mFixturePreset;
     output.mActorOnly = eased > 0.5f
         ? safe_target.mActorOnly : safe_start.mActorOnly; // [ActorMask]
+    output.mDetailShadows = eased > 0.5f
+        ? safe_target.mDetailShadows : safe_start.mDetailShadows;
+    output.mWorldShadowPick = eased > 0.5f
+        ? safe_target.mWorldShadowPick : safe_start.mWorldShadowPick;
     return output;
 }
 

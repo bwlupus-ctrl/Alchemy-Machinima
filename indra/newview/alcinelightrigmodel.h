@@ -101,6 +101,8 @@ struct LightBase
     F32  mSourceSizeM = 0.10f;
     S32  mFixturePreset = 0;
     bool mActorOnly = false; // [ActorMask] Discrete cue/transition property.
+    bool mDetailShadows = false;
+    bool mWorldShadowPick = false; // Rig-owned preference, independent of manual picks.
 };
 
 // [ActorMask] The ONE definition of an effective Actor-only state: the rig-level

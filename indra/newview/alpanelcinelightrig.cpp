@@ -525,6 +525,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigKeyGel",
         "CineLightRigKeyFixtureMode",
         "CineLightRigKeyFixturePreset",
+        "CineLightRigKeyDetailShadows",
+        "CineLightRigKeyWorldShadowPick",
         "CineLightRigKeyActorOnly", // [ActorMask]
         "CineLightRigKeyKelvin",
         "CineLightRigKeyGelSlot0",
@@ -545,6 +547,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigFillGel",
         "CineLightRigFillFixtureMode",
         "CineLightRigFillFixturePreset",
+        "CineLightRigFillDetailShadows",
+        "CineLightRigFillWorldShadowPick",
         "CineLightRigFillActorOnly", // [ActorMask]
         "CineLightRigFillKelvin",
         "CineLightRigFillGelSlot0",
@@ -565,6 +569,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigRimGel",
         "CineLightRigRimFixtureMode",
         "CineLightRigRimFixturePreset",
+        "CineLightRigRimDetailShadows",
+        "CineLightRigRimWorldShadowPick",
         "CineLightRigRimActorOnly", // [ActorMask]
         "CineLightRigRimKelvin",
         "CineLightRigRimGelSlot0",
@@ -585,6 +591,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigBgGel",
         "CineLightRigBgFixtureMode",
         "CineLightRigBgFixturePreset",
+        "CineLightRigBgDetailShadows",
+        "CineLightRigBgWorldShadowPick",
         "CineLightRigBgActorOnly", // [ActorMask]
         "CineLightRigBgKelvin",
         "CineLightRigBgGelSlot0",

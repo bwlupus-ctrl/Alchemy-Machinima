@@ -183,8 +183,35 @@ float awPlane(vec3 n, vec3 ax, vec3 rt, vec3 up, float nd, vec2 slope, float zr,
     if (!(den < -1.e-3)) return zr;
     return clamp(nd/den,zr-cap,zr+cap);
 }
+// Detail fixtures compare each gathered texel with the receiver plane at its
+// own ray, including face interiors. The offset/bias above remain bounded;
+// the geometric plane itself must not be flattened by a bias cap.
+vec2 awDetailFaceTap(int c, int face, vec2 centre, vec3 normal, float nd, float bias, bool search)
+{
+    vec2 q = clamp(centre-0.5,vec2(0.0),vec2(AW_TILE-2.0));
+    vec2 base = floor(q), f = q-base;
+    vec2 tile = vec2(AW_TILE*float(face%3),AW_TILE*(area_world_info[c].x+float(face/3)));
+    vec4 z = awGather(tile+base+1.0,1.0/vec2(textureSize(area_world_atlas,0)),area_world_info[c].y,area_world_light[c].w);
+    vec2 slope = (base+0.5-AW_HALF_TILE)/AW_HALF_USABLE;
+    float den = dot(normal,AW_AXIS[face]+slope.x*AW_RIGHT[face]+slope.y*AW_UP[face]);
+    float dr = dot(normal,AW_RIGHT[face])/AW_HALF_USABLE;
+    float du = dot(normal,AW_UP[face])/AW_HALF_USABLE;
+    vec4 dens = vec4(den+du,den+dr+du,den+dr,den);
+    vec4 plane = vec4(nd)/min(dens,vec4(-1.e-5));
+    vec4 blocked = vec4(lessThan(z,plane-bias))*vec4(lessThan(dens,vec4(-1.e-5)));
+    if (search) return vec2(dot(z,blocked),dot(blocked,vec4(1.0)));
+    return vec2(1.0-mix(mix(blocked.w,blocked.z,f.x),mix(blocked.x,blocked.y,f.x),f.y),0.0);
+}
+float awDetailHorizon(float nl, float source_radius)
+{
+    // Broad sources already filter the horizon. Narrow its angular join as
+    // their aperture grows, preserving the authored source-size penumbra.
+    float band = mix(0.075,0.005,smoothstep(0.10,0.25,source_radius));
+    return smoothstep(0.0,band,nl);
+}
 float awFaceVisibility(int c)
 {
+    bool detail = area_world_info[c].w > 0.5;
     vec4 light = area_world_light[c];
     vec3 dv = area_p-light.xyz;
     vec3 d = vec3(dot(area_world_rot[0],dv),dot(area_world_rot[1],dv),dot(area_world_rot[2],dv));
@@ -199,13 +226,17 @@ float awFaceVisibility(int c)
     // Normal offset along the geometric normal, sized by the texel footprint at this depth (never beyond 5 cm).
     float z0 = dot(d,AW_AXIS[awFace(d)]);
     float texel_w = 2.0*z0/AW_USABLE;
-    d += n_a*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP);
+    d += n_a*(area_world_info[c].w > 0.5
+        ? clamp(0.025*texel_w,0.00015,0.00075)
+        : min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP));
     int face = awFace(d);
     float zr = dot(d,AW_AXIS[face]);
     if (!(zr > near)) return 1.0;
     texel_w = 2.0*zr/AW_USABLE;
     float tan_t = sqrt(max(1.0-nl*nl,0.0))/max(nl,1.e-3);
-    float bias = AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
+    float bias = area_world_info[c].w > 0.5
+        ? clamp(0.00015+0.005*texel_w*min(tan_t,AW_TAN_CAP),0.00015,0.0005)
+        : AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
     vec2 tile = vec2(AW_TILE*float(face%3),AW_TILE*(area_world_info[c].x+float(face/3)));
     vec2 centre = vec2(AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_RIGHT[face])/zr,
                        AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_UP[face])/zr);
@@ -225,6 +256,12 @@ float awFaceVisibility(int c)
     for (int k = 0; k < AW_SEARCH_TAPS; ++k)
     {
         vec2 off = search*awVogel(k,AW_SEARCH_TAPS,rot,true);
+        if (detail)
+        {
+            vec2 hit = awDetailFaceTap(c,face,centre+off,n_a,nd,bias,true);
+            blocker_sum += hit.x; blocker_n += hit.y;
+            continue;
+        }
         vec2 p = tile+centre+off;
         vec2 base = floor(clamp(p-0.5,lo,hi));
         vec4 z = awGather(base+1.0,inv_size,near,far);
@@ -241,10 +278,21 @@ float awFaceVisibility(int c)
     for (int k = 0; k < AW_FILTER_TAPS; ++k)
     {
         vec2 off = radius*awVogel(k,AW_FILTER_TAPS,rot,false);
+        if (detail)
+        {
+            lit += awDetailFaceTap(c,face,centre+off,n_a,nd,bias,false).x;
+            continue;
+        }
         float zp = awPlane(n_a,ax,rt,up,nd,(centre+off-AW_HALF_TILE)/AW_HALF_USABLE,zr,AW_TAN_CAP*texel_w*(length(off)+1.0));
         lit += awTap(tile+centre+off,lo,hi,inv_size,zp,bias,near,far);
     }
-    return lit/float(AW_FILTER_TAPS);
+    // Back-facing receivers already return 1 above. Join that convention
+    // continuously over the last 4.3 degrees at the lighting horizon rather
+    // than switching an entire PCF footprint at nl == 0. No footprint growth
+    // or extra contact bias; lit grazing planes and facial contacts are kept.
+    float visibility = lit/float(AW_FILTER_TAPS);
+    if (detail) visibility = mix(1.0,visibility,awDetailHorizon(nl,r_map));
+    return visibility;
 }
 // One face's share of a direction-space tap. The tap ray was already chosen by the caller (a single, consistent world
 // direction per tap); this reads it from `face`'s own atlas tile, whose 16 texel gutter holds every ray within 5.3 % of
@@ -274,13 +322,15 @@ vec2 awFaceTap(int c, int face, vec3 ray, vec3 normal, float nd, float bias, vec
     // A ray parallel to / behind the receiver plane cannot reveal a blocker on it: awPlane's guard (the centre depth) and
     // clamp (zr +- cap), per corner texel. Without them nd/dens explodes at grazing angles and every texel reads blocked.
     vec4 plane = mix(vec4(zr),clamp(vec4(nd)/min(dens,vec4(-1.e-3)),vec4(zr-cap),vec4(zr+cap)),vec4(lessThan(dens,vec4(-1.e-3))));
+    bool detail = area_world_info[c].w > 0.5;
+    if (detail) plane = vec4(nd)/min(dens,vec4(-1.e-5));
     float depth_scale = dot(ray,direction)/cosine;
     if (blend < 1.0)
     {
         // At the band's inner edge this is exactly the old face footprint; positions, receiver plane and depth units morph
         // together, once per tap. Both planes are this FACE's own: the receiver is expressed in the tap face's axes.
         float old_plane = awPlane(normal,ax,rt,up,nd,ray_slope,zr,cap);
-        plane = mix(vec4(old_plane),plane,blend);
+        if (!detail) plane = mix(vec4(old_plane),plane,blend);
         depth_scale = mix(1.0/centre_cosine,depth_scale,blend);
     }
     vec4 blocked = vec4(lessThan(z,plane-bias*mix(1.0,cosine,blend)))*mix(vec4(1.0),vec4(lessThan(dens,vec4(-1.e-5))),blend);
@@ -323,13 +373,17 @@ float awDirectionVisibility(int c, float blend)
     // Normal offset along the geometric normal, sized by the texel footprint at this depth (never beyond 5 cm).
     float z0 = max(abs(d.x),max(abs(d.y),abs(d.z)));   // the dominant component: continuous across every edge and corner
     float texel_w = 2.0*z0/AW_USABLE;
-    d += n_a*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP);
+    d += n_a*(area_world_info[c].w > 0.5
+        ? clamp(0.025*texel_w,0.00015,0.00075)
+        : min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP));
     int face = awFace(d);
     float zr = dot(d,AW_AXIS[face]);
     if (!(zr > near)) return 1.0;
     texel_w = 2.0*zr/AW_USABLE;
     float tan_t = sqrt(max(1.0-nl*nl,0.0))/max(nl,1.e-3);
-    float bias = AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
+    float bias = area_world_info[c].w > 0.5
+        ? clamp(0.00015+0.005*texel_w*min(tan_t,AW_TAN_CAP),0.00015,0.0005)
+        : AW_BIAS_CONST+AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
     dist = length(d);
     vec3 direction = d/dist;
     // Frisvad's continuous orthonormal basis (only singular at the south pole,
@@ -383,7 +437,9 @@ float awDirectionVisibility(int c, float blend)
         vec3 tap = mix(old_off.x*old_rt+old_off.y*old_up,off.x*rt+off.y*up,blend);
         lit += awDirectionTap(c,normalize(direction+tap),n_a,nd,bias,direction,dist,blend,false).x;
     }
-    return lit/float(filter_taps);
+    float visibility = lit/float(filter_taps);
+    if (area_world_info[c].w > 0.5) visibility = mix(1.0,visibility,awDetailHorizon(nl,r_map));
+    return visibility;
 }
 // Interior small-source footprints use the original cache-local projection.
 // In the last two receiver texels, morph the SAME taps into direction space;
@@ -394,7 +450,10 @@ float awVisibility(int c)
     vec3 dv = area_p-area_world_light[c].xyz;
     vec3 d = vec3(dot(area_world_rot[0],dv),dot(area_world_rot[1],dv),dot(area_world_rot[2],dv));
     vec3 normal = vec3(dot(area_world_rot[0],area_n_geo),dot(area_world_rot[1],area_n_geo),dot(area_world_rot[2],area_n_geo));
-    d += normal*min(AW_NORMAL_TEXELS*2.0*max(abs(d.x),max(abs(d.y),abs(d.z)))/AW_USABLE,AW_NORMAL_CAP);
+    float texel_w = 2.0*max(abs(d.x),max(abs(d.y),abs(d.z)))/AW_USABLE;
+    d += normal*(area_world_info[c].w > 0.5
+        ? clamp(0.025*texel_w,0.00015,0.00075)
+        : min(AW_NORMAL_TEXELS*2.0*max(abs(d.x),max(abs(d.y),abs(d.z)))/AW_USABLE,AW_NORMAL_CAP));
     vec3 a = abs(d);
     float major = max(a.x,max(a.y,a.z));
     float second = min(max(a.x,a.y),min(max(a.y,a.z),max(a.x,a.z)));

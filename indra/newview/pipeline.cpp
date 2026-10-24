@@ -456,6 +456,8 @@ std::set<LLUUID> LLPipeline::sVolumetricShaftObjects;
 std::set<LLUUID> LLPipeline::sWorldShadowPicks;                    // [World Shadow pick] session-only
 std::map<LLUUID, std::string> LLPipeline::sWorldShadowPickNames;
 U64 LLPipeline::sWorldShadowPickRevision = 0;
+std::map<LLUUID, S32> LLPipeline::sRigWorldShadowPicks;
+std::set<LLUUID> LLPipeline::sDetailShadowProjectors;
 std::set<LLUUID> LLPipeline::sNoShadowProjectors; // [BDMerge Batch 3] cast-shadows opt-out
 std::set<LLUUID> LLPipeline::sHeroProjectors;     // [BDMerge F4] Hero Beam per-cone opt-in
 std::map<LLUUID, S32> LLPipeline::sAlphaModeOverride; // [BDMerge G2.3 per-target] per-object/avatar alpha mode
@@ -23289,6 +23291,32 @@ bool LLPipeline::isVolumetricShaftEnabled(const LLUUID& id)
 }
 
 // [World Shadow pick] The session pick set. Every change that really alters the set bumps the revision; a no-op write does not.
+void LLPipeline::setRigWorldShadowPick(const LLUUID& id, bool picked, S32 fixture_priority)
+{
+    if (id.isNull()) return;
+    const auto found = sRigWorldShadowPicks.find(id);
+    if (picked ? (found != sRigWorldShadowPicks.end() && found->second == fixture_priority)
+               : found == sRigWorldShadowPicks.end()) return;
+    const auto before = worldShadowPickList();
+    if (picked) sRigWorldShadowPicks[id] = fixture_priority;
+    else sRigWorldShadowPicks.erase(id);
+    // Provenance alone must not re-pick/reorder an unchanged manual set.
+    if (before != worldShadowPickList()) ++sWorldShadowPickRevision;
+}
+
+void LLPipeline::setProjectorDetailShadows(const LLUUID& id, bool enabled)
+{
+    if (id.isNull()) return;
+    if (enabled) sDetailShadowProjectors.insert(id);
+    else sDetailShadowProjectors.erase(id);
+}
+
+bool LLPipeline::projectorDetailShadows(const LLUUID& id)
+{
+    static LLCachedControl<bool> detail(gSavedSettings, "RenderSpotShadowDetailBias", true);
+    return detail && sDetailShadowProjectors.count(id) != 0;
+}
+
 void LLPipeline::setWorldShadowPick(const LLUUID& id, bool picked, const std::string& name)
 {
     if (id.isNull())
@@ -23317,12 +23345,15 @@ void LLPipeline::setWorldShadowPick(const LLUUID& id, bool picked, const std::st
 
 void LLPipeline::toggleWorldShadowPick(const LLUUID& id, const std::string& name)
 {
-    setWorldShadowPick(id, !isWorldShadowPicked(id), name);
+    setWorldShadowPick(id, sWorldShadowPicks.count(id) == 0, name);
 }
 
 bool LLPipeline::isWorldShadowPicked(const LLUUID& id)
 {
-    return !sWorldShadowPicks.empty() && sWorldShadowPicks.count(id) != 0;
+    if (sWorldShadowPicks.count(id) != 0) return true;
+    if (sRigWorldShadowPicks.count(id) == 0) return false;
+    const auto picks = worldShadowPickList();
+    return std::find(picks.begin(), picks.end(), id) != picks.end();
 }
 
 void LLPipeline::clearWorldShadowPicks()
@@ -23349,13 +23380,27 @@ void LLPipeline::clearAwayWorldShadowPicks()
 
 std::vector<LLUUID> LLPipeline::worldShadowPickList()
 {
+    std::vector<LLUUID> picks = manualWorldShadowPickList();
+    std::vector<std::pair<LLUUID, S32>> rig(sRigWorldShadowPicks.begin(), sRigWorldShadowPicks.end());
+    // Select by fixture role before applying the cap: Key > Fill > Rim > Bg.
+    std::stable_sort(rig.begin(), rig.end(), [](const auto& a, const auto& b) { return a.second < b.second; });
+    for (const auto& entry : rig)
+    {
+        if (picks.size() >= ALWorldShadow::kMaxPicks) break;
+        if (sWorldShadowPicks.count(entry.first) == 0) picks.push_back(entry.first);
+    }
+    return picks; // Already unique/capped; UUID normalisation must not choose the winners.
+}
+
+std::vector<LLUUID> LLPipeline::manualWorldShadowPickList()
+{
     return ALWorldShadow::normalizePicks(std::vector<LLUUID>(sWorldShadowPicks.begin(), sWorldShadowPicks.end()));
 }
 
 void LLPipeline::setWorldShadowPicks(const std::vector<LLUUID>& ids)
 {
     const std::vector<LLUUID> wanted = ALWorldShadow::normalizePicks(ids);
-    if (wanted == worldShadowPickList())
+    if (std::set<LLUUID>(wanted.begin(), wanted.end()) == sWorldShadowPicks)
         return;
     sWorldShadowPicks = std::set<LLUUID>(wanted.begin(), wanted.end());
     for (auto it = sWorldShadowPickNames.begin(); it != sWorldShadowPickNames.end();)
@@ -23404,6 +23449,12 @@ void LLPipeline::clearVolumetricShafts()
     sVCamVolumetricMaster = ALVCamAutoVol::EnableOverride();
     sVCamVolumetricMasterConnection.disconnect();
     sVolumetricShaftObjects.clear();
+    if (!sRigWorldShadowPicks.empty())
+    {
+        sRigWorldShadowPicks.clear();
+        ++sWorldShadowPickRevision;
+    }
+    sDetailShadowProjectors.clear();
     clearWorldShadowPicks();     // [World Shadow pick] session-only too (a Director scene stores its own list)
     sVolumetricShaftOverrides.clear();
     sProjectorShadowSoftness.clear();
@@ -25783,16 +25834,19 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniform1i(LLShaderMgr::SOFT_SHADOW_VOGEL, BDMergeSoftShadowVogel ? 1 : 0);
     shader.uniform1i(LLShaderMgr::SOFT_SHADOW_TAPS, llclamp(BDMergeSoftShadowTaps, 1, 32));
     F32 spot_shadow_softness[MAX_SPOT_SHADOWS] = {};
+    F32 spot_shadow_detail[MAX_SPOT_SHADOWS] = {};
     for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
     {
         LLVOVolume* volume = mShadowSpotLight[i].notNull()
             ? mShadowSpotLight[i]->getVOVolume() : nullptr;
         if (volume)
         {
+            spot_shadow_detail[i] = projectorDetailShadows(volume->getID()) ? 1.f : 0.f;
             getProjectorShadowSoftness(
                 volume->getID(), spot_shadow_softness[i]);
         }
     }
+    shader.uniform1fv(LLStaticHashedString("spot_shadow_detail"), MAX_SPOT_SHADOWS, spot_shadow_detail);
     shader.uniform1fv(LLShaderMgr::SPOT_SHADOW_SOFTNESS,
                       MAX_SPOT_SHADOWS, spot_shadow_softness);
 
@@ -28176,7 +28230,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                     world_flags.mV[i] = 1.f;
                     world_light[i].set(centre.x,centre.y,centre.z,far_m);
                     world_info[i].set(static_cast<F32>(ALWorldShadow::kRowsPerLight*world_slot),worldShadowLightNear(drawable,volume->getLightRadius()),
-                        llmin(source > 0.f ? source : .1f,2.f),0.f);
+                        llmin(source > 0.f ? source : .1f,2.f),projectorDetailShadows(id) ? 1.f : 0.f);
                     world_seed[i] = seeds[i];
                     contact.mV[i] = static_cast<F32>(ALWorldShadow::contactDistance(mapped_contact(),far_m));
                     contact_fade.mV[i] = 0.f;

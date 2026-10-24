@@ -435,6 +435,10 @@ public:
     // clearVolumetricShafts(). Every change bumps worldShadowPickRevision() (scene dirty stamp, residency re-decision, Director row).
     // `name` is remembered for the Director row (names exist only for selected objects); an empty name keeps the old one.
     static void  toggleWorldShadowPick(const LLUUID& id, const std::string& name = std::string());
+    static void setRigWorldShadowPick(const LLUUID& id, bool picked, S32 fixture_priority = 3);
+    static std::vector<LLUUID> manualWorldShadowPickList(); // scene persistence excludes transient rig emitter UUIDs
+    static void setProjectorDetailShadows(const LLUUID& id, bool enabled);
+    static bool projectorDetailShadows(const LLUUID& id);
     static void  setWorldShadowPick(const LLUUID& id, bool picked, const std::string& name = std::string());
     static bool  isWorldShadowPicked(const LLUUID& id);
     static void  clearWorldShadowPicks();
@@ -2602,6 +2606,8 @@ public:
     static std::set<LLUUID> sWorldShadowPicks;                   // [World Shadow pick] session-only, see toggleWorldShadowPick
     static std::map<LLUUID, std::string> sWorldShadowPickNames;  // display names remembered at pick time (never rendering input)
     static U64 sWorldShadowPickRevision;
+    static std::map<LLUUID, S32> sRigWorldShadowPicks; // fixture priority: Key 0, Fill 1, Rim 2, Bg 3
+    static std::set<LLUUID> sDetailShadowProjectors;
 
     // [BDMerge G3.3 Batch 3] session-only opt-OUT set of projector object UUIDs
     // that should light but cast NO shadow (not persisted; see

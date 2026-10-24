@@ -95,6 +95,14 @@ const char* const ACTOR_ONLY_SETTINGS[LIGHT_COUNT] = {
     "CineLightRigKeyActorOnly", "CineLightRigFillActorOnly",
     "CineLightRigRimActorOnly", "CineLightRigBgActorOnly"
 };
+const char* const DETAIL_SHADOW_SETTINGS[LIGHT_COUNT] = {
+    "CineLightRigKeyDetailShadows", "CineLightRigFillDetailShadows",
+    "CineLightRigRimDetailShadows", "CineLightRigBgDetailShadows"
+};
+const char* const WORLD_SHADOW_SETTINGS[LIGHT_COUNT] = {
+    "CineLightRigKeyWorldShadowPick", "CineLightRigFillWorldShadowPick",
+    "CineLightRigRimWorldShadowPick", "CineLightRigBgWorldShadowPick"
+};
 const char* const FIXTURE_GEL_SETTINGS[LIGHT_COUNT][FIXTURE_GEL_SLOT_COUNT] = {
     { "CineLightRigKeyGelSlot0", "CineLightRigKeyGelSlot1",
       "CineLightRigKeyGelSlot2" },
@@ -276,6 +284,8 @@ bool sameLight(const LightBase& first, const LightBase& second)
            first.mGelSlot[2] == second.mGelSlot[2] &&
            first.mSourceSizeM == second.mSourceSizeM &&
            first.mFixturePreset == second.mFixturePreset &&
+           first.mDetailShadows == second.mDetailShadows &&
+           first.mWorldShadowPick == second.mWorldShadowPick &&
            first.mActorOnly == second.mActorOnly; // [ActorMask] Detect flag-only transitions.
 }
 
@@ -497,6 +507,8 @@ LLSD lightToLLSD(const LightBase& light)
     data["source_size_m"] = light.mSourceSizeM;
     data["fixture_preset_idx"] = light.mFixturePreset;
     data["fixture_preset_name"] = fixturePresetName(light.mFixturePreset);
+    data["detail_shadows"] = light.mDetailShadows;
+    data["world_shadow_pick"] = light.mWorldShadowPick;
     data["actor_only"] = light.mActorOnly; // [ActorMask]
     data["fixture_gel_slots"] = LLSD::emptyArray();
     data["fixture_gel_names"] = LLSD::emptyArray();
@@ -624,6 +636,8 @@ bool setupFromLLSD(const LLSD& data, Setup& output)
         }
         // [ActorMask] Old saved Setups/cues/presets predate this key; absent
         // means false (a world light).
+        light.mDetailShadows = item.has("detail_shadows") && item["detail_shadows"].asBoolean();
+        light.mWorldShadowPick = item.has("world_shadow_pick") && item["world_shadow_pick"].asBoolean();
         light.mActorOnly = item.has("actor_only")
             ? item["actor_only"].asBoolean() : false;
         if (item["fixture_gel_slots"].isArray() &&
@@ -1567,6 +1581,8 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
             gSavedSettings.getF32(FIXTURE_SOURCE_SETTINGS[i]);
         setup.mLights[i].mFixturePreset =
             gSavedSettings.getS32(FIXTURE_PRESET_SETTINGS[i]);
+        setup.mLights[i].mDetailShadows = gSavedSettings.getBOOL(DETAIL_SHADOW_SETTINGS[i]);
+        setup.mLights[i].mWorldShadowPick = gSavedSettings.getBOOL(WORLD_SHADOW_SETTINGS[i]);
         setup.mLights[i].mActorOnly =
             gSavedSettings.getBOOL(ACTOR_ONLY_SETTINGS[i]); // [ActorMask]
     }
@@ -1619,6 +1635,8 @@ void ALCineLightRig::readSettings(const ALCineLightRigParamBlob& blob,
         }
         setup.mLights[i].mSourceSizeM = blob.mLights[i].mSourceSizeM;
         setup.mLights[i].mFixturePreset = blob.mLights[i].mFixturePreset;
+        setup.mLights[i].mDetailShadows = blob.mLights[i].mDetailShadows;
+        setup.mLights[i].mWorldShadowPick = blob.mLights[i].mWorldShadowPick;
         setup.mLights[i].mActorOnly = blob.mLights[i].mActorOnly; // [ActorMask]
     }
 
@@ -1670,6 +1688,8 @@ void ALCineLightRig::writeSetupToSettings(const Setup& input) const
                 light.mGelSlot[slot]);
         }
         gSavedSettings.setF32(prefix + "SourceSizeM", light.mSourceSizeM);
+        gSavedSettings.setBOOL(prefix + "DetailShadows", light.mDetailShadows);
+        gSavedSettings.setBOOL(prefix + "WorldShadowPick", light.mWorldShadowPick);
         gSavedSettings.setS32(
             prefix + "FixturePreset", light.mFixturePreset);
         gSavedSettings.setBOOL(
@@ -1765,6 +1785,8 @@ void ALCineLightRig::destroyEmitter(LLPointer<LLVOVolume>& emitter)
     {
         LLPipeline::toggleProjectorCastShadows(id);
     }
+    LLPipeline::setRigWorldShadowPick(id, false);
+    LLPipeline::setProjectorDetailShadows(id, false);
     LLPipeline::clearProjectorShadowSoftness(id);
     LLPipeline::clearGoboOverride(id);
     // Always clear light membership while the strong pointer is held. A region
@@ -1916,6 +1938,8 @@ void ALCineLightRig::updateProjectorFlags()
             continue;
         }
         const LLUUID id = mProjectors[i]->getID();
+        LLPipeline::setProjectorDetailShadows(id, mCurrentLive[i].mDetailShadows);
+        LLPipeline::setRigWorldShadowPick(id, mCurrentLive[i].mWorldShadowPick, i);
         // Keep the temporary VCam override separate from scene/rig intent.
         // Replaying the rig each frame must not undo an untouched auto-enable.
         const bool shaft_enabled = mShaftEnabled[i] ||
@@ -3024,6 +3048,8 @@ void ALCineLightRig::tickShared(
                 setup.mLights[i].mSourceSizeM;
             fx_setup.mLights[i].mFixturePreset =
                 setup.mLights[i].mFixturePreset;
+            fx_setup.mLights[i].mDetailShadows = setup.mLights[i].mDetailShadows;
+            fx_setup.mLights[i].mWorldShadowPick = setup.mLights[i].mWorldShadowPick;
             fx_setup.mLights[i].mActorOnly =
                 setup.mLights[i].mActorOnly; // [ActorMask]
         }

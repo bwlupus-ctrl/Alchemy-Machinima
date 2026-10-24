@@ -383,7 +383,7 @@ class AreaRunner:
                 wflags[i] = 1.0 if ch.get('owned', True) else 0.0
                 wfade[i] = ch.get('contact_fade', 0.0)
                 wcontact[i] = ch['contact']
-                winfo[i] = (ch['row'], ch['near'], ch['r_map'], 0.0)
+                winfo[i] = (ch['row'], ch['near'], ch['r_map'], float(ch.get('detail_shadows', False)))
                 wlight[i] = (arr[i, 0], arr[i, 1], arr[i, 2], ch['far'])
                 wseed[i] = ch['seed']
         lk = None
