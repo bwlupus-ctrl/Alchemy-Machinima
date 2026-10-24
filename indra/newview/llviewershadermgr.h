@@ -333,7 +333,7 @@ extern LLGLSLShader         gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
 extern LLGLSLShader         gCineOutlineProgram;
 extern LLGLSLShader         gRigRimAuxProgram;
-extern LLGLSLShader         gRigRimSmoothProgram[2];
+extern LLGLSLShader         gRigRimSmoothProgram[5];
 extern LLGLSLShader         gRigRimSmoothGuideProgram;
 extern LLGLSLShader         gRigRimSilSeedProgram;
 extern LLGLSLShader         gRigRimSilDtProgram[2];

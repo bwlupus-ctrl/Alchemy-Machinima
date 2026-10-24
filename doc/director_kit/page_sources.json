@@ -160932,7 +160932,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 27513,
+              "line": 27523,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",

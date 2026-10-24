@@ -587,38 +587,56 @@ toggle-off on the next frame, exact post-alpha depth, cached debug identity,
 wireframe, both blur formats, and the existing halo/strength/off-byte gates.
 # Smooth normal revision (2026-10-24)
 
-This revision supersedes the original depth-normal smoothing description below.
-`CineRigRimSmoothness` still defaults to 0. The stock auxiliary permutation and
-pass-demand predicates are unchanged at zero; no smoothing targets or draws are
-created. `CineRigRimSmoothRadius` defaults to 12 cm (1–50 cm); the surface-space
-kernel projects through the current projection/depth and is bounded to 32 pixels
-per axis. This bound can reduce the requested world radius in close shots.
-`CineRigRimTextureNormals` defaults to 0 (0–1), preserving existing presets'
-removal of normal-map detail as Smoothness increases.
+Smoothness still defaults to zero. That path retains the stock aux shader,
+pass-demand predicates, bytes, draw count and allocations. Radius defaults to
+12 cm (1–50); Texture normals defaults to zero (0–1). Presets, scene persistence
+and the Director rows retain their established settings.
 
-When smoothing is requested, the auxiliary guide permutation selects coplanar
-depth quadrants rather than mixed triangle derivatives. Two full-resolution
-separable surface filters blur shading and geometric normals. Depth continuity,
-geometric-normal agreement and subject identity stop filtering across boundaries;
-every intervening pixel is inspected. A compact continuous kernel, fixed pixel
-grid and current-frame inputs avoid random/temporal sampling phases.
+Positive Smoothness keeps a full-resolution geometric guide, independently
+of the full-resolution rim normal. Silhouette seeds and geometric consumers
+read only the guide. The guide certifies one-sided planes using two-pixel
+baselines, first-neighbour and diagonal residuals. Its spare z channel records
+plane reliability; final-normal Toksvig belongs to the separate rim result.
+Half-resolution seed taps snap to full-resolution depth pixel centres while
+Smoothness is positive, avoiding tangent-plane errors on grazing floors.
 
-The horizontal scratch is RGBA32F: two exactly packed 12-bit-per-axis octahedral
-normals plus shading/geometry edge covariance moments. The vertical pass uses
-those moments to distinguish flat shading from interpolated vertex normals and
-transfers shading perturbations by shortest-arc rotation onto the smooth base.
-Constant triangle steps contribute no texture detail. At Texture normals=1,
-normal-map detail is retained. Forward alpha retains its interpolated vertex
-base and scales its existing smoothing contribution by (1−Texture normals).
-The full-resolution RGBA16 published auxiliary texture retains the original
-layout. Toksvig is computed from the final Smoothness/detail normal, excluding
-depth-boundary derivatives. Debug 3 displays that same final Smoothness blend.
-Allocation/compile failures retain shading normals rather than geometric facets.
+A full-resolution RG8 edge map certifies each adjacent horizontal/vertical
+join. Precision, curvature, subject, avatar tag, and available Actor Mask
+identity stop filtering across separate surfaces. Conservative cell reduction
+retains every full-resolution barrier, including one-pixel holes. Two separable
+filters work on the reduced grid (quarter resolution at 1080p/4K; half resolution
+for 1–2 cm radii and 513–1023 px heights; full resolution at 512 px or below); ambiguous cells retain a local fallback. Maximum support
+is a radius of 1024 full-resolution pixels per axis. Including guide, fallback,
+upsampling and derivatives, the maximum dependency footprint is 2097 by 2097
+full-resolution pixels. All requested 1–50 cm radii fit that
+footprint at 1080p and 4K, 1–3 m, with the regression's 1.8 projection scale.
+Outside that envelope the explicitly stated footprint bound applies.
 
-Both new settings belong to rim snapshots, reset and scene state; older scenes
-reset omitted keys to their declared defaults. The two Advanced kit rows live
-beside Smoothness and are indexed for smooth normals, texture normals, facets
-and blocky. Reproduce the GPU regression with
-`python scripts/code_tools/rim_normals_gl_check.py --timing`; use
-`--shader-ref b0d3b1ac2d0` for the failing baseline. Artifacts are written under
-`.tmp/rim_normals/`.
+RGBA32F scratch holds two exactly packed 12-bit octahedral normals and two
+covariance moments. Low-angle geometry changes count above a depth-precision
+noise floor. Guide-aware upsampling and shortest-arc detail transfer run at
+full resolution; unreliable subpixel triangle corners interpolate nearby
+certified detail rotations. Toksvig derives from the final Smoothness/detail
+normal. Debug view 3 displays the same final blend used by rim lighting.
+
+Tiled snapshots render 1048-pixel overlapping margins and crop their cores,
+aligning the reduced grid across tiles. Reduced-grid depth/guide samples
+snap to full-resolution pixel centres so viewport dimensions cannot select a
+different nearest texel. A four-target regression exercises the actual expanded
+projection and both cropped seam axes. The margin covers filtering, guide
+support, upsampling and derivatives. A tile allocation failure reports failure
+rather than writing a seamed snapshot. Zero Smoothness uses stock snapshot code.
+
+Additional smoothing storage at 1920x1080 / 3840x2160 is 24.72 / 98.88 MiB:
+full RGBA16 rim + full RG8 joins + two quarter RGBA32F scratch targets + one
+quarter RGBA16F continuity target. Shared existing aux/silhouette storage is
+unchanged. The 1–2 cm half-grid case uses at most 39.55 / 158.20 MiB
+extra at those resolutions. Compile/allocation failure retains shading normals.
+
+Run `python scripts/code_tools/rim_normals_gl_check.py --timing`. The review
+baseline is `--shader-ref 3608dcc03e6`; original zero-path bytes are checked
+against b0d3b1ac2d0. The harness records 4K-height faceting and motion at 1–3 m,
+multiple sampling phases and camera motion, meaningful rim excitation and
+relative lighting variation (under 1% in production sRGB display space and
+under 3% linear; the original linear stress gate is retained). Capture encoding
+runs before reprojected samples are gathered. Debug images and metrics live in `.tmp/rim_normals/`.

@@ -268,7 +268,7 @@ LLGLSLShader            gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
 LLGLSLShader            gCineOutlineProgram;
 LLGLSLShader            gRigRimAuxProgram;
-LLGLSLShader            gRigRimSmoothProgram[2];
+LLGLSLShader            gRigRimSmoothProgram[5];
 LLGLSLShader            gRigRimSmoothGuideProgram;
 LLGLSLShader            gRigRimSilSeedProgram;
 LLGLSLShader            gRigRimSilDtProgram[2];
@@ -4322,8 +4322,11 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             return true;
         };
         load_optional(gRigRimAuxProgram, "Rig Rim Aux Shader", "deferred/rigRimAuxF.glsl", true);
-        load_optional(gRigRimSmoothProgram[0], "Rig Rim Smooth H", "deferred/rigRimSmoothF.glsl", true);
-        load_optional(gRigRimSmoothProgram[1], "Rig Rim Smooth V", "deferred/rigRimSmoothF.glsl", true, "RIG_RIM_SMOOTH_VERTICAL");
+        load_optional(gRigRimSmoothProgram[0], "Rig Rim Reduce", "deferred/rigRimSmoothF.glsl", true, "RIG_RIM_SMOOTH_DOWNSAMPLE");
+        load_optional(gRigRimSmoothProgram[1], "Rig Rim Barrier", "deferred/rigRimSmoothF.glsl", true, "RIG_RIM_BARRIER_INIT");
+        load_optional(gRigRimSmoothProgram[2], "Rig Rim Barrier Edges", "deferred/rigRimSmoothF.glsl", true, "RIG_RIM_BARRIER_EDGES");
+        load_optional(gRigRimSmoothProgram[3], "Rig Rim Filter", "deferred/rigRimSmoothF.glsl", true);
+        load_optional(gRigRimSmoothProgram[4], "Rig Rim Resolve", "deferred/rigRimSmoothF.glsl", true, "RIG_RIM_SMOOTH_RESOLVE");
         load_optional(gRigRimSmoothGuideProgram, "Rig Rim Smooth Guide", "deferred/rigRimAuxF.glsl", true, "RIG_RIM_SMOOTH_GUIDE");
         load_optional(gRigRimSilSeedProgram, "Rig Rim Silhouette Seed Shader", "deferred/rigRimSilSeedF.glsl", true);
         load_optional(gRigRimSilDtProgram[0], "Rig Rim Silhouette DT H", "deferred/rigRimSilDtF.glsl", false);

@@ -1330,7 +1330,7 @@ public:
         LLRenderTarget          actorMask; // [ActorMask] R8; shared depth, never owned
         U32                     actorMaskDepthSrc = 0;
         LLRenderTarget          rigRimAux;
-        LLRenderTarget          rigRimSmooth[2]; // original aux + H moments; Smoothness > 0 only
+        LLRenderTarget          rigRimSmooth[5]; // full rim, two reduced normal/moment, cell barriers, full RG8 edges
         LLRenderTarget          rigRimSil[2];
         LLRenderTarget          rigRimWrapBlur[2];
         LLRenderTarget          rigRimWrapScene; // full-res pre-wrap RGB; avoids framebuffer feedback

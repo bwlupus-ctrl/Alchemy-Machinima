@@ -6070,6 +6070,44 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
         LL_WARNS() << "over scaling UI not supported." << LL_ENDL;
     }
 
+    // The filter's 1024 px maximum plus geometric reconstruction, cell
+    // support, upsampling and derivatives. Keep the grid phase across tiles.
+    S32 rim_tile_margin = 0;
+    bool rim_overlap_failed = false;
+    if (scale_factor > 1.f && !show_ui && !no_post && LLPipeline::sRenderDeferred &&
+        gSavedSettings.getBOOL("CineRigRimEnabled") && gSavedSettings.getF32("CineRigRimSmoothness") > 0.f)
+    {
+        constexpr S32 support = 1048;
+        window_width = (window_width / 4) * 4;
+        window_height = (window_height / 4) * 4;
+        const F32 ratio = llmin((F32)window_width / image_width, (F32)window_height / image_height);
+        snapshot_width = (S32)(ratio * image_width);
+        snapshot_height = (S32)(ratio * image_height);
+        scale_factor = llmax(1.f, 1.f / ratio);
+        const S32 render_width = window_width + 2 * support;
+        const S32 render_height = window_height + 2 * support;
+        original_width = gPipeline.mRT->deferredScreen.getWidth();
+        original_height = gPipeline.mRT->deferredScreen.getHeight();
+        if (render_width <= gGLManager.mGLMaxTextureSize && render_height <= gGLManager.mGLMaxTextureSize &&
+            scratch_space.allocate(render_width, render_height, GL_RGBA, true) &&
+            gPipeline.allocateScreenBuffer(render_width, render_height))
+        {
+            rim_tile_margin = support;
+            reset_deferred = true;
+            LLViewerCamera::instance().setAspect((F32)window_width / window_height);
+            LLViewerCamera::instance().setViewHeightInPixels(window_height);
+            mWorldViewRectRaw.set(0, render_height, render_width, 0);
+            scratch_space.bindTarget();
+        }
+        else
+        {
+            scratch_space.release();
+            gPipeline.allocateScreenBuffer(original_width, original_height);
+            rim_overlap_failed = true;
+            LL_WARNS("Snapshot") << "Cannot allocate overlapping rim-normal snapshot tiles" << LL_ENDL;
+        }
+    }
+
     S32 buffer_x_offset = llfloor(((window_width  - snapshot_width)  * scale_factor) / 2.f);
     S32 buffer_y_offset = llfloor(((window_height - snapshot_height) * scale_factor) / 2.f);
 
@@ -6119,7 +6157,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
 
     // Subimages are in fact partial rendering of the final view. This happens when the final view is bigger than the screen.
     // In most common cases, scale_factor is 1 and there's no more than 1 iteration on x and y
-    for (int subimage_y = 0; subimage_y < scale_factor; ++subimage_y)
+    for (int subimage_y = 0; subimage_y < scale_factor && !rim_overlap_failed; ++subimage_y)
     {
         S32 subimage_y_offset = llclamp(buffer_y_offset - (subimage_y * window_height), 0, window_height);;
         // handle fractional columns
@@ -6141,7 +6179,15 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
             if (read_width && read_height)
             {
                 const U32 subfield = subimage_x+(subimage_y*llceil(scale_factor));
+                if (rim_tile_margin > 0)
+                {
+                    const F32 sx = (F32)window_width / (window_width + 2 * rim_tile_margin);
+                    const F32 sy = (F32)window_height / (window_height + 2 * rim_tile_margin);
+                    LLViewerCamera::instance().setSnapshotTile(scale_factor*sx, scale_factor*sy,
+                        (scale_factor-1.f-2.f*subimage_x)*sx, (scale_factor-1.f-2.f*subimage_y)*sy);
+                }
                 display(do_rebuild, scale_factor, subfield, true);
+                LLViewerCamera::instance().setSnapshotTile(0.f, 0.f, 0.f, 0.f);
 
                 if (!LLPipeline::sRenderDeferred)
                 {
@@ -6172,7 +6218,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
                         if (type == LLSnapshotModel::SNAPSHOT_TYPE_COLOR)
                         {
                             glReadPixels(
-                                     subimage_x_offset, out_y + subimage_y_offset,
+                                     subimage_x_offset + rim_tile_margin, out_y + subimage_y_offset + rim_tile_margin,
                                      read_width, 1,
                                      GL_RGB, GL_UNSIGNED_BYTE,
                                      raw->getData() + output_buffer_offset
@@ -6182,7 +6228,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
                         {
                             LLPointer<LLImageRaw> depth_line_buffer = new LLImageRaw(read_width, 1, sizeof(GLfloat)); // need to store floating point values
                             glReadPixels(
-                                         subimage_x_offset, out_y + subimage_y_offset,
+                                         subimage_x_offset + rim_tile_margin, out_y + subimage_y_offset + rim_tile_margin,
                                          read_width, 1,
                                          GL_DEPTH_COMPONENT, GL_FLOAT,
                                          depth_line_buffer->getData()// current output pixel is beginning of buffer...
@@ -6212,7 +6258,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
                         {
                             LLPointer<LLImageRaw> depth_line_buffer = new LLImageRaw(read_width, 1, sizeof(GLfloat)); // need to store floating point values
                             glReadPixels(
-                                         subimage_x_offset, out_y + subimage_y_offset,
+                                         subimage_x_offset + rim_tile_margin, out_y + subimage_y_offset + rim_tile_margin,
                                          read_width, 1,
                                          GL_DEPTH_COMPONENT, GL_FLOAT,
                                          depth_line_buffer->getData()// current output pixel is beginning of buffer...
@@ -6287,6 +6333,8 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
         // objects on them.
         gPipeline.resetDrawOrders();
     }
+
+    ret = ret && !rim_overlap_failed;
 
     if (reset_deferred)
     {
