@@ -1268,6 +1268,14 @@ public:
     static bool             sNoAlpha;
     static bool             sUseFarClip;
     static bool             sShadowRender;
+    // Non-null only inside one world-cube light's six caster passes. Also
+    // selects the separate rigged BLEND map; native sun/spot keep their route.
+    struct WorldShadowDrawCounts
+    {
+        U32 avatarBodies = 0, riggedBatches = 0, selfBodies = 0, selfRigged = 0;
+    };
+    static WorldShadowDrawCounts* sWorldShadowDrawCounts;
+    static void recordWorldShadowRiggedDraw(const LLDrawInfo& params);
     // [AlphaShadowCap] 0 = none, 1 = rain (reject attachments), 2 = attachments only,
     // 3 = attachments only + debug accounting (chosen once per pass, so debug-off
     // draws never touch the counters).

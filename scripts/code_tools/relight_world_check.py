@@ -106,6 +106,49 @@ def check_mask_sync():
     print('[world] render-type mask PASS: generateWorldShadowCubes copies generateSunShadow\'s list verbatim (%d types)' % sun.count('RENDER_TYPE'), flush=True)
 
 
+def check_rigged_alpha_casters(pipeline_src=None):
+    """Rigged BLEND is a separate pass, even when the system/BOM body is hidden.
+
+    Pin both ends of the route: admitting the pass alone still draws nothing if
+    renderAlphaObjects reads the static map. Native sun/spot retain their map.
+    """
+    pipe = text(NV / 'pipeline.cpp') if pipeline_src is None else pipeline_src
+    cube = pipe[pipe.index('void LLPipeline::generateWorldShadowCubes('):pipe.index('void LLPipeline::renderGroups(')]
+    alpha = pipe[pipe.index('void LLPipeline::renderAlphaObjects('):pipe.index('void LLPipeline::renderMaskedObjects(')]
+    registration = text(NV / 'llvovolume.cpp')
+    registration = registration[registration.index('    U32 passType = type;'):registration.index('    bool fullbright =', registration.index('    U32 passType = type;'))]
+    assert 'if (rigged)' in registration and 'passType += 1;' in registration and 'group->mDrawMap[passType]' in registration
+    pools = text(NV / 'lldrawpool.h')
+    assert re.search(r'PASS_ALPHA,\s*PASS_ALPHA_RIGGED,', pools), 'rigged alpha must remain a distinct pass'
+    capture = 'const bool rigged_alpha_enabled = hasRenderType(LLRenderPass::PASS_ALPHA_RIGGED);'
+    admit = 'if (rigged_alpha_enabled) setRenderTypeMask(LLRenderPass::PASS_ALPHA_RIGGED, END_RENDER_TYPES);'
+    assert capture in cube and admit in cube, 'cube drops rigged BLEND before postSort'
+    assert cube.index(capture) < cube.index('pushRenderTypeMask();') < cube.index('andRenderTypeMask(') < cube.index(admit) < cube.index('renderShadow(view, proj, shadow_cam')
+    assert 'rigged && sWorldShadowDrawCounts ? LLRenderPass::PASS_ALPHA_RIGGED : LLRenderPass::PASS_ALPHA' in alpha, 'cube rigged BLEND reads the static map'
+    assert 'beginRenderMap(type)' in alpha and 'endRenderMap(type)' in alpha
+    assert 'WorldShadowDrawScope caster_scope(draw_counts[j]);' in cube
+    assert cube.index('WorldShadowDrawScope caster_scope') < cube.index('for (U32 face = 0;')
+    scope = pipe[pipe.index('class WorldShadowDrawScope'):pipe.index('// [P1-lite] World cube shadow maps')]
+    assert 'sWorldShadowDrawCounts = &counts;' in scope and 'sWorldShadowDrawCounts = mPrevious;' in scope, 'cube draw context must restore on exit'
+    draws = text(NV / 'lldrawpool.cpp')
+    endpoints = ('pushMaskBatchesIndexed', 'pushBatch', 'pushUntexturedBatch', 'pushGLTFBatchIndexed', 'pushGLTFBatch', 'pushUntexturedGLTFBatch')
+    for name in endpoints:
+        start = draws.index('void LLRenderPass::' + name + '(')
+        fn = draws[start:draws.index('\n}\n', start)]
+        assert fn.count('recordWorldShadowRiggedDraw(params);') == 1, 'missing/duplicate submitted rigged counter: ' + name
+        assert fn.index('drawRange(') < fn.index('recordWorldShadowRiggedDraw(params);'), 'counting an attempted draw: ' + name
+    avatar = text(NV / 'lldrawpoolavatar.cpp')
+    start = avatar.index('void LLDrawPoolAvatar::renderShadow(')
+    avatar = avatar[start:avatar.index('\n}\n', start)]
+    assert avatar.count('indices = avatarp->renderSkinned();') == 3 and 'if (indices && LLPipeline::sWorldShadowDrawCounts)' in avatar
+    assert 'std::array<WorldShadowDrawCounts, ALWorldShadow::kMaxLights> draw_counts{};' in cube
+    for label in ('bodies=%u', 'rigged=%u', 'self_bodies=%u', 'self_rigged=%u'):
+        assert label in cube, 'missing per-frame submission evidence: ' + label
+    # Native alpha map selection and the normal common mask are unchanged; the
+    # existing mask-sync and section-10 gates still run independently below.
+    print('[world] rigged BLEND PASS: separate map admitted and consumed only in cube scope; native mask/map preserved', flush=True)
+
+
 def check_camera_id(display_src=None):
     """generateWorldShadowCubes returns early unless sCurCameraID == CAMERA_WORLD, and generateSunShadow leaves a shadow ID: the call site
     must set CAMERA_WORLD immediately before the call and restore the saved ID right after it."""
@@ -340,6 +383,22 @@ check_camera_id()
 check_near_and_state()
 check_rotation_independence()
 check_mask_sync()
+check_rigged_alpha_casters()
+# Both halves are necessary. Restoring either original defect must trip the
+# regression independently, even after the other half has been repaired.
+for old, broken in (
+    ('if (rigged_alpha_enabled) setRenderTypeMask(LLRenderPass::PASS_ALPHA_RIGGED, END_RENDER_TYPES);', ''),
+    ('rigged && sWorldShadowDrawCounts ? LLRenderPass::PASS_ALPHA_RIGGED : LLRenderPass::PASS_ALPHA', 'LLRenderPass::PASS_ALPHA'),
+):
+    source = text(NV / 'pipeline.cpp')
+    assert source.count(old) == 1, 'caster regression mutation target vanished'
+    try:
+        check_rigged_alpha_casters(source.replace(old, broken))
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError('rigged BLEND regression accepted the original defect: ' + old)
+print('[world] rigged BLEND controls PASS: missing mask and wrong map each rejected', flush=True)
 check_picks()
 check_section10()
 print('[world] static pins PASS', flush=True)

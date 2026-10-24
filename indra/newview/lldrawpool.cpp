@@ -1413,6 +1413,7 @@ void LLRenderPass::pushMaskBatchesIndexed(U32 type, bool rigged)
         uploadActorFx(params);
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+        LLPipeline::recordWorldShadowRiggedDraw(params);
     }
 }
 
@@ -2125,6 +2126,7 @@ void LLRenderPass::pushBatch(LLDrawInfo& params, bool texture, bool batch_textur
     uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+    LLPipeline::recordWorldShadowRiggedDraw(params);
 
     if (tex_setup)
     {
@@ -2147,6 +2149,7 @@ void LLRenderPass::pushUntexturedBatch(LLDrawInfo& params)
     uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+    LLPipeline::recordWorldShadowRiggedDraw(params);
 }
 
 // static
@@ -2553,6 +2556,7 @@ void LLRenderPass::pushGLTFBatchIndexed(LLDrawInfo& params,
     }
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+    LLPipeline::recordWorldShadowRiggedDraw(params);
 }
 
 // static
@@ -2596,6 +2600,7 @@ void LLRenderPass::pushGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& las
     uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+    LLPipeline::recordWorldShadowRiggedDraw(params);
 
     teardown_texture_matrix(params);
 }
@@ -2623,6 +2628,7 @@ void LLRenderPass::pushUntexturedGLTFBatch(LLDrawInfo& params)
     uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+    LLPipeline::recordWorldShadowRiggedDraw(params);
 }
 
 void LLRenderPass::pushRiggedGLTFBatches(U32 type, bool textured)

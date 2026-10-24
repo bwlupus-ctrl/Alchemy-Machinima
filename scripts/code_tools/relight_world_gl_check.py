@@ -167,13 +167,31 @@ def mesh(prim):
 
 
 class Raster:
-    def __init__(self, runner):
+    def __init__(self, runner, caster='static'):
         self.r, self.gl = runner, runner.gl
+        self.caster = caster
         gl = self.gl
         self.program = gl.program()
-        for path, stage in [('class1/deferred/shadowV.glsl', 0x8B31), ('class1/deferred/shadowF.glsl', 0x8B30),
-                            ('class1/alchemy/actorFxDissolveF.glsl', 0x8B30)]:
-            gl.attach(self.program, runner._compile(runner.tree.read(G.SHADERS + '/' + path), path, stage))
+        vertex, fragment = {
+            'static': ('shadowV', 'shadowF'),
+            'avatar': ('avatarShadowV', 'avatarShadowF'),
+            'rigged': ('shadowSkinnedV', 'shadowF'),
+            'rigged_blend': ('shadowAlphaMaskV', 'shadowAlphaMaskF'),
+        }[caster]
+        modules = [('class1/deferred/'+vertex+'.glsl', 0x8B31), ('class1/deferred/'+fragment+'.glsl', 0x8B30),
+                   ('class1/alchemy/actorFxDissolveF.glsl', 0x8B30)]
+        if caster != 'static':
+            modules.append(('class1/avatar/'+('avatarSkinV' if caster == 'avatar' else 'objectSkinV')+'.glsl', 0x8B31))
+        if caster == 'rigged_blend':
+            modules.append(('class1/objects/nonindexedTextureV.glsl', 0x8B31))
+            # LLShaderMgr's one-channel diffuseLookup glue; sampled texture is
+            # real RGBA, so fully transparent casters must be discarded.
+            glue = 'uniform sampler2D tex0; vec4 diffuseLookup(vec2 uv) { return texture(tex0,uv); }'
+            gl.attach(self.program, runner._compile(glue, 'diffuseLookup', 0x8B30))
+        for path, stage in modules:
+            source = runner.tree.read(G.SHADERS + '/' + path)
+            if caster == 'rigged_blend': source = '#define HAS_SKIN 1\n' + source
+            gl.attach(self.program, runner._compile(source, path, stage))
         gl.link(self.program)
         ok = gl.I(); gl.getprog(self.program, 0x8B82, C.byref(ok))
         assert ok.value, 'production shadow program link failed'
@@ -189,8 +207,11 @@ class Raster:
         self.error = gl.fn('glGetError', gl.U)
         self.fbo = gl.U(); gl.gen_fbo(1, C.byref(self.fbo))
         self.vbo = gl.U(); gl.gen_buf(1, C.byref(self.vbo))
+        self.constant_attr = gl.fn('glVertexAttrib4f', None, gl.U, gl.F, gl.F, gl.F, gl.F)
+        self.disable_attr = gl.fn('glDisableVertexAttribArray', None, gl.U)
+        self.palette = gl.fn('glUniformMatrix3x4fv', None, gl.I, gl.I, C.c_ubyte, C.c_void_p)
 
-    def atlas(self, scene, light, near):
+    def atlas(self, scene, light, near, alpha=1.):
         gl, r = self.gl, self.r
         scratch = r._texture('raster_scratch', 5, 0x8CAC, CS.TILE, CS.TILE, 0x1902, 0x1406, None)
         atlas = r._texture('raster_atlas', 6, 0x8CAC, CS.ATLAS_W, CS.ATLAS_H_PER_LIGHT, 0x1902, 0x1406, None)
@@ -203,6 +224,18 @@ class Raster:
         gl.viewport(0, 0, CS.TILE, CS.TILE)
         gl.use(self.program)
         gl.ui(gl.loc(self.program, b'actorFxEnabled'), 0)
+        if self.caster != 'static':
+            for name, values in [(b'weight', (0,0,0,0)), (b'weight4', (.5,0,0,0)),
+                                 (b'diffuse_color', (1,1,1,1)), (b'texcoord0', (0,0,0,1))]:
+                idx = gl.attr_loc(self.program, name)
+                if idx >= 0:
+                    self.disable_attr(idx); self.constant_attr(idx, *values)
+        if self.caster == 'rigged_blend':
+            r._texture('caster_alpha', 0, 0x8058, 1, 1, 0x1908, 0x1406, np.array([1,1,1,alpha], np.float32))
+            gl.ui(gl.loc(self.program, b'tex0'), 0)
+            gl.uf[1](gl.loc(self.program, b'minimum_alpha'), .598)  # renderAlphaObjects native blend cutoff
+            gl.uf[1](gl.loc(self.program, b'shadow_target_width'), CS.TILE)
+            r._mat(self.program, b'texture_matrix0', np.eye(4))
         far = light.range
         P = np.zeros((4, 4)); P[0, 0] = P[1, 1] = 1 / CS.TAN_HALF
         P[2, 2] = -(far+near)/(far-near); P[2, 3] = -2*far*near/(far-near); P[3, 2] = -1
@@ -210,6 +243,16 @@ class Raster:
             axis, right, up = CS.face_basis(face)
             V = np.eye(4); V[:3, :3] = [right, up, -axis]; V[:3, 3] = -V[:3, :3] @ light.pos
             r._mat(self.program, b'modelview_projection_matrix', P @ V)
+            if self.caster != 'static':
+                r._mat(self.program, b'projection_matrix', P)
+                r._mat(self.program, b'modelview_matrix', V)
+                if self.caster == 'avatar':
+                    # Classic avatar palettes include the current face view.
+                    palette = np.zeros((45,4), np.float32); palette[[0,15,30]] = V[:3]
+                    gl.u4fv(gl.loc(self.program, b'matrixPalette'), 45, palette.ctypes.data_as(C.POINTER(gl.F)))
+                else:
+                    palette = np.ascontiguousarray(np.eye(4)[:3], np.float32)
+                    self.palette(gl.loc(self.program, b'matrixPalette'), 1, 0, palette.ctypes.data)
             self.clear_depth(1.0); self.clear(0x100)
             for prim in scene.prims:
                 self.enable(0x0B44) if prim.cull == 'back' else gl.disable(0x0B44)
@@ -419,6 +462,44 @@ def codex_corner(r, raster, probe, radius=2., view=None):
     light = S.Light('corner', (0,0,0), radius, 10., seed=123)
     r.gpu_atlas = raster.atlas(S.Scene('corner', [S.Prim('sphere','sphere',c=tuple(centre),r=.4)], [[light]], [], {}, np.empty((0,3))), light, .05)
     return probe.run([4*d-np.eye(3)[i]*1.e-6 for i in range(3)], light, .05, view=view)*255
+
+
+def skinned_caster_checks(r, probe):
+    """Production skinning + shadow programs -> D32F cube -> production resolve.
+
+    Identity joints, a thin upright box 0.3..2 m above a floor, and a light 4 m
+    away. Rotate the fixture through all six faces. No system body or static
+    caster can accidentally supply a missing mesh-body shadow.
+    """
+    rows = []
+    for kind in ('avatar', 'rigged', 'rigged_blend'):
+        raster = Raster(r, caster=kind)
+        blocked, lit = [], []
+        for face in range(6):
+            axis, right, up = CS.face_basis(face)
+            # Local +Z is floor normal; map local +X into this cube face.
+            rotation = np.column_stack([axis, -right, up])
+            assert np.isclose(np.linalg.det(rotation), 1.), 'fixture must rotate, not reflect'
+            light = S.Light('skin', tuple(rotation @ np.array([0.,0.,2.5])), .1, 12., seed=123)
+            box = S.Prim('caster', 'obb', c=tuple(rotation @ np.array([4.,0.,1.15])), h=(.18,.3,.85))
+            # mesh() accepts arbitrary OBB rotation through rot(). This fixture
+            # supplies its rigid orientation without changing shader source.
+            box.rot = lambda rotation=rotation: rotation
+            sc = S.Scene('skin', [box], [[light]], [], {}, np.empty((0,3)))
+            points = np.array([[6.,0.,0.], [6.,2.,0.]]) @ rotation.T
+            # Put this face's floor normal at view +Z, as Probe's plane mode
+            # expects. Production camera packing rotates it back to the atlas.
+            view = np.eye(4); view[:3,:3] = rotation.T
+            r.gpu_atlas = raster.atlas(sc, light, .05)
+            v = probe.run(points, light, .05, plane=True, view=view)
+            blocked.append(float(v[0])); lit.append(float(v[1]))
+        rows.append(dict(name='production_'+kind+'_six_faces', blocked_max=max(blocked), lit_min=min(lit),
+                         passed=bool(max(blocked) < .1 and min(lit) > .99)))
+        if kind == 'rigged_blend':
+            r.gpu_atlas = raster.atlas(sc, light, .05, alpha=0.)
+            v = probe.run(points, light, .05, plane=True, view=view)
+            rows.append(dict(name='production_rigged_blend_transparent_discard', min_visibility=float(min(v)), passed=bool(min(v) > .99)))
+    return rows
 
 
 def bleed_atlas(r, legit=(0, 4)):
@@ -801,6 +882,9 @@ def main():
         rows.append(dict(name='old_packing_negative_control', dark_percent=dark, rejected=bool(dark >= .1), passed=bool(dark > 10)))
         r.old_packing = False
         probe = Probe(r)
+        skins = skinned_caster_checks(r, probe)
+        rows.extend(skins)
+        for row in skins: print('[world-gl]', row, flush=True)
         first = len(rows)
         rows.extend(seam_checks(r,raster,probe))
         # Review round 5's exact 2 m reproduction (25/255 before round 8), identity and rotated camera, at the reviewed 1 and 2 m sources.

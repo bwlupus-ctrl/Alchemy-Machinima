@@ -600,6 +600,7 @@ bool    LLPipeline::sBakeSunlight = false;
 bool    LLPipeline::sNoAlpha = false;
 bool    LLPipeline::sUseFarClip = true;
 bool    LLPipeline::sShadowRender = false;
+LLPipeline::WorldShadowDrawCounts* LLPipeline::sWorldShadowDrawCounts = nullptr;
 U8      LLPipeline::sShadowDrawFilter = 0; // [AlphaShadowCap]
 
 namespace
@@ -13168,6 +13169,17 @@ void LLPipeline::renderGLTFObjects(U32 type, bool texture, bool rigged)
     gGLLastMatrix = NULL;
 }
 
+void LLPipeline::recordWorldShadowRiggedDraw(const LLDrawInfo& params)
+{
+    // Called after submission, including scalar/indexed legacy and PBR paths.
+    // No GL queries and no per-draw settings reads. Native/beauty are inert.
+    if (sWorldShadowDrawCounts && params.mAvatar.notNull() && params.mCount)
+    {
+        ++sWorldShadowDrawCounts->riggedBatches;
+        if (params.mAvatar->isSelf()) ++sWorldShadowDrawCounts->selfRigged;
+    }
+}
+
 // Currently only used for shadows -Cosmic,2023-04-19
 void LLPipeline::renderAlphaObjects(bool rigged)
 {
@@ -13177,7 +13189,9 @@ void LLPipeline::renderAlphaObjects(bool rigged)
     gGLLastMatrix = NULL;
     S32 sun_up = LLEnvironment::instance().getIsSunUp() ? 1 : 0;
     U32 target_width = LLRenderTarget::sCurResX;
-    U32 type = LLRenderPass::PASS_ALPHA;
+    // registerFace stores rigged BLEND under PASS_ALPHA_RIGGED. The native
+    // route historically reads PASS_ALPHA twice; repair only the cube route.
+    const U32 type = rigged && sWorldShadowDrawCounts ? LLRenderPass::PASS_ALPHA_RIGGED : LLRenderPass::PASS_ALPHA;
     // for gDeferredShadowAlphaMaskProgram
     const LLVOAvatar* lastAvatar = nullptr;
     U64 lastMeshId = 0;
@@ -33410,6 +33424,21 @@ private:
     LLTexUnit::eTextureType mType[WorldShadowGLState::kTexUnits] = {};
     WorldShadowGLState mBefore;
 };
+
+class WorldShadowDrawScope
+{
+public:
+    explicit WorldShadowDrawScope(LLPipeline::WorldShadowDrawCounts& counts)
+        : mPrevious(LLPipeline::sWorldShadowDrawCounts)
+    {
+        LLPipeline::sWorldShadowDrawCounts = &counts;
+    }
+    ~WorldShadowDrawScope() { LLPipeline::sWorldShadowDrawCounts = mPrevious; }
+    WorldShadowDrawScope(const WorldShadowDrawScope&) = delete;
+    WorldShadowDrawScope& operator=(const WorldShadowDrawScope&) = delete;
+private:
+    LLPipeline::WorldShadowDrawCounts* mPrevious;
+};
 }
 
 // [P1-lite] World cube shadow maps for the top 1-2 RESIDENT point lights (alworldshadowmath.h). Six face passes per light, every
@@ -33519,15 +33548,18 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     struct Job { U32 slot; LLDrawable* drawable; LLVector3 origin; F32 radius; F32 near_plane; };
     std::array<Job, ALWorldShadow::kMaxLights> jobs;
     std::array<GLenum, ALWorldShadow::kMaxLights> copy_error{};
+    std::array<WorldShadowDrawCounts, ALWorldShadow::kMaxLights> draw_counts{};
     U32 job_count = 0, resident_count = 0;
     const auto log_world_shadow = [&](const Job* js, U32 n, const GLenum* errors, U32 mask)
     {
         std::string text;
         for (U32 j = 0; j < n; ++j)
         {
-            char line[200];
-            snprintf(line, sizeof(line), "%sslot %u near=%.3f far=%.3f at (%.2f %.2f %.2f) copy_err=0x%x", j ? "; " : "", js[j].slot, js[j].near_plane,
-                static_cast<F32>(ALWorldShadow::farPlane(js[j].radius)), js[j].origin.mV[VX], js[j].origin.mV[VY], js[j].origin.mV[VZ], static_cast<unsigned>(errors[j]));
+            const auto& counts = draw_counts[j];
+            char line[300];
+            snprintf(line, sizeof(line), "%sslot %u near=%.3f far=%.3f at (%.2f %.2f %.2f) copy_err=0x%x bodies=%u rigged=%u self_bodies=%u self_rigged=%u", j ? "; " : "", js[j].slot, js[j].near_plane,
+                static_cast<F32>(ALWorldShadow::farPlane(js[j].radius)), js[j].origin.mV[VX], js[j].origin.mV[VY], js[j].origin.mV[VZ], static_cast<unsigned>(errors[j]),
+                counts.avatarBodies, counts.riggedBatches, counts.selfBodies, counts.selfRigged);
             text += line;
         }
         log_world_shadow_impl(*this, mWorldShadowState, text.c_str(), n, mask);
@@ -33598,6 +33630,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     if (saved_scissor) glDisable(GL_SCISSOR_TEST);
 
     // The SAME shadow render-type mask generateSunShadow pushes. KEEP IN SYNC (relight_shader_check.py compares the two lists).
+    const bool rigged_alpha_enabled = hasRenderType(LLRenderPass::PASS_ALPHA_RIGGED);
     pushRenderTypeMask();
     andRenderTypeMask(LLPipeline::RENDER_TYPE_SIMPLE,
                     LLPipeline::RENDER_TYPE_ALPHA,
@@ -33667,6 +33700,9 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
                     LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK,
                     LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK_RIGGED,
                     END_RENDER_TYPES);
+    // BLEND mesh bodies/attachments live in a distinct map. Preserve the
+    // caller's enable while retaining the common native mask verbatim above.
+    if (rigged_alpha_enabled) setRenderTypeMask(LLRenderPass::PASS_ALPHA_RIGGED, END_RENDER_TYPES);
     gGL.setColorMask(false, false);
 
     static LLCullResult sWorldCull[ALWorldShadow::kMaxLights];
@@ -33680,6 +33716,7 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
         if (!(far_plane > near_plane)) { mWorldShadowReason[job.slot] = ALWorldShadow::SlotReason::BadRange; continue; }
         const glm::vec3 origin = glm::make_vec3(job.origin.mV);
         const glm::mat4 proj = glm::perspective(fov, 1.f, near_plane, far_plane);
+        WorldShadowDrawScope caster_scope(draw_counts[j]);
         for (U32 face = 0; face < ALWorldShadow::kFaces; ++face)
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("WorldShadow::face");

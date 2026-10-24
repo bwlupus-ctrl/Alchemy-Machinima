@@ -562,23 +562,29 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
     // actorFxEnabled=0 here and cannot inherit the preceding actor's dissolve.
     LLRenderPass::uploadActorFx(actor_fx_id);
 
+    U32 indices = 0;
     if (pass == SHADOW_PASS_AVATAR_OPAQUE)
     {
         LLDrawPoolAvatar::sSkipTransparent = true;
-        avatarp->renderSkinned();
+        indices = avatarp->renderSkinned();
         LLDrawPoolAvatar::sSkipTransparent = false;
     }
     else if (pass == SHADOW_PASS_AVATAR_ALPHA_BLEND)
     {
         LLDrawPoolAvatar::sSkipOpaque = true;
-        avatarp->renderSkinned();
+        indices = avatarp->renderSkinned();
         LLDrawPoolAvatar::sSkipOpaque = false;
     }
     else if (pass == SHADOW_PASS_AVATAR_ALPHA_MASK)
     {
         LLDrawPoolAvatar::sSkipOpaque = true;
-        avatarp->renderSkinned();
+        indices = avatarp->renderSkinned();
         LLDrawPoolAvatar::sSkipOpaque = false;
+    }
+    if (indices && LLPipeline::sWorldShadowDrawCounts)
+    {
+        ++LLPipeline::sWorldShadowDrawCounts->avatarBodies;
+        if (avatarp->isSelf()) ++LLPipeline::sWorldShadowDrawCounts->selfBodies;
     }
 }
 
