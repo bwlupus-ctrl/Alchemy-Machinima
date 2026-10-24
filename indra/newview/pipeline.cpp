@@ -11328,9 +11328,11 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
         }
 
         // UPDATE THE EXISTING NEARBY LIGHTS
-        light_set_t cur_nearby_lights;
+        // Distance is the set's sort key, so update extracted nodes and reinsert them
+        // in current distance order without allocating new nodes each frame.
+        light_set_t updated_lights;
         for (light_set_t::iterator iter = mNearbyLights.begin();
-            iter != mNearbyLights.end(); ++iter)
+            iter != mNearbyLights.end();)
         {
             const Light* light = &(*iter);
             LLDrawable* drawable = light->drawable;
@@ -11340,6 +11342,7 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                 if (!sRenderAttachedLights)
                 {
                     drawable->clearState(LLDrawable::NEARBY_LIGHT);
+                    iter = mNearbyLights.erase(iter);
                     continue;
                 }
                 LLVOAvatar *avatar = vobj->getAvatar();
@@ -11355,6 +11358,7 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                 if (avatar && (avatar->isTooComplex() || avatar->isInMuteList() || avatar->isTooSlow()))
                 {
                     drawable->clearState(LLDrawable::NEARBY_LIGHT);
+                    iter = mNearbyLights.erase(iter);
                     continue;
                 }
             }
@@ -11372,16 +11376,20 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             if (!volight || !drawable->isState(LLDrawable::LIGHT))
             {
                 drawable->clearState(LLDrawable::NEARBY_LIGHT);
+                iter = mNearbyLights.erase(iter);
                 continue;
             }
             if (light->fade <= -LIGHT_FADE_TIME)
             {
                 drawable->clearState(LLDrawable::NEARBY_LIGHT);
+                iter = mNearbyLights.erase(iter);
                 continue;
             }
 
             F32 dist = calc_light_dist(volight, cam_pos, max_dist);
             F32 fade = light->fade;
+            // setupHWLights advances the fade clock: nonnegative fades in,
+            // negative fades out. Reverse direction without a visibility jump.
             if (dist < max_dist)
             {
                 if (fade < 0)
@@ -11400,10 +11408,13 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                     fade -= LIGHT_FADE_TIME;
                 }
             }
-            // Re-insert with updated distance so the set stays correctly sorted
-            cur_nearby_lights.insert(Light(drawable, dist, fade));
+
+            light_set_t::node_type node = mNearbyLights.extract(iter++);
+            node.value().dist = dist;
+            node.value().fade = fade;
+            updated_lights.insert(std::move(node));
         }
-        mNearbyLights = cur_nearby_lights;
+        mNearbyLights.swap(updated_lights);
 
         // FIND NEW LIGHTS THAT ARE IN RANGE
         for (LLDrawable::ordered_drawable_set_t::iterator iter = mLights.begin();
