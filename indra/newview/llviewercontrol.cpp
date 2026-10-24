@@ -109,6 +109,7 @@
 
 // Third party library includes
 #include <boost/algorithm/string.hpp>
+#include <cmath>
 
 #ifdef TOGGLE_HACKED_GODLIKE_VIEWER
 bool                gHackGodmode = false;
@@ -1116,12 +1117,24 @@ void setting_setup_signal_listener(LLControlGroup& group, const std::string& set
     });
 }
 
+static void handleRigRimWrapAmount(const LLSD& value)
+{
+    const F32 amount = static_cast<F32>(value.asReal());
+    const F32 safe = std::isfinite(amount) ? llclamp(amount, 0.f, 1.f) : 0.f;
+    if (amount != safe) gSavedSettings.setF32("CineRigRimWrapStrength", safe);
+}
+
 void settings_setup_listeners()
 {
     LL_PROFILE_ZONE_SCOPED;
     // Exposure history listens at the setting layer, so every editing surface
     // (including Debug Settings and Lightbox) shares one session history.
     ALExposureSettingsHistory::initialize();
+    // Unversioned legacy scenes/presets used 0..2. Preserve values through 1,
+    // saturate larger values, and apply the new perceptual curve in the shader.
+    // This setting-layer listener covers scene, custom preset and Debug loads.
+    setting_setup_signal_listener(gSavedSettings, "CineRigRimWrapStrength", handleRigRimWrapAmount);
+    handleRigRimWrapAmount(gSavedSettings.getControl("CineRigRimWrapStrength")->getValue());
     // Advanced edits mark the three-setting preset Custom, so selecting the
     // previous preset again always emits a change and reapplies all three knobs.
     static bool applying_area_quality = false;

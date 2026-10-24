@@ -20,46 +20,46 @@ SUFFIXES = ('Enabled', 'Strength', 'Width', 'Blur', 'Saturation', 'Clamp')
 # Independent expectations, in the stable public preset order. Include all six
 # settings so a swapped column or an omitted write cannot pass unnoticed.
 EXPECTED = [
-    ('Subtle Edge', True, .25, 1, .5, .5, 2),
-    ('Soft Portrait Wrap', True, .65, 3, 1.5, .65, 4),
-    ('Strong Backlight', True, .55, 2, .8, .7, 6),
-    ('Hair Shine', True, .25, 1, .5, .7, 4),
-    ('Silhouette Glow (any angle)', True, .8, 3.5, 1.8, .7, 6),
-    ('Neon / Stage', True, .25, 1, .5, 1, 8),
-    ('Dreamy Halo', True, 1.1, 4.5, 2.5, .6, 6),
-    ('Noir Kicker', True, .25, 1, .5, .3, 2),
-    ('Two-Sided Kick', True, .25, 1.5, .5, .7, 4),
-    ('Fashion Edge', True, .35, 2, 1, .65, 4),
-    ('Sci-Fi Hologram', True, .7, 2.5, 1.2, 1, 6),
-    ('Candle Glow', True, .5, 2.5, 1.8, .8, 4),
-    ('Metal Sheen', True, .25, 1, .5, .7, 4),
-    ('Skin Sheen', True, .25, 2, 1.2, .55, 3),
-    ('Soft Fill Wrap', True, .65, 3.5, 2, .65, 4),
-    ('Horror Edge', True, .25, 1, .5, .4, 4),
-    ('Moonlit Rim', True, .35, 2, 1.2, .5, 3),
-    ('Glass Shell', True, .25, 1, .5, .5, 4),
-    ('Tron Suit Kick', True, .25, 1, .5, 1, 6),
-    ('Ares Red Backlight', True, .25, 1.5, .5, 1, 6),
-    ('Golden Hour Flare', True, 1.4, 4.5, 2.2, .85, 8),
-    ('Glacial Frost Edge', True, .25, 1, .5, .5, 2),
-    ('Strobe Cut', True, .25, 1, .3, .7, 4),
-    ('Aquatic Caustic Rim', True, .9, 3.2, 1.8, .9, 6),
-    ('Ember Lick', True, .75, 2.8, 1.4, .8, 5),
-    ('Overcast Diffusion', True, .6, 5, 2.5, .4, 2.5),
-    ('Clamshell Beauty Edge', True, .5, 2, 1.2, .6, 3.5),
-    ('Limelight Beam', True, .8, 2.2, 1, .75, 7),
-    ('Crypt Pale Glow', True, .7, 3, 1.6, .2, 3),
-    ('Rain Slick Glaze', True, .25, 1, .5, .6, 4),
-    ('Dusk Horizon Kick', True, 1.1, 3.5, 1.5, .8, 6.5),
-    ('Spectral Silhouette', True, 1.6, 6, 2.6, .3, 4.5),
-    ('Natural Separation', True, .3, 1.5, 1, .6, 3),
-    ('Dialogue Two-Shot', True, .3, 1.5, 1, .55, 3),
-    ('Interview Hair Light', True, .35, 1.5, 1.2, .6, 3.5),
-    ('Window Backlight', True, .5, 3, 1.6, .75, 5),
-    ('Overcast Outdoor', True, .2, 2.5, 2, .4, 2),
-    ('Night Street Edge', True, .3, 1.5, .8, .85, 5),
-    ('Lamp Practical', True, .4, 2, 1.5, .8, 4),
-    ('Dark Background Lift', True, .25, 1, .6, .5, 3),
+    ('Subtle Edge', True, 0.12, 1, 0.5, 0.5, 1),
+    ('Soft Portrait Wrap', True, 0.33, 3, 1.5, 0.65, 1),
+    ('Strong Backlight', True, 0.28, 2, 0.8, 0.7, 1),
+    ('Hair Shine', True, 0.12, 1, 0.5, 0.7, 1),
+    ('Silhouette Glow (any angle)', True, 0.4, 3.5, 1.8, 0.7, 1),
+    ('Neon / Stage', True, 0.12, 1, 0.5, 1, 1),
+    ('Dreamy Halo', True, 0.55, 4.5, 2.5, 0.6, 1),
+    ('Noir Kicker', True, 0.12, 1, 0.5, 0.3, 1),
+    ('Two-Sided Kick', True, 0.12, 1.5, 0.5, 0.7, 1),
+    ('Fashion Edge', True, 0.17, 2, 1, 0.65, 1),
+    ('Sci-Fi Hologram', True, 0.35, 2.5, 1.2, 1, 1),
+    ('Candle Glow', True, 0.25, 2.5, 1.8, 0.8, 1),
+    ('Metal Sheen', True, 0.12, 1, 0.5, 0.7, 1),
+    ('Skin Sheen', True, 0.12, 2, 1.2, 0.55, 1),
+    ('Soft Fill Wrap', True, 0.33, 3.5, 2, 0.65, 1),
+    ('Horror Edge', True, 0.12, 1, 0.5, 0.4, 1),
+    ('Moonlit Rim', True, 0.17, 2, 1.2, 0.5, 1),
+    ('Glass Shell', True, 0.12, 1, 0.5, 0.5, 1),
+    ('Tron Suit Kick', True, 0.12, 1, 0.5, 1, 1),
+    ('Ares Red Backlight', True, 0.12, 1.5, 0.5, 1, 1),
+    ('Golden Hour Flare', True, 0.7, 4.5, 2.2, 0.85, 1),
+    ('Glacial Frost Edge', True, 0.12, 1, 0.5, 0.5, 1),
+    ('Strobe Cut', True, 0.12, 1, 0.3, 0.7, 1),
+    ('Aquatic Caustic Rim', True, 0.45, 3.2, 1.8, 0.9, 1),
+    ('Ember Lick', True, 0.38, 2.8, 1.4, 0.8, 1),
+    ('Overcast Diffusion', True, 0.3, 5, 2.5, 0.4, 1),
+    ('Clamshell Beauty Edge', True, 0.25, 2, 1.2, 0.6, 1),
+    ('Limelight Beam', True, 0.4, 2.2, 1, 0.75, 1),
+    ('Crypt Pale Glow', True, 0.35, 3, 1.6, 0.2, 1),
+    ('Rain Slick Glaze', True, 0.12, 1, 0.5, 0.6, 1),
+    ('Dusk Horizon Kick', True, 0.55, 3.5, 1.5, 0.8, 1),
+    ('Spectral Silhouette', True, 0.8, 6, 2.6, 0.3, 1),
+    ('Natural Separation', True, 0.15, 1.5, 1, 0.6, 1),
+    ('Dialogue Two-Shot', True, 0.15, 1.5, 1, 0.55, 1),
+    ('Interview Hair Light', True, 0.17, 1.5, 1.2, 0.6, 1),
+    ('Window Backlight', True, 0.25, 3, 1.6, 0.75, 1),
+    ('Overcast Outdoor', True, 0.1, 2.5, 2, 0.4, 1),
+    ('Night Street Edge', True, 0.15, 1.5, 0.8, 0.85, 1),
+    ('Lamp Practical', True, 0.2, 2, 1.5, 0.8, 1),
+    ('Dark Background Lift', True, 0.12, 1, 0.6, 0.5, 1),
 ]
 
 
@@ -80,11 +80,13 @@ SHIM = r'''
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <stdexcept>
 #include <string>
 #include <vector>
 using F32 = float;
+template<class T> T llclamp(T value, T low, T high) { return std::clamp(value, low, high); }
 #define LL_ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 struct LLSD {
     double scalar = 0;
@@ -93,6 +95,7 @@ struct LLSD {
     LLSD(bool v) : scalar(v) {}
     LLSD(int v) : scalar(v) {}
     LLSD(double v) : scalar(v) {}
+    double asReal() const { return scalar; }
     static LLSD emptyMap() { return {}; }
     LLSD& operator[](const std::string& key) { return fields[key]; }
     const LLSD& operator[](const std::string& key) const { return fields.at(key); }
@@ -141,6 +144,10 @@ def build_source():
     controller = (ROOT / 'indra/newview/alrigrimcontroller.cpp').read_text()
     loader = (ROOT / 'indra/newview/alkitpresets.cpp').read_text()
     header = (ROOT / 'indra/newview/alpresetlook.h').read_text()
+    controls = (ROOT / 'indra/newview/llviewercontrol.cpp').read_text()
+    normalize = function(controls, 'static void handleRigRimWrapAmount(')
+    assert 'setting_setup_signal_listener(gSavedSettings, "CineRigRimWrapStrength", handleRigRimWrapAmount);' in controls
+    assert 'handleRigRimWrapAmount(gSavedSettings.getControl("CineRigRimWrapStrength")->getValue());' in controls
     enum = re.search(r'enum Family \{.*?\};', header, re.S).group()
     ownership = '\n'.join(function(loader, sig) for sig in (
         'std::vector<std::string> select(',
@@ -185,7 +192,7 @@ def build_source():
                           for row in EXPECTED)
     keys = ', '.join(json.dumps('CineRigRimWrap' + s) for s in SUFFIXES)
     return (SHIM + '\nnamespace ALPresetLook {\n' + enum + '\n' + ownership + '\n}\n' +
-            tables + dispatch + '\nint main() { try {\n' + '\n'.join(declarations) +
+            normalize + tables + dispatch + '\nint main() { try {\n' + '\n'.join(declarations) +
             '\n' + explicit_checks + r'''
 struct Expected { const char* name; double values[6]; };
 const Expected expected[] = {
@@ -227,7 +234,22 @@ require(!ALRigRimController::applyPresetByName("__unknown_rim__"), "unknown pres
 for (const auto& kv : before)
     require(gSavedSettings.controls.at(kv.first).get().scalar == kv.second.get().scalar,
             "unknown preset changed settings");
+// The exact setting-layer callback used by startup, scene and custom-preset
+// loads. No version tag exists in old snapshots; numeric saturation is stable
+// across repeat loads, and values in the new range remain unchanged.
+for (const auto& pair : {std::pair<double,double>{-1,0}, {0,0}, {.1,.1}, {.25,.25},
+                        {1,1}, {1.4,1}, {2,1}, {32,1},
+                        {std::numeric_limits<double>::infinity(),0},
+                        {std::numeric_limits<double>::quiet_NaN(),0}}) {
+    auto& control = gSavedSettings.controls.at("CineRigRimWrapStrength");
+    control.set(LLSD(pair.first));
+    handleRigRimWrapAmount(control.get());
+    require(std::abs(control.get().scalar - pair.second) < 1.e-6, "legacy Amount normalization");
+    handleRigRimWrapAmount(control.get());
+    require(std::abs(control.get().scalar - pair.second) < 1.e-6, "repeat Amount normalization");
+}
 std::cout << "PASS: 40 presets, all six explicit wrap keys, 1680 production applies, excluded settings, unknown name\n";
+std::cout << "PASS: production setting-layer legacy Amount normalization (10 cases, repeat loads)\n";
 return 0;
 } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

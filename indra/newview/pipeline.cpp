@@ -3232,6 +3232,7 @@ void LLPipeline::releaseScreenBuffers()
         rt.rigRimAux.release();
         for (auto& target : rt.rigRimSil) target.release();
         for (auto& target : rt.rigRimWrapBlur) target.release();
+        rt.rigRimWrapScene.release();
         rt.screen.release();
         rt.deferredScreen.release();
         rt.deferredLight.release();
@@ -23831,7 +23832,8 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
 void LLPipeline::renderRigRimWrap(bool debug_only)
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CineRigRimWrapEnabled", false);
-    static LLCachedControl<F32> strength(gSavedSettings, "CineRigRimWrapStrength", .5f);
+    static LLCachedControl<F32> strength(gSavedSettings, "CineRigRimWrapStrength", .25f);
+    static LLCachedControl<F32> master(gSavedSettings, "CineRigRimMasterGain", 1.f);
     static LLCachedControl<U32> debug_view(gSavedSettings, "CineRigRimDebugView", 0);
     if (!enabled() || strength() <= 0.f || (debug_view() == 5) != debug_only ||
         mRT != &mMainRT || gCubeSnapshot || sPrismLensRender || sImpostorRender ||
@@ -23846,7 +23848,7 @@ void LLPipeline::renderRigRimWrap(bool debug_only)
     static LLCachedControl<F32> reach(gSavedSettings, "CineRigRimWrapWidth", 2.f);
     static LLCachedControl<F32> blur(gSavedSettings, "CineRigRimWrapBlur", 1.f);
     static LLCachedControl<F32> saturation(gSavedSettings, "CineRigRimWrapSaturation", .7f);
-    static LLCachedControl<F32> hdr_clamp(gSavedSettings, "CineRigRimWrapClamp", 4.f);
+    static LLCachedControl<F32> hdr_clamp(gSavedSettings, "CineRigRimWrapClamp", 1.f);
     static LLCachedControl<F32> width(gSavedSettings, "CineRigRimSilhouetteWidth", 3.f);
     static LLCachedControl<U32> units(gSavedSettings, "CineRigRimSilhouetteUnits", 0);
     static LLCachedControl<F32> soft(gSavedSettings, "CineRigRimSilhouetteSoft", .5f);
@@ -23886,7 +23888,7 @@ void LLPipeline::renderRigRimWrap(bool debug_only)
         {
             GLboolean blend = glIsEnabledi(GL_BLEND, 0);
             GLboolean mask[4];
-            GLint src_rgb, dst_rgb, src_alpha, dst_alpha, eq_rgb, eq_alpha;
+            GLint src_rgb, dst_rgb, src_alpha, dst_alpha, eq_rgb, eq_alpha, read_buffer;
             std::array<GLenum, 4> buffers{};
             U32 count;
             explicit State(U32 n) : count(n)
@@ -23899,6 +23901,7 @@ void LLPipeline::renderRigRimWrap(bool debug_only)
                 glGetIntegeri_v(GL_BLEND_DST_ALPHA, 0, &dst_alpha);
                 glGetIntegeri_v(GL_BLEND_EQUATION_RGB, 0, &eq_rgb);
                 glGetIntegeri_v(GL_BLEND_EQUATION_ALPHA, 0, &eq_alpha);
+                glGetIntegerv(GL_READ_BUFFER, &read_buffer);
                 for (U32 i = 0; i < count; ++i)
                 {
                     GLint buffer = GL_NONE;
@@ -23913,12 +23916,19 @@ void LLPipeline::renderRigRimWrap(bool debug_only)
                 glBlendFuncSeparatei(0, src_rgb, dst_rgb, src_alpha, dst_alpha);
                 glBlendEquationSeparatei(0, eq_rgb, eq_alpha);
                 glDrawBuffers(count, buffers.data());
+                glReadBuffer(read_buffer);
             }
         } saved(mRT->screen.getNumTextures());
         LLGLDepthTest depth(GL_FALSE, GL_FALSE);
         LLGLDisable cull(GL_CULL_FACE);
         glDisablei(GL_BLEND, 0);
         glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        // One-sided lerp needs the exact foreground. Fixed-function blending
+        // cannot clamp (bg - dst) per channel; reading screen while drawing to
+        // it is undefined. Keep a separate RGBA16F snapshot, including debug.
+        const U32 scene_w = mRT->screen.getWidth(), scene_h = mRT->screen.getHeight();
+        mMainRT.rigRimWrapScene.copyColorToAttachment0(mRT->screen,
+            0, 0, scene_w, scene_h, 0, 0, scene_w, scene_h, GL_NEAREST);
         const F32 blur_q = llclamp(finite_or(blur, 1.f), 0.f, 3.f);
         {
             LL_PROFILE_GPU_ZONE("rig rim wrap blur");
@@ -23961,9 +23971,10 @@ void LLPipeline::renderRigRimWrap(bool debug_only)
             gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP, &mMainRT.rigRimAux, false, LLTexUnit::TFO_POINT);
             gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_SIL_MAP, &mMainRT.rigRimSil[0], false, LLTexUnit::TFO_POINT);
             gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC, &mMainRT.rigRimWrapBlur[0], false, LLTexUnit::TFO_BILINEAR);
+            gRigRimWrapProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, &mMainRT.rigRimWrapScene, false, LLTexUnit::TFO_POINT);
             gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_SIL, width_x, softness, llclamp(finite_or(gap, .08f), .01f, .5f), cm ? texels_per_m : 0.f);
-            gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP, llclamp(finite_or(strength, .5f), 0.f, 2.f), llclamp(finite_or(reach, 2.f), .5f, 8.f) * band, llclamp(finite_or(saturation, .7f), 0.f, 1.f), llclamp(finite_or(hdr_clamp, 4.f), .5f, 32.f));
-            gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP2, 0.f, 0.f, debug_only ? 1.f : 0.f, actors() ? 1.f : 0.f);
+            gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP, llclamp(finite_or(strength, .25f), 0.f, 1.f), llclamp(finite_or(reach, 2.f), .5f, 8.f) * band, llclamp(finite_or(saturation, .7f), 0.f, 1.f), llclamp(finite_or(hdr_clamp, 1.f), .5f, 1.f));
+            gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP2, llclamp(finite_or(master, 0.f), 0.f, 4.f), 0.f, debug_only ? 1.f : 0.f, actors() ? 1.f : 0.f);
             mScreenTriangleVB->setBuffer();
             mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
             unbindDeferredShader(gRigRimWrapProgram);
@@ -25650,13 +25661,22 @@ bool LLPipeline::ensureRigRimAux()
 
 bool LLPipeline::ensureRigRimWrap()
 {
+    const U32 scene_w = mMainRT.screen.getWidth(), scene_h = mMainRT.screen.getHeight();
     const U32 w = (mMainRT.deferredScreen.getWidth() + 3) / 4;
     const U32 h = (mMainRT.deferredScreen.getHeight() + 3) / 4;
     if (mMainRT.rigRimWrapBlur[0].isComplete() &&
         mMainRT.rigRimWrapBlur[0].getWidth() == w && mMainRT.rigRimWrapBlur[0].getHeight() == h &&
         mMainRT.rigRimWrapBlur[1].isComplete() &&
-        mMainRT.rigRimWrapBlur[1].getWidth() == w && mMainRT.rigRimWrapBlur[1].getHeight() == h)
+        mMainRT.rigRimWrapBlur[1].getWidth() == w && mMainRT.rigRimWrapBlur[1].getHeight() == h &&
+        mMainRT.rigRimWrapScene.isComplete() &&
+        mMainRT.rigRimWrapScene.getWidth() == scene_w && mMainRT.rigRimWrapScene.getHeight() == scene_h)
         return true;
+    mMainRT.rigRimWrapScene.release();
+    if (!mMainRT.rigRimWrapScene.allocate(scene_w, scene_h, GL_RGBA16F, false))
+    {
+        LL_WARNS_ONCE("RigRimQ") << "Rig Rim wrap scene allocation failed" << LL_ENDL;
+        return false;
+    }
     for (auto& target : mMainRT.rigRimWrapBlur) target.release();
     for (auto& target : mMainRT.rigRimWrapBlur)
     {
@@ -25666,6 +25686,7 @@ bool LLPipeline::ensureRigRimWrap()
             if (!target.allocate(w, h, GL_RGBA16F, false))
             {
                 for (auto& cleanup : mMainRT.rigRimWrapBlur) cleanup.release();
+                mMainRT.rigRimWrapScene.release();
                 LL_WARNS_ONCE("RigRimQ") << "Rig Rim wrap target allocation failed" << LL_ENDL;
                 return false;
             }
@@ -25679,6 +25700,7 @@ void LLPipeline::releaseRigRimAux()
     mMainRT.rigRimAux.release();
     for (auto& target : mMainRT.rigRimSil) target.release();
     for (auto& target : mMainRT.rigRimWrapBlur) target.release();
+    mMainRT.rigRimWrapScene.release();
     mRigRimAuxValid = mRigRimSilValid = false;
 }
 
@@ -28041,7 +28063,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         static LLCachedControl<F32> rim_seed(gSavedSettings, "CineRigRimSilhouetteSeedThreshold", .02f);
         static LLCachedControl<F32> rim_seed_soft(gSavedSettings, "CineRigRimSilhouetteSeedSoft", .5f);
         static LLCachedControl<U32> rim_debug(gSavedSettings, "CineRigRimDebugView", 0);
-        static LLCachedControl<F32> rim_wrap_strength(gSavedSettings, "CineRigRimWrapStrength", .5f);
+        static LLCachedControl<F32> rim_wrap_strength(gSavedSettings, "CineRigRimWrapStrength", .25f);
         const bool want_aux = rim_smooth() > 0.f || rim_steady() > 0.f || rim_actors() || rim_wrap();
         const bool want_sil = rim_edge() > 0.f || rim_wrap();
         S32 subject_source = mRigRimSubjectSource;

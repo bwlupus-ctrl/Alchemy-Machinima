@@ -41,16 +41,19 @@
 //             (review P2-1)
 //   seed    = uv + offset (half-res texels -> uv)
 //   bg      = blurred(seed + dir * reach)  clamped per channel, desaturated
-//   wrap    = strength * bg * band(dist) * near_ok * (1 - NoV_geo) * subject^gate
+//   fg      = unblurred pre-wrap scene at this pixel
+//   k       = min(0.6, amount^2 * sqrt(master) * prox * graze * gate)
+//   wrap    = max(bg - fg, 0) * k  (one-sided lerp, added to fg)
 //
 // Inputs: rigRimAuxMap / rigRimSilMap (deferredUtil.glsl declarations; the
 // host guarantees both are valid for THIS main view), rigRimWrapSrc (the
 // quarter-res blurred scene = rigRimWrapBlur[0] after C3a, BILINEAR), depth via
-// deferredUtil. Beauty uses the live scene projection at this boundary.
+// deferredUtil. diffuseRect is an independent full-res pre-wrap scene copy;
+// never sample the active framebuffer. Beauty uses the live scene projection.
 // All map reads are textureLod(..., 0): this
 // fragment is in non-uniform flow.
-//   rig_rim_wrap   x strength, y reach (half-res texels), z saturation 0..1, w clamp (HDR)
-//   rig_rim_wrap2  z debug (1 = output the wrap term only; host draws with blend OFF),
+//   rig_rim_wrap   x perceptual amount 0..1, y reach (half-res texels), z saturation 0..1, w clamp <= 1
+//   rig_rim_wrap2  x master gain 0..4, z debug (1 = output the wrap term only; host draws with blend OFF),
 //                  w subject gate 0/1 (ActorsOnly)
 //
 // Program: isDeferred.  Vertex: deferred/postDeferredNoTCV.glsl.
@@ -64,6 +67,7 @@ in vec2 vary_fragcoord;
 uniform vec2 screen_res;
 
 uniform sampler2D rigRimWrapSrc;
+uniform sampler2D diffuseRect;
 uniform vec4      rig_rim_wrap;
 uniform vec4      rig_rim_wrap2;
 
@@ -122,14 +126,18 @@ void main()
                 vec2 sample_uv = clamp(seed_uv + dir * reach_uv, vec2(0.0), vec2(1.0));
 
                 vec3  bg  = textureLod(rigRimWrapSrc, sample_uv, 0.0).rgb;
-                bg        = min(max(bg, vec3(0.0)), vec3(max(rig_rim_wrap.w, 0.0)));
+                bg        = clamp(bg, vec3(0.0), vec3(clamp(rig_rim_wrap.w, 0.0, 1.0)));
                 float lum = dot(bg, vec3(0.2126, 0.7152, 0.0722));
                 bg        = mix(vec3(lum), bg, clamp(rig_rim_wrap.z, 0.0, 1.0));
 
                 float graze = 1.0 - clamp(abs(dot(n_geo, v)), 0.0, 1.0);
                 float gate  = mix(1.0, subject, clamp(rig_rim_wrap2.w, 0.0, 1.0));
 
-                wrap = max(rig_rim_wrap.x, 0.0) * bg * prox * graze * gate;
+                vec3 fg = textureLod(diffuseRect, uv, 0.0).rgb;
+                float amount = clamp(rig_rim_wrap.x, 0.0, 1.0);
+                float master = sqrt(clamp(rig_rim_wrap2.x, 0.0, 4.0));
+                float k = min(0.6, amount * amount * master * prox * graze * gate);
+                wrap = max(bg - fg, vec3(0.0)) * k;
             }
         }
     }

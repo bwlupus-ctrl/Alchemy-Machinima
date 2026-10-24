@@ -1305,6 +1305,7 @@ public:
         LLRenderTarget          rigRimAux;
         LLRenderTarget          rigRimSil[2];
         LLRenderTarget          rigRimWrapBlur[2];
+        LLRenderTarget          rigRimWrapScene; // full-res pre-wrap RGB; avoids framebuffer feedback
         LLRenderTarget          silCover; // [AvatarSilhouette] RG8; shared depth, never owned
         U32                     silCoverDepthSrc = 0;
         LLRenderTarget          deferredLight;

@@ -1,4 +1,4 @@
-"""Real-WGL regression for light-wrap bleeding through / out of alpha hair.
+"""Real-WGL regressions for subtle light wrap and alpha-hair occlusion.
 
 Runs production wrap + blur shaders and rigRimTermEx, with straight-alpha
 blending over an opaque red silhouette. Only scene/depth/normal/DT inputs are
@@ -106,7 +106,9 @@ extern "C" __declspec(dllexport) void cycle(unsigned count) {
                     values.append(value.value)
             route = gl.I()
             getint(0x8825+i, C.byref(route))
-            answer.append((tuple(m), is_enabled(0x0BE2, i), tuple(values), route.value))
+            read = gl.I()
+            getint(0x0C02, C.byref(read))
+            answer.append((tuple(m), is_enabled(0x0BE2, i), tuple(values), route.value, read.value))
         return answer
     for iteration in range(4):
         for i in range(4):
@@ -116,6 +118,7 @@ extern "C" __declspec(dllexport) void cycle(unsigned count) {
             equation(i, 0x800A if i%2 else 0x8006, 0x800B)
         routes = (gl.U*4)(*[0x8CE0+i for i in reversed(range(4))])
         buffers(4, routes)
+        readbuffer(0x8CE0 + iteration)
         before = snapshot()
         native.cycle(4)
         assert snapshot() == before, 'production C++ failed to restore GL state'
@@ -217,12 +220,14 @@ void main() {
         return out
 
     def frame(self, coverage, early, enabled=True, wrap_on=True, internal=0x881A,
-              no_band=False, projection_y=1):
+              no_band=False, projection_y=1, amount=.25, master=.05,
+              hdr_clamp=1, foreground=(.055, .009, .006), background=(2, 2, 2)):
         gl = self.gl
         h, w = coverage.shape
         qw, qh = (w + 3) // 4, (h + 3) // 4
         body = np.zeros((h, w, 4), np.float32)
-        body[:, :96] = [.055, .009, .006, .37]  # opaque red body + glow tag
+        body[:, :96] = [*foreground, .37]  # opaque body + glow tag
+        body[:, 96:, :3] = background
         depth = np.full((h, w), .5, np.float32)
         depth[:, 96:] = 1
         aux = np.zeros_like(body)
@@ -260,8 +265,16 @@ void main() {
             gl.disable(0x0BE2)
 
         def wrap():
-            if not enabled or not wrap_on:
+            if not enabled or not wrap_on or amount <= 0 or master <= 0:
                 return
+            # The production pass takes an independent full-res scene snapshot.
+            # Copy actual rendered pixels (including hair in the late negative
+            # control), rather than regenerating the foreground from fixtures.
+            # Match scene storage exactly, as production does with RGBA16F.
+            snapshot = self._texture('prewrap', 7, 0x8814, w, h, 0x1908, 0x1406, None)
+            self.target(scene, w, h)
+            gl.fn('glCopyTexSubImage2D', None, gl.U, gl.I, gl.I, gl.I, gl.I, gl.I, gl.I, gl.I)(
+                0x0DE1, 0, 0, 0, 0, 0, w, h)
             for pr, src, dst, step in ((self.down, scene, q[0], (0, 0)),
                                       (self.blur, q[0], q[1], (.5/qw, 0)),
                                       (self.blur, q[1], q[0], (0, .5/qh))):
@@ -273,12 +286,13 @@ void main() {
             self.target(scene, w, h)
             self._begin(self.wrap)
             for unit, (name, t) in enumerate((('rigRimWrapSrc', q[0]), ('depthMap', dep),
-                                             ('rigRimAuxMap', normal), ('rigRimSilMap', seeds))):
+                                             ('rigRimAuxMap', normal), ('rigRimSilMap', seeds),
+                                             ('diffuseRect', snapshot))):
                 self.sampler(self.wrap, name, t, unit, unit == 0)
             self.uniform(self.wrap, 'screen_res', w, h)
             self.uniform(self.wrap, 'rig_rim_sil', 4, .5, .08, 0)
-            self.uniform(self.wrap, 'rig_rim_wrap', .25, 4, .5, 2)
-            self.uniform(self.wrap, 'rig_rim_wrap2', 0, 0, 0, 1)
+            self.uniform(self.wrap, 'rig_rim_wrap', amount, 4, .5, hdr_clamp)
+            self.uniform(self.wrap, 'rig_rim_wrap2', master, 0, 0, 1)
             inv = np.diag([1, 1/projection_y, 1, 1]).astype(np.float32)
             inv[2, 3] = -4  # fixture view depth 4 at window depth .5
             self._mat(self.wrap, b'inv_proj', inv)
@@ -325,9 +339,73 @@ def production_order(tree):
         assert 'glDrawBuffers(1, &attachment);' in helper
         assert 'if (!already_bound) mRT->screen.bindTarget();' in helper
         assert 'if (!already_bound) mRT->screen.flush();' in helper
+        if tree.ref == 'WORKTREE':
+            assert 'rigRimWrapScene.copyColorToAttachment0(mRT->screen,' in helper
+            assert 'LLShaderMgr::DEFERRED_DIFFUSE, &mMainRT.rigRimWrapScene' in helper
+            assert 'llclamp(finite_or(strength, .25f), 0.f, 1.f)' in helper
+            assert 'llclamp(finite_or(master, 0.f), 0.f, 4.f)' in helper
         return True
     assert 'gRigRimWrapBlurProgram[0].bind()' in finalize, 'unknown production wrap scheduling'
     return False
+
+
+def check_strength(runner, storage):
+    """Production GPU draws: HDR/dark/tinted cases, full Amount/Master sweeps.
+
+    The independent bounds are on the final composite, never the shader's
+    internal k. This catches missing foreground subtraction or Master upload.
+    """
+    zero = np.zeros((96, 128), np.float32)
+    weights = np.array([.2126, .7152, .0722])
+    amounts = [0, .01, .05, .1, .25, .5, .75, 1]
+    checks, measurements = {}, []
+    subtle = runner.frame(zero, True, internal=storage, amount=.12, master=.6,
+                          foreground=(.02, .02, .02), background=(2, 2, 2))
+    subtle_source = runner.frame(zero, True, internal=storage, wrap_on=False,
+                                 foreground=(.02, .02, .02), background=(2, 2, 2))
+    subtle_gain = float(np.max((subtle[:, :96, :3] - subtle_source[:, :96, :3]) @ weights))
+    checks['subtle_edge_preset_below_2_percent_of_capped_background'] = 0 < subtle_gain < .02
+    for label, fg, bg in (('hdr2', (.02, .02, .02), (2, 2, 2)),
+                          ('hdr8', (.02, .02, .02), (8, 8, 8)),
+                          ('tinted', (1.5, .2, .01), (16, 4, 2)),
+                          ('darker', (.2, .2, .2), (.01, .01, .01))):
+        options = dict(internal=storage, foreground=fg, background=bg)
+        source = runner.frame(zero, True, wrap_on=False, **options)
+        for master in (0, .05, .25, 1, 4):
+            frames = [runner.frame(zero, True, amount=a, master=master, **options) for a in amounts]
+            prefix = '%s/master%g/' % (label, master)
+            checks[prefix + 'zero_byte_identical'] = frames[0].tobytes() == source.tobytes()
+            checks[prefix + 'monotonic'] = all(np.all(b[..., :3] >= a[..., :3]) for a, b in zip(frames, frames[1:]))
+            checks[prefix + 'never_darker'] = all(np.all(a[..., :3] >= source[..., :3]) for a in frames)
+            checks[prefix + 'glow_untouched'] = all(np.array_equal(a[..., 3], source[..., 3]) for a in frames)
+            gain = frames[3][:, :96, :3] - source[:, :96, :3]
+            peak = float(np.max(gain @ weights))
+            checks[prefix + 'subtle_at_0.1'] = peak < .03 * float(np.dot(bg, weights))
+            # Even at full Amount/high Master, approach the capped background
+            # by at most 60%, per channel. Brighter source channels stay exact.
+            upper = .6 * np.maximum(1 - source[..., :3], 0)
+            checks[prefix + 'bounded_lerp'] = all(np.all(a[..., :3] - source[..., :3] <= upper + 1e-6) for a in frames)
+            if label == 'darker' or master == 0:
+                checks[prefix + 'no_light_negative_control'] = all(np.array_equal(a, source) for a in frames)
+            elif label in ('hdr2', 'hdr8'):
+                checks[prefix + 'positive_control'] = peak > 0
+            if label in ('hdr2', 'hdr8'):
+                measurements.append(dict(scene=label, master=master, amount_0_1_peak_gain=peak,
+                                         background_fraction=peak / float(np.dot(bg, weights)),
+                                         amount_0_25_peak_gain=float(np.max((frames[4][:, :96, :3] - source[:, :96, :3]) @ weights))))
+        low = runner.frame(zero, True, amount=.5, master=.05, **options)
+        high = runner.frame(zero, True, amount=.5, master=1, **options)
+        checks[label + '/master_monotonic'] = bool(np.all(high[..., :3] >= low[..., :3]))
+        if label in ('hdr2', 'hdr8'):
+            checks[label + '/master_attenuates'] = bool(np.max(high[..., :3] - low[..., :3]) > .01)
+        # Legacy clamp values must not restore an HDR glow; legacy amounts
+        # over one saturate. These exercise the shader's defensive clamps too.
+        full = runner.frame(zero, True, amount=1, master=1, **options)
+        legacy = runner.frame(zero, True, amount=2, master=1, hdr_clamp=32, **options)
+        checks[label + '/legacy_saturates'] = np.array_equal(full, legacy)
+        off = runner.frame(zero, True, amount=1, wrap_on=False, **options)
+        checks[label + '/wrap_off_byte_identical'] = off.tobytes() == source.tobytes()
+    return dict(measurements=measurements, subtle_edge_peak_gain=subtle_gain, checks=checks)
 
 
 def main():
@@ -357,6 +435,7 @@ def main():
         bare = runner.frame(zero, True, internal=storage)
         hair = runner.frame(coverage, True, wrap_on=False, internal=storage)
         hair_bare = runner.frame(zero, True, wrap_on=False, internal=storage)
+        late = runner.frame(coverage, False, internal=storage)
         transparent = (coverage == 0) & (np.indices(coverage.shape)[1] < 96)
         opaque = coverage == 1
         leak = float(np.max(np.abs(actual[transparent, :3] - bare[transparent, :3])))
@@ -378,6 +457,8 @@ def main():
                       opaque_only_unchanged=np.array_equal(bare, runner.frame(zero, False, internal=storage)),
                       no_band_negative_control=np.array_equal(smooth, hair),
                       no_frame_history=np.array_equal(actual, repeated) and np.array_equal(actual, returned))
+        checks['wrap_positive_control'] = bool(np.max(bare[..., :3] - hair_bare[..., :3]) > .001)
+        checks['late_order_negative_control'] = bool(np.max(np.abs(late - expected)) > .001)
         # The local rim is weighted exactly once by authored coverage.
         full = np.ones_like(coverage)
         delta = runner.frame(full, True, wrap_on=False, internal=storage) - runner.frame(full, True, enabled=False, internal=storage)
@@ -388,9 +469,12 @@ def main():
             unlit = runner.frame(cov, True, enabled=False, internal=storage)
             alpha_error = max(alpha_error, float(np.max(np.abs((lit-unlit)[..., :3] - alpha*delta[..., :3]))))
         checks['rim_proportional_to_coverage'] = alpha_error < 1e-6
+        strength = check_strength(runner, storage)
         rows.append(dict(storage=name, transparent_leak=leak, opaque_overlay=over,
-                         max_error=error, alpha_proportional_error=alpha_error, checks=checks))
+                         max_error=error, alpha_proportional_error=alpha_error, checks=checks,
+                         strength=strength))
         failures += [name + ': ' + k for k, passed in checks.items() if not passed]
+        failures += [name + ': ' + k for k, passed in strength['checks'].items() if not passed]
         for label, pixels in (('actual', actual), ('expected', expected)):
             srgb = np.clip(pixels[..., :3], 0, 1) ** (1/2.2)
             Image.fromarray(np.uint8(srgb * 255 + .5)).resize((512, 384)).save(args.out / (name + '_' + label + '.png'))
