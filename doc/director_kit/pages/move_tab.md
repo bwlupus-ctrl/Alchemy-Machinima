@@ -1,13 +1,13 @@
 # Move — Director Kit page contract
 
 Page key: `move_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (8/19 setting-bound rows; 11 C++-referenced rows).
+Computed class: **code-driven** (8/20 setting-bound rows; 12 C++-referenced rows).
 
 ## Real owners
 
 - `panel_actor_mover` / `panel` at `indra/newview/skins/default/xui/en/panel_actor_mover.xml:19` (11 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (8 matching rows).
-- Referencing classes: `LLFloaterDirector` (31), `ALPanelActorMover` (7).
+- Referencing classes: `LLFloaterDirector` (31), `ALPanelActorMover` (9).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -21,9 +21,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `walk_who` / `scope_radio` (Who) | `radio_group` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:29` | kit `combo` ↔ `ActorMoverSync` `Boolean`; `ALActorMoverKitAdapter` preserves/calls wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onScopeCommit()` (`indra/newview/alpanelactormover.cpp:40`) | none |
-| `walk_who` / `btn_walk` (Walk) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:290` | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onClickWalk()` (`indra/newview/alpanelactormover.cpp:64`) | none |
-| `walk_who` / `btn_stop` (Stop / Release) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:299` | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onClickStop()` (`indra/newview/alpanelactormover.cpp:65`) | none |
+| `walk_who` / `scope_radio` (Who) | `radio_group` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:29` | kit `combo` ↔ `ActorMoverSync` `Boolean`; `ALActorMoverKitAdapter` preserves/calls wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onScopeCommit()` (`indra/newview/alpanelactormover.cpp:44`) | none |
+| `walk_who` / `btn_walk` (Walk) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:290` | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onClickWalk()` (`indra/newview/alpanelactormover.cpp:74`) | none |
+| `walk_who` / `btn_stop` (Stop / Release) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:299` | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onClickStop()` (`indra/newview/alpanelactormover.cpp:75`) | none |
 | `straight` / `speed_slider` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:116` | kit `slider` ↔ `ActorMoverSpeed` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:132` `speed_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:23` `speed_slider` |
 | `straight` / `dist_slider` (Distance) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:158` | kit `slider` ↔ `ActorMoverDistance` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:174` `dist_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:29` `dist_slider` |
 | `straight` / `heading_spinner` (Heading) | `spinner` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:78` | kit `dial` ↔ `ActorMoverHeading` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:35` `heading_spinner` |
@@ -40,14 +40,16 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `groups` / `group_rename_editor` (Rename to) | `line_editor` `indra/newview/skins/default/xui/en/floater_director.xml:477` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroupRename()` (`indra/newview/llfloaterdirector.cpp:1467`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onClickGroupRename()` (`indra/newview/llfloaterdirector.cpp:2422`) | none |
 | `groups` / `btn_group_rename` (Rename) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:488` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroupRename()` (`indra/newview/llfloaterdirector.cpp:1468`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onClickGroupRename()` (`indra/newview/llfloaterdirector.cpp:2423`) | none |
 | `groups` / `btn_group_dissolve` (Dissolve) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:467` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroupDissolve()` (`indra/newview/llfloaterdirector.cpp:1469`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onClickGroupDissolve()` (`indra/newview/llfloaterdirector.cpp:2424`) | none |
+| `my_avatar` / `my_heading_dial` (My heading) | none | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onMyHeadingCommit()` (`indra/newview/alpanelactormover.cpp:62`) | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelActorMover::onClickStop()` — `indra/newview/alpanelactormover.cpp:65` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelActorMover::onClickWalk()` — `indra/newview/alpanelactormover.cpp:64` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelActorMover::onScopeCommit()` — `indra/newview/alpanelactormover.cpp:40` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelActorMover::onClickStop()` — `indra/newview/alpanelactormover.cpp:75` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelActorMover::onClickWalk()` — `indra/newview/alpanelactormover.cpp:74` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelActorMover::onMyHeadingCommit()` — `indra/newview/alpanelactormover.cpp:62` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelActorMover::onScopeCommit()` — `indra/newview/alpanelactormover.cpp:44` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `LLFloaterDirector::onClickGroup()` — `indra/newview/llfloaterdirector.cpp:1455, 1456, 2107, 2418, 2419` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `LLFloaterDirector::onClickGroupDissolve()` — `indra/newview/llfloaterdirector.cpp:1469, 2424` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `LLFloaterDirector::onClickGroupRename()` — `indra/newview/llfloaterdirector.cpp:1467, 1468, 2422, 2423` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
@@ -63,7 +65,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **31 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **33 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -94,6 +96,8 @@ Manifest size: **31 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `groups_list-empty` | `groups_list` is empty with no selection. |
 | `groups_list-one` | `groups_list` has one selected item. |
 | `groups_list-overflow` | `groups_list` has 51 items and a visible scrollbar. |
+| `card-my_avatar-tallest-850` | Only `my_avatar` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-my_avatar-tallest-1160` | Only `my_avatar` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `actor-none` | Rail has no actor; target-dependent rows are disabled with an explicit empty state. |
 | `actor-selected` | One rail actor is selected and unpinned. |
 | `actor-pinned-rail-changes` | Page target is pinned while the rail changes to another actor. |
@@ -112,7 +116,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-41 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+42 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 
