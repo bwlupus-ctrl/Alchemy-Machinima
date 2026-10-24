@@ -1350,7 +1350,10 @@ void probe_gather_light(LLDrawable* drawable, LLVOVolume* light, F32 light_scale
             eligible = false;
         }
     }
-    if (s.mRadius * 1.5f <= 0.001f || light_color.magVecSquared() < 0.001f)
+    // Match the capture collector's EV-zero eligibility. Keep mColor above
+    // exposed: probe signatures must still invalidate when radiance changes.
+    const LLColor3 selection_color = light->getLightLinearColor() * light_scale;
+    if (s.mRadius * 1.5f <= 0.001f || selection_color.magVecSquared() < 0.001f)
     {
         eligible = false;
     }
