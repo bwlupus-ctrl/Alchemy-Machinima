@@ -2179,6 +2179,7 @@ protected:
 
     LLDrawable::ordered_drawable_set_t  mLights;
     light_set_t                     mNearbyLights; // lights near camera
+    U32                             mNearbyLightFadeFrame = ~0U;
     LLColor4                        mHWLightColors[8];
     // [ActorMask] Zero = world; other keys = WP0 exact owner/wearer bytes.
     struct ForwardLightSet

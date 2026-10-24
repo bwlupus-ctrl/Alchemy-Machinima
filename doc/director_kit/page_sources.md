@@ -1564,9 +1564,9 @@ Computed logic class: **code-driven**; 69/79 rows setting-bound, 7 rows referenc
 | `area_soft_shadows` / World lights | `area_shadow_world_lights` | `number` | `S32` `indra/newview/app_settings/settings.xml:21602` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:258` | — |
 | `area_soft_shadows` / World shadows | `area_shadow_world_status` | `readout` | — | — | — | — | — |
 | `area_soft_shadows` / World picks | `area_shadow_world_picks` | `readout` | — | — | — | — | — |
-| `area_soft_shadows` / List picks | `area_shadow_world_list_picks` | `button` | — | — | `LLPipeline::worldShadowPickChatLines indra/newview/pipeline.cpp:27466` | — | — |
-| `area_soft_shadows` / Clear picks | `area_shadow_world_clear_picks` | `button` | — | — | `LLPipeline::clearWorldShadowPicks indra/newview/pipeline.cpp:23310` | — | — |
-| `area_soft_shadows` / Clear away picks | `area_shadow_world_clear_away_picks` | `button` | — | — | `LLPipeline::clearAwayWorldShadowPicks indra/newview/pipeline.cpp:23322` | — | — |
+| `area_soft_shadows` / List picks | `area_shadow_world_list_picks` | `button` | — | — | `LLPipeline::worldShadowPickChatLines indra/newview/pipeline.cpp:27484` | — | — |
+| `area_soft_shadows` / Clear picks | `area_shadow_world_clear_picks` | `button` | — | — | `LLPipeline::clearWorldShadowPicks indra/newview/pipeline.cpp:23328` | — | — |
+| `area_soft_shadows` / Clear away picks | `area_shadow_world_clear_away_picks` | `button` | — | — | `LLPipeline::clearAwayWorldShadowPicks indra/newview/pipeline.cpp:23340` | — | — |
 | `area_soft_shadows` / Also in VCam feeds | `area_shadow_vcam` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:21581` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:276` | — |
 | `area_soft_shadows` / SL status | `area_shadow_sl_status` | `readout` | — | — | — | — | — |
 | `area_soft_shadows` / Coverage | `area_shadow_coverage` | `readout` | — | — | — | — | — |
@@ -2217,7 +2217,7 @@ Computed logic class: **code-driven**; 1/19 rows setting-bound, 18 rows referenc
 | `look` / Render mode | `actor_style_mode` | `combo` | — | `indra/newview/skins/default/xui/en/floater_director.xml:1553` `floater_director`/combo_box | `LLFloaterDirector::onActorStyleControlChanged indra/newview/llfloaterdirector.cpp:2404` | — | — |
 | `look` / Opacity | `actor_style_alpha` | `slider` | — | `indra/newview/skins/default/xui/en/floater_director.xml:1623` `floater_director`/slider | `LLFloaterDirector::onActorStyleControlChanged indra/newview/llfloaterdirector.cpp:2404` | — | — |
 | `look` / Dissolve | `actor_style_dissolve_progress` | `slider` | — | `indra/newview/skins/default/xui/en/floater_director.xml:1624` `floater_director`/slider | `LLFloaterDirector::onActorStyleControlChanged indra/newview/llfloaterdirector.cpp:2404` | — | — |
-| `avatar_rendering` / Alpha attachment sort | `alpha_attachment_sort` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:10837` (Global) | — | — | `actor_style_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml:94` | — |
+| `avatar_rendering` / Alpha attachment sort (legacy) | `alpha_attachment_sort` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:10837` (Global) | — | — | `actor_style_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml:94` | — |
 | `color` / Use actor hue | `actor_style_use_actor_hue` | `toggle` | — | `indra/newview/skins/default/xui/en/floater_director.xml:1618` `floater_director`/check_box | `LLFloaterDirector::onActorStyleControlChanged indra/newview/llfloaterdirector.cpp:2404` | — | — |
 | `color` / Custom hue | `actor_style_hue` | `slider` | — | `indra/newview/skins/default/xui/en/floater_director.xml:1622` `floater_director`/slider | `LLFloaterDirector::onActorStyleControlChanged indra/newview/llfloaterdirector.cpp:2404` | — | — |
 | `color` / Brightness | `actor_style_brightness` | `slider` | — | `indra/newview/skins/default/xui/en/floater_director.xml:1644` `floater_director`/slider | `LLFloaterDirector::onActorStyleControlChanged indra/newview/llfloaterdirector.cpp:2404` | — | — |

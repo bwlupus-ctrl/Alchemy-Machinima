@@ -352,6 +352,7 @@ LLGLSLShader            gRlvSphereProgram;
 
 // Deferred materials shaders
 LLGLSLShader            gDeferredMaterialProgram[LLMaterial::SHADER_COUNT*2];
+LLGLSLShader            gVelocityMaterialProgram[LLMaterial::SHADER_COUNT*2];
 LLGLSLShader            gDeferredMaterialIndexedProgram[LLMaterial::SHADER_COUNT*2]; // multi-material indexed (GBuffer masks only)
 LLGLSLShader            gHUDPBROpaqueProgram;
 LLGLSLShader            gPBRGlowProgram;
@@ -1863,6 +1864,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         for (U32 i = 0; i < LLMaterial::SHADER_COUNT*2; ++i)
         {
             gDeferredMaterialProgram[i].unload();
+            gVelocityMaterialProgram[i].unload();
             gDeferredMaterialIndexedProgram[i].unload();
         }
         LLGLSLShader::sIndexedLegacyMaterials = false;
@@ -2172,6 +2174,28 @@ bool LLViewerShaderMgr::loadShadersDeferred()
 
             success = gDeferredMaterialProgram[i].createShader();
             llassert(success);
+
+            if (success && alpha_mode == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND)
+            {
+                // A material's velocity coverage must evaluate the same glare
+                // as beauty. Share its sources, features and all permutations.
+                LLGLSLShader& velocity = gVelocityMaterialProgram[i];
+                velocity.mName = llformat("Material Velocity Shader %d", i);
+                velocity.mShaderFiles = gDeferredMaterialProgram[i].mShaderFiles;
+                velocity.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+                velocity.mFeatures = gDeferredMaterialProgram[i].mFeatures;
+                velocity.mDefines = gDeferredMaterialProgram[i].mDefines;
+                velocity.addPermutation("MATERIAL_VELOCITY", "1");
+                if (!has_skin)
+                {
+                    mShaderList.push_back(&velocity);
+                    velocity.mRiggedVariant = &gVelocityMaterialProgram[i + 0x10];
+                }
+                success = velocity.createShader();
+                // Same post-link lighting flag as the forward beauty program.
+                velocity.mFeatures.hasLighting = true;
+                llassert(success);
+            }
         }
     }
 

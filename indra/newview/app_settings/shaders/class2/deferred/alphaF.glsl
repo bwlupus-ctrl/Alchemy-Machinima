@@ -57,6 +57,8 @@ uniform mat3 env_mat;
 uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform int classic_mode;
+// Particle ribbons supply a camera-facing normal independently of winding.
+uniform int particle_normal;
 
 #ifdef USE_DIFFUSE_TEX
 uniform sampler2D diffuseMap;
@@ -318,7 +320,7 @@ void main()
 #endif
     vec3 norm = normalize(vary_norm);
     // As in pbralphaF: culling controls whether a back face can reach lighting.
-    norm *= gl_FrontFacing ? 1.0 : -1.0;
+    norm *= (gl_FrontFacing || particle_normal != 0) ? 1.0 : -1.0;
 
     // [RigRimQ] Toksvig input, unconditional at main scope and BEFORE the alpha
     // discards below (review P2-5); unused unless rig_rim_mode != 0.

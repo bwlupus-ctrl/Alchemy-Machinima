@@ -436,6 +436,7 @@ extern LLGLSLShader         gRlvSphereProgram;
 
 // Deferred materials shaders
 extern LLGLSLShader         gDeferredMaterialProgram[LLMaterial::SHADER_COUNT*2];
+extern LLGLSLShader         gVelocityMaterialProgram[LLMaterial::SHADER_COUNT*2];
 extern LLGLSLShader         gDeferredMaterialIndexedProgram[LLMaterial::SHADER_COUNT*2]; // multi-material indexed (GBuffer masks only)
 
 extern LLGLSLShader         gHUDPBROpaqueProgram;

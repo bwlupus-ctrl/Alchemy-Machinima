@@ -414,6 +414,12 @@ in vec3 vary_normal;
 in vec4 vertex_color;
 in vec2 vary_texcoord0;
 
+#ifdef MATERIAL_VELOCITY
+in vec4 vary_cur_clip;
+in vec4 vary_last_clip;
+uniform float velocity_alpha_cutoff;
+#endif
+
 // get the transformed normal and apply glossiness component from normal map
 vec3 getNormal(inout float glossiness, vec2 normal_uv)
 {
@@ -752,6 +758,15 @@ void main()
     if (alrDebug()) color = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
 #endif
     frag_color = max(vec4(color * final_scale, al), vec4(0));
+
+#ifdef MATERIAL_VELOCITY
+    // Reuse effective beauty coverage, including sun/local/environment glare,
+    // emissive suppression, Actor FX and vertex alpha. Texture alpha alone
+    // leaves background motion on otherwise dominant reflective glass.
+    if (al < velocity_alpha_cutoff) discard;
+    frag_color = vec4(vary_cur_clip.xy / vary_cur_clip.w
+                    - vary_last_clip.xy / vary_last_clip.w, 0.0, 1.0);
+#endif
 
 #ifdef HAS_VISIBLE_DIFFUSE
     // Same contract as alphaF.glsl: RGB = LINEAR diffuse reflectance of THIS

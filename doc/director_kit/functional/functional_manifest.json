@@ -189464,7 +189464,7 @@
    "csv_index": null,
    "card": "avatar_rendering",
    "card_title": "Avatar rendering (all)",
-   "row_label": "Alpha attachment sort",
+   "row_label": "Alpha attachment sort (legacy)",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
    "xui_line": null,
    "widget_name": "alpha_attachment_sort",

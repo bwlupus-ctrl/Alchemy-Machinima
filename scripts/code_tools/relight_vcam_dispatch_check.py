@@ -26,6 +26,11 @@ def check_dispatch(g):
     call_start = lighting.index('        renderAreaShadows(debugLightingTerm()')
     production_call = lighting[call_start:lighting.index(';', call_start)+1]
     dispatch = render[render.index('    const U32 width = mRT->deferredScreen.getWidth()'):render.index('    static LLFrameTimer summary;')]
+    # The dispatch now consults cube_on directly for look reach. Its cached
+    # control lives in the scene-collection section omitted by this fixture;
+    # retain the production declaration and default rather than a second value.
+    cube_start = render.index('    static LLCachedControl<bool> cube_on(')
+    cube_control = render[cube_start:render.index(';', cube_start)+1]
     state = render[render.index('    struct State\n'):render.index('    const U32 width = mRT->deferredScreen.getWidth()')]
     release = method(nv / 'pipeline.cpp', 'static void release_prism_scratch_entry(')
     assert 'release_prism_scratch_entry(*target);' in method(nv / 'pipeline.cpp', 'bool LLPipeline::acquirePrismLensScratch(')
@@ -303,7 +308,8 @@ bool gCubeSnapshot=false;
     fixture += 'selected.lights[0].shadowMap=true; mShadowSpotLight[0]=&drawables[0]; mSpotLightFade[0]=.75f;\n'
     # Importance scores for the smooth group fade: light i has score 8 - 0.02 i, so every admitted light is within 5 percent of
     # the first dropped one whenever lights are dropped, and fades.
-    fixture += 'for(unsigned i=0;i<8;++i) selected.lights[i].score=8.0-0.02*i;\nconst bool cube_main=false;\n'
+    fixture += 'for(unsigned i=0;i<8;++i) selected.lights[i].score=8.0-0.02*i;\n'
+    fixture += cube_control + '\nconst bool cube_main = cube_on() && !sPrismLensRender;\n'
     # The production ownership-record prologue (the shared live-main predicate, then begin) sits before the sliced dispatch body, which adds and commits.
     fixture += 'const bool pick_record_pass = isLiveMainAreaShadowPass();\nif (pick_record_pass) mWorldPickedOwned.begin(gFrameCount, mRT);\n'
     fixture += state+dispatch

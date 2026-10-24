@@ -41,6 +41,9 @@ FIXTURES = r'''
 #include <vector>
 using F32 = float;
 using S32 = int;
+using U32 = unsigned;
+U32 gFrameCount = 0, mNearbyLightFadeFrame = ~0U;
+template<class T> T llmin(T a, T b) { return std::min(a,b); }
 template<class T> using LLPointer = T*;
 struct LLUUID {
     int id = 0;
@@ -160,6 +163,8 @@ int main() {
     F32 previous = entry(&d).fade;
     for (int frame = 0; frame < 4; ++frame) {
         setup();
+        update(0, 10);
+        if (mNearbyLights.empty()) break;
         assert(entry(&d).fade < previous);
         previous = entry(&d).fade;
     }
@@ -168,14 +173,38 @@ int main() {
     assert(!d.isState(LLDrawable::NEARBY_LIGHT));
     std::cout << "PASS out-of-range fade clock reaches expiry, erases node and clears NEARBY_LIGHT\n";
 
+    // Six retained closer lights must not starve a re-sorted seventh fade.
+    mNearbyLights.clear();
+    for (int i = 0; i < 7; ++i) {
+        lights[i] = LLDrawable{};
+        lights[i].volume.position = F32(i + 1);
+        mNearbyLights.insert(Light(&lights[i], F32(i + 1), 1));
+    }
+    lights[6].volume.position = 30;
+    update(0, 10);
+    for (int frame = 0; frame < 5; ++frame) {
+        assert(setup().size() == 6);
+        update(0, 10);
+    }
+    assert(mNearbyLights.size() == 6);
+    assert(!lights[6].isState(LLDrawable::NEARBY_LIGHT));
+    std::cout << "PASS seventh out-of-range light expires behind six retained HW lights\n";
+
+    mNearbyLights.clear();
+
     d.state |= LLDrawable::NEARBY_LIGHT;
+    d.volume.position = 30;
     mNearbyLights.insert(Light(&d, 30, .75f));
     update(0, 10);
-    assert(entry(&d).fade == -.25f);
+    assert(entry(&d).fade == -.5f);
+    const F32 unchanged = entry(&d).fade;
     setup();
+    setup();
+    update(0, 10, false);
+    assert(entry(&d).fade == unchanged); // no setup/view can double-step a frame
     d.volume.position = 1;
     update(0, 10);
-    assert(entry(&d).fade == .5f);
+    assert(entry(&d).fade == .75f);
     std::cout << "PASS partial fade reverses continuously when a light returns\n";
 
     // Consecutive rejected nodes expose both double-increment and missing-erase bugs.
@@ -232,7 +261,8 @@ def main():
     program = FIXTURES + light + r'''
 using light_set_t = std::set<Light, Light::compare>;
 light_set_t mNearbyLights;
-void update(F32 cam_pos, F32 max_dist) {
+void update(F32 cam_pos, F32 max_dist, bool next_frame = true) {
+    if (next_frame) ++gFrameCount;
 ''' + update + r'''
 }
 std::vector<LLDrawable*> setup() {

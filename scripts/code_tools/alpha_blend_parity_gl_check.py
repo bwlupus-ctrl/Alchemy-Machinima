@@ -52,6 +52,7 @@ gbuf=[tex((0,0,0,0),0x8C43),tex((0,0,0,0)),tex((0,0,0,0)),tex((0,0,0,0))]
 depth=tex((.5,.5,.5,1)); light=tex((1,1,1,1)); lut=tex((.25,.25,.25,1))
 diffuse=tex((.8,.82,.85,1),0x8058)
 flat_normal=tex((.5,.5,1.,1.))
+relief_normal=tex((.7,.65,.932,1.))
 orm=tex((1.,1.,0.,1.))
 black=tex((0.,0.,0.,0.))
 
@@ -105,16 +106,24 @@ class Runner:
         if key in self.cache:return self.cache[key]
         defs='#define REFMAP_LEVEL 1\n'
         defs+='#define USE_DIFFUSE_TEX 1\n#define USE_VERTEX_COLOR 1\n' if kind=='alpha' else ''
-        defs+='#define DIFFUSE_ALPHA_MODE %d\n'%(1 if kind=='material' else 2) if kind.startswith('material') else ''
+        defs+='#define DIFFUSE_ALPHA_MODE %d\n'%(2 if kind=='material_mask' else 1) if kind.startswith('material') else ''
+        defs+='#define MATERIAL_VELOCITY 1\n' if kind=='material_velocity' else ''
         defs+='#define HAS_ALPHA_MASK 1\n' if kind=='pbr_mask' else ''
         defs+='#define HAS_NORMAL_MAP 1\n' if variant=='normal_map' else ''
         defs+='#define HAS_SKIN 1\n' if variant=='skin' else ''
         defs+='#define HAS_SUN_SHADOW 1\n#define SUN_SHADOW 1\n' if variant=='shadow' or kind=='sunshadow' else ''
-        file={'alpha':'class2/deferred/alphaF.glsl','mask':'deferred/diffuseAlphaMaskF.glsl','soften':'class3/deferred/softenLightF.glsl','material':'class3/deferred/materialF.glsl','material_mask':'class3/deferred/materialF.glsl','point':'class3/deferred/pointLightF.glsl','pbr':'class2/deferred/pbralphaF.glsl','pbr_mask':'class1/deferred/pbropaqueF.glsl','sunshadow':'class2/deferred/sunLightF.glsl','haze':'class3/deferred/hazeF.glsl'}[kind]
+        file={'alpha':'class2/deferred/alphaF.glsl','mask':'deferred/diffuseAlphaMaskF.glsl','soften':'class3/deferred/softenLightF.glsl','material':'class3/deferred/materialF.glsl','material_velocity':'class3/deferred/materialF.glsl','material_mask':'class3/deferred/materialF.glsl','point':'class3/deferred/pointLightF.glsl','pbr':'class2/deferred/pbralphaF.glsl','pbr_mask':'class1/deferred/pbropaqueF.glsl','sunshadow':'class2/deferred/sunLightF.glsl','haze':'class3/deferred/hazeF.glsl'}[kind]
         s=self.source(file)
+        # Before this fix the real velocity replay used velocityAlphaF, whose
+        # authored-alpha cutout misses a dominant glare pixel. Execute that
+        # original program for old refs, rather than treating beauty RGB as a
+        # failed motion vector or accepting a compile error as a control.
+        old_velocity = kind=='material_velocity' and '#ifdef MATERIAL_VELOCITY' not in s
+        if old_velocity:s=self.source('class1/deferred/velocityAlphaF.glsl')
         if variant=='actor_neutral':
             defs+='#define HAS_ACTOR_FX 1\n'
         mods=list(COMMON)
+        if old_velocity:mods=['alchemy/actorFxDissolveF.glsl']
         if kind=='point':mods=[m for m in mods if m not in ('deferred/reflectionProbeF.glsl','deferred/screenSpaceReflUtil.glsl')]
         if variant=='actor_neutral':mods+=['alchemy/avatarLightResponseF.glsl','alchemy/actorFxDissolveF.glsl','alchemy/actorFxF.glsl']
         pr=gl.program()
@@ -124,6 +133,7 @@ class Runner:
         if kind=='point':vary='out vec4 vary_fragcoord; out vec3 trans_center;'
         v='''uniform int fixtureBack; uniform int fixtureGeometry; uniform vec3 fixtureNorm; uniform vec3 fixturePos; uniform vec4 fixtureColor; uniform vec3 fixtureLight;
         out vec3 vary_position; out vec3 vary_normal; out vec3 vary_norm;
+        out vec4 vary_cur_clip; out vec4 vary_last_clip;
         out vec2 vary_texcoord0; out vec2 vary_texcoord1;
         out vec3 vary_tangent; flat out float vary_sign;
         out vec2 base_color_texcoord; out vec2 normal_texcoord;
@@ -132,6 +142,7 @@ class Runner:
         void main(){ int id=fixtureBack!=0 && gl_VertexID!=0 ? 3-gl_VertexID : gl_VertexID;
         vec2 p=vec2((id<<1)&2,id&2); gl_Position=vec4(p*2-1,0,1);
         vary_position=fixturePos;vary_normal=fixtureNorm;vary_norm=fixtureNorm;
+        vary_cur_clip=vec4(.4,.2,0,1);vary_last_clip=vec4(.1,.1,0,1);
         vary_texcoord0=vary_texcoord1=vec2(.5);
         vertex_color=fixtureColor;vary_actor_fx_position=fixturePos;
         vary_tangent=vec3(1,0,0);vary_sign=1.;
@@ -155,14 +166,21 @@ class Runner:
         else:gl.uf[len(vals)](l,*vals)
     def bind(self,p,k,unit,t):
         gl.active(0x84C0+unit);gl.bind_tex(0x0DE1,t);gl.ui(gl.loc(p,k.encode()),unit)
-    def defaults(self,p,classic=0,nlen=1.,sun=(.7,.65,.6),ambient=(.4,.45,.5),local=0.,shape=(0,0,1,-1),spec=(0,0,0,0),env=0.,local_distance=2.,light_falloff=.5,back=False,geometry=False,coverage=1.):
+    def defaults(self,p,classic=0,nlen=1.,sun=(.7,.65,.6),ambient=(.4,.45,.5),local=0.,shape=(0,0,1,-1),spec=(0,0,0,0),env=0.,local_distance=2.,light_falloff=.5,back=False,geometry=False,coverage=1.,particle=False,light_dir=(0.,0.,1.),normal_map=None):
         gl.use(p)
         sets=dict(fixtureNorm=(0.,0.,nlen),fixturePos=(0.,0.,-2.),fixtureColor=(1.,1.,1.,coverage),fixtureBack=(int(back),),fixtureGeometry=(int(geometry),),roughnessFactor=(.5,),metallicFactor=(0.,),fixtureLight=(0.,0.,0.),sun_dir=(0.,0.,1.),moon_dir=(0.,0.,1.),sun_up_factor=(1,),classic_mode=(classic,),lightnorm=(0.,1.,0.),sunlight_color=sun,moonlight_color=sun,ambient_color=ambient,sky_sunlight_scale=(1.,),sky_ambient_scale=(1.,),sky_sun_ev_scale=(1.,),sky_amb_scale=(1.,),sky_sun_tint=(1.,1.,1.),sky_amb_tint=(1.,1.,1.),sky_gi_scale=(1.,),sky_probe_rad_scale=(1.,),sky_hdr_scale=(1.,),max_y=(10000.,),glow=(1.,0.,-1.),scene_light_strength=(1.,),waterPlane=(0.,0.,0.,1.),waterSign=(1.,),screen_res=(1.,1.),minimum_alpha=(.33,),specular_color=spec,env_intensity=(env,),relight_enabled=(1,),relight_limits=(.1,100.),relight_highlight_scale=(1.,),relight_legacy_exponent=(368.,),ssao_irradiance_scale=(.6,),ssao_irradiance_max=(.18,),size=(6.,),falloff=(.5,),color=(local,local,local))
         for k,v in sets.items():self.set(p,k,*v)
-        self.set(p,'fixtureLight',0.,0.,-2.+local_distance)
+        self.set(p,'sun_dir',*light_dir)
+        self.set(p,'moon_dir',*light_dir)
+        self.set(p,'particle_normal',int(particle))
+        self.set(p,'velocity_alpha_cutoff',.5)
+        if self.kinds.get(p)=='material_velocity':self.set(p,'minimum_alpha',.5)
+        eye_z = 2. if back and not particle else -2.
+        self.set(p,'fixturePos',0.,0.,eye_z)
+        self.set(p,'fixtureLight',0.,0.,eye_z+local_distance)
         self.set(p,'falloff',light_falloff)
         self.set(p,'relight_limits',.1,4.)
-        inv=np.eye(4,dtype=np.float32);inv[2,3]=-2
+        inv=np.eye(4,dtype=np.float32);inv[2,3]=eye_z
         gl.matrix(gl.loc(p,b'inv_proj'),1,0,np.ascontiguousarray(inv.T).ctypes.data_as(C.POINTER(C.c_float)))
         m=np.eye(3,dtype=np.float32);m3=gl.fn('glUniformMatrix3fv',None,C.c_int,C.c_int,C.c_uint,C.POINTER(C.c_float))
         for k in ('env_mat','ssao_effect_mat'):
@@ -178,6 +196,7 @@ class Runner:
             self.set(p,'light_deferred_attenuation[%d]'%i,6.,light_falloff)
         self.set(p,'light_shape',*shape)
         for k,u,t in [('diffuseMap',1,diffuse),('diffuseRect',2,gbuf[0]),('specularRect',3,gbuf[1]),('normalMap',4,gbuf[2]),('emissiveRect',5,gbuf[3]),('depthMap',6,depth),('lightMap',7,light),('lightFunc',8,lut),('bumpMap',9,flat_normal),('specularMap',10,orm),('emissiveMap',11,black)]:self.bind(p,k,u,t)
+        if normal_map is not None:self.bind(p,'bumpMap',9,normal_map)
     def draw(self,kind,variant='',**kw):
         p=self.program(kind,variant);self.defaults(p,**kw)
         target_bind(gbuf if kind in ('mask','material_mask','pbr_mask') else [target])
@@ -213,10 +232,26 @@ def measure(r):
     pair('classic', geometry=True, classic=1)
     pair('skin_sun', variant='skin', geometry=True, ambient=(0., 0., 0.))
     pair('material_mapped_front', kind='material', variant='normal_map')
-    pair('material_mapped_back', kind='material', variant='normal_map', nlen=-1., back=True)
+    pair('material_mapped_back', kind='material', variant='normal_map', back=True, light_dir=(0.,0.,-1.))
+    pair('material_relief_front',kind='material',variant='normal_map',normal_map=relief_normal)
+    pair('material_relief_back',kind='material',variant='normal_map',normal_map=relief_normal,
+         back=True,light_dir=(0.,0.,-1.))
+    # Reverse winding only; particle geometry supplies camera-facing normals
+    # for both ribbon orientations (LLVOPartGroup::getGeometry).
+    rows['particle_front'] = r.draw('alpha', particle=True, ambient=(0.,0.,0.))
+    rows['particle_back'] = r.draw('alpha', particle=True, back=True, ambient=(0.,0.,0.))
+    # A non-flat texture exercises tangent AND bitangent relief. Compare actual
+    # packed G-buffer shading normals from legacy and PBR, front and back.
+    for back in (False, True):
+        normals=[]
+        for kind in ('material_mask','pbr_mask'):
+            r.draw(kind,'normal_map',back=back,normal_map=relief_normal)
+            readbuffer(0x8CE2)
+            normals.append(sample())
+        rows['mapped_normal_'+('back' if back else 'front')] = normals
     for kind in ('alpha', 'material', 'pbr'):
         pair(kind+'_front', kind=kind)
-        pair(kind+'_back', kind=kind, nlen=-1., back=True)
+        pair(kind+'_back', kind=kind, back=True, light_dir=(0.,0.,-1.))
         for name, shape, distance, falloff in (
                 ('point', (0., 0., 1., -1.), .25, 0.),
                 ('shaped', (.45, 0., 1., -1.), 2., .5),
@@ -224,9 +259,21 @@ def measure(r):
             pair(kind+'_'+name, kind=kind, include_local=True, local_distance=distance,
                  light_falloff=falloff, shape=shape, local=.5, **dark)
 
+        for distance in (.01, 1.e-6, 0.):
+            for name, shape in (('point',(0.,0.,1.,-1.)),
+                                ('physical',(0.,1.,2.2755555556,-1.))):
+                label=kind+'_near_'+name+'_'+str(distance)
+                pair(label, kind=kind,
+                     include_local=True, local_distance=distance,
+                     shape=shape, local=.5, **dark)
+                # At the exact source centre the direction is undefined:
+                # deferred's zero vector and forward's safe normal fallback
+                # differ. Both must be finite and obey the same HDR bound.
+                if distance == 0.: rows[label].pop('delta_rgb')
+
         # Culling remains the double-sided control, just as in the viewer.
         enable(0x0B44)
-        rows[kind+'_culled_back'] = r.draw(kind, nlen=-1., back=True)
+        rows[kind+'_culled_back'] = r.draw(kind, back=True)
         gl.disable(0x0B44)
 
         # Partial-alpha content uses the same lighting and straight coverage.
@@ -252,6 +299,16 @@ def measure(r):
     diffuse = tex((.8, .82, .85, .01), 0x8058)
     rows['glass_glint'] = r.draw('material', spec=(.5, .5, .5, .8),
                                  ambient=(0., 0., 0.))
+    for name, sun, coverage in (('clear',(0.,0.,0.),1.),
+                                ('glint',(40.,40.,40.),1.),
+                                ('vertex_fade',(40.,40.,40.),.2)):
+        kw=dict(spec=(.5,.5,.5,.8),sun=sun,ambient=(0.,0.,0.),coverage=coverage)
+        rows['glass_velocity_'+name]=dict(beauty=r.draw('material',**kw),
+                                          velocity=r.draw('material_velocity',**kw))
+    for distance in (.01,1.e-6,0.):
+        rows['glass_near_glare_'+str(distance)] = r.draw('material',
+            spec=(.5,.5,.5,.8),local_distance=distance,local=.5,
+            shape=(0.,1.,2.2755555556,-1.),**dark)
     diffuse = strand
 
     # The production reference helper is separate from the split helper used by
@@ -323,6 +380,22 @@ def validate(rows):
         checks[kind+'_actor_neutral'] = bool(np.allclose(
             rows[kind+'_actor_neutral'], front['blend'], atol=1.e-6, rtol=0))
     checks['glass_sun_glint_alpha'] = rows['glass_glint'][3] > .015
+    checks['particle_winding'] = bool(np.allclose(rows['particle_front'],
+        rows['particle_back'], atol=1.e-6, rtol=0))
+    for face in ('front','back'):
+        a,b=rows['mapped_normal_'+face]
+        checks['mapped_normal_'+face] = bool(np.allclose(a[:2],b[:2],atol=1.e-6,rtol=0))
+    for name in ('clear','glint','vertex_fade'):
+        row=rows['glass_velocity_'+name]
+        expected=[.3,.1,0.,1.] if row['beauty'][3]>=.5 else [-5.]*4
+        checks['glass_velocity_'+name]=bool(np.allclose(row['velocity'],expected,atol=1.e-6,rtol=0))
+    checks['glass_velocity_exercises_glare']=rows['glass_velocity_glint']['beauty'][3]>=.5
+    for name,row in rows.items():
+        if name.startswith('glass_near_glare_'):
+            checks[name+'_bounded']=all(0.<=v<=4. for v in row[:3]) and 0.<=row[3]<=1.
+        elif '_near_' in name:
+            checks[name+'_bounded']=all(0.<=v<=4. for path in
+                ('blend','masked_deferred') for v in row[path])
     for name in ('point', 'shaped', 'physical'):
         checks['pbr_reference_'+name] = bool(np.allclose(
             rows['pbr_reference_'+name], rows['pbr_'+name]['blend'], atol=1.e-6, rtol=0))

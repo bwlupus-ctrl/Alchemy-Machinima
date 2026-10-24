@@ -188,7 +188,13 @@ def production_variants(file):
                     ('#define HAS_ALPHA_MASK 1\n' if mode else '')+
                     ('#define HAS_NORMAL_MAP 1\n' if normal else '')+
                     ('#define HAS_SPECULAR_MAP 1\n' if spec else ''))
-        return result+[result[7]+'#define HAS_SKIN 1\n#define HAS_SUN_SHADOW 1\n']
+        # Cover each material mask with both skin/shadow switches, plus all
+        # blend velocity variants which reuse effective beauty coverage.
+        full=[v+skin+shadow for v in result
+              for skin in ('','#define HAS_SKIN 1\n')
+              for shadow in ('','#define HAS_SUN_SHADOW 1\n')]
+        return full+[v+'#define MATERIAL_VELOCITY 1\n' for v in full
+                     if '#define DIFFUSE_ALPHA_MODE 1\n' in v]
     if name=='pbralphaF.glsl':
         base=actor+maps+'#define DIFFUSE_ALPHA_MODE 1\n'
         return [base,base+'#define HAS_SUN_SHADOW 1\n',base+'#define HAS_SKIN 1\n#define HAS_SUN_SHADOW 1\n#define ALR_RIMSPLIT_PARITY 1\n']
