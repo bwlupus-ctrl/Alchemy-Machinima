@@ -266,6 +266,22 @@ void ALCineRigRim::bindAnimated(LLGLSLShader& shader)
         shader.uniform2f(limits, std::isfinite(floor) ? llclamp(floor, .0001f, 10.f) : .1f,
                          std::isfinite(boost) ? llclamp(boost, 0.f, 100.f) : 4.f);
     }
+    // .w in the per-light shape is the area-shadow channel, including forward
+    // paths. Highlight softness is independent of both diffuse and visibility.
+    static const LLStaticHashedString highlight_scale("relight_highlight_scale");
+    if (shape_enabled() && shader.getUniformLocation(highlight_scale) >= 0)
+    {
+        static LLCachedControl<F32> scale(gSavedSettings, "RenderLocalLightHighlightScale", 1.f);
+        const F32 value = scale();
+        shader.uniform1f(highlight_scale, std::isfinite(value) ? llclamp(value, 0.f, 1.f) : 1.f);
+    }
+    static const LLStaticHashedString legacy_exponent("relight_legacy_exponent");
+    if (shape_enabled() && shader.getUniformLocation(legacy_exponent) >= 0)
+    {
+        static LLCachedControl<F32> exponent(gSavedSettings, "RenderSpecularExponent", 368.f);
+        const F32 value = exponent();
+        shader.uniform1f(legacy_exponent, std::isfinite(value) ? llmax(value, 0.f) : 368.f);
+    }
 
     if (shader.getUniformLocation(LLShaderMgr::RIG_RIM_TRON) < 0)
     {

@@ -85,6 +85,9 @@ public:
         // wheel_fine_div (overrides the automatic nice-1-2-5 step). Shift = increment,
         // Ctrl/Alt = step x10. 0 (default) = automatic step.
         Optional<F32>                   wheel_step;
+        // Map normalized user input u to u*u; values/editors/settings stay in
+        // their original units. Increment is in u, incoming values never snap.
+        Optional<bool>                  quadratic;
 
         Params();
     };
@@ -150,6 +153,9 @@ public:
 private:
     bool            handleScrollWheelStock(S32 x, S32 y, LLScrollDelta delta); // pre-[SliderWheel] body, verbatim
     void            setValueAndCommit(F32 value);
+    F32             valueFromFraction(F32 fraction) const;
+    F32             valueToFraction(F32 value) const;
+    F32             steppedValue(F32 delta) const;
     void            updateThumbRect();
     F32             snapToFineGrid(F32 value) const; // [EnvIntensity v2] wheel_fine_div grid, ends pinned exactly
 
@@ -171,6 +177,7 @@ private:
     LLSliderWheel::EWheelAdjust mWheelAdjust;
     const F32           mWheelFineDiv; // [EnvIntensity v2] Shift fine divisor (0 = off)
     const F32           mWheelStep;    // [SliderWheelStep] explicit plain-notch step (0 = automatic)
+    const bool          mQuadratic;
     LLSliderWheel::SettleState mWheelSettle; // [SliderWheel] one pending generation per slider
 
     LLRect      mThumbRect;

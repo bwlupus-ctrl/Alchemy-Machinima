@@ -158,7 +158,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
 #endif
 )
 {
-    if ((relight_enabled & 1) != 0 && shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && (shape.x > 0.0 || shape.y > 0.0))
     {
         // Invert setupHWLights' attenuation encoding to recover shader range R.
         float range = ((12.0*fa)-9.0)/la;
@@ -175,7 +175,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
 #endif
         if (rigRimMode() != 0)
         {
-            float rim_atten = calcLegacyDistanceAttenuation(length(delta)/range,falloff);
+            float rim_atten = attenuation;
             vec3 rim_col = rigRimTermEx(n,view,centre,spot*spot*rim_atten*light_col,
                 diffuse,1.0,rim,rim_px);
             if (rigRimMode() == 2) col = vec3(0);

@@ -209,7 +209,7 @@ void main()
     vec3 n = gb.normal;
 
     float dist_atten = calcLegacyDistanceAttenuation(dist, falloff);
-    if ((relight_enabled & 1) == 0 || light_shape.x == 0.0)
+    if ((relight_enabled & 1) == 0 || (light_shape.x == 0.0 && light_shape.y == 0.0))
     if (dist_atten <= 0.0)
     {
         discard;
@@ -231,7 +231,7 @@ void main()
     lv = proj_origin-pos.xyz;
     vec3  h, l, v = -normalize(pos);
     float nh, nl, nv, vh, lightDist;
-    if ((relight_enabled & 1) == 0 || light_shape.x == 0.0)
+    if ((relight_enabled & 1) == 0 || (light_shape.x == 0.0 && light_shape.y == 0.0))
     calcHalfVectors(lv, n, v, h, l, nh, nl, nv, vh, lightDist);
 
     vec3 diffuse = gb.albedo.rgb;
@@ -241,7 +241,7 @@ void main()
 
     vec3 amb_rgb = vec3(0);
 
-    if ((relight_enabled & 1) != 0 && light_shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && (light_shape.x > 0.0 || light_shape.y > 0.0))
     {
         // Cookie/cone and the existing projector shadow still gate this light.
         if (proj_tc.x > 0.0 && proj_tc.x < 1.0 && proj_tc.y > 0.0 && proj_tc.y < 1.0)
@@ -282,7 +282,7 @@ void main()
             }
             if (rigRimMode() != 0)
             {
-                vec3 rim_lit = lamp * dist_atten * mix(shadow,1.0,
+                vec3 rim_lit = lamp * attenuation * mix(shadow,1.0,
                     (1.0-clamp(rig_rim_shadow,0.0,1.0))*(1.0-smoothstep(0.0,.3,dot(n,centre))));
                 rim_color += rigRimTermEx(n,view,centre,rim_lit,diffuseColor,roughness,rig_rim_light,rim_px);
             }

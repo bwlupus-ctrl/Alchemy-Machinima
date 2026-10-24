@@ -1949,6 +1949,24 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
     }
     if (page == "light_rim_tab")
     {
+        if (LLComboBox* presets = root->findChild<LLComboBox>("relight_shape_preset"))
+        {
+            presets->setValue(-1);
+            presets->setCommitCallback([](LLUICtrl* control, const LLSD&)
+            {
+                const S32 index = control->getValue().asInteger();
+                if (index < 0 || index >= 4 || ALPresetLook::replaying()) return;
+                const F32 radii[] = {.03f, .12f, .45f, .90f};
+                const F32 highlights[] = {1.f, .8f, .6f, .5f};
+                ALKitHistory::ScopedSource source(control);
+                ALPresetLook::Load load("Light shape preset");
+                const auto& owned = ALPresetLook::owned(ALPresetLook::LIGHT_SHAPE);
+                ALPresetLook::reset(owned);
+                ALPresetLook::apply(owned, LLSD().with("RenderLocalLightDefaultRadius", radii[index])
+                    .with("RenderLocalLightHighlightScale", highlights[index]));
+                control->setValue(-1); // action selector, never replay a preset on undo
+            });
+        }
         if (LLTextBox* status = root->findChild<LLTextBox>("area_shadow_sl_status"))
             mAreaShadowSLStatus = status->getDerivedHandle<LLTextBox>();
         if (LLTextBox* coverage = root->findChild<LLTextBox>("area_shadow_coverage"))
@@ -3763,6 +3781,7 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "RenderLightShapeEnable",
         "RenderLocalLightPhysicalFalloff",
         "RenderLocalLightDefaultRadius",
+        "RenderLocalLightHighlightScale",
         "RenderLocalLightSizeFromPrim",
         "RenderLocalLightNearFloor",
         "RenderLocalLightPhysicalMaxBoost",
@@ -4401,6 +4420,13 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
                 }
             }
         }
+    }
+
+    // [RelightQ] Old scenes retain their radius in metres and the historical
+    // highlight scale of one, even after a softer preset was used this session.
+    if (!scene["settings"].has("RenderLocalLightHighlightScale"))
+    {
+        ALPresetLook::reset({"RenderLocalLightHighlightScale"});
     }
 
     // [RigRim] P1-C fix: a scene saved before Rig Rim existed (or any scene

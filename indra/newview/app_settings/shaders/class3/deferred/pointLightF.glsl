@@ -144,7 +144,7 @@ void main()
     vec3 diffuse = gb.albedo.rgb;
     vec4 spec    = gb.specular;
 
-    if ((relight_enabled & 1) != 0 && light_shape.x > 0.0)
+    if ((relight_enabled & 1) != 0 && (light_shape.x > 0.0 || light_shape.y > 0.0))
     {
         vec3 lv = trans_center.xyz-pos;
         if (length(lv) >= size) discard;
@@ -153,7 +153,7 @@ void main()
         vec3 highlight;
         vec3 diffuseColor = diffuse;
         float roughness = 1.0-spec.a;
-        float attenuation = calcLegacyDistanceAttenuation(length(lv)/size,falloff); // Rig Rim only
+        float attenuation = relightAtten(length(lv),size,falloff,light_shape); // Rig Rim only
         if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR))
         {
             roughness = spec.g;

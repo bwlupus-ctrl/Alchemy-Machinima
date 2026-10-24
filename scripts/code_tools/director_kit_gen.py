@@ -308,8 +308,9 @@ def validate_data(data: dict) -> None:
     # P0 grain fix (10/22): +1 live Coverage readout on the Soft shadows card ("Soft shadows on 2 of 8
     # lights"): under budget pressure the least important lights lose their soft shadow instead of grain.
     # World shadows (P1-lite, 10/23): +3 rows on Soft shadows (World shadows toggle, World-shadow lights, readout).
-    if len(pages) != 37 or row_count != 2167:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2167")
+    # Light-shape refinement: +Highlight softness, +native preset action combo.
+    if len(pages) != 37 or row_count != 2169:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2169")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -648,6 +649,9 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     if kind == "slider":
         attrs["show_text"] = "true"
         attrs["text_width"] = "52"
+        if row.get("quadratic"):
+            attrs["quadratic"] = "true"
+            attrs["can_edit_text"] = "true"
         if row.get("volume_text"):
             attrs["volume_text"] = "true"
             attrs["can_edit_text"] = "false"

@@ -168,7 +168,7 @@ void main()
             vec4 area_col = light_col[light_idx];
             if ((relight_enabled & 2) != 0 && light_shapes[light_idx].w >= 0.0)
                 area_col.rgb *= areaShadowVisibility(tc, light_shapes[light_idx].w);
-            if ((relight_enabled & 1) != 0 && light_shapes[light_idx].x > 0.0)
+            if ((relight_enabled & 1) != 0 && (light_shapes[light_idx].x > 0.0 || light_shapes[light_idx].y > 0.0))
             {
                 vec4 shape = light_shapes[light_idx];
                 vec3 delta = light[light_idx].xyz-pos;
@@ -180,7 +180,7 @@ void main()
                     perceptualRoughness,metallic,n,view,delta,range,fa,shape,1.0-gb.envIntensity);
                 if (rigRimMode() != 0)
                     rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
-                        calcLegacyDistanceAttenuation(length(delta)/range,fa)*area_col.rgb,
+                        relightAtten(length(delta),range,fa,shape)*area_col.rgb,
                         diffuseColor,perceptualRoughness,rig_rim_lights[light_idx],rim_px);
                 continue;
             }
@@ -225,7 +225,7 @@ void main()
             vec4 area_col = light_col[i];
             if ((relight_enabled & 2) != 0 && light_shapes[i].w >= 0.0)
                 area_col.rgb *= areaShadowVisibility(tc, light_shapes[i].w);
-            if ((relight_enabled & 1) != 0 && light_shapes[i].x > 0.0)
+            if ((relight_enabled & 1) != 0 && (light_shapes[i].x > 0.0 || light_shapes[i].y > 0.0))
             {
                 vec4 shape = light_shapes[i];
                 vec3 delta = light[i].xyz-pos;
@@ -238,7 +238,7 @@ void main()
                     n,view,delta,range,fa,shape,highlight);
                 if (rigRimMode() != 0)
                     rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
-                        calcLegacyDistanceAttenuation(length(delta)/range,fa)*area_col.rgb,
+                        relightAtten(length(delta),range,fa,shape)*area_col.rgb,
                         diffuse,1.0-spec.a,rig_rim_lights[i],rim_px);
                 continue;
             }

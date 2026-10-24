@@ -11813,7 +11813,7 @@ static LLVector4 light_shape_for_volume(const LLVOVolume* volume)
     const F32 range = volume->getLightRadius() * 1.5f;
     F32 reference = range * .5f;
     const F32 radius = area_source_radius(volume, &reference);
-    if (radius <= 0.f) return point; // exact legacy shading even in physical mode
+    if (radius <= 0.f && !physical()) return point; // exact nonphysical point path
     const F32 floor_setting = near_floor();
     const F32 floor = std::isfinite(floor_setting) ? llclamp(floor_setting, .0001f, 10.f) : .1f;
     const F32 falloff = volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF);

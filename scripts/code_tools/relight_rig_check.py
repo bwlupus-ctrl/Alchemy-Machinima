@@ -72,11 +72,12 @@ def rig_int(name,value):
     ui(loc(pr,name.encode()),value)
 
 def rig_read(angle,distance,radius,component,pbr,roughness=.3,glossiness=.5,
-             enabled=1,physical=0,sil_keep=1,power=1,falloff=.5,channel=-1):
+             enabled=1,physical=0,sil_keep=1,power=1,falloff=.5,channel=-1,highlight_scale=1):
     theta=np.deg2rad(angle)
     rig_uniform('testNormal',np.sin(theta),0,np.cos(theta))
     rig_uniform('testLight',0,0,distance)
     rig_uniform('testShape',radius,physical,1,channel)
+    rig_uniform('relight_highlight_scale',highlight_scale)
     rig_uniform('testRoughness',roughness);rig_uniform('testGlossiness',glossiness)
     rig_uniform('testSilKeep',sil_keep);rig_uniform('testLightPower',power)
     rig_uniform('testFalloff',falloff)
@@ -221,7 +222,23 @@ for rig_path in ('multiPoint','point','spot','alpha','material','pbralpha','pbrs
                                          peak_ratio=float(peaks[1]/peaks[0]) if peaks[0]>1.e-12 else None))
         physical_rim=rig_pair(85,1.5,.3,2,pbr,physical=1)
         rig_extra.append(dict(path=rig_path,pbr=pbr,kind='physical_rim',values=[x.tolist() for x in physical_rim]))
-        rig_require(np.allclose(physical_rim[0][:3],physical_rim[1][:3],rtol=3.e-6,atol=2.e-7),(rig_path,'physical rim',pbr))
+        d,range_,falloff=1.5,15.,.5
+        physical_atten=(1-(d/range_)**4)**2/(d*d)
+        legacy_atten=2*(1-(d/range_+falloff)/(1+falloff))**2
+        expected_rim=physical_rim[0][:3]*(physical_atten/legacy_atten)
+        rig_require(np.allclose(expected_rim,physical_rim[1][:3],rtol=3.e-6,atol=2.e-7),(rig_path,'physical rim',pbr))
+        # Execute every production caller at zero, not just the helper: physical
+        # mode must not disappear at zero source radius (the old cliff).
+        zero=rig_read(0,1.5,0,0,pbr,physical=1)
+        small=rig_read(0,1.5,.01,0,pbr,physical=1)
+        rig_require(np.allclose(zero,small,rtol=2.e-5,atol=2.e-7),(rig_path,'zero physical continuity',pbr))
+        if not alpha:
+            hard=rig_read(0,2,.45,1,pbr,highlight_scale=0)
+            point=rig_read(0,2,0,1,pbr)
+            rig_require(np.allclose(hard,point,rtol=3.e-5,atol=2.e-7),(rig_path,'highlight scale zero',pbr))
+        diffuse_hard=rig_read(85,1.5,.45,0,pbr,highlight_scale=0)
+        diffuse_soft=rig_read(85,1.5,.45,0,pbr,highlight_scale=1)
+        rig_require(np.array_equal(diffuse_hard,diffuse_soft),(rig_path,'diffuse scale identity',pbr))
     if material:
         for angle in (0,60,85):
             for sil_keep in (0,.25,1):
