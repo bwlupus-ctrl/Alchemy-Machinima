@@ -1,7 +1,7 @@
 # Atmosphere — Director Kit page contract
 
 Page key: `atmosphere_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (52/80 setting-bound rows; 25 C++-referenced rows).
+Computed class: **code-driven** (56/84 setting-bound rows; 25 C++-referenced rows).
 
 ## Real owners
 
@@ -98,10 +98,14 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `shaft_quality` / `ps_BDMergeProjectorVolumetricsTemporalReject_slider` (Anti-ghost) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:33` | kit `slider` ↔ `BDMergeProjectorVolumetricsTemporalReject` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:258` `ps_BDMergeProjectorVolumetricsTemporalReject_slider` |
 | `shaft_quality` / `projector_volumetrics_temporal_beam_depth_check` (Track beam) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsTemporalBeamDepth` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:263` `projector_volumetrics_temporal_beam_depth_check` |
 | `shaft_quality` / `projector_volumetrics_scissor_check` (Scissor cull) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsScissor` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:266` `projector_volumetrics_scissor_check` |
-| `shaft_quality` / `ps_BDMergeProjectorVolumetricsMinResolution_slider` (Min samples) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:39` | kit `slider` ↔ `BDMergeProjectorVolumetricsMinResolution` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:269` `ps_BDMergeProjectorVolumetricsMinResolution_slider` |
-| `shaft_quality` / `ps_BDMergeProjectorVolumetricsMaxLuminance_slider` (Peak limit) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:42` | kit `slider` ↔ `BDMergeProjectorVolumetricsMaxLuminance` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:274` `ps_BDMergeProjectorVolumetricsMaxLuminance_slider` |
-| `shaft_quality` / `ps_BDMergeProjectorVolumetricsDither_slider` (Dither) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:45` | kit `slider` ↔ `BDMergeProjectorVolumetricsDither` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:279` `ps_BDMergeProjectorVolumetricsDither_slider` |
-| `shaft_quality` / `projector_volumetrics_temporal_dither_check` (Anti-banding) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsTemporalDither` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:284` `projector_volumetrics_temporal_dither_check` |
+| `shaft_quality` / `projector_volumetrics_pyramid_scissor_check` (Pyramid cull) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsPyramidScissor` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:269` `projector_volumetrics_pyramid_scissor_check` |
+| `shaft_quality` / `ps_BDMergeProjectorVolumetricsMinResolution_slider` (Min samples) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:39` | kit `slider` ↔ `BDMergeProjectorVolumetricsMinResolution` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:272` `ps_BDMergeProjectorVolumetricsMinResolution_slider` |
+| `shaft_quality` / `ps_BDMergeProjectorVolumetricsMaxLuminance_slider` (Peak limit) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:42` | kit `slider` ↔ `BDMergeProjectorVolumetricsMaxLuminance` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:277` `ps_BDMergeProjectorVolumetricsMaxLuminance_slider` |
+| `shaft_quality` / `ps_BDMergeProjectorVolumetricsDither_slider` (Dither) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:45` | kit `slider` ↔ `BDMergeProjectorVolumetricsDither` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:282` `ps_BDMergeProjectorVolumetricsDither_slider` |
+| `shaft_quality` / `projector_volumetrics_temporal_dither_check` (Anti-banding) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsTemporalDither` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:287` `projector_volumetrics_temporal_dither_check` |
+| `shaft_quality` / `projector_volumetrics_equiangular_check` (Equiangular steps) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsEquiangular` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:290` `projector_volumetrics_equiangular_check` |
+| `shaft_quality` / `projector_volumetrics_airborne_tap_check` (Airborne tap) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsAirborneTap` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:293` `projector_volumetrics_airborne_tap_check` |
+| `shaft_quality` / `projector_volumetrics_cookie_footprint_check` (Cookie footprint) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsCookieFootprint` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:296` `projector_volumetrics_cookie_footprint_check` |
 
 ## Adapter extraction
 
@@ -125,7 +129,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **58 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **62 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -183,7 +187,11 @@ Manifest size: **58 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `projector_volumetrics_adaptive_check-on` | Only `projector_volumetrics_adaptive_check` is on; dependent visibility is measured. |
 | `projector_volumetrics_temporal_beam_depth_check-on` | Only `projector_volumetrics_temporal_beam_depth_check` is on; dependent visibility is measured. |
 | `projector_volumetrics_scissor_check-on` | Only `projector_volumetrics_scissor_check` is on; dependent visibility is measured. |
+| `projector_volumetrics_pyramid_scissor_check-on` | Only `projector_volumetrics_pyramid_scissor_check` is on; dependent visibility is measured. |
 | `projector_volumetrics_temporal_dither_check-on` | Only `projector_volumetrics_temporal_dither_check` is on; dependent visibility is measured. |
+| `projector_volumetrics_equiangular_check-on` | Only `projector_volumetrics_equiangular_check` is on; dependent visibility is measured. |
+| `projector_volumetrics_airborne_tap_check-on` | Only `projector_volumetrics_airborne_tap_check` is on; dependent visibility is measured. |
+| `projector_volumetrics_cookie_footprint_check-on` | Only `projector_volumetrics_cookie_footprint_check` is on; dependent visibility is measured. |
 | `selection-deleted` | The selected model row is removed by another owner while visible. |
 | `permission-denied` | The current target exists but cannot be modified. |
 | `target-offline` | The current target/provider becomes unavailable. |
@@ -201,7 +209,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-63 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+67 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

@@ -7,7 +7,7 @@ Do not hand-edit. File and line references describe the scanned tree at generati
 
 | Pages | Rows | Distinct owner files | Unresolved rows | Ambiguous rows | Multi-page settings |
 |---:|---:|---:|---:|---:|---:|
-| 37 | 1987 | 33 | 22 | 0 | 21 |
+| 37 | 1997 | 33 | 22 | 0 | 21 |
 
 Classification: pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven.
 
@@ -1507,7 +1507,7 @@ Real owner roots: `panel_cine_light_rig` in `indra/newview/skins/default/xui/en/
 
 C++ owner classes: `ALRigRimController` (5 references), `LLPipeline` (3 references).
 
-Computed logic class: **code-driven**; 67/77 rows setting-bound, 7 rows referenced in C++.
+Computed logic class: **code-driven**; 69/79 rows setting-bound, 7 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
@@ -1584,9 +1584,11 @@ Computed logic class: **code-driven**; 67/77 rows setting-bound, 7 rows referenc
 | `area_soft_shadows` / Half resolution | `area_shadow_half` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:21658` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:336` | — |
 | `area_soft_shadows` / Denoise radius | `area_shadow_denoise` | `number` | `F32` `indra/newview/app_settings/settings.xml:21665` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:339` | — |
 | `area_soft_shadows` / Light end bias (m) | `area_shadow_light_bias` | `number` | `F32` `indra/newview/app_settings/settings.xml:21679` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:342` | — |
-| `area_soft_shadows` / Visibility view | `area_shadow_debug` | `combo` | `S32` `indra/newview/app_settings/settings.xml:21721` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:345` | — |
-| `area_soft_shadows` / World view | `area_shadow_world_debug` | `combo` | `S32` `indra/newview/app_settings/settings.xml:21616` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:360` | — |
-| `area_soft_shadows` / Work budget (M) | `area_shadow_budget` | `number` | `S32` `indra/newview/app_settings/settings.xml:21728` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:370` | — |
+| `area_soft_shadows` / Near clip (m) | `area_shadow_world_near` | `number` | `F32` `indra/newview/app_settings/settings.xml:21609` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:345` | — |
+| `area_soft_shadows` / Contact (m) | `area_shadow_mapped_contact` | `number` | `F32` `indra/newview/app_settings/settings.xml:21672` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:348` | — |
+| `area_soft_shadows` / Visibility view | `area_shadow_debug` | `combo` | `S32` `indra/newview/app_settings/settings.xml:21721` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:351` | — |
+| `area_soft_shadows` / World view | `area_shadow_world_debug` | `combo` | `S32` `indra/newview/app_settings/settings.xml:21616` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:366` | — |
+| `area_soft_shadows` / Work budget (M) | `area_shadow_budget` | `number` | `S32` `indra/newview/app_settings/settings.xml:21728` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:376` | — |
 | `area_soft_shadows` / SL shadows | `area_shadow_sl_help` | `readout` | — | — | — | — | — |
 
 ### Exposure (`exposure_tab`)
@@ -2232,7 +2234,7 @@ Real owner roots: `panel_projector_shafts` in `indra/newview/skins/default/xui/e
 
 C++ owner classes: `ALPanelAtmosphericVolumes` (55 references), `ALFloaterLightBox` (2 references).
 
-Computed logic class: **code-driven**; 52/80 rows setting-bound, 25 rows referenced in C++.
+Computed logic class: **code-driven**; 56/84 rows setting-bound, 25 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
@@ -2312,10 +2314,14 @@ Computed logic class: **code-driven**; 52/80 rows setting-bound, 25 rows referen
 | `shaft_quality` / Anti-ghost | `ps_BDMergeProjectorVolumetricsTemporalReject_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:19731` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:33` `panel_projector_shafts`/slider | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:258` | — |
 | `shaft_quality` / Track beam | `projector_volumetrics_temporal_beam_depth_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:19742` (Global) | — | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:263` | — |
 | `shaft_quality` / Scissor cull | `projector_volumetrics_scissor_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:19409` (Global) | — | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:266` | — |
-| `shaft_quality` / Min samples | `ps_BDMergeProjectorVolumetricsMinResolution_slider` | `slider` | `U32` `indra/newview/app_settings/settings.xml:19442` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:39` `panel_projector_shafts`/slider | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:269` | — |
-| `shaft_quality` / Peak limit | `ps_BDMergeProjectorVolumetricsMaxLuminance_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:19453` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:42` `panel_projector_shafts`/slider | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:274` | — |
-| `shaft_quality` / Dither | `ps_BDMergeProjectorVolumetricsDither_slider` | `slider` | `U32` `indra/newview/app_settings/settings.xml:19365` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:45` `panel_projector_shafts`/slider | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:279` | — |
-| `shaft_quality` / Anti-banding | `projector_volumetrics_temporal_dither_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:19376` (Global) | — | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:284` | — |
+| `shaft_quality` / Pyramid cull | `projector_volumetrics_pyramid_scissor_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:19499` (Global) | — | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:269` | — |
+| `shaft_quality` / Min samples | `ps_BDMergeProjectorVolumetricsMinResolution_slider` | `slider` | `U32` `indra/newview/app_settings/settings.xml:19442` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:39` `panel_projector_shafts`/slider | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:272` | — |
+| `shaft_quality` / Peak limit | `ps_BDMergeProjectorVolumetricsMaxLuminance_slider` | `slider` | `F32` `indra/newview/app_settings/settings.xml:19453` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:42` `panel_projector_shafts`/slider | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:277` | — |
+| `shaft_quality` / Dither | `ps_BDMergeProjectorVolumetricsDither_slider` | `slider` | `U32` `indra/newview/app_settings/settings.xml:19365` (Global) | `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:45` `panel_projector_shafts`/slider | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:282` | — |
+| `shaft_quality` / Anti-banding | `projector_volumetrics_temporal_dither_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:19376` (Global) | — | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:287` | — |
+| `shaft_quality` / Equiangular steps | `projector_volumetrics_equiangular_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:19475` (Global) | — | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:290` | — |
+| `shaft_quality` / Airborne tap | `projector_volumetrics_airborne_tap_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:19483` (Global) | — | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:293` | — |
+| `shaft_quality` / Cookie footprint | `projector_volumetrics_cookie_footprint_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:19491` (Global) | — | — | `atmosphere_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml:296` | — |
 
 ### Shadows (`shadows_probes_tab`)
 
@@ -2373,7 +2379,7 @@ Real owner roots: `panel_temporal_capture` in `indra/newview/skins/default/xui/e
 
 C++ owner classes: `ALPanelTemporalCapture` (13 references).
 
-Computed logic class: **code-driven**; 10/21 rows setting-bound, 11 rows referenced in C++.
+Computed logic class: **code-driven**; 11/22 rows setting-bound, 11 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
@@ -2397,6 +2403,7 @@ Computed logic class: **code-driven**; 10/21 rows setting-bound, 11 rows referen
 | `drive_on_clock` / Camera | `drive_camera_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:9825` (Global) | `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:249` `panel_temporal_capture`/check_box | — | `temporal_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:72` | — |
 | `frame_rate` / Limit frame rate | `fps_limit_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:26793` (Global) | — | `ALPanelTemporalCapture::syncFpsLimitRow indra/newview/alpaneltemporalcapture.cpp:63` | `prefs_graphics_advanced` `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:198`, `temporal_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:77` | — |
 | `frame_rate` / Frame rate limit | `fps_limit_slider` | `slider` | `U32` `indra/newview/app_settings/settings.xml:26804` (Global) | — | — | `prefs_graphics_advanced` `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:215`, `temporal_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:80` | — |
+| `frame_rate` / VSync lock | `fps_vsync_lock_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:26815` (Global) | — | — | `temporal_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:85` | — |
 | `frame_rate` / Note | `fps_limit_hint` | `readout` | — | — | — | — | — |
 
 ### Scene (`scene_options_tab`)
@@ -2416,11 +2423,11 @@ Computed logic class: **code-driven**; 2/4 rows setting-bound, 0 rows referenced
 
 ### Settings (`director_settings_tab`)
 
-Real owner roots: `director_settings_tab_logic` in `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (7 matched rows).
+Real owner roots: `director_settings_tab_logic` in `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (10 matched rows).
 
 C++ owner classes: `LLFloaterDirector` (4 references), `LLNotifications` (1 references).
 
-Computed logic class: **code-driven**; 2/8 rows setting-bound, 5 rows referenced in C++.
+Computed logic class: **code-driven**; 5/11 rows setting-bound, 5 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
@@ -2432,3 +2439,6 @@ Computed logic class: **code-driven**; 2/8 rows setting-bound, 5 rows referenced
 | `settings_cast` / Add me at login | `settings_add_self_link` | `link` | — | — | — | — | — |
 | `settings_prompts` / Reset prompts | `settings_reset_prompts` | `button` | — | `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:37` `director_settings_tab_logic`/button | `LLNotifications::setIgnored indra/newview/llfloaterdirector.cpp:2083` | — | — |
 | `settings_appearance` / Theme | `settings_theme` | `combo` | `String` `indra/newview/app_settings/settings.xml:7886` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:42` `director_settings_tab_logic`/combo_box | — | — | — |
+| `settings_performance` / LOD hysteresis | `settings_rigged_lod_hysteresis` | `slider` | `F32` `indra/newview/app_settings/settings.xml:22756` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:52` `director_settings_tab_logic`/slider | — | — | — |
+| `settings_performance` / Shadow passes | `settings_shadow_direct_transitions_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:31103` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:57` `director_settings_tab_logic`/kit_switch | — | — | — |
+| `settings_performance` / VBO pool cleanup | `settings_vbo_pool_clean_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:22767` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:60` `director_settings_tab_logic`/kit_switch | — | — | — |

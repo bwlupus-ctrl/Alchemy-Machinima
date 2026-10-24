@@ -1,11 +1,11 @@
 # Settings — Director Kit page contract
 
 Page key: `director_settings_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (2/8 setting-bound rows; 5 C++-referenced rows).
+Computed class: **code-driven** (5/11 setting-bound rows; 5 C++-referenced rows).
 
 ## Real owners
 
-- `director_settings_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (7 matching rows).
+- `director_settings_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (10 matching rows).
 - Referencing classes: `LLFloaterDirector` (4), `LLNotifications` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
@@ -28,6 +28,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `settings_cast` / `settings_add_self_link` (Add me at login) | none | kit-native action `link_to:capture_group/scene_options_tab`; no duplicate widget is required | none |
 | `settings_prompts` / `settings_reset_prompts` (Reset prompts) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:37` | `ALDirectorSettingsKitAdapter` command/model binding → wired in `LLFloaterDirector::bindDirectorSettingsPage()`; behavior `LLNotifications::setIgnored()` (`indra/newview/llfloaterdirector.cpp:2083`) | none |
 | `settings_appearance` / `settings_theme` (Theme) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:42` | kit `combo` ↔ `DirectorTheme` `String` | none |
+| `settings_performance` / `settings_rigged_lod_hysteresis` (LOD hysteresis) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:52` | kit `slider` ↔ `RenderRiggedLODHysteresis` `F32` | none |
+| `settings_performance` / `settings_shadow_direct_transitions_check` (Shadow passes) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:57` | kit `toggle` ↔ `RenderShadowDirectTransitions` `Boolean` | none |
+| `settings_performance` / `settings_vbo_pool_clean_check` (VBO pool cleanup) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:60` | kit `toggle` ↔ `RenderVBOPoolCleanAtFrameEnd` `Boolean` | none |
 
 ## Adapter extraction
 
@@ -44,7 +47,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **14 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **18 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -62,6 +65,10 @@ Manifest size: **14 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `card-settings_prompts-tallest-1160` | Only `settings_prompts` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `card-settings_appearance-tallest-850` | Only `settings_appearance` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-settings_appearance-tallest-1160` | Only `settings_appearance` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `card-settings_performance-tallest-850` | Only `settings_performance` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-settings_performance-tallest-1160` | Only `settings_performance` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `settings_shadow_direct_transitions_check-on` | Only `settings_shadow_direct_transitions_check` is on; dependent visibility is measured. |
+| `settings_vbo_pool_clean_check-on` | Only `settings_vbo_pool_clean_check` is on; dependent visibility is measured. |
 
 ## Parity check
 

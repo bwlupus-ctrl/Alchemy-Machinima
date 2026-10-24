@@ -313,8 +313,9 @@ def validate_data(data: dict) -> None:
     # World Shadow pick fix round 2 (10/23): +1 row (List picks: the complete pick list in nearby chat; the row tooltip is capped).
     # Soft shadow LOOK controls (10/23): +5 rows (Shadow strength, Shadow contrast, Screen-space detail, World shadow amount, Screen-space amount).
     # Light-shape refinement (10/23): +2 rows (Highlight softness, native preset action combo).
-    if len(pages) != 37 or row_count != 2178:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2178")
+    # Haiku kit batch (10/23): +13 rows (World near clip, Projector contact, VSync lock, VCam local video + cache/download limits, Settings Performance card with 3 rows, 4 projector shaft A/B rows).
+    if len(pages) != 37 or row_count != 2191:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 37/2191")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

@@ -1,7 +1,7 @@
 # Time — Director Kit page contract
 
 Page key: `temporal_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (10/21 setting-bound rows; 11 C++-referenced rows).
+Computed class: **code-driven** (11/22 setting-bound rows; 11 C++-referenced rows).
 
 ## Real owners
 
@@ -40,6 +40,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `drive_on_clock` / `drive_camera_check` (Camera) | `check_box` `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:249` | kit `toggle` ↔ `TemporalDriveCamera` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:72` `drive_camera_check` |
 | `frame_rate` / `fps_limit_check` (Limit frame rate) | none | kit `toggle` ↔ `FramerateLimitEnabled` `Boolean`; `ALTemporalCaptureKitAdapter` preserves/calls wired in `ALPanelTemporalCapture::postBuild()`; behavior `ALPanelTemporalCapture::syncFpsLimitRow()` (`indra/newview/alpaneltemporalcapture.cpp:63`) | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:198` `FramerateLimitEnabled`, `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:77` `fps_limit_check` |
 | `frame_rate` / `fps_limit_slider` (Frame rate limit) | none | kit `slider` ↔ `FramerateLimitFPS` `U32` | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:215` `FramerateLimitFPS`, `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:80` `fps_limit_slider` |
+| `frame_rate` / `fps_vsync_lock_check` (VSync lock) | none | kit `toggle` ↔ `FrameLimiterVSyncLock` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml:85` `fps_vsync_lock_check` |
 | `frame_rate` / `fps_limit_hint` (Note) | none | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
@@ -59,7 +60,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **19 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **20 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -82,6 +83,7 @@ Manifest size: **19 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `card-frame_rate-tallest-850` | Only `frame_rate` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-frame_rate-tallest-1160` | Only `frame_rate` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `fps_limit_check-on` | Only `fps_limit_check` is on; dependent visibility is measured. |
+| `fps_vsync_lock_check-on` | Only `fps_vsync_lock_check` is on; dependent visibility is measured. |
 
 ## Parity check
 
@@ -96,7 +98,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-53 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+54 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

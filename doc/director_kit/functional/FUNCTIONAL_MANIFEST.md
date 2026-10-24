@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `142461b9ba1ecb16` (1816 interactive rows); 37
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1336 | 38 | 300 | 50 | 96 | 1 | 1821 |
-| v2 | 1745 | 0 | 452 | 73 | 0 | 11 | 2281 |
+| v2 | 1756 | 0 | 454 | 73 | 0 | 11 | 2294 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
@@ -41,12 +41,12 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | operator_tab (Operator) | camera_group | 69 | 0 | 0 | 0 | 0 | 0 | 70 | 0 | 0 | 0 | 0 | 0 |
 | frame_orbit_tab (Frame & Orbit) | camera_group | 30 | 0 | 0 | 0 | 0 | 0 | 35 | 0 | 0 | 0 | 0 | 0 |
 | takes_tab (Takes) | camera_group | 13 | 0 | 2 | 4 | 0 | 0 | 15 | 0 | 2 | 4 | 0 | 0 |
-| vcam_tab (VCam) | camera_group | 2 | 0 | 0 | 0 | 0 | 0 | 69 | 0 | 139 | 3 | 0 | 4 |
+| vcam_tab (VCam) | camera_group | 2 | 0 | 0 | 0 | 0 | 0 | 70 | 0 | 141 | 3 | 0 | 4 |
 | focus_tab (Focus) | lens_group | 14 | 0 | 0 | 0 | 0 | 0 | 16 | 0 | 0 | 0 | 0 | 0 |
 | filters_tab (Filters) | lens_group | 28 | 0 | 1 | 0 | 0 | 0 | 32 | 0 | 1 | 0 | 0 | 0 |
 | diopter_tab (Diopter) | lens_group | 4 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 |
 | cine_light_rig_tab (Rig) | light_group | 150 | 12 | 4 | 3 | 5 | 0 | 191 | 0 | 4 | 4 | 0 | 1 |
-| light_rim_tab (Rim) | light_group | 42 | 0 | 1 | 0 | 0 | 0 | 84 | 0 | 1 | 3 | 0 | 0 |
+| light_rim_tab (Rim) | light_group | 42 | 0 | 1 | 0 | 0 | 0 | 86 | 0 | 1 | 3 | 0 | 0 |
 | exposure_tab (Exposure) | light_group | 23 | 1 | 0 | 0 | 0 | 0 | 25 | 0 | 0 | 0 | 0 | 0 |
 | practicals_tab (Practicals) | light_group | 12 | 0 | 1 | 1 | 1 | 0 | 14 | 0 | 1 | 1 | 0 | 0 |
 | actors_tab (Actors) | light_group | 15 | 0 | 8 | 2 | 2 | 0 | 28 | 0 | 2 | 6 | 0 | 0 |
@@ -58,11 +58,11 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | stepped_tab (Stepped) | look_group | 37 | 3 | 3 | 2 | 0 | 0 | 63 | 0 | 6 | 2 | 0 | 0 |
 | actor_style_tab (Actor FX) | look_group | 0 | 0 | 15 | 1 | 0 | 0 | 1 | 0 | 16 | 1 | 0 | 0 |
 | weather_tab (Weather) | world_group | 51 | 0 | 0 | 1 | 0 | 0 | 56 | 0 | 0 | 1 | 0 | 0 |
-| atmosphere_tab (Atmosphere) | world_group | 72 | 1 | 1 | 2 | 1 | 0 | 60 | 0 | 0 | 1 | 0 | 0 |
+| atmosphere_tab (Atmosphere) | world_group | 72 | 1 | 1 | 2 | 1 | 0 | 64 | 0 | 0 | 1 | 0 | 0 |
 | shadows_probes_tab (Shadows) | world_group | 37 | 0 | 0 | 0 | 2 | 0 | 39 | 0 | 0 | 0 | 0 | 0 |
-| temporal_tab (Time) | capture_group | 13 | 0 | 0 | 0 | 0 | 0 | 19 | 0 | 0 | 2 | 0 | 0 |
+| temporal_tab (Time) | capture_group | 13 | 0 | 0 | 0 | 0 | 0 | 20 | 0 | 0 | 2 | 0 | 0 |
 | scene_options_tab (Scene) | capture_group | 1 | 0 | 0 | 0 | 1 | 0 | 4 | 0 | 0 | 0 | 0 | 0 |
-| director_settings_tab (director_settings_tab) |  | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 | 0 | 3 | 0 | 0 |
+| director_settings_tab (director_settings_tab) |  | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 | 0 | 3 | 0 | 0 |
 
 ## Card-header switches
 

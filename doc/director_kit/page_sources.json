@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 37,
-    "rows": 1987,
+    "rows": 1997,
     "owner_roots": 33,
     "unresolved_rows": 22,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 1987
+    "independent_json_rows": 1997
   },
   "setting_conflicts": [
     {
@@ -4736,6 +4736,34 @@
       "writable_home": null
     },
     {
+      "setting": "BDMergeProjectorVolumetricsAirborneTap",
+      "pages": [
+        "atmosphere_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+          "line": 293,
+          "widget": "projector_volumetrics_airborne_tap_check",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+            "tag": "panel",
+            "name": "atmosphere_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 19483,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "BDMergeProjectorVolumetricsAnisotropy",
       "pages": [
         "atmosphere_tab"
@@ -4836,6 +4864,34 @@
       "writable_home": null
     },
     {
+      "setting": "BDMergeProjectorVolumetricsCookieFootprint",
+      "pages": [
+        "atmosphere_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+          "line": 296,
+          "widget": "projector_volumetrics_cookie_footprint_check",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+            "tag": "panel",
+            "name": "atmosphere_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 19491,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "BDMergeProjectorVolumetricsDensity",
       "pages": [
         "atmosphere_tab"
@@ -4882,7 +4938,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-          "line": 279,
+          "line": 282,
           "widget": "ps_BDMergeProjectorVolumetricsDither_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
@@ -4909,6 +4965,34 @@
           "line": 19365,
           "group": "Global",
           "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "BDMergeProjectorVolumetricsEquiangular",
+      "pages": [
+        "atmosphere_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+          "line": 290,
+          "widget": "projector_volumetrics_equiangular_check",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+            "tag": "panel",
+            "name": "atmosphere_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 19475,
+          "group": "Global",
+          "type": "Boolean"
         }
       ],
       "writable_home": null
@@ -5207,7 +5291,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-          "line": 274,
+          "line": 277,
           "widget": "ps_BDMergeProjectorVolumetricsMaxLuminance_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
@@ -5246,7 +5330,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-          "line": 269,
+          "line": 272,
           "widget": "ps_BDMergeProjectorVolumetricsMinResolution_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
@@ -5440,6 +5524,34 @@
           "line": 19566,
           "group": "Global",
           "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "BDMergeProjectorVolumetricsPyramidScissor",
+      "pages": [
+        "atmosphere_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+          "line": 269,
+          "widget": "projector_volumetrics_pyramid_scissor_check",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+            "tag": "panel",
+            "name": "atmosphere_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 19499,
+          "group": "Global",
+          "type": "Boolean"
         }
       ],
       "writable_home": null
@@ -5703,7 +5815,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-          "line": 284,
+          "line": 287,
           "widget": "projector_volumetrics_temporal_dither_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
@@ -32113,6 +32225,34 @@
       "writable_home": null
     },
     {
+      "setting": "FrameLimiterVSyncLock",
+      "pages": [
+        "temporal_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+          "line": 85,
+          "widget": "fps_vsync_lock_check",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+            "tag": "panel",
+            "name": "temporal_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 26815,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "FramerateLimitEnabled",
       "pages": [
         "temporal_tab"
@@ -32705,7 +32845,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 370,
+          "line": 376,
           "widget": "area_shadow_budget",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32817,7 +32957,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 345,
+          "line": 351,
           "widget": "area_shadow_debug",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -32945,6 +33085,34 @@
           "line": 21623,
           "group": "Global",
           "type": "S32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "RenderAreaShadowMappedContact",
+      "pages": [
+        "light_rim_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+          "line": 348,
+          "widget": "area_shadow_mapped_contact",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+            "tag": "panel",
+            "name": "light_rim_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 21672,
+          "group": "Global",
+          "type": "F32"
         }
       ],
       "writable_home": null
@@ -33209,7 +33377,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-          "line": 360,
+          "line": 366,
           "widget": "area_shadow_world_debug",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -33225,6 +33393,34 @@
           "line": 21616,
           "group": "Global",
           "type": "S32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "RenderAreaShadowWorldNear",
+      "pages": [
+        "light_rim_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+          "line": 345,
+          "widget": "area_shadow_world_near",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+            "tag": "panel",
+            "name": "light_rim_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 21609,
+          "group": "Global",
+          "type": "F32"
         }
       ],
       "writable_home": null
@@ -37345,6 +37541,34 @@
       "writable_home": null
     },
     {
+      "setting": "RenderRiggedLODHysteresis",
+      "pages": [
+        "director_settings_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+          "line": 52,
+          "widget": "settings_rigged_lod_hysteresis",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+            "tag": "panel",
+            "name": "director_settings_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 22756,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "RenderShadowAlphaCutoff",
       "pages": [
         "shadows_probes_tab"
@@ -37707,6 +37931,34 @@
           "line": 21791,
           "group": "Global",
           "type": "S32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "RenderShadowDirectTransitions",
+      "pages": [
+        "director_settings_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+          "line": 57,
+          "widget": "settings_shadow_direct_transitions_check",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+            "tag": "panel",
+            "name": "director_settings_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31103,
+          "group": "Global",
+          "type": "Boolean"
         }
       ],
       "writable_home": null
@@ -38927,6 +39179,34 @@
           "line": 22899,
           "group": "Global",
           "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "RenderVBOPoolCleanAtFrameEnd",
+      "pages": [
+        "director_settings_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+          "line": 60,
+          "widget": "settings_vbo_pool_clean_check",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+            "tag": "panel",
+            "name": "director_settings_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 22767,
+          "group": "Global",
+          "type": "Boolean"
         }
       ],
       "writable_home": null
@@ -155880,7 +156160,7 @@
       "label": "Rim",
       "group": "light_group",
       "group_label": "Light",
-      "row_count": 77,
+      "row_count": 79,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_cine_light_rig.xml",
@@ -155903,8 +156183,8 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 67,
-        "setting_coverage": 0.87013,
+        "setting_bound_rows": 69,
+        "setting_coverage": 0.873418,
         "cpp_referenced_rows": 7,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -161256,6 +161536,134 @@
           "option_index": null,
           "option_label": null,
           "index": 25,
+          "label": "Near clip (m)",
+          "kind": "number",
+          "widget": "area_shadow_world_near",
+          "matched_widget": "area_shadow_world_near",
+          "declared_setting": "RenderAreaShadowWorldNear",
+          "resolved_setting": "RenderAreaShadowWorldNear",
+          "setting_candidates": [
+            "RenderAreaShadowWorldNear"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 21609,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+              "line": 345,
+              "tag": "spinner",
+              "control_name": "RenderAreaShadowWorldNear",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+                "tag": "panel",
+                "name": "light_rim_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+              "line": 345,
+              "widget": "area_shadow_world_near",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+                "tag": "panel",
+                "name": "light_rim_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "area_soft_shadows",
+          "card_title": "Soft shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 26,
+          "label": "Contact (m)",
+          "kind": "number",
+          "widget": "area_shadow_mapped_contact",
+          "matched_widget": "area_shadow_mapped_contact",
+          "declared_setting": "RenderAreaShadowMappedContact",
+          "resolved_setting": "RenderAreaShadowMappedContact",
+          "setting_candidates": [
+            "RenderAreaShadowMappedContact"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 21672,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+              "line": 348,
+              "tag": "spinner",
+              "control_name": "RenderAreaShadowMappedContact",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+                "tag": "panel",
+                "name": "light_rim_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+              "line": 348,
+              "widget": "area_shadow_mapped_contact",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+                "tag": "panel",
+                "name": "light_rim_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "area_soft_shadows",
+          "card_title": "Soft shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 27,
           "label": "Visibility view",
           "kind": "combo",
           "widget": "area_shadow_debug",
@@ -161296,7 +161704,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 345,
+              "line": 351,
               "tag": "combo_box",
               "control_name": "RenderAreaShadowDebugView",
               "callbacks": [],
@@ -161313,7 +161721,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 345,
+              "line": 351,
               "widget": "area_shadow_debug",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -161329,7 +161737,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 26,
+          "index": 28,
           "label": "World view",
           "kind": "combo",
           "widget": "area_shadow_world_debug",
@@ -161365,7 +161773,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 360,
+              "line": 366,
               "tag": "combo_box",
               "control_name": "RenderAreaShadowWorldDebug",
               "callbacks": [],
@@ -161382,7 +161790,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 360,
+              "line": 366,
               "widget": "area_shadow_world_debug",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -161398,7 +161806,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 27,
+          "index": 29,
           "label": "Work budget (M)",
           "kind": "number",
           "widget": "area_shadow_budget",
@@ -161429,7 +161837,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 370,
+              "line": 376,
               "tag": "spinner",
               "control_name": "RenderAreaShadowBudget",
               "callbacks": [],
@@ -161446,7 +161854,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 370,
+              "line": 376,
               "widget": "area_shadow_budget",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
@@ -161462,7 +161870,7 @@
           "card_title": "Soft shadows",
           "option_index": null,
           "option_label": null,
-          "index": 28,
+          "index": 30,
           "label": "SL shadows",
           "kind": "readout",
           "widget": "area_shadow_sl_help",
@@ -161484,7 +161892,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-              "line": 373,
+              "line": 379,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -204780,7 +205188,7 @@
       "label": "Atmosphere",
       "group": "world_group",
       "group_label": "World",
-      "row_count": 80,
+      "row_count": 84,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_projector_shafts.xml",
@@ -204819,8 +205227,8 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 52,
-        "setting_coverage": 0.65,
+        "setting_bound_rows": 56,
+        "setting_coverage": 0.666667,
         "cpp_referenced_rows": 25,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -210512,6 +210920,70 @@
           "option_index": null,
           "option_label": null,
           "index": 8,
+          "label": "Pyramid cull",
+          "kind": "toggle",
+          "widget": "projector_volumetrics_pyramid_scissor_check",
+          "matched_widget": "projector_volumetrics_pyramid_scissor_check",
+          "declared_setting": "BDMergeProjectorVolumetricsPyramidScissor",
+          "resolved_setting": "BDMergeProjectorVolumetricsPyramidScissor",
+          "setting_candidates": [
+            "BDMergeProjectorVolumetricsPyramidScissor"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 19499,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+              "line": 269,
+              "tag": "kit_switch",
+              "control_name": "BDMergeProjectorVolumetricsPyramidScissor",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+                "tag": "panel",
+                "name": "atmosphere_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+              "line": 269,
+              "widget": "projector_volumetrics_pyramid_scissor_check",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+                "tag": "panel",
+                "name": "atmosphere_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "shaft_quality",
+          "card_title": "Beam quality",
+          "option_index": null,
+          "option_label": null,
+          "index": 9,
           "label": "Min samples",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsMinResolution_slider",
@@ -210556,7 +211028,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-              "line": 269,
+              "line": 272,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsMinResolution",
               "callbacks": [],
@@ -210573,7 +211045,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-              "line": 269,
+              "line": 272,
               "widget": "ps_BDMergeProjectorVolumetricsMinResolution_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
@@ -210589,7 +211061,7 @@
           "card_title": "Beam quality",
           "option_index": null,
           "option_label": null,
-          "index": 9,
+          "index": 10,
           "label": "Peak limit",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsMaxLuminance_slider",
@@ -210634,7 +211106,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-              "line": 274,
+              "line": 277,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsMaxLuminance",
               "callbacks": [],
@@ -210651,7 +211123,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-              "line": 274,
+              "line": 277,
               "widget": "ps_BDMergeProjectorVolumetricsMaxLuminance_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
@@ -210667,7 +211139,7 @@
           "card_title": "Beam quality",
           "option_index": null,
           "option_label": null,
-          "index": 10,
+          "index": 11,
           "label": "Dither",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsDither_slider",
@@ -210712,7 +211184,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-              "line": 279,
+              "line": 282,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsDither",
               "callbacks": [],
@@ -210729,7 +211201,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-              "line": 279,
+              "line": 282,
               "widget": "ps_BDMergeProjectorVolumetricsDither_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
@@ -210745,7 +211217,7 @@
           "card_title": "Beam quality",
           "option_index": null,
           "option_label": null,
-          "index": 11,
+          "index": 12,
           "label": "Anti-banding",
           "kind": "toggle",
           "widget": "projector_volumetrics_temporal_dither_check",
@@ -210776,7 +211248,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-              "line": 284,
+              "line": 287,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsTemporalDither",
               "callbacks": [],
@@ -210793,8 +211265,200 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-              "line": 284,
+              "line": 287,
               "widget": "projector_volumetrics_temporal_dither_check",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+                "tag": "panel",
+                "name": "atmosphere_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "shaft_quality",
+          "card_title": "Beam quality",
+          "option_index": null,
+          "option_label": null,
+          "index": 13,
+          "label": "Equiangular steps",
+          "kind": "toggle",
+          "widget": "projector_volumetrics_equiangular_check",
+          "matched_widget": "projector_volumetrics_equiangular_check",
+          "declared_setting": "BDMergeProjectorVolumetricsEquiangular",
+          "resolved_setting": "BDMergeProjectorVolumetricsEquiangular",
+          "setting_candidates": [
+            "BDMergeProjectorVolumetricsEquiangular"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 19475,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+              "line": 290,
+              "tag": "kit_switch",
+              "control_name": "BDMergeProjectorVolumetricsEquiangular",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+                "tag": "panel",
+                "name": "atmosphere_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+              "line": 290,
+              "widget": "projector_volumetrics_equiangular_check",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+                "tag": "panel",
+                "name": "atmosphere_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "shaft_quality",
+          "card_title": "Beam quality",
+          "option_index": null,
+          "option_label": null,
+          "index": 14,
+          "label": "Airborne tap",
+          "kind": "toggle",
+          "widget": "projector_volumetrics_airborne_tap_check",
+          "matched_widget": "projector_volumetrics_airborne_tap_check",
+          "declared_setting": "BDMergeProjectorVolumetricsAirborneTap",
+          "resolved_setting": "BDMergeProjectorVolumetricsAirborneTap",
+          "setting_candidates": [
+            "BDMergeProjectorVolumetricsAirborneTap"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 19483,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+              "line": 293,
+              "tag": "kit_switch",
+              "control_name": "BDMergeProjectorVolumetricsAirborneTap",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+                "tag": "panel",
+                "name": "atmosphere_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+              "line": 293,
+              "widget": "projector_volumetrics_airborne_tap_check",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+                "tag": "panel",
+                "name": "atmosphere_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "shaft_quality",
+          "card_title": "Beam quality",
+          "option_index": null,
+          "option_label": null,
+          "index": 15,
+          "label": "Cookie footprint",
+          "kind": "toggle",
+          "widget": "projector_volumetrics_cookie_footprint_check",
+          "matched_widget": "projector_volumetrics_cookie_footprint_check",
+          "declared_setting": "BDMergeProjectorVolumetricsCookieFootprint",
+          "resolved_setting": "BDMergeProjectorVolumetricsCookieFootprint",
+          "setting_candidates": [
+            "BDMergeProjectorVolumetricsCookieFootprint"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 19491,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+              "line": 296,
+              "tag": "kit_switch",
+              "control_name": "BDMergeProjectorVolumetricsCookieFootprint",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+                "tag": "panel",
+                "name": "atmosphere_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+              "line": 296,
+              "widget": "projector_volumetrics_cookie_footprint_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
                 "tag": "panel",
@@ -213978,7 +214642,7 @@
       "label": "Time",
       "group": "capture_group",
       "group_label": "Capture",
-      "row_count": 21,
+      "row_count": 22,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_temporal_capture.xml",
@@ -213997,8 +214661,8 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 10,
-        "setting_coverage": 0.47619,
+        "setting_bound_rows": 11,
+        "setting_coverage": 0.5,
         "cpp_referenced_rows": 11,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -215957,6 +216621,70 @@
           "option_index": null,
           "option_label": null,
           "index": 2,
+          "label": "VSync lock",
+          "kind": "toggle",
+          "widget": "fps_vsync_lock_check",
+          "matched_widget": "fps_vsync_lock_check",
+          "declared_setting": "FrameLimiterVSyncLock",
+          "resolved_setting": "FrameLimiterVSyncLock",
+          "setting_candidates": [
+            "FrameLimiterVSyncLock"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 26815,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+              "line": 85,
+              "tag": "kit_switch",
+              "control_name": "FrameLimiterVSyncLock",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+                "tag": "panel",
+                "name": "temporal_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+              "line": 85,
+              "widget": "fps_vsync_lock_check",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+                "tag": "panel",
+                "name": "temporal_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "frame_rate",
+          "card_title": "Frame rate",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
           "label": "Note",
           "kind": "readout",
           "widget": "fps_limit_hint",
@@ -215978,7 +216706,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
-              "line": 85,
+              "line": 88,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -216282,14 +217010,14 @@
       "label": "Settings",
       "group": "settings_group",
       "group_label": "Settings",
-      "row_count": 8,
+      "row_count": 11,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
           "tag": "panel",
           "name": "director_settings_tab_logic",
           "line": 3,
-          "matched_rows": 7,
+          "matched_rows": 10,
           "evidence": "row-widget match"
         }
       ],
@@ -216305,8 +217033,8 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 2,
-        "setting_coverage": 0.25,
+        "setting_bound_rows": 5,
+        "setting_coverage": 0.454545,
         "cpp_referenced_rows": 5,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -216697,6 +217425,153 @@
               "text": "if (LLComboBox* theme_combo = root->findChild<LLComboBox>(\"settings_theme\"))"
             }
           ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "settings_performance",
+          "card_title": "Performance",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "LOD hysteresis",
+          "kind": "slider",
+          "widget": "settings_rigged_lod_hysteresis",
+          "matched_widget": "settings_rigged_lod_hysteresis",
+          "declared_setting": "RenderRiggedLODHysteresis",
+          "resolved_setting": "RenderRiggedLODHysteresis",
+          "setting_candidates": [
+            "RenderRiggedLODHysteresis"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 22756,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+              "line": 52,
+              "tag": "slider",
+              "control_name": "RenderRiggedLODHysteresis",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+                "tag": "panel",
+                "name": "director_settings_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "settings_performance",
+          "card_title": "Performance",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Shadow passes",
+          "kind": "toggle",
+          "widget": "settings_shadow_direct_transitions_check",
+          "matched_widget": "settings_shadow_direct_transitions_check",
+          "declared_setting": "RenderShadowDirectTransitions",
+          "resolved_setting": "RenderShadowDirectTransitions",
+          "setting_candidates": [
+            "RenderShadowDirectTransitions"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31103,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+              "line": 57,
+              "tag": "kit_switch",
+              "control_name": "RenderShadowDirectTransitions",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+                "tag": "panel",
+                "name": "director_settings_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "settings_performance",
+          "card_title": "Performance",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "VBO pool cleanup",
+          "kind": "toggle",
+          "widget": "settings_vbo_pool_clean_check",
+          "matched_widget": "settings_vbo_pool_clean_check",
+          "declared_setting": "RenderVBOPoolCleanAtFrameEnd",
+          "resolved_setting": "RenderVBOPoolCleanAtFrameEnd",
+          "setting_candidates": [
+            "RenderVBOPoolCleanAtFrameEnd"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 22767,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+              "line": 60,
+              "tag": "kit_switch",
+              "control_name": "RenderVBOPoolCleanAtFrameEnd",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+                "tag": "panel",
+                "name": "director_settings_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
           "callback_handlers": [],
           "callbacks": [],
           "kit_action": null,
