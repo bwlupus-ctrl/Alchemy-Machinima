@@ -1118,7 +1118,7 @@ uniform vec4 rig_rim_tron_color;
 
 // [RigRimQ] Rig Rim Quality (doc/RIGRIM_QUALITY_CONTRACT.md).  Every term is a
 // MULTIPLY on the rim, never added light.
-//   rig_rim_quality  vec4  x Smoothness   0..1  depth-reconstructed smooth normal mix
+//   rig_rim_quality  vec4  x Smoothness   0..1  surface-filtered normal mix
 //                          y AntiShimmer  0..1  Toksvig softening of the grazing exponent
 //                          z Silhouette   0..1  silhouette-band gating (deferred only, Phase 1)
 //                          w ActorsOnly   0..1  subject-mask gating (deferred only, Phase 1)
@@ -1375,7 +1375,7 @@ vec3 rigRimTermEx(vec3 n,            // shading normal (eye space)
     }
 
     // [RigRimQ] 1. smooth normal: blend the shading normal toward the
-    // depth-reconstructed (deferred) / vertex (forward) normal.
+    // surface-filtered/detail-transferred (deferred) / vertex (forward) normal.
     vec3 n_r = n;
     if (rig_rim_quality.x > 0.0)
     {

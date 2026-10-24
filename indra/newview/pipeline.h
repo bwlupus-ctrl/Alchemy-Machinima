@@ -750,6 +750,7 @@ public:
     ActorMaskView mActorMaskView = ActorMaskView::NONE;
     bool mActorMaskValid = false; // valid only during this lighting/forward view
     bool mRigRimAuxValid = false;
+    bool mRigRimSmoothValid = false;
     bool mRigRimSilValid = false;
     bool mRigRimWrapSceneValid = false;
     bool mRigRimWrapDebugValid = false;
@@ -760,6 +761,7 @@ public:
     U64 rigRimStatusRevision() const { return mRigRimStatusRevision; }
     const std::string& rigRimStatus() const { return mRigRimStatus; }
     bool ensureRigRimAux();
+    bool ensureRigRimSmooth();
     bool ensureRigRimWrap();
     void renderRigRimWrap(bool debug_only);
     void releaseRigRimAux();
@@ -1328,6 +1330,7 @@ public:
         LLRenderTarget          actorMask; // [ActorMask] R8; shared depth, never owned
         U32                     actorMaskDepthSrc = 0;
         LLRenderTarget          rigRimAux;
+        LLRenderTarget          rigRimSmooth[2]; // original aux + H moments; Smoothness > 0 only
         LLRenderTarget          rigRimSil[2];
         LLRenderTarget          rigRimWrapBlur[2];
         LLRenderTarget          rigRimWrapScene; // full-res pre-wrap RGB; avoids framebuffer feedback

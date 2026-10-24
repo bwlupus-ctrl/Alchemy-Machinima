@@ -221,8 +221,14 @@ void ALCineRigRim::bindGlobals(LLGLSLShader& shader, bool forward_alpha)
     {
         static LLCachedControl<F32> smoothness(gSavedSettings, "CineRigRimSmoothness", 0.f);
         static LLCachedControl<F32> anti_shimmer(gSavedSettings, "CineRigRimAntiShimmer", 0.f);
+        F32 forward_smooth = llclamp(finiteOr(smoothness, 0.f), 0.f, 1.f);
+        if (forward_smooth > 0.f)
+        {
+            static LLCachedControl<F32> texture(gSavedSettings, "CineRigRimTextureNormals", 0.f);
+            forward_smooth *= 1.f - llclamp(finiteOr(texture, 0.f), 0.f, 1.f);
+        }
         shader.uniform4f(LLShaderMgr::RIG_RIM_QUALITY,
-            llclamp(finiteOr(smoothness, 0.f), 0.f, 1.f),
+            forward_smooth,
             llclamp(finiteOr(anti_shimmer, 0.f), 0.f, 1.f),
             0.f, 0.f);
     }

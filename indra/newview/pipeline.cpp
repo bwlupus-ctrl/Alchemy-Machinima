@@ -3236,6 +3236,7 @@ void LLPipeline::releaseScreenBuffers()
         for (auto& target : rt.areaScratch) target.release();
         for (auto& target : rt.areaVisibility) target.release();
         rt.rigRimAux.release();
+        for (auto& target : rt.rigRimSmooth) target.release();
         for (auto& target : rt.rigRimSil) target.release();
         for (auto& target : rt.rigRimWrapBlur) target.release();
         rt.rigRimWrapScene.release();
@@ -25867,11 +25868,20 @@ void LLPipeline::bindRigRimAux(LLGLSLShader& shader)
     const F32 steady_value = llclamp(finite_or((F32)steady, 0.f), 0.f, 1.f);
     if (ALCineRigRim::isForwardAlphaProgram(shader))
     {
+        // Forward alpha already has an interpolated vertex-normal base. Its
+        // texture perturbation is relative to that very base, so retaining
+        // detail reduces only the smoothing contribution (no auxiliary read).
+        F32 forward_smooth = smooth_value;
+        if (forward_smooth > 0.f)
+        {
+            static LLCachedControl<F32> texture(gSavedSettings, "CineRigRimTextureNormals", 0.f);
+            forward_smooth *= 1.f - llclamp(finite_or((F32)texture,0.f),0.f,1.f);
+        }
         // Forward alpha constructs its quality pixel locally, so Smooth and
         // Steady remain valid in probes, mirrors, Prism, and before/without
         // the main-view auxiliary pass. It must never sample the aux maps.
         shader.uniform4f(LLShaderMgr::RIG_RIM_QUALITY,
-                         smooth_value, steady_value, 0.f, 0.f);
+                         forward_smooth, steady_value, 0.f, 0.f);
         shader.uniform4f(LLShaderMgr::RIG_RIM_SIL, 0.f, 0.f, 0.f, 0.f);
         return;
     }
@@ -25880,7 +25890,7 @@ void LLPipeline::bindRigRimAux(LLGLSLShader& shader)
     const bool aux = main && gRigRimAuxCompiled && mRigRimAuxValid;
     const bool sil = main && gRigRimAuxCompiled && mRigRimSilValid;
     shader.uniform4f(LLShaderMgr::RIG_RIM_QUALITY,
-        aux ? smooth_value : 0.f,
+        aux && mRigRimSmoothValid ? smooth_value : 0.f,
         aux ? steady_value : 0.f,
         sil ? llclamp(finite_or((F32)silhouette,0.f),0.f,1.f) : 0.f,
         aux && actors ? 1.f : 0.f);
@@ -26131,6 +26141,24 @@ bool LLPipeline::ensureRigRimAux()
     return true;
 }
 
+bool LLPipeline::ensureRigRimSmooth()
+{
+    const U32 w = mMainRT.deferredScreen.getWidth(), h = mMainRT.deferredScreen.getHeight();
+    if (mMainRT.rigRimSmooth[0].isComplete() && mMainRT.rigRimSmooth[0].getWidth() == w &&
+        mMainRT.rigRimSmooth[0].getHeight() == h && mMainRT.rigRimSmooth[1].isComplete() &&
+        mMainRT.rigRimSmooth[1].getWidth() == w && mMainRT.rigRimSmooth[1].getHeight() == h)
+        return true;
+    for (auto& target : mMainRT.rigRimSmooth) target.release();
+    if (!mMainRT.rigRimSmooth[0].allocate(w, h, GL_RGBA16, false) ||
+        !mMainRT.rigRimSmooth[1].allocate(w, h, GL_RGBA32F, false))
+    {
+        for (auto& target : mMainRT.rigRimSmooth) target.release();
+        LL_WARNS_ONCE("RigRimQ") << "Rim smoothing allocation failed; using shading normals" << LL_ENDL;
+        return false;
+    }
+    return true;
+}
+
 bool LLPipeline::ensureRigRimWrap()
 {
     const U32 scene_w = mMainRT.screen.getWidth(), scene_h = mMainRT.screen.getHeight();
@@ -26170,11 +26198,12 @@ bool LLPipeline::ensureRigRimWrap()
 void LLPipeline::releaseRigRimAux()
 {
     mMainRT.rigRimAux.release();
+    for (auto& target : mMainRT.rigRimSmooth) target.release();
     for (auto& target : mMainRT.rigRimSil) target.release();
     for (auto& target : mMainRT.rigRimWrapBlur) target.release();
     mMainRT.rigRimWrapScene.release();
     mMainRT.rigRimWrapDebug.release();
-    mRigRimAuxValid = mRigRimSilValid = false;
+    mRigRimAuxValid = mRigRimSmoothValid = mRigRimSilValid = false;
     mRigRimWrapSceneValid = mRigRimWrapDebugValid = false;
 }
 
@@ -28370,6 +28399,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
     if (source == ActorMaskViewSource::MAIN && mRT == &mMainRT)
     {
         mRigRimAuxValid = false;
+        mRigRimSmoothValid = false;
         mRigRimSilValid = false;
         mRigRimWrapSceneValid = false;
         mRigRimWrapDebugValid = false;
@@ -28670,6 +28700,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         // Rig Rim Quality auxiliary and silhouette passes. Main view only;
         // validity deliberately survives ResetActorMaskView until finalize.
         static LLCachedControl<F32> rim_smooth(gSavedSettings, "CineRigRimSmoothness", 0.f);
+        static LLCachedControl<F32> rim_radius(gSavedSettings, "CineRigRimSmoothRadius", 12.f);
+        static LLCachedControl<F32> rim_texture(gSavedSettings, "CineRigRimTextureNormals", 0.f);
         static LLCachedControl<F32> rim_steady(gSavedSettings, "CineRigRimAntiShimmer", 0.f);
         static LLCachedControl<F32> rim_edge(gSavedSettings, "CineRigRimSilhouette", 0.f);
         static LLCachedControl<bool> rim_actors(gSavedSettings, "CineRigRimActorsOnly", false);
@@ -28788,20 +28820,52 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             const F32 seed = std::isfinite((F32)rim_seed) ? (F32)rim_seed : .02f;
             const F32 seed_soft = std::isfinite((F32)rim_seed_soft) ? (F32)rim_seed_soft : .5f;
             const F32 p[4] = {(F32)subject_source, llclamp(seed,.002f,.2f), llclamp(seed_soft,.02f,1.f), 0.f};
+            // At zero keep the original pass, targets and draw count.
+            const bool smooth_normals = std::isfinite((F32)rim_smooth) && rim_smooth() > 0.f &&
+                gRigRimSmoothGuideProgram.isComplete() &&
+                gRigRimSmoothProgram[0].isComplete() && gRigRimSmoothProgram[1].isComplete() &&
+                ensureRigRimSmooth();
+            if (rim_smooth() <= 0.f && mMainRT.rigRimSmooth[0].isComplete())
+                for (auto& target : mMainRT.rigRimSmooth) target.release();
+            LLRenderTarget& aux_target = smooth_normals ? mMainRT.rigRimSmooth[0] : mMainRT.rigRimAux;
+            auto& aux_shader = smooth_normals ? gRigRimSmoothGuideProgram : gRigRimAuxProgram;
             {
                 LL_PROFILE_GPU_ZONE("rig rim aux");
-                mMainRT.rigRimAux.bindTarget();
-                bindDeferredShader(gRigRimAuxProgram);
-                gRigRimAuxProgram.uniform4fv(LLShaderMgr::RIG_RIM_AUX_PARAMS, 1, p);
+                aux_target.bindTarget();
+                bindDeferredShader(aux_shader);
+                aux_shader.uniform4fv(LLShaderMgr::RIG_RIM_AUX_PARAMS, 1, p);
                 if (subject_source == 2)
                 {
-                    bindActorMask(gRigRimAuxProgram);
-                    gRigRimAuxProgram.uniform1i(LLShaderMgr::ACTOR_MASK_BITS,
+                    bindActorMask(aux_shader);
+                    aux_shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS,
                         ALCineLightRigManager::instance().liveRecipientBits());
                 }
                 mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
-                unbindDeferredShader(gRigRimAuxProgram); mMainRT.rigRimAux.flush();
+                unbindDeferredShader(aux_shader); aux_target.flush();
                 mRigRimAuxValid = true;
+            }
+            if (smooth_normals)
+            {
+                LL_PROFILE_GPU_ZONE("rig rim smooth normals");
+                const F32 radius = std::isfinite((F32)rim_radius) ? (F32)rim_radius : 12.f;
+                const F32 texture = std::isfinite((F32)rim_texture) ? (F32)rim_texture : 0.f;
+                const F32 focal_x = mMainRT.deferredScreen.getWidth() * gGLProjection[0] * .5f;
+                const F32 focal_y = mMainRT.deferredScreen.getHeight() * gGLProjection[5] * .5f;
+                for (S32 i = 0; i < 2; ++i)
+                {
+                    LLRenderTarget& target = i == 0 ? mMainRT.rigRimSmooth[1] : mMainRT.rigRimAux;
+                    auto& shader = gRigRimSmoothProgram[i];
+                    target.bindTarget();
+                    bindDeferredShader(shader);
+                    shader.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP, &mMainRT.rigRimSmooth[0], false, LLTexUnit::TFO_POINT);
+                    if (i == 1) shader.bindTexture(LLShaderMgr::RIG_RIM_SMOOTH_MAP, &mMainRT.rigRimSmooth[1], false, LLTexUnit::TFO_POINT);
+                    shader.uniform4f(LLShaderMgr::RIG_RIM_SMOOTH_PARAMS, llclamp(radius,1.f,50.f)*.01f,
+                        focal_x, focal_y, llclamp(texture,0.f,1.f));
+                    shader.uniform4f(LLShaderMgr::RIG_RIM_QUALITY, llclamp((F32)rim_smooth,0.f,1.f),0.f,0.f,0.f);
+                    mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+                    unbindDeferredShader(shader); target.flush();
+                }
+                mRigRimSmoothValid = true;
             }
             if (want_sil && gRigRimSilSeedProgram.isComplete() &&
                 gRigRimSilDtProgram[0].isComplete() && gRigRimSilDtProgram[1].isComplete())

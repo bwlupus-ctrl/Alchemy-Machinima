@@ -585,3 +585,40 @@ transaction, SSR helper and capture call against real WGL FBOs. It covers
 successive reflective frames, a camera cut with history retained, Wrap/Rim
 toggle-off on the next frame, exact post-alpha depth, cached debug identity,
 wireframe, both blur formats, and the existing halo/strength/off-byte gates.
+# Smooth normal revision (2026-10-24)
+
+This revision supersedes the original depth-normal smoothing description below.
+`CineRigRimSmoothness` still defaults to 0. The stock auxiliary permutation and
+pass-demand predicates are unchanged at zero; no smoothing targets or draws are
+created. `CineRigRimSmoothRadius` defaults to 12 cm (1–50 cm); the surface-space
+kernel projects through the current projection/depth and is bounded to 32 pixels
+per axis. This bound can reduce the requested world radius in close shots.
+`CineRigRimTextureNormals` defaults to 0 (0–1), preserving existing presets'
+removal of normal-map detail as Smoothness increases.
+
+When smoothing is requested, the auxiliary guide permutation selects coplanar
+depth quadrants rather than mixed triangle derivatives. Two full-resolution
+separable surface filters blur shading and geometric normals. Depth continuity,
+geometric-normal agreement and subject identity stop filtering across boundaries;
+every intervening pixel is inspected. A compact continuous kernel, fixed pixel
+grid and current-frame inputs avoid random/temporal sampling phases.
+
+The horizontal scratch is RGBA32F: two exactly packed 12-bit-per-axis octahedral
+normals plus shading/geometry edge covariance moments. The vertical pass uses
+those moments to distinguish flat shading from interpolated vertex normals and
+transfers shading perturbations by shortest-arc rotation onto the smooth base.
+Constant triangle steps contribute no texture detail. At Texture normals=1,
+normal-map detail is retained. Forward alpha retains its interpolated vertex
+base and scales its existing smoothing contribution by (1−Texture normals).
+The full-resolution RGBA16 published auxiliary texture retains the original
+layout. Toksvig is computed from the final Smoothness/detail normal, excluding
+depth-boundary derivatives. Debug 3 displays that same final Smoothness blend.
+Allocation/compile failures retain shading normals rather than geometric facets.
+
+Both new settings belong to rim snapshots, reset and scene state; older scenes
+reset omitted keys to their declared defaults. The two Advanced kit rows live
+beside Smoothness and are indexed for smooth normals, texture normals, facets
+and blocky. Reproduce the GPU regression with
+`python scripts/code_tools/rim_normals_gl_check.py --timing`; use
+`--shader-ref b0d3b1ac2d0` for the failing baseline. Artifacts are written under
+`.tmp/rim_normals/`.

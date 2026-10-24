@@ -318,8 +318,9 @@ def validate_data(data: dict) -> None:
     # Alpha port follow-up (10/24): +1 default-off Alpha attachment sort toggle on Look > Actor FX.
     # Alpha fix round 1: annotate that row's interleaved-alpha dependency; no added rows (2202).
     # My heading (10/24): +1 world-space self-avatar dial on Cast > Move; 2202 -> 2203.
-    if len(pages) != 38 or row_count != 2203:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2203")
+    # Rim normals (10/24): +2 Advanced rows beside Smoothness: Smooth radius and Texture normals.
+    if len(pages) != 38 or row_count != 2205:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2205")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

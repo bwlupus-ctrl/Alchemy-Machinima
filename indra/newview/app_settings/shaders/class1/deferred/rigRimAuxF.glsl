@@ -121,7 +121,7 @@ void main()
     vec3 p_d = getPositionWithDepth(uv_d, d_d).xyz;
     vec3 p_u = getPositionWithDepth(uv_u, d_u).xyz;
 
-    // --- smooth geometric normal: min-difference derivative per axis ------
+    // --- geometric guide: min-difference derivative per axis -------------
     vec3 dl = p_c - p_l;
     vec3 dr = p_r - p_c;
     vec3 dd = p_c - p_d;
@@ -147,6 +147,35 @@ void main()
     {
         n_geo = n_sh;
     }
+
+#ifdef RIG_RIM_SMOOTH_GUIDE
+    // The old min-z derivative can combine TWO different triangles right on
+    // a join. For the smoothing guide choose a coplanar 2x2 quadrant instead.
+    // Diagonal plane residual distinguishes a real face from that mixed
+    // derivative; shading alignment breaks ties (including two-sided faces).
+    // This permutation runs only with Smoothness > 0; the stock pass above
+    // and its instruction stream are unchanged at the default setting.
+    float best = -1.e6;
+    for (int sy = -1; sy <= 1; sy += 2)
+    {
+        for (int sx = -1; sx <= 1; sx += 2)
+        {
+            vec3 dx = sx < 0 ? -dl : dr;
+            vec3 dy = sy < 0 ? -dd : du;
+            vec3 candidate = cross(dx,dy) * float(sx*sy);
+            if (dot(candidate,candidate) < 1.e-20) continue;
+            candidate = normalize(candidate);
+            if (dot(candidate,-p_c) < 0.0) candidate = -candidate;
+            vec2 tc = clamp(uv+vec2(sx,sy)*px,vec2(0.0),vec2(1.0));
+            float depth = getDepth(tc);
+            if (depth >= .999999) continue;
+            vec3 diagonal = getPositionWithDepth(tc,depth).xyz - p_c;
+            float residual = abs(dot(candidate,diagonal));
+            float score = dot(candidate,n_sh) - residual / max(.00005,.01*length(dx+dy));
+            if (score > best) { best = score; n_geo = candidate; }
+        }
+    }
+#endif
 
     // --- Toksvig length of the shading normals (depth-continuous taps) -----
     float tol   = 0.04 * z_c + 0.02;

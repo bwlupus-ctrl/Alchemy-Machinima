@@ -268,6 +268,8 @@ LLGLSLShader            gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
 LLGLSLShader            gCineOutlineProgram;
 LLGLSLShader            gRigRimAuxProgram;
+LLGLSLShader            gRigRimSmoothProgram[2];
+LLGLSLShader            gRigRimSmoothGuideProgram;
 LLGLSLShader            gRigRimSilSeedProgram;
 LLGLSLShader            gRigRimSilDtProgram[2];
 LLGLSLShader            gRigRimWrapBlurProgram[2];
@@ -705,6 +707,8 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gVolumetricLightProgram);
     mShaderList.push_back(&gCineOutlineProgram);
     if (gRigRimAuxProgram.isComplete()) mShaderList.push_back(&gRigRimAuxProgram);
+    for (auto& shader : gRigRimSmoothProgram) if (shader.isComplete()) mShaderList.push_back(&shader);
+    if (gRigRimSmoothGuideProgram.isComplete()) mShaderList.push_back(&gRigRimSmoothGuideProgram);
     if (gRigRimSilSeedProgram.isComplete()) mShaderList.push_back(&gRigRimSilSeedProgram);
     for (auto& shader : gRigRimSilDtProgram) if (shader.isComplete()) mShaderList.push_back(&shader);
     for (auto& shader : gRigRimWrapBlurProgram) if (shader.isComplete()) mShaderList.push_back(&shader);
@@ -1796,6 +1800,8 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVolumetricLightProgram.unload();
         gCineOutlineProgram.unload();
         gRigRimAuxProgram.unload();
+        for (auto& shader : gRigRimSmoothProgram) shader.unload();
+        gRigRimSmoothGuideProgram.unload();
         gRigRimSilSeedProgram.unload();
         for (auto& shader : gRigRimSilDtProgram) shader.unload();
         for (auto& shader : gRigRimWrapBlurProgram) shader.unload();
@@ -4296,13 +4302,14 @@ bool LLViewerShaderMgr::loadShadersDeferred()
     if (success)
     {
         auto load_optional = [&](LLGLSLShader& shader, const char* name,
-                                 const char* fragment, bool deferred) -> bool
+                                 const char* fragment, bool deferred, const char* permutation = nullptr) -> bool
         {
             shader.mName = name;
             shader.mFeatures = LLShaderFeatures();
             shader.mFeatures.isDeferred = deferred;
             shader.mShaderFiles.clear();
             shader.clearPermutations();
+            if (permutation) shader.addPermutation(permutation, "1");
             shader.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
             shader.mShaderFiles.push_back(make_pair(fragment, GL_FRAGMENT_SHADER));
             shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
@@ -4315,6 +4322,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             return true;
         };
         load_optional(gRigRimAuxProgram, "Rig Rim Aux Shader", "deferred/rigRimAuxF.glsl", true);
+        load_optional(gRigRimSmoothProgram[0], "Rig Rim Smooth H", "deferred/rigRimSmoothF.glsl", true);
+        load_optional(gRigRimSmoothProgram[1], "Rig Rim Smooth V", "deferred/rigRimSmoothF.glsl", true, "RIG_RIM_SMOOTH_VERTICAL");
+        load_optional(gRigRimSmoothGuideProgram, "Rig Rim Smooth Guide", "deferred/rigRimAuxF.glsl", true, "RIG_RIM_SMOOTH_GUIDE");
         load_optional(gRigRimSilSeedProgram, "Rig Rim Silhouette Seed Shader", "deferred/rigRimSilSeedF.glsl", true);
         load_optional(gRigRimSilDtProgram[0], "Rig Rim Silhouette DT H", "deferred/rigRimSilDtF.glsl", false);
         gRigRimSilDtProgram[1].mName = "Rig Rim Silhouette DT V";
