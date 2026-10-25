@@ -40,3 +40,11 @@ Slipstream design credit in their headers. The upstream containing revision is
 recorded above; these per-file hashes pin the inspected reference bytes.
 `slweather`'s existing LGPL 2.1-only notices and physical extinction/rate methods
 remain intact. No private, Reeelight, ReShade or iMMERSE source was inspected.
+
+WP3 review fixes add a native `alweathercovercache.h` camera-cell/geometry-revision
+cache and integrate veil extinction over the bounded, exposed world-ray segment.
+Snow and veil require OpenGL 4.5 core `glTextureBarrier`: prior depth writes are
+published before sampling, and both draws disable depth writes. This follows
+[ARB_texture_barrier section 9.3.1](https://registry.khronos.org/OpenGL/extensions/ARB/ARB_texture_barrier.txt)
+without allocating another full-size depth target. Programs are prepared during
+the idle weather update and retained until GL resource teardown.

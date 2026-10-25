@@ -10,7 +10,7 @@ from weather_cpu_check import compiler_command, prepare
 from weather_preparation_fixture import function
 
 
-def build(tree, out, gl, mutation=None):
+def build(tree, out, gl, mutation=None, parts=False):
     prepare(out)
     shader = tree.read('indra/llrender/llglslshader.cpp')
     manager = tree.read('indra/llrender/llshadermgr.cpp')
@@ -88,8 +88,7 @@ struct LLShaderMgr {
  void prepareWeatherFeatures(LLGLSLShader*);
 };
 struct LLGLSLShader {
- struct gl_uniform_data_t {std::string name;GLenum type=(GLenum)-1;GLint size=-1;
- U32 texunit_priority=UINT_MAX;S32 forced_texunit=-1;};
+ PRODUCTION_UNIFORM_DATA
  LLShaderFeatures mFeatures;std::map<std::string,std::string> mDefines;
  std::vector<std::pair<std::string,unsigned>> mShaderFiles;
  std::vector<int> mUniform,mTexture;std::map<std::string,int> mUniformMap;
@@ -102,6 +101,7 @@ struct LLGLSLShader {
  bool mapUniforms();
 };
 '''
+    prefix = prefix.replace('PRODUCTION_UNIFORM_DATA', function(tree.read('indra/llrender/llglslshader.h'), 'struct gl_uniform_data_t') + ';')
     suffix = '\nextern "C" __declspec(dllexport) void initialize(void** pointers){\n'
     suffix += '\n'.join(f'{name}=reinterpret_cast<decltype({name})>(pointers[{i}]);'
                         for i,(name,*_) in enumerate(entries))
@@ -120,6 +120,8 @@ extern "C" __declspec(dllexport) int feature(const char* file,int enabled,int ex
  return s.mFeatures.hasWeatherMaterial && s.mDefines.count("HAS_WEATHER_MATERIAL");
 }
 '''
+    if parts:
+        return prefix, methods, entries, reserved
     path = out/'native.cpp'
     path.write_text(prefix+methods+selector+suffix, encoding='utf-8')
     dll = C.CDLL(str(compiler_command(out,[path],'native',dll=True)))

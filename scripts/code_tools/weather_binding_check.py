@@ -132,9 +132,7 @@ struct ALKitSettingWatch {
  void fire(const char* key){for(auto& cb:watchers[key])cb({},{});}
 };
 struct Signal {template<class F>int connect(F){return 1;}};
-ALWeatherUIModel sLibraryUI;
-std::string sSurfaceStatus;
-std::string sParticleStatus;
+PRODUCTION_GLOBALS
 struct ALWeatherParticles {inline static bool available=true;static bool supported(){return available;}};
 struct ALPanelWeatherSettings {
  static void applyLibraryPreset(U32);static void stopPrecipitation();
@@ -316,6 +314,11 @@ extern "C" __declspec(dllexport) const char* particle_readout(const char* status
     notification=function(row_source,'void ALKitRow::notifyValueChanged(') if 'void ALKitRow::notifyValueChanged(' in row_source else ''
     proxy_binding=function(row_source,'class ALKitProxyBinding final')+';'
     if mutation=='proxy-notify': binding=binding.replace('ALKitRow::notifyValueChanged(editor);','').replace('ALKitRow::notifyValueChanged(combo);','')
+    from weather_compute_fixture import declaration
+    if 'const std::string& ALPanelWeatherSettings::particleStatus(' not in panel:
+        caps_suffix = caps_suffix.replace(function(caps_suffix, 'extern "C" __declspec(dllexport) const char* particle_readout('), '')
+    consumers = notification+proxy_binding+read+commands+refresh+binding+suffix+upload_suffix+caps_suffix
+    prefix = prefix.replace('PRODUCTION_GLOBALS', '\n'.join(declaration(panel, n) for n in ('sLibraryUI','sSurfaceStatus','sParticleStatus') if n in consumers))
     source=out/'binding.cpp';source.write_text(prefix+notification+proxy_binding+read+commands+refresh+binding+suffix+color_code+upload_prefix+upload+upload_suffix+caps_prefix+caps+caps_suffix,encoding='utf-8')
     preparation=preparation_source(tree,out,mutation)
     dll=compiler_command(out,[source,preparation,*(out/(n+'.cpp') for n in SOURCES)],'binding',dll=True)

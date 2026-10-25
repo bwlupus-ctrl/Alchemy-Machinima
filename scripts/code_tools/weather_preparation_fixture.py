@@ -16,7 +16,7 @@ def function(text, signature):
     return text[start:end]
 
 
-def source(tree, out, mutation=None):
+def source(tree, out, mutation=None, particles=False):
     panel = tree.read('indra/newview/alpanelweathersettings.cpp')
     idle = function(tree.read('indra/newview/llappviewer.cpp'), 'void LLAppViewer::idle()')
     # Preserve the entire production weather block, including an absent/commented
@@ -53,9 +53,17 @@ def source(tree, out, mutation=None):
 #include <vector>
 namespace WeatherPreparationFixture {
 U64 reads=0, terrain=0, refreshes=0, notifications=0;
+struct LLSD {};
+struct LLControlVariable {
+ std::vector<std::function<void()>>* listeners;
+ struct Signal {LLControlVariable* control;template<class F>void connect(F f){auto* c=control;c->listeners->push_back([c,f](){f(c,{},{});});}} signal{this};
+ Signal* getSignal(){return &signal;}
+};
 struct Settings {
  std::map<std::string,double> values;
  std::map<std::string,std::vector<std::function<void()>>> listeners;
+ std::map<std::string,LLControlVariable> controls;
+ LLControlVariable* getControl(const std::string& n){auto& c=controls[n];c.listeners=&listeners[n];return &c;}
  U32 getU32(const std::string& n){return static_cast<U32>(values[n]);}
  bool getBOOL(const std::string& n){return values[n]!=0;}
  void setBOOL(const std::string& n,bool v){values[n]=v;}
@@ -82,21 +90,30 @@ struct LLEnvironment {static LLEnvironment& instance(){static LLEnvironment e;re
 struct LLViewerShaderMgr {static LLViewerShaderMgr* instance(){static LLViewerShaderMgr s;return &s;}
  bool weatherMaterialsSupported()const{return true;}};
 struct LLPipeline {static constexpr bool sRenderDeferred=true;
- struct Surfaces {std::string status()const{return "Surface cover ready";}} mWeatherSurfaces, mWeatherParticles;} gPipeline;
+ struct Surfaces {const std::string& status()const{static std::string s="Surface cover ready";return s;}} mWeatherSurfaces;
+ struct Particles {const char* status()const{return "Falling snow off";} void prepare(){PREPARE_PARTICLES}} mWeatherParticles;} gPipeline;
 U64 gFrameCount=0;
 struct LLPresentationTime {struct Frame {double presentation_time=0;};
  inline static double seconds=0;static Frame currentFrame(){return {seconds};}};
 struct CountedUI:ALWeatherUIModel {
  bool refresh(const ALWeatherBridge::Settings& s,const SLWeather::State& state,bool catchup,double time){
   ++refreshes;return ALWeatherUIModel::refresh(s,state,catchup,time);}
-} sLibraryUI;
-std::string sSurfaceStatus, sParticleStatus;
-struct ALWeatherParticles {static bool supported(){return true;}};
+};
+PRODUCTION_GLOBALS
+struct ALWeatherParticles {static bool supported(){PARTICLE_SUPPORTED}};
 struct Signal {void operator()(){++notifications;}};
 struct ALPanelWeatherSettings {static void updateLibraryWeather();static void initializeLibraryWeather();
  static const std::vector<std::string>& trackedSettings();
  static Signal& libraryChanged(){static Signal s;return s;}};
 '''
+    from weather_compute_fixture import declaration
+    consumers = reader + initialization + update
+    prefix = prefix.replace('PRODUCTION_GLOBALS', '\n'.join(declaration(panel, n) for n in ('sLibraryUI','sSurfaceStatus','sParticleStatus') if n in consumers))
+    prefix = prefix.replace('ALWeatherUIModel sLibraryUI;', 'CountedUI sLibraryUI;')
+    prefix = prefix.replace('PREPARE_PARTICLES', 'fixture_prepare_particles();' if particles else '')
+    prefix = prefix.replace('PARTICLE_SUPPORTED', 'return fixture_particle_supported()!=0;' if particles else 'return true;')
+    if particles:
+        prefix = 'extern "C" void fixture_prepare_particles();\nextern "C" int fixture_particle_supported();\n' + prefix
     suffix = r'''
 void idle(){
 IDLE_BLOCK

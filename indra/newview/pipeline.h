@@ -44,6 +44,7 @@
 #include "llrendertarget.h"
 #include "alweatherresources.h"
 #include "alweatherparticles.h"
+#include "alweathercovercache.h"
 #include "llactormaskeligibility.h" // [ActorMask]
 #include "lltimer.h"
 #include "llreflectionmapmanager.h"
@@ -844,6 +845,8 @@ public:
     void bindWeatherMaterial(LLGLSLShader* shader);
     ALWeatherResources mWeatherSurfaces;
     ALWeatherParticles mWeatherParticles;
+    ALWeatherCoverCache mWeatherPrecipitationCoverCache;
+    U64 mWeatherGeometryRevision = 0;
     void renderWeatherParticles(LLRenderTarget* target, bool auxiliary);
     LLRenderTarget* getSunShadowTarget(U32 i);
     LLRenderTarget* getSpotShadowTarget(U32 i);

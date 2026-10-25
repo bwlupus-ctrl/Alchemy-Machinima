@@ -781,13 +781,17 @@ void ALPanelWeatherSettings::updateLibraryWeather()
         settings, gWindVec.mV[VX], gWindVec.mV[VY],
         gAgent.getRegion() ? gAgent.getRegion()->getHandle() : 0,
         lightning, anchor, manual);
-    const std::string coverage = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
+    if (bridge.precipitationActive()) gPipeline.mWeatherParticles.prepare();
+    const char* coverage = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
         (!LLViewerShaderMgr::instance()->weatherMaterialsSupported() ?
-            "Persistent wet surfaces unavailable on this GPU; existing rain available" : gPipeline.mWeatherSurfaces.status());
-    const std::string particles = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
-        (!ALWeatherParticles::supported() ? "Unavailable: requires OpenGL 4.3 compute, SSBO, images and barriers" :
+            "Persistent wet surfaces unavailable on this GPU; existing rain available" : gPipeline.mWeatherSurfaces.status().c_str());
+    const char* particles = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
+        (!ALWeatherParticles::supported() ? "Unavailable: requires OpenGL 4.5 compute and texture barriers" :
         gPipeline.mWeatherParticles.status());
-    const bool particles_changed = sParticleStatus != particles;
+    // Particle status is an interned message; only a message revision writes UI state.
+    static const char* particle_revision = nullptr;
+    const bool particles_changed = particle_revision != particles;
+    particle_revision = particles;
     if (particles_changed) sParticleStatus = particles;
     const bool cover_changed = sSurfaceStatus != coverage;
     if (cover_changed) sSurfaceStatus = coverage;

@@ -21,6 +21,13 @@ def function(text, signature):
     raise AssertionError('unclosed '+signature)
 
 
+def declaration(text, symbol):
+    """A production global must exist; never repair a missing declaration in a fixture."""
+    match = re.search(r'^\s*(?:std::string|ALWeatherUIModel|inline static U32)\s+' + re.escape(symbol) + r'\s*[^;]*;', text, re.M)
+    assert match, 'missing production declaration: ' + symbol
+    return match.group().strip()
+
+
 def build(tree, out, gl, extend=None):
     prepare(out)
     manager = tree.read('indra/llrender/llshadermgr.cpp')
@@ -125,6 +132,7 @@ struct LLShaderMgr {
  std::string root;int features=0,attributes=0,frag_outputs=0;
  static LLShaderMgr* instance(){static LLShaderMgr s;return &s;}
  static bool computeShadersSupported();static S32 shaderLanguageVersion(GLenum);
+ CONTEXT_DECLARATION
  bool ownsShaderObject(GLuint)const;void clearShaderObjects();
  GLuint loadShaderFile(const std::string&,S32&,GLenum,std::map<std::string,std::string>* =nullptr,S32=-1);
  bool linkProgramObject(GLuint,bool=false);
@@ -154,9 +162,29 @@ struct LLGLSLShader {
  static void unbind(){glUseProgram(0);sCurBoundShaderPtr=nullptr;}
 };
 '''
+    prefix = prefix.replace('CONTEXT_DECLARATION', declaration(tree.read('indra/llrender/llshadermgr.h'), 'sContextGeneration'))
+    # Run the native uniform discovery, ordering and sampler-channel assignment.
+    from weather_native_fixture import build as mapper_parts
+    mp, mm, me, reserved = mapper_parts(tree, out, gl, parts=True)
+    prefix = '#include <climits>\n' + prefix
+    prefix = prefix.replace('struct LLShaderFeatures {int mIndexedTextureChannels=0;', 'struct LLShaderFeatures {int mIndexedMaterialChannels=0,mIndexedTextureChannels=0;')
+    prefix = prefix.replace('bool mapUniforms(){return true;}', 'bool mapUniforms();')
+    prefix = prefix.replace(' bool mapUniforms();', function(tree.read('indra/llrender/llglslshader.h'), 'struct gl_uniform_data_t') + ';\n static constexpr int sIndexedTextureChannels=4,NUM_UNIFORM_BLOCKS=4;\n int mTotalUniformSize=0;\n void bind(){glUseProgram(mProgramObject);}\n void mapUniform(const gl_uniform_data_t&);GLint mapUniformTextureChannel(GLint,GLenum,GLint);\n bool mapUniforms();')
+    prefix = prefix.replace('using U32=unsigned;', 'using LLStaticHashedString=std::string;\n template<class T>T llmin(T a,T b){return std::min(a,b);}\n template<class T>T llmax(T a,T b){return std::max(a,b);}\n using U32=unsigned;')
+    prefix = '#define llassert_always_msg(x,y) llassert(x)\n' + prefix
+    for n,v in re.findall(r'constexpr unsigned (\w+)=(\d+)U;', mp):
+        if 'constexpr unsigned '+n+'=' not in prefix: prefix = f'constexpr unsigned {n}={v}U;\n' + prefix
+    for item in me:
+        if item[0] not in {e[0] for e in entries}:
+            n,ret,args,_,_ = item
+            prefix = f'{ret} (*{n})({args});\n' + prefix
+            entries.append(item)
+    methods += '\n' + mm
     suffix = '\nextern "C" __declspec(dllexport) void initialize(void** p,const char* root){\n'
     suffix += '\n'.join(f'{name}=reinterpret_cast<decltype({name})>(p[{i}]);' for i,(name,*_) in enumerate(entries))
-    suffix += 'LLShaderMgr::instance()->root=root;}\n'
+    suffix += 'LLShaderMgr::instance()->root=root;LLShaderMgr::instance()->mReservedUniforms={' + ','.join('"'+n+'"' for n in reserved) + '};}\n'
+    attributes = re.findall(r'mReservedAttribs.push_back\("([^"]+)"\)', function(manager, 'void LLShaderMgr::initAttribsAndUniforms('))
+    suffix = suffix.replace('mReservedUniforms={', 'mReservedAttribs={' + ','.join('"'+n+'"' for n in attributes) + '};LLShaderMgr::instance()->mReservedUniforms={')
     suffix += r'''
 extern "C" __declspec(dllexport) void capability(int version,int entry){
  gGLManager.mGLVersion=version?4.6f:4.1f;gGLManager.mGLSLVersionMinor=version?60:10;
@@ -174,6 +202,9 @@ extern "C" __declspec(dllexport) void clear(){LLShaderMgr::instance()->clearShad
 extern "C" __declspec(dllexport) int feature_count(){return LLShaderMgr::instance()->features;}
 extern "C" __declspec(dllexport) int instance_count(){return int(LLGLSLShader::sInstances.size());}
 extern "C" __declspec(dllexport) void language(int major,int minor){gGLManager.mGLSLVersionMajor=major;gGLManager.mGLSLVersionMinor=minor;}
+extern "C" __declspec(dllexport) unsigned graphics(const char* vertex,const char* fragment){
+ LLGLSLShader s;s.mShaderFiles={{vertex,GL_VERTEX_SHADER},{fragment,GL_FRAGMENT_SHADER}};s.mDefines["COPY_DEPTH"]="1";
+ if(!s.createShader())return 0;unsigned p=s.mProgramObject;s.mProgramObject=0;LLGLSLShader::sInstances.erase(&s);return p;}
 '''
     sources=[]
     if extend is None:
@@ -188,9 +219,9 @@ struct LLGLSLShader {''')
             'void updateWeatherUniforms(LLGLSLShader*){} void updateShaderUniforms(LLGLSLShader*){} void prepareWeatherFeatures(LLGLSLShader*){}')
         prefix=prefix.replace('inline static LLGLSLShader* sCurBoundShaderPtr=nullptr;',
             'inline static LLGLSLShader* sCurBoundShaderPtr=nullptr; inline static GLuint sCurBoundShader=0; bool mUniformsDirty=false;')
-        prefix=prefix.replace(' bool mapUniforms(){return true;}',
-            'void bind();static void unbind();void unload();void placeProfileQuery(){}void readProfileQuery(){} bool mapUniforms(){bind();unbind();return true;}')
+        prefix = prefix.replace(' void bind(){glUseProgram(mProgramObject);}', ' void bind();void unload();void placeProfileQuery(){}void readProfileQuery(){}')
         prefix=prefix.replace(' static void unbind(){glUseProgram(0);sCurBoundShaderPtr=nullptr;}','')
+        prefix=prefix.replace(' void bind();void unload();', ' void bind();static void unbind();void unload();')
         methods+='\n'+function(shader,'void LLGLSLShader::bind()')+'\n'+function(shader,'void LLGLSLShader::unbind(void)')
         methods+='\n'+function(shader,'void LLGLSLShader::unload()')
         suffix+='''

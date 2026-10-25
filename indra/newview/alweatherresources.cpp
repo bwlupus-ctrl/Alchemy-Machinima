@@ -13,11 +13,11 @@
 #include <cmath>
 #include <algorithm>
 
-ALWeatherResources::State::State()
+ALWeatherResources::State::State(U32 units, U32 buffers, bool full) : mFull(full)
 {
     gGL.flush();
     mActive = gGL.getCurrentTexUnitIndex();
-    mUnits = std::min(U32(gGLManager.mNumTextureImageUnits), U32(mTextures.size()));
+    mUnits = std::min(units, std::min(U32(gGLManager.mNumTextureImageUnits), U32(mTextures.size())));
     for (U32 i = 0; i < mUnits; ++i)
     {
         const auto unit = gGL.getTexUnit(i);
@@ -26,28 +26,35 @@ ALWeatherResources::State::State()
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &mDrawFBO);
     glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &mReadFBO);
     glGetIntegerv(GL_READ_BUFFER, &mReadBuffer);
-    glGetIntegerv(GL_CULL_FACE_MODE, &mCull);
-    glGetIntegerv(GL_FRONT_FACE, &mFront);
     glGetIntegerv(GL_VIEWPORT, mViewport);
-    glGetIntegerv(GL_DEPTH_FUNC, &mDepthFunc);
-    glGetBooleanv(GL_DEPTH_WRITEMASK, &mDepthMask);
-    glGetDoublev(GL_DEPTH_CLEAR_VALUE, &mClearDepth);
-    GLint buffers = 0;
-    glGetIntegerv(GL_MAX_DRAW_BUFFERS, &buffers);
-    mBuffers = std::min(U32(buffers), U32(mDraw.size()));
-    gGL.getBlendFunc(mCS, mCD, mAS, mAD);
+    if (mFull)
+    {
+        glGetIntegerv(GL_CULL_FACE_MODE, &mCull);
+        glGetIntegerv(GL_FRONT_FACE, &mFront);
+        glGetIntegerv(GL_DEPTH_FUNC, &mDepthFunc);
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &mDepthMask);
+        glGetDoublev(GL_DEPTH_CLEAR_VALUE, &mClearDepth);
+        gGL.getBlendFunc(mCS, mCD, mAS, mAD);
+    }
+    GLint max_buffers = 0;
+    if (mFull) glGetIntegerv(GL_MAX_DRAW_BUFFERS, &max_buffers);
+    else max_buffers = GLint(buffers);
+    mBuffers = std::min(buffers, std::min(U32(max_buffers), U32(mDraw.size())));
     for (U32 i = 0; i < mBuffers; ++i)
     {
         auto& d = mDraw[i];
-        glGetIntegerv(GL_DRAW_BUFFER0 + i, &d.buffer);
+        if (mFull) glGetIntegerv(GL_DRAW_BUFFER0 + i, &d.buffer);
         glGetBooleani_v(GL_COLOR_WRITEMASK, i, d.mask);
         d.blend = glIsEnabledi(GL_BLEND, i);
         glGetIntegeri_v(GL_BLEND_SRC_RGB, i, &d.src);
         glGetIntegeri_v(GL_BLEND_DST_RGB, i, &d.dst);
         glGetIntegeri_v(GL_BLEND_SRC_ALPHA, i, &d.srcAlpha);
         glGetIntegeri_v(GL_BLEND_DST_ALPHA, i, &d.dstAlpha);
-        glGetIntegeri_v(GL_BLEND_EQUATION_RGB, i, &d.eq);
-        glGetIntegeri_v(GL_BLEND_EQUATION_ALPHA, i, &d.eqAlpha);
+        if (mFull)
+        {
+            glGetIntegeri_v(GL_BLEND_EQUATION_RGB, i, &d.eq);
+            glGetIntegeri_v(GL_BLEND_EQUATION_ALPHA, i, &d.eqAlpha);
+        }
     }
 }
 ALWeatherResources::State::~State()
@@ -61,20 +68,27 @@ ALWeatherResources::State::~State()
         else gGL.getTexUnit(i)->bindManual(t.type, t.id != 0 && !glIsTexture(t.id) ? 0 : t.id, t.mips);
     }
     gGL.getTexUnit(mActive)->activate();
-    gGL.blendFunc(mCS, mCD, mAS, mAD);
-    gGL.setColorMask(mDraw[0].mask[0], mDraw[0].mask[1], mDraw[0].mask[2], mDraw[0].mask[3]);
+    if (mFull)
+    {
+        gGL.blendFunc(mCS, mCD, mAS, mAD);
+        gGL.setColorMask(mDraw[0].mask[0], mDraw[0].mask[1], mDraw[0].mask[2], mDraw[0].mask[3]);
+    }
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mDrawFBO);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, mReadFBO);
     std::array<GLenum, 32> buffers{};
-    for (U32 i = 0; i < mBuffers; ++i) buffers[i] = GLenum(mDraw[i].buffer);
+    if (mFull)
+        for (U32 i = 0; i < mBuffers; ++i) buffers[i] = GLenum(mDraw[i].buffer);
     // The default framebuffer accepts a single GL_BACK draw buffer.
-    glDrawBuffers(mDrawFBO ? mBuffers : 1, buffers.data());
+    if (mFull) glDrawBuffers(mDrawFBO ? mBuffers : 1, buffers.data());
     glReadBuffer(mReadBuffer);
-    glCullFace(mCull);
-    glFrontFace(mFront);
-    glDepthFunc(mDepthFunc);
-    glDepthMask(mDepthMask);
-    glClearDepth(mClearDepth);
+    if (mFull)
+    {
+        glCullFace(mCull);
+        glFrontFace(mFront);
+        glDepthFunc(mDepthFunc);
+        glDepthMask(mDepthMask);
+        glClearDepth(mClearDepth);
+    }
     glViewport(mViewport[0], mViewport[1], mViewport[2], mViewport[3]);
     for (U32 i = 0; i < mBuffers; ++i)
     {
@@ -82,7 +96,7 @@ ALWeatherResources::State::~State()
         glColorMaski(i, d.mask[0], d.mask[1], d.mask[2], d.mask[3]);
         if (d.blend) glEnablei(GL_BLEND, i); else glDisablei(GL_BLEND, i);
         glBlendFuncSeparatei(i, d.src, d.dst, d.srcAlpha, d.dstAlpha);
-        glBlendEquationSeparatei(i, d.eq, d.eqAlpha);
+        if (mFull) glBlendEquationSeparatei(i, d.eq, d.eqAlpha);
     }
 }
 

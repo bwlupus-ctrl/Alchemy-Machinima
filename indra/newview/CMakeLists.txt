@@ -1307,6 +1307,7 @@ set(viewer_HEADER_FILES
     alweatherbridge.h
     alweatherresources.h
     alweatherparticles.h
+    alweathercovercache.h
     alweathershelter.h
     alweatherclock.h
     alweatheruimodel.h

@@ -80,12 +80,17 @@ bool LLShaderMgr::computeShadersSupported()
         !glDispatchCompute || !glMemoryBarrier || !glBindBufferBase ||
         !glBindImageTexture || !glShaderStorageBlockBinding || !glGetIntegeri_v)
         return false;
+    static U32 generation = ~U32(0);
+    static bool supported = false;
+    if (generation == sContextGeneration) return supported;
+    generation = sContextGeneration;
     GLint storage = 0, images = 0, invocations = 0, groups = 0;
     glGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS, &storage);
     glGetIntegerv(GL_MAX_IMAGE_UNITS, &images);
     glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &invocations);
     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &groups);
-    return storage >= 1 && images >= 1 && invocations >= 128 && groups >= 1024;
+    supported = storage >= 1 && images >= 1 && invocations >= 128 && groups >= 1024;
+    return supported;
 #endif
 }
 
@@ -108,6 +113,7 @@ bool LLShaderMgr::ownsShaderObject(GLuint object) const
 
 void LLShaderMgr::clearShaderObjects()
 {
+    ++sContextGeneration;
     for (const auto& entry : mShaderObjects) glDeleteShader(entry.second);
     mShaderObjects.clear();
     mVertexShaderObjects.clear();

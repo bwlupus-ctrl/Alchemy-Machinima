@@ -4224,6 +4224,8 @@ void LLPipeline::allocDrawable(LLViewerObject *vobj)
 
 void LLPipeline::unlinkDrawable(LLDrawable *drawable)
 {
+    if (drawable && drawable->getVObj() && !drawable->getVObj()->isAvatar() && !drawable->getVObj()->isAttachment())
+        ++mWeatherGeometryRevision;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
 
     assertInitialized();
@@ -5305,6 +5307,8 @@ void LLPipeline::markVisible(LLDrawable *drawablep, LLCamera& camera)
 
 void LLPipeline::markMoved(LLDrawable *drawablep, bool damped_motion)
 {
+    if (drawablep && drawablep->getVObj() && !drawablep->getVObj()->isAvatar() && !drawablep->getVObj()->isAttachment())
+        ++mWeatherGeometryRevision;
     if (!drawablep)
     {
         //LL_ERRS() << "Sending null drawable to moved list!" << LL_ENDL;
@@ -5430,6 +5434,8 @@ void LLPipeline::shiftObjects(const LLVector3 &offset)
 
 void LLPipeline::markTextured(LLDrawable *drawablep)
 {
+    if (drawablep && drawablep->getVObj() && !drawablep->getVObj()->isAvatar() && !drawablep->getVObj()->isAttachment())
+        ++mWeatherGeometryRevision;
     if (drawablep && !drawablep->isDead() && assertInitialized())
     {
         mRetexturedList.insert(drawablep);
@@ -5486,6 +5492,9 @@ void LLPipeline::markRebuild(LLSpatialGroup* group)
 {
     if (group && !group->isDead() && group->getSpatialPartition())
     {
+        const U32 type = group->getSpatialPartition()->mDrawableType;
+        if (type == RENDER_TYPE_VOLUME || type == RENDER_TYPE_TERRAIN || type == RENDER_TYPE_TREE)
+            ++mWeatherGeometryRevision;
         if (!group->hasState(LLSpatialGroup::IN_BUILD_Q1))
         {
             llassert_always(!mGroupQ1Locked);
@@ -5498,6 +5507,8 @@ void LLPipeline::markRebuild(LLSpatialGroup* group)
 
 void LLPipeline::markRebuild(LLDrawable *drawablep, LLDrawable::EDrawableFlags flag)
 {
+    if (drawablep && drawablep->getVObj() && !drawablep->getVObj()->isAvatar() && !drawablep->getVObj()->isAttachment())
+        ++mWeatherGeometryRevision;
     if (drawablep && !drawablep->isDead() && assertInitialized())
     {
         if (!drawablep->isState(LLDrawable::IN_REBUILD_Q))
@@ -20087,16 +20098,22 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
 void LLPipeline::renderWeatherParticles(LLRenderTarget* target, bool auxiliary)
 {
     if (gCubeSnapshot || !sRenderDeferred || !target) return;
+    if (!ALWeatherBridge::Controller::instance().precipitationActive())
+    {
+        mWeatherParticles.suspend();
+        return;
+    }
     const glm::mat4 view = auxiliary ? get_current_modelview() : glm::make_mat4(gGLLastModelView);
     const glm::mat4 projection = auxiliary ? get_current_projection() : glm::make_mat4(gGLLastProjection);
     const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
-    glm::vec3 light(0.15f);
+    glm::vec3 light(0.f);
     if (const auto sky = LLEnvironment::instance().getCurrentSky())
     {
-        const LLColor3 ambient = sky->getAmbientColor();
-        const LLColor3 sun = sky->getSunlightColor();
+        const LLColor3 ambient = linearColor3(sky->getTotalAmbient());
+        const LLColor3 sun = sky->getIsSunUp() ? linearColor3(sky->getSunDiffuse()) : LLColor3::black;
+        const LLColor3 moon = sky->getIsMoonUp() ? linearColor3(sky->getMoonDiffuse()) : LLColor3::black;
         for (U32 i = 0; i < 3; ++i)
-            light[i] = llclamp(ambient.mV[i] * 0.9f + sun.mV[i] * 0.3f, 0.f, 4.f);
+            light[i] = llclamp(ambient.mV[i] * 0.9f + (sun.mV[i] + moon.mV[i]) * 0.3f, 0.f, 4.f);
     }
     mWeatherParticles.render(*target, mRT->deferredScreen, view, projection,
         glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), light, mWeatherSurfaces, gFrameCount);
@@ -20110,7 +20127,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     // Prism never calls renderFinalize. Its explicit hook is inert in mode 0.
     if (auxiliary && (!library || !ALWeatherBridge::Controller::instance().active()))
     {
-        if (!gCubeSnapshot && mWeatherParticles.allocated()) mWeatherParticles.release();
+        if (!gCubeSnapshot) mWeatherParticles.suspend();
         if (auxiliary_exposure) auxiliary_exposure->reset();
         return;
     }
@@ -20131,7 +20148,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
     if (!enabled())
     {
-        if (mWeatherParticles.allocated()) mWeatherParticles.release();
+        mWeatherParticles.suspend();
         sWeatherController.reset();
         sWeatherShelterExposure.reset();
         sLightningSheetSnapshotValid = false;
@@ -20152,7 +20169,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     }
 
     if (library) renderWeatherParticles(target, auxiliary);
-    else if (mWeatherParticles.allocated()) mWeatherParticles.release();
+    else mWeatherParticles.suspend();
 
     LL_PROFILE_GPU_ZONE("weather");
 
@@ -31422,6 +31439,21 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
         return;
     }
     const auto& settings = weather.settings();
+    if (!weather.surfacesActive())
+    {
+        const LLVector3d eye = gAgent.getPosGlobalFromAgent(camera.getOrigin());
+        const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+        const bool reuse_cover = mWeatherPrecipitationCoverCache.reuse(
+            {eye.mdV[0], eye.mdV[1], eye.mdV[2]}, {origin.mdV[0], origin.mdV[1], origin.mdV[2]},
+            mWeatherGeometryRevision, weather.placeSerial(), settings.coverResolution, settings.coverExtent);
+        if (reuse_cover && mWeatherSurfaces.ready())
+        {
+            mWeatherSurfaces.reuseForFrame(gFrameCount);
+            mWeatherPrecipitationCoverCache.publish();
+            return;
+        }
+    }
+    else mWeatherPrecipitationCoverCache.invalidate();
     if (!precipitation && !LLViewerShaderMgr::instance()->weatherMaterialsEnabled())
     {
         mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED,
@@ -31656,6 +31688,7 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
     const U32 surface_submissions = caster_batches > 0 || terrain_submitted ? 1U : 0U;
     mWeatherSurfaces.publish(view_projection, depth_range, surface_submissions, true,
         glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
+    if (!weather.surfacesActive()) mWeatherPrecipitationCoverCache.publish();
 }
 
 void LLPipeline::bindWeatherMaterial(LLGLSLShader* shader)

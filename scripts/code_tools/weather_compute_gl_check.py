@@ -1,6 +1,6 @@
 """WP3 Stage A: real GL production-loader compile/link/dispatch/readback and identity.
 
-Run this before particle work. --source-ref HEAD rejects the pre-WP3 loader.
+Run this before particle work. --source-ref 28a5d96de19 rejects the pre-WP3 loader.
 """
 import os
 os.environ['PYTHONUTF8']='1'
@@ -66,7 +66,7 @@ void main(){uint i=gl_GlobalInvocationID.x;values[i]=i*7u+11u;}
     # The old production loader assembles every existing shader with identical inputs.
     # Source is compared via glGetShaderSource, including failed standalone utility
     # modules (which legitimately lack a main).
-    oldtree=SourceTree('HEAD')
+    oldtree=SourceTree('330d012e161')
     class OldTree:
         def read(self,path):
             if path.endswith('llshadermgr.cpp'):
@@ -75,11 +75,13 @@ void main(){uint i=gl_GlobalInvocationID.x;values[i]=i*7u+11u;}
                 current=tree.read(path)
                 current=current.replace(function(current,'GLuint LLShaderMgr::loadShaderFile('),
                     function(old,'GLuint LLShaderMgr::loadShaderFile('))
+                current=current.replace(function(current,'void LLShaderMgr::initAttribsAndUniforms('),
+                    function(old,'void LLShaderMgr::initAttribsAndUniforms('))
                 return current
             return tree.read(path)
     old=build(OldTree(),out/'old',gl);oldcls=out/'old/class1';oldcls.mkdir()
     getsource=gl.fn('glGetShaderSource',None,C.c_uint,C.c_int,C.c_void_p,C.c_char_p)
-    archive=subprocess.check_output(['git','archive','HEAD',SHADERS],cwd=ROOT,timeout=30)
+    archive=subprocess.check_output(['git','archive','28a5d96de19',SHADERS],cwd=ROOT,timeout=30)
     files=tarfile.open(fileobj=io.BytesIO(archive))
     count=0
     for member in files:
@@ -102,6 +104,24 @@ void main(){uint i=gl_GlobalInvocationID.x;values[i]=i*7u+11u;}
             getsource(x,len(bx),None,bx);getsource(y,len(by),None,by)
             assert bx.value==by.value,'graphics preamble changed '+path
         count+=1
+    # Actual existing copy program, unchanged source, native attribute binding
+    # and native sampler mapping; compare to the immutable identity baseline.
+    programs=[]
+    for lib,root,src in ((native,cls,tree),(old,oldcls,oldtree)):
+        (root/'interface').mkdir(exist_ok=True)
+        for stage in ('V','F'):
+            name='interface/copy'+stage+'.glsl'
+            (root/name).write_text(src.read(SHADERS+'/class1/'+name),encoding='utf-8')
+        lib.graphics.argtypes=[C.c_char_p,C.c_char_p];lib.graphics.restype=C.c_uint
+        program=lib.graphics(b'interface/copyV.glsl',b'interface/copyF.glsl');assert program,'existing graphics program fails native link'
+        assert gl.fn('glGetAttribLocation',C.c_int,C.c_uint,C.c_char_p)(program,b'position')==0,'existing position attribute moved'
+        samplers=[]
+        for name in (b'diffuseMap',b'depthMap'):
+            value=C.c_int(-1);location=gl.loc(program,name);assert location>=0,'existing sampler missing'
+            gl.fn('glGetUniformiv',None,C.c_uint,C.c_int,C.c_void_p)(program,location,C.byref(value));samplers.append(value.value)
+        programs.append(samplers)
+    assert programs==[[0,1],[0,1]],'existing sampler assignments changed '+str(programs)
+    print('PASS actual existing graphics copy program / position attribute / diffuse+depth sampler mappings',flush=True)
     print(f'PASS production compute dispatch/readback, capability negatives, cache/reload; {count} existing sources/preambles identical',flush=True)
     assert gl.fn('glGetError',C.c_uint)()==0,'GL error'
 

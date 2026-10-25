@@ -977,6 +977,8 @@ public:
     bool    validateProgramObject(GLuint obj);
     GLuint loadShaderFile(const std::string& filename, S32 & shader_level, GLenum type, std::map<std::string, std::string>* defines = NULL, S32 texture_index_channels = -1);
     static bool computeShadersSupported();
+    // Shader teardown accompanies GL-context teardown/reload.
+    inline static U32 sContextGeneration = 0;
     static S32 shaderLanguageVersion(GLenum stage);
     void clearShaderObjects();
     bool ownsShaderObject(GLuint object) const;

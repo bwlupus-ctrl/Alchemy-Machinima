@@ -16,6 +16,9 @@ class ALWeatherParticles
 {
 public:
     static bool supported();
+    // Called by the idle preparation phase, before recording any view.
+    void prepare();
+    void suspend() { mVeilActive = false; mStatus = "Falling snow off"; }
     void release();
     bool allocated() const { return mVAO || mBuffer || mAttempted; }
     bool veilActive() const { return mVeilActive; }
@@ -31,6 +34,8 @@ private:
     LLGLSLShader mSimulation, mDraw, mVeil;
     GLuint mBuffer = 0, mVAO = 0;
     U32 mCapacity = 0;
+    GLint mPosition = -1, mTraits = -1;
+    bool mSnowReady = false, mVeilReady = false;
     bool mAttempted = false, mReady = false, mVeilActive = false;
     const char* mStatus = "Falling snow off";
 };

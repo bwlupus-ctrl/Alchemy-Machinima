@@ -20,7 +20,7 @@ public:
     class State
     {
     public:
-        State();
+        State(U32 units = 32, U32 buffers = 32, bool full = true);
         ~State();
     private:
         struct Texture { LLTexUnit::eTextureType type; U32 id; bool mips; };
@@ -32,6 +32,7 @@ public:
         GLboolean mDepthMask;
         GLdouble mClearDepth;
         U32 mActive, mUnits, mBuffers;
+        bool mFull;
     };
     bool allocate(U32 resolution);
     void release();
@@ -44,6 +45,7 @@ public:
     bool precipitationCovers(const glm::vec3& eye, const glm::dvec3& origin, U32 frame) const;
     bool ready() const { return ALWeatherShelter::usable(mCoverage); }
     bool readyForFrame(U32 frame) const { return ready() && mPublishedFrame == frame; }
+    void reuseForFrame(U32 frame) { mPublishedFrame = frame; }
     bool allocated() const { return mCover[0].getWidth() != 0 || mCover[1].getWidth() != 0; }
     bool hasState() const { return allocated() || mCoverage != ALWeatherShelter::Coverage::INCOMPLETE; }
     bool allocationFailed(U32 resolution) const { return mFailedResolution == resolution; }

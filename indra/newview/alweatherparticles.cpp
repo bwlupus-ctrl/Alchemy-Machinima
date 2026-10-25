@@ -22,7 +22,8 @@ bool ALWeatherParticles::supported()
 #if LL_DARWIN
     return false;
 #else
-    return LLShaderMgr::computeShadersSupported() && glDrawArraysInstanced &&
+    return gGLManager.mGLVersion >= 4.49f && glTextureBarrier &&
+        LLShaderMgr::computeShadersSupported() && glDrawArraysInstanced &&
         glVertexAttribDivisor && glGenVertexArrays && glBindVertexArray &&
         LLRender::indexedDrawBufferGuardSupported() && gGLManager.mNumTextureImageUnits >= 2;
 #endif
@@ -35,17 +36,21 @@ void ALWeatherParticles::release()
     if (mVAO) glDeleteVertexArrays(1, &mVAO);
     mBuffer = mVAO = 0; mCapacity = 0;
     mAttempted = mReady = mVeilActive = false;
+    mSnowReady = mVeilReady = false;
+    mPosition = mTraits = -1;
     mStatus = "Falling snow off";
 }
 
 bool ALWeatherParticles::initialize(U32 cap)
 {
-    if (!mAttempted)
+    const auto& settings = ALWeatherBridge::Controller::instance().settings();
+    const bool veil = settings.visibility && settings.visibilityAmount > 0.f;
+    if (!mAttempted || (settings.snowEnabled && !mSnowReady) || (veil && !mVeilReady))
     {
         mAttempted = true;
         if (!supported())
         {
-            mStatus = "Unavailable: requires OpenGL 4.3 compute, SSBO, images and barriers";
+            mStatus = "Unavailable: requires OpenGL 4.5 compute and texture barriers";
             return false;
         }
         const auto load = [](LLGLSLShader& shader, const char* name, bool compute, bool veil)
@@ -64,16 +69,27 @@ bool ALWeatherParticles::initialize(U32 cap)
             }
             return shader.createShader();
         };
-        mReady = load(mSimulation, "Weather Snow Cells", true, false) &&
-            load(mDraw, "Weather Snow Flakes", false, false) &&
-            load(mVeil, "Weather Precipitation Visibility", false, true);
+        if (settings.snowEnabled && !mSnowReady)
+        {
+            mSnowReady = load(mSimulation, "Weather Snow Cells", true, false) &&
+                load(mDraw, "Weather Snow Flakes", false, false);
+            if (mSnowReady)
+            {
+                mPosition = glGetAttribLocation(mDraw.mProgramObject, "position");
+                mTraits = glGetAttribLocation(mDraw.mProgramObject, "texcoord0");
+                mSnowReady = mPosition >= 0 && mTraits >= 0;
+            }
+        }
+        if (veil && !mVeilReady)
+            mVeilReady = load(mVeil, "Weather Precipitation Visibility", false, true);
+        mReady = (!settings.snowEnabled || mSnowReady) && (!veil || mVeilReady);
         if (!mReady)
         {
             mSimulation.unload(); mDraw.unload(); mVeil.unload();
             mStatus = "Unavailable: snowfall shader link failed (existing rain available)";
             return false;
         }
-        glGenVertexArrays(1, &mVAO);
+        if (!mVAO) glGenVertexArrays(1, &mVAO);
         if (!mVAO)
         {
             mReady = false;
@@ -120,6 +136,46 @@ bool ALWeatherParticles::initialize(U32 cap)
     return mVAO != 0;
 }
 
+void ALWeatherParticles::prepare()
+{
+#if !LL_DARWIN
+    const auto& weather = ALWeatherBridge::Controller::instance();
+    if (!weather.precipitationActive()) { suspend(); return; }
+    if (!supported())
+    {
+        mStatus = "Unavailable: requires OpenGL 4.5 compute and texture barriers";
+        return;
+    }
+    const auto& s = weather.settings();
+    if (!s.snowEnabled && (!s.visibility || s.visibilityAmount <= 0.f)) { suspend(); return; }
+    const U32 cap = s.snowEnabled ? s.snowLimit : mCapacity;
+    if (mReady && (!s.snowEnabled || mSnowReady) &&
+        (!s.visibility || s.visibilityAmount <= 0.f || mVeilReady) && cap == mCapacity) return;
+    if (mAttempted && !mReady) return; // A failed session retries on GL teardown.
+    ALWeatherResources::State saved_state;
+    LLGLSLShader* previous = LLGLSLShader::sCurBoundShaderPtr;
+    const U32 mask = LLVertexBuffer::sLastMask;
+    const U32 array_cache = LLVertexBuffer::sGLRenderBuffer, element_cache = LLVertexBuffer::sGLRenderIndices;
+    GLint storage = 0, vao = 0, array = 0, element = 0;
+    glGetIntegerv(GL_SHADER_STORAGE_BUFFER_BINDING, &storage);
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &array);
+    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &element);
+    if (!mVAO) glGenVertexArrays(1, &mVAO);
+    glBindVertexArray(mVAO);
+    LLVertexBuffer::sLastMask = ~U32(0);
+    LLVertexBuffer::setupClientArrays(0);
+    if (initialize(cap)) mStatus = "Snow ready (prepared; world cells; bounded GPU list)";
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, storage);
+    glBindVertexArray(vao);
+    LLVertexBuffer::sLastMask = ~mask;
+    LLVertexBuffer::setupClientArrays(mask);
+    if (previous) previous->bind(); else LLGLSLShader::unbind();
+    glBindBuffer(GL_ARRAY_BUFFER, array); glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element);
+    LLVertexBuffer::sGLRenderBuffer = array_cache; LLVertexBuffer::sGLRenderIndices = element_cache;
+#endif
+}
+
 void ALWeatherParticles::render(LLRenderTarget& target, LLRenderTarget& depth,
     const glm::mat4& view, const glm::mat4& projection, const glm::dvec3& origin,
     const glm::vec3& light, ALWeatherResources& cover, U32 frame)
@@ -127,17 +183,20 @@ void ALWeatherParticles::render(LLRenderTarget& target, LLRenderTarget& depth,
     const auto& weather = ALWeatherBridge::Controller::instance();
     if (!weather.precipitationActive())
     {
-        if (allocated()) release();
+        mVeilActive = false;
         return;
     }
 #if !LL_DARWIN
     if (!supported())
     {
-        if (allocated()) release();
-        mStatus = "Unavailable: requires OpenGL 4.3 compute, SSBO, images and barriers";
+        mVeilActive = false;
+        mStatus = "Unavailable: requires OpenGL 4.5 compute and texture barriers";
         return;
     }
     const auto& s = weather.settings();
+    mVeilActive = false;
+    if (!mReady || (s.snowEnabled && (!mSnowReady || mCapacity != s.snowLimit)) ||
+        (s.visibility && s.visibilityAmount > 0.f && !mVeilReady)) return;
     // Construct hashed names only on first enabled use; steady draws and the
     // off path do not allocate temporary uniform-name strings.
     static const LLStaticHashedString sInverseProjection("snow_inverse_projection"), sLight("snow_light"),
@@ -147,7 +206,7 @@ void ALWeatherParticles::render(LLRenderTarget& target, LLRenderTarget& depth,
         sTime("snow_time"), sView("snow_view"), sProjection("snow_projection"), sScreen("snow_screen"),
         sSize("snow_size"), sRange("snow_range");
     // Preserve bindings not owned by the shared raster state transaction.
-    ALWeatherResources::State saved_state;
+    ALWeatherResources::State saved_state(2, 1, false);
     LLGLSLShader* previous = LLGLSLShader::sCurBoundShaderPtr;
     const U32 attribute_mask = LLVertexBuffer::sLastMask;
     const U32 array_cache = LLVertexBuffer::sGLRenderBuffer, element_cache = LLVertexBuffer::sGLRenderIndices;
@@ -175,7 +234,6 @@ void ALWeatherParticles::render(LLRenderTarget& target, LLRenderTarget& depth,
         LLVertexBuffer::sGLRenderIndices = element_cache;
     };
     mVeilActive = false;
-    if (!initialize(s.snowEnabled ? s.snowLimit : 0)) { restore(); return; }
     glBindVertexArray(mVAO);
     LLVertexBuffer::sLastMask = ~U32(0);
     LLVertexBuffer::setupClientArrays(0);
@@ -188,10 +246,24 @@ void ALWeatherParticles::render(LLRenderTarget& target, LLRenderTarget& depth,
         "Snow ready (world cells; bounded GPU list)" :
         "Snow ready; insufficient cover for this view (prepare its recording area)";
     target.bindTarget();
-    LLGLEnable blend(GL_BLEND);
+    std::array<GLenum, 4> draw_buffers{};
+    const U32 buffer_count = std::min(target.getNumTextures(), U32(draw_buffers.size()));
+    for (U32 i = 0; i < buffer_count; ++i)
+    {
+        GLint buffer = 0;
+        glGetIntegerv(GL_DRAW_BUFFER0 + i, &buffer);
+        draw_buffers[i] = GLenum(buffer);
+    }
+    const GLenum beauty = GL_COLOR_ATTACHMENT0;
+    glDrawBuffers(1, &beauty);
+    // OpenGL 4.5 / ARB_texture_barrier, section 9.3.1: prior depth writes
+    // become visible to texture fetches. Both draws keep depth writes disabled;
+    // neither shader samples a colour attachment it writes. No feedback writes.
+    glTextureBarrier();
     LLGLDisable cull(GL_CULL_FACE), scissor(GL_SCISSOR_TEST);
-    gGL.setColorMask(true, false);
-    gGL.blendFunc(LLRender::BF_ONE, LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    glEnablei(GL_BLEND, 0);
+    glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    glBlendFuncSeparatei(0, GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     const auto bind = [&](LLGLSLShader& shader)
     {
         shader.bind();
@@ -247,17 +319,18 @@ void ALWeatherParticles::render(LLRenderTarget& target, LLRenderTarget& depth,
         mDraw.uniform1f(sSize, s.flakeSize);
         mDraw.uniform1f(sRange, s.snowRange);
         glBindVertexArray(mVAO); glBindBuffer(GL_ARRAY_BUFFER, mBuffer);
-        const GLuint position = glGetAttribLocation(mDraw.mProgramObject, "position");
-        const GLuint traits = glGetAttribLocation(mDraw.mProgramObject, "texcoord0");
+        const GLuint position = mPosition;
+        const GLuint traits = mTraits;
         glEnableVertexAttribArray(position); glEnableVertexAttribArray(traits);
         glVertexAttribPointer(position, 4, GL_FLOAT, GL_FALSE, 32, nullptr);
         glVertexAttribPointer(traits, 4, GL_FLOAT, GL_FALSE, 32, reinterpret_cast<void*>(16));
         glVertexAttribDivisor(position, 1); glVertexAttribDivisor(traits, 1);
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, count);
     }
+    glDrawBuffers(buffer_count, draw_buffers.data());
     target.flush();
     restore();
 #else
-    mStatus = "Unavailable: requires OpenGL 4.3 compute, SSBO, images and barriers";
+    mStatus = "Unavailable: requires OpenGL 4.5 compute and texture barriers";
 #endif
 }
