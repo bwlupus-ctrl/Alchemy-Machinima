@@ -2162,6 +2162,11 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("rig_rim_wrap");
     mReservedUniforms.push_back("rig_rim_wrap2");
     mReservedUniforms.push_back("rigRimWrapSrc");
+    mReservedUniforms.push_back("rig_rim_smooth_params");
+    mReservedUniforms.push_back("rigRimSmoothMap");
+    mReservedUniforms.push_back("rigRimBarrierMap");
+    mReservedUniforms.push_back("rigRimEdgeMap");
+    mReservedUniforms.push_back("rig_rim_smooth_stage");
     mReservedUniforms.push_back("onLensAlbedoMap");
     mReservedUniforms.push_back("lensPyramid0");
     mReservedUniforms.push_back("lensPyramid1");

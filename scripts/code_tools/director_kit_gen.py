@@ -319,8 +319,9 @@ def validate_data(data: dict) -> None:
     # Alpha fix round 1: annotate that row's interleaved-alpha dependency; no added rows (2202).
     # My heading (10/24): +1 world-space self-avatar dial on Cast > Move; 2202 -> 2203.
     # Shadow detail (10/24): +8 per-fixture Detail/World shadow flags and +1 Detail shadow bias master; 2203 -> 2212.
-    if len(pages) != 38 or row_count != 2212:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2212")
+    # Rim normals (10/24): +2 Advanced rows beside Smoothness: Smooth radius and Texture normals; 2212 -> 2214.
+    if len(pages) != 38 or row_count != 2214:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2214")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

@@ -143,6 +143,7 @@ void require(bool ok, const std::string& message) {
 def build_source():
     controller = (ROOT / 'indra/newview/alrigrimcontroller.cpp').read_text()
     loader = (ROOT / 'indra/newview/alkitpresets.cpp').read_text()
+    director = (ROOT / 'indra/newview/llfloaterdirector.cpp').read_text()
     header = (ROOT / 'indra/newview/alpresetlook.h').read_text()
     controls = (ROOT / 'indra/newview/llviewercontrol.cpp').read_text()
     normalize = function(controls, 'static void handleRigRimWrapAmount(')
@@ -152,13 +153,26 @@ def build_source():
     ownership = '\n'.join(function(loader, sig) for sig in (
         'std::vector<std::string> select(',
         'const std::vector<std::string>& owned(',
-        'void reset(', 'void apply(const std::vector<std::string>& settings,'))
+        'void reset(', 'LLSD snapshot(', 'void apply(const std::vector<std::string>& settings,'))
     # This contiguous production slice includes BOTH tables and BOTH overloads.
     tables = controller[controller.index('struct RigRimPresetRow'):controller.index('} // namespace')]
     dispatch = '\n'.join(function(controller, sig) for sig in (
         'const std::vector<std::string>& ALRigRimController::presetNames()',
         'std::string ALRigRimController::presetDescription(',
         'bool ALRigRimController::applyPresetByName('))
+    scene_list = function(director, 'const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()')
+    scene_list = scene_list.replace('LLFloaterDirector::sceneSettingsList()', 'sceneSettingsList()')
+    comment = director.index('// A scene that already has the original Rig Rim block')
+    start = director.rfind('        for (const std::string& setting : sceneSettingsList())',0,comment)
+    brace = director.index('{',start)
+    depth,end=1,brace+1
+    while depth:
+        depth += (director[end]=='{')-(director[end]=='}')
+        end += 1
+    scene_reset = director[start:end]
+    # Other look families are outside this fixture; their appended keys are empty.
+    family_shim = '\nnamespace ALRotoInk { const std::vector<std::string>& settings() { static const std::vector<std::string> v; return v; } }\nnamespace ALTron { const std::vector<std::string>& settings() { static const std::vector<std::string> v; return v; } }\n'
+    scene_code = family_shim + scene_list + '\nvoid restoreMissing(const LLSD& saved) { LLSD scene; scene["settings"] = saved;\n' + scene_reset + '\n}\n'
     # Enforce explicit authorship as well as the resulting settings values.
     for table, field in (('RIG_RIM_PRESETS', 'mWrapValues'), ('RIG_RIM_FULL_PRESETS', 'mValues')):
         checks = f'for (const auto& row : {table}) {{\n'
@@ -192,7 +206,7 @@ def build_source():
                           for row in EXPECTED)
     keys = ', '.join(json.dumps('CineRigRimWrap' + s) for s in SUFFIXES)
     return (SHIM + '\nnamespace ALPresetLook {\n' + enum + '\n' + ownership + '\n}\n' +
-            normalize + tables + dispatch + '\nint main() { try {\n' + '\n'.join(declarations) +
+            normalize + tables + dispatch + scene_code + '\nint main() { try {\n' + '\n'.join(declarations) +
             '\n' + explicit_checks + r'''
 struct Expected { const char* name; double values[6]; };
 const Expected expected[] = {
@@ -229,6 +243,31 @@ for (size_t i = 0; i < names.size(); ++i) {
                     names[i] + " changed excluded " + kv.first);
     }
 }
+// New controls participate in the same production capture/apply/reset paths
+// as Smoothness. Partial old scenes must reset just their omitted keys.
+for (const char* key : {"CineRigRimSmoothRadius", "CineRigRimTextureNormals"}) {
+    require(std::find(owned.begin(),owned.end(),key)!=owned.end(),std::string(key)+" preset ownership");
+    const auto& custom=ALPresetLook::owned(ALPresetLook::RIM_CUSTOM);
+    require(std::find(custom.begin(),custom.end(),key)!=custom.end(),std::string(key)+" custom ownership");
+    const auto& scenes=sceneSettingsList();
+    require(std::find(scenes.begin(),scenes.end(),key)!=scenes.end(),std::string(key)+" scene save ownership");
+}
+gSavedSettings.setF32("CineRigRimSmoothRadius",23.f);
+gSavedSettings.setF32("CineRigRimTextureNormals",.4f);
+const LLSD snapshot=ALPresetLook::snapshot(owned);
+ALPresetLook::reset(owned);
+ALPresetLook::apply(owned,snapshot);
+require(std::abs(gSavedSettings.controls.at("CineRigRimSmoothRadius").get().scalar-23)<1.e-6,"radius snapshot roundtrip");
+require(std::abs(gSavedSettings.controls.at("CineRigRimTextureNormals").get().scalar-.4)<1.e-6,"detail snapshot roundtrip");
+LLSD oldScene;
+oldScene["CineRigRimSmoothness"]=LLSD(.7);
+restoreMissing(oldScene);
+require(gSavedSettings.controls.at("CineRigRimSmoothRadius").get().scalar==12,"old scene radius default");
+require(gSavedSettings.controls.at("CineRigRimTextureNormals").get().scalar==0,"old scene detail default");
+restoreMissing(snapshot);
+ALPresetLook::apply(owned,snapshot);
+require(std::abs(gSavedSettings.controls.at("CineRigRimTextureNormals").get().scalar-.4)<1.e-6,"new scene retains detail");
+std::cout << "PASS: new normal controls production preset/scene ownership, snapshots and old-scene defaults\n";
 const auto before = gSavedSettings.controls;
 require(!ALRigRimController::applyPresetByName("__unknown_rim__"), "unknown preset accepted");
 for (const auto& kv : before)

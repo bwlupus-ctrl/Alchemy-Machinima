@@ -3847,7 +3847,8 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "CineRigRimIncludeAlpha",
         "CineRigRimIncludeProbes",
         "CineRigRimIncludeBounce",
-        "CineRigRimSmoothness", "CineRigRimAntiShimmer", "CineRigRimSilhouette",
+        "CineRigRimSmoothness", "CineRigRimSmoothRadius", "CineRigRimTextureNormals",
+        "CineRigRimAntiShimmer", "CineRigRimSilhouette",
         "CineRigRimSilhouetteWidth", "CineRigRimSilhouetteUnits", "CineRigRimSilhouetteSoft",
         "CineRigRimSilhouetteGap", "CineRigRimSilhouetteSeedThreshold", "CineRigRimSilhouetteSeedSoft",
         "CineRigRimActorsOnly", "CineRigRimActorsOnlyAlpha", "CineRigRimWrapEnabled",
@@ -4528,6 +4529,8 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
             // quality keys so they cannot leak from the previously loaded scene.
             const bool new_quality_key =
                 setting == "CineRigRimSmoothness" ||
+                setting == "CineRigRimSmoothRadius" ||
+                setting == "CineRigRimTextureNormals" ||
                 setting == "CineRigRimAntiShimmer" ||
                 setting.rfind("CineRigRimSilhouette", 0) == 0 ||
                 setting.rfind("CineRigRimActorsOnly", 0) == 0 ||

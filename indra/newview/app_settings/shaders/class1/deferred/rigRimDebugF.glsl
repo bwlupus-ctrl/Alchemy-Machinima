@@ -30,7 +30,7 @@
 //   rig_rim_aux_params.w  2 = silhouette band : seed pixels red, band (near
 //                             side) green = prox, far side / rejected blue,
 //                             sky black
-//                         3 = smooth normal   : n_geo * 0.5 + 0.5
+//                         3 = smooth normal   : final rim normal * 0.5 + 0.5
 //                         4 = subject mask    : grey
 // (1 "rim only" is rig_rim_mode 2 in the light shaders; 5 "wrap only" is the
 // wrap pass drawn with blend off and rig_rim_wrap2.z = 1 -- neither uses this
@@ -52,6 +52,8 @@ uniform sampler2D rigRimSilMap;
 float getDepth(vec2 pos_screen);
 vec4  getPositionWithDepth(vec2 pos_screen, float depth);
 vec3  rigRimOctDecode(vec2 e);
+vec4  getNorm(vec2 uv);
+uniform vec4 rig_rim_quality;
 float rigRimSilBandWidth(float z_view);
 
 const float RIG_RIM_DT_BIG = 1.0e4;
@@ -65,7 +67,10 @@ void main()
 
     if (view == 3)
     {
-        col = rigRimOctDecode(a.xy) * 0.5 + 0.5;
+        vec3 n = getNorm(uv).xyz;
+        if (rig_rim_quality.x > 0.0)
+            n = normalize(mix(n,rigRimOctDecode(a.xy),clamp(rig_rim_quality.x,0.0,1.0)));
+        col = n * 0.5 + 0.5;
     }
     else if (view == 4)
     {

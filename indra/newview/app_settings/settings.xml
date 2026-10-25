@@ -3055,7 +3055,9 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.25</real>
     </map>
-    <key>CineRigRimSmoothness</key><map><key>Comment</key><string>[RigRimQ] Depth-reconstructed smooth-normal blend, 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CineRigRimSmoothRadius</key><map><key>Comment</key><string>[RigRimQ] Smooth normal surface radius in cm, 1..50; capped at 32 screen pixels</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>12</real></map>
+    <key>CineRigRimTextureNormals</key><map><key>Comment</key><string>[RigRimQ] Texture-normal detail transferred onto the smooth base, 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+    <key>CineRigRimSmoothness</key><map><key>Comment</key><string>[RigRimQ] Surface-aware smooth-normal blend, 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
     <key>CineRigRimAntiShimmer</key><map><key>Comment</key><string>[RigRimQ] Toksvig anti-shimmer strength, 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
     <key>CineRigRimSilhouette</key><map><key>Comment</key><string>[RigRimQ] Silhouette-band confinement, 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
     <key>CineRigRimSilhouetteWidth</key><map><key>Comment</key><string>[RigRimQ] Edge width, 0.2..30 cm at subject or px@1080p</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>3</real></map>

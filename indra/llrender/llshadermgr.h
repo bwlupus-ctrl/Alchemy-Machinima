@@ -935,6 +935,11 @@ public:
         RIG_RIM_WRAP,
         RIG_RIM_WRAP2,
         RIG_RIM_WRAP_SRC,
+        RIG_RIM_SMOOTH_PARAMS, // radius metres, focal pixels xy, texture detail
+        RIG_RIM_SMOOTH_MAP,
+        RIG_RIM_BARRIER_MAP,
+        RIG_RIM_EDGE_MAP,
+        RIG_RIM_SMOOTH_STAGE,
         ON_LENS_ALBEDO,
         LENS_PYRAMID0,
         LENS_PYRAMID1,

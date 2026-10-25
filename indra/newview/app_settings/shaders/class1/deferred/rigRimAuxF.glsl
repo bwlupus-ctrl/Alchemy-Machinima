@@ -29,7 +29,7 @@
 // Full-res, MAIN view only, drawn inside renderDeferredLighting after the
 // sun/soften passes and before the local-light loop, into rigRimAuxMap
 // (RGBA16 unorm):
-//   xy  octahedral-encoded SMOOTH normal (eye space): the depth-reconstructed
+//   xy  octahedral-encoded GEOMETRIC normal (eye space): the depth-reconstructed
 //       geometric normal (5 depth taps, min-difference per axis), oriented
 //       toward the camera; falls back to the shading normal where the
 //       reconstruction is degenerate or disagrees with it (back-facing).
@@ -45,6 +45,8 @@
 // Program: isDeferred (deferredUtil.glsl: depthMap / normalMap / inv_proj /
 // screen_res / getDepth / getNorm / getNormRaw / getPositionWithDepth /
 // rigRimOctEncode).  Vertex: deferred/postDeferredNoTCV.glsl.
+// RIG_RIM_SMOOTH_GUIDE keeps xy geometric and uses z for plane confidence;
+// the separate rim result owns final-normal Toksvig.
 // GL: blend off, depth test off, depth write off, viewport = aux target.
 
 out vec4 frag_color;
@@ -121,7 +123,7 @@ void main()
     vec3 p_d = getPositionWithDepth(uv_d, d_d).xyz;
     vec3 p_u = getPositionWithDepth(uv_u, d_u).xyz;
 
-    // --- smooth geometric normal: min-difference derivative per axis ------
+    // --- geometric guide: min-difference derivative per axis -------------
     vec3 dl = p_c - p_l;
     vec3 dr = p_r - p_c;
     vec3 dd = p_c - p_d;
@@ -148,7 +150,83 @@ void main()
         n_geo = n_sh;
     }
 
+#ifdef RIG_RIM_SMOOTH_GUIDE
+    // The old min-z derivative can combine TWO different triangles right on
+    // a join. For the smoothing guide choose a coplanar 2x2 quadrant instead.
+    // Diagonal plane residual distinguishes a real face from that mixed
+    // derivative; shading alignment breaks ties (including two-sided faces).
+    // This permutation runs only with Smoothness > 0; the stock pass above
+    // and its instruction stream are unchanged at the default setting.
+    float best = -1.e6;
+    float best_residual = 1.e6;
+    for (int sy = -1; sy <= 1; sy += 2)
+    {
+        for (int sx = -1; sx <= 1; sx += 2)
+        {
+            vec3 dx = sx < 0 ? -dl : dr;
+            vec3 dy = sy < 0 ? -dd : du;
+            vec2 tx = clamp(uv+vec2(2*sx,0)*px,vec2(0),vec2(1));
+            vec2 ty = clamp(uv+vec2(0,2*sy)*px,vec2(0),vec2(1));
+            vec3 dx2 = getPositionWithDepth(tx,getDepth(tx)).xyz-p_c;
+            vec3 dy2 = getPositionWithDepth(ty,getDepth(ty)).xyz-p_c;
+            vec3 candidate = cross(dx2,dy2) * float(sx*sy);
+            if (dot(candidate,candidate) < 1.e-20) continue;
+            candidate = normalize(candidate);
+            if (dot(candidate,-p_c) < 0.0) candidate = -candidate;
+            vec2 tc = clamp(uv+vec2(sx,sy)*px,vec2(0.0),vec2(1.0));
+            float depth = getDepth(tc);
+            if (depth >= .999999) continue;
+            vec3 diagonal = getPositionWithDepth(tc,depth).xyz - p_c;
+            float residual = abs(dot(candidate,diagonal));
+            // A 2x2 strip straddling a straight fold can itself be perfectly
+            // planar (especially at symmetric half-pixel phases). Certify the
+            // one-sided plane along BOTH axes, so a normal map cannot select
+            // that false tangent by shading alignment and make it crawl.
+            residual = max(residual,abs(dot(candidate,dx)));
+            residual = max(residual,abs(dot(candidate,dy)));
+            float score = dot(candidate,n_sh) - max(0.0,residual-max(1.e-6,2.e-6*z_c*z_c)) / max(1.e-6,2.e-6*z_c*z_c);
+            if (score > best) { best = score; n_geo = candidate; best_residual = residual; }
+            // A thin triangle may have a valid one-pixel quadrant but no
+            // two-pixel baseline. Accept its shading normal ONLY when depth
+            // certifies that normal as the actual plane (a mapped perturbation
+            // cannot pass two independent tangent directions).
+            float shading_residual = max(abs(dot(n_sh,dx)),abs(dot(n_sh,dy)));
+            shading_residual = max(shading_residual,abs(dot(n_sh,diagonal)));
+            if (shading_residual < max(1.e-6,2.e-6*z_c*z_c) && best < 1.0)
+            {
+                best = 1.0; n_geo = n_sh; best_residual = shading_residual;
+            }
+        }
+    }
+    float plane_noise = max(1.e-6,2.e-6*z_c*z_c);
+    if (best_residual > 4.0*plane_noise && dot(n_sh,-p_c)>0.0)
+    {
+        // A triangle's subpixel corner may contain no whole quadrant. Two
+        // independent depth-certified samples on the SAME shading plateau
+        // still prove its plane. This repairs isolated false barriers without
+        // treating a normal-map perturbation as geometric evidence.
+        vec2 first_direction=vec2(0);
+        bool certified=false;
+        for (int y=-3;y<=3 && !certified;++y) for (int x=-3;x<=3;++x)
+        {
+            if (x==0 && y==0) continue;
+            vec2 direction=vec2(x,y);
+            vec2 tc=clamp(uv+direction*px,vec2(0),vec2(1));
+            vec3 sh=getNorm(tc).xyz;
+            if (dot(sh-n_sh,sh-n_sh)>1.e-8) continue;
+            vec3 delta=getPositionWithDepth(tc,getDepth(tc)).xyz-p_c;
+            if (abs(dot(n_sh,delta))>plane_noise) continue;
+            if (dot(first_direction,first_direction)<.5) first_direction=direction;
+            else if (abs(first_direction.x*direction.y-first_direction.y*direction.x)>.5)
+            {
+                n_geo=n_sh; best_residual=0.0; certified=true; break;
+            }
+        }
+    }
+#endif
+
     // --- Toksvig length of the shading normals (depth-continuous taps) -----
+#ifndef RIG_RIM_SMOOTH_GUIDE
     float tol   = 0.04 * z_c + 0.02;
     vec3  n_bar = n_sh;
     float w_sum = 1.0;
@@ -157,6 +235,12 @@ void main()
     if (d_d < 0.999999 && abs(-p_d.z - z_c) < tol) { n_bar += getNorm(uv_d).xyz; w_sum += 1.0; }
     if (d_u < 0.999999 && abs(-p_u.z - z_c) < tol) { n_bar += getNorm(uv_u).xyz; w_sum += 1.0; }
     float n_len = clamp(length(n_bar / w_sum), 0.0, 1.0);
+#else
+    // Resolve owns final-normal Toksvig. The guide's spare channel certifies
+    // geometry for detail transfer at subpixel triangle corners.
+    float noise = max(1.e-6,2.e-6*z_c*z_c);
+    float n_len = 1.0-smoothstep(noise,4.0*noise,best_residual);
+#endif
 
     frag_color = vec4(rigRimOctEncode(n_geo), n_len, subject);
 }

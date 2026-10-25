@@ -44,10 +44,10 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2279,
-  "entries": 4141,
+  "generated_kit_rows": 2281,
+  "entries": 4143,
   "pages": 38,
-  "settings_declared": 3710,
+  "settings_declared": 3712,
   "xui_files": 843,
   "rim_presets": 40,
   "rim_preset_written_settings": [
@@ -184987,7 +184987,7 @@
    "csv_index": null,
    "card": "rim_quality",
    "card_title": "Rim quality",
-   "row_label": "Smooth",
+   "row_label": "Smoothness",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
    "xui_line": null,
    "widget_name": "cine_rimq_smooth",
@@ -185038,7 +185038,117 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_steady:kit:9",
+   "id": "v2:light_rim_tab:cine_rimq_smooth_radius:kit:9",
+   "csv_index": null,
+   "card": "rim_quality",
+   "card_title": "Rim quality",
+   "row_label": "Smooth radius",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+   "xui_line": null,
+   "widget_name": "cine_rimq_smooth_radius",
+   "widget_type": "slider",
+   "csv_kind": "slider",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 13.0,
+   "expect": {
+    "setting": "CineRigRimSmoothRadius",
+    "type": "F32",
+    "value": 13.0
+   },
+   "restore": {
+    "setting": "CineRigRimSmoothRadius",
+    "value": 12.0
+   },
+   "setting": "CineRigRimSmoothRadius",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 12.0,
+   "min": 1.0,
+   "max": 50.0,
+   "increment": 1.0,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml"
+  },
+  {
+   "page": "light_rim_tab",
+   "page_label": "Rim",
+   "group": "light_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "light_rim_tab",
+    "via": "tab"
+   },
+   "id": "v2:light_rim_tab:cine_rimq_texture_normals:kit:10",
+   "csv_index": null,
+   "card": "rim_quality",
+   "card_title": "Rim quality",
+   "row_label": "Texture normals",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+   "xui_line": null,
+   "widget_name": "cine_rimq_texture_normals",
+   "widget_type": "slider",
+   "csv_kind": "slider",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.05,
+   "expect": {
+    "setting": "CineRigRimTextureNormals",
+    "type": "F32",
+    "value": 0.05
+   },
+   "restore": {
+    "setting": "CineRigRimTextureNormals",
+    "value": 0.0
+   },
+   "setting": "CineRigRimTextureNormals",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 0.0,
+   "min": 0.0,
+   "max": 1.0,
+   "increment": 0.05,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml"
+  },
+  {
+   "page": "light_rim_tab",
+   "page_label": "Rim",
+   "group": "light_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "light_rim_tab",
+    "via": "tab"
+   },
+   "id": "v2:light_rim_tab:cine_rimq_steady:kit:11",
    "csv_index": null,
    "card": "rim_quality",
    "card_title": "Rim quality",
@@ -185093,7 +185203,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_actors:kit:10",
+   "id": "v2:light_rim_tab:cine_rimq_actors:kit:12",
    "csv_index": null,
    "card": "rim_quality",
    "card_title": "Rim quality",
@@ -185148,7 +185258,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_enable_tag:kit:11",
+   "id": "v2:light_rim_tab:cine_rimq_enable_tag:kit:13",
    "csv_index": null,
    "card": "rim_quality",
    "card_title": "Rim quality",
@@ -185204,7 +185314,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_status:kit:12",
+   "id": "v2:light_rim_tab:cine_rimq_status:kit:14",
    "csv_index": null,
    "card": "rim_quality",
    "card_title": "Rim quality",
@@ -185254,7 +185364,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_actors_alpha:kit:13",
+   "id": "v2:light_rim_tab:cine_rimq_actors_alpha:kit:15",
    "csv_index": null,
    "card": "rim_quality",
    "card_title": "Rim quality",
@@ -185310,7 +185420,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_key_gain:kit:14",
+   "id": "v2:light_rim_tab:cine_rig_rim_key_gain:kit:16",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185365,7 +185475,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_key_sharpness:kit:15",
+   "id": "v2:light_rim_tab:cine_rig_rim_key_sharpness:kit:17",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185420,7 +185530,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_key_wrap:kit:16",
+   "id": "v2:light_rim_tab:cine_rig_rim_key_wrap:kit:18",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185475,7 +185585,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_key_back_bias:kit:17",
+   "id": "v2:light_rim_tab:cine_rig_rim_key_back_bias:kit:19",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185530,7 +185640,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_fill_gain:kit:18",
+   "id": "v2:light_rim_tab:cine_rig_rim_fill_gain:kit:20",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185585,7 +185695,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_fill_sharpness:kit:19",
+   "id": "v2:light_rim_tab:cine_rig_rim_fill_sharpness:kit:21",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185640,7 +185750,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_fill_wrap:kit:20",
+   "id": "v2:light_rim_tab:cine_rig_rim_fill_wrap:kit:22",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185695,7 +185805,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_fill_back_bias:kit:21",
+   "id": "v2:light_rim_tab:cine_rig_rim_fill_back_bias:kit:23",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185750,7 +185860,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_rim_gain:kit:22",
+   "id": "v2:light_rim_tab:cine_rig_rim_rim_gain:kit:24",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185805,7 +185915,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_rim_sharpness:kit:23",
+   "id": "v2:light_rim_tab:cine_rig_rim_rim_sharpness:kit:25",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185860,7 +185970,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_rim_wrap:kit:24",
+   "id": "v2:light_rim_tab:cine_rig_rim_rim_wrap:kit:26",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185915,7 +186025,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_rim_back_bias:kit:25",
+   "id": "v2:light_rim_tab:cine_rig_rim_rim_back_bias:kit:27",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -185970,7 +186080,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_bg_gain:kit:26",
+   "id": "v2:light_rim_tab:cine_rig_rim_bg_gain:kit:28",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -186025,7 +186135,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_bg_sharpness:kit:27",
+   "id": "v2:light_rim_tab:cine_rig_rim_bg_sharpness:kit:29",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -186080,7 +186190,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_bg_wrap:kit:28",
+   "id": "v2:light_rim_tab:cine_rig_rim_bg_wrap:kit:30",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -186135,7 +186245,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_bg_back_bias:kit:29",
+   "id": "v2:light_rim_tab:cine_rig_rim_bg_back_bias:kit:31",
    "csv_index": null,
    "card": "per_light_rim",
    "card_title": "Per-light rim",
@@ -186190,7 +186300,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_edge:kit:30",
+   "id": "v2:light_rim_tab:cine_rimq_edge:kit:32",
    "csv_index": null,
    "card": "rim_edge",
    "card_title": "Edge band",
@@ -186245,7 +186355,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_width:kit:31",
+   "id": "v2:light_rim_tab:cine_rimq_width:kit:33",
    "csv_index": null,
    "card": "rim_edge",
    "card_title": "Edge band",
@@ -186300,7 +186410,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_units:kit:32",
+   "id": "v2:light_rim_tab:cine_rimq_units:kit:34",
    "csv_index": null,
    "card": "rim_edge",
    "card_title": "Edge band",
@@ -186368,7 +186478,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_soft:kit:33",
+   "id": "v2:light_rim_tab:cine_rimq_soft:kit:35",
    "csv_index": null,
    "card": "rim_edge",
    "card_title": "Edge band",
@@ -186423,7 +186533,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_wrap_amount:kit:34",
+   "id": "v2:light_rim_tab:cine_rimq_wrap_amount:kit:36",
    "csv_index": null,
    "card": "rim_wrap",
    "card_title": "Light wrap",
@@ -186478,7 +186588,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_wrap_reach:kit:35",
+   "id": "v2:light_rim_tab:cine_rimq_wrap_reach:kit:37",
    "csv_index": null,
    "card": "rim_wrap",
    "card_title": "Light wrap",
@@ -186533,7 +186643,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_wrap_blur:kit:36",
+   "id": "v2:light_rim_tab:cine_rimq_wrap_blur:kit:38",
    "csv_index": null,
    "card": "rim_wrap",
    "card_title": "Light wrap",
@@ -186588,7 +186698,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_wrap_colour:kit:37",
+   "id": "v2:light_rim_tab:cine_rimq_wrap_colour:kit:39",
    "csv_index": null,
    "card": "rim_wrap",
    "card_title": "Light wrap",
@@ -186643,7 +186753,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_tron_mode:kit:38",
+   "id": "v2:light_rim_tab:cine_rig_rim_tron_mode:kit:40",
    "csv_index": null,
    "card": "rim_tron",
    "card_title": "Tron colour",
@@ -186715,7 +186825,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_tron_mix:kit:39",
+   "id": "v2:light_rim_tab:cine_rig_rim_tron_mix:kit:41",
    "csv_index": null,
    "card": "rim_tron",
    "card_title": "Tron colour",
@@ -186770,7 +186880,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_tron_color:kit:40",
+   "id": "v2:light_rim_tab:cine_rig_rim_tron_color:kit:42",
    "csv_index": null,
    "card": "rim_tron",
    "card_title": "Tron colour",
@@ -186842,7 +186952,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_debug:kit:41",
+   "id": "v2:light_rim_tab:cine_rig_rim_debug:kit:43",
    "csv_index": null,
    "card": "rim_diagnostics",
    "card_title": "Diagnostics",
@@ -186897,7 +187007,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_debug:kit:42",
+   "id": "v2:light_rim_tab:cine_rimq_debug:kit:44",
    "csv_index": null,
    "card": "rim_diagnostics",
    "card_title": "Diagnostics",
@@ -186981,7 +187091,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_physical:kit:43",
+   "id": "v2:light_rim_tab:relight_physical:kit:45",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -187036,7 +187146,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_world_size:kit:44",
+   "id": "v2:light_rim_tab:relight_world_size:kit:46",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -187091,7 +187201,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_size_from_prim:kit:45",
+   "id": "v2:light_rim_tab:relight_size_from_prim:kit:47",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -187146,7 +187256,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_highlight_softness:kit:46",
+   "id": "v2:light_rim_tab:relight_highlight_softness:kit:48",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -187201,7 +187311,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_shape_preset:kit:47",
+   "id": "v2:light_rim_tab:relight_shape_preset:kit:49",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -187279,7 +187389,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_near_floor:kit:48",
+   "id": "v2:light_rim_tab:relight_near_floor:kit:50",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -187334,7 +187444,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_max_boost:kit:49",
+   "id": "v2:light_rim_tab:relight_max_boost:kit:51",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -187389,7 +187499,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_thin_objects:kit:50",
+   "id": "v2:light_rim_tab:area_shadow_thin_objects:kit:52",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187444,7 +187554,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world:kit:51",
+   "id": "v2:light_rim_tab:area_shadow_world:kit:53",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187499,7 +187609,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_lights:kit:52",
+   "id": "v2:light_rim_tab:area_shadow_world_lights:kit:54",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187554,7 +187664,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_status:kit:53",
+   "id": "v2:light_rim_tab:area_shadow_world_status:kit:55",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187604,7 +187714,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_picks:kit:54",
+   "id": "v2:light_rim_tab:area_shadow_world_picks:kit:56",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187654,7 +187764,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_list_picks:kit:55",
+   "id": "v2:light_rim_tab:area_shadow_world_list_picks:kit:57",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187707,7 +187817,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_clear_picks:kit:56",
+   "id": "v2:light_rim_tab:area_shadow_world_clear_picks:kit:58",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187757,7 +187867,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_clear_away_picks:kit:57",
+   "id": "v2:light_rim_tab:area_shadow_world_clear_away_picks:kit:59",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187807,7 +187917,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_vcam:kit:58",
+   "id": "v2:light_rim_tab:area_shadow_vcam:kit:60",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187862,7 +187972,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_sl_status:kit:59",
+   "id": "v2:light_rim_tab:area_shadow_sl_status:kit:61",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187912,7 +188022,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_coverage:kit:60",
+   "id": "v2:light_rim_tab:area_shadow_coverage:kit:62",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -187962,7 +188072,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_strength:kit:61",
+   "id": "v2:light_rim_tab:area_shadow_strength:kit:63",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188017,7 +188127,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_contrast:kit:62",
+   "id": "v2:light_rim_tab:area_shadow_contrast:kit:64",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188072,7 +188182,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_screen_reach:kit:63",
+   "id": "v2:light_rim_tab:area_shadow_screen_reach:kit:65",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188127,7 +188237,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_amount:kit:64",
+   "id": "v2:light_rim_tab:area_shadow_world_amount:kit:66",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188182,7 +188292,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_screen_amount:kit:65",
+   "id": "v2:light_rim_tab:area_shadow_screen_amount:kit:67",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188237,7 +188347,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_lights:kit:66",
+   "id": "v2:light_rim_tab:area_shadow_lights:kit:68",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188292,7 +188402,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_quality:kit:67",
+   "id": "v2:light_rim_tab:area_shadow_quality:kit:69",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188372,7 +188482,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_samples:kit:68",
+   "id": "v2:light_rim_tab:area_shadow_samples:kit:70",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188427,7 +188537,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_steps:kit:69",
+   "id": "v2:light_rim_tab:area_shadow_steps:kit:71",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188482,7 +188592,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_distance:kit:70",
+   "id": "v2:light_rim_tab:area_shadow_distance:kit:72",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188537,7 +188647,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_thickness:kit:71",
+   "id": "v2:light_rim_tab:area_shadow_thickness:kit:73",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188592,7 +188702,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_half:kit:72",
+   "id": "v2:light_rim_tab:area_shadow_half:kit:74",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188647,7 +188757,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_denoise:kit:73",
+   "id": "v2:light_rim_tab:area_shadow_denoise:kit:75",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188702,7 +188812,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_light_bias:kit:74",
+   "id": "v2:light_rim_tab:area_shadow_light_bias:kit:76",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188757,7 +188867,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_near:kit:75",
+   "id": "v2:light_rim_tab:area_shadow_world_near:kit:77",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188812,7 +188922,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_mapped_contact:kit:76",
+   "id": "v2:light_rim_tab:area_shadow_mapped_contact:kit:78",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188867,7 +188977,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_debug:kit:77",
+   "id": "v2:light_rim_tab:area_shadow_debug:kit:79",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -188963,7 +189073,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_world_debug:kit:78",
+   "id": "v2:light_rim_tab:area_shadow_world_debug:kit:80",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -189039,7 +189149,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_budget:kit:79",
+   "id": "v2:light_rim_tab:area_shadow_budget:kit:81",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -189094,7 +189204,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadow_sl_help:kit:80",
+   "id": "v2:light_rim_tab:area_shadow_sl_help:kit:82",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -189144,7 +189254,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rimq_wrap_enable:kit:81",
+   "id": "v2:light_rim_tab:cine_rimq_wrap_enable:kit:83",
    "csv_index": null,
    "card": "rim_wrap",
    "card_title": "Light wrap",
@@ -189202,7 +189312,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:relight_shape_enable:kit:82",
+   "id": "v2:light_rim_tab:relight_shape_enable:kit:84",
    "csv_index": null,
    "card": "light_shape",
    "card_title": "Light shape",
@@ -189260,7 +189370,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:area_shadows_enable:kit:83",
+   "id": "v2:light_rim_tab:area_shadows_enable:kit:85",
    "csv_index": null,
    "card": "area_soft_shadows",
    "card_title": "Soft shadows",
@@ -189318,7 +189428,7 @@
     "page_view": "light_rim_tab",
     "via": "tab"
    },
-   "id": "v2:light_rim_tab:cine_rig_rim_enable:kit:84",
+   "id": "v2:light_rim_tab:cine_rig_rim_enable:kit:86",
    "csv_index": null,
    "card": "",
    "card_title": "Page master",
@@ -235733,9 +235843,11 @@
    "cine_rimq_edge",
    "cine_rimq_enable_tag",
    "cine_rimq_smooth",
+   "cine_rimq_smooth_radius",
    "cine_rimq_soft",
    "cine_rimq_status",
    "cine_rimq_steady",
+   "cine_rimq_texture_normals",
    "cine_rimq_units",
    "cine_rimq_width",
    "cine_rimq_wrap_amount",
