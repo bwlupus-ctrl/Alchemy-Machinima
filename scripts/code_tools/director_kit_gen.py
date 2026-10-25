@@ -320,8 +320,11 @@ def validate_data(data: dict) -> None:
     # My heading (10/24): +1 world-space self-avatar dial on Cast > Move; 2202 -> 2203.
     # Shadow detail (10/24): +8 per-fixture Detail/World shadow flags and +1 Detail shadow bias master; 2203 -> 2212.
     # Rim normals (10/24): +2 Advanced rows beside Smoothness: Smooth radius and Texture normals; 2212 -> 2214.
-    if len(pages) != 38 or row_count != 2214:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2214")
+    # Shaft Performance (10/24): five global caps/selectors + cost readout; two existing rows move. 2201 -> 2207.
+    # Shaft engine selector (10/24): one row, 2207 -> 2208.
+    # Merged into main after rim normals (10/24): 2214 + 7 shaft rows -> 2221.
+    if len(pages) != 38 or row_count != 2221:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2221")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1049,6 +1052,10 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
                                                cfg.get("label_names", {})))
     declare_undo_owner(body, cfg, str(page.get("name", "")))
     preset = cfg.get("preset", {})
+    if preset.get("mode") == "provider" and preset.get("provider") == "projector_shafts":
+        # ALKitPresetStrip creates this real combo at runtime, with the same
+        # provider callbacks (New/Classic built-ins and saved user presets).
+        names.add("ps_preset:combo_box")
     if preset.get("mode") == "widgets":
         host = ET.SubElement(body, "kit_preset_host", {
             "name": page["name"].removesuffix("_tab") + "_preset_host"})
@@ -2332,7 +2339,21 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         page_settings.add(shaft_page.get("master_setting"))
         checks.append(("shaft page history covers all controls without expanding look ownership",
                        page_settings == owned | {"BDMergeProjectorVolumetricsDust"} | extras and
-                       len(extras) == 18 and not (owned & extras)))
+                       len(extras) == 24 and not (owned & extras)))
+        shaft_rows = list(shafts.iter("kit_row"))
+        engine_control = shaft_rows[0].find("combo_box")
+        new_only = {"BDMergeProjectorVolumetrics" + suffix for suffix in (
+            "Definition", "MaxSteps", "BigConeCap", "FrameBudget", "BeamShadows",
+            "Equiangular", "AirborneTap", "CookieFootprint", "PyramidScissor")}
+        gated = [node for node in shafts.iter() if
+                 node.get("enabled_control") == "BDMergeProjectorVolumetricsEngine"]
+        checks.append(("shaft engine is first, New defaults on, only New controls are gated",
+                       shaft_rows[0].get("setting") == "BDMergeProjectorVolumetricsEngine" and
+                       engine_control is not None and
+                       [(n.get("label"), n.get("value")) for n in engine_control.findall("combo_box.item")] ==
+                       [("New", "1"), ("Classic", "0")] and
+                       {node.get("control_name") for node in gated} == new_only and len(gated) == 9 and
+                       all("New engine only" in node.get("tool_tip", "") for node in gated)))
         ghosts = ET.fromstring(outputs[out_dir / "panel_dpage_cast_ghosts.xml"], parser=parser())
         rotation_rows = [row for row in ghosts.iter("kit_row") if row.get("widget") in
                          {"yaw_spinner", "pitch_spinner", "roll_spinner"}]

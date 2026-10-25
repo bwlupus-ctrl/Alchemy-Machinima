@@ -102,6 +102,7 @@ private:
     LLButton*                                       mDelete   = nullptr;
     std::vector<LLSD>                               mAppliedValues;
     std::vector<boost::signals2::scoped_connection> mConnections;
+    U32                                             mShaftEngine = 1;
     bool                                            mApplying = false;
     bool                                            mModified = false;
 };

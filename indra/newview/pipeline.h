@@ -403,6 +403,10 @@ public:
     // projector-volumetric temporal accumulation. Default false = the unchanged
     // main-view call, byte-identical to before.
     void renderProjectorVolumetric(LLRenderTarget* target, bool aux_direct = false);
+    void renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_direct);
+    void renderProjectorVolumetricClassic(LLRenderTarget* target, bool aux_direct);
+    void feedProjectorVolumetricBloomClassic();
+    F32 setupSpotLightVolumetricClassic(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot);
     // Viewer-native rain/lightning composite. Runs before HDR exposure and bloom
     // so lightning participates in the same photographic response as scene lights.
     void renderWeather(LLRenderTarget* target);
@@ -416,6 +420,22 @@ public:
     // gated by BDMergeProjectorVolumetricsBloomFeed (default 0 = off) so it never
     // reintroduces uncontrolled bloom leakage.
     void feedProjectorVolumetricBloom();
+
+    // Last main-view march only; auxiliary views never overwrite the UI model.
+    struct ProjectorShaftCost
+    {
+        U32 visible = 0, inside = 0;
+        U32 hard_detail = 0, shadow_taps = 0;
+        std::vector<F32> steps;
+    };
+    const ProjectorShaftCost& projectorShaftCost() const { return mProjectorShaftCost; }
+    std::string projectorShaftCostReadout() const;
+    ProjectorShaftCost mProjectorShaftCost;
+    bool mProjVolVariantFailed = false;
+    void projectorVolumetricShaderLoaded(bool success, S32 actual_level, S32 requested_level)
+    {
+        mProjVolVariantFailed = !success || actual_level != requested_level;
+    }
 
     // [BDMerge G3.3 Phase 2] Session-only per-projector art-direction flag.
     // A projector emits a volumetric shaft only when its object UUID has been
@@ -736,7 +756,9 @@ public:
     // [BDMerge G3.3] side-effect-free variant of setupSpotLight for the
     // finalize-stage volumetric pass: uploads only geometry + cookie (NO
     // mTargetShadowSpotLight priority reshuffle - R1), shadow slot passed in.
-    F32 setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot);
+    F32 setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot,
+                                 bool* camera_inside = nullptr, F32 max_distance = 0.f,
+                                 F32* camera_margin = nullptr);
 
     void unbindDeferredShader(LLGLSLShader& shader);
 
@@ -2507,6 +2529,8 @@ public:
     static F32 RenderVolumetricLightingMultiplier;
     static F32 RenderVolumetricLightingFalloffMultiplier;
     // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
+    static U32 BDMergeProjectorVolumetricsEngine;
+    bool mProjVolEngineDirty = false;
     static bool BDMergeProjectorVolumetrics;
     static U32 BDMergeProjectorVolumetricsResolution;
     static F32 BDMergeProjectorVolumetricsMultiplier;

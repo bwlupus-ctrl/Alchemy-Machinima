@@ -1127,6 +1127,12 @@ static void handleRigRimWrapAmount(const LLSD& value)
 void settings_setup_listeners()
 {
     LL_PROFILE_ZONE_SCOPED;
+    // Clear the old engine's label synchronously. Scene loading applies its
+    // preset after selecting the engine, before the renderer's deferred refresh.
+    setting_setup_signal_listener(gSavedSettings, "BDMergeProjectorVolumetricsEngine", []()
+    {
+        gSavedSettings.setString("BDMergeProjectorVolumetricsPreset", "");
+    });
     // Exposure history listens at the setting layer, so every editing surface
     // (including Debug Settings and Lightbox) shares one session history.
     ALExposureSettingsHistory::initialize();
