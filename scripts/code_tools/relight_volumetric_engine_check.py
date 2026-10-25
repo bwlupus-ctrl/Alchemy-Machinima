@@ -79,6 +79,16 @@ def cpp_checks(V, args, check):
     expected=expected[:a]+'''            // Full-only dispatch has no pose/slider admission calculation.
             const bool use_budget = false;
 '''+expected[b:]
+    # Login regression: the first batch must reuse the initial clear's push.
+    # Retain the historical whole-function pin and allow only this exact change;
+    # Classic remains byte-for-byte frozen.
+    batch_bind='        march_target->bindTarget();\n'
+    assert expected.count(batch_bind)==1
+    expected=expected.replace(batch_bind,'''        // The initial clear already pushed this target for the first batch.
+        // Each batch flushes it; only subsequent batches need another push.
+        // A second push before a flush makes the render target its own parent.
+        if (program_index != 0) march_target->bindTarget();
+''',1)
     dispatch_hash = hashlib.sha256(function(src,'renderProjectorVolumetricNew').encode()).hexdigest()
     check('new_cpp/dispatch',reference_hash == '229ba4cfd3f4bacc607e975ed8d245ff4c9c1a16b23bcc7edbae2938ec47f5df'
           and function(src,'renderProjectorVolumetricNew')==expected,sha256=dispatch_hash,reference_sha256=reference_hash)

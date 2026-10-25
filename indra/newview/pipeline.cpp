@@ -22640,7 +22640,10 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
     {
         LLGLSLShader& shaft_shader = program_index == 0 ?
             gDeferredProjectorVolumetricProgram : gDeferredProjectorVolumetricFullProgram;
-        march_target->bindTarget();
+        // The initial clear already pushed this target for the first batch.
+        // Each batch flushes it; only subsequent batches need another push.
+        // A second push before a flush makes the render target its own parent.
+        if (program_index != 0) march_target->bindTarget();
         if (!halfres) glDrawBuffer(GL_COLOR_ATTACHMENT0);
         gGL.setColorMask(true, temporal && BDMergeProjectorVolumetricsTemporalBeamDepth);
         bindDeferredShader(shaft_shader); // binds the full per-slot shadow set
