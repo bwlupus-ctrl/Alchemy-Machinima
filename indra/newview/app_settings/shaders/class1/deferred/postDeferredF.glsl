@@ -118,11 +118,8 @@ vec4 sensorCell(ivec2 p, ivec2 size)
 #if !FRONT_BLUR
         coc = min(coc, 0.0);
 #endif
-        if (abs(coc) > 0.5)
-        {
-            value.rgb += sample_value.rgb*overlap.x*overlap.y;
-            if (abs(coc) > abs(cell_coc)) cell_coc = coc;
-        }
+        value.rgb += sample_value.rgb*overlap.x*overlap.y;
+        if (abs(coc) > abs(cell_coc)) cell_coc = coc;
     }
     return vec4(value.rgb/(cell.x*cell.y),cell_coc/max(max_cof,1e-6)*0.5+0.5);
 }
@@ -132,21 +129,40 @@ vec4 sensorDof()
     ivec2 dest = ivec2(gl_FragCoord.xy);
     float scale = min(float(size.x)/screen_res.x, float(size.y)/screen_res.y);
     int limit = int(ceil(max_cof*scale));
-    vec4 result = vec4(0.0);
+    vec4 center = texelFetch(diffuseRect, dest, 0);
+    float center_coc = (center.a*2.0-1.0)*max_cof;
+#if !FRONT_BLUR
+    // Background scatter cannot cross an opaque focused foreground. With
+    // front blur disabled, this is exact and skips the entire shipped-cap disk.
+    if (center_coc >= -0.5) return center;
+#endif
+    vec3 foreground = vec3(0.0), background = vec3(0.0);
+    float front_coverage = 0.0, back_coverage = 0.0;
     for (int y=-limit; y<=limit; ++y)
     for (int x=-limit; x<=limit; ++x)
     {
         if (x*x+y*y > limit*limit) continue;
         vec4 source = texelFetch(diffuseRect, sensorReflect(dest+ivec2(x,y), size), 0);
         float coc = (source.a*2.0-1.0)*max_cof;
+        if (abs(coc) <= 0.5 || coc < min(center_coc, -0.5)) continue;
 #if !FRONT_BLUR
-        coc = min(coc, 0.0);
+        if (coc > 0.0) continue;
 #endif
         int radius = int(ceil(abs(coc)*scale));
         if (radius > 0 && x*x+y*y <= radius*radius)
-            result += source/float(sensorDiskCount(radius));
+        {
+            float coverage = 1.0/float(sensorDiskCount(radius));
+            if (coc > 0.0) { foreground += source.rgb*coverage; front_coverage += coverage; }
+            else { background += source.rgb*coverage; back_coverage += coverage; }
+        }
     }
-    return result;
+    // Resolve each depth layer by its coverage. Foreground transmittance
+    // attenuates the background; a focused receiver retains its sharp layer.
+    vec3 base = center.rgb;
+    if (center_coc < -0.5 && back_coverage > 0.0) base = background/back_coverage;
+    if (center_coc > 0.5 && front_coverage > 0.0) base = foreground/front_coverage;
+    else base = base*(1.0-min(front_coverage,1.0))+foreground/max(front_coverage,1.0);
+    return vec4(base, center.a);
 }
 #endif
 

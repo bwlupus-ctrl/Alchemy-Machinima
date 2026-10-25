@@ -13985,7 +13985,7 @@ LLGLSLShader* LLPipeline::colorCorrectProgram(SensorStage stage, U32 permutation
             &gCGTonemapColorgradeProgram, &gCGTonemapColorgradeLegacyGammaProgram };
         return stage == SensorStage::Legacy ? color_correct_programs[permutation] :
             &gSensorCameraProgram[stage == SensorStage::Exposure ? 0 :
-                                  stage == SensorStage::Optics ? 1 : stage == SensorStage::Godrays ? 6 : 2 + permutation % 4];
+                                  stage == SensorStage::Optics ? 1 : stage == SensorStage::Godrays ? 6 + permutation % 4 : 2 + permutation % 4];
 
 }
 
@@ -26156,7 +26156,7 @@ void LLPipeline::renderFinalize()
             // Raymarch in the original display units, then explicitly convert
             // that increment into already-exposed linear camera units.
             renderVolumetric(sourceBuffer, &mRT->deferredLight);
-            colorCorrect(sourceBuffer, targetBuffer, true, false, SensorStage::Godrays);
+            colorCorrect(sourceBuffer, targetBuffer, true, true, SensorStage::Godrays);
             std::swap(sourceBuffer, targetBuffer);
         }
         if (BDMergeMotionBlur && mVelocityMap.isComplete() && gDeferredMotionBlurProgram.isComplete())

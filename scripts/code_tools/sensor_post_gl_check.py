@@ -591,6 +591,8 @@ def run(args):
         source_contracts(check)
         import sensor_post_fix_gl_check as review
         review.tests(r,check)
+        import sensor_post_fix2_gl_check as review2
+        review2.tests(r,check)
     except Exception:
         error=traceback.format_exc(); print(error,flush=True)
         check('production shader variants compile/link',False,error)

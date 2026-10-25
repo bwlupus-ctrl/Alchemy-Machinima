@@ -22,7 +22,7 @@ def run(r, root, out):
     pipe=(root/'indra/newview/pipeline.cpp').read_text(encoding='utf-8')
     methods='\n'.join(body(pipe,n) for n in ('releaseSensorTargets','ensureSensorTargets',
         'sensorDiagnosticView','colorCorrectProgram','sensorAAEncode','sensorVignette','sensorWarpUniforms',
-        'compositeSensorOverlay','copyRenderTarget','applyFXAA','generateSMAABuffers','applySMAA','renderVolumetric','renderFinalize'))
+        'compositeSensorOverlay','copyRenderTarget','applyFXAA','generateSMAABuffers','applySMAA','renderVolumetric','renderFinalizeScene','renderFinalizeLegacy','renderFinalizePresent','renderFinalize'))
     # The no-post predicate counts calls, including the production sky lookup
     # seam. All setting reads use current values, even for static cached controls.
     prefix=r'''
@@ -128,7 +128,7 @@ struct LLGLSLShader {
 };
 LLGLSLShader gSensorAAEncodeProgram{1},gSensorVignetteProgram{2},gSensorOverlayProgram{3},
  gVolumetricLightProgram{4},gDeferredMotionBlurProgram{5},gCineFisheyeProgram{6},gCASProgram{7};
-LLGLSLShader gSensorCameraProgram[7]={{300},{301},{302},{303},{304},{305},{306}};
+LLGLSLShader gSensorCameraProgram[10]={{300},{301},{302},{303},{304},{305},{306},{307},{308},{309}};
 LLGLSLShader gCGGammaProgram{200},gCGLegacyGammaProgram{201},gCGColorgradeGammaProgram{202},gCGColorgradeLegacyGammaProgram{203},
  gCGTonemapProgram{204},gCGTonemapLegacyGammaProgram{205},gCGTonemapColorgradeProgram{206},gCGTonemapColorgradeLegacyGammaProgram{207};
 LLGLSLShader gSensorSMAAEdgeProgram[4]={{400},{401},{402},{403}},gSMAABlendWeightsProgram[4]={{420},{421},{422},{423}},
@@ -181,12 +181,13 @@ struct LLPipeline {
  bool hasRenderDebugFeatureMask(int){return true;}
  void assertInitialized(){}void enableLightsFullbright(){}
  void renderActorPathGuides(LLRenderTarget*,const glm::mat4&,const glm::mat4&,U32){events.push_back(80);}
- void renderFinalizeScene(bool,const FinalizeGuides&){events.push_back(21);}
- void renderFinalizeLegacy(bool,LLRenderTarget*& src,LLRenderTarget*&,bool&,bool&,const FinalizeGuides&){++legacy_calls;src=&mMainRT.screen;events.push_back(22);}
- void renderFinalizePresent(LLRenderTarget*,bool,bool){events.push_back(mSensorPhysicalOrder?90:91);}
- void colorCorrect(LLRenderTarget* src,LLRenderTarget* dst,bool tone,bool grade,SensorStage stage){
+ void renderFinalizeScene(bool,const FinalizeGuides&);
+ void renderFinalizeLegacy(bool,LLRenderTarget*&,LLRenderTarget*&,bool&,bool&,const FinalizeGuides&);
+ void renderFinalizePresent(LLRenderTarget*,bool,bool);
+ void colorCorrect(LLRenderTarget* src,LLRenderTarget* dst,bool tone,bool grade,SensorStage stage=SensorStage::Legacy){
+  if(stage==SensorStage::Legacy){++legacy_calls;events.push_back(22);return;}
   if(src==dst)++feedback;
-  if(!tone||grade!=(stage==SensorStage::Camera))++wire_errors;
+  if(!tone||grade!=(stage==SensorStage::Camera||stage==SensorStage::Godrays))++wire_errors;
   colorCorrectProgram(stage,4)->bind();events.push_back(40+int(stage));
  }
  void renderVolumetric(LLRenderTarget*,LLRenderTarget*);
@@ -194,12 +195,12 @@ struct LLPipeline {
  void unbindDeferredShader(LLGLSLShader& shader){shader.unbind();}
  void renderMotionBlurComposite(LLRenderTarget*,LLRenderTarget*){events.push_back(51);}
  void renderDoF(LLRenderTarget*,LLRenderTarget*){events.push_back(52);}
- void renderCineOutline(LLRenderTarget*,void*,void*,bool){events.push_back(53);}
+ void renderCineOutline(LLRenderTarget*,void* =nullptr,void* =nullptr,bool=false){events.push_back(53);}
  bool renderUltimateKaleidoscope(LLRenderTarget*,LLRenderTarget*){events.push_back(sensorDiagnosticView(gSavedSettings.getU32("CineDiopterKalDebugView"))?82:54);return true;}
  bool renderUltimateDiopter(LLRenderTarget*,LLRenderTarget*){events.push_back(sensorDiagnosticView(gSavedSettings.getU32("CineDiopterDebugView"))?83:55);return true;}
  void renderCineFisheye(LLRenderTarget*,LLRenderTarget*){events.push_back(56);}
  void applyFXAA(LLRenderTarget*,LLRenderTarget*);
- void generateSMAABuffers(LLRenderTarget*,LLRenderTarget*);
+ void generateSMAABuffers(LLRenderTarget*,LLRenderTarget* =nullptr);
  void applySMAA(LLRenderTarget*,LLRenderTarget*);
  void copyRenderTarget(LLRenderTarget*,LLRenderTarget*);
  void renderSensor(LLRenderTarget* s,LLRenderTarget* d){if(s==d)++feedback;++physical_calls;events.push_back(mSensorNoise?60:61);}
@@ -213,6 +214,8 @@ struct LLPipeline {
  void compositeSensorOverlay(LLRenderTarget*,LLRenderTarget*,bool,bool,bool);
 };
 '''
+    from sensor_post_finalize_seams import extend
+    prefix=extend(prefix,pipe)
     suffix=r'''
 static LLPipeline pipeline;
 extern "C" __declspec(dllexport) void configure(Callback cb,unsigned mask,int enabled,int aa,int layers,int debug,int w,int h) {
@@ -234,6 +237,7 @@ extern "C" __declspec(dllexport) int execute(){pipeline.renderFinalize();return 
 extern "C" __declspec(dllexport) int metric(int k){switch(k){case 0:return context_calls;case 1:return legacy_calls;case 2:return uniforms;case 3:return feedback;case 4:return pipeline.mSensorClockStarted;case 5:return pipeline.mSensorFrame;case 6:return pipeline.mSensorAllocated;case 8:return uniform_int["1/sensor_aa_mode"];case 9:return uniform_int["3/sensor_overlay_mode"];case 10:{auto v=uniform_vec[uniform_key(3,LLShaderMgr::DEPTH_WARP_PARAMS)];return int(v[0]+2*v[1]);}case 11:return wire_errors;case 12:return predication_bindings;case 13:return texture_bindings[uniform_key(3,LLShaderMgr::DIFFUSE_MAP)];case 14:return texture_bindings[uniform_key(3,LLShaderMgr::DEFERRED_EMISSIVE)];}return 0;}
 extern "C" __declspec(dllexport) int shader_selection(int stage,int permutation){return pipeline.colorCorrectProgram(LLPipeline::SensorStage(stage),permutation)->id;}
 extern "C" __declspec(dllexport) int legacy_smaa(){
+ predication_bindings=0;
  pipeline.mSensorPhysicalOrder=false;RenderFSAAType=2;
  pipeline.generateSMAABuffers(&pipeline.mMainRT.screen,nullptr);
  pipeline.applySMAA(&pipeline.mMainRT.screen,&pipeline.mMainRT.deferredLight);
@@ -296,6 +300,12 @@ extern "C" __declspec(dllexport) unsigned long long tick(unsigned value,int rese
     depth_mutant=build('dispatch_shared_depth',methods.replace(
         'if (ok) ok = mSensorRoto.addColorAttachment(GL_RGB10_A2);',
         'if (ok) ok = mSensorRoto.addColorAttachment(GL_RGB10_A2); if (ok) mMainRT.deferredScreen.shareDepthBuffer(mSensorRoto);'))
+    scene_mutant=build('dispatch_scene_skipped',methods.replace('renderWeather(&mRT->screen);',''))
+    legacy_body=body(pipe,'renderFinalizeLegacy')
+    legacy_mutant=build('dispatch_legacy_cas_skipped',methods.replace(legacy_body,
+        legacy_body.replace('applyCAS(sourceBuffer, targetBuffer);','')))
+    present_mutant=build('dispatch_present_legacy',methods.replace(
+        'mSensorPhysicalOrder ? gSensorBlitProgram : gBlitWithEffectsProgram','gBlitWithEffectsProgram'))
     CB=C.CFUNCTYPE(C.c_int,C.c_int,C.c_int,C.c_int,C.c_int,C.c_int)
     records=[];active={};fail=[-1];serial=[0];errors=[];depth_sharing=[]
     internal_format=r.gl.fn('glGetTexLevelParameteriv',None,C.c_uint,C.c_int,C.c_uint,C.POINTER(C.c_int))
@@ -318,7 +328,7 @@ extern "C" __declspec(dllexport) unsigned long long tick(unsigned value,int rese
         elif op==2:depth_sharing.append(index)
         return 1
     cb=CB(callback)
-    for dll in (lib,mutant,off_mutant,debug_mutant,memory_mutant,shader_mutant,aa_mutant,depth_mutant):
+    for dll in (lib,mutant,off_mutant,debug_mutant,memory_mutant,shader_mutant,aa_mutant,depth_mutant,scene_mutant,legacy_mutant,present_mutant):
         dll.configure.argtypes=[CB,*([C.c_int]*7)];dll.metric.argtypes=[C.c_int];dll.event.argtypes=[C.c_int]
     def configure(dll=lib,mask=3,enabled=1,aa=2,layers=3,debug=1,w=64,h=48):
         records.clear();dll.configure(cb,mask,enabled,aa,layers,debug,w,h)
@@ -391,7 +401,7 @@ extern "C" __declspec(dllexport) unsigned long long tick(unsigned value,int rese
     assert any(error[0]=='format' for error in errors),'storage mutation did not reach the allocation predicate'
     for stage in range(5):
         for permutation in range(8):
-            expected=(200+permutation,300,301,302+permutation%4,306)[stage]
+            expected=(200+permutation,300,301,302+permutation%4,306+permutation%4)[stage]
             assert lib.shader_selection(stage,permutation)==expected,'production camera shader selection'
     assert shader_mutant.shader_selection(1,4)!=300,'legacy shader selection mutation survived'
     configure(dll=aa_mutant,aa=2,layers=0,debug=0);aa_mutant.execute()
@@ -400,9 +410,14 @@ extern "C" __declspec(dllexport) unsigned long long tick(unsigned value,int rese
     assert depth_sharing,'shared sampled-depth mutation survived'
     configure(enabled=0);lib.execute()
     assert lib.legacy_smaa()==1,'legacy default-ON SMAA predication was changed'
+    configure();lib.execute();assert 21 in trace(lib) and 90 in trace(lib)
+    configure(dll=scene_mutant);scene_mutant.execute();assert 21 not in trace(scene_mutant),'scene helper mutation survived'
+    configure(enabled=0);lib.execute();assert 70 in trace(lib),'legacy helper omitted CAS'
+    configure(dll=legacy_mutant,enabled=0);legacy_mutant.execute();assert 70 not in trace(legacy_mutant),'legacy helper mutation survived'
+    configure(dll=present_mutant);present_mutant.execute();assert 91 in trace(present_mutant) and 90 not in trace(present_mutant),'present helper mutation survived'
     r.native_lib=lib
     r.dispatch_callback=cb
-    return dict(full_production_finalize=True,context_combinations=256,master_off_frames=32,
+    return dict(full_production_finalize=True,production_finalize_helpers=3,helper_mutations='REJECTED',context_combinations=256,master_off_frames=32,
         allocation_failure_sites=4,optional_layer_combinations=12,peak_4k_mib=189.84375,
         mutation_permanently_disabled='REJECTED',off_work_mutation='REJECTED',debug_mutation='REJECTED',
         memory_mutation='REJECTED',

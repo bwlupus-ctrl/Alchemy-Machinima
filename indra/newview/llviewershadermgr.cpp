@@ -249,7 +249,7 @@ LLGLSLShader            gDeferredPostProgram;
 LLGLSLShader            gDeferredPostProgramNoNear;
 
 // WP-B: main-presentation physical camera variants, never used by legacy feeds.
-LLGLSLShader gSensorCameraProgram[7]; // exposure, optics, four camera grades
+LLGLSLShader gSensorCameraProgram[10]; // exposure, optics, four camera and four godray grades
 LLGLSLShader gSensorPassProgram;
 LLGLSLShader gSensorAAEncodeProgram;
 LLGLSLShader gSensorDoFProgram[2];
@@ -1775,12 +1775,12 @@ bool LLViewerShaderMgr::loadSensorShaders()
     LLGLSLShader* camera[] = { &gCGTonemapProgram, &gCGTonemapProgram,
         &gCGTonemapProgram, &gCGTonemapLegacyGammaProgram,
         &gCGTonemapColorgradeProgram, &gCGTonemapColorgradeLegacyGammaProgram };
-    for (U32 i = 0; i < 7; ++i)
+    for (U32 i = 0; i < 10; ++i)
     {
         auto& shader = gSensorCameraProgram[i];
-        clone(shader, *camera[i == 6 ? 0 : i]);
+        clone(shader, *camera[i >= 6 ? i - 4 : i]);
         shader.addPermutation(i == 0 ? "AL_SENSOR_EXPOSURE" :
-            i == 1 ? "AL_SENSOR_OPTICS" : i == 6 ? "AL_SENSOR_GODRAYS" : "AL_SENSOR_CAMERA", "1");
+            i == 1 ? "AL_SENSOR_OPTICS" : i >= 6 ? "AL_SENSOR_GODRAYS" : "AL_SENSOR_CAMERA", "1");
         ok = shader.createShader() && ok;
     }
     for (U32 i = 0; i < 2; ++i)

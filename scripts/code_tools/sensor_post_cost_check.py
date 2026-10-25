@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 import numpy as np
+import xml.etree.ElementTree as ET
 import sensor_post_gl_check as P
 import sensor_iso_gl_check as S
 
@@ -38,10 +39,23 @@ def gpu():
     except FileNotFoundError:return 'unavailable'
 
 
+def dof_caps():
+    settings=ET.parse(P.ROOT/'indra/newview/app_settings/settings.xml').getroot().find('map')
+    entries=list(settings)
+    default=next(float(entries[i+1].findall('real')[0].text) for i,item in enumerate(entries[:-1])
+        if item.tag=='key' and item.text=='CameraMaxCoF')
+    panel=ET.parse(P.ROOT/'indra/newview/skins/default/xui/en/panel_dof.xml').getroot()
+    maximum=max(float(item.get('max_val')) for item in panel.iter()
+        if item.get('control_name')=='CameraMaxCoF' and item.get('max_val'))
+    return default,maximum
+
+
 class Chain:
-    def __init__(self,r,model,enabled,w=3840,h=2160,scale=.7):
+    def __init__(self,r,model,enabled,w=3840,h=2160,scale=.7,max_cof=None,focused=False,front_blur=False):
         self.r,self.on,self.w,self.h=r,enabled,w,h
         self.scale=scale
+        self.max_cof=dof_caps()[0] if max_cof is None else max_cof
+        self.focused=focused
         self.u,_=model.get(0,25600,frame=0,seed=1234,stream=0x4d41494e)
         self.hdr=[r.target(('on' if enabled else 'off')+str(i),w,h,fmt=0x881A if enabled else 0x8059) for i in range(2)]
         self.display=self.hdr
@@ -56,7 +70,7 @@ class Chain:
         image[:,:,:3]=(.02+2*x[:,:,None])*(.8+.2*np.sin(y[:,:,None]*70))
         image[:,:,3]=1.
         self.scene=r.upload('cost-scene',image)
-        image[:,:,:3]=.5;self.depth=r.upload('cost-depth',image)
+        image[:,:,:3]=.25;self.depth=r.upload('cost-depth',image)
         image[:,:,:3]=0.;image[:,:,0]=.012;self.velocity=r.upload('cost-velocity',image)
         image[:,:,:3]=.02;self.bloom=r.upload('cost-bloom',image)
         image[:,:,:3]=1.;self.one=r.upload('cost-one',image)
@@ -70,11 +84,11 @@ class Chain:
         self.programs['blur']=r.program('class1/deferred/motionBlurF.glsl')
         self.programs['cof']=r.program('class1/deferred/cofF.glsl',modules=P.common_modules())
         self.programs['dof']=r.program('class1/deferred/postDeferredF.glsl',
-            '#define FRONT_BLUR 1\n'+('#define AL_SENSOR_HDR 1\n' if enabled else ''),P.common_modules())
+            '#define FRONT_BLUR '+str(int(front_blur))+'\n'+('#define AL_SENSOR_HDR 1\n' if enabled else ''),P.common_modules())
         if enabled:
             self.programs['dof_reduce']=r.program('class1/deferred/postDeferredF.glsl',
-                '#define FRONT_BLUR 1\n#define AL_SENSOR_HDR 1\n#define AL_SENSOR_DOF_REDUCE 1\n',P.common_modules())
-        self.programs['combine']=r.program('class1/deferred/dofCombineF.glsl','#define AL_SENSOR_HDR 1\n#define FRONT_BLUR 1\n' if enabled else '')
+                '#define FRONT_BLUR '+str(int(front_blur))+'\n#define AL_SENSOR_HDR 1\n#define AL_SENSOR_DOF_REDUCE 1\n',P.common_modules())
+        self.programs['combine']=r.program('class1/deferred/dofCombineF.glsl','#define AL_SENSOR_HDR 1\n#define FRONT_BLUR '+str(int(front_blur))+'\n' if enabled else '')
         self.programs['dio']=r.program('class1/deferred/ultimateDiopterGatherF.glsl',
             '#define DIOPTER_TAPS 24\n'+('#define AL_SENSOR_HDR 1\n' if enabled else ''),P.common_modules())
         self.programs['dio_comp']=r.program('class1/deferred/ultimateDiopterF.glsl',
@@ -118,18 +132,18 @@ class Chain:
             nonlocal i
             # A physically authored constant CoC fixture at the shipped scale.
             draw('cof',self.cof,[('diffuseRect',self.dst[i][0]),('depthMap',self.depth)],
-                dict(focal_distance=-8.,blur_constant=.002,tan_pixel_angle=.0002,magnification=1.,max_cof=4.,res_scale=self.scale))
+                dict(focal_distance=-.5 if self.focused else -.125,blur_constant=.002,tan_pixel_angle=.0002,magnification=1.,max_cof=self.max_cof,res_scale=self.scale))
             cells=self.cof[0]
             if self.on:
                 draw('dof_reduce',self.dst[1-i],[('diffuseRect',cells)],
-                    dict(screen_res=(w,h),max_cof=4.,res_scale=self.scale),(int(w*self.scale),int(h*self.scale)))
+                    dict(screen_res=(w,h),max_cof=self.max_cof,res_scale=self.scale),(int(w*self.scale),int(h*self.scale)))
                 cells=self.dst[1-i][0]
             r.gl.color_mask(1,1,1,0)
             draw('dof',self.dst[i],[('diffuseRect',cells)],
-                dict(screen_res=(w,h),max_cof=4.,res_scale=self.scale),(int(w*self.scale),int(h*self.scale)))
+                dict(screen_res=(w,h),max_cof=self.max_cof,res_scale=self.scale),(int(w*self.scale),int(h*self.scale)))
             r.gl.color_mask(1,1,1,1)
             draw('combine',self.dst[1-i],[('diffuseRect',self.dst[i][0]),('lightMap',self.cof[0])],
-                dict(max_cof=4.,res_scale=self.scale,dof_width=(int(w*self.scale)-1)/w,dof_height=(int(h*self.scale)-1)/h));i=1-i
+                dict(max_cof=self.max_cof,res_scale=self.scale,dof_width=(int(w*self.scale)-1)/w,dof_height=(int(h*self.scale)-1)/h));i=1-i
         def aa():
             nonlocal i
             detection=self.dst[i][0]
@@ -172,10 +186,9 @@ class Chain:
         return self.times.copy()
 
 
-def run(args):
-    r=P.Runner();model=S.Model(P.OUT/'cost_model')
+def measure(args,cap,focused,r,model):
     before=gpu()
-    chains={False:Chain(r,model,False,scale=args.dof_scale),True:Chain(r,model,True,scale=args.dof_scale)}
+    chains={False:Chain(r,model,False,scale=args.dof_scale,max_cof=cap,focused=focused),True:Chain(r,model,True,scale=args.dof_scale,max_cof=cap,focused=focused)}
     samples={False:[],True:[]}; passes={False:{},True:{}}
     for index in range(args.samples+16):
         for enabled in ((False,True) if index%2==0 else (True,False)):
@@ -192,7 +205,7 @@ def run(args):
     ratio_ci=np.percentile(np.median((b/a)[indices],axis=1),[2.5,97.5]).tolist()
     shared=before!='unavailable' and int(before.split('%')[0].strip())>5
     status='PASS' if delta_ci[1]<=.8 else 'PENDING-QUIET' if shared else 'FAIL'
-    cost=dict(dof_resolution_scale=args.dof_scale,renderer=r.gl.renderer,before=before,after=gpu(),samples=samples,
+    cost=dict(max_cof=cap,focused=focused,front_blur=False,aperture_disk_taps=sum(x*x+y*y<=int(np.ceil(cap*args.dof_scale))**2 for x in range(-int(np.ceil(cap*args.dof_scale)),int(np.ceil(cap*args.dof_scale))+1) for y in range(-int(np.ceil(cap*args.dof_scale)),int(np.ceil(cap*args.dof_scale))+1)),dof_resolution_scale=args.dof_scale,renderer=r.gl.renderer,before=before,after=gpu(),samples=samples,
        commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=P.ROOT,text=True,timeout=15).strip(),
        sources={str(k):hashlib.sha256(v.encode()).hexdigest() for k,v in r.sources.items()},
        totals={str(k):dict(p50=float(np.median(v)),p95=float(np.percentile(v,95))) for k,v in samples.items()},
@@ -202,9 +215,20 @@ def run(args):
        status=status,
        passes={str(k):{name:dict(p50=float(np.median(v)),p95=float(np.percentile(v,95))) for name,v in rows.items()}
                for k,rows in passes.items()})
-    (P.OUT/'cost.json').write_text(json.dumps(cost,indent=2),encoding='utf-8')
+    (P.OUT/('cost_cap'+str(int(cap))+('_focused' if focused else '')+'.json')).write_text(json.dumps(cost,indent=2),encoding='utf-8')
     print(json.dumps({k:v for k,v in cost.items() if k not in ('samples','passes')},indent=2),flush=True)
-    return int(cost['status']=='FAIL')
+    return cost
+
+
+def run(args):
+    shipped,maximum=dof_caps()
+    r=P.Runner();model=S.Model(P.OUT/('cost_model_'+str(os.getpid())))
+    rows=[]
+    for cap,focused in ((shipped,False),(maximum,False),(shipped,True)):
+        print('START cap='+str(cap)+' focused='+str(focused),flush=True)
+        rows.append(measure(args,cap,focused,r,model))
+    (P.OUT/'cost.json').write_text(json.dumps(dict(shipped_cap=shipped,largest_supported_cap=maximum,measurements=rows),indent=2),encoding='utf-8')
+    return int(any(row['status']=='FAIL' for row in rows))
 
 
 def main():

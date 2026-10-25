@@ -318,7 +318,7 @@ extern LLGLSLShader         gDeferredPostProgram;
 extern LLGLSLShader         gDeferredPostProgramNoNear;
 
 // WP-B: main-presentation physical camera variants, never used by legacy feeds.
-extern LLGLSLShader gSensorCameraProgram[7]; // exposure, optics, four camera grades
+extern LLGLSLShader gSensorCameraProgram[10]; // exposure, optics, four camera grades
 extern LLGLSLShader gSensorPassProgram;
 extern LLGLSLShader gSensorAAEncodeProgram;
 extern LLGLSLShader gSensorDoFProgram[2];

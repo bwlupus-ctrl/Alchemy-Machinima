@@ -50,6 +50,10 @@ struct LLViewerShaderMgr {
 '''+loader+r'''
 extern "C" __declspec(dllexport) int recipes(){
  gVolumetricLightProgram.ready=true;
+ gCGTonemapLegacyGammaProgram.mDefines["LEGACY_GAMMA"]="1";
+ gCGTonemapColorgradeProgram.mDefines["COLOR_GRADE"]="1";
+ gCGTonemapColorgradeLegacyGammaProgram.mDefines["COLOR_GRADE"]="1";
+ gCGTonemapColorgradeLegacyGammaProgram.mDefines["LEGACY_GAMMA"]="1";
  for(auto& s:gFXAAProgram)s.ready=true;
  for(auto& s:gSMAANeighborhoodBlendProgram)s.ready=true;
  for(auto& s:gSMAAEdgeDetectProgram){s.ready=true;s.mDefines["SMAA_PREDICATION"]="1";}
@@ -60,6 +64,11 @@ extern "C" __declspec(dllexport) int recipes(){
  for(unsigned i=0;i<2;++i)if(gSensorDoFCombineProgram[i].mDefines["FRONT_BLUR"]!=(i?"1":"0"))return 4;
  if(gSensorCameraProgram[6].mDefines["AL_SENSOR_GODRAYS"]!="1")return 5;
  if(gSensorGodrayProgram.mDefines["AL_SENSOR_HDR"]!="1")return 6;
+ for(unsigned i=0;i<4;++i){
+  auto& ray=gSensorCameraProgram[6+i];auto& camera=gSensorCameraProgram[2+i];
+  if(ray.mDefines["AL_SENSOR_GODRAYS"]!="1"||ray.mDefines["COLOR_GRADE"]!=camera.mDefines["COLOR_GRADE"]||
+     ray.mDefines["LEGACY_GAMMA"]!=camera.mDefines["LEGACY_GAMMA"])return 7;
+ }
  return 100;
 }
 '''
@@ -68,7 +77,8 @@ extern "C" __declspec(dllexport) int recipes(){
     results=[]
     for name,body in (('recipes',suffix),('predication_mutant',suffix.replace(
         'gSensorSMAAEdgeProgram[i].addPermutation("SMAA_PREDICATION", "0");',
-        'gSensorSMAAEdgeProgram[i].addPermutation("SMAA_PREDICATION", "1");'))):
+        'gSensorSMAAEdgeProgram[i].addPermutation("SMAA_PREDICATION", "1");')),
+        ('godray_grade_mutant',suffix.replace('*camera[i >= 6 ? i - 4 : i]','*camera[i >= 6 ? 0 : i]'))):
         path=out/(name+'.cpp');dll=out/(name+'.dll');cmd=out/(name+'.cmd')
         path.write_text(prefix+globals_+body,encoding='utf-8')
         cmd.write_text('@echo off\ncall "'+str(vc)+'" >nul 2>&1\ncl /nologo /std:c++17 /EHsc /O2 /LD "'+str(path)+'" /Fe:"'+str(dll)+'" /Fo"'+out.as_posix()+'/" /link /IMPLIB:"'+str(out/(name+'.lib'))+'"\n',encoding='utf-8')
@@ -76,8 +86,8 @@ extern "C" __declspec(dllexport) int recipes(){
         (out/(name+'.log')).write_text(result.stdout+result.stderr,encoding='utf-8')
         assert result.returncode==0,result.stdout+result.stderr
         results.append(C.CDLL(str(dll)).recipes())
-    assert results==[100,2],results
-    return dict(full_loader=True,default_predication=1,sensor_predication=0,mutation_rejected=True)
+    assert results==[100,2,7],results
+    return dict(full_loader=True,default_predication=1,sensor_predication=0,mutation_rejected=True,godray_grade_mutation='REJECTED')
 
 
 def lpm_controls(root,out):
