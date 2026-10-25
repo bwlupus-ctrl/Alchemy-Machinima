@@ -50,13 +50,30 @@ namespace ALWeatherBridge
         s.legacyIntensity = safe(s.legacyIntensity, 0.55f, 0.f, 1.f);
         s.coverExtent = safe(s.coverExtent, 128.f, 32.f, 256.f);
         s.coverResolution = s.coverResolution < 384 ? 256 : (s.coverResolution < 768 ? 512 : 1024);
+        if (s.advancedShelter)
+        {
+            const auto detail = [](U32 n, U32 cap)
+            {
+                U32 result = 256;
+                while (result < cap && n >= result * 2) result *= 2;
+                return result;
+            };
+            s.shelterNearResolution = detail(s.shelterNearResolution, 2048);
+            s.shelterFarResolution = detail(s.shelterFarResolution, 1024);
+            s.shelterNearExtent = safe(s.shelterNearExtent, 32.f, 16.f, 128.f);
+            s.shelterFarExtent = safe(s.shelterFarExtent, 128.f, 64.f, 512.f);
+            s.shelterHz = std::clamp(s.shelterHz, 5U, 60U);
+            s.shelterBias = safe(s.shelterBias, 0.12f, 0.f, 1.f);
+            s.shelterSoftness = safe(s.shelterSoftness, 0.35f, 0.01f, 2.f);
+            s.shelterFallSpeed = safe(s.shelterFallSpeed, 28.f, 1.f, 80.f);
+        }
         return s;
     }
     SLWeather::Config configuration(const Settings& settings, F32 simulator_x, F32 simulator_y)
     {
         const Settings s = sanitize(settings);
         SLWeather::Config config;
-        config.master = s.enabled && (s.mode == 1 || s.persistentWet);
+        config.master = s.enabled && (s.mode == 1 || s.persistentWet || s.advancedShelter);
         config.wetSurfaces = s.persistentWet;
         config.wetSeconds = s.wetSeconds;
         config.drySeconds = s.drySeconds;
@@ -68,6 +85,14 @@ namespace ALWeatherBridge
             t.setFall(SLWeather::PRECIP_RAIN, SLWeather::fallFromAmount(SLWeather::PRECIP_RAIN, s.legacyIntensity));
             t.transitionSecs = 0.f;
             t.fallVariation = 0.f;
+            if (s.advancedShelter)
+            {
+                const F32 mean_x = safe(simulator_x, 0.f, -40.f, 40.f);
+                const F32 mean_y = safe(simulator_y, 0.f, -40.f, 40.f);
+                t.windSpeed = std::min(std::hypot(mean_x, mean_y), 40.f);
+                t.windDirDeg = std::atan2(-mean_x, -mean_y) * (180.f / 3.14159265358979323846f);
+                t.windVariation = 0.f;
+            }
             return config;
         }
         t.transitionSecs = s.transition;

@@ -3082,6 +3082,7 @@ void LLPipeline::releaseGLBuffers()
     mProjVolRimValid = false;
     mWeatherRainHalf.release();
     mWeatherSurfaces.release();
+    mWeatherShelter.release();
     mWeatherParticles.release();
     mWeatherRainOcclusion.release();
     mWeatherRainOcclusionValid = false;
@@ -20124,15 +20125,17 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
 {
     static LLCachedControl<U32> control_mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
     const bool library = control_mode() == 1;
-    // Prism never calls renderFinalize. Its explicit hook is inert in mode 0.
-    if (auxiliary && (!library || !ALWeatherBridge::Controller::instance().active()))
+    const auto& library_frame = ALWeatherBridge::Controller::instance();
+    const bool advanced_auxiliary = library_frame.settings().enabled && library_frame.settings().advancedShelter;
+    // Legacy auxiliary precipitation is an explicit Advanced shelter consumer.
+    if (auxiliary && !ALWeatherShelter::auxiliaryAllowed(library, library_frame.active(), advanced_auxiliary))
     {
         if (!gCubeSnapshot) mWeatherParticles.suspend();
         if (auxiliary_exposure) auxiliary_exposure->reset();
         return;
     }
     if (auxiliary && !auxiliary_exposure) return;
-    const auto& library_frame = ALWeatherBridge::Controller::instance();
+    const bool legacy_auxiliary = auxiliary && !library;
     static bool sLightningSheetSnapshotValid = false;
     static U64 sLightningSheetStrikeId = 0;
     static F64 sLightningSheetStrikeTime = 0.0;
@@ -20310,16 +20313,17 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
         : 0.f;
     lightning_config.mSeed = lightning_seed_setting();
 
-    if (!library && gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
+    if (!library && !legacy_auxiliary && gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
     {
         gSavedSettings.setBOOL("AlchemyWeatherLightningTrigger", false);
         sWeatherController.trigger(now, lightning_config, anchor);
     }
     // Library timing/strikes are frozen before any view; no draw advances a scheduler.
     ALWeatherModel::Frame weather = library ? library_frame.lightning() :
-        sWeatherController.update(now, lightning_config, anchor);
+        (legacy_auxiliary ? sWeatherController.sample(now, lightning_config) :
+            sWeatherController.update(now, lightning_config, anchor));
     const bool lightning_sheet_active =
-        use_lightning_quality && weather.mActive &&
+        !legacy_auxiliary && use_lightning_quality && weather.mActive &&
         weather_sky &&
         lightning_sheet_enabled_setting() &&
         finite_clamp(
@@ -20427,7 +20431,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
         wetness_enabled() &&
         finite_clamp(wetness_strength_setting, 0.35f, 0.f, 1.f) > 0.f;
     const bool lightning_wet_glint_active =
-        use_lightning_quality && weather.mActive &&
+        !legacy_auxiliary && use_lightning_quality && weather.mActive &&
         lightning_wet_glint_enabled_setting() &&
         finite_clamp(
             lightning_wet_glint_strength_setting, 0.75f, 0.f, 2.f) > 0.f &&
@@ -20439,7 +20443,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
         lens_enabled() &&
         finite_clamp(lens_strength_setting, 0.25f, 0.f, 1.f) > 0.f;
     const bool surface_active =
-        splash_active || wetness_active || mist_active || lens_active;
+        !legacy_auxiliary && (splash_active || wetness_active || mist_active || lens_active);
 
     // A cover map is consumable only in the frame that produced it. This
     // prevents a camera teleport, origin shift, disabled producer, or failed
@@ -20451,11 +20455,21 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
         mWeatherRainOcclusion.getWidth() != 0 &&
         std::isfinite(mWeatherRainOcclusionDepthRange) &&
         mWeatherRainOcclusionDepthRange > 0.f;
-    const bool use_rain_occlusion =
+    const bool advanced_shelter = ALWeatherBridge::Controller::instance().settings().enabled &&
+        ALWeatherBridge::Controller::instance().settings().advancedShelter;
+    glm::dvec3 shelter_world_origin(0.);
+    bool advanced_rain = false;
+    if (advanced_shelter)
+    {
+        const LLVector3d shelter_origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+        shelter_world_origin = glm::dvec3(shelter_origin.mdV[0], shelter_origin.mdV[1], shelter_origin.mdV[2]);
+        advanced_rain = mWeatherShelter.current(shelter_world_origin, gFrameCount);
+    }
+    const bool use_rain_occlusion = advanced_rain || (
         rain_occlusion_current &&
         gDeferredWeatherRainOcclusionProgram.isComplete() &&
         gDeferredWeatherRainOcclusionProgram.getTextureChannel(
-            LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP) >= 0;
+            LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP) >= 0);
     const bool use_surface_occlusion =
         rain_occlusion_current &&
         gDeferredWeatherSurfaceOcclusionProgram.isComplete() &&
@@ -20482,8 +20496,12 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     {
         const F32 shelter_height =
             finite_clamp(shelter_height_setting, 48.f, 8.f, 256.f);
-        const LLVector3 camera_position =
-            LLViewerCamera::getInstance()->getOrigin();
+        const LLVector3 camera_position = [auxiliary]()
+        {
+            if (!auxiliary) return LLViewerCamera::getInstance()->getOrigin();
+            const glm::vec3 eye(glm::inverse(get_current_modelview())[3]);
+            return LLVector3(eye.x, eye.y, eye.z);
+        }();
         F32 target_exposed = 1.f;
         if (camera_position.isFinite())
         {
@@ -20538,11 +20556,11 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
         if (auxiliary) auxiliary_exposure->reset();
         else sWeatherShelterExposure.reset();
     }
-    const F32 rain_pass_intensity =
+    const F32 rain_pass_intensity = advanced_rain && ALWeatherBridge::Controller::instance().settings().shelterDebug ? 1.f :
         base_rain_intensity * (use_rain_occlusion ? 1.f : exposed);
     const F32 surface_pass_intensity =
         base_rain_intensity * (use_surface_occlusion ? 1.f : exposed);
-    LLGLSLShader& rain_program = use_rain_occlusion
+    LLGLSLShader& rain_program = advanced_rain ? mWeatherShelter.rainProgram() : use_rain_occlusion
         ? gDeferredWeatherRainOcclusionProgram
         : gDeferredWeatherRainProgram;
     LLGLSLShader& surface_program = use_surface_occlusion
@@ -20557,7 +20575,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
         surface_pass_intensity > 0.f &&
         surface_active && surface_program.isComplete();
     const bool draw_lightning =
-        weather.mActive && lightning_program.isComplete();
+        !legacy_auxiliary && weather.mActive && lightning_program.isComplete();
     if (!draw_rain && !draw_surface && !draw_lightning)
     {
         return;
@@ -20660,7 +20678,8 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
 
             bindDeferredShader(rain_program);
             S32 rain_occlusion_channel = -1;
-            if (use_rain_occlusion)
+            if (advanced_rain) mWeatherShelter.bind(&rain_program, shelter_world_origin, gFrameCount);
+            if (use_rain_occlusion && !advanced_rain)
             {
                 rain_occlusion_channel = rain_program.bindTexture(
                     LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP,
@@ -31525,6 +31544,26 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
         -extent, extent, -extent, extent, near_clip, far_clip);
     const glm::mat4 view_projection = projection * view;
 
+    U32 surface_submissions = 0;
+    if (!drawWeatherCover(camera, surface_target, view, projection, top_origin,
+                          near_clip, far_clip, surface_submissions))
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
+        return;
+    }
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    mWeatherSurfaces.publish(view_projection, depth_range, surface_submissions, true,
+        glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
+    if (!weather.surfacesActive()) mWeatherPrecipitationCoverCache.publish();
+}
+
+bool LLPipeline::drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_target,
+    const glm::mat4& view, const glm::mat4& projection, const LLVector3& top_origin,
+    F32 near_clip, F32 far_clip, U32& surface_submissions)
+{
+    if (!gDeferredShadowProgram.isComplete() || !gDeferredShadowAlphaMaskProgram.isComplete() ||
+        !gDeferredShadowFullbrightAlphaMaskProgram.isComplete() || !gDeferredTreeShadowProgram.isComplete() ||
+        !gDeferredShadowGLTFAlphaMaskProgram.isComplete() || !gDeferredShadowCubeProgram.isComplete()) return false;
     const glm::mat4 saved_modelview = get_current_modelview();
     const glm::mat4 saved_projection = get_current_projection();
     const glm::mat4 saved_last_modelview = get_last_modelview();
@@ -31582,10 +31621,13 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
         LLViewerCamera::CAMERA_WEATHER_RAIN_OCCLUSION;
 
     surface_target.bindTarget();
+    const GLenum no_colour = GL_NONE;
+    glDrawBuffers(1, &no_colour); // This owner writes depth only.
+    glReadBuffer(GL_NONE);
     gGLViewport[0] = 0;
     gGLViewport[1] = 0;
-    gGLViewport[2] = static_cast<S32>(map_resolution);
-    gGLViewport[3] = static_cast<S32>(map_resolution);
+    gGLViewport[2] = static_cast<S32>(surface_target.getWidth());
+    gGLViewport[3] = static_cast<S32>(surface_target.getWidth());
     glClearDepth(1.0);
     glClear(GL_DEPTH_BUFFER_BIT);
     const bool cleared = glGetError() == GL_NO_ERROR;
@@ -31671,12 +31713,7 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
         LLGLSLShader::unbind();
     }
 
-    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
-    if (!complete)
-    {
-        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
-        return;
-    }
+    if (!complete) return false;
     // Terrain has no render-map caster batches. Include its submitted faces in
     // EMPTY/COVERED diagnostics, without making either count a validity predicate.
     const bool terrain_submitted = std::any_of(mTerrainPools.begin(), mTerrainPools.end(),
@@ -31685,10 +31722,87 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
             return entry.second && entry.second->isFacePool() &&
                 !static_cast<LLFacePool*>(entry.second)->mDrawFace.empty();
         });
-    const U32 surface_submissions = caster_batches > 0 || terrain_submitted ? 1U : 0U;
-    mWeatherSurfaces.publish(view_projection, depth_range, surface_submissions, true,
-        glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
-    if (!weather.surfacesActive()) mWeatherPrecipitationCoverCache.publish();
+    surface_submissions = caster_batches > 0 || terrain_submitted ? 1U : 0U;
+    return true;
+}
+
+void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
+{
+    const auto& weather = ALWeatherBridge::Controller::instance();
+    const auto& s = weather.settings();
+    if (!s.enabled || !s.advancedShelter || gCubeSnapshot) return;
+    if (mWeatherShelter.preparedFrame == gFrameCount) return;
+    mWeatherShelter.preparedFrame = gFrameCount;
+    if (!sRenderDeferred || !mWeatherShelter.prepared()) return;
+    const bool needs_vertical = weather.surfacesActive() ||
+        (weather.precipitationActive() && ALWeatherParticles::supported());
+    if (needs_vertical && !mWeatherSurfaces.readyForFrame(gFrameCount))
+    {
+        mWeatherShelter.fail("Advanced shelter unknown: vertical cover failed; existing fallback");
+        return;
+    }
+    const LLVector3d eye = gAgent.getPosGlobalFromAgent(camera.getOrigin());
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    if (!eye.isFinite() || !origin.isFinite())
+    {
+        mWeatherShelter.fail("Advanced shelter unknown: non-finite camera/origin");
+        return;
+    }
+    const auto shear = ALWeatherShelter::fallShear(weather.state().windMean[0], weather.state().windMean[1],
+        weather.active() && s.snowEnabled && s.precipType == 1 ? s.snowSpeed : s.shelterFallSpeed, s.shelterTilt);
+    const std::array<F64, 3> world_eye{eye.mdV[0], eye.mdV[1], eye.mdV[2]};
+    const std::array<F64, 3> world_origin{origin.mdV[0], origin.mdV[1], origin.mdV[2]};
+    const ALWeatherShelter::Plan plans[] = {
+        ALWeatherShelter::plan(world_eye, s.shelterNearExtent, s.shelterNearResolution, shear),
+        ALWeatherShelter::plan(world_eye, s.shelterFarExtent, s.shelterFarResolution, shear)};
+    for (const auto& plan : plans)
+    {
+        if (!std::all_of(plan.center.begin(), plan.center.end(), [](F64 value) { return std::isfinite(value); }))
+        {
+            mWeatherShelter.fail("Advanced shelter unknown: invalid world-cell transform");
+            return;
+        }
+    }
+    if (!mWeatherShelter.updates.due(plans[0], plans[1], mWeatherGeometryRevision,
+        weather.placeSerial(), world_origin, LLPresentationTime::currentFrame().presentation_time, s.shelterHz))
+    {
+        mWeatherShelter.reuse(gFrameCount);
+        return;
+    }
+    // Two bounded traversals per update, coalescing all object revisions since
+    // the previous update. Resource/program preparation is exclusively in idle.
+    ALWeatherResources::State saved_state;
+    for (U32 layer = 0; layer < 2; ++layer)
+    {
+        const auto& p = plans[layer];
+        auto& map = mWeatherShelter.layers[layer];
+        map.mPreparedFrame = gFrameCount;
+        const F64 top = p.center[2] + p.vertical;
+        LLVector3 top_origin(F32(p.center[0] - shear[0]*top - origin.mdV[0]),
+                             F32(p.center[1] - shear[1]*top - origin.mdV[1]), F32(top - origin.mdV[2]));
+        glm::mat4 view(1.f);
+        view[2][0] = shear[0]; view[2][1] = shear[1];
+        view[3][0] = F32(origin.mdV[0] + shear[0]*origin.mdV[2] - p.center[0]);
+        view[3][1] = F32(origin.mdV[1] + shear[1]*origin.mdV[2] - p.center[1]);
+        view[3][2] = -top_origin.mV[VZ];
+        const F32 clip_start = 0.1f, clip_end = clip_start + 2.f*p.vertical;
+        const glm::mat4 projection = glm::ortho(-p.extent, p.extent, -p.extent, p.extent, clip_start, clip_end);
+        U32 batches = 0;
+        if (!drawWeatherCover(camera, map.writeTarget(), view, projection, top_origin, clip_start, clip_end, batches))
+        {
+            map.fail(ALWeatherShelter::Coverage::FAILED);
+            mWeatherShelter.fail("Advanced shelter traversal failed; coverage unknown, existing fallback");
+            return;
+        }
+        map.publish(projection * view, 2.f*p.vertical, batches, true,
+            glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
+    }
+    // Raster -> sampler ordering is guaranteed by GL command order after both
+    // write FBOs are unbound. No shader/image writer or listener readback exists.
+#if !LL_DARWIN
+    glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+#endif
+    mWeatherShelter.publish(gFrameCount);
 }
 
 void LLPipeline::bindWeatherMaterial(LLGLSLShader* shader)

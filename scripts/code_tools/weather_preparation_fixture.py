@@ -90,7 +90,8 @@ struct LLEnvironment {static LLEnvironment& instance(){static LLEnvironment e;re
 struct LLViewerShaderMgr {static LLViewerShaderMgr* instance(){static LLViewerShaderMgr s;return &s;}
  bool weatherMaterialsSupported()const{return true;}};
 struct LLPipeline {static constexpr bool sRenderDeferred=true;
- struct Surfaces {const std::string& status()const{static std::string s="Surface cover ready";return s;}} mWeatherSurfaces;
+ struct Surfaces {void* advanced=nullptr;void prepare(U32 n){PREPARE_BASIC}const std::string& status()const{static std::string s="Surface cover ready";return s;}} mWeatherSurfaces;
+ struct Shelter {void prepare(){PREPARE_SHELTER}void suspend(){SUSPEND_SHELTER} const std::string& status()const{static std::string s="Advanced shelter ready";return s;}} mWeatherShelter;
  struct Particles {const char* status()const{return "Falling snow off";} void prepare(){PREPARE_PARTICLES}} mWeatherParticles;} gPipeline;
 U64 gFrameCount=0;
 struct LLPresentationTime {struct Frame {double presentation_time=0;};
@@ -110,10 +111,12 @@ struct ALPanelWeatherSettings {static void updateLibraryWeather();static void in
     consumers = reader + initialization + update
     prefix = prefix.replace('PRODUCTION_GLOBALS', '\n'.join(declaration(panel, n) for n in ('sLibraryUI','sSurfaceStatus','sParticleStatus') if n in consumers))
     prefix = prefix.replace('ALWeatherUIModel sLibraryUI;', 'CountedUI sLibraryUI;')
+    prefix = prefix.replace('PREPARE_BASIC','fixture_prepare_basic(n);' if particles else '')
+    prefix = prefix.replace('PREPARE_SHELTER','fixture_prepare_shelter();' if particles else '').replace('SUSPEND_SHELTER','fixture_suspend_shelter();' if particles else '')
     prefix = prefix.replace('PREPARE_PARTICLES', 'fixture_prepare_particles();' if particles else '')
     prefix = prefix.replace('PARTICLE_SUPPORTED', 'return fixture_particle_supported()!=0;' if particles else 'return true;')
     if particles:
-        prefix = 'extern "C" void fixture_prepare_particles();\nextern "C" int fixture_particle_supported();\n' + prefix
+        prefix = 'extern "C" void fixture_prepare_basic(unsigned);\nextern "C" void fixture_prepare_shelter();\nextern "C" void fixture_suspend_shelter();\nextern "C" void fixture_prepare_particles();\nextern "C" int fixture_particle_supported();\n' + prefix
     suffix = r'''
 void idle(){
 IDLE_BLOCK

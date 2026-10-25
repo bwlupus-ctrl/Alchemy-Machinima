@@ -14,7 +14,7 @@
 class ALWeatherUIModel
 {
 public:
-    static constexpr U32 PRESET_VERSION = 4; // WP3 snowfall/visibility; old looks reset new gates off.
+    static constexpr U32 PRESET_VERSION = 5; // Advanced shelter; old looks reset new gates off.
     static F32 presetRate(U32 preset);
     static const char* presetName(U32 preset);
     static void applyPreset(ALWeatherBridge::Settings& settings, U32 preset);

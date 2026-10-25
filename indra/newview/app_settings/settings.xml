@@ -31418,5 +31418,115 @@
         <key>Type</key><string>F32</string>
         <key>Value</key><real>1</real>
     </map>
+    <key>AlchemyWeatherAdvancedShelterEnabled</key>
+    <map>
+        <key>Comment</key>
+        <string>Advanced shelter: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>Boolean</string>
+        <key>Value</key>
+        <integer>0</integer>
+    </map>
+    <key>AlchemyWeatherShelterNearResolution</key>
+    <map>
+        <key>Comment</key>
+        <string>Near detail: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>U32</string>
+        <key>Value</key>
+        <integer>1024</integer>
+    </map>
+    <key>AlchemyWeatherShelterFarResolution</key>
+    <map>
+        <key>Comment</key>
+        <string>Far detail: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>U32</string>
+        <key>Value</key>
+        <integer>512</integer>
+    </map>
+    <key>AlchemyWeatherShelterNearExtent</key>
+    <map>
+        <key>Comment</key>
+        <string>Near coverage: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>32</real>
+    </map>
+    <key>AlchemyWeatherShelterFarExtent</key>
+    <map>
+        <key>Comment</key>
+        <string>Far coverage: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>128</real>
+    </map>
+    <key>AlchemyWeatherShelterTiltEnabled</key>
+    <map>
+        <key>Comment</key>
+        <string>Follow weather wind: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>Boolean</string>
+        <key>Value</key>
+        <integer>1</integer>
+    </map>
+    <key>AlchemyWeatherShelterUpdateHz</key>
+    <map>
+        <key>Comment</key>
+        <string>Update rate: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>U32</string>
+        <key>Value</key>
+        <integer>30</integer>
+    </map>
+    <key>AlchemyWeatherShelterBias</key>
+    <map>
+        <key>Comment</key>
+        <string>Bias: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>0.12</real>
+    </map>
+    <key>AlchemyWeatherShelterSoftness</key>
+    <map>
+        <key>Comment</key>
+        <string>Softness: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>0.35</real>
+    </map>
+    <key>AlchemyWeatherShelterDebug</key>
+    <map>
+        <key>Comment</key>
+        <string>Show shelter: advanced world shelter map control.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>Boolean</string>
+        <key>Value</key>
+        <integer>0</integer>
+    </map>
 </map>
 </llsd>

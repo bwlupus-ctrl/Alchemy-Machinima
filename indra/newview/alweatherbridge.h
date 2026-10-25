@@ -29,6 +29,11 @@ namespace ALWeatherBridge
         bool snowEnabled = false, visibility = false;
         F32 snowRate = 1.5f, flakeSize = 0.015f, snowSpeed = 1.f, snowRange = 64.f;
         F32 visibilityAmount = 1.f;
+        bool advancedShelter = false, shelterTilt = true, shelterDebug = false;
+        U32 shelterNearResolution = 1024, shelterFarResolution = 512, shelterHz = 30;
+        F32 shelterNearExtent = 32.f, shelterFarExtent = 128.f;
+        F32 shelterBias = 0.12f, shelterSoftness = 0.35f;
+        F32 shelterFallSpeed = 28.f; // Existing rain Fall speed, frozen for the map.
         F32 windDirection = 225.f, windSpeed = 3.f, windVariation = 0.3f;
         F32 gustiness = 0.5f, directionSwing = 0.f, storm = 0.f;
     };

@@ -11261,7 +11261,8 @@ void renderAuxiliaryView()
             // auxiliary depth/matrices and a world-cell list around THIS eye.
             // The enclosing auxiliary state transaction restores all main GL/target state.
             // Direct rain drawing avoids sharing the main half-resolution scratch target;
-            // main-view cover maps/history are never sampled or mutated by this hook.
+            // Legacy maps/history remain main-owned. Advanced shelter samples
+            // the frozen world maps in both library and explicit legacy mode.
             if (!LLPipeline::sPrismPreviewRender)
             {
                 gPipeline.renderWeather(&rt.screen, /*auxiliary=*/true, &capture->mWeatherExposure);

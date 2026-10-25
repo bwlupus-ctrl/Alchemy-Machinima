@@ -18,6 +18,7 @@ uniform vec2 weather_material_time_range;
 
 vec3 srgb_to_linear(vec3 c);
 vec3 linear_to_srgb(vec3 c);
+float weatherShelterSurfaceOpen(vec3 agent);
 
 bool weatherMaterialActive()
 {
@@ -26,6 +27,7 @@ bool weatherMaterialActive()
 }
 float weatherSurfaceOpen(vec3 agent)
 {
+    if (weather_material_enabled == 2) return max(weatherShelterSurfaceOpen(agent),0.0);
     vec3 q = (weather_surface_cover_matrix * vec4(agent, 1.0)).xyz * 0.5 + 0.5;
     // Compare on the receiver plane at the nearest depth texel's center.
     // A fixed world-space bias cannot cover half a texel on sloped receivers.

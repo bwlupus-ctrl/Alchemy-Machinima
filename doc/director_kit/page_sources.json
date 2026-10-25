@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 38,
-    "rows": 2063,
+    "rows": 2074,
     "owner_roots": 33,
     "unresolved_rows": 22,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2063
+    "independent_json_rows": 2074
   },
   "setting_conflicts": [
     {
@@ -2368,6 +2368,34 @@
       "writable_home": "exposure_tab"
     },
     {
+      "setting": "AlchemyWeatherAdvancedShelterEnabled",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 446,
+          "widget": "weather_shelter_advanced",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31421,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "AlchemyWeatherControlMode",
       "pages": [
         "weather_tab"
@@ -2375,7 +2403,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 20,
+          "line": 21,
           "widget": "weather_library_mode",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2403,7 +2431,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 378,
+          "line": 379,
           "widget": "weather_surface_drySeconds",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2431,7 +2459,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 136,
+          "line": 137,
           "widget": "weather_eep_coupling",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2498,7 +2526,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 224,
+          "line": 225,
           "widget": "weather_lens_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2537,7 +2565,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 227,
+          "line": 228,
           "widget": "weather_lens_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2576,7 +2604,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 335,
+          "line": 336,
           "widget": "weather_lightning_afterglow",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2615,7 +2643,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 287,
+          "line": 288,
           "widget": "weather_lightning_ambient",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2654,7 +2682,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 282,
+          "line": 283,
           "widget": "weather_bolt_duration",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2693,7 +2721,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 297,
+          "line": 298,
           "widget": "weather_lightning_height",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2732,7 +2760,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 292,
+          "line": 293,
           "widget": "weather_lightning_width",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2771,7 +2799,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 269,
+          "line": 270,
           "widget": "weather_lightning_brightness",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2810,7 +2838,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 312,
+          "line": 313,
           "widget": "weather_lightning_color",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2838,7 +2866,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 330,
+          "line": 331,
           "widget": "weather_lightning_corona_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2877,7 +2905,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 340,
+          "line": 341,
           "widget": "weather_lightning_distance_grading",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2916,7 +2944,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 353,
+          "line": 354,
           "widget": "weather_lightning_energy_ceiling",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2955,7 +2983,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 274,
+          "line": 275,
           "widget": "weather_flash_duration",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -2994,7 +3022,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 307,
+          "line": 308,
           "widget": "weather_lightning_max",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3033,7 +3061,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 302,
+          "line": 303,
           "widget": "weather_lightning_min",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3072,7 +3100,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 317,
+          "line": 318,
           "widget": "weather_lightning_quality_tier",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3111,7 +3139,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 264,
+          "line": 265,
           "widget": "weather_lightning_rate",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3150,7 +3178,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 322,
+          "line": 323,
           "widget": "weather_lightning_sheet_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3189,7 +3217,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 325,
+          "line": 326,
           "widget": "weather_lightning_sheet_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3228,7 +3256,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 77,
+          "line": 78,
           "widget": "weather_library_lightningTiming",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3256,7 +3284,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 345,
+          "line": 346,
           "widget": "weather_lightning_wet_glint_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3295,7 +3323,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 348,
+          "line": 349,
           "widget": "weather_lightning_wet_glint_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3334,7 +3362,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 28,
+          "line": 29,
           "widget": "weather_library_local",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3362,7 +3390,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 211,
+          "line": 212,
           "widget": "weather_mist_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3401,7 +3429,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 219,
+          "line": 220,
           "widget": "weather_mist_height",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3440,7 +3468,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 214,
+          "line": 215,
           "widget": "weather_mist_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3479,7 +3507,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 360,
+          "line": 361,
           "widget": "weather_surface_persistentWet",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3507,7 +3535,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 410,
+          "line": 411,
           "widget": "weather_snow_precipType",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3535,7 +3563,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 34,
+          "line": 35,
           "widget": "weather_library_bands",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3563,7 +3591,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 437,
+          "line": 438,
           "widget": "weather_snow_visibilityAmount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3591,7 +3619,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 434,
+          "line": 435,
           "widget": "weather_snow_visibility",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3619,7 +3647,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 369,
+          "line": 370,
           "widget": "weather_surface_puddleAmount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3647,7 +3675,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 363,
+          "line": 364,
           "widget": "weather_surface_puddles",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3675,7 +3703,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 171,
+          "line": 172,
           "widget": "weather_rain_color",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3703,7 +3731,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 116,
+          "line": 117,
           "widget": "weather_rain_density",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3742,7 +3770,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 121,
+          "line": 122,
           "widget": "weather_rain_speed",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3781,7 +3809,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 131,
+          "line": 132,
           "widget": "weather_rain_gust",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3820,7 +3848,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 111,
+          "line": 112,
           "widget": "weather_rain_intensity",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3859,7 +3887,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 156,
+          "line": 157,
           "widget": "weather_rain_layers",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3898,7 +3926,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 141,
+          "line": 142,
           "widget": "weather_rain_distance",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3937,7 +3965,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 166,
+          "line": 167,
           "widget": "weather_rain_near",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -3976,7 +4004,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 239,
+          "line": 240,
           "widget": "weather_rain_occlusion_bias",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4015,7 +4043,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 234,
+          "line": 235,
           "widget": "weather_rain_occlusion_extent",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4054,7 +4082,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 252,
+          "line": 253,
           "widget": "weather_rain_occlusion_resolution",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4093,7 +4121,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 244,
+          "line": 245,
           "widget": "weather_rain_occlusion_softness",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4132,7 +4160,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 31,
+          "line": 32,
           "widget": "weather_library_rainRate",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4160,7 +4188,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 151,
+          "line": 152,
           "widget": "weather_rain_divisor",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4199,7 +4227,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 146,
+          "line": 147,
           "widget": "weather_rain_samples",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4238,7 +4266,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 161,
+          "line": 162,
           "widget": "weather_rain_shutter",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4277,7 +4305,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 372,
+          "line": 373,
           "widget": "weather_surface_rippleStrength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4298,6 +4326,62 @@
       "writable_home": null
     },
     {
+      "setting": "AlchemyWeatherShelterBias",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 480,
+          "widget": "weather_shelter_bias",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31498,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "AlchemyWeatherShelterDebug",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 486,
+          "widget": "weather_shelter_debug",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31520,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "AlchemyWeatherShelterFade",
       "pages": [
         "weather_tab"
@@ -4305,7 +4389,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 249,
+          "line": 250,
           "widget": "weather_shelter_fade",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4337,6 +4421,62 @@
       "writable_home": null
     },
     {
+      "setting": "AlchemyWeatherShelterFarExtent",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 471,
+          "widget": "weather_shelter_far_coverage",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31465,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "AlchemyWeatherShelterFarResolution",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 459,
+          "widget": "weather_shelter_far_detail",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31443,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "AlchemyWeatherShelterHeight",
       "pages": [
         "weather_tab"
@@ -4344,7 +4484,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 257,
+          "line": 258,
           "widget": "weather_shelter_height",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4376,6 +4516,146 @@
       "writable_home": null
     },
     {
+      "setting": "AlchemyWeatherShelterNearExtent",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 468,
+          "widget": "weather_shelter_near_coverage",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31454,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "AlchemyWeatherShelterNearResolution",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 449,
+          "widget": "weather_shelter_near_detail",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31432,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "AlchemyWeatherShelterSoftness",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 483,
+          "widget": "weather_shelter_softness",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31509,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "AlchemyWeatherShelterTiltEnabled",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 474,
+          "widget": "weather_shelter_tilt",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31476,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "AlchemyWeatherShelterUpdateHz",
+      "pages": [
+        "weather_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+          "line": 477,
+          "widget": "weather_shelter_rate",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+            "tag": "panel",
+            "name": "weather_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 31487,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "AlchemyWeatherSnowEnabled",
       "pages": [
         "weather_tab"
@@ -4383,7 +4663,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 407,
+          "line": 408,
           "widget": "weather_snow_snowEnabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4411,7 +4691,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 425,
+          "line": 426,
           "widget": "weather_snow_snowSpeed",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4439,7 +4719,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 422,
+          "line": 423,
           "widget": "weather_snow_flakeSize",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4467,7 +4747,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 431,
+          "line": 432,
           "widget": "weather_snow_snowLimit",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4495,7 +4775,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 428,
+          "line": 429,
           "widget": "weather_snow_snowRange",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4523,7 +4803,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 419,
+          "line": 420,
           "widget": "weather_snow_snowRate",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4551,7 +4831,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 176,
+          "line": 177,
           "widget": "weather_splash_density",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4590,7 +4870,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 191,
+          "line": 192,
           "widget": "weather_splash_lifetime",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4629,7 +4909,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 186,
+          "line": 187,
           "widget": "weather_splash_range",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4668,7 +4948,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 181,
+          "line": 182,
           "widget": "weather_splash_size",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4707,7 +4987,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 196,
+          "line": 197,
           "widget": "weather_splash_up",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4746,7 +5026,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 381,
+          "line": 382,
           "widget": "weather_surface_startWetness",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4774,7 +5054,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 72,
+          "line": 73,
           "widget": "weather_library_storm",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4802,7 +5082,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 393,
+          "line": 394,
           "widget": "weather_surface_coverExtent",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4830,7 +5110,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 384,
+          "line": 385,
           "widget": "weather_surface_coverResolution",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4858,7 +5138,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 66,
+          "line": 67,
           "widget": "weather_library_transition",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4886,7 +5166,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 366,
+          "line": 367,
           "widget": "weather_surface_wetAmount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4914,7 +5194,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 375,
+          "line": 376,
           "widget": "weather_surface_wetSeconds",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4942,7 +5222,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 203,
+          "line": 204,
           "widget": "weather_wetness_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -4981,7 +5261,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 206,
+          "line": 207,
           "widget": "weather_wetness_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -5020,7 +5300,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 63,
+          "line": 64,
           "widget": "weather_library_directionSwing",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -5048,7 +5328,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 47,
+          "line": 48,
           "widget": "weather_library_windDirection",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -5076,7 +5356,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 58,
+          "line": 59,
           "widget": "weather_library_gustiness",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -5104,7 +5384,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 126,
+          "line": 127,
           "widget": "weather_wind_scale",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -5143,7 +5423,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 39,
+          "line": 40,
           "widget": "weather_library_windSource",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -5171,7 +5451,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 50,
+          "line": 51,
           "widget": "weather_library_windSpeed",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -5199,7 +5479,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-          "line": 53,
+          "line": 54,
           "widget": "weather_library_windVariation",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -48592,7 +48872,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2554,
+              "line": 2559,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -48708,7 +48988,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2558,
+              "line": 2563,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -48719,7 +48999,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2568,
+              "line": 2573,
               "class": "LLFloaterDirector",
               "function": "onCommitGroupDelay",
               "wired_class": "LLFloaterDirector",
@@ -48824,7 +49104,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2555,
+              "line": 2560,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -48835,7 +49115,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2565,
+              "line": 2570,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -48940,7 +49220,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2556,
+              "line": 2561,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -48951,7 +49231,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2566,
+              "line": 2571,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -49060,7 +49340,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2557,
+              "line": 2562,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -49071,7 +49351,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2567,
+              "line": 2572,
               "class": "LLFloaterDirector",
               "function": "onGroupsListSelect",
               "wired_class": "LLFloaterDirector",
@@ -49176,7 +49456,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2559,
+              "line": 2564,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -49187,7 +49467,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2569,
+              "line": 2574,
               "class": "LLFloaterDirector",
               "function": "onClickGroupRename",
               "wired_class": "LLFloaterDirector",
@@ -49292,7 +49572,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2560,
+              "line": 2565,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -49303,7 +49583,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2570,
+              "line": 2575,
               "class": "LLFloaterDirector",
               "function": "onClickGroupRename",
               "wired_class": "LLFloaterDirector",
@@ -49408,7 +49688,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2561,
+              "line": 2566,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -49419,7 +49699,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2571,
+              "line": 2576,
               "class": "LLFloaterDirector",
               "function": "onClickGroupDissolve",
               "wired_class": "LLFloaterDirector",
@@ -71974,7 +72254,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2857,
+              "line": 2862,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -78998,7 +79278,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2684,
+              "line": 2689,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79082,7 +79362,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2685,
+              "line": 2690,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79198,7 +79478,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2687,
+              "line": 2692,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79209,7 +79489,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2737,
+              "line": 2742,
               "class": "LLFloaterDirector",
               "function": "onAnimCopyUUID",
               "wired_class": "LLFloaterDirector",
@@ -79299,7 +79579,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2688,
+              "line": 2693,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79310,7 +79590,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2738,
+              "line": 2743,
               "class": "LLFloaterDirector",
               "function": "onAnimSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -79400,7 +79680,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2689,
+              "line": 2694,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79411,7 +79691,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2739,
+              "line": 2744,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -79501,7 +79781,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2690,
+              "line": 2695,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79512,7 +79792,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2740,
+              "line": 2745,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -79591,7 +79871,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2686,
+              "line": 2691,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79726,7 +80006,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2691,
+              "line": 2696,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79827,7 +80107,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2692,
+              "line": 2697,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79838,7 +80118,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2741,
+              "line": 2746,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -79928,7 +80208,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2693,
+              "line": 2698,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -79939,7 +80219,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2742,
+              "line": 2747,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -80029,7 +80309,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2694,
+              "line": 2699,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -80040,7 +80320,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2743,
+              "line": 2748,
               "class": "LLFloaterDirector",
               "function": "onPasteSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -80221,7 +80501,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2695,
+              "line": 2700,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -80232,7 +80512,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2745,
+              "line": 2750,
               "class": "LLFloaterDirector",
               "function": "onLocomotionRoleChanged",
               "wired_class": "LLFloaterDirector",
@@ -80311,7 +80591,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2696,
+              "line": 2701,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -80401,7 +80681,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2697,
+              "line": 2702,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -80491,7 +80771,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2698,
+              "line": 2703,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -80581,7 +80861,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2699,
+              "line": 2704,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -80671,7 +80951,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2700,
+              "line": 2705,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -80682,7 +80962,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2744,
+              "line": 2749,
               "class": "LLFloaterDirector",
               "function": "onClickClearLoco",
               "wired_class": "LLFloaterDirector",
@@ -80761,7 +81041,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2756,
+              "line": 2761,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -80909,7 +81189,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2701,
+              "line": 2706,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -86801,7 +87081,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2844,
+              "line": 2849,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -93657,7 +93937,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2861,
+              "line": 2866,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -120022,7 +120302,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2895,
+              "line": 2900,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -120112,7 +120392,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2899,
+              "line": 2904,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -120454,7 +120734,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2831,
+              "line": 2836,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -120544,7 +120824,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2835,
+              "line": 2840,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -120634,7 +120914,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2832,
+              "line": 2837,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -120724,7 +121004,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2836,
+              "line": 2841,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -120814,7 +121094,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2833,
+              "line": 2838,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -120904,7 +121184,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2837,
+              "line": 2842,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -120994,7 +121274,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2834,
+              "line": 2839,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -121084,7 +121364,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2838,
+              "line": 2843,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125253,7 +125533,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2878,
+              "line": 2883,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125655,7 +125935,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2883,
+              "line": 2888,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125948,7 +126228,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2888,
+              "line": 2893,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -126563,7 +126843,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2931,
+              "line": 2936,
               "class": "LLFloaterDirector",
               "function": "bindOperatorPage",
               "wired_class": "LLFloaterDirector",
@@ -128330,7 +128610,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3876,
+              "line": 3881,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -132965,7 +133245,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2958,
+              "line": 2963,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -133977,7 +134257,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2951,
+              "line": 2956,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -134150,7 +134430,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3014,
+              "line": 3019,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -134523,7 +134803,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3022,
+              "line": 3027,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -134627,7 +134907,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3023,
+              "line": 3028,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -134731,7 +135011,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3024,
+              "line": 3029,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -134835,7 +135115,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3025,
+              "line": 3030,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -135133,7 +135413,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3864,
+              "line": 3869,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -135224,7 +135504,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3869,
+              "line": 3874,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -135315,7 +135595,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3866,
+              "line": 3871,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -135406,7 +135686,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3870,
+              "line": 3875,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -135497,7 +135777,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3867,
+              "line": 3872,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -135588,7 +135868,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3865,
+              "line": 3870,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -135679,7 +135959,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3868,
+              "line": 3873,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -138295,7 +138575,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2869,
+              "line": 2874,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -138383,7 +138663,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2873,
+              "line": 2878,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -162712,7 +162992,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 27600,
+              "line": 27619,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -162779,7 +163059,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 23383,
+              "line": 23402,
               "class": "LLPipeline",
               "function": "clearWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -162846,7 +163126,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 23395,
+              "line": 23414,
               "class": "LLPipeline",
               "function": "clearAwayWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -163013,7 +163293,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3325,
+              "line": 3330,
               "class": "LLFloaterDirector",
               "function": "refreshLauncherCards",
               "wired_class": "LLFloaterDirector",
@@ -167106,7 +167386,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2865,
+              "line": 2870,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -175707,7 +175987,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2899,
+              "line": 2904,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -177967,7 +178247,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3096,
+              "line": 3101,
               "class": "LLFloaterDirector",
               "function": "onOpen",
               "wired_class": "LLFloaterDirector",
@@ -205577,7 +205857,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2610,
+              "line": 2615,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -205588,7 +205868,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2655,
+              "line": 2660,
               "class": "LLFloaterDirector",
               "function": "onActorStyleTargetChanged",
               "wired_class": "LLFloaterDirector",
@@ -205678,7 +205958,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2627,
+              "line": 2632,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -205779,7 +206059,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2626,
+              "line": 2631,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -205790,7 +206070,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2677,
+              "line": 2682,
               "class": "LLFloaterDirector",
               "function": "onActorStyleReset",
               "wired_class": "LLFloaterDirector",
@@ -206013,7 +206293,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2613,
+              "line": 2618,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206106,7 +206386,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2612,
+              "line": 2617,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206196,7 +206476,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2616,
+              "line": 2621,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206286,7 +206566,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2617,
+              "line": 2622,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206440,7 +206720,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2614,
+              "line": 2619,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206530,7 +206810,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2615,
+              "line": 2620,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206620,7 +206900,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2624,
+              "line": 2629,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206710,7 +206990,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2620,
+              "line": 2625,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206800,7 +207080,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2619,
+              "line": 2624,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206890,7 +207170,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2621,
+              "line": 2626,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -206980,7 +207260,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2625,
+              "line": 2630,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -207080,7 +207360,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2622,
+              "line": 2627,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -207170,7 +207450,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2623,
+              "line": 2628,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -207260,7 +207540,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2618,
+              "line": 2623,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -207313,7 +207593,7 @@
       "label": "Weather",
       "group": "world_group",
       "group_label": "World",
-      "row_count": 94,
+      "row_count": 105,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_weather_settings.xml",
@@ -207327,7 +207607,7 @@
       "owner_classes": [
         {
           "class": "LLFloaterDirector",
-          "reference_count": 33
+          "reference_count": 34
         },
         {
           "class": "ALPanelWeatherSettings",
@@ -207336,9 +207616,9 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 83,
-        "setting_coverage": 0.882979,
-        "cpp_referenced_rows": 31,
+        "setting_bound_rows": 93,
+        "setting_coverage": 0.885714,
+        "cpp_referenced_rows": 32,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
@@ -207376,7 +207656,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 247,
+              "line": 257,
               "class": "ALPanelWeatherSettings",
               "function": "updateDeferredAvailability",
               "wired_class": "ALPanelWeatherSettings",
@@ -207387,7 +207667,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2531,
+              "line": 2536,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -207407,7 +207687,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 12,
+              "line": 13,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -207455,7 +207735,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 181,
+              "line": 191,
               "class": "ALPanelWeatherSettings",
               "function": "onClickResetAll",
               "wired_class": "ALPanelWeatherSettings",
@@ -207486,7 +207766,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 15,
+              "line": 16,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -207540,7 +207820,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 20,
+              "line": 21,
               "tag": "combo_box",
               "control_name": "AlchemyWeatherControlMode",
               "callbacks": [],
@@ -207557,7 +207837,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 20,
+              "line": 21,
               "widget": "weather_library_mode",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -207604,7 +207884,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 28,
+              "line": 29,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherLocalEnabled",
               "callbacks": [],
@@ -207621,7 +207901,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 28,
+              "line": 29,
               "widget": "weather_library_local",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -207668,7 +207948,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 31,
+              "line": 32,
               "tag": "spinner",
               "control_name": "AlchemyWeatherRainRate",
               "callbacks": [],
@@ -207685,7 +207965,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 31,
+              "line": 32,
               "widget": "weather_library_rainRate",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -207732,7 +208012,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 34,
+              "line": 35,
               "tag": "slider",
               "control_name": "AlchemyWeatherPrecipVariation",
               "callbacks": [],
@@ -207749,7 +208029,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 34,
+              "line": 35,
               "widget": "weather_library_bands",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -207799,7 +208079,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 39,
+              "line": 40,
               "tag": "combo_box",
               "control_name": "AlchemyWeatherWindSource",
               "callbacks": [],
@@ -207816,7 +208096,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 39,
+              "line": 40,
               "widget": "weather_library_windSource",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -207863,7 +208143,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 47,
+              "line": 48,
               "tag": "spinner",
               "control_name": "AlchemyWeatherWindDirection",
               "callbacks": [],
@@ -207880,7 +208160,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 47,
+              "line": 48,
               "widget": "weather_library_windDirection",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -207927,7 +208207,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 50,
+              "line": 51,
               "tag": "spinner",
               "control_name": "AlchemyWeatherWindSpeed",
               "callbacks": [],
@@ -207944,7 +208224,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 50,
+              "line": 51,
               "widget": "weather_library_windSpeed",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -207991,7 +208271,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 53,
+              "line": 54,
               "tag": "slider",
               "control_name": "AlchemyWeatherWindVariation",
               "callbacks": [],
@@ -208008,7 +208288,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 53,
+              "line": 54,
               "widget": "weather_library_windVariation",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -208055,7 +208335,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 58,
+              "line": 59,
               "tag": "slider",
               "control_name": "AlchemyWeatherWindGustiness",
               "callbacks": [],
@@ -208072,7 +208352,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 58,
+              "line": 59,
               "widget": "weather_library_gustiness",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -208119,7 +208399,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 63,
+              "line": 64,
               "tag": "spinner",
               "control_name": "AlchemyWeatherWindDirVariation",
               "callbacks": [],
@@ -208136,7 +208416,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 63,
+              "line": 64,
               "widget": "weather_library_directionSwing",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -208183,7 +208463,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 66,
+              "line": 67,
               "tag": "spinner",
               "control_name": "AlchemyWeatherTransitionSeconds",
               "callbacks": [],
@@ -208200,7 +208480,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 66,
+              "line": 67,
               "widget": "weather_library_transition",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -208261,7 +208541,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 69,
+              "line": 70,
               "tag": "line_editor",
               "control_name": null,
               "callbacks": [],
@@ -208312,7 +208592,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 72,
+              "line": 73,
               "tag": "slider",
               "control_name": "AlchemyWeatherStorm",
               "callbacks": [],
@@ -208329,7 +208609,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 72,
+              "line": 73,
               "widget": "weather_library_storm",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -208379,7 +208659,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 77,
+              "line": 78,
               "tag": "combo_box",
               "control_name": "AlchemyWeatherLightningTiming",
               "callbacks": [],
@@ -208396,7 +208676,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 77,
+              "line": 78,
               "widget": "weather_library_lightningTiming",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -208447,7 +208727,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 671,
+              "line": 708,
               "class": "ALPanelWeatherSettings",
               "function": "applyLibraryPreset",
               "wired_class": "LLFloaterDirector",
@@ -208467,7 +208747,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 85,
+              "line": 86,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -208512,7 +208792,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 671,
+              "line": 708,
               "class": "ALPanelWeatherSettings",
               "function": "applyLibraryPreset",
               "wired_class": "LLFloaterDirector",
@@ -208532,7 +208812,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 100,
+              "line": 101,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -208577,7 +208857,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 701,
+              "line": 738,
               "class": "ALPanelWeatherSettings",
               "function": "stopPrecipitation",
               "wired_class": "LLFloaterDirector",
@@ -208597,7 +208877,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 103,
+              "line": 104,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -208631,7 +208911,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2527,
+              "line": 2532,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -208651,7 +208931,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 106,
+              "line": 107,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -208716,7 +208996,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 111,
+              "line": 112,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainIntensity",
               "callbacks": [],
@@ -208772,7 +209052,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 111,
+              "line": 112,
               "widget": "weather_rain_intensity",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -208833,7 +209113,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 116,
+              "line": 117,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainDensity",
               "callbacks": [],
@@ -208850,7 +209130,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 116,
+              "line": 117,
               "widget": "weather_rain_density",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -208911,7 +209191,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 121,
+              "line": 122,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainFallSpeed",
               "callbacks": [],
@@ -208928,7 +209208,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 121,
+              "line": 122,
               "widget": "weather_rain_speed",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -208989,7 +209269,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 126,
+              "line": 127,
               "tag": "slider",
               "control_name": "AlchemyWeatherWindScale",
               "callbacks": [],
@@ -209006,7 +209286,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 126,
+              "line": 127,
               "widget": "weather_wind_scale",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209067,7 +209347,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 131,
+              "line": 132,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainGustStrength",
               "callbacks": [],
@@ -209084,7 +209364,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 131,
+              "line": 132,
               "widget": "weather_rain_gust",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209145,7 +209425,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 136,
+              "line": 137,
               "tag": "slider",
               "control_name": "AlchemyWeatherEEPCoupling",
               "callbacks": [],
@@ -209162,7 +209442,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 136,
+              "line": 137,
               "widget": "weather_eep_coupling",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209223,7 +209503,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 141,
+              "line": 142,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainMaxDistance",
               "callbacks": [],
@@ -209240,7 +209520,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 141,
+              "line": 142,
               "widget": "weather_rain_distance",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209301,7 +209581,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 146,
+              "line": 147,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainSamples",
               "callbacks": [],
@@ -209318,7 +209598,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 146,
+              "line": 147,
               "widget": "weather_rain_samples",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209379,7 +209659,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 151,
+              "line": 152,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainResolutionDivisor",
               "callbacks": [],
@@ -209396,7 +209676,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 151,
+              "line": 152,
               "widget": "weather_rain_divisor",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209457,7 +209737,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 156,
+              "line": 157,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainLayers",
               "callbacks": [],
@@ -209474,7 +209754,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 156,
+              "line": 157,
               "widget": "weather_rain_layers",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209535,7 +209815,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 161,
+              "line": 162,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainVirtualShutter",
               "callbacks": [],
@@ -209552,7 +209832,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 161,
+              "line": 162,
               "widget": "weather_rain_shutter",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209613,7 +209893,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 166,
+              "line": 167,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainNearEmphasis",
               "callbacks": [],
@@ -209630,7 +209910,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 166,
+              "line": 167,
               "widget": "weather_rain_near",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209677,7 +209957,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 171,
+              "line": 172,
               "tag": "color_swatch",
               "control_name": "AlchemyWeatherRainColor",
               "callbacks": [],
@@ -209692,7 +209972,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20580,
+              "line": 20598,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209707,7 +209987,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 171,
+              "line": 172,
               "widget": "weather_rain_color",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209768,7 +210048,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 176,
+              "line": 177,
               "tag": "slider",
               "control_name": "AlchemyWeatherSplashDensity",
               "callbacks": [],
@@ -209783,7 +210063,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20597,
+              "line": 20615,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209798,7 +210078,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 176,
+              "line": 177,
               "widget": "weather_splash_density",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209859,7 +210139,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 181,
+              "line": 182,
               "tag": "slider",
               "control_name": "AlchemyWeatherSplashRingSize",
               "callbacks": [],
@@ -209876,7 +210156,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 181,
+              "line": 182,
               "widget": "weather_splash_size",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -209937,7 +210217,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 186,
+              "line": 187,
               "tag": "slider",
               "control_name": "AlchemyWeatherSplashMaxDistance",
               "callbacks": [],
@@ -209954,7 +210234,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 186,
+              "line": 187,
               "widget": "weather_splash_range",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210015,7 +210295,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 191,
+              "line": 192,
               "tag": "slider",
               "control_name": "AlchemyWeatherSplashLifetime",
               "callbacks": [],
@@ -210030,7 +210310,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20599,
+              "line": 20617,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210045,7 +210325,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 191,
+              "line": 192,
               "widget": "weather_splash_lifetime",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210106,7 +210386,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 196,
+              "line": 197,
               "tag": "slider",
               "control_name": "AlchemyWeatherSplashUpThreshold",
               "callbacks": [],
@@ -210123,7 +210403,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 196,
+              "line": 197,
               "widget": "weather_splash_up",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210184,7 +210464,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 203,
+              "line": 204,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherWetnessEnabled",
               "callbacks": [],
@@ -210199,7 +210479,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20602,
+              "line": 20620,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210214,7 +210494,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 203,
+              "line": 204,
               "widget": "weather_wetness_enabled",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210275,7 +210555,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 206,
+              "line": 207,
               "tag": "slider",
               "control_name": "AlchemyWeatherWetnessStrength",
               "callbacks": [],
@@ -210290,7 +210570,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20603,
+              "line": 20621,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210305,7 +210585,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 206,
+              "line": 207,
               "widget": "weather_wetness_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210366,7 +210646,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 211,
+              "line": 212,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherMistEnabled",
               "callbacks": [],
@@ -210381,7 +210661,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20604,
+              "line": 20622,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210396,7 +210676,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 211,
+              "line": 212,
               "widget": "weather_mist_enabled",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210457,7 +210737,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 214,
+              "line": 215,
               "tag": "slider",
               "control_name": "AlchemyWeatherMistStrength",
               "callbacks": [],
@@ -210472,7 +210752,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20605,
+              "line": 20623,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210487,7 +210767,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 214,
+              "line": 215,
               "widget": "weather_mist_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210548,7 +210828,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 219,
+              "line": 220,
               "tag": "slider",
               "control_name": "AlchemyWeatherMistHeight",
               "callbacks": [],
@@ -210563,7 +210843,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20606,
+              "line": 20624,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210578,7 +210858,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 219,
+              "line": 220,
               "widget": "weather_mist_height",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210639,7 +210919,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 224,
+              "line": 225,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherLensDropsEnabled",
               "callbacks": [],
@@ -210654,7 +210934,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20607,
+              "line": 20625,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210669,7 +210949,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 224,
+              "line": 225,
               "widget": "weather_lens_enabled",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210730,7 +211010,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 227,
+              "line": 228,
               "tag": "slider",
               "control_name": "AlchemyWeatherLensDropsStrength",
               "callbacks": [],
@@ -210745,7 +211025,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20608,
+              "line": 20626,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210760,7 +211040,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 227,
+              "line": 228,
               "widget": "weather_lens_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210821,7 +211101,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 234,
+              "line": 235,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainOcclusionExtent",
               "callbacks": [],
@@ -210838,7 +211118,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 234,
+              "line": 235,
               "widget": "weather_rain_occlusion_extent",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210899,7 +211179,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 239,
+              "line": 240,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainOcclusionBias",
               "callbacks": [],
@@ -210914,7 +211194,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20615,
+              "line": 20633,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210929,7 +211209,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 239,
+              "line": 240,
               "widget": "weather_rain_occlusion_bias",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -210990,7 +211270,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 244,
+              "line": 245,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainOcclusionSoftness",
               "callbacks": [],
@@ -211005,7 +211285,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20617,
+              "line": 20635,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -211020,7 +211300,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 244,
+              "line": 245,
               "widget": "weather_rain_occlusion_softness",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211081,7 +211361,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 249,
+              "line": 250,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherShelterFade",
               "callbacks": [],
@@ -211098,7 +211378,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 249,
+              "line": 250,
               "widget": "weather_shelter_fade",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211159,7 +211439,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 252,
+              "line": 253,
               "tag": "slider",
               "control_name": "AlchemyWeatherRainOcclusionResolution",
               "callbacks": [],
@@ -211176,7 +211456,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 252,
+              "line": 253,
               "widget": "weather_rain_occlusion_resolution",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211237,7 +211517,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 257,
+              "line": 258,
               "tag": "slider",
               "control_name": "AlchemyWeatherShelterHeight",
               "callbacks": [],
@@ -211254,7 +211534,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 257,
+              "line": 258,
               "widget": "weather_shelter_height",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211315,7 +211595,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 264,
+              "line": 265,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningRate",
               "callbacks": [],
@@ -211332,7 +211612,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 264,
+              "line": 265,
               "widget": "weather_lightning_rate",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211393,7 +211673,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 269,
+              "line": 270,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningBrightness",
               "callbacks": [],
@@ -211408,7 +211688,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21066,
+              "line": 21085,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -211423,7 +211703,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 269,
+              "line": 270,
               "widget": "weather_lightning_brightness",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211484,7 +211764,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 274,
+              "line": 275,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningFlashDuration",
               "callbacks": [],
@@ -211501,7 +211781,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 274,
+              "line": 275,
               "widget": "weather_flash_duration",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211545,7 +211825,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 179,
+              "line": 189,
               "class": "ALPanelWeatherSettings",
               "function": "onTriggerStrike",
               "wired_class": "ALPanelWeatherSettings",
@@ -211556,7 +211836,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 251,
+              "line": 261,
               "class": "ALPanelWeatherSettings",
               "function": "updateDeferredAvailability",
               "wired_class": "ALPanelWeatherSettings",
@@ -211587,7 +211867,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 279,
+              "line": 280,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -211652,7 +211932,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 282,
+              "line": 283,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningBoltDuration",
               "callbacks": [],
@@ -211669,7 +211949,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 282,
+              "line": 283,
               "widget": "weather_bolt_duration",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211730,7 +212010,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 287,
+              "line": 288,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningAmbient",
               "callbacks": [],
@@ -211745,7 +212025,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21067,
+              "line": 21086,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -211760,7 +212040,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 287,
+              "line": 288,
               "widget": "weather_lightning_ambient",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211821,7 +212101,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 292,
+              "line": 293,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningBoltWidth",
               "callbacks": [],
@@ -211836,7 +212116,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21065,
+              "line": 21084,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -211851,7 +212131,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 292,
+              "line": 293,
               "widget": "weather_lightning_width",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211912,7 +212192,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 297,
+              "line": 298,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningBoltHeight",
               "callbacks": [],
@@ -211929,7 +212209,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 297,
+              "line": 298,
               "widget": "weather_lightning_height",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -211990,7 +212270,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 302,
+              "line": 303,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningMinDistance",
               "callbacks": [],
@@ -212007,7 +212287,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 302,
+              "line": 303,
               "widget": "weather_lightning_min",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212068,7 +212348,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 307,
+              "line": 308,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningMaxDistance",
               "callbacks": [],
@@ -212085,7 +212365,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 307,
+              "line": 308,
               "widget": "weather_lightning_max",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212132,7 +212412,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 312,
+              "line": 313,
               "tag": "color_swatch",
               "control_name": "AlchemyWeatherLightningColor",
               "callbacks": [],
@@ -212147,7 +212427,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21061,
+              "line": 21080,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -212162,7 +212442,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 312,
+              "line": 313,
               "widget": "weather_lightning_color",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212223,7 +212503,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 317,
+              "line": 318,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningQualityTier",
               "callbacks": [],
@@ -212240,7 +212520,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 317,
+              "line": 318,
               "widget": "weather_lightning_quality_tier",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212301,7 +212581,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 322,
+              "line": 323,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherLightningSheetEnabled",
               "callbacks": [],
@@ -212318,7 +212598,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 322,
+              "line": 323,
               "widget": "weather_lightning_sheet_enabled",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212379,7 +212659,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 325,
+              "line": 326,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningSheetStrength",
               "callbacks": [],
@@ -212396,7 +212676,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 325,
+              "line": 326,
               "widget": "weather_lightning_sheet_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212457,7 +212737,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 330,
+              "line": 331,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningCoronaStrength",
               "callbacks": [],
@@ -212474,7 +212754,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 330,
+              "line": 331,
               "widget": "weather_lightning_corona_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212535,7 +212815,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 335,
+              "line": 336,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningAfterglowStrength",
               "callbacks": [],
@@ -212550,7 +212830,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21077,
+              "line": 21096,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -212565,7 +212845,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 335,
+              "line": 336,
               "widget": "weather_lightning_afterglow",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212626,7 +212906,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 340,
+              "line": 341,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningDistanceGrading",
               "callbacks": [],
@@ -212643,7 +212923,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 340,
+              "line": 341,
               "widget": "weather_lightning_distance_grading",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212704,7 +212984,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 345,
+              "line": 346,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherLightningWetGlintEnabled",
               "callbacks": [],
@@ -212721,7 +213001,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 345,
+              "line": 346,
               "widget": "weather_lightning_wet_glint_enabled",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212782,7 +213062,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 348,
+              "line": 349,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningWetGlintStrength",
               "callbacks": [],
@@ -212799,7 +213079,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 348,
+              "line": 349,
               "widget": "weather_lightning_wet_glint_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212860,7 +213140,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 353,
+              "line": 354,
               "tag": "slider",
               "control_name": "AlchemyWeatherLightningEnergyCeiling",
               "callbacks": [],
@@ -212875,7 +213155,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21084,
+              "line": 21103,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -212890,7 +213170,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 353,
+              "line": 354,
               "widget": "weather_lightning_energy_ceiling",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -212949,7 +213229,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 360,
+              "line": 361,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherPersistentWetEnabled",
               "callbacks": [],
@@ -212966,7 +213246,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 360,
+              "line": 361,
               "widget": "weather_surface_persistentWet",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213025,7 +213305,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 363,
+              "line": 364,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherPuddlesEnabled",
               "callbacks": [],
@@ -213042,7 +213322,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 363,
+              "line": 364,
               "widget": "weather_surface_puddles",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213101,7 +213381,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 366,
+              "line": 367,
               "tag": "spinner",
               "control_name": "AlchemyWeatherWetAmount",
               "callbacks": [],
@@ -213118,7 +213398,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 366,
+              "line": 367,
               "widget": "weather_surface_wetAmount",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213177,7 +213457,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 369,
+              "line": 370,
               "tag": "spinner",
               "control_name": "AlchemyWeatherPuddleAmount",
               "callbacks": [],
@@ -213194,7 +213474,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 369,
+              "line": 370,
               "widget": "weather_surface_puddleAmount",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213253,7 +213533,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 372,
+              "line": 373,
               "tag": "spinner",
               "control_name": "AlchemyWeatherRippleStrength",
               "callbacks": [],
@@ -213270,7 +213550,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 372,
+              "line": 373,
               "widget": "weather_surface_rippleStrength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213329,7 +213609,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 375,
+              "line": 376,
               "tag": "spinner",
               "control_name": "AlchemyWeatherWetSeconds",
               "callbacks": [],
@@ -213346,7 +213626,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 375,
+              "line": 376,
               "widget": "weather_surface_wetSeconds",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213405,7 +213685,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 378,
+              "line": 379,
               "tag": "spinner",
               "control_name": "AlchemyWeatherDrySeconds",
               "callbacks": [],
@@ -213422,7 +213702,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 378,
+              "line": 379,
               "widget": "weather_surface_drySeconds",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213481,7 +213761,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 381,
+              "line": 382,
               "tag": "spinner",
               "control_name": "AlchemyWeatherStartWetness",
               "callbacks": [],
@@ -213498,7 +213778,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 381,
+              "line": 382,
               "widget": "weather_surface_startWetness",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213561,7 +213841,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 384,
+              "line": 385,
               "tag": "combo_box",
               "control_name": "AlchemyWeatherSurfaceCoverResolution",
               "callbacks": [],
@@ -213578,7 +213858,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 384,
+              "line": 385,
               "widget": "weather_surface_coverResolution",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213637,7 +213917,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 393,
+              "line": 394,
               "tag": "spinner",
               "control_name": "AlchemyWeatherSurfaceCoverExtent",
               "callbacks": [],
@@ -213654,7 +213934,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 393,
+              "line": 394,
               "widget": "weather_surface_coverExtent",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213706,7 +213986,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 693,
+              "line": 730,
               "class": "ALPanelWeatherSettings",
               "function": "applyStartingSurfaces",
               "wired_class": "LLFloaterDirector",
@@ -213726,7 +214006,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 396,
+              "line": 397,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -213782,7 +214062,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 697,
+              "line": 734,
               "class": "ALPanelWeatherSettings",
               "function": "clearSurfaces",
               "wired_class": "LLFloaterDirector",
@@ -213802,7 +214082,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 399,
+              "line": 400,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -213836,7 +214116,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2523,
+              "line": 2528,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -213856,7 +214136,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 402,
+              "line": 403,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -213919,7 +214199,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 407,
+              "line": 408,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherSnowEnabled",
               "callbacks": [],
@@ -213936,7 +214216,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 407,
+              "line": 408,
               "widget": "weather_snow_snowEnabled",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -213999,7 +214279,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 410,
+              "line": 411,
               "tag": "combo_box",
               "control_name": "AlchemyWeatherPrecipType",
               "callbacks": [],
@@ -214016,7 +214296,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 410,
+              "line": 411,
               "widget": "weather_snow_precipType",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -214075,7 +214355,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 419,
+              "line": 420,
               "tag": "spinner",
               "control_name": "AlchemyWeatherSnowRate",
               "callbacks": [],
@@ -214092,7 +214372,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 419,
+              "line": 420,
               "widget": "weather_snow_snowRate",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -214151,7 +214431,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 422,
+              "line": 423,
               "tag": "spinner",
               "control_name": "AlchemyWeatherSnowFlakeSize",
               "callbacks": [],
@@ -214168,7 +214448,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 422,
+              "line": 423,
               "widget": "weather_snow_flakeSize",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -214227,7 +214507,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 425,
+              "line": 426,
               "tag": "spinner",
               "control_name": "AlchemyWeatherSnowFallSpeed",
               "callbacks": [],
@@ -214244,7 +214524,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 425,
+              "line": 426,
               "widget": "weather_snow_snowSpeed",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -214303,7 +214583,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 428,
+              "line": 429,
               "tag": "spinner",
               "control_name": "AlchemyWeatherSnowRange",
               "callbacks": [],
@@ -214320,7 +214600,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 428,
+              "line": 429,
               "widget": "weather_snow_snowRange",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -214379,7 +214659,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 431,
+              "line": 432,
               "tag": "spinner",
               "control_name": "AlchemyWeatherSnowParticleLimit",
               "callbacks": [],
@@ -214396,7 +214676,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 431,
+              "line": 432,
               "widget": "weather_snow_snowLimit",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -214455,7 +214735,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 434,
+              "line": 435,
               "tag": "kit_switch",
               "control_name": "AlchemyWeatherPrecipVisibilityEnabled",
               "callbacks": [],
@@ -214472,7 +214752,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 434,
+              "line": 435,
               "widget": "weather_snow_visibility",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -214531,7 +214811,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 437,
+              "line": 438,
               "tag": "spinner",
               "control_name": "AlchemyWeatherPrecipVisibilityAmount",
               "callbacks": [],
@@ -214548,7 +214828,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 437,
+              "line": 438,
               "widget": "weather_snow_visibilityAmount",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
@@ -214598,7 +214878,723 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-              "line": 440,
+              "line": 441,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Advanced shelter",
+          "kind": "toggle",
+          "widget": "weather_shelter_advanced",
+          "matched_widget": "weather_shelter_advanced",
+          "declared_setting": "AlchemyWeatherAdvancedShelterEnabled",
+          "resolved_setting": "AlchemyWeatherAdvancedShelterEnabled",
+          "setting_candidates": [
+            "AlchemyWeatherAdvancedShelterEnabled"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31421,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 446,
+              "tag": "kit_switch",
+              "control_name": "AlchemyWeatherAdvancedShelterEnabled",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 446,
+              "widget": "weather_shelter_advanced",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Near detail",
+          "kind": "combo",
+          "widget": "weather_shelter_near_detail",
+          "matched_widget": "weather_shelter_near_detail",
+          "declared_setting": "AlchemyWeatherShelterNearResolution",
+          "resolved_setting": "AlchemyWeatherShelterNearResolution",
+          "setting_candidates": [
+            "AlchemyWeatherShelterNearResolution"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31432,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "256 px",
+            "512 px",
+            "1024 px",
+            "2048 px"
+          ],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 449,
+              "tag": "combo_box",
+              "control_name": "AlchemyWeatherShelterNearResolution",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 449,
+              "widget": "weather_shelter_near_detail",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Far detail",
+          "kind": "combo",
+          "widget": "weather_shelter_far_detail",
+          "matched_widget": "weather_shelter_far_detail",
+          "declared_setting": "AlchemyWeatherShelterFarResolution",
+          "resolved_setting": "AlchemyWeatherShelterFarResolution",
+          "setting_candidates": [
+            "AlchemyWeatherShelterFarResolution"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31443,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "256 px",
+            "512 px",
+            "1024 px"
+          ],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 459,
+              "tag": "combo_box",
+              "control_name": "AlchemyWeatherShelterFarResolution",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 459,
+              "widget": "weather_shelter_far_detail",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Near coverage",
+          "kind": "number",
+          "widget": "weather_shelter_near_coverage",
+          "matched_widget": "weather_shelter_near_coverage",
+          "declared_setting": "AlchemyWeatherShelterNearExtent",
+          "resolved_setting": "AlchemyWeatherShelterNearExtent",
+          "setting_candidates": [
+            "AlchemyWeatherShelterNearExtent"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31454,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 468,
+              "tag": "spinner",
+              "control_name": "AlchemyWeatherShelterNearExtent",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 468,
+              "widget": "weather_shelter_near_coverage",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 4,
+          "label": "Far coverage",
+          "kind": "number",
+          "widget": "weather_shelter_far_coverage",
+          "matched_widget": "weather_shelter_far_coverage",
+          "declared_setting": "AlchemyWeatherShelterFarExtent",
+          "resolved_setting": "AlchemyWeatherShelterFarExtent",
+          "setting_candidates": [
+            "AlchemyWeatherShelterFarExtent"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31465,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 471,
+              "tag": "spinner",
+              "control_name": "AlchemyWeatherShelterFarExtent",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 471,
+              "widget": "weather_shelter_far_coverage",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 5,
+          "label": "Follow weather wind",
+          "kind": "toggle",
+          "widget": "weather_shelter_tilt",
+          "matched_widget": "weather_shelter_tilt",
+          "declared_setting": "AlchemyWeatherShelterTiltEnabled",
+          "resolved_setting": "AlchemyWeatherShelterTiltEnabled",
+          "setting_candidates": [
+            "AlchemyWeatherShelterTiltEnabled"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31476,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 474,
+              "tag": "kit_switch",
+              "control_name": "AlchemyWeatherShelterTiltEnabled",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 474,
+              "widget": "weather_shelter_tilt",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 6,
+          "label": "Update rate",
+          "kind": "number",
+          "widget": "weather_shelter_rate",
+          "matched_widget": "weather_shelter_rate",
+          "declared_setting": "AlchemyWeatherShelterUpdateHz",
+          "resolved_setting": "AlchemyWeatherShelterUpdateHz",
+          "setting_candidates": [
+            "AlchemyWeatherShelterUpdateHz"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31487,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 477,
+              "tag": "spinner",
+              "control_name": "AlchemyWeatherShelterUpdateHz",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 477,
+              "widget": "weather_shelter_rate",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 7,
+          "label": "Bias",
+          "kind": "number",
+          "widget": "weather_shelter_bias",
+          "matched_widget": "weather_shelter_bias",
+          "declared_setting": "AlchemyWeatherShelterBias",
+          "resolved_setting": "AlchemyWeatherShelterBias",
+          "setting_candidates": [
+            "AlchemyWeatherShelterBias"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31498,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 480,
+              "tag": "spinner",
+              "control_name": "AlchemyWeatherShelterBias",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 480,
+              "widget": "weather_shelter_bias",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 8,
+          "label": "Softness",
+          "kind": "number",
+          "widget": "weather_shelter_softness",
+          "matched_widget": "weather_shelter_softness",
+          "declared_setting": "AlchemyWeatherShelterSoftness",
+          "resolved_setting": "AlchemyWeatherShelterSoftness",
+          "setting_candidates": [
+            "AlchemyWeatherShelterSoftness"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31509,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 483,
+              "tag": "spinner",
+              "control_name": "AlchemyWeatherShelterSoftness",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 483,
+              "widget": "weather_shelter_softness",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 9,
+          "label": "Show shelter",
+          "kind": "toggle",
+          "widget": "weather_shelter_debug",
+          "matched_widget": "weather_shelter_debug",
+          "declared_setting": "AlchemyWeatherShelterDebug",
+          "resolved_setting": "AlchemyWeatherShelterDebug",
+          "setting_candidates": [
+            "AlchemyWeatherShelterDebug"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 31520,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 486,
+              "tag": "kit_switch",
+              "control_name": "AlchemyWeatherShelterDebug",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alweatherresources.cpp",
+              "line": 362,
+              "class": "ALWeatherShelterMaps",
+              "function": "bind",
+              "wired_class": "ALWeatherShelterMaps",
+              "wired_function": "bind",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "static const LLStaticHashedString debug(\"weather_shelter_debug\");"
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 486,
+              "widget": "weather_shelter_debug",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+                "tag": "panel",
+                "name": "weather_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "advanced_shelter",
+          "card_title": "Advanced shelter",
+          "option_index": null,
+          "option_label": null,
+          "index": 10,
+          "label": "Update / coverage status",
+          "kind": "readout",
+          "widget": "weather_shelter_status",
+          "matched_widget": "weather_shelter_status",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2523,
+              "class": "LLFloaterDirector",
+              "function": "refreshWorldLensReadouts",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "refreshWorldLensReadouts",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "if (LLTextBox* shelter = findChild<LLTextBox>(\"weather_shelter_status\"))"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+              "line": 489,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -216439,7 +217435,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2539,
+              "line": 2544,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -216911,7 +217907,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2544,
+              "line": 2549,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",

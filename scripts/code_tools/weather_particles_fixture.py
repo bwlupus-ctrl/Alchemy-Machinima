@@ -12,7 +12,7 @@ from weather_compute_fixture import build as loader_build, function
 from weather_preparation_fixture import source as preparation_source
 
 
-def build(tree,out,gl,mutation=None):
+def build(tree,out,gl,mutation=None,extension=None):
     def extend(prefix,methods,suffix,entries):
         # Historical runs compile a complete snapshot, including local headers.
         for name in SOURCES:
@@ -39,6 +39,7 @@ def build(tree,out,gl,mutation=None):
           ('glUniform1ui','void','int,unsigned',None,[C.c_int,C.c_uint]),
           ('glUniform1f','void','int,float',None,[C.c_int,C.c_float]),
           ('glUniform2f','void','int,float,float',None,[C.c_int,C.c_float,C.c_float]),
+          ('glUniform4f','void','int,float,float,float,float',None,[C.c_int,*[C.c_float]*4]),
           ('glUniform3f','void','int,float,float,float',None,[C.c_int,C.c_float,C.c_float,C.c_float]),
           ('glUniform3i','void','int,int,int,int',None,[C.c_int]*4),
           ('glUniformMatrix4fv','void','int,int,unsigned char,const float*',None,[C.c_int,C.c_int,C.c_ubyte,C.c_void_p]),
@@ -78,6 +79,7 @@ def build(tree,out,gl,mutation=None):
           ('glDepthMask','void','unsigned char',None,[C.c_ubyte]),
           ('glClearDepth','void','double',None,[C.c_double]),
           ('glIsTexture','unsigned char','unsigned',C.c_ubyte,[C.c_uint]),
+          ('glIsProgram','unsigned char','unsigned',C.c_ubyte,[C.c_uint]),
         ]
         names = [e for e in names if e[0] not in {item[0] for item in entries}]
         enum=dict(GL_SHADER_STORAGE_BUFFER=0x90D2,GL_DYNAMIC_DRAW=0x88E8,GL_BUFFER_SIZE=0x8764,
@@ -91,7 +93,8 @@ def build(tree,out,gl,mutation=None):
           GL_DRAW_BUFFER0=0x8825,GL_COLOR_WRITEMASK=0x0C23,GL_BLEND_SRC_RGB=0x80C9,GL_BLEND_DST_RGB=0x80C8,
           GL_BLEND_SRC_ALPHA=0x80CB,GL_BLEND_DST_ALPHA=0x80CA,GL_BLEND_EQUATION_RGB=0x8009,GL_BLEND_EQUATION_ALPHA=0x883D,
           GL_COLOR_ATTACHMENT0=0x8CE0,GL_ONE=1,GL_ONE_MINUS_SRC_ALPHA=0x0303,
-          GL_TEXTURE_2D=0x0DE1,GL_TEXTURE_COMPARE_MODE=0x884C,GL_NONE=0,
+          GL_TEXTURE_2D=0x0DE1,GL_TEXTURE_COMPARE_MODE=0x884C,GL_NONE=0,GL_CURRENT_PROGRAM=0x8B8D,
+          GL_FRAMEBUFFER_BARRIER_BIT=0x400,GL_TEXTURE_FETCH_BARRIER_BIT=8,
           GL_DRAW_FRAMEBUFFER=0x8CA9,GL_READ_FRAMEBUFFER=0x8CA8,GL_DEPTH_TEST=0x0B71)
         extra='#define LL_WARNS_ONCE(x) NullLog{}\n#include <cstddef>\n#include <cmath>\n#include <array>\n#include <new>\n#include "alweatherbridge.h"\n#include "alweathershelter.h"\n'
         extra+='''
@@ -103,14 +106,16 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
         extra+='using GLboolean=unsigned char;using GLdouble=double;using LLStaticHashedString=std::string;\n'
         extra+='\n'.join(f'constexpr unsigned {n}={v}U;' for n,v in enum.items())+'\n'
         extra+='\n'.join(f'{ret} (*{name})({args});' for name,ret,args,_,_ in names)+'\n'
+        prefix=prefix.replace('hasWeatherMaterial=false,attachNothing=false;', 'hasWeatherMaterial=false,attachNothing=false,isDeferred=false;')
         extra+=MATRIX+BACKEND
         prefix=prefix.replace('struct LLGLSLShader {',extra+'\nstruct LLGLSLShader {')
         prefix=prefix.replace('struct LLRender {static constexpr int NUM_MATRIX_MODES=4;};','struct LLRender {static constexpr int NUM_MATRIX_MODES=4; using eBlendFactor=unsigned;enum {BF_ONE=1,BF_ONE_MINUS_SOURCE_ALPHA=0x0303};static bool indexedDrawBufferGuardSupported(){return true;}};')
         import re
         reserved = re.findall(r'mReservedUniforms.push_back\("([^"]+)"\)', function(tree.read('indra/llrender/llshadermgr.cpp'), 'void LLShaderMgr::initAttribsAndUniforms('))
-        slots = ','.join(f'{n}={reserved.index(v)}' for n,v in (('DEFERRED_DEPTH','depthMap'),('WEATHER_SURFACE_COVER_MAP','weather_surface_cover_map'),('WEATHER_SURFACE_COVER_MATRIX','weather_surface_cover_matrix')))
+        slots = ','.join(f'{n}={reserved.index(v)}' for n,v in (('DEFERRED_DEPTH','depthMap'),('WEATHER_SURFACE_COVER_MAP','weather_surface_cover_map'),('WEATHER_SURFACE_COVER_MATRIX','weather_surface_cover_matrix'),('WEATHER_SHELTER_CLOSE_MAP','weather_shelter_close_map'),('WEATHER_SHELTER_DISTANT_MAP','weather_shelter_distant_map')) if v in reserved)
         prefix=prefix.replace('std::string root;int features=', 'enum {'+slots+'};\n std::string root;int features=')
         shader_methods=r'''
+ bool isComplete()const{return mProgramObject!=0;}
  void unload(){unloadInternal();mShaderFiles.clear();mDefines.clear();mFeatures={};}
  void bind();void placeProfileQuery(){}void readProfileQuery(){}
  int getUniformLocation(const LLStaticHashedString&);
@@ -118,6 +123,7 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
  void uniform1f(const std::string& n,float v){glUniform1f(getUniformLocation(n),v);}
  void uniform2f(const std::string& n,float x,float y){glUniform2f(getUniformLocation(n),x,y);}
  void uniform3f(const std::string& n,float x,float y,float z){glUniform3f(getUniformLocation(n),x,y,z);}
+ void uniform4f(const std::string& n,float a,float b,float c,float d){glUniform4f(getUniformLocation(n),a,b,c,d);}
  void uniformMatrix4fv(const std::string& n,int c,bool t,const float* p){glUniformMatrix4fv(getUniformLocation(n),c,t,p);}
  void uniformMatrix4fv(int n,int c,bool t,const float* p){glUniformMatrix4fv(mUniform[n],c,t,p);}
  int getTextureChannel(S32 uniform)const;
@@ -141,6 +147,9 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
         resources=tree.read('indra/newview/alweatherresources.cpp')
         extra_class=function(tree.read('indra/newview/alweatherresources.h'),'class ALWeatherResources').replace('private:', 'public:')+';\n'
         extra_class+=function(tree.read('indra/newview/alweatherparticles.h'),'class ALWeatherParticles').replace('private:','public:')+';\n'
+        if 'class ALWeatherShelterMaps\n{' in tree.read('indra/newview/alweatherresources.h'):
+            extra_class = 'class ALWeatherShelterMaps;\n' + extra_class
+            extra_class += function(tree.read('indra/newview/alweatherresources.h'),'class ALWeatherShelterMaps\n{').replace('private:','public:')+';\n'
         prefix+='\n'+extra_class+'\nALWeatherParticles particles;ALWeatherResources coverage;\n'
         from weather_cover_fixture import parts as cover_parts
         cp, cm, ca = cover_parts(tree,out)
@@ -148,9 +157,11 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
         prefix+='#define LL_PROFILE_GPU_ZONE(x)\n'
         methods+='\n'+ '\n'.join(function(resources,s) for s in (
           'ALWeatherResources::State::State(', 'ALWeatherResources::State::~State(',
-          'bool ALWeatherResources::allocate(', 'void ALWeatherResources::release(',
+          'void ALWeatherResources::prepare(', 'bool ALWeatherResources::allocate(', 'void ALWeatherResources::release(',
           'void ALWeatherResources::publish(', 'void ALWeatherResources::fail(',
           'bool ALWeatherResources::precipitationCovers(', 'void ALWeatherResources::bindPrecipitation('))
+        if 'void ALWeatherShelterMaps::prepare(' in resources:
+            methods += '\n' + '\n'.join(function(resources,s) for s in ('void ALWeatherResources::bindMap(', 'void ALWeatherShelterMaps::prepare(', 'void ALWeatherShelterMaps::release(', 'void ALWeatherShelterMaps::fail(', 'bool ALWeatherShelterMaps::current(', 'bool ALWeatherShelterMaps::covers(', 'void ALWeatherShelterMaps::publish(', 'void ALWeatherShelterMaps::bind('))
         owner=tree.read('indra/newview/alweatherparticles.cpp')
         changes={
           'depth':('LLGLDepthTest depth_test(GL_TRUE, GL_FALSE, GL_LEQUAL);','LLGLDepthTest depth_test(GL_FALSE, GL_FALSE, GL_LEQUAL);'),
@@ -190,10 +201,12 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
         inject='\n'.join(f'{name}=reinterpret_cast<decltype({name})>(p[{len(entries)+i}]);' for i,(name,*_) in enumerate(names))
         suffix=suffix.replace('LLShaderMgr::instance()->root=root;',inject+'\nLLShaderMgr::instance()->root=root;LLShaderMgr::instance()->mReservedAttribs={"position","normal","texcoord0"};')
         preparation=preparation_source(tree,out,particles=True)
-        return prefix,methods,suffix,entries+names,[preparation,*[out/(n+'.cpp') for n in SOURCES]]
+        result=(prefix,methods,suffix,entries+names,[preparation,*[out/(n+'.cpp') for n in SOURCES]])
+        return extension(*result) if extension else result
     lib=loader_build(tree,out,gl,extend)
     shaderdir=out/'class1/deferred';shaderdir.mkdir(parents=True,exist_ok=True)
-    for name in ('weatherSnowSim','weatherSnowV','weatherSnowF','weatherPrecipCoverF','weatherPrecipVeilF'):
+    for name in ('weatherSnowSim','weatherSnowV','weatherSnowF','weatherPrecipCoverF','weatherPrecipVeilF','weatherShelterF'):
+        if not tree.exists('indra/newview/app_settings/shaders/class1/deferred/'+name+'.glsl'): continue;
         text=tree.read('indra/newview/app_settings/shaders/class1/deferred/'+name+'.glsl')
         if mutation=='view-seed' and name=='weatherSnowSim':
             a='^ snow_seed);';assert a in text;text=text.replace(a,'^ snow_seed ^ floatBitsToUint(snow_cell_relative.x));')
@@ -269,7 +282,7 @@ struct GLBackend {LLTexUnit units[32];GLBackend(){for(unsigned i=0;i<32;++i)unit
 struct LLVertexBuffer {inline static U32 sLastMask=0,sGLRenderBuffer=0,sGLRenderIndices=0;
  static void unbind(){glBindBuffer(GL_ARRAY_BUFFER,0);glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);sGLRenderBuffer=sGLRenderIndices=0;}
  static void setupClientArrays(unsigned mask){for(unsigned i=0;i<16;++i){if(mask&(1U<<i))glEnableVertexAttribArray(i);else glDisableVertexAttribArray(i);}sLastMask=mask;}};
-struct LLRenderTarget {unsigned fbo=0,texture=0,w=1,h=1;
+struct LLRenderTarget {unsigned fbo=0,texture=0,w=0,h=0;
  bool isComplete()const{return fbo!=0&&texture!=0;}
  unsigned getTexture(U32=0)const{return texture;}LLTexUnit::eTextureType getUsage()const{return LLTexUnit::TT_TEXTURE;}
  enum {DEPTH_FMT_32F};bool owned=false;
@@ -312,6 +325,9 @@ void record_glGenVertexArrays(int n,unsigned* p){allocations+=n;glGenVertexArray
 '''
 
 API=r'''
+extern "C" __declspec(dllexport) void fixture_prepare_basic(unsigned resolution){coverage.prepare(resolution);}
+extern "C" __declspec(dllexport) void fixture_prepare_shelter(){coverage.advanced=&fixturePipeline.mWeatherShelter;fixturePipeline.mWeatherShelter.prepare();}
+extern "C" __declspec(dllexport) void fixture_suspend_shelter(){fixturePipeline.mWeatherShelter.suspend();}
 extern "C" __declspec(dllexport) void fixture_prepare_particles(){particles.prepare();}
 extern "C" __declspec(dllexport) int fixture_particle_supported(){return ALWeatherParticles::supported();}
 extern "C" __declspec(dllexport) void render(unsigned fbo,unsigned depth,unsigned cover,int w,int h,

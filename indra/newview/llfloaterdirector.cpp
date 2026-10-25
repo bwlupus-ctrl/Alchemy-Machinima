@@ -2520,6 +2520,11 @@ void LLFloaterDirector::refreshWorldLensReadouts(const std::string& page)
                 ALPanelWeatherSettings::particleStatus());
             setTextIfChanged(snow, status);
         }
+        if (LLTextBox* shelter = findChild<LLTextBox>("weather_shelter_status"))
+        {
+            static LLCachedControl<bool> advanced(gSavedSettings, "AlchemyWeatherAdvancedShelterEnabled", false);
+            setTextIfChanged(shelter, advanced() ? ALPanelWeatherSettings::surfaceStatus() : "Advanced shelter off");
+        }
         if (LLTextBox* coverage = findChild<LLTextBox>("weather_surface_status"))
         {
             setTextIfChanged(coverage, ALPanelWeatherSettings::surfaceStatus());

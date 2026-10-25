@@ -286,6 +286,10 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
     {
         return false;
     }
+    if (features->hasWeatherMaterial && !shader->attachFragmentObject("deferred/weatherShelterF.glsl"))
+    {
+        return false;
+    }
     if (features->hasActorFx || features->hasActorFxShadow)
     {
         // Beauty and dissolve/shadow coverage form one Actor FX contract. If
@@ -2324,6 +2328,8 @@ void LLShaderMgr::initAttribsAndUniforms()
     // Append cover after all existing samplers: scalar diffuseMap must retain
     // unit zero for tree/grass draws which bind their diffuse texture directly.
     mReservedUniforms.push_back("weather_surface_cover_map");
+    mReservedUniforms.push_back("weather_shelter_close_map");
+    mReservedUniforms.push_back("weather_shelter_distant_map");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

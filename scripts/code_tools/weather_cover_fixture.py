@@ -12,8 +12,10 @@ def parts(tree, out):
     (out/'alweathercovercache.h').write_text(tree.read('indra/newview/alweathercovercache.h'), encoding='utf-8')
     pipe = tree.read('indra/newview/pipeline.cpp')
     cover = function(pipe, 'void LLPipeline::generateWeatherSurfaceCover(')
-    render_types = sorted(set(re.findall(r'LLPipeline::(RENDER_TYPE_\w+)', cover)))
-    passes = sorted(set(re.findall(r'LLRenderPass::(PASS_\w+)', cover)))
+    draw = function(pipe, 'bool LLPipeline::drawWeatherCover(') if 'bool LLPipeline::drawWeatherCover(' in pipe else ''
+    advanced = function(pipe, 'void LLPipeline::generateWeatherAdvancedShelter(') if 'void LLPipeline::generateWeatherAdvancedShelter(' in pipe else ''
+    render_types = sorted(set(re.findall(r'LLPipeline::(RENDER_TYPE_\w+)', cover+draw)))
+    passes = sorted(set(re.findall(r'LLRenderPass::(PASS_\w+)', cover+draw)))
     prefix = r'''
 #include "alweathercovercache.h"
 #define LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE
@@ -70,6 +72,7 @@ struct LLPipeline {
  void pushRenderTypeMask(){}template<class... T>void andRenderTypeMask(T...){}void popRenderTypeMask(){}
  void renderShadow(const glm::mat4&,const glm::mat4&,LLCamera&,LLCullResult&,bool,bool,bool,bool,bool){
   ++coverTraversals;glUseProgram(casterProgram);for(int i=0;i<256;++i){glDrawArrays(GL_TRIANGLES,0,3);++coverBatches;}glUseProgram(0);}
+ DECLARE_SHELTER
  void generateWeatherSurfaceCover(LLCamera&);void renderWeatherParticles(LLRenderTarget*,bool);
 } fixturePipeline;
 '''.replace('PASSES', ','.join(passes)).replace('@RENDER_TYPES@', ','.join(render_types))
@@ -80,7 +83,19 @@ struct LLPipeline {
     conversion += function(colors,'inline const LLColor3 linearColor3p(')
     conversion += '\ntemplate<class T>\n'+function(colors,'inline const LLColor3 linearColor3(const T& a)')
     prefix = prefix.replace('LINEAR_COLOUR',conversion)
-    methods = cover + '\n' + function(pipe, 'void LLPipeline::renderWeatherParticles(')
+    prefix=prefix.replace('DECLARE_SHELTER', '''
+ ALWeatherShelterMaps mWeatherShelter;
+ bool drawWeatherCover(LLCamera&,LLRenderTarget&,const glm::mat4&,const glm::mat4&,const LLVector3&,F32,F32,U32&);
+ void generateWeatherAdvancedShelter(LLCamera&);
+''' if advanced else '')
+    if advanced:
+        prefix += '''
+struct CoverSettings {} gSavedSettings;
+template<class T>struct LLCachedControl {T value;LLCachedControl(CoverSettings&,const char*,T v):value(v){}T operator()()const{return value;}};
+struct LLPresentationTime {struct Frame {double presentation_time;};inline static double seconds=0;
+ static Frame currentFrame(){return {seconds};}};
+'''
+    methods = cover + '\n' + draw + '\n' + advanced + '\n' + function(pipe, 'void LLPipeline::renderWeatherParticles(')
     api = r'''
 extern "C" __declspec(dllexport) void cover_program(unsigned p){casterProgram=p;}
 extern "C" __declspec(dllexport) void cover_prepare(double x,double y,double z,int dirty){

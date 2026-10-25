@@ -788,6 +788,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
         if (!for_snapshot && gFrameCount > 1)
         {
             gPipeline.generateWeatherSurfaceCover(*LLViewerCamera::getInstance());
+            gPipeline.generateWeatherAdvancedShelter(*LLViewerCamera::getInstance());
         }
         if (gPipeline.RenderMirrors && !gSnapshot)
         {

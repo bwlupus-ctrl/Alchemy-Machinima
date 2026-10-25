@@ -107,4 +107,71 @@ namespace tut
         ensure_equals("camera lifecycle clears exposure", auxiliary.update(1., 0.f), 0.f);
         ensure_equals("presentation rewind resets exposure", main.update(0., 1.f), 1.f);
     }
+    template<> template<> void surface_object::test<5>()
+    {
+        using namespace ALWeatherShelter;
+        const auto shear = fallShear(14.f, 0.f, 28.f, true);
+        ensure_equals("fall ray preserves transverse coordinate", shear[0], 0.5f);
+        ensure_equals("vertical choice", fallShear(14.f, 0.f, 28.f, false)[0], 0.f);
+        const auto bounded = fallShear(40.f, 40.f, 1.f, true);
+        ensure("45 degree fall bound", std::hypot(bounded[0], bounded[1]) <= 1.000001f);
+        const auto a = plan({256., 512., 4.}, 32.f, 1024, shear);
+        const auto b = plan({256.001, 512.001, 4.}, 32.f, 1024, shear);
+        ensure("sub-cell motion cannot move the world lattice", a == b);
+        Updates updates;
+        const std::array<F64, 3> origin{256., 512., 0.};
+        ensure("initial update", updates.due(a, a, 0, 1, origin, 0., 30));
+        updates.publish();
+        ensure("static maps have no periodic traversal", !updates.due(a, a, 0, 1, origin, 1., 30));
+        ensure("moving roof revision", updates.due(a, a, 1, 1, origin, 1.01, 30));
+        updates.publish();
+        ensure("coalesce new dirty revisions", !updates.due(a, a, 2, 1, origin, 1.02, 30));
+        ensure("retain queued dirty revision", updates.due(a, a, 2, 1, origin, 1.05, 30));
+        updates.publish();
+        ensure("capture post-flush geometry once", updates.due(a, a, 2, 1, origin, 1.09, 30));
+        updates.publish();
+        ensure("settling never becomes permanent polling", !updates.due(a, a, 2, 1, origin, 1.2, 30));
+        ensure("origin rebase invalidates immediately", updates.due(a, a, 2, 1, {0.,0.,0.}, 1.201, 30));
+        updates.publish();
+        ensure("place never reuses previous roof", updates.due(a, a, 2, 2, {0.,0.,0.}, 1.202, 30));
+    }
+    template<> template<> void surface_object::test<6>()
+    {
+        using namespace ALWeatherShelter;
+        ALWeatherBridge::Controller weather;
+        ALWeatherBridge::Settings settings;
+        settings.enabled = settings.local = settings.persistentWet = true;
+        settings.mode = 1;
+        weather.update(1, 0., settings, 0, 0, 1, {}, {});
+        const U64 basic = materialSignature(weather);
+        settings.advancedShelter = true;
+        weather.update(2, 0., settings, 0, 0, 1, {}, {});
+        const U64 tilted = materialSignature(weather);
+        ensure("advanced shelter invalidates frozen material probes", basic != tilted);
+        settings.shelterNearExtent = 64.f;
+        weather.update(3, 0., settings, 0, 0, 1, {}, {});
+        ensure("shelter coverage configuration invalidates probes", tilted != materialSignature(weather));
+        settings.advancedShelter = false;
+        weather.update(4, 0., settings, 0, 0, 1, {}, {});
+        ensure_equals("off shelter restores the basic material signature", materialSignature(weather), basic);
+    }
+    template<> template<> void surface_object::test<7>()
+    {
+        using namespace ALWeatherShelter;
+        ensure("default legacy auxiliary remains inert", !auxiliaryAllowed(false, true, false));
+        ensure("advanced legacy auxiliary rain is admitted", auxiliaryAllowed(false, false, true));
+        ensure("inactive library cannot borrow legacy admission", !auxiliaryAllowed(true, false, true));
+        ensure("active library auxiliary remains admitted", auxiliaryAllowed(true, true, false));
+        ALWeatherModel::Config config; config.mEnabled = true;
+        ALWeatherModel::Controller sampled, reference;
+        sampled.update(0., config, {}); reference.update(0., config, {});
+        sampled.trigger(0., config, {}); reference.trigger(0., config, {});
+        const U64 count = sampled.strikeCount();
+        const auto view = sampled.sample(0.1, config);
+        ensure_equals("auxiliary rain never schedules a strike", sampled.strikeCount(), count);
+        ensure("auxiliary read never re-emits a strike event", !view.mStrikeStarted);
+        const auto a = sampled.update(0.2, config, {}), b = reference.update(0.2, config, {});
+        ensure_equals("view sampling preserves the main scheduler", a.mStrikeId, b.mStrikeId);
+        ensure_equals("view sampling preserves the main flash", a.mFlash, b.mFlash);
+    }
 }

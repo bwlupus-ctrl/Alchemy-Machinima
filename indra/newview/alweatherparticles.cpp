@@ -66,6 +66,7 @@ bool ALWeatherParticles::initialize(U32 cap)
                 shader.mShaderFiles.emplace_back("deferred/weatherSnowV.glsl", GL_VERTEX_SHADER);
                 shader.mShaderFiles.emplace_back(veil ? "deferred/weatherPrecipVeilF.glsl" : "deferred/weatherSnowF.glsl", GL_FRAGMENT_SHADER);
                 shader.mShaderFiles.emplace_back("deferred/weatherPrecipCoverF.glsl", GL_FRAGMENT_SHADER);
+                shader.mShaderFiles.emplace_back("deferred/weatherShelterF.glsl", GL_FRAGMENT_SHADER);
             }
             return shader.createShader();
         };
@@ -206,7 +207,9 @@ void ALWeatherParticles::render(LLRenderTarget& target, LLRenderTarget& depth,
         sTime("snow_time"), sView("snow_view"), sProjection("snow_projection"), sScreen("snow_screen"),
         sSize("snow_size"), sRange("snow_range");
     // Preserve bindings not owned by the shared raster state transaction.
-    ALWeatherResources::State saved_state(2, 1, false);
+    // Advanced samplers append after depth + the retained vertical cover map.
+    const U32 cover_units = s.advancedShelter ? 4U : 2U;
+    ALWeatherResources::State saved_state(cover_units, 1, false);
     LLGLSLShader* previous = LLGLSLShader::sCurBoundShaderPtr;
     const U32 attribute_mask = LLVertexBuffer::sLastMask;
     const U32 array_cache = LLVertexBuffer::sGLRenderBuffer, element_cache = LLVertexBuffer::sGLRenderIndices;

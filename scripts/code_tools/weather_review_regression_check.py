@@ -118,6 +118,7 @@ struct Hero{bool mInitialized=false;void update();void renderProbes();};
 struct Pipeline{bool RenderMirrors=true;Surface mWeatherSurfaces;Hero mHeroProbeManager;
  void releaseGLBuffers(){RELEASE}
  void generateWeatherSurfaceCover(LLViewerCamera&){++publications;mWeatherSurfaces.frame=gFrameCount;}
+ void generateWeatherAdvancedShelter(LLViewerCamera&){}
 }gPipeline;
 struct LLViewerShaderMgr{static LLViewerShaderMgr* instance(){static LLViewerShaderMgr s;return &s;}
  void clearShaderCache(){}void setShaders(){SHADER}};

@@ -9,6 +9,7 @@
 
 #ifndef AL_WEATHER_MODEL_H
 #define AL_WEATHER_MODEL_H
+#include <cmath>
 
 #include "stdtypes.h"
 
@@ -74,6 +75,13 @@ namespace ALWeatherModel
         // automatic strike can start per call, even after a large frame hitch.
         Frame update(F64 now_seconds, const Config& config,
                      const Position& anchor);
+        // Read a legacy flash for an auxiliary rain view without advancing or
+        // consuming a scheduler/manual event owned by the main view.
+        Frame sample(F64 now_seconds, const Config& config) const
+        {
+            const Config safe = sanitizeConfig(config);
+            return safe.mEnabled && std::isfinite(now_seconds) ? makeFrame(now_seconds, safe, false) : Frame{};
+        }
 
         // Starts a strike immediately. Invalid time/anchor or a disabled config
         // is rejected without mutating the current valid state.

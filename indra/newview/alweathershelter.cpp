@@ -12,6 +12,56 @@
 
 namespace ALWeatherShelter
 {
+    bool auxiliaryAllowed(bool library, bool active, bool advanced)
+    {
+        return library ? active : advanced;
+    }
+    bool Plan::operator==(const Plan& p) const
+    {
+        return center == p.center && shear == p.shear && extent == p.extent &&
+            vertical == p.vertical && resolution == p.resolution;
+    }
+    std::array<F32, 2> fallShear(F32 wind_x, F32 wind_y, F32 speed, bool follow)
+    {
+        if (!follow || !std::isfinite(wind_x) || !std::isfinite(wind_y)) return {};
+        const F32 fall_speed = std::isfinite(speed) ? std::max(speed, 1.f) : 28.f;
+        // A 45 degree limit also bounds the caster cull volume. No gust input.
+        const F32 scale = 1.f / std::max(fall_speed, std::hypot(wind_x, wind_y));
+        // Following a falling ray preserves x + wind.x/fall_speed * z.
+        return {wind_x * scale, wind_y * scale};
+    }
+    Plan plan(const std::array<F64, 3>& eye, F32 extent, U32 resolution,
+              const std::array<F32, 2>& shear)
+    {
+        Plan p;
+        p.extent = extent; p.resolution = resolution; p.shear = shear;
+        p.vertical = std::clamp(extent + 32.f, 64.f, 512.f);
+        const F64 cell = 2. * extent / resolution;
+        // Snap the WORLD precipitation lattice, not the camera/view coordinates.
+        p.center = {std::floor((eye[0] + shear[0]*eye[2])/cell + 0.5)*cell,
+                    std::floor((eye[1] + shear[1]*eye[2])/cell + 0.5)*cell,
+                    std::floor(eye[2]/8. + 0.5)*8.};
+        return p;
+    }
+    bool Updates::due(const Plan& close, const Plan& distant, U64 geometry, U32 place,
+                      const std::array<F64, 3>& origin, F64 seconds, U32 hz)
+    {
+        if (!std::isfinite(seconds)) { invalidate(); return false; }
+        const bool new_geometry = geometry != mGeometry;
+        const bool changed = !(close == mClose) || !(distant == mDistant) ||
+            new_geometry || mSettle || place != mPlace || origin != mOrigin;
+        const bool urgent = !mRequested || place != mPlace || origin != mOrigin || seconds < mLast;
+        mLast = seconds;
+        if (!urgent && ((!changed && mValid) || seconds < mNext)) return false;
+        mRequested = true;
+        // Native drawable revisions can precede the frame's geometry flush.
+        // One bounded follow-up captures that completed transform/VBO update.
+        mSettle = new_geometry;
+        mClose = close; mDistant = distant; mGeometry = geometry; mPlace = place; mOrigin = origin;
+        mNext = seconds + 1. / std::clamp(hz, 5U, 60U);
+        mValid = false;
+        return true;
+    }
     void Exposure::reset()
     {
         mExposure = 1.f;
@@ -81,6 +131,21 @@ namespace ALWeatherShelter
         add(U64(s.wetSeconds));
         add(U64(s.drySeconds));
         add(quantize(s.startWetness));
+        if (s.advancedShelter)
+        {
+            add(7);
+            add(s.shelterNearResolution); add(s.shelterFarResolution);
+            add(U64(s.shelterNearExtent * 1024.f)); add(U64(s.shelterFarExtent * 1024.f));
+            add(U64(s.shelterBias * 1024.f)); add(U64(s.shelterSoftness * 1024.f));
+            add(s.shelterTilt);
+            if (s.shelterTilt)
+            {
+                const auto shear = fallShear(weather.state().windMean[0], weather.state().windMean[1],
+                    weather.active() && s.snowEnabled && s.precipType == 1 ? s.snowSpeed : s.shelterFallSpeed, true);
+                add(U64(S64(std::floor(shear[0] * 64.f + 0.5f))));
+                add(U64(S64(std::floor(shear[1] * 64.f + 0.5f))));
+            }
+        }
         add(weather.placeSerial());
         add(weather.clearSerial());
         add(weather.surfaceSerial());

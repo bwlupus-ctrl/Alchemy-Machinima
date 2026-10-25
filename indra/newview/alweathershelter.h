@@ -27,7 +27,42 @@ namespace ALWeatherShelter
     Coverage classify(bool allocated, bool cleared, bool traversed, bool complete, U32 batches);
     bool usable(Coverage state);
     const char* label(Coverage state);
+    bool auxiliaryAllowed(bool library, bool active, bool advanced);
+    // Affine precipitation coordinates: (x + shear.x*z, y + shear.y*z, z).
+    // Height remains vertical; a slanted roof sample is never a ground height.
+    struct Plan
+    {
+        std::array<F64, 3> center{};
+        std::array<F32, 2> shear{};
+        F32 extent = 0.f, vertical = 0.f;
+        U32 resolution = 0;
+        bool operator==(const Plan& p) const;
+    };
+    Plan plan(const std::array<F64, 3>& eye, F32 extent, U32 resolution,
+              const std::array<F32, 2>& shear);
+    std::array<F32, 2> fallShear(F32 wind_x, F32 wind_y, F32 speed, bool follow);
+    class Updates
+    {
+    public:
+        bool due(const Plan& close, const Plan& distant, U64 geometry, U32 place,
+                 const std::array<F64, 3>& origin, F64 seconds, U32 hz);
+        void publish() { mValid = true; }
+        void invalidate() { mValid = false; }
+    private:
+        Plan mClose, mDistant;
+        std::array<F64, 3> mOrigin{};
+        U64 mGeometry = 0;
+        U32 mPlace = 0;
+        F64 mNext = 0., mLast = -1.;
+        bool mValid = false, mRequested = false, mSettle = false;
+    };
     constexpr U64 coverBytes(U32 resolution) { return U64(resolution) * resolution * 4 * 2; }
+    constexpr U64 advancedBytes(U32 close_resolution, U32 distant_resolution)
+    {
+        // Four FBOs plus the dedicated program/driver bookkeeping reserve.
+        return coverBytes(close_resolution) + coverBytes(distant_resolution) +
+            (close_resolution || distant_resolution ? 256ULL * 1024 : 0);
+    }
     U64 materialSignature(const ALWeatherBridge::Controller& weather);
     class ProbeRevision
     {

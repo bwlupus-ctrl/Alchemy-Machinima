@@ -240,6 +240,7 @@ struct ALWeatherResources {
  ALWeatherShelter::Coverage mCoverage=ALWeatherShelter::Coverage::INCOMPLETE;
  std::string mStatus;
  glm::dvec3 mOrigin;glm::mat4 mMatrix;float mRange=128.f;
+ struct Advanced {bool current(const glm::dvec3&,U32){return true;}void bind(LLGLSLShader*,const glm::dvec3&,U32){}};Advanced* advanced=nullptr;
  bool ready()const{return ALWeatherShelter::usable(mCoverage);}
  LLRenderTarget& writeTarget(){return mCover[1-mRead];}
  U32 mPreparedFrame=17,mPublishedFrame=~U32(0);
@@ -348,7 +349,10 @@ def run(mutation=None, source_ref='WORKTREE'):
     new_settings=sorted(set(table)-set(baseline))
     wp3={'AlchemyWeather'+n for n in ('SnowEnabled','PrecipType','SnowRate','SnowFlakeSize','SnowFallSpeed',
         'SnowRange','SnowParticleLimit','PrecipVisibilityEnabled','PrecipVisibilityAmount')}
-    assert len(set(new_settings)-wp3)==24
+    wp7={'AlchemyWeather'+n for n in ('AdvancedShelterEnabled','ShelterNearResolution','ShelterFarResolution',
+        'ShelterNearExtent','ShelterFarExtent','ShelterTiltEnabled','ShelterUpdateHz','ShelterBias','ShelterSoftness','ShelterDebug')}
+    assert len(set(new_settings)-wp3-wp7)==24
+    assert not (set(new_settings)&wp7) or wp7.issubset(new_settings)
     assert not (set(new_settings)&wp3) or wp3.issubset(new_settings)
     for setting in new_settings:
         assert '"'+setting+'"' in tracked, 'untracked preset/reset setting: '+setting

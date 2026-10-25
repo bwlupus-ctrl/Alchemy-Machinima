@@ -45,6 +45,8 @@ INVENTORY = [
 def run(ref='WORKTREE', mutation=None, cost=True, regression=None):
     tree = SourceTree(ref)
     helper = tree.read(SHADERS + '/class1/deferred/weatherMaterialF.glsl')
+    if 'float weatherShelterSurfaceOpen(vec3 agent);' in helper:
+        helper += '\n' + tree.read(SHADERS + '/class1/deferred/weatherShelterF.glsl')
     manager=tree.read('indra/newview/llreflectionmapmanager.cpp')
     for consumer in ('mWeatherProbeRevision.update(', 'mWeatherCinematicRevision.update(',
                      'sig.addExact(mWeatherCinematicRevision.signature())'):
@@ -205,7 +207,12 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
             if 'diffuseMap' in units and regression in (None, 'sampler'):
                 assert units['diffuseMap']==0, 'native sampler diffuse loses unit zero '+file+' '+str(units)
             if 'weather_surface_cover_map' in units and regression in (None, 'sampler'):
-                assert all(unit<units['weather_surface_cover_map'] for name,unit in units.items() if name!='weather_surface_cover_map'), 'native sampler cover precedes existing samplers '+file+' '+str(units)
+                assert all(unit<units['weather_surface_cover_map'] for name,unit in units.items() if name not in ('weather_surface_cover_map','weather_shelter_close_map','weather_shelter_distant_map')), 'native sampler cover precedes existing samplers '+file+' '+str(units)
+            if 'weather_shelter_close_map' in units and regression in (None,'sampler'):
+                # A runnable cover mutant may optimize the old sampler out.
+                # Every remaining existing sampler must still precede WP7.
+                existing=[unit for name,unit in units.items() if name not in ('weather_shelter_close_map','weather_shelter_distant_map')]
+                assert max(existing,default=-1)<units['weather_shelter_close_map']<units['weather_shelter_distant_map'],'advanced samplers precede existing samplers '+file+' '+str(units)
             if indexed and regression in (None, 'sampler'):
                 assert units['tex0']==0, 'native indexed diffuse loses unit zero '+file
             print('native sampler PASS',file,units,flush=True)

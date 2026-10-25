@@ -26,7 +26,9 @@ def check(tree, item):
         assert 'hi = min(hi,max(t0,t1))' in cover and 'exposed*step_m' in cover,'ray must clip to known coverage and integrate'
     elif item==3:
         cover=function(pipe,'void LLPipeline::generateWeatherSurfaceCover(')
-        assert cover.index('mWeatherPrecipitationCoverCache.reuse(')<cover.index('renderShadow('),'snow repeats full cover traversal'
+        draw = function(pipe,'bool LLPipeline::drawWeatherCover(') if 'bool LLPipeline::drawWeatherCover(' in pipe else cover
+        traversal = 'drawWeatherCover(' if draw != cover else 'renderShadow('
+        assert cover.index('mWeatherPrecipitationCoverCache.reuse(')<cover.index(traversal) and 'renderShadow(' in draw,'snow repeats full cover traversal'
         assert 'combined preparation/cover/render p95 exceeds 0.65 ms' in particles and 'max(tails)<=.65' in particles,'cost p95 is not enforced'
         assert 'native.cover_prepare(cell,0,0' in particles and 'combined();cpu.append' in particles,'timed scope omits preparation or cover'
         from weather_particles_gl_check import enforce_cost
@@ -47,7 +49,8 @@ def check(tree, item):
     elif item==6:
         caps=function(tree.read('indra/llrender/llshadermgr.cpp'),'bool LLShaderMgr::computeShadersSupported(')
         assert caps.index('generation == sContextGeneration')<caps.index('glGetIntegerv('),'limits are not context cached'
-        assert 'glGetAttribLocation' not in render and 'State saved_state(2, 1, false)' in render,'view path queries attributes or snapshots unrelated state'
+        narrow = 'State saved_state(2, 1, false)' in render or ('const U32 cover_units = s.advancedShelter ? 4U : 2U;' in render and 'State saved_state(cover_units, 1, false)' in render)
+        assert 'glGetAttribLocation' not in render and narrow,'view path queries attributes or snapshots unrelated state'
         assert 'library-on/WP3-off performs GL work' in particles,'off fixture missing'
     elif item==7:
         hook=function(pipe,'void LLPipeline::renderWeatherParticles(')

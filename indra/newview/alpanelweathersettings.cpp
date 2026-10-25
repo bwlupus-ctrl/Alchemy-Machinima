@@ -135,6 +135,16 @@ const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()
         "AlchemyWeatherWetSeconds",
         "AlchemyWeatherDrySeconds",
         "AlchemyWeatherStartWetness",
+        "AlchemyWeatherAdvancedShelterEnabled",
+        "AlchemyWeatherShelterNearResolution",
+        "AlchemyWeatherShelterFarResolution",
+        "AlchemyWeatherShelterNearExtent",
+        "AlchemyWeatherShelterFarExtent",
+        "AlchemyWeatherShelterTiltEnabled",
+        "AlchemyWeatherShelterUpdateHz",
+        "AlchemyWeatherShelterBias",
+        "AlchemyWeatherShelterSoftness",
+        "AlchemyWeatherShelterDebug",
         "AlchemyWeatherSurfaceCoverResolution",
         "AlchemyWeatherSurfaceCoverExtent",
         "AlchemyWeatherWetnessEnabled",
@@ -485,6 +495,8 @@ bool ALPanelWeatherSettings::applyNamedPreset(const std::string& name)
             }
         }
     }
+    if (!preset.has("version") || preset["version"].asInteger() < 5)
+        gSavedSettings.setBOOL("AlchemyWeatherAdvancedShelterEnabled", false);
     if (!preset.has("version") || preset["version"].asInteger() < 4)
     {
         gSavedSettings.setBOOL("AlchemyWeatherSnowEnabled", false);
@@ -629,6 +641,31 @@ namespace
         s.visibility = c_visibility();
         static LLCachedControl<F32> c_visibilityAmount(gSavedSettings, "AlchemyWeatherPrecipVisibilityAmount", 1.f);
         s.visibilityAmount = c_visibilityAmount();
+        static LLCachedControl<bool> c_advancedShelter(gSavedSettings, "AlchemyWeatherAdvancedShelterEnabled", false);
+        s.advancedShelter = c_advancedShelter();
+        if (s.advancedShelter)
+        {
+            static LLCachedControl<U32> c_shelterNearResolution(gSavedSettings, "AlchemyWeatherShelterNearResolution", 1024U);
+            s.shelterNearResolution = c_shelterNearResolution();
+            static LLCachedControl<U32> c_shelterFarResolution(gSavedSettings, "AlchemyWeatherShelterFarResolution", 512U);
+            s.shelterFarResolution = c_shelterFarResolution();
+            static LLCachedControl<F32> c_shelterNearExtent(gSavedSettings, "AlchemyWeatherShelterNearExtent", 32.0f);
+            s.shelterNearExtent = c_shelterNearExtent();
+            static LLCachedControl<F32> c_shelterFarExtent(gSavedSettings, "AlchemyWeatherShelterFarExtent", 128.0f);
+            s.shelterFarExtent = c_shelterFarExtent();
+            static LLCachedControl<bool> c_shelterTilt(gSavedSettings, "AlchemyWeatherShelterTiltEnabled", true);
+            s.shelterTilt = c_shelterTilt();
+            static LLCachedControl<U32> c_shelterHz(gSavedSettings, "AlchemyWeatherShelterUpdateHz", 30U);
+            s.shelterHz = c_shelterHz();
+            static LLCachedControl<F32> c_shelterBias(gSavedSettings, "AlchemyWeatherShelterBias", 0.12f);
+            s.shelterBias = c_shelterBias();
+            static LLCachedControl<F32> c_shelterSoftness(gSavedSettings, "AlchemyWeatherShelterSoftness", 0.35f);
+            s.shelterSoftness = c_shelterSoftness();
+            static LLCachedControl<bool> c_shelterDebug(gSavedSettings, "AlchemyWeatherShelterDebug", false);
+            s.shelterDebug = c_shelterDebug();
+            static LLCachedControl<F32> c_shelterFallSpeed(gSavedSettings, "AlchemyWeatherRainFallSpeed", 28.f);
+            s.shelterFallSpeed = c_shelterFallSpeed();
+        }
         return ALWeatherBridge::sanitize(s);
     }
 
@@ -717,7 +754,8 @@ void ALPanelWeatherSettings::updateLibraryWeather()
     static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
     static LLCachedControl<U32> mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
     static LLCachedControl<bool> persistent_wet(gSavedSettings, "AlchemyWeatherPersistentWetEnabled", false);
-    const bool prepare = enabled() && (mode() == 1 || persistent_wet());
+    static LLCachedControl<bool> advanced_shelter(gSavedSettings, "AlchemyWeatherAdvancedShelterEnabled", false);
+    const bool prepare = enabled() && (mode() == 1 || persistent_wet() || advanced_shelter());
     static bool was_preparing = false;
     // No settings snapshot, sanitization, scene query or UI work while inactive.
     // WP2 still integrates Existing rain when persistent wet surfaces are enabled.
@@ -732,6 +770,7 @@ void ALPanelWeatherSettings::updateLibraryWeather()
             settings, 0.f, 0.f, 0, {}, {});
         sSurfaceStatus = "Persistent wet surfaces off";
         sParticleStatus = "Falling snow off";
+        gPipeline.mWeatherShelter.suspend();
         sLibraryUI.refresh(settings, bridge.state(), false, bridge.clock().seconds());
         libraryChanged()();
         return;
@@ -781,10 +820,17 @@ void ALPanelWeatherSettings::updateLibraryWeather()
         settings, gWindVec.mV[VX], gWindVec.mV[VY],
         gAgent.getRegion() ? gAgent.getRegion()->getHandle() : 0,
         lightning, anchor, manual);
+    if (settings.advancedShelter)
+    {
+        gPipeline.mWeatherSurfaces.advanced = &gPipeline.mWeatherShelter;
+        if (bridge.surfacesActive() || (bridge.precipitationActive() && ALWeatherParticles::supported()))
+            gPipeline.mWeatherSurfaces.prepare(settings.coverResolution);
+        gPipeline.mWeatherShelter.prepare();
+    }
     if (bridge.precipitationActive()) gPipeline.mWeatherParticles.prepare();
     const char* coverage = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
         (!LLViewerShaderMgr::instance()->weatherMaterialsSupported() ?
-            "Persistent wet surfaces unavailable on this GPU; existing rain available" : gPipeline.mWeatherSurfaces.status().c_str());
+            "Persistent wet surfaces unavailable on this GPU; existing rain available" : (settings.advancedShelter ? gPipeline.mWeatherShelter.status() : gPipeline.mWeatherSurfaces.status()).c_str());
     const char* particles = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
         (!ALWeatherParticles::supported() ? "Unavailable: requires OpenGL 4.5 compute and texture barriers" :
         gPipeline.mWeatherParticles.status());

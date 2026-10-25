@@ -961,6 +961,8 @@ public:
         RELIGHT_ENABLED,                   // runtime master; stale shape data is ignored while off
         AREA_WORLD_ATLAS,                  // P1-lite world cube shadow atlas (D32F, compare mode none)
         WEATHER_SURFACE_COVER_MAP,         // "weather_surface_cover_map"; after all existing samplers
+        WEATHER_SHELTER_CLOSE_MAP,
+        WEATHER_SHELTER_DISTANT_MAP,
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

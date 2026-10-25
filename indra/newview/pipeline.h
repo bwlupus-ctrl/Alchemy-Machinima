@@ -842,8 +842,13 @@ public:
     void generatePrismSpotShadows(LLCamera& camera);
     void generateWeatherRainOcclusion(LLCamera& camera);
     void generateWeatherSurfaceCover(LLCamera& camera);
+    bool drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_target,
+        const glm::mat4& view, const glm::mat4& projection, const LLVector3& top_origin,
+        F32 near_clip, F32 far_clip, U32& surface_submissions);
+    void generateWeatherAdvancedShelter(LLCamera& camera);
     void bindWeatherMaterial(LLGLSLShader* shader);
     ALWeatherResources mWeatherSurfaces;
+    ALWeatherShelterMaps mWeatherShelter;
     ALWeatherParticles mWeatherParticles;
     ALWeatherCoverCache mWeatherPrecipitationCoverCache;
     U64 mWeatherGeometryRevision = 0;

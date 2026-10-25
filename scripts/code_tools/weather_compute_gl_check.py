@@ -93,7 +93,14 @@ void main(){uint i=gl_GlobalInvocationID.x;values[i]=i*7u+11u;}
         content=files.extractfile(member).read().decode('utf-8')
         # Existing sources themselves are checked unchanged; preamble emitted
         # before/at their marker is measured with a small valid graphics shader.
-        assert tree.read(path)==content,'existing shader modified: '+path
+        current_source=tree.read(path)
+        if path.endswith('/weatherMaterialF.glsl'):
+            # WP7's two explicit hooks are independently exercised by the
+            # shelter/material GL gates. Pin every other byte to this archive.
+            for hook in ('float weatherShelterSurfaceOpen(vec3 agent);\n',
+                         '    if (weather_material_enabled == 2) return max(weatherShelterSurfaceOpen(agent),0.0);\n'):
+                current_source=current_source.replace(hook,'')
+        assert current_source==content,'existing shader modified: '+path
         marker='/*[EXTRA_CODE_HERE]*/\n' if '[EXTRA_CODE_HERE]' in content else ''
         fixture=marker+('void main(){gl_Position=vec4(0);}\n' if stage==0x8B31 else 'out vec4 frag_color;void main(){frag_color=vec4(1);}\n')
         (cls/'identity.glsl').write_text(fixture);(oldcls/'identity.glsl').write_text(fixture)
