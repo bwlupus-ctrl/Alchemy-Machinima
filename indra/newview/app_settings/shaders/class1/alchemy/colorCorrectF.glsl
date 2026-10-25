@@ -34,6 +34,9 @@ out vec4 frag_color;
 // ---- Input ------------------------------------------------------------------
 uniform sampler2D diffuseRect;
 uniform sampler2D depthMap;
+#ifdef AL_SENSOR_OPTICS
+uniform sampler2D diffuseMap; // unexposed flare source, distinct from exposed diffuseRect
+#endif
 #ifdef LEGACY_GAMMA
 uniform float gamma;
 #endif
@@ -112,19 +115,36 @@ vec3 legacyGamma(vec3 color) {
 void main()
 {
     // === LINEAR SPACE ========================================================
+#ifdef AL_SENSOR_EXPOSURE
+    vec4 scene = texture(diffuseRect, vary_fragcoord);
+    scene.rgb = applyExposure(scene.rgb);
+    // Half-float scratch must never overflow on invalid/extreme scene inputs.
+    scene.rgb = mix(clamp(scene.rgb, vec3(-65000.0), vec3(65000.0)), vec3(0.0), isnan(scene.rgb));
+    frag_color = scene;
+    return;
+#endif
 
-#ifdef HAS_POST_EFFECTS
+
+#if defined(HAS_POST_EFFECTS) && !defined(AL_SENSOR_CAMERA)
     vec4 diff = applyChromaticAberration(diffuseRect, vary_fragcoord);
+#ifdef AL_SENSOR_OPTICS
+    diff.rgb += applyExposure(computeLensFlare(diffuseMap, depthMap, vary_fragcoord));
+#else
     diff.rgb += computeLensFlare(diffuseRect, depthMap, vary_fragcoord);
+#endif
 #else
     vec4 diff = texture(diffuseRect, vary_fragcoord);
 #endif
 
-#ifdef BLOOM_COMPOSITE
+#if defined(BLOOM_COMPOSITE) && !defined(AL_SENSOR_CAMERA)
     // Additively composite the HDR bloom pyramid before exposure/tonemap so the
     // glow is rolled through the same exposure curve as the underlying scene.
     {
         vec4 bloom_sample = texture(bloomMap, vary_fragcoord);
+#ifdef AL_SENSOR_OPTICS
+        bloom_sample.rgb = applyExposure(bloom_sample.rgb);
+        bloom_sample.a *= applyExposure(vec3(1.0)).x;
+#endif
     #ifdef BLOOM_HALATION
         diff.rgb += bloom_sample.rgb * bloom_strength
                   + bloom_sample.a   * halation_strength * halation_tint;
@@ -134,7 +154,11 @@ void main()
     }
 #endif
 
-#ifdef TONEMAP
+#ifdef AL_SENSOR_OPTICS
+    frag_color = diff;
+    return;
+#endif
+#if defined(TONEMAP) && !defined(AL_SENSOR_CAMERA)
     diff.rgb = applyExposure(diff.rgb);
 #endif
 

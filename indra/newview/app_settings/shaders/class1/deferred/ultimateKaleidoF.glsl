@@ -771,7 +771,11 @@ void main()
         col = vec3(h);
     }
 
+#ifdef AL_SENSOR_HDR
+    frag_data[0] = vec4(col, 1.0);
+#else
     frag_data[0] = vec4(clamp(col, 0.0, 1.0), 1.0);
+#endif
     frag_data[1] = vec4(0.0);
     frag_data[2] = vec4(warpUV, 0.0, 0.0);
 }

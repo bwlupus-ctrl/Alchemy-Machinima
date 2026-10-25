@@ -77,6 +77,8 @@ public:
     std::string loadBasicShaders();
     bool loadShadersEffects();
     bool loadShadersDeferred();
+    bool loadSensorShaders();
+    void unloadSensorShaders();
     bool loadShadersObject();
     bool loadShadersAvatar();
     bool loadShadersWater();
@@ -314,6 +316,22 @@ extern LLGLSLShader         gDeferredShadowGLTFAlphaBlendProgram;
 extern LLGLSLShader         gDeferredShadowFullbrightAlphaMaskProgram;
 extern LLGLSLShader         gDeferredPostProgram;
 extern LLGLSLShader         gDeferredPostProgramNoNear;
+
+// WP-B: main-presentation physical camera variants, never used by legacy feeds.
+extern LLGLSLShader gSensorCameraProgram[6]; // exposure, optics, four camera grades
+extern LLGLSLShader gSensorPassProgram;
+extern LLGLSLShader gSensorAAEncodeProgram;
+extern LLGLSLShader gSensorDoFProgram[2];
+extern LLGLSLShader gSensorDiopterGatherProgram[4];
+extern LLGLSLShader gSensorDiopterProgram;
+extern LLGLSLShader gSensorKaleidoProgram;
+extern LLGLSLShader gSensorFXAAProgram[4];
+extern LLGLSLShader gSensorSMAABlendProgram[4];
+extern LLGLSLShader gSensorVignetteProgram;
+extern LLGLSLShader gSensorBlitProgram;
+extern LLGLSLShader gSensorRotoProgram;
+extern LLGLSLShader gSensorOverlayProgram;
+
 extern LLGLSLShader         gDeferredCoFProgram;
 extern LLGLSLShader         gDeferredDoFCombineProgram;
 extern LLGLSLShader         gFXAAProgram[4];

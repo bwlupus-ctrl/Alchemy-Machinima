@@ -47,7 +47,12 @@ void dofSample(inout vec4 diff, inout float w, float min_sc, vec2 tc)
         float wg = 0.25;
 
         // de-weight dull areas to make highlights 'pop'
+#ifdef AL_SENSOR_HDR
+        float luma = max(dot(s.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0);
+        wg += luma / (1.0 + luma);
+#else
         wg += s.r+s.g+s.b;
+#endif
 
         diff += wg*s;
 
@@ -62,7 +67,12 @@ void dofSampleNear(inout vec4 diff, inout float w, float min_sc, vec2 tc)
     float wg = 0.25;
 
     // de-weight dull areas to make highlights 'pop'
+#ifdef AL_SENSOR_HDR
+    float luma = max(dot(s.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0);
+    wg += luma / (1.0 + luma);
+#else
     wg += s.r+s.g+s.b;
+#endif
 
     diff += wg*s;
 
@@ -126,6 +136,8 @@ void main()
         diff /= w;
     }
 
+#ifndef AL_SENSOR_HDR
     diff.rgb = clampHDRRange(diff.rgb);
+#endif
     frag_color = diff;
 }

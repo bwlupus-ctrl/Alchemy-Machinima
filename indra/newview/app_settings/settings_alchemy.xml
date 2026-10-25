@@ -4390,5 +4390,258 @@
         </map>
         <key>AlchemyAnimReflectInventory</key>
     <map><key>Comment</key><string>Reflect newly played inventory animations locally. Others see the original; existing plays keep their join-time mode.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+    <key>CineSensorEnabled</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: Enabled. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>Boolean</string>
+        <key>Value</key>
+        <boolean>false</boolean>
+    </map>
+    <key>CineSensorPhysicalOrderEnabled</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: PhysicalOrderEnabled. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>Boolean</string>
+        <key>Value</key>
+        <boolean>true</boolean>
+    </map>
+    <key>CineSensorNoiseEnabled</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: NoiseEnabled. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>Boolean</string>
+        <key>Value</key>
+        <boolean>true</boolean>
+    </map>
+    <key>CineSensorISO</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: ISO. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>100</real>
+    </map>
+    <key>CineSensorPreset</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: Preset. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>U32</string>
+        <key>Value</key>
+        <integer>0</integer>
+    </map>
+    <key>CineSensorBrightnessMode</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: BrightnessMode. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>U32</string>
+        <key>Value</key>
+        <integer>0</integer>
+    </map>
+    <key>CineSensorNoiseAmount</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: NoiseAmount. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>1</real>
+    </map>
+    <key>CineSensorChroma</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: Chroma. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>1</real>
+    </map>
+    <key>CineSensorSeedFixed</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: SeedFixed. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>Boolean</string>
+        <key>Value</key>
+        <boolean>false</boolean>
+    </map>
+    <key>CineSensorSeed</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: Seed. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>U32</string>
+        <key>Value</key>
+        <integer>0</integer>
+    </map>
+    <key>CineSensorCustomBaseISO</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomBaseISO. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>100</real>
+    </map>
+    <key>CineSensorCustomSwitchISO</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomSwitchISO. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>0</real>
+    </map>
+    <key>CineSensorCustomHeadroom</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomHeadroom. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>3.5</real>
+    </map>
+    <key>CineSensorCustomLCGFullWell</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomLCGFullWell. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>50000</real>
+    </map>
+    <key>CineSensorCustomLCGReadNoise</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomLCGReadNoise. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>3</real>
+    </map>
+    <key>CineSensorCustomLCGAnalogBase</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomLCGAnalogBase. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>0.25</real>
+    </map>
+    <key>CineSensorCustomLCGPedestal</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomLCGPedestal. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>512</real>
+    </map>
+    <key>CineSensorCustomLCGWhite</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomLCGWhite. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>16383</real>
+    </map>
+    <key>CineSensorCustomHCGFullWell</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomHCGFullWell. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>50000</real>
+    </map>
+    <key>CineSensorCustomHCGReadNoise</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomHCGReadNoise. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>3</real>
+    </map>
+    <key>CineSensorCustomHCGAnalogBase</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomHCGAnalogBase. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>0.25</real>
+    </map>
+    <key>CineSensorCustomHCGPedestal</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomHCGPedestal. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>512</real>
+    </map>
+    <key>CineSensorCustomHCGWhite</key>
+    <map>
+        <key>Comment</key>
+        <string>Internal physical camera sensor: CustomHCGWhite. Illustrative calibration; no Director row.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>F32</string>
+        <key>Value</key>
+        <real>16383</real>
+    </map>
 </map>
 </llsd>

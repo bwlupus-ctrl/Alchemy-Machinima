@@ -24,6 +24,15 @@ uniform sampler2D diffuseRect;   // pass-1 A: clear RGB (linear) + mask
 uniform sampler2D emissiveRect;  // pass-1 B: diopter RGB (linear) + rim
 uniform sampler2D diffuseMap;    // untouched source frame (display space)
 uniform vec2 screen_res;
+#ifdef AL_SENSOR_HDR
+uniform sampler2D exposureMap;
+uniform float exposure;
+uniform int tonemap_type;
+float sensorOpticsGain()
+{
+    return max(exposure * (tonemap_type == 8 ? 1.0 : texture(exposureMap, vec2(0.5)).r), 1e-5);
+}
+#endif
 
 // center.xy (uv), size, stretch
 uniform vec4 diopter_shape;
@@ -50,7 +59,14 @@ const int   UD_MAX_GHOSTS = 6;
 
 float ud_sat(float x) { return clamp(x, 0.0, 1.0); }
 
-vec3 ud_delin(vec3 c) { return pow(max(c, vec3(0.0)), vec3(1.0 / 2.2)); }
+vec3 ud_delin(vec3 c)
+{
+#ifdef AL_SENSOR_HDR
+    return c;
+#else
+    return pow(max(c, vec3(0.0)), vec3(1.0 / 2.2));
+#endif
+}
 
 float ud_mirror1(float x)
 {
@@ -134,6 +150,9 @@ void main()
 
             // soft-knee highlight energy
             float lum = dot(g, UD_LUMA);
+#ifdef AL_SENSOR_HDR
+            lum /= sensorOpticsGain();
+#endif
             float t = max(lum - diopter_ghost2.x, 0.0);
             float e = t * t / (t + diopter_ghost2.y + 1e-4);
 
@@ -205,5 +224,9 @@ void main()
         disp_out = vec3(rimW, m, ud_sat(4.0 * m * (1.0 - m)));
     }
 
+#ifdef AL_SENSOR_HDR
+    frag_color = vec4(disp_out, 1.0);
+#else
     frag_color = vec4(clamp(disp_out, 0.0, 1.0), 1.0);
+#endif
 }

@@ -79,7 +79,12 @@ void main()
 
     vec4 diff = texture(diffuseRect, vary_fragcoord.xy);
 
+#ifdef AL_SENSOR_HDR
+    // Transmission was collected by the sensor. Only artistic colour remains.
+    diff.rgb += applyVignette(vec3(0.0), vary_fragcoord.xy);
+#else
     diff.rgb = applyVignette(diff.rgb, vary_fragcoord.xy);
+#endif
     diff.rgb = applyCVDCompensation(diff.rgb);
     diff.rgb = applyFilmGrain(diff.rgb, gl_FragCoord.xy);
 #ifdef DITHER

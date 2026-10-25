@@ -223,10 +223,21 @@ public:
 
     void bindScreenToTexture();
     void renderFinalize();
+    enum class SensorStage { Legacy, Exposure, Optics, Camera };
+    bool physicalCameraOrder() const { return mSensorPhysicalOrder; }
+    bool ensureSensorTargets();
+    void releaseSensorTargets();
+    void renderSensor(LLRenderTarget* src, LLRenderTarget* dst);
+    void sensorAAEncode(LLRenderTarget* src);
+    void sensorVignette(LLRenderTarget* src, LLRenderTarget* dst);
+    void sensorWarpUniforms(LLGLSLShader& shader, bool diopter, bool fisheye, LLRenderTarget* src);
+    void compositeSensorOverlay(LLRenderTarget* src, LLRenderTarget* dst,
+        bool diopter, bool fisheye, bool guides);
+
     void copyScreenSpaceReflections(LLRenderTarget* src, LLRenderTarget* dst, LLRenderTarget* color_src = nullptr);
     void generateLuminance(LLRenderTarget* src, LLRenderTarget* dst);
     void generateExposure(LLRenderTarget* src, LLRenderTarget* dst, bool use_history = true);
-    void colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool tonemap, bool colorgrade);
+    void colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool tonemap, bool colorgrade, SensorStage stage = SensorStage::Legacy);
     // On-lens filters (Graduated ND + Polarizer) applied to the linear HDR scene
     // before bloom/flare generation, so those optics respect the filtered scene.
     void applyOnLensFilters(LLRenderTarget* screen);
@@ -304,7 +315,7 @@ public:
     // it is reliably THIS frame's matrix at that point). This never changes
     // WHEN or HOW gGLLast{ModelView,Projection} themselves get updated --
     // velocity rendering depends on that timing untouched.
-    void renderCineOutline(LLRenderTarget* dst, const F32* camera_modelview = nullptr, const F32* camera_projection = nullptr);
+    void renderCineOutline(LLRenderTarget* dst, const F32* camera_modelview = nullptr, const F32* camera_projection = nullptr, bool sensor_overlay = false);
     // [RotoInk] CineOutlineLayer: which point in the HDR post chain the ink
     // pass runs at. Exactly one of these fires per frame (see
     // shouldRunRotoInkAt). The non-HDR pipeline has no such chain to place a
@@ -1875,6 +1886,20 @@ public:
     LLVector2               mScreenScale;
 
     //water distortion texture (refraction)
+    // WP-B scratch is owned by the main presentation, independently of mRT.
+    LLRenderTarget mSensorPing[2];
+    LLRenderTarget mSensorAA;
+    LLRenderTarget mSensorOverlayReference;
+    LLRenderTarget mSensorRoto; // affine addition, transmission (MRT)
+    LLRenderTarget mSensorGuides[2]; // black/white affine guide capture
+    bool mSensorPhysicalOrder = false;
+    bool mSensorNoise = false;
+    bool mSensorAllocated = false;
+    bool mSensorFailed = false;
+    U64 mSensorFrame = 0;
+    U32 mSensorLastViewerFrame = ~0u;
+    bool mSensorClockStarted = false;
+    U32 mSensorTakeSeed = 0;
     LLRenderTarget              mWaterDis;
 
     // RAW (pre-on-lens-filter) HDR scene snapshot for the ReShade bridge.
