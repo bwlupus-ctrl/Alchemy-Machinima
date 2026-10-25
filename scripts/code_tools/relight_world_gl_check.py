@@ -322,7 +322,9 @@ void main() {
     area_p = texelFetch(probe_positions,ivec2(gl_FragCoord.xy),0).xyz;
     area_n_geo = probe_plane != 0 ? vec3(0,0,1) : -normalize(area_p-area_world_light[0].xyz);
     area_n_shade = area_n_geo;
-    frag_color = vec4(vec3(awVisibility(0)),1);
+    float visibility = probe_plane == 2 ?
+        awFaceTap(0,4,normalize(vec3(1.2,0,1)),vec3(0,0,-1),-2.0,0.003,vec3(0,0,1),2.0,1.0,false).x : awVisibility(0);
+    frag_color = vec4(vec3(visibility),1);
 }'''
         self.program = runner._link('class3/deferred/areaShadowFilterF.glsl', [(text, text[:text.index('void main()')] + body)])
 
@@ -397,21 +399,13 @@ def mutant(r, subs, filename="areaShadowFilterF.glsl"):
 # The pre-fix behaviours, as shader-text controls. Each MUST be rejected by the check named in main().
 MUT_HARD_FACE = [('vec3 w = smoothstep(vec3(AW_OVERLAP*major),vec3(major),a);',
                   'vec3 w = vec3(a.x >= a.y && a.x >= a.z ? 1.0 : 0.0, (a.x < a.y && a.y >= a.z) ? 1.0 : 0.0, (a.x < a.z && a.y < a.z) ? 1.0 : 0.0);')]
-MUT_NO_PLANE_GUARD = [('vec4 plane = clamp(vec4(nd)/min(dens,vec4(-1.e-3)),vec4(zr-cap),vec4(zr+cap));',
-                       'vec4 plane = vec4(nd)/min(dens,vec4(-1.e-5));'),
-                      ('return vec4(lessThan((z+bias)*max(vec4(den+du,den+dr+du,den+dr,den),vec4(1.e-5)),vec4(receiver2)));',
-                       'return vec4(1.0);'),
-                      # Reconstruct the original unbounded/hard-horizon
-                      # failure. receiver_check independently removes ONLY
-                      # the forward bound and rejects partial background
-                      # attenuation on face, direction and detail paths.
-                      ('visibility = mix(1.0,visibility,awDetailHorizon(nl,r_map));', ''),
-                      ('const float AW_PLANE_COMPRESS = 0.25;', 'const float AW_PLANE_COMPRESS = 0.0;')]
+MUT_NO_PLANE_GUARD = [('return vec4(lessThan((z+bias)*max(vec4(den+du,den+dr+du,den+dr,den),vec4(1.e-5)),vec4(receiver2)));',
+                       'return vec4(1.0);')]
 MUT_WIDE_OVERLAP = [('const float AW_OVERLAP = 0.95;', 'const float AW_OVERLAP = 0.5;')]
 # COST upper bound only (relight_world_cost.py): every tap reads all three faces, as if every receiver ray sat on a cube corner.
 MUT_ALL_FACES = [('const float AW_OVERLAP = 0.95;', 'const float AW_OVERLAP = 0.0;')]
 MUT_TWO_FACES = [('vec3 w = smoothstep(vec3(AW_OVERLAP*major),vec3(major),a);', 'vec3 w = vec3(1.0,1.0,0.0);')]   # every tap reads two faces, as if every receiver ray sat on a cube edge
-MUT_WIDE_UNCLAMPED = MUT_WIDE_OVERLAP + [('vec2 q = clamp(centre-0.5,vec2(0.0),vec2(AW_TILE-2.0));', 'vec2 q = centre-0.5;')]
+MUT_WIDE_UNCLAMPED = [('vec2 q = clamp(centre-0.5,vec2(0.0),vec2(AW_TILE-2.0));', 'vec2 q = centre-0.5;')]
 
 
 def seam_checks(r, raster, probe):
@@ -546,6 +540,17 @@ def bleed_value(r, probe, radius=.3):
             a = np.pi/4+az
             pts.append(4*np.array([np.cos(a)*np.cos(el), np.sin(el), np.sin(a)*np.cos(el)]))
     return float(np.min(probe.run(pts, light, .05)))
+
+
+def tile_clamp_value(r, probe):
+    """Stress one tile's addressing beyond its gutter, without altering overlap.
+
+    Only +Z is clear; its right-hand neighbour is a near blocker. The selected
+    production face tap must remain inside +Z even for this out-of-tile ray.
+    """
+    light = S.Light('clamp', (0,0,0), .1, 10., seed=123)
+    r.gpu_atlas = bleed_atlas(r, legit=(4,))
+    return float(probe.run([[0,0,2]], light, .05, plane=2)[0])
 
 
 def softbox_check(r, raster, probe, radius):
@@ -925,25 +930,83 @@ LOOK_BASE = '18a07a3aca5'   # the commit before the LOOK controls: its shaders a
 
 
 class PreLookTree(G.SourceTree):
-    """Historical LOOK-free code with the current, independently gated resolve.
+    """Historical LOOK-free code with frozen 77348de6593 world functions.
 
-    The receiver bug fix intentionally changes world visibility. Keep the
-    historical gather, filter, upsample and LOOK-free main as the byte oracle;
-    transplant only the world function definitions so this gate still tests
-    LOOK identity rather than requiring the diagnosed bug's output forever.
-    Cube-OFF identity retains its entirely historical reference in cube_off.
+    Never substitute the algorithm under test into a historical byte oracle.
+    The optional outer reference retains the EV/detail historical lighting code.
     """
     def __init__(self, current, reference=LOOK_BASE):
         super().__init__(reference)
-        self.current = current
+        self.world = G.SourceTree('77348de6593')
 
     def read(self, path):
         text = super().read(path)
         if Path(path).name == 'areaShadowFilterF.glsl':
-            current = self.current.read(path)
+            current = self.world.read(path)
             start = '#if __VERSION__ >= 400'
             text = text[:text.index(start)] + current[current.index(start):current.index('void main()')] + text[text.index('void main()'):]
+            # The outer test isolates LOOK/EV/detail changes from the receiver
+            # reconstruction deliberately changed by FIX2. Its entire world
+            # oracle, including normal reconstruction, stays historical.
+            text = text.replace('area_n_geo = awGeoNormal(texel);', '')
         return text
+
+
+def historical_protected_mask(reference, eligible, radius=8):
+    """Historical lit/umbra interiors, selected without the candidate output.
+
+    Phase, horizon, receiver reconstruction and behind-surface corrections
+    intentionally change penumbrae and silhouettes. Preserve byte protection
+    on well-conditioned interiors AND gate those changed cases independently.
+    """
+    classes = np.where(reference == 0., 1, np.where(reference == 1., 2, 0))
+    protected = (classes != 0) & eligible
+    for axis in (0,1):
+        for shift in range(-radius,radius+1):
+            protected &= np.roll(classes,shift,axis) == classes
+    protected[:radius,:] = protected[-radius:,:] = False
+    protected[:,:radius] = protected[:,-radius:] = False
+    return protected
+
+
+def geometry_inside(prim, points):
+    """Exact batched volume test; capsule entry roots omit inside origins."""
+    if prim.kind == 'obb':
+        return np.all(np.abs((points-np.asarray(prim.c))@prim.rot())<np.asarray(prim.h),axis=1)
+    if prim.kind == 'sphere':
+        delta=points-np.asarray(prim.c)
+    else:
+        a,b=np.asarray(prim.a),np.asarray(prim.b);axis=b-a
+        t=np.clip(((points-a)@axis)/(axis@axis),0.,1.)
+        delta=points-(a+t[:,None]*axis)
+    return (delta*delta).sum(1)<prim.r*prim.r
+
+
+def historical_geometry_mask(reference,scene,g,light,eligible,radius=8):
+    """Historical interiors whose geometry agrees throughout filter support.
+
+    Ignore the emitter just as independent disk truth does. The candidate is
+    never consulted when selecting unchanged lit/umbra samples.
+    """
+    protected=historical_protected_mask(reference,eligible,radius)
+    p=g['pos'][protected];normal=g['nrm'][protected]
+    delta=np.asarray(light.pos)-p;distance=np.linalg.norm(delta,axis=1)
+    nl=(normal*delta).sum(1)/np.maximum(distance,1.e-9)
+    axis=np.zeros_like(normal);axis[:,2]=1.;axis[np.abs(normal[:,2])>.9]=(0,1,0)
+    tangent=np.cross(normal,axis);tangent/=np.maximum(np.linalg.norm(tangent,axis=1,keepdims=True),1.e-9)
+    bitangent=np.cross(normal,tangent)
+    extent=4.*np.max(np.abs(delta),axis=1)/CS.USABLE/np.maximum(nl,.2)
+    expected=reference[protected]==1.;stable=nl>.2
+    ignored=set(scene.prim_indices(light.ignore))
+    prims=[prim for i,prim in enumerate(scene.prims) if i not in ignored]
+    for x,y in ((0,0),(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)):
+        q=p+extent[:,None]*(x*tangent+y*bitangent)+normal*.0005
+        ray=np.asarray(light.pos)-q;distance=np.linalg.norm(ray,axis=1);ray/=distance[:,None]
+        clear=np.ones(len(q),bool)
+        for prim in prims:clear &= (S.isect(prim,q,ray)>=distance)&~geometry_inside(prim,q)
+        stable &= clear==expected
+    protected[protected]=stable
+    return protected
 
 
 def look_frame(r, raster, light, capsule_in_gbuffer=True, capsule_in_cube=True, look=dict(), owned=True, size=(640, 360), yaw=-54.462, pitch=28.635,
@@ -1021,13 +1084,25 @@ def look_checks(r, raster, mut_runner=None, mut_raster=None):
     # 0b. ... and byte-identical to the shaders of the commit before the LOOK controls existed (LOOK_BASE), on the same frames.
     base = RealRunner(PreLookTree(r.tree), r.host, gl=r.gl)
     base_raster = Raster(base)
+    frozen = RealRunner(PreLookTree(r.tree, r.tree.ref), r.host, gl=r.gl)
+    frozen_raster = Raster(frozen)
     same = []
+    protected_frames = []
     for owned in (True, False):
         for in_cube in (True, False):
-            a, _, _ = look_frame(r, raster, light, owned=owned, capsule_in_cube=in_cube)
+            a, _, _ = look_frame(frozen, frozen_raster, light, owned=owned, capsule_in_cube=in_cube)
             b, _, _ = look_frame(base, base_raster, light, owned=owned, capsule_in_cube=in_cube, look=None)
             same.append(bool(np.array_equal(a, b)))
-    row('look_defaults_byte_identical_to_pre_look_shaders', all(same), frames=same, base=LOOK_BASE)
+            actual, floor, g = look_frame(r,raster,light,owned=owned,capsule_in_cube=in_cube)
+            ray = np.asarray(light.pos)-g['pos']
+            nl = (ray*g['nrm']).sum(2)/np.maximum(np.linalg.norm(ray,axis=2),1.e-9)
+            protected = historical_protected_mask(b,floor & (nl>.2))
+            protected_frames.append(dict(owned=owned,in_cube=in_cube,pixels=int(protected.sum()),
+                                         shadow_pixels=int((protected & (b==0)).sum()),
+                                         passed=bool(protected.sum()>1000 and np.array_equal(actual[protected],b[protected]))))
+    row('look_defaults_byte_identical_to_pre_look_shaders', all(same), frames=same, base=LOOK_BASE,
+        world_reference='77348de6593', scope='LOOK wrappers with historical world functions; production receiver separately gated')
+    row('production_world_unchanged_interiors_match_77348de6593',all(x['passed'] for x in protected_frames),frames=protected_frames)
     # 1. Strength: v' = mix(1, v, s). 0.5 halves the shadow depth; 0 is no soft shadow; unmapped lights are scaled too.
     for owned, base, tag in ((True, v_none, 'world'), (False, v_none_s, 'unmapped')):
         v_half, _, _ = look_frame(r, raster, light, owned=owned, look=dict(strength=.5))
@@ -1229,7 +1304,7 @@ def main():
         dark = grazing_value(m,mraster,2.)
         rows.append(dict(name='control_unguarded_plane_rejected',dark_percent=dark,passed=bool(dark > GRAZING_LIMIT)))
         m, mraster, mprobe = mutant(r,MUT_WIDE_UNCLAMPED)
-        lit = bleed_value(m,mprobe)
+        lit = tile_clamp_value(m,mprobe)
         rows.append(dict(name='control_unclamped_tile_read_rejected',min_visibility=lit,passed=bool(lit < .9)))
         m, mraster, mprobe = mutant(r,MUT_WIDE_OVERLAP)
         lit = bleed_value(m,mprobe)

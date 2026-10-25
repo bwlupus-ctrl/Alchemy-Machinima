@@ -19,6 +19,24 @@ import relight_3d_cube_source as CS
 import relight_world_gl_check as WG
 
 
+def inside_primitive(prim, points):
+    """Exact batched volume test for the independent filter neighbourhood.
+
+    A tangent-plane sample can enter another caster. The scene capsule ray
+    helper only returns entry roots, so an origin already inside must also
+    count as blocked instead of silently becoming clear.
+    """
+    if prim.kind == 'obb':
+        return np.all(np.abs((points-np.asarray(prim.c))@prim.rot())<np.asarray(prim.h),axis=1)
+    if prim.kind == 'sphere':
+        delta=points-np.asarray(prim.c)
+    else:
+        a,b=np.asarray(prim.a),np.asarray(prim.b);axis=b-a
+        t=np.clip(((points-a)@axis)/(axis@axis),0.,1.)
+        delta=points-(a+t[:,None]*axis)
+    return (delta*delta).sum(1)<prim.r*prim.r
+
+
 def evaluate(defaults,out,shader_ref='WORKTREE'):
     out=Path(out)/'detail';out.mkdir(parents=True,exist_ok=True)
     defaults=dict(defaults)
@@ -164,9 +182,16 @@ def evaluate(defaults,out,shader_ref='WORKTREE'):
     for flag in (False,True):
         for soft in (False,True):
             aircur[flag,soft]=r.native_visibility(cam,d,n,dict(e,detail_shadows=flag),dict(defaults,BDMergeSoftProjectorShadows=soft),airborne=True)
-    # Native/soft/airborne keep the unmodified historical byte oracle. The
-    # intentional world receiver fix has its own before/after/mutation gate;
-    # compare detail-OFF identity with that same world algorithm on both sides.
+    # Actual FIX2 world output must retain exact unflagged/master-off identity.
+    # Also exercise those controls through the frozen historical world math,
+    # so detail/LOOK code cannot silently redefine its historical oracle.
+    world_identity=bool(np.array_equal(wcur,wmaster))
+    r.tree=WG.PreLookTree(tree,tree.ref)
+    r.filter=r._link('class3/deferred/areaShadowFilterF.glsl')
+    historical_unflagged=world(cam,d,n,light,False)
+    historical_master=world(cam,d,n,light,True,False)
+    # Native/soft/airborne keep the unmodified historical byte oracle. World
+    # identity uses frozen 77348de6593 functions, never the current algorithm.
     r.tree=G.SourceTree(BASE)
     r.visibility=r.link_text(r.visibility_source,'BASE detail identity',extra=r.FRAGMENT_COMMON+['deferred/shadowUtil.glsl'],defines='#define SPOT_SHADOW 1\n')
     r.tree=WG.PreLookTree(tree,BASE)
@@ -176,8 +201,48 @@ def evaluate(defaults,out,shader_ref='WORKTREE'):
     base_defaults=dict(defaults,RenderSpotShadowDetailBias=False)
     vhead=r.native_visibility(cam,d,n,base_e,base_defaults);whead=world(cam,d,n,light,False,False)
     vhead_soft=r.native_visibility(cam,d,n,base_e,dict(base_defaults,BDMergeSoftProjectorShadows=True))
-    identity=dict(unflagged_native=bool(np.array_equal(vcur,vhead)),master_off_native=bool(np.array_equal(vmaster,vhead)),unflagged_world=bool(np.array_equal(wcur,whead)))
-    identity['master_off_world']=bool(np.array_equal(wmaster,whead))
+    identity=dict(unflagged_native=bool(np.array_equal(vcur,vhead)),master_off_native=bool(np.array_equal(vmaster,vhead)),
+                  unflagged_world=bool(np.array_equal(historical_unflagged,whead)),production_world_master_off=world_identity)
+    identity['master_off_world']=bool(np.array_equal(historical_master,whead))
+    light_ray=np.asarray(light.pos)-g['pos']
+    nl=(light_ray*g['nrm']).sum(2)/np.maximum(np.linalg.norm(light_ray,axis=2),1.e-9)
+    # Select unchanged interiors from independent geometry, not from the
+    # candidate. The skin oracle intentionally excludes floor (surface 0) for
+    # acne statistics, so include its independent ray intersections here too.
+    truth=R.receiver_interiors(scene,g,light)
+    eligible=(truth['lit']&(whead==1.))|(truth['dark']&(whead==0.))
+    floor=g['surf']==0;p=g['pos'][floor];normal=g['nrm'][floor]
+    ray=np.asarray(light.pos)-p;distance=np.linalg.norm(ray,axis=1);ray/=distance[:,None]
+    clear=np.ones(len(p),bool)
+    for prim in scene.prims:clear &= S.isect(prim,p+normal*.0005,ray)>=distance
+    floor_class=np.zeros(floor.shape,np.uint8);floor_class[floor]=np.where(clear,1,2)
+    floor_interior=floor.copy()
+    for axis in (0,1):
+        for shift in range(-4,5):floor_interior &= np.roll(floor_class,shift,axis)==floor_class
+    eligible |= floor_interior&(((floor_class==1)&(whead==1.))|((floor_class==2)&(whead==0.)))
+    protected=WG.historical_protected_mask(whead,eligible&(nl>.2),radius=12)
+    # A minimum one-texel cube filter plus bilinear support reaches farther
+    # than four camera pixels on this proxy. Exclude physical shadow/crease
+    # boundaries using an INDEPENDENT receiver-plane neighbourhood of two
+    # cube texels (stretched by incidence), not candidate visibility values.
+    # This preserves byte protection on actual interiors while permitting
+    # the intentional contact/bias corrections at that filter's boundary.
+    p=g['pos'][protected];normal=g['nrm'][protected]
+    axis=np.zeros_like(normal);axis[:,2]=1.;axis[np.abs(normal[:,2])>.9]=(0,1,0)
+    tangent=np.cross(normal,axis);tangent/=np.linalg.norm(tangent,axis=1,keepdims=True)
+    bitangent=np.cross(normal,tangent)
+    extent=4.*np.max(np.abs(np.asarray(light.pos)-p),axis=1)/CS.USABLE/np.maximum(nl[protected],.2)
+    expected=whead[protected]==1.;stable=np.ones(len(p),bool)
+    for x,y in ((-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)):
+        q=p+extent[:,None]*(x*tangent+y*bitangent)+normal*.0005
+        ray=np.asarray(light.pos)-q;distance=np.linalg.norm(ray,axis=1);ray/=distance[:,None]
+        clear=np.ones(len(q),bool)
+        for prim in scene.prims:clear &= (S.isect(prim,q,ray)>=distance)&~inside_primitive(prim,q)
+        stable &= clear==expected
+    protected[protected]=stable
+    identity['production_world_historical_interiors']=bool(protected.sum()>1000 and np.array_equal(wcur[protected],whead[protected]))
+    historical_pixels=dict(total=int(protected.sum()),shadow=int((protected&(whead==0.)).sum()),
+                           changed=int((protected&(wcur!=whead)).sum()))
     identity.update(unflagged_soft=bool(np.array_equal(vcur_soft,vhead_soft)),master_off_soft=bool(np.array_equal(vmaster_soft,vhead_soft)))
     for (flag,soft),current in aircur.items():
         baseline=r.native_visibility(cam,d,n,dict(base_e,detail_shadows=flag),dict(base_defaults,BDMergeSoftProjectorShadows=soft),airborne=True)
@@ -192,7 +257,8 @@ def evaluate(defaults,out,shader_ref='WORKTREE'):
     if not receiver['passed']:failures.append('normal-map orientation/projector apex')
     result=dict(passed=not failures,shader_ref=shader_ref,grazing=grazing,receiver=receiver,rows=rows,motion=motion,base_identity=identity,identity_reference=BASE,failures=failures,
                 fixture='24cm head, 20.4mm nose, 10mm brows; affine skinning shear 0/0.002/0.004 at 60 Hz; independently intersected geometry and full production raster',
-                world_identity_reference='BASE with current world resolve functions only',
+                world_identity_reference='77348de6593 world functions; current production also compared on independently confirmed unchanged interiors',
+                historical_pixels=historical_pixels,
                 limits=dict(retention=.85,acne_false_dark_percent=.02,motion_p95=.06,motion_pop=.05))
     (out/'results.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n',encoding='utf-8')
     print('[shadow-detail]', 'PASS' if result['passed'] else 'FAIL',failures,flush=True)
