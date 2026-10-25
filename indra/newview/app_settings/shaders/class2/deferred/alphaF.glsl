@@ -304,6 +304,13 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
     return col;
 }
 
+
+// WP2 material contract: after Actor FX, before G-buffer packing/forward lighting.
+bool weatherMaterialActive();
+void weatherMaterialLinear(vec3 p, inout vec3 n, inout vec3 c, inout float r, float m);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+void weatherMaterialLegacyLinear(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+
 void main()
 {
 #ifdef HAS_ACTOR_FX
@@ -425,6 +432,12 @@ void main()
     diffuse_linear.rgb = alrAlbedoLinear(diffuse_linear.rgb); // [AvatarLightResponse] presented surface
 #endif
 
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+    vec3 weather_spec = vec3(0.0);
+    float weather_gloss = 0.0;
+    if (particle_normal == 0)
+        weatherMaterialLegacyLinear(vary_position, norm, diffuse_linear.rgb, weather_spec, weather_gloss);
+#endif
     vec3 sunlit;
     vec3 amblit;
     vec3 additive;

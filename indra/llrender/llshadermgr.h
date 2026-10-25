@@ -51,6 +51,14 @@ public:
         PROJECTION_MATRIX,                  //  "projection_matrix"
         INVERSE_PROJECTION_MATRIX,          //  "inv_proj"
         MODELVIEW_PROJECTION_MATRIX,        //  "modelview_projection_matrix"
+        WEATHER_MATERIAL_ENABLED, // "weather_material_enabled"
+        WEATHER_MATERIAL_EXCLUDED, // "weather_material_excluded"
+        WEATHER_SURFACE_COVER_MAP, // "weather_surface_cover_map"
+        WEATHER_SURFACE_COVER_MATRIX, // "weather_surface_cover_matrix"
+        WEATHER_MATERIAL_VIEW_TO_AGENT, // "weather_material_view_to_agent"
+        WEATHER_MATERIAL_ORIGIN, // "weather_material_origin"
+        WEATHER_MATERIAL_WET, // "weather_material_wet"
+        WEATHER_MATERIAL_TIME_RANGE, // "weather_material_time_range"
         INVERSE_MODELVIEW_MATRIX,           //  "inv_modelview"
         IDENTITY_MATRIX,                    //  "identity_matrix"
         NORMAL_MATRIX,                      //  "normal_matrix"
@@ -973,6 +981,9 @@ public:
     virtual std::string getShaderDirPrefix(void) = 0; // Pure Virtual
 
     // Implemented in the application to actually update out of date uniforms for a particular shader
+    void prepareWeatherFeatures(LLGLSLShader* shader);
+    virtual bool weatherMaterialsEnabled() const { return false; }
+    virtual void updateWeatherUniforms(LLGLSLShader* shader) {} // Per-view material bindings, no simulation.
     virtual void updateShaderUniforms(LLGLSLShader * shader) = 0; // Pure Virtual
 
     void initShaderCache(bool enabled, const LLUUID& old_cache_version, const LLUUID& current_cache_version, bool second_instance);

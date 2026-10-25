@@ -34,12 +34,15 @@
 #include <boost/lexical_cast.hpp>
 #include <filesystem>
 #include <fstream>
+#include <set>
 
 #include "hbxxh.h"
 #include "fsyspath.h"
 #include "llfeaturemanager.h"
 #include "llviewershadermgr.h"
 #include "llviewercontrol.h"
+#include "llviewerobjectlist.h"
+#include "llspatialpartition.h"
 #include "llversioninfo.h"
 
 #include "llrender.h"
@@ -922,6 +925,8 @@ void LLViewerShaderMgr::setShaders()
         return;
     }
 
+    const S32 old_indexed_channels = LLGLSLShader::sIndexedGLTFChannels;
+    const S32 old_shared_channels = LLGLSLShader::sSharedPBRIndexedGLTFChannels;
     mShaderList.clear();
 
     if (!gGLManager.mHasRequirements)
@@ -1049,8 +1054,8 @@ void LLViewerShaderMgr::setShaders()
     // materials; on a 16-unit GPU it is one and shared indexed replay naturally
     // falls back to exact scalar commands.
     LLGLSLShader::sIndexedGLTFChannels = llclamp(
-        gGLManager.mNumTextureImageUnits / 4, 1, 8);
-    constexpr S32 SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS = 10;
+        (gGLManager.mNumTextureImageUnits - (weatherMaterialsEnabled() ? 1 : 0)) / 4, 1, 8);
+    const S32 SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS = weatherMaterialsEnabled() ? 11 : 10;
     const S32 indexed_gltf_texture_units = llmax(
         gGLManager.mNumTextureImageUnits
             - SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS,
@@ -1230,6 +1235,26 @@ void LLViewerShaderMgr::setShaders()
     gPipeline.createGLBuffers();
 
     finalizeShaderList();
+
+    // The cover sampler can narrow indexed material batches. Retire old draw
+    // maps before any draw uses the newly linked, smaller sampler inventory.
+    if (old_indexed_channels != LLGLSLShader::sIndexedGLTFChannels ||
+        old_shared_channels != LLGLSLShader::sSharedPBRIndexedGLTFChannels)
+    {
+        std::set<LLSpatialGroup*> groups;
+        for (S32 i = 0; i < gObjectList.getNumObjects(); ++i)
+        {
+            LLViewerObject* object = gObjectList.getObject(i);
+            if (object && object->mDrawable.notNull())
+            {
+                if (LLSpatialGroup* group = object->mDrawable->getSpatialGroup()) groups.insert(group);
+            }
+        }
+        for (LLSpatialGroup* group : groups)
+        {
+            if (!group->isDead()) group->destroyGLState();
+        }
+    }
 
     // [AvatarLightResponse]
     LL_INFOS("AvatarLightResponse") << "[ALR] module attached to " << LLShaderMgr::sAvatarLightResponseAttachCount
@@ -1412,6 +1437,7 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/deferredUtil.glsl",                    1) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/gbufferUtil.glsl",                    1) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/globalF.glsl",                          1));
+    index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/weatherMaterialF.glsl",                 1));
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/shadowUtil.glsl",                      1) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/aoUtil.glsl",                          1) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/pbrterrainUtilF.glsl",                 1) );
@@ -6520,6 +6546,27 @@ bool LLViewerShaderMgr::loadShadersInterface()
 std::string LLViewerShaderMgr::getShaderDirPrefix(void)
 {
     return gDirUtilp->getExpandedFilename(LL_PATH_APP_SETTINGS, "shaders", "class");
+}
+
+bool LLViewerShaderMgr::weatherMaterialsEnabled() const
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherPersistentWetEnabled", false);
+    return enabled() && weatherMaterialsSupported();
+}
+
+bool LLViewerShaderMgr::weatherMaterialsSupported() const
+{
+    if (!LLRender::indexedDrawBufferGuardSupported()) return false;
+    static LLCachedControl<S32> terrain_detail(gSavedSettings, "RenderTerrainPBRDetail", 0);
+    // Four maps per terrain layer plus paint/alpha and cover; forward paths need up to 16.
+    const S32 detail = terrain_detail();
+    const S32 terrain_units = detail >= 0 ? 18 : (detail >= -1 ? 14 : (detail >= -2 ? 10 : 6));
+    return gGLManager.mNumTextureImageUnits >= llmax(16, terrain_units);
+}
+
+void LLViewerShaderMgr::updateWeatherUniforms(LLGLSLShader* shader)
+{
+    gPipeline.bindWeatherMaterial(shader);
 }
 
 void LLViewerShaderMgr::updateShaderUniforms(LLGLSLShader * shader)

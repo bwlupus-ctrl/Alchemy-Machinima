@@ -440,6 +440,7 @@ bool LLGLSLShader::createShader()
 
     llassert_always(!mShaderFiles.empty());
 
+    LLShaderMgr::instance()->prepareWeatherFeatures(this);
     mShaderHash = hash();
 
     // Create program
@@ -1096,6 +1097,10 @@ void LLGLSLShader::bind()
         LLVertexBuffer::setupClientArrays(mAttributeMask);
     }
 
+    if (mFeatures.hasWeatherMaterial)
+    {
+        LLShaderMgr::instance()->updateWeatherUniforms(this);
+    }
     if (mUniformsDirty)
     {
         LLShaderMgr::instance()->updateShaderUniforms(this);

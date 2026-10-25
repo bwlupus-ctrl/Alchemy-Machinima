@@ -882,6 +882,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                     LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
                     gPipeline.generateWorldShadowCubes(*LLViewerCamera::getInstance());
                     LLViewerCamera::sCurCameraID = saved_camera_id;
+                    gPipeline.generateWeatherSurfaceCover(*LLViewerCamera::getInstance());
                     gPipeline.generateWeatherRainOcclusion(
                         *LLViewerCamera::getInstance());
                 }

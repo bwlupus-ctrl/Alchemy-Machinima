@@ -181,6 +181,13 @@ vec3 mikktspace(vec3 vNt, vec3 vT, float sign)
 }
 #endif
 
+
+// WP2 material contract: after Actor FX, before G-buffer packing/forward lighting.
+bool weatherMaterialActive();
+void weatherMaterialLinear(vec3 p, inout vec3 n, inout vec3 c, inout float r, float m);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+void weatherMaterialLegacyLinear(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+
 void main()
 {
     // Make sure we clip the terrain if we're in a mirror.
@@ -428,8 +435,19 @@ void main()
 // Matte plastic potato terrain
 #define mix_orm vec3(1.0, 1.0, 0.0)
 #endif
+    vec3 weather_orm = mix_orm;
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+    // Evaluate derivatives for the entire quad, then exclude emitting pixels.
+    vec3 weather_normal = tnorm, weather_color = pbr_mix.col.rgb;
+    float weather_roughness = weather_orm.g;
+    weatherMaterialLinear(vary_position, weather_normal, weather_color, weather_roughness, weather_orm.b);
+    if (dot(mix_emissive, mix_emissive) == 0.0)
+    {
+        tnorm = weather_normal; pbr_mix.col.rgb = weather_color; weather_orm.g = weather_roughness;
+    }
+#endif
     frag_data[0] = max(vec4(pbr_mix.col.xyz, 0.0), vec4(0));                                                   // Diffuse
-    frag_data[1] = max(vec4(mix_orm.rgb, base_color_factor_alpha), vec4(0));                                    // PBR linear packed Occlusion, Roughness, Metal.
+    frag_data[1] = max(vec4(weather_orm.rgb, base_color_factor_alpha), vec4(0));                                    // PBR linear packed Occlusion, Roughness, Metal.
     frag_data[2] = encodeNormal(tnorm, 0, GBUFFER_FLAG_HAS_PBR); // normal, flags
 
 #if defined(HAS_EMISSIVE)

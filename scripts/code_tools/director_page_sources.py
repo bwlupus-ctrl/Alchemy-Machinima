@@ -160,9 +160,11 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         }
 
     if page == "weather_tab" and widget in {
-        "weather_library_preset", "weather_library_apply", "weather_library_stop"
+        "weather_library_preset", "weather_library_apply", "weather_library_stop",
+        "weather_surface_apply", "weather_surface_clear"
     }:
-        command = "stopPrecipitation" if widget == "weather_library_stop" else "applyLibraryPreset"
+        command = {"weather_library_stop": "stopPrecipitation", "weather_surface_apply": "applyStartingSurfaces",
+                   "weather_surface_clear": "clearSurfaces"}.get(widget, "applyLibraryPreset")
         source = (ROOT / "indra/newview/llfloaterdirector.cpp").read_text(encoding="utf-8")
         if f"ALPanelWeatherSettings::{command}(" not in source:
             raise RuntimeError(f"missing Director weather callback consumer: {widget}")

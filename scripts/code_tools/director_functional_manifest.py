@@ -773,12 +773,14 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 entry["header_quick"] = row.get("header_quick", "")
                 entry["expect"]["ui"] = ("search reveals and focuses header; Quick commits the real switch"
                     if row.get("header_quick") == "setting" else "search reveals and focuses header; no Quick tile")
-            if page == "weather_tab" and (widget.startswith("weather_library_") or
+            if page == "weather_tab" and (widget.startswith(("weather_library_", "weather_surface_")) or
                                            widget in {"weather_rain_color", "weather_lightning_color"}):
                 # WP1 has a standalone production-reader/callback/consumer test.
                 # Keep native/in-world admission unchanged: that final gate belongs
                 # to the user's own test after the final reviewed viewer build.
                 entry["standalone_consumer_check"] = "scripts/code_tools/weather_binding_check.py"
+                if widget.startswith("weather_surface_"):
+                    entry["standalone_consumer_check"] = "scripts/code_tools/weather_material_gl_check.py"
                 entry["native_acceptance"] = "provisional until final native build and user in-world test"
                 if widget == "weather_library_seed":
                     entry["test_value"] = "4294967295"

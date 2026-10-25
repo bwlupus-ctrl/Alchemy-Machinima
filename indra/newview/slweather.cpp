@@ -628,6 +628,13 @@ void SLWeather::noteSourceSettled(U64 regionHandle, S32 parcelId)
     mMoveSettled = true;
 }
 
+void SLWeather::setSurfaceWetness(F32 wetness)
+{
+    mState.wetness = mConfig.master && mConfig.wetSurfaces && std::isfinite(wetness)
+        ? std::clamp(wetness, 0.f, 1.f) : 0.f;
+    mState.runoff = std::min(mState.runoff, mState.wetness);
+}
+
 void SLWeather::newPlace(const char* /*why*/, F64 /*dist*/)
 {
     // Every SUCCESSFUL teleport resets patterns/surfaces, including short local hops.

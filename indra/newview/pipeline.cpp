@@ -3126,6 +3126,7 @@ void LLPipeline::releaseGLBuffers()
     mProjVolRim.release();
     mProjVolRimValid = false;
     mWeatherRainHalf.release();
+    mWeatherSurfaces.release();
     mWeatherRainOcclusion.release();
     mWeatherRainOcclusionValid = false;
     mWeatherRainOcclusionFrame = 0;
@@ -20420,6 +20421,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary)
         splash_enabled() &&
         finite_clamp(splash_density_setting, 0.65f, 0.f, 1.f) > 0.f;
     const bool wetness_active =
+        !(ALWeatherBridge::Controller::instance().surfacesActive() && mWeatherSurfaces.readyForFrame(gFrameCount)) &&
         wetness_enabled() &&
         finite_clamp(wetness_strength_setting, 0.35f, 0.f, 1.f) > 0.f;
     const bool lightning_wet_glint_active =
@@ -31420,6 +31422,267 @@ void LLPipeline::generateWeatherRainOcclusion(LLCamera& camera)
     mWeatherRainOcclusionDepthRange = depth_range;
     mWeatherRainOcclusionFrame = gFrameCount;
     mWeatherRainOcclusionValid = caster_batches > 0;
+}
+
+void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
+{
+    const auto& weather = ALWeatherBridge::Controller::instance();
+    if (!weather.surfacesActive() && !mWeatherSurfaces.hasState()) return;
+    if (gCubeSnapshot || mWeatherSurfaces.mPreparedFrame == gFrameCount) return;
+    mWeatherSurfaces.mPreparedFrame = gFrameCount;
+    if (!weather.surfacesActive() || !sRenderDeferred)
+    {
+        mWeatherSurfaces.release();
+        return;
+    }
+    const auto& settings = weather.settings();
+    if (!LLViewerShaderMgr::instance()->weatherMaterialsEnabled())
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED,
+            "Persistent wet surfaces unavailable on this GPU; existing rain available");
+        return;
+    }
+    if (!gDeferredShadowProgram.isComplete() || !gDeferredShadowAlphaMaskProgram.isComplete() ||
+        !gDeferredShadowFullbrightAlphaMaskProgram.isComplete() || !gDeferredTreeShadowProgram.isComplete() ||
+        !gDeferredShadowGLTFAlphaMaskProgram.isComplete() || !gDeferredShadowCubeProgram.isComplete())
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
+        return;
+    }
+    // Indexed blend restoration requires GL 4.0; unavailable effects report failure.
+    if (!LLRender::indexedDrawBufferGuardSupported())
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
+        return;
+    }
+    if (mWeatherSurfaces.allocationFailed(settings.coverResolution)) return;
+    ALWeatherResources::State saved_state;
+    if (!mWeatherSurfaces.allocate(settings.coverResolution)) return;
+    LLRenderTarget& surface_target = mWeatherSurfaces.writeTarget();
+    const auto release_map = [this]() { mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED); };
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
+    LL_PROFILE_GPU_ZONE("generateWeatherSurfaceCover");
+
+    const F32 extent = settings.coverExtent;
+    const U32 map_resolution = surface_target.getWidth();
+    // Snap in global space so an agent-coordinate origin shift at a region
+    // crossing cannot move the world-aligned texel grid.
+    LLVector3d center_global =
+        gAgent.getPosGlobalFromAgent(camera.getOrigin());
+    if (!center_global.isFinite())
+    {
+        release_map();
+        return;
+    }
+    const F64 world_texel =
+        (2.0 * static_cast<F64>(extent)) /
+        static_cast<F64>(map_resolution);
+    center_global.mdV[VX] =
+        std::floor(center_global.mdV[VX] / world_texel + 0.5) *
+        world_texel;
+    center_global.mdV[VY] =
+        std::floor(center_global.mdV[VY] / world_texel + 0.5) *
+        world_texel;
+    center_global.mdV[VZ] =
+        std::floor(center_global.mdV[VZ] + 0.5);
+    const LLVector3 center_agent =
+        gAgent.getPosAgentFromGlobal(center_global);
+    if (!center_agent.isFinite())
+    {
+        release_map();
+        return;
+    }
+
+    const F32 vertical_half = llclamp(extent + 32.f, 64.f, 512.f);
+    const F32 near_clip = 0.1f;
+    const F32 far_clip = near_clip + vertical_half * 2.f;
+    const F32 depth_range = far_clip - near_clip;
+    LLVector3 top_origin = center_agent;
+    top_origin.mV[VZ] += vertical_half;
+
+    const glm::mat4 view = look(
+        top_origin, LLVector3(0.f, 0.f, -1.f),
+        LLVector3(0.f, 1.f, 0.f));
+    const glm::mat4 projection = glm::ortho(
+        -extent, extent, -extent, extent, near_clip, far_clip);
+    const glm::mat4 view_projection = projection * view;
+
+    const glm::mat4 saved_modelview = get_current_modelview();
+    const glm::mat4 saved_projection = get_current_projection();
+    const glm::mat4 saved_last_modelview = get_last_modelview();
+    const glm::mat4 saved_last_projection = get_last_projection();
+    const LLViewerCamera::eCameraID saved_camera_id =
+        LLViewerCamera::sCurCameraID;
+    S32 saved_viewport[4];
+    std::memcpy(saved_viewport, gGLViewport, sizeof(saved_viewport));
+    GLboolean saved_color_mask[4];
+    glGetBooleanv(GL_COLOR_WRITEMASK, saved_color_mask);
+    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
+
+    pushRenderTypeMask();
+    andRenderTypeMask(
+        LLPipeline::RENDER_TYPE_TERRAIN,
+        LLPipeline::RENDER_TYPE_SIMPLE,
+        LLPipeline::RENDER_TYPE_ALPHA,
+        LLPipeline::RENDER_TYPE_ALPHA_PRE_WATER,
+        LLPipeline::RENDER_TYPE_ALPHA_POST_WATER,
+        LLPipeline::RENDER_TYPE_GLTF_PBR,
+        LLPipeline::RENDER_TYPE_FULLBRIGHT,
+        LLPipeline::RENDER_TYPE_BUMP,
+        LLPipeline::RENDER_TYPE_VOLUME,
+        LLPipeline::RENDER_TYPE_TREE,
+        LLPipeline::RENDER_TYPE_PASS_ALPHA_MASK,
+        LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_ALPHA_MASK,
+        LLPipeline::RENDER_TYPE_PASS_SIMPLE,
+        LLPipeline::RENDER_TYPE_PASS_BUMP,
+        LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT,
+        LLPipeline::RENDER_TYPE_PASS_SHINY,
+        LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_SHINY,
+        LLPipeline::RENDER_TYPE_PASS_MATERIAL,
+        LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_MASK,
+        LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_SPECMAP,
+        LLPipeline::RENDER_TYPE_PASS_SPECMAP_MASK,
+        LLPipeline::RENDER_TYPE_PASS_SPECMAP_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_NORMMAP,
+        LLPipeline::RENDER_TYPE_PASS_NORMMAP_MASK,
+        LLPipeline::RENDER_TYPE_PASS_NORMMAP_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_NORMSPEC,
+        LLPipeline::RENDER_TYPE_PASS_NORMSPEC_MASK,
+        LLPipeline::RENDER_TYPE_PASS_NORMSPEC_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_GLTF_PBR,
+        LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK,
+        END_RENDER_TYPES);
+
+    LLGLDisable no_blend(GL_BLEND);
+    LLGLDisable no_scissor(GL_SCISSOR_TEST);
+    LLGLEnable depth_clamp(GL_DEPTH_CLAMP);
+    LLGLDepthTest depth_test(GL_TRUE, GL_TRUE, GL_LESS);
+    set_current_modelview(view);
+    set_current_projection(projection);
+    LLViewerCamera::sCurCameraID =
+        LLViewerCamera::CAMERA_WEATHER_RAIN_OCCLUSION;
+
+    surface_target.bindTarget();
+    gGLViewport[0] = 0;
+    gGLViewport[1] = 0;
+    gGLViewport[2] = static_cast<S32>(map_resolution);
+    gGLViewport[3] = static_cast<S32>(map_resolution);
+    glClearDepth(1.0);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    const bool cleared = glGetError() == GL_NO_ERROR;
+
+    LLCamera shadow_camera = camera;
+    shadow_camera.setOrigin(top_origin);
+    shadow_camera.lookDir(
+        LLVector3(0.f, 0.f, -1.f),
+        LLVector3(0.f, 1.f, 0.f));
+    shadow_camera.setNear(near_clip);
+    shadow_camera.setFar(far_clip);
+    LLViewerCamera::updateFrustumPlanes(
+        shadow_camera, true, false, true);
+
+    static LLCullResult rain_occlusion_result;
+    const U8 saved_shadow_draw_filter = sShadowDrawFilter; // [AlphaShadowCap]
+    sShadowDrawFilter = 1;
+    // Unrigged opaque + alpha-mask world geometry only. Ordinary alpha blend
+    // has no reliable "stops rain" material semantic; rigid worn attachments
+    // are rejected centrally while this scoped filter is 1.
+    renderShadow(
+        view, projection, shadow_camera, rain_occlusion_result,
+        true, true, false, false, false);
+    sShadowDrawFilter = saved_shadow_draw_filter;
+
+    // Terrain is traversed inside renderShadow even when no caster batch is built.
+    // Successful clear + traversal is COMPLETE_EMPTY, separate from legacy validity.
+    static const U32 caster_types[] = {
+        LLRenderPass::PASS_SIMPLE,
+        LLRenderPass::PASS_FULLBRIGHT,
+        LLRenderPass::PASS_SHINY,
+        LLRenderPass::PASS_BUMP,
+        LLRenderPass::PASS_FULLBRIGHT_SHINY,
+        LLRenderPass::PASS_MATERIAL,
+        LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE,
+        LLRenderPass::PASS_SPECMAP,
+        LLRenderPass::PASS_SPECMAP_EMISSIVE,
+        LLRenderPass::PASS_NORMMAP,
+        LLRenderPass::PASS_NORMMAP_EMISSIVE,
+        LLRenderPass::PASS_NORMSPEC,
+        LLRenderPass::PASS_NORMSPEC_EMISSIVE,
+        LLRenderPass::PASS_GLTF_PBR,
+        LLRenderPass::PASS_ALPHA_MASK,
+        LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK,
+        LLRenderPass::PASS_MATERIAL_ALPHA_MASK,
+        LLRenderPass::PASS_SPECMAP_MASK,
+        LLRenderPass::PASS_NORMMAP_MASK,
+        LLRenderPass::PASS_NORMSPEC_MASK,
+        LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK
+    };
+    U32 caster_batches = 0;
+    for (U32 type : caster_types)
+    {
+        caster_batches += rain_occlusion_result.getRenderMapSize(type);
+    }
+
+    const bool complete = cleared && glGetError() == GL_NO_ERROR;
+    // LLRenderTarget::flush uses gGLViewport when returning to the default
+    // framebuffer, so restore the global array before popping the target.
+    std::memcpy(gGLViewport, saved_viewport, sizeof(saved_viewport));
+    surface_target.flush();
+    glViewport(
+        saved_viewport[0], saved_viewport[1],
+        saved_viewport[2], saved_viewport[3]);
+
+    set_current_modelview(saved_modelview);
+    set_current_projection(saved_projection);
+    set_last_modelview(saved_last_modelview);
+    set_last_projection(saved_last_projection);
+    LLViewerCamera::sCurCameraID = saved_camera_id;
+    popRenderTypeMask();
+    gGL.setColorMask(
+        saved_color_mask[0] != GL_FALSE,
+        saved_color_mask[1] != GL_FALSE,
+        saved_color_mask[2] != GL_FALSE,
+        saved_color_mask[3] != GL_FALSE);
+    if (saved_shader)
+    {
+        saved_shader->bind();
+    }
+    else
+    {
+        LLGLSLShader::unbind();
+    }
+
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    if (!complete)
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
+        return;
+    }
+    // Terrain has no render-map caster batches. Include its submitted faces in
+    // EMPTY/COVERED diagnostics, without making either count a validity predicate.
+    const bool terrain_submitted = std::any_of(mTerrainPools.begin(), mTerrainPools.end(),
+        [](const auto& entry)
+        {
+            return entry.second && entry.second->isFacePool() &&
+                !static_cast<LLFacePool*>(entry.second)->mDrawFace.empty();
+        });
+    const U32 surface_submissions = caster_batches > 0 || terrain_submitted ? 1U : 0U;
+    mWeatherSurfaces.publish(view_projection, depth_range, surface_submissions, true,
+        glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
+}
+
+void LLPipeline::bindWeatherMaterial(LLGLSLShader* shader)
+{
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    if (sRenderingHUDs || sShadowRender || !sRenderDeferred)
+    {
+        shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_ENABLED, 0);
+        return;
+    }
+    mWeatherSurfaces.bind(shader, glm::inverse(get_current_modelview()),
+        glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), gFrameCount);
+    shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_EXCLUDED, 0);
 }
 
 void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,

@@ -11,7 +11,7 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCES = ['slweather', 'alweatherclock', 'alweatherbridge', 'alweatheruimodel', 'alweathermodel']
+SOURCES = ['slweather', 'alweatherclock', 'alweatherbridge', 'alweatheruimodel', 'alweathershelter', 'alweathermodel']
 
 
 def compiler_command(out, sources, name, dll=False, includes=()):
@@ -100,6 +100,10 @@ def main():
             ('double-step', ('alweatherbridge', 'iteration == mIteration || ', '')),
             ('scheduler', ('alweatherbridge', 'lc.mRatePerMinute = 0.0;', 'lc.mRatePerMinute = 60.0;')),
             ('teleport', ('slweather', 'mPlaceSerial.fetch_add(1, std::memory_order_acq_rel);', '(void)mPlaceSerial;')),
+            ('wet-fixed-step', ('slweather', 'mState.wetness + rate, 1.f', 'mState.wetness + rate * 2.f, 1.f')),
+            ('empty-cover', ('alweathershelter', 'return batches ? Coverage::COMPLETE_COVERED : Coverage::COMPLETE_EMPTY;', 'return batches ? Coverage::COMPLETE_COVERED : Coverage::FAILED;')),
+            ('probe-revision', ('alweathershelter', 'mPublished = signature;\n        mNext = seconds + 0.5;\n        return true;', 'return false;')),
+            ('probe-rewind', ('alweathershelter', 'if (mValid && seconds < mLast) mNext = seconds;', '(void)mLast;')),
         ]
         for name, mutation in mutations:
             result = suite(out / name, mutation)

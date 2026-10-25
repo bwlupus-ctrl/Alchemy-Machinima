@@ -48,6 +48,7 @@
 #include "allenslooks.h"               // Lens > Filters infrared and soft-edge preset actions
 #include "alpanelweathersettings.h"    // World > Weather strike and reset-all
 #include "alweatheruimodel.h"
+#include "llviewershadermgr.h"
 #include "alprojectorshaftlooks.h"
 #include "alprojectorshaftpresets.h"   // Atmosphere projector-shaft presets
 #include <boost/signals2.hpp>
@@ -2400,6 +2401,14 @@ void LLFloaterDirector::bindWeatherPage(LLView* root)
             });
         }
     }
+    if (LLButton* apply = root->findChild<LLButton>("weather_surface_apply"))
+    {
+        apply->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::applyStartingSurfaces(); });
+    }
+    if (LLButton* clear = root->findChild<LLButton>("weather_surface_clear"))
+    {
+        clear->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::clearSurfaces(); });
+    }
     if (LLButton* stop = root->findChild<LLButton>("weather_library_stop"))
     {
         stop->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::stopPrecipitation(); });
@@ -2411,6 +2420,39 @@ void LLFloaterDirector::bindWeatherPage(LLView* root)
     if (LLButton* reset = root->findChild<LLButton>("weather_reset_all"))
     {
         reset->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::confirmResetAll(); });
+    }
+    // Resolve once. Prerequisite changes update weak widget handles; draw() does no work.
+    std::vector<std::pair<LLHandle<LLUICtrl>, U32>> surfaces;
+    const std::pair<const char*, U32> surface_widgets[] = {
+        {"weather_surface_persistentWet", 0}, {"weather_surface_puddles", 1},
+        {"weather_surface_wetAmount", 1}, {"weather_surface_puddleAmount", 2},
+        {"weather_surface_rippleStrength", 2}, {"weather_surface_wetSeconds", 1},
+        {"weather_surface_drySeconds", 1}, {"weather_surface_startWetness", 1},
+        {"weather_surface_coverResolution", 1}, {"weather_surface_coverExtent", 1},
+        {"weather_surface_apply", 1}, {"weather_surface_clear", 1}
+    };
+    for (const auto& entry : surface_widgets)
+    {
+        if (LLUICtrl* control = root->findChild<LLUICtrl>(entry.first))
+            surfaces.emplace_back(control->getDerivedHandle<LLUICtrl>(), entry.second);
+    }
+    auto update_surfaces = [surfaces]()
+    {
+        const bool supported = LLPipeline::sRenderDeferred && LLViewerShaderMgr::instance()->weatherMaterialsSupported();
+        const bool wet = supported && gSavedSettings.getBOOL("AlchemyWeatherPersistentWetEnabled");
+        const bool puddles = wet && gSavedSettings.getBOOL("AlchemyWeatherPuddlesEnabled");
+        for (const auto& entry : surfaces)
+        {
+            if (LLUICtrl* control = entry.first.get())
+                control->setEnabled(entry.second == 0 ? supported : (entry.second == 1 ? wet : puddles));
+        }
+    };
+    update_surfaces();
+    for (const char* setting : {"RenderDeferred", "RenderTerrainPBRDetail",
+                              "AlchemyWeatherPersistentWetEnabled", "AlchemyWeatherPuddlesEnabled"})
+    {
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            setting, [update_surfaces](const LLSD&, const LLSD&) { update_surfaces(); }));
     }
 }
 
@@ -2434,6 +2476,10 @@ void LLFloaterDirector::refreshWorldLensReadouts(const std::string& page)
 {
     if (page == "world_group/weather_tab")
     {
+        if (LLTextBox* coverage = findChild<LLTextBox>("weather_surface_status"))
+        {
+            setTextIfChanged(coverage, ALPanelWeatherSettings::surfaceStatus());
+        }
         if (LLTextBox* status = findChild<LLTextBox>("weather_library_status"))
         {
             setTextIfChanged(status, ALPanelWeatherSettings::libraryStatus());

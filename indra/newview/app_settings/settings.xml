@@ -31285,5 +31285,75 @@
         <key>Type</key><string>S32</string>
         <key>Value</key><integer>0</integer>
     </map>
+    <key>AlchemyWeatherPersistentWetEnabled</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: PersistentWetEnabled. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>AlchemyWeatherPuddlesEnabled</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: PuddlesEnabled. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>AlchemyWeatherWetAmount</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: WetAmount. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>AlchemyWeatherPuddleAmount</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: PuddleAmount. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>AlchemyWeatherRippleStrength</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: RippleStrength. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>AlchemyWeatherWetSeconds</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: WetSeconds. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>120</real>
+    </map>
+    <key>AlchemyWeatherDrySeconds</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: DrySeconds. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>300</real>
+    </map>
+    <key>AlchemyWeatherStartWetness</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: StartWetness. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>AlchemyWeatherSurfaceCoverResolution</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: SurfaceCoverResolution. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>512</integer>
+    </map>
+    <key>AlchemyWeatherSurfaceCoverExtent</key>
+    <map>
+      <key>Comment</key><string>Persistent wet surfaces: SurfaceCoverExtent. See Director World / Weather / Surfaces.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>128</real>
+    </map>
 </map>
 </llsd>

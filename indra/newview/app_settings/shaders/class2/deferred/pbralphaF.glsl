@@ -228,6 +228,13 @@ vec3 alrSilPostFog(vec3 c, vec3 fog_zero, float w);
 bool alrDebug();
 #endif
 
+
+// WP2 material contract: after Actor FX, before G-buffer packing/forward lighting.
+bool weatherMaterialActive();
+void weatherMaterialLinear(vec3 p, inout vec3 n, inout vec3 c, inout float r, float m);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+void weatherMaterialLegacyLinear(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+
 void main()
 {
 #ifdef HAS_ACTOR_FX
@@ -298,6 +305,7 @@ void main()
     // P2-5).  Not used unless rig_rim_mode != 0: colour math unchanged.
     float rim_fw = length(fwidth(norm));
 
+#ifndef HAS_WEATHER_MATERIAL
     float scol = 1.0;
     vec3 sunlit;
     vec3 amblit;
@@ -312,6 +320,9 @@ void main()
 
 #ifdef HAS_SUN_SHADOW
     scol = sampleDirectionalShadow(pos.xyz, norm.xyz, frag);
+#endif
+
+
 #endif
 
 #ifdef HAS_ACTOR_FX
@@ -362,6 +373,36 @@ void main()
     metallic = fx_rm.y;
     colorEmissive = actorFxEmissive(colorEmissive, col);
     col = alrAlbedoLinear(col); perceptualRoughness = alrRoughness(perceptualRoughness); // [AvatarLightResponse] presented surface
+#endif
+
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+    // Evaluate derivatives for the entire quad, then exclude emitting pixels.
+    vec3 weather_normal = norm, weather_color = col;
+    float weather_roughness = perceptualRoughness;
+    weatherMaterialLinear(vary_position, weather_normal, weather_color, weather_roughness, metallic);
+    if (dot(colorEmissive, colorEmissive) == 0.0)
+    {
+        norm = weather_normal; col = weather_color; perceptualRoughness = weather_roughness;
+    }
+#endif
+#ifdef HAS_WEATHER_MATERIAL
+    float scol = 1.0;
+    vec3 sunlit;
+    vec3 amblit;
+    vec3 additive;
+    vec3 atten;
+    calcAtmosphericVarsLinear(pos.xyz, norm, light_dir, sunlit, amblit, additive, atten);
+    if (classic_mode > 0)
+        sunlit *= 1.35;
+    vec3 sunlit_linear = sunlit;
+
+    vec2 frag = vary_fragcoord.xy/vary_fragcoord.z*0.5+0.5;
+
+#ifdef HAS_SUN_SHADOW
+    scol = sampleDirectionalShadow(pos.xyz, norm.xyz, frag);
+#endif
+
+
 #endif
 
     // PBR IBL

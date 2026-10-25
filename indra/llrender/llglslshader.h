@@ -71,6 +71,7 @@ public:
     // Native per-draw cinematic Actor FX. The fragment utility transforms the
     // actor's original material result while leaving authored coverage intact.
     bool hasActorFx = false;
+    bool hasWeatherMaterial = false;
     // Lightweight shadow-only Actor FX coverage. This deliberately does not
     // link the beauty utility: shadow programs only need Dissolve's coverage
     // test, and every other look must remain on a cheap identity path.

@@ -68,6 +68,43 @@ LLShaderMgr * LLShaderMgr::instance()
     return sInstance;
 }
 
+void LLShaderMgr::prepareWeatherFeatures(LLGLSLShader* shader)
+{
+    LLShaderFeatures* features = &shader->mFeatures;
+    features->hasWeatherMaterial = false;
+    shader->mDefines.erase("HAS_WEATHER_MATERIAL");
+    if (features->hasSkinning || features->hasObjectSkinning ||
+        shader->mDefines.count("HAS_SKIN") || shader->mDefines.count("AVATAR_GEOMETRY") ||
+        shader->mDefines.count("IS_HUD") || shader->mDefines.count("MATERIAL_VELOCITY")) return;
+    if (!weatherMaterialsEnabled()) return;
+    // Native material inventory. Fullbright, water, HUD beauty and avatar helpers are excluded.
+    for (const auto& file : shader->mShaderFiles)
+    {
+        if (file.second == GL_FRAGMENT_SHADER && (
+            file.first == "deferred/diffuseF.glsl" ||
+            file.first == "deferred/diffuseIndexedF.glsl" ||
+            file.first == "deferred/diffuseAlphaMaskF.glsl" ||
+            file.first == "deferred/diffuseAlphaMaskIndexedF.glsl" ||
+            file.first == "deferred/diffuseAlphaMaskNoColorF.glsl" ||
+            file.first == "deferred/bumpF.glsl" ||
+            file.first == "deferred/treeF.glsl" ||
+            file.first == "deferred/materialF.glsl" ||
+            file.first == "deferred/materialIndexedF.glsl" ||
+            file.first == "deferred/sharedActorFxPbrF.glsl" ||
+            file.first == "deferred/pbropaqueF.glsl" ||
+            file.first == "deferred/pbropaqueIndexedF.glsl" ||
+            file.first == "deferred/terrainF.glsl" ||
+            file.first == "deferred/pbrterrainF.glsl" ||
+            file.first == "deferred/pbralphaF.glsl" ||
+            file.first == "deferred/alphaF.glsl"))
+        {
+            features->hasWeatherMaterial = true;
+        }
+    }
+
+    if (features->hasWeatherMaterial) shader->addPermutation("HAS_WEATHER_MATERIAL", "1");
+}
+
 bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
 {
     llassert_always(shader != NULL);
@@ -193,6 +230,10 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
         return false;
     }
 
+    if (features->hasWeatherMaterial && !shader->attachFragmentObject("deferred/weatherMaterialF.glsl"))
+    {
+        return false;
+    }
     if (features->hasActorFx || features->hasActorFxShadow)
     {
         // Beauty and dissolve/shadow coverage form one Actor FX contract. If
@@ -235,7 +276,7 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
         }
     }
 
-    if (features->hasSrgb || features->hasAtmospherics || features->calculatesAtmospherics || features->isDeferred)
+    if (features->hasSrgb || features->hasAtmospherics || features->calculatesAtmospherics || features->isDeferred || features->hasWeatherMaterial)
     {
         if (!shader->attachFragmentObject("environment/srgbF.glsl"))
         {
@@ -1322,6 +1363,14 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("projection_matrix");
     mReservedUniforms.push_back("inv_proj");
     mReservedUniforms.push_back("modelview_projection_matrix");
+    mReservedUniforms.push_back("weather_material_enabled");
+    mReservedUniforms.push_back("weather_material_excluded");
+    mReservedUniforms.push_back("weather_surface_cover_map");
+    mReservedUniforms.push_back("weather_surface_cover_matrix");
+    mReservedUniforms.push_back("weather_material_view_to_agent");
+    mReservedUniforms.push_back("weather_material_origin");
+    mReservedUniforms.push_back("weather_material_wet");
+    mReservedUniforms.push_back("weather_material_time_range");
     mReservedUniforms.push_back("inv_modelview");
     mReservedUniforms.push_back("identity_matrix");
     mReservedUniforms.push_back("normal_matrix");

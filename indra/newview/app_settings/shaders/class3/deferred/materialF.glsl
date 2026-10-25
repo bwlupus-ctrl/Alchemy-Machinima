@@ -499,7 +499,20 @@ float getShadow(vec3 pos, vec3 norm)
 #endif
 }
 
+
+// WP2 material contract: after Actor FX, before G-buffer packing/forward lighting.
+bool weatherMaterialActive();
+void weatherMaterialLinear(vec3 p, inout vec3 n, inout vec3 c, inout float r, float m);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+void weatherMaterialLegacyLinear(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+
+// Legacy forward glare contributes coverage. Preserve its authored value exactly.
+#if defined(HAS_WEATHER_MATERIAL) && (DIFFUSE_ALPHA_MODE == DIFFUSE_ALPHA_MODE_BLEND)
+#define WEATHER_KEEP_FORWARD_ALPHA 1
+void weatherMaterialMain(bool weather_apply)
+#else
 void main()
+#endif
 {
 #ifdef HAS_ACTOR_FX
     actorFxTronPrime(); // [TronT2 fix] before any discard/return
@@ -577,6 +590,20 @@ void main()
 #endif
 
     float emissive = getEmissive(diffcol);
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+    vec3 weather_normal = norm, weather_color = diffcol.rgb, weather_spec = spec.rgb;
+    float weather_gloss = glossiness;
+    // Emission can vary within a quad: keep derivative evaluation unconditional.
+    weatherMaterialLegacy(vary_position, weather_normal, weather_color, weather_spec, weather_gloss);
+#ifdef WEATHER_KEEP_FORWARD_ALPHA
+    if (weather_apply && emissive == 0.0)
+#else
+    if (emissive == 0.0)
+#endif
+    {
+        norm = weather_normal; diffcol.rgb = weather_color; spec.rgb = weather_spec; glossiness = weather_gloss;
+    }
+#endif
 
 #if (DIFFUSE_ALPHA_MODE == DIFFUSE_ALPHA_MODE_BLEND)
     //forward rendering, output lit linear color
@@ -815,3 +842,14 @@ void main()
 
 #endif
 }
+
+#ifdef WEATHER_KEEP_FORWARD_ALPHA
+void main()
+{
+    weatherMaterialMain(false);
+    if (!weatherMaterialActive()) return;
+    float authored_alpha = frag_color.a;
+    weatherMaterialMain(true);
+    frag_color.a = authored_alpha;
+}
+#endif

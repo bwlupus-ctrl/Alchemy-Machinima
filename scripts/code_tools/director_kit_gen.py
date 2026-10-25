@@ -321,8 +321,9 @@ def validate_data(data: dict) -> None:
     # Shadow detail (10/24): +8 per-fixture Detail/World shadow flags and +1 Detail shadow bias master; 2203 -> 2212.
     # Rim normals (10/24): +2 Advanced rows beside Smoothness: Smooth radius and Texture normals; 2212 -> 2214.
     # WP1 weather port (10/25): +20 rows (14 settings, preset/apply/stop/status, two colours); 2214 -> 2234.
-    if len(pages) != 38 or row_count != 2234:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2234")
+    # WP2: ten surface settings, Apply/Clear commands and coverage status (+13).
+    if len(pages) != 38 or row_count != 2247:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2247")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

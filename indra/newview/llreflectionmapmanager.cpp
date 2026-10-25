@@ -30,6 +30,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llreflectionmapmanager.h"
+#include "llpresentationtime.h"
 
 #include <vector>
 
@@ -1115,6 +1116,11 @@ U64 LLReflectionMapManager::sampleCinematicH(LLReflectionMap* probe)
     // factors (unit-tested: S13).
     ALProbeSched::appendEnvironmentFields(sig, gatherEnvSample(), 0.1f, false);
 
+    mWeatherCinematicRevision.update(gPipeline.mWeatherSurfaces.readyForFrame(gFrameCount) ?
+        ALWeatherShelter::materialSignature(ALWeatherBridge::Controller::instance()) : 0,
+        LLPresentationTime::currentFrame().presentation_time);
+    sig.addExact(mWeatherCinematicRevision.signature());
+
     // 6. Sticky-quantised hash
     const U64 h = mCineSticky.update(sig);
     mCineLastH = h;
@@ -2149,7 +2155,10 @@ void LLReflectionMapManager::flushProbeSchedule()
 
     {
         const U64 env_h = sampleOrdinaryEnvH();
-        if (mOrdEnvValid && env_h != mOrdEnvH)
+        const bool weather_changed = mWeatherProbeRevision.update(
+            gPipeline.mWeatherSurfaces.readyForFrame(gFrameCount) ?
+                ALWeatherShelter::materialSignature(ALWeatherBridge::Controller::instance()) : 0, now);
+        if ((mOrdEnvValid && env_h != mOrdEnvH) || weather_changed)
         {
             const F32 zero[3] = { 0.f, 0.f, 0.f };
             mSchedEvents.push_back(ALProbeSched::makeEvent(zero, zero, ALProbeSched::R_ENV,

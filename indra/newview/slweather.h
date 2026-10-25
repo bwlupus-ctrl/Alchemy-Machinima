@@ -394,6 +394,8 @@ public:
     // region source's target and the listener / run-off readbacks go at once. Applied by the next
     // update() (the main thread); clearSerial() and resetSerial() increment then. `why` is logged.
     void requestReset(const char* why);
+    // Main-thread surface command: preserve the precipitation target and storm epoch.
+    void setSurfaceWetness(F32 wetness);
     // Incremented by every clean slate (master off) and every teleport that drops the old place's
     // weather (not local): the weather audio cuts its beds / thunder, the region source drops its
     // tag cache and re-polls.

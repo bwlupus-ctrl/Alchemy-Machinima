@@ -17719,6 +17719,12 @@ void LLActorMover::renderSharedActorStyleDepthPrepass()
 // worn animesh, so proxy.mStyleId would name the wrong avatar. Null owner_info => proxy identity.
 static void upload_shared_replay_light_response(const LLDrawInfo* owner_info, const LLUUID& style_id)
 {
+    if (LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr; shader && shader->mFeatures.hasWeatherMaterial)
+    {
+        shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_EXCLUDED, owner_info &&
+            (owner_info->mAttachedToAvatar || owner_info->mAvatar.notNull() || owner_info->mFullbright || owner_info->mHasGlow));
+    }
+
     if (owner_info)
     {
         LLRenderPass::uploadAvatarLightResponse(owner_info->mActorFxOwner, owner_info->mActorFxFallbackOwner);

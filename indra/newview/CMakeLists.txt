@@ -370,6 +370,8 @@ set(viewer_SOURCE_FILES
     alweathermodel.cpp
     slweather.cpp
     alweatherbridge.cpp
+    alweatherresources.cpp
+    alweathershelter.cpp
     alweatherclock.cpp
     alweatheruimodel.cpp
     alghostgroupmodel.cpp
@@ -1302,6 +1304,8 @@ set(viewer_HEADER_FILES
     alweathermodel.h
     slweather.h
     alweatherbridge.h
+    alweatherresources.h
+    alweathershelter.h
     alweatherclock.h
     alweatheruimodel.h
     alghostgroupmodel.h
@@ -2804,6 +2808,7 @@ if (BUILD_TESTING)
     alweathermodel.cpp
     slweather.cpp
     alweatherbridge.cpp
+    alweathershelter.cpp
     alweatherclock.cpp
     alweatheruimodel.cpp
     alghostgroupmodel.cpp
@@ -2824,6 +2829,8 @@ if (BUILD_TESTING)
     llworldmipmap.cpp
   )
 
+  set_source_files_properties(alweathershelter.cpp PROPERTIES
+    LL_TEST_ADDITIONAL_SOURCE_FILES "alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp")
   set_source_files_properties(alweatherbridge.cpp PROPERTIES
     LL_TEST_ADDITIONAL_SOURCE_FILES "slweather.cpp;alweatherclock.cpp;alweathermodel.cpp")
   set_source_files_properties(alweatheruimodel.cpp PROPERTIES

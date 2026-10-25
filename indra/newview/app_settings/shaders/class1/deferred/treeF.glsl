@@ -38,6 +38,7 @@ uniform float minimum_alpha;
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
 
 void main()
 {
@@ -51,6 +52,9 @@ void main()
     frag_data[0] = vec4(vertex_color.rgb*col.rgb, 0.0);
     frag_data[1] = vec4(0,0,0,0);
     vec3 nvn = normalize(vary_normal);
+#ifdef HAS_WEATHER_MATERIAL
+    weatherMaterialLegacy(vary_position, nvn, frag_data[0].rgb, frag_data[1].rgb, frag_data[1].a);
+#endif
     frag_data[2] = encodeNormal(nvn.xyz, 0, GBUFFER_FLAG_HAS_ATMOS);
 
 #if defined(HAS_EMISSIVE)

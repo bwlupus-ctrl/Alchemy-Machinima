@@ -42,6 +42,7 @@
 #include "llrender.h"
 #include "lldrawable.h"
 #include "llrendertarget.h"
+#include "alweatherresources.h"
 #include "llactormaskeligibility.h" // [ActorMask]
 #include "lltimer.h"
 #include "llreflectionmapmanager.h"
@@ -837,6 +838,9 @@ public:
     // endPrismAuxiliaryState, keeping the main view byte-identical.
     void generatePrismSpotShadows(LLCamera& camera);
     void generateWeatherRainOcclusion(LLCamera& camera);
+    void generateWeatherSurfaceCover(LLCamera& camera);
+    void bindWeatherMaterial(LLGLSLShader* shader);
+    ALWeatherResources mWeatherSurfaces;
     LLRenderTarget* getSunShadowTarget(U32 i);
     LLRenderTarget* getSpotShadowTarget(U32 i);
 

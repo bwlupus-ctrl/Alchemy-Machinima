@@ -14,7 +14,7 @@
 class ALWeatherUIModel
 {
 public:
-    static constexpr U32 PRESET_VERSION = 2;
+    static constexpr U32 PRESET_VERSION = 3; // WP2 surface settings; older looks reset new gates off.
     static F32 presetRate(U32 preset);
     static const char* presetName(U32 preset);
     static void applyPreset(ALWeatherBridge::Settings& settings, U32 preset);

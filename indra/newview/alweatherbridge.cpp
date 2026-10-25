@@ -34,15 +34,35 @@ namespace ALWeatherBridge
         s.gustiness = safe(s.gustiness, 0.5f, 0.f, 1.f);
         s.directionSwing = safe(s.directionSwing, 0.f, 0.f, 180.f);
         s.storm = safe(s.storm, 0.f, 0.f, 1.f);
+        s.wetAmount = safe(s.wetAmount, 0.5f, 0.f, 1.f);
+        s.puddleAmount = safe(s.puddleAmount, 0.35f, 0.f, 1.f);
+        s.rippleStrength = safe(s.rippleStrength, 0.25f, 0.f, 1.f);
+        s.wetSeconds = safe(s.wetSeconds, 120.f, 1.f, 3600.f);
+        s.drySeconds = safe(s.drySeconds, 300.f, 1.f, 7200.f);
+        s.startWetness = safe(s.startWetness, 0.f, 0.f, 1.f);
+        s.legacyIntensity = safe(s.legacyIntensity, 0.55f, 0.f, 1.f);
+        s.coverExtent = safe(s.coverExtent, 128.f, 32.f, 256.f);
+        s.coverResolution = s.coverResolution < 384 ? 256 : (s.coverResolution < 768 ? 512 : 1024);
         return s;
     }
     SLWeather::Config configuration(const Settings& settings, F32 simulator_x, F32 simulator_y)
     {
         const Settings s = sanitize(settings);
         SLWeather::Config config;
-        config.master = s.enabled && s.mode == 1;
+        config.master = s.enabled && (s.mode == 1 || s.persistentWet);
+        config.wetSurfaces = s.persistentWet;
+        config.wetSeconds = s.wetSeconds;
+        config.drySeconds = s.drySeconds;
+        config.startWetness = s.startWetness;
         auto& t = config.local;
-        t.active = s.local;
+        t.active = s.mode == 1 ? s.local : s.legacyRain;
+        if (s.mode == 0)
+        {
+            t.setFall(SLWeather::PRECIP_RAIN, SLWeather::fallFromAmount(SLWeather::PRECIP_RAIN, s.legacyIntensity));
+            t.transitionSecs = 0.f;
+            t.fallVariation = 0.f;
+            return config;
+        }
         t.transitionSecs = s.transition;
         if (!t.active) return config;
         t.setFall(SLWeather::PRECIP_RAIN, s.rainRate);
@@ -87,7 +107,12 @@ namespace ALWeatherBridge
         const Settings s = sanitize(settings);
         const auto config = configuration(s, simulator_x, simulator_y);
         const bool active = config.master;
-        const bool reset = active != mActive || s.seed != mSeed || presentation < mLastPresentation;
+        const bool reset = active != mSimActive || s.mode != mMode ||
+            (s.mode == 1 && s.seed != mSeed) || presentation < mLastPresentation;
+        const bool surface_reset = s.persistentWet != mSettings.persistentWet || reset;
+        mSettings = s;
+        mMode = s.mode;
+        if (surface_reset) ++mSurfaceSerial;
         mLastPresentation = presentation;
         if (reset)
         {
@@ -96,7 +121,8 @@ namespace ALWeatherBridge
             mLightning.reset(lightning.mSeed);
             mLastStrike = 0;
         }
-        mActive = active;
+        mSimActive = active;
+        mActive = active && s.mode == 1;
         mSeed = s.seed;
         if (!active)
         {
@@ -104,6 +130,7 @@ namespace ALWeatherBridge
             mClock.reset();
             mLightningFrame = {};
             mTeleportPending = false;
+            mSurfaceCommand = 0;
             if (reset)
             {
                 SLWeather::Input off;
@@ -121,7 +148,7 @@ namespace ALWeatherBridge
         input.syncSeconds = input.seconds; // WP1 local epoch: no wall-clock dependency.
         input.teleportSucceeded = mTeleportPending;
         mTeleportPending = false;
-        if (reset || input.teleportSucceeded || !active)
+        if (reset || surface_reset || mSurfaceCommand || input.teleportSucceeded || !active)
         {
             mWeather.update(config, input);
             if (input.teleportSucceeded)
@@ -131,6 +158,12 @@ namespace ALWeatherBridge
             }
         }
         input.teleportSucceeded = false;
+        if (mSurfaceCommand)
+        {
+            mWeather.setSurfaceWetness(mSurfaceCommand == 1 ? s.startWetness : 0.f);
+            mSurfaceCommand = 0;
+            ++mSurfaceSerial;
+        }
         // Budget catch-up without dropping any ticks; expose backlog until consumed.
         for (U32 steps = 0; active && steps < 240 && mClock.step(); ++steps)
         {
@@ -140,7 +173,7 @@ namespace ALWeatherBridge
             mWeather.update(config, input);
         }
         mLightningFrame = {};
-        if (!active) return;
+        if (!mActive) return;
         auto lc = lightning;
         lc.mEnabled = lc.mEnabled && active;
         if (s.lightningTiming != mTiming)

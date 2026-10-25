@@ -55,6 +55,9 @@ extern "C" __declspec(dllexport) void colors(float* rain,float* lightning){
     color_code+='}\n'
     if mutation=='setting': read=read.replace('s.rainRate = c_rainRate();','s.rainRate = 5.f;')
     if mutation=='command': binding=binding.replace('ALPanelWeatherSettings::applyLibraryPreset(combo->getValue().asInteger());','(void)combo;')
+    if mutation=='surface-setting': read=read.replace('s.wetAmount = c_wetAmount();','s.wetAmount = 0.5f;')
+    if mutation=='surface-command': binding=binding.replace('ALPanelWeatherSettings::clearSurfaces();','(void)0;')
+    if mutation=='surface-apply': binding=binding.replace('ALPanelWeatherSettings::applyStartingSurfaces();','(void)0;')
     prefix=r'''
 #include "alweatheruimodel.h"
 #include <map>
@@ -83,6 +86,7 @@ template<class T> struct LLCachedControl {
 template<class T> struct LLHandle {T* value=nullptr;T* get()const{return value;}};
 struct LLUICtrl {
  LLSD value;std::function<void(LLUICtrl*,const LLSD&)> callback;
+ bool enabled=true;void setEnabled(bool v){enabled=v;}
  virtual ~LLUICtrl()=default;
  void setValue(const LLSD& v){value=v;}LLSD getValue()const{return value;}
  void setCommitCallback(std::function<void(LLUICtrl*,const LLSD&)> cb){callback=cb;}
@@ -97,13 +101,20 @@ struct ALKitSettingWatch {static ALKitSettingWatch& instance(){static ALKitSetti
  template<class F>int watch(const char*,F){return 1;}};
 struct Signal {template<class F>int connect(F){return 1;}};
 ALWeatherUIModel sLibraryUI;
+std::string sSurfaceStatus;
 struct ALPanelWeatherSettings {
  static void applyLibraryPreset(U32);static void stopPrecipitation();
+ static void applyStartingSurfaces();static void clearSurfaces();
+ static const std::string& surfaceStatus();
  static void strikeLightningNow(){}static void confirmResetAll(){}
  static Signal& libraryChanged(){static Signal s;return s;}
  static const std::string& libraryStatus(){return sLibraryUI.status();}
 };
 struct LLPipeline {static constexpr bool sRenderDeferred=true;};
+struct LLViewerShaderMgr {
+ static LLViewerShaderMgr* instance(){static LLViewerShaderMgr s;return &s;}
+ bool weatherMaterialsEnabled()const;bool weatherMaterialsSupported()const;
+};
 void setTextIfChanged(LLTextBox* box,const std::string& s){box->setValue(s);}
 void setVisibleIfChanged(LLTextBox*,bool){}
 struct LLFloaterDirector {
@@ -121,6 +132,8 @@ extern "C" __declspec(dllexport) void command(int preset,int action,const char* 
  if(action==0){root.findChild<LLComboBox>("weather_library_preset")->setValue(preset);root.findChild<LLButton>("weather_library_apply")->fire();}
  if(action==1)root.findChild<LLButton>("weather_library_stop")->fire();
  if(action==2){auto* seed=root.findChild<LLLineEditor>("weather_library_seed");seed->setValue(text);seed->fire();}
+ if(action==3)root.findChild<LLButton>("weather_surface_apply")->fire();
+ if(action==4)root.findChild<LLButton>("weather_surface_clear")->fire();
 }
 extern "C" __declspec(dllexport) void trace(double* output){
  auto settings=readLibrarySettings();
@@ -135,13 +148,112 @@ extern "C" __declspec(dllexport) void trace(double* output){
  }
  sLibraryUI.refresh(settings,bridge.state(),bridge.catchingUp());output[7]=sLibraryUI.revision();
 }
+extern "C" __declspec(dllexport) void surface(double* output,int phase){
+ static U64 tick=1000000;static double seconds=0.;
+ auto& bridge=ALWeatherBridge::Controller::instance();
+ auto settings=readLibrarySettings();ALWeatherModel::Config lightning;
+ if(phase==0 || phase==2){auto off=settings;off.enabled=false;bridge.update(++tick,seconds,off,0,0,1,lightning,{});seconds+=1.;}
+ if(phase==2)command(0,3,"");
+ for(int i=0;i<600;++i){bridge.update(++tick,seconds,settings,0,0,1,lightning,{});seconds+=1./60.;}
+ output[0]=bridge.state().wetness;output[1]=settings.wetAmount;output[2]=settings.puddleAmount;
+ output[3]=settings.rippleStrength;output[4]=settings.puddles;output[5]=settings.coverResolution;output[6]=settings.coverExtent;
+ output[7]=bridge.surfaceSerial();
+}
 '''
-    commands='\n'.join(function(panel,'void ALPanelWeatherSettings::'+name+'(') for name in ('applyLibraryPreset','stopPrecipitation'))
-    source=out/'binding.cpp';source.write_text(prefix+read+commands+refresh+binding+suffix+color_code,encoding='utf-8')
+    # Execute the exact native material upload routine with a recording shader sink.
+    # GL resource/matrix wrappers are fixtures; gating and uniform values are production C++.
+    upload_prefix=r'''
+namespace glm {
+ struct mat4{}; struct dvec3 {double x=0,y=0,z=0;bool operator==(const dvec3& o)const{return x==o.x&&y==o.y&&z==o.z;}};
+ const float* value_ptr(const mat4&){static float matrix[16]{};return matrix;}
+}
+struct LLTexUnit {enum {TFO_POINT};};
+struct LLRenderTarget {bool isComplete()const{return true;} U32 getWidth()const{return 512;}};
+constexpr int GL_FALSE=0;
+struct LLShaderMgr {enum {WEATHER_MATERIAL_ENABLED,WEATHER_SURFACE_COVER_MAP,WEATHER_SURFACE_COVER_MATRIX,
+ WEATHER_MATERIAL_VIEW_TO_AGENT,WEATHER_MATERIAL_ORIGIN,WEATHER_MATERIAL_WET,WEATHER_MATERIAL_TIME_RANGE};};
+struct LLGLSLShader {
+ double* output;
+ void uniform1i(int,double v){output[8]=v;}
+ void bindTexture(int,LLRenderTarget*,bool,int){}
+ void uniformMatrix4fv(int,int,int,const float*){}
+ void uniform3f(int,float,float,float){}
+ void uniform4f(int,float a,float b,float c,float d){output[0]=a;output[1]=b;output[2]=c;output[3]=d;}
+ void uniform2f(int,float a,float b){output[4]=a;output[5]=b;}
+};
+struct ALWeatherResources {
+ LLRenderTarget mCover[2]{};int mRead=0;unsigned mPlace=0;
+ inline static ALWeatherShelter::Coverage fixtureCoverage=ALWeatherShelter::Coverage::COMPLETE_EMPTY;
+ ALWeatherShelter::Coverage mCoverage=ALWeatherShelter::Coverage::INCOMPLETE;
+ std::string mStatus;
+ glm::dvec3 mOrigin;glm::mat4 mMatrix;float mRange=128.f;
+ bool ready()const{return ALWeatherShelter::usable(mCoverage);}
+ LLRenderTarget& writeTarget(){return mCover[1-mRead];}
+ U32 mPreparedFrame=17,mPublishedFrame=~U32(0);
+ // PRODUCTION_GENERATION_GETTER
+ void fail(ALWeatherShelter::Coverage,const char* reason=nullptr);
+ void publish(const glm::mat4&,F32,U32,bool,const glm::dvec3&,U32);
+ void bind(LLGLSLShader*,const glm::mat4&,const glm::dvec3&,U32);
+};
+'''
+    upload=function((ROOT/'indra/newview/alweatherresources.cpp').read_text(encoding='utf-8'),'void ALWeatherResources::bind(')
+    generation=function((ROOT/'indra/newview/alweatherresources.h').read_text(encoding='utf-8'),'bool readyForFrame(')
+    if mutation=='generation': generation=generation.replace('mPublishedFrame == frame','true')
+    upload_prefix=upload_prefix.replace('// PRODUCTION_GENERATION_GETTER',generation)
+    owner_source=(ROOT/'indra/newview/alweatherresources.cpp').read_text(encoding='utf-8')
+    upload=function(owner_source,'void ALWeatherResources::fail(')+function(owner_source,'void ALWeatherResources::publish(')+upload
+    if mutation=='upload': upload=upload.replace('weather.state().wetness * s.wetAmount','0.5f')
+    upload_suffix=r'''
+int bindingFrame=17;
+extern "C" __declspec(dllexport) void surface_generation(int frame){bindingFrame=frame;}
+extern "C" __declspec(dllexport) void surface_uniforms(double* output){
+ std::fill(output,output+9,0.0);LLGLSLShader shader{output};ALWeatherResources resources;
+ auto state=ALWeatherResources::fixtureCoverage;
+ if(ALWeatherShelter::usable(state))resources.publish({},128.f,state==ALWeatherShelter::Coverage::COMPLETE_COVERED?1:0,true,{},ALWeatherBridge::Controller::instance().placeSerial());
+ else resources.fail(state);
+ resources.bind(&shader,{},{},bindingFrame);
+}
+extern "C" __declspec(dllexport) int surface_cover(int allocated,int cleared,int traversed,int complete,int batches){
+ auto state=ALWeatherShelter::classify(allocated!=0,cleared!=0,traversed!=0,complete!=0,batches);
+ ALWeatherResources::fixtureCoverage=state;return static_cast<int>(state);
+}
+extern "C" __declspec(dllexport) const char* cover_readout(int state){
+ sSurfaceStatus=ALWeatherShelter::label(static_cast<ALWeatherShelter::Coverage>(state));
+ LLView root;LLFloaterDirector director;director.root=&root;director.refreshWorldLensReadouts("world_group/weather_tab");
+ static std::string observed;observed=root.findChild<LLTextBox>("weather_surface_status")->getValue().asString();return observed.c_str();
+}
+'''
+    caps_prefix=r'''
+struct LLRender {inline static bool guard=true;static bool indexedDrawBufferGuardSupported(){return guard;}};
+struct FixtureGLManager {int mNumTextureImageUnits=32;} gGLManager;
+int llmax(int a,int b){return std::max(a,b);}
+'''
+    caps=function((ROOT/'indra/newview/llviewershadermgr.cpp').read_text(encoding='utf-8'),'bool LLViewerShaderMgr::weatherMaterialsEnabled(')
+    caps+=function((ROOT/'indra/newview/llviewershadermgr.cpp').read_text(encoding='utf-8'),'bool LLViewerShaderMgr::weatherMaterialsSupported(')
+    caps_suffix=r'''
+extern "C" __declspec(dllexport) int surface_caps(int units,int guard){
+ gGLManager.mNumTextureImageUnits=units;LLRender::guard=guard!=0;return LLViewerShaderMgr{}.weatherMaterialsEnabled();
+}
+extern "C" __declspec(dllexport) int surface_row_enabled(const char* name){
+ LLView root;LLFloaterDirector director;director.root=&root;director.bindWeatherPage(&root);
+ return root.findChild<LLUICtrl>(name)->enabled;
+}
+'''
+    upload_prefix='#include "alweathershelter.h"\n'+upload_prefix
+    commands='\n'.join(function(panel,'void ALPanelWeatherSettings::'+name+'(') for name in ('applyLibraryPreset','stopPrecipitation','applyStartingSurfaces','clearSurfaces'))
+    commands+=function(panel,'const std::string& ALPanelWeatherSettings::surfaceStatus(')
+    source=out/'binding.cpp';source.write_text(prefix+read+commands+refresh+binding+suffix+color_code+upload_prefix+upload+upload_suffix+caps_prefix+caps+caps_suffix,encoding='utf-8')
     dll=compiler_command(out,[source,*(ROOT/('indra/newview/'+n+'.cpp') for n in SOURCES)],'binding',dll=True)
     native=C.CDLL(str(dll));native.set.argtypes=[C.c_char_p,C.c_double];native.get.argtypes=[C.c_char_p];native.get.restype=C.c_double
     native.command.argtypes=[C.c_int,C.c_int,C.c_char_p];native.trace.argtypes=[C.POINTER(C.c_double)]
     native.colors.argtypes=[C.POINTER(C.c_float),C.POINTER(C.c_float)]
+    native.surface.argtypes=[C.POINTER(C.c_double),C.c_int]
+    native.surface_uniforms.argtypes=[C.POINTER(C.c_double)]
+    native.surface_generation.argtypes=[C.c_int]
+    native.surface_cover.argtypes=[C.c_int]*5;native.surface_cover.restype=C.c_int
+    native.cover_readout.argtypes=[C.c_int];native.cover_readout.restype=C.c_char_p
+    native.surface_caps.argtypes=[C.c_int,C.c_int];native.surface_caps.restype=C.c_int
+    native.surface_row_enabled.argtypes=[C.c_char_p];native.surface_row_enabled.restype=C.c_int
     return native
 
 
@@ -155,7 +267,7 @@ def run(mutation=None):
     rows={r.get('widget'):r for r in xml.iter('kit_row')}
     tracked=function(current.read('indra/newview/alpanelweathersettings.cpp'),'const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()')
     new_settings=sorted(set(table)-set(baseline))
-    assert len(new_settings)==14
+    assert len(new_settings)==24
     for setting in new_settings:
         assert '"'+setting+'"' in tracked, 'untracked preset/reset setting: '+setting
     native=build(ROOT/'.tmp/weather_port/bindings'/(mutation or 'baseline'),mutation)
@@ -200,7 +312,9 @@ def run(mutation=None):
         set_(setting,0.7);before=color_output();set_(setting,0.2);after=color_output()
         assert get(setting)==0.2 and not np.array_equal(before,after), 'color row has no native uniform effect'
     assert 'AlchemyWeatherSeed' in xml.find('kit_page').get('watch_settings'), 'seed missing preset dirty observer'
-    print('weather bindings: PASS (20 new rows, 14 settings, real command callbacks and CPU effects)',flush=True)
+    # The material GL gate also drives all 13 surface rows through this compiled reader,
+    # actual Director callbacks, fixed-step model and native shader upload routine.
+    print('weather bindings: PASS (24 tracked settings; WP1 callbacks/CPU effects; WP2 compiled upload consumer available)',flush=True)
 
 
 if __name__=='__main__':

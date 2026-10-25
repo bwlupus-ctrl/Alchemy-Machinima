@@ -1248,6 +1248,7 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderHeroProbeResolution", handleHeroProbeResolutionChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderShadowDetail", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderDeferredSSAO", handleSetShaderChanged);
+    setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherPersistentWetEnabled", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherRainOcclusion", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherLightningQualityEnabled", handleSetShaderChanged);
     // [BDMerge G3.3 Dust / review fix] the dust sampler + sampling code are a

@@ -84,6 +84,13 @@ vec4 alrSilGBufferPbr(vec3 e);
 
 uniform mat3 normal_matrix;
 
+
+// WP2 material contract: after Actor FX, before G-buffer packing/forward lighting.
+bool weatherMaterialActive();
+void weatherMaterialLinear(vec3 p, inout vec3 n, inout vec3 c, inout float r, float m);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+void weatherMaterialLegacyLinear(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+
 void main()
 {
 #ifdef HAS_ACTOR_FX
@@ -210,6 +217,16 @@ void main()
     alr_env_carrier = alrPbrCarrier();
 #endif
     // See: C++: addDeferredAttachments(), GLSL: softenLightF
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+    // Evaluate derivatives for the entire quad, then exclude emitting pixels.
+    vec3 weather_normal = tnorm, weather_color = col;
+    float weather_roughness = spec.g;
+    weatherMaterialLinear(vary_position, weather_normal, weather_color, weather_roughness, spec.b);
+    if (dot(emissive, emissive) == 0.0)
+    {
+        tnorm = weather_normal; col = weather_color; spec.g = weather_roughness;
+    }
+#endif
     frag_data[0] = max(vec4(col, 0.0), vec4(0));                                                   // Diffuse
     frag_data[1] = max(vec4(spec.rgb,0.0), vec4(0));                                    // PBR linear packed Occlusion, Roughness, Metal.
 #ifdef HAS_SKIN
