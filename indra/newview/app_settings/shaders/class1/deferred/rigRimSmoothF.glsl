@@ -37,6 +37,23 @@ vec3 rimUnpack(float n) {
 }
 vec2 rimUV(ivec2 p) { return (vec2(clamp(p,ivec2(0),ivec2(screen_res)-1))+.5)/screen_res; }
 vec3 rimPosition(vec2 uv) { return getPositionWithDepth(uv,getDepth(uv)).xyz; }
+// All local covariance/guide/detail taps use the very same full-resolution
+// depth, subject and Actor Mask edge certificates as the separable filter.
+// Walk every intervening edge; a two-pixel tap must not jump a one-pixel hole.
+bool rimTap(vec2 uv, ivec2 offset) {
+    ivec2 at=ivec2(uv*screen_res), end=at+offset;
+    if (any(lessThan(end,ivec2(0))) || any(greaterThanEqual(end,ivec2(screen_res)))) return false;
+    for (int axis=0;axis<2;++axis) {
+        int count=abs(offset[axis]), direction=offset[axis]<0 ? -1:1;
+        for (int i=0;i<count;++i) {
+            ivec2 next=at; next[axis]+=direction;
+            vec2 edge=texelFetch(rigRimEdgeMap,direction<0 ? next:at,0).xy;
+            if (edge[axis]<.5) return false;
+            at=next;
+        }
+    }
+    return true;
+}
 bool rimJoin(vec2 a, vec2 b, vec3 p, vec3 q, vec3 n, vec3 m) {
     if (getDepth(a)>=.999999 || getDepth(b)>=.999999) return false;
     if (abs(textureLod(rigRimAuxMap,a,0).w-textureLod(rigRimAuxMap,b,0).w)>.5) return false;
@@ -106,6 +123,7 @@ void main() {
     ivec2 origin=ivec2(gl_FragCoord.xy)*grid_size;
     vec3 gs=vec3(0), ss=vec3(0);
     for (int y=0;y<grid_size;++y) for (int x=0;x<grid_size;++x) {
+        if (!rimTap(uv,ivec2(x,y)-ivec2(grid_size/2))) continue;
         vec2 tc=rimUV(origin+ivec2(x,y));
         if (rig_rim_smooth_params.w>0.0) gs+=rigRimOctDecode(textureLod(rigRimAuxMap,tc,0).xy);
         ss+=getNorm(tc).xyz;
@@ -114,6 +132,8 @@ void main() {
     bool valid=any(greaterThan(texelFetch(rigRimBarrierMap,ivec2(gl_FragCoord.xy),0),vec4(1.5)));
     vec2 moments=vec2(0);
     if (rig_rim_smooth_params.w>0.0) for (int k=0;k<2;++k) {
+        ivec2 offset=k==0 ? ivec2(2,0):ivec2(0,2);
+        if (!rimTap(uv,offset) || !rimTap(uv,-offset)) continue;
         vec2 axis=(k==0 ? vec2(2,0):vec2(0,2))/screen_res;
         vec3 dg=rigRimOctDecode(textureLod(rigRimAuxMap,uv+axis,0).xy)-rigRimOctDecode(textureLod(rigRimAuxMap,uv-axis,0).xy);
         vec3 ds=getNorm(uv+axis).xyz-getNorm(uv-axis).xyz;
@@ -213,6 +233,7 @@ void main() {
             const vec2 offsets[8]=vec2[8](vec2(-1,0),vec2(1,0),vec2(0,-1),vec2(0,1),
                 vec2(-2,0),vec2(2,0),vec2(0,-2),vec2(0,2));
             for (int k=0;k<8;++k) {
+                if (!rimTap(uv,ivec2(offsets[k]))) continue;
                 vec2 tc=uv+offsets[k]/screen_res;
                 vec4 a=textureLod(rigRimAuxMap,tc,0);
                 vec3 candidate=rigRimOctDecode(a.xy);
@@ -232,6 +253,7 @@ void main() {
         float edge=0.0;
         for (int k=0;k<4;++k) {
             vec2 axis=k<2 ? vec2(k==0 ? -1:1,0):vec2(0,k==2 ? -1:1);
+            if (!rimTap(uv,ivec2(axis))) continue;
             vec3 delta=rigRimOctDecode(textureLod(rigRimAuxMap,uv+axis*pixel,0).xy)-guide;
             edge=max(edge,dot(delta,delta));
         }
@@ -240,6 +262,7 @@ void main() {
             const vec2 offsets[8]=vec2[8](vec2(-1,0),vec2(1,0),vec2(0,-1),vec2(0,1),
                 vec2(-2,0),vec2(2,0),vec2(0,-2),vec2(0,2));
             for (int k=0;k<8;++k) {
+                if (!rimTap(uv,ivec2(offsets[k]))) continue;
                 vec2 tc=uv+offsets[k]/screen_res;
                 vec4 guide_sample=textureLod(rigRimAuxMap,tc,0);
                 vec3 g=rigRimOctDecode(guide_sample.xy), sh=getNorm(tc).xyz;

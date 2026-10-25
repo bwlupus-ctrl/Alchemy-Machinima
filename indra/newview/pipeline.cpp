@@ -3066,6 +3066,18 @@ void LLPipeline::refreshCachedSettings()
     LLFontWidthBuffer::enableBufferCollection(enable_buffers);
 }
 
+void LLPipeline::invalidateSnapshotEffects()
+{
+    // AllocationBudget also releases lazy targets outside the screen pack.
+    // None of their cached history/validity may survive into the retry/live view.
+    mProjVolHalfValid = mProjVolRimValid = mProjVolHistoryValid = false;
+    mFroxelMediaValid = mFroxelIntegratedValid = mFroxelLightValid = mFroxelHistoryValid = false;
+    mWeatherRainOcclusionValid = false;
+    mWeatherRainOcclusionFrame = 0;
+    mWeatherRainOcclusionFailedResolution = 0;
+    releaseWorldShadowTargets();
+}
+
 void LLPipeline::releaseGLBuffers()
 {
     assertInitialized();
@@ -19089,7 +19101,7 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     LL_PROFILE_GPU_ZONE("renderCineOutline");
 
     const F32 w = (F32)dst->getWidth(), h = (F32)dst->getHeight();
-    const F32 px_scale = h / 1080.f;               // "px at 1080p" -> px at this res
+    const F32 px_scale = effectHeight(h) / 1080.f;               // "px at 1080p" -> px at this res
 
     // --- subject resolve -----------------------------------------------
     // [Round-1 review fix, Codex P1 / Opus P2-4] The smoother lives entirely
@@ -19286,6 +19298,8 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
 
     const LLColor3& outline_color = color();
     gCineOutlineProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, w, h);
+    static const LLStaticHashedString effect_res("effect_res");
+    gCineOutlineProgram.uniform2f(effect_res, effectWidth(w), effectHeight(h));
     gCineOutlineProgram.uniform3f(LLShaderMgr::OUTLINE_COLOR,
         outline_color.mV[0], outline_color.mV[1], outline_color.mV[2]);
     gCineOutlineProgram.uniform4f(LLShaderMgr::OUTLINE_PARAMS,
@@ -19776,7 +19790,7 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     LL_PROFILE_GPU_ZONE("renderTronWorld");
 
     const F32 w = (F32)dst->getWidth(), h = (F32)dst->getHeight();
-    const F32 px_scale = h / 1080.f;
+    const F32 px_scale = effectHeight(h) / 1080.f;
 
     // --- camera / anchor / cam_rel / lattice (T1 contract section 3.3) ------
     const glm::mat4 modelview      = glm::make_mat4(mv);
@@ -24153,7 +24167,7 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
             F32 adj_cof = CameraMaxCoF;
             if (fs_dof_wysiwyg)
             {
-                F32 screen_to_target_scale_factor = (F32)gViewerWindow->getWindowHeightRaw() / (F32)dst->getHeight();
+                F32 screen_to_target_scale_factor = (F32)gViewerWindow->getWindowHeightRaw() / effectHeight((F32)dst->getHeight());
                 dof_tan_pixel_angle_scale = screen_to_target_scale_factor;
                 adj_cof = CameraMaxCoF / screen_to_target_scale_factor;
             }
@@ -24310,7 +24324,7 @@ void LLPipeline::renderRigRimWrap(bool debug_only)
     const F32 texels_per_m = h * projection_y * .25f;
     const bool cm = units() == 0;
     const F32 width_value = llclamp(finite_or(width, 3.f), .2f, 30.f);
-    const F32 width_x = cm ? width_value * .01f : width_value * (h / 1080.f) *
+    const F32 width_x = cm ? width_value * .01f : width_value * (effectHeight(h) / 1080.f) *
         bdmerge_snapshot_autoscale_multiplier() * .5f;
     const F32 softness = llclamp(finite_or(soft, .5f), 0.f, 1.f);
     const F32 band = llmin(24.f / (1.f + softness), cm ? width_x * texels_per_m / distance : width_x);
@@ -24566,7 +24580,7 @@ void LLPipeline::renderFinalize()
             rim_h = (F32)mMainRT.deferredScreen.getHeight();
             rim_texels_per_m = rim_h * gGLLastProjection[5] * .25f;
             const F32 width = llclamp(finite_or((F32)rr_width,3.f),.2f,30.f);
-            rim_width_x = rim_cm ? width*.01f : width*(rim_h/1080.f)*
+            rim_width_x = rim_cm ? width*.01f : width*(effectHeight(rim_h)/1080.f)*
                 bdmerge_snapshot_autoscale_multiplier()*.5f;
         }
         // Display the cached pre-alpha term at the post-scene debug location.
@@ -25900,7 +25914,7 @@ void LLPipeline::bindRigRimAux(LLGLSLShader& shader)
         const bool cm = units() == 0;
         const F32 width_value = llclamp(finite_or((F32)width,3.f),.2f,30.f);
         const F32 width_x = cm ? width_value*.01f :
-            width_value*(h/1080.f)*bdmerge_snapshot_autoscale_multiplier()*.5f;
+            width_value*(effectHeight(h)/1080.f)*bdmerge_snapshot_autoscale_multiplier()*.5f;
         const F32 texels_per_m = cm ? h*gGLProjection[5]*.25f : 0.f;
         shader.uniform4f(LLShaderMgr::RIG_RIM_SIL, width_x,
             llclamp(finite_or((F32)soft,.5f),0.f,1.f),
@@ -28138,7 +28152,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     }
     const bool measure = !sPrismLensRender && !mAreaShadowQueryPending;
     if (measure) glQueryCounter(mAreaShadowQueries[0],GL_TIMESTAMP);
-    const F32 resolution_scale = static_cast<F32>(height)/1080.f;
+    const F32 resolution_scale = effectHeight(static_cast<F32>(height))/1080.f;
     const F32 filter_setting = denoise();
     const F32 radius = ALAreaShadow::filterRadius(filter_setting,resolution_scale,work.q.half);
     const glm::mat4 view = get_current_modelview();
@@ -28803,7 +28817,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 const F32 width = llclamp(finite_or((F32)rim_width,3.f),.2f,30.f);
                 const F32 requested = rim_units() == 0 ?
                     width * .01f * texels_per_m / distance :
-                    width * ((F32)mMainRT.deferredScreen.getHeight() / 1080.f) *
+                    width * (effectHeight((F32)mMainRT.deferredScreen.getHeight()) / 1080.f) *
                         bdmerge_snapshot_autoscale_multiplier() * .5f;
                 if (requested > max_texels && texels_per_m > 0.f)
                 {
@@ -28832,7 +28846,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             const F32 p[4] = {(F32)subject_source, llclamp(seed,.002f,.2f), llclamp(seed_soft,.02f,1.f), 0.f};
             // At zero keep the original pass, targets and draw count.
             const bool smooth_normals = std::isfinite((F32)rim_smooth) && rim_smooth() > 0.f &&
-                gRigRimSmoothGuideProgram.isComplete() &&
+                gRigRimSmoothGuideProgram.isComplete() && gRigRimSmoothSeedProgram.isComplete() &&
                 std::all_of(std::begin(gRigRimSmoothProgram), std::end(gRigRimSmoothProgram),
                     [](LLGLSLShader& shader) { return shader.isComplete(); }) &&
                 ensureRigRimSmooth();
@@ -28892,16 +28906,17 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 draw(4, 0, 1, 3, 1.f, 0.f); // guide-aware resolve + detail + Toksvig
                 mRigRimSmoothValid = true;
             }
-            if (want_sil && gRigRimSilSeedProgram.isComplete() &&
+            auto& seed_shader = smooth_normals ? gRigRimSmoothSeedProgram : gRigRimSilSeedProgram;
+            if (want_sil && seed_shader.isComplete() &&
                 gRigRimSilDtProgram[0].isComplete() && gRigRimSilDtProgram[1].isComplete())
             {
                 { LL_PROFILE_GPU_ZONE("rig rim sil seed");
-                  mMainRT.rigRimSil[0].bindTarget(); bindDeferredShader(gRigRimSilSeedProgram);
-                  gRigRimSilSeedProgram.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP,
+                  mMainRT.rigRimSil[0].bindTarget(); bindDeferredShader(seed_shader);
+                  seed_shader.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP,
                       &mMainRT.rigRimAux,false,LLTexUnit::TFO_POINT);
-                  gRigRimSilSeedProgram.uniform4fv(LLShaderMgr::RIG_RIM_AUX_PARAMS,1,p);
+                  seed_shader.uniform4fv(LLShaderMgr::RIG_RIM_AUX_PARAMS,1,p);
                   mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
-                  unbindDeferredShader(gRigRimSilSeedProgram); mMainRT.rigRimSil[0].flush(); }
+                  unbindDeferredShader(seed_shader); mMainRT.rigRimSil[0].flush(); }
                 { LL_PROFILE_GPU_ZONE("rig rim sil dt");
                   for (S32 i=0;i<2;++i) { const S32 dst=i?0:1, src=i?1:0;
                     mMainRT.rigRimSil[dst].bindTarget(); gRigRimSilDtProgram[i].bind();

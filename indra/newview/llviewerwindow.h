@@ -397,7 +397,7 @@ public:
                      LLSnapshotModel::ESnapshotLayerType type = LLSnapshotModel::SNAPSHOT_TYPE_COLOR, LLSnapshotModel::ESnapshotFormat format = LLSnapshotModel::SNAPSHOT_FORMAT_BMP);
     bool rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_height, bool keep_window_aspect = true, bool is_texture = false,
                      bool show_ui = true, bool show_hud = true, bool do_rebuild = false, bool no_post = false, bool show_balance = true,
-                     LLSnapshotModel::ESnapshotLayerType type = LLSnapshotModel::SNAPSHOT_TYPE_COLOR, S32 max_size = MAX_SNAPSHOT_IMAGE_SIZE);
+                     LLSnapshotModel::ESnapshotLayerType type = LLSnapshotModel::SNAPSHOT_TYPE_COLOR, S32 max_size = MAX_SNAPSHOT_IMAGE_SIZE, bool allow_rim_overlap = true);
 
     bool            simpleSnapshot(LLImageRaw *raw, S32 image_width, S32 image_height, const int num_render_passes);
 

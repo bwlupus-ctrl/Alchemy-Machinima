@@ -270,6 +270,7 @@ LLGLSLShader            gCineOutlineProgram;
 LLGLSLShader            gRigRimAuxProgram;
 LLGLSLShader            gRigRimSmoothProgram[5];
 LLGLSLShader            gRigRimSmoothGuideProgram;
+LLGLSLShader            gRigRimSmoothSeedProgram;
 LLGLSLShader            gRigRimSilSeedProgram;
 LLGLSLShader            gRigRimSilDtProgram[2];
 LLGLSLShader            gRigRimWrapBlurProgram[2];
@@ -709,6 +710,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     if (gRigRimAuxProgram.isComplete()) mShaderList.push_back(&gRigRimAuxProgram);
     for (auto& shader : gRigRimSmoothProgram) if (shader.isComplete()) mShaderList.push_back(&shader);
     if (gRigRimSmoothGuideProgram.isComplete()) mShaderList.push_back(&gRigRimSmoothGuideProgram);
+    if (gRigRimSmoothSeedProgram.isComplete()) mShaderList.push_back(&gRigRimSmoothSeedProgram);
     if (gRigRimSilSeedProgram.isComplete()) mShaderList.push_back(&gRigRimSilSeedProgram);
     for (auto& shader : gRigRimSilDtProgram) if (shader.isComplete()) mShaderList.push_back(&shader);
     for (auto& shader : gRigRimWrapBlurProgram) if (shader.isComplete()) mShaderList.push_back(&shader);
@@ -1802,6 +1804,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gRigRimAuxProgram.unload();
         for (auto& shader : gRigRimSmoothProgram) shader.unload();
         gRigRimSmoothGuideProgram.unload();
+        gRigRimSmoothSeedProgram.unload();
         gRigRimSilSeedProgram.unload();
         for (auto& shader : gRigRimSilDtProgram) shader.unload();
         for (auto& shader : gRigRimWrapBlurProgram) shader.unload();
@@ -4329,6 +4332,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         load_optional(gRigRimSmoothProgram[4], "Rig Rim Resolve", "deferred/rigRimSmoothF.glsl", true, "RIG_RIM_SMOOTH_RESOLVE");
         load_optional(gRigRimSmoothGuideProgram, "Rig Rim Smooth Guide", "deferred/rigRimAuxF.glsl", true, "RIG_RIM_SMOOTH_GUIDE");
         load_optional(gRigRimSilSeedProgram, "Rig Rim Silhouette Seed Shader", "deferred/rigRimSilSeedF.glsl", true);
+        load_optional(gRigRimSmoothSeedProgram, "Rig Rim Smooth Seed Shader", "deferred/rigRimSilSeedF.glsl", true, "RIG_RIM_SMOOTH_SEED");
         load_optional(gRigRimSilDtProgram[0], "Rig Rim Silhouette DT H", "deferred/rigRimSilDtF.glsl", false);
         gRigRimSilDtProgram[1].mName = "Rig Rim Silhouette DT V";
         gRigRimSilDtProgram[1].mFeatures = LLShaderFeatures();

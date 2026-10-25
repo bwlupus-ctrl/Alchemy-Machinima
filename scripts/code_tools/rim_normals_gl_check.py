@@ -182,6 +182,7 @@ class Runner(G.AreaRunner):
         self.debug = self.link_pass('rigRimDebugF.glsl', common=True)
         self.hierarchical = 'RIG_RIM_BARRIER_EDGES' in tree.read(PATH+'rigRimSmoothF.glsl') if self.has_smooth else False
         self.seed = self.link_pass('rigRimSilSeedF.glsl', common=True)
+        self.smooth_seed = self.link_pass('rigRimSilSeedF.glsl', defines='#define RIG_RIM_SMOOTH_SEED 1\n', common=True) if 'RIG_RIM_SMOOTH_SEED' in tree.read(PATH+'rigRimSilSeedF.glsl') else self.seed
         if self.has_smooth:
             self.filters = [self.link_pass('rigRimSmoothF.glsl', defines=d, common=True) for d in
                             (('', '#define RIG_RIM_SMOOTH_VERTICAL 1\n') if not self.hierarchical else
@@ -247,7 +248,10 @@ void main(){frag_color=vec4(linear_to_srgb(texture(rimTestLinear,vary_fragcoord)
             self.uniform(pr, 'rig_rim_quality', smoothness, 1, 0, 0)
         aux_program = self.guide if smoothness > 0 else self.aux
         setup(aux_program, 'raw')
-        self.uniform(aux_program, 'rig_rim_aux_params', 0, .02, .5, 0)
+        self.uniform(aux_program, 'rig_rim_aux_params', f.get('subject_source',0), .02, .5, 0)
+        if identity is not None:
+            self.sampler(aux_program,'actorMaskMap',identity,7)
+            gl.ui(gl.loc(aux_program,b'actor_mask_bits'),1)
         self._timed('aux_ms', stats, lambda: gl.draw(4, 0, 3))
         final = targets['raw']
         if self.has_smooth and smoothness > 0:
@@ -265,7 +269,7 @@ void main(){frag_color=vec4(linear_to_srgb(texture(rimTestLinear,vary_fragcoord)
                     self.sampler(pr,'rigRimSmoothMap',targets[source],3)
                     self.sampler(pr,'rigRimBarrierMap',targets[bar],4)
                     self.sampler(pr,'rigRimEdgeMap',targets['edges'],5)
-                    self.uniform(pr,'rig_rim_smooth_stage',step,axis,grid_size,1 if identity is not None else 0)
+                    self.uniform(pr,'rig_rim_smooth_stage',step,axis,grid_size,1 if identity is not None and f.get('certify_identity',True) else 0)
                     if identity is not None: self.sampler(pr,'actorMaskMap',identity,7)
                     self.uniform(pr,'rig_rim_smooth_params',radius*.01,w*f['proj'][0,0]*.5,h*f['proj'][1,1]*.5,detail)
                     self._timed('stage_%d_ms'%index,stats,lambda: gl.draw(4,0,3))
@@ -492,7 +496,7 @@ def review_checks(runner,require,result,out,label,four_k=True):
     require(result['actor_identity_error_deg']<.1,'available Actor Mask identity prevents coplanar surface transfer (< .1 deg)')
     floor=plane_fixture(384,384,0,2.5,1)
     runner.frame(floor,smoothness=.001,detail=1)
-    pr=runner.seed; runner._begin(pr)
+    pr=runner.smooth_seed; runner._begin(pr)
     runner.sampler(pr,'depthMap',runner.textures['depth'][0],0)
     runner.sampler(pr,'normalMap',runner.textures['norm'][0],1)
     # Match the production host's geometric/shading choice, not a test-only override.

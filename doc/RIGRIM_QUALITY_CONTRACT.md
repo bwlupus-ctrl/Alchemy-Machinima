@@ -602,7 +602,10 @@ Smoothness is positive, avoiding tangent-plane errors on grazing floors.
 
 A full-resolution RG8 edge map certifies each adjacent horizontal/vertical
 join. Precision, curvature, subject, avatar tag, and available Actor Mask
-identity stop filtering across separate surfaces. Conservative cell reduction
+identity stop filtering across separate surfaces. Every local covariance,
+guide-repair, edge and detail-repair tap uses the
+same full-resolution edge certificates; no local tap can hop a barrier.
+Conservative cell reduction
 retains every full-resolution barrier, including one-pixel holes. Two separable
 filters work on the reduced grid (quarter resolution at 1080p/4K; half resolution
 for 1–2 cm radii and 513–1023 px heights; full resolution at 512 px or below); ambiguous cells retain a local fallback. Maximum support
@@ -619,13 +622,50 @@ full resolution; unreliable subpixel triangle corners interpolate nearby
 certified detail rotations. Toksvig derives from the final Smoothness/detail
 normal. Debug view 3 displays the same final blend used by rim lighting.
 
-Tiled snapshots render 1048-pixel overlapping margins and crop their cores,
-aligning the reduced grid across tiles. Reduced-grid depth/guide samples
+Tiled snapshots render at least 1048 internal shader pixels of overlapping
+margin and crop their cores. The output margin and core alignment account for
+RenderResolutionDivisor and RenderResolutionMultiplier: divisor 2 needs 2096
+output pixels, rather than the old 524-shader-pixel margin. Reduced-grid depth/guide samples
 snap to full-resolution pixel centres so viewport dimensions cannot select a
 different nearest texel. A four-target regression exercises the actual expanded
 projection and both cropped seam axes. The margin covers filtering, guide
-support, upsampling and derivatives. A tile allocation failure reports failure
-rather than writing a seamed snapshot. Zero Smoothness uses stock snapshot code.
+support, upsampling and derivatives. A scope guard established before snapshot
+mutation restores camera dimensions, view rectangle, flags and screen buffers
+on all exits, resets tile scale/offset, and unbinds scratch before releasing it.
+Buffer recovery failure returns false and schedules screen-buffer recovery.
+Oversized, over-budget or failed overlap captures release their temporary
+targets and retry ordinary non-overlap tiling, logging the fallback once.
+Positive-Smoothness captures use bounded tiles instead of attempting an
+unbounded full-output framebuffer first. Zero Smoothness retains ordinary
+snapshot allocation and the stock seed shader; a separate seed permutation
+contains the positive-Smoothness coordinate snapping, with no quality uniform
+in the zero seed program and byte-identical zero seed output.
+
+Overlap has a hard cumulative 1024 MiB render-target allocation budget at
+both 3840x2160 and 7680x4320. This includes scratch, resized packs, lazy effect
+targets, mip chains and failed attempts, without refunding releases. The
+separate RGB output requires 23.73 / 94.92 MiB of CPU memory respectively.
+All targets allocated or resized under the budget are tracked and released
+before normal buffers are restored; temporary texture deletion bypasses the
+usual multi-frame deferred queue. Lazy history/validity is invalidated before
+fallback. Existing live scene/asset memory and restored ordinary buffers are
+outside this temporary allocation bound.
+
+Resolution-size audit: pixel-mode rim width (beauty, debug, wrap and status),
+Roto Ink line/sketch/copy/motion/pattern sizes, Tron line sizes, WYSIWYG DoF
+CoC/pixel angle, and area-shadow denoise radii use tile core dimensions.
+Texture addressing, AA texel steps, depth reconstruction, world-space normal
+radius, silhouette centimetre conversion, shadow projection and physical
+target allocation continue using actual buffer dimensions/projection. SSAO,
+shadow blur and DoF's optional BD autoscale multiplier read the output-derived
+setting, not the padded screen size. Bloom mip allocation and DoF downsample
+viewports describe physical storage, not effect-size units.
+
+Run `python scripts/code_tools/rim_normals_fix2_check.py` and repeat with
+`--shader-ref 48f3b6cf255` for failing controls. This executes production C++
+rollback fault injection, tile phase/margin, effect size and cumulative-budget
+checks, plus production GL depth/subject/Actor Mask contamination at 384p and
+1080p and zero-seed uniform/byte checks.
 
 Additional smoothing storage at 1920x1080 / 3840x2160 is 24.72 / 98.88 MiB:
 full RGBA16 rim + full RG8 joins + two quarter RGBA32F scratch targets + one

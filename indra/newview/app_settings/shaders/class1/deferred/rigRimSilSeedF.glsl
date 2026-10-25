@@ -50,7 +50,6 @@ in vec2 vary_fragcoord;
 
 uniform vec2 screen_res;          // FULL-res size (bindDeferredShader); taps are 2 px
 uniform vec4 rig_rim_aux_params;  // y seed threshold (relative residual), z softness 0..1
-uniform vec4 rig_rim_quality;
 
 float getDepth(vec2 pos_screen);
 vec4  getNorm(vec2 screenpos);
@@ -87,8 +86,9 @@ void main()
     vec2  uv  = vary_fragcoord;
     // Match nearest depth/guide samples to their actual full-res pixel centres.
     // Keep the stock zero-Smoothness instruction path and results.
-    if (rig_rim_quality.x > 0.0)
-        uv = (min(vec2(ivec2(gl_FragCoord.xy)*2+ivec2(1)),screen_res-1.0)+.5)/screen_res;
+#ifdef RIG_RIM_SMOOTH_SEED
+    uv = (min(vec2(ivec2(gl_FragCoord.xy)*2+ivec2(1)),screen_res-1.0)+.5)/screen_res;
+#endif
     float d_c = getDepth(uv);
     if (d_c >= 0.999999)
     {
@@ -112,8 +112,9 @@ void main()
     for (int i = 0; i < 8; ++i)
     {
         vec2  tc  = clamp(uv + SEED_DIRS[i] * px, vec2(0.0), vec2(1.0));
-        if (rig_rim_quality.x > 0.0)
-            tc = (clamp(floor(tc*screen_res),vec2(0),screen_res-1.0)+.5)/screen_res;
+#ifdef RIG_RIM_SMOOTH_SEED
+        tc = (clamp(floor(tc*screen_res),vec2(0),screen_res-1.0)+.5)/screen_res;
+#endif
         float dep = getDepth(tc);
         vec3  p_i = getPositionWithDepth(tc, dep).xyz;
         float z_i = max(-p_i.z, 0.0);

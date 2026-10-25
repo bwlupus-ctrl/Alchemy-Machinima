@@ -1513,11 +1513,19 @@ void LLImageGL::updateClass()
 }
 
 // static
-void LLImageGL::deleteTextures(S32 numTextures, const U32 *textures)
+void LLImageGL::deleteTextures(S32 numTextures, const U32 *textures, bool immediate)
 {
     if (gGLManager.mInited)
     {
         LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
+        if (immediate)
+        {
+            // Temporary capture targets have no remaining owners. GL keeps
+            // in-flight references alive; do not retain names for more frames.
+            free_tex_images(numTextures, textures);
+            glDeleteTextures(numTextures, textures);
+            return;
+        }
         U32 idx = sFrameCount % (DELETE_DELAY+1);
         for (S32 i = 0; i < numTextures; ++i)
         {

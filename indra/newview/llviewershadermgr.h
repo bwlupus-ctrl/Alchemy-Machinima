@@ -335,6 +335,7 @@ extern LLGLSLShader         gCineOutlineProgram;
 extern LLGLSLShader         gRigRimAuxProgram;
 extern LLGLSLShader         gRigRimSmoothProgram[5];
 extern LLGLSLShader         gRigRimSmoothGuideProgram;
+extern LLGLSLShader         gRigRimSmoothSeedProgram;
 extern LLGLSLShader         gRigRimSilSeedProgram;
 extern LLGLSLShader         gRigRimSilDtProgram[2];
 extern LLGLSLShader         gRigRimWrapBlurProgram[2];
