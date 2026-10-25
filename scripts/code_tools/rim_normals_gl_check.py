@@ -8,6 +8,7 @@ measurements without changing any acceptance threshold.
 import argparse
 import ctypes as C
 import json
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +19,46 @@ from rim_alpha_gl_check import Runner as WrapRunner
 
 BASE = 'b0d3b1ac2d0'
 PATH = G.SHADERS + '/class1/deferred/'
+
+
+CORE_FILES = tuple(
+    f'indra/{directory}/{name}.{ext}'
+    for directory, name in (('llrender', 'llimagegl'), ('llrender', 'llrendertarget'),
+                            ('newview', 'llviewercamera'), ('newview', 'llviewerwindow'))
+    for ext in ('cpp', 'h')
+)
+
+
+def core_identity_checks(tree, require):
+    """Compare raw bytes, including line endings, against the branch base."""
+    def blob(ref, path):
+        if ref == 'WORKTREE':
+            return (G.REPO/path).read_bytes()
+        return subprocess.check_output(['git', '-C', str(G.REPO), 'show', f'{ref}:{path}'])
+
+    for path in CORE_FILES:
+        require(blob(tree.ref, path) == blob(BASE, path), f'base core bytes identical: {path}')
+    snapshot_header = 'indra/newview/alrimsnapshot.h'
+    if tree.ref == 'WORKTREE':
+        absent = not (G.REPO/snapshot_header).exists()
+    else:
+        absent = not subprocess.check_output(
+            ['git', '-C', str(G.REPO), 'ls-tree', '--name-only', tree.ref, '--', snapshot_header])
+    require(absent, 'snapshot overlap policy header removed')
+    outline = PATH + 'cineOutlineF.glsl'
+    require(blob(tree.ref, outline) == blob(BASE, outline), 'Roto Ink shader bytes identical to base')
+    current = tree.read('indra/newview/pipeline.cpp')
+    stock = G.SourceTree(BASE).read('indra/newview/pipeline.cpp')
+    for name in ('renderCineOutline', 'renderTronWorld', 'renderDoF', 'renderAreaShadows', 'renderRigRimWrap'):
+        marker = 'void LLPipeline::' + name + '('
+        def body(source):
+            start = source.index(marker)
+            return source[start:source.index('\n}\n', start) + 3]
+        require(body(current) == body(stock), f'base effect implementation identical: {name}')
+    header = tree.read('indra/newview/pipeline.h')
+    require(not any(token in current + header for token in
+                    ('mSnapshotCore', 'effectHeight(', 'effectWidth(', 'invalidateSnapshotEffects')),
+            'snapshot-only pipeline sizing and invalidation removed')
 
 
 def unit(n):
@@ -431,45 +472,6 @@ def radius_profile(runner,height,distance,radius):
     return dict(sigma_m=float(sigma),expected_m=float(expected),ratio=float(sigma/expected))
 
 
-def tiled_snapshot(runner,f,margin):
-    w,h=f['w'],f['h']; out=np.empty((h,w,3),np.float32)
-    for core_start,core_end in ((0,w//2),(w//2,w)):
-        start=max(0,core_start-margin);end=min(w,core_end+margin);tw=end-start
-        tile={k:(v[:,start:end].copy() if isinstance(v,np.ndarray) and v.shape[:2]==(h,w) else v) for k,v in f.items()}
-        proj=f['proj'].copy()
-        proj[0]=w/tw*f['proj'][0]+(w-2*start-tw)/tw*f['proj'][3]
-        tile.update(w=tw,proj=proj)
-        n,_,_=runner.frame(tile)
-        out[:,core_start:core_end]=n[:,core_start-start:core_end-start]
-    return out
-
-
-def expanded_snapshot(runner,f,margin):
-    """Four expanded render targets: actual camera scale/offset, then crop.
-
-    Outside-frame pixels extend the fixture's uninterrupted background plane.
-    The gutter is never clipped away, so this exercises a different projection
-    and target size, including the reduced-grid phase, at every tile.
-    """
-    w,h=f['w'],f['h'];cw,ch=w//2,h//2
-    rw,rh=cw+2*margin,ch+2*margin
-    out=np.empty((h,w,3),np.float32)
-    for ty in range(2):
-        for tx in range(2):
-            ox,oy=tx*cw-margin,ty*ch-margin
-            x0,y0=max(0,ox),max(0,oy);x1,y1=min(w,ox+rw),min(h,oy+rh)
-            padding=((y0-oy,oy+rh-y1),(x0-ox,ox+rw-x1))
-            proj=f['proj'].copy()
-            proj[0]=w/rw*f['proj'][0]+(w-2*ox-rw)/rw*f['proj'][3]
-            proj[1]=h/rh*f['proj'][1]+(h-2*oy-rh)/rh*f['proj'][3]
-            tile=dict(w=rw,h=rh,proj=proj,
-                depth=np.pad(f['depth'][y0:y1,x0:x1],padding,mode='edge'),
-                normal=np.pad(f['normal'][y0:y1,x0:x1],padding+((0,0),),mode='edge'))
-            n,_,_=runner.frame(tile)
-            out[ty*ch:(ty+1)*ch,tx*cw:(tx+1)*cw]=n[margin:margin+ch,margin:margin+cw]
-    return out
-
-
 def review_checks(runner,require,result,out,label,four_k=True):
     f=join_fixture()
     pure,_,_=runner.frame(f,detail=0); detailed,_,_=runner.frame(f,detail=1)
@@ -512,29 +514,6 @@ def review_checks(runner,require,result,out,label,four_k=True):
         for offset in range(-4,5): mask &= np.roll(floor['ids'][1::2,1::2],offset,axis)>=0
     result['false_interior_seeds']=int(np.count_nonzero(seeds&mask)); result['seed_interior_samples']=int(mask.sum())
     require(result['false_interior_seeds']==0 and mask.sum()>100,'mapped floor uses geometric guide: zero interior silhouette seeds')
-    # The host, camera projection and readback crop must all participate.
-    pipe=runner.tree.read('indra/newview/llviewerwindow.cpp')
-    import re
-    match=re.search(r'constexpr S32 support = (\d+);',pipe)
-    margin=int(match.group(1)) if match else 0
-    f=fixture(512,384)
-    whole,_,_=runner.frame(f); tiled=tiled_snapshot(runner,f,margin)
-    result['snapshot_seam_error_deg']=float(np.max(angle(whole[:,252:260],tiled[:,252:260])))
-    require(result['snapshot_seam_error_deg']<.03,'overlapping snapshot tiles match the uninterrupted normal field (< .03 deg)')
-    if margin:
-        require(margin>=1048 and 'subimage_x_offset + rim_tile_margin' in pipe and
-                'out_y + subimage_y_offset + rim_tile_margin' in pipe and 'setSnapshotTile(scale_factor*sx' in pipe,
-                'snapshot overlap covers maximum filter, guide, upsample and derivative support, then crops both axes')
-    expanded_fixture=fixture(1024,1024)
-    reference,_,_=runner.frame(expanded_fixture)
-    assembled=expanded_snapshot(runner,expanded_fixture,margin)
-    delta=angle(reference,assembled)
-    seams=np.zeros((1024,1024),bool);seams[:,508:516]=True;seams[508:516,:]=True
-    result['expanded_snapshot_rms_deg']=float(np.sqrt(np.mean(delta[seams]**2)))
-    result['expanded_snapshot_max_deg']=float(np.max(delta[seams]))
-    require(result['expanded_snapshot_rms_deg']<.03 and result['expanded_snapshot_max_deg']<.1,
-            'four expanded snapshot targets preserve both seam axes (RMS < .03 / max < .1 deg quantization budget)')
-    Image.fromarray(np.uint8(np.clip((assembled[::-1]*.5+.5)*255,0,255))).save(out/(label+'_tiled_debug.png'))
     # A real black shader is an adversarial control for the lighting gate.
     live_term=runner.term
     runner.term=runner.link_pass(None,source='in vec2 vary_fragcoord; out vec4 frag_color; void main(){frag_color=vec4(0,0,0,1);}')
@@ -595,6 +574,7 @@ def main():
     def require(ok, message):
         print(('PASS: ' if ok else 'FAIL: ')+message,flush=True)
         if not ok: failures.append(message)
+    core_identity_checks(runner.tree, require)
     result = dict(ref=args.shader_ref, renderer=runner.gl.renderer)
     proxy = fixture()
     n, _, _ = runner.frame(proxy)

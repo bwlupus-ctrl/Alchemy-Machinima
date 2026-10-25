@@ -87,7 +87,6 @@ uniform sampler2D exposureMap;   // 1x1 auto-exposure scale
 uniform float     exposure;      // > 0 manual*auto, < 0 manual only (S-Log3), 0 = already exposed
 
 uniform vec2 screen_res;
-uniform vec2 effect_res; // unpadded dimensions for effect size only
 uniform vec3 outline_color;      // ink colour, linear RGB
 // x = line width in px (already scaled to the current resolution by the host),
 // y = softness 0..1 (threshold feather, fraction of the threshold),
@@ -447,7 +446,7 @@ vec2 rotoMotionEval(int style, vec4 mp, float angle, float seed, vec2 uv, vec2 e
 
     // ---- [RotoInk Anim] new styles -------------------------------------
     float shape  = clamp(mp.w, 0.0, 1.0);
-    float rs     = effect_res.y / 1080.0;                 // px at 1080p -> px here
+    float rs     = screen_res.y / 1080.0;                 // px at 1080p -> px here
     float aspect = screen_res.x / max(screen_res.y, 1.0);
     vec2  p_px   = uv * screen_res;
     float s      = s_edge + seed * 37.0;                   // along-edge coordinate, px
@@ -664,7 +663,7 @@ vec2 rotoMotionDisplace(int style, vec4 mp, float angle, float seed, vec2 uv)
     float t      = rotoMotionTime(mp.x);
     float scale  = max(mp.z, 1.0e-3);
     float shape  = clamp(mp.w, 0.0, 1.0);
-    float rs     = effect_res.y / 1080.0;
+    float rs     = screen_res.y / 1080.0;
 
     if (style == 13)      // glitch: horizontal band offsets
     {
@@ -739,7 +738,7 @@ bool rotoMotionCopy(int style, vec4 mp, float seed, vec2 uv, float base_w,
     float t      = rotoMotionTime(mp.x);
     float scale  = max(mp.z, 1.0e-3);
     float shape  = clamp(mp.w, 0.0, 1.0);
-    float rs     = effect_res.y / 1080.0;
+    float rs     = screen_res.y / 1080.0;
     vec2  p_px   = uv * screen_res;
 
     if (style == 22)      // echo aura: a concentric contour; shape >= 0.5 expands like a shockwave
@@ -937,7 +936,7 @@ vec3 rotoLine(vec2 uv)
     // crease angle (from the uploaded 1 - cos) and the fixed crease test
     // radius: 1 px at 1080p, scaled to the current resolution.
     float c_ang     = acos(clamp(1.0 - max(roto_line.y, 1.0e-5), -1.0, 1.0));
-    float crease_px = max(1.0, floor(effect_res.y / 1080.0 + 0.5));
+    float crease_px = max(1.0, floor(screen_res.y / 1080.0 + 0.5));
     float wC        = clamp(roto_line.w, 0.0, 1.0);
 
     float width = rotoWidthPx();
@@ -1234,7 +1233,7 @@ void main()
     float ang2   = roto_motion5.y;
     float mseed  = roto_motion3.y;
     int   ptype  = int(roto_pattern.x + 0.5);
-    float rs     = effect_res.y / 1080.0;
+    float rs     = screen_res.y / 1080.0;
     float aspect = screen_res.x / max(screen_res.y, 1.0);
     vec2  p_px   = uv * screen_res;
 

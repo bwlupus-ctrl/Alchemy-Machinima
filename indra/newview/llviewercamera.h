@@ -120,12 +120,6 @@ public:
     void setZoomParameters(F32 factor, S16 subregion) { mZoomFactor = factor; mZoomSubregion = subregion; }
     F32 getZoomFactor() const { return mZoomFactor; }
     S16 getZoomSubRegion() const { return mZoomSubregion; }
-    // Snapshot tiles render overlapping margins, then crop to their core.
-    void setSnapshotTile(F32 sx, F32 sy, F32 tx, F32 ty)
-    {
-        mSnapshotTileScaleX = sx; mSnapshotTileScaleY = sy;
-        mSnapshotTileOffsetX = tx; mSnapshotTileOffsetY = ty;
-    }
 
 protected:
     void calcProjection(const F32 far_distance) const;
@@ -147,10 +141,6 @@ protected:
     S32                 mScreenPixelArea; // Pixel area of entire window
     F32                 mZoomFactor;
     S16                 mZoomSubregion;
-    F32                 mSnapshotTileScaleX = 0.f;
-    F32                 mSnapshotTileScaleY = 0.f;
-    F32                 mSnapshotTileOffsetX = 0.f;
-    F32                 mSnapshotTileOffsetY = 0.f;
 
 public:
 };

@@ -707,20 +707,6 @@ public:
     void bindDeferredShaderFast(LLGLSLShader& shader);
     void bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target = nullptr, LLRenderTarget* depth_target = nullptr);
     void bindRigRimAux(LLGLSLShader& shader);
-    U32 mSnapshotCoreWidth = 0, mSnapshotCoreHeight = 0;
-    void invalidateSnapshotEffects();
-    // Physical dimensions still drive addressing and projection. Only effect
-    // sizes expressed as pixels-at-1080p use the unpadded snapshot core.
-    F32 effectHeight(F32 physical_height) const
-    {
-        return mRT == &mMainRT && mSnapshotCoreHeight ?
-            physical_height * mSnapshotCoreHeight / mMainRT.deferredScreen.getHeight() : physical_height;
-    }
-    F32 effectWidth(F32 physical_width) const
-    {
-        return mRT == &mMainRT && mSnapshotCoreWidth ?
-            physical_width * mSnapshotCoreWidth / mMainRT.deferredScreen.getWidth() : physical_width;
-    }
     // [ShadowDist P1] Meta-derived sun-shadow uniform upload (design v6 s1.2).
     // Called from BOTH bind paths right after the shadow maps are bound. The
     // interpretation of the sampled pack's four maps (split blend; later units /

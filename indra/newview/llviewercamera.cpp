@@ -358,12 +358,7 @@ void LLViewerCamera::setPerspective(bool for_selection,
         gGLViewport[3] = height;
     }
 
-    if (mSnapshotTileScaleX > 0.f)
-    {
-        proj_mat = glm::scale(glm::vec3(mSnapshotTileScaleX, mSnapshotTileScaleY, 1.f)) * proj_mat;
-        proj_mat = glm::translate(glm::vec3(mSnapshotTileOffsetX, mSnapshotTileOffsetY, 0.f)) * proj_mat;
-    }
-    else if (mZoomFactor > 1.f)
+    if (mZoomFactor > 1.f)
     {
         float offset = mZoomFactor - 1.f;
         int pos_y = mZoomSubregion / llceil(mZoomFactor);

@@ -73,43 +73,6 @@ namespace
 
 LLRenderTarget* LLRenderTarget::sBoundTarget = NULL;
 U32 LLRenderTarget::sBytesAllocated = 0;
-LLRenderTarget::AllocationBudget* LLRenderTarget::sAllocationBudget = nullptr;
-
-LLRenderTarget::AllocationBudget::AllocationBudget(U64 bytes)
-    : remaining(bytes), previous(sAllocationBudget)
-{
-    sAllocationBudget = this;
-}
-
-LLRenderTarget::AllocationBudget::~AllocationBudget()
-{
-    // Includes lazy post/weather/volumetric targets outside the screen pack.
-    // release() removes the entry, so local targets cannot leave stale pointers.
-    while (!targets.empty()) targets.back()->release();
-    sAllocationBudget = previous;
-}
-
-void LLRenderTarget::trackAllocation()
-{
-    if (sAllocationBudget && !mAllocationBudget)
-    {
-        mAllocationBudget = sAllocationBudget;
-        mAllocationBudget->targets.push_back(this);
-    }
-}
-
-bool LLRenderTarget::reserveAllocation(U64 bytes)
-{
-    auto* budget = sAllocationBudget;
-    if (!budget) return true;
-    if (bytes > budget->remaining)
-    {
-        budget->failed = true;
-        return false;
-    }
-    budget->remaining -= bytes;
-    return true;
-}
 
 namespace
 {
@@ -227,12 +190,6 @@ LLRenderTarget::~LLRenderTarget()
 
 void LLRenderTarget::resize(U32 resx, U32 resy)
 {
-    U64 bytes_per_pixel = 0;
-    for (U32 format : mInternalFormat) bytes_per_pixel += get_color_format_bytes_per_pixel(format);
-    if (mDepth) bytes_per_pixel += get_depth_format_info(mDepthFormat, mStencil).bytes_per_pixel;
-    // Count the complete replacement, including mip levels, before mutation.
-    if (!reserveAllocation(U64(resx) * resy * bytes_per_pixel * (mMipLevels > 1 ? 2 : 1))) return;
-    trackAllocation();
     //for accounting, get the number of pixels added/subtracted
     S64 pix_diff = static_cast<S64>(resx) * resy - static_cast<S64>(mResX) * mResY;
 
@@ -247,7 +204,6 @@ void LLRenderTarget::resize(U32 resx, U32 resy)
         LLImageGL::setManualImage(LLTexUnit::getInternalType(mUsage), 0, mInternalFormat[i], mResX, mResY,
                                   GL_RGBA, GL_UNSIGNED_BYTE, NULL, false,
                                   mGenerateMipMaps != LLTexUnit::TMG_NONE);
-        if (sAllocationBudget && glGetError() != GL_NO_ERROR) sAllocationBudget->failed = true;
         sBytesAllocated += static_cast<S32>(pix_diff * get_color_format_bytes_per_pixel(mInternalFormat[i]));
     }
 
@@ -257,7 +213,6 @@ void LLRenderTarget::resize(U32 resx, U32 resy)
         U32 internal_type = LLTexUnit::getInternalType(mUsage);
         const DepthFormatInfo info = get_depth_format_info(mDepthFormat, mStencil);
         LLImageGL::setManualImage(internal_type, 0, info.internal_format, mResX, mResY, info.pixel_format, info.pixel_type, NULL, false);
-        if (sAllocationBudget && glGetError() != GL_NO_ERROR) sAllocationBudget->failed = true;
 
         sBytesAllocated += static_cast<S32>(pix_diff * info.bytes_per_pixel);
     }
@@ -396,11 +351,6 @@ bool LLRenderTarget::addColorAttachment(U32 color_fmt)
         return false;
     }
 
-    // A factor of two conservatively covers the entire mip chain, including
-    // one-dimensional targets. Count failed attempts too (deferred deletion).
-    if (!reserveAllocation(U64(mResX) * mResY * get_color_format_bytes_per_pixel(color_fmt) *
-                           (mMipLevels > 1 ? 2 : 1))) return false;
-    trackAllocation();
     U32 tex;
     LLImageGL::generateTextures(1, &tex);
     gGL.getTexUnit(0)->bindManual(mUsage, tex);
@@ -415,13 +365,12 @@ bool LLRenderTarget::addColorAttachment(U32 color_fmt)
                                   mGenerateMipMaps != LLTexUnit::TMG_NONE);
         if (glGetError() != GL_NO_ERROR)
         {
-            if (sAllocationBudget) sAllocationBudget->failed = true;
             LL_WARNS() << "Could not allocate color buffer for render target." << LL_ENDL;
             // deleteTextures defers the GL delete by several frames; remove the
             // just-created accounting record now so a failed allocation cannot
             // transiently drive the governor.
             LLImageGLMemory::free_cur_tex_image();
-            LLImageGL::deleteTextures(1, &tex, sAllocationBudget != nullptr);
+            LLImageGL::deleteTextures(1, &tex);
             return false;
         }
     }
@@ -481,24 +430,21 @@ bool LLRenderTarget::addColorAttachment(U32 color_fmt)
 bool LLRenderTarget::allocateDepth()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
-    const DepthFormatInfo info = get_depth_format_info(mDepthFormat, mStencil);
-    if (!reserveAllocation(U64(mResX) * mResY * info.bytes_per_pixel)) return false;
-    trackAllocation();
     LLImageGL::generateTextures(1, &mDepth);
     gGL.getTexUnit(0)->bindManual(mUsage, mDepth);
 
     U32 internal_type = LLTexUnit::getInternalType(mUsage);
     stop_glerror();
     clear_glerror();
+    const DepthFormatInfo info = get_depth_format_info(mDepthFormat, mStencil);
     LLImageGL::setManualImage(internal_type, 0, info.internal_format, mResX, mResY, info.pixel_format, info.pixel_type, NULL, false);
     gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_POINT);
 
     if (glGetError() != GL_NO_ERROR)
     {
-        if (sAllocationBudget) sAllocationBudget->failed = true;
         LL_WARNS() << "Unable to allocate depth buffer for render target." << LL_ENDL;
         LLImageGLMemory::free_cur_tex_image();
-        LLImageGL::deleteTextures(1, &mDepth, sAllocationBudget != nullptr);
+        LLImageGL::deleteTextures(1, &mDepth);
         mDepth = 0;
         return false;
     }
@@ -546,17 +492,12 @@ void LLRenderTarget::shareDepthBuffer(LLRenderTarget& target)
 
 void LLRenderTarget::release()
 {
-    if (mAllocationBudget)
-    {
-        std::erase(mAllocationBudget->targets, this);
-        mAllocationBudget = nullptr;
-    }
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
     llassert(!isBoundInStack());
 
     if (mDepth)
     {
-        LLImageGL::deleteTextures(1, &mDepth, sAllocationBudget != nullptr);
+        LLImageGL::deleteTextures(1, &mDepth);
 
         const DepthFormatInfo info = get_depth_format_info(mDepthFormat, mStencil);
         sBytesAllocated -= mResX * mResY * info.bytes_per_pixel;
@@ -594,7 +535,7 @@ void LLRenderTarget::release()
                 sBytesAllocated -= mResX * mResY * get_color_format_bytes_per_pixel(mInternalFormat[z]);
             }
             glFramebufferTexture2D(GL_FRAMEBUFFER, static_cast<GLenum>(GL_COLOR_ATTACHMENT0+z), LLTexUnit::getInternalType(mUsage), 0, 0);
-            LLImageGL::deleteTextures(1, &mTex[z], sAllocationBudget != nullptr);
+            LLImageGL::deleteTextures(1, &mTex[z]);
         }
         glBindFramebuffer(GL_FRAMEBUFFER, sCurFBO);
     }
@@ -617,7 +558,7 @@ void LLRenderTarget::release()
     if (!mTex.empty() && !mInternalFormat.empty())
     {
         sBytesAllocated -= mResX * mResY * get_color_format_bytes_per_pixel(mInternalFormat[0]);
-        LLImageGL::deleteTextures(1, &mTex[0], sAllocationBudget != nullptr);
+        LLImageGL::deleteTextures(1, &mTex[0]);
     }
 
     mTex.clear();

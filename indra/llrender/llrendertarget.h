@@ -68,24 +68,6 @@ public:
     static U32 sCurResX;
     static U32 sCurResY;
 
-    // Cumulative allocation budget for a temporary capture. Deliberately do
-    // not refund releases: GL texture deletion can be deferred across frames.
-    struct AllocationBudget
-    {
-        U64 remaining;
-        bool failed = false;
-        AllocationBudget* previous;
-        std::vector<LLRenderTarget*> targets;
-        explicit AllocationBudget(U64 bytes);
-        ~AllocationBudget();
-        AllocationBudget(const AllocationBudget&) = delete;
-        AllocationBudget& operator=(const AllocationBudget&) = delete;
-    };
-    static AllocationBudget* sAllocationBudget;
-    static bool reserveAllocation(U64 bytes);
-    void trackAllocation();
-    AllocationBudget* mAllocationBudget = nullptr;
-
     // Format options for the depth buffer.
     // Combined depth+stencil is selected automatically when stencil is requested.
     enum eDepthFormat : U32
