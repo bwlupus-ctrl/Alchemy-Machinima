@@ -5,6 +5,7 @@ an all-far atlas covers the early-out. Each sample times fifty final draws,
 excluding uploads, readbacks, compilation and the unchanged screen gather.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -19,8 +20,11 @@ def main():
     ap.add_argument('--shader-ref',default='WORKTREE')
     ap.add_argument('--out',default='.tmp/world_seethru/cost')
     ap.add_argument('--draws',type=int,default=50)
+    ap.add_argument('--repeats',type=int,default=24,help='interleaved pairs per case (at least 12)')
     ap.add_argument('--gpu-busy',action='store_true',help='known external GPU work: report ceiling misses as PENDING-QUIET, keeping failure exit status')
     args=ap.parse_args();out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
+    if args.draws < 1 or args.repeats < 12:
+        ap.error('--draws must be positive and --repeats must be at least 12')
     a=G.AreaRunner(G.SourceTree(args.base));b=G.AreaRunner(G.SourceTree(args.shader_ref),gl=a.gl)
     cam=S.Camera((0,0,0),(0,-1,-1),3840,2160,90,.02,16.)
     clip=cam.proj@np.array([0.,0.,-2.,1.])
@@ -61,22 +65,35 @@ def main():
             r.run(cam,depth,norm,lights,plan,denoise=0.,world=dict(atlas=atlas,channels=channels))
         for _ in range(4):sample(a,True);sample(b,True)
         times={key:[] for key in ('a_on','b_on','a_off','b_off')}
-        for pair in range(12):
+        for pair in range(args.repeats):
             order=[('a',a),('b',b)] if pair%2==0 else [('b',b),('a',a)]
             for name,r in order:
                 times[name+'_off'].append(sample(r,False))
                 times[name+'_on'].append(sample(r,True))
+            if (pair+1)%6 == 0:
+                print('[receiver-cost] progress',len(rows)+1,'/',len(cases),
+                      'pair',pair+1,'/',args.repeats,flush=True)
         median={key:float(np.median(values)) for key,values in times.items()}
         old=median['a_on']-median['a_off'];new=median['b_on']-median['b_off']
         paired=[dict(before_ms=ao-af,after_ms=bo-bf) for ao,af,bo,bf in
                 zip(times['a_on'],times['a_off'],times['b_on'],times['b_off'])]
+        for pair in paired:
+            pair['ratio']=pair['after_ms']/pair['before_ms'] if pair['before_ms']>0 else None
+        def distribution(values):
+            if not values:
+                return dict.fromkeys(('p10','median','p90'))
+            return dict(zip(('p10','median','p90'),map(float,np.percentile(values,[10,50,90]))))
+        spread={key:distribution([pair[key] for pair in paired if pair[key] is not None])
+                for key in ('before_ms','after_ms','ratio')}
         row=dict(radius=radius,detail=detail,empty=empty,material_tilt_deg=25 if material_tilt else 0,before_ms=old,after_ms=new,
-                 ratio=new/old if old>0 else None,passed=old>0 and new>=0 and new<=1.10*old,median=median,samples=times,paired=paired)
+                 ratio=new/old if old>0 else None,passed=old>0 and new>=0 and new<=1.10*old,median=median,
+                 paired_distribution=spread,positive_base_pairs=sum(pair['before_ms']>0 for pair in paired),samples=times,paired=paired)
         rows.append(row);print('[receiver-cost]',{k:v for k,v in row.items() if k not in ('samples','paired')},flush=True)
     # Preserve the ceiling and paired data even during the user's live GPU
     # recording. A noisy miss is pending quiet certification, never a pass.
     passed=all(x['passed'] for x in rows)
-    result=dict(renderer=gl.renderer,base=args.base,shader_ref=args.shader_ref,draws_per_sample=args.draws,ceiling_ratio=1.10,rows=rows,passed=passed,
+    result=dict(renderer=gl.renderer,base=args.base,shader_ref=args.shader_ref,draws_per_sample=args.draws,repeats=args.repeats,ceiling_ratio=1.10,rows=rows,passed=passed,
+                shader_sha256=hashlib.sha256(b.tree.read(G.SHADERS+'/class3/deferred/areaShadowFilterF.glsl').encode('utf-8')).hexdigest(),
                 external_gpu_busy=args.gpu_busy,status='PASS' if passed else 'PENDING-QUIET' if args.gpu_busy else 'FAIL')
     (out/'results.json').write_text(json.dumps(result,indent=2)+'\n')
     return 0 if result['passed'] else 1

@@ -205,10 +205,9 @@ vec2 awVogel(int k, int n, float rot, bool includeCentre)
 vec4 awGather(vec2 corner, vec2 inv_size, float n, float f)
 {
     vec4 depth = textureGather(area_world_atlas,corner*inv_size);
-    if (all(equal(depth,vec4(1.0)))) return vec4(f);
     // Preserve the exact clear sentinel. Inverting depth 1 in float can round
     // just BELOW far, defeating the empty-gather early return on every tap.
-    return mix(awLinear(depth,n,f),vec4(f),vec4(equal(depth,vec4(1.0))));
+    return mix(awLinear(depth,n,f),vec4(f),equal(depth,vec4(1.0)));
 }
 // Lit fraction of one bilinear compare tap (atlas texel coordinates p, texel centres at +0.5): a texel is lit when its
 // blocker depth is not nearer than the receiver minus the bias, in metres.
@@ -597,7 +596,6 @@ float awVisibility(int c)
 // in front (scale 5 per metre), black = nothing recorded there.
 float awDebugValue(int c, int mode)
 {
-    if (mode == 1) return awVisibility(c);
     vec4 light = area_world_light[c];
     vec3 dv = area_p-light.xyz;
     vec3 d = vec3(dot(area_world_rot[0],dv),dot(area_world_rot[1],dv),dot(area_world_rot[2],dv));
@@ -709,7 +707,14 @@ void main()
         area_n_geo = awGeoNormal(texel);
         for (int c = 0; c < 4; ++c)
             if (area_world[c] > 0.5)
-                frag_color[c] = area_world_debug > 0 ? awDebugValue(c,area_world_debug) : min(frag_color[c],area_look.z != 0.0 ? mix(1.0,awVisibility(c),1.0-area_look.z) : awVisibility(c));
+            {
+                // Share the full resolve between raw visibility diagnostics
+                // and the world-amount control. Duplicated call sites also
+                // duplicate the inlined tap loops and raise register pressure.
+                float visibility = area_world_debug > 1 ? awDebugValue(c,area_world_debug) : awVisibility(c);
+                if (area_world_debug > 0) frag_color[c] = visibility;
+                else frag_color[c] = min(frag_color[c],area_look.z != 0.0 ? mix(1.0,visibility,1.0-area_look.z) : visibility);
+            }
     }
 #endif
     // [Soft shadow look] Applied ONCE to the final per-channel visibility (after the blur, the upsample and the world resolve, before the lighting
