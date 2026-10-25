@@ -37,6 +37,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef> // [AutoAnimate]
+#include <cstring>
 #include <ratio>
 #include <sstream>
 #include <utility>
@@ -1779,6 +1780,7 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
         if (changed) updateVisualParams();
     }
     mRoot->updateWorldMatrixChildren();
+    moveStampedAttachments();
     mReflectPreviousWritten = written;
     if (!check) return;
     bool shape = mReflectPartners.size() == 133, symmetry = written;
@@ -1871,6 +1873,50 @@ void LLGhostAvatar::applyTrueMirrorStamp()
     // already set by the clone's own updateCharacter this frame) reads the
     // stamped pose rather than a dirty-flagged stale one.
     mRoot->updateWorldMatrixChildren();
+    moveStampedAttachments();
+}
+
+void LLGhostAvatar::moveStampedAttachments()
+{
+    // Joint propagation does not update drawable xforms. After the post-object-
+    // list stamp, queue unrigged roots against the FINAL attachment joint pose;
+    // rigged meshes read the skeleton directly, and animesh has its own avatar.
+    for (const auto& ap : mAttachmentPoints)
+    {
+        LLViewerJointAttachment* attachment = ap.second;
+        if (!attachment) continue;
+        for (LLViewerObject* obj : attachment->mAttachedObjects)
+        {
+            if (!obj || obj->isDead() || obj->mDrawable.isNull() ||
+                obj->isRiggedMesh() || obj->isAnimatedObject())
+            {
+                continue;
+            }
+            LLDrawable* drawable = obj->mDrawable;
+            // Match updateXform(true), including an edited attachment offset.
+            // Compare with the ACTUAL drawable cache, not the previous stamp:
+            // an intervening avatar update may have propagated a paused pose.
+            LLXformMatrix target = *drawable->getXform();
+            target.setPosition(obj->getPosition());
+            target.setRotation(obj->getRotation());
+            target.setScale(LLVector3(1.f, 1.f, 1.f));
+            target.updateMatrix(false);
+            if (std::memcmp(target.getWorldMatrix().mMatrix,
+                            drawable->getWorldMatrix().mMatrix,
+                            sizeof(target.getWorldMatrix().mMatrix)) == 0)
+            {
+                continue; // no redundant move/bridge work for a static clone
+            }
+            // An early object-list move may have cached the pre-stamp pose.
+            // updateMovedList otherwise skips it even after markMoved().
+            drawable->clearState(LLDrawable::EARLY_MOVE);
+            gPipeline.markMoved(drawable, false);
+            if (LLSpatialBridge* bridge = drawable->getSpatialBridge())
+            {
+                gPipeline.markMoved(bridge, false);
+            }
+        }
+    }
 }
 
 void LLGhostAvatar::stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing)

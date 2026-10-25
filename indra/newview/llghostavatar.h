@@ -243,6 +243,7 @@ private:
     void stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing);
     void stampTrueMirrorFace(LLVOAvatar* source);
     void buildTrueMirrorParamSets();
+    void moveStampedAttachments();
 
     bool mMarkedForDeath;
     LLUUID mClientHeightKey;   // [ClientHeight] see setClientHeightKey()
