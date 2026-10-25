@@ -11,6 +11,11 @@
 #include "alpresetlook.h"
 
 #include "alpanelweathersettings.h"
+#include "alweatheruimodel.h"
+#include "llagent.h"
+#include "llpresentationtime.h"
+#include "llviewerregion.h"
+#include "llworld.h"
 
 #include "aluirefresh.h"            // [DirFix] D13 diff-guarded writes
 
@@ -68,6 +73,21 @@ const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()
     // captured/reset so a named look has no hidden color or seed dependency.
     static const std::vector<std::string> names = {
         "AlchemyWeatherEnabled",
+        "AlchemyWeatherControlMode",
+        "AlchemyWeatherLocalEnabled",
+        "AlchemyWeatherRainRate",
+        "AlchemyWeatherPrecipVariation",
+        "AlchemyWeatherWindSource",
+        "AlchemyWeatherWindDirection",
+        "AlchemyWeatherWindSpeed",
+        "AlchemyWeatherWindVariation",
+        "AlchemyWeatherWindGustiness",
+        "AlchemyWeatherWindDirVariation",
+        "AlchemyWeatherTransitionSeconds",
+        "AlchemyWeatherSeed",
+        "AlchemyWeatherStorm",
+        "AlchemyWeatherLightningTiming",
+
         "AlchemyWeatherRainEnabled",
         "AlchemyWeatherRainIntensity",
         "AlchemyWeatherRainDensity",
@@ -380,6 +400,7 @@ bool ALPanelWeatherSettings::saveNamedPreset(const std::string& name)
     }
 
     LLSD preset = LLSD::emptyMap();
+    preset["version"] = static_cast<S32>(ALWeatherUIModel::PRESET_VERSION);
     preset["settings"] = values;
     const std::string path = presetPath(name);
     llofstream output(path.c_str());
@@ -441,6 +462,8 @@ bool ALPanelWeatherSettings::applyNamedPreset(const std::string& name)
             }
         }
     }
+    // Unversioned rain looks always use the exact existing renderer path.
+    if (!preset.has("version")) gSavedSettings.setU32("AlchemyWeatherControlMode", 0);
     return true;
 }
 
@@ -495,4 +518,117 @@ bool ALPanelWeatherSettings::deletePresetCallback(
     deleteNamedPreset(name);
     refreshPresetList();
     return false;
+}
+
+namespace
+{
+    ALWeatherUIModel sLibraryUI;
+    ALWeatherBridge::Settings readLibrarySettings()
+    {
+        ALWeatherBridge::Settings s;
+        static LLCachedControl<bool> master(gSavedSettings, "AlchemyWeatherEnabled", false);
+        s.enabled = master();
+        static LLCachedControl<U32> c_mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
+        s.mode = c_mode();
+        static LLCachedControl<bool> c_local(gSavedSettings, "AlchemyWeatherLocalEnabled", false);
+        s.local = c_local();
+        static LLCachedControl<F32> c_rainRate(gSavedSettings, "AlchemyWeatherRainRate", 5.f);
+        s.rainRate = c_rainRate();
+        static LLCachedControl<F32> c_bands(gSavedSettings, "AlchemyWeatherPrecipVariation", 0.35f);
+        s.bands = c_bands();
+        static LLCachedControl<U32> c_windSource(gSavedSettings, "AlchemyWeatherWindSource", 0U);
+        s.windSource = c_windSource();
+        static LLCachedControl<F32> c_windDirection(gSavedSettings, "AlchemyWeatherWindDirection", 225.f);
+        s.windDirection = c_windDirection();
+        static LLCachedControl<F32> c_windSpeed(gSavedSettings, "AlchemyWeatherWindSpeed", 3.f);
+        s.windSpeed = c_windSpeed();
+        static LLCachedControl<F32> c_windVariation(gSavedSettings, "AlchemyWeatherWindVariation", 0.3f);
+        s.windVariation = c_windVariation();
+        static LLCachedControl<F32> c_gustiness(gSavedSettings, "AlchemyWeatherWindGustiness", 0.5f);
+        s.gustiness = c_gustiness();
+        static LLCachedControl<F32> c_directionSwing(gSavedSettings, "AlchemyWeatherWindDirVariation", 0.f);
+        s.directionSwing = c_directionSwing();
+        static LLCachedControl<F32> c_transition(gSavedSettings, "AlchemyWeatherTransitionSeconds", 20.f);
+        s.transition = c_transition();
+        static LLCachedControl<U32> c_seed(gSavedSettings, "AlchemyWeatherSeed", 1597463007U);
+        s.seed = c_seed();
+        static LLCachedControl<F32> c_storm(gSavedSettings, "AlchemyWeatherStorm", 0.f);
+        s.storm = c_storm();
+        static LLCachedControl<U32> c_lightningTiming(gSavedSettings, "AlchemyWeatherLightningTiming", 0U);
+        s.lightningTiming = c_lightningTiming();
+        return ALWeatherBridge::sanitize(s);
+    }
+}
+
+boost::signals2::signal<void()>& ALPanelWeatherSettings::libraryChanged()
+{
+    static boost::signals2::signal<void()> changed;
+    return changed;
+}
+const std::string& ALPanelWeatherSettings::libraryStatus()
+{
+    return sLibraryUI.status();
+}
+void ALPanelWeatherSettings::applyLibraryPreset(U32 preset)
+{
+    if (preset >= 4) return;
+    auto settings = readLibrarySettings();
+    ALWeatherUIModel::applyPreset(settings, preset);
+    gSavedSettings.setU32("AlchemyWeatherControlMode", settings.mode);
+    gSavedSettings.setBOOL("AlchemyWeatherLocalEnabled", settings.local);
+    gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);
+    gSavedSettings.setBOOL("AlchemyWeatherRainEnabled", true);
+}
+void ALPanelWeatherSettings::stopPrecipitation()
+{
+    if (gSavedSettings.getU32("AlchemyWeatherControlMode") == 0)
+    {
+        gSavedSettings.setBOOL("AlchemyWeatherRainEnabled", false);
+        gSavedSettings.setF32("AlchemyWeatherLightningRate", 0.f);
+        return;
+    }
+    auto settings = readLibrarySettings();
+    ALWeatherUIModel::stop(settings);
+    gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);
+    gSavedSettings.setF32("AlchemyWeatherStorm", settings.storm);
+}
+void ALPanelWeatherSettings::updateLibraryWeather()
+{
+    auto& bridge = ALWeatherBridge::Controller::instance();
+    const auto settings = readLibrarySettings();
+    ALWeatherModel::Config lightning;
+    static LLCachedControl<bool> lightning_Enabled(gSavedSettings, "AlchemyWeatherLightningEnabled", true);
+    lightning.mEnabled = lightning_Enabled();
+    static LLCachedControl<F32> lightning_Rate(gSavedSettings, "AlchemyWeatherLightningRate", 1.5f);
+    lightning.mRatePerMinute = lightning_Rate();
+    static LLCachedControl<F32> lightning_FlashDuration(gSavedSettings, "AlchemyWeatherLightningFlashDuration", 0.35f);
+    lightning.mFlashDurationSeconds = lightning_FlashDuration();
+    static LLCachedControl<F32> lightning_BoltDuration(gSavedSettings, "AlchemyWeatherLightningBoltDuration", 0.18f);
+    lightning.mBoltDurationSeconds = lightning_BoltDuration();
+    static LLCachedControl<F32> lightning_MinDistance(gSavedSettings, "AlchemyWeatherLightningMinDistance", 45.f);
+    lightning.mMinDistanceMeters = lightning_MinDistance();
+    static LLCachedControl<F32> lightning_MaxDistance(gSavedSettings, "AlchemyWeatherLightningMaxDistance", 130.f);
+    lightning.mMaxDistanceMeters = lightning_MaxDistance();
+    static LLCachedControl<F32> lightning_BoltHeight(gSavedSettings, "AlchemyWeatherLightningBoltHeight", 160.f);
+    lightning.mBoltHeightMeters = lightning_BoltHeight();
+    static LLCachedControl<bool> lightning_QualityEnabled(gSavedSettings, "AlchemyWeatherLightningQualityEnabled", false);
+    lightning.mQualityEnabled = lightning_QualityEnabled();
+    static LLCachedControl<F32> lightning_AfterglowStrength(gSavedSettings, "AlchemyWeatherLightningAfterglowStrength", 0.35f);
+    lightning.mQualityAfterglowStrength = lightning_AfterglowStrength();
+    static LLCachedControl<U32> lightning_Seed(gSavedSettings, "AlchemyWeatherLightningSeed", 1597463007U);
+    lightning.mSeed = lightning_Seed();
+    bool manual = false;
+    if (settings.mode == 1 && gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
+    {
+        manual = true;
+        gSavedSettings.setBOOL("AlchemyWeatherLightningTrigger", false);
+    }
+    const LLVector3 position = gAgent.getPositionAgent();
+    const F32 ground = LLWorld::getInstance()->resolveLandHeightAgent(position);
+    const ALWeatherModel::Position anchor{position.mV[VX], position.mV[VY], std::isfinite(ground) ? ground : 0.f};
+    bridge.update(gFrameCount, LLPresentationTime::currentFrame().presentation_time,
+        settings, gWindVec.mV[VX], gWindVec.mV[VY],
+        gAgent.getRegion() ? gAgent.getRegion()->getHandle() : 0,
+        lightning, anchor, manual);
+    if (sLibraryUI.refresh(settings, bridge.state(), bridge.catchingUp(), bridge.clock().seconds())) libraryChanged()();
 }

@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alweatherbridge.h"
 #include "llviewermessage.h"
 
 // Linden libraries
@@ -3343,6 +3344,7 @@ void process_agent_movement_complete(LLMessageSystem* msg, void**)
 
         LL_INFOS("Teleport") << "Agent movement complete, setting state to TELEPORT_START_ARRIVAL" << LL_ENDL;
         gAgent.setTeleportState( LLAgent::TELEPORT_START_ARRIVAL );
+        ALWeatherBridge::Controller::instance().teleportSucceeded();
 
         if (isAgentAvatarValid())
         {
@@ -6672,6 +6674,7 @@ void process_teleport_local(LLMessageSystem *msg,void**)
     }
 
     gAgent.setPositionAgent(pos);
+    ALWeatherBridge::Controller::instance().teleportSucceeded();
     gAgentCamera.slamLookAt(look_at);
 
     if ( !(gAgent.getTeleportKeepsLookAt() && LLViewerJoystick::getInstance()->getOverrideCamera()) )

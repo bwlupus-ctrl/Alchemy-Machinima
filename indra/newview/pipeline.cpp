@@ -55,6 +55,7 @@
 #include "alprobedirty.h" // [ProbeOnDemand]
 #include "aldiopterrelevance.h"      // [Ultimate Diopter] shared armed-state helpers, wave 2
 #include "alweathermodel.h"
+#include "alweatherbridge.h"
 
 // library includes
 #include "llimagebmp.h"
@@ -20126,8 +20127,13 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
     }
 }
 
-void LLPipeline::renderWeather(LLRenderTarget* target)
+void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary)
 {
+    static LLCachedControl<U32> control_mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
+    const bool library = control_mode() == 1;
+    // Prism never calls renderFinalize. Its explicit hook is inert in mode 0.
+    if (auxiliary && (!library || !ALWeatherBridge::Controller::instance().active())) return;
+    const auto& library_frame = ALWeatherBridge::Controller::instance();
     static bool sLightningSheetSnapshotValid = false;
     static U64 sLightningSheetStrikeId = 0;
     static F64 sLightningSheetStrikeTime = 0.0;
@@ -20267,7 +20273,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     // Use the render iteration's frozen presentation clock, not a separate
     // wall-clock read. This stays monotonic in Live mode and is ready for
     // presentation scaling without coupling the model to viewer globals.
-    const F64 now =
+    const F64 now = library ? library_frame.clock().seconds() :
         LLPresentationTime::currentFrame().presentation_time;
     LLVector3 anchor_agent = gAgent.getPositionAgent();
     F32 anchor_ground = LLWorld::getInstance()->resolveLandHeightAgent(anchor_agent);
@@ -20301,12 +20307,13 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
         : 0.f;
     lightning_config.mSeed = lightning_seed_setting();
 
-    if (gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
+    if (!library && gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
     {
         gSavedSettings.setBOOL("AlchemyWeatherLightningTrigger", false);
         sWeatherController.trigger(now, lightning_config, anchor);
     }
-    ALWeatherModel::Frame weather =
+    // Library timing/strikes are frozen before any view; no draw advances a scheduler.
+    ALWeatherModel::Frame weather = library ? library_frame.lightning() :
         sWeatherController.update(now, lightning_config, anchor);
     const bool lightning_sheet_active =
         use_lightning_quality && weather.mActive &&
@@ -20404,8 +20411,10 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     const F32 weather_color_variation =
         finite_clamp(weather.mColorVariation, 0.f, -1.f, 1.f);
 
+    const auto library_rain = library ? ALWeatherBridge::rain(
+        library_frame.state(), rain_intensity_setting(), rain_density_setting()) : ALWeatherBridge::Rain{};
     const F32 base_rain_intensity = rain_enabled()
-        ? finite_clamp(rain_intensity_setting, 0.55f, 0.f, 1.f) * cloud_factor
+        ? (library ? library_rain.intensity : finite_clamp(rain_intensity_setting, 0.55f, 0.f, 1.f) * cloud_factor)
         : 0.f;
     const bool splash_active =
         splash_enabled() &&
@@ -20432,7 +20441,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     // prevents a camera teleport, origin shift, disabled producer, or failed
     // allocation from ever sampling stale world-space coverage.
     const bool rain_occlusion_current =
-        rain_occlusion_setting() &&
+        !auxiliary && rain_occlusion_setting() &&
         mWeatherRainOcclusionValid &&
         mWeatherRainOcclusionFrame == gFrameCount &&
         mWeatherRainOcclusion.getWidth() != 0 &&
@@ -20515,12 +20524,15 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 }
             }
         }
-        exposed = sWeatherShelterExposure.update(now, target_exposed);
+        // An auxiliary camera never edits the main camera's shelter history.
+        WeatherShelterExposure auxiliary_exposure;
+        exposed = auxiliary ? auxiliary_exposure.update(now, target_exposed) :
+            sWeatherShelterExposure.update(now, target_exposed);
     }
     else
     {
         // Disabling this optional gate is bit-for-bit factor 1 and raycast-free.
-        sWeatherShelterExposure.reset();
+        if (!auxiliary) sWeatherShelterExposure.reset();
     }
     const F32 rain_pass_intensity =
         base_rain_intensity * (use_rain_occlusion ? 1.f : exposed);
@@ -20553,8 +20565,8 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     // that same authoritative pair instead of depending on incidental post-pass
     // GL state.  The snapshot is current-frame here (renderDeferredLighting updates
     // gGLLast* before renderFinalize), despite the historical "Last" names.
-    const glm::mat4 modelview = glm::make_mat4(gGLLastModelView);
-    const glm::mat4 projection = glm::make_mat4(gGLLastProjection);
+    const glm::mat4 modelview = auxiliary ? get_current_modelview() : glm::make_mat4(gGLLastModelView);
+    const glm::mat4 projection = auxiliary ? get_current_projection() : glm::make_mat4(gGLLastProjection);
     const glm::mat4 inverse_modelview = glm::inverse(modelview);
     const glm::mat4 inverse_projection = glm::inverse(projection);
     const glm::mat4 view_projection = projection * modelview;
@@ -20606,7 +20618,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     {
         const U32 divisor = llclamp(rain_divisor_setting(), 1U, 4U);
         bool low_resolution =
-            divisor > 1U &&
+            !auxiliary && divisor > 1U &&
             gDeferredWeatherRainUpsampleProgram.isComplete() &&
             target->getWidth() >= divisor * 4U &&
             target->getHeight() >= divisor * 4U;
@@ -20677,8 +20689,8 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 glm::value_ptr(inverse_projection));
             const F32 wind_scale =
                 finite_clamp(wind_scale_setting, 1.f, 0.f, 8.f);
-            const F32 wind_x = finite_clamp(gWindVec.mV[VX], 0.f, -50.f, 50.f) * wind_scale;
-            const F32 wind_y = finite_clamp(gWindVec.mV[VY], 0.f, -50.f, 50.f) * wind_scale;
+            const F32 wind_x = finite_clamp(library ? library_rain.windX : gWindVec.mV[VX], 0.f, -50.f, 50.f) * wind_scale;
+            const F32 wind_y = finite_clamp(library ? library_rain.windY : gWindVec.mV[VY], 0.f, -50.f, 50.f) * wind_scale;
             const LLColor3 rain_color_raw = rain_color_setting;
             const F32 rain_r =
                 finite_clamp(rain_color_raw.mV[0], 0.55f, 0.f, 4.f);
@@ -20694,7 +20706,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 sTime, static_cast<F32>(std::fmod(now, 3600.0)));
             rain_program.uniform1f(sIntensity, rain_pass_intensity);
             rain_program.uniform1f(
-                sDensity, finite_clamp(rain_density_setting, 0.65f, 0.02f, 1.f));
+                sDensity, library ? library_rain.density : finite_clamp(rain_density_setting, 0.65f, 0.02f, 1.f));
             rain_program.uniform1f(
                 sFallSpeed, finite_clamp(rain_fall_speed_setting, 28.f, 1.f, 80.f));
             rain_program.uniform1f(
@@ -20708,7 +20720,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 finite_clamp(rain_near_setting, 0.65f, 0.f, 1.f));
             rain_program.uniform1f(
                 sGustStrength,
-                finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
+                library ? 0.f : finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
             rain_program.uniform1i(
                 sLayers, static_cast<S32>(llclamp(rain_layers_setting(), 1U, 3U)));
             rain_program.uniform1i(
@@ -20822,7 +20834,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 sLightning, weather_flash);
             surface_program.uniform1f(
                 sGustStrength,
-                finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
+                library ? 0.f : finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
             surface_program.uniform1f(
                 sGroundHeight, finite_clamp(anchor_ground, 0.f, -4096.f, 4096.f));
 

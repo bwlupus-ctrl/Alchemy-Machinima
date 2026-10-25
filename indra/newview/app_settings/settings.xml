@@ -29638,6 +29638,104 @@
     <key>Value</key><integer>0</integer>
   </map>
   <!-- Viewer-native cinematic weather. Master gate defaults off. -->
+    <key>AlchemyWeatherControlMode</key>
+    <map>
+      <key>Comment</key><string>Weather library: ControlMode; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>AlchemyWeatherLocalEnabled</key>
+    <map>
+      <key>Comment</key><string>Weather library: LocalEnabled; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><boolean>false</boolean>
+    </map>
+    <key>AlchemyWeatherRainRate</key>
+    <map>
+      <key>Comment</key><string>Weather library: RainRate; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>5</real>
+    </map>
+    <key>AlchemyWeatherPrecipVariation</key>
+    <map>
+      <key>Comment</key><string>Weather library: PrecipVariation; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>AlchemyWeatherWindSource</key>
+    <map>
+      <key>Comment</key><string>Weather library: WindSource; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>AlchemyWeatherWindDirection</key>
+    <map>
+      <key>Comment</key><string>Weather library: WindDirection; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>225</real>
+    </map>
+    <key>AlchemyWeatherWindSpeed</key>
+    <map>
+      <key>Comment</key><string>Weather library: WindSpeed; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>3</real>
+    </map>
+    <key>AlchemyWeatherWindVariation</key>
+    <map>
+      <key>Comment</key><string>Weather library: WindVariation; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>AlchemyWeatherWindGustiness</key>
+    <map>
+      <key>Comment</key><string>Weather library: WindGustiness; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>AlchemyWeatherWindDirVariation</key>
+    <map>
+      <key>Comment</key><string>Weather library: WindDirVariation; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>AlchemyWeatherTransitionSeconds</key>
+    <map>
+      <key>Comment</key><string>Weather library: TransitionSeconds; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>20</real>
+    </map>
+    <key>AlchemyWeatherSeed</key>
+    <map>
+      <key>Comment</key><string>Weather library: Seed; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>1597463007</integer>
+    </map>
+    <key>AlchemyWeatherStorm</key>
+    <map>
+      <key>Comment</key><string>Weather library: Storm; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0</real>
+    </map>
+    <key>AlchemyWeatherLightningTiming</key>
+    <map>
+      <key>Comment</key><string>Weather library: LightningTiming; opt-in, WP1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
   <key>AlchemyWeatherEnabled</key>
   <map>
     <key>Comment</key><string>Master gate for viewer-native cinematic rain and lightning. Default off.</string>

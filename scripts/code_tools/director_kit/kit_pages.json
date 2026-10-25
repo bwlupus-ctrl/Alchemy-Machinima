@@ -190,6 +190,7 @@
    "label_names": {}
   },
   "world_group/weather_tab": {
+   "watch_extra": ["AlchemyWeatherSeed"],
    "v1_sources": [],
    "preset": {"mode": "provider", "provider": "weather"},
    "label_names": {}

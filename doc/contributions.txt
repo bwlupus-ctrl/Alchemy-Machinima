@@ -1730,3 +1730,6 @@ Zipherius Turas
 	VWR-77
 Zoex Flanagan
 
+
+Slipstream Viewer contributors
+    Weather state, physical precipitation rates, wind, transitions and storm scheduling; adapted for Alchemy Machinima. LGPL 2.1 only. Exact imported files, SHA-256 hashes and containing revision: doc/weather/UPSTREAM_FILES.md.

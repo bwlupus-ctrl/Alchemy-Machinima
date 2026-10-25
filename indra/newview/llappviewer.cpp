@@ -70,7 +70,8 @@
 #include "llmimetypes.h"
 #include "llslurl.h"
 #include "llstartup.h"
-#include "llpresentationtime.h"     // [Temporal Capture] presentation clock
+#include "llpresentationtime.h"
+#include "alpanelweathersettings.h"     // [Temporal Capture] presentation clock
 #include "llfocusmgr.h"
 #include "llsliderwheel.h" // [SliderWheel] cancelAllForQuit
 #include "llurlfloaterdispatchhandler.h"
@@ -5795,6 +5796,9 @@ void LLAppViewer::idle()
     // gObjectList.update() above, to fix moving-mount camera jitter (the driven
     // pose must be consumed by the same-frame object/skeleton sequence, not
     // queued after it). See the comment at that call site.
+
+    // Weather library freezes once here, before all main/Prism/VCam draws.
+    ALPanelWeatherSettings::updateLibraryWeather();
 
     // [Director Switcher] Resolve program for this frozen presentation frame
     // before camera-owner arbitration. Inert while disarmed. Higher-priority

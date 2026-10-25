@@ -405,7 +405,7 @@ public:
     void renderProjectorVolumetric(LLRenderTarget* target, bool aux_direct = false);
     // Viewer-native rain/lightning composite. Runs before HDR exposure and bloom
     // so lightning participates in the same photographic response as scene lights.
-    void renderWeather(LLRenderTarget* target);
+    void renderWeather(LLRenderTarget* target, bool auxiliary = false);
     // [BDMerge Froxel F0] hybrid froxel volumetrics: run the P1 media pass into the
     // Z-slice atlas and (optionally) the debug overlay. Fully gated on
     // BDMergeFroxelVolumetrics - a no-op (no alloc, no passes) when off.

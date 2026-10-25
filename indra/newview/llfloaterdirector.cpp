@@ -47,6 +47,7 @@
 #include "alcinehaze.h"                // Atmosphere > Depth Haze reset and reference height
 #include "allenslooks.h"               // Lens > Filters infrared and soft-edge preset actions
 #include "alpanelweathersettings.h"    // World > Weather strike and reset-all
+#include "alweatheruimodel.h"
 #include "alprojectorshaftlooks.h"
 #include "alprojectorshaftpresets.h"   // Atmosphere projector-shaft presets
 #include <boost/signals2.hpp>
@@ -2351,6 +2352,58 @@ void LLFloaterDirector::bindWeatherPage(LLView* root)
                 director->refreshWorldLensReadouts("world_group/weather_tab");
             }
         }));
+    mWorldLensConnections.emplace_back(ALPanelWeatherSettings::libraryChanged().connect(
+        [handle]()
+        {
+            if (LLFloaterDirector* director = handle.get()) director->refreshWorldLensReadouts("world_group/weather_tab");
+        }));
+    if (LLLineEditor* seed = root->findChild<LLLineEditor>("weather_library_seed"))
+    {
+        seed->setValue(std::to_string(gSavedSettings.getU32("AlchemyWeatherSeed")));
+        seed->setCommitCallback([](LLUICtrl* control, const LLSD&)
+        {
+            U32 value = 0;
+            if (ALWeatherUIModel::parseSeed(control->getValue().asString(), value))
+                gSavedSettings.setU32("AlchemyWeatherSeed", value);
+            control->setValue(std::to_string(gSavedSettings.getU32("AlchemyWeatherSeed")));
+        });
+        const auto seed_handle = seed->getDerivedHandle<LLLineEditor>();
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            "AlchemyWeatherSeed", [seed_handle](const LLSD&, const LLSD&)
+            {
+                if (LLLineEditor* editor = seed_handle.get())
+                    editor->setValue(std::to_string(gSavedSettings.getU32("AlchemyWeatherSeed")));
+            }));
+    }
+    if (LLComboBox* preset = root->findChild<LLComboBox>("weather_library_preset"))
+    {
+        const LLHandle<LLComboBox> preset_handle = preset->getDerivedHandle<LLComboBox>();
+        auto sync_preset = [preset_handle]()
+        {
+            if (LLComboBox* combo = preset_handle.get())
+            {
+                const F32 rate = gSavedSettings.getF32("AlchemyWeatherRainRate");
+                U32 selected = 4; // Custom after a direct rate edit.
+                for (U32 index = 0; index < 4; ++index)
+                    if (rate == ALWeatherUIModel::presetRate(index)) selected = index;
+                combo->setValue(static_cast<S32>(selected));
+            }
+        };
+        sync_preset();
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            "AlchemyWeatherRainRate", [sync_preset](const LLSD&, const LLSD&) { sync_preset(); }));
+        if (LLButton* apply = root->findChild<LLButton>("weather_library_apply"))
+        {
+            apply->setCommitCallback([preset_handle](LLUICtrl*, const LLSD&)
+            {
+                if (LLComboBox* combo = preset_handle.get()) ALPanelWeatherSettings::applyLibraryPreset(combo->getValue().asInteger());
+            });
+        }
+    }
+    if (LLButton* stop = root->findChild<LLButton>("weather_library_stop"))
+    {
+        stop->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::stopPrecipitation(); });
+    }
     if (LLButton* trigger = root->findChild<LLButton>("weather_trigger"))
     {
         trigger->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::strikeLightningNow(); });
@@ -2381,6 +2434,10 @@ void LLFloaterDirector::refreshWorldLensReadouts(const std::string& page)
 {
     if (page == "world_group/weather_tab")
     {
+        if (LLTextBox* status = findChild<LLTextBox>("weather_library_status"))
+        {
+            setTextIfChanged(status, ALPanelWeatherSettings::libraryStatus());
+        }
         if (LLTextBox* note = findChild<LLTextBox>("weather_deferred_note"))
         {
             setTextIfChanged(note, "Weather requires Advanced Lighting Model (deferred rendering).");
