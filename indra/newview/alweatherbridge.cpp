@@ -201,7 +201,10 @@ namespace ALWeatherBridge
                 const ALWeatherModel::Position base{
                     anchor.mX + strike.dir[0] / std::max(horizontal, 1.e-6) * strike.dist,
                     anchor.mY + strike.dir[1] / std::max(horizontal, 1.e-6) * strike.dist, anchor.mZ};
-                started = mLightning.scheduled(strike.t0, lc, base, strike.dist, strike.serial) || started;
+                // Lifetime serials deduplicate delivery only. The scheduler's hash
+                // derives from seed/slot and survives a deterministic storm restart.
+                const U64 visual_id = (U64(s.seed) << 32) | strike.hash;
+                started = mLightning.scheduled(strike.t0, lc, base, strike.dist, visual_id ? visual_id : 1) || started;
             }
             mLightningFrame = mLightning.update(now, lc, anchor);
             mLightningFrame.mStrikeStarted = started && mLightningFrame.mActive;

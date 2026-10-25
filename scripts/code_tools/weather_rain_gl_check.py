@@ -14,6 +14,7 @@ import re
 import numpy as np
 from relight_3d_gl import GL, SourceTree, SHADERS
 from weather_cpu_check import ROOT, SOURCES, compiler_command, prepare
+from weather_preparation_fixture import source as preparation_source
 
 BASE = '330d012e161'
 UNIFORMS = ['weather_wind', 'weather_rain_color', 'weather_time', 'weather_intensity',
@@ -74,20 +75,15 @@ constexpr int VX=0,VY=1;
 struct Temporal { double presentation_time; };
 struct LLPresentationTime { static Temporal frame; static Temporal currentFrame(){return frame;} };
 Temporal LLPresentationTime::frame{};
-extern "C" __declspec(dllexport) void uniforms(unsigned mode,float rate,double time,float cloud,float* output) {
+extern "C" void fixture_weather_set(const char*,double);
+extern "C" void fixture_weather_step(double);
+extern "C" void fixture_weather_restart();
+extern "C" __declspec(dllexport) void uniforms(unsigned mode,float rate,double time,float cloud,int legacy_rain,float* output) {
  Value<unsigned> control_mode{mode};
- ALWeatherBridge::Controller library_frame;
- ALWeatherBridge::Settings settings;
- settings.mode=1;settings.enabled=settings.local=true;settings.transition=settings.bands=0;
- settings.windSource=1;settings.windSpeed=7;settings.windDirection=225;
- settings.rainRate=rate;settings.windVariation=0.3f;
- ALWeatherModel::Config lightning;
- library_frame.update(0,0,settings,2,3,1,lightning,{});
- U64 frame=1;
- do { library_frame.update(frame++,time,settings,2,3,1,lightning,{}); } while(library_frame.catchingUp());
+ // PRODUCTION_PREPARATION
  LLPresentationTime::frame.presentation_time=time;
  const auto finite_clamp=[](float value,float fallback,float lo,float hi){return std::clamp(std::isfinite(value)?value:fallback,lo,hi);};
- Value<bool> rain_enabled{true};
+ Value<bool> rain_enabled{legacy_rain!=0};
  Value<float> rain_intensity_setting{0.55f}, rain_density_setting{0.65f},wind_scale_setting{1.f};
  Value<float> rain_fall_speed_setting{28.f},rain_distance_setting{80.f},rain_shutter_setting{0.04f},rain_near_setting{0.65f},rain_gust_setting{0.35f};
  Value<unsigned> rain_layers_setting{3},rain_samples_setting{12};
@@ -99,13 +95,33 @@ extern "C" __declspec(dllexport) void uniforms(unsigned mode,float rate,double t
     suffix = '\nconst char* keys[]={' + ','.join('"%s"' % n for n in UNIFORMS) + '};\n'
     suffix += 'for(unsigned n=0;n<13;++n) for(unsigned k=0;k<4;++k) output[n*4+k]=rain_program.values[keys[n]][k];\n}\n'
     source = out / 'adapter.cpp'
+    preparation = []
+    setup = ''
+    if 'const auto library_rain' in pipe:
+        setup = r'''
+ fixture_weather_set("AlchemyWeatherEnabled",1);
+ fixture_weather_set("AlchemyWeatherControlMode",mode);
+ fixture_weather_set("AlchemyWeatherLocalEnabled",1);
+ fixture_weather_set("AlchemyWeatherTransitionSeconds",0);
+ fixture_weather_set("AlchemyWeatherPrecipVariation",0);
+ fixture_weather_set("AlchemyWeatherWindSource",1);
+ fixture_weather_set("AlchemyWeatherWindSpeed",7);
+ fixture_weather_set("AlchemyWeatherWindDirection",225);
+ fixture_weather_set("AlchemyWeatherWindVariation",0.3);
+ fixture_weather_set("AlchemyWeatherRainRate",rate);
+ fixture_weather_restart();fixture_weather_step(0.);
+ const auto& library_frame=ALWeatherBridge::Controller::instance();
+ do {fixture_weather_step(time);} while(library_frame.catchingUp());
+'''
+        preparation = [preparation_source(tree, out, mutation)]
+    prefix = prefix.replace('// PRODUCTION_PREPARATION', setup)
     source.write_text(prefix + mode + names + clock + rate + 'const float rain_pass_intensity=base_rain_intensity;\n' + body + suffix, encoding='utf-8')
-    dll = compiler_command(out, [source, *(ROOT / ('indra/newview/' + n + '.cpp') for n in SOURCES)], 'adapter', dll=True)
+    dll = compiler_command(out, [source, *preparation, *(ROOT / ('indra/newview/' + n + '.cpp') for n in SOURCES)], 'adapter', dll=True)
     library = C.CDLL(str(dll))
-    library.uniforms.argtypes = [C.c_uint, C.c_float, C.c_double, C.c_float, C.POINTER(C.c_float)]
-    def values(mode, rate, time=12.5, cloud=0.7):
+    library.uniforms.argtypes = [C.c_uint, C.c_float, C.c_double, C.c_float, C.c_int, C.POINTER(C.c_float)]
+    def values(mode, rate, time=12.5, cloud=0.7, legacy_rain=True):
         data = np.zeros((len(UNIFORMS), 4), np.float32)
-        library.uniforms(mode, rate, time, cloud, data.ctypes.data_as(C.POINTER(C.c_float)))
+        library.uniforms(mode, rate, time, cloud, legacy_rain, data.ctypes.data_as(C.POINTER(C.c_float)))
         return dict(zip(UNIFORMS, data))
     return values
 
@@ -200,8 +216,9 @@ def run(mutation=None):
     current, baseline=SourceTree('WORKTREE'),SourceTree(BASE)
     pipe=current.read('indra/newview/pipeline.cpp')
     prism=current.read('indra/newview/llprismlens.cpp')
-    if mutation=='aux': prism=prism.replace('gPipeline.renderWeather(&rt.screen, /*auxiliary=*/true);','')
-    assert 'gPipeline.renderWeather(&rt.screen, /*auxiliary=*/true);' in prism, 'missing auxiliary weather consumer'
+    aux_call='gPipeline.renderWeather(&rt.screen, /*auxiliary=*/true, &capture->mWeatherExposure);'
+    if mutation=='aux': prism=prism.replace(aux_call,'')
+    assert aux_call in prism, 'missing auxiliary weather consumer'
     assert '!auxiliary && divisor > 1U' in pipe, 'aux shares main rain scratch'
     assert '!auxiliary && rain_occlusion_setting()' in pipe, 'aux samples main cover map'
     assert 'library ? library_frame.lightning() :' in pipe, 'library draw advances scheduler'
@@ -237,6 +254,8 @@ def run(mutation=None):
                 assert np.array_equal(before,after), 'mode-0 GL bytes changed at divisor '+str(divisor)
                 identities+=1
     light,heavy,clear=new(1,1),new(1,80),new(1,0)
+    assert all(np.array_equal(heavy[key],new(1,80,legacy_rain=False)[key]) for key in heavy), 'legacy Rain toggle disables library precipitation'
+    assert new(0,80,legacy_rain=False)['weather_intensity'][0]==0, 'legacy Rain round trip enables precipitation'
     for aux in (False,True):
         a,b,z=newrunner.render(light,aux),newrunner.render(heavy,aux),newrunner.render(clear,aux)
         assert np.count_nonzero(b[:,:,:3])>100, 'library rain missing in '+('auxiliary' if aux else 'main')
@@ -254,4 +273,4 @@ def run(mutation=None):
 
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--mutation',choices=['default','upload','aux']);args=parser.parse_args();run(args.mutation)
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--mutation',choices=['default','upload','aux','idle-disconnect']);args=parser.parse_args();run(args.mutation)

@@ -15,6 +15,7 @@ import numpy as np
 from relight_3d_gl import SourceTree
 from weather_cpu_check import ROOT, SOURCES, compiler_command, prepare
 from weather_rain_gl_check import function
+from weather_preparation_fixture import source as preparation_source
 
 
 def settings_table(text):
@@ -69,6 +70,7 @@ extern "C" __declspec(dllexport) void colors(float* rain,float* lightning){
 struct LLSD {
  std::string text; LLSD()=default; LLSD(const char* s):text(s){} LLSD(const std::string& s):text(s){} LLSD(int i):text(std::to_string(i)){}
  int asInteger() const{return std::stoi(text);} double asReal()const{return std::stod(text);} std::string asString()const{return text;}
+ bool isDefined()const{return !text.empty();}
 };
 struct Settings {
  std::map<std::string,double> values;
@@ -84,7 +86,13 @@ template<class T> struct LLCachedControl {
  T operator()()const{auto it=gSavedSettings.values.find(name);return it==gSavedSettings.values.end()?fallback:static_cast<T>(it->second);}
 };
 template<class T> struct LLHandle {T* value=nullptr;T* get()const{return value;}};
-struct LLUICtrl {
+struct LLUICtrl;
+struct LLView {
+ virtual ~LLView()=default;LLView* parent=nullptr;LLView* getParent(){return parent;}
+ std::map<std::string,std::unique_ptr<LLUICtrl>> widgets;
+ template<class T>T* findChild(const char* name);
+};
+struct LLUICtrl:LLView {
  LLSD value;std::function<void(LLUICtrl*,const LLSD&)> callback;
  bool enabled=true;void setEnabled(bool v){enabled=v;}
  virtual ~LLUICtrl()=default;
@@ -94,11 +102,28 @@ struct LLUICtrl {
  void fire(){if(callback)callback(this,{});}
 };
 struct LLButton:LLUICtrl{};struct LLComboBox:LLUICtrl{};struct LLLineEditor:LLUICtrl{};struct LLTextBox:LLUICtrl{};
-struct LLView {std::map<std::string,std::unique_ptr<LLUICtrl>> widgets;
- template<class T> T* findChild(const char* name){auto& p=widgets[name];if(!p)p=std::make_unique<T>();return dynamic_cast<T*>(p.get());}
+template<class T>T* LLView::findChild(const char* name){auto& p=widgets[name];if(!p)p=std::make_unique<T>();return dynamic_cast<T*>(p.get());}
+struct ALKitRow:LLView {
+ LLUICtrl* control=nullptr;std::vector<std::function<void()>> changed;
+ template<class T>LLHandle<T> getDerivedHandle(){return {static_cast<T*>(this)};}
+ LLSD boundValue()const{return control->getValue();}LLSD boundDefault()const{return {};}
+ void setBoundValue(const LLSD& v){control->setValue(v);}void reset(){}
+ int setValueCallback(std::function<void()> cb){changed.push_back(cb);return 1;}
+ void bindingChanged(){for(auto& cb:changed)cb();}
+ static void notifyValueChanged(LLUICtrl*);
 };
-struct ALKitSettingWatch {static ALKitSettingWatch& instance(){static ALKitSettingWatch s;return s;}
- template<class F>int watch(const char*,F){return 1;}};
+namespace boost {namespace signals2 {using connection=int;}}
+struct ALKitBinding {
+ virtual ~ALKitBinding()=default;virtual LLSD get()const=0;virtual LLSD getDefault()const=0;
+ virtual void set(const LLSD&)=0;virtual void reset()=0;virtual bool canSet()const=0;virtual bool hasDefault()const=0;
+ virtual int connectChanged(std::function<void()>)=0;virtual std::string describe()const=0;
+};
+struct ALKitSettingWatch {
+ std::map<std::string,std::vector<std::function<void(const LLSD&,const LLSD&)>>> watchers;
+ static ALKitSettingWatch& instance(){static ALKitSettingWatch s;return s;}
+ template<class F>int watch(const char* key,F cb){watchers[key].push_back(cb);return 1;}
+ void fire(const char* key){for(auto& cb:watchers[key])cb({},{});}
+};
 struct Signal {template<class F>int connect(F){return 1;}};
 ALWeatherUIModel sLibraryUI;
 std::string sSurfaceStatus;
@@ -125,9 +150,14 @@ struct LLFloaterDirector {
 };
 '''
     suffix=r'''
+extern "C" void fixture_weather_set(const char*,double);
+extern "C" void fixture_weather_step(double);
+extern "C" void fixture_weather_restart();
+void sync_preparation(){for(const auto& kv:gSavedSettings.values)fixture_weather_set(kv.first.c_str(),kv.second);}
 extern "C" __declspec(dllexport) void set(const char* key,double value){gSavedSettings.values[key]=value;}
 extern "C" __declspec(dllexport) double get(const char* key){return gSavedSettings.values[key];}
 extern "C" __declspec(dllexport) void command(int preset,int action,const char* text){
+ ALKitSettingWatch::instance().watchers.clear();
  LLView root; LLFloaterDirector director;director.root=&root;director.bindWeatherPage(&root);
  if(action==0){root.findChild<LLComboBox>("weather_library_preset")->setValue(preset);root.findChild<LLButton>("weather_library_apply")->fire();}
  if(action==1)root.findChild<LLButton>("weather_library_stop")->fire();
@@ -137,10 +167,10 @@ extern "C" __declspec(dllexport) void command(int preset,int action,const char* 
 }
 extern "C" __declspec(dllexport) void trace(double* output){
  auto settings=readLibrarySettings();
- ALWeatherBridge::Controller bridge;ALWeatherModel::Config lightning;lightning.mEnabled=true;lightning.mRatePerMinute=60;
+ sync_preparation();fixture_weather_restart();auto& bridge=ALWeatherBridge::Controller::instance();
  std::fill(output,output+8,0.0);
  for(U64 frame=0;frame<=7200;++frame){
-  bridge.update(frame,frame/60.0,settings,1.f,2.f,1,lightning,{});
+  fixture_weather_step(frame/60.0);
   const auto r=ALWeatherBridge::rain(bridge.state(),0.55f,0.65f);
   output[0]+=r.intensity;output[1]+=r.density;output[2]+=r.windX;output[3]+=r.windY;
   output[4]+=bridge.lightning().mFlash;output[5]+=bridge.lightning().mStrikeDistanceMeters;
@@ -148,13 +178,24 @@ extern "C" __declspec(dllexport) void trace(double* output){
  }
  sLibraryUI.refresh(settings,bridge.state(),bridge.catchingUp());output[7]=sLibraryUI.revision();
 }
+extern "C" __declspec(dllexport) int pinned(const char* setting,double v,int which){
+ ALKitSettingWatch::instance().watchers.clear();
+ LLView root;LLFloaterDirector director;director.root=&root;director.bindWeatherPage(&root);
+ auto* control=which==0?static_cast<LLUICtrl*>(root.findChild<LLLineEditor>("weather_library_seed")):
+  static_cast<LLUICtrl*>(root.findChild<LLComboBox>("weather_library_preset"));
+ ALKitRow row;row.control=control;control->parent=&row;
+ ALKitProxyBinding binding(&row,true);std::string proxy=binding.get().asString();int signals=0;
+ binding.connectChanged([&](){proxy=binding.get().asString();++signals;});
+ gSavedSettings.values[setting]=v;ALKitSettingWatch::instance().fire(setting);
+ return signals && proxy==control->getValue().asString();
+}
 extern "C" __declspec(dllexport) void surface(double* output,int phase){
- static U64 tick=1000000;static double seconds=0.;
+ static double seconds=0.;
  auto& bridge=ALWeatherBridge::Controller::instance();
- auto settings=readLibrarySettings();ALWeatherModel::Config lightning;
- if(phase==0 || phase==2){auto off=settings;off.enabled=false;bridge.update(++tick,seconds,off,0,0,1,lightning,{});seconds+=1.;}
+ auto settings=readLibrarySettings();sync_preparation();
+ if(phase==0 || phase==2){fixture_weather_restart();seconds+=1.;}
  if(phase==2)command(0,3,"");
- for(int i=0;i<600;++i){bridge.update(++tick,seconds,settings,0,0,1,lightning,{});seconds+=1./60.;}
+ for(int i=0;i<600;++i){fixture_weather_step(seconds);seconds+=1./60.;}
  output[0]=bridge.state().wetness;output[1]=settings.wetAmount;output[2]=settings.puddleAmount;
  output[3]=settings.rippleStrength;output[4]=settings.puddles;output[5]=settings.coverResolution;output[6]=settings.coverExtent;
  output[7]=bridge.surfaceSerial();
@@ -235,15 +276,22 @@ extern "C" __declspec(dllexport) int surface_caps(int units,int guard){
  gGLManager.mNumTextureImageUnits=units;LLRender::guard=guard!=0;return LLViewerShaderMgr{}.weatherMaterialsEnabled();
 }
 extern "C" __declspec(dllexport) int surface_row_enabled(const char* name){
+ ALKitSettingWatch::instance().watchers.clear();
  LLView root;LLFloaterDirector director;director.root=&root;director.bindWeatherPage(&root);
  return root.findChild<LLUICtrl>(name)->enabled;
 }
 '''
     upload_prefix='#include "alweathershelter.h"\n'+upload_prefix
     commands='\n'.join(function(panel,'void ALPanelWeatherSettings::'+name+'(') for name in ('applyLibraryPreset','stopPrecipitation','applyStartingSurfaces','clearSurfaces'))
+    if mutation=='legacy-preset': commands=commands.replace('gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);','gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);\n    gSavedSettings.setBOOL("AlchemyWeatherRainEnabled", true);',1)
     commands+=function(panel,'const std::string& ALPanelWeatherSettings::surfaceStatus(')
-    source=out/'binding.cpp';source.write_text(prefix+read+commands+refresh+binding+suffix+color_code+upload_prefix+upload+upload_suffix+caps_prefix+caps+caps_suffix,encoding='utf-8')
-    dll=compiler_command(out,[source,*(ROOT/('indra/newview/'+n+'.cpp') for n in SOURCES)],'binding',dll=True)
+    row_source=(ROOT/'indra/newview/alkitrow.cpp').read_text(encoding='utf-8')
+    notification=function(row_source,'void ALKitRow::notifyValueChanged(') if 'void ALKitRow::notifyValueChanged(' in row_source else ''
+    proxy_binding=function(row_source,'class ALKitProxyBinding final')+';'
+    if mutation=='proxy-notify': binding=binding.replace('ALKitRow::notifyValueChanged(editor);','').replace('ALKitRow::notifyValueChanged(combo);','')
+    source=out/'binding.cpp';source.write_text(prefix+notification+proxy_binding+read+commands+refresh+binding+suffix+color_code+upload_prefix+upload+upload_suffix+caps_prefix+caps+caps_suffix,encoding='utf-8')
+    preparation=preparation_source(SourceTree('WORKTREE'),out,mutation)
+    dll=compiler_command(out,[source,preparation,*(ROOT/('indra/newview/'+n+'.cpp') for n in SOURCES)],'binding',dll=True)
     native=C.CDLL(str(dll));native.set.argtypes=[C.c_char_p,C.c_double];native.get.argtypes=[C.c_char_p];native.get.restype=C.c_double
     native.command.argtypes=[C.c_int,C.c_int,C.c_char_p];native.trace.argtypes=[C.POINTER(C.c_double)]
     native.colors.argtypes=[C.POINTER(C.c_float),C.POINTER(C.c_float)]
@@ -254,6 +302,7 @@ extern "C" __declspec(dllexport) int surface_row_enabled(const char* name){
     native.cover_readout.argtypes=[C.c_int];native.cover_readout.restype=C.c_char_p
     native.surface_caps.argtypes=[C.c_int,C.c_int];native.surface_caps.restype=C.c_int
     native.surface_row_enabled.argtypes=[C.c_char_p];native.surface_row_enabled.restype=C.c_int
+    native.pinned.argtypes=[C.c_char_p,C.c_double,C.c_int];native.pinned.restype=C.c_int
     return native
 
 
@@ -318,4 +367,4 @@ def run(mutation=None):
 
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--mutation',choices=['setting','command']);args=parser.parse_args();run(args.mutation)
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--mutation',choices=['setting','command','idle-disconnect']);args=parser.parse_args();run(args.mutation)

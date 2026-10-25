@@ -89,4 +89,22 @@ namespace tut
         a.clearSurfaces(); a.update(273, 272., s, 0, 0, 1, lightning, {});
         ensure("clear command invalidates even on dry ground", materialSignature(a) != before);
     }
+    template<> template<> void surface_object::test<4>()
+    {
+        ALWeatherShelter::Exposure main, auxiliary, other;
+        main.update(0., 1.f); auxiliary.update(0., 1.f); other.update(0., 1.f);
+        F32 previous = 1.f;
+        for (U32 frame = 1; frame <= 30; ++frame)
+        {
+            const F64 now = frame / 60.;
+            const F32 exposure = auxiliary.update(now, 0.f);
+            ensure("aux roof crossing fades continuously", exposure > 0.f && exposure < previous);
+            ensure_equals("aux and main use identical response", exposure, main.update(now, 0.f));
+            ensure_equals("other auxiliary remains independent", other.update(now, 1.f), 1.f);
+            previous = exposure;
+        }
+        auxiliary.reset();
+        ensure_equals("camera lifecycle clears exposure", auxiliary.update(1., 0.f), 0.f);
+        ensure_equals("presentation rewind resets exposure", main.update(0., 1.f), 1.f);
+    }
 }

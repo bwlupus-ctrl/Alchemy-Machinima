@@ -96,4 +96,37 @@ namespace tut
         bridge.update(7201, 120.0, s, 0.f, 0.f, 1, lightning, {});
         ensure("lightning disabled immediately", !bridge.lightning().mActive);
     }
+    template<> template<> void weather_bridge_object::test<4>()
+    {
+        ALWeatherBridge::Settings s;
+        s.enabled = s.local = true; s.mode = s.windSource = s.lightningTiming = 1;
+        s.storm = 1.f; s.transition = 0.f; s.seed = 123456U;
+        ALWeatherBridge::Controller bridge;
+        ALWeatherModel::Config lightning;
+        lightning.mEnabled = lightning.mQualityEnabled = true;
+        std::vector<ALWeatherModel::Frame> first;
+        U64 iteration = 0;
+        for (U64 f = 0; f <= 7200; ++f)
+        {
+            bridge.update(iteration++, f / 60., s, 0, 0, 1, lightning, {});
+            first.push_back(bridge.lightning());
+        }
+        s.enabled = false;
+        bridge.update(iteration++, 120., s, 0, 0, 1, lightning, {});
+        s.enabled = true;
+        bool saw_strike = false;
+        for (U64 f = 0; f <= 7200; ++f)
+        {
+            // Presentation time continues across the master toggle; storm time restarts.
+            bridge.update(iteration++, 121. + f / 60., s, 0, 0, 1, lightning, {});
+            const auto& a = first[f]; const auto& b = bridge.lightning();
+            saw_strike = saw_strike || a.mActive;
+            ensure("seeded storm restart preserves strike visuals", a.mActive == b.mActive &&
+                a.mVisualSeed == b.mVisualSeed && a.mStrokeIndex == b.mStrokeIndex &&
+                a.mFlash == b.mFlash && a.mBolt == b.mBolt && a.mQualityBolt == b.mQualityBolt &&
+                a.mAfterglow == b.mAfterglow && a.mColorVariation == b.mColorVariation &&
+                a.mStrikeBase.mX == b.mStrikeBase.mX && a.mStrikeBase.mY == b.mStrikeBase.mY);
+        }
+        ensure("restart regression observes active lightning", saw_strike);
+    }
 }

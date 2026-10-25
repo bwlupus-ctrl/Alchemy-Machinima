@@ -11,6 +11,17 @@
 
 namespace ALWeatherShelter
 {
+    // Each camera owns its own presentation-time fade, independent of draw order.
+    class Exposure
+    {
+    public:
+        void reset();
+        F32 update(F64 presentation_time, F32 target);
+    private:
+        F32 mExposure = 1.f;
+        F64 mLastPresentationTime = 0.0;
+        bool mInitialized = false;
+    };
     enum class Coverage : U32 { INCOMPLETE, COMPLETE_EMPTY, COMPLETE_COVERED, FAILED };
     // A completed clear + terrain/caster traversal is valid even without a roof.
     Coverage classify(bool allocated, bool cleared, bool traversed, bool complete, U32 batches);

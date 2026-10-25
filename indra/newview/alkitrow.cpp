@@ -891,6 +891,19 @@ void ALKitRow::pollLiveValue()
         mLastValue = value;
 }
 
+void ALKitRow::notifyValueChanged(LLUICtrl* control)
+{
+    if (!control) return;
+    for (LLView* parent = control->getParent(); parent; parent = parent->getParent())
+    {
+        if (ALKitRow* row = dynamic_cast<ALKitRow*>(parent))
+        {
+            row->bindingChanged();
+            return;
+        }
+    }
+}
+
 void ALKitRow::bindingChanged()
 {
     // Vec rows: ALKitVecBinding::syncControls already pushed each component into

@@ -2373,7 +2373,10 @@ void LLFloaterDirector::bindWeatherPage(LLView* root)
             "AlchemyWeatherSeed", [seed_handle](const LLSD&, const LLSD&)
             {
                 if (LLLineEditor* editor = seed_handle.get())
+                {
                     editor->setValue(std::to_string(gSavedSettings.getU32("AlchemyWeatherSeed")));
+                    ALKitRow::notifyValueChanged(editor);
+                }
             }));
     }
     if (LLComboBox* preset = root->findChild<LLComboBox>("weather_library_preset"))
@@ -2388,6 +2391,7 @@ void LLFloaterDirector::bindWeatherPage(LLView* root)
                 for (U32 index = 0; index < 4; ++index)
                     if (rate == ALWeatherUIModel::presetRate(index)) selected = index;
                 combo->setValue(static_cast<S32>(selected));
+                ALKitRow::notifyValueChanged(combo);
             }
         };
         sync_preset();

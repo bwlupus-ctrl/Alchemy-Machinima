@@ -25,7 +25,7 @@ def compiler_command(out, sources, name, dll=False, includes=()):
             *('"%s"' % p for p in sources), '/Fe:"%s"' % output, '/Fo"%s/"' % out]
     if dll: args += ['/link', '/IMPLIB:"%s"' % (out / (name + '.lib'))]
     command.write_text('@echo off\ncall "%s" >nul 2>&1\n%s\nexit /b %%ERRORLEVEL%%\n' % (vcvars, ' '.join(args)))
-    result = subprocess.run(['cmd', '/d', '/c', str(command)], capture_output=True, text=True, encoding='utf-8', errors='replace')
+    result = subprocess.run(['cmd', '/d', '/c', str(command)], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=180)
     assert result.returncode == 0, result.stdout + result.stderr
     return output
 
@@ -77,7 +77,7 @@ def suite(out, mutation=None):
         '; std::cout << "weather CPU: %d cases, " << failed << " failures\\n"; return failed ? 1 : 0; }' % count)
     sources.append(main)
     executable = compiler_command(out, sources, 'weather_cpu')
-    result = subprocess.run([str(executable)], capture_output=True, text=True)
+    result = subprocess.run([str(executable)], capture_output=True, text=True, timeout=120)
     return result
 
 
@@ -104,6 +104,7 @@ def main():
             ('empty-cover', ('alweathershelter', 'return batches ? Coverage::COMPLETE_COVERED : Coverage::COMPLETE_EMPTY;', 'return batches ? Coverage::COMPLETE_COVERED : Coverage::FAILED;')),
             ('probe-revision', ('alweathershelter', 'mPublished = signature;\n        mNext = seconds + 0.5;\n        return true;', 'return false;')),
             ('probe-rewind', ('alweathershelter', 'if (mValid && seconds < mLast) mNext = seconds;', '(void)mLast;')),
+            ('strike-identity', ('alweatherbridge', 'visual_id ? visual_id : 1', 'strike.serial')),
         ]
         for name, mutation in mutations:
             result = suite(out / name, mutation)

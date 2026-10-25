@@ -1872,6 +1872,7 @@ struct PendingFileBrowse
 
 struct PrismInstance : LLPrismLens::SourceSlotData
 {
+    mutable ALWeatherShelter::Exposure mWeatherExposure;
     bool mOccupied = false;
     LLPointer<LLViewerMediaTexture> mMediaTexture;
     LLMediaFrame::Identity mMediaIdentity;
@@ -3836,6 +3837,7 @@ public:
         {
             gPipeline.releasePrismLensOutput(slot);
             PrismInstance& lens = mLenses[slot];
+            lens.mWeatherExposure.reset();
             if (lens.mediaUrlData()) stopPrivate(slot);
             lens.mHasOutput = false;
             if (lens.isGate()) LLPrismLens::gateOutputReleased(lens.mGateState);
@@ -3874,6 +3876,7 @@ public:
         bool changed = false;
         for (PrismInstance& capture : mLenses)
         {
+            capture.mWeatherExposure.reset();
             if (!capture.mOccupied)
             {
                 continue;
@@ -8730,6 +8733,7 @@ private:
         // retained. Capture-local removal may release only its retained output.
         PrismInstance& capture = mLenses[slot];
         capture.mHasOutput = false;
+        capture.mWeatherExposure.reset();
         if (capture.isGate()) LLPrismLens::gateOutputReleased(capture.mGateState);
         capture.mOutputWidth = 0;
         capture.mOutputHeight = 0;
@@ -11259,7 +11263,7 @@ void renderAuxiliaryView()
             // main-view cover maps/history are never sampled or mutated by this hook.
             if (!LLPipeline::sPrismPreviewRender)
             {
-                gPipeline.renderWeather(&rt.screen, /*auxiliary=*/true);
+                gPipeline.renderWeather(&rt.screen, /*auxiliary=*/true, &capture->mWeatherExposure);
             }
 
             // renderDeferredLighting() flushes the scratch HDR screen. Copy the

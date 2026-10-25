@@ -214,52 +214,7 @@ namespace
 {
     ALWeatherModel::Controller sWeatherController;
 
-    struct WeatherShelterExposure
-    {
-        void reset()
-        {
-            mExposure = 1.f;
-            mLastPresentationTime = 0.0;
-            mInitialized = false;
-        }
-
-        F32 update(F64 presentation_time, F32 target)
-        {
-            target = llclamp(target, 0.f, 1.f);
-            if (!std::isfinite(presentation_time))
-            {
-                reset();
-                return target;
-            }
-            if (!mInitialized || presentation_time < mLastPresentationTime)
-            {
-                mExposure = target;
-                mLastPresentationTime = presentation_time;
-                mInitialized = true;
-                return mExposure;
-            }
-
-            // Exact exponential integration for a constant target makes the
-            // ease independent of frame subdivision and presentation-time only.
-            constexpr F64 RESPONSE_SECONDS = 0.2;
-            const F64 elapsed = llclamp(
-                presentation_time - mLastPresentationTime, 0.0, 1.0);
-            const F32 blend = static_cast<F32>(
-                1.0 - std::exp(-elapsed / RESPONSE_SECONDS));
-            mExposure = llclamp(
-                mExposure + (target - mExposure) * blend, 0.f, 1.f);
-            if (std::abs(target - mExposure) <= 0.001f)
-            {
-                mExposure = target;
-            }
-            mLastPresentationTime = presentation_time;
-            return mExposure;
-        }
-
-        F32 mExposure = 1.f;
-        F64 mLastPresentationTime = 0.0;
-        bool mInitialized = false;
-    };
+    using WeatherShelterExposure = ALWeatherShelter::Exposure;
 
     WeatherShelterExposure sWeatherShelterExposure;
 }
@@ -20128,12 +20083,18 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
     }
 }
 
-void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary)
+void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
+                               ALWeatherShelter::Exposure* auxiliary_exposure)
 {
     static LLCachedControl<U32> control_mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
     const bool library = control_mode() == 1;
     // Prism never calls renderFinalize. Its explicit hook is inert in mode 0.
-    if (auxiliary && (!library || !ALWeatherBridge::Controller::instance().active())) return;
+    if (auxiliary && (!library || !ALWeatherBridge::Controller::instance().active()))
+    {
+        if (auxiliary_exposure) auxiliary_exposure->reset();
+        return;
+    }
+    if (auxiliary && !auxiliary_exposure) return;
     const auto& library_frame = ALWeatherBridge::Controller::instance();
     static bool sLightningSheetSnapshotValid = false;
     static U64 sLightningSheetStrikeId = 0;
@@ -20414,7 +20375,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary)
 
     const auto library_rain = library ? ALWeatherBridge::rain(
         library_frame.state(), rain_intensity_setting(), rain_density_setting()) : ALWeatherBridge::Rain{};
-    const F32 base_rain_intensity = rain_enabled()
+    const F32 base_rain_intensity = (library ? library_frame.active() : rain_enabled())
         ? (library ? library_rain.intensity : finite_clamp(rain_intensity_setting, 0.55f, 0.f, 1.f) * cloud_factor)
         : 0.f;
     const bool splash_active =
@@ -20527,14 +20488,14 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary)
             }
         }
         // An auxiliary camera never edits the main camera's shelter history.
-        WeatherShelterExposure auxiliary_exposure;
-        exposed = auxiliary ? auxiliary_exposure.update(now, target_exposed) :
+        exposed = auxiliary ? auxiliary_exposure->update(now, target_exposed) :
             sWeatherShelterExposure.update(now, target_exposed);
     }
     else
     {
         // Disabling this optional gate is bit-for-bit factor 1 and raycast-free.
-        if (!auxiliary) sWeatherShelterExposure.reset();
+        if (auxiliary) auxiliary_exposure->reset();
+        else sWeatherShelterExposure.reset();
     }
     const F32 rain_pass_intensity =
         base_rain_intensity * (use_rain_occlusion ? 1.f : exposed);

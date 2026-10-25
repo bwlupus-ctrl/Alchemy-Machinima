@@ -12,6 +12,36 @@
 
 namespace ALWeatherShelter
 {
+    void Exposure::reset()
+    {
+        mExposure = 1.f;
+        mLastPresentationTime = 0.0;
+        mInitialized = false;
+    }
+    F32 Exposure::update(F64 presentation_time, F32 target)
+    {
+        target = std::clamp(target, 0.f, 1.f);
+        if (!std::isfinite(presentation_time))
+        {
+            reset();
+            return target;
+        }
+        if (!mInitialized || presentation_time < mLastPresentationTime)
+        {
+            mExposure = target;
+            mLastPresentationTime = presentation_time;
+            mInitialized = true;
+            return mExposure;
+        }
+        // Preserve the existing main-view exponential response exactly.
+        constexpr F64 RESPONSE_SECONDS = 0.2;
+        const F64 elapsed = std::clamp(presentation_time - mLastPresentationTime, 0.0, 1.0);
+        const F32 blend = static_cast<F32>(1.0 - std::exp(-elapsed / RESPONSE_SECONDS));
+        mExposure = std::clamp(mExposure + (target - mExposure) * blend, 0.f, 1.f);
+        if (std::abs(target - mExposure) <= 0.001f) mExposure = target;
+        mLastPresentationTime = presentation_time;
+        return mExposure;
+    }
     Coverage classify(bool allocated, bool cleared, bool traversed, bool complete, U32 batches)
     {
         if (!allocated || !cleared) return Coverage::FAILED;

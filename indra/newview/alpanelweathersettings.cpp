@@ -615,7 +615,6 @@ void ALPanelWeatherSettings::applyLibraryPreset(U32 preset)
     gSavedSettings.setU32("AlchemyWeatherControlMode", settings.mode);
     gSavedSettings.setBOOL("AlchemyWeatherLocalEnabled", settings.local);
     gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);
-    gSavedSettings.setBOOL("AlchemyWeatherRainEnabled", true);
 }
 const std::string& ALPanelWeatherSettings::surfaceStatus()
 {
@@ -644,8 +643,27 @@ void ALPanelWeatherSettings::stopPrecipitation()
 }
 void ALPanelWeatherSettings::updateLibraryWeather()
 {
+    static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
+    static LLCachedControl<U32> mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
+    static LLCachedControl<bool> persistent_wet(gSavedSettings, "AlchemyWeatherPersistentWetEnabled", false);
+    const bool prepare = enabled() && (mode() == 1 || persistent_wet());
+    static bool was_preparing = false;
+    // No settings snapshot, sanitization, scene query or UI work while inactive.
+    // WP2 still integrates Existing rain when persistent wet surfaces are enabled.
+    if (!prepare && !was_preparing) return;
+    was_preparing = prepare;
     auto& bridge = ALWeatherBridge::Controller::instance();
     auto settings = readLibrarySettings();
+    if (!prepare)
+    {
+        // Publish the off state once, including surface/probe invalidation.
+        bridge.update(gFrameCount, LLPresentationTime::currentFrame().presentation_time,
+            settings, 0.f, 0.f, 0, {}, {});
+        sSurfaceStatus = "Persistent wet surfaces off";
+        sLibraryUI.refresh(settings, bridge.state(), false, bridge.clock().seconds());
+        libraryChanged()();
+        return;
+    }
     if (settings.mode == 0 && settings.persistentWet)
     {
         static LLCachedControl<F32> coupling(gSavedSettings, "AlchemyWeatherEEPCoupling", 0.35f);
