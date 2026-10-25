@@ -82,6 +82,7 @@ vec3 area_n_shade;  // G-buffer (normal-mapped) normal
 float area_footprint; // one trace pixel at the centre's depth, metres
 float area_ns_p;    // native hand-over weight of the centre
 bool area_sky;      // the centre is sky (depth 1): only sky taps count, a surface never averages the lit sky
+float aw_centre_depth; // shared by the final world resolve; historical world-function substitutions retain this declaration
 // P0.3 edge-stops. A tap counts when it lies on the SAME PLANE as the centre
 // (|dot(q-p, n_geo)| against max(2 cm, a tolerance of half a trace-pixel footprint at the first tap that grows
 // with the tap distance up to 2 footprints)): a floor or wall seen at a grazing angle has a large depth step
@@ -123,43 +124,106 @@ vec4 areaWeight(vec2 uv, float reach, out float ns_q, out float geo_q)
 #if __VERSION__ >= 400
 // World geometry is reconstructed only in the final resolve, at FULL depth
 // resolution. It never consumes the G-buffer/material normal or trace spacing.
-// At an edge choose the smaller depth step on each axis. A step above 2% of
-// view depth is trusted only when the two one-sided tangents agree; otherwise
-// fade continuously to the view-facing, constant-slope-bias comparison below.
+// Choose the smaller step at an edge, but judge it against the pixel footprint
+// and D24 uncertainty, not a percentage of view depth: even a nearby background
+// can turn a one-pixel strip's cross product sideways. Consistent opposing
+// tangents still admit grazing planes. Widen the stencil as depth quantisation
+// grows so a distant plane keeps its geometry, offset and early rejection.
 float aw_plane_valid = 1.0;
+float aw_depth_error = 0.0;
+uniform mat4 inv_proj;
+float awTangentAgreement(vec3 a, vec3 b, float noise)
+{
+    return 1.0-smoothstep(0.1+noise,0.3+noise,length(normalize(a)-normalize(b)));
+}
+// Only ambiguous axes fetch the next neighbour. A true surface continues on
+// at least one side; a thin strip's first step onto its background does not.
+// This also prevents the smaller-depth-step rule choosing a nearby silhouette
+// instead of the receiver's steeper but consistent tangent on the other side.
+float awTangent(ivec2 pixel, ivec2 size, ivec2 axis, int radius,
+                vec3 l, vec3 r, float noise, out vec3 tangent)
+{
+    bool left = abs(l.z) < abs(r.z);
+    tangent = left ? l : r;
+    float centre = 1.0-smoothstep(0.1,0.3,length(l-r)/max(max(length(l),length(r)),1.e-9));
+    float valid = float(abs(tangent.z) < 1.e8);
+    if (centre < 1.0)
+    {
+        ivec2 lp = max(pixel-2*radius*axis,ivec2(0)), rp = min(pixel+2*radius*axis,size-1);
+        float dl = texelFetch(depthMap,lp,0).r, dr = texelFetch(depthMap,rp,0).r;
+        vec3 ll = area_p-getPositionWithDepth((vec2(lp)+0.5)/vec2(size),dl).xyz-l;
+        vec3 rr = getPositionWithDepth((vec2(rp)+0.5)/vec2(size),dr).xyz-area_p-r;
+        float vl = dl < 1.0 && any(notEqual(lp,max(pixel-radius*axis,ivec2(0)))) && dot(ll,ll) > 1.e-20
+            ? awTangentAgreement(l,ll,noise) : 0.0;
+        float vr = dr < 1.0 && any(notEqual(rp,min(pixel+radius*axis,size-1))) && dot(rr,rr) > 1.e-20
+            ? awTangentAgreement(r,rr,noise) : 0.0;
+        // Curvature can rotate both one-sided tangents without a surface
+        // break. A discontinuity instead makes the first bend much larger
+        // than its continuation on the outer neighbours (a thin strip over
+        // a nearby background is the limiting case: the outer bend is zero).
+        // Keep the original small-step confidence only outside that break;
+        // rejecting smooth curvature creates grain on crisp curved receivers.
+        float bend = length(r-l);
+        float jump = smoothstep(0.1+noise,0.3+noise,bend/max(max(length(l),length(r)),1.e-9))
+            *(1.0-smoothstep(0.1,0.3,length(rr-ll)/max(bend,1.e-9)));
+        float resolved = (1.0-jump)*(1.0-smoothstep(0.02*abs(area_p.z),0.04*abs(area_p.z),abs(tangent.z)));
+        vl = max(vl,resolved); vr = max(vr,resolved);
+        if (vl > vr) tangent = l;
+        if (vr > vl) tangent = r;
+        valid = max(awTangentAgreement(l,r,noise)*valid,max(vl,vr));
+        centre *= vl*vr;
+    }
+    tangent = mix(tangent,0.5*(l+r),centre*valid);
+    return valid;
+}
 vec3 awGeoNormal(vec2 uv)
 {
     ivec2 size = textureSize(depthMap,0), pixel = ivec2(uv*vec2(size));
-    ivec2 lo = max(pixel-ivec2(1),ivec2(0)), hi = min(pixel+ivec2(1),size-1);
     vec2 step_uv = 1.0/vec2(size);
+    // Reuse the filter's constant-depth footprint, scaled to full resolution.
+    float footprint = area_footprint*min(float(textureSize(area_source,0).x)/float(size.x),
+                                        float(textureSize(area_source,0).y)/float(size.y));
+    // |dz/dd| times two D24 units includes storage and inverse-projection
+    // rounding, without another depth fetch or inverse-projection division.
+    float uncertainty = abs(inv_proj[2][3])*area_p.z*area_p.z/4194304.0;
+    int radius = int(clamp(ceil(uncertainty/max(0.005*footprint,1.e-8)-16.0),1.0,128.0));
+    ivec2 lo = max(pixel-ivec2(radius),ivec2(0)), hi = min(pixel+ivec2(radius),size-1);
+    footprint *= float(radius);
     vec2 ul = (vec2(lo.x,pixel.y)+0.5)*step_uv, ur = (vec2(hi.x,pixel.y)+0.5)*step_uv;
     vec2 ud = (vec2(pixel.x,lo.y)+0.5)*step_uv, uu = (vec2(pixel.x,hi.y)+0.5)*step_uv;
     float dl = texelFetch(depthMap,ivec2(lo.x,pixel.y),0).r;
     float dr = texelFetch(depthMap,ivec2(hi.x,pixel.y),0).r;
     float dd = texelFetch(depthMap,ivec2(pixel.x,lo.y),0).r;
     float du = texelFetch(depthMap,ivec2(pixel.x,hi.y),0).r;
+    // A resolved constant-depth patch has an exact view-space normal. Require
+    // subpixel depth uncertainty before using this path; distant quantisation
+    // plateaus must still use the adaptive stencil. Include the centre, so an
+    // isolated receiver surrounded by one background never qualifies.
+    if (uncertainty <= 0.02*footprint && all(equal(vec4(dl,dr,dd,du),vec4(aw_centre_depth))))
+    {
+        aw_plane_valid = 1.0;
+        if (uncertainty > 0.0001)
+            aw_depth_error = max(0.0,uncertainty*abs(normalize(-area_p).z)-0.0001);
+        return vec3(0,0,1);
+    }
     vec3 l = dl < 1.0 && lo.x != pixel.x ? area_p-getPositionWithDepth(ul,dl).xyz : vec3(0,0,1.e9);
     vec3 r = dr < 1.0 && hi.x != pixel.x ? getPositionWithDepth(ur,dr).xyz-area_p : vec3(0,0,1.e9);
     vec3 d = dd < 1.0 && lo.y != pixel.y ? area_p-getPositionWithDepth(ud,dd).xyz : vec3(0,0,1.e9);
     vec3 u = du < 1.0 && hi.y != pixel.y ? getPositionWithDepth(uu,du).xyz-area_p : vec3(0,0,1.e9);
-    vec3 dx = abs(l.z) < abs(r.z) ? l : r, dy = abs(d.z) < abs(u.z) ? d : u;
-    float relative = max(0.02*abs(area_p.z),1.e-4);
-    float px = 1.0-smoothstep(0.1,0.3,length(l-r)/max(max(length(l),length(r)),1.e-9));
-    float py = 1.0-smoothstep(0.1,0.3,length(d-u)/max(max(length(d),length(u)),1.e-9));
-    float vx = max(1.0-smoothstep(relative,2.0*relative,abs(dx.z)),
-                   px)*float(abs(dx.z) < 1.e8);
-    float vy = max(1.0-smoothstep(relative,2.0*relative,abs(dy.z)),
-                   py)*float(abs(dy.z) < 1.e8);
-    // Centre agreeing one-sided tangents to cancel first-order curvature
-    // error. At a discontinuity the selected smaller step remains authoritative.
-    dx = mix(dx,0.5*(l+r),px*vx);
-    dy = mix(dy,0.5*(d+u),py*vy);
+    vec3 dx, dy;
+    float noise = min(4.0*uncertainty/max(footprint,1.e-9),0.2);
+    float vx = awTangent(pixel,size,ivec2(1,0),radius,l,r,noise,dx);
+    float vy = awTangent(pixel,size,ivec2(0,1),radius,d,u,noise,dy);
     vec3 n = cross(dx,dy), facing = normalize(-area_p);
     float n2 = dot(n,n);
-    aw_plane_valid = vx*vy*(1.0-smoothstep(96.0,128.0,-area_p.z));
+    aw_plane_valid = vx*vy;
     if (!(n2 > 1.e-20) || aw_plane_valid <= 0.0) { aw_plane_valid = 0.0; return facing; }
     n *= inversesqrt(n2);
     n = dot(n,facing) < 0.0 ? -n : n;
+    // Project primary-depth uncertainty onto the geometric plane separately
+    // from the fixed shadow bias and normal-offset cap. Retain the plane and
+    // its validity at distance; compensate only precision beyond 0.1 mm.
+    aw_depth_error = aw_plane_valid*max(0.0,uncertainty*abs(dot(n,facing))-0.0001);
     return normalize(mix(facing,n,aw_plane_valid));
 }
 // ------------------------------------------------------------------------------------------------------------------
@@ -172,6 +236,10 @@ const vec3 AW_UP[6]    = vec3[6](vec3(0,-1,0), vec3(0,-1,0), vec3(0,0,1), vec3(0
 const float AW_TILE = 544.0, AW_HALF_TILE = 272.0, AW_HALF_USABLE = 256.0, AW_USABLE = 512.0;
 // One constant set for every scene (kNormalOffsetTexels, kNormalOffsetCap, kConstantBias, kSlopeTexels, kTanCap).
 const float AW_NORMAL_TEXELS = 1.0, AW_NORMAL_CAP = 0.05, AW_BIAS_CONST = 0.003, AW_BIAS_SLOPE = 1.0, AW_TAN_CAP = 8.0;
+float awReceiverOffset(float texel_w, bool detail)
+{
+    return max(aw_depth_error,detail ? 0.0 : aw_plane_valid*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP));
+}
 const float AW_OVERLAP = 0.95;     // a face also reads a ray whose axis component is within 5 % of the dominant one (gutter: 5.3 %, less the gather footprint)
 const float AW_MAX_RADIUS = 12.0;  // texels; 12 + 2 <= the 16 texel gutter
 const int AW_SEARCH_TAPS = 16, AW_FILTER_TAPS = 32;
@@ -325,13 +393,11 @@ float awFaceVisibility(int c)
     if (nl <= 0.0 && aw_plane_valid >= 1.0) return 1.0;
     float near = area_world_info[c].y;
     float r_map = area_world_info[c].z;
-    // Geometric offset, sized by the texel footprint (at most
-    // 5 cm); detail uses its depth bias alone to preserve small contacts.
+    // Geometric offset, sized by the texel footprint (at most 5 cm), with a
+    // separate primary-depth precision allowance. Detail omits the texel offset.
     float z0 = dot(d,AW_AXIS[awFace(d)]);
     float texel_w = 2.0*z0/AW_USABLE;
-    d += n_a*(area_world_info[c].w > 0.5
-        ? 0.0
-        : aw_plane_valid*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP));
+    d += n_a*awReceiverOffset(texel_w,detail);
     int face = awFace(d);
     float zr = dot(d,AW_AXIS[face]);
     if (!(zr > near)) return 1.0;
@@ -495,9 +561,7 @@ float awDirectionVisibility(int c, float blend)
     // Same stable offset / detail contact rule as the face path.
     float z0 = max(abs(d.x),max(abs(d.y),abs(d.z)));   // the dominant component: continuous across every edge and corner
     float texel_w = 2.0*z0/AW_USABLE;
-    d += n_a*(area_world_info[c].w > 0.5
-        ? 0.0
-        : aw_plane_valid*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP));
+    d += n_a*awReceiverOffset(texel_w,area_world_info[c].w > 0.5);
     int face = awFace(d);
     float zr = dot(d,AW_AXIS[face]);
     if (!(zr > near)) return 1.0;
@@ -580,9 +644,7 @@ float awVisibility(int c)
     vec3 normal = vec3(dot(area_world_rot[0],area_n_geo),dot(area_world_rot[1],area_n_geo),dot(area_world_rot[2],area_n_geo));
     if (aw_plane_valid >= 1.0 && dot(normal,-d) <= 0.0) return 1.0;
     float texel_w = 2.0*max(abs(d.x),max(abs(d.y),abs(d.z)))/AW_USABLE;
-    d += normal*(area_world_info[c].w > 0.5
-        ? 0.0
-        : aw_plane_valid*min(AW_NORMAL_TEXELS*2.0*max(abs(d.x),max(abs(d.y),abs(d.z)))/AW_USABLE,AW_NORMAL_CAP));
+    d += normal*awReceiverOffset(texel_w,area_world_info[c].w > 0.5);
     vec3 a = abs(d);
     float major = max(a.x,max(a.y,a.z));
     float second = min(max(a.x,a.y),min(max(a.y,a.z),max(a.x,a.z)));
@@ -704,6 +766,7 @@ void main()
     // (A pixel whose window depth is exactly 0 sits on the near plane: its position is clamped, not a surface, so no map can judge it.)
     if (all(equal(area_axis,vec2(0))) && !area_sky && depth > 0.0 && any(greaterThan(area_world,vec4(0.5))))
     {
+        aw_centre_depth = depth;
         area_n_geo = awGeoNormal(texel);
         for (int c = 0; c < 4; ++c)
             if (area_world[c] > 0.5)

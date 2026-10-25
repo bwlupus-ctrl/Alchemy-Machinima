@@ -18,6 +18,7 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--base',default='77348de6593')
     ap.add_argument('--shader-ref',default='WORKTREE')
+    ap.add_argument('--control-ref',help='also interleave a frozen prior fix; preserve the historical +10%% gate')
     ap.add_argument('--out',default='.tmp/world_seethru/cost')
     ap.add_argument('--draws',type=int,default=50)
     ap.add_argument('--repeats',type=int,default=24,help='interleaved pairs per case (at least 12)')
@@ -26,6 +27,7 @@ def main():
     if args.draws < 1 or args.repeats < 12:
         ap.error('--draws must be positive and --repeats must be at least 12')
     a=G.AreaRunner(G.SourceTree(args.base));b=G.AreaRunner(G.SourceTree(args.shader_ref),gl=a.gl)
+    control=G.AreaRunner(G.SourceTree(args.control_ref),gl=a.gl) if args.control_ref else None
     cam=S.Camera((0,0,0),(0,-1,-1),3840,2160,90,.02,16.)
     clip=cam.proj@np.array([0.,0.,-2.,1.])
     depth24=round((clip[2]/clip[3]*.5+.5)*16777215)
@@ -61,12 +63,18 @@ def main():
             for k,light in enumerate(lights):light.pos=(.1*(2*k-1),0,0)
         atlas=np.full((2176,1632),1. if empty else 0.,np.float32)
         channels=[dict(row=2*k,near=.02,far=16.,r_map=radius,contact=.0,seed=123+k,detail_shadows=detail) for k in range(2)]
-        for r in (a,b):
+        runners=[('a',a),('b',b)]+([('c',control)] if control else [])
+        for _,r in runners:
             r.run(cam,depth,norm,lights,plan,denoise=0.,world=dict(atlas=atlas,channels=channels))
-        for _ in range(4):sample(a,True);sample(b,True)
-        times={key:[] for key in ('a_on','b_on','a_off','b_off')}
+        for _ in range(4):
+            for _,r in runners:sample(r,True)
+        times={name+'_'+state:[] for name,_ in runners for state in ('on','off')}
         for pair in range(args.repeats):
-            order=[('a',a),('b',b)] if pair%2==0 else [('b',b),('a',a)]
+            # Rotate and reverse so each implementation occupies every timing
+            # position equally often, including the optional FIX3 control.
+            shift=pair%len(runners)
+            order=runners[shift:]+runners[:shift]
+            if (pair//len(runners))%2:order=order[::-1]
             for name,r in order:
                 times[name+'_off'].append(sample(r,False))
                 times[name+'_on'].append(sample(r,True))
@@ -88,13 +96,28 @@ def main():
         row=dict(radius=radius,detail=detail,empty=empty,material_tilt_deg=25 if material_tilt else 0,before_ms=old,after_ms=new,
                  ratio=new/old if old>0 else None,passed=old>0 and new>=0 and new<=1.10*old,median=median,
                  paired_distribution=spread,positive_base_pairs=sum(pair['before_ms']>0 for pair in paired),samples=times,paired=paired)
-        rows.append(row);print('[receiver-cost]',{k:v for k,v in row.items() if k not in ('samples','paired')},flush=True)
+        if control:
+            control_ms=median['c_on']-median['c_off']
+            control_pairs=[dict(control_ms=co-cf,after_ms=bo-bf,delta_ms=(bo-bf)-(co-cf),
+                                ratio=(bo-bf)/(co-cf) if co>cf else None)
+                           for co,cf,bo,bf in zip(times['c_on'],times['c_off'],times['b_on'],times['b_off'])]
+            row.update(control_ref=args.control_ref,control_ms=control_ms,control_delta_ms=new-control_ms,control_passed=new<=control_ms,
+                       control_paired=control_pairs,control_distribution={key:distribution([p[key] for p in control_pairs if p[key] is not None])
+                                                                        for key in ('control_ms','after_ms','delta_ms','ratio')})
+        rows.append(row);print('[receiver-cost]',{k:v for k,v in row.items() if k not in ('samples','paired','control_paired')},flush=True)
     # Preserve the ceiling and paired data even during the user's live GPU
     # recording. A noisy miss is pending quiet certification, never a pass.
     passed=all(x['passed'] for x in rows)
     result=dict(renderer=gl.renderer,base=args.base,shader_ref=args.shader_ref,draws_per_sample=args.draws,repeats=args.repeats,ceiling_ratio=1.10,rows=rows,passed=passed,
                 shader_sha256=hashlib.sha256(b.tree.read(G.SHADERS+'/class3/deferred/areaShadowFilterF.glsl').encode('utf-8')).hexdigest(),
                 external_gpu_busy=args.gpu_busy,status='PASS' if passed else 'PENDING-QUIET' if args.gpu_busy else 'FAIL')
+    if control:
+        result.update(control_ref=args.control_ref,control_shader_sha256=hashlib.sha256(control.tree.read(G.SHADERS+'/class3/deferred/areaShadowFilterF.glsl').encode('utf-8')).hexdigest(),
+                      max_increase_vs_base_ms=max(row['after_ms']-row['before_ms'] for row in rows),
+                      max_increase_vs_control_ms=max(row['control_delta_ms'] for row in rows),
+                      base_passed=passed,control_ceiling_ratio=1.0,control_passed=all(row['control_passed'] for row in rows))
+        result['passed'] = passed and result['control_passed']
+        result['status'] = 'PASS' if result['passed'] else 'PENDING-QUIET' if args.gpu_busy else 'FAIL'
     (out/'results.json').write_text(json.dumps(result,indent=2)+'\n')
     return 0 if result['passed'] else 1
 
