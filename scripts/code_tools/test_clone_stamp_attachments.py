@@ -133,7 +133,11 @@ template<class T> struct Pointer {
     operator T*()const {return p;}
     T* operator->()const {return p;}
 };
-struct LLSpatialBridge { int moves=0; };
+struct LLSpatialBridge {
+    int moves=0;
+    unsigned state=0;
+    void clearState(unsigned flags) {state &= ~flags;}
+};
 struct LLDrawable {
     LLXformMatrix mXform;
     LLSpatialBridge* bridge=nullptr;
@@ -151,6 +155,8 @@ struct LLViewerObject {
     bool dead=false, rigged=false, animated=false;
     LLVector3 pos;
     LLQuaternion rot;
+    std::vector<LLViewerObject*> children;
+    const std::vector<LLViewerObject*>& getChildren()const {return children;}
     bool isDead()const {return dead;}
     bool isRiggedMesh()const {return rigged;}
     bool isAnimatedObject()const {return animated;}
@@ -243,12 +249,15 @@ void run(bool reflect) {
             drawable.mXform.setPosition(cigarette.pos);drawable.mXform.setRotation(cigarette.rot);
             drawable.mXform.updateMatrix();
             drawable.state |= LLDrawable::EARLY_MOVE;
+            bridge.state |= LLDrawable::EARLY_MOVE; // idleUpdateMisc() early bridge move
         }
         LLVector3 p(3+.01f*frame,.2f+.03f*frame,2+.02f*frame);
         LLQuaternion q=turn(.1f+.03f*frame,2)*turn(.01f*frame,0);
         head.setPosition(reflect?ALReflect::vector(p):p);
         head.setRotation(reflect?ALReflect::rotation(q):q);
         stamp();
+        require(!(bridge.state & LLDrawable::EARLY_MOVE),
+                "bridge EARLY_MOVE left set: bridge bounds would keep the pre-stamp pose");
         gPipeline.updateMove(objects);
         require(equal(drawable.getWorldMatrix(),expected(cigarette,mouth)),
                 "stale attachment render matrix after stamp (moving source/alternating paused pose)");
@@ -276,6 +285,15 @@ void run(bool reflect) {
     stamp();gPipeline.updateMove(objects);
     require(equal(replacement.getWorldMatrix(),expected(cigarette,mouth)),"replacement drawable stale");
     require(!rigged_drawable.moves && !animesh_drawable.moves,"exclusions changed");
+    // Mixed linkset: a rigged root with a rigid child renders the child through
+    // the root's world matrix, so the root must follow the stamp.
+    LLViewerObject rigid_child; rigid_child.mDrawable=nullptr;
+    rigged.children.push_back(&rigid_child);
+    head.setRotation(turn(-.5f,1));
+    stamp();gPipeline.updateMove(objects);
+    require(rigged_drawable.moves==1,"rigged root with a rigid child was not moved (mixed linkset)");
+    require(equal(rigged_drawable.getWorldMatrix(),expected(rigged,mouth)),"mixed linkset root stale");
+    rigged.children.clear();
 }
 int main() {
     int failures=0;

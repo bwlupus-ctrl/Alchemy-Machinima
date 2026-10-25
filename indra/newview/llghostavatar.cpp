@@ -1887,10 +1887,24 @@ void LLGhostAvatar::moveStampedAttachments()
         if (!attachment) continue;
         for (LLViewerObject* obj : attachment->mAttachedObjects)
         {
-            if (!obj || obj->isDead() || obj->mDrawable.isNull() ||
-                obj->isRiggedMesh() || obj->isAnimatedObject())
+            if (!obj || obj->isDead() || obj->mDrawable.isNull() || obj->isAnimatedObject())
             {
                 continue;
+            }
+            // A rigged root needs no move unless rigid children render through
+            // its world matrix (mixed linksets); all-rigged linksets are skipped.
+            if (obj->isRiggedMesh())
+            {
+                bool rigid_child = false;
+                for (LLViewerObject* child : obj->getChildren())
+                {
+                    if (child && !child->isDead() && !child->isRiggedMesh())
+                    {
+                        rigid_child = true;
+                        break;
+                    }
+                }
+                if (!rigid_child) continue;
             }
             LLDrawable* drawable = obj->mDrawable;
             // Match updateXform(true), including an edited attachment offset.
@@ -1913,6 +1927,9 @@ void LLGhostAvatar::moveStampedAttachments()
             gPipeline.markMoved(drawable, false);
             if (LLSpatialBridge* bridge = drawable->getSpatialBridge())
             {
+                // idleUpdateMisc() moves attachment bridges early too; clear it so
+                // the bridge bounds follow the stamped pose, not the earlier one.
+                bridge->clearState(LLDrawable::EARLY_MOVE);
                 gPipeline.markMoved(bridge, false);
             }
         }
