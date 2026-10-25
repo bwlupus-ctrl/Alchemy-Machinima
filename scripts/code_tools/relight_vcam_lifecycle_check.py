@@ -161,7 +161,7 @@ int main() {
     std::cout << "[RelightQ] VCam lifecycle PASS: production clearSlot/acquire, surface/camera shared ownership, preview preservation, media survivor, re-bucketing, steady reuse and last close\n";
 }
 '''
-    directory = Path('.tmp/relight_cleanup_lifecycle').resolve()
+    directory = (Path(os.environ.get('RELIGHT_CHECK_OUT', '.tmp')) / 'relight_cleanup_lifecycle').resolve()
     directory.mkdir(parents=True, exist_ok=True)
     (directory / 'lifecycle.cpp').write_text(fixture, encoding='utf-8')
     vcvars = next((Path(os.environ['ProgramFiles']) / 'Microsoft Visual Studio').glob(

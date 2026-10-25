@@ -29,7 +29,7 @@ def check_prim_size():
     assert all(term in row.get('keywords') for term in ('prim size', 'light size', 'bulb size'))
     default = page.find('.//text[@name="area_shadow_sl_status"]')
     assert default.text == 'SL shadows are off in Preferences; Soft shadows is off'
-    directory = Path('.tmp/relight_step3_source').resolve()
+    directory = (Path(os.environ.get('RELIGHT_CHECK_OUT', '.tmp')) / 'relight_step3_source').resolve()
     directory.mkdir(parents=True, exist_ok=True)
     baseline = subprocess.check_output(['git', 'show', 'abbf6ec0ae5~1:indra/newview/pipeline.cpp'], text=True)
     (directory / 'baseline.cpp').write_text(baseline, encoding='utf-8')

@@ -230,7 +230,7 @@ int main() {
     std::cout << "[RelightQ] VCam CPU PASS: production view/transaction/comparator, UUID feed admission across permutations and reversed pointers, main/OFF pointer ordering preserved, 1/2/4 feed channel and diagnostic restoration, prepass invalidation, retained targets; pre-P0 legacy-plan identity where the ladder does not apply (ray floor elsewhere) and shared budget for 1/2/4/8 feeds\n";
 }
 '''
-    directory = Path('.tmp/relight_step6_cpu').resolve()
+    directory = (Path(os.environ.get('RELIGHT_CHECK_OUT', '.tmp')) / 'relight_step6_cpu').resolve()
     directory.mkdir(parents=True, exist_ok=True)
     baseline = subprocess.check_output(['git','show','4dd9ff661c1:indra/newview/alareashadowmath.h'],text=True)  # pre-P0 planner, pinned
     baseline = baseline.replace('AL_AREA_SHADOW_MATH_H','AL_AREA_SHADOW_BASELINE_H').replace(

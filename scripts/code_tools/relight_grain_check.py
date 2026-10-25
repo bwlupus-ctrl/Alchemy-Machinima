@@ -404,7 +404,7 @@ int main() {
 def old_planner_rows():
     """The planner at PRE_P0, compiled as it was: [thin,height,K,preset,feeds,samples,steps,near,half,channels,it]."""
     import json, os
-    directory = Path('.tmp/ws_p0/oldplan').resolve()
+    directory = (Path(os.environ.get('RELIGHT_CHECK_OUT', '.tmp')) / 'ws_p0/oldplan').resolve()
     directory.mkdir(parents=True, exist_ok=True)
     header = subprocess.check_output(['git', 'show', PRE_P0 + ':indra/newview/alareashadowmath.h'], text=True)
     (directory / 'alareashadowmath.h').write_text(header, encoding='utf-8', newline='\n')

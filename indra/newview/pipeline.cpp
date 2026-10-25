@@ -29649,6 +29649,10 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_world_debug"),world_any ? llclamp(static_cast<S32>(world_debug),0,3) : 0);
                 if (world_any)
                 {
+                    const glm::dmat4 inverse_depth = glm::inverse(glm::dmat4(get_current_projection()));
+                    F32 depth_coefficients[4];
+                    ALWorldShadow::splitReceiverDepth(inverse_depth[2][3],inverse_depth[3][3],depth_coefficients);
+                    gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_world_depth"),1,depth_coefficients);
                     const S32 atlas_unit = gAreaShadowFilterProgram.enableTexture(LLShaderMgr::AREA_WORLD_ATLAS);
                     if (atlas_unit > -1)
                     {
