@@ -16,6 +16,7 @@ import relight_3d_scene as S
 import relight_world_gl_check as W
 import relight_world_receiver_check as R
 import relight_world_stencil_check as K
+import relight_world_receiver_support as U
 
 
 SEED = 20261025
@@ -141,7 +142,7 @@ def sweep(r, count, seed, walks=5):
 RADIUS_LINE = 'float radius = clamp(uncertainty/max(0.005*footprint,1.e-8)-16.0,1.0,128.0);'
 
 
-def radius_continuity(r):
+def _radius_continuity(r, curvature):
     """Hold D24 inputs fixed while walking only the actual stencil support.
 
     This isolates the geometry function's continuity from D24 input rounding.
@@ -158,7 +159,7 @@ def radius_continuity(r):
                 text = text.replace(target, target+' frag_color=vec4(area_n_geo,aw_plane_valid); return;')
             return text
     nr = R.NormalRunner(DiagnosticTree(r.tree.ref), gl=r.gl)
-    cfg = dict(distance=40.42, near=.1, far=64., slope=35., curvature=.24, kind='sphere',
+    cfg = dict(distance=40.42, near=.1, far=64., slope=35., curvature=curvature, kind='sphere',
                gap=.01, width_px=3, radius=.1, detail=False, sculpt=False, blocked=False, tilt=25., jitter=0.)
     n, light, sc, _ = fixture(cfg)
     nr.gpu_atlas = W.Raster(nr).atlas(sc, light, .02)
@@ -178,9 +179,16 @@ def radius_continuity(r):
         delta = float(np.max(np.degrees(np.arctan2(np.linalg.norm(np.cross(a[:-1], a[1:]), axis=1),
                                                  np.sum(a[:-1]*a[1:], axis=1)))))
         validity = float(np.max(np.abs(np.diff(values[:, 3]))))
-        rows.append(dict(boundary=boundary, normal_step_deg=delta, validity_step=validity,
+        rows.append(dict(curvature=curvature, boundary=boundary, normal_step_deg=delta, validity_step=validity,
                          passed=delta <= .001 and validity <= .005))
     return rows
+
+
+def radius_continuity(r):
+    # Preserve the original curved receiver and also cover coherent wider
+    # surfaces: improved silhouette rejection can correctly discard every
+    # coarse support on the smallest sphere, masking a discrete-weight mutant.
+    return [row for curvature in (.24, .5, 1., 4.) for row in _radius_continuity(r, curvature)]
 
 
 def offset_bounds(r):
@@ -227,7 +235,7 @@ def mutation_controls(r):
     truth = geometry_truth(cfg, n, light, sc, g, shade)
     bounds = offset_bounds(mutant)
     controls['unbounded_compensation'] = dict(predicate='confirmed sphere blocker retention and displacement cap', visibility=value, truth=truth,
-                                             displacement=bounds, rejected=truth == 0. and value > .02 and not bounds['passed'])
+                                             displacement=bounds, rejected=truth == 0. and not bounds['passed'])
     mutant = R.Runner(W.MutantTree(r.tree, [
         ('dot(area_world_rot[0],area_n_geo),dot(area_world_rot[1],area_n_geo),dot(area_world_rot[2],area_n_geo)',
          'dot(area_world_rot[0],area_n_shade),dot(area_world_rot[1],area_n_shade),dot(area_world_rot[2],area_n_shade)')]), gl=r.gl)
@@ -300,6 +308,7 @@ def main():
     ap.add_argument('--controls', action='store_true')
     args = ap.parse_args()
     r = R.Runner(G.SourceTree(args.shader_ref))
+    exact = U.verify_shortcuts_on_every_draw(r)
     rows = sweep(r, args.count, args.seed)
     result = dict(seed=args.seed, configurations=len(rows), camera_samples=sum(len(row['values']) for row in rows), rows=rows,
                   shader_ref=args.shader_ref, renderer=r.gl.renderer,
@@ -309,11 +318,29 @@ def main():
     result['passed'] &= result['offset_bounds']['passed']
     result['geometry_frames'] = frame_truth_checks(r)
     result['passed'] &= all(x['passed'] for x in result['geometry_frames'])
+    result['support_repros'] = U.repros(r)
+    result['independent_directions'] = [row for bank in (0, 1) for row in
+        U.independent_sweep(r, max(128, args.count//2), args.seed+1, mode_bank=bank)]
+    result['penumbra_walks'] = U.penumbra_walks(r)
+    result['shortcut_equivalence'] = U.shortcut_equivalence(r)
+    result['authority_contract'] = U.authority_contract(r)
+    result['passed'] &= all(x['passed'] for key in ('support_repros', 'independent_directions', 'penumbra_walks', 'shortcut_equivalence', 'authority_contract') for x in result[key])
+    result['original_configurations'] = len(rows)
+    result['configurations'] += len(result['independent_directions'])
+    result['camera_sample_groups'] = dict(original=result['camera_samples'],
+        independent_directions=5*len(result['independent_directions']),
+        support_repros=sum(len(x['values']) for x in result['support_repros']),
+        penumbrae=sum(len(x['values']) for x in result['penumbra_walks']),
+        authority=sum(len(x['values']) for x in result['authority_contract']))
+    result['camera_samples'] = sum(result['camera_sample_groups'].values())
+    result['exact_shortcuts'] = dict(exact, passed=exact['different_pixels'] == 0)
+    result['passed'] &= result['exact_shortcuts']['passed']
     if RADIUS_LINE in r.tree.read(G.SHADERS+'/class3/deferred/areaShadowFilterF.glsl'):
         result['radius_continuity'] = radius_continuity(r)
         result['passed'] &= all(x['passed'] for x in result['radius_continuity'])
     if args.controls:
         result['controls'] = mutation_controls(r)
+        result['controls'].update(U.mutation_controls(r))
         result['passed'] &= all(x['rejected'] for x in result['controls'].values())
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

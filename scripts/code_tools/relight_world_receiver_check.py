@@ -416,8 +416,11 @@ def main():
                                                'float visibility = lit/float(AW_FILTER_TAPS);')])
         mutant = Runner(retention_tree, gl=r.gl)
         retention_rows = material_checks(mutant, WG.Raster(mutant))
-        search_tree = WG.MutantTree(r.tree, [('float radius = max(r_map*max(dist-z_b,0.0)/(z_b*dist),2.0/AW_USABLE);',
-                                            'if (blocker_n >= float(search_taps)*4.0-0.01) return 0.0;\n    float radius = max(r_map*max(dist-z_b,0.0)/(z_b*dist),2.0/AW_USABLE);')])
+        radius_line = 'float radius = max(r_map*max(dist-z_b,0.0)/(z_b*dist),2.0*AW_MIN_RADIUS/AW_USABLE);'
+        if radius_line not in r.tree.read(G.SHADERS+'/class3/deferred/areaShadowFilterF.glsl'):
+            radius_line = 'float radius = max(r_map*max(dist-z_b,0.0)/(z_b*dist),2.0/AW_USABLE);'
+        search_tree = WG.MutantTree(r.tree, [(radius_line,
+                                            'if (blocker_n >= float(search_taps)*4.0-0.01) return 0.0;\n    '+radius_line)])
         mutant = Runner(search_tree, gl=r.gl)
         search_rows = footprint_checks(mutant,WG.Raster(mutant))
         controls = dict(material_normal_rejected=any(not x['passed'] for x in normal_rows if 'passed' in x),

@@ -122,11 +122,11 @@ def thin_checks(r, quick=False):
     return rows
 
 
-def distance_checks(r, quick=False):
+def distance_checks(r, quick=False, source_radius=.1, light_direction=(0., -1., 0.)):
     nr = normal_runner(r)
     rows = []
     n = S.unit([np.sin(np.radians(60)), -np.cos(np.radians(60)), 0])
-    light = S.Light('unobstructed sloping plane', (0, -1, 0), .1, 16., seed=123)
+    light = S.Light('unobstructed sloping plane', tuple(light_direction), source_radius, 16., seed=123)
     r.gpu_atlas = WG.Raster(r).atlas(R.scene([slab(n)], light), light, .02)
     nr.gpu_atlas = r.gpu_atlas
     distances = (2., 127., 128., 130., 512.) if quick else (1., 2., 8., 32., 64., 95., 96., 100., 112., 120., 126., 127., 127.5, 128., 128.5, 129., 130., 192., 256., 384., 512.)
@@ -162,6 +162,10 @@ def main():
     r = R.Runner(G.SourceTree(args.shader_ref))
     thin = thin_checks(r, args.quick)
     distant = distance_checks(r, args.quick)
+    n = S.unit([np.sin(np.radians(60)), -.5, 0.])
+    tangent = S.unit([.5, np.sin(np.radians(60)), 0.])
+    grazing_direction = .1*n+np.sqrt(.99)*tangent
+    distant += distance_checks(r, True, light_direction=grazing_direction)
     result = dict(shader_ref=args.shader_ref, renderer=r.gl.renderer, thin=thin, distant=distant,
                   shader_sha256=hashlib.sha256(r.tree.read(G.SHADERS+'/class3/deferred/areaShadowFilterF.glsl').encode('utf-8')).hexdigest(),
                   passed=all(row['passed'] for row in thin+distant))
@@ -176,7 +180,14 @@ def main():
                 ('depth_precision_compare', 'bias += depth_interval.x;',
                  'bias += 0.0;', distance_checks)):
             mutant = R.Runner(WG.MutantTree(r.tree, [(old, new)]), gl=r.gl)
-            controls[name+'_rejected'] = any(not row['passed'] for row in check(mutant, True))
+            rows = check(mutant, True)
+            if name == 'depth_precision_compare':
+                # Fractional centre-depth recovery also protects the narrow
+                # footprint. Preserve it and exercise angular uncertainty over
+                # a broad source's real support, where the compare is needed.
+                rows += distance_checks(mutant, True, source_radius=1.)
+                rows += distance_checks(mutant, True, source_radius=.1, light_direction=grazing_direction)
+            controls[name+'_rejected'] = any(not row['passed'] for row in rows)
         result['controls'] = controls
         result['passed'] &= all(controls.values())
     out = Path(args.out)

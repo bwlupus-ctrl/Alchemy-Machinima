@@ -326,7 +326,10 @@ void main() {
         awFaceTap(0,4,normalize(vec3(1.2,0,1)),vec3(0,0,-1),-2.0,0.003,vec3(0,0,1),2.0,1.0,false).x : awVisibility(0);
     frag_color = vec4(vec3(visibility),1);
 }'''
-        if 'float distance, float receiver2' in text:
+        if 'float distance, vec3 receiver' in text:
+            body = body.replace('-2.0,0.003,vec3(0,0,1),2.0,1.0,false)',
+                                '-2.0,0.003,vec3(0,0,1),2.0,vec3(0,0,2),4.0,1.0,false)')
+        elif 'float distance, float receiver2' in text:
             body = body.replace('-2.0,0.003,vec3(0,0,1),2.0,1.0,false)',
                                 '-2.0,0.003,vec3(0,0,1),2.0,4.0,1.0,false)')
         self.program = runner._link('class3/deferred/areaShadowFilterF.glsl', [(text, text[:text.index('void main()')] + body)])
