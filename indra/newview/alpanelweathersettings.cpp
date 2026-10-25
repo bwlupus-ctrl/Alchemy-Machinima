@@ -820,11 +820,11 @@ void ALPanelWeatherSettings::updateLibraryWeather()
         settings, gWindVec.mV[VX], gWindVec.mV[VY],
         gAgent.getRegion() ? gAgent.getRegion()->getHandle() : 0,
         lightning, anchor, manual);
+    if (bridge.surfacesActive() || (bridge.precipitationActive() && ALWeatherParticles::supported()))
+        gPipeline.mWeatherSurfaces.prepare(settings.coverResolution);
     if (settings.advancedShelter)
     {
         gPipeline.mWeatherSurfaces.advanced = &gPipeline.mWeatherShelter;
-        if (bridge.surfacesActive() || (bridge.precipitationActive() && ALWeatherParticles::supported()))
-            gPipeline.mWeatherSurfaces.prepare(settings.coverResolution);
         gPipeline.mWeatherShelter.prepare();
     }
     if (bridge.precipitationActive()) gPipeline.mWeatherParticles.prepare();

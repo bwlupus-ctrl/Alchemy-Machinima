@@ -120,20 +120,34 @@ namespace tut
         ensure("sub-cell motion cannot move the world lattice", a == b);
         Updates updates;
         const std::array<F64, 3> origin{256., 512., 0.};
-        ensure("initial update", updates.due(a, a, 0, 1, origin, 0., 30));
-        updates.publish();
-        ensure("static maps have no periodic traversal", !updates.due(a, a, 0, 1, origin, 1., 30));
-        ensure("moving roof revision", updates.due(a, a, 1, 1, origin, 1.01, 30));
-        updates.publish();
-        ensure("coalesce new dirty revisions", !updates.due(a, a, 2, 1, origin, 1.02, 30));
-        ensure("retain queued dirty revision", updates.due(a, a, 2, 1, origin, 1.05, 30));
-        updates.publish();
-        ensure("capture post-flush geometry once", updates.due(a, a, 2, 1, origin, 1.09, 30));
-        updates.publish();
-        ensure("settling never becomes permanent polling", !updates.due(a, a, 2, 1, origin, 1.2, 30));
-        ensure("origin rebase invalidates immediately", updates.due(a, a, 2, 1, {0.,0.,0.}, 1.201, 30));
-        updates.publish();
-        ensure("place never reuses previous roof", updates.due(a, a, 2, 2, {0.,0.,0.}, 1.202, 30));
+        ensure("initial update", updates.schedule(a, a, 1, origin, 0., 30, 1));
+        updates.complete();
+        ensure("static maps have no periodic traversal", !updates.schedule(a, a, 1, origin, 1., 30, 1));
+        updates.dirty({4096.,4096.,0.}, {4100.,4100.,10.});
+        ensure("outside motion stays clean", !updates.schedule(a, a, 1, origin, 1.01, 30, 1));
+        updates.dirty({255.,511.,0.}, {257.,513.,8.});
+        ensure("moving roof region", updates.schedule(a, a, 1, origin, 1.02, 30, 1));
+        ensure("warm work is bounded to a quarter map", updates.tile().size <= 4);
+        updates.complete();
+        ensure("coalesce new dirty revisions", !updates.schedule(a, a, 1, origin, 1.03, 30, 1));
+        ensure("capture post-flush geometry once", updates.schedule(a, a, 1, origin, 1.06, 30, 1));
+        updates.complete();
+        ensure("settling never becomes permanent polling", !updates.schedule(a, a, 1, origin, 1.2, 30, 1));
+        U32 jobs = 0;
+        for (U32 frame = 0; frame < 120; ++frame)
+        {
+            updates.dirty({255.,511.,0.}, {257.,513.,8.});
+            if (updates.schedule(a, a, 1, origin, 2.+frame/60., 30, 1))
+            {
+                ensure("sustained invalidation never becomes a full traversal", !updates.tile().full());
+                ensure("sustained work cap", updates.tile().size <= 4);
+                ++jobs; updates.complete();
+            }
+        }
+        ensure("sustained refresh cadence", jobs >= 55 && jobs <= 60);
+        ensure("origin rebase invalidates immediately", updates.schedule(a, a, 1, {0.,0.,0.}, 4.01, 30, 1));
+        updates.complete();
+        ensure("place never reuses previous roof", updates.schedule(a, a, 2, {0.,0.,0.}, 4.02, 30, 1));
     }
     template<> template<> void surface_object::test<6>()
     {

@@ -23,14 +23,15 @@ def check(tree, item):
         veil=tree.read('indra/newview/app_settings/shaders/class1/deferred/weatherPrecipVeilF.glsl')
         assert 'weatherPrecipExposedDistance(start,direction,distance_m)' in veil,'endpoint exposure is not ray length'
         cover=tree.read('indra/newview/app_settings/shaders/class1/deferred/weatherPrecipCoverF.glsl')
-        assert 'hi = min(hi,max(t0,t1))' in cover and 'exposed*step_m' in cover,'ray must clip to known coverage and integrate'
+        assert 'hi = min(hi,max(t0,t1))' in cover and 'weatherPrecipCellOpen(' in cover and 'weatherPrecipCellEnd(' in cover,'ray must clip to known coverage and integrate every crossed cell'
     elif item==3:
         cover=function(pipe,'void LLPipeline::generateWeatherSurfaceCover(')
         draw = function(pipe,'bool LLPipeline::drawWeatherCover(') if 'bool LLPipeline::drawWeatherCover(' in pipe else cover
         traversal = 'drawWeatherCover(' if draw != cover else 'renderShadow('
-        assert cover.index('mWeatherPrecipitationCoverCache.reuse(')<cover.index(traversal) and 'renderShadow(' in draw,'snow repeats full cover traversal'
+        assert cover.index('mWeatherPrecipitationCoverCache.schedule(')<cover.index(traversal) and 'renderShadow(' in draw,'snow repeats full cover traversal'
         assert 'combined preparation/cover/render p95 exceeds 0.65 ms' in particles and 'max(tails)<=.65' in particles,'cost p95 is not enforced'
-        assert 'native.cover_prepare(cell,0,0' in particles and 'combined();cpu.append' in particles,'timed scope omits preparation or cover'
+        fixture=tree.read('scripts/code_tools/weather_particles_fixture.py')
+        assert 'native.particles_cost_frame(tick,int(remote))' in particles and 'fixture_weather_step(100+double(tick)/60);cover_prepare(' in fixture and 'combined();cpu.append' in particles,'timed scope omits preparation or cover'
         from weather_particles_gl_check import enforce_cost
         over={'memory_bytes':3145728,'cost':[{'on':True,'cpu_plus_gpu_ms':{'p95':.650001}}],
               'main_plus_remote_cpu_plus_gpu_ms':{'p95':.1}}
@@ -49,12 +50,14 @@ def check(tree, item):
     elif item==6:
         caps=function(tree.read('indra/llrender/llshadermgr.cpp'),'bool LLShaderMgr::computeShadersSupported(')
         assert caps.index('generation == sContextGeneration')<caps.index('glGetIntegerv('),'limits are not context cached'
-        narrow = 'State saved_state(2, 1, false)' in render or ('const U32 cover_units = s.advancedShelter ? 4U : 2U;' in render and 'State saved_state(cover_units, 1, false)' in render)
+        narrow = 'const U32 cover_units = cover_reachable ? 7U : 0U;' in render and 'State saved_state(cover_units, cover_reachable ? 1U : 0U, false)' in render
         assert 'glGetAttribLocation' not in render and narrow,'view path queries attributes or snapshots unrelated state'
         assert 'library-on/WP3-off performs GL work' in particles,'off fixture missing'
     elif item==7:
         hook=function(pipe,'void LLPipeline::renderWeatherParticles(')
-        assert all(s in hook for s in ('getTotalAmbient()', 'getSunDiffuse()', 'getMoonDiffuse()', 'getIsSunUp()', 'getIsMoonUp()')),'raw settings bypass evaluated night illumination'
+        sky=tree.read('indra/newview/llsettingsvo.cpp')
+        assert 'LLSettingsVOSky::illumination(*sky)' in hook and 'const auto lighting = illumination(*psky);' in sky,'snow bypasses renderer illumination'
+        assert all(s in sky for s in ('getTotalAmbient()', 'getSunDiffuse()', 'getMoonDiffuse()', 'getIsSunUp()', 'getIsMoonUp()')),'raw settings bypass evaluated night illumination'
     elif item==8:
         panel=tree.read('indra/newview/alpanelweathersettings.cpp')
         declaration(panel,'sParticleStatus')

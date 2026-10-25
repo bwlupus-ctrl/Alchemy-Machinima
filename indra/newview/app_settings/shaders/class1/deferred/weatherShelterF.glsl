@@ -8,9 +8,16 @@
 /*[EXTRA_CODE_HERE]*/
 uniform sampler2D weather_shelter_close_map;
 uniform sampler2D weather_shelter_distant_map;
+ivec2 weatherShelterCloseSize() { return textureSize(weather_shelter_close_map,0); }
+ivec2 weatherShelterDistantSize() { return textureSize(weather_shelter_distant_map,0); }
 uniform mat4 weather_shelter_close_matrix;
 uniform mat4 weather_shelter_distant_matrix;
 uniform vec4 weather_shelter_params; // bias m, softness m, close/distant vertical ranges
+vec2 weatherShelterThresholds(bool close)
+{
+    return vec2(weather_shelter_params.x,weather_shelter_params.x+weather_shelter_params.y)/
+        (close?weather_shelter_params.z:weather_shelter_params.w);
+}
 uniform int weather_shelter_debug;
 
 float weatherShelterLayer(sampler2D map, vec3 q, float range_m)

@@ -8,6 +8,7 @@
 #ifndef AL_WEATHER_PARTICLES_H
 #define AL_WEATHER_PARTICLES_H
 #include "llglslshader.h"
+#include "llrendertarget.h"
 #include <glm/glm.hpp>
 class LLRenderTarget;
 class ALWeatherResources;
@@ -31,11 +32,12 @@ public:
                 ALWeatherResources& cover, U32 frame);
 private:
     bool initialize(U32 cap);
-    LLGLSLShader mSimulation, mDraw, mVeil;
+    LLGLSLShader mSimulation, mDraw, mVeil, mTiltedVeil, mVeilComposite;
+    LLRenderTarget mVeilBuffer;
     GLuint mBuffer = 0, mVAO = 0;
     U32 mCapacity = 0;
     GLint mPosition = -1, mTraits = -1;
-    bool mSnowReady = false, mVeilReady = false;
+    bool mSnowReady = false, mVeilReady = false, mTiltedVeilReady = false;
     bool mAttempted = false, mReady = false, mVeilActive = false;
     const char* mStatus = "Falling snow off";
 };

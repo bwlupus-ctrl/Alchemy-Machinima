@@ -44,23 +44,43 @@ namespace ALWeatherShelter
     class Updates
     {
     public:
-        bool due(const Plan& close, const Plan& distant, U64 geometry, U32 place,
-                 const std::array<F64, 3>& origin, F64 seconds, U32 hz);
+        struct Tile
+        {
+            U32 x = 0, y = 0, size = 8;
+            bool full() const { return size == 8; }
+        };
+        // Bounded, spatial dirty work shared by basic cover and tilted shelter.
+        // Each call selects one tile or a cluster bounded to 1/4 of the map.
+        void dirty(const std::array<F64, 3>& low, const std::array<F64, 3>& high);
+        bool schedule(const Plan& close, const Plan& distant, U32 place,
+                      const std::array<F64, 3>& origin, F64 seconds, U32 hz, U32 layers = 2);
+        const Plan& selectedPlan() const { return mPlans[mSelected]; }
+        U32 selectedLayer() const { return mSelected; }
+        Tile tile() const { return mTile; }
+        void complete();
+        bool initialized() const { return mInitialized; }
         void publish() { mValid = true; }
         void invalidate() { mValid = false; }
     private:
-        Plan mClose, mDistant;
+        std::array<Plan, 2> mPlans{};
+        std::array<U64, 2> mDirty{}, mFollowup{};
+        std::array<bool, 2> mComplete{};
+        U32 mSelected = 0, mCursor = 0, mLayerCount = 2;
+        std::array<U32, 2> mTileCursor{};
+        Tile mTile;
+        bool mInitialized = false;
         std::array<F64, 3> mOrigin{};
-        U64 mGeometry = 0;
         U32 mPlace = 0;
         F64 mNext = 0., mLast = -1.;
-        bool mValid = false, mRequested = false, mSettle = false;
+        bool mValid = false;
     };
     constexpr U64 coverBytes(U32 resolution) { return U64(resolution) * resolution * 4 * 2; }
+    constexpr U64 intervalBytes(U32 resolution) { return resolution ? (U64(resolution)*resolution-1)*8/3 : 0; }
     constexpr U64 advancedBytes(U32 close_resolution, U32 distant_resolution)
     {
         // Four FBOs plus the dedicated program/driver bookkeeping reserve.
         return coverBytes(close_resolution) + coverBytes(distant_resolution) +
+            intervalBytes(close_resolution) + intervalBytes(distant_resolution) +
             (close_resolution || distant_resolution ? 256ULL * 1024 : 0);
     }
     U64 materialSignature(const ALWeatherBridge::Controller& weather);

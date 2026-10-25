@@ -43,24 +43,99 @@ namespace ALWeatherShelter
                     std::floor(eye[2]/8. + 0.5)*8.};
         return p;
     }
-    bool Updates::due(const Plan& close, const Plan& distant, U64 geometry, U32 place,
-                      const std::array<F64, 3>& origin, F64 seconds, U32 hz)
+    void Updates::dirty(const std::array<F64, 3>& low, const std::array<F64, 3>& high)
     {
-        if (!std::isfinite(seconds)) { invalidate(); return false; }
-        const bool new_geometry = geometry != mGeometry;
-        const bool changed = !(close == mClose) || !(distant == mDistant) ||
-            new_geometry || mSettle || place != mPlace || origin != mOrigin;
-        const bool urgent = !mRequested || place != mPlace || origin != mOrigin || seconds < mLast;
+        for (U32 layer = 0; layer < 2; ++layer)
+        {
+            const auto& p = mPlans[layer];
+            if (!mInitialized || p.extent <= 0.f || high[2] < p.center[2] - p.vertical ||
+                low[2] > p.center[2] + p.vertical) continue;
+            U32 first[2], last[2];
+            bool intersects = true;
+            for (U32 axis = 0; axis < 2; ++axis)
+            {
+                const F64 shift0 = p.shear[axis]*low[2], shift1 = p.shear[axis]*high[2];
+                // One texel of guard includes filter/cull boundaries.
+                const F64 pad = 2.*p.extent/p.resolution;
+                const F64 a = (low[axis] + std::min(shift0, shift1) - p.center[axis] - pad)/p.extent;
+                const F64 b = (high[axis] + std::max(shift0, shift1) - p.center[axis] + pad)/p.extent;
+                if (a > 1. || b < -1.) { intersects = false; break; }
+                first[axis] = U32(std::clamp(std::floor((a + 1.)*4.), 0., 7.));
+                last[axis] = U32(std::clamp(std::floor((b + 1.)*4.), 0., 7.));
+            }
+            if (!intersects) continue;
+            for (U32 y = first[1]; y <= last[1]; ++y)
+                for (U32 x = first[0]; x <= last[0]; ++x)
+                {
+                    const U64 bit = U64(1) << (y*8 + x);
+                    mDirty[layer] |= bit;
+                    // Events can precede the frame's geometry flush. Retain
+                    // one follow-up, just as WP7's original bounded scheduler.
+                    mFollowup[layer] |= bit;
+                }
+        }
+    }
+    bool Updates::schedule(const Plan& close, const Plan& distant, U32 place,
+        const std::array<F64, 3>& origin, F64 seconds, U32 hz, U32 layers)
+    {
+        if (!std::isfinite(seconds)) { invalidate(); mInitialized = false; return false; }
+        const Plan requested[] = {close, distant};
+        mLayerCount = layers;
+        const bool urgent = !mInitialized || place != mPlace || origin != mOrigin || seconds < mLast;
         mLast = seconds;
-        if (!urgent && ((!changed && mValid) || seconds < mNext)) return false;
-        mRequested = true;
-        // Native drawable revisions can precede the frame's geometry flush.
-        // One bounded follow-up captures that completed transform/VBO update.
-        mSettle = new_geometry;
-        mClose = close; mDistant = distant; mGeometry = geometry; mPlace = place; mOrigin = origin;
-        mNext = seconds + 1. / std::clamp(hz, 5U, 60U);
-        mValid = false;
-        return true;
+        if (!urgent && seconds + 1e-9 < mNext) return false;
+        for (U32 layer = 0; layer < layers; ++layer)
+        {
+            if (urgent || !(requested[layer] == mPlans[layer]) || !mValid)
+            {
+                mPlans[layer] = requested[layer];
+                mComplete[layer] = false;
+                mDirty[layer] = ~U64(0); mFollowup[layer] = 0;
+            }
+        }
+        mInitialized = mValid = true; mPlace = place; mOrigin = origin;
+        for (U32 offset = 0; offset < layers; ++offset)
+        {
+            const U32 layer = (mCursor + offset)%layers;
+            if (!mDirty[layer]) continue;
+            mSelected = layer; mCursor = (layer + 1)%layers;
+            if (!mComplete[layer]) mTile = {};
+            else
+            {
+                U32 bit = mTileCursor[layer];
+                while (!(mDirty[layer] & (U64(1) << bit))) bit = (bit + 1)%64;
+                mTileCursor[layer] = (bit + 1)%64;
+                mTile = {bit%8, bit/8, 1};
+                U32 low_x = 7, low_y = 7, high_x = 0, high_y = 0;
+                for (U32 index = 0; index < 64; ++index)
+                    if (mDirty[layer] & (U64(1) << index))
+                    {
+                        low_x = std::min(low_x, index%8); low_y = std::min(low_y, index/8);
+                        high_x = std::max(high_x, index%8); high_y = std::max(high_y, index/8);
+                    }
+                const U32 span = std::max(high_x-low_x, high_y-low_y) + 1;
+                // Coalesce a small moving caster's neighbouring tiles into one
+                // cropped traversal. Widespread churn still gets one tile.
+                if (span <= 4) mTile = {std::min(low_x, 8-span), std::min(low_y, 8-span), span};
+                else mTile = {std::min(bit%8, 4U), std::min(bit/8, 4U), 4};
+            }
+            mNext = seconds + 1./std::clamp(hz, 5U, 60U);
+            return true;
+        }
+        return false;
+    }
+    void Updates::complete()
+    {
+        U64 mask = 0;
+        for (U32 y = mTile.y; y < mTile.y+mTile.size; ++y)
+            for (U32 x = mTile.x; x < mTile.x+mTile.size; ++x) mask |= U64(1) << (y*8+x);
+        mDirty[mSelected] = (mDirty[mSelected] & ~mask) | (mFollowup[mSelected] & mask);
+        mFollowup[mSelected] &= ~mask;
+        mComplete[mSelected] = true;
+        // Finish initial paired publication immediately; subsequent dirty work
+        // is round-robin, rate bounded and never builds both maps in a view.
+        if (!mComplete[0] || (mLayerCount == 2 && (!mComplete[1] ||
+            (mSelected == 0 && mDirty[1])))) mNext = 0.;
     }
     void Exposure::reset()
     {

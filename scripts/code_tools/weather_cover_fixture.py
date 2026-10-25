@@ -1,8 +1,8 @@
-"""Viewer services for executing the complete production cover preparation call.
+"""Compile production cover preparation/state/publication with scene services.
 
-The fixture scene submits 256 real GL caster batches. Culling services are a
-stand-in for viewer geometry; the production cover traversal, publication,
-cache decisions and GL state transaction are compiled without substitutions.
+The native renderShadow entry delegates to simulated AABB culling/render-map
+sorting over 256 distinct world rectangles, rasterized on real GL. The viewer's
+octree, spatial bridges and VBO pools are not timed by this standalone harness.
 """
 import re
 from weather_compute_fixture import function
@@ -95,6 +95,39 @@ template<class T>struct LLCachedControl {T value;LLCachedControl(CoverSettings&,
 struct LLPresentationTime {struct Frame {double presentation_time;};inline static double seconds=0;
  static Frame currentFrame(){return {seconds};}};
 '''
+    regional = 'mWeatherPrecipitationCoverCache.schedule(' in cover
+    if regional:
+        prefix=prefix.replace('ALWeatherCoverCache mWeatherPrecipitationCoverCache;U64 mWeatherGeometryRevision=0;',
+            'ALWeatherShelter::Updates mWeatherPrecipitationCoverCache;U32 mWeatherCoverWorkFrame=~U32(0);')
+        prefix=prefix.replace('F32,F32,U32&);','F32,F32,U32&,ALWeatherShelter::Updates::Tile={});')
+        prefix=prefix.replace(' void generateWeatherSurfaceCover(LLCamera&);', '''
+ void dirtyWeatherRegion(const LLVector3&,const LLVector3&);
+ void generateWeatherSurfaceCover(LLCamera&);''')
+        cover += '\n'+function(pipe,'void LLPipeline::dirtyWeatherRegion(')
+    if 'LLSettingsVOSky::illumination' in pipe:
+        # Native illumination helper, with sky/settings services substituted.
+        prefix=prefix.replace('bool getIsSunUp()', 'bool getIsSunUp()const').replace('bool getIsMoonUp()', 'bool getIsMoonUp()const')
+        for name in ('getSunDiffuse','getMoonDiffuse','getTotalAmbient'):
+            prefix=prefix.replace(name+'(){',name+'()const{')
+        prefix=prefix.replace('struct Sky {', 'struct Sky {bool classic=false;float ambiance=1;bool canAutoAdjust()const{return classic;}float getReflectionProbeAmbiance(bool)const{return ambiance;}')
+        prefix=prefix.replace('struct CoverSettings {} gSavedSettings;', '''
+struct CoverSettings {std::map<std::string,double> values;} gSavedSettings;''')
+        prefix=prefix.replace('T value;LLCachedControl(CoverSettings&,const char*,T v):value(v){}T operator()()const{return value;}',
+            'T value;std::string key;LLCachedControl(CoverSettings&,const char* k,T v):value(v),key(k){}T operator()()const{auto it=gSavedSettings.values.find(key);return it==gSavedSettings.values.end()?value:T(it->second);}')
+        prefix+='''
+using LLSettingsSky=Sky;
+namespace ALEnvIntensity {
+ struct Factors {float mSunMul=1,mAmbMul=1;LLColor3 mSunTint{1},mAmbTint{1};};
+ Factors supplied;bool isSamplingCapture(){return false;}
+ Factors compute(bool classic,bool legacy,bool,bool){auto f=classic?Factors{}:supplied;if(legacy)f.mSunMul=std::min(f.mSunMul,1.f);return f;}
+}
+struct LLSettingsVOSky {
+ struct Illumination {LLColor3 ambient,direct;float sunlightScale=1,ambientScale=1;ALEnvIntensity::Factors factors;bool classic=false;};
+ static Illumination illumination(const Sky&);
+ static Illumination rawIllumination(const Sky& s){auto r=illumination(s);r.direct=linearColor3(s.getSunDiffuse());return r;}
+};
+'''
+        prefix+='\n'+function(tree.read('indra/newview/llsettingsvo.cpp'),'LLSettingsVOSky::Illumination LLSettingsVOSky::illumination(')+'\n'
     methods = cover + '\n' + draw + '\n' + advanced + '\n' + function(pipe, 'void LLPipeline::renderWeatherParticles(')
     api = r'''
 extern "C" __declspec(dllexport) void cover_program(unsigned p){casterProgram=p;}
@@ -106,4 +139,45 @@ extern "C" __declspec(dllexport) void cover_counts(double* out){out[0]=coverTrav
 extern "C" __declspec(dllexport) void evaluated_sky(int sun,int moon,float ambient,float daylight,float moonlight){
  auto& s=LLEnvironment::instance().sky;s.sun=sun;s.moon=moon;s.ambient={{ambient,ambient,ambient,0}};s.diffuse=LLColor3(daylight);s.moonDiffuse=LLColor3(moonlight);}
 '''
+    if regional:
+        api=api.replace('++gFrameCount;if(dirty)++fixturePipeline.mWeatherGeometryRevision;', '''
+ ++gFrameCount;LLPresentationTime::seconds+=1./60;
+ if(dirty)fixturePipeline.dirtyWeatherRegion(LLVector3(std::min(oldRoofOffset,roofOffset)-1,-5,0),
+  LLVector3(std::max(oldRoofOffset+oldRoofWidth,roofOffset+8.f)+1,5,8));''')
+        api+='''
+extern "C" __declspec(dllexport) void cover_dirty(double x,double y,double z){
+ fixturePipeline.dirtyWeatherRegion(LLVector3(float(x)-.1f,float(y)-.1f,float(z)-.1f),LLVector3(float(x)+.1f,float(y)+.1f,float(z)+.1f));}
+'''
+        api+='''
+extern "C" __declspec(dllexport) void cover_minimum(double* out){
+ out[0]=coverage.mMinimum;out[1]=coverage.mMinimumValid;out[2]=coverage.mReduction.isComplete();
+ auto tile=fixturePipeline.mWeatherPrecipitationCoverCache.tile();out[3]=double(tile.size*tile.size)/64.;}
+'''
+    else:
+        api+='''
+extern "C" __declspec(dllexport) void cover_dirty(double,double,double){++fixturePipeline.mWeatherGeometryRevision;}
+'''
+    if 'LLSettingsVOSky::illumination' in pipe:
+        api+='''
+extern "C" __declspec(dllexport) void illumination_setting(const char* name,double v){gSavedSettings.values[name]=v;}
+extern "C" __declspec(dllexport) void illumination_factors(float direct,float ambient,float r,float g,float b){
+ ALEnvIntensity::supplied.mSunMul=direct;ALEnvIntensity::supplied.mAmbMul=ambient;
+ ALEnvIntensity::supplied.mSunTint=LLColor3();ALEnvIntensity::supplied.mAmbTint=LLColor3();
+ for(int i=0;i<3;++i){ALEnvIntensity::supplied.mSunTint.mV[i]=i==0?r:i==1?g:b;ALEnvIntensity::supplied.mAmbTint.mV[i]=i==0?r:i==1?g:b;}}
+extern "C" __declspec(dllexport) void illumination_mode(int classic,float ambiance){auto& s=LLEnvironment::instance().sky;s.classic=classic;s.ambiance=ambiance;}
+'''
+    # Closest real harness path: compile production drawWeatherCover unchanged,
+    # including its cropped native renderShadow call. Scene membership/culling
+    # and render-map sorting are simulated over 256 distinct world AABBs; each
+    # visible rectangle is rasterized once using a real alpha-mask program.
+    # This does not time the viewer octree, spatial bridges or native VBO pools.
+    from weather_shelter_fixture import SCENE
+    prefix=prefix.replace('struct LLPipeline {', SCENE+'\nstruct LLPipeline {')
+    original=function(prefix,' void renderShadow(')
+    prefix=prefix.replace(original, ''' void renderShadow(const glm::mat4& v,const glm::mat4& p,LLCamera&,LLCullResult&,bool,bool,bool,bool,bool){sceneDraw(v,p);}''')
+    api=api.replace('casterProgram=p;', '''casterProgram=p;
+ sceneMVP=glGetUniformLocation(p,"fixture_mvp");sceneRect=glGetUniformLocation(p,"fixture_rect");
+ sceneAlpha=glGetUniformLocation(p,"fixture_alpha");sceneZ=glGetUniformLocation(p,"fixture_z");''')
+    from weather_animation_fixture import extend as animation
+    prefix,methods=animation(tree,prefix,methods)
     return prefix, methods, api

@@ -2330,6 +2330,10 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("weather_surface_cover_map");
     mReservedUniforms.push_back("weather_shelter_close_map");
     mReservedUniforms.push_back("weather_shelter_distant_map");
+    mReservedUniforms.push_back("weather_surface_cover_min_map");
+    mReservedUniforms.push_back("weather_shelter_close_min_map");
+    mReservedUniforms.push_back("weather_shelter_distant_min_map");
+    mReservedUniforms.push_back("weather_veil_map");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

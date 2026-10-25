@@ -631,6 +631,9 @@ void LLVOVolume::animateTextures()
 
         if (result)
         {
+            // Coverage changes even after mTexAnimMode is established. The
+            // shared region/tile scheduler coalesces these per-frame events.
+            gPipeline.dirtyWeatherDrawable(mDrawable);
             // [ProbeOnDemand] TXa: texture animation is running (called for every
             // instance every frame, independent of the camera) -> debounced motion.
             if (ALProbeDirty::recording())

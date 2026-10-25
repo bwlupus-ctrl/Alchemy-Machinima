@@ -40,8 +40,19 @@ public:
     };
     bool allocate(U32 resolution);
     void prepare(U32 resolution);
+    void prepareIntervals();
+    void buildIntervals(ALWeatherShelter::Updates::Tile tile);
+    void bindIntervals(LLGLSLShader* shader, S32 sampler);
+    bool copyFrom(ALWeatherResources& source);
+    void setBounds(const ALWeatherShelter::Plan& plan, const glm::dvec3& origin);
+    bool matches(const ALWeatherShelter::Plan& plan, const glm::dvec3& origin) const
+    { return mBoundsValid && plan == mPlan && origin == mOrigin; }
+    bool precipitationWithin(const glm::vec3& eye, const glm::dvec3& origin, U32 frame, F32 reach) const;
     void release();
-    LLRenderTarget& writeTarget() { return mCover[1 - mRead]; }
+    // A tile patches the completed map between draws. Full replacements still
+    // use the other FBO and publish texture + transform atomically.
+    void patch(bool enabled) { mPatching = enabled && ready(); }
+    LLRenderTarget& writeTarget() { return mCover[mPatching ? mRead : 1 - mRead]; }
     void publish(const glm::mat4& matrix, F32 range, U32 batches, bool complete,
                  const glm::dvec3& origin, U32 place);
     void fail(ALWeatherShelter::Coverage state, const char* reason = nullptr);
@@ -62,6 +73,15 @@ private:
     friend class ALWeatherShelterMaps;
     LLRenderTarget mCover[2];
     U32 mRead = 0, mPlace = 0;
+    bool mPatching = false;
+    LLGLSLShader mReduction;
+    U32 mMinimum = 0, mMinimumResolution = 0;
+    bool mMinimumValid = false, mMinimumAttempted = false;
+    U64 mContent = 0, mSourceContent = 0;
+    ALWeatherResources* mSource = nullptr;
+    ALWeatherShelter::Plan mPlan;
+    std::array<F32, 3> mLow{}, mHigh{};
+    bool mBoundsValid = false;
     U32 mFailedResolution = 0;
     U32 mPublishedFrame = ~U32(0);
     glm::mat4 mMatrix{1.f};
@@ -87,6 +107,7 @@ public:
     bool prepared() const { return mReady; }
     bool current(const glm::dvec3& origin, U32 frame) const;
     bool covers(const glm::vec3& eye, const glm::dvec3& origin, U32 frame) const;
+    bool within(const glm::vec3& eye, const glm::dvec3& origin, U32 frame, F32 reach) const;
     void bind(LLGLSLShader* shader, const glm::dvec3& origin, U32 frame);
     LLGLSLShader& rainProgram() { return mRain; }
     const std::string& status() const { return mStatus; }

@@ -32,6 +32,7 @@
 #include "llsettingssky.h"
 #include "llsettingswater.h"
 #include "llsettingsdaycycle.h"
+#include "alenvintensity.h"
 
 #include "llsdserialize.h"
 
@@ -88,6 +89,16 @@ private:
 class LLSettingsVOSky : public LLSettingsSky
 {
 public:
+    struct Illumination
+    {
+        LLColor3 ambient, direct;
+        F32 sunlightScale = 1.f, ambientScale = 1.f;
+        ALEnvIntensity::Factors factors;
+        bool classic = false;
+    };
+    // Same evaluated source, compatibility scales and linear EV/tint factors
+    // for atmospheric uniform uploads and precipitation lighting.
+    static Illumination illumination(const LLSettingsSky& sky);
     LLSettingsVOSky(const LLSD &data, bool advanced = false);
 
     static ptr_t    buildSky(LLSD settings);

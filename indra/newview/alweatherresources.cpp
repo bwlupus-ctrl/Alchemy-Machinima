@@ -15,6 +15,7 @@
 
 ALWeatherResources::State::State(U32 units, U32 buffers, bool full) : mFull(full)
 {
+    LL_PROFILE_GPU_ZONE("weather GL state save");
     gGL.flush();
     glGetIntegerv(GL_CURRENT_PROGRAM, &mProgramName);
     mCachedProgram = LLGLSLShader::sCurBoundShader;
@@ -72,6 +73,7 @@ ALWeatherResources::State::State(U32 units, U32 buffers, bool full) : mFull(full
 }
 ALWeatherResources::State::~State()
 {
+    LL_PROFILE_GPU_ZONE("weather GL state restore");
     gGL.flush();
     // Restore caches through their owners, then restore any indexed overrides.
     for (U32 i = 0; i < mUnits; ++i)
@@ -90,7 +92,10 @@ ALWeatherResources::State::~State()
     if (mFull)
     {
         gGL.blendFunc(mCS, mCD, mAS, mAD);
+        glBlendFuncSeparate(mDraw[0].src, mDraw[0].dst, mDraw[0].srcAlpha, mDraw[0].dstAlpha);
         gGL.setColorMask(mDraw[0].mask[0], mDraw[0].mask[1], mDraw[0].mask[2], mDraw[0].mask[3]);
+        if (mDraw[0].blend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+        glBlendEquationSeparate(mDraw[0].eq, mDraw[0].eqAlpha);
     }
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mDrawFBO);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, mReadFBO);
@@ -112,10 +117,19 @@ ALWeatherResources::State::~State()
     for (U32 i = 0; i < mBuffers; ++i)
     {
         const auto& d = mDraw[i];
-        glColorMaski(i, d.mask[0], d.mask[1], d.mask[2], d.mask[3]);
-        if (d.blend) glEnablei(GL_BLEND, i); else glDisablei(GL_BLEND, i);
-        glBlendFuncSeparatei(i, d.src, d.dst, d.srcAlpha, d.dstAlpha);
-        if (mFull) glBlendEquationSeparatei(i, d.eq, d.eqAlpha);
+        // Restore the common global state once, then only indexed exceptions.
+        // Partial consumer guards must keep all other attachments untouched.
+        if (!mFull || std::memcmp(d.mask, mDraw[0].mask, sizeof(d.mask)))
+            glColorMaski(i, d.mask[0], d.mask[1], d.mask[2], d.mask[3]);
+        if (!mFull || d.blend != mDraw[0].blend)
+        {
+            if (d.blend) glEnablei(GL_BLEND, i); else glDisablei(GL_BLEND, i);
+        }
+        if (!mFull || d.src != mDraw[0].src || d.dst != mDraw[0].dst ||
+            d.srcAlpha != mDraw[0].srcAlpha || d.dstAlpha != mDraw[0].dstAlpha)
+            glBlendFuncSeparatei(i, d.src, d.dst, d.srcAlpha, d.dstAlpha);
+        if (mFull && (d.eq != mDraw[0].eq || d.eqAlpha != mDraw[0].eqAlpha))
+            glBlendEquationSeparatei(i, d.eq, d.eqAlpha);
     }
     if (mProgramName == 0 || glIsProgram(mProgramName))
     {
@@ -128,10 +142,126 @@ ALWeatherResources::State::~State()
 
 void ALWeatherResources::prepare(U32 resolution)
 {
-    if (allocationFailed(resolution) ||
-        (mCover[0].getWidth() == resolution && mCover[1].getWidth() == resolution)) return;
+    if (allocationFailed(resolution)) return;
+    if (mCover[0].getWidth() == resolution && mCover[1].getWidth() == resolution && mMinimumAttempted) return;
     State saved_state;
-    allocate(resolution);
+    if (allocate(resolution)) prepareIntervals();
+}
+void ALWeatherResources::prepareIntervals()
+{
+#if !LL_DARWIN
+    mMinimumAttempted = true;
+    const U32 resolution = mCover[0].getWidth();
+    if (!resolution || !LLShaderMgr::computeShadersSupported()) return;
+    if (!mReduction.isComplete())
+    {
+        mReduction.mName = "Weather cover interval hierarchy";
+        mReduction.mShaderLevel = 1;
+        mReduction.mFeatures = LLShaderFeatures();
+        mReduction.mShaderFiles.clear();
+        mReduction.mShaderFiles.emplace_back("deferred/weatherCoverMinimum.glsl", GL_COMPUTE_SHADER);
+        if (!mReduction.createShader()) return; // Exact leaf walk remains available.
+    }
+    if (mMinimum && mMinimumResolution == resolution) return;
+    if (mMinimum) glDeleteTextures(1, &mMinimum);
+    glGenTextures(1, &mMinimum);
+    gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE, mMinimum, false);
+    U32 levels = 0;
+    for (U32 size = resolution/2; size; size /= 2, ++levels)
+        glTexImage2D(GL_TEXTURE_2D, levels, GL_RG32F, size, size, 0, GL_RG, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, levels-1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    mMinimumResolution = resolution;
+    mMinimumValid = false;
+#endif
+}
+void ALWeatherResources::buildIntervals(ALWeatherShelter::Updates::Tile tile)
+{
+#if !LL_DARWIN
+    if (!mMinimum || !mReduction.isComplete()) { mMinimumValid = false; return; }
+    LL_PROFILE_GPU_ZONE("weather interval dirty updates");
+    GLint saved[6];
+    const GLenum names[] = {GL_IMAGE_BINDING_NAME, GL_IMAGE_BINDING_LEVEL, GL_IMAGE_BINDING_LAYERED,
+        GL_IMAGE_BINDING_LAYER, GL_IMAGE_BINDING_ACCESS, GL_IMAGE_BINDING_FORMAT};
+    for (U32 i = 0; i < 6; ++i) glGetIntegeri_v(names[i], 0, &saved[i]);
+    mReduction.bind();
+    static const LLStaticHashedString input("cover_input"), level("cover_level"), rectangle("cover_rectangle"), depth_input("cover_depth_input");
+    mReduction.uniform1i(input, 0);
+    const U32 resolution = writeTarget().getWidth();
+    U32 x = tile.x*resolution/8, y = tile.y*resolution/8;
+    U32 end_x = x + tile.size*resolution/8, end_y = y + tile.size*resolution/8;
+    for (U32 mip = 0, size = resolution/2; size; size /= 2, ++mip)
+    {
+        x /= 2; y /= 2; end_x = (end_x+1)/2; end_y = (end_y+1)/2;
+        gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE, mip ? mMinimum : writeTarget().getDepth(), false);
+        mReduction.uniform1i(level, mip ? mip-1 : 0);
+        mReduction.uniform1i(depth_input, mip ? 0 : 1);
+        mReduction.uniform4f(rectangle, F32(x), F32(y), F32(end_x-x), F32(end_y-y));
+        glBindImageTexture(0, mMinimum, mip, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG32F);
+        glDispatchCompute((end_x-x+7)/8, (end_y-y+7)/8, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+    }
+    glBindImageTexture(0, saved[0], saved[1], GLboolean(saved[2]), saved[3], saved[4], saved[5]);
+    mMinimumValid = glGetError() == GL_NO_ERROR;
+#endif
+}
+void ALWeatherResources::bindIntervals(LLGLSLShader* shader, S32 sampler)
+{
+    const S32 unit = shader->getTextureChannel(sampler);
+    if (unit >= 0) gGL.getTexUnit(unit)->bindManual(LLTexUnit::TT_TEXTURE, mMinimumValid ? mMinimum : 0, false);
+}
+bool ALWeatherResources::copyFrom(ALWeatherResources& source)
+{
+    if (!source.readyForFrame(mPreparedFrame) || source.mCover[source.mRead].getWidth() != mCover[0].getWidth()) return false;
+    if (ready() && mSource == &source && mSourceContent == source.mContent)
+    {
+        reuseForFrame(mPreparedFrame);
+        return true;
+    }
+    LL_PROFILE_GPU_ZONE("weather reuse vertical map");
+    LLGLDisable no_scissor(GL_SCISSOR_TEST);
+    patch(false);
+    const U32 size = source.mCover[source.mRead].getWidth();
+    writeTarget().copyContents(source.mCover[source.mRead], 0, 0, size, size, 0, 0, size, size,
+                              GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    if (glGetError() != GL_NO_ERROR) return false;
+    buildIntervals({});
+    mPlan = source.mPlan; mLow = source.mLow; mHigh = source.mHigh; mBoundsValid = source.mBoundsValid;
+    publish(source.mMatrix, source.mRange, source.mCoverage == ALWeatherShelter::Coverage::COMPLETE_COVERED ? 1 : 0,
+        true, source.mOrigin, source.mPlace);
+    if (!ready()) return false;
+    mSource = &source; mSourceContent = source.mContent;
+    return true;
+}
+void ALWeatherResources::setBounds(const ALWeatherShelter::Plan& plan, const glm::dvec3& origin)
+{
+    mPlan = plan;
+    const F64 bottom = plan.center[2] - plan.vertical, top = plan.center[2] + plan.vertical;
+    const F64 offset[] = {origin.x, origin.y, origin.z};
+    for (U32 axis = 0; axis < 2; ++axis)
+    {
+        const F64 a = plan.shear[axis]*bottom, b = plan.shear[axis]*top;
+        mLow[axis] = F32(plan.center[axis]-plan.extent-std::max(a,b)-offset[axis]-1.);
+        mHigh[axis] = F32(plan.center[axis]+plan.extent-std::min(a,b)-offset[axis]+1.);
+    }
+    mLow[2] = F32(bottom-origin.z-1.); mHigh[2] = F32(top-origin.z+1.);
+    mBoundsValid = true;
+}
+bool ALWeatherResources::precipitationWithin(const glm::vec3& eye, const glm::dvec3& origin, U32 frame, F32 reach) const
+{
+    if (ALWeatherBridge::Controller::instance().settings().advancedShelter && advanced)
+        return advanced->within(eye, origin, frame, reach);
+    if (!readyForFrame(frame) || origin != mOrigin || ALWeatherBridge::Controller::instance().placeSerial() != mPlace) return false;
+    if (!mBoundsValid) return true; // No bound proof: keep the exact shader path.
+    const F32 position[] = {eye.x, eye.y, eye.z};
+    F64 distance_squared = 0.;
+    for (U32 axis = 0; axis < 3; ++axis)
+    {
+        const F64 delta = std::max({F64(mLow[axis]-position[axis]), 0., F64(position[axis]-mHigh[axis])});
+        distance_squared += delta*delta;
+    }
+    return distance_squared <= F64(reach)*reach;
 }
 bool ALWeatherResources::allocate(U32 resolution)
 {
@@ -161,6 +291,12 @@ bool ALWeatherResources::allocate(U32 resolution)
 }
 void ALWeatherResources::release()
 {
+    if (mMinimum) glDeleteTextures(1, &mMinimum);
+    mMinimum = mMinimumResolution = 0; mMinimumValid = mMinimumAttempted = false;
+    mReduction.unload();
+    mPatching = false;
+    mSource = nullptr; ++mContent;
+    mBoundsValid = false;
     for (auto& target : mCover) target.release();
     mCoverage = ALWeatherShelter::Coverage::INCOMPLETE;
     mPreparedFrame = ~U32(0);
@@ -176,6 +312,7 @@ void ALWeatherResources::fail(ALWeatherShelter::Coverage state, const char* reas
 void ALWeatherResources::publish(const glm::mat4& matrix, F32 range, U32 batches, bool complete,
                                   const glm::dvec3& origin, U32 place)
 {
+    LL_PROFILE_GPU_ZONE("weather cover publication");
     const F32* values = glm::value_ptr(matrix);
     const bool finite_map = std::all_of(values, values + 16, [](F32 value) { return std::isfinite(value); }) &&
         std::isfinite(range) && range > 0.f && std::isfinite(origin.x) &&
@@ -185,7 +322,10 @@ void ALWeatherResources::publish(const glm::mat4& matrix, F32 range, U32 batches
         fail(ALWeatherShelter::Coverage::FAILED, "Surface cover publication invalid; coverage unknown");
         return;
     }
-    fail(ALWeatherShelter::classify(writeTarget().isComplete(), true, true, complete, batches));
+    // An empty patch does not prove the previously completed whole map empty.
+    const U32 known_batches = mPatching && mCoverage == ALWeatherShelter::Coverage::COMPLETE_COVERED ?
+        std::max(batches, 1U) : batches;
+    fail(ALWeatherShelter::classify(writeTarget().isComplete(), true, true, complete, known_batches));
     if (!ready()) return;
     mMatrix = matrix;
     mRange = range;
@@ -194,7 +334,9 @@ void ALWeatherResources::publish(const glm::mat4& matrix, F32 range, U32 batches
     mStatus += " (" + std::to_string(writeTarget().getWidth()) + " px; +/-" +
         std::to_string(U32(ALWeatherBridge::Controller::instance().settings().coverExtent)) + " m; " +
         std::to_string(ALWeatherShelter::coverBytes(writeTarget().getWidth()) / 1024) + " KiB)";
-    mRead = 1 - mRead; // Texture and all stamps publish together after flush.
+    if (!mPatching) mRead = 1 - mRead; // Texture and all stamps publish together after flush.
+    mPatching = false;
+    mSource = nullptr; ++mContent;
     mPublishedFrame = mPreparedFrame;
 }
 void ALWeatherResources::bind(LLGLSLShader* shader, const glm::mat4& view_to_agent, const glm::dvec3& origin, U32 frame)
@@ -231,6 +373,8 @@ bool ALWeatherResources::precipitationCovers(const glm::vec3& eye, const glm::dv
 
 void ALWeatherResources::bindPrecipitation(LLGLSLShader* shader, const glm::dvec3& origin, U32 frame)
 {
+    static const LLStaticHashedString minimum_valid("weather_cover_minimum_valid");
+    shader->uniform1i(minimum_valid, mMinimumValid ? 1 : 0);
     static const LLStaticHashedString sCoverValid("snow_cover_valid");
     const bool current = readyForFrame(frame) && origin == mOrigin &&
         ALWeatherBridge::Controller::instance().placeSerial() == mPlace;
@@ -239,6 +383,7 @@ void ALWeatherResources::bindPrecipitation(LLGLSLShader* shader, const glm::dvec
     if (tilted) advanced->bind(shader, origin, frame);
     if (!current) return;
     shader->bindTexture(LLShaderMgr::WEATHER_SURFACE_COVER_MAP, &mCover[mRead], true, LLTexUnit::TFO_POINT);
+    bindIntervals(shader, LLShaderMgr::WEATHER_SURFACE_COVER_MIN_MAP);
     shader->uniformMatrix4fv(LLShaderMgr::WEATHER_SURFACE_COVER_MATRIX, 1, false, glm::value_ptr(mMatrix));
 }
 
@@ -283,6 +428,7 @@ void ALWeatherShelterMaps::prepare()
         fail("Advanced shelter allocation failed; coverage unknown, existing fallback");
         return;
     }
+    for (auto& layer : layers) layer.prepareIntervals();
     if (!mRain.isComplete())
     {
         mRain.mName = "Weather Advanced Shelter Rain";
@@ -332,6 +478,11 @@ bool ALWeatherShelterMaps::covers(const glm::vec3& eye, const glm::dvec3& origin
     return current(origin, frame) && (layers[0].precipitationCovers(eye, origin, frame) ||
                                      layers[1].precipitationCovers(eye, origin, frame));
 }
+bool ALWeatherShelterMaps::within(const glm::vec3& eye, const glm::dvec3& origin, U32 frame, F32 reach) const
+{
+    return current(origin, frame) && (layers[0].precipitationWithin(eye, origin, frame, reach) ||
+                                     layers[1].precipitationWithin(eye, origin, frame, reach));
+}
 void ALWeatherShelterMaps::publish(U32 frame)
 {
     const auto& weather = ALWeatherBridge::Controller::instance();
@@ -357,6 +508,10 @@ void ALWeatherShelterMaps::bind(LLGLSLShader* shader, const glm::dvec3& origin, 
     if (!current(origin, frame)) return;
     layers[0].bindMap(shader, LLShaderMgr::WEATHER_SHELTER_CLOSE_MAP, matrices[0]);
     layers[1].bindMap(shader, LLShaderMgr::WEATHER_SHELTER_DISTANT_MAP, matrices[1]);
+    layers[0].bindIntervals(shader, LLShaderMgr::WEATHER_SHELTER_CLOSE_MIN_MAP);
+    layers[1].bindIntervals(shader, LLShaderMgr::WEATHER_SHELTER_DISTANT_MIN_MAP);
+    static const LLStaticHashedString minimum_valid("weather_shelter_minimum_valid");
+    shader->uniform1i(minimum_valid, layers[0].mMinimumValid && layers[1].mMinimumValid ? 1 : 0);
     const auto& s = ALWeatherBridge::Controller::instance().settings();
     shader->uniform4f(params, s.shelterBias, s.shelterSoftness, layers[0].mRange, layers[1].mRange);
     static const LLStaticHashedString debug("weather_shelter_debug");

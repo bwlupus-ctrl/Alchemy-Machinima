@@ -86,6 +86,9 @@ def run(ref='WORKTREE', mutation=None, cost=True, regression=None):
         if mutation == 'normal': helper = helper.replace('normal_eye = normalize(transpose(mat3(weather_material_view_to_agent)) * n);', 'normal_eye = transpose(mat3(weather_material_view_to_agent)) * n;')
     # Reuse the established neutral native lighting fixture and real GL context.
     import alpha_blend_parity_gl_check as A
+    # Concurrent negative controls must not read another process's partially
+    # written source snapshot. Each still compiles the same selected git ref.
+    A.OUT = ROOT/'.tmp/weather_port/material'/('parity_'+str(os.getpid()))
     gl = A.gl
     getstr = gl.fn('glGetString', C.c_char_p, C.c_uint)
     device = {k: getstr(v).decode() for k, v in [('vendor',0x1F00),('renderer',0x1F01),('version',0x1F02)]}

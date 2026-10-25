@@ -235,7 +235,7 @@ struct LLGLSLShader {
  void uniform2f(int,float a,float b){output[4]=a;output[5]=b;}
 };
 struct ALWeatherResources {
- LLRenderTarget mCover[2]{};int mRead=0;unsigned mPlace=0;
+ LLRenderTarget mCover[2]{};int mRead=0;unsigned mPlace=0;bool mPatching=false;U64 mContent=0;ALWeatherResources* mSource=nullptr;
  inline static ALWeatherShelter::Coverage fixtureCoverage=ALWeatherShelter::Coverage::COMPLETE_EMPTY;
  ALWeatherShelter::Coverage mCoverage=ALWeatherShelter::Coverage::INCOMPLETE;
  std::string mStatus;
@@ -253,7 +253,7 @@ struct ALWeatherResources {
     upload=function(tree.read('indra/newview/alweatherresources.cpp'),'void ALWeatherResources::bind(')
     generation=function(tree.read('indra/newview/alweatherresources.h'),'bool readyForFrame(')
     if mutation=='generation': generation=generation.replace('mPublishedFrame == frame','true')
-    upload_prefix=upload_prefix.replace('// PRODUCTION_GENERATION_GETTER',generation)
+    upload_prefix='#define LL_PROFILE_GPU_ZONE(x)\n'+upload_prefix.replace('// PRODUCTION_GENERATION_GETTER',generation)
     owner_source=tree.read('indra/newview/alweatherresources.cpp')
     upload=function(owner_source,'void ALWeatherResources::fail(')+function(owner_source,'void ALWeatherResources::publish(')+upload
     if mutation=='upload': upload=upload.replace('weather.state().wetness * s.wetAmount','0.5f')

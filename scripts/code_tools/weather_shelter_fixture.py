@@ -35,7 +35,6 @@ def build(tree, out, gl, mutation=None):
             'unsigned getCurrTexture(){return cachedTexture;}')
         prefix=prefix.replace('void bindManual(eTextureType,unsigned n,bool){activate();glBindTexture(0x0DE1,n);}',
             'void bindManual(eTextureType,unsigned n,bool){activate();if(cachedTexture!=n){glBindTexture(0x0DE1,n);cachedTexture=n;}}')
-        prefix += '\n'+SCENE
         begin = prefix.index(' void renderShadow(')
         finish = prefix.index('\n DECLARE_SHELTER',begin) if '\n DECLARE_SHELTER' in prefix[begin:] else -1
         original = function(prefix,' void renderShadow(')
@@ -45,6 +44,12 @@ def build(tree, out, gl, mutation=None):
             'unsigned coverTraversals=0,coverBatches=0;GLuint casterProgram=0;void sceneDraw(const glm::mat4&,const glm::mat4&);')
         methods += '\n'+function(tree.read('indra/newview/alweatherresources.cpp'),'void ALWeatherResources::bind(')
         methods += '\n'+API+'\n'+COST_API
+        if 'mWeatherPrecipitationCoverCache.schedule(' in methods:
+            methods=methods.replace('if(dirty)++fixturePipeline.mWeatherGeometryRevision;', '''
+ if(dirty){
+  fixturePipeline.dirtyWeatherRegion(LLVector3(oldRoofOffset-1,-5,0),LLVector3(oldRoofOffset+oldRoofWidth+1,5,128));
+  fixturePipeline.dirtyWeatherRegion(LLVector3(roofOffset-1,-5,0),LLVector3(roofOffset+((sceneKind==1||sceneKind==4)?200.f:8.f)+1,5,128));
+ }''')
         sync_entries=[
             ('glGetUniformiv','void','unsigned,int,int*',None,[C.c_uint,C.c_int,C.c_void_p]),
             ('glFenceSync','void*','unsigned,unsigned',C.c_void_p,[C.c_uint,C.c_uint]),
@@ -70,9 +75,9 @@ def build(tree, out, gl, mutation=None):
             'publish-barrier': ('record_glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);', '(void)0;'),
             'mixed-generation': ('mPublishedFrame = frame;\n    updates.publish();','mPublishedFrame = frame-1;\n    updates.publish();'),
             'numeric-publication': ('if (!finite_map)', 'if (false)'),
-            'blend-leak': ('if (d.blend) glEnablei(GL_BLEND, i); else glDisablei(GL_BLEND, i);', 'glEnablei(GL_BLEND, i);'),
+            'blend-leak': ('if (mDraw[0].blend) glEnable(GL_BLEND); else glDisable(GL_BLEND);', 'glEnable(GL_BLEND);'),
             'draw-buffer-leak': ('if (mFull) glDrawBuffers(mDrawFBO ? mBuffers : 1, buffers.data());', 'if (mFull) {const GLenum none=GL_NONE;glDrawBuffers(1,&none);}'),
-            'moving-roof': ('mWeatherGeometryRevision,\n        weather.placeSerial()', 'U64(0),\n        weather.placeSerial()'),
+            'moving-roof': ('mWeatherShelter.updates.dirty(world_low, world_high);', '(void)world_low; (void)world_high;'),
             'listener-wait': ('    mWeatherShelter.publish(gFrameCount);', '    mWeatherShelter.publish(gFrameCount); {auto fence=glFenceSync(0x9117,0);record_listener_wait(fence,0,0);glDeleteSync(fence);}'),
         }
         if mutation in changes:
@@ -101,14 +106,17 @@ def build(tree, out, gl, mutation=None):
 
 SCENE=r'''
 int sceneKind=0;float roofOffset=0,roofHeight=4,roofAlpha=1;
+float oldRoofOffset=0,oldRoofWidth=8;
 int sceneMVP=-1,sceneRect=-1,sceneAlpha=-1,sceneZ=-1;
 bool forceAllocationFailure=false;unsigned forbiddenListenerWaits=0;
+U64 shelterTraversals=0;
 void sceneDraw(const glm::mat4& view,const glm::mat4& projection){
  ++coverTraversals;
- glUseProgram(casterProgram);
  glm::mat4 vp=projection*view;
- glUniformMatrix4fv(sceneMVP,1,0,glm::value_ptr(vp));
- glUniform1f(sceneAlpha,roofAlpha);
+ struct Batch {float x,y,width,height,z;int id;};
+ std::array<Batch,256> batches;unsigned count=0;
+ {
+ WEATHER_FIXTURE_PASS("fixture cull and sort");
  for(int i=0;i<256;++i){
   // Known doorway/overhang plus 255 static objects, all culled against the
   // actual affine precipitation frustum. No per-map object allocations.
@@ -119,13 +127,30 @@ void sceneDraw(const glm::mat4& view,const glm::mat4& projection){
   if(i==0 && sceneKind==4)sceneHeight=-roofHeight;
   float width=i?2.f:((sceneKind==1 || sceneKind==4)?200.f:8.f), height=i?2.f:8.f;
   if(i==0 && sceneKind==2)height=-4.f;
-  glm::vec4 c=vp*glm::vec4(x+width*.5f,y+height*.5f,sceneHeight,1);
-  float rx=std::abs(vp[0][0])*width*.5f,ry=std::abs(vp[1][1])*height*.5f;
-  if(std::abs(c.x)>1+rx||std::abs(c.y)>1+ry||std::abs(c.z)>1)continue;
-  glUniform4f(sceneRect,x,y,width,height);
+  float cx=x+width*.5f,cy=y+height*.5f,cz=sceneHeight;
+  float hx=std::abs(width)*.5f,hy=std::abs(height)*.5f,hz=0;
+  if(height<0){cx=x;cy=y+width*.5f;cz=-height*.5f;hx=0;hy=width*.5f;hz=-height*.5f;}
+  if(sceneHeight<0){cz=-sceneHeight+.5f*cx;hz=.5f*hx;}
+  glm::vec4 c=vp*glm::vec4(cx,cy,cz,1);
+  bool visible=true;
+  for(int axis=0;axis<3;++axis){float radius=std::abs(vp[0][axis])*hx+std::abs(vp[1][axis])*hy+std::abs(vp[2][axis])*hz;
+   if(std::abs(c[axis])>1+radius)visible=false;}
+  if(!visible)continue;
+  batches[count++]={x,y,width,height,sceneHeight,i};
+ }
+ // Render-map services are simulated; geometry and material membership remain
+ // distinct, unlike the former repeated full-screen triangle submissions.
+ std::sort(batches.begin(),batches.begin()+count,[](const Batch& a,const Batch& b){return a.id%8<b.id%8;});
+ }
+ WEATHER_FIXTURE_PASS("caster draw");
+ glUseProgram(casterProgram);
+ glUniformMatrix4fv(sceneMVP,1,0,glm::value_ptr(vp));glUniform1f(sceneAlpha,roofAlpha);
+ for(unsigned i=0;i<count;++i){auto& batch=batches[i];
+  glUniform1f(sceneAlpha,batch.id==0?roofAlpha:1.f);
+  glUniform4f(sceneRect,batch.x,batch.y,batch.width,batch.height);
   // Test geometry is synthesized by the vertex service; native shadow alpha
   // cutoff and discard rules execute in its unchanged fragment module.
-  glUniform1f(sceneZ,sceneHeight);
+  glUniform1f(sceneZ,batch.z);
   glDrawArrays(GL_TRIANGLES,0,6);++coverBatches;
  }
  glUseProgram(0);
@@ -142,12 +167,24 @@ extern "C" __declspec(dllexport) void shelter_sync(){
  for(unsigned i=0;i<32;++i){glActiveTexture(0x84C0+i);int n;glGetIntegerv(0x8069,&n);gGL.units[i].cachedTexture=n;}
  glActiveTexture(active);
 }
-extern "C" __declspec(dllexport) void shelter_scene(int kind,float x,float z,float alpha){sceneKind=kind;roofOffset=x;roofHeight=z;roofAlpha=alpha;}
+extern "C" __declspec(dllexport) void shelter_scene(int kind,float x,float z,float alpha){
+ oldRoofOffset=roofOffset;oldRoofWidth=(sceneKind==1||sceneKind==4)?200.f:8.f;
+ sceneKind=kind;roofOffset=x;roofHeight=z;roofAlpha=alpha;}
 extern "C" __declspec(dllexport) void shelter_origin(double x,double y,double z){gAgent.origin={{x,y,z}};}
 extern "C" __declspec(dllexport) void shelter_prepare(double time,double x,double y,double z,int dirty){
- LLPresentationTime::seconds=time;++gFrameCount;if(dirty)++fixturePipeline.mWeatherGeometryRevision;
- LLCamera camera;camera.eye={float(x),float(y),float(z)};
- fixturePipeline.generateWeatherSurfaceCover(camera);fixturePipeline.generateWeatherAdvancedShelter(camera);
+ static double previousTime=0;
+ const int frames=std::clamp(int(std::floor(std::max(0.,time-previousTime)*60+.0001)),1,120);
+ const double start=previousTime;previousTime=time;
+ // Advance the real owners on the display frames between fixture timestamps.
+ // Large functional-test time jumps must not hide amortised dirty work.
+ for(int frame=1;frame<=frames;++frame){
+  LLPresentationTime::seconds=start+(time-start)*frame/frames;
+  ++gFrameCount;if(dirty)++fixturePipeline.mWeatherGeometryRevision;
+  LLCamera camera;camera.eye={float(x),float(y),float(z)};
+  fixturePipeline.generateWeatherSurfaceCover(camera);
+  const U32 before=coverTraversals;fixturePipeline.generateWeatherAdvancedShelter(camera);
+  shelterTraversals+=coverTraversals-before;
+ }
 }
 extern "C" __declspec(dllexport) void shelter_bind(unsigned p,int kind){
  static std::map<unsigned,LLGLSLShader> programs;
@@ -160,6 +197,7 @@ extern "C" __declspec(dllexport) void shelter_bind(unsigned p,int kind){
  shader.mProgramObject=0;LLGLSLShader::sCurBoundShaderPtr=nullptr;LLGLSLShader::sCurBoundShader=0;
 }
 extern "C" __declspec(dllexport) const char* shelter_status(){return fixturePipeline.mWeatherShelter.status().c_str();}
+extern "C" __declspec(dllexport) U64 shelter_traversals(){return shelterTraversals;}
 extern "C" __declspec(dllexport) unsigned shelter_layer(int layer){auto& a=fixturePipeline.mWeatherShelter.layers[layer];return a.mCover[a.mRead].texture;}
 extern "C" __declspec(dllexport) unsigned shelter_rain_program(){return fixturePipeline.mWeatherShelter.rainProgram().mProgramObject;}
 extern "C" __declspec(dllexport) int shelter_basic_allocated(){return coverage.allocated();}
@@ -206,6 +244,7 @@ struct FixtureShelterCost {
   glDisable(GL_DEPTH_TEST);glDisable(GL_BLEND);glDisable(GL_CULL_FACE);glDisable(GL_SCISSOR_TEST);glColorMask(1,1,1,1);
  }
  void rain(bool on,unsigned view){
+  WEATHER_FIXTURE_PASS("weather rain consumer");
   target();shelter_bind(programs[on],0);
   shelter_depth(depthUnits[on],depth);
   glUniformMatrix4fv(locations[on][14],1,0,glm::value_ptr(inverseProjection));
@@ -225,9 +264,12 @@ struct FixtureShelterCost {
  void consumers(bool on,unsigned view){
   target();const double origin[3]{};
   render(fbo,depth,0,w,h,glm::value_ptr(views[view]),glm::value_ptr(projection),glm::value_ptr(identity),origin,-1);
-  target();shelter_bind(material,2);
-  glUniform4f(materialLine,view?20.f:0.f,view?84.f:64.f,0,0);
-  const unsigned beauty=0x8CE0;glDrawBuffers(1,&beauty);glDrawArrays(GL_TRIANGLES,0,3);
+  {
+   WEATHER_FIXTURE_PASS("weather material consumer");
+   target();shelter_bind(material,2);
+   glUniform4f(materialLine,view?20.f:0.f,view?84.f:64.f,0,0);
+   const unsigned beauty=0x8CE0;glDrawBuffers(1,&beauty);glDrawArrays(GL_TRIANGLES,0,3);
+  }
   rain(on,view);
  }
 } fixtureShelterCost;
@@ -243,6 +285,9 @@ extern "C" __declspec(dllexport) void shelter_cost_setup(const unsigned* objects
 }
 extern "C" __declspec(dllexport) void shelter_cost_frame(int on,int dual,int tick){
  const double t=10+double(tick)/60;
+ // The paired immutable baseline does not share Python's interleaved toggle.
+ // Each native measurement must explicitly select its own production owner.
+ fixture_weather_set("AlchemyWeatherAdvancedShelterEnabled",on?1:0);
  shelter_scene(0,float(tick%7)*.01f,4,1);
  fixture_weather_set("AlchemyWeatherWindDirection",270+double(tick%5)*.1);
  fixture_weather_step(t);shelter_prepare(t,double(tick%16)*.01,0,0,1);

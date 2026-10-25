@@ -25,5 +25,9 @@ void main()
     float distance_m = z >= 0.999999 ? 3000.0 : min(length(eye),3000.0);
     float exposed_m = weatherPrecipExposedDistance(start,direction,distance_m);
     float a = clamp(1.0-exp(-max(snow_extinction,0.0)*exposed_m),0.0,1.0);
+#ifdef SNOW_VEIL_BUFFER
+    frag_color = vec4(a,0,0,1);
+#else
     frag_color = vec4(max(snow_veil_light,vec3(0))*a,a);
+#endif
 }

@@ -59,6 +59,7 @@ def build(tree,out,gl,mutation=None,extension=None):
           ('glBlendFuncSeparate','void','unsigned,unsigned,unsigned,unsigned',None,[C.c_uint]*4),
           ('glBlendFuncSeparatei','void','unsigned,unsigned,unsigned,unsigned,unsigned',None,[C.c_uint]*5),
           ('glBlendEquationSeparatei','void','unsigned,unsigned,unsigned',None,[C.c_uint]*3),
+          ('glBlendEquationSeparate','void','unsigned,unsigned',None,[C.c_uint]*2),
           ('glColorMask','void','unsigned char,unsigned char,unsigned char,unsigned char',None,[C.c_ubyte]*4),
           ('glColorMaski','void','unsigned,unsigned char,unsigned char,unsigned char,unsigned char',None,[C.c_uint,*[C.c_ubyte]*4]),
           ('glDrawBuffers','void','int,const unsigned*',None,[C.c_int,C.c_void_p]),
@@ -70,9 +71,13 @@ def build(tree,out,gl,mutation=None,extension=None):
           ('glTexParameteri','void','unsigned,unsigned,int',None,[C.c_uint,C.c_uint,C.c_int]),
           ('glTexImage2D','void','unsigned,int,int,int,int,int,unsigned,unsigned,const void*',None,[C.c_uint,C.c_int,C.c_int,C.c_int,C.c_int,C.c_int,C.c_uint,C.c_uint,C.c_void_p]),
           ('glFramebufferTexture2D','void','unsigned,unsigned,unsigned,unsigned,int',None,[C.c_uint,C.c_uint,C.c_uint,C.c_uint,C.c_int]),
+          ('glBlitFramebuffer','void','int,int,int,int,int,int,int,int,unsigned,unsigned',None,[C.c_int]*8+[C.c_uint]*2),
           ('glCheckFramebufferStatus','unsigned','unsigned',C.c_uint,[C.c_uint]),
           ('glClear','void','unsigned',None,[C.c_uint]),
+          ('glScissor','void','int,int,int,int',None,[C.c_int]*4),
           ('glReadBuffer','void','unsigned',None,[C.c_uint]),
+          ('glDrawBuffer','void','unsigned',None,[C.c_uint]),
+          ('glGenerateMipmap','void','unsigned',None,[C.c_uint]),
           ('glCullFace','void','unsigned',None,[C.c_uint]),
           ('glFrontFace','void','unsigned',None,[C.c_uint]),
           ('glDepthFunc','void','unsigned',None,[C.c_uint]),
@@ -94,8 +99,14 @@ def build(tree,out,gl,mutation=None,extension=None):
           GL_BLEND_SRC_ALPHA=0x80CB,GL_BLEND_DST_ALPHA=0x80CA,GL_BLEND_EQUATION_RGB=0x8009,GL_BLEND_EQUATION_ALPHA=0x883D,
           GL_COLOR_ATTACHMENT0=0x8CE0,GL_ONE=1,GL_ONE_MINUS_SRC_ALPHA=0x0303,
           GL_TEXTURE_2D=0x0DE1,GL_TEXTURE_COMPARE_MODE=0x884C,GL_NONE=0,GL_CURRENT_PROGRAM=0x8B8D,
-          GL_FRAMEBUFFER_BARRIER_BIT=0x400,GL_TEXTURE_FETCH_BARRIER_BIT=8,
-          GL_DRAW_FRAMEBUFFER=0x8CA9,GL_READ_FRAMEBUFFER=0x8CA8,GL_DEPTH_TEST=0x0B71)
+          GL_FRAMEBUFFER_BARRIER_BIT=0x400,GL_TEXTURE_FETCH_BARRIER_BIT=8,GL_SCISSOR_BOX=0x0C10,
+          GL_DRAW_FRAMEBUFFER=0x8CA9,GL_READ_FRAMEBUFFER=0x8CA8,GL_DEPTH_TEST=0x0B71,
+          GL_R32F=0x822E,GL_RED=0x1903,GL_RG32F=0x8230,GL_RG=0x8227,GL_TEXTURE_MAX_LEVEL=0x813D,GL_TEXTURE_MIN_FILTER=0x2801,
+          GL_TEXTURE_MAG_FILTER=0x2800,GL_NEAREST_MIPMAP_NEAREST=0x2700,GL_NEAREST=0x2600,
+          GL_IMAGE_BINDING_NAME=0x8F3A,GL_IMAGE_BINDING_LEVEL=0x8F3B,GL_IMAGE_BINDING_LAYERED=0x8F3C,
+          GL_IMAGE_BINDING_LAYER=0x8F3D,GL_IMAGE_BINDING_ACCESS=0x8F3E,GL_IMAGE_BINDING_FORMAT=0x906E,
+          GL_WRITE_ONLY=0x88B9,GL_SHADER_IMAGE_ACCESS_BARRIER_BIT=0x20,GL_COMPUTE_SHADER=0x91B9,
+          GL_FRAMEBUFFER=0x8D40,GL_BACK=0x405,GL_COLOR_ATTACHMENT1=0x8CE1,GL_COLOR_ATTACHMENT2=0x8CE2,GL_COLOR_ATTACHMENT3=0x8CE3)
         extra='#define LL_WARNS_ONCE(x) NullLog{}\n#include <cstddef>\n#include <cmath>\n#include <array>\n#include <new>\n#include "alweatherbridge.h"\n#include "alweathershelter.h"\n'
         extra+='''
 size_t hostAllocations=0;
@@ -112,7 +123,7 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
         prefix=prefix.replace('struct LLRender {static constexpr int NUM_MATRIX_MODES=4;};','struct LLRender {static constexpr int NUM_MATRIX_MODES=4; using eBlendFactor=unsigned;enum {BF_ONE=1,BF_ONE_MINUS_SOURCE_ALPHA=0x0303};static bool indexedDrawBufferGuardSupported(){return true;}};')
         import re
         reserved = re.findall(r'mReservedUniforms.push_back\("([^"]+)"\)', function(tree.read('indra/llrender/llshadermgr.cpp'), 'void LLShaderMgr::initAttribsAndUniforms('))
-        slots = ','.join(f'{n}={reserved.index(v)}' for n,v in (('DEFERRED_DEPTH','depthMap'),('WEATHER_SURFACE_COVER_MAP','weather_surface_cover_map'),('WEATHER_SURFACE_COVER_MATRIX','weather_surface_cover_matrix'),('WEATHER_SHELTER_CLOSE_MAP','weather_shelter_close_map'),('WEATHER_SHELTER_DISTANT_MAP','weather_shelter_distant_map')) if v in reserved)
+        slots = ','.join(f'{n}={reserved.index(v)}' for n,v in (('DEFERRED_DEPTH','depthMap'),('WEATHER_SURFACE_COVER_MAP','weather_surface_cover_map'),('WEATHER_SURFACE_COVER_MATRIX','weather_surface_cover_matrix'),('WEATHER_SHELTER_CLOSE_MAP','weather_shelter_close_map'),('WEATHER_SHELTER_DISTANT_MAP','weather_shelter_distant_map'),('WEATHER_SURFACE_COVER_MIN_MAP','weather_surface_cover_min_map'),('WEATHER_SHELTER_CLOSE_MIN_MAP','weather_shelter_close_min_map'),('WEATHER_SHELTER_DISTANT_MIN_MAP','weather_shelter_distant_min_map'),('WEATHER_VEIL_MAP','weather_veil_map')) if v in reserved)
         prefix=prefix.replace('std::string root;int features=', 'enum {'+slots+'};\n std::string root;int features=')
         shader_methods=r'''
  bool isComplete()const{return mProgramObject!=0;}
@@ -154,14 +165,32 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
         from weather_cover_fixture import parts as cover_parts
         cp, cm, ca = cover_parts(tree,out)
         prefix += cp
+        # Use the actual logical FBO stack, not a raw bind/unbind substitute.
+        rt=tree.read('indra/llrender/llrendertarget.cpp')
+        prefix+='''
+#define LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE(x)
+#define LL_PROFILE_ZONE_NUM(x)
+#define RT_PROFILE_GPU_ZONE(x) WEATHER_FIXTURE_PASS(x)
+void check_framebuffer_status(){}
+'''
+        for signature in ('bool LLRenderTarget::isBoundInStack() const','void LLRenderTarget::bindTarget()','void LLRenderTarget::flush()'):
+            if signature not in rt:continue
+            source=function(rt,signature).replace('mFBO','fbo').replace('mResX','w').replace('mResY','h')
+            source=source.replace('mTex.empty()','(getNumTextures()==0)').replace('mTex.size()','getNumTextures()')
+            source=source.replace('glBindFramebuffer(GL_FRAMEBUFFER, fbo);','fixtureTargetFBO=fbo;glBindFramebuffer(GL_FRAMEBUFFER, fbo);')
+            source=source.replace('glBindFramebuffer(GL_FRAMEBUFFER, 0);','fixtureTargetFBO=0;glBindFramebuffer(GL_FRAMEBUFFER, 0);')
+            prefix+='\n'+source+'\n'
         prefix+='#define LL_PROFILE_GPU_ZONE(x)\n'
         methods+='\n'+ '\n'.join(function(resources,s) for s in (
           'ALWeatherResources::State::State(', 'ALWeatherResources::State::~State(',
-          'void ALWeatherResources::prepare(', 'bool ALWeatherResources::allocate(', 'void ALWeatherResources::release(',
+          'void ALWeatherResources::prepare(', 'void ALWeatherResources::prepareIntervals(',
+          'void ALWeatherResources::buildIntervals(', 'void ALWeatherResources::bindIntervals(', 'bool ALWeatherResources::copyFrom(',
+          'void ALWeatherResources::setBounds(', 'bool ALWeatherResources::precipitationWithin(',
+          'bool ALWeatherResources::allocate(', 'void ALWeatherResources::release(',
           'void ALWeatherResources::publish(', 'void ALWeatherResources::fail(',
-          'bool ALWeatherResources::precipitationCovers(', 'void ALWeatherResources::bindPrecipitation('))
+          'bool ALWeatherResources::precipitationCovers(', 'void ALWeatherResources::bindPrecipitation(') if s in resources)
         if 'void ALWeatherShelterMaps::prepare(' in resources:
-            methods += '\n' + '\n'.join(function(resources,s) for s in ('void ALWeatherResources::bindMap(', 'void ALWeatherShelterMaps::prepare(', 'void ALWeatherShelterMaps::release(', 'void ALWeatherShelterMaps::fail(', 'bool ALWeatherShelterMaps::current(', 'bool ALWeatherShelterMaps::covers(', 'void ALWeatherShelterMaps::publish(', 'void ALWeatherShelterMaps::bind('))
+            methods += '\n' + '\n'.join(function(resources,s) for s in ('void ALWeatherResources::bindMap(', 'void ALWeatherShelterMaps::prepare(', 'void ALWeatherShelterMaps::release(', 'void ALWeatherShelterMaps::fail(', 'bool ALWeatherShelterMaps::current(', 'bool ALWeatherShelterMaps::covers(', 'bool ALWeatherShelterMaps::within(', 'void ALWeatherShelterMaps::publish(', 'void ALWeatherShelterMaps::bind(') if s in resources)
         owner=tree.read('indra/newview/alweatherparticles.cpp')
         changes={
           'depth':('LLGLDepthTest depth_test(GL_TRUE, GL_FALSE, GL_LEQUAL);','LLGLDepthTest depth_test(GL_FALSE, GL_FALSE, GL_LEQUAL);'),
@@ -174,6 +203,7 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
           'veil-twice':('glDrawArrays(GL_TRIANGLES, 0, 3); // One extinction application per target view.',
                         'glDrawArrays(GL_TRIANGLES, 0, 3); glDrawArrays(GL_TRIANGLES, 0, 3); // Mutant'),
           'mrt':('glDrawBuffers(1, &beauty);','(void)beauty;'),
+          'veil-stack':('mVeilBuffer.flush();','mVeilBuffer.flush(); target.bindTarget();'),
           'texture-barrier':('glTextureBarrier();','(void)0;'),
         }
         if mutation in changes:
@@ -181,15 +211,30 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
         if mutation=='cover-cache':
             assert 'if (reuse_cover && mWeatherSurfaces.ready())' in cm
             cm=cm.replace('if (reuse_cover && mWeatherSurfaces.ready())','if (false && reuse_cover && mWeatherSurfaces.ready())')
+            cm=cm.replace('if (reuse_cover) return;', 'if (false && reuse_cover) return;')
         if mutation=='raw-light':
-            assert 'sky->getIsSunUp() ? linearColor3(sky->getSunDiffuse()) : LLColor3::black' in cm
-            cm=cm.replace('sky->getIsSunUp() ? linearColor3(sky->getSunDiffuse()) : LLColor3::black','linearColor3(sky->getSunDiffuse())')
+            if 'LLSettingsVOSky::illumination' in cm:
+                cm=cm.replace('LLSettingsVOSky::illumination(*sky)', 'LLSettingsVOSky::rawIllumination(*sky)')
+            else:
+                cm=cm.replace('sky->getIsSunUp() ? linearColor3(sky->getSunDiffuse()) : LLColor3::black','linearColor3(sky->getSunDiffuse())')
         if mutation=='cap-cache':
             assert 'if (generation == sContextGeneration) return supported;' in methods
             methods=methods.replace('if (generation == sContextGeneration) return supported;','')
         methods+='\n'+ '\n'.join(function(owner,s) for s in ('bool ALWeatherParticles::supported(',
             'void ALWeatherParticles::release(', 'bool ALWeatherParticles::initialize(', 'void ALWeatherParticles::prepare(', 'void ALWeatherParticles::render('))
-        methods+='\n'+cm+'\n'+API+'\n'+ca
+        fixture_api=API
+        if 'mVeilBuffer' in tree.read('indra/newview/alweatherparticles.h'):
+            fixture_api=fixture_api.replace('// SET_VEIL_BUFFER','veilIntermediateFBO=particles.mVeilBuffer.fbo;')
+        if 'mMinimumValid' in resources:
+            fixture_api=fixture_api.replace('if(frame>=0){', 'if(frame>=0){coverage.mMinimumValid=false;')
+            fixture_api=fixture_api.replace('// SAVE_MINIMUM', 'const bool saved_minimum=coverage.mMinimumValid;')
+            fixture_api=fixture_api.replace('// RESTORE_MINIMUM', 'coverage.mMinimumValid=saved_minimum;')
+        if 'void ALWeatherResources::prepare(' not in resources:
+            fixture_api=fixture_api.replace('coverage.prepare(resolution);','coverage.allocate(resolution);')
+        if 'class ALWeatherShelterMaps\n{' not in tree.read('indra/newview/alweatherresources.h'):
+            fixture_api=fixture_api.replace('coverage.advanced=&fixturePipeline.mWeatherShelter;fixturePipeline.mWeatherShelter.prepare();','')
+            fixture_api=fixture_api.replace('fixturePipeline.mWeatherShelter.suspend();','')
+        methods+='\n'+cm+'\n'+fixture_api+'\n'+ca
         # Redirect only the dispatch surface. Assertions observe the real GL
         # state at the production draw, never a compile-error stand-in mutant.
         prefix=prefix.replace('struct LLGLSLShader {',TRACE+'\nstruct LLGLSLShader {')
@@ -202,10 +247,12 @@ void operator delete(void* p)noexcept{free(p);}void operator delete[](void* p)no
         suffix=suffix.replace('LLShaderMgr::instance()->root=root;',inject+'\nLLShaderMgr::instance()->root=root;LLShaderMgr::instance()->mReservedAttribs={"position","normal","texcoord0"};')
         preparation=preparation_source(tree,out,particles=True)
         result=(prefix,methods,suffix,entries+names,[preparation,*[out/(n+'.cpp') for n in SOURCES]])
+        from weather_profile_fixture import extend as profile
+        result=profile(*result)
         return extension(*result) if extension else result
     lib=loader_build(tree,out,gl,extend)
     shaderdir=out/'class1/deferred';shaderdir.mkdir(parents=True,exist_ok=True)
-    for name in ('weatherSnowSim','weatherSnowV','weatherSnowF','weatherPrecipCoverF','weatherPrecipVeilF','weatherShelterF'):
+    for name in ('weatherSnowSim','weatherSnowV','weatherSnowF','weatherPrecipCoverF','weatherPrecipVeilF','weatherPrecipCompositeF','weatherShelterF','weatherCoverMinimum'):
         if not tree.exists('indra/newview/app_settings/shaders/class1/deferred/'+name+'.glsl'): continue;
         text=tree.read('indra/newview/app_settings/shaders/class1/deferred/'+name+'.glsl')
         if mutation=='view-seed' and name=='weatherSnowSim':
@@ -264,10 +311,10 @@ MATRIX=MATRIX.replace('float& operator[]', 'template<class T>vec4(const V3<T>& a
 
 BACKEND=r'''
 struct LLRenderTarget;
-struct LLTexUnit {enum eTextureType {TT_NONE,TT_TEXTURE};enum eTextureFilterOptions {TFO_POINT,TFO_TRILINEAR,TFO_ANISOTROPIC};enum {TMG_NONE,TAM_CLAMP};unsigned index=0;
- eTextureType getCurrType(){return TT_TEXTURE;}unsigned getCurrTexture(){int n;activate();glGetIntegerv(0x8069,&n);return n;}
+struct LLTexUnit {enum eTextureType {TT_NONE,TT_TEXTURE};enum eTextureFilterOptions {TFO_POINT,TFO_TRILINEAR,TFO_ANISOTROPIC};enum {TMG_NONE,TMG_AUTO,TAM_CLAMP};unsigned index=0,cachedTexture=0;
+ eTextureType getCurrType(){return TT_TEXTURE;}unsigned getCurrTexture(){return cachedTexture;}
  bool hasMipMaps(){return false;}void activate(){glActiveTexture(0x84C0+index);}
- void bindManual(eTextureType,unsigned n,bool){activate();glBindTexture(0x0DE1,n);}
+ void bindManual(eTextureType,unsigned n,bool){activate();if(cachedTexture!=n){glBindTexture(0x0DE1,n);cachedTexture=n;}}
  void bind(LLRenderTarget*,bool);void setTextureFilteringOption(int){}void setTextureAddressMode(int){}
  void unbind(eTextureType){bindManual(TT_TEXTURE,0,false);}
  void disable(){bindManual(TT_TEXTURE,0,false);}};
@@ -282,20 +329,29 @@ struct GLBackend {LLTexUnit units[32];GLBackend(){for(unsigned i=0;i<32;++i)unit
 struct LLVertexBuffer {inline static U32 sLastMask=0,sGLRenderBuffer=0,sGLRenderIndices=0;
  static void unbind(){glBindBuffer(GL_ARRAY_BUFFER,0);glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);sGLRenderBuffer=sGLRenderIndices=0;}
  static void setupClientArrays(unsigned mask){for(unsigned i=0;i<16;++i){if(mask&(1U<<i))glEnableVertexAttribArray(i);else glDisableVertexAttribArray(i);}sLastMask=mask;}};
-struct LLRenderTarget {unsigned fbo=0,texture=0,w=0,h=0;
+unsigned fixtureTargetFBO=0;
+struct LLRenderTarget {unsigned fbo=0,texture=0,w=0,h=0,colorFormat=0;
+ inline static unsigned sCurFBO=0,sCurResX=0,sCurResY=0;
+ inline static LLRenderTarget* sBoundTarget=nullptr;LLRenderTarget* mPreviousRT=nullptr;int mGenerateMipMaps=LLTexUnit::TMG_NONE;
+ static LLRenderTarget* getCurrentBoundTarget(){return sBoundTarget;}
+ bool isBoundInStack()const;
+ unsigned getDepth()const{return texture;}
+ void copyContents(LLRenderTarget& source,int a,int b,int c,int d,int e,int f,int g,int h,unsigned mask,unsigned filter){
+  glBindFramebuffer(GL_READ_FRAMEBUFFER,source.fbo);glBindFramebuffer(GL_DRAW_FRAMEBUFFER,fbo);
+  glBlitFramebuffer(a,b,c,d,e,f,g,h,mask,filter);}
  bool isComplete()const{return fbo!=0&&texture!=0;}
  unsigned getTexture(U32=0)const{return texture;}LLTexUnit::eTextureType getUsage()const{return LLTexUnit::TT_TEXTURE;}
  enum {DEPTH_FMT_32F};bool owned=false;
- bool allocate(unsigned width,unsigned height,int,bool,bool,LLTexUnit::eTextureType,int,int){
-  w=width;h=height;owned=true;glGenFramebuffers(1,&fbo);glGenTextures(1,&texture);glBindTexture(0x0DE1,texture);
-  glTexImage2D(0x0DE1,0,0x8CAC,w,h,0,0x1902,GL_FLOAT,nullptr);
+ bool allocate(unsigned width,unsigned height,int color,bool,bool,LLTexUnit::eTextureType,int,int){
+  w=width;h=height;owned=true;colorFormat=color;glGenFramebuffers(1,&fbo);glGenTextures(1,&texture);glBindTexture(0x0DE1,texture);
+  glTexImage2D(0x0DE1,0,color?color:0x8CAC,w,h,0,color?GL_RED:0x1902,GL_FLOAT,nullptr);
   for(unsigned p:{0x2801U,0x2800U})glTexParameteri(0x0DE1,p,0x2600);
-  glBindFramebuffer(0x8D40,fbo);glFramebufferTexture2D(0x8D40,0x8D00,0x0DE1,texture,0);
-  const unsigned none=0;glDrawBuffers(1,&none);glReadBuffer(0);return glCheckFramebufferStatus(0x8D40)==0x8CD5;}
+  glBindFramebuffer(0x8D40,fbo);glFramebufferTexture2D(0x8D40,color?0x8CE0:0x8D00,0x0DE1,texture,0);
+  const unsigned buffer=color?0x8CE0:0;glDrawBuffers(1,&buffer);glReadBuffer(buffer);return glCheckFramebufferStatus(0x8D40)==0x8CD5;}
  void release(){if(owned){glDeleteFramebuffers(1,&fbo);glDeleteTextures(1,&texture);}fbo=texture=w=h=0;owned=false;}
- unsigned getNumTextures()const{return owned?0:3;}
- void bindTarget(){glBindFramebuffer(0x8D40,fbo);const unsigned buffers[]={0x8CE0,0x8CE1,0x8CE2},none=0;glDrawBuffers(owned?1:3,owned?&none:buffers);glReadBuffer(owned?0:0x8CE0);glViewport(0,0,w,h);}
- void flush(){glBindFramebuffer(GL_DRAW_FRAMEBUFFER,0);}unsigned getWidth()const{return w;}unsigned getHeight()const{return h;}};
+ unsigned getNumTextures()const{return owned?(colorFormat?1:0):3;}
+ void bindTexture(unsigned,int channel,LLTexUnit::eTextureFilterOptions){gGL.getTexUnit(channel)->bind(this,false);}
+ void bindTarget();void flush();unsigned getWidth()const{return w;}unsigned getHeight()const{return h;}};
 void LLTexUnit::bind(LLRenderTarget* t,bool){bindManual(TT_TEXTURE,t->texture,false);}
 struct Enable {unsigned cap;bool was;Enable(unsigned c,bool on):cap(c),was(glIsEnabled(c)!=0){if(on)glEnable(c);else glDisable(c);}
  ~Enable(){if(was)glEnable(cap);else glDisable(cap);}};
@@ -308,6 +364,8 @@ struct LLGLDepthTest:Enable {int func;unsigned char mask;LLGLDepthTest(bool on,b
 TRACE=r'''
 unsigned draws=0,veilDraws=0,dispatches=0,barriers=0,allocations=0,instances=0,depthEnabled=0,barrierBeforeDraw=0,lastBuffer=0,groups=0,reuseBarrier=0;
 unsigned queries=0,attributeQueries=0,programCreates=0,textureBarriers=0,limitQueries=0,drawContract=0;
+unsigned veilIntermediateFBO=0;
+unsigned fixtureStackViolations=0;
 void record_glGetIntegerv(unsigned name,int* value){++queries;if(name==GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS||name==GL_MAX_IMAGE_UNITS||name==GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS)++limitQueries;glGetIntegerv(name,value);}
 void record_glGetIntegeri_v(unsigned name,unsigned index,int* value){++queries;if(name==GL_MAX_COMPUTE_WORK_GROUP_COUNT)++limitQueries;glGetIntegeri_v(name,index,value);}
 int record_glGetAttribLocation(unsigned p,const char* name){++attributeQueries;return glGetAttribLocation(p,name);}
@@ -319,12 +377,17 @@ void checkDrawContract(){int b1,b2;glGetIntegerv(GL_DRAW_BUFFER0+1,&b1);glGetInt
 void record_glDispatchCompute(unsigned x,unsigned y,unsigned z){++dispatches;groups=x;reuseBarrier=barriers;barriers=0;glDispatchCompute(x,y,z);}
 void record_glMemoryBarrier(unsigned bits){barriers|=bits;glMemoryBarrier(bits);}
 void record_glDrawArraysInstanced(unsigned mode,int start,int n,int count){checkDrawContract();++draws;instances=count;depthEnabled=glIsEnabled(GL_DEPTH_TEST);barrierBeforeDraw=barriers;int b;glGetIntegerv(GL_ARRAY_BUFFER_BINDING,&b);lastBuffer=b;glDrawArraysInstanced(mode,start,n,count);barriers=0;}
-void record_glDrawArrays(unsigned mode,int start,int n){++veilDraws;glDrawArrays(mode,start,n);}
+void record_glDrawArrays(unsigned mode,int start,int n){if(fixtureTargetFBO!=veilIntermediateFBO)++veilDraws;glDrawArrays(mode,start,n);}
 void record_glGenBuffers(int n,unsigned* p){allocations+=n;glGenBuffers(n,p);}
 void record_glGenVertexArrays(int n,unsigned* p){allocations+=n;glGenVertexArrays(n,p);}
 '''
 
 API=r'''
+extern "C" __declspec(dllexport) void fixture_sync(){
+ int active;glGetIntegerv(0x84E0,&active);
+ for(unsigned i=0;i<32;++i){glActiveTexture(0x84C0+i);int n;glGetIntegerv(0x8069,&n);gGL.units[i].cachedTexture=n;}
+ glActiveTexture(active);
+}
 extern "C" __declspec(dllexport) void fixture_prepare_basic(unsigned resolution){coverage.prepare(resolution);}
 extern "C" __declspec(dllexport) void fixture_prepare_shelter(){coverage.advanced=&fixturePipeline.mWeatherShelter;fixturePipeline.mWeatherShelter.prepare();}
 extern "C" __declspec(dllexport) void fixture_suspend_shelter(){fixturePipeline.mWeatherShelter.suspend();}
@@ -332,6 +395,11 @@ extern "C" __declspec(dllexport) void fixture_prepare_particles(){particles.prep
 extern "C" __declspec(dllexport) int fixture_particle_supported(){return ALWeatherParticles::supported();}
 extern "C" __declspec(dllexport) void render(unsigned fbo,unsigned depth,unsigned cover,int w,int h,
  const float* view,const float* projection,const float* coverMatrix,const double* origin,int frame){
+ if(frame>=0 && ALWeatherBridge::Controller::instance().precipitationActive())fixture_sync();
+ const auto saved_read=coverage.mRead,saved_place=coverage.mPlace,saved_frame=coverage.mPublishedFrame;
+ const auto saved_texture=coverage.mCover[0].texture;const auto saved_coverage=coverage.mCoverage;
+ const auto saved_matrix=coverage.mMatrix;const auto saved_origin=coverage.mOrigin;
+ // SAVE_MINIMUM
  LLRenderTarget target;target.fbo=fbo;target.w=w;target.h=h;
  LLRenderTarget depthTarget;depthTarget.texture=depth;
  if(frame>=0){coverage.mRead=0;coverage.mCover[0].texture=cover;coverage.mPlace=ALWeatherBridge::Controller::instance().placeSerial();
@@ -340,7 +408,15 @@ extern "C" __declspec(dllexport) void render(unsigned fbo,unsigned depth,unsigne
  glm::mat4 v,p;std::memcpy(&v,view,64);std::memcpy(&p,projection,64);
  currentView=v;currentProjection=p;std::memcpy(gGLLastModelView,view,64);std::memcpy(gGLLastProjection,projection,64);
  gAgent.origin={{origin[0],origin[1],origin[2]}};fixturePipeline.targets.deferredScreen=depthTarget;
- fixturePipeline.renderWeatherParticles(&target,true);
+ // SET_VEIL_BUFFER
+ try{fixturePipeline.renderWeatherParticles(&target,true);}
+ catch(const std::exception&){++fixtureStackViolations;
+  for(int i=0;i<16 && LLRenderTarget::getCurrentBoundTarget();++i)LLRenderTarget::getCurrentBoundTarget()->flush();
+ }
+ if(frame>=0){coverage.mRead=saved_read;coverage.mPlace=saved_place;coverage.mPublishedFrame=saved_frame;
+  coverage.mCover[0].texture=saved_texture;coverage.mCoverage=saved_coverage;coverage.mMatrix=saved_matrix;coverage.mOrigin=saved_origin;
+  // RESTORE_MINIMUM
+ }
 }
 extern "C" __declspec(dllexport) void metrics(double* v){v[0]=draws;v[1]=veilDraws;v[2]=dispatches;v[3]=allocations;
  v[4]=instances;v[5]=depthEnabled;v[6]=barrierBeforeDraw;v[7]=particles.bytes();v[8]=groups;v[9]=double(hostAllocations);v[10]=reuseBarrier;}
@@ -349,6 +425,8 @@ extern "C" __declspec(dllexport) unsigned draw_contract(){return drawContract;}
 extern "C" __declspec(dllexport) void work_counts(double* v){v[0]=queries;v[1]=attributeQueries;v[2]=programCreates;v[3]=textureBarriers;v[4]=limitQueries;}
 extern "C" __declspec(dllexport) void texture_capability(int core,int entry){gGLManager.mGLVersion=core?4.6f:4.3f;if(!entry)glTextureBarrier=nullptr;}
 extern "C" __declspec(dllexport) unsigned draw_program(){return particles.mDraw.mProgramObject;}
+extern "C" __declspec(dllexport) unsigned veil_program(){return particles.mVeil.mProgramObject;}
+extern "C" __declspec(dllexport) unsigned fixture_stack_state(){return fixtureStackViolations*2+(LLRenderTarget::getCurrentBoundTarget()?1:0);}
 extern "C" __declspec(dllexport) void attribute_mask(unsigned mask){LLVertexBuffer::setupClientArrays(mask);}
 extern "C" __declspec(dllexport) unsigned buffer(){
  // The last dispatch's indexed buffer binding is restored by production, so
@@ -357,4 +435,20 @@ extern "C" __declspec(dllexport) unsigned buffer(){
 extern "C" __declspec(dllexport) void weather_values(double* v){auto& c=ALWeatherBridge::Controller::instance();
  v[0]=c.clock().seconds();v[1]=c.state().rainFall;v[2]=c.state().snowFall;v[3]=c.snowDrift()[0];v[4]=c.snowDrift()[1];v[5]=c.snowDrift()[2];
  v[6]=ALWeatherBridge::rain(c.state(),1,1).intensity;v[7]=ALWeatherBridge::snowAmount(c.state());}
+extern "C" void fixture_weather_step(double);
+extern "C" __declspec(dllexport) void cover_prepare(double,double,double,int);
+struct FixtureParticleCost {
+ unsigned fbo=0,depth=0;int width=0,height=0;glm::mat4 projection,views[2],identity{1.f};double origin[3]{};
+} fixtureParticleCost;
+extern "C" __declspec(dllexport) void particles_cost_setup(unsigned fbo,unsigned depth,int width,int height,const float* projection,const float* views){
+ auto& c=fixtureParticleCost;c.fbo=fbo;c.depth=depth;c.width=width;c.height=height;
+ std::memcpy(&c.projection,projection,64);std::memcpy(c.views,views,128);
+}
+extern "C" __declspec(dllexport) void particles_cost_frame(int tick,int dual){
+ auto& c=fixtureParticleCost;
+ oldRoofOffset=roofOffset;oldRoofWidth=8;roofOffset=float(tick%7)*.01f;
+ fixture_weather_step(100+double(tick)/60);cover_prepare(0,0,0,1);
+ render(c.fbo,c.depth,0,c.width,c.height,glm::value_ptr(c.views[0]),glm::value_ptr(c.projection),glm::value_ptr(c.identity),c.origin,-1);
+ if(dual)render(c.fbo,c.depth,0,c.width,c.height,glm::value_ptr(c.views[1]),glm::value_ptr(c.projection),glm::value_ptr(c.identity),c.origin,-1);
+}
 '''

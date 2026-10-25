@@ -963,6 +963,10 @@ public:
         WEATHER_SURFACE_COVER_MAP,         // "weather_surface_cover_map"; after all existing samplers
         WEATHER_SHELTER_CLOSE_MAP,
         WEATHER_SHELTER_DISTANT_MAP,
+        WEATHER_SURFACE_COVER_MIN_MAP,
+        WEATHER_SHELTER_CLOSE_MIN_MAP,
+        WEATHER_SHELTER_DISTANT_MIN_MAP,
+        WEATHER_VEIL_MAP,
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

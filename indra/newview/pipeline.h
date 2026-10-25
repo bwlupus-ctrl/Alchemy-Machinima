@@ -844,14 +844,17 @@ public:
     void generateWeatherSurfaceCover(LLCamera& camera);
     bool drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_target,
         const glm::mat4& view, const glm::mat4& projection, const LLVector3& top_origin,
-        F32 near_clip, F32 far_clip, U32& surface_submissions);
+        F32 clip_start, F32 clip_end, U32& surface_submissions,
+        ALWeatherShelter::Updates::Tile tile = {});
+    void dirtyWeatherDrawable(LLDrawable* drawable);
+    void dirtyWeatherRegion(const LLVector3& low, const LLVector3& high);
     void generateWeatherAdvancedShelter(LLCamera& camera);
     void bindWeatherMaterial(LLGLSLShader* shader);
     ALWeatherResources mWeatherSurfaces;
     ALWeatherShelterMaps mWeatherShelter;
     ALWeatherParticles mWeatherParticles;
-    ALWeatherCoverCache mWeatherPrecipitationCoverCache;
-    U64 mWeatherGeometryRevision = 0;
+    ALWeatherShelter::Updates mWeatherPrecipitationCoverCache;
+    U32 mWeatherCoverWorkFrame = ~U32(0);
     void renderWeatherParticles(LLRenderTarget* target, bool auxiliary);
     LLRenderTarget* getSunShadowTarget(U32 i);
     LLRenderTarget* getSpotShadowTarget(U32 i);
