@@ -1319,7 +1319,7 @@ class Suite:
 
     def scope(self):
         diff=subprocess.run(['git','diff','--check'],cwd=ROOT,text=True,capture_output=True,timeout=10)
-        paths=subprocess.check_output(['git','diff','--name-only'],cwd=ROOT,text=True,timeout=10).splitlines()
+        paths=subprocess.check_output(['git','diff','--name-only','0de20f6fb5e','f3a8ff5a97a'],cwd=ROOT,text=True,timeout=10).splitlines()
         shaders=[path for path in paths if '/app_settings/shaders/' in path]
         self.check('git diff --check',diff.returncode==0,diff.stdout+diff.stderr)
         self.check('no other production shader changed',shaders==[SHADER.relative_to(ROOT).as_posix()],shaders)

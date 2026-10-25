@@ -108,7 +108,13 @@ void main()
     }
     shaftify *= fade;
 #endif
+#ifdef AL_SENSOR_HDR
+    // Store only the display-unit increment. Adding it to an HDR base and
+    // subtracting that base in half float would lose dim rays in S-Log3.
+    diff.rgb = ((shaftify * haze_weight.x) * shadamount) * sunlight_color;
+#else
     diff.rgb += ((shaftify * haze_weight.x) * shadamount) * sunlight_color;
+#endif
 
     frag_color = diff;
 }

@@ -15,6 +15,7 @@ uniform int sensor_overlay_mode;
 void main()
 {
     vec2 duv = vary_fragcoord.xy;
+    bool outside = false;
     if (depth_warp_params.y > 0.5)
     {
         // exact forward source-uv mapping from cineFisheyeF.glsl; the color
@@ -32,8 +33,8 @@ void main()
                    fisheye_params.y * rn2 * rn2) /
                   (1.0 + fisheye_params.x + fisheye_params.y);
         vec2 src = c * g / max(fisheye_params2.z, 0.25);
-        duv = clamp(vec2(src.x / aspect, src.y) * 0.5 + 0.5 +
-                    fisheye_params2.xy, 0.0, 1.0);
+        duv = vec2(src.x / aspect, src.y) * 0.5 + 0.5 + fisheye_params2.xy;
+        outside = any(lessThan(duv, vec2(0.0))) || any(greaterThan(duv, vec2(1.0)));
     }
     if (depth_warp_params.x > 0.5)
     {
@@ -41,6 +42,7 @@ void main()
     }
 
     vec4 scene = texture(diffuseRect, vary_fragcoord);
+    if (outside) { frag_color = scene; return; }
     vec3 addition = texture(diffuseMap, duv).rgb;
     vec3 transmission = texture(emissiveRect, duv).rgb;
     if (sensor_overlay_mode == 1) transmission -= addition;

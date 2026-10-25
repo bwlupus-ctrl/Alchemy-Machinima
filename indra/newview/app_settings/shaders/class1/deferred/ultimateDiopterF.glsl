@@ -25,6 +25,7 @@ uniform sampler2D emissiveRect;  // pass-1 B: diopter RGB (linear) + rim
 uniform sampler2D diffuseMap;    // untouched source frame (display space)
 uniform vec2 screen_res;
 #ifdef AL_SENSOR_HDR
+uniform int sensor_diagnostics;
 uniform sampler2D exposureMap;
 uniform float exposure;
 uniform int tonemap_type;
@@ -197,6 +198,11 @@ void main()
     }
 
     // ---- setup / debug views ---------------------------------------------
+#ifdef AL_SENSOR_HDR
+    // Stage D adds diagnostics over the processed image; do not apply the
+    // optical gather a second time to that background.
+    if (sensor_diagnostics != 0) disp_out = orig;
+#endif
     int dbg = int(diopter_comp2.w + 0.5);
     if (dbg == 1)        // region mask
     {

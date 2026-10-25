@@ -2,7 +2,7 @@
 
 Matched ON/OFF fixture: 32-tap motion blur, DOF CoC/gather/combine, SMAA High
 with production area/search textures, 24-tap diopter, fisheye, CAS .4 and
-presentation. DOF uses the production half-resolution gather contract.
+presentation. DOF uses the shipped 0.7-resolution gather contract.
 This is a shader-chain benchmark; it does not claim a running-viewer result.
 """
 import os
@@ -10,6 +10,7 @@ os.environ['PYTHONUTF8']='1'
 os.environ['PYTHONDONTWRITEBYTECODE']='1'
 import argparse
 import ctypes as C
+import hashlib
 import json
 import re
 import subprocess
@@ -38,17 +39,17 @@ def gpu():
 
 
 class Chain:
-    def __init__(self,r,model,enabled,w=3840,h=2160):
+    def __init__(self,r,model,enabled,w=3840,h=2160,scale=.7):
         self.r,self.on,self.w,self.h=r,enabled,w,h
+        self.scale=scale
         self.u,_=model.get(0,25600,frame=0,seed=1234,stream=0x4d41494e)
         self.hdr=[r.target(('on' if enabled else 'off')+str(i),w,h,fmt=0x881A if enabled else 0x8059) for i in range(2)]
-        self.display=[r.target('on-display'+str(i),w,h,fmt=0x8059) for i in range(2)] if enabled else self.hdr
+        self.display=self.hdr
         self.dst=self.hdr
         self.cof=r.target('cof',w,h)
         self.edge=r.target('edges',w,h)
         self.weights=r.target('weights',w,h)
         self.dio=r.target('diopter',w,h,3)
-        self.encode=r.target('encoded',w,h)
         x=np.arange(w,dtype=np.float32)[None,:]/w
         y=np.arange(h,dtype=np.float32)[:,None]/h
         image=np.empty((h,w,4),np.float32)
@@ -70,13 +71,16 @@ class Chain:
         self.programs['cof']=r.program('class1/deferred/cofF.glsl',modules=P.common_modules())
         self.programs['dof']=r.program('class1/deferred/postDeferredF.glsl',
             '#define FRONT_BLUR 1\n'+('#define AL_SENSOR_HDR 1\n' if enabled else ''),P.common_modules())
-        self.programs['combine']=r.program('class1/deferred/dofCombineF.glsl')
+        if enabled:
+            self.programs['dof_reduce']=r.program('class1/deferred/postDeferredF.glsl',
+                '#define FRONT_BLUR 1\n#define AL_SENSOR_HDR 1\n#define AL_SENSOR_DOF_REDUCE 1\n',P.common_modules())
+        self.programs['combine']=r.program('class1/deferred/dofCombineF.glsl','#define AL_SENSOR_HDR 1\n#define FRONT_BLUR 1\n' if enabled else '')
         self.programs['dio']=r.program('class1/deferred/ultimateDiopterGatherF.glsl',
             '#define DIOPTER_TAPS 24\n'+('#define AL_SENSOR_HDR 1\n' if enabled else ''),P.common_modules())
         self.programs['dio_comp']=r.program('class1/deferred/ultimateDiopterF.glsl',
             '#define AL_SENSOR_HDR 1\n' if enabled else '',P.common_modules())
         self.programs['fish']=r.program('class1/deferred/cineFisheyeF.glsl')
-        defs='#define SMAA_GLSL_4 1\n#define SMAA_PRESET_HIGH 1\n#define SMAA_PREDICATION 0\n#define SMAA_REPROJECTION 0\n'
+        defs='#define SMAA_GLSL_4 1\n#define SMAA_PRESET_HIGH 1\n#define SMAA_PREDICATION '+('0' if enabled else '1')+'\n#define SMAA_REPROJECTION 0\n'
         mods=('class1/environment/srgbF.glsl','class1/deferred/SMAA.glsl')
         for key,part in [('smaa_edge','EdgeDetect'),('smaa_weights','BlendWeights'),('smaa_blend','NeighborhoodBlend')]:
             self.programs[key]=r.program('class1/deferred/SMAA'+part+'F.glsl',
@@ -112,22 +116,27 @@ class Chain:
         draw('cameraEXPOSURE' if self.on else 'camera',self.dst[i],tex,self.defaults)
         def dof():
             nonlocal i
-            # A physically authored constant CoC fixture: max 4 px, half-res.
+            # A physically authored constant CoC fixture at the shipped scale.
             draw('cof',self.cof,[('diffuseRect',self.dst[i][0]),('depthMap',self.depth)],
-                dict(focal_distance=-8.,blur_constant=.002,tan_pixel_angle=.0002,magnification=1.,max_cof=4.,res_scale=.5))
+                dict(focal_distance=-8.,blur_constant=.002,tan_pixel_angle=.0002,magnification=1.,max_cof=4.,res_scale=self.scale))
+            cells=self.cof[0]
+            if self.on:
+                draw('dof_reduce',self.dst[1-i],[('diffuseRect',cells)],
+                    dict(screen_res=(w,h),max_cof=4.,res_scale=self.scale),(int(w*self.scale),int(h*self.scale)))
+                cells=self.dst[1-i][0]
             r.gl.color_mask(1,1,1,0)
-            draw('dof',self.dst[i],[('diffuseRect',self.cof[0])],
-                dict(screen_res=(w,h),max_cof=4.,res_scale=.5),(w//2,h//2))
+            draw('dof',self.dst[i],[('diffuseRect',cells)],
+                dict(screen_res=(w,h),max_cof=4.,res_scale=self.scale),(int(w*self.scale),int(h*self.scale)))
             r.gl.color_mask(1,1,1,1)
             draw('combine',self.dst[1-i],[('diffuseRect',self.dst[i][0]),('lightMap',self.cof[0])],
-                dict(max_cof=4.,res_scale=.5,dof_width=(w//2-1)/w,dof_height=(h//2-1)/h));i=1-i
+                dict(max_cof=4.,res_scale=self.scale,dof_width=(int(w*self.scale)-1)/w,dof_height=(int(h*self.scale)-1)/h));i=1-i
         def aa():
             nonlocal i
             detection=self.dst[i][0]
             if self.on:
-                draw('encode',self.encode,[('diffuseRect',detection)],{'sensor_aa_mode':2});detection=self.encode[0]
+                draw('encode',self.dst[1-i],[('diffuseRect',detection)],{'sensor_aa_mode':2});detection=self.dst[1-i][0]
             metrics={'SMAA_RT_METRICS':(1/w,1/h,w,h)}
-            draw('smaa_edge',self.edge,[('diffuseRect',detection)],metrics)
+            draw('smaa_edge',self.edge,[('diffuseRect',detection),('predicationTex',self.depth)],metrics)
             draw('smaa_weights',self.weights,[('edgesTex',self.edge[0]),('areaTex',self.area),('searchTex',self.search)],metrics)
             apply('smaa_blend',[('blendTex',self.weights[0])],metrics)
         def optics():
@@ -150,8 +159,7 @@ class Chain:
             optics();apply('vignette',uniforms=dict(uVignetteAmount=.2,uVignetteRadius=1.,uVignetteSoft=.5,
                 uVignetteFeather=1.,uVignetteAspect=(1.,1.)))
             aa();apply('sensor')
-            draw('cameraCAMERA',self.display[0],[('diffuseRect',self.dst[i][0])],self.defaults)
-            self.dst=self.display;i=0
+            draw('cameraCAMERA',self.dst[1-i],[('diffuseRect',self.dst[i][0])],self.defaults);i=1-i
         else:aa()
         c0=np.array([1.,1.,0.,0.],np.float32).view(np.uint32)
         c1=np.array([-1./(8.-3.*.4),0.,0.,0.],np.float32).view(np.uint32)
@@ -167,7 +175,7 @@ class Chain:
 def run(args):
     r=P.Runner();model=S.Model(P.OUT/'cost_model')
     before=gpu()
-    chains={False:Chain(r,model,False),True:Chain(r,model,True)}
+    chains={False:Chain(r,model,False,scale=args.dof_scale),True:Chain(r,model,True,scale=args.dof_scale)}
     samples={False:[],True:[]}; passes={False:{},True:{}}
     for index in range(args.samples+16):
         for enabled in ((False,True) if index%2==0 else (True,False)):
@@ -184,7 +192,9 @@ def run(args):
     ratio_ci=np.percentile(np.median((b/a)[indices],axis=1),[2.5,97.5]).tolist()
     shared=before!='unavailable' and int(before.split('%')[0].strip())>5
     status='PASS' if delta_ci[1]<=.8 else 'PENDING-QUIET' if shared else 'FAIL'
-    cost=dict(renderer=r.gl.renderer,before=before,after=gpu(),samples=samples,
+    cost=dict(dof_resolution_scale=args.dof_scale,renderer=r.gl.renderer,before=before,after=gpu(),samples=samples,
+       commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=P.ROOT,text=True,timeout=15).strip(),
+       sources={str(k):hashlib.sha256(v.encode()).hexdigest() for k,v in r.sources.items()},
        totals={str(k):dict(p50=float(np.median(v)),p95=float(np.percentile(v,95))) for k,v in samples.items()},
        delta_p50=float(np.median(delta)),delta_p95=float(np.percentile(delta,95)),
        paired_delta_p95_ci=delta_ci,paired_ratio_ci=ratio_ci,
@@ -199,7 +209,7 @@ def run(args):
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--worker',action='store_true')
-    ap.add_argument('--samples',type=int,default=128);ap.add_argument('--timeout',type=int,default=600)
+    ap.add_argument('--dof-scale',type=float,default=.7);ap.add_argument('--samples',type=int,default=128);ap.add_argument('--timeout',type=int,default=600)
     args=ap.parse_args()
     if args.worker:return run(args)
     return subprocess.run([sys.executable,__file__,'--worker',*sys.argv[1:]],cwd=P.ROOT,timeout=args.timeout).returncode

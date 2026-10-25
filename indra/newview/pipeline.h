@@ -222,13 +222,28 @@ public:
     void generateImpostor(LLVOAvatar* avatar, bool preview_avatar = false, bool for_profile = false, LLViewerObject* specific_attachment = nullptr);
 
     void bindScreenToTexture();
+    struct FinalizeGuides
+    {
+        LLPipeline& pipeline;
+        const glm::mat4& projection;
+        const glm::mat4& modelview;
+        void operator()(LLRenderTarget* target, U32 attachment = 0) const;
+    };
     void renderFinalize();
-    enum class SensorStage { Legacy, Exposure, Optics, Camera };
+    void renderActorPathGuides(LLRenderTarget* target, const glm::mat4& projection,
+        const glm::mat4& modelview, U32 attachment);
+    void renderFinalizeScene(bool hdr, const FinalizeGuides& guides);
+    void renderFinalizeLegacy(bool hdr, LLRenderTarget*& src, LLRenderTarget*& dst, bool& diopter,
+        bool& fisheye, const FinalizeGuides& guides);
+    void renderFinalizePresent(LLRenderTarget* src, bool diopter, bool fisheye);
+    enum class SensorStage { Legacy, Exposure, Optics, Camera, Godrays };
+    LLGLSLShader* colorCorrectProgram(SensorStage stage, U32 permutation);
     bool physicalCameraOrder() const { return mSensorPhysicalOrder; }
+    U32 sensorDiagnosticView(U32 view) const;
     bool ensureSensorTargets();
     void releaseSensorTargets();
     void renderSensor(LLRenderTarget* src, LLRenderTarget* dst);
-    void sensorAAEncode(LLRenderTarget* src);
+    void sensorAAEncode(LLRenderTarget* src, LLRenderTarget* dst);
     void sensorVignette(LLRenderTarget* src, LLRenderTarget* dst);
     void sensorWarpUniforms(LLGLSLShader& shader, bool diopter, bool fisheye, LLRenderTarget* src);
     void compositeSensorOverlay(LLRenderTarget* src, LLRenderTarget* dst,
@@ -541,7 +556,7 @@ public:
     static AlphaPolicy resolveAlphaPolicy(const LLFace* facep);
 
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
-    void generateSMAABuffers(LLRenderTarget* src);
+    void generateSMAABuffers(LLRenderTarget* src, LLRenderTarget* detection = nullptr);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
     void renderDoF(LLRenderTarget* src, LLRenderTarget* dst);
     void copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst);
@@ -1888,10 +1903,9 @@ public:
     //water distortion texture (refraction)
     // WP-B scratch is owned by the main presentation, independently of mRT.
     LLRenderTarget mSensorPing[2];
-    LLRenderTarget mSensorAA;
-    LLRenderTarget mSensorOverlayReference;
-    LLRenderTarget mSensorRoto; // affine addition, transmission (MRT)
-    LLRenderTarget mSensorGuides[2]; // black/white affine guide capture
+    LLRenderTarget mSensorRoto; // optional RGB10_A2 affine addition/transmission
+    bool mSensorWasEnabled = false;
+    bool mSensorDiagnostics = false;
     bool mSensorPhysicalOrder = false;
     bool mSensorNoise = false;
     bool mSensorAllocated = false;

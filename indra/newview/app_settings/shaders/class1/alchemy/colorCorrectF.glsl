@@ -34,7 +34,7 @@ out vec4 frag_color;
 // ---- Input ------------------------------------------------------------------
 uniform sampler2D diffuseRect;
 uniform sampler2D depthMap;
-#ifdef AL_SENSOR_OPTICS
+#if defined(AL_SENSOR_OPTICS) || defined(AL_SENSOR_GODRAYS)
 uniform sampler2D diffuseMap; // unexposed flare source, distinct from exposed diffuseRect
 #endif
 #ifdef LEGACY_GAMMA
@@ -58,6 +58,7 @@ uniform vec3  halation_tint;
 // =============================================================================
 
 vec3 linear_to_srgb(vec3 cl);
+vec3 srgb_to_linear(vec3 cl);
 vec3 clampHDRRange(vec3 color);
 
 #ifdef TONEMAP
@@ -114,6 +115,66 @@ vec3 legacyGamma(vec3 color) {
 // =============================================================================
 void main()
 {
+#ifdef AL_SENSOR_GODRAYS
+    vec4 scene = texture(diffuseRect, vary_fragcoord);
+    vec3 display_ray = max(texture(diffuseMap, vary_fragcoord).rgb, vec3(0.0));
+    if (all(equal(display_ray,vec3(0.0)))) { frag_color = scene; return; }
+    vec3 desired = clamp(linear_to_srgb(applyToneMap(scene.rgb))+display_ray, 0.0, 1.0);
+    if (all(greaterThanEqual(desired,vec3(1.0-1e-6))))
+    { frag_color = vec4(vec3(65000.0),scene.a); return; }
+    if (tonemap_type == 0 || tonemap_type == 1 || tonemap_type == 2 || tonemap_type == 6 || tonemap_type == 7)
+    {
+        // Neutral/ACES/AgX/LPM couple RGB channels. Solve their actual production
+        // transfer together; independent channel searches alter ray colour.
+        // At a clipped gamut boundary, retain the closest representable light.
+        vec3 value = max(scene.rgb,vec3(0.0))+max(srgb_to_linear(display_ray),vec3(1e-6));
+        for (int iteration=0; iteration<12; ++iteration)
+        {
+            vec3 code = linear_to_srgb(applyToneMap(value));
+            vec3 residual = desired-code;
+            float error = dot(residual,residual);
+            if (error < 1e-10) break;
+            vec3 step_size = max(value*0.01,vec3(1e-5));
+            mat3 jacobian;
+            for (int axis=0; axis<3; ++axis)
+            {
+                vec3 probe = value; probe[axis] += step_size[axis];
+                jacobian[axis] = (linear_to_srgb(applyToneMap(probe))-code)/step_size[axis];
+            }
+            mat3 normal = transpose(jacobian)*jacobian;
+            float damping = max(normal[0][0]+normal[1][1]+normal[2][2],1e-4)*1e-6;
+            vec3 step = inverse(normal+mat3(damping))*transpose(jacobian)*residual;
+            step = clamp(step,-max(value,vec3(0.1)),4.0*max(value,vec3(0.1)));
+            bool improved = false;
+            for (int trial=0; trial<4; ++trial)
+            {
+                vec3 candidate = clamp(value+step,vec3(0.0),vec3(65000.0));
+                vec3 delta = desired-linear_to_srgb(applyToneMap(candidate));
+                if (dot(delta,delta) < error) { value = candidate; improved = true; break; }
+                step *= 0.5;
+            }
+            if (!improved) break;
+        }
+        frag_color = vec4(value,scene.a);
+        return;
+    }
+    // Reinhard and the S-Log family are separable monotone transfers. Search
+    // in log light units so both deep shadows and HDR highlights retain
+    // precision. Filmic and GT also use separable channel curves.
+    vec3 lower = vec3(-24.0), upper = vec3(16.0);
+    for (int i=0; i<24; ++i)
+    {
+        vec3 mid = (lower+upper)*0.5;
+        vec3 code = linear_to_srgb(applyToneMap(exp2(mid)));
+        bvec3 below = lessThan(code, desired);
+        lower = mix(lower, mid, below);
+        upper = mix(mid, upper, below);
+    }
+    vec3 converted = min(max(exp2((lower+upper)*0.5), scene.rgb), vec3(65000.0));
+    frag_color = vec4(mix(scene.rgb, converted, greaterThan(display_ray,vec3(0.0))), scene.a);
+    return;
+#endif
+
     // === LINEAR SPACE ========================================================
 #ifdef AL_SENSOR_EXPOSURE
     vec4 scene = texture(diffuseRect, vary_fragcoord);

@@ -13976,6 +13976,19 @@ bool LLPipeline::updateCineFlareEnergy(const LLVector4* inputs, LLRenderTarget* 
     return ready;
 }
 
+LLGLSLShader* LLPipeline::colorCorrectProgram(SensorStage stage, U32 permutation)
+{
+        LLGLSLShader* color_correct_programs[8] = {
+            &gCGGammaProgram, &gCGLegacyGammaProgram,
+            &gCGColorgradeGammaProgram, &gCGColorgradeLegacyGammaProgram,
+            &gCGTonemapProgram, &gCGTonemapLegacyGammaProgram,
+            &gCGTonemapColorgradeProgram, &gCGTonemapColorgradeLegacyGammaProgram };
+        return stage == SensorStage::Legacy ? color_correct_programs[permutation] :
+            &gSensorCameraProgram[stage == SensorStage::Exposure ? 0 :
+                                  stage == SensorStage::Optics ? 1 : stage == SensorStage::Godrays ? 6 : 2 + permutation % 4];
+
+}
+
 void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                               bool apply_tonemap, bool apply_color_grade, SensorStage stage)
 {
@@ -14003,15 +14016,8 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
         // display-referred legacy curve would corrupt the log transfer function.
         static LLCachedControl<S32> tonemap_type(gSavedSettings, "AlchemyRenderTonemapType", 0);
         const bool legacy_curve = legacy_gamma && !(apply_tonemap && !no_post && tonemap_type() == 8);
-        LLGLSLShader* color_correct_programs[8] = {
-            &gCGGammaProgram, &gCGLegacyGammaProgram,
-            &gCGColorgradeGammaProgram, &gCGColorgradeLegacyGammaProgram,
-            &gCGTonemapProgram, &gCGTonemapLegacyGammaProgram,
-            &gCGTonemapColorgradeProgram, &gCGTonemapColorgradeLegacyGammaProgram };
         const U32 permutation = colorCorrectPermutation(apply_tonemap, apply_color_grade);
-        LLGLSLShader* shader = stage == SensorStage::Legacy ? color_correct_programs[permutation] :
-            &gSensorCameraProgram[stage == SensorStage::Exposure ? 0 :
-                                  stage == SensorStage::Optics ? 1 : 2 + permutation % 4];
+        LLGLSLShader* shader = colorCorrectProgram(stage, permutation);
 
         shader->bind();
 
@@ -14019,6 +14025,10 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
         S32 depth_channel = shader->bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
         S32 exposure_channel = shader->bindTexture(LLShaderMgr::EXPOSURE_MAP, &mExposureMap);
         S32 sensor_flare_channel = -1;
+        if (stage == SensorStage::Godrays)
+        {
+            sensor_flare_channel = shader->bindTexture(LLShaderMgr::DIFFUSE_MAP, &mRT->deferredLight, false, LLTexUnit::TFO_POINT);
+        }
         if (stage == SensorStage::Optics)
         {
             sensor_flare_channel = shader->bindTexture(LLShaderMgr::DIFFUSE_MAP, &mRT->screen, false, LLTexUnit::TFO_BILINEAR);
@@ -17150,8 +17160,9 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
                                       llclamp((F32)f_falloff, 0.5f, 40.f));
     composite_prog.uniform4f(LLShaderMgr::DIOPTER_COMP, seam_px,
                                       llclamp((F32)c_seam_amt, 0.f, 1.f), ca_mag, edge_vig);
+    if (mSensorPhysicalOrder) composite_prog.uniform1i(LLStaticHashedString("sensor_diagnostics"), mSensorDiagnostics ? 1 : 0);
     composite_prog.uniform4f(LLShaderMgr::DIOPTER_COMP2, rim_caustic, rim_darken,
-                                      master_blend, (F32)llclamp((U32)debug_view, 0U, 4U));
+                                      master_blend, (F32)sensorDiagnosticView(llclamp((U32)debug_view, 0U, 4U)));
     composite_prog.uniform4f(LLShaderMgr::DIOPTER_GHOST, ghost_count, ghost_spacing,
                                       radial_smear, tangent_smear);
     composite_prog.uniform4f(LLShaderMgr::DIOPTER_GHOST2,
@@ -17826,8 +17837,9 @@ bool LLPipeline::renderUltimateKaleidoscope(LLRenderTarget* src, LLRenderTarget*
                    0.f, 0.f);
     prog.uniform4f(LLShaderMgr::KAL_WAVE, mo.mWavePhase, mo.mWaveGain,
                    look.mWaveAmp, look.mWaveFreq);
+    if (mSensorPhysicalOrder) prog.uniform1i(LLStaticHashedString("sensor_diagnostics"), mSensorDiagnostics ? 1 : 0);
     prog.uniform4f(LLShaderMgr::KAL_LOOK, look.mSeamSoften, master_blend,
-                   (F32)llclamp((U32)kal_debug, 0U, 3U), 0.f);
+                   (F32)sensorDiagnosticView(llclamp((U32)kal_debug, 0U, 3U)), 0.f);
     prog.uniform4f(LLShaderMgr::KAL_CELL, look.mCellSizeVar, look.mCellBreathe,
                    look.mCellSubdiv, look.mCellMerge);
     prog.uniform4f(LLShaderMgr::KAL_CELL2, look.mCellTint, 0.f, 0.f, 0.f);
@@ -17859,9 +17871,8 @@ void LLPipeline::applyFXAA(LLRenderTarget* src, LLRenderTarget* dst)
             S32 width = dst->getWidth();
             S32 height = dst->getHeight();
 
-            LLRenderTarget& aa_map = mSensorPhysicalOrder ? mSensorAA : mFXAAMap;
-            if (mSensorPhysicalOrder) sensorAAEncode(src);
-            else
+            LLRenderTarget& aa_map = mSensorPhysicalOrder ? *src : mFXAAMap;
+            if (!mSensorPhysicalOrder)
             {
                 // bake out texture2D with RGBL for FXAA shader
                 mFXAAMap.bindTarget();
@@ -17935,11 +17946,11 @@ void LLPipeline::applyFXAA(LLRenderTarget* src, LLRenderTarget* dst)
     }
 }
 
-void LLPipeline::generateSMAABuffers(LLRenderTarget* src)
+void LLPipeline::generateSMAABuffers(LLRenderTarget* src, LLRenderTarget* detection)
 {
     llassert(!gCubeSnapshot);
-    if (mSensorPhysicalOrder) sensorAAEncode(src);
-    LLRenderTarget* detection = mSensorPhysicalOrder ? &mSensorAA : src;
+    if (mSensorPhysicalOrder) sensorAAEncode(src, detection);
+    else detection = src;
     bool multisample = RenderFSAAType == 2 && gSMAAEdgeDetectProgram[0].isComplete() && mFXAAMap.isComplete() && mSMAABlendBuffer.isComplete();
 
     // Present everything.
@@ -17965,7 +17976,7 @@ void LLPipeline::generateSMAABuffers(LLRenderTarget* src)
         {
             // Bind setup:
             LLRenderTarget& dest = mFXAAMap;
-            LLGLSLShader& edge_shader = gSMAAEdgeDetectProgram[fsaa_quality];
+            LLGLSLShader& edge_shader = mSensorPhysicalOrder ? gSensorSMAAEdgeProgram[fsaa_quality] : gSMAAEdgeDetectProgram[fsaa_quality];
 
             dest.bindTarget();
             dest.clear(use_stencil ? (GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT) : GL_COLOR_BUFFER_BIT);
@@ -17989,7 +18000,7 @@ void LLPipeline::generateSMAABuffers(LLRenderTarget* src)
             }
 
             S32 pred_channel = -1;
-            if (use_predication)
+            if (use_predication && !mSensorPhysicalOrder)
             {
                 pred_channel = edge_shader.enableTexture(LLShaderMgr::SMAA_PREDICATION_TEX, mRT->deferredScreen.getUsage());
                 if (pred_channel > -1)
@@ -20153,26 +20164,27 @@ bool LLPipeline::shouldRunRotoInkAt(S32 layer) const
 // only runs when shadows are on.
 void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
 {
+    LLGLSLShader& ray_program = mSensorPhysicalOrder ? gSensorGodrayProgram : gVolumetricLightProgram;
     if (RenderVolumetricLighting && RenderShadowDetail > 0 && !gCubeSnapshot &&
         !sPrismPreviewRender &&
-        gVolumetricLightProgram.isComplete())
+        ray_program.isComplete())
     {
         LL_PROFILE_GPU_ZONE("renderVolumetric");
         dst->bindTarget();
         gGL.setColorMask(true, false);
 
-        bindDeferredShader(gVolumetricLightProgram);
-        gVolumetricLightProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, LLTexUnit::TFO_POINT);
+        bindDeferredShader(ray_program);
+        ray_program.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, LLTexUnit::TFO_POINT);
 
-        gVolumetricLightProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)src->getWidth(), (GLfloat)src->getHeight());
-        gVolumetricLightProgram.uniform1i(LLShaderMgr::GODRAY_RES, RenderVolumetricLightingResolution);
-        gVolumetricLightProgram.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, RenderVolumetricLightingMultiplier);
-        gVolumetricLightProgram.uniform1f(LLShaderMgr::FALLOFF_MULTIPLIER, RenderVolumetricLightingFalloffMultiplier);
+        ray_program.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)src->getWidth(), (GLfloat)src->getHeight());
+        ray_program.uniform1i(LLShaderMgr::GODRAY_RES, RenderVolumetricLightingResolution);
+        ray_program.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, RenderVolumetricLightingMultiplier);
+        ray_program.uniform1f(LLShaderMgr::FALLOFF_MULTIPLIER, RenderVolumetricLightingFalloffMultiplier);
 
         mScreenTriangleVB->setBuffer();
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
 
-        unbindDeferredShader(gVolumetricLightProgram);
+        unbindDeferredShader(ray_program);
         gGL.setColorMask(true, true);
         dst->flush();
     }
@@ -25579,6 +25591,24 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
             U32 dof_width = (U32)(mRT->screen.getWidth() * CameraDoFResScale);
             U32 dof_height = (U32)(mRT->screen.getHeight() * CameraDoFResScale);
 
+            if (mSensorPhysicalOrder)
+            {
+                // Cache conservative source cells once. The output target is
+                // free until combine; gather then reuses src. No extra storage.
+                dst->bindTarget();
+                glViewport(0, 0, dof_width, dof_height);
+                auto& reduce_program = gSensorDoFReduceProgram[gSavedSettings.getBOOL("RenderDepthOfFieldNearBlur") ? 1 : 0];
+                reduce_program.bind();
+                reduce_program.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, &mRT->deferredLight, LLTexUnit::TFO_POINT);
+                reduce_program.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (F32)dst->getWidth(), (F32)dst->getHeight());
+                reduce_program.uniform1f(LLShaderMgr::DOF_MAX_COF, adj_cof);
+                reduce_program.uniform1f(LLShaderMgr::DOF_RES_SCALE, CameraDoFResScale);
+                mScreenTriangleVB->setBuffer();
+                mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+                reduce_program.unbind();
+                dst->flush();
+            }
+
             { // perform DoF sampling at half-res (preserve alpha channel)
                 src->bindTarget();
                 glViewport(0, 0, dof_width, dof_height);
@@ -25590,7 +25620,7 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
                     (RenderDepthOfFieldNearBlur ? gDeferredPostProgram : gDeferredPostProgramNoNear);
 
                 post_program.bind();
-                post_program.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, &mRT->deferredLight, LLTexUnit::TFO_POINT);
+                post_program.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, mSensorPhysicalOrder ? dst : &mRT->deferredLight, LLTexUnit::TFO_POINT);
 
                 post_program.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)dst->getWidth(), (GLfloat)dst->getHeight());
                 post_program.uniform1f(LLShaderMgr::DOF_MAX_COF, adj_cof);
@@ -25610,20 +25640,21 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
                 dst->bindTarget();
                 glViewport(0, 0, dst->getWidth(), dst->getHeight());
 
-                gDeferredDoFCombineProgram.bind();
-                gDeferredDoFCombineProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, LLTexUnit::TFO_POINT);
-                gDeferredDoFCombineProgram.bindTexture(LLShaderMgr::DEFERRED_LIGHT, &mRT->deferredLight, LLTexUnit::TFO_POINT);
+                LLGLSLShader& combine_program = mSensorPhysicalOrder ? gSensorDoFCombineProgram[gSavedSettings.getBOOL("RenderDepthOfFieldNearBlur") ? 1 : 0] : gDeferredDoFCombineProgram;
+                combine_program.bind();
+                combine_program.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, LLTexUnit::TFO_POINT);
+                combine_program.bindTexture(LLShaderMgr::DEFERRED_LIGHT, &mRT->deferredLight, LLTexUnit::TFO_POINT);
 
-                gDeferredDoFCombineProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)dst->getWidth(), (GLfloat)dst->getHeight());
-                gDeferredDoFCombineProgram.uniform1f(LLShaderMgr::DOF_MAX_COF, adj_cof);
-                gDeferredDoFCombineProgram.uniform1f(LLShaderMgr::DOF_RES_SCALE, CameraDoFResScale);
-                gDeferredDoFCombineProgram.uniform1f(LLShaderMgr::DOF_WIDTH, (dof_width - 1) / (F32)src->getWidth());
-                gDeferredDoFCombineProgram.uniform1f(LLShaderMgr::DOF_HEIGHT, (dof_height - 1) / (F32)src->getHeight());
+                combine_program.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, (GLfloat)dst->getWidth(), (GLfloat)dst->getHeight());
+                combine_program.uniform1f(LLShaderMgr::DOF_MAX_COF, adj_cof);
+                combine_program.uniform1f(LLShaderMgr::DOF_RES_SCALE, CameraDoFResScale);
+                combine_program.uniform1f(LLShaderMgr::DOF_WIDTH, (dof_width - 1) / (F32)src->getWidth());
+                combine_program.uniform1f(LLShaderMgr::DOF_HEIGHT, (dof_height - 1) / (F32)src->getHeight());
 
                 mScreenTriangleVB->setBuffer();
                 mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
 
-                gDeferredDoFCombineProgram.unbind();
+                combine_program.unbind();
 
                 dst->flush();
             }
@@ -25836,14 +25867,15 @@ void LLPipeline::renderRigRimWrap(bool debug_only)
 }
 
 
+U32 LLPipeline::sensorDiagnosticView(U32 view) const
+{
+    return mSensorPhysicalOrder && !mSensorDiagnostics ? 0U : view;
+}
+
 void LLPipeline::releaseSensorTargets()
 {
     if (!mSensorAllocated) return;
-    // Detach the guide targets before releasing the shared scene depth owner.
-    for (auto& target : mSensorGuides) target.release();
     for (auto& target : mSensorPing) target.release();
-    mSensorAA.release();
-    mSensorOverlayReference.release();
     mSensorRoto.release();
     mSensorAllocated = false;
 }
@@ -25852,22 +25884,30 @@ bool LLPipeline::ensureSensorTargets()
 {
     const U32 width = mMainRT.screen.getWidth(), height = mMainRT.screen.getHeight();
     if (!LLViewerShaderMgr::instance()->loadSensorShaders()) return false;
+    const bool layers = shouldRunRotoInkAt(ROTOINK_LAYER_OVERLAY);
     if (mSensorAllocated && mSensorPing[0].getWidth() == width &&
-        mSensorPing[0].getHeight() == height) return true;
+        mSensorPing[0].getHeight() == height)
+    {
+        if (!layers) { if (mSensorRoto.isComplete()) mSensorRoto.release(); return true; }
+        if (mSensorRoto.isComplete()) return true;
+        bool ok = mSensorRoto.allocate(width, height, GL_RGB10_A2, false);
+        if (ok) ok = mSensorRoto.addColorAttachment(GL_RGB10_A2);
+        if (!ok) releaseSensorTargets();
+        return ok;
+    }
     releaseSensorTargets();
     if (width == 0 || height == 0) return false;
     // Set before the first allocation so a partial failure releases everything.
     mSensorAllocated = true;
     bool ok = true;
     for (auto& target : mSensorPing) ok = target.allocate(width, height, GL_RGBA16F, false) && ok;
-    ok = mSensorAA.allocate(width, height, GL_RGBA16F, false) && ok;
-    ok = mSensorOverlayReference.allocate(width, height, GL_RGBA16F, false) && ok;
-    ok = mSensorRoto.allocate(width, height, GL_RGBA16F, false) && ok;
-    if (ok) ok = mSensorRoto.addColorAttachment(GL_RGBA16F);
-    for (auto& target : mSensorGuides)
+    // Display-encoded affine coefficients are bounded [0,1]; alpha is unused.
+    // Roto samples scene depth, so its framebuffer MUST NOT share that depth.
+    // Guides instead reuse the existing display pair after stage C.
+    if (layers)
     {
-        ok = target.allocate(width, height, GL_RGBA16F, false) && ok;
-        if (ok) mMainRT.deferredScreen.shareDepthBuffer(target);
+        ok = mSensorRoto.allocate(width, height, GL_RGB10_A2, false) && ok;
+        if (ok) ok = mSensorRoto.addColorAttachment(GL_RGB10_A2);
     }
     if (!ok)
     {
@@ -25879,10 +25919,11 @@ bool LLPipeline::ensureSensorTargets()
     return true;
 }
 
-void LLPipeline::sensorAAEncode(LLRenderTarget* src)
+
+void LLPipeline::sensorAAEncode(LLRenderTarget* src, LLRenderTarget* dst)
 {
     LL_PROFILE_GPU_ZONE("sensor AA detection encode");
-    mSensorAA.bindTarget();
+    dst->bindTarget();
     gSensorAAEncodeProgram.bind();
     gSensorAAEncodeProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, false, LLTexUnit::TFO_BILINEAR);
     static LLStaticHashedString mode("sensor_aa_mode");
@@ -25890,7 +25931,7 @@ void LLPipeline::sensorAAEncode(LLRenderTarget* src)
     mScreenTriangleVB->setBuffer();
     mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
     gSensorAAEncodeProgram.unbind();
-    mSensorAA.flush();
+    dst->flush();
 }
 
 void LLPipeline::renderSensor(LLRenderTarget* src, LLRenderTarget* dst)
@@ -26013,8 +26054,8 @@ void LLPipeline::compositeSensorOverlay(LLRenderTarget* src, LLRenderTarget* dst
     auto& shader = gSensorOverlayProgram;
     shader.bind();
     shader.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, false, LLTexUnit::TFO_POINT);
-    shader.bindTexture(LLShaderMgr::DIFFUSE_MAP, guides ? &mSensorGuides[0] : &mSensorRoto, false, LLTexUnit::TFO_BILINEAR);
-    if (guides) shader.bindTexture(LLShaderMgr::DEFERRED_EMISSIVE, &mSensorGuides[1], false, LLTexUnit::TFO_BILINEAR);
+    shader.bindTexture(LLShaderMgr::DIFFUSE_MAP, guides ? &mRT->postPongMap : &mSensorRoto, false, LLTexUnit::TFO_BILINEAR);
+    if (guides) shader.bindTexture(LLShaderMgr::DEFERRED_EMISSIVE, &mRT->postPingMap, false, LLTexUnit::TFO_BILINEAR);
     else
     {
         const S32 channel = shader.enableTexture(LLShaderMgr::DEFERRED_EMISSIVE, mSensorRoto.getUsage());
@@ -26056,9 +26097,194 @@ void LLPipeline::renderFinalize()
     // matrices and shared scene depth used by the original depth-aware pass.
     const glm::mat4 actor_path_projection = get_current_projection();
     const glm::mat4 actor_path_modelview = get_current_modelview();
-    auto render_actor_path_guides = [&](LLRenderTarget* target)
+    const FinalizeGuides render_actor_path_guides{*this, actor_path_projection, actor_path_modelview};
+
+    // ReShade decouple: assume no raw-scene capture until applyOnLensFilters
+    // actually performs one this frame. Reset unconditionally (including the
+    // non-HDR path) so a stale snapshot from a previous frame can never be
+    // published by the bridge.
+    mReShadeRawSceneValid = false;
+
+    gGL.color4f(1, 1, 1, 1);
+    LLGLDepthTest depth(GL_FALSE);
+    LLGLDisable blend(GL_BLEND);
+    LLGLDisable cull(GL_CULL_FACE);
+
+    enableLightsFullbright();
+
+    gGL.setColorMask(true, true);
+    glClearColor(0, 0, 0, 0);
+
+    static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
+    bool hdr = worldHDREnabled();
+    static LLCachedControl<bool> sensor_enabled(gSavedSettings, "CineSensorEnabled", false);
+    static LLCachedControl<bool> physical_order(gSavedSettings, "CineSensorPhysicalOrderEnabled", true);
+    static LLCachedControl<bool> sensor_noise(gSavedSettings, "CineSensorNoiseEnabled", true);
+    if (!sensor_enabled() && mSensorWasEnabled)
     {
-        if (!target || gCubeSnapshot || LLPipeline::sPrismLensRender ||
+        releaseSensorTargets();
+        mSensorFailed = false;
+        mSensorFrame = 0;
+        mSensorLastViewerFrame = ~0u;
+        mSensorClockStarted = false;
+    }
+    const bool sensor_context = sensor_enabled() && physical_order() && hdr && mRT == &mMainRT && !gCubeSnapshot &&
+        !sPrismLensRender && !sPrismPreviewRender && !sImpostorRender && !sRenderingHUDs &&
+        colorCorrectWillApplyExposure(hdr);
+    mSensorWasEnabled = sensor_enabled();
+    mSensorPhysicalOrder = sensor_context && !mSensorFailed;
+    if (mSensorPhysicalOrder && !ensureSensorTargets())
+    {
+        mSensorPhysicalOrder = false;
+        mSensorFailed = true; // retry on disable/re-enable or screen reallocation
+    }
+    mSensorNoise = mSensorPhysicalOrder && sensor_noise();
+    renderFinalizeScene(hdr, render_actor_path_guides);
+
+    LLRenderTarget* sourceBuffer = nullptr;
+    LLRenderTarget* targetBuffer = nullptr;
+    bool diopter_warped = false;
+    bool fisheye_warped = false;
+    if (mSensorPhysicalOrder)
+    {
+        // Stage A: expose exactly once, then scene effects and linear optics.
+        sourceBuffer = &mSensorPing[0];
+        targetBuffer = &mSensorPing[1];
+        colorCorrect(&mRT->screen, sourceBuffer, true, false, SensorStage::Exposure);
+        if (RenderVolumetricLighting && RenderShadowDetail > 0 && gVolumetricLightProgram.isComplete())
+        {
+            // Raymarch in the original display units, then explicitly convert
+            // that increment into already-exposed linear camera units.
+            renderVolumetric(sourceBuffer, &mRT->deferredLight);
+            colorCorrect(sourceBuffer, targetBuffer, true, false, SensorStage::Godrays);
+            std::swap(sourceBuffer, targetBuffer);
+        }
+        if (BDMergeMotionBlur && mVelocityMap.isComplete() && gDeferredMotionBlurProgram.isComplete())
+        {
+            renderMotionBlurComposite(sourceBuffer, targetBuffer);
+            std::swap(sourceBuffer, targetBuffer);
+        }
+        static LLCachedControl<bool> dof_in_edit(gSavedSettings, "RenderDepthOfFieldInEditMode", false);
+        if (RenderDepthOfField && (dof_in_edit || !LLToolMgr::getInstance()->inBuildMode()))
+        {
+            renderDoF(sourceBuffer, targetBuffer);
+            std::swap(sourceBuffer, targetBuffer);
+        }
+        // Bloom, CA and flare use the UNWARPED scene/depth. Bloom receives the
+        // same exposure as stage A; stage C has neither bloom nor exposure.
+        colorCorrect(sourceBuffer, targetBuffer, true, false, SensorStage::Optics);
+        std::swap(sourceBuffer, targetBuffer);
+        if (RlvActions::hasBehaviour(RLV_BHVR_SETSPHERE))
+        {
+            LLShaderEffectParams params(sourceBuffer, targetBuffer, false);
+            LLVfxManager::instance().runEffect(EVisualEffect::RlvSphere, &params);
+            std::swap(sourceBuffer, targetBuffer);
+        }
+        const bool roto_overlay = shouldRunRotoInkAt(ROTOINK_LAYER_OVERLAY);
+        if (roto_overlay)
+        {
+            colorCorrect(sourceBuffer, targetBuffer, true, true, SensorStage::Camera);
+            mSensorRoto.bindTarget();
+            const F32 zero[4] = {0.f,0.f,0.f,0.f}, one[4] = {1.f,1.f,1.f,1.f};
+            glClearBufferfv(GL_COLOR, 0, zero); glClearBufferfv(GL_COLOR, 1, one);
+            mSensorRoto.flush();
+            renderCineOutline(targetBuffer, nullptr, nullptr, true);
+        }
+        if (gSavedSettings.getBOOL("CineDiopterEnabled") && mDiopterMap.isComplete())
+        {
+            diopter_warped = gSavedSettings.getU32("CineDiopterToolMode") == 1 ?
+                renderUltimateKaleidoscope(sourceBuffer, targetBuffer) : renderUltimateDiopter(sourceBuffer, targetBuffer);
+            std::swap(sourceBuffer, targetBuffer);
+        }
+        fisheye_warped = gSavedSettings.getBOOL("CineFisheyeEnabled") && gCineFisheyeProgram.isComplete();
+        if (fisheye_warped)
+        {
+            renderCineFisheye(sourceBuffer, targetBuffer);
+            std::swap(sourceBuffer, targetBuffer);
+        }
+        sensorVignette(sourceBuffer, targetBuffer);
+        std::swap(sourceBuffer, targetBuffer);
+        // AA detects perceptual edges and gathers the original linear radiance.
+        if (RenderFSAAType == 1)
+        {
+            sensorAAEncode(sourceBuffer, targetBuffer);
+            applyFXAA(targetBuffer, sourceBuffer);
+        }
+        else if (RenderFSAAType == 2)
+        {
+            generateSMAABuffers(sourceBuffer, targetBuffer);
+            applySMAA(sourceBuffer, targetBuffer); std::swap(sourceBuffer, targetBuffer);
+        }
+        // Stage B: only this final main-view presentation collects sensor noise.
+        renderSensor(sourceBuffer, targetBuffer);
+        std::swap(sourceBuffer, targetBuffer);
+        // Stage C: camera processing, then sharpening, then the warped Roto layer.
+        colorCorrect(sourceBuffer, targetBuffer, true, true, SensorStage::Camera);
+        std::swap(sourceBuffer, targetBuffer);
+        static LLCachedControl<F32> sharpness(gSavedSettings, "RenderCASSharpness", .4f);
+        if (sharpness > 0.f && gCASProgram.isComplete())
+        {
+            applyCAS(sourceBuffer, targetBuffer); std::swap(sourceBuffer, targetBuffer);
+        }
+        if (roto_overlay)
+        {
+            compositeSensorOverlay(sourceBuffer, targetBuffer, diopter_warped, fisheye_warped, false);
+            std::swap(sourceBuffer, targetBuffer);
+        }
+        // Stage D: affine guide capture preserves the guide renderer's blend
+        // modes and scene-depth occlusion without sending guides to the sensor.
+        static LLCachedControl<bool> show_heading(gSavedSettings, "ActorMoverShowHeading", true);
+        const bool guide_work =
+            (show_heading && (LLFloaterReg::instanceVisible("actor_mover") ||
+                              LLFloaterReg::instanceVisible("director") ||
+                              LLFloaterReg::instanceVisible("prop_mover"))) ||
+            LLToolMgr::getInstance()->getCurrentTool() == (LLTool*)ALToolPathEdit::getInstance();
+        if (guide_work && hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_UI) && gViewerWindow->getUIVisibility())
+        {
+            // postPing already shares scene depth. Capture black/white there,
+            // saving black in postPong, which has no depth attachment. The Roto
+            // MRT remains depth-free throughout its sampling lifetime.
+            for (U32 i = 0; i < 2; ++i)
+            {
+                mRT->postPingMap.bindTarget();
+                const F32 background[4] = {(F32)i,(F32)i,(F32)i,1.f};
+                glClearBufferfv(GL_COLOR, 0, background);
+                mRT->postPingMap.flush();
+                render_actor_path_guides(&mRT->postPingMap);
+                if (i == 0) copyRenderTarget(&mRT->postPingMap, &mRT->postPongMap);
+            }
+            compositeSensorOverlay(sourceBuffer, targetBuffer, diopter_warped, fisheye_warped, true);
+            std::swap(sourceBuffer, targetBuffer);
+        }
+        if (gSavedSettings.getBOOL("CineDiopterEnabled") && mDiopterMap.isComplete() &&
+            gSavedSettings.getU32(gSavedSettings.getU32("CineDiopterToolMode") == 1 ?
+                "CineDiopterKalDebugView" : "CineDiopterDebugView") != 0)
+        {
+            mSensorDiagnostics = true;
+            if (gSavedSettings.getU32("CineDiopterToolMode") == 1)
+                renderUltimateKaleidoscope(sourceBuffer, targetBuffer);
+            else renderUltimateDiopter(sourceBuffer, targetBuffer);
+            mSensorDiagnostics = false;
+            std::swap(sourceBuffer, targetBuffer);
+        }
+    }
+    else
+    {
+        renderFinalizeLegacy(hdr, sourceBuffer, targetBuffer, diopter_warped, fisheye_warped, render_actor_path_guides);
+    }
+
+    renderFinalizePresent(sourceBuffer, diopter_warped, fisheye_warped);
+}
+
+void LLPipeline::FinalizeGuides::operator()(LLRenderTarget* target, U32 attachment) const
+{
+    pipeline.renderActorPathGuides(target, projection, modelview, attachment);
+}
+
+void LLPipeline::renderActorPathGuides(LLRenderTarget* target, const glm::mat4& actor_path_projection,
+    const glm::mat4& actor_path_modelview, U32 attachment)
+{
+    if (!target || gCubeSnapshot || LLPipeline::sPrismLensRender ||
             !hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) ||
             !gViewerWindow->getUIVisibility())
         {
@@ -26068,6 +26294,7 @@ void LLPipeline::renderFinalize()
         const glm::mat4 saved_projection = get_current_projection();
         const glm::mat4 saved_modelview = get_current_modelview();
         target->bindTarget();
+        if (mSensorPhysicalOrder) glDrawBuffer(GL_COLOR_ATTACHMENT0 + attachment);
         gGL.matrixMode(LLRender::MM_PROJECTION);
         gGL.loadMatrix(glm::value_ptr(actor_path_projection));
         gGL.matrixMode(LLRender::MM_MODELVIEW);
@@ -26092,47 +26319,12 @@ void LLPipeline::renderFinalize()
         gGL.loadMatrix(glm::value_ptr(saved_projection));
         gGL.matrixMode(LLRender::MM_MODELVIEW);
         gGL.loadMatrix(glm::value_ptr(saved_modelview));
-    };
 
-    // ReShade decouple: assume no raw-scene capture until applyOnLensFilters
-    // actually performs one this frame. Reset unconditionally (including the
-    // non-HDR path) so a stale snapshot from a previous frame can never be
-    // published by the bridge.
-    mReShadeRawSceneValid = false;
+}
 
-    gGL.color4f(1, 1, 1, 1);
-    LLGLDepthTest depth(GL_FALSE);
-    LLGLDisable blend(GL_BLEND);
-    LLGLDisable cull(GL_CULL_FACE);
-
-    enableLightsFullbright();
-
-    gGL.setColorMask(true, true);
-    glClearColor(0, 0, 0, 0);
-
-    static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
-    bool hdr = worldHDREnabled();
-    static LLCachedControl<bool> sensor_enabled(gSavedSettings, "CineSensorEnabled", false);
-    static LLCachedControl<bool> physical_order(gSavedSettings, "CineSensorPhysicalOrderEnabled", true);
-    static LLCachedControl<bool> sensor_noise(gSavedSettings, "CineSensorNoiseEnabled", true);
-    if (!sensor_enabled())
-    {
-        releaseSensorTargets();
-        mSensorFailed = false;
-        mSensorFrame = 0;
-        mSensorLastViewerFrame = ~0u;
-        mSensorClockStarted = false;
-    }
-    const bool sensor_context = hdr && mRT == &mMainRT && !gCubeSnapshot &&
-        !sPrismLensRender && !sPrismPreviewRender && !sImpostorRender && !sRenderingHUDs &&
-        colorCorrectWillApplyExposure(hdr);
-    mSensorPhysicalOrder = sensor_enabled() && physical_order() && sensor_context && !mSensorFailed;
-    if (mSensorPhysicalOrder && !ensureSensorTargets())
-    {
-        mSensorPhysicalOrder = false;
-        mSensorFailed = true; // retry on disable/re-enable or screen reallocation
-    }
-    mSensorNoise = mSensorPhysicalOrder && sensor_noise();
+void LLPipeline::renderFinalizeScene(bool hdr, const FinalizeGuides& guides)
+{
+    auto render_actor_path_guides = [&](LLRenderTarget* target) { guides(target, 0); };
     if (hdr)
     {
         copyScreenSpaceReflections(&mRT->screen, &mSceneMap,
@@ -26297,12 +26489,12 @@ void LLPipeline::renderFinalize()
         glGetIntegerv(GL_VIEWPORT, saved_viewport);
         gGL.matrixMode(LLRender::MM_PROJECTION);
         gGL.pushMatrix();
-        gGL.loadMatrix(glm::value_ptr(actor_path_projection));
+        gGL.loadMatrix(glm::value_ptr(guides.projection));
         gGL.matrixMode(LLRender::MM_MODELVIEW);
         gGL.pushMatrix();
-        gGL.loadMatrix(glm::value_ptr(actor_path_modelview));
-        memcpy(gGLProjection, glm::value_ptr(actor_path_projection), sizeof(saved_projection));
-        memcpy(gGLModelView, glm::value_ptr(actor_path_modelview), sizeof(saved_modelview));
+        gGL.loadMatrix(glm::value_ptr(guides.modelview));
+        memcpy(gGLProjection, glm::value_ptr(guides.projection), sizeof(saved_projection));
+        memcpy(gGLModelView, glm::value_ptr(guides.modelview), sizeof(saved_modelview));
         gGLLastMatrix = nullptr;
         glViewport(0, 0, mRT->deferredScreen.getWidth(), mRT->deferredScreen.getHeight());
         renderSilCover(1);
@@ -26347,118 +26539,13 @@ void LLPipeline::renderFinalize()
         if (!mSensorPhysicalOrder) render_actor_path_guides(&mRT->screen);
     }
 
-    LLRenderTarget* sourceBuffer = nullptr;
-    LLRenderTarget* targetBuffer = nullptr;
-    bool diopter_warped = false;
-    bool fisheye_warped = false;
-    if (mSensorPhysicalOrder)
-    {
-        // Stage A: expose exactly once, then scene effects and linear optics.
-        sourceBuffer = &mSensorPing[0];
-        targetBuffer = &mSensorPing[1];
-        colorCorrect(&mRT->screen, sourceBuffer, true, false, SensorStage::Exposure);
-        if (RenderVolumetricLighting && RenderShadowDetail > 0 && gVolumetricLightProgram.isComplete())
-        {
-            // Godrays were formerly added after exposure. Their multiplier stays
-            // in presentation units here, so exposure cannot multiply it again.
-            renderVolumetric(sourceBuffer, targetBuffer);
-            std::swap(sourceBuffer, targetBuffer);
-        }
-        if (BDMergeMotionBlur && mVelocityMap.isComplete() && gDeferredMotionBlurProgram.isComplete())
-        {
-            renderMotionBlurComposite(sourceBuffer, targetBuffer);
-            std::swap(sourceBuffer, targetBuffer);
-        }
-        static LLCachedControl<bool> dof_in_edit(gSavedSettings, "RenderDepthOfFieldInEditMode", false);
-        if (RenderDepthOfField && (dof_in_edit || !LLToolMgr::getInstance()->inBuildMode()))
-        {
-            renderDoF(sourceBuffer, targetBuffer);
-            std::swap(sourceBuffer, targetBuffer);
-        }
-        // Bloom, CA and flare use the UNWARPED scene/depth. Bloom receives the
-        // same exposure as stage A; stage C has neither bloom nor exposure.
-        colorCorrect(sourceBuffer, targetBuffer, true, false, SensorStage::Optics);
-        std::swap(sourceBuffer, targetBuffer);
-        if (RlvActions::hasBehaviour(RLV_BHVR_SETSPHERE))
-        {
-            LLShaderEffectParams params(sourceBuffer, targetBuffer, false);
-            LLVfxManager::instance().runEffect(EVisualEffect::RlvSphere, &params);
-            std::swap(sourceBuffer, targetBuffer);
-        }
-        const bool roto_overlay = shouldRunRotoInkAt(ROTOINK_LAYER_OVERLAY);
-        if (roto_overlay)
-        {
-            colorCorrect(sourceBuffer, &mSensorOverlayReference, true, true, SensorStage::Camera);
-            mSensorRoto.bindTarget();
-            const F32 zero[4] = {0.f,0.f,0.f,0.f}, one[4] = {1.f,1.f,1.f,1.f};
-            glClearBufferfv(GL_COLOR, 0, zero); glClearBufferfv(GL_COLOR, 1, one);
-            mSensorRoto.flush();
-            renderCineOutline(&mSensorOverlayReference, nullptr, nullptr, true);
-        }
-        if (gSavedSettings.getBOOL("CineDiopterEnabled") && mDiopterMap.isComplete())
-        {
-            diopter_warped = gSavedSettings.getU32("CineDiopterToolMode") == 1 ?
-                renderUltimateKaleidoscope(sourceBuffer, targetBuffer) : renderUltimateDiopter(sourceBuffer, targetBuffer);
-            std::swap(sourceBuffer, targetBuffer);
-        }
-        fisheye_warped = gSavedSettings.getBOOL("CineFisheyeEnabled") && gCineFisheyeProgram.isComplete();
-        if (fisheye_warped)
-        {
-            renderCineFisheye(sourceBuffer, targetBuffer);
-            std::swap(sourceBuffer, targetBuffer);
-        }
-        sensorVignette(sourceBuffer, targetBuffer);
-        std::swap(sourceBuffer, targetBuffer);
-        // AA detects perceptual edges and gathers the original linear radiance.
-        if (RenderFSAAType == 1)
-        {
-            applyFXAA(sourceBuffer, targetBuffer); std::swap(sourceBuffer, targetBuffer);
-        }
-        else if (RenderFSAAType == 2)
-        {
-            generateSMAABuffers(sourceBuffer);
-            applySMAA(sourceBuffer, targetBuffer); std::swap(sourceBuffer, targetBuffer);
-        }
-        // Stage B: only this final main-view presentation collects sensor noise.
-        renderSensor(sourceBuffer, targetBuffer);
-        std::swap(sourceBuffer, targetBuffer);
-        // Stage C: camera processing, then sharpening, then the warped Roto layer.
-        colorCorrect(sourceBuffer, &mRT->postPingMap, true, true, SensorStage::Camera);
-        sourceBuffer = &mRT->postPingMap; targetBuffer = &mRT->postPongMap;
-        static LLCachedControl<F32> sharpness(gSavedSettings, "RenderCASSharpness", .4f);
-        if (sharpness > 0.f && gCASProgram.isComplete())
-        {
-            applyCAS(sourceBuffer, targetBuffer); std::swap(sourceBuffer, targetBuffer);
-        }
-        if (roto_overlay)
-        {
-            compositeSensorOverlay(sourceBuffer, targetBuffer, diopter_warped, fisheye_warped, false);
-            std::swap(sourceBuffer, targetBuffer);
-        }
-        // Stage D: affine guide capture preserves the guide renderer's blend
-        // modes and scene-depth occlusion without sending guides to the sensor.
-        static LLCachedControl<bool> show_heading(gSavedSettings, "ActorMoverShowHeading", true);
-        const bool guide_work =
-            (show_heading && (LLFloaterReg::instanceVisible("actor_mover") ||
-                              LLFloaterReg::instanceVisible("director") ||
-                              LLFloaterReg::instanceVisible("prop_mover"))) ||
-            LLToolMgr::getInstance()->getCurrentTool() == (LLTool*)ALToolPathEdit::getInstance();
-        if (guide_work && hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_UI) && gViewerWindow->getUIVisibility())
-        {
-            for (U32 i = 0; i < 2; ++i)
-            {
-                mSensorGuides[i].bindTarget();
-                const F32 background[4] = {(F32)i,(F32)i,(F32)i,1.f};
-                glClearBufferfv(GL_COLOR, 0, background);
-                mSensorGuides[i].flush();
-                render_actor_path_guides(&mSensorGuides[i]);
-            }
-            compositeSensorOverlay(sourceBuffer, targetBuffer, diopter_warped, fisheye_warped, true);
-            std::swap(sourceBuffer, targetBuffer);
-        }
-    }
-    else
-    {
+
+}
+
+void LLPipeline::renderFinalizeLegacy(bool hdr, LLRenderTarget*& sourceBuffer, LLRenderTarget*& targetBuffer,
+    bool& diopter_warped, bool& fisheye_warped, const FinalizeGuides& guides)
+{
+    auto render_actor_path_guides = [&](LLRenderTarget* target) { guides(target, 0); };
         // Handles tonemap, colorgrading, and gamma correction in one pass. In the HDR
         // path, this also applies eye adaptation and bloom. In the non-HDR path, this
         // is just a linear copy with color correction.
@@ -26625,8 +26712,11 @@ void LLPipeline::renderFinalize()
             std::swap(sourceBuffer, targetBuffer);
         }
 
-    }
 
+}
+
+void LLPipeline::renderFinalizePresent(LLRenderTarget* sourceBuffer, bool diopter_warped, bool fisheye_warped)
+{
     if (RenderBufferVisualization > -1)
     {
         switch (RenderBufferVisualization)
@@ -26846,6 +26936,7 @@ void LLPipeline::renderFinalize()
 
     // flush calls made to "addTrianglesDrawn" so far to stats machinery
     recordTrianglesDrawn();
+
 }
 
 void LLPipeline::bindLightFunc(LLGLSLShader& shader)

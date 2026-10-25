@@ -197,13 +197,18 @@ def camera(r, stage, grade=False, ref=None):
 
 
 def smoke(r):
-    for stage in ('EXPOSURE','OPTICS','CAMERA'):
+    r.program('class3/deferred/volumetricLightF.glsl','#define AL_SENSOR_HDR 1\n#define SUN_SHADOW 1\n',
+        common_modules()+('class1/deferred/shadowUtil.glsl',))
+    r.program('class1/deferred/volumetricLightF.glsl','#define AL_SENSOR_HDR 1\n')
+    for stage in ('EXPOSURE','OPTICS','CAMERA','GODRAYS'):
         for grade in (False,True): camera(r,stage,grade)
     r.program('class1/alchemy/sensorF.glsl',modules=('class1/alchemy/sensorUtilF.glsl',))
     for path in ('sensorAAEncodeF.glsl','sensorVignetteF.glsl','sensorOverlayF.glsl'):
         r.program('class1/alchemy/'+path)
     for front in (0,1):
         r.program('class1/deferred/postDeferredF.glsl',f'#define AL_SENSOR_HDR 1\n#define FRONT_BLUR {front}\n',common_modules())
+        r.program('class1/deferred/postDeferredF.glsl',f'#define AL_SENSOR_HDR 1\n#define FRONT_BLUR {front}\n#define AL_SENSOR_DOF_REDUCE 1\n',common_modules())
+        r.program('class1/deferred/dofCombineF.glsl',f'#define AL_SENSOR_HDR 1\n#define FRONT_BLUR {front}\n')
     for path in ('ultimateDiopterGatherF.glsl','ultimateDiopterF.glsl','ultimateKaleidoF.glsl'):
         r.program('class1/deferred/'+path,'#define AL_SENSOR_HDR 1\n#define DIOPTER_TAPS 16\n',common_modules())
     r.program('class1/alchemy/blitWithEffectsF.glsl','#define AL_SENSOR_HDR 1\n',
@@ -221,172 +226,11 @@ def smoke(r):
 
 
 def native_host(r):
-    """Compile the production gate/target transactions into a tiny instrumented
-    host. Its allocation callbacks create real GL textures/FBOs in this context.
-    This does not compile or link any viewer object.
-    """
-    pipe=(subprocess.check_output(['git','show',r.reference+':indra/newview/pipeline.cpp'],cwd=ROOT,
-        text=True,encoding='utf-8',timeout=15) if r.reference else
-        (ROOT/'indra/newview/pipeline.cpp').read_text(encoding='utf-8'))
-    gate=re.search(r'const bool sensor_context = (.*?);',pipe,re.S).group(1)
-    methods=[]
-    for name in ('releaseSensorTargets','ensureSensorTargets'):
-        start=pipe.index(('void' if name.startswith('release') else 'bool')+' LLPipeline::'+name+'(')
-        methods.append(pipe[start:pipe.index('\n}',start)+2])
-    out=OUT/'native'; out.mkdir(exist_ok=True)
-    source='''#include <cstdint>
-#include <iostream>
-using U32=std::uint32_t; using U64=std::uint64_t;
-#define GL_RGBA16F 0x881A
-#define LL_WARNS(x) std::cerr
-#define LL_ENDL std::endl
-using Callback=int(*)(int,int,int,int,int);
-static Callback callback; static bool shaders=true;
-struct Target {
- int id=0; U32 width=0,height=0;
- bool allocate(U32 w,U32 h,int format,bool depth=false) {
-   bool ok=callback(0,id,w,h,format)!=0;
-   if(ok) {width=w;height=h;} return ok;
- }
- bool addColorAttachment(int format) {return callback(1,id,width,height,format)!=0;}
- void shareDepthBuffer(Target& other) {callback(2,other.id,width,height,0);}
- void release(){callback(3,id,width,height,0);width=height=0;}
- U32 getWidth()const{return width;} U32 getHeight()const{return height;}
-};
-struct LLViewerShaderMgr {
- static LLViewerShaderMgr* instance(){static LLViewerShaderMgr s;return &s;}
- bool loadSensorShaders(){return shaders;}
-};
-struct LLFrameTimer {inline static U32 current=42;static U32 getFrameCount(){return current;}};
-struct LLPipeline {
- struct Pack{Target screen{10},deferredScreen{11};}mMainRT,other;
- Pack* mRT=&mMainRT;
- Target mSensorPing[2]={{0},{1}},mSensorAA{2},mSensorOverlayReference{3},mSensorRoto{4},mSensorGuides[2]={{5},{6}};
- bool mSensorAllocated=false,mSensorClockStarted=false,mSensorPhysicalOrder=false,mSensorNoise=false;
- U64 mSensorFrame=0; U32 mSensorLastViewerFrame=~0u,mSensorTakeSeed=0;
- bool no_post=false;
- bool colorCorrectWillApplyExposure(bool hdr)const{return hdr&&!no_post;}
- void releaseSensorTargets(); bool ensureSensorTargets();
- bool gate(U32 mask) {
-  bool hdr=mask&1,gCubeSnapshot=mask&4,sPrismLensRender=mask&8,sPrismPreviewRender=mask&16;
-  bool sImpostorRender=mask&32,sRenderingHUDs=mask&64; no_post=mask&128;
-  mRT=(mask&2)?&mMainRT:&other;
-  return '''+gate+''';
- }
-};
-'''+ '\n'.join(methods)+'''
-static LLPipeline pipeline;
-extern "C" __declspec(dllexport) int gate(unsigned mask){return pipeline.gate(mask);}
-extern "C" __declspec(dllexport) int targets(Callback cb,int width,int height,int enabled,int shader_ok){
- callback=cb;shaders=shader_ok;pipeline.mMainRT.screen.width=width;pipeline.mMainRT.screen.height=height;
- if(!enabled){pipeline.releaseSensorTargets();return !pipeline.mSensorAllocated;}
- return pipeline.ensureSensorTargets();
-}
-'''
-    start=source.index(' bool gate(U32 mask)')
-    end=source.index('\n }',start)+3
-    original=source[start:end]
-    mutant=original.replace('gate(U32 mask)','gate_mutant(U32 mask)').replace('!gCubeSnapshot','true')
-    source=source.replace(original,original+'\n'+mutant)
-    source+='\nextern "C" __declspec(dllexport) int gate_leak(unsigned mask){return pipeline.gate_mutant(mask);}\n'
-    begin=pipe.index('    struct SensorScope',pipe.index('void LLPipeline::renderFinalize()'))
-    scope=pipe[begin:pipe.index('    llassert(!gCubeSnapshot);',begin)]
-    begin=pipe.index('    const U32 viewer_frame = LLFrameTimer::getFrameCount();',pipe.index('void LLPipeline::renderSensor('))
-    clock=pipe[begin:pipe.index('    const Parameters parameters',begin)]
-    source+='''
-extern "C" __declspec(dllexport) int scope_lifetime(int previous) {
- auto& mSensorPhysicalOrder=pipeline.mSensorPhysicalOrder;
- auto& mSensorNoise=pipeline.mSensorNoise;
- mSensorPhysicalOrder=mSensorNoise=previous!=0; bool cleared=false;
- {'''+scope+'''
- cleared=!mSensorPhysicalOrder&&!mSensorNoise;
- mSensorPhysicalOrder=mSensorNoise=true;
- }
- return cleared&&mSensorPhysicalOrder==(previous!=0)&&mSensorNoise==(previous!=0);
-}
-extern "C" __declspec(dllexport) unsigned long long tick(unsigned value,int reset) {
- auto& mSensorClockStarted=pipeline.mSensorClockStarted;
- auto& mSensorLastViewerFrame=pipeline.mSensorLastViewerFrame;
- auto& mSensorFrame=pipeline.mSensorFrame;
- if(reset){mSensorClockStarted=false;mSensorFrame=0;}
- LLFrameTimer::current=value;
-'''+clock+'''
- return mSensorFrame;
-}
-'''
-    path=out/'host.cpp';path.write_text(source,encoding='utf-8')
-    installs=Path(os.environ['ProgramFiles'])/'Microsoft Visual Studio'
-    vc=sorted(installs.glob('*/Community/VC/Auxiliary/Build/vcvars64.bat'))[-1]
-    dll=out/'host.dll'; command=out/'build.cmd'
-    command.write_text('@echo off\ncall "'+str(vc)+'" >nul 2>&1\ncl /nologo /std:c++17 /EHsc /O2 /LD "'+
-        str(path)+'" /Fe:"'+str(dll)+'" /Fo"'+out.as_posix()+'/" /link /IMPLIB:"'+str(out/'host.lib')+'"\n',encoding='utf-8')
-    result=subprocess.run(['cmd','/d','/c',str(command)],cwd=ROOT,capture_output=True,text=True,timeout=90)
-    (out/'build.log').write_text(result.stdout+result.stderr,encoding='utf-8')
-    assert result.returncode==0,result.stdout+result.stderr
-    lib=C.CDLL(str(dll))
-    lib.gate.argtypes=[C.c_uint];lib.gate.restype=C.c_int
-    lib.gate_leak.argtypes=[C.c_uint];lib.gate_leak.restype=C.c_int
-    r.native_lib=lib
-    lib.scope_lifetime.argtypes=[C.c_int];lib.scope_lifetime.restype=C.c_int
-    assert lib.scope_lifetime(0) and lib.scope_lifetime(1),'physical/noise context lifetime'
-    lib.tick.argtypes=[C.c_uint,C.c_int];lib.tick.restype=C.c_uint64
-    clock_values=[lib.tick(0xfffffffe,1),lib.tick(0xfffffffe,0),lib.tick(0xffffffff,0),lib.tick(0,0),lib.tick(1,0)]
-    assert clock_values==[0,0,1,2,3],clock_values
-    CB=C.CFUNCTYPE(C.c_int,C.c_int,C.c_int,C.c_int,C.c_int,C.c_int)
-    lib.targets.argtypes=[CB,C.c_int,C.c_int,C.c_int,C.c_int];lib.targets.restype=C.c_int
-    allocations=[]; released=[]; active={};fail=[-1];serial=[0];errors=[];shared=[]
-    internal_format=r.gl.fn('glGetTexLevelParameteriv',None,C.c_uint,C.c_int,C.c_uint,C.POINTER(C.c_int))
-    def callback(op,index,w,h,fmt):
-        if op in (0,1):
-            allocations.append((op,index,w,h,fmt))
-            if fail[0]==len(allocations):return 0
-            if fmt!=0x881A:
-                errors.append(('scratch format',fmt));return 0
-            serial[0]+=1
-            tex=r.target('native-'+str(serial[0]),w,h,fmt=fmt)[0]
-            active.setdefault(index,[]).append(tex)
-            observed=C.c_int();internal_format(0x0DE1,0,0x1003,C.byref(observed))
-            if observed.value!=fmt:
-                errors.append(('GL scratch storage',observed.value,fmt));return 0
-            r.gl.bind_fbo(0x8D40,r.base.fbo)
-            r.gl.fbo_tex(0x8D40,0x8CE0,0x0DE1,tex,0)
-            if r.gl.fbo_status(0x8D40)!=0x8CD5:
-                errors.append(('scratch FBO',index));return 0
-        elif op==2:shared.append(index)
-        elif op==3:
-            released.append(index)
-            for tex in active.pop(index,[]):r.gl.del_tex(1,C.byref(tex))
-        return 1
-    cb=CB(callback)
-    # Every predicate combination, including all excluded contexts.
-    expected=lambda mask: bool(mask&1 and mask&2 and not mask&252)
-    assert all(bool(lib.gate(mask))==expected(mask) for mask in range(256))
-    # Prove skipped contexts actually present the unchanged pixels in GL.
-    # The gate is the exact compiled production expression, not a Python copy.
-    w,h=32,16
-    image=np.random.default_rng(7).uniform(0,12,(h,w,4)).astype(np.float32)
-    original=r.upload('context-input',image)
-    copy=r.program('class1/alchemy/sensorAAEncodeF.glsl')
-    for bit in (4,8,16,32,64,128):
-        assert not lib.gate(3|bit)
-    assert lib.targets(cb,w,h,0,1) and len(allocations)==0
-    assert lib.targets(cb,w,h,1,1)
-    count=len(allocations)
-    assert lib.targets(cb,w,h,1,1) and len(allocations)==count
-    assert lib.targets(cb,19,11,1,1) and len(allocations)==count*2
-    assert lib.targets(cb,19,11,0,1) and not active
-    for n in range(1,count+1):
-        allocations.clear();released.clear();fail[0]=n
-        assert not lib.targets(cb,31,17,1,1),('allocation failure survived',n)
-        assert not active,('partial allocation leaked',n,active)
-    fail[0]=-1;allocations.clear()
-    assert not lib.targets(cb,0,0,1,1) and not allocations
-    assert not lib.targets(cb,31,17,1,0) and not allocations
-    assert not errors,errors
-    assert set(shared)=={5,6},shared
-    return dict(context_combinations=256,allocation_failure_sites=count,
-                format='RGBA16F',same_size_no_reallocation=True,disable_released=True,
-                nested_context_flags_restored=True,capture_clock_wrap=clock_values)
+    import sensor_post_dispatch_check as dispatch
+    import sensor_post_recipe_check as recipes
+    result=dispatch.run(r,ROOT,OUT/'native_dispatch')
+    result['shader_recipes']=recipes.run(ROOT,OUT/'native_recipes')
+    return result
 
 
 def pixels(r, check):
@@ -644,7 +488,7 @@ def optics_alignment(r,check):
 def source_contracts(check):
     pipe=(ROOT/'indra/newview/pipeline.cpp').read_text(encoding='utf-8')
     start=pipe.index('// Stage A: expose exactly once')
-    end=pipe.index('    else\n    {\n        // Handles tonemap',start)
+    end=pipe.index('        renderFinalizeLegacy(',start)
     chain=pipe[start:end]
     calls=['SensorStage::Exposure','renderVolumetric(','renderMotionBlurComposite(',
         'renderDoF(','SensorStage::Optics','EVisualEffect::RlvSphere','renderUltimateKaleidoscope(',
@@ -672,13 +516,15 @@ def source_contracts(check):
     baseline=subprocess.check_output(['git','show',BASELINE+':indra/newview/pipeline.cpp'],cwd=ROOT,
         text=True,encoding='utf-8',timeout=15)
     def legacy_body(source):
-        begin=source.index('// Handles tonemap, colorgrading',source.index('void LLPipeline::renderFinalize()'))
-        finish=source.index('    if (RenderBufferVisualization > -1)',begin)
-        body=source[begin:finish]
+        begin=source.index('// Handles tonemap, colorgrading')
+        if 'void LLPipeline::renderFinalizeLegacy(' in source:
+            finish=source.index('void LLPipeline::renderFinalizePresent(',begin)
+            body=source[begin:finish];body=body[:body.rfind('}')]
+        else:
+            finish=source.index('    if (RenderBufferVisualization > -1)',begin)
+            body=source[begin:finish]
         body=body.replace('LLRenderTarget* sourceBuffer =','sourceBuffer =').replace('LLRenderTarget* targetBuffer =','targetBuffer =')
         body=body.replace('bool diopter_warped = false;','').replace('const bool fisheye_warped =','fisheye_warped =')
-        # The new branch's closing brace is outside the original legacy body.
-        if source is pipe: body=body[:body.rfind('    }')]
         return re.sub(r'\s+','',body)
     check('legacy finalize branch retains the original statements and order',legacy_body(pipe)==legacy_body(baseline))
     settings=(ROOT/'indra/newview/app_settings/settings_alchemy.xml').read_text(encoding='utf-8')
@@ -743,6 +589,8 @@ def run(args):
         sensor_order(r,check)
         optics_alignment(r,check)
         source_contracts(check)
+        import sensor_post_fix_gl_check as review
+        review.tests(r,check)
     except Exception:
         error=traceback.format_exc(); print(error,flush=True)
         check('production shader variants compile/link',False,error)

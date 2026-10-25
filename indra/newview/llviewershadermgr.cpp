@@ -249,7 +249,7 @@ LLGLSLShader            gDeferredPostProgram;
 LLGLSLShader            gDeferredPostProgramNoNear;
 
 // WP-B: main-presentation physical camera variants, never used by legacy feeds.
-LLGLSLShader gSensorCameraProgram[6]; // exposure, optics, four camera grades
+LLGLSLShader gSensorCameraProgram[7]; // exposure, optics, four camera grades
 LLGLSLShader gSensorPassProgram;
 LLGLSLShader gSensorAAEncodeProgram;
 LLGLSLShader gSensorDoFProgram[2];
@@ -258,6 +258,10 @@ LLGLSLShader gSensorDiopterProgram;
 LLGLSLShader gSensorKaleidoProgram;
 LLGLSLShader gSensorFXAAProgram[4];
 LLGLSLShader gSensorSMAABlendProgram[4];
+LLGLSLShader gSensorSMAAEdgeProgram[4];
+LLGLSLShader gSensorDoFCombineProgram[2];
+LLGLSLShader gSensorDoFReduceProgram[2];
+LLGLSLShader gSensorGodrayProgram;
 LLGLSLShader gSensorVignetteProgram;
 LLGLSLShader gSensorBlitProgram;
 LLGLSLShader gSensorRotoProgram;
@@ -1723,12 +1727,15 @@ void LLViewerShaderMgr::unloadSensorShaders()
     };
     for (auto& shader : gSensorCameraProgram) remove(&shader);
     for (auto& shader : gSensorDoFProgram) remove(&shader);
+    for (auto& shader : gSensorDoFCombineProgram) remove(&shader);
+    for (auto& shader : gSensorDoFReduceProgram) remove(&shader);
     for (auto& shader : gSensorDiopterGatherProgram) remove(&shader);
     for (auto& shader : gSensorFXAAProgram) remove(&shader);
     for (auto& shader : gSensorSMAABlendProgram) remove(&shader);
+    for (auto& shader : gSensorSMAAEdgeProgram) remove(&shader);
     for (auto* shader : { &gSensorPassProgram, &gSensorAAEncodeProgram,
         &gSensorDiopterProgram, &gSensorKaleidoProgram, &gSensorVignetteProgram,
-        &gSensorBlitProgram, &gSensorRotoProgram, &gSensorOverlayProgram }) remove(shader);
+        &gSensorBlitProgram, &gSensorRotoProgram, &gSensorOverlayProgram, &gSensorGodrayProgram }) remove(shader);
 }
 
 bool LLViewerShaderMgr::loadSensorShaders()
@@ -1768,18 +1775,21 @@ bool LLViewerShaderMgr::loadSensorShaders()
     LLGLSLShader* camera[] = { &gCGTonemapProgram, &gCGTonemapProgram,
         &gCGTonemapProgram, &gCGTonemapLegacyGammaProgram,
         &gCGTonemapColorgradeProgram, &gCGTonemapColorgradeLegacyGammaProgram };
-    for (U32 i = 0; i < 6; ++i)
+    for (U32 i = 0; i < 7; ++i)
     {
         auto& shader = gSensorCameraProgram[i];
-        clone(shader, *camera[i]);
+        clone(shader, *camera[i == 6 ? 0 : i]);
         shader.addPermutation(i == 0 ? "AL_SENSOR_EXPOSURE" :
-            i == 1 ? "AL_SENSOR_OPTICS" : "AL_SENSOR_CAMERA", "1");
+            i == 1 ? "AL_SENSOR_OPTICS" : i == 6 ? "AL_SENSOR_GODRAYS" : "AL_SENSOR_CAMERA", "1");
         ok = shader.createShader() && ok;
     }
     for (U32 i = 0; i < 2; ++i)
     {
         clone(gSensorDoFProgram[i], i ? gDeferredPostProgram : gDeferredPostProgramNoNear);
         ok = gSensorDoFProgram[i].createShader() && ok;
+        clone(gSensorDoFReduceProgram[i], i ? gDeferredPostProgram : gDeferredPostProgramNoNear);
+        gSensorDoFReduceProgram[i].addPermutation("AL_SENSOR_DOF_REDUCE", "1");
+        ok = gSensorDoFReduceProgram[i].createShader() && ok;
     }
     for (U32 i = 0; i < 4; ++i)
     {
@@ -1792,11 +1802,25 @@ bool LLViewerShaderMgr::loadSensorShaders()
         }
         if (gSMAANeighborhoodBlendProgram[i].isComplete())
         {
+            clone(gSensorSMAAEdgeProgram[i], gSMAAEdgeDetectProgram[i]);
+            gSensorSMAAEdgeProgram[i].addPermutation("SMAA_PREDICATION", "0");
+            ok = gSensorSMAAEdgeProgram[i].createShader() && ok;
             clone(gSensorSMAABlendProgram[i], gSMAANeighborhoodBlendProgram[i]);
             ok = gSensorSMAABlendProgram[i].createShader() && ok;
         }
     }
+    for (U32 i = 0; i < 2; ++i)
+    {
+        clone(gSensorDoFCombineProgram[i], gDeferredDoFCombineProgram);
+        gSensorDoFCombineProgram[i].addPermutation("FRONT_BLUR", i ? "1" : "0");
+        ok = gSensorDoFCombineProgram[i].createShader() && ok;
+    }
     clone(gSensorDiopterProgram, gUltimateDiopterProgram);
+    if (gVolumetricLightProgram.isComplete())
+    {
+        clone(gSensorGodrayProgram, gVolumetricLightProgram);
+        ok = gSensorGodrayProgram.createShader() && ok;
+    }
     clone(gSensorKaleidoProgram, gUltimateKaleidoProgram);
     clone(gSensorBlitProgram, gBlitWithEffectsProgram);
     clone(gSensorRotoProgram, gCineOutlineProgram);
