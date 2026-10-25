@@ -371,6 +371,7 @@ set(viewer_SOURCE_FILES
     slweather.cpp
     alweatherbridge.cpp
     alweatherresources.cpp
+    alweatherparticles.cpp
     alweathershelter.cpp
     alweatherclock.cpp
     alweatheruimodel.cpp
@@ -1305,6 +1306,7 @@ set(viewer_HEADER_FILES
     slweather.h
     alweatherbridge.h
     alweatherresources.h
+    alweatherparticles.h
     alweathershelter.h
     alweatherclock.h
     alweatheruimodel.h

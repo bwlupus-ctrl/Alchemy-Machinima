@@ -11257,7 +11257,8 @@ void renderAuxiliaryView()
                 gPipeline.renderProjectorVolumetric(&rt.screen, /*aux_direct=*/true);
             }
 
-            // WP1 library rain/lightning: same frozen frame, auxiliary depth/matrices.
+            // Library rain/lightning and WP3 snow/visibility: same frozen frame,
+            // auxiliary depth/matrices and a world-cell list around THIS eye.
             // The enclosing auxiliary state transaction restores all main GL/target state.
             // Direct rain drawing avoids sharing the main half-resolution scratch target;
             // main-view cover maps/history are never sampled or mutated by this hook.

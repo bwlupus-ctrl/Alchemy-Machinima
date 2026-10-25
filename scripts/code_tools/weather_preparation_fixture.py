@@ -67,7 +67,7 @@ struct LLEnvironment {static LLEnvironment& instance(){static LLEnvironment e;re
 struct LLViewerShaderMgr {static LLViewerShaderMgr* instance(){static LLViewerShaderMgr s;return &s;}
  bool weatherMaterialsSupported()const{return true;}};
 struct LLPipeline {static constexpr bool sRenderDeferred=true;
- struct Surfaces {std::string status()const{return "Surface cover ready";}} mWeatherSurfaces;} gPipeline;
+ struct Surfaces {std::string status()const{return "Surface cover ready";}} mWeatherSurfaces, mWeatherParticles;} gPipeline;
 U64 gFrameCount=0;
 struct LLPresentationTime {struct Frame {double presentation_time=0;};
  inline static double seconds=0;static Frame currentFrame(){return {seconds};}};
@@ -75,7 +75,8 @@ struct CountedUI:ALWeatherUIModel {
  bool refresh(const ALWeatherBridge::Settings& s,const SLWeather::State& state,bool catchup,double time){
   ++refreshes;return ALWeatherUIModel::refresh(s,state,catchup,time);}
 } sLibraryUI;
-std::string sSurfaceStatus;
+std::string sSurfaceStatus, sParticleStatus;
+struct ALWeatherParticles {static bool supported(){return true;}};
 struct Signal {void operator()(){++notifications;}};
 struct ALPanelWeatherSettings {static void updateLibraryWeather();
  static Signal& libraryChanged(){static Signal s;return s;}};

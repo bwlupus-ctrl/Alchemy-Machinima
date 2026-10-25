@@ -976,6 +976,10 @@ public:
     bool    linkProgramObject(GLuint obj, bool suppress_errors = false);
     bool    validateProgramObject(GLuint obj);
     GLuint loadShaderFile(const std::string& filename, S32 & shader_level, GLenum type, std::map<std::string, std::string>* defines = NULL, S32 texture_index_channels = -1);
+    static bool computeShadersSupported();
+    static S32 shaderLanguageVersion(GLenum stage);
+    void clearShaderObjects();
+    bool ownsShaderObject(GLuint object) const;
 
     // Implemented in the application to actually point to the shader directory.
     virtual std::string getShaderDirPrefix(void) = 0; // Pure Virtual
@@ -997,6 +1001,9 @@ public:
     // Map of shader names to compiled
     std::map<std::string, GLuint> mVertexShaderObjects;
     std::map<std::string, GLuint> mFragmentShaderObjects;
+    // Owns compiled objects. The filename maps above are aliases for preloaded
+    // graphics feature modules, not a permutation cache.
+    std::map<std::string, GLuint> mShaderObjects;
 
     //global (reserved slot) shader parameters
     std::vector<std::string> mReservedAttribs;

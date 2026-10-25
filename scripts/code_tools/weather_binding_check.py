@@ -134,16 +134,20 @@ struct ALKitSettingWatch {
 struct Signal {template<class F>int connect(F){return 1;}};
 ALWeatherUIModel sLibraryUI;
 std::string sSurfaceStatus;
+std::string sParticleStatus;
+struct ALWeatherParticles {inline static bool available=true;static bool supported(){return available;}};
 struct ALPanelWeatherSettings {
  static void applyLibraryPreset(U32);static void stopPrecipitation();
  static void applyStartingSurfaces();static void clearSurfaces();
  static const std::string& surfaceStatus();
+ static const std::string& particleStatus();
  static void strikeLightningNow(){}static void confirmResetAll(){}
  static Signal& libraryChanged(){static Signal s;return s;}
  static const std::string& libraryStatus(){return sLibraryUI.status();}
 };
 struct LLGLSLShader;
 struct LLPipeline {static constexpr bool sRenderDeferred=true;inline static int weatherBinds=0;
+ struct Particles {bool available()const{return true;}} mWeatherParticles;
  void bindWeatherMaterial(LLGLSLShader*){++weatherBinds;}} gPipeline;
 struct LLViewerShaderMgr {
  static LLViewerShaderMgr* instance(){static LLViewerShaderMgr s;return &s;}
@@ -295,11 +299,19 @@ extern "C" __declspec(dllexport) int surface_row_enabled(const char* name){
  LLView root;LLFloaterDirector director;director.root=&root;director.bindWeatherPage(&root);
  return root.findChild<LLUICtrl>(name)->enabled;
 }
+extern "C" __declspec(dllexport) void snow_capability(int supported){ALWeatherParticles::available=supported!=0;}
+extern "C" __declspec(dllexport) const char* particle_readout(const char* status){
+ sParticleStatus=status;LLView root;LLFloaterDirector director;director.root=&root;
+ director.refreshWorldLensReadouts("world_group/weather_tab");static std::string observed;
+ observed=root.findChild<LLTextBox>("weather_snow_status")->getValue().asString();return observed.c_str();}
 '''
     upload_prefix='#include "alweathershelter.h"\n'+upload_prefix
     commands='\n'.join(function(panel,'void ALPanelWeatherSettings::'+name+'(') for name in ('applyLibraryPreset','stopPrecipitation','applyStartingSurfaces','clearSurfaces'))
     if mutation=='legacy-preset': commands=commands.replace('gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);','gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);\n    gSavedSettings.setBOOL("AlchemyWeatherRainEnabled", true);',1)
+    if mutation=='snow-relief': commands=commands.replace('gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);','gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);\n    gSavedSettings.setBOOL("AlchemyWeatherSnowReliefEnabled", true);',1)
     commands+=function(panel,'const std::string& ALPanelWeatherSettings::surfaceStatus(')
+    if 'const std::string& ALPanelWeatherSettings::particleStatus(' in panel:
+        commands+=function(panel,'const std::string& ALPanelWeatherSettings::particleStatus(')
     row_source=tree.read('indra/newview/alkitrow.cpp')
     notification=function(row_source,'void ALKitRow::notifyValueChanged(') if 'void ALKitRow::notifyValueChanged(' in row_source else ''
     proxy_binding=function(row_source,'class ALKitProxyBinding final')+';'
@@ -331,7 +343,10 @@ def run(mutation=None, source_ref='WORKTREE'):
     rows={r.get('widget'):r for r in xml.iter('kit_row')}
     tracked=function(current.read('indra/newview/alpanelweathersettings.cpp'),'const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()')
     new_settings=sorted(set(table)-set(baseline))
-    assert len(new_settings)==24
+    wp3={'AlchemyWeather'+n for n in ('SnowEnabled','PrecipType','SnowRate','SnowFlakeSize','SnowFallSpeed',
+        'SnowRange','SnowParticleLimit','PrecipVisibilityEnabled','PrecipVisibilityAmount')}
+    assert len(set(new_settings)-wp3)==24
+    assert not (set(new_settings)&wp3) or wp3.issubset(new_settings)
     for setting in new_settings:
         assert '"'+setting+'"' in tracked, 'untracked preset/reset setting: '+setting
     native=build(ROOT/'.tmp/weather_port/bindings'/(mutation or 'baseline'),mutation,source_ref)

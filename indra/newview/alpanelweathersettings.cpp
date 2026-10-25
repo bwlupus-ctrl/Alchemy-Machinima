@@ -12,6 +12,7 @@
 
 #include "alpanelweathersettings.h"
 #include "alweatheruimodel.h"
+#include "alweatherparticles.h"
 #include "llagent.h"
 #include "llpresentationtime.h"
 #include "llviewerregion.h"
@@ -79,6 +80,15 @@ const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()
         "AlchemyWeatherControlMode",
         "AlchemyWeatherLocalEnabled",
         "AlchemyWeatherRainRate",
+        "AlchemyWeatherSnowEnabled",
+        "AlchemyWeatherPrecipType",
+        "AlchemyWeatherSnowRate",
+        "AlchemyWeatherSnowFlakeSize",
+        "AlchemyWeatherSnowFallSpeed",
+        "AlchemyWeatherSnowRange",
+        "AlchemyWeatherSnowParticleLimit",
+        "AlchemyWeatherPrecipVisibilityEnabled",
+        "AlchemyWeatherPrecipVisibilityAmount",
         "AlchemyWeatherPrecipVariation",
         "AlchemyWeatherWindSource",
         "AlchemyWeatherWindDirection",
@@ -475,6 +485,12 @@ bool ALPanelWeatherSettings::applyNamedPreset(const std::string& name)
             }
         }
     }
+    if (!preset.has("version") || preset["version"].asInteger() < 4)
+    {
+        gSavedSettings.setBOOL("AlchemyWeatherSnowEnabled", false);
+        gSavedSettings.setBOOL("AlchemyWeatherPrecipVisibilityEnabled", false);
+        gSavedSettings.setU32("AlchemyWeatherPrecipType", 0);
+    }
     // Unversioned rain looks always use the exact existing renderer path.
     if (!preset.has("version")) gSavedSettings.setU32("AlchemyWeatherControlMode", 0);
     return true;
@@ -537,6 +553,7 @@ namespace
 {
     ALWeatherUIModel sLibraryUI;
     std::string sSurfaceStatus = "Persistent wet surfaces off";
+    std::string sParticleStatus = "Falling snow off";
     ALWeatherBridge::Settings readLibrarySettings()
     {
         ALWeatherBridge::Settings s;
@@ -594,6 +611,24 @@ namespace
         s.legacyRain = c_legacyRain();
         static LLCachedControl<F32> c_legacyIntensity(gSavedSettings, "AlchemyWeatherRainIntensity", 0.55f);
         s.legacyIntensity = c_legacyIntensity();
+        static LLCachedControl<bool> c_snowEnabled(gSavedSettings, "AlchemyWeatherSnowEnabled", false);
+        s.snowEnabled = c_snowEnabled();
+        static LLCachedControl<U32> c_precipType(gSavedSettings, "AlchemyWeatherPrecipType", 0U);
+        s.precipType = c_precipType();
+        static LLCachedControl<F32> c_snowRate(gSavedSettings, "AlchemyWeatherSnowRate", 1.5f);
+        s.snowRate = c_snowRate();
+        static LLCachedControl<F32> c_flakeSize(gSavedSettings, "AlchemyWeatherSnowFlakeSize", 0.015f);
+        s.flakeSize = c_flakeSize();
+        static LLCachedControl<F32> c_snowSpeed(gSavedSettings, "AlchemyWeatherSnowFallSpeed", 1.f);
+        s.snowSpeed = c_snowSpeed();
+        static LLCachedControl<F32> c_snowRange(gSavedSettings, "AlchemyWeatherSnowRange", 64.f);
+        s.snowRange = c_snowRange();
+        static LLCachedControl<U32> c_snowLimit(gSavedSettings, "AlchemyWeatherSnowParticleLimit", 32768U);
+        s.snowLimit = c_snowLimit();
+        static LLCachedControl<bool> c_visibility(gSavedSettings, "AlchemyWeatherPrecipVisibilityEnabled", false);
+        s.visibility = c_visibility();
+        static LLCachedControl<F32> c_visibilityAmount(gSavedSettings, "AlchemyWeatherPrecipVisibilityAmount", 1.f);
+        s.visibilityAmount = c_visibilityAmount();
         return ALWeatherBridge::sanitize(s);
     }
 }
@@ -609,12 +644,21 @@ const std::string& ALPanelWeatherSettings::libraryStatus()
 }
 void ALPanelWeatherSettings::applyLibraryPreset(U32 preset)
 {
-    if (preset >= 4) return;
+    if (preset == 4 || preset > 8) return;
     auto settings = readLibrarySettings();
     ALWeatherUIModel::applyPreset(settings, preset);
     gSavedSettings.setU32("AlchemyWeatherControlMode", settings.mode);
     gSavedSettings.setBOOL("AlchemyWeatherLocalEnabled", settings.local);
     gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);
+    gSavedSettings.setBOOL("AlchemyWeatherSnowEnabled", settings.snowEnabled);
+    gSavedSettings.setU32("AlchemyWeatherPrecipType", settings.precipType);
+    gSavedSettings.setF32("AlchemyWeatherSnowRate", settings.snowRate);
+    gSavedSettings.setU32("AlchemyWeatherWindSource", settings.windSource);
+    gSavedSettings.setF32("AlchemyWeatherWindSpeed", settings.windSpeed);
+}
+const std::string& ALPanelWeatherSettings::particleStatus()
+{
+    return sParticleStatus;
 }
 const std::string& ALPanelWeatherSettings::surfaceStatus()
 {
@@ -639,6 +683,7 @@ void ALPanelWeatherSettings::stopPrecipitation()
     auto settings = readLibrarySettings();
     ALWeatherUIModel::stop(settings);
     gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);
+    gSavedSettings.setF32("AlchemyWeatherSnowRate", settings.snowRate);
     gSavedSettings.setF32("AlchemyWeatherStorm", settings.storm);
 }
 void ALPanelWeatherSettings::updateLibraryWeather()
@@ -660,6 +705,7 @@ void ALPanelWeatherSettings::updateLibraryWeather()
         bridge.update(gFrameCount, LLPresentationTime::currentFrame().presentation_time,
             settings, 0.f, 0.f, 0, {}, {});
         sSurfaceStatus = "Persistent wet surfaces off";
+        sParticleStatus = "Falling snow off";
         sLibraryUI.refresh(settings, bridge.state(), false, bridge.clock().seconds());
         libraryChanged()();
         return;
@@ -712,7 +758,12 @@ void ALPanelWeatherSettings::updateLibraryWeather()
     const std::string coverage = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
         (!LLViewerShaderMgr::instance()->weatherMaterialsSupported() ?
             "Persistent wet surfaces unavailable on this GPU; existing rain available" : gPipeline.mWeatherSurfaces.status());
+    const std::string particles = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
+        (!ALWeatherParticles::supported() ? "Unavailable: requires OpenGL 4.3 compute, SSBO, images and barriers" :
+        gPipeline.mWeatherParticles.status());
+    const bool particles_changed = sParticleStatus != particles;
+    if (particles_changed) sParticleStatus = particles;
     const bool cover_changed = sSurfaceStatus != coverage;
     if (cover_changed) sSurfaceStatus = coverage;
-    if (sLibraryUI.refresh(settings, bridge.state(), bridge.catchingUp(), bridge.clock().seconds()) || cover_changed) libraryChanged()();
+    if (sLibraryUI.refresh(settings, bridge.state(), bridge.catchingUp(), bridge.clock().seconds()) || cover_changed || particles_changed) libraryChanged()();
 }

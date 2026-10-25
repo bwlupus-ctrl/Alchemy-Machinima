@@ -37,6 +37,7 @@ public:
     static void applyStartingSurfaces();
     static void clearSurfaces();
     static const std::string& surfaceStatus();
+    static const std::string& particleStatus();
     static const std::string& libraryStatus();
     static boost::signals2::signal<void()>& libraryChanged();
     static void confirmResetAll();

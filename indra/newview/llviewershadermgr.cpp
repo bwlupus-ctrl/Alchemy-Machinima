@@ -1066,8 +1066,7 @@ void LLViewerShaderMgr::setShaders()
     reentrance = true;
 
     // Make sure the compiled shader map is cleared before we recompile shaders.
-    mVertexShaderObjects.clear();
-    mFragmentShaderObjects.clear();
+    clearShaderObjects();
 
     initAttribsAndUniforms();
     gPipeline.releaseGLBuffers();
@@ -1278,6 +1277,7 @@ void LLViewerShaderMgr::unloadShaders()
         LLGLSLShader* shader = *(LLGLSLShader::sInstances.begin());
         shader->unload();
     }
+    clearShaderObjects();
 
     mShaderLevel[SHADER_LIGHTING] = 0;
     mShaderLevel[SHADER_OBJECT] = 0;

@@ -40,6 +40,8 @@ public:
                  const glm::dvec3& origin, U32 place);
     void fail(ALWeatherShelter::Coverage state, const char* reason = nullptr);
     void bind(LLGLSLShader* shader, const glm::mat4& view_to_agent, const glm::dvec3& origin, U32 frame);
+    void bindPrecipitation(LLGLSLShader* shader, const glm::dvec3& origin, U32 frame);
+    bool precipitationCovers(const glm::vec3& eye, const glm::dvec3& origin, U32 frame) const;
     bool ready() const { return ALWeatherShelter::usable(mCoverage); }
     bool readyForFrame(U32 frame) const { return ready() && mPublishedFrame == frame; }
     bool allocated() const { return mCover[0].getWidth() != 0 || mCover[1].getWidth() != 0; }

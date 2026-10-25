@@ -26,6 +26,13 @@ namespace ALWeatherBridge
         s.windSource = std::min(s.windSource, 1U);
         s.lightningTiming = std::min(s.lightningTiming, 1U);
         s.rainRate = safe(s.rainRate, 5.f, 0.f, 200.f);
+        s.precipType = std::min(s.precipType, 2U);
+        s.snowRate = safe(s.snowRate, 1.5f, 0.f, 360.f);
+        s.flakeSize = safe(s.flakeSize, 0.015f, 0.002f, 0.08f);
+        s.snowSpeed = safe(s.snowSpeed, 1.f, 0.2f, 4.f);
+        s.snowRange = safe(s.snowRange, 64.f, 16.f, 128.f);
+        s.snowLimit = std::clamp(s.snowLimit, 4096U, 131072U);
+        s.visibilityAmount = safe(s.visibilityAmount, 1.f, 0.f, 1.f);
         s.bands = safe(s.bands, 0.35f, 0.f, 1.f);
         s.transition = safe(s.transition, 20.f, 0.f, 600.f);
         s.windDirection = safe(s.windDirection, 225.f, 0.f, 360.f);
@@ -65,7 +72,8 @@ namespace ALWeatherBridge
         }
         t.transitionSecs = s.transition;
         if (!t.active) return config;
-        t.setFall(SLWeather::PRECIP_RAIN, s.rainRate);
+        t.setFall(SLWeather::PRECIP_RAIN, s.precipType == 1 ? 0.f : s.rainRate);
+        t.setFall(SLWeather::PRECIP_SNOW, s.precipType == 0 ? 0.f : s.snowRate);
         t.fallVariation = s.bands;
         t.seed = s.seed;
         t.storm = s.lightningTiming == 1 ? s.storm : 0.f;
@@ -87,10 +95,18 @@ namespace ALWeatherBridge
     Rain rain(const SLWeather::State& state, F32 intensity, F32 density)
     {
         // 5 mm/h maps near the old 0.55 look; physical rates stay independent of art.
-        const F32 amount = std::clamp(SLWeather::amountFromFall(SLWeather::PRECIP_RAIN, state.rainFall), 0.f, 1.f);
+        const F32 r = std::clamp(SLWeather::amountFromFall(SLWeather::PRECIP_RAIN, state.rainFall), 0.f, 1.f);
+        const F32 sn = std::clamp(SLWeather::amountFromFall(SLWeather::PRECIP_SNOW, state.snowFall), 0.f, 1.f);
+        const F32 amount = r / std::max(1.f, r + sn);
         return {safe(intensity, 0.55f, 0.f, 1.f) * amount,
                 safe(density, 0.65f, 0.02f, 1.f) * (0.2f + 0.8f * amount),
                 state.wind[0], state.wind[1]};
+    }
+    F32 snowAmount(const SLWeather::State& state)
+    {
+        const F32 r = std::clamp(SLWeather::amountFromFall(SLWeather::PRECIP_RAIN, state.rainFall), 0.f, 1.f);
+        const F32 sn = std::clamp(SLWeather::amountFromFall(SLWeather::PRECIP_SNOW, state.snowFall), 0.f, 1.f);
+        return sn / std::max(1.f, r + sn);
     }
     Controller& Controller::instance()
     {
@@ -118,6 +134,7 @@ namespace ALWeatherBridge
         {
             mWeather.requestReset("weather mode/seed change");
             mClock.reset();
+            mSnowDrift = {};
             mLightning.reset(lightning.mSeed);
             mLastStrike = 0;
         }
@@ -171,6 +188,12 @@ namespace ALWeatherBridge
             input.seconds = mClock.seconds();
             input.syncSeconds = input.seconds;
             mWeather.update(config, input);
+            if (s.snowEnabled)
+            {
+                mSnowDrift[0] += mWeather.state().wind[0] * (0.9 / ALWeatherClock::HZ);
+                mSnowDrift[1] += mWeather.state().wind[1] * (0.9 / ALWeatherClock::HZ);
+                mSnowDrift[2] -= s.snowSpeed / ALWeatherClock::HZ;
+            }
         }
         mLightningFrame = {};
         if (!mActive) return;

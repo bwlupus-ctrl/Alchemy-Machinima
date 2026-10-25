@@ -34,6 +34,7 @@
 #include "lldir.h"
 #include "llsdutil.h"
 #include "llsdserialize.h"
+#include "hbxxh.h"
 
 #if LL_DARWIN
 #include "OpenGL/OpenGL.h"
@@ -66,6 +67,51 @@ LLShaderMgr * LLShaderMgr::instance()
     }
 
     return sInstance;
+}
+
+bool LLShaderMgr::computeShadersSupported()
+{
+#if LL_DARWIN
+    return false;
+#else
+    if (gGLManager.mGLVersion < 4.29f ||
+        gGLManager.mGLSLVersionMajor < 4 ||
+        (gGLManager.mGLSLVersionMajor == 4 && gGLManager.mGLSLVersionMinor < 30) ||
+        !glDispatchCompute || !glMemoryBarrier || !glBindBufferBase ||
+        !glBindImageTexture || !glShaderStorageBlockBinding || !glGetIntegeri_v)
+        return false;
+    GLint storage = 0, images = 0, invocations = 0, groups = 0;
+    glGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS, &storage);
+    glGetIntegerv(GL_MAX_IMAGE_UNITS, &images);
+    glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &invocations);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &groups);
+    return storage >= 1 && images >= 1 && invocations >= 128 && groups >= 1024;
+#endif
+}
+
+S32 LLShaderMgr::shaderLanguageVersion(GLenum stage)
+{
+    if (stage == LLGLSLShader::COMPUTE_STAGE) return 430;
+    const S32 major = gGLManager.mGLSLVersionMajor;
+    const S32 minor = gGLManager.mGLSLVersionMinor;
+    if (major >= 4) return minor >= 20 ? 420 : 400;
+    if (major == 3) return minor <= 29 ? 150 : 330;
+    return stage == GL_GEOMETRY_SHADER || minor >= 50 ? 150 : 140;
+}
+
+bool LLShaderMgr::ownsShaderObject(GLuint object) const
+{
+    for (const auto& entry : mShaderObjects)
+        if (entry.second == object) return true;
+    return false;
+}
+
+void LLShaderMgr::clearShaderObjects()
+{
+    for (const auto& entry : mShaderObjects) glDeleteShader(entry.second);
+    mShaderObjects.clear();
+    mVertexShaderObjects.clear();
+    mFragmentShaderObjects.clear();
 }
 
 void LLShaderMgr::prepareWeatherFeatures(LLGLSLShader* shader)
@@ -572,6 +618,16 @@ void LLShaderMgr::dumpObjectLog(GLuint ret, bool warns, const std::string& filen
 
 GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_level, GLenum type, std::map<std::string, std::string>* defines, S32 texture_index_channels)
 {
+    if (type == LLGLSLShader::COMPUTE_STAGE && !computeShadersSupported())
+    {
+        LL_WARNS("ShaderLoading") << "Compute unavailable: GL 4.3, SSBO, image and barrier support required" << LL_ENDL;
+        return 0;
+    }
+
+    // A failed replacement must not leave a filename alias to an older
+    // permutation. Successfully cached objects republish their alias below.
+    if (type == GL_VERTEX_SHADER) mVertexShaderObjects.erase(filename);
+    if (type == GL_FRAGMENT_SHADER) mFragmentShaderObjects.erase(filename);
     GLenum error = GL_NO_ERROR;
 
     error = glGetError();
@@ -671,7 +727,11 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_lev
     S32 major_version = gGLManager.mGLSLVersionMajor;
     S32 minor_version = gGLManager.mGLSLVersionMinor;
 
-    if (major_version == 1 && minor_version < 30)
+    if (type == LLGLSLShader::COMPUTE_STAGE)
+    {
+        shader_code_text[shader_code_count++] = strdup("#version 430\n");
+    }
+    else if (major_version == 1 && minor_version < 30)
     {
         llassert(false); // GL 3.1 or later required
     }
@@ -727,6 +787,10 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_lev
     if (type == GL_FRAGMENT_SHADER)
     {
         extra_code_text[extra_code_count++] = strdup("#define FRAGMENT_SHADER 1\n");
+    }
+    else if (type == LLGLSLShader::COMPUTE_STAGE)
+    {
+        extra_code_text[extra_code_count++] = strdup("#define COMPUTE_SHADER 1\n");
     }
     else
     {
@@ -980,6 +1044,26 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_lev
 
     fclose(file);
 
+    // Include the assembled bytes: version, stage, permutations, indexed
+    // channels, source edits and the resolved class all distinguish objects.
+    HBXXH128 object_hash;
+    object_hash.update(filename);
+    object_hash.update(&type, sizeof(type));
+    object_hash.update(&gpu_class, sizeof(gpu_class));
+    object_hash.update(&texture_index_channels, sizeof(texture_index_channels));
+    for (GLuint i = 0; i < shader_code_count; ++i)
+        object_hash.update(std::string(shader_code_text[i]));
+    const std::string object_key = object_hash.digest().asString();
+    auto cached = mShaderObjects.find(object_key);
+    if (cached != mShaderObjects.end())
+    {
+        for (GLuint i = 0; i < shader_code_count; ++i) free(shader_code_text[i]);
+        if (type == GL_VERTEX_SHADER) mVertexShaderObjects[filename] = cached->second;
+        if (type == GL_FRAGMENT_SHADER) mFragmentShaderObjects[filename] = cached->second;
+        shader_level = try_gpu_class;
+        return cached->second;
+    }
+
     //create shader object
     GLuint ret = glCreateShader(type);
 
@@ -1024,7 +1108,7 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_lev
         }
     }
 
-    if (error == GL_NO_ERROR)
+    if (ret && error == GL_NO_ERROR)
     {
         //check for errors
         LL_DEBUGS("ShaderLoading") << "glCompileShader done" << U32(ret) << LL_ENDL;
@@ -1058,6 +1142,7 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_lev
     //successfully loaded, save results
     if (ret)
     {
+        mShaderObjects[object_key] = ret;
         // Add shader file to map
         if (type == GL_VERTEX_SHADER) {
             mVertexShaderObjects[filename] = ret;

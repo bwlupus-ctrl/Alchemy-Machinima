@@ -146,6 +146,9 @@ public:
 class LLGLSLShader
 {
 public:
+    // Numeric spelling keeps the GL 4.1/macOS headers usable.
+    static constexpr GLenum COMPUTE_STAGE = 0x91B9;
+    bool isCompute() const;
     // NOTE: Keep gShaderConsts and LLGLSLShader::ShaderConsts_e in sync!
     enum eShaderConsts
     {

@@ -50,4 +50,24 @@ namespace tut
         ensure("numeric readout capped at 10 Hz", !ui.refresh(s, state, false, 1.01));
         ensure("numeric readout refreshes on next interval", ui.refresh(s, state, false, 1.11));
     }
+    template<> template<> void weather_ui_object::test<2>()
+    {
+        ALWeatherBridge::Settings s;
+        const F32 rates[] = {0.3f, 1.5f, 5.f, 12.f};
+        for (U32 i = 0; i < 4; ++i)
+        {
+            ALWeatherUIModel::applyPreset(s, i + 5);
+            ensure("snow preset selects snowfall only", s.snowEnabled && s.precipType == 1 && s.snowRate == rates[i]);
+            ensure("snow preset never enables secondary effects", !s.visibility && !s.persistentWet && !s.puddles);
+            ensure("snow preset leaves master off", !s.enabled);
+        }
+        ensure("Blizzard declares weather wind at least 15 m/s", s.windSource == 1 && s.windSpeed >= 15.f);
+        ALWeatherUIModel ui;
+        s.enabled = true;ui.refresh(s, {}, false);
+        ensure("snow status has units", ui.status().find("cm/h") != std::string::npos);
+        ALWeatherUIModel::stop(s);
+        ensure("stop clears both rates", s.rainRate == 0.f && s.snowRate == 0.f);
+        ALWeatherUIModel::applyPreset(s, 1);
+        ensure("rain preset selects rain layer", !s.snowEnabled && s.precipType == 0);
+    }
 }

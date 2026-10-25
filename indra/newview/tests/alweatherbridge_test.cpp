@@ -129,4 +129,40 @@ namespace tut
         }
         ensure("restart regression observes active lightning", saw_strike);
     }
+    template<> template<> void weather_bridge_object::test<5>()
+    {
+        ALWeatherBridge::Settings s;
+        s.enabled = s.local = s.snowEnabled = true;
+        s.mode = s.precipType = 1; s.transition = s.bands = 0.f;
+        s.snowRate = 12.f; s.snowSpeed = 2.f;
+        ALWeatherBridge::Controller a, b;
+        for (U64 f = 0; f <= 600; ++f) a.update(f, f / 60., s, 3, 4, 1, {}, {});
+        for (U64 f = 0; f <= 1440; ++f) b.update(f, f / 144., s, 3, 4, 1, {}, {});
+        ensure("snow wind drift independent of display partitions", a.snowDrift() == b.snowDrift());
+        ensure("fall follows fixed weather clock", std::fabs(a.snowDrift()[2] + a.clock().seconds() * 2.) < 1.e-9);
+        ensure("snow never leaks into rain", a.state().rainFall == 0.f && ALWeatherBridge::rain(a.state(), 1, 1).intensity == 0.f);
+        ensure("snowfall does not accumulate unshipped ground snow", a.state().snowDepth == 0.f && a.state().snowCover == 0.f);
+        const auto drift = a.snowDrift();
+        a.update(600, 99., s, 10, 10, 1, {}, {});
+        ensure("auxiliary order cannot move flakes twice", drift == a.snowDrift());
+        SLWeather::State mixed; mixed.rainFall = 200.f; mixed.snowFall = 360.f;
+        ensure("mixed visual components normalized", ALWeatherBridge::rain(mixed, 1, 1).intensity + ALWeatherBridge::snowAmount(mixed) <= 1.f);
+        s.precipType = 2;
+        const auto config = ALWeatherBridge::configuration(s, 3, 4);
+        ensure("mixed physical rates retained independently", config.local.rainFall == s.rainRate && config.local.snowFall == s.snowRate);
+        s.enabled = false; a.update(601, 11., s, 3, 4, 1, {}, {});
+        ensure("master off releases precipitation state", !a.precipitationActive() && a.snowDrift() == std::array<F64,3>{});
+    }
+    template<> template<> void weather_bridge_object::test<6>()
+    {
+        ALWeatherBridge::Settings s;
+        s.snowRate = std::numeric_limits<F32>::quiet_NaN();
+        s.flakeSize = std::numeric_limits<F32>::infinity();
+        s.snowRange = -1.f; s.snowSpeed = 9.f; s.snowLimit = ~0U;
+        s.visibilityAmount = -2.f; s.precipType = ~0U;
+        s = ALWeatherBridge::sanitize(s);
+        ensure("snow parameters finite and bounded", s.snowRate == 1.5f && s.flakeSize == 0.015f &&
+            s.snowRange == 16.f && s.snowSpeed == 4.f && s.snowLimit == 131072U && s.visibilityAmount == 0.f && s.precipType == 2);
+        ensure("new expensive defaults off", !s.snowEnabled && !s.visibility);
+    }
 }

@@ -10,6 +10,7 @@
 #include "alweatherclock.h"
 #include "alweathermodel.h"
 #include "slweather.h"
+#include <array>
 
 namespace ALWeatherBridge
 {
@@ -24,6 +25,10 @@ namespace ALWeatherBridge
         F32 legacyIntensity = 0.55f, coverExtent = 128.f;
         U32 coverResolution = 512;
         F32 rainRate = 5.f, bands = 0.35f, transition = 20.f;
+        U32 precipType = 0, snowLimit = 32768;
+        bool snowEnabled = false, visibility = false;
+        F32 snowRate = 1.5f, flakeSize = 0.015f, snowSpeed = 1.f, snowRange = 64.f;
+        F32 visibilityAmount = 1.f;
         F32 windDirection = 225.f, windSpeed = 3.f, windVariation = 0.3f;
         F32 gustiness = 0.5f, directionSwing = 0.f, storm = 0.f;
     };
@@ -34,6 +39,7 @@ namespace ALWeatherBridge
         F32 intensity = 0.f, density = 0.f, windX = 0.f, windY = 0.f;
     };
     Rain rain(const SLWeather::State& state, F32 intensity, F32 density);
+    F32 snowAmount(const SLWeather::State& state);
 
     class Controller
     {
@@ -54,6 +60,9 @@ namespace ALWeatherBridge
         const SLWeather::State& state() const { return mWeather.state(); }
         const ALWeatherModel::Frame& lightning() const { return mLightningFrame; }
         const ALWeatherClock& clock() const { return mClock; }
+        // A single fixed-tick wind translation, shared by all world-cell lists.
+        const std::array<F64, 3>& snowDrift() const { return mSnowDrift; }
+        bool precipitationActive() const { return mActive && (mSettings.snowEnabled || mSettings.visibility); }
         U32 placeSerial() const { return mWeather.placeSerial(); }
         U32 clearSerial() const { return mWeather.clearSerial(); }
         bool catchingUp() const { return mClock.catchingUp(); }
@@ -66,6 +75,7 @@ namespace ALWeatherBridge
         F64 mLastPresentation = -1.0;
         U32 mLastStrike = 0, mTiming = 0, mSeed = 0;
         Settings mSettings;
+        std::array<F64, 3> mSnowDrift{};
         U32 mSurfaceCommand = 0, mSurfaceSerial = 0, mMode = 0;
         bool mSimActive = false;
         bool mActive = false, mTeleportPending = false;

@@ -14,7 +14,7 @@
 class ALWeatherUIModel
 {
 public:
-    static constexpr U32 PRESET_VERSION = 3; // WP2 surface settings; older looks reset new gates off.
+    static constexpr U32 PRESET_VERSION = 4; // WP3 snowfall/visibility; old looks reset new gates off.
     static F32 presetRate(U32 preset);
     static const char* presetName(U32 preset);
     static void applyPreset(ALWeatherBridge::Settings& settings, U32 preset);
@@ -27,7 +27,7 @@ public:
 private:
     U64 mRevision = 0;
     std::string mStatus;
-    std::array<F64, 15> mSignature{};
+    std::array<F64, 18> mSignature{};
     F64 mNextRefresh = 0.0, mLastSample = 0.0, mTransitionEnd = 0.0;
     bool mInitialized = false, mCatchingUp = false;
 };

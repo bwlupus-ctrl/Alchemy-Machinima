@@ -359,15 +359,17 @@ LLGLSLShader::~LLGLSLShader()
 
 void LLGLSLShader::unload()
 {
+    // Preserve stage classification until a currently bound program is unbound.
+    unloadInternal();
     mShaderFiles.clear();
     mDefines.clear();
     mFeatures = LLShaderFeatures();
 
-    unloadInternal();
 }
 
 void LLGLSLShader::unloadInternal()
 {
+    if (sCurBoundShaderPtr == this) unbind();
     sInstances.erase(this);
 
     stop_glerror();
@@ -388,7 +390,7 @@ void LLGLSLShader::unloadInternal()
 
         for (GLsizei i = 0; i < count; i++)
         {
-            if (glIsShader(obj[i]))
+            if (!LLShaderMgr::instance()->ownsShaderObject(obj[i]) && glIsShader(obj[i]))
             {
                 glDeleteShader(obj[i]);
 #if LL_DARWIN
@@ -420,7 +422,19 @@ void LLGLSLShader::unloadInternal()
         mSamplesQuery = 0;
     }
 
+    if (mPrimitivesQuery) glDeleteQueries(1, &mPrimitivesQuery);
+    mPrimitivesQuery = 0;
+    mAttributeMask = 0;
+    mUniformMap.clear();
+    mValue.clear();
+    mUsingBinaryProgram = false;
+
     stop_glerror();
+}
+
+bool LLGLSLShader::isCompute() const
+{
+    return mShaderFiles.size() == 1 && mShaderFiles.front().second == COMPUTE_STAGE;
 }
 
 bool LLGLSLShader::createShader()
@@ -440,7 +454,16 @@ bool LLGLSLShader::createShader()
 
     llassert_always(!mShaderFiles.empty());
 
-    LLShaderMgr::instance()->prepareWeatherFeatures(this);
+    bool has_compute = false;
+    for (const auto& file : mShaderFiles) has_compute |= file.second == COMPUTE_STAGE;
+    if (has_compute && (!isCompute() || !LLShaderMgr::computeShadersSupported()))
+    {
+        unloadInternal();
+        return false;
+    }
+
+    if (isCompute()) mFeatures = LLShaderFeatures();
+    else LLShaderMgr::instance()->prepareWeatherFeatures(this);
     mShaderHash = hash();
 
     // Create program
@@ -481,7 +504,7 @@ bool LLGLSLShader::createShader()
     }
 
     // Attach existing objects
-    if (!LLShaderMgr::instance()->attachShaderFeatures(this))
+    if (!isCompute() && !LLShaderMgr::instance()->attachShaderFeatures(this))
     {
         unloadInternal();
         return false;
@@ -489,7 +512,7 @@ bool LLGLSLShader::createShader()
     // Map attributes and uniforms
     if (success)
     {
-        success = mapAttributes();
+        success = isCompute() ? (mUsingBinaryProgram || link()) : mapAttributes();
     }
     if (success)
     {
@@ -500,7 +523,7 @@ bool LLGLSLShader::createShader()
         LL_SHADER_LOADING_WARNS() << "Failed to link shader: " << mName << LL_ENDL;
 
         // Try again using a lower shader level;
-        if (mShaderLevel > 0)
+        if (!isCompute() && mShaderLevel > 0)
         {
             LL_SHADER_LOADING_WARNS() << "Failed to link using shader level " << mShaderLevel << " trying again using shader level " << (mShaderLevel - 1) << LL_ENDL;
             mShaderLevel--;
@@ -1052,7 +1075,7 @@ bool LLGLSLShader::link(bool suppress_errors)
     // GLSL 1.50 does not support explicit fragment-output locations without an
     // extension. Bind the named forward-rendering outputs before linking; on
     // newer GLSL these agree with (and do not override) the layout qualifiers.
-    if (glBindFragDataLocation)
+    if (!isCompute() && glBindFragDataLocation)
     {
         glBindFragDataLocation(mProgramObject, 0, "frag_color");
         glBindFragDataLocation(mProgramObject, 1, "visible_diffuse");
@@ -1089,19 +1112,19 @@ void LLGLSLShader::bind()
         {
             sCurBoundShaderPtr->readProfileQuery();
         }
-        LLVertexBuffer::unbind();
+        if (!isCompute()) LLVertexBuffer::unbind();
         glUseProgram(mProgramObject);
         sCurBoundShader = mProgramObject;
         sCurBoundShaderPtr = this;
         placeProfileQuery();
-        LLVertexBuffer::setupClientArrays(mAttributeMask);
+        if (!isCompute()) LLVertexBuffer::setupClientArrays(mAttributeMask);
     }
 
     if (mFeatures.hasWeatherMaterial)
     {
         LLShaderMgr::instance()->updateWeatherUniforms(this);
     }
-    if (mUniformsDirty)
+    if (!isCompute() && mUniformsDirty)
     {
         LLShaderMgr::instance()->updateShaderUniforms(this);
         mUniformsDirty = false;
@@ -1135,7 +1158,7 @@ void LLGLSLShader::unbind(void)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
     gGL.flush();
-    LLVertexBuffer::unbind();
+    if (!sCurBoundShaderPtr || !sCurBoundShaderPtr->isCompute()) LLVertexBuffer::unbind();
 
     if (sCurBoundShaderPtr)
     {
@@ -2090,6 +2113,8 @@ LLUUID LLGLSLShader::hash()
     {
         hash_obj.update(shdr_pair.first);
         hash_obj.update(&shdr_pair.second, sizeof(GLenum));
+        const S32 version = LLShaderMgr::shaderLanguageVersion(shdr_pair.second);
+        hash_obj.update(&version, sizeof(version));
     }
     for (const auto& define_pair : mDefines)
     {

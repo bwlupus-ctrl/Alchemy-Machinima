@@ -160,3 +160,21 @@ void ALWeatherResources::bind(LLGLSLShader* shader, const glm::mat4& view_to_age
     shader->uniform2f(LLShaderMgr::WEATHER_MATERIAL_TIME_RANGE,
         F32(std::fmod(weather.clock().seconds(), 4096.)), mRange);
 }
+
+bool ALWeatherResources::precipitationCovers(const glm::vec3& eye, const glm::dvec3& origin, U32 frame) const
+{
+    if (!readyForFrame(frame) || origin != mOrigin || ALWeatherBridge::Controller::instance().placeSerial() != mPlace) return false;
+    const glm::vec4 q = mMatrix * glm::vec4(eye, 1.f);
+    return q.w > 0.f && glm::all(glm::lessThan(glm::abs(glm::vec3(q) / q.w), glm::vec3(1.f)));
+}
+
+void ALWeatherResources::bindPrecipitation(LLGLSLShader* shader, const glm::dvec3& origin, U32 frame)
+{
+    static const LLStaticHashedString sCoverValid("snow_cover_valid");
+    const bool current = readyForFrame(frame) && origin == mOrigin &&
+        ALWeatherBridge::Controller::instance().placeSerial() == mPlace;
+    shader->uniform1i(sCoverValid, current ? 1 : 0);
+    if (!current) return;
+    shader->bindTexture(LLShaderMgr::WEATHER_SURFACE_COVER_MAP, &mCover[mRead], true, LLTexUnit::TFO_POINT);
+    shader->uniformMatrix4fv(LLShaderMgr::WEATHER_SURFACE_COVER_MATRIX, 1, false, glm::value_ptr(mMatrix));
+}

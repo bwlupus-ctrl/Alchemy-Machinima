@@ -3082,6 +3082,7 @@ void LLPipeline::releaseGLBuffers()
     mProjVolRimValid = false;
     mWeatherRainHalf.release();
     mWeatherSurfaces.release();
+    mWeatherParticles.release();
     mWeatherRainOcclusion.release();
     mWeatherRainOcclusionValid = false;
     mWeatherRainOcclusionFrame = 0;
@@ -20083,6 +20084,24 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
     }
 }
 
+void LLPipeline::renderWeatherParticles(LLRenderTarget* target, bool auxiliary)
+{
+    if (gCubeSnapshot || !sRenderDeferred || !target) return;
+    const glm::mat4 view = auxiliary ? get_current_modelview() : glm::make_mat4(gGLLastModelView);
+    const glm::mat4 projection = auxiliary ? get_current_projection() : glm::make_mat4(gGLLastProjection);
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    glm::vec3 light(0.15f);
+    if (const auto sky = LLEnvironment::instance().getCurrentSky())
+    {
+        const LLColor3 ambient = sky->getAmbientColor();
+        const LLColor3 sun = sky->getSunlightColor();
+        for (U32 i = 0; i < 3; ++i)
+            light[i] = llclamp(ambient.mV[i] * 0.9f + sun.mV[i] * 0.3f, 0.f, 4.f);
+    }
+    mWeatherParticles.render(*target, mRT->deferredScreen, view, projection,
+        glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), light, mWeatherSurfaces, gFrameCount);
+}
+
 void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
                                ALWeatherShelter::Exposure* auxiliary_exposure)
 {
@@ -20091,6 +20110,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     // Prism never calls renderFinalize. Its explicit hook is inert in mode 0.
     if (auxiliary && (!library || !ALWeatherBridge::Controller::instance().active()))
     {
+        if (!gCubeSnapshot && mWeatherParticles.allocated()) mWeatherParticles.release();
         if (auxiliary_exposure) auxiliary_exposure->reset();
         return;
     }
@@ -20111,6 +20131,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
     if (!enabled())
     {
+        if (mWeatherParticles.allocated()) mWeatherParticles.release();
         sWeatherController.reset();
         sWeatherShelterExposure.reset();
         sLightningSheetSnapshotValid = false;
@@ -20129,6 +20150,9 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     {
         return;
     }
+
+    if (library) renderWeatherParticles(target, auxiliary);
+    else if (mWeatherParticles.allocated()) mWeatherParticles.release();
 
     LL_PROFILE_GPU_ZONE("weather");
 
@@ -20392,7 +20416,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
             lightning_wet_glint_strength_setting, 0.75f, 0.f, 2.f) > 0.f &&
         wetness_active && base_rain_intensity > 0.f;
     const bool mist_active =
-        mist_enabled() &&
+        mist_enabled() && !mWeatherParticles.veilActive() &&
         finite_clamp(mist_strength_setting, 0.25f, 0.f, 1.f) > 0.f;
     const bool lens_active =
         lens_enabled() &&
@@ -31388,16 +31412,17 @@ void LLPipeline::generateWeatherRainOcclusion(LLCamera& camera)
 void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
 {
     const auto& weather = ALWeatherBridge::Controller::instance();
-    if (!weather.surfacesActive() && !mWeatherSurfaces.hasState()) return;
+    const bool precipitation = weather.precipitationActive() && ALWeatherParticles::supported();
+    if (!weather.surfacesActive() && !precipitation && !mWeatherSurfaces.hasState()) return;
     if (gCubeSnapshot || mWeatherSurfaces.mPreparedFrame == gFrameCount) return;
     mWeatherSurfaces.mPreparedFrame = gFrameCount;
-    if (!weather.surfacesActive() || !sRenderDeferred)
+    if ((!weather.surfacesActive() && !precipitation) || !sRenderDeferred)
     {
         mWeatherSurfaces.release();
         return;
     }
     const auto& settings = weather.settings();
-    if (!LLViewerShaderMgr::instance()->weatherMaterialsEnabled())
+    if (!precipitation && !LLViewerShaderMgr::instance()->weatherMaterialsEnabled())
     {
         mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED,
             "Persistent wet surfaces unavailable on this GPU; existing rain available");
