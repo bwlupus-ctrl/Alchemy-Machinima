@@ -208447,7 +208447,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 644,
+              "line": 668,
               "class": "ALPanelWeatherSettings",
               "function": "applyLibraryPreset",
               "wired_class": "LLFloaterDirector",
@@ -208512,7 +208512,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 644,
+              "line": 668,
               "class": "ALPanelWeatherSettings",
               "function": "applyLibraryPreset",
               "wired_class": "LLFloaterDirector",
@@ -208577,7 +208577,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 674,
+              "line": 698,
               "class": "ALPanelWeatherSettings",
               "function": "stopPrecipitation",
               "wired_class": "LLFloaterDirector",
@@ -213706,7 +213706,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 666,
+              "line": 690,
               "class": "ALPanelWeatherSettings",
               "function": "applyStartingSurfaces",
               "wired_class": "LLFloaterDirector",
@@ -213782,7 +213782,7 @@
             },
             {
               "file": "indra/newview/alpanelweathersettings.cpp",
-              "line": 670,
+              "line": 694,
               "class": "ALPanelWeatherSettings",
               "function": "clearSurfaces",
               "wired_class": "LLFloaterDirector",

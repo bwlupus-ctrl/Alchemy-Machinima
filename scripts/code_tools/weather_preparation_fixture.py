@@ -34,20 +34,35 @@ def source(tree, out, mutation=None):
         reader = reader.replace('s.wetAmount = c_wetAmount();', 's.wetAmount = 0.5f;')
     reader = reader.replace('{', '{\n        ++reads;', 1)
     update = function(panel, 'void ALPanelWeatherSettings::updateLibraryWeather()')
+    initialization = ''
+    initialize_call = ''
+    if 'void ALPanelWeatherSettings::initializeLibraryWeather()' in panel:
+        initialization = (function(panel, 'const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()') +
+                          function(panel, 'void refreshInactiveLibraryWeather()') +
+                          function(panel, 'void ALPanelWeatherSettings::initializeLibraryWeather()'))
+        initialize_call = '\n'.join(line for line in function(
+            tree.read('indra/newview/llviewercontrol.cpp'), 'void settings_setup_listeners()').splitlines()
+            if 'ALPanelWeatherSettings::initializeLibraryWeather();' in line)
     prefix = r'''
 #include "alweatheruimodel.h"
 #include <algorithm>
 #include <map>
 #include <string>
 #include <cmath>
+#include <functional>
+#include <vector>
 namespace WeatherPreparationFixture {
 U64 reads=0, terrain=0, refreshes=0, notifications=0;
 struct Settings {
  std::map<std::string,double> values;
+ std::map<std::string,std::vector<std::function<void()>>> listeners;
  U32 getU32(const std::string& n){return static_cast<U32>(values[n]);}
  bool getBOOL(const std::string& n){return values[n]!=0;}
  void setBOOL(const std::string& n,bool v){values[n]=v;}
 } gSavedSettings;
+void setting_setup_signal_listener(Settings& settings,const std::string& name,std::function<void()> callback){
+ settings.listeners[name].push_back(callback);
+}
 template<class T> struct LLCachedControl {
  std::string name;T fallback;LLCachedControl(Settings&,const char* n,T f):name(n),fallback(f){}
  T operator()()const{auto it=gSavedSettings.values.find(name);return it==gSavedSettings.values.end()?fallback:static_cast<T>(it->second);}
@@ -78,19 +93,26 @@ struct CountedUI:ALWeatherUIModel {
 std::string sSurfaceStatus, sParticleStatus;
 struct ALWeatherParticles {static bool supported(){return true;}};
 struct Signal {void operator()(){++notifications;}};
-struct ALPanelWeatherSettings {static void updateLibraryWeather();
+struct ALPanelWeatherSettings {static void updateLibraryWeather();static void initializeLibraryWeather();
+ static const std::vector<std::string>& trackedSettings();
  static Signal& libraryChanged(){static Signal s;return s;}};
 '''
     suffix = r'''
 void idle(){
 IDLE_BLOCK
 }
+void initialize(){static bool initialized=false;if(!initialized){initialized=true;INITIALIZE_CALL}}
 }
 extern "C" __declspec(dllexport) void fixture_weather_set(const char* key,double v){
- WeatherPreparationFixture::gSavedSettings.values[key]=v;
+ using namespace WeatherPreparationFixture;
+ initialize();
+ if(gSavedSettings.values.count(key) && gSavedSettings.values[key]==v)return;
+ gSavedSettings.values[key]=v;
+ for(auto& listener:gSavedSettings.listeners[key])listener();
 }
 extern "C" __declspec(dllexport) void fixture_weather_step(double time){
  using namespace WeatherPreparationFixture;
+ initialize();
  ++gFrameCount;LLPresentationTime::seconds=time;idle();
 }
 extern "C" __declspec(dllexport) void fixture_weather_restart(){
@@ -104,7 +126,13 @@ extern "C" __declspec(dllexport) void fixture_weather_counts(double* out){
  using namespace WeatherPreparationFixture;
  out[0]=double(reads);out[1]=double(terrain);out[2]=double(refreshes);out[3]=double(notifications);
 }
-'''.replace('IDLE_BLOCK', idle)
+extern "C" __declspec(dllexport) const char* fixture_weather_status(){
+ using namespace WeatherPreparationFixture;initialize();return sLibraryUI.status().c_str();
+}
+extern "C" __declspec(dllexport) void fixture_weather_load(const char* key,double value){
+ WeatherPreparationFixture::gSavedSettings.values[key]=value;
+}
+'''.replace('IDLE_BLOCK', idle).replace('INITIALIZE_CALL', initialize_call)
     path = Path(out) / 'preparation.cpp'
-    path.write_text(prefix + reader + update + suffix, encoding='utf-8')
+    path.write_text(prefix + reader + initialization + update + suffix, encoding='utf-8')
     return path

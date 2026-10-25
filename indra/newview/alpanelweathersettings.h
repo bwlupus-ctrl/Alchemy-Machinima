@@ -31,6 +31,7 @@ public:
 
     // Shared with the Director weather kit page (llfloaterdirector.cpp bindWeatherPage).
     static void strikeLightningNow();
+    static void initializeLibraryWeather(); // settings notifications, including inactive status
     static void updateLibraryWeather(); // idle, before any view; no draw-time work
     static void applyLibraryPreset(U32 preset);
     static void stopPrecipitation();

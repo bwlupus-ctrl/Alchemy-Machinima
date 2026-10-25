@@ -11,6 +11,7 @@ from unittest.mock import patch
 from relight_3d_gl import SourceTree
 from weather_cpu_check import ROOT, SOURCES
 from weather_preparation_fixture import function
+from weather_review_regression_check import reload_check, display_check as display_lifetime_check
 import weather_binding_check as binding
 import weather_material_gl_check as material
 
@@ -23,12 +24,12 @@ def master_check(tree, out, mutation):
     native.set(b'AlchemyWeatherEnabled',0)
     assert native.surface_caps(32,1)==0, 'master off retains weather shader feature'
     assert native.surface_bind_count()==0, 'master off enters bindWeatherMaterial'
-    listener='setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherEnabled", handleSetShaderChanged);'
-    assert listener in tree.read('indra/newview/llviewercontrol.cpp'), 'master toggle lacks shader reload listener'
+    reload_check(tree, out / 'reload')
     print('master feature / upload / reload PASS',flush=True)
 
 
 def display_check(tree, out, mutation):
+    display_lifetime_check(tree, out / 'lifetime', mutation)
     text=tree.read('indra/newview/llviewerdisplay.cpp')
     if mutation=='mirror-order':
         cover='gPipeline.generateWeatherSurfaceCover(*LLViewerCamera::getInstance());'
@@ -81,7 +82,7 @@ if __name__=='__main__':
         if args.check is None or name==args.check:check(tree,out/name,args.mutation)
     if args.mutations:
         for check,mutation,expected in [('master','master-switch','master off retains weather shader feature'),
-                ('display','mirror-order','hero probes capture before current-frame cover'),
+                ('display','mirror-order','hero probes lack current-frame cover'),
                 ('source-pin','source-pin','pinned consumer reads working-tree C++')]:
             r=subprocess.run([sys.executable,__file__,'--source-ref',args.source_ref,'--check',check,'--mutation',mutation],
                              capture_output=True,text=True,encoding='utf-8',timeout=240)

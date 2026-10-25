@@ -775,12 +775,6 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
     if (!gDisconnected && !LLApp::isExiting())
     {
-        // Publish this frame's shelter before mirrors bind material uniforms.
-        // Keep hero capture and the camera/geometry update sequence in place.
-        if (!for_snapshot && gFrameCount > 1)
-        {
-            gPipeline.generateWeatherSurfaceCover(*LLViewerCamera::getInstance());
-        }
         // Render mirrors and associated hero probes before we render the rest of the scene.
         // This ensures the scene state in the hero probes are exactly the same as the rest of the scene before we render it.
         if (gPipeline.RenderMirrors && !gSnapshot)
@@ -788,6 +782,15 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Update hero probes");
             LL_PROFILE_GPU_ZONE("hero manager")
             gPipeline.mHeroProbeManager.update();
+        }
+        // Hero initialization can reload shaders and release the surface map.
+        // Publish once after that invalidation, before mirrors or the main view.
+        if (!for_snapshot && gFrameCount > 1)
+        {
+            gPipeline.generateWeatherSurfaceCover(*LLViewerCamera::getInstance());
+        }
+        if (gPipeline.RenderMirrors && !gSnapshot)
+        {
             gPipeline.mHeroProbeManager.renderProbes();
         }
 

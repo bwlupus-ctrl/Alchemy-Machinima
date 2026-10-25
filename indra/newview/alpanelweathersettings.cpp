@@ -631,6 +631,32 @@ namespace
         s.visibilityAmount = c_visibilityAmount();
         return ALWeatherBridge::sanitize(s);
     }
+
+    void refreshInactiveLibraryWeather()
+    {
+        // Active status follows the frozen simulation in updateLibraryWeather().
+        // Inactive status has no frame work; startup and setting changes publish it.
+        if (gSavedSettings.getBOOL("AlchemyWeatherEnabled") &&
+            (gSavedSettings.getU32("AlchemyWeatherControlMode") == 1 ||
+             gSavedSettings.getBOOL("AlchemyWeatherPersistentWetEnabled"))) return;
+        auto& bridge = ALWeatherBridge::Controller::instance();
+        if (sLibraryUI.refresh(readLibrarySettings(), bridge.state(), false, bridge.clock().seconds()))
+        {
+            ALPanelWeatherSettings::libraryChanged()();
+        }
+    }
+}
+
+void ALPanelWeatherSettings::initializeLibraryWeather()
+{
+    for (const auto& name : trackedSettings())
+    {
+        if (LLControlVariable* control = gSavedSettings.getControl(name))
+        {
+            control->getSignal()->connect([](LLControlVariable*, const LLSD&, const LLSD&) { refreshInactiveLibraryWeather(); });
+        }
+    }
+    refreshInactiveLibraryWeather();
 }
 
 boost::signals2::signal<void()>& ALPanelWeatherSettings::libraryChanged()
