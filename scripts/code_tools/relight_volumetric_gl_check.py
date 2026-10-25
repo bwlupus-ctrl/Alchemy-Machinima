@@ -136,10 +136,32 @@ class Runner(G.AreaRunner):
         self.delete_query(1,C.byref(q))
         stats[key] = stats.get(key,0)+t.value*1e-6
 
+    def projector(self, pr, cam, light, shadows, uniforms):
+        """Upload one distinct projector, including its own light-space blockers."""
+        gl = self.gl
+        shadow = light['depth'] if shadows else np.ones_like(light['depth'])
+        self._texture('shadow',3,0x8CAC,*shadow.shape[::-1],0x1902,0x1406,shadow)
+        gl.param(0x0DE1,0x884C,0x884E); gl.param(0x0DE1,0x884D,0x0203)
+        gl.param(0x0DE1,0x2801,0x2601); gl.param(0x0DE1,0x2800,0x2601)
+        self._mat(pr,b'proj_mat',light['matrix']@np.linalg.inv(cam.view))
+        mats = np.tile(np.eye(4),(14,1,1)); mats[4:] = light['matrix']@np.linalg.inv(cam.view)
+        data = np.ascontiguousarray(mats.transpose(0,2,1),np.float32)
+        gl.matrix(gl.loc(pr,b'shadow_matrix'),14,0,data.ctypes.data_as(C.POINTER(gl.F)))
+        planes = light['planes']@np.linalg.inv(cam.view)
+        planes = np.ascontiguousarray(planes/np.linalg.norm(planes[:,:3],axis=1)[:,None],np.float32)
+        gl.u4fv(gl.loc(pr,b'projvol_frustum_planes'),6,planes.ctypes.data_as(C.POINTER(gl.F)))
+        self.uf(pr,'center',*(cam.view@np.array([*light['pos'],1.]))[:3])
+        self.uf(pr,'proj_n',*(cam.view[:3,:3]@light['dir']))
+        self.uf(pr,'proj_shadow_res',*shadow.shape[::-1])
+        for name,val in uniforms.items():
+            if isinstance(val,tuple): self.uf(pr,name,*map(float,val))
+            elif isinstance(val,(bool,int,np.integer)): self.ui(pr,name,int(val))
+            else: self.uf(pr,name,float(val))
+
     def run(self, fixture, half=False, steps=24, dither=0, frame=0, equi=0,
             air=0, footprint=0, rim=0, soft=True, cookie=False, shadows=True, rect=None, beam=0, conservative=0, maximum=100, bloom=False,
             planes_override=None, count=False, layers=1, cap=0, rim_rect=None, uniforms=None,
-            budget_steps=0., hard_beam=False):
+            budget_steps=0., hard_beam=False, projectors=None, definition=None):
         cam,g,depth,norm,light = fixture
         gl = self.gl; W,H = cam.W,cam.H
         tw,th = (W//2,H//2) if half else (W,H)
@@ -164,6 +186,10 @@ class Runner(G.AreaRunner):
         pr = self.shaft
         integration = bool(equi or air or footprint) and self.modern
         requested_budget = budget_steps
+        if definition is not None:
+            assert self.host is not None, 'Definition requires production C++ dispatch'
+            effective = int(host_request(self.host,'K',[definition,int(hard_beam)])[0])
+            if effective == 1: budget_steps = 0.
         if self.cpu_fallback and budget_steps > 0 and not hard_beam:
             assert self.host is not None, 'CPU fallback requires the production decision host'
             u = uniforms or {}
@@ -253,7 +279,22 @@ class Runner(G.AreaRunner):
             self.enable(0x0BE2); self.blend(1,1); self.blend_i(1,1,0)
         if rect is not None:
             self.enable(0x0C11); self.scissor(*rect)
-        for _ in range(layers): self.draw(stats,'march_ms')
+        self.last_projector_dispatch = []
+        for projector in projectors if projectors is not None else [None]*layers:
+            if projector is not None:
+                per_light = dict(uniforms or {}, **projector.get('uniforms',{}))
+                self.projector(pr,cam,projector['light'],shadows,per_light)
+                authored = projector.get('steps',steps)
+            else:
+                authored = steps
+            if definition is not None:
+                # The actual production C++ quality and upload routines decide
+                # each cone's shader/sample controls; replay their GL commands.
+                mode = int(host_request(self.host,'K',[definition,int(hard_beam)])[0])
+                commands = host_request(self.host,'Q',[0,mode,authored,authored,requested_budget])
+                self.execute(pr,commands,None,None)
+                self.last_projector_dispatch.append(dict(mode=mode,steps=authored,commands=commands))
+            self.draw(stats,'march_ms')
         gl.disable(0x0C11)
         if count: stats['iterations'] = self.read_counter()
         if half and self.mrt:
@@ -280,13 +321,17 @@ class Runner(G.AreaRunner):
                 if bloom: self.target('rim_source',W,H)
                 self._begin(pr)
                 self.enable(0x0BE2); self.blend(1,1)
-                if self.host is not None:
-                    r = rim_rect if rim_rect is not None else rect if rect is not None else (0,0,tw,th)
-                    commands=host_request(self.host,'R',[int(rect is not None),*r,tw,th,W,H,rim])
-                    self.execute(pr,commands,stats,'rim_ms')
-                else:
-                    self.ui(pr,'godray_res',0); self.uf(pr,'projvol_half_res',0,0)
-                    self.uf(pr,'projvol_rim_strength',rim); self.draw(stats,'rim_ms')
+                for projector in projectors if projectors is not None else [None]:
+                    if projector is not None:
+                        self.projector(pr,cam,projector['light'],shadows,
+                                       dict(uniforms or {},**projector.get('uniforms',{})))
+                    if self.host is not None:
+                        r = rim_rect if rim_rect is not None else rect if rect is not None else (0,0,tw,th)
+                        commands=host_request(self.host,'R',[int(rect is not None),*r,tw,th,W,H,rim])
+                        self.execute(pr,commands,stats,'rim_ms')
+                    else:
+                        self.ui(pr,'godray_res',0); self.uf(pr,'projvol_half_res',0,0)
+                        self.uf(pr,'projvol_rim_strength',rim); self.draw(stats,'rim_ms')
                 gl.disable(0x0C11); gl.disable(0x0BE2)
                 if bloom:
                     rim_tex=self.textures['rim_source'][0]

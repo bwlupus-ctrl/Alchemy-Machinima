@@ -1,4 +1,4 @@
-"""Seeded production-WGL FIX5 gate (no viewer build, mutations only in memory).
+"""Seeded production-WGL FIX6 gate (no viewer build, mutations only in memory).
 
 Run python scripts/code_tools/relight_volumetric_sweep.py. The default 256
 configurations use small odd/even targets; cost probes use 720p and 4K.
@@ -13,6 +13,7 @@ import time
 
 import numpy as np
 import relight_volumetric_gl_check as V
+import relight_volumetric_fix6_check as F6
 from relight_volumetric_perf import ORDER_NOISE_MS, ORDER_NOISE_FRACTION, HARD_COST_TOLERANCE, hard_cost_noise
 
 SEEDS = (0x1430716, 0x8550843, 0x8080979, 0x41004755,
@@ -49,6 +50,7 @@ def configurations():
             result.append(dict(seed=seed, index=k,
                 size=[int(rng.choice((256, 257, 320, 321))), int(rng.choice((144, 145, 180, 181)))],
                 pose=str(rng.choice(('backlit', 'inside', 'outside', 'toward_apex'))),
+                blocker=F6.BLOCKERS[k%4], geometry_seed=(seed*31+k)%1000000,
                 fog=float(rng.choice((0., 1e-8, 1e-6, .01, .25, .5, 1.))),
                 noise=float(rng.choice((0., .12, .124, .126, .25, .49, .5, .51, 1., rng.random()))),
                 scale=float(rng.choice((.1, 1.2, 2., 8., rng.uniform(.1, 8.)))),
@@ -68,6 +70,7 @@ def configurations():
     for kind in ('cookie', 'fog', 'weak', 'duplicate', 'interpolant'):
         c = copy.deepcopy(result[0])
         c.update(seed=0, index=kind, size=[640, 360], pose='backlit', fog=0.,
+                 blocker='fence',geometry_seed=0,
                  noise=.25 if kind in ('weak', 'duplicate') else 0., scale=1.2,
                  time=27., wind=[.37, .21, .19], cookie='checker' if kind == 'cookie' else 'none',
                  cones=1, resolution=64, mode=0, air=0, soft_filter=True,
@@ -77,6 +80,7 @@ def configurations():
     for kind in ('detail_cost', 'eight_cost', 'soft_energy', 'missing_soft', 'no_filter', 'shadow_jitter', 'saturated'):
         c = copy.deepcopy(result[0])
         c.update(seed=0,index=kind,size=[640,360],pose='inside',fog=0.,noise=.25,
+                 blocker='fence',geometry_seed=0,
                  scale=1.2,time=27.,wind=[.37,.21,.19],cookie='none',cones=6,
                  resolution=32,mode=0,hard=False,air=0,soft_filter=True,direct_budget=4.9)
         if kind == 'detail_cost': c['air'] = 1
@@ -148,29 +152,41 @@ def allocation(host, c, overlap_delta=0.):
 class Sweep:
     def __init__(self, gl, host):
         self.gl, self.host, self.fixtures = gl, host, {}
+        self.templates, self.projector_sets = {}, {}
+
+    spec = staticmethod(spec_for)
+
+    def projectors(self, c, f):
+        key = (id(f[4]),c['cones'])
+        if key not in self.projector_sets:
+            ps=F6.distinct_projectors(f,c['cones'])
+            # A random configuration applies its sliders to every cone. The
+            # separate mixed test explicitly varies controls cone by cone.
+            for p in ps: p['uniforms']={}
+            if c['cones']==1: ps=[dict(light=f[4],uniforms={})]
+            self.projector_sets[key]=ps
+        return self.projector_sets[key]
 
     def fixture(self, c):
-        key = (*c['size'], c['pose'],tuple(c.get('eye',())),tuple(c.get('target',())))
+        key = (*c['size'], c['pose'],tuple(c.get('eye',())),tuple(c.get('target',())),
+               c.get('blocker','fence'),c.get('geometry_seed',0))
         if key not in self.fixtures:
             w, h = c['size']
-            # Reuse the expensive analytic light-space depth map across sizes.
-            group = next((v for k, v in self.fixtures.items() if k[2] == c['pose']), None)
-            if group is not None:
-                cam = group[0]
-                camera = V.S.Camera(c.get('eye',cam.eye), c.get('target',cam.eye+cam.f), w, h)
-                g = V.S.cast_primary(group[4]['scene'], camera)
-                _, d, n = V.S.encode_gbuffer(camera, g)
-                self.fixtures[key] = (camera, g, d, n, group[4])
-            else:
-                self.fixtures[key] = (V.backlit_fixture(w, h) if c['pose'] == 'backlit'
-                                      else V.fixtures(w, h)[c['pose']])
+            if c['pose'] not in self.templates:
+                self.templates[c['pose']] = (V.backlit_fixture(129,73) if c['pose']=='backlit'
+                                             else V.fixtures(129,73)[c['pose']])
+            group=self.templates[c['pose']];cam=group[0]
+            camera=V.S.Camera(c.get('eye',cam.eye),c.get('target',cam.eye+cam.f),w,h)
+            light=F6.blockers(F6.light_geometry(group[4]),c.get('blocker','fence'),c.get('geometry_seed',0))
+            g=V.S.cast_primary(light['scene'],camera);_,d,n=V.S.encode_gbuffer(camera,g)
+            self.fixtures[key]=(camera,g,d,n,light)
         return self.fixtures[key]
 
     def fallback_identity(self, runner, c):
         sp, f = spec_for(c), self.fixture(c)
-        full, raw, _ = V.render_look(runner,f,sp,layers=c['cones'])
+        full, raw, _ = V.render_look(runner,f,sp,projectors=self.projectors(c,f))
         termination = runner.termination.tobytes()
-        actual, capped, _ = V.render_look(runner,f,sp,budget_steps=allocation(self.host,c),layers=c['cones'])
+        actual, capped, _ = V.render_look(runner,f,sp,budget_steps=allocation(self.host,c),projectors=self.projectors(c,f))
         decision = copy.deepcopy(runner.last_soft_decision)
         return dict(decision=decision,identical=(full.tobytes(),raw.tobytes(),termination) ==
                     (actual.tobytes(),capped.tobytes(),runner.termination.tobytes()))
@@ -178,7 +194,7 @@ class Sweep:
     def continuity(self, runner, c):
         spec = spec_for(c)
         f, n = self.fixture(c), allocation(self.host, c)
-        a = V.render_look(runner, f, spec, layers=c['cones'], budget_steps=n, hard_beam=c['hard'])[0]
+        a = V.render_look(runner, f, spec, projectors=self.projectors(c,f), budget_steps=n, hard_beam=c['hard'])[0]
         results = {}
         for field in ('budget', 'fog', 'noise', 'overlap'):
             sp = copy.deepcopy(spec)
@@ -187,7 +203,7 @@ class Sweep:
             elif field == 'fog': sp['uniforms']['projvol_fog_strength'] += 1e-8
             elif field == 'noise': sp['uniforms']['projvol_noise_strength'] = min(c['noise']+1e-6, 1.)
             else: budget = allocation(self.host, c, 1e-4)
-            b = V.render_look(runner, f, sp, layers=c['cones'], budget_steps=budget, hard_beam=c['hard'])[0]
+            b = V.render_look(runner, f, sp, projectors=self.projectors(c,f), budget_steps=budget, hard_beam=c['hard'])[0]
             changed, lit = V.shaft_changes(a, b)
             results[field] = dict(fraction=changed/lit if lit else 1., changed=changed, lit=lit,
                                   valid_coverage=lit > 0)
@@ -195,27 +211,25 @@ class Sweep:
 
     def energy(self, runner, c, hard=True):
         sp, f = spec_for(c), self.fixture(c)
-        # Hold authored resolution at the 64-step energy reference for both
-        # images. Definition must match Full at identical authored settings;
-        # hard_identity separately proves every randomized resolution (8..64).
-        sp['kwargs']['steps'] = 64
-        ref = V.render_look(runner, f, sp, steps=64, hard_beam=hard, layers=c['cones'])[0]
-        clear = V.render_look(runner, f, sp, steps=64, hard_beam=hard, shadows=False, layers=c['cones'])[0]
-        im = V.render_look(runner, f, sp, budget_steps=allocation(self.host, c), hard_beam=hard, layers=c['cones'])[0]
+        # Compare at the REAL configured count. Never relabel a 64-step render.
+        assert sp['kwargs']['steps']==c['resolution']
+        ref = V.render_look(runner, f, sp, hard_beam=hard, projectors=self.projectors(c,f))[0]
+        clear = V.render_look(runner, f, sp, hard_beam=hard, shadows=False, projectors=self.projectors(c,f))[0]
+        im = V.render_look(runner, f, sp, budget_steps=allocation(self.host, c), hard_beam=hard, projectors=self.projectors(c,f))[0]
         decision = copy.deepcopy(runner.last_soft_decision)
         lit = clear[:, :, :3].max(2) > 1e-4
         delta = np.max(np.abs(im[:, :, :3]-ref[:, :, :3]), 2)/np.maximum(clear[:, :, :3].max(2), 1e-4)
         reference_lit = int(np.sum(ref[:,:,:3].max(2) > 1e-4))
-        return dict(error=float(delta[lit].max()) if lit.any() else float('inf'), lit=int(lit.sum()),
+        return dict(steps=sp['kwargs']['steps'],error=float(delta[lit].max()) if lit.any() else float('inf'), lit=int(lit.sum()),
                     reference_lit=reference_lit, actual_lit=int(np.sum(im[:,:,:3].max(2)>1e-4)),
                     decision=decision, pixels_over_bound=int(np.sum(lit & (delta > ENERGY_BOUND))))
 
     def hard_identity(self, runner, c):
         sp, f = spec_for(c), self.fixture(c)
-        full, raw, _ = V.render_look(runner, f, sp, hard_beam=True, layers=c['cones'])
+        full, raw, _ = V.render_look(runner, f, sp, hard_beam=True, projectors=self.projectors(c,f))
         termination = runner.termination.tobytes()
         actual, capped, _ = V.render_look(runner, f, sp, budget_steps=allocation(self.host,c),
-                                        hard_beam=True, layers=c['cones'])
+                                        hard_beam=True, projectors=self.projectors(c,f))
         return (full.tobytes(),raw.tobytes(),termination) == (actual.tobytes(),capped.tobytes(),runner.termination.tobytes())
 
 
@@ -235,7 +249,7 @@ def timed(runner, fixture, spec, n, hard, layers, repeats, post=False):
                 stages_ms={key:float(np.median([r.get(key,0.) for r in stages])) for key in stages[0]})
 
 
-def paired_cost(runners, fixture, spec, budgets, hard, layers, repeats, post=False):
+def paired_cost(runners, fixture, spec, budgets, hard, layers, repeats, post=False, projectors=None, definitions=None):
     """Rotate identical warmed draws to prevent whole-block clock drift."""
     samples = {k:[] for k in runners}; stages = {k:[] for k in runners}
     histories = {k:np.zeros((fixture[0].H//2,fixture[0].W//2,4),np.float32) for k in runners}
@@ -243,10 +257,16 @@ def paired_cost(runners, fixture, spec, budgets, hard, layers, repeats, post=Fal
     for i in range(8+max(repeats,15)):
         for j in range(len(names)):
             k = names[(i+j)%len(names)]; runner = runners[k]
-            _,_,stats = V.render_look(runner,fixture,spec,budget_steps=budgets[k],hard_beam=hard,layers=layers)
+            _,_,stats = V.render_look(runner,fixture,spec,budget_steps=budgets[k],hard_beam=hard,layers=layers,
+                                     projectors=projectors,definition=definitions[k] if definitions else None)
             if post:
-                histories[k] = runner.temporal_resolve(fixture,histories[k],fixture[0],i>0,blend=.86,reject=3.)
-                stats['temporal_ms'] = runner.temporal_ms; runner.bloom_feed(fixture,1.85,1.,stats)
+                controls=spec.get('post_controls',dict(Temporal=1,TemporalBlend=.86,TemporalReject=3.))
+                if controls['Temporal']:
+                    histories[k] = runner.temporal_resolve(fixture,histories[k],fixture[0],i>0,
+                        blend=controls['TemporalBlend'],reject=controls['TemporalReject'])
+                    stats['temporal_ms'] = runner.temporal_ms
+                bloom=spec['bloom'] if definitions else (1.85,1.)
+                if bloom[0]>0: runner.bloom_feed(fixture,*bloom,stats)
             if i >= 8: samples[k].append(sum(stats.values())); stages[k].append(stats)
     return {k:dict(median_ms=float(np.median(samples[k])),p10_p90_ms=np.percentile(samples[k],[10,90]).tolist(),
                    stages_ms={s:float(np.median([r.get(s,0.) for r in stages[k]])) for s in stages[k][0]}) for k in names}
@@ -331,10 +351,10 @@ def review_costs(sweep, runner, repeats):
             rows.append(row);print('admitted_cost',row,flush=True)
     for kind,steps,air,cap,reported in (('detail_cost',32,1,4.9,[1.847,2.722]),('eight_cost',8,0,1.,[.647,.797])):
         c=copy.deepcopy(next(c for c in configurations() if c['index']==kind))
-        c.update(size=[1280,720],cones=6,resolution=steps,air=air,direct_budget=cap)
+        c.update(size=[1280,720],cones=6 if kind=='detail_cost' else 1,resolution=steps,air=air,direct_budget=cap)
         sp=spec_for(c)
         timing=paired_cost(dict(Full=runner,Before=old,After=runner),sweep.fixture(c),sp,
-                           dict(Full=0.,Before=cap,After=cap),False,6,repeats)
+                           dict(Full=0.,Before=cap,After=cap),False,c['cones'],repeats)
         full,after=(timing[k]['median_ms'] for k in ('Full','After'))
         row=dict(repro=kind,config=c,timing=timing,ratio=after/full,review_full_soft_ms=reported,
                  **sweep.fallback_identity(runner,c))
@@ -368,7 +388,7 @@ def cost_checks(sweep, runner, repeats):
                         c['mode'] = mode
                         n = budgets[name]
                         t = measured[name]
-                        row = dict(size=list(size), noise=noise, cones=cones, hard=hard, mode=name, steps=n,
+                        row = dict(synthetic_stress=True,size=list(size), noise=noise, cones=cones, hard=hard, mode=name, steps=n,
                                    config=copy.deepcopy(c), render_controls=copy.deepcopy(sp), **t)
                         rows.append(row); group[name] = t['median_ms']
                         print('cost', row, flush=True)
@@ -405,7 +425,14 @@ def identity(gl, host, source):
     return rows
 
 
+def F6_unsafe_source(source):
+    a=source.index('// FIX6_FULL_ONLY_BEGIN')
+    b=source.index('// FIX6_FULL_ONLY_END',a)+len('// FIX6_FULL_ONLY_END')
+    return source[:a]+source[b:]
+
+
 def mutations(source):
+    source = F6_unsafe_source(source)
     old = V.G.SourceTree(REVIEWED).read(V.G.SHADERS+'/'+V.SHAFT)
     soft_marker = '        if (budgeted && projvol_hard_beam_shadows == 0)\n        {'
     a, b = block(source, soft_marker)
@@ -465,6 +492,7 @@ def controls(sweep, runner, source, repeats):
             metric = sweep.continuity(bad, c)
             rejected = any(m['fraction'] > CONTINUITY_BOUND for m in metric.values())
         elif kind in ('weak','missing_soft'):
+            if kind == 'missing_soft': bad.cpu_fallback = False
             c = focused[kind]
             metric = sweep.energy(bad, c, hard=kind == 'weak')
             rejected = metric['lit'] > 0 and metric['reference_lit'] > 0 and metric['error'] > ENERGY_BOUND
@@ -510,8 +538,10 @@ def main():
     host = V.build_scissor_host(args.out, None)
     source = V.G.SourceTree('WORKTREE').read(V.G.SHADERS+'/'+V.SHAFT)
     runner = V.Runner(MemoryTree(source), gl); runner.host = host
-    sweep = Sweep(gl, host)
-    report = dict(renderer=gl.renderer, seeds=list(SEEDS), visual_look='b:silhouette', visual_base=base_spec(), cost_look='b:cinematic', cost_stages='march, upsample, temporal, bloom', continuity_bound=CONTINUITY_BOUND,
+    sweep = Sweep(gl, host); sweep.output=args.out
+    report = dict(renderer=gl.renderer, seeds=list(SEEDS), visual_look='b:silhouette', visual_base=base_spec(),
+                  cost_look='SHIPPED settings in shipped_costs; costs retains synthetic 32-step/100-luminance stress and the unchanged saving predicate',
+                  cost_stages='march, upsample, temporal, bloom', continuity_bound=CONTINUITY_BOUND,
                   energy_bound=ENERGY_BOUND, configurations=[], worst={}, checks=[])
     start = time.monotonic()
     try:
@@ -526,6 +556,17 @@ def main():
                 if key not in report['worst'] or value > report['worst'][key]['value']:
                     report['worst'][key] = dict(value=value, config=c, budget=row['budget'])
             if i % 16 == 0: print('sweep', i+1, 'worst', {k: v['value'] for k, v in report['worst'].items()}, flush=True)
+        report['fix6_controls']=F6.negative_controls(sweep,runner,configurations()[0])
+        report['checks'].append(dict(name='FIX6_pop_and_missing_detail_controls',passed=all(r['rejected'] for r in report['fix6_controls'])))
+        report['fine_walks']=F6.fine_walks(sweep,runner,configurations()[0])
+        report['checks'].append(dict(name='FIX6_fine_step_Full_identity',passed=all(r['Full_byte_identical'] and r['all_fallback'] and r['lit']>0 for r in report['fine_walks'])))
+        report['checks'].append(dict(name='FIX6_fine_step_absolute_bound',bound=F6.STEP_ENERGY_BOUND,passed=all(r['maximum_step_energy']<=F6.STEP_ENERGY_BOUND for r in report['fine_walks'])))
+        report['mixed_projectors']=F6.mixed_checks(sweep,runner,configurations()[0])
+        report['checks'].append(dict(name='FIX6_distinct_mixed_projectors',passed=all(r['identical'] and r['energy']['lit']>0 and r['energy']['reference_lit']>0 and len(r['dispatch'])==r['cones'] and all(d['mode']==1 for d in r['dispatch']) for r in report['mixed_projectors'])))
+        report['stale_variants']=F6.stale_variant_checks(sweep,runner,configurations()[0])
+        report['checks'].append(dict(name='FIX6_stale_budget_variants_Full_identity',passed=all(r['identical'] for r in report['stale_variants'])))
+        report['discrete_controls']=F6.discrete_controls(sweep,runner,configurations()[0])
+        report['checks'].append(dict(name='FIX6_discrete_controls_Full_identity',passed=all(r['identical'] and r['reference_lit']>0 for r in report['discrete_controls'])))
         report['identity'] = identity(gl, host, source)
         old = V.Runner(V.G.SourceTree('462f5fac75c'),gl); old.host=host
         c = next(c for c in configurations() if c['index']=='soft_energy')
@@ -536,8 +577,7 @@ def main():
         report['checks'].append(dict(name='fallback_boundaries',passed=all(
             r['lit'] > 0 and r['fraction'] == 0. and all(
                 e['lit'] > 0 and e['reference_lit'] > 0 and e['error'] <= ENERGY_BOUND for e in r['energy'])
-            for r in report['boundaries']) and all(any(d['budgeted'] for d in r['decisions']) and
-                not all(d['budgeted'] for d in r['decisions']) for r in report['boundaries'] if r['boundary'] != 'inside_edge')))
+            for r in report['boundaries']) and all(not d['budgeted'] for r in report['boundaries'] for d in r['decisions'])))
         report['checks'].append(dict(name='randomized_continuity', passed=all(
             m['fraction'] == 0. for r in report['configurations'] for m in r['continuity'].values())))
         report['checks'].append(dict(name='hard_energy', passed=all(r['energy']['error'] <= ENERGY_BOUND for r in report['configurations'])))
@@ -549,9 +589,13 @@ def main():
         report['checks'].append(dict(name='Soft_fallback_Full_byte_identity',passed=all(
             r['soft_identity']['decision']['budgeted'] or r['soft_identity']['identical'] for r in report['configurations'])))
         report['checks'].append(dict(name='Full_odd_even_byte_identity', passed=all(r['identical'] for r in report['identity'])))
-        report['checks'].append(dict(name='admitted_Soft_exercised',passed=sum(
-            r['soft_energy']['decision']['budgeted'] for r in report['configurations']) >= 15))
+        report['checks'].append(dict(name='retired_Soft_never_admitted',passed=all(
+            not r['soft_energy']['decision']['budgeted'] for r in report['configurations'])))
         if not args.visual_only:
+            report['shipped_costs']=F6.shipped_costs(sweep,runner,args.repeats,paired_cost)
+            report['checks'].append(dict(name='FIX6_shipped_settings_identity',passed=all(
+                m['identical'] and m['lit']>0 and m['reference_lit']>0 and m['error']==0.
+                for r in report['shipped_costs'] for m in r['identity'].values())))
             report['costs'], failures = cost_checks(sweep, runner, args.repeats)
             report['review_costs'], extra_failures = review_costs(sweep,runner,args.repeats)
             failures += extra_failures

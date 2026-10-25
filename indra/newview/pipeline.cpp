@@ -22111,7 +22111,10 @@ static F32 projvolCoverage(bool valid, const glm::vec4& sphere, F32 width, F32 h
 
 static U32 projvolEffectiveDefinition(U32 definition, bool hard)
 {
-    return hard ? 1u : llclamp(definition,0u,3u);
+    // FIX6: sparse visibility cannot bound unsampled fences/slats/leaves.
+    // Retired modes remain readable in saved preferences, but all use Full.
+    // This also bypasses reservations, the second dispatch and history resets.
+    return 1u;
 }
 
 static F32 projvolStepBudget(U32 definition, bool adaptive, F32 coverage,
@@ -22138,33 +22141,17 @@ static F32 projvolStepBudget(U32 definition, bool adaptive, F32 coverage,
     return llmax(steps,0.f);
 }
 
-// FIX5: the sixteen-node kernel is an accuracy floor, NOT the requested cap.
-// Normalized GPU work: phase/medium=4, PCF=1, bilinear=1/12.
-// Full=N*(4+authored_taps*filter); Soft=2+1.40*(16*4+31*filter).
-// The 40% specialized-node margin covers the measured ALU/register overhead.
-// Charge sixteen fine nodes and all fifteen possible visibility refinements,
-// never the requested cap. Smooth shadow cells need no refinement lookup.
-// WGL calibration (RTX 5090, 720p/4K, inside, 32 samples, PCF, two taps):
-// Six-cone default <= 0.60 including resolve. Require >= 25% modeled headroom.
-// Never amortize detail options, cookies, fog or strong/high-frequency noise.
-// Camera containment/facing is conservative; the sweep crosses both boundaries
-// and requires the two estimates to match the existing 5% pixel-change bound.
+// Retain the standalone decision interface for regression probes. No CPU-only
+// cost model proves an error bound for arbitrary shadow-map detail. Equal
+// endpoint visibility does not prove the interval is clear. A crossfade would
+// retain that error; evaluating Full as well would remove the cost saving.
 static bool projvolSoftBudgetAllowed(U32 authored, F32 budget, bool airborne,
                                      bool equiangular, bool footprint, bool extra_detail,
                                      bool cookie, bool soft_filter, U32 shadow_taps,
                                      F32 noise, F32 noise_scale, F32 fog,
                                      bool inside, F32 margin_ratio, F32 facing, F32 distance_ratio, U32 dither)
 {
-    if (authored < 32 || shadow_taps > 2 || !soft_filter || !(budget > 0.f) || airborne || equiangular || footprint ||
-        extra_detail || cookie || !inside || !(margin_ratio >= 0.05f) ||
-        !(facing >= 0.95f) || !(distance_ratio >= 1.f/6.f && distance_ratio <= 0.25f) || dither > 1 ||
-        !(noise <= 0.125f) || !(noise_scale <= 1.2f) || fog != 0.f) return false;
-    const F32 taps = (F32)llclamp(shadow_taps,1u,4u);
-    const F32 filter = soft_filter ? 1.f : 1.f/12.f;
-    const F32 node = 4.f + taps*filter;
-    const F32 full_cost = (F32)authored*node;
-    const F32 soft_cost = 2.f + 1.40f*(16.f*4.f+31.f*filter);
-    return soft_cost <= 0.75f*full_cost;
+    return false;
 }
 
 static F32 projvolCameraMargin(const glm::mat4& clip, F32 radius)
@@ -22393,10 +22380,10 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
     static LLCachedControl<bool> airborne_tap(gSavedSettings, "BDMergeProjectorVolumetricsAirborneTap", false);
     static LLCachedControl<bool> cookie_footprint(gSavedSettings, "BDMergeProjectorVolumetricsCookieFootprint", false);
     static LLCachedControl<bool> pyramid_scissor(gSavedSettings, "BDMergeProjectorVolumetricsPyramidScissor", true);
-    static LLCachedControl<U32> definition(gSavedSettings, "BDMergeProjectorVolumetricsDefinition", 0);
+    static LLCachedControl<U32> definition(gSavedSettings, "BDMergeProjectorVolumetricsDefinition", 1);
     static LLCachedControl<U32> beam_shadows(gSavedSettings, "BDMergeProjectorVolumetricsBeamShadows", 0);
     const bool hard_variant = beam_shadows == 1;
-    // Hard always uses Full's adaptive steps and bypasses every cap/reservation.
+    // Every saved Definition uses Full; there is no admission threshold.
     const U32 quality = projvolEffectiveDefinition(definition,hard_variant);
     const bool budget_variant = quality != 1;
     const U32 integration_mask = (equiangular() ? 1u : 0u) |
@@ -22611,7 +22598,6 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
     }
 
     glm::mat4 inv_mv = glm::inverse(mat);
-    const glm::mat4 inverse_projection = glm::inverse(proj);
     struct RimDraw
     {
         LLDrawable* drawable;
@@ -22987,10 +22973,9 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
             // Side-effect-free geometry + cookie upload; slot passed in directly
             // (NO mTargetShadowSpotLight priority reshuffle - R1).
             bool camera_inside = false;
-            F32 camera_margin = 0.f;
             const F32 lamp_power_scale = setupSpotLightVolumetric(
                 shaft_shader, drawablep, (S32)i, &camera_inside,
-                llclamp(e_max_dist,0.f,64.f), &camera_margin);
+                llclamp(e_max_dist,0.f,64.f));
 
             glm::vec3 c(drawablep->getPositionAgent());
             c = mul_mat4_vec3(mat, c); // agent -> view space
@@ -23006,11 +22991,6 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
             const F32 coverage = projvolCoverage(sphere_valid,sphere,tgt_w,tgt_h);
             const F32 budget = projvolStepBudget(quality,BDMergeProjectorVolumetricsAdaptive,
                 coverage,tgt_h,min_res,max_res,step_limit,large_limit,frame_limit,(F32)total_coverage);
-            const LLVector3 forward = LLVector3(0.f,0.f,-1.f)*volume->getRenderRotation();
-            const glm::vec3 view_axis = glm::mat3(mat)*glm::vec3(forward.mV[0],forward.mV[1],forward.mV[2]);
-            LLPrismLens::ProjectorFeed soft_feed;
-            const bool has_cookie = volume->getLightTextureID().notNull() ||
-                hasGoboOverride(volume->getID()) || LLPrismLens::projectorFeedFor(volume,soft_feed);
             // Remaining per-cone override levers (brightness/feather/g/density/tint).
             const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
             const F32 e_feather  = has_ov ? ov.feather      : BDMergeProjectorVolumetricsFeather;
@@ -23033,28 +23013,8 @@ void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* target, bool aux_d
                 const F32 t = llclamp(e_tintStr, 0.f, 1.f);
                 col = col * (1.f - t) + e_tint * (ls * t);
             }
-            const F32 color_max = llmax(col.mV[0],llmax(col.mV[1],col.mV[2]));
-            const F32 gain = e_mult*llmax(e_density,0.f)*
-                (1.f+llclamp(BDMergeProjectorVolumetricsNoiseStrength,0.f,1.f))*color_max*
-                llmax(1.f,BDMergeProjectorVolumetricsShadowTint);
-            const bool use_budget = budget_variant && e_mult >= 0.f &&
-                col.mV[0] >= 0.f && col.mV[1] >= 0.f && col.mV[2] >= 0.f &&
-                volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF) >= 0.f &&
-                projvolFullCostIsUnclamped(c,inverse_projection,radius,e_g,gain,
-                    BDMergeProjectorVolumetricsMaxLuminance) &&
-                projvolSoftBudgetAllowed(cone_res,budget,
-                airborne_tap(),equiangular(),cookie_footprint(),
-                dust_on || !BDMergeProjectorVolumetricsFrustumClip ||
-                    BDMergeProjectorVolumetricsConservativeShadow || BDMergeSoftShadowVogel ||
-                    BDMergeProjectorVolumetricsShadowJitterTap ||
-                    e_max_dist > 0.f,has_cookie,
-                BDMergeSoftProjectorShadows,BDMergeProjectorVolumetricsShadowJitterTap ? 1u :
-                    BDMergeProjectorVolumetricsShadowSamples,
-                BDMergeProjectorVolumetricsNoiseStrength,BDMergeProjectorVolumetricsNoiseScale,
-                BDMergeProjectorVolumetricsFogStrength,camera_inside,camera_margin/radius,
-                -view_axis.z,glm::length(c)/radius,
-                BDMergeProjectorVolumetricsDither);
-            if (budget_variant && use_budget != (program_index == 0)) continue;
+            // Full-only dispatch has no pose/slider admission calculation.
+            const bool use_budget = false;
             const U32 cone_quality = projvolConeDefinition(quality,use_budget,budget);
 
             shaft_shader.uniform1f(LLShaderMgr::GODRAY_MULTIPLIER, e_mult);

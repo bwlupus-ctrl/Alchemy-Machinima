@@ -134,10 +134,10 @@ Manifest size: **45 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `projector_volumetrics_pyramid_scissor_check-on` | Only `projector_volumetrics_pyramid_scissor_check` is on; dependent visibility is measured. |
 | `card-shaft_performance-tallest-850` | Only `shaft_performance` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-shaft_performance-tallest-1160` | Only `shaft_performance` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `ps_BDMergeProjectorVolumetricsDefinition-option-0` | Only `ps_BDMergeProjectorVolumetricsDefinition` selects `Auto (resolution-aware)`; other selectors remain default. |
+| `ps_BDMergeProjectorVolumetricsDefinition-option-0` | Only `ps_BDMergeProjectorVolumetricsDefinition` selects `Auto (retired; uses Full)`; other selectors remain default. |
 | `ps_BDMergeProjectorVolumetricsDefinition-option-1` | Only `ps_BDMergeProjectorVolumetricsDefinition` selects `Full (original)`; other selectors remain default. |
-| `ps_BDMergeProjectorVolumetricsDefinition-option-2` | Only `ps_BDMergeProjectorVolumetricsDefinition` selects `Balanced`; other selectors remain default. |
-| `ps_BDMergeProjectorVolumetricsDefinition-option-3` | Only `ps_BDMergeProjectorVolumetricsDefinition` selects `Fast`; other selectors remain default. |
+| `ps_BDMergeProjectorVolumetricsDefinition-option-2` | Only `ps_BDMergeProjectorVolumetricsDefinition` selects `Balanced (retired; uses Full)`; other selectors remain default. |
+| `ps_BDMergeProjectorVolumetricsDefinition-option-3` | Only `ps_BDMergeProjectorVolumetricsDefinition` selects `Fast (retired; uses Full)`; other selectors remain default. |
 | `ps_BDMergeProjectorVolumetricsBeamShadows-option-0` | Only `ps_BDMergeProjectorVolumetricsBeamShadows` selects `Soft`; other selectors remain default. |
 | `ps_BDMergeProjectorVolumetricsBeamShadows-option-1` | Only `ps_BDMergeProjectorVolumetricsBeamShadows` selects `Hard (soft surfaces)`; other selectors remain default. |
 | `projector_volumetrics_half_res_check-on` | Only `projector_volumetrics_half_res_check` is on; dependent visibility is measured. |

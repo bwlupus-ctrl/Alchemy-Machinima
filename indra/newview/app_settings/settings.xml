@@ -19335,18 +19335,18 @@
   <key>BDMergeProjectorVolumetricsDefinition</key>
   <map>
       <key>Comment</key>
-      <string>Auto scales definition with march height (1080 rows is the reference), then applies the caps. Balanced uses 85% and Fast 65% of Auto, including the frame budget. Full keeps the original adaptive look samples and bypasses caps. Caps limit march segments; particles and strong dust retain fine density detail, and Hard retains extra depth checks for thin blockers. Changing looks keeps these global controls. Global quality preference; not owned by shaft looks or scene files.</string>
+      <string>Full preserves the authored samples and shadow detail. Auto, Balanced and Fast are retired; saved selections also use Full. The sparse estimator could miss fences, slats and leaves and pop at admission boundaries. Definition caps are inactive. Changing looks keeps this preference.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>U32</string>
       <key>Value</key>
-      <integer>0</integer>
+      <integer>1</integer>
   </map>
   <key>BDMergeProjectorVolumetricsMaxSteps</key>
   <map>
       <key>Comment</key>
-      <string>Limit each cone without changing the look's Samples. 0 uses the look default. Full bypasses this cap. Global quality preference; not owned by shaft looks or scene files.</string>
+      <string>Inactive: all Definition selections currently use Full and preserve the authored samples.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -19357,7 +19357,7 @@
   <key>BDMergeProjectorVolumetricsBigConeCap</key>
   <map>
       <key>Comment</key>
-      <string>Lower definition smoothly as a cone fills the screen. 0 is off; 1 approaches Min samples. Starts at 25% influence coverage. Full bypasses this cap. Global quality preference; not owned by shaft looks or scene files.</string>
+      <string>Inactive: all Definition selections currently use Full and preserve the authored samples.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -19368,7 +19368,7 @@
   <key>BDMergeProjectorVolumetricsFrameBudget</key>
   <map>
       <key>Comment</key>
-      <string>Total fractional steps shared by cones, weighted by continuous screen coverage. 0 is unlimited. Conservative bounds reserve shares before culling and shadow-slot selection, preventing edge pops. Full bypasses this cap. Global quality preference; not owned by shaft looks or scene files.</string>
+      <string>Inactive: all Definition selections currently use Full and preserve the authored samples.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

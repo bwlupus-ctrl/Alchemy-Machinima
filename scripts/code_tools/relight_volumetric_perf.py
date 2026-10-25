@@ -75,7 +75,7 @@ def performance_checks(V, args, gl, host, report):
     pipe=(V.G.REPO/'indra/newview/pipeline.cpp').read_text(encoding='utf-8')
     effective={f'{mode}/{int(hard)}':V.host_request(host,'K',[mode,int(hard)])[0]
                for mode in (0,1,2,3) for hard in (False,True)}
-    check('Hard_Full_allocation',all(effective[f'{mode}/1']==1 and effective[f'{mode}/0']==mode
+    check('Hard_Full_allocation',all(effective[f'{mode}/1']==1 and effective[f'{mode}/0']==1
           for mode in (0,1,2,3)) and
           'const U32 quality = projvolEffectiveDefinition(definition,hard_variant);' in pipe and
           'if (quality != 1 && frame_limit > 0.f)' in pipe,
@@ -88,13 +88,16 @@ def performance_checks(V, args, gl, host, report):
     looks = V.parse_looks()['looks']; defaults = V.settings_defaults()
     specs = {look['id']:V.look_spec(V.look_state(look,defaults)) for look in looks}
     if args.performance_cost_only:
-        # Exact named profile controls, on the same analytic inside-cone fixture
-        # for both refs. Identical overlapping cones isolate repeated march cost.
+        # Exact SHIPPED Cinematic Haze controls, with distinct projectors.
         # Termination MRT, temporal, upsample and bloom are all included.
-        spec = V.look_spec(V.look_state(next(l for l in looks if l['id']=='b:cinematic'),defaults))
-        spec['kwargs'].update(steps=32,soft=True,rim=0.,maximum=100.)
-        spec['uniforms']['projvol_shadow_samples']=2
-        spec['bloom']=(1.85,1.)
+        state = V.look_state(next(l for l in looks if l['id']=='b:cinematic'),defaults)
+        spec = V.look_spec(state)
+        temporal_blend=state[V.PV+'TemporalBlend'][0]
+        temporal_reject=state[V.PV+'TemporalReject'][0]
+        spec['post_controls']=dict(Temporal=state[V.PV+'Temporal'][0],TemporalBlend=temporal_blend,TemporalReject=temporal_reject)
+        from relight_volumetric_fix6_check import distinct_projectors
+        resolution=spec['resolution']
+        projector_sets={}
         after = rig.runners(spec['dust'])['after']; before = V.Runner(V.G.SourceTree(BASE),gl)
         before.host = host
         f = scenes['inside']; cov = sphere(f)
@@ -104,35 +107,37 @@ def performance_checks(V, args, gl, host, report):
                         median_ms=float(np.median(totals)),p10_p90_ms=np.percentile(totals,[10,90]).tolist(),
                         stages_ms={k:float(np.median([s.get(k,0) for s in runs])) for k in runs[0]})
         def timed(runner, mode, n, hard):
-            steps = budget(mode,cov,args.height//2,32,n*cov)
+            steps = budget(mode,cov,args.height//2,resolution,n*cov)
             history = np.zeros((args.height//2,args.width//2,4),np.float32)
             runs=[]
             for k in range(8+max(args.repeats,15)):
-                _,_,stats = V.render_look(runner,f,spec,layers=n,budget_steps=steps,hard_beam=hard)
-                history=runner.temporal_resolve(f,history,f[0],k>0,blend=.86,reject=3.)
+                _,_,stats = V.render_look(runner,f,spec,projectors=projector_sets[n],budget_steps=steps,hard_beam=hard,definition=mode)
+                history=runner.temporal_resolve(f,history,f[0],k>0,blend=temporal_blend,reject=temporal_reject)
                 stats['temporal_ms']=runner.temporal_ms
-                runner.bloom_feed(f,1.85,1.,stats)
+                if spec['bloom'][0]>0: runner.bloom_feed(f,*spec['bloom'],stats)
                 if k>=8:runs.append(stats)
-            return summarize(runs,steps if mode!=1 and not hard else 32.)
+            return summarize(runs,float(resolution))
         def interleaved(n, hard):
             # Alternate Full/Auto/Fast for Soft and Hard. Rotate the order each
             # round so background GPU work cannot bias whole mode blocks.
             # Preserve the eight warmups and >=15 samples per mode, all stages,
             # and independent temporal histories used by the Soft measurements.
             modes=(1,0,3)
-            counts={m:budget(m,cov,args.height//2,32,n*cov) for m in modes}
+            counts={m:budget(m,cov,args.height//2,resolution,n*cov) for m in modes}
             histories={m:np.zeros((args.height//2,args.width//2,4),np.float32) for m in modes}
             runs={m:[] for m in modes}
             for k in range(8+max(args.repeats,15)):
                 for j in range(3):
                     mode=modes[(k+j)%3]
-                    _,_,stats=V.render_look(after,f,spec,layers=n,budget_steps=counts[mode],hard_beam=hard)
-                    histories[mode]=after.temporal_resolve(f,histories[mode],f[0],k>0,blend=.86,reject=3.)
+                    _,_,stats=V.render_look(after,f,spec,projectors=projector_sets[n],budget_steps=counts[mode],hard_beam=hard,definition=mode)
+                    histories[mode]=after.temporal_resolve(f,histories[mode],f[0],k>0,blend=temporal_blend,reject=temporal_reject)
                     stats['temporal_ms']=after.temporal_ms
-                    after.bloom_feed(f,1.85,1.,stats)
+                    if spec['bloom'][0]>0: after.bloom_feed(f,*spec['bloom'],stats)
                     if k>=8:runs[mode].append(stats)
-            return {m:summarize(runs[m],32. if hard or m==1 else counts[m]) for m in modes}
+            return {m:summarize(runs[m],float(resolution)) for m in modes}
         for n in (1,3,6,10):
+            projector_sets[n]=distinct_projectors(f,n)
+            for p in projector_sets[n]:p['uniforms']={}
             original=timed(before,1,n,False)
             report['measurements'].append(dict(cones=n,mode='baseline',shadows='soft',**original))
             print('baseline',n,original,flush=True)
@@ -158,8 +163,8 @@ def performance_checks(V, args, gl, host, report):
               hard_sampling='interleaved, rotating Full/Auto/Fast order each round',
               soft_sampling='interleaved, rotating Full/Auto/Fast order each round',
               six_cone_maximum_ratio=SIX_CONE_COST_RATIO,failures=failures,size=[args.width,args.height],warmups=8,samples=max(args.repeats,15),
-              controls=dict(Resolution=32,ShadowSamples=2,SoftProjectorShadows=True,BloomFeed=1.85,TemporalBlend=.86,TemporalReject=3.),
-              fixture='Cinematic Haze medium, identical inside cones, no rim; GPU draw costs only')
+              controls=spec,
+              fixture='SHIPPED Cinematic Haze, distinct inside cones; GPU draw costs only')
         inflated=[dict(m,median_ms=m['median_ms']*10 if m['mode']=='Auto' else m['median_ms']) for m in report['measurements']]
         rejected=cost_bounds(inflated)
         check('cost_bracket_negative_control',len({(v['cones'],v['shadows']) for v in rejected if v['mode']=='Auto'})==8,

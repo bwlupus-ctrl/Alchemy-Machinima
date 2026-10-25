@@ -183856,29 +183856,29 @@
    "hazards": [],
    "exercise": "select_item",
    "test_value": {
-    "item_index": 1,
-    "label": "Full (original)",
-    "value": 1
+    "item_index": 2,
+    "label": "Balanced (retired; uses Full)",
+    "value": 2
    },
    "expect": {
     "setting": "BDMergeProjectorVolumetricsDefinition",
     "type": "U32",
-    "value": 1
+    "value": 2
    },
    "restore": {
     "setting": "BDMergeProjectorVolumetricsDefinition",
-    "value": 0
+    "value": 1
    },
    "setting": "BDMergeProjectorVolumetricsDefinition",
    "setting_source": "kit_row setting",
    "setting_type": "U32",
-   "default": 0,
+   "default": 1,
    "min": null,
    "max": null,
    "increment": null,
    "combo_items": [
     {
-     "label": "Auto (resolution-aware)",
+     "label": "Auto (retired; uses Full)",
      "value": "0"
     },
     {
@@ -183886,11 +183886,11 @@
      "value": "1"
     },
     {
-     "label": "Balanced",
+     "label": "Balanced (retired; uses Full)",
      "value": "2"
     },
     {
-     "label": "Fast",
+     "label": "Fast (retired; uses Full)",
      "value": "3"
     }
    ],

@@ -1564,9 +1564,9 @@ Computed logic class: **code-driven**; 69/79 rows setting-bound, 7 rows referenc
 | `area_soft_shadows` / World lights | `area_shadow_world_lights` | `number` | `S32` `indra/newview/app_settings/settings.xml:21671` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:258` | — |
 | `area_soft_shadows` / World shadows | `area_shadow_world_status` | `readout` | — | — | — | — | — |
 | `area_soft_shadows` / World picks | `area_shadow_world_picks` | `readout` | — | — | — | — | — |
-| `area_soft_shadows` / List picks | `area_shadow_world_list_picks` | `button` | — | — | `LLPipeline::worldShadowPickChatLines indra/newview/pipeline.cpp:28779` | — | — |
-| `area_soft_shadows` / Clear picks | `area_shadow_world_clear_picks` | `button` | — | — | `LLPipeline::clearWorldShadowPicks indra/newview/pipeline.cpp:24623` | — | — |
-| `area_soft_shadows` / Clear away picks | `area_shadow_world_clear_away_picks` | `button` | — | — | `LLPipeline::clearAwayWorldShadowPicks indra/newview/pipeline.cpp:24635` | — | — |
+| `area_soft_shadows` / List picks | `area_shadow_world_list_picks` | `button` | — | — | `LLPipeline::worldShadowPickChatLines indra/newview/pipeline.cpp:28739` | — | — |
+| `area_soft_shadows` / Clear picks | `area_shadow_world_clear_picks` | `button` | — | — | `LLPipeline::clearWorldShadowPicks indra/newview/pipeline.cpp:24583` | — | — |
+| `area_soft_shadows` / Clear away picks | `area_shadow_world_clear_away_picks` | `button` | — | — | `LLPipeline::clearAwayWorldShadowPicks indra/newview/pipeline.cpp:24595` | — | — |
 | `area_soft_shadows` / Also in VCam feeds | `area_shadow_vcam` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:21650` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:276` | — |
 | `area_soft_shadows` / SL status | `area_shadow_sl_status` | `readout` | — | — | — | — | — |
 | `area_soft_shadows` / Coverage | `area_shadow_coverage` | `readout` | — | — | — | — | — |

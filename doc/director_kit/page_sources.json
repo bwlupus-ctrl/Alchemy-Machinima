@@ -160839,7 +160839,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 28779,
+              "line": 28739,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -160906,7 +160906,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 24623,
+              "line": 24583,
               "class": "LLPipeline",
               "function": "clearWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -160973,7 +160973,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 24635,
+              "line": 24595,
               "class": "LLPipeline",
               "function": "clearAwayWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -171342,10 +171342,10 @@
             }
           ],
           "items": [
-            "Auto (resolution-aware)",
+            "Auto (retired; uses Full)",
             "Full (original)",
-            "Balanced",
-            "Fast"
+            "Balanced (retired; uses Full)",
+            "Fast (retired; uses Full)"
           ],
           "xui": [
             {

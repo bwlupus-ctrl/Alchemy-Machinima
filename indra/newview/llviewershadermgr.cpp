@@ -4518,9 +4518,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         // Match the deactivated A/B variant exactly in the binary-cache key.
         // Absent and explicit "0" hash differently: first OFF must reuse startup.
         gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_INTEGRATION_AB", "0");
-        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_BUDGET_ENABLE",
-            gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") == 1 ||
-            gSavedSettings.getU32("BDMergeProjectorVolumetricsBeamShadows") == 1 ? "0" : "1");
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_BUDGET_ENABLE", "0");
         gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_HARD_BEAM",
             gSavedSettings.getU32("BDMergeProjectorVolumetricsBeamShadows") == 1 ? "1" : "0");
         // [BDMerge G3.3 Dust / review fix] Dust is a compile-time permutation:

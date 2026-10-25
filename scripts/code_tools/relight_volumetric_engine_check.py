@@ -60,12 +60,28 @@ def cpp_checks(V, args, check):
     src = tree.read(PIPE); old = ref.read(PIPE)
     for name in ['renderProjectorVolumetric', 'feedProjectorVolumetricBloom', 'setupSpotLightVolumetric']:
         check('frozen_cpp/' + name, function(src, name.replace('Volumetric', 'VolumetricClassic') if name != 'feedProjectorVolumetricBloom' else 'feedProjectorVolumetricBloomClassic') == rename(function(old, name)))
-    # Keep an exact dispatch pin after FIX5's two-program cone batching. This
-    # replaces the old textual migration with the same whole-function equality
-    # requirement; Classic, shader registration, Full bytes, scenes and reset
-    # gates below remain pinned to their original independent references.
+    # Keep the FIX5 whole-function pin, permitting only the explicit FIX6
+    # retirement edits below. The independent reference pin is still checked;
+    # every other byte of the production dispatch must remain identical.
+    previous=function(V.G.SourceTree('342a2514642').read(PIPE),'renderProjectorVolumetricNew')
+    reference_hash=hashlib.sha256(previous.encode()).hexdigest()
+    expected=previous.replace('"BDMergeProjectorVolumetricsDefinition", 0);','"BDMergeProjectorVolumetricsDefinition", 1);')
+    expected=expected.replace('// Hard always uses Full\'s adaptive steps and bypasses every cap/reservation.',
+                              '// Every saved Definition uses Full; there is no admission threshold.')
+    expected=expected.replace('    const glm::mat4 inverse_projection = glm::inverse(proj);\n','')
+    expected=expected.replace('            F32 camera_margin = 0.f;\n','')
+    expected=expected.replace('llclamp(e_max_dist,0.f,64.f), &camera_margin);','llclamp(e_max_dist,0.f,64.f));')
+    a=expected.index('            const LLVector3 forward =',expected.index('const F32 budget = projvolStepBudget(quality'))
+    b=expected.index('            // Remaining per-cone override',a)
+    expected=expected[:a]+expected[b:]
+    a=expected.index('            const F32 color_max =',a)
+    b=expected.index('            const U32 cone_quality =',a)
+    expected=expected[:a]+'''            // Full-only dispatch has no pose/slider admission calculation.
+            const bool use_budget = false;
+'''+expected[b:]
     dispatch_hash = hashlib.sha256(function(src,'renderProjectorVolumetricNew').encode()).hexdigest()
-    check('new_cpp/dispatch',dispatch_hash == '229ba4cfd3f4bacc607e975ed8d245ff4c9c1a16b23bcc7edbae2938ec47f5df',sha256=dispatch_hash)
+    check('new_cpp/dispatch',reference_hash == '229ba4cfd3f4bacc607e975ed8d245ff4c9c1a16b23bcc7edbae2938ec47f5df'
+          and function(src,'renderProjectorVolumetricNew')==expected,sha256=dispatch_hash,reference_sha256=reference_hash)
     dispatch=function(src,'renderProjectorVolumetricNew')
     batch=dispatch[dispatch.index('for (U32 program_index ='):]
     check('new_cpp/direct_batch_MRT','march_target->bindTarget();\n        if (!halfres) glDrawBuffer(GL_COLOR_ATTACHMENT0);' in batch)
@@ -244,9 +260,9 @@ def engine_checks(V, args, gl, report):
     expected_registration=new_registration(baseline_manager,'        // Cinematic weather').replace('''        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_FINE_MEDIUM",
             gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") != 1 &&
             gSavedSettings.getF32("BDMergeProjectorVolumetricsNoiseStrength") > 0.5f ? "1" : "0");
-''','').replace('gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") == 1 ? "0" : "1");',
-    'gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") == 1 ||\n'
-    '            gSavedSettings.getU32("BDMergeProjectorVolumetricsBeamShadows") == 1 ? "0" : "1");')
+''','').replace('''gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_BUDGET_ENABLE",
+            gSavedSettings.getU32("BDMergeProjectorVolumetricsDefinition") == 1 ? "0" : "1");''',
+    'gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_BUDGET_ENABLE", "0");')
     check('new_shader_registration_unchanged',
           new_registration(manager,'        // Four optional Classic programs') ==
           expected_registration)

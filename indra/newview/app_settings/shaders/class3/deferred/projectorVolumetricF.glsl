@@ -85,6 +85,12 @@ uniform int   godray_res;         // raymarch sample count (bounded local march;
 #undef PROJVOL_BUDGET_ENABLE
 #define PROJVOL_BUDGET_ENABLE 0
 #endif
+// FIX6_FULL_ONLY_BEGIN
+// Sparse shadow visibility has no bound for detail between nodes. Compile the
+// exact Full integrator even for a stale saved Auto/Fast shader permutation.
+#undef PROJVOL_BUDGET_ENABLE
+#define PROJVOL_BUDGET_ENABLE 0
+// FIX6_FULL_ONLY_END
 #if defined(PROJVOL_BUDGET_ENABLE) && PROJVOL_BUDGET_ENABLE
 uniform float projvol_budget_steps; // 0 = rim-only; >0 = continuous cap
 #else
