@@ -27,11 +27,23 @@ bool weatherMaterialActive()
 float weatherSurfaceOpen(vec3 agent)
 {
     vec3 q = (weather_surface_cover_matrix * vec4(agent, 1.0)).xyz * 0.5 + 0.5;
+    // Compare on the receiver plane at the nearest depth texel's center.
+    // A fixed world-space bias cannot cover half a texel on sloped receivers.
+    vec3 dx = dFdx(q), dy = dFdy(q);
+    float determinant = dx.x * dy.y - dx.y * dy.x;
+    vec2 depth_slope = vec2(0.0);
+    if (abs(determinant) > 1e-20)
+        depth_slope = vec2(dy.y * dx.z - dx.y * dy.z,
+                           dx.x * dy.z - dy.x * dx.z) / determinant;
+    vec2 map_size = vec2(textureSize(weather_surface_cover_map, 0));
+    vec2 texel_index = clamp(floor(q.xy * map_size), vec2(0.0), map_size - 1.0);
+    vec2 texel_offset = (texel_index + 0.5) / map_size - q.xy;
+    float receiver_depth = q.z + dot(depth_slope, texel_offset);
     // Outside a published volume is UNKNOWN, including remote auxiliary views.
     if (any(lessThan(q, vec3(0.0))) || any(greaterThan(q, vec3(1.0)))) return 0.0;
     float depth = texture(weather_surface_cover_map, q.xy).r;
-    // A successfully cleared empty map is open. Receiver bias is 12 cm.
-    return step(q.z - 0.12 / weather_material_time_range.y, depth);
+    // Keep only 2 cm for depth precision; actual roofs still shelter receivers.
+    return step(receiver_depth - 0.02 / weather_material_time_range.y, depth);
 }
 float weatherPuddle(vec2 world_xy, float up)
 {
@@ -39,8 +51,10 @@ float weatherPuddle(vec2 world_xy, float up)
     vec2 p = world_xy * (6.28318530718 / 16.0);
     float field = sin(p.x + sin(p.y)) * cos(p.y * 0.5 - sin(p.x));
     float width = max(fwidth(field), 0.035);
-    float threshold = 1.0 - weather_material_wet.y * 1.8;
-    return smoothstep(threshold - width, threshold + width, field) * smoothstep(0.94, 0.995, up);
+    float amount = clamp(weather_material_wet.y, 0.0, 1.0);
+    if (amount <= 0.0) return 0.0;
+    float threshold = 1.0 - amount * 1.8;
+    return smoothstep(threshold - width, threshold + width, field) * smoothstep(0.94, 0.995, up) * smoothstep(0.0, 0.1, amount);
 }
 vec2 weatherDropSlope(vec2 world_xy, float seconds)
 {

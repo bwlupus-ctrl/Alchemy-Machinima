@@ -42,7 +42,7 @@ INVENTORY = [
 ]
 
 
-def run(ref='WORKTREE', mutation=None, cost=True):
+def run(ref='WORKTREE', mutation=None, cost=True, regression=None):
     tree = SourceTree(ref)
     helper = tree.read(SHADERS + '/class1/deferred/weatherMaterialF.glsl')
     manager=tree.read('indra/newview/llreflectionmapmanager.cpp')
@@ -69,7 +69,9 @@ def run(ref='WORKTREE', mutation=None, cost=True):
     changes = {
         'off': ('if (!weatherMaterialActive()) return;', 'if (false) return;'),
         'screen': ('agent.xy + weather_material_origin.xy', 'gl_FragCoord.xy'),
-        'cover': ('return step(q.z - 0.12 / weather_material_time_range.y, depth);', 'return 1.0;'),
+        'cover': ('return step(receiver_depth - 0.02 / weather_material_time_range.y, depth);', 'return 1.0;'),
+        'puddle-zero': ('if (amount <= 0.0) return 0.0;', ''),
+        'slope-self': ('float receiver_depth = q.z + dot(depth_slope, texel_offset);', 'float receiver_depth = q.z;'),
         'normal': ('n = normalize(n + vec3(slope, 0.0));', 'n = n + vec3(slope * 40.0, 0.0);'),
         'energy': ('color *= 1.0 - wet *', 'color *= 1.0 + 4.0 * wet *'),
         'gloss': ('gloss = 1.0 - roughness;', 'gloss = roughness;'),
@@ -78,6 +80,7 @@ def run(ref='WORKTREE', mutation=None, cost=True):
         a, b = changes[mutation]
         assert a in helper
         helper = helper.replace(a, b)
+        if mutation == 'puddle-zero': helper = helper.replace(' * smoothstep(0.0, 0.1, amount)', '')
         if mutation == 'normal': helper = helper.replace('normal_eye = normalize(transpose(mat3(weather_material_view_to_agent)) * n);', 'normal_eye = transpose(mat3(weather_material_view_to_agent)) * n;')
     # Reuse the established neutral native lighting fixture and real GL context.
     import alpha_blend_parity_gl_check as A
@@ -85,9 +88,23 @@ def run(ref='WORKTREE', mutation=None, cost=True):
     getstr = gl.fn('glGetString', C.c_char_p, C.c_uint)
     device = {k: getstr(v).decode() for k, v in [('vendor',0x1F00),('renderer',0x1F01),('version',0x1F02)]}
     print('WGL', device, flush=True)
+    from weather_native_fixture import build as native_build
+    native_mapper = native_build(tree, ROOT/'.tmp/weather_port/material'/('mapper_'+str(os.getpid())), gl, mutation)
+    eyes = native_mapper.feature(b'deferred/diffuseAlphaMaskNoColorF.glsl',1,0)
+    if regression in (None, 'avatar-eyes'):
+        assert eyes == 0, 'avatar rigid eyes enable weather material'
+        print('native avatar eyes exclusion PASS', flush=True)
+        if regression == 'avatar-eyes': return
+    for file,_ in INVENTORY:
+        native_file=re.sub(r'^class\d+/', '', file).encode()
+        assert native_mapper.feature(native_file,0,0)==0, 'master-off native permutation enables weather '+file
+        for excluded in range(1,5):
+            assert native_mapper.feature(native_file,1,excluded)==0, 'native excluded permutation enables weather '+file
     r = A.Runner(ref)
     old = A.Runner('330d012e161')
     all_programs = []
+    sampler_mappings = []
+    output_location=gl.fn('glGetFragDataLocation',C.c_int,C.c_uint,C.c_char_p)
     # 4 float MRTs also expose flags, emissive and alpha for exact off comparisons.
     textures = []
     def texture(w, h, data=None, internal=0x8814, fmt=0x1908):
@@ -103,8 +120,16 @@ def run(ref='WORKTREE', mutation=None, cost=True):
     cover_open = texture(16,16,np.ones((16,16),np.float32),0x822E,0x1903)
     cover_roof = texture(16,16,np.full((16,16),0.2,np.float32),0x822E,0x1903)
     flat_z = A.tex((.5,1.,.5,1.)) # native scene fixture has z-up rather than eye-z-up
+    thin_diffuse = A.tex((.8,.82,.85,.02))
+    gloss_lookup = texture(8,256,np.broadcast_to(np.linspace(.02,2.,256,dtype=np.float32)[:,None,None],(256,8,4)).copy())
     # Constant lookup fixtures represent the native indexed texture dispatch only.
-    lookup = 'uniform sampler2D fixtureDiffuse; vec4 diffuseLookup(vec2 uv){return texture(fixtureDiffuse,uv);}\n'
+    lookup = '''uniform sampler2D tex0,tex1,tex2,tex3; uniform int fixtureTextureIndex;
+vec4 diffuseLookup(vec2 uv){
+ if(fixtureTextureIndex==0)return texture(tex0,uv);
+ if(fixtureTextureIndex==1)return texture(tex1,uv);
+ if(fixtureTextureIndex==2)return texture(tex2,uv);
+ return texture(tex3,uv);}
+'''
 
     def vertex(source, defs):
         # Derive the fixture interface from each unmodified production fragment.
@@ -136,11 +161,14 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
  vec3 P=mat3(fixtureWorldToView)*(vec3(xy*2.0+fixtureShift,0.0)-fixtureCamera);
 '''+ '\n'.join(assignments)+'\n}'
 
-    def program(file, defs, baseline=False, extra='', weather=True):
+    def program(file, defs, baseline=False, extra='', weather=True, sidecars=True):
         owner = old if baseline else r
         src = owner.source(file)
+        if mutation == 'forward-coverage' and file == 'class3/deferred/materialF.glsl':
+            src = src.replace('visible_diffuse.a = authored_visible_alpha;', '').replace('surface_coverage.y = authored_surface_alpha;', '')
         pr = gl.program()
         defines = '#define REFMAP_LEVEL 1\n#define HAS_EMISSIVE 1\n' + defs + extra
+        if sidecars: defines += '#define HAS_VISIBLE_DIFFUSE 1\n'
         if weather and not baseline: defines += '#define HAS_WEATHER_MATERIAL 1\n'
         for module in A.COMMON:
             gl.attach(pr, owner.compile(owner.source(module), defines, module))
@@ -155,16 +183,39 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
         gl.attach(pr, owner.compile(vertex(src, defines), defines, file+' vertex',0x8B31))
         for i in range(4): A.bindout(pr,i,('frag_data[%d]'%i).encode())
         A.bindout(pr,0,b'frag_color')
+        for i,name in enumerate(('visible_diffuse','surface_coverage','alr_rimsplit_parity_mask'),1):
+            A.bindout(pr,i,name.encode())
         gl.link(pr); ok = C.c_int(); gl.getprog(pr,0x8B82,C.byref(ok))
         if not ok.value:
             log=C.create_string_buffer(64000);gl.plog(pr,len(log),None,log);raise AssertionError(file+' LINK '+log.value.decode())
         all_programs.append(pr)
+        if not baseline and weather and file != 'class1/deferred/diffuseAlphaMaskNoColorF.glsl':
+            indexed=4 if gl.loc(pr,b'tex0')>=0 else 0
+            native_mapper.map_program(pr,indexed,1 if 'GLTF_INDEXED_CHANNELS' in defines else 0)
+            get_uniform = gl.fn('glGetUniformiv',None,C.c_uint,C.c_int,C.POINTER(C.c_int))
+            get_active = gl.fn('glGetActiveUniform',None,C.c_uint,C.c_uint,C.c_int,C.POINTER(C.c_int),C.POINTER(C.c_int),C.POINTER(C.c_uint),C.c_void_p)
+            units = {}
+            count=C.c_int();gl.getprog(pr,0x8B86,C.byref(count))
+            for i in range(count.value):
+                name=C.create_string_buffer(1024);length=C.c_int();size=C.c_int();kind=C.c_uint()
+                get_active(pr,i,len(name),C.byref(length),C.byref(size),C.byref(kind),name)
+                if 0x8B5D<=kind.value<=0x8B64 or kind.value in (0x9108,0x900C):
+                    value=(C.c_int*size.value)();get_uniform(pr,gl.loc(pr,name.value),value)
+                    units[name.value.decode()]=value[0]
+            if 'diffuseMap' in units and regression in (None, 'sampler'):
+                assert units['diffuseMap']==0, 'native sampler diffuse loses unit zero '+file+' '+str(units)
+            if 'weather_surface_cover_map' in units and regression in (None, 'sampler'):
+                assert all(unit<units['weather_surface_cover_map'] for name,unit in units.items() if name!='weather_surface_cover_map'), 'native sampler cover precedes existing samplers '+file+' '+str(units)
+            if indexed and regression in (None, 'sampler'):
+                assert units['tex0']==0, 'native indexed diffuse loses unit zero '+file
+            print('native sampler PASS',file,units,flush=True)
+            sampler_mappings.append(dict(file=file,defines=defines,units=units))
         return pr
 
     def matrix(pr, name, value):
         packed=np.ascontiguousarray(np.array(value,np.float32).T)
         gl.matrix(gl.loc(pr,name.encode()),1,0,packed.ctypes.data_as(C.POINTER(C.c_float)))
-    def configure(pr, wet=0, covered=False, camera=(0.,0.,0.), shift=(0.,0.), puddles=.7, ripple=1., time=0., excluded=0, rotation=None, emission=0.):
+    def configure(pr, wet=0, covered=False, camera=(0.,0.,0.), shift=(0.,0.), puddles=.7, ripple=1., time=0., excluded=0, rotation=None, emission=0., glare=False):
         r.defaults(pr)
         r.set(pr,'fixtureCamera',*camera); r.set(pr,'fixtureShift',*shift)
         r.set(pr,'weather_material_enabled',int(wet != 0));r.set(pr,'weather_material_excluded',excluded)
@@ -176,7 +227,9 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
         r.bind(pr,'emissiveMap',11,A.diffuse if emission else A.black)
         r.set(pr,'sharedActorFxOpacity',1.)
         r.set(pr,'specular_color',.1,.1,.1,.25)
-        r.set(pr,'fixtureDiffuse',1)
+        if glare:
+            r.set(pr,'specular_color',.8,.8,.8,.25)
+        r.bind(pr,'tex0',1,A.diffuse)
         r.set(pr,'terrain_texture_scale',1.)
         r.set(pr,'terrain_paint_type',0)
         for i in range(4):
@@ -202,6 +255,9 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
             r.bind(pr,key,10,A.orm)
         for key in ['detail_0_emissive','detail_1_emissive','detail_2_emissive','detail_3_emissive','emissivemap0']:
             r.bind(pr,key,11,A.diffuse if emission else A.black)
+        if glare:
+            r.bind(pr,'diffuseMap',1,thin_diffuse)
+            r.bind(pr,'lightFunc',8,gloss_lookup)
         r.bind(pr,'weather_surface_cover_map',14,cover_roof if covered else cover_open)
         rot=np.eye(3) if rotation is None else rotation
         fixture_view=np.eye(4);fixture_view[:3,:3]=rot
@@ -216,6 +272,13 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
         target_bind(ids)
         gl.viewport(0,0,*size)
         A.clearcolor(-5.,-5.,-5.,-5.); A.clear(0x4000)
+        # An absent fragment output has undefined values if its draw buffer is
+        # enabled. Preserve the cleared sentinel for attachments the real
+        # program does not declare (e.g. shared Actor FX has beauty only).
+        active={output_location(pr,name.encode()) for name in
+                ['frag_color','visible_diffuse','surface_coverage','alr_rimsplit_parity_mask',
+                 *('frag_data[%d]'%i for i in range(4))]}
+        A.drawbuffers(4,(C.c_uint*4)(*(0x8CE0+i if i in active else 0 for i in range(4))))
         gl.draw(4,0,3)
         result=[]
         for i in range(4):
@@ -229,6 +292,16 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
 
     identity=0; effects=[]
     for file,defs in INVENTORY:
+        if regression in ('puddle-zero','slope-self'): continue
+        if regression=='forward-coverage' and not (file=='class3/deferred/materialF.glsl' and '#define DIFFUSE_ALPHA_MODE 1\n' in defs): continue
+        if file == 'class1/deferred/diffuseAlphaMaskNoColorF.glsl':
+            baseline_program=program(file,defs,True,weather=False)
+            excluded_program=program(file,defs,weather=False)
+            authored=draw(baseline_program)
+            assert np.array_equal(authored,draw(excluded_program)), 'weather-off byte identity '+file
+            assert np.array_equal(authored,draw(excluded_program,1)), 'avatar rigid eyes changed'
+            identity+=2
+            continue
         before, after = program(file,defs,True), program(file,defs)
         off_program=program(file,defs,weather=False)
         a,b=draw(before),draw(after)
@@ -245,6 +318,19 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
             assert np.array_equal(wet[3],b[3]), 'emission changed '+file
         else:
             assert np.array_equal(wet[0,:,:,3],b[0,:,:,3]), 'forward alpha changed '+file
+            if regression in (None, 'forward-coverage'):
+                if output_location(after,b'visible_diffuse')>=0:
+                    assert np.array_equal(wet[1,:,:,3],b[1,:,:,3]), 'forward MRT visible diffuse coverage changed '+file
+                if output_location(after,b'surface_coverage')>=0:
+                    assert np.array_equal(wet[2,:,:,:2],b[2,:,:,:2]), 'forward MRT surface coverage changed '+file
+                if output_location(after,b'alr_rimsplit_parity_mask')>=0:
+                    assert np.array_equal(wet[3],b[3]), 'forward MRT parity mask changed '+file
+                if file=='class3/deferred/materialF.glsl':
+                    authored,coated=(draw(after,w,glare=True,camera=(1.,1.,2.)) for w in (0,1))
+                    assert authored[0,:,:,3].max()>.02, 'forward glare fixture is empty'
+                    assert authored[0,:,:,3].min()<.64, 'forward glare fixture has opaque texture coverage'
+                    for attachment,channel in ((0,3),(1,3),(2,1)):
+                        assert np.array_equal(authored[attachment,:,:,channel],coated[attachment,:,:,channel]), 'forward MRT glare coverage changed '+str((attachment,channel))
         covered=draw(after,1,covered=True)
         assert np.max(np.abs(covered-b))<2e-6, 'sheltered interior wetted '+file+' '+str([(i,float(np.max(np.abs(covered[i]-b[i]))),covered[i,0,0].tolist(),b[i,0,0].tolist()) for i in range(4)])
         excluded=draw(after,1,excluded=1)
@@ -257,6 +343,7 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
             assert np.array_equal(emitting,draw(after,1,emission=.5)), 'emitting surface is coated '+file
         effects.append(file)
         print('material PASS',file,flush=True)
+    if regression in ('sampler', 'forward-coverage'): return
     for file,defs in [INVENTORY[0],INVENTORY[6],INVENTORY[10],INVENTORY[11],INVENTORY[12],INVENTORY[13]]:
         avatar=program(file,defs,extra='#define HAS_SKIN 1\n#define GBUFFER_AVATAR_TAG 1\n')
         assert np.array_equal(draw(avatar),draw(avatar,1)), 'WP2 coats avatar permutation '+file
@@ -264,12 +351,16 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
     assert np.array_equal(draw(hud),draw(hud,1)), 'HUD changed'
     velocity=program('class3/deferred/materialF.glsl','#define MATERIAL_VELOCITY 1\n#define DIFFUSE_ALPHA_MODE 1\n',weather=False)
     assert np.array_equal(draw(velocity),draw(velocity,1)), 'wetness changes velocity coverage'
+    plain_forward=program('class3/deferred/materialF.glsl',INVENTORY[11][1],sidecars=False)
+    plain_alpha=[draw(plain_forward,w,glare=True,camera=(1.,1.,2.))[0,:,:,3] for w in (0,1)]
+    assert np.array_equal(*plain_alpha), 'forward alpha without sidecars changed'
     for file in ('class1/deferred/fullbrightF.glsl','class1/environment/waterF.glsl','class3/environment/waterF.glsl'):
         assert tree.read(SHADERS+'/'+file)==SourceTree('330d012e161').read(SHADERS+'/'+file), 'excluded shader modified '+file
 
     # Direct production helper fixture gives decoded fields before native packing.
     fixture='''in vec3 vary_position; out vec4 frag_data[4];uniform vec3 fixtureEyeNormal;
 uniform float fixtureRoughness; uniform float fixtureMetal; uniform int fixtureLegacy;
+uniform vec2 fixturePuddlePoint; uniform int fixturePuddleProbe;
 uniform mat4 weather_material_view_to_agent; uniform vec3 weather_material_origin;
 void weatherMaterialLinear(vec3 p,inout vec3 n,inout vec3 c,inout float r,float m);
 void weatherMaterialLegacyLinear(vec3 p,inout vec3 n,inout vec3 c,inout vec3 s,inout float g);
@@ -277,7 +368,8 @@ float weatherPuddle(vec2 p,float up);
 void main(){vec3 n=fixtureEyeNormal,c=vec3(.6),s=vec3(.04);float r=fixtureRoughness;
  if(fixtureLegacy!=0) weatherMaterialLegacyLinear(vary_position,n,c,s,r);
  else weatherMaterialLinear(vary_position,n,c,r,fixtureMetal);
- frag_data[0]=vec4(c,r);frag_data[1]=vec4(n,weatherPuddle((weather_material_view_to_agent*vec4(vary_position,1)).xy+weather_material_origin.xy,1.));
+ vec2 point=fixturePuddleProbe!=0?fixturePuddlePoint:(weather_material_view_to_agent*vec4(vary_position,1)).xy+weather_material_origin.xy;
+ frag_data[0]=vec4(c,r);frag_data[1]=vec4(n,weatherPuddle(point,1.));
  frag_data[2]=vec4(s,0);frag_data[3]=vec4(0);}
 '''
     pr=gl.program()
@@ -289,6 +381,14 @@ void main(){vec3 n=fixtureEyeNormal,c=vec3(.6),s=vec3(.04);float r=fixtureRoughn
     gl.link(pr);ok=C.c_int();gl.getprog(pr,0x8B82,C.byref(ok));assert ok.value
     # Defaults set by configure don't override these decoded fixture inputs.
     gl.use(pr);r.set(pr,'fixtureRoughness',.8);r.set(pr,'fixtureMetal',0.);r.set(pr,'fixtureLegacy',0)
+    if regression in (None, 'puddle-zero'):
+        r.set(pr,'fixturePuddleProbe',1);r.set(pr,'fixturePuddlePoint',1.631036,3.043559)
+        masks=[float(draw(pr,1,puddles=amount)[1,:,:,3].max()) for amount in (0.,1e-6,1e-4,.001,.01,.1)]
+        assert masks[0]==0., 'zero puddle amount has nonzero mask '+str(masks)
+        assert 0.<masks[1]<1e-7 and all(a<=b for a,b in zip(masks,masks[1:])), 'puddle mask does not fade continuously '+str(masks)
+        r.set(pr,'fixturePuddleProbe',0)
+        print('zero puddle GL PASS',masks,flush=True)
+        if regression == 'puddle-zero': return
     a=draw(pr,1,ripple=1.,time=.25)
     b=draw(pr,1,ripple=1.,time=.25,camera=(4.,-2.,3.))
     temporal=float(np.max(np.abs(a-b)))
@@ -364,7 +464,7 @@ void main(){float u=gl_FragCoord.x/1024.0;float z=1.0-u*u;
 
     # Every new Director row reaches a setting/command and changes actual decoded GL output.
     from weather_binding_check import build, settings_table
-    native=build(ROOT/'.tmp/weather_port/material'/('bindings_'+(mutation or 'baseline')+'_'+str(os.getpid())),mutation)
+    native=build(ROOT/'.tmp/weather_port/material'/('bindings_'+(mutation or 'baseline')+'_'+str(os.getpid())),mutation,ref)
     settings=settings_table(tree.read('indra/newview/app_settings/settings.xml'))
     rows={row.get('setting'):row for row in __import__('xml.etree.ElementTree',fromlist=['ElementTree']).fromstring(
         tree.read('indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml')).iter('kit_row')}
@@ -448,6 +548,7 @@ void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
  p=c[gl_VertexID%6];p.x=p.x*.35+(gl_VertexID/6==0?0.:.65);}
  float z=coverDepth+(coverShape==1?p.x*.2:0.);
  if(coverShape==2){z=p.x*1.6-.8;p.x=.5;}
+ if(coverShape==4){z=.5-p.x;}
  gl_Position=vec4(p*2-1,z,1);post_pos=gl_Position;target_pos_x=p.x*512.;
  vary_actor_fx_position=vec3(p,z);vertex_color=vec4(1);vary_texcoord0=p;}'''
     gl.attach(shadow,r.compile(shadow_vertex,'','cover fixture vertex',0x8B31))
@@ -477,9 +578,46 @@ void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
             gl.use(caster);r.set(caster,'coverDepth',depth);r.set(caster,'coverShape',shape)
             if masked:
                 r.set(caster,'minimum_alpha',.5);r.set(caster,'shadow_alpha_mode',0)
-                r.bind(caster,'fixtureDiffuse',1,canopy_texture)
+                r.bind(caster,'tex0',1,canopy_texture)
             gl.draw(4,0,12 if shape==3 else 3)
         gl.disable(0x0B71)
+    if regression in (None, 'slope-self'):
+        # A 45-degree receiver spans 256 m across 512 texels (50 cm each).
+        # Rasterize its OWN depth, then sample receiver locations between texel
+        # centers. A second draw places the same receiver one metre below a roof.
+        slope_vertex=vertex(fixture,'').replace('vec3(xy*2.0+fixtureShift,0.0)',
+                                               'vec3(xy*2.0+fixtureShift,(xy*2.0+fixtureShift).x)')
+        slope_pr=gl.program()
+        for src,label,stage in [(helper,'slope helper',0x8B30),(r.source('environment/srgbF.glsl'),'slope srgb',0x8B30),
+                                (fixture,'slope receiver',0x8B30),(slope_vertex,'slope receiver vertex',0x8B31)]:
+            gl.attach(slope_pr,r.compile(src,'',label,stage))
+        for i in range(4):A.bindout(slope_pr,i,('frag_data[%d]'%i).encode())
+        gl.link(slope_pr);gl.getprog(slope_pr,0x8B82,C.byref(ok));assert ok.value
+        # Native shadow rasterization: z_ndc = -world_x / 256, x_ndc=world_x/128.
+        cover_pass(0,-.5,1)
+        gl.use(shadow);r.set(shadow,'coverDepth',.5)
+        # shape 4 is an unmodified fixture geometry plane; the native fragment
+        # and hardware depth rasterization remain the actual cover producer.
+        r.set(shadow,'coverShape',4)
+        gl.bind_fbo(0x8D40,cover_fbo);gl.viewport(0,0,512,512)
+        A.enable(0x0B71);clear_depth(1.);A.clear(0x0100);gl.draw(4,0,3);gl.disable(0x0B71)
+        slope_matrix=np.diag([1/128,1/128,-1/256,1.])
+        for roof in (False,True):
+            configure(slope_pr,1,puddles=0.,ripple=0.)
+            r.set(slope_pr,'fixtureRoughness',.8);r.set(slope_pr,'fixtureMetal',0.);r.set(slope_pr,'fixtureLegacy',0)
+            r.set(slope_pr,'fixtureEyeNormal',float(-1/np.sqrt(2)),0.,float(1/np.sqrt(2)))
+            view=np.eye(4);view[2,3]=-1. if roof else 0.
+            matrix(slope_pr,'weather_material_view_to_agent',view)
+            matrix(slope_pr,'weather_surface_cover_matrix',slope_matrix)
+            r.set(slope_pr,'weather_material_time_range',0.,512.)
+            r.bind(slope_pr,'weather_surface_cover_map',14,depth_maps[0])
+            target_bind(outputs);gl.viewport(0,0,48,32);gl.draw(4,0,3)
+            A.readbuffer(0x8CE0);pixels=np.empty((32,48,4),np.float32)
+            gl.read(0,0,48,32,0x1908,0x1406,pixels.ctypes.data)
+            expected=.6 if roof else .6*.72
+            assert np.max(np.abs(pixels[:,:,:3]-expected))<2e-6, ('sloped receiver loses real roof shelter' if roof else 'sloped receiver self shelters')
+        print('sloped self receiver / real roof GL PASS',flush=True)
+        if regression == 'slope-self': return
     defaults();set_('RainRate',0);set_('StartWetness',1.);production_surface(2)
     for label,depth,flags,expected in [
         ('terrain-only',0.,(1,1,1,1,1),1),('no-roof',.4,(1,1,1,1,1),1),
@@ -556,21 +694,32 @@ void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
         assert timing['new_peak_bytes']<=timing['budget_bytes']
         print('4K cost',json.dumps(timing),flush=True)
     result=dict(device=device,identity_inventory=identity,wet_inventory=effects,temporal_max=temporal,brdf_integrals=energy,
+                native_sampler_mappings=sampler_mappings,avatar_eyes_excluded=eyes==0,puddle_zero_masks=masks,
+                forward_mrt='Authored beauty alpha, visible diffuse alpha, surface coverage and parity checked for every declared output',
                 cover_fixtures=['terrain-only','no-roof','empty-map','roof','failed','failed-clear','incomplete',
-                                'sloped-roof','vertical-wall','masked-canopy','doorway'],
+                                'sloped-roof','vertical-wall','masked-canopy','doorway','sloped-self-receiver','sloped-self-roof'],
                 energy_bound='Native integrated specular gain <=0.10 absolute, total <=1.01; PBR F0 never increases; dielectric albedo 0.72..1, metal 0.98..1; legacy film <=0.02 absolute F0; roughness floor 0.12',cost=timing)
     out=ROOT/'.tmp/weather_port/material';out.mkdir(parents=True,exist_ok=True)
     (out/('result_'+(mutation or ref)+'.json')).write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('weather material GL: PASS',json.dumps(result),flush=True)
 
 
+def mutation_command(ref, mutation):
+    command=[os.sys.executable,__file__,'--source-ref',ref,'--mutation',mutation,'--no-cost']
+    regression={'sampler-order':'sampler','avatar-eyes':'avatar-eyes','puddle-zero':'puddle-zero',
+                'slope-self':'slope-self','forward-coverage':'forward-coverage'}.get(mutation)
+    return command+(['--regression',regression] if regression else [])
+
+
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
-    mutations=['off','screen','cover','normal','energy','gloss','surface-setting','surface-command','surface-apply','upload','generation']
+    mutations=['off','screen','cover','normal','energy','gloss','surface-setting','surface-command','surface-apply','upload','generation',
+               'sampler-order','avatar-eyes','puddle-zero','slope-self','forward-coverage']
     p.add_argument('--source-ref',default='WORKTREE');p.add_argument('--mutation',choices=mutations)
     p.add_argument('--mutations',action='store_true');p.add_argument('--no-cost',action='store_true')
+    p.add_argument('--regression',choices=['sampler','avatar-eyes','puddle-zero','slope-self','forward-coverage'])
     args=p.parse_args()
-    run(args.source_ref,args.mutation,not args.no_cost)
+    run(args.source_ref,args.mutation,not args.no_cost,args.regression)
     if args.mutations:
         expected={
             'off':'weather-off byte identity','screen':'camera-anchored puddle shimmer',
@@ -579,9 +728,12 @@ if __name__=='__main__':
             'surface-setting':'dead Director surface row WetAmount',
             'surface-command':'Clear surfaces has no GL consumer',
             'surface-apply':'dead Director surface row DrySeconds','upload':'dead Director surface row WetAmount',
-            'generation':'stale cover generation is consumed'}
+            'generation':'stale cover generation is consumed',
+            'sampler-order':'native sampler diffuse loses unit zero','avatar-eyes':'avatar rigid eyes enable weather material',
+            'puddle-zero':'zero puddle amount has nonzero mask','slope-self':'sloped receiver self shelters',
+            'forward-coverage':'forward MRT'}
         for mutation in mutations:
-            r=subprocess.run([os.sys.executable,__file__,'--mutation',mutation,'--no-cost'],capture_output=True,text=True,encoding='utf-8')
+            r=subprocess.run(mutation_command(args.source_ref,mutation),capture_output=True,text=True,encoding='utf-8',timeout=300)
             assert r.returncode!=0,'SURVIVING MUTATION '+mutation
             assert expected[mutation] in r.stderr,'control failed to execute its behavioural assertion '+r.stderr
             print('mutation rejected',mutation,r.stderr.strip().splitlines()[-1],flush=True)

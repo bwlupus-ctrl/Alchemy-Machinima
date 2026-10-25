@@ -27,14 +27,21 @@ def settings_table(text):
             for children in [list(entries[i+1]) ]}
 
 
-def build(out, mutation=None):
+def build(out, mutation=None, source_ref='WORKTREE'):
     prepare(out)
-    panel=(ROOT/'indra/newview/alpanelweathersettings.cpp').read_text(encoding='utf-8')
-    director=(ROOT/'indra/newview/llfloaterdirector.cpp').read_text(encoding='utf-8')
+    tree=SourceTree(source_ref)
+    # Snapshot sources AND their local headers; quoted includes must not fall
+    # back to newer working-tree declarations when testing a historical ref.
+    for name in SOURCES:
+        for ext in ('.h','.cpp'):
+            (out/(name+ext)).write_text(tree.read('indra/newview/'+name+ext),encoding='utf-8')
+    (out/'stdtypes.h').write_text(tree.read('indra/llcommon/stdtypes.h'),encoding='utf-8')
+    panel=tree.read('indra/newview/alpanelweathersettings.cpp')
+    director=tree.read('indra/newview/llfloaterdirector.cpp')
     read=function(panel,'ALWeatherBridge::Settings readLibrarySettings()')
     binding=function(director,'void LLFloaterDirector::bindWeatherPage(')
     refresh=function(director,'void LLFloaterDirector::refreshWorldLensReadouts(')
-    pipe=function((ROOT/'indra/newview/pipeline.cpp').read_text(encoding='utf-8'),'void LLPipeline::renderWeather(')
+    pipe=function(tree.read('indra/newview/pipeline.cpp'),'void LLPipeline::renderWeather(')
     color_code='''
 struct LLColor3 { float mV[3]; };
 struct ColorSink {float* output;void uniform3f(int,float r,float g,float b){output[0]=r;output[1]=g;output[2]=b;}};
@@ -135,10 +142,13 @@ struct ALPanelWeatherSettings {
  static Signal& libraryChanged(){static Signal s;return s;}
  static const std::string& libraryStatus(){return sLibraryUI.status();}
 };
-struct LLPipeline {static constexpr bool sRenderDeferred=true;};
+struct LLGLSLShader;
+struct LLPipeline {static constexpr bool sRenderDeferred=true;inline static int weatherBinds=0;
+ void bindWeatherMaterial(LLGLSLShader*){++weatherBinds;}} gPipeline;
 struct LLViewerShaderMgr {
  static LLViewerShaderMgr* instance(){static LLViewerShaderMgr s;return &s;}
  bool weatherMaterialsEnabled()const;bool weatherMaterialsSupported()const;
+ void updateWeatherUniforms(LLGLSLShader*);
 };
 void setTextIfChanged(LLTextBox* box,const std::string& s){box->setValue(s);}
 void setVisibleIfChanged(LLTextBox*,bool){}
@@ -237,11 +247,11 @@ struct ALWeatherResources {
  void bind(LLGLSLShader*,const glm::mat4&,const glm::dvec3&,U32);
 };
 '''
-    upload=function((ROOT/'indra/newview/alweatherresources.cpp').read_text(encoding='utf-8'),'void ALWeatherResources::bind(')
-    generation=function((ROOT/'indra/newview/alweatherresources.h').read_text(encoding='utf-8'),'bool readyForFrame(')
+    upload=function(tree.read('indra/newview/alweatherresources.cpp'),'void ALWeatherResources::bind(')
+    generation=function(tree.read('indra/newview/alweatherresources.h'),'bool readyForFrame(')
     if mutation=='generation': generation=generation.replace('mPublishedFrame == frame','true')
     upload_prefix=upload_prefix.replace('// PRODUCTION_GENERATION_GETTER',generation)
-    owner_source=(ROOT/'indra/newview/alweatherresources.cpp').read_text(encoding='utf-8')
+    owner_source=tree.read('indra/newview/alweatherresources.cpp')
     upload=function(owner_source,'void ALWeatherResources::fail(')+function(owner_source,'void ALWeatherResources::publish(')+upload
     if mutation=='upload': upload=upload.replace('weather.state().wetness * s.wetAmount','0.5f')
     upload_suffix=r'''
@@ -269,11 +279,16 @@ struct LLRender {inline static bool guard=true;static bool indexedDrawBufferGuar
 struct FixtureGLManager {int mNumTextureImageUnits=32;} gGLManager;
 int llmax(int a,int b){return std::max(a,b);}
 '''
-    caps=function((ROOT/'indra/newview/llviewershadermgr.cpp').read_text(encoding='utf-8'),'bool LLViewerShaderMgr::weatherMaterialsEnabled(')
-    caps+=function((ROOT/'indra/newview/llviewershadermgr.cpp').read_text(encoding='utf-8'),'bool LLViewerShaderMgr::weatherMaterialsSupported(')
+    caps=function(tree.read('indra/newview/llviewershadermgr.cpp'),'bool LLViewerShaderMgr::weatherMaterialsEnabled(')
+    caps+=function(tree.read('indra/newview/llviewershadermgr.cpp'),'bool LLViewerShaderMgr::weatherMaterialsSupported(')
+    caps+=function(tree.read('indra/newview/llviewershadermgr.cpp'),'void LLViewerShaderMgr::updateWeatherUniforms(')
+    if mutation=='master-switch': caps=caps.replace('master() && ', '').replace('if (weatherMaterialsEnabled())', 'if (true)')
     caps_suffix=r'''
 extern "C" __declspec(dllexport) int surface_caps(int units,int guard){
  gGLManager.mNumTextureImageUnits=units;LLRender::guard=guard!=0;return LLViewerShaderMgr{}.weatherMaterialsEnabled();
+}
+extern "C" __declspec(dllexport) int surface_bind_count(){
+ LLPipeline::weatherBinds=0;LLViewerShaderMgr{}.updateWeatherUniforms(nullptr);return LLPipeline::weatherBinds;
 }
 extern "C" __declspec(dllexport) int surface_row_enabled(const char* name){
  ALKitSettingWatch::instance().watchers.clear();
@@ -285,13 +300,13 @@ extern "C" __declspec(dllexport) int surface_row_enabled(const char* name){
     commands='\n'.join(function(panel,'void ALPanelWeatherSettings::'+name+'(') for name in ('applyLibraryPreset','stopPrecipitation','applyStartingSurfaces','clearSurfaces'))
     if mutation=='legacy-preset': commands=commands.replace('gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);','gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);\n    gSavedSettings.setBOOL("AlchemyWeatherRainEnabled", true);',1)
     commands+=function(panel,'const std::string& ALPanelWeatherSettings::surfaceStatus(')
-    row_source=(ROOT/'indra/newview/alkitrow.cpp').read_text(encoding='utf-8')
+    row_source=tree.read('indra/newview/alkitrow.cpp')
     notification=function(row_source,'void ALKitRow::notifyValueChanged(') if 'void ALKitRow::notifyValueChanged(' in row_source else ''
     proxy_binding=function(row_source,'class ALKitProxyBinding final')+';'
     if mutation=='proxy-notify': binding=binding.replace('ALKitRow::notifyValueChanged(editor);','').replace('ALKitRow::notifyValueChanged(combo);','')
     source=out/'binding.cpp';source.write_text(prefix+notification+proxy_binding+read+commands+refresh+binding+suffix+color_code+upload_prefix+upload+upload_suffix+caps_prefix+caps+caps_suffix,encoding='utf-8')
-    preparation=preparation_source(SourceTree('WORKTREE'),out,mutation)
-    dll=compiler_command(out,[source,preparation,*(ROOT/('indra/newview/'+n+'.cpp') for n in SOURCES)],'binding',dll=True)
+    preparation=preparation_source(tree,out,mutation)
+    dll=compiler_command(out,[source,preparation,*(out/(n+'.cpp') for n in SOURCES)],'binding',dll=True)
     native=C.CDLL(str(dll));native.set.argtypes=[C.c_char_p,C.c_double];native.get.argtypes=[C.c_char_p];native.get.restype=C.c_double
     native.command.argtypes=[C.c_int,C.c_int,C.c_char_p];native.trace.argtypes=[C.POINTER(C.c_double)]
     native.colors.argtypes=[C.POINTER(C.c_float),C.POINTER(C.c_float)]
@@ -306,8 +321,8 @@ extern "C" __declspec(dllexport) int surface_row_enabled(const char* name){
     return native
 
 
-def run(mutation=None):
-    current=SourceTree('WORKTREE');old=SourceTree('330d012e161')
+def run(mutation=None, source_ref='WORKTREE'):
+    current=SourceTree(source_ref);old=SourceTree('330d012e161')
     settings_path='indra/newview/app_settings/settings.xml'
     table=settings_table(current.read(settings_path));baseline=settings_table(old.read(settings_path))
     for key,value in baseline.items():
@@ -319,7 +334,7 @@ def run(mutation=None):
     assert len(new_settings)==24
     for setting in new_settings:
         assert '"'+setting+'"' in tracked, 'untracked preset/reset setting: '+setting
-    native=build(ROOT/'.tmp/weather_port/bindings'/(mutation or 'baseline'),mutation)
+    native=build(ROOT/'.tmp/weather_port/bindings'/(mutation or 'baseline'),mutation,source_ref)
     defaults={key:float({'true':'1','false':'0'}.get(info['Value'],info['Value'])) for key,info in table.items() if key.startswith('AlchemyWeather') and info['Type'] in ('Boolean','U32','F32')}
     def set_(key,value):native.set(key.encode(),value)
     def get(key):return native.get(key.encode())
@@ -367,4 +382,7 @@ def run(mutation=None):
 
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--mutation',choices=['setting','command','idle-disconnect']);args=parser.parse_args();run(args.mutation)
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--mutation',choices=['setting','command','idle-disconnect'])
+    parser.add_argument('--source-ref',default='WORKTREE')
+    args=parser.parse_args();run(args.mutation,args.source_ref)

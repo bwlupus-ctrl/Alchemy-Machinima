@@ -775,6 +775,12 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
     if (!gDisconnected && !LLApp::isExiting())
     {
+        // Publish this frame's shelter before mirrors bind material uniforms.
+        // Keep hero capture and the camera/geometry update sequence in place.
+        if (!for_snapshot && gFrameCount > 1)
+        {
+            gPipeline.generateWeatherSurfaceCover(*LLViewerCamera::getInstance());
+        }
         // Render mirrors and associated hero probes before we render the rest of the scene.
         // This ensures the scene state in the hero probes are exactly the same as the rest of the scene before we render it.
         if (gPipeline.RenderMirrors && !gSnapshot)
@@ -882,7 +888,6 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                     LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
                     gPipeline.generateWorldShadowCubes(*LLViewerCamera::getInstance());
                     LLViewerCamera::sCurCameraID = saved_camera_id;
-                    gPipeline.generateWeatherSurfaceCover(*LLViewerCamera::getInstance());
                     gPipeline.generateWeatherRainOcclusion(
                         *LLViewerCamera::getInstance());
                 }

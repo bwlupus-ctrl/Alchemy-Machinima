@@ -53,7 +53,6 @@ public:
         MODELVIEW_PROJECTION_MATRIX,        //  "modelview_projection_matrix"
         WEATHER_MATERIAL_ENABLED, // "weather_material_enabled"
         WEATHER_MATERIAL_EXCLUDED, // "weather_material_excluded"
-        WEATHER_SURFACE_COVER_MAP, // "weather_surface_cover_map"
         WEATHER_SURFACE_COVER_MATRIX, // "weather_surface_cover_matrix"
         WEATHER_MATERIAL_VIEW_TO_AGENT, // "weather_material_view_to_agent"
         WEATHER_MATERIAL_ORIGIN, // "weather_material_origin"
@@ -961,6 +960,7 @@ public:
         AREA_SHADOW_SOURCE,
         RELIGHT_ENABLED,                   // runtime master; stale shape data is ignored while off
         AREA_WORLD_ATLAS,                  // P1-lite world cube shadow atlas (D32F, compare mode none)
+        WEATHER_SURFACE_COVER_MAP,         // "weather_surface_cover_map"; after all existing samplers
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

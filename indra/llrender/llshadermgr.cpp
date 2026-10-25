@@ -78,6 +78,7 @@ void LLShaderMgr::prepareWeatherFeatures(LLGLSLShader* shader)
         shader->mDefines.count("IS_HUD") || shader->mDefines.count("MATERIAL_VELOCITY")) return;
     if (!weatherMaterialsEnabled()) return;
     // Native material inventory. Fullbright, water, HUD beauty and avatar helpers are excluded.
+    // diffuseAlphaMaskNoColorF is rigid avatar eyes and has no skinning tag.
     for (const auto& file : shader->mShaderFiles)
     {
         if (file.second == GL_FRAGMENT_SHADER && (
@@ -85,7 +86,6 @@ void LLShaderMgr::prepareWeatherFeatures(LLGLSLShader* shader)
             file.first == "deferred/diffuseIndexedF.glsl" ||
             file.first == "deferred/diffuseAlphaMaskF.glsl" ||
             file.first == "deferred/diffuseAlphaMaskIndexedF.glsl" ||
-            file.first == "deferred/diffuseAlphaMaskNoColorF.glsl" ||
             file.first == "deferred/bumpF.glsl" ||
             file.first == "deferred/treeF.glsl" ||
             file.first == "deferred/materialF.glsl" ||
@@ -1365,7 +1365,6 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("modelview_projection_matrix");
     mReservedUniforms.push_back("weather_material_enabled");
     mReservedUniforms.push_back("weather_material_excluded");
-    mReservedUniforms.push_back("weather_surface_cover_map");
     mReservedUniforms.push_back("weather_surface_cover_matrix");
     mReservedUniforms.push_back("weather_material_view_to_agent");
     mReservedUniforms.push_back("weather_material_origin");
@@ -2230,6 +2229,10 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("area_source");
     mReservedUniforms.push_back("relight_enabled");
     mReservedUniforms.push_back("area_world_atlas");
+
+    // Append cover after all existing samplers: scalar diffuseMap must retain
+    // unit zero for tree/grass draws which bind their diffuse texture directly.
+    mReservedUniforms.push_back("weather_surface_cover_map");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

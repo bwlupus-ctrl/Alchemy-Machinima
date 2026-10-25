@@ -849,7 +849,15 @@ void main()
     weatherMaterialMain(false);
     if (!weatherMaterialActive()) return;
     float authored_alpha = frag_color.a;
+#ifdef HAS_VISIBLE_DIFFUSE
+    float authored_visible_alpha = visible_diffuse.a;
+    float authored_surface_alpha = surface_coverage.y;
+#endif
     weatherMaterialMain(true);
     frag_color.a = authored_alpha;
+#ifdef HAS_VISIBLE_DIFFUSE
+    visible_diffuse.a = authored_visible_alpha;
+    surface_coverage.y = authored_surface_alpha;
+#endif
 }
 #endif

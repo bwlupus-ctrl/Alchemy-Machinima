@@ -6550,8 +6550,9 @@ std::string LLViewerShaderMgr::getShaderDirPrefix(void)
 
 bool LLViewerShaderMgr::weatherMaterialsEnabled() const
 {
+    static LLCachedControl<bool> master(gSavedSettings, "AlchemyWeatherEnabled", false);
     static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherPersistentWetEnabled", false);
-    return enabled() && weatherMaterialsSupported();
+    return master() && enabled() && weatherMaterialsSupported();
 }
 
 bool LLViewerShaderMgr::weatherMaterialsSupported() const
@@ -6566,7 +6567,7 @@ bool LLViewerShaderMgr::weatherMaterialsSupported() const
 
 void LLViewerShaderMgr::updateWeatherUniforms(LLGLSLShader* shader)
 {
-    gPipeline.bindWeatherMaterial(shader);
+    if (weatherMaterialsEnabled()) gPipeline.bindWeatherMaterial(shader);
 }
 
 void LLViewerShaderMgr::updateShaderUniforms(LLGLSLShader * shader)
