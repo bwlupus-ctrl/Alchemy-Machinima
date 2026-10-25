@@ -55,10 +55,16 @@ The rounding contributes quantisation noise of `1/12 DN²`.
 
 ```
 ŝ_e   = (DN − B) / a_m
-L_out = ŝ_e · g_N / K
+L_out = ŝ_e · g / K          g = ISO / ISO_base (total gain), in BOTH modes
 ```
 
 The result is signed. It is never clamped here.
+
+Consequences:
+- **Neutral:** `μ_e = K·L/g`, so `E[L_out] = L`. Brightness is unchanged.
+- **Brightens:** `μ_e = K·L`, so `E[L_out] = g·L`, which is +1 stop per ISO doubling.
+
+`g_N` appears ONLY in the collection step (section 1). Correction 10/25: an earlier text used `g_N` here, which wrongly kept Brightens flat.
 
 ## 8. Photon transfer curve (the test oracle)
 
@@ -69,7 +75,18 @@ SNR = μ_e / σ_total
 
 Dynamic range in stops is `log2(e_sat / σ_r,m)`.
 
-Headroom above mid-grey is `log2(g_N · e_sat / (0.18·K))` stops.
+Headroom above OUTPUT mid-grey:
+
+| Mode | Headroom (stops) |
+|---|---|
+| Neutral | `log2(g · e_sat / (0.18·K))` |
+| Brightens | `log2(e_sat / (0.18·K))` |
+
+In Brightens the scene's mid-grey is at `0.18·K` electrons and its output is `0.18·g`. The output clip is at `e_sat·g/K`, so the gain cancels. Headroom shrinks one stop per doubling only through `e_sat` itself, in the ADC-limited region where `e_sat = (W − B)/a_m` and `a_m ∝ ISO`.
+
+Both forms are the same quantity: `log2(L_out_clip / L_out_mid)`. Tests use this definition.
+
+Correction 10/25: an earlier text divided by `g` a second time; Codex WP-A found it.
 
 ## 9. Colour structure
 

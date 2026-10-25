@@ -368,6 +368,7 @@ set(viewer_SOURCE_FILES
     alfloaterultimatediopter.cpp
     alvcambonepov.cpp
     alweathermodel.cpp
+    alsensormodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
     alghostplacementresolver.cpp
@@ -1296,6 +1297,7 @@ set(viewer_HEADER_FILES
     alvcamautovol.h
     alviewfinder.h
     alweathermodel.h
+    alsensormodel.h
     alghostgroupmodel.h
     alghostrotation.h
     alghostinteractionstate.h
@@ -2794,6 +2796,7 @@ if (BUILD_TESTING)
     aldanceballmodel.cpp
     alavatarstagingmodel.cpp
     alweathermodel.cpp
+    alsensormodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
     alghostplacementresolver.cpp
