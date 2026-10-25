@@ -172,7 +172,8 @@ namespace tut
                 for (int c = 1; c < 3; ++c)
                     close("chroma basis has zero working luminance",.2126*workingBasis[0][c]+.7152*workingBasis[1][c]+.0722*workingBasis[2][c],0.,1e-6);
                 ensure_equals("basis offset std140",offsetof(Uniforms,readCameraBasis),std::size_t(160));
-                ensure_equals("uniform size std140",sizeof(Uniforms),std::size_t(208));
+                ensure_equals("context offset std140",offsetof(Uniforms,randomContext),std::size_t(208));
+                ensure_equals("uniform size std140",sizeof(Uniforms),std::size_t(224));
             }
     }
 
@@ -190,5 +191,17 @@ namespace tut
                                        u.readCameraBasis[2][1]*u.readCameraBasis[2][1]);
                     close("packed green difference matches average variance",u.controls[3]*u.controls[3],variance,1e-6);
                 }
+    }
+
+    template<> template<>
+    void sensor_model_object::test<8>()
+    {
+        const auto& preset = illustrativePresets()[0];
+        auto u = pack(preset,derive(preset,100.));
+        // Independent literal answers for the shader's ordered uint32 hash.
+        setClock(u,0x123456789abcdef0ULL,91,7);
+        ensure_equals("prefix known answer",u.randomContext[0],std::uint32_t(513469243));
+        const auto packed = pack(preset,derive(preset,100.),0x123456789abcdef0ULL,91,7);
+        ensure("pack refreshes clock prefix",packed.randomContext==u.randomContext);
     }
 }

@@ -40,10 +40,27 @@ FRAMES = 8
 SIZE = 256
 CLOCK = 144
 BASIS = 40
+UNIFORM_BYTES = 224
+IDENTITY_REF = '3efef2be20af4a3098c21e7d3b22cd54ea6c457c'
 SUITES = ('poisson','quantisation','ptc','brightness','gain_switch','clip','colour',
           'determinism','black','adversarial','temporal','green_sites','green_peak',
           'poisson_tail','hue_ramp','lattice_phase','layout','model_sensitivity',
-          'report_contract','coverage','hires','mutations','cost','scope')
+          'report_contract','coverage','hires','identity','mutations','cost','scope')
+
+
+def refresh_random_context(packed):
+    """Integer-only test oracle, also refreshes fixtures that edit clock words."""
+    def avalanche(value):
+        value ^= value >> 16
+        value = value*0x7feb352d & 0xffffffff
+        value ^= value >> 15
+        value = value*0x846ca68b & 0xffffffff
+        return value ^ (value >> 16)
+    clock = [int(value) for value in packed[CLOCK:CLOCK+16].view(np.uint32)]
+    context = avalanche(clock[0]^0x9e3779b9)
+    for value in clock[1:]:
+        context = avalanche(context^value)
+    packed[208:224].view(np.uint32)[:] = [context,0,0,0]
 
 
 def progress(message):
@@ -172,9 +189,12 @@ extern "C" __declspec(dllexport) void sensor_pack(int index, double iso, int bri
         self.fn.restype = None
 
     def get(self, preset=0, iso=100, bright=0, frame=0, seed=1234, stream=7, amount=1., chroma=1.):
-        packed = np.zeros(208, np.uint8)
+        packed = np.zeros(UNIFORM_BYTES, np.uint8)
         v = np.zeros(12, np.float64)
         self.fn(preset,iso,bright,frame,seed,stream,amount,chroma,packed.ctypes.data,v.ctypes.data)
+        expected = packed.copy()
+        refresh_random_context(expected)
+        assert np.array_equal(packed[208:],expected[208:]), 'C++ packed hash prefixes differ from integer oracle'
         return packed, dict(zip(('base','switch','H','g','gN','a','sat','K','headroom','floor','dr','hcg'),v.tolist()))
 
 
@@ -187,8 +207,15 @@ class Runner:
             self.sensor = subprocess.check_output(['git','show',baseline_ref+':'+SHADER.relative_to(ROOT).as_posix()],
                 cwd=ROOT,text=True,encoding='utf-8',timeout=10)
         self.programs = {}
+        self.identity_sensor = None if baseline_ref else subprocess.check_output(
+            ['git','show',IDENTITY_REF+':'+SHADER.relative_to(ROOT).as_posix()],
+            cwd=ROOT,text=True,encoding='utf-8',timeout=10)
+        self.identity_programs = {}
+        self.identity_pixels = 0
+        self.identity_renders = 0
         self.targets = {}
         self.matrix3 = gl.fn('glUniformMatrix3fv',None,C.c_int,C.c_int,C.c_ubyte,C.POINTER(C.c_float))
+        self.uniform2i = gl.fn('glUniform2i',None,C.c_int,C.c_int,C.c_int)
         self.bind_base = gl.fn('glBindBufferBase',None,C.c_uint,C.c_uint,C.c_uint)
         self.error = gl.fn('glGetError',C.c_uint)
         self.delete_program = gl.fn('glDeleteProgram',None,C.c_uint)
@@ -251,7 +278,7 @@ void main() { gl_Position=vec4(position,0,1); vary_fragcoord=position*.5+.5; }
                 source = source.replace(old,new,1)
         fragment = '#version 420\n' + source
         fragment += '\nlayout(std140,binding=0) uniform SensorBlock { SensorParameters sensor; };\n'
-        fragment += 'uniform vec3 testLight; uniform vec2 testGradient; uniform int testKind; uniform sampler2D oracleImage;\nout vec4 result;\n'
+        fragment += 'uniform vec3 testLight; uniform vec2 testGradient; uniform int testKind; uniform sampler2D oracleImage; uniform ivec2 testPixelOffset;\nout vec4 result;\n'
         if cost:
             expression = 'light' if baseline else 'applySensor(light,ivec2(gl_FragCoord.xy),sensor)'
             fragment += 'void main() { vec3 light=testLight*(testGradient.x+testGradient.y*gl_FragCoord.x/3840.0); result=vec4('+expression+',1); }'
@@ -261,7 +288,7 @@ void main() { gl_Position=vec4(position,0,1); vary_fragcoord=position*.5+.5; }
                 fragment += '\n'+(ROOT/G.SHADERS/'class1'/path).read_text(encoding='utf-8')
             fragment += '''
 void main() {
-    ivec2 pixel=ivec2(gl_FragCoord.xy);
+    ivec2 pixel=ivec2(gl_FragCoord.xy)+testPixelOffset;
     vec3 light=testLight*(testGradient.x+testGradient.y*gl_FragCoord.x);
     vec3 value;
     if (testKind==2) {
@@ -281,6 +308,14 @@ void main() {
     } else if (testKind==13) {
         float saturation=min(sensor.physics.x,(sensor.scale.x-sensor.physics.w)/sensor.physics.z);
         value=sensorHueClip(testLight/saturation,light,sensor);
+    } else if (testKind>=14 && testKind<=18) {
+        vec3 inputLight=texelFetch(oracleImage,ivec2(gl_FragCoord.xy),0).rgb;
+        SensorReadout readout=sensorReadCamera(inputLight,pixel,sensor);
+        if (testKind==14) value=applySensor(inputLight,pixel,sensor);
+        else if (testKind==15) value=readout.cameraElectrons;
+        else if (testKind==16) value=readout.preClipElectrons;
+        else if (testKind==17) value=vec3(readout.greenPreClipElectrons,0);
+        else value=vec3(readout.greenCameraElectrons,0);
     } else if (testKind==1 || testKind==4) {
         SensorReadout readout=sensorReadCamera(light,pixel,sensor);
         value=testKind==1 ? readout.cameraElectrons : readout.preClipElectrons;
@@ -340,8 +375,9 @@ void main() {
             self.gl.uf[len(v)](loc,*v)
 
     def prepare(self,packed,light,kind=0,gradient=(1.,0.),w=SIZE,h=SIZE,mutation=None,
-                processing=None,cost=False,baseline=False):
+                processing=None,cost=False,baseline=False,pixel_offset=(0,0)):
         gl = self.gl
+        refresh_random_context(packed)
         pr = self.program(mutation,cost,baseline)
         self.target(w,h,cost)
         gl.use(pr)
@@ -353,6 +389,7 @@ void main() {
         self.uniform(pr,'testLight',*light)
         self.uniform(pr,'testGradient',*gradient)
         gl.ui(gl.loc(pr,b'testKind'),kind)
+        self.uniform2i(gl.loc(pr,b'testPixelOffset'),*pixel_offset)
         if processing:
             self.uniform(pr,'uLift',0.,0.,0.)
             self.uniform(pr,'uGain',1.,1.,1.)
@@ -375,9 +412,36 @@ void main() {
         self.gl.read(0,0,w,h,0x1908,0x1406,result.ctypes.data)
         assert self.error()==0, 'OpenGL error'
         assert np.isfinite(result).all(), 'nonfinite readback'
+        if not kw.get('mutation'):
+            self.verify_identity(packed,light,result,kw)
         return result[:,:,:3].astype(np.float64)
 
-    def process_pixels(self,packed,pixels,settings,code=False):
+    def verify_identity(self,packed,light,observed,kw,texture=None):
+        if self.identity_sensor is None:
+            return
+        source,programs = self.sensor,self.programs
+        try:
+            self.sensor,self.programs = self.identity_sensor,self.identity_programs
+            self.prepare(packed,light,**kw)
+            if texture is not None:
+                self.gl.bind_tex(0x0DE1,texture)
+            self.gl.draw(0x0004,0,6)
+            expected = np.empty_like(observed)
+            height,width,_ = expected.shape
+            self.gl.read(0,0,width,height,0x1908,0x1406,expected.ctypes.data)
+            assert self.error()==0, 'reference OpenGL error'
+            mismatch = observed.view(np.uint32)!=expected.view(np.uint32)
+            if np.any(mismatch):
+                index = tuple(np.argwhere(mismatch)[0])
+                raise AssertionError('BIT IDENTITY '+str(dict(kind=kw.get('kind',0),index=index,
+                    observed=float(observed[index]),expected=float(expected[index]),
+                    mismatched_components=int(mismatch.sum()))))
+            self.identity_pixels += height*width
+            self.identity_renders += 1
+        finally:
+            self.sensor,self.programs = source,programs
+
+    def process_pixels(self,packed,pixels,settings,code=False,kind=None,pixel_offset=(0,0)):
         pixels = np.ascontiguousarray(pixels,dtype=np.float32)
         height,width,_ = pixels.shape
         tex = C.c_uint()
@@ -386,11 +450,13 @@ void main() {
         for param in (0x2801,0x2800):
             self.gl.param(0x0DE1,param,0x2600)
         self.gl.teximage(0x0DE1,0,0x8814,width,height,0,0x1907,0x1406,pixels.ctypes.data)
-        self.prepare(packed,0.,kind=11 if code else 10,w=width,h=height,processing=settings)
+        options = dict(kind=(11 if code else 10) if kind is None else kind,w=width,h=height,processing=settings,pixel_offset=pixel_offset)
+        self.prepare(packed,0.,**options)
         self.gl.bind_tex(0x0DE1,tex)
         self.gl.draw(0x0004,0,6)
         result = np.empty((height,width,4),np.float32)
         self.gl.read(0,0,width,height,0x1908,0x1406,result.ctypes.data)
+        self.verify_identity(packed,0.,result,options,tex)
         self.gl.fn('glDeleteTextures',None,C.c_int,C.POINTER(C.c_uint))(1,C.byref(tex))
         assert self.error()==0 and np.isfinite(result).all()
         return result[:,:,:3].astype(np.float64)
@@ -420,9 +486,9 @@ MUTATIONS = {
                      'return p.physics.y*vec3(fullResolution.x,companion*0.707106781186548,sensorNormalPair(sensorKey(pixel,p,0xabcdu)).x);')],
     'clip_capture': ('result.preClipElectrons = photons + readResidual;',
                      'result.preClipElectrons = min(photons+readResidual,vec3(min(p.physics.x,(p.scale.x-p.physics.w)/p.physics.z)));'),
-    'frame_only': ('h = sensorHash(h ^ p.clock.z);\n    return sensorHash(h ^ p.clock.w);',
-                   'h = sensorHash(h ^ 0u);\n    return sensorHash(h ^ 0u);'),
-    'unnormalised_lattice': ('return value / sqrt(dot(w, w));','return value;'),
+    'frame_only': ('return p.randomContext.x;',
+                   'return sensorHash(sensorHash(p.clock.x ^ 0x9e3779b9u) ^ p.clock.y);'),
+    'unnormalised_lattice': ('return value / (quarterPhase ? 0.625 : sqrt(dot(w, w)));','return value;'),
     'linear_key': ('''uint spatial = sensorHash(uint(pixel.x) ^ 0x85ebca6bu);
     spatial = sensorHash(spatial ^ uint(pixel.y));
     return sensorHash(spatial ^ sensorHash(sensorContext(p) ^ domain));''','''uint h = p.clock.x ^ (p.clock.y*0xc2b2ae35u);
@@ -436,8 +502,8 @@ MUTATIONS = {
          'companion = fullResolution.y * p.physics.y * 0.707106781186548;')],
     'average_green_peak': ('result.preClipElectrons.y = max(result.greenPreClipElectrons.x,result.greenPreClipElectrons.y);',
                            'result.preClipElectrons.y = (result.greenPreClipElectrons.x+result.greenPreClipElectrons.y)*0.5;'),
-    'stalled_cdf': ('vec4 value = sensorPoissonCDF(lambda,min(u,vec4(0.9999)));',
-                    'return sensorPoissonCDF(lambda,u);\n    vec4 value = sensorPoissonCDF(lambda,min(u,vec4(0.9999)));'),
+    'stalled_cdf': ('vec4 value = sensorPoissonCDF(lambda,mix(u,vec4(0.0),greaterThan(u,vec4(0.9999))));',
+                    'return sensorPoissonCDF(lambda,u);\n    vec4 value = sensorPoissonCDF(lambda,mix(u,vec4(0.0),greaterThan(u,vec4(0.9999))));'),
     'peak_hue': ('float t = (coverage.x+coverage.y+coverage.z)/3.0;',
                  'float t = max(coverage.x,max(coverage.y,coverage.z));'),
     'fixed_lattice': ('vec2 position = vec2(pixel) * 0.5 + origin;','vec2 position = vec2(pixel) * 0.5;'),
@@ -1062,15 +1128,16 @@ class Suite:
     def layout(self):
         gl = self.r.gl
         pr = self.r.program()
-        names = (C.c_char_p*7)(*[('sensor.'+name).encode() for name in
-            ('physics','scale','controls','cameraToWorking','workingToCamera','clock','readCameraBasis')])
-        indices = (C.c_uint*7)(); offsets = (C.c_int*7)()
-        gl.fn('glGetUniformIndices',None,C.c_uint,C.c_int,C.POINTER(C.c_char_p),C.POINTER(C.c_uint))(pr,7,names,indices)
-        gl.fn('glGetActiveUniformsiv',None,C.c_uint,C.c_int,C.POINTER(C.c_uint),C.c_uint,C.POINTER(C.c_int))(pr,7,indices,0x8A3B,offsets)
+        fields = ('physics','scale','controls','cameraToWorking','workingToCamera','clock',
+                  'readCameraBasis','randomContext')
+        names = (C.c_char_p*len(fields))(*[('sensor.'+name).encode() for name in fields])
+        indices = (C.c_uint*len(fields))(); offsets = (C.c_int*len(fields))()
+        gl.fn('glGetUniformIndices',None,C.c_uint,C.c_int,C.POINTER(C.c_char_p),C.POINTER(C.c_uint))(pr,len(fields),names,indices)
+        gl.fn('glGetActiveUniformsiv',None,C.c_uint,C.c_int,C.POINTER(C.c_uint),C.c_uint,C.POINTER(C.c_int))(pr,len(fields),indices,0x8A3B,offsets)
         size = C.c_int()
         gl.fn('glGetActiveUniformBlockiv',None,C.c_uint,C.c_uint,C.c_uint,C.POINTER(C.c_int))(pr,0,0x8A40,C.byref(size))
-        expected = [0,16,32,48,96,CLOCK,BASIS*4]
-        self.check('std140 CPU/GLSL compact layout',list(offsets)==expected and size.value==208 and 'readCholesky' not in self.r.sensor,
+        expected = [0,16,32,48,96,CLOCK,BASIS*4,208]
+        self.check('std140 CPU/GLSL compact layout',list(offsets)==expected and size.value==UNIFORM_BYTES and 'readCholesky' not in self.r.sensor,
             dict(offsets=list(offsets),expected=expected,block_size=size.value,unused_readCholesky='readCholesky' in self.r.sensor))
 
     def model_sensitivity(self):
@@ -1211,6 +1278,45 @@ class Suite:
             progress('4K cost '+fixture+': '+status+' p95 CI='+str(sensor_ci))
         self.tables['cost'] = rows
 
+    def identity(self):
+        if self.r.identity_sensor is None:
+            self.groups['identity']='SKIP'
+            return
+        rng = np.random.default_rng(0xb17e9ac7)
+        initial = self.r.identity_pixels
+        # Independent pixel texture, 384 parameter/clock combinations. Check
+        # RGBA32F bits before conversion, including signed zero and both sites.
+        for index in range(384):
+            preset = index%3
+            base = (100,800,200)[preset]
+            iso = float(2**rng.uniform(math.log2(base/4),math.log2(25600)))
+            frame = (0,1,2**32-1,2**32,2**32+1,2**63-1,int(rng.integers(0,2**63)))[index%7]
+            u,p = self.m.get(preset,iso,index%2,frame,int(rng.integers(0,2**32)),
+                int(rng.integers(0,2**32)),amount=(0.,.1,.5,1.,2.,4.)[index%6],
+                chroma=(0.,.25,.5,1.,2.,4.)[(index//6)%6])
+            electrons = np.exp(rng.uniform(np.log(1e-9),np.log(1e9),size=(128,128,3))).astype(np.float32)
+            special = np.array([0.,-1.,np.nan,np.inf,-np.inf,19.999998,20.,20.000002,p['sat'],
+                np.nextafter(np.float32(p['sat']),np.float32(0.)),1e12],np.float32)
+            electrons[:len(special),:,0] = special[:,None]
+            offset = ((0,0),(3839,2159),(-4096,-2048),(2**24,-2**24),
+                tuple(int(value) for value in rng.integers(-2**31+1024,2**31-1024,size=2)))[index%5]
+            for kind in range(14,19):
+                pixels = electrons*p['gN']/p['K'] if kind==14 else electrons
+                try:
+                    self.r.process_pixels(u,pixels,None,kind=kind,pixel_offset=offset)
+                except AssertionError as error:
+                    raise AssertionError('randomized parameter set '+str(index)+': '+str(error)) from error
+            if index%96==95:
+                progress('randomized bit identity '+str(index+1)+'/384 parameter sets')
+        detail = dict(reference_commit=IDENTITY_REF,
+            reference_shader_sha256=hashlib.sha256(self.r.identity_sensor.encode()).hexdigest(),
+            randomized_parameter_sets=384,randomized_pixels=self.r.identity_pixels-initial,
+            all_suite_pixels=self.r.identity_pixels,all_suite_renders=self.r.identity_renders,
+            mismatched_components=0,format='RGBA32F uint32 exact comparison')
+        self.check('pre-optimisation bit identity across suite and randomized inputs',
+                   detail['randomized_pixels']==384*128*128*5,detail)
+        self.tables['bit_identity'] = detail
+
     def scope(self):
         diff=subprocess.run(['git','diff','--check'],cwd=ROOT,text=True,capture_output=True,timeout=10)
         paths=subprocess.check_output(['git','diff','--name-only'],cwd=ROOT,text=True,timeout=10).splitlines()
@@ -1271,7 +1377,8 @@ def report(suite,error=None):
         ('4K spatial/2D spectra/parity/wide-frame readbacks',('hires',)),
         ('1,024 AB/BA pairs; p95 bootstrap CI; predeclared gate',('cost',)),
         ('Non-base ISO floor/DR, both modes; missing-gain mutation',('model_sensitivity',)),
-        ('Removed GPU readCholesky; 208-byte CPU/GL std140 check',('layout',))]
+        ('CPU integer context hash; 224-byte CPU/GL std140 check',('layout',)),
+        ('Pre-optimisation bit identity across correctness suite and randomized pixels',('identity',))]
     lines=['WP-A fixes: '+overall+'.']
     lines += [str(i)+'. '+description+': '+state(*groups)+'.' for i,(description,groups) in enumerate(descriptions,1)]
     fits=suite.tables.get('ptc_fit',[]); pois=suite.tables.get('poisson',[])

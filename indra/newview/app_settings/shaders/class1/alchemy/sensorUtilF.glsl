@@ -17,6 +17,7 @@ struct SensorParameters
     mat3 workingToCamera;
     uvec4 clock; // capture-relative frame low/high, take seed, presentation stream
     mat3 readCameraBasis; // precomputed camera-space C*orthonormal luma/chroma rotation
+    uvec4 randomContext; // capture tuple prefix, computed with identical integer math on CPU
 };
 
 uint sensorHash(uint x)
@@ -30,10 +31,7 @@ uint sensorHash(uint x)
 
 uint sensorContext(SensorParameters p)
 {
-    uint h = sensorHash(p.clock.x ^ 0x9e3779b9u);
-    h = sensorHash(h ^ p.clock.y);
-    h = sensorHash(h ^ p.clock.z);
-    return sensorHash(h ^ p.clock.w);
+    return p.randomContext.x;
 }
 
 uint sensorKey(ivec2 pixel, SensorParameters p, uint domain)
@@ -141,7 +139,9 @@ float sensorPoissonUpper(float lambda, float u)
 
 vec4 sensorPoissonQuantile(vec4 lambda, vec4 u)
 {
-    vec4 value = sensorPoissonCDF(lambda,min(u,vec4(0.9999)));
+    // Tail lanes are overwritten below; exclude them from the lower-CDF exit
+    // condition without changing any recurrence arithmetic for other lanes.
+    vec4 value = sensorPoissonCDF(lambda,mix(u,vec4(0.0),greaterThan(u,vec4(0.9999))));
     if (u.x > 0.9999) value.x = sensorPoissonUpper(lambda.x,u.x);
     if (u.y > 0.9999) value.y = sensorPoissonUpper(lambda.y,u.y);
     if (u.z > 0.9999) value.z = sensorPoissonUpper(lambda.z,u.z);
@@ -196,7 +196,10 @@ vec2 sensorChroma(ivec2 pixel, SensorParameters p, uint domain)
     value += w.y * sensorNormalPair(sensorKey(cell + ivec2(1,0), p, domain));
     value += w.z * sensorNormalPair(sensorKey(cell + ivec2(0,1), p, domain));
     value += w.w * sensorNormalPair(sensorKey(cell + ivec2(1,1), p, domain));
-    return value / sqrt(dot(w, w));
+    // Quarter-cell phases all have sum(w*w)=25/64. Keep the general path
+    // for integer coordinates so large that float conversion loses the phase.
+    bool quarterPhase = all(equal(abs(f-0.5),vec2(0.25)));
+    return value / (quarterPhase ? 0.625 : sqrt(dot(w, w)));
 }
 
 vec3 sensorGaussian(mat3 c, ivec2 pixel, SensorParameters p, uint domain, out float companion)

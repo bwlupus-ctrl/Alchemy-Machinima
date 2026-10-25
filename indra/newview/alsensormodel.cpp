@@ -43,6 +43,15 @@ namespace ALSensorModel
                 for (int r = 0; r < 3; ++r)
                     out[c][r] = static_cast<float>(a[r][c]);
         }
+
+        std::uint32_t sensorHash(std::uint32_t value)
+        {
+            value ^= value >> 16;
+            value *= 0x7feb352du;
+            value ^= value >> 15;
+            value *= 0x846ca68bu;
+            return value ^ (value >> 16);
+        }
     }
 
     const std::array<Preset, 3>& illustrativePresets()
@@ -165,9 +174,17 @@ namespace ALSensorModel
         const double chroma = u.controls[1];
         u.controls[3] = static_cast<float>(std::sqrt(basis[1][0]*basis[1][0] +
             chroma*chroma*(basis[1][1]*basis[1][1]+basis[1][2]*basis[1][2])));
-        u.clock = {{static_cast<std::uint32_t>(frame), static_cast<std::uint32_t>(frame >> 32), seed, stream}};
+        setClock(u,frame,seed,stream);
         return u;
     }
 
-    static_assert(sizeof(Uniforms) == 208, "SensorParameters std140 packing");
+    void setClock(Uniforms& u, std::uint64_t frame, std::uint32_t seed, std::uint32_t stream)
+    {
+        u.clock = {{static_cast<std::uint32_t>(frame), static_cast<std::uint32_t>(frame >> 32), seed, stream}};
+        std::uint32_t context = sensorHash(u.clock[0] ^ 0x9e3779b9u);
+        for (int word = 1; word < 4; ++word) context = sensorHash(context ^ u.clock[word]);
+        u.randomContext = {{context,0u,0u,0u}};
+    }
+
+    static_assert(sizeof(Uniforms) == 224, "SensorParameters std140 packing");
 }

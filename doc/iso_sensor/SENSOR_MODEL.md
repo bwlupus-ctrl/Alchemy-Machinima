@@ -168,3 +168,14 @@ The random inputs come from an ordered hash of `(pixel.x, pixel.y, frame low,
 frame high, seed, stream id, domain)`. Spatial and capture/domain sub-tuples
 avalanche every component before a final avalanche combines them. Fixed seed
 plus the same frame counter gives a bit-identical output.
+
+`ALSensorModel::pack` caches the ordered capture-context hash in
+`Uniforms::randomContext.x` using the same uint32 operations as the shader.
+Use `setClock` when changing a packed clock so this cache stays in sync;
+the GPU layout is 224 bytes. Pixel and domain hashing remain in GLSL.
+This moves only integer work: the random streams and floating-point equations
+are unchanged. Quarter-cell lattice phases have `sum(w_i^2) = 25/64`, so
+their normaliser is exactly `5/8`; coordinates that lose that phase during
+float conversion retain the general normaliser. Upper-tail Poisson lanes
+are excluded from the lower-CDF exit condition because the survival sampler
+overwrites those lanes.

@@ -64,6 +64,7 @@ namespace ALSensorModel
         std::array<std::array<float, 4>, 3> workingToCamera;
         std::array<std::uint32_t, 4> clock; // frame low, frame high, seed, stream
         std::array<std::array<float, 4>, 3> readCameraBasis; // fixed C*luma/chroma basis, in camera space
+        std::array<std::uint32_t, 4> randomContext; // identical integer prefix, reserved lanes zero
     };
 
     // These are illustrative published-CLASS values, not measured camera profiles.
@@ -74,6 +75,8 @@ namespace ALSensorModel
                       const std::array<double, 3>& cameraVariance);
     // Positive semidefinite matrices are accepted (including zero noise).
     Matrix cholesky(const Matrix& sigma);
+    // Refresh the capture clock AND its cached integer hashes together.
+    void setClock(Uniforms&, std::uint64_t frame, std::uint32_t seed, std::uint32_t stream);
     Uniforms pack(const Preset&, const Parameters&, std::uint64_t frame = 0,
                   std::uint32_t seed = 0, std::uint32_t stream = 0,
                   float noiseAmount = 1.f, float chromaAmount = 1.f);
