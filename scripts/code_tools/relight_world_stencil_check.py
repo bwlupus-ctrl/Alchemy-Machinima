@@ -168,13 +168,13 @@ def main():
     if args.controls:
         controls = {}
         for name, old, new, check in (
-                ('inconsistent_tangents', 'return valid;', 'return 1.0;', thin_checks),
-                ('distance_cutoff', 'aw_plane_valid = vx*vy;',
-                 'aw_plane_valid = vx*vy*(1.0-smoothstep(96.0,128.0,-area_p.z));', distance_checks),
-                ('adaptive_radius', 'int radius = int(clamp(ceil(uncertainty/max(0.005*footprint,1.e-8)-16.0),1.0,128.0));',
-                 'int radius = 1;', distance_checks),
-                ('depth_precision_offset', 'return max(aw_depth_error,detail ? 0.0 : aw_plane_valid*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP));',
-                 'return detail ? 0.0 : aw_plane_valid*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP);', distance_checks)):
+                ('inconsistent_tangents', 'return valid;', 'tangent = abs(l.z) < abs(r.z) ? l : r; return 1.0;', thin_checks),
+                ('distance_cutoff', 'aw_plane_valid = geometry.w;',
+                 'aw_plane_valid = geometry.w*(1.0-smoothstep(96.0,128.0,-area_p.z));', distance_checks),
+                ('adaptive_radius', 'float radius = clamp(uncertainty/max(0.005*footprint,1.e-8)-16.0,1.0,128.0);',
+                 'float radius = 1.0;', distance_checks),
+                ('depth_precision_compare', 'bias += depth_interval.x;',
+                 'bias += 0.0;', distance_checks)):
             mutant = R.Runner(WG.MutantTree(r.tree, [(old, new)]), gl=r.gl)
             controls[name+'_rejected'] = any(not row['passed'] for row in check(mutant, True))
         result['controls'] = controls

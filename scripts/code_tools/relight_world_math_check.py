@@ -1,12 +1,14 @@
-"""Compile/run production world maths tests 37..43 without a viewer build.
+"""Compile/run production world maths tests 37..43 and 46 without a viewer build.
 
 python scripts/code_tools/relight_world_math_check.py [--out DIR]
 The assertions are extracted verbatim from alrelightmath_test.cpp. The small TUT
 adapter only reports failures and provides test_group/ensure; no maths is copied.
 """
 import argparse
+from collections import Counter
 import os
 from pathlib import Path
+import re
 import subprocess
 
 REPO = Path(__file__).resolve().parents[2]
@@ -15,6 +17,13 @@ REPO = Path(__file__).resolve().parents[2]
 def check(out):
     out = Path(out).resolve(); out.mkdir(parents=True,exist_ok=True)
     test = (REPO / 'indra/newview/tests/alrelightmath_test.cpp').read_text()
+    numbers = list(map(int,re.findall(r'relight_object::test<(\d+)>\s*\(',test)))
+    duplicates = [n for n,count in Counter(numbers).items() if count > 1]
+    assert not duplicates, f'duplicate TUT specializations: {duplicates}'
+    tut = (REPO / 'indra/externals/tut/tut/tut.hpp').read_text()
+    maximum = int(re.search(r'int MaxTestsInGroup\s*=\s*(\d+)',tut)[1])
+    assert max(numbers) <= maximum, f'test {max(numbers)} exceeds TUT group limit {maximum}'
+    print(f'[world-math] unique TUT tests 1..{max(numbers)}; group limit {maximum}',flush=True)
     tests = test[test.index('// ---- [P1-lite] world cube shadow maps'):test.rindex('}')]
     shim = '''#include <algorithm>
 #include <array>
@@ -92,13 +101,13 @@ void check() {
 }
 '''
     cpp = out / 'world_math.cpp'
-    cpp.write_text(shim+tests+'\n}\n'+scene_shim+'\nint main() { scene_regression::check(); tut::relight_object o; o.test<37>(); o.test<38>(); o.test<39>(); o.test<40>(); o.test<41>(); o.test<42>(); o.test<43>(); std::puts("[world-math] PASS tests 37..43"); }\n')
+    cpp.write_text(shim+tests+'\n}\n'+scene_shim+'\nint main() { scene_regression::check(); tut::relight_object o; o.test<37>(); o.test<38>(); o.test<39>(); o.test<40>(); o.test<41>(); o.test<42>(); o.test<43>(); o.test<46>(); std::puts("[world-math] PASS tests 37..43 + 46"); }\n')
     vswhere = Path(os.environ.get('ProgramFiles(x86)','C:/Program Files (x86)')) / 'Microsoft Visual Studio/Installer/vswhere.exe'
     vs = subprocess.check_output([str(vswhere),'-latest','-property','installationPath'],text=True).strip()
     cmd = out / 'world_math.cmd'; exe = out / 'world_math.exe'
     cmd.write_text('@echo off\ncall "%s" >nul 2>&1\ncl /nologo /std:c++20 /EHsc /I "%s" "%s" /Fe:"%s" /Fo:"%s"\nif errorlevel 1 exit /b 1\n"%s"\n' %
                    (Path(vs)/'VC/Auxiliary/Build/vcvars64.bat',REPO/'indra/newview',cpp,exe,out/'world_math.obj',exe))
-    result = subprocess.run([str(cmd)],cwd=out,shell=True,capture_output=True,text=True)
+    result = subprocess.run([str(cmd)],cwd=out,shell=True,capture_output=True,text=True,timeout=120)
     assert result.returncode == 0, result.stdout+result.stderr
     print(result.stdout.strip(),flush=True)
 

@@ -3887,4 +3887,36 @@ template<> template<> void relight_object::test<43>()
 
 }
 
+// Receiver denominator packing is independent of the material normal and D24
+// quantisation. Verify the actual float/FMA evaluation over the camera domain.
+template<> template<> void relight_object::test<46>()
+{
+    double worst = 0.0, truncated = 0.0;
+    unsigned samples = 0;
+    for (double nearPlane : {0.1,0.25,0.8950138031404896,1.0})
+        for (double farPlane : {64.0,256.0,1015.5071544778539,1024.0})
+        {
+            const double a = -(farPlane-nearPlane)/(2.0*farPlane*nearPlane);
+            const double b = (farPlane+nearPlane)/(2.0*farPlane*nearPlane);
+            float coefficients[4];
+            ALWorldShadow::splitReceiverDepth(a,b,coefficients);
+            for (double distance : {0.3,2.0,40.4179,40.4224,167.689326,337.787357,512.0,600.0})
+            {
+                if (distance <= nearPlane || distance >= farPlane) continue;
+                const double window = (1.0/distance-b)/(2.0*a)+0.5;
+                const float depth = static_cast<float>(std::round(window*16777215.0)/16777215.0);
+                const float ndc = 2.0f*depth-1.0f;
+                const double expected = 1.0/(a*static_cast<double>(ndc)+b);
+                const float high = std::fma(coefficients[0],ndc,coefficients[1]);
+                const float low = std::fma(coefficients[2],ndc,coefficients[3]);
+                worst = std::max(worst,std::abs(static_cast<double>(1.0f/(high+low))-expected));
+                truncated = std::max(truncated,std::abs(static_cast<double>(1.0f/high)-expected));
+                ++samples;
+            }
+        }
+    ensure("split inverse-depth denominator stays within 0.1 mm",worst <= 0.0001);
+    ensure("dropping the low coefficients must fail independently",truncated > 0.001);
+    std::printf("[receiver-depth] %u cases max %.9f m; low-bits mutation %.9f m\n",samples,worst,truncated);
+}
+
 }

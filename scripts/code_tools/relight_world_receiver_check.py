@@ -412,7 +412,7 @@ def main():
                                            'return vec4(1.0);')])
         mutant = Runner(plane_tree, gl=r.gl)
         plane_rows = depth_checks(mutant, WG.Raster(mutant))
-        retention_tree = WG.MutantTree(r.tree, [('float visibility = min(lit/float(AW_FILTER_TAPS),front_lit);',
+        retention_tree = WG.MutantTree(r.tree, [('float visibility = min(lit/float(AW_FILTER_TAPS),smoothstep(0.0,1.0/float(AW_FILTER_TAPS),front_lit));',
                                                'float visibility = lit/float(AW_FILTER_TAPS);')])
         mutant = Runner(retention_tree, gl=r.gl)
         retention_rows = material_checks(mutant, WG.Raster(mutant))

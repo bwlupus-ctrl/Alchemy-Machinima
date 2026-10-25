@@ -361,6 +361,8 @@ def gl_checks(rows, before, ref, out, glm_include):
                         signature = (id(r),row['path'],row['native'],tuple(row['plan']),row['strength'],row['regular'])
                         base_visibility[k] = cache[signature]
                     if refs is zero:
+                        if row['path'] < 2:
+                            assert pixels.tobytes() == base_zero[k].tobytes(), 'EV 0 current production complete-frame historical byte identity'
                         # EV-zero history freezes ONLY the intentionally
                         # changed receiver algorithm, at actual 77348de6593.
                         # All EV shape/brightness comparisons below still run

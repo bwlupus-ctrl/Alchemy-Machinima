@@ -42,6 +42,31 @@ def gbuffer_task(args):
     return scene, pidx, str(path)
 
 
+def guarded_world_uploads(pipeline):
+    """Prove lexical containment, rather than proximity to a guard's text."""
+    scopes = []
+    tokens = re.compile(r'//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|[{};]')
+    for guard in re.finditer(r'if\s*\(\s*(?:upsample\s*&&\s*)?upload_world\s*\)', pipeline):
+        opening = guard.end()
+        statement = opening+len(pipeline[opening:])-len(pipeline[opening:].lstrip())
+        if pipeline[statement:statement+1] != '{':
+            end = next((t.start() for t in tokens.finditer(pipeline, opening) if t.group() == ';'), None)
+            if end is not None:
+                scopes.append((opening, end))
+            continue
+        level = 0
+        for token in tokens.finditer(pipeline, opening):
+            if token.group() == '{':
+                level += 1
+            elif token.group() == '}':
+                level -= 1
+                if level == 0:
+                    scopes.append((opening, token.start()))
+                    break
+    uploads = list(re.finditer(r'uniform\w+\(LLStaticHashedString\("area_world(?:_|\")', pipeline))
+    return bool(uploads) and all(any(a < upload.start() < b for a, b in scopes) for upload in uploads)
+
+
 def static_checks():
     pipeline = (REPO / 'indra/newview/pipeline.cpp').read_text(encoding='utf-8')
     start = pipeline.index('void LLPipeline::generateWorldShadowCubes(LLCamera& camera)')
@@ -56,10 +81,10 @@ def static_checks():
     assert 'RenderAreaShadowCubeMaps' in body and 'RenderAreaShadows' in body
     # the world uniforms: uploaded only with a live reason (a world channel, or the one zero upload on the way out)
     assert 'const bool upload_world = world_any || mWorldShadowUniformsLive;' in pipeline
-    for name in ('area_world"', 'area_world_light', 'area_world_info', 'area_world_seed', 'area_world_rot'):
-        for m in re.finditer(r'uniform\w+\(LLStaticHashedString\("' + re.escape(name.rstrip('"')), pipeline):
-            window = pipeline[max(0, m.start() - 900):m.start()]
-            assert 'upload_world' in window or 'upsample && upload_world' in window, 'unguarded upload of ' + name
+    assert guarded_world_uploads(pipeline), 'unguarded world uniform upload'
+    control_upload = 'program.uniform4fv(LLStaticHashedString("area_world_depth"),1,data);'
+    assert guarded_world_uploads('if (upsample && upload_world) {'+control_upload+'}')
+    assert not guarded_world_uploads('if (upsample && upload_world) {}'+control_upload), 'unguarded-upload mutation survived'
     control = (REPO / 'indra/newview/llviewercontrol.cpp').read_text(encoding='utf-8')
     manager = (REPO / 'indra/newview/llviewershadermgr.cpp').read_text(encoding='utf-8')
     for setting in ('RenderAreaShadowCubeMaps', 'RenderAreaShadowCubeLights'):

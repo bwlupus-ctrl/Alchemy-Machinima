@@ -326,6 +326,9 @@ void main() {
         awFaceTap(0,4,normalize(vec3(1.2,0,1)),vec3(0,0,-1),-2.0,0.003,vec3(0,0,1),2.0,1.0,false).x : awVisibility(0);
     frag_color = vec4(vec3(visibility),1);
 }'''
+        if 'float distance, float receiver2' in text:
+            body = body.replace('-2.0,0.003,vec3(0,0,1),2.0,1.0,false)',
+                                '-2.0,0.003,vec3(0,0,1),2.0,4.0,1.0,false)')
         self.program = runner._link('class3/deferred/areaShadowFilterF.glsl', [(text, text[:text.index('void main()')] + body)])
 
     def run(self, positions, light, near, plane=False, view=None):
@@ -949,6 +952,7 @@ class PreLookTree(G.SourceTree):
             # reconstruction deliberately changed by FIX2. Its entire world
             # oracle, including normal reconstruction, stays historical.
             text = text.replace('area_n_geo = awGeoNormal(texel);', '')
+            text = text.replace('area_p = awPosition(texel,depth);', '')
         return text
 
 
@@ -1087,6 +1091,7 @@ def look_checks(r, raster, mut_runner=None, mut_raster=None):
     frozen = RealRunner(PreLookTree(r.tree, r.tree.ref), r.host, gl=r.gl)
     frozen_raster = Raster(frozen)
     same = []
+    complete_current = []
     protected_frames = []
     for owned in (True, False):
         for in_cube in (True, False):
@@ -1094,6 +1099,9 @@ def look_checks(r, raster, mut_runner=None, mut_raster=None):
             b, _, _ = look_frame(base, base_raster, light, owned=owned, capsule_in_cube=in_cube, look=None)
             same.append(bool(np.array_equal(a, b)))
             actual, floor, g = look_frame(r,raster,light,owned=owned,capsule_in_cube=in_cube)
+            if not owned:
+                complete_current.append(dict(owned=owned,in_cube=in_cube,pixels=int(actual.size),
+                                             passed=bool(np.array_equal(actual,b))))
             ray = np.asarray(light.pos)-g['pos']
             nl = (ray*g['nrm']).sum(2)/np.maximum(np.linalg.norm(ray,axis=2),1.e-9)
             protected = historical_protected_mask(b,floor & (nl>.2))
@@ -1103,6 +1111,8 @@ def look_checks(r, raster, mut_runner=None, mut_raster=None):
     row('look_defaults_byte_identical_to_pre_look_shaders', all(same), frames=same, base=LOOK_BASE,
         world_reference='77348de6593', scope='LOOK wrappers with historical world functions; production receiver separately gated')
     row('production_world_unchanged_interiors_match_77348de6593',all(x['passed'] for x in protected_frames),frames=protected_frames)
+    row('production_unchanged_paths_complete_frames_match_history',len(complete_current)==2 and all(x['passed'] for x in complete_current),
+        frames=complete_current,scope='current production output, every pixel including avatar surfaces and penumbrae')
     # 1. Strength: v' = mix(1, v, s). 0.5 halves the shadow depth; 0 is no soft shadow; unmapped lights are scaled too.
     for owned, base, tag in ((True, v_none, 'world'), (False, v_none_s, 'unmapped')):
         v_half, _, _ = look_frame(r, raster, light, owned=owned, look=dict(strength=.5))

@@ -130,63 +130,93 @@ vec4 areaWeight(vec2 uv, float reach, out float ns_q, out float geo_q)
 // tangents still admit grazing planes. Widen the stencil as depth quantisation
 // grows so a distant plane keeps its geometry, offset and early rejection.
 float aw_plane_valid = 1.0;
-float aw_depth_error = 0.0;
 uniform mat4 inv_proj;
+uniform vec4 area_world_depth; // inverse-projection depth denominator: high a,b; low a,b
+vec3 awPosition(vec2 uv, float depth)
+{
+    vec4 h = inv_proj*vec4(uv*2.0-1.0,depth*2.0-1.0,1.0);
+    // The homogeneous denominator is a subtraction of nearly equal numbers
+    // at distance. One rounding (FMA) avoids a camera-dependent extra D24 unit.
+    float ndc = depth*2.0-1.0;
+    h.w = fma(area_world_depth.x,ndc,area_world_depth.y)
+        + fma(area_world_depth.z,ndc,area_world_depth.w);
+    return h.xyz/h.w;
+}
 float awTangentAgreement(vec3 a, vec3 b, float noise)
 {
-    return 1.0-smoothstep(0.1+noise,0.3+noise,length(normalize(a)-normalize(b)));
+    return 1.0-smoothstep(0.1+noise,0.3+noise,
+        length(a-b)/max(max(length(a),length(b)),1.e-9));
+}
+vec3 awCentreTangent(vec3 first, vec3 second, float noise)
+{
+    float scale = max(length(first),1.e-9);
+    vec3 a = first/scale, b = (first+second)/scale;
+    float bb = dot(b,b), ab = dot(a,b);
+    vec3 centre = bb*(1.0-ab)*a+(bb-ab)*b;
+    vec3 circle = a-centre*(dot(a,centre)/max(dot(centre,centre),1.e-12));
+    vec3 unit_second = second*inversesqrt(max(dot(second,second),1.e-20));
+    float bend = length(a-unit_second);
+    return mix(1.5*first-0.5*second,scale*circle,smoothstep(noise,noise+0.05,bend));
 }
 // Only ambiguous axes fetch the next neighbour. A true surface continues on
 // at least one side; a thin strip's first step onto its background does not.
 // This also prevents the smaller-depth-step rule choosing a nearby silhouette
 // instead of the receiver's steeper but consistent tangent on the other side.
 float awTangent(ivec2 pixel, ivec2 size, ivec2 axis, int radius,
-                vec3 l, vec3 r, float noise, out vec3 tangent)
+                vec3 l, vec3 r, float noise, float curve_noise, out vec3 tangent)
 {
-    bool left = abs(l.z) < abs(r.z);
-    tangent = left ? l : r;
-    float centre = 1.0-smoothstep(0.1,0.3,length(l-r)/max(max(length(l),length(r)),1.e-9));
+    bool left_ok = abs(l.z) < 1.e8, right_ok = abs(r.z) < 1.e8;
+    if (!left_ok && !right_ok) { tangent = vec3(axis,0); return 0.0; }
+    // Never interpolate a finite tangent with the sky sentinel: even a weight
+    // of exactly one can lose the finite operand to cancellation in mix().
+    l = left_ok ? l : r;
+    r = right_ok ? r : l;
+    // A tie between the two sides must not switch the tangent. The weights
+    // are continuous even when camera motion reverses the smaller depth step.
+    float side = smoothstep(-0.1,0.1,(abs(l.z)-abs(r.z))/max(max(length(l),length(r)),1.e-9));
+    tangent = mix(l,r,side);
+    float centre = float(left_ok && right_ok)*(1.0-smoothstep(0.1,0.3,length(l-r)/max(max(length(l),length(r)),1.e-9)));
     float valid = float(abs(tangent.z) < 1.e8);
     if (centre < 1.0)
     {
         ivec2 lp = max(pixel-2*radius*axis,ivec2(0)), rp = min(pixel+2*radius*axis,size-1);
         float dl = texelFetch(depthMap,lp,0).r, dr = texelFetch(depthMap,rp,0).r;
-        vec3 ll = area_p-getPositionWithDepth((vec2(lp)+0.5)/vec2(size),dl).xyz-l;
-        vec3 rr = getPositionWithDepth((vec2(rp)+0.5)/vec2(size),dr).xyz-area_p-r;
-        float vl = dl < 1.0 && any(notEqual(lp,max(pixel-radius*axis,ivec2(0)))) && dot(ll,ll) > 1.e-20
+        vec3 ll = area_p-awPosition((vec2(lp)+0.5)/vec2(size),dl)-l;
+        vec3 rr = awPosition((vec2(rp)+0.5)/vec2(size),dr)-area_p-r;
+        float vl = left_ok && dl < 1.0 && any(notEqual(lp,max(pixel-radius*axis,ivec2(0)))) && dot(ll,ll) > 1.e-20
             ? awTangentAgreement(l,ll,noise) : 0.0;
-        float vr = dr < 1.0 && any(notEqual(rp,min(pixel+radius*axis,size-1))) && dot(rr,rr) > 1.e-20
+        float vr = right_ok && dr < 1.0 && any(notEqual(rp,min(pixel+radius*axis,size-1))) && dot(rr,rr) > 1.e-20
             ? awTangentAgreement(r,rr,noise) : 0.0;
-        // Curvature can rotate both one-sided tangents without a surface
-        // break. A discontinuity instead makes the first bend much larger
-        // than its continuation on the outer neighbours (a thin strip over
-        // a nearby background is the limiting case: the outer bend is zero).
-        // Keep the original small-step confidence only outside that break;
-        // rejecting smooth curvature creates grain on crisp curved receivers.
-        float bend = length(r-l);
-        float jump = smoothstep(0.1+noise,0.3+noise,bend/max(max(length(l),length(r)),1.e-9))
-            *(1.0-smoothstep(0.1,0.3,length(rr-ll)/max(bend,1.e-9)));
-        float resolved = (1.0-jump)*(1.0-smoothstep(0.02*abs(area_p.z),0.04*abs(area_p.z),abs(tangent.z)));
-        vl = max(vl,resolved); vr = max(vr,resolved);
-        if (vl > vr) tangent = l;
-        if (vr > vl) tangent = r;
+        if (left_ok && dl < 1.0 && dot(ll,ll) > 1.e-20)
+            vl = max(vl,1.0-smoothstep(0.3+noise,0.6+noise,length(l-ll)/max(max(length(l),length(ll)),1.e-9)));
+        if (right_ok && dr < 1.0 && dot(rr,rr) > 1.e-20)
+            vr = max(vr,1.0-smoothstep(0.3+noise,0.6+noise,length(r-rr)/max(max(length(r),length(rr)),1.e-9)));
+        vl *= float(left_ok); vr *= float(right_ok);
+        // Extrapolate a coherent one-sided secant back to the centre. Without
+        // this quadratic correction its normal belongs half a pixel away,
+        // enough to shadow convex skin at a silhouette. Confidence makes the
+        // correction vanish continuously at a discontinuity.
+        vec3 tl = mix(l,awCentreTangent(l,ll,curve_noise),vl);
+        vec3 tr = mix(r,awCentreTangent(r,rr,curve_noise),vr);
+        // Coherent continuation wins. When both sides are coherent, retain
+        // the smaller-depth-step preference continuously at a crease rather
+        // than averaging tangents from two different receiver surfaces.
+        float resolved_side = 1.0/(1.0+curve_noise*curve_noise);
+        float choice = vr-vl+0.1*(2.0*side-1.0)*min(vl,vr)*resolved_side;
+        tangent = mix(tl,tr,smoothstep(-0.1,0.1,choice));
         valid = max(awTangentAgreement(l,r,noise)*valid,max(vl,vr));
         centre *= vl*vr;
     }
     tangent = mix(tangent,0.5*(l+r),centre*valid);
+    valid = smoothstep(0.0,0.25,valid);
     return valid;
 }
-vec3 awGeoNormal(vec2 uv)
+vec4 awGeoStencil(ivec2 pixel, ivec2 size, int radius, float footprint, float uncertainty)
 {
-    ivec2 size = textureSize(depthMap,0), pixel = ivec2(uv*vec2(size));
     vec2 step_uv = 1.0/vec2(size);
     // Reuse the filter's constant-depth footprint, scaled to full resolution.
-    float footprint = area_footprint*min(float(textureSize(area_source,0).x)/float(size.x),
-                                        float(textureSize(area_source,0).y)/float(size.y));
     // |dz/dd| times two D24 units includes storage and inverse-projection
     // rounding, without another depth fetch or inverse-projection division.
-    float uncertainty = abs(inv_proj[2][3])*area_p.z*area_p.z/4194304.0;
-    int radius = int(clamp(ceil(uncertainty/max(0.005*footprint,1.e-8)-16.0),1.0,128.0));
     ivec2 lo = max(pixel-ivec2(radius),ivec2(0)), hi = min(pixel+ivec2(radius),size-1);
     footprint *= float(radius);
     vec2 ul = (vec2(lo.x,pixel.y)+0.5)*step_uv, ur = (vec2(hi.x,pixel.y)+0.5)*step_uv;
@@ -201,31 +231,84 @@ vec3 awGeoNormal(vec2 uv)
     // isolated receiver surrounded by one background never qualifies.
     if (uncertainty <= 0.02*footprint && all(equal(vec4(dl,dr,dd,du),vec4(aw_centre_depth))))
     {
-        aw_plane_valid = 1.0;
-        if (uncertainty > 0.0001)
-            aw_depth_error = max(0.0,uncertainty*abs(normalize(-area_p).z)-0.0001);
-        return vec3(0,0,1);
+        return vec4(0,0,1,1);
     }
-    vec3 l = dl < 1.0 && lo.x != pixel.x ? area_p-getPositionWithDepth(ul,dl).xyz : vec3(0,0,1.e9);
-    vec3 r = dr < 1.0 && hi.x != pixel.x ? getPositionWithDepth(ur,dr).xyz-area_p : vec3(0,0,1.e9);
-    vec3 d = dd < 1.0 && lo.y != pixel.y ? area_p-getPositionWithDepth(ud,dd).xyz : vec3(0,0,1.e9);
-    vec3 u = du < 1.0 && hi.y != pixel.y ? getPositionWithDepth(uu,du).xyz-area_p : vec3(0,0,1.e9);
+    vec3 l = dl < 1.0 && lo.x != pixel.x ? area_p-awPosition(ul,dl) : vec3(0,0,1.e9);
+    vec3 r = dr < 1.0 && hi.x != pixel.x ? awPosition(ur,dr)-area_p : vec3(0,0,1.e9);
+    vec3 d = dd < 1.0 && lo.y != pixel.y ? area_p-awPosition(ud,dd) : vec3(0,0,1.e9);
+    vec3 u = du < 1.0 && hi.y != pixel.y ? awPosition(uu,du)-area_p : vec3(0,0,1.e9);
     vec3 dx, dy;
-    float noise = min(4.0*uncertainty/max(footprint,1.e-9),0.2);
-    float vx = awTangent(pixel,size,ivec2(1,0),radius,l,r,noise,dx);
-    float vy = awTangent(pixel,size,ivec2(0,1),radius,d,u,noise,dy);
+    float curve_noise = 4.0*uncertainty/max(footprint,1.e-9);
+    float noise = min(curve_noise,0.2);
+    float vx = awTangent(pixel,size,ivec2(1,0),radius,l,r,noise,curve_noise,dx);
+    float vy = awTangent(pixel,size,ivec2(0,1),radius,d,u,noise,curve_noise,dy);
     vec3 n = cross(dx,dy), facing = normalize(-area_p);
     float n2 = dot(n,n);
-    aw_plane_valid = vx*vy;
-    if (!(n2 > 1.e-20) || aw_plane_valid <= 0.0) { aw_plane_valid = 0.0; return facing; }
+    float valid = vx*vy;
+    if (!(n2 > 1.e-20)) return vec4(facing,0);
     n *= inversesqrt(n2);
     n = dot(n,facing) < 0.0 ? -n : n;
     // Project primary-depth uncertainty onto the geometric plane separately
     // from the fixed shadow bias and normal-offset cap. Retain the plane and
     // its validity at distance; compensate only precision beyond 0.1 mm.
-    aw_depth_error = aw_plane_valid*max(0.0,uncertainty*abs(dot(n,facing))-0.0001);
-    return normalize(mix(facing,n,aw_plane_valid));
+    return vec4(n,valid);
 }
+vec3 awGeoNormal(vec2 uv)
+{
+    ivec2 size = textureSize(depthMap,0), pixel = ivec2(uv*vec2(size));
+    float footprint = area_footprint*min(float(textureSize(area_source,0).x)/float(size.x),
+                                        float(textureSize(area_source,0).y)/float(size.y));
+    float uncertainty = abs(inv_proj[2][3])*area_p.z*area_p.z/4194304.0;
+    // Keep resolved flat pixels out of the adaptive/curvature machinery. This
+    // is the exact endpoint of the general stencil, not a different normal.
+    if (uncertainty <= 0.02*footprint)
+    {
+        ivec2 lo = max(pixel-1,ivec2(0)), hi = min(pixel+1,size-1);
+        vec4 depth = vec4(texelFetch(depthMap,ivec2(lo.x,pixel.y),0).r,
+                          texelFetch(depthMap,ivec2(hi.x,pixel.y),0).r,
+                          texelFetch(depthMap,ivec2(pixel.x,lo.y),0).r,
+                          texelFetch(depthMap,ivec2(pixel.x,hi.y),0).r);
+        if (all(equal(depth,vec4(aw_centre_depth))))
+        {
+            aw_plane_valid = 1.0;
+            return vec3(0,0,1);
+        }
+    }
+    float radius = clamp(uncertainty/max(0.005*footprint,1.e-8)-16.0,1.0,128.0);
+    vec4 geometry = awGeoStencil(pixel,size,1,footprint,uncertainty);
+    // Nested supports form a continuous partition: at each endpoint the next
+    // interval starts with exactly the previous result. A wider support may
+    // refine a coherent fine normal, but can never invalidate it at an edge.
+    for (int r = 2; r <= 128; r *= 2)
+    {
+        float weight = smoothstep(float(r/2),float(r),radius);
+        if (weight <= 0.0) break;
+        vec4 coarse = awGeoStencil(pixel,size,r,footprint,uncertainty);
+        float angular_noise = min(4.0*uncertainty/max(footprint*float(r/2),1.e-9),0.2);
+        float agreement = 1.0-smoothstep(0.1+angular_noise,0.3+angular_noise,length(geometry.xyz-coarse.xyz));
+        coarse.w *= mix(1.0,agreement,geometry.w);
+        geometry.xyz = normalize(mix(geometry.xyz,coarse.xyz,weight*coarse.w));
+        geometry.w = mix(geometry.w,max(geometry.w,coarse.w),weight);
+    }
+    vec3 facing = normalize(-area_p);
+    aw_plane_valid = geometry.w;
+    vec3 normal = normalize(mix(facing,geometry.xyz,aw_plane_valid));
+    // Precision is a compare interval, never an additional displacement.
+    return normal;
+}
+float awDepthFraction()
+{
+    float uncertainty = abs(inv_proj[2][3])*area_p.z*area_p.z/4194304.0;
+    // One D24 storage/conversion unit plus a 10% float/FMA rounding margin.
+    // The small-error endpoint is covered by the existing fixed compare bias.
+    float error = 0.55*uncertainty;
+    return error*smoothstep(0.0001,0.0002,error)/max(abs(area_p.z),1.e-9);
+}
+float awDepthError()
+{
+    return awDepthFraction()*abs(dot(area_n_geo,area_p));
+}
+#define aw_depth_error awDepthError()
 // ------------------------------------------------------------------------------------------------------------------
 // World cube shadow resolve (P1-lite). Full resolution, never blurred: vis = min(upsampled screen contact, world).
 // Face f: look axis, right, up (alworldshadowmath.h kFaceTable; the probe cube order +X -X +Y -Y +Z -Z).
@@ -238,11 +321,27 @@ const float AW_TILE = 544.0, AW_HALF_TILE = 272.0, AW_HALF_USABLE = 256.0, AW_US
 const float AW_NORMAL_TEXELS = 1.0, AW_NORMAL_CAP = 0.05, AW_BIAS_CONST = 0.003, AW_BIAS_SLOPE = 1.0, AW_TAN_CAP = 8.0;
 float awReceiverOffset(float texel_w, bool detail)
 {
-    return max(aw_depth_error,detail ? 0.0 : aw_plane_valid*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP));
+    return detail ? 0.0 : aw_plane_valid*min(AW_NORMAL_TEXELS*texel_w,AW_NORMAL_CAP);
 }
 const float AW_OVERLAP = 0.95;     // a face also reads a ray whose axis component is within 5 % of the dominant one (gutter: 5.3 %, less the gather footprint)
 const float AW_MAX_RADIUS = 12.0;  // texels; 12 + 2 <= the 16 texel gutter
 const int AW_SEARCH_TAPS = 16, AW_FILTER_TAPS = 32;
+vec2 awPrecision(float nl, float footprint)
+{
+    float fraction = awDepthFraction();
+    if (fraction > 0.0)
+    {
+        vec2 size = vec2(textureSize(depthMap,0));
+        float pixel_angle = 2.0*min(abs(inv_proj[0][0])/size.x,abs(inv_proj[1][1])/size.y);
+        // D24 also bounds the direction error of a finite difference. Apply
+        // that uncertainty over the light's actual support, in the compare.
+        float angular_error = 2.0*fraction/max(pixel_angle,1.e-9);
+        float incidence = max(abs(nl),0.05);
+        float plane_error = fraction*abs(dot(area_n_geo,area_p))/incidence;
+        return vec2(plane_error+angular_error*footprint/incidence,plane_error);
+    }
+    return vec2(0.0);
+}
 // Wide direction-space footprints compress their rearward quarter toward the
 // light plane. The depth bound stays authoritative; this preserves curved
 // contacts without adding gathers. The face morph carries this in smoothly.
@@ -315,7 +414,7 @@ vec4 awPlaneWeight(vec4 den)
 // confirmed small contact. Only if the normal search found nothing, inspect
 // the centre with the constant bias and keep its real blocker depth. This is
 // still a search result: the full filter below decides coverage/penumbra.
-vec2 awFallbackBlocker(int c, vec3 d, float bias, float depth_scale)
+vec2 awFallbackBlocker(int c, vec3 d, float bias, float depth_scale, float receiver2)
 {
     int face = awFace(d);
     float zr = dot(d,AW_AXIS[face]);
@@ -324,7 +423,8 @@ vec2 awFallbackBlocker(int c, vec3 d, float bias, float depth_scale)
     vec2 tile = vec2(AW_TILE*float(face%3),AW_TILE*(area_world_info[c].x+float(face/3)));
     vec4 z = awGather(tile+base+1.0,1.0/vec2(textureSize(area_world_atlas,0)),area_world_info[c].y,area_world_light[c].w);
     vec3 forward = vec3(zr,dot(d,AW_RIGHT[face])/AW_HALF_USABLE,dot(d,AW_UP[face])/AW_HALF_USABLE);
-    vec4 front = awReceiverFront(z,min(bias,AW_BIAS_CONST),forward,dot(d,d),base);
+    float front_bias = area_world_info[c].w > 0.5 ? 0.00015 : AW_BIAS_CONST;
+    vec4 front = awReceiverFront(z,front_bias,forward,receiver2,base);
     return vec2(dot(z,front)*depth_scale,dot(front,vec4(1.0)));
 }
 vec3 awPlaneTangent(vec3 normal, vec3 direction)
@@ -340,7 +440,7 @@ vec2 awTap(vec2 p, vec2 lo, vec2 hi, vec2 inv_size, float zr, float bias, float 
     vec2 base = floor(q);
     vec2 fr = q-base;
     vec4 z = awGather(base+1.0,inv_size,n,f);   // x=(0,1) y=(1,1) z=(1,0) w=(0,0)
-    vec4 front = awReceiverFront(z,min(bias,AW_BIAS_CONST),forward,receiver2,base-lo);
+    vec4 front = awReceiverFront(z,AW_BIAS_CONST,forward,receiver2,base-lo);
     vec4 blocked = awBlocked(z,vec4(zr),forward.x,bias,vec4(plane_weight))*front;
     vec4 lit = vec4(1.0)-blocked;
     return vec2(mix(mix(lit.w,lit.z,fr.x),mix(lit.x,lit.y,fr.x),fr.y),
@@ -357,6 +457,10 @@ float awPlane(vec3 n, vec3 ax, vec3 rt, vec3 up, float nd, vec2 slope, float zr,
     float den = dot(n,ax+slope.x*rt+slope.y*up);
     return clamp(nd/min(den,-1.e-3),zr-cap,zr+cap);
 }
+float awLocalPlane(vec3 n, float nd, vec2 slope, float zr, float cap)
+{
+    return clamp(nd/min(n.x+dot(n.yz,slope),-1.e-3),zr-cap,zr+cap);
+}
 // Detail fixtures compare each gathered texel with the receiver plane at its
 // own ray, including face interiors. The offset/bias above remain bounded;
 // the geometric plane is bounded by the light-facing receiver plane too.
@@ -368,12 +472,13 @@ vec2 awDetailFaceTap(int c, int face, vec2 centre, vec3 normal, float nd, float 
     vec4 z = awGather(tile+base+1.0,1.0/vec2(textureSize(area_world_atlas,0)),area_world_info[c].y,area_world_light[c].w);
     if (all(greaterThanEqual(z,vec4(area_world_light[c].w)))) return search ? vec2(0.0) : vec2(1.0);
     vec2 slope = (base+0.5-AW_HALF_TILE)/AW_HALF_USABLE;
-    float den = dot(normal,AW_AXIS[face]+slope.x*AW_RIGHT[face]+slope.y*AW_UP[face]);
-    float dr = dot(normal,AW_RIGHT[face])/AW_HALF_USABLE;
-    float du = dot(normal,AW_UP[face])/AW_HALF_USABLE;
+    // normal is already expressed in this face's axis/right/up basis.
+    float den = normal.x+dot(normal.yz,slope);
+    float dr = normal.y/AW_HALF_USABLE;
+    float du = normal.z/AW_HALF_USABLE;
     vec4 dens = vec4(den+du,den+dr+du,den+dr,den);
     vec4 plane = vec4(nd)/min(dens,vec4(-1.e-3));
-    vec4 front = awReceiverFront(z,min(bias,AW_BIAS_CONST),forward,receiver2,base);
+    vec4 front = awReceiverFront(z,0.00015,forward,receiver2,base);
     vec4 blocked = awBlocked(z,plane,forward.x,bias,awPlaneWeight(dens))*front;
     if (search) return vec2(dot(z,blocked),dot(blocked,vec4(1.0)));
     return vec2(1.0-mix(mix(blocked.w,blocked.z,f.x),mix(blocked.x,blocked.y,f.x),f.y),
@@ -397,6 +502,7 @@ float awFaceVisibility(int c)
     // separate primary-depth precision allowance. Detail omits the texel offset.
     float z0 = dot(d,AW_AXIS[awFace(d)]);
     float texel_w = 2.0*z0/AW_USABLE;
+    vec2 depth_interval = awPrecision(nl,AW_MAX_RADIUS*texel_w*max(1.0,r_map/0.1));
     d += n_a*awReceiverOffset(texel_w,detail);
     int face = awFace(d);
     float zr = dot(d,AW_AXIS[face]);
@@ -406,14 +512,17 @@ float awFaceVisibility(int c)
     float bias = area_world_info[c].w > 0.5
         ? clamp(0.00015+0.005*texel_w*min(tan_t,AW_TAN_CAP),0.00015,0.0005)
         : AW_BIAS_CONST+(1.0-aw_plane_valid)*AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
+    bias += depth_interval.x;
     vec2 tile = vec2(AW_TILE*float(face%3),AW_TILE*(area_world_info[c].x+float(face/3)));
     vec2 centre = vec2(AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_RIGHT[face])/zr,
                        AW_HALF_TILE+AW_HALF_USABLE*dot(d,AW_UP[face])/zr);
     vec2 lo = tile, hi = tile+vec2(AW_TILE-2.0);   // base texel range that keeps the 2x2 footprint inside the tile
     vec2 inv_size = 1.0/vec2(textureSize(area_world_atlas,0));
-    vec3 ax = AW_AXIS[face], rt = AW_RIGHT[face], up = AW_UP[face];
-    vec3 forward = vec3(dot(d,ax),dot(d,rt)/AW_HALF_USABLE,dot(d,up)/AW_HALF_USABLE);
-    float receiver2 = dot(d,d);
+    // Project once per light, instead of carrying three basis vectors and
+    // rebuilding the same normal projection in every search/filter tap.
+    vec3 plane_n = vec3(dot(n_a,AW_AXIS[face]),dot(n_a,AW_RIGHT[face]),dot(n_a,AW_UP[face]));
+    vec3 forward = vec3(dot(d,AW_AXIS[face]),dot(d,AW_RIGHT[face])/AW_HALF_USABLE,dot(d,AW_UP[face])/AW_HALF_USABLE);
+    float receiver2 = max(0.0,dot(d,d)-length(d)*depth_interval.y);
     float nd = dot(n_a,d);
     // Continuous phase in world metres, also used by the direction path.
     float rot = float(area_world_seed[c] >> 16)*(6.28318530718/65536.0)+dot(d,vec3(0.13,0.21,0.37));
@@ -427,7 +536,7 @@ float awFaceVisibility(int c)
         vec2 off = search*awVogel(k,AW_SEARCH_TAPS,rot,true);
         if (detail)
         {
-            vec2 hit = awDetailFaceTap(c,face,centre+off,n_a,nd,bias,forward,receiver2,true);
+            vec2 hit = awDetailFaceTap(c,face,centre+off,plane_n,nd,bias,forward,receiver2,true);
             blocker_sum += hit.x; blocker_n += hit.y;
             continue;
         }
@@ -435,17 +544,17 @@ float awFaceVisibility(int c)
         vec2 base = floor(clamp(p-0.5,lo,hi));
         vec4 z = awGather(base+1.0,inv_size,near,far);
         if (all(greaterThanEqual(z,vec4(far)))) continue;
-        float zp = awPlane(n_a,ax,rt,up,nd,(centre+off-AW_HALF_TILE)/AW_HALF_USABLE,zr,AW_TAN_CAP*texel_w*(length(off)+1.0));
-        vec4 front = awReceiverFront(z,min(bias,AW_BIAS_CONST),forward,receiver2,base-tile);
+        float zp = awLocalPlane(plane_n,nd,(centre+off-AW_HALF_TILE)/AW_HALF_USABLE,zr,AW_TAN_CAP*texel_w*(length(off)+1.0));
+        vec4 front = awReceiverFront(z,AW_BIAS_CONST,forward,receiver2,base-tile);
         vec2 slope = (centre+off-AW_HALF_TILE)/AW_HALF_USABLE;
-        float plane_weight = awPlaneWeight(vec4(dot(n_a,ax+slope.x*rt+slope.y*up))).x;
+        float plane_weight = awPlaneWeight(vec4(plane_n.x+dot(plane_n.yz,slope))).x;
         vec4 blocked = awBlocked(z,vec4(zp),zr,bias,vec4(plane_weight))*front;
         blocker_sum += dot(z,blocked);
         blocker_n += blocked.x+blocked.y+blocked.z+blocked.w;
     }
-    if (blocker_n < 0.5 && aw_plane_valid < 1.0)
+    if (blocker_n < 0.5 && (aw_plane_valid < 1.0 || bias > (area_world_info[c].w > 0.5 ? 0.0005 : AW_BIAS_CONST)))
     {
-        vec2 fallback = awFallbackBlocker(c,d,bias,1.0);
+        vec2 fallback = awFallbackBlocker(c,d,bias,1.0,receiver2);
         blocker_sum = fallback.x; blocker_n = fallback.y;
     }
     if (blocker_n < 0.5) return 1.0;
@@ -459,21 +568,22 @@ float awFaceVisibility(int c)
         vec2 off = radius*awVogel(k,AW_FILTER_TAPS,rot,false);
         if (detail)
         {
-            vec2 tap = awDetailFaceTap(c,face,centre+off,n_a,nd,bias,forward,receiver2,false);
+            vec2 tap = awDetailFaceTap(c,face,centre+off,plane_n,nd,bias,forward,receiver2,false);
             lit += tap.x; front_lit = max(front_lit,tap.y);
             continue;
         }
-        float zp = awPlane(n_a,ax,rt,up,nd,(centre+off-AW_HALF_TILE)/AW_HALF_USABLE,zr,AW_TAN_CAP*texel_w*(length(off)+1.0));
+        float zp = awLocalPlane(plane_n,nd,(centre+off-AW_HALF_TILE)/AW_HALF_USABLE,zr,AW_TAN_CAP*texel_w*(length(off)+1.0));
         vec2 slope = (centre+off-AW_HALF_TILE)/AW_HALF_USABLE;
-        float plane_weight = awPlaneWeight(vec4(dot(n_a,ax+slope.x*rt+slope.y*up))).x;
+        float plane_weight = awPlaneWeight(vec4(plane_n.x+dot(plane_n.yz,slope))).x;
         vec2 tap = awTap(tile+centre+off,lo,hi,inv_size,zp,bias,near,far,forward,receiver2,plane_weight);
         lit += tap.x; front_lit = max(front_lit,tap.y);
     }
     // Confirmation uses the ACTUAL filter footprint, including every blended
     // face. A search disk may be smaller than a broad source's filter disk.
-    // The maximum bilinear plain visibility is a continuous upper bound: a
-    // fully foreground-covered receiver stays shadowed; a penumbra remains.
-    float visibility = min(lit/float(AW_FILTER_TAPS),front_lit);
+    // Full foreground coverage is a separate confirmation, not a second
+    // shadow filter: fractional bilinear self depth must not darken a valid
+    // convex plane. Fade confirmation over one tap; zero remains exact.
+    float visibility = min(lit/float(AW_FILTER_TAPS),smoothstep(0.0,1.0/float(AW_FILTER_TAPS),front_lit));
     return visibility;
 }
 // One face's share of a direction-space tap. The tap ray was already chosen by the caller (a single, consistent world
@@ -481,11 +591,14 @@ float awFaceVisibility(int c)
 // the face boundary. Compare each gathered texel against the receiver plane at THAT texel's ray, in this face's own axial
 // units. The base texel is clamped to the tile exactly like awTap, so a tap never reads another face's tile (or the
 // other light's row), and the plane is guarded and capped exactly like awPlane.
-vec2 awFaceTap(int c, int face, vec3 ray, vec3 normal, float nd, float bias, vec3 direction, float distance, float blend, bool search)
+vec2 awFaceTap(int c, int face, vec3 ray, vec3 normal, float nd, float bias, vec3 direction, float distance, float receiver2, float blend, bool search)
 {
     vec3 ax = AW_AXIS[face], rt = AW_RIGHT[face], up = AW_UP[face];
-    float cosine = dot(ray,ax);
-    vec2 ray_slope = vec2(dot(ray,rt),dot(ray,up))/cosine;
+    vec3 ray_face = vec3(dot(ray,ax),dot(ray,rt),dot(ray,up));
+    vec3 normal_face = vec3(dot(normal,ax),dot(normal,rt),dot(normal,up));
+    vec3 direction_face = vec3(dot(direction,ax),dot(direction,rt),dot(direction,up));
+    float cosine = ray_face.x;
+    vec2 ray_slope = ray_face.yz/cosine;
     vec2 centre = AW_HALF_TILE+AW_HALF_USABLE*ray_slope;
     vec2 q = clamp(centre-0.5,vec2(0.0),vec2(AW_TILE-2.0));
     vec2 base = floor(q), fr = q-base;
@@ -493,32 +606,49 @@ vec2 awFaceTap(int c, int face, vec3 ray, vec3 normal, float nd, float bias, vec
     vec4 z = awGather(tile+base+1.0,1.0/vec2(textureSize(area_world_atlas,0)),area_world_info[c].y,area_world_light[c].w);
     if (all(greaterThanEqual(z,vec4(area_world_light[c].w)))) return search ? vec2(0.0) : vec2(1.0);
     vec2 slope = (base+0.5-AW_HALF_TILE)/AW_HALF_USABLE;
-    vec3 v = ax+slope.x*rt+slope.y*up;
-    float den = dot(normal,v), dr = dot(normal,rt)/AW_HALF_USABLE, du = dot(normal,up)/AW_HALF_USABLE;
+    float den = normal_face.x+dot(normal_face.yz,slope);
+    float dr = normal_face.y/AW_HALF_USABLE, du = normal_face.z/AW_HALF_USABLE;
     vec4 dens = vec4(den+du,den+dr+du,den+dr,den);
     // The receiver in THIS face's axial units (the same units as the gathered depths), and the plane-slope cap per texel of
     // tap distance from the receiver's own ray.
-    float centre_cosine = max(dot(direction,ax),0.1);
+    float centre_cosine = max(direction_face.x,0.1);
     float zr = distance*centre_cosine;
-    vec2 receiver_slope = vec2(dot(direction,rt),dot(direction,up))/centre_cosine;
+    vec2 receiver_slope = direction_face.yz/centre_cosine;
     float cap = AW_TAN_CAP*(2.0*zr/AW_USABLE)*(length(ray_slope-receiver_slope)*AW_HALF_USABLE+1.0);
-    // The denominator is continuous through the tangent horizon. The bounded
-    // forward comparison below rejects every extrapolated background caster.
-    vec4 plane = clamp(vec4(nd)/min(dens,vec4(-1.e-3)),vec4(zr-cap),vec4(zr+cap));
     bool detail = area_world_info[c].w > 0.5;
-    if (detail) plane = vec4(nd)/min(dens,vec4(-1.e-3));
-    float depth_scale = dot(ray,direction)/cosine;
+    float depth_scale = dot(ray_face,direction_face)/cosine;
+    float old_plane = 0.0;
     if (blend < 1.0)
     {
-        // At the band's inner edge this is exactly the old face footprint; positions, receiver plane and depth units morph
-        // together, once per tap. Both planes are this FACE's own: the receiver is expressed in the tap face's axes.
-        float old_plane = awPlane(normal,ax,rt,up,nd,ray_slope,zr,cap);
-        if (!detail) plane = mix(vec4(old_plane),plane,blend);
+        // Finish the old footprint before the proof, so its face vectors do
+        // not stay live across either compare path. Planes and depth units
+        // still morph together, once per tap, in this face's own axes.
+        if (!detail) old_plane = awLocalPlane(normal_face,nd,ray_slope,zr,cap);
         depth_scale = mix(1.0/centre_cosine,depth_scale,blend);
     }
     float tap_bias = bias*mix(1.0,cosine,blend);
-    vec3 forward = distance*vec3(dot(direction,ax),dot(direction,rt)/AW_HALF_USABLE,dot(direction,up)/AW_HALF_USABLE);
-    vec4 front = awReceiverFront(z,min(tap_bias,AW_BIAS_CONST),forward,distance*distance,base);
+    vec3 forward = distance*vec3(direction_face.x,direction_face.yz/AW_HALF_USABLE);
+    float front_bias = (detail ? 0.00015 : AW_BIAS_CONST)*mix(1.0,cosine,blend);
+    vec4 front = awReceiverFront(z,front_bias,forward,receiver2,base);
+    // The most negative denominator gives the nearest positive plane depth
+    // when nd < 0. Both the plain compare and every clamped plane compare
+    // therefore block below min(zr, that depth): the upper clamp is >= zr.
+    // Prove this before four divisions/clamps/horizon blends, retaining every
+    // gather and the authoritative forward bound. The small inward margin
+    // makes rounding conservative; an inconclusive proof uses the full path.
+    // The face-morph band also keeps the full path for its old-plane blend.
+    if (blend >= 1.0 && nd < 0.0)
+    {
+        float lower_plane = min(zr,nd/min(min(min(dens.x,dens.y),min(dens.z,dens.w)),-1.e-3))*0.999999;
+        float largest_z = max(max(z.x,z.y),max(z.z,z.w));
+        if (largest_z < lower_plane-tap_bias && all(greaterThanEqual(front,vec4(1.0))))
+            return search ? vec2(dot(z,vec4(1.0))*depth_scale,4.0) : vec2(0.0);
+    }
+    // The denominator is continuous through the tangent horizon. The bounded
+    // forward comparison below rejects every extrapolated background caster.
+    vec4 plane = clamp(vec4(nd)/min(dens,vec4(-1.e-3)),vec4(zr-cap),vec4(zr+cap));
+    if (detail) plane = vec4(nd)/min(dens,vec4(-1.e-3));
+    if (blend < 1.0 && !detail) plane = mix(vec4(old_plane),plane,blend);
     vec4 blocked = awBlocked(z,plane,zr,tap_bias,awPlaneWeight(dens))*front;
     if (search)
         return vec2(dot(z,blocked)*depth_scale,dot(blocked,vec4(1.0)));
@@ -531,7 +661,7 @@ vec2 awFaceTap(int c, int face, vec3 ray, vec3 normal, float nd, float bias, vec
 // twelve edges and eight corners whatever the footprint's size. (A hard choice of the single dominant face changed which
 // texel lattice a tap read at the boundary; the 2 m softbox's blocker mean and radius, which hang on a handful of binary
 // flags, jumped by up to 25/255 across a three-face corner.) At most two faces per edge tap, three per corner tap.
-vec2 awDirectionTap(int c, vec3 ray, vec3 normal, float nd, float bias, vec3 direction, float distance, float blend, bool search, vec3 tangent)
+vec2 awDirectionTap(int c, vec3 ray, vec3 normal, float nd, float bias, vec3 direction, float distance, float receiver2, float blend, bool search, vec3 tangent)
 {
     ray -= (AW_PLANE_COMPRESS*blend)*max(dot(tangent,ray),0.0)*tangent;
     vec3 a = abs(ray);
@@ -540,9 +670,9 @@ vec2 awDirectionTap(int c, vec3 ray, vec3 normal, float nd, float bias, vec3 dir
     float inv_total = 1.0/(w.x+w.y+w.z);
     // Three explicit calls: a loop over the axes with dynamically indexed vectors costs ~70 % more at 4K than this (register pressure).
     vec2 sum = vec2(0.0);
-    if (w.x > 0.0) sum += (w.x*inv_total)*awFaceTap(c,ray.x < 0.0 ? 1 : 0,ray,normal,nd,bias,direction,distance,blend,search);
-    if (w.y > 0.0) sum += (w.y*inv_total)*awFaceTap(c,ray.y < 0.0 ? 3 : 2,ray,normal,nd,bias,direction,distance,blend,search);
-    if (w.z > 0.0) sum += (w.z*inv_total)*awFaceTap(c,ray.z < 0.0 ? 5 : 4,ray,normal,nd,bias,direction,distance,blend,search);
+    if (w.x > 0.0) sum += (w.x*inv_total)*awFaceTap(c,ray.x < 0.0 ? 1 : 0,ray,normal,nd,bias,direction,distance,receiver2,blend,search);
+    if (w.y > 0.0) sum += (w.y*inv_total)*awFaceTap(c,ray.y < 0.0 ? 3 : 2,ray,normal,nd,bias,direction,distance,receiver2,blend,search);
+    if (w.z > 0.0) sum += (w.z*inv_total)*awFaceTap(c,ray.z < 0.0 ? 5 : 4,ray,normal,nd,bias,direction,distance,receiver2,blend,search);
     return sum;
 }
 float awDirectionVisibility(int c, float blend)
@@ -561,6 +691,7 @@ float awDirectionVisibility(int c, float blend)
     // Same stable offset / detail contact rule as the face path.
     float z0 = max(abs(d.x),max(abs(d.y),abs(d.z)));   // the dominant component: continuous across every edge and corner
     float texel_w = 2.0*z0/AW_USABLE;
+    vec2 depth_interval = awPrecision(nl,AW_MAX_RADIUS*texel_w*max(1.0,r_map/0.1));
     d += n_a*awReceiverOffset(texel_w,area_world_info[c].w > 0.5);
     int face = awFace(d);
     float zr = dot(d,AW_AXIS[face]);
@@ -570,7 +701,9 @@ float awDirectionVisibility(int c, float blend)
     float bias = area_world_info[c].w > 0.5
         ? clamp(0.00015+0.005*texel_w*min(tan_t,AW_TAN_CAP),0.00015,0.0005)
         : AW_BIAS_CONST+(1.0-aw_plane_valid)*AW_BIAS_SLOPE*texel_w*min(tan_t,AW_TAN_CAP);
+    bias += depth_interval.x;
     dist = length(d);
+    float receiver2 = max(0.0,dist*(dist-depth_interval.y));
     vec3 direction = d/dist;
     vec3 tangent = awPlaneTangent(n_a,direction);
     // Frisvad's continuous orthonormal basis (only singular at the south pole,
@@ -581,7 +714,6 @@ float awDirectionVisibility(int c, float blend)
     vec3 up = cross(direction,rt);
     vec3 old_rt = AW_RIGHT[face], old_up = AW_UP[face];
     vec2 centre = AW_HALF_TILE+AW_HALF_USABLE*vec2(dot(d,old_rt),dot(d,old_up))/zr;
-    float old_rot = float(area_world_seed[c] >> 16)*(6.28318530718/65536.0)+dot(d,vec3(0.13,0.21,0.37));
     float nd = dot(n_a,d);
     uint h = area_world_seed[c];
     float rot = float(h >> 16)*(6.28318530718/65536.0);
@@ -601,15 +733,15 @@ float awDirectionVisibility(int c, float blend)
     for (int k = 0; k < search_taps; ++k)
     {
         vec2 off = search*awVogel(k,search_taps,rot,true);
-        vec2 old_off = old_search*awVogel(k,search_taps,old_rot,true);
+        vec2 old_off = old_search*awVogel(k,search_taps,rot,true);
         vec3 tap = mix(old_off.x*old_rt+old_off.y*old_up,off.x*rt+off.y*up,blend);
-        vec2 hit = awDirectionTap(c,normalize(direction+tap),n_a,nd,bias,direction,dist,blend,true,tangent);
+        vec2 hit = awDirectionTap(c,normalize(direction+tap),n_a,nd,bias,direction,dist,receiver2,blend,true,tangent);
         blocker_sum += hit.x;
         blocker_n += hit.y;
     }
-    if (blocker_n < 0.5 && aw_plane_valid < 1.0)
+    if (blocker_n < 0.5 && (aw_plane_valid < 1.0 || bias > (area_world_info[c].w > 0.5 ? 0.0005 : AW_BIAS_CONST)))
     {
-        vec2 fallback = awFallbackBlocker(c,d,bias,dist/zr);
+        vec2 fallback = awFallbackBlocker(c,d,bias,dist/zr,receiver2);
         blocker_sum = fallback.x; blocker_n = fallback.y;
     }
     if (blocker_n < 0.5) return 1.0;
@@ -624,12 +756,12 @@ float awDirectionVisibility(int c, float blend)
     for (int k = 0; k < filter_taps; ++k)
     {
         vec2 off = radius*awVogel(k,filter_taps,rot,false);
-        vec2 old_off = old_radius*awVogel(k,filter_taps,old_rot,false);
+        vec2 old_off = old_radius*awVogel(k,filter_taps,rot,false);
         vec3 tap = mix(old_off.x*old_rt+old_off.y*old_up,off.x*rt+off.y*up,blend);
-        vec2 hit = awDirectionTap(c,normalize(direction+tap),n_a,nd,bias,direction,dist,blend,false,tangent);
+        vec2 hit = awDirectionTap(c,normalize(direction+tap),n_a,nd,bias,direction,dist,receiver2,blend,false,tangent);
         lit += hit.x; front_lit = max(front_lit,hit.y);
     }
-    float visibility = min(lit/float(filter_taps),front_lit);
+    float visibility = min(lit/float(filter_taps),smoothstep(0.0,1.0/float(filter_taps),front_lit));
     return visibility;
 }
 // Interior small-source footprints use the original cache-local projection.
@@ -767,6 +899,7 @@ void main()
     if (all(equal(area_axis,vec2(0))) && !area_sky && depth > 0.0 && any(greaterThan(area_world,vec4(0.5))))
     {
         aw_centre_depth = depth;
+        area_p = awPosition(texel,depth);
         area_n_geo = awGeoNormal(texel);
         for (int c = 0; c < 4; ++c)
             if (area_world[c] > 0.5)

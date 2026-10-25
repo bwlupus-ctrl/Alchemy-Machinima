@@ -405,6 +405,11 @@ class AreaRunner:
             fr = self.filter
             self._begin(fr)
             self._mat(fr, b'inv_proj', np.linalg.inv(cam.proj))
+            inverse_depth = np.linalg.inv(cam.proj)
+            exact_depth = inverse_depth[[3, 3], [2, 3]]
+            high_depth = exact_depth.astype(np.float32)
+            low_depth = (exact_depth-high_depth.astype(np.float64)).astype(np.float32)
+            gl.uf[4](gl.loc(fr, b'area_world_depth'), *map(float, np.r_[high_depth, low_depth]))
             gl.ui(gl.loc(fr, b'depthMap'), 1)
             gl.ui(gl.loc(fr, b'normalMap'), 2)
             gl.ui(gl.loc(fr, b'area_source'), 3)
